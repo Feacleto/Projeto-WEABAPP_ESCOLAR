@@ -4,8 +4,10 @@ import { Ticket, Mail, Lock, ArrowLeft, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
-import { signupWithInvite } from '../services/authService';
+import GoogleIcon from '../components/common/GoogleIcon';
+import { signupWithInvite, signupWithGoogleInvite } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
+import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
 
 export default function FirstAccess() {
   const navigate = useNavigate();
@@ -17,16 +19,26 @@ export default function FirstAccess() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const errs = {};
+    if (!isValidInviteCode(code)) {
+      errs.code = 'Use o formato TN seguido de 4 dígitos (ex: TN4582).';
+    }
+    if (!name.trim()) errs.name = 'Informe seu nome.';
+    if (!isValidEmail(email)) errs.email = 'Email inválido.';
+    if (password.length < 6) errs.password = 'Mínimo 6 caracteres.';
+    if (password !== confirmPassword) errs.confirmPassword = 'As senhas não conferem.';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
-
-    if (password.length < 6) {
-      toast.error('Senha precisa ter no mínimo 6 caracteres.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error('As senhas não conferem.');
+    if (!validate()) {
+      toast.error('Confira os campos destacados.');
       return;
     }
 
@@ -45,6 +57,30 @@ export default function FirstAccess() {
     }
   };
 
+  const onGoogleSignup = async () => {
+    if (!isValidInviteCode(code)) {
+      setErrors((prev) => ({
+        ...prev,
+        code: 'Informe o código de convite antes de continuar com Google.',
+      }));
+      toast.error('Digite o código de convite primeiro.');
+      return;
+    }
+    setGoogleSubmitting(true);
+    try {
+      await signupWithGoogleInvite({ inviteCode: code });
+      await refreshProfile();
+      toast.success('Conta criada com Google!');
+      navigate('/pai', { replace: true });
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        toast.error(err?.message || mapAuthError(err));
+      }
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col px-6 py-6">
       <Link
@@ -59,18 +95,40 @@ export default function FirstAccess() {
         Use o código de convite que o motorista te entregou para criar sua conta.
       </p>
 
-      <form onSubmit={onSubmit} className="space-y-4">
-        <Input
-          label="Código de convite"
-          placeholder="TN4582"
-          icon={Ticket}
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          autoCapitalize="characters"
-          maxLength={6}
-          hint="Formato: TN seguido de 4 dígitos"
-          required
-        />
+      <Input
+        label="Código de convite"
+        placeholder="TN4582"
+        icon={Ticket}
+        value={code}
+        onChange={(e) => setCode(maskInviteCode(e.target.value))}
+        autoCapitalize="characters"
+        maxLength={6}
+        hint="Formato: TN seguido de 4 dígitos"
+        error={errors.code}
+        required
+      />
+
+      <div className="my-4">
+        <Button
+          variant="secondary"
+          loading={googleSubmitting}
+          onClick={onGoogleSignup}
+        >
+          {!googleSubmitting && <GoogleIcon size={18} />}
+          Criar conta com Google
+        </Button>
+      </div>
+
+      <div className="relative my-2">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200"></div>
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-bg px-3 text-textMuted">ou crie com email/senha</span>
+        </div>
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-4 mt-4">
         <Input
           label="Seu nome"
           placeholder="Nome completo"
@@ -78,6 +136,7 @@ export default function FirstAccess() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoComplete="name"
+          error={errors.name}
           required
         />
         <Input
@@ -89,6 +148,7 @@ export default function FirstAccess() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          error={errors.email}
           required
         />
         <Input
@@ -100,6 +160,7 @@ export default function FirstAccess() {
           onChange={(e) => setPassword(e.target.value)}
           minLength={6}
           autoComplete="new-password"
+          error={errors.password}
           required
         />
         <Input
@@ -111,6 +172,7 @@ export default function FirstAccess() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           minLength={6}
           autoComplete="new-password"
+          error={errors.confirmPassword}
           required
         />
         <Button type="submit" loading={submitting}>
@@ -132,6 +194,10 @@ function mapAuthError(err) {
       return 'Senha muito fraca.';
     case 'auth/network-request-failed':
       return 'Sem conexão com a internet.';
+    case 'auth/popup-blocked':
+      return 'Popup bloqueado pelo navegador. Habilite e tente novamente.';
+    case 'auth/account-exists-with-different-credential':
+      return 'Já existe conta com outro método de login pra este email.';
     default:
       return 'Erro ao criar conta. Tente novamente.';
   }

@@ -5,9 +5,19 @@ import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Spinner from '../components/common/Spinner';
-import { createFirstAdmin } from '../services/authService';
+import GoogleIcon from '../components/common/GoogleIcon';
+import {
+  createFirstAdmin,
+  createFirstAdminWithGoogle,
+} from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
 import { useAuth } from '../hooks/useAuth';
+import {
+  maskPhone,
+  isValidPhone,
+  isValidEmail,
+  unmaskPhone,
+} from '../utils/masks';
 
 /**
  * Bootstrap do primeiro admin do app.
@@ -25,6 +35,8 @@ export default function FirstAdmin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     adminExists()
@@ -42,15 +54,32 @@ export default function FirstAdmin() {
       .finally(() => setChecking(false));
   }, [navigate]);
 
+  const validate = () => {
+    const errs = {};
+    if (!name.trim()) errs.name = 'Informe seu nome.';
+    if (phone && !isValidPhone(phone)) {
+      errs.phone = 'Telefone inválido. Use 10 ou 11 dígitos com DDD.';
+    }
+    if (!isValidEmail(email)) errs.email = 'Email inválido.';
+    if (password.length < 6) errs.password = 'Mínimo 6 caracteres.';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error('Senha precisa ter no mínimo 6 caracteres.');
+    if (!validate()) {
+      toast.error('Confira os campos destacados.');
       return;
     }
     setSubmitting(true);
     try {
-      await createFirstAdmin({ email, password, name, phone });
+      await createFirstAdmin({
+        email,
+        password,
+        name,
+        phone: unmaskPhone(phone),
+      });
       await refreshProfile();
       toast.success('Administrador criado!');
       navigate('/tio', { replace: true });
@@ -58,6 +87,30 @@ export default function FirstAdmin() {
       toast.error(err?.message || 'Erro ao criar administrador.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onGoogleAdminSignup = async () => {
+    if (phone && !isValidPhone(phone)) {
+      setErrors((prev) => ({
+        ...prev,
+        phone: 'Telefone inválido. Use 10 ou 11 dígitos com DDD.',
+      }));
+      toast.error('Confira o telefone.');
+      return;
+    }
+    setGoogleSubmitting(true);
+    try {
+      await createFirstAdminWithGoogle({ phone: unmaskPhone(phone) });
+      await refreshProfile();
+      toast.success('Administrador criado com Google!');
+      navigate('/tio', { replace: true });
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        toast.error(err?.message || 'Erro ao criar administrador.');
+      }
+    } finally {
+      setGoogleSubmitting(false);
     }
   };
 
@@ -87,7 +140,38 @@ export default function FirstAdmin() {
         não houver nenhum admin cadastrado.
       </p>
 
-      <form onSubmit={onSubmit} className="space-y-4">
+      <Input
+        label="Telefone (opcional)"
+        placeholder="(11) 99999-9999"
+        icon={Phone}
+        value={phone}
+        onChange={(e) => setPhone(maskPhone(e.target.value))}
+        autoComplete="tel"
+        inputMode="tel"
+        error={errors.phone}
+      />
+
+      <div className="my-4">
+        <Button
+          variant="secondary"
+          loading={googleSubmitting}
+          onClick={onGoogleAdminSignup}
+        >
+          {!googleSubmitting && <GoogleIcon size={18} />}
+          Criar admin com Google
+        </Button>
+      </div>
+
+      <div className="relative my-2">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200"></div>
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-bg px-3 text-textMuted">ou crie com email/senha</span>
+        </div>
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-4 mt-4">
         <Input
           label="Nome"
           placeholder="Seu nome"
@@ -95,16 +179,8 @@ export default function FirstAdmin() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoComplete="name"
+          error={errors.name}
           required
-        />
-        <Input
-          label="Telefone"
-          placeholder="(11) 99999-9999"
-          icon={Phone}
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          autoComplete="tel"
-          inputMode="tel"
         />
         <Input
           type="email"
@@ -115,6 +191,7 @@ export default function FirstAdmin() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          error={errors.email}
           required
         />
         <Input
@@ -126,6 +203,7 @@ export default function FirstAdmin() {
           onChange={(e) => setPassword(e.target.value)}
           minLength={6}
           autoComplete="new-password"
+          error={errors.password}
           required
         />
         <Button type="submit" loading={submitting}>

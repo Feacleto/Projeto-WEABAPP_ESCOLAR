@@ -5,7 +5,9 @@ import {
   GraduationCap,
   Bus,
   MapPin,
+  HelpCircle,
 } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Card from '../../components/common/Card';
@@ -28,6 +30,7 @@ const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
 
 export default function PaiDashboard() {
   const { profile, logout } = useAuth();
+  const { openTutorial } = useOutletContext() || {};
   const { child, loading: childLoading } = useChild(profile?.childId);
   const { location: liveLocation, loading: locLoading } = useLiveLocation();
 
@@ -113,13 +116,22 @@ export default function PaiDashboard() {
         <Header
           title="Início"
           action={
-            <button
-              onClick={logout}
-              aria-label="Sair"
-              className="text-textMuted tap p-1"
-            >
-              <LogOut size={20} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={openTutorial}
+                aria-label="Ver tutorial novamente"
+                className="text-textMuted tap p-1"
+              >
+                <HelpCircle size={20} />
+              </button>
+              <button
+                onClick={logout}
+                aria-label="Sair"
+                className="text-textMuted tap p-1"
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
           }
         />
         <EmptyState
@@ -138,13 +150,22 @@ export default function PaiDashboard() {
       <Header
         title={`Olá, ${firstName}`}
         action={
-          <button
-            onClick={logout}
-            aria-label="Sair"
-            className="text-textMuted tap p-1"
-          >
-            <LogOut size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={openTutorial}
+              aria-label="Ver tutorial novamente"
+              className="text-textMuted tap p-1"
+            >
+              <HelpCircle size={20} />
+            </button>
+            <button
+              onClick={logout}
+              aria-label="Sair"
+              className="text-textMuted tap p-1"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
         }
       />
 

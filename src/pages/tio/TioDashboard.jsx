@@ -6,7 +6,9 @@ import {
   AlertCircle,
   Activity,
   Users,
+  HelpCircle,
 } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
 import { onSnapshot, doc } from 'firebase/firestore';
 import Header from '../../components/layout/Header';
 import Card from '../../components/common/Card';
@@ -20,6 +22,7 @@ const ON_VAN = ['onboard', 'returning'];
 
 export default function TioDashboard() {
   const { profile, logout } = useAuth();
+  const { openTutorial } = useOutletContext() || {};
   const { children, loading } = useChildren();
   const [routeActive, setRouteActive] = useState(false);
 
@@ -46,13 +49,22 @@ export default function TioDashboard() {
       <Header
         title={`Olá, ${firstName}`}
         action={
-          <button
-            onClick={logout}
-            aria-label="Sair"
-            className="text-textMuted tap p-1"
-          >
-            <LogOut size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={openTutorial}
+              aria-label="Ver tutorial novamente"
+              className="text-textMuted tap p-1"
+            >
+              <HelpCircle size={20} />
+            </button>
+            <button
+              onClick={logout}
+              aria-label="Sair"
+              className="text-textMuted tap p-1"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
         }
       />
 

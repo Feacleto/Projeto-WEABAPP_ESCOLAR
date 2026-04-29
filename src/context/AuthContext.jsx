@@ -65,6 +65,12 @@ export function AuthProvider({ children }) {
     return updated;
   }, []);
 
+  // Atualiza o profile no estado local sem refetch — usado quando já
+  // sabemos o que mudou no Firestore (ex: tutorialDone após o tutorial).
+  const updateProfile = useCallback((partial) => {
+    setProfile((prev) => (prev ? { ...prev, ...partial } : prev));
+  }, []);
+
   const value = {
     user,
     profile,
@@ -73,6 +79,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     refreshProfile,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

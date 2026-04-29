@@ -19,6 +19,12 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { addChild } from '../../services/childrenService';
 import { searchAddress } from '../../services/locationService';
+import {
+  maskPhone,
+  unmaskPhone,
+  isValidPhone,
+  isValidEmail,
+} from '../../utils/masks';
 
 const PERIODS = [
   { value: 'morning', label: 'Manhã' },
@@ -52,9 +58,32 @@ export default function ChildForm() {
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
+  const [errors, setErrors] = useState({});
 
   const setField = (key) => (e) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const setPhone = (e) =>
+    setForm((prev) => ({ ...prev, parentPhone: maskPhone(e.target.value) }));
+
+  const validate = () => {
+    const errs = {};
+    if (!form.name.trim()) errs.name = 'Informe o nome da criança.';
+    if (!form.school.trim()) errs.school = 'Informe a escola.';
+    if (!form.parentName.trim()) errs.parentName = 'Informe o nome do responsável.';
+    if (!isValidEmail(form.parentEmail)) errs.parentEmail = 'Email inválido.';
+    if (!isValidPhone(form.parentPhone)) {
+      errs.parentPhone = 'Telefone inválido. Use 10 ou 11 dígitos com DDD.';
+    }
+    if (!form.address.trim()) errs.address = 'Informe o endereço.';
+    if (!form.lat || !form.lng) {
+      errs.address = 'Busque as coordenadas do endereço primeiro.';
+    }
+    const fee = parseFloat(form.monthlyFee);
+    if (!fee || fee <= 0) errs.monthlyFee = 'Mensalidade deve ser maior que zero.';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const onSearchCoords = async () => {
     if (!form.address.trim()) {
@@ -80,14 +109,15 @@ export default function ChildForm() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!form.lat || !form.lng) {
-      toast.error('Busque as coordenadas do endereço primeiro.');
+    if (!validate()) {
+      toast.error('Confira os campos destacados.');
       return;
     }
     setSubmitting(true);
     try {
       const { inviteCode } = await addChild({
         ...form,
+        parentPhone: unmaskPhone(form.parentPhone),
         monthlyFee: parseFloat(form.monthlyFee) || 0,
       });
       setCreatedCode(inviteCode);
@@ -121,6 +151,7 @@ export default function ChildForm() {
             icon={User}
             value={form.name}
             onChange={setField('name')}
+            error={errors.name}
             required
           />
           <Input
@@ -129,6 +160,7 @@ export default function ChildForm() {
             icon={GraduationCap}
             value={form.school}
             onChange={setField('school')}
+            error={errors.school}
             required
           />
           <div>
@@ -165,6 +197,7 @@ export default function ChildForm() {
             value={form.parentName}
             onChange={setField('parentName')}
             autoComplete="name"
+            error={errors.parentName}
             required
           />
           <Input
@@ -176,6 +209,7 @@ export default function ChildForm() {
             value={form.parentEmail}
             onChange={setField('parentEmail')}
             autoComplete="email"
+            error={errors.parentEmail}
             required
           />
           <Input
@@ -184,8 +218,10 @@ export default function ChildForm() {
             icon={Phone}
             inputMode="tel"
             value={form.parentPhone}
-            onChange={setField('parentPhone')}
+            onChange={setPhone}
             autoComplete="tel"
+            maxLength={15}
+            error={errors.parentPhone}
             required
           />
         </Card>
@@ -199,6 +235,7 @@ export default function ChildForm() {
             value={form.address}
             onChange={setField('address')}
             hint="Quanto mais específico, melhor o geocoding."
+            error={errors.address}
             required
           />
           <Button
@@ -233,6 +270,7 @@ export default function ChildForm() {
             icon={DollarSign}
             value={form.monthlyFee}
             onChange={setField('monthlyFee')}
+            error={errors.monthlyFee}
             required
           />
           <div>

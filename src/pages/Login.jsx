@@ -4,18 +4,20 @@ import { Mail, Lock, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import GoogleIcon from '../components/common/GoogleIcon';
 import { useAuth } from '../hooks/useAuth';
-import { resetPassword } from '../services/authService';
+import { resetPassword, loginWithGoogle, getUserDoc, logout } from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
 
 export default function Login() {
-  const { login, profile, loading: authLoading } = useAuth();
+  const { login, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
   // Assumimos que admin existe até confirmar — evita "flicker" do link de bootstrap
   const [hasAdmin, setHasAdmin] = useState(true);
@@ -48,6 +50,36 @@ export default function Login() {
       toast.error(mapAuthError(err));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * Login com Google: só funciona pra usuários JÁ cadastrados.
+   * Se o user fizer login Google sem ter doc users/{uid}, deslogamos
+   * e direcionamos pro fluxo de "primeiro acesso" com invite code.
+   */
+  const onGoogleLogin = async () => {
+    setGoogleSubmitting(true);
+    try {
+      const user = await loginWithGoogle();
+      const userProfile = await getUserDoc(user.uid);
+      if (!userProfile) {
+        await logout();
+        toast.error(
+          'Conta Google não cadastrada. Use "Primeiro acesso" com seu código de convite.',
+          { duration: 5000 }
+        );
+        return;
+      }
+      // Profile existe — força refresh no contexto e o useEffect redireciona
+      await refreshProfile();
+      toast.success(`Bem-vindo, ${userProfile.name || 'Tio'}!`);
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        toast.error(mapAuthError(err));
+      }
+    } finally {
+      setGoogleSubmitting(false);
     }
   };
 
@@ -116,6 +148,24 @@ export default function Login() {
           </button>
         </form>
 
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-bg px-3 text-textMuted">ou</span>
+          </div>
+        </div>
+
+        <Button
+          variant="secondary"
+          loading={googleSubmitting}
+          onClick={onGoogleLogin}
+        >
+          {!googleSubmitting && <GoogleIcon size={18} />}
+          Entrar com Google
+        </Button>
+
         <div className="mt-8 pt-6 border-t border-gray-200 text-center space-y-3">
           <Link
             to="/first-access"
@@ -151,7 +201,13 @@ function mapAuthError(err) {
       return 'Muitas tentativas. Aguarde alguns minutos.';
     case 'auth/network-request-failed':
       return 'Sem conexão com a internet.';
+    case 'auth/popup-blocked':
+      return 'Popup bloqueado pelo navegador. Habilite e tente novamente.';
+    case 'auth/popup-closed-by-user':
+      return 'Login cancelado.';
+    case 'auth/account-exists-with-different-credential':
+      return 'Já existe conta com outro método de login pra este email.';
     default:
-      return 'Erro ao entrar. Tente novamente.';
+      return err?.message || 'Erro ao entrar. Tente novamente.';
   }
 }

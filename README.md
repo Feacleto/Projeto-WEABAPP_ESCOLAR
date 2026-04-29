@@ -44,10 +44,14 @@ VITE_FIREBASE_MEASUREMENT_ID=...
 ## Configuração inicial do Firebase
 
 1. Crie um projeto no [Firebase Console](https://console.firebase.google.com)
-2. **Authentication → Sign-in method**: habilite "Email/Password"
-3. **Firestore Database**: crie em modo "Native"
-4. Cole as credenciais no `.env`
-5. Aplique as Security Rules:
+2. **Authentication → Sign-in method**: habilite
+   - **Email/Password**
+   - **Google** (precisa selecionar email de suporte do projeto)
+3. **Authentication → Settings → Authorized domains**: adicione
+   `localhost` (já vem) e o domínio de produção (`{projectId}.web.app`)
+4. **Firestore Database**: crie em modo "Native"
+5. Cole as credenciais no `.env`
+6. Aplique as Security Rules:
 
    ```bash
    npm install -g firebase-tools
@@ -93,8 +97,16 @@ Existem **duas formas** — escolha uma:
 2. Preencha o formulário; toque em **"Buscar coordenadas"** (geocodifica via Nominatim/OSM)
 3. Salve — anote o **invite code** mostrado (`TN` + 4 dígitos, ex: `TN4582`)
 4. Entregue o código pro responsável (WhatsApp, presencial, etc.)
-5. O responsável abre o app → **"Primeiro acesso"** → informa código + email + senha
-6. Conta criada e vinculada automaticamente; nos próximos logins ele usa email + senha
+5. O responsável abre o app → **"Primeiro acesso"** → informa o código e escolhe:
+   - **Criar conta com Google** (1 clique, usa conta Google existente), ou
+   - **Email + senha** (preenche nome, email, senha)
+6. Conta criada e vinculada automaticamente; nos próximos logins ele usa o método escolhido
+
+### Login com Google
+
+Tanto o admin (Tio) quanto o pai podem usar **"Entrar com Google"** no login,
+desde que já tenham conta cadastrada (email/senha ou Google) no app. Pra primeiro
+acesso, o pai precisa do invite code, e o admin usa `/first-admin`.
 
 ## Iniciar uma rota (Tio)
 
