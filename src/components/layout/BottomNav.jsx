@@ -2,9 +2,10 @@ import { NavLink } from 'react-router-dom';
 
 /**
  * Navegação inferior fixa (mobile-first). Recebe lista de itens dinâmica
- * pra reaproveitar entre Tio (4 abas) e Pai (2 abas).
+ * pra reaproveitar entre Tio e Pai.
  *
- * items: [{ to, label, icon: LucideIcon, end?: bool }]
+ * items: [{ to, label, icon: LucideIcon, end?: bool, badge?: number }]
+ *   - badge: número exibido como "bolinha" sobre o ícone (oculta se 0/undef)
  */
 export default function BottomNav({ items }) {
   return (
@@ -27,7 +28,14 @@ export default function BottomNav({ items }) {
             }`
           }
         >
-          <item.icon size={22} strokeWidth={2} />
+          <span className="relative inline-flex">
+            <item.icon size={22} strokeWidth={2} />
+            {item.badge > 0 && (
+              <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center">
+                {item.badge > 9 ? '9+' : item.badge}
+              </span>
+            )}
+          </span>
           <span>{item.label}</span>
         </NavLink>
       ))}

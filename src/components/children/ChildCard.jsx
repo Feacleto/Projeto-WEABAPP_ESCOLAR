@@ -1,5 +1,6 @@
-import { GraduationCap, Phone, MoreVertical } from 'lucide-react';
+import { GraduationCap, Phone, ChevronRight } from 'lucide-react';
 import Card from '../common/Card';
+import Avatar from '../common/Avatar';
 import StatusBadge from './StatusBadge';
 import { PERIOD_LABELS, formatPhone } from '../../utils/formatters';
 
@@ -9,13 +10,18 @@ import { PERIOD_LABELS, formatPhone } from '../../utils/formatters';
  * Props:
  *   - child:           dados do Firestore
  *   - onCycleStatus:   handler do botão "Próximo status"
- *   - onMenuClick:     handler do menu de opções (editar/excluir) — opcional
+ *   - onClick:         handler do clique no card todo (ex: abrir detalhes)
  */
-export default function ChildCard({ child, onCycleStatus, onMenuClick }) {
+export default function ChildCard({ child, onCycleStatus, onClick }) {
   return (
     <Card className="flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
+      <div className="flex items-start gap-3">
+        <Avatar gender={child.gender} size="md" />
+        <button
+          type="button"
+          onClick={onClick}
+          className={`flex-1 min-w-0 text-left ${onClick ? 'tap' : ''}`}
+        >
           <h3 className="font-semibold text-text truncate">{child.name}</h3>
           <p className="text-xs text-textMuted flex items-center gap-1 mt-0.5 truncate">
             <GraduationCap size={12} className="shrink-0" />
@@ -29,15 +35,9 @@ export default function ChildCard({ child, onCycleStatus, onMenuClick }) {
               {formatPhone(child.parentPhone)}
             </p>
           )}
-        </div>
-        {onMenuClick && (
-          <button
-            onClick={onMenuClick}
-            aria-label="Mais opções"
-            className="text-textMuted tap p-1 -mr-1"
-          >
-            <MoreVertical size={18} />
-          </button>
+        </button>
+        {onClick && (
+          <ChevronRight size={18} className="text-textMuted shrink-0 mt-1" />
         )}
       </div>
 

@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react';
 import {
-  LogOut,
   ParkingCircle,
   GraduationCap,
   Bus,
   MapPin,
-  HelpCircle,
+  ChevronRight,
 } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Card from '../../components/common/Card';
@@ -20,6 +19,7 @@ import { useChild } from '../../hooks/useChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { haversineDistance } from '../../utils/haversine';
 import { PERIOD_LABELS, formatDateTime } from '../../utils/formatters';
+import { getEffectiveStatus } from '../../services/childrenService';
 
 // Limites das zonas de proximidade (em km)
 const NEAR_KM = 2;
@@ -29,7 +29,10 @@ const ARRIVED_KM = 0.4;
 const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
 
 export default function PaiDashboard() {
-  const { profile, logout } = useAuth();
+  const navigate = useNavigate();
+  const { profile } = useAuth();
+  // openTutorial mantido pra futuros usos; logout migrou pro perfil
+  // eslint-disable-next-line no-unused-vars
   const { openTutorial } = useOutletContext() || {};
   const { child, loading: childLoading } = useChild(profile?.childId);
   const { location: liveLocation, loading: locLoading } = useLiveLocation();
@@ -113,27 +116,7 @@ export default function PaiDashboard() {
   if (!profile?.childId || !child) {
     return (
       <>
-        <Header
-          title="Início"
-          action={
-            <div className="flex items-center gap-1">
-              <button
-                onClick={openTutorial}
-                aria-label="Ver tutorial novamente"
-                className="text-textMuted tap p-1"
-              >
-                <HelpCircle size={20} />
-              </button>
-              <button
-                onClick={logout}
-                aria-label="Sair"
-                className="text-textMuted tap p-1"
-              >
-                <LogOut size={20} />
-              </button>
-            </div>
-          }
-        />
+        <Header title="Início" />
         <EmptyState
           icon={MapPin}
           title="Cadastro não encontrado"
@@ -147,31 +130,14 @@ export default function PaiDashboard() {
 
   return (
     <>
-      <Header
-        title={`Olá, ${firstName}`}
-        action={
-          <div className="flex items-center gap-1">
-            <button
-              onClick={openTutorial}
-              aria-label="Ver tutorial novamente"
-              className="text-textMuted tap p-1"
-            >
-              <HelpCircle size={20} />
-            </button>
-            <button
-              onClick={logout}
-              aria-label="Sair"
-              className="text-textMuted tap p-1"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
-        }
-      />
+      <Header title={`Olá, ${firstName}`} />
 
       <div className="p-4 space-y-4">
-        {/* Card grande de status */}
-        <Card className="text-center space-y-2">
+        {/* Card grande de status (clicável -> abre perfil da criança) */}
+        <Card
+          className="text-center space-y-2"
+          onClick={() => navigate('/pai/child')}
+        >
           <div>
             <h2 className="text-lg font-bold text-text">{child.name}</h2>
             <p className="text-xs text-textMuted flex items-center justify-center gap-1 mt-0.5">
@@ -179,9 +145,12 @@ export default function PaiDashboard() {
               {child.school} · {PERIOD_LABELS[child.period]}
             </p>
           </div>
-          <div className="pt-1">
-            <StatusBadge status={child.status} size="lg" />
+          <div className="pt-1 flex items-center justify-center gap-2">
+            <StatusBadge status={getEffectiveStatus(child)} size="lg" />
           </div>
+          <p className="text-[11px] text-primary inline-flex items-center justify-center gap-1 mt-1">
+            Ver perfil completo <ChevronRight size={12} />
+          </p>
         </Card>
 
         {/* Estado da rota: alerta de proximidade OU mensagem offline */}

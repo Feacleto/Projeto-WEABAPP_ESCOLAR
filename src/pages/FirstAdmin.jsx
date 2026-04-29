@@ -6,10 +6,12 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Spinner from '../components/common/Spinner';
 import GoogleIcon from '../components/common/GoogleIcon';
+import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import {
   createFirstAdmin,
   createFirstAdminWithGoogle,
 } from '../services/authService';
+import { acceptTerms } from '../services/consentService';
 import { adminExists } from '../services/inviteCodeService';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -37,6 +39,7 @@ export default function FirstAdmin() {
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   useEffect(() => {
     adminExists()
@@ -62,6 +65,8 @@ export default function FirstAdmin() {
     }
     if (!isValidEmail(email)) errs.email = 'Email inválido.';
     if (password.length < 6) errs.password = 'Mínimo 6 caracteres.';
+    if (!acceptedLegal)
+      errs.legal = 'Você precisa aceitar os termos e a política de privacidade.';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -74,12 +79,17 @@ export default function FirstAdmin() {
     }
     setSubmitting(true);
     try {
-      await createFirstAdmin({
+      const user = await createFirstAdmin({
         email,
         password,
         name,
         phone: unmaskPhone(phone),
       });
+      try {
+        await acceptTerms(user.uid);
+      } catch (err) {
+        console.error('Falha ao registrar aceite:', err);
+      }
       await refreshProfile();
       toast.success('Administrador criado!');
       navigate('/tio', { replace: true });
@@ -99,9 +109,22 @@ export default function FirstAdmin() {
       toast.error('Confira o telefone.');
       return;
     }
+    if (!acceptedLegal) {
+      setErrors((prev) => ({
+        ...prev,
+        legal: 'Você precisa aceitar os termos antes de continuar.',
+      }));
+      toast.error('Aceite os termos antes de continuar.');
+      return;
+    }
     setGoogleSubmitting(true);
     try {
-      await createFirstAdminWithGoogle({ phone: unmaskPhone(phone) });
+      const user = await createFirstAdminWithGoogle({ phone: unmaskPhone(phone) });
+      try {
+        await acceptTerms(user.uid);
+      } catch (err) {
+        console.error('Falha ao registrar aceite:', err);
+      }
       await refreshProfile();
       toast.success('Administrador criado com Google!');
       navigate('/tio', { replace: true });
@@ -150,6 +173,14 @@ export default function FirstAdmin() {
         inputMode="tel"
         error={errors.phone}
       />
+
+      <div className="mt-4">
+        <LegalAcceptCheckbox
+          checked={acceptedLegal}
+          onChange={setAcceptedLegal}
+          error={errors.legal}
+        />
+      </div>
 
       <div className="my-4">
         <Button

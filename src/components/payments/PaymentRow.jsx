@@ -1,4 +1,12 @@
-import { Calendar, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Hourglass,
+  Banknote,
+  QrCode,
+} from 'lucide-react';
 import Card from '../common/Card';
 import {
   formatCurrency,
@@ -9,8 +17,13 @@ import {
 const STATUS_CONFIG = {
   paid: {
     label: 'Pago',
-    color: 'text-emerald-700 bg-success/10',
+    color: 'text-lime-700 bg-success/10',
     Icon: CheckCircle2,
+  },
+  claimed: {
+    label: 'Aguardando confirmação',
+    color: 'text-primaryDark bg-primary/10',
+    Icon: Hourglass,
   },
   pending: {
     label: 'Pendente',
@@ -73,6 +86,19 @@ export default function PaymentRow({
             Vence: {formatDate(payment.dueDate)}
             {payment.paidAt && ` · Pago: ${formatDate(payment.paidAt)}`}
           </p>
+          {payment.paymentMethod && displayStatus !== 'pending' && displayStatus !== 'overdue' && (
+            <p className="text-[11px] text-textMuted flex items-center gap-1 mt-0.5">
+              {payment.paymentMethod === 'cash' ? (
+                <>
+                  <Banknote size={10} /> Dinheiro
+                </>
+              ) : (
+                <>
+                  <QrCode size={10} /> PIX
+                </>
+              )}
+            </p>
+          )}
         </div>
         {action}
       </div>

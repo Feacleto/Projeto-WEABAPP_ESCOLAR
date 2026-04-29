@@ -62,7 +62,13 @@ service cloud.firestore {
     //   - Update não pode mudar a role (evita auto-promoção a admin)
     // -----------------------------------------------------------------
     match /users/{uid} {
-      allow get: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      // Próprio dono lê o seu doc; admin lê todos; qualquer signed-in pode ler
+      // o doc DO admin (necessário pro pai ver chave PIX e telefone do tio).
+      allow get: if isSignedIn() && (
+        request.auth.uid == uid
+        || isAdmin()
+        || resource.data.role == 'admin'
+      );
       allow list: if isAdmin();
 
       allow create: if isSignedIn()
@@ -128,13 +134,75 @@ service cloud.firestore {
     // payments/{paymentId}
     //   - Admin: leitura/escrita total
     //   - Pai: leitura SOMENTE dos seus (parentUid == uid)
+    //   - Pai: pode atualizar APENAS pra alternar entre 'pending' <-> 'claimed'
+    //     (marcar/desmarcar "paguei"). Nunca pode escrever 'paid' direto.
     // -----------------------------------------------------------------
     match /payments/{paymentId} {
       allow read: if isSignedIn() && (
         isAdmin()
         || resource.data.parentUid == request.auth.uid
       );
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && (
+          (resource.data.status == 'pending' && request.resource.data.status == 'claimed')
+          || (resource.data.status == 'claimed' && request.resource.data.status == 'pending')
+        )
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'claimedAt', 'paymentMethod'])
+      );
+    }
+
+    // -----------------------------------------------------------------
+    // notifications/{id}
+    //   - Cada doc pertence a um único userId (dono).
+    //   - Dono lê/atualiza (marcar como lida) seus próprios docs.
+    //   - Admin lê tudo (útil pra suporte).
+    //   - Criação: signed-in pode criar pra qualquer userId — controle de
+    //     conteúdo é validado pelos campos obrigatórios. Cenários válidos:
+    //       * Pai cria notif pro tio quando marca pagamento como pago
+    //       * Tio cria notif pro pai quando confirma recebimento
+    //   - Delete: dono apaga as suas, admin apaga qualquer uma.
+    // -----------------------------------------------------------------
+    match /notifications/{notifId} {
+      // Read combinado (get + list): força a query a ter where userId == auth.uid
+      // — sem isso, list seria permissivo demais e usuário poderia consultar
+      // notificações alheias.
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.userId == request.auth.uid
+      );
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll(['userId', 'type', 'title', 'createdAt'])
+        && request.resource.data.userId is string
+        && request.resource.data.type is string;
+
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['readAt']);
+
+      allow delete: if isAdmin() || (
+        isSignedIn() && resource.data.userId == request.auth.uid
+      );
+    }
+
+    // -----------------------------------------------------------------
+    // routePlans/{id} — ordem padrão das rotas (ex: routePlans/default).
+    //   - Apenas admin lê/escreve. Pais NÃO veem ordem da fila (privacidade).
+    // -----------------------------------------------------------------
+    match /routePlans/{planId} {
+      allow read, write: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // dailyRoutes/{YYYY-MM-DD} — overrides do dia (ordem + ausências).
+    //   - Apenas admin lê/escreve.
+    // -----------------------------------------------------------------
+    match /dailyRoutes/{dateKey} {
+      allow read, write: if isAdmin();
     }
 
     // -----------------------------------------------------------------

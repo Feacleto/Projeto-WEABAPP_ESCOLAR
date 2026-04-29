@@ -43,3 +43,23 @@
   height: 100%;
   z-index: 0;
 }
+
+/* Print-friendly pra páginas legais (Termos / Privacidade) — usuário
+ * salva como PDF pelo diálogo nativo do navegador. */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  #root {
+    max-width: none;
+    background: white;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  /* Page breaks limpos entre seções de documento legal */
+  article section {
+    break-inside: avoid;
+  }
+}

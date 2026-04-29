@@ -20,7 +20,9 @@ import { db } from '../firebase/config';
  * pode rodar de novo após o pai criar a conta.
  *
  * @param monthKey "YYYY-MM"
- * @param dueDay   dia do mês para vencimento (default: 10)
+ * @param dueDay   dia do mês para vencimento (default: 10). Se for maior que o
+ *                 último dia do mês, o JS Date faz wraparound — clampamos pro
+ *                 último dia do mês alvo pra evitar pular pro mês seguinte.
  * @returns { created, skipped, withoutParent }
  */
 export async function generateMonthlyPayments(monthKey, dueDay = 10) {
@@ -44,7 +46,10 @@ export async function generateMonthlyPayments(monthKey, dueDay = 10) {
   );
 
   // 3. Cria os faltantes em batch (até 500 writes; pra essa escala basta)
-  const dueDate = Timestamp.fromDate(new Date(year, month - 1, dueDay));
+  // Clamp dueDay pro último dia do mês alvo (ex: 31/fev -> último dia de fev)
+  const lastDay = new Date(year, month, 0).getDate();
+  const safeDueDay = Math.min(Math.max(1, Number(dueDay) || 10), lastDay);
+  const dueDate = Timestamp.fromDate(new Date(year, month - 1, safeDueDay));
   const batch = writeBatch(db);
   let created = 0;
   let withoutParent = 0;
@@ -80,9 +85,37 @@ export async function generateMonthlyPayments(monthKey, dueDay = 10) {
 }
 
 /**
- * Dá baixa num pagamento — admin only.
+ * Pai marca o pagamento como "paguei" (aguardando confirmação do tio).
+ * O Firestore Rules garante que pai só pode escrever 'pending' -> 'claimed'.
+ *
+ * @param method 'pix' | 'cash' — como ele pagou (opcional, default 'pix')
  */
-export async function markAsPaid(paymentId) {
+export async function claimPayment(paymentId, method = 'pix') {
+  await updateDoc(doc(db, 'payments', paymentId), {
+    status: 'claimed',
+    claimedAt: serverTimestamp(),
+    paymentMethod: method,
+  });
+}
+
+/**
+ * Pai desfaz "marquei como pago" (caso tenha clicado errado e o tio ainda
+ * não confirmou). Volta pra 'pending'.
+ */
+export async function unclaimPayment(paymentId) {
+  await updateDoc(doc(db, 'payments', paymentId), {
+    status: 'pending',
+    claimedAt: null,
+    paymentMethod: null,
+  });
+}
+
+/**
+ * Tio confirma que recebeu o pagamento — admin only.
+ * Funciona tanto pra dar baixa direto ('pending' -> 'paid') quanto pra
+ * confirmar um claim do pai ('claimed' -> 'paid').
+ */
+export async function confirmReceipt(paymentId) {
   await updateDoc(doc(db, 'payments', paymentId), {
     status: 'paid',
     paidAt: serverTimestamp(),
@@ -90,25 +123,34 @@ export async function markAsPaid(paymentId) {
 }
 
 /**
- * Reverte uma baixa (em caso de erro do admin).
+ * Reverte uma confirmação (em caso de erro do tio).
+ * Volta pra 'pending' — perde o claim do pai (ele precisa marcar de novo).
  */
-export async function markAsPending(paymentId) {
+export async function undoReceipt(paymentId) {
   await updateDoc(doc(db, 'payments', paymentId), {
     status: 'pending',
     paidAt: null,
+    claimedAt: null,
   });
 }
 
 /**
- * Calcula o status de exibição (paid | pending | overdue).
+ * Calcula o status de exibição.
  *
- * O Firestore só armazena "paid" ou "pending" — "overdue" é derivado
- * comparando dueDate com a data atual, evitando precisar de Cloud Functions
- * pra rodar um cron que atualizaria o status.
+ * Estados possíveis:
+ *   - 'paid'     — pago e confirmado pelo tio
+ *   - 'claimed'  — pai marcou como pago, aguardando confirmação do tio
+ *   - 'overdue'  — pendente E dueDate < hoje
+ *   - 'pending'  — pendente E dueDate >= hoje (ou sem dueDate)
+ *
+ * 'overdue' é derivado em runtime — evita Cloud Function pra atualizar status.
+ * 'claimed' tem prioridade sobre 'overdue': se o pai marcou como pago, mesmo
+ * que esteja após a data, o tio precisa confirmar antes de virar 'paid'.
  */
 export function computeDisplayStatus(payment) {
   if (!payment) return 'pending';
   if (payment.status === 'paid') return 'paid';
+  if (payment.status === 'claimed') return 'claimed';
   const due = payment.dueDate?.toDate?.()?.getTime();
   if (due && due < Date.now()) return 'overdue';
   return 'pending';

@@ -19,7 +19,36 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Analytics só em browsers que suportam (não falha em SSR/contextos restritos)
-isSupported()
-  .then((ok) => ok && getAnalytics(app))
-  .catch(() => null);
+// Garante que emails do Firebase Auth (reset de senha, verificação) cheguem
+// em PT-BR mesmo se o usuário tiver outro idioma no navegador.
+auth.languageCode = 'pt-BR';
+
+// Analytics: inicializa SOMENTE se o usuário consentiu cookies analíticos
+// (LGPD — opt-in é obrigatório). Lê o consentimento de localStorage diretamente
+// pra evitar dependência circular com consentService.
+function userAllowsAnalytics() {
+  try {
+    const raw = localStorage.getItem('tn_cookie_consent_v1');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return !!parsed?.analytics;
+  } catch {
+    return false;
+  }
+}
+
+if (userAllowsAnalytics()) {
+  isSupported()
+    .then((ok) => ok && getAnalytics(app))
+    .catch(() => null);
+}
+
+// Permite ativar Analytics depois que o usuário aceitar cookies (sem reload).
+// Chamado pelo CookieBanner via custom event.
+if (typeof window !== 'undefined') {
+  window.addEventListener('tn-analytics-consent', () => {
+    isSupported()
+      .then((ok) => ok && getAnalytics(app))
+      .catch(() => null);
+  });
+}

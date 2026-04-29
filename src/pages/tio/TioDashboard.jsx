@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
-  LogOut,
   Bus,
   CheckCircle2,
   AlertCircle,
   Activity,
   Users,
-  HelpCircle,
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { onSnapshot, doc } from 'firebase/firestore';
@@ -15,13 +13,13 @@ import Card from '../../components/common/Card';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
+import { getEffectiveStatus } from '../../services/childrenService';
 import { db } from '../../firebase/config';
 
-// "Na perua" = quem está em movimento (pra escola ou voltando).
-const ON_VAN = ['onboard', 'returning'];
-
 export default function TioDashboard() {
-  const { profile, logout } = useAuth();
+  const { profile } = useAuth();
+  // openTutorial mantido pra futuros usos; logout/help migraram pro perfil
+  // eslint-disable-next-line no-unused-vars
   const { openTutorial } = useOutletContext() || {};
   const { children, loading } = useChildren();
   const [routeActive, setRouteActive] = useState(false);
@@ -38,35 +36,20 @@ export default function TioDashboard() {
     return unsub;
   }, []);
 
+  // Usa effective status (reseta automaticamente em virada de dia)
   const total = children.length;
-  const onVan = children.filter((c) => ON_VAN.includes(c.status)).length;
-  const delivered = children.filter((c) => c.status === 'delivered').length;
+  const onVan = children.filter(
+    (c) => getEffectiveStatus(c) === 'onboard'
+  ).length;
+  const delivered = children.filter(
+    (c) => getEffectiveStatus(c) === 'delivered'
+  ).length;
 
   const firstName = profile?.name?.split(' ')[0] || 'Tio';
 
   return (
     <>
-      <Header
-        title={`Olá, ${firstName}`}
-        action={
-          <div className="flex items-center gap-1">
-            <button
-              onClick={openTutorial}
-              aria-label="Ver tutorial novamente"
-              className="text-textMuted tap p-1"
-            >
-              <HelpCircle size={20} />
-            </button>
-            <button
-              onClick={logout}
-              aria-label="Sair"
-              className="text-textMuted tap p-1"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
-        }
-      />
+      <Header title={`Olá, ${firstName}`} />
 
       <div className="p-4 space-y-3">
         <Card

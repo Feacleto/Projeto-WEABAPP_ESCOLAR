@@ -11,8 +11,8 @@ const NAV_ITEMS = [
 ];
 
 /**
- * Layout do painel do Pai: <Outlet /> + BottomNav fixo (2 abas).
- * Hospeda o modal de tutorial e expõe openTutorial via Outlet context.
+ * Layout do painel do Pai: <Outlet /> + BottomNav fixo.
+ * Notificações e perfil ficam no Header (sino + ícone à direita).
  */
 export default function PaiLayout() {
   const { profile } = useAuth();

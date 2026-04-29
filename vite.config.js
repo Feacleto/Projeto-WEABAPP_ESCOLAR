@@ -10,24 +10,28 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['icon.png', 'apple-touch-icon.png', 'logo.png'],
       manifest: {
         name: 'Tio Nino Digital',
         short_name: 'Tio Nino',
         description: 'Gestão e rastreamento de transporte escolar em tempo real',
-        theme_color: '#38BDF8',
+        theme_color: '#1F5F3F',
         background_color: '#F3F4F6',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
-        // SVG escala pra qualquer tamanho — evita gerar PNGs separados.
-        // Browsers modernos suportam SVG no manifest (iOS 16+, Chrome, Firefox).
         icons: [
           {
-            src: 'icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: 'icon.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'apple-touch-icon.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any maskable',
           },
         ],

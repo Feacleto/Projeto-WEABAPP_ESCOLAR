@@ -7,11 +7,11 @@ import L from 'leaflet';
 const VAN_SVG = `
 <svg width="42" height="42" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg">
   <ellipse cx="21" cy="38" rx="14" ry="2.5" fill="#000" fill-opacity="0.18"/>
-  <rect x="6" y="14" width="30" height="18" rx="3.5" fill="#0284C7"/>
-  <rect x="9" y="17" width="6.5" height="5.5" rx="1" fill="#BAE6FD"/>
-  <rect x="17.5" y="17" width="6.5" height="5.5" rx="1" fill="#BAE6FD"/>
-  <rect x="26" y="17" width="6.5" height="5.5" rx="1" fill="#BAE6FD"/>
-  <rect x="6" y="25" width="30" height="2" fill="#0369A1"/>
+  <rect x="6" y="14" width="30" height="18" rx="3.5" fill="#F5A623"/>
+  <rect x="9" y="17" width="6.5" height="5.5" rx="1" fill="#FFFFFF"/>
+  <rect x="17.5" y="17" width="6.5" height="5.5" rx="1" fill="#FFFFFF"/>
+  <rect x="26" y="17" width="6.5" height="5.5" rx="1" fill="#FFFFFF"/>
+  <rect x="6" y="25" width="30" height="2" fill="#D48816"/>
   <circle cx="13" cy="33" r="3.2" fill="#1F2937" stroke="#fff" stroke-width="1.5"/>
   <circle cx="29" cy="33" r="3.2" fill="#1F2937" stroke="#fff" stroke-width="1.5"/>
 </svg>`;
@@ -19,10 +19,10 @@ const VAN_SVG = `
 const HOME_SVG = `
 <svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
   <ellipse cx="18" cy="33" rx="11" ry="2" fill="#000" fill-opacity="0.18"/>
-  <path d="M5 19 L18 7 L31 19 V30 H5 Z" fill="#10B981"/>
-  <path d="M4 19.5 L18 6.5 L32 19.5" stroke="#065F46" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+  <path d="M5 19 L18 7 L31 19 V30 H5 Z" fill="#1F5F3F"/>
+  <path d="M4 19.5 L18 6.5 L32 19.5" stroke="#143F2A" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
   <rect x="14" y="21" width="8" height="9" fill="#FFFFFF"/>
-  <circle cx="20.5" cy="25.5" r="0.8" fill="#065F46"/>
+  <circle cx="20.5" cy="25.5" r="0.8" fill="#143F2A"/>
 </svg>`;
 
 // Wrapper centralizado pro divIcon — passamos className: '' pra remover

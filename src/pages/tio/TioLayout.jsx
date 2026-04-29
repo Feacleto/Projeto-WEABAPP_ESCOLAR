@@ -14,17 +14,12 @@ const NAV_ITEMS = [
 
 /**
  * Layout do painel do Tio: <Outlet /> + BottomNav fixo.
- * O pb-20 garante que o conteúdo não fique escondido atrás da nav.
- *
- * Hospeda também o modal de tutorial (1ª vez) e expõe `openTutorial` via
- * Outlet context pra que o Dashboard possa oferecer "Ver tutorial novamente".
+ * Notificações e perfil ficam no Header (sino + ícone à direita).
  */
 export default function TioLayout() {
   const { profile } = useAuth();
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
-  // Abre automaticamente quando o usuário ainda não concluiu o tutorial.
-  // Reabre se profile.tutorialDone voltar pra false (botão "Refazer tutorial").
   useEffect(() => {
     if (profile && profile.tutorialDone !== true) {
       setTutorialOpen(true);

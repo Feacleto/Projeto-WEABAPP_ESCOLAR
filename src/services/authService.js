@@ -5,6 +5,10 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
+  applyActionCode,
+  checkActionCode,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
@@ -26,8 +30,35 @@ export async function logout() {
   return signOut(auth);
 }
 
+// O link enviado pelo Firebase aponta de volta pra nossa rota /auth-action
+// (em vez da página hospedada do Firebase em inglês). handleCodeInApp:true
+// preserva o oobCode na query string ao invés de processá-lo automaticamente.
 export async function resetPassword(email) {
-  return sendPasswordResetEmail(auth, email.trim());
+  const actionCodeSettings = {
+    url: `${window.location.origin}/auth-action`,
+    handleCodeInApp: true,
+  };
+  return sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
+}
+
+// Valida o oobCode recebido na URL. Retorna o email associado ao código
+// (útil pra mostrar "Redefinindo senha de fulano@...") ou lança se inválido/expirado.
+export async function verifyResetCode(oobCode) {
+  return verifyPasswordResetCode(auth, oobCode);
+}
+
+// Conclui o reset: salva a nova senha. Após isso, o oobCode fica inválido.
+export async function confirmReset(oobCode, newPassword) {
+  return confirmPasswordReset(auth, oobCode, newPassword);
+}
+
+// Verifica e aplica códigos de outras ações (verificação de email, etc.).
+export async function inspectActionCode(oobCode) {
+  return checkActionCode(auth, oobCode);
+}
+
+export async function applyAuthActionCode(oobCode) {
+  return applyActionCode(auth, oobCode);
 }
 
 // Lê o documento users/{uid}. Retorna null se ainda não existe (caso normal

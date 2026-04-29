@@ -1,22 +1,13 @@
-import {
-  Home,
-  Clock,
-  Bus,
-  School,
-  ArrowLeft,
-  CheckCircle2,
-} from 'lucide-react';
+import { Home, Bus, School, CheckCircle2 } from 'lucide-react';
 import { STATUS_LABELS } from '../../services/childrenService';
 
 // Cor + ícone por status. Mantém o mesmo "vocabulário" visual em qualquer
 // lugar do app (lista do Tio, dashboard do Pai, etc.).
 const VISUAL = {
   home: { icon: Home, color: 'bg-gray-100 text-gray-700' },
-  waiting: { icon: Clock, color: 'bg-warning/10 text-amber-700' },
   onboard: { icon: Bus, color: 'bg-primary/10 text-primaryDark' },
   atSchool: { icon: School, color: 'bg-purple-100 text-purple-700' },
-  returning: { icon: ArrowLeft, color: 'bg-primary/10 text-primaryDark' },
-  delivered: { icon: CheckCircle2, color: 'bg-success/10 text-emerald-700' },
+  delivered: { icon: CheckCircle2, color: 'bg-success/10 text-lime-700' },
 };
 
 export default function StatusBadge({ status, size = 'md' }) {

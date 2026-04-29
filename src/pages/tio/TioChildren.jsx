@@ -110,6 +110,7 @@ export default function TioChildren() {
                 key={child.id}
                 child={child}
                 onCycleStatus={onCycleStatus}
+                onClick={() => navigate(`/tio/children/${child.id}`)}
               />
             ))}
           </div>

@@ -11,6 +11,9 @@ import {
   Copy,
   Check,
   Home,
+  School,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../layout/Header';
@@ -19,6 +22,7 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { addChild } from '../../services/childrenService';
 import { searchAddress } from '../../services/locationService';
+import { PERIOD_OPTIONS } from '../../services/routePlanService';
 import {
   maskPhone,
   unmaskPhone,
@@ -26,10 +30,10 @@ import {
   isValidEmail,
 } from '../../utils/masks';
 
-const PERIODS = [
-  { value: 'morning', label: 'Manhã' },
-  { value: 'afternoon', label: 'Tarde' },
-  { value: 'evening', label: 'Noite' },
+// Períodos vêm de routePlanService (fonte única — usado pelo kanban também)
+const GENDERS = [
+  { value: 'male', label: 'Masculino' },
+  { value: 'female', label: 'Feminino' },
 ];
 
 /**
@@ -44,36 +48,52 @@ export default function ChildForm() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
+    gender: 'male',
     parentName: '',
     parentEmail: '',
     parentPhone: '',
+    parent2Name: '',
+    parent2Phone: '',
     address: '',
     lat: '',
     lng: '',
     school: '',
+    schoolAddress: '',
+    schoolLat: '',
+    schoolLng: '',
     period: 'morning',
+    pickupPeriod: 'morning',
+    dropoffPeriod: 'afternoon',
     monthlyFee: '',
     notes: '',
   });
   const [searching, setSearching] = useState(false);
+  const [searchingSchool, setSearchingSchool] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
   const [errors, setErrors] = useState({});
+  const [showSecondParent, setShowSecondParent] = useState(false);
 
   const setField = (key) => (e) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const setPhone = (e) =>
-    setForm((prev) => ({ ...prev, parentPhone: maskPhone(e.target.value) }));
+  const setPhone = (key) => (e) =>
+    setForm((prev) => ({ ...prev, [key]: maskPhone(e.target.value) }));
 
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Informe o nome da criança.';
     if (!form.school.trim()) errs.school = 'Informe a escola.';
+    if (!form.schoolAddress.trim())
+      errs.schoolAddress = 'Informe o endereço da escola.';
     if (!form.parentName.trim()) errs.parentName = 'Informe o nome do responsável.';
     if (!isValidEmail(form.parentEmail)) errs.parentEmail = 'Email inválido.';
     if (!isValidPhone(form.parentPhone)) {
       errs.parentPhone = 'Telefone inválido. Use 10 ou 11 dígitos com DDD.';
+    }
+    // Segundo responsável é opcional, mas se preencheu o telefone, valida
+    if (form.parent2Phone && !isValidPhone(form.parent2Phone)) {
+      errs.parent2Phone = 'Telefone inválido.';
     }
     if (!form.address.trim()) errs.address = 'Informe o endereço.';
     if (!form.lat || !form.lng) {
@@ -85,7 +105,7 @@ export default function ChildForm() {
     return Object.keys(errs).length === 0;
   };
 
-  const onSearchCoords = async () => {
+  const onSearchHomeCoords = async () => {
     if (!form.address.trim()) {
       toast.error('Digite o endereço primeiro.');
       return;
@@ -107,6 +127,28 @@ export default function ChildForm() {
     }
   };
 
+  const onSearchSchoolCoords = async () => {
+    if (!form.schoolAddress.trim()) {
+      toast.error('Digite o endereço da escola primeiro.');
+      return;
+    }
+    setSearchingSchool(true);
+    try {
+      const result = await searchAddress(form.schoolAddress);
+      setForm((prev) => ({
+        ...prev,
+        schoolLat: result.lat,
+        schoolLng: result.lng,
+        schoolAddress: result.displayName || prev.schoolAddress,
+      }));
+      toast.success('Endereço da escola localizado!');
+    } catch (err) {
+      toast.error(err?.message || 'Endereço não encontrado.');
+    } finally {
+      setSearchingSchool(false);
+    }
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) {
@@ -118,6 +160,7 @@ export default function ChildForm() {
       const { inviteCode } = await addChild({
         ...form,
         parentPhone: unmaskPhone(form.parentPhone),
+        parent2Phone: form.parent2Phone ? unmaskPhone(form.parent2Phone) : '',
         monthlyFee: parseFloat(form.monthlyFee) || 0,
       });
       setCreatedCode(inviteCode);
@@ -146,7 +189,7 @@ export default function ChildForm() {
         <Card className="space-y-4">
           <h2 className="text-sm font-semibold text-text">Criança</h2>
           <Input
-            label="Nome da criança"
+            label="Nome completo"
             placeholder="Ex: Pedro Silva"
             icon={User}
             value={form.name}
@@ -154,21 +197,35 @@ export default function ChildForm() {
             error={errors.name}
             required
           />
-          <Input
-            label="Escola"
-            placeholder="Nome da escola"
-            icon={GraduationCap}
-            value={form.school}
-            onChange={setField('school')}
-            error={errors.school}
-            required
-          />
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">
-              Período
+              Gênero
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {GENDERS.map((g) => (
+                <button
+                  key={g.value}
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, gender: g.value }))
+                  }
+                  className={`h-10 rounded-xl text-sm font-semibold border tap ${
+                    form.gender === g.value
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-card text-text border-gray-200'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text mb-1.5">
+              Período escolar
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {PERIODS.map((p) => (
+              {PERIOD_OPTIONS.map((p) => (
                 <button
                   key={p.value}
                   type="button"
@@ -185,13 +242,112 @@ export default function ChildForm() {
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-textMuted mt-1">
+              Em qual turno a criança estuda.
+            </p>
           </div>
         </Card>
 
         <Card className="space-y-4">
-          <h2 className="text-sm font-semibold text-text">Responsável</h2>
+          <h2 className="text-sm font-semibold text-text">Horários de transporte</h2>
+          <p className="text-xs text-textMuted -mt-2">
+            Define em qual turno você passa em casa pra buscar e devolver a criança.
+          </p>
+
+          <div>
+            <label className="block text-sm font-medium text-text mb-1.5">
+              Turno da coleta (casa → escola)
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {PERIOD_OPTIONS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, pickupPeriod: p.value }))
+                  }
+                  className={`h-10 rounded-xl text-sm font-semibold border tap ${
+                    form.pickupPeriod === p.value
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-card text-text border-gray-200'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text mb-1.5">
+              Turno da entrega (escola → casa)
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {PERIOD_OPTIONS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, dropoffPeriod: p.value }))
+                  }
+                  className={`h-10 rounded-xl text-sm font-semibold border tap ${
+                    form.dropoffPeriod === p.value
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-card text-text border-gray-200'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <h2 className="text-sm font-semibold text-text">Escola</h2>
           <Input
-            label="Nome do responsável"
+            label="Nome da escola"
+            placeholder="Ex: Colégio Tio Nino"
+            icon={GraduationCap}
+            value={form.school}
+            onChange={setField('school')}
+            error={errors.school}
+            required
+          />
+          <Input
+            label="Endereço da escola"
+            placeholder="Rua, número, bairro, cidade"
+            icon={School}
+            value={form.schoolAddress}
+            onChange={setField('schoolAddress')}
+            error={errors.schoolAddress}
+            required
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            icon={Search}
+            onClick={onSearchSchoolCoords}
+            loading={searchingSchool}
+          >
+            Buscar coordenadas da escola
+          </Button>
+          {form.schoolLat && form.schoolLng && (
+            <div className="flex items-center gap-2 text-xs text-lime-700 bg-success/10 px-3 py-2 rounded-lg">
+              <MapPin size={14} />
+              <span>
+                {Number(form.schoolLat).toFixed(5)},{' '}
+                {Number(form.schoolLng).toFixed(5)}
+              </span>
+            </div>
+          )}
+        </Card>
+
+        <Card className="space-y-4">
+          <h2 className="text-sm font-semibold text-text">Responsável principal</h2>
+          <Input
+            label="Nome"
             placeholder="Pai, mãe ou tutor"
             icon={User}
             value={form.parentName}
@@ -218,16 +374,56 @@ export default function ChildForm() {
             icon={Phone}
             inputMode="tel"
             value={form.parentPhone}
-            onChange={setPhone}
+            onChange={setPhone('parentPhone')}
             autoComplete="tel"
             maxLength={15}
             error={errors.parentPhone}
             required
           />
+
+          {/* Segundo responsável (opcional) */}
+          <button
+            type="button"
+            onClick={() => setShowSecondParent((v) => !v)}
+            className="w-full flex items-center justify-between text-sm font-medium text-primary tap py-2"
+          >
+            <span>
+              {showSecondParent
+                ? 'Ocultar segundo responsável'
+                : 'Adicionar segundo responsável (opcional)'}
+            </span>
+            {showSecondParent ? (
+              <ChevronUp size={18} />
+            ) : (
+              <ChevronDown size={18} />
+            )}
+          </button>
+
+          {showSecondParent && (
+            <div className="space-y-4 pt-2 border-t border-gray-100">
+              <Input
+                label="Nome do segundo responsável"
+                placeholder="Ex: pai ou mãe"
+                icon={User}
+                value={form.parent2Name}
+                onChange={setField('parent2Name')}
+              />
+              <Input
+                label="Telefone do segundo responsável"
+                placeholder="(11) 99999-9999"
+                icon={Phone}
+                inputMode="tel"
+                value={form.parent2Phone}
+                onChange={setPhone('parent2Phone')}
+                maxLength={15}
+                error={errors.parent2Phone}
+              />
+            </div>
+          )}
         </Card>
 
         <Card className="space-y-4">
-          <h2 className="text-sm font-semibold text-text">Endereço</h2>
+          <h2 className="text-sm font-semibold text-text">Endereço de casa</h2>
           <Input
             label="Endereço completo"
             placeholder="Rua, número, bairro, cidade"
@@ -243,13 +439,13 @@ export default function ChildForm() {
             variant="secondary"
             size="md"
             icon={Search}
-            onClick={onSearchCoords}
+            onClick={onSearchHomeCoords}
             loading={searching}
           >
             Buscar coordenadas
           </Button>
           {form.lat && form.lng && (
-            <div className="flex items-center gap-2 text-xs text-emerald-700 bg-success/10 px-3 py-2 rounded-lg">
+            <div className="flex items-center gap-2 text-xs text-lime-700 bg-success/10 px-3 py-2 rounded-lg">
               <MapPin size={14} />
               <span>
                 {Number(form.lat).toFixed(5)}, {Number(form.lng).toFixed(5)}

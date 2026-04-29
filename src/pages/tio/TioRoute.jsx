@@ -17,6 +17,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { formatDateTime } from '../../utils/formatters';
+import RouteKanban from '../../components/route/RouteKanban';
 
 /**
  * Tela do Tio para iniciar/encerrar a rota.
@@ -187,6 +188,17 @@ export default function TioRoute() {
             <p>{formatDateTime(liveLocation.updatedAt)}</p>
           </Card>
         )}
+
+        {/* Kanban de planejamento da rota — abaixo do GPS */}
+        <div className="pt-2">
+          <h2 className="text-sm font-bold text-text mb-2">
+            Planejamento de hoje
+          </h2>
+          <p className="text-xs text-textMuted mb-3">
+            Arraste pra reordenar. Toque em "Faltou" pra marcar ausência.
+          </p>
+          <RouteKanban />
+        </div>
       </div>
     </>
   );

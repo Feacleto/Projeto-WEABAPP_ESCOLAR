@@ -5,7 +5,9 @@ import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
+import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import { signupWithInvite, signupWithGoogleInvite } from '../services/authService';
+import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
 import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
 
@@ -21,6 +23,7 @@ export default function FirstAccess() {
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   const validate = () => {
     const errs = {};
@@ -31,6 +34,8 @@ export default function FirstAccess() {
     if (!isValidEmail(email)) errs.email = 'Email inválido.';
     if (password.length < 6) errs.password = 'Mínimo 6 caracteres.';
     if (password !== confirmPassword) errs.confirmPassword = 'As senhas não conferem.';
+    if (!acceptedLegal)
+      errs.legal = 'Você precisa aceitar os termos e a política de privacidade.';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -44,7 +49,19 @@ export default function FirstAccess() {
 
     setSubmitting(true);
     try {
-      await signupWithInvite({ inviteCode: code, email, password, name });
+      const user = await signupWithInvite({
+        inviteCode: code,
+        email,
+        password,
+        name,
+      });
+      // Registra o aceite logo após criar o doc users/{uid}.
+      // Não-bloqueante (signup já passou): erro só loga.
+      try {
+        await acceptTerms(user.uid);
+      } catch (err) {
+        console.error('Falha ao registrar aceite:', err);
+      }
       // signupWithInvite faz signup (auto-login) e cria o doc users/{uid} DEPOIS
       // do onAuthStateChanged disparar — o profile chega null. Forçamos refresh.
       await refreshProfile();
@@ -66,9 +83,22 @@ export default function FirstAccess() {
       toast.error('Digite o código de convite primeiro.');
       return;
     }
+    if (!acceptedLegal) {
+      setErrors((prev) => ({
+        ...prev,
+        legal: 'Você precisa aceitar os termos antes de continuar.',
+      }));
+      toast.error('Aceite os termos antes de continuar.');
+      return;
+    }
     setGoogleSubmitting(true);
     try {
-      await signupWithGoogleInvite({ inviteCode: code });
+      const user = await signupWithGoogleInvite({ inviteCode: code });
+      try {
+        await acceptTerms(user.uid);
+      } catch (err) {
+        console.error('Falha ao registrar aceite:', err);
+      }
       await refreshProfile();
       toast.success('Conta criada com Google!');
       navigate('/pai', { replace: true });
@@ -107,6 +137,15 @@ export default function FirstAccess() {
         error={errors.code}
         required
       />
+
+      {/* Aceite cobre os dois fluxos abaixo (Google e email/senha) */}
+      <div className="mt-4">
+        <LegalAcceptCheckbox
+          checked={acceptedLegal}
+          onChange={setAcceptedLegal}
+          error={errors.legal}
+        />
+      </div>
 
       <div className="my-4">
         <Button

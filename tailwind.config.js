@@ -4,15 +4,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#F3F4F6',
+        bg: '#F7F8F7',
         card: '#FFFFFF',
-        primary: '#38BDF8',
-        primaryDark: '#0284C7',
+        primary: '#1F5F3F',
+        primaryDark: '#143F2A',
+        secondary: '#F5A623',
+        secondaryDark: '#D48816',
+        accent: '#52C41A',
+        accentDark: '#3F9B12',
         text: '#111827',
         textMuted: '#6B7280',
-        success: '#10B981',
+        success: '#52C41A',
         danger: '#EF4444',
-        warning: '#F59E0B',
+        warning: '#F5A623',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

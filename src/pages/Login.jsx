@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Bus } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -91,7 +91,10 @@ export default function Login() {
     setResetting(true);
     try {
       await resetPassword(email);
-      toast.success('Email de redefinição enviado.');
+      toast.success(
+        'Enviamos um link para redefinir sua senha. Confira sua caixa de entrada (e o spam!).',
+        { duration: 6000 }
+      );
     } catch (err) {
       toast.error(mapAuthError(err));
     } finally {
@@ -103,10 +106,11 @@ export default function Login() {
     <div className="min-h-screen flex flex-col px-6 py-10">
       <div className="flex-1 flex flex-col justify-center">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-            <Bus size={32} className="text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-text">Tio Nino Digital</h1>
+          <img
+            src="/logo.png"
+            alt="Tio Nino Digital"
+            className="w-32 h-32 mx-auto mb-4 object-contain"
+          />
           <p className="text-sm text-textMuted mt-1">
             Transporte escolar em tempo real
           </p>
@@ -181,6 +185,15 @@ export default function Login() {
               Configurar primeiro administrador
             </Link>
           )}
+          <div className="text-[11px] text-textMuted pt-2 flex items-center justify-center gap-3">
+            <Link to="/termos" className="hover:underline">
+              Termos de Uso
+            </Link>
+            <span aria-hidden>·</span>
+            <Link to="/privacidade" className="hover:underline">
+              Política de Privacidade
+            </Link>
+          </div>
         </div>
       </div>
     </div>
