@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset básico mobile-first com fonte Inter via fallback do sistema */
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Inputs herdam fonte e evitam zoom no iOS */
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    font-size: 16px;
+  }
+
+  /* Container mobile centrado em telas maiores (PWA é mobile-first) */
+  #root {
+    @apply mx-auto max-w-mobile bg-bg;
+  }
+}
+
+@layer components {
+  /* Tap highlight customizado para botões em mobile */
+  .tap {
+    @apply active:scale-[0.98] transition-transform;
+  }
+}
+
+/* Leaflet exige estes estilos pra renderizar corretamente */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
