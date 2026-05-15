@@ -260,12 +260,34 @@ export default function AltPickupSheet({
 
 /* ─────────────── Form "Cadastrar outro" ─────────────── */
 
+// Parentescos mais comuns — chips clicáveis em vez de digitar. "Outro" abre
+// input livre pra casos fora da lista (madrinha, vizinho, cuidador etc).
+const COMMON_RELATIONSHIPS = [
+  'Tio(a)',
+  'Avô',
+  'Avó',
+  'Primo(a)',
+  'Irmão',
+  'Irmã',
+];
+
 function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [relationship, setRelationship] = useState('');
+  const [isCustom, setIsCustom] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const pickPredef = (rel) => {
+    setIsCustom(false);
+    setRelationship(relationship === rel ? '' : rel);
+  };
+
+  const pickCustom = () => {
+    setIsCustom(true);
+    setRelationship('');
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -333,13 +355,51 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
         error={errors.phone}
         required
       />
-      <Input
-        label="Parentesco (opcional)"
-        icon={Heart}
-        placeholder="Avó, tia, vizinho..."
-        value={relationship}
-        onChange={(e) => setRelationship(e.target.value)}
-      />
+      <div>
+        <label className="block text-sm font-semibold text-text mb-2 inline-flex items-center gap-1.5">
+          <Heart size={14} className="text-textMuted" />
+          Parentesco{' '}
+          <span className="text-textMuted font-normal">(opcional)</span>
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {COMMON_RELATIONSHIPS.map((rel) => (
+            <button
+              key={rel}
+              type="button"
+              onClick={() => pickPredef(rel)}
+              className={`tap h-9 px-3 rounded-full text-sm font-semibold border transition-colors ${
+                relationship === rel && !isCustom
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-card text-text border-gray-200'
+              }`}
+            >
+              {rel}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={pickCustom}
+            className={`tap h-9 px-3 rounded-full text-sm font-semibold border transition-colors ${
+              isCustom
+                ? 'bg-primary text-white border-primary'
+                : 'bg-card text-text border-gray-200'
+            }`}
+          >
+            Outro
+          </button>
+        </div>
+        {isCustom && (
+          <input
+            type="text"
+            placeholder="Ex: madrinha, vizinho, cuidador..."
+            value={relationship}
+            onChange={(e) => setRelationship(e.target.value)}
+            maxLength={40}
+            autoFocus
+            className="mt-2 w-full h-12 rounded-2xl border-2 border-gray-200 bg-card text-text px-4 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
+          />
+        )}
+      </div>
       <div className="flex gap-2">
         <Button
           type="button"

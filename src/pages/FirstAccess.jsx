@@ -52,9 +52,15 @@ export default function FirstAccess() {
       </Link>
 
       <div className="text-center mb-5">
-        <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-violet-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <Users size={28} className="text-white" />
-        </div>
+        <Link
+          to="/conheca"
+          aria-label="Conhecer o Tio Nino Digital"
+          className="tap inline-block"
+        >
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-violet-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Users size={28} className="text-white" />
+          </div>
+        </Link>
         <h1 className="text-2xl font-bold text-text">Pai / Mãe</h1>
         <p className="text-sm text-textMuted mt-1">
           Entre ou crie sua conta
@@ -173,6 +179,26 @@ function LoginPane({ login }) {
 
   return (
     <>
+      {/* Google em destaque — opção principal pra reduzir fricção
+        * (não precisa digitar email/senha). Email/senha vem depois. */}
+      <Button
+        loading={googleSubmitting}
+        onClick={onGoogleLogin}
+        className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 !h-14 !text-base shadow-md"
+      >
+        {!googleSubmitting && <GoogleIcon size={22} />}
+        Entrar com Google
+      </Button>
+
+      <div className="relative my-5">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-bg px-3 text-textMuted">ou com email e senha</span>
+        </div>
+      </div>
+
       <form onSubmit={onSubmit} className="space-y-4">
         <Input
           type="email"
@@ -195,7 +221,7 @@ function LoginPane({ login }) {
           autoComplete="current-password"
           required
         />
-        <Button type="submit" loading={submitting}>
+        <Button type="submit" variant="secondary" loading={submitting}>
           Entrar
         </Button>
         <button
@@ -207,24 +233,6 @@ function LoginPane({ login }) {
           {resetting ? 'Enviando...' : 'Esqueci minha senha'}
         </button>
       </form>
-
-      <div className="relative my-5">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-bg px-3 text-textMuted">ou</span>
-        </div>
-      </div>
-
-      <Button
-        variant="secondary"
-        loading={googleSubmitting}
-        onClick={onGoogleLogin}
-      >
-        {!googleSubmitting && <GoogleIcon size={18} />}
-        Entrar com Google
-      </Button>
     </>
   );
 }

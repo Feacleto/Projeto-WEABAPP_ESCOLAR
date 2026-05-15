@@ -37,13 +37,16 @@ export default function TioAgendaFAB() {
 
   return (
     <>
+      {/* FAB com label persistente "Avisar" — sinaliza claramente que esse
+        * botão serve pra mandar recado pros pais (não é só um ícone solto). */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Abrir agenda"
-        className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-500/30 flex items-center justify-center tap"
+        aria-label="Avisar os pais"
+        className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-500/30 flex items-center gap-2 tap font-bold print:hidden"
       >
-        <Notebook size={26} />
+        <Notebook size={22} />
+        <span className="text-sm">Avisar pais</span>
       </button>
 
       {open && <AgendaSheet onClose={() => setOpen(false)} />}

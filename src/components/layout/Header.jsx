@@ -34,7 +34,7 @@ export default function Header({
 
   // Hooks só rodam quando autenticado pra não disparar subscribes em /login
   return (
-    <header className="sticky top-0 z-20 bg-card border-b border-gray-100 h-14 px-4 flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-20 bg-card border-b border-gray-100 h-14 px-4 flex items-center justify-between gap-3 print:hidden">
       <div className="flex items-center gap-2 min-w-0">
         {showBack && (
           <button
@@ -105,7 +105,7 @@ function GlobalActions({ role, basePath, currentPath }) {
       >
         <Avatar
           photoURL={profile?.photoURL}
-          kind="adult"
+          kind={role === 'admin' ? 'admin' : 'adult'}
           seed={user?.uid}
           name={profile?.name}
           size="sm"

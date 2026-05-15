@@ -141,10 +141,64 @@ export async function confirmReceipt(paymentId, method = null) {
 }
 
 /**
- * Reverte uma confirmação (em caso de erro do tio).
+ * Janela em que o Tio pode reverter um pagamento PIX/dinheiro recebido.
+ * Depois disso, a confirmação fica definitiva — evita zicas tipo o pai
+ * recolher o dinheiro 1 mês depois ou o Tio se confundir muito tempo
+ * após o fato. Cartão de crédito não tem reversão manual em momento
+ * nenhum (é reconhecido automaticamente pelo gateway).
+ */
+export const UNDO_WINDOW_HOURS = 24;
+const UNDO_WINDOW_MS = UNDO_WINDOW_HOURS * 60 * 60 * 1000;
+
+/**
+ * Diz se um pagamento ainda pode ser revertido pelo Tio. Combina:
+ *   - método (cartão nunca pode ser desfeito manualmente)
+ *   - tempo desde a confirmação (limite UNDO_WINDOW_HOURS)
+ *
+ * Retorna { allowed, reason } pra UI exibir mensagem clara.
+ */
+export function canUndoReceipt(payment) {
+  if (!payment) return { allowed: false, reason: 'Pagamento não encontrado.' };
+  if (payment.status !== 'paid') {
+    return { allowed: false, reason: 'Pagamento ainda não foi confirmado.' };
+  }
+  if (payment.paymentMethod === 'card') {
+    return {
+      allowed: false,
+      reason:
+        'Pagamentos por cartão são reconhecidos automaticamente — não dá pra desfazer.',
+    };
+  }
+  const paidAt =
+    payment.paidAt?.toDate?.() ||
+    (payment.paidAt ? new Date(payment.paidAt) : null);
+  if (!paidAt) {
+    // Sem timestamp → pagamento antigo. Permite desfazer (compatibilidade).
+    return { allowed: true, reason: null };
+  }
+  const elapsed = Date.now() - paidAt.getTime();
+  if (elapsed > UNDO_WINDOW_MS) {
+    const hours = Math.round(elapsed / (60 * 60 * 1000));
+    return {
+      allowed: false,
+      reason: `Já se passaram ${hours}h da confirmação. Reversão liberada só em até ${UNDO_WINDOW_HOURS}h pra evitar erros.`,
+    };
+  }
+  return { allowed: true, reason: null };
+}
+
+/**
+ * Reverte uma confirmação (em caso de erro do tio). Sujeito às regras
+ * de `canUndoReceipt` — joga erro se não for permitido (a UI evita o
+ * caminho mas a verificação aqui é a fonte da verdade).
+ *
  * Volta pra 'pending' — perde o claim do pai (ele precisa marcar de novo).
  */
-export async function undoReceipt(paymentId) {
+export async function undoReceipt(paymentId, payment = null) {
+  if (payment) {
+    const { allowed, reason } = canUndoReceipt(payment);
+    if (!allowed) throw new Error(reason || 'Reversão não permitida.');
+  }
   await updateDoc(doc(db, 'payments', paymentId), {
     status: 'pending',
     paidAt: null,

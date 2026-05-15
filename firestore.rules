@@ -392,13 +392,43 @@ service cloud.firestore {
     //   - Não permite update/delete — feedback é imutável.
     // -----------------------------------------------------------------
     match /feedbacks/{id} {
-      allow read: if isSignedIn() && (
-        isAdmin() || resource.data.uid == request.auth.uid
+      // Get: dono lê o próprio, admin lê todos, qualquer um lê depoimentos
+      //   com allowTestimonial == true (pra exibir na landing pública).
+      // List: SOMENTE quando há filtro allowTestimonial == true (pra
+      //   alimentar a landing) ou pra admin. O dono não lista — usa get.
+      allow get: if (
+        resource.data.allowTestimonial == true
+      ) || (
+        isSignedIn() && (
+          isAdmin() || resource.data.uid == request.auth.uid
+        )
+      );
+      allow list: if isAdmin() || (
+        request.query.limit <= 100
+        && resource.data.allowTestimonial == true
       );
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasAll(['uid', 'role', 'answers', 'createdAt']);
       allow update, delete: if false;
+    }
+
+    // -----------------------------------------------------------------
+    // supportTickets/{id} — chamados de suporte abertos pelo usuário.
+    //   - Dono lê os próprios; admin lê todos.
+    //   - Criação: signed-in cria o seu (uid == auth.uid).
+    //   - Update: só admin (pra marcar status: open → in_progress → closed).
+    //   - Delete: não permitido (histórico imutável).
+    // -----------------------------------------------------------------
+    match /supportTickets/{id} {
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.uid == request.auth.uid
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(['uid', 'role', 'category', 'description', 'status', 'createdAt']);
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
     // -----------------------------------------------------------------

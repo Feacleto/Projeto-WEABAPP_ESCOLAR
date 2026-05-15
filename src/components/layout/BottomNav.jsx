@@ -12,7 +12,7 @@ import { NavLink } from 'react-router-dom';
 export default function BottomNav({ items }) {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-30 px-3 pb-3 pointer-events-none"
+      className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-30 px-3 pb-3 pointer-events-none print:hidden"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 0.75rem)' }}
     >
       <div

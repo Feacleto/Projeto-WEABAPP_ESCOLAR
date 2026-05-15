@@ -202,6 +202,42 @@
   animation: fest-sparkle 2s ease-in-out infinite;
 }
 
+/* Scroll reveal — entrada leve das seções da landing à medida que o
+ * usuário desce. Início em opacity 0 + 20px abaixo; ao receber `reveal-in`
+ * (via IntersectionObserver), volta ao normal com ease-out. Respeita
+ * prefers-reduced-motion via o próprio componente (não aplica delay/anim). */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 600ms ease-out,
+    transform 600ms ease-out;
+  will-change: opacity, transform;
+}
+.reveal.reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Balão da festividade — entrada rápida com leve "pop" pra parecer que
+ * estourou da bolinha. Origem top-right pra ficar coerente com a seta. */
+@keyframes fest-balloon-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(-6px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.03) translateY(0);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-fest-balloon-in {
+  animation: fest-balloon-in 220ms ease-out;
+}
+
 /* Confetti animado pro modal de aniversário — pontinhos coloridos caindo.
  * Cada `<i>` recebe delay/posição inline via style. */
 @keyframes confetti-fall {
@@ -294,7 +330,15 @@
     max-width: none;
     background: white;
   }
+  /* Classe Tailwind print:hidden — escapa o `:` que o Tailwind usa */
   .print\:hidden {
+    display: none !important;
+  }
+  /* Esconde também elementos com position:fixed (FABs, BottomNav antigo,
+   * pop-ups de chamada) que podem ter ficado sem print:hidden aplicado.
+   * Vale só em telas de relatório onde se chama window.print. */
+  .printable .no-print,
+  body.printing .no-print {
     display: none !important;
   }
   /* Page breaks limpos entre seções de documento legal */

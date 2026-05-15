@@ -113,13 +113,39 @@ export default function Login() {
 
       <div className="flex-1 flex flex-col justify-center">
         <div className="text-center mb-6">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Bus size={32} className="text-white" />
-          </div>
+          <Link
+            to="/conheca"
+            aria-label="Conhecer o Tio Nino Digital"
+            className="tap inline-block"
+          >
+            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <Bus size={32} className="text-white" />
+            </div>
+          </Link>
           <h1 className="text-2xl font-bold text-text">Entrar como motorista</h1>
           <p className="text-sm text-textMuted mt-1">
             Acesse sua conta
           </p>
+        </div>
+
+        {/* Google em destaque — opção principal pra reduzir fricção
+          * (não precisa digitar email/senha). Email/senha vem depois. */}
+        <Button
+          loading={googleSubmitting}
+          onClick={onGoogleLogin}
+          className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 !h-14 !text-base shadow-md"
+        >
+          {!googleSubmitting && <GoogleIcon size={22} />}
+          Entrar com Google
+        </Button>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-bg px-3 text-textMuted">ou com email e senha</span>
+          </div>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -144,7 +170,7 @@ export default function Login() {
             autoComplete="current-password"
             required
           />
-          <Button type="submit" loading={submitting}>
+          <Button type="submit" variant="secondary" loading={submitting}>
             Entrar
           </Button>
 
@@ -158,25 +184,15 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200"></div>
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-bg px-3 text-textMuted">ou</span>
-          </div>
-        </div>
-
-        <Button
-          variant="secondary"
-          loading={googleSubmitting}
-          onClick={onGoogleLogin}
-        >
-          {!googleSubmitting && <GoogleIcon size={18} />}
-          Entrar com Google
-        </Button>
-
         <div className="mt-8 pt-6 border-t border-gray-200 text-center space-y-3">
+          {/* Primeira vez aqui? — Tio sem conta. O app é exclusivo, então em vez
+            * de signup direto, manda pra landing pública pra ele pedir acesso. */}
+          <Link
+            to="/conheca"
+            className="block text-sm font-semibold text-primary hover:underline"
+          >
+            Primeira vez aqui? Peça acesso →
+          </Link>
           {!hasAdmin && (
             <Link
               to="/first-admin"

@@ -13,11 +13,17 @@
  * Uso: `getFestivityForDate(new Date())` → tema ou null.
  */
 
+// Cada tema agora carrega:
+//   - label    → string curta (tooltip do navegador)
+//   - greeting → saudação grande dentro do balão (o "feliz X")
+//   - subtitle → frase explicando POR QUE a bolinha está ali
 const THEMES = {
   newYear: {
     key: 'newYear',
     emoji: '🎉',
-    label: 'Feliz Ano Novo!',
+    label: 'Ano Novo',
+    greeting: 'Feliz Ano Novo!',
+    subtitle: 'Que o ano que começou seja lindo pra você e pra criançada.',
     gradient: 'from-yellow-400 via-amber-500 to-orange-500',
     animation: 'animate-fest-bounce',
     sound: null,
@@ -25,7 +31,9 @@ const THEMES = {
   carnival: {
     key: 'carnival',
     emoji: '🎭',
-    label: 'É Carnaval!',
+    label: 'Carnaval',
+    greeting: 'Bom Carnaval!',
+    subtitle: 'Cuidado com os foliões na rua e bom feriado!',
     gradient: 'from-fuchsia-500 via-purple-500 to-pink-500',
     animation: 'animate-fest-wiggle',
     sound: null,
@@ -33,7 +41,9 @@ const THEMES = {
   easter: {
     key: 'easter',
     emoji: '🐰',
-    label: 'Páscoa chegando',
+    label: 'Páscoa',
+    greeting: 'Feliz Páscoa!',
+    subtitle: 'Tempo de chocolate, família e gratidão.',
     gradient: 'from-pink-300 via-rose-400 to-purple-400',
     animation: 'animate-fest-float',
     sound: 'easter',
@@ -41,7 +51,9 @@ const THEMES = {
   mothersDay: {
     key: 'mothersDay',
     emoji: '💐',
-    label: 'Mês das Mães',
+    label: 'Dia das Mães',
+    greeting: 'Feliz Dia das Mães!',
+    subtitle: 'Pra todas as mães que confiam o filho na perua todo dia.',
     gradient: 'from-pink-400 via-rose-400 to-red-400',
     animation: 'animate-fest-float',
     sound: null,
@@ -49,7 +61,9 @@ const THEMES = {
   june: {
     key: 'june',
     emoji: '🎈',
-    label: 'Festa Junina!',
+    label: 'Festa Junina',
+    greeting: 'Boa festa junina!',
+    subtitle: 'Quentão, pé de moleque e fogueira — bom mês de junho!',
     gradient: 'from-amber-500 via-red-500 to-rose-600',
     animation: 'animate-fest-bounce',
     sound: null,
@@ -57,7 +71,9 @@ const THEMES = {
   vacation: {
     key: 'vacation',
     emoji: '☀️',
-    label: 'Tempo de férias',
+    label: 'Férias de julho',
+    greeting: 'Boas férias!',
+    subtitle: 'Aproveite o descanso da criançada — você merece também.',
     gradient: 'from-cyan-400 via-sky-500 to-blue-500',
     animation: 'animate-fest-glow',
     sound: null,
@@ -65,7 +81,9 @@ const THEMES = {
   fathersDay: {
     key: 'fathersDay',
     emoji: '🎩',
-    label: 'Mês dos Pais',
+    label: 'Dia dos Pais',
+    greeting: 'Feliz Dia dos Pais!',
+    subtitle: 'Pra todos os pais que confiam o filho na perua todo dia.',
     gradient: 'from-slate-500 via-indigo-600 to-blue-700',
     animation: 'animate-fest-float',
     sound: null,
@@ -74,6 +92,8 @@ const THEMES = {
     key: 'independence',
     emoji: '🇧🇷',
     label: 'Independência',
+    greeting: 'Viva a Independência!',
+    subtitle: 'Mês da pátria — Brasil que leva nossas crianças à escola.',
     gradient: 'from-green-500 via-yellow-400 to-blue-600',
     animation: 'animate-fest-sway',
     sound: null,
@@ -81,7 +101,9 @@ const THEMES = {
   halloween: {
     key: 'halloween',
     emoji: '🎃',
-    label: 'Halloween!',
+    label: 'Halloween',
+    greeting: 'Feliz Halloween!',
+    subtitle: 'Cuidado com as criancinhas fantasiadas pela rua hoje.',
     gradient: 'from-orange-500 via-orange-600 to-purple-700',
     animation: 'animate-fest-wiggle',
     sound: 'halloween',
@@ -89,7 +111,9 @@ const THEMES = {
   christmas: {
     key: 'christmas',
     emoji: '🎄',
-    label: 'Feliz Natal!',
+    label: 'Natal',
+    greeting: 'Feliz Natal!',
+    subtitle: 'Que essa época seja cheia de paz pra você e pra criançada.',
     gradient: 'from-red-500 via-rose-600 to-green-700',
     animation: 'animate-fest-sparkle',
     sound: 'christmas',

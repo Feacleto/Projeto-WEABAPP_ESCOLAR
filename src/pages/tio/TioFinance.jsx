@@ -24,6 +24,7 @@ import { usePaymentsByMonth } from '../../hooks/usePayments';
 import {
   confirmReceipt,
   undoReceipt,
+  canUndoReceipt,
   computeDisplayStatus,
 } from '../../services/paymentsService';
 import { notifyPaymentConfirmed } from '../../services/notificationsService';
@@ -109,12 +110,13 @@ export default function TioFinance() {
     if (!unconfirming) return;
     setActionLoading(true);
     try {
-      await undoReceipt(unconfirming.id);
+      // Passa o doc inteiro pra o service validar tempo + método.
+      await undoReceipt(unconfirming.id, unconfirming);
       toast.success(`Confirmação desfeita.`);
       setUnconfirming(null);
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao desfazer.');
+      toast.error(err?.message || 'Erro ao desfazer.');
     } finally {
       setActionLoading(false);
     }
@@ -356,6 +358,10 @@ function FinanceHero({ paid, open, overdueCount, claimedCount }) {
 
 function renderAction(payment, { onConfirm, onUndo }) {
   if (payment._display === 'paid') {
+    // Só mostra "Desfazer" enquanto a regra de reversão permitir.
+    // Cartão nunca permite; PIX/dinheiro permitem dentro de 24h.
+    const { allowed } = canUndoReceipt(payment);
+    if (!allowed) return null;
     return (
       <Button size="sm" variant="ghost" fullWidth={false} onClick={onUndo}>
         Desfazer

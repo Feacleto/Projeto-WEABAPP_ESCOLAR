@@ -53,13 +53,16 @@ export default function PaiNotebookFAB() {
 
   return (
     <>
+      {/* FAB com label persistente "Veja a agenda" — convida o Pai a abrir
+        * o caderno mesmo quando não tem notificação chamando atenção. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Abrir agenda"
-        className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-500/30 flex items-center justify-center tap"
+        aria-label="Veja a agenda"
+        className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-500/30 flex items-center gap-2 tap font-bold print:hidden"
       >
-        <Notebook size={26} />
+        <Notebook size={22} />
+        <span className="text-sm">Veja a agenda</span>
       </button>
 
       {open && <NotebookView onClose={() => setOpen(false)} />}

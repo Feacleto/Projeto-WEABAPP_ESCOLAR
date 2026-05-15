@@ -24,7 +24,7 @@ export default function OutgoingCallPanel({ calls = [] }) {
 
   return (
     <div
-      className="fixed top-2 left-2 right-2 max-w-mobile mx-auto z-[55] pointer-events-none"
+      className="fixed top-2 left-2 right-2 max-w-mobile mx-auto z-[55] pointer-events-none print:hidden"
       style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
     >
       <CallPanelCard call={call} />

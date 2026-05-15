@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Hourglass,
   CalendarClock,
+  ChevronDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
@@ -21,7 +22,7 @@ import {
   markAllNotificationsRead,
   markAllDerivedRead,
 } from '../services/notificationsService';
-import { formatDateTime } from '../utils/formatters';
+import { formatRelativeTime } from '../utils/formatters';
 
 const TYPE_VISUAL = {
   payment_claimed: { Icon: Hourglass, color: 'text-primary bg-primary/10' },
@@ -33,6 +34,18 @@ const TYPE_VISUAL = {
   payment_overdue_7d: { Icon: AlertTriangle, color: 'text-danger bg-danger/10' },
 };
 
+// Quantas notificações mostrar de cara. "Ver mais" carrega de 6 em 6.
+const INITIAL_PAGE_SIZE = 6;
+const PAGE_INCREMENT = 6;
+
+// Cores do pill "Hoje / Ontem / Há X dias" — sinaliza recência em uma piscadela.
+const TONE_STYLES = {
+  today: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  yesterday: 'bg-amber-100 text-amber-800 border border-amber-200',
+  recent: 'bg-blue-50 text-blue-700 border border-blue-200',
+  older: 'bg-gray-100 text-textMuted border border-gray-200',
+};
+
 /**
  * Página de Notificações compartilhada por tio e pai. O hook detecta o tipo
  * pelo `deriveFor` — só pais geram lembretes derivados de pagamento.
@@ -41,6 +54,7 @@ export default function Notifications() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const isParent = profile?.role === 'parent';
+  const [visibleCount, setVisibleCount] = useState(INITIAL_PAGE_SIZE);
 
   // Pai: lê seus pagamentos pra derivar lembretes. Tio: payments=[] (não usa).
   const { payments } = usePaymentsByParent(isParent ? user?.uid : null);
@@ -136,11 +150,32 @@ export default function Notifications() {
             }
           />
         ) : (
-          <ul className="space-y-2">
-            {notifications.map((n) => (
-              <NotificationItem key={n.id} notif={n} onClick={() => onClickNotif(n)} />
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-2">
+              {notifications.slice(0, visibleCount).map((n) => (
+                <NotificationItem
+                  key={n.id}
+                  notif={n}
+                  onClick={() => onClickNotif(n)}
+                />
+              ))}
+            </ul>
+            {visibleCount < notifications.length && (
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleCount((c) => c + PAGE_INCREMENT)
+                }
+                className="tap mt-4 mx-auto block text-xs font-semibold text-textMuted hover:text-text inline-flex items-center gap-1 py-2 px-3 rounded-full"
+              >
+                Ver mais{' '}
+                <span className="text-[10px] text-textMuted">
+                  ({notifications.length - visibleCount} restantes)
+                </span>
+                <ChevronDown size={14} />
+              </button>
+            )}
+          </>
         )}
       </div>
     </>
@@ -153,6 +188,7 @@ function NotificationItem({ notif, onClick }) {
     color: 'text-textMuted bg-gray-100',
   };
   const { Icon, color } = visual;
+  const { label, tone } = formatRelativeTime(notif.createdAt);
 
   return (
     <li>
@@ -184,9 +220,13 @@ function NotificationItem({ notif, onClick }) {
               {notif.body}
             </p>
           )}
-          <p className="text-[11px] text-textMuted mt-1">
-            {formatDateTime(notif.createdAt)}
-          </p>
+          <div className="mt-1.5">
+            <span
+              className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${TONE_STYLES[tone]}`}
+            >
+              {label}
+            </span>
+          </div>
         </div>
       </button>
     </li>

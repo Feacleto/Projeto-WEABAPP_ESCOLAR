@@ -34,6 +34,7 @@ import { useChild } from './hooks/useChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
 import { hasAcceptedContract } from './services/contractService';
 import Spinner from './components/common/Spinner';
+import { useGlobalClickSound } from './hooks/useGlobalClickSound';
 
 function FullScreenLoader() {
   return (
@@ -92,6 +93,9 @@ function ParentContractGate({ children }) {
 }
 
 export default function App() {
+  // Som global de clique em qualquer elemento .tap — desabilitável no Profile
+  useGlobalClickSound();
+
   return (
     <>
       <Routes>

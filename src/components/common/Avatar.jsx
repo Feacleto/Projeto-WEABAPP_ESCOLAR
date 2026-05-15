@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User } from 'lucide-react';
+import { User, Bus } from 'lucide-react';
 import { childAvatarUrl, adultAvatarUrl } from '../../utils/avatarUrl';
 
 /**
@@ -7,15 +7,16 @@ import { childAvatarUrl, adultAvatarUrl } from '../../utils/avatarUrl';
  *
  * Hierarquia de exibição:
  *   1. photoURL (foto enviada pelo usuário) — se carregar sem erro
- *   2. DiceBear (gerado automaticamente):
- *      - kind='child' → adventurer com gênero (boy/girl seed)
- *      - kind='adult' → initials com nome
- *   3. Fallback final → ícone <User /> com cor de fundo por gênero
+ *   2. Default por tipo:
+ *      - kind='child' → DiceBear adventurer com gênero
+ *      - kind='adult' → DiceBear initials com nome
+ *      - kind='admin' → ilustração de van escolar em gradient verde
+ *   3. Fallback final → ícone genérico com cor de fundo
  *
  * Props:
  *   - photoURL:  string opcional — URL pública (Firebase Storage)
  *   - gender:    'male' | 'female' | undefined
- *   - kind:      'child' | 'adult' (default: 'child' por compat)
+ *   - kind:      'child' | 'adult' | 'admin' (default: 'child' por compat)
  *   - seed:      string — id estável (childId, uid). Default: '' (gera neutro)
  *   - name:      string — usado em initials pro kind='adult'
  *   - size:      'sm' | 'md' | 'lg' | 'xl'
@@ -67,7 +68,19 @@ export default function Avatar({
     );
   }
 
-  // 2. Avatar gerado automaticamente (DiceBear)
+  // 2a. Motorista sem foto → ilustração de van escolar em gradient verde.
+  // Mantém a estética do app (mesma família de verde do hero/BottomNav).
+  if (kind === 'admin') {
+    return (
+      <div
+        className={`${box} rounded-full shrink-0 flex items-center justify-center bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white shadow-md ${className}`}
+      >
+        <Bus size={icon} strokeWidth={1.8} />
+      </div>
+    );
+  }
+
+  // 2b. Avatar gerado automaticamente (DiceBear) — child/adult
   const generatedSrc =
     kind === 'adult'
       ? adultAvatarUrl({ name, seed })

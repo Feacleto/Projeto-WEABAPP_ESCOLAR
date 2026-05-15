@@ -122,13 +122,27 @@ export default function TioPixConfig() {
             </div>
           </div>
 
+          {/* maxLength e type específicos por tipo:
+            *   phone → 15 chars (formato mascarado (11) 99999-9999)
+            *   email → type="email" pra validação HTML nativa + teclado
+            *   random → uuid v4 (36 chars com hífens) */}
           <Input
             label="Chave PIX"
             placeholder={PIX_KEY_TYPES[type].placeholder}
             icon={Key}
             value={key}
             onChange={onKeyChange}
-            inputMode={type === 'phone' ? 'tel' : type === 'email' ? 'email' : 'text'}
+            type={type === 'email' ? 'email' : 'text'}
+            inputMode={
+              type === 'phone'
+                ? 'tel'
+                : type === 'email'
+                ? 'email'
+                : 'text'
+            }
+            maxLength={
+              type === 'phone' ? 15 : type === 'random' ? 36 : 80
+            }
             autoComplete="off"
             autoCapitalize={type === 'random' ? 'none' : 'off'}
             error={error}

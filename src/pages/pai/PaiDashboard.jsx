@@ -232,12 +232,15 @@ export default function PaiDashboard() {
           onClick={() => setAltPickupOpen(true)}
         />
 
-        {/* Tracking — só quando rota tá ativa */}
-        {routeActive && distanceKm != null && (
+        {/* Tracking — quando rota tá ativa mostra status dinâmico. Quando
+          * não tá, um botão simples permite abrir o mapa mesmo assim. */}
+        {routeActive && distanceKm != null ? (
           <TrackingPanel
             distanceKm={distanceKm}
             onOpenMap={() => navigate('/pai/map')}
           />
+        ) : (
+          <OpenMapButton onClick={() => navigate('/pai/map')} />
         )}
 
         {/* Pagamento — só se houver pendente */}
@@ -579,6 +582,31 @@ function TrackingPanel({ distanceKm, onOpenMap }) {
       <div className="flex-1 min-w-0">
         <p className="font-bold text-text leading-tight">{cfg.title}</p>
         <p className="text-xs text-textMuted mt-0.5">{cfg.subtitle}</p>
+      </div>
+      <ChevronRight size={18} className="text-textMuted shrink-0" />
+    </button>
+  );
+}
+
+/**
+ * Botão simples pra abrir o mapa quando a rota NÃO está ativa.
+ * Substitui o TrackingPanel nesse cenário pra deixar o mapa sempre
+ * a um toque de distância, mesmo sem perua em trânsito agora.
+ */
+function OpenMapButton({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border border-dashed border-gray-200"
+    >
+      <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <MapIcon size={20} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-text leading-tight">Ver no mapa</p>
+        <p className="text-xs text-textMuted mt-0.5">
+          A perua aparece aqui quando estiver rodando
+        </p>
       </div>
       <ChevronRight size={18} className="text-textMuted shrink-0" />
     </button>

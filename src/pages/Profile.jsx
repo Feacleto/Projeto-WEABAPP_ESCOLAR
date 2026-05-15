@@ -6,6 +6,7 @@ import {
   LogOut,
   HelpCircle,
   MessageSquare,
+  LifeBuoy,
   Key,
   ChevronRight,
   Pencil,
@@ -48,6 +49,7 @@ import { formatPhone } from '../utils/formatters';
 import { PIX_KEY_TYPES } from '../services/userService';
 import { APP_VERSION } from '../version';
 import FeedbackSheet from '../components/feedback/FeedbackSheet';
+import SupportSheet from '../components/support/SupportSheet';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -60,6 +62,7 @@ export default function Profile() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [soundsEnabled, setSoundsEnabledState] = useSoundsEnabled();
 
   if (!profile) {
@@ -129,6 +132,7 @@ export default function Profile() {
               uid={user?.uid}
               name={profile.name}
               photoURL={profile.photoURL}
+              kind={isAdmin ? 'admin' : 'adult'}
               onChanged={refreshProfile}
             />
             <div>
@@ -266,6 +270,25 @@ export default function Profile() {
 
           <button
             type="button"
+            onClick={() => setSupportOpen(true)}
+            className="w-full flex items-center gap-3 tap py-2"
+          >
+            <LifeBuoy size={20} className="text-primary shrink-0" />
+            <div className="flex-1 text-left">
+              <p className="text-sm text-text font-medium">
+                Abrir chamado de suporte
+              </p>
+              <p className="text-[11px] text-textMuted">
+                Reportar problema ou pedir ajuda
+              </p>
+            </div>
+            <ChevronRight size={20} className="text-textMuted shrink-0" />
+          </button>
+
+          <div className="border-t border-gray-100 -mx-4" />
+
+          <button
+            type="button"
             onClick={() => setFeedbackOpen(true)}
             className="w-full flex items-center gap-3 tap py-2"
           >
@@ -347,6 +370,14 @@ export default function Profile() {
         onClose={() => setFeedbackOpen(false)}
         uid={user?.uid}
         role={role}
+        profile={profile}
+      />
+
+      <SupportSheet
+        open={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        uid={user?.uid}
+        role={role}
       />
 
       <ConfirmDialog
@@ -371,7 +402,7 @@ export default function Profile() {
  * Avatar com botão de câmera flutuante pra trocar/remover foto.
  * Compartilhado entre Tio e Pai — Storage rules garantem permissão.
  */
-function ProfilePhotoEditor({ uid, name, photoURL, onChanged }) {
+function ProfilePhotoEditor({ uid, name, photoURL, kind = 'adult', onChanged }) {
   const [uploading, setUploading] = useState(false);
 
   const onPick = async (e) => {
@@ -412,7 +443,7 @@ function ProfilePhotoEditor({ uid, name, photoURL, onChanged }) {
     <div className="relative">
       <Avatar
         photoURL={photoURL}
-        kind="adult"
+        kind={kind}
         seed={uid}
         name={name}
         size="xl"

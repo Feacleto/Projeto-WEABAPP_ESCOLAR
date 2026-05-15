@@ -37,6 +37,12 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Inclui jpeg/jpg no precache (default só pega js/css/html/ico/png/svg).
+        // Necessário pra screenshots de telas em /public/telas/.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff2,mp3}'],
+        // Limite por arquivo no precache. Default 2 MiB — subimos pra 10 MiB
+        // porque temos imagemvanescolar.png (~8 MB) e alguns sons mais altos.
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         // Não cachear chamadas ao Firestore: rastreamento precisa ser sempre online
         navigateFallbackDenylist: [/^\/__/, /firestore\.googleapis\.com/],
         runtimeCaching: [
