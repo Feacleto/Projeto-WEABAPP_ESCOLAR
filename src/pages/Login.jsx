@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -66,8 +66,8 @@ export default function Login() {
       if (!userProfile) {
         await logout();
         toast.error(
-          'Conta Google não cadastrada. Use "Primeiro acesso" com seu código de convite.',
-          { duration: 5000 }
+          'Conta Google não cadastrada. Se você é pai/mãe, volte e selecione "Sou pai ou mãe".',
+          { duration: 6000 }
         );
         return;
       }
@@ -103,16 +103,22 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col px-6 py-10">
+    <div className="min-h-screen flex flex-col px-6 py-6">
+      <Link
+        to="/welcome"
+        className="inline-flex items-center gap-1 text-sm text-textMuted mb-4 tap"
+      >
+        <ArrowLeft size={16} /> Voltar
+      </Link>
+
       <div className="flex-1 flex flex-col justify-center">
-        <div className="text-center mb-8">
-          <img
-            src="/logo.png"
-            alt="Tio Nino Digital"
-            className="w-32 h-32 mx-auto mb-4 object-contain"
-          />
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <Bus size={32} className="text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-text">Entrar como motorista</h1>
           <p className="text-sm text-textMuted mt-1">
-            Transporte escolar em tempo real
+            Acesse sua conta
           </p>
         </div>
 
@@ -171,12 +177,6 @@ export default function Login() {
         </Button>
 
         <div className="mt-8 pt-6 border-t border-gray-200 text-center space-y-3">
-          <Link
-            to="/first-access"
-            className="block text-sm text-primary font-medium tap"
-          >
-            Primeiro acesso (recebi um código de convite)
-          </Link>
           {!hasAdmin && (
             <Link
               to="/first-admin"

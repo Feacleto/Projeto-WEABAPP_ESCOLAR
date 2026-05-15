@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   watchUserNotifications,
   deriveParentReminders,
   getDerivedReadIds,
 } from '../services/notificationsService';
+import { playSound } from '../services/soundService';
 
 /**
  * Combina notificações persistidas do Firestore + lembretes derivados dos
@@ -20,16 +21,41 @@ export function useNotifications({ userId, payments = [], deriveFor = 'parent' }
   // Bump pra forçar re-cálculo de derivados após "marcar tudo como lido".
   const [readBump, setReadBump] = useState(0);
 
+  // Trackeia ids já vistos pra detectar notif nova → dispara som apropriado.
+  // Inicializa com o snapshot atual (não dispara som na 1ª carga).
+  const seenIdsRef = useRef(null);
+
   useEffect(() => {
     if (!userId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStored([]);
       setLoading(false);
+      seenIdsRef.current = null;
       return;
     }
     setLoading(true);
     const unsub = watchUserNotifications(
       userId,
       (list) => {
+        // Detecta notifs novas comparando com o snapshot anterior
+        if (seenIdsRef.current != null) {
+          const previous = seenIdsRef.current;
+          const newOnes = list.filter((n) => !previous.has(n.id));
+          if (newOnes.length > 0) {
+            // Toca som apropriado por tipo. payment_confirmed → pay,
+            // payment_claimed → cash_in. Outros → notify genérico.
+            const first = newOnes[0];
+            if (first.type === 'payment_confirmed') {
+              playSound('pay');
+            } else if (first.type === 'payment_claimed') {
+              playSound('cash_in');
+            } else {
+              playSound('notify');
+            }
+          }
+        }
+        seenIdsRef.current = new Set(list.map((n) => n.id));
+
         setStored(list);
         setLoading(false);
       },

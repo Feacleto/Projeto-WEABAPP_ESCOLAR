@@ -1,25 +1,40 @@
-import { ArrowLeft, Bus, Home, MessageCircle } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import {
+  ArrowLeft,
+  Bus,
+  ParkingCircle,
+  MessageCircle,
+  Home,
+  School,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import LiveMap from '../../components/map/LiveMap';
 import Skeleton from '../../components/common/Skeleton';
-import StatusBadge from '../../components/children/StatusBadge';
+import { playSound } from '../../services/soundService';
 import { useAuth } from '../../hooks/useAuth';
 import { useChild } from '../../hooks/useChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { haversineDistance } from '../../utils/haversine';
-import { getEffectiveStatus, STATUS_LABELS } from '../../services/childrenService';
 import { formatDateTime } from '../../utils/formatters';
 
-const NEAR_KM = 2;
+const NEAR_KM = 2; // ≤ 2 km da casa do pai = "zona próxima"
 const ARRIVED_KM = 0.4;
+const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
 
 /**
- * Tela cheia de mapa pro Pai. Layout 70/30 vertical:
- *  - 70% mapa (com home + van quando rota ativa)
- *  - 30% painel inferior com status da criança, distância, tempo estimado
- *    e botão "Falar com Tio" (WhatsApp).
+ * Mapa do Pai — desenhado pra preservar a privacidade do Tio:
+ *
+ * 1. Sempre mostra: casa do pai 🏠 (verde) + escola da criança 🏫 (violeta)
+ * 2. Quando rota INATIVA: só casa + escola. Mensagem "Tio não está em rota".
+ * 3. Quando rota ATIVA mas Tio LONGE (> 2 km da casa): NÃO mostra perua.
+ *    Mensagem "Tio Nino em rota — chegará em breve". Privacidade preservada
+ *    (outros pais não veem por onde ele tá indo).
+ * 4. Quando rota ATIVA e Tio PRÓXIMO (≤ 2 km): perua aparece na posição real
+ *    + mensagem "Pode preparar a criança". Permite o pai se organizar sem
+ *    atrasar a rota.
+ * 5. Quando CHEGOU (≤ 400 m): "Tio Nino chegou!" + vibração.
  */
 export default function PaiMap() {
   const navigate = useNavigate();
@@ -30,14 +45,68 @@ export default function PaiMap() {
 
   const home =
     child?.lat && child?.lng ? { lat: child.lat, lng: child.lng } : null;
+  const school =
+    child?.schoolLat && child?.schoolLng
+      ? { lat: child.schoolLat, lng: child.schoolLng }
+      : null;
   const routeActive = !!liveLocation?.routeActive;
-  const van =
+
+  // Posição real da perua (só usamos se for próximo)
+  const realVan =
     routeActive && liveLocation?.lat && liveLocation?.lng
       ? { lat: liveLocation.lat, lng: liveLocation.lng }
       : null;
 
-  const distanceKm =
-    van && home ? haversineDistance(home.lat, home.lng, van.lat, van.lng) : null;
+  const realDistanceKm =
+    realVan && home
+      ? haversineDistance(home.lat, home.lng, realVan.lat, realVan.lng)
+      : null;
+
+  const isNearby = realDistanceKm != null && realDistanceKm <= NEAR_KM;
+  const hasArrived = realDistanceKm != null && realDistanceKm <= ARRIVED_KM;
+
+  // O marcador da perua só aparece quando entra na zona próxima
+  const visibleVan = isNearby ? realVan : null;
+
+  // Alertas — dispara cada um uma vez por rota (transição de zona)
+  const alertedNearRef = useRef(false);
+  const alertedArrivedRef = useRef(false);
+  useEffect(() => {
+    if (!routeActive) {
+      alertedNearRef.current = false;
+      alertedArrivedRef.current = false;
+      return;
+    }
+    if (hasArrived && !alertedArrivedRef.current) {
+      alertedArrivedRef.current = true;
+      toast.success('🚐 Tio Nino chegou! Pode levar a criança.', {
+        duration: 10000,
+      });
+      playSound('horn_long');
+      if ('vibrate' in navigator) {
+        try {
+          navigator.vibrate(VIBRATE_PATTERN);
+        } catch {
+          /* */
+        }
+      }
+      return;
+    }
+    if (isNearby && !alertedNearRef.current) {
+      alertedNearRef.current = true;
+      toast.success('🚐 Tio Nino tá chegando! Pode preparar a criança.', {
+        duration: 8000,
+      });
+      playSound('horn_short');
+      if ('vibrate' in navigator) {
+        try {
+          navigator.vibrate(VIBRATE_PATTERN);
+        } catch {
+          /* */
+        }
+      }
+    }
+  }, [routeActive, isNearby, hasArrived]);
 
   const whatsappUrl = admin?.phone
     ? `https://wa.me/55${String(admin.phone).replace(/\D/g, '')}`
@@ -45,27 +114,24 @@ export default function PaiMap() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-4">
+      <div className="min-h-screen p-5">
         <Skeleton className="h-[60vh]" />
       </div>
     );
   }
 
-  const status = child ? getEffectiveStatus(child) : 'home';
-
   return (
     <div className="min-h-screen flex flex-col bg-bg">
-      {/* Header flutuante minimal */}
       <header className="sticky top-0 z-30 bg-card border-b border-gray-100 h-14 px-3 flex items-center gap-2">
         <button
           onClick={() => navigate(-1)}
           aria-label="Voltar"
-          className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted"
+          className="tap w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-textMuted"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={20} />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-text truncate">
+          <p className="text-sm font-bold text-text truncate leading-tight">
             Mapa ao vivo
           </p>
           <p className="text-[11px] text-textMuted truncate">
@@ -83,60 +149,58 @@ export default function PaiMap() {
         )}
       </header>
 
-      {/* Mapa — 70% */}
+      {/* Mapa — 70% da viewport */}
       <div className="relative" style={{ height: 'min(70vh, 600px)' }}>
-        {home ? (
-          <LiveMap van={van} home={home} />
+        {home || school ? (
+          <LiveMap van={visibleVan} home={home} school={school} />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-center p-4">
+          <div className="absolute inset-0 flex items-center justify-center text-center p-5">
             <p className="text-sm text-textMuted">
-              Endereço residencial ainda não cadastrado.
+              Endereços ainda não cadastrados.
             </p>
           </div>
         )}
       </div>
 
-      {/* Painel inferior — 30% */}
-      <div className="flex-1 bg-card -mt-4 rounded-t-3xl shadow-lg p-4 space-y-3">
+      {/* Painel inferior — contextual ao estado da rota */}
+      <div className="flex-1 bg-card -mt-4 rounded-t-3xl shadow-lg p-5 space-y-4 relative z-10">
         <div className="flex justify-center -mt-1 pb-1">
           <span className="block w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
-        {/* Status */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-textMuted">Status</p>
-            <p className="text-lg font-bold text-text leading-tight">
-              {STATUS_LABELS[status]}
-            </p>
-          </div>
-          <StatusBadge status={status} size="lg" />
+        <StatusPanel
+          routeActive={routeActive}
+          hasArrived={hasArrived}
+          isNearby={isNearby}
+          realDistanceKm={realDistanceKm}
+          updatedAt={liveLocation?.updatedAt}
+        />
+
+        {/* Pontos de referência sempre visíveis */}
+        <div className="bg-bg rounded-2xl p-3 space-y-2">
+          <ReferenceRow
+            icon={Home}
+            color="bg-emerald-500"
+            label="Casa"
+            value={child?.address || 'Endereço não cadastrado'}
+          />
+          <ReferenceRow
+            icon={School}
+            color="bg-violet-500"
+            label="Escola"
+            value={
+              child?.schoolAddress || child?.school || 'Não cadastrada'
+            }
+          />
         </div>
 
-        {/* Distância / ETA */}
-        {routeActive && distanceKm != null ? (
-          <DistanceCard distanceKm={distanceKm} />
-        ) : (
-          <div className="rounded-2xl bg-gray-50 p-3 text-xs text-textMuted">
-            <p className="font-semibold text-text">
-              Tio Nino não está em rota agora
-            </p>
-            {liveLocation?.updatedAt && (
-              <p className="mt-0.5">
-                Última atualização: {formatDateTime(liveLocation.updatedAt)}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* WhatsApp */}
         <button
           onClick={() => {
             if (whatsappUrl) window.open(whatsappUrl, '_blank');
-            else toast('Telefone do motorista não cadastrado ainda.');
+            else toast('Telefone do motorista não cadastrado.');
           }}
           disabled={!whatsappUrl}
-          className="tap w-full rounded-2xl py-3 bg-emerald-600 text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          className="tap w-full rounded-2xl py-3.5 bg-emerald-600 text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <MessageCircle size={18} />
           Falar com o Tio
@@ -146,36 +210,102 @@ export default function PaiMap() {
   );
 }
 
-function DistanceCard({ distanceKm }) {
-  const zone =
-    distanceKm > NEAR_KM ? 'far' : distanceKm > ARRIVED_KM ? 'near' : 'arrived';
-  const cfg = {
-    far: { msg: 'Em rota', bar: '20%', bg: 'from-blue-50 to-indigo-100' },
-    near: { msg: 'A 5 min', bar: '70%', bg: 'from-amber-50 to-orange-100' },
-    arrived: {
-      msg: 'Chegou!',
-      bar: '100%',
-      bg: 'from-emerald-50 to-green-100',
-    },
-  }[zone];
+/* ─────────────── Painel de status (contextual) ─────────────── */
 
-  return (
-    <div className={`rounded-2xl bg-gradient-to-br ${cfg.bg} p-3 space-y-2`}>
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-3xl font-bold text-text tabular-nums leading-none">
-          {formatDistance(distanceKm)}
-        </p>
-        <p className="text-sm font-semibold text-text">{cfg.msg}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Bus size={16} className="text-text" />
-        <div className="flex-1 h-1.5 rounded-full bg-white/60 overflow-hidden">
-          <div
-            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-            style={{ width: cfg.bar }}
-          />
+function StatusPanel({
+  routeActive,
+  hasArrived,
+  isNearby,
+  realDistanceKm,
+  updatedAt,
+}) {
+  if (!routeActive) {
+    return (
+      <div className="rounded-2xl bg-gray-50 p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-gray-200 text-textMuted flex items-center justify-center shrink-0">
+          <ParkingCircle size={22} />
         </div>
-        <Home size={16} className="text-text" />
+        <div className="flex-1">
+          <p className="font-bold text-text leading-tight">
+            Tio Nino não está em rota
+          </p>
+          {updatedAt && (
+            <p className="text-xs text-textMuted mt-0.5">
+              Última rota: {formatDateTime(updatedAt)}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (hasArrived) {
+    return (
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+          <Bus size={22} />
+        </div>
+        <div className="flex-1">
+          <p className="font-bold text-emerald-900 leading-tight text-lg">
+            Tio Nino chegou!
+          </p>
+          <p className="text-xs text-emerald-800 mt-0.5">
+            Tá na sua porta — pode levar a criança.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isNearby) {
+    return (
+      <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+          <Bus size={22} />
+        </div>
+        <div className="flex-1">
+          <p className="font-bold text-amber-900 leading-tight text-lg">
+            Tá chegando!
+          </p>
+          <p className="text-xs text-amber-900 mt-0.5">
+            {formatDistance(realDistanceKm)} daqui · prepare a criança
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Longe — privacidade do Tio: não mostra distância nem posição
+  return (
+    <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 p-4 flex items-start gap-3">
+      <div className="w-11 h-11 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0">
+        <Bus size={22} />
+      </div>
+      <div className="flex-1">
+        <p className="font-bold text-indigo-900 leading-tight">
+          Tio Nino em rota
+        </p>
+        <p className="text-xs text-indigo-900 mt-0.5">
+          Vamos te avisar quando estiver perto.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ReferenceRow({ icon: Icon, color, label, value }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <div
+        className={`w-8 h-8 rounded-lg text-white flex items-center justify-center shrink-0 ${color}`}
+      >
+        <Icon size={16} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] uppercase tracking-widest font-semibold text-textMuted">
+          {label}
+        </p>
+        <p className="text-sm text-text leading-tight truncate">{value}</p>
       </div>
     </div>
   );

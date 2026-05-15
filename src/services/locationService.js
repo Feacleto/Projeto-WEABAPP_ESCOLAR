@@ -1,5 +1,6 @@
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { playSound } from './soundService';
 
 // ============================================================================
 // Geocoding (Nominatim / OSM) — usado no cadastro de criança
@@ -93,6 +94,8 @@ export function startTracking(driverUid) {
     throw new Error('Geolocalização não é suportada neste dispositivo.');
   }
   lastWrite = 0;
+  // Som de motor ligando — Tio começou a rota
+  playSound('start_engine');
 
   activeWatchId = navigator.geolocation.watchPosition(
     async (position) => {
@@ -136,6 +139,8 @@ export async function stopTracking() {
     activeWatchId = null;
   }
   emitPosition({ position: null, error: null });
+  // Som de encerramento — Tio finalizou o turno
+  playSound('end_route');
   await setDoc(
     LIVE_LOCATION_DOC,
     { routeActive: false, updatedAt: serverTimestamp() },

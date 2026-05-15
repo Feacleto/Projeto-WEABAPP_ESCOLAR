@@ -71,6 +71,25 @@ export async function notifyPaymentClaimed({
 }
 
 /**
+ * Cria notificação pro Tio quando o Pai aceita o contrato de transporte.
+ */
+export async function notifyContractAccepted({ adminUid, parentName, childName }) {
+  if (!adminUid) return;
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      userId: adminUid,
+      type: 'contract_accepted',
+      title: 'Contrato aceito',
+      body: `${parentName} aceitou o contrato de transporte de ${childName}.`,
+      childName,
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('Falha ao criar notificação contract_accepted:', err);
+  }
+}
+
+/**
  * Cria notificação pro pai quando o tio confirma recebimento.
  */
 export async function notifyPaymentConfirmed({

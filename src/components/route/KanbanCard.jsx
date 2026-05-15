@@ -66,14 +66,12 @@ export default function KanbanCard({
 
   const action = getActionForStatus(child.effectiveStatus, direction);
 
-  // Para pickup: tio passa em CASA pra coletar (mostra endereço residencial).
-  // Para dropoff: tio passa na ESCOLA pra coletar e levar pra casa.
-  const AddressIcon = direction === 'pickup' ? Home : School;
-  const addressLabel = direction === 'pickup' ? 'Casa' : 'Escola';
-  const addressValue =
-    direction === 'pickup'
-      ? child.address || 'Sem endereço de casa'
-      : child.schoolAddress || child.school || 'Sem endereço da escola';
+  // Mostramos os DOIS endereços (casa + escola) sempre — o Tio enxerga a
+  // rota completa de cada criança. A direção do turno só destaca qual é o
+  // ponto de coleta dessa etapa (anel verde no ícone correspondente).
+  const homeAddress = child.address || 'Sem endereço de casa';
+  const schoolAddress =
+    child.schoolAddress || child.school || 'Sem endereço da escola';
 
   return (
     <div
@@ -99,7 +97,13 @@ export default function KanbanCard({
         >
           <GripVertical size={18} />
         </button>
-        <Avatar gender={child.gender} size="md" />
+        <Avatar
+          photoURL={child.photoURL}
+          gender={child.gender}
+          seed={child.id}
+          kind="child"
+          size="md"
+        />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-text truncate leading-tight">
             {child.name}
@@ -127,15 +131,20 @@ export default function KanbanCard({
         </div>
       </div>
 
-      {/* Endereço (origem ou destino dependendo da direção do turno) */}
-      <div className="flex items-start gap-2 text-xs pl-6">
-        <AddressIcon size={12} className="text-textMuted shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase font-semibold tracking-wide text-textMuted">
-            {addressLabel}
-          </p>
-          <p className="text-text break-words leading-snug">{addressValue}</p>
-        </div>
+      {/* Endereços (casa + escola, sempre os dois — destaque conforme a etapa) */}
+      <div className="space-y-1.5 pl-6">
+        <AddressRow
+          icon={Home}
+          label="Casa"
+          value={homeAddress}
+          highlighted={direction === 'pickup'}
+        />
+        <AddressRow
+          icon={School}
+          label="Escola"
+          value={schoolAddress}
+          highlighted={direction === 'dropoff'}
+        />
       </div>
 
       {/* Responsável + telefone */}
@@ -190,6 +199,37 @@ export default function KanbanCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function AddressRow({ icon: Icon, label, value, highlighted }) {
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <div
+        className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${
+          highlighted
+            ? 'bg-primary text-white'
+            : 'bg-gray-100 text-textMuted'
+        }`}
+      >
+        <Icon size={11} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p
+          className={`text-[10px] uppercase font-semibold tracking-wide ${
+            highlighted ? 'text-primary' : 'text-textMuted'
+          }`}
+        >
+          {label}
+          {highlighted && (
+            <span className="ml-1 normal-case tracking-normal text-textMuted font-medium">
+              · etapa atual
+            </span>
+          )}
+        </p>
+        <p className="text-text break-words leading-snug">{value}</p>
+      </div>
     </div>
   );
 }

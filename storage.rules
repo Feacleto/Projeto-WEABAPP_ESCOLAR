@@ -1,0 +1,67 @@
+rules_version = '2';
+
+// =============================================================================
+// Tio Nino Digital — Storage Security Rules
+// =============================================================================
+//
+// Estrutura:
+//   profilePhotos/{uid}     — foto do próprio usuário (tio ou pai)
+//   childPhotos/{childId}   — foto de uma criança (só admin escreve)
+//
+// Princípios:
+//   - Read: qualquer signed-in (avatares são "públicos" dentro do app)
+//   - Write: dono escreve a própria foto; admin escreve fotos de crianças
+//   - Limite de 2 MB por upload (resize client-side já reduz pra ~50 KB)
+//   - Validação de content-type pra evitar upload de arquivos não-imagem
+//
+// Deploy: firebase deploy --only storage
+// =============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isWithinSizeLimit() {
+      return request.resource.size < 2 * 1024 * 1024; // 2 MB
+    }
+
+    // --------------------------------------------------------------------
+    // profilePhotos/{uid} — foto do tio ou pai
+    // --------------------------------------------------------------------
+    match /profilePhotos/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && isWithinSizeLimit();
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --------------------------------------------------------------------
+    // childPhotos/{childId} — foto da criança (gerenciada pelo Tio)
+    // --------------------------------------------------------------------
+    match /childPhotos/{childId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isImage() && isWithinSizeLimit();
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import Landing from './pages/Landing';
+import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import FirstAccess from './pages/FirstAccess';
 import FirstAdmin from './pages/FirstAdmin';
@@ -8,8 +10,8 @@ import TioDashboard from './pages/tio/TioDashboard';
 import TioChildren from './pages/tio/TioChildren';
 import TioRoute from './pages/tio/TioRoute';
 import TioRoutePlan from './pages/tio/TioRoutePlan';
-import TioMap from './pages/tio/TioMap';
 import TioFinance from './pages/tio/TioFinance';
+import TioContract from './pages/tio/TioContract';
 import TioPixConfig from './pages/tio/TioPixConfig';
 import ChildForm from './components/children/ChildForm';
 import PaiLayout from './pages/pai/PaiLayout';
@@ -22,9 +24,12 @@ import ChildDetail from './pages/ChildDetail';
 import Terms from './pages/legal/Terms';
 import Privacy from './pages/legal/Privacy';
 import TermsAcceptanceGate from './components/legal/TermsAcceptanceGate';
+import ContractAcceptanceGate from './components/contract/ContractAcceptanceGate';
 import CookieBanner from './components/legal/CookieBanner';
 import { useAuth } from './hooks/useAuth';
+import { useChild } from './hooks/useChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
+import { hasAcceptedContract } from './services/contractService';
 import Spinner from './components/common/Spinner';
 
 function FullScreenLoader() {
@@ -47,7 +52,7 @@ function PrivateRoute({ children, requireRole }) {
 
   if (loading) return <FullScreenLoader />;
   if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/welcome" state={{ from: location.pathname }} replace />;
   }
   if (!profile) return <FullScreenLoader />;
   if (requireRole && profile.role !== requireRole) {
@@ -59,6 +64,27 @@ function PrivateRoute({ children, requireRole }) {
   if (!hasAcceptedCurrentTerms(profile)) {
     return <TermsAcceptanceGate />;
   }
+  // Gate de contrato — só pra Pai, antes de acessar o app
+  if (profile.role === 'parent') {
+    return <ParentContractGate>{children}</ParentContractGate>;
+  }
+  return children;
+}
+
+/**
+ * Sub-gate específico do Pai: bloqueia até aceitar o contrato.
+ * Carrega o child do profile, verifica `hasAcceptedContract`.
+ */
+function ParentContractGate({ children }) {
+  const { profile } = useAuth();
+  const { child, loading } = useChild(profile?.childId);
+
+  if (loading) return <FullScreenLoader />;
+  // Se não tem child vinculado, deixa entrar — o próprio dashboard mostra erro
+  if (!child) return children;
+  if (!hasAcceptedContract(child)) {
+    return <ContractAcceptanceGate />;
+  }
   return children;
 }
 
@@ -67,6 +93,8 @@ export default function App() {
     <>
       <Routes>
         {/* Rotas públicas */}
+        <Route path="/conheca" element={<Landing />} />
+        <Route path="/welcome" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/first-access" element={<FirstAccess />} />
         <Route path="/first-admin" element={<FirstAdmin />} />
@@ -87,9 +115,9 @@ export default function App() {
         <Route path="children" element={<TioChildren />} />
         <Route path="children/new" element={<ChildForm />} />
         <Route path="children/:id" element={<ChildDetail />} />
+        <Route path="children/:id/contract" element={<TioContract />} />
         <Route path="route" element={<TioRoute />} />
         <Route path="route/plan" element={<TioRoutePlan />} />
-        <Route path="route/map" element={<TioMap />} />
         <Route path="finance" element={<TioFinance />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="notifications" element={<Notifications />} />
@@ -113,8 +141,8 @@ export default function App() {
         <Route path="profile" element={<Profile />} />
       </Route>
 
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/welcome" replace />} />
+        <Route path="*" element={<Navigate to="/welcome" replace />} />
       </Routes>
 
       {/* Banner global de cookies — aparece só na primeira visita */}

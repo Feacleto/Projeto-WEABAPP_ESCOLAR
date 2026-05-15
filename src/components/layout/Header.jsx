@@ -1,8 +1,9 @@
-import { ArrowLeft, Bell, User } from 'lucide-react';
+import { ArrowLeft, Bell } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { usePaymentsByParent } from '../../hooks/usePayments';
+import Avatar from '../common/Avatar';
 
 /**
  * Header sticky comum às páginas autenticadas.
@@ -67,7 +68,7 @@ export default function Header({
  */
 function GlobalActions({ role, basePath, currentPath }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const isParent = role === 'parent';
   const { payments } = usePaymentsByParent(isParent ? user?.uid : null);
   const { unreadCount } = useNotifications({
@@ -98,11 +99,17 @@ function GlobalActions({ role, basePath, currentPath }) {
       <button
         onClick={() => navigate(`${basePath}/profile`)}
         aria-label="Meu perfil"
-        className={`p-2 tap rounded-lg ${
-          isOnProfile ? 'text-primary bg-primary/10' : 'text-textMuted'
+        className={`tap rounded-full p-0.5 ${
+          isOnProfile ? 'ring-2 ring-primary' : ''
         }`}
       >
-        <User size={20} />
+        <Avatar
+          photoURL={profile?.photoURL}
+          kind="adult"
+          seed={user?.uid}
+          name={profile?.name}
+          size="sm"
+        />
       </button>
     </>
   );

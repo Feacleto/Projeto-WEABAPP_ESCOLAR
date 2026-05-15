@@ -6,6 +6,7 @@ import {
   Hourglass,
   Banknote,
   QrCode,
+  CreditCard,
 } from 'lucide-react';
 import Card from '../common/Card';
 import {
@@ -91,6 +92,10 @@ export default function PaymentRow({
               {payment.paymentMethod === 'cash' ? (
                 <>
                   <Banknote size={10} /> Dinheiro
+                </>
+              ) : payment.paymentMethod === 'card' ? (
+                <>
+                  <CreditCard size={10} /> Cartão
                 </>
               ) : (
                 <>

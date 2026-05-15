@@ -12,10 +12,12 @@ const variants = {
   ghost: 'bg-transparent text-text hover:bg-gray-100 disabled:opacity-60',
 };
 
+// Tamanhos ampliados pra público com baixa familiaridade com toque preciso.
+// Mínimo 40 px (sm), 48 px (md), 56 px (lg). Os ícones acompanham.
 const sizes = {
-  lg: 'h-12 px-6 text-base',
-  md: 'h-10 px-4 text-sm',
-  sm: 'h-8 px-3 text-xs',
+  lg: 'h-14 px-6 text-base',
+  md: 'h-12 px-4 text-sm',
+  sm: 'h-10 px-3 text-xs',
 };
 
 export default function Button({

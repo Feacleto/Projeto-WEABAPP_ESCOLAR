@@ -42,6 +42,7 @@ export default function AuthAction() {
   // Valida o código assim que a página monta
   useEffect(() => {
     if (!mode || !oobCode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus('error');
       setErrorMsg('Link inválido. Solicite um novo email.');
       return;
@@ -139,8 +140,8 @@ export default function AuthAction() {
           <p className="text-sm text-textMuted mt-2 mb-6">
             Sua nova senha já está ativa. Use ela pra entrar.
           </p>
-          <Button onClick={() => navigate('/login', { replace: true })}>
-            Ir para o login
+          <Button onClick={() => navigate('/welcome', { replace: true })}>
+            Voltar para a entrada
           </Button>
         </div>
       </div>
@@ -161,8 +162,8 @@ export default function AuthAction() {
               ? `O email ${email} foi confirmado.`
               : 'Seu email foi confirmado com sucesso.'}
           </p>
-          <Button onClick={() => navigate('/login', { replace: true })}>
-            Ir para o login
+          <Button onClick={() => navigate('/welcome', { replace: true })}>
+            Voltar para a entrada
           </Button>
         </div>
       </div>

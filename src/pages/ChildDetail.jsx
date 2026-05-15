@@ -8,6 +8,9 @@ import {
   MapPin,
   StickyNote,
   Trash2,
+  Camera,
+  FileText,
+  ChevronRight,
 } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -20,7 +23,12 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import StatusBadge from '../components/children/StatusBadge';
 import { useAuth } from '../hooks/useAuth';
 import { useChild } from '../hooks/useChild';
-import { deactivateChild } from '../services/childrenService';
+import { deactivateChildAndParent } from '../services/accountService';
+import {
+  uploadChildPhoto,
+  deleteChildPhoto,
+} from '../services/photoService';
+import { setChildPhotoURL } from '../services/childrenService';
 import { PERIOD_LABELS, formatPhone } from '../utils/formatters';
 
 /**
@@ -47,8 +55,14 @@ export default function ChildDetail() {
     if (!child) return;
     setDeactivating(true);
     try {
-      await deactivateChild(child.id);
-      toast.success(`${child.name} foi removido(a) da lista ativa.`);
+      const { parentRemoved } = await deactivateChildAndParent({
+        childId: child.id,
+      });
+      toast.success(
+        parentRemoved
+          ? `${child.name} e o responsável foram removidos.`
+          : `${child.name} foi removido(a) da lista ativa.`
+      );
       navigate('/tio/children', { replace: true });
     } catch (err) {
       console.error(err);
@@ -94,7 +108,17 @@ export default function ChildDetail() {
         {/* Cabeçalho com avatar grande, nome e status */}
         <Card className="text-center">
           <div className="flex flex-col items-center gap-3">
-            <Avatar gender={child.gender} size="xl" />
+            {isAdmin ? (
+              <ChildPhotoEditor child={child} />
+            ) : (
+              <Avatar
+                photoURL={child.photoURL}
+                gender={child.gender}
+                seed={child.id}
+                kind="child"
+                size="xl"
+              />
+            )}
             <div>
               <h2 className="text-xl font-bold text-text">{child.name}</h2>
               <p className="text-xs text-textMuted mt-1 flex items-center justify-center gap-1">
@@ -201,6 +225,30 @@ export default function ChildDetail() {
           </Card>
         )}
 
+        {/* Acesso ao contrato (Tio) */}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => navigate(`/tio/children/${child.id}/contract`)}
+            className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3"
+          >
+            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <FileText size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-text leading-tight">
+                Contrato de transporte
+              </p>
+              <p className="text-xs text-textMuted mt-0.5">
+                {child.contractAcceptedAt
+                  ? `Aceito por ${child.contractAcceptedName || 'responsável'}`
+                  : 'Aguardando aceite do responsável'}
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-textMuted shrink-0" />
+          </button>
+        )}
+
         {/* Ações do tio */}
         {isAdmin && (
           <Button
@@ -217,7 +265,11 @@ export default function ChildDetail() {
       <ConfirmDialog
         open={confirmDeactivate}
         title={`Remover ${child.name}?`}
-        description="A criança vai sair da lista ativa, mas o histórico de pagamentos é preservado. Você pode reativar depois manualmente."
+        description={
+          child.parentUid
+            ? `A criança sai da lista ativa e o responsável (${child.parentName || 'pai/mãe'}) é desvinculado do app. O histórico de pagamentos é preservado.`
+            : 'A criança vai sair da lista ativa. O histórico de pagamentos é preservado.'
+        }
         confirmLabel="Sim, remover"
         variant="danger"
         loading={deactivating}
@@ -225,6 +277,87 @@ export default function ChildDetail() {
         onCancel={() => setConfirmDeactivate(false)}
       />
     </>
+  );
+}
+
+/**
+ * Avatar grande da criança com botões pra trocar/remover foto.
+ * Só renderiza pro admin (storage.rules garantem permissão).
+ */
+function ChildPhotoEditor({ child }) {
+  const [uploading, setUploading] = useState(false);
+
+  const onPick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadChildPhoto(child.id, file);
+      await setChildPhotoURL(child.id, url);
+      toast.success('Foto atualizada!');
+    } catch (err) {
+      console.error('Upload de foto da criança falhou:', err);
+      toast.error('Não foi possível enviar a foto.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onRemove = async () => {
+    setUploading(true);
+    try {
+      await deleteChildPhoto(child.id);
+      await setChildPhotoURL(child.id, null);
+      toast.success('Foto removida.');
+    } catch (err) {
+      console.error('Remover foto falhou:', err);
+      toast.error('Não foi possível remover.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Avatar
+        photoURL={child.photoURL}
+        gender={child.gender}
+        seed={child.id}
+        kind="child"
+        size="xl"
+      />
+      <label
+        htmlFor={`child-photo-${child.id}`}
+        className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
+        aria-label="Trocar foto"
+      >
+        <Camera size={18} />
+        <input
+          id={`child-photo-${child.id}`}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={onPick}
+          disabled={uploading}
+        />
+      </label>
+      {child.photoURL && !uploading && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="absolute -bottom-1 -left-1 w-9 h-9 rounded-full bg-card text-danger border border-gray-200 shadow flex items-center justify-center tap"
+          aria-label="Remover foto"
+        >
+          <Trash2 size={16} />
+        </button>
+      )}
+      {uploading && (
+        <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+          ...
+        </div>
+      )}
+    </div>
   );
 }
 

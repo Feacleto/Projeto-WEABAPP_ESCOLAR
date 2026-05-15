@@ -1,54 +1,59 @@
 import { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { createVanIcon, createHomeIcon } from './VanIcon';
+import { createVanIcon, createHomeIcon, createSchoolIcon } from './VanIcon';
 
 /**
- * Ajusta o viewport do mapa quando van/home mudam de posição.
- *
- * - Os dois conhecidos: fitBounds incluindo ambos com padding
- * - Só home ou só van: setView centrado nesse ponto
- * - Nenhum: deixa como está (não deveria acontecer porque LiveMap
- *   só renderiza quando há pelo menos home)
+ * Ajusta o viewport pra englobar os marcadores presentes.
+ * Re-fit acontece quando van se move OU quando muda visibilidade.
  */
-function AutoFit({ van, home }) {
+function AutoFit({ van, home, school }) {
   const map = useMap();
   useEffect(() => {
-    if (van && home) {
-      const bounds = [
-        [home.lat, home.lng],
-        [van.lat, van.lng],
-      ];
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-    } else if (home) {
-      map.setView([home.lat, home.lng], 15);
-    } else if (van) {
-      map.setView([van.lat, van.lng], 15);
+    const points = [];
+    if (home) points.push([home.lat, home.lng]);
+    if (school) points.push([school.lat, school.lng]);
+    if (van) points.push([van.lat, van.lng]);
+
+    if (points.length >= 2) {
+      map.fitBounds(points, { padding: [60, 60], maxZoom: 15 });
+    } else if (points.length === 1) {
+      map.setView(points[0], 15);
     }
-    // Re-fit quando coordenadas mudam (van se move a cada update)
-  }, [map, van?.lat, van?.lng, home?.lat, home?.lng]);
+  }, [
+    map,
+    van?.lat,
+    van?.lng,
+    home?.lat,
+    home?.lng,
+    school?.lat,
+    school?.lng,
+  ]);
   return null;
 }
 
 /**
- * Mapa em tempo real com marcadores de casa e perua.
+ * Mapa em tempo real.
  *
  * Props:
- *   - van:  { lat, lng } | null  (perua — null quando rota inativa)
- *   - home: { lat, lng } | null  (casa do pai)
+ *   - home:   { lat, lng } | null
+ *   - school: { lat, lng } | null  — opcional. Quando passado, mostra pin da escola.
+ *   - van:    { lat, lng } | null  — só renderizado se passado (privacidade).
  *
- * Renderizar dentro de um container com altura definida (h-[XYZ]px ou h-full).
+ * Render dentro de container com altura definida.
  */
-export default function LiveMap({ van, home, className = '' }) {
-  // Recriar os ícones a cada render é desperdício; memoiza.
+export default function LiveMap({ van, home, school, className = '' }) {
   const vanIcon = useMemo(() => createVanIcon(), []);
   const homeIcon = useMemo(() => createHomeIcon(), []);
+  const schoolIcon = useMemo(() => createSchoolIcon(), []);
 
   const initialCenter = home
     ? [home.lat, home.lng]
+    : school
+    ? [school.lat, school.lng]
     : van
     ? [van.lat, van.lng]
-    : [-23.55, -46.63]; // fallback: centro de SP (não deveria ocorrer na prática)
+    : [-23.55, -46.63];
 
   return (
     <MapContainer
@@ -56,15 +61,17 @@ export default function LiveMap({ van, home, className = '' }) {
       zoom={14}
       scrollWheelZoom
       className={`w-full h-full ${className}`}
-      // attributionControl em rodapé minúsculo é OK; OSM exige atribuição.
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {home && <Marker position={[home.lat, home.lng]} icon={homeIcon} />}
+      {school && (
+        <Marker position={[school.lat, school.lng]} icon={schoolIcon} />
+      )}
       {van && <Marker position={[van.lat, van.lng]} icon={vanIcon} />}
-      <AutoFit van={van} home={home} />
+      <AutoFit van={van} home={home} school={school} />
     </MapContainer>
   );
 }

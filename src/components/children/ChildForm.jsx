@@ -14,9 +14,14 @@ import {
   School,
   ChevronDown,
   ChevronUp,
+  ArrowLeft,
+  ArrowRight,
+  Calendar,
+  Sunrise,
+  Sunset,
+  Moon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import Header from '../layout/Header';
 import Card from '../common/Card';
 import Input from '../common/Input';
 import Button from '../common/Button';
@@ -30,131 +35,115 @@ import {
   isValidEmail,
 } from '../../utils/masks';
 
-// Períodos vêm de routePlanService (fonte única — usado pelo kanban também)
 const GENDERS = [
-  { value: 'male', label: 'Masculino' },
-  { value: 'female', label: 'Feminino' },
+  { value: 'male', label: 'Menino' },
+  { value: 'female', label: 'Menina' },
 ];
 
+const PERIOD_ICONS = {
+  morning: Sunrise,
+  afternoon: Sunset,
+  evening: Moon,
+};
+
+const TOTAL_STEPS = 4;
+
+const EMPTY_FORM = {
+  name: '',
+  gender: 'male',
+  parentName: '',
+  parentEmail: '',
+  parentPhone: '',
+  parent2Name: '',
+  parent2Phone: '',
+  address: '',
+  lat: '',
+  lng: '',
+  school: '',
+  schoolAddress: '',
+  schoolLat: '',
+  schoolLng: '',
+  period: 'morning',
+  pickupPeriod: 'morning',
+  dropoffPeriod: 'afternoon',
+  monthlyFee: '',
+  dueDay: '10',
+  notes: '',
+};
+
 /**
- * Página de cadastro de criança.
+ * Cadastro de criança em wizard (4 passos curtos).
+ * Cada passo valida antes de avançar. Voltar é livre.
+ *   1. Criança         — nome, gênero, período escolar
+ *   2. Onde mora       — endereço (com geocoding Nominatim)
+ *   3. Escola          — nome, endereço, turnos do transporte
+ *   4. Responsável e financeiro — nome/email/tel, mensalidade, dia vencimento
  *
- * Fluxo:
- *   1. Tio preenche os campos e busca coordenadas via Nominatim
- *   2. Submit chama addChild → gera invite code único + cria doc
- *   3. Mostra modal com o código pra ser entregue ao responsável
+ * Após salvar, mostra modal de invite code pra entregar ao responsável.
  */
 export default function ChildForm() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    name: '',
-    gender: 'male',
-    parentName: '',
-    parentEmail: '',
-    parentPhone: '',
-    parent2Name: '',
-    parent2Phone: '',
-    address: '',
-    lat: '',
-    lng: '',
-    school: '',
-    schoolAddress: '',
-    schoolLat: '',
-    schoolLng: '',
-    period: 'morning',
-    pickupPeriod: 'morning',
-    dropoffPeriod: 'afternoon',
-    monthlyFee: '',
-    notes: '',
-  });
-  const [searching, setSearching] = useState(false);
-  const [searchingSchool, setSearchingSchool] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
   const [errors, setErrors] = useState({});
-  const [showSecondParent, setShowSecondParent] = useState(false);
 
   const setField = (key) => (e) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
-
   const setPhone = (key) => (e) =>
     setForm((prev) => ({ ...prev, [key]: maskPhone(e.target.value) }));
 
-  const validate = () => {
+  function validateStep(s) {
     const errs = {};
-    if (!form.name.trim()) errs.name = 'Informe o nome da criança.';
-    if (!form.school.trim()) errs.school = 'Informe a escola.';
-    if (!form.schoolAddress.trim())
-      errs.schoolAddress = 'Informe o endereço da escola.';
-    if (!form.parentName.trim()) errs.parentName = 'Informe o nome do responsável.';
-    if (!isValidEmail(form.parentEmail)) errs.parentEmail = 'Email inválido.';
-    if (!isValidPhone(form.parentPhone)) {
-      errs.parentPhone = 'Telefone inválido. Use 10 ou 11 dígitos com DDD.';
+    if (s === 1) {
+      if (!form.name.trim()) errs.name = 'Diga o nome da criança.';
     }
-    // Segundo responsável é opcional, mas se preencheu o telefone, valida
-    if (form.parent2Phone && !isValidPhone(form.parent2Phone)) {
-      errs.parent2Phone = 'Telefone inválido.';
+    if (s === 2) {
+      if (!form.address.trim()) errs.address = 'Diga o endereço de casa.';
+      if (!form.lat || !form.lng)
+        errs.address = 'Toque em "Buscar endereço" pra confirmar o local.';
     }
-    if (!form.address.trim()) errs.address = 'Informe o endereço.';
-    if (!form.lat || !form.lng) {
-      errs.address = 'Busque as coordenadas do endereço primeiro.';
+    if (s === 3) {
+      if (!form.school.trim()) errs.school = 'Diga o nome da escola.';
+      if (!form.schoolAddress.trim())
+        errs.schoolAddress = 'Diga o endereço da escola.';
     }
-    const fee = parseFloat(form.monthlyFee);
-    if (!fee || fee <= 0) errs.monthlyFee = 'Mensalidade deve ser maior que zero.';
+    if (s === 4) {
+      if (!form.parentName.trim())
+        errs.parentName = 'Diga o nome do responsável.';
+      if (!isValidEmail(form.parentEmail))
+        errs.parentEmail = 'Email não parece válido.';
+      if (!isValidPhone(form.parentPhone))
+        errs.parentPhone = 'Telefone com 10 ou 11 dígitos.';
+      if (form.parent2Phone && !isValidPhone(form.parent2Phone))
+        errs.parent2Phone = 'Telefone inválido.';
+      const fee = parseFloat(form.monthlyFee);
+      if (!fee || fee <= 0) errs.monthlyFee = 'Diga o valor da mensalidade.';
+      const day = parseInt(form.dueDay, 10);
+      if (!day || day < 1 || day > 28)
+        errs.dueDay = 'Dia entre 1 e 28.';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
-  };
+  }
 
-  const onSearchHomeCoords = async () => {
-    if (!form.address.trim()) {
-      toast.error('Digite o endereço primeiro.');
+  const onAdvance = () => {
+    if (!validateStep(step)) {
+      toast.error('Confira o que tá destacado.');
       return;
     }
-    setSearching(true);
-    try {
-      const result = await searchAddress(form.address);
-      setForm((prev) => ({
-        ...prev,
-        lat: result.lat,
-        lng: result.lng,
-        address: result.displayName || prev.address,
-      }));
-      toast.success('Coordenadas encontradas!');
-    } catch (err) {
-      toast.error(err?.message || 'Endereço não encontrado.');
-    } finally {
-      setSearching(false);
-    }
+    if (step < TOTAL_STEPS) setStep(step + 1);
+    else onSubmit();
   };
 
-  const onSearchSchoolCoords = async () => {
-    if (!form.schoolAddress.trim()) {
-      toast.error('Digite o endereço da escola primeiro.');
-      return;
-    }
-    setSearchingSchool(true);
-    try {
-      const result = await searchAddress(form.schoolAddress);
-      setForm((prev) => ({
-        ...prev,
-        schoolLat: result.lat,
-        schoolLng: result.lng,
-        schoolAddress: result.displayName || prev.schoolAddress,
-      }));
-      toast.success('Endereço da escola localizado!');
-    } catch (err) {
-      toast.error(err?.message || 'Endereço não encontrado.');
-    } finally {
-      setSearchingSchool(false);
-    }
+  const onBack = () => {
+    setErrors({});
+    if (step > 1) setStep(step - 1);
+    else navigate(-1);
   };
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) {
-      toast.error('Confira os campos destacados.');
-      return;
-    }
+  const onSubmit = async () => {
     setSubmitting(true);
     try {
       const { inviteCode } = await addChild({
@@ -162,6 +151,7 @@ export default function ChildForm() {
         parentPhone: unmaskPhone(form.parentPhone),
         parent2Phone: form.parent2Phone ? unmaskPhone(form.parent2Phone) : '',
         monthlyFee: parseFloat(form.monthlyFee) || 0,
+        dueDay: parseInt(form.dueDay, 10) || 10,
       });
       setCreatedCode(inviteCode);
     } catch (err) {
@@ -176,326 +166,529 @@ export default function ChildForm() {
     return (
       <InviteCodeSuccess
         code={createdCode}
+        childName={form.name}
         onDone={() => navigate('/tio/children', { replace: true })}
       />
     );
   }
 
   return (
-    <>
-      <Header title="Nova criança" showBack />
+    <div className="min-h-screen flex flex-col">
+      {/* Header próprio do wizard — sem o Header global pra ter mais espaço */}
+      <header className="sticky top-0 z-20 bg-bg px-5 pt-4 pb-3 space-y-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="tap inline-flex items-center gap-1 text-sm text-textMuted -ml-1 p-1"
+        >
+          <ArrowLeft size={18} />
+          {step === 1 ? 'Cancelar' : 'Voltar'}
+        </button>
 
-      <form onSubmit={onSubmit} className="p-4 space-y-4 pb-8">
-        <Card className="space-y-4">
-          <h2 className="text-sm font-semibold text-text">Criança</h2>
-          <Input
-            label="Nome completo"
-            placeholder="Ex: Pedro Silva"
-            icon={User}
-            value={form.name}
-            onChange={setField('name')}
-            error={errors.name}
-            required
-          />
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">
-              Gênero
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {GENDERS.map((g) => (
-                <button
-                  key={g.value}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, gender: g.value }))
-                  }
-                  className={`h-10 rounded-xl text-sm font-semibold border tap ${
-                    form.gender === g.value
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-card text-text border-gray-200'
-                  }`}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">
-              Período escolar
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {PERIOD_OPTIONS.map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, period: p.value }))
-                  }
-                  className={`h-10 rounded-xl text-sm font-semibold border tap ${
-                    form.period === p.value
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-card text-text border-gray-200'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-[11px] text-textMuted mt-1">
-              Em qual turno a criança estuda.
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+              Passo {step} de {TOTAL_STEPS}
+            </p>
+            <p className="text-[11px] font-semibold text-textMuted">
+              {STEP_LABELS[step - 1]}
             </p>
           </div>
-        </Card>
+          <ProgressBar step={step} total={TOTAL_STEPS} />
+        </div>
+      </header>
 
-        <Card className="space-y-4">
-          <h2 className="text-sm font-semibold text-text">Horários de transporte</h2>
-          <p className="text-xs text-textMuted -mt-2">
-            Define em qual turno você passa em casa pra buscar e devolver a criança.
-          </p>
-
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">
-              Turno da coleta (casa → escola)
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {PERIOD_OPTIONS.map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, pickupPeriod: p.value }))
-                  }
-                  className={`h-10 rounded-xl text-sm font-semibold border tap ${
-                    form.pickupPeriod === p.value
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-card text-text border-gray-200'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">
-              Turno da entrega (escola → casa)
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {PERIOD_OPTIONS.map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, dropoffPeriod: p.value }))
-                  }
-                  className={`h-10 rounded-xl text-sm font-semibold border tap ${
-                    form.dropoffPeriod === p.value
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-card text-text border-gray-200'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card className="space-y-4">
-          <h2 className="text-sm font-semibold text-text">Escola</h2>
-          <Input
-            label="Nome da escola"
-            placeholder="Ex: Colégio Tio Nino"
-            icon={GraduationCap}
-            value={form.school}
-            onChange={setField('school')}
-            error={errors.school}
-            required
+      <main className="flex-1 px-5 pt-3 pb-32 space-y-5">
+        {step === 1 && (
+          <Step1Child
+            form={form}
+            setForm={setForm}
+            setField={setField}
+            errors={errors}
           />
-          <Input
-            label="Endereço da escola"
-            placeholder="Rua, número, bairro, cidade"
-            icon={School}
-            value={form.schoolAddress}
-            onChange={setField('schoolAddress')}
-            error={errors.schoolAddress}
-            required
+        )}
+        {step === 2 && (
+          <Step2Home
+            form={form}
+            setForm={setForm}
+            setField={setField}
+            errors={errors}
           />
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            icon={Search}
-            onClick={onSearchSchoolCoords}
-            loading={searchingSchool}
-          >
-            Buscar coordenadas da escola
-          </Button>
-          {form.schoolLat && form.schoolLng && (
-            <div className="flex items-center gap-2 text-xs text-lime-700 bg-success/10 px-3 py-2 rounded-lg">
-              <MapPin size={14} />
-              <span>
-                {Number(form.schoolLat).toFixed(5)},{' '}
-                {Number(form.schoolLng).toFixed(5)}
-              </span>
-            </div>
-          )}
-        </Card>
-
-        <Card className="space-y-4">
-          <h2 className="text-sm font-semibold text-text">Responsável principal</h2>
-          <Input
-            label="Nome"
-            placeholder="Pai, mãe ou tutor"
-            icon={User}
-            value={form.parentName}
-            onChange={setField('parentName')}
-            autoComplete="name"
-            error={errors.parentName}
-            required
+        )}
+        {step === 3 && (
+          <Step3School
+            form={form}
+            setForm={setForm}
+            setField={setField}
+            errors={errors}
           />
-          <Input
-            type="email"
-            inputMode="email"
-            label="Email do responsável"
-            placeholder="email@exemplo.com"
-            icon={Mail}
-            value={form.parentEmail}
-            onChange={setField('parentEmail')}
-            autoComplete="email"
-            error={errors.parentEmail}
-            required
+        )}
+        {step === 4 && (
+          <Step4Parent
+            form={form}
+            setForm={setForm}
+            setField={setField}
+            setPhone={setPhone}
+            errors={errors}
           />
-          <Input
-            label="Telefone"
-            placeholder="(11) 99999-9999"
-            icon={Phone}
-            inputMode="tel"
-            value={form.parentPhone}
-            onChange={setPhone('parentPhone')}
-            autoComplete="tel"
-            maxLength={15}
-            error={errors.parentPhone}
-            required
-          />
+        )}
+      </main>
 
-          {/* Segundo responsável (opcional) */}
-          <button
-            type="button"
-            onClick={() => setShowSecondParent((v) => !v)}
-            className="w-full flex items-center justify-between text-sm font-medium text-primary tap py-2"
-          >
-            <span>
-              {showSecondParent
-                ? 'Ocultar segundo responsável'
-                : 'Adicionar segundo responsável (opcional)'}
-            </span>
-            {showSecondParent ? (
-              <ChevronUp size={18} />
-            ) : (
-              <ChevronDown size={18} />
-            )}
-          </button>
-
-          {showSecondParent && (
-            <div className="space-y-4 pt-2 border-t border-gray-100">
-              <Input
-                label="Nome do segundo responsável"
-                placeholder="Ex: pai ou mãe"
-                icon={User}
-                value={form.parent2Name}
-                onChange={setField('parent2Name')}
-              />
-              <Input
-                label="Telefone do segundo responsável"
-                placeholder="(11) 99999-9999"
-                icon={Phone}
-                inputMode="tel"
-                value={form.parent2Phone}
-                onChange={setPhone('parent2Phone')}
-                maxLength={15}
-                error={errors.parent2Phone}
-              />
-            </div>
-          )}
-        </Card>
-
-        <Card className="space-y-4">
-          <h2 className="text-sm font-semibold text-text">Endereço de casa</h2>
-          <Input
-            label="Endereço completo"
-            placeholder="Rua, número, bairro, cidade"
-            icon={Home}
-            value={form.address}
-            onChange={setField('address')}
-            hint="Quanto mais específico, melhor o geocoding."
-            error={errors.address}
-            required
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            icon={Search}
-            onClick={onSearchHomeCoords}
-            loading={searching}
-          >
-            Buscar coordenadas
-          </Button>
-          {form.lat && form.lng && (
-            <div className="flex items-center gap-2 text-xs text-lime-700 bg-success/10 px-3 py-2 rounded-lg">
-              <MapPin size={14} />
-              <span>
-                {Number(form.lat).toFixed(5)}, {Number(form.lng).toFixed(5)}
-              </span>
-            </div>
-          )}
-        </Card>
-
-        <Card className="space-y-4">
-          <h2 className="text-sm font-semibold text-text">Financeiro</h2>
-          <Input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
-            label="Mensalidade (R$)"
-            placeholder="450.00"
-            icon={DollarSign}
-            value={form.monthlyFee}
-            onChange={setField('monthlyFee')}
-            error={errors.monthlyFee}
-            required
-          />
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">
-              Observações (opcional)
-            </label>
-            <textarea
-              value={form.notes}
-              onChange={setField('notes')}
-              rows={3}
-              placeholder="Alergias, instruções especiais..."
-              className="w-full rounded-xl border border-gray-200 bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-textMuted"
-            />
-          </div>
-        </Card>
-
-        <Button type="submit" loading={submitting}>
-          Cadastrar criança
+      {/* Footer com botão "Avançar" / "Cadastrar" fixo */}
+      <footer
+        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto px-5 pb-5 pointer-events-none"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 1.25rem)' }}
+      >
+        <Button
+          onClick={onAdvance}
+          loading={submitting}
+          icon={step === TOTAL_STEPS ? Check : ArrowRight}
+          className="pointer-events-auto shadow-2xl shadow-emerald-500/30 !bg-emerald-600 hover:!bg-emerald-700 !h-14 !text-base"
+        >
+          {step === TOTAL_STEPS ? 'Cadastrar criança' : 'Avançar'}
         </Button>
-      </form>
+      </footer>
+    </div>
+  );
+}
+
+const STEP_LABELS = [
+  'Quem é a criança',
+  'Onde mora',
+  'Onde estuda',
+  'Responsável e mensalidade',
+];
+
+/* ─────────────── Barra de progresso ─────────────── */
+
+function ProgressBar({ step, total }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {Array.from({ length: total }, (_, i) => {
+        const done = i + 1 < step;
+        const current = i + 1 === step;
+        return (
+          <div
+            key={i}
+            className={`h-1.5 rounded-full flex-1 transition-colors ${
+              done
+                ? 'bg-emerald-500'
+                : current
+                ? 'bg-emerald-500'
+                : 'bg-gray-200'
+            }`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─────────────── Passo 1: Criança ─────────────── */
+
+function Step1Child({ form, setForm, setField, errors }) {
+  return (
+    <>
+      <Heading
+        title="Quem é a criança?"
+        subtitle="Comece pelo básico — vamos um passo de cada vez."
+      />
+
+      <Input
+        label="Nome completo"
+        placeholder="Ex: Pedro Silva"
+        icon={User}
+        value={form.name}
+        onChange={setField('name')}
+        error={errors.name}
+        required
+        autoFocus
+      />
+
+      <div>
+        <label className="block text-sm font-semibold text-text mb-2">
+          É menino ou menina?
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {GENDERS.map((g) => (
+            <SelectorButton
+              key={g.value}
+              label={g.label}
+              active={form.gender === g.value}
+              onClick={() => setForm((p) => ({ ...p, gender: g.value }))}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-text mb-2">
+          Em qual período estuda?
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {PERIOD_OPTIONS.map((p) => {
+            const Icon = PERIOD_ICONS[p.value] || Sunrise;
+            return (
+              <SelectorButton
+                key={p.value}
+                label={p.label}
+                icon={Icon}
+                active={form.period === p.value}
+                onClick={() => setForm((prev) => ({ ...prev, period: p.value }))}
+              />
+            );
+          })}
+        </div>
+      </div>
     </>
   );
 }
 
-/**
- * Tela de sucesso pós-cadastro: mostra o invite code num card grande
- * com botão de copiar pra área de transferência.
- */
-function InviteCodeSuccess({ code, onDone }) {
+/* ─────────────── Passo 2: Casa ─────────────── */
+
+function Step2Home({ form, setForm, setField, errors }) {
+  const [searching, setSearching] = useState(false);
+
+  const onSearch = async () => {
+    if (!form.address.trim()) {
+      toast.error('Digite o endereço primeiro.');
+      return;
+    }
+    setSearching(true);
+    try {
+      const result = await searchAddress(form.address);
+      setForm((prev) => ({
+        ...prev,
+        lat: result.lat,
+        lng: result.lng,
+        address: result.displayName || prev.address,
+      }));
+      toast.success('Encontramos o local!');
+    } catch (err) {
+      toast.error(err?.message || 'Endereço não encontrado.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  return (
+    <>
+      <Heading
+        title="Onde a criança mora?"
+        subtitle="O endereço da casa pra você passar todo dia."
+      />
+
+      <Input
+        label="Endereço completo"
+        placeholder="Rua, número, bairro, cidade"
+        icon={Home}
+        value={form.address}
+        onChange={setField('address')}
+        hint="Quanto mais completo, melhor o sistema encontra."
+        error={errors.address}
+        required
+        autoFocus
+      />
+
+      <Button
+        type="button"
+        variant="secondary"
+        icon={Search}
+        onClick={onSearch}
+        loading={searching}
+      >
+        Buscar endereço no mapa
+      </Button>
+
+      {form.lat && form.lng && (
+        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl">
+          <MapPin size={18} />
+          <span>Local confirmado!</span>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ─────────────── Passo 3: Escola ─────────────── */
+
+function Step3School({ form, setForm, setField, errors }) {
+  const [searchingSchool, setSearchingSchool] = useState(false);
+
+  const onSearchSchool = async () => {
+    if (!form.schoolAddress.trim()) {
+      toast.error('Digite o endereço da escola primeiro.');
+      return;
+    }
+    setSearchingSchool(true);
+    try {
+      const result = await searchAddress(form.schoolAddress);
+      setForm((prev) => ({
+        ...prev,
+        schoolLat: result.lat,
+        schoolLng: result.lng,
+        schoolAddress: result.displayName || prev.schoolAddress,
+      }));
+      toast.success('Encontramos a escola!');
+    } catch (err) {
+      toast.error(err?.message || 'Endereço não encontrado.');
+    } finally {
+      setSearchingSchool(false);
+    }
+  };
+
+  return (
+    <>
+      <Heading
+        title="Onde estuda?"
+        subtitle="Nome da escola e endereço — pra entregar e buscar."
+      />
+
+      <Input
+        label="Nome da escola"
+        placeholder="Ex: Colégio Sol"
+        icon={GraduationCap}
+        value={form.school}
+        onChange={setField('school')}
+        error={errors.school}
+        required
+        autoFocus
+      />
+
+      <Input
+        label="Endereço da escola"
+        placeholder="Rua, número, bairro, cidade"
+        icon={School}
+        value={form.schoolAddress}
+        onChange={setField('schoolAddress')}
+        error={errors.schoolAddress}
+        required
+      />
+
+      <Button
+        type="button"
+        variant="secondary"
+        icon={Search}
+        onClick={onSearchSchool}
+        loading={searchingSchool}
+      >
+        Buscar endereço da escola
+      </Button>
+
+      {form.schoolLat && form.schoolLng && (
+        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl">
+          <MapPin size={18} />
+          <span>Local confirmado!</span>
+        </div>
+      )}
+
+      <div className="pt-2">
+        <label className="block text-sm font-semibold text-text mb-2">
+          Quando você busca em casa?
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {PERIOD_OPTIONS.map((p) => {
+            const Icon = PERIOD_ICONS[p.value] || Sunrise;
+            return (
+              <SelectorButton
+                key={p.value}
+                label={p.label}
+                icon={Icon}
+                active={form.pickupPeriod === p.value}
+                onClick={() =>
+                  setForm((prev) => ({ ...prev, pickupPeriod: p.value }))
+                }
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-text mb-2">
+          Quando você devolve em casa?
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {PERIOD_OPTIONS.map((p) => {
+            const Icon = PERIOD_ICONS[p.value] || Sunrise;
+            return (
+              <SelectorButton
+                key={p.value}
+                label={p.label}
+                icon={Icon}
+                active={form.dropoffPeriod === p.value}
+                onClick={() =>
+                  setForm((prev) => ({ ...prev, dropoffPeriod: p.value }))
+                }
+              />
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ─────────────── Passo 4: Responsável + Financeiro ─────────────── */
+
+function Step4Parent({ form, setField, setPhone, errors }) {
+  const [showSecondParent, setShowSecondParent] = useState(false);
+
+  return (
+    <>
+      <Heading
+        title="Responsável e mensalidade"
+        subtitle="Quem cuida e como é a cobrança."
+      />
+
+      <Card className="space-y-4">
+        <h3 className="text-sm font-bold text-text">Responsável principal</h3>
+        <Input
+          label="Nome"
+          placeholder="Pai, mãe ou tutor"
+          icon={User}
+          value={form.parentName}
+          onChange={setField('parentName')}
+          error={errors.parentName}
+          required
+        />
+        <Input
+          type="email"
+          inputMode="email"
+          label="Email"
+          placeholder="email@exemplo.com"
+          icon={Mail}
+          value={form.parentEmail}
+          onChange={setField('parentEmail')}
+          error={errors.parentEmail}
+          required
+        />
+        <Input
+          label="Telefone"
+          placeholder="(11) 99999-9999"
+          icon={Phone}
+          inputMode="tel"
+          value={form.parentPhone}
+          onChange={setPhone('parentPhone')}
+          maxLength={15}
+          error={errors.parentPhone}
+          required
+        />
+
+        <button
+          type="button"
+          onClick={() => setShowSecondParent((v) => !v)}
+          className="tap w-full flex items-center justify-between text-sm font-medium text-primary py-2"
+        >
+          <span>
+            {showSecondParent
+              ? 'Ocultar segundo responsável'
+              : 'Adicionar segundo responsável (opcional)'}
+          </span>
+          {showSecondParent ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+
+        {showSecondParent && (
+          <div className="space-y-3 pt-1 border-t border-gray-100">
+            <Input
+              label="Nome do segundo responsável"
+              icon={User}
+              value={form.parent2Name}
+              onChange={setField('parent2Name')}
+            />
+            <Input
+              label="Telefone do segundo responsável"
+              icon={Phone}
+              inputMode="tel"
+              value={form.parent2Phone}
+              onChange={setPhone('parent2Phone')}
+              maxLength={15}
+              error={errors.parent2Phone}
+            />
+          </div>
+        )}
+      </Card>
+
+      <Card className="space-y-4">
+        <h3 className="text-sm font-bold text-text">Mensalidade</h3>
+        <Input
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          min="0"
+          label="Valor (R$)"
+          placeholder="450,00"
+          icon={DollarSign}
+          value={form.monthlyFee}
+          onChange={setField('monthlyFee')}
+          error={errors.monthlyFee}
+          required
+        />
+        <Input
+          type="number"
+          inputMode="numeric"
+          min="1"
+          max="28"
+          label="Dia do vencimento"
+          placeholder="10"
+          icon={Calendar}
+          value={form.dueDay}
+          onChange={setField('dueDay')}
+          hint="Em que dia do mês o pai paga (1 a 28)."
+          error={errors.dueDay}
+          required
+        />
+      </Card>
+
+      <Card>
+        <label className="block text-sm font-bold text-text mb-2">
+          Observações (opcional)
+        </label>
+        <textarea
+          value={form.notes}
+          onChange={setField('notes')}
+          rows={3}
+          placeholder="Alergias, instruções especiais..."
+          className="w-full rounded-xl border border-gray-200 bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-textMuted"
+        />
+      </Card>
+    </>
+  );
+}
+
+/* ─────────────── Helpers visuais ─────────────── */
+
+function Heading({ title, subtitle }) {
+  return (
+    <div className="mb-1">
+      <h1 className="text-2xl font-bold text-text leading-tight">{title}</h1>
+      {subtitle && (
+        <p className="text-sm text-textMuted mt-1">{subtitle}</p>
+      )}
+    </div>
+  );
+}
+
+function SelectorButton({ label, icon: Icon, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tap h-14 rounded-2xl text-sm font-semibold border-2 flex flex-col items-center justify-center gap-0.5 ${
+        active
+          ? 'bg-primary text-white border-primary'
+          : 'bg-card text-text border-gray-200'
+      }`}
+    >
+      {Icon && <Icon size={16} />}
+      {label}
+    </button>
+  );
+}
+
+/* ─────────────── Sucesso ─────────────── */
+
+function InviteCodeSuccess({ code, childName, onDone }) {
   const [copied, setCopied] = useState(false);
 
   const onCopy = async () => {
@@ -505,26 +698,32 @@ function InviteCodeSuccess({ code, onDone }) {
       toast.success('Código copiado!');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Não foi possível copiar. Anote o código.');
+      toast.error('Anote o código.');
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6">
-      <div className="bg-card rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-sm">
-        <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-          <Check size={28} className="text-success" />
+      <div className="bg-card rounded-3xl p-6 max-w-sm w-full text-center space-y-5 shadow-xl shadow-emerald-500/15">
+        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+          <Check size={32} className="text-emerald-600" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-text">Criança cadastrada!</h3>
-          <p className="text-sm text-textMuted mt-1">
-            Entregue o código abaixo ao responsável (WhatsApp, presencialmente)
-            para que ele crie sua conta.
+          <h3 className="text-2xl font-bold text-text">
+            {childName?.split(' ')[0] || 'Criança'} cadastrad{
+              childName?.endsWith('a') ? 'a' : 'o(a)'
+            }!
+          </h3>
+          <p className="text-sm text-textMuted mt-2">
+            Entregue o código abaixo ao responsável pra ele criar a conta no
+            app (por WhatsApp, presencial...).
           </p>
         </div>
-        <div className="bg-bg rounded-xl p-4">
-          <p className="text-xs text-textMuted mb-1">Código de convite</p>
-          <p className="text-3xl font-bold tracking-widest text-text">{code}</p>
+        <div className="bg-bg rounded-2xl p-5">
+          <p className="text-xs text-textMuted mb-1 uppercase tracking-widest font-semibold">
+            Código
+          </p>
+          <p className="text-4xl font-bold tracking-widest text-text">{code}</p>
         </div>
         <Button variant="secondary" icon={copied ? Check : Copy} onClick={onCopy}>
           {copied ? 'Copiado!' : 'Copiar código'}

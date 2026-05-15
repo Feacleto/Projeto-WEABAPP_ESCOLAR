@@ -49,7 +49,9 @@ service cloud.firestore {
       allow read: if true;
       allow create: if !exists(/databases/$(database)/documents/appState/init);
       allow update: if isAdmin();
-      allow delete: if false;
+      // Admin pode deletar quando "encerrar operação" (deleteAdminAccount).
+      // Apagar appState/init restaura o link "Configurar primeiro admin".
+      allow delete: if isAdmin();
     }
 
     // -----------------------------------------------------------------
@@ -89,7 +91,9 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if isAdmin();
+      // O próprio dono pode apagar (excluir minha conta) ou admin pode
+      // apagar qualquer um (remover pai vinculado / encerrar operação).
+      allow delete: if isSignedIn() && (request.auth.uid == uid || isAdmin());
     }
 
     // -----------------------------------------------------------------
@@ -110,6 +114,12 @@ service cloud.firestore {
 
       allow create, delete: if isAdmin();
 
+      // Updates permitidos (não-admin):
+      //   a) Aceitar invite: pending → used, parentUid = auth.uid
+      //   b) Desvincular (pai apagando própria conta): used → pending,
+      //      parentUid = null. Só se parentUid atual é do próprio auth.uid.
+      //   c) Aceitar contrato (pai vinculado): grava campos de aceite.
+      //      Só permitido se ainda não foi aceito (contractAcceptedAt null).
       allow update: if isAdmin() || (
         isSignedIn()
         && resource.data.inviteStatus == 'pending'
@@ -117,6 +127,26 @@ service cloud.firestore {
         && request.resource.data.inviteStatus == 'used'
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['parentUid', 'inviteStatus'])
+      ) || (
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && request.resource.data.parentUid == null
+        && request.resource.data.inviteStatus == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['parentUid', 'inviteStatus'])
+      ) || (
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && request.resource.data.contractAcceptedByUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'contractVersion',
+              'contractAcceptedAt',
+              'contractAcceptedByUid',
+              'contractAcceptedName',
+              'contractHash',
+              'contractUserAgent',
+            ])
       );
     }
 
@@ -241,6 +271,23 @@ service cloud.firestore {
       allow delete: if isAdmin() || (
         isSignedIn() && ownsChild(resource.data.childId)
       );
+    }
+
+    // -----------------------------------------------------------------
+    // waitlistDrivers/{id} e waitlistParents/{id}
+    //   Leads da landing (/conheca). Coleções públicas só pra create
+    //   (com auth anônimo). Leitura/edição/delete apenas admin — assim o
+    //   admin atual vê quem quer entrar sem expor leads pra outros usuários.
+    // -----------------------------------------------------------------
+    match /waitlistDrivers/{id} {
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll(['name', 'email', 'createdAt']);
+      allow read, update, delete: if isAdmin();
+    }
+    match /waitlistParents/{id} {
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll(['name', 'email', 'createdAt']);
+      allow read, update, delete: if isAdmin();
     }
 
     // -----------------------------------------------------------------

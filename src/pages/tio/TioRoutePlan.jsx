@@ -359,7 +359,13 @@ function SortableRow({ id, index, child, direction }) {
         {index}
       </div>
 
-      <Avatar gender={child.gender} size="sm" />
+      <Avatar
+        photoURL={child.photoURL}
+        gender={child.gender}
+        seed={child.id}
+        kind="child"
+        size="sm"
+      />
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-text truncate">{child.name}</p>

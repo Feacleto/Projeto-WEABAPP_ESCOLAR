@@ -1,9 +1,18 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, Plus, Loader2, Key, ChevronRight, X } from 'lucide-react';
+import {
+  Key,
+  ChevronRight,
+  ChevronLeft,
+  X,
+  Banknote,
+  QrCode,
+  CreditCard,
+  Wallet,
+  DollarSign,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
-import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
 import Skeleton from '../../components/common/Skeleton';
@@ -12,45 +21,41 @@ import PaymentRow from '../../components/payments/PaymentRow';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import {
-  generateMonthlyPayments,
   confirmReceipt,
   undoReceipt,
   computeDisplayStatus,
 } from '../../services/paymentsService';
 import { notifyPaymentConfirmed } from '../../services/notificationsService';
 import {
-  getCurrentMonthKey,
   formatMonthLabel,
   formatCurrency,
+  getCurrentMonthKey,
 } from '../../utils/formatters';
 import { PIX_KEY_TYPES } from '../../services/userService';
 
-const FILTERS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'claimed', label: 'Aguardando' },
-  { value: 'pending', label: 'Pendente' },
-  { value: 'overdue', label: 'Atrasado' },
-  { value: 'paid', label: 'Pago' },
-];
-
+/**
+ * Financeiro do Tio — dashboard mês-a-mês.
+ *
+ * Mudanças vs versão anterior:
+ *   - Seletor de mês (12 meses pra trás navegáveis)
+ *   - Pagamentos do mês corrente são GERADOS AUTOMATICAMENTE pelo useAutoBilling
+ *     (não tem mais botão "+" manual)
+ *   - Ao "dar baixa", sheet pergunta como o tio recebeu: PIX, Dinheiro ou Cartão
+ *   - Hero card "Recebido" + "Pra receber" em destaque (gradiente)
+ */
 export default function TioFinance() {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const [monthKey] = useState(getCurrentMonthKey());
+
+  const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
   const { payments, loading } = usePaymentsByMonth(monthKey);
   const [filter, setFilter] = useState('all');
 
-  // Modal "gerar pagamentos"
-  const [genModalOpen, setGenModalOpen] = useState(false);
-  const [dueDay, setDueDay] = useState(10);
-  const [generating, setGenerating] = useState(false);
-
   // Confirmar / desfazer recebimento
-  const [confirming, setConfirming] = useState(null); // payment a confirmar
-  const [unconfirming, setUnconfirming] = useState(null); // payment a desfazer
+  const [methodSheetFor, setMethodSheetFor] = useState(null); // payment ou null
+  const [unconfirming, setUnconfirming] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Anota cada pagamento com seu display status — evita recalcular toda hora
   const enriched = useMemo(
     () => payments.map((p) => ({ ...p, _display: computeDisplayStatus(p) })),
     [payments]
@@ -69,54 +74,31 @@ export default function TioFinance() {
     return {
       paid: sumByStatus(['paid']),
       open: sumByStatus(['pending', 'overdue', 'claimed']),
+      overdueCount: enriched.filter((p) => p._display === 'overdue').length,
       claimedCount: enriched.filter((p) => p._display === 'claimed').length,
     };
   }, [enriched]);
 
-  const onGenerate = async () => {
-    setGenerating(true);
-    try {
-      const { created, withoutParent } = await generateMonthlyPayments(
-        monthKey,
-        dueDay
-      );
-      if (created === 0) {
-        toast.success('Pagamentos do mês já estão gerados.');
-      } else {
-        toast.success(`${created} pagamento(s) criado(s).`);
-      }
-      if (withoutParent > 0) {
-        toast(
-          `${withoutParent} criança(s) sem responsável vinculado — pulei.`,
-          { icon: '⚠️', duration: 6000 }
-        );
-      }
-      setGenModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao gerar pagamentos.');
-    } finally {
-      setGenerating(false);
-    }
-  };
+  const hasPix = !!profile?.pixKey;
+  const isCurrentMonth = monthKey === getCurrentMonthKey();
 
-  const onConfirmReceipt = async () => {
-    if (!confirming) return;
+  const onMethodSelected = async (method) => {
+    if (!methodSheetFor) return;
+    const payment = methodSheetFor;
     setActionLoading(true);
     try {
-      await confirmReceipt(confirming.id);
-      // Notifica pai de forma fire-and-forget (não trava a UI)
+      await confirmReceipt(payment.id, method);
       notifyPaymentConfirmed({
-        parentUid: confirming.parentUid,
-        paymentId: confirming.id,
-        monthLabel: formatMonthLabel(confirming.month),
-        amount: confirming.amount,
+        parentUid: payment.parentUid,
+        paymentId: payment.id,
+        monthLabel: formatMonthLabel(payment.month),
+        amount: payment.amount,
       });
-      toast.success(`Recebimento de ${confirming.childName} confirmado.`);
-      setConfirming(null);
+      toast.success(`Recebimento de ${payment.childName} confirmado.`);
+      setMethodSheetFor(null);
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao confirmar recebimento.');
+      toast.error('Erro ao confirmar.');
     } finally {
       setActionLoading(false);
     }
@@ -127,105 +109,84 @@ export default function TioFinance() {
     setActionLoading(true);
     try {
       await undoReceipt(unconfirming.id);
-      toast.success(`Confirmação de ${unconfirming.childName} desfeita.`);
+      toast.success(`Confirmação desfeita.`);
       setUnconfirming(null);
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao desfazer confirmação.');
+      toast.error('Erro ao desfazer.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const hasPix = !!profile?.pixKey;
-
   return (
     <>
-      <Header
-        title={`Financeiro · ${formatMonthLabel(monthKey)}`}
-        action={
-          <button
-            onClick={() => setGenModalOpen(true)}
-            disabled={generating}
-            aria-label="Gerar pagamentos do mês"
-            className="text-primary tap p-1 disabled:opacity-50"
-          >
-            {generating ? (
-              <Loader2 size={22} className="animate-spin" />
-            ) : (
-              <Plus size={22} />
-            )}
-          </button>
-        }
-      />
+      <Header title="Pagamentos" />
 
-      <div className="p-4 space-y-4">
-        {/* PIX banner */}
-        <button
-          type="button"
-          onClick={() => navigate('/tio/pix')}
-          className={`w-full text-left rounded-xl p-3 flex items-center gap-3 tap border ${
-            hasPix
-              ? 'bg-card border-gray-200'
-              : 'bg-warning/10 border-warning/30'
-          }`}
-        >
-          <div
-            className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-              hasPix ? 'bg-primary/10' : 'bg-warning/20'
+      <div className="p-5 space-y-5">
+        {/* Seletor de mês */}
+        <MonthSwitcher
+          monthKey={monthKey}
+          onChange={setMonthKey}
+        />
+
+        {/* Hero: recebido vs a receber */}
+        <FinanceHero
+          paid={totals.paid}
+          open={totals.open}
+          overdueCount={totals.overdueCount}
+          claimedCount={totals.claimedCount}
+        />
+
+        {/* PIX banner — só se for mês corrente */}
+        {isCurrentMonth && (
+          <button
+            type="button"
+            onClick={() => navigate('/tio/pix')}
+            className={`tap w-full text-left rounded-2xl p-4 flex items-center gap-3 border ${
+              hasPix
+                ? 'bg-card border-gray-200'
+                : 'bg-gradient-to-br from-amber-50 to-orange-100 border-amber-200'
             }`}
           >
-            <Key size={20} className={hasPix ? 'text-primary' : 'text-warning'} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-text">
-              {hasPix ? 'Chave PIX cadastrada' : 'Cadastre sua chave PIX'}
-            </p>
-            <p className="text-xs text-textMuted truncate">
-              {hasPix
-                ? `${PIX_KEY_TYPES[profile.pixKeyType]?.label || ''}: ${profile.pixKey}`
-                : 'Os pais precisam dela pra pagar pelo app.'}
-            </p>
-          </div>
-          <ChevronRight size={20} className="text-textMuted shrink-0" />
-        </button>
-
-        {totals.claimedCount > 0 && (
-          <Card className="bg-primary/5 border border-primary/20">
-            <p className="text-sm text-primaryDark font-medium">
-              {totals.claimedCount} pagamento(s) aguardando sua confirmação.
-            </p>
-            <p className="text-xs text-textMuted mt-1">
-              Verifique os comprovantes no WhatsApp e confirme abaixo.
-            </p>
-          </Card>
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                hasPix ? 'bg-primary/10' : 'bg-amber-500 text-white'
+              }`}
+            >
+              <Key size={20} className={hasPix ? 'text-primary' : ''} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-text leading-tight">
+                {hasPix ? 'Chave PIX cadastrada' : 'Cadastre sua chave PIX'}
+              </p>
+              <p className="text-xs text-textMuted mt-0.5 truncate">
+                {hasPix
+                  ? `${PIX_KEY_TYPES[profile.pixKeyType]?.label || ''}: ${profile.pixKey}`
+                  : 'Os pais precisam pra pagar pelo app'}
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-textMuted shrink-0" />
+          </button>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <Card>
-            <p className="text-xs text-textMuted">Recebido</p>
-            <p className="text-2xl font-bold text-success leading-none mt-2">
-              {formatCurrency(totals.paid)}
-            </p>
-          </Card>
-          <Card>
-            <p className="text-xs text-textMuted">A receber</p>
-            <p className="text-2xl font-bold text-warning leading-none mt-2">
-              {formatCurrency(totals.open)}
-            </p>
-          </Card>
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 -mb-1">
-          {FILTERS.map((f) => (
+        {/* Filtros */}
+        <div className="flex gap-2 overflow-x-auto -mx-5 px-5 pb-1 -mb-1">
+          {[
+            { value: 'all', label: 'Todos' },
+            { value: 'claimed', label: 'Aguardando' },
+            { value: 'overdue', label: 'Atrasados' },
+            { value: 'pending', label: 'Pendentes' },
+            { value: 'paid', label: 'Pagos' },
+          ].map((f) => (
             <button
               key={f.value}
               type="button"
               onClick={() => setFilter(f.value)}
-              className={`shrink-0 h-8 px-3 rounded-full text-xs font-semibold tap border ${
+              className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold tap border ${
                 filter === f.value
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-card text-text border-gray-200'
+                  ? 'bg-text text-white border-text'
+                  : 'bg-card text-textMuted border-gray-200'
               }`}
             >
               {f.label}
@@ -233,25 +194,21 @@ export default function TioFinance() {
           ))}
         </div>
 
+        {/* Lista */}
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-24" />
             ))}
           </div>
-        ) : payments.length === 0 ? (
+        ) : enriched.length === 0 ? (
           <EmptyState
-            icon={DollarSign}
+            icon={Wallet}
             title="Nenhum pagamento"
-            description={`Toque em + ou no botão abaixo para gerar pagamentos de ${formatMonthLabel(monthKey)}.`}
-            action={
-              <Button
-                onClick={() => setGenModalOpen(true)}
-                icon={Plus}
-                fullWidth={false}
-              >
-                Gerar pagamentos
-              </Button>
+            description={
+              isCurrentMonth
+                ? 'Os pagamentos do mês são gerados quando você cadastra crianças.'
+                : `Sem registros pra ${formatMonthLabel(monthKey)}.`
             }
           />
         ) : filtered.length === 0 ? (
@@ -261,14 +218,14 @@ export default function TioFinance() {
             description="Sem pagamentos com esse filtro."
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filtered.map((payment) => (
               <PaymentRow
                 key={payment.id}
                 payment={payment}
                 displayStatus={payment._display}
                 action={renderAction(payment, {
-                  onConfirm: () => setConfirming(payment),
+                  onConfirm: () => setMethodSheetFor(payment),
                   onUndo: () => setUnconfirming(payment),
                 })}
               />
@@ -277,41 +234,15 @@ export default function TioFinance() {
         )}
       </div>
 
-      {/* Modal: gerar pagamentos com seleção de dia de vencimento */}
-      {genModalOpen && (
-        <DueDayModal
-          dueDay={dueDay}
-          onChange={setDueDay}
-          onClose={() => setGenModalOpen(false)}
-          onConfirm={onGenerate}
-          loading={generating}
-          monthLabel={formatMonthLabel(monthKey)}
+      {/* Sheet "Como você recebeu?" */}
+      {methodSheetFor && (
+        <MethodSheet
+          payment={methodSheetFor}
+          loading={actionLoading}
+          onPick={onMethodSelected}
+          onClose={() => !actionLoading && setMethodSheetFor(null)}
         />
       )}
-
-      {/* Confirmar recebimento (incluindo pré-confirmação dupla pra evitar erro) */}
-      <ConfirmDialog
-        open={!!confirming}
-        title="Confirmar recebimento?"
-        description={
-          confirming ? (
-            <>
-              Você confirma que recebeu o pagamento de{' '}
-              <strong className="text-text">{confirming.childName}</strong> (
-              {formatCurrency(confirming.amount)} ·{' '}
-              {formatMonthLabel(confirming.month)})?
-              <br />
-              <span className="text-xs">
-                O pai vai ser notificado de que o pagamento foi reconhecido.
-              </span>
-            </>
-          ) : null
-        }
-        confirmLabel="Sim, confirmar"
-        loading={actionLoading}
-        onConfirm={onConfirmReceipt}
-        onCancel={() => setConfirming(null)}
-      />
 
       {/* Desfazer confirmação */}
       <ConfirmDialog
@@ -319,7 +250,7 @@ export default function TioFinance() {
         title="Desfazer confirmação?"
         description={
           unconfirming
-            ? `Isso vai voltar o pagamento de ${unconfirming.childName} para "Pendente". Use só se você confirmou por engano.`
+            ? `O pagamento de ${unconfirming.childName} volta para "Pendente". Use só se você confirmou por engano.`
             : null
         }
         confirmLabel="Sim, desfazer"
@@ -329,6 +260,84 @@ export default function TioFinance() {
         onCancel={() => setUnconfirming(null)}
       />
     </>
+  );
+}
+
+/* ─────────────── Componentes ─────────────── */
+
+function MonthSwitcher({ monthKey, onChange }) {
+  const goPrev = () => onChange(addMonths(monthKey, -1));
+  const goNext = () => onChange(addMonths(monthKey, 1));
+  const current = getCurrentMonthKey();
+  const canGoNext = monthKey < current;
+
+  // Limita até 12 meses pra trás (alinhado com a retenção)
+  const minMonth = addMonths(current, -11);
+  const canGoPrev = monthKey > minMonth;
+
+  return (
+    <div className="flex items-center justify-between bg-card rounded-2xl shadow-sm p-2">
+      <button
+        type="button"
+        onClick={goPrev}
+        disabled={!canGoPrev}
+        aria-label="Mês anterior"
+        className="tap w-10 h-10 rounded-xl flex items-center justify-center text-text disabled:opacity-30"
+      >
+        <ChevronLeft size={20} />
+      </button>
+      <p className="text-base font-bold text-text capitalize">
+        {formatMonthLabel(monthKey)}
+      </p>
+      <button
+        type="button"
+        onClick={goNext}
+        disabled={!canGoNext}
+        aria-label="Próximo mês"
+        className="tap w-10 h-10 rounded-xl flex items-center justify-center text-text disabled:opacity-30"
+      >
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  );
+}
+
+function FinanceHero({ paid, open, overdueCount, claimedCount }) {
+  return (
+    <div className="rounded-3xl overflow-hidden shadow-xl shadow-emerald-500/15">
+      <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-5 space-y-4">
+        <div>
+          <p className="text-xs uppercase tracking-widest font-semibold text-white/80">
+            Recebido
+          </p>
+          <p className="text-4xl font-bold tabular-nums leading-none mt-1">
+            {formatCurrency(paid)}
+          </p>
+        </div>
+        <div className="border-t border-white/20 pt-3">
+          <p className="text-xs uppercase tracking-widest font-semibold text-white/80">
+            Pra receber
+          </p>
+          <p className="text-2xl font-bold tabular-nums leading-none mt-1">
+            {formatCurrency(open)}
+          </p>
+          {(overdueCount > 0 || claimedCount > 0) && (
+            <div className="flex gap-2 mt-2 text-xs">
+              {overdueCount > 0 && (
+                <span className="bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 font-semibold">
+                  {overdueCount} atrasado{overdueCount > 1 ? 's' : ''}
+                </span>
+              )}
+              {claimedCount > 0 && (
+                <span className="bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 font-semibold">
+                  {claimedCount} aguardando você
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -347,8 +356,6 @@ function renderAction(payment, { onConfirm, onUndo }) {
       </Button>
     );
   }
-  // pending / overdue: tio dá baixa direto (sem o pai marcar) — caso ele tenha
-  // recebido por outro canal (dinheiro, transferência fora do app, etc.)
   return (
     <Button size="sm" fullWidth={false} onClick={onConfirm}>
       Dar baixa
@@ -356,83 +363,122 @@ function renderAction(payment, { onConfirm, onUndo }) {
   );
 }
 
-function DueDayModal({
-  dueDay,
-  onChange,
-  onClose,
-  onConfirm,
-  loading,
-  monthLabel,
-}) {
+/* ─────────────── Sheet "Como recebeu?" ─────────────── */
+
+function MethodSheet({ payment, loading, onPick, onClose }) {
+  const claimedMethod = payment.paymentMethod; // o que o pai declarou (se houver)
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 pt-20"
-      onClick={() => !loading && onClose()}
+      className="fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
     >
       <div
-        role="dialog"
-        aria-modal="true"
-        className="relative w-full max-w-mobile bg-card rounded-2xl shadow-xl p-5"
+        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar"
-          className="absolute right-3 top-3 p-1 text-textMuted tap"
-          disabled={loading}
-        >
-          <X size={20} />
-        </button>
+        <div className="pt-3 pb-1 flex justify-center">
+          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+        </div>
 
-        <h3 className="text-lg font-bold text-text">Gerar pagamentos</h3>
-        <p className="text-sm text-textMuted mt-1 mb-4">
-          Pagamentos de {monthLabel} para todas as crianças ativas.
-        </p>
-
-        <label className="block text-sm font-medium text-text mb-2">
-          Dia de vencimento
-        </label>
-        <div className="grid grid-cols-7 gap-1.5 mb-4">
-          {[5, 10, 15, 20, 25, 28, 30].map((d) => (
+        <div className="px-5 pt-2 pb-5 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-text leading-tight">
+                Como você recebeu?
+              </h2>
+              <p className="text-xs text-textMuted mt-1">
+                {payment.childName} · {formatCurrency(payment.amount)}
+                {claimedMethod && (
+                  <span className="ml-1">
+                    · pai marcou:{' '}
+                    {claimedMethod === 'cash' ? 'dinheiro' : 'PIX'}
+                  </span>
+                )}
+              </p>
+            </div>
             <button
-              key={d}
-              type="button"
-              onClick={() => onChange(d)}
-              className={`h-10 rounded-lg text-sm font-semibold tap border ${
-                dueDay === d
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-card text-text border-gray-200'
-              }`}
+              onClick={onClose}
+              disabled={loading}
+              className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+              aria-label="Fechar"
             >
-              {d}
+              <X size={18} />
             </button>
-          ))}
-        </div>
+          </div>
 
-        <div className="mb-4">
-          <label className="block text-xs text-textMuted mb-1">
-            Outro dia (1 a 31)
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={31}
-            value={dueDay}
-            onChange={(e) => onChange(Number(e.target.value) || 1)}
-            className="w-full h-12 rounded-xl border border-gray-200 px-4 text-text focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button onClick={onConfirm} loading={loading}>
-            Gerar
-          </Button>
+          <div className="space-y-2">
+            <MethodOption
+              icon={QrCode}
+              title="PIX"
+              subtitle="Recebido por PIX"
+              gradient="from-emerald-50 to-green-100"
+              iconBg="bg-emerald-600"
+              onClick={() => onPick('pix')}
+              disabled={loading}
+            />
+            <MethodOption
+              icon={Banknote}
+              title="Dinheiro"
+              subtitle="Recebido em mãos"
+              gradient="from-amber-50 to-orange-100"
+              iconBg="bg-amber-600"
+              onClick={() => onPick('cash')}
+              disabled={loading}
+            />
+            <MethodOption
+              icon={CreditCard}
+              title="Cartão"
+              subtitle="Em breve"
+              gradient="from-gray-50 to-gray-100"
+              iconBg="bg-gray-400"
+              disabled
+            />
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function MethodOption({
+  icon: Icon,
+  title,
+  subtitle,
+  gradient,
+  iconBg,
+  onClick,
+  disabled,
+}) {
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      className={`tap w-full text-left rounded-2xl p-4 flex items-center gap-3 bg-gradient-to-br ${gradient} ${
+        disabled ? 'opacity-60 cursor-not-allowed' : ''
+      }`}
+    >
+      <div
+        className={`w-11 h-11 rounded-xl text-white flex items-center justify-center shrink-0 shadow-sm ${iconBg}`}
+      >
+        <Icon size={22} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-text leading-tight">{title}</p>
+        <p className="text-xs text-textMuted mt-0.5">{subtitle}</p>
+      </div>
+      {!disabled && <ChevronRight size={18} className="text-textMuted" />}
+    </button>
+  );
+}
+
+/* ─────────────── helpers ─────────────── */
+
+function addMonths(monthKey, delta) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${yy}-${mm}`;
 }

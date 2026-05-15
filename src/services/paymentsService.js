@@ -11,21 +11,23 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { playSound } from './soundService';
 
 /**
  * Gera pagamentos do mês para todas as crianças ativas que ainda não têm.
  * Idempotente — se já existir doc pra (childId, month), pula.
  *
- * Crianças sem parentUid (convite ainda pendente) são puladas — o admin
- * pode rodar de novo após o pai criar a conta.
+ * Cada pagamento usa o `dueDay` configurado individualmente na criança
+ * (cadastrado no ChildForm). Famílias com rendas em datas diferentes têm
+ * vencimentos diferentes. Fallback global de 10 pra crianças antigas.
+ *
+ * Crianças sem parentUid (convite ainda pendente) são puladas.
  *
  * @param monthKey "YYYY-MM"
- * @param dueDay   dia do mês para vencimento (default: 10). Se for maior que o
- *                 último dia do mês, o JS Date faz wraparound — clampamos pro
- *                 último dia do mês alvo pra evitar pular pro mês seguinte.
+ * @param fallbackDueDay dia padrão quando a criança não tem dueDay configurado
  * @returns { created, skipped, withoutParent }
  */
-export async function generateMonthlyPayments(monthKey, dueDay = 10) {
+export async function generateMonthlyPayments(monthKey, fallbackDueDay = 10) {
   const [year, month] = (monthKey || '').split('-').map(Number);
   if (!year || !month) {
     throw new Error('monthKey inválido (esperado: "YYYY-MM").');
@@ -45,11 +47,9 @@ export async function generateMonthlyPayments(monthKey, dueDay = 10) {
     existingSnap.docs.map((d) => d.data().childId)
   );
 
-  // 3. Cria os faltantes em batch (até 500 writes; pra essa escala basta)
-  // Clamp dueDay pro último dia do mês alvo (ex: 31/fev -> último dia de fev)
-  const lastDay = new Date(year, month, 0).getDate();
-  const safeDueDay = Math.min(Math.max(1, Number(dueDay) || 10), lastDay);
-  const dueDate = Timestamp.fromDate(new Date(year, month - 1, safeDueDay));
+  // Último dia do mês — usado pra clampar dueDays maiores (ex: 31/fev)
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+
   const batch = writeBatch(db);
   let created = 0;
   let withoutParent = 0;
@@ -60,6 +60,14 @@ export async function generateMonthlyPayments(monthKey, dueDay = 10) {
       withoutParent++;
       continue;
     }
+
+    // dueDay individual da criança (com clamp pro último dia do mês)
+    const childDueDay = Number(child.dueDay) || fallbackDueDay;
+    const safeDueDay = Math.min(
+      Math.max(1, childDueDay),
+      lastDayOfMonth
+    );
+    const dueDate = Timestamp.fromDate(new Date(year, month - 1, safeDueDay));
 
     const ref = doc(collection(db, 'payments'));
     batch.set(ref, {
@@ -96,6 +104,8 @@ export async function claimPayment(paymentId, method = 'pix') {
     claimedAt: serverTimestamp(),
     paymentMethod: method,
   });
+  // Som "pagar" — feedback pro pai que marcou como pago
+  playSound('pay');
 }
 
 /**
@@ -114,12 +124,20 @@ export async function unclaimPayment(paymentId) {
  * Tio confirma que recebeu o pagamento — admin only.
  * Funciona tanto pra dar baixa direto ('pending' -> 'paid') quanto pra
  * confirmar um claim do pai ('claimed' -> 'paid').
+ *
+ * `method` ('pix' | 'cash' | 'card') registra como o tio recebeu — preserva
+ * o método declarado pelo pai (se houver) ou sobrescreve com o que o tio
+ * informar na hora de dar baixa.
  */
-export async function confirmReceipt(paymentId) {
-  await updateDoc(doc(db, 'payments', paymentId), {
+export async function confirmReceipt(paymentId, method = null) {
+  const updates = {
     status: 'paid',
     paidAt: serverTimestamp(),
-  });
+  };
+  if (method) updates.paymentMethod = method;
+  await updateDoc(doc(db, 'payments', paymentId), updates);
+  // Som "caixa registrando" — feedback pro Tio que deu baixa
+  playSound('cash_in');
 }
 
 /**
@@ -154,6 +172,32 @@ export function computeDisplayStatus(payment) {
   const due = payment.dueDate?.toDate?.()?.getTime();
   if (due && due < Date.now()) return 'overdue';
   return 'pending';
+}
+
+/**
+ * Apaga pagamentos com `month` anterior ao limite de retenção (default: 12 meses).
+ * Útil pra manter o histórico em um ano rolling — chamado pelo useAutoBilling.
+ *
+ * Idempotente. Retorna a quantidade apagada.
+ */
+export async function cleanOldPayments(retentionMonths = 12) {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - retentionMonths);
+  const cutoffKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`;
+
+  const snap = await getDocs(
+    query(collection(db, 'payments'), where('month', '<', cutoffKey))
+  );
+  if (snap.empty) return 0;
+
+  const docs = snap.docs;
+  for (let i = 0; i < docs.length; i += 450) {
+    const slice = docs.slice(i, i + 450);
+    const batch = writeBatch(db);
+    slice.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+  return docs.length;
 }
 
 /**

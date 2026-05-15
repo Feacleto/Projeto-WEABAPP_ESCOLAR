@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, DollarSign } from 'lucide-react';
+import { Home, DollarSign } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import Tutorial from '../../components/tutorial/Tutorial';
+import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import { useAuth } from '../../hooks/useAuth';
 
 const NAV_ITEMS = [
-  { to: '/pai', label: 'Início', icon: LayoutDashboard, end: true },
+  { to: '/pai', label: 'Início', icon: Home, end: true },
   { to: '/pai/finance', label: 'Financeiro', icon: DollarSign },
 ];
 
@@ -16,32 +17,27 @@ const NAV_ITEMS = [
  */
 export default function PaiLayout() {
   const { profile } = useAuth();
-  const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [tutorialFloating, setTutorialFloating] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
 
   useEffect(() => {
     if (profile && profile.tutorialDone !== true) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTutorialOpen(true);
-      setTutorialFloating(false);
+      setWelcomeOpen(true);
     }
   }, [profile?.tutorialDone, profile]);
 
   const openTutorial = (opts = {}) => {
-    setTutorialFloating(!!opts.floating);
-    setTutorialOpen(true);
+    if (opts.floating) setTourOpen(true);
+    else setWelcomeOpen(true);
   };
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-28">
       <Outlet context={{ openTutorial }} />
       <BottomNav items={NAV_ITEMS} />
-      {tutorialOpen && (
-        <Tutorial
-          floating={tutorialFloating}
-          onClose={() => setTutorialOpen(false)}
-        />
-      )}
+      {welcomeOpen && <Tutorial onClose={() => setWelcomeOpen(false)} />}
+      <InteractiveTour open={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
   );
 }

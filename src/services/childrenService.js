@@ -16,6 +16,7 @@ import {
   addChildToDefaultPlan,
   removeChildFromDefaultPlan,
 } from './routePlanService';
+import { playSound } from './soundService';
 
 // Estados simplificados pra 4. Cada criança passa por:
 //   home → onboard → atSchool → onboard → delivered
@@ -91,6 +92,7 @@ export async function addChild(data) {
     pickupPeriod: data.pickupPeriod || data.period || 'morning',
     dropoffPeriod: data.dropoffPeriod || 'afternoon',
     monthlyFee: Number(data.monthlyFee) || 0,
+    dueDay: clampDueDay(data.dueDay),
     notes: data.notes?.trim() || '',
     inviteCode,
     inviteStatus: 'pending',
@@ -131,7 +133,18 @@ export async function updateChild(id, data) {
   if (updates.schoolLat != null) updates.schoolLat = Number(updates.schoolLat);
   if (updates.schoolLng != null) updates.schoolLng = Number(updates.schoolLng);
   if (updates.monthlyFee != null) updates.monthlyFee = Number(updates.monthlyFee);
+  if (updates.dueDay != null) updates.dueDay = clampDueDay(updates.dueDay);
   await updateDoc(doc(db, 'children', id), updates);
+}
+
+/**
+ * Restringe o dueDay pro intervalo 1-28 (evita problemas com fevereiro).
+ * Pra meses com mais dias, o paymentsService já clampa pro último dia.
+ */
+function clampDueDay(value) {
+  const n = Math.round(Number(value) || 10);
+  if (!Number.isFinite(n)) return 10;
+  return Math.min(Math.max(1, n), 28);
 }
 
 export async function updateChildStatus(id, status) {
@@ -139,6 +152,15 @@ export async function updateChildStatus(id, status) {
     status,
     statusUpdatedAt: serverTimestamp(),
   });
+  // Som de mudança de status — feedback pro Tio ao avançar na rota
+  playSound('status_change');
+}
+
+/**
+ * Define ou remove a foto da criança. Null reseta pro avatar gerado.
+ */
+export async function setChildPhotoURL(id, photoURL) {
+  await updateDoc(doc(db, 'children', id), { photoURL: photoURL || null });
 }
 
 export async function deactivateChild(id) {

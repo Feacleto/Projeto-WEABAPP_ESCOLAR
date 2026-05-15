@@ -31,10 +31,89 @@
 }
 
 @layer components {
-  /* Tap highlight customizado para botões em mobile */
+  /* Tap highlight customizado para botões em mobile.
+   * Animação suave + ease-out pra dar sensação tátil de "afundar" no toque. */
   .tap {
-    @apply active:scale-[0.98] transition-transform;
+    @apply active:scale-[0.97] transition-transform duration-150 ease-out;
   }
+}
+
+/* Scrollbar mais fina nos chips horizontais e sheets internos —
+ * estética minimalista, não atrapalha. */
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ============================================================
+ * Animações dos heros — feedback visual por estado da criança.
+ * Usadas no PaiDashboard pra dar "vida" ao card de status.
+ * ============================================================ */
+
+/* Perua atravessando da esquerda pra direita em loop suave.
+ * 6s pra dar sensação de "tá rodando" sem ser distrativo. */
+@keyframes van-drive {
+  0% {
+    transform: translateX(-30%) translateY(0);
+  }
+  50% {
+    transform: translateX(20%) translateY(-2px);
+  }
+  100% {
+    transform: translateX(-30%) translateY(0);
+  }
+}
+.animate-van-drive {
+  animation: van-drive 6s ease-in-out infinite;
+}
+
+/* Casa "respirando" — pulse de escala sutil pra indicar repouso */
+@keyframes house-rest {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+.animate-house-rest {
+  animation: house-rest 4s ease-in-out infinite;
+}
+
+/* Escola com balançado — leve sway lateral, como sino tocando */
+@keyframes school-sway {
+  0%, 100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+.animate-school-sway {
+  animation: school-sway 3s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+/* Estrela girando lento + brilho — pra estado "voltou em segurança" */
+@keyframes celebrate {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.15) rotate(180deg);
+    opacity: 1;
+  }
+}
+.animate-celebrate {
+  animation: celebrate 5s ease-in-out infinite;
 }
 
 /* Leaflet exige estes estilos pra renderizar corretamente */
@@ -42,6 +121,60 @@
   width: 100%;
   height: 100%;
   z-index: 0;
+}
+
+/* ─────────── Pins do mapa (Pai) ───────────
+ * Estética unificada: círculo colorido + glyph branco + sombra suave.
+ * A perua tem halo pulsante (animação CSS) — sinaliza "ao vivo".
+ */
+.tn-marker {
+  background: transparent !important;
+  border: none !important;
+}
+.tn-pin {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tn-pin-dot {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.12);
+  border: 3px solid white;
+}
+.tn-pin-home .tn-pin-dot {
+  background: linear-gradient(135deg, #10b981, #047857);
+}
+.tn-pin-school .tn-pin-dot {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+.tn-pin-van .tn-pin-dot {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+.tn-pin-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.4);
+  animation: tn-pulse 2s ease-out infinite;
+}
+@keyframes tn-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
 }
 
 /* Print-friendly pra páginas legais (Termos / Privacidade) — usuário

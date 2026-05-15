@@ -106,6 +106,7 @@ export async function signupWithGoogleInvite({ inviteCode }) {
       phone: child.parentPhone || '',
       childId: child.id,
       provider: 'google',
+      photoURL: user.photoURL || null,
       createdAt: serverTimestamp(),
     });
 
@@ -255,6 +256,7 @@ export async function createFirstAdminWithGoogle({ phone }) {
       email: user.email || '',
       phone: phone?.trim() || '',
       provider: 'google',
+      photoURL: user.photoURL || null,
       createdAt: serverTimestamp(),
     });
 
