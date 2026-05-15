@@ -10,6 +10,7 @@ import {
   CreditCard,
   Wallet,
   DollarSign,
+  FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
@@ -121,7 +122,19 @@ export default function TioFinance() {
 
   return (
     <>
-      <Header title="Pagamentos" />
+      <Header
+        title="Pagamentos"
+        action={
+          <button
+            onClick={() => navigate('/tio/finance/report')}
+            aria-label="Ver relatório"
+            className="tap inline-flex items-center gap-1 text-primary text-xs font-semibold px-2 py-1"
+          >
+            <FileText size={16} />
+            Relatório
+          </button>
+        }
+      />
 
       <div className="p-5 space-y-5">
         {/* Seletor de mês */}
@@ -430,10 +443,11 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
             <MethodOption
               icon={CreditCard}
               title="Cartão"
-              subtitle="Em breve"
-              gradient="from-gray-50 to-gray-100"
-              iconBg="bg-gray-400"
-              disabled
+              subtitle="Recebido por cartão"
+              gradient="from-violet-50 to-purple-100"
+              iconBg="bg-violet-600"
+              onClick={() => onPick('card')}
+              disabled={loading}
             />
           </div>
         </div>

@@ -17,7 +17,7 @@ import { getDateKey } from '../../services/routePlanService';
  *  - onClose: () => void
  *  - child: { id, name, parentUid }
  *  - declaredBy: 'parent' | 'admin'
- *  - notifyTargetUid: uid de quem recebe a notificação (Tio se pai declara, pai se tio declara)
+ *  (destinatário da notificação é determinado internamente pelo notifyAbsence)
  *  - currentAbsence: doc da declaração existente (pra mostrar "remover")
  *  - dateKey: opcional, default = hoje
  */
@@ -26,7 +26,6 @@ export default function AbsenceSheet({
   onClose,
   child,
   declaredBy,
-  notifyTargetUid,
   currentAbsence,
   dateKey,
 }) {
@@ -55,10 +54,10 @@ export default function AbsenceSheet({
         type,
         declaredBy,
       });
-      // Notifica o outro lado — fire-and-forget
+      // Notifica o outro lado — fire-and-forget. A função encontra o
+      // destinatário internamente (admin via appState/init ou parent via child).
       notifyAbsence({
-        targetUid: notifyTargetUid,
-        childName: child.name || '',
+        child: { name: child.name, parentUid: child.parentUid },
         type,
         dateKey: targetDate,
         declaredBy,

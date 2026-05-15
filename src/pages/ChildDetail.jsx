@@ -105,20 +105,12 @@ export default function ChildDetail() {
       <Header title="Perfil da criança" showBack />
 
       <div className="p-4 space-y-4">
-        {/* Cabeçalho com avatar grande, nome e status */}
+        {/* Cabeçalho com avatar grande, nome e status. Tanto Tio quanto Pai
+          * podem trocar a foto da criança — backend valida permissão por
+          * parentUid (ver firestore.rules + storage.rules). */}
         <Card className="text-center">
           <div className="flex flex-col items-center gap-3">
-            {isAdmin ? (
-              <ChildPhotoEditor child={child} />
-            ) : (
-              <Avatar
-                photoURL={child.photoURL}
-                gender={child.gender}
-                seed={child.id}
-                kind="child"
-                size="xl"
-              />
-            )}
+            <ChildPhotoEditor child={child} />
             <div>
               <h2 className="text-xl font-bold text-text">{child.name}</h2>
               <p className="text-xs text-textMuted mt-1 flex items-center justify-center gap-1">

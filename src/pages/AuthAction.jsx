@@ -184,7 +184,7 @@ export default function AuthAction() {
         <img
           src="/logo.png"
           alt="Tio Nino Digital"
-          className="w-24 h-24 mx-auto mb-4 object-contain"
+          className="w-24 h-24 mx-auto mb-4 rounded-full object-cover bg-white shadow-md ring-2 ring-emerald-200"
         />
         <h1 className="text-2xl font-bold text-text">Redefinir senha</h1>
         <p className="text-sm text-textMuted mt-1">

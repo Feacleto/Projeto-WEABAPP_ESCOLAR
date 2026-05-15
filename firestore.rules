@@ -147,6 +147,18 @@ service cloud.firestore {
               'contractHash',
               'contractUserAgent',
             ])
+      ) || (
+        // Pai gerencia lista de responsáveis alternativos do próprio filho
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['altResponsibles'])
+      ) || (
+        // Pai atualiza foto da própria criança (reflete pro Tio).
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['photoURL'])
       );
     }
 
@@ -216,6 +228,33 @@ service cloud.firestore {
 
       allow delete: if isAdmin() || (
         isSignedIn() && resource.data.userId == request.auth.uid
+      );
+    }
+
+    // -----------------------------------------------------------------
+    // altPickups/{dateKey_childId} — indicação diária de quem vai buscar
+    //   - Pai pode CRUD do próprio filho.
+    //   - Admin lê tudo + também pode escrever (caso queira corrigir).
+    // -----------------------------------------------------------------
+    match /altPickups/{id} {
+      function ownsChild(childId) {
+        return isSignedIn()
+          && exists(/databases/$(database)/documents/children/$(childId))
+          && get(/databases/$(database)/documents/children/$(childId)).data.parentUid == request.auth.uid;
+      }
+      allow read: if isSignedIn() && (
+        isAdmin() || ownsChild(resource.data.childId)
+      );
+      allow create: if isAdmin() || (
+        isSignedIn() && ownsChild(request.resource.data.childId)
+      );
+      allow update: if isAdmin() || (
+        isSignedIn()
+        && ownsChild(resource.data.childId)
+        && request.resource.data.childId == resource.data.childId
+      );
+      allow delete: if isAdmin() || (
+        isSignedIn() && ownsChild(resource.data.childId)
       );
     }
 
@@ -291,6 +330,31 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // pendingCalls/{id} — "ligação" Tio → Pai pra avisar urgência.
+    //   - Admin cria pra qualquer pai (deve setar adminUid = auth.uid).
+    //   - Pai (alvo) e Admin (autor) leem.
+    //   - Update: dono pode mudar status pra acknowledged (pai) ou
+    //     resolved (qualquer um). Admin também pode reescrever campos.
+    //   - Delete: só admin.
+    // -----------------------------------------------------------------
+    match /pendingCalls/{id} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || resource.data.parentUid == request.auth.uid
+        || resource.data.adminUid == request.auth.uid
+      );
+      allow create: if isAdmin()
+        && request.resource.data.adminUid == request.auth.uid;
+      allow update: if isAdmin() || (
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && request.resource.data.adminUid == resource.data.adminUid
+        && request.resource.data.parentUid == resource.data.parentUid
+      );
+      allow delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------
     // schoolBroadcasts/{id} — histórico de avisos "sem aula" disparados
     // pelo admin. Pais não interagem diretamente: o efeito vem via
     // notifications + absenceDeclarations criados no mesmo batch.
@@ -298,6 +362,43 @@ service cloud.firestore {
     match /schoolBroadcasts/{id} {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // agendaEntries/{id} — avisos do Tio pro Pai (agenda digital).
+    //   - Admin cria e gerencia (deletar/editar próprios).
+    //   - Leitura pro Pai: entradas onde parentUid == auth.uid (scope=child)
+    //     OU scope=school (filtragem por schoolName fica client-side).
+    //   - Pai não escreve nada aqui.
+    // -----------------------------------------------------------------
+    match /agendaEntries/{id} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || (resource.data.scope == 'child'
+            && resource.data.parentUid == request.auth.uid)
+        || resource.data.scope == 'school'
+      );
+      allow create: if isAdmin()
+        && request.resource.data.adminUid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // feedbacks/{id} — avaliações enviadas pelos usuários.
+    //   - Qualquer signed-in cria (pra ele mesmo: uid == auth.uid).
+    //   - O dono pode ler/listar os próprios feedbacks (pra mostrar "já
+    //     enviou antes" no Profile).
+    //   - Admin lê tudo (pra analisar respostas e pensar features).
+    //   - Não permite update/delete — feedback é imutável.
+    // -----------------------------------------------------------------
+    match /feedbacks/{id} {
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.uid == request.auth.uid
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(['uid', 'role', 'answers', 'createdAt']);
+      allow update, delete: if false;
     }
 
     // -----------------------------------------------------------------

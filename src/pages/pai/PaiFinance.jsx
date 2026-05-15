@@ -7,7 +7,9 @@ import {
   Key,
   Banknote,
   X,
+  FileText,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Card from '../../components/common/Card';
@@ -38,6 +40,7 @@ import {
 } from '../../utils/formatters';
 
 export default function PaiFinance() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { payments, loading } = usePaymentsByParent(user?.uid);
   const { admin } = useAdminProfile();
@@ -168,7 +171,19 @@ export default function PaiFinance() {
 
   return (
     <>
-      <Header title="Pagamentos" />
+      <Header
+        title="Pagamentos"
+        action={
+          <button
+            onClick={() => navigate('/pai/finance/report')}
+            aria-label="Ver histórico"
+            className="tap inline-flex items-center gap-1 text-primary text-xs font-semibold px-2 py-1"
+          >
+            <FileText size={16} />
+            Histórico
+          </button>
+        }
+      />
       <div className="p-4 space-y-4">
         {/* Bloco da chave PIX (se o tio cadastrou) */}
         {admin?.pixKey ? (

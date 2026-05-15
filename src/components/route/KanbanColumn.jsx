@@ -36,6 +36,7 @@ export default function KanbanColumn({
   children = [],
   absentIds,
   declaredInfo = {},
+  altPickupInfo = {},
   direction,
   isActive = false,
   onReorder,
@@ -100,6 +101,7 @@ export default function KanbanColumn({
                   direction={direction}
                   isAbsent={absentIds.has(c.id)}
                   declaredAbsence={declaredInfo[c.id] || null}
+                  altPickup={altPickupInfo[c.id] || null}
                   onAdvance={(nextStatus) => onAdvance(c.id, nextStatus)}
                   onMarkAbsent={() => onMarkAbsent(c.id)}
                 />

@@ -76,6 +76,7 @@ export async function addChild(data) {
   const payload = {
     name: data.name?.trim() || '',
     gender: data.gender || 'male',
+    birthDate: data.birthDate?.trim() || '', // YYYY-MM-DD
     parentName: data.parentName?.trim() || '',
     parentEmail: data.parentEmail?.trim().toLowerCase() || '',
     parentPhone: data.parentPhone?.trim() || '',

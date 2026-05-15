@@ -34,15 +34,18 @@ export default function BottomNav({ items }) {
           >
             {({ isActive }) => (
               <>
+                {/* Item ativo: mesmo gradient esmeralda → verde-700 do
+                  * HeroCard de rota. "Cromado discreto" — duas paradas + ring
+                  * branca interna sutil pra parecer pastilha polida. */}
                 <span
-                  className={`relative inline-flex items-center justify-center transition-all ${
+                  className={`relative inline-flex items-center justify-center transition-all w-11 h-11 rounded-full ${
                     isActive
-                      ? 'w-11 h-11 rounded-full bg-primary text-white shadow-md shadow-primary/30'
-                      : 'w-11 h-11 rounded-full'
+                      ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white shadow-md shadow-emerald-600/35 ring-1 ring-inset ring-white/25'
+                      : ''
                   }`}
                 >
                   <item.icon
-                    size={isActive ? 22 : 22}
+                    size={22}
                     strokeWidth={isActive ? 2.2 : 1.8}
                   />
                   {item.badge > 0 && (
@@ -51,7 +54,7 @@ export default function BottomNav({ items }) {
                     </span>
                   )}
                 </span>
-                <span className={isActive ? 'text-text' : 'text-textMuted'}>
+                <span className={isActive ? 'text-emerald-700' : 'text-textMuted'}>
                   {item.label}
                 </span>
               </>

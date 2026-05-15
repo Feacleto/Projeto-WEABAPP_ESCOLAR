@@ -8,6 +8,7 @@ import {
   onSnapshot,
   serverTimestamp,
   addDoc,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -107,6 +108,35 @@ export function watchAbsencesByDate(dateKey, onUpdate, onError) {
 }
 
 /**
+ * Subscribe a TODAS as ausências de uma criança ao longo do tempo.
+ * Usado pelo Pai pra ver histórico de faltas (semana/mês).
+ * Filtragem por período é feita no client.
+ */
+export function watchAllAbsencesForChild(childId, onUpdate, onError) {
+  if (!childId) {
+    onUpdate([]);
+    return () => {};
+  }
+  const q = query(
+    collection(db, 'absenceDeclarations'),
+    where('childId', '==', childId)
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Ordena por dateKey desc (mais recentes primeiro)
+      list.sort((a, b) => (b.dateKey || '').localeCompare(a.dateKey || ''));
+      onUpdate(list);
+    },
+    (err) => {
+      console.error('watchAllAbsencesForChild error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
  * Subscribe à ausência de uma criança específica em uma data (uso do Pai).
  * Retorna o doc ou null.
  */
@@ -128,19 +158,48 @@ export function watchAbsenceForChild(dateKey, childId, onUpdate, onError) {
 
 /**
  * Cria notificação informando a declaração de ausência.
- * Quem declarou e quem recebe é decidido pelo chamador.
+ *
+ * Quem é o destinatário é determinado por `declaredBy`:
+ *   - 'parent' → admin (busca uid em appState/init, sempre disponível)
+ *   - 'admin'  → pai (usa parentUid passado em child)
+ *
+ * Importante: a busca do admin acontece DENTRO da função pra evitar
+ * race condition (se o pai abre o sheet antes do useAdminProfile carregar,
+ * a notif ainda funciona).
  */
 export async function notifyAbsence({
-  targetUid,
-  childName,
+  child, // { parentUid, name }
   type,
   dateKey,
   declaredBy,
 }) {
-  if (!targetUid) return;
+  let targetUid = null;
+
+  if (declaredBy === 'parent') {
+    // Notifica o admin — busca uid de appState/init (leitura pública)
+    try {
+      const initSnap = await getDoc(doc(db, 'appState', 'init'));
+      if (initSnap.exists()) {
+        targetUid = initSnap.data().adminUid || null;
+      }
+    } catch (err) {
+      console.error('[notifyAbsence] Falha ao ler appState/init:', err);
+    }
+  } else {
+    // Tio declarando → notifica o pai vinculado
+    targetUid = child?.parentUid || null;
+  }
+
+  if (!targetUid) {
+    console.warn('[notifyAbsence] Sem destinatário — notif não criada.');
+    return;
+  }
+
   const typeLabel = ABSENCE_LABELS[type] || 'Ausência registrada';
   const who = declaredBy === 'parent' ? 'O responsável' : 'O motorista';
   const dateLabel = formatDateLabel(dateKey);
+  const childName = child?.name || 'Aluno';
+
   try {
     await addDoc(collection(db, 'notifications'), {
       userId: targetUid,

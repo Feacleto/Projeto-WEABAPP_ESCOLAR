@@ -16,6 +16,7 @@ import {
   Bus,
   School,
   Star,
+  UserCheck,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -24,18 +25,25 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import Avatar from '../../components/common/Avatar';
 import AbsenceSheet from '../../components/absences/AbsenceSheet';
+import RouteTracker from '../../components/dashboard/RouteTracker';
+import AbsenceCounts from '../../components/dashboard/AbsenceCounts';
+import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { useChild } from '../../hooks/useChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { usePaymentsByParent } from '../../hooks/usePayments';
-import { useAbsenceForChild } from '../../hooks/useAbsences';
+import { useAbsenceForChild, useChildAbsenceHistory } from '../../hooks/useAbsences';
+import { useDailyAltPickup } from '../../hooks/useAltPickup';
 import { haversineDistance } from '../../utils/haversine';
 import { formatCurrency } from '../../utils/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS } from '../../services/absencesService';
 import { getDateKey } from '../../services/routePlanService';
 import { playSound } from '../../services/soundService';
+import { greet } from '../../utils/greeting';
+import FestiveBadge from '../../components/festive/FestiveBadge';
+import PaiNotebookFAB from '../../components/agenda/PaiNotebookFAB';
 
 const NEAR_KM = 2;
 const ARRIVED_KM = 0.4;
@@ -47,13 +55,6 @@ const STATUS_GRADIENTS = {
   atSchool: 'from-purple-500 via-fuchsia-600 to-pink-600',
   delivered: 'from-emerald-500 via-emerald-600 to-green-700',
 };
-
-function greeting(d = new Date()) {
-  const h = d.getHours();
-  if (h < 12) return 'Bom dia';
-  if (h < 18) return 'Boa tarde';
-  return 'Boa noite';
-}
 
 /**
  * Frase humana que descreve o estado do filho em UMA linha — adapta pra
@@ -89,8 +90,11 @@ export default function PaiDashboard() {
   const { payments } = usePaymentsByParent(user?.uid);
   const todayKey = getDateKey();
   const { absence } = useAbsenceForChild(todayKey, profile?.childId);
+  const { history: absenceHistory } = useChildAbsenceHistory(profile?.childId);
+  const { pickup: altPickup } = useDailyAltPickup(todayKey, profile?.childId);
 
   const [absenceOpen, setAbsenceOpen] = useState(false);
+  const [altPickupOpen, setAltPickupOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
   const home =
@@ -193,10 +197,13 @@ export default function PaiDashboard() {
       <Header title="Início" />
 
       <div className="p-5 space-y-5">
-        {/* Saudação simples */}
-        <h1 className="text-2xl font-bold text-text leading-tight">
-          {greeting()}, {firstName}
-        </h1>
+        {/* Saudação simples — bolinha festiva separada ao lado */}
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
+            {greet(new Date(), admin?.greetingHours)}, {firstName}!
+          </h1>
+          <FestiveBadge />
+        </div>
 
         {/* HERO ÚNICO — frase humana */}
         <ChildHero
@@ -205,6 +212,9 @@ export default function PaiDashboard() {
           phrase={phrase}
           onTap={() => navigate('/pai/child')}
         />
+
+        {/* Tracker visual estilo "rastreio de pedido" */}
+        <RouteTracker status={status} />
 
         {/* Ausência declarada / botão de informar */}
         {absence ? (
@@ -215,6 +225,12 @@ export default function PaiDashboard() {
             onClick={() => setAbsenceOpen(true)}
           />
         )}
+
+        {/* Quem busca hoje */}
+        <AltPickupCTA
+          pickup={altPickup}
+          onClick={() => setAltPickupOpen(true)}
+        />
 
         {/* Tracking — só quando rota tá ativa */}
         {routeActive && distanceKm != null && (
@@ -230,6 +246,11 @@ export default function PaiDashboard() {
             payment={nextPayment}
             onClick={() => navigate('/pai/finance')}
           />
+        )}
+
+        {/* Contagem de faltas — só aparece se há histórico */}
+        {absenceHistory.length > 0 && (
+          <AbsenceCounts history={absenceHistory} />
         )}
 
         {/* Mais opções */}
@@ -281,6 +302,9 @@ export default function PaiDashboard() {
         </div>
       </div>
 
+      {/* Caderno digital — botão flutuante na tela inicial do Pai */}
+      <PaiNotebookFAB />
+
       <AbsenceSheet
         open={absenceOpen}
         onClose={() => setAbsenceOpen(false)}
@@ -290,9 +314,17 @@ export default function PaiDashboard() {
           parentUid: child.parentUid || user?.uid,
         }}
         declaredBy="parent"
-        notifyTargetUid={admin?.uid || admin?.id}
         currentAbsence={absence}
         dateKey={todayKey}
+      />
+
+      <AltPickupSheet
+        open={altPickupOpen}
+        onClose={() => setAltPickupOpen(false)}
+        child={child}
+        parentUid={user?.uid}
+        dateKey={todayKey}
+        currentPickup={altPickup}
       />
     </>
   );
@@ -458,6 +490,53 @@ function AbsenceStatus({ absence, onClick }) {
         </p>
         <p className="text-xs text-textMuted mt-0.5">
           {ABSENCE_LABELS[absence.type]}
+        </p>
+      </div>
+      <ChevronRight size={18} className="text-textMuted shrink-0" />
+    </button>
+  );
+}
+
+/**
+ * Botão "Quem busca hoje?" — adapta conforme há ou não indicação ativa.
+ */
+function AltPickupCTA({ pickup, onClick }) {
+  if (pickup) {
+    return (
+      <button
+        onClick={onClick}
+        className="tap w-full text-left rounded-2xl bg-gradient-to-br from-violet-50 to-purple-100 border border-violet-200 p-4 flex items-center gap-3"
+      >
+        <div className="w-10 h-10 rounded-xl bg-violet-500 text-white flex items-center justify-center shrink-0">
+          <UserCheck size={20} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-text leading-tight">
+            Hoje quem pega: {pickup.name}
+          </p>
+          <p className="text-xs text-textMuted mt-0.5 truncate">
+            {pickup.relationship && <span>{pickup.relationship} · </span>}
+            {pickup.phone}
+          </p>
+        </div>
+        <ChevronRight size={18} className="text-textMuted shrink-0" />
+      </button>
+    );
+  }
+  return (
+    <button
+      onClick={onClick}
+      className="tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border border-dashed border-gray-200"
+    >
+      <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+        <UserCheck size={20} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-text leading-tight">
+          Outro responsável vai buscar?
+        </p>
+        <p className="text-xs text-textMuted mt-0.5">
+          Indique no app pra o motorista saber
         </p>
       </div>
       <ChevronRight size={18} className="text-textMuted shrink-0" />

@@ -15,11 +15,15 @@ import {
   History,
   ArrowRight,
   Sparkles,
+  UserX,
+  Sunrise,
+  Sunset,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { onSnapshot, doc } from 'firebase/firestore';
 import Header from '../../components/layout/Header';
 import SchoolBroadcastSheet from '../../components/broadcasts/SchoolBroadcastSheet';
+import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
@@ -27,6 +31,8 @@ import { useAbsences } from '../../hooks/useAbsences';
 import { db } from '../../firebase/config';
 import { formatCurrency, getCurrentMonthKey } from '../../utils/formatters';
 import { getDateKey } from '../../services/routePlanService';
+import { greet } from '../../utils/greeting';
+import FestiveBadge from '../../components/festive/FestiveBadge';
 
 const WEEK_DAYS = [
   'Domingo',
@@ -56,13 +62,6 @@ function formatLongDate(d = new Date()) {
   return `${WEEK_DAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
 }
 
-function greeting(d = new Date()) {
-  const h = d.getHours();
-  if (h < 12) return 'Bom dia';
-  if (h < 18) return 'Boa tarde';
-  return 'Boa noite';
-}
-
 /**
  * Frase principal do hero — adapta pro horário, pro estado da rota e pra
  * quantidade de crianças do dia. Linguagem coloquial.
@@ -89,6 +88,7 @@ export default function TioDashboard() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [showReceivable, setShowReceivable] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [absenceListOpen, setAbsenceListOpen] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -104,6 +104,12 @@ export default function TioDashboard() {
   const totalChildren = children.length;
   const absentCount = absences.length;
   const effectiveCount = Math.max(0, totalChildren - absentCount);
+  const morningCount = children.filter(
+    (c) => (c.period || 'morning') === 'morning'
+  ).length;
+  const afternoonCount = children.filter(
+    (c) => (c.period || 'morning') === 'afternoon'
+  ).length;
 
   const { receivableTotal, overdueCount, claimedCount } = useMemo(() => {
     let receivable = 0;
@@ -138,14 +144,17 @@ export default function TioDashboard() {
       <Header title="Início" />
 
       <div className="p-5 space-y-5">
-        {/* Saudação — minúscula, contexto */}
+        {/* Saudação — minúscula, contexto. Bolinha festiva ao lado (clicável) */}
         <div>
           <p className="text-xs text-textMuted capitalize">
             {formatLongDate()}
           </p>
-          <h1 className="text-2xl font-bold text-text leading-tight mt-1">
-            {greeting()}, {firstName}
-          </h1>
+          <div className="flex items-center gap-3 mt-1">
+            <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
+              {greet(new Date(), profile?.greetingHours)}, {firstName}!
+            </h1>
+            <FestiveBadge />
+          </div>
         </div>
 
         {/* HERO — único elemento dominante. Tap inteiro = começar/continuar */}
@@ -176,6 +185,43 @@ export default function TioDashboard() {
             onClick={() => navigate('/tio/finance')}
           />
         )}
+
+        {/* Bloco "Hoje" — 4 cards clicáveis */}
+        <section className="space-y-2">
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+            Hoje
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            <StatCard
+              icon={Users}
+              label="Crianças"
+              value={totalChildren}
+              tone="primary"
+              onClick={() => navigate('/tio/children')}
+            />
+            <StatCard
+              icon={UserX}
+              label="Ausentes"
+              value={absentCount}
+              tone={absentCount > 0 ? 'warning' : 'muted'}
+              onClick={() => setAbsenceListOpen(true)}
+            />
+            <StatCard
+              icon={Sunrise}
+              label="Manhã"
+              value={morningCount}
+              tone="amber"
+              onClick={() => navigate('/tio/children?period=morning')}
+            />
+            <StatCard
+              icon={Sunset}
+              label="Tarde"
+              value={afternoonCount}
+              tone="violet"
+              onClick={() => navigate('/tio/children?period=afternoon')}
+            />
+          </div>
+        </section>
 
         {/* "Mais opções" — expansão em-place */}
         <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
@@ -239,7 +285,43 @@ export default function TioDashboard() {
         open={broadcastOpen}
         onClose={() => setBroadcastOpen(false)}
       />
+
+      <AbsenceListSheet
+        open={absenceListOpen}
+        onClose={() => setAbsenceListOpen(false)}
+        absences={absences}
+      />
     </>
+  );
+}
+
+/* ─────────────── StatCard ─────────────── */
+
+function StatCard({ icon: Icon, label, value, tone = 'primary', onClick }) {
+  const tones = {
+    primary: 'bg-primary/10 text-primary',
+    warning: 'bg-amber-100 text-amber-700',
+    muted: 'bg-gray-100 text-textMuted',
+    amber: 'bg-amber-100 text-amber-700',
+    violet: 'bg-violet-100 text-violet-700',
+  };
+  return (
+    <button
+      onClick={onClick}
+      className="tap text-left bg-card rounded-2xl shadow-sm p-4 flex items-start justify-between gap-2"
+    >
+      <div>
+        <p className="text-xs text-textMuted">{label}</p>
+        <p className="text-3xl font-bold text-text leading-none mt-1.5 tabular-nums">
+          {value}
+        </p>
+      </div>
+      <div
+        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tones[tone] || tones.primary}`}
+      >
+        <Icon size={18} />
+      </div>
+    </button>
   );
 }
 
@@ -252,18 +334,32 @@ function HeroCard({ routeActive, phrase, effectiveCount, absentCount, onTap }) {
         onClick={onTap}
         className="tap w-full text-left rounded-3xl overflow-hidden shadow-xl shadow-emerald-500/25"
       >
-        <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-6">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-            <span className="relative inline-flex">
-              <span className="absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75 animate-ping" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-            </span>
-            Em rota agora
+        <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-6 relative overflow-hidden">
+          {/* Van animada atravessando o card em loop */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-3 pointer-events-none animate-van-drive"
+          >
+            <Bus
+              size={64}
+              strokeWidth={1.5}
+              className="text-white/20 mx-auto"
+            />
           </div>
-          <p className="text-4xl font-bold leading-tight mt-3">{phrase}</p>
-          <p className="text-white/85 mt-2">Toque pra gerenciar a rota</p>
-          <div className="mt-5 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2.5 font-semibold">
-            Abrir rota <ArrowRight size={18} />
+
+          <div className="relative">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+              <span className="relative inline-flex">
+                <span className="absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+              </span>
+              Em rota agora
+            </div>
+            <p className="text-4xl font-bold leading-tight mt-3">{phrase}</p>
+            <p className="text-white/85 mt-2">Toque pra gerenciar a rota</p>
+            <div className="mt-5 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2.5 font-semibold">
+              Abrir rota <ArrowRight size={18} />
+            </div>
           </div>
         </div>
       </button>
@@ -275,32 +371,50 @@ function HeroCard({ routeActive, phrase, effectiveCount, absentCount, onTap }) {
       onClick={onTap}
       className="tap w-full text-left rounded-3xl overflow-hidden shadow-xl shadow-emerald-500/25"
     >
-      <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <p className="text-4xl font-bold leading-tight">{phrase}</p>
-            <p className="text-white/90 mt-3 text-lg">
-              {effectiveCount === 0 ? (
-                'Nenhuma criança hoje'
-              ) : (
-                <>
-                  <span className="font-bold">{effectiveCount}</span>{' '}
-                  {effectiveCount === 1 ? 'criança' : 'crianças'} hoje
-                  {absentCount > 0 && (
-                    <span className="text-white/70 text-sm">
-                      {' '}
-                      · {absentCount} ausente{absentCount > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </>
-              )}
-            </p>
-          </div>
-          <Bus size={48} strokeWidth={1.6} className="text-white/90 shrink-0" />
+      <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-6 relative overflow-hidden">
+        {/* Van animada atravessando o card em loop — feedback visual constante */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-2 pointer-events-none animate-van-drive"
+        >
+          <Bus
+            size={64}
+            strokeWidth={1.5}
+            className="text-white/15 mx-auto"
+          />
         </div>
 
-        <div className="mt-6 inline-flex items-center gap-2 bg-white text-emerald-700 rounded-full px-5 py-3 font-bold text-base shadow-md">
-          Começar agora <ArrowRight size={18} />
+        <div className="relative">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <p className="text-4xl font-bold leading-tight">{phrase}</p>
+              <p className="text-white/90 mt-3 text-lg">
+                {effectiveCount === 0 ? (
+                  'Nenhuma criança hoje'
+                ) : (
+                  <>
+                    <span className="font-bold">{effectiveCount}</span>{' '}
+                    {effectiveCount === 1 ? 'criança' : 'crianças'} hoje
+                    {absentCount > 0 && (
+                      <span className="text-white/70 text-sm">
+                        {' '}
+                        · {absentCount} ausente{absentCount > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
+            <Bus
+              size={48}
+              strokeWidth={1.6}
+              className="text-white/90 shrink-0"
+            />
+          </div>
+
+          <div className="mt-6 inline-flex items-center gap-2 bg-white text-emerald-700 rounded-full px-5 py-3 font-bold text-base shadow-md">
+            Começar agora <ArrowRight size={18} />
+          </div>
         </div>
       </div>
     </button>

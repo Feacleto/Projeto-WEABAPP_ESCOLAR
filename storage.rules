@@ -30,6 +30,14 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Pai/mãe da criança — autorizado a trocar a foto do próprio filho.
+    // O backend valida via children/{childId}.parentUid.
+    function isParentOf(childId) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/children/$(childId))
+        && firestore.get(/databases/(default)/documents/children/$(childId)).data.parentUid == request.auth.uid;
+    }
+
     function isImage() {
       return request.resource.contentType.matches('image/.*');
     }
@@ -55,8 +63,10 @@ service firebase.storage {
     // --------------------------------------------------------------------
     match /childPhotos/{childId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() && isImage() && isWithinSizeLimit();
-      allow delete: if isAdmin();
+      allow write: if (isAdmin() || isParentOf(childId))
+        && isImage()
+        && isWithinSizeLimit();
+      allow delete: if isAdmin() || isParentOf(childId);
     }
 
     // Default deny

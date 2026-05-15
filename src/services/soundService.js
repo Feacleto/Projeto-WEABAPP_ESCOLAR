@@ -30,6 +30,13 @@ const SOUNDS = {
   notify: 'notify.mp3',
   pay: 'pay.mp3',
   status_change: 'status-change.mp3',
+  // Sons festivos — tocam quando o pai/tio clica na bolinha do mês
+  birthday: 'birthday.mp3',
+  halloween: 'halloween.mp3',
+  easter: 'pascoa.mp3',
+  christmas: 'natal.mp3',
+  // Som de virada de folha — caderno animado da agenda (pai)
+  page_turn: 'folhaagenda.mp3',
 };
 
 // Volumes padrão por som — calibrados pra idosos (não muito alto)
@@ -43,7 +50,47 @@ const DEFAULT_VOLUMES = {
   notify: 0.5,
   pay: 0.6,
   status_change: 0.45,
+  birthday: 0.6,
+  halloween: 0.55,
+  easter: 0.5,
+  christmas: 0.55,
+  page_turn: 0.55,
 };
+
+/**
+ * Sons que precisam de controle de play/pause manual (não-disparo único).
+ * Pra toggle de som festivo (clica toca, clica para) usamos getSound/stopSound
+ * em vez do playSound padrão.
+ */
+export function getSound(key) {
+  if (!areSoundsEnabled()) return null;
+  const file = SOUNDS[key];
+  if (!file) return null;
+  let audio = pool.get(key);
+  if (!audio) {
+    try {
+      audio = new Audio(SOUND_PATH + file);
+      audio.preload = 'auto';
+      pool.set(key, audio);
+    } catch {
+      return null;
+    }
+  }
+  audio.volume = DEFAULT_VOLUMES[key] ?? 0.6;
+  return audio;
+}
+
+export function stopSound(key) {
+  const audio = pool.get(key);
+  if (audio) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch {
+      // ignore
+    }
+  }
+}
 
 const STORAGE_KEY = 'tn_sounds_enabled';
 const pool = new Map();

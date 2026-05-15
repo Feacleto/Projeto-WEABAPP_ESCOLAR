@@ -175,6 +175,20 @@ export function computeDisplayStatus(payment) {
 }
 
 /**
+ * Busca todos os pagamentos desde `fromMonthKey` (YYYY-MM) inclusive.
+ * Uso no relatório financeiro do Tio — one-shot, não-reativo.
+ */
+export async function getPaymentsSince(fromMonthKey) {
+  if (!fromMonthKey) return [];
+  const q = query(
+    collection(db, 'payments'),
+    where('month', '>=', fromMonthKey)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
  * Apaga pagamentos com `month` anterior ao limite de retenção (default: 12 meses).
  * Útil pra manter o histórico em um ano rolling — chamado pelo useAutoBilling.
  *

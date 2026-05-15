@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   watchAbsencesByDate,
   watchAbsenceForChild,
+  watchAllAbsencesForChild,
 } from '../services/absencesService';
 
 /**
@@ -66,4 +67,34 @@ export function useAbsenceForChild(dateKey, childId) {
   }, [dateKey, childId]);
 
   return { absence, loading };
+}
+
+/**
+ * Subscribe a todas as ausências históricas de uma criança (uso do Pai).
+ * Retorna o array completo — caller filtra por período (semana/mês).
+ */
+export function useChildAbsenceHistory(childId) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!childId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHistory([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const unsub = watchAllAbsencesForChild(
+      childId,
+      (list) => {
+        setHistory(list);
+        setLoading(false);
+      },
+      () => setLoading(false)
+    );
+    return unsub;
+  }, [childId]);
+
+  return { history, loading };
 }

@@ -13,6 +13,7 @@ export async function updateProfile(uid, data) {
   if (data.companyName !== undefined) updates.companyName = data.companyName;
   if (data.companyDocument !== undefined) updates.companyDocument = data.companyDocument;
   if (data.companyAddress !== undefined) updates.companyAddress = data.companyAddress;
+  if (data.greetingHours !== undefined) updates.greetingHours = data.greetingHours;
   await updateDoc(doc(db, 'users', uid), updates);
 }
 

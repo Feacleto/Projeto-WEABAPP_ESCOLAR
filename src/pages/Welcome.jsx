@@ -27,7 +27,7 @@ export default function Welcome() {
         <img
           src="/logo.png"
           alt="Tio Nino Digital"
-          className="w-24 h-24 mx-auto mb-3 object-contain"
+          className="w-24 h-24 mx-auto mb-3 rounded-full object-cover bg-white shadow-md ring-2 ring-emerald-200"
         />
         <h1 className="text-2xl font-bold text-text">Bem-vindo!</h1>
         <p className="text-sm text-textMuted mt-1">

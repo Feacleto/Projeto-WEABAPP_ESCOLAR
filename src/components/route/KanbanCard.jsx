@@ -7,6 +7,8 @@ import {
   Copy,
   UserX,
   Check,
+  UserCheck,
+  Phone,
 } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -14,6 +16,8 @@ import Avatar from '../common/Avatar';
 import StatusBadge from '../children/StatusBadge';
 import { formatPhone } from '../../utils/formatters';
 import { ABSENCE_SHORT } from '../../services/absencesService';
+import { createCall } from '../../services/pendingCallService';
+import { useAuth } from '../../hooks/useAuth';
 
 /**
  * Card draggable de uma criança dentro do kanban de rota.
@@ -30,9 +34,11 @@ export default function KanbanCard({
   direction,
   isAbsent = false,
   declaredAbsence = null,
+  altPickup = null,
   onAdvance,
   onMarkAbsent,
 }) {
+  const { user } = useAuth();
   const {
     attributes,
     listeners,
@@ -41,6 +47,25 @@ export default function KanbanCard({
     transition,
     isDragging,
   } = useSortable({ id: child.id, disabled: isAbsent });
+
+  const onCallParent = async () => {
+    if (!child.parentUid) {
+      toast.error('Pai ainda não tem conta vinculada.');
+      return;
+    }
+    try {
+      await createCall({
+        adminUid: user?.uid,
+        parentUid: child.parentUid,
+        childId: child.id,
+        childName: child.name,
+      });
+      toast.success('Ligando pro pai…');
+    } catch (err) {
+      console.error(err);
+      toast.error('Não foi possível ligar.');
+    }
+  };
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -147,6 +172,36 @@ export default function KanbanCard({
         />
       </div>
 
+      {/* Aviso "outro responsável vai buscar hoje" — só em dropoff
+        * (faz sentido só quando é a hora de entregar a criança) */}
+      {altPickup && direction === 'dropoff' && (
+        <div className="bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-2 flex items-center gap-2">
+          <UserCheck size={14} className="text-violet-700 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] uppercase tracking-wide font-semibold text-violet-900">
+              Hoje quem pega
+            </p>
+            <p className="text-xs text-text font-semibold truncate">
+              {altPickup.name}
+              {altPickup.relationship && (
+                <span className="text-textMuted font-normal">
+                  {' '}
+                  · {altPickup.relationship}
+                </span>
+              )}
+            </p>
+            {altPickup.phone && (
+              <a
+                href={`tel:${altPickup.phone}`}
+                className="text-xs text-violet-700 underline"
+              >
+                {formatPhone(altPickup.phone)}
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Responsável + telefone */}
       {(child.parentName || phone) && (
         <div className="flex items-center gap-2 text-xs pl-6">
@@ -198,6 +253,19 @@ export default function KanbanCard({
             Faltou
           </button>
         </div>
+      )}
+
+      {/* Botão "Chamar pai" — só em dropoff, quando o Tio chegou e
+        * precisa apressar o pai a buscar a criança */}
+      {!isAbsent && direction === 'dropoff' && child.parentUid && (
+        <button
+          type="button"
+          onClick={onCallParent}
+          className="w-full h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold tap inline-flex items-center justify-center gap-1.5 mt-1"
+        >
+          <Phone size={14} />
+          Chamar o pai pra buscar
+        </button>
       )}
     </div>
   );

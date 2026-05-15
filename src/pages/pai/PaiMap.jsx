@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import LiveMap from '../../components/map/LiveMap';
 import Skeleton from '../../components/common/Skeleton';
+import RouteTracker from '../../components/dashboard/RouteTracker';
 import { playSound } from '../../services/soundService';
 import { useAuth } from '../../hooks/useAuth';
 import { useChild } from '../../hooks/useChild';
@@ -18,6 +19,7 @@ import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { haversineDistance } from '../../utils/haversine';
 import { formatDateTime } from '../../utils/formatters';
+import { getEffectiveStatus } from '../../services/childrenService';
 
 const NEAR_KM = 2; // ≤ 2 km da casa do pai = "zona próxima"
 const ARRIVED_KM = 0.4;
@@ -175,6 +177,9 @@ export default function PaiMap() {
           realDistanceKm={realDistanceKm}
           updatedAt={liveLocation?.updatedAt}
         />
+
+        {/* Tracker do trajeto da criança — mesmo do dashboard */}
+        <RouteTracker status={child ? getEffectiveStatus(child) : 'home'} compact />
 
         {/* Pontos de referência sempre visíveis */}
         <div className="bg-bg rounded-2xl p-3 space-y-2">

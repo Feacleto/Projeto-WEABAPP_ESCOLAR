@@ -1,0 +1,418 @@
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Notebook,
+  X,
+  ArrowLeft,
+  Send,
+  School,
+  Users,
+  History,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import Avatar from '../common/Avatar';
+import Button from '../common/Button';
+import { useAuth } from '../../hooks/useAuth';
+import { useChildren } from '../../hooks/useChildren';
+import {
+  AGENDA_TYPES,
+  createChildEntry,
+  createSchoolEntry,
+} from '../../services/agendaService';
+
+/**
+ * Botão flutuante de agenda na tela do Tio. Tap abre um sheet em 3 passos:
+ *
+ *   1. Alvo: "uma criança" ou "toda a escola X"
+ *   2. Tipo do aviso (chip com emoji + label)
+ *   3. Revisão/edição do texto pronto, e envio
+ *
+ * O input é deliberadamente guiado — o Tio NÃO escreve do zero. Os templates
+ * cobrem 80% dos casos comuns (criança doente, briga, recado da professora,
+ * reunião, evento, sem aula, outro). "Outro" deixa o texto vazio pra ele
+ * digitar livremente.
+ */
+export default function TioAgendaFAB() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Abrir agenda"
+        className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-500/30 flex items-center justify-center tap"
+      >
+        <Notebook size={26} />
+      </button>
+
+      {open && <AgendaSheet onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function AgendaSheet({ onClose }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { children } = useChildren();
+  const [step, setStep] = useState('target'); // target | type | confirm
+  const [scope, setScope] = useState(null); // 'child' | 'school'
+  const [selectedChild, setSelectedChild] = useState(null);
+  const [selectedSchool, setSelectedSchool] = useState(null);
+  const [typeKey, setTypeKey] = useState(null);
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Escolas únicas vindas das crianças cadastradas — pro Tio escolher.
+  const schools = useMemo(() => {
+    const map = new Map();
+    for (const c of children) {
+      const name = c.school?.trim();
+      if (!name) continue;
+      const entry = map.get(name) || { name, children: [] };
+      entry.children.push({
+        id: c.id,
+        name: c.name,
+        parentUid: c.parentUid || null,
+      });
+      map.set(name, entry);
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, 'pt-BR')
+    );
+  }, [children]);
+
+  const pickChild = (child) => {
+    setScope('child');
+    setSelectedChild(child);
+    setStep('type');
+  };
+
+  const pickSchool = (school) => {
+    setScope('school');
+    setSelectedSchool(school);
+    setStep('type');
+  };
+
+  const pickType = (key) => {
+    setTypeKey(key);
+    // Pré-preenche o template do template baseado no alvo
+    const tpl = AGENDA_TYPES[key]?.template;
+    const target =
+      scope === 'child'
+        ? selectedChild?.name?.split(' ')[0] || 'a criança'
+        : 'a turma';
+    setMessage(tpl ? tpl(target) : '');
+    setStep('confirm');
+  };
+
+  const onBack = () => {
+    if (step === 'confirm') setStep('type');
+    else if (step === 'type') setStep('target');
+  };
+
+  const onSubmit = async () => {
+    if (!message.trim()) {
+      toast.error('Escreve uma mensagem antes de enviar.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      if (scope === 'child') {
+        await createChildEntry({
+          adminUid: user?.uid,
+          child: selectedChild,
+          type: typeKey,
+          message,
+        });
+        toast.success(`Aviso enviado pra ${selectedChild.name?.split(' ')[0]}!`);
+      } else {
+        await createSchoolEntry({
+          adminUid: user?.uid,
+          schoolName: selectedSchool.name,
+          type: typeKey,
+          message,
+          childrenInSchool: selectedSchool.children,
+        });
+        toast.success(`Aviso geral enviado · ${selectedSchool.name}`);
+      }
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error('Não foi possível enviar.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[92vh] overflow-y-auto"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="pt-3 pb-1 flex justify-center sticky top-0 bg-card z-10">
+          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+        </div>
+
+        <div className="px-5 pt-2 pb-6">
+          <SheetHeader
+            step={step}
+            onBack={onBack}
+            onClose={onClose}
+            onHistory={() => {
+              onClose();
+              navigate('/tio/agenda');
+            }}
+          />
+
+          {step === 'target' && (
+            <TargetStep
+              children={children}
+              schools={schools}
+              onPickChild={pickChild}
+              onPickSchool={pickSchool}
+            />
+          )}
+
+          {step === 'type' && (
+            <TypeStep
+              scope={scope}
+              target={scope === 'child' ? selectedChild : selectedSchool}
+              onPick={pickType}
+            />
+          )}
+
+          {step === 'confirm' && (
+            <ConfirmStep
+              scope={scope}
+              target={scope === 'child' ? selectedChild : selectedSchool}
+              typeKey={typeKey}
+              message={message}
+              onChange={setMessage}
+              onSubmit={onSubmit}
+              submitting={submitting}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SheetHeader({ step, onBack, onClose, onHistory }) {
+  const titles = {
+    target: 'Quem precisa saber?',
+    type: 'O que aconteceu?',
+    confirm: 'Confirmar e enviar',
+  };
+  return (
+    <div className="flex items-start justify-between gap-3 mb-4">
+      {step !== 'target' ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="tap text-textMuted -ml-1 p-1 inline-flex items-center gap-1 text-sm"
+        >
+          <ArrowLeft size={16} /> Voltar
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onHistory}
+          className="tap text-textMuted -ml-1 p-1 inline-flex items-center gap-1 text-xs"
+        >
+          <History size={14} /> Ver enviados
+        </button>
+      )}
+      <h2 className="text-base font-bold text-text leading-tight flex-1 text-center">
+        {titles[step]}
+      </h2>
+      <button
+        onClick={onClose}
+        className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+        aria-label="Fechar"
+      >
+        <X size={18} />
+      </button>
+    </div>
+  );
+}
+
+function TargetStep({ children, schools, onPickChild, onPickSchool }) {
+  const [search, setSearch] = useState('');
+  const filteredChildren = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return children;
+    return children.filter((c) => c.name?.toLowerCase().includes(term));
+  }, [children, search]);
+
+  if (children.length === 0) {
+    return (
+      <div className="text-center py-8 text-sm text-textMuted">
+        Cadastre crianças primeiro pra mandar avisos pelos pais.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Bloco "Toda uma escola" */}
+      {schools.length > 0 && (
+        <section>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-textMuted mb-2">
+            Aviso geral · escola
+          </p>
+          <div className="grid grid-cols-1 gap-2">
+            {schools.map((s) => (
+              <button
+                key={s.name}
+                type="button"
+                onClick={() => onPickSchool(s)}
+                className="tap w-full text-left rounded-2xl bg-gradient-to-r from-emerald-500 to-green-700 text-white px-4 py-3 flex items-center gap-3 shadow-sm"
+              >
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                  <School size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold leading-tight truncate">{s.name}</p>
+                  <p className="text-xs text-white/85 mt-0.5">
+                    {s.children.length}{' '}
+                    {s.children.length === 1 ? 'criança' : 'crianças'} · enviar
+                    pra todos
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Bloco "Uma criança" */}
+      <section>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-textMuted mb-2 flex items-center gap-1.5">
+          <Users size={12} /> Aviso pessoal · criança
+        </p>
+        <input
+          type="search"
+          placeholder="Buscar pelo nome..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full h-11 px-3 mb-2 rounded-2xl bg-card border border-gray-200 text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+        />
+        <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          {filteredChildren.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onPickChild(c)}
+              className="tap w-full text-left bg-card rounded-2xl border border-gray-200 px-3 py-2.5 flex items-center gap-3"
+            >
+              <Avatar
+                photoURL={c.photoURL}
+                gender={c.gender}
+                seed={c.id}
+                kind="child"
+                size="sm"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-text text-sm leading-tight truncate">
+                  {c.name}
+                </p>
+                <p className="text-[11px] text-textMuted truncate">
+                  {c.school || 'Sem escola'}
+                </p>
+              </div>
+            </button>
+          ))}
+          {filteredChildren.length === 0 && (
+            <p className="text-xs text-textMuted text-center py-3">
+              Ninguém encontrado.
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TypeStep({ scope, target, onPick }) {
+  const subtitle =
+    scope === 'child'
+      ? `Pra ${target?.name?.split(' ')[0] || 'a criança'}`
+      : `Pra todas as crianças de ${target?.name || 'a escola'}`;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-textMuted text-center">{subtitle}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {Object.entries(AGENDA_TYPES).map(([key, t]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onPick(key)}
+            className={`tap min-h-20 rounded-2xl bg-gradient-to-br ${t.color} text-white px-3 py-3 flex flex-col items-center justify-center gap-1 shadow-sm`}
+          >
+            <span className="text-2xl" aria-hidden>
+              {t.emoji}
+            </span>
+            <span className="text-[11px] font-bold leading-tight text-center">
+              {t.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmStep({ scope, target, typeKey, message, onChange, onSubmit, submitting }) {
+  const typeData = AGENDA_TYPES[typeKey];
+  const recipient =
+    scope === 'child'
+      ? `Pra ${target?.name?.split(' ')[0] || 'a criança'}`
+      : `Aviso geral · ${target?.name}`;
+
+  return (
+    <div className="space-y-4">
+      <div
+        className={`rounded-2xl bg-gradient-to-r ${typeData.color} text-white p-4 flex items-center gap-3`}
+      >
+        <span className="text-3xl" aria-hidden>
+          {typeData.emoji}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-widest text-white/85 font-bold">
+            {recipient}
+          </p>
+          <p className="font-bold leading-tight">{typeData.label}</p>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold uppercase tracking-widest text-textMuted mb-2">
+          Mensagem que o pai vai receber
+        </label>
+        <textarea
+          value={message}
+          onChange={(e) => onChange(e.target.value)}
+          rows={6}
+          maxLength={1500}
+          placeholder="Escreve aqui o que aconteceu…"
+          className="w-full rounded-2xl border-2 border-gray-200 bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
+        />
+        <p className="text-[11px] text-textMuted mt-1.5">
+          Pode editar o texto antes de enviar. O pai recebe na agenda dele.
+        </p>
+      </div>
+
+      <Button onClick={onSubmit} icon={Send} loading={submitting}>
+        Enviar aviso
+      </Button>
+    </div>
+  );
+}

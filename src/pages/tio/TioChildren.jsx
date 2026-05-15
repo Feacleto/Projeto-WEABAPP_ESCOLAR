@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Users, Plus, Search, X } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
 import ChildCard from '../../components/children/ChildCard';
+import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { useChildren } from '../../hooks/useChildren';
 import { PERIOD_LABELS } from '../../utils/formatters';
 
@@ -18,9 +19,21 @@ const FILTERS = [
 
 export default function TioChildren() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { children, loading } = useChildren();
-  const [filter, setFilter] = useState('all');
+  const initialFilter = searchParams.get('period') || 'all';
+  const [filter, setFilter] = useState(initialFilter);
   const [search, setSearch] = useState('');
+
+  // Quando navega vindo de outra tela com query param, atualiza o filtro
+  useEffect(() => {
+    const p = searchParams.get('period');
+    if (p && p !== filter) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFilter(p);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const filtered = useMemo(() => {
     let list = children;
@@ -39,11 +52,11 @@ export default function TioChildren() {
         action={
           <button
             onClick={() => navigate('/tio/children/new')}
-            aria-label="Cadastrar criança"
+            aria-label="Cadastrar nova criança"
             className="tap inline-flex items-center gap-1 bg-primary text-white text-sm font-semibold px-3 py-1.5 rounded-full"
           >
             <Plus size={16} />
-            Nova
+            Nova criança
           </button>
         }
       />
@@ -139,6 +152,9 @@ export default function TioChildren() {
           </div>
         )}
       </div>
+
+      {/* Agenda digital — botão flutuante de aviso pros pais */}
+      <TioAgendaFAB />
     </>
   );
 }

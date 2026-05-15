@@ -51,6 +51,7 @@ const TOTAL_STEPS = 4;
 const EMPTY_FORM = {
   name: '',
   gender: 'male',
+  birthDate: '', // YYYY-MM-DD — usado pra parabenizar no aniversário
   parentName: '',
   parentEmail: '',
   parentPhone: '',
@@ -234,16 +235,19 @@ export default function ChildForm() {
         )}
       </main>
 
-      {/* Footer com botão "Avançar" / "Cadastrar" fixo */}
+      {/* Footer com botão "Avançar" / "Cadastrar" fixo.
+        * z-40 fica acima do BottomNav (z-30) — esse era o bug que impedia
+        * o usuário de avançar do passo 1 em diante (o toque caía no nav).
+        * Fundo branco com gradient pra cobrir o nav visualmente. */}
       <footer
-        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto px-5 pb-5 pointer-events-none"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 1.25rem)' }}
+        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-40 px-5 pt-3 bg-bg border-t border-gray-100"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 1rem)' }}
       >
         <Button
           onClick={onAdvance}
           loading={submitting}
           icon={step === TOTAL_STEPS ? Check : ArrowRight}
-          className="pointer-events-auto shadow-2xl shadow-emerald-500/30 !bg-emerald-600 hover:!bg-emerald-700 !h-14 !text-base"
+          className="shadow-2xl shadow-emerald-500/30 !bg-emerald-600 hover:!bg-emerald-700 !h-14 !text-base"
         >
           {step === TOTAL_STEPS ? 'Cadastrar criança' : 'Avançar'}
         </Button>
@@ -320,6 +324,15 @@ function Step1Child({ form, setForm, setField, errors }) {
           ))}
         </div>
       </div>
+
+      <Input
+        type="date"
+        label="Data de aniversário"
+        icon={Calendar}
+        value={form.birthDate}
+        onChange={setField('birthDate')}
+        hint="Pra parabenizar a criança no dia (opcional)."
+      />
 
       <div>
         <label className="block text-sm font-semibold text-text mb-2">

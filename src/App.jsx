@@ -11,12 +11,15 @@ import TioChildren from './pages/tio/TioChildren';
 import TioRoute from './pages/tio/TioRoute';
 import TioRoutePlan from './pages/tio/TioRoutePlan';
 import TioFinance from './pages/tio/TioFinance';
+import TioFinanceReport from './pages/tio/TioFinanceReport';
 import TioContract from './pages/tio/TioContract';
 import TioPixConfig from './pages/tio/TioPixConfig';
+import TioAgenda from './pages/tio/TioAgenda';
 import ChildForm from './components/children/ChildForm';
 import PaiLayout from './pages/pai/PaiLayout';
 import PaiDashboard from './pages/pai/PaiDashboard';
 import PaiFinance from './pages/pai/PaiFinance';
+import PaiFinanceReport from './pages/pai/PaiFinanceReport';
 import PaiMap from './pages/pai/PaiMap';
 import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
@@ -119,7 +122,9 @@ export default function App() {
         <Route path="route" element={<TioRoute />} />
         <Route path="route/plan" element={<TioRoutePlan />} />
         <Route path="finance" element={<TioFinance />} />
+        <Route path="finance/report" element={<TioFinanceReport />} />
         <Route path="pix" element={<TioPixConfig />} />
+        <Route path="agenda" element={<TioAgenda />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>
@@ -135,6 +140,7 @@ export default function App() {
       >
         <Route index element={<PaiDashboard />} />
         <Route path="finance" element={<PaiFinance />} />
+        <Route path="finance/report" element={<PaiFinanceReport />} />
         <Route path="map" element={<PaiMap />} />
         <Route path="child" element={<ChildDetail />} />
         <Route path="notifications" element={<Notifications />} />

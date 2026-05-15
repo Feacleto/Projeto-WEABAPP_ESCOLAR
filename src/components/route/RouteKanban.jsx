@@ -5,6 +5,7 @@ import ConfirmDialog from '../common/ConfirmDialog';
 import { X } from 'lucide-react';
 import { useChildren } from '../../hooks/useChildren';
 import { useAbsences } from '../../hooks/useAbsences';
+import { useAllAltPickups } from '../../hooks/useAltPickup';
 import {
   getEffectiveStatus,
   updateChildStatus,
@@ -23,7 +24,7 @@ import {
   setDailyTurnoOrder,
   toggleAbsence,
 } from '../../services/routePlanService';
-import { ABSENCE_TYPES } from '../../services/absencesService';
+import { ABSENCE_TYPES, notifyAbsence } from '../../services/absencesService';
 
 /**
  * Kanban completo de rota. Mostra todas as colunas que têm crianças,
@@ -46,6 +47,8 @@ export default function RouteKanban() {
   const [currentPeriod, setCurrentPeriod] = useState(getCurrentPeriod());
   // Declarações de ausência (pai ou tio) do dia — mescla com dailyRoute.absent
   const { byChildId: declaredByChildId } = useAbsences(dateKey);
+  // Indicações de quem vai buscar hoje (alt responsibles)
+  const { byChildId: altPickupByChildId } = useAllAltPickups(dateKey);
 
   // Modal de ausência
   const [absencePicker, setAbsencePicker] = useState(null); // { childId, name }
@@ -197,6 +200,23 @@ export default function RouteKanban() {
       if (when === 'pickup') {
         await updateChildStatus(childId, 'atSchool');
       }
+
+      // Notifica o pai vinculado (fire-and-forget)
+      if (child.parentUid) {
+        const absenceType =
+          when === 'pickup'
+            ? ABSENCE_TYPES.NO_PICKUP
+            : when === 'dropoff'
+            ? ABSENCE_TYPES.NO_DROPOFF
+            : ABSENCE_TYPES.FULL;
+        notifyAbsence({
+          child: { name: child.name, parentUid: child.parentUid },
+          type: absenceType,
+          dateKey,
+          declaredBy: 'admin',
+        });
+      }
+
       toast.success(`${child.name} marcado(a) como ausente.`);
       setAbsencePicker(null);
     } catch (err) {
@@ -243,6 +263,7 @@ export default function RouteKanban() {
               children={enrichedChildren}
               absentIds={t.absent}
               declaredInfo={t.declaredInfo}
+              altPickupInfo={altPickupByChildId}
               onReorder={(newOrder) => onReorder(t.key, newOrder)}
               onAdvance={onAdvance}
               onMarkAbsent={onMarkAbsentRequest}

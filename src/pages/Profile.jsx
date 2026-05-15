@@ -5,6 +5,7 @@ import {
   Phone,
   LogOut,
   HelpCircle,
+  MessageSquare,
   Key,
   ChevronRight,
   Pencil,
@@ -12,13 +13,15 @@ import {
   X,
   User as UserIcon,
   Trash2,
-  AlertTriangle,
   Camera,
   Volume2,
   VolumeX,
   Building2,
   FileText,
   MapPin as MapPinIcon,
+  Sunrise,
+  Sunset,
+  Moon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
@@ -39,9 +42,12 @@ import { uploadProfilePhoto, deleteProfilePhoto } from '../services/photoService
 import { setProfilePhotoURL } from '../services/profileService';
 import { useSoundsEnabled } from '../hooks/useSoundsEnabled';
 import { playSound } from '../services/soundService';
+import { DEFAULT_GREETING_HOURS } from '../utils/greeting';
 import { maskPhone, unmaskPhone, isValidPhone } from '../utils/masks';
 import { formatPhone } from '../utils/formatters';
 import { PIX_KEY_TYPES } from '../services/userService';
+import { APP_VERSION } from '../version';
+import FeedbackSheet from '../components/feedback/FeedbackSheet';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -53,6 +59,7 @@ export default function Profile() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [soundsEnabled, setSoundsEnabledState] = useSoundsEnabled();
 
   if (!profile) {
@@ -173,6 +180,11 @@ export default function Profile() {
           <CompanyDataCard profile={profile} onSaved={refreshProfile} />
         )}
 
+        {/* Horários das saudações (só Tio) — vale pra todos os usuários */}
+        {isAdmin && (
+          <GreetingHoursCard profile={profile} onSaved={refreshProfile} />
+        )}
+
         {/* Atalhos do tio */}
         {isAdmin && (
           <Card>
@@ -254,6 +266,25 @@ export default function Profile() {
 
           <button
             type="button"
+            onClick={() => setFeedbackOpen(true)}
+            className="w-full flex items-center gap-3 tap py-2"
+          >
+            <MessageSquare size={20} className="text-primary shrink-0" />
+            <div className="flex-1 text-left">
+              <p className="text-sm text-text font-medium">
+                Avaliar o app
+              </p>
+              <p className="text-[11px] text-textMuted">
+                Conta o que tá funcionando e o que pode melhorar
+              </p>
+            </div>
+            <ChevronRight size={20} className="text-textMuted shrink-0" />
+          </button>
+
+          <div className="border-t border-gray-100 -mx-4" />
+
+          <button
+            type="button"
             onClick={() => setConfirmLogout(true)}
             className="w-full flex items-center gap-3 tap py-2"
           >
@@ -264,31 +295,20 @@ export default function Profile() {
           </button>
         </Card>
 
-        {/* Zona de perigo — exclusão de conta */}
-        <Card className="border border-red-200 bg-red-50/50 space-y-2">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-red-700 flex items-center gap-1.5">
-            <AlertTriangle size={12} />
-            Zona de perigo
-          </h3>
+        {/* Exclusão de conta — discreto, só link textual no fim da página.
+          * Confirmação continua avisando do impacto. */}
+        <div className="pt-3 text-center">
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="w-full flex items-center gap-3 tap py-2"
+            className="tap inline-flex items-center gap-1.5 text-xs text-textMuted hover:text-danger transition-colors py-2 px-3"
           >
-            <Trash2 size={20} className="text-danger shrink-0" />
-            <div className="flex-1 text-left">
-              <p className="text-sm font-semibold text-danger leading-tight">
-                {isAdmin ? 'Encerrar operação' : 'Excluir minha conta'}
-              </p>
-              <p className="text-[11px] text-textMuted mt-0.5">
-                {isAdmin
-                  ? 'Apaga todos os dados do app (crianças, pais, pagamentos)'
-                  : 'Apaga seus dados pessoais. O histórico fica com o motorista.'}
-              </p>
-            </div>
-            <ChevronRight size={18} className="text-textMuted shrink-0" />
+            <Trash2 size={12} />
+            <span className="underline underline-offset-2 decoration-textMuted/30">
+              {isAdmin ? 'Encerrar operação' : 'Excluir minha conta'}
+            </span>
           </button>
-        </Card>
+        </div>
 
         <div className="text-center text-[11px] text-textMuted flex items-center justify-center gap-3 pt-2">
           <a href="/termos" target="_blank" rel="noopener noreferrer" className="hover:underline">
@@ -304,6 +324,9 @@ export default function Profile() {
             Política de Privacidade
           </a>
         </div>
+        <div className="text-center text-[10px] text-textMuted/70">
+          Tio Nino Digital · versão {APP_VERSION}
+        </div>
       </div>
 
       <ConfirmDialog
@@ -317,6 +340,13 @@ export default function Profile() {
           navigate('/welcome', { replace: true });
         }}
         onCancel={() => setConfirmLogout(false)}
+      />
+
+      <FeedbackSheet
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        uid={user?.uid}
+        role={role}
       />
 
       <ConfirmDialog
@@ -639,5 +669,151 @@ function CompanyDataCard({ profile, onSaved }) {
         </div>
       )}
     </Card>
+  );
+}
+
+/* ─────────────── Horários das saudações ─────────────── */
+
+function GreetingHoursCard({ profile, onSaved }) {
+  const { user } = useAuth();
+  const current = profile.greetingHours || DEFAULT_GREETING_HOURS;
+  const [editing, setEditing] = useState(false);
+  const [morning, setMorning] = useState(current.morning);
+  const [afternoon, setAfternoon] = useState(current.afternoon);
+  const [evening, setEvening] = useState(current.evening);
+  const [saving, setSaving] = useState(false);
+
+  const isValid = morning < afternoon && afternoon < evening;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!isValid) {
+      toast.error('Horários devem estar em ordem (manhã < tarde < noite).');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateProfile(user.uid, {
+        greetingHours: { morning, afternoon, evening },
+      });
+      toast.success('Horários salvos!');
+      await onSaved();
+      setEditing(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao salvar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <Card>
+        <form onSubmit={onSubmit} className="space-y-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-text">
+              Horários das saudações
+            </h3>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              className="text-textMuted tap p-1"
+              aria-label="Cancelar"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <p className="text-xs text-textMuted leading-relaxed">
+            A partir de cada hora, o app começa a dizer a saudação correspondente.
+          </p>
+          <HourInput
+            icon={Sunrise}
+            label='"Bom dia" começa às'
+            value={morning}
+            onChange={setMorning}
+          />
+          <HourInput
+            icon={Sunset}
+            label='"Boa tarde" começa às'
+            value={afternoon}
+            onChange={setAfternoon}
+          />
+          <HourInput
+            icon={Moon}
+            label='"Boa noite" começa às'
+            value={evening}
+            onChange={setEvening}
+          />
+          {!isValid && (
+            <p className="text-xs text-danger">
+              Os horários precisam estar em ordem crescente.
+            </p>
+          )}
+          <Button type="submit" icon={Save} loading={saving} disabled={!isValid}>
+            Salvar
+          </Button>
+        </form>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-text">
+          Horários das saudações
+        </h3>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="text-primary tap p-1 inline-flex items-center gap-1 text-xs font-medium"
+        >
+          <Pencil size={14} /> Editar
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-2 pt-1">
+        <HourPill icon={Sunrise} label="Bom dia" hour={current.morning} />
+        <HourPill icon={Sunset} label="Boa tarde" hour={current.afternoon} />
+        <HourPill icon={Moon} label="Boa noite" hour={current.evening} />
+      </div>
+      <p className="text-[11px] text-textMuted pt-1">
+        Vale pra você e pros responsáveis.
+      </p>
+    </Card>
+  );
+}
+
+function HourInput({ icon: Icon, label, value, onChange }) {
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-text mb-1.5 inline-flex items-center gap-1.5">
+        <Icon size={14} />
+        {label}
+      </label>
+      <input
+        type="number"
+        min="0"
+        max="23"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full h-12 rounded-2xl border-2 border-gray-200 px-4 text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+      />
+    </div>
+  );
+}
+
+function HourPill({ icon: Icon, label, hour }) {
+  return (
+    <div className="bg-bg rounded-xl p-2 text-center">
+      <Icon size={14} className="mx-auto text-textMuted" />
+      <p className="text-[10px] text-textMuted uppercase tracking-wide mt-1">
+        {label}
+      </p>
+      <p className="text-base font-bold text-text mt-0.5 tabular-nums">
+        {String(hour).padStart(2, '0')}h
+      </p>
+    </div>
   );
 }

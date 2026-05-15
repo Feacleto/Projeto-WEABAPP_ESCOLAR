@@ -7,11 +7,27 @@ import {
   addDoc,
   updateDoc,
   serverTimestamp,
+  getDoc,
   getDocs,
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './../firebase/config';
 import { computeDisplayStatus } from './paymentsService';
+
+/**
+ * Helper: busca adminUid de appState/init (público, sempre disponível).
+ * Usado pelas notifs que vão pro admin — evita race condition de quem
+ * chama estar dependendo do useAdminProfile carregar primeiro.
+ */
+async function resolveAdminUid() {
+  try {
+    const snap = await getDoc(doc(db, 'appState', 'init'));
+    return snap.exists() ? snap.data().adminUid || null : null;
+  } catch (err) {
+    console.error('[notifications] Falha ao resolver adminUid:', err);
+    return null;
+  }
+}
 
 /**
  * Notificações = união de duas fontes:
@@ -50,6 +66,13 @@ export async function notifyPaymentClaimed({
   amount,
   method = 'pix',
 }) {
+  // Fallback: se o caller não conseguiu carregar adminUid (race condition),
+  // busca do appState/init (público, sempre disponível).
+  const targetUid = adminUid || (await resolveAdminUid());
+  if (!targetUid) {
+    console.warn('[notifyPaymentClaimed] Sem adminUid — notif não criada.');
+    return;
+  }
   const methodLabel = method === 'cash' ? 'em dinheiro' : 'via PIX';
   const followup =
     method === 'cash'
@@ -57,7 +80,7 @@ export async function notifyPaymentClaimed({
       : 'Confirme o recebimento após verificar o comprovante.';
   try {
     await addDoc(collection(db, 'notifications'), {
-      userId: adminUid,
+      userId: targetUid,
       type: 'payment_claimed',
       title: 'Novo pagamento informado',
       body: `${childName} informou pagamento de ${formatBRL(amount)} (${monthLabel}) ${methodLabel}. ${followup}`,
@@ -74,10 +97,14 @@ export async function notifyPaymentClaimed({
  * Cria notificação pro Tio quando o Pai aceita o contrato de transporte.
  */
 export async function notifyContractAccepted({ adminUid, parentName, childName }) {
-  if (!adminUid) return;
+  const targetUid = adminUid || (await resolveAdminUid());
+  if (!targetUid) {
+    console.warn('[notifyContractAccepted] Sem adminUid — notif não criada.');
+    return;
+  }
   try {
     await addDoc(collection(db, 'notifications'), {
-      userId: adminUid,
+      userId: targetUid,
       type: 'contract_accepted',
       title: 'Contrato aceito',
       body: `${parentName} aceitou o contrato de transporte de ${childName}.`,
