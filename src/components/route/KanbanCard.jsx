@@ -4,7 +4,6 @@ import {
   GripVertical,
   School,
   Home,
-  Phone,
   Copy,
   UserX,
   Check,
@@ -14,6 +13,7 @@ import toast from 'react-hot-toast';
 import Avatar from '../common/Avatar';
 import StatusBadge from '../children/StatusBadge';
 import { formatPhone } from '../../utils/formatters';
+import { ABSENCE_SHORT } from '../../services/absencesService';
 
 /**
  * Card draggable de uma criança dentro do kanban de rota.
@@ -29,6 +29,7 @@ export default function KanbanCard({
   child,
   direction,
   isAbsent = false,
+  declaredAbsence = null,
   onAdvance,
   onMarkAbsent,
 }) {
@@ -107,8 +108,19 @@ export default function KanbanCard({
           <div className="mt-1">
             <StatusBadge status={child.effectiveStatus} />
             {isAbsent && (
-              <span className="ml-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-warning bg-warning/10 px-2 py-0.5 rounded-full">
-                <UserX size={11} /> Ausente
+              <span
+                className={`ml-1.5 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                  declaredAbsence
+                    ? 'text-amber-800 bg-amber-100 border border-amber-200'
+                    : 'text-warning bg-warning/10'
+                }`}
+              >
+                <UserX size={11} />
+                {declaredAbsence
+                  ? `${ABSENCE_SHORT[declaredAbsence.type] || 'Ausente'} · ${
+                      declaredAbsence.declaredBy === 'parent' ? 'pai avisou' : 'registrado'
+                    }`
+                  : 'Ausente'}
               </span>
             )}
           </div>
@@ -186,6 +198,7 @@ export default function KanbanCard({
  * Decide qual ação mostrar baseado no status efetivo + direção do turno.
  * Retorna { label, nextStatus, variant } ou null se não há ação possível.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function getActionForStatus(status, direction) {
   if (direction === 'pickup') {
     // home → onboard → atSchool

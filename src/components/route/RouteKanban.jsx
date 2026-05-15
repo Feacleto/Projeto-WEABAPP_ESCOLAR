@@ -4,6 +4,7 @@ import KanbanColumn from './KanbanColumn';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { X } from 'lucide-react';
 import { useChildren } from '../../hooks/useChildren';
+import { useAbsences } from '../../hooks/useAbsences';
 import {
   getEffectiveStatus,
   updateChildStatus,
@@ -22,6 +23,7 @@ import {
   setDailyTurnoOrder,
   toggleAbsence,
 } from '../../services/routePlanService';
+import { ABSENCE_TYPES } from '../../services/absencesService';
 
 /**
  * Kanban completo de rota. Mostra todas as colunas que têm crianças,
@@ -42,6 +44,8 @@ export default function RouteKanban() {
   const [dailyRoute, setDailyRoute] = useState(null);
   const [dateKey] = useState(getDateKey());
   const [currentPeriod, setCurrentPeriod] = useState(getCurrentPeriod());
+  // Declarações de ausência (pai ou tio) do dia — mescla com dailyRoute.absent
+  const { byChildId: declaredByChildId } = useAbsences(dateKey);
 
   // Modal de ausência
   const [absencePicker, setAbsencePicker] = useState(null); // { childId, name }
@@ -105,17 +109,38 @@ export default function RouteKanban() {
           ...candidateIds.filter((id) => !orderSet.has(id)),
         ];
 
+        // Mescla declarações dos pais. Cada tipo de declaração mapeia:
+        //   - full       -> ausente em pickup E dropoff
+        //   - no-pickup  -> ausente só nos turnos de pickup (pai vai levar)
+        //   - no-dropoff -> ausente só nos turnos de dropoff (pai vai buscar)
+        const absentSet = new Set(absent);
+        const declaredInfo = {};
+        for (const childId of finalOrder) {
+          const decl = declaredByChildId[childId];
+          if (!decl) continue;
+          const t = decl.type;
+          const applies =
+            t === ABSENCE_TYPES.FULL ||
+            (t === ABSENCE_TYPES.NO_PICKUP && direction === 'pickup') ||
+            (t === ABSENCE_TYPES.NO_DROPOFF && direction === 'dropoff');
+          if (applies) {
+            absentSet.add(childId);
+            declaredInfo[childId] = decl;
+          }
+        }
+
         list.push({
           key,
           period,
           direction,
           order: finalOrder,
-          absent: new Set(absent),
+          absent: absentSet,
+          declaredInfo,
         });
       }
     }
     return list;
-  }, [allChildren, defaultPlan, dailyRoute]);
+  }, [allChildren, defaultPlan, dailyRoute, declaredByChildId]);
 
   const onReorder = async (turno, newOrder) => {
     try {
@@ -217,6 +242,7 @@ export default function RouteKanban() {
               isActive={currentPeriod === t.period}
               children={enrichedChildren}
               absentIds={t.absent}
+              declaredInfo={t.declaredInfo}
               onReorder={(newOrder) => onReorder(t.key, newOrder)}
               onAdvance={onAdvance}
               onMarkAbsent={onMarkAbsentRequest}

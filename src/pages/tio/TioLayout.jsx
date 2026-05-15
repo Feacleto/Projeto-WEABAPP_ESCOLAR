@@ -19,18 +19,31 @@ const NAV_ITEMS = [
 export default function TioLayout() {
   const { profile } = useAuth();
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tutorialFloating, setTutorialFloating] = useState(false);
 
   useEffect(() => {
     if (profile && profile.tutorialDone !== true) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTutorialOpen(true);
+      setTutorialFloating(false);
     }
   }, [profile?.tutorialDone, profile]);
 
+  const openTutorial = (opts = {}) => {
+    setTutorialFloating(!!opts.floating);
+    setTutorialOpen(true);
+  };
+
   return (
     <div className="min-h-screen pb-20">
-      <Outlet context={{ openTutorial: () => setTutorialOpen(true) }} />
+      <Outlet context={{ openTutorial }} />
       <BottomNav items={NAV_ITEMS} />
-      {tutorialOpen && <Tutorial onClose={() => setTutorialOpen(false)} />}
+      {tutorialOpen && (
+        <Tutorial
+          floating={tutorialFloating}
+          onClose={() => setTutorialOpen(false)}
+        />
+      )}
     </div>
   );
 }

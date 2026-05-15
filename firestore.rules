@@ -206,6 +206,54 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // absenceDeclarations/{date_childId}
+    //   - Ausências declaradas pelo pai (próprio filho) ou pelo admin.
+    //   - Id estável `${dateKey}_${childId}` evita duplicação.
+    //   - Admin: leitura/escrita total.
+    //   - Pai: leitura/escrita SOMENTE de declarações do próprio filho
+    //     (validado via children/{childId}.parentUid == auth.uid).
+    // -----------------------------------------------------------------
+    match /absenceDeclarations/{absId} {
+      function ownsChild(childId) {
+        return isSignedIn()
+          && exists(/databases/$(database)/documents/children/$(childId))
+          && get(/databases/$(database)/documents/children/$(childId)).data.parentUid == request.auth.uid;
+      }
+
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || ownsChild(resource.data.childId)
+      );
+
+      allow create: if isAdmin() || (
+        isSignedIn()
+        && ownsChild(request.resource.data.childId)
+        && request.resource.data.declaredBy == 'parent'
+      );
+
+      allow update: if isAdmin() || (
+        isSignedIn()
+        && ownsChild(resource.data.childId)
+        && request.resource.data.childId == resource.data.childId
+        && request.resource.data.declaredBy == 'parent'
+      );
+
+      allow delete: if isAdmin() || (
+        isSignedIn() && ownsChild(resource.data.childId)
+      );
+    }
+
+    // -----------------------------------------------------------------
+    // schoolBroadcasts/{id} — histórico de avisos "sem aula" disparados
+    // pelo admin. Pais não interagem diretamente: o efeito vem via
+    // notifications + absenceDeclarations criados no mesmo batch.
+    // -----------------------------------------------------------------
+    match /schoolBroadcasts/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------
     // Default deny — qualquer outra coleção é proibida.
     // -----------------------------------------------------------------
     match /{document=**} {

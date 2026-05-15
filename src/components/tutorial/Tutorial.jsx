@@ -14,8 +14,10 @@ import { useAuth } from '../../hooks/useAuth';
  * Props:
  *   - onClose: () => void — fecha o modal sem alterar tutorialDone
  *   - onComplete?: () => void — chamado após marcar como concluído
+ *   - floating?: bool — quando true, renderiza como card flutuante no rodapé
+ *     (não bloqueia toques no resto da tela). Usado pelo botão "Como usar".
  */
-export default function Tutorial({ onClose, onComplete }) {
+export default function Tutorial({ onClose, onComplete, floating = false }) {
   const { user, profile, updateProfile } = useAuth();
   const [stepIndex, setStepIndex] = useState(0);
   const [confirmingSkip, setConfirmingSkip] = useState(false);
@@ -64,8 +66,8 @@ export default function Tutorial({ onClose, onComplete }) {
   // ---------------------------------------------------------------------------
   if (confirmingSkip) {
     return (
-      <Overlay>
-        <ModalCard>
+      <Overlay floating={floating}>
+        <ModalCard floating={floating}>
           <h2 className="text-lg font-bold text-text">Pular o tutorial?</h2>
           <p className="text-sm text-textMuted mt-2">
             Como você não chegou até o final, o tutorial vai aparecer
@@ -89,8 +91,8 @@ export default function Tutorial({ onClose, onComplete }) {
   // Slide do tutorial
   // ---------------------------------------------------------------------------
   return (
-    <Overlay>
-      <ModalCard>
+    <Overlay floating={floating}>
+      <ModalCard floating={floating}>
         <button
           type="button"
           onClick={onSkip}
@@ -154,7 +156,21 @@ export default function Tutorial({ onClose, onComplete }) {
   );
 }
 
-function Overlay({ children }) {
+function Overlay({ children, floating }) {
+  if (floating) {
+    // Modo flutuante: overlay com pointer-events:none deixa toques passarem
+    // pro app embaixo. Card é absoluto no rodapé com pointer-events:auto.
+    return (
+      <div
+        className="fixed inset-0 z-50 pointer-events-none max-w-mobile mx-auto flex items-end justify-center p-3"
+        role="dialog"
+        aria-modal="false"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 5rem)' }}
+      >
+        {children}
+      </div>
+    );
+  }
   return (
     <div
       className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
@@ -166,7 +182,14 @@ function Overlay({ children }) {
   );
 }
 
-function ModalCard({ children }) {
+function ModalCard({ children, floating }) {
+  if (floating) {
+    return (
+      <div className="relative pointer-events-auto bg-card rounded-3xl shadow-2xl shadow-black/20 p-5 w-full max-w-sm border border-gray-100">
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="relative bg-card rounded-2xl shadow-xl p-6 w-full max-w-sm">
       {children}

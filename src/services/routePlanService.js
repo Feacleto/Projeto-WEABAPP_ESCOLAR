@@ -142,6 +142,22 @@ export async function getDefaultPlan() {
   return snap.exists() ? snap.data() : {};
 }
 
+/**
+ * Salva a ordem de um turno específico no plano padrão (rota base).
+ * Cresce automaticamente ao adicionar crianças (addChildToDefaultPlan) e
+ * pode ser reorganizada manualmente pela tela "Planejar rota padrão".
+ */
+export async function setDefaultTurnoOrder(turno, order) {
+  await setDoc(
+    DEFAULT_DOC,
+    {
+      [turno]: order,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
 export function watchDefaultPlan(onUpdate, onError) {
   return onSnapshot(
     DEFAULT_DOC,

@@ -18,6 +18,7 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { formatDateTime } from '../../utils/formatters';
 import RouteKanban from '../../components/route/RouteKanban';
+import StartRouteSheet from '../../components/route/StartRouteSheet';
 
 /**
  * Tela do Tio para iniciar/encerrar a rota.
@@ -32,6 +33,7 @@ export default function TioRoute() {
   const { location: liveLocation } = useLiveLocation();
 
   const [confirmStop, setConfirmStop] = useState(false);
+  const [startSheetOpen, setStartSheetOpen] = useState(false);
   const lastErrorCodeRef = useRef(null);
 
   // Só dispara toast quando o erro MUDA, pra não floodar tela de toasts
@@ -55,13 +57,30 @@ export default function TioRoute() {
     }
   }, [error]);
 
+  // Abre o sheet de confirmação. O start real acontece no `onConfirmStart`.
   const onStart = () => {
     if (!user?.uid) {
       toast.error('Sessão expirada. Faça login novamente.');
       return;
     }
+    setStartSheetOpen(true);
+  };
+
+  const onConfirmStart = () => {
+    setStartSheetOpen(false);
     start(user.uid);
     toast.success('Rota iniciada. GPS ativo.');
+  };
+
+  const onReorganizeBeforeStart = () => {
+    setStartSheetOpen(false);
+    // Rola pra baixo até o Kanban (que já está nesta página).
+    setTimeout(() => {
+      document.getElementById('route-kanban-anchor')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 100);
   };
 
   const onStop = async () => {
@@ -190,7 +209,7 @@ export default function TioRoute() {
         )}
 
         {/* Kanban de planejamento da rota — abaixo do GPS */}
-        <div className="pt-2">
+        <div id="route-kanban-anchor" className="pt-2 scroll-mt-4">
           <h2 className="text-sm font-bold text-text mb-2">
             Planejamento de hoje
           </h2>
@@ -200,6 +219,13 @@ export default function TioRoute() {
           <RouteKanban />
         </div>
       </div>
+
+      <StartRouteSheet
+        open={startSheetOpen}
+        onClose={() => setStartSheetOpen(false)}
+        onConfirm={onConfirmStart}
+        onReorganize={onReorganizeBeforeStart}
+      />
     </>
   );
 }
