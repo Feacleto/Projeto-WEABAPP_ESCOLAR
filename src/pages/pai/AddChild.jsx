@@ -7,6 +7,7 @@ import Input from '../../components/common/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { redeemInvite } from '../../services/authService';
 import { lookupInvite, normalizeInviteCode } from '../../services/inviteCodeService';
+import { isValidInviteCodeFormat } from '../../utils/generateInviteCode';
 
 /**
  * Adicionar outro filho a uma conta que já existe — /pai/adicionar-filho
@@ -87,21 +88,25 @@ export default function AddChild() {
         <form onSubmit={onCheck} className="space-y-4">
           <Input
             label="Código do convite"
-            placeholder="TN4582"
+            placeholder="TN2K9F4B"
             icon={Ticket}
             value={code}
             onChange={(e) => {
-              setCode(normalizeInviteCode(e.target.value).slice(0, 6));
+              setCode(normalizeInviteCode(e.target.value).slice(0, 8));
               setError(null);
             }}
             autoCapitalize="characters"
-            maxLength={6}
-            hint="Duas letras e quatro números."
+            maxLength={8}
+            hint="Começa com TN. Com o link do convite, não precisa digitar nada."
             error={error}
             required
             autoFocus
           />
-          <Button type="submit" loading={checking} disabled={code.length < 6}>
+          <Button
+            type="submit"
+            loading={checking}
+            disabled={!isValidInviteCodeFormat(code)}
+          >
             Procurar
           </Button>
         </form>

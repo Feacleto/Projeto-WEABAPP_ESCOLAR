@@ -255,7 +255,7 @@ function SignupPane({ refreshProfile }) {
   const validate = () => {
     const errs = {};
     if (!isValidInviteCode(code)) {
-      errs.code = 'Use o formato TN seguido de 4 dígitos (ex: TN4582).';
+      errs.code = 'Confira o código com o motorista — ele começa com TN.';
     }
     if (!name.trim()) errs.name = 'Informe seu nome.';
     if (!isValidEmail(email)) errs.email = 'Email inválido.';
@@ -341,13 +341,13 @@ function SignupPane({ refreshProfile }) {
 
       <Input
         label="Código de convite"
-        placeholder="TN4582"
+        placeholder="TN2K9F4B"
         icon={Ticket}
         value={code}
         onChange={(e) => setCode(maskInviteCode(e.target.value))}
         autoCapitalize="characters"
-        maxLength={6}
-        hint="Formato: TN seguido de 4 dígitos"
+        maxLength={8}
+        hint="Começa com TN. Se você tem o LINK do convite, prefira abrir o link."
         error={errors.code}
         required
       />

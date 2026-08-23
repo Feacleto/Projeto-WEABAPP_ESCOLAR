@@ -1,3 +1,8 @@
+import { isValidInviteCodeFormat } from './generateInviteCode';
+
+// "TN" + 6 caracteres do formato novo. O legado (TN + 4 dígitos) cabe
+// dentro deste limite, então uma constante serve pros dois.
+const MAX_INVITE_LENGTH = 8;
 // Máscaras e validações usadas em formulários (Brasil-first).
 
 /**
@@ -44,11 +49,18 @@ export function maskInviteCode(value) {
   const upper = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   // Se o usuário começou direto com dígitos, prefixa TN automaticamente
   if (/^\d/.test(upper)) {
-    return ('TN' + upper).slice(0, 6);
+    return ('TN' + upper).slice(0, MAX_INVITE_LENGTH);
   }
-  return upper.slice(0, 6);
+  return upper.slice(0, MAX_INVITE_LENGTH);
 }
 
+/**
+ * Valida o código de convite nos DOIS formatos.
+ *
+ * A regra vive em generateInviteCode porque é lá que o formato é
+ * definido. Duplicar o regex aqui foi o que gerou divergência entre
+ * cliente e Cloud Function na primeira versão.
+ */
 export function isValidInviteCode(value) {
-  return /^TN\d{4}$/.test(String(value || '').trim().toUpperCase());
+  return isValidInviteCodeFormat(value);
 }

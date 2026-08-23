@@ -40,6 +40,15 @@ service cloud.firestore {
         && userDoc().role == 'admin';
     }
 
+    // Tem conta de VERDADE no app (doc em users/). A landing chama
+    // signInAnonymously pra gravar leads, então `isSignedIn()` sozinho
+    // inclui qualquer visitante do site — e não deveria dar acesso a
+    // nada que fale de crianças, escolas ou avisos.
+    function isAppUser() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     // -----------------------------------------------------------------
     // appState/init — flag de bootstrap.
     //   - Leitura pública (Login precisa checar antes do auth)
@@ -64,12 +73,17 @@ service cloud.firestore {
     //   - Update não pode mudar a role (evita auto-promoção a admin)
     // -----------------------------------------------------------------
     match /users/{uid} {
-      // Próprio dono lê o seu doc; admin lê todos; qualquer signed-in pode ler
-      // o doc DO admin (necessário pro pai ver chave PIX e telefone do tio).
+      // Próprio dono lê o seu doc; admin lê todos.
+      //
+      // O doc DO admin é legível pelos usuários do app porque o pai
+      // precisa ver a chave PIX e o telefone do motorista. Mas isso exige
+      // isAppUser(), não isSignedIn(): a landing chama signInAnonymously
+      // pra gravar leads, e com isSignedIn() qualquer visitante do site
+      // lia nome, email, telefone e CHAVE PIX do motorista.
       allow get: if isSignedIn() && (
         request.auth.uid == uid
         || isAdmin()
-        || resource.data.role == 'admin'
+        || (isAppUser() && resource.data.role == 'admin')
       );
       allow list: if isAdmin();
 
@@ -83,11 +97,17 @@ service cloud.firestore {
           )
         );
 
+      // O dono atualiza o próprio doc, mas NÃO pode mexer em role nem no
+      // vínculo de crianças. Quem escreve childIds/childId é a Cloud
+      // Function redeemInvite (Admin SDK) — deixar o cliente escrever
+      // esses campos permitiria auto-atribuição de filhos.
       allow update: if isSignedIn() && (
         isAdmin()
         || (
           request.auth.uid == uid
           && request.resource.data.role == resource.data.role
+          && !request.resource.data.diff(resource.data).affectedKeys()
+               .hasAny(['role', 'childId', 'childIds'])
         )
       );
 
@@ -175,7 +195,13 @@ service cloud.firestore {
       // qualquer visitante do site rastreava a perua em tempo real.
       allow read: if isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && (isAdmin() || userDoc().childId != null);
+        && (
+          isAdmin()
+          || userDoc().childId != null
+          // childIds é o modelo novo (um responsável, vários filhos).
+          // Sem esta linha, um pai migrado pro array perderia o mapa.
+          || (userDoc().childIds is list && userDoc().childIds.size() > 0)
+        );
       allow write: if isAdmin();
     }
 
@@ -201,6 +227,16 @@ service cloud.firestore {
         )
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'claimedAt', 'paymentMethod', 'receiptURL'])
+        // O comprovante tem que ser arquivo do NOSSO Storage. Sem esta
+        // checagem o pai gravava qualquer URL no campo, e o tio clicaria
+        // nela achando que era o comprovante.
+        && (
+          !("receiptURL" in request.resource.data)
+          || request.resource.data.receiptURL == null
+          || request.resource.data.receiptURL.matches(
+               'https://firebasestorage[.]googleapis[.]com/.*'
+             )
+        )
       );
     }
 
@@ -338,8 +374,11 @@ service cloud.firestore {
     //   admin atual vê quem quer entrar sem expor leads pra outros usuários.
     // -----------------------------------------------------------------
     match /waitlistDrivers/{id} {
-      allow create: if isSignedIn()
-        && request.resource.data.keys().hasAll(['name', 'email', 'createdAt']);
+      // Criação NEGADA pro cliente: quem grava é a Cloud Function
+      // joinDriverWaitlist (Admin SDK), que valida campos, deduplica por
+      // email e devolve a posição na fila. Com o create aberto, qualquer
+      // visitante anônimo podia inflar a lista do tio com lixo.
+      allow create: if false;
       allow read, update, delete: if isAdmin();
     }
     match /waitlistParents/{id} {
@@ -379,7 +418,10 @@ service cloud.firestore {
     // notifications + absenceDeclarations criados no mesmo batch.
     // -----------------------------------------------------------------
     match /schoolBroadcasts/{id} {
-      allow read: if isSignedIn();
+      // isAppUser em vez de isSignedIn: um aviso de "sem aula" carrega o
+      // nome da escola e a mensagem do motorista — não é informação pra
+      // visitante anônimo da landing.
+      allow read: if isAppUser();
       allow create, update, delete: if isAdmin();
     }
 
@@ -391,7 +433,10 @@ service cloud.firestore {
     //   - Pai não escreve nada aqui.
     // -----------------------------------------------------------------
     match /agendaEntries/{id} {
-      allow read: if isSignedIn() && (
+      // A cláusula de scope=school NÃO pode se contentar com
+      // isSignedIn(): sessão anônima da landing conseguia ler todos os
+      // recados de escola do motorista. Exige conta de verdade.
+      allow read: if isAppUser() && (
         isAdmin()
         || (resource.data.scope == 'child'
             && resource.data.parentUid == request.auth.uid)
@@ -415,6 +460,10 @@ service cloud.firestore {
       //   com allowTestimonial == true (pra exibir na landing pública).
       // List: SOMENTE quando há filtro allowTestimonial == true (pra
       //   alimentar a landing) ou pra admin. O dono não lista — usa get.
+      // ATENÇÃO: um depoimento com allowTestimonial=true é legível por
+      // qualquer um, incluindo o campo `uid` do autor. Isso é aceitável
+      // porque o uid não identifica a pessoa fora do Firebase — mas
+      // NUNCA adicione nome, email ou telefone a este documento.
       allow get: if (
         resource.data.allowTestimonial == true
       ) || (

@@ -21,9 +21,23 @@ const admin = require('firebase-admin');
 
 const REGION = 'southamerica-east1';
 
-// Prefixo de 2 letras + 4 dígitos. Aceita minúsculas e espaços do teclado
-// do celular; normaliza antes de validar.
-const CODE_RE = /^[A-Z]{2}\d{4}$/;
+// Dois formatos aceitos (ver src/utils/generateInviteCode.js):
+//   legado — 2 letras + 4 dígitos (9.000 combinações)
+//   novo   — 2 letras + 6 chars de alfabeto sem ambiguidade (~730 mi)
+// O legado segue valendo pra quem já recebeu convite; códigos novos
+// nascem no formato grande porque o espaço pequeno era varrível.
+const NEW_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+const LEGACY_RE = /^[A-Z]{2}\d{4}$/;
+const NEW_RE = new RegExp('^[A-Z]{2}[' + NEW_ALPHABET + ']{6}$');
+
+function isValidCode(code) {
+  return LEGACY_RE.test(code) || NEW_RE.test(code);
+}
+
+// Tentativas erradas toleradas por conta antes de bloquear por um tempo.
+// Existe pra tornar a varredura inviável mesmo com conta de verdade.
+const MAX_FAILED_ATTEMPTS = 12;
+const ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
 
 function normalizeCode(raw) {
   return String(raw || '')
@@ -60,7 +74,7 @@ async function findPendingChild(db, code) {
 function makeLookupInvite(db) {
   return onCall({ region: REGION }, async (request) => {
     const code = normalizeCode(request.data?.code);
-    if (!CODE_RE.test(code)) {
+    if (!isValidCode(code)) {
       throw new HttpsError('invalid-argument', 'Código em formato inválido.');
     }
 
@@ -114,16 +128,35 @@ function makeRedeemInvite(db) {
     if (!uid) {
       throw new HttpsError('unauthenticated', 'Faça login antes de usar o convite.');
     }
+
+    // Conta ANÔNIMA não resgata convite. A landing chama
+    // signInAnonymously pra gravar leads, então sem esta checagem
+    // qualquer visitante do site podia varrer códigos e se vincular a
+    // uma criança de verdade — ganhando nome, endereço, coordenada,
+    // escola e telefone do responsável.
+    const provider = request.auth.token?.firebase?.sign_in_provider;
+    if (!provider || provider === 'anonymous') {
+      throw new HttpsError(
+        'permission-denied',
+        'Crie uma conta com email ou Google antes de usar o convite.'
+      );
+    }
+
     const code = normalizeCode(request.data?.code);
-    if (!CODE_RE.test(code)) {
+    if (!isValidCode(code)) {
+      await registerFailedAttempt(db, uid);
       throw new HttpsError('invalid-argument', 'Código em formato inválido.');
     }
+
+    await assertNotThrottled(db, uid);
 
     const name = String(request.data?.name || '').trim().slice(0, 120);
     const acceptedLegalVersion = String(request.data?.legalVersion || '').slice(0, 20);
 
     const childDoc = await findPendingChild(db, code);
     if (!childDoc) {
+      // Cada erro conta: é assim que a varredura fica inviável.
+      await registerFailedAttempt(db, uid);
       throw new HttpsError('not-found', 'Convite não encontrado ou já usado.');
     }
 
@@ -274,12 +307,59 @@ async function positionOf(db, docSnap) {
   return (before.data().count || 0) + 1;
 }
 
+
+/**
+ * Contagem de tentativas erradas por conta, em `inviteAttempts/{uid}`.
+ *
+ * A coleção não aparece nas Security Rules de propósito: só o Admin SDK
+ * escreve nela, e o default deny cuida do resto. Se aparecesse, o próprio
+ * atacante poderia zerar o contador.
+ */
+async function assertNotThrottled(db, uid) {
+  const snap = await db.doc(`inviteAttempts/${uid}`).get();
+  if (!snap.exists) return;
+  const d = snap.data();
+  const first = d.windowStart?.toMillis?.() || 0;
+  if (Date.now() - first > ATTEMPT_WINDOW_MS) return; // janela expirou
+  if ((d.failed || 0) >= MAX_FAILED_ATTEMPTS) {
+    throw new HttpsError(
+      'resource-exhausted',
+      'Muitas tentativas erradas. Aguarde uma hora ou peça um link novo ao motorista.'
+    );
+  }
+}
+
+async function registerFailedAttempt(db, uid) {
+  const ref = db.doc(`inviteAttempts/${uid}`);
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const now = Date.now();
+      const first = snap.exists ? snap.data().windowStart?.toMillis?.() || 0 : 0;
+      const fresh = !snap.exists || now - first > ATTEMPT_WINDOW_MS;
+      tx.set(
+        ref,
+        {
+          failed: fresh ? 1 : (snap.data().failed || 0) + 1,
+          windowStart: fresh
+            ? admin.firestore.FieldValue.serverTimestamp()
+            : snap.data().windowStart,
+          lastAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+  } catch (err) {
+    // Falhar em CONTAR não deve impedir o usuário legítimo de tentar.
+    logger.warn('registerFailedAttempt:', err);
+  }
+}
 module.exports = {
   makeLookupInvite,
   makeRedeemInvite,
   makeJoinDriverWaitlist,
   normalizeCode,
-  CODE_RE,
+  isValidCode,
 };
 
 /**
