@@ -56,9 +56,14 @@ export async function submitDriverWaitlist({
   } catch (err) {
     const c = String(err?.code || '');
     if (c.includes('invalid-argument')) {
-      throw new Error(err?.message || 'Confira seu nome e o WhatsApp ou email.');
+      throw new Error(
+        err?.message || 'Confira seu nome e o WhatsApp ou email.',
+        { cause: err }
+      );
     }
-    throw new Error('Não conseguimos enviar agora. Tente em alguns segundos.');
+    throw new Error('Não conseguimos enviar agora. Tente em alguns segundos.', {
+      cause: err,
+    });
   }
 }
 

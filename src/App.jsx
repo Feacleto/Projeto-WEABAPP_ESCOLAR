@@ -25,6 +25,7 @@ import PaiDashboard from './pages/pai/PaiDashboard';
 import PaiFinance from './pages/pai/PaiFinance';
 import PaiFinanceReport from './pages/pai/PaiFinanceReport';
 import PaiMap from './pages/pai/PaiMap';
+import AddChild from './pages/pai/AddChild';
 import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
 import ChildDetail from './pages/ChildDetail';
@@ -34,7 +35,7 @@ import TermsAcceptanceGate from './components/legal/TermsAcceptanceGate';
 import ContractAcceptanceGate from './components/contract/ContractAcceptanceGate';
 import CookieBanner from './components/legal/CookieBanner';
 import { useAuth } from './hooks/useAuth';
-import { useChild } from './hooks/useChild';
+import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
 import { hasAcceptedContract } from './services/contractService';
 import Spinner from './components/common/Spinner';
@@ -84,8 +85,7 @@ function PrivateRoute({ children, requireRole }) {
  * Carrega o child do profile, verifica `hasAcceptedContract`.
  */
 function ParentContractGate({ children }) {
-  const { profile } = useAuth();
-  const { child, loading } = useChild(profile?.childId);
+  const { child, loading } = useActiveChild();
 
   if (loading) return <FullScreenLoader />;
   // Se não tem child vinculado, deixa entrar — o próprio dashboard mostra erro
@@ -157,6 +157,7 @@ export default function App() {
         <Route path="finance/report" element={<PaiFinanceReport />} />
         <Route path="map" element={<PaiMap />} />
         <Route path="child" element={<ChildDetail />} />
+        <Route path="adicionar-filho" element={<AddChild />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>

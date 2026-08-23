@@ -10,7 +10,7 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useChild } from '../../hooks/useChild';
+import { useActiveChild } from '../../hooks/useActiveChild';
 import {
   AGENDA_TYPES,
   filterByMonth,
@@ -71,8 +71,8 @@ export default function PaiNotebookFAB() {
 }
 
 function NotebookView({ onClose }) {
-  const { user, profile } = useAuth();
-  const { child } = useChild(profile?.childId);
+  const { user } = useAuth();
+  const { child } = useActiveChild();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('pages'); // 'pages' | 'index'

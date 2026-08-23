@@ -95,6 +95,7 @@ export default function TioFinance() {
         paymentId: payment.id,
         monthLabel: formatMonthLabel(payment.month),
         amount: payment.amount,
+        childName: payment.childName,
       });
       toast.success(`Recebimento de ${payment.childName} confirmado.`);
       setMethodSheetFor(null);

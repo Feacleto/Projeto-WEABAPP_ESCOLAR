@@ -178,18 +178,21 @@ export async function deactivateChildAndParent({ childId }) {
  *
  * PAGAMENTOS NÃO são apagados (titular = Tio, retenção fiscal/contábil).
  */
-export async function deleteOwnParentAccount({ uid, childId }) {
+export async function deleteOwnParentAccount({ uid, childIds = [] }) {
   if (!uid) throw new Error('Sem uid.');
 
-  // Desvincula criança (rules permitem o pai mexer só nesses 2 campos)
-  if (childId) {
+  // Desvincula TODAS as crianças da conta (um responsável pode ter dois
+  // filhos). Antes só desvinculava uma, e o segundo filho ficava preso a um
+  // parentUid de conta apagada — invisível pro pai e sem convite reutilizável.
+  const ids = Array.isArray(childIds) ? childIds.filter(Boolean) : [];
+  for (const childId of ids) {
     try {
       await updateDoc(doc(db, 'children', childId), {
         parentUid: null,
         inviteStatus: 'pending',
       });
     } catch (err) {
-      console.error('Falha ao desvincular criança:', err);
+      console.error('Falha ao desvincular criança ' + childId + ':', err);
       // Continua mesmo assim — UX prioriza fechar a conta
     }
   }
@@ -210,14 +213,14 @@ export async function deleteOwnParentAccount({ uid, childId }) {
   // NOTA: agendaEntries sobre o filho NÃO podem ser apagadas aqui — as rules
   // só deixam o admin apagar. Ficam pendentes até o Tio remover a criança
   // (deactivateChildAndParent) ou encerrar a operação.
-  if (childId) {
+  for (const childId of ids) {
     try {
       const altSnap = await getDocs(
         query(collection(db, 'altPickups'), where('childId', '==', childId))
       );
       await deleteInBatches(altSnap.docs);
     } catch (err) {
-      console.error('Falha ao apagar altPickups:', err);
+      console.error('Falha ao apagar altPickups de ' + childId + ':', err);
     }
   }
 

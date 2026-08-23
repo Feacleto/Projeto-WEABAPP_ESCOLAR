@@ -9,6 +9,7 @@ import {
   LifeBuoy,
   Key,
   Bus,
+  UserPlus,
   ChevronRight,
   Pencil,
   Save,
@@ -29,6 +30,7 @@ import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
 import { watchDriverLeads } from '../services/waitlistService';
+import { getChildIds } from '../utils/childIds';
 import Avatar from '../components/common/Avatar';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -57,6 +59,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const { user, profile, role, logout, refreshProfile } = useAuth();
   const isAdmin = role === 'admin';
+  const childCount = getChildIds(profile).length;
   const basePath = isAdmin ? '/tio' : '/pai';
 
   const [editing, setEditing] = useState(false);
@@ -98,12 +101,12 @@ export default function Profile() {
       } else {
         await deleteOwnParentAccount({
           uid: user.uid,
-          childId: profile.childId,
+          childIds: getChildIds(profile),
         });
         toast.success('Conta excluída.');
       }
       // signOut implícito via deleteUser — apenas redireciona
-      navigate('/welcome', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       console.error('Erro ao excluir conta:', err);
       if (isRecentLoginRequired(err)) {
@@ -216,6 +219,34 @@ export default function Profile() {
             <div className="h-px bg-gray-100 my-3" />
 
             <LeadsShortcut onOpen={() => navigate('/tio/leads')} />
+          </Card>
+        )}
+
+        {/* Atalho do pai pra vincular outra criança. Fica aqui porque o
+          * seletor de filho só aparece a partir do segundo — sem este
+          * caminho, quem tem um filho não conseguiria adicionar o próximo. */}
+        {!isAdmin && (
+          <Card>
+            <button
+              type="button"
+              onClick={() => navigate('/pai/adicionar-filho')}
+              className="w-full flex items-center gap-3 tap"
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <UserPlus size={20} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-semibold text-text">
+                  Adicionar outro filho
+                </p>
+                <p className="text-xs text-textMuted truncate">
+                  {childCount === 1
+                    ? '1 criança na sua conta'
+                    : `${childCount} crianças na sua conta`}
+                </p>
+              </div>
+              <ChevronRight size={20} className="text-textMuted shrink-0" />
+            </button>
           </Card>
         )}
 

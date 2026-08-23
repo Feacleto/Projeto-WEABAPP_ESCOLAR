@@ -7,7 +7,7 @@ import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveCallForParent } from '../../hooks/usePendingCall';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
-import { useChild } from '../../hooks/useChild';
+import { useActiveChild } from '../../hooks/useActiveChild';
 import IncomingCallModal from '../../components/call/IncomingCallModal';
 import BirthdayModal from '../../components/festive/BirthdayModal';
 import {
@@ -34,7 +34,7 @@ export default function PaiLayout() {
   // Chamada ativa do Tio pro Pai (modal fullscreen com ringtone)
   const activeCall = useActiveCallForParent(user?.uid);
   const { admin } = useAdminProfile();
-  const { child } = useChild(profile?.childId);
+  const { child } = useActiveChild();
   const childBirthdayToday = child && isBirthdayToday(child.birthDate);
 
   useEffect(() => {

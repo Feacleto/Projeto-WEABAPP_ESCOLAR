@@ -167,7 +167,7 @@ export async function redeemInvite({ inviteCode, name = '' }) {
     });
     return res.data;
   } catch (err) {
-    throw new Error(friendlyCallableError(err));
+    throw new Error(friendlyCallableError(err), { cause: err });
   }
 }
 

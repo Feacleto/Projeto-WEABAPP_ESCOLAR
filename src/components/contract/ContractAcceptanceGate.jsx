@@ -6,7 +6,7 @@ import Button from '../common/Button';
 import ContractView from './ContractView';
 import Skeleton from '../common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
-import { useChild } from '../../hooks/useChild';
+import { useActiveChild } from '../../hooks/useActiveChild';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import {
   buildContractData,
@@ -36,7 +36,7 @@ import {
 export default function ContractAcceptanceGate() {
   const navigate = useNavigate();
   const { user, profile, logout, refreshProfile } = useAuth();
-  const { child, loading: childLoading } = useChild(profile?.childId);
+  const { child, loading: childLoading } = useActiveChild();
   const { admin, loading: adminLoading } = useAdminProfile();
 
   const [confirmName, setConfirmName] = useState('');

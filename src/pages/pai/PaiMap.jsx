@@ -13,8 +13,7 @@ import LiveMap from '../../components/map/LiveMap';
 import Skeleton from '../../components/common/Skeleton';
 import RouteTracker from '../../components/dashboard/RouteTracker';
 import { playSound } from '../../services/soundService';
-import { useAuth } from '../../hooks/useAuth';
-import { useChild } from '../../hooks/useChild';
+import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { haversineDistance } from '../../utils/haversine';
@@ -40,8 +39,7 @@ const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
  */
 export default function PaiMap() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const { child, loading } = useChild(profile?.childId);
+  const { child, loading } = useActiveChild();
   const { location: liveLocation } = useLiveLocation();
   const { admin } = useAdminProfile();
 

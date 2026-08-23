@@ -47,12 +47,14 @@ export async function lookupInvite(rawCode) {
   } catch (err) {
     const c = String(err?.code || '');
     if (c.includes('not-found')) {
-      throw new Error('Convite não encontrado ou já usado.');
+      throw new Error('Convite não encontrado ou já usado.', { cause: err });
     }
     if (c.includes('invalid-argument')) {
-      throw new Error('Código inválido. São 2 letras e 4 números.');
+      throw new Error('Código inválido. São 2 letras e 4 números.', { cause: err });
     }
-    throw new Error('Não conseguimos verificar o convite. Tente de novo.');
+    throw new Error('Não conseguimos verificar o convite. Tente de novo.', {
+      cause: err,
+    });
   }
 }
 

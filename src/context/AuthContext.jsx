@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import {
@@ -6,6 +6,20 @@ import {
   login as loginService,
   logout as logoutService,
 } from '../services/authService';
+import { getChildIds, resolveActiveChildId } from '../utils/childIds';
+
+// Filho ativo escolhido pelo responsável. Fica em localStorage pra o app
+// abrir no mesmo filho da última vez — trocar de filho a cada reload seria
+// desorientador pra quem tem dois.
+const ACTIVE_CHILD_KEY = 'ab_active_child_v1';
+
+function readSavedChildId() {
+  try {
+    return localStorage.getItem(ACTIVE_CHILD_KEY);
+  } catch {
+    return null;
+  }
+}
 
 export const AuthContext = createContext(null);
 
@@ -25,6 +39,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [savedChildId, setSavedChildId] = useState(readSavedChildId);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -54,6 +69,14 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     await logoutService();
     setProfile(null);
+    // Não deixa o filho de uma conta vazar pra próxima que logar no mesmo
+    // aparelho — cenário real em celular compartilhado.
+    setSavedChildId(null);
+    try {
+      localStorage.removeItem(ACTIVE_CHILD_KEY);
+    } catch {
+      // ignorado
+    }
   }, []);
 
   // Re-busca o doc users/{uid}. Necessário após signup, porque o documento
@@ -71,11 +94,32 @@ export function AuthProvider({ children }) {
     setProfile((prev) => (prev ? { ...prev, ...partial } : prev));
   }, []);
 
+  const childIds = useMemo(() => getChildIds(profile), [profile]);
+
+  // Nunca devolve um id que não pertence mais à conta: se o tio removeu a
+  // criança, cai no primeiro filho restante em vez de tela vazia.
+  const activeChildId = useMemo(
+    () => resolveActiveChildId(profile, savedChildId),
+    [profile, savedChildId]
+  );
+
+  const setActiveChildId = useCallback((id) => {
+    setSavedChildId(id);
+    try {
+      localStorage.setItem(ACTIVE_CHILD_KEY, id);
+    } catch {
+      // modo privado / quota — segue só em memória
+    }
+  }, []);
+
   const value = {
     user,
     profile,
     role: profile?.role ?? null,
     loading,
+    childIds,
+    activeChildId,
+    setActiveChildId,
     login,
     logout,
     refreshProfile,

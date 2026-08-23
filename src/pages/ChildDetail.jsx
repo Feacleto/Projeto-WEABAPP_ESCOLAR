@@ -42,11 +42,13 @@ import { PERIOD_LABELS, formatPhone } from '../utils/formatters';
 export default function ChildDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { profile, role } = useAuth();
+  const { role, activeChildId } = useAuth();
   const isAdmin = role === 'admin';
 
   // Pai: usa o childId do próprio profile, ignora :id na URL
-  const childId = isAdmin ? id : profile?.childId;
+  // Pai: o filho em foco vem do seletor (AuthContext), não mais do único
+  // childId do perfil. Admin segue usando o :id da URL.
+  const childId = isAdmin ? id : activeChildId;
   const { child, loading } = useChild(childId);
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);

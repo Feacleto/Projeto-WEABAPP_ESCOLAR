@@ -4,7 +4,7 @@ import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
-import { useChild } from '../../hooks/useChild';
+import { useActiveChild } from '../../hooks/useActiveChild';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { usePaymentsByParent } from '../../hooks/usePayments';
 import { computeDisplayStatus } from '../../services/paymentsService';
@@ -20,7 +20,7 @@ import {
  */
 export default function PaiFinanceReport() {
   const { user, profile } = useAuth();
-  const { child } = useChild(profile?.childId);
+  const { child } = useActiveChild();
   const { admin } = useAdminProfile();
   const { payments, loading } = usePaymentsByParent(user?.uid);
 

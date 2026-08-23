@@ -124,14 +124,19 @@ export async function notifyPaymentConfirmed({
   paymentId,
   monthLabel,
   amount,
+  childName,
 }) {
   try {
+    // O nome da criança entra no corpo porque um responsável pode ter dois
+    // filhos: "pagamento confirmado" sem dizer de quem não informa nada.
+    const who = childName ? ` da mensalidade de ${childName}` : '';
     await addDoc(collection(db, 'notifications'), {
       userId: parentUid,
       type: 'payment_confirmed',
       title: 'Pagamento confirmado',
-      body: `O motorista confirmou o recebimento de ${formatBRL(amount)} (${monthLabel}).`,
+      body: `O motorista confirmou o recebimento${who}: ${formatBRL(amount)} (${monthLabel}).`,
       paymentId,
+      childName: childName || null,
       createdAt: serverTimestamp(),
     });
   } catch (err) {
@@ -212,6 +217,9 @@ export function deriveParentReminders(payments, now = Date.now()) {
 
     const monthLabel = formatMonthLabel(p.month);
     const amount = formatBRL(p.amount);
+    // Prefixo com o nome da criança quando o pagamento tem essa informação
+    // denormalizada — necessário pra quem acompanha dois filhos.
+    const who = p.childName ? `${String(p.childName).split(/s+/)[0]}: ` : '';
     const diffDays = Math.floor((due - now) / DAY_MS);
     const overdueDays = Math.floor((now - due) / DAY_MS);
 
@@ -220,19 +228,19 @@ export function deriveParentReminders(payments, now = Date.now()) {
       if (diffDays === 5) {
         reminders.push(reminder(p, 'payment_due_5d', due, {
           title: 'Vencimento em 5 dias',
-          body: `Sua mensalidade de ${amount} (${monthLabel}) vence em 5 dias.`,
+          body: `${who}sua mensalidade de ${amount} (${monthLabel}) vence em 5 dias.`,
         }));
       }
       if (diffDays === 3) {
         reminders.push(reminder(p, 'payment_due_3d', due, {
           title: 'Vencimento em 3 dias',
-          body: `Sua mensalidade de ${amount} (${monthLabel}) vence em 3 dias.`,
+          body: `${who}sua mensalidade de ${amount} (${monthLabel}) vence em 3 dias.`,
         }));
       }
       if (diffDays === 0) {
         reminders.push(reminder(p, 'payment_due_0d', due, {
           title: 'Vencimento hoje',
-          body: `Sua mensalidade de ${amount} (${monthLabel}) vence hoje.`,
+          body: `${who}sua mensalidade de ${amount} (${monthLabel}) vence hoje.`,
         }));
       }
     }
@@ -243,13 +251,13 @@ export function deriveParentReminders(payments, now = Date.now()) {
       if (overdueDays === 3) {
         reminders.push(reminder(p, 'payment_overdue_3d', due + 3 * DAY_MS, {
           title: 'Pagamento atrasado',
-          body: `Sua mensalidade de ${amount} (${monthLabel}) está 3 dias atrasada.`,
+          body: `${who}sua mensalidade de ${amount} (${monthLabel}) está 3 dias atrasada.`,
         }));
       }
       if (overdueDays === 7) {
         reminders.push(reminder(p, 'payment_overdue_7d', due + 7 * DAY_MS, {
           title: 'Pagamento atrasado há uma semana',
-          body: `Sua mensalidade de ${amount} (${monthLabel}) está 7 dias atrasada.`,
+          body: `${who}sua mensalidade de ${amount} (${monthLabel}) está 7 dias atrasada.`,
         }));
       }
     }

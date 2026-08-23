@@ -26,10 +26,11 @@ import EmptyState from '../../components/common/EmptyState';
 import Avatar from '../../components/common/Avatar';
 import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import RouteTracker from '../../components/dashboard/RouteTracker';
+import ChildSwitcher from '../../components/children/ChildSwitcher';
 import AbsenceCounts from '../../components/dashboard/AbsenceCounts';
 import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
 import { useAuth } from '../../hooks/useAuth';
-import { useChild } from '../../hooks/useChild';
+import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { usePaymentsByParent } from '../../hooks/usePayments';
@@ -84,14 +85,17 @@ export default function PaiDashboard() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { openTutorial } = useOutletContext() || {};
-  const { child, loading: childLoading } = useChild(profile?.childId);
+  const { child, loading: childLoading } = useActiveChild();
   const { location: liveLocation } = useLiveLocation();
   const { admin } = useAdminProfile();
   const { payments } = usePaymentsByParent(user?.uid);
   const todayKey = getDateKey();
-  const { absence } = useAbsenceForChild(todayKey, profile?.childId);
-  const { history: absenceHistory } = useChildAbsenceHistory(profile?.childId);
-  const { pickup: altPickup } = useDailyAltPickup(todayKey, profile?.childId);
+  // Ausência, histórico e responsável alternativo são POR CRIANÇA: têm que
+  // seguir o filho selecionado, senão o pai de dois filhos vê a falta de um
+  // na tela do outro.
+  const { absence } = useAbsenceForChild(todayKey, child?.id);
+  const { history: absenceHistory } = useChildAbsenceHistory(child?.id);
+  const { pickup: altPickup } = useDailyAltPickup(todayKey, child?.id);
 
   const [absenceOpen, setAbsenceOpen] = useState(false);
   const [altPickupOpen, setAltPickupOpen] = useState(false);
@@ -171,14 +175,14 @@ export default function PaiDashboard() {
     );
   }
 
-  if (!profile?.childId || !child) {
+  if (!child) {
     return (
       <>
         <Header title="Início" />
         <EmptyState
           icon={MapPin}
           title="Cadastro não encontrado"
-          description="Sua conta ainda não está vinculada a uma criança. Fale com o motorista."
+          description="Sua conta ainda não está vinculada a uma criança. Peça o link de convite pro motorista."
         />
       </>
     );
@@ -197,6 +201,10 @@ export default function PaiDashboard() {
       <Header title="Início" />
 
       <div className="p-5 space-y-5">
+        {/* Só aparece a partir do segundo filho — quem tem um vê a tela
+          * igual a antes. */}
+        <ChildSwitcher />
+
         {/* Saudação simples — bolinha festiva separada ao lado */}
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
