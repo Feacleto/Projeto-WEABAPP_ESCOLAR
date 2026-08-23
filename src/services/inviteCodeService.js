@@ -10,7 +10,9 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebase/config';
 
-const CODE_RE = /^[A-Z]{2}\d{4}$/;
+// Aceita os dois formatos de convite: legado (2 letras + 4 dígitos) e
+// novo (2 letras + 6 caracteres sem ambiguidade visual).
+const CODE_RE = /^[A-Z]{2}(\d{4}|[ABCDEFGHJKMNPQRSTVWXYZ23456789]{6})$/;
 
 /** Normaliza o que veio do teclado do celular: maiúsculas, sem espaço/traço. */
 export function normalizeInviteCode(raw) {
@@ -58,6 +60,45 @@ export async function lookupInvite(rawCode) {
   }
 }
 
+
+/**
+ * Prévia do convite — o que aparece ANTES de o responsável ter conta.
+ *
+ * Mais rica que `lookupInvite`: além do nome, traz a mensalidade em aberto
+ * e a contagem de recados. É o que faz o pai entender o app sem digitar
+ * nada. O conteúdo dos recados fica de fora de propósito — recado pode
+ * falar de saúde da criança ou de outra família.
+ *
+ * Abrir o link NÃO consome o convite: o robô do WhatsApp busca a URL pra
+ * montar o cartão de prévia, e não queremos que ele gaste o convite.
+ *
+ * Retorna { status: "pending" | "used", childFirstName, driverFirstName,
+ *           companyName, monthlyFee, nextPayment, notices }.
+ */
+export async function getInvitePreview(rawCode) {
+  const code = normalizeInviteCode(rawCode);
+  if (!CODE_RE.test(code)) {
+    throw new Error('Link de convite inválido. Peça outro ao motorista.');
+  }
+  const fn = httpsCallable(functions, 'getInvitePreview');
+  try {
+    const res = await fn({ code });
+    return res.data;
+  } catch (err) {
+    const c = String(err?.code || '');
+    if (c.includes('not-found')) {
+      throw new Error('Este convite não existe. Peça um link novo ao motorista.', {
+        cause: err,
+      });
+    }
+    if (c.includes('invalid-argument')) {
+      throw new Error('Link de convite inválido.', { cause: err });
+    }
+    throw new Error('Não conseguimos abrir o convite. Tente de novo.', {
+      cause: err,
+    });
+  }
+}
 /**
  * Verifica se já existe ao menos um administrador no app.
  *

@@ -81,78 +81,19 @@ export async function loginWithGoogle() {
 }
 
 /**
- * Cadastro do pai via código de convite + conta Google.
+ * NOTA: `signupWithInvite` e `signupWithGoogleInvite` foram removidas.
  *
- * Igual ao signupWithInvite, mas usa popup do Google em vez de email/senha.
- * Se o usuário já tinha conta Google sem doc users/{uid}, cria o doc agora.
- *
- * O VÍNCULO em si é feito pela Cloud Function `redeemInvite`: ela roda com
- * Admin SDK, em transação, e valida que o código ainda está pendente. Aqui
- * só criamos/autenticamos a conta e chamamos a função.
+ * Elas criavam conta E vinculavam a criança, duplicando o que
+ * `authenticateAndRedeem` e `googleAndRedeem` fazem agora — e a versão
+ * antiga do Google derrubava a sessão com erro quando a conta já existia,
+ * o que quebrava justamente o pai adicionando o segundo filho.
  */
-export async function signupWithGoogleInvite({ inviteCode }) {
-  const credential = await signInWithPopup(auth, googleProvider);
-  const user = credential.user;
-
-  try {
-    const existingProfile = await getUserDoc(user.uid);
-    if (existingProfile) {
-      throw new Error(
-        'Esta conta Google já está cadastrada. Use "Entrar com Google" na tela de login.'
-      );
-    }
-    await redeemInvite({ inviteCode, name: user.displayName || '' });
-    return user;
-  } catch (err) {
-    // Best-effort cleanup: só deleta se o usuário foi criado nesta sessão
-    // (pra não apagar conta Google de quem já existia).
-    try {
-      const profile = await getUserDoc(user.uid);
-      if (!profile) await user.delete();
-    } catch (cleanupErr) {
-      console.error('Falha ao limpar conta órfã:', cleanupErr);
-    }
-    throw err;
-  }
-}
-
-/**
- * Cadastro do pai via código de convite (email/senha).
- *
- * Ordem:
- *   1. createUserWithEmailAndPassword (auto-login)
- *   2. redeemInvite() — a Cloud Function grava users/{uid} e vincula a criança
- *
- * Se o passo 2 falhar, apagamos a conta auth recém-criada pra não deixar
- * usuário em limbo (autenticado mas sem doc users, o que trava no
- * PrivateRoute sem mensagem útil).
- */
-export async function signupWithInvite({ inviteCode, email, password, name }) {
-  const credential = await createUserWithEmailAndPassword(
-    auth,
-    email.trim(),
-    password
-  );
-  const user = credential.user;
-
-  try {
-    await redeemInvite({ inviteCode, name: name?.trim() || '' });
-    return user;
-  } catch (err) {
-    try {
-      await user.delete();
-    } catch (cleanupErr) {
-      console.error('Falha ao limpar conta órfã:', cleanupErr);
-    }
-    throw err;
-  }
-}
 
 /**
  * Resgata um convite pra conta JÁ autenticada.
  *
  * Serve pros dois casos:
- *   - primeiro acesso (chamado por signupWithInvite / signupWithGoogleInvite)
+ *   - primeiro acesso (chamado por authenticateAndRedeem / googleAndRedeem)
  *   - pai já cadastrado adicionando um segundo filho
  *
  * Toda a validação e o vínculo acontecem no servidor.
@@ -191,6 +132,87 @@ function friendlyCallableError(err) {
     return 'Sem conexão com o servidor. Tente novamente em alguns segundos.';
   }
   return err?.message || 'Não foi possível usar este convite.';
+}
+
+/**
+ * Entra OU cria conta com email/senha e resgata o convite — sem perguntar
+ * ao usuário qual dos dois ele quer.
+ *
+ * POR QUE ASSIM
+ * Obrigar o pai a escolher entre "criar conta" e "já tenho conta" é uma
+ * decisão que ELE não tem como tomar com segurança: metade não lembra se
+ * já cadastrou. Então tentamos criar; se o email já existe, entramos com a
+ * mesma senha. Um par de campos cobre os dois caminhos.
+ *
+ * Retorna { user, created } — `created` diz se a conta nasceu agora.
+ */
+export async function authenticateAndRedeem({ inviteCode, email, password, name = '' }) {
+  const cleanEmail = String(email || '').trim();
+  let user;
+  let created = false;
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+    user = cred.user;
+    created = true;
+  } catch (err) {
+    if (err?.code === 'auth/email-already-in-use') {
+      // Já tem conta: a mesma senha resolve. Se estiver errada, o erro que
+      // sobe é de credencial inválida, e a tela oferece redefinir senha.
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+      user = cred.user;
+    } else {
+      throw err;
+    }
+  }
+
+  try {
+    await redeemInvite({ inviteCode, name });
+  } catch (err) {
+    // Conta recém-criada que não conseguiu vincular fica em limbo:
+    // autenticada, sem doc em users, travada no PrivateRoute sem
+    // explicação. Melhor desfazer.
+    if (created) {
+      try {
+        await user.delete();
+      } catch (cleanupErr) {
+        console.error('Falha ao limpar conta órfã:', cleanupErr);
+      }
+    }
+    throw err;
+  }
+
+  return { user, created };
+}
+
+/**
+ * Google + resgate do convite, tolerante a quem já tem conta.
+ *
+ * A versão antiga derrubava a sessão e mandava um erro quando a conta
+ * Google já existia. Agora não: se já existe, apenas vinculamos a criança
+ * — é o caso do pai adicionando o segundo filho.
+ */
+export async function googleAndRedeem({ inviteCode }) {
+  const credential = await signInWithPopup(auth, googleProvider);
+  const user = credential.user;
+  const existing = await getUserDoc(user.uid);
+
+  try {
+    await redeemInvite({ inviteCode, name: user.displayName || '' });
+  } catch (err) {
+    // Só apaga se a conta nasceu neste fluxo — nunca a conta Google de
+    // alguém que já usava o app.
+    if (!existing) {
+      try {
+        await user.delete();
+      } catch (cleanupErr) {
+        console.error('Falha ao limpar conta órfã:', cleanupErr);
+      }
+    }
+    throw err;
+  }
+
+  return { user, created: !existing };
 }
 
 /**

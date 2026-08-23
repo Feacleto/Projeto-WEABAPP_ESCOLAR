@@ -129,23 +129,26 @@ function makeRedeemInvite(db) {
       throw new HttpsError('unauthenticated', 'Faça login antes de usar o convite.');
     }
 
-    // Conta ANÔNIMA não resgata convite. A landing chama
-    // signInAnonymously pra gravar leads, então sem esta checagem
-    // qualquer visitante do site podia varrer códigos e se vincular a
-    // uma criança de verdade — ganhando nome, endereço, coordenada,
-    // escola e telefone do responsável.
-    const provider = request.auth.token?.firebase?.sign_in_provider;
-    if (!provider || provider === 'anonymous') {
-      throw new HttpsError(
-        'permission-denied',
-        'Crie uma conta com email ou Google antes de usar o convite.'
-      );
-    }
-
     const code = normalizeCode(request.data?.code);
     if (!isValidCode(code)) {
       await registerFailedAttempt(db, uid);
       throw new HttpsError('invalid-argument', 'Código em formato inválido.');
+    }
+
+    // Conta ANÔNIMA só resgata código do formato NOVO.
+    //
+    // O motivo é aritmético. Identidade anônima é grátis e ilimitada, então
+    // o limite de tentativas por conta não segura nada contra ela: o
+    // atacante cria uma conta nova a cada 12 erros. O que segura é o
+    // tamanho do espaço. Código legado tem 9.000 combinações — varredura de
+    // minutos. Código novo tem ~730 milhões — semanas pra 1% de chance.
+    const provider = request.auth.token?.firebase?.sign_in_provider;
+    const isAnonymous = !provider || provider === 'anonymous';
+    if (isAnonymous && LEGACY_RE.test(code)) {
+      throw new HttpsError(
+        'permission-denied',
+        'Este convite é antigo. Peça um link novo ao motorista, ou entre com email/Google.'
+      );
     }
 
     await assertNotThrottled(db, uid);
@@ -205,6 +208,20 @@ function makeRedeemInvite(db) {
         childId: existing?.childId || childRef.id,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
+
+      // O vínculo é por POSSE DO LINK, não por email igual ao cadastro.
+      // Exigir email igual recriaria a burocracia: o tio digita errado, ou
+      // o pai usa outra conta Google, e o acesso trava. Em vez de barrar,
+      // REGISTRAMOS se casou — assim o tio vê a divergência na ficha e
+      // decide se quer conferir.
+      const authEmail = (request.auth.token?.email || '').toLowerCase();
+      const cadastroEmail = String(child.parentEmail || '').toLowerCase();
+      if (authEmail && cadastroEmail) {
+        tx.update(childRef, {
+          linkedEmailMatchesCadastro: authEmail === cadastroEmail,
+          linkedEmail: authEmail,
+        });
+      }
 
       if (!existing) {
         userPayload.name = name || child.parentName || '';

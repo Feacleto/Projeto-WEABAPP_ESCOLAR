@@ -7,8 +7,8 @@ import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import {
-  signupWithInvite,
-  signupWithGoogleInvite,
+  authenticateAndRedeem,
+  googleAndRedeem,
   resetPassword,
   loginWithGoogle,
   getUserDoc,
@@ -275,7 +275,10 @@ function SignupPane({ refreshProfile }) {
 
     setSubmitting(true);
     try {
-      const user = await signupWithInvite({
+      // Mesma função do fluxo por link: tenta criar, e se o email já
+      // existir, entra com a mesma senha. O pai não escolhe entre
+      // "criar conta" e "entrar" — o sistema descobre.
+      const { user, created } = await authenticateAndRedeem({
         inviteCode: code,
         email,
         password,
@@ -287,7 +290,9 @@ function SignupPane({ refreshProfile }) {
         console.error('Falha ao registrar aceite:', err);
       }
       await refreshProfile();
-      toast.success('Conta criada! Bem-vindo(a).');
+      toast.success(
+        created ? 'Conta criada! Bem-vindo(a).' : 'Pronto! Criança vinculada.'
+      );
       navigate('/pai', { replace: true });
     } catch (err) {
       toast.error(err?.message || mapAuthError(err));
@@ -315,14 +320,16 @@ function SignupPane({ refreshProfile }) {
     }
     setGoogleSubmitting(true);
     try {
-      const user = await signupWithGoogleInvite({ inviteCode: code });
+      const { user, created } = await googleAndRedeem({ inviteCode: code });
       try {
         await acceptTerms(user.uid);
       } catch (err) {
         console.error('Falha ao registrar aceite:', err);
       }
       await refreshProfile();
-      toast.success('Conta criada com Google!');
+      toast.success(
+        created ? 'Conta criada com Google!' : 'Pronto! Criança vinculada.'
+      );
       navigate('/pai', { replace: true });
     } catch (err) {
       if (err?.code !== 'auth/popup-closed-by-user') {

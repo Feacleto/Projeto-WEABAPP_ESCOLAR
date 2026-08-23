@@ -39,6 +39,7 @@ const {
   makeGenerateMonthlyPayments,
   makeRunBillingNow,
 } = require('./lib/billing');
+const { makeGetInvitePreview } = require('./lib/invitePreview');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -349,3 +350,11 @@ exports.sendPushOnNotification = makeSendPushOnNotification(db);
 
 exports.generateMonthlyPayments = makeGenerateMonthlyPayments(db);
 exports.runBillingNow = makeRunBillingNow(db);
+
+// ===== Previa do convite (ver functions/lib/invitePreview.js) =====
+//
+// Chamavel SEM autenticacao: o pai abre o link e ja ve o que o app tem,
+// antes de criar conta. Abrir NAO consome o convite — importante porque o
+// WhatsApp busca a URL pra montar o cartao de previa.
+
+exports.getInvitePreview = makeGetInvitePreview(db);
