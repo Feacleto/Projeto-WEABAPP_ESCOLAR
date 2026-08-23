@@ -7,6 +7,7 @@ import {
   Banknote,
   QrCode,
   CreditCard,
+  Paperclip,
 } from 'lucide-react';
 import Card from '../common/Card';
 import {
@@ -14,28 +15,16 @@ import {
   formatDate,
   formatMonthLabel,
 } from '../../utils/formatters';
+import { paymentLabel } from '../../utils/paymentVocabulary';
 
+// A COR fica aqui; o TEXTO vem de utils/paymentVocabulary, que sabe falar
+// pro papel de quem está lendo. O estado 'claimed' era o pior caso: o tio
+// lia "aguardando confirmação" sem saber que a bola estava com ele.
 const STATUS_CONFIG = {
-  paid: {
-    label: 'Pago',
-    color: 'text-lime-700 bg-success/10',
-    Icon: CheckCircle2,
-  },
-  claimed: {
-    label: 'Aguardando confirmação',
-    color: 'text-primaryDark bg-primary/10',
-    Icon: Hourglass,
-  },
-  pending: {
-    label: 'Pendente',
-    color: 'text-amber-700 bg-warning/10',
-    Icon: Clock,
-  },
-  overdue: {
-    label: 'Atrasado',
-    color: 'text-red-700 bg-danger/10',
-    Icon: AlertCircle,
-  },
+  paid: { color: 'text-lime-700 bg-success/10', Icon: CheckCircle2 },
+  claimed: { color: 'text-amber-700 bg-warning/10', Icon: Hourglass },
+  pending: { color: 'text-gray-700 bg-gray-100', Icon: Clock },
+  overdue: { color: 'text-red-700 bg-danger/10', Icon: AlertCircle },
 };
 
 /**
@@ -52,9 +41,11 @@ export default function PaymentRow({
   displayStatus,
   action = null,
   showChild = true,
+  role = 'parent',
 }) {
   const config = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.pending;
-  const { Icon, label, color } = config;
+  const { Icon, color } = config;
+  const label = paymentLabel(displayStatus, role);
 
   return (
     <Card className="space-y-2">
@@ -87,6 +78,20 @@ export default function PaymentRow({
             Vence: {formatDate(payment.dueDate)}
             {payment.paidAt && ` · Pago: ${formatDate(payment.paidAt)}`}
           </p>
+          {/* Comprovante anexado pelo pai. Fica a um toque pro tio
+            * conferir antes de confirmar — era isto que antes virava
+            * print de tela no WhatsApp. */}
+          {payment.receiptURL && (
+            <a
+              href={payment.receiptURL}
+              target="_blank"
+              rel="noreferrer"
+              className="tap inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline mt-1"
+            >
+              <Paperclip size={13} />
+              Ver comprovante
+            </a>
+          )}
           {payment.paymentMethod && displayStatus !== 'pending' && displayStatus !== 'overdue' && (
             <p className="text-[11px] text-textMuted flex items-center gap-1 mt-0.5">
               {payment.paymentMethod === 'cash' ? (

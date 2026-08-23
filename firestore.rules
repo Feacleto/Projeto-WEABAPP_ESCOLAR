@@ -200,7 +200,7 @@ service cloud.firestore {
           || (resource.data.status == 'claimed' && request.resource.data.status == 'pending')
         )
         && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'claimedAt', 'paymentMethod'])
+            .hasOnly(['status', 'claimedAt', 'paymentMethod', 'receiptURL'])
       );
     }
 

@@ -35,6 +35,10 @@ const {
 } = require('./lib/invites');
 const { makeCloseStaleRoutes } = require('./lib/routes');
 const { makeSendPushOnNotification } = require('./lib/push');
+const {
+  makeGenerateMonthlyPayments,
+  makeRunBillingNow,
+} = require('./lib/billing');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -95,12 +99,16 @@ function formatMonthLabel(date) {
   return `${MONTHS[date.getMonth()]}/${date.getFullYear()}`;
 }
 
+// ATENÇÃO: as chaves aqui têm que casar com userService.PIX_KEY_TYPES no
+// cliente. Antes esta tabela usava 'aleatoria' enquanto o app grava
+// 'random', e o email de cobrança saía com o rótulo do tipo em branco.
 const PIX_TYPE_LABELS = {
+  phone: 'Celular',
+  email: 'Email',
+  random: 'Chave aleatória',
+  // Aceitos por compatibilidade caso o cadastro venha de outra origem.
   cpf: 'CPF',
   cnpj: 'CNPJ',
-  email: 'Email',
-  phone: 'Telefone',
-  aleatoria: 'Aleatória',
 };
 
 // ===== Lógica principal =====
@@ -331,3 +339,13 @@ exports.closeStaleRoutes = makeCloseStaleRoutes(db);
 // sem que cada caminho precise lembrar de enviar.
 
 exports.sendPushOnNotification = makeSendPushOnNotification(db);
+
+// ===== Faturamento (ver functions/lib/billing.js) =====
+//
+// Saiu do cliente: rodava no hook useAutoBilling quando o tio abria o
+// app, com trava em localStorage. Mes em que ele nao abrisse, ninguem
+// era cobrado — e a limpeza de historico era exclusao em massa disparada
+// sem confirmacao no carregamento da tela.
+
+exports.generateMonthlyPayments = makeGenerateMonthlyPayments(db);
+exports.runBillingNow = makeRunBillingNow(db);

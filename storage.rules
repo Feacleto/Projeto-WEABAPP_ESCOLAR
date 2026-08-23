@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // =============================================================================
-// Tio Nino Digital — Storage Security Rules
+// Alô Buzinou — Storage Security Rules
 // =============================================================================
 //
 // Estrutura:
@@ -67,6 +67,30 @@ service firebase.storage {
         && isImage()
         && isWithinSizeLimit();
       allow delete: if isAdmin() || isParentOf(childId);
+    }
+
+    // --------------------------------------------------------------------
+    // paymentReceipts/{paymentId} — comprovante que o pai anexa ao avisar
+    // que pagou. Fecha o ciclo pagar → comprovar → confirmar dentro do app,
+    // em vez de virar conversa paralela no WhatsApp.
+    //
+    // Leitura restrita: só o admin e o próprio pai daquele pagamento. Um
+    // comprovante bancário tem nome, valor e às vezes agência/conta — não é
+    // arquivo "público dentro do app" como os avatares.
+    // --------------------------------------------------------------------
+    match /paymentReceipts/{paymentId} {
+      function isPayer() {
+        return isSignedIn()
+          && firestore.exists(/databases/(default)/documents/payments/$(paymentId))
+          && firestore.get(/databases/(default)/documents/payments/$(paymentId)).data.parentUid == request.auth.uid;
+      }
+      allow read: if isAdmin() || isPayer();
+      allow write: if isPayer()
+        && (isImage() || request.resource.contentType == 'application/pdf')
+        && isWithinSizeLimit();
+      // O pai pode trocar o comprovante errado; o admin limpa depois de
+      // conferir, se quiser.
+      allow delete: if isAdmin() || isPayer();
     }
 
     // Default deny

@@ -240,6 +240,7 @@ export default function TioFinance() {
                 key={payment.id}
                 payment={payment}
                 displayStatus={payment._display}
+                role="admin"
                 action={renderAction(payment, {
                   onConfirm: () => setMethodSheetFor(payment),
                   onUndo: () => setUnconfirming(payment),

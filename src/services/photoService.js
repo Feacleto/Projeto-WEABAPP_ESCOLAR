@@ -104,3 +104,40 @@ export async function deleteChildPhoto(childId) {
     }
   }
 }
+
+// ============================================================================
+// Comprovante de pagamento
+// ============================================================================
+
+/**
+ * Sobe o comprovante que o pai anexa ao avisar que pagou.
+ *
+ * Aceita imagem (foto do print) e PDF (o que o banco gera). Imagem passa
+ * pelo resize; PDF sobe como está, porque comprimir PDF no cliente não vale
+ * a complexidade — as rules limitam a 2 MB de qualquer forma.
+ *
+ * Retorna a URL de download.
+ */
+export async function uploadPaymentReceipt(paymentId, file) {
+  if (!paymentId) throw new Error('Sem paymentId.');
+  if (!file) throw new Error('Sem arquivo.');
+
+  const isPdf = file.type === 'application/pdf';
+  const payload = isPdf ? file : await resizeAndCompress(file);
+
+  const fileRef = ref(storage, `paymentReceipts/${paymentId}`);
+  await uploadBytes(fileRef, payload, {
+    contentType: isPdf ? 'application/pdf' : 'image/jpeg',
+  });
+  return getDownloadURL(fileRef);
+}
+
+/** Remove o comprovante (pai trocando o arquivo errado, ou admin limpando). */
+export async function deletePaymentReceipt(paymentId) {
+  try {
+    await deleteObject(ref(storage, `paymentReceipts/${paymentId}`));
+  } catch (err) {
+    // Não existir não é erro — o chamador só quer garantir que não está lá.
+    if (err?.code !== 'storage/object-not-found') throw err;
+  }
+}

@@ -1,10 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
-  Copy,
   MessageCircle,
-  Check,
   DollarSign,
-  Key,
   Banknote,
   X,
   FileText,
@@ -18,6 +15,8 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import PaymentRow from '../../components/payments/PaymentRow';
+import PixBlock from '../../components/payments/PixBlock';
+import ReceiptPicker from '../../components/payments/ReceiptPicker';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByParent } from '../../hooks/usePayments';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
@@ -26,17 +25,13 @@ import {
   claimPayment,
   unclaimPayment,
 } from '../../services/paymentsService';
+import { uploadPaymentReceipt } from '../../services/photoService';
 import {
   notifyPaymentClaimed,
 } from '../../services/notificationsService';
 import {
-  PIX_KEY_TYPES,
-  normalizePixKey,
-} from '../../services/userService';
-import {
   formatCurrency,
   formatMonthLabel,
-  formatPhone,
 } from '../../utils/formatters';
 
 export default function PaiFinance() {
@@ -44,11 +39,11 @@ export default function PaiFinance() {
   const { user } = useAuth();
   const { payments, loading } = usePaymentsByParent(user?.uid);
   const { admin } = useAdminProfile();
-
-  const [copied, setCopied] = useState(false);
   // Fluxo do "Paguei": primeiro escolhe o método, depois confirma
   const [methodPicker, setMethodPicker] = useState(null); // payment escolhido
   const [claiming, setClaiming] = useState(null); // { payment, method }
+  // Comprovante escolhido antes de confirmar o aviso de pagamento.
+  const [receiptFile, setReceiptFile] = useState(null);
   const [unclaiming, setUnclaiming] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -63,6 +58,20 @@ export default function PaiFinance() {
     [payments]
   );
 
+  // A mensalidade que o pai vai pagar agora: a mais antiga ainda em aberto.
+  // Guia o bloco PIX pra ele nao ter que escolher nada.
+  const nextToPay = useMemo(() => {
+    const open = payments
+      .filter((p) => computeDisplayStatus(p) !== 'paid' && p.status !== 'claimed')
+      .map((p) => ({
+        ...p,
+        _due: p.dueDate?.toDate?.() || (p.dueDate ? new Date(p.dueDate) : null),
+      }))
+      .filter((p) => p._due)
+      .sort((a, b) => a._due - b._due);
+    return open[0] || null;
+  }, [payments]);
+
   const enriched = useMemo(
     () => payments.map((p) => ({ ...p, _display: computeDisplayStatus(p) })),
     [payments]
@@ -75,18 +84,6 @@ export default function PaiFinance() {
   );
   const hasMultipleChildren = childIds.size > 1;
 
-  const onCopyPix = async () => {
-    if (!admin?.pixKey) return;
-    const value = normalizePixKey(admin.pixKeyType, admin.pixKey);
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      toast.success('Chave PIX copiada!');
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      toast.error('Não foi possível copiar. Selecione e copie manualmente.');
-    }
-  };
 
   // Prepara mensagem pronta pro WhatsApp do tio com detalhes do pagamento
   const buildWhatsAppLink = (payment) => {
@@ -103,6 +100,7 @@ export default function PaiFinance() {
     if (!methodPicker) return;
     setClaiming({ payment: methodPicker, method });
     setMethodPicker(null);
+    setReceiptFile(null);
   };
 
   const onConfirmClaim = async () => {
@@ -110,7 +108,19 @@ export default function PaiFinance() {
     const { payment, method } = claiming;
     setActionLoading(true);
     try {
-      await claimPayment(payment.id, method);
+      // Sobe o comprovante ANTES de marcar como pago: se o upload falhar,
+      // o pagamento nao fica avisado sem o anexo que o tio espera.
+      let receiptURL = null;
+      if (receiptFile) {
+        try {
+          receiptURL = await uploadPaymentReceipt(payment.id, receiptFile);
+        } catch (err) {
+          console.error('Falha ao subir comprovante:', err);
+          toast.error('Nao deu pra anexar o comprovante. Avisamos sem ele.');
+        }
+      }
+
+      await claimPayment(payment.id, method, receiptURL);
 
       // Notifica o tio (fire-and-forget)
       if (admin?.uid) {
@@ -124,8 +134,16 @@ export default function PaiFinance() {
         });
       }
 
-      if (method === 'pix') {
-        // Abre WhatsApp pra enviar comprovante
+      if (receiptURL) {
+        // Comprovante ja esta no app — nao faz sentido empurrar o pai pro
+        // WhatsApp. Era exatamente essa conversa paralela que queriamos
+        // tirar do caminho.
+        toast.success(
+          'Pagamento informado com comprovante! O motorista vai confirmar.',
+          { duration: 5000 }
+        );
+      } else if (method === 'pix') {
+        // Sem anexo, o WhatsApp segue como plano B.
         const wa = buildWhatsAppLink(payment);
         if (wa) {
           window.open(wa, '_blank', 'noopener,noreferrer');
@@ -185,42 +203,35 @@ export default function PaiFinance() {
         }
       />
       <div className="p-4 space-y-4">
-        {/* Bloco da chave PIX (se o tio cadastrou) */}
-        {admin?.pixKey ? (
-          <Card>
-            <div className="flex items-center gap-2 mb-2">
-              <Key size={16} className="text-primary" />
-              <p className="text-sm font-semibold text-text">Chave PIX</p>
-            </div>
-            <p className="text-xs text-textMuted mb-1">
-              {PIX_KEY_TYPES[admin.pixKeyType]?.label || 'Chave'}
-            </p>
-            <div className="flex items-center gap-2 bg-bg rounded-lg px-3 py-2 mb-3">
-              <p className="text-sm text-text font-mono break-all flex-1">
-                {admin.pixKeyType === 'phone'
-                  ? formatPhone(admin.pixKey)
-                  : admin.pixKey}
+        {/* Pagamento por PIX — copia-e-cola com o valor ja embutido.
+          * Antes era so a chave em texto: o pai selecionava, copiava e
+          * digitava o valor no app do banco, o que gerava o classico
+          * "paguei 32 no lugar de 320". */}
+        {nextToPay ? (
+          <Card className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-text">
+                Pagar {formatMonthLabel(nextToPay.month)}
+              </p>
+              <p className="text-xs text-textMuted">
+                {formatCurrency(nextToPay.amount)}
+                {nextToPay.childName ? ` · ${nextToPay.childName}` : ''}
               </p>
             </div>
-            <Button
-              variant={copied ? 'success' : 'primary'}
-              icon={copied ? Check : Copy}
-              onClick={onCopyPix}
-            >
-              {copied ? 'Copiado!' : 'Copiar chave PIX'}
-            </Button>
-            {admin.name && (
-              <p className="text-xs text-textMuted mt-2 text-center">
-                Pagamento para: <strong>{admin.name}</strong>
-              </p>
-            )}
+            <PixBlock
+              admin={admin}
+              amount={nextToPay.amount}
+              txid={nextToPay.month}
+            />
           </Card>
         ) : (
           !loading && (
-            <Card className="bg-warning/10 border border-warning/30">
-              <p className="text-sm text-text">
-                O motorista ainda não cadastrou uma chave PIX no app. Combine o
-                pagamento direto com ele.
+            <Card>
+              <p className="text-sm font-semibold text-text">
+                Nada a pagar agora
+              </p>
+              <p className="text-xs text-textMuted mt-1">
+                Quando abrir uma mensalidade, o codigo PIX aparece aqui.
               </p>
             </Card>
           )
@@ -297,18 +308,24 @@ export default function PaiFinance() {
               referente a {claiming.payment.childName} (
               {formatMonthLabel(claiming.payment.month)}).
               <br />
-              <span className="text-xs">
+              <span className="text-xs block mb-3">
                 {claiming.method === 'cash'
                   ? 'O motorista vai confirmar quando estiver com o dinheiro em mãos.'
-                  : 'Vamos abrir o WhatsApp pra você enviar o comprovante. Confirme só se já fez o PIX.'}
+                  : 'Confirme só se já fez o PIX. O motorista precisa confirmar depois.'}
               </span>
+              {/* Anexar aqui, e nao numa tela separada: e o momento em que
+                * o pai acabou de pagar e tem o comprovante na mao. */}
+              <ReceiptPicker file={receiptFile} onChange={setReceiptFile} />
             </>
           ) : null
         }
         confirmLabel={claiming?.method === 'cash' ? 'Sim, paguei' : 'Sim, paguei'}
         loading={actionLoading}
         onConfirm={onConfirmClaim}
-        onCancel={() => setClaiming(null)}
+        onCancel={() => {
+          setClaiming(null);
+          setReceiptFile(null);
+        }}
       />
 
       {/* Desfazer marcação */}
