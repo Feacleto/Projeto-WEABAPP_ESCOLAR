@@ -168,7 +168,13 @@ service cloud.firestore {
     //   - Só admin escreve (locationService.startTracking/stopTracking)
     // -----------------------------------------------------------------
     match /liveLocation/{docId} {
-      allow read: if isSignedIn();
+      // Leitura: admin, ou pai VINCULADO (users/{uid}.childId preenchido).
+      // Exigir o doc users/ exclui sessões anônimas — a landing chama
+      // signInAnonymously pra gravar leads de waitlist, e sem essa checagem
+      // qualquer visitante do site rastreava a perua em tempo real.
+      allow read: if isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (isAdmin() || userDoc().childId != null);
       allow write: if isAdmin();
     }
 
@@ -216,10 +222,22 @@ service cloud.firestore {
         isAdmin() || resource.data.userId == request.auth.uid
       );
 
+      // Create: além dos campos obrigatórios, restringe QUEM pode ser alvo.
+      //   - Admin (Tio) cria pra qualquer userId.
+      //   - Não-admin só cria pra o admin (ex: pai marca "paguei" e avisa o Tio).
+      // Sem a segunda cláusula, qualquer signed-in — inclusive sessão anônima
+      // da landing — injetava notificação com título/corpo arbitrário na conta
+      // de qualquer usuário (phishing in-app).
       allow create: if isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && request.resource.data.keys().hasAll(['userId', 'type', 'title', 'createdAt'])
         && request.resource.data.userId is string
-        && request.resource.data.type is string;
+        && request.resource.data.type is string
+        && (
+          isAdmin()
+          || request.resource.data.userId ==
+              get(/databases/$(database)/documents/appState/init).data.adminUid
+        );
 
       allow update: if isSignedIn()
         && resource.data.userId == request.auth.uid

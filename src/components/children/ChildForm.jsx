@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../common/Card';
+import MapPicker from '../map/MapPicker';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { addChild } from '../../services/childrenService';
@@ -101,9 +102,11 @@ export default function ChildForm() {
       if (!form.name.trim()) errs.name = 'Diga o nome da criança.';
     }
     if (s === 2) {
+      // Só o texto do endereço é obrigatório. A coordenada NÃO bloqueia:
+      // o Nominatim não conhece boa parte dos endereços de periferia, e
+      // exigir o geocoding deixava o tio sem conseguir cadastrar a criança.
+      // Quem ficar sem coordenada é salvo com geoPending e resolve depois.
       if (!form.address.trim()) errs.address = 'Diga o endereço de casa.';
-      if (!form.lat || !form.lng)
-        errs.address = 'Toque em "Buscar endereço" pra confirmar o local.';
     }
     if (s === 3) {
       if (!form.school.trim()) errs.school = 'Diga o nome da escola.';
@@ -361,6 +364,11 @@ function Step1Child({ form, setForm, setField, errors }) {
 
 function Step2Home({ form, setForm, setField, errors }) {
   const [searching, setSearching] = useState(false);
+  // null = nunca buscou · 'found' · 'notFound' — controla a mensagem exibida
+  const [searchState, setSearchState] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const hasCoord = form.lat !== '' && form.lng !== '' && form.lat != null;
 
   const onSearch = async () => {
     if (!form.address.trim()) {
@@ -376,12 +384,22 @@ function Step2Home({ form, setForm, setField, errors }) {
         lng: result.lng,
         address: result.displayName || prev.address,
       }));
+      setSearchState('found');
       toast.success('Encontramos o local!');
-    } catch (err) {
-      toast.error(err?.message || 'Endereço não encontrado.');
+    } catch {
+      // Não usamos toast.error aqui: falhar a busca é caso ESPERADO, não erro.
+      // O aviso inline explica que dá pra seguir sem a coordenada.
+      setSearchState('notFound');
     } finally {
       setSearching(false);
     }
+  };
+
+  const onPick = ({ lat, lng }) => {
+    setForm((prev) => ({ ...prev, lat, lng }));
+    setSearchState('found');
+    setPickerOpen(false);
+    toast.success('Ponto marcado!');
   };
 
   return (
@@ -413,11 +431,44 @@ function Step2Home({ form, setForm, setField, errors }) {
         Buscar endereço no mapa
       </Button>
 
-      {form.lat && form.lng && (
+      {hasCoord && (
         <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl">
           <MapPin size={18} />
           <span>Local confirmado!</span>
         </div>
+      )}
+
+      {/* Endereço não encontrado NÃO é erro de preenchimento — é limite do
+        * mapa. A mensagem diz isso e oferece as duas saídas. */}
+      {!hasCoord && searchState === 'notFound' && (
+        <div className="text-sm bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl space-y-1">
+          <p className="font-semibold">Não achamos esse endereço no mapa.</p>
+          <p className="text-amber-700">
+            Sem problema — dá pra marcar na mão agora ou seguir e ajustar
+            depois. A criança fica salva do mesmo jeito.
+          </p>
+        </div>
+      )}
+
+      {!hasCoord && (
+        <Button
+          type="button"
+          variant="secondary"
+          icon={MapPin}
+          onClick={() => setPickerOpen(true)}
+        >
+          Marcar no mapa
+        </Button>
+      )}
+
+      {pickerOpen && (
+        <MapPicker
+          kind="home"
+          initial={hasCoord ? { lat: Number(form.lat), lng: Number(form.lng) } : null}
+          addressLabel={form.address}
+          onConfirm={onPick}
+          onClose={() => setPickerOpen(false)}
+        />
       )}
     </>
   );

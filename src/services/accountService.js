@@ -111,7 +111,23 @@ export async function deactivateChildAndParent({ childId }) {
     );
   }
 
-  await deleteInBatches([...futureAbs, ...parentNotifs.docs]);
+  // 3. Dados pessoais atrelados à criança que não fazem sentido sobreviver:
+  //    - altPickups: nome/telefone de quem buscou a criança em cada dia
+  //    - agendaEntries (scope=child): recados nominais sobre a criança
+  //    Sem essa limpeza, os dois ficavam órfãos no banco pra sempre (LGPD).
+  const altPickupsSnap = await getDocs(
+    query(collection(db, 'altPickups'), where('childId', '==', childId))
+  );
+  const agendaSnap = await getDocs(
+    query(collection(db, 'agendaEntries'), where('childId', '==', childId))
+  );
+
+  await deleteInBatches([
+    ...futureAbs,
+    ...parentNotifs.docs,
+    ...altPickupsSnap.docs,
+    ...agendaSnap.docs,
+  ]);
 
   // 3. Apaga doc users do pai (Auth fica órfã — sem doc users, não loga)
   if (parentUid) {
@@ -128,17 +144,23 @@ export async function deactivateChildAndParent({ childId }) {
   }
 
   // 5. Soft delete da criança + desvincula
+  // O soft delete PRESERVA o doc, então os dados pessoais de terceiros
+  // (responsáveis alternativos: nome, telefone, parentesco) precisam ser
+  // zerados explicitamente — senão sobrevivem indefinidamente no children/.
   await updateDoc(childRef, {
     active: false,
     deactivatedAt: serverTimestamp(),
     parentUid: null,
     inviteStatus: 'pending', // reseta pra o admin poder reentregar o invite
+    altResponsibles: [],
   });
 
   return {
     parentRemoved: !!parentUid,
     deletedFutureAbsences: futureAbs.length,
     deletedParentNotifications: parentNotifs.docs.length,
+    deletedAltPickups: altPickupsSnap.docs.length,
+    deletedAgendaEntries: agendaSnap.docs.length,
   };
 }
 
@@ -182,6 +204,23 @@ export async function deleteOwnParentAccount({ uid, childId }) {
     console.error('Falha ao apagar notificações:', err);
   }
 
+  // Apaga as indicações de busca (altPickups) — carregam nome e telefone
+  // de terceiros que o pai cadastrou. As rules permitem o dono apagar.
+  //
+  // NOTA: agendaEntries sobre o filho NÃO podem ser apagadas aqui — as rules
+  // só deixam o admin apagar. Ficam pendentes até o Tio remover a criança
+  // (deactivateChildAndParent) ou encerrar a operação.
+  if (childId) {
+    try {
+      const altSnap = await getDocs(
+        query(collection(db, 'altPickups'), where('childId', '==', childId))
+      );
+      await deleteInBatches(altSnap.docs);
+    } catch (err) {
+      console.error('Falha ao apagar altPickups:', err);
+    }
+  }
+
   // Apaga doc users
   await deleteDoc(doc(db, 'users', uid));
 
@@ -216,6 +255,13 @@ export async function deleteAdminAccount(adminUid) {
   await deleteEntireCollection('notifications');
   await deleteEntireCollection('schoolBroadcasts');
   await deleteEntireCollection('dailyRoutes');
+  // Estas quatro ficavam de fora do wipe e sobreviviam ao "encerrar operação",
+  // carregando nomes de crianças, telefones de terceiros e recados nominais.
+  await deleteEntireCollection('altPickups');
+  await deleteEntireCollection('pendingCalls');
+  await deleteEntireCollection('agendaEntries');
+  await deleteEntireCollection('waitlistDrivers');
+  await deleteEntireCollection('waitlistParents');
 
   await deleteDoc(doc(db, 'routePlans', 'default')).catch((err) =>
     console.error('routePlans/default:', err)

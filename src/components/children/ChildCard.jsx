@@ -1,4 +1,4 @@
-import { GraduationCap, ChevronRight, AlertTriangle } from 'lucide-react';
+import { GraduationCap, ChevronRight, AlertTriangle, MapPinOff } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import StatusBadge from './StatusBadge';
 import { PERIOD_LABELS } from '../../utils/formatters';
@@ -16,6 +16,10 @@ import { getEffectiveStatus } from '../../services/childrenService';
 export default function ChildCard({ child, onClick }) {
   const status = getEffectiveStatus(child);
   const pendingInvite = child.inviteStatus === 'pending';
+  // Salva sem coordenada (endereço que o mapa não conhece). Cobre também as
+  // crianças cadastradas antes do campo existir: lat/lng ausente conta igual.
+  const geoPending =
+    child.geoPending === true || child.lat == null || child.lng == null;
 
   return (
     <button
@@ -46,6 +50,12 @@ export default function ChildCard({ child, onClick }) {
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
               <AlertTriangle size={10} />
               Convite pendente
+            </span>
+          )}
+          {geoPending && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
+              <MapPinOff size={10} />
+              Sem local
             </span>
           )}
         </div>

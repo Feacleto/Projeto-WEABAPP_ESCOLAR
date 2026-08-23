@@ -15,6 +15,7 @@ import TioFinanceReport from './pages/tio/TioFinanceReport';
 import TioContract from './pages/tio/TioContract';
 import TioPixConfig from './pages/tio/TioPixConfig';
 import TioAgenda from './pages/tio/TioAgenda';
+import TioLeads from './pages/tio/TioLeads';
 import ChildForm from './components/children/ChildForm';
 import PaiLayout from './pages/pai/PaiLayout';
 import PaiDashboard from './pages/pai/PaiDashboard';
@@ -56,7 +57,7 @@ function PrivateRoute({ children, requireRole }) {
 
   if (loading) return <FullScreenLoader />;
   if (!user) {
-    return <Navigate to="/welcome" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   if (!profile) return <FullScreenLoader />;
   if (requireRole && profile.role !== requireRole) {
@@ -129,6 +130,7 @@ export default function App() {
         <Route path="finance/report" element={<TioFinanceReport />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
+        <Route path="leads" element={<TioLeads />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>
@@ -151,8 +153,10 @@ export default function App() {
         <Route path="profile" element={<Profile />} />
       </Route>
 
-        <Route path="/" element={<Navigate to="/welcome" replace />} />
-        <Route path="*" element={<Navigate to="/welcome" replace />} />
+        {/* A escolha "sou pai / sou motorista" saiu do caminho: o papel vem do
+          * doc users. /welcome segue existindo pra links antigos. */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
 
       {/* Banner global de cookies — aparece só na primeira visita */}

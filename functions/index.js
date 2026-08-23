@@ -42,7 +42,7 @@ const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 // APP_URL: URL de produção da hospedagem (Firebase Hosting).
 //   Trocar pelo domínio próprio quando configurar.
 const FROM_EMAIL = 'Alô Buzinou! <onboarding@resend.dev>';
-const APP_URL = 'https://tio-nino-digital.web.app';
+const APP_URL = 'https://projeto-tio-nino-digital.web.app';
 
 // Milestones de cobrança (dias em relação ao vencimento).
 //   diffDays positivo = ainda falta vencer

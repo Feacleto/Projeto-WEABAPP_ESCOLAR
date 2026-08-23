@@ -66,8 +66,8 @@ export default function Login() {
       if (!userProfile) {
         await logout();
         toast.error(
-          'Conta Google não cadastrada. Se você é pai/mãe, volte e selecione "Sou pai ou mãe".',
-          { duration: 6000 }
+          'Esta conta Google ainda não tem acesso. Se o motorista te mandou um convite, abra o link que ele enviou.',
+          { duration: 7000 }
         );
         return;
       }
@@ -122,9 +122,9 @@ export default function Login() {
               <Bus size={32} className="text-white" />
             </div>
           </Link>
-          <h1 className="text-2xl font-bold text-text">Entrar como motorista</h1>
+          <h1 className="text-2xl font-bold text-text">Alô Buzinou</h1>
           <p className="text-sm text-textMuted mt-1">
-            Acesse sua conta
+            Entre com sua conta
           </p>
         </div>
 
@@ -162,8 +162,9 @@ export default function Login() {
           />
           <Input
             type="password"
+            revealable
             label="Senha"
-            placeholder="••••••••"
+            placeholder="sua senha"
             icon={Lock}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -185,13 +186,22 @@ export default function Login() {
         </form>
 
         <div className="mt-8 pt-6 border-t border-gray-200 text-center space-y-3">
-          {/* Primeira vez aqui? — Tio sem conta. O app é exclusivo, então em vez
-            * de signup direto, manda pra landing pública pra ele pedir acesso. */}
+          {/* Pai de primeira viagem não escolhe papel nem digita código: ele
+            * abre o link que o motorista mandou. Aqui só explicamos isso. */}
+          <div className="text-left bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1">
+            <p className="text-sm font-semibold text-text">
+              Recebeu um convite do seu motorista?
+            </p>
+            <p className="text-xs text-textMuted">
+              Abra o link que ele mandou — sua conta se cria por lá.
+            </p>
+          </div>
+
           <Link
             to="/conheca"
             className="block text-sm font-semibold text-primary hover:underline"
           >
-            Primeira vez aqui? Peça acesso →
+            Sou motorista e quero fazer parte →
           </Link>
           {!hasAdmin && (
             <Link

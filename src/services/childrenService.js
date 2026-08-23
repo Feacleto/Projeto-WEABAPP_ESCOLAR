@@ -83,12 +83,17 @@ export async function addChild(data) {
     parent2Name: data.parent2Name?.trim() || '',
     parent2Phone: data.parent2Phone?.trim() || '',
     address: data.address?.trim() || '',
-    lat: Number(data.lat),
-    lng: Number(data.lng),
+    // ATENÇÃO: Number('') é 0 — sem o coalesce abaixo, uma criança salva sem
+    // geocoding ficava em lat/lng 0,0 (golfo da Guiné) e o mapa desenhava
+    // aquilo como se fosse a casa dela. Ausente tem que ser null.
+    lat: toCoord(data.lat),
+    lng: toCoord(data.lng),
+    // true = endereço salvo sem coordenada; o tio resolve depois.
+    geoPending: toCoord(data.lat) == null || toCoord(data.lng) == null,
     school: data.school?.trim() || '',
     schoolAddress: data.schoolAddress?.trim() || '',
-    schoolLat: data.schoolLat != null ? Number(data.schoolLat) : null,
-    schoolLng: data.schoolLng != null ? Number(data.schoolLng) : null,
+    schoolLat: toCoord(data.schoolLat),
+    schoolLng: toCoord(data.schoolLng),
     period: data.period || 'morning',
     pickupPeriod: data.pickupPeriod || data.period || 'morning',
     dropoffPeriod: data.dropoffPeriod || 'afternoon',
@@ -129,13 +134,27 @@ export async function getChild(id) {
 // Atualiza dados gerais (não usar pra mudar status — use updateChildStatus).
 export async function updateChild(id, data) {
   const updates = { ...data };
-  if (updates.lat != null) updates.lat = Number(updates.lat);
-  if (updates.lng != null) updates.lng = Number(updates.lng);
-  if (updates.schoolLat != null) updates.schoolLat = Number(updates.schoolLat);
-  if (updates.schoolLng != null) updates.schoolLng = Number(updates.schoolLng);
+  if ('lat' in updates) updates.lat = toCoord(updates.lat);
+  if ('lng' in updates) updates.lng = toCoord(updates.lng);
+  if ('schoolLat' in updates) updates.schoolLat = toCoord(updates.schoolLat);
+  if ('schoolLng' in updates) updates.schoolLng = toCoord(updates.schoolLng);
+  // Mantém geoPending coerente sempre que a coordenada de casa é tocada.
+  if ('lat' in updates || 'lng' in updates) {
+    updates.geoPending = updates.lat == null || updates.lng == null;
+  }
   if (updates.monthlyFee != null) updates.monthlyFee = Number(updates.monthlyFee);
   if (updates.dueDay != null) updates.dueDay = clampDueDay(updates.dueDay);
   await updateDoc(doc(db, 'children', id), updates);
+}
+
+/**
+ * Normaliza coordenada: string vazia, null, undefined e NaN viram null.
+ * Nunca 0 — 0 é uma coordenada válida no meio do Atlântico e o mapa a desenha.
+ */
+function toCoord(value) {
+  if (value === '' || value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 /**

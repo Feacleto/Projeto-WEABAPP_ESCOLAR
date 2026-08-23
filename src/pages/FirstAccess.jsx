@@ -213,8 +213,9 @@ function LoginPane({ login }) {
         />
         <Input
           type="password"
+          revealable
           label="Senha"
-          placeholder="••••••••"
+          placeholder="sua senha"
           icon={Lock}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -246,7 +247,6 @@ function SignupPane({ refreshProfile }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -260,8 +260,6 @@ function SignupPane({ refreshProfile }) {
     if (!name.trim()) errs.name = 'Informe seu nome.';
     if (!isValidEmail(email)) errs.email = 'Email inválido.';
     if (password.length < 6) errs.password = 'Mínimo 6 caracteres.';
-    if (password !== confirmPassword)
-      errs.confirmPassword = 'As senhas não conferem.';
     if (!acceptedLegal)
       errs.legal = 'Você precisa aceitar os termos e a política de privacidade.';
     setErrors(errs);
@@ -405,8 +403,12 @@ function SignupPane({ refreshProfile }) {
           error={errors.email}
           required
         />
+        {/* Um campo só: o olho de revelar substitui o "confirme a senha".
+          * Digitar a senha duas vezes num teclado de celular gera mais erro
+          * do que evita. */}
         <Input
           type="password"
+          revealable
           label="Crie uma senha"
           placeholder="Mínimo 6 caracteres"
           icon={Lock}
@@ -415,18 +417,7 @@ function SignupPane({ refreshProfile }) {
           minLength={6}
           autoComplete="new-password"
           error={errors.password}
-          required
-        />
-        <Input
-          type="password"
-          label="Confirme a senha"
-          placeholder="Repita a senha"
-          icon={Lock}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          minLength={6}
-          autoComplete="new-password"
-          error={errors.confirmPassword}
+          hint="Toque no olho pra conferir o que digitou."
           required
         />
         <Button type="submit" loading={submitting}>
