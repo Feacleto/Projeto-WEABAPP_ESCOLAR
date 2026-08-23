@@ -1,0 +1,334 @@
+/**
+ * Resgate de convite no servidor.
+ *
+ * POR QUE ISTO EXISTE
+ * O fluxo antigo resolvia o convite no cliente: o app consultava
+ * `children` filtrando por inviteCode. Pra isso funcionar, as rules
+ * precisavam liberar leitura de qualquer criança com
+ * `inviteStatus == 'pending'` — e como a landing faz signInAnonymously pra
+ * gravar leads, QUALQUER visitante do site conseguia rodar essa query e
+ * receber a lista completa de crianças pendentes com nome, endereço,
+ * coordenada, escola e telefone do responsável.
+ *
+ * Movendo pro servidor: as rules não precisam mais liberar nada, o cliente
+ * nunca vê os dados de uma criança que não é dele, e o vínculo passa a ser
+ * validado com o Admin SDK.
+ */
+
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { logger } = require('firebase-functions/v2');
+const admin = require('firebase-admin');
+
+const REGION = 'southamerica-east1';
+
+// Prefixo de 2 letras + 4 dígitos. Aceita minúsculas e espaços do teclado
+// do celular; normaliza antes de validar.
+const CODE_RE = /^[A-Z]{2}\d{4}$/;
+
+function normalizeCode(raw) {
+  return String(raw || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+function firstName(full) {
+  return String(full || '').trim().split(/\s+/)[0] || '';
+}
+
+/**
+ * Busca a criança de um invite code válido e ainda não usado.
+ * Retorna o doc snapshot ou null.
+ */
+async function findPendingChild(db, code) {
+  const snap = await db
+    .collection('children')
+    .where('inviteCode', '==', code)
+    .where('inviteStatus', '==', 'pending')
+    .limit(1)
+    .get();
+  return snap.empty ? null : snap.docs[0];
+}
+
+/**
+ * lookupInvite — pré-visualização do convite, ANTES de ter conta.
+ *
+ * Deliberadamente devolve o mínimo: primeiro nome da criança e nome do
+ * motorista. Nada de endereço, coordenada, escola, telefone ou email.
+ * Assim, mesmo que alguém varra os 9.000 códigos possíveis, não colhe
+ * dado pessoal útil — só descobre que um código existe.
+ */
+function makeLookupInvite(db) {
+  return onCall({ region: REGION }, async (request) => {
+    const code = normalizeCode(request.data?.code);
+    if (!CODE_RE.test(code)) {
+      throw new HttpsError('invalid-argument', 'Código em formato inválido.');
+    }
+
+    const childDoc = await findPendingChild(db, code);
+    if (!childDoc) {
+      // Mensagem única pra código inexistente E já usado: não confirma
+      // pra quem está tentando adivinhar se acertou um código real.
+      throw new HttpsError('not-found', 'Convite não encontrado ou já usado.');
+    }
+
+    const child = childDoc.data();
+
+    let driverName = '';
+    let companyName = '';
+    try {
+      const initSnap = await db.doc('appState/init').get();
+      const adminUid = initSnap.exists ? initSnap.data().adminUid : null;
+      if (adminUid) {
+        const adminSnap = await db.doc(`users/${adminUid}`).get();
+        if (adminSnap.exists) {
+          driverName = adminSnap.data().name || '';
+          companyName = adminSnap.data().companyName || '';
+        }
+      }
+    } catch (err) {
+      logger.warn('lookupInvite: falha ao ler dados do motorista', err);
+    }
+
+    return {
+      childFirstName: firstName(child.name),
+      driverFirstName: firstName(driverName),
+      companyName,
+    };
+  });
+}
+
+/**
+ * redeemInvite — vincula a conta autenticada à criança do convite.
+ *
+ * Pré-condição: o cliente JÁ criou a conta no Firebase Auth (email/senha
+ * ou Google) e chama isto autenticado. Fazemos tudo em transação pra dois
+ * pais não resgatarem o mesmo código ao mesmo tempo.
+ *
+ * Grava `childIds` (array) e `childId` (string) ao mesmo tempo: o array é
+ * o modelo novo, o campo antigo segue preenchido enquanto as telas do pai
+ * ainda o leem. Quem já tinha conta ganha a criança no array.
+ */
+function makeRedeemInvite(db) {
+  return onCall({ region: REGION }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', 'Faça login antes de usar o convite.');
+    }
+    const code = normalizeCode(request.data?.code);
+    if (!CODE_RE.test(code)) {
+      throw new HttpsError('invalid-argument', 'Código em formato inválido.');
+    }
+
+    const name = String(request.data?.name || '').trim().slice(0, 120);
+    const acceptedLegalVersion = String(request.data?.legalVersion || '').slice(0, 20);
+
+    const childDoc = await findPendingChild(db, code);
+    if (!childDoc) {
+      throw new HttpsError('not-found', 'Convite não encontrado ou já usado.');
+    }
+
+    const childRef = childDoc.ref;
+    const userRef = db.doc(`users/${uid}`);
+
+    const result = await db.runTransaction(async (tx) => {
+      const freshChild = await tx.get(childRef);
+      if (!freshChild.exists) {
+        throw new HttpsError('not-found', 'Criança não encontrada.');
+      }
+      const child = freshChild.data();
+
+      // Revalida DENTRO da transação — evita dois pais resgatando o mesmo
+      // código em paralelo (o último sobrescreveria o primeiro).
+      if (child.inviteStatus !== 'pending' || child.parentUid) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Este convite já foi usado. Peça um novo ao motorista.'
+        );
+      }
+
+      const userSnap = await tx.get(userRef);
+      const existing = userSnap.exists ? userSnap.data() : null;
+
+      // Uma conta de admin não pode virar responsável de criança.
+      if (existing && existing.role === 'admin') {
+        throw new HttpsError(
+          'failed-precondition',
+          'Esta conta é de motorista e não pode ser vinculada como responsável.'
+        );
+      }
+
+      tx.update(childRef, {
+        parentUid: uid,
+        inviteStatus: 'used',
+        inviteUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      const userPayload = {
+        role: 'parent',
+        childIds: admin.firestore.FieldValue.arrayUnion(childRef.id),
+        // Campo legado: as telas do pai ainda leem `childId`. Só definimos
+        // quando não havia nenhum, pra não trocar o filho ativo de quem
+        // está adicionando o segundo.
+        childId: existing?.childId || childRef.id,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (!existing) {
+        userPayload.name = name || child.parentName || '';
+        userPayload.email = request.auth.token?.email || child.parentEmail || '';
+        userPayload.phone = child.parentPhone || '';
+        userPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        // Nomes destes campos vêm de consentService.hasAcceptedCurrentTerms —
+        // se divergirem, o TermsAcceptanceGate barra o pai que acabou de
+        // aceitar os termos na tela de convite.
+        if (acceptedLegalVersion) {
+          const now = admin.firestore.FieldValue.serverTimestamp();
+          userPayload.termsVersion = acceptedLegalVersion;
+          userPayload.termsAcceptedAt = now;
+          userPayload.privacyVersion = acceptedLegalVersion;
+          userPayload.privacyAcceptedAt = now;
+        }
+      }
+
+      tx.set(userRef, userPayload, { merge: true });
+
+      return {
+        childId: childRef.id,
+        childFirstName: firstName(child.name),
+        isNewAccount: !existing,
+      };
+    });
+
+    logger.info(`Convite resgatado: code=${code} child=${result.childId} uid=${uid}`);
+    return result;
+  });
+}
+
+/**
+ * joinDriverWaitlist — inscrição de motorista + posição na fila.
+ *
+ * Existe como função porque as rules (corretamente) não deixam o próprio
+ * inscrito ler a coleção, então ele não conseguiria saber sua posição.
+ * Aqui contamos no servidor e devolvemos só o número.
+ */
+function makeJoinDriverWaitlist(db) {
+  return onCall({ region: REGION }, async (request) => {
+    const d = request.data || {};
+    const name = String(d.name || '').trim().slice(0, 120);
+    const phone = String(d.phone || '').replace(/\D/g, '').slice(0, 15);
+    const email = String(d.email || '').trim().toLowerCase().slice(0, 160);
+    const city = String(d.city || '').trim().slice(0, 120);
+    const fleet = ['1', '2-3', '4+'].includes(d.fleet) ? d.fleet : '1';
+    const message = String(d.message || '').trim().slice(0, 600);
+
+    if (!name || (!phone && !email)) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Precisamos do seu nome e de um WhatsApp ou email pra falar com você.'
+      );
+    }
+
+    // Já se inscreveu antes? Devolve a posição existente em vez de duplicar.
+    if (email) {
+      const dup = await db
+        .collection('waitlistDrivers')
+        .where('email', '==', email)
+        .limit(1)
+        .get();
+      if (!dup.empty) {
+        const position = await positionOf(db, dup.docs[0]);
+        return { position, alreadyOnList: true };
+      }
+    }
+
+    const ref = await db.collection('waitlistDrivers').add({
+      name,
+      phone,
+      email,
+      city,
+      fleet,
+      message,
+      contacted: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const created = await ref.get();
+    const position = await positionOf(db, created);
+    return { position, alreadyOnList: false };
+  });
+}
+
+/**
+ * Posição na fila = quantos ainda-não-contatados entraram antes dele, +1.
+ * Quem já foi contatado sai da conta — a fila é de espera, não histórico.
+ */
+async function positionOf(db, docSnap) {
+  const createdAt = docSnap.data()?.createdAt;
+  if (!createdAt) return 1;
+  const before = await db
+    .collection('waitlistDrivers')
+    .where('contacted', '==', false)
+    .where('createdAt', '<', createdAt)
+    .count()
+    .get();
+  return (before.data().count || 0) + 1;
+}
+
+module.exports = {
+  makeLookupInvite,
+  makeRedeemInvite,
+  makeJoinDriverWaitlist,
+  normalizeCode,
+  CODE_RE,
+};
+
+/**
+ * getShowcase — dados públicos da plataforma pra home (sem login).
+ *
+ * A home precisa mostrar o motorista parceiro, mas as rules (corretamente)
+ * exigem login pra ler `users`. Em vez de duplicar os dados num doc público
+ * que o tio teria que manter em sincronia, lemos aqui com Admin SDK e
+ * devolvemos só o que é de vitrine: nome, cidade, quantas famílias.
+ *
+ * Nada de email, telefone, chave PIX ou nome de criança.
+ */
+function makeGetShowcase(db) {
+  return onCall({ region: REGION }, async () => {
+    try {
+      const initSnap = await db.doc('appState/init').get();
+      if (!initSnap.exists) return { drivers: [], hasAdmin: false };
+
+      const adminUid = initSnap.data().adminUid;
+      if (!adminUid) return { drivers: [], hasAdmin: true };
+
+      const adminSnap = await db.doc(`users/${adminUid}`).get();
+      if (!adminSnap.exists) return { drivers: [], hasAdmin: true };
+      const a = adminSnap.data();
+
+      const familiesSnap = await db
+        .collection('children')
+        .where('active', '==', true)
+        .count()
+        .get();
+
+      return {
+        hasAdmin: true,
+        drivers: [
+          {
+            name: a.companyName || (a.name ? `Perua do ${a.name}` : 'Perua parceira'),
+            driverFirstName: firstName(a.name),
+            city: a.companyCity || a.city || '',
+            families: familiesSnap.data().count || 0,
+            photoURL: a.photoURL || null,
+          },
+        ],
+      };
+    } catch (err) {
+      logger.error('getShowcase:', err);
+      // Home nunca deve quebrar por causa da vitrine.
+      return { drivers: [], hasAdmin: true };
+    }
+  });
+}
+
+module.exports.makeGetShowcase = makeGetShowcase;

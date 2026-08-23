@@ -8,7 +8,6 @@ import {
   GraduationCap,
   DollarSign,
   Search,
-  Copy,
   Check,
   Home,
   School,
@@ -24,6 +23,7 @@ import {
 import toast from 'react-hot-toast';
 import Card from '../common/Card';
 import MapPicker from '../map/MapPicker';
+import InviteShare from './InviteShare';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { addChild } from '../../services/childrenService';
@@ -171,6 +171,7 @@ export default function ChildForm() {
       <InviteCodeSuccess
         code={createdCode}
         childName={form.name}
+        parentPhone={unmaskPhone(form.parentPhone)}
         onDone={() => navigate('/tio/children', { replace: true })}
       />
     );
@@ -752,48 +753,34 @@ function SelectorButton({ label, icon: Icon, active, onClick }) {
 
 /* ─────────────── Sucesso ─────────────── */
 
-function InviteCodeSuccess({ code, childName, onDone }) {
-  const [copied, setCopied] = useState(false);
-
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      toast.success('Código copiado!');
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error('Anote o código.');
-    }
-  };
-
+/**
+ * Confirmação depois de cadastrar. O foco mudou: antes o tio saía daqui com
+ * um código pra ditar; agora ele sai com um LINK pronto pra mandar no
+ * WhatsApp. O código continua visível pra quando precisar ditar por telefone.
+ */
+function InviteCodeSuccess({ code, childName, parentPhone, onDone }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6">
-      <div className="bg-card rounded-3xl p-6 max-w-sm w-full text-center space-y-5 shadow-xl shadow-emerald-500/15">
+    <div className="min-h-screen flex flex-col p-6 gap-5 justify-center">
+      <div className="text-center space-y-3">
         <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
           <Check size={32} className="text-emerald-600" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-text">
-            {childName?.split(' ')[0] || 'Criança'} cadastrad{
+            {childName?.split(' ')[0] || 'Criança'} está cadastrad{
               childName?.endsWith('a') ? 'a' : 'o(a)'
             }!
           </h3>
-          <p className="text-sm text-textMuted mt-2">
-            Entregue o código abaixo ao responsável pra ele criar a conta no
-            app (por WhatsApp, presencial...).
+          <p className="text-sm text-textMuted mt-1.5">
+            Falta só o responsável entrar. Mande o link — a conta dele se cria
+            por lá, sem digitar código.
           </p>
         </div>
-        <div className="bg-bg rounded-2xl p-5">
-          <p className="text-xs text-textMuted mb-1 uppercase tracking-widest font-semibold">
-            Código
-          </p>
-          <p className="text-4xl font-bold tracking-widest text-text">{code}</p>
-        </div>
-        <Button variant="secondary" icon={copied ? Check : Copy} onClick={onCopy}>
-          {copied ? 'Copiado!' : 'Copiar código'}
-        </Button>
-        <Button onClick={onDone}>Concluir</Button>
       </div>
+
+      <InviteShare code={code} childName={childName} parentPhone={parentPhone} />
+
+      <Button onClick={onDone}>Concluir</Button>
     </div>
   );
 }

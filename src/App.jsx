@@ -1,5 +1,8 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Landing from './pages/Landing';
+import Home from './pages/Home';
+import Invite from './pages/Invite';
+import DriverSignup from './pages/DriverSignup';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import FirstAccess from './pages/FirstAccess';
@@ -101,6 +104,11 @@ export default function App() {
     <>
       <Routes>
         {/* Rotas públicas */}
+        <Route path="/" element={<Home />} />
+        {/* O convite é o caminho principal do responsável: o código vem na
+          * URL, então ele não digita nada além de email e senha. */}
+        <Route path="/convite/:codigo" element={<Invite />} />
+        <Route path="/quero-fazer-parte" element={<DriverSignup />} />
         <Route path="/conheca" element={<Landing />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
@@ -153,10 +161,9 @@ export default function App() {
         <Route path="profile" element={<Profile />} />
       </Route>
 
-        {/* A escolha "sou pai / sou motorista" saiu do caminho: o papel vem do
-          * doc users. /welcome segue existindo pra links antigos. */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* A escolha "sou pai / sou motorista" saiu do caminho: o papel vem
+          * do doc users. /welcome segue existindo pra links antigos. */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       {/* Banner global de cookies — aparece só na primeira visita */}

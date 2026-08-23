@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
 // Todas as chaves vêm do .env (prefixo VITE_) — chaves do client são
@@ -20,6 +21,9 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+// Mesma região das Cloud Functions (firebase.json / functions/index.js).
+// Sem passar a região, o SDK chama us-central1 e recebe 404.
+export const functions = getFunctions(app, 'southamerica-east1');
 
 // Garante que emails do Firebase Auth (reset de senha, verificação) cheguem
 // em PT-BR mesmo se o usuário tiver outro idioma no navegador.

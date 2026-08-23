@@ -10,7 +10,8 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
-import { auth, db } from '../firebase/config';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from '../firebase/config';
 
 /**
  * Listas de espera / interesse — formulários públicos da landing.
@@ -28,16 +29,37 @@ async function ensureSignedIn() {
   await signInAnonymously(auth);
 }
 
-export async function submitDriverWaitlist({ name, email, phone, city, message }) {
+/**
+ * Inscrição de motorista na lista de espera.
+ *
+ * Vai por Cloud Function em vez de addDoc direto por dois motivos:
+ *   - devolve a POSIÇÃO na fila, que o próprio inscrito não conseguiria
+ *     calcular (as rules, corretamente, não deixam ele ler a coleção);
+ *   - deduplica por email, pra quem se inscreve duas vezes não virar dois
+ *     leads na tela do tio.
+ *
+ * Retorna { position, alreadyOnList }.
+ */
+export async function submitDriverWaitlist({
+  name,
+  email,
+  phone,
+  city,
+  fleet,
+  message,
+}) {
   await ensureSignedIn();
-  await addDoc(collection(db, 'waitlistDrivers'), {
-    name: name?.trim() || '',
-    email: email?.trim().toLowerCase() || '',
-    phone: phone?.trim() || '',
-    city: city?.trim() || '',
-    message: message?.trim() || '',
-    createdAt: serverTimestamp(),
-  });
+  const fn = httpsCallable(functions, 'joinDriverWaitlist');
+  try {
+    const res = await fn({ name, email, phone, city, fleet, message });
+    return res.data;
+  } catch (err) {
+    const c = String(err?.code || '');
+    if (c.includes('invalid-argument')) {
+      throw new Error(err?.message || 'Confira seu nome e o WhatsApp ou email.');
+    }
+    throw new Error('Não conseguimos enviar agora. Tente em alguns segundos.');
+  }
 }
 
 export async function submitParentWaitlist({

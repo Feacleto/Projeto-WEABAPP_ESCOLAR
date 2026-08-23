@@ -11,8 +11,10 @@ import {
   checkActionCode,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase/config';
-import { findChildByInviteCode, adminExists } from './inviteCodeService';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from '../firebase/config';
+import { adminExists } from './inviteCodeService';
+import { LEGAL_VERSION } from '../pages/legal/legalContent';
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -83,7 +85,10 @@ export async function loginWithGoogle() {
  *
  * Igual ao signupWithInvite, mas usa popup do Google em vez de email/senha.
  * Se o usuário já tinha conta Google sem doc users/{uid}, cria o doc agora.
- * Se já existir doc users/{uid}, lança erro (usuário já cadastrado).
+ *
+ * O VÍNCULO em si é feito pela Cloud Function `redeemInvite`: ela roda com
+ * Admin SDK, em transação, e valida que o código ainda está pendente. Aqui
+ * só criamos/autenticamos a conta e chamamos a função.
  */
 export async function signupWithGoogleInvite({ inviteCode }) {
   const credential = await signInWithPopup(auth, googleProvider);
@@ -96,29 +101,7 @@ export async function signupWithGoogleInvite({ inviteCode }) {
         'Esta conta Google já está cadastrada. Use "Entrar com Google" na tela de login.'
       );
     }
-
-    const child = await findChildByInviteCode(inviteCode);
-
-    await setDoc(doc(db, 'users', user.uid), {
-      role: 'parent',
-      name: user.displayName || child.parentName || '',
-      email: user.email || '',
-      phone: child.parentPhone || '',
-      childId: child.id,
-      provider: 'google',
-      photoURL: user.photoURL || null,
-      createdAt: serverTimestamp(),
-    });
-
-    await setDoc(
-      doc(db, 'children', child.id),
-      {
-        inviteStatus: 'used',
-        parentUid: user.uid,
-      },
-      { merge: true }
-    );
-
+    await redeemInvite({ inviteCode, name: user.displayName || '' });
     return user;
   } catch (err) {
     // Best-effort cleanup: só deleta se o usuário foi criado nesta sessão
@@ -134,17 +117,15 @@ export async function signupWithGoogleInvite({ inviteCode }) {
 }
 
 /**
- * Cadastro do pai via código de convite.
+ * Cadastro do pai via código de convite (email/senha).
  *
- * IMPORTANTE: ordem dos passos foi escolhida pra alinhar com as Firestore
- * Security Rules (que exigem auth pra ler children):
- *   1. createUserWithEmailAndPassword (auto-login, sem profile ainda)
- *   2. findChildByInviteCode (agora autenticado, rule permite ler pending)
- *   3. setDoc users/{uid} com role:'parent' + childId
- *   4. setDoc children/{childId} merge {parentUid, inviteStatus:'used'}
+ * Ordem:
+ *   1. createUserWithEmailAndPassword (auto-login)
+ *   2. redeemInvite() — a Cloud Function grava users/{uid} e vincula a criança
  *
- * Se qualquer passo após o (1) falhar, tentamos apagar a conta auth recém-
- * criada pra evitar "limbo" (best-effort — não relança erro do cleanup).
+ * Se o passo 2 falhar, apagamos a conta auth recém-criada pra não deixar
+ * usuário em limbo (autenticado mas sem doc users, o que trava no
+ * PrivateRoute sem mensagem útil).
  */
 export async function signupWithInvite({ inviteCode, email, password, name }) {
   const credential = await createUserWithEmailAndPassword(
@@ -155,29 +136,9 @@ export async function signupWithInvite({ inviteCode, email, password, name }) {
   const user = credential.user;
 
   try {
-    const child = await findChildByInviteCode(inviteCode);
-
-    await setDoc(doc(db, 'users', user.uid), {
-      role: 'parent',
-      name: name?.trim() || child.parentName || '',
-      email: email.trim(),
-      phone: child.parentPhone || '',
-      childId: child.id,
-      createdAt: serverTimestamp(),
-    });
-
-    await setDoc(
-      doc(db, 'children', child.id),
-      {
-        inviteStatus: 'used',
-        parentUid: user.uid,
-      },
-      { merge: true }
-    );
-
+    await redeemInvite({ inviteCode, name: name?.trim() || '' });
     return user;
   } catch (err) {
-    // Cleanup best-effort: usuário recém-criado deleta a si mesmo.
     try {
       await user.delete();
     } catch (cleanupErr) {
@@ -185,6 +146,51 @@ export async function signupWithInvite({ inviteCode, email, password, name }) {
     }
     throw err;
   }
+}
+
+/**
+ * Resgata um convite pra conta JÁ autenticada.
+ *
+ * Serve pros dois casos:
+ *   - primeiro acesso (chamado por signupWithInvite / signupWithGoogleInvite)
+ *   - pai já cadastrado adicionando um segundo filho
+ *
+ * Toda a validação e o vínculo acontecem no servidor.
+ */
+export async function redeemInvite({ inviteCode, name = '' }) {
+  const fn = httpsCallable(functions, 'redeemInvite');
+  try {
+    const res = await fn({
+      code: inviteCode,
+      name,
+      legalVersion: LEGAL_VERSION,
+    });
+    return res.data;
+  } catch (err) {
+    throw new Error(friendlyCallableError(err));
+  }
+}
+
+/**
+ * Traduz erro de callable pra mensagem que o usuário entende.
+ * O Firebase entrega `functions/<code>` em err.code e a mensagem que a
+ * função lançou em err.message — que já escrevemos em português.
+ */
+function friendlyCallableError(err) {
+  const code = String(err?.code || '');
+  if (code.includes('unauthenticated')) {
+    return 'Sua sessão expirou. Entre novamente e tente de novo.';
+  }
+  if (code.includes('invalid-argument')) {
+    return 'Código em formato inválido. Confira com o motorista.';
+  }
+  if (code.includes('not-found')) {
+    return 'Convite não encontrado ou já usado. Peça um novo ao motorista.';
+  }
+  if (code.includes('unavailable') || code.includes('deadline')) {
+    return 'Sem conexão com o servidor. Tente novamente em alguns segundos.';
+  }
+  return err?.message || 'Não foi possível usar este convite.';
 }
 
 /**

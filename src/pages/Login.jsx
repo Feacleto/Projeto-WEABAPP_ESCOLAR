@@ -105,7 +105,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex flex-col px-6 py-6">
       <Link
-        to="/welcome"
+        to="/"
         className="inline-flex items-center gap-1 text-sm text-textMuted mb-4 tap"
       >
         <ArrowLeft size={16} /> Voltar
@@ -195,6 +195,14 @@ export default function Login() {
             <p className="text-xs text-textMuted">
               Abra o link que ele mandou — sua conta se cria por lá.
             </p>
+            {/* Plano B pra quem recebeu o convite ditado por telefone e não
+              * tem o link. Deliberadamente discreto: o link é o caminho. */}
+            <Link
+              to="/first-access"
+              className="inline-block text-xs font-semibold text-primary underline pt-1"
+            >
+              Só tenho o código, sem o link
+            </Link>
           </div>
 
           <Link

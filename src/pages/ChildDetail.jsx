@@ -16,6 +16,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
+import InviteShare from '../components/children/InviteShare';
 import Avatar from '../components/common/Avatar';
 import Skeleton from '../components/common/Skeleton';
 import Button from '../components/common/Button';
@@ -204,16 +205,19 @@ export default function ChildDetail() {
 
         {/* Convite pendente — só faz sentido pro tio ver */}
         {isAdmin && child.inviteStatus === 'pending' && (
-          <Card className="bg-warning/10 border border-warning/30">
-            <p className="text-sm font-semibold text-text">
-              Convite pendente
-            </p>
-            <p className="text-xs text-textMuted mt-1">
-              O responsável ainda não criou a conta. Entregue o código:
-            </p>
-            <p className="text-2xl font-bold tracking-widest text-text mt-2">
-              {child.inviteCode}
-            </p>
+          <Card className="bg-warning/10 border border-warning/30 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-text">Convite pendente</p>
+              <p className="text-xs text-textMuted mt-1">
+                O responsável ainda não entrou. Mande o link — a conta dele se
+                cria por lá.
+              </p>
+            </div>
+            <InviteShare
+              code={child.inviteCode}
+              childName={child.name}
+              parentPhone={child.parentPhone}
+            />
           </Card>
         )}
 

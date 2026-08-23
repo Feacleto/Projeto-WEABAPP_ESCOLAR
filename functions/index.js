@@ -27,6 +27,12 @@ const admin = require('firebase-admin');
 
 const { buildEmailHtml, buildEmailText, subjectFor } = require('./lib/emailTemplate');
 const { sendEmail } = require('./lib/resend');
+const {
+  makeLookupInvite,
+  makeRedeemInvite,
+  makeJoinDriverWaitlist,
+  makeGetShowcase,
+} = require('./lib/invites');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -297,3 +303,15 @@ exports.runPaymentRemindersNow = onCall(
     return await processReminders(apiKey);
   }
 );
+
+// ===== Convites e lista de espera (ver functions/lib/invites.js) =====
+//
+// O resgate de convite saiu do cliente por segurança: as rules precisavam
+// liberar leitura de toda criança pendente pra o app achar o código, e a
+// landing autentica anonimamente — então qualquer visitante conseguia
+// listar as crianças com endereço e telefone dos responsáveis.
+
+exports.lookupInvite = makeLookupInvite(db);
+exports.redeemInvite = makeRedeemInvite(db);
+exports.joinDriverWaitlist = makeJoinDriverWaitlist(db);
+exports.getShowcase = makeGetShowcase(db);

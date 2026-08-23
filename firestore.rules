@@ -106,10 +106,16 @@ service cloud.firestore {
     //     e só se o convite ainda está pendente
     // -----------------------------------------------------------------
     match /children/{childId} {
+      // A cláusula `inviteStatus == 'pending'` foi REMOVIDA daqui.
+      // Ela existia pra o cliente achar a criança pelo invite code, mas
+      // como a landing faz signInAnonymously, qualquer visitante do site
+      // conseguia listar todas as crianças pendentes com nome, endereço,
+      // coordenada, escola e telefone do responsável.
+      // Agora quem resolve convite é a Cloud Function `lookupInvite` /
+      // `redeemInvite`, que roda com Admin SDK e devolve o mínimo.
       allow read: if isSignedIn() && (
         isAdmin()
         || resource.data.parentUid == request.auth.uid
-        || resource.data.inviteStatus == 'pending'
       );
 
       allow create, delete: if isAdmin();
@@ -120,14 +126,11 @@ service cloud.firestore {
       //      parentUid = null. Só se parentUid atual é do próprio auth.uid.
       //   c) Aceitar contrato (pai vinculado): grava campos de aceite.
       //      Só permitido se ainda não foi aceito (contractAcceptedAt null).
+      // O vínculo pending → used NÃO é mais feito pelo cliente: quem faz é
+      // a Cloud Function redeemInvite, em transação (evita dois pais
+      // resgatarem o mesmo código). O caminho inverso (desvincular ao
+      // apagar a conta) continua aqui — é o próprio dono agindo.
       allow update: if isAdmin() || (
-        isSignedIn()
-        && resource.data.inviteStatus == 'pending'
-        && request.resource.data.parentUid == request.auth.uid
-        && request.resource.data.inviteStatus == 'used'
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['parentUid', 'inviteStatus'])
-      ) || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.parentUid == null
