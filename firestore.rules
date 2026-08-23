@@ -100,10 +100,8 @@ service cloud.firestore {
     // children/{childId}
     //   - Admin: leitura/escrita total
     //   - Pai do filho: leitura
-    //   - Qualquer signed-in pode LER children com inviteStatus == 'pending'
-    //     (necessário pro fluxo signupWithInvite resgatar o código)
-    //   - Update por pai NOVO (signup): só pode mudar parentUid + inviteStatus,
-    //     e só se o convite ainda está pendente
+    //   - Resgate de convite NÃO passa mais por aqui: quem resolve o código
+    //     é a Cloud Function redeemInvite (Admin SDK, em transação)
     // -----------------------------------------------------------------
     match /children/{childId} {
       // A cláusula `inviteStatus == 'pending'` foi REMOVIDA daqui.

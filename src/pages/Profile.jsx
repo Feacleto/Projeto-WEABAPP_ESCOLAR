@@ -9,6 +9,8 @@ import {
   LifeBuoy,
   Key,
   Bus,
+  Bell,
+  BellOff,
   UserPlus,
   ChevronRight,
   Pencil,
@@ -31,6 +33,12 @@ import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
 import { watchDriverLeads } from '../services/waitlistService';
 import { getChildIds } from '../utils/childIds';
+import {
+  isPushAvailable,
+  permissionState,
+  enablePush,
+  disablePush,
+} from '../services/pushService';
 import Avatar from '../components/common/Avatar';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -249,6 +257,9 @@ export default function Profile() {
             </button>
           </Card>
         )}
+
+        {/* Avisos no celular — vale pros dois papéis */}
+        <PushCard uid={user?.uid} />
 
         {/* Ações secundárias */}
         <Card className="space-y-2">
@@ -930,5 +941,95 @@ function LeadsShortcut({ onOpen }) {
       )}
       <ChevronRight size={20} className="text-textMuted shrink-0" />
     </button>
+  );
+}
+
+/**
+ * Liga/desliga os avisos no celular.
+ *
+ * Não renderiza quando o push não está disponível — navegador sem suporte
+ * ou projeto sem a chave VAPID configurada. Melhor não existir do que
+ * existir e não funcionar.
+ */
+function PushCard({ uid }) {
+  const [available, setAvailable] = useState(null);
+  const [state, setState] = useState(permissionState());
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    isPushAvailable().then(setAvailable);
+  }, []);
+
+  if (available !== true) return null;
+
+  const on = state === 'granted';
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      if (on) {
+        await disablePush(uid);
+        toast.success('Avisos desligados neste aparelho.');
+        setState('default');
+      } else {
+        const res = await enablePush(uid);
+        if (res.ok) {
+          toast.success('Pronto! Você recebe avisos mesmo com o app fechado.');
+          setState('granted');
+        } else if (res.reason === 'negado') {
+          toast.error(
+            'O navegador bloqueou os avisos. Libere nas configurações do site.',
+            { duration: 6000 }
+          );
+          setState('denied');
+        } else {
+          toast.error('Não conseguimos ligar os avisos agora.');
+        }
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={busy}
+        className="w-full flex items-center gap-3 tap disabled:opacity-60"
+      >
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          {on ? (
+            <Bell size={20} className="text-primary" />
+          ) : (
+            <BellOff size={20} className="text-textMuted" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <p className="text-sm font-semibold text-text">
+            Avisos no celular
+          </p>
+          <p className="text-xs text-textMuted">
+            {state === 'denied'
+              ? 'Bloqueado pelo navegador'
+              : on
+              ? 'Ligado — chega mesmo com o app fechado'
+              : 'Desligado'}
+          </p>
+        </div>
+        <span
+          className={`w-11 h-6 rounded-full shrink-0 relative transition-colors ${
+            on ? 'bg-primary' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${
+              on ? 'left-[1.375rem]' : 'left-0.5'
+            }`}
+          />
+        </span>
+      </button>
+    </Card>
   );
 }

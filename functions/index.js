@@ -33,6 +33,8 @@ const {
   makeJoinDriverWaitlist,
   makeGetShowcase,
 } = require('./lib/invites');
+const { makeCloseStaleRoutes } = require('./lib/routes');
+const { makeSendPushOnNotification } = require('./lib/push');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -315,3 +317,17 @@ exports.lookupInvite = makeLookupInvite(db);
 exports.redeemInvite = makeRedeemInvite(db);
 exports.joinDriverWaitlist = makeJoinDriverWaitlist(db);
 exports.getShowcase = makeGetShowcase(db);
+
+// ===== Rota abandonada (ver functions/lib/routes.js) =====
+//
+// Fecha routeActive quando o motorista some sem encerrar. Sem isto o painel
+// do pai mostrava a perua parada no mapa como se fosse a posição atual.
+
+exports.closeStaleRoutes = makeCloseStaleRoutes(db);
+
+// ===== Push (ver functions/lib/push.js) =====
+//
+// Amarrado na criação de notifications/{id}: todo aviso do app ganha push
+// sem que cada caminho precise lembrar de enviar.
+
+exports.sendPushOnNotification = makeSendPushOnNotification(db);

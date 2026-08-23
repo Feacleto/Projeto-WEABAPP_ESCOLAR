@@ -11,6 +11,7 @@ import {
   ChevronUp,
   Sparkles,
   Map as MapIcon,
+  CircleAlert,
   CheckCircle2,
   Home,
   Bus,
@@ -37,6 +38,7 @@ import { usePaymentsByParent } from '../../hooks/usePayments';
 import { useAbsenceForChild, useChildAbsenceHistory } from '../../hooks/useAbsences';
 import { useDailyAltPickup } from '../../hooks/useAltPickup';
 import { haversineDistance } from '../../utils/haversine';
+import { describeRoutePresence, PRESENCE } from '../../utils/routePresence';
 import { formatCurrency } from '../../utils/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS } from '../../services/absencesService';
@@ -111,10 +113,26 @@ export default function PaiDashboard() {
   const distanceKm =
     van && home ? haversineDistance(home.lat, home.lng, van.lat, van.lng) : null;
 
+  // Estado honesto da perua. Recalcula a cada tick pra o selo de frescor não
+  // congelar em "agora" enquanto a posição envelhece sem chegar nada novo.
+  const [presenceTick, setPresenceTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setPresenceTick((n) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
+  const presence = useMemo(
+    () => describeRoutePresence({ liveLocation, distanceKm }),
+    // presenceTick força o recálculo do "há quanto tempo" no relógio
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [liveLocation, distanceKm, presenceTick]
+  );
+
   // Alertas de proximidade — só dispara em transição de zona
   const lastZoneRef = useRef(null);
   useEffect(() => {
-    if (!routeActive) {
+    if (!routeActive || presence.isStale) {
+      // Posição velha não gera "chegou!". Avisar com dado que o app não
+      // confirmou é justamente o que queima a confiança do pai.
       lastZoneRef.current = null;
       return;
     }
@@ -148,7 +166,7 @@ export default function PaiDashboard() {
         }
       }
     }
-  }, [distanceKm, routeActive]);
+  }, [distanceKm, routeActive, presence.isStale]);
 
   const nextPayment = useMemo(() => {
     if (!payments?.length) return null;
@@ -242,14 +260,10 @@ export default function PaiDashboard() {
 
         {/* Tracking — quando rota tá ativa mostra status dinâmico. Quando
           * não tá, um botão simples permite abrir o mapa mesmo assim. */}
-        {routeActive && distanceKm != null ? (
-          <TrackingPanel
-            distanceKm={distanceKm}
-            onOpenMap={() => navigate('/pai/map')}
-          />
-        ) : (
-          <OpenMapButton onClick={() => navigate('/pai/map')} />
-        )}
+        <PresencePanel
+          presence={presence}
+          onOpenMap={() => navigate('/pai/map')}
+        />
 
         {/* Pagamento — só se houver pendente */}
         {nextPayment && (
@@ -563,58 +577,61 @@ function AltPickupCTA({ pickup, onClick }) {
  *   - Próximo (≤ 2 km): mostra "Tá chegando!" com distância e tempo
  *   - Chegou (≤ 400 m): "Chegou! Já tá na sua porta"
  */
-function TrackingPanel({ distanceKm, onOpenMap }) {
-  const zone =
-    distanceKm > NEAR_KM ? 'far' : distanceKm > ARRIVED_KM ? 'near' : 'arrived';
-  const messages = {
-    far: {
-      title: 'Em rota',
-      subtitle: 'Vamos te avisar quando estiver perto',
+/**
+ * Painel de presença da perua — três estados honestos em vez de dois.
+ *
+ * Antes existiam só "rota ativa com distância" e "sem rota". O caso do tio
+ * que fecha a aba no meio do caminho caía no primeiro: routeActive ficava
+ * true, a perua aparecia parada no mapa e o pai lia aquilo como verdade.
+ * Agora esse caso tem nome, cor e um telefone à mão.
+ */
+function PresencePanel({ presence, onOpenMap }) {
+  const cfg = {
+    [PRESENCE.NO_ROUTE]: {
+      ring: 'border-dashed border-gray-200',
+      iconBg: 'bg-gray-100 text-textMuted',
+      icon: MapIcon,
     },
-    near: {
-      title: 'Tá chegando!',
-      subtitle: `${formatDistance(distanceKm)} daqui · prepare a criança`,
+    [PRESENCE.STALE]: {
+      ring: 'border-amber-200',
+      iconBg: 'bg-amber-100 text-amber-700',
+      icon: CircleAlert,
     },
-    arrived: { title: 'Chegou!', subtitle: 'Já tá na sua porta' },
-  };
-  const cfg = messages[zone];
+    [PRESENCE.MOVING]: {
+      ring: 'border-gray-100',
+      iconBg: 'bg-primary/10 text-primary',
+      icon: Bus,
+    },
+  }[presence.kind];
+
+  const Icon = cfg.icon;
 
   return (
     <button
       onClick={onOpenMap}
-      className="tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3"
+      className={`tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border ${cfg.ring}`}
     >
-      <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <MapIcon size={20} />
+      <div
+        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${cfg.iconBg}`}
+      >
+        <Icon size={20} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-text leading-tight">{cfg.title}</p>
-        <p className="text-xs text-textMuted mt-0.5">{cfg.subtitle}</p>
-      </div>
-      <ChevronRight size={18} className="text-textMuted shrink-0" />
-    </button>
-  );
-}
-
-/**
- * Botão simples pra abrir o mapa quando a rota NÃO está ativa.
- * Substitui o TrackingPanel nesse cenário pra deixar o mapa sempre
- * a um toque de distância, mesmo sem perua em trânsito agora.
- */
-function OpenMapButton({ onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border border-dashed border-gray-200"
-    >
-      <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <MapIcon size={20} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-text leading-tight">Ver no mapa</p>
-        <p className="text-xs text-textMuted mt-0.5">
-          A perua aparece aqui quando estiver rodando
-        </p>
+        <p className="font-bold text-text leading-tight">{presence.title}</p>
+        {presence.detail && (
+          <p className="text-xs text-textMuted mt-0.5 leading-snug">
+            {presence.detail}
+          </p>
+        )}
+        {/* Selo de frescor: sempre visível quando vem do GPS. É o que separa
+          * "está aqui agora" de "estava aqui em algum momento". */}
+        {presence.freshness && (
+          <p className="text-[11px] text-textMuted mt-1">
+            {presence.freshness}
+            {presence.distanceKm != null &&
+              ` · ${formatDistance(presence.distanceKm)} daqui`}
+          </p>
+        )}
       </div>
       <ChevronRight size={18} className="text-textMuted shrink-0" />
     </button>
