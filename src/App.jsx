@@ -12,6 +12,7 @@ import TioLayout from './pages/tio/TioLayout';
 import TioDashboard from './pages/tio/TioDashboard';
 import TioChildren from './pages/tio/TioChildren';
 import TioRoute from './pages/tio/TioRoute';
+import TioRouteNow from './pages/tio/TioRouteNow';
 import TioRoutePlan from './pages/tio/TioRoutePlan';
 import TioFinance from './pages/tio/TioFinance';
 import TioFinanceReport from './pages/tio/TioFinanceReport';
@@ -133,6 +134,7 @@ export default function App() {
         <Route path="children/:id" element={<ChildDetail />} />
         <Route path="children/:id/contract" element={<TioContract />} />
         <Route path="route" element={<TioRoute />} />
+        <Route path="route/now" element={<TioRouteNow />} />
         <Route path="route/plan" element={<TioRoutePlan />} />
         <Route path="finance" element={<TioFinance />} />
         <Route path="finance/report" element={<TioFinanceReport />} />

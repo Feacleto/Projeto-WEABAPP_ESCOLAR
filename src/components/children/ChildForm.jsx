@@ -108,24 +108,27 @@ export default function ChildForm() {
       // Quem ficar sem coordenada é salvo com geoPending e resolve depois.
       if (!form.address.trim()) errs.address = 'Diga o endereço de casa.';
     }
+    // Escola é OPCIONAL: o tio muitas vezes cadastra a criança no meio da
+    // rota e completa a ficha depois. Validamos só o que foi preenchido.
     if (s === 3) {
-      if (!form.school.trim()) errs.school = 'Diga o nome da escola.';
-      if (!form.schoolAddress.trim())
-        errs.schoolAddress = 'Diga o endereço da escola.';
+      if (form.schoolAddress.trim() && !form.school.trim()) {
+        errs.school = 'Se informou o endereço, diga também o nome da escola.';
+      }
     }
+    // Responsável e financeiro: só o telefone é indispensável — é por ele
+    // que o convite chega. Email e mensalidade podem vir depois.
     if (s === 4) {
-      if (!form.parentName.trim())
-        errs.parentName = 'Diga o nome do responsável.';
-      if (!isValidEmail(form.parentEmail))
-        errs.parentEmail = 'Email não parece válido.';
       if (!isValidPhone(form.parentPhone))
-        errs.parentPhone = 'Telefone com 10 ou 11 dígitos.';
+        errs.parentPhone = 'Telefone com DDD — é por aqui que o convite vai.';
+      if (form.parentEmail.trim() && !isValidEmail(form.parentEmail))
+        errs.parentEmail = 'Email não parece válido.';
       if (form.parent2Phone && !isValidPhone(form.parent2Phone))
         errs.parent2Phone = 'Telefone inválido.';
       const fee = parseFloat(form.monthlyFee);
-      if (!fee || fee <= 0) errs.monthlyFee = 'Diga o valor da mensalidade.';
+      if (form.monthlyFee.trim() && (!fee || fee <= 0))
+        errs.monthlyFee = 'Valor precisa ser maior que zero.';
       const day = parseInt(form.dueDay, 10);
-      if (!day || day < 1 || day > 28)
+      if (form.dueDay && (!day || day < 1 || day > 28))
         errs.dueDay = 'Dia entre 1 e 28.';
     }
     setErrors(errs);
@@ -145,6 +148,19 @@ export default function ChildForm() {
     setErrors({});
     if (step > 1) setStep(step - 1);
     else navigate(-1);
+  };
+
+  // A partir do passo 2 a criança já tem o mínimo pra existir (nome +
+  // endereço). Deixar o tio salvar aqui é o que evita o abandono no meio do
+  // formulário — ele volta na ficha e completa quando estiver parado.
+  const canSaveEarly = step >= 2 && !!form.name.trim() && !!form.address.trim();
+
+  const onSaveEarly = () => {
+    if (!validateStep(step)) {
+      toast.error('Confira o que tá destacado.');
+      return;
+    }
+    onSubmit();
   };
 
   const onSubmit = async () => {
@@ -203,7 +219,7 @@ export default function ChildForm() {
         </div>
       </header>
 
-      <main className="flex-1 px-5 pt-3 pb-32 space-y-5">
+      <main className="flex-1 px-5 pt-3 pb-44 space-y-5">
         {step === 1 && (
           <Step1Child
             form={form}
@@ -255,6 +271,20 @@ export default function ChildForm() {
         >
           {step === TOTAL_STEPS ? 'Cadastrar criança' : 'Avançar'}
         </Button>
+
+        {/* Saída antecipada: a criança já tem o mínimo pra existir. Sem este
+          * botão, quem não sabe o CEP da escola ou o valor combinado ficava
+          * preso no meio do cadastro e desistia. */}
+        {canSaveEarly && step < TOTAL_STEPS && (
+          <button
+            type="button"
+            onClick={onSaveEarly}
+            disabled={submitting}
+            className="tap w-full text-sm font-semibold text-textMuted py-3 disabled:opacity-50"
+          >
+            Salvar e completar depois
+          </button>
+        )}
       </footer>
     </div>
   );

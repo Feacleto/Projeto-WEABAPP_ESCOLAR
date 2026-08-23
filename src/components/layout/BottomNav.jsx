@@ -27,7 +27,7 @@ export default function BottomNav({ items }) {
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              `tap flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-semibold ${
+              `tap flex flex-col items-center justify-center gap-1 py-2.5 text-[12px] font-semibold ${
                 isActive ? 'text-text' : 'text-textMuted'
               }`
             }

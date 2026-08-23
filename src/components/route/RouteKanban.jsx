@@ -11,6 +11,7 @@ import {
   updateChildStatus,
   STATUS_LABELS,
 } from '../../services/childrenService';
+import { advanceChild } from '../../services/routeStatusService';
 import {
   PERIODS,
   DIRECTIONS,
@@ -160,7 +161,7 @@ export default function RouteKanban() {
     const child = byId.get(childId);
     if (!child || !nextStatus) return;
     try {
-      await updateChildStatus(childId, nextStatus);
+      await advanceChild(childId, nextStatus);
       toast.success(`${child.name}: ${STATUS_LABELS[nextStatus] || nextStatus}`);
     } catch (err) {
       console.error(err);

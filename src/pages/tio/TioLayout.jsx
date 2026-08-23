@@ -19,7 +19,7 @@ import {
 const NAV_ITEMS = [
   { to: '/tio', label: 'Início', icon: Home, end: true },
   { to: '/tio/children', label: 'Crianças', icon: Users },
-  { to: '/tio/route', label: 'Rota', icon: Map },
+  { to: '/tio/route/now', label: 'Rota', icon: Map },
   { to: '/tio/finance', label: 'Financeiro', icon: DollarSign },
 ];
 

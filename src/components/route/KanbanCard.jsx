@@ -16,6 +16,7 @@ import Avatar from '../common/Avatar';
 import StatusBadge from '../children/StatusBadge';
 import { formatPhone } from '../../utils/formatters';
 import { ABSENCE_SHORT } from '../../services/absencesService';
+import { getActionForStatus } from '../../services/routeStatusService';
 import { createCall } from '../../services/pendingCallService';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -302,33 +303,4 @@ function AddressRow({ icon: Icon, label, value, highlighted }) {
   );
 }
 
-/**
- * Decide qual ação mostrar baseado no status efetivo + direção do turno.
- * Retorna { label, nextStatus, variant } ou null se não há ação possível.
- */
-// eslint-disable-next-line react-refresh/only-export-components
-export function getActionForStatus(status, direction) {
-  if (direction === 'pickup') {
-    // home → onboard → atSchool
-    if (status === 'home') {
-      return { label: 'Embarcar', nextStatus: 'onboard', variant: 'primary' };
-    }
-    if (status === 'onboard') {
-      return {
-        label: 'Entregar na escola',
-        nextStatus: 'atSchool',
-        variant: 'success',
-      };
-    }
-    return null; // atSchool ou delivered: nada a fazer no pickup
-  }
-  // direction === 'dropoff'
-  // atSchool → onboard → delivered
-  if (status === 'atSchool') {
-    return { label: 'Embarcar pra casa', nextStatus: 'onboard', variant: 'primary' };
-  }
-  if (status === 'onboard') {
-    return { label: 'Entregar em casa', nextStatus: 'delivered', variant: 'success' };
-  }
-  return null;
-}
+
