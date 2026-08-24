@@ -27,6 +27,23 @@
   /* Container mobile centrado em telas maiores (PWA é mobile-first) */
   #root {
     @apply mx-auto max-w-mobile bg-bg;
+
+    /* REDE DE SEGURANÇA CONTRA ROLAGEM LATERAL.
+     *
+     * Um só elemento largo demais — um endereço sem espaço, um valor que não
+     * coube, um cartão com largura fixa — faz a PÁGINA INTEIRA rolar de lado.
+     * No celular isso não lê como "esse card está errado", lê como "o app
+     * está quebrado": o cabeçalho desalinha do conteúdo e o dedo arrasta a
+     * tela pro nada.
+     *
+     * É `clip` e NÃO `hidden` de propósito. `overflow-x: hidden` transforma o
+     * #root em contêiner de rolagem e mata o `position: sticky` de todos os
+     * cabeçalhos do app. `clip` só recorta — o sticky continua funcionando.
+     *
+     * Isto é rede, não conserto: o que transborda continua transbordando, só
+     * não arrasta a página junto. Cada caso ainda precisa de min-w-0 /
+     * truncate / break-words no lugar certo. */
+    overflow-x: clip;
   }
 }
 

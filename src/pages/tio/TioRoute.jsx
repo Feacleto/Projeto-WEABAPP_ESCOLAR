@@ -114,7 +114,9 @@ export default function TioRoute() {
 
   return (
     <>
-      <Header title="Rota" />
+      {/* /tio/route não é aba: chega-se aqui do painel ou do "Rota agora".
+        * Sem a seta, a única volta era o gesto do sistema. */}
+      <Header title="Rota" showBack />
 
       <div className="p-5 space-y-5">
         {watching ? (
