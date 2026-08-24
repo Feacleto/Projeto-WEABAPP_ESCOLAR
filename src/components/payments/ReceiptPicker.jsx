@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Paperclip, FileText, X, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { STORAGE_ENABLED } from '../../config/capabilities';
 
 const MAX_BYTES = 2 * 1024 * 1024; // igual ao limite das storage.rules
 
@@ -19,6 +20,16 @@ const MAX_BYTES = 2 * 1024 * 1024; // igual ao limite das storage.rules
 export default function ReceiptPicker({ file, onChange }) {
   const inputRef = useRef(null);
   const [preview, setPreview] = useState(null);
+
+  // Sem Storage não existe onde guardar o anexo, então o botão não
+  // aparece. Isto NÃO quebra o fluxo: anexar sempre foi opcional, e
+  // avisar que pagou funciona com o arquivo nulo — é o mesmo caminho de
+  // quem escolhe não anexar. O que se perde é a prova junto do aviso,
+  // não o aviso.
+  //
+  // Devolver null em vez de um botão desabilitado é deliberado: botão
+  // apagado convida a tocar e a procurar o motivo. Ausência não.
+  if (!STORAGE_ENABLED) return null;
 
   const pick = (e) => {
     const chosen = e.target.files?.[0];

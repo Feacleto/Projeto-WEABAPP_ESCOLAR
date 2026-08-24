@@ -53,6 +53,7 @@ import {
   isRecentLoginRequired,
 } from '../services/accountService';
 import { uploadProfilePhoto, deleteProfilePhoto } from '../services/photoService';
+import { STORAGE_ENABLED } from '../config/capabilities';
 import { setProfilePhotoURL } from '../services/profileService';
 import { useSoundsEnabled } from '../hooks/useSoundsEnabled';
 import { playSound } from '../services/soundService';
@@ -545,22 +546,30 @@ function ProfilePhotoEditor({ uid, name, photoURL, kind = 'adult', onChanged }) 
         name={name}
         size="xl"
       />
-      <label
-        htmlFor="profile-photo-input"
-        className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
-        aria-label="Trocar foto"
-      >
-        <Camera size={18} />
-        <input
-          id="profile-photo-input"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={onPick}
-          disabled={uploading}
-        />
-      </label>
-      {photoURL && !uploading && (
+      {/* Sem Storage não há upload, então não há botão. O avatar continua
+        * ali: ele é gerado no navegador a partir do id, e ninguém fica sem
+        * rosto na lista — só não dá pra trocar por uma foto de verdade. */}
+      {STORAGE_ENABLED && (
+        <label
+          htmlFor="profile-photo-input"
+          className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
+          aria-label="Trocar foto"
+        >
+          <Camera size={18} />
+          <input
+            id="profile-photo-input"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onPick}
+            disabled={uploading}
+          />
+        </label>
+      )}
+      {/* Remover também depende de Storage (deleteObject). Uma foto
+        * legada de antes do desligamento fica visível e não removível —
+        * botão que erra é pior que botão que não está lá. */}
+      {STORAGE_ENABLED && photoURL && !uploading && (
         <button
           type="button"
           onClick={onRemove}

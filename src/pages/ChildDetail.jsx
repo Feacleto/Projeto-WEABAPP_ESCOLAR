@@ -20,6 +20,7 @@ import Card from '../components/common/Card';
 import InviteShare from '../components/children/InviteShare';
 import ChildPaymentHistory from '../components/payments/ChildPaymentHistory';
 import Avatar from '../components/common/Avatar';
+import { STORAGE_ENABLED } from '../config/capabilities';
 import Skeleton from '../components/common/Skeleton';
 import Button from '../components/common/Button';
 import ConfirmDialog from '../components/common/ConfirmDialog';
@@ -363,22 +364,28 @@ function ChildPhotoEditor({ child }) {
         kind="child"
         size="xl"
       />
-      <label
-        htmlFor={`child-photo-${child.id}`}
-        className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
-        aria-label="Trocar foto"
-      >
-        <Camera size={18} />
-        <input
-          id={`child-photo-${child.id}`}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={onPick}
-          disabled={uploading}
-        />
-      </label>
-      {child.photoURL && !uploading && (
+      {/* Sem Storage não há upload, então não há botão. O avatar continua
+        * ali: ele é gerado no navegador a partir do id, e ninguém fica sem
+        * rosto na lista — só não dá pra trocar por uma foto de verdade. */}
+      {STORAGE_ENABLED && (
+        <label
+          htmlFor={`child-photo-${child.id}`}
+          className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
+          aria-label="Trocar foto"
+        >
+          <Camera size={18} />
+          <input
+            id={`child-photo-${child.id}`}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onPick}
+            disabled={uploading}
+          />
+        </label>
+      )}
+      {/* Remover também depende de Storage (deleteObject). */}
+      {STORAGE_ENABLED && child.photoURL && !uploading && (
         <button
           type="button"
           onClick={onRemove}

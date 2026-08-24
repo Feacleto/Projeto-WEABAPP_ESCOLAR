@@ -4,6 +4,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
+import { STORAGE_ENABLED, STORAGE_OFF_MESSAGE } from '../config/capabilities';
 import { storage } from '../firebase/config';
 
 /**
@@ -65,6 +66,12 @@ export async function resizeAndCompress(file, maxSize = MAX_SIZE) {
 export async function uploadProfilePhoto(uid, file) {
   if (!uid) throw new Error('Sem uid.');
   const blob = await resizeAndCompress(file);
+  // A interface não oferece este caminho quando Storage está desligado.
+  // Se a execução chegou aqui, é chamada nova que não checou — e o erro
+  // precisa dizer isso, em vez de virar falha de rede genérica que manda
+  // o próximo a debugar a conexão do usuário.
+  if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
+
   const storageRef = ref(storage, `profilePhotos/${uid}`);
   await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
   return await getDownloadURL(storageRef);
@@ -77,6 +84,12 @@ export async function uploadProfilePhoto(uid, file) {
 export async function uploadChildPhoto(childId, file) {
   if (!childId) throw new Error('Sem childId.');
   const blob = await resizeAndCompress(file);
+  // A interface não oferece este caminho quando Storage está desligado.
+  // Se a execução chegou aqui, é chamada nova que não checou — e o erro
+  // precisa dizer isso, em vez de virar falha de rede genérica que manda
+  // o próximo a debugar a conexão do usuário.
+  if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
+
   const storageRef = ref(storage, `childPhotos/${childId}`);
   await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
   return await getDownloadURL(storageRef);
@@ -124,6 +137,12 @@ export async function uploadPaymentReceipt(paymentId, file) {
 
   const isPdf = file.type === 'application/pdf';
   const payload = isPdf ? file : await resizeAndCompress(file);
+
+  // A interface não oferece este caminho quando Storage está desligado.
+  // Se a execução chegou aqui, é chamada nova que não checou — e o erro
+  // precisa dizer isso, em vez de virar falha de rede genérica que manda
+  // o próximo a debugar a conexão do usuário.
+  if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
 
   const fileRef = ref(storage, `paymentReceipts/${paymentId}`);
   await uploadBytes(fileRef, payload, {
