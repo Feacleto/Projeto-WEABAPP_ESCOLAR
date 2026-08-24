@@ -152,9 +152,23 @@ async function main() {
 
   // TRAVA DE SEGURANÇA: com dois motoristas, carimbar tudo com um uid só
   // entregaria as crianças de um pro outro. Melhor recusar que adivinhar.
+  //
+  // MAS O DONO NÃO É UM MOTORISTA, mesmo carregando `role: 'admin'`.
+  //
+  // A conta do dono ainda é `role: 'admin'` + `superAdmin: true`, porque
+  // migrar pra `role: 'owner'` exige console e ele não tem esse caminho. Sem
+  // descontar, a trava contava 2 e recusava — protegendo contra um segundo
+  // parceiro que não existe, e travando o backfill de que a base precisa.
+  //
+  // É o mesmo desconto que `contaParceiros()` faz nas métricas do painel, e
+  // pelo mesmo motivo: `role: 'admin'` responde "opera uma perua?", e o dono
+  // responde sim por acidente de modelagem, não por operar alguma.
   const usuarios = await listar(docs, sessao.token, 'users');
+  const ehDono = (u) =>
+    u.fields?.role?.stringValue === 'owner' ||
+    u.fields?.superAdmin?.booleanValue === true;
   const motoristas = usuarios.filter(
-    (u) => u.fields?.role?.stringValue === 'admin'
+    (u) => u.fields?.role?.stringValue === 'admin' && !ehDono(u)
   );
   if (motoristas.length > 1) {
     console.error(

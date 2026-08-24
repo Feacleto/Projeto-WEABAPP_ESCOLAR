@@ -205,7 +205,22 @@ async function main() {
   // O oposto: a regra tem que DEIXAR o trabalho acontecer.
   {
     const r = await listar('children', tio);
-    registrar('motorista LÊ children', r.ok, 'HTTP ' + r.status);
+    // OBSOLETA DESDE O ESCOPO POR MOTORISTA — agora ela testa o CONTRÁRIO.
+    //
+    // Esta sonda nasceu quando `children` era `if isAdmin()`: listar a
+    // coleção inteira era o comportamento certo, e o 200 provava que a regra
+    // deixava o trabalho acontecer. Com `adminUid`, listar SEM filtro passou
+    // a ser exatamente o que não pode — e é o que a sonda 12 verifica.
+    //
+    // Duas sondas testando o mesmo gesto com expectativas opostas é pior que
+    // uma só: uma delas vai estar sempre vermelha, e a vermelha permanente é
+    // a que ensina a ignorar o relatório. Quem prova a positiva agora é a
+    // sonda 11, que consulta COM o filtro de escopo.
+    registrar(
+      'motorista NÃO lista children sem filtro (era a sonda 5)',
+      !r.ok,
+      'HTTP ' + r.status
+    );
   }
 
   // ── 6. motorista não se auto-promove a dono ─────────────────────────────
@@ -349,9 +364,23 @@ async function main() {
   // Suspensão que o suspenso desfaz não é suspensão. `suspenso` está fora do
   // que o próprio usuário escreve: quem mexe é o dono.
   {
+    // ESCREVE `true`, NÃO `false` — e a diferença é a sonda inteira.
+    //
+    // A versão anterior gravava `false` num campo que já valia `false`. Isso
+    // é diff VAZIO, e diff vazio nenhuma regra bloqueia: `affectedKeys()`
+    // devolve conjunto vazio, `hasAny([...])` dá falso, e a escrita passa —
+    // corretamente, porque nada mudou. A sonda lia esse 200 e gritava
+    // "O SUSPENSO SE DESSUSPENDE" todo dia, contra uma regra que funciona.
+    //
+    // Sonda que grita sem motivo é pior que sonda que não existe: ensina a
+    // ignorar o alarme, e aí o dia em que ele for de verdade ninguém olha.
+    //
+    // `true` é mudança real e é o gesto que importa — o motorista SUSPENSO
+    // tentando mexer no próprio estado. Fica `true` se passar, e aí o grito
+    // é justo.
     const r = await atualizar(
       `users/${tio.uid}`,
-      { suspenso: { booleanValue: false } },
+      { suspenso: { booleanValue: true } },
       tio
     );
     registrar(
