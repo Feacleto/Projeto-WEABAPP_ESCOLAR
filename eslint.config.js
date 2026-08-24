@@ -19,6 +19,17 @@ export default defineConfig([
     },
   },
 
+  // vite.config.js roda no Node durante o build — não no browser. Sem este
+  // bloco, o `process.cwd()` da trava que exige a config do Firebase virava
+  // no-undef. É o mesmo caso das functions: arquivo de Node caindo na regra
+  // do browser porque casava com o padrão '*.{js,jsx}' da raiz.
+  {
+    files: ['vite.config.js', 'eslint.config.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+
   {
     files: ['src/**/*.{js,jsx}', '*.{js,jsx}'],
     extends: [
