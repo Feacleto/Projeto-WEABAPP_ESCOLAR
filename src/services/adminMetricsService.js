@@ -62,6 +62,30 @@ async function conta(q) {
   }
 }
 
+/**
+ * Quantos PARCEIROS existem — motoristas de verdade, sem o dono da plataforma.
+ *
+ * `role: 'admin'` significa MOTORISTA no código inteiro: é o que `isAdmin()`
+ * checa nas rules pra liberar crianças, pagamentos e rotas. A conta do dono
+ * carrega esse mesmo papel por necessidade — sem ele, as leituras deste painel
+ * seriam negadas e a tela viria vazia.
+ *
+ * A consequência é que ele entrava na contagem de parceiros. Então descontamos
+ * quem tem `superAdmin`, que é o que distingue o dono de um parceiro.
+ *
+ * Duas consultas em vez de uma porque o Firestore não expressa "tem role admin
+ * E NÃO tem superAdmin" numa query só: `!=` ignora documento onde o campo não
+ * existe, que é justamente o caso de todo parceiro. Subtrair é exato; filtrar
+ * por desigualdade daria zero.
+ */
+async function contaParceiros(users) {
+  const [comPapel, donos] = await Promise.all([
+    conta(query(users, where('role', '==', 'admin'))),
+    conta(query(users, where('role', '==', 'admin'), where('superAdmin', '==', true))),
+  ]);
+  return Math.max(0, comPapel - donos);
+}
+
 /** YYYY-MM do mês corrente, no mesmo formato do campo `month` de payments. */
 export function mesAtual() {
   const d = new Date();
@@ -89,7 +113,16 @@ export async function getPlatformOverview() {
     filaParceiros,
   ] = await Promise.all([
     conta(query(users)),
-    conta(query(users, where('role', '==', 'admin'))),
+    // MOTORISTAS SÃO OS PARCEIROS — e o dono da plataforma não é um deles.
+    //
+    // A conta do dono precisa de `role: 'admin'` porque é isso que as rules
+    // checam pra liberar a leitura de users, children e payments — ou seja,
+    // sem esse papel o próprio painel não consegue ler nada. Mas ele não é um
+    // parceiro, e contá-lo aqui inflava o número: com um parceiro real, a tela
+    // dizia 2.
+    //
+    // Um número de vitrine errado pra mais é o pior tipo: ninguém desconfia.
+    contaParceiros(users),
     conta(query(users, where('role', '==', 'parent'))),
     conta(query(children, where('active', '==', true))),
     somaCampo(query(payments, where('status', '==', 'paid')), 'amount'),
