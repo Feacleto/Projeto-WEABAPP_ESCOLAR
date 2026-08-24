@@ -265,6 +265,8 @@ export async function deleteAdminAccount(adminUid) {
   await deleteEntireCollection('agendaEntries');
   await deleteEntireCollection('waitlistDrivers');
   await deleteEntireCollection('waitlistParents');
+  // Despesas são dado de negócio do tio: saem junto quando ele encerra.
+  await deleteEntireCollection('expenses');
 
   await deleteDoc(doc(db, 'routePlans', 'default')).catch((err) =>
     console.error('routePlans/default:', err)

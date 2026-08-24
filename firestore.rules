@@ -500,6 +500,17 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // expenses/{id} — despesas do motorista (combustível, manutenção...)
+    //
+    // SOMENTE admin, leitura e escrita. Isto é dado de negócio do tio:
+    // quanto ele gasta de combustível ou paga de parcela não é da conta
+    // de quem paga a mensalidade. Nenhum responsável enxerga.
+    // -----------------------------------------------------------------
+    match /expenses/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------
     // Default deny — qualquer outra coleção é proibida.
     // -----------------------------------------------------------------
     match /{document=**} {

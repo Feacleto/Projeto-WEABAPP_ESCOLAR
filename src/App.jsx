@@ -16,6 +16,7 @@ import TioRouteNow from './pages/tio/TioRouteNow';
 import TioRoutePlan from './pages/tio/TioRoutePlan';
 import TioFinance from './pages/tio/TioFinance';
 import TioFinanceReport from './pages/tio/TioFinanceReport';
+import TioExpenses from './pages/tio/TioExpenses';
 import TioContract from './pages/tio/TioContract';
 import TioPixConfig from './pages/tio/TioPixConfig';
 import TioAgenda from './pages/tio/TioAgenda';
@@ -139,6 +140,7 @@ export default function App() {
         <Route path="route/plan" element={<TioRoutePlan />} />
         <Route path="finance" element={<TioFinance />} />
         <Route path="finance/report" element={<TioFinanceReport />} />
+        <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
         <Route path="leads" element={<TioLeads />} />

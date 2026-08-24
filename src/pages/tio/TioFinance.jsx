@@ -2,9 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Key,
-  ChevronRight,
-  ChevronLeft,
-  X,
+  ChevronRight,  X,
   Search,
   Banknote,
   QrCode,
@@ -12,6 +10,7 @@ import {
   Wallet,
   DollarSign,
   FileText,
+  TrendingDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
@@ -34,6 +33,7 @@ import {
 import { notifyPaymentConfirmed } from '../../services/notificationsService';
 import { uploadPaymentReceipt } from '../../services/photoService';
 import ReceiptPicker from '../../components/payments/ReceiptPicker';
+import MonthSwitcher from '../../components/payments/MonthSwitcher';
 import {
   formatMonthLabel,
   formatCurrency,
@@ -317,7 +317,32 @@ export default function TioFinance() {
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-24" />
             ))}
+    
+        {/* Complemento, deliberadamente no fim e discreto.
+          *
+          * O foco desta tela é ENTRADA: quem pagou, quem não pagou, quem
+          * atrasou — a pergunta que o tio responde todo dia. Despesa é a
+          * conta que ele fecha uma vez por mês, então fica atrás de um
+          * toque em vez de competir por espaço com a cobrança. */}
+        <button
+          type="button"
+          onClick={() => navigate('/tio/finance/expenses')}
+          className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3 mt-2"
+        >
+          <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+            <TrendingDown size={20} />
           </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-text leading-tight">
+              Visão completa
+            </p>
+            <p className="text-xs text-textMuted mt-0.5">
+              Lance despesas e veja quanto sobrou no mês
+            </p>
+          </div>
+          <ChevronRight size={18} className="text-textMuted shrink-0" />
+        </button>
+      </div>
         ) : enriched.length === 0 ? (
           <EmptyState
             icon={Wallet}
@@ -412,43 +437,6 @@ export default function TioFinance() {
 }
 
 /* ─────────────── Componentes ─────────────── */
-
-function MonthSwitcher({ monthKey, onChange }) {
-  const goPrev = () => onChange(addMonths(monthKey, -1));
-  const goNext = () => onChange(addMonths(monthKey, 1));
-  const current = getCurrentMonthKey();
-  const canGoNext = monthKey < current;
-
-  // Limita até 12 meses pra trás (alinhado com a retenção)
-  const minMonth = addMonths(current, -11);
-  const canGoPrev = monthKey > minMonth;
-
-  return (
-    <div className="flex items-center justify-between bg-card rounded-2xl shadow-sm p-2">
-      <button
-        type="button"
-        onClick={goPrev}
-        disabled={!canGoPrev}
-        aria-label="Mês anterior"
-        className="tap w-10 h-10 rounded-xl flex items-center justify-center text-text disabled:opacity-30"
-      >
-        <ChevronLeft size={20} />
-      </button>
-      <p className="text-base font-bold text-text capitalize">
-        {formatMonthLabel(monthKey)}
-      </p>
-      <button
-        type="button"
-        onClick={goNext}
-        disabled={!canGoNext}
-        aria-label="Próximo mês"
-        className="tap w-10 h-10 rounded-xl flex items-center justify-center text-text disabled:opacity-30"
-      >
-        <ChevronRight size={20} />
-      </button>
-    </div>
-  );
-}
 
 function FinanceHero({ paid, open, overdueCount, claimedCount }) {
   return (
@@ -628,10 +616,3 @@ function MethodOption({
 
 /* ─────────────── helpers ─────────────── */
 
-function addMonths(monthKey, delta) {
-  const [y, m] = monthKey.split('-').map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  const yy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${yy}-${mm}`;
-}

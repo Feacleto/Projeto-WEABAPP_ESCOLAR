@@ -156,3 +156,19 @@ export function formatAge(birthDate) {
   if (age == null) return null;
   return age === 1 ? '1 ano' : `${age} anos`;
 }
+
+/**
+ * Soma (ou subtrai) meses de uma chave 'YYYY-MM'.
+ *
+ * Estava definida dentro do TioFinance. Subiu pra cá quando o seletor de
+ * mês passou a ser compartilhado com a tela de despesas — duas cópias da
+ * mesma aritmética de data divergem na primeira correção.
+ *
+ * Usa `new Date(y, m - 1 + delta, 1)`, que já trata a virada de ano: mês
+ * 13 vira janeiro do ano seguinte sem código extra.
+ */
+export function addMonths(monthKey, delta) {
+  const [y, m] = String(monthKey).split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
