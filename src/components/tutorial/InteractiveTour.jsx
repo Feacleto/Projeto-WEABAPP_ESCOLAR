@@ -113,17 +113,21 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
       );
     };
 
-    measure();
+    const raf = requestAnimationFrame(measure);
     const id = setInterval(measure, 120);
-    return () => clearInterval(id);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearInterval(id);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, stepIndex, step?.anchor]);
 
+  const uid = user?.uid;
   const finish = useCallback(
     async (completed) => {
-      if (completed && user?.uid) {
+      if (completed && uid) {
         try {
-          await markTutorialDone(user.uid);
+          await markTutorialDone(uid);
           updateProfile({ tutorialDone: true });
         } catch (err) {
           console.error('Falha ao marcar tutorial concluído:', err);
@@ -131,7 +135,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
       }
       onClose?.();
     },
-    [user?.uid, updateProfile, onClose]
+    [uid, updateProfile, onClose]
   );
 
   const goNext = useCallback(() => {

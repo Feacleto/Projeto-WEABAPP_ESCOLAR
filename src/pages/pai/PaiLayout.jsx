@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, DollarSign } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
@@ -36,6 +36,10 @@ export default function PaiLayout() {
   const navigate = useNavigate();
   // null | 'first' (primeiro acesso) | 'review' (pediu pra rever no perfil)
   const [tour, setTour] = useState(null);
+  // Abre sozinho UMA vez por sessão: o profile é refetchado em vários
+  // momentos, e sem isso o tour reabriria por cima de quem acabou de
+  // fechá-lo. Quem pulou reencontra o tour no próximo login.
+  const autoOpened = useRef(false);
   const [birthdayOpen, setBirthdayOpen] = useState(false);
 
   // Chamada ativa do Tio pro Pai (modal fullscreen com ringtone)
@@ -48,7 +52,9 @@ export default function PaiLayout() {
   // responsável não chegar no último passo. Pular é permitido; concluir é o
   // que desliga.
   useEffect(() => {
+    if (autoOpened.current) return;
     if (profile && profile.tutorialDone !== true) {
+      autoOpened.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTour('first');
     }
