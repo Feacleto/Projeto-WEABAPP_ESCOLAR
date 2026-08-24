@@ -22,6 +22,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
  * e não com uma tela nova aparecendo do nada.
  */
 import Home from './pages/Home';
+import Familia from './pages/Familia';
 import Invite from './pages/Invite';
 import Login from './pages/Login';
 import FirstAccess from './pages/FirstAccess';
@@ -70,6 +71,7 @@ import { hasAcceptedCurrentTerms } from './services/consentService';
 import { hasAcceptedContract } from './services/contractService';
 import Spinner from './components/common/Spinner';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
+import { aparelhoDeResponsavel } from './utils/deviceHint';
 
 function FullScreenLoader() {
   return (
@@ -150,6 +152,39 @@ function ParentContractGate({ children }) {
   return children;
 }
 
+/**
+ * A RAIZ SABE COM QUEM ESTÁ FALANDO.
+ *
+ * `/` é a home do MOTORISTA: vende associação, fala de taxa, vaga e
+ * credibilidade de negócio. É a página certa pra quem decide entrar como
+ * parceiro — e a errada pra um responsável.
+ *
+ * Três caminhos jogavam o responsável ali: sair da conta, errar a URL (o
+ * catch-all manda tudo pra `/`) e um botão "ver na home" depois de
+ * avaliar. Ele não ficava preso, porque a home tem "Entrar" no topo — mas
+ * lia uma página escrita pra outra pessoa. E é justamente quem menos vai
+ * insistir: o responsável não decora endereço de site, ele volta pelo
+ * link do WhatsApp.
+ *
+ * Logado, a própria Home já manda cada um pro seu painel. O que faltava
+ * era o caso DESLOGADO, em que o app não sabe com quem fala. A migalha do
+ * aparelho resolve: se aquele celular já foi de um responsável, a raiz
+ * abre a porta da família.
+ *
+ * Errar pra que lado? Pra mostrar a home. Um responsável na home tem
+ * "Entrar" e resolve; e quem nunca usou o app não tem migalha nenhuma,
+ * então visitante novo sempre cai na home — que é o que a gente quer.
+ */
+function Raiz() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <FullScreenLoader />;
+  if (!user && aparelhoDeResponsavel()) {
+    return <Navigate to="/familia" replace />;
+  }
+  return <Home />;
+}
+
 export default function App() {
   // Som global de clique em qualquer elemento .tap — desabilitável no Profile
   useGlobalClickSound();
@@ -159,7 +194,12 @@ export default function App() {
       <Suspense fallback={<FullScreenLoader />}>
         <Routes>
         {/* Rotas públicas */}
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Raiz />} />
+        {/* A porta da família — a home do responsável. Mesmo sistema
+          * visual da home do motorista, porque é o mesmo produto e ele
+          * precisa reconhecer onde está; conteúdo completamente outro,
+          * porque ele não está comprando nada. Ver Familia.jsx. */}
+        <Route path="/familia" element={<Familia />} />
         {/* O convite é o caminho principal do responsável: o código vem na
           * URL, então ele não digita nada além de email e senha. */}
         <Route path="/convite/:codigo" element={<Invite />} />

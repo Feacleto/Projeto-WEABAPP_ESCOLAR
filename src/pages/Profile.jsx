@@ -54,6 +54,7 @@ import {
 } from '../services/accountService';
 import { uploadProfilePhoto, deleteProfilePhoto } from '../services/photoService';
 import { STORAGE_ENABLED } from '../config/capabilities';
+import { destinoAposSair } from '../utils/deviceHint';
 import { setProfilePhotoURL } from '../services/profileService';
 import { useSoundsEnabled } from '../hooks/useSoundsEnabled';
 import { playSound } from '../services/soundService';
@@ -457,8 +458,17 @@ export default function Profile() {
         confirmLabel="Sim, sair"
         variant="danger"
         onConfirm={async () => {
+          // O papel tem que ser lido ANTES do logout: depois dele o
+          // profile vira null e a informação já não existe.
+          const destino = destinoAposSair(role);
           await logout();
-          navigate('/', { replace: true });
+          // Cada papel volta pra porta dele. O motorista vai pra home,
+          // que é a vitrine DELE e faz sentido ele ver. O responsável ia
+          // pro mesmo lugar — uma página que vende associação, fala de
+          // taxa e de vaga limitada. Conteúdo endereçado a outra pessoa,
+          // e escassez que, pra ele, sugere que a vaga do filho corre
+          // risco.
+          navigate(destino, { replace: true });
         }}
         onCancel={() => setConfirmLogout(false)}
       />

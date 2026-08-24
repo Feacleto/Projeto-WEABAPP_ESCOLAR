@@ -7,6 +7,7 @@ import {
   logout as logoutService,
 } from '../services/authService';
 import { getChildIds, resolveActiveChildId } from '../utils/childIds';
+import { marcarAparelho } from '../utils/deviceHint';
 
 // Filho ativo escolhido pelo responsável. Fica em localStorage pra o app
 // abrir no mesmo filho da última vez — trocar de filho a cada reload seria
@@ -48,6 +49,12 @@ export function AuthProvider({ children }) {
         try {
           const userProfile = await getUserDoc(firebaseUser.uid);
           setProfile(userProfile);
+          // De quem é este aparelho. Sobrevive ao logout de propósito:
+          // sair da conta não muda de quem é o celular, e é na visita
+          // seguinte — deslogado — que a dica decide se mostramos a
+          // porta da família ou a home do motorista. Não é permissão;
+          // o papel de verdade continua vindo do doc de usuário.
+          marcarAparelho(userProfile?.role);
         } catch (err) {
           console.error('Falha ao carregar perfil:', err);
           setProfile(null);
