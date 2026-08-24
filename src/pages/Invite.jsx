@@ -42,7 +42,13 @@ import { formatCurrency } from '../utils/formatters';
 export default function Invite() {
   const { codigo } = useParams();
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
+  const {
+    user,
+    profile,
+    loading: authLoading,
+    refreshProfile,
+    setActiveChildId,
+  } = useAuth();
 
   const code = normalizeInviteCode(codigo);
   const [preview, setPreview] = useState(null);
@@ -70,6 +76,19 @@ export default function Invite() {
     }
   }, [authLoading, profile, navigate]);
 
+  // ESTE É O CAMINHO MAIS PERCORRIDO DO APP.
+  //
+  // O pai não guarda o endereço do site e não pede link novo ao tio: ele
+  // volta na conversa do WhatsApp e toca no MESMO link, semana após semana.
+  // Antes isso caía numa tela dizendo "Este convite já foi usado" — ou seja,
+  // o único atalho que ele tem pro app respondia com erro. Agora, se o
+  // convite é dele, entramos direto na criança certa.
+  useEffect(() => {
+    if (preview?.status !== 'yours') return;
+    if (preview.childId) setActiveChildId(preview.childId);
+    navigate('/pai', { replace: true });
+  }, [preview, navigate, setActiveChildId]);
+
   const finish = async (destination) => {
     await refreshProfile();
     navigate(destination || '/pai', { replace: true });
@@ -90,6 +109,29 @@ export default function Invite() {
     preview.companyName ||
     (preview.driverFirstName ? `Tio ${preview.driverFirstName}` : 'seu motorista');
 
+  // O convite é dele: o efeito acima já está navegando. Só um respiro
+  // visual pra não piscar a prévia no meio do caminho.
+  if (preview.status === 'yours') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <Spinner size={30} className="text-primary" />
+        <p className="text-sm text-textMuted">Abrindo o app...</p>
+      </div>
+    );
+  }
+
+  // Vinculado a OUTRA conta, e quem abriu não está logado. Isso é
+  // esmagadoramente o pai que limpou o navegador ou trocou de aparelho —
+  // não um invasor. Então a tela é uma porta ('entre'), não um alarme.
+  if (preview.status === 'taken' && !user) {
+    return (
+      <SignInToContinue
+        childFirstName={preview.childFirstName}
+        driverLabel={driverLabel}
+      />
+    );
+  }
+
   // Pai JÁ logado abrindo o link: nada de prévia, só confirmar o vínculo.
   if (user && profile?.role === 'parent') {
     return (
@@ -102,8 +144,8 @@ export default function Invite() {
     );
   }
 
-  // Convite já usado por outra conta: sem prévia financeira.
-  if (preview.status === 'used') {
+  // Vinculado a outra conta com alguém logado: explica sem assustar.
+  if (preview.status === 'taken') {
     return <AlreadyUsed childFirstName={preview.childFirstName} />;
   }
 
@@ -299,7 +341,7 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
     }
   };
 
-  if (preview.status === 'used') {
+  if (preview.status === 'taken') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
         <p className="text-lg font-bold text-text">Este convite já foi usado</p>
@@ -342,6 +384,50 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
 }
 
 /* ─────────────── Estados de erro ─────────────── */
+
+/**
+ * O link é de uma conta que já existe, e quem abriu não está logado.
+ *
+ * Na prática este é o pai voltando: limpou o navegador, trocou de celular,
+ * ou abriu o link no Chrome depois de ter entrado dentro do WhatsApp (as
+ * duas sessões têm armazenamento separado). Tratar isso como erro de
+ * segurança seria errar o diagnóstico na maioria dos casos.
+ */
+function SignInToContinue({ childFirstName, driverLabel }) {
+  return (
+    <div className="min-h-screen flex flex-col px-6 py-8 justify-center gap-6">
+      <div className="text-center space-y-3">
+        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-emerald-500 to-primary text-white text-3xl font-bold flex items-center justify-center shadow-lg shadow-emerald-500/25">
+          {(childFirstName || '?')[0].toUpperCase()}
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-text leading-tight">
+            Entre pra ver {childFirstName || 'seu filho'}
+          </h1>
+          <p className="text-sm text-textMuted mt-1.5">
+            Sua conta já existe. É só entrar pra continuar acompanhando.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Link
+          to="/login"
+          className="tap w-full h-14 rounded-xl bg-primary text-white font-semibold inline-flex items-center justify-center"
+        >
+          Entrar na minha conta
+        </Link>
+        <p className="text-[11px] text-textMuted text-center">
+          Use o mesmo Google ou email da primeira vez.
+        </p>
+      </div>
+
+      <p className="text-xs text-textMuted text-center">
+        Não consegue entrar? Fale com {driverLabel} — ele gera um link novo.
+      </p>
+    </div>
+  );
+}
 
 function AlreadyUsed({ childFirstName }) {
   return (

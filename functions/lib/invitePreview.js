@@ -10,14 +10,22 @@
  * uma leitura direta do Firestore seria negada. Aqui o servidor monta um
  * pacote curado e devolve só o que decidimos expor.
  *
- * DUAS PROPRIEDADES IMPORTANTES
+ * TRÊS PROPRIEDADES IMPORTANTES
  *   1. Abrir o link NÃO consome o convite. Isso importa de verdade: quando
  *      o tio cola o link no WhatsApp, o WhatsApp busca a URL pra montar o
  *      cartão de prévia. Se abrir consumisse, o robô do WhatsApp gastaria
  *      o convite antes do pai tocar nele.
- *   2. Dado financeiro só aparece com o convite PENDENTE. Se já foi usado,
- *      não sabemos se quem está abrindo é o responsável — então mostramos
- *      apenas o nome da criança e um convite pra entrar.
+ *
+ *   2. Dado financeiro só aparece pra quem tem direito: convite pendente
+ *      (ninguém pegou ainda) ou o próprio responsável já vinculado.
+ *
+ *   3. O LINK É PERMANENTE, e isto é a propriedade mais importante.
+ *      Na prática o pai não guarda o endereço do site nem pede link novo
+ *      ao tio: ele volta na conversa do WhatsApp e toca no mesmo link,
+ *      pra sempre. Então este endpoint é a porta de entrada do app, não
+ *      um passo de cadastro. Se o chamador JÁ é o responsável daquela
+ *      criança, devolvemos status "yours" e o app entra direto — sem
+ *      tela de erro, sem toque extra.
  */
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
@@ -163,8 +171,9 @@ async function loadNoticeSummary(db, child) {
  * getInvitePreview — chamável sem autenticação.
  *
  * Retorna { status, childFirstName, driver..., nextPayment, notices }.
- *   status 'pending' → convite válido, mostra a prévia completa
- *   status 'used'    → já vinculado; só o nome e um "entre com sua conta"
+ *   'pending' → ninguém pegou ainda: mostra a prévia completa
+ *   'yours'   → o chamador JÁ é o responsável: o app entra direto
+ *   'taken'   → vinculado a outra conta: manda pro login, sem alarme
  */
 function makeGetInvitePreview(db) {
   return onCall({ region: REGION }, async (request) => {
@@ -189,11 +198,34 @@ function makeGetInvitePreview(db) {
     const child = { id: childDoc.id, ...childDoc.data() };
     const driver = await loadDriver(db);
 
-    if (child.inviteStatus !== 'pending' || child.parentUid) {
-      // Convite já usado: nada de dado financeiro. Quem abre pode não ser o
-      // responsável, e nós não temos como saber sem login.
+    const callerUid = request.auth?.uid || null;
+    const claimed = child.inviteStatus !== 'pending' || !!child.parentUid;
+
+    if (claimed) {
+      // O chamador é o próprio responsável? Chamadas autenticadas trazem
+      // request.auth, então dá pra saber. Este é o caminho da SEGUNDA
+      // sessão em diante — e é o mais percorrido de todos, porque o link
+      // do WhatsApp é o que o pai guarda pra sempre.
+      if (callerUid && child.parentUid === callerUid) {
+        const [nextPayment, notices] = await Promise.all([
+          loadNextPayment(db, child.id),
+          loadNoticeSummary(db, child),
+        ]);
+        return {
+          status: 'yours',
+          childId: child.id,
+          childFirstName: firstName(child.name),
+          ...driver,
+          monthlyFee: Number(child.monthlyFee) || 0,
+          nextPayment,
+          notices,
+        };
+      }
+
+      // Vinculado a outra conta (ou chamador sem login). Sem dado
+      // financeiro: não temos como saber se é o responsável.
       return {
-        status: 'used',
+        status: 'taken',
         childFirstName: firstName(child.name),
         ...driver,
         nextPayment: null,

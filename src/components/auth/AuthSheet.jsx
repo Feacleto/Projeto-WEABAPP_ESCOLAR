@@ -10,6 +10,7 @@ import {
   googleAndRedeem,
   resetPassword,
 } from '../../services/authService';
+import { canUseGoogleSignIn } from '../../utils/browserEnv';
 
 /**
  * Folha de autenticação que aparece na PRIMEIRA AÇÃO do responsável.
@@ -44,7 +45,12 @@ export default function AuthSheet({
   reason,
   onSuccess,
 }) {
-  const [showEmail, setShowEmail] = useState(false);
+  // Dentro do navegador do WhatsApp o Google recusa o OAuth (devolve
+  // disallowed_useragent). Nesse caso email/senha já começa aberto e é o
+  // caminho principal — oferecer Google ali entregaria uma página de erro
+  // do Google no primeiro contato do pai com o app.
+  const googleWorks = canUseGoogleSignIn();
+  const [showEmail, setShowEmail] = useState(!googleWorks);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -161,22 +167,24 @@ export default function AuthSheet({
           </p>
         </div>
 
-        {/* Caminho principal: nada pra digitar */}
-        <div className="space-y-2">
-          <Button
-            loading={googleBusy}
-            onClick={onGoogle}
-            className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 shadow-md"
-          >
-            {!googleBusy && <GoogleIcon size={22} />}
-            Continuar com Google
-          </Button>
-          <p className="text-[11px] text-textMuted text-center">
-            Sem digitar nada. Se você usa Gmail no celular, é um toque.
-          </p>
-        </div>
+        {/* Caminho principal: nada pra digitar — quando o Google funciona */}
+        {googleWorks && (
+          <div className="space-y-2">
+            <Button
+              loading={googleBusy}
+              onClick={onGoogle}
+              className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 shadow-md"
+            >
+              {!googleBusy && <GoogleIcon size={22} />}
+              Continuar com Google
+            </Button>
+            <p className="text-[11px] text-textMuted text-center">
+              Sem digitar nada. Se você usa Gmail no celular, é um toque.
+            </p>
+          </div>
+        )}
 
-        {!showEmail ? (
+        {googleWorks && !showEmail ? (
           <button
             type="button"
             onClick={() => setShowEmail(true)}

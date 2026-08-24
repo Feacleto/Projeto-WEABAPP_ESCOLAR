@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Home, DollarSign } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
+import InstallPrompt from '../../components/common/InstallPrompt';
 import Tutorial from '../../components/tutorial/Tutorial';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import { useAuth } from '../../hooks/useAuth';
@@ -65,6 +66,11 @@ export default function PaiLayout() {
     <div className="min-h-screen pb-28">
       <Outlet context={{ openTutorial }} />
       <BottomNav items={NAV_ITEMS} />
+
+      {/* Sem um ícone na tela de início, o link do WhatsApp continua sendo
+        * o único caminho do pai pro app — pra sempre. Este convite troca
+        * "achar a conversa certa" por "tocar no ícone". */}
+      <InstallPrompt />
       {welcomeOpen && <Tutorial onClose={() => setWelcomeOpen(false)} />}
       <InteractiveTour open={tourOpen} onClose={() => setTourOpen(false)} />
 

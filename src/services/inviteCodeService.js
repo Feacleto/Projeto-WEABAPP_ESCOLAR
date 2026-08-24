@@ -72,8 +72,18 @@ export async function lookupInvite(rawCode) {
  * Abrir o link NÃO consome o convite: o robô do WhatsApp busca a URL pra
  * montar o cartão de prévia, e não queremos que ele gaste o convite.
  *
- * Retorna { status: "pending" | "used", childFirstName, driverFirstName,
- *           companyName, monthlyFee, nextPayment, notices }.
+ * Retorna { status, childFirstName, driverFirstName, companyName,
+ *           monthlyFee, nextPayment, notices, childId? }.
+ *
+ *   'pending' → ninguém pegou ainda: mostra a prévia completa
+ *   'yours'   → quem está chamando JÁ é o responsável: entra direto no app
+ *   'taken'   → vinculado a outra conta
+ *
+ * O caso 'yours' é o mais importante e o mais percorrido. Na prática o pai
+ * não guarda o endereço do site nem pede link novo ao tio: ele volta na
+ * conversa do WhatsApp e toca no MESMO link, pra sempre. Esse link é a porta
+ * de entrada permanente do app, não um passo de cadastro — então ele nunca
+ * pode terminar numa tela de erro.
  */
 export async function getInvitePreview(rawCode) {
   const code = normalizeInviteCode(rawCode);
