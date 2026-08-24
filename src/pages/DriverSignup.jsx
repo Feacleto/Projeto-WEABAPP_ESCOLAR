@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Bus, Check, MapPin } from 'lucide-react';
+import { ArrowLeft, User, Mail, Bus, Check, MapPin, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
-import WhatsAppIcon from '../components/common/WhatsAppIcon';
 import { ArtRoad } from '../components/landing/BlockArt';
 import AssociadosCard from '../components/landing/AssociadosCard';
 import { submitDriverWaitlist } from '../services/waitlistService';
+import { inscreverAssociado } from '../services/associadoService';
+import { useAuth } from '../hooks/useAuth';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../utils/masks';
 
 const FLEET_OPTIONS = [
@@ -33,13 +34,14 @@ export default function DriverSignup() {
     name: '',
     phone: '',
     email: '',
+    senha: '',
     city: '',
     fleet: '1',
     message: '',
   });
+  const { refreshProfile } = useAuth();
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState(null);
 
   const set = (key) => (e) =>
     setForm((p) => ({ ...p, [key]: e.target.value }));
@@ -49,7 +51,10 @@ export default function DriverSignup() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Diga seu nome.';
     if (!isValidPhone(form.phone)) errs.phone = 'WhatsApp com DDD.';
-    if (form.email && !isValidEmail(form.email)) errs.email = 'Email inválido.';
+    // Email e senha viraram OBRIGATÓRIOS porque a inscrição agora CRIA A
+    // CONTA — não é mais só um lead. Sem eles não há como ele voltar.
+    if (!isValidEmail(form.email)) errs.email = 'Precisamos do email pra criar sua conta.';
+    if (form.senha.length < 6) errs.senha = 'Mínimo 6 caracteres.';
     if (!form.city.trim()) errs.city = 'Em qual cidade você roda?';
     setErrors(errs);
     if (Object.keys(errs).length) {
@@ -59,21 +64,58 @@ export default function DriverSignup() {
 
     setSubmitting(true);
     try {
-      const res = await submitDriverWaitlist({
+      // A ORDEM IMPORTA: a lista primeiro, a conta depois.
+      //
+      // A lista é o registro de intenção e é o que o dono usa pra
+      // decidir. Se a criação da conta falhar (email já usado com outra
+      // senha, rede caindo), o pedido dele NÃO se perde — ele continua
+      // na fila e alguém consegue chamar. O contrário deixaria uma conta
+      // órfã sem ninguém saber que aquela pessoa quis entrar.
+      await submitDriverWaitlist({
         ...form,
         phone: unmaskPhone(form.phone),
       });
-      setResult(res);
+
+      const { posicao } = await inscreverAssociado({
+        email: form.email,
+        senha: form.senha,
+        nome: form.name,
+        telefone: unmaskPhone(form.phone),
+        cidade: form.city,
+        frota: form.fleet,
+      });
+
+      await refreshProfile();
+      toast.success(
+        posicao ? `Pronto! Você é o ${posicao}º da fila.` : 'Pronto! Você está na fila.'
+      );
+      navigate('/aguardando', { replace: true });
     } catch (err) {
-      toast.error(err.message);
+      // Conta criada mas perfil recusado deixaria ele autenticado sem
+      // lugar nenhum. A mensagem tem que dizer o que fazer, e a única
+      // coisa acionável aqui é tentar entrar com a senha que ele já usou.
+      if (err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
+        toast.error(
+          'Esse email já tem conta aqui. Use a senha que você criou, ou entre pelo login.',
+          { duration: 8000 }
+        );
+      } else {
+        toast.error(err?.message || 'Não deu pra concluir. Tente de novo.');
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (result) {
-    return <Confirmation result={result} onHome={() => navigate('/')} />;
-  }
+  // A TELA DE CONFIRMAÇÃO SAIU DAQUI.
+  //
+  // Ela mostrava a posição na fila e um botão de voltar pra home. Agora a
+  // inscrição CRIA A CONTA e entra: quem termina o formulário cai na sala de
+  // espera (/aguardando), que mostra a mesma posição, é persistente — ele
+  // reencontra ao abrir o app de novo — e tem o caminho pro consultor.
+  //
+  // Uma tela de "recebemos seu pedido" que ele vê uma vez e nunca mais era o
+  // ponto em que o interesse esfriava.
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -169,13 +211,30 @@ export default function DriverSignup() {
           <Input
             type="email"
             inputMode="email"
-            label="Email (opcional)"
+            label="Email"
             placeholder="seu@email.com"
             icon={Mail}
             value={form.email}
             onChange={set('email')}
             autoComplete="email"
             error={errors.email}
+            hint="É por ele que você entra na sua conta."
+          />
+          {/* A senha aparece aqui porque a inscrição CRIA A CONTA. Google
+            * fica de fora de propósito: dentro da webview do WhatsApp o
+            * OAuth é recusado, e este formulário costuma ser aberto a
+            * partir de um link compartilhado. Caminho que falha em metade
+            * dos aparelhos é pior que um campo a mais. */}
+          <Input
+            type="password"
+            revealable
+            label="Crie uma senha"
+            placeholder="mínimo 6 caracteres"
+            icon={Lock}
+            value={form.senha}
+            onChange={set('senha')}
+            autoComplete="new-password"
+            error={errors.senha}
           />
           <Input
             label="Cidade onde você roda"
@@ -247,58 +306,3 @@ export default function DriverSignup() {
       </div>
     );
   }
-
-  /**
-   * Confirmação com posição na fila.
-   *
-   * A posição torna a escassez concreta em vez de insinuada — e o "não
-   * prometemos prazo" é deliberado: é mais honesto e mais barato que um prazo
-   * que a gente não controla.
-   */
-  function Confirmation({ result, onHome }) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-5">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-primary text-white flex items-center justify-center shadow-lg shadow-emerald-500/25">
-          <Check size={38} strokeWidth={3} />
-        </div>
-
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-text">
-            {result.alreadyOnList ? 'Você já está na lista' : 'Recebemos seu pedido'}
-          </h1>
-          {result.alreadyOnList && (
-            <p className="text-sm text-textMuted">
-              Achamos seu email na fila — não criamos pedido duplicado.
-            </p>
-          )}
-        </div>
-
-        <div className="bg-card border border-gray-200 rounded-2xl px-8 py-5 shadow-sm">
-          <p className="text-xs text-textMuted uppercase tracking-widest font-semibold">
-            sua posição na fila
-          </p>
-          <p className="text-5xl font-extrabold text-primary mt-1">
-            {result.position}º
-          </p>
-        </div>
-
-        <p className="text-sm text-textMuted max-w-xs leading-relaxed">
-          Falamos com você pelo WhatsApp quando abrir vaga.{' '}
-          <span className="text-text font-semibold">
-            Não prometemos prazo
-          </span>{' '}
-          — quando for, a gente chama.
-        </p>
-
-        <div className="w-full max-w-xs space-y-2">
-          <Button variant="secondary" onClick={onHome}>
-            Voltar pro início
-          </Button>
-          <p className="text-[11px] text-textMuted inline-flex items-center gap-1 justify-center w-full">
-            <WhatsAppIcon size={13} />
-            Deixe o WhatsApp aberto pra nossa mensagem
-          </p>
-      </div>
-    </div>
-  );
-}

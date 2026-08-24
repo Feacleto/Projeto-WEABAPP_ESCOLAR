@@ -60,6 +60,34 @@ export function ehResponsavel(profile) {
 }
 
 /**
+ * Motorista que se inscreveu e ainda não foi aprovado.
+ *
+ * A INSCRIÇÃO É O CADASTRO. Não existe "entrar na lista" e depois "criar
+ * conta": quem preenche a lista de associados sai dali com conta criada, entra
+ * no app e vê a própria posição na fila. O que falta é a aprovação do dono,
+ * que é negociada fora do sistema.
+ *
+ * POR QUE ISTO É PAPEL, E NÃO `role: 'admin'` + `ativo: false`
+ * Esta é a decisão que decide se o desenho falha pro lado seguro.
+ *
+ * Com flag, ele JÁ É motorista pra toda regra do Firestore, e cada uma
+ * precisaria lembrar de checar `ativo`. Uma que esquecesse — uma só, hoje ou
+ * daqui a seis meses — e um inscrito não aprovado alcançaria criança,
+ * pagamento e rota de quem já está dentro.
+ *
+ * Com papel próprio, `isAdmin()` é falso e ele não alcança nada. Esquecer uma
+ * checagem faz ele ver MENOS, não mais. É a diferença entre uma garantia que
+ * depende de vigilância e uma que depende da forma.
+ *
+ * ATENÇÃO: `isAppUser()` nas rules significa "tem documento em users" — e o
+ * aguardando tem. Ele foi ajustado pra EXCLUIR este papel, senão a fila de
+ * espera viraria porta pros recados de escola e pra agenda do parceiro atual.
+ */
+export function ehAguardando(profile) {
+  return profile?.role === 'aguardando';
+}
+
+/**
  * O painel DESTE usuário — a resposta para "pra onde eu mando essa pessoa".
  *
  * Os três papéis são exclusivos, então a ordem aqui é só legibilidade — mas
@@ -84,5 +112,9 @@ export function painelDe(profile) {
   if (ehDono(profile)) return '/admin';
   if (ehMotorista(profile)) return '/tio';
   if (ehResponsavel(profile)) return '/pai';
+  // Inscrito e ainda não aprovado tem uma tela só: a da fila. Ela vem ANTES
+  // do fallback de propósito — sem isto ele cairia no /login, entraria de
+  // novo, e voltaria pro /login num laço que parece o app estar quebrado.
+  if (ehAguardando(profile)) return '/aguardando';
   return '/login';
 }

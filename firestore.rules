@@ -129,9 +129,27 @@ service cloud.firestore {
     // signInAnonymously pra gravar leads, então `isSignedIn()` sozinho
     // inclui qualquer visitante do site — e não deveria dar acesso a
     // nada que fale de crianças, escolas ou avisos.
+    // AGUARDANDO NÃO É USUÁRIO DO APP, e a exclusão aqui é o que impede a
+    // fila de espera de virar porta.
+    //
+    // Quem se inscreve como associado sai com conta criada (`role:
+    // 'aguardando'`) e entra no app pra ver a própria posição na fila. Isso
+    // dá a ele um documento em `users` — e `isAppUser()` significa
+    // literalmente "tem documento em users".
+    //
+    // Sem esta linha, um inscrito não aprovado passaria a ler
+    // `schoolBroadcasts` e `agendaEntries` do parceiro que JÁ está dentro:
+    // nome de escola, recado do motorista pras famílias, aviso de dia sem
+    // aula. Alguém que preencheu um formulário lendo a operação de quem
+    // paga pra estar aqui.
+    //
+    // É exatamente o mesmo erro da sessão anônima, com outra roupa: um estado
+    // intermediário que ninguém classificou como "usuário" acabando dentro da
+    // definição por acidente.
     function isAppUser() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc().role != 'aguardando';
     }
 
     // -----------------------------------------------------------------
@@ -245,6 +263,33 @@ service cloud.firestore {
           'createdAt', 'provisionedBy', 'provisionedFromLead'
         ])
         && request.resource.data.provisionedBy == request.auth.uid
+      ) || (
+        // INSCRIÇÃO NA LISTA DE ASSOCIADOS — a conta nasce AGUARDANDO.
+        //
+        // A inscrição É o cadastro do motorista: ele preenche, entra, e vê a
+        // própria posição na fila enquanto a aprovação é negociada fora do
+        // sistema. Por isso o create é aberto pra qualquer um que acabou de
+        // se autenticar — e por isso `aguardando` não pode valer nada.
+        //
+        // O QUE TORNA ISTO SEGURO não é a whitelist abaixo, é o papel:
+        // `aguardando` não passa em `isAdmin()`, não passa em `isOwner()` e
+        // foi EXCLUÍDO de `isAppUser()`. Quem cria uma conta dessas alcança
+        // exatamente nada além do próprio documento. Se amanhã alguém
+        // esquecer uma checagem numa regra nova, o esquecimento não abre
+        // porta — o papel já não abria.
+        //
+        // A whitelist existe pra ele não nascer com campo que não é dele:
+        // sem `superAdmin`, sem `childIds`, sem `adminUid`. E `role` fixo em
+        // 'aguardando' impede a auto-promoção no ato da criação, que seria o
+        // caminho óbvio — criar já como 'admin'.
+        isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'aguardando'
+        && request.resource.data.keys().hasAll(['role', 'createdAt'])
+        && request.resource.data.keys().hasOnly([
+          'role', 'name', 'email', 'phone', 'city', 'fleet',
+          'createdAt', 'posicaoNaFila'
+        ])
       );
 
       // O dono atualiza o próprio doc, mas NÃO pode mexer em role nem no
@@ -286,6 +331,31 @@ service cloud.firestore {
       // Agora o ramo do DONO vem primeiro e é fechado em si (só os campos de
       // gestão), e o ramo de todo mundo proíbe privilégio E gestão juntos.
       allow update: if (
+        // APROVAR UM INSCRITO — a única transição de `role` que existe.
+        //
+        // Trocar `role` é a escrita mais protegida do sistema: foi por ela
+        // que um motorista se promovia a dono. Esta exceção é estreita de
+        // propósito, e cada termo fecha um caminho:
+        //
+        //   isOwner()                     só o dono aprova
+        //   resource.role == 'aguardando' só sai da fila; conta ativa não
+        //                                 pode ser rebaixada nem mexida
+        //   request.role == 'admin'       só chega em MOTORISTA. Não existe
+        //                                 caminho pra virar 'owner' — o dono
+        //                                 não se multiplica por aqui
+        //   hasOnly([...])                e nada mais viaja junto: nem
+        //                                 superAdmin, nem childIds, nem
+        //                                 adminUid
+        //
+        // Aprovação é irreversível por aqui de propósito. Desfazer um aceite
+        // é suspender (`suspenso`), que é o ramo abaixo e deixa rastro — não
+        // é apagar o fato de que a conta foi aprovada um dia.
+        isOwner()
+        && resource.data.role == 'aguardando'
+        && request.resource.data.role == 'admin'
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['role', 'aprovadoEm', 'aprovadoPor'])
+      ) || (
         // O DONO GERENCIA, NÃO EDITA CADASTRO ALHEIO.
         // Três campos, e nenhum é dado do parceiro: suspender, quando
         // suspendeu, e a nota interna da plataforma. Nome, telefone e chave

@@ -31,6 +31,7 @@ import AuthAction from './pages/AuthAction';
 
 const DriverSignup = lazy(() => import('./pages/DriverSignup'));
 const FirstAdmin = lazy(() => import('./pages/FirstAdmin'));
+const Aguardando = lazy(() => import('./pages/Aguardando'));
 const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 
 const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
@@ -75,7 +76,7 @@ import { hasAcceptedContract } from './services/contractService';
 import Spinner from './components/common/Spinner';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
-import { painelDe, ehDono } from './utils/papeis';
+import { painelDe, ehDono, ehAguardando } from './utils/papeis';
 
 function FullScreenLoader() {
   return (
@@ -145,6 +146,29 @@ function PrivateRoute({ children, requireRole }) {
  * claim o privilégio viveria no token, fora do alcance do cliente. Está no
  * backlog.
  */
+/**
+ * Guarda da sala de espera.
+ *
+ * Ela é o oposto das outras: em vez de exigir um papel pra DEIXAR entrar,
+ * ela exige o papel pra deixar FICAR. Quem já foi aprovado é empurrado pro
+ * painel dele — senão o motorista aprovado continuaria vendo a fila por ter
+ * o endereço no histórico do navegador, e acharia que a aprovação não valeu.
+ */
+function SalaDeEspera() {
+  const { user, profile, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <FullScreenLoader />;
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+  if (!profile) return <FullScreenLoader />;
+  if (!ehAguardando(profile)) {
+    return <Navigate to={painelDe(profile)} replace />;
+  }
+  return <Aguardando />;
+}
+
 function SuperAdminRoute({ children }) {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
@@ -239,6 +263,10 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/first-access" element={<FirstAccess />} />
         <Route path="/first-admin" element={<FirstAdmin />} />
+        {/* A sala de espera de quem se inscreveu como associado. Não é rota
+          * pública: exige sessão, porque a conta já existe. Quem cai aqui
+          * sem ser `aguardando` é devolvido pro painel dele. */}
+        <Route path="/aguardando" element={<SalaDeEspera />} />
         <Route path="/auth-action" element={<AuthAction />} />
         <Route path="/termos" element={<Terms />} />
         <Route path="/privacidade" element={<Privacy />} />

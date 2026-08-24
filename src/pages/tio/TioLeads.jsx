@@ -8,6 +8,7 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import WhatsAppIcon from '../../components/common/WhatsAppIcon';
 import { useAuth } from '../../hooks/useAuth';
+import AguardandoAprovacao from '../../components/admin/AguardandoAprovacao';
 import { watchDriverLeads, setLeadContacted } from '../../services/waitlistService';
 import { unmaskPhone } from '../../utils/masks';
 
@@ -82,6 +83,13 @@ export default function TioLeads() {
       </header>
 
       <div className="px-5 pt-4 space-y-4">
+        {/* Contas que JÁ EXISTEM e esperam aprovação vêm antes dos leads.
+          * A diferença é de urgência: lead é contato que alguém deixou;
+          * isto é gente que já se cadastrou e está vendo a tela de espera
+          * neste momento. Quem está esperando na porta vem antes de quem
+          * deixou recado. */}
+        <AguardandoAprovacao />
+
         {leads === null && (
           <div className="space-y-3">
             <Skeleton className="h-28 rounded-2xl" />
