@@ -38,6 +38,7 @@ import {
 } from '../../services/paymentAuditService';
 import ReceiptPicker from '../../components/payments/ReceiptPicker';
 import MonthSwitcher from '../../components/payments/MonthSwitcher';
+import BillingBlockers from '../../components/payments/BillingBlockers';
 import { shareReceipt } from '../../services/receiptImageService';
 import {
   formatMonthLabel,
@@ -329,6 +330,17 @@ export default function TioFinance() {
             <ChevronRight size={18} className="text-textMuted shrink-0" />
           </button>
         )}
+
+        {/* O que está travando o dinheiro de entrar, em silêncio.
+          * Vem ANTES da lista: não faz sentido cobrar quem já tem cobrança
+          * enquanto três crianças não têm nenhuma. */}
+        <BillingBlockers
+          children={children}
+          payments={payments}
+          monthKey={monthKey}
+          admin={profile}
+          isCurrentMonth={isCurrentMonth}
+        />
 
         {/* Busca por criança — responde "essa família está em dia?" */}
         <div className="relative">

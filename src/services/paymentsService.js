@@ -8,7 +8,8 @@ import {
   updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../firebase/config';
 import { playSound } from './soundService';
 
 // NOTA: a geracao das mensalidades do mes e a limpeza do historico
@@ -274,4 +275,35 @@ export function watchPaymentsByParent(parentUid, onUpdate, onError) {
       if (onError) onError(err);
     }
   );
+}
+
+/**
+ * Dispara a geração de cobranças do mês na hora, sem esperar as 6h.
+ *
+ * POR QUE ISTO PRECISA EXISTIR NA INTERFACE
+ * A função agendada roda uma vez por dia. Então quando o tio cadastra uma
+ * criança à tarde, ou preenche a mensalidade que tinha deixado em branco, a
+ * cobrança só nasce na manhã seguinte — e nesse meio-tempo o pai abre o app,
+ * lê "nada a pagar" e vai embora achando que está tudo certo.
+ *
+ * Pior: se a mensalidade só foi configurada DEPOIS da geração daquele mês,
+ * aquela criança fica sem cobrança até o mês seguinte. A geração é idempotente
+ * (consulta o que já existe), então chamar isto nunca duplica nada.
+ */
+export async function runBillingNow(monthKey = null) {
+  const fn = httpsCallable(functions, 'runBillingNow');
+  try {
+    const res = await fn(monthKey ? { monthKey } : {});
+    return res.data;
+  } catch (err) {
+    const c = String(err?.code || '');
+    if (c.includes('permission-denied')) {
+      throw new Error('Só o motorista responsável pode gerar cobranças.', {
+        cause: err,
+      });
+    }
+    throw new Error('Não conseguimos gerar agora. Tente em alguns segundos.', {
+      cause: err,
+    });
+  }
 }

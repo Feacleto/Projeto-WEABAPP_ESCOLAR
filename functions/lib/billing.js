@@ -47,6 +47,7 @@ async function generateForMonth(db, monthKey) {
 
   let created = 0;
   let withoutParent = 0;
+  let withoutFee = 0;
   let batch = db.batch();
   let inBatch = 0;
 
@@ -59,6 +60,18 @@ async function generateForMonth(db, monthKey) {
       continue;
     }
 
+    // Mensalidade sem valor NÃO gera cobrança.
+    //
+    // O campo é opcional de propósito no cadastro (o tio salva a criança
+    // no meio da rota e completa depois). Mas gerar cobrança de R$ 0,00
+    // era pior que não gerar: o pai via "nada a pagar" num mês que devia,
+    // e o tio não recebia sem nenhum aviso de que faltava configurar.
+    const fee = Number(child.monthlyFee) || 0;
+    if (fee <= 0) {
+      withoutFee += 1;
+      continue;
+    }
+
     const dueDay = Number(child.dueDay) || FALLBACK_DUE_DAY;
     // Clampa pro último dia do mês: dia 31 em fevereiro viraria março.
     const safeDueDay = Math.min(Math.max(1, dueDay), lastDayOfMonth);
@@ -68,7 +81,7 @@ async function generateForMonth(db, monthKey) {
       childName: child.name || '', // denormalizado pra evitar join na leitura
       parentUid: child.parentUid,
       month: monthKey,
-      amount: Number(child.monthlyFee) || 0,
+      amount: fee,
       dueDate: admin.firestore.Timestamp.fromDate(
         new Date(year, month - 1, safeDueDay)
       ),
@@ -87,7 +100,7 @@ async function generateForMonth(db, monthKey) {
 
   if (inBatch > 0) await batch.commit();
 
-  return { monthKey, created, skipped: existing.size, withoutParent };
+  return { monthKey, created, skipped: existing.size, withoutParent, withoutFee };
 }
 
 /** Apaga mensalidades mais antigas que a janela de retenção. */
@@ -126,6 +139,13 @@ function makeGenerateMonthlyPayments(db) {
     async () => {
       const result = await generateForMonth(db, monthKeyOf(new Date()));
       logger.info('generateMonthlyPayments', result);
+      if (result.withoutFee > 0) {
+        // Fica no log porque é configuração faltando, não erro do sistema:
+        // alguém precisa preencher a mensalidade daquelas crianças.
+        logger.warn(
+          `${result.withoutFee} criança(s) sem mensalidade configurada — nenhuma cobrança gerada pra elas.`
+        );
+      }
 
       const purged = await purgeOld(db);
       if (purged.deleted > 0) {
