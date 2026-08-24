@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import {
@@ -15,6 +16,7 @@ import {
   TrendingUp,
   Users,
   X,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
@@ -175,6 +177,7 @@ export default function AdminPanel() {
 /* ─────────────── aba 1: visão geral ─────────────── */
 
 function Geral({ ov }) {
+  const navigate = useNavigate();
   if (ov === null) return <Carregando />;
   if (ov === false) return <Erro />;
 
@@ -226,7 +229,26 @@ function Geral({ ov }) {
 
       <section>
         <Titulo icon={Bus}>Fila de parceiros</Titulo>
-        <Tile label="Motoristas pedindo acesso" value={ov.filaParceiros} />
+        {/* Número que não leva a lugar nenhum é número que ninguém usa:
+          * saber que há 3 motoristas esperando só serve se der pra abrir
+          * a fila e decidir sobre eles. */}
+        <button
+          type="button"
+          onClick={() => navigate('/admin/parceiros')}
+          className="tap w-full text-left"
+        >
+          <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-card p-4">
+            <div className="flex-1">
+              <p className="text-xl font-extrabold tabular-nums tracking-tight text-text">
+                {ov.filaParceiros}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-tight text-textMuted">
+                Motoristas pedindo acesso — toque pra aprovar ou recusar
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-textMuted" />
+          </div>
+        </button>
       </section>
 
       <section>

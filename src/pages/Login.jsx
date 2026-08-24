@@ -7,6 +7,7 @@ import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
+import { painelDe } from '../utils/papeis';
 import { veioDaFamilia } from '../utils/frentes';
 import {
   resetPassword,
@@ -53,7 +54,7 @@ export default function Login() {
   // Já logado? Redireciona pelo role.
   useEffect(() => {
     if (!authLoading && profile?.role) {
-      const target = profile.role === 'admin' ? '/tio' : '/pai';
+      const target = painelDe(profile);
       navigate(location.state?.from || target, { replace: true });
     }
   }, [authLoading, profile, navigate, location.state]);

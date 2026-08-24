@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { functions } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
+import { painelDe } from '../utils/papeis';
 import Logo from '../components/common/Logo';
 import Spinner from '../components/common/Spinner';
 import LoginSheet from '../components/landing/LoginSheet';
@@ -97,7 +98,7 @@ export default function Familia() {
   // lendo uma página escrita pra outra pessoa.
   useEffect(() => {
     if (!loading && profile?.role) {
-      navigate(profile.role === 'admin' ? '/tio' : '/pai', { replace: true });
+      navigate(painelDe(profile), { replace: true });
     }
   }, [loading, profile, navigate]);
 

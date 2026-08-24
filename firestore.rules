@@ -34,10 +34,39 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    // MOTORISTA. O nome `admin` é histórico e confunde: no código inteiro ele
+    // quer dizer "quem opera uma perua", não "quem administra a plataforma".
+    // É este papel que libera crianças, pagamentos, rotas e agenda.
     function isAdmin() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && userDoc().role == 'admin';
+    }
+
+    // DONO DA PLATAFORMA — quem faz a gestão do produto: aprova motorista,
+    // abre e fecha depoimento, olha os números do negócio.
+    //
+    // POR QUE ELE PRECISOU DE UM PAPEL PRÓPRIO
+    // Antes o dono era um MOTORISTA com `superAdmin: true` por cima, porque
+    // as leituras do painel exigiam `isAdmin()`. Isso tinha dois efeitos
+    // ruins e um deles é conceitual:
+    //
+    //   - ele entrava no /tio e mexia na operação de um parceiro — abria a
+    //     rota, editava criança, dava baixa em pagamento. Nada disso é dele;
+    //   - e era contado como parceiro nas métricas da própria plataforma.
+    //
+    // Agora `role: 'owner'` é papel de primeira classe, e `isOwner()` libera
+    // só o que a GESTÃO precisa: ler as coleções que o painel resume e mexer
+    // na fila de parceiros e na visibilidade de depoimento. Ele NÃO ganha
+    // escrita na operação: criança, pagamento, rota e agenda continuam
+    // exigindo `isAdmin()`.
+    //
+    // O campo `superAdmin` continua existindo pra não quebrar quem já o tem,
+    // mas quem manda agora é o papel.
+    function isOwner() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (userDoc().role == 'owner' || userDoc().superAdmin == true);
     }
 
     // Tem conta de VERDADE no app (doc em users/). A landing chama
@@ -85,7 +114,8 @@ service cloud.firestore {
         || isAdmin()
         || (isAppUser() && resource.data.role == 'admin')
       );
-      allow list: if isAdmin();
+      // O dono lista pra contar a base; o motorista, pra operar.
+      allow list: if isAdmin() || isOwner();
 
       // CREATE só existe pro bootstrap do primeiro motorista.
       //
@@ -170,8 +200,11 @@ service cloud.firestore {
       // coordenada, escola e telefone do responsável.
       // Agora quem resolve convite é a Cloud Function `lookupInvite` /
       // `redeemInvite`, que roda com Admin SDK e devolve o mínimo.
+      // O dono LÊ pra contar a base, mas NÃO escreve: cadastro de criança
+      // é operação do parceiro, não gestão da plataforma.
       allow read: if isSignedIn() && (
         isAdmin()
+        || isOwner()
         || resource.data.parentUid == request.auth.uid
       );
 
@@ -252,8 +285,11 @@ service cloud.firestore {
     //     (marcar/desmarcar "paguei"). Nunca pode escrever 'paid' direto.
     // -----------------------------------------------------------------
     match /payments/{paymentId} {
+      // O dono LÊ pro GMV do painel, e só. Dar baixa em pagamento é
+      // operação do parceiro — a plataforma não mexe no dinheiro dele.
       allow read: if isSignedIn() && (
         isAdmin()
+        || isOwner()
         || resource.data.parentUid == request.auth.uid
       );
       allow create, delete: if isAdmin();
@@ -314,7 +350,19 @@ service cloud.firestore {
         && request.resource.data.actorUid == request.auth.uid;
 
       // Definitivo por design.
-      allow update, delete: if false;
+      // ABRIR E FECHAR DEPOIMENTO É PODER DO DONO, e só isso.
+      //
+      // O conteúdo continua IMUTÁVEL pra todo mundo, inclusive pra ele:
+      // a única chave que se pode tocar é `hiddenByOwner`. Depoimento que
+      // o dono pudesse reescrever não seria depoimento — seria texto da
+      // plataforma assinado por outra pessoa.
+      //
+      // Esconder não apaga: o autor continua vendo o que escreveu, e o
+      // registro do que foi dito permanece. O que muda é só a vitrine.
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['hiddenByOwner']);
+      allow delete: if false;
     }
 
     // -----------------------------------------------------------------
@@ -456,7 +504,10 @@ service cloud.firestore {
       // email e devolve a posição na fila. Com o create aberto, qualquer
       // visitante anônimo podia inflar a lista do tio com lixo.
       allow create: if false;
-      allow read, update, delete: if isAdmin();
+      // A fila de parceiros é GESTÃO DA PLATAFORMA, não operação de perua:
+      // quem aprova ou recusa um motorista é o dono. O parceiro não tem o
+      // que fazer aqui — e ver a fila é ver os concorrentes dele.
+      allow read, update, delete: if isOwner();
     }
     match /waitlistParents/{id} {
       allow create: if isSignedIn()
@@ -549,14 +600,16 @@ service cloud.firestore {
       // `authorName` completo enquanto este comentário dizia pra não
       // gravar. Comentário em rule não impede código de escrever — se
       // um campo novo aparecer aqui, confira o que o serviço manda.
+      // Público só vê depoimento autorizado E não escondido pelo dono.
       allow get: if (
         resource.data.allowTestimonial == true
+        && resource.data.get("hiddenByOwner", false) == false
       ) || (
         isSignedIn() && (
-          isAdmin() || resource.data.uid == request.auth.uid
+          isAdmin() || isOwner() || resource.data.uid == request.auth.uid
         )
       );
-      allow list: if isAdmin() || (
+      allow list: if isAdmin() || isOwner() || (
         request.query.limit <= 100
         && resource.data.allowTestimonial == true
       );

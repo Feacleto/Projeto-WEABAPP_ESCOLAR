@@ -12,7 +12,11 @@ import { NavLink } from 'react-router-dom';
  * Três sinais redundantes (posição, cor e peso do traço) pra a leitura não
  * depender só de cor — quem não distingue verde de cinza ainda vê a bolinha.
  *
- * items: [{ to, label, icon: LucideIcon, end?: bool, badge?: number }]
+ * items: [{ to, label, icon: LucideIcon, end?: bool, badge?: number,
+ *           tour?: string }]
+ *
+ * `tour` vira data-tour no link: é a âncora que o tutorial guiado ilumina e
+ * escuta pra saber que a pessoa tocou na aba certa.
  */
 export default function BottomNav({ items }) {
   return (
@@ -33,6 +37,7 @@ export default function BottomNav({ items }) {
             key={item.to}
             to={item.to}
             end={item.end}
+            data-tour={item.tour}
             className="tap flex flex-col items-center justify-center gap-0.5 pt-2 pb-2.5 text-[12px] font-semibold"
           >
             {({ isActive }) => (

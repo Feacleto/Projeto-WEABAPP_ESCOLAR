@@ -160,13 +160,16 @@ export default function TioDashboard() {
         </div>
 
         {/* HERO — único elemento dominante. Tap inteiro = começar/continuar */}
-        <HeroCard
-          routeActive={routeActive}
-          phrase={phrase}
-          effectiveCount={effectiveCount}
-          absentCount={absentCount}
-          onTap={() => navigate('/tio/route')}
-        />
+        {/* data-tour: âncora que o tutorial guiado ilumina */}
+        <div data-tour="hero">
+          <HeroCard
+            routeActive={routeActive}
+            phrase={phrase}
+            effectiveCount={effectiveCount}
+            absentCount={absentCount}
+            onTap={() => navigate('/tio/route')}
+          />
+        </div>
 
         {/* Banners de ação — só aparecem se houver algo pra fazer */}
         {overdueCount > 0 && (
@@ -287,7 +290,7 @@ export default function TioDashboard() {
                 icon={HelpCircle}
                 title="Como usar o app"
                 subtitle="Tutorial passo a passo"
-                onClick={() => openTutorial?.({ floating: true })}
+                onClick={() => openTutorial?.()}
               />
             </div>
           )}

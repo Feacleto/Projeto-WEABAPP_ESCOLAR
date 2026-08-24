@@ -46,7 +46,10 @@ const TioExpenses = lazy(() => import('./pages/tio/TioExpenses'));
 const TioContract = lazy(() => import('./pages/tio/TioContract'));
 const TioPixConfig = lazy(() => import('./pages/tio/TioPixConfig'));
 const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
-const TioLeads = lazy(() => import('./pages/tio/TioLeads'));
+// A fila de motoristas é do DONO, não do parceiro: aprovar quem entra na
+// plataforma é gestão, e ver a fila é ver os concorrentes dele. Por isso
+// ela mora sob /admin, atrás do SuperAdminRoute.
+const FilaDeParceiros = lazy(() => import('./pages/tio/TioLeads'));
 const ChildForm = lazy(() => import('./components/children/ChildForm'));
 
 const PaiLayout = lazy(() => import('./pages/pai/PaiLayout'));
@@ -71,6 +74,7 @@ import { hasAcceptedCurrentTerms } from './services/consentService';
 import { hasAcceptedContract } from './services/contractService';
 import Spinner from './components/common/Spinner';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
+import { painelDe, ehDono } from './utils/papeis';
 
 function FullScreenLoader() {
   return (
@@ -95,9 +99,21 @@ function PrivateRoute({ children, requireRole }) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   if (!profile) return <FullScreenLoader />;
-  if (requireRole && profile.role !== requireRole) {
-    const correctPath = profile.role === 'admin' ? '/tio' : '/pai';
-    return <Navigate to={correctPath} replace />;
+  // O DONO NÃO ENTRA EM PAINEL DE OPERAÇÃO, nem que o papel dele deixasse.
+  //
+  // A checagem de `ehDono` vem junto de propósito. Conta antiga de dono foi
+  // criada como MOTORISTA com `superAdmin: true` por cima — porque na época
+  // as leituras do painel exigiam papel de motorista. Numa conta dessas
+  // `profile.role === 'admin'` é verdadeiro, então só comparar o papel
+  // deixava o dono entrar no /tio e mexer na operação de um parceiro: abrir
+  // rota, editar criança, dar baixa em pagamento. Nada disso é dele.
+  //
+  // Corrigir só o documento no banco não bastaria: a regra agora proíbe
+  // escrever `role` pelo cliente (foi assim que a auto-promoção foi fechada),
+  // então contas antigas continuam com o papel velho até alguém migrar na
+  // mão. A trava tem que estar aqui, no caminho, e não depender da migração.
+  if (requireRole && (profile.role !== requireRole || ehDono(profile))) {
+    return <Navigate to={painelDe(profile)} replace />;
   }
   // Bloqueia acesso ao app até aceitar a versão corrente dos termos.
   // Acontece com usuários antigos quando bumpamos LEGAL_VERSION.
@@ -112,13 +128,21 @@ function PrivateRoute({ children, requireRole }) {
 }
 
 /**
- * Painel do dono — só pra quem tem `superAdmin: true` no doc de usuário.
+ * Painel do dono da plataforma.
  *
- * ATENÇÃO, ISTO É GATE DE PRODUTO, NÃO DE SEGURANÇA. Todo usuário com role
- * 'admin' já pode ler users, children, payments e feedbacks pelas rules —
- * esconder a rota evita mostrar o negócio inteiro pra um parceiro, e nada
- * além disso. Pra virar segurança de verdade: custom claim `superAdmin` +
- * rules dedicadas por coleção (está no brief de arquitetura).
+ * ISTO DEIXOU DE SER SÓ GATE DE PRODUTO.
+ * O comentário anterior avisava, com razão, que esconder a rota não protegia
+ * nada: qualquer motorista já podia ler users, children, payments e feedbacks
+ * pelas rules, então o /admin escondia a tela e não o dado.
+ *
+ * Agora as rules têm `isOwner()`, e a fila de parceiros e a moderação de
+ * depoimento exigem esse papel — um motorista não alcança nem pela tela nem
+ * pelo banco. O que ele continua lendo é a operação DELE, que é dele mesmo.
+ *
+ * O que falta pra fechar de vez: `isOwner()` ainda lê o documento do usuário,
+ * então depende de nenhuma regra futura reabrir a escrita de `role`. Em custom
+ * claim o privilégio viveria no token, fora do alcance do cliente. Está no
+ * backlog.
  */
 function SuperAdminRoute({ children }) {
   const { user, profile, loading } = useAuth();
@@ -129,8 +153,8 @@ function SuperAdminRoute({ children }) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   if (!profile) return <FullScreenLoader />;
-  if (!profile.superAdmin) {
-    return <Navigate to={profile.role === 'admin' ? '/tio' : '/pai'} replace />;
+  if (!ehDono(profile)) {
+    return <Navigate to={painelDe(profile)} replace />;
   }
   return children;
 }
@@ -224,6 +248,17 @@ export default function App() {
           </SuperAdminRoute>
         }
       />
+      {/* A fila de motoristas que pediram acesso: aprovar ou recusar quem
+        * entra na plataforma. Saiu de /tio/leads porque é GESTÃO, e porque
+        * a fila é a lista de concorrentes de quem já é parceiro. */}
+      <Route
+        path="/admin/parceiros"
+        element={
+          <SuperAdminRoute>
+            <FilaDeParceiros />
+          </SuperAdminRoute>
+        }
+      />
 
       {/* Painel do Tio (admin) — rotas aninhadas com layout compartilhado */}
       <Route
@@ -251,7 +286,6 @@ export default function App() {
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
-        <Route path="leads" element={<TioLeads />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>

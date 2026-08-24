@@ -8,7 +8,6 @@ import {
   MessageSquare,
   LifeBuoy,
   Key,
-  Bus,
   Bell,
   BellOff,
   UserPlus,
@@ -32,7 +31,6 @@ import {
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
-import { watchDriverLeads } from '../services/waitlistService';
 import { getChildIds } from '../utils/childIds';
 import {
   isPushAvailable,
@@ -45,7 +43,6 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { useAuth } from '../hooks/useAuth';
-import { resetTutorial } from '../services/userService';
 import { updateProfile } from '../services/profileService';
 import {
   deleteOwnParentAccount,
@@ -92,15 +89,10 @@ export default function Profile() {
     );
   }
 
-  const onResetTutorial = async () => {
-    try {
-      await resetTutorial(user.uid);
-      toast.success('Tutorial reativado! Volte pra tela inicial pra ver.');
-      navigate(basePath);
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao reativar tutorial.');
-    }
+  // Rever o tutorial não desfaz o "já concluí": só leva pra tela inicial —
+  // o tour precisa dela embaixo pra iluminar — e manda o layout abrir na hora.
+  const onReplayTutorial = () => {
+    navigate(basePath, { state: { openTour: true } });
   };
 
   const onDeleteAccount = async () => {
@@ -227,9 +219,8 @@ export default function Profile() {
               <ChevronRight size={20} className="text-textMuted shrink-0" />
             </button>
 
-            <div className="h-px bg-gray-100 my-3" />
-
-            <LeadsShortcut onOpen={() => navigate('/tio/leads')} />
+            {/* O atalho da fila de parceiros saiu daqui: ela é do dono, e
+              * este bloco é do motorista. Agora vive no /admin. */}
           </Card>
         )}
 
@@ -331,12 +322,12 @@ export default function Profile() {
 
           <button
             type="button"
-            onClick={onResetTutorial}
+            onClick={onReplayTutorial}
             className="w-full flex items-center gap-3 tap py-2"
           >
             <HelpCircle size={20} className="text-textMuted shrink-0" />
             <span className="flex-1 text-left text-sm text-text">
-              Ver tutorial novamente
+              Ver tutorial de novo
             </span>
             <ChevronRight size={20} className="text-textMuted shrink-0" />
           </button>
@@ -970,47 +961,9 @@ function HourPill({ icon: Icon, label, hour }) {
  * não foi contatado. Sem isso o tio não tem sinal nenhum de que alguém
  * pediu acesso — a coleção existia mas nenhuma tela a lia.
  */
-function LeadsShortcut({ onOpen }) {
-  const [pending, setPending] = useState(null);
-
-  useEffect(() => {
-    const unsub = watchDriverLeads(
-      (list) => setPending(list.filter((l) => !l.contacted).length),
-      () => setPending(0)
-    );
-    return unsub;
-  }, []);
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="w-full flex items-center gap-3 tap"
-    >
-      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-        <Bus size={20} className="text-primary" />
-      </div>
-      <div className="flex-1 min-w-0 text-left">
-        <p className="text-sm font-semibold text-text">Interessados</p>
-        <p className="text-xs text-textMuted truncate">
-          {pending === null
-            ? 'Carregando...'
-            : pending === 0
-            ? 'Ninguém aguardando contato'
-            : pending === 1
-            ? '1 motorista aguardando contato'
-            : `${pending} motoristas aguardando contato`}
-        </p>
-      </div>
-      {pending > 0 && (
-        <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-danger text-white text-[11px] font-bold flex items-center justify-center shrink-0">
-          {pending > 9 ? '9+' : pending}
-        </span>
-      )}
-      <ChevronRight size={20} className="text-textMuted shrink-0" />
-    </button>
-  );
-}
+// LeadsShortcut foi REMOVIDO: ele mostrava a contagem da fila de parceiros
+// no perfil do motorista, e essa fila passou a ser do dono. A porta agora
+// é o bloco "Fila de parceiros" do /admin, que leva pra /admin/parceiros.
 
 /**
  * Liga/desliga os avisos no celular.

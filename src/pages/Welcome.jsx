@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Bus, LogIn, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { painelDe } from '../utils/papeis';
 import Logo from '../components/common/Logo';
 import { RoleCard } from '../components/common/Sheet';
 import { ArtRoad } from '../components/landing/BlockArt';
@@ -35,7 +36,7 @@ export default function Welcome() {
 
   useEffect(() => {
     if (!loading && profile?.role) {
-      navigate(profile.role === 'admin' ? '/tio' : '/pai', { replace: true });
+      navigate(painelDe(profile), { replace: true });
     }
   }, [loading, profile, navigate]);
 

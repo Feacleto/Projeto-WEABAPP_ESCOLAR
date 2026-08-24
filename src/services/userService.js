@@ -20,16 +20,6 @@ export async function markTutorialDone(uid) {
   });
 }
 
-/**
- * Reseta o estado do tutorial — usado pelo botão "Ver tutorial novamente".
- * Após resetar, o useEffect do layout exibe o modal de novo.
- */
-export async function resetTutorial(uid) {
-  return updateDoc(doc(db, 'users', uid), {
-    tutorialDone: false,
-  });
-}
-
 // ============================================================================
 // PIX (admin/tio)
 // ============================================================================

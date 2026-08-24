@@ -239,6 +239,7 @@ function IdleHero({ onStart }) {
   return (
     <button
       onClick={onStart}
+      data-tour="start-route"
       className="tap w-full text-left rounded-3xl overflow-hidden shadow-xl shadow-emerald-500/25"
     >
       <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-6">

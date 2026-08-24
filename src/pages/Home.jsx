@@ -33,6 +33,7 @@ import {
 } from '../components/landing/BlockArt';
 import { functions } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
+import { painelDe } from '../utils/papeis';
 import {
   listPublicTestimonials,
   getPublicRatingStats,
@@ -162,7 +163,7 @@ export default function Home() {
   // Quem já tem sessão não precisa de vitrine — vai direto pro painel.
   useEffect(() => {
     if (!loading && profile?.role) {
-      navigate(profile.role === 'admin' ? '/tio' : '/pai', { replace: true });
+      navigate(painelDe(profile), { replace: true });
     }
   }, [loading, profile, navigate]);
 

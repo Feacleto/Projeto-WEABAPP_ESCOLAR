@@ -19,6 +19,7 @@ import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import { authenticateAndRedeem, googleAndRedeem } from '../services/authService';
 import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
+import { painelDe } from '../utils/papeis';
 import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
 
 /**
@@ -75,7 +76,7 @@ export default function FirstAccess() {
   // Já autenticado? Vai pro painel — inclusive quem cair aqui por link antigo.
   useEffect(() => {
     if (!authLoading && profile?.role) {
-      const target = profile.role === 'admin' ? '/tio' : '/pai';
+      const target = painelDe(profile);
       navigate(location.state?.from || target, { replace: true });
     }
   }, [authLoading, profile, navigate, location.state]);

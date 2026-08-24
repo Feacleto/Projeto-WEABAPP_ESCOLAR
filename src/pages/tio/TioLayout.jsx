@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Map, DollarSign } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import InstallPrompt from '../../components/common/InstallPrompt';
-import Tutorial from '../../components/tutorial/Tutorial';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import { useAuth } from '../../hooks/useAuth';
 import { useAutoBilling } from '../../hooks/useAutoBilling';
@@ -18,10 +17,15 @@ import {
 } from '../../services/birthdayService';
 
 const NAV_ITEMS = [
-  { to: '/tio', label: 'Início', icon: Home, end: true },
-  { to: '/tio/children', label: 'Crianças', icon: Users },
-  { to: '/tio/route/now', label: 'Rota', icon: Map },
-  { to: '/tio/finance', label: 'Financeiro', icon: DollarSign },
+  { to: '/tio', label: 'Início', icon: Home, end: true, tour: 'nav-home' },
+  { to: '/tio/children', label: 'Crianças', icon: Users, tour: 'nav-children' },
+  { to: '/tio/route/now', label: 'Rota', icon: Map, tour: 'nav-route' },
+  {
+    to: '/tio/finance',
+    label: 'Financeiro',
+    icon: DollarSign,
+    tour: 'nav-finance',
+  },
 ];
 
 /**
@@ -30,8 +34,10 @@ const NAV_ITEMS = [
  */
 export default function TioLayout() {
   const { user, profile } = useAuth();
-  const [welcomeOpen, setWelcomeOpen] = useState(false); // modal central (1º acesso)
-  const [tourOpen, setTourOpen] = useState(false); // tour interativo
+  const location = useLocation();
+  const navigate = useNavigate();
+  // null | 'first' (primeiro acesso) | 'review' (pediu pra rever no perfil)
+  const [tour, setTour] = useState(null);
   const [birthdayOpen, setBirthdayOpen] = useState(false);
 
   useAutoBilling(profile?.role);
@@ -46,12 +52,24 @@ export default function TioLayout() {
     [children]
   );
 
+  // Primeiro acesso: o tour abre sozinho e volta a cada login enquanto o Tio
+  // não chegar no último passo. Pular é permitido; concluir é o que desliga.
   useEffect(() => {
     if (profile && profile.tutorialDone !== true) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setWelcomeOpen(true);
+      setTour('first');
     }
   }, [profile?.tutorialDone, profile]);
+
+  // "Ver tutorial de novo" no perfil manda pra cá com esse state: o tour
+  // precisa da tela inicial embaixo pra ter o que iluminar.
+  useEffect(() => {
+    if (location.state?.openTour) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTour('review');
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
     if (birthdayChildren.length > 0 && shouldShowBirthdayModal()) {
@@ -65,20 +83,19 @@ export default function TioLayout() {
     markBirthdayModalShown();
   };
 
-  const openTutorial = (opts = {}) => {
-    // floating=true → tour interativo (botão "Como usar")
-    // sem opts → modal central (1º acesso)
-    if (opts.floating) setTourOpen(true);
-    else setWelcomeOpen(true);
-  };
+  // Usado pelo "Como usar o app" do painel
+  const openTutorial = () => setTour('review');
 
   return (
     <div className="min-h-screen pb-28">
       <Outlet context={{ openTutorial }} />
       <BottomNav items={NAV_ITEMS} />
       <InstallPrompt />
-      {welcomeOpen && <Tutorial onClose={() => setWelcomeOpen(false)} />}
-      <InteractiveTour open={tourOpen} onClose={() => setTourOpen(false)} />
+      <InteractiveTour
+        open={!!tour}
+        mode={tour || 'review'}
+        onClose={() => setTour(null)}
+      />
       <OutgoingCallPanel calls={activeCalls} />
       {birthdayOpen && (
         <BirthdayModal

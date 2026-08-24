@@ -233,25 +233,33 @@ export default function PaiDashboard() {
         </div>
 
         {/* HERO ÚNICO — frase humana */}
-        <ChildHero
-          child={child}
-          status={status}
-          phrase={phrase}
-          onTap={() => navigate('/pai/child')}
-        />
+        {/* data-tour: âncora que o tutorial guiado ilumina */}
+        <div data-tour="hero">
+          <ChildHero
+            child={child}
+            status={status}
+            phrase={phrase}
+            onTap={() => navigate('/pai/child')}
+          />
+        </div>
 
         {/* Tracker visual estilo "rastreio de pedido" */}
         <RouteTracker status={status} />
 
         {/* Ausência declarada / botão de informar */}
-        {absence ? (
-          <AbsenceStatus absence={absence} onClick={() => setAbsenceOpen(true)} />
-        ) : (
-          <AbsenceCTA
-            childFirstName={childFirstName}
-            onClick={() => setAbsenceOpen(true)}
-          />
-        )}
+        <div data-tour="absence">
+          {absence ? (
+            <AbsenceStatus
+              absence={absence}
+              onClick={() => setAbsenceOpen(true)}
+            />
+          ) : (
+            <AbsenceCTA
+              childFirstName={childFirstName}
+              onClick={() => setAbsenceOpen(true)}
+            />
+          )}
+        </div>
 
         {/* Quem busca hoje */}
         <AltPickupCTA
@@ -261,10 +269,12 @@ export default function PaiDashboard() {
 
         {/* Tracking — quando rota tá ativa mostra status dinâmico. Quando
           * não tá, um botão simples permite abrir o mapa mesmo assim. */}
-        <PresencePanel
-          presence={presence}
-          onOpenMap={() => navigate('/pai/map')}
-        />
+        <div data-tour="map">
+          <PresencePanel
+            presence={presence}
+            onOpenMap={() => navigate('/pai/map')}
+          />
+        </div>
 
         {/* Pagamento — só se houver pendente */}
         {nextPayment && (
@@ -326,7 +336,7 @@ export default function PaiDashboard() {
               <OptionRow
                 icon={HelpCircle}
                 title="Como usar o app"
-                onClick={() => openTutorial?.({ floating: true })}
+                onClick={() => openTutorial?.()}
               />
             </div>
           )}

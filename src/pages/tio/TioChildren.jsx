@@ -86,6 +86,7 @@ export default function TioChildren() {
           <button
             onClick={() => navigate('/tio/children/new')}
             aria-label="Cadastrar nova criança"
+            data-tour="add-child"
             className="tap inline-flex items-center gap-1 bg-primary text-white text-sm font-semibold px-3 py-1.5 rounded-full"
           >
             <Plus size={16} />
