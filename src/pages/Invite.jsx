@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import {
   Bus,
   Lock,
@@ -17,6 +22,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getInvitePreview, normalizeInviteCode } from '../services/inviteCodeService';
 import { redeemInvite } from '../services/authService';
 import { formatCurrency } from '../utils/formatters';
+import { isInAppBrowser, openForAuth } from '../utils/browserEnv';
 
 /**
  * Convite por link — /convite/:codigo
@@ -57,6 +63,36 @@ export default function Invite() {
   // O que ele tentou fazer antes de a conta ser pedida — usado no texto da
   // folha e pra levar ele ao lugar certo depois de entrar.
   const [pendingAction, setPendingAction] = useState(null);
+  const [searchParams] = useSearchParams();
+
+  // Chegou com ?auth=1 → veio da webview pra entrar. Sobe a folha na hora,
+  // pra a troca de app parecer continuação e não recomeço.
+  const resumeAuth = searchParams.get('auth') === '1';
+
+  useEffect(() => {
+    if (!resumeAuth) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingAction({ reason: 'acompanhar seu filho', destination: '/pai' });
+  }, [resumeAuth]);
+
+  /**
+   * Uma ação da prévia foi tocada.
+   *
+   * Dentro da webview do WhatsApp, tentamos PRIMEIRO abrir o Chrome já no
+   * estado de login. No Android isso resolve num toque só. Se não sair do
+   * lugar (iOS sem Chrome, webview que bloqueia o intent), a folha sobe
+   * aqui mesmo com a ponte manual dentro dela — o pai nunca fica travado.
+   */
+  const onAction = (action) => {
+    if (isInAppBrowser()) {
+      openForAuth();
+      // A folha sobe de qualquer forma: se o Chrome abriu, esta tela some;
+      // se não abriu, ela é o plano B com a instrução manual.
+      setTimeout(() => setPendingAction(action), 1200);
+      return;
+    }
+    setPendingAction(action);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -154,7 +190,7 @@ export default function Invite() {
       <PreviewScreen
         preview={preview}
         driverLabel={driverLabel}
-        onAction={setPendingAction}
+        onAction={onAction}
       />
       <AuthSheet
         open={!!pendingAction}

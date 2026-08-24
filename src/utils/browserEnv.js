@@ -139,3 +139,30 @@ export function inAppBrowserName() {
   if (/MicroMessenger/i.test(ua)) return 'WeChat';
   return null;
 }
+
+/**
+ * Leva pro navegador de verdade JÁ NO ESTADO DE LOGIN.
+ *
+ * A diferença em relação a `openInExternalBrowser` é o `?auth=1`: quando o
+ * Chrome abre a mesma URL, o app entende que ele veio pra entrar e sobe a
+ * folha de autenticação sozinho. Sem isso a troca de app parece um
+ * recomeço — ele cai na prévia outra vez e precisa achar o botão de novo.
+ *
+ * POR QUE NÃO REDIRECIONAR NO CARREGAMENTO DA PÁGINA
+ * Seria mais simples e é tentador, mas três coisas dão errado:
+ *   - No iOS sem Chrome instalado nada acontece: o pai fica olhando uma
+ *     tela parada, sem mensagem nenhuma.
+ *   - Trocar de app sozinho, num link sobre o filho dele, parece golpe.
+ *     Parte das pessoas fecha e não volta.
+ *   - Mata a prévia. O valor do fluxo é ele VER a mensalidade antes de
+ *     qualquer atrito; redirecionar antes disso troca a ordem.
+ *
+ * Então a tentativa acontece no momento do login — quando o ganho é real e
+ * o pai já sabe onde está.
+ */
+export function openForAuth() {
+  if (typeof window === 'undefined') return 'unsupported';
+  const url = new URL(window.location.href);
+  url.searchParams.set('auth', '1');
+  return openInExternalBrowser(url.toString());
+}
