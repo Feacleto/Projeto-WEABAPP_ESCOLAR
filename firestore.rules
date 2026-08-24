@@ -34,13 +34,44 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // MOTORISTA. O nome `admin` é histórico e confunde: no código inteiro ele
-    // quer dizer "quem opera uma perua", não "quem administra a plataforma".
-    // É este papel que libera crianças, pagamentos, rotas e agenda.
+    // MOTORISTA ATIVO. O nome `admin` é histórico e confunde: no código inteiro
+    // ele quer dizer "quem opera uma perua", não "quem administra a
+    // plataforma". É este papel que libera crianças, pagamentos, rotas e
+    // agenda.
+    //
+    // SUSPENSO NÃO É MOTORISTA, E A TRAVA MORA AQUI
+    // Suspensão que só existisse na interface seria enfeite: o parceiro
+    // suspenso continuaria com token válido e continuaria escrevendo na
+    // operação por qualquer outro caminho — outro aparelho, uma aba antiga,
+    // um script. Negando dentro do `isAdmin()`, a suspensão vale pra TODAS as
+    // coleções que dependem dele de uma vez, e não uma por uma.
+    //
+    // `.get('suspenso', false)` e não `.suspenso`: acessar chave ausente é
+    // erro de avaliação, e erro de avaliação nega. Sem o default, publicar
+    // esta linha trancaria fora TODO motorista cujo doc não tem o campo — ou
+    // seja, todos eles.
     function isAdmin() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && userDoc().role == 'admin';
+        && userDoc().role == 'admin'
+        && userDoc().get('suspenso', false) != true;
+    }
+
+    // "ESTE DOCUMENTO É DESTE MOTORISTA?" — o escopo por parceiro.
+    //
+    // Vale pra `children` e `payments`, as duas coleções que carregam a
+    // operação e o dinheiro de um parceiro. O `.get('adminUid', '')` existe
+    // porque chave ausente é erro de avaliação (que nega, mas nega com ruído
+    // difícil de ler no console); com default, documento legado simplesmente
+    // não pertence a ninguém — e é por isso que o backfill vem antes.
+    //
+    // ATENÇÃO PRA CONSULTA: rule que exige campo obriga a CONSULTA a provar
+    // o filtro. `where('adminUid','==',uid)` não é otimização, é requisito —
+    // sem ele o Firestore recusa a consulta inteira, e a tela vem vazia em
+    // vez de vir parcial.
+    function ehDoMotorista() {
+      return isAdmin()
+        && resource.data.get('adminUid', '') == request.auth.uid;
     }
 
     // DONO DA PLATAFORMA — quem faz a gestão do produto: aprova motorista,
@@ -61,12 +92,22 @@ service cloud.firestore {
     // escrita na operação: criança, pagamento, rota e agenda continuam
     // exigindo `isAdmin()`.
     //
-    // O campo `superAdmin` continua existindo pra não quebrar quem já o tem,
-    // mas quem manda agora é o papel.
+    // O DONO É UMA CONTA SÓ, E `superAdmin` SAIU DAQUI.
+    // O fallback existia como ponte pra conta antiga. Ele criava duas
+    // assimetrias, e as duas doem só num incidente:
+    //
+    //   - o cliente (`ehDono()` em src/utils/papeis.js) já não aceita o
+    //     booleano. Cliente e servidor discordando sobre quem é dono é a
+    //     pior classe de bug: a tela mostra uma coisa e o banco decide outra;
+    //   - "quantos donos existem?" deixava de ser uma query e passava a ser
+    //     uma auditoria de campo esquecido em doc antigo.
+    //
+    // A migração é MANUAL e vem antes: o doc do dono passa a `role: 'owner'`
+    // pelo console, porque o cliente não escreve `role` de propósito.
     function isOwner() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && (userDoc().role == 'owner' || userDoc().superAdmin == true);
+        && userDoc().role == 'owner';
     }
 
     // Tem conta de VERDADE no app (doc em users/). A landing chama
@@ -76,6 +117,23 @@ service cloud.firestore {
     function isAppUser() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // -----------------------------------------------------------------
+    // platformConfig/{docId} — os interruptores do DONO.
+    //
+    // Leitura livre: o app precisa saber se o período de avaliação está
+    // aberto antes de decidir o que desenhar, e isso vale inclusive pra
+    // quem ainda não tem conta. Não há nada sensível aqui.
+    //
+    // Escrita SÓ de isOwner(), e é por isso que este bloco existe em vez de
+    // reusar appState/init: a regra daquele é `isAdmin()`, que neste projeto
+    // significa MOTORISTA. Guardar um interruptor de plataforma lá deixaria
+    // qualquer parceiro abrir e fechar o período de avaliação de todo mundo.
+    // -----------------------------------------------------------------
+    match /platformConfig/{docId} {
+      allow read: if true;
+      allow write: if isOwner();
     }
 
     // -----------------------------------------------------------------
@@ -134,10 +192,45 @@ service cloud.firestore {
       // Cloud Function, quem cria users/{uid} de responsável é o redeemInvite
       // com Admin SDK, que não passa por rules. Só o bootstrap do admin
       // (createFirstAdmin) ainda escreve daqui.
-      allow create: if isSignedIn()
+      // Dois caminhos, e só dois:
+      //
+      //   1. BOOTSTRAP — o primeiro motorista se cria sozinho, e a porta
+      //      fecha atrás dele (`appState/init`).
+      //   2. PROVISIONAMENTO PELO DONO — o parceiro aprovado na fila. Antes
+      //      disto, "aprovar" no painel era só um recado pra si mesmo: a
+      //      conta tinha que ser criada à mão no console, e a decisão ficava
+      //      num limbo entre o funil e o banco.
+      //
+      // O QUE O DONO NÃO CONSEGUE FAZER AQUI, mesmo tendo o create liberado:
+      //   - criar outro DONO. `role` tem que ser 'admin', e o `hasOnly`
+      //     abaixo nem admite a chave `superAdmin`. O dono é uma conta só, e
+      //     essa contagem não pode depender de bom comportamento do cliente;
+      //   - vincular criança. `childId`/`childIds` estão fora da whitelist:
+      //     quem cria vínculo é o resgate de convite, não a gestão;
+      //   - forjar aceite de termos. `termsVersion` e companhia estão fora:
+      //     o motorista novo cai no gate e aceita ele mesmo, com o próprio
+      //     login. Consentimento que a plataforma escreve pelo usuário não é
+      //     consentimento.
+      //
+      // A criação do login no Firebase Auth acontece no cliente, numa
+      // instância secundária (src/services/provisionamentoService.js) — o
+      // Auth já permite a qualquer pessoa criar conta com e-mail e senha,
+      // então o privilégio de verdade é ESTE doc, e é aqui que ele é gateado.
+      allow create: if (
+        isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.role == 'admin'
-        && !exists(/databases/$(database)/documents/appState/init);
+        && !exists(/databases/$(database)/documents/appState/init)
+      ) || (
+        isOwner()
+        && request.resource.data.role == 'admin'
+        && request.resource.data.keys().hasAll(['role', 'name', 'createdAt'])
+        && request.resource.data.keys().hasOnly([
+          'role', 'name', 'email', 'phone', 'city',
+          'createdAt', 'provisionedBy', 'provisionedFromLead'
+        ])
+        && request.resource.data.provisionedBy == request.auth.uid
+      );
 
       // O dono atualiza o próprio doc, mas NÃO pode mexer em role nem no
       // vínculo de crianças. Quem escreve childIds/childId é a Cloud
@@ -165,9 +258,42 @@ service cloud.firestore {
       // usuário edita o próprio. Vínculo de criança e papel continuam sendo
       // escritos só pelo `redeemInvite` com Admin SDK, que não passa por
       // rules — e por isso não perde nada aqui.
-      allow update: if isSignedIn()
+      // A ORDEM DOS RAMOS MUDOU, E O MOTIVO FOI UM FURO ENCONTRADO NO TESTE.
+      //
+      // Antes o `hasAny` de campos proibidos vinha ANTES do OU e valia pros
+      // dois ramos — o que estava certo pra `role` e `superAdmin`. Quando os
+      // campos de GESTÃO entraram (`suspenso`), a lista não os acompanhou, e
+      // o ramo "a própria pessoa edita o próprio doc" passou a incluí-los:
+      // o motorista SUSPENSO gravava `suspenso: false` em si mesmo e voltava
+      // a operar. A sonda do emulador pegou isso, e a rule compilava e lia
+      // bem — é o tipo de furo que revisão de olho não acha.
+      //
+      // Agora o ramo do DONO vem primeiro e é fechado em si (só os campos de
+      // gestão), e o ramo de todo mundo proíbe privilégio E gestão juntos.
+      allow update: if (
+        // O DONO GERENCIA, NÃO EDITA CADASTRO ALHEIO.
+        // Três campos, e nenhum é dado do parceiro: suspender, quando
+        // suspendeu, e a nota interna da plataforma. Nome, telefone e chave
+        // PIX continuam sendo do motorista — a plataforma não reescreve o
+        // cadastro de quem ela hospeda, nem por conveniência de suporte.
+        isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['suspenso', 'suspensoEm', 'notaInterna'])
+      ) || (
+        isSignedIn()
+        // PRIVILÉGIO E GESTÃO: NINGUÉM ESCREVE DAQUI, NEM EM SI MESMO.
+        //
+        // `role`/`superAdmin` porque era assim que um motorista se promovia
+        // a dono da plataforma (sondado contra o ambiente publicado, e
+        // passava). `childId`/`childIds` porque vínculo de criança é do
+        // `redeemInvite` com Admin SDK, e auto-atribuição de filho daria
+        // acesso à posição ao vivo da perua. `suspenso` e companhia porque
+        // suspensão que o suspenso desfaz não é suspensão.
         && !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['role', 'childId', 'childIds', 'superAdmin'])
+             .hasAny([
+               'role', 'childId', 'childIds', 'superAdmin',
+               'suspenso', 'suspensoEm', 'notaInterna'
+             ])
         && (
           // Quem edita: o motorista (dados de cadastro dos seus usuários) ou
           // a própria pessoa. A checagem redundante de `role` fica como
@@ -178,7 +304,8 @@ service cloud.firestore {
             request.auth.uid == uid
             && request.resource.data.role == resource.data.role
           )
-        );
+        )
+      );
 
       // O próprio dono pode apagar (excluir minha conta) ou admin pode
       // apagar qualquer um (remover pai vinculado / encerrar operação).
@@ -202,13 +329,35 @@ service cloud.firestore {
       // `redeemInvite`, que roda com Admin SDK e devolve o mínimo.
       // O dono LÊ pra contar a base, mas NÃO escreve: cadastro de criança
       // é operação do parceiro, não gestão da plataforma.
+      // CADA MOTORISTA ALCANÇA AS CRIANÇAS DELE, E SÓ.
+      //
+      // Antes bastava `isAdmin()`: QUALQUER motorista lia e escrevia QUALQUER
+      // criança. Com um parceiro só, ninguém via o problema — no segundo,
+      // cada um passa a ler nome, endereço, coordenada, escola e telefone das
+      // famílias do outro, e a plataforma não teria como dizer que não. É a
+      // classe de falha que só aparece no dia em que o produto dá certo.
+      //
+      // `ehDoMotorista()` compara `adminUid` com o uid da sessão, com default
+      // vazio pra chave ausente — acessar chave inexistente é erro de
+      // avaliação, e erro nega. Documento legado (sem `adminUid`) portanto
+      // NÃO é lido por motorista nenhum: o backfill
+      // (scripts/backfill-adminuid.cjs) tem que rodar ANTES de publicar isto,
+      // senão o parceiro atual abre o painel e não vê as próprias crianças.
+      //
+      // O DONO CONTINUA LENDO TUDO, e isso é deliberado: ele conta a base e
+      // resume o negócio. Ler não é operar — escrita segue proibida pra ele.
       allow read: if isSignedIn() && (
-        isAdmin()
+        ehDoMotorista()
         || isOwner()
         || resource.data.parentUid == request.auth.uid
       );
 
-      allow create, delete: if isAdmin();
+      // Criar exige carimbar a própria autoria: sem isto, um motorista
+      // cadastraria criança JÁ na conta de outro, e o dado nasceria fora do
+      // alcance de quem ele pertence.
+      allow create: if isAdmin()
+        && request.resource.data.adminUid == request.auth.uid;
+      allow delete: if ehDoMotorista();
 
       // Updates permitidos (não-admin):
       //   a) Aceitar invite: pending → used, parentUid = auth.uid
@@ -220,7 +369,13 @@ service cloud.firestore {
       // a Cloud Function redeemInvite, em transação (evita dois pais
       // resgatarem o mesmo código). O caminho inverso (desvincular ao
       // apagar a conta) continua aqui — é o próprio dono agindo.
-      allow update: if isAdmin() || (
+      // O motorista edita as dele, e não pode transferir a criança pra outro
+      // (`adminUid` imutável): mudar o dono do documento é o mesmo que
+      // escrever na operação alheia, só que em duas etapas.
+      allow update: if (
+        ehDoMotorista()
+        && request.resource.data.adminUid == resource.data.adminUid
+      ) || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.parentUid == null
@@ -287,13 +442,29 @@ service cloud.firestore {
     match /payments/{paymentId} {
       // O dono LÊ pro GMV do painel, e só. Dar baixa em pagamento é
       // operação do parceiro — a plataforma não mexe no dinheiro dele.
+      //
+      // E CADA MOTORISTA SÓ ALCANÇA O PRÓPRIO FINANCEIRO. Antes, `isAdmin()`
+      // sozinho dava create, update e DELETE de qualquer pagamento a qualquer
+      // motorista: um parceiro podia apagar a cobrança do outro, ou dar baixa
+      // no dinheiro que não é dele. O responsável continua entrando pelo
+      // `parentUid`, que é o vínculo dele com a cobrança.
       allow read: if isSignedIn() && (
-        isAdmin()
+        ehDoMotorista()
         || isOwner()
         || resource.data.parentUid == request.auth.uid
       );
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
+      // ATENÇÃO, QUEM FOR MEXER NA COBRANÇA: quando a geração de mensalidade
+      // voltar a rodar (Cloud Function `generateMonthlyPayments`), ela precisa
+      // gravar `adminUid` no pagamento — o Admin SDK não passa por rules, mas
+      // um pagamento sem `adminUid` fica invisível pro motorista dono dele,
+      // porque a consulta da tela filtra por esse campo.
+      allow create: if isAdmin()
+        && request.resource.data.adminUid == request.auth.uid;
+      allow delete: if ehDoMotorista();
+      allow update: if (
+        ehDoMotorista()
+        && request.resource.data.adminUid == resource.data.adminUid
+      ) || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && (
@@ -349,20 +520,21 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['type', 'at'])
         && request.resource.data.actorUid == request.auth.uid;
 
-      // Definitivo por design.
-      // ABRIR E FECHAR DEPOIMENTO É PODER DO DONO, e só isso.
+      // Definitivo por design. Nem update nem delete, PRA NINGUÉM — nem
+      // pro dono da plataforma.
       //
-      // O conteúdo continua IMUTÁVEL pra todo mundo, inclusive pra ele:
-      // a única chave que se pode tocar é `hiddenByOwner`. Depoimento que
-      // o dono pudesse reescrever não seria depoimento — seria texto da
-      // plataforma assinado por outra pessoa.
+      // Aqui morava, por engano, o `allow update` do `hiddenByOwner` dos
+      // depoimentos: eu escrevi a regra e ela caiu no bloco errado, 230
+      // linhas acima do `match /feedbacks/{id}` a que pertencia. O efeito
+      // era duplo e os dois lados silenciosos — a moderação de depoimento
+      // nunca funcionaria, e ESTA trilha deixava de ser append-only sem
+      // que o comentário acima parasse de prometer o contrário.
       //
-      // Esconder não apaga: o autor continua vendo o que escreveu, e o
-      // registro do que foi dito permanece. O que muda é só a vitrine.
-      allow update: if isOwner()
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['hiddenByOwner']);
-      allow delete: if false;
+      // É a sétima vez neste projeto que um comentário promete garantia
+      // que o código ao lado não dá. As seis primeiras eu encontrei; esta
+      // eu causei, e outra sessão pegou lendo o enquadramento dos blocos.
+      // Comentário é hipótese, inclusive quando quem escreveu foi você.
+      allow update, delete: if false;
     }
 
     // -----------------------------------------------------------------
@@ -503,7 +675,15 @@ service cloud.firestore {
       // joinDriverWaitlist (Admin SDK), que valida campos, deduplica por
       // email e devolve a posição na fila. Com o create aberto, qualquer
       // visitante anônimo podia inflar a lista do tio com lixo.
-      allow create: if false;
+      // Continua FECHADO pro público: era por aqui que um visitante anônimo
+      // inflava a lista com lixo, e a entrada pública é a callable
+      // `joinDriverWaitlist` (que deduplica por e-mail e devolve a posição).
+      //
+      // O dono cria porque hoje ele é o único canal que funciona: sem Cloud
+      // Functions no ar, o formulário da home não grava nada, e o interessado
+      // que chega por WhatsApp precisa entrar na fila de algum jeito. Sem
+      // isto, a fila fica vazia e o funil não tem o que gerenciar.
+      allow create: if isOwner();
       // A fila de parceiros é GESTÃO DA PLATAFORMA, não operação de perua:
       // quem aprova ou recusa um motorista é o dono. O parceiro não tem o
       // que fazer aqui — e ver a fila é ver os concorrentes dele.
@@ -616,7 +796,25 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasAll(['uid', 'role', 'answers', 'createdAt']);
-      allow update, delete: if false;
+
+      // ABRIR E FECHAR DEPOIMENTO É PODER DO DONO, e só isso.
+      //
+      // O conteúdo continua IMUTÁVEL pra todo mundo, inclusive pra ele: a
+      // única chave que se pode tocar é `hiddenByOwner`. Depoimento que o dono
+      // pudesse reescrever não seria depoimento — seria texto da plataforma
+      // assinado por outra pessoa.
+      //
+      // Esconder não apaga: o autor continua vendo o que escreveu, e o
+      // registro do que foi dito permanece. O que muda é só a vitrine — o
+      // `allow get` acima já filtra por esta chave.
+      //
+      // Isto fecha uma promessa que o app já fazia e não podia cumprir: o
+      // ReviewSheet diz "se mudar de ideia, fale com a gente e a gente tira do
+      // ar", e até agora não existia caminho de escrita pra isso.
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['hiddenByOwner']);
+      allow delete: if false;
     }
 
     // -----------------------------------------------------------------
