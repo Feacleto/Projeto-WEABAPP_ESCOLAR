@@ -24,6 +24,23 @@ import { auth, db, functions } from '../firebase/config';
  * privada — a leitura está restrita a `isAdmin()` nas rules.
  */
 
+/**
+ * ATENÇÃO: O LOGIN ANÔNIMO ESTÁ DESLIGADO NESTE PROJETO.
+ *
+ * `signInAnonymously` responde ADMIN_ONLY_OPERATION — conferido contra o
+ * ambiente real. Então `submitParentWaitlist` abaixo FALHA se alguém a ligar
+ * numa tela: ela não chega a escrever nada.
+ *
+ * Hoje isso não quebra ninguém porque ela não é chamada de lugar nenhum (a
+ * captação de responsável acontece pelo link do motorista, não por formulário
+ * público). Fica o aviso pra quem for ligar: ou habilita o login anônimo no
+ * console, ou passa esta escrita por Cloud Function, como o
+ * `joinDriverWaitlist` já faz.
+ *
+ * A segunda opção é melhor, e o motivo está no vizinho: a function deduplica
+ * por email e devolve a posição na fila. Um addDoc direto não faz nenhum dos
+ * dois — e a coleção `waitlistParents` hoje não tem NENHUMA tela que a leia.
+ */
 async function ensureSignedIn() {
   if (auth.currentUser) return;
   await signInAnonymously(auth);
