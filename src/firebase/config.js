@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
 // Todas as chaves vêm do .env (prefixo VITE_) — chaves do client são
@@ -24,6 +24,41 @@ export const storage = getStorage(app);
 // Mesma região das Cloud Functions (firebase.json / functions/index.js).
 // Sem passar a região, o SDK chama us-central1 e recebe 404.
 export const functions = getFunctions(app, 'southamerica-east1');
+
+// ============================================================================
+// Emuladores locais
+// ============================================================================
+//
+// POR QUE ISTO PRECISA EXISTIR
+// Sem este bloco, `npm run dev` conversa com o Firebase de PRODUÇÃO. Ou seja:
+// subir o emulador não serviria de nada, e cada teste criaria criança, pai e
+// cobrança de verdade no banco real — misturado com os dados do Tio Nino.
+//
+// Fica atrás de uma flag explícita (VITE_USE_EMULATORS=true no .env) em vez
+// de ligar sozinho em desenvolvimento, porque às vezes você QUER rodar local
+// contra produção pra reproduzir um problema com dado real.
+//
+// As portas batem com o bloco `emulators` do firebase.json. Firestore está em
+// 8085 e não na 8080 padrão porque a 8080 estava ocupada pelo Apache.
+const USE_EMULATORS =
+  import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true';
+
+if (USE_EMULATORS) {
+  const host = '127.0.0.1';
+  connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
+  connectFirestoreEmulator(db, host, 8085);
+  connectStorageEmulator(storage, host, 9199);
+  connectFunctionsEmulator(functions, host, 5001);
+  console.info('%c🔧 EMULADOR LOCAL — nenhum dado vai pra produção', 'color:#1F5F3F;font-weight:bold');
+} else if (import.meta.env.DEV) {
+  // Aviso alto de propósito: rodar dev contra produção é legítimo, mas nunca
+  // deve acontecer sem você saber. É assim que dado de teste vaza pro banco
+  // real e ninguém descobre até alguém estranhar uma criança chamada "teste".
+  console.warn(
+    '%c⚠ PRODUÇÃO — você está gravando no banco real. Pra usar o emulador, ponha VITE_USE_EMULATORS=true no .env',
+    'color:#EF4444;font-weight:bold'
+  );
+}
 
 // Garante que emails do Firebase Auth (reset de senha, verificação) cheguem
 // em PT-BR mesmo se o usuário tiver outro idioma no navegador.
