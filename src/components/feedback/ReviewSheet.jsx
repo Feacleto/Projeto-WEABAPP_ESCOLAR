@@ -19,6 +19,7 @@ import {
   PUBLIC_COMMENT_MAX,
   submitFeedback,
 } from '../../services/feedbackService';
+import { STORAGE_ENABLED } from '../../config/capabilities';
 import { USE_OPTIONS_PAI, USE_OPTIONS_TIO, WISH_OPTIONS } from './surveyOptions';
 
 /**
@@ -74,14 +75,27 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
   const [submitting, setSubmitting] = useState(false);
   const [publicou, setPublicou] = useState(false);
 
-  const temFoto = !!profile?.photoURL;
+  // Anexo de arquivo pode estar desligado no ambiente (ver capabilities).
+  // Quando está, o editor de foto do perfil nem existe — então exigir foto
+  // aqui criava um beco sem saída: o botão de publicar ficava travado pra
+  // sempre, e o atalho "enviar foto agora" levava a uma tela que não tem
+  // onde enviar. Requisito que ninguém pode cumprir é o mesmo erro de
+  // correção que ninguém pode executar.
+  const podeEnviarFoto = STORAGE_ENABLED;
+  const temFoto = podeEnviarFoto && !!profile?.photoURL;
   const texto = comment.trim();
   const restam = PUBLIC_COMMENT_MAX - comment.length;
 
-  // Publicar exige as quatro coisas que o card mostra: nota, texto, foto e
-  // autorização explícita. Faltando qualquer uma, o caminho é o privado.
+  // Publicar exige o que o card mostra: nota, texto e autorização explícita.
+  // A foto entra na conta só quando o ambiente permite enviar uma — sem
+  // Storage, o card sai com o avatar gerado pelo app (todo mundo tem um) e o
+  // depoimento continua podendo ir pra home.
   const podePublicar =
-    isTio && rating >= 1 && texto.length >= 8 && temFoto && autoriza;
+    isTio &&
+    rating >= 1 &&
+    texto.length >= 8 &&
+    autoriza &&
+    (temFoto || !podeEnviarFoto);
 
   const fechar = () => {
     setStep('nota');
@@ -298,7 +312,11 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
             <ul className="mt-2 space-y-1 text-xs leading-relaxed text-emerald-900/80">
               <li>· suas estrelas</li>
               <li>· seu depoimento, até {PUBLIC_COMMENT_MAX} caracteres</li>
-              <li>· seu primeiro nome e sua foto</li>
+              <li>
+                {podeEnviarFoto
+                  ? '· seu primeiro nome e sua foto'
+                  : '· seu primeiro nome e o avatar do app'}
+              </li>
             </ul>
             <p className="mt-2 text-xs leading-relaxed text-emerald-900/70">
               Nada é publicado sem você marcar a autorização no fim.
@@ -380,8 +398,9 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
           />
         </div>
 
-        {/* Foto — só importa pra quem vai pra vitrine. */}
-        {isTio && (
+        {/* Foto — só importa pra quem vai pra vitrine, e só quando o ambiente
+          * deixa enviar arquivo. */}
+        {isTio && podeEnviarFoto && (
           <div>
             <p className="mb-2 text-sm font-bold text-text">Sua foto</p>
             {temFoto ? (
@@ -436,8 +455,13 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                 className="mt-0.5 h-5 w-5 shrink-0 rounded border-gray-300 text-primary focus:ring-primary/40"
               />
               <span className="text-xs leading-relaxed text-text">
-                Autorizo publicar meu <strong>primeiro nome</strong>, minha{' '}
-                <strong>foto</strong>, minhas <strong>estrelas</strong> e este{' '}
+                Autorizo publicar meu <strong>primeiro nome</strong>,{' '}
+                {podeEnviarFoto ? (
+                  <>
+                    minha <strong>foto</strong>,{' '}
+                  </>
+                ) : null}
+                minhas <strong>estrelas</strong> e este{' '}
                 <strong>depoimento</strong> na home do Alô Buzinou.
               </span>
             </label>
@@ -482,7 +506,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                     ? 'Dê a nota em estrelas.'
                     : texto.length < 8
                       ? 'Escreva seu depoimento.'
-                      : !temFoto
+                      : podeEnviarFoto && !temFoto
                         ? 'Envie uma foto pra poder publicar.'
                         : 'Marque a autorização pra publicar.'}
                 </p>
