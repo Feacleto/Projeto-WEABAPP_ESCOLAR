@@ -113,9 +113,24 @@ function makeSpinEntryBonus(db) {
         // um sorteio antigo fica impossível de auditar contra a tabela nova.
         premiosNaEpoca: PREMIOS.map((p) => ({ meses: p.meses, peso: p.peso })),
         spunAt: admin.firestore.FieldValue.serverTimestamp(),
-        // Consumo fica pra quando a taxa existir de verdade (hoje a receita é
-        // R$ 0,00 e nenhum contrato cobra). Nasce nulo e explícito em vez de
-        // ausente, pra a cobrança futura ter onde marcar sem migração.
+        // OBSOLETOS — NÃO USE. Quem registra consumo de isenção é a FATURA.
+        //
+        // Eu criei estes dois achando que facilitava a vida de quem fosse
+        // implementar a cobrança: "nascem nulos, é só marcar depois". Estava
+        // errado, e a sessão que foi construir a taxa apontou o porquê:
+        // consumo de isenção é fato de COBRANÇA, não de sorteio. Este
+        // documento responde "o que foi sorteado" e nada mais.
+        //
+        // Pior: pra marcar aqui, alguém precisaria escrever num doc que é
+        // `update: if false` pra todos — ou seja, teria que afrouxar a regra
+        // que faz a roleta valer alguma coisa. O campo "conveniente" era um
+        // convite a abrir a porta.
+        //
+        // Cada mês de fatura carrega a própria decisão de isenção. Fica
+        // auditável sem ninguém reescrever histórico.
+        //
+        // Continuam sendo gravados porque documento já existente os tem, e
+        // tirar campo de doc imutável é migração — não porque sirvam.
         aplicadoDe: null,
         aplicadoAte: null,
       });
