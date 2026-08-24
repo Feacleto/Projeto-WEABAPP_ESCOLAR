@@ -21,9 +21,7 @@ import Sheet, {
 import OpenInBrowser from '../auth/OpenInBrowser';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  getUserDoc,
-  loginWithGoogle,
-  logout,
+  loginWithGoogleExistingOnly,
   resetPassword,
 } from '../../services/authService';
 import { canUseGoogleSignIn, isInAppBrowser } from '../../utils/browserEnv';
@@ -93,27 +91,26 @@ export default function LoginSheet({ open, onClose, onWantPartner }) {
   };
 
   /**
-   * Login com Google: só vale pra quem JÁ tem cadastro. Sem doc em
-   * users/{uid}, deslogamos e mostramos a escolha de papel — entrar com
-   * Google não pode virar porta de entrada sem vínculo com um motorista.
+   * Login com Google: só vale pra quem JÁ tem cadastro.
+   *
+   * A checagem e a LIMPEZA moram no serviço (`loginWithGoogleExistingOnly`):
+   * o login social cria o usuário no Auth antes de qualquer verificação
+   * nossa, então uma conta sem perfil é apagada na hora, ali dentro. Antes
+   * cada tela de login repetia esse cuidado — e a terceira ia esquecer.
+   *
+   * Aqui só resta o que é de interface: quem não tem acesso vai pra escolha
+   * de papel, com a mensagem que o serviço já escreveu.
    */
   const onGoogleLogin = async () => {
     setGoogleSubmitting(true);
     try {
-      const user = await loginWithGoogle();
-      const userProfile = await getUserDoc(user.uid);
-      if (!userProfile) {
-        await logout();
-        setStep('novo');
-        toast.error(
-          'Esta conta Google ainda não tem acesso ao app. Veja por onde começar.',
-          { duration: 6000 }
-        );
-        return;
-      }
+      const { profile: userProfile } = await loginWithGoogleExistingOnly();
       toast.success(`Bem-vindo, ${userProfile.name || 'Tio'}!`);
     } catch (err) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
+      if (err?.code === 'app/no-profile') {
+        setStep('novo');
+        toast.error(err.message, { duration: 7000 });
+      } else if (err?.code !== 'auth/popup-closed-by-user') {
         toast.error(mapAuthError(err));
       }
     } finally {

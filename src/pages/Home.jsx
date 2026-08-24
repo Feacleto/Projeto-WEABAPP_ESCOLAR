@@ -55,7 +55,7 @@ import { APP_VERSION } from '../version';
  * Pro MOTORISTA ESCOLAR, do primeiro ao último bloco. O pai também cai aqui
  * (o link do convite passa por essa porta), e ele entende tudo — mas a
  * comunicação não é dividida ao meio: cada bloco existe pra convencer o tio
- * a virar associado da comunidade. Até o que o PAI ganha é
+ * a virar associado. Até o que o PAI ganha é
  * argumento pro tio ("a família para de te ligar"), e não uma seção à parte.
  * Quem já tem conta resolve no "Entrar" do hero; quem quer o app pra ele tem
  * o convite sempre à mão, na barra flutuante.
@@ -95,12 +95,23 @@ import { APP_VERSION } from '../version';
 /**
  * Logo do único associado de hoje.
  *
- * Está fixo aqui de propósito, e com data de validade: a vitrine lê o
- * `photoURL` que vem do `getShowcase`, mas enquanto o parceiro não subir a
- * marca dele no perfil (e enquanto a home rodar sem backend, no ambiente
- * local) a seção ficava com uma caixa tracejada dizendo "estamos começando"
- * — o que é pior que a verdade: já existe um associado, e ele tem marca.
- * Quando o showcase devolver o logo, esta constante sai.
+ * Está fixo aqui de propósito, e com data de validade: enquanto o parceiro
+ * não subir a marca dele (e enquanto a home rodar sem backend, no ambiente
+ * local), a seção ficava com uma caixa tracejada dizendo "estamos começando"
+ * — pior que a verdade, porque já existe um associado e ele tem marca.
+ *
+ * A VITRINE NÃO USA MAIS A FOTO DE PERFIL, E ISSO NÃO É DETALHE.
+ * O `getShowcase` devolve o `photoURL` do motorista pra QUALQUER visitante
+ * (é callable com Admin SDK, roda sem login), e esta tela renderizava esse
+ * campo. Ou seja: o rosto que ele subiu numa tela de perfil — que sempre foi
+ * privada — aparecia na internet, e ninguém nunca lhe perguntou. É a mesma
+ * forma do bug do `allowPhoto` no depoimento: publicar imagem de pessoa sem
+ * um "sim" explícito pra ESSE uso.
+ *
+ * Então a vitrine só mostra MARCA: o logo do parceiro, ou o nome desenhado
+ * como marca. Quando existir um campo de imagem de marca com consentimento
+ * (a camada de parceiro em desenho prevê `brandImageURL` + `brandKind`), a
+ * vitrine passa a ler ELE — nunca o avatar do perfil.
  */
 const LOGO_ASSOCIADO = '/parceiros/tio-nino.webp';
 const NOME_ASSOCIADO = 'Tio Nino Digital';
@@ -387,7 +398,7 @@ export default function Home() {
         *   tradução prática       o que muda no meu dia?
         *   números reais          é verdade?
         *   "Quero ser associado"  o que eu faço agora?
-        *   vaga + comunidade      por que agora, e onde eu entro?
+        *   vaga + estrutura      por que a vaga é contada?
         *   "role pra ver mais"    tem mais?
         *
         * DUAS CORREÇÕES DE HIERARQUIA QUE ESTE BLOCO TINHA ERRADAS
@@ -590,8 +601,11 @@ export default function Home() {
                 * desenhado pra fundo claro, e vidro escuro comeria o dele. */}
               <ul className="flex flex-wrap gap-3">
                 <li className="flex min-w-[10rem] flex-1 items-center justify-center rounded-3xl bg-white p-5 shadow-lg shadow-black/20">
+                  {/* Só marca — nunca o avatar do perfil. Ver a nota em
+                    * LOGO_ASSOCIADO: foto de rosto aqui seria publicar a
+                    * imagem de uma pessoa sem ela ter dito sim pra isso. */}
                   <img
-                    src={driver?.photoURL || LOGO_ASSOCIADO}
+                    src={LOGO_ASSOCIADO}
                     alt={driver?.name || NOME_ASSOCIADO}
                     className="h-20 w-auto max-w-full object-contain"
                     loading="lazy"

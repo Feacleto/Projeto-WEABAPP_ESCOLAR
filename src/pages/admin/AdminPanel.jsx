@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { httpsCallable } from 'firebase/functions';
 import {
   ArrowLeft,
   BarChart3,
@@ -9,6 +10,7 @@ import {
   MapPin,
   MessageSquare,
   Phone,
+  ShieldCheck,
   Star,
   TrendingUp,
   Users,
@@ -16,6 +18,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
 import { useAuth } from '../../hooks/useAuth';
@@ -210,11 +214,12 @@ function Geral({ ov }) {
             <strong>{moeda(ov.gmvTotal)}</strong> é o volume que passou entre
             pai e motorista dentro do app — é o que prova que o produto está no
             meio de uma transação real. A receita do Alô Buzinou é{' '}
-            <strong>R$ 0,00</strong> porque a taxa sobre a mensalidade (o
-            modelo apresentado ao parceiro, com desconto por engajamento na
-            comunidade) ainda não é cobrada em nenhum contrato. Os dois números
-            importam pra valuation por motivos diferentes: GMV mostra o mercado
-            que você já toca; a taxa mostra que você sabe capturar parte dele.
+            <strong>R$ 0,00</strong> porque a taxa sobre a mensalidade — o
+            modelo apresentado ao associado, que paga a administração e a
+            manutenção da estrutura dele — ainda não é cobrada em nenhum
+            contrato. Os dois números importam pra valuation por motivos
+            diferentes: GMV mostra o mercado que você já toca; a taxa mostra
+            que você sabe capturar parte dele.
           </p>
         </div>
       </section>
@@ -223,7 +228,173 @@ function Geral({ ov }) {
         <Titulo icon={Bus}>Fila de parceiros</Titulo>
         <Tile label="Motoristas pedindo acesso" value={ov.filaParceiros} />
       </section>
+
+      <section>
+        <Titulo icon={ShieldCheck}>Manutenção</Titulo>
+        <PrivacidadeDosDepoimentos />
+      </section>
     </div>
+  );
+}
+
+/**
+ * Recolher nome completo e foto sem consentimento dos depoimentos antigos.
+ *
+ * POR QUE ISTO EXISTE COMO BOTÃO
+ * A correção do vazamento (o serviço passou a gravar só o primeiro nome)
+ * valia da correção pra frente. Documento gravado ANTES continua com nome
+ * completo — e depoimento público é legível sem login, então o dado antigo
+ * seguia exposto. A limpeza é uma Cloud Function (as rules proíbem update em
+ * `feedbacks` pra TODOS, inclusive admin, então só o Admin SDK apaga campo).
+ *
+ * Só que callable admin-only não se chama pelo console do Firebase. Sem um
+ * botão, a correção existia e ninguém podia rodar — que é o mesmo que não
+ * existir. Este é o botão.
+ *
+ * DUAS REGRAS QUE ELE SEGUE
+ * 1. Verificar antes de aplicar, sempre. A função é dry-run por padrão e o
+ *    "aplicar" só aparece depois de existir um número.
+ * 2. Nenhum nome aparece aqui. O relatório da função devolve de propósito só
+ *    o que SERÁ feito, sem os nomes — repetir o dado vazado na tela e no log
+ *    criaria um terceiro lugar com o vazamento, com retenção própria.
+ */
+function PrivacidadeDosDepoimentos() {
+  const [relatorio, setRelatorio] = useState(null);
+  const [rodando, setRodando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [feito, setFeito] = useState(null);
+
+  const chamar = async (apply) => {
+    setRodando(true);
+    try {
+      const fn = httpsCallable(functions, 'backfillTestimonialPrivacy');
+      const { data } = await fn({ apply });
+      if (apply) {
+        setFeito(data);
+        setRelatorio(null);
+        toast.success(
+          data.corrigidos > 0
+            ? `${data.corrigidos} depoimento(s) corrigido(s).`
+            : 'Nada a corrigir.'
+        );
+      } else {
+        setRelatorio(data);
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Não deu pra rodar a verificação.');
+    } finally {
+      setRodando(false);
+      setConfirmando(false);
+    }
+  };
+
+  const aCorrigir = relatorio?.aCorrigir || 0;
+  const comNome =
+    relatorio?.detalhes?.filter((d) => d.removeNomeCompleto).length || 0;
+  const comFoto =
+    relatorio?.detalhes?.filter((d) => d.removeFotoSemConsentimento).length || 0;
+
+  return (
+    <>
+      <div className="rounded-2xl border border-gray-200 bg-card p-4">
+        <p className="text-sm font-bold text-text">
+          Privacidade dos depoimentos antigos
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-textMuted">
+          Depoimento publicado antes da correção pode ter <strong>nome
+          completo</strong> ou <strong>foto sem autorização</strong> no
+          documento — e depoimento público é legível sem login. Isto recolhe os
+          dois, preservando o primeiro nome pra não perder a atribuição do
+          card.
+        </p>
+
+        {feito && (
+          <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
+            {feito.corrigidos > 0
+              ? `Corrigidos ${feito.corrigidos} de ${feito.avaliados} depoimentos públicos.`
+              : `Nada a corrigir — ${feito.avaliados} depoimentos públicos, todos limpos.`}
+          </p>
+        )}
+
+        {relatorio && !feito && (
+          <div className="mt-3 rounded-xl border border-gray-200 bg-surface p-3">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-textMuted">
+              <span>
+                públicos:{' '}
+                <strong className="tabular-nums text-text">
+                  {relatorio.avaliados}
+                </strong>
+              </span>
+              <span>
+                a corrigir:{' '}
+                <strong
+                  className={`tabular-nums ${aCorrigir > 0 ? 'text-warning' : 'text-emerald-600'}`}
+                >
+                  {aCorrigir}
+                </strong>
+              </span>
+              {aCorrigir > 0 && (
+                <>
+                  <span>
+                    nome completo:{' '}
+                    <strong className="tabular-nums text-text">
+                      {comNome}
+                    </strong>
+                  </span>
+                  <span>
+                    foto sem consentimento:{' '}
+                    <strong className="tabular-nums text-text">
+                      {comFoto}
+                    </strong>
+                  </span>
+                </>
+              )}
+            </div>
+            {aCorrigir === 0 && (
+              <p className="mt-1.5 text-[11px] text-textMuted">
+                Nada exposto. Não precisa aplicar nada.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => chamar(false)}
+            disabled={rodando}
+            className="tap inline-flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-xs font-bold text-text disabled:opacity-60"
+          >
+            {rodando && !confirmando ? <Spinner size={14} /> : null}
+            Verificar
+          </button>
+          {aCorrigir > 0 && (
+            <button
+              type="button"
+              onClick={() => setConfirmando(true)}
+              disabled={rodando}
+              className="tap inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white disabled:opacity-60"
+            >
+              Aplicar correção
+            </button>
+          )}
+        </div>
+
+        <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+          A verificação não muda nada. Aplicar apaga campos e não tem desfazer.
+        </p>
+      </div>
+
+      <ConfirmDialog
+        open={confirmando}
+        title={`Recolher dados de ${aCorrigir} depoimento(s)?`}
+        description="Apaga o nome completo e a foto sem autorização dos documentos públicos, preservando o primeiro nome. Não tem desfazer."
+        confirmLabel="Aplicar"
+        loading={rodando}
+        onConfirm={() => chamar(true)}
+        onCancel={() => setConfirmando(false)}
+      />
+    </>
   );
 }
 

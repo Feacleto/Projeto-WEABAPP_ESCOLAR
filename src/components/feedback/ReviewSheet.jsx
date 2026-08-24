@@ -108,6 +108,17 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
         comment,
         allowTestimonial: publicar,
         allowPhoto: publicar && temFoto,
+        // Manda o nome como está: quem CORTA é o serviço, que grava
+        // `authorFirstName` e nunca o nome completo.
+        //
+        // Eu cortava aqui também, por um tempo, e tirei de propósito. O
+        // documento de feedback com `allowTestimonial: true` é legível por
+        // qualquer um sem login (é o que alimenta a vitrine da home), então
+        // sobrenome ali é vazamento — mas garantia de CAMPO tem que morar
+        // onde o campo é escrito, senão ela vale só pro caminho que passa
+        // por esta tela. Duas truncagens em dois arquivos também tiram do
+        // leitor a resposta pra "quem manda aqui?" no dia em que uma das
+        // duas mudar.
         authorName: profile?.name || null,
         authorPhotoURL: publicar && temFoto ? profile.photoURL : null,
       });

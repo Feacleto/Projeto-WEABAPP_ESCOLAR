@@ -6,7 +6,7 @@ import Input from '../common/Input';
 import Sheet, { SheetCard, SheetCTA, SheetGhost } from '../common/Sheet';
 import PartnerPitch from './PartnerPitch';
 import ConsultorButton from './ConsultorButton';
-import ComunidadeCard from './ComunidadeCard';
+import AssociadosCard from './AssociadosCard';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import { submitDriverWaitlist } from '../../services/waitlistService';
 import {
@@ -126,7 +126,7 @@ export default function WaitlistSheet({
         open={open}
         onClose={onClose}
         icon={Check}
-        eyebrow="comunidade de associados"
+        eyebrow="lista de associados"
         title={
           result.alreadyOnList ? 'Você já está na lista' : 'Recebemos seu pedido'
         }
@@ -170,9 +170,10 @@ export default function WaitlistSheet({
               Sua condição de entrada
             </p>
             <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
-              No seu <strong>primeiro acesso</strong> ao app você gira a roleta
-              uma vez e pode tirar <strong>1, 2 ou 3 meses sem taxa</strong>.
-              Uma tentativa por associado — o resultado fica registrado na sua
+              O sistema está em teste, então você não começa pagando: no seu
+              <strong>primeiro acesso</strong> você gira a roleta uma vez e
+              pode tirar <strong>de 1 a 4 meses sem taxa</strong>. Uma
+              tentativa por associado — o resultado fica registrado na sua
               conta.
             </p>
           </div>
@@ -234,7 +235,7 @@ export default function WaitlistSheet({
       title="Quero ser associado"
       subtitle="Entrar na fila não custa nada e não compromete você."
     >
-      <ComunidadeCard associados={associados} className="mb-5" />
+      <AssociadosCard associados={associados} className="mb-5" />
 
       {/* Antes do primeiro campo: quem prefere conversar não deveria ter que
         * preencher um formulário pra conseguir falar com alguém. */}

@@ -8,7 +8,6 @@ import {
   Percent,
   Plus,
   Server,
-  Users,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -24,9 +23,10 @@ import useSpeech, { rotuloDaVoz } from '../../hooks/useSpeech';
  * conversa se sente enganado; um que leu isso na primeira tela chega pra
  * negociar. A ordem das quatro telas é essa história:
  *
- *   1. somos uma comunidade  →  2. cada associado dá trabalho (administração
- *   financeira e técnica)  →  3. e essa estrutura tem custo fixo, por isso a
- *   vaga é contada  →  4. e por isso existe uma taxa (que a comunidade reduz)
+ *   1. o que o app faz por você  →  2. cada associado dá trabalho
+ *   (administração financeira e técnica)  →  3. e essa estrutura tem custo
+ *   fixo, por isso a vaga é contada  →  4. e por isso existe uma taxa, que
+ *   paga exatamente isso
  *
  * A ordem importa: a ADMINISTRAÇÃO vem antes do CUSTO porque é o que o
  * motorista reconhece na própria pele — ele sabe o que dá trabalho no dia a
@@ -89,7 +89,7 @@ const PASSOS = [
     eyebrow: 'a taxa, dita agora',
     titulo: 'A taxa de associação sai da mensalidade',
     texto:
-      'Um percentual combinado com você, sem valor fixo caindo do céu e sem surpresa depois.',
+      'Um percentual combinado com você. Ele paga a administração e a manutenção da estrutura que atende a sua rota.',
     Art: ArtTaxa,
     audio: null,
   },
@@ -98,7 +98,7 @@ const PASSOS = [
     eyebrow: 'condição de entrada',
     titulo: 'Seu primeiro acesso começa com meses sem taxa',
     texto:
-      'Quando sua vaga abrir, você gira a roleta uma vez: pode sair um, dois ou três meses sem pagar taxa. É sorte, não desconto negociado.',
+      'O sistema está em teste, e você não paga desde o primeiro dia. Quando sua vaga abrir, você gira a roleta uma vez: de um a quatro meses sem taxa.',
     Art: ArtRoleta,
     audio: null,
   },
@@ -435,11 +435,11 @@ function ArtRoleta() {
         className="art-orbit block h-20 w-20 rounded-full border-2 border-white/20"
         style={{
           background:
-            'conic-gradient(rgba(82,196,26,.55) 0deg 90deg, rgba(255,255,255,.10) 90deg 180deg, rgba(245,166,35,.5) 180deg 270deg, rgba(255,255,255,.16) 270deg 360deg)',
+            'conic-gradient(rgba(82,196,26,.55) 0deg 90deg, rgba(255,255,255,.12) 90deg 180deg, rgba(245,166,35,.5) 180deg 270deg, rgba(255,255,255,.2) 270deg 360deg)',
         }}
       />
       <span className="absolute flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-[#0B1210] font-mono text-[9px] font-bold text-emerald-300">
-        1·2·3
+        1·4
       </span>
       <span className="absolute -right-1 bottom-2 rounded-full border border-emerald-300/30 bg-emerald-400/15 px-2 py-1 font-mono text-[8px] uppercase tracking-wider text-emerald-200">
         meses sem taxa
@@ -448,35 +448,61 @@ function ArtRoleta() {
   );
 }
 
-/* A taxa que cai conforme a comunidade cresce: quatro pessoas aparecendo e
- * o marcador de porcentagem andando pra baixo na trilha. */
+/* A taxa sustentando a estrutura — e não caindo por engajamento.
+ *
+ * A versão anterior DESENHAVA a promessa que saiu do texto: uma trilha de
+ * "taxa cheia" a "taxa menor", com um marcador andando conforme quatro
+ * pessoinhas apareciam. Trocar a frase e manter o desenho seria continuar
+ * prometendo em outra linguagem — e desenho promete mais rápido que texto,
+ * porque não precisa ser lido.
+ *
+ * Agora mostra o percentual ALIMENTANDO o que mantém o serviço: o caminho
+ * entra na pilha de infraestrutura, e as luzes piscam porque ele chegou. */
 function ArtTaxa() {
   return (
-    <div aria-hidden className="relative h-24">
-      <div className="flex items-center justify-center gap-2">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/[0.09]">
-          <Percent size={18} className="text-secondary" />
-        </span>
-        {[0, 300, 600, 900].map((d) => (
-          <span
-            key={d}
-            className="art-pop flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-300/25 bg-emerald-400/15"
-            style={{ animationDelay: `${d}ms` }}
-          >
-            <Users size={14} className="text-emerald-300" />
-          </span>
-        ))}
-      </div>
+    <div
+      aria-hidden
+      className="relative flex h-24 items-center justify-center gap-2"
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-secondary/30 bg-secondary/15">
+        <Percent size={20} className="text-secondary" />
+      </span>
 
-      {/* trilha: quanto mais comunidade, mais o marcador anda — e a taxa cai */}
-      <div className="relative mt-4 h-4">
-        <div className="absolute inset-x-2 top-1/2 border-t border-dashed border-white/20" />
-        <span className="art-travel absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-500/40" />
-      </div>
-      <div className="mt-1 flex justify-between font-mono text-[9px] uppercase tracking-wider text-white/35">
-        <span>taxa cheia</span>
-        <span className="text-emerald-300/70">taxa menor</span>
-      </div>
+      {/* o caminho do dinheiro até a estrutura */}
+      <span className="relative flex h-6 w-10 items-center">
+        <span className="absolute inset-x-0 top-1/2 border-t border-dashed border-white/25" />
+        <span className="art-travel absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-secondary" />
+      </span>
+
+      <span className="flex items-end gap-1.5">
+        <span className="flex h-12 w-11 flex-col items-center justify-center gap-1 rounded-xl border border-white/15 bg-white/[0.07]">
+          <Database size={16} className="text-emerald-300" />
+          <span className="flex gap-1">
+            {[0, 200].map((d) => (
+              <span
+                key={d}
+                className="art-typing h-1 w-1 rounded-full bg-emerald-300/80"
+                style={{ animationDelay: `${d}ms` }}
+              />
+            ))}
+          </span>
+        </span>
+        <span className="flex h-14 w-11 flex-col items-center justify-center gap-1 rounded-xl border border-white/15 bg-white/[0.07]">
+          <Server size={16} className="text-white/70" />
+          <span className="flex gap-1">
+            {[100, 400].map((d) => (
+              <span
+                key={d}
+                className="art-typing h-1 w-1 rounded-full bg-emerald-300/80"
+                style={{ animationDelay: `${d}ms` }}
+              />
+            ))}
+          </span>
+        </span>
+        <span className="flex h-10 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/[0.07]">
+          <Bus size={16} className="text-white/70" />
+        </span>
+      </span>
     </div>
   );
 }

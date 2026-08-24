@@ -6,7 +6,7 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import WhatsAppIcon from '../components/common/WhatsAppIcon';
 import { ArtRoad } from '../components/landing/BlockArt';
-import ComunidadeCard from '../components/landing/ComunidadeCard';
+import AssociadosCard from '../components/landing/AssociadosCard';
 import { submitDriverWaitlist } from '../services/waitlistService';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../utils/masks';
 
@@ -140,7 +140,7 @@ export default function DriverSignup() {
       <div className="flex flex-1 flex-col px-6 py-6">
         {/* Mesmo cartão da folha da home: um lugar só pra contagem, senão
           * uma tela diz "1" e a outra diz "um" no dia em que virar 2. */}
-        <ComunidadeCard className="mb-5" />
+        <AssociadosCard className="mb-5" />
 
         <form onSubmit={onSubmit} className="space-y-4">
           <Input
