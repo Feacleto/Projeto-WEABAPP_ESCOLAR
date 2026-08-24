@@ -63,3 +63,26 @@ export function paymentTone(status) {
 export function paymentChipClasses(status) {
   return TONE_CLASSES[paymentTone(status)];
 }
+
+/**
+ * O rótulo do estado `claimed` COM comprovante anexado, do lado do pai.
+ *
+ * POR QUE ISTO É SEPARADO
+ * Pra ele, um mês pago e comprovado está resolvido — ele fez tudo que
+ * cabia. Mostrar "aguardando confirmação" em âmbar, do lado de meses
+ * verdes, faz parecer que o pagamento não valeu e que ele precisa fazer
+ * algo. Precisa não: quem tem pendência é o motorista.
+ *
+ * Então o pai lê "Pago" em verde, com a informação de que a baixa do
+ * motorista ainda vem. É a mesma verdade, contada do lado certo.
+ *
+ * O tio continua vendo "aguardando SUA confirmação" — pra ele a bola
+ * ainda está no pé.
+ */
+export function parentClaimedLabel(hasReceipt) {
+  return hasReceipt ? 'Pago' : 'Aguardando confirmação do motorista';
+}
+
+export function parentClaimedTone(hasReceipt) {
+  return hasReceipt ? 'ok' : 'wait';
+}

@@ -16,7 +16,12 @@ import {
   formatDate,
   formatMonthLabel,
 } from '../../utils/formatters';
-import { paymentLabel } from '../../utils/paymentVocabulary';
+import {
+  paymentLabel,
+  parentClaimedLabel,
+  parentClaimedTone,
+  TONE_CLASSES,
+} from '../../utils/paymentVocabulary';
 
 // A COR fica aqui; o TEXTO vem de utils/paymentVocabulary, que sabe falar
 // pro papel de quem está lendo. O estado 'claimed' era o pior caso: o tio
@@ -47,8 +52,21 @@ export default function PaymentRow({
   onCharge = null,
 }) {
   const config = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.pending;
-  const { Icon, color } = config;
-  const label = paymentLabel(displayStatus, role);
+  const { Icon } = config;
+
+  // Mês pago E comprovado, na tela do PAI, não é pendência dele — é
+  // pendência do motorista. Mostrar âmbar ali, no meio de meses verdes,
+  // faz parecer que o pagamento não valeu. Ele lê "Pago"; o tio continua
+  // lendo "aguardando SUA confirmação".
+  const parentResolved =
+    role === 'parent' && displayStatus === 'claimed' && !!payment.receiptURL;
+
+  const label = parentResolved
+    ? parentClaimedLabel(true)
+    : paymentLabel(displayStatus, role);
+  const color = parentResolved
+    ? TONE_CLASSES[parentClaimedTone(true)]
+    : config.color;
 
   return (
     <Card className="space-y-2">

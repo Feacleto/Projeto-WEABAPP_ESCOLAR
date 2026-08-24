@@ -5,7 +5,13 @@ import Skeleton from '../common/Skeleton';
 import { usePaymentsByChild } from '../../hooks/usePayments';
 import { computeDisplayStatus } from '../../services/paymentsService';
 import { formatCurrency, formatMonthLabel } from '../../utils/formatters';
-import { paymentLabel, paymentChipClasses } from '../../utils/paymentVocabulary';
+import {
+  paymentLabel,
+  paymentChipClasses,
+  parentClaimedLabel,
+  parentClaimedTone,
+  TONE_CLASSES,
+} from '../../utils/paymentVocabulary';
 
 const INITIAL_ROWS = 4;
 
@@ -107,13 +113,7 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
             <span className="text-xs font-semibold text-text shrink-0 tabular-nums">
               {formatCurrency(p.amount)}
             </span>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${paymentChipClasses(
-                p._display
-              )}`}
-            >
-              {paymentLabel(p._display, role)}
-            </span>
+            <StatusChip payment={p} role={role} />
           </div>
         ))}
       </div>
@@ -132,5 +132,32 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
         </button>
       )}
     </Card>
+  );
+}
+
+/**
+ * O chip de status. Separado porque a regra do `claimed` do pai depende do
+ * comprovante: com anexo ele leu "Pago" em verde, porque do lado dele está
+ * resolvido — a baixa que falta é do motorista.
+ */
+function StatusChip({ payment, role }) {
+  const resolved =
+    role === 'parent' &&
+    payment._display === 'claimed' &&
+    !!payment.receiptURL;
+
+  const label = resolved
+    ? parentClaimedLabel(true)
+    : paymentLabel(payment._display, role);
+  const classes = resolved
+    ? TONE_CLASSES[parentClaimedTone(true)]
+    : paymentChipClasses(payment._display);
+
+  return (
+    <span
+      className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${classes}`}
+    >
+      {label}
+    </span>
   );
 }

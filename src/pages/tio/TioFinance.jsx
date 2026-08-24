@@ -34,6 +34,7 @@ import { notifyPaymentConfirmed } from '../../services/notificationsService';
 import { uploadPaymentReceipt } from '../../services/photoService';
 import ReceiptPicker from '../../components/payments/ReceiptPicker';
 import MonthSwitcher from '../../components/payments/MonthSwitcher';
+import { shareReceipt } from '../../services/receiptImageService';
 import {
   formatMonthLabel,
   formatCurrency,
@@ -77,6 +78,13 @@ export default function TioFinance() {
   // o pai pagar pelo banco e mandar o print no WhatsApp — sem isto aquele
   // comprovante nunca entra no app.
   const [attachingTo, setAttachingTo] = useState(null);
+
+  // Pagamento em DINHEIRO acabou de ser confirmado. Dinheiro não deixa
+  // rastro nenhum — nem extrato, nem comprovante do banco — e é onde a
+  // discussão nasce um mês depois. O app oferece o recibo na hora, enquanto
+  // o tio ainda está com o assunto na mão.
+  const [receiptFor, setReceiptFor] = useState(null);
+  const [sharingReceipt, setSharingReceipt] = useState(false);
   const [attachFile, setAttachFile] = useState(null);
 
   const enriched = useMemo(
@@ -143,13 +151,55 @@ export default function TioFinance() {
   const hasPix = !!profile?.pixKey;
   const isCurrentMonth = monthKey === getCurrentMonthKey();
 
+  const onShareReceipt = async () => {
+    if (!receiptFor) return;
+    setSharingReceipt(true);
+    try {
+      const result = await shareReceipt({ payment: receiptFor, admin: profile });
+      if (result === 'downloaded') {
+        toast.success(
+          'Recibo salvo no celular. Agora anexe na conversa com o responsável.',
+          { duration: 6000 }
+        );
+      }
+      if (result !== 'cancelled') setReceiptFor(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra gerar o recibo.');
+    } finally {
+      setSharingReceipt(false);
+    }
+  };
+
   const onConfirmAttach = async () => {
     if (!attachingTo || !attachFile) return;
     setActionLoading(true);
     try {
       const url = await uploadPaymentReceipt(attachingTo.id, attachFile);
       await attachReceipt(attachingTo.id, url);
-      toast.success('Comprovante anexado.');
+
+      // Quando é o TIO que anexa, a decisão já está tomada: ele viu o
+      // comprovante e escolheu registrá-lo. Deixar o pagamento em
+      // "aguardando confirmação" depois disso seria pedir que ele
+      // confirmasse a si mesmo — e o pai continuaria vendo pendência num
+      // mês que o tio já considera recebido.
+      if (attachingTo._display !== 'paid') {
+        await confirmReceipt(
+          attachingTo.id,
+          attachingTo.paymentMethod || 'pix'
+        );
+        notifyPaymentConfirmed({
+          parentUid: attachingTo.parentUid,
+          paymentId: attachingTo.id,
+          monthLabel: formatMonthLabel(attachingTo.month),
+          amount: attachingTo.amount,
+          childName: attachingTo.childName,
+        });
+        toast.success('Comprovante anexado e pagamento confirmado.');
+      } else {
+        toast.success('Comprovante anexado.');
+      }
+
       setAttachingTo(null);
       setAttachFile(null);
     } catch (err) {
@@ -174,6 +224,12 @@ export default function TioFinance() {
         childName: payment.childName,
       });
       toast.success(`Recebimento de ${payment.childName} confirmado.`);
+
+      // Só pra dinheiro: em PIX o banco já emitiu comprovante e o pai
+      // costuma ter anexado. Oferecer recibo ali seria ruído.
+      if (method === 'cash') {
+        setReceiptFor({ ...payment, paymentMethod: method, paidAt: new Date() });
+      }
       setMethodSheetFor(null);
     } catch (err) {
       console.error(err);
@@ -392,6 +448,24 @@ export default function TioFinance() {
         />
       )}
 
+      {/* Recibo de pagamento em dinheiro.
+        * PIX tem comprovante do banco; dinheiro não tem nada. Este recibo
+        * é o único papel que vai existir daquele pagamento. */}
+      <ConfirmDialog
+        open={!!receiptFor}
+        title="Mandar o recibo pro responsável?"
+        description={
+          receiptFor
+            ? `Pagamento em dinheiro de ${receiptFor.childName} não tem comprovante de banco. O app gera o recibo e você escolhe por onde mandar.`
+            : ''
+        }
+        confirmLabel="Gerar e enviar"
+        cancelLabel="Agora não"
+        loading={sharingReceipt}
+        onConfirm={onShareReceipt}
+        onCancel={() => setReceiptFor(null)}
+      />
+
       {/* Anexar comprovante que chegou por fora do app */}
       <ConfirmDialog
         open={!!attachingTo}
@@ -403,6 +477,12 @@ export default function TioFinance() {
                 Comprovante de {attachingTo.childName} —{' '}
                 {formatMonthLabel(attachingTo.month)}. Serve a foto do print
                 que o responsável mandou.
+                {attachingTo._display !== 'paid' && (
+                  <span className="block mt-1 font-semibold text-text">
+                    Ao anexar, o pagamento já fica confirmado e o responsável
+                    é avisado.
+                  </span>
+                )}
               </span>
               <ReceiptPicker file={attachFile} onChange={setAttachFile} />
             </>
