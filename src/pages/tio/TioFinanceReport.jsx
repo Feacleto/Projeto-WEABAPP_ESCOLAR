@@ -8,6 +8,7 @@ import StackedBar from '../../components/charts/StackedBar';
 import {
   getPaymentsSince,
   computeDisplayStatus,
+  foiPagoAtrasado,
 } from '../../services/paymentsService';
 import {
   formatCurrency,
@@ -29,7 +30,7 @@ import { useAuth } from '../../hooks/useAuth';
  * Imprimir / Salvar PDF: window.print() — CSS print já existe no projeto.
  */
 export default function TioFinanceReport() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [payments, setPayments] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +43,7 @@ export default function TioFinanceReport() {
 
   useEffect(() => {
     let cancelled = false;
-    getPaymentsSince(fromKey)
+    getPaymentsSince(fromKey, user?.uid)
       .then((list) => {
         if (!cancelled) {
           setPayments(list);
@@ -56,7 +57,7 @@ export default function TioFinanceReport() {
     return () => {
       cancelled = true;
     };
-  }, [fromKey]);
+  }, [fromKey, user?.uid]);
 
   const enriched = useMemo(
     () =>
@@ -87,6 +88,43 @@ export default function TioFinanceReport() {
       else slot.open += value;
     }
     return map;
+  }, [enriched]);
+
+  /**
+   * QUEM MAIS ATRASA — o padrão que um mês sozinho não mostra.
+   *
+   * Na tela do mês, um pagamento que entrou é verde e acabou. Mas entrar no
+   * dia 3 e entrar no dia 28 são coisas diferentes, e a diferença só aparece
+   * quando se olha doze meses de uma vez: é a lista de com quem ele vai ter
+   * trabalho de novo no mês que vem.
+   *
+   * Conta as duas formas de atraso, porque as duas contam a mesma história:
+   *   - o que ainda está aberto e venceu ('overdue')
+   *   - o que já entrou, mas depois do vencimento (foiPagoAtrasado)
+   *
+   * Fica SÓ AQUI, no relatório, e não como selo na ficha da criança: um
+   * carimbo permanente de "atrasa" na ficha é julgamento que o tio lê toda
+   * vez que abre o cadastro pra conferir um endereço. Aqui é consulta —
+   * ele vem quando quer a resposta.
+   */
+  const quemMaisAtrasa = useMemo(() => {
+    const porCrianca = new Map();
+    for (const p of enriched) {
+      const atrasou = p._display === 'overdue' || foiPagoAtrasado(p);
+      if (!atrasou) continue;
+      const chave = p.childId || p.childName || 'sem-id';
+      const atual = porCrianca.get(chave) || {
+        nome: p.childName || 'Criança',
+        vezes: 0,
+        emAberto: 0,
+      };
+      atual.vezes += 1;
+      if (p._display === 'overdue') atual.emAberto += Number(p.amount) || 0;
+      porCrianca.set(chave, atual);
+    }
+    return [...porCrianca.values()]
+      .sort((a, b) => b.vezes - a.vezes || b.emAberto - a.emAberto)
+      .slice(0, 8);
   }, [enriched]);
 
   const currentMonthKey = getCurrentMonthKey();
@@ -303,6 +341,40 @@ export default function TioFinanceReport() {
             Tio Nino Digital · Relatório emitido em{' '}
             {new Date().toLocaleString('pt-BR')}
           </footer>
+
+          {/* ── quem mais atrasa ── */}
+          {quemMaisAtrasa.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-bold text-text">Quem mais atrasa</h2>
+              <p className="text-[11px] leading-snug text-textMuted">
+                Contando meses vencidos em aberto e meses pagos depois do
+                vencimento, nos últimos 12 meses.
+              </p>
+              <div className="space-y-1.5">
+                {quemMaisAtrasa.map((c, i) => (
+                  <div
+                    key={c.nome + i}
+                    className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2"
+                  >
+                    <span className="w-4 shrink-0 text-center text-[11px] font-bold tabular-nums text-textMuted">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">
+                      {c.nome}
+                    </span>
+                    {c.emAberto > 0 && (
+                      <span className="shrink-0 text-[11px] font-semibold tabular-nums text-red-700">
+                        {formatCurrency(c.emAberto)} em aberto
+                      </span>
+                    )}
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-amber-800">
+                      {c.vezes}x
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </article>
       </div>
     </>

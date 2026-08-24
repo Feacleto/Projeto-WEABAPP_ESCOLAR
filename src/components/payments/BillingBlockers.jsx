@@ -35,6 +35,7 @@ import { mensagemDeErro } from '../../services/callableError';
  *   - monthKey:  mês exibido
  *   - admin:     doc do motorista (pra saber da chave PIX)
  *   - isCurrentMonth
+ *   - onOpenPix (opcional) — abre a folha da chave em vez de navegar
  */
 export default function BillingBlockers({
   children,
@@ -42,6 +43,9 @@ export default function BillingBlockers({
   monthKey,
   admin,
   isCurrentMonth,
+  // Quando quem chama sabe abrir a folha, usamos a folha. Sem isso,
+  // cai na rota — que continua válida.
+  onOpenPix = null,
 }) {
   const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
@@ -97,7 +101,7 @@ export default function BillingBlockers({
           title="Chave PIX não cadastrada"
           detail="Sem ela, o app não gera o código de pagamento e os responsáveis não conseguem pagar por aqui."
           actionLabel="Cadastrar chave"
-          onAction={() => navigate('/tio/pix')}
+          onAction={() => (onOpenPix ? onOpenPix() : navigate('/tio/pix'))}
         />
       )}
 

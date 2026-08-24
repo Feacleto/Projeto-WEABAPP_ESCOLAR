@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Key,
   ChevronRight,
-  AlertTriangle,  X,
+  AlertTriangle,
+  X,
   Search,
   Banknote,
   QrCode,
@@ -12,10 +13,14 @@ import {
   DollarSign,
   FileText,
   TrendingDown,
+  History,
+  Check,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
+import PageHeader from '../../components/layout/PageHeader';
 import Button from '../../components/common/Button';
+import Avatar from '../../components/common/Avatar';
 import EmptyState from '../../components/common/EmptyState';
 import Skeleton from '../../components/common/Skeleton';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -41,6 +46,7 @@ import {
 import ReceiptPicker from '../../components/payments/ReceiptPicker';
 import MonthSwitcher from '../../components/payments/MonthSwitcher';
 import BillingBlockers from '../../components/payments/BillingBlockers';
+import PixSheet from '../../components/payments/PixSheet';
 import { shareReceipt } from '../../services/receiptImageService';
 import {
   formatMonthLabel,
@@ -73,8 +79,29 @@ export default function TioFinance() {
   // A dívida que ficou pra trás. Fica FORA do usePaymentsByMonth de propósito:
   // ela não pertence ao mês na tela, ela existe APESAR do mês na tela.
   const [arrears, setArrears] = useState([]);
-  useEffect(() => watchArrears(monthKey, setArrears), [monthKey]);
+  useEffect(
+    () => watchArrears(monthKey, user?.uid, setArrears),
+    [monthKey, user?.uid]
+  );
   const [filter, setFilter] = useState('all');
+
+  /**
+   * O MÊS VIGENTE É A TELA. O RESTO É HISTÓRICO.
+   *
+   * O seletor de mês ficava no topo, com setas pros dois lados, convidando a
+   * passear por doze meses. Mas a operação do motorista acontece no mês
+   * corrente: é nele que ele cobra, dá baixa e fecha as contas. Mês passado
+   * ele consulta — pra ver quanto entrou e quem atrasou — e volta.
+   *
+   * Então a tela abre sempre no mês de hoje, sem seletor competindo com o
+   * número que importa. Olhar pra trás virou uma decisão explícita, e
+   * enquanto ele está lá a tela diz, em cima, que aquilo é histórico e como
+   * voltar. Ninguém mais dá baixa achando que está no mês errado.
+   */
+  const isCurrentMonthView = monthKey === getCurrentMonthKey();
+  const [historicoAberto, setHistoricoAberto] = useState(false);
+  // A chave PIX é interrupção desta tela, não destino: abre por cima.
+  const [pixOpen, setPixOpen] = useState(false);
 
   // Busca por nome. A pergunta que o tio mais faz ao financeiro não é
   // "quanto entrou este mês" — é "a família do Miguel está em dia?". Sem
@@ -151,21 +178,54 @@ export default function TioFinance() {
     );
   };
 
+  /**
+   * OS DOIS NÚMEROS QUE ELE OPERA — e o terceiro que a gente tirou.
+   *
+   * Antes havia `open`: a soma de tudo que ainda não entrou, estampada no
+   * herói como "Pra receber". É previsão, e previsão é uma pergunta que o
+   * motorista não faz. Ele quer saber o que ENTROU (pra saber se fecha o mês)
+   * e QUEM ESTÁ DEVENDO (pra saber a quem ligar hoje). O resto é enfeite
+   * numérico que envelhece sozinho conforme o mês corre.
+   *
+   * `naoVencido` fica calculado mas não vai pra tela: é o que faz a lista
+   * "Todos" continuar tendo linhas no começo do mês.
+   */
   const totals = useMemo(() => {
-    const sumByStatus = (statuses) =>
-      enriched
-        .filter((p) => statuses.includes(p._display))
-        .reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    const soma = (lista) =>
+      lista.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    const pagos = enriched.filter((p) => p._display === 'paid');
+    const atrasados = enriched.filter((p) => p._display === 'overdue');
     return {
-      paid: sumByStatus(['paid']),
-      open: sumByStatus(['pending', 'overdue', 'claimed']),
-      overdue: sumByStatus(['overdue']),
+      paid: soma(pagos),
+      pagos,
+      overdue: soma(atrasados),
+      atrasados,
       claimedCount: enriched.filter((p) => p._display === 'claimed').length,
     };
   }, [enriched]);
 
+  /**
+   * QUEM DEVE, VENHA DE ONDE VIER.
+   *
+   * Existiam dois cartões vermelhos: o atraso DESTE mês, dentro do herói, e
+   * "atrasado de meses anteriores", num banner separado logo abaixo. Dois
+   * lugares pra mesma pergunta — e o tio tinha que somar de cabeça pra saber
+   * quanto tem na rua.
+   *
+   * A dívida não se importa com o mês da tela. Um só bloco, com todo mundo
+   * que está devendo e o total que isso dá.
+   */
+  const todosAtrasados = useMemo(() => {
+    if (!isCurrentMonthView) return totals.atrasados;
+    return [...totals.atrasados, ...arrears];
+  }, [totals.atrasados, arrears, isCurrentMonthView]);
+
+  const totalAtrasado = useMemo(
+    () => todosAtrasados.reduce((acc, p) => acc + (Number(p.amount) || 0), 0),
+    [todosAtrasados]
+  );
+
   const hasPix = !!profile?.pixKey;
-  const isCurrentMonth = monthKey === getCurrentMonthKey();
 
   const onShareReceipt = async () => {
     if (!receiptFor) return;
@@ -296,33 +356,66 @@ export default function TioFinance() {
       />
 
       <div className="p-5 space-y-5">
-        {/* Seletor de mês */}
-        <MonthSwitcher
+        {/* Só aparece quando ele SAIU do mês vigente. Barra de "você não está
+          * em casa", com a porta de volta do lado. */}
+        {!isCurrentMonthView && (
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
+              <History size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-amber-700/80">
+                Histórico
+              </p>
+              <p className="truncate text-sm font-bold capitalize text-amber-900">
+                {formatMonthLabel(monthKey)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMonthKey(getCurrentMonthKey())}
+              className="tap shrink-0 rounded-full bg-amber-600 px-3 py-1.5 text-xs font-bold text-white"
+            >
+              Voltar pra hoje
+            </button>
+          </div>
+        )}
+
+        {/* Diz de que mês a tela fala antes de mostrar o número. Sem isto,
+          * o valor grande no topo não tem período colado nele — e essa tela
+          * agora abre sempre no mês corrente, então a pergunta "de quando é
+          * isso?" nasce todo dia 1º. */}
+        {isCurrentMonthView && (
+          <PageHeader
+            icon={Wallet}
+            title="Este mês"
+            subtitle="Quem já pagou, quem está devendo e quanto entrou até agora."
+          />
+        )}
+
+        {/* O ÚNICO NÚMERO DO TOPO: o que entrou. */}
+        <FinanceHero paid={totals.paid} monthKey={monthKey} />
+
+        {/* Quem pagou. O valor sozinho não diz de quem ele já não precisa
+          * cobrar — e é essa a leitura que ele faz depois do total. */}
+        <QuemPagou pagos={totals.pagos} childById={childById} />
+
+        {/* Quem deve. Mês vigente e meses anteriores no MESMO bloco: a
+          * dívida não se importa com o mês da tela. */}
+        <Atrasados
+          items={todosAtrasados}
+          total={totalAtrasado}
+          childById={childById}
+          onCharge={onCharge}
+          onGoToMonth={setMonthKey}
           monthKey={monthKey}
-          onChange={setMonthKey}
-        />
-
-        {/* Hero: recebido vs a receber */}
-        <FinanceHero
-          paid={totals.paid}
-          open={totals.open}
-          overdue={totals.overdue}
-          claimedCount={totals.claimedCount}
-        />
-
-        {/* Vem LOGO depois do hero: o número do mês na tela não significa
-          * nada se existe dinheiro velho parado que ele nem sabe que existe.
-          * Tocar leva pro mês mais antigo em aberto — onde dá pra agir. */}
-        <ArrearsBanner
-          items={arrears}
-          onGoToOldest={() => arrears[0]?.month && setMonthKey(arrears[0].month)}
         />
 
         {/* PIX banner — só se for mês corrente */}
-        {isCurrentMonth && (
+        {isCurrentMonthView && (
           <button
             type="button"
-            onClick={() => navigate('/tio/pix')}
+            onClick={() => setPixOpen(true)}
             className={`tap w-full text-left rounded-2xl p-4 flex items-center gap-3 border ${
               hasPix
                 ? 'bg-card border-gray-200'
@@ -358,7 +451,8 @@ export default function TioFinance() {
           payments={payments}
           monthKey={monthKey}
           admin={profile}
-          isCurrentMonth={isCurrentMonth}
+          isCurrentMonth={isCurrentMonthView}
+          onOpenPix={() => setPixOpen(true)}
         />
 
         {/* Busca por criança — responde "essa família está em dia?" */}
@@ -388,11 +482,14 @@ export default function TioFinance() {
 
         {/* Filtros */}
         <div className="flex gap-2 overflow-x-auto -mx-5 px-5 pb-1 -mb-1">
+          {/* TRÊS CHIPS, NÃO CINCO.
+            * "Aguardando" e "Pendentes" descreviam dinheiro que não entrou —
+            * o mesmo assunto de "Atrasados", picado em três. Quem está
+            * esperando baixa já aparece com o botão verde na lista de
+            * "Todos"; não precisa de filtro próprio pra ser encontrado. */}
           {[
             { value: 'all', label: 'Todos' },
-            { value: 'claimed', label: 'Aguardando' },
             { value: 'overdue', label: 'Atrasados' },
-            { value: 'pending', label: 'Pendentes' },
             { value: 'paid', label: 'Pagos' },
           ].map((f) => (
             <button
@@ -416,38 +513,13 @@ export default function TioFinance() {
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-24" />
             ))}
-    
-        {/* Complemento, deliberadamente no fim e discreto.
-          *
-          * O foco desta tela é ENTRADA: quem pagou, quem não pagou, quem
-          * atrasou — a pergunta que o tio responde todo dia. Despesa é a
-          * conta que ele fecha uma vez por mês, então fica atrás de um
-          * toque em vez de competir por espaço com a cobrança. */}
-        <button
-          type="button"
-          onClick={() => navigate('/tio/finance/expenses')}
-          className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3 mt-2"
-        >
-          <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
-            <TrendingDown size={20} />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-text leading-tight">
-              Visão completa
-            </p>
-            <p className="text-xs text-textMuted mt-0.5">
-              Lance despesas e veja quanto sobrou no mês
-            </p>
-          </div>
-          <ChevronRight size={18} className="text-textMuted shrink-0" />
-        </button>
-      </div>
         ) : enriched.length === 0 ? (
           <EmptyState
             icon={Wallet}
             title="Nenhum pagamento"
             description={
-              isCurrentMonth
+              isCurrentMonthView
                 ? 'Os pagamentos do mês são gerados quando você cadastra crianças.'
                 : `Sem registros pra ${formatMonthLabel(monthKey)}.`
             }
@@ -479,7 +551,77 @@ export default function TioFinance() {
             ))}
           </div>
         )}
+
+        {/* ── o fim da tela: o que ele consulta, não o que ele opera ── */}
+
+        {/* A PORTA DO HISTÓRICO, no rodapé e não no topo.
+          *
+          * O seletor de mês vivia acima do herói, com setas pros dois lados
+          * competindo com o número que importa. Mas passear por meses não é
+          * o trabalho dele — é consulta, e consulta mora no fim. Aqui
+          * embaixo ele não atrapalha quem abriu a tela pra cobrar alguém. */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setHistoricoAberto((v) => !v)}
+            aria-expanded={historicoAberto}
+            className="tap flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-sm"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+              <History size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold leading-tight text-text">
+                Meses anteriores
+              </p>
+              <p className="mt-0.5 text-xs text-textMuted">
+                Quanto entrou e quem atrasou
+              </p>
+            </div>
+            <ChevronRight
+              size={18}
+              className={`shrink-0 text-textMuted transition-transform ${
+                historicoAberto ? 'rotate-90' : ''
+              }`}
+            />
+          </button>
+
+          {historicoAberto && (
+            <div className="mt-2">
+              <MonthSwitcher monthKey={monthKey} onChange={setMonthKey} />
+            </div>
+          )}
+        </div>
+
+        {/* Complemento, deliberadamente no fim e discreto.
+          *
+          * O foco desta tela é ENTRADA: quem pagou, quem não pagou, quem
+          * atrasou — a pergunta que o tio responde todo dia. Despesa é a
+          * conta que ele fecha uma vez por mês, então fica atrás de um
+          * toque em vez de competir por espaço com a cobrança.
+          *
+          * Estava aninhado DENTRO do bloco de carregamento: aparecia no meio
+          * do esqueleto e sumia quando a lista chegava. Na prática, não havia
+          * caminho pras despesas a partir daqui. */}
+        <button
+          type="button"
+          onClick={() => navigate('/tio/finance/expenses')}
+          className="tap mt-2 flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-sm"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+            <TrendingDown size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold leading-tight text-text">Visão completa</p>
+            <p className="mt-0.5 text-xs text-textMuted">
+              Lance despesas e veja quanto sobrou no mês
+            </p>
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-textMuted" />
+        </button>
       </div>
+
+      <PixSheet open={pixOpen} onClose={() => setPixOpen(false)} />
 
       {/* Sheet "Como você recebeu?" */}
       {methodSheetFor && (
@@ -574,98 +716,203 @@ export default function TioFinance() {
  * "Aguardando você" continua contagem de propósito: ali não é dinheiro
  * perdido, é tarefa pendente na mão dele — e tarefa se conta.
  */
-function FinanceHero({ paid, open, overdue, claimedCount }) {
+/**
+ * O HERÓI: UM NÚMERO SÓ.
+ *
+ * Antes eram dois — "Recebido" grande e "Pra receber" logo abaixo, com
+ * pastilhas de atrasado e de aguardando penduradas. Quatro números pra
+ * responder uma pergunta que o motorista faz em um: quanto entrou.
+ *
+ * "Pra receber" era o pior deles. É previsão, e previsão no dia 3 do mês é
+ * quase o faturamento inteiro — um número grande, verde, que não é dinheiro.
+ * Ele fechava o mês com a sensação de ter recebido menos do que o painel
+ * prometeu, todo mês, porque o painel prometia o bruto.
+ *
+ * Quem está devendo não sumiu: ganhou bloco próprio, embaixo, com nome e
+ * botão de cobrar. Saiu de pastilha decorativa e virou trabalho.
+ */
+function FinanceHero({ paid, monthKey }) {
   return (
-    <div className="rounded-3xl overflow-hidden shadow-xl shadow-emerald-500/15">
-      <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-5 space-y-4">
-        <div>
-          <p className="text-xs uppercase tracking-widest font-semibold text-white/80">
-            Recebido
-          </p>
-          <p className="text-4xl font-bold tabular-nums leading-none mt-1">
-            {formatCurrency(paid)}
-          </p>
-        </div>
-        <div className="border-t border-white/20 pt-3">
-          <p className="text-xs uppercase tracking-widest font-semibold text-white/80">
-            Pra receber
-          </p>
-          <p className="text-2xl font-bold tabular-nums leading-none mt-1">
-            {formatCurrency(open)}
-          </p>
-          {(overdue > 0 || claimedCount > 0) && (
-            <div className="flex flex-wrap gap-2 mt-2 text-xs">
-              {overdue > 0 && (
-                <span className="bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 font-semibold tabular-nums">
-                  {formatCurrency(overdue)} atrasado
-                </span>
-              )}
-              {claimedCount > 0 && (
-                <span className="bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 font-semibold">
-                  {claimedCount} aguardando você
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+    <div className="overflow-hidden rounded-3xl shadow-xl shadow-emerald-500/15">
+      <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 p-5 text-white">
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
+          Recebido
+        </p>
+        <p className="mt-1 text-4xl font-bold leading-none tabular-nums">
+          {formatCurrency(paid)}
+        </p>
+        <p className="mt-2 text-xs capitalize text-white/70">
+          {formatMonthLabel(monthKey)}
+        </p>
       </div>
     </div>
   );
 }
 
 /**
- * A FAIXA DA DÍVIDA VELHA — o que ficou pra trás e continua aberto.
+ * QUEM JÁ PAGOU — com rosto.
  *
- * A tela é por competência: agosto mostra agosto. Sem esta faixa, a
- * mensalidade de julho que ninguém pagou ficava escondida em julho, e quem
- * olha só o mês corrente (todo mundo) nunca mais a via — ela desaparecia
- * exatamente por ter envelhecido.
+ * O total sozinho responde "fechei o mês?". Não responde "de quem eu ainda
+ * preciso cobrar?", que é a pergunta seguinte e a que gera ação. Ele
+ * respondia isso varrendo a lista inteira procurando os verdes.
  *
- * Mostra VALOR primeiro (é o que dói), a contagem de cobranças e desde quando
- * a coisa se arrasta. Tocar não abre explicação: leva pro mês mais antigo com
- * dívida, que é onde ele pode dar baixa ou cobrar. Faixa que informa e não
- * deixa agir é só um lembrete de mau humor.
+ * Rosto e não texto porque ele conhece as crianças de vista, não de nome
+ * completo — e porque uma fileira de rostos se lê num relance, enquanto uma
+ * lista de nomes se lê linha por linha.
+ *
+ * Fica quieto quando ninguém pagou ainda: bloco vazio no começo do mês é
+ * lembrete diário de que ninguém pagou, e isso não é informação, é humor.
  */
-function ArrearsBanner({ items, onGoToOldest }) {
-  if (!items.length) return null;
-
-  const total = items.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-  const maisAntigo = items[0]?.month;
-  const meses = new Set(items.map((p) => p.month)).size;
+function QuemPagou({ pagos, childById }) {
+  if (!pagos.length) return null;
 
   return (
-    <button
-      type="button"
-      onClick={onGoToOldest}
-      className="tap w-full text-left rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 p-4 flex items-center gap-3"
-    >
-      <span className="w-11 h-11 rounded-xl bg-red-500 text-white flex items-center justify-center shrink-0">
-        <AlertTriangle size={20} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs uppercase tracking-widest font-semibold text-red-700/80">
-          Atrasado de meses anteriores
+    <div className="rounded-2xl bg-card p-4 shadow-sm">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-sm font-bold text-text">Quem já pagou</p>
+        <p className="shrink-0 text-xs font-semibold tabular-nums text-textMuted">
+          {pagos.length}
+        </p>
+      </div>
+
+      {/* Rola de lado em vez de quebrar em várias linhas: com vinte crianças
+        * pagas, uma grade empurraria o bloco de atrasados pra fora da tela —
+        * e é o de atrasados que tem trabalho dentro. */}
+      <div className="scrollbar-hide -mx-4 mt-3 flex gap-3 overflow-x-auto px-4">
+        {pagos.map((p) => {
+          const child = childById.get(p.childId);
+          const primeiro = String(p.childName || '').trim().split(/\s+/)[0];
+          return (
+            <div
+              key={p.id}
+              className="flex w-14 shrink-0 flex-col items-center gap-1"
+            >
+              <div className="relative">
+                <Avatar
+                  photoURL={child?.photoURL}
+                  gender={child?.gender}
+                  seed={p.childId}
+                  kind="child"
+                  size="md"
+                />
+                <span
+                  aria-hidden
+                  className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-emerald-500 text-white"
+                >
+                  <Check size={10} strokeWidth={3.5} />
+                </span>
+              </div>
+              <span className="w-full truncate text-center text-[10px] font-semibold text-textMuted">
+                {primeiro}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * QUEM ESTÁ DEVENDO — de qualquer mês, num bloco só.
+ *
+ * A dívida vinha picada em dois lugares: uma pastilha dentro do herói pro
+ * atraso do mês na tela, e um banner vermelho separado pro que ficou pra
+ * trás. Duas superfícies pra mesma pergunta, e nenhuma delas dizia QUEM.
+ * O tio lia "R$ 450 atrasado" e ainda tinha que descer a lista pra
+ * descobrir de quem cobrar.
+ *
+ * Aqui o valor vem com nome, e o nome vem com o botão de cobrar do lado.
+ * A cobrança de meses anteriores mostra o mês, porque cobrar setembro em
+ * novembro exige dizer qual mês.
+ *
+ * O silêncio quando ninguém deve é proposital, e é a melhor tela possível:
+ * bloco verde de "tudo em dia" ocuparia o mesmo espaço pra dizer que não há
+ * trabalho.
+ */
+function Atrasados({
+  items,
+  total,
+  childById,
+  onCharge,
+  onGoToMonth,
+  monthKey,
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-red-200 bg-red-50">
+      <div className="flex items-center gap-3 p-4 pb-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500 text-white">
+          <AlertTriangle size={20} />
         </span>
-        <span className="block text-xl font-bold tabular-nums text-red-700 leading-tight mt-0.5">
-          {formatCurrency(total)}
-        </span>
-        <span className="block text-xs text-red-900/70 mt-0.5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-red-700/80">
+            Atrasado
+          </p>
+          <p className="text-2xl font-bold leading-none tabular-nums text-red-700">
+            {formatCurrency(total)}
+          </p>
+        </div>
+        <p className="shrink-0 text-xs font-semibold text-red-900/60">
           {items.length} cobrança{items.length > 1 ? 's' : ''}
-          {' · '}
-          {meses > 1
-            ? `${meses} meses, desde ${formatMonthLabel(maisAntigo)}`
-            : `de ${formatMonthLabel(maisAntigo)}`}
-        </span>
-      </span>
-      <ChevronRight size={18} className="text-red-400 shrink-0" />
-    </button>
+        </p>
+      </div>
+
+      <div className="space-y-1.5 px-3 pb-3">
+        {items.map((p) => {
+          const child = childById.get(p.childId);
+          const deOutroMes = p.month !== monthKey;
+          return (
+            <div
+              key={p.id}
+              className="flex items-center gap-2.5 rounded-xl bg-card p-2.5"
+            >
+              <Avatar
+                photoURL={child?.photoURL}
+                gender={child?.gender}
+                seed={p.childId}
+                kind="child"
+                size="sm"
+              />
+              <button
+                type="button"
+                onClick={() => deOutroMes && onGoToMonth(p.month)}
+                disabled={!deOutroMes}
+                className="min-w-0 flex-1 text-left disabled:cursor-default"
+              >
+                <p className="truncate text-sm font-bold leading-tight text-text">
+                  {p.childName || 'Criança'}
+                </p>
+                <p className="text-[11px] tabular-nums text-textMuted">
+                  {formatCurrency(p.amount)}
+                  {deOutroMes && (
+                    <span className="capitalize">
+                      {' '}
+                      · {formatMonthLabel(p.month)}
+                    </span>
+                  )}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => onCharge(p)}
+                className="tap shrink-0 rounded-full bg-red-600 px-3 py-1.5 text-xs font-bold text-white"
+              >
+                Cobrar
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 function renderAction(payment, { onConfirm, onUndo }) {
   if (payment._display === 'paid') {
-    // Só mostra "Desfazer" enquanto a regra de reversão permitir.
-    // Cartão nunca permite; PIX/dinheiro permitem dentro de 24h.
+    // Só mostra "Desfazer" enquanto a regra de reversão permitir:
+    // qualquer método, dentro de 24h da baixa.
     const { allowed } = canUndoReceipt(payment);
     if (!allowed) return null;
     return (
@@ -675,9 +922,15 @@ function renderAction(payment, { onConfirm, onUndo }) {
     );
   }
   if (payment._display === 'claimed') {
+    // MESMO VERBO DOS OUTROS ESTADOS.
+    // Era "Confirmar" aqui e "Dar baixa" logo abaixo, pra exatamente a mesma
+    // operação — o tio tinha que aprender duas palavras pro mesmo botão. E
+    // como 'claimed' perdeu o rótulo (virou tarefa, ver paymentVocabulary),
+    // este botão passou a ser a ÚNICA coisa que diz que há algo a fazer
+    // nesta linha. Ele é verde por isso.
     return (
       <Button size="sm" variant="success" fullWidth={false} onClick={onConfirm}>
-        Confirmar
+        Dar baixa
       </Button>
     );
   }
@@ -755,7 +1008,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
             <MethodOption
               icon={CreditCard}
               title="Cartão"
-              subtitle="Recebido por cartão"
+              subtitle="Na maquininha"
               gradient="from-violet-50 to-purple-100"
               iconBg="bg-violet-600"
               onClick={() => onPick('card')}
