@@ -4,7 +4,6 @@ import {
   Map,
   DollarSign,
   Home,
-  MapPin,
   Bell,
   Receipt,
 } from 'lucide-react';

@@ -54,7 +54,11 @@ import { PIX_KEY_TYPES } from '../../services/userService';
  *
  * Mudanças vs versão anterior:
  *   - Seletor de mês (12 meses pra trás navegáveis)
- *   - Pagamentos do mês corrente são GERADOS AUTOMATICAMENTE pelo useAutoBilling
+ *   - Pagamentos do mês corrente são gerados pelo SERVIDOR: a function
+ *     `generateMonthlyPayments` roda uma vez por mês, e o botão "gerar
+ *     cobranças" chama `runBillingNow` pra antecipar. O hook useAutoBilling
+ *     ficou VAZIO quando isso mudou de lado — ele existia pra faturar no
+ *     cliente quando o motorista abria o app, e não faz mais nada.
  *     (não tem mais botão "+" manual)
  *   - Ao "dar baixa", sheet pergunta como o tio recebeu: PIX, Dinheiro ou Cartão
  *   - Hero card "Recebido" + "Pra receber" em destaque (gradiente)

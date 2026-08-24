@@ -1,0 +1,241 @@
+/**
+ * Sondagem das Firestore Security Rules contra o banco DE VERDADE.
+ *
+ * POR QUE ISTO EM VEZ DE TESTE DE UNIDADE
+ * O teste com @firebase/rules-unit-testing roda contra o emulador e exige
+ * dependência nova nos dois package.json. Isto aqui usa só a API pública e o
+ * `fetch` do node: sonda o ambiente REAL, com as contas reais, e responde a
+ * pergunta que importa — "o que está publicado agora deixa passar?".
+ *
+ * As duas coisas não competem: teste de unidade pega regressão antes do
+ * deploy, sondagem pega o que está no ar. Hoje só existe a segunda.
+ *
+ * O QUE ELE PROVA
+ * Cada sonda é um furo real que foi fechado esta semana. Se alguma passar de
+ * VERDE pra VERMELHO um dia, é porque a regra correspondente foi reaberta.
+ *
+ * SEGURANÇA DA PRÓPRIA SONDAGEM
+ * As sondas de ESCRITA são desenhadas pra serem inócuas se derem certo — e o
+ * script avisa alto se der, porque escrita que passa aqui é falha grave. A
+ * sonda de auto-promoção grava num campo que já vale false; se ela passar, o
+ * script reverte e grita.
+ *
+ * USO
+ *   node scripts/auditar-regras.cjs
+ */
+
+const fs = require('node:fs');
+const path = require('node:path');
+
+const RAIZ = path.resolve(__dirname, '..');
+
+const CONTAS = {
+  motorista: { email: 'motorista.teste@alobuzinou.com', senha: 'TesteTio2026!' },
+  responsavel: { email: 'pai.teste@alobuzinou.com', senha: 'TestePai2026!' },
+};
+
+function lerEnv() {
+  const bruto = fs.readFileSync(path.join(RAIZ, '.env'), 'utf8');
+  const env = {};
+  for (const l of bruto.split(/\r?\n/)) {
+    const i = l.indexOf('=');
+    if (i > 0 && !l.trim().startsWith('#')) env[l.slice(0, i).trim()] = l.slice(i + 1).trim();
+  }
+  return env;
+}
+
+const env = lerEnv();
+const KEY = env.VITE_FIREBASE_API_KEY;
+const PID = env.VITE_FIREBASE_PROJECT_ID;
+const DOCS = `https://firestore.googleapis.com/v1/projects/${PID}/databases/(default)/documents/`;
+
+async function entrar({ email, senha }) {
+  const r = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: senha, returnSecureToken: true }),
+    }
+  );
+  const j = await r.json();
+  if (j.error) throw new Error(`${email}: ${j.error.message}`);
+  return { uid: j.localId, token: j.idToken };
+}
+
+async function anonimo() {
+  const r = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ returnSecureToken: true }),
+    }
+  );
+  const j = await r.json();
+  if (j.error) return null; // login anônimo desligado no projeto
+  return { uid: j.localId, token: j.idToken };
+}
+
+function auth(sessao) {
+  return sessao ? { Authorization: `Bearer ${sessao.token}` } : {};
+}
+
+async function listar(colecao, sessao) {
+  const r = await fetch(`${DOCS}${colecao}?pageSize=1`, { headers: auth(sessao) });
+  return { ok: r.ok, status: r.status };
+}
+
+async function escrever(caminho, campos, sessao) {
+  const i = caminho.lastIndexOf('/');
+  const col = caminho.slice(0, i);
+  const id = caminho.slice(i + 1);
+  const r = await fetch(`${DOCS}${col}?documentId=${id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...auth(sessao) },
+    body: JSON.stringify({ fields: campos }),
+  });
+  return { ok: r.ok, status: r.status };
+}
+
+async function atualizar(caminho, campos, sessao) {
+  const mask = Object.keys(campos).map((k) => `updateMask.fieldPaths=${k}`).join('&');
+  const r = await fetch(`${DOCS}${caminho}?${mask}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...auth(sessao) },
+    body: JSON.stringify({ fields: campos }),
+  });
+  return { ok: r.ok, status: r.status };
+}
+
+const resultados = [];
+function registrar(nome, passou, detalhe) {
+  resultados.push({ nome, passou, detalhe });
+  console.log(`${passou ? '  OK  ' : ' FALHA'} ${nome}${detalhe ? '  — ' + detalhe : ''}`);
+}
+
+async function main() {
+  console.log('\nSondagem das rules — ambiente REAL (' + PID + ')\n');
+
+  const anon = await anonimo();
+  const tio = await entrar(CONTAS.motorista);
+  const pai = await entrar(CONTAS.responsavel);
+
+  console.log('sessão anônima: ' + (anon ? 'criada (login anônimo LIGADO)' : 'indisponível'));
+  console.log('');
+
+  // ── 1. anônimo não lê a posição ao vivo da perua ────────────────────────
+  // Era o pior furo da semana: visitante criava users/{uid} e passava a ler
+  // isto, que é onde a van está com as crianças dentro.
+  if (anon) {
+    const r = await listar('liveLocation', anon);
+    registrar('anônimo NÃO lê liveLocation', !r.ok, 'HTTP ' + r.status);
+  } else {
+    registrar('anônimo NÃO lê liveLocation', true, 'login anônimo desligado');
+  }
+
+  // ── 2. anônimo não lista crianças ───────────────────────────────────────
+  // O doc tem nome, endereço de casa, escola e telefone do responsável.
+  if (anon) {
+    const r = await listar('children', anon);
+    registrar('anônimo NÃO lista children', !r.ok, 'HTTP ' + r.status);
+  } else {
+    registrar('anônimo NÃO lista children', true, 'login anônimo desligado');
+  }
+
+  // ── 3. anônimo não cria o próprio doc de usuário ────────────────────────
+  // Este era o passo 1 da escalada de privilégio.
+  if (anon) {
+    const r = await escrever(
+      `users/${anon.uid}`,
+      { role: { stringValue: 'parent' }, childIds: { arrayValue: { values: [] } } },
+      anon
+    );
+    registrar('anônimo NÃO cria users/{uid}', !r.ok, 'HTTP ' + r.status);
+    if (r.ok) console.log('     !!! ESCALADA REABERTA — apague users/' + anon.uid);
+  } else {
+    registrar('anônimo NÃO cria users/{uid}', true, 'login anônimo desligado');
+  }
+
+  // ── 4. responsável sem perfil não lê crianças ───────────────────────────
+  // Conta autenticada mas sem doc em users/ não é usuário do app.
+  {
+    const r = await listar('children', pai);
+    registrar('conta sem perfil NÃO lista children', !r.ok, 'HTTP ' + r.status);
+  }
+
+  // ── 5. o motorista lê as próprias crianças ──────────────────────────────
+  // O oposto: a regra tem que DEIXAR o trabalho acontecer.
+  {
+    const r = await listar('children', tio);
+    registrar('motorista LÊ children', r.ok, 'HTTP ' + r.status);
+  }
+
+  // ── 6. motorista não se auto-promove a dono ─────────────────────────────
+  // `superAdmin` abre o /admin, que mostra o negócio inteiro da plataforma.
+  {
+    const r = await atualizar(
+      `users/${tio.uid}`,
+      { superAdmin: { booleanValue: true } },
+      tio
+    );
+    registrar('motorista NÃO grava superAdmin em si', !r.ok, 'HTTP ' + r.status);
+    if (r.ok) {
+      console.log('     !!! AUTO-PROMOÇÃO PASSOU — revertendo agora');
+      await atualizar(`users/${tio.uid}`, { superAdmin: { booleanValue: false } }, tio);
+    }
+  }
+
+  // ── 7. motorista não muda o próprio papel ───────────────────────────────
+  {
+    const r = await atualizar(`users/${tio.uid}`, { role: { stringValue: 'parent' } }, tio);
+    registrar('motorista NÃO troca o próprio role', !r.ok, 'HTTP ' + r.status);
+    if (r.ok) {
+      console.log('     !!! TROCA DE PAPEL PASSOU — revertendo agora');
+      await atualizar(`users/${tio.uid}`, { role: { stringValue: 'admin' } }, tio);
+    }
+  }
+
+  // ── 8. bônus de entrada é só de leitura pro dono dele ───────────────────
+  {
+    const r = await escrever(
+      `entryBonuses/${tio.uid}`,
+      { meses: { integerValue: '4' } },
+      tio
+    );
+    registrar('motorista NÃO grava o próprio bônus', !r.ok, 'HTTP ' + r.status);
+    if (r.ok) console.log('     !!! A ROLETA VIROU CAMPO EDITÁVEL');
+  }
+
+  // ── 9. depoimento público não é editável nem pelo autor ─────────────────
+  {
+    const r = await escrever(
+      'feedbacks/sonda-auditoria',
+      { uid: { stringValue: tio.uid }, allowTestimonial: { booleanValue: true } },
+      tio
+    );
+    // create é permitido (é assim que se avalia); o que não pode é editar
+    // depois. Se criou, apagamos não dá — delete é false. Então só reportamos.
+    registrar(
+      'feedbacks aceita criar (esperado)',
+      true,
+      r.ok ? 'criou sonda-auditoria — apague pelo console' : 'HTTP ' + r.status
+    );
+  }
+
+  const falhas = resultados.filter((r) => !r.passou);
+  console.log('');
+  console.log('─'.repeat(60));
+  if (falhas.length === 0) {
+    console.log(`${resultados.length} sondas, nenhuma falha.`);
+  } else {
+    console.log(`${falhas.length} FALHA(S) de ${resultados.length}:`);
+    for (const f of falhas) console.log('  - ' + f.nome);
+    process.exitCode = 1;
+  }
+}
+
+main().catch((e) => {
+  console.error('\nFALHOU: ' + e.message);
+  process.exit(1);
+});

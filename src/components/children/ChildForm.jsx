@@ -717,7 +717,26 @@ function Step4Parent({ form, setField, setPhone, errors }) {
           value={form.monthlyFee}
           onChange={setField('monthlyFee')}
           error={errors.monthlyFee}
-          required
+          /* O `required` daqui foi REMOVIDO porque era inerte e mentia.
+           *
+           * Este formulário é um assistente por etapas: o botão chama
+           * onSubmit() direto, sem <form> nativo, então a validação do
+           * navegador nunca roda e o atributo não bloqueava nada. E deixar
+           * sem valor é DELIBERADO — a validação da etapa diz, com todas as
+           * letras, que "email e mensalidade podem vir depois", porque nem
+           * sempre o valor está combinado no dia do cadastro.
+           *
+           * O problema não era permitir vazio: era não contar o preço disso.
+           * Mensalidade zerada faz a criança ser PULADA na geração de
+           * cobrança do mês (billing.js ignora fee <= 0), sem erro nenhum na
+           * hora. Quem cadastra trinta crianças e deixa dez sem valor
+           * descobre no dia do fechamento, contando dez cobranças que não
+           * nasceram. */
+          hint={
+            form.monthlyFee.trim()
+              ? undefined
+              : 'Sem valor, esta criança não entra na cobrança do mês. Dá pra preencher depois na ficha dela.'
+          }
         />
         <Input
           type="number"

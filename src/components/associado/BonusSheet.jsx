@@ -8,6 +8,7 @@ import {
   getMyEntryBonus,
   spinEntryBonus,
 } from '../../services/entryBonusService';
+import { mensagemDeErro } from '../../services/callableError';
 import { salesWhatsAppLink } from '../../config/developer';
 
 /**
@@ -97,10 +98,8 @@ export default function BonusSheet({ open, onClose }) {
       }, DURACAO_MS);
     } catch (err) {
       setGirando(false);
-      toast.error(
-        err?.message ||
-          'Não deu pra girar agora. Tente de novo em alguns instantes.'
-      );
+      // "internal" na tela mandaria o motorista culpar a internet dele.
+      toast.error(mensagemDeErro(err, 'girar a roleta'), { duration: 7000 });
     }
   };
 

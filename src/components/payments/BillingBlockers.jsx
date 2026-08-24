@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { TriangleAlert, Key, RefreshCw, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { runBillingNow } from '../../services/paymentsService';
+import { mensagemDeErro } from '../../services/callableError';
 
 /**
  * O que está impedindo o dinheiro de entrar.
@@ -74,7 +75,9 @@ export default function BillingBlockers({
         toast('Nenhuma cobrança nova pra gerar.');
       }
     } catch (err) {
-      toast.error(err.message);
+      // Sem as functions publicadas isto devolvia "internal" na tela, e o
+      // motorista ia culpar a própria internet.
+      toast.error(mensagemDeErro(err, 'gerar as cobranças'), { duration: 7000 });
     } finally {
       setGenerating(false);
     }

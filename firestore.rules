@@ -113,24 +113,42 @@ service cloud.firestore {
       // vínculo de crianças. Quem escreve childIds/childId é a Cloud
       // Function redeemInvite (Admin SDK) — deixar o cliente escrever
       // esses campos permitiria auto-atribuição de filhos.
-      allow update: if isSignedIn() && (
-        isAdmin()
-        || (
-          request.auth.uid == uid
-          && request.resource.data.role == resource.data.role
-          && !request.resource.data.diff(resource.data).affectedKeys()
-               .hasAny(['role', 'childId', 'childIds', 'superAdmin'])
-        // superAdmin é o gate do painel /admin (App.jsx). Sem ele nesta
-        // lista, um responsável legítimo se auto-atribuía e abria a tela.
-        // O dano era contido — as leituras de lá exigem isAdmin(), que
-        // role=="parent" não satisfaz — mas expor a casca de uma tela
-        // administrativa já é informação que ele não deveria ter.
-        //
-        // NOTA: isto é defesa em profundidade, não a defesa principal. O
-        // gate real precisa virar custom claim; enquanto for campo em doc,
-        // ele depende de nenhuma regra futura reabrir a escrita.
-        )
-      );
+      // OS QUATRO CAMPOS DE PRIVILÉGIO NÃO SE ESCREVEM DAQUI. POR NINGUÉM.
+      //
+      // A versão anterior tinha `isAdmin()` como primeiro termo de um OU, e
+      // isso curto-circuitava tudo o que vinha depois: quem já tinha
+      // role == 'admin' — ou seja, QUALQUER MOTORISTA — passava direto e
+      // podia gravar o que quisesse em qualquer users/{uid}, inclusive no
+      // próprio. Na prática:
+      //
+      //   - o motorista se dava `superAdmin: true` e abria o /admin, que
+      //     mostra o negócio da PLATAFORMA: GMV, tamanho da base, fila de
+      //     parceiros, avaliações de todo mundo;
+      //   - e podia trocar o próprio `role`, ou o de outro usuário.
+      //
+      // Não era teoria: a sondagem de rules (scripts/auditar-regras.cjs)
+      // executou os dois contra o ambiente publicado e os DOIS passaram.
+      //
+      // A restrição agora vem ANTES do OU, então vale para os dois ramos. O
+      // que sobra é o legítimo: o motorista edita dados de cadastro (nome,
+      // telefone, PIX, foto) do próprio doc e dos que ele administra; o
+      // usuário edita o próprio. Vínculo de criança e papel continuam sendo
+      // escritos só pelo `redeemInvite` com Admin SDK, que não passa por
+      // rules — e por isso não perde nada aqui.
+      allow update: if isSignedIn()
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['role', 'childId', 'childIds', 'superAdmin'])
+        && (
+          // Quem edita: o motorista (dados de cadastro dos seus usuários) ou
+          // a própria pessoa. A checagem redundante de `role` fica como
+          // segunda tranca — se alguém mexer na lista de campos acima, esta
+          // aqui ainda barra a troca de papel do próprio doc.
+          isAdmin()
+          || (
+            request.auth.uid == uid
+            && request.resource.data.role == resource.data.role
+          )
+        );
 
       // O próprio dono pode apagar (excluir minha conta) ou admin pode
       // apagar qualquer um (remover pai vinculado / encerrar operação).
