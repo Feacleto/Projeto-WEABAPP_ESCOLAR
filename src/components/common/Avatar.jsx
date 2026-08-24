@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { User, Bus } from 'lucide-react';
-import { childAvatarUrl, adultAvatarUrl } from '../../utils/avatarUrl';
+import {
+  childAvatarUrl,
+  adultAvatarUrl,
+  adminAvatarUrl,
+} from '../../utils/avatarUrl';
 
 /**
  * Avatar circular.
@@ -8,9 +12,9 @@ import { childAvatarUrl, adultAvatarUrl } from '../../utils/avatarUrl';
  * Hierarquia de exibição:
  *   1. photoURL (foto enviada pelo usuário) — se carregar sem erro
  *   2. Default por tipo:
- *      - kind='child' → DiceBear adventurer com gênero
- *      - kind='adult' → DiceBear initials com nome
- *      - kind='admin' → ilustração de van escolar em gradient verde
+ *      - kind='child'  → avatar no traço do Notion, paleta suave
+ *      - kind='adult'  → mesmo traço, paleta fria e sóbria
+ *      - kind='admin'  → mesmo traço, paleta do esmeralda da marca
  *   3. Fallback final → ícone genérico com cor de fundo
  *
  * Props:
@@ -68,21 +72,17 @@ export default function Avatar({
     );
   }
 
-  // 2a. Motorista sem foto → ilustração de van escolar em gradient verde.
-  // Mantém a estética do app (mesma família de verde do hero/BottomNav).
-  if (kind === 'admin') {
-    return (
-      <div
-        className={`${box} rounded-full shrink-0 flex items-center justify-center bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white shadow-md ${className}`}
-      >
-        <Bus size={icon} strokeWidth={1.8} />
-      </div>
-    );
-  }
-
-  // 2b. Avatar gerado automaticamente (DiceBear) — child/adult
+  // 2. Avatar gerado, no traço do Notion. TODOS os três públicos passam
+  // por aqui.
+  //
+  // Antes o motorista caía num ícone de van e o responsável numa letra
+  // dentro de um círculo: os dois adultos do app não tinham rosto. Num app
+  // em que a relação entre eles é o produto, isso importa — o pai vê "quem"
+  // está levando o filho dele, não um pictograma de veículo.
   const generatedSrc =
-    kind === 'adult'
+    kind === 'admin'
+      ? adminAvatarUrl({ name, seed })
+      : kind === 'adult'
       ? adultAvatarUrl({ name, seed })
       : childAvatarUrl({ id: seed, gender });
 
@@ -102,12 +102,15 @@ export default function Avatar({
     );
   }
 
-  // 3. Fallback final — ícone (rede sem internet, DiceBear off etc)
+  // 3. Último recurso: sem internet ou DiceBear fora do ar. Ícone, mas
+  // ainda diferenciando o motorista — a van some só quando não há
+  // alternativa nenhuma.
+  const FallbackIcon = kind === 'admin' ? Bus : User;
   return (
     <div
       className={`${box} ${style} rounded-full flex items-center justify-center shrink-0 ${className}`}
     >
-      <User size={icon} strokeWidth={2.2} />
+      <FallbackIcon size={icon} strokeWidth={2.2} />
     </div>
   );
 }
