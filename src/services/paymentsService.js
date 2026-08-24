@@ -418,12 +418,27 @@ export async function runBillingNow(monthKey = null) {
   } catch (err) {
     const c = String(err?.code || '');
     if (c.includes('permission-denied')) {
+      // Mensagem mais específica que a genérica de `mensagemDeErro`, e ela
+      // passa direto por lá (erro sem `code` cai no ramo do `message`).
       throw new Error('Só o motorista responsável pode gerar cobranças.', {
         cause: err,
       });
     }
-    throw new Error('Não conseguimos gerar agora. Tente em alguns segundos.', {
-      cause: err,
-    });
+
+    // O ERRO ORIGINAL SOBE INTEIRO — e é isto que estava quebrado.
+    //
+    // Aqui havia um `new Error('Não conseguimos gerar agora. Tente em alguns
+    // segundos.')`. Quem chama (BillingBlockers) passa o erro por
+    // `mensagemDeErro`, que classifica pelo `err.code` — e o embrulho jogava
+    // o `code` fora. Resultado: `functions/internal` (o código que o SDK
+    // devolve quando a function não está publicada) nunca era reconhecido, e o
+    // motorista lia "tente em alguns segundos" pra uma coisa que, sem o plano
+    // Blaze, não vai funcionar em nenhum número de segundos.
+    //
+    // É exatamente o engano que `callableError.js` foi escrito pra evitar:
+    // "quem lê 'internal' tenta de novo, troca de rede, reinicia o celular".
+    // A camada certa existia; uma camada abaixo dela apagava a informação de
+    // que ela precisava.
+    throw err;
   }
 }
