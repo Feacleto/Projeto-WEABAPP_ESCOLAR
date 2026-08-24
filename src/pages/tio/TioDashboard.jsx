@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
 import BonusNudge from '../../components/associado/BonusNudge';
+import { ENTRY_BONUS_ENABLED } from '../../config/capabilities';
 import {
   Bus,
   CircleAlert,
@@ -194,8 +195,14 @@ export default function TioDashboard() {
         {/* A condição de entrada: aparece só pra quem ainda não girou, e
           * some pra sempre depois — é uma vez por associado. Vem ANTES do
           * convite pra avaliar porque é o que ele ganha, não o que a gente
-          * pede. */}
-        <BonusNudge />
+          * pede.
+          *
+          * Hoje a bandeira está DESLIGADA (ver config/capabilities.js): sem
+          * cloud, o brinde não fecha o ciclo e não merece o topo do painel.
+          * A linha fica aqui, e não some, porque o dia que a bandeira virar
+          * o cartão volta ao lugar certo sem ninguém precisar lembrar onde
+          * ele ficava. */}
+        {ENTRY_BONUS_ENABLED && <BonusNudge />}
 
         {/* Convite pra avaliar — o depoimento do parceiro é a prova social
           * da home, então o pedido vive no painel dele, não escondido no

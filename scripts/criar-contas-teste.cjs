@@ -5,7 +5,9 @@
  *
  *   DONO       você. Precisa do /admin, que mostra o negócio inteiro:
  *              tamanho da base, dinheiro que passou pelo app, fila de
- *              parceiros, notas e comentários de todo mundo.
+ *              parceiros, notas e comentários de todo mundo. Hoje ele é um
+ *              PAPEL (`role: 'owner'`), não um motorista com flag — e por
+ *              isso o script cria só o LOGIN dele. Ver abaixo.
  *
  *   MOTORISTA  seu colega. Opera a perua dele em /tio. NÃO recebe
  *              `superAdmin`, e isso é o ponto: o painel do dono é o seu
@@ -17,9 +19,21 @@
  *
  * ATENÇÃO: `role: 'admin'` NÃO quer dizer "dono". No código inteiro ele quer
  * dizer MOTORISTA — é o que `isAdmin()` checa nas regras pra liberar crianças,
- * pagamentos e rotas. Quem é dono da plataforma é marcado por `superAdmin`, e
- * a única coisa que esse campo faz é abrir o /admin. Os dois nomes são ruins e
- * confundem; a distinção é real.
+ * pagamentos e rotas.
+ *
+ * O DONO MUDOU, E ESTE SCRIPT NÃO CRIA MAIS O PERFIL DELE
+ * Ele era um motorista com `superAdmin: true` por cima. Não é mais: agora é
+ * `role: 'owner'`, e `superAdmin` não vale nada — nem no cliente
+ * (`ehDono()` em src/utils/papeis.js) nem nas regras (`isOwner()`).
+ *
+ * O create de `users` só aceita `role == 'admin'`, então criar um dono pelo
+ * cliente é impossível por construção — e afrouxar isso pra semear teste
+ * seria reabrir a escalada de privilégio que foi fechada. Então o script cria
+ * o LOGIN do dono e IMPRIME o passo do console.
+ *
+ * Preferir imprimir a fingir é o ponto: a versão anterior deste script dizia
+ * "DONO criado" e entregava um motorista. Quem fosse testar o /admin caía no
+ * /tio sem entender por quê, e ia procurar o defeito no código do painel.
  *
  * A JANELA DO BOOTSTRAP
  * A regra de `users` só permite CREATE quando `role == 'admin'` E
@@ -52,7 +66,6 @@ const DONO = {
   senha: 'TesteDono2026!',
   nome: 'Dono da Plataforma',
   telefone: '11999990001',
-  superAdmin: true, // abre o /admin
 };
 
 const MOTORISTA = {
@@ -60,7 +73,6 @@ const MOTORISTA = {
   senha: 'TesteTio2026!',
   nome: 'Motorista Teste',
   telefone: '11999990000',
-  superAdmin: false, // o painel do dono NÃO é dele
 };
 
 const RESPONSAVEL = {
@@ -122,10 +134,10 @@ async function criarPerfilDeTrabalho(DOCS, conta, sessao, agora) {
     },
     body: JSON.stringify({
       fields: {
-        // 'admin' aqui significa MOTORISTA. Os dois precisam dele: é o que
-        // libera crianças, pagamentos e rotas nas regras.
+        // 'admin' aqui significa MOTORISTA — e agora SÓ o motorista passa
+        // por aqui. O perfil do dono é `role: 'owner'`, que o create das
+        // regras não aceita: ele sai no console, no fim da execução.
         role: { stringValue: 'admin' },
-        superAdmin: { booleanValue: conta.superAdmin },
         name: { stringValue: conta.nome },
         email: { stringValue: conta.email },
         phone: { stringValue: conta.telefone },
@@ -165,15 +177,21 @@ async function main() {
   }
   console.log('\nappState/init não existe — janela do bootstrap ABERTA.\n');
 
-  // ── 1. dono ─────────────────────────────────────────────────────────────
+  // ── 1. dono: SÓ O LOGIN ─────────────────────────────────────────────────
+  // O perfil não dá pra criar daqui (o create exige role 'admin'), e criar o
+  // dono como motorista seria mentir no fixture — além de sujar a contagem de
+  // parceiros do próprio painel que ele vai abrir.
   const d = await criarLogin(KEY, DONO.email, DONO.senha);
-  await criarPerfilDeTrabalho(DOCS, DONO, d, agora);
-  console.log('1) DONO criado' + (d.jaExistia ? ' (login já existia)' : ''));
+  console.log(
+    '1) DONO: login pronto' +
+      (d.jaExistia ? ' (já existia)' : '') +
+      ' — perfil é no console (ver abaixo)'
+  );
 
   // ── 2. motorista ────────────────────────────────────────────────────────
   const m = await criarLogin(KEY, MOTORISTA.email, MOTORISTA.senha);
   await criarPerfilDeTrabalho(DOCS, MOTORISTA, m, agora);
-  console.log('2) MOTORISTA criado, SEM superAdmin' + (m.jaExistia ? ' (login já existia)' : ''));
+  console.log('2) MOTORISTA criado' + (m.jaExistia ? ' (login já existia)' : ''));
 
   // ── 3. fecha a janela, apontando pro MOTORISTA ──────────────────────────
   // adminUid é quem a vitrine da home mostra como parceiro — o colega, não você.
@@ -215,10 +233,30 @@ async function main() {
   console.log('  uid: ' + p.uid);
   console.log(L);
 
-  console.log('\nFALTA UM PASSO, E SÓ DÁ NO CONSOLE');
-  console.log('As regras proíbem criar users/{uid} fora do bootstrap — pra todo');
-  console.log('mundo, inclusive pro motorista logado. É a escalada de privilégio');
-  console.log('fechada, e não vale afrouxar pra semear dado de teste.');
+  console.log('\nFALTAM DOIS PASSOS, E OS DOIS SO DAO NO CONSOLE');
+  console.log('');
+  console.log('1) O PERFIL DO DONO - sem ele, este login NAO abre o /admin.');
+  console.log('   O create de users so aceita role admin, entao o papel de');
+  console.log('   dono nao se cria pelo cliente. E por construcao: foi assim');
+  console.log('   que a auto-promocao a dono foi fechada.');
+  console.log('');
+  console.log('   Firestore > users > Add document > ID = ' + d.uid);
+  console.log('       role              string     owner');
+  console.log('       name              string     ' + DONO.nome);
+  console.log('       email             string     ' + DONO.email);
+  console.log('       phone             string     ' + DONO.telefone);
+  console.log('       termsVersion      string     ' + LEGAL_VERSION);
+  console.log('       privacyVersion    string     ' + LEGAL_VERSION);
+  console.log('       termsAcceptedAt   timestamp  agora');
+  console.log('       privacyAcceptedAt timestamp  agora');
+  console.log('       createdAt         timestamp  agora');
+  console.log('');
+  console.log('   NAO ponha superAdmin: ele nao vale mais nada, nem no app');
+  console.log('   nem nas regras. Quem manda e o papel role: owner.');
+  console.log('');
+  console.log('2) O PERFIL DO RESPONSAVEL');
+  console.log('   Mesmo motivo: as regras proibem criar users/{uid} fora do');
+  console.log('   bootstrap, e nao vale afrouxar pra semear dado de teste.');
   console.log('');
   console.log('  a) entre como MOTORISTA e cadastre uma criança; anote o ID');
   console.log('  b) Firestore > users > Add document > ID = ' + p.uid);

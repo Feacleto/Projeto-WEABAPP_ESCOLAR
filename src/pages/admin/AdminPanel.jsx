@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import {
-  ArrowLeft,
   BarChart3,
   Bus,
   Check,
   CircleDollarSign,
+  LogOut,
   MapPin,
   MessageSquare,
   Phone,
@@ -26,11 +25,18 @@ import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
 import { useAuth } from '../../hooks/useAuth';
 import {
+  watchPlatformConfig,
+  setReviewWindow,
+  janelaAberta,
+} from '../../services/platformConfigService';
+import {
   getPlatformOverview,
   getSurveyResults,
   mesAtual,
 } from '../../services/adminMetricsService';
 import { setLeadStatus, watchDriverLeads } from '../../services/waitlistService';
+import { logout } from '../../services/authService';
+import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
 import { devWhatsAppLink } from '../../config/developer';
 
 /**
@@ -61,6 +67,7 @@ import { devWhatsAppLink } from '../../config/developer';
  */
 export default function AdminPanel() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('geral');
 
   const [ov, setOv] = useState(null);
@@ -121,12 +128,29 @@ export default function AdminPanel() {
         </div>
 
         <div className="relative">
-          <Link
-            to="/tio"
+          {/* SAIR, E NÃO "PAINEL DO MOTORISTA".
+            * Aqui havia um link pro /tio, e ele virou porta fechada quando o
+            * dono deixou de ser motorista: o `PrivateRoute` devolve ele pra
+            * cá, então o toque não fazia nada — o pior tipo de botão.
+            *
+            * Trocar por "sair" não é só tapar o buraco. O /admin é a ÚNICA
+            * tela do dono: ele não tem /tio, não tem aba de perfil, e sem
+            * isto não existia caminho pra encerrar a sessão sem limpar o
+            * navegador. */}
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await logout();
+                navigate('/login', { replace: true });
+              } catch {
+                toast.error('Não deu pra sair. Tente de novo.');
+              }
+            }}
             className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
           >
-            <ArrowLeft size={16} /> Painel do motorista
-          </Link>
+            <LogOut size={15} /> Sair
+          </button>
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
             só pra você
           </p>
@@ -135,7 +159,7 @@ export default function AdminPanel() {
           </h1>
           <p className="mt-1 text-sm text-white/60">
             {profile?.name ? `Oi, ${profile.name.split(' ')[0]}. ` : ''}
-            Números da plataforma, pesquisa e fila de parceiros.
+            Parceiros, motoristas, uso da plataforma e pesquisa.
           </p>
         </div>
       </header>
@@ -253,7 +277,13 @@ function Geral({ ov }) {
 
       <section>
         <Titulo icon={ShieldCheck}>Manutenção</Titulo>
-        <PrivacidadeDosDepoimentos />
+        <PeriodoDeAvaliacao />
+        {/* A limpeza de privacidade é `httpsCallable`, e não existe function
+          * no ar neste projeto (Cloud Functions API desativada). Com o botão
+          * visível, "Verificar" só produz um toast de erro — e erro em botão
+          * de manutenção faz quem aperta desconfiar do DADO, não do ambiente.
+          * A janela de avaliação acima FICA: ela é Firestore direto. */}
+        {CLOUD_FUNCTIONS_ENABLED && <PrivacidadeDosDepoimentos />}
       </section>
     </div>
   );
@@ -280,6 +310,106 @@ function Geral({ ov }) {
  *    o que SERÁ feito, sem os nomes — repetir o dado vazado na tela e no log
  *    criaria um terceiro lugar com o vazamento, com retenção própria.
  */
+/**
+ * O PERÍODO DE AVALIAÇÃO — o interruptor que o dono liga e desliga.
+ *
+ * POR QUE ISTO É UMA JANELA, E NÃO UM PEDIDO PERMANENTE
+ * O convite pra avaliar ficava no topo do painel do motorista o ano inteiro.
+ * Pedido que nunca sai vira paisagem: ele aprende a não ler aquele pedaço da
+ * tela, e junto com o pedido some tudo que a gente colocar ali depois. Com
+ * janela, o cartão volta a ser evento — aparece quando há campanha e some
+ * quando ela acaba.
+ *
+ * O PRAZO NÃO É ENFEITE
+ * Sem data-limite, um período aberto e esquecido é exatamente o estado
+ * anterior, só que com mais passos. O campo aceita vazio ("deixa aberto até
+ * eu fechar"), mas o caminho fácil é pôr uma data.
+ *
+ * Escrever aqui exige `isOwner()` nas rules. Motorista não alcança.
+ */
+function PeriodoDeAvaliacao() {
+  const [config, setConfig] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => watchPlatformConfig(setConfig), []);
+
+  const aberta = !!config?.reviewOpen;
+  const ativa = janelaAberta(config);
+  const ateISO = (() => {
+    const d = config?.reviewUntil?.toDate?.() || config?.reviewUntil;
+    if (!d) return '';
+    const dt = new Date(d);
+    return isNaN(dt) ? '' : dt.toISOString().slice(0, 10);
+  })();
+
+  const salvar = async (patch) => {
+    setSalvando(true);
+    try {
+      await setReviewWindow({ aberta, ate: ateISO || null, ...patch });
+      toast.success('Período atualizado.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Você é o dono desta conta?');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-text">Período de avaliação</p>
+          <p className="mt-1 text-xs leading-relaxed text-textMuted">
+            Enquanto estiver fechado, ninguém vê o convite pra avaliar — nem
+            motorista, nem responsável.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={aberta}
+          aria-label="Abrir período de avaliação"
+          disabled={salvando || config === null}
+          onClick={() => salvar({ aberta: !aberta })}
+          className={`tap relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+            aberta ? 'bg-primary' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+              aberta ? 'left-6' : 'left-1'
+            }`}
+          />
+        </button>
+      </div>
+
+      <label className="mt-3 block">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-textMuted">
+          Fecha sozinho em
+        </span>
+        <input
+          type="date"
+          value={ateISO}
+          disabled={salvando}
+          onChange={(e) => salvar({ ate: e.target.value || null })}
+          className="mt-1 h-11 w-full rounded-xl border border-gray-200 bg-card px-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </label>
+
+      <p className="mt-2 text-[11px] text-textMuted">
+        {ativa
+          ? ateISO
+            ? `Aberto — fecha sozinho em ${ateISO.split('-').reverse().join('/')}.`
+            : 'Aberto por tempo indeterminado.'
+          : aberta
+            ? 'O prazo já passou: o convite não aparece mais.'
+            : 'Fechado — o convite não aparece pra ninguém.'}
+      </p>
+    </div>
+  );
+}
+
 function PrivacidadeDosDepoimentos() {
   const [relatorio, setRelatorio] = useState(null);
   const [rodando, setRodando] = useState(false);

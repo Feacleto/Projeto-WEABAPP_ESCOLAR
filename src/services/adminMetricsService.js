@@ -22,8 +22,9 @@ import { db } from '../firebase/config';
  * tipo de coisa que funciona com 18 crianças e derruba a tela com 1.800.
  *
  * O QUE ESTE MÓDULO NÃO FAZ
- * Não inventa receita. Hoje o Alô Buzinou não cobra dos parceiros (o
- * gatewayService ainda é stub), então a receita própria é ZERO e o painel
+ * Não inventa receita. Hoje o Alô Buzinou não cobra dos parceiros — a taxa
+ * de associação é vendida no cadastro e sorteada na roleta, mas nada a
+ * cobra ainda —, então a receita própria é ZERO e o painel
  * diz isso com letra grande em vez de exibir uma projeção disfarçada de
  * fato. O que existe de verdade é o GMV: o dinheiro que passou pelo app
  * entre pai e motorista. Os dois números são diferentes e confundir um com o
@@ -63,27 +64,22 @@ async function conta(q) {
 }
 
 /**
- * Quantos PARCEIROS existem — motoristas de verdade, sem o dono da plataforma.
+ * Quantos PARCEIROS existem — e agora é uma query só.
  *
- * `role: 'admin'` significa MOTORISTA no código inteiro: é o que `isAdmin()`
- * checa nas rules pra liberar crianças, pagamentos e rotas. A conta do dono
- * carrega esse mesmo papel por necessidade — sem ele, as leituras deste painel
- * seriam negadas e a tela viria vazia.
+ * Aqui havia duas consultas e uma subtração: contava `role == 'admin'` e
+ * descontava quem tinha `superAdmin`, porque a conta do dono precisava
+ * carregar papel de MOTORISTA pras rules liberarem as leituras deste painel.
+ * O dono entrava na própria contagem de parceiros, e com um parceiro real a
+ * tela dizia 2.
  *
- * A consequência é que ele entrava na contagem de parceiros. Então descontamos
- * quem tem `superAdmin`, que é o que distingue o dono de um parceiro.
- *
- * Duas consultas em vez de uma porque o Firestore não expressa "tem role admin
- * E NÃO tem superAdmin" numa query só: `!=` ignora documento onde o campo não
- * existe, que é justamente o caso de todo parceiro. Subtrair é exato; filtrar
- * por desigualdade daria zero.
+ * Isso deixou de ser verdade quando o dono ganhou papel próprio (`role:
+ * 'owner'`, com `isOwner()` nas rules): ele não tem mais papel de motorista,
+ * então não há o que descontar. Manter a subtração custaria uma leitura por
+ * abertura do painel pra sempre devolver zero — e, pior, manteria escrito na
+ * tela um raciocínio que já não descreve o sistema.
  */
 async function contaParceiros(users) {
-  const [comPapel, donos] = await Promise.all([
-    conta(query(users, where('role', '==', 'admin'))),
-    conta(query(users, where('role', '==', 'admin'), where('superAdmin', '==', true))),
-  ]);
-  return Math.max(0, comPapel - donos);
+  return conta(query(users, where('role', '==', 'admin')));
 }
 
 /** YYYY-MM do mês corrente, no mesmo formato do campo `month` de payments. */
@@ -113,14 +109,8 @@ export async function getPlatformOverview() {
     filaParceiros,
   ] = await Promise.all([
     conta(query(users)),
-    // MOTORISTAS SÃO OS PARCEIROS — e o dono da plataforma não é um deles.
-    //
-    // A conta do dono precisa de `role: 'admin'` porque é isso que as rules
-    // checam pra liberar a leitura de users, children e payments — ou seja,
-    // sem esse papel o próprio painel não consegue ler nada. Mas ele não é um
-    // parceiro, e contá-lo aqui inflava o número: com um parceiro real, a tela
-    // dizia 2.
-    //
+    // MOTORISTAS SÃO OS PARCEIROS — e o dono, que agora tem papel próprio
+    // (`role: 'owner'`), não aparece nesta conta nem precisa ser descontado.
     // Um número de vitrine errado pra mais é o pior tipo: ninguém desconfia.
     contaParceiros(users),
     conta(query(users, where('role', '==', 'parent'))),

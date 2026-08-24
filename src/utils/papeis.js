@@ -19,15 +19,23 @@
  * Agora a separação é de papel, e vale nos dois lados: as rules têm
  * `isOwner()` e a interface tem isto.
  *
- * COMPATIBILIDADE
- * `superAdmin: true` continua sendo aceito como dono pra não quebrar conta
- * antiga, mas quem manda é o papel. Conta nova nasce com `role: 'owner'`.
+ * O DONO É UMA CONTA SÓ, E O PAPEL É A ÚNICA PROVA DISSO
+ * O fallback `superAdmin: true` foi REMOVIDO. Ele existia como ponte pra conta
+ * antiga, e ponte que ninguém atravessa vira porta dos fundos: enquanto duas
+ * coisas diferentes davam poder de dono, "quantos donos existem?" não tinha
+ * resposta olhando o código — dependia de quantos docs tinham um booleano
+ * esquecido. Agora é uma pergunta de uma query: `role == 'owner'`.
+ *
+ * A MIGRAÇÃO É MANUAL, E TEM QUE VIR ANTES
+ * O cliente não escreve `role` (foi assim que a auto-promoção foi fechada),
+ * então a conta do dono passa a `role: 'owner'` pelo console. Publicar esta
+ * versão ANTES da migração tranca o dono fora do próprio painel — a conta
+ * antiga (`role: 'admin'` + `superAdmin`) cai como motorista.
  */
 
 /** É o dono da plataforma? */
 export function ehDono(profile) {
-  if (!profile) return false;
-  return profile.role === 'owner' || profile.superAdmin === true;
+  return profile?.role === 'owner';
 }
 
 /** É motorista (opera uma perua)? */
@@ -43,17 +51,27 @@ export function ehResponsavel(profile) {
 /**
  * O painel DESTE usuário — a resposta para "pra onde eu mando essa pessoa".
  *
- * A ordem importa: o dono é checado ANTES do motorista, porque uma conta
- * antiga pode ter os dois (`role: 'admin'` + `superAdmin: true`) e o painel
- * dela é o da plataforma.
+ * Os três papéis são exclusivos, então a ordem aqui é só legibilidade — mas
+ * ela segue a do produto: plataforma, operação, família.
  *
- * Sem perfil devolve null — quem chama decide o que fazer, em vez de receber
- * um palpite. Mandar alguém pro /pai por engano é como se perde a pessoa numa
- * tela que não é dela.
+ * SEM PAPEL, A RESPOSTA É `/login` — E ANTES ERA `null`, QUE VIROU BUG
+ * O docstring anterior dizia que devolver `null` era de propósito, pra "quem
+ * chama decide o que fazer". Só que nenhum dos dois chamadores decidia nada:
+ * `App.jsx` jogava o retorno direto em `<Navigate to={...}>`, nas duas rotas
+ * protegidas. E `<Navigate to={null}>` não estoura — ele não navega e não
+ * renderiza, ou seja, TELA BRANCA CALADA, sem nada no console (conferido em
+ * teste com react-router 7.18.2 pela sessão do ErrorBoundary; nem o boundary
+ * pega, porque nada é jogado).
+ *
+ * Doc de usuário sem `role` é raro e é defeito de dado — mas a resposta certa
+ * pra ele não é sumir com a tela: é mandar pro login, que é a única página que
+ * funciona sem papel nenhum. `/login` não devolve a pessoa pra cá em ciclo:
+ * ele só redireciona quem tem `profile?.role` — como todos os outros
+ * chamadores desta função, que já filtram por isso antes de navegar.
  */
 export function painelDe(profile) {
-  if (!profile?.role && !profile?.superAdmin) return null;
   if (ehDono(profile)) return '/admin';
   if (ehMotorista(profile)) return '/tio';
-  return '/pai';
+  if (ehResponsavel(profile)) return '/pai';
+  return '/login';
 }

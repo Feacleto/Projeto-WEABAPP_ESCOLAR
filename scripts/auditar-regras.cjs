@@ -108,6 +108,43 @@ async function atualizar(caminho, campos, sessao) {
   return { ok: r.ok, status: r.status };
 }
 
+/**
+ * Consulta com filtro de igualdade — o `runQuery` do Firestore.
+ *
+ * Precisou existir porque as sondas de escopo não são sobre "pode ler o
+ * documento X", são sobre "a CONSULTA prova o escopo". `listar()` acima faz
+ * GET na coleção, que é justamente a consulta SEM filtro: serve pra provar a
+ * negativa, e nunca conseguiria provar a positiva.
+ */
+async function consultar(colecao, campo, valor, sessao) {
+  const r = await fetch(`${DOCS.replace(/\/$/, '')}:runQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...auth(sessao) },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: colecao }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: campo },
+            op: 'EQUAL',
+            value: { stringValue: valor },
+          },
+        },
+        limit: 1,
+      },
+    }),
+  });
+  return { ok: r.ok, status: r.status };
+}
+
+async function apagar(caminho, sessao) {
+  const r = await fetch(`${DOCS}${caminho}`, {
+    method: 'DELETE',
+    headers: auth(sessao),
+  });
+  return { ok: r.ok, status: r.status };
+}
+
 const resultados = [];
 function registrar(nome, passou, detalhe) {
   resultados.push({ nome, passou, detalhe });
@@ -221,6 +258,130 @@ async function main() {
       true,
       r.ok ? 'criou sonda-auditoria — apague pelo console' : 'HTTP ' + r.status
     );
+  }
+
+  // ── 10. config da plataforma é do DONO, não do motorista ───────────────
+  //
+  // `platformConfig/*` guarda interruptor que vale pra plataforma inteira (a
+  // janela de avaliação hoje; o que vier depois). A regra é `write: if
+  // isOwner()`.
+  //
+  // O motorista é a sonda certa aqui — e não o responsável — porque ele é o
+  // papel que QUASE passa: no código inteiro `role: 'admin'` significa
+  // motorista, e foi exatamente por isso que este documento não foi parar em
+  // `appState/init`, cuja regra é `allow update: if isAdmin()`. Se algum dia
+  // alguém "simplificar" movendo isto pra lá, esta linha fica vermelha no
+  // mesmo dia.
+  //
+  // Grava `reviewOpen: false` porque falso é o estado seguro: se a sonda
+  // passar (ruim), o efeito colateral é fechar a janela de avaliação, não
+  // abrir. Mesma doutrina da sonda de superAdmin.
+  //
+  // Passa nos dois mundos — com a regra publicada, `isOwner()` barra; sem
+  // ela, o default nega. É guarda de superfície, não detector de deploy.
+  {
+    const r = await atualizar(
+      'platformConfig/app',
+      { reviewOpen: { booleanValue: false } },
+      tio
+    );
+    registrar(
+      'motorista NÃO escreve config da plataforma',
+      !r.ok,
+      'HTTP ' + r.status
+    );
+    if (r.ok) {
+      console.log('     !!! UM PARCEIRO MANDA NA PLATAFORMA INTEIRA');
+    }
+  }
+
+  // ── 11. o motorista LÊ as próprias crianças (sonda POSITIVA) ───────────
+  //
+  // POR QUE UMA POSITIVA IMPORTA AQUI
+  // Sonda negativa passa verde com ou sem a regra publicada: sem regra, o
+  // default nega, e o verde não prova nada sobre o deploy. Esta é a única do
+  // bloco que EXIGE a regra no ar — e ela também pega o backfill esquecido,
+  // porque consulta por `adminUid`, o campo que o backfill escreve.
+  {
+    const r = await consultar('children', 'adminUid', tio.uid, tio);
+    registrar(
+      'motorista LÊ as próprias crianças (escopo publicado)',
+      r.ok,
+      'HTTP ' + r.status
+    );
+  }
+
+  // ── 12. consulta SEM escopo é recusada inteira ─────────────────────────
+  // O outro lado da moeda: sem o filtro por `adminUid`, o Firestore não
+  // devolve "as que ele pode ver" — devolve erro. É por isso que toda tela
+  // do motorista teve que passar a filtrar.
+  {
+    const r = await listar('children', tio);
+    registrar('motorista NÃO lista children sem escopo', !r.ok, 'HTTP ' + r.status);
+  }
+
+  // ── 13. motorista não cadastra criança na conta de outro ───────────────
+  // Sem o `adminUid == request.auth.uid` no create, dava pra nascer dado já
+  // fora do alcance de quem ele pertence — e o dono legítimo nunca saberia.
+  {
+    const id = `sonda-escopo-${tio.uid.slice(0, 6)}`;
+    const r = await escrever(
+      `children/${id}`,
+      {
+        name: { stringValue: 'SONDA — apague se aparecer' },
+        adminUid: { stringValue: 'uid-de-outro-motorista' },
+        active: { booleanValue: false },
+      },
+      tio
+    );
+    registrar(
+      'motorista NÃO cria criança de outro motorista',
+      !r.ok,
+      'HTTP ' + r.status
+    );
+    if (r.ok) {
+      console.log('     !!! DADO NASCENDO NA CONTA DE OUTRO PARCEIRO');
+      await apagar(`children/${id}`, tio);
+    }
+  }
+
+  // ── 14. motorista não levanta a própria suspensão ──────────────────────
+  // Suspensão que o suspenso desfaz não é suspensão. `suspenso` está fora do
+  // que o próprio usuário escreve: quem mexe é o dono.
+  {
+    const r = await atualizar(
+      `users/${tio.uid}`,
+      { suspenso: { booleanValue: false } },
+      tio
+    );
+    registrar(
+      'motorista NÃO escreve o próprio `suspenso`',
+      !r.ok,
+      'HTTP ' + r.status
+    );
+    if (r.ok) console.log('     !!! O SUSPENSO SE DESSUSPENDE');
+  }
+
+  // ── 15. motorista não provisiona conta ─────────────────────────────────
+  // Criar `users/{outro}` é poder do DONO (fila de parceiros). Na mão do
+  // parceiro, seria criar motorista — ou criar um doc pra um uid alheio.
+  {
+    const alvo = `sonda-provisionamento-${tio.uid.slice(0, 6)}`;
+    const r = await escrever(
+      `users/${alvo}`,
+      {
+        role: { stringValue: 'admin' },
+        name: { stringValue: 'SONDA — apague se aparecer' },
+        createdAt: { timestampValue: new Date().toISOString() },
+        provisionedBy: { stringValue: tio.uid },
+      },
+      tio
+    );
+    registrar('motorista NÃO provisiona conta', !r.ok, 'HTTP ' + r.status);
+    if (r.ok) {
+      console.log('     !!! PARCEIRO CRIANDO CONTA DE MOTORISTA');
+      await apagar(`users/${alvo}`, tio);
+    }
   }
 
   const falhas = resultados.filter((r) => !r.passou);
