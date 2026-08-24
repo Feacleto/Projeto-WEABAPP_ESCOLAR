@@ -3,10 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Users, Plus, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
+import PageHeader from '../../components/layout/PageHeader';
 import Skeleton from '../../components/common/Skeleton';
 import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
 import ChildCard from '../../components/children/ChildCard';
+import { ChildDetailSheet } from '../../pages/ChildDetail';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { useChildren } from '../../hooks/useChildren';
 import { useAbsences } from '../../hooks/useAbsences';
@@ -41,6 +43,11 @@ export default function TioChildren() {
   // prática, e o tio corrige na tela de rota se precisar.
   const direction = getCurrentPeriod() === 'morning' ? 'pickup' : 'dropoff';
   const [advancingId, setAdvancingId] = useState(null);
+
+  // A ficha abre POR CIMA da lista. O filtro, a busca e a rolagem continuam
+  // exatamente onde estavam — que é a diferença entre consultar um telefone
+  // e perder o lugar numa lista de vinte crianças.
+  const [fichaDe, setFichaDe] = useState(null);
 
   const onAdvance = async (child, nextStatus) => {
     setAdvancingId(child.id);
@@ -90,12 +97,28 @@ export default function TioChildren() {
             className="tap inline-flex items-center gap-1 bg-primary text-white text-sm font-semibold px-3 py-1.5 rounded-full"
           >
             <Plus size={16} />
-            Nova criança
+            {/* Em tela estreita (360px pra baixo) o rótulo some e sobra o
+              * "+": o título da página não precisa ser cortado pra caber um
+              * botão que o ícone sozinho já explica. */}
+            <span className="hidden min-[360px]:inline">Nova criança</span>
           </button>
         }
       />
 
       <div className="p-5 space-y-4">
+        {/* Apresenta as pílulas de período que vêm logo abaixo. Elas sempre
+          * estiveram certas; o que faltava era dizer que aquilo são as
+          * turmas dele. Ver components/layout/PageHeader. */}
+        <PageHeader
+          icon={Users}
+          title={
+            children.length
+              ? `${children.length} criança${children.length > 1 ? 's' : ''} na sua turma`
+              : 'Sua turma'
+          }
+          subtitle="Escolha a turma pelo período, ou busque pelo nome. Toque na foto pra abrir a ficha."
+        />
+
         {/* Busca por nome */}
         <div className="relative">
           <Search
@@ -187,12 +210,18 @@ export default function TioChildren() {
                 )}
                 advancing={advancingId === child.id}
                 onAdvance={(next) => onAdvance(child, next)}
-                onClick={() => navigate(`/tio/children/${child.id}`)}
+                onClick={() => setFichaDe(child.id)}
               />
             ))}
           </div>
         )}
       </div>
+
+      <ChildDetailSheet
+        open={!!fichaDe}
+        childId={fichaDe}
+        onClose={() => setFichaDe(null)}
+      />
 
       {/* Agenda digital — botão flutuante de aviso pros pais */}
       <TioAgendaFAB />

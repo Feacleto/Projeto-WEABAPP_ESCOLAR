@@ -12,12 +12,18 @@ import {
   FileText,
   ChevronRight,
   Printer,
+  UserRound,
+  Link2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
+import AppSheet from '../components/common/AppSheet';
 import InviteShare from '../components/children/InviteShare';
+import WhatsAppIcon from '../components/common/WhatsAppIcon';
 import ChildPaymentHistory from '../components/payments/ChildPaymentHistory';
 import Avatar from '../components/common/Avatar';
 import { STORAGE_ENABLED } from '../config/capabilities';
@@ -41,8 +47,30 @@ import { PERIOD_LABELS, formatPhone } from '../utils/formatters';
  * Roteamento:
  *   - /tio/children/:id (tio)
  *   - /pai/child        (pai — pega o childId do próprio profile)
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * A ORDEM DA PÁGINA É A ORDEM DAS PERGUNTAS DO TIO.
+ *
+ * Antes ela era a ordem do cadastro: escola, endereço, responsáveis,
+ * observações — e só depois, lá no fim, convite, mensalidade e contrato.
+ * Ou seja: o que ele CONSULTA vinha antes do que ele RESOLVE, e as três
+ * coisas que geram trabalho ficavam abaixo da dobra.
+ *
+ * A ordem agora:
+ *
+ *   1. Link do responsável   o que ele veio buscar quando o pai ligou
+ *   2. Mensalidade           "essa família está em dia?"
+ *   3. Contrato              o documento da relação
+ *   4. Escola                consulta
+ *   5. Endereço de casa      consulta
+ *   6. Responsável           consulta — e por último de propósito: é o dado
+ *                            mais longo e o menos perecível dos três
+ *
+ * Observações e extrato fecham a página; remover a criança fica no fim,
+ * longe do dedo.
+ * ─────────────────────────────────────────────────────────────────
  */
-export default function ChildDetail() {
+function ChildDetailBody({ childId: childIdProp, onLeave }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role, activeChildId } = useAuth();
@@ -51,7 +79,9 @@ export default function ChildDetail() {
   // Pai: usa o childId do próprio profile, ignora :id na URL
   // Pai: o filho em foco vem do seletor (AuthContext), não mais do único
   // childId do perfil. Admin segue usando o :id da URL.
-  const childId = isAdmin ? id : activeChildId;
+  // A folha passa o id na mão; a página lê da URL. O pai continua vindo do
+  // seletor de filho, que não depende de nenhum dos dois.
+  const childId = childIdProp || (isAdmin ? id : activeChildId);
   const { child, loading } = useChild(childId);
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
@@ -69,7 +99,10 @@ export default function ChildDetail() {
           ? `${child.name} e o responsável foram removidos.`
           : `${child.name} foi removido(a) da lista ativa.`
       );
-      navigate('/tio/children', { replace: true });
+      // A página volta pra lista; a folha só se fecha — a lista já está
+      // atrás dela, e navegar por cima recarregaria a tela inteira.
+      if (onLeave) onLeave();
+      else navigate('/tio/children', { replace: true });
     } catch (err) {
       console.error(err);
       toast.error('Erro ao remover. Tente novamente.');
@@ -80,37 +113,29 @@ export default function ChildDetail() {
 
   if (loading) {
     return (
-      <>
-        <Header title="Perfil da criança" showBack />
-        <div className="p-4 space-y-3">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40" />
-        </div>
-      </>
+      <div className="space-y-3">
+        <Skeleton className="h-32" />
+        <Skeleton className="h-40" />
+        <Skeleton className="h-40" />
+      </div>
     );
   }
 
   if (!child) {
     return (
-      <>
-        <Header title="Perfil da criança" showBack />
-        <div className="p-4">
+      <div>
           <Card>
             <p className="text-sm text-text">
               Cadastro não encontrado.
             </p>
           </Card>
-        </div>
-      </>
+      </div>
     );
   }
 
   return (
     <>
-      <Header title="Perfil da criança" showBack />
-
-      <div className="p-4 space-y-4">
+      <div className="space-y-4">
         {/* Cabeçalho com avatar grande, nome e status. Tanto Tio quanto Pai
           * podem trocar a foto da criança — backend valida permissão por
           * parentUid (ver firestore.rules + storage.rules). */}
@@ -127,6 +152,65 @@ export default function ChildDetail() {
             <StatusBadge status={child.status} size="lg" />
           </div>
         </Card>
+
+        {/* ─────────── 1. O LINK DO RESPONSÁVEL ───────────
+          *
+          * PRIMEIRO DE TUDO, E SEMPRE PRESENTE.
+          *
+          * Antes este bloco era o sexto da página e só existia enquanto o
+          * convite estivesse pendente. O caminho real é outro: o pai perde o
+          * link — apaga a conversa, troca de celular, nunca abriu — e pede
+          * pro tio. Aí o tio abria a ficha, não achava link nenhum, e o
+          * assunto virava chamado de suporte por uma URL.
+          *
+          * Agora tem um alvo só, sempre no topo, e é O APP que decide qual
+          * link mandar. O tio nunca precisa saber a diferença:
+          *
+          *   convite pendente → /convite/CÓDIGO, que cria a conta na hora
+          *   já aceito        → a porta da família, que é onde ele entra
+          *
+          * POR QUE NÃO UM "GERAR NOVO CONVITE"
+          * Porque o convite é de uso único no servidor (functions/lib/
+          * invites.js recusa código já usado, e é isso que impede um estranho
+          * de se vincular a uma criança). Emitir convite novo pra quem já tem
+          * conta reabriria essa porta pra resolver um problema que era só de
+          * achar uma URL. */}
+        {isAdmin && <LinkDoResponsavel child={child} />}
+
+        {/* Histórico de mensalidades desta criança.
+          * A pergunta que o tio mais faz ao financeiro é "essa família está
+          * em dia?" — e ela nasce AQUI, na ficha, não na tela de meses. */}
+        <ChildPaymentHistory
+          childId={child.id}
+          role={isAdmin ? 'admin' : 'parent'}
+        />
+
+        {/* Acesso ao contrato (Tio) */}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => {
+              onLeave?.();
+              navigate(`/tio/children/${child.id}/contract`);
+            }}
+            className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3"
+          >
+            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <FileText size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-text leading-tight">
+                Contrato de transporte
+              </p>
+              <p className="text-xs text-textMuted mt-0.5">
+                {child.contractAcceptedAt
+                  ? `Aceito por ${child.contractAcceptedName || 'responsável'}`
+                  : 'Aguardando aceite do responsável'}
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-textMuted shrink-0" />
+          </button>
+        )}
 
         {/* Escola */}
         <Card className="space-y-3">
@@ -208,32 +292,6 @@ export default function ChildDetail() {
           </Card>
         )}
 
-        {/* Convite pendente — só faz sentido pro tio ver */}
-        {isAdmin && child.inviteStatus === 'pending' && (
-          <Card className="bg-warning/10 border border-warning/30 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-text">Convite pendente</p>
-              <p className="text-xs text-textMuted mt-1">
-                O responsável ainda não entrou. Mande o link — a conta dele se
-                cria por lá.
-              </p>
-            </div>
-            <InviteShare
-              code={child.inviteCode}
-              childName={child.name}
-              parentPhone={child.parentPhone}
-            />
-          </Card>
-        )}
-
-        {/* Histórico de mensalidades desta criança.
-          * A pergunta que o tio mais faz ao financeiro é "essa família está
-          * em dia?" — e ela nasce AQUI, na ficha, não na tela de meses. */}
-        <ChildPaymentHistory
-          childId={child.id}
-          role={isAdmin ? 'admin' : 'parent'}
-        />
-
         {/* O MESMO HISTÓRICO, EM PAPEL
           * O bloco acima responde "essa família está em dia?" na tela, com o
           * dedo. Mas o motorista também precisa LEVAR essa conta pra uma
@@ -244,7 +302,10 @@ export default function ChildDetail() {
         {isAdmin && (
           <button
             type="button"
-            onClick={() => navigate(`/tio/children/${child.id}/extrato`)}
+            onClick={() => {
+              onLeave?.();
+              navigate(`/tio/children/${child.id}/extrato`);
+            }}
             className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3"
           >
             <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -256,30 +317,6 @@ export default function ChildDetail() {
               </p>
               <p className="text-xs text-textMuted mt-0.5">
                 Pra imprimir, mandar ou anotar em cima
-              </p>
-            </div>
-            <ChevronRight size={18} className="text-textMuted shrink-0" />
-          </button>
-        )}
-
-        {/* Acesso ao contrato (Tio) */}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => navigate(`/tio/children/${child.id}/contract`)}
-            className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3"
-          >
-            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <FileText size={20} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-text leading-tight">
-                Contrato de transporte
-              </p>
-              <p className="text-xs text-textMuted mt-0.5">
-                {child.contractAcceptedAt
-                  ? `Aceito por ${child.contractAcceptedName || 'responsável'}`
-                  : 'Aguardando aceite do responsável'}
               </p>
             </div>
             <ChevronRight size={18} className="text-textMuted shrink-0" />
@@ -321,6 +358,152 @@ export default function ChildDetail() {
  * Avatar grande da criança com botões pra trocar/remover foto.
  * Só renderiza pro admin (storage.rules garantem permissão).
  */
+
+/**
+ * CASCA 1 — a página. Link direto, favorito, notificação, e o pai (que chega
+ * por /pai/child sem nenhuma lista por trás).
+ */
+export default function ChildDetail() {
+  return (
+    <>
+      <Header title="Perfil da criança" showBack />
+      <div className="p-4">
+        <ChildDetailBody />
+      </div>
+    </>
+  );
+}
+
+/**
+ * CASCA 2 — a folha. É por onde a lista "Minha turma" abre a ficha.
+ *
+ * Abrir a ficha custava a lista inteira: o filtro de período, o texto da
+ * busca e a rolagem. O tio conferia um telefone e voltava pro começo de uma
+ * lista de vinte crianças. Como folha, tudo isso continua atrás, intacto.
+ *
+ * Altura cheia porque a ficha é longa de verdade — link, mensalidade,
+ * contrato, escola, endereço, responsáveis. Folha curta aqui viraria uma
+ * janelinha rolando dentro de outra tela, que é pior que as duas opções.
+ */
+export function ChildDetailSheet({ open, childId, onClose }) {
+  return (
+    <AppSheet
+      open={open}
+      onClose={onClose}
+      title="Ficha da criança"
+      icon={UserRound}
+      size="full"
+    >
+      {open && <ChildDetailBody childId={childId} onLeave={onClose} />}
+    </AppSheet>
+  );
+}
+
+/**
+ * O bloco do link, que muda de conversa conforme o estado do convite.
+ *
+ * Pendente, ele é âmbar e chama atenção: há trabalho a fazer, o responsável
+ * ainda não entrou. Aceito, ele fica neutro e discreto — não é pendência,
+ * é uma ferramenta que fica ali pro dia em que o pai pedir.
+ */
+function LinkDoResponsavel({ child }) {
+  const pendente = child.inviteStatus === 'pending';
+
+  if (pendente) {
+    return (
+      <Card className="space-y-3 border border-warning/30 bg-warning/10">
+        <div>
+          <p className="text-sm font-semibold text-text">
+            O responsável ainda não entrou
+          </p>
+          <p className="mt-1 text-xs text-textMuted">
+            Mande o link — a conta dele se cria por lá, sem digitar código.
+          </p>
+        </div>
+        <InviteShare
+          code={child.inviteCode}
+          childName={child.name}
+          parentPhone={child.parentPhone}
+        />
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Link2 size={19} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-text">
+            Link de acesso do responsável
+          </p>
+          <p className="mt-1 text-xs text-textMuted">
+            {child.parentName || 'O responsável'} já tem conta. Se perdeu o
+            caminho de volta, mande este link.
+          </p>
+        </div>
+      </div>
+      <AppLinkShare childName={child.name} parentPhone={child.parentPhone} />
+    </Card>
+  );
+}
+
+/**
+ * Copiar / mandar no WhatsApp a porta da família.
+ *
+ * `/familia` e não `/`: a raiz é a vitrine de associação, que fala de taxa,
+ * de vaga e de negócio — conteúdo endereçado ao motorista. Mandar o pai pra
+ * lá é, no mínimo, confuso; no pior caso sugere que a vaga do filho dele
+ * corre risco. A regra vive em utils/frentes.js e vale aqui também.
+ */
+function AppLinkShare({ childName, parentPhone }) {
+  const [copiado, setCopiado] = useState(false);
+  const url =
+    typeof window !== 'undefined' ? `${window.location.origin}/familia` : '';
+
+  const primeiro = String(childName || '').trim().split(/\s+/)[0] || '';
+  const texto = `Oi! Aqui é o link pra você acompanhar o transporte d${
+    primeiro ? `o(a) ${primeiro}` : 'a criança'
+  }: ${url}`;
+
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      toast.error('Não deu pra copiar. Segure no link pra copiar à mão.');
+    }
+  };
+
+  const digits = String(parentPhone || '').replace(/\D/g, '');
+  const e164 = digits ? (digits.startsWith('55') ? digits : `55${digits}`) : '';
+
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={copiar}
+        className="tap flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-card text-sm font-bold text-text"
+      >
+        {copiado ? <Check size={16} /> : <Copy size={16} />}
+        {copiado ? 'Copiado' : 'Copiar link'}
+      </button>
+      <a
+        href={`https://wa.me/${e164}?text=${encodeURIComponent(texto)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="tap flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-white"
+      >
+        <WhatsAppIcon size={16} />
+        WhatsApp
+      </a>
+    </div>
+  );
+}
+
 function ChildPhotoEditor({ child }) {
   const [uploading, setUploading] = useState(false);
 
