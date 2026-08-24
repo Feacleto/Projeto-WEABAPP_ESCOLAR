@@ -51,7 +51,15 @@ const TOTAL_STEPS = 4;
 
 const EMPTY_FORM = {
   name: '',
-  gender: 'male',
+  // VAZIO, E NÃO 'male'.
+  //
+  // Vinha pré-selecionado como menino. O tio passava direto pelo passo sem
+  // tocar em nada e a criança era gravada como menino em silêncio — não
+  // havia como distinguir, depois, quem tinha sido escolhido de quem tinha
+  // sido herdado. O avatar saía errado e ninguém sabia por quê.
+  //
+  // Vazio força a escolha e torna o erro impossível de acontecer calado.
+  gender: '',
   birthDate: '', // YYYY-MM-DD — usado pra parabenizar no aniversário
   parentName: '',
   parentEmail: '',
@@ -100,6 +108,10 @@ export default function ChildForm() {
     const errs = {};
     if (s === 1) {
       if (!form.name.trim()) errs.name = 'Diga o nome da criança.';
+      // Obrigatório agora que o campo não vem pré-respondido. É o que decide
+      // o rosto que a criança vai ter na lista, e um chute do sistema custa
+      // mais caro do que um toque a mais aqui.
+      if (!form.gender) errs.gender = 'Escolha menino ou menina.';
     }
     if (s === 2) {
       // Só o texto do endereço é obrigatório. A coordenada NÃO bloqueia:
@@ -357,6 +369,11 @@ function Step1Child({ form, setForm, setField, errors }) {
             />
           ))}
         </div>
+        {errors.gender && (
+          <p className="mt-1.5 text-xs font-semibold text-danger">
+            {errors.gender}
+          </p>
+        )}
       </div>
 
       <Input

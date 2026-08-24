@@ -19,7 +19,7 @@ import {
  *
  * Props:
  *   - photoURL:  string opcional — URL pública (Firebase Storage)
- *   - gender:    'male' | 'female' | undefined
+ *   - gender:    'male' | 'female' | undefined — vale pros três kinds
  *   - kind:      'child' | 'adult' | 'admin' (default: 'child' por compat)
  *   - seed:      string — id estável (childId, uid). Default: '' (gera neutro)
  *   - name:      string — usado em initials pro kind='adult'
@@ -79,12 +79,15 @@ export default function Avatar({
   // dentro de um círculo: os dois adultos do app não tinham rosto. Num app
   // em que a relação entre eles é o produto, isso importa — o pai vê "quem"
   // está levando o filho dele, não um pictograma de veículo.
+  // `gender` vale pros TRÊS públicos agora. Antes só a criança recebia, e
+  // os dois adultos do app saíam com rosto sorteado — inclusive o do próprio
+  // motorista, que ele vê no canto de toda tela.
   const generatedSrc =
     kind === 'admin'
-      ? adminAvatarUrl({ name, seed })
+      ? adminAvatarUrl({ name, seed, gender })
       : kind === 'adult'
-      ? adultAvatarUrl({ name, seed })
-      : childAvatarUrl({ id: seed, gender });
+        ? adultAvatarUrl({ name, seed, gender })
+        : childAvatarUrl({ id: seed, gender });
 
   if (!generatedError) {
     return (

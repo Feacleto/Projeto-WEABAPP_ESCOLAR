@@ -9,7 +9,7 @@ import {
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 import { generateInviteCode } from '../utils/generateInviteCode';
 import { inviteCodeExists } from './inviteCodeService';
 import {
@@ -75,7 +75,10 @@ export async function addChild(data) {
 
   const payload = {
     name: data.name?.trim() || '',
-    gender: data.gender || 'male',
+    // Sem `|| 'male'`: completar o silêncio com um chute é como o campo
+    // ficou errado em toda base antiga. Null é a resposta honesta pra
+    // "ninguém respondeu", e o avatar sabe lidar com ela.
+    gender: data.gender || null,
     birthDate: data.birthDate?.trim() || '', // YYYY-MM-DD
     parentName: data.parentName?.trim() || '',
     parentEmail: data.parentEmail?.trim().toLowerCase() || '',
@@ -103,6 +106,17 @@ export async function addChild(data) {
     inviteCode,
     inviteStatus: 'pending',
     parentUid: null,
+    // DE QUEM É ESTA CRIANÇA — o vínculo que faltava.
+    //
+    // Sem este campo, `children` era uma coleção sem dono: as rules liberavam
+    // qualquer `isAdmin()` a ler e escrever QUALQUER criança, e o segundo
+    // motorista da plataforma leria o endereço, a escola e o telefone das
+    // famílias do primeiro. Passava despercebido porque só existia um.
+    //
+    // O uid vem do login, e não de parâmetro: quem cadastra é quem opera, e
+    // deixar isso configurável seria criar um jeito de cadastrar criança na
+    // conta de outro motorista.
+    adminUid: auth.currentUser?.uid || null,
     status: 'home',
     statusUpdatedAt: serverTimestamp(),
     active: true,
@@ -195,13 +209,27 @@ export async function deactivateChild(id) {
 }
 
 /**
- * Subscribe à lista de crianças ativas via onSnapshot.
- * Retorna a função de unsubscribe (chame no cleanup do useEffect).
+ * Subscribe à lista de crianças ativas DESTE motorista.
+ *
+ * O `adminUid` NÃO É OPCIONAL, e o motivo é o formato da negativa: as rules
+ * exigem que a consulta prove o escopo, e uma consulta sem o filtro é
+ * rejeitada INTEIRA — não vem "as que ele pode ver", vem erro de permissão e
+ * a tela fica vazia. Sem uid, então, não adianta nem chamar: devolvemos lista
+ * vazia e um unsubscribe inerte, que é o mesmo resultado sem gastar uma
+ * consulta negada e sem poluir o console de quem for depurar outra coisa.
  *
  * Ordenação é client-side pra evitar índice composto no Firestore.
  */
-export function watchActiveChildren(onUpdate, onError) {
-  const q = query(collection(db, 'children'), where('active', '==', true));
+export function watchActiveChildren(adminUid, onUpdate, onError) {
+  if (!adminUid) {
+    onUpdate([]);
+    return () => {};
+  }
+  const q = query(
+    collection(db, 'children'),
+    where('adminUid', '==', adminUid),
+    where('active', '==', true)
+  );
   return onSnapshot(
     q,
     (snap) => {
