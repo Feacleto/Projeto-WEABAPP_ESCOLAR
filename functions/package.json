@@ -3,7 +3,7 @@
   "description": "Cloud Functions do Alô Buzinou — envio de lembretes de pagamento por email.",
   "private": true,
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "scripts": {
