@@ -74,7 +74,12 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
               : openCount === 1
               ? '1 mês em aberto'
               : `${openCount} meses em aberto`}
-            {totalPaid > 0 && ` · ${formatCurrency(totalPaid)} já recebidos`}
+            {/* O acumulado é informação do TIO — pra ele é o quanto aquela
+              * família já rendeu. Pro pai é só um lembrete de quanto gastou,
+              * que não muda decisão nenhuma dele. */}
+            {role === 'admin' &&
+              totalPaid > 0 &&
+              ` · ${formatCurrency(totalPaid)} já recebidos`}
           </p>
         </div>
       </div>

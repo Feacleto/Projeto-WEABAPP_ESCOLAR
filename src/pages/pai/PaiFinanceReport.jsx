@@ -29,16 +29,22 @@ export default function PaiFinanceReport() {
     [payments]
   );
 
-  const totals = useMemo(() => {
-    let paid = 0;
-    let open = 0;
-    for (const p of enriched) {
-      const v = Number(p.amount) || 0;
-      if (p._display === 'paid') paid += v;
-      else open += v;
-    }
-    return { paid, open };
-  }, [enriched]);
+  /**
+   * Só o que ele DEVE. Sem total acumulado de quanto já pagou: esse
+   * número não muda nenhuma decisão dele, e o valor de cada mês já está
+   * na linha do mês. `claimed` fica de fora — ele pagou e está esperando
+   * confirmação, não deve nada.
+   */
+  const debtTotal = useMemo(
+    () =>
+      enriched.reduce((acc, p) => {
+        if (p._display === 'pending' || p._display === 'overdue') {
+          return acc + (Number(p.amount) || 0);
+        }
+        return acc;
+      }, 0),
+    [enriched]
+  );
 
   const onPrint = () => window.print();
 
@@ -91,24 +97,27 @@ export default function PaiFinanceReport() {
             </p>
           </header>
 
-          <section className="grid grid-cols-2 gap-3">
-            <div className="bg-emerald-50 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-900">
-                Total pago
-              </p>
-              <p className="text-2xl font-bold text-emerald-900 tabular-nums mt-1">
-                {formatCurrency(totals.paid)}
-              </p>
-            </div>
-            <div className="bg-amber-50 rounded-2xl p-4">
+          {/* Total no topo só quando há dívida. Em dia, o extrato é a
+            * lista — sem número grande dizendo zero. */}
+          {debtTotal > 0 ? (
+            <section className="bg-amber-50 rounded-2xl p-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-amber-900">
-                Em aberto
+                A pagar
               </p>
               <p className="text-2xl font-bold text-amber-900 tabular-nums mt-1">
-                {formatCurrency(totals.open)}
+                {formatCurrency(debtTotal)}
               </p>
-            </div>
-          </section>
+            </section>
+          ) : (
+            <section className="bg-emerald-50 rounded-2xl p-4">
+              <p className="text-sm font-bold text-emerald-900">
+                Tudo em dia
+              </p>
+              <p className="text-xs text-emerald-900/75 mt-0.5">
+                Nenhuma mensalidade em aberto.
+              </p>
+            </section>
+          )}
 
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-text">Mensalidades</h2>

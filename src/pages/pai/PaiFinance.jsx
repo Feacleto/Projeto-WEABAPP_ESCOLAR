@@ -47,13 +47,28 @@ export default function PaiFinance() {
   const [unclaiming, setUnclaiming] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Soma do que ainda está em aberto (pendente + atrasado + claimed)
-  const openTotal = useMemo(
+  /**
+   * O que o pai realmente DEVE.
+   *
+   * Duas correções em relação à versão anterior:
+   *
+   * 1. `claimed` NÃO é dívida. Ele já pagou e está esperando o motorista
+   *    confirmar — cobrar de novo por algo que ele resolveu é o tipo de
+   *    erro que faz a pessoa desconfiar do app.
+   *
+   * 2. Não existe total acumulado de quanto ele já pagou. Esse número não
+   *    serve pra nenhuma decisão dele, e soa como lembrete de quanto
+   *    gastou. O valor de cada mês aparece na linha do mês, que é onde
+   *    ele procura.
+   */
+  const debtTotal = useMemo(
     () =>
       payments.reduce((acc, p) => {
         const s = computeDisplayStatus(p);
-        if (s === 'paid') return acc;
-        return acc + (Number(p.amount) || 0);
+        if (s === 'pending' || s === 'overdue') {
+          return acc + (Number(p.amount) || 0);
+        }
+        return acc;
       }, 0),
     [payments]
   );
@@ -237,15 +252,14 @@ export default function PaiFinance() {
           )
         )}
 
-        {!loading && payments.length > 0 && (
+        {/* Total no topo SÓ quando ele deve algo. Estando em dia, um card
+          * escrito "R$ 0,00 em aberto" não informa nada e ainda ocupa o
+          * lugar da lista, que é o que ele veio ver. */}
+        {!loading && debtTotal > 0 && (
           <Card>
-            <p className="text-xs text-textMuted">Em aberto</p>
-            <p
-              className={`text-2xl font-bold leading-none mt-2 ${
-                openTotal > 0 ? 'text-warning' : 'text-success'
-              }`}
-            >
-              {formatCurrency(openTotal)}
+            <p className="text-xs text-textMuted">Você tem a pagar</p>
+            <p className="text-2xl font-bold leading-none mt-2 text-warning">
+              {formatCurrency(debtTotal)}
             </p>
           </Card>
         )}
