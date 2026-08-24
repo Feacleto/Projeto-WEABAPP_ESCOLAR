@@ -19,16 +19,21 @@ import {
 } from '../../utils/formatters';
 import {
   paymentLabel,
+  paymentChipClasses,
   parentClaimedLabel,
   parentClaimedTone,
   TONE_CLASSES,
 } from '../../utils/paymentVocabulary';
+import { foiPagoAtrasado } from '../../services/paymentsService';
 
 // A COR fica aqui; o TEXTO vem de utils/paymentVocabulary, que sabe falar
 // pro papel de quem está lendo. O estado 'claimed' era o pior caso: o tio
 // lia "aguardando confirmação" sem saber que a bola estava com ele.
 const STATUS_CONFIG = {
   paid: { color: 'text-lime-700 bg-success/10', Icon: CheckCircle2 },
+  // 'paid' que entrou depois do vencimento. Não é estado novo — é o mesmo
+  // 'paid' com outra cara. Ver foiPagoAtrasado em services/paymentsService.
+  paidLate: { color: '', Icon: CheckCircle2 },
   claimed: { color: 'text-amber-700 bg-warning/10', Icon: Hourglass },
   pending: { color: 'text-gray-700 bg-gray-100', Icon: Clock },
   overdue: { color: 'text-red-700 bg-danger/10', Icon: AlertCircle },
@@ -62,12 +67,25 @@ export default function PaymentRow({
   const parentResolved =
     role === 'parent' && displayStatus === 'claimed' && !!payment.receiptURL;
 
+  // Entrou depois do vencimento? Só o tio vê isso — ver paymentVocabulary.
+  const pagoAtrasado = foiPagoAtrasado(payment);
+
   const label = parentResolved
     ? parentClaimedLabel(true)
-    : paymentLabel(displayStatus, role);
+    : paymentLabel(displayStatus, role, { pagoAtrasado });
   const color = parentResolved
     ? TONE_CLASSES[parentClaimedTone(true)]
-    : config.color;
+    : pagoAtrasado && role === 'admin'
+      ? paymentChipClasses(displayStatus, role, { pagoAtrasado })
+      : config.color;
+
+  // SEM PALAVRA, SEM CHIP.
+  //
+  // Do lado do tio, 'claimed' e 'pending' não têm rótulo: um é tarefa (vira
+  // o botão "Dar baixa") e o outro é silêncio (ainda não venceu). Sem esta
+  // guarda o chip renderizaria como uma pílula vazia com um ícone solto
+  // dentro — pior que a palavra que a gente acabou de tirar.
+  const mostrarChip = !!label;
 
   return (
     <Card className="space-y-2">
@@ -82,12 +100,14 @@ export default function PaymentRow({
             {formatMonthLabel(payment.month)}
           </p>
         </div>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium shrink-0 ${color}`}
-        >
-          <Icon size={12} />
-          {label}
-        </span>
+        {mostrarChip && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium shrink-0 ${color}`}
+          >
+            <Icon size={12} />
+            {label}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-3">

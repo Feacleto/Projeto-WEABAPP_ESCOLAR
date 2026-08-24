@@ -101,18 +101,26 @@ export async function confirmReceipt(paymentId, method = null) {
 }
 
 /**
- * Janela em que o Tio pode reverter um pagamento PIX/dinheiro recebido.
+ * Janela em que o Tio pode reverter um recebimento que ele mesmo deu baixa.
  * Depois disso, a confirmação fica definitiva — evita zicas tipo o pai
  * recolher o dinheiro 1 mês depois ou o Tio se confundir muito tempo
- * após o fato. Cartão de crédito não tem reversão manual em momento
- * nenhum (é reconhecido automaticamente pelo gateway).
+ * após o fato.
+ *
+ * VALE PRA TODO MÉTODO, INCLUSIVE CARTÃO
+ * A versão anterior negava reversão a 'card' para sempre, alegando que
+ * cartão "é reconhecido automaticamente pelo gateway". Não existe gateway
+ * neste app: o pai paga o motorista direto, por PIX, dinheiro ou maquininha,
+ * e os três chegam aqui do mesmo jeito — o motorista digitando como
+ * recebeu. Tratar um deles como se tivesse confirmação automática dava a
+ * ele a única baixa irreversível do sistema, e com a justificativa errada:
+ * quem marcou "cartão" por engano, ou levou estorno na maquininha, ficava
+ * sem saída nenhuma.
  */
 export const UNDO_WINDOW_HOURS = 24;
 const UNDO_WINDOW_MS = UNDO_WINDOW_HOURS * 60 * 60 * 1000;
 
 /**
  * Diz se um pagamento ainda pode ser revertido pelo Tio. Combina:
- *   - método (cartão nunca pode ser desfeito manualmente)
  *   - tempo desde a confirmação (limite UNDO_WINDOW_HOURS)
  *
  * Retorna { allowed, reason } pra UI exibir mensagem clara.
@@ -121,13 +129,6 @@ export function canUndoReceipt(payment) {
   if (!payment) return { allowed: false, reason: 'Pagamento não encontrado.' };
   if (payment.status !== 'paid') {
     return { allowed: false, reason: 'Pagamento ainda não foi confirmado.' };
-  }
-  if (payment.paymentMethod === 'card') {
-    return {
-      allowed: false,
-      reason:
-        'Pagamentos por cartão são reconhecidos automaticamente — não dá pra desfazer.',
-    };
   }
   const paidAt =
     payment.paidAt?.toDate?.() ||
@@ -196,13 +197,44 @@ export function computeDisplayStatus(payment) {
 }
 
 /**
- * Busca todos os pagamentos desde `fromMonthKey` (YYYY-MM) inclusive.
- * Uso no relatório financeiro do Tio — one-shot, não-reativo.
+ * O pagamento entrou, mas entrou DEPOIS do vencimento?
+ *
+ * POR QUE ISTO NÃO É UM QUINTO ESTADO
+ * A tentação era `computeDisplayStatus` devolver 'paidLate'. Seria errado:
+ * dezessete lugares perguntam `=== 'paid'` pra somar recebido, filtrar lista
+ * e montar relatório. Um estado novo faria o dinheiro que ENTROU sumir dos
+ * totais — o pior tipo de regressão, porque o número continua aparecendo,
+ * só que menor.
+ *
+ * Então "pago atrasado" é LEITURA, não estado. Continua sendo 'paid' pra
+ * todo mundo que conta; só o rótulo na tela conta a história completa.
+ *
+ * É o que responde "quem mais atrasa": um mês pago no dia 3 e um pago no dia
+ * 28 são ambos verdes no fim do mês, e é a diferença entre eles que diz com
+ * quem o tio vai ter trabalho de novo.
+ *
+ * Derivado em tempo de execução dos dois campos que já existem no documento.
+ * Zero migração.
  */
-export async function getPaymentsSince(fromMonthKey) {
-  if (!fromMonthKey) return [];
+export function foiPagoAtrasado(payment) {
+  if (!payment || payment.status !== 'paid') return false;
+  const pago = payment.paidAt?.toDate?.()?.getTime();
+  const vence = payment.dueDate?.toDate?.()?.getTime();
+  if (!pago || !vence) return false;
+  return pago > vence;
+}
+
+/**
+ * Busca os pagamentos DESTE motorista desde `fromMonthKey` (YYYY-MM).
+ * Uso no relatório financeiro do Tio — one-shot, não-reativo.
+ *
+ * Sobre o `adminUid` obrigatório, ver a nota em `watchPaymentsByMonth`.
+ */
+export async function getPaymentsSince(fromMonthKey, adminUid) {
+  if (!fromMonthKey || !adminUid) return [];
   const q = query(
     collection(db, 'payments'),
+    where('adminUid', '==', adminUid),
     where('month', '>=', fromMonthKey)
   );
   const snap = await getDocs(q);
@@ -235,9 +267,14 @@ export async function getPaymentsSince(fromMonthKey) {
  * pequeno por natureza (o que está pago sai da conta sozinho), então trazer
  * as abertas e cortar o mês na memória custa menos que manter um índice.
  */
-export function watchArrears(beforeMonthKey, onUpdate, onError) {
+export function watchArrears(beforeMonthKey, adminUid, onUpdate, onError) {
+  if (!adminUid) {
+    onUpdate([]);
+    return () => {};
+  }
   const q = query(
     collection(db, 'payments'),
+    where('adminUid', '==', adminUid),
     where('status', 'in', ['pending', 'claimed'])
   );
   return onSnapshot(
@@ -259,10 +296,26 @@ export function watchArrears(beforeMonthKey, onUpdate, onError) {
 
 /**
  * Subscribe aos pagamentos de um mês específico (visão do Tio).
+ *
+ * O `adminUid` NÃO É OPCIONAL — e isto vale pras quatro consultas daqui.
+ * As rules exigem que a consulta prove o escopo do motorista, e consulta sem
+ * o filtro não volta filtrada: volta NEGADA, inteira. O sintoma é financeiro
+ * vazio com erro no console, não "alguns pagamentos". Sem uid devolvemos
+ * lista vazia e um unsubscribe inerte, em vez de gastar uma consulta que já
+ * se sabe que vai ser recusada.
+ *
  * Ordena por nome da criança (client-side, evita índice composto).
  */
-export function watchPaymentsByMonth(monthKey, onUpdate, onError) {
-  const q = query(collection(db, 'payments'), where('month', '==', monthKey));
+export function watchPaymentsByMonth(monthKey, adminUid, onUpdate, onError) {
+  if (!adminUid) {
+    onUpdate([]);
+    return () => {};
+  }
+  const q = query(
+    collection(db, 'payments'),
+    where('adminUid', '==', adminUid),
+    where('month', '==', monthKey)
+  );
   return onSnapshot(
     q,
     (snap) => {
@@ -281,10 +334,30 @@ export function watchPaymentsByMonth(monthKey, onUpdate, onError) {
 
 /**
  * Subscribe aos pagamentos de uma criança específica.
- * Útil pro admin ver o histórico individual de uma criança.
+ *
+ * O ESCOPO AQUI MUDA COM O PAPEL, E ISSO NÃO É DETALHE
+ * Esta consulta serve as DUAS pontas: o histórico que o motorista abre na
+ * ficha da criança, e o mesmo histórico que o responsável vê no app dele
+ * (`ChildPaymentHistory` recebe `role` e é montado nos dois lugares). As
+ * rules liberam o motorista pelo `adminUid` e o responsável pelo `parentUid`
+ * — filtros diferentes, e usar o do motorista na tela do pai devolveria a
+ * consulta NEGADA, ou seja, histórico vazio pra quem tem direito de ver.
+ *
+ * Por isso o segundo parâmetro é um objeto de escopo explícito:
+ *   { adminUid }   → visão do motorista
+ *   { parentUid }  → visão do responsável
  */
-export function watchPaymentsByChild(childId, onUpdate, onError) {
-  const q = query(collection(db, 'payments'), where('childId', '==', childId));
+export function watchPaymentsByChild(childId, escopo, onUpdate, onError) {
+  const { adminUid, parentUid } = escopo || {};
+  if (!childId || (!adminUid && !parentUid)) {
+    onUpdate([]);
+    return () => {};
+  }
+  const q = query(
+    collection(db, 'payments'),
+    where(adminUid ? 'adminUid' : 'parentUid', '==', adminUid || parentUid),
+    where('childId', '==', childId)
+  );
   return onSnapshot(
     q,
     (snap) => {

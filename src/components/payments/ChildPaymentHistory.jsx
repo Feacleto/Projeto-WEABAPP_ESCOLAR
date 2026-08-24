@@ -3,7 +3,10 @@ import { ChevronDown, Paperclip, Wallet } from 'lucide-react';
 import Card from '../common/Card';
 import Skeleton from '../common/Skeleton';
 import { usePaymentsByChild } from '../../hooks/usePayments';
-import { computeDisplayStatus } from '../../services/paymentsService';
+import {
+  computeDisplayStatus,
+  foiPagoAtrasado,
+} from '../../services/paymentsService';
 import { formatCurrency, formatMonthLabel } from '../../utils/formatters';
 import {
   paymentLabel,
@@ -146,12 +149,18 @@ function StatusChip({ payment, role }) {
     payment._display === 'claimed' &&
     !!payment.receiptURL;
 
+  const pagoAtrasado = foiPagoAtrasado(payment);
+
   const label = resolved
     ? parentClaimedLabel(true)
-    : paymentLabel(payment._display, role);
+    : paymentLabel(payment._display, role, { pagoAtrasado });
   const classes = resolved
     ? TONE_CLASSES[parentClaimedTone(true)]
-    : paymentChipClasses(payment._display);
+    : paymentChipClasses(payment._display, role, { pagoAtrasado });
+
+  // Do lado do tio há estados sem palavra (ver paymentVocabulary): sem esta
+  // guarda sobraria uma pílula vazia no lugar do rótulo.
+  if (!label) return null;
 
   return (
     <span
