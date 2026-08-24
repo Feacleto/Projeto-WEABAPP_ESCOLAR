@@ -7,7 +7,10 @@ import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
-import { resetPassword, loginWithGoogle, getUserDoc, logout } from '../services/authService';
+import {
+  resetPassword,
+  loginWithGoogleExistingOnly,
+} from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
 import OpenInBrowser from '../components/auth/OpenInBrowser';
 import { canUseGoogleSignIn, isInAppBrowser } from '../utils/browserEnv';
@@ -73,21 +76,16 @@ export default function Login() {
   const onGoogleLogin = async () => {
     setGoogleSubmitting(true);
     try {
-      const user = await loginWithGoogle();
-      const userProfile = await getUserDoc(user.uid);
-      if (!userProfile) {
-        await logout();
-        toast.error(
-          'Esta conta Google ainda não tem acesso. Se o motorista te mandou um convite, abra o link que ele enviou.',
-          { duration: 7000 }
-        );
-        return;
-      }
-      // Profile existe — força refresh no contexto e o useEffect redireciona
+      // A limpeza de conta orfa vive no servico: duas telas fazem este
+      // login, e deixar a checagem em cada uma garante que a terceira
+      // esquece.
+      const { profile: userProfile } = await loginWithGoogleExistingOnly();
       await refreshProfile();
       toast.success(`Bem-vindo, ${userProfile.name || 'Tio'}!`);
     } catch (err) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
+      if (err?.code === 'app/no-profile') {
+        toast.error(err.message, { duration: 7000 });
+      } else if (err?.code !== 'auth/popup-closed-by-user') {
         toast.error(mapAuthError(err));
       }
     } finally {

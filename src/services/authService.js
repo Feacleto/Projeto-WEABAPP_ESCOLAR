@@ -305,3 +305,44 @@ export async function createFirstAdminWithGoogle({ phone }) {
     throw err;
   }
 }
+
+/**
+ * Login com Google que EXIGE conta já existente no app.
+ *
+ * POR QUE ISTO É UMA FUNÇÃO E NÃO UMA CHECAGEM NA TELA
+ * `signInWithPopup` cria o usuário no Firebase Auth ANTES de qualquer
+ * verificação nossa. Se ele não tem doc em users/, a tela desloga — mas a
+ * conta Auth fica no projeto pra sempre. Ou seja: qualquer visitante cria uma
+ * conta no seu projeto tocando em "Entrar com Google", e elas acumulam.
+ *
+ * Duas telas fazem esse login (Login.jsx e a folha da home). Deixar a limpeza
+ * em cada uma garante que a terceira tela vai esquecer. Aqui, quem chamar já
+ * recebe o comportamento certo.
+ *
+ * A conta órfã é apagada na hora: a sessão tem segundos de idade, então
+ * `delete()` não exige reautenticação. Se o delete falhar, desloga — nunca
+ * deixa a sessão pendurada.
+ *
+ * Lança Error com mensagem pronta pra exibir quando não há conta.
+ * Retorna { user, profile } quando existe.
+ */
+export async function loginWithGoogleExistingOnly() {
+  const credential = await signInWithPopup(auth, googleProvider);
+  const user = credential.user;
+  const profile = await getUserDoc(user.uid);
+
+  if (profile) return { user, profile };
+
+  try {
+    await user.delete();
+  } catch (err) {
+    console.error('Falha ao limpar conta Google órfã:', err);
+    await signOut(auth);
+  }
+
+  const e = new Error(
+    'Esta conta Google ainda não tem acesso. Se o motorista te mandou um convite, abra o link que ele enviou.'
+  );
+  e.code = 'app/no-profile';
+  throw e;
+}
