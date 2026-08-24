@@ -388,6 +388,18 @@ module.exports = {
  * devolvemos só o que é de vitrine: nome, cidade, quantas famílias.
  *
  * Nada de email, telefone, chave PIX ou nome de criança.
+ *
+ * E NADA DE FOTO DE PERFIL — o motivo importa mais que a proibição.
+ * Esta função roda com Admin SDK e SEM login: o que ela devolve está na
+ * internet, pra qualquer um. O `photoURL` de `users/{uid}` é o avatar que
+ * o motorista subiu (ou que veio da conta Google dele) numa tela de
+ * PERFIL, que sempre foi privada. Ninguém nunca lhe perguntou se aquele
+ * rosto podia ir pra home — e é o rosto dele, num app cujo público são as
+ * famílias da rua dele.
+ *
+ * Vitrine mostra MARCA, não pessoa. Quando existir imagem de marca com
+ * consentimento explícito pra uso público (`brandImageURL` + `brandKind`
+ * na camada de parceiro), é ELA que entra aqui. Avatar de perfil, nunca.
  */
 function makeGetShowcase(db) {
   return onCall({ region: REGION }, async () => {
@@ -416,7 +428,6 @@ function makeGetShowcase(db) {
             driverFirstName: firstName(a.name),
             city: a.companyCity || a.city || '',
             families: familiesSnap.data().count || 0,
-            photoURL: a.photoURL || null,
           },
         ],
       };
