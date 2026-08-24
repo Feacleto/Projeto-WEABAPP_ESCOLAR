@@ -8,6 +8,7 @@ import {
   QrCode,
   CreditCard,
   Paperclip,
+  Send,
 } from 'lucide-react';
 import Card from '../common/Card';
 import {
@@ -43,6 +44,7 @@ export default function PaymentRow({
   showChild = true,
   role = 'parent',
   onAttachReceipt = null,
+  onCharge = null,
 }) {
   const config = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.pending;
   const { Icon, color } = config;
@@ -129,6 +131,20 @@ export default function PaymentRow({
         </div>
         {action}
       </div>
+
+      {/* Cobrar sem sair do app. Só pra quem está devendo — em 'pago' ou
+        * "aguardando confirmação" cobrar seria constrangedor e errado. */}
+      {onCharge &&
+        (displayStatus === 'overdue' || displayStatus === 'pending') && (
+          <button
+            type="button"
+            onClick={onCharge}
+            className="tap w-full h-10 rounded-xl bg-card border border-gray-200 text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
+          >
+            <Send size={13} />
+            {displayStatus === 'overdue' ? 'Cobrar no WhatsApp' : 'Lembrar no WhatsApp'}
+          </button>
+        )}
     </Card>
   );
 }

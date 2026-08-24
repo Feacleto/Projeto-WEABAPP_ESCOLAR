@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ChevronLeft,
   X,
+  Search,
   Banknote,
   QrCode,
   CreditCard,
@@ -21,6 +22,8 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import PaymentRow from '../../components/payments/PaymentRow';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
+import { useChildren } from '../../hooks/useChildren';
+import { buildChargeMessage } from '../../utils/chargeMessage';
 import {
   confirmReceipt,
   undoReceipt,
@@ -56,6 +59,15 @@ export default function TioFinance() {
   const { payments, loading } = usePaymentsByMonth(monthKey);
   const [filter, setFilter] = useState('all');
 
+  // Busca por nome. A pergunta que o tio mais faz ao financeiro não é
+  // "quanto entrou este mês" — é "a família do Miguel está em dia?". Sem
+  // isso ele varria a lista inteira com o dedo.
+  const [search, setSearch] = useState('');
+
+  // Telefone do responsável não vive em `payments`; vem da criança. É o que
+  // permite cobrar sem sair do app.
+  const { children } = useChildren();
+
   // Confirmar / desfazer recebimento
   const [methodSheetFor, setMethodSheetFor] = useState(null); // payment ou null
   const [unconfirming, setUnconfirming] = useState(null);
@@ -73,9 +85,47 @@ export default function TioFinance() {
   );
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return enriched;
-    return enriched.filter((p) => p._display === filter);
-  }, [enriched, filter]);
+    const term = search.trim().toLowerCase();
+    return enriched.filter((p) => {
+      if (filter !== 'all' && p._display !== filter) return false;
+      if (!term) return true;
+      return String(p.childName || '').toLowerCase().includes(term);
+    });
+  }, [enriched, filter, search]);
+
+  const childById = useMemo(
+    () => new Map((children || []).map((c) => [c.id, c])),
+    [children]
+  );
+
+  /**
+   * Cobrança pelo WhatsApp, com a mensagem pronta.
+   *
+   * Informação sem ação é só ansiedade: ele via "3 atrasados" e tinha que
+   * sair do app, abrir o WhatsApp, achar o contato e escrever o texto. Era
+   * exatamente o atrito que o faz voltar pra planilha que ele já domina.
+   */
+  const onCharge = (payment) => {
+    const child = childById.get(payment.childId);
+    const phone = child?.parentPhone;
+    if (!phone) {
+      toast.error('Telefone do responsável não cadastrado na ficha.');
+      return;
+    }
+    const digits = String(phone).replace(/\D/g, '');
+    const e164 = digits.startsWith('55') ? digits : `55${digits}`;
+    const text = buildChargeMessage({
+      payment,
+      displayStatus: payment._display,
+      pixKey: profile?.pixKey,
+      driverName: profile?.companyName || profile?.name,
+    });
+    window.open(
+      `https://wa.me/${e164}?text=${encodeURIComponent(text)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
 
   const totals = useMemo(() => {
     const sumByStatus = (statuses) =>
@@ -212,6 +262,31 @@ export default function TioFinance() {
           </button>
         )}
 
+        {/* Busca por criança — responde "essa família está em dia?" */}
+        <div className="relative">
+          <Search
+            size={17}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Procurar criança"
+            className="w-full h-12 rounded-xl border-2 border-gray-200 bg-card pl-11 pr-10 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Limpar busca"
+              className="tap absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg text-textMuted flex items-center justify-center"
+            >
+              <X size={17} />
+            </button>
+          )}
+        </div>
+
         {/* Filtros */}
         <div className="flex gap-2 overflow-x-auto -mx-5 px-5 pb-1 -mb-1">
           {[
@@ -267,6 +342,7 @@ export default function TioFinance() {
                 payment={payment}
                 displayStatus={payment._display}
                 role="admin"
+                onCharge={() => onCharge(payment)}
                 onAttachReceipt={() => {
                   setAttachingTo(payment);
                   setAttachFile(null);

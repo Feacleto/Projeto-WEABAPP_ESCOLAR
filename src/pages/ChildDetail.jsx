@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
 import InviteShare from '../components/children/InviteShare';
+import ChildPaymentHistory from '../components/payments/ChildPaymentHistory';
 import Avatar from '../components/common/Avatar';
 import Skeleton from '../components/common/Skeleton';
 import Button from '../components/common/Button';
@@ -222,6 +223,14 @@ export default function ChildDetail() {
             />
           </Card>
         )}
+
+        {/* Histórico de mensalidades desta criança.
+          * A pergunta que o tio mais faz ao financeiro é "essa família está
+          * em dia?" — e ela nasce AQUI, na ficha, não na tela de meses. */}
+        <ChildPaymentHistory
+          childId={child.id}
+          role={isAdmin ? 'admin' : 'parent'}
+        />
 
         {/* Acesso ao contrato (Tio) */}
         {isAdmin && (
