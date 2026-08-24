@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
+import BonusNudge from '../../components/associado/BonusNudge';
 import {
   Bus,
   CircleAlert,
@@ -186,6 +187,12 @@ export default function TioDashboard() {
             onClick={() => navigate('/tio/finance')}
           />
         )}
+
+        {/* A condição de entrada: aparece só pra quem ainda não girou, e
+          * some pra sempre depois — é uma vez por associado. Vem ANTES do
+          * convite pra avaliar porque é o que ele ganha, não o que a gente
+          * pede. */}
+        <BonusNudge />
 
         {/* Convite pra avaliar — o depoimento do parceiro é a prova social
           * da home, então o pedido vive no painel dele, não escondido no

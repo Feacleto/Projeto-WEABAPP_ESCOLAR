@@ -9,6 +9,7 @@ import ConsultorButton from './ConsultorButton';
 import AssociadosCard from './AssociadosCard';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import { submitDriverWaitlist } from '../../services/waitlistService';
+import { salesWhatsAppLink } from '../../config/developer';
 import {
   isValidEmail,
   isValidPhone,
@@ -65,6 +66,7 @@ export default function WaitlistSheet({
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [falhou, setFalhou] = useState(false);
 
   // Formulário em passos: cada campo aparece quando o anterior recebe o dedo.
   // Seis campos de uma vez fazem desistir antes de começar; um por vez parece
@@ -111,8 +113,24 @@ export default function WaitlistSheet({
       setResult(
         await submitDriverWaitlist({ ...form, phone: unmaskPhone(form.phone) })
       );
+      setFalhou(false);
     } catch (err) {
-      toast.error(err.message);
+      // A FALHA AQUI NÃO PODE PERDER O MOTORISTA.
+      //
+      // Quem grava a fila é uma Cloud Function (o cliente não escreve em
+      // `waitlistDrivers` por regra), então qualquer coisa que derrube a
+      // função derruba o envio: função fora do ar, faturamento do projeto
+      // fechado, 3G caindo no meio. E a mensagem que o Firebase devolve
+      // nesses casos ("internal", "not-found") não diz nada pra quem dirige
+      // van — ele só vê que não funcionou e vai embora.
+      //
+      // Então o erro cru sai da tela e entra um caminho que ainda salva o
+      // lead: falar com o consultor pelo WhatsApp, com nome e cidade já
+      // escritos na mensagem. O pedido não se perde por causa de
+      // infraestrutura, e o motorista não fica com a impressão de que o app
+      // é quebrado.
+      console.error('submitDriverWaitlist:', err);
+      setFalhou(true);
     } finally {
       setSubmitting(false);
     }
@@ -366,13 +384,37 @@ export default function WaitlistSheet({
             className="w-full rounded-2xl border-2 border-gray-200 bg-card p-4 text-sm text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
 
+          {falhou && (
+            <div className="animate-step-in rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-bold text-text">
+                Não conseguimos registrar agora
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+                Pode ser a nossa fila fora do ar ou a sua internet. Seu pedido
+                não se perde: fale com o consultor que a gente registra do
+                outro lado.
+              </p>
+              <a
+                href={salesWhatsAppLink(
+                  `Olá! Quero minha vaga de associado no Alô Buzinou. Nome: ${form.name.trim() || '—'}. Cidade: ${form.city.trim() || '—'}. WhatsApp: ${form.phone || '—'}.`
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tap mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-white"
+              >
+                <WhatsAppIcon size={15} colored={false} />
+                Mandar meus dados pelo WhatsApp
+              </a>
+            </div>
+          )}
+
           <SheetCTA
             type="submit"
             loading={submitting}
             icon={Bus}
             className="mt-4"
           >
-            Quero minha vaga
+            {falhou ? 'Tentar de novo' : 'Quero minha vaga'}
           </SheetCTA>
         </div>
         )}
