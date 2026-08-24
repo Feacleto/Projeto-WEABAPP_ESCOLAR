@@ -104,10 +104,25 @@ service cloud.firestore {
     //
     // A migração é MANUAL e vem antes: o doc do dono passa a `role: 'owner'`
     // pelo console, porque o cliente não escreve `role` de propósito.
+    // `superAdmin` CONTINUA VALENDO, e não é dívida — é a única prova que a
+    // conta atual do dono tem.
+    //
+    // O papel `owner` é o destino certo, e conta nova nasce com ele. Mas a
+    // conta do dono hoje é `role: 'admin'` + `superAdmin: true`, e migrar
+    // exige console: a regra de update proíbe escrever `role` pelo cliente
+    // (foi assim que a auto-promoção do motorista foi fechada, e vale pra
+    // todo mundo). Exigir só `owner` trancaria o dono fora do próprio painel,
+    // sem caminho no app pra sair.
+    //
+    // E aceitar o campo é SEGURO, não é concessão: `superAdmin` está na lista
+    // de chaves que nenhum cliente escreve — sondado contra produção, HTTP
+    // 403. Se um documento tem esse campo, quem o pôs foi o console ou o
+    // Admin SDK. A objeção legítima ao fallback é de legibilidade ("quantos
+    // donos existem?" vira duas perguntas em vez de uma), não de segurança.
     function isOwner() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && userDoc().role == 'owner';
+        && (userDoc().role == 'owner' || userDoc().superAdmin == true);
     }
 
     // Tem conta de VERDADE no app (doc em users/). A landing chama

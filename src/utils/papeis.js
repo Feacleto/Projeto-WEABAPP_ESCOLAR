@@ -35,7 +35,18 @@
 
 /** É o dono da plataforma? */
 export function ehDono(profile) {
-  return profile?.role === 'owner';
+  // `superAdmin` continua valendo, e o motivo é o dono não ter outra prova.
+  //
+  // O papel `owner` é o destino, e conta nova nasce com ele. Mas a conta do
+  // dono hoje é `role: 'admin'` + `superAdmin: true`, e migrar exige console
+  // — a regra proíbe escrever `role` pelo cliente, que foi como a
+  // auto-promoção do motorista se fechou. Exigir só `owner` trancaria ele
+  // fora do próprio painel, e o conserto não existiria dentro do app.
+  //
+  // Aceitar não afrouxa nada: `superAdmin` está entre as chaves que nenhum
+  // cliente escreve, e a sondagem confirma isso contra produção (HTTP 403).
+  // Documento que tem esse campo recebeu do console ou do Admin SDK.
+  return profile?.role === 'owner' || profile?.superAdmin === true;
 }
 
 /** É motorista (opera uma perua)? */
