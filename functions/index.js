@@ -41,6 +41,9 @@ const {
 } = require('./lib/billing');
 const { makeGetInvitePreview } = require('./lib/invitePreview');
 const { makeFlagDuplicateReceipts } = require('./lib/receiptGuard');
+const {
+  makeBackfillTestimonialPrivacy,
+} = require('./lib/privacyBackfill');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -367,3 +370,13 @@ exports.getInvitePreview = makeGetInvitePreview(db);
 // resultado e um aviso pro tio, nao um bloqueio.
 
 exports.flagDuplicateReceipts = makeFlagDuplicateReceipts(db);
+
+// ===== Backfill de privacidade (ver functions/lib/privacyBackfill.js) =====
+//
+// O commit e005363 fechou a ESCRITA de nome completo e foto sem consentimento
+// no documento publico de depoimento. Isto recolhe o que ja estava gravado —
+// fechar a porta nao traz de volta o que ficou do lado de fora.
+//
+// Padrao e dry-run. Pra aplicar: { apply: true }.
+
+exports.backfillTestimonialPrivacy = makeBackfillTestimonialPrivacy(db);
