@@ -7,6 +7,7 @@ import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
+import { portaDeEntrada } from '../utils/deviceHint';
 import {
   resetPassword,
   loginWithGoogleExistingOnly,
@@ -114,8 +115,9 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col px-6 py-6">
+      {/* Volta pra porta deste visitante, não pra vitrine do motorista. */}
       <Link
-        to="/"
+        to={portaDeEntrada()}
         className="inline-flex items-center gap-1 text-sm text-textMuted mb-4 tap"
       >
         <ArrowLeft size={16} /> Voltar
@@ -124,8 +126,8 @@ export default function Login() {
       <div className="flex-1 flex flex-col justify-center">
         <div className="text-center mb-6">
           <Link
-            to="/"
-            aria-label="Conhecer o Alô Buzinou"
+            to={portaDeEntrada()}
+            aria-label="Voltar"
             className="tap inline-block"
           >
             <Logo variant="stacked" height={104} className="mx-auto" />

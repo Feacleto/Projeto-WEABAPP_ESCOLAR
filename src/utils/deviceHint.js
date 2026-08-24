@@ -75,3 +75,19 @@ export function aparelhoDeResponsavel() {
 export function destinoAposSair(role) {
   return role === 'parent' ? '/familia' : '/';
 }
+
+/**
+ * A porta de entrada DESTE visitante.
+ *
+ * Usada nos "Voltar" das telas compartilhadas (login, primeiro acesso). Antes
+ * todos apontavam pra `/`, que é a home do MOTORISTA — então o responsável que
+ * tocasse em Voltar caía na página que vende associação, falando de taxa e
+ * vaga. Voltar tem que devolver a pessoa pra onde ela estava, não pra vitrine
+ * de outro público.
+ *
+ * Visitante novo não tem migalha e vai pra `/` — que é o certo: quem chega sem
+ * histórico está conhecendo a plataforma, e a plataforma se apresenta ali.
+ */
+export function portaDeEntrada() {
+  return aparelhoDeResponsavel() ? '/familia' : '/';
+}

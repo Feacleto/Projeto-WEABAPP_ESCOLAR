@@ -20,6 +20,7 @@ import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import { authenticateAndRedeem, googleAndRedeem } from '../services/authService';
 import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
+import { portaDeEntrada, aparelhoDeResponsavel } from '../utils/deviceHint';
 import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
 
 /**
@@ -206,8 +207,11 @@ export default function FirstAccess() {
         </div>
 
         <div className="relative">
+          {/* Voltar devolve à porta DESTE visitante. Apontava pra "/", que é
+            * a home do MOTORISTA: o responsável tocava em Voltar e caía na
+            * página que vende associação, falando de taxa e vaga. */}
           <Link
-            to="/"
+            to={portaDeEntrada()}
             className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
           >
             <ArrowLeft size={16} /> Voltar
@@ -408,17 +412,26 @@ export default function FirstAccess() {
             <LogIn size={14} />
             Já tenho conta
           </button>
-          <span aria-hidden className="text-gray-300">
-            ·
-          </span>
-          <button
-            type="button"
-            onClick={() => navigate('/quero-fazer-parte')}
-            className="tap inline-flex items-center gap-1.5 py-2 text-primary hover:text-primaryDark"
-          >
-            <Bus size={14} />
-            Sou motorista
-          </button>
+          {/* "Sou motorista" existe pra quem errou a tela — e agora só aparece
+            * pra quem NÃO é responsável. Num aparelho que já foi de um
+            * responsável, este link levava ele do primeiro acesso direto pro
+            * cadastro de parceiro: a porta do outro público, oferecida dentro
+            * da tela dele. */}
+          {!aparelhoDeResponsavel() && (
+            <>
+              <span aria-hidden className="text-gray-300">
+                ·
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate('/quero-fazer-parte')}
+                className="tap inline-flex items-center gap-1.5 py-2 text-primary hover:text-primaryDark"
+              >
+                <Bus size={14} />
+                Sou motorista
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex items-center justify-center gap-3 pt-4 text-[11px] text-textMuted">

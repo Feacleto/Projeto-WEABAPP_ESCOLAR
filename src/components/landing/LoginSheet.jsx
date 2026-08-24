@@ -51,7 +51,30 @@ import { canUseGoogleSignIn, isInAppBrowser } from '../../utils/browserEnv';
  * antes da ponte: o OAuth do Google recusa a webview e a sessão criada lá
  * fica presa nela.
  */
-export default function LoginSheet({ open, onClose, onWantPartner }) {
+/**
+ * DE QUAL FRENTE ESTA FOLHA FOI ABERTA.
+ *
+ * `publico='familia'` quando ela abre em /familia. A folha é compartilhada
+ * pelas duas frentes, e sem isso ela falava com os dois públicos ao mesmo
+ * tempo dentro da porta do responsável: o subtítulo dizia "Motorista ou
+ * responsável", e "Criar cadastro" abria a pergunta "Quem é você?" com um
+ * cartão SOU MOTORISTA que levava pro cadastro de parceiro.
+ *
+ * Ou seja: o responsável entrava pela porta dele e saía no funil de
+ * aquisição de motorista. As frentes existem justamente pra isso não
+ * acontecer — separar as páginas e deixar a folha misturada anula a
+ * separação no primeiro toque.
+ *
+ * Na frente da família não existe escolha de papel: a conta do responsável
+ * NASCE DO CONVITE do motorista, então o único caminho honesto é o link.
+ */
+export default function LoginSheet({
+  open,
+  onClose,
+  onWantPartner,
+  publico,
+}) {
+  const naFamilia = publico === 'familia';
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -108,6 +131,18 @@ export default function LoginSheet({ open, onClose, onWantPartner }) {
       toast.success(`Bem-vindo, ${userProfile.name || 'Tio'}!`);
     } catch (err) {
       if (err?.code === 'app/no-profile') {
+        // Na frente da família, conta sem perfil vai pro primeiro acesso — não
+        // pra escolha de papel. Era o vazamento mais difícil de ver: o
+        // responsável tocava em "Entrar com Google", não tinha conta ainda, e
+        // a folha o levava à tela "Quem é você?", com um cartão SOU MOTORISTA
+        // que abre o cadastro de parceiro. Ele entrou pela porta dele e saiu
+        // no funil do outro público, sem ter escolhido nada.
+        if (naFamilia) {
+          fechar();
+          navigate('/first-access');
+          toast.error(err.message, { duration: 7000 });
+          return;
+        }
         setStep('novo');
         toast.error(err.message, { duration: 7000 });
       } else if (err?.code !== 'auth/popup-closed-by-user') {
@@ -164,20 +199,29 @@ export default function LoginSheet({ open, onClose, onWantPartner }) {
             detail="Recebi (ou vou receber) o convite do motorista"
             onClick={() => navigate('/first-access')}
           />
-          <RoleCard
-            tone="emerald"
-            icon={Bus}
-            title="Sou motorista escolar"
-            detail="Quero ser associado e usar o app na minha rota"
-            onClick={() => {
-              if (onWantPartner) {
-                setStep('login');
-                onWantPartner();
-              } else {
-                navigate('/quero-fazer-parte');
-              }
-            }}
-          />
+          {/* O cartão do motorista NÃO existe na frente da família.
+            *
+            * Isto é a segunda tranca da mesma porta: os caminhos que chegam
+            * aqui já desviam quando `naFamilia`, e ainda assim o cartão não é
+            * renderizado. É o padrão que a gente aprendeu à força esta semana
+            * — garantia num caminho protege aquele caminho; garantia no lugar
+            * onde a coisa existe protege os que ninguém mapeou ainda. */}
+          {!naFamilia && (
+            <RoleCard
+              tone="emerald"
+              icon={Bus}
+              title="Sou motorista escolar"
+              detail="Quero ser associado e usar o app na minha rota"
+              onClick={() => {
+                if (onWantPartner) {
+                  setStep('login');
+                  onWantPartner();
+                } else {
+                  navigate('/quero-fazer-parte');
+                }
+              }}
+            />
+          )}
 
           <SheetCard>
             <p className="text-sm font-bold text-text">
@@ -210,7 +254,11 @@ export default function LoginSheet({ open, onClose, onWantPartner }) {
       icon={LogIn}
       eyebrow="quem já tem conta"
       title="Entrar"
-      subtitle="Motorista ou responsável — o app reconhece você pelo login."
+      subtitle={
+        naFamilia
+          ? 'Entre com a conta que você criou pelo link do motorista.'
+          : 'Motorista ou responsável — o app reconhece você pelo login.'
+      }
     >
       {showBridge ? (
         <OpenInBrowser onContinueHere={() => setBridgeDismissed(true)} />
@@ -313,7 +361,18 @@ export default function LoginSheet({ open, onClose, onWantPartner }) {
             * de quem abre esta folha já é cadastrada. */}
           <button
             type="button"
-            onClick={() => setStep('novo')}
+            onClick={() => {
+              // Na frente da família não se pergunta o papel: a conta do
+              // responsável nasce do convite, então vai direto pro
+              // primeiro acesso. Perguntar "quem é você?" a quem já está
+              // na porta da família é oferecer a ele a porta do outro.
+              if (naFamilia) {
+                fechar();
+                navigate('/first-access');
+                return;
+              }
+              setStep('novo');
+            }}
             className="tap mt-6 flex w-full items-center gap-3 rounded-2xl border border-dashed border-gray-300 p-4 text-left hover:bg-card"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">

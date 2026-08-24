@@ -233,7 +233,13 @@ export default function Familia() {
         </p>
       </div>
 
-      <LoginSheet open={loginAberto} onClose={() => setLoginAberto(false)} />
+      {/* publico="familia" é o que impede a folha de oferecer o cadastro
+        * de motorista a quem entrou pela porta do responsável. */}
+      <LoginSheet
+        open={loginAberto}
+        onClose={() => setLoginAberto(false)}
+        publico="familia"
+      />
     </div>
   );
 }
