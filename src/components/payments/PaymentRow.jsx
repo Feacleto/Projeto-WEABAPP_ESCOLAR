@@ -9,6 +9,7 @@ import {
   CreditCard,
   Paperclip,
   Send,
+  TriangleAlert,
 } from 'lucide-react';
 import Card from '../common/Card';
 import {
@@ -99,6 +100,25 @@ export default function PaymentRow({
             Vence: {formatDate(payment.dueDate)}
             {payment.paidAt && ` · Pago: ${formatDate(payment.paidAt)}`}
           </p>
+          {/* Comprovante IDÊNTICO ao de outro mês.
+            *
+            * Aviso, não bloqueio, e só pro tio — é ele quem decide. Boa
+            * parte das vezes não é má-fé: a pessoa procura na galeria e
+            * pega o print errado. Uma heurística que acusa sozinha erra e
+            * estraga uma relação que precisa durar anos. */}
+          {role === 'admin' && payment.receiptDuplicateOf && (
+            <p className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 inline-flex items-start gap-1.5 mt-1">
+              <TriangleAlert size={12} className="shrink-0 mt-0.5" />
+              <span>
+                Comprovante igual ao de{' '}
+                {payment.receiptDuplicateOf.month
+                  ? formatMonthLabel(payment.receiptDuplicateOf.month)
+                  : 'outro mês'}
+                . Vale conferir antes de confirmar.
+              </span>
+            </p>
+          )}
+
           {/* Comprovante anexado pelo pai. Fica a um toque pro tio
             * conferir antes de confirmar — era isto que antes virava
             * print de tela no WhatsApp. */}

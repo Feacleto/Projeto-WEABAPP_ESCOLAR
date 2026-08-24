@@ -31,7 +31,11 @@ import {
   attachReceipt,
 } from '../../services/paymentsService';
 import { notifyPaymentConfirmed } from '../../services/notificationsService';
-import { uploadPaymentReceipt } from '../../services/photoService';
+import { uploadPaymentReceipt, fileHash } from '../../services/photoService';
+import {
+  logPaymentEvent,
+  PAYMENT_EVENTS,
+} from '../../services/paymentAuditService';
 import ReceiptPicker from '../../components/payments/ReceiptPicker';
 import MonthSwitcher from '../../components/payments/MonthSwitcher';
 import { shareReceipt } from '../../services/receiptImageService';
@@ -54,7 +58,7 @@ import { PIX_KEY_TYPES } from '../../services/userService';
  */
 export default function TioFinance() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
 
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
   const { payments, loading } = usePaymentsByMonth(monthKey);
@@ -175,8 +179,9 @@ export default function TioFinance() {
     if (!attachingTo || !attachFile) return;
     setActionLoading(true);
     try {
+      const hash = await fileHash(attachFile);
       const url = await uploadPaymentReceipt(attachingTo.id, attachFile);
-      await attachReceipt(attachingTo.id, url);
+      await attachReceipt(attachingTo.id, url, hash);
 
       // Quando é o TIO que anexa, a decisão já está tomada: ele viu o
       // comprovante e escolheu registrá-lo. Deixar o pagamento em
@@ -223,6 +228,13 @@ export default function TioFinance() {
         amount: payment.amount,
         childName: payment.childName,
       });
+      logPaymentEvent(payment.id, {
+        type: PAYMENT_EVENTS.CONFIRMED,
+        actorUid: user?.uid,
+        actorRole: 'admin',
+        note: `Recebido em ${method}`,
+      });
+
       toast.success(`Recebimento de ${payment.childName} confirmado.`);
 
       // Só pra dinheiro: em PIX o banco já emitiu comprovante e o pai

@@ -19,6 +19,7 @@ import EmptyState from '../../components/common/EmptyState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useChildren } from '../../hooks/useChildren';
 import { useAbsences } from '../../hooks/useAbsences';
+import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { getEffectiveStatus } from '../../services/childrenService';
 import {
   getActionForStatus,
@@ -58,6 +59,9 @@ export default function TioRouteNow() {
 
   const { children, loading: childrenLoading } = useChildren();
   const { byChildId: absenceByChild } = useAbsences(dateKey);
+
+  // Posição que o rastreamento já gravou — não pedimos GPS na hora.
+  const { location: liveLocation } = useLiveLocation();
 
   const [defaultPlan, setDefaultPlan] = useState(null);
   const [dailyRoute, setDailyRoute] = useState(null);
@@ -147,7 +151,22 @@ export default function TioRouteNow() {
   const onAdvanceOne = async (childId, nextStatus, name) => {
     setBusy(true);
     try {
-      await advanceChild(childId, nextStatus);
+      // Contexto pra registrar DE ONDE a entrega foi marcada. Se o
+      // rastreamento não está ativo, vai sem — melhor sem rastro que
+      // travar a ação do tio no meio da rua.
+      const child = byId.get(childId);
+      await advanceChild(childId, nextStatus, {
+        driverPosition:
+          liveLocation?.routeActive && liveLocation?.lat
+            ? { lat: liveLocation.lat, lng: liveLocation.lng }
+            : null,
+        home:
+          child?.lat != null ? { lat: child.lat, lng: child.lng } : null,
+        school:
+          child?.schoolLat != null
+            ? { lat: child.schoolLat, lng: child.schoolLng }
+            : null,
+      });
       toast.success(`${name}: pronto`);
     } catch (err) {
       console.error(err);

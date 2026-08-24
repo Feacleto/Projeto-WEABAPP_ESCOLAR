@@ -1,6 +1,7 @@
 import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { playSound } from './soundService';
+import { haversineDistance } from '../utils/haversine';
 
 /**
  * Máquina de status da criança na rota.
@@ -65,13 +66,69 @@ export function getActionForStatus(status, direction) {
  * Avança UMA criança pro próximo status.
  * Mantido separado do batch pra continuar tocando o som de feedback.
  */
-export async function advanceChild(childId, nextStatus) {
+/**
+ * Distância entre onde o tio estava e onde a criança deveria estar.
+ *
+ * POR QUE ISTO EXISTE
+ * "Entregue" é a informação mais séria do app: é o pai lendo que o filho
+ * chegou. Se ela pode ser marcada de qualquer lugar sem deixar rastro,
+ * ela vale menos do que parece — inclusive contra ERRO honesto, que é o
+ * caso comum: o tio toca no cartão errado da lista e marca a criança
+ * que ainda está na perua.
+ *
+ * Guardamos a distância no momento da marcação. Não bloqueia nada e não
+ * acusa ninguém: cria o rastro que permite conferir depois.
+ *
+ * OPORTUNISTA de propósito: usa a posição que o rastreamento JÁ gravou.
+ * Nunca pede GPS na hora — pedir permissão no meio da rota travaria a
+ * ação, e uma verificação que atrasa o trabalho é uma verificação que o
+ * tio vai querer desligar.
+ */
+function checkpointFrom(context, nextStatus) {
+  const pos = context?.driverPosition;
+  if (!pos?.lat || !pos?.lng) return null;
+
+  // Só faz sentido conferir onde há um destino esperado.
+  const target =
+    nextStatus === 'delivered'
+      ? context?.home
+      : nextStatus === 'atSchool'
+      ? context?.school
+      : null;
+
+  const checkpoint = {
+    lat: pos.lat,
+    lng: pos.lng,
+    at: new Date().toISOString(),
+  };
+
+  if (target?.lat && target?.lng) {
+    checkpoint.distanceKm = Number(
+      haversineDistance(target.lat, target.lng, pos.lat, pos.lng).toFixed(3)
+    );
+  }
+  return checkpoint;
+}
+
+/**
+ * Avança UMA criança pro próximo status.
+ *
+ * `context` é opcional: { driverPosition, home, school }. Quando vem,
+ * gravamos de onde a marcação foi feita — ver `checkpointFrom`.
+ */
+export async function advanceChild(childId, nextStatus, context = null) {
   if (!childId || !nextStatus) return;
-  const batch = writeBatch(db);
-  batch.update(doc(db, 'children', childId), {
+
+  const updates = {
     status: nextStatus,
     statusUpdatedAt: serverTimestamp(),
-  });
+  };
+
+  const checkpoint = checkpointFrom(context, nextStatus);
+  if (checkpoint) updates.lastStatusCheckpoint = checkpoint;
+
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'children', childId), updates);
   await batch.commit();
   playSound('status_change');
 }

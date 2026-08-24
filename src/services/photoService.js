@@ -141,3 +141,33 @@ export async function deletePaymentReceipt(paymentId) {
     if (err?.code !== 'storage/object-not-found') throw err;
   }
 }
+
+/**
+ * SHA-256 do arquivo, em hexadecimal.
+ *
+ * PARA QUE SERVE
+ * Detectar comprovante REUSADO — mandar o mesmo print de julho como se fosse
+ * o de agosto. É o abuso mais comum e mais fácil de acontecer sem má-fé
+ * (a pessoa procura na galeria e pega o arquivo errado).
+ *
+ * O que isto NÃO faz: verificar se o pagamento existiu. Nenhuma análise de
+ * imagem faz isso — só a conciliação com o extrato do banco faz. Aqui o
+ * objetivo é dar ao tio um AVISO ("este comprovante é idêntico ao de julho")
+ * e deixar a decisão com ele. Heurística que acusa sozinha erra e estraga
+ * relação.
+ *
+ * Usa Web Crypto, disponível em qualquer navegador em contexto seguro.
+ */
+export async function fileHash(file) {
+  if (!file || !crypto?.subtle) return null;
+  try {
+    const buffer = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buffer);
+    return [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  } catch (err) {
+    console.error('fileHash:', err);
+    return null;
+  }
+}

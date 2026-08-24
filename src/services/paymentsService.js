@@ -23,11 +23,19 @@ import { playSound } from './soundService';
  *
  * @param method 'pix' | 'cash' — como ele pagou (opcional, default 'pix')
  */
-export async function claimPayment(paymentId, method = 'pix', receiptURL = null) {
+export async function claimPayment(
+  paymentId,
+  method = 'pix',
+  receiptURL = null,
+  receiptHash = null
+) {
   await updateDoc(doc(db, 'payments', paymentId), {
     status: 'claimed',
     claimedAt: serverTimestamp(),
     paymentMethod: method,
+    // Hash do arquivo: uma Cloud Function compara com os outros
+    // pagamentos e avisa o tio se for o mesmo comprovante de outro mês.
+    receiptHash: receiptHash || null,
     // Comprovante anexado fecha o ciclo dentro do app: sem ele, "paguei"
     // virava conversa paralela no WhatsApp com print de tela.
     receiptURL: receiptURL || null,
@@ -50,10 +58,11 @@ export async function claimPayment(paymentId, method = 'pix', receiptURL = null)
  * Não muda o STATUS, só o anexo. Confirmar recebimento continua sendo uma
  * decisão separada e explícita do tio.
  */
-export async function attachReceipt(paymentId, receiptURL) {
+export async function attachReceipt(paymentId, receiptURL, receiptHash = null) {
   if (!paymentId) throw new Error('Sem paymentId.');
   await updateDoc(doc(db, 'payments', paymentId), {
     receiptURL: receiptURL || null,
+    receiptHash: receiptHash || null,
     receiptAttachedAt: serverTimestamp(),
   });
 }
@@ -149,10 +158,17 @@ export async function undoReceipt(paymentId, payment = null) {
     const { allowed, reason } = canUndoReceipt(payment);
     if (!allowed) throw new Error(reason || 'Reversão não permitida.');
   }
+  // claimedAt NÃO é zerado.
+  //
+  // A versão anterior apagava esse campo, e com ele a prova de que o pai
+  // um dia declarou o pagamento. Numa discussão — "eu avisei que paguei",
+  // "não avisou" — a evidência de um dos lados era destruída pela ação do
+  // outro. Se ele avisou, isso aconteceu; desfazer a confirmação não
+  // desfaz o aviso.
   await updateDoc(doc(db, 'payments', paymentId), {
     status: 'pending',
     paidAt: null,
-    claimedAt: null,
+    revertedAt: serverTimestamp(),
   });
 }
 

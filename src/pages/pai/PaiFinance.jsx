@@ -25,7 +25,11 @@ import {
   claimPayment,
   unclaimPayment,
 } from '../../services/paymentsService';
-import { uploadPaymentReceipt } from '../../services/photoService';
+import { uploadPaymentReceipt, fileHash } from '../../services/photoService';
+import {
+  logPaymentEvent,
+  PAYMENT_EVENTS,
+} from '../../services/paymentAuditService';
 import {
   notifyPaymentClaimed,
 } from '../../services/notificationsService';
@@ -126,8 +130,13 @@ export default function PaiFinance() {
       // Sobe o comprovante ANTES de marcar como pago: se o upload falhar,
       // o pagamento nao fica avisado sem o anexo que o tio espera.
       let receiptURL = null;
+      let receiptHash = null;
       if (receiptFile) {
         try {
+          // O hash sai do arquivo ORIGINAL, antes de qualquer
+          // redimensionamento — senão dois envios do mesmo print podiam
+          // gerar hashes diferentes e a duplicata passaria batido.
+          receiptHash = await fileHash(receiptFile);
           receiptURL = await uploadPaymentReceipt(payment.id, receiptFile);
         } catch (err) {
           console.error('Falha ao subir comprovante:', err);
@@ -135,7 +144,19 @@ export default function PaiFinance() {
         }
       }
 
-      await claimPayment(payment.id, method, receiptURL);
+      await claimPayment(payment.id, method, receiptURL, receiptHash);
+
+      // Trilha append-only: este registro não pode ser apagado por
+      // ninguém depois, nem pelo motorista. É o que dá ao pai uma prova
+      // de que ele avisou, na data em que avisou.
+      logPaymentEvent(payment.id, {
+        type: receiptURL
+          ? PAYMENT_EVENTS.RECEIPT_ATTACHED
+          : PAYMENT_EVENTS.CLAIMED,
+        actorUid: user?.uid,
+        actorRole: 'parent',
+        note: method === 'cash' ? 'Pagamento em dinheiro' : 'Pagamento via PIX',
+      });
 
       // Notifica o tio (fire-and-forget)
       if (admin?.uid) {
@@ -233,10 +254,18 @@ export default function PaiFinance() {
                 {nextToPay.childName ? ` · ${nextToPay.childName}` : ''}
               </p>
             </div>
+            {/* txid = id do pagamento, e não o mês.
+              *
+              * O BR Code aceita 25 caracteres alfanuméricos e o id do
+              * Firestore tem 20. Com ele no PIX, cada cobrança fica
+              * identificada de forma única no extrato do banco — o que torna
+              * a CONCILIAÇÃO automática possível depois, sem trocar mais
+              * nada. Com o mês, dois filhos da mesma família geravam o mesmo
+              * identificador e o extrato não distinguia um do outro. */}
             <PixBlock
               admin={admin}
               amount={nextToPay.amount}
-              txid={nextToPay.month}
+              txid={nextToPay.id}
             />
           </Card>
         ) : (

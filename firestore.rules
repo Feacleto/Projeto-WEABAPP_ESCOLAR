@@ -226,7 +226,14 @@ service cloud.firestore {
           || (resource.data.status == 'claimed' && request.resource.data.status == 'pending')
         )
         && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'claimedAt', 'paymentMethod', 'receiptURL'])
+            .hasOnly([
+              'status',
+              'claimedAt',
+              'paymentMethod',
+              'receiptURL',
+              // Hash do arquivo, pro servidor detectar comprovante reusado.
+              'receiptHash',
+            ])
         // O comprovante tem que ser arquivo do NOSSO Storage. Sem esta
         // checagem o pai gravava qualquer URL no campo, e o tio clicaria
         // nela achando que era o comprovante.
@@ -238,6 +245,37 @@ service cloud.firestore {
              )
         )
       );
+    }
+
+    // -----------------------------------------------------------------
+    // payments/{id}/events/{eventId} — trilha APPEND-ONLY do pagamento
+    //
+    // Só CREATE. Nem update nem delete, pra ninguém — nem pro admin.
+    // Essa é justamente a propriedade que faz a trilha valer como prova:
+    // antes, `undoReceipt` zerava o claimedAt e o registro de que o pai
+    // declarou o pagamento desaparecia. Sem histórico, discordância
+    // honesta não tem como ser resolvida, e quem cede é quem tem menos
+    // poder na relação.
+    //
+    // Leitura: admin e o próprio responsável daquele pagamento — os dois
+    // lados precisam poder consultar a mesma trilha.
+    // -----------------------------------------------------------------
+    match /payments/{paymentId}/events/{eventId} {
+      function paymentDoc() {
+        return get(/databases/$(database)/documents/payments/$(paymentId)).data;
+      }
+
+      allow read: if isSignedIn() && (
+        isAdmin() || paymentDoc().parentUid == request.auth.uid
+      );
+
+      allow create: if isSignedIn()
+        && (isAdmin() || paymentDoc().parentUid == request.auth.uid)
+        && request.resource.data.keys().hasAll(['type', 'at'])
+        && request.resource.data.actorUid == request.auth.uid;
+
+      // Definitivo por design.
+      allow update, delete: if false;
     }
 
     // -----------------------------------------------------------------

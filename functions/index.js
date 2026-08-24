@@ -40,6 +40,7 @@ const {
   makeRunBillingNow,
 } = require('./lib/billing');
 const { makeGetInvitePreview } = require('./lib/invitePreview');
+const { makeFlagDuplicateReceipts } = require('./lib/receiptGuard');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -358,3 +359,11 @@ exports.runBillingNow = makeRunBillingNow(db);
 // WhatsApp busca a URL pra montar o cartao de previa.
 
 exports.getInvitePreview = makeGetInvitePreview(db);
+
+// ===== Comprovante reusado (ver functions/lib/receiptGuard.js) =====
+//
+// Nao verifica se o pagamento existiu — so a conciliacao com o extrato do
+// banco faz isso. Detecta DUPLICATA: o mesmo arquivo em dois meses. E o
+// resultado e um aviso pro tio, nao um bloqueio.
+
+exports.flagDuplicateReceipts = makeFlagDuplicateReceipts(db);
