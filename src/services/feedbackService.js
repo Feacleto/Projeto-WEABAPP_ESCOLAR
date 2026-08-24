@@ -34,6 +34,17 @@ const COLLECTION = 'feedbacks';
  */
 export const PUBLIC_COMMENT_MAX = 200;
 
+/**
+ * Primeiro nome apenas.
+ *
+ * O documento de feedback é público quando o autor autoriza depoimento, e
+ * a tela nunca mostrou mais que o primeiro nome. Guardar o resto era
+ * expor sobrenome de pai e de motorista na internet sem necessidade.
+ */
+function firstNameOf(full) {
+  const first = String(full || '').trim().split(/\s+/)[0];
+  return first || null;
+}
 export async function submitFeedback({
   uid,
   role,
@@ -59,8 +70,20 @@ export async function submitFeedback({
     // Permissões pra exibição pública na landing
     allowTestimonial: !!allowTestimonial,
     allowPhoto: !!allowPhoto,
-    authorName: authorName || null,
-    authorPhotoURL: authorPhotoURL || null,
+
+    // SÓ O PRIMEIRO NOME, e a foto SÓ se ele autorizou.
+    //
+    // Este documento é legível por QUALQUER UM, sem login, quando
+    // allowTestimonial é true — é assim que a landing mostra depoimento
+    // pra visitante. Guardar o nome completo aqui publicava o nome
+    // inteiro de um pai ou do motorista na internet, mesmo a tela
+    // exibindo apenas o primeiro. O mesmo pra foto: guardar a URL sem
+    // checar allowPhoto expunha o rosto de quem não autorizou.
+    //
+    // Não perdemos nada: listPublicTestimonials sempre derivou só o
+    // primeiro nome. O resto era dado guardado sem uso e com risco.
+    authorFirstName: firstNameOf(authorName),
+    authorPhotoURL: allowPhoto ? authorPhotoURL || null : null,
     createdAt: serverTimestamp(),
   });
 }
@@ -94,7 +117,13 @@ export async function listPublicTestimonials(max = 12, { role = null } = {}) {
       if (role && d.role !== role) continue;
       list.push({
         id: doc.id,
-        firstName: (d.authorName || '').split(' ')[0] || 'Anônimo',
+        // authorName (nome completo) é o campo LEGADO: documentos
+        // gravados antes desta correção ainda o têm. Preferimos o campo
+        // novo e caímos no antigo cortando no primeiro nome.
+        firstName:
+          d.authorFirstName ||
+          (d.authorName || '').split(' ')[0] ||
+          'Anônimo',
         photoURL: d.allowPhoto ? d.authorPhotoURL || null : null,
         rating,
         comment,

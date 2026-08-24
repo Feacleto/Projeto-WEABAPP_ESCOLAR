@@ -263,8 +263,16 @@ export async function deleteAdminAccount(adminUid) {
   await deleteEntireCollection('altPickups');
   await deleteEntireCollection('pendingCalls');
   await deleteEntireCollection('agendaEntries');
-  await deleteEntireCollection('waitlistDrivers');
-  await deleteEntireCollection('waitlistParents');
+  // waitlistDrivers e waitlistParents NÃO são apagadas.
+  //
+  // São dado da PLATAFORMA, não do motorista: é a fila de motoristas e
+  // de pais interessados, construída pela página pública. Se o Tio Nino
+  // tocar em "encerrar operação", ele apagaria o funil inteiro de
+  // captação — que não é dele.
+  //
+  // A distinção que vale a regra: esta função apaga o que o motorista
+  // GEROU (crianças, pagamentos, rotas, recados). O que a plataforma
+  // captou fica.
   // Despesas são dado de negócio do tio: saem junto quando ele encerra.
   await deleteEntireCollection('expenses');
 

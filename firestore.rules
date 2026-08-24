@@ -520,9 +520,17 @@ service cloud.firestore {
       // List: SOMENTE quando há filtro allowTestimonial == true (pra
       //   alimentar a landing) ou pra admin. O dono não lista — usa get.
       // ATENÇÃO: um depoimento com allowTestimonial=true é legível por
-      // qualquer um, incluindo o campo `uid` do autor. Isso é aceitável
-      // porque o uid não identifica a pessoa fora do Firebase — mas
-      // NUNCA adicione nome, email ou telefone a este documento.
+      // QUALQUER UM, sem login. Portanto todo campo deste documento é
+      // público na prática — rules não filtram campo na leitura.
+      //
+      // O que pode morar aqui: uid (não identifica fora do Firebase),
+      // PRIMEIRO nome, nota, comentário, e a foto SÓ com allowPhoto.
+      // Nunca nome completo, email, telefone ou endereço.
+      //
+      // Este invariante já foi violado uma vez: o serviço gravava
+      // `authorName` completo enquanto este comentário dizia pra não
+      // gravar. Comentário em rule não impede código de escrever — se
+      // um campo novo aparecer aqui, confira o que o serviço manda.
       allow get: if (
         resource.data.allowTestimonial == true
       ) || (
