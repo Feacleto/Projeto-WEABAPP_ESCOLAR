@@ -3,6 +3,10 @@ import { ArrowRight, Star, X } from 'lucide-react';
 import ReviewSheet from './ReviewSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { getLastFeedbackAt } from '../../services/feedbackService';
+import {
+  getPlatformConfig,
+  janelaAberta,
+} from '../../services/platformConfigService';
 
 /**
  * Convite pra avaliar, no painel de quem usa.
@@ -15,10 +19,21 @@ import { getLastFeedbackAt } from '../../services/feedbackService';
  * também diz a verdade: "só a gente vê".
  *
  * QUANDO APARECE
- * Só pra quem nunca avaliou, ou quem avaliou há mais de 120 dias (opinião
- * envelhece; app muda). Some pro resto da sessão quando fechado, e some por
- * 60 dias quando dispensado — dá pra ignorar sem ser perseguido, e o pedido
- * volta quando o app já é outro.
+ * Primeiro: SÓ COM A JANELA ABERTA. O dono liga o período de avaliação no
+ * painel dele (platformConfig/app) e é isso que dá permissão ao cartão de
+ * existir. Fora da janela ele não aparece pra ninguém, por melhor que seja o
+ * momento — porque pedir avaliação o ano inteiro é como não pedir: vira
+ * paisagem, e o motorista aprende a não ler o topo do painel.
+ *
+ * Depois, e só depois, as regras de sempre: pra quem nunca avaliou, ou quem
+ * avaliou há mais de 120 dias (opinião envelhece; app muda). Some pro resto
+ * da sessão quando fechado, e some por 60 dias quando dispensado — dá pra
+ * ignorar sem ser perseguido, e o pedido volta quando o app já é outro.
+ *
+ * A ORDEM DAS DUAS PERGUNTAS IMPORTA
+ * A janela é consultada ANTES do histórico de feedback. Fechada, nem lemos
+ * o feedback: é uma leitura a menos por abertura de painel, em toda conta,
+ * todo dia.
  *
  * ESPERA O SINAL ANTES DE APARECER
  * Nada é renderizado enquanto a checagem não volta: um cartão que aparece e
@@ -53,11 +68,15 @@ export default function ReviewNudge() {
     if (dispensadoRecentemente(uid)) return;
 
     let alive = true;
-    getLastFeedbackAt(uid).then((ultima) => {
-      if (!alive) return;
-      const vencido =
-        !ultima || Date.now() - ultima.getTime() > DIAS_ATE_PEDIR_DE_NOVO * DIA;
-      if (vencido) setMostrar(true);
+    getPlatformConfig().then((config) => {
+      if (!alive || !janelaAberta(config)) return;
+      return getLastFeedbackAt(uid).then((ultima) => {
+        if (!alive) return;
+        const vencido =
+          !ultima ||
+          Date.now() - ultima.getTime() > DIAS_ATE_PEDIR_DE_NOVO * DIA;
+        if (vencido) setMostrar(true);
+      });
     });
     return () => {
       alive = false;
