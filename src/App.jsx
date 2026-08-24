@@ -1,40 +1,66 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
+/**
+ * O QUE VEM NO PRIMEIRO DOWNLOAD, E O QUE VEM QUANDO PRECISA.
+ *
+ * O app tinha 37 telas num arquivo só, de 1,47 MB. Quem abria o link do
+ * WhatsApp pra ver uma mensalidade baixava o mapa, o gerador de QR, as
+ * telas de impressão e o painel do dono junto — tudo antes da primeira
+ * pintura, em dado móvel, num aparelho de rua.
+ *
+ * ADIANTADO fica só o caminho de quem chega de fora: a home, o convite, o
+ * login e o primeiro acesso. É o que precisa pintar rápido, porque é onde o
+ * responsável decide se o app presta.
+ *
+ * SOB DEMANDA vai o resto — os dois painéis, o mapa, os relatórios, as
+ * telas legais e o painel do dono. Quem entra num painel já está logado e
+ * já esperou uma navegação; um instante ali não custa a primeira impressão.
+ *
+ * O <Suspense> fica no topo das rotas com o MESMO loader de tela cheia que
+ * o PrivateRoute já usa — a espera parece com a espera que o app já tinha,
+ * e não com uma tela nova aparecendo do nada.
+ */
 import Home from './pages/Home';
 import Invite from './pages/Invite';
-import DriverSignup from './pages/DriverSignup';
-import Welcome from './pages/Welcome';
-import AdminPanel from './pages/admin/AdminPanel';
 import Login from './pages/Login';
 import FirstAccess from './pages/FirstAccess';
-import FirstAdmin from './pages/FirstAdmin';
+import Welcome from './pages/Welcome';
 import AuthAction from './pages/AuthAction';
-import TioLayout from './pages/tio/TioLayout';
-import TioDashboard from './pages/tio/TioDashboard';
-import TioChildren from './pages/tio/TioChildren';
-import TioRoute from './pages/tio/TioRoute';
-import TioRouteNow from './pages/tio/TioRouteNow';
-import TioRoutePlan from './pages/tio/TioRoutePlan';
-import TioFinance from './pages/tio/TioFinance';
-import TioFinanceReport from './pages/tio/TioFinanceReport';
-import TioChildStatement from './pages/tio/TioChildStatement';
-import TioExpenses from './pages/tio/TioExpenses';
-import TioContract from './pages/tio/TioContract';
-import TioPixConfig from './pages/tio/TioPixConfig';
-import TioAgenda from './pages/tio/TioAgenda';
-import TioLeads from './pages/tio/TioLeads';
-import ChildForm from './components/children/ChildForm';
-import PaiLayout from './pages/pai/PaiLayout';
-import PaiDashboard from './pages/pai/PaiDashboard';
-import PaiFinance from './pages/pai/PaiFinance';
-import PaiFinanceReport from './pages/pai/PaiFinanceReport';
-import PaiMap from './pages/pai/PaiMap';
-import AddChild from './pages/pai/AddChild';
-import PaiContract from './pages/pai/PaiContract';
-import Notifications from './pages/Notifications';
-import Profile from './pages/Profile';
-import ChildDetail from './pages/ChildDetail';
-import Terms from './pages/legal/Terms';
-import Privacy from './pages/legal/Privacy';
+
+const DriverSignup = lazy(() => import('./pages/DriverSignup'));
+const FirstAdmin = lazy(() => import('./pages/FirstAdmin'));
+const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
+
+const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
+const TioDashboard = lazy(() => import('./pages/tio/TioDashboard'));
+const TioChildren = lazy(() => import('./pages/tio/TioChildren'));
+const TioRoute = lazy(() => import('./pages/tio/TioRoute'));
+const TioRouteNow = lazy(() => import('./pages/tio/TioRouteNow'));
+const TioRoutePlan = lazy(() => import('./pages/tio/TioRoutePlan'));
+const TioFinance = lazy(() => import('./pages/tio/TioFinance'));
+const TioFinanceReport = lazy(() => import('./pages/tio/TioFinanceReport'));
+const TioChildStatement = lazy(() => import('./pages/tio/TioChildStatement'));
+const TioExpenses = lazy(() => import('./pages/tio/TioExpenses'));
+const TioContract = lazy(() => import('./pages/tio/TioContract'));
+const TioPixConfig = lazy(() => import('./pages/tio/TioPixConfig'));
+const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
+const TioLeads = lazy(() => import('./pages/tio/TioLeads'));
+const ChildForm = lazy(() => import('./components/children/ChildForm'));
+
+const PaiLayout = lazy(() => import('./pages/pai/PaiLayout'));
+const PaiDashboard = lazy(() => import('./pages/pai/PaiDashboard'));
+const PaiFinance = lazy(() => import('./pages/pai/PaiFinance'));
+const PaiFinanceReport = lazy(() => import('./pages/pai/PaiFinanceReport'));
+const PaiMap = lazy(() => import('./pages/pai/PaiMap'));
+const AddChild = lazy(() => import('./pages/pai/AddChild'));
+const PaiContract = lazy(() => import('./pages/pai/PaiContract'));
+
+const Notifications = lazy(() => import('./pages/Notifications'));
+const Profile = lazy(() => import('./pages/Profile'));
+const ChildDetail = lazy(() => import('./pages/ChildDetail'));
+const Terms = lazy(() => import('./pages/legal/Terms'));
+const Privacy = lazy(() => import('./pages/legal/Privacy'));
 import TermsAcceptanceGate from './components/legal/TermsAcceptanceGate';
 import ContractAcceptanceGate from './components/contract/ContractAcceptanceGate';
 import CookieBanner from './components/legal/CookieBanner';
@@ -130,20 +156,25 @@ export default function App() {
 
   return (
     <>
-      <Routes>
+      <Suspense fallback={<FullScreenLoader />}>
+        <Routes>
         {/* Rotas públicas */}
         <Route path="/" element={<Home />} />
         {/* O convite é o caminho principal do responsável: o código vem na
           * URL, então ele não digita nada além de email e senha. */}
         <Route path="/convite/:codigo" element={<Invite />} />
         <Route path="/quero-fazer-parte" element={<DriverSignup />} />
-        {/* A /conheca (Landing.jsx, o folheto verde antigo) saiu do ar: a
-          * home nova cobre tudo que ela fazia — o que o app faz, as telas,
-          * como começa, os parceiros, os depoimentos, a lista de espera e o
-          * contato de quem desenvolveu. Link velho, QR impresso e favorito
+        {/* A /conheca (o folheto verde antigo) saiu do ar: a home nova
+          * cobre tudo que ela fazia. Link velho, QR impresso e favorito
           * caem na home em vez de numa versão do produto que não existe
-          * mais. O arquivo continua no repositório até a gente decidir se
-          * aproveita algum pedaço dele. */}
+          * mais.
+          *
+          * O Landing.jsx foi APAGADO, e com ele imagemvanescolar.png —
+          * 7,9 MB, 2392x1792. A imagem era usada só por aquela página e
+          * respondia por 55% do precache do PWA: todo mundo que instalava
+          * o app baixava 7,9 MB pra servir uma tela que ninguém alcançava.
+          * O limite de tamanho no precache tinha sido subido de 2 pra 10
+          * MiB só pra ela caber; voltou ao padrão. */}
         <Route path="/conheca" element={<Navigate to="/" replace />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
@@ -219,7 +250,8 @@ export default function App() {
         {/* A escolha "sou pai / sou motorista" saiu do caminho: o papel vem
           * do doc users. /welcome segue existindo pra links antigos. */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </Suspense>
 
       {/* Banner global de cookies — aparece só na primeira visita */}
       <CookieBanner />
