@@ -23,6 +23,31 @@
 
     <!-- Preview do link. O convite do motorista circula por WhatsApp: sem
          estas tags o pai recebe um retângulo cinza no lugar da marca. -->
+    <!--
+      og:url É OBRIGATÓRIA, e a ausência dela era o motivo do link do WhatsApp
+      aparecer pelado: só o domínio repetido, sem título, sem texto e sem
+      imagem.
+
+      O protocolo Open Graph exige quatro tags — og:title, og:type, og:image e
+      og:url. As outras três estavam aqui; sem a quarta, vários robôs (o do
+      WhatsApp entre eles) desistem de montar o cartão e caem no fallback de
+      mostrar a URL crua. As tags que existiam estavam corretas, e a imagem
+      responde 200 com 1200x630 de verdade — não era nada disso.
+
+      Isso importa mais aqui do que na maioria dos sites: o link do WhatsApp é
+      a porta de entrada do responsável, e é a primeira coisa que ele vê do
+      produto. Link pelado, mandado por um motorista pedindo que ele clique,
+      tem cara de golpe — e a pessoa não clica.
+
+      O ENDEREÇO É FIXO, E ISSO É LIMITAÇÃO CONHECIDA
+      Este é um SPA: existe um index.html só, e o robô não roda JavaScript.
+      Então TODA rota compartilha estas tags — /familia, /convite/CODIGO e a
+      home mostram o mesmo cartão. Preview por rota exigiria renderizar no
+      servidor (rewrite do Hosting pra uma function), o que depende do plano
+      Blaze. Enquanto não existir, o cartão genérico é melhor que cartão
+      nenhum.
+    -->
+    <meta property="og:url" content="https://projeto-tio-nino-digital.web.app/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Alô Buzinou" />
     <meta property="og:locale" content="pt_BR" />
