@@ -3,6 +3,7 @@ import {
   GraduationCap,
   ChevronRight,
   ChevronDown,
+  CheckCircle2,
   AlertTriangle,
   MapPinOff,
   MapPin,
@@ -35,8 +36,18 @@ import { ABSENCE_LABELS } from '../../services/absencesService';
  *   - child
  *   - absence:  declaração de hoje (ou null) — { type, ... }
  *   - onClick:  abre a ficha completa
+ *   - action:   { label, nextStatus } | null — próximo passo da rota
+ *   - onAdvance: (nextStatus) => void
+ *   - advancing: bool
  */
-export default function ChildCard({ child, absence = null, onClick }) {
+export default function ChildCard({
+  child,
+  absence = null,
+  onClick,
+  action = null,
+  onAdvance = null,
+  advancing = false,
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const status = getEffectiveStatus(child);
@@ -118,6 +129,29 @@ export default function ChildCard({ child, absence = null, onClick }) {
         </div>
         <ChevronRight size={18} className="text-textMuted shrink-0" />
       </button>
+
+      {/* AVANÇAR O STATUS DAQUI, num toque.
+        *
+        * O status da criança só podia ser mudado na tela de rota. Mas a
+        * lista é onde o tio já está quando encontra a criança na porta —
+        * obrigá-lo a trocar de tela pra registrar o embarque é o atrito
+        * que faz o status nunca ser atualizado, e é o status que o pai
+        * está esperando ver mudar.
+        *
+        * Não aparece pra quem faltou: não há o que avançar. */}
+      {action && onAdvance && !absence && (
+        <div className="px-4 pb-3">
+          <button
+            type="button"
+            disabled={advancing}
+            onClick={() => onAdvance(action.nextStatus)}
+            className="tap w-full h-12 rounded-xl bg-primary text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            <CheckCircle2 size={17} />
+            {action.label}
+          </button>
+        </div>
+      )}
 
       {/* "Ver mais" abre AQUI, sem sair da lista: o tio consulta um endereço
         * e continua de onde parou, em vez de navegar e voltar. */}

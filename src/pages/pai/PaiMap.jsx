@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import LiveMap from '../../components/map/LiveMap';
 import Skeleton from '../../components/common/Skeleton';
 import RouteTracker from '../../components/dashboard/RouteTracker';
+import { describeRoutePresence, PRESENCE } from '../../utils/routePresence';
 import { playSound } from '../../services/soundService';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
@@ -66,13 +67,24 @@ export default function PaiMap() {
   const hasArrived = realDistanceKm != null && realDistanceKm <= ARRIVED_KM;
 
   // O marcador da perua só aparece quando entra na zona próxima
-  const visibleVan = isNearby ? realVan : null;
+  // MESMA lógica honesta do dashboard. Esta tela tinha regra própria e
+  // ficou pra trás quando o estado de três casos foi criado: aqui a perua
+  // continuava aparecendo no mapa mesmo com posição velha, exatamente o
+  // caso do motorista que fecha a aba no meio do caminho.
+  const presence = describeRoutePresence({
+    liveLocation,
+    distanceKm: realDistanceKm,
+  });
+  const positionIsStale = presence.kind === PRESENCE.STALE;
+
+  // Só desenha a perua quando ela está perto E a posição é fresca.
+  const visibleVan = isNearby && !positionIsStale ? realVan : null;
 
   // Alertas — dispara cada um uma vez por rota (transição de zona)
   const alertedNearRef = useRef(false);
   const alertedArrivedRef = useRef(false);
   useEffect(() => {
-    if (!routeActive) {
+    if (!routeActive || positionIsStale) {
       alertedNearRef.current = false;
       alertedArrivedRef.current = false;
       return;
@@ -106,7 +118,7 @@ export default function PaiMap() {
         }
       }
     }
-  }, [routeActive, isNearby, hasArrived]);
+  }, [routeActive, isNearby, hasArrived, positionIsStale]);
 
   const whatsappUrl = admin?.phone
     ? `https://wa.me/55${String(admin.phone).replace(/\D/g, '')}`
@@ -174,6 +186,7 @@ export default function PaiMap() {
           isNearby={isNearby}
           realDistanceKm={realDistanceKm}
           updatedAt={liveLocation?.updatedAt}
+          presence={presence}
         />
 
         {/* Tracker do trajeto da criança — mesmo do dashboard */}
@@ -221,7 +234,28 @@ function StatusPanel({
   isNearby,
   realDistanceKm,
   updatedAt,
+  presence,
 }) {
+  // Rota marcada como ativa mas sem posição nova: o motorista pode estar
+  // sem sinal, ou fechou a aba sem encerrar. Antes esta tela mostrava a
+  // perua parada no mapa como se fosse a posição atual — e é o caso em que
+  // parecer errado custa mais caro que parecer incompleto.
+  if (presence?.kind === PRESENCE.STALE) {
+    return (
+      <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+          <ParkingCircle size={22} />
+        </div>
+        <div className="flex-1">
+          <p className="font-bold text-text leading-tight">{presence.title}</p>
+          <p className="text-xs text-amber-800 mt-0.5 leading-snug">
+            {presence.detail}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!routeActive) {
     return (
       <div className="rounded-2xl bg-gray-50 p-4 flex items-start gap-3">

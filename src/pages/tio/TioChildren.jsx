@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Users, Plus, Search, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import Button from '../../components/common/Button';
@@ -9,7 +10,12 @@ import ChildCard from '../../components/children/ChildCard';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { useChildren } from '../../hooks/useChildren';
 import { useAbsences } from '../../hooks/useAbsences';
-import { getDateKey } from '../../services/routePlanService';
+import { getDateKey, getCurrentPeriod } from '../../services/routePlanService';
+import {
+  getActionForStatus,
+  advanceChild,
+} from '../../services/routeStatusService';
+import { getEffectiveStatus } from '../../services/childrenService';
 import { PERIOD_LABELS } from '../../utils/formatters';
 
 const FILTERS = [
@@ -28,6 +34,26 @@ export default function TioChildren() {
   // quem ia faltar — a informação mais perecível do dia ficava só na tela
   // de rota, que ele abre no meio do trânsito.
   const { byChildId: absenceByChild } = useAbsences(getDateKey());
+
+  // Qual passo cabe agora depende da DIREÇÃO do turno, e a lista não tem
+  // esse contexto. Deduzimos do relógio, igual à tela "Rota agora": manhã
+  // leva pra escola, tarde e noite trazem de volta. É o que acontece na
+  // prática, e o tio corrige na tela de rota se precisar.
+  const direction = getCurrentPeriod() === 'morning' ? 'pickup' : 'dropoff';
+  const [advancingId, setAdvancingId] = useState(null);
+
+  const onAdvance = async (child, nextStatus) => {
+    setAdvancingId(child.id);
+    try {
+      await advanceChild(child.id, nextStatus);
+      toast.success(`${child.name.split(' ')[0]}: pronto`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Tente de novo.');
+    } finally {
+      setAdvancingId(null);
+    }
+  };
   const initialFilter = searchParams.get('period') || 'all';
   const [filter, setFilter] = useState(initialFilter);
   const [search, setSearch] = useState('');
@@ -154,6 +180,12 @@ export default function TioChildren() {
                 key={child.id}
                 child={child}
                 absence={absenceByChild?.[child.id] || null}
+                action={getActionForStatus(
+                  getEffectiveStatus(child),
+                  direction
+                )}
+                advancing={advancingId === child.id}
+                onAdvance={(next) => onAdvance(child, next)}
                 onClick={() => navigate(`/tio/children/${child.id}`)}
               />
             ))}
