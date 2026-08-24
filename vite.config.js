@@ -1,11 +1,51 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { loadEnv } from 'vite';
+
+/**
+ * UM BUNDLE SEM A CONFIG DO FIREBASE NÃO PODE SER PUBLICADO.
+ *
+ * `src/firebase/config.js` chama initializeApp no carregamento do módulo. Com
+ * apiKey undefined isso LANÇA, nada renderiza, e o usuário vê uma tela branca
+ * — sem mensagem, sem caminho de volta.
+ *
+ * E o pior não é a tela branca: é que o service worker do PWA GUARDA esse
+ * build. Depois disso, o navegador continua servindo a versão quebrada mesmo
+ * depois de um deploy bom, e a pessoa não tem como saber que precisa limpar
+ * o cache. Foi exatamente o que aconteceu — um build sem chave foi publicado,
+ * cacheado, e o site voltou branco num navegador enquanto o servidor já tinha
+ * a versão certa.
+ *
+ * Então a hora de descobrir isso é no build, não em produção. Falta de
+ * variável agora quebra o build com o nome do que falta.
+ */
+const ENV_OBRIGATORIAS = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_APP_ID',
+];
+
+function exigirConfigDoFirebase(mode) {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const faltando = ENV_OBRIGATORIAS.filter((k) => !env[k] || !env[k].trim());
+  if (faltando.length === 0) return;
+  throw new Error(
+    'Build abortado: faltam variaveis do Firebase no .env -> ' +
+      faltando.join(', ') +
+      '. Um bundle sem elas mostra tela branca e fica preso no cache do PWA.' +
+      ' Copie .env.example para .env e preencha.'
+  );
+}
 
 // PWA configurada com auto-update.
 // Service worker faz cache apenas do shell; dados do Firestore sempre são
 // buscados online (importante porque o app depende de tempo real).
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  exigirConfigDoFirebase(mode);
+
+  return {
   plugins: [
     react(),
     VitePWA({
@@ -100,8 +140,9 @@ export default defineConfig({
       },
     }),
   ],
-  server: {
-    host: true,
-    port: 5173,
-  },
+    server: {
+      host: true,
+      port: 5173,
+    },
+  };
 });
