@@ -8,6 +8,8 @@ import GoogleIcon from '../components/common/GoogleIcon';
 import { useAuth } from '../hooks/useAuth';
 import { resetPassword, loginWithGoogle, getUserDoc, logout } from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
+import OpenInBrowser from '../components/auth/OpenInBrowser';
+import { canUseGoogleSignIn, isInAppBrowser } from '../utils/browserEnv';
 
 export default function Login() {
   const { login, profile, loading: authLoading, refreshProfile } = useAuth();
@@ -21,6 +23,15 @@ export default function Login() {
   const [resetting, setResetting] = useState(false);
   // Assumimos que admin existe até confirmar — evita "flicker" do link de bootstrap
   const [hasAdmin, setHasAdmin] = useState(true);
+
+  // Mesmo tratamento da folha de convite: dentro do navegador embutido do
+  // WhatsApp/Instagram, o Google recusa o OAuth e a sessão criada aqui fica
+  // presa no armazenamento da webview. Então a ponte pro navegador de
+  // verdade vem antes, e o Google nem aparece.
+  const inApp = isInAppBrowser();
+  const googleWorks = canUseGoogleSignIn();
+  const [bridgeDismissed, setBridgeDismissed] = useState(false);
+  const showBridge = inApp && !bridgeDismissed;
 
   useEffect(() => {
     adminExists()
@@ -128,27 +139,42 @@ export default function Login() {
           </p>
         </div>
 
+        {showBridge && (
+          <div className="mb-5">
+            <OpenInBrowser onContinueHere={() => setBridgeDismissed(true)} />
+          </div>
+        )}
+
         {/* Google em destaque — opção principal pra reduzir fricção
           * (não precisa digitar email/senha). Email/senha vem depois. */}
-        <Button
-          loading={googleSubmitting}
-          onClick={onGoogleLogin}
-          className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 !h-14 !text-base shadow-md"
+        {!showBridge && googleWorks && (
+          <>
+            <Button
+              loading={googleSubmitting}
+              onClick={onGoogleLogin}
+              className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 !h-14 !text-base shadow-md"
+            >
+              {!googleSubmitting && <GoogleIcon size={22} />}
+              Entrar com Google
+            </Button>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-bg px-3 text-textMuted">
+                  ou com email e senha
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+
+        <form
+          onSubmit={onSubmit}
+          className={`space-y-4 ${showBridge ? 'hidden' : ''}`}
         >
-          {!googleSubmitting && <GoogleIcon size={22} />}
-          Entrar com Google
-        </Button>
-
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200"></div>
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-bg px-3 text-textMuted">ou com email e senha</span>
-          </div>
-        </div>
-
-        <form onSubmit={onSubmit} className="space-y-4">
           <Input
             type="email"
             inputMode="email"

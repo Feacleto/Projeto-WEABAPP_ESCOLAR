@@ -68,3 +68,74 @@ export function isStandalone() {
     window.navigator.standalone === true
   );
 }
+
+// ============================================================================
+// Sair da webview pro navegador de verdade
+// ============================================================================
+
+/**
+ * Tenta abrir a URL atual no navegador real do sistema.
+ *
+ * POR QUE ANTES DO LOGIN, E NÃO DEPOIS
+ * O armazenamento da webview do WhatsApp é separado do Chrome/Safari. Se o
+ * pai logar DENTRO da webview, aquela sessão fica presa ali: ele abre o
+ * Chrome depois e está deslogado, sem entender por quê. Então a hora de
+ * mandar pro navegador é antes de ele criar a conta — não depois.
+ *
+ * O QUE DÁ E O QUE NÃO DÁ
+ *   Android: dá, de forma confiável. O esquema `intent://` abre o Chrome
+ *     direto, e `browser_fallback_url` cobre quem não tem Chrome instalado.
+ *   iOS: NÃO existe forma confiável. A Apple não tem equivalente do intent.
+ *     `googlechrome://` funciona SE o Chrome estiver instalado; pro Safari
+ *     não há esquema nenhum. Sobra instruir o menu "..." do app.
+ *
+ * Retorna 'launched' | 'maybe' | 'unsupported' — o chamador decide se mostra
+ * instrução manual. Nunca deixa o usuário num beco: quem recebe 'maybe' ou
+ * 'unsupported' precisa oferecer o passo a passo.
+ */
+export function openInExternalBrowser(url = window.location.href) {
+  if (typeof window === 'undefined') return 'unsupported';
+
+  const full = String(url);
+  const withoutScheme = full.replace(/^https?:\/\//, '');
+
+  if (!isIOS()) {
+    // Android. O fallback garante que quem não tem Chrome não fique na mão.
+    const intent =
+      `intent://${withoutScheme}#Intent;scheme=https;` +
+      `package=com.android.chrome;` +
+      `S.browser_fallback_url=${encodeURIComponent(full)};end`;
+    try {
+      window.location.href = intent;
+      return 'launched';
+    } catch {
+      return 'unsupported';
+    }
+  }
+
+  // iOS: só o Chrome tem esquema próprio. Se não estiver instalado, nada
+  // acontece — e é por isso que devolvemos 'maybe' em vez de 'launched'.
+  try {
+    window.location.href = `googlechrome://${withoutScheme}`;
+    return 'maybe';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+/** Nome do app de navegador pra usar no texto do botão. */
+export function externalBrowserLabel() {
+  return isIOS() ? 'Safari' : 'Chrome';
+}
+
+/** Nome do app que está segurando a webview, pra instrução fazer sentido. */
+export function inAppBrowserName() {
+  if (typeof navigator === 'undefined') return null;
+  const ua = navigator.userAgent || '';
+  if (/\bWhatsApp\b/i.test(ua)) return 'WhatsApp';
+  if (/Instagram/i.test(ua)) return 'Instagram';
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return 'Facebook';
+  if (/\bLine\//i.test(ua)) return 'Line';
+  if (/MicroMessenger/i.test(ua)) return 'WeChat';
+  return null;
+}

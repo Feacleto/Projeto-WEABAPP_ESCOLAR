@@ -10,7 +10,8 @@ import {
   googleAndRedeem,
   resetPassword,
 } from '../../services/authService';
-import { canUseGoogleSignIn } from '../../utils/browserEnv';
+import OpenInBrowser from './OpenInBrowser';
+import { canUseGoogleSignIn, isInAppBrowser } from '../../utils/browserEnv';
 
 /**
  * Folha de autenticação que aparece na PRIMEIRA AÇÃO do responsável.
@@ -45,11 +46,21 @@ export default function AuthSheet({
   reason,
   onSuccess,
 }) {
-  // Dentro do navegador do WhatsApp o Google recusa o OAuth (devolve
-  // disallowed_useragent). Nesse caso email/senha já começa aberto e é o
-  // caminho principal — oferecer Google ali entregaria uma página de erro
-  // do Google no primeiro contato do pai com o app.
+  // Estamos dentro do navegador embutido do WhatsApp/Instagram?
+  //
+  // Se sim, a PRIMEIRA coisa oferecida é sair pro navegador de verdade —
+  // antes do login, não depois. Duas razões, nesta ordem de gravidade:
+  //
+  //   1. O armazenamento da webview é separado do Chrome/Safari. Logar
+  //      aqui cria uma sessão presa: ele abre o navegador depois e está
+  //      deslogado, sem entender por quê.
+  //   2. O Google recusa OAuth em webview embutida (disallowed_useragent),
+  //      então "Continuar com Google" entregaria uma página de erro do
+  //      Google no primeiro contato do pai com o app.
+  const inApp = isInAppBrowser();
   const googleWorks = canUseGoogleSignIn();
+  const [bridgeDismissed, setBridgeDismissed] = useState(false);
+  const showBridge = inApp && !bridgeDismissed;
   const [showEmail, setShowEmail] = useState(!googleWorks);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -167,8 +178,13 @@ export default function AuthSheet({
           </p>
         </div>
 
+        {/* Webview embutida: sair pro navegador vem antes de tudo. */}
+        {showBridge && (
+          <OpenInBrowser onContinueHere={() => setBridgeDismissed(true)} />
+        )}
+
         {/* Caminho principal: nada pra digitar — quando o Google funciona */}
-        {googleWorks && (
+        {!showBridge && googleWorks && (
           <div className="space-y-2">
             <Button
               loading={googleBusy}
@@ -184,7 +200,7 @@ export default function AuthSheet({
           </div>
         )}
 
-        {googleWorks && !showEmail ? (
+        {showBridge ? null : googleWorks && !showEmail ? (
           <button
             type="button"
             onClick={() => setShowEmail(true)}
