@@ -54,7 +54,12 @@ function makeSendPushOnNotification(db) {
         },
         webpush: {
           fcmOptions: { link: url },
-          notification: { icon: '/icon.png', badge: '/icon.png' },
+          // badge é tingido pelo alfa pelo Android — tem que ser a silhueta
+          // monocromática, não o ícone colorido.
+          notification: {
+            icon: '/brand/icon-192.png',
+            badge: '/brand/notification-badge-96.png',
+          },
         },
       });
 

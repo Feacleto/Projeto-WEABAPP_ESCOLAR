@@ -127,3 +127,29 @@ export async function setLeadContacted(id, contacted, adminUid) {
     contactedBy: contacted ? adminUid || null : null,
   });
 }
+
+/**
+ * Move um pedido da lista de parceiros pelo funil.
+ *
+ * `status` ∈ 'pending' | 'contacted' | 'approved' | 'rejected'.
+ *
+ * IMPORTANTE — isto marca a DECISÃO, não cria a conta. Aprovar aqui é dizer
+ * "esse motorista entra"; provisionar (criar o usuário, o tenant e o link de
+ * primeiro acesso) é operação privilegiada e tem que acontecer numa Cloud
+ * Function com Admin SDK, nunca no cliente. Enquanto essa function não
+ * existir, `approved` é um recado pra você mesmo: já falei, já decidi, falta
+ * liberar. Ver o brief de arquitetura.
+ */
+export async function setLeadStatus(id, status, adminUid) {
+  if (!id) throw new Error('Sem id do lead.');
+  const permitidos = ['pending', 'contacted', 'approved', 'rejected'];
+  if (!permitidos.includes(status)) throw new Error('Status inválido.');
+  await updateDoc(doc(db, 'waitlistDrivers', id), {
+    status,
+    // Mantém o booleano antigo em sincronia: a tela de leads do tio ainda
+    // lê `contacted`, e dois campos discordando é bug garantido depois.
+    contacted: status !== 'pending',
+    statusBy: adminUid || null,
+    statusAt: serverTimestamp(),
+  });
+}

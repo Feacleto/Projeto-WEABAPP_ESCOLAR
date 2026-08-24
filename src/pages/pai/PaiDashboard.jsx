@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import ReviewNudge from '../../components/feedback/ReviewNudge';
 import {
   MapPin,
   UserX,
@@ -277,6 +278,11 @@ export default function PaiDashboard() {
         {absenceHistory.length > 0 && (
           <AbsenceCounts history={absenceHistory} />
         )}
+
+        {/* Convite pra avaliar — a resposta do responsável não vai pra home,
+          * vira métrica: é o único jeito de saber se o app serve a ponta que
+          * não paga pela ferramenta. */}
+        <ReviewNudge />
 
         {/* Mais opções */}
         <div className="bg-card rounded-3xl shadow-sm overflow-hidden">

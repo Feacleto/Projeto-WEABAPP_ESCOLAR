@@ -2,7 +2,11 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/icon.png" />
+    <!-- SVG primeiro: o favicon.svg troca de cor sozinho em aba escura.
+         O .ico fica como reserva pra navegador antigo (e é tile esmeralda,
+         porque em 16 px o desenho vazado desaparece). -->
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+    <link rel="alternate icon" href="/brand/favicon.ico" sizes="16x16 32x32 48x48" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
@@ -10,12 +14,31 @@
     <meta name="theme-color" content="#1F5F3F" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Tio Nino" />
+    <meta name="apple-mobile-web-app-title" content="Alô Buzinou" />
     <meta
       name="description"
-      content="Gestão e rastreamento de transporte escolar em tempo real"
+      content="Onde a perua está agora, o que o motorista avisou e a mensalidade em dia — num lugar só."
     />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+
+    <!-- Preview do link. O convite do motorista circula por WhatsApp: sem
+         estas tags o pai recebe um retângulo cinza no lugar da marca. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Alô Buzinou" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Alô Buzinou — onde a perua está, agora" />
+    <meta
+      property="og:description"
+      content="Rota em tempo real, avisos do motorista e mensalidade em dia. Sem grupo de WhatsApp e sem planilha."
+    />
+    <meta
+      property="og:image"
+      content="https://projeto-tio-nino-digital.web.app/brand/og-image.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Alô Buzinou — transporte escolar em tempo real" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link
       rel="preconnect"
       href="https://fonts.googleapis.com"
@@ -29,7 +52,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>Tio Nino Digital</title>
+    <title>Alô Buzinou</title>
   </head>
   <body>
     <div id="root"></div>

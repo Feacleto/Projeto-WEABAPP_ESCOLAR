@@ -211,6 +211,53 @@ export async function getPaymentsSince(fromMonthKey) {
 
 
 /**
+ * A DÍVIDA QUE SE ARRASTA — pagamentos abertos de meses ANTERIORES ao pedido.
+ *
+ * POR QUE ISSO PRECISOU EXISTIR
+ * A tela do financeiro é por competência: agosto mostra as mensalidades DE
+ * agosto. Isso deixava um buraco perigoso — a mensalidade de julho que ninguém
+ * pagou ficava só em julho, e o motorista que olha o mês corrente (todo mundo)
+ * não via a dívida antiga. Ela sumia de vista justamente porque envelheceu, e
+ * quanto mais velha, mais difícil de receber.
+ *
+ * O QUE CONTA COMO ARRASTANDO
+ * Qualquer cobrança de mês anterior que não está `paid`: 'pending' e também
+ * 'claimed' (o pai disse que pagou e o motorista ainda não deu baixa — o
+ * dinheiro pode até ter entrado, mas a conta continua aberta no sistema, e é
+ * ele que precisa fechar). Vencimento não entra na conta aqui: cobrança de
+ * mês passado ainda aberta está atrasada por definição, mesmo que o
+ * `dueDate` tenha sido salvo torto.
+ *
+ * POR QUE FILTRAR O MÊS EM JS, E NÃO NA CONSULTA
+ * `where('status','in',[...])` + `where('month','<',key)` mistura `in` com
+ * desigualdade em campos diferentes: pede índice composto e uma migração de
+ * firestore.indexes.json pra cada ambiente. Cobrança aberta é conjunto
+ * pequeno por natureza (o que está pago sai da conta sozinho), então trazer
+ * as abertas e cortar o mês na memória custa menos que manter um índice.
+ */
+export function watchArrears(beforeMonthKey, onUpdate, onError) {
+  const q = query(
+    collection(db, 'payments'),
+    where('status', 'in', ['pending', 'claimed'])
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((p) => (p.month || '') < beforeMonthKey);
+      // Mais velho primeiro: é a ordem de quem precisa ser cobrado antes.
+      list.sort((a, b) => (a.month || '').localeCompare(b.month || ''));
+      onUpdate(list);
+    },
+    (err) => {
+      console.error('watchArrears error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
  * Subscribe aos pagamentos de um mês específico (visão do Tio).
  * Ordena por nome da criança (client-side, evita índice composto).
  */

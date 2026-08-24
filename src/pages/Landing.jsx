@@ -29,22 +29,25 @@ import {
   submitParentWaitlist,
 } from '../services/waitlistService';
 import { isValidEmail, isValidPhone, maskPhone, unmaskPhone } from '../utils/masks';
+import {
+  DEV_CNPJ,
+  DEV_EMAIL,
+  DEV_INSTAGRAM_URL,
+  DEV_PHONE_DISPLAY,
+  devMailLink,
+  devWhatsAppLink,
+} from '../config/developer';
 
-// Contatos oficiais da Desenvolva Algo — empresa que desenvolveu o app.
-// Centralizado pra facilitar manutenção (CNPJ, telefone, redes sociais).
-const DEV_PHONE_RAW = '5511969170709';
-const DEV_PHONE_DISPLAY = '(11) 96917-0709';
-const DEV_EMAIL = 'desenvolvaalgo@gmail.com';
-const DEV_INSTAGRAM_URL =
-  'https://www.instagram.com/desenvolvaalgo?igsh=MWR2YnE3cmZieTlraA%3D%3D&utm_source=qr';
-const DEV_WHATSAPP_URL = `https://wa.me/${DEV_PHONE_RAW}?text=${encodeURIComponent(
-  'Olá! Vi o Alô Buzinou e gostaria de saber mais sobre um app pra minha perua.'
-)}`;
-const DEV_MAIL_URL = `mailto:${DEV_EMAIL}?subject=${encodeURIComponent(
-  'Quero um app pra minha perua'
-)}&body=${encodeURIComponent(
+// Os contatos e o CNPJ da Desenvolva Algo moraram aqui até a home também
+// precisar deles. Agora vêm de src/config/developer.js — um lugar só pra
+// dado legal, porque CNPJ certo numa tela e errado na outra ninguém percebe.
+const DEV_WHATSAPP_URL = devWhatsAppLink(
+  'Olá! Vi o Alô Buzinou e gostaria de saber mais sobre um app pro meu transporte escolar.'
+);
+const DEV_MAIL_URL = devMailLink(
+  'Quero um app pro meu transporte escolar',
   'Olá! Vi o Alô Buzinou e gostaria de saber mais.'
-)}`;
+);
 
 /**
  * Landing pública. Apresenta o projeto de forma lúdica e direciona pra:
@@ -456,7 +459,7 @@ function DeveloperSection() {
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 size={14} className="shrink-0" />
-              <span>CNPJ 65.000.217/0001-47</span>
+              <span>CNPJ {DEV_CNPJ}</span>
             </div>
           </div>
         </div>

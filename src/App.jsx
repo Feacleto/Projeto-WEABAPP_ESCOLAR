@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Landing from './pages/Landing';
 import Home from './pages/Home';
 import Invite from './pages/Invite';
 import DriverSignup from './pages/DriverSignup';
 import Welcome from './pages/Welcome';
+import AdminPanel from './pages/admin/AdminPanel';
 import Login from './pages/Login';
 import FirstAccess from './pages/FirstAccess';
 import FirstAdmin from './pages/FirstAdmin';
@@ -16,6 +16,7 @@ import TioRouteNow from './pages/tio/TioRouteNow';
 import TioRoutePlan from './pages/tio/TioRoutePlan';
 import TioFinance from './pages/tio/TioFinance';
 import TioFinanceReport from './pages/tio/TioFinanceReport';
+import TioChildStatement from './pages/tio/TioChildStatement';
 import TioExpenses from './pages/tio/TioExpenses';
 import TioContract from './pages/tio/TioContract';
 import TioPixConfig from './pages/tio/TioPixConfig';
@@ -84,6 +85,30 @@ function PrivateRoute({ children, requireRole }) {
 }
 
 /**
+ * Painel do dono — só pra quem tem `superAdmin: true` no doc de usuário.
+ *
+ * ATENÇÃO, ISTO É GATE DE PRODUTO, NÃO DE SEGURANÇA. Todo usuário com role
+ * 'admin' já pode ler users, children, payments e feedbacks pelas rules —
+ * esconder a rota evita mostrar o negócio inteiro pra um parceiro, e nada
+ * além disso. Pra virar segurança de verdade: custom claim `superAdmin` +
+ * rules dedicadas por coleção (está no brief de arquitetura).
+ */
+function SuperAdminRoute({ children }) {
+  const { user, profile, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <FullScreenLoader />;
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+  if (!profile) return <FullScreenLoader />;
+  if (!profile.superAdmin) {
+    return <Navigate to={profile.role === 'admin' ? '/tio' : '/pai'} replace />;
+  }
+  return children;
+}
+
+/**
  * Sub-gate específico do Pai: bloqueia até aceitar o contrato.
  * Carrega o child do profile, verifica `hasAcceptedContract`.
  */
@@ -112,7 +137,14 @@ export default function App() {
           * URL, então ele não digita nada além de email e senha. */}
         <Route path="/convite/:codigo" element={<Invite />} />
         <Route path="/quero-fazer-parte" element={<DriverSignup />} />
-        <Route path="/conheca" element={<Landing />} />
+        {/* A /conheca (Landing.jsx, o folheto verde antigo) saiu do ar: a
+          * home nova cobre tudo que ela fazia — o que o app faz, as telas,
+          * como começa, os parceiros, os depoimentos, a lista de espera e o
+          * contato de quem desenvolveu. Link velho, QR impresso e favorito
+          * caem na home em vez de numa versão do produto que não existe
+          * mais. O arquivo continua no repositório até a gente decidir se
+          * aproveita algum pedaço dele. */}
+        <Route path="/conheca" element={<Navigate to="/" replace />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/first-access" element={<FirstAccess />} />
@@ -120,6 +152,18 @@ export default function App() {
         <Route path="/auth-action" element={<AuthAction />} />
         <Route path="/termos" element={<Terms />} />
         <Route path="/privacidade" element={<Privacy />} />
+
+      {/* Painel do dono do produto — fora do /tio de propósito: são dois
+        * papéis diferentes na mesma pessoa hoje, e vão ser duas pessoas
+        * quando houver o segundo parceiro. */}
+      <Route
+        path="/admin"
+        element={
+          <SuperAdminRoute>
+            <AdminPanel />
+          </SuperAdminRoute>
+        }
+      />
 
       {/* Painel do Tio (admin) — rotas aninhadas com layout compartilhado */}
       <Route
@@ -135,6 +179,10 @@ export default function App() {
         <Route path="children/new" element={<ChildForm />} />
         <Route path="children/:id" element={<ChildDetail />} />
         <Route path="children/:id/contract" element={<TioContract />} />
+        <Route
+          path="children/:id/extrato"
+          element={<TioChildStatement />}
+        />
         <Route path="route" element={<TioRoute />} />
         <Route path="route/now" element={<TioRouteNow />} />
         <Route path="route/plan" element={<TioRoutePlan />} />

@@ -5,6 +5,8 @@ import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import WhatsAppIcon from '../components/common/WhatsAppIcon';
+import { ArtRoad } from '../components/landing/BlockArt';
+import ComunidadeCard from '../components/landing/ComunidadeCard';
 import { submitDriverWaitlist } from '../services/waitlistService';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../utils/masks';
 
@@ -74,186 +76,228 @@ export default function DriverSignup() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col px-6 py-6">
-      <Link
-        to="/"
-        className="inline-flex items-center gap-1 text-sm text-textMuted mb-4 tap self-start p-1 -ml-1"
-      >
-        <ArrowLeft size={16} /> Voltar
-      </Link>
-
-      <div className="space-y-1 mb-5">
-        <h1 className="text-2xl font-bold text-text">Vagas por convite</h1>
-        <p className="text-sm text-textMuted">
-          Entre na lista e a gente chama quando abrir.
-        </p>
-      </div>
-
-      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5 space-y-1">
-        <p className="text-sm font-bold text-text">
-          Hoje rodamos com um motorista parceiro.
-        </p>
-        <p className="text-xs text-emerald-900/75 leading-relaxed">
-          Abrimos vaga aos poucos porque acompanhamos cada parceiro de perto
-          no começo — dá pra ajustar o app junto com quem usa.
-        </p>
-      </div>
-
-      <form onSubmit={onSubmit} className="space-y-4">
-        <Input
-          label="Seu nome"
-          placeholder="Nome completo"
-          icon={User}
-          value={form.name}
-          onChange={set('name')}
-          autoComplete="name"
-          error={errors.name}
-          required
-        />
-        <Input
-          label="WhatsApp"
-          placeholder="(11) 90000-0000"
-          inputMode="tel"
-          value={form.phone}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))
-          }
-          autoComplete="tel"
-          error={errors.phone}
-          hint="É por aqui que falamos com você."
-          required
-        />
-        <Input
-          type="email"
-          inputMode="email"
-          label="Email (opcional)"
-          placeholder="seu@email.com"
-          icon={Mail}
-          value={form.email}
-          onChange={set('email')}
-          autoComplete="email"
-          error={errors.email}
-        />
-        <Input
-          label="Cidade onde você roda"
-          placeholder="Ex: Guarulhos, SP"
-          icon={MapPin}
-          value={form.city}
-          onChange={set('city')}
-          error={errors.city}
-          required
-        />
-
-        <div>
-          <p className="block text-sm font-semibold text-text mb-2">
-            Quantas peruas
-          </p>
-          <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 rounded-2xl">
-            {FLEET_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setForm((p) => ({ ...p, fleet: opt.value }))}
-                className={`tap py-3 text-sm font-semibold rounded-xl transition-colors ${
-                  form.fleet === opt.value
-                    ? 'bg-card text-text shadow-sm'
-                    : 'text-textMuted'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="msg"
-            className="block text-sm font-semibold text-text mb-2"
-          >
-            Quer contar algo? (opcional)
-          </label>
-          <textarea
-            id="msg"
-            rows={3}
-            value={form.message}
-            onChange={set('message')}
-            placeholder="Há quanto tempo roda, quantas crianças atende..."
-            className="w-full rounded-2xl border-2 border-gray-200 bg-card text-text p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
+    <div className="min-h-screen flex flex-col bg-bg">
+      {/* Tampa escura, corpo claro — a mesma regra da folha modal e das
+        * outras portas: marca em cima, produto embaixo. Assim o motorista
+        * que vem do cartão "sou motorista escolar" não sente que trocou de
+        * aplicativo no meio do caminho. */}
+      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute inset-0 opacity-80 animate-glow-drift"
+            style={{
+              background:
+                'radial-gradient(110% 80% at 10% 0%, rgba(31,95,63,.6) 0%, rgba(11,18,16,0) 62%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-60 animate-glow-drift-slow"
+            style={{
+              background:
+                'radial-gradient(90% 70% at 100% 10%, rgba(82,196,26,.2) 0%, rgba(11,18,16,0) 58%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.06] animate-grid-drift"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
+              backgroundSize: '44px 44px',
+            }}
           />
         </div>
 
-        <Button type="submit" loading={submitting} icon={Bus}>
-          Entrar na lista
-        </Button>
-        <p className="text-xs text-textMuted text-center">
-          Sem cobrança e sem compromisso.
-        </p>
-      </form>
+        <div className="relative">
+          <Link
+            to="/"
+            className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+          >
+            <ArrowLeft size={16} /> Voltar
+          </Link>
 
-      <div className="mt-auto pt-6 text-[11px] text-textMuted flex items-center justify-center gap-3">
-        <Link to="/termos" className="hover:underline">
-          Termos de Uso
-        </Link>
-        <span aria-hidden>·</span>
-        <Link to="/privacidade" className="hover:underline">
-          Política de Privacidade
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Confirmação com posição na fila.
- *
- * A posição torna a escassez concreta em vez de insinuada — e o "não
- * prometemos prazo" é deliberado: é mais honesto e mais barato que um prazo
- * que a gente não controla.
- */
-function Confirmation({ result, onHome }) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-5">
-      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-primary text-white flex items-center justify-center shadow-lg shadow-emerald-500/25">
-        <Check size={38} strokeWidth={3} />
-      </div>
-
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-text">
-          {result.alreadyOnList ? 'Você já está na lista' : 'Recebemos seu pedido'}
-        </h1>
-        {result.alreadyOnList && (
-          <p className="text-sm text-textMuted">
-            Achamos seu email na fila — não criamos pedido duplicado.
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
+            vaga limitada por estrutura
           </p>
-        )}
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+            Quero ser associado
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/65">
+            Você manda seus dados, a gente chama e configura o app com você.
+            Entrar na fila não custa nada e não compromete você.
+          </p>
+
+          <div className="mt-5">
+            <ArtRoad />
+          </div>
+        </div>
+      </header>
+
+      <div
+        aria-hidden
+        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary"
+      />
+
+      <div className="flex flex-1 flex-col px-6 py-6">
+        {/* Mesmo cartão da folha da home: um lugar só pra contagem, senão
+          * uma tela diz "1" e a outra diz "um" no dia em que virar 2. */}
+        <ComunidadeCard className="mb-5" />
+
+        <form onSubmit={onSubmit} className="space-y-4">
+          <Input
+            label="Seu nome"
+            placeholder="Nome completo"
+            icon={User}
+            value={form.name}
+            onChange={set('name')}
+            autoComplete="name"
+            error={errors.name}
+            required
+          />
+          <Input
+            label="WhatsApp"
+            placeholder="(11) 90000-0000"
+            inputMode="tel"
+            value={form.phone}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))
+            }
+            autoComplete="tel"
+            error={errors.phone}
+            hint="É por aqui que falamos com você."
+            required
+          />
+          <Input
+            type="email"
+            inputMode="email"
+            label="Email (opcional)"
+            placeholder="seu@email.com"
+            icon={Mail}
+            value={form.email}
+            onChange={set('email')}
+            autoComplete="email"
+            error={errors.email}
+          />
+          <Input
+            label="Cidade onde você roda"
+            placeholder="Ex: Guarulhos, SP"
+            icon={MapPin}
+            value={form.city}
+            onChange={set('city')}
+            error={errors.city}
+            required
+          />
+
+          <div>
+            <p className="block text-sm font-semibold text-text mb-2">
+              Quantas vans
+            </p>
+            <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 rounded-2xl">
+              {FLEET_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, fleet: opt.value }))}
+                  className={`tap py-3 text-sm font-semibold rounded-xl transition-colors ${
+                    form.fleet === opt.value
+                      ? 'bg-card text-text shadow-sm'
+                      : 'text-textMuted'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="msg"
+              className="block text-sm font-semibold text-text mb-2"
+            >
+              Quer contar algo? (opcional)
+            </label>
+            <textarea
+              id="msg"
+              rows={3}
+              value={form.message}
+              onChange={set('message')}
+              placeholder="Há quanto tempo roda, quantas crianças atende..."
+              className="w-full rounded-2xl border-2 border-gray-200 bg-card text-text p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
+            />
+          </div>
+
+          <Button type="submit" loading={submitting} icon={Bus}>
+            Quero minha vaga
+          </Button>
+          <p className="text-xs text-textMuted text-center">
+            Sem cobrança e sem compromisso.
+          </p>
+        </form>
+
+        <div className="mt-auto pt-6 text-[11px] text-textMuted flex items-center justify-center gap-3">
+          <Link to="/termos" className="hover:underline">
+            Termos de Uso
+          </Link>
+          <span aria-hidden>·</span>
+          <Link to="/privacidade" className="hover:underline">
+            Política de Privacidade
+          </Link>
+        </div>
+        </div>
       </div>
+    );
+  }
 
-      <div className="bg-card border border-gray-200 rounded-2xl px-8 py-5 shadow-sm">
-        <p className="text-xs text-textMuted uppercase tracking-widest font-semibold">
-          sua posição na fila
-        </p>
-        <p className="text-5xl font-extrabold text-primary mt-1">
-          {result.position}º
-        </p>
-      </div>
+  /**
+   * Confirmação com posição na fila.
+   *
+   * A posição torna a escassez concreta em vez de insinuada — e o "não
+   * prometemos prazo" é deliberado: é mais honesto e mais barato que um prazo
+   * que a gente não controla.
+   */
+  function Confirmation({ result, onHome }) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-5">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-primary text-white flex items-center justify-center shadow-lg shadow-emerald-500/25">
+          <Check size={38} strokeWidth={3} />
+        </div>
 
-      <p className="text-sm text-textMuted max-w-xs leading-relaxed">
-        Falamos com você pelo WhatsApp quando abrir vaga.{' '}
-        <span className="text-text font-semibold">
-          Não prometemos prazo
-        </span>{' '}
-        — quando for, a gente chama.
-      </p>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-text">
+            {result.alreadyOnList ? 'Você já está na lista' : 'Recebemos seu pedido'}
+          </h1>
+          {result.alreadyOnList && (
+            <p className="text-sm text-textMuted">
+              Achamos seu email na fila — não criamos pedido duplicado.
+            </p>
+          )}
+        </div>
 
-      <div className="w-full max-w-xs space-y-2">
-        <Button variant="secondary" onClick={onHome}>
-          Voltar pro início
-        </Button>
-        <p className="text-[11px] text-textMuted inline-flex items-center gap-1 justify-center w-full">
-          <WhatsAppIcon size={13} />
-          Deixe o WhatsApp aberto pra nossa mensagem
+        <div className="bg-card border border-gray-200 rounded-2xl px-8 py-5 shadow-sm">
+          <p className="text-xs text-textMuted uppercase tracking-widest font-semibold">
+            sua posição na fila
+          </p>
+          <p className="text-5xl font-extrabold text-primary mt-1">
+            {result.position}º
+          </p>
+        </div>
+
+        <p className="text-sm text-textMuted max-w-xs leading-relaxed">
+          Falamos com você pelo WhatsApp quando abrir vaga.{' '}
+          <span className="text-text font-semibold">
+            Não prometemos prazo
+          </span>{' '}
+          — quando for, a gente chama.
         </p>
+
+        <div className="w-full max-w-xs space-y-2">
+          <Button variant="secondary" onClick={onHome}>
+            Voltar pro início
+          </Button>
+          <p className="text-[11px] text-textMuted inline-flex items-center gap-1 justify-center w-full">
+            <WhatsAppIcon size={13} />
+            Deixe o WhatsApp aberto pra nossa mensagem
+          </p>
       </div>
     </div>
   );

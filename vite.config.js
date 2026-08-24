@@ -10,29 +10,35 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.png', 'apple-touch-icon.png', 'logo.png'],
+      includeAssets: [
+        'brand/favicon.svg',
+        'brand/favicon.ico',
+        'brand/apple-touch-icon.png',
+        'brand/notification-badge-96.png',
+      ],
       manifest: {
-        name: 'Tio Nino Digital',
-        short_name: 'Tio Nino',
-        description: 'Gestão e rastreamento de transporte escolar em tempo real',
+        name: 'Alô Buzinou',
+        short_name: 'Alô Buzinou',
+        description: 'Onde a perua está agora, o que o motorista avisou e a mensalidade em dia.',
         theme_color: '#1F5F3F',
-        background_color: '#F3F4F6',
+        background_color: '#EEF1EF',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
+        lang: 'pt-BR',
+        // 'any' e 'maskable' em arquivos SEPARADOS: o maskable tem folga
+        // maior porque o launcher do Android recorta um círculo por cima.
+        // Declarar o mesmo PNG nos dois papéis é o que faz o ícone aparecer
+        // cortado nas bordas em uns aparelhos e minúsculo em outros.
         icons: [
+          { src: 'brand/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'brand/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           {
-            src: 'icon.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any',
-          },
-          {
-            src: 'apple-touch-icon.png',
+            src: 'brand/icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable',
+            purpose: 'maskable',
           },
         ],
       },

@@ -82,7 +82,7 @@ export default function ContractAcceptanceGate() {
             variant="secondary"
             onClick={async () => {
               await logout();
-              navigate('/welcome', { replace: true });
+              navigate('/', { replace: true });
             }}
             className="mt-4"
           >
@@ -136,7 +136,7 @@ export default function ContractAcceptanceGate() {
     setRejecting(true);
     try {
       await logout();
-      navigate('/welcome', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       console.error(err);
       setRejecting(false);

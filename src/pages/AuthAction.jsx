@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Spinner from '../components/common/Spinner';
+import { LogoMark } from '../components/common/Logo';
 import {
   verifyResetCode,
   confirmReset,
@@ -140,7 +141,7 @@ export default function AuthAction() {
           <p className="text-sm text-textMuted mt-2 mb-6">
             Sua nova senha já está ativa. Use ela pra entrar.
           </p>
-          <Button onClick={() => navigate('/welcome', { replace: true })}>
+          <Button onClick={() => navigate('/', { replace: true })}>
             Voltar para a entrada
           </Button>
         </div>
@@ -162,7 +163,7 @@ export default function AuthAction() {
               ? `O email ${email} foi confirmado.`
               : 'Seu email foi confirmado com sucesso.'}
           </p>
-          <Button onClick={() => navigate('/welcome', { replace: true })}>
+          <Button onClick={() => navigate('/', { replace: true })}>
             Voltar para a entrada
           </Button>
         </div>
@@ -181,11 +182,7 @@ export default function AuthAction() {
       </Link>
 
       <div className="text-center mb-6">
-        <img
-          src="/logo.png"
-          alt="Tio Nino Digital"
-          className="w-24 h-24 mx-auto mb-4 rounded-full object-cover bg-white shadow-md ring-2 ring-emerald-200"
-        />
+        <LogoMark height={72} className="mx-auto mb-4" label="Alô Buzinou" />
         <h1 className="text-2xl font-bold text-text">Redefinir senha</h1>
         <p className="text-sm text-textMuted mt-1">
           Crie uma nova senha para <span className="font-medium">{email}</span>

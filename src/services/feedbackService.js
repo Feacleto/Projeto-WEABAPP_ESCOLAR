@@ -25,6 +25,15 @@ import { APP_VERSION } from '../version';
 
 const COLLECTION = 'feedbacks';
 
+/**
+ * Teto do depoimento PÚBLICO (o que vai pra home). 200 caracteres não é
+ * capricho de layout: é o que cabe num card lido de relance, e é curto o
+ * bastante pra o motorista escrever no celular sem desistir no meio. O
+ * comentário privado (que só a gente lê) continua aceitando 1000 — ali o
+ * limite é do banco, não do olho de quem passa pela home.
+ */
+export const PUBLIC_COMMENT_MAX = 200;
+
 export async function submitFeedback({
   uid,
   role,
@@ -41,7 +50,12 @@ export async function submitFeedback({
     role: role || 'parent',
     version: APP_VERSION,
     answers: answers || {},
-    comment: (comment || '').trim().slice(0, 1000),
+    // Quem autorizou publicar tem o texto cortado no limite público — o
+    // corte acontece aqui, e não só no <textarea>, porque o campo pode ser
+    // preenchido por autofill, colar ou versão antiga do app em cache.
+    comment: (comment || '')
+      .trim()
+      .slice(0, allowTestimonial ? PUBLIC_COMMENT_MAX : 1000),
     // Permissões pra exibição pública na landing
     allowTestimonial: !!allowTestimonial,
     allowPhoto: !!allowPhoto,
@@ -58,7 +72,7 @@ export async function submitFeedback({
  *
  * Retorna array com objetos { firstName, photoURL?, rating, comment }.
  */
-export async function listPublicTestimonials(max = 12) {
+export async function listPublicTestimonials(max = 12, { role = null } = {}) {
   try {
     const q = query(
       collection(db, COLLECTION),
@@ -73,6 +87,11 @@ export async function listPublicTestimonials(max = 12) {
       const rating = Number(d?.answers?.rating || 0);
       const comment = (d.comment || '').trim();
       if (rating < 4 || comment.length < 8) continue;
+      // Na home só entra depoimento de MOTORISTA: a página fala com quem
+      // dirige, e elogio de pai ali soa como propaganda pro público errado.
+      // A avaliação do pai continua sendo coletada — ela vira métrica, não
+      // vitrine (é o que o painel do admin lê).
+      if (role && d.role !== role) continue;
       list.push({
         id: doc.id,
         firstName: (d.authorName || '').split(' ')[0] || 'Anônimo',
@@ -96,7 +115,7 @@ export async function listPublicTestimonials(max = 12) {
  * autorizou aparecer publicamente (allowTestimonial == true). Não conta
  * avaliações privadas — a landing reflete só clientes que recomendam.
  */
-export async function getPublicRatingStats() {
+export async function getPublicRatingStats({ role = null } = {}) {
   try {
     const q = query(
       collection(db, COLLECTION),
@@ -108,7 +127,9 @@ export async function getPublicRatingStats() {
     let total = 0;
     let count = 0;
     for (const doc of snap.docs) {
-      const r = Number(doc.data()?.answers?.rating || 0);
+      const d = doc.data();
+      if (role && d.role !== role) continue;
+      const r = Number(d?.answers?.rating || 0);
       if (r >= 1 && r <= 5) {
         total += r;
         count += 1;

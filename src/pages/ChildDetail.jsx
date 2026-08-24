@@ -11,6 +11,7 @@ import {
   Camera,
   FileText,
   ChevronRight,
+  Printer,
 } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -231,6 +232,34 @@ export default function ChildDetail() {
           childId={child.id}
           role={isAdmin ? 'admin' : 'parent'}
         />
+
+        {/* O MESMO HISTÓRICO, EM PAPEL
+          * O bloco acima responde "essa família está em dia?" na tela, com o
+          * dedo. Mas o motorista também precisa LEVAR essa conta pra uma
+          * conversa: sentar com o responsável, mandar quando alguém contesta
+          * um mês, imprimir e anotar o combinado em cima. Tela não faz isso —
+          * então existe uma versão documento, com nome, período e assinatura.
+          * Só pro tio: o pai já tem o extrato dele em /pai/finance/report. */}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => navigate(`/tio/children/${child.id}/extrato`)}
+            className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3"
+          >
+            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Printer size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-text leading-tight">
+                Extrato de mensalidades
+              </p>
+              <p className="text-xs text-textMuted mt-0.5">
+                Pra imprimir, mandar ou anotar em cima
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-textMuted shrink-0" />
+          </button>
+        )}
 
         {/* Acesso ao contrato (Tio) */}
         {isAdmin && (

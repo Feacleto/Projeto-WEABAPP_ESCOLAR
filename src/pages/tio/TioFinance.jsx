@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Key,
-  ChevronRight,  X,
+  ChevronRight,
+  AlertTriangle,  X,
   Search,
   Banknote,
   QrCode,
@@ -29,6 +30,7 @@ import {
   canUndoReceipt,
   computeDisplayStatus,
   attachReceipt,
+  watchArrears,
 } from '../../services/paymentsService';
 import { notifyPaymentConfirmed } from '../../services/notificationsService';
 import { uploadPaymentReceipt, fileHash } from '../../services/photoService';
@@ -63,6 +65,11 @@ export default function TioFinance() {
 
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
   const { payments, loading } = usePaymentsByMonth(monthKey);
+
+  // A dívida que ficou pra trás. Fica FORA do usePaymentsByMonth de propósito:
+  // ela não pertence ao mês na tela, ela existe APESAR do mês na tela.
+  const [arrears, setArrears] = useState([]);
+  useEffect(() => watchArrears(monthKey, setArrears), [monthKey]);
   const [filter, setFilter] = useState('all');
 
   // Busca por nome. A pergunta que o tio mais faz ao financeiro não é
@@ -148,7 +155,7 @@ export default function TioFinance() {
     return {
       paid: sumByStatus(['paid']),
       open: sumByStatus(['pending', 'overdue', 'claimed']),
-      overdueCount: enriched.filter((p) => p._display === 'overdue').length,
+      overdue: sumByStatus(['overdue']),
       claimedCount: enriched.filter((p) => p._display === 'claimed').length,
     };
   }, [enriched]);
@@ -295,8 +302,16 @@ export default function TioFinance() {
         <FinanceHero
           paid={totals.paid}
           open={totals.open}
-          overdueCount={totals.overdueCount}
+          overdue={totals.overdue}
           claimedCount={totals.claimedCount}
+        />
+
+        {/* Vem LOGO depois do hero: o número do mês na tela não significa
+          * nada se existe dinheiro velho parado que ele nem sabe que existe.
+          * Tocar leva pro mês mais antigo em aberto — onde dá pra agir. */}
+        <ArrearsBanner
+          items={arrears}
+          onGoToOldest={() => arrears[0]?.month && setMonthKey(arrears[0].month)}
         />
 
         {/* PIX banner — só se for mês corrente */}
@@ -542,7 +557,20 @@ export default function TioFinance() {
 
 /* ─────────────── Componentes ─────────────── */
 
-function FinanceHero({ paid, open, overdueCount, claimedCount }) {
+/**
+ * Recebido e a receber do mês — e, dentro do a receber, QUANTO está atrasado.
+ *
+ * POR QUE O ATRASADO VIROU VALOR E NÃO CONTAGEM
+ * O selo dizia "3 atrasados". Contagem sem valor não decide nada: R$ 900 pra
+ * receber com 1 atrasado pode ser R$ 100 ou R$ 800 preso — e é exatamente
+ * essa diferença que define se o motorista pega o telefone hoje. Agora o selo
+ * diz o dinheiro. A contagem vive na faixa dos meses anteriores, onde a
+ * pergunta é outra ("quantas famílias eu preciso cobrar?").
+ *
+ * "Aguardando você" continua contagem de propósito: ali não é dinheiro
+ * perdido, é tarefa pendente na mão dele — e tarefa se conta.
+ */
+function FinanceHero({ paid, open, overdue, claimedCount }) {
   return (
     <div className="rounded-3xl overflow-hidden shadow-xl shadow-emerald-500/15">
       <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-5 space-y-4">
@@ -561,11 +589,11 @@ function FinanceHero({ paid, open, overdueCount, claimedCount }) {
           <p className="text-2xl font-bold tabular-nums leading-none mt-1">
             {formatCurrency(open)}
           </p>
-          {(overdueCount > 0 || claimedCount > 0) && (
-            <div className="flex gap-2 mt-2 text-xs">
-              {overdueCount > 0 && (
-                <span className="bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 font-semibold">
-                  {overdueCount} atrasado{overdueCount > 1 ? 's' : ''}
+          {(overdue > 0 || claimedCount > 0) && (
+            <div className="flex flex-wrap gap-2 mt-2 text-xs">
+              {overdue > 0 && (
+                <span className="bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 font-semibold tabular-nums">
+                  {formatCurrency(overdue)} atrasado
                 </span>
               )}
               {claimedCount > 0 && (
@@ -578,6 +606,55 @@ function FinanceHero({ paid, open, overdueCount, claimedCount }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A FAIXA DA DÍVIDA VELHA — o que ficou pra trás e continua aberto.
+ *
+ * A tela é por competência: agosto mostra agosto. Sem esta faixa, a
+ * mensalidade de julho que ninguém pagou ficava escondida em julho, e quem
+ * olha só o mês corrente (todo mundo) nunca mais a via — ela desaparecia
+ * exatamente por ter envelhecido.
+ *
+ * Mostra VALOR primeiro (é o que dói), a contagem de cobranças e desde quando
+ * a coisa se arrasta. Tocar não abre explicação: leva pro mês mais antigo com
+ * dívida, que é onde ele pode dar baixa ou cobrar. Faixa que informa e não
+ * deixa agir é só um lembrete de mau humor.
+ */
+function ArrearsBanner({ items, onGoToOldest }) {
+  if (!items.length) return null;
+
+  const total = items.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  const maisAntigo = items[0]?.month;
+  const meses = new Set(items.map((p) => p.month)).size;
+
+  return (
+    <button
+      type="button"
+      onClick={onGoToOldest}
+      className="tap w-full text-left rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 p-4 flex items-center gap-3"
+    >
+      <span className="w-11 h-11 rounded-xl bg-red-500 text-white flex items-center justify-center shrink-0">
+        <AlertTriangle size={20} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs uppercase tracking-widest font-semibold text-red-700/80">
+          Atrasado de meses anteriores
+        </span>
+        <span className="block text-xl font-bold tabular-nums text-red-700 leading-tight mt-0.5">
+          {formatCurrency(total)}
+        </span>
+        <span className="block text-xs text-red-900/70 mt-0.5">
+          {items.length} cobrança{items.length > 1 ? 's' : ''}
+          {' · '}
+          {meses > 1
+            ? `${meses} meses, desde ${formatMonthLabel(maisAntigo)}`
+            : `de ${formatMonthLabel(maisAntigo)}`}
+        </span>
+      </span>
+      <ChevronRight size={18} className="text-red-400 shrink-0" />
+    </button>
   );
 }
 

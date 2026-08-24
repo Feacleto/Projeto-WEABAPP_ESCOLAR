@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft, Bus } from 'lucide-react';
+import { Mail, Lock, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
+import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { resetPassword, loginWithGoogle, getUserDoc, logout } from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
@@ -125,16 +126,16 @@ export default function Login() {
       <div className="flex-1 flex flex-col justify-center">
         <div className="text-center mb-6">
           <Link
-            to="/conheca"
-            aria-label="Conhecer o Tio Nino Digital"
+            to="/"
+            aria-label="Conhecer o Alô Buzinou"
             className="tap inline-block"
           >
-            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Bus size={32} className="text-white" />
-            </div>
+            <Logo variant="stacked" height={104} className="mx-auto" />
           </Link>
-          <h1 className="text-2xl font-bold text-text">Alô Buzinou</h1>
-          <p className="text-sm text-textMuted mt-1">
+          {/* O logo já diz o nome em desenho. O h1 continua existindo pra
+            * leitor de tela não perder o cabeçalho da página. */}
+          <h1 className="sr-only">Alô Buzinou</h1>
+          <p className="text-sm text-textMuted mt-3">
             Entre com sua conta
           </p>
         </div>
@@ -232,7 +233,7 @@ export default function Login() {
           </div>
 
           <Link
-            to="/conheca"
+            to="/quero-fazer-parte"
             className="block text-sm font-semibold text-primary hover:underline"
           >
             Sou motorista e quero fazer parte →

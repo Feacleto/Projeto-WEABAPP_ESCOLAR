@@ -35,8 +35,11 @@ messaging.onBackgroundMessage((payload) => {
 
   self.registration.showNotification(title, {
     body,
-    icon: '/icon.png',
-    badge: '/icon.png',
+    // badge ≠ icon: o Android tinge o badge usando só o alfa, então ele
+    // precisa ser silhueta monocromática. Com o ícone colorido ali, a
+    // barra de status mostrava um quadrado chapado.
+    icon: '/brand/icon-192.png',
+    badge: '/brand/notification-badge-96.png',
     tag: payload.data?.tag || undefined,
     data: { url },
     vibrate: [220, 100, 220],

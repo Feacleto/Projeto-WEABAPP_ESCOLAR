@@ -27,6 +27,7 @@ import {
   Sunrise,
   Sunset,
   Moon,
+  BarChart3,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
@@ -60,7 +61,7 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../utils/masks';
 import { formatPhone } from '../utils/formatters';
 import { PIX_KEY_TYPES } from '../services/userService';
 import { APP_VERSION } from '../version';
-import FeedbackSheet from '../components/feedback/FeedbackSheet';
+import ReviewSheet from '../components/feedback/ReviewSheet';
 import SupportSheet from '../components/support/SupportSheet';
 
 export default function Profile() {
@@ -125,7 +126,7 @@ export default function Profile() {
         setConfirmDelete(false);
         // Força logout pra forçar relogin
         await logout();
-        navigate('/welcome', { replace: true });
+        navigate('/', { replace: true });
       } else {
         toast.error('Não foi possível excluir. Tente novamente.');
         setDeleting(false);
@@ -376,6 +377,30 @@ export default function Profile() {
             <ChevronRight size={20} className="text-textMuted shrink-0" />
           </button>
 
+          {/* Painel do dono — aparece só pra quem carrega o negócio nas
+            * costas. Um parceiro nunca vê esta linha. */}
+          {profile?.superAdmin && (
+            <>
+              <div className="border-t border-gray-100 -mx-4" />
+              <button
+                type="button"
+                onClick={() => navigate('/admin')}
+                className="w-full flex items-center gap-3 tap py-2"
+              >
+                <BarChart3 size={20} className="text-primary shrink-0" />
+                <div className="flex-1 text-left">
+                  <p className="text-sm text-text font-medium">
+                    Painel do dono
+                  </p>
+                  <p className="text-[11px] text-textMuted">
+                    Números da plataforma, pesquisa e fila de parceiros
+                  </p>
+                </div>
+                <ChevronRight size={20} className="text-textMuted shrink-0" />
+              </button>
+            </>
+          )}
+
           <div className="border-t border-gray-100 -mx-4" />
 
           <button
@@ -432,12 +457,12 @@ export default function Profile() {
         variant="danger"
         onConfirm={async () => {
           await logout();
-          navigate('/welcome', { replace: true });
+          navigate('/', { replace: true });
         }}
         onCancel={() => setConfirmLogout(false)}
       />
 
-      <FeedbackSheet
+      <ReviewSheet
         open={feedbackOpen}
         onClose={() => setFeedbackOpen(false)}
         uid={user?.uid}

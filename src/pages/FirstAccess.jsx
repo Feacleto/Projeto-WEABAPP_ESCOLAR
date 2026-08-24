@@ -1,40 +1,79 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Ticket, Mail, Lock, ArrowLeft, User, Users } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bus,
+  Link2,
+  LogIn,
+  Lock,
+  Mail,
+  Ticket,
+  User,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
+import Logo from '../components/common/Logo';
 import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
-import {
-  authenticateAndRedeem,
-  googleAndRedeem,
-  resetPassword,
-  loginWithGoogle,
-  getUserDoc,
-  logout,
-} from '../services/authService';
+import { authenticateAndRedeem, googleAndRedeem } from '../services/authService';
 import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
 import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
 
 /**
- * Fluxo de Pai/Mãe — entrada única com 2 abas:
- *   1. "Já tenho conta": email/senha ou Google (login direto)
- *   2. "Primeira vez aqui": código de convite + criar conta
+ * Primeiro acesso do responsável — /first-access
  *
- * O pai que clica "Sou pai ou mãe" no /welcome cai aqui.
- * Se já está autenticado, redireciona pelo role no useEffect inicial.
+ * ESTA TELA SÓ CRIA CONTA. NÃO É PORTA DE LOGIN.
+ * Quem chega aqui é quem ainda não existe no app: o responsável que recebeu
+ * um convite do motorista. Ela tinha duas abas ("já tenho conta" / "criar
+ * conta") e a de login era um convite ao erro — porque login não resolve o
+ * problema de quem chega aqui:
+ *
+ *   "ENTRAR com Google" não dá acesso a ninguém. Sem doc em `users/{uid}` o
+ *   app desloga na hora, e é isso que tem que acontecer: acesso de
+ *   responsável nasce do VÍNCULO com uma criança, e o vínculo nasce do
+ *   convite do motorista. Um botão que parece resolver e devolve erro é pior
+ *   que um botão que não existe.
+ *
+ *   "CRIAR CONTA com Google" dá acesso, porque vai junto com o código
+ *   (`googleAndRedeem`): resgata o convite e cria o vínculo no mesmo passo.
+ *   Esse fica — e fica em destaque, porque é o caminho sem digitar nada, que
+ *   é o que serve pra quem tem pouca familiaridade com teclado de celular.
+ *
+ * Quem já tem conta encontra um link discreto pro /login no fim. É a minoria
+ * aqui, e mandar essa pessoa pra tela certa custa um toque.
+ *
+ * O CÓDIGO É A EXCEÇÃO, NÃO A REGRA
+ * O caminho natural do responsável é o LINK que o motorista mandou: ele já
+ * carrega o convite e a conta se cria por lá, sem código. Então a tela abre
+ * dizendo isso, e o campo de código só aparece pra quem toca em "tenho um
+ * código". Colocar o código na frente ensinava a coisa errada.
+ *
+ * O FORMULÁRIO APARECE EM PASSOS
+ * Nome → email → senha → botão, cada campo entrando quando o anterior recebe
+ * o dedo. O formulário é o mesmo; o que muda é a sensação: em vez de um muro
+ * de campos, uma pergunta por vez.
  */
 export default function FirstAccess() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, profile, loading: authLoading, refreshProfile } = useAuth();
+  const { profile, loading: authLoading, refreshProfile } = useAuth();
 
-  // Estado de aba (default: já tenho conta — mais comum em sessões repetidas)
-  const [tab, setTab] = useState('login');
+  const [abriuCodigo, setAbriuCodigo] = useState(false);
+  const [abriuSenha, setAbriuSenha] = useState(false);
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const [tocou, setTocou] = useState({});
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
-  // Redireciona se já autenticado
+  // Já autenticado? Vai pro painel — inclusive quem cair aqui por link antigo.
   useEffect(() => {
     if (!authLoading && profile?.role) {
       const target = profile.role === 'admin' ? '/tio' : '/pai';
@@ -42,219 +81,20 @@ export default function FirstAccess() {
     }
   }, [authLoading, profile, navigate, location.state]);
 
-  return (
-    <div className="min-h-screen flex flex-col px-6 py-6">
-      <Link
-        to="/welcome"
-        className="inline-flex items-center gap-1 text-sm text-textMuted mb-4 tap"
-      >
-        <ArrowLeft size={16} /> Voltar
-      </Link>
+  const marcar = (campo) => () =>
+    setTocou((p) => (p[campo] ? p : { ...p, [campo]: true }));
 
-      <div className="text-center mb-5">
-        <Link
-          to="/conheca"
-          aria-label="Conhecer o Tio Nino Digital"
-          className="tap inline-block"
-        >
-          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-violet-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Users size={28} className="text-white" />
-          </div>
-        </Link>
-        <h1 className="text-2xl font-bold text-text">Pai / Mãe</h1>
-        <p className="text-sm text-textMuted mt-1">
-          Entre ou crie sua conta
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-2xl mb-5">
-        <button
-          onClick={() => setTab('login')}
-          className={`tap py-2.5 text-sm font-semibold rounded-xl transition-colors ${
-            tab === 'login'
-              ? 'bg-card text-text shadow-sm'
-              : 'text-textMuted'
-          }`}
-        >
-          Já tenho conta
-        </button>
-        <button
-          onClick={() => setTab('signup')}
-          className={`tap py-2.5 text-sm font-semibold rounded-xl transition-colors ${
-            tab === 'signup'
-              ? 'bg-card text-text shadow-sm'
-              : 'text-textMuted'
-          }`}
-        >
-          Primeira vez aqui
-        </button>
-      </div>
-
-      {tab === 'login' ? <LoginPane login={login} /> : <SignupPane refreshProfile={refreshProfile} />}
-
-      <div className="text-[11px] text-textMuted flex items-center justify-center gap-3 pt-6 mt-auto">
-        <Link to="/termos" className="hover:underline">
-          Termos de Uso
-        </Link>
-        <span aria-hidden>·</span>
-        <Link to="/privacidade" className="hover:underline">
-          Política de Privacidade
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// Aba "Já tenho conta" — email/senha + Google
-// ============================================================================
-function LoginPane({ login }) {
-  const { refreshProfile } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const [resetting, setResetting] = useState(false);
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast.error('Preencha email e senha.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await login(email, password);
-      // Redirect ocorre via useEffect no componente pai quando profile chega
-    } catch (err) {
-      toast.error(mapAuthError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onGoogleLogin = async () => {
-    setGoogleSubmitting(true);
-    try {
-      const user = await loginWithGoogle();
-      const userProfile = await getUserDoc(user.uid);
-      if (!userProfile) {
-        await logout();
-        toast.error(
-          'Conta Google não cadastrada. Use "Primeira vez aqui" com seu código de convite.',
-          { duration: 6000 }
-        );
-        return;
-      }
-      await refreshProfile();
-      toast.success(`Bem-vindo, ${userProfile.name?.split(' ')[0] || ''}!`);
-    } catch (err) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
-        toast.error(mapAuthError(err));
-      }
-    } finally {
-      setGoogleSubmitting(false);
-    }
-  };
-
-  const onForgotPassword = async () => {
-    if (!email) {
-      toast.error('Digite seu email primeiro.');
-      return;
-    }
-    setResetting(true);
-    try {
-      await resetPassword(email);
-      toast.success(
-        'Enviamos um link pra redefinir sua senha. Confira sua caixa de entrada (e o spam).',
-        { duration: 6000 }
-      );
-    } catch (err) {
-      toast.error(mapAuthError(err));
-    } finally {
-      setResetting(false);
-    }
-  };
-
-  return (
-    <>
-      {/* Google em destaque — opção principal pra reduzir fricção
-        * (não precisa digitar email/senha). Email/senha vem depois. */}
-      <Button
-        loading={googleSubmitting}
-        onClick={onGoogleLogin}
-        className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 !h-14 !text-base shadow-md"
-      >
-        {!googleSubmitting && <GoogleIcon size={22} />}
-        Entrar com Google
-      </Button>
-
-      <div className="relative my-5">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-bg px-3 text-textMuted">ou com email e senha</span>
-        </div>
-      </div>
-
-      <form onSubmit={onSubmit} className="space-y-4">
-        <Input
-          type="email"
-          inputMode="email"
-          label="Email"
-          placeholder="seu@email.com"
-          icon={Mail}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          required
-        />
-        <Input
-          type="password"
-          revealable
-          label="Senha"
-          placeholder="sua senha"
-          icon={Lock}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-        />
-        <Button type="submit" variant="secondary" loading={submitting}>
-          Entrar
-        </Button>
-        <button
-          type="button"
-          onClick={onForgotPassword}
-          disabled={resetting}
-          className="block w-full text-sm text-textMuted hover:text-text disabled:opacity-50"
-        >
-          {resetting ? 'Enviando...' : 'Esqueci minha senha'}
-        </button>
-      </form>
-    </>
-  );
-}
-
-// ============================================================================
-// Aba "Primeira vez aqui" — invite code + criar conta
-// ============================================================================
-function SignupPane({ refreshProfile }) {
-  const navigate = useNavigate();
-  const [code, setCode] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const codigoOk = isValidInviteCode(code);
+  // Os passos: cada campo entra quando o anterior recebeu o dedo. Uso FOCO e
+  // não "está válido" de propósito — validar antes de a pessoa terminar de
+  // digitar é o jeito mais rápido de irritar.
+  const mostraEmail = tocou.nome || name.length > 0;
+  const mostraSenha = mostraEmail && (tocou.email || email.length > 0);
+  const mostraBotao = mostraSenha && (tocou.senha || password.length > 0);
 
   const validate = () => {
     const errs = {};
-    if (!isValidInviteCode(code)) {
+    if (!codigoOk) {
       errs.code = 'Confira o código com o motorista — ele começa com TN.';
     }
     if (!name.trim()) errs.name = 'Informe seu nome.';
@@ -272,12 +112,11 @@ function SignupPane({ refreshProfile }) {
       toast.error('Confira os campos destacados.');
       return;
     }
-
     setSubmitting(true);
     try {
-      // Mesma função do fluxo por link: tenta criar, e se o email já
-      // existir, entra com a mesma senha. O pai não escolhe entre
-      // "criar conta" e "entrar" — o sistema descobre.
+      // Mesma função do fluxo por link: tenta criar, e se o email já existir,
+      // entra com a mesma senha. O responsável não escolhe entre "criar
+      // conta" e "entrar" — o sistema descobre.
       const { user, created } = await authenticateAndRedeem({
         inviteCode: code,
         email,
@@ -302,17 +141,14 @@ function SignupPane({ refreshProfile }) {
   };
 
   const onGoogleSignup = async () => {
-    if (!isValidInviteCode(code)) {
-      setErrors((prev) => ({
-        ...prev,
-        code: 'Informe o código de convite antes de continuar com Google.',
-      }));
+    if (!codigoOk) {
+      setErrors((p) => ({ ...p, code: 'Informe o código antes de continuar.' }));
       toast.error('Digite o código de convite primeiro.');
       return;
     }
     if (!acceptedLegal) {
-      setErrors((prev) => ({
-        ...prev,
+      setErrors((p) => ({
+        ...p,
         legal: 'Você precisa aceitar os termos antes de continuar.',
       }));
       toast.error('Aceite os termos antes de continuar.');
@@ -341,97 +177,261 @@ function SignupPane({ refreshProfile }) {
   };
 
   return (
-    <>
-      <p className="text-xs text-textMuted mb-3 px-1">
-        O motorista te entregou um código? Digite abaixo e crie sua conta.
-      </p>
+    <div className="min-h-screen flex flex-col bg-bg">
+      {/* ── tampa escura: a marca, no mesmo material da home ── */}
+      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute inset-0 opacity-80 animate-glow-drift"
+            style={{
+              background:
+                'radial-gradient(110% 80% at 10% 0%, rgba(31,95,63,.6) 0%, rgba(11,18,16,0) 62%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-60 animate-glow-drift-slow"
+            style={{
+              background:
+                'radial-gradient(90% 70% at 100% 10%, rgba(82,196,26,.2) 0%, rgba(11,18,16,0) 58%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.06] animate-grid-drift"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
+              backgroundSize: '44px 44px',
+            }}
+          />
+        </div>
 
-      <Input
-        label="Código de convite"
-        placeholder="TN2K9F4B"
-        icon={Ticket}
-        value={code}
-        onChange={(e) => setCode(maskInviteCode(e.target.value))}
-        autoCapitalize="characters"
-        maxLength={8}
-        hint="Começa com TN. Se você tem o LINK do convite, prefira abrir o link."
-        error={errors.code}
-        required
+        <div className="relative">
+          <Link
+            to="/"
+            className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+          >
+            <ArrowLeft size={16} /> Voltar
+          </Link>
+
+          <div className="mt-3 text-center">
+            <Logo
+              variant="stacked"
+              tone="onDark"
+              height={80}
+              className="mx-auto"
+            />
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
+              primeiro acesso
+            </p>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+              Criar sua conta
+            </h1>
+            <p className="mx-auto mt-2 max-w-[19rem] text-sm leading-relaxed text-white/65">
+              Sua conta nasce do convite do motorista — é ele que liga seu filho
+              a você.
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* Costura entre a marca e o produto. */}
+      <div
+        aria-hidden
+        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary"
       />
 
-      <div className="mt-4">
-        <LegalAcceptCheckbox
-          checked={acceptedLegal}
-          onChange={setAcceptedLegal}
-          error={errors.legal}
-        />
-      </div>
-
-      <div className="my-4">
-        <Button
-          variant="secondary"
-          loading={googleSubmitting}
-          onClick={onGoogleSignup}
-        >
-          {!googleSubmitting && <GoogleIcon size={18} />}
-          Criar conta com Google
-        </Button>
-      </div>
-
-      <div className="relative my-3">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200" />
+      <main className="flex flex-1 flex-col px-6 py-5">
+        {/* O caminho fácil primeiro: quem tem o link não precisa de nada disso. */}
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
+            <Link2 size={15} className="text-primary" />
+            O motorista te mandou um link?
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-emerald-900/80">
+            Então abre o link — ele já vem com o convite dentro, e sua conta se
+            cria por lá. <strong>Você não precisa de código nenhum.</strong>
+          </p>
         </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-bg px-3 text-textMuted">ou crie com email/senha</span>
-        </div>
-      </div>
 
-      <form onSubmit={onSubmit} className="space-y-4 mt-4">
-        <Input
-          label="Seu nome"
-          placeholder="Nome completo"
-          icon={User}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoComplete="name"
-          error={errors.name}
-          required
-        />
-        <Input
-          type="email"
-          inputMode="email"
-          label="Email"
-          placeholder="seu@email.com"
-          icon={Mail}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          error={errors.email}
-          required
-        />
-        {/* Um campo só: o olho de revelar substitui o "confirme a senha".
-          * Digitar a senha duas vezes num teclado de celular gera mais erro
-          * do que evita. */}
-        <Input
-          type="password"
-          revealable
-          label="Crie uma senha"
-          placeholder="Mínimo 6 caracteres"
-          icon={Lock}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={6}
-          autoComplete="new-password"
-          error={errors.password}
-          hint="Toque no olho pra conferir o que digitou."
-          required
-        />
-        <Button type="submit" loading={submitting}>
-          Criar minha conta
-        </Button>
-      </form>
-    </>
+        {/* O CÓDIGO É EXCEÇÃO, E AGORA TEM O TAMANHO DE UMA EXCEÇÃO
+          * Ele era um cartão do mesmo peso do aviso do link — e dois blocos
+          * do mesmo tamanho lado a lado leem como duas opções equivalentes,
+          * quando na verdade 9 de 10 responsáveis chegam pelo link. Virou uma
+          * linha de texto: continua a um toque, mas não disputa a tela com a
+          * resposta que quase todo mundo precisa. */}
+        {!abriuCodigo ? (
+          <button
+            type="button"
+            onClick={() => setAbriuCodigo(true)}
+            className="tap mt-3 inline-flex w-full items-center justify-center gap-1.5 py-2 text-sm font-semibold text-textMuted hover:text-text"
+          >
+            <Ticket size={14} />
+            Tenho um código de convite
+          </button>
+        ) : (
+          <div className="animate-step-in mt-4 space-y-4">
+            <Input
+              label="Código de convite"
+              placeholder="TN2K9F4B"
+              icon={Ticket}
+              value={code}
+              onChange={(e) => setCode(maskInviteCode(e.target.value))}
+              autoCapitalize="characters"
+              maxLength={8}
+              hint="8 caracteres, começa com TN."
+              error={errors.code}
+              required
+            />
+
+            {/* Só depois do código a criação de conta faz sentido: sem ele não
+              * há criança pra vincular, e conta de responsável sem criança é
+              * conta órfã. */}
+            {codigoOk ? (
+              <div className="animate-step-in space-y-4">
+                <LegalAcceptCheckbox
+                  checked={acceptedLegal}
+                  onChange={setAcceptedLegal}
+                  error={errors.legal}
+                />
+
+                {/* O Google aqui CRIA a conta (resgata o convite junto), e é o
+                  * caminho sem digitar nada. */}
+                <button
+                  type="button"
+                  onClick={onGoogleSignup}
+                  disabled={googleSubmitting}
+                  className="tap cta-shine relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl border-2 border-gray-300 bg-card text-base font-bold text-text shadow-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                >
+                  <GoogleIcon size={22} />
+                  {googleSubmitting ? 'Um instante…' : 'Criar conta com Google'}
+                </button>
+                <p className="-mt-2 text-center text-[11px] text-textMuted">
+                  sem digitar nada
+                </p>
+
+                {!abriuSenha ? (
+                  <button
+                    type="button"
+                    onClick={() => setAbriuSenha(true)}
+                    className="tap flex w-full items-center justify-center gap-1.5 py-1 text-sm font-semibold text-textMuted hover:text-text"
+                  >
+                    Criar com email e senha
+                    <ArrowRight size={15} />
+                  </button>
+                ) : (
+                  <form onSubmit={onSubmit} className="animate-step-in space-y-4">
+                    <Input
+                      label="Seu nome"
+                      placeholder="Nome completo"
+                      icon={User}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      onFocus={marcar('nome')}
+                      autoComplete="name"
+                      error={errors.name}
+                      required
+                    />
+
+                    {mostraEmail && (
+                      <div className="animate-step-in">
+                        <Input
+                          type="email"
+                          inputMode="email"
+                          label="Email"
+                          placeholder="seu@email.com"
+                          icon={Mail}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          onFocus={marcar('email')}
+                          autoComplete="email"
+                          error={errors.email}
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {/* Um campo só: o olho de revelar substitui o "confirme a
+                      * senha". Digitar a senha duas vezes num teclado de
+                      * celular gera mais erro do que evita. */}
+                    {mostraSenha && (
+                      <div className="animate-step-in">
+                        <Input
+                          type="password"
+                          revealable
+                          label="Crie uma senha"
+                          placeholder="Mínimo 6 caracteres"
+                          icon={Lock}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          onFocus={marcar('senha')}
+                          minLength={6}
+                          autoComplete="new-password"
+                          error={errors.password}
+                          hint="Toque no olho pra conferir o que digitou."
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {mostraBotao && (
+                      <div className="animate-step-in">
+                        <Button type="submit" loading={submitting}>
+                          Criar minha conta
+                          <ArrowRight size={17} />
+                        </Button>
+                      </div>
+                    )}
+                  </form>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs leading-relaxed text-textMuted">
+                Digite o código pra continuar. Se não tiver, peça o{' '}
+                <strong>link</strong> pro motorista — é mais rápido pros dois.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* AS DUAS SAÍDAS, EM UMA LINHA
+          * Quem errou a tela e quem é motorista precisam de porta — mas eram
+          * dois cartões grandes no pé, do tamanho do conteúdo principal, e
+          * empurravam o assunto da tela pra cima. Como par de links discretos
+          * eles continuam acháveis por quem procura, sem competir com quem
+          * está aqui pelo motivo certo. */}
+        <div className="mt-auto flex items-center justify-center gap-3 pt-8 text-sm font-semibold text-textMuted">
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="tap inline-flex items-center gap-1.5 py-2 hover:text-text"
+          >
+            <LogIn size={14} />
+            Já tenho conta
+          </button>
+          <span aria-hidden className="text-gray-300">
+            ·
+          </span>
+          <button
+            type="button"
+            onClick={() => navigate('/quero-fazer-parte')}
+            className="tap inline-flex items-center gap-1.5 py-2 text-primary hover:text-primaryDark"
+          >
+            <Bus size={14} />
+            Sou motorista
+          </button>
+        </div>
+
+        <div className="flex items-center justify-center gap-3 pt-4 text-[11px] text-textMuted">
+          <Link to="/termos" className="hover:underline">
+            Termos de Uso
+          </Link>
+          <span aria-hidden>·</span>
+          <Link to="/privacidade" className="hover:underline">
+            Política de Privacidade
+          </Link>
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -440,14 +440,13 @@ function mapAuthError(err) {
   switch (code) {
     case 'auth/invalid-email':
       return 'Email inválido.';
-    case 'auth/user-not-found':
+    case 'auth/email-already-in-use':
+      return 'Este email já tem conta. Use "Já tenho conta".';
+    case 'auth/weak-password':
+      return 'Senha muito curta. Use ao menos 6 caracteres.';
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Email ou senha incorretos.';
-    case 'auth/email-already-in-use':
-      return 'Este email já está em uso.';
-    case 'auth/weak-password':
-      return 'Senha muito fraca.';
     case 'auth/too-many-requests':
       return 'Muitas tentativas. Aguarde alguns minutos.';
     case 'auth/network-request-failed':
@@ -459,6 +458,6 @@ function mapAuthError(err) {
     case 'auth/account-exists-with-different-credential':
       return 'Já existe conta com outro método de login pra este email.';
     default:
-      return err?.message || 'Erro ao entrar. Tente novamente.';
+      return err?.message || 'Erro. Tente novamente.';
   }
 }

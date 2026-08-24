@@ -346,3 +346,479 @@
     break-inside: avoid;
   }
 }
+
+/* ============================================================
+ * HOME — animações da porta da rua.
+ *
+ * A home é a única tela que o visitante conhece antes de confiar no app.
+ * Movimento aqui não é enfeite: é a prova de que a coisa é viva. Tudo
+ * abaixo é CSS puro (zero JS por frame) e tudo morre em
+ * prefers-reduced-motion, no bloco no fim desta seção.
+ * ============================================================ */
+
+/* Subida escalonada DENTRO de um bloco que entrou na viewport.
+ * O pai é um .reveal (IntersectionObserver); os filhos .rise sobem em
+ * sequência via --d. Um observer só, N elementos animados. */
+.rise {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 620ms cubic-bezier(0.2, 0.75, 0.2, 1),
+    transform 620ms cubic-bezier(0.2, 0.75, 0.2, 1);
+  transition-delay: var(--d, 0ms);
+  will-change: opacity, transform;
+}
+.reveal-in .rise {
+  opacity: 1;
+  transform: none;
+}
+
+/* Brilho que atravessa o botão principal — chama o toque sem piscar.
+ * Roda a cada 4,2s: presente o bastante pra ser notado, espaçado o
+ * bastante pra não virar strobe na leitura do texto ao lado. */
+@keyframes cta-shine {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  55%,
+  100% {
+    transform: translateX(260%) skewX(-18deg);
+  }
+}
+/* Variante clara do brilho: pra botão COLORIDO ou escuro, onde o sweep
+ * esverdeado do .cta-shine desaparece. Mesma curva, tinta branca. */
+.cta-shine-white::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: cta-shine 4.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.cta-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(31, 95, 63, 0.13) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: cta-shine 4.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Halo do CTA — dois anéis defasados saindo da borda do botão. */
+@keyframes cta-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.14);
+  }
+}
+.cta-ring {
+  animation: cta-ring 2.6s ease-out infinite;
+}
+.cta-ring-2 {
+  animation-delay: 1.3s;
+}
+
+/* Dica de rolagem no hero — desce e volta, como um dedo insistindo. */
+@keyframes hint-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(7px);
+    opacity: 1;
+  }
+}
+.animate-hint-bounce {
+  animation: hint-bounce 1.9s ease-in-out infinite;
+}
+
+/* Brilhos do fundo escuro à deriva — dá profundidade sem gradiente chapado. */
+@keyframes glow-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) scale(1.12);
+  }
+}
+.animate-glow-drift {
+  animation: glow-drift 14s ease-in-out infinite;
+}
+.animate-glow-drift-slow {
+  animation: glow-drift 22s ease-in-out infinite reverse;
+}
+
+/* Malha do hero deslizando devagar — sensação de "interface rodando". */
+@keyframes grid-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 44px 44px;
+  }
+}
+.animate-grid-drift {
+  animation: grid-drift 9s linear infinite;
+}
+
+/* ─────────── Demo de telas (mock em CSS, sem screenshot) ─────────── */
+
+/* Perua cruzando a "estrada" do card de status. */
+@keyframes demo-van-run {
+  0% {
+    left: -18%;
+  }
+  100% {
+    left: 104%;
+  }
+}
+.demo-van {
+  animation: demo-van-run 5s linear infinite;
+}
+
+/* Ponto "ao vivo" — o mesmo halo do pin do mapa, em escala de mock. */
+@keyframes demo-ping {
+  0% {
+    opacity: 0.65;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.3);
+  }
+}
+.demo-ping {
+  animation: demo-ping 2s ease-out infinite;
+}
+
+/* Traçado da rota se desenhando no mapa falso. */
+@keyframes demo-dash {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+.demo-dash {
+  animation: demo-dash 2.4s linear infinite;
+}
+
+/* Van andando pelo traçado do mapa falso. São translates em px (e não
+ * offset-path, que ainda falha no WebView do Android antigo) calculados
+ * sobre o tamanho REAL do mapa do mock — 178x104, que vem da moldura de
+ * largura fixa do celular. Se a moldura mudar de largura, estes quatro
+ * pontos precisam ser recalculados junto com o path do SVG. */
+@keyframes demo-van-map {
+  0% {
+    transform: translate(4px, 80px);
+  }
+  35% {
+    transform: translate(58px, 57px);
+  }
+  70% {
+    transform: translate(102px, 25px);
+  }
+  100% {
+    transform: translate(151px, 9px);
+  }
+}
+.demo-van-map {
+  animation: demo-van-map 6s ease-in-out infinite alternate;
+}
+
+/* Troca de tela do demo: a nova entra subindo com um leve pop. */
+@keyframes demo-screen-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-demo-screen-in {
+  animation: demo-screen-in 380ms cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+
+/* Barra de progresso do "copiar PIX" e afins. */
+@keyframes demo-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+.demo-sweep {
+  animation: demo-sweep 2.8s ease-in-out infinite;
+}
+
+/* ─────────── Artes animadas do topo de cada bloco (BlockArt.jsx) ───────────
+ * Cada bloco da home abre com um desenho em CSS que diz do que ele trata
+ * antes da primeira palavra. Loops longos (2,6s a 6s) de propósito: arte de
+ * topo que pisca rápido rouba a leitura do texto que vem embaixo. */
+
+/* Moeda caindo na carteira. Três moedas com delay formam uma fila. */
+@keyframes art-coin {
+  0% {
+    transform: translateY(-4px) scale(0.7);
+    opacity: 0;
+  }
+  22% {
+    transform: translateY(18px) scale(1);
+    opacity: 1;
+  }
+  55% {
+    transform: translateY(40px) scale(0.9);
+    opacity: 1;
+  }
+  70%,
+  100% {
+    transform: translateY(46px) scale(0.6);
+    opacity: 0;
+  }
+}
+.art-coin {
+  animation: art-coin 2.4s ease-in infinite;
+}
+
+/* Balão/estrela aparecendo com pop e ficando quase o ciclo todo no ar. */
+@keyframes art-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) translateY(6px);
+  }
+  14% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  88% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(0);
+  }
+}
+.art-pop {
+  animation: art-pop 4.4s ease-out infinite;
+}
+
+/* Os três pontinhos de "digitando". */
+@keyframes art-typing {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+.art-typing {
+  animation: art-typing 1s ease-in-out infinite;
+}
+
+/* Telas flutuando fora de fase. A rotação vem de --r pra cada cartão
+ * manter a inclinação enquanto sobe (senão o translate zeraria o rotate). */
+@keyframes art-lift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--r, 0deg));
+  }
+  50% {
+    transform: translateY(-8px) rotate(var(--r, 0deg));
+  }
+}
+.art-lift {
+  animation: art-lift 3.2s ease-in-out infinite;
+}
+
+/* Ponto viajando da parada 1 até a 3. Anima `left` (e não transform) porque
+ * o percurso é uma fração da largura do bloco, que muda com o aparelho. */
+@keyframes art-travel {
+  0% {
+    left: 8px;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 24px);
+    opacity: 0;
+  }
+}
+.art-travel {
+  animation: art-travel 3.4s ease-in-out infinite;
+}
+
+/* Dois pontos em órbita em volta do selo de parceria. */
+@keyframes art-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.art-orbit {
+  animation: art-orbit 9s linear infinite;
+}
+
+/* A vaga que ainda está aberta, respirando. */
+@keyframes art-blink {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.art-blink {
+  animation: art-blink 2.2s ease-in-out infinite;
+}
+
+/* Barra flutuante do convite pro motorista — sobe uma vez, ao aparecer. */
+@keyframes cta-dock-in {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-cta-dock-in {
+  animation: cta-dock-in 420ms cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+
+/* ─────────── Folha modal (Sheet.jsx) ───────────
+ * O fundo escurece e a folha sobe. Curva rápida no começo e freio no fim:
+ * dá a sensação de a folha ter sido puxada, não de ter "aparecido". */
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-sheet-fade {
+  animation: sheet-fade 200ms ease-out;
+}
+
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-sheet-up {
+  animation: sheet-up 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ─────────── Formulário que se revela em passos ───────────
+ * Cada campo novo entra subindo. Um formulário de cinco campos assusta;
+ * o mesmo formulário aparecendo um campo por vez parece conversa. */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-step-in {
+  animation: step-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ─────────── Botão "falar com um consultor" ───────────
+ * Respira devagar (2,8s) em vez de piscar: chama o olho de quem está em
+ * dúvida sem competir com o botão principal da tela. */
+@keyframes talk-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.25);
+  }
+  50% {
+    transform: scale(1.015);
+    box-shadow: 0 0 22px 0 rgba(82, 196, 26, 0.25);
+  }
+}
+.animate-talk-pulse {
+  animation: talk-pulse 2.8s ease-in-out infinite;
+}
+
+/* Quem pediu menos movimento recebe a home parada — o conteúdo é o mesmo. */
+@media (prefers-reduced-motion: reduce) {
+  .cta-shine::after,
+  .cta-shine-white::after,
+  .cta-ring,
+  .animate-hint-bounce,
+  .animate-glow-drift,
+  .animate-glow-drift-slow,
+  .animate-grid-drift,
+  .demo-van,
+  .demo-ping,
+  .art-coin,
+  .art-pop,
+  .art-typing,
+  .art-lift,
+  .art-travel,
+  .art-orbit,
+  .art-blink,
+  .animate-cta-dock-in,
+  .animate-sheet-fade,
+  .animate-sheet-up,
+  .animate-step-in,
+  .animate-talk-pulse,
+  .demo-dash,
+  .demo-van-map,
+  .animate-demo-screen-in,
+  .demo-sweep {
+    animation: none !important;
+  }
+  .rise {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

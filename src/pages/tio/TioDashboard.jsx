@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ReviewNudge from '../../components/feedback/ReviewNudge';
 import {
   Bus,
   CircleAlert,
@@ -185,6 +186,11 @@ export default function TioDashboard() {
             onClick={() => navigate('/tio/finance')}
           />
         )}
+
+        {/* Convite pra avaliar — o depoimento do parceiro é a prova social
+          * da home, então o pedido vive no painel dele, não escondido no
+          * perfil. Só aparece pra quem ainda não avaliou. */}
+        <ReviewNudge />
 
         {/* Bloco "Hoje" — 4 cards clicáveis */}
         <section className="space-y-2">
