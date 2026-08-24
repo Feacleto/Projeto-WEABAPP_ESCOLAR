@@ -7,7 +7,7 @@ import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
-import { portaDeEntrada } from '../utils/deviceHint';
+import { portaDeEntrada, aparelhoDeResponsavel } from '../utils/deviceHint';
 import {
   resetPassword,
   loginWithGoogleExistingOnly,
@@ -232,19 +232,35 @@ export default function Login() {
             </Link>
           </div>
 
-          <Link
-            to="/quero-fazer-parte"
-            className="block text-sm font-semibold text-primary hover:underline"
-          >
-            Sou motorista e quero fazer parte →
-          </Link>
-          {!hasAdmin && (
-            <Link
-              to="/first-admin"
-              className="block text-xs text-textMuted underline"
-            >
-              Configurar primeiro administrador
-            </Link>
+          {/* AS DUAS PORTAS DO MOTORISTA, escondidas de quem é responsável.
+            *
+            * Esta tela é compartilhada, e num aparelho de responsável ela
+            * oferecia o cadastro de parceiro e — pior — o "configurar
+            * primeiro administrador", que é o bootstrap do dono do sistema.
+            * As rules impedem o segundo de funcionar depois que existe um
+            * admin, então não era brecha de acesso; era um responsável
+            * olhando uma porta que não é dele e podendo achar que errou de
+            * app.
+            *
+            * A assimetria é intencional: o motorista PODE ver coisa de
+            * responsável, o responsável NÃO pode ver coisa de motorista. */}
+          {!aparelhoDeResponsavel() && (
+            <>
+              <Link
+                to="/quero-fazer-parte"
+                className="block text-sm font-semibold text-primary hover:underline"
+              >
+                Sou motorista e quero fazer parte →
+              </Link>
+              {!hasAdmin && (
+                <Link
+                  to="/first-admin"
+                  className="block text-xs text-textMuted underline"
+                >
+                  Configurar primeiro administrador
+                </Link>
+              )}
+            </>
           )}
           <div className="text-[11px] text-textMuted pt-2 flex items-center justify-center gap-3">
             <Link to="/termos" className="hover:underline">

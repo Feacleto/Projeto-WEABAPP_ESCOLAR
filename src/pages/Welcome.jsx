@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Bus, LogIn, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { portaDeEntrada, aparelhoDeResponsavel } from '../utils/deviceHint';
 import Logo from '../components/common/Logo';
 import { RoleCard } from '../components/common/Sheet';
 import { ArtRoad } from '../components/landing/BlockArt';
@@ -69,15 +70,16 @@ export default function Welcome() {
         </div>
 
         <div className="relative">
+          {/* Volta pra porta deste visitante, nao pra vitrine do motorista. */}
           <Link
-            to="/"
+            to={portaDeEntrada()}
             className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
           >
             <ArrowLeft size={16} /> Voltar
           </Link>
 
           <div className="mt-3 text-center">
-            <Link to="/" aria-label="Conhecer o Alô Buzinou" className="tap inline-block">
+            <Link to={portaDeEntrada()} aria-label="Voltar" className="tap inline-block">
               <Logo variant="stacked" tone="onDark" height={92} className="mx-auto" />
             </Link>
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
@@ -113,13 +115,18 @@ export default function Welcome() {
           detail="Recebi (ou vou receber) o convite do motorista"
           onClick={() => navigate('/first-access')}
         />
-        <RoleCard
-          tone="emerald"
-          icon={Bus}
-          title="Sou motorista escolar"
-          detail="Quero ser associado e usar o app na minha rota"
-          onClick={() => navigate('/quero-fazer-parte')}
-        />
+        {/* Escondido de quem é responsável: /welcome só existe pra links
+          * antigos, e num aparelho de responsável ela apresentava as duas
+          * portas como equivalentes. */}
+        {!aparelhoDeResponsavel() && (
+          <RoleCard
+            tone="emerald"
+            icon={Bus}
+            title="Sou motorista escolar"
+            detail="Quero ser associado e usar o app na minha rota"
+            onClick={() => navigate('/quero-fazer-parte')}
+          />
+        )}
 
         <div className="rounded-2xl border border-gray-200 bg-card p-4 shadow-sm">
           <p className="text-sm font-bold text-text">Como o app te reconhece</p>
