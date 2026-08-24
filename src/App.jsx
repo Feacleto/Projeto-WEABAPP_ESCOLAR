@@ -27,6 +27,7 @@ import PaiFinance from './pages/pai/PaiFinance';
 import PaiFinanceReport from './pages/pai/PaiFinanceReport';
 import PaiMap from './pages/pai/PaiMap';
 import AddChild from './pages/pai/AddChild';
+import PaiContract from './pages/pai/PaiContract';
 import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
 import ChildDetail from './pages/ChildDetail';
@@ -160,6 +161,7 @@ export default function App() {
         <Route path="map" element={<PaiMap />} />
         <Route path="child" element={<ChildDetail />} />
         <Route path="adicionar-filho" element={<AddChild />} />
+        <Route path="contrato" element={<PaiContract />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>

@@ -85,7 +85,10 @@ service firebase.storage {
           && firestore.get(/databases/(default)/documents/payments/$(paymentId)).data.parentUid == request.auth.uid;
       }
       allow read: if isAdmin() || isPayer();
-      allow write: if isPayer()
+      // O TIO também anexa. Na prática o pai paga e manda o comprovante
+      // pelo WhatsApp sem passar pelo app — sem isto, aquele comprovante
+      // não entra no histórico e o registro do mês fica incompleto.
+      allow write: if (isAdmin() || isPayer())
         && (isImage() || request.resource.contentType == 'application/pdf')
         && isWithinSizeLimit();
       // O pai pode trocar o comprovante errado; o admin limpa depois de

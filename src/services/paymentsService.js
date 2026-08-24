@@ -36,6 +36,27 @@ export async function claimPayment(paymentId, method = 'pix', receiptURL = null)
   playSound('pay');
 }
 
+
+/**
+ * Anexa (ou troca) o comprovante de um pagamento já existente.
+ *
+ * POR QUE O TIO PRECISA DISTO
+ * O caminho ideal é o pai anexar ao avisar que pagou. Mas o caminho real,
+ * na maioria das vezes, é ele pagar pelo banco e mandar o print no
+ * WhatsApp — porque foi assim que ele sempre fez. Sem uma forma de o tio
+ * anexar aquilo, o comprovante fica fora do app e o histórico do mês
+ * mente: aparece como pago sem lastro nenhum.
+ *
+ * Não muda o STATUS, só o anexo. Confirmar recebimento continua sendo uma
+ * decisão separada e explícita do tio.
+ */
+export async function attachReceipt(paymentId, receiptURL) {
+  if (!paymentId) throw new Error('Sem paymentId.');
+  await updateDoc(doc(db, 'payments', paymentId), {
+    receiptURL: receiptURL || null,
+    receiptAttachedAt: serverTimestamp(),
+  });
+}
 /**
  * Pai desfaz "marquei como pago" (caso tenha clicado errado e o tio ainda
  * não confirmou). Volta pra 'pending'.

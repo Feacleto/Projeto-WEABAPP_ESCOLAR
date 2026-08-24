@@ -8,6 +8,8 @@ import EmptyState from '../../components/common/EmptyState';
 import ChildCard from '../../components/children/ChildCard';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { useChildren } from '../../hooks/useChildren';
+import { useAbsences } from '../../hooks/useAbsences';
+import { getDateKey } from '../../services/routePlanService';
 import { PERIOD_LABELS } from '../../utils/formatters';
 
 const FILTERS = [
@@ -21,6 +23,11 @@ export default function TioChildren() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { children, loading } = useChildren();
+
+  // Ausências declaradas HOJE. Sem isto, o tio olhava a lista e não sabia
+  // quem ia faltar — a informação mais perecível do dia ficava só na tela
+  // de rota, que ele abre no meio do trânsito.
+  const { byChildId: absenceByChild } = useAbsences(getDateKey());
   const initialFilter = searchParams.get('period') || 'all';
   const [filter, setFilter] = useState(initialFilter);
   const [search, setSearch] = useState('');
@@ -146,6 +153,7 @@ export default function TioChildren() {
               <ChildCard
                 key={child.id}
                 child={child}
+                absence={absenceByChild?.[child.id] || null}
                 onClick={() => navigate(`/tio/children/${child.id}`)}
               />
             ))}

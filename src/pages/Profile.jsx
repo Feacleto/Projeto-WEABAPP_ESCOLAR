@@ -255,6 +255,30 @@ export default function Profile() {
               </div>
               <ChevronRight size={20} className="text-textMuted shrink-0" />
             </button>
+
+            <div className="h-px bg-gray-100 my-3" />
+
+            {/* O pai era obrigado a aceitar o contrato pra entrar e depois
+              * não tinha como relê-lo: a única rota era a do tio. Pedir
+              * aceite e esconder o documento é o oposto de transparência. */}
+            <button
+              type="button"
+              onClick={() => navigate('/pai/contrato')}
+              className="w-full flex items-center gap-3 tap"
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <FileText size={20} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-semibold text-text">
+                  Contrato de transporte
+                </p>
+                <p className="text-xs text-textMuted truncate">
+                  Ler de novo ou salvar em PDF
+                </p>
+              </div>
+              <ChevronRight size={20} className="text-textMuted shrink-0" />
+            </button>
           </Card>
         )}
 

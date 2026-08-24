@@ -42,6 +42,7 @@ export default function PaymentRow({
   action = null,
   showChild = true,
   role = 'parent',
+  onAttachReceipt = null,
 }) {
   const config = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.pending;
   const { Icon, color } = config;
@@ -81,7 +82,7 @@ export default function PaymentRow({
           {/* Comprovante anexado pelo pai. Fica a um toque pro tio
             * conferir antes de confirmar — era isto que antes virava
             * print de tela no WhatsApp. */}
-          {payment.receiptURL && (
+          {payment.receiptURL ? (
             <a
               href={payment.receiptURL}
               target="_blank"
@@ -91,6 +92,22 @@ export default function PaymentRow({
               <Paperclip size={13} />
               Ver comprovante
             </a>
+          ) : (
+            /* Sem comprovante e já avisado/pago: o tio anexa o print que
+             * recebeu no WhatsApp. Sem isso o histórico do mês mostra
+             * "pago" sem lastro nenhum. */
+            onAttachReceipt &&
+            displayStatus !== 'pending' &&
+            displayStatus !== 'overdue' && (
+              <button
+                type="button"
+                onClick={onAttachReceipt}
+                className="tap inline-flex items-center gap-1.5 text-xs font-semibold text-textMuted underline mt-1"
+              >
+                <Paperclip size={13} />
+                Anexar comprovante
+              </button>
+            )
           )}
           {payment.paymentMethod && displayStatus !== 'pending' && displayStatus !== 'overdue' && (
             <p className="text-[11px] text-textMuted flex items-center gap-1 mt-0.5">

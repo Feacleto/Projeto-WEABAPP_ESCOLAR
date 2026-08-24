@@ -26,8 +26,11 @@ import {
   undoReceipt,
   canUndoReceipt,
   computeDisplayStatus,
+  attachReceipt,
 } from '../../services/paymentsService';
 import { notifyPaymentConfirmed } from '../../services/notificationsService';
+import { uploadPaymentReceipt } from '../../services/photoService';
+import ReceiptPicker from '../../components/payments/ReceiptPicker';
 import {
   formatMonthLabel,
   formatCurrency,
@@ -58,6 +61,12 @@ export default function TioFinance() {
   const [unconfirming, setUnconfirming] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Pagamento que o tio escolheu pra anexar comprovante. O caminho real é
+  // o pai pagar pelo banco e mandar o print no WhatsApp — sem isto aquele
+  // comprovante nunca entra no app.
+  const [attachingTo, setAttachingTo] = useState(null);
+  const [attachFile, setAttachFile] = useState(null);
+
   const enriched = useMemo(
     () => payments.map((p) => ({ ...p, _display: computeDisplayStatus(p) })),
     [payments]
@@ -83,6 +92,23 @@ export default function TioFinance() {
 
   const hasPix = !!profile?.pixKey;
   const isCurrentMonth = monthKey === getCurrentMonthKey();
+
+  const onConfirmAttach = async () => {
+    if (!attachingTo || !attachFile) return;
+    setActionLoading(true);
+    try {
+      const url = await uploadPaymentReceipt(attachingTo.id, attachFile);
+      await attachReceipt(attachingTo.id, url);
+      toast.success('Comprovante anexado.');
+      setAttachingTo(null);
+      setAttachFile(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra anexar. Tente uma imagem menor.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const onMethodSelected = async (method) => {
     if (!methodSheetFor) return;
@@ -241,6 +267,10 @@ export default function TioFinance() {
                 payment={payment}
                 displayStatus={payment._display}
                 role="admin"
+                onAttachReceipt={() => {
+                  setAttachingTo(payment);
+                  setAttachFile(null);
+                }}
                 action={renderAction(payment, {
                   onConfirm: () => setMethodSheetFor(payment),
                   onUndo: () => setUnconfirming(payment),
@@ -260,6 +290,31 @@ export default function TioFinance() {
           onClose={() => !actionLoading && setMethodSheetFor(null)}
         />
       )}
+
+      {/* Anexar comprovante que chegou por fora do app */}
+      <ConfirmDialog
+        open={!!attachingTo}
+        title="Anexar comprovante"
+        description={
+          attachingTo ? (
+            <>
+              <span className="block text-xs mb-3">
+                Comprovante de {attachingTo.childName} —{' '}
+                {formatMonthLabel(attachingTo.month)}. Serve a foto do print
+                que o responsável mandou.
+              </span>
+              <ReceiptPicker file={attachFile} onChange={setAttachFile} />
+            </>
+          ) : null
+        }
+        confirmLabel="Anexar"
+        loading={actionLoading}
+        onConfirm={onConfirmAttach}
+        onCancel={() => {
+          setAttachingTo(null);
+          setAttachFile(null);
+        }}
+      />
 
       {/* Desfazer confirmação */}
       <ConfirmDialog

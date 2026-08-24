@@ -124,3 +124,35 @@ export function formatRelativeTime(input, now = new Date()) {
     tone: 'older',
   };
 }
+
+/**
+ * Idade em anos a partir de `birthDate` ('YYYY-MM-DD').
+ *
+ * Existe pra a lista de crianças poder dizer "Miguel, 7 anos" — a idade é o
+ * que o tio usa pra distinguir dois irmãos e pra saber com quem está
+ * falando na porta. Devolve null quando não há data, e o chamador
+ * simplesmente omite.
+ */
+export function ageFromBirthDate(birthDate) {
+  if (!birthDate) return null;
+  const d = birthDate instanceof Date ? birthDate : new Date(`${birthDate}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  // Ainda não fez aniversário este ano.
+  const beforeBirthday =
+    today.getMonth() < d.getMonth() ||
+    (today.getMonth() === d.getMonth() && today.getDate() < d.getDate());
+  if (beforeBirthday) age -= 1;
+
+  if (age < 0 || age > 30) return null; // data digitada errada
+  return age;
+}
+
+/** "7 anos" / "1 ano" — ou null quando não há data. */
+export function formatAge(birthDate) {
+  const age = ageFromBirthDate(birthDate);
+  if (age == null) return null;
+  return age === 1 ? '1 ano' : `${age} anos`;
+}
