@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, LogOut, MessageCircle, ShieldCheck } from 'lucide-react';
+import { Clock, LogOut, MessageCircle, RefreshCw, ShieldCheck } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { destinoAposSair } from '../utils/frentes';
 import Logo from '../components/common/Logo';
@@ -36,17 +37,66 @@ import Logo from '../components/common/Logo';
 /** WhatsApp de quem negocia a associação. */
 const WHATSAPP_CONSULTOR = '5511999999999';
 
+/** De quanto em quanto tempo a tela pergunta se já foi aprovado. */
+const INTERVALO_MS = 30_000;
+
 export default function Aguardando() {
-  const { profile, logout } = useAuth();
+  const { profile, logout, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [saindo, setSaindo] = useState(false);
+  const [conferindo, setConferindo] = useState(false);
 
-  // Quem for aprovado enquanto está com a tela aberta vai pro painel sozinho.
-  // O perfil é refetchado a cada foco da aba, então a aprovação chega sem ele
-  // precisar recarregar nada — e é o momento que ele está esperando.
+  /**
+   * ESTA TELA PERGUNTA SOZINHA SE JÁ FOI APROVADO.
+   *
+   * O perfil só era buscado quando a sessão iniciava (`onAuthStateChanged`).
+   * Na prática isso funcionava — o motorista fecha e abre o app pra conferir,
+   * e cada abertura traz o papel novo. Mas é justamente o comportamento que a
+   * gente quer evitar: alguém checando de hora em hora, sem saber se checou
+   * cedo demais.
+   *
+   * Três gatilhos, e cada um cobre um jeito de esperar:
+   *   - ao voltar pra aba (`visibilitychange`), que é o gesto de quem deixou
+   *     aberto e foi fazer outra coisa;
+   *   - a cada 30s enquanto a tela está VISÍVEL — parado com o app aberto,
+   *     esperando, que é o caso mais provável logo depois do cadastro;
+   *   - no botão, porque quem espera precisa de algo pra fazer. Dar uma ação
+   *     a quem está ansioso vale mais que a ação em si.
+   *
+   * O intervalo só roda com a aba visível de propósito: 30s num app em
+   * segundo plano é bateria e leitura gastas com ninguém olhando.
+   */
   useEffect(() => {
-    if (profile?.role === 'admin') navigate('/tio', { replace: true });
-  }, [profile?.role, navigate]);
+    if (profile?.role === 'admin') {
+      navigate('/tio', { replace: true });
+      return undefined;
+    }
+
+    const conferir = () => {
+      if (document.visibilityState === 'visible') refreshProfile();
+    };
+
+    const id = setInterval(conferir, INTERVALO_MS);
+    document.addEventListener('visibilitychange', conferir);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', conferir);
+    };
+  }, [profile?.role, navigate, refreshProfile]);
+
+  const conferirAgora = async () => {
+    setConferindo(true);
+    try {
+      const atualizado = await refreshProfile();
+      // Só avisa quando a resposta é "ainda não". O "sim" não precisa de
+      // aviso: a tela troca pro painel sozinha, e isso já é a resposta.
+      if (atualizado?.role !== 'admin') {
+        toast('Ainda em análise. A gente te avisa assim que liberar.');
+      }
+    } finally {
+      setConferindo(false);
+    }
+  };
 
   const posicao = profile?.posicaoNaFila;
   const primeiroNome = String(profile?.name || '').trim().split(/\s+/)[0];
@@ -144,9 +194,19 @@ export default function Aguardando() {
             Falar com um consultor
           </a>
 
+          <button
+            type="button"
+            onClick={conferirAgora}
+            disabled={conferindo}
+            className="tap mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] text-[13.5px] font-semibold text-white/75 disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={conferindo ? 'animate-spin' : undefined} />
+            {conferindo ? 'Conferindo…' : 'Já fui aprovado?'}
+          </button>
+
           <p className="mt-3 flex items-center justify-center gap-1.5 text-[12px] text-white/40">
             <Clock size={13} />
-            Costumamos responder no mesmo dia útil.
+            A tela abre sozinha quando liberarem.
           </p>
 
           <button
