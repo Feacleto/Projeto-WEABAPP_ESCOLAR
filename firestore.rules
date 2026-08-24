@@ -87,15 +87,27 @@ service cloud.firestore {
       );
       allow list: if isAdmin();
 
+      // CREATE só existe pro bootstrap do primeiro motorista.
+      //
+      // A cláusula que aceitava role == 'parent' de qualquer signed-in foi
+      // REMOVIDA, e ela era uma escalada de privilégio de verdade:
+      //
+      //   1. A landing chama signInAnonymously pra gravar leads, então
+      //      qualquer visitante do site tem um uid.
+      //   2. O create não restringia CAMPOS. Dava pra criar o próprio doc
+      //      com role 'parent' E childIds: ['qualquer-id'].
+      //   3. Com isso o visitante virava isAppUser() e passava as regras de
+      //      liveLocation — ou seja, lia a POSIÇÃO AO VIVO da perua — além do
+      //      doc do motorista, com telefone e chave PIX.
+      //
+      // Nada do cliente precisa disso: desde que o resgate de convite virou
+      // Cloud Function, quem cria users/{uid} de responsável é o redeemInvite
+      // com Admin SDK, que não passa por rules. Só o bootstrap do admin
+      // (createFirstAdmin) ainda escreve daqui.
       allow create: if isSignedIn()
         && request.auth.uid == uid
-        && (
-          request.resource.data.role == 'parent'
-          || (
-            request.resource.data.role == 'admin'
-            && !exists(/databases/$(database)/documents/appState/init)
-          )
-        );
+        && request.resource.data.role == 'admin'
+        && !exists(/databases/$(database)/documents/appState/init);
 
       // O dono atualiza o próprio doc, mas NÃO pode mexer em role nem no
       // vínculo de crianças. Quem escreve childIds/childId é a Cloud
