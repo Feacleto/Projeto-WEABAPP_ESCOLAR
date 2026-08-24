@@ -73,6 +73,7 @@ import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
 import { hasAcceptedContract } from './services/contractService';
 import Spinner from './components/common/Spinner';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
 import { painelDe, ehDono } from './utils/papeis';
 
@@ -205,6 +206,11 @@ export default function App() {
   return (
     <>
       <Suspense fallback={<FullScreenLoader />}>
+        {/* Boundary DENTRO do Suspense: é aqui que a rejeição do lazy()
+          * chega quando um chunk sumiu depois de um deploy. Fica mais perto
+          * do erro que o boundary do main.jsx, e por isso é o que atende
+          * quase sempre. Ver ErrorBoundary.jsx. */}
+        <ErrorBoundary>
         <Routes>
         {/* Rotas públicas */}
         <Route path="/" element={<Home />} />
@@ -314,6 +320,7 @@ export default function App() {
           * do doc users. /welcome segue existindo pra links antigos. */}
         <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ErrorBoundary>
       </Suspense>
 
       {/* Banner global de cookies — aparece só na primeira visita */}
