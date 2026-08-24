@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth';
 import Logo from '../components/common/Logo';
 import Spinner from '../components/common/Spinner';
 import LoginSheet from '../components/landing/LoginSheet';
+import { FRENTE_FAMILIA } from '../utils/frentes';
 
 /**
  * A PORTA DA FAMÍLIA — a home do responsável.
@@ -126,7 +127,13 @@ export default function Familia() {
 
   // Sessão sem doc de usuário (conta recém-criada, ou órfã) — deixa o fluxo
   // normal de login resolver em vez de mostrar a porta pra quem já entrou.
-  if (user && !profile) return <Navigate to="/login" replace />;
+  // Leva a frente junto: sem isso o /login mostra as portas do motorista a
+  // quem estava na porta da família.
+  if (user && !profile) {
+    return (
+      <Navigate to="/login" replace state={{ frente: FRENTE_FAMILIA }} />
+    );
+  }
 
   const nomeMotorista = motorista?.driverFirstName;
 

@@ -71,7 +71,6 @@ import { hasAcceptedCurrentTerms } from './services/consentService';
 import { hasAcceptedContract } from './services/contractService';
 import Spinner from './components/common/Spinner';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
-import { aparelhoDeResponsavel } from './utils/deviceHint';
 
 function FullScreenLoader() {
   return (
@@ -175,16 +174,6 @@ function ParentContractGate({ children }) {
  * "Entrar" e resolve; e quem nunca usou o app não tem migalha nenhuma,
  * então visitante novo sempre cai na home — que é o que a gente quer.
  */
-function Raiz() {
-  const { user, loading } = useAuth();
-
-  if (loading) return <FullScreenLoader />;
-  if (!user && aparelhoDeResponsavel()) {
-    return <Navigate to="/familia" replace />;
-  }
-  return <Home />;
-}
-
 export default function App() {
   // Som global de clique em qualquer elemento .tap — desabilitável no Profile
   useGlobalClickSound();
@@ -194,7 +183,7 @@ export default function App() {
       <Suspense fallback={<FullScreenLoader />}>
         <Routes>
         {/* Rotas públicas */}
-        <Route path="/" element={<Raiz />} />
+        <Route path="/" element={<Home />} />
         {/* A porta da família — a home do responsável. Mesmo sistema
           * visual da home do motorista, porque é o mesmo produto e ele
           * precisa reconhecer onde está; conteúdo completamente outro,

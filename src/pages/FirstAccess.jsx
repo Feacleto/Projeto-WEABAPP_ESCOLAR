@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
-  Bus,
   Link2,
   LogIn,
   Lock,
@@ -20,7 +19,6 @@ import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import { authenticateAndRedeem, googleAndRedeem } from '../services/authService';
 import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
-import { portaDeEntrada, aparelhoDeResponsavel } from '../utils/deviceHint';
 import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
 
 /**
@@ -207,11 +205,12 @@ export default function FirstAccess() {
         </div>
 
         <div className="relative">
-          {/* Voltar devolve à porta DESTE visitante. Apontava pra "/", que é
-            * a home do MOTORISTA: o responsável tocava em Voltar e caía na
-            * página que vende associação, falando de taxa e vaga. */}
+          {/* Voltar vai pra porta da FAMÍLIA, não pra "/". Esta tela existe
+            * só pra criar conta de responsável — quem está aqui está no
+            * caminho dele, e Voltar tem que devolver ele pra frente dele.
+            * Antes apontava pra home do motorista, que vende associação. */}
           <Link
-            to={portaDeEntrada()}
+            to="/familia"
             className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
           >
             <ArrowLeft size={16} /> Voltar
@@ -412,26 +411,17 @@ export default function FirstAccess() {
             <LogIn size={14} />
             Já tenho conta
           </button>
-          {/* "Sou motorista" existe pra quem errou a tela — e agora só aparece
-            * pra quem NÃO é responsável. Num aparelho que já foi de um
-            * responsável, este link levava ele do primeiro acesso direto pro
-            * cadastro de parceiro: a porta do outro público, oferecida dentro
-            * da tela dele. */}
-          {!aparelhoDeResponsavel() && (
-            <>
-              <span aria-hidden className="text-gray-300">
-                ·
-              </span>
-              <button
-                type="button"
-                onClick={() => navigate('/quero-fazer-parte')}
-                className="tap inline-flex items-center gap-1.5 py-2 text-primary hover:text-primaryDark"
-              >
-                <Bus size={14} />
-                Sou motorista
-              </button>
-            </>
-          )}
+          {/* O "Sou motorista" SAIU daqui.
+            *
+            * Esta tela existe só pra criar conta de responsável, e o link
+            * levava ele direto pro cadastro de parceiro — a porta do outro
+            * público oferecida dentro da tela dele. A regra é assimétrica:
+            * o motorista pode ver coisa de responsável, o responsável não
+            * pode ver coisa de motorista.
+            *
+            * Quem é motorista e caiu aqui por engano tem "Já tenho conta" ao
+            * lado, e a home em "/" — que é a frente dele e onde ele chega
+            * naturalmente. Ninguém fica sem porta. */}
         </div>
 
         <div className="flex items-center justify-center gap-3 pt-4 text-[11px] text-textMuted">

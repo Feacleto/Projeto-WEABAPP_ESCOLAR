@@ -54,7 +54,7 @@ import {
 } from '../services/accountService';
 import { uploadProfilePhoto, deleteProfilePhoto } from '../services/photoService';
 import { STORAGE_ENABLED } from '../config/capabilities';
-import { destinoAposSair } from '../utils/deviceHint';
+import { destinoAposSair } from '../utils/frentes';
 import { setProfilePhotoURL } from '../services/profileService';
 import { useSoundsEnabled } from '../hooks/useSoundsEnabled';
 import { playSound } from '../services/soundService';

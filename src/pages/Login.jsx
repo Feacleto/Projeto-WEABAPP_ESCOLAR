@@ -7,7 +7,7 @@ import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
-import { portaDeEntrada, aparelhoDeResponsavel } from '../utils/deviceHint';
+import { veioDaFamilia } from '../utils/frentes';
 import {
   resetPassword,
   loginWithGoogleExistingOnly,
@@ -20,6 +20,12 @@ export default function Login() {
   const { login, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // A frente vem da NAVEGAÇÃO, não do aparelho: uma pessoa pode ser
+  // responsável e motorista, e marcar o celular travaria ela no último
+  // papel usado. Sem contexto, o padrão é a frente do motorista — quem
+  // chega sem histórico está conhecendo a plataforma.
+  const daFamilia = veioDaFamilia(location);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -115,9 +121,9 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col px-6 py-6">
-      {/* Volta pra porta deste visitante, não pra vitrine do motorista. */}
+      {/* Volta pra frente de onde a pessoa veio. */}
       <Link
-        to={portaDeEntrada()}
+        to={daFamilia ? '/familia' : '/'}
         className="inline-flex items-center gap-1 text-sm text-textMuted mb-4 tap"
       >
         <ArrowLeft size={16} /> Voltar
@@ -126,7 +132,7 @@ export default function Login() {
       <div className="flex-1 flex flex-col justify-center">
         <div className="text-center mb-6">
           <Link
-            to={portaDeEntrada()}
+            to={daFamilia ? '/familia' : '/'}
             aria-label="Voltar"
             className="tap inline-block"
           >
@@ -244,7 +250,7 @@ export default function Login() {
             *
             * A assimetria é intencional: o motorista PODE ver coisa de
             * responsável, o responsável NÃO pode ver coisa de motorista. */}
-          {!aparelhoDeResponsavel() && (
+          {!daFamilia && (
             <>
               <Link
                 to="/quero-fazer-parte"
