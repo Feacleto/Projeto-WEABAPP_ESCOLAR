@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { getChild } from '../../services/childrenService';
 import { useAuth } from '../../hooks/useAuth';
+import { AddChildSheet } from '../../pages/pai/AddChild';
 
 /**
  * Troca entre os filhos do responsável.
@@ -16,9 +16,10 @@ import { useAuth } from '../../hooks/useAuth';
  * preencher um rótulo seria desperdício.
  */
 export default function ChildSwitcher({ className = '' }) {
-  const navigate = useNavigate();
   const { childIds, activeChildId, setActiveChildId } = useAuth();
   const [names, setNames] = useState({});
+  // Adicionar filho é interrupção da troca de filho, não destino.
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     if (childIds.length < 2) return;
@@ -31,7 +32,7 @@ export default function ChildSwitcher({ className = '' }) {
           if (c) map[c.id] = String(c.name || '').split(/\s+/)[0] || 'Criança';
         });
         setNames(map);
-      }
+      },
     );
     return () => {
       alive = false;
@@ -41,31 +42,37 @@ export default function ChildSwitcher({ className = '' }) {
   if (childIds.length < 2) return null;
 
   return (
-    <div className={`flex items-center gap-1 p-1 bg-gray-100 rounded-2xl ${className}`}>
-      {childIds.map((id) => {
-        const active = id === activeChildId;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActiveChildId(id)}
-            aria-pressed={active}
-            className={`tap flex-1 min-w-0 py-2.5 px-2 text-sm font-semibold rounded-xl truncate transition-colors ${
-              active ? 'bg-card text-text shadow-sm' : 'text-textMuted'
-            }`}
-          >
-            {names[id] || '...'}
-          </button>
-        );
-      })}
-      <button
-        type="button"
-        onClick={() => navigate('/pai/adicionar-filho')}
-        aria-label="Adicionar outro filho"
-        className="tap w-10 h-10 rounded-xl text-textMuted flex items-center justify-center shrink-0"
+    <>
+      <div
+        className={`flex items-center gap-1 p-1 bg-gray-100 rounded-2xl ${className}`}
       >
-        <Plus size={18} />
-      </button>
-    </div>
+        {childIds.map((id) => {
+          const active = id === activeChildId;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveChildId(id)}
+              aria-pressed={active}
+              className={`tap flex-1 min-w-0 py-2.5 px-2 text-sm font-semibold rounded-xl truncate transition-colors ${
+                active ? 'bg-card text-text shadow-sm' : 'text-textMuted'
+              }`}
+            >
+              {names[id] || '...'}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          aria-label="Adicionar outro filho"
+          className="tap w-10 h-10 rounded-xl text-textMuted flex items-center justify-center shrink-0"
+        >
+          <Plus size={18} />
+        </button>
+      </div>
+
+      <AddChildSheet open={addOpen} onClose={() => setAddOpen(false)} />
+    </>
   );
 }

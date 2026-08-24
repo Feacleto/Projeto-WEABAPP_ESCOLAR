@@ -62,6 +62,8 @@ import { PIX_KEY_TYPES } from '../services/userService';
 import { APP_VERSION } from '../version';
 import ReviewSheet from '../components/feedback/ReviewSheet';
 import SupportSheet from '../components/support/SupportSheet';
+import PixSheet from '../components/payments/PixSheet';
+import { AddChildSheet } from './pai/AddChild';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -76,6 +78,8 @@ export default function Profile() {
   const [deleting, setDeleting] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [pixOpen, setPixOpen] = useState(false);
+  const [addChildOpen, setAddChildOpen] = useState(false);
   const [soundsEnabled, setSoundsEnabledState] = useSoundsEnabled();
 
   if (!profile) {
@@ -141,6 +145,7 @@ export default function Profile() {
               name={profile.name}
               photoURL={profile.photoURL}
               kind={isAdmin ? 'admin' : 'adult'}
+              gender={profile.gender}
               onChanged={refreshProfile}
             />
             <div>
@@ -202,7 +207,7 @@ export default function Profile() {
           <Card>
             <button
               type="button"
-              onClick={() => navigate('/tio/pix')}
+              onClick={() => setPixOpen(true)}
               className="w-full flex items-center gap-3 tap"
             >
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -231,7 +236,7 @@ export default function Profile() {
           <Card>
             <button
               type="button"
-              onClick={() => navigate('/pai/adicionar-filho')}
+              onClick={() => setAddChildOpen(true)}
               className="w-full flex items-center gap-3 tap"
             >
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -464,6 +469,13 @@ export default function Profile() {
         onCancel={() => setConfirmLogout(false)}
       />
 
+      <PixSheet open={pixOpen} onClose={() => setPixOpen(false)} />
+
+      <AddChildSheet
+        open={addChildOpen}
+        onClose={() => setAddChildOpen(false)}
+      />
+
       <ReviewSheet
         open={feedbackOpen}
         onClose={() => setFeedbackOpen(false)}
@@ -501,7 +513,14 @@ export default function Profile() {
  * Avatar com botão de câmera flutuante pra trocar/remover foto.
  * Compartilhado entre Tio e Pai — Storage rules garantem permissão.
  */
-function ProfilePhotoEditor({ uid, name, photoURL, kind = 'adult', onChanged }) {
+function ProfilePhotoEditor({
+  uid,
+  name,
+  photoURL,
+  kind = 'adult',
+  gender,
+  onChanged,
+}) {
   const [uploading, setUploading] = useState(false);
 
   const onPick = async (e) => {
@@ -543,6 +562,7 @@ function ProfilePhotoEditor({ uid, name, photoURL, kind = 'adult', onChanged }) 
       <Avatar
         photoURL={photoURL}
         kind={kind}
+        gender={gender}
         seed={uid}
         name={name}
         size="xl"
@@ -609,6 +629,10 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
   const [phone, setPhone] = useState(
     profile.phone ? formatPhone(profile.phone) : ''
   );
+  // Vazio pra toda conta criada antes deste campo existir. Não há migração
+  // possível — ninguém sabe o gênero de quem nunca foi perguntado — então o
+  // avatar segue sorteado até a pessoa responder aqui, uma vez.
+  const [gender, setGender] = useState(profile.gender || '');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -630,6 +654,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
       await updateProfile(user.uid, {
         name: name.trim(),
         phone: phone ? unmaskPhone(phone) : '',
+        gender: gender || null,
       });
       toast.success('Perfil atualizado!');
       await onSaved();
@@ -676,6 +701,47 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
           error={errors.phone}
           autoComplete="tel"
         />
+        {/* O GÊNERO EXISTE PRO ROSTO, E O TEXTO DIZ ISSO.
+          *
+          * Os dois adultos do app — motorista e responsável — nunca foram
+          * perguntados, e por isso saíam com rosto sorteado. O do motorista
+          * é o pior caso: ele o vê no canto de TODA tela, e metade das vezes
+          * não se reconhece nele.
+          *
+          * O campo é opcional de propósito. É pra desenhar um avatar, não
+          * pra classificar ninguém: quem não quiser responder continua com o
+          * rosto de sempre, e nada no app muda por causa disso. Dizer pra que
+          * serve, ali embaixo, é o que torna a pergunta justa. */}
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-text">
+            Seu avatar
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: 'female', label: 'Mulher' },
+              { value: 'male', label: 'Homem' },
+              { value: '', label: 'Prefiro não dizer' },
+            ].map((g) => (
+              <button
+                key={g.value || 'none'}
+                type="button"
+                onClick={() => setGender(g.value)}
+                className={`tap rounded-xl border-2 px-2 py-2.5 text-xs font-semibold ${
+                  gender === g.value
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-gray-200 bg-card text-textMuted'
+                }`}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-snug text-textMuted">
+            Serve só pra desenhar seu rosto automático. Se você enviou uma
+            foto, ela continua valendo.
+          </p>
+        </div>
+
         <Button type="submit" icon={Save} loading={saving}>
           Salvar
         </Button>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Ticket, Check, Link2 } from 'lucide-react';
+import AppSheet from '../../components/common/AppSheet';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -20,7 +21,7 @@ import { isValidInviteCodeFormat } from '../../utils/generateInviteCode';
  * ele confirma. Vincular direto sem mostrar o nome deixaria o responsável
  * sem saber o que aconteceu se digitasse um código errado.
  */
-export default function AddChild() {
+function AddChildBody({ onDone }) {
   const navigate = useNavigate();
   const { refreshProfile, setActiveChildId } = useAuth();
 
@@ -52,7 +53,10 @@ export default function AddChild() {
       if (res?.childId) setActiveChildId(res.childId);
       await refreshProfile();
       toast.success(`${res?.childFirstName || 'Criança'} adicionado à sua conta!`);
-      navigate('/pai', { replace: true });
+      // A página volta pro painel; a folha só se fecha — o painel já está
+      // atrás dela, e ele acabou de ser atualizado pelo refreshProfile.
+      if (onDone) onDone();
+      else navigate('/pai', { replace: true });
     } catch (err) {
       toast.error(err.message);
       setLinking(false);
@@ -60,20 +64,7 @@ export default function AddChild() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col px-6 py-6">
-      <Link
-        to="/pai"
-        className="inline-flex items-center gap-1 text-sm text-textMuted mb-4 tap self-start p-1 -ml-1"
-      >
-        <ArrowLeft size={16} /> Voltar
-      </Link>
-
-      <div className="space-y-1 mb-5">
-        <h1 className="text-2xl font-bold text-text">Adicionar outro filho</h1>
-        <p className="text-sm text-textMuted">
-          Use o convite que o motorista mandou pra segunda criança.
-        </p>
-      </div>
+    <div className="flex flex-col">
 
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-5 flex gap-3">
         <Link2 size={18} className="text-textMuted shrink-0 mt-0.5" />
@@ -147,5 +138,53 @@ export default function AddChild() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * CASCA 1 — a página. Link direto e o gesto de voltar do sistema.
+ */
+export default function AddChild() {
+  const navigate = useNavigate();
+  return (
+    <div className="flex min-h-screen flex-col px-6 py-6">
+      <Link
+        to="/pai"
+        className="tap -ml-1 mb-4 inline-flex items-center gap-1 self-start p-1 text-sm text-textMuted"
+      >
+        <ArrowLeft size={16} /> Voltar
+      </Link>
+
+      <div className="mb-5 space-y-1">
+        <h1 className="text-2xl font-bold text-text">Adicionar outro filho</h1>
+        <p className="text-sm text-textMuted">
+          Use o convite que o motorista mandou pra segunda criança.
+        </p>
+      </div>
+
+      <AddChildBody onDone={() => navigate('/pai', { replace: true })} />
+    </div>
+  );
+}
+
+/**
+ * CASCA 2 — a folha. É por onde o seletor de filhos e o perfil abrem.
+ *
+ * Nos dois casos o responsável está no meio de outra coisa: trocando de
+ * filho, ou conferindo os dados dele. Digitar um código de convite não
+ * justifica trocar de tela — ainda mais numa tela que, se ele desistir,
+ * exige achar o caminho de volta.
+ */
+export function AddChildSheet({ open, onClose }) {
+  return (
+    <AppSheet
+      open={open}
+      onClose={onClose}
+      title="Adicionar outro filho"
+      subtitle="Use o convite que o motorista mandou pra segunda criança."
+      icon={Ticket}
+    >
+      {open && <AddChildBody onDone={onClose} />}
+    </AppSheet>
   );
 }
