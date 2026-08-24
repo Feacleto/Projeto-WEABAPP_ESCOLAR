@@ -578,6 +578,28 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // entryBonuses/{uid} — o que a roleta sorteou pra esta conta.
+    //
+    // NINGUÉM ESCREVE DAQUI. Nem o dono, nem o admin: create, update e
+    // delete são `false` pra todos, e quem grava é a callable
+    // spinEntryBonus com Admin SDK, que não passa por rules.
+    //
+    // O motivo é o que o documento é: um benefício em dinheiro. Se o
+    // beneficiário pudesse escrever, ele escolheria o prêmio — e a
+    // roleta seria enfeite em cima de um campo editável. Se a plataforma
+    // pudesse reescrever depois, o registro não sustentaria nenhuma
+    // conversa sobre o que foi combinado. Definitivo dos dois lados.
+    //
+    // O id do documento é o uid de propósito: é o que garante "uma vez
+    // por conta" sem depender de contagem nem de campo de controle.
+    match /entryBonuses/{uid} {
+      allow get: if isSignedIn()
+        && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // -----------------------------------------------------------------
     // Default deny — qualquer outra coleção é proibida.
     // -----------------------------------------------------------------
     match /{document=**} {

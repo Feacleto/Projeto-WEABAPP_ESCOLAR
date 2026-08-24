@@ -40,6 +40,7 @@ const {
   makeRunBillingNow,
 } = require('./lib/billing');
 const { makeGetInvitePreview } = require('./lib/invitePreview');
+const { makeSpinEntryBonus } = require('./lib/entryBonus');
 const { makeFlagDuplicateReceipts } = require('./lib/receiptGuard');
 const {
   makeBackfillTestimonialPrivacy,
@@ -330,6 +331,13 @@ exports.lookupInvite = makeLookupInvite(db);
 exports.redeemInvite = makeRedeemInvite(db);
 exports.joinDriverWaitlist = makeJoinDriverWaitlist(db);
 exports.getShowcase = makeGetShowcase(db);
+
+/**
+ * A roleta de entrada. O SERVIDOR sorteia e grava antes de responder — a
+ * animação do cliente encena um resultado que já existe. Uma vez por conta,
+ * garantido pelo id do documento ser o uid.
+ */
+exports.spinEntryBonus = makeSpinEntryBonus(db);
 
 // ===== Rota abandonada (ver functions/lib/routes.js) =====
 //
