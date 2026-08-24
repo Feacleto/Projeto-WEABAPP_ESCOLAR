@@ -179,7 +179,7 @@ export default function DriverSignup() {
           />
           <Input
             label="Cidade onde você roda"
-            placeholder="Ex: Guarulhos, SP"
+            placeholder="Ex: Cidade Ademar, SP"
             icon={MapPin}
             value={form.city}
             onChange={set('city')}
