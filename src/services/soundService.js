@@ -152,20 +152,41 @@ export function playSound(key, options = {}) {
 }
 
 /**
- * Pré-carrega todos os arquivos no pool. Chamar uma vez após a 1ª interação
- * do usuário (no Layout, depois de um click qualquer) pra evitar atraso na
- * primeira reprodução.
+ * Os sons que respondem a um TOQUE, e por isso não podem chegar atrasados.
+ *
+ * `click` e `status_change` são a confirmação de que o dedo foi registrado —
+ * som que chega meio segundo depois não confirma nada, e o motorista toca de
+ * novo achando que não pegou. `notify` é curto e some no meio da rota.
+ *
+ * Os outros ficam de fora de propósito. Buzina, motor e os sons festivos
+ * tocam em momentos em que uma fração de segundo não se percebe, e juntos
+ * passam de 3 MB — carregar isso no primeiro toque é gastar a internet do
+ * motorista com o que ele não vai ouvir hoje.
  */
-export function preloadSounds() {
-  for (const key of Object.keys(SOUNDS)) {
-    if (!pool.has(key)) {
-      try {
-        const audio = new Audio(SOUND_PATH + SOUNDS[key]);
-        audio.preload = 'auto';
-        pool.set(key, audio);
-      } catch {
-        // ignore
-      }
+const ESSENCIAIS = ['click', 'status_change', 'notify'];
+
+/**
+ * Aquece o pool depois da PRIMEIRA interação do usuário.
+ *
+ * Por que depois e não no carregamento: antes de um gesto o navegador não
+ * deixa tocar áudio, e baixar arquivo que não pode ser usado é gastar rede à
+ * toa. O service worker guarda o que passar por aqui (regra CacheFirst em
+ * `/sounds/`), então isto acontece uma vez por instalação, não por sessão.
+ *
+ * ESTA FUNÇÃO NÃO ERA CHAMADA POR NINGUÉM. A documentação dela mandava
+ * "chamar uma vez após a 1ª interação" e ninguém chamava — o efeito prático
+ * era o primeiro toque de cada som esperando a rede, justamente no toque em
+ * que a confirmação importa.
+ */
+export function preloadSounds(chaves = ESSENCIAIS) {
+  for (const key of chaves) {
+    if (!SOUNDS[key] || pool.has(key)) continue;
+    try {
+      const audio = new Audio(SOUND_PATH + SOUNDS[key]);
+      audio.preload = 'auto';
+      pool.set(key, audio);
+    } catch {
+      // ignore
     }
   }
 }

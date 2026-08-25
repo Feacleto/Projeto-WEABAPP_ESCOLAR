@@ -1,5 +1,9 @@
 import { useEffect } from 'react';
-import { playSound, areSoundsEnabled } from '../services/soundService';
+import {
+  playSound,
+  preloadSounds,
+  areSoundsEnabled,
+} from '../services/soundService';
 
 /**
  * Listener global que toca `click.mp3` toda vez que o usuário aciona um
@@ -19,6 +23,11 @@ import { playSound, areSoundsEnabled } from '../services/soundService';
  */
 export function useGlobalClickSound() {
   useEffect(() => {
+    // O primeiro toque é o único momento em que dá pra aquecer os sons: antes
+    // dele o navegador não deixa tocar áudio, e baixar o que não pode ser
+    // usado é gastar a rede do motorista à toa.
+    let aquecido = false;
+
     function isInteractive(el) {
       if (!el || typeof el.closest !== 'function') return null;
       // .tap é a classe-âncora que usamos em todo o app pra botões clicáveis
@@ -34,6 +43,10 @@ export function useGlobalClickSound() {
       // Disabled (aria ou prop) não toca
       if (tap.getAttribute('aria-disabled') === 'true') return;
       if (tap.disabled) return;
+      if (!aquecido) {
+        aquecido = true;
+        preloadSounds();
+      }
       playSound('click');
     }
 
