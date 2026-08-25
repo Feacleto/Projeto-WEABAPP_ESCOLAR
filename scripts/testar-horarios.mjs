@@ -162,6 +162,26 @@ t('"o pai busca à tarde" marca a VOLTA e deixa a IDA normal', () => {
   eq(estadoNoDia(BASE[0], d, 'volta'), ESTADOS.PAI_BUSCA);
 });
 
+t('"já peguei" tem estado PRÓPRIO, e não reescreve a ida que já aconteceu', () => {
+  const d = { type: 'picked-up' };
+  eq(estadoNoDia(BASE[0], d, 'volta'), ESTADOS.PAI_PEGOU);
+  eq(estadoNoDia(BASE[0], d, 'ida'), ESTADOS.NORMAL,
+    'quando isto é declarado a ida do dia já foi marcada — mexer nela seria reescrever o passado');
+  assert(ESTADOS.PAI_PEGOU !== ESTADOS.PAI_BUSCA,
+    '"busca" é plano e "já pegou" é fato: o motorista lê os dois diferente');
+});
+
+t('quem o pai já pegou sai da volta mas continua na lista', () => {
+  const decl = { ana: { type: 'picked-up' } };
+  const blocos = blocosDaDirecao(BASE, 'volta', { declaracoes: decl });
+  eq(nomes(blocos[0].paradas), ['Ana', 'Duda'], 'Ana continua visível');
+  eq(precisaDaPerua(blocos[0].paradas[0].estado), false, 'mas não é mais parada');
+});
+
+t('tipo desconhecido não derruba a fila', () => {
+  eq(estadoNoDia(BASE[0], { type: 'inventado' }, 'ida'), ESTADOS.NORMAL);
+});
+
 t('quem não precisa da perua continua na lista, só que marcado', () => {
   const decl = { ana: { type: 'full' } };
   const blocos = blocosDaDirecao(BASE, 'ida', { declaracoes: decl });

@@ -29,6 +29,7 @@ import Avatar from '../../components/common/Avatar';
 import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import RouteTracker from '../../components/dashboard/RouteTracker';
 import HorarioDoDia from '../../components/dashboard/HorarioDoDia';
+import { useRide } from '../../hooks/useRide';
 import ChildSwitcher from '../../components/children/ChildSwitcher';
 import AbsenceCounts from '../../components/dashboard/AbsenceCounts';
 import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
@@ -100,6 +101,9 @@ export default function PaiDashboard() {
   const { absence } = useAbsenceForChild(todayKey, child?.id);
   const { history: absenceHistory } = useChildAbsenceHistory(child?.id);
   const { pickup: altPickup } = useDailyAltPickup(todayKey, child?.id);
+  // Hora real de cada etapa e posição na fila — nenhuma das duas o
+  // responsável consegue derivar do que ele pode ler.
+  const { ride } = useRide(child?.id, todayKey);
 
   const [absenceOpen, setAbsenceOpen] = useState(false);
   const [altPickupOpen, setAltPickupOpen] = useState(false);
@@ -248,10 +252,10 @@ export default function PaiDashboard() {
           * tracker porque responde a pergunta que traz o pai até aqui —
           * "que horas eu preciso estar na porta?" — e o tracker responde a
           * seguinte, que é "e onde ele está agora?". */}
-        <HorarioDoDia child={child} absence={absence} />
+        <HorarioDoDia child={child} absence={absence} ride={ride} />
 
         {/* Tracker visual estilo "rastreio de pedido" */}
-        <RouteTracker status={status} />
+        <RouteTracker status={status} ride={ride} />
 
         {/* Ausência declarada / botão de informar */}
         <div data-tour="absence">
@@ -367,6 +371,7 @@ export default function PaiDashboard() {
         declaredBy="parent"
         currentAbsence={absence}
         dateKey={todayKey}
+        status={status}
       />
 
       <AltPickupSheet

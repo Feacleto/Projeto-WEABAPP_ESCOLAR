@@ -17,14 +17,20 @@ import { ABSENCE_TYPES } from '../../services/absencesService';
  * esse chute aqui seria pior que não mostrar nada: o pai desceria com a
  * criança na hora errada e a culpa cairia no app — com razão.
  */
-export default function HorarioDoDia({ child, absence }) {
+export default function HorarioDoDia({ child, absence, ride = null }) {
   if (!child) return null;
 
   const { pega, entrega, presumido } = horariosCombinados(child);
   const tipo = absence?.type;
 
   const semIda = tipo === ABSENCE_TYPES.FULL || tipo === ABSENCE_TYPES.NO_PICKUP;
-  const semVolta = tipo === ABSENCE_TYPES.FULL || tipo === ABSENCE_TYPES.NO_DROPOFF;
+  // ALREADY_PICKED entra aqui junto: sem ele o `cancelado` ficava falso e o
+  // rótulo "você já pegou" nunca apareceria — o pai que acabou de buscar a
+  // criança continuaria lendo "chega em casa às 12h35".
+  const semVolta =
+    tipo === ABSENCE_TYPES.FULL
+    || tipo === ABSENCE_TYPES.NO_DROPOFF
+    || tipo === ABSENCE_TYPES.ALREADY_PICKED;
 
   return (
     <section
@@ -75,9 +81,38 @@ export default function HorarioDoDia({ child, absence }) {
             motivo={
               tipo === ABSENCE_TYPES.NO_DROPOFF
                 ? 'você busca hoje'
+                : tipo === ABSENCE_TYPES.ALREADY_PICKED
+                ? 'você já pegou'
                 : 'não vai hoje'
             }
           />
+        </div>
+      )}
+
+      {/* A POSIÇÃO NA FILA.
+        * O motorista publica isto ao iniciar a rota, porque o responsável não
+        * tem como calcular: a fila é feita das outras crianças, que ele não lê.
+        * É o ordinal do dia, não "quantas faltam" — um número estável vale
+        * mais que um contador que às vezes mente. */}
+      {!presumido && (ride?.ordemIda || ride?.ordemVolta) && (
+        <div className="px-5 pb-4 -mt-1">
+          <p className="text-xs text-textMuted bg-gray-50 rounded-xl px-3 py-2 leading-relaxed">
+            {ride.ordemIda ? (
+              <>
+                De manhã, {child.name?.split(' ')[0] || 'seu filho'} é a{' '}
+                <b className="text-text">{ride.ordemIda}ª parada</b> de{' '}
+                {ride.totalIda}.
+              </>
+            ) : null}
+            {ride.ordemIda && ride.ordemVolta ? ' ' : null}
+            {ride.ordemVolta ? (
+              <>
+                Na volta, a{' '}
+                <b className="text-text">{ride.ordemVolta}ª</b> de{' '}
+                {ride.totalVolta}.
+              </>
+            ) : null}
+          </p>
         </div>
       )}
     </section>

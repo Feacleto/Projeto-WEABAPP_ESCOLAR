@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, UserX, Sunrise, Sunset, Trash2 } from 'lucide-react';
+import { X, UserX, Sunrise, Sunset, Trash2, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   ABSENCE_TYPES,
@@ -28,6 +28,11 @@ export default function AbsenceSheet({
   declaredBy,
   currentAbsence,
   dateKey,
+  // Status efetivo da criança agora. Só serve pra decidir se a opção
+  // "já peguei" aparece — ela não faz sentido antes de a criança chegar
+  // na escola, e uma opção impossível na lista é ruído no momento em que
+  // o responsável está com pressa.
+  status,
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -168,6 +173,26 @@ export default function AbsenceSheet({
               disabled={submitting}
               onClick={() => handleSelect(ABSENCE_TYPES.NO_DROPOFF)}
             />
+
+            {/* O FATO CONSUMADO, e não o plano.
+              * Só aparece com a criança já na escola: é a situação de quem
+              * resolveu buscar no meio do dia e está ali com ela na mão. Sem
+              * esta frase o responsável escolhia "vou buscar à tarde" — que é
+              * outra coisa — ou avisava por WhatsApp, fora do app, onde a rota
+              * não enxerga e o motorista passa na escola à toa. */}
+            {(status === 'atSchool' || status === 'onboard'
+              || currentAbsence?.type === ABSENCE_TYPES.ALREADY_PICKED) && (
+              <OptionCard
+                icon={UserCheck}
+                title="Já peguei na escola"
+                subtitle="O motorista não precisa passar lá hoje"
+                gradient="from-emerald-50 to-green-100"
+                iconBg="bg-emerald-600"
+                active={currentAbsence?.type === ABSENCE_TYPES.ALREADY_PICKED}
+                disabled={submitting}
+                onClick={() => handleSelect(ABSENCE_TYPES.ALREADY_PICKED)}
+              />
+            )}
           </div>
 
           {/* Remover declaração existente */}

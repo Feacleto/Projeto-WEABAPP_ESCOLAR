@@ -9,6 +9,7 @@ import {
   Home,
   UserCheck,
   MessageCircle,
+  BellRing,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
@@ -18,6 +19,7 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import ControleDeRota from '../../components/route/ControleDeRota';
+import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
 import { useAbsences } from '../../hooks/useAbsences';
@@ -40,6 +42,8 @@ import {
 } from '../../services/horariosService';
 
 import { declareAbsence, ABSENCE_TYPES } from '../../services/absencesService';
+import { createCall } from '../../services/pendingCallService';
+import { publicarOrdemDoDia } from '../../services/ridesService';
 
 /**
  * "Rota agora" — a tela de operação em movimento.
@@ -58,6 +62,7 @@ import { declareAbsence, ABSENCE_TYPES } from '../../services/absencesService';
  */
 export default function TioRouteNow() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const dateKey = getDateKey();
 
   const { children, loading } = useChildren();
@@ -134,6 +139,7 @@ export default function TioRouteNow() {
           moves: iguais.map((q) => ({
             childId: q.child.id,
             nextStatus: proximo,
+            parentUid: q.child.parentUid || null,
             home: q.child.lat != null ? { lat: q.child.lat, lng: q.child.lng } : null,
             school:
               q.child.schoolLat != null
@@ -156,6 +162,31 @@ export default function TioRouteNow() {
     [blocos, blocoAtual, tick]
   );
 
+  /**
+   * Publica no doc de viagem de cada criança a posição dela no dia.
+   *
+   * Roda ao INICIAR a rota, uma vez. O número é o ordinal ("4ª parada"), e não
+   * "quantas faltam": ordinal só muda se o motorista mexer nos horários, e
+   * "quantas faltam" custaria uma escrita por criança a cada entrega — além de
+   * envelhecer errado se uma delas falhasse.
+   *
+   * O responsável não consegue calcular isso sozinho: ele lê apenas o doc do
+   * próprio filho, e a fila é feita das outras crianças.
+   */
+  async function publicarOrdem() {
+    try {
+      const contexto = {};
+      for (const b of blocos) {
+        for (const p of b.paradas) contexto[p.child.id] = { adminUid: user?.uid };
+      }
+      await publicarOrdemDoDia(blocos, dateKey, contexto);
+    } catch (err) {
+      // Não bloqueia a rota: ele precisa sair, e a posição na fila é conforto
+      // do responsável, não requisito da operação.
+      console.error('Falha ao publicar a ordem do dia:', err);
+    }
+  }
+
   const posicaoDoDriver =
     liveLocation?.routeActive && liveLocation?.lat
       ? { lat: liveLocation.lat, lng: liveLocation.lng }
@@ -166,6 +197,9 @@ export default function TioRouteNow() {
     try {
       await advanceChild(item.child.id, item.action.nextStatus, {
         driverPosition: posicaoDoDriver,
+        dateKey,
+        adminUid: user?.uid,
+        parentUid: item.child.parentUid || null,
         home: item.child.lat != null ? { lat: item.child.lat, lng: item.child.lng } : null,
         school:
           item.child.schoolLat != null
@@ -185,7 +219,11 @@ export default function TioRouteNow() {
     if (!lote) return;
     setBusy(true);
     try {
-      const n = await advanceMany(lote.moves, { driverPosition: posicaoDoDriver });
+      const n = await advanceMany(lote.moves, {
+        driverPosition: posicaoDoDriver,
+        dateKey,
+        adminUid: user?.uid,
+      });
       toast.success(`${n} crianças atualizadas.`);
     } catch (err) {
       console.error(err);
@@ -226,6 +264,41 @@ export default function TioRouteNow() {
     }
   }
 
+  /**
+   * A BUZINA DIGITAL — faz o celular do responsável TOCAR.
+   *
+   * Ela existia e sumiu junto com o Kanban: o botão que criava a chamada morava
+   * no cartão de lá, e apagar aquela tela deixou `createCall` sem gatilho
+   * nenhum. O modal com ringtone continuava montado no celular do pai
+   * esperando uma chamada que ninguém mais conseguia criar.
+   *
+   * É o caso que motivou o recurso: o motorista na porta, buzinando de verdade,
+   * e o pai não desce. Aqui ela é o primeiro degrau — toca o aparelho sem
+   * exigir que ele saia do app — e o WhatsApp e a ligação ficam como os
+   * degraus seguintes, pra quando o primeiro não resolve.
+   */
+  async function chamar(child) {
+    if (!child?.parentUid) {
+      toast('Esse responsável ainda não entrou no app. Use o WhatsApp.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await createCall({
+        adminUid: user?.uid,
+        parentUid: child.parentUid,
+        childId: child.id,
+        childName: child.name,
+      });
+      toast.success(`Chamando ${child.name.split(' ')[0]}…`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra chamar. Tente o WhatsApp.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const zap = (child) => {
     const tel = String(child.parentPhone || '').replace(/\D/g, '');
     if (!tel) {
@@ -246,7 +319,7 @@ export default function TioRouteNow() {
         {/* O interruptor do GPS vem primeiro. Sem ele ligado, o painel do
           * responsável diz "a rota ainda não começou" o dia inteiro — e essa
           * é a falha que o pai percebe antes de qualquer outra. */}
-        <ControleDeRota />
+        <ControleDeRota onIniciar={publicarOrdem} />
 
         {loading && <Skeleton className="h-56 rounded-2xl" />}
 
@@ -374,15 +447,26 @@ export default function TioRouteNow() {
               {foco.action.shortLabel}
             </button>
 
-            {/* A porta: o pai não desceu. Antes de buzinar, o WhatsApp. */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* A PORTA: o motorista chegou e ninguém desceu.
+              * Três degraus, do mais barato pro mais caro: tocar o celular
+              * dele sem sair do app, mandar mensagem, ligar. */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => chamar(foco.child)}
+                className="tap h-10 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                <BellRing size={14} />
+                Chamar
+              </button>
               <button
                 type="button"
                 onClick={() => zap(foco.child)}
                 className="tap h-10 rounded-xl bg-card border border-gray-200 text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
               >
                 <MessageCircle size={14} />
-                WhatsApp
+                Zap
               </button>
               {foco.child.parentPhone ? (
                 <a
@@ -393,9 +477,9 @@ export default function TioRouteNow() {
                   Ligar
                 </a>
               ) : (
-                <Button size="sm" variant="ghost" disabled>
-                  Sem telefone
-                </Button>
+                <span className="h-10 rounded-xl bg-gray-100 text-textMuted text-[11px] font-semibold inline-flex items-center justify-center">
+                  sem tel.
+                </span>
               )}
             </div>
 
@@ -420,7 +504,7 @@ export default function TioRouteNow() {
                   onClick={() =>
                     setMarcando({
                       child: foco.child,
-                      tipo: ABSENCE_TYPES.NO_DROPOFF,
+                      tipo: ABSENCE_TYPES.ALREADY_PICKED,
                     })
                   }
                 >
@@ -561,7 +645,9 @@ export default function TioRouteNow() {
 function tituloMarcacao({ child, tipo }) {
   const nome = child.name.split(' ')[0];
   if (tipo === ABSENCE_TYPES.FULL) return `${nome} faltou hoje?`;
-  if (tipo === ABSENCE_TYPES.NO_DROPOFF) return `O responsável já pegou ${nome}?`;
+  if (tipo === ABSENCE_TYPES.ALREADY_PICKED) {
+    return `O responsável já pegou ${nome}?`;
+  }
   return `O responsável levou ${nome}?`;
 }
 
@@ -569,8 +655,8 @@ function descricaoMarcacao({ tipo }) {
   if (tipo === ABSENCE_TYPES.FULL) {
     return 'Ela sai da rota de hoje nas duas direções, e o responsável é avisado. Continua aparecendo na lista, em cinza.';
   }
-  if (tipo === ABSENCE_TYPES.NO_DROPOFF) {
-    return 'Você não precisa mais buscá-la na escola hoje. A ida de amanhã continua normal.';
+  if (tipo === ABSENCE_TYPES.ALREADY_PICKED) {
+    return 'Ela já saiu com o responsável. Você não precisa passar na escola por ela hoje.';
   }
   return 'Você não precisa buscá-la em casa hoje — mas continua trazendo ela de volta à tarde.';
 }

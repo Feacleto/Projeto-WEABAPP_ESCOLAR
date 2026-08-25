@@ -32,18 +32,27 @@ export const ABSENCE_TYPES = {
   FULL: 'full',
   NO_PICKUP: 'no-pickup',
   NO_DROPOFF: 'no-dropoff',
+  // JÁ PEGUEI — o fato consumado, não o plano.
+  //
+  // O efeito na rota é o mesmo de `no-dropoff`: o motorista não busca à tarde.
+  // Mas o responsável que está NA ESCOLA com a criança na mão não encontrava a
+  // frase certa: "eu vou buscar à tarde" se lê como intenção, e ele acabava
+  // não avisando — ou avisando por WhatsApp, fora do app, onde a rota não vê.
+  ALREADY_PICKED: 'picked-up',
 };
 
 export const ABSENCE_LABELS = {
   full: 'Não vai hoje',
   'no-pickup': 'Pai vai levar de manhã',
   'no-dropoff': 'Pai vai buscar à tarde',
+  'picked-up': 'Pai já pegou na escola',
 };
 
 export const ABSENCE_SHORT = {
   full: 'Falta',
   'no-pickup': 'Sem ida',
   'no-dropoff': 'Sem volta',
+  'picked-up': 'Já pegou',
 };
 
 function buildId(dateKey, childId) {

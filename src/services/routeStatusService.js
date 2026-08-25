@@ -4,6 +4,7 @@ import { playSound } from './soundService';
 import { haversineDistance } from '../utils/haversine';
 import { getEffectiveStatus } from './childrenService';
 import { ABSENCE_TYPES } from './absencesService';
+import { anotarMarco } from './ridesService';
 
 /**
  * Máquina de status da criança na rota.
@@ -131,6 +132,22 @@ export async function advanceChild(childId, nextStatus, context = null) {
 
   const batch = writeBatch(db);
   batch.update(doc(db, 'children', childId), updates);
+
+  // O marco vai no MESMO batch. Escrita separada poderia deixar "entregue" sem
+  // a hora da entrega — e a hora que falta é justamente a que alguém procura.
+  if (context?.dateKey) {
+    anotarMarco(batch, {
+      childId,
+      dateKey: context.dateKey,
+      status: nextStatus,
+      contexto: {
+        adminUid: context.adminUid,
+        parentUid: context.parentUid,
+        checkpoint,
+      },
+    });
+  }
+
   await batch.commit();
   playSound('status_change');
 }
@@ -145,13 +162,15 @@ export async function advanceChild(childId, nextStatus, context = null) {
  * diferentes possam avançar no mesmo lote. Ignora entradas sem nextStatus
  * (criança que já não tem ação naquele turno).
  *
- * Firestore aceita 500 operações por batch; fatiamos em 400 por segurança.
+ * Firestore aceita 500 operações por batch; ver o CHUNK abaixo.
  */
 export async function advanceMany(moves, context = null) {
   const valid = (moves || []).filter((m) => m?.childId && m?.nextStatus);
   if (!valid.length) return 0;
 
-  const CHUNK = 400;
+  // 200 e não 400: cada criança agora custa DUAS operações no batch (o doc
+  // dela e o marco da viagem), e o teto do Firestore é 500.
+  const CHUNK = 200;
   for (let i = 0; i < valid.length; i += CHUNK) {
     const batch = writeBatch(db);
     for (const m of valid.slice(i, i + CHUNK)) {
@@ -177,6 +196,19 @@ export async function advanceMany(moves, context = null) {
       if (checkpoint) updates.lastStatusCheckpoint = checkpoint;
 
       batch.update(doc(db, 'children', m.childId), updates);
+
+      if (context?.dateKey) {
+        anotarMarco(batch, {
+          childId: m.childId,
+          dateKey: context.dateKey,
+          status: m.nextStatus,
+          contexto: {
+            adminUid: context.adminUid,
+            parentUid: m.parentUid,
+            checkpoint,
+          },
+        });
+      }
     }
     await batch.commit();
   }

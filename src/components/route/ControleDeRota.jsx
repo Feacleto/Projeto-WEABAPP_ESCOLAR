@@ -22,7 +22,7 @@ import { playSound } from '../../services/soundService';
  * mundo, e um diálogo modal no celular em movimento é mais fácil de confirmar
  * sem ler do que um botão que muda de cara.
  */
-export default function ControleDeRota() {
+export default function ControleDeRota({ onIniciar }) {
   const { user } = useAuth();
   const { watching, position, error, stopping, start, stop } = useGeolocation();
   const { location: liveLocation } = useLiveLocation();
@@ -59,6 +59,10 @@ export default function ControleDeRota() {
     }
     start(user.uid);
     toast.success('Rota começou! GPS ligado.');
+    // Quem sabe a fila é a tela de rota, não este botão. Ela publica a posição
+    // de cada criança no dia — o responsável não consegue calcular isso
+    // sozinho, porque a fila é feita das outras crianças, que ele não lê.
+    onIniciar?.();
   }
 
   async function encerrar() {

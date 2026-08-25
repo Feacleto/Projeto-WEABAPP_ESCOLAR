@@ -599,6 +599,35 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // children/{id}/rides/{YYYY-MM-DD} — a viagem de cada dia
+    //
+    // Guarda a hora de cada marco (embarcou, chegou na escola, foi entregue) e
+    // a posição da criança na fila do dia. Existe porque `children.status`
+    // guardava só o ÚLTIMO passo: o tracker do responsável não conseguia dizer
+    // "chegou na escola às 7h12", e no dia seguinte não havia como reconstruir
+    // a rota numa reclamação.
+    //
+    // A permissão sai do doc PAI. A subcoleção não herda regra no Firestore —
+    // sem este bloco ela cairia no `match /{document=**}` e ficaria fechada, o
+    // que é seguro mas deixa o tracker sem hora. Aqui o `get()` no doc da
+    // criança dá a resposta exata: o motorista dela escreve, o responsável dela
+    // lê, e mais ninguém.
+    // -----------------------------------------------------------------
+    match /children/{childId}/rides/{dia} {
+      function crianca() {
+        return get(/databases/$(database)/documents/children/$(childId)).data;
+      }
+      allow read: if isSignedIn() && (
+        (isAdmin() && crianca().get('adminUid', '') == request.auth.uid)
+        || crianca().get('parentUid', '') == request.auth.uid
+      );
+      // O responsável NÃO escreve: a hora da entrega é registro de quem
+      // entregou. Deixar o outro lado escrever tiraria dela o valor de prova.
+      allow write: if isAdmin()
+        && crianca().get('adminUid', '') == request.auth.uid;
+    }
+
+    // -----------------------------------------------------------------
     // liveLocation/{docId}
     //   - Todo signed-in lê (admin acompanha telemetria, pai vê perua)
     //   - Só admin escreve (locationService.startTracking/stopTracking)
@@ -820,28 +849,18 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
-    // routePlans/{id} — ordem padrão das rotas (ex: routePlans/default).
-    //   - Apenas admin lê/escreve. Pais NÃO veem ordem da fila (privacidade).
+    // routePlans e dailyRoutes MORRERAM com os turnos.
+    //
+    // Guardavam a ordem fixa das seis filas e o override do dia. A rota deixou
+    // de ser uma lista salva: ela é o resultado de ordenar quem tem horário
+    // combinado, então não há mais o que planejar num documento.
+    //
+    // As regras saem junto com o código. Regra publicada pra coleção morta não
+    // é vazamento — estas eram restritas — mas descreve um modelo que não
+    // existe, e num incidente isso custa tempo de leitura de quem procura onde
+    // a rota é decidida. Os documentos antigos, se sobraram, ficam inertes: o
+    // fallback do `match /{document=**}` nega tudo.
     // -----------------------------------------------------------------
-    // O id é `{uid}_default`, mas quem autoriza é o `adminUid` DO CORPO.
-    // Nome de documento não é permissão: sabendo o uid do outro, um motorista
-    // montava o caminho na mão. O campo no corpo é o que a regra confere.
-    match /routePlans/{planId} {
-      allow read, delete: if doDono();
-      allow create: if nasceDoDono();
-      allow update: if doDono() && nasceDoDono();
-    }
-
-    // -----------------------------------------------------------------
-    // dailyRoutes/{YYYY-MM-DD} — overrides do dia (ordem + ausências).
-    //   - Apenas admin lê/escreve.
-    // -----------------------------------------------------------------
-    // Mesmo desenho do routePlans: id `{uid}_{data}`, autorização pelo corpo.
-    match /dailyRoutes/{dateKey} {
-      allow read, delete: if doDono();
-      allow create: if nasceDoDono();
-      allow update: if doDono() && nasceDoDono();
-    }
 
     // -----------------------------------------------------------------
     // absenceDeclarations/{date_childId}

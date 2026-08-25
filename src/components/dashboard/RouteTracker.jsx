@@ -1,4 +1,5 @@
 import { Home, Bus, School, CheckCircle2 } from 'lucide-react';
+import { horaDoMarco } from '../../services/ridesService';
 
 /**
  * Tracker visual do trajeto da criança — estilo "rastreio de pedido"
@@ -23,7 +24,12 @@ const STEPS = [
   { key: 'delivered', label: 'Voltou', icon: CheckCircle2 },
 ];
 
-export default function RouteTracker({ status = 'home', compact = false }) {
+/**
+ * `ride` é opcional: quando vem, cada etapa cumprida ganha a hora em que
+ * aconteceu de verdade. Sem ele o tracker segue como era — as quatro etapas
+ * sem hora nenhuma, que é meio caminho entre informar e não informar.
+ */
+export default function RouteTracker({ status = 'home', compact = false, ride = null }) {
   const currentIdx = Math.max(
     0,
     STEPS.findIndex((s) => s.key === status)
@@ -79,6 +85,15 @@ export default function RouteTracker({ status = 'home', compact = false }) {
               >
                 {step.label}
               </p>
+
+              {/* A hora em que a etapa aconteceu. Só aparece pra etapa
+                * cumprida: hora em etapa futura seria previsão disfarçada
+                * de registro. */}
+              {(done || active) && horaDoMarco(ride, step.key) && (
+                <p className="text-[9px] mt-0.5 font-mono text-textMuted tabular-nums">
+                  {horaDoMarco(ride, step.key)}
+                </p>
+              )}
             </div>
           );
         })}

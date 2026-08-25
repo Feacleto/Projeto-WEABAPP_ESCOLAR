@@ -43,6 +43,7 @@
 const TIPO_FALTA_CHEIA = 'full';
 const TIPO_SEM_IDA = 'no-pickup';
 const TIPO_SEM_VOLTA = 'no-dropoff';
+const TIPO_JA_PEGOU = 'picked-up';
 
 // ============================================================================
 // Datas e horas
@@ -188,12 +189,17 @@ export const ESTADOS = {
   FALTA: 'falta',
   PAI_LEVA: 'pai-leva',
   PAI_BUSCA: 'pai-busca',
+  PAI_PEGOU: 'pai-pegou',
 };
 
 export const ROTULO_ESTADO = {
   [ESTADOS.FALTA]: 'Falta hoje',
   [ESTADOS.PAI_LEVA]: 'O pai leva hoje',
   [ESTADOS.PAI_BUSCA]: 'O pai busca hoje',
+  // Tempo verbal diferente de propósito: "busca" é plano, "já pegou" é fato.
+  // Pro motorista lendo a lista em movimento, a diferença é entre "não vou
+  // precisar esperar" e "não preciso nem passar lá".
+  [ESTADOS.PAI_PEGOU]: 'O pai já pegou',
 };
 
 /**
@@ -212,6 +218,12 @@ export function estadoNoDia(child, declaracao, direcao) {
   }
   if (t === TIPO_SEM_VOLTA) {
     return direcao === 'volta' ? ESTADOS.PAI_BUSCA : ESTADOS.NORMAL;
+  }
+  if (t === TIPO_JA_PEGOU) {
+    // Mesmo efeito na rota que `no-dropoff` — o que muda é o que o motorista
+    // lê. A ida do dia já aconteceu quando isto é declarado, então ela fica
+    // normal: mexer nela seria reescrever um passado que já foi marcado.
+    return direcao === 'volta' ? ESTADOS.PAI_PEGOU : ESTADOS.NORMAL;
   }
   return ESTADOS.NORMAL;
 }
