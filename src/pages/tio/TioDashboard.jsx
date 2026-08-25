@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   ChevronRight,
   CheckCircle2,
+  CalendarDays,
   Eye,
   EyeOff,
   MailWarning,
@@ -653,6 +654,15 @@ function AcoesDeCadastro({ totalCriancas, totalEscolas, semHorario, onBroadcast,
           contagem={totalCriancas}
           tour="turma"
           onClick={() => navigate('/tio/children')}
+        />
+        {/* A semana fica no cadastro e não nas pendências porque ele consulta
+          * isso pra PLANEJAR — domingo à noite, sábado de manhã — e não só
+          * quando há aviso novo. */}
+        <Linha
+          icon={CalendarDays}
+          titulo="Faltas da semana"
+          subtitulo="Quem falta em qual dia, de segunda a sexta"
+          onClick={() => navigate('/tio/semana')}
         />
         <Linha
           icon={School}

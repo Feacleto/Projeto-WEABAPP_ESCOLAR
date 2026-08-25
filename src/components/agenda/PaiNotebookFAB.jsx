@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Notebook,
   X,
@@ -49,7 +50,35 @@ const MONTH_NAMES = [
  *   - 'index'  → lista cronológica de meses pra navegar pro passado
  */
 export default function PaiNotebookFAB() {
-  const [open, setOpen] = useState(false);
+  const [abertoNoToque, setAbertoNoToque] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  /**
+   * ABRE SOZINHO QUANDO A NOTIFICAÇÃO PEDE.
+   *
+   * O caderno é uma folha da home, não uma rota — então a notificação de
+   * recado não tinha pra onde levar, e tocar nela não fazia nada. Agora ela
+   * navega pra home com `state.abrirCaderno`, e quem sabe abrir a folha é
+   * quem a tem.
+   *
+   * DERIVADO, e não sincronizado por efeito. A primeira versão fazia
+   * `setOpen(true)` dentro de um `useEffect` — que é render em cascata e o
+   * lint pega. Aqui "aberto" é simplesmente "ele tocou no botão OU a
+   * navegação pediu": não há estado pra manter em dia com outro estado.
+   */
+  const pedidoDaNotificacao = !!location.state?.abrirCaderno;
+  const open = abertoNoToque || pedidoDaNotificacao;
+
+  const fechar = () => {
+    setAbertoNoToque(false);
+    // Limpa o pedido, senão o caderno reabriria toda vez que a pessoa
+    // voltasse pra home pelo botão do telefone — por cima do que ela
+    // estivesse tentando ver.
+    if (pedidoDaNotificacao) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  };
 
   return (
     <>
@@ -57,7 +86,7 @@ export default function PaiNotebookFAB() {
         * o caderno mesmo quando não tem notificação chamando atenção. */}
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => setAbertoNoToque(true)}
         aria-label="Veja a agenda"
         className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-500/30 flex items-center gap-2 tap font-bold print:hidden"
       >
@@ -65,7 +94,7 @@ export default function PaiNotebookFAB() {
         <span className="text-sm">Veja a agenda</span>
       </button>
 
-      {open && <NotebookView onClose={() => setOpen(false)} />}
+      {open && <NotebookView onClose={fechar} />}
     </>
   );
 }

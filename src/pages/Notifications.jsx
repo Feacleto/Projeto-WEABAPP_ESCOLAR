@@ -22,7 +22,9 @@ export default function Notifications() {
     <>
       <Header title="Notificações" showBack backLabel="Voltar" />
       <div className="p-4">
-        <NotificationsBody onNavigate={(to) => navigate(to)} />
+        <NotificationsBody
+          onNavigate={(to, state) => navigate(to, state ? { state } : undefined)}
+        />
       </div>
     </>
   );

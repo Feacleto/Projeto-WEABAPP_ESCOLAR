@@ -35,9 +35,9 @@ export default function NotificationsSheet({ open, onClose }) {
       {/* Fecha ANTES de trocar de rota: senão a folha fica por cima da tela
         * de destino e o toque parece não ter funcionado. */}
       <NotificationsBody
-        onNavigate={(to) => {
+        onNavigate={(to, state) => {
           onClose();
-          navigate(to);
+          navigate(to, state ? { state } : undefined);
         }}
       />
     </AppSheet>

@@ -139,6 +139,40 @@ export function watchAbsencesByDate(dateKey, adminUid, onUpdate, onError) {
 }
 
 /**
+ * Todas as ausências de um INTERVALO de dias, deste motorista.
+ *
+ * POR QUE UM INTERVALO E NÃO UM DIA
+ * O app só sabia responder "quem falta hoje". Mas o aviso útil é o que chega
+ * ANTES: o pai avisa na segunda que na quinta tem consulta, e o motorista só
+ * descobria na quinta de manhã — sem tempo de reorganizar nada.
+ *
+ * A consulta leva `adminUid` E o intervalo de `dateKey`. Os dois filtros são
+ * obrigatórios: o primeiro porque a regra exige (rule que pede campo obriga a
+ * consulta a provar o filtro), e o índice composto (adminUid, dateKey) já
+ * existe pra isso — uma igualdade mais um intervalo cabem nele.
+ */
+export function watchAbsencesRange(adminUid, deKey, ateKey, onUpdate, onError) {
+  if (!adminUid || !deKey || !ateKey) {
+    onUpdate([]);
+    return () => {};
+  }
+  const q = query(
+    collection(db, 'absenceDeclarations'),
+    where('adminUid', '==', adminUid),
+    where('dateKey', '>=', deKey),
+    where('dateKey', '<=', ateKey)
+  );
+  return onSnapshot(
+    q,
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('watchAbsencesRange error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
  * Subscribe a TODAS as ausências de uma criança ao longo do tempo.
  * Usado pelo Pai pra ver histórico de faltas (semana/mês).
  * Filtragem por período é feita no client.

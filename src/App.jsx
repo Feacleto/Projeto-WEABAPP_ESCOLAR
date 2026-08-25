@@ -40,6 +40,7 @@ const TioChildren = lazy(() => import('./pages/tio/TioChildren'));
 const TioEscolas = lazy(() => import('./pages/tio/TioEscolas'));
 const TioRouteNow = lazy(() => import('./pages/tio/TioRouteNow'));
 const TioHorarios = lazy(() => import('./pages/tio/TioHorarios'));
+const TioSemana = lazy(() => import('./pages/tio/TioSemana'));
 const TioFinance = lazy(() => import('./pages/tio/TioFinance'));
 const TioFinanceReport = lazy(() => import('./pages/tio/TioFinanceReport'));
 const TioChildStatement = lazy(() => import('./pages/tio/TioChildStatement'));
@@ -410,6 +411,7 @@ export default function App() {
           * responsável. O caminho antigo continua respondendo pra não
           * quebrar link salvo nem o botão de alguma tela ainda não migrada. */}
         <Route path="horarios" element={<TioHorarios />} />
+        <Route path="semana" element={<TioSemana />} />
         <Route path="route/plan" element={<TioHorarios />} />
         <Route path="finance" element={<TioFinance />} />
         <Route path="finance/report" element={<TioFinanceReport />} />

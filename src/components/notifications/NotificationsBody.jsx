@@ -122,9 +122,48 @@ export default function NotificationsBody({ onNavigate }) {
     }
   };
 
+  /**
+   * CLICAR NA NOTIFICAÇÃO LEVA PRO ASSUNTO DELA.
+   *
+   * Só pagamento tinha destino; o resto era texto morto. Quem recebia "Novo
+   * aviso sobre a Ana" tocava, não acontecia nada, e ia procurar o recado no
+   * caderno pelo caminho longo — quando não desistia. Aviso que não leva a
+   * lugar nenhum ensina a não tocar em aviso.
+   */
   const onClickNotif = (n) => {
     if (n.paymentId) {
       onNavigate(isParent ? '/pai/finance' : '/tio/finance');
+      return;
+    }
+
+    // Recados da agenda: o caderno do responsável é uma folha na home dele,
+    // não uma rota — então o destino é a home com um pedido de abertura, que
+    // o `PaiNotebookFAB` lê.
+    if (
+      n.type === 'agenda_entry' ||
+      n.type === 'agenda_school_entry' ||
+      n.type === 'agenda_broadcast'
+    ) {
+      onNavigate(isParent ? '/pai' : '/tio/agenda', { abrirCaderno: true });
+      return;
+    }
+
+    // Chegou na escola / chegou em casa → a home, que é onde o tracker mostra
+    // o percurso com as horas.
+    if (n.type === 'child_arrived_home' || n.type === 'child_arrived_school') {
+      onNavigate('/pai');
+      return;
+    }
+
+    // Falta declarada e responsável alternativo são coisas que mudam a ROTA
+    // do motorista — e é na rota que ele precisa ver o efeito.
+    if (n.type === 'absence_declared' || n.type === 'alt_pickup') {
+      onNavigate(isParent ? '/pai' : '/tio');
+      return;
+    }
+
+    if (n.type === 'school_no_class') {
+      onNavigate(isParent ? '/pai' : '/tio/semana');
     }
   };
 

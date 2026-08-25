@@ -37,6 +37,21 @@ export default function AbsenceSheet({
   const [submitting, setSubmitting] = useState(false);
   const [closing, setClosing] = useState(false);
 
+  /**
+   * A DATA É ESCOLHÍVEL AQUI.
+   *
+   * A folha sempre aceitou qualquer `dateKey` — só que ninguém nunca passou
+   * outro além de hoje. Quem descobre com uma semana de antecedência que a
+   * criança tem consulta na quinta não tinha o que fazer além de LEMBRAR de
+   * avisar na quinta de manhã, que é o minuto em que ele está mais ocupado.
+   *
+   * Os atalhos de hoje e amanhã ficam na home; aqui mora o resto do calendário.
+   *
+   * Declarado ANTES do `if (!open)`: hook depois de return condicional muda a
+   * ordem dos hooks entre renders, e o React quebra.
+   */
+  const [dataEscolhida, setDataEscolhida] = useState(dateKey || getDateKey());
+
   if (!open) {
     // Garante que próxima abertura comece sem animação de fechamento.
     // Acontece dentro do render porque o componente só monta quando open=true.
@@ -44,7 +59,7 @@ export default function AbsenceSheet({
     return null;
   }
 
-  const targetDate = dateKey || getDateKey();
+  const targetDate = dataEscolhida;
   const firstName = child?.name?.split(' ')[0] || 'Aluno';
 
   async function handleSelect(type) {
@@ -129,7 +144,7 @@ export default function AbsenceSheet({
                 {firstName} vai faltar?
               </h2>
               <p className="text-xs text-textMuted mt-1">
-                Escolha o que se aplica hoje
+                Escolha o dia e o que se aplica
               </p>
             </div>
             <button
@@ -140,6 +155,26 @@ export default function AbsenceSheet({
               <X size={18} />
             </button>
           </div>
+
+          {/* PARA QUAL DIA.
+            * Fica no topo porque muda o significado de tudo que vem depois:
+            * escolher "não vai" sem saber pra qual dia é o tipo de erro que a
+            * pessoa só descobre quando a perua não passa. */}
+          <label className="block">
+            <span className="block text-xs font-bold uppercase tracking-widest text-textMuted mb-1.5">
+              Para qual dia
+            </span>
+            <input
+              type="date"
+              value={dataEscolhida}
+              min={getDateKey()}
+              onChange={(e) => setDataEscolhida(e.target.value || getDateKey())}
+              className="w-full h-12 rounded-2xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+            />
+            <span className="block text-[11px] text-textMuted mt-1">
+              {rotuloDoDia(dataEscolhida)}
+            </span>
+          </label>
 
           {/* Opções */}
           <div className="space-y-2">
@@ -246,4 +281,26 @@ function OptionCard({
       )}
     </button>
   );
+}
+
+/**
+ * "hoje", "amanhã", "quinta, 28 de agosto".
+ *
+ * Data crua (2026-08-28) obriga a pessoa a converter de cabeça pra saber se
+ * escolheu o dia certo — e é justamente aí que ela erra.
+ */
+function rotuloDoDia(chave) {
+  const [y, m, d] = String(chave || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const data = new Date(y, m - 1, d);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((data - hoje) / 86400000);
+  if (dias === 0) return 'Hoje';
+  if (dias === 1) return 'Amanhã';
+  return new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+  }).format(data);
 }
