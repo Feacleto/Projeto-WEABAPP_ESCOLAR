@@ -35,6 +35,7 @@ const {
 } = require('./lib/invites');
 const { makeCloseStaleRoutes } = require('./lib/routes');
 const { makeSendPushOnNotification } = require('./lib/push');
+const { makeConfirmarAusencias } = require('./lib/confirmarAusencias');
 const {
   makeGenerateMonthlyPayments,
   makeRunBillingNow,
@@ -352,6 +353,14 @@ exports.closeStaleRoutes = makeCloseStaleRoutes(db);
 // sem que cada caminho precise lembrar de enviar.
 
 exports.sendPushOnNotification = makeSendPushOnNotification(db);
+
+// ===== Confirmação de véspera (ver functions/lib/confirmarAusencias.js) =====
+//
+// Às 19h pergunta ao responsável se a ausência marcada pra amanhã continua
+// valendo. O app já pergunta isso na tela — mas quem esquece de desmarcar é,
+// por definição, quem não está abrindo o app.
+
+exports.confirmarAusencias = makeConfirmarAusencias(db);
 
 // ===== Faturamento (ver functions/lib/billing.js) =====
 //

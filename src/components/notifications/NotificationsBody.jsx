@@ -155,6 +155,14 @@ export default function NotificationsBody({ onNavigate }) {
       return;
     }
 
+    // A confirmação de véspera leva pra home do responsável, que é onde o
+    // cartão âmbar "amanhã: não vai — continua?" está esperando com os dois
+    // botões. Levar pra qualquer outro lugar obrigaria ele a procurar.
+    if (n.type === 'absence_confirm') {
+      onNavigate('/pai');
+      return;
+    }
+
     // Falta declarada e responsável alternativo são coisas que mudam a ROTA
     // do motorista — e é na rota que ele precisa ver o efeito.
     if (n.type === 'absence_declared' || n.type === 'alt_pickup') {

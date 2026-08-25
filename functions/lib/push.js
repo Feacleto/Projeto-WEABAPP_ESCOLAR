@@ -16,14 +16,36 @@ const admin = require('firebase-admin');
 
 const REGION = 'southamerica-east1';
 
-// Pra onde o toque na notificação leva, por tipo de aviso.
+/**
+ * Pra onde o toque na notificação leva, por tipo de aviso.
+ *
+ * ESTE MAPA ESTAVA DESATUALIZADO E FALHAVA CALADO.
+ * As chaves `absence` e `agenda` não existem: os tipos gravados são
+ * `absence_declared`, `agenda_entry`, `agenda_school_entry`. Chave que não bate
+ * cai no `|| '/'` e o push abre a raiz do app — a pessoa toca no aviso "novo
+ * recado sobre a Ana" e chega numa tela genérica, sem nada indicando que
+ * errou. Aviso que não leva a lugar nenhum ensina a não tocar em aviso.
+ *
+ * Espelha o `onClickNotif` de `NotificationsBody`: os dois respondem a mesma
+ * pergunta, um pra quem toca no push e outro pra quem toca na lista.
+ */
 const URL_BY_TYPE = {
   payment_claimed: '/tio/finance',
   payment_confirmed: '/pai/finance',
   payment_due: '/pai/finance',
   contract_accepted: '/tio',
-  absence: '/tio',
-  agenda: '/pai',
+
+  absence_declared: '/tio',
+  absence_confirm: '/pai',
+  alt_pickup: '/tio',
+  school_no_class: '/pai',
+
+  agenda_entry: '/pai',
+  agenda_school_entry: '/pai',
+  agenda_broadcast: '/pai',
+
+  child_arrived_school: '/pai',
+  child_arrived_home: '/pai',
 };
 
 function makeSendPushOnNotification(db) {
