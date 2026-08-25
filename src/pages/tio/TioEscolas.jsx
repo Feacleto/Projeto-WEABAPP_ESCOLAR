@@ -157,7 +157,7 @@ export default function TioEscolas() {
 
   return (
     <div className="min-h-screen pb-28">
-      <Header title="Escolas" showBack />
+      <Header title="Escolas" showBack backLabel="Crianças" backTo="/tio/children" />
 
       <div className="px-5 pt-4 space-y-4">
         <p className="text-sm text-textMuted">

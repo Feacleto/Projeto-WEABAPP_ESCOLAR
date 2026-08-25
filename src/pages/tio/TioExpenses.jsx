@@ -76,7 +76,7 @@ export default function TioExpenses() {
 
   return (
     <div className="pb-28">
-      <Header title="Despesas" showBack />
+      <Header title="Despesas" showBack backLabel="Financeiro" backTo="/tio/finance" />
 
       <div className="px-5 pt-4 space-y-4">
         <MonthSwitcher monthKey={monthKey} onChange={setMonthKey} />

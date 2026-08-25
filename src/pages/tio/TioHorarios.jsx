@@ -122,7 +122,7 @@ export default function TioHorarios() {
 
   return (
     <div className="min-h-screen pb-28">
-      <Header title="Horários" showBack />
+      <Header title="Horários" showBack backLabel="Rota" backTo="/tio/route/now" />
 
       <div className="px-5 pt-4 space-y-4">
         <p className="text-sm text-textMuted">

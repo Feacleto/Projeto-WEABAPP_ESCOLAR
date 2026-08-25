@@ -23,6 +23,17 @@ import NotificationsSheet from '../notifications/NotificationsSheet';
 export default function Header({
   title,
   showBack = false,
+  // DE ONDE ELE VEIO, escrito. Uma seta sozinha diz "dá pra voltar", não diz
+  // pra ONDE — e quem tem pouca familiaridade com app não arrisca um botão
+  // cujo destino não está escrito: fica na tela, ou sai pela aba de baixo e
+  // perde a rolagem e o filtro no caminho.
+  backLabel = null,
+  // Destino explícito. `navigate(-1)` presume que existe história — e não
+  // existe quando a pessoa chegou por notificação, por link do WhatsApp ou
+  // recarregando a página. Nesses casos a seta ou não faz nada, ou joga ela
+  // pra FORA do app. Com destino declarado, voltar sempre chega em algum
+  // lugar do app.
+  backTo = null,
   action = null,
   showGlobal = true,
 }) {
@@ -54,11 +65,19 @@ export default function Header({
         <div className="flex items-center gap-2 min-w-0">
           {showBack && (
             <button
-              onClick={() => navigate(-1)}
-              aria-label="Voltar"
-              className="-ml-1 p-1 tap text-textMuted"
+              onClick={() => (backTo ? navigate(backTo) : navigate(-1))}
+              aria-label={backLabel ? `Voltar para ${backLabel}` : 'Voltar'}
+              className="-ml-1 py-1 pl-1 pr-1.5 tap text-textMuted inline-flex items-center gap-1 shrink-0"
             >
               <ArrowLeft size={22} />
+              {backLabel && (
+                /* Some abaixo de 400px: com título longo, o rótulo empurraria
+                 * o nome da tela pras reticências — e saber ONDE ESTOU vem
+                 * antes de saber de onde vim. */
+                <span className="hidden min-[400px]:inline text-sm font-medium">
+                  {backLabel}
+                </span>
+              )}
             </button>
           )}
           <h1 className="text-base font-semibold text-text truncate">

@@ -93,7 +93,7 @@ export default function TioChildStatement() {
   if (loading || loadingChild) {
     return (
       <>
-        <Header title="Extrato do aluno" showBack />
+        <Header title="Extrato do aluno" showBack backLabel="Crianças" backTo="/tio/children" />
         <div className="p-5 space-y-3">
           <Skeleton className="h-12" />
           <Skeleton className="h-32" />
@@ -105,7 +105,7 @@ export default function TioChildStatement() {
 
   return (
     <>
-      <Header title="Extrato do aluno" showBack />
+      <Header title="Extrato do aluno" showBack backLabel="Crianças" backTo="/tio/children" />
 
       <div className="p-5 space-y-5">
         <div className="print:hidden">

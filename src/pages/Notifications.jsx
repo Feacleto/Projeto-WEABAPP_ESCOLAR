@@ -20,7 +20,7 @@ export default function Notifications() {
   const navigate = useNavigate();
   return (
     <>
-      <Header title="Notificações" showBack />
+      <Header title="Notificações" showBack backLabel="Voltar" />
       <div className="p-4">
         <NotificationsBody onNavigate={(to) => navigate(to)} />
       </div>

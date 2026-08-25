@@ -39,7 +39,7 @@ export default function TioAgenda() {
 
   return (
     <>
-      <Header title="Avisos enviados" showBack />
+      <Header title="Avisos enviados" showBack backLabel="Início" backTo="/tio" />
 
       <div className="p-5 space-y-3">
         <div className="flex gap-2">

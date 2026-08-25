@@ -28,6 +28,7 @@ import EmptyState from '../../components/common/EmptyState';
 import Avatar from '../../components/common/Avatar';
 import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import RouteTracker from '../../components/dashboard/RouteTracker';
+import { ChildDetailSheet } from '../ChildDetail';
 import HorarioDoDia from '../../components/dashboard/HorarioDoDia';
 import { useRide } from '../../hooks/useRide';
 import ChildSwitcher from '../../components/children/ChildSwitcher';
@@ -105,6 +106,13 @@ export default function PaiDashboard() {
   // responsável consegue derivar do que ele pode ler.
   const { ride } = useRide(child?.id, todayKey);
 
+  // A ficha abre POR CIMA do painel.
+  //
+  // O motorista já tinha isso na lista dele; o responsável — que é quem menos
+  // convive com app — era o único ejetado da tela pra ver o perfil do próprio
+  // filho, e voltava perdendo a rolagem. Tocar num cartão pra "dar uma olhada"
+  // não deveria custar o lugar onde ele estava.
+  const [fichaAberta, setFichaAberta] = useState(false);
   const [absenceOpen, setAbsenceOpen] = useState(false);
   const [altPickupOpen, setAltPickupOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -244,7 +252,7 @@ export default function PaiDashboard() {
             child={child}
             status={status}
             phrase={phrase}
-            onTap={() => navigate('/pai/child')}
+            onTap={() => setFichaAberta(true)}
           />
         </div>
 
@@ -356,6 +364,12 @@ export default function PaiDashboard() {
 
       {/* Caderno digital — botão flutuante na tela inicial do Pai */}
       <PaiNotebookFAB />
+
+      <ChildDetailSheet
+        open={fichaAberta}
+        childId={child.id}
+        onClose={() => setFichaAberta(false)}
+      />
 
       <AbsenceSheet
         open={absenceOpen}

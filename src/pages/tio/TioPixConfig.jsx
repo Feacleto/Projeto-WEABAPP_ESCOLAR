@@ -17,7 +17,7 @@ export default function TioPixConfig() {
   const navigate = useNavigate();
   return (
     <>
-      <Header title="Chave PIX" showBack />
+      <Header title="Chave PIX" showBack backLabel="Financeiro" backTo="/tio/finance" />
       <div className="p-4 space-y-4">
         <Card>
           <p className="text-sm leading-relaxed text-textMuted">

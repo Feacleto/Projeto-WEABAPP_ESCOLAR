@@ -162,7 +162,7 @@ export default function TioFinanceReport() {
   if (loading) {
     return (
       <>
-        <Header title="Relatório financeiro" showBack />
+        <Header title="Relatório financeiro" showBack backLabel="Financeiro" backTo="/tio/finance" />
         <div className="p-5 space-y-3">
           <Skeleton className="h-40" />
           <Skeleton className="h-32" />
@@ -174,7 +174,7 @@ export default function TioFinanceReport() {
 
   return (
     <>
-      <Header title="Relatório financeiro" showBack />
+      <Header title="Relatório financeiro" showBack backLabel="Financeiro" backTo="/tio/finance" />
 
       <div className="p-5 space-y-5">
         {/* Ações topo (escondidas no print) */}

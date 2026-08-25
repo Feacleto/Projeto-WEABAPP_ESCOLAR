@@ -135,12 +135,18 @@ export default function PaiMap() {
   return (
     <div className="min-h-screen flex flex-col bg-bg">
       <header className="sticky top-0 z-30 bg-card border-b border-gray-100 h-14 px-3 flex items-center gap-2">
+        {/* Destino declarado em vez de `navigate(-1)`: o mapa é a tela que
+          * mais se chega por notificação ("Tio Nino tá chegando!"), e nesse
+          * caminho não existe história pra voltar — a seta sozinha jogaria o
+          * responsável pra fora do app no momento em que ele mais precisa
+          * dele. */}
         <button
-          onClick={() => navigate(-1)}
-          aria-label="Voltar"
-          className="tap w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-textMuted"
+          onClick={() => navigate('/pai')}
+          aria-label="Voltar para o início"
+          className="tap h-10 pl-2 pr-3 rounded-full bg-gray-100 flex items-center gap-1 text-textMuted shrink-0"
         >
           <ArrowLeft size={20} />
+          <span className="text-sm font-medium">Início</span>
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-text truncate leading-tight">

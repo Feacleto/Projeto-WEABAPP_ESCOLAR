@@ -402,9 +402,21 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
  * por /pai/child sem nenhuma lista por trás).
  */
 export default function ChildDetail() {
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
+
   return (
     <>
-      <Header title="Perfil da criança" showBack />
+      {/* O destino é DECLARADO, não `navigate(-1)`.
+        * Esta casca é justamente a de quem chegou por notificação, link do
+        * WhatsApp ou recarregando a página — casos em que não existe história
+        * e a seta sozinha ou não faz nada, ou joga a pessoa pra fora do app. */}
+      <Header
+        title="Perfil da criança"
+        showBack
+        backLabel={isAdmin ? 'Crianças' : 'Início'}
+        backTo={isAdmin ? '/tio/children' : '/pai'}
+      />
       <div className="p-4">
         <ChildDetailBody />
       </div>
