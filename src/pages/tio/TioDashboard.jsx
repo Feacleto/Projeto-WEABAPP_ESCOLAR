@@ -676,6 +676,7 @@ function AcoesDeCadastro({ totalCriancas, totalEscolas, semHorario, onBroadcast,
           * que estava falando a língua do modelo em vez da língua dele. */}
         <Linha
           icon={ListOrdered}
+          tour="horarios"
           titulo="Editar rota padrão"
           subtitulo="Os horários que você combinou com cada família"
           aviso={semHorario > 0 ? `${semHorario} a confirmar` : null}

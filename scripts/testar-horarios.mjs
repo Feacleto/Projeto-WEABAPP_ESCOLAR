@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 /**
  * Testes do modelo de horários (src/services/horariosService.js).
  *
@@ -629,6 +630,104 @@ t('sair da conta devolve cada um à sua porta', () => {
   eq(destinoAposSair('admin'), '/');
   eq(destinoAposSair('owner'), '/');
   eq(destinoAposSair(undefined), '/', 'sem papel, a apresentação da plataforma');
+});
+
+// ────────────────── 12. o tutorial ──────────────────
+sec('12. O tutorial — cada passo tem que apontar pra algo que existe');
+
+/**
+ * Lido como TEXTO, de propósito.
+ *
+ * Importar `interactiveSteps.js` traria `lucide-react` junto, e este script
+ * roda sem bundler. O que interessa aqui são as âncoras e as rotas, que são
+ * literais — regex resolve, sem dependência nova.
+ */
+const fonteDoTour = await readFile(
+  new URL('../src/components/tutorial/interactiveSteps.js', import.meta.url),
+  'utf8'
+);
+const fonteDoApp = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
+
+const ancorasDoTour = [
+  ...new Set([...fonteDoTour.matchAll(/anchor:\s*'([^']+)'/g)].map((m) => m[1])),
+];
+const rotasDoTour = [
+  ...new Set([...fonteDoTour.matchAll(/path:\s*'([^']+)'/g)].map((m) => m[1])),
+];
+
+// Onde as âncoras podem estar: `data-tour="x"` direto, ou `tour="x"` passado
+// como prop pra um componente que a repassa (é o caso das Linhas do Início).
+const fontesDeTela = await Promise.all(
+  [
+    'src/pages/tio/TioDashboard.jsx',
+    'src/pages/tio/TioChildren.jsx',
+    'src/pages/tio/TioLayout.jsx',
+    'src/pages/pai/PaiDashboard.jsx',
+    'src/pages/pai/PaiLayout.jsx',
+    'src/components/route/ControleDeRota.jsx',
+    'src/components/dashboard/HorarioDoDia.jsx',
+  ].map((p) => readFile(new URL(`../${p}`, import.meta.url), 'utf8'))
+);
+const telas = fontesDeTela.join('\n');
+
+t('toda âncora do tour existe em alguma tela', () => {
+  // Este é o teste que faltava. O tour já apontou pra abas apagadas e pra uma
+  // âncora que tinha sido removida — as duas vezes ninguém percebeu, porque
+  // passo sem âncora não quebra: ele vira um balão no rodapé e o tutorial
+  // segue, ensinando sem mostrar.
+  // Três formas, porque a âncora chega ao DOM por três caminhos: atributo
+  // direto, prop de um componente que a repassa, e item de uma lista de
+  // configuração (a barra de baixo monta os links a partir de um array).
+  const orfas = ancorasDoTour.filter(
+    (a) =>
+      !telas.includes(`data-tour="${a}"`) &&
+      !telas.includes(`tour="${a}"`) &&
+      !telas.includes(`tour: '${a}'`)
+  );
+  eq(orfas, [], 'âncora sem elemento na tela');
+});
+
+t('toda rota do tour existe no App', () => {
+  const inexistentes = rotasDoTour.filter((r) => {
+    if (r === '/tio' || r === '/pai') return !fonteDoApp.includes(`path="${r}"`);
+    // Rotas filhas são declaradas relativas: `/tio/children` → path="children".
+    const filha = r.replace(/^\/(tio|pai)\//, '');
+    return !fonteDoApp.includes(`path="${filha}"`);
+  });
+  eq(inexistentes, [], 'passo navegando pra rota que não existe');
+});
+
+t('o modelo de horários aparece nos dois tours', () => {
+  // O conceito central do app passou a ser a hora combinada com cada família,
+  // e o tutorial ficou dois modelos atrás. Sem isto, o motorista abre o app,
+  // vê "3 a confirmar" e não tem onde aprender o que é.
+  assert(
+    fonteDoTour.includes("anchor: 'horarios'"),
+    'o motorista precisa saber onde combina as horas'
+  );
+  assert(
+    fonteDoTour.includes("anchor: 'horario-dia'"),
+    'o responsável precisa saber onde vê a hora e a posição na fila'
+  );
+});
+
+t('nenhum passo fala de turno, período ou kanban', () => {
+  // Só o TEXTO QUE O USUÁRIO LÊ — title e body.
+  //
+  // Na primeira versão eu varria o arquivo inteiro, e ele acusou o próprio
+  // docblock, que explica em qual modelo o tour ficou preso. Comentário que
+  // conta a história tem que poder nomear o que morreu; passo que fala com o
+  // motorista, não.
+  const textoDosPassos = [
+    ...fonteDoTour.matchAll(/(?:title|body):\s*'((?:[^'\\]|\\.)*)'/g),
+  ]
+    .map((m) => m[1])
+    .join(' ')
+    .toLowerCase();
+
+  const mortos = ['turno', 'kanban', 'arraste', 'período da manhã'];
+  const achados = mortos.filter((p) => textoDosPassos.includes(p));
+  eq(achados, [], 'vocabulário do modelo antigo no texto que o usuário lê');
 });
 
 console.log('\n' + '─'.repeat(66));

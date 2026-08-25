@@ -1,4 +1,5 @@
 import {
+  Clock,
   Hand,
   Bus,
   Users,
@@ -15,13 +16,28 @@ import {
 /**
  * Passos do tour guiado.
  *
- * O ROTEIRO DO MOTORISTA MUDOU COM AS DUAS ABAS.
- * Ele mandava "toque em Crianças" e "toque em Rota" — dois passos `interact`
- * ancorados em abas que não existem mais. Passo interativo apontando pro vazio
- * é pior que passo sem destaque: ele trava esperando um toque que a pessoa não
- * tem onde dar. Agora o passeio é Início → Minha turma → Financeiro, que é o
- * caminho que o app realmente tem. Um passo é uma frase curta ancorada num elemento
- * REAL da tela — o app fica visível atrás, com o elemento iluminado.
+ * O ROTEIRO ACOMPANHA O APP, E O APP MUDOU DUAS VEZES.
+ *
+ * PRIMEIRO as quatro abas viraram duas. O tour mandava "toque em Crianças" e
+ * "toque em Rota" — dois passos `interact` ancorados em abas que já não
+ * existiam. O passeio virou Início → Minha turma → Financeiro.
+ *
+ * DEPOIS o modelo de rota mudou inteiro: os seis turnos fixos deram lugar à
+ * HORA COMBINADA COM CADA FAMÍLIA. E o tour não soube — ele ensinava a operar
+ * um app cujo conceito central ele nunca mencionava. Pior: o motorista que vem
+ * do modelo antigo abre o app e encontra uma cobrança ("3 a confirmar") sem
+ * nenhuma explicação do que é pra confirmar. Por isso existe agora um passo
+ * só sobre os horários, dos dois lados.
+ *
+ * E UM PASSO APONTAVA PRO ELEMENTO ERRADO. "Começar a viagem" tinha sido
+ * repontado pra âncora `hero` — que é o cartão da próxima viagem, na rolagem
+ * da página — enquanto o texto dizia "este mesmo quadro vira o botão de
+ * iniciar a rota". O botão é uma barra FIXA no topo, e nunca foi o mesmo
+ * quadro. Passo que ilumina uma coisa e descreve outra ensina errado com toda
+ * a confiança do tutorial por trás.
+ *
+ * Um passo é uma frase curta ancorada num elemento REAL da tela — o app fica
+ * visível atrás, com o elemento iluminado.
  *
  * Campos:
  *   - path:     rota pra onde navegar antes de mostrar o passo
@@ -56,10 +72,17 @@ export const ADMIN_TOUR = [
   },
   {
     path: '/tio',
-    anchor: 'hero',
+    anchor: 'start-route',
     icon: Play,
     title: 'Começar a viagem',
-    body: 'Quando faltar pouco pra saída, este mesmo quadro vira o botão de iniciar a rota. Toque nele e deixe o celular ligado — a partir daí os pais veem a perua andando no mapa.',
+    body: 'Este botão fica sempre no alto da tela. Toque nele quando sair e deixe o celular ligado — a partir daí os pais veem a perua andando no mapa.',
+  },
+  {
+    path: '/tio',
+    anchor: 'horarios',
+    icon: Clock,
+    title: 'A hora de cada criança',
+    body: 'Seu dia é montado com as horas que você combinou com cada família. Aqui você ajusta uma a uma. Se aparecer "a confirmar", é criança que o app chutou o horário — confirme com o pai e corrija aqui.',
   },
   {
     path: '/tio',
@@ -74,7 +97,7 @@ export const ADMIN_TOUR = [
     anchor: 'add-child',
     icon: UserPlus,
     title: 'Cadastrar uma criança',
-    body: 'Toque em "Nova criança" e preencha. No fim o app cria um código — mande pro pai. Com esse código ele entra e já vê o filho.',
+    body: 'Toque em "Nova criança" e preencha — inclusive a hora que você combinou de pegar e de entregar. No fim o app cria um código: mande pro pai, e com ele o pai entra e já vê o filho.',
   },
   {
     path: '/tio',
@@ -111,6 +134,13 @@ export const PARENT_TOUR = [
     icon: Bus,
     title: 'Onde seu filho está agora',
     body: 'Este quadro muda sozinho: em casa, dentro da perua ou já na escola.',
+  },
+  {
+    path: '/pai',
+    anchor: 'horario-dia',
+    icon: Clock,
+    title: 'A que horas a perua passa',
+    body: 'Aqui ficam a hora de buscar e a de trazer, combinadas com o motorista, e a sua posição na fila do dia. Se aparecer "combine com ele a hora", é porque isso ainda não foi acertado — fale com o motorista.',
   },
   {
     path: '/pai',

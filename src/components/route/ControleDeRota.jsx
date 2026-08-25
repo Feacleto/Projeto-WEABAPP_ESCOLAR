@@ -79,14 +79,21 @@ export default function ControleDeRota({ onIniciar }) {
 
   if (!watching) {
     return (
-      /* A âncora `data-tour="start-route"` foi REMOVIDA daqui.
+      /* A ÂNCORA DO TUTORIAL MORA AQUI, e o passo aponta pra cá de novo.
        *
-       * O comentário antigo dizia que ela tinha sido resgatada porque o passo
-       * "começar a viagem" apontava pro vazio. O passo existe, mas foi movido
-       * pra âncora `hero` — nenhum passo referencia `start-route`. Era um
-       * atributo sem consumidor, com um comentário mandando preservá-lo. */
+       * Ela já tinha sido removida uma vez, corretamente: nenhum passo a
+       * referenciava, porque o passo "Começar a viagem" tinha sido repontado
+       * pra âncora `hero`. Só que o `hero` é o cartão da PRÓXIMA VIAGEM, na
+       * rolagem da página, e este botão é uma barra FIXA no topo — coisas
+       * diferentes. O tutorial iluminava o cartão da hora enquanto o texto
+       * dizia "este mesmo quadro vira o botão de iniciar a rota", que nunca
+       * foi verdade.
+       *
+       * Órfã ela era sintoma, não causa: o problema era o passo apontando pro
+       * elemento errado. */
       <button
         type="button"
+        data-tour="start-route"
         onClick={iniciar}
         className="tap w-full rounded-2xl bg-emerald-600 text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
         style={{ height: 56 }}

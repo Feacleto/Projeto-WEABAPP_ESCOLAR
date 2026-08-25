@@ -34,7 +34,14 @@ export default function HorarioDoDia({ child, absence, ride = null }) {
     || tipo === ABSENCE_TYPES.ALREADY_PICKED;
 
   return (
+    // A âncora fica NO COMPONENTE, e não na tela que o monta.
+    //
+    // `PaiDashboard` renderiza este painel em dois estados diferentes
+    // (esperando e acompanhando). Marcar os dois pontos de montagem daria
+    // duas âncoras iguais na árvore e o tutorial iluminaria a primeira que
+    // encontrasse — que nem sempre é a que está na tela.
     <section
+      data-tour="horario-dia"
       className="bg-card rounded-3xl shadow-sm overflow-hidden"
       aria-label="Horários de hoje"
     >
