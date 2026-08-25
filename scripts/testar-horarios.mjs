@@ -121,6 +121,16 @@ t('criança do modelo antigo opera pelo período, MARCADA como presumida', () =>
   eq(h.presumido, true, 'o motorista tem que ser cobrado a confirmar');
 });
 
+t('sem dropoffPeriod, a volta segue a IDA — nada de fantasma às 17h30', () => {
+  // Regressão: o default 'afternoon' dava entrega 17h30 pra criança da manhã,
+  // e ao meio-dia — entregando de verdade — a tela apontava pra essa viagem
+  // que não existe.
+  const h = horariosCombinados({ pickupPeriod: 'morning' });
+  eq(h.pega, '06:30');
+  eq(h.entrega, '12:30', 'quem é pego de manhã volta no fim da manhã');
+  eq(h.presumido, true);
+});
+
 t('horário pela metade continua presumido', () => {
   const h = horariosCombinados({ horaPega: '06:15', dropoffPeriod: 'afternoon' });
   eq(h.pega, '06:15');
@@ -283,6 +293,37 @@ t('às 15h — buraco do modelo antigo — devolve o PRÓXIMO, não null', () =>
   const b = blocoDoMomento(DIA, em(15, 0));
   assert(b != null, 'o modelo antigo devolvia null e a tela ficava sem turno');
   eq(`${b.direcao} ${deMinutos(b.inicio)}`, 'volta 17:20');
+});
+
+// ── o relógio sozinho trocava de viagem com as crianças na calçada ──
+//
+// `fim` é a hora da ÚLTIMA porta. Um minuto depois dela o bloco deixava de
+// ser o atual e a tela pulava pra próxima viagem, sozinha, com a fila cheia.
+// Atrasar um minuto numa rota escolar é o caso normal.
+const TUDO_PENDENTE = () => true;
+const NADA_PENDENTE = () => false;
+
+t('1 min depois da última porta, com fila cheia, NÃO troca de viagem', () => {
+  const b = blocoDoMomento(DIA, em(6, 36), TUDO_PENDENTE);
+  eq(`${b.direcao} ${deMinutos(b.inicio)}`, 'ida 06:20',
+    'o motorista atrasado 5 min continua vendo quem falta embarcar');
+});
+
+t('com a viagem toda resolvida, o relógio volta a mandar', () => {
+  const b = blocoDoMomento(DIA, em(6, 36), NADA_PENDENTE);
+  eq(`${b.direcao} ${deMinutos(b.inicio)}`, 'ida 12:20');
+});
+
+t('a porta do próximo bloco vence a pendência do anterior', () => {
+  // Às 12h00 (12h20 menos a margem de partida) ele está atrasado pra viagem
+  // seguinte — e é ela que precisa aparecer, mesmo com pendência atrás.
+  const b = blocoDoMomento(DIA, em(12, 0), TUDO_PENDENTE);
+  eq(`${b.direcao} ${deMinutos(b.inicio)}`, 'ida 12:20');
+});
+
+t('sem callback, o comportamento antigo é preservado', () => {
+  const b = blocoDoMomento(DIA, em(6, 36));
+  eq(`${b.direcao} ${deMinutos(b.inicio)}`, 'ida 12:20');
 });
 
 t('às 23h devolve o último do dia em vez de nada', () => {

@@ -139,10 +139,27 @@ export function horariosCombinados(child) {
   const entrega = normalizaHora(child.horaEntrega);
   if (pega && entrega) return { pega, entrega, presumido: false };
 
-  const base = PRESUMIDO_POR_PERIODO[child.pickupPeriod || child.period || 'morning']
-    || PRESUMIDO_POR_PERIODO.morning;
-  const baseVolta = PRESUMIDO_POR_PERIODO[child.dropoffPeriod || 'afternoon']
-    || PRESUMIDO_POR_PERIODO.afternoon;
+  // A VOLTA PRESUMIDA SAI DA IDA, e este default era uma volta fantasma.
+  //
+  // Era `child.dropoffPeriod || 'afternoon'`. Como `childrenService` grava
+  // `dropoffPeriod: data.dropoffPeriod || 'afternoon'` em TODA criança, cada
+  // criança legada da manhã — que volta por volta das 12h30 — recebia entrega
+  // presumida às 17h30. No dia da migração o motorista abria o app com uma
+  // viagem de volta que não existe, e ao meio-dia, entregando de verdade, a
+  // tela apontava pra ela; o bloco real das 12h30 não existia.
+  //
+  // A tabela também não fechava consigo mesma: `periodoDaHora('17:30')`
+  // devolve 'evening', não 'afternoon'. O 'afternoon' do modelo antigo era
+  // 11h–14h; o 17h30 veio de outro lugar.
+  //
+  // Presumir a volta pelo MESMO período da ida faz o par ida/volta ser
+  // coerente: quem é pego de manhã volta ao meio-dia. Continua sendo chute —
+  // e continua saindo com `presumido: true`, que é o que a tela usa pra pedir
+  // confirmação em vez de exibir como combinado.
+  const periodoDaIda = child.pickupPeriod || child.period || 'morning';
+  const base = PRESUMIDO_POR_PERIODO[periodoDaIda] || PRESUMIDO_POR_PERIODO.morning;
+  const baseVolta = PRESUMIDO_POR_PERIODO[child.dropoffPeriod || periodoDaIda]
+    || base;
 
   return {
     pega: pega || base.pega,
@@ -351,21 +368,57 @@ export function diaCompleto(children, opcoes = {}) {
 }
 
 /**
- * O bloco que o relógio indica — substitui `getCurrentPeriod`.
+ * O bloco em que o motorista ESTÁ — e não é só o relógio que decide.
  *
  * As janelas fixas do modelo antigo tinham buraco: às 15h devolviam null e a
- * tela ficava sem turno nenhum. Aqui: o bloco que está acontecendo; se nenhum
- * está, o próximo; no fim do dia, o último. Nunca null com blocos existindo.
+ * tela ficava sem turno nenhum. Aqui nunca é null havendo blocos.
+ *
+ * O RELÓGIO SOZINHO TROCAVA DE VIAGEM COM AS CRIANÇAS NA CALÇADA
+ * `fim` é a hora da ÚLTIMA porta do bloco. Um minuto depois dela, o bloco
+ * deixava de ser "o atual" e a tela pulava pra próxima viagem — sozinha, com
+ * a fila ainda cheia. Às 6h36, atrasado cinco minutos na porta da Duda, o
+ * motorista via a Ana, o Caio e a Duda sumirem do cartão, o botão grande virar
+ * o do Theo (12h20) e o rodapé anunciar "próxima viagem em 6h". No Início, o
+ * mesmo relógio dizia "você está entre viagens" com três crianças esperando.
+ *
+ * Atrasar um minuto numa rota escolar é o caso NORMAL. E isto era regressão:
+ * o Kanban dos seis turnos ficava no turno até o motorista sair dele.
+ *
+ * A REGRA: um bloco com parada pendente continua sendo o atual até chegar a
+ * hora da primeira porta do PRÓXIMO. Aí a tela avança mesmo com pendência —
+ * porque nesse ponto ele está atrasado pra viagem seguinte, e é ela que
+ * precisa aparecer.
+ *
+ * `pendente` é injetado por quem chama, e não calculado aqui de propósito: se
+ * uma criança já foi marcada depende do `status` dela, que mora no
+ * routeStatusService. Este módulo não importa Firebase nem serviço de
+ * operação — é o que o mantém testável sem emulador (ver o topo do arquivo).
+ * Sem o callback, o comportamento é o antigo, só pelo relógio.
+ *
+ * @param {Function} [pendente] recebe um bloco, devolve true se ele ainda tem
+ *   parada esperando ação do motorista.
  */
-export function blocoDoMomento(blocos, agora = new Date()) {
+// A margem existe só na PARTIDA: ele tem que estar na porta às 6h20, então às
+// 6h10 já está trabalhando nesse bloco. Aplicá-la também no FIM fazia a ida
+// das 12h20 continuar "em andamento" às 12h38 e vencer a volta das 12h35, que
+// é onde ele realmente está.
+const MARGEM_DE_PARTIDA = 20;
+
+export function blocoDoMomento(blocos, agora = new Date(), pendente = null) {
   if (!blocos?.length) return null;
   const min = agora.getHours() * 60 + agora.getMinutes();
 
-  // Duas passadas, e a ordem importa. A margem existe só na PARTIDA: ele tem
-  // que estar na porta às 6h20, então às 6h10 já está trabalhando nesse bloco.
-  // Aplicá-la também no fim fazia a ida das 12h20 continuar "em andamento" às
-  // 12h38 e vencer a volta das 12h35, que é onde ele realmente está.
-  const MARGEM_DE_PARTIDA = 20;
+  if (typeof pendente === 'function') {
+    for (let i = 0; i < blocos.length; i += 1) {
+      const b = blocos[i];
+      // Ainda não começou: quem decide é o relógio, lá embaixo.
+      if (min < b.inicio - MARGEM_DE_PARTIDA) break;
+      if (!pendente(b)) continue;
+      const proximo = blocos[i + 1];
+      // Segura o bloco inacabado até a porta do próximo chamar.
+      if (!proximo || min < proximo.inicio - MARGEM_DE_PARTIDA) return b;
+    }
+  }
 
   const emAndamento = blocos.find((b) => min >= b.inicio && min <= b.fim);
   if (emAndamento) return emAndamento;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { onSnapshot, doc } from 'firebase/firestore';
 import {
@@ -143,22 +143,41 @@ export default function TioDashboard() {
     [children, declaracoes, escolasPorId]
   );
 
-  const bloco = useMemo(
-    () => blocoDoMomento(blocos, new Date()),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blocos, tick]
+  /**
+   * Quem ainda depende da perua NUM BLOCO QUALQUER — considera falta E status.
+   *
+   * Precisa vir antes da escolha do bloco, e não depois: quem decide qual é a
+   * viagem atual tem que poder perguntar isso de todas elas. Na versão
+   * anterior o cálculo só existia para o bloco já escolhido, o que tornava a
+   * pergunta circular — e foi por isso que a escolha ficou só com o relógio.
+   */
+  const paradasPendentes = useCallback(
+    (b) => {
+      if (!b) return [];
+      const dir = b.direcao === 'ida' ? 'pickup' : 'dropoff';
+      return b.paradas.filter((p) => {
+        if (!precisaDaPerua(p.estado)) return false;
+        const st = statusNaDirecao(p.child, declaracoes?.[p.child.id], dir);
+        return !!getActionForStatus(st, dir);
+      });
+    },
+    [declaracoes]
+  );
+  const temPendencia = useCallback(
+    (b) => paradasPendentes(b).length > 0,
+    [paradasPendentes]
   );
 
-  /** Quem ainda depende da perua nesta viagem — considera falta E status. */
-  const pendentes = useMemo(() => {
-    if (!bloco) return [];
-    const dir = bloco.direcao === 'ida' ? 'pickup' : 'dropoff';
-    return bloco.paradas.filter((p) => {
-      if (!precisaDaPerua(p.estado)) return false;
-      const st = statusNaDirecao(p.child, declaracoes?.[p.child.id], dir);
-      return !!getActionForStatus(st, dir);
-    });
-  }, [bloco, declaracoes]);
+  const bloco = useMemo(
+    // A pendência entra aqui pelo mesmo motivo da tela de operação: sem ela,
+    // um minuto depois da última porta o Início anunciava "você está entre
+    // viagens" com a fila ainda cheia.
+    () => blocoDoMomento(blocos, new Date(), temPendencia),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [blocos, tick, temPendencia]
+  );
+
+  const pendentes = useMemo(() => paradasPendentes(bloco), [bloco, paradasPendentes]);
 
   const minutosAgora = new Date().getHours() * 60 + new Date().getMinutes();
   const faltamMin = bloco ? bloco.inicio - minutosAgora : null;

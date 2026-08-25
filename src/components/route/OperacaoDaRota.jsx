@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Clock,
@@ -99,13 +99,29 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
     [children, declaracoes, escolasPorId]
   );
 
+  /**
+   * O bloco ainda tem alguém esperando? É o mesmo predicado que monta a fila
+   * (`fila.filter(q => q.action)`), só que aplicável a QUALQUER bloco — a fila
+   * só existe pro bloco atual, e quem escolhe o atual precisa olhar os outros.
+   */
+  const temPendencia = useCallback(
+    (bloco) => {
+      const dir = bloco.direcao === 'ida' ? 'pickup' : 'dropoff';
+      return bloco.paradas.some((p) => {
+        if (!precisaDaPerua(p.estado)) return false;
+        const st = statusNaDirecao(p.child, declaracoes?.[p.child.id], dir);
+        return !!getActionForStatus(st, dir);
+      });
+    },
+    [declaracoes]
+  );
   const blocoAtual = useMemo(() => {
     if (!blocos.length) return null;
     if (indiceEscolhido != null) return blocos[indiceEscolhido] || blocos[0];
-    return blocoDoMomento(blocos, new Date());
+    return blocoDoMomento(blocos, new Date(), temPendencia);
     // `tick` força o recálculo no relógio.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocos, indiceEscolhido, tick]);
+  }, [blocos, indiceEscolhido, tick, temPendencia]);
 
   const direcaoAntiga = blocoAtual?.direcao === 'ida' ? 'pickup' : 'dropoff';
 
@@ -375,7 +391,15 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
                 <button
                   key={`${b.direcao}-${b.inicio}`}
                   type="button"
-                  onClick={() => setIndiceEscolhido(i)}
+                  // Tocar na viagem JÁ ativa volta pro automático.
+                  //
+                  // Antes `indiceEscolhido` nunca era zerado: o primeiro toque
+                  // congelava a tela naquela viagem o dia inteiro, sem nenhum
+                  // caminho de volta a não ser recarregar o app. Uma escolha
+                  // manual sem desfazer não é escolha, é armadilha.
+                  onClick={() =>
+                    setIndiceEscolhido((atual) => (atual === i ? null : i))
+                  }
                   aria-pressed={ativa}
                   className={`tap shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${
                     ativa

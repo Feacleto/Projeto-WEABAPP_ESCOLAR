@@ -112,7 +112,19 @@ export async function addChild(data) {
     sala: '',
     period: data.period || 'morning',
     pickupPeriod: data.pickupPeriod || data.period || 'morning',
-    dropoffPeriod: data.dropoffPeriod || 'afternoon',
+    // A VOLTA SEGUE A IDA, e o default 'afternoon' era uma viagem inventada.
+    //
+    // Todo cadastro sem `dropoffPeriod` explícito nascia 'afternoon', e
+    // 'afternoon' presume entrega às 17h30 (horariosService). Resultado: uma
+    // criança da manhã, que volta ~12h30, ganhava uma volta fantasma às 17h30
+    // no dia do motorista — e ao meio-dia, entregando de verdade, a tela
+    // apontava pra ela.
+    //
+    // Sem `data.dropoffPeriod`, a volta é do MESMO período da ida: quem é
+    // pego de manhã volta no fim da manhã. Continua chute, e continua saindo
+    // com `presumido: true` pra tela cobrar a confirmação.
+    dropoffPeriod:
+      data.dropoffPeriod || data.pickupPeriod || data.period || 'morning',
     monthlyFee: Number(data.monthlyFee) || 0,
     dueDay: clampDueDay(data.dueDay),
     notes: data.notes?.trim() || '',
