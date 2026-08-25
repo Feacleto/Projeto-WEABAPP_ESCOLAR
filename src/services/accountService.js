@@ -69,6 +69,25 @@ async function deleteOwnedCollection(name, adminUid, exceptIds = []) {
   await deleteInBatches(docs);
 }
 
+/**
+ * Apaga as VIAGENS antes das crianças, uma criança por vez.
+ *
+ * Por que uma de cada vez, e não tudo num lote só: a regra de `rides` faz um
+ * `get()` no doc da criança, e o Firestore corta em 20 acessos por batch. Os
+ * dias de UMA criança compartilham o mesmo `get()` (o Firestore cacheia o
+ * mesmo caminho dentro da requisição), então por criança cabe folgado; um
+ * lote com trinta crianças diferentes seria negado inteiro.
+ */
+async function apagarViagensDasCriancas(adminUid) {
+  const snap = await getDocs(
+    query(collection(db, 'children'), where('adminUid', '==', adminUid))
+  );
+  for (const filho of snap.docs) {
+    const viagens = await getDocs(collection(db, 'children', filho.id, 'rides'));
+    if (!viagens.empty) await deleteInBatches(viagens.docs);
+  }
+}
+
 async function deleteInBatches(docs) {
   for (let i = 0; i < docs.length; i += FIRESTORE_BATCH_LIMIT) {
     const slice = docs.slice(i, i + FIRESTORE_BATCH_LIMIT);
@@ -262,9 +281,22 @@ export async function deleteAdminAccount(adminUid) {
   if (!adminUid) throw new Error('Sem adminUid.');
 
   // As coleções que já carregam `adminUid` saem escopadas.
+  //
+  // `children` sai por último entre as três porque as VIAGENS dependem dela:
+  // a regra de `children/{id}/rides/{dia}` resolve permissão com um `get()`
+  // no doc da criança. Apagando a criança primeiro, a subcoleção fica sem
+  // caminho de leitura E sem caminho de exclusão pelo cliente — e o que fica
+  // lá dentro é hora de embarque e LAT/LNG ligadas a uma criança.
+  await apagarViagensDasCriancas(adminUid);
   await deleteOwnedCollection('children', adminUid);
   await deleteOwnedCollection('payments', adminUid);
-  await deleteOwnedCollection('dailyRoutes', adminUid);
+  await deleteOwnedCollection('schools', adminUid);
+
+  // `dailyRoutes` NÃO é mais varrida: a coleção morreu junto com o modelo de
+  // turnos, e as regras dela saíram. Um `getDocs` aqui cai no
+  // `match /{document=**}` e é negado — sem catch, e no MEIO do encerramento.
+  // O motorista perderia crianças e pagamentos e ficaria com a conta de pé:
+  // exatamente o wipe parcial que esta função foi reescrita pra evitar.
 
   // `users` NÃO é mais varrida aqui.
   //
@@ -299,12 +331,7 @@ export async function deleteAdminAccount(adminUid) {
   // Despesas são dado de negócio do tio: saem junto quando ele encerra.
   await deleteOwnedCollection('expenses', adminUid);
 
-  // O id da rota padrão passou a ser `{uid}_default`. O `routePlans/default`
-  // que esta linha apagava é o id legado — apagava o doc errado e deixava o
-  // certo de pé.
-  await deleteDoc(doc(db, 'routePlans', `${adminUid}_default`)).catch((err) =>
-    console.error('routePlans do motorista:', err)
-  );
+  // `routePlans` também saiu: a coleção e as regras dela não existem mais.
 
   // `appState/init` NÃO é apagado.
   //

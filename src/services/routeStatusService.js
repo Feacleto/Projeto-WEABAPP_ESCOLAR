@@ -162,15 +162,29 @@ export async function advanceChild(childId, nextStatus, context = null) {
  * diferentes possam avançar no mesmo lote. Ignora entradas sem nextStatus
  * (criança que já não tem ação naquele turno).
  *
- * Firestore aceita 500 operações por batch; ver o CHUNK abaixo.
+ * Firestore aceita 500 operações por batch, mas o limite que morde aqui é
+ * outro: 20 `get()` por requisição. Ver o CHUNK abaixo.
  */
 export async function advanceMany(moves, context = null) {
   const valid = (moves || []).filter((m) => m?.childId && m?.nextStatus);
   if (!valid.length) return 0;
 
-  // 200 e não 400: cada criança agora custa DUAS operações no batch (o doc
-  // dela e o marco da viagem), e o teto do Firestore é 500.
-  const CHUNK = 200;
+  // 15, E O TETO AQUI NÃO É O DE 500 OPERAÇÕES — É O DE 20 `get()`.
+  //
+  // A regra de `children/{id}/rides/{dia}` resolve a permissão com um
+  // `get()` no doc da criança. Cada documento do lote aponta pra uma criança
+  // DIFERENTE, então nada cacheia, e o Firestore corta em 20 acessos por
+  // requisição de batch — não por operação.
+  //
+  // Medido no emulador (scripts/testar-regras.mjs trava isso): 18 crianças
+  // passa, 19 devolve 403. E batch é atômico: nada salva. Uma perua escolar
+  // leva 15 a 20 crianças, então o lote inteiro do "embarquei todos" caía
+  // exatamente na faixa de uso normal — e o erro morria num console.error,
+  // sem ninguém no app perceber.
+  //
+  // 15 deixa folga pros acessos que a própria regra faz por fora (users/{uid})
+  // e pra regra ganhar mais um `get()` sem quebrar de novo em produção.
+  const CHUNK = 15;
   for (let i = 0; i < valid.length; i += CHUNK) {
     const batch = writeBatch(db);
     for (const m of valid.slice(i, i + CHUNK)) {

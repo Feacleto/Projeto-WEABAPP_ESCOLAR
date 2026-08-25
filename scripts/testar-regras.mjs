@@ -27,6 +27,8 @@
  * pé, o teste aborta em vez de mentir.
  */
 
+import { readFile } from 'node:fs/promises';
+
 const PID = 'projeto-tio-nino-digital';
 const AUTH = `http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts`;
 const FS = `http://127.0.0.1:8085/v1/projects/${PID}/databases/(default)/documents`;
@@ -248,6 +250,8 @@ async function main() {
   checar('pai', 'pai lê a posição do motorista dele', 'PASSA', await ler(`liveLocation/${tio1.uid}`, pai1));
   checar('pai', 'pai lê a posição de OUTRO motorista', 'NEGA', await ler(`liveLocation/${tio2.uid}`, pai1));
 
+  await tetoDeGets(tio1);
+
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
   if (falhas.length) {
@@ -256,6 +260,78 @@ async function main() {
   }
   console.log(`${'═'.repeat(64)}\n`);
   process.exit(bad > 0 ? 1 : 0);
+}
+
+/**
+ * O TETO QUE MORDE NÃO É O DE 500 OPERAÇÕES POR BATCH — É O DE 20 `get()`.
+ *
+ * A regra de `children/{id}/rides/{dia}` resolve permissão com um `get()` no
+ * doc da criança. Num lote de "embarquei todos", cada documento aponta pra uma
+ * criança DIFERENTE, então nada cacheia e o Firestore corta a requisição.
+ *
+ * Medido aqui: 18 crianças passa, 19 devolve 403. E batch é atômico — nada
+ * salva. Uma perua escolar leva 15 a 20 crianças, ou seja, o lote caía dentro
+ * da faixa de uso normal, e o erro morria num `console.error`: o motorista
+ * marcava todo mundo, e nenhum pai via nada mudar.
+ *
+ * Este caso existe pra impedir que o CHUNK volte a subir. Ele não testa uma
+ * regra; testa o custo dela — que é o tipo de coisa que nenhuma leitura de
+ * código pega e nenhum teste de caminho feliz alcança, porque só aparece com
+ * turma cheia.
+ */
+async function tetoDeGets(tio) {
+  console.log('\n═══ CUSTO DA REGRA — lote de viagens ═══');
+  const kids = [];
+  // 20 e não 16: o caso de 19 usa slice(0, 19), e num elenco de 16 o slice
+  // devolve 16 em silêncio — o teste passaria medindo outro número.
+  for (let i = 0; i < 20; i += 1) {
+    const id = `teto_kid_${i}_${Date.now()}`;
+    await semear(`children/${id}`, {
+      name: S(`Kid${i}`),
+      adminUid: S(tio.uid),
+      parentUid: S('p'),
+      active: B(true),
+      monthlyFee: N(100),
+    });
+    kids.push(id);
+  }
+
+  const lote = async (n) => {
+    const writes = kids.slice(0, n).map((id) => ({
+      update: {
+        name: `projects/${PID}/databases/(default)/documents/children/${id}/rides/2026-08-25`,
+        fields: { posicao: { integerValue: '1' } },
+      },
+    }));
+    const r = await fetch(`${FS}:commit`, {
+      method: 'POST',
+      headers: H(tio),
+      body: JSON.stringify({ writes }),
+    });
+    return r.status;
+  };
+
+  // Três casos, cercando a decisão pelos dois lados.
+  //
+  // O limiar medido é 18 passa / 19 nega. Numa primeira versão eu afirmei que
+  // 16 já quebrava — e 16 passou. O número exato tinha que ser MEDIDO, não
+  // deduzido do "20" da documentação: a regra também gasta acessos que não são
+  // por documento, e a conta não fecha de cabeça.
+  checar('teto', 'lote de 15 viagens (o CHUNK do código)', 'PASSA', await lote(15));
+  checar('teto', 'lote de 19 estoura o teto de get()', 'NEGA', await lote(19));
+
+  // E o que de fato protege: o CHUNK do fonte. Os dois casos acima provam onde
+  // fica a parede; este prova que o código continua longe dela. Sem ele, subir
+  // o CHUNK pra 200 de novo passaria despercebido — o lote grande só é montado
+  // com turma cheia, que nenhuma conta de teste tem.
+  const TETO_SEGURO = 18;
+  for (const arq of ['src/services/ridesService.js', 'src/services/routeStatusService.js']) {
+    const fonte = await readFile(new URL(`../${arq}`, import.meta.url), 'utf8');
+    const achado = fonte.match(/const CHUNK = (\d+)/);
+    const valor = achado ? Number(achado[1]) : NaN;
+    checar('teto', `CHUNK de ${arq.split('/').pop()} ≤ ${TETO_SEGURO}`, 'PASSA',
+      valor > 0 && valor <= TETO_SEGURO ? 200 : 403);
+  }
 }
 
 /**
