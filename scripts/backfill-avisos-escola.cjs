@@ -12,15 +12,26 @@
  * antigo não tem esse campo, e sem ele some do caderno da família — não é
  * vazamento, é história perdida. Este script devolve.
  *
- * A ORDEM IMPORTA, E ELA NÃO PERDOA
+ * A ORDEM É: PUBLIQUE AS REGRAS NOVAS PRIMEIRO.
  *
- *   1. rode este script (as regras ANTIGAS ainda publicadas — é por isso que
- *      ele consegue ler os avisos pra carimbar);
- *   2. confira o relatório;
- *   3. só então publique as regras novas.
+ *   1. publique as regras novas;
+ *   2. rode este script (sem flag: ele conta e mostra o que faria);
+ *   3. confira o relatório e rode de novo com `--aplicar`.
  *
- * Invertido, o script não enxerga os próprios avisos do motorista e reporta
- * zero — parecendo sucesso.
+ * ISTO AQUI DIZIA O CONTRÁRIO, e o conselho custava caro.
+ *
+ * A versão anterior mandava rodar com as regras ANTIGAS ainda publicadas,
+ * alegando que depois o script "não enxergaria os próprios avisos e reportaria
+ * zero, parecendo sucesso". Não é o que acontece: as duas consultas dele já
+ * filtram `where('adminUid','==',uid)` (ver `carregarAvisos` e `carregarCriancas`),
+ * e a regra nova (`isAppUser() && ehDoMotorista()`) aprova exatamente esse
+ * conjunto. Funciona igual antes e depois.
+ *
+ * O custo do conselho errado era concreto: ele empurrava o operador a MANTER
+ * publicada a regra antiga — aquela em que o responsável de um motorista lê os
+ * recados de escola de todos os outros — durante todo o tempo do backfill.
+ * Segurar uma janela aberta pra proteger um passo que não precisava de
+ * proteção.
  *
  * SÓ ESCREVE COM `--aplicar`
  * Sem a flag ele CONTA e mostra o que faria. Backfill que escreve por padrão é
