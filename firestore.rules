@@ -953,6 +953,88 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // =================================================================
+    // A PLATAFORMA COBRANDO O MOTORISTA
+    //
+    // Dinheiro em sentido OPOSTO ao de `payments`. Lá é o pai pagando o
+    // motorista, e a plataforma não está no caminho. Aqui é o motorista
+    // pagando a plataforma, pelo uso do sistema.
+    //
+    // Manter os dois separados sustenta o item 7 dos Termos ("não processa
+    // nem intermedeia transações financeiras"). No dia em que a taxa sair de
+    // dentro da mensalidade, essa frase fica falsa.
+    // =================================================================
+
+    // taxaConfig/app — percentual padrão, piso e o PIX da PLATAFORMA.
+    //
+    // Leitura pro motorista também: é onde está a chave PIX pra ele pagar.
+    // Esconder isso dele seria cobrar sem dizer pra onde mandar.
+    match /taxaConfig/{docId} {
+      allow read: if isAppUser();
+      allow write: if isOwner();
+    }
+
+    // taxaParceiros/{uid} — a NEGOCIAÇÃO. Só o dono, nem o próprio.
+    //
+    // O motorista NÃO lê o próprio documento, e é deliberado: aqui moram a
+    // nota interna do dono e a estrutura de preço. O que ele precisa saber —
+    // valor, periodicidade, carência — está no CONTRATO, que é o documento
+    // feito pra ele ver.
+    //
+    // Rules não filtram campo na leitura: liberar o doc pro dono dele seria
+    // liberar a nota junto.
+    match /taxaParceiros/{uid} {
+      allow read, write: if isOwner();
+    }
+
+    // faturasParceiro/{id} — o que ele deve, e ele PRECISA ver.
+    //
+    // Cobrança que o cobrado não consegue conferir é cobrança que ele não tem
+    // como contestar. Leitura pro dono da fatura; escrita só do dono da
+    // plataforma — quem calcula é quem cobra, e o cobrado não tem caneta.
+    match /faturasParceiro/{id} {
+      allow read: if isOwner()
+        || (isSignedIn() && resource.data.tioUid == request.auth.uid);
+      allow write: if isOwner();
+    }
+
+    // leadsFunil/{id} — a prospecção comercial.
+    //
+    // Fechada pro dono e só. A fila de quem está negociando é a lista de
+    // concorrentes de quem já é parceiro, e o valor proposto a cada um é
+    // informação que muda negociação.
+    match /leadsFunil/{id} {
+      allow read, write: if isOwner();
+    }
+
+    // contratosAssociacao/{id} — o documento entre a plataforma e ele.
+    //
+    // O DONO ESCREVE, O ASSOCIADO SÓ ACEITA. E aceitar é uma escrita
+    // estreitíssima: quatro campos, e só saindo de "sem aceite".
+    //
+    // Aceite que pode ser reescrito não prova nada — o valor do registro está
+    // em ele ser definitivo. Por isso `aceitoEm` só pode ser gravado uma vez,
+    // e nem o dono altera cláusula de contrato já aceito: renovar cria
+    // documento NOVO, e o anterior fica no histórico.
+    match /contratosAssociacao/{id} {
+      allow read: if isOwner()
+        || (isSignedIn() && resource.data.tioUid == request.auth.uid);
+      allow create, delete: if isOwner();
+
+      allow update: if (
+        // o associado aceitando o próprio contrato, uma vez só
+        isSignedIn()
+        && resource.data.tioUid == request.auth.uid
+        && resource.data.aceitoEm == null
+        && request.resource.data.aceitoEm != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['aceitoEm', 'aceitoPorNome', 'aceiteHash', 'aceiteUserAgent'])
+      ) || (
+        // o dono só mexe em contrato AINDA NÃO aceito
+        isOwner() && resource.data.aceitoEm == null
+      );
+    }
+
     // -----------------------------------------------------------------
     // Default deny — qualquer outra coleção é proibida.
     // -----------------------------------------------------------------

@@ -230,7 +230,34 @@ export async function carregarBasePorMotorista() {
 // ── a negociação de cada motorista ──────────────────────────────────────────
 
 /** Modo `percentual` acompanha o crescimento; `fixo` não. Ver `taxaDe`. */
-export const MODOS = { PERCENTUAL: 'percentual', FIXO: 'fixo' };
+/**
+ * GRATUITO é modo, não `valor: 0`.
+ *
+ * Zero é indistinguível de "ainda não configurei" — e as duas coisas levam a
+ * decisões opostas: uma pede cobrança, a outra pede nada. Modo explícito faz a
+ * gratuidade aparecer no painel como DECISÃO de alguém, com data e nota, e faz
+ * o custo dela entrar no CAC em vez de sumir num campo vazio.
+ */
+export const MODOS = { PERCENTUAL: 'percentual', FIXO: 'fixo', GRATUITO: 'gratuito' };
+
+/**
+ * Como o associado paga.
+ *
+ * `anual` é à vista; `anual12` é o mesmo período em doze parcelas. Os dois
+ * geram a MESMA receita reconhecida por mês e caixas completamente diferentes —
+ * e é justamente essa diferença que o painel precisa mostrar separada.
+ */
+export const PERIODICIDADES = {
+  MENSAL: 'mensal',
+  SEMESTRAL: 'semestral',
+  ANUAL: 'anual',
+  ANUAL12: 'anual12',
+};
+
+/** Meses que cada periodicidade cobre. */
+export const MESES_DA_PERIODICIDADE = {
+  mensal: 1, semestral: 6, anual: 12, anual12: 12,
+};
 
 export async function getNegociacao(uid) {
   if (!uid) return null;
@@ -264,18 +291,28 @@ export function watchNegociacoes(cb, onError) {
  * fechamento do mês consulta. Derivar o segundo do primeiro exigiria uma data de
  * início que ninguém garante estar preenchida.
  */
-export async function setNegociacao(uid, { modo, valor, isencaoMeses, notas, desdeMes }) {
+export async function setNegociacao(
+  uid,
+  { modo, valor, isencaoMeses, notas, desdeMes, periodicidade, descontoAntecipacao }
+) {
   if (!uid) throw new Error('Sem uid do motorista.');
 
   const m = modo || MODOS.PERCENTUAL;
-  if (m !== MODOS.PERCENTUAL && m !== MODOS.FIXO) {
-    throw new Error('Modo tem que ser percentual ou fixo.');
+  if (!Object.values(MODOS).includes(m)) {
+    throw new Error('Modo tem que ser percentual, fixo ou gratuito.');
   }
-  const v = Number(valor);
+  // Gratuidade não tem valor a validar: o valor É zero, por definição.
+  const v = m === MODOS.GRATUITO ? 0 : Number(valor);
   if (!Number.isFinite(v) || v < 0) throw new Error('Valor inválido.');
   if (m === MODOS.PERCENTUAL && v > 100) {
     throw new Error('Percentual não pode passar de 100.');
   }
+
+  const per = periodicidade || PERIODICIDADES.MENSAL;
+  if (!Object.values(PERIODICIDADES).includes(per)) {
+    throw new Error('Periodicidade inválida.');
+  }
+  const desc = Math.min(100, Math.max(0, Number(descontoAntecipacao) || 0));
 
   const meses = Math.max(0, Math.floor(Number(isencaoMeses) || 0));
 
@@ -284,6 +321,8 @@ export async function setNegociacao(uid, { modo, valor, isencaoMeses, notas, des
     {
       modo: m,
       valor: v,
+      periodicidade: per,
+      descontoAntecipacao: desc,
       isencaoMeses: meses,
       isencaoAte:
         meses > 0 ? addMonths(desdeMes || getCurrentMonthKey(), meses - 1) : null,
@@ -335,7 +374,18 @@ export function calcularTaxa({ base, negociacao, config = PADRAO }) {
   let cobrada = padrao;
   let negociada = false;
 
-  if (negociacao && Number.isFinite(Number(negociacao.valor))) {
+  // GRATUIDADE ANTES DE TUDO, e explícita.
+  //
+  // Ela funcionaria por acidente: `valor: 0` no ramo percentual dá zero. Mas
+  // sairia daqui com `abaixoDoPiso: true`, e a tela mostraria um alerta de
+  // preço mal negociado em cima de uma decisão deliberada do dono. Um aviso
+  // que grita no caso certo é um aviso que se aprende a ignorar.
+  const gratuito = negociacao?.modo === MODOS.GRATUITO;
+
+  if (gratuito) {
+    negociada = true;
+    cobrada = 0;
+  } else if (negociacao && Number.isFinite(Number(negociacao.valor))) {
     negociada = true;
     cobrada =
       negociacao.modo === MODOS.FIXO
@@ -354,7 +404,10 @@ export function calcularTaxa({ base, negociacao, config = PADRAO }) {
     // Sem base não existe percentual — evita 0/0 virando NaN na tela.
     efetivo: b > 0 ? (cobrada / b) * 100 : 0,
     padraoEfetivo: b > 0 ? (padrao / b) * 100 : 0,
-    abaixoDoPiso: cobrada < (Number(config.piso) || 0),
+    // Gratuidade NÃO é preço abaixo do piso: é decisão. Sem esta exceção o
+    // painel alertaria o dono contra a própria escolha dele, toda vez.
+    abaixoDoPiso: !gratuito && cobrada < (Number(config.piso) || 0),
+    gratuito,
     // `fixo` não acompanha crescimento: entra criança, a plataforma recebe o
     // mesmo. A tela avisa; quem decide é o dono.
     naoAcompanhaCrescimento: negociada && negociacao.modo === MODOS.FIXO,
