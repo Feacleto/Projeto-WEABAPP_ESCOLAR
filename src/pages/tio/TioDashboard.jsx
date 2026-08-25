@@ -1,64 +1,91 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import { onSnapshot, doc } from 'firebase/firestore';
+import {
+  Play,
+  Clock,
+  Users,
+  School,
+  Megaphone,
+  HelpCircle,
+  History,
+  CircleAlert,
+  AlertTriangle,
+  ChevronRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  MailWarning,
+} from 'lucide-react';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
 import BonusNudge from '../../components/associado/BonusNudge';
 import { ENTRY_BONUS_ENABLED } from '../../config/capabilities';
-import {
-  Bus,
-  CircleAlert,
-  AlertTriangle,
-  Megaphone,
-  ListOrdered,
-  HelpCircle,
-  Users,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  Eye,
-  EyeOff,
-  History,
-  ArrowRight,
-  Sparkles,
-  UserX,
-  Sunrise,
-  Sunset,
-} from 'lucide-react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
-import { onSnapshot, doc } from 'firebase/firestore';
 import Header from '../../components/layout/Header';
+import Avatar from '../../components/common/Avatar';
+import Skeleton from '../../components/common/Skeleton';
 import SchoolBroadcastSheet from '../../components/broadcasts/SchoolBroadcastSheet';
 import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
+import OperacaoDaRota from '../../components/route/OperacaoDaRota';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
+import { useEscolas } from '../../hooks/useEscolas';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useAbsences } from '../../hooks/useAbsences';
 import { db } from '../../firebase/config';
 import { formatCurrency, getCurrentMonthKey } from '../../utils/formatters';
-import { getDateKey } from '../../services/horariosService';
+import {
+  getDateKey,
+  diaCompleto,
+  blocoDoMomento,
+  horaCurta,
+  deMinutos,
+  precisaDaPerua,
+  semHorarioCombinado,
+  ROTULO_ESTADO,
+} from '../../services/horariosService';
+import {
+  statusNaDirecao,
+  getActionForStatus,
+} from '../../services/routeStatusService';
 import { greet } from '../../utils/greeting';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 
-const WEEK_DAYS = [
-  'Domingo',
-  'Segunda',
-  'Terça',
-  'Quarta',
-  'Quinta',
-  'Sexta',
-  'Sábado',
-];
+/**
+ * O INÍCIO — a única tela em que o motorista trabalha.
+ *
+ * POR QUE ELA MUDOU DE FORMA
+ * Ele tem quarenta anos e não cresceu com aplicativo. Cada troca de tela cobra
+ * um pedágio: some a rolagem, some o filtro, e ele gasta dois segundos
+ * procurando onde está. A rota morava numa aba separada, então o trabalho de
+ * todo dia começava com esse pedágio.
+ *
+ * A home passou a hospedar a operação inteira. Mas juntar quatro abas numa
+ * tela é o caminho mais curto pra uma rolagem infinita, que é PIOR que
+ * navegar — então ela não mostra tudo: mostra o que serve AGORA.
+ *
+ * TRÊS CARAS, E O RELÓGIO ESCOLHE
+ *
+ *   ANTES     — falta menos de uma hora pra próxima viagem. Um botão domina a
+ *               tela: "iniciar rota". Embaixo, quem ele vai pegar.
+ *   DIRIGINDO — a home VIRA a operação. O cadastro some inteiro: ele está com
+ *               o veículo em movimento e não vai cadastrar escola.
+ *   ENTRE     — o intervalo entre as viagens é a única janela em que ele
+ *               resolve pendência. Então é a pendência que aparece.
+ *
+ * O QUE SAIU, E POR QUÊ
+ * A gaveta "Mais opções" escondia turma, rota padrão e aviso de escola atrás
+ * de um toque. Gaveta esconde justamente de quem tem medo de procurar — as
+ * quatro ações viraram linhas escritas e visíveis.
+ *
+ * Os quatro cartões de contagem (Crianças / Ausentes / Manhã / Tarde) também
+ * saíram. Eles diziam QUANTOS; a lista da viagem diz QUEM, na ordem, com quem
+ * faltou já em cinza. É o mesmo dado fazendo trabalho em vez de decorar.
+ */
+
+const WEEK_DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const MONTHS = [
-  'janeiro',
-  'fevereiro',
-  'março',
-  'abril',
-  'maio',
-  'junho',
-  'julho',
-  'agosto',
-  'setembro',
-  'outubro',
-  'novembro',
-  'dezembro',
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
 
 function formatLongDate(d = new Date()) {
@@ -66,461 +93,581 @@ function formatLongDate(d = new Date()) {
 }
 
 /**
- * Frase principal do hero — adapta pro horário, pro estado da rota e pra
- * quantidade de crianças do dia. Linguagem coloquial.
+ * A partir de quantos minutos antes a viagem vira "vou sair agora".
+ *
+ * Uma hora é folga suficiente pra ele se preparar e curta o bastante pra o
+ * botão gigante de "iniciar rota" não ficar piscando o dia inteiro — botão
+ * grande que está sempre lá deixa de ser chamado à ação e vira paisagem.
  */
-function heroPhrase({ routeActive, total, hour }) {
-  if (routeActive) return 'Você tá em rota!';
-  if (total === 0) return 'Cadastre suas primeiras crianças';
-  if (hour < 11) return 'Hora de buscar a turma!';
-  if (hour < 13) return 'Hora da volta da escola';
-  if (hour < 17) return 'Hora de buscar pra trazer';
-  return 'Boa noite — bom descanso!';
-}
+const JANELA_DE_PARTIDA = 60;
 
 export default function TioDashboard() {
   const { profile, user } = useAuth();
   const navigate = useNavigate();
   const { openTutorial } = useOutletContext() || {};
-  const { children } = useChildren();
+  const { children, loading: carregandoCriancas } = useChildren();
+  const { mapa: escolasPorId, escolas } = useEscolas();
   const { payments } = usePaymentsByMonth(getCurrentMonthKey());
   const todayKey = getDateKey();
-  const { absences } = useAbsences(todayKey);
+  const { absences, byChildId: declaracoes } = useAbsences(todayKey);
 
-  const [routeActive, setRouteActive] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [showReceivable, setShowReceivable] = useState(false);
+  const [rotaAtiva, setRotaAtiva] = useState(false);
+  const [mostrarReceber, setMostrarReceber] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
-  const [absenceListOpen, setAbsenceListOpen] = useState(false);
+  const [listaAusentesOpen, setListaAusentesOpen] = useState(false);
+
+  // O relógio anda. Sem isto a home fica presa na cara da manhã a tarde
+  // inteira, porque nada mais dispararia um novo render.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   // A rota ativa é a DELE. Enquanto `liveLocation` era um doc só pra
-  // plataforma toda, este badge acendia quando QUALQUER motorista estivesse
+  // plataforma toda, este estado acendia quando QUALQUER motorista estivesse
   // rodando — e o daqui apagava quando outro encerrasse a dele.
   const meuUid = user?.uid;
   useEffect(() => {
     if (!meuUid) return undefined;
     return onSnapshot(
       doc(db, 'liveLocation', meuUid),
-      (snap) => {
-        setRouteActive(snap.exists() ? !!snap.data().routeActive : false);
-      },
-      () => setRouteActive(false)
+      (snap) => setRotaAtiva(snap.exists() ? !!snap.data().routeActive : false),
+      () => setRotaAtiva(false)
     );
   }, [meuUid]);
 
-  const totalChildren = children.length;
-  const absentCount = absences.length;
-  const effectiveCount = Math.max(0, totalChildren - absentCount);
-  const morningCount = children.filter(
-    (c) => (c.period || 'morning') === 'morning'
-  ).length;
-  const afternoonCount = children.filter(
-    (c) => (c.period || 'morning') === 'afternoon'
-  ).length;
+  const blocos = useMemo(
+    () => diaCompleto(children, { declaracoes, escolasPorId }),
+    [children, declaracoes, escolasPorId]
+  );
 
-  const { receivableTotal, overdueCount, claimedCount } = useMemo(() => {
-    let receivable = 0;
-    let overdueC = 0;
-    let claimedC = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const bloco = useMemo(
+    () => blocoDoMomento(blocos, new Date()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [blocos, tick]
+  );
+
+  /** Quem ainda depende da perua nesta viagem — considera falta E status. */
+  const pendentes = useMemo(() => {
+    if (!bloco) return [];
+    const dir = bloco.direcao === 'ida' ? 'pickup' : 'dropoff';
+    return bloco.paradas.filter((p) => {
+      if (!precisaDaPerua(p.estado)) return false;
+      const st = statusNaDirecao(p.child, declaracoes?.[p.child.id], dir);
+      return !!getActionForStatus(st, dir);
+    });
+  }, [bloco, declaracoes]);
+
+  const minutosAgora = new Date().getHours() * 60 + new Date().getMinutes();
+  const faltamMin = bloco ? bloco.inicio - minutosAgora : null;
+
+  /**
+   * Qual das três caras. A ordem das perguntas importa: dirigir vence tudo.
+   */
+  const estado = useMemo(() => {
+    if (rotaAtiva) return 'dirigindo';
+    if (carregandoCriancas) return 'carregando';
+    if (!blocos.length) return 'vazio';
+    if (!bloco || !pendentes.length) return 'entre';
+    return faltamMin != null && faltamMin <= JANELA_DE_PARTIDA ? 'antes' : 'entre';
+  }, [rotaAtiva, carregandoCriancas, blocos.length, bloco, pendentes.length, faltamMin]);
+
+  const { aReceber, atrasados, marcados } = useMemo(() => {
+    let receber = 0;
+    let atraso = 0;
+    let claimed = 0;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
     for (const p of payments) {
       if (p.status === 'paid') continue;
-      receivable += Number(p.amount) || 0;
-      if (p.status === 'claimed') claimedC++;
-      const due =
-        p.dueDate?.toDate?.() || (p.dueDate ? new Date(p.dueDate) : null);
-      if (due && due < today && p.status !== 'claimed') overdueC++;
+      receber += Number(p.amount) || 0;
+      if (p.status === 'claimed') claimed++;
+      const venc = p.dueDate?.toDate?.() || (p.dueDate ? new Date(p.dueDate) : null);
+      if (venc && venc < hoje && p.status !== 'claimed') atraso++;
     }
-    return {
-      receivableTotal: receivable,
-      overdueCount: overdueC,
-      claimedCount: claimedC,
-    };
+    return { aReceber: receber, atrasados: atraso, marcados: claimed };
   }, [payments]);
 
-  const firstName = profile?.name?.split(' ')[0] || 'Tio';
-  const phrase = heroPhrase({
-    routeActive,
-    total: totalChildren,
-    hour: new Date().getHours(),
-  });
+  const semHorario = useMemo(() => semHorarioCombinado(children), [children]);
+  const convitesAbertos = useMemo(
+    () => children.filter((c) => c.inviteStatus === 'pending').length,
+    [children]
+  );
+
+  const primeiroNome = profile?.name?.split(' ')[0] || 'Tio';
+  const proximo = pendentes[0] || null;
 
   return (
     <>
       <Header title="Início" />
 
-      <div className="p-5 space-y-5">
-        {/* Saudação — minúscula, contexto. Bolinha festiva ao lado (clicável) */}
-        <div>
-          <p className="text-xs text-textMuted capitalize">
-            {formatLongDate()}
-          </p>
-          <div className="flex items-center gap-3 mt-1">
-            <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
-              {greet(new Date(), profile?.greetingHours)}, {firstName}!
-            </h1>
-            <FestiveBadge />
-          </div>
-        </div>
-
-        {/* HERO — único elemento dominante. Tap inteiro = começar/continuar */}
-        {/* data-tour: âncora que o tutorial guiado ilumina */}
-        <div data-tour="hero">
-          <HeroCard
-            routeActive={routeActive}
-            phrase={phrase}
-            effectiveCount={effectiveCount}
-            absentCount={absentCount}
-            onTap={() => navigate('/tio/route/now')}
-          />
-        </div>
-
-        {/* Banners de ação — só aparecem se houver algo pra fazer */}
-        {overdueCount > 0 && (
-          <Banner
-            tone="danger"
-            icon={CircleAlert}
-            title={`${overdueCount} pagamento${overdueCount > 1 ? 's' : ''} atrasado${overdueCount > 1 ? 's' : ''}`}
-            subtitle="Toque pra ver e cobrar"
-            onClick={() => navigate('/tio/finance')}
-          />
-        )}
-        {claimedCount > 0 && (
-          <Banner
-            tone="warning"
-            icon={AlertTriangle}
-            title={`${claimedCount} pai${claimedCount > 1 ? 's' : ''} marcou pagamento`}
-            subtitle="Confirmar recebimento"
-            onClick={() => navigate('/tio/finance')}
-          />
-        )}
-
-        {/* A condição de entrada: aparece só pra quem ainda não girou, e
-          * some pra sempre depois — é uma vez por associado. Vem ANTES do
-          * convite pra avaliar porque é o que ele ganha, não o que a gente
-          * pede.
-          *
-          * Hoje a bandeira está DESLIGADA (ver config/capabilities.js): sem
-          * cloud, o brinde não fecha o ciclo e não merece o topo do painel.
-          * A linha fica aqui, e não some, porque o dia que a bandeira virar
-          * o cartão volta ao lugar certo sem ninguém precisar lembrar onde
-          * ele ficava. */}
-        {ENTRY_BONUS_ENABLED && <BonusNudge />}
-
-        {/* Convite pra avaliar — o depoimento do parceiro é a prova social
-          * da home, então o pedido vive no painel dele, não escondido no
-          * perfil. Só aparece pra quem ainda não avaliou. */}
-        <ReviewNudge />
-
-        {/* Bloco "Hoje" — 4 cards clicáveis */}
-        <section className="space-y-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
-            Hoje
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            <StatCard
-              icon={Users}
-              label="Crianças"
-              value={totalChildren}
-              tone="primary"
-              onClick={() => navigate('/tio/children')}
-            />
-            <StatCard
-              icon={UserX}
-              label="Ausentes"
-              value={absentCount}
-              tone={absentCount > 0 ? 'warning' : 'muted'}
-              onClick={() => setAbsenceListOpen(true)}
-            />
-            <StatCard
-              icon={Sunrise}
-              label="Manhã"
-              value={morningCount}
-              tone="amber"
-              onClick={() => navigate('/tio/children?period=morning')}
-            />
-            <StatCard
-              icon={Sunset}
-              label="Tarde"
-              value={afternoonCount}
-              tone="violet"
-              onClick={() => navigate('/tio/children?period=afternoon')}
-            />
-          </div>
-        </section>
-
-        {/* "Mais opções" — expansão em-place */}
-        <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
-          <button
-            onClick={() => setMoreOpen((v) => !v)}
-            className="tap w-full p-4 flex items-center gap-2 text-text font-semibold"
-          >
-            <Sparkles size={18} className="text-primary" />
-            <span className="flex-1 text-left">Mais opções</span>
-            {moreOpen ? (
-              <ChevronUp size={18} className="text-textMuted" />
-            ) : (
-              <ChevronDown size={18} className="text-textMuted" />
-            )}
-          </button>
-
-          {moreOpen && (
-            <div className="border-t border-gray-100 divide-y divide-gray-100">
-              <OptionRow
-                icon={Users}
-                title="Minha turma"
-                subtitle={`${totalChildren} ${totalChildren === 1 ? 'criança cadastrada' : 'crianças cadastradas'}`}
-                onClick={() => navigate('/tio/children')}
-              />
-              <OptionRow
-                icon={ListOrdered}
-                title="Organizar rota padrão"
-                subtitle="A ordem que você usa todo dia"
-                onClick={() => navigate('/tio/horarios')}
-              />
-              <OptionRow
-                icon={Megaphone}
-                title="Avisar que não tem aula"
-                subtitle="Marca falta de toda uma escola"
-                onClick={() => setBroadcastOpen(true)}
-              />
-              <ReceivableRow
-                amount={receivableTotal}
-                visible={showReceivable}
-                onToggle={() => setShowReceivable((v) => !v)}
-                onClick={() => navigate('/tio/finance')}
-              />
-              <OptionRow
-                icon={History}
-                title="Pagamentos do mês"
-                subtitle="Quem já pagou, quem falta"
-                onClick={() => navigate('/tio/finance')}
-              />
-              <OptionRow
-                icon={HelpCircle}
-                title="Como usar o app"
-                subtitle="Tutorial passo a passo"
-                onClick={() => openTutorial?.()}
-              />
+      <div className="pb-4">
+        {/* Saudação — pequena, contexto. Durante a rota ela sai: o topo da
+          * tela é caro demais pra gastar com cortesia enquanto ele dirige. */}
+        {estado !== 'dirigindo' && (
+          <div className="px-5 pt-5">
+            <p className="text-xs text-textMuted capitalize">{formatLongDate()}</p>
+            <div className="flex items-center gap-3 mt-1">
+              <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
+                {greet(new Date(), profile?.greetingHours)}, {primeiroNome}!
+              </h1>
+              <FestiveBadge />
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* ─────────── DIRIGINDO — a home é a operação ─────────── */}
+        {estado === 'dirigindo' && <OperacaoDaRota mostrarRodape={false} />}
+
+        {estado === 'carregando' && (
+          <div className="px-5 pt-4 space-y-3">
+            <Skeleton className="h-40 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+          </div>
+        )}
+
+        {/* ─────────── ANTES — um botão domina ─────────── */}
+        {estado === 'antes' && bloco && (
+          <div className="px-5 pt-4 space-y-4">
+            <div
+              data-tour="hero"
+              className="bg-card border-2 border-primary rounded-3xl p-4 shadow-lg shadow-emerald-600/15"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+                próxima viagem
+              </p>
+              <div className="flex items-baseline gap-2.5 mt-1">
+                <span className="text-4xl font-extrabold text-primary tabular-nums leading-none">
+                  {horaCurta(deMinutos(bloco.inicio))}
+                </span>
+                <span className="text-sm text-textMuted">
+                  {faltamMin > 1
+                    ? `daqui a ${formataEspera(faltamMin)}`
+                    : faltamMin >= 0
+                    ? 'agora'
+                    : `atrasado ${formataEspera(-faltamMin)}`}
+                </span>
+              </div>
+
+              {proximo && (
+                <div className="flex items-center gap-3 mt-3">
+                  <Avatar
+                    photoURL={proximo.child.photoURL}
+                    gender={proximo.child.gender}
+                    seed={proximo.child.id}
+                    kind="child"
+                    size="sm"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-text text-sm leading-tight truncate">
+                      {proximo.child.name}
+                    </p>
+                    <p className="text-[11px] text-textMuted truncate">
+                      {bloco.direcao === 'ida'
+                        ? proximo.child.address || 'Sem endereço'
+                        : bloco.escolas[0]?.nome || 'Escola'}
+                      {' · '}
+                      {pendentes.length}{' '}
+                      {pendentes.length === 1 ? 'criança' : 'crianças'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Levar pro /route/now e não abrir o GPS daqui é deliberado:
+                * iniciar rota liga rastreamento e publica a ordem do dia. Uma
+                * ação dessas merece a tela que a explica. */}
+              <button
+                type="button"
+                onClick={() => navigate('/tio/route/now')}
+                className="tap w-full rounded-2xl bg-primary text-white font-extrabold text-base tracking-wide flex items-center justify-center gap-2 mt-4"
+                style={{ height: 56 }}
+              >
+                <Play size={20} />
+                INICIAR ROTA
+              </button>
+            </div>
+
+            <ListaDaViagem bloco={bloco} />
+            <AcoesDeCadastro
+              totalCriancas={children.length}
+              totalEscolas={escolas.length}
+              semHorario={semHorario.length}
+              onBroadcast={() => setBroadcastOpen(true)}
+              navigate={navigate}
+            />
+          </div>
+        )}
+
+        {/* ─────────── ENTRE — a janela das pendências ─────────── */}
+        {estado === 'entre' && (
+          <div className="px-5 pt-4 space-y-4">
+            <div
+              data-tour="hero"
+              className="bg-emerald-50 border border-emerald-200 rounded-3xl p-5 text-center"
+            >
+              <CheckCircle2 size={34} className="text-emerald-600 mx-auto" />
+              <p className="font-bold text-text mt-2">
+                {blocos.length && bloco ? 'Nada agora' : 'Dia livre'}
+              </p>
+              <p className="text-sm text-emerald-900/75 mt-1">
+                {bloco && faltamMin != null && faltamMin > 0 ? (
+                  <>
+                    Próxima viagem às{' '}
+                    <b>{horaCurta(deMinutos(bloco.inicio))}</b> · daqui a{' '}
+                    {formataEspera(faltamMin)}
+                  </>
+                ) : (
+                  'Nenhuma viagem pendente hoje.'
+                )}
+              </p>
+            </div>
+
+            <Pendencias
+              semHorario={semHorario.length}
+              convitesAbertos={convitesAbertos}
+              atrasados={atrasados}
+              marcados={marcados}
+              ausentes={absences.length}
+              onHorarios={() => navigate('/tio/horarios')}
+              onCriancas={() => navigate('/tio/children')}
+              onFinanceiro={() => navigate('/tio/finance')}
+              onAusentes={() => setListaAusentesOpen(true)}
+            />
+
+            {ENTRY_BONUS_ENABLED && <BonusNudge />}
+            <ReviewNudge />
+
+            <AcoesDeCadastro
+              totalCriancas={children.length}
+              totalEscolas={escolas.length}
+              semHorario={semHorario.length}
+              onBroadcast={() => setBroadcastOpen(true)}
+              navigate={navigate}
+            />
+
+            <ReceberRow
+              amount={aReceber}
+              visivel={mostrarReceber}
+              onToggle={() => setMostrarReceber((v) => !v)}
+              onClick={() => navigate('/tio/finance')}
+            />
+
+            <button
+              type="button"
+              onClick={() => openTutorial?.()}
+              className="tap w-full flex items-center gap-2 text-xs text-textMuted justify-center py-2"
+            >
+              <HelpCircle size={14} />
+              Como usar o app
+            </button>
+          </div>
+        )}
+
+        {/* ─────────── VAZIO — ainda não há de onde tirar rota ─────────── */}
+        {estado === 'vazio' && (
+          <div className="px-5 pt-4 space-y-4">
+            <div
+              data-tour="hero"
+              className="bg-card border border-gray-200 rounded-3xl p-6 text-center"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                <Users size={26} />
+              </div>
+              <p className="font-bold text-text mt-3">
+                Sua turma ainda está vazia
+              </p>
+              <p className="text-sm text-textMuted mt-1 max-w-xs mx-auto">
+                Cadastre a escola, depois as crianças e a hora que você combinou
+                com cada responsável. A rota se monta a partir disso.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/tio/children/escolas')}
+                className="tap w-full rounded-2xl bg-primary text-white font-bold mt-4 h-12 inline-flex items-center justify-center gap-2"
+              >
+                <School size={18} />
+                Começar pela escola
+              </button>
+            </div>
+
+            <AcoesDeCadastro
+              totalCriancas={children.length}
+              totalEscolas={escolas.length}
+              semHorario={semHorario.length}
+              onBroadcast={() => setBroadcastOpen(true)}
+              navigate={navigate}
+            />
+          </div>
+        )}
       </div>
 
       <SchoolBroadcastSheet
         open={broadcastOpen}
         onClose={() => setBroadcastOpen(false)}
       />
-
       <AbsenceListSheet
-        open={absenceListOpen}
-        onClose={() => setAbsenceListOpen(false)}
+        open={listaAusentesOpen}
+        onClose={() => setListaAusentesOpen(false)}
         absences={absences}
       />
     </>
   );
 }
 
-/* ─────────────── StatCard ─────────────── */
+/* ─────────────── a viagem, em prévia ─────────────── */
 
-function StatCard({ icon: Icon, label, value, tone = 'primary', onClick }) {
-  const tones = {
-    primary: 'bg-primary/10 text-primary',
-    warning: 'bg-amber-100 text-amber-700',
-    muted: 'bg-gray-100 text-textMuted',
-    amber: 'bg-amber-100 text-amber-700',
-    violet: 'bg-violet-100 text-violet-700',
-  };
+/**
+ * Quem ele vai pegar, na ordem, com quem faltou já em cinza.
+ *
+ * Substitui os quatro cartões de contagem que ficavam aqui. Eles diziam
+ * QUANTOS; isto diz QUEM — e "quem" é a pergunta que ele faz antes de sair.
+ */
+function ListaDaViagem({ bloco }) {
+  if (!bloco?.paradas?.length) return null;
   return (
-    <button
-      onClick={onClick}
-      className="tap text-left bg-card rounded-2xl shadow-sm p-4 flex items-start justify-between gap-2"
-    >
-      <div>
-        <p className="text-xs text-textMuted">{label}</p>
-        <p className="text-3xl font-bold text-text leading-none mt-1.5 tabular-nums">
-          {value}
-        </p>
-      </div>
-      <div
-        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tones[tone] || tones.primary}`}
-      >
-        <Icon size={18} />
-      </div>
-    </button>
-  );
-}
+    <section className="space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+        {bloco.direcao === 'ida' ? 'quem você pega' : 'quem você leva pra casa'}
+      </p>
 
-/* ─────────────── HERO ─────────────── */
+      {bloco.direcao === 'volta' && bloco.escolas.length > 0 && (
+        <ParadaEscola escolas={bloco.escolas} />
+      )}
 
-function HeroCard({ routeActive, phrase, effectiveCount, absentCount, onTap }) {
-  if (routeActive) {
-    return (
-      <button
-        onClick={onTap}
-        className="tap w-full text-left rounded-3xl overflow-hidden shadow-xl shadow-emerald-500/25"
-      >
-        <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-6 relative overflow-hidden">
-          {/* Van animada atravessando o card em loop */}
+      {bloco.paradas.map((p) => {
+        const fora = !precisaDaPerua(p.estado);
+        return (
           <div
-            aria-hidden
-            className="absolute inset-x-0 bottom-3 pointer-events-none animate-van-drive"
+            key={p.child.id}
+            className={`rounded-xl px-3 py-2 flex items-center gap-2.5 border ${
+              fora ? 'bg-gray-50 border-gray-200 opacity-70' : 'bg-card border-gray-200'
+            }`}
           >
-            <Bus
-              size={64}
-              strokeWidth={1.5}
-              className="text-white/20 mx-auto"
+            <span
+              className={`font-mono text-xs tabular-nums w-11 shrink-0 ${
+                fora ? 'text-textMuted' : 'text-text font-semibold'
+              }`}
+            >
+              {horaCurta(p.hora)}
+            </span>
+            <Avatar
+              photoURL={p.child.photoURL}
+              gender={p.child.gender}
+              seed={p.child.id}
+              kind="child"
+              size="sm"
             />
-          </div>
-
-          <div className="relative">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-              <span className="relative inline-flex">
-                <span className="absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+            <span className="flex-1 min-w-0">
+              <span
+                className={`block text-sm font-semibold truncate ${
+                  fora ? 'text-textMuted line-through' : 'text-text'
+                }`}
+              >
+                {p.child.name}
               </span>
-              Em rota agora
-            </div>
-            <p className="text-4xl font-bold leading-tight mt-3">{phrase}</p>
-            <p className="text-white/85 mt-2">Toque pra gerenciar a rota</p>
-            <div className="mt-5 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2.5 font-semibold">
-              Abrir rota <ArrowRight size={18} />
-            </div>
+              {fora && (
+                <span className="block text-[11px] text-amber-700 font-medium">
+                  {ROTULO_ESTADO[p.estado] || 'Fora hoje'}
+                </span>
+              )}
+            </span>
           </div>
-        </div>
-      </button>
-    );
+        );
+      })}
+
+      {bloco.direcao === 'ida' && bloco.escolas.length > 0 && (
+        <ParadaEscola escolas={bloco.escolas} />
+      )}
+    </section>
+  );
+}
+
+function ParadaEscola({ escolas }) {
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-violet-50 border border-violet-200">
+      <span className="w-11 shrink-0 text-[10px] uppercase tracking-wide text-violet-700 font-semibold">
+        depois
+      </span>
+      <School size={15} className="text-violet-700 shrink-0" />
+      <span className="flex-1 min-w-0 text-sm font-semibold text-violet-900 truncate">
+        {escolas.map((e) => e.nome).join(' · ')}
+      </span>
+    </div>
+  );
+}
+
+/* ─────────────── pendências do intervalo ─────────────── */
+
+/**
+ * O que dá pra resolver enquanto a perua está parada.
+ *
+ * Só aparece o que EXISTE. Uma lista de pendências que mostra zeros é uma
+ * lista que ele aprende a não ler.
+ */
+function Pendencias({
+  semHorario, convitesAbertos, atrasados, marcados, ausentes,
+  onHorarios, onCriancas, onFinanceiro, onAusentes,
+}) {
+  const itens = [];
+  if (semHorario > 0) {
+    itens.push({
+      icon: Clock,
+      texto: `${semHorario} ${semHorario === 1 ? 'criança sem horário confirmado' : 'crianças sem horário confirmado'}`,
+      onClick: onHorarios,
+    });
   }
+  if (convitesAbertos > 0) {
+    itens.push({
+      icon: MailWarning,
+      texto: `${convitesAbertos} ${convitesAbertos === 1 ? 'responsável ainda não entrou' : 'responsáveis ainda não entraram'} no app`,
+      onClick: onCriancas,
+    });
+  }
+  if (atrasados > 0) {
+    itens.push({
+      icon: CircleAlert,
+      texto: `${atrasados} ${atrasados === 1 ? 'pagamento atrasado' : 'pagamentos atrasados'}`,
+      onClick: onFinanceiro,
+    });
+  }
+  if (marcados > 0) {
+    itens.push({
+      icon: AlertTriangle,
+      texto: `${marcados} ${marcados === 1 ? 'pai marcou pagamento' : 'pais marcaram pagamento'} — confirmar`,
+      onClick: onFinanceiro,
+    });
+  }
+  if (ausentes > 0) {
+    itens.push({
+      icon: Users,
+      texto: `${ausentes} ${ausentes === 1 ? 'falta declarada hoje' : 'faltas declaradas hoje'}`,
+      onClick: onAusentes,
+    });
+  }
+  if (!itens.length) return null;
 
   return (
-    <button
-      onClick={onTap}
-      className="tap w-full text-left rounded-3xl overflow-hidden shadow-xl shadow-emerald-500/25"
-    >
-      <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white p-6 relative overflow-hidden">
-        {/* Van animada atravessando o card em loop — feedback visual constante */}
-        <div
-          aria-hidden
-          className="absolute inset-x-0 bottom-2 pointer-events-none animate-van-drive"
+    <section className="space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+        enquanto isso
+      </p>
+      {itens.map((i) => (
+        <button
+          key={i.texto}
+          type="button"
+          onClick={i.onClick}
+          className="tap w-full text-left bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-center gap-2.5"
         >
-          <Bus
-            size={64}
-            strokeWidth={1.5}
-            className="text-white/15 mx-auto"
-          />
-        </div>
-
-        <div className="relative">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <p className="text-4xl font-bold leading-tight">{phrase}</p>
-              <p className="text-white/90 mt-3 text-lg">
-                {effectiveCount === 0 ? (
-                  'Nenhuma criança hoje'
-                ) : (
-                  <>
-                    <span className="font-bold">{effectiveCount}</span>{' '}
-                    {effectiveCount === 1 ? 'criança' : 'crianças'} hoje
-                    {absentCount > 0 && (
-                      <span className="text-white/70 text-sm">
-                        {' '}
-                        · {absentCount} ausente{absentCount > 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </>
-                )}
-              </p>
-            </div>
-            <Bus
-              size={48}
-              strokeWidth={1.6}
-              className="text-white/90 shrink-0"
-            />
-          </div>
-
-          <div className="mt-6 inline-flex items-center gap-2 bg-white text-emerald-700 rounded-full px-5 py-3 font-bold text-base shadow-md">
-            Começar agora <ArrowRight size={18} />
-          </div>
-        </div>
-      </div>
-    </button>
+          <i.icon size={16} className="text-amber-700 shrink-0" />
+          <span className="flex-1 min-w-0 text-[13px] font-semibold text-amber-900">
+            {i.texto}
+          </span>
+          <ChevronRight size={16} className="text-amber-700 shrink-0" />
+        </button>
+      ))}
+    </section>
   );
 }
 
-/* ─────────────── BANNERS / ROWS ─────────────── */
+/* ─────────────── cadastro, escrito e visível ─────────────── */
 
-function Banner({ tone, icon: Icon, title, subtitle, onClick }) {
-  const styles = {
-    danger:
-      'bg-gradient-to-br from-red-50 to-rose-100 border-red-200 text-red-900',
-    warning:
-      'bg-gradient-to-br from-amber-50 to-orange-100 border-amber-200 text-amber-900',
-  };
-  const iconBg = {
-    danger: 'bg-red-500 text-white',
-    warning: 'bg-amber-500 text-white',
-  };
+/**
+ * As quatro ações que viviam na gaveta "Mais opções".
+ *
+ * Saíram da gaveta porque gaveta esconde justamente de quem tem medo de
+ * procurar — e é exatamente esse o usuário deste app. Elas não aparecem no
+ * estado "dirigindo": ali ele está com o veículo em movimento.
+ */
+function AcoesDeCadastro({ totalCriancas, totalEscolas, semHorario, onBroadcast, navigate }) {
+  return (
+    <section className="space-y-2">
+      <Linha
+        icon={Users}
+        titulo="Minha turma"
+        contagem={totalCriancas}
+        onClick={() => navigate('/tio/children')}
+      />
+      <Linha
+        icon={School}
+        titulo="Escolas"
+        contagem={totalEscolas}
+        onClick={() => navigate('/tio/children/escolas')}
+      />
+      <Linha
+        icon={Clock}
+        titulo="Horários"
+        aviso={semHorario > 0 ? `${semHorario} a confirmar` : null}
+        onClick={() => navigate('/tio/horarios')}
+      />
+      <Linha
+        icon={Megaphone}
+        titulo="Avisar que não tem aula"
+        onClick={onBroadcast}
+      />
+    </section>
+  );
+}
+
+function Linha({ icon: Icon, titulo, contagem, aviso, onClick }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`tap w-full text-left rounded-2xl p-4 border flex items-center gap-3 ${styles[tone]}`}
+      className="tap w-full text-left bg-card border border-gray-200 rounded-xl px-3 py-3 flex items-center gap-3"
     >
-      <div
-        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconBg[tone]}`}
-      >
-        <Icon size={20} />
+      <div className="w-8 h-8 rounded-lg bg-gray-100 text-textMuted flex items-center justify-center shrink-0">
+        <Icon size={16} />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-bold leading-tight">{title}</p>
-        <p className="text-xs opacity-80 mt-0.5">{subtitle}</p>
-      </div>
-      <ChevronRight size={18} className="opacity-60 shrink-0" />
+      <span className="flex-1 min-w-0 text-sm font-semibold text-text truncate">
+        {titulo}
+      </span>
+      {aviso ? (
+        <span className="text-[11px] font-semibold text-amber-700 shrink-0">
+          {aviso}
+        </span>
+      ) : contagem != null ? (
+        <span className="font-mono text-xs text-textMuted shrink-0">{contagem}</span>
+      ) : null}
+      <ChevronRight size={16} className="text-textMuted shrink-0" />
     </button>
   );
 }
 
-function OptionRow({ icon: Icon, title, subtitle, onClick }) {
+/**
+ * O total a receber fica ESCONDIDO até ele tocar.
+ *
+ * É a única informação da home que ele não quer que apareça sem querer: o
+ * celular na mão dentro da perua, com um pai olhando pela janela.
+ */
+function ReceberRow({ amount, visivel, onToggle, onClick }) {
   return (
-    <button
-      onClick={onClick}
-      className="tap w-full text-left p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
-    >
-      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-        <Icon size={20} />
+    <div className="bg-card border border-gray-200 rounded-xl px-3 py-3 flex items-center gap-3">
+      <div className="w-8 h-8 rounded-lg bg-gray-100 text-textMuted flex items-center justify-center shrink-0">
+        <History size={16} />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-text leading-tight">{title}</p>
-        <p className="text-xs text-textMuted mt-0.5">{subtitle}</p>
-      </div>
-      <ChevronRight size={18} className="text-textMuted shrink-0" />
-    </button>
-  );
-}
-
-function ReceivableRow({ amount, visible, onToggle, onClick }) {
-  return (
-    <div className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
-      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-        <Eye size={20} className={visible ? '' : 'hidden'} />
-        <EyeOff size={20} className={visible ? 'hidden' : ''} />
-      </div>
-      <button
-        onClick={onClick}
-        className="tap flex-1 min-w-0 text-left"
-      >
-        <p className="font-semibold text-text leading-tight">Pra receber</p>
-        <p className="text-xl font-bold text-text mt-0.5 tabular-nums">
-          {visible ? formatCurrency(amount) : '••••••'}
-        </p>
+      <button type="button" onClick={onClick} className="tap flex-1 min-w-0 text-left">
+        <span className="block text-sm font-semibold text-text">A receber no mês</span>
+        <span className="block text-[11px] text-textMuted">
+          {visivel ? formatCurrency(amount) : '••••••'}
+        </span>
       </button>
       <button
+        type="button"
         onClick={onToggle}
-        aria-label={visible ? 'Ocultar valor' : 'Mostrar valor'}
-        className="tap text-textMuted p-2"
+        aria-label={visivel ? 'Esconder valor' : 'Mostrar valor'}
+        className="tap w-8 h-8 rounded-lg flex items-center justify-center text-textMuted shrink-0"
       >
-        {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+        {visivel ? <EyeOff size={16} /> : <Eye size={16} />}
       </button>
     </div>
   );
+}
+
+function formataEspera(min) {
+  if (min < 60) return `${Math.round(min)} min`;
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
 }

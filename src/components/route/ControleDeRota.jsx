@@ -79,9 +79,13 @@ export default function ControleDeRota({ onIniciar }) {
 
   if (!watching) {
     return (
+      /* `data-tour` é a âncora do tutorial guiado. Ela morava no Kanban e ficou
+       * órfã quando aquela tela saiu: o passo "começar a viagem" apontava pra
+       * um elemento que não existia mais, e o holofote não acendia. */
       <button
         type="button"
         onClick={iniciar}
+        data-tour="start-route"
         className="tap w-full rounded-2xl bg-emerald-600 text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
         style={{ height: 56 }}
       >

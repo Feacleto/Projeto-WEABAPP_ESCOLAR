@@ -45,8 +45,8 @@ export const ADMIN_TOUR = [
     path: '/tio',
     anchor: 'hero',
     icon: Bus,
-    title: 'Este é o botão do dia',
-    body: 'O quadrado verde grandão abre a sua rota. É por ele que você começa a viagem todo dia.',
+    title: 'Aqui é o seu dia',
+    body: 'Este quadro mostra a que horas sai a próxima viagem e quem você pega primeiro. É por ele que o dia começa.',
   },
   {
     path: '/tio',
@@ -72,14 +72,14 @@ export const ADMIN_TOUR = [
     body: 'É a tela que você mais vai usar.',
   },
   {
-    path: '/tio/route',
+    path: '/tio/route/now',
     anchor: 'start-route',
     icon: Play,
     title: 'Começar a viagem',
-    body: 'Toque em "Começar agora" e deixe o celular ligado. A partir daí os pais veem a perua andando no mapa.',
+    body: 'Toque em "Iniciar rota" e deixe o celular ligado. A partir daí os pais veem a perua andando no mapa.',
   },
   {
-    path: '/tio/route',
+    path: '/tio/route/now',
     anchor: 'nav-finance',
     interact: true,
     icon: DollarSign,
