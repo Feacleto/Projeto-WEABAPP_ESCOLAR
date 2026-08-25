@@ -108,6 +108,45 @@ const consultar = (col, campo, valor, s) =>
 
 const listar = (col, s) => fetch(`${FS}/${col}?pageSize=50`, { headers: H(s) }).then((r) => r.status);
 
+/** A vitrine pública da home. `comFiltro` inclui `hiddenByOwner == false`. */
+function consultaVitrine(s, comFiltro) {
+  const filters = [
+    { fieldFilter: { field: { fieldPath: 'allowTestimonial' }, op: 'EQUAL', value: B(true) } },
+  ];
+  if (comFiltro) {
+    filters.push({
+      fieldFilter: { field: { fieldPath: 'hiddenByOwner' }, op: 'EQUAL', value: B(false) },
+    });
+  }
+  return fetch(`${FS}:runQuery`, {
+    method: 'POST',
+    headers: H(s),
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'feedbacks' }],
+        where: { compositeFilter: { op: 'AND', filters } },
+        limit: 50,
+      },
+    }),
+  }).then((r) => r.status);
+}
+
+/** "Você já avaliou antes" — o autor procurando a própria avaliação. */
+function consultaMinhaAvaliacao(s) {
+  return fetch(`${FS}:runQuery`, {
+    method: 'POST',
+    headers: H(s),
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'feedbacks' }],
+        where: { fieldFilter: { field: { fieldPath: 'uid' }, op: 'EQUAL', value: S(s.uid) } },
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+        limit: 1,
+      },
+    }),
+  }).then((r) => r.status);
+}
+
 /**
  * A consulta do caderno do responsável, como o cliente a monta.
  * Com `adminUid` null, monta a versão antiga (só array-contains) — que a regra
@@ -343,6 +382,45 @@ async function main() {
     await consultaAgenda(pai1, tio1.uid));
   checar('lista', 'a mesma consulta sem provar o escopo', 'NEGA',
     await consultaAgenda(pai1, null));
+
+  // ── dinheiro, moderação e aceite ────────────────────────────────────────
+  console.log('\n═══ DINHEIRO, MODERAÇÃO E ACEITE ═══');
+  await semear('children/kid3', {
+    name: S('Ciça'), adminUid: S(tio1.uid), parentUid: S(pai1.uid),
+    active: B(true), monthlyFee: N(300),
+    contractAcceptedAt: { timestampValue: '2026-08-01T09:00:00Z' },
+    contractAcceptedByUid: S(pai1.uid), contractHash: S('hash-original'),
+  });
+  checar('aceite', 'pai reescreve um contrato já aceito', 'NEGA',
+    await escrever('children/kid3', pai1, {
+      contractHash: S('hash-trocado'),
+      contractAcceptedByUid: S(pai1.uid),
+    }, ['contractHash', 'contractAcceptedByUid']));
+  checar('pos', 'pai aceita um contrato ainda não aceito', 'PASSA',
+    await escrever('children/kid1', pai1, {
+      contractVersion: S('v1'),
+      contractAcceptedAt: { timestampValue: '2026-08-25T09:00:00Z' },
+      contractAcceptedByUid: S(pai1.uid),
+      contractAcceptedName: S('Pai Um'),
+      contractHash: S('hash'),
+      contractUserAgent: S('probe'),
+    }, ['contractVersion', 'contractAcceptedAt', 'contractAcceptedByUid',
+        'contractAcceptedName', 'contractHash', 'contractUserAgent']));
+
+  // A vitrine da home é alimentada por LIST, não por get — foi exatamente por
+  // isso que a moderação não funcionava: o `get` filtrava `hiddenByOwner` e o
+  // `list` não. Medir a CONSULTA é o que importa aqui.
+  await semear('feedbacks/f1', {
+    uid: S(pai1.uid), role: S('parent'), rating: N(5),
+    comment: S('ótimo'), allowTestimonial: B(true), hiddenByOwner: B(false),
+    createdAt: { timestampValue: '2026-08-20T09:00:00Z' },
+  });
+  checar('moderacao', 'vitrine sem provar hiddenByOwner é recusada', 'NEGA',
+    await consultaVitrine(pai1, false));
+  checar('pos', 'a vitrine provando o filtro carrega', 'PASSA',
+    await consultaVitrine(pai1, true));
+  checar('pos', 'o autor encontra a própria avaliação', 'PASSA',
+    await consultaMinhaAvaliacao(pai1));
 
   await tetoDeGets(tio1);
 

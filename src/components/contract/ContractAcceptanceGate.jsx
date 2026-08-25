@@ -37,7 +37,7 @@ export default function ContractAcceptanceGate() {
   const navigate = useNavigate();
   const { user, profile, logout, refreshProfile } = useAuth();
   const { child, loading: childLoading } = useActiveChild();
-  const { admin, loading: adminLoading } = useAdminProfile();
+  const { admin, loading: adminLoading } = useAdminProfile(child?.adminUid);
 
   const [confirmName, setConfirmName] = useState('');
   const [checked, setChecked] = useState(false);

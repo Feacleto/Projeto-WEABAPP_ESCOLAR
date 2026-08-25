@@ -36,13 +36,13 @@ import {
 import {
   formatCurrency,
   formatMonthLabel,
+  emCentavos,
 } from '../../utils/formatters';
 
 export default function PaiFinance() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { payments, loading } = usePaymentsByParent(user?.uid);
-  const { admin } = useAdminProfile();
   // Fluxo do "Paguei": primeiro escolhe o método, depois confirma
   const [methodPicker, setMethodPicker] = useState(null); // payment escolhido
   const [claiming, setClaiming] = useState(null); // { payment, method }
@@ -67,13 +67,15 @@ export default function PaiFinance() {
    */
   const debtTotal = useMemo(
     () =>
-      payments.reduce((acc, p) => {
-        const s = computeDisplayStatus(p);
-        if (s === 'pending' || s === 'overdue') {
-          return acc + (Number(p.amount) || 0);
-        }
-        return acc;
-      }, 0),
+      emCentavos(
+        payments.reduce((acc, p) => {
+          const s = computeDisplayStatus(p);
+          if (s === 'pending' || s === 'overdue') {
+            return acc + (Number(p.amount) || 0);
+          }
+          return acc;
+        }, 0)
+      ),
     [payments]
   );
 
@@ -90,6 +92,18 @@ export default function PaiFinance() {
       .sort((a, b) => a._due - b._due);
     return open[0] || null;
   }, [payments]);
+
+  // A CHAVE PIX É A DO MOTORISTA DAQUELA COBRANÇA.
+  //
+  // Aqui não serve a criança ativa: esta tela lista as mensalidades de TODOS
+  // os filhos, e um responsável pode ter filhos em peruas diferentes. Mostrar
+  // uma chave só, escolhida por outro critério, é dinheiro na conta errada com
+  // a tela dizendo que está tudo certo.
+  //
+  // `nextToPay` é a cobrança que o bloco PIX está guiando; o primeiro
+  // pagamento serve de base enquanto não há nenhuma em aberto.
+  const adminDaCobranca = nextToPay?.adminUid || payments[0]?.adminUid || null;
+  const { admin } = useAdminProfile(adminDaCobranca);
 
   const enriched = useMemo(
     () => payments.map((p) => ({ ...p, _display: computeDisplayStatus(p) })),

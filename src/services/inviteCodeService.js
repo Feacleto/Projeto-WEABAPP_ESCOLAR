@@ -8,7 +8,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '../firebase/config';
+import { auth, db, functions } from '../firebase/config';
 
 // Aceita os dois formatos de convite: legado (2 letras + 4 dígitos) e
 // novo (2 letras + 6 caracteres sem ambiguidade visual).
@@ -126,8 +126,20 @@ export async function adminExists() {
  * children livremente pelas rules, então segue no cliente.
  */
 export async function inviteCodeExists(code) {
+  // O ESCOPO É REQUISITO DA REGRA, e sem ele a consulta é negada INTEIRA.
+  //
+  // `children` exige `adminUid == request.auth.uid` na leitura. Uma consulta
+  // só por `inviteCode` não prova isso, então o Firestore recusa tudo — e
+  // como o chamador engole o erro, a checagem de colisão respondia "não
+  // existe" SEMPRE. Dois convites com o mesmo código passariam.
+  //
+  // Conferir só dentro das crianças deste motorista é suficiente: o código
+  // só precisa ser único pra quem vai usá-lo.
+  const dono = auth.currentUser?.uid;
+  if (!dono) return false;
   const q = query(
     collection(db, 'children'),
+    where('adminUid', '==', dono),
     where('inviteCode', '==', code),
     limit(1)
   );

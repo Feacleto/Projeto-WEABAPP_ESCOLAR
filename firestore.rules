@@ -562,6 +562,16 @@ service cloud.firestore {
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.contractAcceptedByUid == request.auth.uid
+        // ACEITAR VALE UMA VEZ. O comentário no topo deste bloco já prometia
+        // "só permitido se ainda não foi aceito", e a condição nunca existiu:
+        // o responsável reescrevia hash, versão, nome e data quantas vezes
+        // quisesse, inclusive apontando pra uma versão de contrato diferente
+        // da que assinou. Numa discordância sobre o combinado, o registro não
+        // sustentava nada — que é a única coisa que ele existe pra fazer.
+        //
+        // `contratosAssociacao` já fazia certo (`aceitoEm == null`); é o mesmo
+        // desenho.
+        && resource.data.get('contractAcceptedAt', null) == null
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly([
               'contractVersion',
@@ -1158,9 +1168,29 @@ service cloud.firestore {
           isAdmin() || isOwner() || resource.data.uid == request.auth.uid
         )
       );
+      // A MODERAÇÃO SÓ FUNCIONA SE O `list` TAMBÉM FILTRAR.
+      //
+      // O `allow get` acima já checava `hiddenByOwner` — e isso era
+      // irrelevante, porque quem alimenta a vitrine da home é o `list`
+      // (`listPublicTestimonials`, `getPublicRatingStats`). O dono tocava em
+      // "tirar do ar", a tela dele confirmava, e o depoimento continuava
+      // aparecendo pra todo visitante. A pessoa que pediu a remoção seguia
+      // exposta, e ninguém no app tinha como perceber.
+      //
+      // O campo passou a ser gravado explicitamente como `false` na criação
+      // (ver feedbackService): consulta que filtra `== false` não alcança
+      // documento sem a chave, então deixá-lo implícito sumiria com a vitrine.
+      // O AUTOR LISTA O PRÓPRIO. Faltava este ramo, e por isso a checagem de
+      // "você já avaliou antes" era negada sempre (mascarada por um catch).
+      // O `limit` baixo é o que impede transformar isto numa varredura.
       allow list: if isAdmin() || isOwner() || (
+        isSignedIn()
+        && request.query.limit <= 5
+        && resource.data.uid == request.auth.uid
+      ) || (
         request.query.limit <= 100
         && resource.data.allowTestimonial == true
+        && resource.data.hiddenByOwner == false
       );
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid

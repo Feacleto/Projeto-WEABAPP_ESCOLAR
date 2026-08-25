@@ -33,7 +33,7 @@ import {
  */
 export default function PaiContract() {
   const { child, loading } = useActiveChild();
-  const { admin, loading: adminLoading } = useAdminProfile();
+  const { admin, loading: adminLoading } = useAdminProfile(child?.adminUid);
 
   const contractData = useMemo(() => {
     if (!child || !admin) return null;

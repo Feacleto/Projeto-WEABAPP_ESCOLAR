@@ -7,7 +7,11 @@ import {
   computeDisplayStatus,
   foiPagoAtrasado,
 } from '../../services/paymentsService';
-import { formatCurrency, formatMonthLabel } from '../../utils/formatters';
+import {
+  formatCurrency,
+  formatMonthLabel,
+  emCentavos,
+} from '../../utils/formatters';
 import {
   paymentLabel,
   paymentChipClasses,
@@ -46,9 +50,11 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
 
     return {
       rows: list,
-      totalPaid: list
-        .filter((p) => p._display === 'paid')
-        .reduce((acc, p) => acc + (Number(p.amount) || 0), 0),
+      totalPaid: emCentavos(
+        list
+          .filter((p) => p._display === 'paid')
+          .reduce((acc, p) => acc + (Number(p.amount) || 0), 0)
+      ),
       openCount: list.filter((p) => p._display !== 'paid').length,
     };
   }, [payments]);

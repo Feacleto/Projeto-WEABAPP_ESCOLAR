@@ -1,3 +1,4 @@
+import { emCentavos } from '../utils/formatters';
 import {
   collection,
   doc,
@@ -190,5 +191,5 @@ export function sumByCategory(expenses) {
 
 /** Total simples. */
 export function sumExpenses(expenses) {
-  return (expenses || []).reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+  return emCentavos((expenses || []).reduce((acc, e) => acc + (Number(e.amount) || 0), 0));
 }

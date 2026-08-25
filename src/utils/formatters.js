@@ -1,6 +1,26 @@
 // Formatadores e constantes de exibição em formato brasileiro.
 
 /**
+ * Arredonda dinheiro pro centavo. Use no FIM de toda soma.
+ *
+ * Trinta mensalidades de R$ 287,50 somadas em `reduce` dão
+ * 8624.999999999998. `formatCurrency` esconde (mostra R$ 8.625,00), então
+ * ninguém vê — até o número entrar numa COMPARAÇÃO. E entra: `total === 0`
+ * decide se uma fatura está quitada.
+ *
+ * O `taxaService` já fazia isso, com o motivo escrito, numa função privada
+ * chamada `centavos`. O resto do app somava direto: o recebido do mês, a
+ * dívida acumulada, o total de despesas por categoria, a receita da
+ * plataforma no painel do dono.
+ *
+ * Arredondar UMA vez no fim, e não a cada parcela: arredondar no meio acumula
+ * o erro em vez de eliminá-lo.
+ */
+export function emCentavos(valor) {
+  return Math.round((Number(valor) || 0) * 100) / 100;
+}
+
+/**
  * O primeiro nome — a forma como o app chama as pessoas.
  *
  * Estava reinventado em 40 lugares, com dois problemas.

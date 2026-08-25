@@ -21,7 +21,7 @@ import {
 export default function PaiFinanceReport() {
   const { user, profile } = useAuth();
   const { child } = useActiveChild();
-  const { admin } = useAdminProfile();
+  const { admin } = useAdminProfile(child?.adminUid);
   const { payments, loading } = usePaymentsByParent(user?.uid);
 
   const enriched = useMemo(

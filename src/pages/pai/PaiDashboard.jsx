@@ -90,7 +90,7 @@ export default function PaiDashboard() {
   const { openTutorial } = useOutletContext() || {};
   const { child, loading: childLoading } = useActiveChild();
   const { location: liveLocation } = useLiveLocation(child?.adminUid);
-  const { admin } = useAdminProfile();
+  const { admin } = useAdminProfile(child?.adminUid);
   const { payments } = usePaymentsByParent(user?.uid);
   const todayKey = getDateKey();
   // Ausência, histórico e responsável alternativo são POR CRIANÇA: têm que

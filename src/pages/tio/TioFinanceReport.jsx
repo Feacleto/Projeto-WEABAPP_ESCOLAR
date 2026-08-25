@@ -14,6 +14,7 @@ import {
   formatCurrency,
   formatMonthLabel,
   getCurrentMonthKey,
+  addMonths,
 } from '../../utils/formatters';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -34,12 +35,19 @@ export default function TioFinanceReport() {
   const [payments, setPayments] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Janela: últimos 12 meses incluindo o corrente
-  const fromKey = useMemo(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 11);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, []);
+  // Janela: últimos 12 meses incluindo o corrente.
+  //
+  // `d.setMonth(d.getMonth() - 11)` sobre a data de HOJE, com o dia
+  // preservado, transborda no dia 31: em 31/08/2026 devolvia 2025-10 em vez de
+  // 2025-09. Como este é o PISO da consulta, o mês mais antigo não vinha do
+  // banco — mas a barra dele continuava sendo desenhada, zerada. Quatro dias
+  // por ano o motorista abria o relatório e via um mês sem faturamento que
+  // teve faturamento.
+  //
+  // `addMonths` já existia em utils/formatters, escrito exatamente pra isso, e
+  // `getLast12MonthKeys` neste mesmo arquivo já a usava — as duas metades do
+  // gráfico calculavam a mesma janela por caminhos diferentes.
+  const fromKey = useMemo(() => addMonths(getCurrentMonthKey(), -11), []);
 
   useEffect(() => {
     let cancelled = false;

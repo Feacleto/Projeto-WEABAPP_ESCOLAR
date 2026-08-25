@@ -180,11 +180,26 @@ export function resumirBase(criancas) {
   // ponto flutuante ao somar oito delas, e a base é o que multiplica tudo.
   const base = Math.round(valores.reduce((s, v) => s + v, 0) * 100) / 100;
 
+  const media = valores.length ? base / valores.length : 0;
+
   return {
     criancas: ativas.length,
     semMensalidade: ativas.length - valores.length,
     base,
-    ticketMedio: valores.length ? base / valores.length : 0,
+    ticketMedio: media,
+    // MESMO NÚMERO, O NOME QUE O CONTRATO PROCURA.
+    //
+    // `montarContrato` lê `base.mensalidadeMedia` — nome que ninguém produzia.
+    // Como o painel de associados ainda não está plugado, isso estava latente;
+    // no dia em que fosse ligado, o contrato de associação sairia com
+    // `valorPorPeriodo: 0` e o motorista assinaria eletronicamente, com hash,
+    // um documento dizendo que não deve nada.
+    //
+    // Os dois nomes convivem de propósito: `ticketMedio` é como o painel do
+    // dono chama, `mensalidadeMedia` é como o contrato chama. Derivar os dois
+    // do mesmo cálculo aqui é mais barato que renomear em dois vocabulários
+    // que já existem na tela.
+    mensalidadeMedia: media,
     menor: valores.length ? Math.min(...valores) : 0,
     maior: valores.length ? Math.max(...valores) : 0,
   };

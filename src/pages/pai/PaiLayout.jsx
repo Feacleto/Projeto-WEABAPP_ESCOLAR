@@ -44,8 +44,8 @@ export default function PaiLayout() {
 
   // Chamada ativa do Tio pro Pai (modal fullscreen com ringtone)
   const activeCall = useActiveCallForParent(user?.uid);
-  const { admin } = useAdminProfile();
   const { child } = useActiveChild();
+  const { admin } = useAdminProfile(child?.adminUid);
   const childBirthdayToday = child && isBirthdayToday(child.birthDate);
 
   // Primeiro acesso: o tour abre sozinho e volta a cada login enquanto o

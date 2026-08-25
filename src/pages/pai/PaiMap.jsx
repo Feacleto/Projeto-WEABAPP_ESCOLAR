@@ -42,7 +42,7 @@ export default function PaiMap() {
   const navigate = useNavigate();
   const { child, loading } = useActiveChild();
   const { location: liveLocation } = useLiveLocation(child?.adminUid);
-  const { admin } = useAdminProfile();
+  const { admin } = useAdminProfile(child?.adminUid);
 
   const home =
     child?.lat && child?.lng ? { lat: child.lat, lng: child.lng } : null;

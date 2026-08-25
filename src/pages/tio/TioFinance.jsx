@@ -52,6 +52,7 @@ import {
   formatMonthLabel,
   formatCurrency,
   getCurrentMonthKey,
+  emCentavos,
 } from '../../utils/formatters';
 import { PIX_KEY_TYPES } from '../../services/userService';
 
@@ -192,7 +193,7 @@ export default function TioFinance() {
    */
   const totals = useMemo(() => {
     const soma = (lista) =>
-      lista.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+      emCentavos(lista.reduce((acc, p) => acc + (Number(p.amount) || 0), 0));
     const pagos = enriched.filter((p) => p._display === 'paid');
     const atrasados = enriched.filter((p) => p._display === 'overdue');
     return {
@@ -221,7 +222,7 @@ export default function TioFinance() {
   }, [totals.atrasados, arrears, isCurrentMonthView]);
 
   const totalAtrasado = useMemo(
-    () => todosAtrasados.reduce((acc, p) => acc + (Number(p.amount) || 0), 0),
+    () => emCentavos(todosAtrasados.reduce((acc, p) => acc + (Number(p.amount) || 0), 0)),
     [todosAtrasados]
   );
 

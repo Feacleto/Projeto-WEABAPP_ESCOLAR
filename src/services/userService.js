@@ -1,10 +1,4 @@
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  onSnapshot,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 /**
@@ -47,65 +41,35 @@ export async function clearAdminPixKey(adminUid) {
   });
 }
 
-/**
- * Busca o doc do tio (admin) pra que o pai consiga ver chave PIX e telefone.
- * Lê appState/init pra pegar o adminUid (público), depois lê users/{adminUid}.
- *
- * IMPORTANTE: as Firestore rules atuais permitem 'get' em users/{uid} apenas
- * pro próprio dono ou admin. Pro pai conseguir ler o doc do tio, precisamos
- * relaxar a rule (feito em firestore.rules).
- */
-export async function getAdminProfile() {
-  const initSnap = await getDoc(doc(db, 'appState', 'init'));
-  if (!initSnap.exists()) return null;
-  const adminUid = initSnap.data().adminUid;
-  if (!adminUid) return null;
-
-  const userSnap = await getDoc(doc(db, 'users', adminUid));
-  if (!userSnap.exists()) return null;
-  return { uid: adminUid, ...userSnap.data() };
-}
 
 /**
  * Subscribe ao doc do admin (atualiza UI quando ele troca a chave PIX).
  */
-export function watchAdminProfile(onUpdate, onError) {
-  let unsubUser = null;
-
-  getDoc(doc(db, 'appState', 'init'))
-    .then((initSnap) => {
-      if (!initSnap.exists()) {
-        onUpdate(null);
-        return;
-      }
-      const adminUid = initSnap.data().adminUid;
-      if (!adminUid) {
-        onUpdate(null);
-        return;
-      }
-      unsubUser = onSnapshot(
-        doc(db, 'users', adminUid),
-        (snap) => {
-          if (snap.exists()) {
-            onUpdate({ uid: adminUid, ...snap.data() });
-          } else {
-            onUpdate(null);
-          }
-        },
-        (err) => {
-          console.error('watchAdminProfile error:', err);
-          if (onError) onError(err);
-        }
-      );
-    })
-    .catch((err) => {
-      console.error('watchAdminProfile init error:', err);
+/**
+ * O motorista de UMA criança — o dono da chave PIX que o responsável vê.
+ *
+ * Lia `appState/init.adminUid`, o ponteiro ÚNICO da plataforma. Com um
+ * motorista dava no mesmo; com dois, o responsável do motorista B abria o
+ * financeiro, via a chave PIX do motorista A e PAGAVA NELA. O dinheiro ia pra
+ * conta errada e nada no sistema saberia — não há campo no pagamento que ligue
+ * a cobrança a uma chave.
+ *
+ * O uid agora vem de quem chama, e a fonte é sempre `child.adminUid` (ou
+ * `payment.adminUid`): o vínculo real, por criança.
+ */
+export function watchAdminProfile(adminUid, onUpdate, onError) {
+  if (!adminUid) {
+    onUpdate(null);
+    return () => {};
+  }
+  return onSnapshot(
+    doc(db, 'users', adminUid),
+    (snap) => onUpdate(snap.exists() ? { uid: adminUid, ...snap.data() } : null),
+    (err) => {
+      console.error('watchAdminProfile:', err);
       if (onError) onError(err);
-    });
-
-  return () => {
-    if (unsubUser) unsubUser();
-  };
+    }
+  );
 }
 
 export function validatePixKey(type, value) {

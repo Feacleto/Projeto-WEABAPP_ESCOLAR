@@ -69,6 +69,16 @@ export async function submitFeedback({
       .slice(0, allowTestimonial ? PUBLIC_COMMENT_MAX : 1000),
     // Permissões pra exibição pública na landing
     allowTestimonial: !!allowTestimonial,
+    // `false` EXPLÍCITO, não ausente.
+    //
+    // A vitrine da home passou a filtrar `hiddenByOwner == false` — porque
+    // sem isso o botão "tirar do ar" do dono não tirava nada: a regra de
+    // `get` filtrava e a de `list`, que é quem alimenta a home, não.
+    //
+    // Consulta de igualdade não alcança documento sem a chave. Deixar o campo
+    // nascer ausente sumiria com a vitrine inteira. É a mesma lição do
+    // `aceitoEm: null` do contrato de associação.
+    hiddenByOwner: false,
     allowPhoto: !!allowPhoto,
 
     // SÓ O PRIMEIRO NOME, e a foto SÓ se ele autorizou.
@@ -100,6 +110,7 @@ export async function listPublicTestimonials(max = 12, { role = null } = {}) {
     const q = query(
       collection(db, COLLECTION),
       where('allowTestimonial', '==', true),
+      where('hiddenByOwner', '==', false),
       orderBy('createdAt', 'desc'),
       limit(50)
     );
@@ -149,6 +160,7 @@ export async function getPublicRatingStats({ role = null } = {}) {
     const q = query(
       collection(db, COLLECTION),
       where('allowTestimonial', '==', true),
+      where('hiddenByOwner', '==', false),
       orderBy('createdAt', 'desc'),
       limit(100)
     );
@@ -181,6 +193,14 @@ export async function getPublicRatingStats({ role = null } = {}) {
 export async function getLastFeedbackAt(uid) {
   if (!uid) return null;
   try {
+    // A CONSULTA ESTÁ CERTA; ERA A REGRA QUE NÃO A ACEITAVA.
+    //
+    // O `allow list` de `feedbacks` cobria o dono da plataforma, o motorista
+    // e a vitrine pública — não "os meus". Como o `catch` abaixo mascara, o
+    // texto "você já avaliou antes" simplesmente nunca aparecia.
+    //
+    // O id do documento é gerado pelo `addDoc`, então não dá pra trocar por
+    // um `get` direto: quem tinha que mudar era a rule, e mudou.
     const q = query(
       collection(db, COLLECTION),
       where('uid', '==', uid),
