@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bus, Check, Undo2, MapPin } from 'lucide-react';
+import { ArrowLeft, Bus, Check, Undo2, MapPin, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -10,6 +10,7 @@ import WhatsAppIcon from '../../components/common/WhatsAppIcon';
 import { useAuth } from '../../hooks/useAuth';
 import AguardandoAprovacao from '../../components/admin/AguardandoAprovacao';
 import { watchDriverLeads, setLeadContacted } from '../../services/waitlistService';
+import { logout } from '../../services/authService';
 import { unmaskPhone } from '../../utils/masks';
 
 const FLEET_LABELS = {
@@ -69,13 +70,39 @@ export default function TioLeads() {
   return (
     <div className="min-h-screen pb-8">
       <header className="sticky top-0 z-20 bg-bg px-5 pt-4 pb-3 border-b border-gray-200">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="tap inline-flex items-center gap-1 text-sm text-textMuted -ml-1 p-1 mb-2"
-        >
-          <ArrowLeft size={18} /> Voltar
-        </button>
+        {/* VOLTAR PRO /admin, E SAIR — as duas saídas desta tela.
+          *
+          * O "voltar" era `navigate(-1)`, e esta é uma tela do DONO: as duas
+          * únicas dele são /admin e esta. Chegando por link ou recarregando a
+          * página, não existe história — a seta ou não fazia nada, ou jogava
+          * ele pra fora do app.
+          *
+          * E não havia como encerrar a sessão daqui. O /admin ganhou "Sair"
+          * porque é a única tela do dono; esta é a segunda, e ficava de fora
+          * pelo mesmo motivo que a primeira ficava: ninguém contou as portas. */}
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <button
+            type="button"
+            onClick={() => navigate('/admin')}
+            className="tap inline-flex items-center gap-1 text-sm text-textMuted -ml-1 p-1"
+          >
+            <ArrowLeft size={18} /> Painel do dono
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await logout();
+                navigate('/login', { replace: true });
+              } catch {
+                toast.error('Não deu pra sair. Tente de novo.');
+              }
+            }}
+            className="tap inline-flex items-center gap-1 p-1 text-sm text-textMuted"
+          >
+            <LogOut size={15} /> Sair
+          </button>
+        </div>
         <h1 className="text-xl font-bold text-text">Interessados</h1>
         <p className="text-sm text-textMuted">
           Motoristas que pediram acesso pela página pública.
