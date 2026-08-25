@@ -188,10 +188,14 @@ export default function ChildForm() {
         ...form,
         horaPega: horaPega || '',
         horaEntrega: horaEntrega || '',
-        // `period`/`pickupPeriod`/`dropoffPeriod` continuam gravados, derivados
-        // da hora: o Kanban dos seis turnos e o filtro da lista de crianças
-        // ainda leem esses campos. O motorista informa a hora uma vez; o
-        // rótulo se acerta sozinho em vez de virar mais dois botões.
+        // `period` alimenta o filtro da lista de crianças e os rótulos de
+        // ChildCard/ChildDetail. `pickupPeriod`/`dropoffPeriod` são ponte pro
+        // cadastro anterior ao modelo de horários, lidos só por
+        // `horariosCombinados`. Derivados da hora: o motorista informa uma
+        // vez e o rótulo se acerta sozinho, em vez de virar mais dois botões.
+        //
+        // (Dizia "o Kanban dos seis turnos lê esses campos" — o Kanban foi
+        // apagado nos mesmos commits.)
         ...(horaPega ? { pickupPeriod: periodoDaHora(horaPega), period: periodoDaHora(horaPega) } : {}),
         ...(horaEntrega ? { dropoffPeriod: periodoDaHora(horaEntrega) } : {}),
         parentPhone: unmaskPhone(form.parentPhone),

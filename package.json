@@ -14,9 +14,6 @@
     "testar": "npm run testar:horarios"
   },
   "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
     "firebase": "^12.12.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.475.0",

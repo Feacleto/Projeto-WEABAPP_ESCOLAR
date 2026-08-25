@@ -38,6 +38,7 @@ import {
   precisaDaPerua,
   ROTULO_ESTADO,
   getDateKey,
+  formataEspera,
 } from '../../services/horariosService';
 
 import { declareAbsence, ABSENCE_TYPES } from '../../services/absencesService';
@@ -731,13 +732,6 @@ function descricaoMarcacao({ tipo }) {
     return 'Ela já saiu com o responsável. Você não precisa passar na escola por ela hoje.';
   }
   return 'Você não precisa buscá-la em casa hoje — mas continua trazendo ela de volta à tarde.';
-}
-
-function formataEspera(min) {
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
 }
 
 /**

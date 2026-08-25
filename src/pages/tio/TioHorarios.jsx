@@ -28,6 +28,7 @@ import {
   proporCascata,
   periodoDaHora,
   CAMPO_DA_DIRECAO,
+  horaNaDirecao,
 } from '../../services/horariosService';
 
 /**
@@ -76,7 +77,7 @@ export default function TioHorarios() {
   }
 
   function abrirEdicao(child) {
-    setEditando({ child, valor: horaNaDirecaoDoForm(child, direcao) });
+    setEditando({ child, valor: horaNaDirecao(child, direcao) || '' });
   }
 
   function confirmarEdicao() {
@@ -357,11 +358,6 @@ export default function TioHorarios() {
 }
 
 /* ─────────────── auxiliares ─────────────── */
-
-function horaNaDirecaoDoForm(child, direcao) {
-  const h = horariosCombinados(child);
-  return direcao === 'ida' ? h.pega || '' : h.entrega || '';
-}
 
 /**
  * A parada de escola não tem hora — de propósito. Estimar "~6h52" traria de

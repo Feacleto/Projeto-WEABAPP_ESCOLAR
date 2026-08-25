@@ -98,7 +98,18 @@ export default defineConfig(({ mode }) => {
         // passam a ser buscados quando tocam e ficam em cache a partir daí
         // (ver runtimeCaching). Offline no primeiro uso, o efeito falha
         // calado — é a coisa menos importante da tela.
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff2}'],
+        // / SAÍRAM do precache.
+        //
+        // Eles estavam aqui por causa de public/Telas — sete screenshots, 628
+        // KB, que só o ScreensCarousel consumia. O carrossel não era importado
+        // por ninguém (e ainda apontava pra /telas/ minúsculo enquanto a pasta
+        // era /Telas/, o que quebraria em host case-sensitive: nunca rodou).
+        //
+        // Eram 23% do precache: todo instalador do PWA baixava 628 KB de
+        // imagens de uma tela que rota nenhuma alcança. É o mesmo caso do
+        // imagemvanescolar.png que o comentário logo abaixo comemora ter
+        // matado — repetido, menor, e sobrevivendo no mesmo arquivo.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
         // Limite por arquivo NO PADRÃO do workbox (2 MiB), de propósito.
         //
         // Ele tinha sido subido pra 10 MiB pra caber imagemvanescolar.png

@@ -3,7 +3,7 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
-import { getAnalytics, isSupported } from 'firebase/analytics';
+// `firebase/analytics` NÃO é importado no topo — ver `ligarAnalytics()`.
 
 // Todas as chaves vêm do .env (prefixo VITE_) — chaves do client são
 // públicas por design; a segurança real fica nas Firestore Security Rules.
@@ -78,18 +78,36 @@ function userAllowsAnalytics() {
   }
 }
 
-if (userAllowsAnalytics()) {
-  isSupported()
-    .then((ok) => ok && getAnalytics(app))
-    .catch(() => null);
+/**
+ * Carrega o SDK de analytics SÓ quando há consentimento.
+ *
+ * O gate de runtime já existia e estava certo; o `import` no topo do arquivo
+ * anulava metade dele. O módulo caía no chunk que toda primeira tela carrega,
+ * então ~56 KB de analytics eram baixados inclusive pelo responsável que abre
+ * o link do WhatsApp em dado móvel e ainda NEM VIU o banner de cookie.
+ *
+ * O `vite.config.js` documenta exatamente esse cenário — "o primeiro acesso do
+ * responsável acontece pelo link do WhatsApp, em dado móvel, num aparelho
+ * barato, e é ali que ele decide se o app presta". O comentário estava certo
+ * e este arquivo não o seguia.
+ *
+ * `import()` dinâmico dentro do gate: sem consentimento, o navegador nunca
+ * pede o arquivo.
+ */
+async function ligarAnalytics() {
+  try {
+    const { getAnalytics, isSupported } = await import('firebase/analytics');
+    if (await isSupported()) getAnalytics(app);
+  } catch {
+    // Bloqueador de rastreio, navegador sem suporte, rede caindo: analytics é
+    // acessório e não pode derrubar o boot do app.
+  }
 }
+
+if (userAllowsAnalytics()) ligarAnalytics();
 
 // Permite ativar Analytics depois que o usuário aceitar cookies (sem reload).
 // Chamado pelo CookieBanner via custom event.
 if (typeof window !== 'undefined') {
-  window.addEventListener('tn-analytics-consent', () => {
-    isSupported()
-      .then((ok) => ok && getAnalytics(app))
-      .catch(() => null);
-  });
+  window.addEventListener('tn-analytics-consent', ligarAnalytics);
 }

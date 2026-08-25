@@ -42,6 +42,7 @@ import {
   precisaDaPerua,
   semHorarioCombinado,
   ROTULO_ESTADO,
+  formataEspera,
 } from '../../services/horariosService';
 import {
   statusNaDirecao,
@@ -703,9 +704,3 @@ function ReceberRow({ amount, visivel, onToggle, onClick }) {
   );
 }
 
-function formataEspera(min) {
-  if (min < 60) return `${Math.round(min)} min`;
-  const h = Math.floor(min / 60);
-  const m = Math.round(min % 60);
-  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
-}

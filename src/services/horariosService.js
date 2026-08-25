@@ -111,7 +111,6 @@ export function horaCurta(hhmm) {
 // O combinado com o pai
 // ============================================================================
 
-export const DIRECOES = ['ida', 'volta'];
 export const CAMPO_DA_DIRECAO = { ida: 'horaPega', volta: 'horaEntrega' };
 
 /**
@@ -176,11 +175,23 @@ export function horaNaDirecao(child, direcao) {
 /**
  * Rótulo de período a partir da hora — manhã/tarde/noite.
  *
- * O período deixou de ser regra e virou cosmético, mas continua sendo gravado
- * em `pickupPeriod`/`dropoffPeriod` por dois motivos concretos: as telas que
- * ainda não migraram (o Kanban dos seis turnos) leem esses campos, e a lista
- * de crianças filtra por eles. Derivar aqui mantém os dois coerentes sem pedir
- * nada ao motorista — ele informa a hora, o período se acerta sozinho.
+ * O período deixou de ser regra e virou cosmético, mas os três campos ainda
+ * são gravados — e por motivos DIFERENTES, o que importa pra quem for
+ * simplificar isto:
+ *
+ *   `period`         é LIDO DE VERDADE: ChildCard, ChildDetail e o filtro de
+ *                    TioChildren. Removê-lo quebra o filtro da lista.
+ *   `pickupPeriod`   e `dropoffPeriod` são lidos SÓ por `horariosCombinados`,
+ *                    aqui neste arquivo, como ponte pra criança cadastrada
+ *                    antes do modelo de horários. É ponte com prazo: quando
+ *                    toda criança tiver hora combinada, os dois saem.
+ *
+ * O comentário anterior dizia que "o Kanban dos seis turnos lê esses campos".
+ * O Kanban foi APAGADO no mesmo conjunto de commits que escreveu essa frase.
+ * Quem fosse simplificar procuraria o Kanban, não acharia, e ou removeria os
+ * três de uma vez (quebrando o filtro) ou manteria os três pra sempre. *
+ * Derivar da hora mantém tudo coerente sem pedir nada ao motorista: ele
+ * informa a hora, o rótulo se acerta sozinho.
  */
 export function periodoDaHora(hhmm) {
   const min = emMinutos(hhmm);
@@ -188,6 +199,22 @@ export function periodoDaHora(hhmm) {
   if (min < 11 * 60) return 'morning';
   if (min < 16 * 60) return 'afternoon';
   return 'evening';
+}
+
+/**
+ * '3 min', '1h20' — quanto falta, pra ler.
+ *
+ * Existia copiada em OperacaoDaRota e TioDashboard, e as duas JÁ divergiam:
+ * uma arredondava, a outra não. As duas telas mostram a MESMA espera ao mesmo
+ * motorista, então bastava a primeira fonte fracionária pra uma exibir
+ * "3,4 min" e a outra "3 min". Ficou a versão endurecida.
+ */
+export function formataEspera(min) {
+  const n = Math.round(Number(min) || 0);
+  if (n < 60) return `${n} min`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
 }
 
 /** Crianças sem horário combinado de verdade — a tela tem que cobrar. */

@@ -1,3 +1,8 @@
+// A extensão `.js` é explícita de propósito: este módulo é carregado direto
+// pelo Node em `scripts/testar-horarios.mjs`, e o resolvedor de ESM do Node
+// não completa extensão como o Vite completa.
+import { getDateKey } from '../services/horariosService.js';
+
 /**
  * Intervalos de dias — a parte PURA do aviso de "sem aula".
  *
@@ -24,10 +29,17 @@ export function parseDia(chave) {
 }
 
 export function chaveDoDia(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  // MESMA REGRA, UMA IMPLEMENTAÇÃO SÓ.
+  //
+  // Isto era uma cópia linha a linha do `getDateKey` de horariosService, cada
+  // uma com seu comentário explicando a escolha de hora local sobre UTC. As
+  // duas concordavam — e são justamente as duas que gravam ausência, então o
+  // modo de falha de uma divergência é gravar falta no dia errado, com a
+  // criança na porta.
+  //
+  // Importar não custa a testabilidade que este arquivo protege: nenhum dos
+  // dois módulos importa Firebase.
+  return getDateKey(date);
 }
 
 /**
