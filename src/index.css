@@ -839,3 +839,45 @@
     transition: none;
   }
 }
+
+/* ============================================================
+ * A FILA DA ROTA QUE SE REORGANIZA
+ *
+ * Quando o motorista marca uma criança, ela sai da lista de baixo e aparece
+ * na de cima. São duas listas diferentes no DOM, então o navegador não tem
+ * como animar a transição sozinho — o que ele vê é uma linha sumindo e outra
+ * aparecendo, seca, e com o veículo em movimento isso se parece com erro.
+ *
+ * A animação de entrada dá a leitura de "subiu": a linha entra deslizando de
+ * baixo. É barata (transform + opacity, sem layout) e cabe no orçamento de
+ * um celular modesto segurando GPS e mapa ao mesmo tempo.
+ * ============================================================ */
+
+@keyframes fila-entra {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fila-entra {
+  animation: fila-entra 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* A barra de progresso da viagem cresce, não pula. */
+.progresso-barra {
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fila-entra {
+    animation: none;
+  }
+  .progresso-barra {
+    transition: none;
+  }
+}

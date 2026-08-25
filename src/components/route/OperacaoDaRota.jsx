@@ -131,7 +131,7 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
   // Tudo que deriva da fila sai do MESMO memo: derivar `pendentes` fora e
   // memoizar o lote em cima dele fazia o React Compiler desistir de memoizar
   // a árvore inteira ("Compilation Skipped").
-  const { resolvidas, foco, lote } = useMemo(() => {
+  const { feitos, restantes, totalEfetivo, resolvidas, foco, lote } = useMemo(() => {
     const p = fila.filter((q) => q.action);
     let l = null;
     if (p.length >= 2) {
@@ -157,9 +157,27 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
         };
       }
     }
+    // A fila se divide em três em vez de ser uma lista só.
+    //
+    // Quem já foi marcado sobe pra cima do cartão em foco: é o que dá a
+    // sensação de progresso e o que o motorista olha pra conferir se não
+    // esqueceu ninguém. Quem falta fica embaixo, na ordem do relógio.
+    const feitos = fila.filter((q) => precisaDaPerua(q.estado) && !q.action);
+    const focoAtual = p[0] || null;
+
+    // Tudo que não foi feito e não está em foco — e NÃO "o que vem depois do
+    // foco na ordem". Fatiar por índice fazia quem faltou e estava antes do
+    // foco no relógio desaparecer das três listas: não é feito (não embarcou),
+    // não é o foco, e ficava atrás do corte. Sumir com a criança é justamente
+    // o que esta tela existe pra não fazer.
+    const restantes = fila.filter((q) => q !== focoAtual && !feitos.includes(q));
+
     return {
-      resolvidas: fila.filter((q) => precisaDaPerua(q.estado) && !q.action).length,
-      foco: p[0] || null,
+      feitos,
+      restantes,
+      totalEfetivo: fila.filter((q) => precisaDaPerua(q.estado)).length,
+      resolvidas: feitos.length,
+      foco: focoAtual,
       lote: l,
     };
   }, [fila]);
@@ -298,7 +316,7 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
         childId: child.id,
         childName: child.name,
       });
-      toast.success(`Chamando ${child.name.split(' ')[0]}…`);
+      toast.success(`Buzinando pra ${child.name.split(' ')[0]}…`);
     } catch (err) {
       console.error(err);
       toast.error('Não deu pra chamar. Tente o WhatsApp.');
@@ -385,8 +403,8 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
                   : 'Trazendo pra casa'}
               </p>
               <p className="text-[11px] text-textMuted">
-                {resolvidas > 0
-                  ? `${resolvidas} de ${fila.filter((q) => precisaDaPerua(q.estado)).length} resolvidas`
+                {totalEfetivo > 0
+                  ? `${resolvidas} de ${totalEfetivo} ${resolvidas === 1 ? 'resolvida' : 'resolvidas'}`
                   : `${fila.length} ${fila.length === 1 ? 'criança' : 'crianças'} nesta viagem`}
               </p>
             </div>
@@ -395,6 +413,19 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
                 {blocoAtual.escolas.map((e) => e.nome).join(' · ')}
               </span>
             )}
+          </div>
+        )}
+
+        {/* A BARRA — quanto da viagem já foi.
+          * Um número ("2 de 5") ele precisa ler; a barra ele reconhece de
+          * relance, que é o único jeito de olhar a tela com o veículo em
+          * movimento. */}
+        {totalEfetivo > 1 && (
+          <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className="progresso-barra h-full rounded-full bg-primary"
+              style={{ width: `${Math.round((resolvidas / totalEfetivo) * 100)}%` }}
+            />
           </div>
         )}
 
@@ -416,6 +447,12 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
             )}
           </div>
         )}
+
+        {/* JÁ FEITOS — sobem pra cima do cartão em foco.
+          * Colapsa a partir de quatro: com vinte crianças, a lista inteira
+          * empurraria o botão grande pra baixo da dobra, e ele é apertado com
+          * a perua andando. */}
+        {feitos.length > 0 && <JaFeitos itens={feitos} direcao={blocoAtual?.direcao} />}
 
         {/* A criança em foco */}
         {foco && (
@@ -464,7 +501,7 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
                 className="tap h-10 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
               >
                 <BellRing size={14} />
-                Chamar
+                Buzinar
               </button>
               <button
                 type="button"
@@ -553,19 +590,20 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
           </button>
         )}
 
-        {/* A viagem inteira. Ninguém some — quem não vai fica em cinza. */}
-        {fila.length > 0 && (
+        {/* O QUE FALTA. Ninguém some — quem não vai fica em cinza, no lugar
+          * onde estaria, pra ele não perder a referência da ordem. */}
+        {restantes.length > 0 && (
           <section className="space-y-2">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
-              a viagem
+              o resto da viagem
             </p>
-            {fila.map((q) => {
+            {restantes.map((q) => {
               const fora = !precisaDaPerua(q.estado);
               const feito = !fora && !q.action;
               return (
                 <div
                   key={q.child.id}
-                  className={`rounded-xl px-3 py-2.5 flex items-center gap-2.5 border ${
+                  className={`fila-entra rounded-xl px-3 py-2.5 flex items-center gap-2.5 border ${
                     fora
                       ? 'bg-gray-50 border-gray-200 opacity-70'
                       : 'bg-card border-gray-200'
@@ -676,4 +714,81 @@ function formataEspera(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
+}
+
+/**
+ * Quem já foi marcado nesta viagem.
+ *
+ * POR QUE ELES SOBEM
+ * A lista antiga era uma só, na ordem do relógio, com o cartão em foco
+ * repetido no topo. O motorista via o mesmo nome duas vezes e não tinha como
+ * saber de relance quantos já tinham entrado — ele contava.
+ *
+ * POR QUE COLAPSA A PARTIR DE QUATRO
+ * Com vinte crianças, vinte linhas de "já foi" empurram o botão grande pra
+ * baixo da dobra. Esse botão é apertado com o veículo em movimento: nada pode
+ * entrar acima dele além do que cabe num relance.
+ */
+function JaFeitos({ itens, direcao }) {
+  const [aberto, setAberto] = useState(false);
+  const compacto = itens.length > 3;
+  const verbo = direcao === 'ida' ? 'já embarcaram' : 'já foram entregues';
+
+  if (compacto && !aberto) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAberto(true)}
+        className="fila-entra tap w-full rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-center gap-2.5"
+      >
+        <CheckCircle2 size={17} className="text-emerald-600 shrink-0" />
+        <span className="flex-1 text-left text-sm font-semibold text-emerald-900">
+          {itens.length} {verbo}
+        </span>
+        <span className="text-[11px] font-semibold text-emerald-700 shrink-0">
+          ver
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <section className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-700">
+          {verbo}
+        </p>
+        {compacto && (
+          <button
+            type="button"
+            onClick={() => setAberto(false)}
+            className="tap text-[11px] font-semibold text-textMuted ml-auto"
+          >
+            esconder
+          </button>
+        )}
+      </div>
+      {itens.map((q) => (
+        <div
+          key={q.child.id}
+          className="fila-entra rounded-xl px-3 py-2 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200"
+        >
+          <span className="font-mono text-xs tabular-nums shrink-0 w-11 text-emerald-800">
+            {horaCurta(q.hora)}
+          </span>
+          <Avatar
+            photoURL={q.child.photoURL}
+            gender={q.child.gender}
+            seed={q.child.id}
+            kind="child"
+            size="sm"
+          />
+          <span className="flex-1 min-w-0 text-sm font-semibold text-emerald-900 truncate">
+            {q.child.name}
+          </span>
+          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+        </div>
+      ))}
+    </section>
+  );
 }
