@@ -5,7 +5,7 @@ import {
   MapPin,
   Phone,
   Mail,
-  GraduationCap,
+  Clock,
   DollarSign,
   Search,
   Check,
@@ -16,9 +16,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Calendar,
-  Sunrise,
-  Sunset,
-  Moon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../common/Card';
@@ -28,7 +25,8 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { addChild } from '../../services/childrenService';
 import { searchAddress } from '../../services/locationService';
-import { PERIOD_OPTIONS } from '../../services/routePlanService';
+import { normalizaHora, periodoDaHora, horaCurta } from '../../services/horariosService';
+import { useEscolas } from '../../hooks/useEscolas';
 import {
   maskPhone,
   unmaskPhone,
@@ -40,12 +38,6 @@ const GENDERS = [
   { value: 'male', label: 'Menino' },
   { value: 'female', label: 'Menina' },
 ];
-
-const PERIOD_ICONS = {
-  morning: Sunrise,
-  afternoon: Sunset,
-  evening: Moon,
-};
 
 const TOTAL_STEPS = 4;
 
@@ -69,10 +61,16 @@ const EMPTY_FORM = {
   address: '',
   lat: '',
   lng: '',
+  schoolId: '',
   school: '',
   schoolAddress: '',
   schoolLat: '',
   schoolLng: '',
+  // O que foi COMBINADO com o pai: a hora que a perua encosta na porta e a
+  // hora que a criança volta. É isto que organiza o dia do motorista e é isto
+  // que o pai vê — não o horário da escola, que é outra coisa.
+  horaPega: '',
+  horaEntrega: '',
   period: 'morning',
   pickupPeriod: 'morning',
   dropoffPeriod: 'afternoon',
@@ -123,8 +121,14 @@ export default function ChildForm() {
     // Escola é OPCIONAL: o tio muitas vezes cadastra a criança no meio da
     // rota e completa a ficha depois. Validamos só o que foi preenchido.
     if (s === 3) {
-      if (form.schoolAddress.trim() && !form.school.trim()) {
-        errs.school = 'Se informou o endereço, diga também o nome da escola.';
+      // Horário é o que organiza o dia inteiro. Se ele digitou alguma coisa,
+      // ela precisa ser uma hora de verdade — '7' vira 07:00, 'manhã' não vira
+      // nada e não pode ser salvo como se fosse.
+      if (form.horaPega.trim() && !normalizaHora(form.horaPega)) {
+        errs.horaPega = 'Hora inválida. Ex: 06:20';
+      }
+      if (form.horaEntrega.trim() && !normalizaHora(form.horaEntrega)) {
+        errs.horaEntrega = 'Hora inválida. Ex: 12:35';
       }
     }
     // Responsável e financeiro: só o telefone é indispensável — é por ele
@@ -178,8 +182,18 @@ export default function ChildForm() {
   const onSubmit = async () => {
     setSubmitting(true);
     try {
+      const horaPega = normalizaHora(form.horaPega);
+      const horaEntrega = normalizaHora(form.horaEntrega);
       const { inviteCode } = await addChild({
         ...form,
+        horaPega: horaPega || '',
+        horaEntrega: horaEntrega || '',
+        // `period`/`pickupPeriod`/`dropoffPeriod` continuam gravados, derivados
+        // da hora: o Kanban dos seis turnos e o filtro da lista de crianças
+        // ainda leem esses campos. O motorista informa a hora uma vez; o
+        // rótulo se acerta sozinho em vez de virar mais dois botões.
+        ...(horaPega ? { pickupPeriod: periodoDaHora(horaPega), period: periodoDaHora(horaPega) } : {}),
+        ...(horaEntrega ? { dropoffPeriod: periodoDaHora(horaEntrega) } : {}),
         parentPhone: unmaskPhone(form.parentPhone),
         parent2Phone: form.parent2Phone ? unmaskPhone(form.parent2Phone) : '',
         monthlyFee: parseFloat(form.monthlyFee) || 0,
@@ -385,25 +399,9 @@ function Step1Child({ form, setForm, setField, errors }) {
         hint="Pra parabenizar a criança no dia (opcional)."
       />
 
-      <div>
-        <label className="block text-sm font-semibold text-text mb-2">
-          Em qual período estuda?
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {PERIOD_OPTIONS.map((p) => {
-            const Icon = PERIOD_ICONS[p.value] || Sunrise;
-            return (
-              <SelectorButton
-                key={p.value}
-                label={p.label}
-                icon={Icon}
-                active={form.period === p.value}
-                onClick={() => setForm((prev) => ({ ...prev, period: p.value }))}
-              />
-            );
-          })}
-        </div>
-      </div>
+      {/* O seletor de período saiu daqui. Ele era um botão a mais pedindo
+        * ao motorista que traduzisse "entra 7h" pra "manhã" — tradução que o
+        * app faz sozinho a partir da hora combinada, no passo 3. */}
     </>
   );
 }
@@ -522,120 +520,159 @@ function Step2Home({ form, setForm, setField, errors }) {
   );
 }
 
-/* ─────────────── Passo 3: Escola ─────────────── */
+/* ─────────────── Passo 3: Escola e horários ─────────────── */
 
+/**
+ * Aqui mora a informação que organiza o dia inteiro: a hora combinada com o
+ * pai. Não é o horário da escola — é a hora em que a perua encosta na porta e
+ * a hora em que a criança volta pra casa.
+ *
+ * A escola virou seleção. Antes eram três campos digitados por criança (nome,
+ * endereço, geocoding), o que fazia cinco alunos da mesma escola custarem
+ * cinco digitações — e um "E.M." no lugar de "EM" partia a turma em duas no
+ * aviso de "não vai ter aula".
+ */
 function Step3School({ form, setForm, setField, errors }) {
-  const [searchingSchool, setSearchingSchool] = useState(false);
+  const navigate = useNavigate();
+  const { escolas, loading } = useEscolas();
 
-  const onSearchSchool = async () => {
-    if (!form.schoolAddress.trim()) {
-      toast.error('Digite o endereço da escola primeiro.');
-      return;
-    }
-    setSearchingSchool(true);
-    try {
-      const result = await searchAddress(form.schoolAddress);
-      setForm((prev) => ({
-        ...prev,
-        schoolLat: result.lat,
-        schoolLng: result.lng,
-        schoolAddress: result.displayName || prev.schoolAddress,
-      }));
-      toast.success('Encontramos a escola!');
-    } catch (err) {
-      toast.error(err?.message || 'Endereço não encontrado.');
-    } finally {
-      setSearchingSchool(false);
-    }
-  };
+  const escolhida = escolas.find((e) => e.id === form.schoolId) || null;
+
+  const escolher = (e) =>
+    setForm((prev) => ({
+      ...prev,
+      schoolId: e.id,
+      // O nome e as coordenadas continuam copiados dentro da criança: é o que
+      // a rota usa e o que o pai vê. Escola apagada por engano não pode apagar
+      // o endereço de entrega de ninguém no meio da rota.
+      school: e.nome || '',
+      schoolAddress: e.endereco || '',
+      schoolLat: e.lat ?? '',
+      schoolLng: e.lng ?? '',
+    }));
 
   return (
     <>
       <Heading
-        title="Onde estuda?"
-        subtitle="Nome da escola e endereço — pra entregar e buscar."
+        title="Escola e horários"
+        subtitle="Onde estuda e a que horas você combinou de pegar e entregar."
       />
-
-      <Input
-        label="Nome da escola"
-        placeholder="Ex: Colégio Sol"
-        icon={GraduationCap}
-        value={form.school}
-        onChange={setField('school')}
-        error={errors.school}
-        required
-        autoFocus
-      />
-
-      <Input
-        label="Endereço da escola"
-        placeholder="Rua, número, bairro, cidade"
-        icon={School}
-        value={form.schoolAddress}
-        onChange={setField('schoolAddress')}
-        error={errors.schoolAddress}
-        required
-      />
-
-      <Button
-        type="button"
-        variant="secondary"
-        icon={Search}
-        onClick={onSearchSchool}
-        loading={searchingSchool}
-      >
-        Buscar endereço da escola
-      </Button>
-
-      {form.schoolLat && form.schoolLng && (
-        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl">
-          <MapPin size={18} />
-          <span>Local confirmado!</span>
-        </div>
-      )}
-
-      <div className="pt-2">
-        <label className="block text-sm font-semibold text-text mb-2">
-          Quando você busca em casa?
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {PERIOD_OPTIONS.map((p) => {
-            const Icon = PERIOD_ICONS[p.value] || Sunrise;
-            return (
-              <SelectorButton
-                key={p.value}
-                label={p.label}
-                icon={Icon}
-                active={form.pickupPeriod === p.value}
-                onClick={() =>
-                  setForm((prev) => ({ ...prev, pickupPeriod: p.value }))
-                }
-              />
-            );
-          })}
-        </div>
-      </div>
 
       <div>
         <label className="block text-sm font-semibold text-text mb-2">
-          Quando você devolve em casa?
+          Escola
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          {PERIOD_OPTIONS.map((p) => {
-            const Icon = PERIOD_ICONS[p.value] || Sunrise;
-            return (
-              <SelectorButton
-                key={p.value}
-                label={p.label}
-                icon={Icon}
-                active={form.dropoffPeriod === p.value}
-                onClick={() =>
-                  setForm((prev) => ({ ...prev, dropoffPeriod: p.value }))
-                }
-              />
-            );
-          })}
+
+        {loading && <div className="h-12 rounded-2xl bg-gray-100 animate-pulse" />}
+
+        {!loading && escolas.length === 0 && (
+          <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-4 text-center space-y-3">
+            <p className="text-sm text-textMuted">
+              Você ainda não cadastrou nenhuma escola.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              fullWidth={false}
+              icon={School}
+              onClick={() => navigate('/tio/children/escolas')}
+            >
+              Cadastrar escola
+            </Button>
+          </div>
+        )}
+
+        {!loading && escolas.length > 0 && (
+          <div className="space-y-2">
+            {escolas.map((e) => {
+              const ativa = form.schoolId === e.id;
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => escolher(e)}
+                  aria-pressed={ativa}
+                  className={`tap w-full text-left rounded-2xl border-2 px-3.5 py-3 flex items-center gap-3 ${
+                    ativa
+                      ? 'border-primary bg-primary/5'
+                      : 'border-gray-200 bg-card'
+                  }`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      ativa ? 'bg-primary text-white' : 'bg-gray-100 text-textMuted'
+                    }`}
+                  >
+                    <School size={17} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-text leading-tight">
+                      {e.nome}
+                    </p>
+                    {e.endereco && (
+                      <p className="text-[11px] text-textMuted truncate">
+                        {e.endereco}
+                      </p>
+                    )}
+                  </div>
+                  {ativa && <Check size={18} className="text-primary shrink-0" />}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => navigate('/tio/children/escolas')}
+              className="tap text-xs font-semibold text-primary px-1 py-1"
+            >
+              + Cadastrar outra escola
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Os dois horários que o pai vai ler na tela dele */}
+      <div className="pt-2 space-y-4">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 leading-relaxed">
+          <b className="block text-sm mb-0.5">O combinado com o responsável</b>
+          É o que o pai vê pra ficar esperando na hora certa, e é por ele que
+          sua rota se organiza sozinha. O horário da escola é outra coisa e não
+          entra aqui.
         </div>
+
+        <Input
+          label="Que horas você pega em casa?"
+          type="time"
+          icon={Clock}
+          value={form.horaPega}
+          onChange={setField('horaPega')}
+          error={errors.horaPega}
+          hint={
+            form.horaPega
+              ? `O pai vê: “entra na perua às ${horaCurta(form.horaPega)}”.`
+              : 'Pode preencher depois, mas até lá a criança fica com horário presumido.'
+          }
+        />
+
+        <Input
+          label="Que horas você entrega em casa?"
+          type="time"
+          icon={Clock}
+          value={form.horaEntrega}
+          onChange={setField('horaEntrega')}
+          error={errors.horaEntrega}
+          hint={
+            form.horaEntrega
+              ? `O pai vê: “chega em casa às ${horaCurta(form.horaEntrega)}”.`
+              : undefined
+          }
+        />
+
+        {escolhida?.geoPending && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            {escolhida.nome} está sem localização no mapa. Dá pra resolver
+            depois em Crianças → Escolas.
+          </p>
+        )}
       </div>
     </>
   );

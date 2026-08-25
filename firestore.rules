@@ -583,6 +583,18 @@ service cloud.firestore {
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['photoURL'])
+      ) || (
+        // Pai informa turma e sala. É o único que sabe — o motorista não
+        // acompanha a criança até a porta da sala, e perguntar a ele seria
+        // perguntar pra quem não tem a resposta.
+        //
+        // São dois campos de texto sem efeito em rota, cobrança ou permissão:
+        // o pior caso de um pai mal-intencionado aqui é escrever bobagem na
+        // ficha do próprio filho.
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['turma', 'sala'])
       );
     }
 
@@ -839,6 +851,36 @@ service cloud.firestore {
     //   - Pai: leitura/escrita SOMENTE de declarações do próprio filho
     //     (validado via children/{childId}.parentUid == auth.uid).
     // -----------------------------------------------------------------
+    // -----------------------------------------------------------------
+    // schools/{schoolId} — as escolas que CADA motorista atende
+    //
+    // POR QUE A COLEÇÃO NASCE JÁ ESCOPADA
+    // A escola era três campos soltos dentro da criança. Virou entidade porque
+    // o aviso em massa agrupa por escola, e agrupar por string digitada à mão
+    // ("E.M." numa criança, "EM" na outra) alcançava metade da turma.
+    //
+    // Nascendo agora, ela nasce com dono: `adminUid` carimbado na criação e
+    // imutável no update. O erro que isto evita é o mesmo que `children`,
+    // `routePlans` e `liveLocation` tiveram que corrigir depois — com o banco
+    // já cheio, uma vez cada. Aqui custa três linhas.
+    //
+    // O pai NÃO lê esta coleção: o que ele precisa saber sobre a escola do
+    // filho já está copiado no doc da criança.
+    // -----------------------------------------------------------------
+    match /schools/{schoolId} {
+      allow read: if isSignedIn() && (ehDoMotorista() || isOwner());
+
+      allow create: if isAdmin()
+        && request.resource.data.adminUid == request.auth.uid;
+
+      // `adminUid` imutável: transferir a escola pra outro motorista levaria
+      // junto o alcance dos avisos das famílias dela.
+      allow update: if ehDoMotorista()
+        && request.resource.data.adminUid == resource.data.adminUid;
+
+      allow delete: if ehDoMotorista();
+    }
+
     match /absenceDeclarations/{absId} {
       function ownsChild(childId) {
         return isSignedIn()

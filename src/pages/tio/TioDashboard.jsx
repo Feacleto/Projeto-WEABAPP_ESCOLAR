@@ -33,7 +33,7 @@ import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useAbsences } from '../../hooks/useAbsences';
 import { db } from '../../firebase/config';
 import { formatCurrency, getCurrentMonthKey } from '../../utils/formatters';
-import { getDateKey } from '../../services/routePlanService';
+import { getDateKey } from '../../services/horariosService';
 import { greet } from '../../utils/greeting';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 
@@ -172,7 +172,7 @@ export default function TioDashboard() {
             phrase={phrase}
             effectiveCount={effectiveCount}
             absentCount={absentCount}
-            onTap={() => navigate('/tio/route')}
+            onTap={() => navigate('/tio/route/now')}
           />
         </div>
 
@@ -277,7 +277,7 @@ export default function TioDashboard() {
                 icon={ListOrdered}
                 title="Organizar rota padrão"
                 subtitle="A ordem que você usa todo dia"
-                onClick={() => navigate('/tio/route/plan')}
+                onClick={() => navigate('/tio/horarios')}
               />
               <OptionRow
                 icon={Megaphone}

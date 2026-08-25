@@ -7,7 +7,7 @@ import {
   removeAbsence,
   notifyAbsence,
 } from '../../services/absencesService';
-import { getDateKey } from '../../services/routePlanService';
+import { getDateKey } from '../../services/horariosService';
 
 /**
  * Sheet (bottom sheet) reusável pra declarar ausência.

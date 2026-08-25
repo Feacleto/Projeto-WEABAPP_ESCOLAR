@@ -2,6 +2,8 @@ import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { playSound } from './soundService';
 import { haversineDistance } from '../utils/haversine';
+import { getEffectiveStatus } from './childrenService';
+import { ABSENCE_TYPES } from './absencesService';
 
 /**
  * Máquina de status da criança na rota.
@@ -145,7 +147,7 @@ export async function advanceChild(childId, nextStatus, context = null) {
  *
  * Firestore aceita 500 operações por batch; fatiamos em 400 por segurança.
  */
-export async function advanceMany(moves) {
+export async function advanceMany(moves, context = null) {
   const valid = (moves || []).filter((m) => m?.childId && m?.nextStatus);
   if (!valid.length) return 0;
 
@@ -153,13 +155,67 @@ export async function advanceMany(moves) {
   for (let i = 0; i < valid.length; i += CHUNK) {
     const batch = writeBatch(db);
     for (const m of valid.slice(i, i + CHUNK)) {
-      batch.update(doc(db, 'children', m.childId), {
+      const updates = {
         status: m.nextStatus,
         statusUpdatedAt: serverTimestamp(),
-      });
+      };
+
+      // O LOTE TAMBÉM DEIXA RASTRO. Antes não deixava, e o buraco era grande:
+      // `advanceChild` gravava `lastStatusCheckpoint` porque "entregue é a
+      // informação mais séria do app" — mas o botão de lote é justamente o
+      // caminho que marca VINTE crianças como entregues em casa de uma vez,
+      // e passava sem uma linha de rastro. O mecanismo anti-erro existia só
+      // no caminho que quase ninguém usa.
+      //
+      // A distância é por criança e é isso que denuncia o lote apertado cedo
+      // demais: no lote legítimo (todos na escola) todas as distâncias são
+      // pequenas; no lote errado, as das casas seguintes são quilômetros.
+      const checkpoint = checkpointFrom(
+        { driverPosition: context?.driverPosition, home: m.home, school: m.school },
+        m.nextStatus
+      );
+      if (checkpoint) updates.lastStatusCheckpoint = checkpoint;
+
+      batch.update(doc(db, 'children', m.childId), updates);
     }
     await batch.commit();
   }
   playSound('status_change');
   return valid.length;
+}
+
+/**
+ * O status que VALE pra esta direção, considerando o que o pai declarou hoje.
+ *
+ * POR QUE ISTO EXISTE
+ * Quando o pai declara "eu vou levar de manhã", nada marca a criança como
+ * `atSchool`: `AbsenceSheet` só grava a declaração, e as rules — corretamente
+ * — proíbem o pai de escrever `status`. À tarde, `getActionForStatus('home',
+ * 'dropoff')` devolve null: a criança SOME da fila da volta e o tio não
+ * consegue registrar a entrega dela em casa.
+ *
+ * Quando é o TIO que marca a mesma coisa, o Kanban chama `updateChildStatus`
+ * na mão e funciona. Ou seja: o mesmo fato do mundo produzia dois resultados
+ * diferentes dependendo de quem digitou.
+ *
+ * A correção não é dar escrita ao pai. É DERIVAR na leitura: a declaração do
+ * dia é um fato tão bom quanto o campo, e derivar não precisa de permissão.
+ */
+export function statusNaDirecao(child, declaracao, direction) {
+  // Parte do status EFETIVO, não do campo cru: `getEffectiveStatus` devolve
+  // 'home' quando o `statusUpdatedAt` é de ontem. Sem isso o 'delivered' de
+  // ontem vazaria pra hoje e a criança nasceria o dia já entregue.
+  const base = getEffectiveStatus(child);
+  if (!declaracao) return base;
+
+  // "O pai leva de manhã": pra rota da VOLTA, a criança está na escola —
+  // ainda que ninguém tenha tocado no botão de embarcar.
+  if (
+    direction === 'dropoff' &&
+    declaracao.type === ABSENCE_TYPES.NO_PICKUP &&
+    base === 'home'
+  ) {
+    return 'atSchool';
+  }
+  return base;
 }

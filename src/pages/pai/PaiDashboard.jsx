@@ -28,6 +28,7 @@ import EmptyState from '../../components/common/EmptyState';
 import Avatar from '../../components/common/Avatar';
 import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import RouteTracker from '../../components/dashboard/RouteTracker';
+import HorarioDoDia from '../../components/dashboard/HorarioDoDia';
 import ChildSwitcher from '../../components/children/ChildSwitcher';
 import AbsenceCounts from '../../components/dashboard/AbsenceCounts';
 import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
@@ -43,7 +44,7 @@ import { describeRoutePresence, PRESENCE } from '../../utils/routePresence';
 import { formatCurrency } from '../../utils/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS } from '../../services/absencesService';
-import { getDateKey } from '../../services/routePlanService';
+import { getDateKey } from '../../services/horariosService';
 import { playSound } from '../../services/soundService';
 import { greet } from '../../utils/greeting';
 import FestiveBadge from '../../components/festive/FestiveBadge';
@@ -242,6 +243,12 @@ export default function PaiDashboard() {
             onTap={() => navigate('/pai/child')}
           />
         </div>
+
+        {/* Os dois horários combinados com o motorista. Fica acima do
+          * tracker porque responde a pergunta que traz o pai até aqui —
+          * "que horas eu preciso estar na porta?" — e o tracker responde a
+          * seguinte, que é "e onde ele está agora?". */}
+        <HorarioDoDia child={child} absence={absence} />
 
         {/* Tracker visual estilo "rastreio de pedido" */}
         <RouteTracker status={status} />

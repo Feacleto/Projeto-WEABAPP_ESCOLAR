@@ -2,6 +2,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   GraduationCap,
   School,
+  Clock,
+  Pencil,
   Home,
   Phone,
   Mail,
@@ -18,6 +20,8 @@ import {
   Check,
 } from 'lucide-react';
 import { useState } from 'react';
+import { horariosCombinados, horaCurta } from '../services/horariosService';
+import { updateChild } from '../services/childrenService';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
@@ -225,6 +229,40 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
               label="Endereço"
               value={child.schoolAddress}
             />
+          )}
+
+          {/* Turma e sala: quem sabe é o RESPONSÁVEL. O motorista não
+            * acompanha a criança até a porta da sala, então perguntar a ele
+            * seria perguntar pra quem não tem a resposta. Ele lê aqui pra
+            * saber onde chamar quando precisa. */}
+          <TurmaSala child={child} podeEditar={!isAdmin} />
+        </Card>
+
+        {/* Os horários combinados — o que o motorista prometeu e o que o
+          * responsável espera. É a mesma informação que aparece grande no
+          * início do painel do pai. */}
+        <Card className="space-y-3">
+          <h3 className="text-sm font-semibold text-text flex items-center gap-2">
+            <Clock size={16} className="text-primary" />
+            Horários combinados
+          </h3>
+          {horariosCombinados(child).presumido ? (
+            <p className="text-sm text-textMuted">
+              {isAdmin
+                ? 'Ainda não confirmados. Defina em Rota → Ajustar horários.'
+                : 'O motorista ainda não confirmou os horários.'}
+            </p>
+          ) : (
+            <>
+              <InfoRow
+                label="Entra na perua"
+                value={horaCurta(horariosCombinados(child).pega)}
+              />
+              <InfoRow
+                label="Chega em casa"
+                value={horaCurta(horariosCombinados(child).entrega)}
+              />
+            </>
           )}
         </Card>
 
@@ -624,6 +662,100 @@ function PhoneRow({ phone, name, childName }) {
       >
         WhatsApp
       </a>
+    </div>
+  );
+}
+
+/**
+ * Turma e sala — preenchidos pelo RESPONSÁVEL.
+ *
+ * O motorista lê pra saber onde chamar a criança quando ela não aparece no
+ * portão; o pai escreve porque é o único que sabe. As rules liberam só estes
+ * dois campos pra ele: são texto sem efeito em rota, cobrança ou permissão.
+ */
+function TurmaSala({ child, podeEditar }) {
+  const [editando, setEditando] = useState(false);
+  const [turma, setTurma] = useState(child.turma || '');
+  const [sala, setSala] = useState(child.sala || '');
+  const [salvando, setSalvando] = useState(false);
+
+  const vazio = !child.turma && !child.sala;
+
+  async function salvar() {
+    setSalvando(true);
+    try {
+      await updateChild(child.id, {
+        turma: turma.trim(),
+        sala: sala.trim(),
+      });
+      toast.success('Turma e sala atualizadas.');
+      setEditando(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (editando) {
+    return (
+      <div className="space-y-2 pt-1">
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            value={turma}
+            onChange={(e) => setTurma(e.target.value)}
+            placeholder="Turma (3º B)"
+            className="h-11 rounded-xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+          />
+          <input
+            value={sala}
+            onChange={(e) => setSala(e.target.value)}
+            placeholder="Sala (12)"
+            className="h-11 rounded-xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" loading={salvando} onClick={salvar}>
+            Salvar
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={salvando}
+            onClick={() => setEditando(false)}
+          >
+            Cancelar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (vazio && !podeEditar) {
+    return (
+      <p className="text-xs text-textMuted">
+        O responsável ainda não informou a turma e a sala.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 min-w-0 space-y-3">
+        <InfoRow label="Turma" value={child.turma || '—'} />
+        <InfoRow label="Sala" value={child.sala || '—'} />
+      </div>
+      {podeEditar && (
+        <button
+          type="button"
+          onClick={() => setEditando(true)}
+          aria-label="Editar turma e sala"
+          className="tap w-9 h-9 rounded-xl border border-gray-200 text-textMuted flex items-center justify-center shrink-0"
+        >
+          <Pencil size={15} />
+        </button>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useChildren } from '../../hooks/useChildren';
 import { useAuth } from '../../hooks/useAuth';
 import { createSchoolBroadcast } from '../../services/broadcastService';
-import { getDateKey } from '../../services/routePlanService';
+import { getDateKey } from '../../services/horariosService';
 
 /**
  * Sheet pra disparar aviso "sem aula" pra todos os pais de uma escola.

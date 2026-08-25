@@ -12,10 +12,6 @@ import {
 import { auth, db } from '../firebase/config';
 import { generateInviteCode } from '../utils/generateInviteCode';
 import { inviteCodeExists } from './inviteCodeService';
-import {
-  addChildToDefaultPlan,
-  removeChildFromDefaultPlan,
-} from './routePlanService';
 import { playSound } from './soundService';
 
 // Estados simplificados pra 4. Cada criança passa por:
@@ -93,10 +89,27 @@ export async function addChild(data) {
     lng: toCoord(data.lng),
     // true = endereço salvo sem coordenada; o tio resolve depois.
     geoPending: toCoord(data.lat) == null || toCoord(data.lng) == null,
+    // O vínculo com a entidade escola. O nome e as coordenadas continuam
+    // copiados aqui de propósito: é o que a rota usa e o que o pai vê, então
+    // uma escola apagada por engano não apaga o endereço de entrega de
+    // ninguém no meio da rota.
+    schoolId: data.schoolId || null,
     school: data.school?.trim() || '',
     schoolAddress: data.schoolAddress?.trim() || '',
     schoolLat: toCoord(data.schoolLat),
     schoolLng: toCoord(data.schoolLng),
+    // O COMBINADO COM O RESPONSÁVEL — a hora em que a perua encosta na porta
+    // e a hora em que a criança volta. É o que organiza o dia do motorista e
+    // o que o pai lê pra saber quando esperar. Vazio é aceitável no cadastro
+    // (ele muitas vezes cadastra no meio da rota); até ser preenchido, a
+    // criança opera com horário PRESUMIDO pelo período — e a tela cobra.
+    horaPega: data.horaPega?.trim() || '',
+    horaEntrega: data.horaEntrega?.trim() || '',
+    // Preenchidos pelo RESPONSÁVEL na ficha da criança: o motorista não sabe
+    // a turma nem a sala, e perguntar a ele seria perguntar pra quem não tem
+    // a resposta.
+    turma: '',
+    sala: '',
     period: data.period || 'morning',
     pickupPeriod: data.pickupPeriod || data.period || 'morning',
     dropoffPeriod: data.dropoffPeriod || 'afternoon',
@@ -125,18 +138,11 @@ export async function addChild(data) {
 
   const docRef = await addDoc(collection(db, 'children'), payload);
 
-  // Auto-adiciona a criança no fim das filas dos turnos relevantes da rota
-  // padrão. Não-bloqueante: erro aqui não impede o cadastro.
-  try {
-    await addChildToDefaultPlan({
-      childId: docRef.id,
-      pickupPeriod: payload.pickupPeriod,
-      dropoffPeriod: payload.dropoffPeriod,
-    });
-  } catch (err) {
-    console.error('Falha ao adicionar criança ao plano padrão:', err);
-  }
-
+  // Aqui havia um `addChildToDefaultPlan`, que enfileirava a criança nos seis
+  // turnos de `routePlans`. Saiu junto com os turnos: a fila não é mais uma
+  // lista salva que precisa ser mantida em dia, é o resultado de ordenar quem
+  // tem horário. Criança nova aparece na rota por existir, não por ter sido
+  // inscrita — que era exatamente o passo que falhava calado.
   return { id: docRef.id, inviteCode };
 }
 
@@ -200,12 +206,9 @@ export async function setChildPhotoURL(id, photoURL) {
 export async function deactivateChild(id) {
   // Soft delete — preserva histórico de pagamentos e rotas.
   await updateDoc(doc(db, 'children', id), { active: false });
-  // Tira da rota padrão também — fire-and-forget pra não falhar a desativação.
-  try {
-    await removeChildFromDefaultPlan(id);
-  } catch (err) {
-    console.error('Falha ao remover criança do plano padrão:', err);
-  }
+  // `active: false` basta: a fila do dia filtra por ele. Não há mais lista
+  // salva de onde a criança precise ser retirada — e portanto não há mais
+  // como ela sobrar numa rota depois de desativada.
 }
 
 /**

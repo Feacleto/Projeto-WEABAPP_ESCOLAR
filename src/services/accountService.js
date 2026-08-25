@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import { deleteUser, signOut } from 'firebase/auth';
 import { auth, db } from '../firebase/config';
-import { removeChildFromDefaultPlan } from './routePlanService';
 
 /**
  * Operações de exclusão de conta / vínculo — chamadas pela aba de Perfil
@@ -151,12 +150,8 @@ export async function deactivateChildAndParent({ childId }) {
     });
   }
 
-  // 4. Tira da rota padrão (já existe)
-  try {
-    await removeChildFromDefaultPlan(childId);
-  } catch (err) {
-    console.error('Falha ao remover da rota padrão:', err);
-  }
+  // O passo "tirar da rota padrão" saiu daqui: não existe mais lista salva de
+  // rota. A criança sai da operação pelo `active: false` do passo seguinte.
 
   // 5. Soft delete da criança + desvincula
   // O soft delete PRESERVA o doc, então os dados pessoais de terceiros

@@ -37,9 +37,9 @@ const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
 const TioDashboard = lazy(() => import('./pages/tio/TioDashboard'));
 const TioChildren = lazy(() => import('./pages/tio/TioChildren'));
-const TioRoute = lazy(() => import('./pages/tio/TioRoute'));
+const TioEscolas = lazy(() => import('./pages/tio/TioEscolas'));
 const TioRouteNow = lazy(() => import('./pages/tio/TioRouteNow'));
-const TioRoutePlan = lazy(() => import('./pages/tio/TioRoutePlan'));
+const TioHorarios = lazy(() => import('./pages/tio/TioHorarios'));
 const TioFinance = lazy(() => import('./pages/tio/TioFinance'));
 const TioFinanceReport = lazy(() => import('./pages/tio/TioFinanceReport'));
 const TioChildStatement = lazy(() => import('./pages/tio/TioChildStatement'));
@@ -307,15 +307,25 @@ export default function App() {
         <Route index element={<TioDashboard />} />
         <Route path="children" element={<TioChildren />} />
         <Route path="children/new" element={<ChildForm />} />
+        <Route path="children/escolas" element={<TioEscolas />} />
         <Route path="children/:id" element={<ChildDetail />} />
         <Route path="children/:id/contract" element={<TioContract />} />
         <Route
           path="children/:id/extrato"
           element={<TioChildStatement />}
         />
-        <Route path="route" element={<TioRoute />} />
+        {/* O Kanban dos seis turnos foi removido junto com os turnos.
+          * `route` continua respondendo pra não quebrar link salvo — e
+          * manter duas telas de rota, uma no modelo velho, seria pior:
+          * a falta marcada numa não aparecia na outra. */}
+        <Route path="route" element={<TioRouteNow />} />
         <Route path="route/now" element={<TioRouteNow />} />
-        <Route path="route/plan" element={<TioRoutePlan />} />
+        {/* "Planejar rota padrão" virou "Horários": a ordem deixou de ser
+          * arrastada à mão e passou a cair do que ele combinou com cada
+          * responsável. O caminho antigo continua respondendo pra não
+          * quebrar link salvo nem o botão de alguma tela ainda não migrada. */}
+        <Route path="horarios" element={<TioHorarios />} />
+        <Route path="route/plan" element={<TioHorarios />} />
         <Route path="finance" element={<TioFinance />} />
         <Route path="finance/report" element={<TioFinanceReport />} />
         <Route path="finance/expenses" element={<TioExpenses />} />

@@ -8,7 +8,7 @@ import { X } from 'lucide-react';
  * POR QUE ELA EXISTE
  * Onze arquivos tinham a mesma folha copiada à mão: AbsenceSheet,
  * AltPickupSheet, SupportSheet, SchoolBroadcastSheet, AbsenceListSheet,
- * StartRouteSheet, AuthSheet, TioAgendaFAB, TioExpenses, TioFinance e
+ * AuthSheet, TioAgendaFAB, TioExpenses, TioFinance e
  * PaiMap. Mesmo `fixed inset-0`, mesmo `rounded-t-3xl`, mesmo puxador
  * cinza — e onze chances de divergir. Já divergiam: algumas travavam a
  * rolagem do fundo, a maioria não; algumas fechavam com ESC, a maioria

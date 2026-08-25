@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Users, Plus, Search, X } from 'lucide-react';
+import { Users, Plus, Search, X, School, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import PageHeader from '../../components/layout/PageHeader';
@@ -12,7 +12,7 @@ import { ChildDetailSheet } from '../../pages/ChildDetail';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { useChildren } from '../../hooks/useChildren';
 import { useAbsences } from '../../hooks/useAbsences';
-import { getDateKey, getCurrentPeriod } from '../../services/routePlanService';
+import { getDateKey } from '../../services/horariosService';
 import {
   getActionForStatus,
   advanceChild,
@@ -41,7 +41,7 @@ export default function TioChildren() {
   // esse contexto. Deduzimos do relógio, igual à tela "Rota agora": manhã
   // leva pra escola, tarde e noite trazem de volta. É o que acontece na
   // prática, e o tio corrige na tela de rota se precisar.
-  const direction = getCurrentPeriod() === 'morning' ? 'pickup' : 'dropoff';
+  const direction = new Date().getHours() < 11 ? 'pickup' : 'dropoff';
   const [advancingId, setAdvancingId] = useState(null);
 
   // A ficha abre POR CIMA da lista. O filtro, a busca e a rolagem continuam
@@ -118,6 +118,27 @@ export default function TioChildren() {
           }
           subtitle="Escolha a turma pelo período, ou busque pelo nome. Toque na foto pra abrir a ficha."
         />
+
+        {/* Escolas — cadastro que vive perto de onde ele é usado.
+          * Não virou aba: já são quatro e a quinta aperta o polegar. */}
+        <button
+          type="button"
+          onClick={() => navigate('/tio/children/escolas')}
+          className="tap w-full bg-card border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-3 text-left"
+        >
+          <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center shrink-0">
+            <School size={17} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-text leading-tight">
+              Escolas
+            </p>
+            <p className="text-[11px] text-textMuted">
+              Cadastre uma vez e reaproveite em cada criança
+            </p>
+          </div>
+          <ChevronRight size={18} className="text-textMuted shrink-0" />
+        </button>
 
         {/* Busca por nome */}
         <div className="relative">
