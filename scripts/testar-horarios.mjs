@@ -557,6 +557,19 @@ t('intervalo que coube inteiro não se declara truncado', () => {
   assert(!truncouIntervalo(semana, '2026-08-28'), 'nada foi cortado');
 });
 
+t('a cascata não atravessa a meia-noite', () => {
+  // deMinutos embrulha em 1440: 23h20 + 50min virava 00h10, e uma entrega às
+  // 00h10 tem inicio=10 — o que joga a criança do FIM da fila pro começo do
+  // dia, na frente de todo mundo.
+  const noturnos = [
+    { id: 'a', name: 'Ana', active: true, horaPega: '22:00', horaEntrega: '23:00' },
+    { id: 'b', name: 'Bob', active: true, horaPega: '22:20', horaEntrega: '23:20' },
+  ];
+  const props = proporCascata(noturnos, 'a', '23:50', 'volta');
+  eq(props.length, 1, 'só a própria Ana — o Bob passaria da meia-noite');
+  eq(props[0].para, '23:50');
+});
+
 t('primeiro nome não renderiza undefined na tela', () => {
   // Dois lugares faziam `.split(' ')[0]` sem fallback e mostravam
   // literalmente "undefined": a lista de aniversariantes e o toast da agenda.

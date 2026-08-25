@@ -531,6 +531,16 @@ export function proporCascata(children, childId, novaHora, direcao) {
     for (let i = idx + 1; i < bloco.paradas.length; i++) {
       const p = bloco.paradas[i];
       const novo = p.minutos + delta;
+      // A CASCATA NÃO ATRAVESSA A MEIA-NOITE.
+      //
+      // `deMinutos` embrulha (`% 1440`), então numa rota noturna atrasar a Ana
+      // de 23h00 pra 23h50 propunha mover o Bob de 23h20 pra 00h10 — e uma
+      // entrega às 00h10 tem `inicio = 10`, o que joga o Bob do FIM da fila
+      // pro começo do dia seguinte, na frente de todo mundo.
+      //
+      // Parar aqui é mais honesto que propor um horário que reordena o dia: o
+      // motorista vê a cascata até onde ela faz sentido e decide o resto.
+      if (novo > 23 * 60 + 59) break;
       out.push({ child: p.child, de: p.hora, para: deMinutos(novo) });
     }
   }

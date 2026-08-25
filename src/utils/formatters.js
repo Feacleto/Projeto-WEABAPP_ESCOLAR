@@ -15,7 +15,7 @@
  * jeitos. O fallback é parâmetro porque ele DEPENDE do lugar: numa lista de
  * crianças 'a criança' cabe, num cumprimento não.
  *
- * `split(/s+/)` com `trim()` e não `split(' ')`: nome com espaço à esquerda
+ * `split` por espaços com `trim()`, e não `split(' ')`: nome com espaço à esquerda
  * ou espaço duplo devolvia string vazia na versão ingênua.
  */
 export function primeiroNome(nome, fallback = '') {

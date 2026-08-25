@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from './useAuth';
 import {
   watchAbsencesByDate,
@@ -38,9 +38,19 @@ export function useAbsences(dateKey) {
     return unsub;
   }, [dateKey, user?.uid]);
 
-  // Mapa childId -> absence pro consumo rápido na lista de rota
-  const byChildId = {};
-  for (const a of absences) byChildId[a.childId] = a;
+  // Mapa childId -> absence pro consumo rápido na lista de rota.
+  //
+  // MEMOIZADO porque ele é dependência de memo lá em cima: montado no corpo do
+  // render, o objeto tinha identidade nova a cada passada, invalidando `blocos`
+  // em OperacaoDaRota e, em cascata, `fila`, `foco`, `lote` e o dia inteiro —
+  // `diaCompleto` recalculando do zero a cada render, no celular que já está
+  // segurando GPS e mapa. Não era bug de corretude (nada dispara render por
+  // causa disso), mas o arquivo se preocupa explicitamente com esse aparelho.
+  const byChildId = useMemo(() => {
+    const mapa = {};
+    for (const a of absences) mapa[a.childId] = a;
+    return mapa;
+  }, [absences]);
 
   return { absences, byChildId, loading };
 }

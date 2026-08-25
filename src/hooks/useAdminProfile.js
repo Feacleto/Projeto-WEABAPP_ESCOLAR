@@ -6,20 +6,17 @@ import { watchAdminProfile } from '../services/userService';
  * + telefone (deep link do WhatsApp).
  */
 export function useAdminProfile() {
-  const [admin, setAdmin] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // `pronto` em vez de `setLoading(true)` no corpo do efeito: a assinatura é
+  // única (sem chave que mude), então basta saber se o primeiro resultado já
+  // chegou.
+  const [estado, setEstado] = useState({ pronto: false, admin: null });
 
   useEffect(() => {
-    setLoading(true);
-    const unsub = watchAdminProfile(
-      (profile) => {
-        setAdmin(profile);
-        setLoading(false);
-      },
-      () => setLoading(false)
+    return watchAdminProfile(
+      (profile) => setEstado({ pronto: true, admin: profile }),
+      () => setEstado({ pronto: true, admin: null })
     );
-    return unsub;
   }, []);
 
-  return { admin, loading };
+  return { admin: estado.admin, loading: !estado.pronto };
 }

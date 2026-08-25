@@ -9,31 +9,27 @@ import { watchChild } from '../services/childrenService';
  * ou quando id não foi passado.
  */
 export function useChild(id) {
-  const [child, setChild] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // O ESTADO CARREGA A CHAVE — mesmo padrão de useRide e usePayments.
+  //
+  // `setLoading(true)` e `setX(null)` no corpo do efeito é um render a mais e,
+  // pior, deixa um quadro em que a tela já sabe que a chave mudou e ainda
+  // mostra o dado da anterior. Comparar a chave na leitura fecha essa janela
+  // sem tocar em estado dentro do efeito.
+  const [snap, setSnap] = useState({ chave: null, child: null, error: null });
 
   useEffect(() => {
-    if (!id) {
-      setChild(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const unsub = watchChild(
+    if (!id) return undefined;
+    return watchChild(
       id,
-      (data) => {
-        setChild(data);
-        setError(null);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err);
-        setLoading(false);
-      }
+      (data) => setSnap({ chave: id, child: data, error: null }),
+      (err) => setSnap({ chave: id, child: null, error: err })
     );
-    return unsub;
   }, [id]);
 
-  return { child, loading, error };
+  const naChave = snap.chave === id;
+  return {
+    child: naChave ? snap.child : null,
+    loading: id ? !naChave : false,
+    error: naChave ? snap.error : null,
+  };
 }

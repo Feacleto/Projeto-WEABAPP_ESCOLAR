@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Key, Save, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
@@ -28,18 +28,23 @@ import { formatPhone } from '../../utils/formatters';
 export default function PixForm({ onDone }) {
   const { user, profile, refreshProfile } = useAuth();
 
-  const [type, setType] = useState(profile?.pixKeyType || 'phone');
-  const [key, setKey] = useState(profile?.pixKey || '');
+  // O QUE ELE DIGITOU VENCE O QUE VEIO DO PERFIL — e o perfil é a base.
+  //
+  // Antes eram dois estados semeados no primeiro render mais um efeito que os
+  // reescrevia quando o perfil chegasse. Isso é um render a mais e uma janela
+  // real: o perfil chega enquanto ele digita, e o efeito apaga o que ele
+  // escreveu. Guardar só a EDIÇÃO (null = ainda não mexeu) e derivar na
+  // leitura resolve os dois — sem `setState` dentro de efeito.
+  const [tipoEditado, setTipoEditado] = useState(null);
+  const [chaveEditada, setChaveEditada] = useState(null);
+  const type = tipoEditado ?? profile?.pixKeyType ?? 'phone';
+  const key = chaveEditada ?? profile?.pixKey ?? '';
+  const setType = setTipoEditado;
+  const setKey = setChaveEditada;
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
-
-  // Sincroniza com o profile quando ele chegar/atualizar
-  useEffect(() => {
-    if (profile?.pixKeyType) setType(profile.pixKeyType);
-    if (profile?.pixKey) setKey(profile.pixKey);
-  }, [profile?.pixKey, profile?.pixKeyType]);
 
   const onTypeChange = (newType) => {
     setType(newType);

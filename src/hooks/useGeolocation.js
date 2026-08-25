@@ -29,8 +29,10 @@ export function useGeolocation() {
   const [stopping, setStopping] = useState(false);
 
   useEffect(() => {
-    // Re-sincroniza ao montar (caso outro componente já tenha iniciado)
-    setWatching(isTracking());
+    // O `useState(() => isTracking())` acima JÁ lê o valor no mount, e o
+    // mount acontece depois de qualquer outro componente ter iniciado o
+    // rastreio. A linha `setWatching(isTracking())` que ficava aqui era
+    // redundante e custava um render extra na tela que segura o GPS.
     const unsub = subscribePosition((payload) => {
       if (payload.position) {
         setPosition(payload.position);

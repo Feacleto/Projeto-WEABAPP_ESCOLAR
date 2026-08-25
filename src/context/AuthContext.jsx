@@ -1,4 +1,5 @@
-import { createContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { AuthContext } from './authContextObject';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import {
@@ -20,8 +21,6 @@ function readSavedChildId() {
     return null;
   }
 }
-
-export const AuthContext = createContext(null);
 
 /**
  * Provê o estado de autenticação para a árvore inteira.

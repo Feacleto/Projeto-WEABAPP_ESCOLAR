@@ -15,26 +15,29 @@ import { useAuth } from './useAuth';
  */
 export function useChildren() {
   const { user } = useAuth();
-  const [children, setChildren] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // O ESTADO CARREGA A CHAVE — mesmo padrão de useRide e usePayments.
+  //
+  // `setLoading(true)` e `setX(null)` no corpo do efeito é um render a mais e,
+  // pior, deixa um quadro em que a tela já sabe que a chave mudou e ainda
+  // mostra o dado da anterior. Comparar a chave na leitura fecha essa janela
+  // sem tocar em estado dentro do efeito.
+  const uid = user?.uid || null;
+  const [snap, setSnap] = useState({ chave: null, children: [], error: null });
 
   useEffect(() => {
-    setLoading(true);
+    if (!uid) return undefined;
     const unsub = watchActiveChildren(
-      user?.uid,
-      (list) => {
-        setChildren(list);
-        setError(null);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err);
-        setLoading(false);
-      }
+      uid,
+      (list) => setSnap({ chave: uid, children: list, error: null }),
+      (err) => setSnap({ chave: uid, children: [], error: err })
     );
     return unsub;
-  }, [user?.uid]);
+  }, [uid]);
 
-  return { children, loading, error };
+  const naChave = snap.chave === uid;
+  return {
+    children: naChave ? snap.children : [],
+    loading: uid ? !naChave : false,
+    error: naChave ? snap.error : null,
+  };
 }

@@ -9,36 +9,46 @@ import { useAuth } from './useAuth';
 /**
  * Subscribe aos pagamentos de um mês (admin).
  */
-export function usePaymentsByMonth(monthKey) {
-  const { user } = useAuth();
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+/**
+ * A assinatura de uma lista de pagamentos, com o estado carregando a CHAVE.
+ *
+ * Os três hooks abaixo faziam a mesma coisa de três jeitos iguais, e todos
+ * com o mesmo defeito: `setPayments([])` e `setLoading(true)` no corpo do
+ * efeito. Isso é um render a mais e, pior, deixa um quadro em que a tela já
+ * sabe que o mês (ou a criança) mudou e ainda mostra os pagamentos do
+ * anterior — num app de dinheiro, é o valor errado exibido com confiança.
+ *
+ * Guardar a chave junto do dado fecha a janela sem tocar em estado dentro do
+ * efeito: enquanto o snapshot novo não chega, `naChave` é falso e a tela
+ * recebe lista vazia com `loading: true`, que é a verdade.
+ */
+function useAssinaturaDePagamentos(chave, assinar) {
+  const [snap, setSnap] = useState({ chave: null, payments: [], error: null });
 
   useEffect(() => {
-    if (!monthKey) {
-      setPayments([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const unsub = watchPaymentsByMonth(
-      monthKey,
-      user?.uid,
-      (list) => {
-        setPayments(list);
-        setError(null);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err);
-        setLoading(false);
-      }
+    if (!chave) return undefined;
+    return assinar(
+      (list) => setSnap({ chave, payments: list, error: null }),
+      (err) => setSnap({ chave, payments: [], error: err })
     );
-    return unsub;
-  }, [monthKey, user?.uid]);
+    // `assinar` é recriado a cada render por construção (fecha sobre os
+    // parâmetros); a chave é o que de fato identifica a assinatura.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chave]);
 
-  return { payments, loading, error };
+  const naChave = snap.chave === chave;
+  return {
+    payments: naChave ? snap.payments : [],
+    loading: chave ? !naChave : false,
+    error: naChave ? snap.error : null,
+  };
+}
+export function usePaymentsByMonth(monthKey) {
+  const { user } = useAuth();
+  return useAssinaturaDePagamentos(
+    monthKey && user?.uid ? `${monthKey}|${user.uid}` : null,
+    (ok, erro) => watchPaymentsByMonth(monthKey, user?.uid, ok, erro)
+  );
 }
 
 /**
@@ -57,9 +67,6 @@ export function usePaymentsByMonth(monthKey) {
  */
 export function usePaymentsByChild(childId) {
   const { user, profile } = useAuth();
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const escopo = useMemo(
     () =>
@@ -69,30 +76,13 @@ export function usePaymentsByChild(childId) {
     [profile?.role, user?.uid]
   );
 
-  useEffect(() => {
-    if (!childId) {
-      setPayments([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const unsub = watchPaymentsByChild(
-      childId,
-      escopo,
-      (list) => {
-        setPayments(list);
-        setError(null);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err);
-        setLoading(false);
-      }
-    );
-    return unsub;
-  }, [childId, escopo]);
-
-  return { payments, loading, error };
+  // O papel entra na chave: a mesma criança lida como responsável e como
+  // motorista são duas assinaturas diferentes, e trocar de papel sem trocar de
+  // chave manteria o resultado do escopo anterior na tela.
+  return useAssinaturaDePagamentos(
+    childId && user?.uid ? `${childId}|${profile?.role}|${user.uid}` : null,
+    (ok, erro) => watchPaymentsByChild(childId, escopo, ok, erro)
+  );
 }
 
 /**
@@ -100,31 +90,7 @@ export function usePaymentsByChild(childId) {
  * Filtra por parentUid (compatível com firestore.rules).
  */
 export function usePaymentsByParent(parentUid) {
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!parentUid) {
-      setPayments([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const unsub = watchPaymentsByParent(
-      parentUid,
-      (list) => {
-        setPayments(list);
-        setError(null);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err);
-        setLoading(false);
-      }
-    );
-    return unsub;
-  }, [parentUid]);
-
-  return { payments, loading, error };
+  return useAssinaturaDePagamentos(parentUid || null, (ok, erro) =>
+    watchPaymentsByParent(parentUid, ok, erro)
+  );
 }
