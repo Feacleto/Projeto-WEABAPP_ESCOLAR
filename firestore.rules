@@ -832,18 +832,24 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/children/$(childId))
           && get(/databases/$(database)/documents/children/$(childId)).data.parentUid == request.auth.uid;
       }
-      allow read: if isSignedIn() && (
-        isAdmin() || ownsChild(resource.data.childId)
+      // AQUI NEM A LEITURA ESTAVA ESCOPADA.
+      //
+      // O bloco inteiro era `isAdmin()`, e o documento guarda NOME E TELEFONE
+      // de quem vai buscar a criança — dado de um terceiro, que o responsável
+      // entregou supondo que só o motorista dele veria. Reproduzido no
+      // emulador: leitura e alteração cruzadas, 200 nas duas.
+      allow read: if ehDoMotorista() || (
+        isSignedIn() && ownsChild(resource.data.childId)
       );
-      allow create: if isAdmin() || (
+      allow create: if nasceDoDono() || (
         isSignedIn() && ownsChild(request.resource.data.childId)
       );
-      allow update: if isAdmin() || (
+      allow update: if ehDoMotorista() || (
         isSignedIn()
         && ownsChild(resource.data.childId)
         && request.resource.data.childId == resource.data.childId
       );
-      allow delete: if isAdmin() || (
+      allow delete: if ehDoMotorista() || (
         isSignedIn() && ownsChild(resource.data.childId)
       );
     }
@@ -921,20 +927,32 @@ service cloud.firestore {
         || ownsChild(resource.data.childId)
       );
 
-      allow create: if isAdmin() || (
+      // A LEITURA FOI ESCOPADA E A ESCRITA FICOU PRA TRÁS.
+      //
+      // `allow read` já usava `ehDoMotorista()`, mas create, update e delete
+      // seguiam com `isAdmin()` nu — que aqui significa QUALQUER motorista.
+      // Como o id é determinístico (`{data}_{childId}`), bastava saber o id
+      // da criança do outro pra marcar falta nela, alterar a falta que o pai
+      // declarou, ou apagá-la — a criança some da rota do outro motorista, ou
+      // aparece nela depois de o pai ter avisado que não vai.
+      //
+      // Reproduzido no emulador (scripts/testar-regras.mjs): três operações
+      // cruzadas devolviam 200. Mesmo padrão de sempre: metade do bloco
+      // recebeu o escopo e a outra metade não.
+      allow create: if nasceDoDono() || (
         isSignedIn()
         && ownsChild(request.resource.data.childId)
         && request.resource.data.declaredBy == 'parent'
       );
 
-      allow update: if isAdmin() || (
+      allow update: if ehDoMotorista() || (
         isSignedIn()
         && ownsChild(resource.data.childId)
         && request.resource.data.childId == resource.data.childId
         && request.resource.data.declaredBy == 'parent'
       );
 
-      allow delete: if isAdmin() || (
+      allow delete: if ehDoMotorista() || (
         isSignedIn() && ownsChild(resource.data.childId)
       );
     }

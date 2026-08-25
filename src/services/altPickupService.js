@@ -100,6 +100,7 @@ export async function setDailyAltPickup({
   dateKey,
   childId,
   parentUid,
+  adminUid,
   name,
   phone,
   relationship,
@@ -110,6 +111,16 @@ export async function setDailyAltPickup({
     dateKey,
     childId,
     parentUid: parentUid || null,
+    // DE QUEM É ESTA OPERAÇÃO — mesmo desenho de absenceDeclarations, e
+    // pelo mesmo motivo: vem da CRIANÇA, não da sessão. Quem indica quem
+    // vai buscar costuma ser o responsável, e o uid dele não diz qual
+    // motorista precisa enxergar a troca.
+    //
+    // Sem o campo, a rule só sabia perguntar `isAdmin()` — e aí qualquer
+    // motorista lia NOME E TELEFONE de quem busca a criança das famílias
+    // de todos os outros. É dado de terceiro, que o pai entregou pensando
+    // num motorista só.
+    adminUid: adminUid || null,
     name: name?.trim() || '',
     phone: phone?.trim() || '',
     relationship: relationship?.trim() || '',
