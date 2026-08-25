@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Users, Map, DollarSign } from 'lucide-react';
+import { Home, DollarSign } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import InstallPrompt from '../../components/common/InstallPrompt';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
@@ -16,10 +16,28 @@ import {
   markBirthdayModalShown,
 } from '../../services/birthdayService';
 
+/**
+ * DUAS ABAS, E A REGRA QUE DECIDE QUAIS.
+ *
+ * Uma aba é um lugar onde ele MORA. Um botão é um lugar que ele VISITA.
+ *
+ * O motorista faz duas coisas todo dia: levar e trazer criança, e receber por
+ * isso. Tudo o mais — cadastrar criança, cadastrar escola, ajustar horário,
+ * avisar que não tem aula — ele faz algumas vezes por mês, quase sempre
+ * parado. O rodapé é o espaço mais caro do aparelho (sempre visível, onde o
+ * polegar descansa), e metade dele estava com o trabalho mais raro.
+ *
+ * "Rota" saiu porque virou o Início: a operação inteira mora lá agora.
+ * "Crianças" saiu porque virou uma linha escrita na home.
+ *
+ * TIRAR DA ABA NÃO É ESCONDER. `/tio/children` e `/tio/route/now` continuam
+ * respondendo, com as mesmas telas. Muda só como se chega: por uma linha com
+ * nome escrito, em vez de um ícone permanente. O custo é um toque a mais — e
+ * só quando ele está em OUTRA tela. Durante a rota, que é quando um toque a
+ * mais dói, ele já está no Início.
+ */
 const NAV_ITEMS = [
   { to: '/tio', label: 'Início', icon: Home, end: true, tour: 'nav-home' },
-  { to: '/tio/children', label: 'Crianças', icon: Users, tour: 'nav-children' },
-  { to: '/tio/route/now', label: 'Rota', icon: Map, tour: 'nav-route' },
   {
     to: '/tio/finance',
     label: 'Financeiro',

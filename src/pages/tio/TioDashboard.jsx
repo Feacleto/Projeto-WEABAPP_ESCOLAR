@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { onSnapshot, doc } from 'firebase/firestore';
 import {
-  Play,
   Clock,
   Users,
   School,
@@ -26,6 +25,7 @@ import Skeleton from '../../components/common/Skeleton';
 import SchoolBroadcastSheet from '../../components/broadcasts/SchoolBroadcastSheet';
 import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import OperacaoDaRota from '../../components/route/OperacaoDaRota';
+import ControleDeRota from '../../components/route/ControleDeRota';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
@@ -47,6 +47,7 @@ import {
   statusNaDirecao,
   getActionForStatus,
 } from '../../services/routeStatusService';
+import { publicarOrdemDoDia } from '../../services/ridesService';
 import { greet } from '../../utils/greeting';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 
@@ -195,6 +196,26 @@ export default function TioDashboard() {
     [children]
   );
 
+  /**
+   * Publica a posição de cada criança no dia ao iniciar a rota.
+   *
+   * O responsável não consegue calcular isso: lê só o doc do próprio filho, e
+   * a fila é feita das outras crianças. Quem sabe publica — uma vez, aqui.
+   */
+  async function publicarOrdem() {
+    try {
+      const contexto = {};
+      for (const b of blocos) {
+        for (const p of b.paradas) contexto[p.child.id] = { adminUid: user?.uid };
+      }
+      await publicarOrdemDoDia(blocos, todayKey, contexto);
+    } catch (err) {
+      // Não trava a saída: ele precisa sair, e posição na fila é conforto do
+      // responsável, não requisito da operação.
+      console.error('Falha ao publicar a ordem do dia:', err);
+    }
+  }
+
   const primeiroNome = profile?.name?.split(' ')[0] || 'Tio';
   const proximo = pendentes[0] || null;
 
@@ -275,18 +296,14 @@ export default function TioDashboard() {
                 </div>
               )}
 
-              {/* Levar pro /route/now e não abrir o GPS daqui é deliberado:
-                * iniciar rota liga rastreamento e publica a ordem do dia. Uma
-                * ação dessas merece a tela que a explica. */}
-              <button
-                type="button"
-                onClick={() => navigate('/tio/route/now')}
-                className="tap w-full rounded-2xl bg-primary text-white font-extrabold text-base tracking-wide flex items-center justify-center gap-2 mt-4"
-                style={{ height: 56 }}
-              >
-                <Play size={20} />
-                INICIAR ROTA
-              </button>
+              {/* O botão INICIA AQUI, não leva pra outra tela.
+                * A primeira versão navegava pro /route/now pra ele tocar em
+                * iniciar lá — dois toques e uma troca de tela pra fazer a
+                * coisa mais frequente do dia, que é exatamente o pedágio que
+                * esta home existe pra tirar. */}
+              <div className="mt-4">
+                <ControleDeRota onIniciar={publicarOrdem} />
+              </div>
             </div>
 
             <ListaDaViagem bloco={bloco} />
@@ -587,6 +604,7 @@ function AcoesDeCadastro({ totalCriancas, totalEscolas, semHorario, onBroadcast,
         icon={Users}
         titulo="Minha turma"
         contagem={totalCriancas}
+        tour="turma"
         onClick={() => navigate('/tio/children')}
       />
       <Linha
@@ -610,10 +628,11 @@ function AcoesDeCadastro({ totalCriancas, totalEscolas, semHorario, onBroadcast,
   );
 }
 
-function Linha({ icon: Icon, titulo, contagem, aviso, onClick }) {
+function Linha({ icon: Icon, titulo, contagem, aviso, tour, onClick }) {
   return (
     <button
       type="button"
+      data-tour={tour}
       onClick={onClick}
       className="tap w-full text-left bg-card border border-gray-200 rounded-xl px-3 py-3 flex items-center gap-3"
     >

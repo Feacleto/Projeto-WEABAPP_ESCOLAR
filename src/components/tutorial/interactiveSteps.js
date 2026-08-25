@@ -3,7 +3,6 @@ import {
   Bus,
   Users,
   UserPlus,
-  Map,
   Play,
   DollarSign,
   Wallet,
@@ -14,7 +13,14 @@ import {
 } from 'lucide-react';
 
 /**
- * Passos do tour guiado. Um passo é uma frase curta ancorada num elemento
+ * Passos do tour guiado.
+ *
+ * O ROTEIRO DO MOTORISTA MUDOU COM AS DUAS ABAS.
+ * Ele mandava "toque em Crianças" e "toque em Rota" — dois passos `interact`
+ * ancorados em abas que não existem mais. Passo interativo apontando pro vazio
+ * é pior que passo sem destaque: ele trava esperando um toque que a pessoa não
+ * tem onde dar. Agora o passeio é Início → Minha turma → Financeiro, que é o
+ * caminho que o app realmente tem. Um passo é uma frase curta ancorada num elemento
  * REAL da tela — o app fica visível atrás, com o elemento iluminado.
  *
  * Campos:
@@ -46,15 +52,22 @@ export const ADMIN_TOUR = [
     anchor: 'hero',
     icon: Bus,
     title: 'Aqui é o seu dia',
-    body: 'Este quadro mostra a que horas sai a próxima viagem e quem você pega primeiro. É por ele que o dia começa.',
+    body: 'Este quadro mostra a que horas sai a próxima viagem e quem você pega primeiro. Ele muda sozinho conforme o relógio.',
   },
   {
     path: '/tio',
-    anchor: 'nav-children',
+    anchor: 'hero',
+    icon: Play,
+    title: 'Começar a viagem',
+    body: 'Quando faltar pouco pra saída, este mesmo quadro vira o botão de iniciar a rota. Toque nele e deixe o celular ligado — a partir daí os pais veem a perua andando no mapa.',
+  },
+  {
+    path: '/tio',
+    anchor: 'turma',
     interact: true,
     icon: Users,
-    title: 'Agora toque em "Crianças"',
-    body: 'Pode tocar aí embaixo — eu espero você.',
+    title: 'Agora toque em "Minha turma"',
+    body: 'Pode tocar aí — eu espero você.',
   },
   {
     path: '/tio/children',
@@ -64,27 +77,12 @@ export const ADMIN_TOUR = [
     body: 'Toque em "Nova criança" e preencha. No fim o app cria um código — mande pro pai. Com esse código ele entra e já vê o filho.',
   },
   {
-    path: '/tio/children',
-    anchor: 'nav-route',
-    interact: true,
-    icon: Map,
-    title: 'Toque em "Rota"',
-    body: 'É a tela que você mais vai usar.',
-  },
-  {
-    path: '/tio/route/now',
-    anchor: 'start-route',
-    icon: Play,
-    title: 'Começar a viagem',
-    body: 'Toque em "Iniciar rota" e deixe o celular ligado. A partir daí os pais veem a perua andando no mapa.',
-  },
-  {
-    path: '/tio/route/now',
+    path: '/tio',
     anchor: 'nav-finance',
     interact: true,
     icon: DollarSign,
     title: 'Toque em "Financeiro"',
-    body: 'Último lugar do passeio.',
+    body: 'Último lugar do passeio. Pode tocar aí embaixo.',
   },
   {
     path: '/tio/finance',
@@ -96,7 +94,7 @@ export const ADMIN_TOUR = [
     path: '/tio',
     icon: CheckCircle2,
     title: 'Pronto, é isso!',
-    body: 'Esqueceu alguma coisa? Abra seu perfil e toque em "Ver tutorial de novo".',
+    body: 'São duas abas só: aqui no Início você trabalha, e no Financeiro você recebe. O resto abre por aqui mesmo. Esqueceu alguma coisa? Abra seu perfil e toque em "Ver tutorial de novo".',
   },
 ];
 
