@@ -90,7 +90,10 @@ function NotebookView({ onClose }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const unsub = watchParentAgenda(
-      { parentUid: user.uid },
+      // `adminUid` vem da criança: é o motorista de quem este responsável é
+      // cliente, e é o que a regra confere pra o recado de escola de um
+      // parceiro não cair no caderno da família de outro.
+      { parentUid: user.uid, adminUid: child?.adminUid },
       (list) => {
         setEntries(list);
         setLoading(false);
@@ -98,7 +101,7 @@ function NotebookView({ onClose }) {
       () => setLoading(false)
     );
     return unsub;
-  }, [user?.uid, child?.school]);
+  }, [user?.uid, child?.school, child?.adminUid]);
 
   const currentMonthEntries = useMemo(
     () => filterByMonth(entries, year, month),

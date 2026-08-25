@@ -11,17 +11,28 @@ import {
   getDocs,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from './../firebase/config';
+import { auth, db } from './../firebase/config';
 import { computeDisplayStatus } from './paymentsService';
 
 /**
- * Helper: busca adminUid de appState/init (público, sempre disponível).
- * Usado pelas notifs que vão pro admin — evita race condition de quem
- * chama estar dependendo do useAdminProfile carregar primeiro.
+ * O motorista DESTE responsável — não o motorista da plataforma.
+ *
+ * Continua sendo só um fallback: quem chama passa `child.adminUid`, e este
+ * caminho existe pra corrida em que o perfil ainda não carregou.
+ *
+ * Lia `appState/init.adminUid`, que é o ponteiro ÚNICO da plataforma. Com um
+ * motorista dava no mesmo; com dois, o aviso de falta do pai de um chegava ao
+ * outro — que recebia o nome de uma criança que não é cliente dele, enquanto o
+ * motorista certo nunca ficava sabendo.
+ *
+ * O doc do próprio responsável carrega `adminUid` desde o resgate do convite,
+ * e ele sempre pode ler o próprio doc.
  */
 async function resolveAdminUid() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return null;
   try {
-    const snap = await getDoc(doc(db, 'appState', 'init'));
+    const snap = await getDoc(doc(db, 'users', uid));
     return snap.exists() ? snap.data().adminUid || null : null;
   } catch (err) {
     console.error('[notifications] Falha ao resolver adminUid:', err);

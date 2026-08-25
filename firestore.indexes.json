@@ -33,24 +33,6 @@
       ]
     },
     {
-      "collectionGroup": "agendaEntries",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "scope",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "schoolName",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "feedbacks",
       "queryScope": "COLLECTION",
       "fields": [
@@ -243,6 +225,28 @@
         {
           "fieldPath": "parentUids",
           "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "agendaEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "parentUids",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "scope",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "adminUid",
+          "order": "ASCENDING"
         },
         {
           "fieldPath": "createdAt",

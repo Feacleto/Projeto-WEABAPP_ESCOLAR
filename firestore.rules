@@ -623,8 +623,19 @@ service cloud.firestore {
       );
       // O responsável NÃO escreve: a hora da entrega é registro de quem
       // entregou. Deixar o outro lado escrever tiraria dela o valor de prova.
+      // WHITELIST DE CAMPOS: o proprio codigo chama este registro de prova, e
+      // prova que aceita campo arbitrario e so um documento. Sao os campos que
+      // `ridesService` grava — nada alem.
       allow write: if isAdmin()
-        && crianca().get('adminUid', '') == request.auth.uid;
+        && crianca().get('adminUid', '') == request.auth.uid
+        && (
+          request.resource.data == null
+          || request.resource.data.keys().hasOnly([
+            'marcos', 'checkpoints', 'posicao', 'ordemIda', 'totalIda',
+            'ordemVolta', 'totalVolta', 'combinado', 'childId', 'adminUid',
+            'parentUid', 'dateKey', 'atualizadoEm', 'criadoEm'
+          ])
+        );
     }
 
     // -----------------------------------------------------------------
@@ -786,12 +797,30 @@ service cloud.firestore {
     //       * Tio cria notif pro pai quando confirma recebimento
     //   - Delete: dono apaga as suas, admin apaga qualquer uma.
     // -----------------------------------------------------------------
+    // NOTIFICACAO E CORRESPONDENCIA: so o destinatario le, e nao se escreve
+    // para quem nao e seu.
+    //
+    // `allow read: if isAdmin()` deixava qualquer motorista listar a caixa de
+    // TODO MUNDO — inclusive os avisos das familias dos concorrentes, com
+    // nome de crianca no titulo. E o `create` com `isAdmin()` solto aceitava
+    // qualquer `userId`: um parceiro escrevia aviso de titulo e corpo livres
+    // na caixa do cliente de outro. Phishing dentro do app, com a
+    // credibilidade do app inteira por tras.
+    //
+    // Quem o motorista PODE notificar: os responsaveis DELE — os que tem
+    // `adminUid` apontando pra ele. Quem o responsavel pode notificar: o
+    // motorista dele, pelo mesmo campo. `appState/init` saiu daqui: era o
+    // ponteiro unico da plataforma, e com dois motoristas ele entrega o aviso
+    // do pai de um ao outro.
     match /notifications/{notifId} {
+      function destinatario() {
+        return get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data;
+      }
       // Read combinado (get + list): força a query a ter where userId == auth.uid
       // — sem isso, list seria permissivo demais e usuário poderia consultar
       // notificações alheias.
       allow read: if isSignedIn() && (
-        isAdmin() || resource.data.userId == request.auth.uid
+        resource.data.userId == request.auth.uid
       );
 
       // Create: além dos campos obrigatórios, restringe QUEM pode ser alvo.
@@ -806,9 +835,8 @@ service cloud.firestore {
         && request.resource.data.userId is string
         && request.resource.data.type is string
         && (
-          isAdmin()
-          || request.resource.data.userId ==
-              get(/databases/$(database)/documents/appState/init).data.adminUid
+          (isAdmin() && destinatario().get('adminUid', '') == request.auth.uid)
+          || request.resource.data.userId == userDoc().get('adminUid', '')
         );
 
       allow update: if isSignedIn()
@@ -816,7 +844,9 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['readAt']);
 
-      allow delete: if isAdmin() || (
+      // Apagar e do dono da caixa. `isAdmin()` aqui deixava um motorista
+      // sumir com o aviso de qualquer pessoa da plataforma.
+      allow delete: if (
         isSignedIn() && resource.data.userId == request.auth.uid
       );
     }
@@ -943,6 +973,17 @@ service cloud.firestore {
         isSignedIn()
         && ownsChild(request.resource.data.childId)
         && request.resource.data.declaredBy == 'parent'
+        // O `adminUid` do ramo do RESPONSAVEL e conferido CONTRA A CRIANCA.
+        //
+        // O comentario do servico ja dizia que ele "vem da crianca" — mas isso
+        // era intencao do cliente, nao garantia daqui. Um pai que editasse o
+        // valor plantava a falta, com nome da crianca e motivo, na lista de
+        // rota de um motorista estranho; e um valor vazio fazia a declaracao
+        // nascer orfa, invisivel pro motorista que precisa ve-la — e ele vai a
+        // porta de quem avisou que nao vai. O get() ja esta em cache pelo
+        // ownsChild() logo acima.
+        && request.resource.data.get('adminUid', '') ==
+           get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.get('adminUid', '')
       );
 
       allow update: if ehDoMotorista() || (
@@ -950,6 +991,17 @@ service cloud.firestore {
         && ownsChild(resource.data.childId)
         && request.resource.data.childId == resource.data.childId
         && request.resource.data.declaredBy == 'parent'
+        // O `adminUid` do ramo do RESPONSAVEL e conferido CONTRA A CRIANCA.
+        //
+        // O comentario do servico ja dizia que ele "vem da crianca" — mas isso
+        // era intencao do cliente, nao garantia daqui. Um pai que editasse o
+        // valor plantava a falta, com nome da crianca e motivo, na lista de
+        // rota de um motorista estranho; e um valor vazio fazia a declaracao
+        // nascer orfa, invisivel pro motorista que precisa ve-la — e ele vai a
+        // porta de quem avisou que nao vai. O get() ja esta em cache pelo
+        // ownsChild() logo acima.
+        && request.resource.data.get('adminUid', '') ==
+           get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.get('adminUid', '')
       );
 
       allow delete: if ehDoMotorista() || (
@@ -998,7 +1050,11 @@ service cloud.firestore {
     // -----------------------------------------------------------------
     match /pendingCalls/{id} {
       allow read: if isSignedIn() && (
-        isAdmin()
+        // O ramo `isAdmin()` solto saiu: as linhas de baixo ja dao ao
+        // motorista o que e dele. Sozinho, ele entregava a buzina de todas as
+        // familias da plataforma — com nome de crianca — a qualquer parceiro.
+        // E a buzina voltou a ser gravada no modelo novo.
+        false
         || resource.data.parentUid == request.auth.uid
         || resource.data.adminUid == request.auth.uid
       );
@@ -1010,7 +1066,7 @@ service cloud.firestore {
         && request.resource.data.adminUid == resource.data.adminUid
         && request.resource.data.parentUid == resource.data.parentUid
       );
-      allow delete: if isAdmin();
+      allow delete: if ehDoMotorista();
     }
 
     // -----------------------------------------------------------------
@@ -1049,7 +1105,15 @@ service cloud.firestore {
         || (resource.data.scope == 'child'
             && resource.data.parentUid == request.auth.uid)
         || (resource.data.scope == 'school'
-            && request.auth.uid in resource.data.get('parentUids', []))
+            && request.auth.uid in resource.data.get('parentUids', [])
+            // O `parentUids` e uma lista que o MOTORISTA escolhe, e a regra
+            // nao tem como conferir item a item na criacao. A amarra vai
+            // aqui, na leitura: alem de estar na lista, o responsavel tem
+            // que ser cliente DESTE motorista. Sem isto, um parceiro
+            // publicava recado de 1500 caracteres no caderno da familia de
+            // outro — bastava conhecer o uid, que a listagem de notificacoes
+            // entregava.
+            && userDoc().get('adminUid', '') == resource.data.get('adminUid', ''))
       );
 
       allow create: if isAdmin()
@@ -1129,14 +1193,20 @@ service cloud.firestore {
     //   - Update: só admin (pra marcar status: open → in_progress → closed).
     //   - Delete: não permitido (histórico imutável).
     // -----------------------------------------------------------------
+    // SUPORTE E COM A PLATAFORMA, NAO COM OS OUTROS MOTORISTAS.
+    //
+    // `isAdmin()` deixava qualquer parceiro ler todos os chamados de todos os
+    // usuarios — e `description` e texto livre, onde a pessoa conta o
+    // problema dela com nomes e detalhes.
     match /supportTickets/{id} {
       allow read: if isSignedIn() && (
-        isAdmin() || resource.data.uid == request.auth.uid
+        isOwner() || resource.data.uid == request.auth.uid
       );
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasAll(['uid', 'role', 'category', 'description', 'status', 'createdAt']);
-      allow update: if isAdmin();
+      // Quem trata o chamado e o dono da plataforma.
+      allow update: if isOwner();
       allow delete: if false;
     }
 

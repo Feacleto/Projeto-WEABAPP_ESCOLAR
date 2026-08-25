@@ -108,6 +108,33 @@ const consultar = (col, campo, valor, s) =>
 
 const listar = (col, s) => fetch(`${FS}/${col}?pageSize=50`, { headers: H(s) }).then((r) => r.status);
 
+/**
+ * A consulta do caderno do responsável, como o cliente a monta.
+ * Com `adminUid` null, monta a versão antiga (só array-contains) — que a regra
+ * nova recusa inteira.
+ */
+function consultaAgenda(s, adminUid) {
+  const filters = [
+    { fieldFilter: { field: { fieldPath: 'parentUids' }, op: 'ARRAY_CONTAINS', value: S(s.uid) } },
+  ];
+  if (adminUid) {
+    filters.push({ fieldFilter: { field: { fieldPath: 'scope' }, op: 'EQUAL', value: S('school') } });
+    filters.push({ fieldFilter: { field: { fieldPath: 'adminUid' }, op: 'EQUAL', value: S(adminUid) } });
+  }
+  return fetch(`${FS}:runQuery`, {
+    method: 'POST',
+    headers: H(s),
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'agendaEntries' }],
+        where: { compositeFilter: { op: 'AND', filters } },
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+        limit: 50,
+      },
+    }),
+  }).then((r) => r.status);
+}
+
 async function main() {
   console.log('\n═══ elenco ═══');
   const dono = await criarLogin(`dono.${Date.now()}@teste.local`);
@@ -249,6 +276,73 @@ async function main() {
   checar('pai', 'pai lê a escola (dado do motorista)', 'NEGA', await ler('schools/esc1', pai1));
   checar('pai', 'pai lê a posição do motorista dele', 'PASSA', await ler(`liveLocation/${tio1.uid}`, pai1));
   checar('pai', 'pai lê a posição de OUTRO motorista', 'NEGA', await ler(`liveLocation/${tio2.uid}`, pai1));
+
+  // ── correspondência, suporte e caderno ─────────────────────────────────
+  console.log('\n═══ CORRESPONDÊNCIA E SUPORTE ═══');
+  await semear('notifications/n1', {
+    userId: S(pai1.uid), type: S('absence'), title: S('aviso'),
+    createdAt: { timestampValue: '2026-08-25T09:00:00Z' },
+  });
+  await semear('supportTickets/t1', {
+    uid: S(pai1.uid), role: S('parent'), category: S('bug'),
+    description: S('texto livre com nomes'), status: S('open'),
+    createdAt: { timestampValue: '2026-08-25T09:00:00Z' },
+  });
+  await semear('pendingCalls/pc1', {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childName: S('Ana'),
+  });
+  await semear('agendaEntries/ag2', {
+    adminUid: S(tio1.uid), scope: S('school'), message: S('reunião'),
+    parentUids: { arrayValue: { values: [S(pai1.uid)] } },
+  });
+
+  checar('pos', 'o destinatário lê a própria notificação', 'PASSA', await ler('notifications/n1', pai1));
+  checar('pos', 'o pai lê o recado de escola do motorista dele', 'PASSA', await ler('agendaEntries/ag2', pai1));
+  checar('pos', 'o dono lê um chamado de suporte', 'PASSA', await ler('supportTickets/t1', dono));
+
+  checar('corr', 'tio2 lê a notificação do pai do tio1', 'NEGA', await ler('notifications/n1', tio2));
+  checar('corr', 'tio2 apaga a notificação do pai do tio1', 'NEGA', await apagar('notifications/n1', tio2));
+  checar('corr', 'tio2 injeta aviso na caixa do pai do tio1', 'NEGA',
+    await criar('notifications', `phish_${Date.now()}`, tio2, {
+      userId: S(pai1.uid), type: S('info'), title: S('Pague neste PIX'),
+      createdAt: { timestampValue: '2026-08-25T09:00:00Z' },
+    }));
+  checar('corr', 'tio2 lê o chamado de suporte do pai do tio1', 'NEGA', await ler('supportTickets/t1', tio2));
+  checar('corr', 'tio2 lê a buzina da família do tio1', 'NEGA', await ler('pendingCalls/pc1', tio2));
+  // O recado plantado: tio2 grava com adminUid DELE e o uid do pai do tio1 na
+  // lista. A regra confere se o leitor é cliente de quem publicou.
+  await semear('agendaEntries/ag3', {
+    adminUid: S(tio2.uid), scope: S('school'), message: S('recado plantado'),
+    parentUids: { arrayValue: { values: [S(pai1.uid)] } },
+  });
+  checar('corr', 'recado plantado por tio2 não entra no caderno do pai', 'NEGA',
+    await ler('agendaEntries/ag3', pai1));
+
+  checar('corr', 'pai declara falta com adminUid de outro motorista', 'NEGA',
+    await criar('absenceDeclarations', `forjada_${Date.now()}`, pai1, {
+      adminUid: S(tio2.uid), childId: S('kid1'), dateKey: S('2026-08-27'),
+      declaredBy: S('parent'),
+    }));
+  checar('pos', 'pai declara falta com o adminUid certo', 'PASSA',
+    await criar('absenceDeclarations', `legitima_${Date.now()}`, pai1, {
+      adminUid: S(tio1.uid), childId: S('kid1'), dateKey: S('2026-08-28'),
+      declaredBy: S('parent'),
+    }));
+
+  checar('corr', 'campo fora da whitelist em rides', 'NEGA',
+    await escrever('children/kid1/rides/2026-08-25', tio1, { inventado: S('x') }, ['inventado']));
+
+  // A CONSULTA, não só a leitura de um documento.
+  //
+  // Regra e consulta são coisas separadas: o Firestore recusa a consulta
+  // INTEIRA quando ela não prova cada condição da regra — não devolve "a parte
+  // que você pode". O sintoma é o caderno do pai abrindo vazio, sem erro na
+  // tela e sem nada no console. Ao apertar `agendaEntries` eu quebrei
+  // exatamente isso, e só apareceu porque este caso existe.
+  checar('lista', 'a consulta do caderno do pai (scope + adminUid)', 'PASSA',
+    await consultaAgenda(pai1, tio1.uid));
+  checar('lista', 'a mesma consulta sem provar o escopo', 'NEGA',
+    await consultaAgenda(pai1, null));
 
   await tetoDeGets(tio1);
 

@@ -263,8 +263,10 @@ export function watchAdminAgenda(adminUid, onUpdate, onError) {
  * alcança, em vez de a tela adivinhar pelo nome. Um responsável cujo filho
  * está sem o campo `school` preenchido também parou de perder os recados.
  */
-export function watchParentAgenda({ parentUid }, onUpdate, onError) {
-  if (!parentUid) return () => {};
+export function watchParentAgenda({ parentUid, adminUid }, onUpdate, onError) {
+  // Sem o motorista da criança a consulta da escola seria negada inteira;
+  // não vale gastar a chamada nem sujar o console do pai.
+  if (!parentUid || !adminUid) return () => {};
   let childList = [];
   let schoolList = [];
 
@@ -308,9 +310,21 @@ export function watchParentAgenda({ parentUid }, onUpdate, onError) {
       // O segundo é o casamento por nome digitado: "E.M. Rui Barbosa" no doc e
       // "EM Rui Barbosa" na criança nunca foram iguais, e o recado da escola
       // simplesmente não aparecia pra metade das famílias.
+      // OS TRÊS FILTROS SÃO REQUISITO DA REGRA, NÃO REFINAMENTO.
+      //
+      // A regra de leitura exige `scope == 'school'`, o uid em `parentUids` E
+      // que o responsável seja cliente de quem publicou (`adminUid`). Consulta
+      // que não PROVA cada uma dessas condições é recusada INTEIRA pelo
+      // Firestore — não parcialmente — e o caderno do pai abre vazio, sem erro
+      // na tela.
+      //
+      // Medido contra o emulador: só com `array-contains` → negada; com
+      // `+ scope` → ainda negada; com `+ scope + adminUid` → passa.
       query(
         collection(db, AGENDA_COLLECTION),
         where('parentUids', 'array-contains', parentUid),
+        where('scope', '==', 'school'),
+        where('adminUid', '==', adminUid),
         orderBy('createdAt', 'desc')
       ),
       (snap) => {
