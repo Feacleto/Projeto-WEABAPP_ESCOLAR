@@ -141,7 +141,15 @@ export default function PaiMap() {
           * responsável pra fora do app no momento em que ele mais precisa
           * dele. */}
         <button
-          onClick={() => navigate('/pai')}
+          onClick={() => {
+            // Mesma regra do Header: consumir história quando existe, e só
+            // cair no destino quando ela não existe (chegada por push).
+            // Navegar sempre empilhava, e o botão físico do Android trazia a
+            // pessoa de volta pro mapa que ela tinha acabado de fechar.
+            const temHistoria = (window.history.state?.idx ?? 0) > 0;
+            if (temHistoria) navigate(-1);
+            else navigate('/pai', { replace: true });
+          }}
           aria-label="Voltar para o início"
           className="tap h-10 pl-2 pr-3 rounded-full bg-gray-100 flex items-center gap-1 text-textMuted shrink-0"
         >

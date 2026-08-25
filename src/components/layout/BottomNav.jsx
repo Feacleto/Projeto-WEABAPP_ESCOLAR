@@ -38,24 +38,33 @@ export default function BottomNav({ items }) {
             to={item.to}
             end={item.end}
             data-tour={item.tour}
-            className="tap flex flex-col items-center justify-center gap-0.5 pt-2 pb-2.5 text-[12px] font-semibold"
+            className="tap flex flex-col items-center justify-center gap-1 pt-2 pb-2.5 text-[12px] font-semibold"
           >
             {({ isActive }) => (
               <>
-                {/* A bolinha. Ocupa a mesma altura sempre — visível ou não —
-                  * pra o ícone não pular de posição ao trocar de aba. */}
+                {/* A MARCA DE SELECIONADO ABRAÇA O ÍCONE, não fica acima dele.
+                  *
+                  * Antes era um ponto de 6 px flutuando sobre o ícone: pequeno
+                  * demais pra ser visto de relance e, com duas abas largas,
+                  * solto no meio do vazio. Agora é uma pílula atrás do ícone —
+                  * o mesmo elemento diz "é aqui" pela forma, pela cor de fundo
+                  * e pela cor do traço, em vez de depender de um detalhe de
+                  * seis pixels.
+                  *
+                  * A pílula tem tamanho fixo e existe sempre (transparente
+                  * quando inativa): assim o ícone não pula de posição ao
+                  * trocar de aba, que era o motivo do ponto invisível de antes. */}
                 <span
-                  aria-hidden
-                  className={`h-1.5 w-1.5 rounded-full mb-0.5 transition-colors ${
-                    isActive ? 'bg-primary' : 'bg-transparent'
+                  className={`relative inline-flex items-center justify-center h-8 w-14 rounded-full transition-colors duration-200 ${
+                    isActive ? 'bg-primary/12' : 'bg-transparent'
                   }`}
-                />
-
-                <span className="relative inline-flex items-center justify-center">
+                >
                   <item.icon
                     size={23}
                     strokeWidth={isActive ? 2.4 : 1.8}
-                    className={isActive ? 'text-primary' : 'text-textMuted'}
+                    className={`transition-colors duration-200 ${
+                      isActive ? 'text-primary' : 'text-textMuted'
+                    }`}
                   />
                   {item.badge > 0 && (
                     <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center border-2 border-card">

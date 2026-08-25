@@ -6,6 +6,8 @@ import {
   Users,
   School,
   Megaphone,
+  ListOrdered,
+  Notebook,
   HelpCircle,
   History,
   CircleAlert,
@@ -243,6 +245,28 @@ export default function TioDashboard() {
     <>
       <Header title="Início" />
 
+      {/* INICIAR / ENCERRAR ROTA — FIXO NO TOPO, SEMPRE.
+        *
+        * Ele estava só no estado "antes de sair", que aparece na última hora
+        * antes da viagem. Fora dessa janela — e é a maior parte do dia — não
+        * havia botão nenhum: o motorista que quisesse ligar o rastreamento
+        * mais cedo, ou religar depois de fechar a aba sem querer, não tinha
+        * por onde.
+        *
+        * Fixo porque a lista da viagem rola, e o botão de encerrar não pode
+        * rolar junto: encerrar é o que ele faz com a perua parada, olhando
+        * rápido, e procurar botão que fugiu pra fora da tela é o oposto disso.
+        *
+        * `top` acompanha o cabeçalho e o recorte do aparelho: no iPhone
+        * instalado como app o `env()` vale a faixa do sistema, e sem somar
+        * isso a barra ficaria por baixo do relógio e da bateria. */}
+      <div
+        className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-gray-100"
+        style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
+      >
+        <ControleDeRota onIniciar={publicarOrdem} />
+      </div>
+
       <div className="pb-4">
         {/* Saudação — pequena, contexto. Durante a rota ela sai: o topo da
           * tela é caro demais pra gastar com cortesia enquanto ele dirige. */}
@@ -259,7 +283,9 @@ export default function TioDashboard() {
         )}
 
         {/* ─────────── DIRIGINDO — a home é a operação ─────────── */}
-        {estado === 'dirigindo' && <OperacaoDaRota mostrarRodape={false} />}
+        {estado === 'dirigindo' && (
+          <OperacaoDaRota mostrarRodape={false} mostrarControle={false} />
+        )}
 
         {estado === 'carregando' && (
           <div className="px-5 pt-4 space-y-3">
@@ -316,14 +342,10 @@ export default function TioDashboard() {
                 </div>
               )}
 
-              {/* O botão INICIA AQUI, não leva pra outra tela.
-                * A primeira versão navegava pro /route/now pra ele tocar em
-                * iniciar lá — dois toques e uma troca de tela pra fazer a
-                * coisa mais frequente do dia, que é exatamente o pedágio que
-                * esta home existe pra tirar. */}
-              <div className="mt-4">
-                <ControleDeRota onIniciar={publicarOrdem} />
-              </div>
+              {/* O botão de iniciar subiu pra barra fixa no topo da tela.
+                * Aqui ele rolava junto com a lista da viagem — e some da vista
+                * assim que ele confere quem vai pegar, que é justamente o
+                * gesto que antecede a partida. */}
             </div>
 
             <ListaDaViagem bloco={bloco} />
@@ -619,36 +641,67 @@ function Pendencias({
  */
 function AcoesDeCadastro({ totalCriancas, totalEscolas, semHorario, onBroadcast, navigate }) {
   return (
-    <section className="space-y-2">
-      <Linha
-        icon={Users}
-        titulo="Minha turma"
-        contagem={totalCriancas}
-        tour="turma"
-        onClick={() => navigate('/tio/children')}
-      />
-      <Linha
-        icon={School}
-        titulo="Escolas"
-        contagem={totalEscolas}
-        onClick={() => navigate('/tio/children/escolas')}
-      />
-      <Linha
-        icon={Clock}
-        titulo="Horários"
-        aviso={semHorario > 0 ? `${semHorario} a confirmar` : null}
-        onClick={() => navigate('/tio/horarios')}
-      />
-      <Linha
-        icon={Megaphone}
-        titulo="Avisar que não tem aula"
-        onClick={onBroadcast}
-      />
-    </section>
+    <div className="space-y-4">
+      {/* CADASTRO — quem anda na perua e de onde. */}
+      <section className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+          cadastro
+        </p>
+        <Linha
+          icon={Users}
+          titulo="Minha turma"
+          contagem={totalCriancas}
+          tour="turma"
+          onClick={() => navigate('/tio/children')}
+        />
+        <Linha
+          icon={School}
+          titulo="Escolas"
+          contagem={totalEscolas}
+          onClick={() => navigate('/tio/children/escolas')}
+        />
+        {/* "Horários" não dizia que ali se edita a rota.
+          * O motorista pensa "minha rota padrão"; o app respondia com uma
+          * palavra que, pra ele, era sobre relógio. É a mesma tela — o nome é
+          * que estava falando a língua do modelo em vez da língua dele. */}
+        <Linha
+          icon={ListOrdered}
+          titulo="Editar rota padrão"
+          subtitulo="Os horários que você combinou com cada família"
+          aviso={semHorario > 0 ? `${semHorario} a confirmar` : null}
+          onClick={() => navigate('/tio/horarios')}
+        />
+      </section>
+
+      {/* AVISOS — tudo que chega na agenda das famílias, junto.
+        *
+        * "Avisar que não tem aula" ficava solto no meio do cadastro, sem nada
+        * dizendo que o recado aparece no caderno digital do responsável. Do
+        * lado do motorista pareciam duas coisas diferentes; do lado do pai
+        * chegam no mesmo lugar. Agora o grupo diz isso — e o "avisos
+        * enviados", que só existia escondido, entra aqui. */}
+      <section className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+          avisos que vão pra agenda das famílias
+        </p>
+        <Linha
+          icon={Megaphone}
+          titulo="Avisar que não tem aula"
+          subtitulo="Marca a falta e avisa quem você escolher"
+          onClick={onBroadcast}
+        />
+        <Linha
+          icon={Notebook}
+          titulo="Avisos enviados"
+          subtitulo="O que já foi pro caderno de cada família"
+          onClick={() => navigate('/tio/agenda')}
+        />
+      </section>
+    </div>
   );
 }
 
-function Linha({ icon: Icon, titulo, contagem, aviso, tour, onClick }) {
+function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, tour, onClick }) {
   return (
     <button
       type="button"
@@ -659,8 +712,15 @@ function Linha({ icon: Icon, titulo, contagem, aviso, tour, onClick }) {
       <div className="w-8 h-8 rounded-lg bg-gray-100 text-textMuted flex items-center justify-center shrink-0">
         <Icon size={16} />
       </div>
-      <span className="flex-1 min-w-0 text-sm font-semibold text-text truncate">
-        {titulo}
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-semibold text-text truncate">
+          {titulo}
+        </span>
+        {subtitulo && (
+          <span className="block text-[11px] text-textMuted truncate">
+            {subtitulo}
+          </span>
+        )}
       </span>
       {aviso ? (
         <span className="text-[11px] font-semibold text-amber-700 shrink-0">

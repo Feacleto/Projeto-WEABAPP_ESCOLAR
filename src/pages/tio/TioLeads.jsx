@@ -83,7 +83,11 @@ export default function TioLeads() {
         <div className="flex items-center justify-between gap-3 mb-2">
           <button
             type="button"
-            onClick={() => navigate('/admin')}
+            onClick={() => {
+              const temHistoria = (window.history.state?.idx ?? 0) > 0;
+              if (temHistoria) navigate(-1);
+              else navigate('/admin', { replace: true });
+            }}
             className="tap inline-flex items-center gap-1 text-sm text-textMuted -ml-1 p-1"
           >
             <ArrowLeft size={18} /> Painel do dono

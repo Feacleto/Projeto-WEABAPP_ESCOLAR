@@ -28,11 +28,20 @@ export default function Header({
   // cujo destino não está escrito: fica na tela, ou sai pela aba de baixo e
   // perde a rolagem e o filtro no caminho.
   backLabel = null,
-  // Destino explícito. `navigate(-1)` presume que existe história — e não
-  // existe quando a pessoa chegou por notificação, por link do WhatsApp ou
-  // recarregando a página. Nesses casos a seta ou não faz nada, ou joga ela
-  // pra FORA do app. Com destino declarado, voltar sempre chega em algum
-  // lugar do app.
+  // Destino de EMERGÊNCIA, não destino padrão.
+  //
+  // `navigate(-1)` presume que existe história, e ela não existe quando a
+  // pessoa chegou por notificação, link do WhatsApp ou recarregando a página:
+  // ali a seta ou não faz nada, ou joga ela pra FORA do app.
+  //
+  // MAS NAVEGAR PRO DESTINO SEMPRE É PIOR, e foi o que esta tela fez desde que
+  // o `backTo` entrou: `navigate(destino)` EMPILHA uma entrada nova. O
+  // histórico virava Início → Escolas → Início, e o botão físico do Android
+  // levava de volta pra Escolas — a pessoa apertava "voltar" e reencontrava a
+  // tela de onde tinha acabado de sair. Voltar que anda pra frente é pior que
+  // voltar que não funciona, porque ela tenta de novo.
+  //
+  // Agora o destino só entra quando não há história pra consumir.
   backTo = null,
   action = null,
   showGlobal = true,
@@ -65,7 +74,15 @@ export default function Header({
         <div className="flex items-center gap-2 min-w-0">
           {showBack && (
             <button
-              onClick={() => (backTo ? navigate(backTo) : navigate(-1))}
+              onClick={() => {
+                // `history.state.idx` é o contador do React Router: 0 (ou
+                // ausente) significa que esta é a primeira tela desta aba do
+                // navegador — não há o que consumir com `navigate(-1)`.
+                const temHistoria = (window.history.state?.idx ?? 0) > 0;
+                if (temHistoria) navigate(-1);
+                else if (backTo) navigate(backTo, { replace: true });
+                else navigate(-1);
+              }}
               aria-label={backLabel ? `Voltar para ${backLabel}` : 'Voltar'}
               className="-ml-1 py-1 pl-1 pr-1.5 tap text-textMuted inline-flex items-center gap-1 shrink-0"
             >

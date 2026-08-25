@@ -70,7 +70,13 @@ import { publicarOrdemDoDia } from '../../services/ridesService';
  * motorista perder a referência de onde ela estaria na ordem — e não dava
  * chance de perceber que a falta foi marcada por engano.
  */
-export default function OperacaoDaRota({ mostrarRodape = true }) {
+export default function OperacaoDaRota({
+  mostrarRodape = true,
+  // Dentro do Início o controle de rota é FIXO no topo da tela, acima de
+  // tudo. Renderizar o daqui também deixaria dois botões de encerrar rota na
+  // mesma tela, um deles rolando pra fora da vista.
+  mostrarControle = true,
+}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const dateKey = getDateKey();
@@ -392,7 +398,7 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
         {/* O interruptor do GPS vem primeiro. Sem ele ligado, o painel do
           * responsável diz "a rota ainda não começou" o dia inteiro — e essa
           * é a falha que o pai percebe antes de qualquer outra. */}
-        <ControleDeRota onIniciar={publicarOrdem} />
+        {mostrarControle && <ControleDeRota onIniciar={publicarOrdem} />}
 
         {loading && <Skeleton className="h-56 rounded-2xl" />}
 

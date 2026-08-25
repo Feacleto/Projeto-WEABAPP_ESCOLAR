@@ -89,6 +89,9 @@ export default function TioChildren() {
     <>
       <Header
         title="Minha turma"
+        showBack
+        backLabel="Início"
+        backTo="/tio"
         action={
           <button
             onClick={() => navigate('/tio/children/new')}
