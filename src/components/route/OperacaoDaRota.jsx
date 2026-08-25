@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Clock,
@@ -43,6 +43,7 @@ import {
 
 import { declareAbsence, ABSENCE_TYPES } from '../../services/absencesService';
 import { createCall } from '../../services/pendingCallService';
+import { playSound } from '../../services/soundService';
 import { publicarOrdemDoDia } from '../../services/ridesService';
 
 /**
@@ -86,6 +87,16 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
   const [busy, setBusy] = useState(false);
   const [confirmLote, setConfirmLote] = useState(null);
   const [marcando, setMarcando] = useState(null); // { child, tipo }
+
+  /**
+   * O som de fim de viagem toca UMA VEZ, na transição.
+   *
+   * Sem a trava ele tocaria a cada render enquanto a tela estiver concluída —
+   * e "concluída" é um estado que dura horas, até a próxima viagem. O id do
+   * bloco entra na chave porque duas viagens diferentes terminam no mesmo
+   * dia, e a segunda merece o mesmo aviso da primeira.
+   */
+  const jaCelebrou = useRef(null);
 
   // O relógio anda: sem isto a tela fica presa na viagem da manhã a tarde
   // inteira, porque `blocoDoMomento` só é recalculado quando algo muda.
@@ -198,6 +209,21 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
       lote: l,
     };
   }, [fila]);
+
+  // Toca quando a viagem VIRA concluída — e só então.
+  useEffect(() => {
+    if (!blocoAtual) return;
+    const chave = `${blocoAtual.direcao}-${blocoAtual.inicio}`;
+    const concluida = !foco && totalEfetivo > 0;
+    if (concluida && jaCelebrou.current !== chave) {
+      jaCelebrou.current = chave;
+      playSound('viagem_concluida');
+    } else if (!concluida && jaCelebrou.current === chave) {
+      // Voltou a ter pendência (o motorista desfez, ou o responsável cancelou
+      // a falta): a viagem pode terminar de novo, e merece o aviso de novo.
+      jaCelebrou.current = null;
+    }
+  }, [blocoAtual, foco, totalEfetivo]);
 
   const espera = useMemo(
     () => esperaAte(blocos, blocoAtual, new Date()),
@@ -333,7 +359,13 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
         childId: child.id,
         childName: child.name,
       });
-      toast.success(`Buzinando pra ${child.name.split(' ')[0]}…`);
+      // O som toca AQUI, no aparelho do motorista, e não é decoração: ele
+      // está parado na porta olhando pra rua. Sem esta confirmação ele volta
+      // os olhos pra tela pra saber se o toque pegou.
+      playSound('buzina');
+      toast.success(
+        `Buzinando… o celular de ${child.name.split(' ')[0]} está tocando`
+      );
     } catch (err) {
       console.error(err);
       toast.error('Não deu pra chamar. Tente o WhatsApp.');
@@ -550,6 +582,14 @@ export default function OperacaoDaRota({ mostrarRodape = true }) {
                 </span>
               )}
             </div>
+
+            {/* O QUE O BOTÃO FAZ, ESCRITO.
+              * "Buzinar" não diz onde a buzina toca. Sem esta linha o
+              * motorista testa uma vez pra descobrir — e testar significa
+              * fazer o celular de uma família tocar à toa. */}
+            <p className="text-[11px] text-textMuted text-center -mt-1">
+              Buzinar faz o celular do responsável tocar
+            </p>
 
             <div className="grid grid-cols-2 gap-2">
               <Button

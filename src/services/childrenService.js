@@ -155,6 +155,10 @@ export async function addChild(data) {
   // lista salva que precisa ser mantida em dia, é o resultado de ordenar quem
   // tem horário. Criança nova aparece na rota por existir, não por ter sido
   // inscrita — que era exatamente o passo que falhava calado.
+  // Som de "gravou". Mora no serviço e não na tela porque o mesmo fato é
+  // disparado de mais de um lugar — e um som que só toca em metade dos
+  // caminhos ensina que o silêncio às vezes também é sucesso.
+  playSound('salvo');
   return { id: docRef.id, inviteCode };
 }
 
@@ -177,6 +181,7 @@ export async function updateChild(id, data) {
   if (updates.monthlyFee != null) updates.monthlyFee = Number(updates.monthlyFee);
   if (updates.dueDay != null) updates.dueDay = clampDueDay(updates.dueDay);
   await updateDoc(doc(db, 'children', id), updates);
+  playSound('salvo');
 }
 
 /**

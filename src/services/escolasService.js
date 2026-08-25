@@ -12,6 +12,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import { playSound } from './soundService';
 
 // A parte pura da migração mora em utils pra poder ser testada sem Firebase.
 export { chaveDoNome, proporEscolasDasCriancas } from '../utils/nomeEscola';
@@ -69,6 +70,10 @@ export async function addEscola(data) {
     ativa: true,
     createdAt: serverTimestamp(),
   });
+  // Som de "gravou". Mora no serviço e não na tela porque o mesmo fato é
+  // disparado de mais de um lugar — e um som que só toca em metade dos
+  // caminhos ensina que o silêncio às vezes também é sucesso.
+  playSound('salvo');
   return ref.id;
 }
 
@@ -86,6 +91,7 @@ export async function updateEscola(id, data) {
   // o cliente não tentar.
   delete updates.adminUid;
   await updateDoc(doc(db, 'schools', id), updates);
+  playSound('salvo');
 }
 
 /**

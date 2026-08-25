@@ -226,7 +226,13 @@ export async function advanceMany(moves, context = null) {
     }
     await batch.commit();
   }
-  playSound('status_change');
+  // Som PRÓPRIO do lote, e não o mesmo do toque individual.
+  //
+  // Marcar cinco de uma vez soava exatamente igual a marcar uma. Com o
+  // veículo em movimento ele não tinha como distinguir "peguei a Ana" de
+  // "peguei todas" sem conferir a lista — e conferir lista dirigindo é o que
+  // esta tela existe pra evitar.
+  playSound('lote');
   return valid.length;
 }
 

@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { ABSENCE_TYPES } from './absencesService';
+import { playSound } from './soundService';
 // A parte pura (intervalo, dias úteis, rótulos) mora em utils pra poder ser
 // testada sem Firebase — e é ela que decide em que dia a ausência é gravada.
 import { diasUteis, rotuloDoPeriodo } from '../utils/intervaloDeDias';
@@ -145,6 +146,11 @@ export async function createSchoolBroadcast({
     for (const aplicar of ops.slice(i, i + CHUNK)) aplicar(batch);
     await batch.commit();
   }
+
+  // Som de "gravou". Mora no serviço e não na tela porque o mesmo fato é
+  // disparado de mais de um lugar — e um som que só toca em metade dos
+  // caminhos ensina que o silêncio às vezes também é sucesso.
+  playSound('salvo');
 
   return {
     broadcastId: broadcastRef.id,

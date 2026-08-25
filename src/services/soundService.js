@@ -37,6 +37,27 @@ const SOUNDS = {
   christmas: 'natal.mp3',
   // Som de virada de folha — caderno animado da agenda (pai)
   page_turn: 'folhaagenda.mp3',
+
+  // A BUZINA, no celular DELE.
+  //
+  // Não confundir com `ringtone.mp3`: aquele toca em loop no celular do
+  // RESPONSÁVEL quando a chamada chega. Este é a confirmação que o motorista
+  // ouve ao tocar no botão — sem ela ele fica olhando a tela pra saber se
+  // saiu, e olhar a tela é o que ele não pode fazer parado na porta.
+  buzina: 'universfield-car-horn-153261.mp3',
+
+  // Lote: mais cheio que o `status_change` de propósito. Marcar cinco de uma
+  // vez tocava exatamente o mesmo som que marcar uma — ele não tinha como
+  // distinguir sem conferir a lista, e conferir lista dirigindo é o que a
+  // tela existe pra evitar.
+  lote: 'liecio-menu_beep_ploc-533786.mp3',
+
+  // Fim da viagem. Encerramento próprio: é o momento em que ele decide se
+  // desliga o GPS, e antes disso soava igual a mais uma criança marcada.
+  viagem_concluida: 'soundshelfstudio-ui-mission-complete-chime-527522.mp3',
+
+  // Salvo, enviado, cadastrado.
+  salvo: 'soundshelfstudio-ui-swipe-confirm-522221.mp3',
 };
 
 // Volumes padrão por som — calibrados pra idosos (não muito alto)
@@ -55,6 +76,13 @@ const DEFAULT_VOLUMES = {
   easter: 0.5,
   christmas: 0.55,
   page_turn: 0.55,
+  // A buzina é a mais alta do app de propósito: ela toca com o motor ligado,
+  // vidro aberto e rua no fundo. Ainda assim abaixo de 1 — som que estoura
+  // vira som que o motorista desliga.
+  buzina: 0.75,
+  lote: 0.5,
+  viagem_concluida: 0.55,
+  salvo: 0.45,
 };
 
 /**

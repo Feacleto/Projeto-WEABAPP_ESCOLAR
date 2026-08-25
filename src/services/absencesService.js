@@ -11,6 +11,7 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { playSound } from './soundService';
 
 /**
  * Ausências declaradas — coleção separada de `dailyRoutes` pra deixar as rules
@@ -91,6 +92,10 @@ export async function declareAbsence({
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  // Som de "gravou". Mora no serviço e não na tela porque o mesmo fato é
+  // disparado de mais de um lugar — e um som que só toca em metade dos
+  // caminhos ensina que o silêncio às vezes também é sucesso.
+  playSound('salvo');
   return id;
 }
 
