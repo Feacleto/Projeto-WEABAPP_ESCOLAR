@@ -8,9 +8,6 @@ import {
   Bell,
   HelpCircle,
   ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
   Map as MapIcon,
   CircleAlert,
   CheckCircle2,
@@ -45,7 +42,7 @@ import { haversineDistance } from '../../utils/haversine';
 import { describeRoutePresence, PRESENCE } from '../../utils/routePresence';
 import { formatCurrency } from '../../utils/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
-import { ABSENCE_LABELS } from '../../services/absencesService';
+import { ABSENCE_LABELS, ABSENCE_TYPES } from '../../services/absencesService';
 import { getDateKey } from '../../services/horariosService';
 import { playSound } from '../../services/soundService';
 import { greet } from '../../utils/greeting';
@@ -115,7 +112,6 @@ export default function PaiDashboard() {
   const [fichaAberta, setFichaAberta] = useState(false);
   const [absenceOpen, setAbsenceOpen] = useState(false);
   const [altPickupOpen, setAltPickupOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const home =
     child?.lat && child?.lng ? { lat: child.lat, lng: child.lng } : null;
@@ -221,6 +217,31 @@ export default function PaiDashboard() {
   }
 
   const firstName = profile?.name?.split(' ')[0] || '';
+
+  /**
+   * QUAL DAS TRÊS CARAS — o espelho da home do motorista.
+   *
+   * A home do responsável empilhava dez blocos: herói, horários, tracker,
+   * falta, quem busca, presença, pagamento, contagem de faltas, convite pra
+   * avaliar e a gaveta "Mais opções". Todos ao mesmo tempo, o dia inteiro — e
+   * a pergunta dele muda três vezes por dia.
+   *
+   *   ESPERANDO    — a perua não saiu. "Que horas eu preciso estar na porta?"
+   *   ACOMPANHANDO — ela está andando, ou o filho está dentro dela.
+   *                  "Onde ele está agora?"
+   *   ENCERRADO    — chegou, ou não vai hoje. "Está tudo certo?" — e aí sim
+   *                  cabe falar de mensalidade, histórico e avaliação.
+   *
+   * A ordem das perguntas importa: ter chegado em casa vence estar em rota,
+   * porque a perua continua rodando pra outras famílias depois de entregar
+   * esta — e pra este pai o dia já acabou.
+   */
+  const estadoDoDia =
+    status === 'delivered' || absence?.type === ABSENCE_TYPES.FULL
+      ? 'encerrado'
+      : routeActive || status === 'onboard'
+      ? 'acompanhando'
+      : 'esperando';
   const childFirstName = child.name?.split(' ')[0] || 'Aluno';
   const status = getEffectiveStatus(child);
   const phrase = statusPhrase(status, routeActive, new Date().getHours());
@@ -237,16 +258,19 @@ export default function PaiDashboard() {
           * igual a antes. */}
         <ChildSwitcher />
 
-        {/* Saudação simples — bolinha festiva separada ao lado */}
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
-            {greet(new Date(), admin?.greetingHours)}, {firstName}!
-          </h1>
-          <FestiveBadge />
-        </div>
+        {/* Saudação — some enquanto a perua está andando: ali o topo da tela
+          * é caro demais pra gastar com cortesia. */}
+        {estadoDoDia !== 'acompanhando' && (
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
+              {greet(new Date(), admin?.greetingHours)}, {firstName}!
+            </h1>
+            <FestiveBadge />
+          </div>
+        )}
 
-        {/* HERO ÚNICO — frase humana */}
-        {/* data-tour: âncora que o tutorial guiado ilumina */}
+        {/* HERO — em todos os estados. É a âncora do tutorial e o lugar onde
+          * o responsável olha primeiro, aconteça o que acontecer. */}
         <div data-tour="hero">
           <ChildHero
             child={child}
@@ -256,38 +280,46 @@ export default function PaiDashboard() {
           />
         </div>
 
-        {/* Os dois horários combinados com o motorista. Fica acima do
-          * tracker porque responde a pergunta que traz o pai até aqui —
-          * "que horas eu preciso estar na porta?" — e o tracker responde a
-          * seguinte, que é "e onde ele está agora?". */}
-        <HorarioDoDia child={child} absence={absence} ride={ride} />
+        {/* ───────── ESPERANDO — "que horas eu preciso estar na porta?" ───────── */}
+        {estadoDoDia === 'esperando' && (
+          <>
+            {/* O horário combinado vem antes de tudo: é a pergunta que traz
+              * o responsável até aqui. */}
+            <HorarioDoDia child={child} absence={absence} ride={ride} />
 
-        {/* Tracker visual estilo "rastreio de pedido" */}
-        <RouteTracker status={status} ride={ride} />
+            <div data-tour="absence">
+              {absence ? (
+                <AbsenceStatus
+                  absence={absence}
+                  onClick={() => setAbsenceOpen(true)}
+                />
+              ) : (
+                <AbsenceCTA
+                  childFirstName={childFirstName}
+                  onClick={() => setAbsenceOpen(true)}
+                />
+              )}
+            </div>
 
-        {/* Ausência declarada / botão de informar */}
-        <div data-tour="absence">
-          {absence ? (
-            <AbsenceStatus
-              absence={absence}
-              onClick={() => setAbsenceOpen(true)}
+            <AltPickupCTA
+              pickup={altPickup}
+              onClick={() => setAltPickupOpen(true)}
             />
-          ) : (
-            <AbsenceCTA
-              childFirstName={childFirstName}
-              onClick={() => setAbsenceOpen(true)}
-            />
-          )}
-        </div>
+          </>
+        )}
 
-        {/* Quem busca hoje */}
-        <AltPickupCTA
-          pickup={altPickup}
-          onClick={() => setAltPickupOpen(true)}
-        />
+        {/* ───────── ACOMPANHANDO — "onde ele está agora?" ───────── */}
+        {estadoDoDia === 'acompanhando' && (
+          <>
+            <RouteTracker status={status} ride={ride} />
+            <HorarioDoDia child={child} absence={absence} ride={ride} />
+          </>
+        )}
 
-        {/* Tracking — quando rota tá ativa mostra status dinâmico. Quando
-          * não tá, um botão simples permite abrir o mapa mesmo assim. */}
+        {/* O painel da perua fica nos TRÊS estados — é o que mantém a âncora
+          * `map` do tutorial sempre presente, e a frase dele é honesta em
+          * qualquer um deles: "ainda não começou", "chega em uns X minutos",
+          * "sem posição do motorista". */}
         <div data-tour="map">
           <PresencePanel
             presence={presence}
@@ -295,51 +327,77 @@ export default function PaiDashboard() {
           />
         </div>
 
-        {/* Pagamento — só se houver pendente */}
-        {nextPayment && (
+        {/* Falar com o motorista — direto, fora de gaveta.
+          * É o que ele procura quando alguma coisa fugiu do combinado, e
+          * procurar dentro de "Mais opções" com a criança na porta é o
+          * momento errado pra explorar menu. */}
+        <button
+          type="button"
+          onClick={() => {
+            if (whatsappUrl) window.open(whatsappUrl, '_blank');
+            else toast('Telefone do motorista não cadastrado.');
+          }}
+          disabled={!whatsappUrl}
+          className="tap w-full bg-card border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-3 disabled:opacity-50"
+        >
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+            <MessageCircle size={17} />
+          </div>
+          <span className="flex-1 min-w-0 text-left">
+            <span className="block text-sm font-semibold text-text">
+              Falar com o motorista
+            </span>
+            <span className="block text-[11px] text-textMuted">
+              {whatsappUrl ? 'Abre o WhatsApp' : 'Telefone não cadastrado'}
+            </span>
+          </span>
+          <ChevronRight size={17} className="text-textMuted shrink-0" />
+        </button>
+
+        {/* Pagamento pendente aparece já na espera: é a única pendência que
+          * não deve esperar o fim do dia pra ser vista. */}
+        {estadoDoDia === 'esperando' && nextPayment && (
           <PaymentBanner
             payment={nextPayment}
             onClick={() => navigate('/pai/finance')}
           />
         )}
 
-        {/* Contagem de faltas — só aparece se há histórico */}
-        {absenceHistory.length > 0 && (
-          <AbsenceCounts history={absenceHistory} />
-        )}
+        {/* ───────── ENCERRADO — o dia acabou, dá pra tratar do resto ───────── */}
+        {estadoDoDia === 'encerrado' && (
+          <>
+            <RouteTracker status={status} ride={ride} />
 
-        {/* Convite pra avaliar — a resposta do responsável não vai pra home,
-          * vira métrica: é o único jeito de saber se o app serve a ponta que
-          * não paga pela ferramenta. */}
-        <ReviewNudge />
-
-        {/* Mais opções */}
-        <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
-          <button
-            onClick={() => setMoreOpen((v) => !v)}
-            className="tap w-full p-4 flex items-center gap-2 text-text font-semibold"
-          >
-            <Sparkles size={18} className="text-primary" />
-            <span className="flex-1 text-left">Mais opções</span>
-            {moreOpen ? (
-              <ChevronUp size={18} className="text-textMuted" />
-            ) : (
-              <ChevronDown size={18} className="text-textMuted" />
+            {absence && (
+              <div data-tour="absence">
+                <AbsenceStatus
+                  absence={absence}
+                  onClick={() => setAbsenceOpen(true)}
+                />
+              </div>
             )}
-          </button>
 
-          {moreOpen && (
-            <div className="border-t border-gray-100 divide-y divide-gray-100">
-              <OptionRow
-                icon={MessageCircle}
-                title="Falar com o Tio"
-                subtitle={whatsappUrl ? 'WhatsApp' : 'Telefone não cadastrado'}
-                onClick={() => {
-                  if (whatsappUrl) window.open(whatsappUrl, '_blank');
-                  else toast('Telefone do motorista não cadastrado.');
-                }}
-                disabled={!whatsappUrl}
+            {nextPayment && (
+              <PaymentBanner
+                payment={nextPayment}
+                onClick={() => navigate('/pai/finance')}
               />
+            )}
+
+            {absenceHistory.length > 0 && (
+              <AbsenceCounts history={absenceHistory} />
+            )}
+
+            {/* Convite pra avaliar — a resposta não vai pra home, vira
+              * métrica: é o único jeito de saber se o app serve a ponta que
+              * não paga pela ferramenta. Fica no estado calmo, que é quando
+              * ele tem paciência pra responder. */}
+            <ReviewNudge />
+
+            {/* A gaveta "Mais opções" saiu. Ela escondia quatro linhas atrás
+              * de um toque, e gaveta esconde justamente de quem tem medo de
+              * procurar. */}
+            <div className="bg-card rounded-3xl shadow-sm overflow-hidden divide-y divide-gray-100">
               <OptionRow
                 icon={Calendar}
                 title="Histórico de pagamentos"
@@ -358,8 +416,8 @@ export default function PaiDashboard() {
                 onClick={() => openTutorial?.()}
               />
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Caderno digital — botão flutuante na tela inicial do Pai */}
