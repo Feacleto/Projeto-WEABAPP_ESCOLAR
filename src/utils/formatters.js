@@ -1,5 +1,29 @@
 // Formatadores e constantes de exibição em formato brasileiro.
 
+/**
+ * O primeiro nome — a forma como o app chama as pessoas.
+ *
+ * Estava reinventado em 40 lugares, com dois problemas.
+ *
+ * O primeiro é visível: `.split(' ')[0]` sem fallback renderiza literalmente
+ * `undefined` quando o nome falta — acontecia na lista de aniversariantes e
+ * no toast do aviso da agenda.
+ *
+ * O segundo é de voz: os fallbacks divergiam entre 'Aluno', 'a criança',
+ * 'seu filho', 'Criança', 'A criança', 'Você', 'Tio' e ''. Num app que
+ * escolhe cada palavra com cuidado, a mesma ausência de nome aparecia de oito
+ * jeitos. O fallback é parâmetro porque ele DEPENDE do lugar: numa lista de
+ * crianças 'a criança' cabe, num cumprimento não.
+ *
+ * `split(/s+/)` com `trim()` e não `split(' ')`: nome com espaço à esquerda
+ * ou espaço duplo devolvia string vazia na versão ingênua.
+ */
+export function primeiroNome(nome, fallback = '') {
+  const limpo = String(nome ?? '').trim();
+  if (!limpo) return fallback;
+  return limpo.split(/\s+/)[0] || fallback;
+}
+
 export function formatCurrency(value) {
   if (value == null || isNaN(value)) return '—';
   return new Intl.NumberFormat('pt-BR', {

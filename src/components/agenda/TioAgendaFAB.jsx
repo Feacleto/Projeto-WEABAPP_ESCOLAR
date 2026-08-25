@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { chaveDoNome } from '../../utils/nomeEscola';
+import { primeiroNome } from '../../utils/formatters';
 import { useNavigate } from 'react-router-dom';
 import {
   Notebook,
@@ -72,18 +74,25 @@ function AgendaSheet({ onClose }) {
 
   // Escolas únicas vindas das crianças cadastradas — pro Tio escolher.
   const schools = useMemo(() => {
+    // AGRUPA PELA CHAVE NORMALIZADA, não pelo nome digitado.
+    //
+    // `c.school?.trim()` como chave é o mesmo bug que motivou a coleção de
+    // escolas existir: "E.M. Rui Barbosa" numa criança e "EM Rui Barbosa" na
+    // outra viram dois grupos, e o aviso alcança metade da turma. A correção
+    // foi feita no aviso em massa e não chegou até aqui.
     const map = new Map();
     for (const c of children) {
       const name = c.school?.trim();
       if (!name) continue;
-      const entry = map.get(name) || { name, schoolId: c.schoolId || null, children: [] };
+      const chave = chaveDoNome(name);
+      const entry = map.get(chave) || { name, schoolId: c.schoolId || null, children: [] };
       if (!entry.schoolId && c.schoolId) entry.schoolId = c.schoolId;
       entry.children.push({
         id: c.id,
         name: c.name,
         parentUid: c.parentUid || null,
       });
-      map.set(name, entry);
+      map.set(chave, entry);
     }
     return Array.from(map.values()).sort((a, b) =>
       a.name.localeCompare(b.name, 'pt-BR')
@@ -134,7 +143,7 @@ function AgendaSheet({ onClose }) {
           message,
           eventDate: eventDate || null,
         });
-        toast.success(`Aviso enviado pra ${selectedChild.name?.split(' ')[0]}!`);
+        toast.success(`Aviso enviado pra ${primeiroNome(selectedChild.name, 'a família')}!`);
       } else {
         await createSchoolEntry({
           adminUid: user?.uid,

@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { primeiroNome } from '../../utils/formatters';
 import { PartyPopper, X } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import { playSound } from '../../services/soundService';
@@ -164,7 +165,7 @@ function AdminMessage({ childrenList }) {
       <ul className="text-sm text-text space-y-0.5">
         {childrenList.map((c) => (
           <li key={c.id}>
-            <span className="font-semibold">{c.name?.split(' ')[0]}</span>
+            <span className="font-semibold">{primeiroNome(c.name, 'A criança')}</span>
             <span className="text-textMuted"> — {c.name}</span>
           </li>
         ))}

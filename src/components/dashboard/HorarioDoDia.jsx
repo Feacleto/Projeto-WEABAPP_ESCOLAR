@@ -1,6 +1,7 @@
 import { Bus, Home, CircleAlert, UserCheck } from 'lucide-react';
 import { horariosCombinados, horaCurta } from '../../services/horariosService';
 import { ABSENCE_TYPES } from '../../services/absencesService';
+import { primeiroNome } from '../../utils/formatters';
 
 /**
  * "Hoje" — os dois horários que o responsável abre o app pra ver.
@@ -97,9 +98,17 @@ export default function HorarioDoDia({ child, absence, ride = null }) {
       {!presumido && (ride?.ordemIda || ride?.ordemVolta) && (
         <div className="px-5 pb-4 -mt-1">
           <p className="text-xs text-textMuted bg-gray-50 rounded-xl px-3 py-2 leading-relaxed">
+            {/* A HORA, NÃO O PERÍODO DO DIA.
+              * Dizia "De manhã" e "Na volta" — herança dos seis turnos, que
+              * morreram. O ordinal é por VIAGEM, então a mãe do Theo, pego às
+              * 12h20, lia "De manhã, Theo é a 1ª parada de 2" — e a mãe da Ana,
+              * pega às 6h20, lia "1ª parada" também, com outro total. Dois pais
+              * lendo o mesmo número sobre viagens diferentes.
+              * A hora combinada já está no doc; é ela que identifica a viagem. */}
             {ride.ordemIda ? (
               <>
-                De manhã, {child.name?.split(' ')[0] || 'seu filho'} é a{' '}
+                {ride.combinado?.ida ? `Na ida das ${horaCurta(ride.combinado.ida)}` : 'Na ida'},{' '}
+                {primeiroNome(child.name, 'seu filho')} é a{' '}
                 <b className="text-text">{ride.ordemIda}ª parada</b> de{' '}
                 {ride.totalIda}.
               </>
@@ -107,8 +116,10 @@ export default function HorarioDoDia({ child, absence, ride = null }) {
             {ride.ordemIda && ride.ordemVolta ? ' ' : null}
             {ride.ordemVolta ? (
               <>
-                Na volta, a{' '}
-                <b className="text-text">{ride.ordemVolta}ª</b> de{' '}
+                {ride.combinado?.volta
+                  ? `Na volta das ${horaCurta(ride.combinado.volta)}`
+                  : 'Na volta'}
+                , a <b className="text-text">{ride.ordemVolta}ª</b> de{' '}
                 {ride.totalVolta}.
               </>
             ) : null}

@@ -21,7 +21,14 @@ import {
   avisosDeTempo, proporCascata,
 } from '../src/services/horariosService.js';
 import { chaveDoNome, proporEscolasDasCriancas } from '../src/utils/nomeEscola.js';
-import { diasUteis, rotuloDoPeriodo, parseDia, MAX_DIAS } from '../src/utils/intervaloDeDias.js';
+import {
+  diasUteis,
+  rotuloDoPeriodo,
+  parseDia,
+  MAX_DIAS,
+  truncouIntervalo,
+} from '../src/utils/intervaloDeDias.js';
+import { primeiroNome } from '../src/utils/formatters.js';
 
 let ok = 0;
 let fail = 0;
@@ -529,6 +536,37 @@ t('o rótulo é legível em cada tamanho de intervalo', () => {
 });
 
 // ─────────────────────────── relatório ───────────────────────────
+// ────────────────── 10. o texto que chega no usuário ──────────────────
+sec('10. O texto que chega no usuário');
+
+t('o intervalo truncado se declara — a tela dizia que rejeitava', () => {
+  // Errar o ano no seletor (01/01 a 31/12) mostrava "31 dias úteis · de 01/01
+  // a 12/02", com o botão habilitado. A mensagem de erro da tela só aparecia
+  // com a lista VAZIA, o que num intervalo longo demais nunca acontece.
+  const ano = diasUteis('2026-01-01', '2026-12-31');
+  eq(ano.length, MAX_DIAS, 'trunca no teto');
+  assert(
+    truncouIntervalo(ano, '2026-12-31'),
+    'sem isto ele grava 31 faltas sem saber que o resto ficou de fora'
+  );
+});
+
+t('intervalo que coube inteiro não se declara truncado', () => {
+  const semana = diasUteis('2026-08-24', '2026-08-28');
+  eq(semana.length, 5);
+  assert(!truncouIntervalo(semana, '2026-08-28'), 'nada foi cortado');
+});
+
+t('primeiro nome não renderiza undefined na tela', () => {
+  // Dois lugares faziam `.split(' ')[0]` sem fallback e mostravam
+  // literalmente "undefined": a lista de aniversariantes e o toast da agenda.
+  eq(primeiroNome(undefined, 'A criança'), 'A criança');
+  eq(primeiroNome(null, 'a família'), 'a família');
+  eq(primeiroNome('', 'seu filho'), 'seu filho');
+  eq(primeiroNome('  Ana   Maria Souza '), 'Ana', 'espaço à esquerda e duplo');
+  eq(primeiroNome('Beto'), 'Beto');
+});
+
 console.log('\n' + '─'.repeat(66));
 console.log(`\x1b[1m${ok} passaram, ${fail} falharam\x1b[0m`);
 if (fail) {

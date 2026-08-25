@@ -7,7 +7,9 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   createSchoolBroadcast,
   diasUteis,
+  truncouIntervalo,
   rotuloDoPeriodo,
+  rotuloDoDia,
   MAX_DIAS,
 } from '../../services/broadcastService';
 import { getDateKey } from '../../services/horariosService';
@@ -74,6 +76,10 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
   }, [escolaId]);
 
   const dias = useMemo(() => diasUteis(de, ate || de), [de, ate]);
+  // O teto de 31 dias TRUNCA em silêncio. Sem esta linha, errar o ano no
+  // seletor mostrava "31 dias úteis · de 01/01 a 12/02", com o botão
+  // habilitado — e gravava 31 faltas que ninguém pediu.
+  const truncado = useMemo(() => truncouIntervalo(dias, ate || de), [dias, ate, de]);
   const alcancadas = useMemo(
     () => (escolhida?.criancas || []).filter((c) => !desmarcadas.has(c.id)),
     [escolhida, desmarcadas]
@@ -241,6 +247,12 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
               </label>
             </div>
 
+            {truncado && (
+              <p className="text-[11px] text-warning mt-2">
+                O intervalo passa de {MAX_DIAS} dias. Vamos gravar só até{' '}
+                {rotuloDoDia(dias[dias.length - 1])} — o resto fica de fora.
+              </p>
+            )}
             {dias.length > 0 ? (
               <p className="text-[11px] text-textMuted mt-2">
                 {dias.length === 1

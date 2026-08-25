@@ -47,12 +47,33 @@ export function diasUteis(de, ate) {
 
   const dias = [];
   const cursor = new Date(inicio);
+  // O teto TRUNCA, e quem chama precisa saber disso.
+  //
+  // A tela dizia "Esse intervalo não tem dia útil (ou passa de 31 dias)", mas
+  // esse ramo só roda quando a lista vem VAZIA — o que nunca acontece num
+  // intervalo longo demais. Errando o ano no seletor (01/01 a 31/12), o
+  // motorista via "31 dias úteis · de 01/01 a 12/02", com o botão habilitado,
+  // e gravava 31 faltas que não pediu. `truncado` deixa a tela dizer a
+  // verdade em vez de a lista mentir por omissão.
   while (cursor <= fim && dias.length < MAX_DIAS) {
     const dow = cursor.getDay();
     if (dow !== 0 && dow !== 6) dias.push(chaveDoDia(cursor));
     cursor.setDate(cursor.getDate() + 1);
   }
   return dias;
+}
+
+/**
+ * O intervalo pedido não coube inteiro?
+ *
+ * `diasUteis` para no teto e devolve a lista curta, sem dizer nada. Quem
+ * mostra o resultado precisa saber a diferença entre "são 31 dias" e "são os
+ * 31 primeiros de um pedido bem maior" — a segunda frase é a que evita o
+ * motorista gravar um mês de faltas achando que gravou um ano.
+ */
+export function truncouIntervalo(dias, fimChave) {
+  if (!dias?.length || !fimChave) return false;
+  return dias.length >= MAX_DIAS && dias[dias.length - 1] < fimChave;
 }
 
 export function rotuloDoDia(chave) {
