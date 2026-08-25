@@ -100,6 +100,9 @@ export default function Profile() {
   };
 
   const onDeleteAccount = async () => {
+    // Lido AGORA, antes de qualquer coisa: `deleteUser` derruba a sessão e
+    // `profile` vira null no meio do caminho.
+    const destinoDaExclusao = destinoAposSair(profile?.role);
     setDeleting(true);
     try {
       if (isAdmin) {
@@ -112,8 +115,13 @@ export default function Profile() {
         });
         toast.success('Conta excluída.');
       }
-      // signOut implícito via deleteUser — apenas redireciona
-      navigate('/', { replace: true });
+      // signOut implícito via deleteUser — só falta escolher a porta.
+      //
+      // Era `/` pros dois papéis. Quem encerra operação é motorista e volta
+      // pra vitrine, certo; mas o responsável que exclui a conta também caía
+      // lá. O papel tem que ser lido ANTES, porque `deleteUser` já apagou a
+      // sessão quando chegamos aqui.
+      navigate(destinoDaExclusao, { replace: true });
     } catch (err) {
       console.error('Erro ao excluir conta:', err);
       if (isRecentLoginRequired(err)) {

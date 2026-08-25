@@ -16,7 +16,7 @@ import { painelDe } from '../utils/papeis';
 import Logo from '../components/common/Logo';
 import Spinner from '../components/common/Spinner';
 import LoginSheet from '../components/landing/LoginSheet';
-import { FRENTE_FAMILIA } from '../utils/frentes';
+import { FRENTE_FAMILIA, lembrarFrente } from '../utils/frentes';
 
 /**
  * A PORTA DA FAMÍLIA — a home do responsável.
@@ -96,6 +96,16 @@ export default function Familia() {
   // Quem já tem sessão não precisa de porta — vai direto pro painel dele.
   // Inclui o motorista que caiu aqui por engano: ele vai pro /tio, não fica
   // lendo uma página escrita pra outra pessoa.
+  // ESTA É A PORTA DELE — e o atalho instalado precisa saber disso.
+  //
+  // O manifesto do PWA tem um `start_url` só, `/`. O responsável instala daqui
+  // e o atalho abre na página que vende associação: com sessão a home o
+  // reencaminha, sem sessão ele fica lá. Registrar a porta na chegada resolve
+  // o caso sem classificar ninguém — `/` continua sendo `/` pra quem digitar.
+  useEffect(() => {
+    lembrarFrente(FRENTE_FAMILIA);
+  }, []);
+
   useEffect(() => {
     if (!loading && profile?.role) {
       navigate(painelDe(profile), { replace: true });

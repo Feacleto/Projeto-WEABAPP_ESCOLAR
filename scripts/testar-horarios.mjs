@@ -29,6 +29,13 @@ import {
   truncouIntervalo,
 } from '../src/utils/intervaloDeDias.js';
 import { primeiroNome } from '../src/utils/formatters.js';
+import {
+  frenteDoCaminho,
+  portaDaFrente,
+  estadoDaFrente,
+  destinoAposSair,
+  FRENTE_FAMILIA,
+} from '../src/utils/frentes.js';
 
 let ok = 0;
 let fail = 0;
@@ -578,6 +585,50 @@ t('primeiro nome não renderiza undefined na tela', () => {
   eq(primeiroNome('', 'seu filho'), 'seu filho');
   eq(primeiroNome('  Ana   Maria Souza '), 'Ana', 'espaço à esquerda e duplo');
   eq(primeiroNome('Beto'), 'Beto');
+});
+
+// ────────────────── 11. as duas frentes ──────────────────
+sec('11. As duas portas — o pai não pode cair na do motorista');
+
+t('o caminho denuncia a frente quando o perfil já não existe', () => {
+  // É o caso que mais acontece: sessão expirada. `profile` é null e o guarda
+  // de rota só tem a URL na mão.
+  eq(frenteDoCaminho('/pai/finance'), FRENTE_FAMILIA);
+  eq(frenteDoCaminho('/pai'), FRENTE_FAMILIA);
+  eq(frenteDoCaminho('/convite/ABC123'), FRENTE_FAMILIA);
+  eq(frenteDoCaminho('/familia'), FRENTE_FAMILIA);
+});
+
+t('caminho do motorista e desconhecido não viram frente de família', () => {
+  eq(frenteDoCaminho('/tio/route'), null);
+  eq(frenteDoCaminho('/admin'), null);
+  eq(frenteDoCaminho('/'), null);
+  eq(frenteDoCaminho(''), null);
+  eq(frenteDoCaminho(undefined), null);
+});
+
+t('prefixo parecido não conta como área da família', () => {
+  // `/paiol` e `/familiares` começam com as mesmas letras e não são do pai.
+  // Sem a checagem de limite, `startsWith` mandaria as duas pra `/familia`.
+  eq(frenteDoCaminho('/paiol'), null);
+  eq(frenteDoCaminho('/familiares'), null);
+});
+
+t('cada frente tem a sua porta, e a ausência de frente é a do motorista', () => {
+  eq(portaDaFrente(FRENTE_FAMILIA), '/familia');
+  eq(portaDaFrente(null), '/');
+});
+
+t('o estado de navegação só carrega a frente quando ela existe', () => {
+  eq(estadoDaFrente(FRENTE_FAMILIA), { frente: FRENTE_FAMILIA });
+  eq(estadoDaFrente(null), {});
+});
+
+t('sair da conta devolve cada um à sua porta', () => {
+  eq(destinoAposSair('parent'), '/familia');
+  eq(destinoAposSair('admin'), '/');
+  eq(destinoAposSair('owner'), '/');
+  eq(destinoAposSair(undefined), '/', 'sem papel, a apresentação da plataforma');
 });
 
 console.log('\n' + '─'.repeat(66));

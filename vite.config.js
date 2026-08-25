@@ -64,7 +64,18 @@ export default defineConfig(({ mode }) => {
         background_color: '#EEF1EF',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        // `?atalho=1` É O QUE DISTINGUE O ATALHO DA URL DIGITADA.
+        //
+        // O manifesto é um só pro app inteiro, então `start_url` não pode
+        // variar por pessoa. Mas pode CARREGAR UM SINAL: quem chega com este
+        // parâmetro abriu pelo ícone instalado, e só nesse caso a home
+        // consulta a última porta usada pra decidir onde abrir.
+        //
+        // Sem essa distinção, um motorista que visitasse `/familia` uma vez
+        // por curiosidade passaria a ser devolvido pra lá toda vez que
+        // digitasse `/` — o app decidindo por ele, que é exatamente o que a
+        // marca de aparelho fazia de errado.
+        start_url: '/?atalho=1',
         scope: '/',
         lang: 'pt-BR',
         // 'any' e 'maskable' em arquivos SEPARADOS: o maskable tem folga

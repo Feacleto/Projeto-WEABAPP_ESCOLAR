@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { destinoAposSair } from '../../utils/frentes';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, LogOut, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -81,8 +82,11 @@ export default function ContractAcceptanceGate() {
           <Button
             variant="secondary"
             onClick={async () => {
+              // Este gate é SÓ do responsável, e ia pra `/` fixo: quem
+              // desistia aqui caía na página que vende associação.
+              const destino = destinoAposSair(profile?.role);
               await logout();
-              navigate('/', { replace: true });
+              navigate(destino, { replace: true });
             }}
             className="mt-4"
           >
@@ -135,8 +139,10 @@ export default function ContractAcceptanceGate() {
   const onReject = async () => {
     setRejecting(true);
     try {
+      // O papel ANTES do logout: depois dele o perfil é null.
+      const destino = destinoAposSair(profile?.role);
       await logout();
-      navigate('/', { replace: true });
+      navigate(destino, { replace: true });
     } catch (err) {
       console.error(err);
       setRejecting(false);

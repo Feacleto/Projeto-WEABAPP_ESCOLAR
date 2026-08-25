@@ -8,7 +8,7 @@ import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
-import { veioDaFamilia } from '../utils/frentes';
+import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../utils/frentes';
 import {
   resetPassword,
   loginWithGoogleExistingOnly,
@@ -26,7 +26,15 @@ export default function Login() {
   // responsável e motorista, e marcar o celular travaria ela no último
   // papel usado. Sem contexto, o padrão é a frente do motorista — quem
   // chega sem histórico está conhecendo a plataforma.
-  const daFamilia = veioDaFamilia(location);
+  // A frente vem de duas fontes, e as duas importam.
+  //
+  // `veioDaFamilia` cobre quem clicou em Entrar na `/familia`. Mas quem
+  // chega por sessão expirada não clicou em nada: foi empurrado pra cá pelo
+  // guarda de rota, e o que ele traz é o `from`. Sem a segunda leitura, todo
+  // responsável que voltasse depois do prazo via as portas do motorista.
+  const daFamilia =
+    veioDaFamilia(location) ||
+    frenteDoCaminho(location?.state?.from) === FRENTE_FAMILIA;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

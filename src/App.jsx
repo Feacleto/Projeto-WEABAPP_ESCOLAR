@@ -78,6 +78,12 @@ import Spinner from './components/common/Spinner';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
 import { painelDe, ehDono, ehAguardando } from './utils/papeis';
+import {
+  frenteDoCaminho,
+  estadoDaFrente,
+  portaDaFrente,
+  frenteLembrada,
+} from './utils/frentes';
 
 function FullScreenLoader() {
   return (
@@ -93,13 +99,54 @@ function FullScreenLoader() {
  *   - Autenticado mas com role errado → painel correto.
  *   - Profile ainda não carregado (logo após signup) → loader.
  */
+/**
+ * URL que não existe — e para onde ela devolve a pessoa.
+ *
+ * Era `<Navigate to="/" />` fixo: link velho, endereço digitado errado ou rota
+ * renomeada jogavam QUALQUER pessoa na página que vende associação, inclusive
+ * o responsável.
+ *
+ * A ordem das perguntas é a das certezas: quem tem sessão vai pro painel dele
+ * (é a informação mais forte); quem não tem, mas errou dentro da área da
+ * família, volta pra porta da família; o resto está conhecendo a plataforma.
+ */
+function NaoEncontrado() {
+  const { profile, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <FullScreenLoader />;
+  if (profile?.role) return <Navigate to={painelDe(profile)} replace />;
+
+  const frente = frenteDoCaminho(location.pathname) || frenteLembrada();
+  return <Navigate to={portaDaFrente(frente)} replace />;
+}
+
 function PrivateRoute({ children, requireRole }) {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return <FullScreenLoader />;
   if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // A FRENTE VIAJA JUNTO COM O `from`.
+    //
+    // Aqui o perfil já não existe (é este o caso: sem sessão), então o papel
+    // não pode dizer de que lado a pessoa está. A URL pode: quem foi barrado
+    // em `/pai/finance` é responsável, e o login precisa saber disso pra não
+    // oferecer a ele "Sou motorista e quero fazer parte" nem devolvê-lo à
+    // vitrine de associação no botão Voltar.
+    //
+    // Toda expiração de sessão de responsável passa por aqui — era o caminho
+    // de maior alcance dos seis.
+    return (
+      <Navigate
+        to="/login"
+        state={{
+          from: location.pathname,
+          ...estadoDaFrente(frenteDoCaminho(location.pathname)),
+        }}
+        replace
+      />
+    );
   }
   if (!profile) return <FullScreenLoader />;
   // O DONO NÃO ENTRA EM PAINEL DE OPERAÇÃO, nem que o papel dele deixasse.
@@ -161,7 +208,26 @@ function SalaDeEspera() {
 
   if (loading) return <FullScreenLoader />;
   if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // A FRENTE VIAJA JUNTO COM O `from`.
+    //
+    // Aqui o perfil já não existe (é este o caso: sem sessão), então o papel
+    // não pode dizer de que lado a pessoa está. A URL pode: quem foi barrado
+    // em `/pai/finance` é responsável, e o login precisa saber disso pra não
+    // oferecer a ele "Sou motorista e quero fazer parte" nem devolvê-lo à
+    // vitrine de associação no botão Voltar.
+    //
+    // Toda expiração de sessão de responsável passa por aqui — era o caminho
+    // de maior alcance dos seis.
+    return (
+      <Navigate
+        to="/login"
+        state={{
+          from: location.pathname,
+          ...estadoDaFrente(frenteDoCaminho(location.pathname)),
+        }}
+        replace
+      />
+    );
   }
   if (!profile) return <FullScreenLoader />;
   if (!ehAguardando(profile)) {
@@ -176,7 +242,26 @@ function SuperAdminRoute({ children }) {
 
   if (loading) return <FullScreenLoader />;
   if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // A FRENTE VIAJA JUNTO COM O `from`.
+    //
+    // Aqui o perfil já não existe (é este o caso: sem sessão), então o papel
+    // não pode dizer de que lado a pessoa está. A URL pode: quem foi barrado
+    // em `/pai/finance` é responsável, e o login precisa saber disso pra não
+    // oferecer a ele "Sou motorista e quero fazer parte" nem devolvê-lo à
+    // vitrine de associação no botão Voltar.
+    //
+    // Toda expiração de sessão de responsável passa por aqui — era o caminho
+    // de maior alcance dos seis.
+    return (
+      <Navigate
+        to="/login"
+        state={{
+          from: location.pathname,
+          ...estadoDaFrente(frenteDoCaminho(location.pathname)),
+        }}
+        replace
+      />
+    );
   }
   if (!profile) return <FullScreenLoader />;
   if (!ehDono(profile)) {
@@ -360,7 +445,7 @@ export default function App() {
 
         {/* A escolha "sou pai / sou motorista" saiu do caminho: o papel vem
           * do doc users. /welcome segue existindo pra links antigos. */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NaoEncontrado />} />
         </Routes>
         </ErrorBoundary>
       </Suspense>

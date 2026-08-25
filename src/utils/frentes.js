@@ -54,3 +54,79 @@ export function destinoAposSair(role) {
 export function veioDaFamilia(location) {
   return location?.state?.frente === FRENTE_FAMILIA;
 }
+
+/**
+ * Os caminhos que pertencem ao responsável.
+ *
+ * `/pai/*` é o painel dele; `/convite/*` é como ele chega; `/familia` é a
+ * porta. Qualquer um desses é sinal suficiente de frente — e é sinal que
+ * sobrevive ao logout, porque mora na URL e não na sessão.
+ */
+const CAMINHOS_DA_FAMILIA = ['/pai', '/convite', '/familia'];
+
+/**
+ * A frente que um caminho denuncia.
+ *
+ * Existe porque o momento em que a frente mais importa é justamente aquele em
+ * que o perfil já não existe: a sessão expirou, o guarda de rota vai mandar a
+ * pessoa pro login, e `profile` é null. O que sobra é a URL onde ela estava —
+ * e ela basta.
+ */
+export function frenteDoCaminho(pathname) {
+  const p = String(pathname || '');
+  return CAMINHOS_DA_FAMILIA.some((c) => p === c || p.startsWith(`${c}/`))
+    ? FRENTE_FAMILIA
+    : null;
+}
+
+/** O `state` de navegação que leva a frente adiante. */
+export function estadoDaFrente(frente) {
+  return frente === FRENTE_FAMILIA ? { frente: FRENTE_FAMILIA } : {};
+}
+
+/**
+ * A porta correspondente a uma frente.
+ * Sem frente conhecida, a do motorista — que é a apresentação da plataforma.
+ */
+export function portaDaFrente(frente) {
+  return frente === FRENTE_FAMILIA ? '/familia' : '/';
+}
+
+/**
+ * A ÚLTIMA PORTA USADA — uma dica, e só pro atalho instalado.
+ *
+ * O manifesto do PWA tem UM `start_url` pro app inteiro. O responsável
+ * instala pela `/familia` e o atalho abre em `/`: com sessão a home o
+ * reencaminha, sem sessão ele fica na página que vende associação.
+ *
+ * ISTO NÃO É A MARCA DE APARELHO QUE FOI REJEITADA no topo deste arquivo, e a
+ * diferença importa. Aquela CLASSIFICAVA a pessoa e ESCONDIA dela as portas do
+ * outro papel — o motorista que também é pai ficava trancado. Esta aqui só
+ * escolhe onde a porta se abre quando ninguém disse nada, e:
+ *
+ *   - nunca esconde nada: `/` continua sendo `/` pra quem digitar ou tocar;
+ *   - perde pra URL explícita, sempre;
+ *   - perde pra sessão ativa, que manda direto pro painel.
+ *
+ * É uma preferência de atalho, não uma etiqueta de identidade.
+ */
+const CHAVE_ULTIMA_PORTA = 'alobuzinou:ultimaPorta';
+
+export function lembrarFrente(frente) {
+  try {
+    localStorage.setItem(CHAVE_ULTIMA_PORTA, frente === FRENTE_FAMILIA ? FRENTE_FAMILIA : '');
+  } catch {
+    // Modo privado: o atalho abre na porta do motorista. Aceitável — é o
+    // padrão de quem chega sem contexto, não uma perda de acesso.
+  }
+}
+
+export function frenteLembrada() {
+  try {
+    return localStorage.getItem(CHAVE_ULTIMA_PORTA) === FRENTE_FAMILIA
+      ? FRENTE_FAMILIA
+      : null;
+  } catch {
+    return null;
+  }
+}

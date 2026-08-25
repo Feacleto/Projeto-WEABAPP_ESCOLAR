@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import {
   ArrowRight,
@@ -34,6 +34,7 @@ import {
 import { functions } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
+import { frenteLembrada, lembrarFrente, FRENTE_FAMILIA } from '../utils/frentes';
 import {
   listPublicTestimonials,
   getPublicRatingStats,
@@ -147,7 +148,6 @@ const CLEAR_CTA = 'pb-32';
 const CONVITE_LABEL = 'Garanta seu nome na lista';
 
 export default function Home() {
-  const navigate = useNavigate();
   const { profile, loading } = useAuth();
 
   // Qual folha está aberta: 'lista' (parceiros), 'login' ou nenhuma. As
@@ -160,12 +160,40 @@ export default function Home() {
   const [vozesLoaded, setVozesLoaded] = useState(false);
   const [rating, setRating] = useState(null);
 
-  // Quem já tem sessão não precisa de vitrine — vai direto pro painel.
+  /**
+   * PARA ONDE ESTA PESSOA DEVERIA IR — antes de desenhar a vitrine.
+   *
+   * Duas correções sobre a versão anterior, que só reencaminhava quem tinha
+   * sessão:
+   *
+   * 1. O ATALHO INSTALADO. O manifesto tem um `start_url` só, `/`. O
+   *    responsável instala pela `/familia` e o atalho abria aqui; sem sessão
+   *    ele ficava na página que vende associação. `frenteLembrada()` é a porta
+   *    que ele usou por último — dica, não etiqueta: quem digitar `/` continua
+   *    vendo `/`, e a sessão ativa sempre vence.
+   *
+   * 2. O PISCAR. O redirecionamento morava num efeito, então a vitrine do
+   *    motorista pintava um quadro antes de sumir. Decidir no render e
+   *    devolver `<Navigate>` corta esse quadro.
+   */
+  // `?atalho=1` vem do `start_url` do manifesto: só quem abriu pelo ícone
+  // instalado tem esse sinal. Quem digitou `/` não tem, e por isso continua
+  // vendo `/` — a última porta é dica de atalho, não decisão sobre a pessoa.
+  const veioDoAtalho = new URLSearchParams(window.location.search).has('atalho');
+
+  const destino = useMemo(() => {
+    if (loading) return null;
+    if (profile?.role) return painelDe(profile);
+    if (veioDoAtalho && frenteLembrada() === FRENTE_FAMILIA) return '/familia';
+    return null;
+  }, [loading, profile, veioDoAtalho]);
+
+  // Chegar aqui de propósito É a porta do motorista, e isso vale como resposta
+  // à mesma pergunta que a `/familia` responde do outro lado. Sem esta linha,
+  // uma visita antiga à `/familia` ficaria valendo pra sempre no atalho.
   useEffect(() => {
-    if (!loading && profile?.role) {
-      navigate(painelDe(profile), { replace: true });
-    }
-  }, [loading, profile, navigate]);
+    if (!veioDoAtalho) lembrarFrente(null);
+  }, [veioDoAtalho]);
 
   useEffect(() => {
     let alive = true;
@@ -219,6 +247,10 @@ export default function Home() {
   const iAtual = secoes.findIndex(([id]) => id === active);
   const proximaSecao =
     iAtual >= 0 && iAtual < secoes.length - 1 ? secoes[iAtual + 1][0] : null;
+
+  // Sai antes de desenhar qualquer coisa. Este `return` fica depois dos hooks
+  // de propósito — sair antes deles mudaria a contagem entre renders.
+  if (destino) return <Navigate to={destino} replace />;
 
   return (
     <>

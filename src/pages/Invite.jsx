@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { FRENTE_FAMILIA } from '../utils/frentes';
 import {
   Link,
   useNavigate,
@@ -505,7 +506,13 @@ function InviteBroken({ message }) {
           criança.
         </p>
       </div>
-      <Link to="/login" className="text-sm font-semibold text-primary underline">
+      {/* Com a frente: este é o caminho do responsável, e a tela de erro é
+        * onde ele já está frustrado — não é hora de oferecer associação. */}
+      <Link
+        to="/login"
+        state={{ frente: FRENTE_FAMILIA }}
+        className="text-sm font-semibold text-primary underline"
+      >
         Já tenho conta, quero entrar
       </Link>
     </div>
