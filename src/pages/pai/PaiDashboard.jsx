@@ -360,6 +360,9 @@ export default function PaiDashboard() {
           id: child.id,
           name: child.name,
           parentUid: child.parentUid || user?.uid,
+          // Sem o adminUid a declaração nasce sem dono e o motorista dela
+          // não consegue ler a própria falta.
+          adminUid: child.adminUid || null,
         }}
         declaredBy="parent"
         currentAbsence={absence}

@@ -51,6 +51,7 @@ export default function AbsenceSheet({
         childId: child.id,
         childName: child.name || '',
         parentUid: child.parentUid || null,
+        adminUid: child.adminUid || null,
         type,
         declaredBy,
       });

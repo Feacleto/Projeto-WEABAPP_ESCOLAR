@@ -64,6 +64,10 @@ function AgendaSheet({ onClose }) {
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [typeKey, setTypeKey] = useState(null);
   const [message, setMessage] = useState('');
+  // Data DO EVENTO — separada da data de envio. "Festa junina dia 12/09"
+  // vivia dentro do texto: o pai não via numa data e o app não sabia que
+  // naquele dia a rota muda.
+  const [eventDate, setEventDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Escolas únicas vindas das crianças cadastradas — pro Tio escolher.
@@ -72,7 +76,8 @@ function AgendaSheet({ onClose }) {
     for (const c of children) {
       const name = c.school?.trim();
       if (!name) continue;
-      const entry = map.get(name) || { name, children: [] };
+      const entry = map.get(name) || { name, schoolId: c.schoolId || null, children: [] };
+      if (!entry.schoolId && c.schoolId) entry.schoolId = c.schoolId;
       entry.children.push({
         id: c.id,
         name: c.name,
@@ -127,14 +132,17 @@ function AgendaSheet({ onClose }) {
           child: selectedChild,
           type: typeKey,
           message,
+          eventDate: eventDate || null,
         });
         toast.success(`Aviso enviado pra ${selectedChild.name?.split(' ')[0]}!`);
       } else {
         await createSchoolEntry({
           adminUid: user?.uid,
           schoolName: selectedSchool.name,
+          schoolId: selectedSchool.schoolId || null,
           type: typeKey,
           message,
+          eventDate: eventDate || null,
           childrenInSchool: selectedSchool.children,
         });
         toast.success(`Aviso geral enviado · ${selectedSchool.name}`);
@@ -197,6 +205,8 @@ function AgendaSheet({ onClose }) {
               typeKey={typeKey}
               message={message}
               onChange={setMessage}
+              eventDate={eventDate}
+              onEventDateChange={setEventDate}
               onSubmit={onSubmit}
               submitting={submitting}
             />
@@ -373,7 +383,17 @@ function TypeStep({ scope, target, onPick }) {
   );
 }
 
-function ConfirmStep({ scope, target, typeKey, message, onChange, onSubmit, submitting }) {
+function ConfirmStep({
+  scope,
+  target,
+  typeKey,
+  message,
+  onChange,
+  eventDate,
+  onEventDateChange,
+  onSubmit,
+  submitting,
+}) {
   const typeData = AGENDA_TYPES[typeKey];
   const recipient =
     scope === 'child'
@@ -410,6 +430,29 @@ function ConfirmStep({ scope, target, typeKey, message, onChange, onSubmit, subm
         />
         <p className="text-[11px] text-textMuted mt-1.5">
           Pode editar o texto antes de enviar. O pai recebe na agenda dele.
+        </p>
+      </div>
+
+      <div>
+        <label
+          htmlFor="agenda-event-date"
+          className="block text-xs font-bold uppercase tracking-widest text-textMuted mb-2"
+        >
+          Dia do evento{' '}
+          <span className="font-medium normal-case tracking-normal">
+            (opcional)
+          </span>
+        </label>
+        <input
+          id="agenda-event-date"
+          type="date"
+          value={eventDate}
+          onChange={(e) => onEventDateChange(e.target.value)}
+          className="w-full h-12 rounded-2xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+        />
+        <p className="text-[11px] text-textMuted mt-1.5">
+          Passeio, festa, reunião. O pai vê o aviso na data, em vez de ter que
+          achar o dia no meio do texto.
         </p>
       </div>
 

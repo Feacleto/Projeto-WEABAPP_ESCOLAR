@@ -1,96 +1,142 @@
-import { useMemo, useState } from 'react';
-import { X, Megaphone, School, Calendar, Send } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { X, Megaphone, School, Send, Check, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChildren } from '../../hooks/useChildren';
+import { useEscolas } from '../../hooks/useEscolas';
 import { useAuth } from '../../hooks/useAuth';
-import { createSchoolBroadcast } from '../../services/broadcastService';
+import {
+  createSchoolBroadcast,
+  diasUteis,
+  rotuloDoPeriodo,
+  MAX_DIAS,
+} from '../../services/broadcastService';
 import { getDateKey } from '../../services/horariosService';
+import { chaveDoNome } from '../../utils/nomeEscola';
 
 /**
- * Sheet pra disparar aviso "sem aula" pra todos os pais de uma escola.
- * Marca ausência automática + cria notificações no mesmo batch.
+ * "Sem aula" — o aviso que já sai virando ausência na rota.
+ *
+ * TRÊS COISAS QUE ELE NÃO FAZIA
+ * Era um dia só, era a escola inteira, e agrupava por nome digitado. Os três
+ * limites tinham o mesmo efeito prático: o motorista não usava. Ou avisava
+ * famílias que não deviam ser avisadas, ou disparava o mesmo recado três vezes
+ * pra cobrir três dias, ou descobria que metade da turma não tinha recebido
+ * porque a escola dela estava escrita com pontos.
  */
 export default function SchoolBroadcastSheet({ open, onClose }) {
   const { user } = useAuth();
-  const { children: allChildren } = useChildren();
+  const { children: todasCriancas } = useChildren();
+  const { escolas } = useEscolas();
 
-  const [school, setSchool] = useState('');
-  const [whenChoice, setWhenChoice] = useState('today'); // 'today' | 'tomorrow' | 'custom'
-  const [customDate, setCustomDate] = useState('');
+  const [escolaId, setEscolaId] = useState('');
+  const [de, setDe] = useState(getDateKey());
+  const [ate, setAte] = useState('');
   const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
+  const [desmarcadas, setDesmarcadas] = useState(() => new Set());
+  const [enviando, setEnviando] = useState(false);
 
-  // Lista única de escolas + contagem de crianças
-  const schools = useMemo(() => {
-    const map = new Map();
-    for (const c of allChildren) {
-      if (!c.school) continue;
-      map.set(c.school, (map.get(c.school) || 0) + 1);
+  /**
+   * As escolas ofertadas. Sai das entidades cadastradas, mas cai pro nome
+   * digitado quando a criança ainda não foi migrada — senão o motorista que
+   * ainda não cadastrou escola nenhuma abre o aviso e vê uma lista vazia.
+   */
+  const opcoes = useMemo(() => {
+    const mapa = new Map();
+    for (const e of escolas) {
+      mapa.set(e.id, { id: e.id, nome: e.nome, criancas: [], legada: false });
     }
-    return Array.from(map.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  }, [allChildren]);
+    for (const c of todasCriancas) {
+      if (c.active === false) continue;
+      if (c.schoolId && mapa.has(c.schoolId)) {
+        mapa.get(c.schoolId).criancas.push(c);
+        continue;
+      }
+      const nome = c.school?.trim();
+      if (!nome) continue;
+      const chave = `legado:${chaveDoNome(nome)}`;
+      if (!mapa.has(chave)) {
+        mapa.set(chave, { id: chave, nome, criancas: [], legada: true });
+      }
+      mapa.get(chave).criancas.push(c);
+    }
+    return [...mapa.values()]
+      .filter((o) => o.criancas.length > 0)
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [escolas, todasCriancas]);
 
-  const selectedCount = schools.find((s) => s.name === school)?.count || 0;
+  const escolhida = opcoes.find((o) => o.id === escolaId) || null;
+
+  // Trocar de escola zera a seleção de crianças: manter marcações da escola
+  // anterior faria o aviso sair pra quem ele não estava olhando.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDesmarcadas(new Set());
+  }, [escolaId]);
+
+  const dias = useMemo(() => diasUteis(de, ate || de), [de, ate]);
+  const alcancadas = useMemo(
+    () => (escolhida?.criancas || []).filter((c) => !desmarcadas.has(c.id)),
+    [escolhida, desmarcadas]
+  );
 
   if (!open) return null;
 
-  function resolveDateKey() {
-    if (whenChoice === 'today') return getDateKey();
-    if (whenChoice === 'tomorrow') {
-      const d = new Date();
-      d.setDate(d.getDate() + 1);
-      return getDateKey(d);
-    }
-    return customDate || null;
+  function alternar(id) {
+    setDesmarcadas((s) => {
+      const novo = new Set(s);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
   }
 
-  async function handleSend() {
-    if (!school) {
+  async function enviar() {
+    if (!escolhida) {
       toast.error('Escolha uma escola.');
       return;
     }
-    const dateKey = resolveDateKey();
-    if (!dateKey) {
-      toast.error('Escolha uma data.');
+    if (!dias.length) {
+      toast.error('Escolha pelo menos um dia útil.');
       return;
     }
-    setSending(true);
+    if (!alcancadas.length) {
+      toast.error('Escolha pelo menos uma criança.');
+      return;
+    }
+    setEnviando(true);
     try {
       const { affectedCount } = await createSchoolBroadcast({
-        schoolName: school,
-        dateKey,
+        escolaId: escolhida.legada ? null : escolhida.id,
+        escolaNome: escolhida.nome,
+        de,
+        ate: ate || de,
         message,
-        adminUid: user?.uid,
-        children: allChildren,
+        adminUid: user.uid,
+        children: alcancadas,
       });
       toast.success(
-        `Aviso enviado pra ${affectedCount} ${
-          affectedCount === 1 ? 'pai' : 'pais'
-        }.`
+        `${affectedCount} ${affectedCount === 1 ? 'família avisada' : 'famílias avisadas'} · ${rotuloDoPeriodo(dias)}`
       );
-      onClose?.();
-      // Reset
-      setSchool('');
-      setWhenChoice('today');
-      setCustomDate('');
       setMessage('');
+      setAte('');
+      onClose?.();
     } catch (err) {
-      console.error('Erro ao disparar aviso:', err);
-      toast.error('Não foi possível enviar o aviso.');
+      console.error(err);
+      toast.error(err.message || 'Não deu pra enviar o aviso.');
     } finally {
-      setSending(false);
+      setEnviando(false);
     }
   }
+
+  const hoje = getDateKey();
 
   return (
     <div
       className="fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={() => !enviando && onClose?.()}
     >
       <div
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[88vh] flex flex-col"
+        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -100,17 +146,18 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
 
         <div className="px-5 pt-2 pb-3 flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-text leading-tight">
-              Avisar pais &quot;sem aula&quot;
+            <h2 className="text-xl font-bold text-text leading-tight inline-flex items-center gap-2">
+              <Megaphone size={20} className="text-primary" />
+              Avisar sem aula
             </h2>
             <p className="text-xs text-textMuted mt-1">
-              Marca ausência automática e notifica
+              Os responsáveis são notificados e a rota do dia já sai sem elas.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
             aria-label="Fechar"
+            className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
           >
             <X size={18} />
           </button>
@@ -118,149 +165,186 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
 
         <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-4">
           {/* Escola */}
-          <Section icon={School} label="Qual escola?">
-            {schools.length === 0 ? (
-              <div className="bg-card rounded-2xl border border-dashed border-gray-200 p-4 text-center text-xs text-textMuted">
-                Cadastre crianças com escola pra liberar essa opção.
-              </div>
+          <div>
+            <label className="block text-sm font-semibold text-text mb-2">
+              Escola
+            </label>
+            {opcoes.length === 0 ? (
+              <p className="text-sm text-textMuted bg-gray-50 border border-dashed border-gray-200 rounded-xl p-4 text-center">
+                Nenhuma criança com escola cadastrada.
+              </p>
             ) : (
               <div className="space-y-2">
-                {schools.map((s) => {
-                  const active = school === s.name;
+                {opcoes.map((o) => {
+                  const ativa = escolaId === o.id;
                   return (
                     <button
-                      key={s.name}
-                      onClick={() => setSchool(s.name)}
-                      className={`tap w-full text-left rounded-2xl p-3 flex items-center gap-3 border ${
-                        active
-                          ? 'bg-primary/10 border-primary'
-                          : 'bg-card border-gray-200'
+                      key={o.id}
+                      type="button"
+                      onClick={() => setEscolaId(o.id)}
+                      aria-pressed={ativa}
+                      className={`tap w-full text-left rounded-2xl border-2 px-3 py-2.5 flex items-center gap-3 ${
+                        ativa ? 'border-primary bg-primary/5' : 'border-gray-200 bg-card'
                       }`}
                     >
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          active
-                            ? 'bg-primary text-white'
-                            : 'bg-gray-100 text-textMuted'
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          ativa ? 'bg-primary text-white' : 'bg-gray-100 text-textMuted'
                         }`}
                       >
-                        <School size={18} />
+                        <School size={15} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-text truncate">
-                          {s.name}
-                        </p>
-                        <p className="text-[11px] text-textMuted">
-                          {s.count} {s.count === 1 ? 'criança' : 'crianças'}
-                        </p>
-                      </div>
-                      <span
-                        className={`w-5 h-5 rounded-full border-2 ${
-                          active
-                            ? 'bg-primary border-primary'
-                            : 'border-gray-300'
-                        }`}
-                      />
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold text-text truncate">
+                          {o.nome}
+                        </span>
+                        <span className="block text-[11px] text-textMuted">
+                          {o.criancas.length}{' '}
+                          {o.criancas.length === 1 ? 'criança' : 'crianças'}
+                        </span>
+                      </span>
+                      {ativa && <Check size={17} className="text-primary shrink-0" />}
                     </button>
                   );
                 })}
               </div>
             )}
-          </Section>
+          </div>
 
-          {/* Data */}
-          <Section icon={Calendar} label="Que dia?">
+          {/* Quando */}
+          <div>
+            <label className="block text-sm font-semibold text-text mb-2">
+              Quando
+            </label>
             <div className="grid grid-cols-2 gap-2">
-              <DateChip
-                label="Hoje"
-                active={whenChoice === 'today'}
-                onClick={() => setWhenChoice('today')}
-              />
-              <DateChip
-                label="Amanhã"
-                active={whenChoice === 'tomorrow'}
-                onClick={() => setWhenChoice('tomorrow')}
-              />
+              <label className="block">
+                <span className="block text-[11px] text-textMuted mb-1">De</span>
+                <input
+                  type="date"
+                  value={de}
+                  min={hoje}
+                  onChange={(e) => setDe(e.target.value)}
+                  className="w-full h-12 rounded-xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] text-textMuted mb-1">
+                  Até <span className="opacity-60">(opcional)</span>
+                </span>
+                <input
+                  type="date"
+                  value={ate}
+                  min={de}
+                  onChange={(e) => setAte(e.target.value)}
+                  className="w-full h-12 rounded-xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+                />
+              </label>
             </div>
-            <button
-              onClick={() => setWhenChoice('custom')}
-              className={`tap w-full mt-2 rounded-xl p-3 border text-sm font-semibold text-left ${
-                whenChoice === 'custom'
-                  ? 'bg-primary/10 border-primary text-text'
-                  : 'bg-card border-gray-200 text-textMuted'
-              }`}
-            >
-              Escolher data...
-            </button>
-            {whenChoice === 'custom' && (
-              <input
-                type="date"
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
-                min={getDateKey()}
-                className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm"
-              />
-            )}
-          </Section>
 
-          {/* Mensagem opcional */}
-          <Section icon={Megaphone} label="Mensagem (opcional)">
+            {dias.length > 0 ? (
+              <p className="text-[11px] text-textMuted mt-2">
+                {dias.length === 1
+                  ? `1 dia · ${rotuloDoPeriodo(dias)}`
+                  : `${dias.length} dias úteis · ${rotuloDoPeriodo(dias)}`}
+                {ate && ' · sábado e domingo não contam'}
+              </p>
+            ) : (
+              <p className="text-[11px] text-danger mt-2">
+                Esse intervalo não tem dia útil{' '}
+                {ate ? '(ou passa de ' + MAX_DIAS + ' dias).' : '.'}
+              </p>
+            )}
+          </div>
+
+          {/* Quem */}
+          {escolhida && (
+            <div>
+              <div className="flex items-baseline justify-between gap-2 mb-2">
+                <label className="text-sm font-semibold text-text">
+                  Quem avisar
+                </label>
+                <span className="text-[11px] text-textMuted inline-flex items-center gap-1">
+                  <Users size={12} />
+                  {alcancadas.length} de {escolhida.criancas.length}
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {escolhida.criancas.map((c) => {
+                  const marcada = !desmarcadas.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => alternar(c.id)}
+                      aria-pressed={marcada}
+                      className={`tap w-full text-left rounded-xl border px-3 py-2 flex items-center gap-2.5 ${
+                        marcada
+                          ? 'border-gray-200 bg-card'
+                          : 'border-gray-200 bg-gray-50 opacity-60'
+                      }`}
+                    >
+                      <span
+                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                          marcada
+                            ? 'bg-primary border-primary text-white'
+                            : 'border-gray-300 bg-card'
+                        }`}
+                      >
+                        {marcada && <Check size={13} />}
+                      </span>
+                      <span
+                        className={`flex-1 min-w-0 truncate text-sm ${
+                          marcada ? 'text-text font-medium' : 'text-textMuted line-through'
+                        }`}
+                      >
+                        {c.name}
+                      </span>
+                      {!c.parentUid && (
+                        <span className="text-[10px] text-amber-700 shrink-0">
+                          sem app
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-textMuted mt-2">
+                Quem está sem o app não recebe notificação, mas a falta é
+                registrada do mesmo jeito.
+              </p>
+            </div>
+          )}
+
+          {/* Recado */}
+          <div>
+            <label className="block text-sm font-semibold text-text mb-2">
+              Recado <span className="text-textMuted font-normal">(opcional)</span>
+            </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Ex: recesso, treinamento, paralisação..."
-              rows={2}
-              className="w-full rounded-xl border border-gray-200 p-3 text-sm resize-none"
-              maxLength={140}
+              rows={3}
+              maxLength={500}
+              placeholder="Reunião do conselho de classe."
+              className="w-full rounded-2xl border-2 border-gray-200 bg-card p-3 text-sm text-text placeholder:text-textMuted focus:outline-none focus:border-primary resize-none"
             />
-            <p className="text-[10px] text-textMuted text-right mt-1">
-              {message.length}/140
-            </p>
-          </Section>
+          </div>
         </div>
 
-        <div className="px-5 pt-2 pb-3 border-t border-gray-100">
+        <div className="px-5 pt-2 pb-3 border-t border-gray-100 bg-card">
           <button
-            onClick={handleSend}
-            disabled={sending || !school || (whenChoice === 'custom' && !customDate)}
-            className="tap w-full rounded-2xl py-3.5 bg-amber-500 text-white font-bold shadow-lg shadow-amber-500/30 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:shadow-none"
+            type="button"
+            onClick={enviar}
+            disabled={enviando || !escolhida || !dias.length || !alcancadas.length}
+            className="tap w-full rounded-2xl py-3.5 bg-primary text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Send size={18} />
-            {sending
-              ? 'Enviando...'
-              : selectedCount > 0
-              ? `Enviar pra ${selectedCount} ${selectedCount === 1 ? 'pai' : 'pais'}`
-              : 'Enviar aviso'}
+            {enviando
+              ? 'Enviando…'
+              : `Avisar ${alcancadas.length} ${alcancadas.length === 1 ? 'família' : 'famílias'}`}
           </button>
         </div>
       </div>
     </div>
-  );
-}
-
-function Section({ icon: Icon, label, children }) {
-  return (
-    <section>
-      <h3 className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1 mb-2 inline-flex items-center gap-1.5">
-        <Icon size={12} />
-        {label}
-      </h3>
-      {children}
-    </section>
-  );
-}
-
-function DateChip({ label, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`tap rounded-xl p-3 text-sm font-semibold border ${
-        active
-          ? 'bg-primary text-white border-primary'
-          : 'bg-card text-text border-gray-200'
-      }`}
-    >
-      {label}
-    </button>
   );
 }

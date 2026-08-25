@@ -90,7 +90,7 @@ function NotebookView({ onClose }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const unsub = watchParentAgenda(
-      { parentUid: user.uid, schoolName: child?.school || null },
+      { parentUid: user.uid },
       (list) => {
         setEntries(list);
         setLoading(false);
@@ -339,6 +339,17 @@ function Entry({ entry }) {
         <ScopeIcon size={11} /> {scopeLabel}
       </p>
 
+      {/* O DIA DO EVENTO, quando o motorista informou.
+        * Antes "festa junina dia 12/09" ficava dentro do texto: o responsável
+        * tinha que achar a data no meio do recado, e o aviso de um passeio da
+        * semana que vem parecia igual ao de hoje. */}
+      {entry.eventDate && (
+        <p className="inline-flex items-center gap-1.5 rounded-lg bg-amber-200/60 px-2.5 py-1.5 text-xs font-bold text-amber-900">
+          <CalendarDays size={13} />
+          {rotuloDoEvento(entry.eventDate)}
+        </p>
+      )}
+
       <div className="pt-2">
         <p className="text-[15px] text-amber-950 leading-relaxed whitespace-pre-wrap font-serif">
           {entry.message || (
@@ -390,4 +401,25 @@ function IndexView({ groups, onPick, currentYear, currentMonth }) {
       })}
     </div>
   );
+}
+
+/**
+ * "quinta, 12 de setembro" — e "hoje"/"amanhã" quando é perto, porque é assim
+ * que o responsável pensa na data quando abre o app de manhã.
+ */
+function rotuloDoEvento(chave) {
+  const [y, m, d] = String(chave).split('-').map(Number);
+  if (!y || !m || !d) return chave;
+  const data = new Date(y, m - 1, d);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((data - hoje) / 86400000);
+  if (dias === 0) return 'Hoje';
+  if (dias === 1) return 'Amanhã';
+  const texto = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+  }).format(data);
+  return dias < 0 ? `${texto} (já passou)` : texto;
 }

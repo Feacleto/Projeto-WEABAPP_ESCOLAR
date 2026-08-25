@@ -58,6 +58,7 @@ export async function declareAbsence({
   childId,
   childName,
   parentUid,
+  adminUid,
   type,
   declaredBy,
   note = '',
@@ -68,6 +69,13 @@ export async function declareAbsence({
     childId,
     childName: childName || '',
     parentUid: parentUid || null,
+    // DE QUEM É ESTA OPERAÇÃO. Vem da CRIANÇA, não da sessão: quem declara
+    // costuma ser o responsável, e o uid dele não diz nada sobre qual
+    // motorista precisa enxergar a falta.
+    //
+    // Sem este campo a rule de leitura só sabia perguntar `isAdmin()` — e aí
+    // qualquer motorista lia as declarações das famílias de todos os outros.
+    adminUid: adminUid || null,
     type,
     declaredBy,
     note,
@@ -85,13 +93,22 @@ export async function removeAbsence({ dateKey, childId }) {
 /**
  * Subscribe a todas as ausências de uma data (uso do Tio).
  */
-export function watchAbsencesByDate(dateKey, onUpdate, onError) {
-  if (!dateKey) {
+export function watchAbsencesByDate(dateKey, adminUid, onUpdate, onError) {
+  if (!dateKey || !adminUid) {
     onUpdate([]);
     return () => {};
   }
+  // O `adminUid` no WHERE não é otimização, é requisito.
+  //
+  // A rule de leitura passou a exigir que a declaração seja deste motorista, e
+  // rule que exige campo obriga a CONSULTA a provar o filtro: sem esta linha o
+  // Firestore recusa a consulta INTEIRA e a tela vem vazia — que na lista de
+  // rota se confunde com "ninguém faltou hoje", que é a pior forma de errar
+  // aqui: o motorista deixa de buscar quem avisou que não vai, ou espera na
+  // porta de quem não vem.
   const q = query(
     collection(db, 'absenceDeclarations'),
+    where('adminUid', '==', adminUid),
     where('dateKey', '==', dateKey)
   );
   return onSnapshot(

@@ -212,6 +212,7 @@ export default function TioRouteNow() {
         childId: marcando.child.id,
         childName: marcando.child.name,
         parentUid: marcando.child.parentUid || null,
+        adminUid: marcando.child.adminUid || null,
         type: marcando.tipo,
         declaredBy: 'admin',
       });

@@ -888,8 +888,17 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/children/$(childId)).data.parentUid == request.auth.uid;
       }
 
+      // Era `isAdmin()` puro: um motorista lia as declarações de ausência das
+      // famílias de todos os outros — nome da criança, dia e motivo.
+      //
+      // `ehDoMotorista()` compara o `adminUid` gravado na declaração, que vem
+      // da CRIANÇA e não de quem declarou (o responsável declara a maior parte
+      // delas). Declaração antiga, sem `adminUid`, deixa de ser lida pelo
+      // motorista — e aqui isso é aceitável porque declaração é do dia: a de
+      // hoje é recriada conforme o dia anda, diferente do backfill que
+      // `children` exigiu.
       allow read: if isSignedIn() && (
-        isAdmin()
+        ehDoMotorista()
         || ownsChild(resource.data.childId)
       );
 
@@ -973,11 +982,15 @@ service cloud.firestore {
     // notifications + absenceDeclarations criados no mesmo batch.
     // -----------------------------------------------------------------
     match /schoolBroadcasts/{id} {
-      // isAppUser em vez de isSignedIn: um aviso de "sem aula" carrega o
-      // nome da escola e a mensagem do motorista — não é informação pra
-      // visitante anônimo da landing.
-      allow read: if isAppUser();
-      allow create, update, delete: if isAdmin();
+      // Era `isAppUser()`, e isso liberava QUALQUER usuário do app a listar o
+      // histórico de avisos de TODOS os motoristas — nome de escola, recado e
+      // a lista de crianças atingidas. Nenhuma tela lê esta coleção: ela é só
+      // histórico de escrita. Leitura passa a ser de quem disparou.
+      allow read: if ehDoMotorista() || isOwner();
+
+      allow create: if isAdmin()
+        && request.resource.data.adminUid == request.auth.uid;
+      allow update, delete: if ehDoMotorista();
     }
 
     // -----------------------------------------------------------------
@@ -988,18 +1001,26 @@ service cloud.firestore {
     //   - Pai não escreve nada aqui.
     // -----------------------------------------------------------------
     match /agendaEntries/{id} {
-      // A cláusula de scope=school NÃO pode se contentar com
-      // isSignedIn(): sessão anônima da landing conseguia ler todos os
-      // recados de escola do motorista. Exige conta de verdade.
+      // O ramo `scope == 'school'` não tinha condição nenhuma além do scope:
+      // o responsável de um motorista lia os recados de escola de TODOS os
+      // outros. A filtragem por escola era client-side, e filtro de tela não
+      // é permissão. Agora o recado carrega `parentUids` — quem estava na
+      // escola no momento do envio — e a regra fica exata sem `get()`.
       allow read: if isAppUser() && (
-        isAdmin()
+        ehDoMotorista()
+        || isOwner()
         || (resource.data.scope == 'child'
             && resource.data.parentUid == request.auth.uid)
-        || resource.data.scope == 'school'
+        || (resource.data.scope == 'school'
+            && request.auth.uid in resource.data.get('parentUids', []))
       );
+
       allow create: if isAdmin()
         && request.resource.data.adminUid == request.auth.uid;
-      allow update, delete: if isAdmin();
+
+      // Era `isAdmin()`: qualquer motorista editava e APAGAVA o recado de
+      // qualquer outro. Escrever na agenda de família alheia é pior que ler.
+      allow update, delete: if ehDoMotorista();
     }
 
     // -----------------------------------------------------------------

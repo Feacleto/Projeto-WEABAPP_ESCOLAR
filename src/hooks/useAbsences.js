@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from './useAuth';
 import {
   watchAbsencesByDate,
   watchAbsenceForChild,
@@ -10,11 +11,15 @@ import {
  * Retorna array de docs + mapa por childId pra lookup rápido.
  */
 export function useAbsences(dateKey) {
+  // O uid vem daqui e não de quem chama, igual ao `useChildren`: são três
+  // telas usando este hook, e esquecer o escopo não dá erro de compilação —
+  // dá lista vazia, que se confunde com "ninguém faltou".
+  const { user } = useAuth();
   const [absences, setAbsences] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!dateKey) {
+    if (!dateKey || !user?.uid) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAbsences([]);
       setLoading(false);
@@ -23,6 +28,7 @@ export function useAbsences(dateKey) {
     setLoading(true);
     const unsub = watchAbsencesByDate(
       dateKey,
+      user.uid,
       (list) => {
         setAbsences(list);
         setLoading(false);
@@ -30,7 +36,7 @@ export function useAbsences(dateKey) {
       () => setLoading(false)
     );
     return unsub;
-  }, [dateKey]);
+  }, [dateKey, user?.uid]);
 
   // Mapa childId -> absence pro consumo rápido na lista de rota
   const byChildId = {};

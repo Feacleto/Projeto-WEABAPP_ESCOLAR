@@ -21,6 +21,7 @@ import {
   avisosDeTempo, proporCascata,
 } from '../src/services/horariosService.js';
 import { chaveDoNome, proporEscolasDasCriancas } from '../src/utils/nomeEscola.js';
+import { diasUteis, rotuloDoPeriodo, parseDia, MAX_DIAS } from '../src/utils/intervaloDeDias.js';
 
 let ok = 0;
 let fail = 0;
@@ -415,6 +416,55 @@ t('criança sem escola e criança inativa não entram', () => {
 t('lista vazia não quebra', () => {
   eq(proporEscolasDasCriancas([]), []);
   eq(proporEscolasDasCriancas(null), []);
+});
+
+
+// ────────────────── 9. intervalo de dias do aviso ──────────────────
+sec('9. Aviso "sem aula" — em que dias a ausência é gravada');
+
+t('um dia só devolve um dia', () => {
+  eq(diasUteis('2026-08-24'), ['2026-08-24']);          // segunda
+  eq(diasUteis('2026-08-24', '2026-08-24'), ['2026-08-24']);
+});
+
+t('intervalo pula sábado e domingo — a perua não roda', () => {
+  // 2026-08-24 é segunda; 28 é sexta; 29 e 30 são fim de semana.
+  eq(diasUteis('2026-08-24', '2026-08-31'), [
+    '2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28',
+    '2026-08-31',
+  ]);
+});
+
+t('intervalo só de fim de semana não gera dia nenhum', () => {
+  eq(diasUteis('2026-08-29', '2026-08-30'), []);
+});
+
+t('intervalo invertido não gera nada em vez de explodir', () => {
+  eq(diasUteis('2026-08-28', '2026-08-24'), []);
+});
+
+t('data inválida não vira dia', () => {
+  eq(diasUteis('2026-02-31'), [], 'fevereiro com 31 rolaria pra março');
+  eq(diasUteis('lixo'), []);
+  eq(diasUteis(null), []);
+  eq(diasUteis(''), []);
+  eq(parseDia('2026-13-01'), null);
+});
+
+t('o teto segura o dedo escorregando no ano', () => {
+  const dias = diasUteis('2026-01-01', '2027-01-01');
+  assert(dias.length <= MAX_DIAS, `devolveu ${dias.length} dias`);
+});
+
+t('atravessa a virada do mês e do ano', () => {
+  eq(diasUteis('2026-12-31', '2027-01-01'), ['2026-12-31', '2027-01-01']);
+});
+
+t('o rótulo é legível em cada tamanho de intervalo', () => {
+  eq(rotuloDoPeriodo(['2026-08-24']), '24/08');
+  eq(rotuloDoPeriodo(['2026-08-24', '2026-08-25']), '24/08 e 25/08');
+  eq(rotuloDoPeriodo(diasUteis('2026-08-24', '2026-08-28')), 'de 24/08 a 28/08');
+  eq(rotuloDoPeriodo([]), '');
 });
 
 // ─────────────────────────── relatório ───────────────────────────

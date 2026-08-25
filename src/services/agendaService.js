@@ -124,7 +124,7 @@ export const AGENDA_TYPES = {
  * @param {string} params.type    — chave em AGENDA_TYPES
  * @param {string} params.message
  */
-export async function createChildEntry({ adminUid, child, type, message }) {
+export async function createChildEntry({ adminUid, child, type, message, eventDate }) {
   if (!adminUid) throw new Error('Sem adminUid.');
   if (!child?.id) throw new Error('Sem criança.');
   if (!type || !AGENDA_TYPES[type]) throw new Error('Tipo inválido.');
@@ -137,6 +137,13 @@ export async function createChildEntry({ adminUid, child, type, message }) {
     childId: child.id,
     childName: child.name || '',
     parentUid: child.parentUid || null,
+    // A DATA DO EVENTO, separada do `createdAt`.
+    //
+    // Sem ela, "festa junina dia 12/09" vivia dentro do texto: o responsável
+    // não via o aviso numa data, e o app não tinha como saber que naquele dia
+    // a rota muda. Opcional — recado de "a professora pediu pra ler a agenda"
+    // é sobre hoje e não tem data própria.
+    eventDate: eventDate || null,
     createdAt: serverTimestamp(),
   });
 
@@ -169,8 +176,10 @@ export async function createChildEntry({ adminUid, child, type, message }) {
 export async function createSchoolEntry({
   adminUid,
   schoolName,
+  schoolId,
   type,
   message,
+  eventDate,
   childrenInSchool = [],
 }) {
   if (!adminUid) throw new Error('Sem adminUid.');
@@ -182,7 +191,18 @@ export async function createSchoolEntry({
     type,
     message: (message || '').trim().slice(0, 1500),
     adminUid,
+    schoolId: schoolId || null,
     schoolName: schoolName.trim(),
+    eventDate: eventDate || null,
+    // QUEM PODE LER. A rule de leitura de aviso de escola só sabia dizer
+    // "scope == 'school'", sem mais nada — e com isso o responsável de um
+    // motorista lia os recados de escola de todos os outros. A lista aqui
+    // deixa a regra exata e barata, sem `get()` de criança dentro da rule.
+    parentUids: [
+      ...new Set(
+        (childrenInSchool || []).map((c) => c.parentUid).filter(Boolean)
+      ),
+    ],
     createdAt: serverTimestamp(),
   });
 
@@ -234,12 +254,16 @@ export function watchAdminAgenda(adminUid, onUpdate, onError) {
 /**
  * Subscribe às entradas relevantes pro Pai:
  *   - Específicas do filho (parentUid == uid)
- *   - Da escola do filho (scope == 'school' AND schoolName == school)
+ *   - Da escola (parentUids contém uid)
  *
  * Como o SDK do Firestore não suporta OR em campos diferentes, fazemos
  * 2 listeners e combinamos client-side.
+ *
+ * `schoolName` saiu dos parâmetros: o aviso de escola passou a dizer QUEM
+ * alcança, em vez de a tela adivinhar pelo nome. Um responsável cujo filho
+ * está sem o campo `school` preenchido também parou de perder os recados.
  */
-export function watchParentAgenda({ parentUid, schoolName }, onUpdate, onError) {
+export function watchParentAgenda({ parentUid }, onUpdate, onError) {
   if (!parentUid) return () => {};
   let childList = [];
   let schoolList = [];
@@ -270,25 +294,34 @@ export function watchParentAgenda({ parentUid, schoolName }, onUpdate, onError) 
     }
   );
 
-  let unsubSchool = () => {};
-  if (schoolName) {
-    unsubSchool = onSnapshot(
+  const unsubSchool = onSnapshot(
+      // `parentUids` no lugar de `schoolName`, e a troca resolve dois
+      // problemas de uma vez.
+      //
+      // O primeiro é permissão: a rule passou a exigir que o responsável
+      // esteja na lista do aviso — antes o ramo `scope == 'school'` não tinha
+      // condição nenhuma e o pai de um motorista lia os recados de escola de
+      // todos os outros. Rule que exige campo obriga a CONSULTA a provar o
+      // filtro; consultar por `schoolName` seria recusado inteiro e o caderno
+      // do pai abriria vazio.
+      //
+      // O segundo é o casamento por nome digitado: "E.M. Rui Barbosa" no doc e
+      // "EM Rui Barbosa" na criança nunca foram iguais, e o recado da escola
+      // simplesmente não aparecia pra metade das famílias.
       query(
         collection(db, AGENDA_COLLECTION),
-        where('scope', '==', 'school'),
-        where('schoolName', '==', schoolName),
+        where('parentUids', 'array-contains', parentUid),
         orderBy('createdAt', 'desc')
       ),
       (snap) => {
         schoolList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         emit();
       },
-      (err) => {
-        console.error('watchParentAgenda (school) error:', err);
-        if (onError) onError(err);
-      }
-    );
-  }
+    (err) => {
+      console.error('watchParentAgenda (school) error:', err);
+      if (onError) onError(err);
+    }
+  );
 
   return () => {
     unsubChild();
