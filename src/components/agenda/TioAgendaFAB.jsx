@@ -121,6 +121,27 @@ function AgendaSheet({ onClose }) {
     setStep('type');
   };
 
+  /**
+   * ATALHO DOS URGENTES — pula o passo de escolher o tipo.
+   *
+   * "Vou atrasar" e "perua quebrou" custavam os mesmos quatro passos de um
+   * recado sobre briga no recreio: alvo, tipo, revisar, enviar. Só que estes
+   * dois são disparados de dentro do carro parado no acostamento, com o
+   * motorista fazendo mais três coisas ao mesmo tempo.
+   *
+   * O passo de revisão FICA. É uma mensagem que vai pra todas as famílias de
+   * uma vez — mandar sem ver o texto seria trocar quatro toques por um
+   * arrependimento que não tem desfazer.
+   */
+  const atalhoUrgente = (tipo) => {
+    setScope('todos');
+    setSelectedChild(null);
+    setSelectedSchool(null);
+    setTypeKey(tipo);
+    setMessage(AGENDA_TYPES[tipo].template());
+    setStep('confirm');
+  };
+
   const pickSchool = (school) => {
     setScope('school');
     setSelectedSchool(school);
@@ -226,6 +247,7 @@ function AgendaSheet({ onClose }) {
               onPickChild={pickChild}
               onPickSchool={pickSchool}
               onPickTodos={pickTodos}
+              onAtalho={atalhoUrgente}
             />
           )}
 
@@ -295,7 +317,14 @@ function SheetHeader({ step, onBack, onClose, onHistory }) {
   );
 }
 
-function TargetStep({ children, schools, onPickChild, onPickSchool, onPickTodos }) {
+function TargetStep({
+  children,
+  schools,
+  onPickChild,
+  onPickSchool,
+  onPickTodos,
+  onAtalho,
+}) {
   const [search, setSearch] = useState('');
   const filteredChildren = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -313,26 +342,46 @@ function TargetStep({ children, schools, onPickChild, onPickSchool, onPickTodos 
 
   return (
     <div className="space-y-5">
-      {/* TODAS AS FAMÍLIAS — vem primeiro porque é o aviso mais urgente que
-        * existe, e urgência não deve estar embaixo de uma lista. */}
+      {/* OS DOIS URGENTES, PRONTOS.
+        * Vêm primeiro e já com texto escrito: são os únicos avisos disparados
+        * de dentro do carro parado, e ali cada passo custa. Um toque leva
+        * direto pra revisão. */}
       <section>
         <p className="text-[11px] font-bold uppercase tracking-widest text-textMuted mb-2">
-          Aviso urgente · todo mundo
+          Aconteceu agora · avisa todo mundo
         </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onAtalho('atraso')}
+            className="tap rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white px-3 py-3 flex flex-col items-center gap-1 shadow-sm"
+          >
+            <span className="text-2xl" aria-hidden>
+              ⏰
+            </span>
+            <span className="text-sm font-bold">Vou atrasar</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onAtalho('quebrou')}
+            className="tap rounded-2xl bg-gradient-to-br from-rose-600 to-red-700 text-white px-3 py-3 flex flex-col items-center gap-1 shadow-sm"
+          >
+            <span className="text-2xl" aria-hidden>
+              🚨
+            </span>
+            <span className="text-sm font-bold">Perua quebrou</span>
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={onPickTodos}
-          className="tap w-full text-left rounded-2xl bg-gradient-to-r from-rose-500 to-red-700 text-white px-4 py-3 flex items-center gap-3 shadow-sm"
+          className="tap w-full mt-2 rounded-2xl border border-gray-200 bg-card px-4 py-2.5 flex items-center gap-3"
         >
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Megaphone size={20} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold leading-tight">Todas as famílias</p>
-            <p className="text-[11px] text-white/85">
-              Perua quebrada, atraso — o que é sobre a rota, não sobre a escola
-            </p>
-          </div>
+          <Megaphone size={17} className="text-textMuted shrink-0" />
+          <span className="flex-1 min-w-0 text-left text-sm font-semibold text-text">
+            Outro aviso pra todas as famílias
+          </span>
         </button>
       </section>
 

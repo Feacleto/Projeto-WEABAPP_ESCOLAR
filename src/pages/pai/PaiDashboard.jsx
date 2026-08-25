@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
 import {
   MapPin,
-  UserX,
   MessageCircle,
   Calendar,
   Bell,
@@ -24,6 +23,7 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import Avatar from '../../components/common/Avatar';
 import AbsenceSheet from '../../components/absences/AbsenceSheet';
+import AvisoRapido from '../../components/absences/AvisoRapido';
 import RouteTracker from '../../components/dashboard/RouteTracker';
 import { ChildDetailSheet } from '../ChildDetail';
 import HorarioDoDia from '../../components/dashboard/HorarioDoDia';
@@ -97,6 +97,13 @@ export default function PaiDashboard() {
   // seguir o filho selecionado, senão o pai de dois filhos vê a falta de um
   // na tela do outro.
   const { absence } = useAbsenceForChild(todayKey, child?.id);
+  // Amanhã. O pai que descobre na terça à noite que na quarta tem consulta
+  // não tinha o que fazer além de lembrar de avisar na quarta de manhã — que
+  // é o minuto em que ele está mais ocupado.
+  const amanhaKey = getDateKey(
+    new Date(new Date().setDate(new Date().getDate() + 1))
+  );
+  const { absence: absenceAmanha } = useAbsenceForChild(amanhaKey, child?.id);
   const { history: absenceHistory } = useChildAbsenceHistory(child?.id);
   const { pickup: altPickup } = useDailyAltPickup(todayKey, child?.id);
   // Hora real de cada etapa e posição na fila — nenhuma das duas o
@@ -242,7 +249,6 @@ export default function PaiDashboard() {
       : routeActive || status === 'onboard'
       ? 'acompanhando'
       : 'esperando';
-  const childFirstName = child.name?.split(' ')[0] || 'Aluno';
   const status = getEffectiveStatus(child);
   const phrase = statusPhrase(status, routeActive, new Date().getHours());
   const whatsappUrl = admin?.phone
@@ -287,18 +293,17 @@ export default function PaiDashboard() {
               * o responsável até aqui. */}
             <HorarioDoDia child={child} absence={absence} ride={ride} />
 
+            {/* Três respostas escritas na tela, um toque envia.
+              * Antes era um botão que abria uma folha pra depois escolher —
+              * dois toques e uma tela no meio, no minuto em que o responsável
+              * está atrasado com a criança doente do lado. */}
             <div data-tour="absence">
-              {absence ? (
-                <AbsenceStatus
-                  absence={absence}
-                  onClick={() => setAbsenceOpen(true)}
-                />
-              ) : (
-                <AbsenceCTA
-                  childFirstName={childFirstName}
-                  onClick={() => setAbsenceOpen(true)}
-                />
-              )}
+              <AvisoRapido
+                child={child}
+                absenceHoje={absence}
+                absenceAmanha={absenceAmanha}
+                onDetalhes={() => setAbsenceOpen(true)}
+              />
             </div>
 
             <AltPickupCTA
@@ -583,25 +588,10 @@ function StateIllustration({ status }) {
 
 /* ─────────────── Ausência ─────────────── */
 
-function AbsenceCTA({ childFirstName, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border border-dashed border-gray-200"
-    >
-      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-        <UserX size={20} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-text leading-tight">
-          {childFirstName} vai faltar hoje?
-        </p>
-        <p className="text-xs text-textMuted mt-0.5">Avisar o motorista</p>
-      </div>
-      <ChevronRight size={18} className="text-textMuted shrink-0" />
-    </button>
-  );
-}
+/* O `AbsenceCTA` — o botão pontilhado que abria a folha — saiu junto com o
+ * `AvisoRapido`. Ele existia pra levar a uma tela onde as opções estavam; as
+ * opções agora estão na home. O `AbsenceStatus` fica: ele ainda é usado no
+ * estado "encerrado", pra mostrar o que já foi declarado. */
 
 function AbsenceStatus({ absence, onClick }) {
   return (
