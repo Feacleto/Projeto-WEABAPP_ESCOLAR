@@ -125,6 +125,22 @@ service cloud.firestore {
         && (userDoc().role == 'owner' || userDoc().superAdmin == true);
     }
 
+    // DONO DO DOCUMENTO OPERACIONAL. O campo `adminUid` no corpo é o que dá
+    // escopo às coleções que antes eram `isAdmin()` puro — e `isAdmin()`,
+    // neste projeto, quer dizer QUALQUER MOTORISTA.
+    //
+    // `.get('adminUid', '')` em vez de acesso direto: documento legado sem o
+    // campo faz o acesso nu virar erro de avaliação, e erro nega. Com o
+    // default, o legado simplesmente não casa com ninguém — nega igual, mas
+    // por decisão em vez de por acidente.
+    function doDono() {
+      return isAdmin() && resource.data.get('adminUid', '') == request.auth.uid;
+    }
+    function nasceDoDono() {
+      return isAdmin()
+        && request.resource.data.get('adminUid', '') == request.auth.uid;
+    }
+
     // Tem conta de VERDADE no app (doc em users/). A landing chama
     // signInAnonymously pra gravar leads, então `isSignedIn()` sozinho
     // inclui qualquer visitante do site — e não deveria dar acesso a
@@ -174,13 +190,32 @@ service cloud.firestore {
     //   - Leitura pública (Login precisa checar antes do auth)
     //   - Criação livre apenas se o doc ainda não existir; depois só admin atualiza
     // -----------------------------------------------------------------
+    // ESTE DOC É UM PONTEIRO GLOBAL, E POR ISSO NÃO É DO MOTORISTA.
+    //
+    // `appState/init.adminUid` responde "quem é o motorista" pra nove pontos
+    // do sistema, incluindo a CHAVE PIX mostrada ao responsável e a do e-mail
+    // de cobrança. Com `allow update: if isAdmin()` — que aqui significa
+    // qualquer motorista — um parceiro apontava o ponteiro pra si mesmo e os
+    // pais de TODOS os outros passavam a pagar na conta dele.
+    //
+    // Sondado contra produção com dois motoristas reais: o segundo reescreveu
+    // `adminUid` e recebeu HTTP 200. Revertido no mesmo teste.
+    //
+    // O `delete` era o primeiro elo de uma escalada completa: apagar este doc
+    // reabre o ramo de bootstrap de `users` (que só exige `appState/init`
+    // ausente), e por ele um motorista se recriava com `superAdmin: true`.
+    // Três escritas, e ele virava dono da plataforma.
+    //
+    // Escrita passa a ser de isOwner(). Encerrar operação não precisa apagar
+    // este doc — e não deve: apagá-lo reabre /first-admin pro próximo
+    // visitante que souber a URL.
     match /appState/{docId} {
       allow read: if true;
-      allow create: if !exists(/databases/$(database)/documents/appState/init);
-      allow update: if isAdmin();
-      // Admin pode deletar quando "encerrar operação" (deleteAdminAccount).
-      // Apagar appState/init restaura o link "Configurar primeiro admin".
-      allow delete: if isAdmin();
+      // Bootstrap exige sessão: sem isso, um anônimo cria o doc com o
+      // adminUid que quiser antes do dono legítimo chegar.
+      allow create: if isSignedIn()
+        && !exists(/databases/$(database)/documents/appState/init);
+      allow update, delete: if isOwner();
     }
 
     // -----------------------------------------------------------------
@@ -205,8 +240,19 @@ service cloud.firestore {
         || isAdmin()
         || (isAppUser() && resource.data.role == 'admin')
       );
-      // O dono lista pra contar a base; o motorista, pra operar.
-      allow list: if isAdmin() || isOwner();
+      // SÓ O DONO LISTA. O motorista não tem por que varrer `users`.
+      //
+      // `users` não tem como ser escopado numa consulta (não havia `adminUid`
+      // até agora), então `allow list: if isAdmin()` era um dump da base
+      // inteira: nome, e-mail, telefone e CHAVE PIX de todo responsável e de
+      // todo parceiro concorrente, num `getDocs` de uma linha. Sondado: HTTP
+      // 200, base inteira devolvida.
+      //
+      // Conferido antes de apertar: os três lugares que listam `users`
+      // (TaxaTab, adminMetricsService, associadoService) são todos do dono.
+      // Nenhuma tela do motorista lista usuários — isto não tira função de
+      // ninguém.
+      allow list: if isOwner();
 
       // CREATE só existe pro bootstrap do primeiro motorista.
       //
@@ -249,11 +295,27 @@ service cloud.firestore {
       // instância secundária (src/services/provisionamentoService.js) — o
       // Auth já permite a qualquer pessoa criar conta com e-mail e senha,
       // então o privilégio de verdade é ESTE doc, e é aqui que ele é gateado.
+      // O RAMO DE BOOTSTRAP TAMBÉM TEM WHITELIST — ele era o único sem.
+      //
+      // Os outros dois ramos listam os campos permitidos, e `superAdmin` fica
+      // de fora deles. Este não listava nada, e virava o terceiro passo de uma
+      // escalada: apagar `appState/init` (que era `isAdmin()`), apagar o
+      // próprio doc (que o dono do doc pode), e recriar-se aqui com
+      // `superAdmin: true` — que `isOwner()` aceita. Três escritas, nenhuma
+      // delas exigindo mais que uma conta comum de motorista.
+      //
+      // A sonda antiga (`scripts/auditar-regras.cjs`) testava `superAdmin` só
+      // no `update`, e passava verde. É o mesmo aprendizado de antes, na
+      // forma que mais custa: sempre que o `update` for restritivo, pergunte
+      // "e se ele criar o documento do zero?".
       allow create: if (
         isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.role == 'admin'
         && !exists(/databases/$(database)/documents/appState/init)
+        && request.resource.data.keys().hasOnly([
+          'role', 'name', 'email', 'phone', 'city', 'createdAt'
+        ])
       ) || (
         isOwner()
         && request.resource.data.role == 'admin'
@@ -380,11 +442,26 @@ service cloud.firestore {
                'suspenso', 'suspensoEm', 'notaInterna'
              ])
         && (
-          // Quem edita: o motorista (dados de cadastro dos seus usuários) ou
-          // a própria pessoa. A checagem redundante de `role` fica como
-          // segunda tranca — se alguém mexer na lista de campos acima, esta
-          // aqui ainda barra a troca de papel do próprio doc.
-          isAdmin()
+          // Quem edita: o motorista, NOS DOCS QUE SÃO DELE, ou a própria
+          // pessoa. A checagem redundante de `role` fica como segunda tranca
+          // — se alguém mexer na lista de campos acima, esta aqui ainda barra
+          // a troca de papel do próprio doc.
+          //
+          // O `isAdmin()` estava SOZINHO aqui, sem amarrar `{uid}` a nada — e
+          // o comentário lá em cima já prometia "e dos que ele administra",
+          // escopo que a regra não tinha. Todo campo fora da lista proibida
+          // (pixKey, phone, email, name...) era gravável por qualquer
+          // motorista em QUALQUER doc de users.
+          //
+          // Sondado com dois motoristas reais em produção: o segundo
+          // reescreveu a `pixKey` do primeiro e recebeu HTTP 200. Os
+          // responsáveis do primeiro abririam o financeiro, veriam a chave do
+          // segundo e pagariam nela — sem nada mudar na tela de quem foi
+          // roubado, até ele abrir /tio/pix. Revertido no mesmo teste.
+          //
+          // `adminUid` no doc do responsável é o que dá escopo: quem o grava
+          // é o resgate de convite (Admin SDK), copiado de `child.adminUid`.
+          (isAdmin() && resource.data.get('adminUid', '') == request.auth.uid)
           || (
             request.auth.uid == uid
             && request.resource.data.role == resource.data.role
@@ -392,9 +469,23 @@ service cloud.firestore {
         )
       );
 
-      // O próprio dono pode apagar (excluir minha conta) ou admin pode
-      // apagar qualquer um (remover pai vinculado / encerrar operação).
-      allow delete: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      // O próprio dono apaga o seu (excluir minha conta); o motorista apaga
+      // o doc DOS RESPONSÁVEIS DELE (remover pai vinculado).
+      //
+      // `isAdmin()` sem escopo aqui deixava um motorista apagar o doc de
+      // qualquer conta — inclusive a do dono, que perderia `role` e
+      // `superAdmin` sem nenhum caminho no app pra se recriar (o ramo de
+      // bootstrap exige `appState/init` ausente). Destruição de conta com
+      // DoS no dono junto, a partir de uma conta comum de parceiro.
+      // O DONO TAMBÉM REMOVE. Escopar o motorista sem reabrir pro dono deixava
+      // a plataforma sem como desligar um parceiro que saiu — descoberto na
+      // hora de limpar uma conta de teste, que é onde esse tipo de aperto
+      // demais costuma aparecer.
+      allow delete: if isSignedIn() && (
+        request.auth.uid == uid
+        || isOwner()
+        || (isAdmin() && resource.data.get('adminUid', '') == request.auth.uid)
+      );
     }
 
     // -----------------------------------------------------------------
@@ -505,16 +596,37 @@ service cloud.firestore {
       // Exigir o doc users/ exclui sessões anônimas — a landing chama
       // signInAnonymously pra gravar leads de waitlist, e sem essa checagem
       // qualquer visitante do site rastreava a perua em tempo real.
+      // UM DOCUMENTO POR MOTORISTA: o {docId} É o uid dele.
+      //
+      // Era `liveLocation/current`, caminho fixo pra plataforma inteira, com
+      // `driverUid` no corpo que ninguém lia. Sondado em produção com dois
+      // motoristas: os dois escreveram HTTP 200 e o doc terminou do segundo.
+      //
+      // A escrita compara {docId} com o uid direto — sem campo no corpo,
+      // porque aqui o próprio caminho já é a identidade, como em users/{uid}.
       allow read: if isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && (
-          isAdmin()
-          || userDoc().childId != null
-          // childIds é o modelo novo (um responsável, vários filhos).
-          // Sem esta linha, um pai migrado pro array perderia o mapa.
-          || (userDoc().childIds is list && userDoc().childIds.size() > 0)
+          // O motorista lê a própria posição.
+          (isAdmin() && docId == request.auth.uid)
+          // O responsável lê a do motorista DELE, e só. Antes qualquer pai
+          // vinculado lia o doc único — o que, com dois motoristas, é a
+          // perua de um estranho no mapa da família, e o aviso "está
+          // chegando" disparado pela van errada.
+          || (
+            userDoc().get('adminUid', '') == docId
+            && (
+              userDoc().childId != null
+              // childIds é o modelo novo (um responsável, vários filhos).
+              // Sem esta linha, um pai migrado pro array perderia o mapa.
+              || (userDoc().childIds is list && userDoc().childIds.size() > 0)
+            )
+          )
         );
-      allow write: if isAdmin();
+      // O dono limpa posições órfãs (ex.: o `liveLocation/current` legado, que
+      // ficou sem leitor quando o doc passou a ser por motorista) — sem isso
+      // ninguém consegue apagar um documento cujo id não é uid de ninguém.
+      allow write: if (isAdmin() && docId == request.auth.uid) || isOwner();
     }
 
     // -----------------------------------------------------------------
@@ -699,16 +811,24 @@ service cloud.firestore {
     // routePlans/{id} — ordem padrão das rotas (ex: routePlans/default).
     //   - Apenas admin lê/escreve. Pais NÃO veem ordem da fila (privacidade).
     // -----------------------------------------------------------------
+    // O id é `{uid}_default`, mas quem autoriza é o `adminUid` DO CORPO.
+    // Nome de documento não é permissão: sabendo o uid do outro, um motorista
+    // montava o caminho na mão. O campo no corpo é o que a regra confere.
     match /routePlans/{planId} {
-      allow read, write: if isAdmin();
+      allow read, delete: if doDono();
+      allow create: if nasceDoDono();
+      allow update: if doDono() && nasceDoDono();
     }
 
     // -----------------------------------------------------------------
     // dailyRoutes/{YYYY-MM-DD} — overrides do dia (ordem + ausências).
     //   - Apenas admin lê/escreve.
     // -----------------------------------------------------------------
+    // Mesmo desenho do routePlans: id `{uid}_{data}`, autorização pelo corpo.
     match /dailyRoutes/{dateKey} {
-      allow read, write: if isAdmin();
+      allow read, delete: if doDono();
+      allow create: if nasceDoDono();
+      allow update: if doDono() && nasceDoDono();
     }
 
     // -----------------------------------------------------------------
@@ -927,8 +1047,14 @@ service cloud.firestore {
     // quanto ele gasta de combustível ou paga de parcela não é da conta
     // de quem paga a mensalidade. Nenhum responsável enxerga.
     // -----------------------------------------------------------------
+    // DESPESA TEM DONO. Era `isAdmin()` puro, com a consulta filtrando só por
+    // mês — então cada motorista via, editava e apagava o combustível, a
+    // parcela do veículo e o salário do monitor de todos os outros. Sondado
+    // com duas contas reais: leitura e alteração cruzadas, HTTP 200 nas duas.
     match /expenses/{id} {
-      allow read, write: if isAdmin();
+      allow read, delete: if doDono();
+      allow create: if nasceDoDono();
+      allow update: if doDono() && nasceDoDono();
     }
 
     // -----------------------------------------------------------------

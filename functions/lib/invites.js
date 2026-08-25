@@ -201,6 +201,19 @@ function makeRedeemInvite(db) {
 
       const userPayload = {
         role: 'parent',
+        // DE QUAL MOTORISTA ESTE RESPONSÁVEL É.
+        //
+        // Sem este campo, `users` não tinha como ser escopado, e as rules
+        // caíam em `isAdmin()` solto — que aqui significa QUALQUER motorista.
+        // Na prática: um parceiro reescrevia a `pixKey` de outro (sondado em
+        // produção, HTTP 200) e apagava o doc de qualquer conta, inclusive a
+        // do dono. É também o que diz ao responsável qual perua ele pode
+        // acompanhar no mapa.
+        //
+        // Um responsável com filhos em peruas diferentes fica com o primeiro
+        // motorista aqui; o vínculo por criança continua em `child.adminUid`,
+        // que é o dado real. Este campo é a chave de escopo, não a verdade.
+        adminUid: existing?.adminUid || child.adminUid || null,
         childIds: admin.firestore.FieldValue.arrayUnion(childRef.id),
         // Campo legado: as telas do pai ainda leem `childId`. Só definimos
         // quando não havia nenhum, pra não trocar o filho ativo de quem

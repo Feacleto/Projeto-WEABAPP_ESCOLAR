@@ -79,7 +79,7 @@ function heroPhrase({ routeActive, total, hour }) {
 }
 
 export default function TioDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const navigate = useNavigate();
   const { openTutorial } = useOutletContext() || {};
   const { children } = useChildren();
@@ -93,16 +93,20 @@ export default function TioDashboard() {
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [absenceListOpen, setAbsenceListOpen] = useState(false);
 
+  // A rota ativa é a DELE. Enquanto `liveLocation` era um doc só pra
+  // plataforma toda, este badge acendia quando QUALQUER motorista estivesse
+  // rodando — e o daqui apagava quando outro encerrasse a dele.
+  const meuUid = user?.uid;
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, 'liveLocation', 'current'),
+    if (!meuUid) return undefined;
+    return onSnapshot(
+      doc(db, 'liveLocation', meuUid),
       (snap) => {
         setRouteActive(snap.exists() ? !!snap.data().routeActive : false);
       },
       () => setRouteActive(false)
     );
-    return unsub;
-  }, []);
+  }, [meuUid]);
 
   const totalChildren = children.length;
   const absentCount = absences.length;

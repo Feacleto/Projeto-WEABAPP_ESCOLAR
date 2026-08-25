@@ -49,8 +49,23 @@ import { removeChildFromDefaultPlan } from './routePlanService';
 
 const FIRESTORE_BATCH_LIMIT = 450;
 
-async function deleteEntireCollection(name, exceptIds = []) {
-  const snap = await getDocs(collection(db, name));
+/**
+ * APAGA SÓ O QUE É DESTE MOTORISTA. Antes varria a coleção inteira.
+ *
+ * `getDocs(collection(db, name))` sem filtro nenhum, em onze coleções. Com um
+ * motorista, fazia o que promete. Com vinte, o parceiro que desistisse levava
+ * junto as crianças, os pagamentos, as rotas e os usuários dos outros
+ * dezenove — de um botão na tela de perfil.
+ *
+ * Agora que as rules exigem escopo, a versão sem filtro seria pior ainda: a
+ * consulta é negada INTEIRA (o Firestore não devolve "a parte que você pode"),
+ * e a função lançaria no meio da limpeza. Um wipe parcial, sem transação e sem
+ * como retomar, é o único resultado pior que um wipe grande demais.
+ */
+async function deleteOwnedCollection(name, adminUid, exceptIds = []) {
+  const snap = await getDocs(
+    query(collection(db, name), where('adminUid', '==', adminUid))
+  );
   const docs = snap.docs.filter((d) => !exceptIds.includes(d.id));
   await deleteInBatches(docs);
 }
@@ -251,18 +266,31 @@ export async function deleteOwnParentAccount({ uid, childIds = [] }) {
 export async function deleteAdminAccount(adminUid) {
   if (!adminUid) throw new Error('Sem adminUid.');
 
-  await deleteEntireCollection('children');
-  await deleteEntireCollection('users', [adminUid]);
-  await deleteEntireCollection('payments');
-  await deleteEntireCollection('absenceDeclarations');
-  await deleteEntireCollection('notifications');
-  await deleteEntireCollection('schoolBroadcasts');
-  await deleteEntireCollection('dailyRoutes');
+  // As coleções que já carregam `adminUid` saem escopadas.
+  await deleteOwnedCollection('children', adminUid);
+  await deleteOwnedCollection('payments', adminUid);
+  await deleteOwnedCollection('dailyRoutes', adminUid);
+
+  // `users` NÃO é mais varrida aqui.
+  //
+  // Apagar "todos menos eu" tirava do ar as contas dos responsáveis dos
+  // outros motoristas e a do próprio dono da plataforma — que perderia `role`
+  // e `superAdmin` sem nenhum caminho no app pra se recriar. Os responsáveis
+  // deste motorista já são apagados um a um em deactivateChildAndParent,
+  // que é onde existe o vínculo pra saber quem é de quem.
+
+  // Estas três ainda não têm `adminUid` no modelo. Enquanto não tiverem, o
+  // encerramento não as toca: é melhor deixar dado órfão do motorista que
+  // saiu do que apagar o dado de quem ficou. Anotado como pendência.
+  //   - absenceDeclarations
+  //   - notifications
+  //   - schoolBroadcasts
   // Estas quatro ficavam de fora do wipe e sobreviviam ao "encerrar operação",
   // carregando nomes de crianças, telefones de terceiros e recados nominais.
-  await deleteEntireCollection('altPickups');
-  await deleteEntireCollection('pendingCalls');
-  await deleteEntireCollection('agendaEntries');
+  //   - altPickups
+  //   - pendingCalls
+  // `agendaEntries` já carimba adminUid na criação.
+  await deleteOwnedCollection('agendaEntries', adminUid);
   // waitlistDrivers e waitlistParents NÃO são apagadas.
   //
   // São dado da PLATAFORMA, não do motorista: é a fila de motoristas e
@@ -274,14 +302,21 @@ export async function deleteAdminAccount(adminUid) {
   // GEROU (crianças, pagamentos, rotas, recados). O que a plataforma
   // captou fica.
   // Despesas são dado de negócio do tio: saem junto quando ele encerra.
-  await deleteEntireCollection('expenses');
+  await deleteOwnedCollection('expenses', adminUid);
 
-  await deleteDoc(doc(db, 'routePlans', 'default')).catch((err) =>
-    console.error('routePlans/default:', err)
+  // O id da rota padrão passou a ser `{uid}_default`. O `routePlans/default`
+  // que esta linha apagava é o id legado — apagava o doc errado e deixava o
+  // certo de pé.
+  await deleteDoc(doc(db, 'routePlans', `${adminUid}_default`)).catch((err) =>
+    console.error('routePlans do motorista:', err)
   );
-  await deleteDoc(doc(db, 'appState', 'init')).catch((err) =>
-    console.error('appState/init:', err)
-  );
+
+  // `appState/init` NÃO é apagado.
+  //
+  // Apagá-lo reabre /first-admin: o próximo visitante que souber a URL vira
+  // administrador. É flag de bootstrap da PLATAFORMA, não do motorista — e a
+  // rule agora só deixa o dono mexer nele, então a linha antiga também
+  // lançaria aqui e derrubaria o encerramento inteiro.
 
   // Por ÚLTIMO: doc do admin
   await deleteDoc(doc(db, 'users', adminUid));

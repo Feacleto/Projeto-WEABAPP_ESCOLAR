@@ -76,7 +76,27 @@ async function generateForMonth(db, monthKey) {
     // Clampa pro último dia do mês: dia 31 em fevereiro viraria março.
     const safeDueDay = Math.min(Math.max(1, dueDay), lastDayOfMonth);
 
+    // SEM `adminUid` O PAGAMENTO NASCE ÓRFÃO — e o aviso já estava escrito.
+    //
+    // `firestore.rules` avisa, em maiúsculas, que a geração de mensalidade
+    // precisa gravar este campo. A geração voltou a rodar e o campo não veio.
+    // As quatro consultas do motorista filtram por ele, então a mensalidade
+    // gerada pelo servidor é INVISÍVEL pra quem tem que receber: o pai vê a
+    // cobrança (a consulta dele é por `parentUid`), o motorista abre o
+    // Financeiro e encontra o mês vazio. Sem erro no console — o pior
+    // formato de falha que existe.
+    //
+    // E não dá nem pra dar baixa: o `allow update` compara `adminUid` dos
+    // dois lados, e comparação sobre chave ausente é erro, e erro nega.
+    if (!child.adminUid) {
+      logger.warn(
+        `Criança sem adminUid, mensalidade NÃO gerada: child=${childDoc.id} mes=${monthKey}`
+      );
+      continue;
+    }
+
     batch.set(db.collection('payments').doc(), {
+      adminUid: child.adminUid,
       childId: childDoc.id,
       childName: child.name || '', // denormalizado pra evitar join na leitura
       parentUid: child.parentUid,

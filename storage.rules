@@ -24,10 +24,21 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    // A SUSPENSÃO PRECISA VALER AQUI TAMBÉM.
+    //
+    // `firestore.rules` documenta que negar dentro do `isAdmin()` faz a
+    // suspensão valer "pra TODAS as coleções de uma vez". Vale — no Firestore.
+    // O Storage tem uma CÓPIA desta função, e a cópia nunca recebeu a trava:
+    // motorista suspenso seguia lendo, escrevendo e APAGANDO foto de criança
+    // e comprovante bancário.
+    //
+    // É o custo de ter a mesma decisão escrita em dois arquivos. Quem mexer
+    // em `isAdmin()` num deles tem que mexer no outro.
     function isAdmin() {
       return isSignedIn()
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('suspenso', false) != true;
     }
 
     // Pai/mãe da criança — autorizado a trocar a foto do próprio filho.
@@ -79,21 +90,39 @@ service firebase.storage {
     // arquivo "público dentro do app" como os avatares.
     // --------------------------------------------------------------------
     match /paymentReceipts/{paymentId} {
+      function pagamento() {
+        return firestore.get(/databases/(default)/documents/payments/$(paymentId)).data;
+      }
+      function existePagamento() {
+        return firestore.exists(/databases/(default)/documents/payments/$(paymentId));
+      }
       function isPayer() {
         return isSignedIn()
-          && firestore.exists(/databases/(default)/documents/payments/$(paymentId))
-          && firestore.get(/databases/(default)/documents/payments/$(paymentId)).data.parentUid == request.auth.uid;
+          && existePagamento()
+          && pagamento().parentUid == request.auth.uid;
       }
-      allow read: if isAdmin() || isPayer();
+      // O MOTORISTA DAQUELE PAGAMENTO, não qualquer motorista.
+      //
+      // O comentário acima já dizia "só o admin e o próprio pai daquele
+      // pagamento" — mas `isAdmin()` aqui significa TODO motorista cadastrado,
+      // e o caminho é determinístico (`paymentReceipts/{paymentId}`). Qualquer
+      // parceiro lia, sobrescrevia e apagava o comprovante bancário de
+      // qualquer família da plataforma: nome, valor e às vezes agência e conta.
+      function isDono() {
+        return isAdmin()
+          && existePagamento()
+          && pagamento().get('adminUid', '') == request.auth.uid;
+      }
+      allow read: if isDono() || isPayer();
       // O TIO também anexa. Na prática o pai paga e manda o comprovante
       // pelo WhatsApp sem passar pelo app — sem isto, aquele comprovante
       // não entra no histórico e o registro do mês fica incompleto.
-      allow write: if (isAdmin() || isPayer())
+      allow write: if (isDono() || isPayer())
         && (isImage() || request.resource.contentType == 'application/pdf')
         && isWithinSizeLimit();
-      // O pai pode trocar o comprovante errado; o admin limpa depois de
-      // conferir, se quiser.
-      allow delete: if isAdmin() || isPayer();
+      // O pai pode trocar o comprovante errado; o motorista daquele pagamento
+      // limpa depois de conferir, se quiser.
+      allow delete: if isDono() || isPayer();
     }
 
     // Default deny

@@ -8,7 +8,7 @@ import {
   arrayUnion,
   arrayRemove,
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 
 /**
  * Sistema de rota baseado em turnos.
@@ -21,11 +21,11 @@ import { db } from '../firebase/config';
  * uma chave 'morning-pickup' / 'afternoon-dropoff' / etc. Total: 6 turnos.
  *
  * Estrutura:
- *   - routePlans/default          — ordem fixa por turno (cresce com cadastros)
- *   - dailyRoutes/{YYYY-MM-DD}    — override do dia (ordem + ausências)
+ *   - routePlans/{uid}_default        — ordem fixa por turno, POR MOTORISTA
+ *   - dailyRoutes/{uid}_{YYYY-MM-DD}  — override do dia, POR MOTORISTA
  *
  * Resolução: ao ler "ordem de hoje pro turno X", buscamos primeiro
- * dailyRoutes/{hoje}.X. Se não existe, caímos pra routePlans/default.X.
+ * dailyRoutes/{uid}_{hoje}.X. Se não existe, caímos pra routePlans/{uid}_default.X.
  */
 
 // ============================================================================
@@ -93,10 +93,38 @@ export function getDateKey(date = new Date()) {
 }
 
 // ============================================================================
-// routePlans/default — ordem padrão por turno
+// routePlans/{uid}_default — ordem padrão por turno, por motorista
 // ============================================================================
 
-const DEFAULT_DOC = doc(db, 'routePlans', 'default');
+/**
+ * O ID DA ROTA CARREGA O DONO. E isso não é organização, é integridade.
+ *
+ * Antes era `routePlans/default` e `dailyRoutes/{data}` — IDs FIXOS. Com um
+ * motorista funcionava; com dois, os dois escrevem no MESMO documento.
+ *
+ * Testado contra produção com duas contas reais: o motorista 2 sobrescreveu
+ * o `dailyRoutes` do motorista 1 com HTTP 200. Não é vazamento de leitura —
+ * é DESTRUIÇÃO: o segundo abre o app e a rota do dia do primeiro, com as
+ * crianças já embarcadas e a ordem ajustada na hora, vira a rota dele.
+ *
+ * `{uid}_default` e `{uid}_{data}` resolvem sem join e sem consulta extra: o
+ * caminho do documento já é o escopo. E a rule confere `adminUid` dentro,
+ * porque ID bonito não é permissão.
+ *
+ * E o `adminUid` VAI TAMBÉM NO CORPO, não só no id. Id bonito não é
+ * permissão: a rule precisa de um campo pra conferir, senão qualquer
+ * motorista que souber o uid do outro monta o caminho na mão e escreve.
+ *
+ * Consertado com o banco VAZIO, que é o momento em que isto custa zero.
+ * Depois de vinte motoristas seria migração com rota em andamento.
+ */
+function uidAtual() {
+  return auth.currentUser?.uid || '_sem_sessao';
+}
+
+function defaultDoc() {
+  return doc(db, 'routePlans', `${uidAtual()}_default`);
+}
 
 /**
  * Adiciona uma criança aos turnos relevantes (pickup + dropoff) na rota
@@ -120,7 +148,7 @@ export async function addChildToDefaultPlan({
   updates.updatedAt = serverTimestamp();
 
   // setDoc com merge cria o doc se não existir e mescla campos
-  await setDoc(DEFAULT_DOC, updates, { merge: true });
+  await setDoc(defaultDoc(), { ...updates, adminUid: uidAtual() }, { merge: true });
 }
 
 /**
@@ -134,11 +162,11 @@ export async function removeChildFromDefaultPlan(childId) {
       updates[turnoKey(period, direction)] = arrayRemove(childId);
     }
   }
-  await setDoc(DEFAULT_DOC, updates, { merge: true });
+  await setDoc(defaultDoc(), { ...updates, adminUid: uidAtual() }, { merge: true });
 }
 
 export async function getDefaultPlan() {
-  const snap = await getDoc(DEFAULT_DOC);
+  const snap = await getDoc(defaultDoc());
   return snap.exists() ? snap.data() : {};
 }
 
@@ -149,8 +177,9 @@ export async function getDefaultPlan() {
  */
 export async function setDefaultTurnoOrder(turno, order) {
   await setDoc(
-    DEFAULT_DOC,
+    defaultDoc(),
     {
+      adminUid: uidAtual(),
       [turno]: order,
       updatedAt: serverTimestamp(),
     },
@@ -160,7 +189,7 @@ export async function setDefaultTurnoOrder(turno, order) {
 
 export function watchDefaultPlan(onUpdate, onError) {
   return onSnapshot(
-    DEFAULT_DOC,
+    defaultDoc(),
     (snap) => onUpdate(snap.exists() ? snap.data() : {}),
     (err) => {
       console.error('watchDefaultPlan error:', err);
@@ -170,11 +199,13 @@ export function watchDefaultPlan(onUpdate, onError) {
 }
 
 // ============================================================================
-// dailyRoutes/{YYYY-MM-DD} — override do dia
+// dailyRoutes/{uid}_{YYYY-MM-DD} — override do dia, por motorista
 // ============================================================================
 
 function dailyDoc(dateKey) {
-  return doc(db, 'dailyRoutes', dateKey);
+  // Mesmo motivo do defaultDoc: sem o uid no id, dois motoristas dividem o
+  // documento do dia e o último a escrever apaga o trabalho do outro.
+  return doc(db, 'dailyRoutes', `${uidAtual()}_${dateKey}`);
 }
 
 export async function getDailyRoute(dateKey) {
@@ -205,6 +236,7 @@ export async function setDailyTurnoOrder(dateKey, turno, order) {
   await setDoc(
     dailyDoc(dateKey),
     {
+      adminUid: uidAtual(),
       [turno]: { order, absent: [] },
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
@@ -236,6 +268,7 @@ export async function toggleAbsence(dateKey, turno, childId, mode) {
   await setDoc(
     ref,
     {
+      adminUid: uidAtual(),
       [turno]: {
         order: turnoData.order || [],
         absent,
@@ -295,5 +328,5 @@ export async function removeChildFromDailyRoute(dateKey, childId) {
       updates[k] = { order: newOrder, absent: newAbsent };
     }
   }
-  await updateDoc(ref, updates);
+  await updateDoc(ref, { ...updates, adminUid: uidAtual() });
 }

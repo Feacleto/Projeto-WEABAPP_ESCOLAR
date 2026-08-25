@@ -41,7 +41,7 @@ const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
 export default function PaiMap() {
   const navigate = useNavigate();
   const { child, loading } = useActiveChild();
-  const { location: liveLocation } = useLiveLocation();
+  const { location: liveLocation } = useLiveLocation(child?.adminUid);
   const { admin } = useAdminProfile();
 
   const home =

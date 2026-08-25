@@ -1,7 +1,7 @@
 /**
  * Encerramento automático de rota abandonada.
  *
- * O tracking web grava em `liveLocation/current` a cada 30 s enquanto a aba
+ * O tracking web grava em `liveLocation/{uid}` a cada 30 s enquanto a aba
  * está visível. Se o motorista fecha a aba sem tocar em "Encerrar rota",
  * `routeActive` fica `true` indefinidamente — e o painel do pai passa a
  * mostrar uma perua parada no mapa como se aquilo fosse a posição atual.
@@ -28,31 +28,48 @@ function makeCloseStaleRoutes(db) {
       region: REGION,
     },
     async () => {
-      const ref = db.doc('liveLocation/current');
-      const snap = await ref.get();
-      if (!snap.exists) return;
+      // UM DOCUMENTO POR MOTORISTA, não mais `liveLocation/current`.
+      //
+      // Com o doc único, esta função encerrava a rota dos DOIS motoristas
+      // quando qualquer um deles ficasse 20 minutos sem sinal — e o que
+      // seguia rodando sumia do mapa dos pais dele no meio do trajeto.
+      //
+      // A varredura filtra `routeActive` no servidor pra não baixar o
+      // histórico de quem não está em rota: fora do horário escolar isso é
+      // quase a coleção inteira, quatro vezes por hora, todo dia.
+      const ativos = await db
+        .collection('liveLocation')
+        .where('routeActive', '==', true)
+        .get();
+      if (ativos.empty) return;
 
-      const data = snap.data();
-      if (!data.routeActive) return;
+      const agora = Date.now();
+      let encerradas = 0;
 
-      const updatedMs = data.updatedAt?.toMillis?.() || 0;
-      const age = Date.now() - updatedMs;
-      if (age < ABANDON_MS) return;
+      for (const docSnap of ativos.docs) {
+        const data = docSnap.data();
+        const updatedMs = data.updatedAt?.toMillis?.() || 0;
+        const age = agora - updatedMs;
+        if (age < ABANDON_MS) continue;
 
-      // merge preserva lat/lng — a "última posição conhecida" continua
-      // disponível, só deixa de ser apresentada como posição atual.
-      await ref.set(
-        {
-          routeActive: false,
-          closedBy: 'auto-timeout',
-          closedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+        // merge preserva lat/lng — a "última posição conhecida" continua
+        // disponível, só deixa de ser apresentada como posição atual.
+        await docSnap.ref.set(
+          {
+            routeActive: false,
+            closedBy: 'auto-timeout',
+            closedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+        encerradas += 1;
+        logger.info(
+          `Rota encerrada por inatividade: motorista=${docSnap.id}, ${Math.round(age / 60000)} min sem posição.`
+        );
+      }
 
-      logger.info(
-        `Rota encerrada por inatividade: ${Math.round(age / 60000)} min sem posição.`
-      );
+      if (encerradas === 0) return;
+      logger.info(`closeStaleRoutes: ${encerradas} rota(s) encerrada(s).`);
     }
   );
 }

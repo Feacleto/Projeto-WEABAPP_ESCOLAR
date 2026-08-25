@@ -11,7 +11,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 
 /**
  * Despesas do motorista.
@@ -79,7 +79,18 @@ export async function addExpense({ amount, category, description, date }) {
   }
   const when = toDate(date);
 
+  const dono = auth.currentUser?.uid;
+  if (!dono) throw new Error('Entre de novo para lançar a despesa.');
+
   await addDoc(collection(db, 'expenses'), {
+    // DE QUEM É ESTA DESPESA. Sem este campo a coleção não tinha dono
+    // nenhum: a rule era `isAdmin()` puro e a consulta filtrava só por mês,
+    // então cada motorista via — e podia EDITAR e APAGAR — o combustível, a
+    // parcela do veículo e o salário do monitor de todos os outros.
+    //
+    // Sondado com dois motoristas reais: o segundo leu e alterou a despesa
+    // do primeiro, HTTP 200 nas duas.
+    adminUid: dono,
     amount: value,
     category,
     description: String(description || '').trim().slice(0, 200),
@@ -114,8 +125,13 @@ export async function deleteExpense(id) {
  */
 export function watchExpensesByMonth(monthKey, onUpdate, onError) {
   if (!monthKey) return () => {};
+  const dono = auth.currentUser?.uid;
+  // Sem sessão não há consulta a fazer: a rule negaria, e uma consulta que
+  // já se sabe negada é erro no console do motorista sem nada em troca.
+  if (!dono) return () => {};
   const q = query(
     collection(db, 'expenses'),
+    where('adminUid', '==', dono),
     where('monthKey', '==', monthKey),
     orderBy('date', 'desc')
   );
@@ -138,7 +154,13 @@ export function watchExpensesByMonth(monthKey, onUpdate, onError) {
 export function watchExpensesByMonths(monthKeys, onUpdate, onError) {
   const keys = (monthKeys || []).filter(Boolean).slice(0, 30);
   if (keys.length === 0) return () => {};
-  const q = query(collection(db, 'expenses'), where('monthKey', 'in', keys));
+  const dono = auth.currentUser?.uid;
+  if (!dono) return () => {};
+  const q = query(
+    collection(db, 'expenses'),
+    where('adminUid', '==', dono),
+    where('monthKey', 'in', keys)
+  );
   return onSnapshot(
     q,
     (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),

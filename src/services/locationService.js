@@ -1,5 +1,5 @@
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 import { playSound } from './soundService';
 
 // ============================================================================
@@ -42,7 +42,29 @@ export async function searchAddress(address) {
 // GPS Tracking (Tio)
 // ============================================================================
 
-const LIVE_LOCATION_DOC = doc(db, 'liveLocation', 'current');
+/**
+ * A POSIÇÃO AO VIVO É POR MOTORISTA. Era um documento só pra plataforma toda.
+ *
+ * `liveLocation/current` guardava `driverUid` DENTRO do doc, mas o caminho era
+ * fixo — e ninguém lia esse campo. Com dois motoristas em rota, cada um
+ * sobrescrevia o outro a cada 30 segundos.
+ *
+ * Sondado em produção com duas contas reais: os dois escreveram HTTP 200 e o
+ * documento terminou sendo do segundo. O pai do primeiro abriria o mapa e
+ * veria a perua de um estranho — e, pior que ver errado, `PaiMap` calcula
+ * `isNearby`/`hasArrived` em cima disso e dispara "a perua está chegando"
+ * pela van de outro motorista. A mãe desce com a criança pra rua.
+ *
+ * `liveLocation/{uid}` resolve no caminho. O leitor do pai chega no uid certo
+ * por `child.adminUid`, que a criança já carrega.
+ */
+function uidDaSessao() {
+  return auth.currentUser?.uid || '_sem_sessao';
+}
+
+function docDoMotorista(uid) {
+  return doc(db, 'liveLocation', uid);
+}
 const THROTTLE_MS = 30000;
 
 // Estado em nível de módulo — sobrevive à troca de páginas no app.
@@ -107,7 +129,7 @@ export function startTracking(driverUid) {
       lastWrite = now;
 
       try {
-        await setDoc(LIVE_LOCATION_DOC, {
+        await setDoc(docDoMotorista(uidDaSessao()), {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           accuracy: position.coords.accuracy,
@@ -142,7 +164,7 @@ export async function stopTracking() {
   // Som de encerramento — Tio finalizou o turno
   playSound('end_route');
   await setDoc(
-    LIVE_LOCATION_DOC,
+    docDoMotorista(uidDaSessao()),
     { routeActive: false, updatedAt: serverTimestamp() },
     { merge: true }
   );

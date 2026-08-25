@@ -89,7 +89,7 @@ export default function PaiDashboard() {
   const { user, profile } = useAuth();
   const { openTutorial } = useOutletContext() || {};
   const { child, loading: childLoading } = useActiveChild();
-  const { location: liveLocation } = useLiveLocation();
+  const { location: liveLocation } = useLiveLocation(child?.adminUid);
   const { admin } = useAdminProfile();
   const { payments } = usePaymentsByParent(user?.uid);
   const todayKey = getDateKey();
