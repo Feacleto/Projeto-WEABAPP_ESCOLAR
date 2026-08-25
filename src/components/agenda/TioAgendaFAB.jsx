@@ -10,6 +10,7 @@ import {
   School,
   Users,
   History,
+  Megaphone,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Avatar from '../common/Avatar';
@@ -20,6 +21,7 @@ import {
   AGENDA_TYPES,
   createChildEntry,
   createSchoolEntry,
+  createBroadcastEntry,
 } from '../../services/agendaService';
 
 /**
@@ -61,7 +63,7 @@ function AgendaSheet({ onClose }) {
   const navigate = useNavigate();
   const { children } = useChildren();
   const [step, setStep] = useState('target'); // target | type | confirm
-  const [scope, setScope] = useState(null); // 'child' | 'school'
+  const [scope, setScope] = useState(null); // 'child' | 'school' | 'todos'
   const [selectedChild, setSelectedChild] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [typeKey, setTypeKey] = useState(null);
@@ -105,6 +107,20 @@ function AgendaSheet({ onClose }) {
     setStep('type');
   };
 
+  /**
+   * Aviso pra TODAS as famílias.
+   *
+   * É o caso que não cabia em "criança" nem em "escola": a perua quebrou, ele
+   * vai atrasar. Antes disso ele teria que disparar um aviso por escola, um de
+   * cada vez, parado no acostamento.
+   */
+  const pickTodos = () => {
+    setScope('todos');
+    setSelectedChild(null);
+    setSelectedSchool(null);
+    setStep('type');
+  };
+
   const pickSchool = (school) => {
     setScope('school');
     setSelectedSchool(school);
@@ -135,7 +151,20 @@ function AgendaSheet({ onClose }) {
     }
     setSubmitting(true);
     try {
-      if (scope === 'child') {
+      if (scope === 'todos') {
+        const { alcance } = await createBroadcastEntry({
+          adminUid: user?.uid,
+          type: typeKey,
+          message,
+          eventDate: eventDate || null,
+          children,
+        });
+        toast.success(
+          alcance === 1
+            ? 'Aviso enviado pra 1 família.'
+            : `Aviso enviado pra ${alcance} famílias.`
+        );
+      } else if (scope === 'child') {
         await createChildEntry({
           adminUid: user?.uid,
           child: selectedChild,
@@ -196,6 +225,7 @@ function AgendaSheet({ onClose }) {
               schools={schools}
               onPickChild={pickChild}
               onPickSchool={pickSchool}
+              onPickTodos={pickTodos}
             />
           )}
 
@@ -265,7 +295,7 @@ function SheetHeader({ step, onBack, onClose, onHistory }) {
   );
 }
 
-function TargetStep({ children, schools, onPickChild, onPickSchool }) {
+function TargetStep({ children, schools, onPickChild, onPickSchool, onPickTodos }) {
   const [search, setSearch] = useState('');
   const filteredChildren = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -283,6 +313,29 @@ function TargetStep({ children, schools, onPickChild, onPickSchool }) {
 
   return (
     <div className="space-y-5">
+      {/* TODAS AS FAMÍLIAS — vem primeiro porque é o aviso mais urgente que
+        * existe, e urgência não deve estar embaixo de uma lista. */}
+      <section>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-textMuted mb-2">
+          Aviso urgente · todo mundo
+        </p>
+        <button
+          type="button"
+          onClick={onPickTodos}
+          className="tap w-full text-left rounded-2xl bg-gradient-to-r from-rose-500 to-red-700 text-white px-4 py-3 flex items-center gap-3 shadow-sm"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Megaphone size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold leading-tight">Todas as famílias</p>
+            <p className="text-[11px] text-white/85">
+              Perua quebrada, atraso — o que é sobre a rota, não sobre a escola
+            </p>
+          </div>
+        </button>
+      </section>
+
       {/* Bloco "Toda uma escola" */}
       {schools.length > 0 && (
         <section>
@@ -405,7 +458,9 @@ function ConfirmStep({
 }) {
   const typeData = AGENDA_TYPES[typeKey];
   const recipient =
-    scope === 'child'
+    scope === 'todos'
+      ? 'Pra todas as famílias'
+      : scope === 'child'
       ? `Pra ${target?.name?.split(' ')[0] || 'a criança'}`
       : `Aviso geral · ${target?.name}`;
 

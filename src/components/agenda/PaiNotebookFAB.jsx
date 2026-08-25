@@ -310,10 +310,14 @@ function Entry({ entry }) {
   const t = AGENDA_TYPES[entry.type] || AGENDA_TYPES.other;
   const date = entry.createdAt?.toDate?.();
   const ScopeIcon = entry.scope === 'school' ? School : UserIcon;
-  const scopeLabel =
-    entry.scope === 'school'
-      ? `Aviso da escola · ${entry.schoolName}`
-      : `Sobre ${entry.childName?.split(' ')[0] || 'a criança'}`;
+  // "Aviso do motorista" e "Aviso da escola" são coisas diferentes pro
+  // responsável: um fala da perua, o outro fala da aula. Sem a distinção, o
+  // recado de carro quebrado chegava rotulado como recado da escola.
+  const scopeLabel = entry.todasAsEscolas
+    ? 'Aviso do motorista · para todas as famílias'
+    : entry.scope === 'school'
+    ? `Aviso da escola · ${entry.schoolName}`
+    : `Sobre ${entry.childName?.split(' ')[0] || 'a criança'}`;
 
   return (
     <div className="space-y-3">

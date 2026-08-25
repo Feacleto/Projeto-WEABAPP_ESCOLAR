@@ -107,6 +107,23 @@ export const AGENDA_TYPES = {
     template: () =>
       'A escola avisou que não vai ter aula. Confirma direitinho na agenda escolar.',
   },
+  // ATRASO E QUEBRA — os dois avisos que não são sobre a escola, são sobre a
+  // perua. Faltavam, e sem eles o motorista com o carro quebrado escolhia
+  // "outro aviso" e escrevia do zero, no pior momento possível pra escrever.
+  atraso: {
+    label: 'Vou atrasar',
+    emoji: '⏰',
+    color: 'from-amber-500 to-orange-600',
+    template: () =>
+      'Hoje vou atrasar um pouco na rota. Assim que eu estiver chegando, o app avisa vocês.',
+  },
+  quebrou: {
+    label: 'Problema com a perua',
+    emoji: '🚨',
+    color: 'from-rose-600 to-red-700',
+    template: () =>
+      'Tive um problema com a perua hoje. Estou resolvendo e aviso vocês assim que tiver notícia. Se puderem, se organizem para levar a criança hoje.',
+  },
   other: {
     label: 'Outro aviso',
     emoji: '✏️',
@@ -160,6 +177,71 @@ export async function createChildEntry({ adminUid, child, type, message, eventDa
   }
 
   return docRef.id;
+}
+
+/**
+ * Cria um aviso pra TODAS as famílias do motorista, de todas as escolas.
+ *
+ * POR QUE ELE PRECISA EXISTIR SEPARADO
+ * A agenda só sabia falar com uma criança ou com uma escola. Mas o aviso mais
+ * urgente que existe na operação não é sobre escola nenhuma — é sobre a perua:
+ * ela quebrou, ele vai atrasar, ele não vai rodar hoje. Nesse caso ele tinha
+ * que disparar um aviso por escola, um de cada vez, no exato momento em que
+ * está parado no acostamento.
+ *
+ * NÃO MEXE NA ROTA, DE PROPÓSITO
+ * Diferente do "sem aula", este aviso não marca falta de ninguém. "A perua
+ * quebrou" não quer dizer que a criança não vai à escola — quer dizer que
+ * quem leva mudou. Marcar falta aqui apagaria as crianças da rota de um dia
+ * que talvez ele ainda consiga rodar depois do conserto.
+ */
+export async function createBroadcastEntry({
+  adminUid,
+  type,
+  message,
+  eventDate,
+  children = [],
+}) {
+  if (!adminUid) throw new Error('Sem adminUid.');
+  if (!type || !AGENDA_TYPES[type]) throw new Error('Tipo inválido.');
+
+  const parentUids = [
+    ...new Set(
+      (children || [])
+        .filter((c) => c?.active !== false)
+        .map((c) => c.parentUid)
+        .filter(Boolean)
+    ),
+  ];
+
+  const docRef = await addDoc(collection(db, AGENDA_COLLECTION), {
+    // `scope: 'school'` de propósito, com `schoolName` vazio: é o mesmo
+    // formato que o caderno do responsável já sabe ler e que a rule já sabe
+    // autorizar (por `parentUids`). Um scope novo exigiria mexer nos dois —
+    // e o que muda aqui é o alcance, não a natureza do aviso.
+    scope: 'school',
+    todasAsEscolas: true,
+    type,
+    message: (message || '').trim().slice(0, 1500),
+    adminUid,
+    schoolId: null,
+    schoolName: '',
+    eventDate: eventDate || null,
+    parentUids,
+    createdAt: serverTimestamp(),
+  });
+
+  for (const parentUid of parentUids) {
+    pushNotification({
+      userId: parentUid,
+      type: 'agenda_broadcast',
+      title: 'Aviso do motorista',
+      body: AGENDA_TYPES[type].label,
+      meta: { agendaId: docRef.id },
+    });
+  }
+
+  return { id: docRef.id, alcance: parentUids.length };
 }
 
 /**
