@@ -371,6 +371,33 @@ async function main() {
   checar('corr', 'campo fora da whitelist em rides', 'NEGA',
     await escrever('children/kid1/rides/2026-08-25', tio1, { inventado: S('x') }, ['inventado']));
 
+  // O PAYLOAD REAL, campo por campo.
+  //
+  // A whitelist de `rides` é uma lista escrita à mão, e lista escrita à mão
+  // erra por omissão. Um probe meu usou `embarcouEm` — nome que o serviço não
+  // grava — levou 403 e por um momento pareceu que eu tinha quebrado o
+  // rastreador em produção. O caso abaixo copia o que `anotarMarco` e
+  // `publicarOrdemDoDia` mandam de verdade: se alguém adicionar um campo ao
+  // serviço e esquecer da regra, quebra AQUI, e não na rota do motorista.
+  checar('pos', 'anotarMarco com o payload real', 'PASSA',
+    await escrever('children/kid1/rides/2026-08-25', tio1, {
+      dateKey: S('2026-08-25'), childId: S('kid1'),
+      adminUid: S(tio1.uid), parentUid: S(pai1.uid),
+      marcos: { mapValue: { fields: { embarcou: { timestampValue: '2026-08-25T09:20:00Z' } } } },
+      checkpoints: { mapValue: { fields: { embarcou: { mapValue: { fields: { lat: N(-23.1) } } } } } },
+      combinado: { mapValue: { fields: { ida: S('06:20') } } },
+      atualizadoEm: { timestampValue: '2026-08-25T09:20:00Z' },
+    }));
+  checar('pos', 'publicarOrdemDoDia com o payload real', 'PASSA',
+    await escrever('children/kid1/rides/2026-08-25', tio1, {
+      dateKey: S('2026-08-25'), childId: S('kid1'),
+      adminUid: S(tio1.uid), parentUid: S(pai1.uid),
+      combinado: { mapValue: { fields: { ida: S('06:20'), volta: S('12:35') } } },
+      ordemIda: { integerValue: '1' }, totalIda: { integerValue: '3' },
+      ordemVolta: { integerValue: '2' }, totalVolta: { integerValue: '3' },
+      atualizadoEm: { timestampValue: '2026-08-25T09:20:00Z' },
+    }));
+
   // A CONSULTA, não só a leitura de um documento.
   //
   // Regra e consulta são coisas separadas: o Firestore recusa a consulta
