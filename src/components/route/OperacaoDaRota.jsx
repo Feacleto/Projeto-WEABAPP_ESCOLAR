@@ -182,6 +182,7 @@ export default function OperacaoDaRota({
             childId: q.child.id,
             nextStatus: proximo,
             parentUid: q.child.parentUid || null,
+            childName: q.child.name,
             home: q.child.lat != null ? { lat: q.child.lat, lng: q.child.lng } : null,
             school:
               q.child.schoolLat != null
@@ -275,6 +276,7 @@ export default function OperacaoDaRota({
         dateKey,
         adminUid: user?.uid,
         parentUid: item.child.parentUid || null,
+        childName: item.child.name,
         home: item.child.lat != null ? { lat: item.child.lat, lng: item.child.lng } : null,
         school:
           item.child.schoolLat != null

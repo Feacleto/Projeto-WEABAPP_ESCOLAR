@@ -1,4 +1,10 @@
-import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  doc,
+  writeBatch,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { playSound } from './soundService';
 import { haversineDistance } from '../utils/haversine';
@@ -149,6 +155,16 @@ export async function advanceChild(childId, nextStatus, context = null) {
   }
 
   await batch.commit();
+
+  await avisarChegadas([
+    {
+      parentUid: context?.parentUid,
+      childId,
+      childName: context?.childName,
+      status: nextStatus,
+    },
+  ]);
+
   playSound('status_change');
 }
 
@@ -226,6 +242,16 @@ export async function advanceMany(moves, context = null) {
     }
     await batch.commit();
   }
+
+  await avisarChegadas(
+    valid.map((m) => ({
+      parentUid: m.parentUid,
+      childId: m.childId,
+      childName: m.childName,
+      status: m.nextStatus,
+    }))
+  );
+
   // Som PRÓPRIO do lote, e não o mesmo do toque individual.
   //
   // Marcar cinco de uma vez soava exatamente igual a marcar uma. Com o
@@ -234,6 +260,81 @@ export async function advanceMany(moves, context = null) {
   // esta tela existe pra evitar.
   playSound('lote');
   return valid.length;
+}
+
+/**
+ * AVISA O RESPONSÁVEL QUE A CRIANÇA CHEGOU.
+ *
+ * POR QUE FALTAVA, E POR QUE DÓI
+ * O app avisava bem sobre dinheiro, falta e recado — e era mudo justamente
+ * sobre a criança. O tracker mostrava "na escola" e "voltou", mas só pra quem
+ * estivesse com o app ABERTO. Quem está no trabalho não tinha como saber que o
+ * filho chegou sem parar o que estava fazendo e abrir o app.
+ *
+ * Escrever em `notifications` já vira push: a Cloud Function
+ * `sendPushOnNotification` dispara em qualquer documento criado ali.
+ *
+ * SÓ AS DUAS CHEGADAS, E NÃO OS QUATRO PASSOS
+ * Embarcou na ida, chegou na escola, embarcou na volta, chegou em casa — quatro
+ * pushes por dia por criança é o caminho mais curto pra ele desligar as
+ * notificações do app, levando junto o aviso de falta e o de pagamento. As
+ * chegadas são as que respondem a pergunta que ele tem de verdade.
+ *
+ * FORA DO BATCH, E ISSO NÃO É DESCUIDO
+ * A tentação é gravar junto com o status, pelo mesmo motivo do marco da
+ * viagem: atomicidade. Mas a regra de `notifications` resolve o destinatário
+ * com um `get()` em `users/{userId}` — um documento DIFERENTE por família.
+ * Somado ao `get()` que a regra de `rides` já faz, o lote de "embarquei todos"
+ * passaria do teto de 20 acessos por requisição, voltaria 403, e o batch é
+ * atômico: NADA salvaria, com as crianças já embarcadas de verdade. É o mesmo
+ * buraco que o CHUNK de 15 existe pra evitar.
+ *
+ * Fora do batch a ordem fica até melhor: o status grava primeiro, e o aviso
+ * sai depois de ele existir. O preço é que uma falha aqui custa a notificação
+ * — e notificação perdida é muito mais barato que marcação perdida.
+ */
+const TEXTO_DA_CHEGADA = {
+  atSchool: {
+    title: 'Chegou na escola',
+    corpo: (nome, hora) => `${nome} chegou na escola às ${hora}.`,
+  },
+  delivered: {
+    title: 'Chegou em casa',
+    corpo: (nome, hora) => `${nome} chegou em casa às ${hora}.`,
+  },
+};
+
+async function avisarChegadas(avisos) {
+  const validos = (avisos || []).filter(
+    (a) => a?.parentUid && TEXTO_DA_CHEGADA[a.status]
+  );
+  if (!validos.length) return;
+
+  const agora = new Date();
+  const hora = `${String(agora.getHours()).padStart(2, '0')}:${String(
+    agora.getMinutes()
+  ).padStart(2, '0')}`;
+
+  await Promise.all(
+    validos.map((a) => {
+      const texto = TEXTO_DA_CHEGADA[a.status];
+      const nome = (a.childName || '').split(' ')[0] || 'A criança';
+      return addDoc(collection(db, 'notifications'), {
+        userId: a.parentUid,
+        type:
+          a.status === 'delivered' ? 'child_arrived_home' : 'child_arrived_school',
+        title: texto.title,
+        body: texto.corpo(nome, hora),
+        childId: a.childId,
+        createdAt: serverTimestamp(),
+      }).catch((err) => {
+        // Silencioso de propósito: o motorista não pode ver erro de
+        // notificação no meio da rota. A marcação — que é o que importa — já
+        // está gravada quando isto roda.
+        console.error('Falha ao avisar chegada:', err);
+      });
+    })
+  );
 }
 
 /**
