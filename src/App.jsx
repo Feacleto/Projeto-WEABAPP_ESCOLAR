@@ -47,6 +47,7 @@ const TioExpenses = lazy(() => import('./pages/tio/TioExpenses'));
 const TioContract = lazy(() => import('./pages/tio/TioContract'));
 const TioPixConfig = lazy(() => import('./pages/tio/TioPixConfig'));
 const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
+const TioContratoAssociacao = lazy(() => import('./pages/tio/TioContratoAssociacao'));
 // A fila de motoristas é do DONO, não do parceiro: aprovar quem entra na
 // plataforma é gestão, e ver a fila é ver os concorrentes dele. Por isso
 // ela mora sob /admin, atrás do SuperAdminRoute.
@@ -320,6 +321,9 @@ export default function App() {
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
+        {/* O contrato com a PLATAFORMA — outro documento e outro nível do que
+          * o contrato com as famílias, que vive em children/:id/contract. */}
+        <Route path="contrato-plataforma" element={<TioContratoAssociacao />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>
