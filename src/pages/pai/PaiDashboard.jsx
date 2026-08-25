@@ -24,6 +24,7 @@ import EmptyState from '../../components/common/EmptyState';
 import Avatar from '../../components/common/Avatar';
 import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import AvisoRapido from '../../components/absences/AvisoRapido';
+import AvisosFuturos from '../../components/absences/AvisosFuturos';
 import RouteTracker from '../../components/dashboard/RouteTracker';
 import { ChildDetailSheet } from '../ChildDetail';
 import HorarioDoDia from '../../components/dashboard/HorarioDoDia';
@@ -305,6 +306,11 @@ export default function PaiDashboard() {
                 onDetalhes={() => setAbsenceOpen(true)}
               />
             </div>
+
+            {/* O que ele já prometeu, de volta na tela.
+              * Sem isto, um aviso feito semana passada nunca mais é
+              * reencontrado — e no dia o motorista não passa na porta. */}
+            <AvisosFuturos child={child} historico={absenceHistory} />
 
             <AltPickupCTA
               pickup={altPickup}

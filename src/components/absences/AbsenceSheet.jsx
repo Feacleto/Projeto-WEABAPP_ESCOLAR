@@ -164,15 +164,28 @@ export default function AbsenceSheet({
             <span className="block text-xs font-bold uppercase tracking-widest text-textMuted mb-1.5">
               Para qual dia
             </span>
+            {/* O TETO DE 14 DIAS É DELIBERADO.
+              * Avisar com muita antecedência abre um buraco: o plano muda, o
+              * responsável não lembra de desmarcar, e no dia o motorista não
+              * passa na porta. Duas semanas cobrem consulta, viagem e feriado
+              * — que é o que as pessoas realmente marcam por dia — sem virar
+              * promessa que ninguém lembra de ter feito.
+              *
+              * O teto sozinho NÃO resolve (dá pra esquecer um aviso de três
+              * dias igual). Ele anda junto com o `AvisosFuturos`, que traz o
+              * aviso de volta pra tela, e com a pergunta da véspera. */}
             <input
               type="date"
               value={dataEscolhida}
               min={getDateKey()}
+              max={getDateKey(
+                new Date(new Date().setDate(new Date().getDate() + 14))
+              )}
               onChange={(e) => setDataEscolhida(e.target.value || getDateKey())}
               className="w-full h-12 rounded-2xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
             />
             <span className="block text-[11px] text-textMuted mt-1">
-              {rotuloDoDia(dataEscolhida)}
+              {rotuloDoDia(dataEscolhida)} · dá pra avisar até 14 dias à frente
             </span>
           </label>
 

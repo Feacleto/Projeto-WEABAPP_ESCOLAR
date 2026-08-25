@@ -41,7 +41,11 @@ import {
   formataEspera,
 } from '../../services/horariosService';
 
-import { declareAbsence, ABSENCE_TYPES } from '../../services/absencesService';
+import {
+  declareAbsence,
+  removeAbsence,
+  ABSENCE_TYPES,
+} from '../../services/absencesService';
 import { createCall } from '../../services/pendingCallService';
 import { playSound } from '../../services/soundService';
 import { publicarOrdemDoDia } from '../../services/ridesService';
@@ -93,6 +97,7 @@ export default function OperacaoDaRota({
   const [busy, setBusy] = useState(false);
   const [confirmLote, setConfirmLote] = useState(null);
   const [marcando, setMarcando] = useState(null); // { child, tipo }
+  const [desfazendo, setDesfazendo] = useState(null); // criança fora que ele quer devolver
 
   /**
    * O som de fim de viagem toca UMA VEZ, na transição.
@@ -379,6 +384,33 @@ export default function OperacaoDaRota({
       toast.error('Não deu pra chamar. Tente o WhatsApp.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * "ELA VEIO" — devolve a criança pra rota, na porta.
+   *
+   * POR QUE ISTO É A ÚLTIMA DEFESA
+   * O responsável avisa que a criança falta no dia 28, o plano muda, e ele não
+   * lembra de desmarcar. No dia 28 o motorista lê "falta hoje", não passa, e a
+   * criança fica esperando. O app inteiro fica do lado errado de uma
+   * informação velha.
+   *
+   * As outras defesas são preventivas (teto de 14 dias, o aviso voltando pra
+   * tela do pai, a pergunta na véspera). Esta é a que funciona quando todas
+   * falharam e ele está na porta vendo a criança de mochila.
+   */
+  async function devolverPraRota(child) {
+    setBusy(true);
+    try {
+      await removeAbsence({ dateKey, childId: child.id });
+      toast.success(`${child.name.split(' ')[0]} voltou pra rota.`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra desfazer. Tente de novo.');
+    } finally {
+      setBusy(false);
+      setDesfazendo(null);
     }
   }
 
@@ -676,9 +708,22 @@ export default function OperacaoDaRota({
               return (
                 <div
                   key={q.child.id}
+                  role={fora ? 'button' : undefined}
+                  tabIndex={fora ? 0 : undefined}
+                  onClick={fora ? () => setDesfazendo(q.child) : undefined}
+                  onKeyDown={
+                    fora
+                      ? (ev) => {
+                          if (ev.key === 'Enter' || ev.key === ' ') {
+                            ev.preventDefault();
+                            setDesfazendo(q.child);
+                          }
+                        }
+                      : undefined
+                  }
                   className={`fila-entra rounded-xl px-3 py-2.5 flex items-center gap-2.5 border ${
                     fora
-                      ? 'bg-gray-50 border-gray-200 opacity-70'
+                      ? 'tap bg-gray-50 border-gray-200 opacity-70'
                       : 'bg-card border-gray-200'
                   }`}
                 >
@@ -707,6 +752,18 @@ export default function OperacaoDaRota({
                     {fora && (
                       <span className="block text-[11px] text-amber-700 font-medium">
                         {ROTULO_ESTADO[q.estado] || 'Fora hoje'}
+                        {/* A IDADE DO AVISO É O QUE DIZ SE ELE AINDA VALE.
+                          * Um aviso de ontem quase certamente vale; um de duas
+                          * semanas atrás é justamente o que o responsável
+                          * esqueceu que existe. Mostrar a idade transforma
+                          * "ela falta" em "ela faltaria, segundo algo que
+                          * alguém disse há doze dias" — que é a verdade. */}
+                        {idadeDoAviso(declaracoes?.[q.child.id]) && (
+                          <span className="text-textMuted font-normal">
+                            {' · avisado '}
+                            {idadeDoAviso(declaracoes[q.child.id])}
+                          </span>
+                        )}
                       </span>
                     )}
                   </span>
@@ -745,6 +802,20 @@ export default function OperacaoDaRota({
         loading={busy}
         onConfirm={avancarLote}
         onCancel={() => setConfirmLote(null)}
+      />
+
+      <ConfirmDialog
+        open={!!desfazendo}
+        title={
+          desfazendo
+            ? `${desfazendo.name.split(' ')[0]} veio hoje?`
+            : ''
+        }
+        description="Ela volta pra rota agora, e o responsável é avisado de que o aviso foi desfeito."
+        confirmLabel="Voltar pra rota"
+        loading={busy}
+        onConfirm={() => devolverPraRota(desfazendo)}
+        onCancel={() => setDesfazendo(null)}
       />
 
       <ConfirmDialog
@@ -857,4 +928,22 @@ function JaFeitos({ itens, direcao }) {
       ))}
     </section>
   );
+}
+
+/**
+ * "hoje", "ontem", "há 12 dias".
+ *
+ * Só aparece quando o aviso não é de hoje: aviso feito hoje de manhã não
+ * precisa de carimbo de validade, e repetir "avisado hoje" em toda linha vira
+ * ruído que o olho aprende a pular — levando junto o "há 12 dias", que é o
+ * único que importa.
+ */
+function idadeDoAviso(declaracao) {
+  const ts = declaracao?.createdAt;
+  const d = ts?.toDate?.() || (ts instanceof Date ? ts : null);
+  if (!d) return null;
+  const dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (dias <= 0) return null;
+  if (dias === 1) return 'ontem';
+  return `há ${dias} dias`;
 }
