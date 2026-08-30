@@ -213,6 +213,35 @@ export default function ContractAcceptanceGate() {
         </div>
       </header>
 
+      {/* MIGRAÇÃO: ELE PROVAVELMENTE JÁ COMBINOU ISSO NO PAPEL.
+        *
+        * O motorista que chega ao app já tem acordo com as famílias dele. O
+        * responsável abre a primeira tela e lê "leia e aceite o contrato" —
+        * e a reação natural é "de novo? eu já assinei um".
+        *
+        * Sem essa frase, o aceite parece um segundo contrato aparecendo do
+        * nada, e a pessoa desconfia justamente no primeiro contato com o app.
+        * Com ela, o aceite vira o que de fato é: o mesmo combinado, agora
+        * registrado num lugar em que os dois conseguem consultar.
+        *
+        * Ela não promete que os valores estão certos — quem digitou foi o
+        * motorista. Promete que é o mesmo acordo, e manda conferir. Se o
+        * número estiver errado, é AQUI que a pessoa tem que reclamar, antes
+        * de assinar, e não depois da primeira cobrança. */}
+      <div className="px-5 pt-5">
+        <div className="rounded-2xl border border-gray-200 bg-surface p-4">
+          <p className="text-sm font-semibold text-text">
+            Já combinou tudo com o motorista?
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-textMuted">
+            Então este é o mesmo acordo, escrito aqui pra vocês dois poderem
+            consultar. <strong>Confira o valor e o dia do vencimento</strong> —
+            se estiver diferente do que vocês combinaram, fale com ele antes de
+            aceitar.
+          </p>
+        </div>
+      </div>
+
       {/* Conteúdo do contrato */}
       <div className="p-5">
         <div className="bg-card rounded-3xl shadow-sm p-6">

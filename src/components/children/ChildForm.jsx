@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Calendar,
   MessageCircle,
+  Paperclip,
   Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -25,7 +26,9 @@ import MapPicker from '../map/MapPicker';
 import InviteShare from './InviteShare';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { addChild } from '../../services/childrenService';
+import { addChild, updateChild } from '../../services/childrenService';
+import { uploadContratoAnterior } from '../../services/photoService';
+import { STORAGE_ENABLED } from '../../config/capabilities';
 import { useAuth } from '../../hooks/useAuth';
 import { useLimiteCriancas } from '../../hooks/useLimiteCriancas';
 import { devWhatsAppLink } from '../../config/developer';
@@ -102,6 +105,7 @@ export default function ChildForm() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
+  const [createdId, setCreatedId] = useState(null);
   const [errors, setErrors] = useState({});
 
   const setField = (key) => (e) =>
@@ -191,7 +195,7 @@ export default function ChildForm() {
     try {
       const horaPega = normalizaHora(form.horaPega);
       const horaEntrega = normalizaHora(form.horaEntrega);
-      const { inviteCode } = await addChild({
+      const { id, inviteCode } = await addChild({
         ...form,
         horaPega: horaPega || '',
         horaEntrega: horaEntrega || '',
@@ -211,6 +215,7 @@ export default function ChildForm() {
         dueDay: parseInt(form.dueDay, 10) || 10,
       });
       setCreatedCode(inviteCode);
+      setCreatedId(id);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao salvar. Tente novamente.');
@@ -223,6 +228,7 @@ export default function ChildForm() {
     return (
       <InviteCodeSuccess
         code={createdCode}
+        childId={createdId}
         childName={form.name}
         parentPhone={unmaskPhone(form.parentPhone)}
         onDone={() => navigate('/tio/children', { replace: true })}
@@ -887,7 +893,7 @@ function SelectorButton({ label, icon: Icon, active, onClick }) {
  * um código pra ditar; agora ele sai com um LINK pronto pra mandar no
  * WhatsApp. O código continua visível pra quando precisar ditar por telefone.
  */
-function InviteCodeSuccess({ code, childName, parentPhone, onDone }) {
+function InviteCodeSuccess({ code, childId, childName, parentPhone, onDone }) {
   return (
     <div className="min-h-screen flex flex-col p-6 gap-5 justify-center">
       <div className="text-center space-y-3">
@@ -908,6 +914,20 @@ function InviteCodeSuccess({ code, childName, parentPhone, onDone }) {
       </div>
 
       <InviteShare code={code} childName={childName} parentPhone={parentPhone} />
+
+      {/* O CONTRATO QUE ELE JÁ TEM — oferecido AQUI, e não num menu.
+        *
+        * É o único instante em que o motorista está com essa família na
+        * cabeça: acabou de digitar o valor, o vencimento e o telefone. Uma
+        * semana depois, "anexar o contrato antigo" é tarefa que nunca sobe na
+        * lista de ninguém.
+        *
+        * Fica opcional e discreto de propósito. O contrato que VALE é o do
+        * app, gerado dos campos que ele acabou de preencher e assinado pelo
+        * responsável; este anexo é memória do que veio antes. Dar a ele o
+        * mesmo peso visual do convite faria alguém achar que anexar o papel
+        * dispensa o aceite — e aí a família opera sem contrato válido. */}
+      <AnexarContratoAnterior childId={childId} />
 
       <Button onClick={onDone}>Concluir</Button>
     </div>
@@ -981,6 +1001,85 @@ function SemVaga({ limite, onVoltar }) {
           vaga volta na hora, e o histórico dela não se perde.
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * ANEXAR O CONTRATO QUE JÁ EXISTIA — foto ou arquivo.
+ *
+ * O QUE ESTE ANEXO É, E O QUE ELE NÃO É
+ * Não é o contrato do app, e a tela diz isso em voz alta. O contrato que vale
+ * é gerado dos campos que o motorista acabou de preencher — mensalidade,
+ * vencimento, vigência — e passa a existir quando o responsável aceita. Este
+ * arquivo é memória do que foi combinado ANTES, e serve pra uma discussão
+ * sobre o passado que o contrato novo não cobre.
+ *
+ * A confusão é perigosa e por isso está escrita: quem achar que anexar o
+ * papel dispensa o aceite fica operando sem contrato válido nenhum.
+ *
+ * SOME QUANDO NÃO HÁ STORAGE, como todo anexo do app: botão que não pode dar
+ * certo não aparece.
+ */
+function AnexarContratoAnterior({ childId }) {
+  const [enviando, setEnviando] = useState(false);
+  const [pronto, setPronto] = useState(false);
+
+  if (!STORAGE_ENABLED || !childId) return null;
+
+  const escolher = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite reenviar o mesmo arquivo
+    if (!file) return;
+    setEnviando(true);
+    try {
+      const url = await uploadContratoAnterior(childId, file);
+      await updateChild(childId, {
+        contratoAnteriorURL: url,
+        contratoAnteriorEm: new Date().toISOString(),
+      });
+      setPronto(true);
+      toast.success('Contrato guardado junto da criança.');
+    } catch (err) {
+      console.error('Falha ao anexar contrato anterior:', err);
+      toast.error('Não deu pra enviar o arquivo.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  if (pronto) {
+    return (
+      <p className="flex items-center justify-center gap-1.5 text-xs text-emerald-700">
+        <Check size={14} />
+        Contrato anterior guardado na ficha
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-dashed border-gray-300 p-3.5">
+      <p className="text-xs font-semibold text-text">
+        Já tem contrato com essa família?
+      </p>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-textMuted">
+        Anexe o papel ou o PDF que vocês já assinaram. Ele fica guardado na
+        ficha como registro do que foi combinado antes —{' '}
+        <strong>o contrato que vale continua sendo o do app</strong>, com os
+        valores que você acabou de preencher.
+      </p>
+      <label className="tap mt-2.5 flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-300 text-xs font-bold text-text">
+        <Paperclip size={14} />
+        {enviando ? 'Enviando…' : 'Anexar ou fotografar'}
+        <input
+          type="file"
+          accept="image/*,application/pdf"
+          capture="environment"
+          className="hidden"
+          disabled={enviando}
+          onChange={escolher}
+        />
+      </label>
     </div>
   );
 }

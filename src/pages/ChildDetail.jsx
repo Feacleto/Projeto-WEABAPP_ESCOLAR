@@ -14,6 +14,7 @@ import {
   FileText,
   ChevronRight,
   ChevronLeft,
+  Paperclip,
   Printer,
   UserRound,
   Link2,
@@ -266,6 +267,32 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           childId={child.id}
           role={isAdmin ? 'admin' : 'parent'}
         />
+
+        {/* O CONTRATO DE ANTES, quando existe.
+          * Fica ao lado do contrato do app de propósito: quem abre a ficha
+          * procurando "o contrato" precisa ver os dois e entender qual é
+          * qual — o do app é o que vale, este é o que veio antes. */}
+        {child.contratoAnteriorURL && (
+          <a
+            href={child.contratoAnteriorURL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tap flex items-center gap-3 rounded-2xl border border-gray-200 bg-card px-4 py-3"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-textMuted">
+              <Paperclip size={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-text">
+                Contrato anterior
+              </span>
+              <span className="block text-[11px] text-textMuted">
+                O papel de antes do app — registro, não é o que vale
+              </span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-textMuted" />
+          </a>
+        )}
 
         {/* Acesso ao contrato (Tio) */}
         {isAdmin && (

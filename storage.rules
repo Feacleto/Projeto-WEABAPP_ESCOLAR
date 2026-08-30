@@ -7,6 +7,7 @@ rules_version = '2';
 // Estrutura:
 //   profilePhotos/{uid}     — foto do próprio usuário (tio ou pai)
 //   marcaLogos/{uid}        — logo da marca do motorista (o pai dele vê)
+//   contratosAnteriores/{childId} — o contrato de papel, antes do app
 //   childPhotos/{childId}   — foto de uma criança (só admin escreve)
 //
 // Princípios:
@@ -113,6 +114,44 @@ service firebase.storage {
     // comprovante bancário tem nome, valor e às vezes agência/conta — não é
     // arquivo "público dentro do app" como os avatares.
     // --------------------------------------------------------------------
+    // ------------------------------------------------------------------
+    // contratosAnteriores/{childId} — o contrato de papel, antes do app
+    //
+    // ESCOPADO PELO DONO DA CRIANÇA, e não por `isAdmin()`. O caminho é
+    // determinístico, então `isAdmin()` puro deixaria qualquer parceiro da
+    // plataforma ler o contrato de qualquer família de qualquer concorrente —
+    // com valor combinado, endereço e nome dos responsáveis. É exatamente o
+    // furo que `paymentReceipts` teve e que o comentário logo abaixo conta.
+    //
+    // O RESPONSÁVEL LÊ, e não escreve. É o contrato dele: negar a leitura
+    // seria guardar um documento sobre a pessoa e não deixar ela ver. Mas
+    // quem sobe é o motorista — documento que define quanto o pai paga não
+    // pode entrar pela mão de quem paga.
+    // ------------------------------------------------------------------
+    match /contratosAnteriores/{childId} {
+      function crianca() {
+        return firestore.get(/databases/(default)/documents/children/$(childId)).data;
+      }
+      function existeCrianca() {
+        return firestore.exists(/databases/(default)/documents/children/$(childId));
+      }
+      function ehOMotorista() {
+        return isAdmin()
+          && existeCrianca()
+          && crianca().get('adminUid', '') == request.auth.uid;
+      }
+      function ehOResponsavel() {
+        return isSignedIn()
+          && existeCrianca()
+          && crianca().get('parentUid', '') == request.auth.uid;
+      }
+      allow read: if ehOMotorista() || ehOResponsavel();
+      allow write: if ehOMotorista()
+        && (isImage() || request.resource.contentType == 'application/pdf')
+        && isWithinSizeLimit();
+      allow delete: if ehOMotorista();
+    }
+
     match /paymentReceipts/{paymentId} {
       function pagamento() {
         return firestore.get(/databases/(default)/documents/payments/$(paymentId)).data;

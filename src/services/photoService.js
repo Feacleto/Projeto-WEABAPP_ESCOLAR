@@ -185,6 +185,54 @@ export async function uploadPaymentReceipt(paymentId, file) {
   return getDownloadURL(fileRef);
 }
 
+/**
+ * O CONTRATO QUE JÁ EXISTIA — foto ou PDF, guardado como prova do passado.
+ *
+ * POR QUE ISTO EXISTE
+ * O motorista que chega ao app já tem acordo com as famílias dele, no papel
+ * ou num PDF trocado por WhatsApp. O contrato do app não substitui a memória
+ * daquilo: ele é gerado dos campos (mensalidade, vencimento, vigência) e
+ * passa a valer da assinatura em diante. O que veio antes -- e é o que
+ * responde uma discussão sobre o que foi combinado no ano passado -- só
+ * existe naquele arquivo.
+ *
+ * NÃO É O CONTRATO DO APP, e a interface precisa dizer isso. Este anexo não
+ * é lido, não gera cobrança e não vale como aceite; é arquivo morto,
+ * proposital. Quem confunde os dois acaba achando que anexar o papel dispensa
+ * o aceite do responsável -- e aí opera sem contrato nenhum válido.
+ *
+ * QUEM SOBE É O MOTORISTA. O responsável está do outro lado da mesa da
+ * negociação: documento que define quanto ele paga não pode entrar pela mão
+ * dele, pelo mesmo princípio que faz o pai só escrever `claimed` e nunca
+ * `paid`.
+ */
+export async function uploadContratoAnterior(childId, file) {
+  if (!childId) throw new Error('Sem childId.');
+  if (!file) throw new Error('Sem arquivo.');
+
+  const isPdf = file.type === 'application/pdf';
+  // Foto de contrato passa pelo resize como qualquer imagem: são páginas
+  // fotografadas de perto, e 4 MB por página estouraria o limite das rules
+  // sem ganhar legibilidade nenhuma.
+  const payload = isPdf ? file : await resizeAndCompress(file);
+  if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
+
+  const fileRef = ref(storage, `contratosAnteriores/${childId}`);
+  await uploadBytes(fileRef, payload, {
+    contentType: isPdf ? 'application/pdf' : 'image/jpeg',
+  });
+  return getDownloadURL(fileRef);
+}
+
+export async function deleteContratoAnterior(childId) {
+  if (!childId) return;
+  try {
+    await deleteObject(ref(storage, `contratosAnteriores/${childId}`));
+  } catch {
+    // Já não existia. Apagar o que não está lá não é erro.
+  }
+}
+
 /** Remove o comprovante (pai trocando o arquivo errado, ou admin limpando). */
 export async function deletePaymentReceipt(paymentId) {
   try {

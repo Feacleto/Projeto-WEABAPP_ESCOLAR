@@ -237,6 +237,27 @@ v9 é `bob`, não `longHairBob`, e valor errado devolve **HTTP 400**, não um
 avatar feio. Sem gênero informado, nenhum `top` é passado e o sorteio é o
 padrão.
 
+**Migrar quem já tinha contrato de papel** — o contrato do app **não é um
+arquivo**: é gerado dos campos (mensalidade, `dueDay`, vigência) por
+`buildContractData`. Então migrar = o motorista digitar os valores que já
+combinou, e o pai aceitar o do app. O papel antigo vira ANEXO
+(`children.contratoAnteriorURL`, Storage em `contratosAnteriores/{childId}`),
+oferecido no fim do cadastro da criança — o único instante em que ele está com
+aquela família na cabeça. **Anexo não é contrato**: não gera cobrança nem vale
+como aceite, e as duas telas dizem isso, senão alguém opera sem contrato
+válido achando que o papel bastou. Quem sobe é o MOTORISTA — documento que
+define quanto o pai paga não entra pela mão de quem paga.
+
+**Falta não gera desconto**, e a cláusula 7ª já dizia: o valor é pela VAGA,
+inclusive nas férias, `independentemente da quantidade de dias letivos`. A tela
+de faltas repete isso onde a dúvida nasce.
+
+**Responsável avulso: guarda UM.** `children.altResponsibles` é um array de no
+máximo 1 — o último. Era lista que só crescia; ninguém mantém lista, e são
+nome e telefone de terceiro que não usa o app. Sobrescrever é o recurso: apaga
+o histórico na mesma escrita, e mantém a permissão das rules intacta
+(`hasOnly(['altResponsibles'])`).
+
 **Falta tem teto de 14 dias** — o aviso do responsável não passa disso, e o
 motivo está em [AbsenceSheet.jsx](src/components/absences/AbsenceSheet.jsx):
 plano muda, ninguém desmarca, e no dia o motorista não passa na porta. O
