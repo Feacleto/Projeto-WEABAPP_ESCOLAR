@@ -25,6 +25,7 @@ import { horariosCombinados, horaCurta } from '../services/horariosService';
 import { resumoDeFaltas } from '../utils/faltas';
 import { useChildAbsenceHistory } from '../hooks/useAbsences';
 import { updateChild } from '../services/childrenService';
+import EditarOndeSheet from '../components/children/EditarOndeSheet';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
@@ -90,6 +91,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
   // seletor de filho, que não depende de nenhum dos dois.
   const childId = childIdProp || (isAdmin ? id : activeChildId);
   const { child, loading } = useChild(childId);
+  const [editandoOnde, setEditandoOnde] = useState(false);
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -160,6 +162,72 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           </div>
         </Card>
 
+        {/* ─────────── ONDE E QUANDO — a operação primeiro ───────────
+          *
+          * A ficha estava ordenada por ordem de implementação: link do
+          * responsável, mensalidade, contrato, e só então escola, horário e
+          * endereço. Mas ninguém abre a ficha de uma criança pra ver contrato.
+          *
+          * O motorista abre no meio da rota, com a perua andando, pra três
+          * perguntas: onde eu pego, que horas, e pra qual escola. O pai abre
+          * pra uma: que horas. As duas respostas são as mesmas três linhas —
+          * então elas vêm antes de tudo, e o dinheiro desce pro fim, que é
+          * quando alguém senta pra conferir.
+          *
+          * O EDITAR É SÓ DO MOTORISTA, e existe porque não existia: o
+          * endereço só era escrito no cadastro, e família que muda de casa
+          * obrigava a apagar a criança e refazer — perdendo o vínculo com o
+          * responsável e o histórico de pagamento junto. */}
+        <Card className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
+              <Clock size={16} className="text-primary" />
+              Onde e quando
+            </h3>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setEditandoOnde(true)}
+                className="tap -mr-1 -mt-1 inline-flex items-center gap-1 p-1 text-xs font-semibold text-primary"
+              >
+                <Pencil size={13} /> Editar
+              </button>
+            )}
+          </div>
+
+          {horariosCombinados(child).presumido ? (
+            <p className="text-sm text-textMuted">
+              {isAdmin
+                ? 'Você ainda não definiu os horários — e até lá o responsável não vê hora nenhuma. Defina em Rota → Ajustar horários.'
+                : 'O motorista ainda não informou os horários. Assim que ele definir, aparecem aqui.'}
+            </p>
+          ) : (
+            <>
+              <InfoRow
+                label="Entra na perua"
+                value={horaCurta(horariosCombinados(child).pega)}
+              />
+              <InfoRow
+                label="Chega em casa"
+                value={horaCurta(horariosCombinados(child).entrega)}
+              />
+            </>
+          )}
+
+          <div className="space-y-3 border-t border-gray-100 pt-3">
+            <InfoRow icon={Home} label="Casa" value={child.address} />
+            <InfoRow icon={School} label="Escola" value={child.school} />
+            {child.schoolAddress && (
+              <InfoRow icon={MapPin} label="Endereço da escola" value={child.schoolAddress} />
+            )}
+            {/* Turma e sala: quem sabe é o RESPONSÁVEL. O motorista não
+              * acompanha a criança até a porta da sala, então perguntar a ele
+              * seria perguntar pra quem não tem a resposta. Ele lê aqui pra
+              * saber onde chamar quando precisa. */}
+            <TurmaSala child={child} podeEditar={!isAdmin} />
+          </div>
+        </Card>
+
         {/* ─────────── 1. O LINK DO RESPONSÁVEL ───────────
           *
           * PRIMEIRO DE TUDO, E SEMPRE PRESENTE.
@@ -219,56 +287,6 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           </button>
         )}
 
-        {/* Escola */}
-        <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-            <School size={16} className="text-primary" />
-            Escola
-          </h3>
-          <InfoRow label="Nome" value={child.school} />
-          {child.schoolAddress && (
-            <InfoRow
-              icon={MapPin}
-              label="Endereço"
-              value={child.schoolAddress}
-            />
-          )}
-
-          {/* Turma e sala: quem sabe é o RESPONSÁVEL. O motorista não
-            * acompanha a criança até a porta da sala, então perguntar a ele
-            * seria perguntar pra quem não tem a resposta. Ele lê aqui pra
-            * saber onde chamar quando precisa. */}
-          <TurmaSala child={child} podeEditar={!isAdmin} />
-        </Card>
-
-        {/* Os horários combinados — o que o motorista prometeu e o que o
-          * responsável espera. É a mesma informação que aparece grande no
-          * início do painel do pai. */}
-        <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-            <Clock size={16} className="text-primary" />
-            Horários combinados
-          </h3>
-          {horariosCombinados(child).presumido ? (
-            <p className="text-sm text-textMuted">
-              {isAdmin
-                ? 'Você ainda não definiu — e até lá o responsável não vê hora nenhuma. Defina em Rota → Ajustar horários.'
-                : 'O motorista ainda não informou os horários. Assim que ele definir, aparecem aqui.'}
-            </p>
-          ) : (
-            <>
-              <InfoRow
-                label="Entra na perua"
-                value={horaCurta(horariosCombinados(child).pega)}
-              />
-              <InfoRow
-                label="Chega em casa"
-                value={horaCurta(horariosCombinados(child).entrega)}
-              />
-            </>
-          )}
-        </Card>
-
         {/* QUANTAS VEZES ELA FALTOU — a pergunta que os dois lados fazem.
           *
           * O motorista precisa disso pra conversar com a família ("é a quinta
@@ -280,15 +298,6 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           * combinado, não falta. Somar faria a ficha dizer que a criança
           * faltou num dia que ainda não chegou. */}
         <FaltasDaCrianca childId={child.id} />
-
-        {/* Endereço de casa */}
-        <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-            <Home size={16} className="text-primary" />
-            Endereço de casa
-          </h3>
-          <InfoRow icon={MapPin} label="Endereço" value={child.address} />
-        </Card>
 
         {/* Responsáveis */}
         <Card className="space-y-3">
@@ -388,6 +397,18 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           </Button>
         )}
       </div>
+
+      {/* A `key` faz a folha renascer com os dados atuais: os campos são
+        * estado local inicializado da prop, e sem isso a segunda abertura
+        * mostraria o endereço de antes de salvar. */}
+      {isAdmin && (
+        <EditarOndeSheet
+          key={`${child.address}-${child.schoolId}`}
+          open={editandoOnde}
+          child={child}
+          onClose={() => setEditandoOnde(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmDeactivate}
