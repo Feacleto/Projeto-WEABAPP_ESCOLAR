@@ -23,10 +23,9 @@ import {
   Building2,
   FileText,
   MapPin as MapPinIcon,
-  Sunrise,
-  Sunset,
-  Moon,
   BarChart3,
+  Bus,
+  Image as ImageIcon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
@@ -49,16 +48,20 @@ import {
   deleteAdminAccount,
   isRecentLoginRequired,
 } from '../services/accountService';
-import { uploadProfilePhoto, deleteProfilePhoto } from '../services/photoService';
+import {
+  uploadProfilePhoto,
+  deleteProfilePhoto,
+  uploadMarcaLogo,
+  deleteMarcaLogo,
+} from '../services/photoService';
 import { STORAGE_ENABLED } from '../config/capabilities';
 import { destinoAposSair } from '../utils/frentes';
 import { setProfilePhotoURL } from '../services/profileService';
 import { useSoundsEnabled } from '../hooks/useSoundsEnabled';
 import { playSound } from '../services/soundService';
-import { DEFAULT_GREETING_HOURS } from '../utils/greeting';
 import { maskPhone, unmaskPhone, isValidPhone } from '../utils/masks';
 import { formatPhone } from '../utils/formatters';
-import { PIX_KEY_TYPES } from '../services/userService';
+import { PIX_KEY_TYPES, setMarca } from '../services/userService';
 import { APP_VERSION } from '../version';
 import ReviewSheet from '../components/feedback/ReviewSheet';
 import SupportSheet from '../components/support/SupportSheet';
@@ -205,11 +208,6 @@ export default function Profile() {
           <CompanyDataCard profile={profile} onSaved={refreshProfile} />
         )}
 
-        {/* Horários das saudações (só Tio) — vale pra todos os usuários */}
-        {isAdmin && (
-          <GreetingHoursCard profile={profile} onSaved={refreshProfile} />
-        )}
-
         {/* Atalhos do tio */}
         {isAdmin && (
           <Card>
@@ -287,6 +285,18 @@ export default function Profile() {
               <ChevronRight size={20} className="text-textMuted shrink-0" />
             </button>
           </Card>
+        )}
+
+        {/* A MARCA — só do motorista, porque só ele tem público.
+          * Fica ANTES dos avisos e depois do contrato: é configuração de
+          * vitrine, e vitrine vem antes de preferência de aparelho. */}
+        {isAdmin && (
+          <MarcaCard
+            uid={user?.uid}
+            nome={profile?.marcaNome || ''}
+            logoURL={profile?.marcaLogoURL || null}
+            onChanged={refreshProfile}
+          />
         )}
 
         {/* Avisos no celular — vale pros dois papéis */}
@@ -884,151 +894,6 @@ function CompanyDataCard({ profile, onSaved }) {
   );
 }
 
-/* ─────────────── Horários das saudações ─────────────── */
-
-function GreetingHoursCard({ profile, onSaved }) {
-  const { user } = useAuth();
-  const current = profile.greetingHours || DEFAULT_GREETING_HOURS;
-  const [editing, setEditing] = useState(false);
-  const [morning, setMorning] = useState(current.morning);
-  const [afternoon, setAfternoon] = useState(current.afternoon);
-  const [evening, setEvening] = useState(current.evening);
-  const [saving, setSaving] = useState(false);
-
-  const isValid = morning < afternoon && afternoon < evening;
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!isValid) {
-      toast.error('Horários devem estar em ordem (manhã < tarde < noite).');
-      return;
-    }
-    setSaving(true);
-    try {
-      await updateProfile(user.uid, {
-        greetingHours: { morning, afternoon, evening },
-      });
-      toast.success('Horários salvos!');
-      await onSaved();
-      setEditing(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao salvar.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (editing) {
-    return (
-      <Card>
-        <form onSubmit={onSubmit} className="space-y-3">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-text">
-              Horários das saudações
-            </h3>
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              disabled={saving}
-              className="text-textMuted tap p-1"
-              aria-label="Cancelar"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <p className="text-xs text-textMuted leading-relaxed">
-            A partir de cada hora, o app começa a dizer a saudação correspondente.
-          </p>
-          <HourInput
-            icon={Sunrise}
-            label='"Bom dia" começa às'
-            value={morning}
-            onChange={setMorning}
-          />
-          <HourInput
-            icon={Sunset}
-            label='"Boa tarde" começa às'
-            value={afternoon}
-            onChange={setAfternoon}
-          />
-          <HourInput
-            icon={Moon}
-            label='"Boa noite" começa às'
-            value={evening}
-            onChange={setEvening}
-          />
-          {!isValid && (
-            <p className="text-xs text-danger">
-              Os horários precisam estar em ordem crescente.
-            </p>
-          )}
-          <Button type="submit" icon={Save} loading={saving} disabled={!isValid}>
-            Salvar
-          </Button>
-        </form>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text">
-          Horários das saudações
-        </h3>
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="text-primary tap p-1 inline-flex items-center gap-1 text-xs font-medium"
-        >
-          <Pencil size={14} /> Editar
-        </button>
-      </div>
-      <div className="grid grid-cols-3 gap-2 pt-1">
-        <HourPill icon={Sunrise} label="Bom dia" hour={current.morning} />
-        <HourPill icon={Sunset} label="Boa tarde" hour={current.afternoon} />
-        <HourPill icon={Moon} label="Boa noite" hour={current.evening} />
-      </div>
-      <p className="text-[11px] text-textMuted pt-1">
-        Vale pra você e pros responsáveis.
-      </p>
-    </Card>
-  );
-}
-
-function HourInput({ icon: Icon, label, value, onChange }) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-text mb-1.5 inline-flex items-center gap-1.5">
-        <Icon size={14} />
-        {label}
-      </label>
-      <input
-        type="number"
-        min="0"
-        max="23"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-12 rounded-2xl border-2 border-gray-200 px-4 text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-      />
-    </div>
-  );
-}
-
-function HourPill({ icon: Icon, label, hour }) {
-  return (
-    <div className="bg-bg rounded-xl p-2 text-center">
-      <Icon size={14} className="mx-auto text-textMuted" />
-      <p className="text-[10px] text-textMuted uppercase tracking-wide mt-1">
-        {label}
-      </p>
-      <p className="text-base font-bold text-text mt-0.5 tabular-nums">
-        {String(hour).padStart(2, '0')}h
-      </p>
-    </div>
-  );
-}
 
 /**
  * Atalho pra lista de motoristas interessados, com contagem de quem ainda
@@ -1036,8 +901,9 @@ function HourPill({ icon: Icon, label, hour }) {
  * pediu acesso — a coleção existia mas nenhuma tela a lia.
  */
 // LeadsShortcut foi REMOVIDO: ele mostrava a contagem da fila de parceiros
-// no perfil do motorista, e essa fila passou a ser do dono. A porta agora
-// é o bloco "Fila de parceiros" do /admin, que leva pra /admin/parceiros.
+// no perfil do motorista, e essa fila passou a ser do dono. A porta agora é a
+// aba "Fila" do /admin — o bloco da Visão geral troca de aba em vez de
+// navegar, desde que a tela separada foi unificada no painel.
 
 /**
  * Liga/desliga os avisos no celular.
@@ -1125,6 +991,156 @@ function PushCard({ uid }) {
           />
         </span>
       </button>
+    </Card>
+  );
+}
+
+/**
+ * A MARCA DO MOTORISTA — o que as famílias dele veem no topo da tela.
+ *
+ * POR QUE NÃO BASTAVA A FOTO DE PERFIL
+ * A foto é o rosto dele, e vira um avatar de 32px no canto. A marca é a
+ * identidade do transporte, e ocupa o cabeçalho de todo responsável que ele
+ * atende. Muitos são conhecidos só pelo apelido — "Tio Nino", "Tia Lene" — e
+ * apresentar "José Ednaldo dos Santos" pras famílias que o chamam de Nino é o
+ * app criando um estranho onde já havia uma relação.
+ *
+ * O NOME MUDA SOZINHO, SEM O LOGO. São duas decisões com ritmos diferentes:
+ * o apelido ele já tem; o logo depende de achar um arquivo no celular. Um
+ * formulário só, com salvar único, faria a segunda travar a primeira — e o
+ * cabeçalho ficaria escrito "Início" por meses esperando uma imagem.
+ *
+ * A PRÉVIA MOSTRA O CABEÇALHO DE VERDADE, e não um cartão bonito: é onde isso
+ * vai aparecer, e o tamanho real é a única informação útil aqui. Logo que
+ * funciona em 200px e some em 32px é o erro que essa prévia evita.
+ */
+function MarcaCard({ uid, nome, logoURL, onChanged }) {
+  const [valor, setValor] = useState(nome);
+  const [salvando, setSalvando] = useState(false);
+  const [subindo, setSubindo] = useState(false);
+
+  const mudou = valor.trim() !== (nome || '').trim();
+
+  const salvarNome = async () => {
+    setSalvando(true);
+    try {
+      await setMarca(uid, { nome: valor });
+      await onChanged?.();
+      toast.success('Pronto — é assim que suas famílias vão te ver.');
+    } catch (err) {
+      console.error('Falha ao salvar a marca:', err);
+      toast.error('Não deu pra salvar agora.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const escolherLogo = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite reenviar o mesmo arquivo
+    if (!file || !uid) return;
+    setSubindo(true);
+    try {
+      const url = await uploadMarcaLogo(uid, file);
+      await setMarca(uid, { logoURL: url });
+      await onChanged?.();
+      toast.success('Logo atualizado!');
+    } catch (err) {
+      console.error('Upload do logo falhou:', err);
+      toast.error('Não deu pra enviar a imagem.');
+    } finally {
+      setSubindo(false);
+    }
+  };
+
+  const removerLogo = async () => {
+    setSubindo(true);
+    try {
+      await deleteMarcaLogo(uid);
+      // `null` explícito: `undefined` seria ignorado pelo Firestore e o
+      // cabeçalho continuaria mostrando um logo que já não existe no Storage.
+      await setMarca(uid, { logoURL: null });
+      await onChanged?.();
+    } catch (err) {
+      console.error('Falha ao remover o logo:', err);
+      toast.error('Não deu pra remover agora.');
+    } finally {
+      setSubindo(false);
+    }
+  };
+
+  return (
+    <Card className="space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-text">Sua marca</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-textMuted">
+          É o que aparece no topo do app — no seu e no das famílias que você
+          atende. Muda quando você quiser.
+        </p>
+      </div>
+
+      {/* A prévia é o cabeçalho real, no tamanho real. */}
+      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-surface px-4 py-3">
+        {logoURL ? (
+          <img
+            src={logoURL}
+            alt=""
+            className="h-8 w-8 shrink-0 rounded-lg object-cover"
+          />
+        ) : (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Bus size={16} />
+          </span>
+        )}
+        <span className="truncate text-base font-semibold text-text">
+          {valor.trim() || 'Início'}
+        </span>
+      </div>
+
+      <Input
+        id="marca-nome"
+        label="Como suas famílias te chamam"
+        placeholder="Ex.: Tio Nino"
+        value={valor}
+        maxLength={40}
+        onChange={(e) => setValor(e.target.value)}
+        hint="Sem preencher, o topo continua escrito “Início”."
+      />
+
+      {mudou && (
+        <Button size="md" loading={salvando} onClick={salvarNome}>
+          Salvar nome
+        </Button>
+      )}
+
+      {/* O anexo some quando não há Storage — mesma regra do resto do app:
+        * botão que não pode dar certo não aparece. O NOME continua editável,
+        * e ele sozinho já resolve o cabeçalho. */}
+      {STORAGE_ENABLED && (
+        <div className="flex gap-2">
+          <label className="tap flex h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-300 text-sm font-semibold text-text">
+            <ImageIcon size={15} />
+            {subindo ? 'Enviando…' : logoURL ? 'Trocar logo' : 'Enviar logo'}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={subindo}
+              onChange={escolherLogo}
+            />
+          </label>
+          {logoURL && (
+            <button
+              type="button"
+              onClick={removerLogo}
+              disabled={subindo}
+              className="tap h-10 rounded-xl border border-gray-300 px-3 text-sm font-semibold text-textMuted"
+            >
+              Remover
+            </button>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

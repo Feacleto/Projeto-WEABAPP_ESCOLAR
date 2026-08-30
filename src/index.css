@@ -45,6 +45,26 @@
      * truncate / break-words no lugar certo. */
     overflow-x: clip;
   }
+
+  /* A EXCEÇÃO: o painel do dono usa a tela toda.
+   *
+   * O teto de 480px acima é o que dá ao app a coluna de celular centralizada
+   * no desktop, e ele está certo pra motorista e responsável — os dois usam o
+   * produto no aparelho. O painel do dono é outro trabalho: negociar taxa,
+   * fechar mês, abrir número numa reunião. Sentado, num monitor.
+   *
+   * Sem esta regra, as classes `sm:` e `lg:` do painel ATIVAM e não adiantam
+   * nada: breakpoint do Tailwind olha a viewport, não o contêiner. O efeito
+   * era cinco abas numa fileira e quatro fichas lado a lado, tudo espremido
+   * em 480px no meio de um monitor vazio — pior que a versão empilhada.
+   *
+   * `:has()` e não uma classe posta por efeito: presença de elemento não tem
+   * ciclo de vida pra vazar. Desmontou o painel, a regra deixa de casar
+   * sozinha — não existe estado pra alguém esquecer de limpar. Navegador sem
+   * `:has()` cai no teto de 480px: estreito, e não quebrado. */
+  #root:has([data-painel='web']) {
+    max-width: none;
+  }
 }
 
 @layer components {

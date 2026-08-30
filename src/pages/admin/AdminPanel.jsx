@@ -20,6 +20,9 @@ import {
 import toast from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import AguardandoAprovacao from '../../components/admin/AguardandoAprovacao';
+import TaxaTab from './TaxaTab';
+import FunilTab from '../../components/admin/FunilTab';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
@@ -42,21 +45,43 @@ import { devWhatsAppLink } from '../../config/developer';
 /**
  * Painel do dono — /admin
  *
- * TRÊS PERGUNTAS, TRÊS ABAS
+ * A ÚNICA TELA DE MESA DO PRODUTO.
+ * O app inteiro é mobile-first porque motorista e responsável o usam em pé, na
+ * rua, com uma mão. Esta tela não: é onde se negocia taxa, se fecha o mês e se
+ * abre número numa reunião — trabalho sentado, em monitor. Então aqui a ordem
+ * se inverte: o layout é pensado pra largura, e o celular é o caso que precisa
+ * continuar funcionando (dá pra aprovar um parceiro no ônibus), não o que
+ * manda no desenho.
+ *
+ * Na prática: conteúdo dentro de `max-w-6xl` centralizado — texto que ocupa
+ * 1.900px de largura não se lê, se varre —, abas numa fileira só a partir de
+ * `sm`, e as fichas de número abrindo em quatro colunas em `lg`.
+ *
+ * CINCO ABAS, E O QUE CADA UMA RESPONDE
  * 1. Visão geral: o tamanho real da coisa (usuários, crianças, dinheiro que
  *    passou pelo app). É o que se leva pra uma conversa de investimento.
- * 2. Pesquisa: o que os usuários responderam — inclusive as avaliações de
+ * 2. Funil: a prospecção comercial em colunas, e o orçamento que nasce dela —
+ *    salvar a negociação já emite o contrato pro associado aceitar.
+ * 3. Taxa: a régua da casa, a negociação de cada parceiro e o fechamento das
+ *    faturas do mês. É aqui que a receita da plataforma deixa de ser zero.
+ * 4. Fila: os motoristas pedindo acesso (`waitlistDrivers`), com
+ *    pendente → contatado → aprovado / recusado. NÃO é o funil da aba 2: ali
+ *    é registro comercial, aqui é a porta do app. Separadas de propósito —
+ *    ver o cabeçalho de `funilService`.
+ * 5. Pesquisa: o que os usuários responderam — inclusive as avaliações de
  *    responsável, que nunca vão pra home mas dizem se o app está servindo a
  *    ponta que não paga pela ferramenta.
- * 3. Parceiros: a fila de motoristas pedindo acesso, com o funil
- *    pendente → contatado → aprovado / recusado.
  *
  * GMV NÃO É RECEITA — e o painel não deixa confundir
  * O dinheiro que passa entre pai e motorista dentro do app é GMV (volume).
- * A receita do Alô Buzinou é o que ele cobra por essa intermediação, e hoje
- * é ZERO: não existe cobrança de parceiro implementada. Somar as duas coisas
- * numa métrica só é o erro clássico de valuation de marketplace, e é
- * exatamente o número que um investidor sério vai pedir pra abrir.
+ * A receita do Alô Buzinou é a taxa de associação que ele cobra do motorista,
+ * e ela é outra coisa e outro sentido. Somar as duas numa métrica só é o erro
+ * clássico de valuation de marketplace, e é exatamente o número que um
+ * investidor sério vai pedir pra abrir.
+ *
+ * A receita continua ZERO enquanto nenhuma fatura for fechada na aba Taxa: o
+ * cartão amarelo da Visão geral lê `faturasParceiro`, não a negociação. Acordo
+ * combinado e não faturado não é receita — e o painel não antecipa.
  *
  * O GATE AQUI É DE PRODUTO, NÃO DE SEGURANÇA
  * Esta tela só aparece pra quem tem `superAdmin: true` no doc de usuário. Só
@@ -106,7 +131,9 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
+    /* `data-painel="web"` é o que solta o teto de 480px do #root — a regra
+     * mora em index.css, junto do teto que ela abre. Ver lá o porquê. */
+    <div data-painel="web" className="min-h-screen flex flex-col bg-bg">
       {/* Tampa escura — mesma regra das outras portas do produto. */}
       <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-5 pb-6 pt-5 text-white">
         <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -127,7 +154,7 @@ export default function AdminPanel() {
           />
         </div>
 
-        <div className="relative">
+        <div className="relative mx-auto w-full max-w-6xl">
           {/* SAIR, E NÃO "PAINEL DO MOTORISTA".
             * Aqui havia um link pro /tio, e ele virou porta fechada quando o
             * dono deixou de ser motorista: o `PrivateRoute` devolve ele pra
@@ -169,28 +196,65 @@ export default function AdminPanel() {
         className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary"
       />
 
-      <main className="flex-1 px-5 py-5">
-        {/* Abas */}
-        <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl bg-gray-100 p-1">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-5 sm:px-6">
+        {/* Abas — UMA FILEIRA NA WEB, DUAS NO CELULAR.
+          *
+          * Esta tela é de mesa: é onde se negocia, se fecha mês e se abre
+          * número numa reunião. Em tela larga as cinco abas cabem numa linha
+          * e é assim que elas ficam.
+          *
+          * No celular, cinco rótulos em 320px viram texto ilegível — e a saída
+          * comum, a tira que rola, esconde o fim: quem não arrasta nunca
+          * descobre que existe mais. Foi assim que a taxa e o funil ficaram
+          * invisíveis por tanto tempo, só que ali eles nem estavam na tela.
+          *
+          * A quebra separa o que É o negócio (o dinheiro e quem vai pagar) do
+          * que CHEGA nele (a fila de inscritos e o que os usuários responderam). */}
+        <div className="mb-5 space-y-1 rounded-2xl bg-gray-100 p-1 sm:flex sm:space-y-0 sm:gap-1">
           {[
-            ['geral', 'Visão geral'],
-            ['pesquisa', 'Pesquisa'],
-            ['parceiros', 'Parceiros'],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={`tap rounded-xl py-2.5 text-xs font-bold transition-colors ${
-                tab === id ? 'bg-card text-primary shadow-sm' : 'text-textMuted'
+            [
+              ['geral', 'Visão geral'],
+              ['funil', 'Funil'],
+              ['taxa', 'Taxa'],
+            ],
+            [
+              ['parceiros', 'Fila'],
+              ['pesquisa', 'Pesquisa'],
+            ],
+          ].map((fileira, i) => (
+            <div
+              key={i}
+              // `flex-[3]` e `flex-[2]` e não `flex-1`: lado a lado, as duas
+              // fileiras têm 3 e 2 abas, então dividir o espaço meio a meio
+              // deixaria as duas da direita mais largas que as três da
+              // esquerda. Proporcional ao número de abas, todas ficam iguais.
+              className={`grid gap-1 ${
+                fileira.length === 3
+                  ? 'grid-cols-3 sm:flex-[3]'
+                  : 'grid-cols-2 sm:flex-[2]'
               }`}
             >
-              {label}
-            </button>
+              {fileira.map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  className={`tap rounded-xl py-2.5 text-xs font-bold transition-colors ${
+                    tab === id
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-textMuted'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
 
-        {tab === 'geral' && <Geral ov={ov} />}
+        {tab === 'geral' && <Geral ov={ov} onVerFila={() => setTab('parceiros')} />}
+        {tab === 'funil' && <FunilTab />}
+        {tab === 'taxa' && <TaxaTab />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
         {tab === 'parceiros' && <Parceiros leads={leads} onMarcar={marcar} />}
       </main>
@@ -200,8 +264,7 @@ export default function AdminPanel() {
 
 /* ─────────────── aba 1: visão geral ─────────────── */
 
-function Geral({ ov }) {
-  const navigate = useNavigate();
+function Geral({ ov, onVerFila }) {
   if (ov === null) return <Carregando />;
   if (ov === false) return <Erro />;
 
@@ -209,7 +272,7 @@ function Geral({ ov }) {
     <div className="space-y-5">
       <section>
         <Titulo icon={Users}>Tamanho da base</Titulo>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Tile label="Usuários no app" value={ov.usuarios} />
           <Tile label="Crianças ativas" value={ov.criancas} />
           <Tile label="Motoristas parceiros" value={ov.motoristas} tone="emerald" />
@@ -219,7 +282,7 @@ function Geral({ ov }) {
 
       <section>
         <Titulo icon={CircleDollarSign}>Dinheiro que passou pelo app</Titulo>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Tile label="GMV total" value={moeda(ov.gmvTotal)} tone="emerald" />
           <Tile label={`GMV de ${mesAtual()}`} value={moeda(ov.gmvMes)} />
           <Tile label="Ticket médio / criança" value={moeda(ov.ticketMedio)} />
@@ -241,13 +304,32 @@ function Geral({ ov }) {
             <strong>{moeda(ov.gmvTotal)}</strong> é o volume que passou entre
             pai e motorista dentro do app — é o que prova que o produto está no
             meio de uma transação real. A receita do Alô Buzinou é{' '}
-            <strong>R$ 0,00</strong> porque a taxa sobre a mensalidade — o
-            modelo apresentado ao associado, que paga a administração e a
-            manutenção da estrutura dele — ainda não é cobrada em nenhum
-            contrato. Os dois números importam pra valuation por motivos
-            diferentes: GMV mostra o mercado que você já toca; a taxa mostra
-            que você sabe capturar parte dele.
+            <strong>{moeda(ov.receitaPropria)}</strong>: a taxa de associação
+            que os parceiros já pagaram — o modelo apresentado a eles, que
+            cobre a administração e a manutenção da estrutura. Os dois números
+            importam pra valuation por motivos diferentes: GMV mostra o mercado
+            que você já toca; a taxa mostra que você sabe capturar parte dele.
           </p>
+
+          {/* FATURADO NÃO É RECEBIDO, e a diferença aparece só quando existe.
+            * Num painel que se abre pra decidir, uma linha permanente de
+            * "R$ 0,00 em aberto" vira ruído que se aprende a pular — e aí ela
+            * não é vista no dia em que passa a ter número. */}
+          {ov.receitaEmAberto > 0 && (
+            <p className="mt-2 border-t border-amber-200/70 pt-2 text-xs leading-relaxed text-amber-900/80">
+              Mais <strong>{moeda(ov.receitaEmAberto)}</strong> estão faturados
+              e não recebidos. Não entram na receita porque o dinheiro não caiu
+              — é a mesma linha que separa “o pai disse que pagou” de “o
+              pagamento entrou”.
+            </p>
+          )}
+          {ov.receitaPropria === 0 && ov.receitaEmAberto === 0 && (
+            <p className="mt-2 border-t border-amber-200/70 pt-2 text-xs leading-relaxed text-amber-900/80">
+              Ainda é zero porque nenhuma fatura foi fechada. A régua e a
+              negociação vivem na aba <strong>Taxa</strong>; a receita começa a
+              existir quando o mês é fechado lá.
+            </p>
+          )}
         </div>
       </section>
 
@@ -255,10 +337,14 @@ function Geral({ ov }) {
         <Titulo icon={Bus}>Fila de parceiros</Titulo>
         {/* Número que não leva a lugar nenhum é número que ninguém usa:
           * saber que há 3 motoristas esperando só serve se der pra abrir
-          * a fila e decidir sobre eles. */}
+          * a fila e decidir sobre eles.
+          *
+          * TROCA DE ABA, e não navega. A fila tinha duas casas — esta ficha
+          * levava pra /admin/parceiros enquanto a aba ao lado mostrava a
+          * mesma coleção. Uma tela só: o dono decide sem sair de onde está. */}
         <button
           type="button"
-          onClick={() => navigate('/admin/parceiros')}
+          onClick={onVerFila}
           className="tap w-full text-left"
         >
           <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-card p-4">
@@ -701,20 +787,36 @@ const STATUS_SKIN = {
   rejected: 'bg-red-50 text-red-700',
 };
 
+/**
+ * A FILA — e as duas coisas diferentes que moram nela.
+ *
+ * `AguardandoAprovacao` vem primeiro porque é outra urgência: ali são CONTAS
+ * que já existem e estão vendo a sala de espera NESTE momento; abaixo são
+ * LEADS, gente que deixou contato. Quem espera na porta vem antes de quem
+ * deixou recado — a ordem veio da tela `/admin/parceiros`, que esta aba
+ * substituiu.
+ *
+ * Ele se esconde sozinho quando não há ninguém esperando (devolve `null`), e é
+ * por isso que aparece nos dois galhos sem precisar de condição aqui.
+ */
 function Parceiros({ leads, onMarcar }) {
   if (leads === null) return <Carregando />;
   if (!leads.length) {
     return (
-      <Vazio
-        icon={Bus}
-        titulo="Ninguém na fila"
-        texto="Quando um motorista entrar na lista pela home, ele aparece aqui."
-      />
+      <div className="space-y-4">
+        <AguardandoAprovacao />
+        <Vazio
+          icon={Bus}
+          titulo="Ninguém na fila"
+          texto="Quando um motorista entrar na lista pela home, ele aparece aqui."
+        />
+      </div>
     );
   }
 
   return (
     <div className="space-y-2">
+      <AguardandoAprovacao />
       {leads.map((l) => {
         const status = l.status || (l.contacted ? 'contacted' : 'pending');
         return (
@@ -734,10 +836,10 @@ function Parceiros({ leads, onMarcar }) {
                       {l.city}
                     </span>
                   )}
-                  {l.fleet && (
+                  {l.criancas > 0 && (
                     <span className="inline-flex items-center gap-1">
                       <Bus size={11} />
-                      {l.fleet} {l.fleet === '1' ? 'van' : 'vans'}
+                      {l.criancas} {l.criancas === 1 ? 'criança' : 'crianças'}
                     </span>
                   )}
                   {l.position != null && (
