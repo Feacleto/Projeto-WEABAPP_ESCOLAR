@@ -8,6 +8,7 @@ import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
+import { CENA_ENTRADA, estadoDaTravessia } from '../utils/travessia';
 import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../utils/frentes';
 import {
   resetPassword,
@@ -60,10 +61,17 @@ export default function Login() {
   }, []);
 
   // Já logado? Redireciona pelo role.
+  //
+  // A cortina de entrada viaja no `state` desta navegação, e é por isso que
+  // ela chega junto com o painel em vez de depois dele — o painel nunca
+  // pisca antes de ser coberto. Ver utils/travessia.js.
   useEffect(() => {
     if (!authLoading && profile?.role) {
       const target = painelDe(profile);
-      navigate(location.state?.from || target, { replace: true });
+      navigate(location.state?.from || target, {
+        replace: true,
+        state: estadoDaTravessia(CENA_ENTRADA, profile.role),
+      });
     }
   }, [authLoading, profile, navigate, location.state]);
 

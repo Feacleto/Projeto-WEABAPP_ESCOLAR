@@ -73,7 +73,8 @@ import { useAuth } from './hooks/useAuth';
 import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
 import { hasAcceptedContract } from './services/contractService';
-import Spinner from './components/common/Spinner';
+import Respiro from './components/common/Respiro';
+import Travessia from './components/common/Travessia';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
 import { painelDe, ehDono, ehAguardando } from './utils/papeis';
@@ -84,12 +85,16 @@ import {
   frenteLembrada,
 } from './utils/frentes';
 
+/**
+ * A espera de tela cheia — a MESMA nos dois usos, como já era.
+ *
+ * Era um spinner nu. Virou a marca com as ondas emitindo, e com um atraso de
+ * 300 ms antes de aparecer: se o pedaço da rota chegar antes, ninguém vê
+ * nada. Ver o cabeçalho do Respiro — o atraso é o ponto inteiro, não um
+ * detalhe de gosto.
+ */
 function FullScreenLoader() {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Spinner size={32} className="text-primary" />
-    </div>
-  );
+  return <Respiro />;
 }
 
 /**
@@ -314,6 +319,11 @@ export default function App() {
 
   return (
     <>
+      {/* A cortina de entrar e sair. Fica FORA do Suspense e acima das
+        * rotas: ela chega na mesma renderização que a tela de destino, então
+        * o destino nunca pisca antes de ser coberto. Ver Travessia.jsx. */}
+      <Travessia />
+
       <Suspense fallback={<FullScreenLoader />}>
         {/* Boundary DENTRO do Suspense: é aqui que a rejeição do lazy()
           * chega quando um chunk sumiu depois de um deploy. Fica mais perto

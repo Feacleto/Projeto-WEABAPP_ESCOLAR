@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ArrowUpCircle, X } from 'lucide-react';
-import Spinner from './Spinner';
+import Respiro from './Respiro';
 
 /**
  * "SAIU UMA VERSÃO NOVA" — o aviso, e o teatro de trocar.
@@ -94,7 +94,10 @@ export default function AtualizacaoDisponivel() {
         aria-label="Atualizando o app"
         className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-4 bg-bg px-8 text-center"
       >
-        <Spinner size={30} className="text-primary" />
+        {/* Sem atraso aqui: esta tela SÓ existe porque a espera já começou,
+          * então esconder a marca por 300 ms deixaria um vazio de propósito
+          * nenhum. É o oposto do fallback de rota. */}
+        <Respiro atraso={0} altura={54} className="" label="Atualizando" />
         <div>
           <p className="text-base font-bold text-text">Atualizando o app</p>
           <p className="mt-1 text-sm leading-relaxed text-textMuted">

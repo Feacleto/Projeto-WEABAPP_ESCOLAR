@@ -12,6 +12,7 @@ import Avatar from '../common/Avatar';
 import SupportSheet from '../support/SupportSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { destinoAposSair } from '../../utils/frentes';
+import { CENA_SAIDA, estadoDaTravessia } from '../../utils/travessia';
 
 /**
  * O perfil como MENU SUSPENSO, não como viagem.
@@ -65,7 +66,19 @@ export default function ProfileMenu({ role, basePath, active = false }) {
   const sair = async () => {
     const destino = destinoAposSair(role);
     await logout();
-    navigate(destino, { replace: true });
+    // A cortina de saída viaja no `state`, então ela cobre a porta pública no
+    // mesmo quadro em que a porta monta. E o papel vai junto porque foi lido
+    // ANTES do logout — depois dele o profile é null. A frase da saída é a
+    // única da marca que fala de permanência ("continua aqui"), e ela cai
+    // aqui de propósito: é o único momento em que a pessoa poderia achar que
+    // fechou e perdeu.
+    //
+    // Se a cortina falhar por qualquer motivo, o logout e a navegação já
+    // aconteceram — sair nunca depende do teatro.
+    navigate(destino, {
+      replace: true,
+      state: estadoDaTravessia(CENA_SAIDA, role),
+    });
   };
 
   // Fecha com ESC e com toque fora. As duas saídas importam: no celular o

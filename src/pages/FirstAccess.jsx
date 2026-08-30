@@ -20,6 +20,11 @@ import { authenticateAndRedeem, googleAndRedeem } from '../services/authService'
 import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
+import {
+  CENA_ABERTURA,
+  CENA_ENTRADA,
+  estadoDaTravessia,
+} from '../utils/travessia';
 import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
 
 /**
@@ -132,7 +137,18 @@ export default function FirstAccess() {
       toast.success(
         created ? 'Conta criada! Bem-vindo(a).' : 'Pronto! Criança vinculada.'
       );
-      navigate('/pai', { replace: true });
+      // `created` é o que separa as duas cenas: conta NOVA ganha a abertura
+      // (o balão vira a porta), conta que já existia e só vinculou mais uma
+      // criança ganha a entrada normal. A abertura é cara e existe pra um
+      // único momento na vida da pessoa — o instante em que ela descobre se
+      // aquele link do WhatsApp era um produto de verdade.
+      navigate('/pai', {
+        replace: true,
+        state: estadoDaTravessia(
+          created ? CENA_ABERTURA : CENA_ENTRADA,
+          'parent'
+        ),
+      });
     } catch (err) {
       toast.error(err?.message || mapAuthError(err));
     } finally {
@@ -166,7 +182,18 @@ export default function FirstAccess() {
       toast.success(
         created ? 'Conta criada com Google!' : 'Pronto! Criança vinculada.'
       );
-      navigate('/pai', { replace: true });
+      // `created` é o que separa as duas cenas: conta NOVA ganha a abertura
+      // (o balão vira a porta), conta que já existia e só vinculou mais uma
+      // criança ganha a entrada normal. A abertura é cara e existe pra um
+      // único momento na vida da pessoa — o instante em que ela descobre se
+      // aquele link do WhatsApp era um produto de verdade.
+      navigate('/pai', {
+        replace: true,
+        state: estadoDaTravessia(
+          created ? CENA_ABERTURA : CENA_ENTRADA,
+          'parent'
+        ),
+      });
     } catch (err) {
       if (err?.code !== 'auth/popup-closed-by-user') {
         toast.error(err?.message || mapAuthError(err));

@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # = testar:horarios (node puro, sem runner)
+npm run testar                   # horarios + faltas + aviso + contraste + travessia
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -300,6 +300,28 @@ de rede, quem depura procura CORS, e o conserto é ligar o faturamento. Pior,
 `functions/not-found` significava duas coisas — e o app acusava convite VÁLIDO
 de não existir. O guarda vem antes do `try`, então esse código volta a ter um
 significado só. `getShowcase` fica de fora de propósito: já degrada calado.
+
+**A marca do app é a PORTA, não a casa** — e é isso que decide onde ela pode
+se mexer. O `<Logo />` aparece em 8 telas e TODAS são públicas ou de exceção;
+dentro de `/tio` e `/pai` ele não aparece nenhuma vez, porque ali o
+[Header](src/components/layout/Header.jsx) põe a marca do MOTORISTA. Sobrou a
+travessia, que não é de ninguém: [Travessia.jsx](src/components/common/Travessia.jsx)
+cobre a tela ao entrar e ao sair, com a cena viajando pelo `state` da navegação
+(o mesmo caminho de `frentes.js`) — assim a cortina chega na MESMA renderização
+que o destino e o painel nunca pisca antes de ser coberto. Três cenas:
+`abertura` só no primeiro acesso (o balão de fala cresce e vira a tela),
+`entrada` no login e `saida` no logout. **A fala não tem nome, hora nem
+contagem** — isso a pessoa vê lá dentro dois segundos depois, e citar aqui
+criaria dependência de dado que pode não ter chegado. As frases e as quatro
+regras que as filtraram estão em [utils/travessia.js](src/utils/travessia.js),
+testadas com `npm run testar:travessia`. Um toque na cortina pula o teatro:
+prender o motorista no portão da escola seria pior que não ter teatro.
+
+**A espera mostra a marca, não um spinner** —
+[Respiro.jsx](src/components/common/Respiro.jsx), nos dois lugares onde a
+espera é real (tela de atualização e rota preguiçosa). **O atraso de 300 ms é o
+ponto inteiro**: se o chunk chegar antes, ninguém vê nada. Animação que aparece
+em toda navegação não é lembrada como capricho, é lembrada como lentidão.
 
 **PWA: instalar e atualizar** — as duas conversas com o aparelho.
 
