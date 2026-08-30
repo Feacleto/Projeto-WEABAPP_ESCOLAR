@@ -182,6 +182,26 @@ export default function ProfileMenu({ role, basePath, active = false }) {
             danger
             onClick={() => go(sair)}
           />
+
+          {/* O NOME DO PRODUTO, e este é o único lugar dele dentro do app.
+            *
+            * O cabeçalho cede o topo pra marca do MOTORISTA — "Tio Nino" — e
+            * isso está certo: é a proposta de valor dele, e o app do
+            * responsável tem que parecer o transporte que ele contratou.
+            *
+            * O efeito colateral é que "Alô Buzinou" não aparecia em canto
+            * nenhum que ela conseguisse achar, e isso morde em dois momentos
+            * concretos: quando ela troca de celular e vai procurar o app na
+            * loja, e quando precisa reclamar de algo que não é do motorista.
+            *
+            * Aqui não disputa nada — está no fim de um menu que ela abre pra
+            * outra coisa, em texto secundário — e resolve os dois casos.
+            *
+            * Sem número de versão junto: o package.json está em 0.0.0, e
+            * versão falsa no rodapé é pior que versão nenhuma. */}
+          <p className="border-t border-neutro px-3 py-2.5 text-center text-xs text-textMuted">
+            Alô Buzinou
+          </p>
         </div>
       )}
 

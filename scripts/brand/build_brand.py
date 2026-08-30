@@ -374,9 +374,10 @@ def lockup(size=100, stacked=False, pad=0.0):
 
 
 # ─────────── SVG ───────────
-def _arc_svg(color):
+def _arc_svg(color, w=None):
     return ''.join(
-        '<path d="{}" stroke="{}" stroke-width="{}" stroke-linecap="round"/>'.format(d, color, ARC_W)
+        '<path d="{}" stroke="{}" stroke-width="{}" stroke-linecap="round"/>'.format(
+            d, color, ARC_W if w is None else w)
         for d in MARK_ARC_D)
 
 
@@ -387,7 +388,45 @@ def accent_svg(acc, color):
         for r in acc['radii'])
 
 
-def mark_svg(size=512, pad=0.06, mono=None, dark_aware=False):
+def mark_svg(size=512, pad=0.06, mono=None, dark_aware=False, tile=False):
+    """
+    `tile=True` é a projeção de FAVICON, e ela existe por um motivo medido.
+
+    O desenho normal é vazado: carroceria esmeralda, janela branca recortada,
+    ondas de buzina em traço fino. Em 16 px isso não sobrevive — a onda tem
+    espessura 20 num viewBox de 512, o que dá 0,63 px de traço, e some. O
+    projeto já sabia disso: o `.ico` virou tile esmeralda anos atrás, e o
+    comentário no index.html diz a razão com todas as letras.
+
+    A conclusão certa tinha sido tirada e aplicada só no formato de RESERVA.
+    O `.svg`, que é o que o Chrome de fato usa, continuou vazado — então o
+    conserto valia pro navegador antigo e não pro atual.
+
+    A projeção inverte o desenho: quadrado esmeralda cheio, marca branca,
+    janela na cor do fundo (com alfa zero sobre carroceria branca o balão
+    simplesmente desaparece) e ondas brancas e mais grossas, porque em 16 px
+    o verde sobre esmeralda não separa. É a mesma decisão do `.ico`, e sai da
+    mesma geometria — que é a razão de este gerador existir.
+
+    Sem media query aqui, ao contrário do vazado: um quadrado de cor sólida
+    tem contraste contra aba clara E escura, então não há nada pra adaptar.
+    """
+    if tile:
+        t = fit(MARK_BBOX, size, size, 0.14)
+        L = [
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {s} {s}" fill="none">',
+          '  <rect width="{s}" height="{s}" rx="{r}" fill="{bg}"/>',
+          '  <g transform="{t}">',
+          '    <path d="{body}" fill="{fg}"/>',
+          '    <path d="{win}" fill="{bg}"/>',
+          '    {arcs}',
+          '  </g>',
+          '</svg>',
+          '',
+        ]
+        return chr(10).join(L).format(
+            s=size, r=int(size * 0.16), bg=EMERALD, fg=WHITE, t=t.svg(),
+            body=MARK_BODY_D, win=MARK_WINDOW_D, arcs=_arc_svg(WHITE, ARC_W * 2))
     t = fit(MARK_BBOX, size, size, pad)
     if mono:
         return (
@@ -575,7 +614,7 @@ def main():
     print('SVG')
     for name, kw in (('mark.svg', dict()),
                      ('mark-white.svg', dict(mono=WHITE)),
-                     ('favicon.svg', dict(pad=0.02, dark_aware=True))):
+                     ('favicon.svg', dict(tile=True))):
         with open(os.path.join(OUT, name), 'w', encoding='utf-8') as fh:
             fh.write(mark_svg(**kw))
         print('   public/brand/' + name)

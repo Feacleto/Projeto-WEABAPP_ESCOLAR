@@ -2,9 +2,13 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <!-- SVG primeiro: o favicon.svg troca de cor sozinho em aba escura.
-         O .ico fica como reserva pra navegador antigo (e é tile esmeralda,
-         porque em 16 px o desenho vazado desaparece). -->
+    <!-- OS DOIS FAVICONS SÃO O MESMO TILE ESMERALDA, e agora isso é verdade.
+         Em 16 px o desenho vazado desaparece: a onda de buzina tem 0,68 px de
+         traço e some. A conclusão já estava escrita aqui, mas aplicada só no
+         .ico — o formato de RESERVA. O .svg, que é o que o Chrome usa, ficou
+         vazado por anos. Agora os dois saem da mesma projeção do gerador.
+         Tile não precisa trocar de cor em aba escura: quadrado de cor sólida
+         tem contraste contra as duas, então a media query saiu junto. -->
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
     <link rel="alternate icon" href="/brand/favicon.ico" sizes="16x16 32x32 48x48" />
     <meta
