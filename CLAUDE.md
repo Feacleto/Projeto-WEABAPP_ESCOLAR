@@ -80,14 +80,16 @@ src/
 │                      do arquivo — era 1,47 MB num bundle só)
 ├── pages/
 │   ├── Home, Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
-│   ├── tio/           17 telas do motorista
+│   ├── tio/           16 telas do motorista
 │   ├── pai/           7 telas do responsável
-│   ├── admin/         AdminPanel, TaxaTab (dono da plataforma)
+│   ├── admin/         AdminPanel, TaxaTab — o dono tem UMA tela só, com
+│   │                  cinco abas. `/admin/parceiros` era a segunda e virou
+│   │                  redirecionamento; a fila mora na aba "Fila".
 │   └── legal/         termos e privacidade
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive…
 ├── services/          38 módulos — TODO acesso ao Firestore passa aqui
-├── hooks/             18 hooks, quase todos onSnapshot de um service
+├── hooks/             19 hooks, quase todos onSnapshot de um service
 ├── config/            capabilities, rodada, developer
 ├── context/           AuthContext (perfil + papel)
 ├── utils/             puros e testáveis, sem Firebase
@@ -142,6 +144,49 @@ em [childrenService.js](src/services/childrenService.js). `home` é o que
 - `taxaParceiros` / `faturasParceiro` — taxa de associação do **motorista → a
   plataforma**. [taxaService.js](src/services/taxaService.js)
 
+**A associação, ponta a ponta** — escrito inteiro nas Fases 2 e 3 (24/08/2026)
+e ligado à navegação em 29/08. Quatro paradas:
+`leadsFunil` (prospecção, aba **Funil** do `/admin`) → orçamento
+([OrcamentoSheet](src/components/admin/OrcamentoSheet.jsx), que grava a
+negociação **e** emite o contrato na mesma folha) → `contratosAssociacao`
+(o associado aceita em `/tio/contrato-plataforma`) → `faturasParceiro`
+(fechada na aba **Taxa**, paga em `/tio/taxa`).
+
+- **`leadsFunil` não é `waitlistDrivers`.** O funil é registro comercial; a
+  fila (aba **Fila** do painel) é a porta do app. Mover cartão de
+  vendas não dá acesso a sistema nenhum — ver o cabeçalho de
+  [funilService.js](src/services/funilService.js).
+- **Orçar exige conta aprovada.** O id do lead é o uid só quando a pessoa se
+  inscreveu pelo app; pra quem chegou por fora, salvar produziria um contrato
+  que ninguém consegue aceitar. Quem recusa é
+  [FunilTab.jsx](src/components/admin/FunilTab.jsx) — as rules deixam passar,
+  porque a escrita é do dono.
+- **O vencimento é da CASA**, não de cada parceiro: `taxaConfig.diaVencimento`
+  (1–28, padrão 10). `fecharFatura` congela a data pronta em `vencimento`, como
+  o [billing.js](functions/lib/billing.js) faz com o `dueDay` da criança — e lá
+  a data é por criança porque quem negocia é o motorista com cada família. Se
+  alguém pedir dia diferente, o lugar é `diaVencimento` na negociação:
+  `dataDeVencimento` já prefere ela sobre a régua.
+- **O contrato diz o dia** desde a `VERSAO_CONTRATO = 2` — a 1 mandava
+  suspender por atraso sem definir atraso. Subir a versão exige novo aceite.
+- **Vaga de criança é contratada.** `users.limiteCriancas` (só o dono escreve,
+  definido no orçamento) contra `users.criancasAtivas`, contador que sobe no
+  MESMO batch do cadastro. Rules não sabem contar documentos: `allow create` em
+  `children` valida o contador com `getAfter` — um `addDoc` solto é recusado.
+  Limite ausente = sem limite. Conta só crianças ATIVAS, mesmo recorte de
+  `resumirBase`, então desativar libera vaga.
+  **Não é à prova de devtools** — nenhuma rule exige que o contador ande junto
+  de uma criança de verdade; quem pega é a fatura, que conta as crianças reais.
+  Vira Cloud Function quando o Blaze entrar.
+- **Receita é fatura `quitada`**, e sai de `faturasParceiro` em
+  [adminMetricsService.js](src/services/adminMetricsService.js) — mesmo
+  critério do GMV, que só soma `payments` com `paid`. Fatura `aberta` viaja
+  em `receitaEmAberto` e **nunca** é somada na receita.
+- **`suspenso` bloqueia nas rules**; o cartão de
+  [AvisoDaPlataforma](src/components/tio/AvisoDaPlataforma.jsx) só explica.
+  Ele mora no `TioLayout` e é omitido em `/tio/taxa` de propósito: cobrança
+  que cobre a própria tela de pagamento não deixa ninguém pagar.
+
 **A "buzina" é `pendingCalls`** — o motorista chega e o pai não desce; em vez de
 buzinar na rua, dispara uma chamada que toca em tela cheia no celular do pai.
 `ringing → acknowledged → resolved`.
@@ -177,6 +222,36 @@ Sem Cloud Storage o app **esconde** os botões de anexo (comprovante, foto de
 perfil, foto da criança) em vez de deixar o upload falhar como erro de rede.
 Tudo o mais funciona. Push sem `VITE_FIREBASE_VAPID_KEY` vira no-op silencioso.
 
+**A marca do motorista** — `users.marcaNome` + `users.marcaLogoURL` (logo em
+`marcaLogos/{uid}` no Storage). É o que aparece no cabeçalho do `/tio` **e** do
+`/pai`, no lugar de "Início": ele escolhe como as famílias dele o chamam ("Tio
+Nino"). Não é `name`, que é o nome civil do contrato. Resolve em
+[useMarcaDoTio.js](src/hooks/useMarcaDoTio.js) — o pai vê a marca do motorista
+DELE, pelo `adminUid` da criança ativa. Sem marca, volta o título.
+
+**Avatar respeita gênero pelo CABELO**, em
+[avatarUrl.js](src/utils/avatarUrl.js). O estilo é `avataaars` (era
+`notionists`, que não expunha gênero nenhum — só barba, então menina saía com
+cara de menino). Os nomes de cabelo vêm do schema da API, não da memória: na
+v9 é `bob`, não `longHairBob`, e valor errado devolve **HTTP 400**, não um
+avatar feio. Sem gênero informado, nenhum `top` é passado e o sorteio é o
+padrão.
+
+**PWA: instalar e atualizar** — as duas conversas com o aparelho.
+
+- [InstallPrompt.jsx](src/components/common/InstallPrompt.jsx) convida a pôr na
+  tela de início, montado nos layouts do tio **e** do pai. Android usa
+  `beforeinstallprompt` (um toque); iOS não tem esse evento e recebe o passo a
+  passo do Compartilhar. Quem decide é `isIOS()` em
+  [browserEnv.js](src/utils/browserEnv.js). Não aparece na 1ª visita, nem já
+  instalado, nem dentro da webview do WhatsApp.
+- `registerType: 'prompt'` (não `autoUpdate`) em [vite.config.js](vite.config.js):
+  versão nova AVISA em vez de assumir calada.
+  [AtualizacaoDisponivel.jsx](src/components/common/AtualizacaoDisponivel.jsx)
+  mostra o aviso, cobre a troca com uma tela cheia e recarrega na marra depois
+  de 8s se o worker não assumir. Montado no `main.jsx`, fora do `AuthProvider`
+  — atualizar não depende de quem está logado.
+
 [src/config/rodada.js](src/config/rodada.js) — `VAGAS_NA_RODADA` é escassez
 **real** e precisa ser baixada à mão quando um associado entra; contador falso
 que reinicia sozinho é propaganda enganosa (CDC art. 37).
@@ -201,6 +276,12 @@ passar por lá — e `npm run testar:regras` cobre o payload real.
 
 **Navegação: uma tela só.** Cada troca de tela cobra pedágio — resolva em folha
 onde couber, e rotule o "voltar" onde não couber.
+
+**Mobile-first, menos no `/admin`.** Motorista e responsável usam o app em pé,
+na rua, com uma mão. O painel do dono é a exceção: é trabalho de mesa
+(negociar, fechar mês, abrir número numa reunião), então lá o layout é pensado
+pra largura — `max-w-6xl`, abas numa fileira em `sm`, kanban em cinco colunas
+em `lg` — e o celular é o que precisa continuar funcionando, não o que manda.
 
 **Nada de `git add -A`** — o repositório recebe várias sessões ao mesmo tempo.
 
