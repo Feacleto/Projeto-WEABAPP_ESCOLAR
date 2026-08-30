@@ -12,11 +12,17 @@ import { primeiroNome } from '../../utils/formatters';
  * calculada por distância em linha reta dividida por 18 km/h — um número que o
  * app inventava. Agora é o horário que o MOTORISTA COMBINOU com ele.
  *
+ * QUEM DEFINE É O MOTORISTA, E O PAI É INFORMADO.
+ * Não há negociação a fazer nesta tela, e ela não sugere que haja: o horário
+ * sai da rota inteira — distância, ordem das outras crianças, trânsito — e o
+ * responsável não tem nenhuma dessas informações pra propor outra coisa. O
+ * que ele precisa é saber a hora de estar na porta.
+ *
  * O QUE ELE SE RECUSA A MOSTRAR
- * Horário presumido. Enquanto o motorista não confirmar, a criança opera com
- * uma hora chutada pelo período antigo (pra ela não sumir da rota), e mostrar
- * esse chute aqui seria pior que não mostrar nada: o pai desceria com a
- * criança na hora errada e a culpa cairia no app — com razão.
+ * Horário presumido. Enquanto o motorista não define o dele, a criança opera
+ * com uma hora chutada pelo período antigo (pra ela não sumir da rota), e
+ * mostrar esse chute aqui seria pior que não mostrar nada: o pai desceria com
+ * a criança na hora errada e a culpa cairia no app — com razão.
  */
 export default function HorarioDoDia({ child, absence, ride = null }) {
   if (!child) return null;
@@ -60,12 +66,12 @@ export default function HorarioDoDia({ child, absence, ride = null }) {
         <div className="px-5 pb-5 pt-2 flex items-start gap-3">
           <CircleAlert size={20} className="text-amber-600 shrink-0 mt-0.5" />
           <p className="text-sm text-textMuted leading-relaxed">
-            O motorista ainda não confirmou os horários de{' '}
+            O motorista ainda não informou os horários de{' '}
             {child.name?.split(' ')[0] || 'seu filho'}.{' '}
             <span className="text-text font-medium">
-              Combine com ele a hora de pegar e de entregar
+              Assim que ele definir, a hora aparece aqui
             </span>{' '}
-            — assim que registrar, aparece aqui.
+            — é ele quem monta a rota e sabe a ordem das crianças.
           </p>
         </div>
       ) : (

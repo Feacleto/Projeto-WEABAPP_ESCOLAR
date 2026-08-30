@@ -440,7 +440,7 @@ export default function OperacaoDaRota({
           <EmptyState
             icon={Clock}
             title="Nenhuma viagem hoje"
-            description="Combine com cada responsável a hora de pegar e entregar — a rota se monta a partir disso."
+            description="Defina a hora de pegar e entregar cada criança — a rota se monta a partir disso, e é o que o responsável vê."
             action={
               <Button
                 variant="secondary"

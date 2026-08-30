@@ -19,6 +19,7 @@ import EmptyState from '../../components/common/EmptyState';
 import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
 import { updateChild } from '../../services/childrenService';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 import {
   normalizaHora,
   horaCurta,
@@ -37,7 +38,11 @@ import {
  * POR QUE NÃO SE CHAMA MAIS "ROTA PADRÃO"
  * A rota padrão era uma ordem que ele arrastava à mão, turno por turno. Agora
  * ela CAI da informação que ele já negocia com cada família: a hora em que
- * pega e a hora em que entrega. Ele preenche o que combinou; a ordem se monta.
+ * pega e a hora em que entrega. QUEM DEFINE É ELE — não existe combinação a
+ * fazer aqui, e a tela não deve sugerir que exista: o motorista conhece a
+ * rota, a distância e as outras crianças, e o responsável não tem como
+ * negociar um horário sem essa informação. Ele preenche; a ordem se monta; o
+ * pai é informado.
  *
  * O QUE ESTA TELA DELIBERADAMENTE NÃO MOSTRA
  * Horário de viagem. As versões anteriores agrupavam as crianças em "turnos"
@@ -127,8 +132,9 @@ export default function TioHorarios() {
 
       <div className="px-5 pt-4 space-y-4">
         <p className="text-sm text-textMuted">
-          O que você combinou com cada responsável. A ordem da rota sai daqui —
-          e é isso que o pai vê pra saber a hora de descer.
+          O horário que <b>você define</b> para cada criança. A ordem da rota
+          sai daqui — e é este número que o responsável vê pra saber a hora de
+          estar na porta.
         </p>
 
         {/* Ida / volta */}
@@ -164,9 +170,9 @@ export default function TioHorarios() {
                   ? 'criança está com horário presumido'
                   : 'crianças estão com horário presumido'}
               </b>
-              O app chutou pelo período antigo pra ninguém sumir da rota. Toque
-              no horário e confirme o que você combinou de verdade — o pai está
-              vendo esse número.
+              O app chutou pelo período antigo pra ninguém sumir da rota, e
+              esse chute <b>não aparece pro responsável</b> — a tela dele diz
+              que você ainda não informou. Toque no horário e defina o seu.
             </div>
           </div>
         )}
@@ -256,7 +262,7 @@ export default function TioHorarios() {
                     </span>
                     <span className="block text-[11px] text-textMuted truncate">
                       {p.presumido
-                        ? 'horário presumido — confirme'
+                        ? 'horário presumido — defina o seu'
                         : p.child.address?.split(',')[0] || 'Sem endereço'}
                     </span>
                   </span>
@@ -381,6 +387,7 @@ function ParadaEscola({ escolas }) {
 }
 
 function Folha({ children, onClose }) {
+  const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   return (
     <div
       className="fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm"
@@ -388,10 +395,13 @@ function Folha({ children, onClose }) {
     >
       <div
         className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[88vh] overflow-y-auto"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="pt-3 pb-1 flex justify-center">
+        <div
+          {...alcaProps}
+          className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
+        >
           <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
         </div>
         <div className="px-5 pt-2 pb-5 space-y-4">

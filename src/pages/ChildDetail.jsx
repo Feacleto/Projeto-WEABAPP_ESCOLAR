@@ -249,8 +249,8 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           {horariosCombinados(child).presumido ? (
             <p className="text-sm text-textMuted">
               {isAdmin
-                ? 'Ainda não confirmados. Defina em Rota → Ajustar horários.'
-                : 'O motorista ainda não confirmou os horários.'}
+                ? 'Você ainda não definiu — e até lá o responsável não vê hora nenhuma. Defina em Rota → Ajustar horários.'
+                : 'O motorista ainda não informou os horários. Assim que ele definir, aparecem aqui.'}
             </p>
           ) : (
             <>

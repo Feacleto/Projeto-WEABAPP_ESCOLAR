@@ -82,7 +82,7 @@ export const ADMIN_TOUR = [
     anchor: 'horarios',
     icon: Clock,
     title: 'A hora de cada criança',
-    body: 'Seu dia é montado com as horas que você combinou com cada família. Aqui você ajusta uma a uma. Se aparecer "a confirmar", é criança que o app chutou o horário — confirme com o pai e corrija aqui.',
+    body: 'Seu dia é montado com as horas que VOCÊ define pra cada criança. Aqui você ajusta uma a uma. Se aparecer "presumido", é criança que o app chutou o horário — e esse chute não aparece pro responsável até você definir o seu.',
   },
   {
     path: '/tio',
@@ -97,7 +97,7 @@ export const ADMIN_TOUR = [
     anchor: 'add-child',
     icon: UserPlus,
     title: 'Cadastrar uma criança',
-    body: 'Toque em "Nova criança" e preencha — inclusive a hora que você combinou de pegar e de entregar. No fim o app cria um código: mande pro pai, e com ele o pai entra e já vê o filho.',
+    body: 'Toque em "Nova criança" e preencha — inclusive a hora que você vai pegar e entregar. No fim o app cria um código: mande pro pai, e com ele o pai entra e já vê o filho e o horário.',
   },
   {
     path: '/tio',
