@@ -104,7 +104,7 @@ export default function PaiNotebookFAB() {
       <button
         type="button"
         onClick={() => setAbertoNoToque(true)}
-        className="tap flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-card px-4 py-3 text-left"
+        className="tap flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
           <Notebook size={17} />

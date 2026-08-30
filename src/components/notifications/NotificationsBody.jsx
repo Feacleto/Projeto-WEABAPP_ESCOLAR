@@ -41,7 +41,7 @@ const TONE_STYLES = {
   today: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
   yesterday: 'bg-amber-100 text-amber-800 border border-amber-200',
   recent: 'bg-blue-50 text-blue-700 border border-blue-200',
-  older: 'bg-gray-100 text-textMuted border border-gray-200',
+  older: 'bg-neutro text-textMuted border border-border',
 };
 
 /**
@@ -243,7 +243,7 @@ export default function NotificationsBody({ onNavigate }) {
 function NotificationItem({ notif, onClick }) {
   const visual = TYPE_VISUAL[notif.type] || {
     Icon: Bell,
-    color: 'text-textMuted bg-gray-100',
+    color: 'text-textMuted bg-neutro',
   };
   const { Icon, color } = visual;
   const { label, tone } = formatRelativeTime(notif.createdAt);
@@ -255,7 +255,7 @@ function NotificationItem({ notif, onClick }) {
         onClick={onClick}
         className={`w-full text-left flex gap-3 p-3 rounded-xl border tap ${
           notif.isRead
-            ? 'bg-card border-gray-100'
+            ? 'bg-card border-neutro'
             : 'bg-primary/5 border-primary/20'
         }`}
       >

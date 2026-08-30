@@ -200,10 +200,10 @@ export default function TioEscolas() {
             {propostas.map((g) => (
               <div
                 key={g.chave}
-                className="bg-card border border-gray-200 rounded-2xl p-3 space-y-2.5"
+                className="bg-card border border-border rounded-2xl p-3 space-y-2.5"
               >
                 <div className="flex items-start gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-gray-100 text-textMuted flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-neutro text-textMuted flex items-center justify-center shrink-0">
                     <School size={17} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -221,7 +221,7 @@ export default function TioEscolas() {
                 {/* As grafias diferentes são o motivo da tela existir —
                   * mostrar quais eram deixa claro o que está sendo unificado. */}
                 {g.variacoes.length > 1 && (
-                  <p className="text-[11px] text-textMuted bg-gray-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
+                  <p className="text-[11px] text-textMuted bg-sunken rounded-lg px-2.5 py-1.5 leading-relaxed">
                     Escrita de {g.variacoes.length} jeitos:{' '}
                     {g.variacoes.map((v) => `“${v}”`).join(', ')}
                   </p>
@@ -260,7 +260,7 @@ export default function TioEscolas() {
             {escolas.map((e) => (
               <div
                 key={e.id}
-                className="bg-card border border-gray-200 rounded-2xl p-3 flex items-start gap-3"
+                className="bg-card border border-border rounded-2xl p-3 flex items-start gap-3"
               >
                 <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center shrink-0">
                   <School size={18} />
@@ -300,7 +300,7 @@ export default function TioEscolas() {
                         lng: e.lng ?? null,
                       })
                     }
-                    className="tap w-9 h-9 rounded-xl border border-gray-200 text-textMuted flex items-center justify-center"
+                    className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center"
                   >
                     <Pencil size={15} />
                   </button>
@@ -308,7 +308,7 @@ export default function TioEscolas() {
                     type="button"
                     aria-label={`Remover ${e.nome}`}
                     onClick={() => setParaApagar(e)}
-                    className="tap w-9 h-9 rounded-xl border border-gray-200 text-danger flex items-center justify-center"
+                    className="tap w-9 h-9 rounded-xl border border-border text-danger flex items-center justify-center"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -341,7 +341,7 @@ export default function TioEscolas() {
               {...alcaProps}
               className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
             >
-              <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+              <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
             </div>
 
             <div className="px-5 pt-2 pb-4 space-y-4">
@@ -353,7 +353,7 @@ export default function TioEscolas() {
                   type="button"
                   onClick={() => setEditando(null)}
                   aria-label="Fechar"
-                  className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+                  className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
                 >
                   <X size={18} />
                 </button>

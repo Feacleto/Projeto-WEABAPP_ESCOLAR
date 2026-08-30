@@ -24,7 +24,7 @@ export default function AbsenceListSheet({ open, onClose, absences = [] }) {
           {...alcaProps}
           className={`pt-3 pb-1 flex justify-center sticky top-0 bg-card z-10 ${alcaProps.className}`}
         >
-          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+          <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
         </div>
 
         <div className="px-5 pt-2 pb-5 space-y-3">
@@ -40,7 +40,7 @@ export default function AbsenceListSheet({ open, onClose, absences = [] }) {
             </div>
             <button
               onClick={onClose}
-              className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
               aria-label="Fechar"
             >
               <X size={18} />

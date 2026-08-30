@@ -78,12 +78,12 @@ export default function PaiFaltas() {
       <div className="space-y-4 px-5 pt-4">
         {/* Navegação de mês, grudada no topo: rolar uma lista de vinte
           * faltas não pode custar a resposta de QUAL mês se está lendo. */}
-        <div className="sticky top-14 z-10 -mx-5 flex items-center gap-2 border-b border-gray-100 bg-bg px-5 pb-3 pt-1">
+        <div className="sticky top-14 z-10 -mx-5 flex items-center gap-2 border-b border-neutro bg-bg px-5 pb-3 pt-1">
           <button
             type="button"
             onClick={() => setMes((m) => addMonths(m, -1))}
             aria-label="Mês anterior"
-            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-textMuted"
+            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted"
           >
             <ChevronLeft size={17} />
           </button>
@@ -104,7 +104,7 @@ export default function PaiFaltas() {
             disabled={!podeAvancar}
             onClick={() => podeAvancar && setMes((m) => addMonths(m, 1))}
             aria-label="Próximo mês"
-            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-textMuted disabled:opacity-30"
+            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted disabled:opacity-30"
           >
             <ChevronRight size={17} />
           </button>
@@ -139,7 +139,7 @@ export default function PaiFaltas() {
         <button
           type="button"
           onClick={() => setAvisando(true)}
-          className="tap flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-card text-sm font-bold text-text"
+          className="tap flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border bg-card text-sm font-bold text-text"
         >
           <CalendarPlus size={17} className="text-primary" />
           Avisar uma falta
@@ -163,7 +163,7 @@ export default function PaiFaltas() {
           * aceitou isso pra entrar, e relembrar no momento certo evita que
           * ele se sinta enganado por uma regra que ele já conhecia. */}
         {doMes.length > 0 && (
-          <div className="rounded-2xl border border-gray-200 bg-surface p-4">
+          <div className="rounded-2xl border border-border bg-surface p-4">
             <p className="text-xs font-semibold text-text">
               Falta não muda a mensalidade
             </p>

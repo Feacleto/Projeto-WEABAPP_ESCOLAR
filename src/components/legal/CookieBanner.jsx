@@ -52,7 +52,7 @@ export default function CookieBanner() {
       aria-label="Preferências de cookies"
       className="fixed bottom-0 left-0 right-0 z-[60] p-3 sm:p-4 print:hidden"
     >
-      <div className="max-w-mobile mx-auto bg-card border border-gray-200 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="max-w-mobile mx-auto bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
         <div className="p-4 space-y-3">
           <div className="flex items-start gap-2">
             <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -80,7 +80,7 @@ export default function CookieBanner() {
           </div>
 
           {showCustom && (
-            <div className="border-t border-gray-100 pt-3 space-y-2">
+            <div className="border-t border-neutro pt-3 space-y-2">
               <CookieOption
                 label="Cookies essenciais"
                 description="Necessários pro funcionamento (login, sessão). Não desativáveis."
@@ -127,14 +127,14 @@ export default function CookieBanner() {
                   <button
                     type="button"
                     onClick={onEssentialsOnly}
-                    className="h-10 rounded-xl border border-gray-200 text-text text-xs font-semibold tap"
+                    className="h-10 rounded-xl border border-border text-text text-xs font-semibold tap"
                   >
                     Apenas essenciais
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowCustom(true)}
-                    className="h-10 rounded-xl border border-gray-200 text-text text-xs font-semibold tap"
+                    className="h-10 rounded-xl border border-border text-text text-xs font-semibold tap"
                   >
                     Personalizar
                   </button>

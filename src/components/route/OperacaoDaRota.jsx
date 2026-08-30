@@ -482,7 +482,7 @@ export default function OperacaoDaRota({
                   className={`tap shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${
                     ativa
                       ? 'bg-text text-white border-text'
-                      : 'bg-card text-textMuted border-gray-200'
+                      : 'bg-card text-textMuted border-border'
                   }`}
                 >
                   <Icone size={13} />
@@ -494,7 +494,7 @@ export default function OperacaoDaRota({
         )}
 
         {blocoAtual && (
-          <div className="bg-card border border-gray-200 rounded-2xl p-3 flex items-center gap-2.5">
+          <div className="bg-card border border-border rounded-2xl p-3 flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               {blocoAtual.direcao === 'ida' ? <Home size={17} /> : <School size={17} />}
             </div>
@@ -523,7 +523,7 @@ export default function OperacaoDaRota({
           * relance, que é o único jeito de olhar a tela com o veículo em
           * movimento. */}
         {totalEfetivo > 1 && (
-          <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-border overflow-hidden">
             <div
               className="progresso-barra h-full rounded-full bg-primary"
               style={{ width: `${Math.round((resolvidas / totalEfetivo) * 100)}%` }}
@@ -608,7 +608,7 @@ export default function OperacaoDaRota({
               <button
                 type="button"
                 onClick={() => zap(foco.child)}
-                className="tap h-10 rounded-xl bg-card border border-gray-200 text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
+                className="tap h-10 rounded-xl bg-card border border-border text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
               >
                 <MessageCircle size={14} />
                 Zap
@@ -616,13 +616,13 @@ export default function OperacaoDaRota({
               {foco.child.parentPhone ? (
                 <a
                   href={`tel:${foco.child.parentPhone}`}
-                  className="tap h-10 rounded-xl bg-card border border-gray-200 text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
+                  className="tap h-10 rounded-xl bg-card border border-border text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
                 >
                   <Phone size={14} />
                   Ligar
                 </a>
               ) : (
-                <span className="h-10 rounded-xl bg-gray-100 text-textMuted text-[11px] font-semibold inline-flex items-center justify-center">
+                <span className="h-10 rounded-xl bg-neutro text-textMuted text-[11px] font-semibold inline-flex items-center justify-center">
                   sem tel.
                 </span>
               )}
@@ -728,8 +728,8 @@ export default function OperacaoDaRota({
                   }
                   className={`fila-entra rounded-xl px-3 py-2.5 flex items-center gap-2.5 border ${
                     fora
-                      ? 'tap bg-gray-50 border-gray-200 opacity-70'
-                      : 'bg-card border-gray-200'
+                      ? 'tap bg-sunken border-border opacity-70'
+                      : 'bg-card border-border'
                   }`}
                 >
                   <span

@@ -129,7 +129,7 @@ function MockRow({ nome, info, chip, chipClass, acao }) {
           {acao}
         </span>
       ) : (
-        <ChevronRight size={8} className="text-gray-300 shrink-0" />
+        <ChevronRight size={8} className="text-borderStrong shrink-0" />
       )}
     </div>
   );
@@ -216,7 +216,7 @@ function ScreenMapa() {
       <MockHeader titulo="Rota no mapa" chip="ao vivo" chipTone="live" />
 
       {/* Mapa falso: quadras em CSS, rota em SVG, van animada por cima. */}
-      <div className="mx-3 mt-1.5 rounded-2xl overflow-hidden border border-gray-200 bg-[#E8EDE9] relative h-[112px]">
+      <div className="mx-3 mt-1.5 rounded-2xl overflow-hidden border border-border bg-[#E8EDE9] relative h-[112px]">
         <div
           aria-hidden
           className="absolute inset-0"
@@ -281,7 +281,7 @@ function ScreenMapa() {
         </span>
       </div>
 
-      <div className="mx-3 mt-1.5 rounded-xl bg-surface border border-gray-200 p-2">
+      <div className="mx-3 mt-1.5 rounded-xl bg-surface border border-border p-2">
         <p className="text-[6px] leading-relaxed text-textMuted">
           A família acompanha a mesma van no celular dela — sem te ligar.
         </p>
@@ -307,7 +307,7 @@ function ScreenCriancas() {
       <StatusBar />
       <MockHeader titulo="Crianças" chip="12 ativas" />
 
-      <div className="mx-3 mt-1.5 rounded-lg bg-card border border-gray-200 px-2 py-1.5 flex items-center gap-1.5">
+      <div className="mx-3 mt-1.5 rounded-lg bg-card border border-border px-2 py-1.5 flex items-center gap-1.5">
         <Search size={8} className="text-textMuted" />
         <span className="text-[6.5px] text-textMuted">Buscar por nome…</span>
       </div>
@@ -394,7 +394,7 @@ function ScreenFinanceiro() {
         />
       </div>
 
-      <div className="mx-3 mt-2 rounded-xl bg-surface border border-gray-200 p-2 flex items-center gap-1.5">
+      <div className="mx-3 mt-2 rounded-xl bg-surface border border-border p-2 flex items-center gap-1.5">
         <span className="w-3.5 h-3.5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
           <Check size={7} className="text-emerald-600" />
         </span>

@@ -42,7 +42,7 @@ export default function BarChart({
                 </span>
               )}
             </div>
-            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-3 bg-neutro rounded-full overflow-hidden">
               <div
                 className={`h-full ${fillClass} rounded-full transition-all`}
                 style={{ width: `${Math.max(widthPct, value > 0 ? 3 : 0)}%` }}

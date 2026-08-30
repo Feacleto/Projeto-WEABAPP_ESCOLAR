@@ -79,7 +79,7 @@ export default function Header({
      * A faixa é padding do <header>, não do conteúdo: a barra continua
      * grudada no topo e a tarja do sistema fica com a cor do cabeçalho. */
     <header
-      className="sticky top-0 z-20 bg-card border-b border-gray-100 print:hidden"
+      className="sticky top-0 z-20 bg-card border-b border-neutro print:hidden"
       style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
     >
       <div className="h-14 px-4 flex items-center justify-between gap-3">

@@ -138,7 +138,7 @@ export default function TioHorarios() {
         </p>
 
         {/* Ida / volta */}
-        <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl">
+        <div className="grid grid-cols-2 gap-1 p-1 bg-neutro rounded-xl">
           {[
             { v: 'ida', label: 'Pego em casa', icon: Home },
             { v: 'volta', label: 'Entrego em casa', icon: School },
@@ -222,11 +222,11 @@ export default function TioHorarios() {
             <section key={`${bloco.inicio}-${i}`} className="space-y-2">
               {i > 0 && (
                 <div className="flex items-center gap-2 pt-2">
-                  <span className="h-px flex-1 bg-gray-200" />
+                  <span className="h-px flex-1 bg-border" />
                   <span className="text-[10px] uppercase tracking-widest text-textMuted">
                     outra viagem
                   </span>
-                  <span className="h-px flex-1 bg-gray-200" />
+                  <span className="h-px flex-1 bg-border" />
                 </div>
               )}
 
@@ -240,7 +240,7 @@ export default function TioHorarios() {
                   key={p.child.id}
                   type="button"
                   onClick={() => abrirEdicao(p.child)}
-                  className="tap w-full text-left bg-card border border-gray-200 rounded-2xl px-3 py-2.5 flex items-center gap-3"
+                  className="tap w-full text-left bg-card border border-border rounded-2xl px-3 py-2.5 flex items-center gap-3"
                 >
                   <span
                     className={`font-mono text-sm font-semibold tabular-nums shrink-0 w-14 ${
@@ -296,7 +296,7 @@ export default function TioHorarios() {
             onChange={(e) =>
               setEditando((s) => ({ ...s, valor: e.target.value }))
             }
-            className="w-full h-14 rounded-2xl border-2 border-gray-200 bg-card px-4 text-text text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="w-full h-14 rounded-2xl border-2 border-border bg-card px-4 text-text text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
 
           <p className="text-xs text-textMuted">
@@ -325,7 +325,7 @@ export default function TioHorarios() {
             {cascata.proposta.map((p) => (
               <div
                 key={p.child.id}
-                className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 text-sm"
+                className="flex items-center gap-2 bg-sunken rounded-xl px-3 py-2 text-sm"
               >
                 <span className="flex-1 min-w-0 truncate font-medium text-text">
                   {p.child.name.split(' ')[0]}
@@ -402,14 +402,14 @@ function Folha({ children, onClose }) {
           {...alcaProps}
           className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
         >
-          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+          <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
         </div>
         <div className="px-5 pt-2 pb-5 space-y-4">
           <button
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="tap absolute right-4 top-4 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted"
+            className="tap absolute right-4 top-4 w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted"
           >
             <X size={18} />
           </button>

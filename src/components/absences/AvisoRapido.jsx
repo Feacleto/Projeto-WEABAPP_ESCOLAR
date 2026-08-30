@@ -124,7 +124,7 @@ export default function AvisoRapido({
       </div>
 
       {/* Hoje / amanhã */}
-      <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl">
+      <div className="grid grid-cols-2 gap-1 p-1 bg-neutro rounded-xl">
         {[
           { v: 'hoje', label: 'Hoje' },
           { v: 'amanha', label: 'Amanhã' },
@@ -156,7 +156,7 @@ export default function AvisoRapido({
               className={`tap rounded-2xl border-2 py-3 px-1 flex flex-col items-center gap-1.5 transition-colors disabled:opacity-60 ${
                 ativo
                   ? 'border-primary bg-primary/10'
-                  : 'border-gray-200 bg-card'
+                  : 'border-border bg-card'
               }`}
             >
               <o.icon
@@ -190,7 +190,7 @@ export default function AvisoRapido({
             onClick={onOutraPessoa}
             aria-pressed={outraAtiva}
             className={`tap flex flex-col items-center gap-1.5 rounded-2xl border-2 px-1 py-3 transition-colors disabled:opacity-60 ${
-              outraAtiva ? 'border-primary bg-primary/10' : 'border-gray-200 bg-card'
+              outraAtiva ? 'border-primary bg-primary/10' : 'border-border bg-card'
             }`}
           >
             <UserCheck

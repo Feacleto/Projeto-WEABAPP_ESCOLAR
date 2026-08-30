@@ -83,7 +83,7 @@ export default function OpenInBrowser({ onContinueHere }) {
       </Button>
 
       {showManual && (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+        <div className="bg-sunken border border-border rounded-xl p-3 space-y-2">
           <p className="text-xs font-semibold text-text flex items-center gap-1.5">
             <MoreHorizontal size={14} />
             {isIOS()

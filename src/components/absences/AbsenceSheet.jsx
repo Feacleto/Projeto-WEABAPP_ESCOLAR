@@ -138,7 +138,7 @@ export default function AbsenceSheet({
           {...alcaProps}
           className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
         >
-          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+          <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
         </div>
 
         <div className="px-5 pt-2 pb-5 space-y-4">
@@ -154,7 +154,7 @@ export default function AbsenceSheet({
             </div>
             <button
               onClick={handleClose}
-              className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted"
+              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted"
               aria-label="Fechar"
             >
               <X size={18} />
@@ -187,7 +187,7 @@ export default function AbsenceSheet({
                 new Date(new Date().setDate(new Date().getDate() + 14))
               )}
               onChange={(e) => setDataEscolhida(e.target.value || getDateKey())}
-              className="w-full h-12 rounded-2xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+              className="w-full h-12 rounded-2xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
             />
             <span className="block text-[11px] text-textMuted mt-1">
               {rotuloDoDia(dataEscolhida)} · dá pra avisar até 14 dias à frente
@@ -253,7 +253,7 @@ export default function AbsenceSheet({
             <button
               onClick={handleRemove}
               disabled={submitting}
-              className="tap w-full rounded-xl py-3 px-4 bg-gray-100 text-text font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              className="tap w-full rounded-xl py-3 px-4 bg-neutro text-text font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Trash2 size={16} />
               Remover ausência

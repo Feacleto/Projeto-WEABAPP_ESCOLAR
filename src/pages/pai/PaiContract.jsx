@@ -80,7 +80,7 @@ export default function PaiContract() {
       <Header title="Contrato" showBack />
 
       <div className="p-5 space-y-4">
-        <div className="bg-card border border-gray-200 rounded-2xl p-4">
+        <div className="bg-card border border-border rounded-2xl p-4">
           <p className="text-sm font-semibold text-text">
             Seu contrato com {admin.companyName || admin.name || 'o motorista'}
           </p>

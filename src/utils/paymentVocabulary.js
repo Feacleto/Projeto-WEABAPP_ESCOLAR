@@ -85,7 +85,7 @@ export const TONE_CLASSES = {
   // Entrou, mas atrasado. Verde-acinzentado com texto âmbar: lê como
   // "resolvido" à distância e como "houve atrito" de perto.
   'late-ok': 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  neutral: 'bg-gray-100 text-gray-700',
+  neutral: 'bg-neutro text-textMuted',
 };
 
 /**

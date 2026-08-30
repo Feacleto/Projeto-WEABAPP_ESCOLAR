@@ -421,7 +421,7 @@ function PixDaPlataforma({ config }) {
               className={`tap h-10 rounded-xl border text-xs font-semibold ${
                 tipo === valor
                   ? 'border-primary bg-primary text-white'
-                  : 'border-gray-200 bg-card text-text'
+                  : 'border-border bg-card text-text'
               }`}
             >
               {label}
@@ -602,7 +602,7 @@ function Ficha({ linha, mes, config, onSalvou, ownerUid }) {
   };
 
   return (
-    <div className="space-y-4 border-t border-gray-100 bg-gray-50/60 p-4">
+    <div className="space-y-4 border-t border-neutro bg-sunken/60 p-4">
       {/* A BASE — e por que não existe "a mensalidade dele" */}
       <div>
         <Rotulo>a base</Rotulo>
@@ -640,7 +640,7 @@ function Ficha({ linha, mes, config, onSalvou, ownerUid }) {
               className={`tap h-10 flex-1 rounded-xl border text-xs font-semibold ${
                 modo === m
                   ? 'border-primary bg-primary text-white'
-                  : 'border-gray-200 bg-card text-text'
+                  : 'border-border bg-card text-text'
               }`}
             >
               {m === MODOS.PERCENTUAL ? 'Percentual' : 'Valor fixo'}
@@ -716,7 +716,7 @@ function Ficha({ linha, mes, config, onSalvou, ownerUid }) {
           onChange={(e) => setNotas(e.target.value)}
           rows={2}
           placeholder="O que foi combinado, e por quê."
-          className="w-full rounded-xl border border-gray-200 bg-card p-3 text-sm text-text placeholder:text-textMuted/60 focus:border-primary focus:outline-none"
+          className="w-full rounded-xl border border-border bg-card p-3 text-sm text-text placeholder:text-textMuted/60 focus:border-primary focus:outline-none"
         />
         <p className="mt-1 text-[11px] text-textMuted">
           Só o dono lê. O motorista não tem acesso a este campo.
@@ -788,7 +788,7 @@ function CampoCurto({ label, value, onChange, prefixo, sufixo }) {
       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-textMuted">
         {label}
       </span>
-      <span className="flex items-center gap-1 rounded-xl border border-gray-200 bg-card px-3">
+      <span className="flex items-center gap-1 rounded-xl border border-border bg-card px-3">
         {prefixo && <span className="text-xs text-textMuted">{prefixo}</span>}
         <input
           type="text"
@@ -844,7 +844,7 @@ function Aviso({ children }) {
 }
 
 const TONS = {
-  neutral: 'bg-gray-100 text-textMuted',
+  neutral: 'bg-neutro text-textMuted',
   emerald: 'bg-emerald-100 text-emerald-700',
   warning: 'bg-amber-100 text-amber-800',
   violet: 'bg-violet-100 text-violet-700',

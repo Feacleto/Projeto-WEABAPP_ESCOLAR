@@ -19,7 +19,7 @@ export default function LegalDocument({
   return (
     <div className="min-h-screen bg-bg">
       {/* Topo (não-printável) */}
-      <header className="sticky top-0 z-10 bg-card border-b border-gray-100 h-14 px-4 flex items-center justify-between gap-3 print:hidden">
+      <header className="sticky top-0 z-10 bg-card border-b border-neutro h-14 px-4 flex items-center justify-between gap-3 print:hidden">
         <Link
           to="/login"
           className="inline-flex items-center gap-1 text-sm text-textMuted tap"
@@ -62,7 +62,7 @@ export default function LegalDocument({
           ))}
         </div>
 
-        <footer className="mt-10 pt-6 border-t border-gray-200 text-xs text-textMuted print:mt-12">
+        <footer className="mt-10 pt-6 border-t border-border text-xs text-textMuted print:mt-12">
           <p>Documento gerado a partir do aplicativo Tio Nino Digital.</p>
           <p>Versão {version} — {date}.</p>
         </footer>

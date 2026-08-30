@@ -189,7 +189,7 @@ export default function AuthSheet({
             <Button
               loading={googleBusy}
               onClick={onGoogle}
-              className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 shadow-md"
+              className="!bg-white !text-text !border-2 !border-borderStrong hover:!bg-sunken shadow-md"
             >
               {!googleBusy && <GoogleIcon size={22} />}
               Continuar com Google

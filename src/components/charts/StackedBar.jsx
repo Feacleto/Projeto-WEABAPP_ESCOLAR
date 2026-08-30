@@ -19,7 +19,7 @@ export default function StackedBar({ segments = [] }) {
 
   return (
     <div className="space-y-3">
-      <div className="h-6 bg-gray-100 rounded-full overflow-hidden flex">
+      <div className="h-6 bg-neutro rounded-full overflow-hidden flex">
         {segments.map((s, i) => {
           const value = Number(s.value) || 0;
           if (value <= 0) return null;

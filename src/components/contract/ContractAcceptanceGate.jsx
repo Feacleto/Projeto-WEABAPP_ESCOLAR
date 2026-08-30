@@ -197,7 +197,7 @@ export default function ContractAcceptanceGate() {
   return (
     <div className="min-h-screen bg-bg pb-32">
       {/* Header sticky */}
-      <header className="sticky top-0 z-20 bg-card border-b border-gray-100 p-4">
+      <header className="sticky top-0 z-20 bg-card border-b border-neutro p-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <FileText size={22} />
@@ -229,7 +229,7 @@ export default function ContractAcceptanceGate() {
         * número estiver errado, é AQUI que a pessoa tem que reclamar, antes
         * de assinar, e não depois da primeira cobrança. */}
       <div className="px-5 pt-5">
-        <div className="rounded-2xl border border-gray-200 bg-surface p-4">
+        <div className="rounded-2xl border border-border bg-surface p-4">
           <p className="text-sm font-semibold text-text">
             Já combinou tudo com o motorista?
           </p>
@@ -251,7 +251,7 @@ export default function ContractAcceptanceGate() {
 
       {/* Form de aceite — fixo no rodapé */}
       <div
-        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto bg-card border-t border-gray-200 shadow-2xl shadow-black/10 p-4 space-y-3"
+        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto bg-card border-t border-border shadow-2xl shadow-black/10 p-4 space-y-3"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 1rem)' }}
       >
         <input
@@ -259,7 +259,7 @@ export default function ContractAcceptanceGate() {
           placeholder="Digite seu nome completo"
           value={confirmName}
           onChange={(e) => setConfirmName(e.target.value)}
-          className="w-full h-12 rounded-xl border-2 border-gray-200 px-4 text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+          className="w-full h-12 rounded-xl border-2 border-border px-4 text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           autoComplete="name"
           disabled={submitting}
         />

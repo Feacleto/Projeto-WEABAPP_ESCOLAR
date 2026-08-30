@@ -73,7 +73,7 @@ export default function BirthdayModal({ children = [], onClose, role = 'tio' }) 
           type="button"
           onClick={onClose}
           aria-label="Fechar"
-          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-gray-100 text-textMuted flex items-center justify-center tap"
+          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-neutro text-textMuted flex items-center justify-center tap"
         >
           <X size={18} />
         </button>

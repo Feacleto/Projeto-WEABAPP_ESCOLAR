@@ -168,7 +168,7 @@ export default function Login() {
             <Button
               loading={googleSubmitting}
               onClick={onGoogleLogin}
-              className="!bg-white !text-text !border-2 !border-gray-300 hover:!bg-gray-50 !h-14 !text-base shadow-md"
+              className="!bg-white !text-text !border-2 !border-borderStrong hover:!bg-sunken !h-14 !text-base shadow-md"
             >
               {!googleSubmitting && <GoogleIcon size={22} />}
               Entrar com Google
@@ -176,7 +176,7 @@ export default function Login() {
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full border-t border-border"></div>
               </div>
               <div className="relative flex justify-center text-xs">
                 <span className="bg-bg px-3 text-textMuted">
@@ -227,10 +227,10 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-200 text-center space-y-3">
+        <div className="mt-8 pt-6 border-t border-border text-center space-y-3">
           {/* Pai de primeira viagem não escolhe papel nem digita código: ele
             * abre o link que o motorista mandou. Aqui só explicamos isso. */}
-          <div className="text-left bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1">
+          <div className="text-left bg-sunken border border-border rounded-xl px-4 py-3 space-y-1">
             <p className="text-sm font-semibold text-text">
               Recebeu um convite do seu motorista?
             </p>

@@ -195,7 +195,7 @@ export default function TioFinanceReport() {
         {/* Documento — visível no print */}
         <article className="bg-card rounded-3xl shadow-sm p-6 print:p-0 print:shadow-none print:rounded-none space-y-6">
           {/* Cabeçalho do relatório */}
-          <header className="space-y-1 border-b border-gray-200 pb-4">
+          <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-textMuted">
@@ -292,7 +292,7 @@ export default function TioFinanceReport() {
             <div className="overflow-x-auto -mx-2">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-textMuted border-b border-gray-200">
+                  <tr className="text-textMuted border-b border-border">
                     <th className="text-left py-2 px-2 font-semibold">Mês</th>
                     <th className="text-right py-2 px-2 font-semibold">
                       Recebido
@@ -324,7 +324,7 @@ export default function TioFinanceReport() {
                           ? Math.round((slot.received / slot.total) * 100)
                           : 0;
                       return (
-                        <tr key={mk} className="border-b border-gray-100">
+                        <tr key={mk} className="border-b border-neutro">
                           <td className="py-2 px-2 capitalize">
                             {formatMonthLabel(mk)}
                           </td>
@@ -345,7 +345,7 @@ export default function TioFinanceReport() {
             </div>
           </section>
 
-          <footer className="text-center text-[10px] text-textMuted pt-4 border-t border-gray-200">
+          <footer className="text-center text-[10px] text-textMuted pt-4 border-t border-border">
             Tio Nino Digital · Relatório emitido em{' '}
             {new Date().toLocaleString('pt-BR')}
           </footer>

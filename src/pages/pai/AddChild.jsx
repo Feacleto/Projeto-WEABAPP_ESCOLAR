@@ -66,7 +66,7 @@ function AddChildBody({ onDone }) {
   return (
     <div className="flex flex-col">
 
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-5 flex gap-3">
+      <div className="bg-sunken border border-border rounded-xl p-4 mb-5 flex gap-3">
         <Link2 size={18} className="text-textMuted shrink-0 mt-0.5" />
         <p className="text-xs text-textMuted leading-relaxed">
           Se você tem o <span className="text-text font-semibold">link</span>,

@@ -152,7 +152,7 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
           {...alcaProps}
           className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
         >
-          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+          <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
         </div>
 
         <div className="px-5 pt-2 pb-3 flex items-start justify-between gap-3">
@@ -168,7 +168,7 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
           <button
             onClick={onClose}
             aria-label="Fechar"
-            className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+            className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
           >
             <X size={18} />
           </button>
@@ -181,7 +181,7 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
               Escola
             </label>
             {opcoes.length === 0 ? (
-              <p className="text-sm text-textMuted bg-gray-50 border border-dashed border-gray-200 rounded-xl p-4 text-center">
+              <p className="text-sm text-textMuted bg-sunken border border-dashed border-border rounded-xl p-4 text-center">
                 Nenhuma criança com escola cadastrada.
               </p>
             ) : (
@@ -195,12 +195,12 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
                       onClick={() => setEscolaId(o.id)}
                       aria-pressed={ativa}
                       className={`tap w-full text-left rounded-2xl border-2 px-3 py-2.5 flex items-center gap-3 ${
-                        ativa ? 'border-primary bg-primary/5' : 'border-gray-200 bg-card'
+                        ativa ? 'border-primary bg-primary/5' : 'border-border bg-card'
                       }`}
                     >
                       <div
                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                          ativa ? 'bg-primary text-white' : 'bg-gray-100 text-textMuted'
+                          ativa ? 'bg-primary text-white' : 'bg-neutro text-textMuted'
                         }`}
                       >
                         <School size={15} />
@@ -235,7 +235,7 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
                   value={de}
                   min={hoje}
                   onChange={(e) => setDe(e.target.value)}
-                  className="w-full h-12 rounded-xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+                  className="w-full h-12 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
                 />
               </label>
               <label className="block">
@@ -247,7 +247,7 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
                   value={ate}
                   min={de}
                   onChange={(e) => setAte(e.target.value)}
-                  className="w-full h-12 rounded-xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+                  className="w-full h-12 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
                 />
               </label>
             </div>
@@ -296,15 +296,15 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
                       aria-pressed={marcada}
                       className={`tap w-full text-left rounded-xl border px-3 py-2 flex items-center gap-2.5 ${
                         marcada
-                          ? 'border-gray-200 bg-card'
-                          : 'border-gray-200 bg-gray-50 opacity-60'
+                          ? 'border-border bg-card'
+                          : 'border-border bg-sunken opacity-60'
                       }`}
                     >
                       <span
                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
                           marcada
                             ? 'bg-primary border-primary text-white'
-                            : 'border-gray-300 bg-card'
+                            : 'border-borderStrong bg-card'
                         }`}
                       >
                         {marcada && <Check size={13} />}
@@ -343,12 +343,12 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
               rows={3}
               maxLength={500}
               placeholder="Reunião do conselho de classe."
-              className="w-full rounded-2xl border-2 border-gray-200 bg-card p-3 text-sm text-text placeholder:text-textMuted focus:outline-none focus:border-primary resize-none"
+              className="w-full rounded-2xl border-2 border-border bg-card p-3 text-sm text-text placeholder:text-textMuted focus:outline-none focus:border-primary resize-none"
             />
           </div>
         </div>
 
-        <div className="px-5 pt-2 pb-3 border-t border-gray-100 bg-card">
+        <div className="px-5 pt-2 pb-3 border-t border-neutro bg-card">
           <button
             type="button"
             onClick={enviar}

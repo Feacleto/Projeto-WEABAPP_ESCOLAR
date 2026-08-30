@@ -210,7 +210,7 @@ export default function AdminPanel() {
           *
           * A quebra separa o que É o negócio (o dinheiro e quem vai pagar) do
           * que CHEGA nele (a fila de inscritos e o que os usuários responderam). */}
-        <div className="mb-5 space-y-1 rounded-2xl bg-gray-100 p-1 sm:flex sm:space-y-0 sm:gap-1">
+        <div className="mb-5 space-y-1 rounded-2xl bg-neutro p-1 sm:flex sm:space-y-0 sm:gap-1">
           {[
             [
               ['geral', 'Visão geral'],
@@ -347,7 +347,7 @@ function Geral({ ov, onVerFila }) {
           onClick={onVerFila}
           className="tap w-full text-left"
         >
-          <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-card p-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
             <div className="flex-1">
               <p className="text-xl font-extrabold tabular-nums tracking-tight text-text">
                 {ov.filaParceiros}
@@ -442,7 +442,7 @@ function PeriodoDeAvaliacao() {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-card p-4">
+    <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-text">Período de avaliação</p>
@@ -459,7 +459,7 @@ function PeriodoDeAvaliacao() {
           disabled={salvando || config === null}
           onClick={() => salvar({ aberta: !aberta })}
           className={`tap relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-            aberta ? 'bg-primary' : 'bg-gray-300'
+            aberta ? 'bg-primary' : 'bg-borderStrong'
           }`}
         >
           <span
@@ -479,7 +479,7 @@ function PeriodoDeAvaliacao() {
           value={ateISO}
           disabled={salvando}
           onChange={(e) => salvar({ ate: e.target.value || null })}
-          className="mt-1 h-11 w-full rounded-xl border border-gray-200 bg-card px-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="mt-1 h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </label>
 
@@ -534,7 +534,7 @@ function PrivacidadeDosDepoimentos() {
 
   return (
     <>
-      <div className="rounded-2xl border border-gray-200 bg-card p-4">
+      <div className="rounded-2xl border border-border bg-card p-4">
         <p className="text-sm font-bold text-text">
           Privacidade dos depoimentos antigos
         </p>
@@ -555,7 +555,7 @@ function PrivacidadeDosDepoimentos() {
         )}
 
         {relatorio && !feito && (
-          <div className="mt-3 rounded-xl border border-gray-200 bg-surface p-3">
+          <div className="mt-3 rounded-xl border border-border bg-surface p-3">
             <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-textMuted">
               <span>
                 públicos:{' '}
@@ -601,7 +601,7 @@ function PrivacidadeDosDepoimentos() {
             type="button"
             onClick={() => chamar(false)}
             disabled={rodando}
-            className="tap inline-flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-xs font-bold text-text disabled:opacity-60"
+            className="tap inline-flex h-10 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold text-text disabled:opacity-60"
           >
             {rodando && !confirmando ? <Spinner size={14} /> : null}
             Verificar
@@ -675,14 +675,14 @@ function Pesquisa({ s }) {
 
       <section>
         <Titulo icon={BarChart3}>Distribuição</Titulo>
-        <div className="space-y-1.5 rounded-2xl border border-gray-200 bg-card p-4">
+        <div className="space-y-1.5 rounded-2xl border border-border bg-card p-4">
           {[5, 4, 3, 2, 1].map((n) => (
             <div key={n} className="flex items-center gap-2">
               <span className="inline-flex w-8 shrink-0 items-center gap-0.5 text-xs font-bold text-textMuted">
                 {n}
                 <Star size={11} className="fill-amber-400 text-amber-400" />
               </span>
-              <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+              <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutro">
                 <span
                   className="block h-full rounded-full bg-amber-400"
                   style={{ width: `${(s.estrelas[n] / maxEstrela) * 100}%` }}
@@ -712,7 +712,7 @@ function Pesquisa({ s }) {
           {s.comentarios.map((c) => (
             <article
               key={c.id}
-              className="rounded-2xl border border-gray-200 bg-card p-4"
+              className="rounded-2xl border border-border bg-card p-4"
             >
               <div className="mb-1.5 flex items-center gap-2">
                 <Stars value={c.nota} size={12} />
@@ -750,13 +750,13 @@ function Ranking({ itens, vazio }) {
   }
   const max = itens[0][1] || 1;
   return (
-    <div className="space-y-1.5 rounded-2xl border border-gray-200 bg-card p-4">
+    <div className="space-y-1.5 rounded-2xl border border-border bg-card p-4">
       {itens.map(([valor, n]) => (
         <div key={valor} className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-xs font-semibold text-text">
             {labelDaOpcao(valor)}
           </span>
-          <span className="h-2 w-20 shrink-0 overflow-hidden rounded-full bg-gray-100">
+          <span className="h-2 w-20 shrink-0 overflow-hidden rounded-full bg-neutro">
             <span
               className="block h-full rounded-full bg-primary"
               style={{ width: `${(n / max) * 100}%` }}
@@ -781,7 +781,7 @@ const STATUS_LABEL = {
 };
 
 const STATUS_SKIN = {
-  pending: 'bg-gray-100 text-textMuted',
+  pending: 'bg-neutro text-textMuted',
   contacted: 'bg-amber-50 text-amber-700',
   approved: 'bg-emerald-50 text-emerald-700',
   rejected: 'bg-red-50 text-red-700',
@@ -822,7 +822,7 @@ function Parceiros({ leads, onMarcar }) {
         return (
           <article
             key={l.id}
-            className="rounded-2xl border border-gray-200 bg-card p-4"
+            className="rounded-2xl border border-border bg-card p-4"
           >
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
@@ -868,7 +868,7 @@ function Parceiros({ leads, onMarcar }) {
                   ).replace('/5511969170709', `/${l.phone}`)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-xs font-bold text-text"
+                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold text-text"
                 >
                   <Phone size={13} />
                   WhatsApp
@@ -897,7 +897,7 @@ function Parceiros({ leads, onMarcar }) {
                 <button
                   type="button"
                   onClick={() => onMarcar(l, 'rejected')}
-                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-xs font-bold text-textMuted"
+                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold text-textMuted"
                 >
                   <X size={13} />
                   Recusar
@@ -938,7 +938,7 @@ function Tile({ label, value, tone = 'neutral' }) {
         ? 'text-warning'
         : 'text-text';
   return (
-    <div className="rounded-2xl border border-gray-200 bg-card p-4">
+    <div className="rounded-2xl border border-border bg-card p-4">
       <p className={`text-xl font-extrabold tabular-nums tracking-tight ${cor}`}>
         {value}
       </p>
@@ -971,7 +971,7 @@ function Erro() {
 
 function Vazio({ icon: Icon, titulo, texto }) {
   return (
-    <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-center">
+    <div className="rounded-2xl border border-dashed border-borderStrong p-6 text-center">
       <Icon size={22} className="mx-auto mb-2 text-textMuted" />
       <p className="text-sm font-bold text-text">{titulo}</p>
       <p className="mx-auto mt-1 max-w-[20rem] text-xs leading-relaxed text-textMuted">

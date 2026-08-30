@@ -109,7 +109,7 @@ export default function AtualizacaoDisponivel() {
 
   return (
     <div className="fixed inset-x-0 top-3 z-[60] mx-auto max-w-mobile px-4">
-      <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-card p-3.5 shadow-2xl shadow-black/15">
+      <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-2xl shadow-black/15">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <ArrowUpCircle size={19} />
         </span>

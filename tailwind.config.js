@@ -33,8 +33,15 @@ export default {
         // AS TRÊS BORDAS, do mais fraco pro mais forte. Existiam como
         // gray-100/200/300 espalhados (~340 usos), e a escolha entre eles
         // era pelo dedo, não pela regra.
-        divider: '#F3F4F6', // separador DENTRO de um cartão; base do cabeçalho
-        border: '#E5E7EB', // a borda de tudo — a maioria absoluta
+        //
+        // `neutro` NÃO se chama `divider` de propósito: dos 88 usos, 47 são
+        // PREENCHIMENTO (o X redondo das folhas, o trilho do gráfico, o
+        // esqueleto de carregamento, o segmento inativo de um seletor) e 41
+        // são linha. Não há uso dominante, e `bg-divider` num botão seria uma
+        // classe válida e mentirosa. A regra dele é por PESO: é o cinza mais
+        // fraco do sistema, seja como risco ou como fundo em repouso.
+        neutro: '#F3F4F6',
+        border: '#E5E7EB', // a borda de tudo — 94% dos usos são borda mesmo
         borderStrong: '#D1D5DB', // borda de campo, tracejado, e a ALÇA de
         // arrastar das folhas (que é affordance física: precisa ser vista)
 

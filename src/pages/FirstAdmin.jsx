@@ -195,7 +195,7 @@ export default function FirstAdmin() {
 
       <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200"></div>
+          <div className="w-full border-t border-border"></div>
         </div>
         <div className="relative flex justify-center text-xs">
           <span className="bg-bg px-3 text-textMuted">ou crie com email/senha</span>

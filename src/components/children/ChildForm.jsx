@@ -318,7 +318,7 @@ export default function ChildForm() {
         * o usuário de avançar do passo 1 em diante (o toque caía no nav).
         * Fundo branco com gradient pra cobrir o nav visualmente. */}
       <footer
-        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-40 px-5 pt-3 bg-bg border-t border-gray-100"
+        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-40 px-5 pt-3 bg-bg border-t border-neutro"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 1rem)' }}
       >
         <Button
@@ -371,7 +371,7 @@ function ProgressBar({ step, total }) {
                 ? 'bg-emerald-500'
                 : current
                 ? 'bg-emerald-500'
-                : 'bg-gray-200'
+                : 'bg-border'
             }`}
           />
         );
@@ -595,10 +595,10 @@ function Step3School({ form, setForm, setField, errors }) {
           Escola
         </label>
 
-        {loading && <div className="h-12 rounded-2xl bg-gray-100 animate-pulse" />}
+        {loading && <div className="h-12 rounded-2xl bg-neutro animate-pulse" />}
 
         {!loading && escolas.length === 0 && (
-          <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-4 text-center space-y-3">
+          <div className="bg-sunken border border-dashed border-border rounded-2xl p-4 text-center space-y-3">
             <p className="text-sm text-textMuted">
               Você ainda não cadastrou nenhuma escola.
             </p>
@@ -627,12 +627,12 @@ function Step3School({ form, setForm, setField, errors }) {
                   className={`tap w-full text-left rounded-2xl border-2 px-3.5 py-3 flex items-center gap-3 ${
                     ativa
                       ? 'border-primary bg-primary/5'
-                      : 'border-gray-200 bg-card'
+                      : 'border-border bg-card'
                   }`}
                 >
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      ativa ? 'bg-primary text-white' : 'bg-gray-100 text-textMuted'
+                      ativa ? 'bg-primary text-white' : 'bg-neutro text-textMuted'
                     }`}
                   >
                     <School size={17} />
@@ -770,7 +770,7 @@ function Step4Parent({ form, setField, setPhone, errors }) {
         </button>
 
         {showSecondParent && (
-          <div className="space-y-3 pt-1 border-t border-gray-100">
+          <div className="space-y-3 pt-1 border-t border-neutro">
             <Input
               label="Nome do segundo responsável"
               icon={User}
@@ -849,7 +849,7 @@ function Step4Parent({ form, setField, setPhone, errors }) {
           onChange={setField('notes')}
           rows={3}
           placeholder="Alergias, instruções especiais..."
-          className="w-full rounded-xl border border-gray-200 bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-textMuted"
+          className="w-full rounded-xl border border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-textMuted"
         />
       </Card>
     </>
@@ -877,7 +877,7 @@ function SelectorButton({ label, icon: Icon, active, onClick }) {
       className={`tap h-14 rounded-2xl text-sm font-semibold border-2 flex flex-col items-center justify-center gap-0.5 ${
         active
           ? 'bg-primary text-white border-primary'
-          : 'bg-card text-text border-gray-200'
+          : 'bg-card text-text border-border'
       }`}
     >
       {Icon && <Icon size={16} />}
@@ -1058,7 +1058,7 @@ function AnexarContratoAnterior({ childId }) {
   }
 
   return (
-    <div className="rounded-2xl border border-dashed border-gray-300 p-3.5">
+    <div className="rounded-2xl border border-dashed border-borderStrong p-3.5">
       <p className="text-xs font-semibold text-text">
         Já tem contrato com essa família?
       </p>
@@ -1068,7 +1068,7 @@ function AnexarContratoAnterior({ childId }) {
         <strong>o contrato que vale continua sendo o do app</strong>, com os
         valores que você acabou de preencher.
       </p>
-      <label className="tap mt-2.5 flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-300 text-xs font-bold text-text">
+      <label className="tap mt-2.5 flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-borderStrong text-xs font-bold text-text">
         <Paperclip size={14} />
         {enviando ? 'Enviando…' : 'Anexar ou fotografar'}
         <input

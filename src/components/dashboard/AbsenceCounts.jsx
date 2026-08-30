@@ -64,7 +64,7 @@ export default function AbsenceCounts({ history = [] }) {
             )}
           </button>
           {expanded && (
-            <div className="border-t border-gray-100 divide-y divide-gray-100">
+            <div className="border-t border-neutro divide-y divide-neutro">
               {monthList.map((a) => (
                 <div key={a.id} className="p-3 flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
@@ -101,7 +101,7 @@ function CountCard({ label, value }) {
         className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
           value > 0
             ? 'bg-amber-100 text-amber-700'
-            : 'bg-gray-100 text-textMuted'
+            : 'bg-neutro text-textMuted'
         }`}
       >
         <UserX size={18} />

@@ -270,7 +270,7 @@ export default function LoginSheet({
                 type="button"
                 onClick={onGoogleLogin}
                 disabled={googleSubmitting}
-                className="tap relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl border-2 border-gray-300 bg-card text-base font-bold text-text shadow-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                className="tap relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl border-2 border-borderStrong bg-card text-base font-bold text-text shadow-md hover:bg-sunken focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
               >
                 <GoogleIcon size={22} />
                 {googleSubmitting ? 'Entrando…' : 'Entrar com Google'}
@@ -373,7 +373,7 @@ export default function LoginSheet({
               }
               setStep('novo');
             }}
-            className="tap mt-6 flex w-full items-center gap-3 rounded-2xl border border-dashed border-gray-300 p-4 text-left hover:bg-card"
+            className="tap mt-6 flex w-full items-center gap-3 rounded-2xl border border-dashed border-borderStrong p-4 text-left hover:bg-card"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Users size={17} />

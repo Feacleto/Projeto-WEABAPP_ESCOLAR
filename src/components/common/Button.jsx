@@ -4,12 +4,12 @@ const variants = {
   primary:
     'bg-primary text-white hover:bg-primaryDark active:bg-primaryDark disabled:bg-primary/50',
   secondary:
-    'bg-card border border-gray-200 text-text hover:bg-gray-50 disabled:opacity-60',
+    'bg-card border border-border text-text hover:bg-sunken disabled:opacity-60',
   danger:
     'bg-danger text-white hover:bg-red-600 disabled:bg-danger/50',
   success:
     'bg-success text-white hover:bg-accentDark disabled:bg-success/50',
-  ghost: 'bg-transparent text-text hover:bg-gray-100 disabled:opacity-60',
+  ghost: 'bg-transparent text-text hover:bg-neutro disabled:opacity-60',
 };
 
 // Tamanhos ampliados pra público com baixa familiaridade com toque preciso.

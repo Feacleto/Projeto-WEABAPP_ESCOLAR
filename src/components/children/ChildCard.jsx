@@ -216,7 +216,7 @@ export default function ChildCard({
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-2.5">
+        <div className="px-4 pb-4 pt-1 border-t border-neutro space-y-2.5">
           <Detail icon={MapPin} label="Onde mora">
             {child.address || 'Endereço não informado'}
           </Detail>

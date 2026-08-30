@@ -107,7 +107,7 @@ export default function ContratoDoc({ dados, aceite }) {
                 cor="text-warning"
               />
             )}
-            <tr className="border-t border-gray-300">
+            <tr className="border-t border-borderStrong">
               <td className="pt-2 font-bold">Valor por {periodoLabel}</td>
               <td className="pt-2 text-right text-[16px] font-extrabold tabular-nums">
                 {formatBRL(t.valorPorPeriodo)}
@@ -165,7 +165,7 @@ export default function ContratoDoc({ dados, aceite }) {
       </Clausula>
 
       {/* ── o rodapé do aceite ── */}
-      <footer className="mt-4 border-t border-dashed border-gray-300 pt-3 text-[11.5px] text-textMuted">
+      <footer className="mt-4 border-t border-dashed border-borderStrong pt-3 text-[11.5px] text-textMuted">
         {aceite?.aceitoEm ? (
           <>
             <p>

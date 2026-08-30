@@ -126,7 +126,7 @@ export default function Welcome() {
           onClick={() => navigate('/quero-fazer-parte')}
         />
 
-        <div className="rounded-2xl border border-gray-200 bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="text-sm font-bold text-text">Como o app te reconhece</p>
           <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-textMuted">
             <li>
@@ -147,7 +147,7 @@ export default function Welcome() {
         <button
           type="button"
           onClick={() => navigate('/login')}
-          className="tap mt-1 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 bg-card text-base font-bold text-text hover:bg-gray-50"
+          className="tap mt-1 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-border bg-card text-base font-bold text-text hover:bg-sunken"
         >
           <LogIn size={18} />
           Já tenho conta

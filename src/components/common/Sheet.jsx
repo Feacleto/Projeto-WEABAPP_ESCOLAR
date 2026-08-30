@@ -196,7 +196,7 @@ export default function Sheet({
 export function SheetCard({ className = '', children }) {
   return (
     <div
-      className={`rounded-2xl border border-gray-200 bg-card p-4 shadow-sm ${className}`}
+      className={`rounded-2xl border border-border bg-card p-4 shadow-sm ${className}`}
     >
       {children}
     </div>
@@ -243,7 +243,7 @@ export function SheetGhost({
     <button
       type={type}
       disabled={disabled || loading}
-      className={`tap inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 bg-card text-base font-bold text-text hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 ${className}`}
+      className={`tap inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-border bg-card text-base font-bold text-text hover:bg-sunken focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 ${className}`}
       {...rest}
     >
       {loading ? <Spinner size={19} /> : Icon && <Icon size={19} />}
@@ -260,11 +260,11 @@ export function SheetGhost({
 export function SheetDivider({ children }) {
   return (
     <div className="my-5 flex items-center gap-3">
-      <span aria-hidden className="h-px flex-1 bg-gray-200" />
+      <span aria-hidden className="h-px flex-1 bg-border" />
       <span className="text-[11px] uppercase tracking-wider text-textMuted">
         {children}
       </span>
-      <span aria-hidden className="h-px flex-1 bg-gray-200" />
+      <span aria-hidden className="h-px flex-1 bg-border" />
     </div>
   );
 }

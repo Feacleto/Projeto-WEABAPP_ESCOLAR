@@ -82,7 +82,7 @@ export default function MapPicker({
 
   return (
     <div className="fixed inset-0 z-50 bg-bg flex flex-col max-w-mobile mx-auto">
-      <header className="px-5 pt-4 pb-3 bg-card border-b border-gray-200 space-y-1">
+      <header className="px-5 pt-4 pb-3 bg-card border-b border-border space-y-1">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -118,7 +118,7 @@ export default function MapPicker({
         </MapContainer>
 
         {!point && (
-          <div className="absolute inset-x-4 top-4 z-[400] bg-card/95 border border-gray-200 rounded-xl px-4 py-3 shadow-lg pointer-events-none">
+          <div className="absolute inset-x-4 top-4 z-[400] bg-card/95 border border-border rounded-xl px-4 py-3 shadow-lg pointer-events-none">
             <p className="text-sm text-text font-semibold">Toque no mapa</p>
             <p className="text-xs text-textMuted">
               Pode aproximar com dois dedos pra acertar a casa.
@@ -127,7 +127,7 @@ export default function MapPicker({
         )}
       </div>
 
-      <div className="p-4 space-y-2 bg-card border-t border-gray-200">
+      <div className="p-4 space-y-2 bg-card border-t border-border">
         <Button
           type="button"
           variant="secondary"

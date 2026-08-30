@@ -72,7 +72,7 @@ export default function PaiFinanceReport() {
         </div>
 
         <article className="bg-card rounded-3xl shadow-sm p-6 print:p-0 print:shadow-none print:rounded-none space-y-6">
-          <header className="space-y-1 border-b border-gray-200 pb-4">
+          <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-textMuted">
@@ -134,7 +134,7 @@ export default function PaiFinanceReport() {
             )}
           </section>
 
-          <footer className="text-center text-[10px] text-textMuted pt-4 border-t border-gray-200">
+          <footer className="text-center text-[10px] text-textMuted pt-4 border-t border-border">
             Tio Nino Digital · Documento gerado em{' '}
             {new Date().toLocaleString('pt-BR')}
           </footer>

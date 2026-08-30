@@ -89,7 +89,7 @@ export default function HorarioDoDia({
           </p>
         </div>
       ) : (
-        <div className="px-5 pb-5 pt-1 divide-y divide-gray-100">
+        <div className="px-5 pb-5 pt-1 divide-y divide-neutro">
           <Linha
             icon={Bus}
             hora={pega}
@@ -124,7 +124,7 @@ export default function HorarioDoDia({
         * mais que um contador que às vezes mente. */}
       {!presumido && (ride?.ordemIda || ride?.ordemVolta) && (
         <div className="px-5 pb-4 -mt-1">
-          <p className="text-xs text-textMuted bg-gray-50 rounded-xl px-3 py-2 leading-relaxed">
+          <p className="text-xs text-textMuted bg-sunken rounded-xl px-3 py-2 leading-relaxed">
             {/* A HORA, NÃO O PERÍODO DO DIA.
               * Dizia "De manhã" e "Na volta" — herança dos seis turnos, que
               * morreram. O ordinal é por VIAGEM, então a mãe do Theo, pego às
@@ -162,7 +162,7 @@ function Linha({ icon: Icon, hora, titulo, cancelado, motivo }) {
     <div className="flex items-center gap-4 py-3">
       <div
         className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-          cancelado ? 'bg-gray-100 text-textMuted' : 'bg-primary/10 text-primary'
+          cancelado ? 'bg-neutro text-textMuted' : 'bg-primary/10 text-primary'
         }`}
       >
         {cancelado ? <UserCheck size={20} /> : <Icon size={20} />}

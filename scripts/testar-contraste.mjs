@@ -30,6 +30,22 @@ const C = cfg.theme.extend.colors;
 
 let ok = 0, falhou = 0;
 
+/**
+ * O token existe? Um nome removido do config chegava aqui como `undefined` e
+ * estourava um TypeError no meio da fórmula — pilha de erro que não diz a
+ * ninguém qual cor sumiu. Isto aconteceu de verdade ao renomear `divider`.
+ */
+function exigir(hex, onde) {
+  if (typeof hex !== 'string') {
+    console.error(`
+[31mToken inexistente em "${onde}".[0m ` +
+      'Ele foi renomeado ou removido do tailwind.config.js — ' +
+      'atualize o par aqui em vez de apagar a medição.');
+    process.exit(1);
+  }
+  return hex;
+}
+
 /** Luminância relativa, fórmula da WCAG 2.1. */
 function luminancia(hex) {
   const canais = [1, 3, 5]
@@ -48,7 +64,7 @@ function razao(a, b) {
  * @param piso  4.5 = texto normal · 3 = texto grande · 0 = só informativo
  */
 const par = (nome, frente, fundo, piso = 4.5) => {
-  const r = razao(frente, fundo);
+  const r = razao(exigir(frente, nome), exigir(fundo, nome));
   const passou = r >= piso;
   passou ? ok++ : falhou++;
   const marca = passou ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
@@ -79,7 +95,7 @@ par('textMuted sobre bg', C.textMuted, C.bg);
 par('textMuted sobre card', C.textMuted, C.card);
 par('textMuted sobre surface', C.textMuted, C.surface);
 par('textMuted sobre sunken', C.textMuted, C.sunken);
-par('textMuted sobre divider (chip neutro)', C.textMuted, C.divider);
+par('textMuted sobre neutro (chip neutro)', C.textMuted, C.neutro);
 
 console.log('\n\x1b[1m3. Marca e ação\x1b[0m');
 par('primary sobre bg', C.primary, C.bg);
@@ -116,7 +132,7 @@ console.log('\n\x1b[1m7. O QUE NÃO PODE SER TEXTO — a regra, medida\x1b[0m');
 // warningText existirem. Se um dia alguém "consertar" o accent pra ele
 // funcionar como texto, terá mudado a cor das ondas da marca.
 const proibido = (nome, frente, fundo) => {
-  const r = razao(frente, fundo);
+  const r = razao(exigir(frente, nome), exigir(fundo, nome));
   const certo = r < 4.5;
   certo ? ok++ : falhou++;
   console.log(`  ${certo ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${nome.padEnd(46)} ` +

@@ -221,7 +221,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
             </>
           )}
 
-          <div className="space-y-3 border-t border-gray-100 pt-3">
+          <div className="space-y-3 border-t border-neutro pt-3">
             <InfoRow icon={Home} label="Casa" value={child.address} />
             <InfoRow icon={School} label="Escola" value={child.school} />
             {child.schoolAddress && (
@@ -276,9 +276,9 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
             href={child.contratoAnteriorURL}
             target="_blank"
             rel="noopener noreferrer"
-            className="tap flex items-center gap-3 rounded-2xl border border-gray-200 bg-card px-4 py-3"
+            className="tap flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-textMuted">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutro text-textMuted">
               <Paperclip size={16} />
             </span>
             <span className="min-w-0 flex-1">
@@ -338,7 +338,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
             Responsáveis
           </h3>
 
-          <div className="space-y-2 pb-2 border-b border-gray-100 last:border-0 last:pb-0">
+          <div className="space-y-2 pb-2 border-b border-neutro last:border-0 last:pb-0">
             <p className="text-[11px] text-textMuted uppercase tracking-wide">
               Principal
             </p>
@@ -558,12 +558,12 @@ function FaltasDaCrianca({ childId }) {
           type="button"
           onClick={() => setMes((m) => addMonths(m, -1))}
           aria-label="Mês anterior"
-          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-textMuted"
+          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-textMuted"
         >
           <ChevronLeft size={15} />
         </button>
 
-        <div className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-surface px-3 py-2 text-center">
+        <div className="min-w-0 flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-center">
           {loading ? (
             <p className="text-sm text-textMuted">carregando…</p>
           ) : (
@@ -583,7 +583,7 @@ function FaltasDaCrianca({ childId }) {
           disabled={!podeAvancar}
           onClick={() => podeAvancar && setMes((m) => addMonths(m, 1))}
           aria-label="Próximo mês"
-          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-textMuted disabled:opacity-30"
+          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-textMuted disabled:opacity-30"
         >
           <ChevronRight size={15} />
         </button>
@@ -695,7 +695,7 @@ function AppLinkShare({ childName, parentPhone }) {
       <button
         type="button"
         onClick={copiar}
-        className="tap flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-card text-sm font-bold text-text"
+        className="tap flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-border bg-card text-sm font-bold text-text"
       >
         {copiado ? <Check size={16} /> : <Copy size={16} />}
         {copiado ? 'Copiado' : 'Copiar link'}
@@ -781,7 +781,7 @@ function ChildPhotoEditor({ child }) {
         <button
           type="button"
           onClick={onRemove}
-          className="absolute -bottom-1 -left-1 w-9 h-9 rounded-full bg-card text-danger border border-gray-200 shadow flex items-center justify-center tap"
+          className="absolute -bottom-1 -left-1 w-9 h-9 rounded-full bg-card text-danger border border-border shadow flex items-center justify-center tap"
           aria-label="Remover foto"
         >
           <Trash2 size={16} />
@@ -877,13 +877,13 @@ function TurmaSala({ child, podeEditar }) {
             value={turma}
             onChange={(e) => setTurma(e.target.value)}
             placeholder="Turma (3º B)"
-            className="h-11 rounded-xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+            className="h-11 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
           />
           <input
             value={sala}
             onChange={(e) => setSala(e.target.value)}
             placeholder="Sala (12)"
-            className="h-11 rounded-xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+            className="h-11 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
           />
         </div>
         <div className="flex gap-2">
@@ -922,7 +922,7 @@ function TurmaSala({ child, podeEditar }) {
           type="button"
           onClick={() => setEditando(true)}
           aria-label="Editar turma e sala"
-          className="tap w-9 h-9 rounded-xl border border-gray-200 text-textMuted flex items-center justify-center shrink-0"
+          className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
         >
           <Pencil size={15} />
         </button>

@@ -391,7 +391,7 @@ export default function WaitlistSheet({
             value={form.message}
             onChange={set('message')}
             placeholder="Há quanto tempo roda, quantas crianças atende..."
-            className="w-full rounded-2xl border-2 border-gray-200 bg-card p-4 text-sm text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-2xl border-2 border-border bg-card p-4 text-sm text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
 
           {falhou && (

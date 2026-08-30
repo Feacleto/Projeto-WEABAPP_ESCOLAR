@@ -459,8 +459,8 @@ function MethodPickerModal({ payment, hasPix, onPick, onClose }) {
             disabled={!hasPix}
             className={`w-full flex items-center gap-3 p-4 rounded-xl border tap text-left ${
               hasPix
-                ? 'bg-card border-gray-200 hover:bg-gray-50'
-                : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'
+                ? 'bg-card border-border hover:bg-sunken'
+                : 'bg-sunken border-neutro opacity-50 cursor-not-allowed'
             }`}
           >
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -479,7 +479,7 @@ function MethodPickerModal({ payment, hasPix, onPick, onClose }) {
           <button
             type="button"
             onClick={() => onPick('cash')}
-            className="w-full flex items-center gap-3 p-4 rounded-xl border bg-card border-gray-200 hover:bg-gray-50 tap text-left"
+            className="w-full flex items-center gap-3 p-4 rounded-xl border bg-card border-border hover:bg-sunken tap text-left"
           >
             <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
               <Banknote size={20} className="text-warning" />

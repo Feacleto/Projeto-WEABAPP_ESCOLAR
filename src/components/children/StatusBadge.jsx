@@ -4,7 +4,7 @@ import { STATUS_LABELS } from '../../services/childrenService';
 // Cor + ícone por status. Mantém o mesmo "vocabulário" visual em qualquer
 // lugar do app (lista do Tio, dashboard do Pai, etc.).
 const VISUAL = {
-  home: { icon: Home, color: 'bg-gray-100 text-gray-700' },
+  home: { icon: Home, color: 'bg-neutro text-textMuted' },
   onboard: { icon: Bus, color: 'bg-primary/10 text-primaryDark' },
   atSchool: { icon: School, color: 'bg-purple-100 text-purple-700' },
   delivered: { icon: CheckCircle2, color: 'bg-success/10 text-lime-700' },

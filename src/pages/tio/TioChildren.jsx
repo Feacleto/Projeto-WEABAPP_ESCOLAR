@@ -127,7 +127,7 @@ export default function TioChildren() {
         <button
           type="button"
           onClick={() => navigate('/tio/children/escolas')}
-          className="tap w-full bg-card border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-3 text-left"
+          className="tap w-full bg-card border border-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left"
         >
           <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center shrink-0">
             <School size={17} />
@@ -154,7 +154,7 @@ export default function TioChildren() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar pelo nome..."
-            className="w-full h-12 pl-10 pr-10 rounded-2xl bg-card border border-gray-200 text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="w-full h-12 pl-10 pr-10 rounded-2xl bg-card border border-border text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
           {search && (
             <button
@@ -178,7 +178,7 @@ export default function TioChildren() {
               className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold tap border ${
                 filter === f.value
                   ? 'bg-text text-white border-text'
-                  : 'bg-card text-textMuted border-gray-200'
+                  : 'bg-card text-textMuted border-border'
               }`}
             >
               {f.label}

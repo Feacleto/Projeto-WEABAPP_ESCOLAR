@@ -231,7 +231,7 @@ function AgendaSheet({ onClose }) {
           {...alcaProps}
           className={`pt-3 pb-1 flex justify-center sticky top-0 bg-card z-10 ${alcaProps.className}`}
         >
-          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+          <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
         </div>
 
         <div className="px-5 pt-2 pb-6">
@@ -313,7 +313,7 @@ function SheetHeader({ step, onBack, onClose, onHistory }) {
       </h2>
       <button
         onClick={onClose}
-        className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+        className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
         aria-label="Fechar"
       >
         <X size={18} />
@@ -381,7 +381,7 @@ function TargetStep({
         <button
           type="button"
           onClick={onPickTodos}
-          className="tap w-full mt-2 rounded-2xl border border-gray-200 bg-card px-4 py-2.5 flex items-center gap-3"
+          className="tap w-full mt-2 rounded-2xl border border-border bg-card px-4 py-2.5 flex items-center gap-3"
         >
           <Megaphone size={17} className="text-textMuted shrink-0" />
           <span className="flex-1 min-w-0 text-left text-sm font-semibold text-text">
@@ -431,7 +431,7 @@ function TargetStep({
           placeholder="Buscar pelo nome..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full h-11 px-3 mb-2 rounded-2xl bg-card border border-gray-200 text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+          className="w-full h-11 px-3 mb-2 rounded-2xl bg-card border border-border text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
         />
         <div className="space-y-1.5 max-h-72 overflow-y-auto">
           {filteredChildren.map((c) => (
@@ -439,7 +439,7 @@ function TargetStep({
               key={c.id}
               type="button"
               onClick={() => onPickChild(c)}
-              className="tap w-full text-left bg-card rounded-2xl border border-gray-200 px-3 py-2.5 flex items-center gap-3"
+              className="tap w-full text-left bg-card rounded-2xl border border-border px-3 py-2.5 flex items-center gap-3"
             >
               <Avatar
                 photoURL={c.photoURL}
@@ -544,7 +544,7 @@ function ConfirmStep({
           rows={6}
           maxLength={1500}
           placeholder="Escreve aqui o que aconteceu…"
-          className="w-full rounded-2xl border-2 border-gray-200 bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
+          className="w-full rounded-2xl border-2 border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
         />
         <p className="text-[11px] text-textMuted mt-1.5">
           Pode editar o texto antes de enviar. O pai recebe na agenda dele.
@@ -566,7 +566,7 @@ function ConfirmStep({
           type="date"
           value={eventDate}
           onChange={(e) => onEventDateChange(e.target.value)}
-          className="w-full h-12 rounded-2xl border-2 border-gray-200 bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+          className="w-full h-12 rounded-2xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
         />
         <p className="text-[11px] text-textMuted mt-1.5">
           Passeio, festa, reunião. O pai vê o aviso na data, em vez de ter que

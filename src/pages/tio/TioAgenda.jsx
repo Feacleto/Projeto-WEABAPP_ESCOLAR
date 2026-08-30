@@ -67,7 +67,7 @@ export default function TioAgenda() {
               className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold tap border ${
                 filter === f.value
                   ? 'bg-text text-white border-text'
-                  : 'bg-card text-textMuted border-gray-200'
+                  : 'bg-card text-textMuted border-border'
               }`}
             >
               {f.label}
@@ -112,7 +112,7 @@ function EntryRow({ entry }) {
     entry.scope === 'school' ? entry.schoolName : entry.childName;
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+    <div className="bg-card rounded-2xl shadow-sm overflow-hidden border border-neutro">
       <div
         className={`bg-gradient-to-r ${t.color} text-white px-4 py-2 flex items-center gap-2`}
       >

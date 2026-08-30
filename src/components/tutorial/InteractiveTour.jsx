@@ -258,7 +258,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
               {!isFirst && (
                 <button
                   onClick={onPrev}
-                  className="tap h-12 px-3 rounded-xl bg-gray-100 text-text text-sm font-semibold inline-flex items-center gap-1"
+                  className="tap h-12 px-3 rounded-xl bg-neutro text-text text-sm font-semibold inline-flex items-center gap-1"
                 >
                   <ChevronLeft size={16} />
                   Voltar

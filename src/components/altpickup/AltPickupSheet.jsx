@@ -105,7 +105,7 @@ export default function AltPickupSheet({
           {...alcaProps}
           className={`pt-3 pb-1 flex justify-center sticky top-0 bg-card z-10 ${alcaProps.className}`}
         >
-          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+          <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
         </div>
 
         <div className="px-5 pt-2 pb-5 space-y-3">
@@ -129,7 +129,7 @@ export default function AltPickupSheet({
             <button
               onClick={onClose}
               disabled={submitting}
-              className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
               aria-label="Fechar"
             >
               <X size={18} />
@@ -205,7 +205,7 @@ export default function AltPickupSheet({
                     type="button"
                     onClick={() => handleSelect(avulso)}
                     disabled={submitting}
-                    className="tap flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-card p-3 text-left"
+                    className="tap flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left"
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
                       <UserIcon size={18} />
@@ -378,7 +378,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
               className={`tap h-9 px-3 rounded-full text-sm font-semibold border transition-colors ${
                 relationship === rel && !isCustom
                   ? 'bg-primary text-white border-primary'
-                  : 'bg-card text-text border-gray-200'
+                  : 'bg-card text-text border-border'
               }`}
             >
               {rel}
@@ -390,7 +390,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
             className={`tap h-9 px-3 rounded-full text-sm font-semibold border transition-colors ${
               isCustom
                 ? 'bg-primary text-white border-primary'
-                : 'bg-card text-text border-gray-200'
+                : 'bg-card text-text border-border'
             }`}
           >
             Outro
@@ -404,7 +404,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
             onChange={(e) => setRelationship(e.target.value)}
             maxLength={40}
             autoFocus
-            className="mt-2 w-full h-12 rounded-2xl border-2 border-gray-200 bg-card text-text px-4 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
+            className="mt-2 w-full h-12 rounded-2xl border-2 border-border bg-card text-text px-4 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
           />
         )}
       </div>

@@ -420,7 +420,7 @@ export default function TioFinance() {
             onClick={() => setPixOpen(true)}
             className={`tap w-full text-left rounded-2xl p-4 flex items-center gap-3 border ${
               hasPix
-                ? 'bg-card border-gray-200'
+                ? 'bg-card border-border'
                 : 'bg-gradient-to-br from-amber-50 to-orange-100 border-amber-200'
             }`}
           >
@@ -468,7 +468,7 @@ export default function TioFinance() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Procurar criança"
-            className="w-full h-12 rounded-xl border-2 border-gray-200 bg-card pl-11 pr-10 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
+            className="w-full h-12 rounded-xl border-2 border-border bg-card pl-11 pr-10 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
           />
           {search && (
             <button
@@ -501,7 +501,7 @@ export default function TioFinance() {
               className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold tap border ${
                 filter === f.value
                   ? 'bg-text text-white border-text'
-                  : 'bg-card text-textMuted border-gray-200'
+                  : 'bg-card text-textMuted border-border'
               }`}
             >
               {f.label}
@@ -963,7 +963,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
           {...alcaProps}
           className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
         >
-          <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+          <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
         </div>
 
         <div className="px-5 pt-2 pb-5 space-y-4">
@@ -985,7 +985,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
             <button
               onClick={onClose}
               disabled={loading}
-              className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
               aria-label="Fechar"
             >
               <X size={18} />

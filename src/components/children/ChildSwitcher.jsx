@@ -44,7 +44,7 @@ export default function ChildSwitcher({ className = '' }) {
   return (
     <>
       <div
-        className={`flex items-center gap-1 p-1 bg-gray-100 rounded-2xl ${className}`}
+        className={`flex items-center gap-1 p-1 bg-neutro rounded-2xl ${className}`}
       >
         {childIds.map((id) => {
           const active = id === activeChildId;

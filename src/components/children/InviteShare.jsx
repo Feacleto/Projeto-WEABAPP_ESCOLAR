@@ -70,7 +70,7 @@ export default function InviteShare({ code, childName, parentPhone }) {
         Mandar convite no WhatsApp
       </a>
 
-      <div className="bg-card border border-gray-200 rounded-xl p-3 space-y-2">
+      <div className="bg-card border border-border rounded-xl p-3 space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted flex items-center gap-1.5">
           <Link2 size={12} />
           link do convite
@@ -89,7 +89,7 @@ export default function InviteShare({ code, childName, parentPhone }) {
       </div>
 
       {/* Plano B: ditar o código */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+      <div className="bg-sunken border border-border rounded-xl p-3 space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
           se precisar ditar por telefone
         </p>
@@ -101,7 +101,7 @@ export default function InviteShare({ code, childName, parentPhone }) {
             type="button"
             onClick={() => copy(code, 'code')}
             aria-label="Copiar código"
-            className="tap w-11 h-11 rounded-xl bg-card border border-gray-200 flex items-center justify-center text-textMuted"
+            className="tap w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-textMuted"
           >
             {copied === 'code' ? <Check size={18} /> : <Copy size={18} />}
           </button>
@@ -114,7 +114,7 @@ export default function InviteShare({ code, childName, parentPhone }) {
           Mostrar QR pra ele apontar a câmera
         </Button>
       ) : (
-        <div className="bg-card border border-gray-200 rounded-xl p-4 flex flex-col items-center gap-2">
+        <div className="bg-card border border-border rounded-xl p-4 flex flex-col items-center gap-2">
           {qrDataUrl ? (
             <img
               src={qrDataUrl}
@@ -122,7 +122,7 @@ export default function InviteShare({ code, childName, parentPhone }) {
               className="w-44 h-44 rounded-lg"
             />
           ) : (
-            <div className="w-44 h-44 rounded-lg bg-gray-100 animate-pulse" />
+            <div className="w-44 h-44 rounded-lg bg-neutro animate-pulse" />
           )}
           <p className="text-xs text-textMuted text-center">
             Peça pro responsável abrir a câmera do celular e apontar aqui.

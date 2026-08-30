@@ -103,7 +103,7 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
         {visible.map((p) => (
           <div
             key={p.id}
-            className="flex items-center gap-2 py-1.5 border-b border-gray-100 last:border-0"
+            className="flex items-center gap-2 py-1.5 border-b border-neutro last:border-0"
           >
             <span className="text-xs text-text capitalize flex-1 min-w-0 truncate">
               {formatMonthLabel(p.month)}

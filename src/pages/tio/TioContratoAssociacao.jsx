@@ -83,7 +83,7 @@ export default function TioContratoAssociacao() {
 
   return (
     <div className="min-h-screen pb-10">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-bg px-5 pb-3 pt-4 print:hidden">
+      <header className="sticky top-0 z-20 border-b border-border bg-bg px-5 pb-3 pt-4 print:hidden">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -134,7 +134,7 @@ export default function TioContratoAssociacao() {
                   onChange={(e) => setNome(e.target.value)}
                   placeholder={profile?.name || 'Seu nome completo'}
                   autoComplete="name"
-                  className="mt-3 w-full rounded-xl border border-gray-300 bg-surface px-3 py-2.5 text-[15px] text-text"
+                  className="mt-3 w-full rounded-xl border border-borderStrong bg-surface px-3 py-2.5 text-[15px] text-text"
                 />
                 <Button
                   onClick={aceitar}

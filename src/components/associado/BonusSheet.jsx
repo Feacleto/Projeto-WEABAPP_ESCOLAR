@@ -175,7 +175,7 @@ export default function BonusSheet({ open, onClose }) {
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="tap inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 bg-card text-sm font-bold text-text"
+              className="tap inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border-2 border-border bg-card text-sm font-bold text-text"
             >
               <WhatsAppIcon size={16} colored={false} />
               Avisar o consultor

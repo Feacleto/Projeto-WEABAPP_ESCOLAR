@@ -123,7 +123,7 @@ export default function TioChildStatement() {
         </div>
 
         <article className="bg-card rounded-3xl shadow-sm p-6 print:p-0 print:shadow-none print:rounded-none space-y-6">
-          <header className="space-y-1 border-b border-gray-200 pb-4">
+          <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-textMuted">
@@ -201,7 +201,7 @@ export default function TioChildStatement() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-gray-200 text-left text-textMuted">
+                    <tr className="border-b border-border text-left text-textMuted">
                       <th className="py-2 pr-2 font-semibold">Mês</th>
                       <th className="py-2 pr-2 font-semibold">Vencimento</th>
                       <th className="py-2 pr-2 text-right font-semibold">
@@ -213,7 +213,7 @@ export default function TioChildStatement() {
                   </thead>
                   <tbody>
                     {linhas.map((p) => (
-                      <tr key={p.id} className="border-b border-gray-100">
+                      <tr key={p.id} className="border-b border-neutro">
                         <td className="py-2 pr-2 font-semibold text-text">
                           {formatMonthLabel(p.month)}
                         </td>
@@ -255,9 +255,13 @@ export default function TioChildStatement() {
             <h2 className="text-sm font-bold text-text">Observações</h2>
             <div className="mt-2 space-y-6">
               {[0, 1, 2, 3].map((n) => (
-                <div key={n} className="border-b border-gray-300" />
+                <div key={n} className="border-b border-borderStrong" />
               ))}
             </div>
+            {/* `gray-400` cru, e de propósito: estas duas linhas só existem
+              * no PAPEL. O `borderStrong` da tela (#D1D5DB) some numa
+              * impressora a jato quase sem tinta, que é a que o motorista
+              * tem — e linha de assinatura invisível é folha inutilizada. */}
             <div className="mt-10 flex gap-8 text-[11px] text-textMuted">
               <div className="flex-1 border-t border-gray-400 pt-1">
                 Assinatura do responsável

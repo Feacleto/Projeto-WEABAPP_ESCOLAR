@@ -134,7 +134,7 @@ export default function PaiMap() {
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
-      <header className="sticky top-0 z-30 bg-card border-b border-gray-100 h-14 px-3 flex items-center gap-2">
+      <header className="sticky top-0 z-30 bg-card border-b border-neutro h-14 px-3 flex items-center gap-2">
         {/* Destino declarado em vez de `navigate(-1)`: o mapa é a tela que
           * mais se chega por notificação ("Tio Nino tá chegando!"), e nesse
           * caminho não existe história pra voltar — a seta sozinha jogaria o
@@ -151,7 +151,7 @@ export default function PaiMap() {
             else navigate('/pai', { replace: true });
           }}
           aria-label="Voltar para o início"
-          className="tap h-10 pl-2 pr-3 rounded-full bg-gray-100 flex items-center gap-1 text-textMuted shrink-0"
+          className="tap h-10 pl-2 pr-3 rounded-full bg-neutro flex items-center gap-1 text-textMuted shrink-0"
         >
           <ArrowLeft size={20} />
           <span className="text-sm font-medium">Início</span>
@@ -191,7 +191,7 @@ export default function PaiMap() {
       {/* Painel inferior — contextual ao estado da rota */}
       <div className="flex-1 bg-card -mt-4 rounded-t-3xl shadow-lg p-5 space-y-4 relative z-10">
         <div className="flex justify-center -mt-1 pb-1">
-          <span className="block w-10 h-1 rounded-full bg-gray-200" />
+          <span className="block w-10 h-1 rounded-full bg-border" />
         </div>
 
         <StatusPanel
@@ -272,8 +272,8 @@ function StatusPanel({
 
   if (!routeActive) {
     return (
-      <div className="rounded-2xl bg-gray-50 p-4 flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl bg-gray-200 text-textMuted flex items-center justify-center shrink-0">
+      <div className="rounded-2xl bg-sunken p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-border text-textMuted flex items-center justify-center shrink-0">
           <ParkingCircle size={22} />
         </div>
         <div className="flex-1">

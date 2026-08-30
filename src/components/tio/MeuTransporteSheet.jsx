@@ -173,9 +173,9 @@ function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="tap w-full text-left bg-card border border-gray-200 rounded-xl px-3 py-3 flex items-center gap-3"
+      className="tap w-full text-left bg-card border border-border rounded-xl px-3 py-3 flex items-center gap-3"
     >
-      <div className="w-8 h-8 rounded-lg bg-gray-100 text-textMuted flex items-center justify-center shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-neutro text-textMuted flex items-center justify-center shrink-0">
         <Icon size={16} />
       </div>
       <span className="flex-1 min-w-0">

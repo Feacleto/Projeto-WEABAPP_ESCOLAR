@@ -110,7 +110,7 @@ export default function AppSheet({
           {...alcaProps}
           className={`flex shrink-0 justify-center pb-1 pt-3 ${alcaProps.className}`}
         >
-          <span className="block h-1.5 w-10 rounded-full bg-gray-300" />
+          <span className="block h-1.5 w-10 rounded-full bg-borderStrong" />
         </div>
 
         <div
@@ -136,7 +136,7 @@ export default function AppSheet({
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-textMuted"
+            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutro text-textMuted"
           >
             <X size={18} />
           </button>
@@ -149,7 +149,7 @@ export default function AppSheet({
 
         {/* Rodapé fixo — o botão principal não pode fugir com a rolagem. */}
         {footer && (
-          <div className="shrink-0 border-t border-gray-100 bg-card px-5 py-3">
+          <div className="shrink-0 border-t border-neutro bg-card px-5 py-3">
             {footer}
           </div>
         )}

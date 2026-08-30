@@ -117,7 +117,7 @@ export default function PixForm({ onDone }) {
                   className={`h-12 rounded-xl text-xs font-semibold tap border ${
                     type === value
                       ? 'bg-primary text-white border-primary'
-                      : 'bg-card text-text border-gray-200'
+                      : 'bg-card text-text border-border'
                   }`}
                 >
                   {label}

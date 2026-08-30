@@ -47,7 +47,7 @@ export default function PixBlock({ admin, amount, txid }) {
   // Sem chave cadastrada não há o que mostrar — e é o tio que resolve isso.
   if (!admin?.pixKey) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+      <div className="bg-sunken border border-border rounded-2xl p-4">
         <p className="text-sm font-semibold text-text">
           O motorista ainda não cadastrou a chave PIX
         </p>
@@ -71,7 +71,7 @@ export default function PixBlock({ admin, amount, txid }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-card border border-gray-200 rounded-2xl p-4 space-y-3">
+      <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
@@ -84,7 +84,7 @@ export default function PixBlock({ admin, amount, txid }) {
         </div>
 
         {/* O copia-e-cola é o caminho principal — o valor já vai embutido */}
-        <div className="bg-gray-50 border border-dashed border-primary/40 rounded-xl p-3">
+        <div className="bg-sunken border border-dashed border-primary/40 rounded-xl p-3">
           <p className="font-mono text-[10px] leading-relaxed text-primary break-all">
             {payload}
           </p>
@@ -104,11 +104,11 @@ export default function PixBlock({ admin, amount, txid }) {
           Prefiro pagar pelo QR
         </Button>
       ) : (
-        <div className="bg-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center gap-2">
+        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center gap-2">
           {qrDataUrl ? (
             <img src={qrDataUrl} alt="QR do PIX" className="w-48 h-48 rounded-lg" />
           ) : (
-            <div className="w-48 h-48 rounded-lg bg-gray-100 animate-pulse" />
+            <div className="w-48 h-48 rounded-lg bg-neutro animate-pulse" />
           )}
           <p className="text-xs text-textMuted text-center">
             Abra o app do banco, escolha PIX e aponte a câmera.

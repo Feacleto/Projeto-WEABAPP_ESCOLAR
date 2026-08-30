@@ -281,7 +281,7 @@ export default function Profile() {
               <ChevronRight size={20} className="text-textMuted shrink-0" />
             </button>
 
-            <div className="h-px bg-gray-100 my-3" />
+            <div className="h-px bg-neutro my-3" />
 
             {/* O pai era obrigado a aceitar o contrato pra entrar e depois
               * não tinha como relê-lo: a única rota era a do tio. Pedir
@@ -350,7 +350,7 @@ export default function Profile() {
             </div>
             <div
               className={`w-11 h-6 rounded-full p-0.5 transition-colors ${
-                soundsEnabled ? 'bg-primary' : 'bg-gray-300'
+                soundsEnabled ? 'bg-primary' : 'bg-borderStrong'
               }`}
             >
               <div
@@ -361,7 +361,7 @@ export default function Profile() {
             </div>
           </button>
 
-          <div className="border-t border-gray-100 -mx-4" />
+          <div className="border-t border-neutro -mx-4" />
 
           <button
             type="button"
@@ -375,7 +375,7 @@ export default function Profile() {
             <ChevronRight size={20} className="text-textMuted shrink-0" />
           </button>
 
-          <div className="border-t border-gray-100 -mx-4" />
+          <div className="border-t border-neutro -mx-4" />
 
           <button
             type="button"
@@ -394,7 +394,7 @@ export default function Profile() {
             <ChevronRight size={20} className="text-textMuted shrink-0" />
           </button>
 
-          <div className="border-t border-gray-100 -mx-4" />
+          <div className="border-t border-neutro -mx-4" />
 
           <button
             type="button"
@@ -417,7 +417,7 @@ export default function Profile() {
             * costas. Um parceiro nunca vê esta linha. */}
           {profile?.superAdmin && (
             <>
-              <div className="border-t border-gray-100 -mx-4" />
+              <div className="border-t border-neutro -mx-4" />
               <button
                 type="button"
                 onClick={() => navigate('/admin')}
@@ -437,7 +437,7 @@ export default function Profile() {
             </>
           )}
 
-          <div className="border-t border-gray-100 -mx-4" />
+          <div className="border-t border-neutro -mx-4" />
 
           <button
             type="button"
@@ -611,7 +611,7 @@ function ProfilePhotoEditor({
         <button
           type="button"
           onClick={onRemove}
-          className="absolute -bottom-1 -left-1 w-9 h-9 rounded-full bg-card text-danger border border-gray-200 shadow flex items-center justify-center tap"
+          className="absolute -bottom-1 -left-1 w-9 h-9 rounded-full bg-card text-danger border border-border shadow flex items-center justify-center tap"
           aria-label="Remover foto"
         >
           <Trash2 size={16} />
@@ -746,7 +746,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
                 className={`tap rounded-xl border-2 px-2 py-2.5 text-xs font-semibold ${
                   gender === g.value
                     ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-gray-200 bg-card text-textMuted'
+                    : 'border-border bg-card text-textMuted'
                 }`}
               >
                 {g.label}
@@ -980,7 +980,7 @@ function PushCard({ uid }) {
         </div>
         <span
           className={`w-11 h-6 rounded-full shrink-0 relative transition-colors ${
-            on ? 'bg-primary' : 'bg-gray-300'
+            on ? 'bg-primary' : 'bg-borderStrong'
           }`}
         >
           <span
@@ -1079,7 +1079,7 @@ function MarcaCard({ uid, nome, logoURL, onChanged }) {
       </div>
 
       {/* A prévia é o cabeçalho real, no tamanho real. */}
-      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-surface px-4 py-3">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3">
         {logoURL ? (
           <img
             src={logoURL}
@@ -1117,7 +1117,7 @@ function MarcaCard({ uid, nome, logoURL, onChanged }) {
         * e ele sozinho já resolve o cabeçalho. */}
       {STORAGE_ENABLED && (
         <div className="flex gap-2">
-          <label className="tap flex h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-300 text-sm font-semibold text-text">
+          <label className="tap flex h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-borderStrong text-sm font-semibold text-text">
             <ImageIcon size={15} />
             {subindo ? 'Enviando…' : logoURL ? 'Trocar logo' : 'Enviar logo'}
             <input
@@ -1133,7 +1133,7 @@ function MarcaCard({ uid, nome, logoURL, onChanged }) {
               type="button"
               onClick={removerLogo}
               disabled={subindo}
-              className="tap h-10 rounded-xl border border-gray-300 px-3 text-sm font-semibold text-textMuted"
+              className="tap h-10 rounded-xl border border-borderStrong px-3 text-sm font-semibold text-textMuted"
             >
               Remover
             </button>

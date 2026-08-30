@@ -35,7 +35,7 @@ const STATUS_CONFIG = {
   // 'paid' com outra cara. Ver foiPagoAtrasado em services/paymentsService.
   paidLate: { color: '', Icon: CheckCircle2 },
   claimed: { color: 'text-amber-700 bg-warning/10', Icon: Hourglass },
-  pending: { color: 'text-gray-700 bg-gray-100', Icon: Clock },
+  pending: { color: 'text-textMuted bg-neutro', Icon: Clock },
   overdue: { color: 'text-red-700 bg-danger/10', Icon: AlertCircle },
 };
 
@@ -197,7 +197,7 @@ export default function PaymentRow({
           <button
             type="button"
             onClick={onCharge}
-            className="tap w-full h-10 rounded-xl bg-card border border-gray-200 text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
+            className="tap w-full h-10 rounded-xl bg-card border border-border text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
           >
             <Send size={13} />
             {displayStatus === 'overdue' ? 'Cobrar no WhatsApp' : 'Lembrar no WhatsApp'}

@@ -290,7 +290,7 @@ function ExpenseForm({ defaultMonthKey, onClose, onSaved }) {
                     className={`tap h-12 rounded-xl border-2 text-xs font-semibold flex items-center gap-1.5 px-3 text-left ${
                       active
                         ? 'border-primary bg-primary/5 text-text'
-                        : 'border-gray-200 bg-card text-textMuted'
+                        : 'border-border bg-card text-textMuted'
                     }`}
                   >
                     <span aria-hidden>{cat.icon}</span>

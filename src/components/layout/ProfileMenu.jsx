@@ -116,7 +116,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         <div
           role="menu"
           aria-label="Menu do perfil"
-          className="animate-fest-balloon-in absolute right-0 top-full mt-2 w-[min(17rem,calc(100vw-1.5rem))] origin-top-right overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-2xl shadow-black/20"
+          className="animate-fest-balloon-in absolute right-0 top-full mt-2 w-[min(17rem,calc(100vw-1.5rem))] origin-top-right overflow-hidden rounded-2xl border border-neutro bg-card shadow-2xl shadow-black/20"
         >
           {/* Quem está logado. É a pergunta silenciosa de quem toca aqui —
            * principalmente em casa, onde pai e mãe usam o mesmo celular. */}
@@ -124,7 +124,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
             type="button"
             role="menuitem"
             onClick={() => go(() => navigate(`${basePath}/profile`))}
-            className="tap flex w-full items-center gap-3 border-b border-gray-100 p-3 text-left"
+            className="tap flex w-full items-center gap-3 border-b border-neutro p-3 text-left"
           >
             <Avatar
               photoURL={profile?.photoURL}

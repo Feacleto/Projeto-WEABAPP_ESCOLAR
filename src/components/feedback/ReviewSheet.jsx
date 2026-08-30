@@ -224,7 +224,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                     className={`tap flex items-center gap-2 rounded-2xl border-2 p-3 text-left text-xs font-semibold transition-colors ${
                       on
                         ? 'border-primary bg-primary/5 text-text'
-                        : 'border-gray-200 bg-card text-textMuted'
+                        : 'border-border bg-card text-textMuted'
                     }`}
                   >
                     <Icon
@@ -253,7 +253,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                     className={`tap flex w-full items-center gap-3 rounded-2xl border-2 p-3 text-left text-sm font-semibold transition-colors ${
                       on
                         ? 'border-primary bg-primary/5 text-text'
-                        : 'border-gray-200 bg-card text-textMuted'
+                        : 'border-border bg-card text-textMuted'
                     }`}
                   >
                     <Icon
@@ -352,7 +352,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                   className={
                     n <= rating
                       ? 'fill-amber-400 text-amber-400'
-                      : 'fill-gray-200 text-gray-300'
+                      : 'fill-border text-borderStrong'
                   }
                 />
               </button>
@@ -394,7 +394,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                 ? 'O que mudou no seu dia a dia desde que você usa o app?'
                 : 'O que está bom, o que está ruim…'
             }
-            className="w-full rounded-2xl border-2 border-gray-200 bg-card p-4 text-sm text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-2xl border-2 border-border bg-card p-4 text-sm text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
 
@@ -404,7 +404,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
           <div>
             <p className="mb-2 text-sm font-bold text-text">Sua foto</p>
             {temFoto ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-card p-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
                 <Avatar
                   photoURL={profile.photoURL}
                   kind="admin"
@@ -447,12 +447,12 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
         {/* Autorização + preview: ele vê o card antes de dizer sim. */}
         {isTio && (
           <div className="space-y-3">
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-gray-200 bg-card p-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-card p-4">
               <input
                 type="checkbox"
                 checked={autoriza}
                 onChange={(e) => setAutoriza(e.target.checked)}
-                className="mt-0.5 h-5 w-5 shrink-0 rounded border-gray-300 text-primary focus:ring-primary/40"
+                className="mt-0.5 h-5 w-5 shrink-0 rounded border-borderStrong text-primary focus:ring-primary/40"
               />
               <span className="text-xs leading-relaxed text-text">
                 Autorizo publicar meu <strong>primeiro nome</strong>,{' '}

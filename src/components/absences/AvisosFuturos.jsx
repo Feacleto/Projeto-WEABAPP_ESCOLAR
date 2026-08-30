@@ -96,7 +96,7 @@ export default function AvisosFuturos({ child, historico }) {
 
       {/* Os outros, como lista curta */}
       {resto.length > 0 && (
-        <div className="bg-card rounded-2xl border border-gray-200 divide-y divide-gray-100">
+        <div className="bg-card rounded-2xl border border-border divide-y divide-neutro">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-3 pt-2.5 pb-1.5">
             você já avisou
           </p>
@@ -116,7 +116,7 @@ export default function AvisosFuturos({ child, historico }) {
                 disabled={removendo === a.dateKey}
                 onClick={() => desfazer(a)}
                 aria-label={`Desmarcar ${longa(a.dateKey)}`}
-                className="tap w-8 h-8 rounded-lg border border-gray-200 text-textMuted flex items-center justify-center shrink-0 disabled:opacity-60"
+                className="tap w-8 h-8 rounded-lg border border-border text-textMuted flex items-center justify-center shrink-0 disabled:opacity-60"
               >
                 <X size={15} />
               </button>

@@ -141,12 +141,12 @@ export default function TioSemana() {
           *
           * `top-14` é a altura do cabeçalho do app, que também é sticky —
           * sem o deslocamento, uma barra cobriria a outra. */}
-        <div className="sticky top-14 z-10 -mx-4 flex items-center gap-2 border-b border-gray-100 bg-bg px-4 pb-3 pt-1">
+        <div className="sticky top-14 z-10 -mx-4 flex items-center gap-2 border-b border-neutro bg-bg px-4 pb-3 pt-1">
           <button
             type="button"
             onClick={() => setSemanaBase((b) => somaDias(b, -7))}
             aria-label="Semana anterior"
-            className="tap w-9 h-9 rounded-xl border border-gray-200 text-textMuted flex items-center justify-center shrink-0"
+            className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
           >
             <ChevronLeft size={17} />
           </button>
@@ -164,7 +164,7 @@ export default function TioSemana() {
             type="button"
             onClick={() => setSemanaBase((b) => somaDias(b, 7))}
             aria-label="Próxima semana"
-            className="tap w-9 h-9 rounded-xl border border-gray-200 text-textMuted flex items-center justify-center shrink-0"
+            className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
           >
             <ChevronRight size={17} />
           </button>
@@ -218,7 +218,7 @@ export default function TioSemana() {
                 </thead>
                 <tbody>
                   {linhas.map(({ child, hora }) => (
-                    <tr key={child.id} className="border-t border-gray-100">
+                    <tr key={child.id} className="border-t border-neutro">
                       <td className="py-2 pr-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <Avatar
@@ -278,7 +278,7 @@ function Marca({ tipo }) {
   if (!e) {
     // Célula vazia continua desenhada: sem ela a grade vira um campo de
     // buracos e o olho perde a linha da criança ao atravessar a semana.
-    return <span className="inline-block w-7 h-7 rounded-lg bg-gray-50" />;
+    return <span className="inline-block w-7 h-7 rounded-lg bg-sunken" />;
   }
   return (
     <span

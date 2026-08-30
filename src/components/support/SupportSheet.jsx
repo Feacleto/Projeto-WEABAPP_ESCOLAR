@@ -63,12 +63,12 @@ export default function SupportSheet({ open, onClose, uid, role }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header sticky */}
-        <div className="shrink-0 bg-card rounded-t-3xl border-b border-gray-100">
+        <div className="shrink-0 bg-card rounded-t-3xl border-b border-neutro">
           <div
           {...alcaProps}
           className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
         >
-            <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
+            <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
           </div>
           <div className="px-5 pt-2 pb-3 flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -84,7 +84,7 @@ export default function SupportSheet({ open, onClose, uid, role }) {
             </div>
             <button
               onClick={resetAndClose}
-              className="tap w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-textMuted shrink-0"
+              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
               aria-label="Fechar"
             >
               <X size={18} />
@@ -115,7 +115,7 @@ export default function SupportSheet({ open, onClose, uid, role }) {
                       className={`tap h-10 px-3.5 rounded-full text-sm font-semibold border transition-colors ${
                         category === c.value
                           ? 'bg-primary text-white border-primary'
-                          : 'bg-card text-text border-gray-200'
+                          : 'bg-card text-text border-border'
                       }`}
                     >
                       {c.label}
@@ -136,7 +136,7 @@ export default function SupportSheet({ open, onClose, uid, role }) {
                     rows={6}
                     maxLength={2000}
                     placeholder={current?.placeholder || ''}
-                    className="w-full rounded-2xl border-2 border-gray-200 bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
+                    className="w-full rounded-2xl border-2 border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
                   />
                   <p className="text-[11px] text-textMuted mt-1.5">
                     Quanto mais detalhe, mais rápido a gente resolve.

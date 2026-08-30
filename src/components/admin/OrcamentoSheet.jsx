@@ -252,12 +252,12 @@ export default function OrcamentoSheet({
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
             placeholder="O que foi combinado, e por quê."
-            className="min-h-[64px] w-full resize-y rounded-xl border border-gray-300 bg-surface px-3 py-2.5 text-[14px] text-text"
+            className="min-h-[64px] w-full resize-y rounded-xl border border-borderStrong bg-surface px-3 py-2.5 text-[14px] text-text"
           />
         </Grupo>
 
         {/* ── a conta, com caixa e receita SEMPRE separados ── */}
-        <div className="rounded-2xl border border-gray-200 bg-surface p-4 text-[13px]">
+        <div className="rounded-2xl border border-border bg-surface p-4 text-[13px]">
           {gratuito ? (
             <>
               <Linha rotulo="Este parceiro" valor="não é cobrado" />
@@ -340,7 +340,7 @@ function Campo({ value, onChange, ...rest }) {
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-xl border border-gray-300 bg-surface px-3 py-2.5 text-[15px] text-text"
+      className="w-full rounded-xl border border-borderStrong bg-surface px-3 py-2.5 text-[15px] text-text"
       {...rest}
     />
   );
@@ -358,7 +358,7 @@ function Opcoes({ valor, onChange, opcoes }) {
           className={`tap inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2.5 text-[12.5px] font-semibold ${
             valor === v
               ? 'border-primary bg-primary text-white'
-              : 'border-gray-300 bg-surface text-textMuted'
+              : 'border-borderStrong bg-surface text-textMuted'
           }`}
         >
           {Icon && <Icon size={14} />}
@@ -373,7 +373,7 @@ function Linha({ rotulo, valor, cor, total }) {
   return (
     <div
       className={`flex justify-between py-1 ${
-        total ? 'mt-1.5 border-t border-gray-200 pt-2 font-bold' : ''
+        total ? 'mt-1.5 border-t border-border pt-2 font-bold' : ''
       }`}
     >
       <span className="text-textMuted">{rotulo}</span>

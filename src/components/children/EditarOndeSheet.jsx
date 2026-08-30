@@ -167,7 +167,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
                     className={`tap w-full rounded-xl border px-3 py-2.5 text-left ${
                       ativa
                         ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 bg-card'
+                        : 'border-border bg-card'
                     }`}
                   >
                     <span className="block text-sm font-semibold text-text">

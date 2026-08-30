@@ -288,7 +288,7 @@ export default function TioDashboard() {
         * instalado como app o `env()` vale a faixa do sistema, e sem somar
         * isso a barra ficaria por baixo do relógio e da bateria. */}
       <div
-        className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-gray-100"
+        className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-neutro"
         style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
       >
         <ControleDeRota onIniciar={publicarOrdem} direcao={bloco?.direcao} />
@@ -476,7 +476,7 @@ export default function TioDashboard() {
           <div className="px-5 pt-4 space-y-4">
             <div
               data-tour="hero"
-              className="bg-card border border-gray-200 rounded-3xl p-6 text-center"
+              className="bg-card border border-border rounded-3xl p-6 text-center"
             >
               <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
                 <Users size={26} />
@@ -577,7 +577,7 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
             key={p.child.id}
             onClick={() => onAbrirFicha?.(p.child.id)}
             className={`tap w-full text-left rounded-xl px-3 py-2 flex items-center gap-2.5 border ${
-              fora ? 'bg-gray-50 border-gray-200 opacity-70' : 'bg-card border-gray-200'
+              fora ? 'bg-sunken border-border opacity-70' : 'bg-card border-border'
             }`}
           >
             <span
@@ -732,7 +732,7 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
       type="button"
       data-tour="turma"
       onClick={onClick}
-      className="tap w-full text-left bg-card border border-gray-200 rounded-xl px-3 py-3 flex items-center gap-3"
+      className="tap w-full text-left bg-card border border-border rounded-xl px-3 py-3 flex items-center gap-3"
     >
       <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
         <LayoutGrid size={16} />

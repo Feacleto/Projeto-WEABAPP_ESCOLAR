@@ -48,7 +48,7 @@ export default function TioTaxa() {
 
   return (
     <div className="min-h-screen pb-10">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-bg px-5 pb-3 pt-4">
+      <header className="sticky top-0 z-20 border-b border-border bg-bg px-5 pb-3 pt-4">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -204,7 +204,7 @@ function FaturaAberta({ fatura }) {
         * Ele vê de onde saiu o número — quantas crianças e qual o total que ele
         * mesmo contratou. Valor de cobrança sem a conta do lado é o que
         * transforma cada fatura numa pergunta, e a pergunta chega no WhatsApp. */}
-      <div className="mt-3 space-y-0.5 border-t border-gray-100 pt-3">
+      <div className="mt-3 space-y-0.5 border-t border-neutro pt-3">
         <Linha label="Crianças ativas" valor={String(fatura.criancas ?? '—')} />
         <Linha
           label="Total que você cobra"
@@ -274,7 +274,7 @@ function PagamentoPix({ fatura }) {
   // Sem chave cadastrada não há o que mostrar — e quem resolve é a plataforma.
   if (!payload) {
     return (
-      <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+      <div className="mt-3 rounded-xl border border-border bg-sunken p-3">
         <p className="text-xs font-semibold text-text">
           A plataforma ainda não cadastrou a chave PIX
         </p>
@@ -298,7 +298,7 @@ function PagamentoPix({ fatura }) {
 
   return (
     <div className="mt-3 space-y-2">
-      <div className="rounded-xl border border-dashed border-primary/40 bg-gray-50 p-3">
+      <div className="rounded-xl border border-dashed border-primary/40 bg-sunken p-3">
         <p className="break-all font-mono text-[10px] leading-relaxed text-primary">
           {payload}
         </p>
@@ -323,11 +323,11 @@ function PagamentoPix({ fatura }) {
           Prefiro pagar pelo QR
         </Button>
       ) : (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 p-4">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-border p-4">
           {qr ? (
             <img src={qr} alt="QR do PIX" className="h-48 w-48 rounded-lg" />
           ) : (
-            <div className="h-48 w-48 animate-pulse rounded-lg bg-gray-100" />
+            <div className="h-48 w-48 animate-pulse rounded-lg bg-neutro" />
           )}
           <p className="text-center text-xs text-textMuted">
             Abra o app do banco, escolha PIX e aponte a câmera.

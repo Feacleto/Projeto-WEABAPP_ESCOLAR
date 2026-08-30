@@ -270,7 +270,7 @@ export default function DriverSignup() {
               value={form.message}
               onChange={set('message')}
               placeholder="Há quanto tempo roda, quantas crianças atende..."
-              className="w-full rounded-2xl border-2 border-gray-200 bg-card text-text p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
+              className="w-full rounded-2xl border-2 border-border bg-card text-text p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
             />
           </div>
 

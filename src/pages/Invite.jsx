@@ -244,7 +244,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
             onClick={() =>
               onAction({ reason: 'ver e pagar a mensalidade', destination: '/pai/finance' })
             }
-            className="tap w-full text-left bg-card border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3"
+            className="tap w-full text-left bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3"
           >
             <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -272,7 +272,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
           </button>
         ) : (
           preview.monthlyFee > 0 && (
-            <div className="bg-card border border-gray-200 rounded-2xl p-4 shadow-sm">
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
                 mensalidade combinada
               </p>
@@ -292,7 +292,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
           onClick={() =>
             onAction({ reason: 'ler os recados', destination: '/pai' })
           }
-          className="tap w-full text-left bg-card border border-gray-200 rounded-2xl p-4 shadow-sm flex items-center gap-3"
+          className="tap w-full text-left bg-card border border-border rounded-2xl p-4 shadow-sm flex items-center gap-3"
         >
           <div className="w-11 h-11 rounded-xl bg-secondary/15 text-secondaryDark flex items-center justify-center shrink-0">
             <MessageSquare size={20} />
@@ -314,7 +314,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
         </button>
 
         {/* O que mais tem lá dentro — expectativa honesta */}
-        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-2.5">
+        <div className="bg-sunken border border-border rounded-2xl p-4 space-y-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
             também no app
           </p>
@@ -340,7 +340,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
         </p>
       </main>
 
-      <footer className="px-6 py-5 border-t border-gray-200 text-center">
+      <footer className="px-6 py-5 border-t border-border text-center">
         <p className="text-xs text-textMuted">
           Não é você? Fale com {driverLabel} — o convite é pessoal.
         </p>
@@ -404,7 +404,7 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
         </h1>
         <p className="text-sm text-textMuted">Convite de {driverLabel}</p>
       </div>
-      <div className="bg-card border border-gray-200 rounded-2xl p-4 text-sm text-text">
+      <div className="bg-card border border-border rounded-2xl p-4 text-sm text-text">
         Você já está logado. Depois de adicionar, você troca entre as crianças
         na tela de início.
       </div>

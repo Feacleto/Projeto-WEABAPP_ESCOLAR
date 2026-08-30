@@ -96,7 +96,7 @@ export default function ReceiptPicker({ file, onChange }) {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="tap w-full h-12 rounded-xl bg-card border-2 border-dashed border-gray-300 text-textMuted text-sm font-semibold inline-flex items-center justify-center gap-2"
+        className="tap w-full h-12 rounded-xl bg-card border-2 border-dashed border-borderStrong text-textMuted text-sm font-semibold inline-flex items-center justify-center gap-2"
       >
         <Paperclip size={16} />
         Anexar comprovante (opcional)

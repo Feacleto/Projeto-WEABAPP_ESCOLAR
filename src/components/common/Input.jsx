@@ -50,9 +50,9 @@ const Input = forwardRef(function Input(
           className={`
             w-full h-14 rounded-2xl border-2 bg-card text-text
             ${Icon ? 'pl-11' : 'pl-4'} ${showReveal ? 'pr-12' : 'pr-4'}
-            ${error ? 'border-danger' : 'border-gray-200'}
+            ${error ? 'border-danger' : 'border-border'}
             focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-            placeholder:text-textMuted disabled:bg-gray-50 disabled:text-textMuted
+            placeholder:text-textMuted disabled:bg-sunken disabled:text-textMuted
           `}
           {...rest}
         />

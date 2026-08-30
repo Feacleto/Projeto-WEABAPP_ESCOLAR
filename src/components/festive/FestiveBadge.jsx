@@ -126,7 +126,7 @@ function Balloon({ theme, onClose }) {
         aria-hidden
         className="absolute -top-2 right-3 w-4 h-4 bg-card rotate-45 shadow-md"
       />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-gray-100 p-4">
+      <div className="relative bg-card rounded-2xl shadow-2xl border border-neutro p-4">
         <div className="flex items-start gap-3">
           <div
             className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${theme.gradient} text-white text-2xl flex items-center justify-center shrink-0 shadow-md`}
@@ -145,7 +145,7 @@ function Balloon({ theme, onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="tap mt-3 w-full text-xs font-semibold text-primary py-1.5 rounded-lg hover:bg-gray-50"
+          className="tap mt-3 w-full text-xs font-semibold text-primary py-1.5 rounded-lg hover:bg-sunken"
         >
           Fechar
         </button>

@@ -59,7 +59,7 @@ export default function Avatar({
   if (photoURL && !photoError) {
     return (
       <div
-        className={`${box} rounded-full overflow-hidden shrink-0 bg-gray-100 ${className}`}
+        className={`${box} rounded-full overflow-hidden shrink-0 bg-neutro ${className}`}
       >
         <img
           src={photoURL}
@@ -92,7 +92,7 @@ export default function Avatar({
   if (!generatedError) {
     return (
       <div
-        className={`${box} rounded-full overflow-hidden shrink-0 bg-gray-100 ${className}`}
+        className={`${box} rounded-full overflow-hidden shrink-0 bg-neutro ${className}`}
       >
         <img
           src={generatedSrc}

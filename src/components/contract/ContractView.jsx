@@ -192,7 +192,7 @@ export default function ContractView({ data, acceptanceInfo = null }) {
 
       {/* Bloco de aceite (visível quando o contrato foi assinado) */}
       {acceptanceInfo && (
-        <section className="mt-8 border-t border-gray-200 pt-6 space-y-2">
+        <section className="mt-8 border-t border-border pt-6 space-y-2">
           <h3 className="text-sm font-bold uppercase tracking-widest text-textMuted">
             Aceite eletrônico
           </h3>

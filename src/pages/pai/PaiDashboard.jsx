@@ -466,7 +466,7 @@ export default function PaiDashboard() {
             {/* A gaveta "Mais opções" saiu. Ela escondia quatro linhas atrás
               * de um toque, e gaveta esconde justamente de quem tem medo de
               * procurar. */}
-            <div className="bg-card rounded-3xl shadow-sm overflow-hidden divide-y divide-gray-100">
+            <div className="bg-card rounded-3xl shadow-sm overflow-hidden divide-y divide-neutro">
               <OptionRow
                 icon={Calendar}
                 title="Histórico de pagamentos"
@@ -653,7 +653,7 @@ function CartaoDeHoje({
         <button
           type="button"
           onClick={onMapa}
-          className="tap flex w-full items-center gap-2.5 border-t border-gray-100 bg-surface px-5 py-3 text-left"
+          className="tap flex w-full items-center gap-2.5 border-t border-neutro bg-surface px-5 py-3 text-left"
         >
           <MapPin size={15} className="shrink-0 text-textMuted" />
           <span className="min-w-0 flex-1">
@@ -792,7 +792,7 @@ function AltPickupCTA({ pickup, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border border-dashed border-gray-200"
+      className="tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border border-dashed border-border"
     >
       <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
         <UserCheck size={20} />
@@ -829,8 +829,8 @@ function AltPickupCTA({ pickup, onClick }) {
 function PresencePanel({ presence, onOpenMap }) {
   const cfg = {
     [PRESENCE.NO_ROUTE]: {
-      ring: 'border-dashed border-gray-200',
-      iconBg: 'bg-gray-100 text-textMuted',
+      ring: 'border-dashed border-border',
+      iconBg: 'bg-neutro text-textMuted',
       icon: MapIcon,
     },
     [PRESENCE.STALE]: {
@@ -839,7 +839,7 @@ function PresencePanel({ presence, onOpenMap }) {
       icon: CircleAlert,
     },
     [PRESENCE.MOVING]: {
-      ring: 'border-gray-100',
+      ring: 'border-neutro',
       iconBg: 'bg-primary/10 text-primary',
       icon: Bus,
     },
@@ -932,7 +932,7 @@ function OptionRow({ icon: Icon, title, subtitle, onClick, disabled }) {
     <button
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
-      className={`tap w-full text-left p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors ${
+      className={`tap w-full text-left p-4 flex items-center gap-3 hover:bg-sunken transition-colors ${
         disabled ? 'opacity-50' : ''
       }`}
     >

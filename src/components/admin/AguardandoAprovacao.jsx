@@ -72,7 +72,7 @@ export default function AguardandoAprovacao() {
 
       <ul className="mt-3 space-y-2">
         {lista.map((i) => (
-          <li key={i.id} className="rounded-xl border border-gray-200 bg-card p-3">
+          <li key={i.id} className="rounded-xl border border-border bg-card p-3">
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-text">
