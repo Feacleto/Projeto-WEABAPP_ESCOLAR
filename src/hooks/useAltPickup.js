@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   watchDailyAltPickup,
-  watchAllAltPickupsByDate,
 } from '../services/altPickupService';
 
 /**
@@ -34,25 +33,3 @@ export function useDailyAltPickup(dateKey, childId) {
   return { pickup, loading };
 }
 
-/**
- * Mapa childId → altPickup de um dia (uso do Tio).
- */
-export function useAllAltPickups(dateKey) {
-  const [byChildId, setByChildId] = useState({});
-
-  useEffect(() => {
-    if (!dateKey) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setByChildId({});
-      return;
-    }
-    const unsub = watchAllAltPickupsByDate(
-      dateKey,
-      (map) => setByChildId(map),
-      () => {}
-    );
-    return unsub;
-  }, [dateKey]);
-
-  return { byChildId };
-}

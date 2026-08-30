@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { listarParceiros } from '../../services/userService';
 import {
   AlertTriangle,
   Check,
@@ -11,8 +12,6 @@ import {
   Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../firebase/config';
 import Button from '../../components/common/Button';
 import Spinner from '../../components/common/Spinner';
 import { useAuth } from '../../hooks/useAuth';
@@ -92,18 +91,14 @@ export default function TaxaTab() {
 
   useEffect(() => {
     let vivo = true;
-    // Os motoristas vêm de `users` (o dono tem `list`). Leitura única: a
-    // lista de parceiros não muda enquanto a tela está aberta.
-    getDocs(query(collection(db, 'users'), where('role', '==', 'admin')))
-      .then((s) => {
-        if (vivo) setMotoristas(s.docs.map((d) => ({ uid: d.id, ...d.data() })));
-      })
-      .catch((err) => {
-        console.error(err);
-        if (!vivo) return;
-        setMotoristas([]);
-        toast.error('Não deu pra listar os parceiros.');
-      });
+    // Pelo service. A mesma consulta estava escrita à mão aqui e no FunilTab,
+    // com tratamento de erro divergente — e as duas telas importavam
+    // `firebase/firestore` direto, fora da regra de camada.
+    listarParceiros().then(({ lista, falhou }) => {
+      if (!vivo) return;
+      setMotoristas(lista);
+      if (falhou) toast.error('Não deu pra listar os parceiros.');
+    });
     return () => {
       vivo = false;
     };

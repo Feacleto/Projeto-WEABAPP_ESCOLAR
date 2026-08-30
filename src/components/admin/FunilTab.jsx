@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { listarParceiros } from '../../services/userService';
 import toast from 'react-hot-toast';
-import { db } from '../../firebase/config';
 import { useAuth } from '../../hooks/useAuth';
 import {
   PADRAO,
@@ -34,6 +33,7 @@ import OrcamentoSheet from './OrcamentoSheet';
 export default function FunilTab() {
   const { user } = useAuth();
   const [parceiros, setParceiros] = useState(null);
+  const [falhouParceiros, setFalhouParceiros] = useState(false);
   const [bases, setBases] = useState({});
   const [negociacoes, setNegociacoes] = useState({});
   const [config, setConfig] = useState(PADRAO);
@@ -49,14 +49,15 @@ export default function FunilTab() {
 
   useEffect(() => {
     let vivo = true;
-    getDocs(query(collection(db, 'users'), where('role', '==', 'admin')))
-      .then((s) => {
-        if (vivo) setParceiros(s.docs.map((d) => ({ uid: d.id, ...d.data() })));
-      })
-      .catch((err) => {
-        console.error('[funil] não deu pra listar os parceiros:', err);
-        if (vivo) setParceiros([]);
-      });
+    // `falhou` importa aqui mais que em qualquer outra tela: `abrirOrcamento`
+    // recusa lead sem conta aprovada procurando NESTA lista. Uma leitura que
+    // falhou virava "este motorista não tem conta aprovada", e mandava o dono
+    // aprovar um cadastro que já estava aprovado.
+    listarParceiros().then(({ lista, falhou }) => {
+      if (!vivo) return;
+      setParceiros(lista);
+      setFalhouParceiros(falhou);
+    });
     return () => {
       vivo = false;
     };
@@ -86,6 +87,20 @@ export default function FunilTab() {
   const abrirOrcamento = (lead) => {
     if (parceiros === null) {
       toast('Ainda lendo os parceiros — tente de novo em um segundo.');
+      return;
+    }
+    // A LEITURA FALHOU ≠ NÃO EXISTE CONTA.
+    //
+    // As duas terminavam em lista vazia, e a recusa abaixo tratava as duas
+    // igual: o dono lia "ainda não tem conta aprovada" e era mandado aprovar
+    // um cadastro que já estava aprovado — atrás de um erro de rede que
+    // ninguém tinha visto.
+    if (falhouParceiros) {
+      toast.error(
+        'Não deu pra ler a lista de parceiros agora, então não dá pra saber ' +
+          'se este lead já tem conta. Recarregue a tela e tente de novo.',
+        { duration: 8000 }
+      );
       return;
     }
     const conta = contaDe[lead.id];

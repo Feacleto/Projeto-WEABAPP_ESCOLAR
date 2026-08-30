@@ -1,4 +1,13 @@
-import { doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDocs,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import { db } from '../firebase/config';
 // A CHAVE PIX TEM UMA DEFINIÇÃO SÓ, e ela mora em `utils/pix.js`.
 //
@@ -10,6 +19,45 @@ import { db } from '../firebase/config';
 import { PIX_KEY_TYPES, validatePixKey, normalizePixKey } from '../utils/pix';
 
 export { PIX_KEY_TYPES, validatePixKey, normalizePixKey };
+
+/**
+ * Os motoristas associados — a lista de parceiros do dono.
+ *
+ * POR QUE VIROU SERVICE
+ * Esta consulta estava escrita À MÃO, byte a byte igual, em `TaxaTab.jsx` e
+ * `FunilTab.jsx` — duas telas importando `firebase/firestore` direto, fora da
+ * regra de camada. E ela é a definição de "quem é parceiro": `role == 'admin'`,
+ * que neste projeto significa MOTORISTA. O predicado morava em três lugares
+ * (contando `adminMetricsService`), e a migração de papel prevista no
+ * `CLAUDE.md` deixaria dois deles para trás em silêncio.
+ *
+ * DEVOLVE `{ lista, falhou }`, E ISSO NÃO É PRECIOSISMO
+ * As duas cópias tratavam o erro de formas diferentes — uma com `toast`, outra
+ * só com `console.error` — e as duas acabavam em `[]`. No Funil isso tinha
+ * efeito visível: `abrirOrcamento` recusa lead sem conta aprovada procurando
+ * na lista, então uma leitura que FALHOU virava "este motorista não tem conta
+ * aprovada", e o dono era mandado aprovar um cadastro que já estava aprovado.
+ *
+ * Lista vazia de verdade e lista vazia por falha não podem ser o mesmo valor
+ * quando alguém decide alguma coisa com base nelas.
+ *
+ * Leitura única, e não assinatura: a lista de parceiros não muda enquanto a
+ * tela está aberta.
+ */
+export async function listarParceiros() {
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'users'), where('role', '==', 'admin'))
+    );
+    return {
+      lista: snap.docs.map((d) => ({ uid: d.id, ...d.data() })),
+      falhou: false,
+    };
+  } catch (err) {
+    console.error('[users] não deu pra listar os parceiros:', err);
+    return { lista: [], falhou: true };
+  }
+}
 
 /**
  * Marca que o usuário concluiu o tutorial de boas-vindas.

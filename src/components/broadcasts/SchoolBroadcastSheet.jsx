@@ -26,7 +26,27 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  * pra cobrir três dias, ou descobria que metade da turma não tinha recebido
  * porque a escola dela estava escrita com pontos.
  */
+/**
+ * A CASCA. O miolo só monta com a folha ABERTA — e isso não é detalhe.
+ *
+ * O componente recebia `open` como prop, mas os hooks rodavam de qualquer
+ * jeito: `useChildren` e `useEscolas` no topo, antes de qualquer `return`.
+ * Como esta folha é montada incondicionalmente no `TioDashboard`, o resultado
+ * era DUAS assinaturas do Firestore abertas a tela inteira, o dia inteiro,
+ * para uma folha que talvez nunca fosse aberta.
+ *
+ * Com `useChildren` e `useEscolas` já assinados pelo layout e pelo dashboard,
+ * eram a terceira e a quarta cópia dos mesmos dados.
+ *
+ * O padrão já existe no projeto, dois diretórios ao lado: `ChildDetail.jsx`
+ * monta o corpo com `{open && <ChildDetailBody …/>}` pelo mesmo motivo.
+ */
 export default function SchoolBroadcastSheet({ open, onClose }) {
+  if (!open) return null;
+  return <SchoolBroadcastBody onClose={onClose} />;
+}
+
+function SchoolBroadcastBody({ onClose }) {
   const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const { user } = useAuth();
   const { children: todasCriancas } = useChildren();
@@ -86,8 +106,6 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
     () => (escolhida?.criancas || []).filter((c) => !desmarcadas.has(c.id)),
     [escolhida, desmarcadas]
   );
-
-  if (!open) return null;
 
   function alternar(id) {
     setDesmarcadas((s) => {

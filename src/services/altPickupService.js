@@ -4,8 +4,6 @@ import {
   setDoc,
   deleteDoc,
   updateDoc,
-  query,
-  where,
   onSnapshot,
   serverTimestamp,
   addDoc,
@@ -148,35 +146,25 @@ export function watchDailyAltPickup(dateKey, childId, onUpdate, onError) {
   );
 }
 
+
 /**
- * Subscribe a todos os altPickups do dia — uso do Tio.
- * Retorna mapa childId → pickup pra lookup rápido.
+ * AQUI HAVIA `watchAllAltPickupsByDate`, E ELA FOI APAGADA (30/08/2026).
+ *
+ * Era código morto E quebrado ao mesmo tempo — a combinação que mais engana.
+ *
+ * A consulta era `altPickups where dateKey ==`, SEM `adminUid`. A rule de
+ * leitura exige `ehDoMotorista()`, que compara `resource.data.adminUid` com o
+ * uid — e consulta que não prova o filtro é recusada INTEIRA pelo Firestore.
+ * Ela nunca teria devolvido nada.
+ *
+ * O hook que a embrulhava (`useAllAltPickups`) não era chamado por ninguém.
+ * Então o estrago era prospectivo: no dia em que alguém montasse aquele hook
+ * numa tela de rota, leria o mapa vazio como "ninguém pediu troca hoje" — e o
+ * motorista entregaria a criança para quem não era pra entregar.
+ *
+ * Quem precisar disto de volta: `where('adminUid','==',uid)` primeiro, e um
+ * caso em `scripts/testar-regras.mjs` provando que passa.
  */
-export function watchAllAltPickupsByDate(dateKey, onUpdate, onError) {
-  if (!dateKey) {
-    onUpdate({});
-    return () => {};
-  }
-  const q = query(
-    collection(db, 'altPickups'),
-    where('dateKey', '==', dateKey)
-  );
-  return onSnapshot(
-    q,
-    (snap) => {
-      const map = {};
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        if (data.childId) map[data.childId] = { id: d.id, ...data };
-      });
-      onUpdate(map);
-    },
-    (err) => {
-      console.error('watchAllAltPickupsByDate error:', err);
-      if (onError) onError(err);
-    }
-  );
-}
 
 /**
  * Cria notificação pro Tio quando o pai indica responsável alternativo.

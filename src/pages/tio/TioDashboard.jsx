@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { onSnapshot, doc } from 'firebase/firestore';
 import {
   Clock,
   Users,
@@ -27,7 +27,6 @@ import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useAbsences } from '../../hooks/useAbsences';
-import { db } from '../../firebase/config';
 import { getCurrentMonthKey } from '../../utils/formatters';
 import {
   getDateKey,
@@ -135,7 +134,6 @@ export default function TioDashboard() {
   // Qual criança está com a ficha aberta. `null` = nenhuma.
   const [fichaDe, setFichaDe] = useState(null);
 
-  const [rotaAtiva, setRotaAtiva] = useState(false);
   const [indiceAberto, setIndiceAberto] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [listaAusentesOpen, setListaAusentesOpen] = useState(false);
@@ -151,15 +149,15 @@ export default function TioDashboard() {
   // A rota ativa é a DELE. Enquanto `liveLocation` era um doc só pra
   // plataforma toda, este estado acendia quando QUALQUER motorista estivesse
   // rodando — e o daqui apagava quando outro encerrasse a dele.
-  const meuUid = user?.uid;
-  useEffect(() => {
-    if (!meuUid) return undefined;
-    return onSnapshot(
-      doc(db, 'liveLocation', meuUid),
-      (snap) => setRotaAtiva(snap.exists() ? !!snap.data().routeActive : false),
-      () => setRotaAtiva(false)
-    );
-  }, [meuUid]);
+  //
+  // PELO HOOK, e não por um `onSnapshot` próprio. Esta página reimplementava
+  // à mão o que `useLiveLocation` já faz — importando `firebase/firestore`
+  // direto, fora da regra de camada, e abrindo uma TERCEIRA assinatura do
+  // mesmo documento (ControleDeRota e OperacaoDaRota já assinam as outras
+  // duas, na mesma tela). A cópia local também não tinha a guarda de "esta
+  // posição é de quem eu pedi" que o hook documenta.
+  const { location: minhaPosicao } = useLiveLocation(user?.uid);
+  const rotaAtiva = !!minhaPosicao?.routeActive;
 
   const blocos = useMemo(
     () => diaCompleto(children, { declaracoes, escolasPorId }),
@@ -755,6 +753,5 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
     </button>
   );
 }
-
 
 
