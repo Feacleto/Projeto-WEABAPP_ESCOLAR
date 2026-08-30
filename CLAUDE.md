@@ -434,7 +434,29 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real.
+passar por lá — e `npm run testar:regras` cobre o payload real (101 casos, com
+atores **anônimo** e **`aguardando`**; ele roda fora do CI porque precisa do
+emulador, então rode à mão antes de publicar rule).
+
+**`isAdmin()` nas rules significa QUALQUER MOTORISTA** — nunca é escopo
+sozinho. Quem escopa é `ehDoMotorista()`/`doDono()`, que comparam `adminUid`.
+Regra nova que pare em `isAdmin()` está entregando o dado de um parceiro aos
+outros; foi assim que a chave PIX, a trilha de pagamento, a roleta e os leads
+de família ficaram legíveis por quem não devia.
+
+**O responsável alcança o doc do motorista por `users.adminUids`** — a LISTA,
+mantida por `arrayUnion` no `redeemInvite`. O campo singular `adminUid` guarda
+só o PRIMEIRO motorista, e a interface resolve pelo `adminUid` da criança
+ATIVA: escopar só pelo singular faz a mãe com filhos em peruas diferentes
+perder a chave PIX do segundo filho, em silêncio.
+
+**As functions têm o próprio guarda de papel** —
+[functions/lib/papeis.js](functions/lib/papeis.js), com `exigirMotorista` e
+`exigirDono`. Callable manual recebe o escopo do **uid autenticado**, nunca de
+`request.data`. As agendadas continuam globais de propósito.
+
+**Há CI** — [.github/workflows/ci.yml](.github/workflows/ci.yml) roda lint,
+`npm run testar` e build. Rules e Storage ficam fora até o emulador entrar lá.
 
 **O Início do motorista tem um ÍNDICE, não um bloco de cadastro.**
 [MeuTransporteSheet](src/components/tio/MeuTransporteSheet.jsx) — turma,
