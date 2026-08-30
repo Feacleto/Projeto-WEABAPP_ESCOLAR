@@ -10,7 +10,6 @@ import {
   serverTimestamp,
   addDoc,
   getDoc,
-  arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -18,13 +17,13 @@ import { db } from '../firebase/config';
  * Responsáveis alternativos — quem pode buscar a criança no lugar do pai.
  *
  * Estrutura:
- *   children/{childId}.altResponsibles  — lista pré-cadastrada pelo pai
- *     [{ id, name, phone, relationship }]
+ *   children/{childId}.altResponsibles  — o ÚLTIMO avulso, e só ele
+ *     [{ id, name, phone, relationship }]  (array de no máximo 1)
  *
  *   altPickups/{dateKey}_{childId}      — indicação diária de quem vai pegar
  *     { dateKey, childId, parentUid, name, phone, relationship, createdAt }
  *
- * - Pai cadastra/edita/remove `altResponsibles` no doc da criança.
+ * - Pai grava o último avulso em `altResponsibles` (sobrescreve o anterior).
  * - Pai cria/atualiza/remove `altPickups` quando precisa indicar outra pessoa
  *   pra um dia específico.
  * - Tio só lê — vê no card da criança "Hoje quem pega: X · (11) 99999-9999".
@@ -34,60 +33,56 @@ function buildId(dateKey, childId) {
   return `${dateKey}_${childId}`;
 }
 
-// ─────────────── Lista pré-cadastrada (em children/{childId}) ───────────────
+// ─────────────── O último avulso (em children/{childId}) ───────────────
 
 /**
- * Adiciona um responsável alternativo na lista do pai.
- * Cada item ganha id estável client-side pra facilitar edição/remoção.
+ * GUARDA UM SÓ — o último avulso, e nada antes dele.
+ *
+ * Era uma LISTA que só crescia (`altResponsibles`, com arrayUnion), mais uma
+ * tela pra gerenciá-la. Duas coisas estavam erradas nisso:
+ *
+ *   1. Ninguém mantém lista. O pai indicava a vizinha uma vez, a tia noutra,
+ *      o cuidador noutra — e seis meses depois escolhia entre nove nomes,
+ *      metade deles gente que não pega mais a criança. A tela de "gerenciar"
+ *      existia pra limpar uma bagunça que o próprio desenho criava.
+ *   2. É dado de TERCEIRO. Nome e telefone de quem não é usuário do app,
+ *      entregue pra resolver uma tarde. Guardar nove desses pra sempre é
+ *      acumular o que ninguém consentiu em deixar guardado — e a LGPD chama
+ *      isso de retenção sem finalidade.
+ *
+ * O caso real é quase sempre a mesma pessoa duas vezes seguidas: a avó que
+ * pega quando o pai não pode. Um slot cobre isso e o resto é digitar de novo,
+ * que leva quinze segundos e é o comportamento certo pra quem só vai pegar a
+ * criança uma vez.
+ *
+ * ESCREVE NO MESMO CAMPO `altResponsibles`, e de propósito: as rules já
+ * liberam exatamente essa chave pro responsável (`hasOnly(['altResponsibles'])`).
+ * Guardar um array de UM item mantém a permissão intacta e apaga o histórico
+ * na mesma escrita -- sobrescrever é o que faz o banco esquecer os anteriores.
  */
-export async function addAltResponsible(childId, data) {
+export async function lembrarAvulso(childId, data) {
   if (!childId) throw new Error('Sem childId.');
-  const newItem = {
+  const unico = {
     id: `alt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     name: data.name?.trim() || '',
     phone: data.phone?.trim() || '',
     relationship: data.relationship?.trim() || '',
   };
-  await updateDoc(doc(db, 'children', childId), {
-    altResponsibles: arrayUnion(newItem),
-  });
-  return newItem;
+  // Array de um item, e não `arrayUnion`: a substituição é o recurso.
+  await updateDoc(doc(db, 'children', childId), { altResponsibles: [unico] });
+  return unico;
 }
 
-/**
- * Remove um responsável alt da lista. Como arrayRemove exige objeto exato,
- * fazemos read → filter → write.
- */
-export async function removeAltResponsible(childId, altId) {
-  if (!childId || !altId) return;
-  const snap = await getDoc(doc(db, 'children', childId));
-  if (!snap.exists()) return;
-  const current = snap.data().altResponsibles || [];
-  const next = current.filter((r) => r.id !== altId);
-  await updateDoc(doc(db, 'children', childId), {
-    altResponsibles: next,
-  });
+/** O último avulso guardado, ou `null`. Lê o mesmo campo, pega o primeiro. */
+export function ultimoAvulso(child) {
+  const lista = child?.altResponsibles;
+  return Array.isArray(lista) && lista.length > 0 ? lista[0] : null;
 }
 
-/**
- * Atualiza um responsável alt (edita nome/telefone/parentesco).
- */
-export async function updateAltResponsible(childId, altId, data) {
-  if (!childId || !altId) return;
-  const snap = await getDoc(doc(db, 'children', childId));
-  if (!snap.exists()) return;
-  const current = snap.data().altResponsibles || [];
-  const next = current.map((r) =>
-    r.id === altId
-      ? {
-          ...r,
-          name: data.name?.trim() ?? r.name,
-          phone: data.phone?.trim() ?? r.phone,
-          relationship: data.relationship?.trim() ?? r.relationship,
-        }
-      : r
-  );
-  await updateDoc(doc(db, 'children', childId), { altResponsibles: next });
+/** Esquece o último avulso. O pai decide não guardar mais aquele nome. */
+export async function esquecerAvulso(childId) {
+  if (!childId) return;
+  await updateDoc(doc(db, 'children', childId), { altResponsibles: [] });
 }
 
 // ─────────────── Indicação diária (altPickups/{dateKey_childId}) ───────────────

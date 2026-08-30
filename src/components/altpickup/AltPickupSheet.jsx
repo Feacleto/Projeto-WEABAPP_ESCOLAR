@@ -5,7 +5,6 @@ import {
   Phone,
   User as UserIcon,
   Plus,
-  Trash2,
   Heart,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -13,8 +12,9 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { maskPhone, unmaskPhone, isValidPhone } from '../../utils/masks';
 import {
-  addAltResponsible,
-  removeAltResponsible,
+  lembrarAvulso,
+  ultimoAvulso,
+  esquecerAvulso,
   setDailyAltPickup,
   clearDailyAltPickup,
   notifyAltPickup,
@@ -46,7 +46,8 @@ export default function AltPickupSheet({
 
   if (!open) return null;
 
-  const altResponsibles = child?.altResponsibles || [];
+  // UM SÓ, o último. A lista que crescia saiu — ver `lembrarAvulso`.
+  const avulso = ultimoAvulso(child);
 
   const handleSelect = async (resp) => {
     setSubmitting(true);
@@ -185,56 +186,63 @@ export default function AltPickupSheet({
                 </button>
               )}
 
-              {/* Lista de responsáveis pré-cadastrados */}
-              {altResponsibles.length > 0 && (
+              {/* O ÚLTIMO AVULSO — atalho, não cadastro.
+                *
+                * É quase sempre a mesma pessoa duas vezes seguidas: a avó que
+                * pega quando o pai não pode. Um toque resolve esse caso; o
+                * resto é digitar de novo, que leva quinze segundos e é o
+                * certo pra quem só vai pegar a criança uma vez.
+                *
+                * "Esquecer" fica à vista de propósito: é o telefone de um
+                * terceiro guardado no app, e quem entregou o dado precisa
+                * conseguir tirá-lo sem procurar. */}
+              {avulso && (
                 <>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1 pt-2">
-                    Outros responsáveis
+                  <p className="px-1 pt-2 text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+                    Da última vez
                   </p>
-                  <div className="space-y-2">
-                    {altResponsibles.map((resp) => (
-                      <button
-                        key={resp.id}
-                        type="button"
-                        onClick={() => handleSelect(resp)}
-                        disabled={submitting}
-                        className="tap w-full text-left rounded-2xl bg-card border border-gray-200 p-3 flex items-center gap-3"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
-                          <UserIcon size={18} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-text truncate">
-                            {resp.name}
-                          </p>
-                          <p className="text-[11px] text-textMuted truncate">
-                            {resp.relationship && (
-                              <span>{resp.relationship} · </span>
-                            )}
-                            {resp.phone}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(avulso)}
+                    disabled={submitting}
+                    className="tap flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-card p-3 text-left"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                      <UserIcon size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-text">
+                        {avulso.name}
+                      </p>
+                      <p className="truncate text-[11px] text-textMuted">
+                        {avulso.relationship && (
+                          <span>{avulso.relationship} · </span>
+                        )}
+                        {maskPhone(avulso.phone)}
+                      </p>
+                    </div>
+                  </button>
                 </>
               )}
 
-              <div className="pt-2 space-y-2">
+              <div className="space-y-2 pt-2">
                 <Button
                   variant="secondary"
                   icon={Plus}
                   onClick={() => setMode('new')}
                 >
-                  Cadastrar outro
+                  {avulso ? 'Outra pessoa' : 'Indicar quem vai pegar'}
                 </Button>
-                {altResponsibles.length > 0 && (
+                {avulso && (
                   <button
                     type="button"
-                    onClick={() => setMode('manage')}
-                    className="tap w-full text-xs text-textMuted py-2 hover:text-text"
+                    onClick={async () => {
+                      await esquecerAvulso(child.id);
+                      toast.success('Esquecido.');
+                    }}
+                    className="tap w-full py-2 text-xs text-textMuted hover:text-text"
                   >
-                    Gerenciar lista de responsáveis
+                    Esquecer {avulso.name.split(' ')[0]}
                   </button>
                 )}
               </div>
@@ -251,13 +259,6 @@ export default function AltPickupSheet({
             />
           )}
 
-          {mode === 'manage' && (
-            <ManageList
-              child={child}
-              altResponsibles={altResponsibles}
-              onBack={() => setMode('default')}
-            />
-          )}
         </div>
       </div>
     </div>
@@ -310,7 +311,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
     try {
       const cleanPhone = unmaskPhone(phone);
       // Salva na lista do pai (pra usar depois) + indica como pickup do dia
-      await addAltResponsible(child.id, {
+      await lembrarAvulso(child.id, {
         name,
         phone: cleanPhone,
         relationship,
@@ -424,54 +425,3 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
   );
 }
 
-/* ─────────────── Gerenciar lista ─────────────── */
-
-function ManageList({ child, altResponsibles, onBack }) {
-  return (
-    <div className="space-y-2">
-      {altResponsibles.length === 0 ? (
-        <p className="text-sm text-textMuted text-center py-6">
-          Sem responsáveis cadastrados.
-        </p>
-      ) : (
-        altResponsibles.map((resp) => (
-          <div
-            key={resp.id}
-            className="bg-card border border-gray-200 rounded-2xl p-3 flex items-center gap-3"
-          >
-            <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
-              <UserIcon size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-text truncate">{resp.name}</p>
-              <p className="text-[11px] text-textMuted truncate">
-                {resp.relationship && <span>{resp.relationship} · </span>}
-                {resp.phone}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await removeAltResponsible(child.id, resp.id);
-                  toast.success(`${resp.name} removido.`);
-                } catch (err) {
-                  console.error(err);
-                  toast.error('Não foi possível remover.');
-                }
-              }}
-              className="tap text-danger p-2"
-              aria-label="Remover"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        ))
-      )}
-
-      <Button variant="secondary" onClick={onBack}>
-        Voltar
-      </Button>
-    </div>
-  );
-}

@@ -33,6 +33,7 @@ import { useRide } from '../../hooks/useRide';
 import ChildSwitcher from '../../components/children/ChildSwitcher';
 import AbsenceCounts from '../../components/dashboard/AbsenceCounts';
 import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
+import { maskPhone } from '../../utils/masks';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
@@ -313,10 +314,6 @@ export default function PaiDashboard() {
               * reencontrado — e no dia o motorista não passa na porta. */}
             <AvisosFuturos child={child} historico={absenceHistory} />
 
-            <AltPickupCTA
-              pickup={altPickup}
-              onClick={() => setAltPickupOpen(true)}
-            />
           </>
         )}
 
@@ -326,6 +323,21 @@ export default function PaiDashboard() {
             <RouteTracker status={status} ride={ride} />
             <HorarioDoDia child={child} absence={absence} ride={ride} />
           </>
+        )}
+
+        {/* QUEM PEGA HOJE — visível ANTES e DURANTE a rota.
+          *
+          * Ele estava só no estado "esperando", e sumia quando a perua saía.
+          * Só que "não consigo pegar hoje" quase nunca é uma decisão da
+          * manhã: é o chefe segurando às 16h, o carro que não pegou, a
+          * consulta que atrasou. O botão desaparecia exatamente na hora em
+          * que a pessoa corre pra indicar alguém — e aí a indicação vai por
+          * WhatsApp, fora do app, sem o motorista ter onde conferir. */}
+        {estadoDoDia !== 'encerrado' && (
+          <AltPickupCTA
+            pickup={altPickup}
+            onClick={() => setAltPickupOpen(true)}
+          />
         )}
 
         {/* O painel da perua fica nos TRÊS estados — é o que mantém a âncora
@@ -666,7 +678,7 @@ function AltPickupCTA({ pickup, onClick }) {
           </p>
           <p className="text-xs text-textMuted mt-0.5 truncate">
             {pickup.relationship && <span>{pickup.relationship} · </span>}
-            {pickup.phone}
+            {maskPhone(pickup.phone)}
           </p>
         </div>
         <ChevronRight size={18} className="text-textMuted shrink-0" />
