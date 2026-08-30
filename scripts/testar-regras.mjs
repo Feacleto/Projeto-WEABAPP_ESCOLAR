@@ -478,6 +478,7 @@ async function main() {
   await tetoDeGets(tio1);
   await vagaContratada(tio1, tio2);
   await oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon });
+  await decisao12({ tio1, tio2, pai1 });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -568,6 +569,24 @@ async function vagaContratada(tio1, tio2) {
   checar('vaga', 'criar criança sem incrementar o contador', 'NEGA', semContador);
 
   // 4. O motorista aumentando o próprio teto. É a fraude que paga a conta.
+  //
+  // ESTE CASO PASSAVA PELO MOTIVO ERRADO, e só apareceu quando um caso de
+  // forma IDÊNTICA, escrito no bloco da decisão 12, deu 200 contra as mesmas
+  // rules. A diferença não estava na regra: estava no ator.
+  //
+  // O `criarComContador` acima usa `:commit`, e um write de `update` no REST
+  // do Firestore SUBSTITUI o documento quando não vai máscara junto — então
+  // `users/{tio1}` saía de lá só com `criancasAtivas`, sem `role`. Sem papel,
+  // `isAdmin()` é falso e o outro ramo compara `role` sobre chave ausente,
+  // que é erro, e erro nega. Tudo virava 403 por falta de cadastro, não por
+  // escopo — o 403 que este arquivo inteiro foi escrito pra não confiar.
+  //
+  // Ressemear antes de medir é o que faz o caso provar o que ele diz provar.
+  await semear(`users/${tio1.uid}`, {
+    role: S('admin'), name: S('Tio Um'),
+    limiteCriancas: { integerValue: '2' },
+    criancasAtivas: { integerValue: '2' },
+  });
   checar('vaga', 'o motorista aumenta o próprio limiteCriancas', 'NEGA',
     await escrever(`users/${tio1.uid}`, tio1,
       { limiteCriancas: { integerValue: '99' } }, ['limiteCriancas']));
@@ -814,6 +833,161 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon }) {
   });
   checar('pix', 'com a lista sem ele, o segundo motorista volta a ser negado', 'NEGA',
     await ler('users/' + tio2.uid, pai1));
+}
+
+/**
+ * DECISÃO 12 — nenhuma regra de negócio depende de lista de campos mantida à
+ * mão (`docs/decisoes.md`).
+ *
+ * Todos os furos de permissão deste projeto nasceram do mesmo jeito: uma
+ * whitelist de campos dentro de um arquivo de 1.393 linhas. A lista não é
+ * verificada por nada — ela é prosa com sintaxe. Quando um campo novo aparece
+ * no modelo, ninguém é obrigado a lembrar de acrescentá-lo, e o furo fica
+ * aberto até alguém sondar.
+ *
+ * Enquanto o invariante não sobe pra camada de caso de uso (o "alvo" da
+ * decisão), o que segura a lista é isto aqui: um caso NEGATIVO por campo, com
+ * o nome da regra que ele prova.
+ *
+ * Cada um destes falhou contra as rules antes do conserto — é por isso que
+ * eles existem, e é o que a decisão exige.
+ */
+async function decisao12({ tio1, tio2, pai1 }) {
+  console.log('\n=== DECISÃO 12 — a lista de campos proibidos ===');
+
+  // Restaura o elenco: `vagaContratada` e o bloco anterior reescrevem estes
+  // documentos, e o teste seguinte nasceria com ator sem papel. Ver a nota em
+  // `oQueNinguemTestava`.
+  await semear('users/' + tio1.uid, {
+    role: S('admin'), name: S('Tio Um'), pixKey: S('tio1@pix.com'),
+    limiteCriancas: { integerValue: '2' },
+    criancasAtivas: { integerValue: '1' },
+  });
+  await semear('users/' + tio2.uid, { role: S('admin'), name: S('Tio Dois') });
+  await semear('users/' + pai1.uid, {
+    role: S('parent'), name: S('Pai Um'), adminUid: S(tio1.uid), childId: S('kid1'),
+  });
+
+  // ── responsavel_nao_reescreve_o_proprio_adminUid ────────────────────────
+  //
+  // `adminUid` é a CHAVE DE ESCOPO do responsável, não um dado de cadastro.
+  // A rule de `liveLocation` autoriza a leitura por
+  // `userDoc().get('adminUid','') == docId` — então quem consegue reescrever
+  // o próprio campo passa a ver o GPS AO VIVO da perua de qualquer motorista,
+  // e ainda ganha o direito de criar notificação para qualquer uid (a rule de
+  // `notifications` compara com o mesmo campo).
+  //
+  // Não é escalada de papel: ele continua `parent`. É escalada de ESCOPO, que
+  // a lista de campos proibidos não cobria.
+  checar('decisao12', 'responsavel_nao_reescreve_o_proprio_adminUid', 'NEGA',
+    await escrever('users/' + pai1.uid, pai1, { adminUid: S(tio2.uid) }, ['adminUid']));
+
+  // Prova de que o dano existe: com o campo trocado, esta leitura passaria.
+  // Fica como positiva do vínculo LEGÍTIMO — o pai lê a perua do motorista
+  // dele, e é isso que a correção não pode quebrar.
+  //
+  // RESSEMEIA O VÍNCULO ANTES DE MEDIR. Enquanto a brecha existia, o caso
+  // acima CONSEGUIA gravar `adminUid: tio2` no doc do pai — e a positiva
+  // abaixo passava a ler a perua de um motorista que não é o dele, dando 403
+  // por motivo certo e resultado confuso. Depois do conserto a escrita é
+  // negada e o campo nem muda; a ressemeadura deixa o caso determinístico nos
+  // dois mundos, que é o que um teste de regressão precisa ser.
+  await semear('users/' + pai1.uid, {
+    role: S('parent'), name: S('Pai Um'), adminUid: S(tio1.uid), childId: S('kid1'),
+  });
+  await semear('liveLocation/' + tio1.uid, { routeActive: B(true), lat: N(-23.1) });
+  checar('pos', 'o pai lê a perua do motorista DELE', 'PASSA',
+    await ler('liveLocation/' + tio1.uid, pai1));
+
+  // ── motorista_nao_escreve_o_proprio_limiteCriancas ──────────────────────
+  //
+  // A vaga contratada é cláusula do contrato de associação: quem escreve é
+  // quem NEGOCIA (o ramo do dono, logo acima na rule, já lista o campo). Sem
+  // ele na lista proibida, o devedor editava o próprio limite — e o limite é
+  // exatamente o que as rules de `children` validam com `getAfter`.
+  //
+  // O comentário da rule já afirmava que isto era proibido. Não era.
+  checar('decisao12', 'motorista_nao_escreve_o_proprio_limiteCriancas', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1,
+      { limiteCriancas: { integerValue: '999' } }, ['limiteCriancas']));
+
+  // ── motorista_nao_altera_o_proprio_criancasAtivas ───────────────────────
+  //
+  // O contador é a contagem MATERIALIZADA que sustenta o limite: `allow
+  // create` em `children` compara `criancasAtivas` com `limiteCriancas` via
+  // `getAfter`. Livre em valor e direção, bastava gravar `0` para cadastrar
+  // sem teto — sem precisar tocar em `limiteCriancas`.
+  //
+  // O QUE A REGRA PODE EXIGIR É A FORMA DO PASSO, não a existência da criança:
+  // rule não enxerga as outras escritas do batch. Todo caminho legítimo usa
+  // `increment(±1)` (conferido nos três call sites), então o passo de UM é a
+  // forma verdadeira — e é ela que barra o salto.
+  //
+  // Note que o comentário de `accountService.js` prometia o inverso ("descida
+  // livre, subida de um em um"). Descida livre é exatamente o ataque: é ela
+  // que zera o contador.
+  await semear('users/' + tio1.uid, {
+    role: S('admin'), name: S('Tio Um'),
+    limiteCriancas: { integerValue: '5' },
+    criancasAtivas: { integerValue: '5' },
+  });
+  checar('decisao12', 'motorista_nao_altera_o_proprio_criancasAtivas', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1,
+      { criancasAtivas: { integerValue: '0' } }, ['criancasAtivas']));
+  checar('decisao12', 'nem inflar o contador de uma vez', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1,
+      { criancasAtivas: { integerValue: '99' } }, ['criancasAtivas']));
+
+  // E os dois caminhos REAIS continuam passando — sem isto, o conserto
+  // quebraria cadastro e remoção de criança, que é pior que o furo.
+  checar('pos', 'o contador desce de um em um (desativar criança)', 'PASSA',
+    await escrever('users/' + tio1.uid, tio1,
+      { criancasAtivas: { integerValue: '4' } }, ['criancasAtivas']));
+  checar('pos', 'e sobe de um em um (cadastrar criança)', 'PASSA',
+    await escrever('users/' + tio1.uid, tio1,
+      { criancasAtivas: { integerValue: '5' } }, ['criancasAtivas']));
+
+  // O cadastro comum não pode ter sido pego junto: a lista proibida cresceu,
+  // e ela vale pro ramo de "a própria pessoa edita o próprio doc".
+  checar('pos', 'o motorista continua editando o próprio cadastro', 'PASSA',
+    await escrever('users/' + tio1.uid, tio1, { phone: S('11988887777') }, ['phone']));
+  checar('pos', 'o responsável continua editando o próprio cadastro', 'PASSA',
+    await escrever('users/' + pai1.uid, pai1, { name: S('Pai Um Silva') }, ['name']));
+
+  // ── motorista_nao_atualiza_buzina_de_outro ──────────────────────────────
+  //
+  // O `allow read` deste bloco já foi escopado por `ehDoMotorista()`; o
+  // `update` ficou com `isAdmin()` solto — metade do bloco corrigida e a
+  // outra metade não, que é o padrão que o próprio arquivo cataloga.
+  //
+  // Sem escopo, qualquer motorista reescreve a buzina de qualquer família:
+  // marcar como `resolved` a chamada que o pai ainda não atendeu apaga da tela
+  // dele o aviso de que a perua está na porta.
+  await semear('pendingCalls/pc1', {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childName: S('Ana'),
+    status: S('ringing'),
+  });
+  checar('decisao12', 'motorista_nao_atualiza_buzina_de_outro', 'NEGA',
+    await escrever('pendingCalls/pc1', tio2, { status: S('resolved') }, ['status']));
+  checar('pos', 'o motorista da buzina continua encerrando a dele', 'PASSA',
+    await escrever('pendingCalls/pc1', tio1, { status: S('resolved') }, ['status']));
+
+  // ── motorista_nao_lista_feedbacks_da_plataforma ─────────────────────────
+  //
+  // `feedbacks` guarda `uid`, `role` e as respostas de quem avaliou — de TODA
+  // a plataforma. O ramo `isAdmin()` no `allow list` deixava um parceiro
+  // varrer a base inteira: as avaliações que as famílias dos concorrentes
+  // escreveram, com o uid de cada uma.
+  //
+  // Não há tela de motorista que liste feedback: quem modera é o dono
+  // (`isOwner()`), e o autor encontra o próprio pelo ramo de `limit <= 5`.
+  await semear('feedbacks/f2', {
+    uid: S(pai1.uid), role: S('parent'), rating: N(5),
+    comment: S('avaliação de outra operação'),
+    allowTestimonial: B(false), hiddenByOwner: B(false),
+  });
+  checar('decisao12', 'motorista_nao_lista_feedbacks_da_plataforma', 'NEGA',
+    await listar('feedbacks', tio2));
 }
 
 /**

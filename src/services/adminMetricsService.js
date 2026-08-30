@@ -169,9 +169,21 @@ export async function getPlatformOverview() {
  * Resultado da pesquisa de satisfação — o que o app faz com as avaliações
  * que NÃO vão pra home (as de responsável) e com as respostas de métrica.
  *
- * Lê até `max` feedbacks (o admin tem list liberado nas rules) e agrega no
- * cliente: são poucas centenas de documentos pequenos, e agregar aqui evita
- * criar índice pra cada corte que a gente vai querer olhar.
+ * Lê até `max` feedbacks e agrega no cliente: são poucas centenas de
+ * documentos pequenos, e agregar aqui evita criar índice pra cada corte que a
+ * gente vai querer olhar.
+ *
+ * SÓ O DONO CONSEGUE. O comentário aqui dizia "o admin tem list liberado nas
+ * rules" — e `admin`, neste projeto, é o MOTORISTA. A frase estava certa sobre
+ * a rule e errada sobre quem: qualquer parceiro varria as avaliações de toda a
+ * plataforma, com `uid` e papel de quem escreveu, incluindo as das famílias
+ * dos concorrentes.
+ *
+ * O ramo `isAdmin()` do `allow list` de `feedbacks` saiu em 30/08/2026
+ * (decisão 12). Esta função continua funcionando porque o único chamador dela
+ * é o `AdminPanel`, e quem abre aquela tela é o dono — que passa por
+ * `isOwner()`. Se um dia ela for chamada de uma tela de motorista, vai receber
+ * `permission-denied`, e o certo é essa tela não existir.
  */
 export async function getSurveyResults(max = 500) {
   const snap = await getDocs(

@@ -462,13 +462,23 @@ service cloud.firestore {
              .hasOnly(['role', 'aprovadoEm', 'aprovadoPor'])
       ) || (
         // O DONO GERENCIA, NÃO EDITA CADASTRO ALHEIO.
-        // Três campos, e nenhum é dado do parceiro: suspender, quando
-        // suspendeu, e a nota interna da plataforma. Nome, telefone e chave
-        // PIX continuam sendo do motorista — a plataforma não reescreve o
-        // cadastro de quem ela hospeda, nem por conveniência de suporte.
-        // `limiteCriancas` entra aqui: quantas crianças ativas o parceiro
-        // contratou. É cláusula de contrato, então quem escreve é quem
-        // negocia — e o ramo de baixo proíbe que o próprio parceiro toque.
+        // QUATRO campos, e nenhum é dado do parceiro: suspender, quando
+        // suspendeu, a nota interna da plataforma e a vaga contratada. Nome,
+        // telefone e chave PIX continuam sendo do motorista — a plataforma não
+        // reescreve o cadastro de quem ela hospeda, nem por conveniência de
+        // suporte.
+        //
+        // `limiteCriancas` é cláusula de contrato, então quem escreve é quem
+        // negocia. A frase "e o ramo de baixo proíbe que o próprio parceiro
+        // toque" ESTAVA AQUI E ERA FALSA: o campo não constava da lista
+        // proibida, e o devedor editava o próprio teto. Passou a ser verdade
+        // em 30/08/2026, com o teste que prova
+        // (`motorista_nao_escreve_o_proprio_limiteCriancas`).
+        //
+        // `criancasAtivas` NÃO entra nesta lista, e a ausência é decidida:
+        // acrescentar campo a whitelist mantida à mão pra consertar o efeito
+        // de outro campo é exatamente o padrão que a decisão 12 nomeia. O
+        // contador se conserta pelo passo de ±1 que o ramo de baixo permite.
         isOwner()
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['suspenso', 'suspensoEm', 'notaInterna', 'limiteCriancas'])
@@ -485,8 +495,56 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys()
              .hasAny([
                'role', 'childId', 'childIds', 'superAdmin',
-               'suspenso', 'suspensoEm', 'notaInterna'
+               'suspenso', 'suspensoEm', 'notaInterna',
+               // OS TRÊS QUE FALTAVAM (decisão 12, docs/decisoes.md).
+               //
+               // `adminUid` é a CHAVE DE ESCOPO do responsável, não dado de
+               // cadastro. Quem reescreve o próprio passa a ler o GPS ao vivo
+               // da perua de OUTRO motorista — a rule de `liveLocation`
+               // autoriza por `userDoc().adminUid == docId` — e ganha o
+               // direito de criar notificação pra qualquer uid, que compara
+               // com o mesmo campo. Não é escalada de papel (ele continua
+               // `parent`), é escalada de ESCOPO. Quem grava é o
+               // `redeemInvite` com Admin SDK, copiando de `child.adminUid`.
+               //
+               // `limiteCriancas` é a vaga CONTRATADA: cláusula de contrato,
+               // escrita por quem negocia. O ramo do dono, logo acima, já a
+               // lista. Sem ela aqui, o devedor editava o próprio limite — e
+               // o comentário da linha 428 já afirmava que isso era proibido.
+               'adminUid', 'limiteCriancas'
              ])
+        // `criancasAtivas` NÃO ENTRA NA LISTA ACIMA, e o motivo é que proibi-lo
+        // por completo quebraria o cadastro de criança.
+        //
+        // Ele é a contagem materializada que sustenta o limite (`allow create`
+        // em `children` a confere com `getAfter`), então a escrita do contador
+        // precisa poder acompanhar a da criança — vem no mesmo batch, do
+        // cliente. Livre em valor e direção, porém, bastava gravar `0` para
+        // cadastrar sem teto, sem nem tocar em `limiteCriancas`.
+        //
+        // O QUE A REGRA CONSEGUE EXIGIR É A FORMA DO PASSO. Rule não enxerga as
+        // outras escritas do batch, então "só mexe se houver criança do outro
+        // lado" não é expressável aqui. Mas todo caminho legítimo usa
+        // `increment(±1)` — os três estão em `childrenService` e
+        // `accountService` —, então o passo de UM é a forma verdadeira, e é ela
+        // que barra o salto para zero.
+        //
+        // O QUE ISTO NÃO RESOLVE, e precisa continuar escrito: N escritas de
+        // −1 seguidas chegam no mesmo lugar que uma de −N. O conserto completo
+        // é o contador virar Cloud Function, como o CLAUDE.md já registra.
+        // Isto encarece o ataque e fecha a forma acidental; não fecha a
+        // deliberada.
+        //
+        // `get(...,0)` porque a primeira criança escreve num doc que ainda não
+        // tem o campo — e comparação sobre chave ausente é erro, e erro nega.
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['criancasAtivas'])
+          || request.resource.data.criancasAtivas
+               == resource.data.get('criancasAtivas', 0) + 1
+          || request.resource.data.criancasAtivas
+               == resource.data.get('criancasAtivas', 0) - 1
+        )
         && (
           // Quem edita: o motorista, NOS DOCS QUE SÃO DELE, ou a própria
           // pessoa. A checagem redundante de `role` fica como segunda tranca
@@ -1166,7 +1224,20 @@ service cloud.firestore {
       );
       allow create: if isAdmin()
         && request.resource.data.adminUid == request.auth.uid;
-      allow update: if isAdmin() || (
+      // METADE DO BLOCO TINHA SIDO ESCOPADA, E A OUTRA METADE NÃO.
+      //
+      // O `read` acima perdeu o `isAdmin()` solto, o `delete` abaixo já usa
+      // `ehDoMotorista()` — e o `update` ficou no meio, com `isAdmin()` sem
+      // amarrar o documento a ninguém. Qualquer motorista da plataforma
+      // reescrevia a buzina de qualquer família.
+      //
+      // O estrago é o oposto de um vazamento, e por isso passa despercebido:
+      // marcar como `resolved` uma chamada que o pai ainda não atendeu APAGA
+      // da tela dele o aviso de que a perua está parada na porta. Ninguém vê
+      // dado de ninguém; a família só não desce.
+      //
+      // `ehDoMotorista()` é o mesmo predicado do `delete`, três linhas abaixo.
+      allow update: if ehDoMotorista() || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.adminUid == resource.data.adminUid
@@ -1279,7 +1350,22 @@ service cloud.firestore {
       // O AUTOR LISTA O PRÓPRIO. Faltava este ramo, e por isso a checagem de
       // "você já avaliou antes" era negada sempre (mascarada por um catch).
       // O `limit` baixo é o que impede transformar isto numa varredura.
-      allow list: if isAdmin() || isOwner() || (
+      //
+      // O RAMO `isAdmin()` SAIU (decisão 12), depois de procurar uso legítimo
+      // e não achar nenhum. Aqui ele significava QUALQUER MOTORISTA varrendo
+      // as avaliações de TODA a plataforma — com `uid`, papel e as respostas
+      // de quem escreveu. As avaliações que as famílias de um concorrente
+      // deixaram, legíveis por ele, com a identidade de cada uma.
+      //
+      // As três leituras que existem de verdade continuam cobertas:
+      //   - o DONO agrega a pesquisa de satisfação (`getSurveyResults`, e o
+      //     único chamador dela é o `AdminPanel`) → `isOwner()`
+      //   - o AUTOR procura a própria avaliação → o ramo de `limit <= 5`
+      //   - a VITRINE pública mostra depoimento liberado → o ramo de baixo
+      //
+      // Nenhuma tela de motorista lista feedback, e nunca listou: quem modera
+      // é o dono, e quem avalia enxerga o próprio.
+      allow list: if isOwner() || (
         isSignedIn()
         && request.query.limit <= 5
         && resource.data.uid == request.auth.uid

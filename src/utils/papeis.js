@@ -19,12 +19,23 @@
  * Agora a separação é de papel, e vale nos dois lados: as rules têm
  * `isOwner()` e a interface tem isto.
  *
- * O DONO É UMA CONTA SÓ, E O PAPEL É A ÚNICA PROVA DISSO
- * O fallback `superAdmin: true` foi REMOVIDO. Ele existia como ponte pra conta
- * antiga, e ponte que ninguém atravessa vira porta dos fundos: enquanto duas
- * coisas diferentes davam poder de dono, "quantos donos existem?" não tinha
- * resposta olhando o código — dependia de quantos docs tinham um booleano
- * esquecido. Agora é uma pergunta de uma query: `role == 'owner'`.
+ * O DONO É UMA CONTA SÓ — E O FALLBACK `superAdmin` AINDA ESTÁ AQUI
+ *
+ * Este parágrafo dizia que o fallback "foi REMOVIDO". Não foi: ele está na
+ * última linha de `ehDono()`, e o comentário lá dentro sempre explicou por
+ * quê. O cabeçalho descrevia o destino como se fosse o presente, e as duas
+ * coisas conviveram no mesmo arquivo, uma contradizendo a outra.
+ *
+ * O que continua verdadeiro é o ARGUMENTO: ponte que ninguém atravessa vira
+ * porta dos fundos. Enquanto duas coisas diferentes derem poder de dono,
+ * "quantos donos existem?" não tem resposta olhando o código — depende de
+ * quantos docs têm um booleano esquecido. Quando a conta do dono for migrada
+ * para `role: 'owner'` pelo console, o fallback sai de `ehDono()` e de
+ * `functions/lib/papeis.js`, e aí a pergunta vira uma query só.
+ *
+ * Até lá, o número de donos se confere assim, e está escrito porque não é
+ * óbvio:
+ *   users where role == 'owner'  +  users where superAdmin == true
  *
  * A MIGRAÇÃO É MANUAL, E TEM QUE VIR ANTES
  * O cliente não escreve `role` (foi assim que a auto-promoção foi fechada),

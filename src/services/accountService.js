@@ -193,10 +193,21 @@ export async function deactivateChildAndParent({ childId }) {
   // contrato, bateria no teto tendo menos crianças do que contratou. O erro
   // seria silencioso e ele culparia a cobrança.
   //
-  // FORA do batch acima de propósito: a regra do contador em `users` só
-  // aceita descida livre e subida de um em um, então uma falha aqui deixa a
-  // vaga presa (recuperável, e ele fala com o suporte) em vez de impedir a
-  // remoção da criança (que é o que ele pediu e o que envolve dado de menor).
+  // FORA do batch acima de propósito: uma falha aqui deixa a vaga presa
+  // (recuperável) em vez de impedir a remoção da criança — que é o que ele
+  // pediu, e o que envolve dado de menor.
+  //
+  // ATENÇÃO AO QUE ESTE COMENTÁRIO AFIRMAVA ANTES: que "a regra do contador em
+  // `users` só aceita descida livre e subida de um em um". A regra não existia
+  // — `criancasAtivas` estava fora da lista de campos proibidos, livre em
+  // valor e em direção —, e a metade que ele descrevia estava INVERTIDA:
+  // descida livre é justamente o ataque, porque zerar o contador libera
+  // cadastro sem teto.
+  //
+  // Desde 30/08/2026 a regra existe e é simétrica: o contador anda de UM em
+  // um, pra cima ou pra baixo. É o que `increment(±1)` faz aqui e nos outros
+  // dois call sites, então nenhum caminho legítimo mudou. Provado em
+  // `scripts/testar-regras.mjs`, bloco "DECISÃO 12".
   if (child.adminUid && child.active !== false) {
     try {
       await updateDoc(doc(db, 'users', child.adminUid), {
