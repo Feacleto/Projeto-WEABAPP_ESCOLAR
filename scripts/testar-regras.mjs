@@ -450,6 +450,7 @@ async function main() {
     await consultaMinhaAvaliacao(pai1));
 
   await tetoDeGets(tio1);
+  await vagaContratada(tio1, tio2);
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -459,6 +460,99 @@ async function main() {
   }
   console.log(`${'═'.repeat(64)}\n`);
   process.exit(bad > 0 ? 1 : 0);
+}
+
+/**
+ * A VAGA CONTRATADA — a única regra do projeto que usa `getAfter`.
+ *
+ * Ela é a que impõe o contrato: `children` só aceita `create` se o contador
+ * `criancasAtivas` do motorista, JÁ INCREMENTADO, couber no `limiteCriancas`
+ * que o dono negociou. Como rules não sabem contar documentos, a contagem
+ * precisa estar materializada — e as duas escritas precisam vir no mesmo
+ * commit, que é o que `getAfter` enxerga.
+ *
+ * POR ISSO O TESTE USA `:commit`, e não o PATCH de documento único usado no
+ * resto do arquivo: com escritas separadas o `getAfter` vê o contador ANTIGO,
+ * e o teste passaria por um motivo que não é o da regra.
+ *
+ * OS QUATRO CASOS CERCAM A DECISÃO:
+ *   1. dentro do limite, com incremento  → PASSA  (prova que a regra existe)
+ *   2. estourando o limite               → NEGA   (prova que ela morde)
+ *   3. criando sem incrementar           → NEGA   (o furo óbvio)
+ *   4. o motorista aumentando o próprio limite → NEGA
+ *
+ * O quarto é o que mais importa e é o mais fácil de esquecer: foi assim que o
+ * `suspenso` vazou uma vez — campo de gestão que a lista de proibidos não
+ * acompanhou, e o suspenso se liberava sozinho. Limite que o limitado aumenta
+ * não é limite.
+ */
+async function vagaContratada(tio1, tio2) {
+  const doc = (c) => `projects/${PID}/databases/(default)/documents/${c}`;
+
+  // Cenário: tio1 contratou 2 vagas e está usando 1.
+  await semear(`users/${tio1.uid}`, {
+    role: S('admin'),
+    name: S('Tio Um'),
+    limiteCriancas: { integerValue: '2' },
+    criancasAtivas: { integerValue: '1' },
+  });
+
+  const criarComContador = (sessao, uid, idCrianca, contador) =>
+    fetch(`${FS}:commit`, {
+      method: 'POST',
+      headers: H(sessao),
+      body: JSON.stringify({
+        writes: [
+          {
+            update: {
+              name: doc(`children/${idCrianca}`),
+              fields: { name: S('Nova'), adminUid: S(uid), active: B(true) },
+            },
+            currentDocument: { exists: false },
+          },
+          {
+            update: {
+              name: doc(`users/${uid}`),
+              fields: { criancasAtivas: { integerValue: String(contador) } },
+            },
+            updateMask: { fieldPaths: ['criancasAtivas'] },
+          },
+        ],
+      }),
+    }).then((r) => r.status);
+
+  // 1. Segunda criança, contador indo a 2, limite 2. Cabe.
+  checar('vaga', 'cria a 2ª criança dentro do limite de 2', 'PASSA',
+    await criarComContador(tio1, tio1.uid, `vaga_ok_${Date.now()}`, 2));
+
+  // 2. Terceira, contador a 3, limite 2. Não cabe.
+  await semear(`users/${tio1.uid}`, { criancasAtivas: { integerValue: '2' } });
+  checar('vaga', 'a 3ª criança estoura o limite de 2', 'NEGA',
+    await criarComContador(tio1, tio1.uid, `vaga_no_${Date.now()}`, 3));
+
+  // 3. Criar sem mexer no contador — o furo óbvio.
+  const semContador = await fetch(`${FS}/children?documentId=vaga_solta_${Date.now()}`, {
+    method: 'POST',
+    headers: H(tio1),
+    body: JSON.stringify({
+      fields: { name: S('Solta'), adminUid: S(tio1.uid), active: B(true) },
+    }),
+  }).then((r) => r.status);
+  checar('vaga', 'criar criança sem incrementar o contador', 'NEGA', semContador);
+
+  // 4. O motorista aumentando o próprio teto. É a fraude que paga a conta.
+  checar('vaga', 'o motorista aumenta o próprio limiteCriancas', 'NEGA',
+    await escrever(`users/${tio1.uid}`, tio1,
+      { limiteCriancas: { integerValue: '99' } }, ['limiteCriancas']));
+
+  // E o vizinho: limite de OUTRO motorista, que nem é dele.
+  await semear(`users/${tio2.uid}`, {
+    role: S('admin'), name: S('Tio Dois'),
+    limiteCriancas: { integerValue: '1' },
+  });
+  checar('vaga', 'tio1 mexe no limite do tio2', 'NEGA',
+    await escrever(`users/${tio2.uid}`, tio1,
+      { limiteCriancas: { integerValue: '99' } }, ['limiteCriancas']));
 }
 
 /**
