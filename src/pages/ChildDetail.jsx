@@ -18,9 +18,12 @@ import {
   Link2,
   Copy,
   Check,
+  CalendarX2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { horariosCombinados, horaCurta } from '../services/horariosService';
+import { resumoDeFaltas } from '../utils/faltas';
+import { useChildAbsenceHistory } from '../hooks/useAbsences';
 import { updateChild } from '../services/childrenService';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
@@ -266,6 +269,18 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           )}
         </Card>
 
+        {/* QUANTAS VEZES ELA FALTOU — a pergunta que os dois lados fazem.
+          *
+          * O motorista precisa disso pra conversar com a família ("é a quinta
+          * este mês") e o responsável pra saber onde está. Estava só no painel
+          * do pai, e o motorista não tinha nenhum lugar onde ler o número:
+          * ele via a falta do DIA na rota e nunca o acumulado.
+          *
+          * O aviso marcado pra frente aparece separado e nunca somado: é
+          * combinado, não falta. Somar faria a ficha dizer que a criança
+          * faltou num dia que ainda não chegou. */}
+        <FaltasDaCrianca childId={child.id} />
+
         {/* Endereço de casa */}
         <Card className="space-y-3">
           <h3 className="text-sm font-semibold text-text flex items-center gap-2">
@@ -446,6 +461,66 @@ export function ChildDetailSheet({ open, childId, onClose }) {
     >
       {open && <ChildDetailBody childId={childId} onLeave={onClose} />}
     </AppSheet>
+  );
+}
+
+/**
+ * O acumulado de faltas, com caminho pro histórico completo.
+ *
+ * Assina por criança em vez de receber pronto porque a ficha abre de quatro
+ * lugares diferentes (rota, turma, painel do pai, home do motorista) e passar
+ * o histórico por prop obrigaria os quatro a carregá-lo — inclusive os que
+ * abrem a ficha e nunca rolam até aqui.
+ */
+function FaltasDaCrianca({ childId }) {
+  const { history, loading } = useChildAbsenceHistory(childId);
+  const resumo = useMemo(() => resumoDeFaltas(history), [history]);
+
+  return (
+    <Card className="space-y-3">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
+        <CalendarX2 size={16} className="text-primary" />
+        Faltas
+      </h3>
+
+      {loading ? (
+        <p className="text-sm text-textMuted">carregando…</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Numero rotulo="Neste mês" valor={resumo.noMes} />
+            <Numero rotulo="Desde o começo" valor={resumo.total} />
+          </div>
+
+          {resumo.futuras > 0 && (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+              <strong>
+                {resumo.futuras}{' '}
+                {resumo.futuras === 1 ? 'aviso marcado' : 'avisos marcados'}
+              </strong>{' '}
+              pra frente. Não entram na conta acima — ainda não aconteceram.
+            </p>
+          )}
+
+          {resumo.total === 0 && resumo.futuras === 0 && (
+            <p className="text-xs leading-relaxed text-textMuted">
+              Nenhuma falta registrada. Só conta o que foi avisado pelo app.
+            </p>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+function Numero({ rotulo, valor }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-surface px-3 py-2.5">
+      <p className="text-xl font-extrabold tabular-nums leading-none text-text">
+        {valor}
+      </p>
+      <p className="mt-1 text-[11px] leading-tight text-textMuted">{rotulo}</p>
+    </div>
   );
 }
 
