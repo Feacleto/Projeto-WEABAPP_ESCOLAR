@@ -7,6 +7,7 @@ import {
   Bell,
   HelpCircle,
   ChevronRight,
+  CalendarX2,
   Map as MapIcon,
   CircleAlert,
   CheckCircle2,
@@ -398,6 +399,31 @@ export default function PaiDashboard() {
             {absenceHistory.length > 0 && (
               <AbsenceCounts history={absenceHistory} />
             )}
+
+            {/* A PORTA DO HISTÓRICO — e ela aparece mesmo sem falta nenhuma.
+              *
+              * O bloco acima some quando o histórico está vazio, e faz
+              * sentido: contador zerado não informa nada. Mas a tela de
+              * histórico precisa existir antes da primeira falta, senão o
+              * caminho pra ela só nasce no dia em que já se precisou dele. */}
+            <button
+              type="button"
+              onClick={() => navigate('/pai/faltas')}
+              className="tap flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-sm"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <CalendarX2 size={17} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-text">
+                  Faltas
+                </span>
+                <span className="block text-[11px] text-textMuted">
+                  Meses anteriores e avisar uma nova
+                </span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-textMuted" />
+            </button>
 
             {/* Convite pra avaliar — a resposta não vai pra home, vira
               * métrica: é o único jeito de saber se o app serve a ponta que

@@ -81,7 +81,7 @@ src/
 ├── pages/
 │   ├── Home, Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
 │   ├── tio/           16 telas do motorista
-│   ├── pai/           7 telas do responsável
+│   ├── pai/           8 telas do responsável
 │   ├── admin/         AdminPanel, TaxaTab — o dono tem UMA tela só, com
 │   │                  cinco abas. `/admin/parceiros` era a segunda e virou
 │   │                  redirecionamento; a fila mora na aba "Fila".
@@ -89,7 +89,7 @@ src/
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive…
 ├── services/          38 módulos — TODO acesso ao Firestore passa aqui
-├── hooks/             19 hooks, quase todos onSnapshot de um service
+├── hooks/             23 hooks, quase todos onSnapshot de um service
 ├── config/            capabilities, rodada, developer
 ├── context/           AuthContext (perfil + papel)
 ├── utils/             puros e testáveis, sem Firebase
@@ -236,6 +236,13 @@ cara de menino). Os nomes de cabelo vêm do schema da API, não da memória: na
 v9 é `bob`, não `longHairBob`, e valor errado devolve **HTTP 400**, não um
 avatar feio. Sem gênero informado, nenhum `top` é passado e o sorteio é o
 padrão.
+
+**Falta tem teto de 14 dias** — o aviso do responsável não passa disso, e o
+motivo está em [AbsenceSheet.jsx](src/components/absences/AbsenceSheet.jsx):
+plano muda, ninguém desmarca, e no dia o motorista não passa na porta. O
+HISTÓRICO anda meses pra trás (`/pai/faltas`); o aviso continua cabendo em
+duas semanas. A conta é pura e testada em [utils/faltas.js](src/utils/faltas.js)
+(`npm run testar:faltas`) — aviso marcado pra frente nunca é somado como falta.
 
 **PWA: instalar e atualizar** — as duas conversas com o aparelho.
 
