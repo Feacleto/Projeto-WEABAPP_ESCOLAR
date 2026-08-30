@@ -1,4 +1,4 @@
-import { formatBRL } from '../../services/contractService';
+import { formatBRL } from '../../utils/formatters';
 import { formatPhone } from '../../utils/formatters';
 
 /**

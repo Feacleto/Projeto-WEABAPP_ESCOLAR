@@ -14,12 +14,14 @@
     "testar:horarios": "node scripts/testar-horarios.mjs",
     "testar:faltas": "node scripts/testar-faltas.mjs",
     "testar:aviso": "node scripts/testar-aviso.mjs",
-    "testar": "npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste && npm run testar:travessia && npm run testar:taxa && npm run testar:contrato && npm run testar:pix",
+    "testar": "npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste && npm run testar:travessia && npm run testar:taxa && npm run testar:contrato && npm run testar:pix && npm run testar:status && npm run testar:auth",
     "testar:contraste": "node scripts/testar-contraste.mjs",
     "testar:travessia": "node scripts/testar-travessia.mjs",
     "testar:taxa": "node scripts/testar-taxa.mjs",
     "testar:contrato": "node scripts/testar-contrato.mjs",
     "testar:pix": "node scripts/testar-pix.mjs",
+    "testar:status": "node scripts/testar-status.mjs",
+    "testar:auth": "node scripts/testar-auth.mjs",
     "testar:avatar": "node scripts/testar-avatar.mjs"
   },
   "dependencies": {

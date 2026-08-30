@@ -13,7 +13,11 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './../firebase/config';
 import { computeDisplayStatus } from './paymentsService';
-import { primeiroNome } from '../utils/formatters';
+// O COMENTARIO QUE JUSTIFICAVA AS COPIAS LOCAIS ERA FALSO.
+// Dizia 'evita dependencia circular com utils/formatters' -- e utils/
+// formatters nao tem uma unica linha de import. Nao havia ciclo possivel;
+// havia duas definicoes de dinheiro que ja divergiam no valor vazio.
+import { primeiroNome, formatBRL, formatMonthLabel } from '../utils/formatters';
 
 /**
  * O motorista DESTE responsável — não o motorista da plataforma.
@@ -91,7 +95,9 @@ export async function notifyPaymentClaimed({
   method = 'pix',
 }) {
   // Fallback: se o caller não conseguiu carregar adminUid (race condition),
-  // busca do appState/init (público, sempre disponível).
+  // resolve pelo doc do PRÓPRIO responsável. Este comentário dizia
+  // "busca do appState/init (público, sempre disponível)" — e era isso que o
+  // código fazia, com um ponteiro único pra plataforma inteira.
   const targetUid = adminUid || (await resolveAdminUid());
   if (!targetUid) {
     console.warn('[notifyPaymentClaimed] Sem adminUid — notif não criada.');
@@ -346,24 +352,4 @@ export function markAllDerivedRead(ids) {
   saveDerivedReads(set);
 }
 
-// =============================================================================
-// Helpers locais (evita dependência circular com utils/formatters)
-// =============================================================================
 
-function formatBRL(value) {
-  if (value == null || isNaN(value)) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(Number(value));
-}
-
-function formatMonthLabel(monthKey) {
-  if (!monthKey) return '';
-  const [y, m] = monthKey.split('-').map(Number);
-  if (!y || !m) return monthKey;
-  return new Intl.DateTimeFormat('pt-BR', {
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(y, m - 1, 1));
-}

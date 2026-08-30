@@ -44,8 +44,37 @@ export function primeiroNome(nome, fallback = '') {
   return limpo.split(/\s+/)[0] || fallback;
 }
 
+/**
+ * Dinheiro na TELA. Vazio vira travessão.
+ *
+ * "—" diz "não há número aqui"; "R$ 0,00" diz "o número é zero". Num painel,
+ * a diferença é entre um dado que não carregou e um mês sem receita.
+ */
 export function formatCurrency(value) {
   if (value == null || isNaN(value)) return '—';
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number(value));
+}
+
+/**
+ * Dinheiro em DOCUMENTO. Vazio vira R$ 0,00.
+ *
+ * A diferença para `formatCurrency` é deliberada e as duas continuam
+ * existindo: num contrato ou numa mensagem de cobrança, travessão não é
+ * resposta — o documento precisa afirmar um valor, e "zero" é uma afirmação.
+ *
+ * ESTAVA ESCRITA EM QUATRO LUGARES: aqui não, mas em `contractService`,
+ * `notificationsService` e `PixBlock`, mais uma variante curta. A cópia de
+ * `notificationsService` vinha sob o comentário "evita dependência circular
+ * com utils/formatters" — e o ciclo NÃO EXISTIA: este arquivo não tem uma
+ * única linha de `import`. Era uma justificativa falsa mantendo viva uma
+ * divergência real, e cinco componentes importavam um service que fala com o
+ * Firestore só para formatar moeda.
+ */
+export function formatBRL(value) {
+  if (value == null || isNaN(value)) return 'R$ 0,00';
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',

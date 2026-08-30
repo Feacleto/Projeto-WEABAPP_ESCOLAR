@@ -1,4 +1,9 @@
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+// `formatBRL` mora em `utils/formatters.js`. Ele nao precisa de Firestore,
+// e cinco componentes importavam ESTE service so pra formatar moeda.
+import { formatBRL } from '../utils/formatters';
+
+export { formatBRL };
 import { db } from '../firebase/config';
 
 /**
@@ -141,14 +146,3 @@ export function hasAcceptedContract(child) {
   return true;
 }
 
-/**
- * Formato de moeda BRL — usado tanto na renderização do contrato
- * quanto na geração da mensagem do WhatsApp.
- */
-export function formatBRL(value) {
-  if (value == null || isNaN(value)) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(Number(value));
-}

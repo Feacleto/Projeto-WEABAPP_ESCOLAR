@@ -15,7 +15,7 @@ import {
   registrarPerda,
   metricasDoFunil,
 } from '../../services/funilService';
-import { formatBRL } from '../../services/contractService';
+import { formatBRL } from '../../utils/formatters';
 import { maskPhone } from '../../utils/masks';
 
 /**

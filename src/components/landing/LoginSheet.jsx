@@ -25,6 +25,7 @@ import {
   resetPassword,
 } from '../../services/authService';
 import { canUseGoogleSignIn, isInAppBrowser } from '../../utils/browserEnv';
+import { mensagemDeAuth } from '../../utils/authErrors';
 
 /**
  * Folha de entrada — uma porta só, sem pedir papel.
@@ -107,7 +108,7 @@ export default function LoginSheet({
       await login(email, password);
       // A Home redireciona quando o profile carregar — o role vem de lá.
     } catch (err) {
-      toast.error(mapAuthError(err));
+      toast.error(mensagemDeAuth(err, 'entrar'));
     } finally {
       setSubmitting(false);
     }
@@ -146,7 +147,7 @@ export default function LoginSheet({
         setStep('novo');
         toast.error(err.message, { duration: 7000 });
       } else if (err?.code !== 'auth/popup-closed-by-user') {
-        toast.error(mapAuthError(err));
+        toast.error(mensagemDeAuth(err, 'entrar'));
       }
     } finally {
       setGoogleSubmitting(false);
@@ -166,7 +167,7 @@ export default function LoginSheet({
         { duration: 6000 }
       );
     } catch (err) {
-      toast.error(mapAuthError(err));
+      toast.error(mensagemDeAuth(err, 'entrar'));
     } finally {
       setResetting(false);
     }
@@ -395,26 +396,3 @@ export default function LoginSheet({
 }
 
 // Traduz códigos de erro do Firebase Auth para mensagens amigáveis em PT-BR.
-function mapAuthError(err) {
-  const code = err?.code || '';
-  switch (code) {
-    case 'auth/invalid-email':
-      return 'Email inválido.';
-    case 'auth/user-not-found':
-    case 'auth/wrong-password':
-    case 'auth/invalid-credential':
-      return 'Email ou senha incorretos.';
-    case 'auth/too-many-requests':
-      return 'Muitas tentativas. Aguarde alguns minutos.';
-    case 'auth/network-request-failed':
-      return 'Sem conexão com a internet.';
-    case 'auth/popup-blocked':
-      return 'Popup bloqueado pelo navegador. Habilite e tente novamente.';
-    case 'auth/popup-closed-by-user':
-      return 'Login cancelado.';
-    case 'auth/account-exists-with-different-credential':
-      return 'Já existe conta com outro método de login pra este email.';
-    default:
-      return err?.message || 'Erro ao entrar. Tente novamente.';
-  }
-}

@@ -22,6 +22,7 @@ import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
 import { CENA_ABERTURA, CENA_ENTRADA, travessar } from '../utils/travessia';
 import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
+import { mensagemDeAuth } from '../utils/authErrors';
 
 /**
  * Primeiro acesso do responsável — /first-access
@@ -141,7 +142,15 @@ export default function FirstAccess() {
       travessar(created ? CENA_ABERTURA : CENA_ENTRADA, 'parent');
       navigate('/pai', { replace: true });
     } catch (err) {
-      toast.error(err?.message || mapAuthError(err));
+      // A TRADUZIDA VEM PRIMEIRO.
+      //
+      // Era `err?.message || mensagemDeAuth(...)`, e o `||` fazia a mensagem
+      // CRUA do SDK — em ingles — ganhar sempre que existisse, que e sempre.
+      // Quem tentava criar conta com e-mail ja usado lia o texto do Firebase
+      // aqui e o texto em portugues na folha de login da home: mesma pessoa,
+      // mesmo erro, duas respostas. A traducao ja cai em err.message quando
+      // nao conhece o codigo.
+      toast.error(mensagemDeAuth(err, 'criar'));
     } finally {
       setSubmitting(false);
     }
@@ -182,7 +191,7 @@ export default function FirstAccess() {
       navigate('/pai', { replace: true });
     } catch (err) {
       if (err?.code !== 'auth/popup-closed-by-user') {
-        toast.error(err?.message || mapAuthError(err));
+        toast.error(mensagemDeAuth(err, 'criar'));
       }
     } finally {
       setGoogleSubmitting(false);
@@ -452,29 +461,3 @@ export default function FirstAccess() {
   );
 }
 
-function mapAuthError(err) {
-  const code = err?.code || '';
-  switch (code) {
-    case 'auth/invalid-email':
-      return 'Email inválido.';
-    case 'auth/email-already-in-use':
-      return 'Este email já tem conta. Use "Já tenho conta".';
-    case 'auth/weak-password':
-      return 'Senha muito curta. Use ao menos 6 caracteres.';
-    case 'auth/wrong-password':
-    case 'auth/invalid-credential':
-      return 'Email ou senha incorretos.';
-    case 'auth/too-many-requests':
-      return 'Muitas tentativas. Aguarde alguns minutos.';
-    case 'auth/network-request-failed':
-      return 'Sem conexão com a internet.';
-    case 'auth/popup-blocked':
-      return 'Popup bloqueado pelo navegador. Habilite e tente novamente.';
-    case 'auth/popup-closed-by-user':
-      return 'Login cancelado.';
-    case 'auth/account-exists-with-different-credential':
-      return 'Já existe conta com outro método de login pra este email.';
-    default:
-      return err?.message || 'Erro. Tente novamente.';
-  }
-}

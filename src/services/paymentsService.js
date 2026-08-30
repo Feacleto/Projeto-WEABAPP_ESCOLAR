@@ -10,6 +10,27 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebase/config';
+// O ESTADO DO PAGAMENTO MORA EM `utils/statusPagamento.js`.
+//
+// `computeDisplayStatus` é a definição de "atrasado" no app inteiro — o
+// cabeçalho dela diz que dezessete lugares perguntam `=== 'paid'` — e nada
+// protegia isso, porque atrás do `import { db }` acima ela era intestável.
+// Lá as três funções recebem a hora por parâmetro e têm bateria própria
+// (`npm run testar:status`). O reexport mantém este módulo como a porta que
+// as telas já usam.
+import {
+  UNDO_WINDOW_HOURS,
+  computeDisplayStatus,
+  foiPagoAtrasado,
+  canUndoReceipt,
+} from '../utils/statusPagamento';
+
+export {
+  UNDO_WINDOW_HOURS,
+  computeDisplayStatus,
+  foiPagoAtrasado,
+  canUndoReceipt,
+};
 import { playSound } from './soundService';
 import { exigirCloud } from './callableError';
 
@@ -101,53 +122,6 @@ export async function confirmReceipt(paymentId, method = null) {
   playSound('cash_in');
 }
 
-/**
- * Janela em que o Tio pode reverter um recebimento que ele mesmo deu baixa.
- * Depois disso, a confirmação fica definitiva — evita zicas tipo o pai
- * recolher o dinheiro 1 mês depois ou o Tio se confundir muito tempo
- * após o fato.
- *
- * VALE PRA TODO MÉTODO, INCLUSIVE CARTÃO
- * A versão anterior negava reversão a 'card' para sempre, alegando que
- * cartão "é reconhecido automaticamente pelo gateway". Não existe gateway
- * neste app: o pai paga o motorista direto, por PIX, dinheiro ou maquininha,
- * e os três chegam aqui do mesmo jeito — o motorista digitando como
- * recebeu. Tratar um deles como se tivesse confirmação automática dava a
- * ele a única baixa irreversível do sistema, e com a justificativa errada:
- * quem marcou "cartão" por engano, ou levou estorno na maquininha, ficava
- * sem saída nenhuma.
- */
-export const UNDO_WINDOW_HOURS = 24;
-const UNDO_WINDOW_MS = UNDO_WINDOW_HOURS * 60 * 60 * 1000;
-
-/**
- * Diz se um pagamento ainda pode ser revertido pelo Tio. Combina:
- *   - tempo desde a confirmação (limite UNDO_WINDOW_HOURS)
- *
- * Retorna { allowed, reason } pra UI exibir mensagem clara.
- */
-export function canUndoReceipt(payment) {
-  if (!payment) return { allowed: false, reason: 'Pagamento não encontrado.' };
-  if (payment.status !== 'paid') {
-    return { allowed: false, reason: 'Pagamento ainda não foi confirmado.' };
-  }
-  const paidAt =
-    payment.paidAt?.toDate?.() ||
-    (payment.paidAt ? new Date(payment.paidAt) : null);
-  if (!paidAt) {
-    // Sem timestamp → pagamento antigo. Permite desfazer (compatibilidade).
-    return { allowed: true, reason: null };
-  }
-  const elapsed = Date.now() - paidAt.getTime();
-  if (elapsed > UNDO_WINDOW_MS) {
-    const hours = Math.round(elapsed / (60 * 60 * 1000));
-    return {
-      allowed: false,
-      reason: `Já se passaram ${hours}h da confirmação. Reversão liberada só em até ${UNDO_WINDOW_HOURS}h pra evitar erros.`,
-    };
-  }
-  return { allowed: true, reason: null };
-}
 
 /**
  * Reverte uma confirmação (em caso de erro do tio). Sujeito às regras
@@ -175,55 +149,6 @@ export async function undoReceipt(paymentId, payment = null) {
   });
 }
 
-/**
- * Calcula o status de exibição.
- *
- * Estados possíveis:
- *   - 'paid'     — pago e confirmado pelo tio
- *   - 'claimed'  — pai marcou como pago, aguardando confirmação do tio
- *   - 'overdue'  — pendente E dueDate < hoje
- *   - 'pending'  — pendente E dueDate >= hoje (ou sem dueDate)
- *
- * 'overdue' é derivado em runtime — evita Cloud Function pra atualizar status.
- * 'claimed' tem prioridade sobre 'overdue': se o pai marcou como pago, mesmo
- * que esteja após a data, o tio precisa confirmar antes de virar 'paid'.
- */
-export function computeDisplayStatus(payment) {
-  if (!payment) return 'pending';
-  if (payment.status === 'paid') return 'paid';
-  if (payment.status === 'claimed') return 'claimed';
-  const due = payment.dueDate?.toDate?.()?.getTime();
-  if (due && due < Date.now()) return 'overdue';
-  return 'pending';
-}
-
-/**
- * O pagamento entrou, mas entrou DEPOIS do vencimento?
- *
- * POR QUE ISTO NÃO É UM QUINTO ESTADO
- * A tentação era `computeDisplayStatus` devolver 'paidLate'. Seria errado:
- * dezessete lugares perguntam `=== 'paid'` pra somar recebido, filtrar lista
- * e montar relatório. Um estado novo faria o dinheiro que ENTROU sumir dos
- * totais — o pior tipo de regressão, porque o número continua aparecendo,
- * só que menor.
- *
- * Então "pago atrasado" é LEITURA, não estado. Continua sendo 'paid' pra
- * todo mundo que conta; só o rótulo na tela conta a história completa.
- *
- * É o que responde "quem mais atrasa": um mês pago no dia 3 e um pago no dia
- * 28 são ambos verdes no fim do mês, e é a diferença entre eles que diz com
- * quem o tio vai ter trabalho de novo.
- *
- * Derivado em tempo de execução dos dois campos que já existem no documento.
- * Zero migração.
- */
-export function foiPagoAtrasado(payment) {
-  if (!payment || payment.status !== 'paid') return false;
-  const pago = payment.paidAt?.toDate?.()?.getTime();
-  const vence = payment.dueDate?.toDate?.()?.getTime();
-  if (!pago || !vence) return false;
-  return pago > vence;
-}
 
 /**
  * Busca os pagamentos DESTE motorista desde `fromMonthKey` (YYYY-MM).

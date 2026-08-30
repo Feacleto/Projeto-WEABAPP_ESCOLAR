@@ -12,6 +12,7 @@ import {
   applyAuthActionCode,
   inspectActionCode,
 } from '../services/authService';
+import { mensagemDeAuth } from '../utils/authErrors';
 
 /**
  * Handler in-app dos links de ação do Firebase Auth.
@@ -69,7 +70,7 @@ export default function AuthAction() {
         }
       } catch (err) {
         setStatus('error');
-        setErrorMsg(mapAuthError(err));
+        setErrorMsg(mensagemDeAuth(err, 'link'));
       }
     })();
   }, [mode, oobCode]);
@@ -95,7 +96,7 @@ export default function AuthAction() {
       setStatus('reset-success');
       toast.success('Senha redefinida com sucesso!');
     } catch (err) {
-      toast.error(mapAuthError(err));
+      toast.error(mensagemDeAuth(err, 'link'));
     } finally {
       setSubmitting(false);
     }
@@ -223,22 +224,3 @@ export default function AuthAction() {
   );
 }
 
-function mapAuthError(err) {
-  const code = err?.code || '';
-  switch (code) {
-    case 'auth/expired-action-code':
-      return 'O link expirou. Solicite um novo email de redefinição.';
-    case 'auth/invalid-action-code':
-      return 'Link inválido ou já utilizado. Solicite um novo email.';
-    case 'auth/user-disabled':
-      return 'Esta conta foi desativada. Entre em contato com o motorista.';
-    case 'auth/user-not-found':
-      return 'Usuário não encontrado.';
-    case 'auth/weak-password':
-      return 'Senha muito fraca. Use ao menos 6 caracteres.';
-    case 'auth/network-request-failed':
-      return 'Sem conexão com a internet.';
-    default:
-      return 'Não foi possível concluir. Tente novamente.';
-  }
-}
