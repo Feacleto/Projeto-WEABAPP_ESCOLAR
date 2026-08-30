@@ -4,6 +4,30 @@ import { X } from 'lucide-react';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
+ * ATENÇÃO — O CABEÇALHO ABAIXO PROMETE UMA MIGRAÇÃO QUE NÃO ACONTECEU.
+ *
+ * Ele diz que esta peça existe porque "onze arquivos tinham a mesma folha
+ * copiada à mão", e NOMEIA os onze. Conferido em 30/08/2026: **nenhum dos onze
+ * usa `AppSheet`**. Os dois conjuntos são disjuntos — quem usa esta folha é
+ * outro grupo de nove arquivos, e os originais continuam copiando a casca
+ * (`fixed inset-0 z-50 max-w-mobile …`) linha a linha.
+ *
+ * Então as garantias que o texto abaixo promete — portal, trava de rolagem do
+ * fundo, ESC — NÃO valem em AbsenceSheet, AltPickupSheet, SupportSheet,
+ * SchoolBroadcastSheet, AbsenceListSheet, TioAgendaFAB, TioFinance,
+ * TioHorarios nem TioEscolas. `TioExpenses` é o pior caso: nem o
+ * `useArrastarPraFechar` usa, então aquela folha não fecha arrastando.
+ *
+ * O texto ficou (é o registro de por que a peça nasceu), mas com esta ressalva
+ * na frente: comentário que promete garantia sem prová-la é o mecanismo pelo
+ * qual o bug volta — alguém lê, confia, e constrói em cima.
+ *
+ * A migração das nove é trabalho mecânico e verificável tela a tela, e está no
+ * plano de arquitetura. Enquanto não acontecer, o `grep` é a fonte da verdade:
+ *   grep -rln "fixed inset-0 z-50 max-w-mobile" src
+ */
+
+/**
  * A folha do MIOLO do app — a casca única.
  *
  * POR QUE ELA EXISTE
