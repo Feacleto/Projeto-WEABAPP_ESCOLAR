@@ -235,12 +235,19 @@ Nino"). Não é `name`, que é o nome civil do contrato. Resolve em
 DELE, pelo `adminUid` da criança ativa. Sem marca, volta o título.
 
 **Avatar respeita gênero pelo CABELO**, em
-[avatarUrl.js](src/utils/avatarUrl.js). O estilo é `avataaars` (era
-`notionists`, que não expunha gênero nenhum — só barba, então menina saía com
-cara de menino). Os nomes de cabelo vêm do schema da API, não da memória: na
-v9 é `bob`, não `longHairBob`, e valor errado devolve **HTTP 400**, não um
-avatar feio. Sem gênero informado, nenhum `top` é passado e o sorteio é o
-padrão.
+[avatarUrl.js](src/utils/avatarUrl.js). O estilo é `adventurer` — 26 cortes
+`long*` e 19 `short*`, nenhum ambíguo. Já foi `notionists`, que não expunha
+gênero nenhum (64 cortes chamados `variant01`…`variant64`, e menina saía com
+cara de menino), e depois `avataaars`, que resolvia o gênero mas repetia rosto:
+fixado o cabelo, sobravam poucas combinações, e numa perua de 25 duas crianças
+recebiam o rosto idêntico. `adventurer` dá 68 milhões. **Ele não tem barba** —
+o motorista passou a ter um sinal de gênero em vez de dois.
+
+Os nomes de cabelo vêm do schema da API, **não da memória**: valor fora do
+catálogo devolve **HTTP 400** e a imagem some — não vira avatar feio, vira
+buraco, e só pra quem tem aquele gênero. `npm run testar:avatar` bate as URLs
+reais contra a API (precisa de rede, fica fora da bateria padrão). Sem gênero
+informado, nenhum `hair` é passado e o sorteio é o padrão.
 
 **Migrar quem já tinha contrato de papel** — o contrato do app **não é um
 arquivo**: é gerado dos campos (mensalidade, `dueDay`, vigência) por

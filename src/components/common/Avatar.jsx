@@ -13,7 +13,7 @@ import { COR_GENERO } from '../../config/paletaCategorica';
  * Hierarquia de exibição:
  *   1. photoURL (foto enviada pelo usuário) — se carregar sem erro
  *   2. Default por tipo:
- *      - kind='child'  → avatar no traço do Notion, paleta suave
+ *      - kind='child'  → avatar ilustrado do DiceBear, paleta suave
  *      - kind='adult'  → mesmo traço, paleta fria e sóbria
  *      - kind='admin'  → mesmo traço, paleta do esmeralda da marca
  *   3. Fallback final → ícone genérico com cor de fundo
@@ -71,7 +71,7 @@ export default function Avatar({
     );
   }
 
-  // 2. Avatar gerado, no traço do Notion. TODOS os três públicos passam
+  // 2. Avatar gerado. TODOS os três públicos passam
   // por aqui.
   //
   // Antes o motorista caía num ícone de van e o responsável numa letra

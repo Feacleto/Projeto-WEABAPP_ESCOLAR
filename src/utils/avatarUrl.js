@@ -1,13 +1,6 @@
 /**
  * Avatares automáticos via DiceBear (CDN público, sem chave).
  *
- * O ESTILO: `notionists`
- * É o traço de ilustração que o Notion usa — linha simples, rosto amigável,
- * fundo chapado. Escolhido no lugar do cartoon anterior (`adventurer`) e das
- * iniciais porque resolve os três públicos com UMA linguagem visual: criança,
- * responsável e motorista ficam do mesmo mundo, o que faz o app parecer um
- * produto e não três telas costuradas.
- *
  * NINGUÉM FICA SEM AVATAR
  * Antes, responsável caía numa letra dentro de um círculo e o motorista caía
  * num ícone de van — ou seja, os dois adultos do app não tinham rosto. Agora
@@ -22,66 +15,66 @@
 const DICEBEAR = 'https://api.dicebear.com/9.x';
 
 /**
- * O ESTILO MUDOU DE `notionists` PRA `avataaars`, e o motivo é o gênero.
+ * O ESTILO É `adventurer`, E A ESCOLHA SAIU DE DUAS MEDIÇÕES.
  *
- * O texto abaixo continha a confissão honesta de que o estilo anterior não
- * escutava o campo: ele não expõe nenhum eixo de gênero, e a única coisa
- * controlável era a BARBA. Isso resolvia metade — homem barbado lê como
- * homem —, mas deixava as outras duas de fora: mulher e criança caíam num
- * rosto sorteado que saía masculino em boa parte das vezes. É o que o Felipe
- * viu ao cadastrar uma menina e receber um menino.
+ * A história curta: o app já usou `notionists`, que não expõe eixo de gênero
+ * nenhum — os 64 cortes de cabelo dele se chamam `variant01` a `variant64`, e
+ * sem saber qual é longo não há como obedecer ao campo. Foi assim que uma
+ * menina cadastrada saiu com cara de menino: o dado estava certo no banco e o
+ * desenho não escutava. Depois veio `avataaars`, que resolveu isso.
  *
- * `avataaars` expõe o CABELO como parâmetro (`top`), com nomes que dizem o
- * que são — `longHair*` e `shortHair*`. Cabelo é o sinal de gênero mais forte
- * que um avatar plano consegue dar, e ele funciona nas três faixas, inclusive
- * na criança, que não tem barba pra ajudar.
+ * A troca pro `adventurer` é sobre a segunda medição, a de REPETIÇÃO. Fixado
+ * o cabelo pelo gênero, o que sobra de variação decide quantas crianças da
+ * mesma perua recebem o rosto idêntico — e o rosto é como a mãe reconhece o
+ * filho no cartão do dia. Rodando a conta numa perua de 25:
  *
- * O CUSTO É REAL E VALE ESTAR ESCRITO: todo rosto do app muda de uma vez,
- * inclusive os que alguém já reconhecia como seu. Foi feito agora porque
- * agora é barato — ainda não há motorista em produção. Depois de a base
- * crescer, essa troca vira uma perda de reconhecimento pra todo mundo, e a
- * resposta certa passa a ser conviver com o problema.
+ *   dylan        350 rostos     58% de chance de duas iguais
+ *   thumbs     3.600 rostos      8%   (e sem gênero nenhum)
+ *   adventurer  68 milhões       praticamente zero
+ *
+ * O `adventurer` tem 45 cortes nomeados — 26 `long*` e 19 `short*`, nenhum
+ * ambíguo — mais 15 sobrancelhas, 26 olhos e 30 bocas. É o catálogo mais bem
+ * dividido de todos os 30 estilos do DiceBear, e é o traço mais jovem entre
+ * os que sabem separar gênero, o que serve a um app que cuida de criança.
+ *
+ * O QUE ELE CUSTA, E VALE ESTAR ESCRITO: `adventurer` NÃO TEM BARBA. O
+ * motorista tinha dois sinais de gênero e passa a ter um. Com 19 cortes
+ * masculinos o cabelo dá conta, mas o Tio Nino fica com cara mais nova do que
+ * provavelmente é.
+ *
+ * E o custo que vale pra qualquer troca de estilo: TODO ROSTO DO APP MUDA DE
+ * UMA VEZ, inclusive os que alguém já reconhecia como seu. Continua barato
+ * porque ainda não há motorista em produção. Depois de a base crescer, a
+ * resposta certa passa a ser conviver com o que estiver aí.
  */
-const STYLE = 'avataaars';
+const STYLE = 'adventurer';
 
 /**
  * OS CABELOS QUE CARREGAM O SINAL.
  *
- * Listas curtas de propósito: quanto mais variante entra, mais alguma delas
- * é ambígua — e uma ambígua no meio devolve exatamente o problema que a troca
- * veio resolver, só que mais raro e mais difícil de reproduzir.
+ * Aqui entram TODOS os 45 do catálogo, e não uma seleção — diferente do que
+ * era preciso no estilo anterior, onde as listas eram curtas de propósito
+ * porque algumas variantes eram ambíguas e uma ambígua no meio devolve o
+ * problema que a troca veio resolver. No `adventurer` o nome é a garantia:
+ * `long*` é longo e `short*` é curto, sem exceção no catálogo inteiro.
  *
  * Sem gênero informado (conta antiga, ninguém foi perguntado), NÃO passamos
- * `top` nenhum: o estilo sorteia do catálogo inteiro, que é o comportamento
- * de antes. Chutar um lado seria pior que não saber — metade das pessoas
+ * `hair` nenhum: o estilo sorteia entre os 45, que é o comportamento de
+ * antes. Chutar um lado seria pior que não saber — metade das pessoas
  * receberia um rosto errado com aparência de decisão.
  */
-// Os nomes vêm do schema da API (`/9.x/avataaars/schema.json`), e não da
-// memória: a v9 encurtou tudo — é `bob`, não `longHairBob`. Valor fora do
-// catálogo não degrada, devolve HTTP 400 e a imagem não carrega.
-const CABELO_FEM = [
-  'straight01',
-  'straight02',
-  'straightAndStrand',
-  'bob',
-  'bun',
-  'curly',
-  'curvy',
-  'longButNotTooLong',
-  'miaWallace',
-  'bigHair',
-].join(',');
+// Os nomes vêm do schema da API (`/9.x/adventurer/schema.json`), e não da
+// memória. Valor fora do catálogo não degrada: devolve HTTP 400 e a imagem
+// não carrega.
+const CABELO_FEM = Array.from(
+  { length: 26 },
+  (_, i) => `long${String(i + 1).padStart(2, '0')}`,
+).join(',');
 
-const CABELO_MASC = [
-  'shortFlat',
-  'shortRound',
-  'shortWaved',
-  'shortCurly',
-  'sides',
-  'theCaesar',
-  'theCaesarAndSidePart',
-  'frizzle',
-].join(',');
+const CABELO_MASC = Array.from(
+  { length: 19 },
+  (_, i) => `short${String(i + 1).padStart(2, '0')}`,
+).join(',');
 
 function cabeloPor(gender) {
   if (gender === 'female') return CABELO_FEM;
@@ -111,47 +104,38 @@ const BG_PARENT = 'dfe6e2,cfe3ee,e3e6ea,d8dee3';
 const BG_ADMIN = 'c8ded1,b9d6c6,d1e8d5';
 
 /**
- * O QUE DÁ E O QUE NÃO DÁ PRA GARANTIR SOBRE GÊNERO.
+ * OS ACESSÓRIOS, E A REGRA QUE DECIDE CADA UM.
  *
- * O `notionists` não tem parâmetro de gênero. Durante muito tempo este
- * arquivo fingiu que tinha: prefixava a seed com 'b-' ou 'g-' e seguia em
- * frente. Isso muda QUAL rosto sai do sorteio, não SE ele parece menino ou
- * menina — dois sorteios diferentes, ambos aleatórios. Foi por isso que a
- * Mariana saiu com cara de menino: o dado estava certo e o desenho não
- * escutava.
+ * O estilo anterior levava um `accessoriesProbability=0` chapado, e o motivo
+ * escrito era "metade da turma de óculos escuros". `adventurer` não tem esse
+ * parâmetro — tem três, com probabilidades próprias e muito mais baixas —,
+ * então a regra teve que ser reescrita em vez de copiada.
  *
- * O único eixo que o estilo expõe e que carrega gênero de verdade é a
- * BARBA. Então é o que a gente controla, e só isso — cabelo tem 60 variantes
- * numeradas, sem catálogo de qual é longo ou curto, e escolher no chute daria
- * a mesma aleatoriedade de antes com aparência de intenção.
+ * A regra nova é mais estreita e diz melhor o que se quer: SAI O ACESSÓRIO
+ * QUE CARREGA GÊNERO, FICA O QUE NÃO CARREGA.
  *
- * CRIANÇA NUNCA TEM BARBA, de nenhum gênero. Isso é bug puro e é
- * consertado pra todo mundo, independente do que estiver gravado no campo.
- *
- * O resultado é honesto: rosto de adulto masculino ganha barba, feminino
- * nunca ganha, e criança nunca ganha. O resto do rosto continua sorteado.
- * Quem quiser garantia de gênero em cada traço precisa trocar de estilo — e
- * aí TODOS os rostos do app mudam de uma vez, inclusive os que as pessoas já
- * reconhecem como seus.
+ *   brinco   → ZERO. É o único que significa alguma coisa sobre a pessoa, e
+ *              ele seria sorteado sem olhar o campo: um brinco num avatar de
+ *              cabelo curto contradiz o sinal que este arquivo inteiro existe
+ *              pra emitir. É a mesma falha da menina com cara de menino, só
+ *              que menor e mais difícil de reproduzir.
+ *   óculos   → fica nos 10% do padrão. Não diz nada sobre gênero, e uma
+ *              criança de óculos a cada dez é a turma parecendo uma turma.
+ *   features → fica nos 5% do padrão. São sarda e pinta. Mesmo caso.
  */
+const SEM_BRINCO = 'earringsProbability=0';
+
 function build(seed, backgroundColor, opts = {}) {
   const s = encodeURIComponent(String(seed || 'anon'));
   const partes = [
     `seed=${s}`,
     `backgroundColor=${backgroundColor}`,
     'radius=50',
+    SEM_BRINCO,
   ];
-  // `top` é o cabelo; `facialHairProbability` é a barba. Cada um só entra
-  // quando há decisão a comunicar — parâmetro ausente devolve o sorteio
-  // padrão do estilo, que é o certo pra quem nunca informou o gênero.
-  if (opts.top) partes.push(`top=${opts.top}`);
-  if (opts.facialHairProbability !== undefined) {
-    partes.push(`facialHairProbability=${opts.facialHairProbability}`);
-  }
-  // Óculos e chapéu no sorteio padrão viravam ruído: metade da turma de
-  // óculos escuros, e o acessório rouba o pouco espaço que o rosto tem em
-  // 32px. Zero pros dois, sempre.
-  partes.push('accessoriesProbability=0');
+  // `hair` só entra quando há decisão a comunicar — parâmetro ausente devolve
+  // o sorteio padrão do estilo, que é o certo pra quem nunca informou gênero.
+  if (opts.hair) partes.push(`hair=${opts.hair}`);
   return `${DICEBEAR}/${STYLE}/svg?${partes.join('&')}`;
 }
 
@@ -163,16 +147,18 @@ function prefixo(gender) {
 /**
  * Avatar de criança, estável por id.
  *
- * O gênero entra como prefixo da seed, não como filtro de cor: assim irmão e
- * irmã com ids parecidos não saem com o mesmo rosto, e a criança não fica
- * marcada por cor de fundo "de menino" ou "de menina".
+ * O gênero entra como prefixo da seed E como filtro de cabelo. O prefixo
+ * sozinho não resolve nada de gênero — ele só garante que irmão e irmã com
+ * ids parecidos não saiam com o mesmo rosto. Quem obedece ao campo é o
+ * `hair`.
+ *
+ * Não há nada aqui zerando barba, como havia antes: `adventurer` não desenha
+ * barba em ninguém, então a criança está protegida pelo estilo e não por uma
+ * regra que alguém precise lembrar de manter.
  */
 export function childAvatarUrl({ id, gender }) {
-  // Barba zero SEMPRE: criança não tem barba, e o padrão do estilo dava.
   return build(`${prefixo(gender)}${id || 'unknown'}`, BG_CHILD, {
-    top: cabeloPor(gender),
-    // Criança não tem barba, de nenhum gênero e por nenhum sorteio.
-    facialHairProbability: 0,
+    hair: cabeloPor(gender),
   });
 }
 
@@ -180,38 +166,19 @@ export function childAvatarUrl({ id, gender }) {
  * Avatar do responsável. A seed prefere o uid, que nunca muda.
  *
  * `gender` é opcional e chega vazio pra toda conta criada antes deste campo
- * existir — nesse caso o comportamento é o de sempre: barba no sorteio. Não
- * há migração possível (ninguém sabe o gênero de quem nunca foi perguntado),
- * e a pessoa resolve sozinha ao preencher no perfil.
+ * existir — nesse caso o cabelo é sorteado entre os 45. Não há migração
+ * possível (ninguém sabe o gênero de quem nunca foi perguntado), e a pessoa
+ * resolve sozinha ao preencher no perfil.
  */
 export function adultAvatarUrl({ name, seed, gender }) {
   return build(`${prefixo(gender)}${seed || name || 'user'}`, BG_PARENT, {
-    top: cabeloPor(gender),
-    facialHairProbability: beardPor(gender),
+    hair: cabeloPor(gender),
   });
 }
 
 /** Avatar do motorista, na família de cor da marca. */
 export function adminAvatarUrl({ name, seed, gender }) {
   return build(`${prefixo(gender)}${seed || name || 'driver'}`, BG_ADMIN, {
-    top: cabeloPor(gender),
-    facialHairProbability: beardPor(gender),
+    hair: cabeloPor(gender),
   });
-}
-
-/**
- * Quanto de barba, por gênero.
- *
- * Feminino: zero, sem exceção — barba em rosto feminino não é variedade, é
- * erro. Masculino: 60, e não mais os 100 de antes. A queda é consequência da
- * troca de estilo: quando a barba era o ÚNICO sinal disponível, ela tinha que
- * ser certeza. Agora o cabelo carrega o gênero, e barba obrigatória em todo
- * homem do app fazia todos parecerem o mesmo senhor.
- *
- * Sem informação, devolve `undefined` e o estilo sorteia como sempre fez.
- */
-function beardPor(gender) {
-  if (gender === 'female') return 0;
-  if (gender === 'male') return 60;
-  return undefined;
 }

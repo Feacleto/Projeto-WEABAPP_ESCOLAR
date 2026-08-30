@@ -15,7 +15,8 @@
     "testar:faltas": "node scripts/testar-faltas.mjs",
     "testar:aviso": "node scripts/testar-aviso.mjs",
     "testar": "npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste",
-    "testar:contraste": "node scripts/testar-contraste.mjs"
+    "testar:contraste": "node scripts/testar-contraste.mjs",
+    "testar:avatar": "node scripts/testar-avatar.mjs"
   },
   "dependencies": {
     "firebase": "^12.12.1",
