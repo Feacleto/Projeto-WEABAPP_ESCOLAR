@@ -38,7 +38,7 @@ let ok = 0, falhou = 0;
 function exigir(hex, onde) {
   if (typeof hex !== 'string') {
     console.error(`
-[31mToken inexistente em "${onde}".[0m ` +
+\x1b[31mToken inexistente em "${onde}".\x1b[0m ` +
       'Ele foi renomeado ou removido do tailwind.config.js — ' +
       'atualize o par aqui em vez de apagar a medição.');
     process.exit(1);
@@ -102,14 +102,21 @@ par('primary sobre bg', C.primary, C.bg);
 par('primary sobre card', C.primary, C.card);
 par('branco sobre primary (o botão)', C.card, C.primary);
 par('branco sobre primaryDark (pressionado)', C.card, C.primaryDark);
+par('primary sobre primarySoft', C.primary, C.primarySoft);
+par('primary sobre primaryChip', C.primary, C.primaryChip);
+// O botão de CONFIRMAR. Era `bg-success text-white` = 2,3:1 — o rótulo do
+// botão de aceitar contrato e atender chamada era ilegível dentro dele.
+par('branco sobre accentText (botão confirmar)', C.card, C.accentText);
 
 console.log('\n\x1b[1m4. Os sinais como PALAVRA\x1b[0m');
 // A regra que estes pares defendem: verde e âmbar são tinta de PREENCHIMENTO.
 // Quando precisam ser palavra, existem accentText e warningText.
 par('warningText sobre card', C.warningText, C.card);
+par('warningText sobre warningChip', C.warningText, C.warningChip);
 par('warningText sobre warningSoft', C.warningText, C.warningSoft);
 par('warningText sobre bg', C.warningText, C.bg);
 par('dangerText sobre card', C.dangerText, C.card);
+par('dangerText sobre dangerChip', C.dangerText, C.dangerChip);
 par('dangerText sobre dangerSoft', C.dangerText, C.dangerSoft);
 par('dangerText sobre bg', C.dangerText, C.bg);
 par('accentText sobre card', C.accentText, C.card);
@@ -120,12 +127,18 @@ par('accentText sobre chip de accent/10', C.accentText, sobre(C.accent, 0.1, C.c
 console.log('\n\x1b[1m5. A escola — legenda, e por isso precisa ser lida\x1b[0m');
 par('escola sobre card', C.escola, C.card);
 par('escola sobre escolaSoft', C.escola, C.escolaSoft);
+par('escola sobre escolaChip', C.escola, C.escolaChip);
 par('branco sobre escola (o pin)', C.card, C.escola);
 
 console.log('\n\x1b[1m6. A porta escura do motorista\x1b[0m');
 par('onNight sobre night', C.onNight, C.night);
 par('onNightMuted sobre night (rodapé legal)', C.onNightMuted, C.night);
 par('accent sobre night (as ondas da marca)', C.accent, C.night, 3);
+// O `primary` da marca sobre o quase-preto dá 1,4:1 — é o motivo de a porta
+// escura ter um verde próprio em vez de reusar o da marca.
+par('onNightAccent sobre night', C.onNightAccent, C.night);
+par('onNightAccentFill sobre night', C.onNightAccentFill, C.night, 3);
+par('escolaBorder sobre night (ícone de escola)', C.escolaBorder, C.night);
 
 console.log('\n\x1b[1m7. O QUE NÃO PODE SER TEXTO — a regra, medida\x1b[0m');
 // Estas linhas passam quando REPROVAM: é o motivo de accentText e
@@ -141,6 +154,20 @@ const proibido = (nome, frente, fundo) => {
 };
 proibido('accent como texto sobre card', C.accent, C.card);
 proibido('warning como texto sobre card', C.warning, C.card);
+proibido('perua como texto sobre card', C.perua, C.card);
+proibido('primary como texto sobre night', C.primary, C.night);
+
+console.log('\n\x1b[1m8. Os dois hex repetidos, e por que estão certos\x1b[0m');
+// O erro que este trabalho desfez foi NOME VAGO, não tinta compartilhada.
+// `secondary` servia pra qualquer coisa porque não dizia nada; `perua` só
+// serve pra perua. A checagem aqui é que o par continue proposital.
+const mesmoHex = (nome, a, b) => {
+  const igual = a === b;
+  igual ? ok++ : falhou++;
+  console.log(`  ${igual ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${nome}`);
+};
+mesmoHex('perua e warning compartilham tinta de propósito', C.perua, C.warning);
+mesmoHex('onNight é o branco do card', C.onNight, C.card);
 
 console.log('\n' + '─'.repeat(66));
 console.log(`\x1b[1m${ok} passaram, ${falhou} falharam\x1b[0m`);

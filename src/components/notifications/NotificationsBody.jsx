@@ -24,7 +24,7 @@ import { formatRelativeTime } from '../../utils/formatters';
 
 const TYPE_VISUAL = {
   payment_claimed: { Icon: Hourglass, color: 'text-primary bg-primary/10' },
-  payment_confirmed: { Icon: CheckCircle2, color: 'text-success bg-success/10' },
+  payment_confirmed: { Icon: CheckCircle2, color: 'text-accentText bg-accent/10' },
   payment_due_5d: { Icon: CalendarClock, color: 'text-primary bg-primary/10' },
   payment_due_3d: { Icon: CalendarClock, color: 'text-warning bg-warning/10' },
   payment_due_0d: { Icon: Clock, color: 'text-warning bg-warning/10' },

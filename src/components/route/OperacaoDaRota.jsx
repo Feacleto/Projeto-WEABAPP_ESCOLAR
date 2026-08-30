@@ -689,7 +689,7 @@ export default function OperacaoDaRota({
             type="button"
             disabled={busy}
             onClick={() => setConfirmLote(lote)}
-            className="tap w-full rounded-2xl bg-secondary text-[#3B2600] font-extrabold text-sm flex flex-col items-center justify-center gap-0.5 disabled:opacity-60 py-4"
+            className="tap w-full rounded-2xl bg-warning text-warningText font-extrabold text-sm flex flex-col items-center justify-center gap-0.5 disabled:opacity-60 py-4"
           >
             <span>
               {lote.label} — TODOS OS {lote.count}

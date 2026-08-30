@@ -8,7 +8,7 @@ const variants = {
   danger:
     'bg-danger text-white hover:bg-danger disabled:bg-danger/50',
   success:
-    'bg-success text-white hover:bg-accentDark disabled:bg-success/50',
+    'bg-accentText text-white hover:bg-primaryDark disabled:bg-accentText/50',
   ghost: 'bg-transparent text-text hover:bg-neutro disabled:opacity-60',
 };
 

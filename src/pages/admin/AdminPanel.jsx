@@ -680,7 +680,7 @@ function Pesquisa({ s }) {
             <div key={n} className="flex items-center gap-2">
               <span className="inline-flex w-8 shrink-0 items-center gap-0.5 text-xs font-bold text-textMuted">
                 {n}
-                <Star size={11} className="fill-estrela text-estrela" />
+                <Star size={11} className="fill-ouro text-ouro" />
               </span>
               <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutro">
                 <span
@@ -878,7 +878,7 @@ function Parceiros({ leads, onMarcar }) {
                 <button
                   type="button"
                   onClick={() => onMarcar(l, 'contacted')}
-                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl bg-secondary px-3 text-xs font-bold text-white"
+                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white"
                 >
                   Marcar contatado
                 </button>

@@ -130,28 +130,38 @@ export default {
         escolaChip: '#EDE9FE', // o chip — 6,0:1 com o escola
         escolaBorder: '#DDD6FE', // e o ícone de escola sobre `night`: 13,6:1
 
-        // A ESTRELA DE AVALIAÇÃO — âmbar, e NÃO é a cor de aviso.
+        // ── AS OUTRAS DUAS FAMÍLIAS DE ÂMBAR ────────────────────────────
         //
-        // A regra do sistema é que âmbar significa "atender": fatura vencida,
-        // falta marcada. A estrela de nota não é nada disso, mas é dourada em
-        // todo lugar do mundo, e recolori-la de marrom pra obedecer à regra
-        // seria consertar o texto e quebrar o significado. Então ela tem nome
-        // próprio, e o `warning` continua querendo dizer uma coisa só.
+        // A regra do sistema é que âmbar significa ATENDER — fatura vencida,
+        // falta marcada, criança sem horário. Só que existem no produto duas
+        // coisas âmbar que não pedem nada a ninguém, e fingir o contrário
+        // seria consertar a regra e quebrar a tela.
         //
-        // Ela fica em 1,7:1 sobre o branco, abaixo do piso de 3:1 pra objeto
-        // gráfico. É dívida herdada, registrada aqui de propósito: quem for
-        // consertar, o conserto é CONTORNO na estrela vazia, não ouro mais
+        // A PERUA. Casa é verde, perua é âmbar, escola é violeta: é a LEGENDA
+        // do produto, e ela aparece no pin do mapa, na arte da home e no chip
+        // de estado. O hex é o mesmo do `warning`, e isso NÃO repete o erro
+        // que este trabalho desfez — o problema do `secondary` nunca foi
+        // compartilhar tinta, foi não ter significado. "A segunda cor" serve
+        // pra qualquer coisa; "a perua" não serve pra nada além da perua.
+        perua: '#F5A623',
+        //
+        // O OURO: o âmbar que não quer dizer nada. A estrela de avaliação, a
+        // moeda da arte, os pontinhos de enfeite. Sem este nome, todo enfeite
+        // dourado ia bater na porta do `warning` e queimar o sinal de novo —
+        // foi exatamente assim que o `secondary` virou decoração.
+        //
+        // Ele fica em 1,7:1 sobre o branco, abaixo do piso de 3:1 pra objeto
+        // gráfico. É dívida herdada, registrada de propósito: quem for
+        // consertar, o conserto é CONTORNO na estrela vazia, e não ouro mais
         // escuro — escurecer o ouro resolve a medição e estraga a leitura.
-        estrela: '#FBBF24',
+        ouro: '#FBBF24',
 
-        // ── A SAIR NA FASE 4 ────────────────────────────────────────────
-        // Quatro nomes pra duas tintas que já existem acima. Ficam só até os
-        // 39 usos serem decididos um a um (aviso ou enfeite?); removê-los
-        // antes é build vermelha e pressa pra escolher errado.
-        secondary: '#F5A623', // = warning
-        secondaryDark: '#D48816',
-        accentDark: '#3F9B12',
-        success: '#52C41A', // = accent
+        // FORAM REMOVIDOS DAQUI: `secondary`, `secondaryDark`, `success` e
+        // `accentDark`. Eram quatro nomes pra duas tintas que já existiam, e
+        // o custo não era o arquivo — era a tela. "Secundária" não diz nada,
+        // então servia pra tudo: foi assim que a cor de AVISO virou enfeite da
+        // porta de entrada, e o botão verde de confirmar ficou com rótulo
+        // branco em 2,3:1. Nome vago não é economia, é permissão.
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

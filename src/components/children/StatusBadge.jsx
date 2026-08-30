@@ -7,7 +7,7 @@ const VISUAL = {
   home: { icon: Home, color: 'bg-neutro text-textMuted' },
   onboard: { icon: Bus, color: 'bg-primary/10 text-primaryDark' },
   atSchool: { icon: School, color: 'bg-escolaChip text-escola' },
-  delivered: { icon: CheckCircle2, color: 'bg-success/10 text-accentText' },
+  delivered: { icon: CheckCircle2, color: 'bg-accent/10 text-accentText' },
 };
 
 export default function StatusBadge({ status, size = 'md' }) {

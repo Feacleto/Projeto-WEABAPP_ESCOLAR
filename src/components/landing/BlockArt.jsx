@@ -42,7 +42,7 @@ export function ArtRoad() {
       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-escola/20 border border-escolaBorder/30 flex items-center justify-center">
         <School size={13} className="text-escolaBorder" />
       </span>
-      <div className="demo-van absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-secondary flex items-center justify-center shadow-lg shadow-black/40">
+      <div className="demo-van absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-perua flex items-center justify-center shadow-lg shadow-black/40">
         <Bus size={16} className="text-white" />
       </div>
     </div>
@@ -62,7 +62,7 @@ export function ArtRadar() {
             style={{ animationDelay: `${d}ms` }}
           />
         ))}
-        <span className="relative w-11 h-11 rounded-2xl bg-secondary flex items-center justify-center shadow-lg shadow-black/40">
+        <span className="relative w-11 h-11 rounded-2xl bg-perua flex items-center justify-center shadow-lg shadow-black/40">
           <Bus size={20} className="text-white" />
         </span>
       </div>
@@ -89,7 +89,7 @@ export function ArtCoins() {
         {[0, 600, 1200].map((d) => (
           <span
             key={d}
-            className="art-coin w-6 h-6 rounded-full bg-secondary text-[9px] font-extrabold text-white flex items-center justify-center shadow-md"
+            className="art-coin w-6 h-6 rounded-full bg-ouro text-[9px] font-extrabold text-white flex items-center justify-center shadow-md"
             style={{ animationDelay: `${d}ms` }}
           >
             R$
@@ -206,7 +206,7 @@ export function ArtBadge() {
       <span className="absolute w-16 h-16 rounded-full bg-onNightAccentFill/20 demo-ping" />
       <span className="art-orbit absolute w-[74px] h-[74px]">
         <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-onNightAccent" />
-        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-secondary" />
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-ouro" />
       </span>
       <span className="relative w-12 h-12 rounded-2xl bg-white/[0.09] border border-white/20 flex items-center justify-center">
         <Handshake size={22} className="text-onNightAccent" />

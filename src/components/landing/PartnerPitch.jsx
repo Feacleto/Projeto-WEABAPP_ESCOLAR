@@ -340,7 +340,7 @@ function ArtParceria() {
       <span className="absolute h-20 w-20 rounded-full bg-onNightAccentFill/20 demo-ping" />
       <span className="art-orbit absolute h-[86px] w-[86px]">
         <span className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-onNightAccent" />
-        <span className="absolute -bottom-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-secondary" />
+        <span className="absolute -bottom-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-ouro" />
       </span>
       <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/[0.09]">
         <Handshake size={26} className="text-onNightAccent" />
@@ -383,7 +383,7 @@ function ArtInfra() {
           {[100, 400, 700].map((d) => (
             <span
               key={d}
-              className="art-typing h-1 w-1 rounded-full bg-secondary"
+              className="art-typing h-1 w-1 rounded-full bg-ouro"
               style={{ animationDelay: `${d}ms` }}
             />
           ))}

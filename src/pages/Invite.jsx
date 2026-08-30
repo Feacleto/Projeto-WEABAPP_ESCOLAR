@@ -294,7 +294,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
           }
           className="tap w-full text-left bg-card border border-border rounded-2xl p-4 shadow-sm flex items-center gap-3"
         >
-          <div className="w-11 h-11 rounded-xl bg-secondary/15 text-secondaryDark flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-warningChip text-warningText flex items-center justify-center shrink-0">
             <MessageSquare size={20} />
           </div>
           <div className="flex-1 min-w-0">

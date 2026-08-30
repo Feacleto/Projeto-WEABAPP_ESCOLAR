@@ -151,7 +151,7 @@ export default function Aguardando() {
             <>
               <h1 className="mt-3 text-[2.1rem] font-extrabold leading-none tracking-tight">
                 Você é o {posicao}
-                <span className="text-secondary">º</span> da fila
+                <span className="text-ouro">º</span> da fila
               </h1>
               <p className="mt-3 text-[15px] leading-relaxed text-white/70">
                 {primeiroNome ? `${primeiroNome}, sua` : 'Sua'} conta já existe.
@@ -174,7 +174,7 @@ export default function Aguardando() {
           )}
 
           <div className="mt-6 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.05] p-4">
-            <ShieldCheck size={18} className="mt-0.5 shrink-0 text-secondary" />
+            <ShieldCheck size={18} className="mt-0.5 shrink-0 text-ouro" />
             <p className="text-[13.5px] leading-relaxed text-white/65">
               A aprovação não é automática de propósito: cada associado é
               conversado, porque a plataforma responde pelas famílias que ele

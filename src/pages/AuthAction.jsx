@@ -134,8 +134,8 @@ export default function AuthAction() {
     return (
       <div className="min-h-screen flex flex-col px-6 py-10">
         <div className="flex-1 flex flex-col justify-center text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-success/10 mb-4 mx-auto">
-            <CheckCircle2 size={32} className="text-success" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-4 mx-auto">
+            <CheckCircle2 size={32} className="text-accentText" />
           </div>
           <h1 className="text-2xl font-bold text-text">Senha redefinida!</h1>
           <p className="text-sm text-textMuted mt-2 mb-6">
@@ -154,8 +154,8 @@ export default function AuthAction() {
     return (
       <div className="min-h-screen flex flex-col px-6 py-10">
         <div className="flex-1 flex flex-col justify-center text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-success/10 mb-4 mx-auto">
-            <CheckCircle2 size={32} className="text-success" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-4 mx-auto">
+            <CheckCircle2 size={32} className="text-accentText" />
           </div>
           <h1 className="text-2xl font-bold text-text">Email confirmado!</h1>
           <p className="text-sm text-textMuted mt-2 mb-6">

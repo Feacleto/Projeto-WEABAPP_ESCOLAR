@@ -829,7 +829,7 @@ function PhoneRow({ phone, name, childName }) {
         href={waLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-xs font-semibold text-success tap px-2 py-1 bg-success/10 rounded-lg"
+        className="text-xs font-semibold text-accentText tap px-2 py-1 bg-accent/10 rounded-lg"
       >
         WhatsApp
       </a>

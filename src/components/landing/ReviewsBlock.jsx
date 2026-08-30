@@ -117,7 +117,7 @@ export function Stars({ value, size = 16 }) {
       {[1, 2, 3, 4, 5].map((n) => {
         if (n <= cheias) {
           return (
-            <Star key={n} size={size} className="fill-estrela text-estrela" />
+            <Star key={n} size={size} className="fill-ouro text-ouro" />
           );
         }
         if (n === cheias + 1 && resto > 0) {
@@ -130,7 +130,7 @@ export function Stars({ value, size = 16 }) {
               >
                 <Star
                   size={size}
-                  className="fill-estrela text-estrela"
+                  className="fill-ouro text-ouro"
                 />
               </span>
             </span>

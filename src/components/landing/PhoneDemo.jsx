@@ -192,7 +192,7 @@ function ScreenInicio() {
         <MockRow
           nome="Ana"
           chip="na van"
-          chipClass="bg-secondary text-white"
+          chipClass="bg-perua text-warningText"
         />
         <MockRow
           nome="Bia"
@@ -259,8 +259,8 @@ function ScreenMapa() {
           <School size={7} className="text-white" />
         </span>
         <div className="demo-van-map absolute top-0 left-0 w-5 h-5">
-          <span className="absolute inset-0 rounded-full bg-secondary/40 demo-ping" />
-          <span className="relative w-5 h-5 rounded-full bg-secondary border-2 border-white flex items-center justify-center shadow">
+          <span className="absolute inset-0 rounded-full bg-perua/40 demo-ping" />
+          <span className="relative w-5 h-5 rounded-full bg-perua border-2 border-white flex items-center justify-center shadow">
             <Bus size={9} className="text-white" />
           </span>
         </div>
@@ -349,7 +349,7 @@ function ScreenFinanceiro() {
       <div className="mx-3 mt-1.5 grid grid-cols-3 gap-1">
         {[
           ['R$ 2.880', 'recebido', 'text-accentText'],
-          ['R$ 1.240', 'a receber', 'text-secondary'],
+          ['R$ 1.240', 'a receber', 'text-warningText'],
           ['R$ 320', 'atrasado', 'text-danger'],
         ].map(([valor, label, cor]) => (
           <div key={label} className="rounded-lg bg-card p-1.5 shadow-sm">

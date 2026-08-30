@@ -30,7 +30,7 @@ import { foiPagoAtrasado } from '../../services/paymentsService';
 // pro papel de quem está lendo. O estado 'claimed' era o pior caso: o tio
 // lia "aguardando confirmação" sem saber que a bola estava com ele.
 const STATUS_CONFIG = {
-  paid: { color: 'text-accentText bg-success/10', Icon: CheckCircle2 },
+  paid: { color: 'text-accentText bg-accent/10', Icon: CheckCircle2 },
   // 'paid' que entrou depois do vencimento. Não é estado novo — é o mesmo
   // 'paid' com outra cara. Ver foiPagoAtrasado em services/paymentsService.
   paidLate: { color: '', Icon: CheckCircle2 },

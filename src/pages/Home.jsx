@@ -1018,7 +1018,7 @@ function Metric({ value, label, icon: Icon, countUp }) {
   return (
     <div className="min-w-0">
       <p className="text-2xl font-extrabold tracking-tight tabular-nums inline-flex items-center gap-1">
-        {Icon && <Icon size={16} className="text-estrela fill-estrela" />}
+        {Icon && <Icon size={16} className="text-ouro fill-ouro" />}
         {countUp ? shown : value}
       </p>
       <p className="text-[11px] text-white/50 leading-tight">{label}</p>

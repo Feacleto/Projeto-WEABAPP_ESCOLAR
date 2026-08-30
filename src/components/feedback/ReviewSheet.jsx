@@ -351,7 +351,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                   size={38}
                   className={
                     n <= rating
-                      ? 'fill-estrela text-estrela'
+                      ? 'fill-ouro text-ouro'
                       : 'fill-border text-borderStrong'
                   }
                 />
@@ -434,7 +434,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                 <button
                   type="button"
                   onClick={irProFoto}
-                  className="tap mt-3 inline-flex h-10 items-center gap-1.5 rounded-xl bg-secondary px-3 text-sm font-bold text-white"
+                  className="tap mt-3 inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-bold text-white"
                 >
                   Enviar foto agora
                   <ArrowRight size={15} />
