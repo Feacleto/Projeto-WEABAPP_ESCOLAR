@@ -68,6 +68,15 @@ export default {
         // ── MARCA E AÇÃO ────────────────────────────────────────────────
         primary: '#1F5F3F', // 6,7:1 sobre bg; branco sobre ele dá 7,6:1
         primaryDark: '#143F2A',
+        // O degrau claro do verde da marca — o painel, o chip e a borda de
+        // tudo que está EM ORDEM. Os valores são os do emerald do Tailwind,
+        // que é o que já estava na tela: a diferença de matiz entre ele e o
+        // verde-floresta da marca é imperceptível nessas saturações, e trocar
+        // por um tom derivado do `primary` mudaria a aparência de ~60 lugares
+        // sem ninguém ter pedido. Fica registrado que são famílias diferentes.
+        primarySoft: '#ECFDF5',
+        primaryChip: '#D1FAE5',
+        primaryBorder: '#A7F3D0',
         // O verde-limão das ondas da marca. Em interface significa CONCLUÍDO.
         // Só preenchimento e ícone — como TEXTO dá 2,3:1 e é ilegível.
         accent: '#52C41A',

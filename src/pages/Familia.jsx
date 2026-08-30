@@ -72,29 +72,39 @@ import { FRENTE_FAMILIA, lembrarFrente } from '../utils/frentes';
  *      não vence nem se gasta, então pedir de novo resolve.
  *   4. O que tem dentro, como tranquilidade e não como lista de recursos.
  *
- * O MESMO SISTEMA VISUAL DA HOME — e agora é verdade.
- * Fundo escuro, cartão de vidro, mesma marca — porque é o mesmo produto e o
- * responsável precisa reconhecer onde está. O que muda é o que se diz, não
- * como se parece.
+ * ESTA PORTA É CLARA. A DO MOTORISTA É ESCURA. NÃO É DESCUIDO.
  *
- * Durante um tempo esta frase estava aqui e o código fazia outra coisa: fundo
- * `primaryDark` chapado contra o `#0B1210` da home, e ícones em âmbar contra
- * o esmeralda de lá. Duas portas do mesmo produto com temperatura diferente
- * por acidente, e um comentário prometendo o contrário.
+ * Ela já foi escura, com o mesmo quase-preto e o mesmo cartão de vidro da
+ * home do motorista, e o comentário aqui defendia isso como coerência: mesmo
+ * produto, mesmo material. O argumento tinha um furo que só aparece quando se
+ * olha o caminho dela em vez do código: ELA NUNCA VÊ A HOME DO MOTORISTA. A
+ * comparação que a coerência servia não existe pra ninguém — o sistema ficava
+ * coerente pra quem lê o repositório.
  *
- * O ÂMBAR SAIU POR UM MOTIVO ALÉM DA COERÊNCIA: `secondary` e `warning` são o
- * MESMO hex (#F5A623). Ele é a cor de aviso no app inteiro — fatura vencida,
- * criança sem horário, falta marcada. Gastá-lo como enfeite na porta de
- * entrada é queimar um sinal que tem outro trabalho.
+ * O que ela vê é isto, e só isto: um link no WhatsApp, esta tela, e o app.
+ * Então a única coerência que a alcança é entre a PORTA e o APP — e o app
+ * dela é claro. A porta escura prometia visualmente um produto que não é o
+ * que abre em seguida.
  *
- * A ÚNICA DIFERENÇA MANTIDA são os brilhos animados da home, que não vêm pra
- * cá. Lá eles seguram atenção de quem está avaliando um negócio; aqui o
- * trabalho é o oposto — quem chega está perdida, e movimento no fundo não
- * acalma ninguém.
+ * E tem o motivo mais duro, que o index.html já reconhece pro preview do
+ * link: mensagem de terceiro, link pelado, página escura e um botão pedindo
+ * login é a forma exata de um golpe. Ela não precisa saber nomear isso pra
+ * hesitar.
+ *
+ * As duas portas continuam com temperaturas diferentes, agora de propósito e
+ * pelo motivo certo: a temperatura serve quem lê a porta, não o sistema. O
+ * motorista está COMPRANDO — escuro, negócio, decisão. Ela está ENTRANDO EM
+ * CASA.
+ *
+ * O ÂMBAR SAIU E NÃO VOLTA: `secondary` e `warning` eram o MESMO hex
+ * (#F5A623). Âmbar é aviso no app inteiro — fatura vencida, criança sem
+ * horário, falta marcada. Gastá-lo como enfeite na porta de entrada é queimar
+ * um sinal que tem outro trabalho.
  */
 
-/* Cartão de vidro — mesmo material da home, pra ser o mesmo produto. */
-const GLASS = 'bg-white/[0.055] border border-white/10 rounded-3xl';
+/* O cartão desta porta é o mesmo cartão do app dela: branco sobre o cinza da
+ * página. O vidro ficou só na home do motorista, junto com o escuro. */
+const CARTAO = 'bg-card border border-border rounded-3xl shadow-sm';
 
 /**
  * O que ele encontra dentro. Quatro, não seis: é o que ele realmente abre o
@@ -198,8 +208,8 @@ export default function Familia() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B1210] flex items-center justify-center">
-        <Spinner size={32} className="text-white" />
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <Spinner size={32} className="text-primary" />
       </div>
     );
   }
@@ -230,15 +240,15 @@ export default function Familia() {
   const responsaveis = comPiso(vitrine ? vitrine.responsaveis : null);
 
   return (
-    <div className="min-h-screen bg-[#0B1210] text-white">
+    <div className="min-h-screen bg-bg text-text">
       <div className="mx-auto w-full max-w-mobile px-5 pb-16 pt-7">
         <header className="flex items-center justify-between">
-          <Logo tone="onDark" height={26} />
+          <Logo tone="color" height={26} />
         </header>
 
         {/* ── 1. RECONHECIMENTO ────────────────────────────────────────── */}
         <section className="mt-11">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/45">
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-textMuted">
             área da família
           </p>
           <h1 className="mt-3 text-[2rem] font-extrabold leading-[1.08] tracking-tight text-balance">
@@ -256,7 +266,7 @@ export default function Familia() {
               </>
             )}
           </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-white/70">
+          <p className="mt-4 text-[15px] leading-relaxed text-textMuted">
             Entre para ver a hora de hoje e acompanhar a perua. É a mesma
             conta que você criou pelo link do motorista.
           </p>
@@ -273,10 +283,10 @@ export default function Familia() {
             *
             * Sem vitrine, não aparece nada — nem a linha, nem o traço. */}
           {responsaveis !== null && (
-            <p className="mt-5 flex items-center gap-2.5 border-t border-white/10 pt-4 text-[13px] leading-snug text-white/55">
-              <Users size={15} className="shrink-0 text-emerald-300" />
+            <p className="mt-5 flex items-center gap-2.5 border-t border-border pt-4 text-[13px] leading-snug text-textMuted">
+              <Users size={15} className="shrink-0 text-primary" />
               <span>
-                <strong className="font-bold tabular-nums text-white/85">
+                <strong className="font-bold tabular-nums text-text">
                   {responsaveis}
                 </strong>{' '}
                 responsáveis acompanham a perua do filho por aqui.
@@ -290,7 +300,7 @@ export default function Familia() {
           <button
             type="button"
             onClick={() => setLoginAberto(true)}
-            className="tap flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-bold text-primaryDark shadow-lg shadow-black/20"
+            className="tap flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-bold text-white shadow-lg shadow-primary/25"
           >
             Entrar na minha conta
             <ArrowRight size={18} />
@@ -298,12 +308,12 @@ export default function Familia() {
         </section>
 
         {/* ── 3. PERDI O LINK — o modo de falha real dele ───────────────── */}
-        <section className={`mt-4 ${GLASS} p-5`}>
+        <section className={`mt-4 ${CARTAO} p-5`}>
           <p className="flex items-center gap-2 text-sm font-bold">
-            <Link2 size={16} className="text-emerald-300" />
+            <Link2 size={16} className="text-primary" />
             Perdeu o link?
           </p>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-white/70">
+          <p className="mt-2 text-[13.5px] leading-relaxed text-textMuted">
             Pode pedir de novo sem preocupação: o link do convite não vence e
             não se gasta. É o mesmo link, sempre — e ele abre a sua conta
             direto, sem senha.
@@ -319,7 +329,7 @@ export default function Familia() {
             * E não faz falta: quem chega aqui recebeu o link pelo WhatsApp do
             * motorista, então já tem o contato. O que ele não tem é a certeza
             * de que pode pedir de novo — e é isso que o texto resolve. */}
-          <p className="mt-3 flex items-center gap-2 text-[13px] text-white/50">
+          <p className="mt-3 flex items-center gap-2 text-[13px] text-textMuted">
             <MessageCircle size={14} className="shrink-0" />
             Chame o motorista no WhatsApp e peça o link de novo.
           </p>
@@ -335,8 +345,8 @@ export default function Familia() {
             * único caminho, e é assim de propósito (foi por aí que a
             * auto-promoção se fechou). Então a saída não é um cadastro: é
             * dizer, sem rodeio, quem consegue criar a conta dela. */}
-          <p className="mt-4 border-t border-white/10 pt-3 text-[13px] leading-relaxed text-white/70">
-            <strong className="font-semibold text-white/90">
+          <p className="mt-4 border-t border-border pt-3 text-[13px] leading-relaxed text-textMuted">
+            <strong className="font-semibold text-text">
               Ainda não tem conta?
             </strong>{' '}
             Só o seu motorista pode criar a sua — peça o link pra ele. Não
@@ -346,7 +356,7 @@ export default function Familia() {
 
         {/* ── 4. O QUE TEM DENTRO — tranquilidade, não recurso ──────────── */}
         <section className="mt-9">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-textMuted">
             o que você encontra
           </h2>
           <ul className="mt-4 space-y-3">
@@ -355,20 +365,20 @@ export default function Familia() {
                 key={titulo}
                 className={`flex gap-3.5 rounded-3xl border p-4 ${
                   destaque
-                    ? 'border-emerald-300/30 bg-emerald-500/10'
-                    : 'border-white/10 bg-white/[0.055]'
+                    ? 'border-primaryBorder bg-primarySoft'
+                    : 'border-border bg-surface'
                 }`}
               >
                 <span
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    destaque ? 'bg-emerald-400/15' : 'bg-white/[0.08]'
+                    destaque ? 'bg-primaryChip' : 'bg-neutro'
                   }`}
                 >
-                  <Icon size={18} className="text-emerald-300" />
+                  <Icon size={18} className="text-primary" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-bold leading-snug">{titulo}</p>
-                  <p className="mt-1 text-[13px] leading-relaxed text-white/60">
+                  <p className="mt-1 text-[13px] leading-relaxed text-textMuted">
                     {texto}
                   </p>
                 </div>
@@ -387,28 +397,28 @@ export default function Familia() {
           * Continua sem "seja parceiro" e sem link pra `/`: o responsável não
           * é público de aquisição, e essa regra vale no rodapé também. O que
           * entra é o que a lei e a confiança pedem, nada de venda. */}
-        <footer className="mt-10 space-y-5 border-t border-white/10 pt-7">
+        <footer className="mt-10 space-y-5 border-t border-border pt-7">
           <div className="flex items-start gap-2.5">
-            <ShieldCheck size={16} className="mt-0.5 shrink-0 text-emerald-300" />
-            <p className="text-xs leading-relaxed text-white/60">
+            <ShieldCheck size={16} className="mt-0.5 shrink-0 text-primary" />
+            <p className="text-xs leading-relaxed text-textMuted">
               Todos os dados são tratados conforme a LGPD. Endereço e
               localização só aparecem pra quem tem vínculo.
             </p>
           </div>
 
-          <div className="space-y-1.5 text-[11px] text-white/50">
+          <div className="space-y-1.5 text-[11px] text-textMuted">
             <p className="flex items-center gap-2">
-              <MapPin size={13} className="shrink-0 text-emerald-300" />
+              <MapPin size={13} className="shrink-0 text-primary" />
               {DEV_CITY}
             </p>
             <p className="flex items-center gap-2">
-              <Check size={13} className="shrink-0 text-emerald-300" />
+              <Check size={13} className="shrink-0 text-primary" />
               <span className="font-mono">CNPJ {DEV_CNPJ}</span>
             </p>
           </div>
 
           <div className="space-y-2 text-center">
-            <div className="flex items-center justify-center gap-3 text-[11px] text-white/50">
+            <div className="flex items-center justify-center gap-3 text-[11px] text-textMuted">
               <Link to="/termos" className="hover:underline">
                 Termos de Uso
               </Link>
@@ -417,7 +427,7 @@ export default function Familia() {
                 Privacidade
               </Link>
             </div>
-            <p className="text-[12px] leading-relaxed text-white/35">
+            <p className="text-[12px] leading-relaxed text-textMuted">
               Alô Buzinou — o transporte escolar do seu filho, organizado.
             </p>
           </div>

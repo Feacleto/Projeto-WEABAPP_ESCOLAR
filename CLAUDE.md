@@ -317,6 +317,15 @@ família tem rodapé legal próprio — é onde está a pessoa cujos dados e os 
 filho vivem no sistema — e **nenhuma** palavra de aquisição: sem vaga, sem
 taxa, sem escassez.
 
+**A porta dele é ESCURA, a dela é CLARA** — e o motivo não é coerência de
+sistema, é o caminho de cada um. Ela nunca vê a home do motorista: o que ela
+vê é o link no WhatsApp, a porta e o app. Então a única coerência que a
+alcança é entre a porta e o APP dela, que é claro — porta escura prometia um
+produto que não é o que abre em seguida. E link pelado de terceiro numa
+página escura pedindo login tem a forma exata de um golpe, risco que o
+[index.html](index.html) já reconhece pro preview do link. Ele está
+comprando (escuro, negócio); ela está entrando em casa.
+
 **Preço não aparece na vitrine.** O que aparece é a FORMA do dinheiro: "a
 mensalidade das suas famílias é sua, a plataforma não entra no caminho dela".
 É verdade verificável (`payments` é PIX direto pai→motorista; a taxa vive em
