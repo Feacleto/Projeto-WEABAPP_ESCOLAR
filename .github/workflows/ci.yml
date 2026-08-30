@@ -1,0 +1,66 @@
+# A rede que faltava.
+#
+# POR QUE ISTO EXISTE
+# O projeto tem 3.722 linhas de teste em scripts/ e, até aqui, nada as
+# executava. A decisão de não usar Jest/Vitest é deliberada e está registrada
+# no CLAUDE.md — mas ela só funciona se ALGUÉM rodar os scripts, e "alguém"
+# era disciplina manual de várias sessões trabalhando na mesma árvore.
+#
+# O QUE ENTRA AQUI, E O QUE NÃO ENTRA
+# Só o que roda sem emulador, sem rede e sem segredo:
+#   lint     — 0 erros hoje (3 avisos pré-existentes em LiveMap/MapPicker)
+#   testar   — horários, faltas, aviso, contraste e travessia
+#   build    — o vite.config.js aborta se faltar variável do Firebase, então
+#              o build também é o teste de que a config continua completa
+#
+# FICAM DE FORA, de propósito:
+#   testar:regras e testar:storage — precisam do emulador do Firebase. São os
+#     testes que medem SEGURANÇA, e é justamente por ficarem fora que uma
+#     mudança de rules não é pega por nada que alguém rode por hábito. Entram
+#     quando o emulador entrar no CI (item A2 do plano de arquitetura).
+#   testar:avatar — depende de rede (bate na API real do DiceBear).
+#
+# `--legacy-peer-deps` não é opcional: vite-plugin-pwa@1.x lista Vite <= 7 como
+# peer e o projeto usa Vite 8.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar
+        run: npm ci --legacy-peer-deps
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes (node puro, sem emulador)
+        run: npm run testar
+
+      # O build precisa das variáveis do Firebase: vite.config.js aborta com o
+      # nome do que falta em vez de gerar um bundle que quebra em branco na
+      # primeira tela. São chaves PÚBLICAS por natureza (a segurança real está
+      # nas rules), mas ficam em secrets para o CI não fixar ambiente no código.
+      - name: Build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: npm run build

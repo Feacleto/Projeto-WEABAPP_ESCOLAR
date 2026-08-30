@@ -99,7 +99,35 @@ export function montarContrato({ motorista, negociacao, base, config }) {
   const baseMensal = criancas * mensalidadeMedia;
 
   const cheia = modo === 'gratuito' ? 0 : modo === 'fixo' ? valor : baseMensal * (valor / 100);
-  const mesesCobrados = Math.max(0, (per === 'mensal' ? 1 : meses) - carencia);
+
+  // Quantos meses o PERÍODO DE COBRANÇA cobre. Não confundir com a vigência:
+  // o mensal vige 12 meses e cobra 1 de cada vez; semestral e anual cobram o
+  // bloco inteiro de uma vez.
+  const mesesDoPeriodo = per === 'mensal' ? 1 : meses;
+
+  // A CARÊNCIA NÃO REDUZ A MENSALIDADE — ELA ADIA O INÍCIO DA COBRANÇA.
+  //
+  // Descontá-la do período só faz sentido onde o período é um BLOCO pago de
+  // uma vez: dois meses de carência num semestral significam pagar quatro.
+  //
+  // No mensal o período é UM mês, e `1 - carencia` dava ZERO para qualquer
+  // carência. O contrato saía com `valorPorPeriodo: 0` e
+  // `valorMensalReconhecido: 0` — R$ 0,00 por mês, pelos doze meses de
+  // vigência, não só durante a carência — e era hasheado e assinado assim.
+  // A roleta de entrada concede de 1 a 4 meses (functions/lib/entryBonus.js),
+  // então o caminho comum caía exatamente aqui.
+  //
+  // É a SEGUNDA vez que este contrato sai zerado por um campo mal lido; a
+  // primeira está registrada em taxaService.js:269-280 (`mensalidadeMedia`
+  // que ninguém produzia). As duas vezes passaram porque esta função é pura
+  // e mora atrás de um import de Firestore, que a torna intestável.
+  //
+  // A carência continua dita em dois lugares que estão corretos:
+  // `carenciaMeses` logo abaixo, e `isencaoAte` na fatura — que é quem de
+  // fato zera a cobrança dos primeiros meses (taxaService.isentoEm).
+  const mesesCobrados =
+    per === 'mensal' ? 1 : Math.max(0, mesesDoPeriodo - carencia);
+
   const totalPeriodo = cheia * mesesCobrados * (1 - desconto / 100);
 
   return {
@@ -148,7 +176,7 @@ export function montarContrato({ motorista, negociacao, base, config }) {
       baseCriancas: criancas,
       baseMensalidade: mensalidadeMedia,
       valorPorPeriodo: Number(totalPeriodo.toFixed(2)),
-      valorMensalReconhecido: Number((totalPeriodo / (per === 'mensal' ? 1 : meses)).toFixed(2)),
+      valorMensalReconhecido: Number((totalPeriodo / mesesDoPeriodo).toFixed(2)),
     },
   };
 }

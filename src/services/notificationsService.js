@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './../firebase/config';
 import { computeDisplayStatus } from './paymentsService';
+import { primeiroNome } from '../utils/formatters';
 
 /**
  * O motorista DESTE responsável — não o motorista da plataforma.
@@ -230,7 +231,12 @@ export function deriveParentReminders(payments, now = Date.now()) {
     const amount = formatBRL(p.amount);
     // Prefixo com o nome da criança quando o pagamento tem essa informação
     // denormalizada — necessário pra quem acompanha dois filhos.
-    const who = p.childName ? `${String(p.childName).split(/s+/)[0]}: ` : '';
+    // `primeiroNome` do utils, e não um split local: o split que estava aqui
+    // era `/s+/` — sem a barra invertida —, então ele quebrava na LETRA "s" e
+    // não no espaço. "Vanessa Silva" virava "Vane" no push de cobrança.
+    // É exatamente o que o utils foi extraído para acabar ("estava reinventado
+    // em 40 lugares", formatters.js:41).
+    const who = p.childName ? `${primeiroNome(p.childName)}: ` : '';
     const diffDays = Math.floor((due - now) / DAY_MS);
     const overdueDays = Math.floor((now - due) / DAY_MS);
 
