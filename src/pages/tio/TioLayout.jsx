@@ -4,8 +4,10 @@ import { Home, DollarSign } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import InstallPrompt from '../../components/common/InstallPrompt';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
+import AvisoDaPlataforma from '../../components/tio/AvisoDaPlataforma';
 import { useAuth } from '../../hooks/useAuth';
 import { useAutoBilling } from '../../hooks/useAutoBilling';
+import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
 import { useActiveCallsForAdmin } from '../../hooks/usePendingCall';
 import { useChildren } from '../../hooks/useChildren';
 import OutgoingCallPanel from '../../components/call/OutgoingCallPanel';
@@ -110,8 +112,26 @@ export default function TioLayout() {
   // Usado pelo "Como usar o app" do painel
   const openTutorial = () => setTour('review');
 
+  // A COBRANÇA DA PLATAFORMA — e a única tela onde ela não aparece.
+  //
+  // O aviso mora no layout porque atraso não é assunto de uma tela: ele
+  // precisa alcançar o motorista onde quer que ele esteja. Suspenso, o cartão
+  // vira sobreposição fixa por cima de tudo.
+  //
+  // POR CIMA DE TUDO MENOS DE `/tio/taxa`, que é justamente pra onde o botão
+  // dele manda. Sem esta exceção o suspenso tocaria "Pagar com PIX", chegaria
+  // na tela certa e encontraria o mesmo cartão cobrindo o QR Code — uma
+  // cobrança que impede o pagamento é a única falha que este aviso não pode
+  // ter. `startsWith` e não igualdade: qualquer coisa que venha a pendurar
+  // sob esse caminho continua alcançável.
+  const naTelaDaTaxa = location.pathname.startsWith('/tio/taxa');
+  const { fatura } = useFaturaPlataforma(user?.uid);
+
   return (
     <div className="min-h-screen pb-28">
+      {!naTelaDaTaxa && (
+        <AvisoDaPlataforma fatura={fatura} criancas={children?.length || 0} />
+      )}
       <Outlet context={{ openTutorial }} />
       <BottomNav items={NAV_ITEMS} />
       <InstallPrompt />
