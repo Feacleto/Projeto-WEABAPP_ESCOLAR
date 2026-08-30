@@ -48,7 +48,7 @@ export default function TioAgendaFAB() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Avisar os pais"
-        className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-focus flex items-center gap-2 tap font-bold print:hidden"
+        className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-escola to-escola text-white shadow-focus flex items-center gap-2 tap font-bold print:hidden"
       >
         <Notebook size={22} />
         <span className="text-sm">Avisar pais</span>
@@ -359,7 +359,7 @@ function TargetStep({
           <button
             type="button"
             onClick={() => onAtalho('atraso')}
-            className="tap rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white px-3 py-3 flex flex-col items-center gap-1 shadow-sm"
+            className="tap rounded-2xl bg-gradient-to-br from-warning to-warning text-white px-3 py-3 flex flex-col items-center gap-1 shadow-sm"
           >
             <span className="text-2xl" aria-hidden>
               ⏰
@@ -369,7 +369,7 @@ function TargetStep({
           <button
             type="button"
             onClick={() => onAtalho('quebrou')}
-            className="tap rounded-2xl bg-gradient-to-br from-rose-600 to-red-700 text-white px-3 py-3 flex flex-col items-center gap-1 shadow-sm"
+            className="tap rounded-2xl bg-gradient-to-br from-danger to-dangerText text-white px-3 py-3 flex flex-col items-center gap-1 shadow-sm"
           >
             <span className="text-2xl" aria-hidden>
               🚨
@@ -402,7 +402,7 @@ function TargetStep({
                 key={s.name}
                 type="button"
                 onClick={() => onPickSchool(s)}
-                className="tap w-full text-left rounded-2xl bg-gradient-to-r from-emerald-500 to-green-700 text-white px-4 py-3 flex items-center gap-3 shadow-sm"
+                className="tap w-full text-left rounded-2xl bg-gradient-to-r from-primary to-primaryDark text-white px-4 py-3 flex items-center gap-3 shadow-sm"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                   <School size={20} />

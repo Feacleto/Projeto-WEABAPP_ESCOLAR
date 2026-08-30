@@ -222,7 +222,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Quem está chamando */}
-      <header className="bg-gradient-to-br from-emerald-600 via-primary to-primaryDark text-white px-6 pt-9 pb-7">
+      <header className="bg-gradient-to-br from-primary via-primary to-primaryDark text-white px-6 pt-9 pb-7">
         <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-white/20 border border-white/25 rounded-full px-3 py-1">
           <Bus size={13} />
           {driverLabel}
@@ -396,7 +396,7 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
   return (
     <div className="min-h-screen flex flex-col px-6 py-8 justify-center gap-6">
       <div className="text-center space-y-3">
-        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-emerald-500 to-primary text-white text-3xl font-bold flex items-center justify-center shadow-focus">
+        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-primary text-white text-3xl font-bold flex items-center justify-center shadow-focus">
           {(preview.childFirstName || '?')[0].toUpperCase()}
         </div>
         <h1 className="text-2xl font-bold text-text leading-tight">
@@ -434,7 +434,7 @@ function SignInToContinue({ childFirstName, driverLabel }) {
   return (
     <div className="min-h-screen flex flex-col px-6 py-8 justify-center gap-6">
       <div className="text-center space-y-3">
-        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-emerald-500 to-primary text-white text-3xl font-bold flex items-center justify-center shadow-focus">
+        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-primary text-white text-3xl font-bold flex items-center justify-center shadow-focus">
           {(childFirstName || '?')[0].toUpperCase()}
         </div>
         <div>

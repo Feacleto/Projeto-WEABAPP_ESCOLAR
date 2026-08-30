@@ -133,7 +133,7 @@ export default function IncomingCallModal({ call, adminName }) {
   const isAcknowledged = call.status === CALL_STATUS.ACKNOWLEDGED;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 text-white flex flex-col items-center justify-between p-8 max-w-mobile mx-auto">
+    <div className="fixed inset-0 z-[60] bg-gradient-to-br from-primary via-primary to-primaryDark text-white flex flex-col items-center justify-between p-8 max-w-mobile mx-auto">
       {/* Topo */}
       <div className="w-full text-center mt-8 space-y-2">
         <p className="text-xs font-bold uppercase tracking-widest text-white/80 inline-flex items-center gap-2">

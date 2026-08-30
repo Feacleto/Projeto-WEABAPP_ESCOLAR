@@ -292,7 +292,7 @@ function StatusPanel({
 
   if (hasArrived) {
     return (
-      <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 border border-primaryBorder p-4 flex items-start gap-3">
+      <div className="rounded-2xl bg-gradient-to-br from-primarySoft to-primaryChip border border-primaryBorder p-4 flex items-start gap-3">
         <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
           <Bus size={22} />
         </div>
@@ -310,7 +310,7 @@ function StatusPanel({
 
   if (isNearby) {
     return (
-      <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-warningBorder p-4 flex items-start gap-3">
+      <div className="rounded-2xl bg-gradient-to-br from-warningSoft to-warningChip border border-warningBorder p-4 flex items-start gap-3">
         <div className="w-11 h-11 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
           <Bus size={22} />
         </div>
@@ -328,15 +328,15 @@ function StatusPanel({
 
   // Longe — privacidade do Tio: não mostra distância nem posição
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 p-4 flex items-start gap-3">
-      <div className="w-11 h-11 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0">
+    <div className="rounded-2xl bg-gradient-to-br from-infoSoft to-infoChip border border-infoBorder p-4 flex items-start gap-3">
+      <div className="w-11 h-11 rounded-xl bg-info text-white flex items-center justify-center shrink-0">
         <Bus size={22} />
       </div>
       <div className="flex-1">
-        <p className="font-bold text-indigo-900 leading-tight">
+        <p className="font-bold text-infoText leading-tight">
           Tio Nino em rota
         </p>
-        <p className="text-xs text-indigo-900 mt-0.5">
+        <p className="text-xs text-infoText mt-0.5">
           Vamos te avisar quando estiver perto.
         </p>
       </div>

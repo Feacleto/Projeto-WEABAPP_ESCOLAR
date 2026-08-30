@@ -82,3 +82,20 @@ export const SERIE_GRAFICO = {
   red: 'bg-red-500',
   gray: 'bg-gray-400',
 };
+
+/**
+ * O par de cor do avatar por gênero.
+ *
+ * Azul e rosa não dizem nada sobre a criança — o trabalho deles é a mesma
+ * coisa que o dos gradientes acima: fazer duas fichas na mesma lista não
+ * parecerem a mesma ficha. `default` é o verde da marca, que é o que aparece
+ * quando o gênero não foi informado, e é a maioria.
+ *
+ * Vale lembrar que o avatar DESENHADO respeita gênero pelo cabelo (ver
+ * utils/avatarUrl.js) — isto aqui é só o fundo de quando não há desenho.
+ */
+export const COR_GENERO = {
+  male: 'bg-sky-100 text-sky-700',
+  female: 'bg-pink-100 text-pink-700',
+  default: 'bg-primary/10 text-primary',
+};

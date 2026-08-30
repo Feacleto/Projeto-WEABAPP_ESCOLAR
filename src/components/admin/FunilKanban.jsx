@@ -143,12 +143,12 @@ export default function FunilKanban({ onOrcar }) {
       </div>
 
       {m.pipeline > 0 && (
-        <div className="flex items-start gap-2.5 rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
-          <TrendingUp size={16} className="mt-0.5 shrink-0 text-indigo-700" />
-          <p className="text-[12.5px] leading-relaxed text-indigo-900">
+        <div className="flex items-start gap-2.5 rounded-2xl border border-infoBorder bg-infoSoft p-3">
+          <TrendingUp size={16} className="mt-0.5 shrink-0 text-infoText" />
+          <p className="text-[12.5px] leading-relaxed text-infoText">
             <strong>{formatBRL(m.pipeline)}/mês</strong> é o que entraria se
             tudo que está na mesa fechasse.{' '}
-            <span className="text-indigo-700">
+            <span className="text-infoText">
               Isso é expectativa — nunca some com receita real.
             </span>
           </p>

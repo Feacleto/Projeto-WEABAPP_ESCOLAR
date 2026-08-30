@@ -106,7 +106,7 @@ function MockHeader({ titulo, chip, chipTone = 'primary' }) {
 function MockRow({ nome, info, chip, chipClass, acao }) {
   return (
     <div className="rounded-lg bg-card px-2 py-1.5 flex items-center gap-1.5 shadow-sm">
-      <span className="w-4 h-4 rounded-md bg-gradient-to-br from-emerald-500 to-primary shrink-0" />
+      <span className="w-4 h-4 rounded-md bg-gradient-to-br from-primary to-primary shrink-0" />
       <span className="min-w-0 flex-1">
         <span className="block text-[7px] font-semibold text-text leading-tight">
           {nome}
@@ -143,7 +143,7 @@ function ScreenInicio() {
       <StatusBar />
 
       <div className="px-3 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-primary" />
+        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-primary" />
         <div className="flex-1 min-w-0">
           <p className="text-[6.5px] text-textMuted leading-none">
             segunda, 7 de abril
@@ -156,7 +156,7 @@ function ScreenInicio() {
       </div>
 
       {/* Hero: o único elemento dominante — tocar começa a rota. */}
-      <div className="mx-3 mt-2 rounded-2xl bg-gradient-to-br from-emerald-600 to-primary p-2.5 text-white shadow-sm">
+      <div className="mx-3 mt-2 rounded-2xl bg-gradient-to-br from-primary to-primary p-2.5 text-white shadow-sm">
         <p className="text-[6px] font-bold uppercase tracking-[0.14em] text-white/70">
           rota da manhã
         </p>
@@ -199,7 +199,7 @@ function ScreenInicio() {
           chip="entregue"
           chipClass="bg-primary text-white"
         />
-        <MockRow nome="Téo" chip="faltou" chipClass="bg-gray-400 text-white" />
+        <MockRow nome="Téo" chip="faltou" chipClass="bg-borderStrong text-text" />
       </div>
 
       <MockNav active="inicio" />
@@ -322,7 +322,7 @@ function ScreenCriancas() {
             chipClass={
               turno === 'manhã'
                 ? 'bg-warningChip text-warningText'
-                : 'bg-indigo-100 text-indigo-700'
+                : 'bg-infoChip text-infoText'
             }
           />
         ))}

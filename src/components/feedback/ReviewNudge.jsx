@@ -99,8 +99,8 @@ export default function ReviewNudge() {
       <div
         className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-lg ${
           isTio
-            ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-primary shadow-focus'
-            : 'bg-gradient-to-br from-blue-500 via-indigo-600 to-violet-700 shadow-focus'
+            ? 'bg-gradient-to-br from-primary via-primary to-primary shadow-focus'
+            : 'bg-gradient-to-br from-info via-info to-escola shadow-focus'
         }`}
       >
         <button

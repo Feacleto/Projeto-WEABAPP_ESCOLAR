@@ -48,7 +48,7 @@ export default function BonusNudge() {
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-ouro via-amber-500 to-warning p-4 text-white shadow-focus">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-ouro via-warning to-warning p-4 text-white shadow-focus">
         <div className="flex items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/20">
             <Gift size={22} />

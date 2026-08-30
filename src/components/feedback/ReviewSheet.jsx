@@ -168,7 +168,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
         }
       >
         <div className="flex flex-col items-center gap-4 text-center">
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-primary text-white shadow-focus">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-accent to-primary text-white shadow-focus">
             <Check size={32} strokeWidth={3} />
           </span>
           <p className="text-sm leading-relaxed text-textMuted">

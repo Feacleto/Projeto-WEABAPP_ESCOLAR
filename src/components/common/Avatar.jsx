@@ -5,6 +5,7 @@ import {
   adultAvatarUrl,
   adminAvatarUrl,
 } from '../../utils/avatarUrl';
+import { COR_GENERO } from '../../config/paletaCategorica';
 
 /**
  * Avatar circular.
@@ -33,11 +34,9 @@ const SIZES = {
   xl: { box: 'w-24 h-24', icon: 44 },
 };
 
-const GENDER_STYLES = {
-  male: 'bg-sky-100 text-sky-700',
-  female: 'bg-pink-100 text-pink-700',
-  default: 'bg-primary/10 text-primary',
-};
+// As cores por gênero são CATEGÓRICAS — só precisam diferir entre si — e
+// por isso moram no único lugar com licença pra cor crua.
+const GENDER_STYLES = COR_GENERO;
 
 export default function Avatar({
   photoURL,

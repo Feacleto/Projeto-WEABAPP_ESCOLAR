@@ -192,8 +192,8 @@ const STATUS_CONFIG = {
   claimed: {
     icon: Hourglass,
     label: 'Aguardando',
-    color: 'bg-blue-100 text-blue-700',
-    text: 'text-blue-700',
+    color: 'bg-infoChip text-infoText',
+    text: 'text-infoText',
   },
   pending: {
     icon: Clock,

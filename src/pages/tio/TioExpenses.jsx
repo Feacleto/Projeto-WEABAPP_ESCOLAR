@@ -82,7 +82,7 @@ export default function TioExpenses() {
         <MonthSwitcher monthKey={monthKey} onChange={setMonthKey} />
 
         {/* O número que ele veio ver */}
-        <div className="rounded-2xl bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-white p-5">
+        <div className="rounded-2xl bg-gradient-to-br from-text via-text to-night text-white p-5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-white/70">
             gasto em {formatMonthLabel(monthKey)}
           </p>
@@ -250,7 +250,7 @@ function ExpenseForm({ defaultMonthKey, onClose, onSaved }) {
         </button>
 
         <div className="pr-10">
-          <div className="w-11 h-11 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center mb-2">
+          <div className="w-11 h-11 rounded-2xl bg-neutro text-text flex items-center justify-center mb-2">
             <Wallet size={22} />
           </div>
           <h2 className="text-xl font-bold text-text leading-tight">

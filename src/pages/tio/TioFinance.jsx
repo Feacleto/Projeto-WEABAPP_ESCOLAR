@@ -421,7 +421,7 @@ export default function TioFinance() {
             className={`tap w-full text-left rounded-2xl p-4 flex items-center gap-3 border ${
               hasPix
                 ? 'bg-card border-border'
-                : 'bg-gradient-to-br from-amber-50 to-orange-100 border-warningBorder'
+                : 'bg-gradient-to-br from-warningSoft to-warningChip border-warningBorder'
             }`}
           >
             <div
@@ -569,7 +569,7 @@ export default function TioFinance() {
             aria-expanded={historicoAberto}
             className="tap flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-sm"
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutro text-text">
               <History size={20} />
             </div>
             <div className="min-w-0 flex-1">
@@ -610,7 +610,7 @@ export default function TioFinance() {
           onClick={() => navigate('/tio/finance/expenses')}
           className="tap mt-2 flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-sm"
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutro text-text">
             <TrendingDown size={20} />
           </div>
           <div className="min-w-0 flex-1">
@@ -736,7 +736,7 @@ export default function TioFinance() {
 function FinanceHero({ paid, monthKey }) {
   return (
     <div className="overflow-hidden rounded-3xl shadow-focus">
-      <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 p-5 text-white">
+      <div className="bg-gradient-to-br from-primary via-primary to-primaryDark p-5 text-white">
         <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
           Recebido
         </p>
@@ -997,7 +997,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
               icon={QrCode}
               title="PIX"
               subtitle="Recebido por PIX"
-              gradient="from-emerald-50 to-green-100"
+              gradient="from-primarySoft to-primaryChip"
               iconBg="bg-primary"
               onClick={() => onPick('pix')}
               disabled={loading}
@@ -1006,7 +1006,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
               icon={Banknote}
               title="Dinheiro"
               subtitle="Recebido em mãos"
-              gradient="from-amber-50 to-orange-100"
+              gradient="from-warningSoft to-warningChip"
               iconBg="bg-warning"
               onClick={() => onPick('cash')}
               disabled={loading}
@@ -1015,7 +1015,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
               icon={CreditCard}
               title="Cartão"
               subtitle="Na maquininha"
-              gradient="from-violet-50 to-purple-100"
+              gradient="from-escolaSoft to-escolaChip"
               iconBg="bg-escola"
               onClick={() => onPick('card')}
               disabled={loading}

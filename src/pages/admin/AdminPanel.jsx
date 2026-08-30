@@ -734,7 +734,7 @@ function Pesquisa({ s }) {
                   className={`rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${
                     c.papel === 'admin'
                       ? 'bg-primarySoft text-primary'
-                      : 'bg-indigo-50 text-indigo-700'
+                      : 'bg-infoSoft text-infoText'
                   }`}
                 >
                   {c.papel === 'admin' ? 'motorista' : 'responsável'}

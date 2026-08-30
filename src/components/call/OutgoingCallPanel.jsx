@@ -50,8 +50,8 @@ function CallPanelCard({ call }) {
   };
 
   const bg = isAcknowledged
-    ? 'from-emerald-500 to-green-700'
-    : 'from-amber-500 to-orange-600';
+    ? 'from-primary to-primaryDark'
+    : 'from-warning to-warning';
 
   return (
     <div

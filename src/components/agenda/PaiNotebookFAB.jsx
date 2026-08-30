@@ -202,7 +202,7 @@ function NotebookView({ open, onClose }) {
     <AppSheet open={open} onClose={onClose} title="Caderno de recados" icon={Notebook} size="full">
     <div className="flex flex-col h-full">
       {/* Topo — header do caderno */}
-      <div className="bg-gradient-to-b from-amber-50 to-amber-100 px-4 py-3 flex items-center gap-2 border-b border-warningBorder">
+      <div className="bg-gradient-to-b from-warningSoft to-warningChip px-4 py-3 flex items-center gap-2 border-b border-warningBorder">
         {view === 'pages' ? (
           <>
             <button

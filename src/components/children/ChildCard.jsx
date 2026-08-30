@@ -161,7 +161,7 @@ export default function ChildCard({
               </span>
             )}
             {geoPending && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-infoText bg-infoChip px-2 py-0.5 rounded-full">
                 <MapPinOff size={10} />
                 Sem local
               </span>

@@ -281,7 +281,7 @@ const SITUACAO = {
   paid: { rotulo: 'Pago', classe: 'font-semibold text-primary' },
   claimed: {
     rotulo: 'Aguardando confirmação',
-    classe: 'font-semibold text-blue-700',
+    classe: 'font-semibold text-infoText',
   },
   overdue: { rotulo: 'Atrasado', classe: 'font-semibold text-dangerText' },
   pending: { rotulo: 'Em aberto', classe: 'font-semibold text-warningText' },

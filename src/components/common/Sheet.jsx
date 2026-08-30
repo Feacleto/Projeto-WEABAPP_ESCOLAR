@@ -286,8 +286,8 @@ export function RoleCard({
 }) {
   const skin =
     tone === 'indigo'
-      ? 'from-blue-500 via-indigo-600 to-violet-700 shadow-focus'
-      : 'from-emerald-500 via-emerald-600 to-primary shadow-focus';
+      ? 'from-info via-info to-escola shadow-focus'
+      : 'from-primary via-primary to-primary shadow-focus';
   return (
     <button
       type="button"

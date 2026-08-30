@@ -116,6 +116,24 @@ export default {
         dangerChip: '#FEE2E2', // o chip — 5,3:1 com o dangerText
         dangerBorder: '#FECACA',
 
+        // ── INFORMAÇÃO — a quarta família de sinal, e a que quase escapou
+        //
+        // Azul e índigo estavam em ~30 lugares e eu levei quatro varreduras
+        // pra ver que eram UMA coisa: o fato neutro. A notificação recente, o
+        // valor previsto (que ainda não venceu, então não é âmbar), o cartão
+        // de aviso do mapa, a dica do funil. Nada disso pede ação e nada
+        // disso é conclusão — mandar pro `warning` seria alarmar por um fato,
+        // e mandar pro `accent` seria dar por resolvido o que não está.
+        //
+        // O índigo virou azul: eram duas escadas pro mesmo papel, e a mistura
+        // já tinha produzido um `bg-indigo-500` com texto branco em 4,5:1 —
+        // exatamente no piso, sem folga nenhuma pra tela sob sol.
+        info: '#1D4ED8', // branco sobre ele dá 6,7:1
+        infoSoft: '#EFF6FF', // o painel
+        infoChip: '#DBEAFE', // o chip — 5,5:1 com o infoText
+        infoBorder: '#BFDBFE',
+        infoText: '#1D4ED8', // 6,7:1 sobre branco, 5,9:1 sobre bg
+
         // ── SEMÂNTICA DO PRODUTO ────────────────────────────────────────
         //
         // A ESCOLA, em toda tela: a parada na lista do motorista, o pin no

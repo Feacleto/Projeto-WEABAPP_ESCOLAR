@@ -123,6 +123,15 @@ par('accentText sobre card', C.accentText, C.card);
 par('accentText sobre bg', C.accentText, C.bg);
 // O chip real onde o accentText vive: accent a 10% sobre branco.
 par('accentText sobre chip de accent/10', C.accentText, sobre(C.accent, 0.1, C.card));
+// A quarta família: o FATO neutro. Valor previsto, notificação recente,
+// cartão de aviso do mapa. Levou quatro varreduras pra virar uma coisa só —
+// azul e índigo eram duas escadas pro mesmo papel, e a mistura já tinha
+// produzido um `bg-indigo-500` com texto branco em 4,5:1 cravados, sem folga.
+par('infoText sobre card', C.infoText, C.card);
+par('infoText sobre infoSoft', C.infoText, C.infoSoft);
+par('infoText sobre infoChip', C.infoText, C.infoChip);
+par('infoText sobre bg', C.infoText, C.bg);
+par('branco sobre info (o quadradinho)', C.card, C.info);
 
 console.log('\n\x1b[1m5. A escola — legenda, e por isso precisa ser lida\x1b[0m');
 par('escola sobre card', C.escola, C.card);

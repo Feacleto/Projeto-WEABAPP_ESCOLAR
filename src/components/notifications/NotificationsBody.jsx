@@ -40,7 +40,7 @@ const PAGE_INCREMENT = 6;
 const TONE_STYLES = {
   today: 'bg-primaryChip text-primary border border-primaryBorder',
   yesterday: 'bg-warningChip text-warningText border border-warningBorder',
-  recent: 'bg-blue-50 text-blue-700 border border-blue-200',
+  recent: 'bg-infoSoft text-infoText border border-infoBorder',
   older: 'bg-neutro text-textMuted border border-border',
 };
 

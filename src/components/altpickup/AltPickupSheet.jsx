@@ -140,7 +140,7 @@ export default function AltPickupSheet({
             <>
               {/* Status atual */}
               {currentPickup && (
-                <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-warningBorder p-3 flex items-center gap-3">
+                <div className="rounded-2xl bg-gradient-to-br from-warningSoft to-warningChip border border-warningBorder p-3 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
                     <UserCheck size={18} />
                   </div>

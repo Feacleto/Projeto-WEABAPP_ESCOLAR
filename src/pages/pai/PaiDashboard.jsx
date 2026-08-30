@@ -739,7 +739,7 @@ function AbsenceStatus({ absence, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="tap w-full text-left rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-warningBorder p-4 flex items-center gap-3"
+      className="tap w-full text-left rounded-2xl bg-gradient-to-br from-warningSoft to-warningChip border border-warningBorder p-4 flex items-center gap-3"
     >
       <div className="w-10 h-10 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
         <CheckCircle2 size={20} />
@@ -765,7 +765,7 @@ function AltPickupCTA({ pickup, onClick }) {
     return (
       <button
         onClick={onClick}
-        className="tap w-full text-left rounded-2xl bg-gradient-to-br from-violet-50 to-purple-100 border border-escolaBorder p-4 flex items-center gap-3"
+        className="tap w-full text-left rounded-2xl bg-gradient-to-br from-escolaSoft to-escolaChip border border-escolaBorder p-4 flex items-center gap-3"
       >
         <div className="w-10 h-10 rounded-xl bg-escola text-white flex items-center justify-center shrink-0">
           <UserCheck size={20} />
@@ -887,10 +887,10 @@ function PaymentBanner({ payment, onClick }) {
   const urgent = dleft != null && dleft >= 0 && dleft <= 3;
 
   const bg = overdue
-    ? 'from-red-50 to-rose-100 border-dangerBorder'
+    ? 'from-dangerSoft to-dangerChip border-dangerBorder'
     : urgent
-    ? 'from-amber-50 to-orange-100 border-warningBorder'
-    : 'from-blue-50 to-indigo-100 border-blue-200';
+    ? 'from-warningSoft to-warningChip border-warningBorder'
+    : 'from-infoSoft to-infoChip border-infoBorder';
 
   const headline = overdue
     ? `Atrasado há ${Math.abs(dleft)} dia${Math.abs(dleft) > 1 ? 's' : ''}`

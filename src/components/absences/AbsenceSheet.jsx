@@ -200,7 +200,7 @@ export default function AbsenceSheet({
               icon={UserX}
               title="Não vai à escola"
               subtitle="Motorista não busca nem traz hoje"
-              gradient="from-red-50 to-rose-100"
+              gradient="from-dangerSoft to-dangerChip"
               iconBg="bg-danger"
               active={currentAbsence?.type === ABSENCE_TYPES.FULL}
               disabled={submitting}
@@ -210,7 +210,7 @@ export default function AbsenceSheet({
               icon={Sunrise}
               title="Eu vou levar de manhã"
               subtitle="Motorista só busca à tarde"
-              gradient="from-amber-50 to-orange-100"
+              gradient="from-warningSoft to-warningChip"
               iconBg="bg-warning"
               active={currentAbsence?.type === ABSENCE_TYPES.NO_PICKUP}
               disabled={submitting}
@@ -220,7 +220,7 @@ export default function AbsenceSheet({
               icon={Sunset}
               title="Eu vou buscar à tarde"
               subtitle="Motorista só leva de manhã"
-              gradient="from-violet-50 to-purple-100"
+              gradient="from-escolaSoft to-escolaChip"
               iconBg="bg-escola"
               active={currentAbsence?.type === ABSENCE_TYPES.NO_DROPOFF}
               disabled={submitting}
@@ -239,7 +239,7 @@ export default function AbsenceSheet({
                 icon={UserCheck}
                 title="Já peguei na escola"
                 subtitle="O motorista não precisa passar lá hoje"
-                gradient="from-emerald-50 to-green-100"
+                gradient="from-primarySoft to-primaryChip"
                 iconBg="bg-primary"
                 active={currentAbsence?.type === ABSENCE_TYPES.ALREADY_PICKED}
                 disabled={submitting}

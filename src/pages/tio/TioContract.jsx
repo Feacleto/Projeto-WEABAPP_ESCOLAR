@@ -79,7 +79,7 @@ export default function TioContract() {
       <div className="p-5 space-y-4">
         {/* Status do aceite */}
         {accepted ? (
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 border border-primaryBorder p-4 flex items-center gap-3">
+          <div className="rounded-2xl bg-gradient-to-br from-primarySoft to-primaryChip border border-primaryBorder p-4 flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
               <CheckCircle2 size={22} />
             </div>
@@ -93,7 +93,7 @@ export default function TioContract() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-warningBorder p-4 flex items-center gap-3">
+          <div className="rounded-2xl bg-gradient-to-br from-warningSoft to-warningChip border border-warningBorder p-4 flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
               <MessageCircle size={22} />
             </div>
