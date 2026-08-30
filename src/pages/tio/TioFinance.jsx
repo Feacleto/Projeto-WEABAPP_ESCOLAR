@@ -55,6 +55,7 @@ import {
   emCentavos,
 } from '../../utils/formatters';
 import { PIX_KEY_TYPES } from '../../services/userService';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
  * Financeiro do Tio — dashboard mês-a-mês.
@@ -945,6 +946,7 @@ function renderAction(payment, { onConfirm, onUndo }) {
 /* ─────────────── Sheet "Como recebeu?" ─────────────── */
 
 function MethodSheet({ payment, loading, onPick, onClose }) {
+  const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const claimedMethod = payment.paymentMethod; // o que o pai declarou (se houver)
 
   return (
@@ -954,10 +956,13 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
     >
       <div
         className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="pt-3 pb-1 flex justify-center">
+        <div
+          {...alcaProps}
+          className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
+        >
           <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
         </div>
 

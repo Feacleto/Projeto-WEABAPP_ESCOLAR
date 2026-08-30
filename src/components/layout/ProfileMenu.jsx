@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, GraduationCap, LifeBuoy, LogOut } from 'lucide-react';
+import {
+  ChevronRight,
+  GraduationCap,
+  LifeBuoy,
+  LogOut,
+  Receipt,
+} from 'lucide-react';
 import Avatar from '../common/Avatar';
 import ConfirmDialog from '../common/ConfirmDialog';
 import SupportSheet from '../support/SupportSheet';
@@ -123,6 +129,21 @@ export default function ProfileMenu({ role, basePath, active = false }) {
             </span>
           </button>
 
+          {/* MINHA ASSOCIAÇÃO — só pro motorista, e só aqui.
+            *
+            * A tela da taxa tinha uma porta só: o aviso de cobrança em atraso.
+            * Quem está em dia não tinha como abrir a própria fatura, ver o
+            * histórico do que já pagou nem conferir a conta que gerou o valor.
+            * Cobrança que só é visível quando está atrasada ensina o associado
+            * a associar a palavra "taxa" a susto — e some justamente no mês em
+            * que ele quer conferir se o desconto combinado foi aplicado. */}
+          {role === 'admin' && (
+            <MenuItem
+              icon={Receipt}
+              label="Minha associação"
+              onClick={() => go(() => navigate('/tio/taxa'))}
+            />
+          )}
           <MenuItem
             icon={GraduationCap}
             label="Ver o tutorial de novo"

@@ -1,5 +1,6 @@
 import { X, UserX } from 'lucide-react';
 import { ABSENCE_LABELS } from '../../services/absencesService';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
  * Sheet com a lista de ausências do dia — exibido na home do Tio
@@ -7,6 +8,7 @@ import { ABSENCE_LABELS } from '../../services/absencesService';
  * sair da tela inicial.
  */
 export default function AbsenceListSheet({ open, onClose, absences = [] }) {
+  const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   if (!open) return null;
   return (
     <div
@@ -15,10 +17,13 @@ export default function AbsenceListSheet({ open, onClose, absences = [] }) {
     >
       <div
         className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="pt-3 pb-1 flex justify-center sticky top-0 bg-card z-10">
+        <div
+          {...alcaProps}
+          className={`pt-3 pb-1 flex justify-center sticky top-0 bg-card z-10 ${alcaProps.className}`}
+        >
           <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
         </div>
 

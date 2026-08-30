@@ -84,9 +84,9 @@ export default function AguardandoAprovacao() {
                   ) : null}
                 </p>
                 <p className="truncate text-[12px] text-textMuted">{i.email}</p>
-                {(i.city || i.fleet) && (
+                {(i.city || i.criancasEstimadas > 0) && (
                   <p className="mt-0.5 text-[11px] text-textMuted">
-                    {[i.city, i.fleet && `${i.fleet} perua(s)`]
+                    {[i.city, i.criancasEstimadas > 0 && `${i.criancasEstimadas} criança(s)`]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>

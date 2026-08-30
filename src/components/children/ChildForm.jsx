@@ -16,6 +16,9 @@ import {
   ArrowLeft,
   ArrowRight,
   Calendar,
+  MessageCircle,
+  Paperclip,
+  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../common/Card';
@@ -23,7 +26,12 @@ import MapPicker from '../map/MapPicker';
 import InviteShare from './InviteShare';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { addChild } from '../../services/childrenService';
+import { addChild, updateChild } from '../../services/childrenService';
+import { uploadContratoAnterior } from '../../services/photoService';
+import { STORAGE_ENABLED } from '../../config/capabilities';
+import { useAuth } from '../../hooks/useAuth';
+import { useLimiteCriancas } from '../../hooks/useLimiteCriancas';
+import { devWhatsAppLink } from '../../config/developer';
 import { searchAddress } from '../../services/locationService';
 import { normalizaHora, periodoDaHora, horaCurta } from '../../services/horariosService';
 import { useEscolas } from '../../hooks/useEscolas';
@@ -91,10 +99,13 @@ const EMPTY_FORM = {
  */
 export default function ChildForm() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const limite = useLimiteCriancas(user?.uid);
   const [form, setForm] = useState(EMPTY_FORM);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
+  const [createdId, setCreatedId] = useState(null);
   const [errors, setErrors] = useState({});
 
   const setField = (key) => (e) =>
@@ -184,7 +195,7 @@ export default function ChildForm() {
     try {
       const horaPega = normalizaHora(form.horaPega);
       const horaEntrega = normalizaHora(form.horaEntrega);
-      const { inviteCode } = await addChild({
+      const { id, inviteCode } = await addChild({
         ...form,
         horaPega: horaPega || '',
         horaEntrega: horaEntrega || '',
@@ -204,6 +215,7 @@ export default function ChildForm() {
         dueDay: parseInt(form.dueDay, 10) || 10,
       });
       setCreatedCode(inviteCode);
+      setCreatedId(id);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao salvar. Tente novamente.');
@@ -216,11 +228,27 @@ export default function ChildForm() {
     return (
       <InviteCodeSuccess
         code={createdCode}
+        childId={createdId}
         childName={form.name}
         parentPhone={unmaskPhone(form.parentPhone)}
         onDone={() => navigate('/tio/children', { replace: true })}
       />
     );
+  }
+
+  // VAGAS ESGOTADAS — a porta fecha ANTES do formulário.
+  //
+  // Não é o botão de salvar que fica cinza no fim: ele preencheria oito
+  // campos, escolheria o ponto no mapa, e só então descobriria que não cabe.
+  // O limite é do contrato, não do preenchimento — então ele aparece onde a
+  // decisão começa.
+  //
+  // Quem impede de verdade são as rules (`allow create` em `children` valida
+  // o contador contra o limite). Esta tela existe pra dizer o que aconteceu e
+  // dar o caminho: sem ela, o cadastro falharia com erro de permissão, que
+  // não é informação pra ninguém.
+  if (limite.lotado) {
+    return <SemVaga limite={limite} onVoltar={() => navigate('/tio/children')} />;
   }
 
   return (
@@ -559,7 +587,7 @@ function Step3School({ form, setForm, setField, errors }) {
     <>
       <Heading
         title="Escola e horários"
-        subtitle="Onde estuda e a que horas você combinou de pegar e entregar."
+        subtitle="Onde estuda e a que horas você vai pegar e entregar."
       />
 
       <div>
@@ -637,7 +665,7 @@ function Step3School({ form, setForm, setField, errors }) {
       {/* Os dois horários que o pai vai ler na tela dele */}
       <div className="pt-2 space-y-4">
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 leading-relaxed">
-          <b className="block text-sm mb-0.5">O combinado com o responsável</b>
+          <b className="block text-sm mb-0.5">O horário que você vai cumprir</b>
           É o que o pai vê pra ficar esperando na hora certa, e é por ele que
           sua rota se organiza sozinha. O horário da escola é outra coisa e não
           entra aqui.
@@ -865,7 +893,7 @@ function SelectorButton({ label, icon: Icon, active, onClick }) {
  * um código pra ditar; agora ele sai com um LINK pronto pra mandar no
  * WhatsApp. O código continua visível pra quando precisar ditar por telefone.
  */
-function InviteCodeSuccess({ code, childName, parentPhone, onDone }) {
+function InviteCodeSuccess({ code, childId, childName, parentPhone, onDone }) {
   return (
     <div className="min-h-screen flex flex-col p-6 gap-5 justify-center">
       <div className="text-center space-y-3">
@@ -887,7 +915,171 @@ function InviteCodeSuccess({ code, childName, parentPhone, onDone }) {
 
       <InviteShare code={code} childName={childName} parentPhone={parentPhone} />
 
+      {/* O CONTRATO QUE ELE JÁ TEM — oferecido AQUI, e não num menu.
+        *
+        * É o único instante em que o motorista está com essa família na
+        * cabeça: acabou de digitar o valor, o vencimento e o telefone. Uma
+        * semana depois, "anexar o contrato antigo" é tarefa que nunca sobe na
+        * lista de ninguém.
+        *
+        * Fica opcional e discreto de propósito. O contrato que VALE é o do
+        * app, gerado dos campos que ele acabou de preencher e assinado pelo
+        * responsável; este anexo é memória do que veio antes. Dar a ele o
+        * mesmo peso visual do convite faria alguém achar que anexar o papel
+        * dispensa o aceite — e aí a família opera sem contrato válido. */}
+      <AnexarContratoAnterior childId={childId} />
+
       <Button onClick={onDone}>Concluir</Button>
+    </div>
+  );
+}
+
+/**
+ * A TELA DE "NÃO CABE MAIS" — e por que ela não é um erro.
+ *
+ * O tom importa. Ele não fez nada errado: preencheu o contrato dele e ele
+ * encheu, o que é a melhor notícia possível sobre o negócio dele. Uma tela
+ * vermelha de bloqueio trata crescimento como infração.
+ *
+ * O NÚMERO VEM PRIMEIRO porque é a única pergunta que ele tem ao bater aqui:
+ * quantas eu contratei? E o botão é a resposta pra segunda: como aumento?
+ *
+ * ABRE O WHATSAPP COM O TEXTO PRONTO. Ampliar limite é renegociar contrato e
+ * orçamento — não existe botão que faça isso sozinho, e fingir que existe
+ * (um "solicitar aumento" que só grava um pedido em algum lugar) criaria uma
+ * espera sem prazo. A conversa é o caminho real; o app encurta ela.
+ */
+function SemVaga({ limite, onVoltar }) {
+  const zap = devWhatsAppLink(
+    `Olá! Contratei ${limite.limite} vaga(s) de criança no Alô Buzinou e ` +
+      'preciso de mais. Podemos atualizar meu contrato?'
+  );
+
+  return (
+    <div className="min-h-screen px-5 pt-4">
+      <button
+        type="button"
+        onClick={onVoltar}
+        className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
+      >
+        <ArrowLeft size={18} /> Voltar
+      </button>
+
+      <div className="mx-auto mt-8 max-w-md text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Users size={26} />
+        </div>
+
+        <h1 className="mt-4 text-xl font-extrabold tracking-tight text-text">
+          Suas vagas acabaram
+        </h1>
+
+        <p className="mt-2 text-sm leading-relaxed text-textMuted">
+          Você contratou <strong className="text-text">{limite.limite}</strong>{' '}
+          {limite.limite === 1 ? 'vaga' : 'vagas'} e está usando{' '}
+          <strong className="text-text">{limite.usadas}</strong>. Pra cadastrar
+          mais uma criança, a gente atualiza seu contrato e o orçamento junto —
+          é rápido.
+        </p>
+
+        <a
+          href={zap}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-bold text-white"
+        >
+          <MessageCircle size={17} />
+          Falar sobre ampliar
+        </a>
+
+        {/* A SAÍDA QUE NÃO CUSTA NADA, e ela é real: o limite conta crianças
+          * ATIVAS. Quem parou de atender uma família libera a vaga ao
+          * desativá-la, sem falar com ninguém. Esconder isso pra empurrar
+          * renegociação seria vender vaga que ele já tem. */}
+        <p className="mt-4 text-xs leading-relaxed text-textMuted">
+          Parou de atender alguma família? Desative a criança na sua turma — a
+          vaga volta na hora, e o histórico dela não se perde.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ANEXAR O CONTRATO QUE JÁ EXISTIA — foto ou arquivo.
+ *
+ * O QUE ESTE ANEXO É, E O QUE ELE NÃO É
+ * Não é o contrato do app, e a tela diz isso em voz alta. O contrato que vale
+ * é gerado dos campos que o motorista acabou de preencher — mensalidade,
+ * vencimento, vigência — e passa a existir quando o responsável aceita. Este
+ * arquivo é memória do que foi combinado ANTES, e serve pra uma discussão
+ * sobre o passado que o contrato novo não cobre.
+ *
+ * A confusão é perigosa e por isso está escrita: quem achar que anexar o
+ * papel dispensa o aceite fica operando sem contrato válido nenhum.
+ *
+ * SOME QUANDO NÃO HÁ STORAGE, como todo anexo do app: botão que não pode dar
+ * certo não aparece.
+ */
+function AnexarContratoAnterior({ childId }) {
+  const [enviando, setEnviando] = useState(false);
+  const [pronto, setPronto] = useState(false);
+
+  if (!STORAGE_ENABLED || !childId) return null;
+
+  const escolher = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite reenviar o mesmo arquivo
+    if (!file) return;
+    setEnviando(true);
+    try {
+      const url = await uploadContratoAnterior(childId, file);
+      await updateChild(childId, {
+        contratoAnteriorURL: url,
+        contratoAnteriorEm: new Date().toISOString(),
+      });
+      setPronto(true);
+      toast.success('Contrato guardado junto da criança.');
+    } catch (err) {
+      console.error('Falha ao anexar contrato anterior:', err);
+      toast.error('Não deu pra enviar o arquivo.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  if (pronto) {
+    return (
+      <p className="flex items-center justify-center gap-1.5 text-xs text-emerald-700">
+        <Check size={14} />
+        Contrato anterior guardado na ficha
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-dashed border-gray-300 p-3.5">
+      <p className="text-xs font-semibold text-text">
+        Já tem contrato com essa família?
+      </p>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-textMuted">
+        Anexe o papel ou o PDF que vocês já assinaram. Ele fica guardado na
+        ficha como registro do que foi combinado antes —{' '}
+        <strong>o contrato que vale continua sendo o do app</strong>, com os
+        valores que você acabou de preencher.
+      </p>
+      <label className="tap mt-2.5 flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-300 text-xs font-bold text-text">
+        <Paperclip size={14} />
+        {enviando ? 'Enviando…' : 'Anexar ou fotografar'}
+        <input
+          type="file"
+          accept="image/*,application/pdf"
+          capture="environment"
+          className="hidden"
+          disabled={enviando}
+          onChange={escolher}
+        />
+      </label>
     </div>
   );
 }

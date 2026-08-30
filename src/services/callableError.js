@@ -1,3 +1,5 @@
+import { CLOUD_FUNCTIONS_ENABLED } from '../config/capabilities';
+
 /**
  * Traduz erro de Cloud Function pra frase que a pessoa entende.
  *
@@ -68,6 +70,46 @@ export function mensagemDeErro(err, oQueFazia) {
 
   console.error('Erro não mapeado em callable:', err);
   return 'Algo deu errado. Tente de novo em alguns instantes.';
+}
+
+/**
+ * RECUSA A CHAMADA ANTES DE FAZÊ-LA, quando o cloud está desligado.
+ *
+ * O PROBLEMA QUE ISTO FECHA
+ * `CLOUD_FUNCTIONS_ENABLED` documentava, com nome e sobrenome, quais recursos
+ * dependem do Blaze. Só que sete dos oito lugares que chamam um callable não
+ * consultavam a bandeira: o app disparava assim mesmo, o navegador barrava no
+ * CORS (a API desativada responde sem `Access-Control-Allow-Origin`), e o que
+ * chegava na tela era erro de rede. Foi o que o convite fez.
+ *
+ * O sintoma engana duas vezes. Pra quem usa, parece internet ruim — e ele
+ * troca de rede, reinicia o celular, tenta de novo. Pra quem depura, parece
+ * configuração de CORS — e o conserto verdadeiro é ligar o faturamento.
+ *
+ * E ELE CORROMPE A MENSAGEM CERTA. `lookupInvite` traduz `functions/not-found`
+ * para "convite não encontrado ou já usado" — o que é verdade quando o
+ * servidor existe. Com a função fora do ar, o MESMO código chega, e o app
+ * acusava um convite perfeitamente válido de não existir. O responsável então
+ * pede outro link ao motorista, que gera outro, que também não funciona.
+ *
+ * Por isso o guarda vem ANTES do `try`: depois dele, `not-found` volta a
+ * significar uma coisa só.
+ *
+ * UMA LINHA POR CHAMADA, e de propósito. Um invólucro que engolisse a chamada
+ * inteira obrigaria a reescrever o tratamento de erro cuidadoso que cada um
+ * desses lugares já tem — e é justamente esse tratamento que faz a diferença
+ * entre "convite já usado" e "código digitado errado".
+ */
+export function exigirCloud(oQueFazia) {
+  if (CLOUD_FUNCTIONS_ENABLED) return;
+  const alvo = oQueFazia ? `${oQueFazia} ` : '';
+  const erro = new Error(
+    `Não deu pra ${alvo}agora: esta parte do sistema ainda não está ` +
+      'publicada. Não é problema da sua internet.'
+  );
+  // Marca pra quem quiser distinguir "desligado" de "falhou de verdade".
+  erro.code = 'app/cloud-desligado';
+  throw erro;
 }
 
 /** Este erro é "a função não está publicada"? */

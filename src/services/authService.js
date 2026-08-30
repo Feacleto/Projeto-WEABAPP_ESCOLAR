@@ -15,6 +15,7 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase/config';
 import { adminExists } from './inviteCodeService';
 import { LEGAL_VERSION } from '../pages/legal/legalContent';
+import { exigirCloud } from './callableError';
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -99,6 +100,7 @@ export async function loginWithGoogle() {
  * Toda a validação e o vínculo acontecem no servidor.
  */
 export async function redeemInvite({ inviteCode, name = '' }) {
+  exigirCloud('criar sua conta');
   const fn = httpsCallable(functions, 'redeemInvite');
   try {
     const res = await fn({

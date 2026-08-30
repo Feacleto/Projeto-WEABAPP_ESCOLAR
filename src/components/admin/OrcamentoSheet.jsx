@@ -8,6 +8,7 @@ import {
   PERIODICIDADES,
   MESES_DA_PERIODICIDADE,
   setNegociacao,
+  setLimiteCriancas,
 } from '../../services/taxaService';
 import {
   montarContrato,
@@ -44,6 +45,7 @@ export default function OrcamentoSheet({
   onClose,
   parceiro, // { uid, name, city, email, phone }
   base, // { criancas, mensalidadeMedia }
+  config, // a régua da casa — entra no contrato pelo dia do vencimento
   negociacaoAtual,
   ownerUid,
   onSalvo,
@@ -60,6 +62,14 @@ export default function OrcamentoSheet({
     String(negociacaoAtual?.isencaoMeses ?? 0)
   );
   const [notas, setNotas] = useState(negociacaoAtual?.notas || '');
+  // Quantas crianças ativas ele pode cadastrar. Nasce da estimativa que ele
+  // deu na inscrição — mas quem fecha o número é esta conversa.
+  // O limite vigente vem do doc do parceiro (é lá que a rule lê). Sem limite
+  // ainda, a sugestão é o que ele já tem ativo — nunca menos que a operação
+  // real, senão o orçamento nasceria bloqueando quem já está rodando.
+  const [vagas, setVagas] = useState(
+    String(parceiro?.limiteCriancas ?? base?.criancas ?? '')
+  );
   const [salvando, setSalvando] = useState(false);
 
   const conta = useMemo(() => {
@@ -109,6 +119,18 @@ export default function OrcamentoSheet({
         notas,
       });
 
+      // O LIMITE MORA EM `users`, E NÃO AQUI NA NEGOCIAÇÃO.
+      //
+      // Não é duplicação por descuido: a rule de `children` precisa lê-lo no
+      // momento do cadastro, e `getAfter` no doc do motorista custa uma
+      // leitura — apontar pra `taxaParceiros` custaria outra, em toda criação
+      // de criança, pra sempre. O campo é `write: isOwner()` pelas rules, e o
+      // parceiro não alcança nem no próprio doc.
+      const limite = Math.max(0, Math.trunc(Number(vagas) || 0));
+      if (limite > 0) {
+        await setLimiteCriancas(parceiro.uid, limite);
+      }
+
       const conteudo = montarContrato({
         motorista: {
           uid: parceiro.uid,
@@ -128,6 +150,9 @@ export default function OrcamentoSheet({
           criancas: base?.criancas || 0,
           mensalidadeMedia: base?.mensalidadeMedia || 0,
         },
+        // A régua da casa entra pelo dia do vencimento. Sem ela o contrato
+        // cairia no padrão e prometeria um dia que a fatura não usaria.
+        config,
       });
 
       await emitirContrato({
@@ -204,6 +229,23 @@ export default function OrcamentoSheet({
             </div>
           </>
         )}
+
+        {/* VAGAS — vale inclusive na gratuidade, e é por isso que fica fora
+          * do `!gratuito` acima. Associado cortesia também tem tamanho
+          * contratado; sem limite, "de graça" vira ilimitado por descuido. */}
+        <Grupo rotulo="Vagas de criança contratadas">
+          <Campo value={vagas} onChange={setVagas} type="number" />
+          <p className="mt-1.5 text-[11px] leading-relaxed text-textMuted">
+            É o teto que o app vai impor: acima disso ele não cadastra e cai
+            numa tela pedindo pra falar com você.{' '}
+            {base?.criancas > 0 && (
+              <>
+                Hoje ele tem <strong>{base.criancas}</strong> ativa(s) — abaixo
+                disso, ninguém é desligado, mas ele não cadastra mais nenhuma.
+              </>
+            )}
+          </p>
+        </Grupo>
 
         <Grupo rotulo="Nota interna — só você vê">
           <textarea

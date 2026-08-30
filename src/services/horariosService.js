@@ -108,8 +108,17 @@ export function horaCurta(hhmm) {
 }
 
 // ============================================================================
-// O combinado com o pai
+// O horário que o motorista define — e que o pai lê
 // ============================================================================
+//
+// Chamava-se "o combinado com o pai", e o nome descrevia um acordo que não
+// existe. Quem define é o MOTORISTA: o horário sai da rota inteira (ordem das
+// crianças, distância, trânsito), e o responsável não tem nenhuma dessas
+// informações pra negociar. Ele precisa saber a hora de estar na porta.
+//
+// O nome importava porque virava texto de tela: a interface pedia ao motorista
+// pra "confirmar o que combinou" e ao pai pra "combinar com ele", e nenhum dos
+// dois tinha o que fazer com essa instrução.
 
 export const CAMPO_DA_DIRECAO = { ida: 'horaPega', volta: 'horaEntrega' };
 
@@ -117,9 +126,10 @@ export const CAMPO_DA_DIRECAO = { ida: 'horaPega', volta: 'horaEntrega' };
  * Horário presumido por período, pra ponte com o modelo antigo.
  *
  * Só serve pra ninguém parar de operar durante a migração. O que importa é o
- * `presumido: true` que sai junto: a tela PRECISA pedir confirmação. Horário
- * chutado que se disfarça de horário combinado é pior que horário faltando,
- * porque o pai vai esperar na porta no horário errado.
+ * `presumido: true` que sai junto: a tela do motorista PRECISA cobrar o
+ * horário dele, e a do pai PRECISA esconder o chute. Horário chutado que se
+ * disfarça de horário definido é pior que horário faltando, porque o pai vai
+ * esperar na porta no horário errado.
  */
 const PRESUMIDO_POR_PERIODO = {
   morning: { pega: '06:30', entrega: '12:30' },
@@ -128,8 +138,10 @@ const PRESUMIDO_POR_PERIODO = {
 };
 
 /**
- * O que foi combinado com o pai: { pega, entrega, presumido }.
- * `presumido` é true quando qualquer um dos dois veio do período antigo.
+ * O horário definido pelo motorista: { pega, entrega, presumido }.
+ * `presumido` é true quando qualquer um dos dois veio do período antigo — ou
+ * seja, quando é chute do app e não decisão dele. A tela do pai não mostra
+ * horário presumido.
  */
 export function horariosCombinados(child) {
   if (!child) return { pega: null, entrega: null, presumido: true };

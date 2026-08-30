@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -20,6 +19,10 @@ import {
   DEV_EMAIL,
   DEV_PHONE_DISPLAY,
 } from '../config/developer';
+// O teto de 28 é a mesma regra da fatura — duas definições de "dia possível"
+// divergindo entre o contrato e a cobrança é como um promete o que a outra
+// não cumpre. `taxaService` não importa daqui, então não há ciclo.
+import { limitarDiaVencimento } from './taxaService';
 
 /**
  * O CONTRATO ENTRE A PLATAFORMA E O MOTORISTA.
@@ -45,8 +48,19 @@ import {
 const COL = () => collection(db, 'contratosAssociacao');
 const DOC = (id) => doc(db, 'contratosAssociacao', id);
 
-/** Versão do texto das cláusulas. Subir aqui exige novo aceite. */
-export const VERSAO_CONTRATO = 1;
+/**
+ * Versão do texto das cláusulas. Subir aqui exige novo aceite.
+ *
+ * 2 — o contrato passou a dizer QUANDO a taxa vence.
+ *
+ * A versão 1 tinha a cláusula de suspensão por inadimplência sem nenhuma
+ * cláusula definindo atraso: "havendo atraso" sobre um documento que não
+ * marcava data. O associado assinava, com hash, um papel que não dizia o
+ * prazo — e depois recebia um aviso de fatura em aberto. Subir a versão custa
+ * uma rodada de reassinatura, e custava zero enquanto nenhum contrato tinha
+ * sido emitido.
+ */
+export const VERSAO_CONTRATO = 2;
 
 /** Quantos meses de vigência cada periodicidade gera. */
 const VIGENCIA_MESES = { mensal: 12, semestral: 6, anual: 12, anual12: 12 };
@@ -71,7 +85,7 @@ function somaMeses(data, n) {
  * que entra no hash: se a tela montasse o texto por conta própria, o hash
  * provaria um conteúdo e a pessoa teria lido outro.
  */
-export function montarContrato({ motorista, negociacao, base }) {
+export function montarContrato({ motorista, negociacao, base, config }) {
   const agora = new Date();
   const per = negociacao?.periodicidade || 'mensal';
   const meses = VIGENCIA_MESES[per] || 12;
@@ -121,6 +135,14 @@ export function montarContrato({ motorista, negociacao, base }) {
             : `${valor}% sobre a mensalidade das crianças ativas`,
       periodicidade: per,
       rotuloPeriodicidade: ROTULO_PER[per] || per,
+      // O DIA VIAJA DENTRO DO CONTRATO, não como ponteiro pra régua.
+      //
+      // Mesma razão de todo o resto deste objeto: o que foi aceito tem que
+      // continuar legível depois que a casa mudar de padrão. Um contrato que
+      // dissesse "vence no dia definido pela plataforma" não prometeria nada.
+      diaVencimento: limitarDiaVencimento(
+        negociacao?.diaVencimento ?? config?.diaVencimento
+      ),
       carenciaMeses: carencia,
       descontoAntecipacao: desconto,
       baseCriancas: criancas,
@@ -201,14 +223,6 @@ export async function contratoVigente(tioUid) {
   return docs.find((c) => c.aceitoEm) || docs[0] || null;
 }
 
-/** Tudo que ele já assinou, do mais novo pro mais velho. */
-export async function historicoDe(tioUid) {
-  const snap = await getDocs(
-    query(COL(), where('tioUid', '==', tioUid), orderBy('emitidoEm', 'desc'), limit(30))
-  );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
 /** Acompanha todos os contratos — pro painel do dono. */
 export function watchContratos(cb, onError) {
   return onSnapshot(
@@ -219,12 +233,6 @@ export function watchContratos(cb, onError) {
       onError?.(err);
     }
   );
-}
-
-/** Um contrato específico. */
-export async function getContrato(id) {
-  const snap = await getDoc(DOC(id));
-  return snap.exists() ? { id, ...snap.data() } : null;
 }
 
 /**

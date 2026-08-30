@@ -20,7 +20,74 @@
  */
 
 const DICEBEAR = 'https://api.dicebear.com/9.x';
-const STYLE = 'notionists';
+
+/**
+ * O ESTILO MUDOU DE `notionists` PRA `avataaars`, e o motivo é o gênero.
+ *
+ * O texto abaixo continha a confissão honesta de que o estilo anterior não
+ * escutava o campo: ele não expõe nenhum eixo de gênero, e a única coisa
+ * controlável era a BARBA. Isso resolvia metade — homem barbado lê como
+ * homem —, mas deixava as outras duas de fora: mulher e criança caíam num
+ * rosto sorteado que saía masculino em boa parte das vezes. É o que o Felipe
+ * viu ao cadastrar uma menina e receber um menino.
+ *
+ * `avataaars` expõe o CABELO como parâmetro (`top`), com nomes que dizem o
+ * que são — `longHair*` e `shortHair*`. Cabelo é o sinal de gênero mais forte
+ * que um avatar plano consegue dar, e ele funciona nas três faixas, inclusive
+ * na criança, que não tem barba pra ajudar.
+ *
+ * O CUSTO É REAL E VALE ESTAR ESCRITO: todo rosto do app muda de uma vez,
+ * inclusive os que alguém já reconhecia como seu. Foi feito agora porque
+ * agora é barato — ainda não há motorista em produção. Depois de a base
+ * crescer, essa troca vira uma perda de reconhecimento pra todo mundo, e a
+ * resposta certa passa a ser conviver com o problema.
+ */
+const STYLE = 'avataaars';
+
+/**
+ * OS CABELOS QUE CARREGAM O SINAL.
+ *
+ * Listas curtas de propósito: quanto mais variante entra, mais alguma delas
+ * é ambígua — e uma ambígua no meio devolve exatamente o problema que a troca
+ * veio resolver, só que mais raro e mais difícil de reproduzir.
+ *
+ * Sem gênero informado (conta antiga, ninguém foi perguntado), NÃO passamos
+ * `top` nenhum: o estilo sorteia do catálogo inteiro, que é o comportamento
+ * de antes. Chutar um lado seria pior que não saber — metade das pessoas
+ * receberia um rosto errado com aparência de decisão.
+ */
+// Os nomes vêm do schema da API (`/9.x/avataaars/schema.json`), e não da
+// memória: a v9 encurtou tudo — é `bob`, não `longHairBob`. Valor fora do
+// catálogo não degrada, devolve HTTP 400 e a imagem não carrega.
+const CABELO_FEM = [
+  'straight01',
+  'straight02',
+  'straightAndStrand',
+  'bob',
+  'bun',
+  'curly',
+  'curvy',
+  'longButNotTooLong',
+  'miaWallace',
+  'bigHair',
+].join(',');
+
+const CABELO_MASC = [
+  'shortFlat',
+  'shortRound',
+  'shortWaved',
+  'shortCurly',
+  'sides',
+  'theCaesar',
+  'theCaesarAndSidePart',
+  'frizzle',
+].join(',');
+
+function cabeloPor(gender) {
+  if (gender === 'female') return CABELO_FEM;
+  if (gender === 'male') return CABELO_MASC;
+  return undefined;
+}
 
 /**
  * As paletas.
@@ -69,11 +136,23 @@ const BG_ADMIN = 'c8ded1,b9d6c6,d1e8d5';
  */
 function build(seed, backgroundColor, opts = {}) {
   const s = encodeURIComponent(String(seed || 'anon'));
-  const extra =
-    opts.beardProbability === undefined
-      ? ''
-      : `&beardProbability=${opts.beardProbability}`;
-  return `${DICEBEAR}/${STYLE}/svg?seed=${s}&backgroundColor=${backgroundColor}&radius=50${extra}`;
+  const partes = [
+    `seed=${s}`,
+    `backgroundColor=${backgroundColor}`,
+    'radius=50',
+  ];
+  // `top` é o cabelo; `facialHairProbability` é a barba. Cada um só entra
+  // quando há decisão a comunicar — parâmetro ausente devolve o sorteio
+  // padrão do estilo, que é o certo pra quem nunca informou o gênero.
+  if (opts.top) partes.push(`top=${opts.top}`);
+  if (opts.facialHairProbability !== undefined) {
+    partes.push(`facialHairProbability=${opts.facialHairProbability}`);
+  }
+  // Óculos e chapéu no sorteio padrão viravam ruído: metade da turma de
+  // óculos escuros, e o acessório rouba o pouco espaço que o rosto tem em
+  // 32px. Zero pros dois, sempre.
+  partes.push('accessoriesProbability=0');
+  return `${DICEBEAR}/${STYLE}/svg?${partes.join('&')}`;
 }
 
 /** Prefixo de seed por gênero — mantém irmão e irmã com rostos diferentes. */
@@ -91,7 +170,9 @@ function prefixo(gender) {
 export function childAvatarUrl({ id, gender }) {
   // Barba zero SEMPRE: criança não tem barba, e o padrão do estilo dava.
   return build(`${prefixo(gender)}${id || 'unknown'}`, BG_CHILD, {
-    beardProbability: 0,
+    top: cabeloPor(gender),
+    // Criança não tem barba, de nenhum gênero e por nenhum sorteio.
+    facialHairProbability: 0,
   });
 }
 
@@ -105,28 +186,32 @@ export function childAvatarUrl({ id, gender }) {
  */
 export function adultAvatarUrl({ name, seed, gender }) {
   return build(`${prefixo(gender)}${seed || name || 'user'}`, BG_PARENT, {
-    beardProbability: beardPor(gender),
+    top: cabeloPor(gender),
+    facialHairProbability: beardPor(gender),
   });
 }
 
 /** Avatar do motorista, na família de cor da marca. */
 export function adminAvatarUrl({ name, seed, gender }) {
   return build(`${prefixo(gender)}${seed || name || 'driver'}`, BG_ADMIN, {
-    beardProbability: beardPor(gender),
+    top: cabeloPor(gender),
+    facialHairProbability: beardPor(gender),
   });
 }
 
 /**
  * Quanto de barba, por gênero.
  *
- * Feminino: zero, sem exceção. Masculino: 100 — e não "às vezes", porque é
- * o ÚNICO sinal de gênero que este estilo oferece; deixar no sorteio faria
- * metade dos homens continuar com rosto ambíguo, que é o problema que a
- * gente veio resolver. Sem informação, devolve `undefined` e o estilo faz o
- * que sempre fez.
+ * Feminino: zero, sem exceção — barba em rosto feminino não é variedade, é
+ * erro. Masculino: 60, e não mais os 100 de antes. A queda é consequência da
+ * troca de estilo: quando a barba era o ÚNICO sinal disponível, ela tinha que
+ * ser certeza. Agora o cabelo carrega o gênero, e barba obrigatória em todo
+ * homem do app fazia todos parecerem o mesmo senhor.
+ *
+ * Sem informação, devolve `undefined` e o estilo sorteia como sempre fez.
  */
 function beardPor(gender) {
   if (gender === 'female') return 0;
-  if (gender === 'male') return 100;
+  if (gender === 'male') return 60;
   return undefined;
 }

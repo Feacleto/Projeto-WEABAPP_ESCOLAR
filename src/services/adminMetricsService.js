@@ -22,20 +22,32 @@ import { db } from '../firebase/config';
  * tipo de coisa que funciona com 18 crianças e derruba a tela com 1.800.
  *
  * O QUE ESTE MÓDULO NÃO FAZ
- * Não inventa receita. Hoje o Alô Buzinou não cobra dos parceiros — a taxa
- * de associação é vendida no cadastro e sorteada na roleta, mas nada a
- * cobra ainda —, então a receita própria é ZERO e o painel
- * diz isso com letra grande em vez de exibir uma projeção disfarçada de
- * fato. O que existe de verdade é o GMV: o dinheiro que passou pelo app
- * entre pai e motorista. Os dois números são diferentes e confundir um com o
- * outro é o erro clássico de valuation de marketplace.
+ * Não inventa receita. A receita própria sai de `faturasParceiro` QUITADA —
+ * taxa de associação que o motorista já pagou —, no mesmo critério do GMV,
+ * que soma `payments` com status `paid`. Os dois números medem dinheiro que
+ * entrou, e não dinheiro combinado; misturar os critérios faria uma linha
+ * parecer maior que a outra por razão de contabilidade, não de negócio.
+ *
+ * Fatura ABERTA vem separada (`receitaEmAberto`) e nunca somada na primeira.
+ * Ela é a distância entre faturar e receber — o número que diz se a cobrança
+ * está funcionando —, e embutir na receita seria antecipar caixa que não
+ * caiu. É a mesma linha que separa `claimed` de `paid` do lado do pai.
+ *
+ * GMV continua sendo outra coisa: o dinheiro que passou entre pai e motorista,
+ * que a plataforma não toca. Confundir os dois é o erro clássico de valuation
+ * de marketplace.
  *
  * SEGURANÇA
- * Toda leitura aqui já é permitida pelas rules a quem tem role `admin` —
- * este módulo não abre porta nenhuma, só organiza o que o admin já podia
- * ler. O gate de super-admin é de PRODUTO (esconder a tela de quem não é
- * dono do negócio), não de segurança. Segurança de verdade exige custom
- * claim + rules dedicadas: está no brief de arquitetura.
+ * As leituras de `users`, `children`, `payments` e `waitlistDrivers` já são
+ * permitidas pelas rules a quem tem role `admin`. `faturasParceiro` NÃO é:
+ * ela pede `isOwner()`, e um motorista que chegasse aqui teria a agregação
+ * negada — `somaCampo` engole e devolve 0, então ele veria receita zerada em
+ * vez de erro. Nenhuma porta se abre por causa disso; o módulo continua só
+ * organizando o que o chamador já podia ler.
+ *
+ * O gate de super-admin na tela é de PRODUTO (esconder o negócio de quem não
+ * é dono), não de segurança. Segurança de verdade exige custom claim + rules
+ * dedicadas: está no brief de arquitetura.
  */
 
 /** Soma um campo numérico da coleção, com fallback se a agregação falhar. */
@@ -92,12 +104,14 @@ export function mesAtual() {
  * Visão geral da plataforma — os números que importam pra valuation.
  *
  * Retorna { usuarios, motoristas, responsaveis, criancas, gmvTotal,
- *           gmvMes, ticketMedio, receitaPropria, filaParceiros }
+ *           gmvMes, ticketMedio, receitaPropria, receitaEmAberto,
+ *           filaParceiros }
  */
 export async function getPlatformOverview() {
   const users = collection(db, 'users');
   const children = collection(db, 'children');
   const payments = collection(db, 'payments');
+  const faturas = collection(db, 'faturasParceiro');
 
   const [
     usuarios,
@@ -106,6 +120,8 @@ export async function getPlatformOverview() {
     criancas,
     gmvTotal,
     gmvMes,
+    receitaPropria,
+    receitaEmAberto,
     filaParceiros,
   ] = await Promise.all([
     conta(query(users)),
@@ -124,6 +140,12 @@ export async function getPlatformOverview() {
       ),
       'amount'
     ),
+    // A TAXA DE ASSOCIAÇÃO QUE JÁ ENTROU — a receita de verdade da plataforma.
+    // `quitada` é o dono ter dado baixa depois do PIX cair; não há gateway
+    // que confirme por conta própria.
+    somaCampo(query(faturas, where('status', '==', 'quitada')), 'total'),
+    // Faturada e não recebida. Fica SEPARADA — ver o cabeçalho.
+    somaCampo(query(faturas, where('status', '==', 'aberta')), 'total'),
     conta(query(collection(db, 'waitlistDrivers'))),
   ]);
 
@@ -137,8 +159,8 @@ export async function getPlatformOverview() {
     // Mensalidade média por criança ativa no mês — a base de qualquer conta
     // de take rate futura.
     ticketMedio: criancas > 0 ? gmvMes / criancas : 0,
-    // Zero, e por um motivo: não existe cobrança de parceiro implementada.
-    receitaPropria: 0,
+    receitaPropria,
+    receitaEmAberto,
     filaParceiros,
   };
 }

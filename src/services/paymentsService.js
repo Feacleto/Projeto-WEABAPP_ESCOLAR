@@ -11,6 +11,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebase/config';
 import { playSound } from './soundService';
+import { exigirCloud } from './callableError';
 
 // NOTA: a geracao das mensalidades do mes e a limpeza do historico
 // antigo NAO vivem mais aqui. Foram pra functions/lib/billing.js,
@@ -411,6 +412,7 @@ export function watchPaymentsByParent(parentUid, onUpdate, onError) {
  * (consulta o que já existe), então chamar isto nunca duplica nada.
  */
 export async function runBillingNow(monthKey = null) {
+  exigirCloud('gerar as cobranças');
   const fn = httpsCallable(functions, 'runBillingNow');
   try {
     const res = await fn(monthKey ? { monthKey } : {});

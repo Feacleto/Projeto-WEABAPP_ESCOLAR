@@ -49,10 +49,7 @@ const TioContract = lazy(() => import('./pages/tio/TioContract'));
 const TioPixConfig = lazy(() => import('./pages/tio/TioPixConfig'));
 const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
 const TioContratoAssociacao = lazy(() => import('./pages/tio/TioContratoAssociacao'));
-// A fila de motoristas é do DONO, não do parceiro: aprovar quem entra na
-// plataforma é gestão, e ver a fila é ver os concorrentes dele. Por isso
-// ela mora sob /admin, atrás do SuperAdminRoute.
-const FilaDeParceiros = lazy(() => import('./pages/tio/TioLeads'));
+const TioTaxa = lazy(() => import('./pages/tio/TioTaxa'));
 const ChildForm = lazy(() => import('./components/children/ChildForm'));
 
 const PaiLayout = lazy(() => import('./pages/pai/PaiLayout'));
@@ -62,6 +59,7 @@ const PaiFinanceReport = lazy(() => import('./pages/pai/PaiFinanceReport'));
 const PaiMap = lazy(() => import('./pages/pai/PaiMap'));
 const AddChild = lazy(() => import('./pages/pai/AddChild'));
 const PaiContract = lazy(() => import('./pages/pai/PaiContract'));
+const PaiFaltas = lazy(() => import('./pages/pai/PaiFaltas'));
 
 const Notifications = lazy(() => import('./pages/Notifications'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -369,16 +367,20 @@ export default function App() {
           </SuperAdminRoute>
         }
       />
-      {/* A fila de motoristas que pediram acesso: aprovar ou recusar quem
-        * entra na plataforma. Saiu de /tio/leads porque é GESTÃO, e porque
-        * a fila é a lista de concorrentes de quem já é parceiro. */}
+      {/* A FILA VOLTOU PRA DENTRO DO PAINEL — aba "Fila".
+        *
+        * Eram duas telas de dono lendo a MESMA coleção (`waitlistDrivers`): a
+        * aba mostrava a lista com o funil de quatro estados, e esta rota
+        * mostrava a mesma lista com um liga-desliga. A ficha da Visão geral
+        * levava pra cá, atravessando o painel pra chegar no que já estava
+        * dentro dele.
+        *
+        * O caminho continua respondendo em vez de virar 404: ele foi divulgado
+        * como link e está escrito em comentário de outra tela. Redireciona
+        * pro painel, que é onde a fila mora agora. */}
       <Route
         path="/admin/parceiros"
-        element={
-          <SuperAdminRoute>
-            <FilaDeParceiros />
-          </SuperAdminRoute>
-        }
+        element={<Navigate to="/admin" replace />}
       />
 
       {/* Painel do Tio (admin) — rotas aninhadas com layout compartilhado */}
@@ -407,7 +409,7 @@ export default function App() {
         <Route path="route" element={<TioRouteNow />} />
         <Route path="route/now" element={<TioRouteNow />} />
         {/* "Planejar rota padrão" virou "Horários": a ordem deixou de ser
-          * arrastada à mão e passou a cair do que ele combinou com cada
+          * arrastada à mão e passou a cair do horário que ele definiu pra cada
           * responsável. O caminho antigo continua respondendo pra não
           * quebrar link salvo nem o botão de alguma tela ainda não migrada. */}
         <Route path="horarios" element={<TioHorarios />} />
@@ -421,6 +423,13 @@ export default function App() {
         {/* O contrato com a PLATAFORMA — outro documento e outro nível do que
           * o contrato com as famílias, que vive em children/:id/contract. */}
         <Route path="contrato-plataforma" element={<TioContratoAssociacao />} />
+        {/* A TAXA que ele deve à plataforma — o outro lado do painel do dono.
+          *
+          * Não fica sob /tio/finance de propósito: lá é o dinheiro que ele
+          * RECEBE das famílias, e a plataforma não está no caminho daquele
+          * dinheiro. Misturar as duas telas é o começo de misturar os dois
+          * dinheiros, que é o que os Termos de Uso proíbem. */}
+        <Route path="taxa" element={<TioTaxa />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>
@@ -435,6 +444,10 @@ export default function App() {
         }
       >
         <Route index element={<PaiDashboard />} />
+        {/* O histórico de faltas, mês a mês. O painel responde "esta semana
+          * e este mês"; aqui ele olha pra trás, que é o que a conversa com a
+          * escola e a conferência da mensalidade pedem. */}
+        <Route path="faltas" element={<PaiFaltas />} />
         <Route path="finance" element={<PaiFinance />} />
         <Route path="finance/report" element={<PaiFinanceReport />} />
         <Route path="map" element={<PaiMap />} />

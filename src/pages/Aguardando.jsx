@@ -191,7 +191,7 @@ export default function Aguardando() {
             className="tap mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-bold text-primaryDark shadow-lg shadow-black/25"
           >
             <MessageCircle size={19} />
-            Falar com um consultor
+            Pedir ajuda a um consultor
           </a>
 
           <button

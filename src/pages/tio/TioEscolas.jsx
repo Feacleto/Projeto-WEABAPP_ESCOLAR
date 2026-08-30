@@ -19,6 +19,7 @@ import EmptyState from '../../components/common/EmptyState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 import {
   addEscola,
   updateEscola,
@@ -48,7 +49,18 @@ export default function TioEscolas() {
   const { escolas, loading } = useEscolas();
 
   const [editando, setEditando] = useState(null); // { id?, nome, endereco, lat, lng }
+
+  // O ARRASTO RESPEITA O SALVAMENTO — e é por isso que esta folha não entrou
+  // no lote das outras.
+  //
+  // Aqui fechar não é incondicional: o toque fora já checa `!salvando`, porque
+  // sumir com o formulário no meio da gravação deixa a pessoa sem saber se a
+  // escola foi criada. O gesto precisa da mesma trava; sem ela, o caminho mais
+  // fácil de fechar seria justamente o único que ignora a regra.
   const [salvando, setSalvando] = useState(false);
+  const { alcaProps, estilo } = useArrastarPraFechar(() => {
+    if (!salvando) setEditando(null);
+  });
   const [buscandoEndereco, setBuscandoEndereco] = useState(false);
   const [paraApagar, setParaApagar] = useState(null);
   const [migrando, setMigrando] = useState(null);
@@ -319,10 +331,16 @@ export default function TioEscolas() {
         >
           <div
             className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[88vh] overflow-y-auto"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+            style={{
+              paddingBottom: 'env(safe-area-inset-bottom, 0)',
+              ...estilo,
+            }}
             onClick={(ev) => ev.stopPropagation()}
           >
-            <div className="pt-3 pb-1 flex justify-center">
+            <div
+              {...alcaProps}
+              className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
+            >
               <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
             </div>
 

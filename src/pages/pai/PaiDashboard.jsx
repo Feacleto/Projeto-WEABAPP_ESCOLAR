@@ -7,6 +7,7 @@ import {
   Bell,
   HelpCircle,
   ChevronRight,
+  CalendarX2,
   Map as MapIcon,
   CircleAlert,
   CheckCircle2,
@@ -32,6 +33,7 @@ import { useRide } from '../../hooks/useRide';
 import ChildSwitcher from '../../components/children/ChildSwitcher';
 import AbsenceCounts from '../../components/dashboard/AbsenceCounts';
 import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
+import { maskPhone } from '../../utils/masks';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
@@ -202,7 +204,7 @@ export default function PaiDashboard() {
   if (childLoading) {
     return (
       <>
-        <Header title="Início" />
+        <Header title="Início" marca />
         <div className="p-5 space-y-3">
           <Skeleton className="h-48" />
           <Skeleton className="h-24" />
@@ -214,7 +216,7 @@ export default function PaiDashboard() {
   if (!child) {
     return (
       <>
-        <Header title="Início" />
+        <Header title="Início" marca />
         <EmptyState
           icon={MapPin}
           title="Cadastro não encontrado"
@@ -258,7 +260,7 @@ export default function PaiDashboard() {
 
   return (
     <>
-      <Header title="Início" />
+      <Header title="Início" marca />
 
       <div className="p-5 space-y-5">
         {/* Só aparece a partir do segundo filho — quem tem um vê a tela
@@ -270,7 +272,7 @@ export default function PaiDashboard() {
         {estadoDoDia !== 'acompanhando' && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
-              {greet(new Date(), admin?.greetingHours)}, {firstName}!
+              {greet(new Date())}, {firstName}!
             </h1>
             <FestiveBadge />
           </div>
@@ -312,10 +314,6 @@ export default function PaiDashboard() {
               * reencontrado — e no dia o motorista não passa na porta. */}
             <AvisosFuturos child={child} historico={absenceHistory} />
 
-            <AltPickupCTA
-              pickup={altPickup}
-              onClick={() => setAltPickupOpen(true)}
-            />
           </>
         )}
 
@@ -325,6 +323,21 @@ export default function PaiDashboard() {
             <RouteTracker status={status} ride={ride} />
             <HorarioDoDia child={child} absence={absence} ride={ride} />
           </>
+        )}
+
+        {/* QUEM PEGA HOJE — visível ANTES e DURANTE a rota.
+          *
+          * Ele estava só no estado "esperando", e sumia quando a perua saía.
+          * Só que "não consigo pegar hoje" quase nunca é uma decisão da
+          * manhã: é o chefe segurando às 16h, o carro que não pegou, a
+          * consulta que atrasou. O botão desaparecia exatamente na hora em
+          * que a pessoa corre pra indicar alguém — e aí a indicação vai por
+          * WhatsApp, fora do app, sem o motorista ter onde conferir. */}
+        {estadoDoDia !== 'encerrado' && (
+          <AltPickupCTA
+            pickup={altPickup}
+            onClick={() => setAltPickupOpen(true)}
+          />
         )}
 
         {/* O painel da perua fica nos TRÊS estados — é o que mantém a âncora
@@ -398,6 +411,31 @@ export default function PaiDashboard() {
             {absenceHistory.length > 0 && (
               <AbsenceCounts history={absenceHistory} />
             )}
+
+            {/* A PORTA DO HISTÓRICO — e ela aparece mesmo sem falta nenhuma.
+              *
+              * O bloco acima some quando o histórico está vazio, e faz
+              * sentido: contador zerado não informa nada. Mas a tela de
+              * histórico precisa existir antes da primeira falta, senão o
+              * caminho pra ela só nasce no dia em que já se precisou dele. */}
+            <button
+              type="button"
+              onClick={() => navigate('/pai/faltas')}
+              className="tap flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-sm"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <CalendarX2 size={17} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-text">
+                  Faltas
+                </span>
+                <span className="block text-[11px] text-textMuted">
+                  Meses anteriores e avisar uma nova
+                </span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-textMuted" />
+            </button>
 
             {/* Convite pra avaliar — a resposta não vai pra home, vira
               * métrica: é o único jeito de saber se o app serve a ponta que
@@ -640,7 +678,7 @@ function AltPickupCTA({ pickup, onClick }) {
           </p>
           <p className="text-xs text-textMuted mt-0.5 truncate">
             {pickup.relationship && <span>{pickup.relationship} · </span>}
-            {pickup.phone}
+            {maskPhone(pickup.phone)}
           </p>
         </div>
         <ChevronRight size={18} className="text-textMuted shrink-0" />

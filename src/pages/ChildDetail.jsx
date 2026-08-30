@@ -13,15 +13,26 @@ import {
   Camera,
   FileText,
   ChevronRight,
+  ChevronLeft,
+  Paperclip,
   Printer,
   UserRound,
   Link2,
   Copy,
   Check,
+  CalendarX2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { horariosCombinados, horaCurta } from '../services/horariosService';
+import { faltasDoMes, resumoDeFaltas } from '../utils/faltas';
+import {
+  addMonths,
+  formatMonthLabel,
+  getCurrentMonthKey,
+} from '../utils/formatters';
+import { useChildAbsenceHistory } from '../hooks/useAbsences';
 import { updateChild } from '../services/childrenService';
+import EditarOndeSheet from '../components/children/EditarOndeSheet';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
@@ -87,6 +98,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
   // seletor de filho, que não depende de nenhum dos dois.
   const childId = childIdProp || (isAdmin ? id : activeChildId);
   const { child, loading } = useChild(childId);
+  const [editandoOnde, setEditandoOnde] = useState(false);
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -157,6 +169,72 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           </div>
         </Card>
 
+        {/* ─────────── ONDE E QUANDO — a operação primeiro ───────────
+          *
+          * A ficha estava ordenada por ordem de implementação: link do
+          * responsável, mensalidade, contrato, e só então escola, horário e
+          * endereço. Mas ninguém abre a ficha de uma criança pra ver contrato.
+          *
+          * O motorista abre no meio da rota, com a perua andando, pra três
+          * perguntas: onde eu pego, que horas, e pra qual escola. O pai abre
+          * pra uma: que horas. As duas respostas são as mesmas três linhas —
+          * então elas vêm antes de tudo, e o dinheiro desce pro fim, que é
+          * quando alguém senta pra conferir.
+          *
+          * O EDITAR É SÓ DO MOTORISTA, e existe porque não existia: o
+          * endereço só era escrito no cadastro, e família que muda de casa
+          * obrigava a apagar a criança e refazer — perdendo o vínculo com o
+          * responsável e o histórico de pagamento junto. */}
+        <Card className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
+              <Clock size={16} className="text-primary" />
+              Onde e quando
+            </h3>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setEditandoOnde(true)}
+                className="tap -mr-1 -mt-1 inline-flex items-center gap-1 p-1 text-xs font-semibold text-primary"
+              >
+                <Pencil size={13} /> Editar
+              </button>
+            )}
+          </div>
+
+          {horariosCombinados(child).presumido ? (
+            <p className="text-sm text-textMuted">
+              {isAdmin
+                ? 'Você ainda não definiu os horários — e até lá o responsável não vê hora nenhuma. Defina em Rota → Ajustar horários.'
+                : 'O motorista ainda não informou os horários. Assim que ele definir, aparecem aqui.'}
+            </p>
+          ) : (
+            <>
+              <InfoRow
+                label="Entra na perua"
+                value={horaCurta(horariosCombinados(child).pega)}
+              />
+              <InfoRow
+                label="Chega em casa"
+                value={horaCurta(horariosCombinados(child).entrega)}
+              />
+            </>
+          )}
+
+          <div className="space-y-3 border-t border-gray-100 pt-3">
+            <InfoRow icon={Home} label="Casa" value={child.address} />
+            <InfoRow icon={School} label="Escola" value={child.school} />
+            {child.schoolAddress && (
+              <InfoRow icon={MapPin} label="Endereço da escola" value={child.schoolAddress} />
+            )}
+            {/* Turma e sala: quem sabe é o RESPONSÁVEL. O motorista não
+              * acompanha a criança até a porta da sala, então perguntar a ele
+              * seria perguntar pra quem não tem a resposta. Ele lê aqui pra
+              * saber onde chamar quando precisa. */}
+            <TurmaSala child={child} podeEditar={!isAdmin} />
+          </div>
+        </Card>
+
         {/* ─────────── 1. O LINK DO RESPONSÁVEL ───────────
           *
           * PRIMEIRO DE TUDO, E SEMPRE PRESENTE.
@@ -189,6 +267,32 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           role={isAdmin ? 'admin' : 'parent'}
         />
 
+        {/* O CONTRATO DE ANTES, quando existe.
+          * Fica ao lado do contrato do app de propósito: quem abre a ficha
+          * procurando "o contrato" precisa ver os dois e entender qual é
+          * qual — o do app é o que vale, este é o que veio antes. */}
+        {child.contratoAnteriorURL && (
+          <a
+            href={child.contratoAnteriorURL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tap flex items-center gap-3 rounded-2xl border border-gray-200 bg-card px-4 py-3"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-textMuted">
+              <Paperclip size={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-text">
+                Contrato anterior
+              </span>
+              <span className="block text-[11px] text-textMuted">
+                O papel de antes do app — registro, não é o que vale
+              </span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-textMuted" />
+          </a>
+        )}
+
         {/* Acesso ao contrato (Tio) */}
         {isAdmin && (
           <button
@@ -216,64 +320,17 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           </button>
         )}
 
-        {/* Escola */}
-        <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-            <School size={16} className="text-primary" />
-            Escola
-          </h3>
-          <InfoRow label="Nome" value={child.school} />
-          {child.schoolAddress && (
-            <InfoRow
-              icon={MapPin}
-              label="Endereço"
-              value={child.schoolAddress}
-            />
-          )}
-
-          {/* Turma e sala: quem sabe é o RESPONSÁVEL. O motorista não
-            * acompanha a criança até a porta da sala, então perguntar a ele
-            * seria perguntar pra quem não tem a resposta. Ele lê aqui pra
-            * saber onde chamar quando precisa. */}
-          <TurmaSala child={child} podeEditar={!isAdmin} />
-        </Card>
-
-        {/* Os horários combinados — o que o motorista prometeu e o que o
-          * responsável espera. É a mesma informação que aparece grande no
-          * início do painel do pai. */}
-        <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-            <Clock size={16} className="text-primary" />
-            Horários combinados
-          </h3>
-          {horariosCombinados(child).presumido ? (
-            <p className="text-sm text-textMuted">
-              {isAdmin
-                ? 'Ainda não confirmados. Defina em Rota → Ajustar horários.'
-                : 'O motorista ainda não confirmou os horários.'}
-            </p>
-          ) : (
-            <>
-              <InfoRow
-                label="Entra na perua"
-                value={horaCurta(horariosCombinados(child).pega)}
-              />
-              <InfoRow
-                label="Chega em casa"
-                value={horaCurta(horariosCombinados(child).entrega)}
-              />
-            </>
-          )}
-        </Card>
-
-        {/* Endereço de casa */}
-        <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-            <Home size={16} className="text-primary" />
-            Endereço de casa
-          </h3>
-          <InfoRow icon={MapPin} label="Endereço" value={child.address} />
-        </Card>
+        {/* QUANTAS VEZES ELA FALTOU — a pergunta que os dois lados fazem.
+          *
+          * O motorista precisa disso pra conversar com a família ("é a quinta
+          * este mês") e o responsável pra saber onde está. Estava só no painel
+          * do pai, e o motorista não tinha nenhum lugar onde ler o número:
+          * ele via a falta do DIA na rota e nunca o acumulado.
+          *
+          * O aviso marcado pra frente aparece separado e nunca somado: é
+          * combinado, não falta. Somar faria a ficha dizer que a criança
+          * faltou num dia que ainda não chegou. */}
+        <FaltasDaCrianca childId={child.id} />
 
         {/* Responsáveis */}
         <Card className="space-y-3">
@@ -374,6 +431,18 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
         )}
       </div>
 
+      {/* A `key` faz a folha renascer com os dados atuais: os campos são
+        * estado local inicializado da prop, e sem isso a segunda abertura
+        * mostraria o endereço de antes de salvar. */}
+      {isAdmin && (
+        <EditarOndeSheet
+          key={`${child.address}-${child.schoolId}`}
+          open={editandoOnde}
+          child={child}
+          onClose={() => setEditandoOnde(false)}
+        />
+      )}
+
       <ConfirmDialog
         open={confirmDeactivate}
         title={`Remover ${child.name}?`}
@@ -448,6 +517,96 @@ export function ChildDetailSheet({ open, childId, onClose }) {
     </AppSheet>
   );
 }
+
+/**
+ * O acumulado de faltas, com caminho pro histórico completo.
+ *
+ * Assina por criança em vez de receber pronto porque a ficha abre de quatro
+ * lugares diferentes (rota, turma, painel do pai, home do motorista) e passar
+ * o histórico por prop obrigaria os quatro a carregá-lo — inclusive os que
+ * abrem a ficha e nunca rolam até aqui.
+ */
+function FaltasDaCrianca({ childId }) {
+  const { history, loading } = useChildAbsenceHistory(childId);
+  const [mes, setMes] = useState(() => getCurrentMonthKey());
+
+  const doMes = useMemo(() => faltasDoMes(history, mes), [history, mes]);
+  const futuras = useMemo(() => resumoDeFaltas(history).futuras, [history]);
+
+  // Só anda PRA TRÁS a partir do mês corrente. Mês à frente só teria aviso
+  // marcado, que não é falta e já aparece separado logo abaixo — navegar pra
+  // lá daria meses vazios sem fim e a sensação de que a tela travou.
+  const podeAvancar = mes < getCurrentMonthKey();
+
+  return (
+    <Card className="space-y-3">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
+        <CalendarX2 size={16} className="text-primary" />
+        Faltas
+      </h3>
+
+      {/* MÊS A MÊS, E SEM TOTAL ACUMULADO.
+        *
+        * O "desde o começo" saiu: ele responde uma pergunta que ninguém faz.
+        * A conversa real é sempre sobre um mês — a mensalidade é mensal, a
+        * reunião da escola é sobre o bimestre, e "faltou muito" quer dizer
+        * "muito neste mês". Um número que só cresce vira ruído: depois de um
+        * ano ele diz 40 e não distingue a criança que faltou toda semana da
+        * que teve uma catapora e nunca mais. */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setMes((m) => addMonths(m, -1))}
+          aria-label="Mês anterior"
+          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-textMuted"
+        >
+          <ChevronLeft size={15} />
+        </button>
+
+        <div className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-surface px-3 py-2 text-center">
+          {loading ? (
+            <p className="text-sm text-textMuted">carregando…</p>
+          ) : (
+            <>
+              <p className="text-xl font-extrabold leading-none tabular-nums text-text">
+                {doMes.length}
+              </p>
+              <p className="mt-1 text-[11px] capitalize leading-tight text-textMuted">
+                {formatMonthLabel(mes)}
+              </p>
+            </>
+          )}
+        </div>
+
+        <button
+          type="button"
+          disabled={!podeAvancar}
+          onClick={() => podeAvancar && setMes((m) => addMonths(m, 1))}
+          aria-label="Próximo mês"
+          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-textMuted disabled:opacity-30"
+        >
+          <ChevronRight size={15} />
+        </button>
+      </div>
+
+      {futuras > 0 && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+          <strong>
+            {futuras} {futuras === 1 ? 'aviso marcado' : 'avisos marcados'}
+          </strong>{' '}
+          pra frente. Não entra na conta — ainda não aconteceu.
+        </p>
+      )}
+
+      {!loading && doMes.length === 0 && futuras === 0 && (
+        <p className="text-xs leading-relaxed text-textMuted">
+          Só conta o que foi avisado pelo app.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 
 /**
  * O bloco do link, que muda de conversa conforme o estado do convite.

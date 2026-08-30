@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
  * A folha do MIOLO do app — a casca única.
@@ -60,6 +61,9 @@ export default function AppSheet({
   footer = null,
   children,
 }) {
+  // ANTES do `if (!open)` abaixo: hook não pode ficar atrás de return.
+  const { alcaProps, estilo, arrastando } = useArrastarPraFechar(onClose);
+
   // ESC fecha, e o fundo para de rolar enquanto a folha está aberta.
   useEffect(() => {
     if (!open) return;
@@ -87,16 +91,32 @@ export default function AppSheet({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className={`animate-sheet-up absolute bottom-0 left-0 right-0 flex flex-col overflow-hidden rounded-t-3xl bg-card shadow-2xl ${SIZES[size] || SIZES.auto}`}
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        className={`absolute bottom-0 left-0 right-0 flex flex-col overflow-hidden rounded-t-3xl bg-card shadow-2xl ${
+          SIZES[size] || SIZES.auto
+        } ${
+          // A animação de entrada sai de cena durante o arrasto: as duas mexem
+          // no mesmo `transform`, e juntas a folha treme.
+          arrastando ? '' : 'animate-sheet-up transition-transform duration-200'
+        }`}
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom, 0)',
+          ...estilo,
+        }}
       >
-        {/* Puxador. Não é enfeite: é o que diz "isto sobe e desce", e é o
-          * que separa uma folha de uma tela nova. */}
-        <div className="flex shrink-0 justify-center pb-1 pt-3">
+        {/* Puxador. Não é enfeite: é o que diz "isto sobe e desce" — e agora
+          * cumpre: puxar daqui pra baixo fecha. O gesto pega no CABEÇALHO e
+          * não no corpo, senão brigaria com a rolagem da lista. */}
+        <div
+          {...alcaProps}
+          className={`flex shrink-0 justify-center pb-1 pt-3 ${alcaProps.className}`}
+        >
           <span className="block h-1.5 w-10 rounded-full bg-gray-300" />
         </div>
 
-        <div className="flex shrink-0 items-start gap-3 px-5 pb-3 pt-2">
+        <div
+          {...alcaProps}
+          className={`flex shrink-0 items-start gap-3 px-5 pb-3 pt-2 ${alcaProps.className}`}
+        >
           {Icon && (
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Icon size={19} />

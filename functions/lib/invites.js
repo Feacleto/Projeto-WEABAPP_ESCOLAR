@@ -281,7 +281,16 @@ function makeJoinDriverWaitlist(db) {
     const phone = String(d.phone || '').replace(/\D/g, '').slice(0, 15);
     const email = String(d.email || '').trim().toLowerCase().slice(0, 160);
     const city = String(d.city || '').trim().slice(0, 120);
-    const fleet = ['1', '2-3', '4+'].includes(d.fleet) ? d.fleet : '1';
+    // Quantas crianças ele transporta hoje. Substituiu o tamanho da frota:
+    // van é patrimônio dele, criança é o tamanho da operação — e é sobre
+    // criança que a associação é dimensionada e contratada.
+    //
+    // Teto de 500 pra recusar dedo escorregado e lixo de bot sem barrar
+    // ninguém real: a maior frota escolar plausível não chega perto.
+    const criancas = Math.min(
+      500,
+      Math.max(0, Math.trunc(Number(d.criancas) || 0))
+    );
     const message = String(d.message || '').trim().slice(0, 600);
 
     if (!name || (!phone && !email)) {
@@ -309,7 +318,7 @@ function makeJoinDriverWaitlist(db) {
       phone,
       email,
       city,
-      fleet,
+      criancas,
       message,
       contacted: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -433,8 +442,31 @@ function makeGetShowcase(db) {
         .count()
         .get();
 
+      // Responsáveis COM CONTA — não é o mesmo número que `families`, e a
+      // diferença importa pra quem for usar um ou outro.
+      //
+      // `families` conta CRIANÇA ativa: é o tamanho da operação do motorista,
+      // e existe desde o cadastro dela, antes de qualquer pai entrar no app.
+      // Isto aqui conta GENTE que resgatou o convite e tem login. É sempre
+      // menor, e é o que responde "quantas pessoas usam isto".
+      //
+      // Não existe sinal de atividade em `users` (sem lastSeen, sem
+      // lastLogin), então "ativo" aqui significa TER CONTA, não ter aberto o
+      // app recentemente. Se um dia a distinção importar, é este contador que
+      // muda — e o nome do campo já não vai servir.
+      //
+      // A contagem é agregação no servidor: não baixa documento nenhum, então
+      // nada de nome, e-mail ou telefone de responsável trafega pra montar um
+      // número que vai pra uma página pública.
+      const responsaveisSnap = await db
+        .collection('users')
+        .where('role', '==', 'parent')
+        .count()
+        .get();
+
       return {
         hasAdmin: true,
+        responsaveis: responsaveisSnap.data().count || 0,
         drivers: [
           {
             name: a.companyName || (a.name ? `Perua do ${a.name}` : 'Perua parceira'),

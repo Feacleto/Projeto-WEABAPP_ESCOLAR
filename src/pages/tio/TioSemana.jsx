@@ -131,8 +131,17 @@ export default function TioSemana() {
       />
 
       <div className="px-4 pt-4 space-y-4">
-        {/* Navegação de semana */}
-        <div className="flex items-center gap-2">
+        {/* A SEMANA FICA GRUDADA NO TOPO.
+          *
+          * Ela rolava junto com a lista, e numa turma de dez crianças some na
+          * primeira rolagem — restando cinco colunas de quadradinhos sem
+          * nenhuma pista de que dias são. A pergunta "que semana eu estou
+          * vendo?" é a que a tela existe pra responder; deixá-la sumir é a
+          * tela perdendo o próprio assunto.
+          *
+          * `top-14` é a altura do cabeçalho do app, que também é sticky —
+          * sem o deslocamento, uma barra cobriria a outra. */}
+        <div className="sticky top-14 z-10 -mx-4 flex items-center gap-2 border-b border-gray-100 bg-bg px-4 pb-3 pt-1">
           <button
             type="button"
             onClick={() => setSemanaBase((b) => somaDias(b, -7))}
@@ -142,7 +151,7 @@ export default function TioSemana() {
             <ChevronLeft size={17} />
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-bold text-text leading-tight">
+            <p className="text-sm font-bold capitalize text-text leading-tight">
               {rotuloSemana(dias)}
             </p>
             <p className="text-[11px] text-textMuted">
@@ -178,7 +187,12 @@ export default function TioSemana() {
               * forma de não espremer o nome até virar reticências. */}
             <div className="overflow-x-auto -mx-1 px-1">
               <table className="w-full border-collapse" style={{ minWidth: 340 }}>
-                <thead>
+                {/* E o cabeçalho das COLUNAS gruda junto, logo abaixo da
+                  * barra da semana. Sem ele, rolar transforma a grade em
+                  * quadradinhos anônimos: dá pra ver que alguém faltou, não
+                  * em que dia. `top-[6.5rem]` empilha na ordem cabeçalho do
+                  * app → semana → dias. */}
+                <thead className="sticky top-[6.5rem] z-10 bg-bg">
                   <tr>
                     <th className="text-left text-[10px] uppercase tracking-widest text-textMuted font-normal pb-2 pr-2">
                       criança
@@ -289,8 +303,27 @@ function Legenda({ tipo, texto }) {
   );
 }
 
+/**
+ * "25 a 29 de agosto" — e o mês por extenso não é enfeite.
+ *
+ * Era "25/08 a 29/08". Duas datas numéricas coladas viram um borrão que se
+ * lê como código, não como período: pra saber de que mês era, o motorista
+ * tinha que decodificar duas vezes e comparar. Ele está navegando semanas
+ * pra trás e pra frente — o mês é justamente o que se perde nesse vaivém.
+ *
+ * SEMANA QUE ATRAVESSA O MÊS ganha os dois nomes ("29 de setembro a 3 de
+ * outubro"). É o caso em que a pergunta "que semana é essa?" mais aparece, e
+ * era exatamente o que a versão curta escondia.
+ */
 function rotuloSemana(dias) {
   if (!dias.length) return '';
-  const fmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
-  return `${fmt.format(dias[0])} a ${fmt.format(dias[dias.length - 1])}`;
+  const ini = dias[0];
+  const fim = dias[dias.length - 1];
+  const mes = (d) =>
+    new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(d);
+
+  if (ini.getMonth() === fim.getMonth()) {
+    return `${ini.getDate()} a ${fim.getDate()} de ${mes(fim)}`;
+  }
+  return `${ini.getDate()} de ${mes(ini)} a ${fim.getDate()} de ${mes(fim)}`;
 }

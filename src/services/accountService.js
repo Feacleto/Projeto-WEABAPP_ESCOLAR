@@ -3,6 +3,7 @@ import {
   collection,
   getDoc,
   getDocs,
+  increment,
   deleteDoc,
   updateDoc,
   writeBatch,
@@ -183,6 +184,28 @@ export async function deactivateChildAndParent({ childId }) {
     inviteStatus: 'pending', // reseta pra o admin poder reentregar o invite
     altResponsibles: [],
   });
+
+  // 6. DEVOLVE A VAGA. Este é o caminho REAL de remoção — `deactivateChild`
+  // no `childrenService` decrementa igual, mas nenhuma tela o chama.
+  //
+  // Sem isto o contador só sobe: o motorista que removesse uma criança
+  // continuaria com a vaga ocupada por ela pra sempre e, no limite do
+  // contrato, bateria no teto tendo menos crianças do que contratou. O erro
+  // seria silencioso e ele culparia a cobrança.
+  //
+  // FORA do batch acima de propósito: a regra do contador em `users` só
+  // aceita descida livre e subida de um em um, então uma falha aqui deixa a
+  // vaga presa (recuperável, e ele fala com o suporte) em vez de impedir a
+  // remoção da criança (que é o que ele pediu e o que envolve dado de menor).
+  if (child.adminUid && child.active !== false) {
+    try {
+      await updateDoc(doc(db, 'users', child.adminUid), {
+        criancasAtivas: increment(-1),
+      });
+    } catch (err) {
+      console.error('[conta] vaga não foi devolvida ao remover criança:', err);
+    }
+  }
 
   return {
     parentRemoved: !!parentUid,

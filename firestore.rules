@@ -423,9 +423,12 @@ service cloud.firestore {
         // suspendeu, e a nota interna da plataforma. Nome, telefone e chave
         // PIX continuam sendo do motorista — a plataforma não reescreve o
         // cadastro de quem ela hospeda, nem por conveniência de suporte.
+        // `limiteCriancas` entra aqui: quantas crianças ativas o parceiro
+        // contratou. É cláusula de contrato, então quem escreve é quem
+        // negocia — e o ramo de baixo proíbe que o próprio parceiro toque.
         isOwner()
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['suspenso', 'suspensoEm', 'notaInterna'])
+             .hasOnly(['suspenso', 'suspensoEm', 'notaInterna', 'limiteCriancas'])
       ) || (
         isSignedIn()
         // PRIVILÉGIO E GESTÃO: NINGUÉM ESCREVE DAQUI, NEM EM SI MESMO.
@@ -531,8 +534,27 @@ service cloud.firestore {
       // Criar exige carimbar a própria autoria: sem isto, um motorista
       // cadastraria criança JÁ na conta de outro, e o dado nasceria fora do
       // alcance de quem ele pertence.
+      //
+      // E EXIGE O CONTADOR SUBINDO NO MESMO BATCH.
+      //
+      // `getAfter` lê o doc do motorista COMO ELE FICA depois desta escrita —
+      // é o que permite validar duas gravações juntas sem servidor. Criar
+      // criança sem incrementar não passa; incrementar além do contratado não
+      // passa (a regra do contador vive em `users`). O cliente que cadastra
+      // tem que mandar as duas coisas num `writeBatch` — ver
+      // `childrenService.criarCrianca`.
+      //
+      // `limiteCriancas` ausente = SEM LIMITE, de propósito: o número nasce
+      // no orçamento, e parceiro que ainda não negociou não pode ficar
+      // impedido de trabalhar por uma cláusula que ninguém combinou com ele.
+      // O default alto vale pros dois lados da comparação, então a conta
+      // continua exigindo o incremento — o que some é só o teto.
       allow create: if isAdmin()
-        && request.resource.data.adminUid == request.auth.uid;
+        && request.resource.data.adminUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.get('criancasAtivas', 0)
+           <= getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+                .data.get('limiteCriancas', 999999);
       allow delete: if ehDoMotorista();
 
       // Updates permitidos (não-admin):

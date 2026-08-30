@@ -39,7 +39,7 @@ function exigirConfigDoFirebase(mode) {
   );
 }
 
-// PWA configurada com auto-update.
+// PWA com atualização AVISADA (registerType prompt — ver o comentário lá).
 // Service worker faz cache apenas do shell; dados do Firestore sempre são
 // buscados online (importante porque o app depende de tempo real).
 export default defineConfig(({ mode }) => {
@@ -49,7 +49,25 @@ export default defineConfig(({ mode }) => {
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      /**
+       * `prompt` E NÃO `autoUpdate` — a atualização passa a ser avisada.
+       *
+       * Com `autoUpdate` o service worker novo assumia sozinho, calado, e só
+       * valia no próximo carregamento completo da página. Num PWA instalado
+       * isso quase nunca acontece: o motorista abre pelo ícone de manhã e
+       * deixa aberto o dia inteiro — ele podia rodar dias numa versão antiga
+       * sem ninguém nunca ter dito que existia outra. E o pior caso é mudo: um
+       * deploy que corrige a conta da mensalidade não chega em quem já está
+       * com o número errado na tela.
+       *
+       * Com `prompt`, quem decide o momento é o usuário. Isso importa mais
+       * aqui do que numa página comum: recarregar no meio de uma rota, com o
+       * GPS ligado e criança embarcando, é interrupção de verdade. O aviso
+       * espera; ele toca quando parar no farol.
+       *
+       * Quem costura é `AtualizacaoDisponivel`, montado no `main.jsx`.
+       */
+      registerType: 'prompt',
       includeAssets: [
         'brand/favicon.svg',
         'brand/favicon.ico',

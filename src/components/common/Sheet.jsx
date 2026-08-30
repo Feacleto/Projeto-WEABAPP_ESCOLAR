@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 import Spinner from './Spinner';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
  * Folha modal — sobe de baixo no celular, centraliza no desktop.
@@ -30,8 +31,22 @@ import Spinner from './Spinner';
  * celular barato sob sol — o cenário real do pai no portão da escola e do
  * motorista dentro da van.
  *
+ * ARRASTAR PRA BAIXO FECHA — e a alça já prometia isso.
+ *
+ * O tracinho no topo é o sinal universal de "me puxa", e ele estava desenhado
+ * sem estar ligado: a pessoa arrastava, nada acontecia, e ela concluía que o
+ * gesto não existe neste app. Affordance desenhada e morta é pior que
+ * affordance ausente, porque ensina o contrário do que é verdade.
+ *
+ * O ARRASTO PEGA SÓ NA TAMPA, e isso não é limitação — é o que impede o
+ * gesto de brigar com a rolagem do corpo. Numa folha comprida (a lista de
+ * notificações, o formulário da associação) qualquer arrasto pra baixo dentro
+ * do conteúdo é intenção de rolar; fechar ali faria a folha fugir da mão de
+ * quem só queria ler o resto.
+ *
  * Props: open, onClose, onBack, title, subtitle, icon, eyebrow, children
  */
+
 export default function Sheet({
   open,
   onClose,
@@ -42,6 +57,8 @@ export default function Sheet({
   icon: Icon,
   children,
 }) {
+  const { alcaProps, estilo, arrastando } = useArrastarPraFechar(onClose);
+
   // Fecha com ESC — mesmo contrato do ConfirmDialog.
   useEffect(() => {
     if (!open) return;
@@ -54,6 +71,7 @@ export default function Sheet({
 
   if (!open) return null;
 
+
   return (
     <div
       className="animate-sheet-fade fixed inset-0 z-50 flex items-end justify-center bg-black/75 backdrop-blur-md sm:items-center sm:px-4 sm:py-6"
@@ -64,10 +82,18 @@ export default function Sheet({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="animate-sheet-up relative flex max-h-[92svh] w-full max-w-mobile flex-col overflow-hidden rounded-t-3xl bg-bg shadow-[0_-24px_70px_rgba(0,0,0,0.55)] sm:rounded-3xl"
+        style={estilo}
+        className={`relative flex max-h-[92svh] w-full max-w-mobile flex-col overflow-hidden rounded-t-3xl bg-bg shadow-[0_-24px_70px_rgba(0,0,0,0.55)] sm:rounded-3xl ${
+          // A animação de entrada sai de cena durante o arrasto: as duas
+          // mexem no mesmo `transform`, e juntas a folha treme.
+          arrastando ? '' : 'animate-sheet-up transition-transform duration-200'
+        }`}
       >
         {/* ── tampa: a marca, com o mesmo fundo da home ── */}
-        <div className="relative shrink-0 overflow-hidden bg-[#0B1210] px-5 pb-5 pt-3 text-white">
+        <div
+          {...alcaProps}
+          className={`relative shrink-0 overflow-hidden bg-[#0B1210] px-5 pb-5 pt-3 text-white ${alcaProps.className}`}
+        >
           <div aria-hidden className="pointer-events-none absolute inset-0">
             <div
               className="absolute inset-0 opacity-80 animate-glow-drift"
@@ -95,7 +121,7 @@ export default function Sheet({
 
           <span
             aria-hidden
-            className="relative mx-auto mb-3 block h-1 w-10 rounded-full bg-white/30 sm:hidden"
+            className="relative mx-auto mb-3 block h-1 w-10 rounded-full bg-white/40 sm:hidden"
           />
 
           {/* VOLTAR: UM PASSO ATRÁS, NÃO A SAÍDA

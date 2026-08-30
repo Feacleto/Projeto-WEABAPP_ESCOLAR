@@ -85,6 +85,14 @@ export default function ContratoDoc({ dados, aceite }) {
               valor={`${t.baseCriancas} criança(s) × ${formatBRL(t.baseMensalidade)}`}
             />
             <Linha rotulo="Periodicidade" valor={t.rotuloPeriodicidade} />
+            {/* Contrato da versão 1 não tem o campo. Some a linha em vez de
+              * escrever "vence todo dia undefined" num documento assinado. */}
+            {t.diaVencimento > 0 && (
+              <Linha
+                rotulo="Vencimento"
+                valor={`todo dia ${t.diaVencimento}`}
+              />
+            )}
             {t.descontoAntecipacao > 0 && (
               <Linha
                 rotulo="Desconto por antecipação"
@@ -125,6 +133,16 @@ export default function ContratoDoc({ dados, aceite }) {
       </Clausula>
 
       <Clausula n="5" titulo="Suspensão por inadimplência">
+        {/* O QUE CONTA COMO ATRASO — a frase que faltava.
+          * A cláusula falava em "havendo atraso" sobre um contrato que não
+          * marcava data nenhuma. Suspender alguém por descumprir um prazo que
+          * o documento não diz é o tipo de cláusula que não se sustenta. */}
+        {t.diaVencimento > 0 && (
+          <>
+            Considera-se em atraso a taxa não paga até o{' '}
+            <strong>dia {t.diaVencimento}</strong> do mês de referência.{' '}
+          </>
+        )}
         Havendo atraso, a CONTRATADA comunica o ASSOCIADO pelo próprio
         aplicativo e poderá{' '}
         <strong>suspender o acesso às funções de operação</strong> — início de

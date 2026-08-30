@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { Check, Copy, QrCode, Receipt } from 'lucide-react';
+import { ArrowLeft, Check, Copy, FileText, QrCode, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import Spinner from '../../components/common/Spinner';
@@ -31,8 +32,57 @@ import { watchFaturasDoParceiro } from '../../services/taxaService';
  * motorista esse aviso serve porque são dezenas de cobranças e uma pessoa
  * conferindo; aqui é o contrário — poucas cobranças, e quem confere é quem
  * recebe.
+ *
+ * CASCA E CONTEÚDO SEPARADOS
+ * O corpo foi escrito solto, pra ser plugado onde a navegação decidisse. Ela
+ * decidiu por rota própria (`/tio/taxa`), e rota sob o `TioLayout` recebe só
+ * o `<Outlet />` e o rodapé — sem a casca daqui a tela abriria colada na
+ * borda, sem título e sem caminho de volta.
+ *
+ * O VOLTAR É ROTULADO, e não só a seta. Quem chega aqui quase sempre veio do
+ * aviso de cobrança por cima do painel — um susto. Depois de um susto, seta
+ * sozinha num canto não se lê como saída.
  */
 export default function TioTaxa() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen pb-10">
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-bg px-5 pb-3 pt-4">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="tap -ml-1 mb-2 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
+        >
+          <ArrowLeft size={18} /> Voltar
+        </button>
+        <h1 className="text-xl font-bold text-text">Taxa de associação</h1>
+        <p className="text-sm text-textMuted">
+          O que você paga ao Alô Buzinou — separado do que as famílias pagam a
+          você.
+        </p>
+        {/* O CONTRATO A UM TOQUE DA COBRANÇA.
+          * `/tio/contrato-plataforma` respondia sem que nada apontasse pra
+          * ele. Aqui é onde ele é procurado: quem estranha um valor quer ler o
+          * que foi combinado, e esse é o momento em que a dúvida vira ou uma
+          * conferência de trinta segundos ou uma mensagem no WhatsApp. */}
+        <button
+          type="button"
+          onClick={() => navigate('/tio/contrato-plataforma')}
+          className="tap mt-1.5 inline-flex items-center gap-1 py-1 text-xs font-semibold text-primary"
+        >
+          <FileText size={13} />O que foi combinado
+        </button>
+      </header>
+
+      <div className="px-5 pt-4">
+        <Conteudo />
+      </div>
+    </div>
+  );
+}
+
+function Conteudo() {
   const { user } = useAuth();
   const [faturas, setFaturas] = useState(null);
 

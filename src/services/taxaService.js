@@ -7,6 +7,7 @@ import {
   query,
   setDoc,
   serverTimestamp,
+  Timestamp,
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -90,7 +91,41 @@ export const PADRAO = {
    * mesmo quando é paga.
    */
   piso: 25,
+  /**
+   * Dia do mês em que a fatura vence.
+   *
+   * DA CASA, E NÃO DE CADA PARCEIRO — ao contrário do `dueDay` da criança.
+   *
+   * Lá a data é por criança porque quem negocia é o MOTORISTA com cada
+   * família, e espalhar os vencimentos pelo mês é o que dá fôlego ao caixa
+   * dele. Aqui é o inverso: um credor, poucos devedores, e o fechamento roda
+   * em lote num clique. Data por parceiro viraria N datas pra acompanhar à
+   * mão, num processo sem gateway que avise — o mesmo custo de conferência
+   * que o `piso` acima existe pra evitar.
+   *
+   * Quando alguém pedir dia diferente, o lugar é `diaVencimento` na
+   * NEGOCIAÇÃO, e `fecharFatura` prefere ela sobre esta. Override é barato
+   * de somar depois; desfazer data por parceiro depois de espalhada, não.
+   *
+   * 10, como o `FALLBACK_DUE_DAY` do outro lado: um número que já é o padrão
+   * mental de quem usa o app não precisa ser aprendido.
+   */
+  diaVencimento: 10,
 };
+
+/**
+ * O dia útil possível em QUALQUER mês.
+ *
+ * Teto 28 e não 31, igual ao `clampDueDay` da criança: dia 30 combinado em
+ * janeiro não existe em fevereiro, e a alternativa (empurrar pro mês
+ * seguinte) faria a fatura de fevereiro vencer depois da de março. Quem
+ * precisa de "último dia do mês" combina 28 e não perde nada real.
+ */
+export function limitarDiaVencimento(dia) {
+  const n = Math.trunc(Number(dia));
+  if (!Number.isFinite(n)) return PADRAO.diaVencimento;
+  return Math.min(Math.max(1, n), 28);
+}
 
 // ── config global ───────────────────────────────────────────────────────────
 
@@ -140,16 +175,60 @@ export async function setPixPlataforma({ pixKey, pixKeyType, nome, cidade }) {
   );
 }
 
-export async function setTaxaConfig({ percentual, piso }) {
+export async function setTaxaConfig({ percentual, piso, diaVencimento }) {
   const p = Number(percentual);
   const f = Number(piso);
   if (!Number.isFinite(p) || p < 0 || p > 100) {
     throw new Error('Percentual tem que estar entre 0 e 100.');
   }
   if (!Number.isFinite(f) || f < 0) throw new Error('Piso não pode ser negativo.');
+
+  // O dia RECUSA em vez de corrigir calado.
+  //
+  // `limitarDiaVencimento` existe pra defender o cálculo de dado que já está
+  // gravado; aqui há uma pessoa digitando, e salvar 30 como 28 sem dizer nada
+  // deixaria o contrato prometendo um dia e a fatura cobrando outro.
+  const d = Math.trunc(Number(diaVencimento));
+  if (!Number.isFinite(d) || d < 1 || d > 28) {
+    throw new Error(
+      'Dia do vencimento tem que estar entre 1 e 28 — dia 29, 30 ou 31 não existe em todo mês.'
+    );
+  }
+
   await setDoc(
     CONFIG(),
-    { percentual: p, piso: f, atualizadoEm: serverTimestamp() },
+    { percentual: p, piso: f, diaVencimento: d, atualizadoEm: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+/**
+ * QUANTAS CRIANÇAS ATIVAS ELE PODE CADASTRAR — a vaga contratada.
+ *
+ * MORA EM `users/{uid}`, e não em `taxaParceiros`, apesar de ser cláusula de
+ * negociação. O motivo é a regra que o consome: `allow create` em `children`
+ * confere o contador do motorista contra este teto a cada cadastro, via
+ * `getAfter` no doc dele. Guardar o limite noutra coleção obrigaria a rule a
+ * uma segunda leitura de documento em TODA criação de criança, pra sempre.
+ *
+ * A separação de leitura continua respeitada: `taxaParceiros` guarda o que o
+ * motorista não pode ver (nota interna, estrutura de preço) e por isso é
+ * `read: isOwner()`. O limite é o contrário — ele PRECISA ver, porque é o
+ * número que a tela dele mostra quando as vagas acabam.
+ *
+ * Só o dono escreve: as rules põem `limiteCriancas` na mesma lista de campos
+ * de gestão que `suspenso`, fora do alcance do próprio parceiro. Limite que o
+ * limitado aumenta não é limite.
+ */
+export async function setLimiteCriancas(uid, limite) {
+  if (!uid) throw new Error('Sem motorista.');
+  const n = Math.trunc(Number(limite));
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error('O número de vagas não pode ser negativo.');
+  }
+  await setDoc(
+    doc(db, 'users', uid),
+    { limiteCriancas: n },
     { merge: true }
   );
 }
@@ -439,6 +518,34 @@ export function isentoEm(negociacao, mes) {
 // ── a fatura ────────────────────────────────────────────────────────────────
 
 /**
+ * A data concreta em que a fatura de `mes` vence.
+ *
+ * DIA VIRA DATA NO FECHAMENTO, e não na leitura — mesma escolha do
+ * `billing.js` do outro lado, que materializa o `dueDay` da criança num
+ * `dueDate` por mensalidade. Guardar só o dia obrigaria toda tela que mostra
+ * atraso a refazer esta conta, e bastaria uma delas errar a virada de mês
+ * para o motorista ver duas datas diferentes pro mesmo boleto.
+ *
+ * A negociação ganha precedência sobre a régua da casa: hoje ninguém grava
+ * `diaVencimento` por parceiro, mas quando alguém pedir dia diferente é aqui
+ * que ele passa a valer, sem tocar em mais nada.
+ */
+export function dataDeVencimento(mes, { negociacao, config } = {}) {
+  const [ano, m] = String(mes).split('-').map(Number);
+  if (!ano || !m) return null;
+  const dia = limitarDiaVencimento(
+    negociacao?.diaVencimento ?? config?.diaVencimento ?? PADRAO.diaVencimento
+  );
+  // Meio-dia, e não meia-noite.
+  //
+  // `new Date(ano, mes, dia)` nasce no fuso local. Em 00:00 qualquer conversão
+  // de fuso de uma hora joga a data pro dia anterior — e a fatura passaria a
+  // vencer no dia 9 pra quem abrisse o app do lado errado do meridiano. Meio-dia
+  // sobra doze horas de folga pra cada lado.
+  return new Date(ano, m - 1, dia, 12, 0, 0, 0);
+}
+
+/**
  * Fecha a fatura do mês — e CONGELA a régua usada.
  *
  * A fatura guarda o modo e o valor VIGENTES no fechamento, não um ponteiro para
@@ -478,6 +585,16 @@ export async function fecharFatura({
     // a régua, congelada
     reguaPercentual: Number(config?.percentual ?? PADRAO.percentual),
     reguaPiso: Number(config?.piso ?? PADRAO.piso),
+
+    // QUANDO VENCE — data pronta, congelada junto com o resto da régua.
+    //
+    // Mudar o dia na régua em dezembro não pode mexer no que já venceu em
+    // setembro, pelo mesmo motivo que renegociar o percentual não reescreve
+    // fatura antiga: o histórico é o que se mostra numa conversa sobre atraso.
+    vencimento: (() => {
+      const d = dataDeVencimento(mes, { negociacao, config });
+      return d ? Timestamp.fromDate(d) : null;
+    })(),
 
     // PARA ONDE PAGAR — copiado, não referenciado.
     //

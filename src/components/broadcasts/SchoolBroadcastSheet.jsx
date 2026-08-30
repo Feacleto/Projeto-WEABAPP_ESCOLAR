@@ -14,6 +14,7 @@ import {
 } from '../../services/broadcastService';
 import { getDateKey } from '../../services/horariosService';
 import { chaveDoNome } from '../../utils/nomeEscola';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
  * "Sem aula" — o aviso que já sai virando ausência na rota.
@@ -26,6 +27,7 @@ import { chaveDoNome } from '../../utils/nomeEscola';
  * porque a escola dela estava escrita com pontos.
  */
 export default function SchoolBroadcastSheet({ open, onClose }) {
+  const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const { user } = useAuth();
   const { children: todasCriancas } = useChildren();
   const { escolas } = useEscolas();
@@ -143,10 +145,13 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
     >
       <div
         className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="pt-3 pb-1 flex justify-center">
+        <div
+          {...alcaProps}
+          className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
+        >
           <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
         </div>
 

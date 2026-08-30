@@ -65,7 +65,13 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
 
   // O número que dá o susto verdadeiro: o que ELE tem a receber e não
   // consegue cobrar enquanto estiver parado.
-  const aReceber = Number(fatura?.baseDoMes) || 0;
+  //
+  // `base` é o campo que `fecharFatura` grava — a soma das mensalidades das
+  // crianças ativas dele no mês. Aqui se lia `baseDoMes`, nome que nenhum
+  // gravador produzia: o cartão de suspensão caía calado no galho sem número
+  // ("Seu acesso está suspenso") justamente na hora em que o número é o
+  // argumento inteiro.
+  const aReceber = Number(fatura?.base) || 0;
 
   const fechar = () => {
     setFechado(true);
@@ -88,7 +94,15 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
       className={
         suspenso
           ? 'fixed inset-0 z-50 flex items-center justify-center bg-primaryDark/95 px-5 py-8 backdrop-blur-sm'
-          : 'mb-4'
+          : // O respiro lateral é DAQUI, e não de quem monta.
+            //
+            // Ele vive no `TioLayout`, acima do <Outlet /> — ou seja, fora da
+            // caixa com margem que cada tela constrói pra si. Deixar o padding
+            // pro chamador significaria repetir a mesma classe em todo ponto
+            // de montagem futuro, e bastaria um esquecimento pra o cartão
+            // aparecer colado nas bordas justamente na tela onde ninguém
+            // testou.
+            'mb-4 px-5 pt-4'
       }
       role={suspenso ? 'alertdialog' : undefined}
       aria-modal={suspenso ? 'true' : undefined}
@@ -181,7 +195,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
           }`}
         >
           <MessageCircle size={13} />
-          Falar com um consultor
+          Pedir ajuda a um consultor
         </a>
       </div>
     </div>

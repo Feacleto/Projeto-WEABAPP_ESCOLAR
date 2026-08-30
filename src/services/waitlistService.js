@@ -12,6 +12,7 @@ import {
 import { signInAnonymously } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase/config';
+import { exigirCloud } from './callableError';
 
 /**
  * Listas de espera / interesse — formulários públicos da landing.
@@ -62,13 +63,14 @@ export async function submitDriverWaitlist({
   email,
   phone,
   city,
-  fleet,
+  criancas,
   message,
 }) {
   await ensureSignedIn();
+  exigirCloud('entrar na fila');
   const fn = httpsCallable(functions, 'joinDriverWaitlist');
   try {
-    const res = await fn({ name, email, phone, city, fleet, message });
+    const res = await fn({ name, email, phone, city, criancas, message });
     return res.data;
   } catch (err) {
     const c = String(err?.code || '');
@@ -133,19 +135,6 @@ export function watchDriverLeads(onUpdate, onError) {
 }
 
 /**
- * Marca/desmarca um lead como já contatado. Só admin (rules).
- * Guardamos quem falou e quando pra não perder o histórico.
- */
-export async function setLeadContacted(id, contacted, adminUid) {
-  if (!id) throw new Error('Sem id do lead.');
-  await updateDoc(doc(db, 'waitlistDrivers', id), {
-    contacted: !!contacted,
-    contactedAt: contacted ? serverTimestamp() : null,
-    contactedBy: contacted ? adminUid || null : null,
-  });
-}
-
-/**
  * Move um pedido da lista de parceiros pelo funil.
  *
  * `status` ∈ 'pending' | 'contacted' | 'approved' | 'rejected'.
@@ -163,8 +152,13 @@ export async function setLeadStatus(id, status, adminUid) {
   if (!permitidos.includes(status)) throw new Error('Status inválido.');
   await updateDoc(doc(db, 'waitlistDrivers', id), {
     status,
-    // Mantém o booleano antigo em sincronia: a tela de leads do tio ainda
-    // lê `contacted`, e dois campos discordando é bug garantido depois.
+    // MANTÉM O BOOLEANO ANTIGO EM SINCRONIA.
+    //
+    // A tela que lia `contacted` (a antiga /admin/parceiros) não existe mais,
+    // mas o campo continua nos documentos JÁ GRAVADOS — e a aba Fila cai nele
+    // quando `status` está ausente: `l.status || (l.contacted ? ...)`. Parar
+    // de escrever aqui faria o lead antigo marcado como contatado voltar a
+    // aparecer como pendente na primeira vez que alguém mexesse nele.
     contacted: status !== 'pending',
     statusBy: adminUid || null,
     statusAt: serverTimestamp(),

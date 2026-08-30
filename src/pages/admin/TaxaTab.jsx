@@ -38,6 +38,11 @@ import {
   watchNegociacoes,
   watchTaxaConfig,
 } from '../../services/taxaService';
+import {
+  diasParaVencer,
+  precisaRenovar,
+  watchContratos,
+} from '../../services/contratoAssociacaoService';
 
 /**
  * A TAXA DE ASSOCIAÇÃO no painel do dono.
@@ -69,10 +74,13 @@ export default function TaxaTab() {
   const [negociacoes, setNegociacoes] = useState({});
   const [faturas, setFaturas] = useState([]);
   const [aberta, setAberta] = useState(null);
+  const [contratos, setContratos] = useState([]);
   const [fechando, setFechando] = useState(false);
 
   // Régua e negociações são reativas: o dono muda e vê o efeito na mesma tela.
   useEffect(() => watchTaxaConfig(setConfig), []);
+  // Contratos, só pra saber quais estão perto de vencer.
+  useEffect(() => watchContratos(setContratos, () => setContratos([])), []);
   useEffect(() => watchNegociacoes(setNegociacoes), []);
   useEffect(() => watchFaturasDoMes(mes, setFaturas), [mes]);
 
@@ -184,6 +192,19 @@ export default function TaxaTab() {
     <div className="space-y-4">
       <SeletorDeMes mes={mes} onChange={setMes} />
 
+      {/* CONTRATO VENCENDO ENTRA NA FILA DO DONO — o que o serviço prometia.
+        *
+        * `diasParaVencer` e `precisaRenovar` existiam com a intenção escrita
+        * no cabeçalho ("o que o vencimento faz é entrar na fila do dono") e
+        * não chegavam em fila nenhuma: nada as chamava. Vigência vencia em
+        * silêncio, e a renovação só aconteceria se alguém lembrasse.
+        *
+        * VENCER NÃO SUSPENDE, e o serviço é explícito nisso: cortar por
+        * vencimento de papel suspenderia quem está pagando em dia. O que
+        * vencido faz é aparecer aqui, ao lado da negociação, que é onde o
+        * dono já está quando pensa em preço. */}
+      <ContratosVencendo contratos={contratos} />
+
       {/* A base incompleta tem que gritar ANTES dos números, senão o dono
         * fecha o mês somando o que sobrou e a fatura sai menor que a real. */}
       {semDono.length > 0 && (
@@ -205,7 +226,7 @@ export default function TaxaTab() {
         * sincronizando prop em estado — e efeito assim encadeia render.
         * Digitar não muda a key: só salvar muda, e aí o valor já é o novo. */}
       <ReguaDaCasa
-        key={`${config.percentual}-${config.piso}`}
+        key={`${config.percentual}-${config.piso}-${config.diaVencimento}`}
         config={config}
       />
 
@@ -285,16 +306,18 @@ export default function TaxaTab() {
 function ReguaDaCasa({ config }) {
   const [percentual, setPercentual] = useState(String(config.percentual));
   const [piso, setPiso] = useState(String(config.piso));
+  const [dia, setDia] = useState(String(config.diaVencimento));
   const [salvando, setSalvando] = useState(false);
 
   const mudou =
     Number(percentual) !== Number(config.percentual) ||
-    Number(piso) !== Number(config.piso);
+    Number(piso) !== Number(config.piso) ||
+    Number(dia) !== Number(config.diaVencimento);
 
   const salvar = async () => {
     setSalvando(true);
     try {
-      await setTaxaConfig({ percentual, piso });
+      await setTaxaConfig({ percentual, piso, diaVencimento: dia });
       toast.success('Régua atualizada.');
     } catch (err) {
       toast.error(err.message || 'Não deu pra salvar.');
@@ -320,10 +343,21 @@ function ReguaDaCasa({ config }) {
             value={piso}
             onChange={setPiso}
           />
+          <CampoCurto label="Vence dia" value={dia} onChange={setDia} />
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
           O piso não é ganância: fatura de R$ 4,50 custa mais pra emitir e
           conferir do que rende.
+        </p>
+        {/* O DIA VALE PRA TODO MUNDO, e o contrato passa a dizer isso.
+          * Data por parceiro seria N datas pra acompanhar num fechamento que
+          * roda em lote — ver o cabeçalho de `diaVencimento` no service.
+          * Mudar aqui não mexe em fatura já fechada: o dia viaja congelado
+          * dentro dela, como o percentual e o piso. */}
+        <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+          O vencimento entra no contrato de quem assinar daqui pra frente — e é
+          ele que define o que conta como atraso. Entre 1 e 28: dia 30 não
+          existe em fevereiro.
         </p>
         {mudou && (
           <div className="mt-3">
@@ -823,5 +857,79 @@ function Etiqueta({ tone = 'neutral', children }) {
     >
       {children}
     </span>
+  );
+}
+
+/**
+ * OS CONTRATOS PERTO DE VENCER — a fila que o serviço prometia.
+ *
+ * SÓ O CONTRATO ACEITO CONTA. Um documento emitido e nunca aceito não está
+ * vencendo, está parado: a cobrança dele é outra (o associado precisa aceitar),
+ * e misturar as duas listas faria o dono ligar pra renovar algo que nunca
+ * começou.
+ *
+ * UM POR PARCEIRO, o mais recente. Renovar cria documento novo e o anterior
+ * fica no histórico — sem esse corte, um parceiro de três anos apareceria três
+ * vezes na fila, todas as vezes vencidas.
+ *
+ * VENCIDO E VENCENDO NA MESMA LISTA, com o número de dias dizendo qual é qual.
+ * Separar em dois blocos daria mais destaque ao vencido, e o que precisa de
+ * ação é justamente o outro: quem já venceu continua operando (vencimento não
+ * suspende), quem vence em duas semanas ainda dá pra renovar sem atropelo.
+ */
+function ContratosVencendo({ contratos }) {
+  const fila = useMemo(() => {
+    const porParceiro = new Map();
+    for (const c of contratos || []) {
+      if (!c.aceitoEm) continue; // não aceito não está vencendo, está parado
+      const atual = porParceiro.get(c.tioUid);
+      const maisNovo =
+        !atual ||
+        String(c.conteudo?.emitidoEm || '') > String(atual.conteudo?.emitidoEm || '');
+      if (maisNovo) porParceiro.set(c.tioUid, c);
+    }
+    return [...porParceiro.values()]
+      .filter((c) => precisaRenovar(c))
+      .map((c) => ({ c, dias: diasParaVencer(c) }))
+      .sort((a, b) => a.dias - b.dias);
+  }, [contratos]);
+
+  if (fila.length === 0) return null;
+
+  return (
+    <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+      <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
+        <AlertTriangle size={15} className="text-warning" />
+        {fila.length}{' '}
+        {fila.length === 1 ? 'contrato pra renovar' : 'contratos pra renovar'}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+        Vencer não suspende ninguém — quem está em dia continua operando. Mas
+        renovar antes é o que evita cobrar sem papel vigente.
+      </p>
+      <div className="mt-3 space-y-1.5">
+        {fila.map(({ c, dias }) => (
+          <div
+            key={c.id}
+            className="flex items-baseline justify-between gap-2 rounded-xl bg-card px-3 py-2"
+          >
+            <span className="truncate text-sm font-semibold text-text">
+              {c.conteudo?.associado?.nome || 'Parceiro'}
+            </span>
+            <span
+              className={`shrink-0 text-xs font-bold tabular-nums ${
+                dias < 0 ? 'text-red-600' : 'text-amber-700'
+              }`}
+            >
+              {dias < 0
+                ? `venceu há ${Math.abs(dias)}d`
+                : dias === 0
+                  ? 'vence hoje'
+                  : `${dias}d`}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

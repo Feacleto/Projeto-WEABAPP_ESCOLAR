@@ -69,7 +69,24 @@ export async function enablePush(uid) {
   if (permission !== 'granted') return { ok: false, reason: 'negado' };
 
   try {
-    const registration = await navigator.serviceWorker.register(swUrl());
+    // ESCOPO PRÓPRIO — sem ele, este registro DERRUBA o service worker do PWA.
+    //
+    // `navigator.serviceWorker.register(url)` sem `scope` assume o diretório
+    // do script. Como os dois arquivos moram na raiz, o do FCM e o do PWA
+    // disputavam o escopo `/`, e registrar um substitui o outro: quem ligasse
+    // as notificações perdia o cache offline E o aviso de versão nova, sem
+    // nenhum erro na tela.
+    //
+    // `/firebase-cloud-messaging-push-scope` é o caminho que o próprio SDK do
+    // Firebase usa quando registra sozinho — não é invenção nossa, é voltar
+    // ao padrão que a passagem manual do registro tinha atropelado.
+    //
+    // A pasta não precisa existir: escopo de service worker é um prefixo de
+    // URL, não um diretório. Mas o ARQUIVO tem que estar na raiz pra poder
+    // reivindicar esse prefixo — e está.
+    const registration = await navigator.serviceWorker.register(swUrl(), {
+      scope: '/firebase-cloud-messaging-push-scope',
+    });
     const messaging = getMessaging(app);
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
