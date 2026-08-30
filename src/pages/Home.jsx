@@ -28,7 +28,6 @@ import {
   ArtRoad,
   ArtScreens,
   ArtSeats,
-  ArtStars,
   ArtSteps,
 } from '../components/landing/BlockArt';
 import { functions } from '../firebase/config';
@@ -226,13 +225,22 @@ export default function Home() {
   const families = comPiso(showcase ? driver?.families : null);
 
   // Ordem dos blocos + o nome que o leitor de tela anuncia em cada bolinha.
+  // A ORDEM SEGUE A DECISÃO, NÃO O CATÁLOGO.
+  //
+  // Era: o que faz → como começa → quem já é → avaliações → a vaga. Duas
+  // coisas estavam fora de lugar. A PROVA vinha depois da instrução — quem
+  // ainda não acreditou não lê passo a passo —, e estava partida em dois
+  // blocos que respondiam a mesma pergunta ("isso é de verdade?"), o que faz
+  // pouca prova parecer ainda menos.
+  //
+  // Agora: o que faz → por que confiar → como começa → a vaga. Seis bolinhas
+  // em vez de sete, e a rolagem inteira anda numa direção só.
   const secoes = [
     ['inicio', 'Início'],
     ['perguntas', 'As três perguntas'],
     ['telas', 'As telas do app'],
+    ['prova', 'Quem já usa'],
     ['como', 'Como começa'],
-    ['parceiro', 'Quem já é associado'],
-    ['vozes', 'Avaliações'],
     ['motorista', 'Vaga de associado'],
   ];
 
@@ -589,38 +597,26 @@ export default function Home() {
         {/* ───────────── 6. COMO COMEÇA ─────────────
           * Numerado porque É uma sequência, e curto porque a promessa é
           * justamente que começar não dá trabalho. */}
-        <Snap id="como" className={CLEAR_CTA}>
-          <Reveal once={false} className="px-6 pb-10 pt-16">
-            <div className="rise">
-              <ArtSteps />
-            </div>
-            <div className={`${GLASS} p-6 space-y-5 mt-2 rise`}>
-              <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70">
-                  começar é simples
-                </p>
-                <h2 className="text-xl font-extrabold tracking-tight mt-1">
-                  Do caderno pro app em 3 passos
-                </h2>
-              </div>
-
-              <StepsSequence />
-            </div>
-
-            {/* A dúvida que o texto não responde é "quanto fica na MINHA
-              * mensalidade?". Ela não cabe em parágrafo — cabe em conversa. */}
-            <div className="mt-4 rise" style={{ '--d': '420ms' }}>
-              <ConsultorButton assunto="como começar como associado" />
-            </div>
-          </Reveal>
-        </Snap>
-
-        {/* ───────────── 7. PARCEIRO ─────────────
-          * A vitrine mostra o LOGO do parceiro, não a ficha dele: o tio
-          * reconhece a marca da van que passa na rua dele em um relance.
-          * O tile do logo é o único elemento BRANCO da página escura — logo de
-          * marca é desenhado pra fundo claro, e vidro escuro comeria o dele. */}
-        <Snap id="parceiro" className={CLEAR_CTA}>
+        {/* ───────────── 7. A PROVA, NUM BLOCO SÓ ─────────────
+          *
+          * Eram DOIS blocos — "quem já é associado" e "avaliações" — e os
+          * dois respondiam a MESMA pergunta: isso é de verdade? Com um
+          * associado e poucos depoimentos, dividir a prova em dois gestos de
+          * rolagem faz a escassez de prova parecer maior do que ela é: a
+          * pessoa vê uma tela com um logo, rola, e vê outra tela quase vazia.
+          * Junto, o mesmo material lê como um bloco cheio.
+          *
+          * E ele SOBE, pra antes do "como começa": quem ainda não acreditou
+          * não lê passo a passo. Prova vem antes de instrução.
+          *
+          * A `ArtStars` saiu — ela desenhava a nota ao lado do `ReviewsBlock`,
+          * que já mostra a nota de verdade. Arte que repete o dado ao lado
+          * dele ocupa altura sem acrescentar.
+          *
+          * O tile do logo é o único elemento BRANCO da página escura: logo de
+          * marca é desenhado pra fundo claro, e vidro escuro comeria o dele.
+          * Só marca — nunca o avatar do perfil (ver LOGO_ASSOCIADO). */}
+        <Snap id="prova" className={CLEAR_CTA}>
           <Reveal once={false} className="px-6 pb-10 pt-16">
             <div className="rise">
               <ArtBadge />
@@ -675,23 +671,7 @@ export default function Home() {
               Já é cliente de um associado? Peça o link de convite — sua conta
               se cria por ali, sem código pra digitar.
             </p>
-          </Reveal>
-        </Snap>
-
-        {/* ───────────── 8. AVALIAÇÕES ─────────────
-        * Nota e depoimentos vindos da folha de avaliação dentro do app —
-        * só de motorista associado, e só de quem marcou a autorização. É a
-        * única prova social da página que não fui eu que escrevi.
-        *
-        * O bloco existe SEMPRE, mesmo sem avaliação: com um parceiro só, a
-        * ausência de depoimento é o estado normal por um tempo, e o exemplo
-        * marcado como exemplo é mais honesto (e mais útil) que uma seção que
-        * aparece e desaparece conforme o banco. */}
-      <Snap id="vozes" className={CLEAR_CTA}>
-        <Reveal once={false} className="px-6 pb-10 pt-16">
-          <div className="rise">
-            <ArtStars />
-          </div>
+          
           <p
             className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70 rise"
             style={{ '--d': '80ms' }}
@@ -720,8 +700,34 @@ export default function Home() {
             Quem avalia é quem usa: a nota e o depoimento vêm de dentro do
             app, e só aparecem aqui com autorização do parceiro.
           </p>
-        </Reveal>
-      </Snap>
+                  </Reveal>
+        </Snap>
+
+        <Snap id="como" className={CLEAR_CTA}>
+          <Reveal once={false} className="px-6 pb-10 pt-16">
+            <div className="rise">
+              <ArtSteps />
+            </div>
+            <div className={`${GLASS} p-6 space-y-5 mt-2 rise`}>
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70">
+                  começar é simples
+                </p>
+                <h2 className="text-xl font-extrabold tracking-tight mt-1">
+                  Do caderno pro app em 3 passos
+                </h2>
+              </div>
+
+              <StepsSequence />
+            </div>
+
+            {/* A dúvida que o texto não responde é "quanto fica na MINHA
+              * mensalidade?". Ela não cabe em parágrafo — cabe em conversa. */}
+            <div className="mt-4 rise" style={{ '--d': '420ms' }}>
+              <ConsultorButton assunto="como começar como associado" />
+            </div>
+          </Reveal>
+        </Snap>
 
       {/* ───────────── 9. A LISTA + RODAPÉ ─────────────
           * O destino de tudo. Aqui a barra flutuante sai de cena e o botão é o
@@ -753,6 +759,34 @@ export default function Home() {
                   de dados, backup, suporte e conferência de pagamento. A gente
                   abre vaga na velocidade que consegue sustentar — pra o seu
                   espaço de trabalho digital funcionar de verdade.
+                </p>
+
+                {/* A FRASE MAIS FORTE QUE ESTA PÁGINA PODE TER, e ela não
+                  * estava em lugar nenhum.
+                  *
+                  * O motorista que lê "plataforma" pensa em aplicativo que
+                  * fica com um percentual do que ele recebe — é o que todo
+                  * app de intermediação faz, e é a objeção silenciosa de quem
+                  * lê isto às 22h e não vai tocar no botão do consultor.
+                  *
+                  * Dizer que não é o caso não é falar de preço: é dizer a
+                  * FORMA do dinheiro. E é verdade verificável no produto — a
+                  * mensalidade é `payments`, PIX direto entre pai e motorista,
+                  * e a taxa vive noutra coleção e noutra tela (`/tio/taxa`,
+                  * fora do `/tio/finance`) exatamente por isso. É o que
+                  * sustenta o item 7 dos Termos de Uso.
+                  *
+                  * QUANTO CUSTA CONTINUA FORA DA PÁGINA. Número solto numa
+                  * vitrine vira âncora antes de existir proposta, e cada
+                  * operação tem um tamanho — a conversa com o consultor é
+                  * onde isso se resolve, e ela já é prometida no pitch. */}
+                <p className="rounded-xl border border-emerald-300/25 bg-emerald-400/10 p-3.5 text-[13px] leading-relaxed text-white/85">
+                  <strong className="font-bold text-white">
+                    A mensalidade das suas famílias é sua.
+                  </strong>{' '}
+                  PIX, dinheiro ou maquininha, direto com quem paga — a
+                  plataforma não entra no caminho desse dinheiro e não fica
+                  com percentual nenhum dele.
                 </p>
                 <button
                   type="button"

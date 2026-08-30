@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import {
   ArrowRight,
   BellRing,
   CalendarX2,
+  Check,
   FileText,
   Link2,
+  MapPin,
   MessageCircle,
   Receipt,
+  ShieldCheck,
   Users,
 } from 'lucide-react';
 import { functions } from '../firebase/config';
 import { comPiso } from '../config/vitrine';
+import { DEV_CITY, DEV_CNPJ } from '../config/developer';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
 import Logo from '../components/common/Logo';
@@ -68,10 +72,25 @@ import { FRENTE_FAMILIA, lembrarFrente } from '../utils/frentes';
  *      não vence nem se gasta, então pedir de novo resolve.
  *   4. O que tem dentro, como tranquilidade e não como lista de recursos.
  *
- * O MESMO SISTEMA VISUAL DA HOME
+ * O MESMO SISTEMA VISUAL DA HOME — e agora é verdade.
  * Fundo escuro, cartão de vidro, mesma marca — porque é o mesmo produto e o
  * responsável precisa reconhecer onde está. O que muda é o que se diz, não
  * como se parece.
+ *
+ * Durante um tempo esta frase estava aqui e o código fazia outra coisa: fundo
+ * `primaryDark` chapado contra o `#0B1210` da home, e ícones em âmbar contra
+ * o esmeralda de lá. Duas portas do mesmo produto com temperatura diferente
+ * por acidente, e um comentário prometendo o contrário.
+ *
+ * O ÂMBAR SAIU POR UM MOTIVO ALÉM DA COERÊNCIA: `secondary` e `warning` são o
+ * MESMO hex (#F5A623). Ele é a cor de aviso no app inteiro — fatura vencida,
+ * criança sem horário, falta marcada. Gastá-lo como enfeite na porta de
+ * entrada é queimar um sinal que tem outro trabalho.
+ *
+ * A ÚNICA DIFERENÇA MANTIDA são os brilhos animados da home, que não vêm pra
+ * cá. Lá eles seguram atenção de quem está avaliando um negócio; aqui o
+ * trabalho é o oposto — quem chega está perdida, e movimento no fundo não
+ * acalma ninguém.
  */
 
 /* Cartão de vidro — mesmo material da home, pra ser o mesmo produto. */
@@ -153,7 +172,7 @@ export default function Familia() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-primaryDark flex items-center justify-center">
+      <div className="min-h-screen bg-[#0B1210] flex items-center justify-center">
         <Spinner size={32} className="text-white" />
       </div>
     );
@@ -185,7 +204,7 @@ export default function Familia() {
   const responsaveis = comPiso(vitrine ? vitrine.responsaveis : null);
 
   return (
-    <div className="min-h-screen bg-primaryDark text-white">
+    <div className="min-h-screen bg-[#0B1210] text-white">
       <div className="mx-auto w-full max-w-mobile px-5 pb-16 pt-7">
         <header className="flex items-center justify-between">
           <Logo tone="onDark" height={26} />
@@ -229,7 +248,7 @@ export default function Familia() {
             * Sem vitrine, não aparece nada — nem a linha, nem o traço. */}
           {responsaveis !== null && (
             <p className="mt-5 flex items-center gap-2.5 border-t border-white/10 pt-4 text-[13px] leading-snug text-white/55">
-              <Users size={15} className="shrink-0 text-secondary" />
+              <Users size={15} className="shrink-0 text-emerald-300" />
               <span>
                 <strong className="font-bold tabular-nums text-white/85">
                   {responsaveis}
@@ -255,7 +274,7 @@ export default function Familia() {
         {/* ── 3. PERDI O LINK — o modo de falha real dele ───────────────── */}
         <section className={`mt-4 ${GLASS} p-5`}>
           <p className="flex items-center gap-2 text-sm font-bold">
-            <Link2 size={16} className="text-secondary" />
+            <Link2 size={16} className="text-emerald-300" />
             Perdeu o link?
           </p>
           <p className="mt-2 text-[13.5px] leading-relaxed text-white/70">
@@ -278,6 +297,25 @@ export default function Familia() {
             <MessageCircle size={14} className="shrink-0" />
             Chame o motorista no WhatsApp e peça o link de novo.
           </p>
+
+          {/* QUEM NUNCA TEVE CONTA NÃO TINHA FRASE NENHUMA.
+            *
+            * "Perdeu o link?" atende quem já teve. A mãe que ouviu falar do
+            * app e procurou sozinha caía num beco: tentava "Entrar" com um
+            * email que não existe, recebia erro de login, e concluía que o
+            * app está quebrado.
+            *
+            * A conta dela só pode nascer pelo convite — `redeemInvite` é o
+            * único caminho, e é assim de propósito (foi por aí que a
+            * auto-promoção se fechou). Então a saída não é um cadastro: é
+            * dizer, sem rodeio, quem consegue criar a conta dela. */}
+          <p className="mt-4 border-t border-white/10 pt-3 text-[13px] leading-relaxed text-white/70">
+            <strong className="font-semibold text-white/90">
+              Ainda não tem conta?
+            </strong>{' '}
+            Só o seu motorista pode criar a sua — peça o link pra ele. Não
+            existe cadastro por aqui, e isso protege os dados do seu filho.
+          </p>
         </section>
 
         {/* ── 4. O QUE TEM DENTRO — tranquilidade, não recurso ──────────── */}
@@ -289,7 +327,7 @@ export default function Familia() {
             {DENTRO.map(({ Icon, titulo, texto }) => (
               <li key={titulo} className={`${GLASS} flex gap-3.5 p-4`}>
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.08]">
-                  <Icon size={18} className="text-secondary" />
+                  <Icon size={18} className="text-emerald-300" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-bold leading-snug">{titulo}</p>
@@ -302,12 +340,51 @@ export default function Familia() {
           </ul>
         </section>
 
-        {/* Não existe pé de página com "seja parceiro" aqui, e é deliberado:
-          * o responsável não é público de aquisição. Quem quer conhecer a
-          * plataforma chega pela home, que é a porta do motorista. */}
-        <p className="mt-10 text-center text-[12px] leading-relaxed text-white/35">
-          Alô Buzinou — o transporte escolar do seu filho, organizado.
-        </p>
+        {/* ── O RODAPÉ LEGAL, QUE FALTAVA JUSTAMENTE AQUI ────────────────
+          *
+          * A porta do motorista tinha LGPD, Termos, Privacidade e CNPJ. Esta
+          * não tinha NADA — e é aqui que está a pessoa cujos dados, e os do
+          * filho (endereço, foto, escola), vivem no sistema. Estava invertido
+          * em relação a quem mais precisa da informação.
+          *
+          * Continua sem "seja parceiro" e sem link pra `/`: o responsável não
+          * é público de aquisição, e essa regra vale no rodapé também. O que
+          * entra é o que a lei e a confiança pedem, nada de venda. */}
+        <footer className="mt-10 space-y-5 border-t border-white/10 pt-7">
+          <div className="flex items-start gap-2.5">
+            <ShieldCheck size={16} className="mt-0.5 shrink-0 text-emerald-300" />
+            <p className="text-xs leading-relaxed text-white/60">
+              Todos os dados são tratados conforme a LGPD. Endereço e
+              localização só aparecem pra quem tem vínculo.
+            </p>
+          </div>
+
+          <div className="space-y-1.5 text-[11px] text-white/50">
+            <p className="flex items-center gap-2">
+              <MapPin size={13} className="shrink-0 text-emerald-300" />
+              {DEV_CITY}
+            </p>
+            <p className="flex items-center gap-2">
+              <Check size={13} className="shrink-0 text-emerald-300" />
+              <span className="font-mono">CNPJ {DEV_CNPJ}</span>
+            </p>
+          </div>
+
+          <div className="space-y-2 text-center">
+            <div className="flex items-center justify-center gap-3 text-[11px] text-white/50">
+              <Link to="/termos" className="hover:underline">
+                Termos de Uso
+              </Link>
+              <span aria-hidden>·</span>
+              <Link to="/privacidade" className="hover:underline">
+                Privacidade
+              </Link>
+            </div>
+            <p className="text-[12px] leading-relaxed text-white/35">
+              Alô Buzinou — o transporte escolar do seu filho, organizado.
+            </p>
+          </div>
+        </footer>
       </div>
 
       {/* publico="familia" é o que impede a folha de oferecer o cadastro

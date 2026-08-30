@@ -292,6 +292,22 @@ significado só. `getShowcase` fica de fora de propósito: já degrada calado.
   de 8s se o worker não assumir. Montado no `main.jsx`, fora do `AuthProvider`
   — atualizar não depende de quem está logado.
 
+**As duas portas públicas: decidir mora em `/`, entrar mora em `/familia`.**
+Nada mora nas duas. A home do motorista tem 6 blocos, e a ordem segue a
+decisão: o que faz → **por que confiar** → como começa → a vaga. A prova
+social é UM bloco (parceiro e avaliações eram dois respondendo a mesma
+pergunta, e prova pouca dividida em dois parece menos ainda). A porta da
+família tem rodapé legal próprio — é onde está a pessoa cujos dados e os do
+filho vivem no sistema — e **nenhuma** palavra de aquisição: sem vaga, sem
+taxa, sem escassez.
+
+**Preço não aparece na vitrine.** O que aparece é a FORMA do dinheiro: "a
+mensalidade das suas famílias é sua, a plataforma não entra no caminho dela".
+É verdade verificável (`payments` é PIX direto pai→motorista; a taxa vive em
+`faturasParceiro` e noutra tela) e sustenta o item 7 dos Termos. Quanto custa
+é conversa com o consultor — número solto vira âncora antes de existir
+proposta.
+
 [src/config/rodada.js](src/config/rodada.js) — `VAGAS_NA_RODADA` é escassez
 **real** e precisa ser baixada à mão quando um associado entra; contador falso
 que reinicia sozinho é propaganda enganosa (CDC art. 37).

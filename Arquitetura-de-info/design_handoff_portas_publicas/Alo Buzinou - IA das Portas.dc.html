@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"><script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.js"></script><style>
+body{margin:0;background:#e6e9e7;font-family:Inter,system-ui,sans-serif;color:#111827}
+a{color:#1F5F3F}a:hover{color:#143F2A}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08)}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 22px}
+.dv-tid{font:700 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#111827;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 Inter,sans-serif;color:#111827}
+.dv-opts{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#111827;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Inter,sans-serif;color:rgba(0,0,0,.55)}
+.dv-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.dv-opt:target .dv-oid{background:#1F5F3F;color:#fff}
+.dv-next{margin:26px 0 0;font:12px/1.6 Inter,sans-serif;color:rgba(0,0,0,.5)}
+</style></helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">As duas portas de rua — arquitetura de informação da home do motorista e da porta da família</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>MAPA — quem chega em cada porta, e por qual caminho</div>
+<div class="dv-card" style="width:1240px;padding:32px 34px 30px">
+<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6B7280">artboard 1</p>
+<h2 style="margin:6px 0 4px;font-size:26px;font-weight:800;letter-spacing:-.02em">Duas portas, dois estados de espírito</h2>
+<p style="margin:0 0 24px;font-size:14px;line-height:1.55;color:#374151;max-width:84ch;text-wrap:pretty">Uma porta vende, a outra deixa entrar. É a distinção que organiza tudo o que vem depois: <b>o motorista está decidindo, o responsável já decidiu.</b> Nenhuma frase serve pros dois — e o produto já reconheceu isso quando separou <code style="font-size:12.5px">/familia</code> da raiz.</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+<div style="background:#0B1210;border-radius:16px;padding:22px;color:#fff">
+<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6EE7B7">porta 1</p>
+<h3 style="margin:4px 0 2px;font-size:20px;font-weight:800;letter-spacing:-.01em"><code style="font-size:18px">/</code> — home do motorista</h3>
+<p style="margin:0 0 16px;font-size:13px;color:rgba(255,255,255,.6)">7 blocos com rolagem travada (um bloco = uma tela)</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div><p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45)">quem chega</p><p style="margin:3px 0 0;font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85)">Motorista escolar avaliando se vira associado. Dirige o dia inteiro, não lê ensaio, e desconfia de propaganda — o ramo dele é cheio.</p></div>
+<div><p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45)">o que ele quer saber, nesta ordem</p><p style="margin:3px 0 0;font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85)">É pra mim? · O que eu ganho? · Isso é de verdade? · <b style="color:#F5A623">Quanto me custa?</b> · Como começo?</p></div>
+<div><p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45)">o que a página faz com ele</p><p style="margin:3px 0 0;font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85)">Pede o nome na lista de associados. Escassez REAL entra aqui e constrói credibilidade.</p></div>
+</div>
+</div>
+
+<div style="background:#143F2A;border-radius:16px;padding:22px;color:#fff">
+<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#F5A623">porta 2</p>
+<h3 style="margin:4px 0 2px;font-size:20px;font-weight:800;letter-spacing:-.01em"><code style="font-size:18px">/familia</code> — porta do responsável</h3>
+<p style="margin:0 0 16px;font-size:13px;color:rgba(255,255,255,.6)">4 seções, rolagem normal, sem trava</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div><p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45)">quem chega</p><p style="margin:3px 0 0;font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85)">Mãe ou pai que <b>já</b> tem motorista e filho na perua. Chega em um de três estados: saiu da conta, errou a URL, ou perdeu o link do WhatsApp.</p></div>
+<div><p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45)">o que ele quer saber</p><p style="margin:3px 0 0;font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85)">Isto é o app do transporte do meu filho? · Como eu entro? · Perdi o link, e agora?</p></div>
+<div><p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45)">o que a página faz com ele</p><p style="margin:3px 0 0;font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.85)">Deixa entrar. Não convence de nada. <b>Zero escassez</b> — "últimas vagas" aqui sugere que o lugar do filho dele está em risco.</p></div>
+</div>
+</div>
+</div>
+
+<h3 style="margin:28px 0 14px;font-size:17px;font-weight:800;letter-spacing:-.01em">Os seis caminhos de chegada — e onde eles desembocam hoje</h3>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-left:4px solid #1F5F3F;border-radius:12px;padding:14px"><p style="margin:0;font-size:13px;font-weight:800">Link do convite no WhatsApp</p><p style="margin:4px 0 0;font-size:12.5px;line-height:1.55;color:#6B7280">→ <code>/convite/:codigo</code>. <b>É o caminho real do responsável</b> e não passa por porta nenhuma: o código vem na URL, ele não digita nada além de email e senha. Certo hoje.</p></div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-left:4px solid #1F5F3F;border-radius:12px;padding:14px"><p style="margin:0;font-size:13px;font-weight:800">Atalho do app instalado</p><p style="margin:4px 0 0;font-size:12.5px;line-height:1.55;color:#6B7280">→ o manifesto tem <code>start_url</code> só de <code>/</code>. Quem instalou pela porta da família é reencaminhado pelo rastro do aparelho + <code>?atalho=1</code>. Certo hoje.</p></div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-left:4px solid #1F5F3F;border-radius:12px;padding:14px"><p style="margin:0;font-size:13px;font-weight:800">Saiu da conta / sessão expirou</p><p style="margin:4px 0 0;font-size:12.5px;line-height:1.55;color:#6B7280">→ <code>/login</code>, com a "frente" viajando no state pra não oferecer "sou motorista e quero fazer parte" a uma mãe. Certo hoje.</p></div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-left:4px solid #1F5F3F;border-radius:12px;padding:14px"><p style="margin:0;font-size:13px;font-weight:800">URL errada / link velho</p><p style="margin:4px 0 0;font-size:12.5px;line-height:1.55;color:#6B7280">→ o 404 pergunta na ordem das certezas: tem sessão? vai pro painel. Errou dentro da área da família? volta pra porta da família. Certo hoje.</p></div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-left:4px solid #F5A623;border-radius:12px;padding:14px"><p style="margin:0;font-size:13px;font-weight:800">Digitou <code>/</code> num celular novo</p><p style="margin:4px 0 0;font-size:12.5px;line-height:1.55;color:#6B7280">→ home do motorista. O rastro é do <b>aparelho</b>, então não existe. Um responsável lê a página de associação. <b>Custo real: baixo</b> — tem "Entrar" fixo no topo. É o furo que sobrou.</p></div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-left:4px solid #F5A623;border-radius:12px;padding:14px"><p style="margin:0;font-size:13px;font-weight:800">QR impresso / cartão na van</p><p style="margin:4px 0 0;font-size:12.5px;line-height:1.55;color:#6B7280">→ hoje aponta pra <code>/</code> ou pro convite. <b>Se o material é entregue à FAMÍLIA, o QR tem que apontar pra <code>/familia</code></b> — é a única decisão de porta que não está no código, está na gráfica.</p></div>
+</div>
+
+<div style="margin-top:24px;background:#111827;border-radius:16px;padding:20px 22px;color:#fff">
+<p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.6)">a regra que resolve as dúvidas futuras</p>
+<p style="margin:0;font-size:14.5px;line-height:1.65;max-width:96ch;text-wrap:pretty">Toda vez que aparecer um bloco novo, a pergunta é: <b style="color:#F5A623">isso ajuda alguém a DECIDIR ou alguém a ENTRAR?</b> Decidir mora na raiz. Entrar mora na <code style="font-size:14px">/familia</code>. Nada mora nas duas — e conteúdo que serviria nas duas provavelmente está escrito genérico demais pra funcionar em qualquer uma.</p>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>HOME DO MOTORISTA — os 7 blocos hoje, e a ordem que eu proponho</div>
+<div class="dv-card" style="width:1240px;padding:32px 34px 30px">
+<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6B7280">artboard 2</p>
+<h2 style="margin:6px 0 4px;font-size:26px;font-weight:800;letter-spacing:-.02em">A ordem dos blocos é a ordem das objeções</h2>
+<p style="margin:0 0 24px;font-size:14px;line-height:1.55;color:#374151;max-width:86ch;text-wrap:pretty">Com rolagem travada, <b>cada bloco custa um gesto e ele só vê um por vez</b> — não existe "espiar o que vem depois". Isso torna a sequência a decisão mais importante da página: bloco fora de hora é bloco lido por quem já parou de acreditar.</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-radius:16px;padding:20px">
+<p style="margin:0 0 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#6B7280">hoje · 7 gestos</p>
+<div style="display:flex;flex-direction:column;gap:7px">
+<div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">1</span><span style="flex:1"><b style="font-size:13px">Hero</b> <span style="font-size:12.5px;color:#6B7280">— chapéu, promessa, estradinha, tradução, números reais, botão da lista</span><br><span style="font-size:11.5px;color:#1F5F3F;font-weight:600">responde: é pra mim? o que eu ganho?</span></span></div>
+<div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">2</span><span style="flex:1"><b style="font-size:13px">As três perguntas</b> <span style="font-size:12.5px;color:#6B7280">— o que ele ouve todo dia, avançando pro lado</span><br><span style="font-size:11.5px;color:#1F5F3F;font-weight:600">responde: você entende o meu dia?</span></span></div>
+<div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">3</span><span style="flex:1"><b style="font-size:13px">As telas</b> <span style="font-size:12.5px;color:#6B7280">— demo clicável, mock em CSS (print real vazaria dado de criança)</span><br><span style="font-size:11.5px;color:#1F5F3F;font-weight:600">responde: como é por dentro?</span></span></div>
+<div style="background:#fff;border:2px solid #F5A623;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#B45309;flex:none">4</span><span style="flex:1"><b style="font-size:13px">Como começa</b> <span style="font-size:12.5px;color:#6B7280">— 3 passos + botão do consultor</span><br><span style="font-size:11.5px;color:#B45309;font-weight:600">fora de hora: ele ainda não acreditou</span></span></div>
+<div style="background:#fff;border:2px solid #F5A623;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#B45309;flex:none">5</span><span style="flex:1"><b style="font-size:13px">Quem já é associado</b> <span style="font-size:12.5px;color:#6B7280">— um logo, num tile branco</span><br><span style="font-size:11.5px;color:#B45309;font-weight:600">meio bloco de conteúdo gastando um gesto inteiro</span></span></div>
+<div style="background:#fff;border:2px solid #F5A623;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#B45309;flex:none">6</span><span style="flex:1"><b style="font-size:13px">Avaliações</b> <span style="font-size:12.5px;color:#6B7280">— nota e depoimento de motorista, com autorização</span><br><span style="font-size:11.5px;color:#B45309;font-weight:600">mesma pergunta do bloco 5, em outro gesto</span></span></div>
+<div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">7</span><span style="flex:1"><b style="font-size:13px">A vaga + rodapé</b> <span style="font-size:12.5px;color:#6B7280">— o pedido, o brinde, CNPJ, LGPD, termos</span><br><span style="font-size:11.5px;color:#1F5F3F;font-weight:600">responde: o que eu faço agora?</span></span></div>
+</div>
+<p style="margin:14px 0 0;font-size:12.5px;line-height:1.6;color:#6B7280;text-wrap:pretty">Constantes em todos os blocos: marca + <b>Entrar</b> na barra fixa do topo, bolinhas de seção na direita, barra do convite no rodapé (sai no bloco 1 e no 7), e a dica "role pra ver mais".</p>
+</div>
+
+<div style="background:#e7f0ea;border:1px solid #c6dbcd;border-radius:16px;padding:20px">
+<p style="margin:0 0 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#1F5F3F">proposta · 6 gestos</p>
+<div style="display:flex;flex-direction:column;gap:7px">
+<div style="background:#fff;border:1px solid #c6dbcd;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">1</span><span style="flex:1"><b style="font-size:13px">Hero</b> <span style="font-size:12.5px;color:#6B7280">— igual. Não mexer: a ordem interna dele já segue o olho.</span></span></div>
+<div style="background:#fff;border:1px solid #c6dbcd;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">2</span><span style="flex:1"><b style="font-size:13px">As três perguntas</b> <span style="font-size:12.5px;color:#6B7280">— igual.</span></span></div>
+<div style="background:#fff;border:1px solid #c6dbcd;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">3</span><span style="flex:1"><b style="font-size:13px">As telas</b> <span style="font-size:12.5px;color:#6B7280">— igual.</span></span></div>
+<div style="background:#fff;border:2px solid #1F5F3F;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">4</span><span style="flex:1"><b style="font-size:13px">Quem já usa</b> <span style="font-size:12.5px;color:#1F5F3F;font-weight:600">← blocos 5 e 6 FUNDIDOS</span><br><span style="font-size:12.5px;color:#6B7280">O logo do associado e a nota/depoimento respondem a MESMA pergunta — "isso é de verdade?". Com um parceiro e poucos depoimentos, dois blocos fazem a escassez de prova parecer maior do que ela é. Juntos, viram um bloco cheio.</span></span></div>
+<div style="background:#fff;border:2px solid #1F5F3F;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">5</span><span style="flex:1"><b style="font-size:13px">O que custa</b> <span style="font-size:12.5px;color:#1F5F3F;font-weight:600">← BLOCO NOVO</span><br><span style="font-size:12.5px;color:#6B7280">A objeção de maior peso não tem bloco nenhum hoje — ela está terceirizada pro botão do consultor. Ver o cartão abaixo.</span></span></div>
+<div style="background:#fff;border:1px solid #c6dbcd;border-radius:12px;padding:11px 13px;display:flex;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1F5F3F;flex:none">6</span><span style="flex:1"><b style="font-size:13px">A vaga + como começa + rodapé</b><br><span style="font-size:12.5px;color:#6B7280">Os 3 passos ("do caderno pro app") descem pra cá e colam no pedido: "como começa" só interessa a quem já decidiu, e no fim da página ele é a última objeção antes do sim — não uma seção no meio do caminho.</span></span></div>
+</div>
+<p style="margin:14px 0 0;font-size:12.5px;line-height:1.6;color:#143F2A;text-wrap:pretty"><b>Um gesto a menos e a prova social antes do "como".</b> Quem não acreditou não lê passo a passo — e hoje o passo a passo vem primeiro.</p>
+</div>
+</div>
+
+<div style="margin-top:24px;display:grid;grid-template-columns:1.3fr 1fr;gap:20px">
+<div style="background:#fff;border:1px solid #E5E7EB;border-left:4px solid #F5A623;border-radius:14px;padding:18px 20px">
+<p style="margin:0 0 6px;font-size:15px;font-weight:800">O bloco novo: "o que custa"</p>
+<p style="margin:0 0 10px;font-size:13.5px;line-height:1.65;color:#374151;text-wrap:pretty">O código é honesto sobre isso: a dúvida que o texto não responde é <i>"quanto fica na MINHA mensalidade?"</i>, e a saída foi mandar pro consultor no WhatsApp. Funciona pra quem toca — e perde quem não toca, que é a maioria de quem lê página de vendas às 22h.</p>
+<p style="margin:0 0 10px;font-size:13.5px;line-height:1.65;color:#374151;text-wrap:pretty"><b>Não é tabela de preço.</b> É a FORMA do dinheiro, que é o que ele precisa entender pra confiar — e que o produto já tem escrito em contrato:</p>
+<ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7;color:#111827">
+<li>A mensalidade das famílias é <b>dele</b>. PIX, dinheiro ou maquininha, direto — <b>a plataforma não entra no caminho desse dinheiro.</b></li>
+<li>O que ele paga é <b>taxa de associação</b>, mensal, com dia de vencimento definido no contrato.</li>
+<li>São dois dinheiros diferentes, e o app não mistura os dois nem numa tela.</li>
+<li>Quanto é: fecha na conversa, porque a vaga é negociada — e aí o consultor faz sentido, como <i>próximo passo</i> em vez de <i>desvio</i>.</li>
+</ul>
+<p style="margin:10px 0 0;font-size:13px;line-height:1.6;color:#6B7280;text-wrap:pretty">Dizer que a plataforma não toca no dinheiro dele é, provavelmente, a frase mais poderosa que essa página pode ter — e hoje ela não está em lugar nenhum.</p>
+</div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-radius:14px;padding:18px 20px">
+<p style="margin:0 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6B7280">o que eu não mexeria, e por quê</p>
+<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.6;color:#374151">
+<p style="margin:0"><b>A rolagem travada.</b> Pergunta e resposta na mesma tela, sem parágrafo. É a decisão certa pro leitor que ela tem.</p>
+<p style="margin:0"><b>O "Entrar" pequeno no topo.</b> Ele serve a minoria (quem já é cliente) e já perdeu o destaque de propósito.</p>
+<p style="margin:0"><b>A frase única do botão flutuante.</b> Botão que troca de texto por bloco fica bonito e não ensina o destino.</p>
+<p style="margin:0"><b>Números reais, e o piso declarado.</b> Nota média sem piso é regra: piso em opinião de terceiro seria falsificar depoimento.</p>
+<p style="margin:0"><b>Demo em mock.</b> Print real vazaria nome e endereço de criança.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>PORTA DA FAMÍLIA — 4 seções, e três defeitos que eu consertaria</div>
+<div class="dv-card" style="width:1240px;padding:32px 34px 30px">
+<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6B7280">artboard 3</p>
+<h2 style="margin:6px 0 4px;font-size:26px;font-weight:800;letter-spacing:-.02em">A porta da família está quase certa</h2>
+<p style="margin:0 0 24px;font-size:14px;line-height:1.55;color:#374151;max-width:84ch;text-wrap:pretty">A estrutura dela é boa e as regras estão escritas: sem taxa, sem vaga, sem roleta, sem depoimento de motorista e — a mais importante — <b>sem nenhuma escassez</b>. O que eu mexeria são três coisas, e duas delas são promessas que o código faz e não cumpre.</p>
+
+<div style="display:grid;grid-template-columns:0.95fr 1.05fr;gap:20px;align-items:start">
+<div style="background:#143F2A;border-radius:16px;padding:20px;color:#fff">
+<p style="margin:0 0 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.55)">as 4 seções, na ordem</p>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px"><p style="margin:0;font-size:13.5px;font-weight:700">1 · Reconhecimento</p><p style="margin:3px 0 0;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,.7)">"A perua do Tio Nino fica aqui." Usa a marca do MOTORISTA, não a da plataforma — é o que ela reconhece. Fecha com o contador de responsáveis: prova antes do pedido.</p></div>
+<div style="background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px"><p style="margin:0;font-size:13.5px;font-weight:700">2 · Entrar</p><p style="margin:3px 0 0;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,.7)">Grande, branco, primeiro. Abre folha — não sai da página.</p></div>
+<div style="background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px"><p style="margin:0;font-size:13.5px;font-weight:700">3 · "Perdeu o link?"</p><p style="margin:3px 0 0;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,.7)">O modo de falha real dela. E a resposta honesta: o link não vence nem se gasta. Sem botão de WhatsApp de propósito — o telefone do motorista não pode sair numa função pública.</p></div>
+<div style="background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px"><p style="margin:0;font-size:13.5px;font-weight:700">4 · O que você encontra</p><p style="margin:3px 0 0;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,.7)">Quatro linhas, no presente, sem adjetivo: mensalidade · recados · avisar que hoje não vai · contrato.</p></div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="background:#fff;border:1px solid #E5E7EB;border-left:4px solid #EF4444;border-radius:14px;padding:16px 18px">
+<p style="margin:0 0 4px;font-size:14.5px;font-weight:800">1 · Falta o rodapé legal — e aqui ele importa mais</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#374151;text-wrap:pretty">A home do motorista tem LGPD, Termos, Privacidade, CNPJ e quem desenvolveu. A porta da família <b>não tem nenhum</b> — e é justamente aqui que está a pessoa cujos dados (e os do filho: endereço, foto, escola) estão no sistema. Consertar é barato: a mesma linha de LGPD, os dois links legais e a assinatura da empresa. <b>Sem "seja parceiro"</b>, que continua proibido nesta porta.</p>
+</div>
+<div style="background:#fff;border:1px solid #E5E7EB;border-left:4px solid #F5A623;border-radius:14px;padding:16px 18px">
+<p style="margin:0 0 4px;font-size:14.5px;font-weight:800">2 · "Mesmo sistema visual" não está cumprido</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#374151;text-wrap:pretty">O comentário promete o mesmo material das duas portas, mas os fundos são <b>diferentes</b>: a home usa <code>#0B1210</code> com brilhos e malha; esta usa <code>primaryDark</code> (<code>#143F2A</code>) chapado. E os ícones aqui são <code>secondary</code> (âmbar), que no app inteiro é a cor de <b>aviso</b>. Proposta: mesma base <code>#0B1210</code>, <b>sem os brilhos animados</b> (calma é o objetivo desta porta) e ícones em esmeralda. Mesmo produto, temperatura diferente — de propósito, e não por acidente.</p>
+</div>
+<div style="background:#fff;border:1px solid #E5E7EB;border-left:4px solid #1F5F3F;border-radius:14px;padding:16px 18px">
+<p style="margin:0 0 4px;font-size:14.5px;font-weight:800">3 · Nada diz o que fazer quem nunca teve conta</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#374151;text-wrap:pretty">"Perdeu o link?" atende quem já teve. Quem <b>nunca</b> recebeu — a mãe que ouviu falar do app e procurou sozinha — não tem frase nenhuma, e a conta dela só pode nascer pelo convite do motorista. Uma linha resolve: <i>"Ainda não tem conta? Só o seu motorista pode criar — peça o link pra ele."</i> Sem isso ela fica tentando "Entrar" com um email que não existe.</p>
+</div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-radius:14px;padding:16px 18px">
+<p style="margin:0 0 4px;font-size:13px;font-weight:800;color:#6B7280">O que eu NÃO acrescentaria</p>
+<p style="margin:0;font-size:12.5px;line-height:1.6;color:#6B7280;text-wrap:pretty">Mapa, print do app, vídeo, "baixe agora", depoimento de mãe. Ela não precisa ser convencida — precisa entrar. Cada bloco a mais é uma tela a mais entre ela e o botão branco.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>TELAS — as duas portas hoje, lado a lado, em 390px</div>
+<div class="dv-card" style="width:1240px;padding:32px 34px 34px">
+<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6B7280">artboard 4</p>
+<h2 style="margin:6px 0 22px;font-size:26px;font-weight:800;letter-spacing:-.02em">O mesmo produto, duas temperaturas</h2>
+
+<div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start">
+
+<div style="width:390px">
+<p style="margin:0 0 8px;font-size:12.5px;font-weight:700"><code>/</code> — home do motorista <span style="font-weight:500;color:#6B7280">· bloco 1 de 7</span></p>
+<div style="width:390px;height:800px;border-radius:26px;overflow:hidden;border:1px solid #1a2320;background:#0B1210;box-shadow:0 10px 30px rgba(0,0,0,.25);position:relative;color:#fff">
+<div style="position:absolute;inset:0;background:radial-gradient(120% 80% at 15% 0%, rgba(31,95,63,.55) 0%, rgba(11,18,16,0) 60%),radial-gradient(90% 60% at 100% 15%, rgba(82,196,26,.24) 0%, rgba(11,18,16,0) 55%),radial-gradient(80% 50% at 0% 100%, rgba(31,95,63,.35) 0%, rgba(11,18,16,0) 60%)"></div>
+<div style="position:absolute;inset:0;opacity:.07;background-image:linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px);background-size:44px 44px"></div>
+
+<div style="position:absolute;inset:0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px 8px">
+<span style="height:26px;padding:0 8px;border:1px dashed rgba(110,231,183,.55);border-radius:6px;display:inline-flex;align-items:center;font-family:ui-monospace,Menlo,monospace;font-size:9px;color:rgba(110,231,183,.8)">&lt;Logo tone="onDark" h=26&gt;</span>
+<span style="height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.07);font-size:12px;font-weight:700;color:rgba(255,255,255,.85);display:inline-flex;align-items:center;gap:6px">Entrar<i data-lucide="arrow-right" style="width:14px;height:14px"></i></span>
+</div>
+
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 24px">
+<p style="margin:0;font-family:ui-monospace,Menlo,monospace;font-size:11px;text-transform:uppercase;letter-spacing:.2em;color:rgba(110,231,183,.8)">app pra transporte escolar</p>
+<h1 style="margin:8px 0 0;font-size:32px;line-height:1.1;font-weight:800;letter-spacing:-.02em">Você faz seu transporte. <span style="color:#6EE7B7">O app avisa, cobra e organiza</span>.</h1>
+
+<div style="margin-top:20px;position:relative;height:72px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);overflow:hidden">
+<span style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed rgba(255,255,255,.2)"></span>
+<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:8px;background:rgba(16,185,129,.2);border:1px solid rgba(110,231,183,.3);display:flex;align-items:center;justify-content:center"><i data-lucide="house" style="width:13px;height:13px;color:#6EE7B7"></i></span>
+<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:8px;background:rgba(139,92,246,.2);border:1px solid rgba(196,181,253,.3);display:flex;align-items:center;justify-content:center"><i data-lucide="school" style="width:13px;height:13px;color:#DDD6FE"></i></span>
+<span style="position:absolute;left:44%;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:12px;background:#F5A623;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(0,0,0,.4)"><i data-lucide="bus" style="width:16px;height:16px;color:#fff"></i></span>
+</div>
+
+<p style="margin:20px 0 0;font-size:15px;line-height:1.65;color:rgba(255,255,255,.7)">Menos WhatsApp, menos caderninho, menos cobrança na mão.</p>
+
+<div style="margin-top:20px;display:flex;align-items:center;gap:24px;border-top:1px solid rgba(255,255,255,.1);padding-top:16px">
+<span><span style="display:block;font-size:24px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums">27</span><span style="display:block;font-size:11px;color:rgba(255,255,255,.5);line-height:1.2">famílias atendidas</span></span>
+<span><span style="display:flex;align-items:center;gap:5px;font-size:24px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums"><i data-lucide="star" style="width:16px;height:16px;color:#FBBF24;fill:#FBBF24"></i>4,9</span><span style="display:block;font-size:11px;color:rgba(255,255,255,.5);line-height:1.2">de nota · 6 avaliações</span></span>
+</div>
+
+<div style="margin-top:24px">
+<div style="height:56px;border-radius:16px;background:#34D399;color:#0B1210;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 12px 26px rgba(16,185,129,.25)"><i data-lucide="sparkles" style="width:17px;height:17px"></i>Garanta seu nome na lista<i data-lucide="arrow-right" style="width:18px;height:18px"></i></div>
+<p style="margin:10px 0 0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:rgba(255,255,255,.45)"><i data-lucide="users" style="width:12px;height:12px;color:rgba(110,231,183,.7)"></i>3 vagas nesta rodada · até o fim do mês</p>
+</div>
+</div>
+
+<div style="display:flex;justify-content:center;padding:0 0 22px">
+<span style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(11,18,16,.7);padding:8px 14px;font-size:11px;font-weight:700;color:rgba(255,255,255,.85)">role pra ver mais<i data-lucide="chevron-down" style="width:15px;height:15px;color:#6EE7B7"></i></span>
+</div>
+</div>
+
+<div style="position:absolute;right:6px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px">
+<span style="width:6px;height:20px;border-radius:999px;background:#6EE7B7;display:block"></span>
+<span style="width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25);display:block"></span>
+<span style="width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25);display:block"></span>
+<span style="width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25);display:block"></span>
+<span style="width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25);display:block"></span>
+<span style="width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25);display:block"></span>
+<span style="width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25);display:block"></span>
+</div>
+</div>
+<p style="margin:10px 2px 0;font-size:12px;line-height:1.6;color:#6B7280;text-wrap:pretty">Vende: escassez real, números do banco, botão que é o objetivo da página. A barra do convite sai de cena AQUI — dizer duas vezes na mesma tela é ruído.</p>
+</div>
+
+<div style="width:390px">
+<p style="margin:0 0 8px;font-size:12.5px;font-weight:700"><code>/familia</code> — porta do responsável <span style="font-weight:500;color:#6B7280">· página inteira</span></p>
+<div style="width:390px;border-radius:26px;overflow:hidden;border:1px solid #1a2320;background:#143F2A;box-shadow:0 10px 30px rgba(0,0,0,.25);color:#fff">
+<div style="padding:28px 20px 24px">
+<span style="height:26px;padding:0 8px;border:1px dashed rgba(255,255,255,.4);border-radius:6px;display:inline-flex;align-items:center;font-family:ui-monospace,Menlo,monospace;font-size:9px;color:rgba(255,255,255,.6)">&lt;Logo tone="onDark" h=26&gt;</span>
+
+<p style="margin:44px 0 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:rgba(255,255,255,.45)">área da família</p>
+<h1 style="margin:12px 0 0;font-size:32px;font-weight:800;line-height:1.08;letter-spacing:-.02em">A perua do Tio Nino<br>fica aqui.</h1>
+<p style="margin:16px 0 0;font-size:15px;line-height:1.65;color:rgba(255,255,255,.7)">Entre para ver a mensalidade, os recados e o contrato. É a mesma conta que você criou pelo link do motorista.</p>
+<p style="margin:20px 0 0;display:flex;align-items:center;gap:10px;border-top:1px solid rgba(255,255,255,.1);padding-top:16px;font-size:13px;line-height:1.4;color:rgba(255,255,255,.55)"><i data-lucide="users" style="width:15px;height:15px;color:#F5A623;flex:none"></i><span><b style="color:rgba(255,255,255,.85);font-variant-numeric:tabular-nums">27</b> responsáveis acompanham a perua do filho por aqui.</span></p>
+
+<div style="margin-top:32px;height:56px;border-radius:16px;background:#fff;color:#143F2A;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 22px rgba(0,0,0,.2)">Entrar na minha conta<i data-lucide="arrow-right" style="width:18px;height:18px"></i></div>
+
+<div style="margin-top:16px;border-radius:24px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);padding:20px">
+<p style="margin:0;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700"><i data-lucide="link-2" style="width:16px;height:16px;color:#F5A623"></i>Perdeu o link?</p>
+<p style="margin:8px 0 0;font-size:13.5px;line-height:1.65;color:rgba(255,255,255,.7)">Pode pedir de novo sem preocupação: o link do convite não vence e não se gasta. É o mesmo link, sempre — e ele abre a sua conta direto, sem senha.</p>
+<p style="margin:12px 0 0;display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.5)"><i data-lucide="message-circle" style="width:14px;height:14px;flex:none"></i>Chame o motorista no WhatsApp e peça o link de novo.</p>
+</div>
+
+<h2 style="margin:36px 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.45)">o que você encontra</h2>
+<div style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
+<div style="border-radius:24px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);padding:16px;display:flex;gap:14px"><span style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex:none"><i data-lucide="receipt" style="width:18px;height:18px;color:#F5A623"></i></span><span style="min-width:0"><span style="display:block;font-size:14px;font-weight:700;line-height:1.35">A mensalidade e o comprovante</span><span style="display:block;margin-top:4px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.6)">O que está pago, o que está em aberto, e o comprovante de cada mês.</span></span></div>
+<div style="border-radius:24px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);padding:16px;display:flex;gap:14px"><span style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex:none"><i data-lucide="bell-ring" style="width:18px;height:18px;color:#F5A623"></i></span><span style="min-width:0"><span style="display:block;font-size:14px;font-weight:700;line-height:1.35">Os recados do motorista</span><span style="display:block;margin-top:4px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.6)">Aviso de atraso, de mudança de horário e de dia sem aula.</span></span></div>
+<div style="border-radius:24px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);padding:16px;display:flex;gap:14px"><span style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex:none"><i data-lucide="calendar-x-2" style="width:18px;height:18px;color:#F5A623"></i></span><span style="min-width:0"><span style="display:block;font-size:14px;font-weight:700;line-height:1.35">Avisar que hoje não vai</span><span style="display:block;margin-top:4px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.6)">Sem depender de alguém ler mensagem no meio da rota.</span></span></div>
+<div style="border-radius:24px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);padding:16px;display:flex;gap:14px"><span style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex:none"><i data-lucide="file-text" style="width:18px;height:18px;color:#F5A623"></i></span><span style="min-width:0"><span style="display:block;font-size:14px;font-weight:700;line-height:1.35">O contrato</span><span style="display:block;margin-top:4px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.6)">O que foi combinado, disponível quando você precisar conferir.</span></span></div>
+</div>
+<p style="margin:40px 0 0;text-align:center;font-size:12px;line-height:1.6;color:rgba(255,255,255,.35)">Alô Buzinou — o transporte escolar do seu filho, organizado.</p>
+</div>
+</div>
+<p style="margin:10px 2px 0;font-size:12px;line-height:1.6;color:#6B7280;text-wrap:pretty">Deixa entrar: reconhecimento, botão branco, o modo de falha real. Note o fundo <code>#143F2A</code> e os ícones âmbar — a divergência apontada em <a class="dv-oid" href="#1c">1c</a>.</p>
+</div>
+
+<div style="width:340px">
+<p style="margin:0 0 8px;font-size:12.5px;font-weight:700">O contraste, em números</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-radius:14px;padding:14px"><p style="margin:0;font-size:12px;color:#6B7280">Blocos até a ação principal</p><p style="margin:4px 0 0;font-size:15px;font-weight:800">motorista: 1 <span style="color:#6B7280">·</span> família: 1</p><p style="margin:4px 0 0;font-size:11.5px;line-height:1.5;color:#6B7280">As duas acertam: a ação vem antes da explicação nos dois lados.</p></div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-radius:14px;padding:14px"><p style="margin:0;font-size:12px;color:#6B7280">Menções a preço, taxa ou vaga</p><p style="margin:4px 0 0;font-size:15px;font-weight:800">motorista: 6 <span style="color:#6B7280">·</span> família: <span style="color:#1F5F3F">0</span></p><p style="margin:4px 0 0;font-size:11.5px;line-height:1.5;color:#6B7280">O zero é a regra mais importante da porta da família, e está cumprida.</p></div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-radius:14px;padding:14px"><p style="margin:0;font-size:12px;color:#6B7280">Explica a forma do dinheiro?</p><p style="margin:4px 0 0;font-size:15px;font-weight:800;color:#B91C1C">nenhuma das duas</p><p style="margin:4px 0 0;font-size:11.5px;line-height:1.5;color:#6B7280">Na do motorista, é a objeção de maior peso — e o bloco novo de <a class="dv-oid" href="#1b">1b</a> existe pra isso.</p></div>
+<div style="background:#F6F8F7;border:1px solid #dfe5e2;border-radius:14px;padding:14px"><p style="margin:0;font-size:12px;color:#6B7280">Links legais e LGPD</p><p style="margin:4px 0 0;font-size:15px;font-weight:800">motorista: sim <span style="color:#6B7280">·</span> família: <span style="color:#B91C1C">não</span></p><p style="margin:4px 0 0;font-size:11.5px;line-height:1.5;color:#6B7280">Invertido: a titular dos dados está do lado que não tem os links.</p></div>
+<div style="background:#111827;color:#fff;border-radius:14px;padding:14px"><p style="margin:0;font-size:12px;color:rgba(255,255,255,.6)">Resumo</p><p style="margin:4px 0 0;font-size:13px;line-height:1.6">Fundir dois blocos, criar um ("o que custa"), descer o "como começa", e dar rodapé legal + uma frase de "nunca tive conta" pra porta da família.</p></div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Peça em seguida: "desenha o bloco 'o que custa' no visual da home" · "redesenha a porta da família com o fundo e o rodapé de <a class="dv-oid" href="#1c">1c</a>" · "mostra a home nova com os 6 blocos em miniatura"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1340,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  componentDidMount() { this.pintarIcones(); }
+  componentDidUpdate() { this.pintarIcones(); }
+  pintarIcones() {
+    const tentar = () => {
+      if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+      else setTimeout(tentar, 120);
+    };
+    tentar();
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

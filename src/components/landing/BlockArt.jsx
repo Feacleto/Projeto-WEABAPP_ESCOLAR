@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Plus,
   School,
-  Star,
   Users,
 } from 'lucide-react';
 
@@ -216,22 +215,6 @@ export function ArtBadge() {
   );
 }
 
-/* Cinco estrelas acendendo uma a uma — a nota que vem do banco, não do
- * departamento de marketing. */
-export function ArtStars() {
-  return (
-    <div aria-hidden className="relative h-[72px] flex items-center justify-center gap-1.5">
-      {[0, 220, 440, 660, 880].map((d) => (
-        <Star
-          key={d}
-          size={22}
-          className="art-pop text-amber-400 fill-amber-400"
-          style={{ animationDelay: `${d}ms` }}
-        />
-      ))}
-    </div>
-  );
-}
 
 /* Quatro lugares: três ocupados, um piscando com um "+". É o "vagas por
  * convite" sem precisar de texto — e o convite pra ser o quarto. */
