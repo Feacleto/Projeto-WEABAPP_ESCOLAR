@@ -487,10 +487,15 @@ export default function PaiDashboard() {
             </div>
           </>
         )}
-      </div>
 
-      {/* Caderno digital — botão flutuante na tela inicial do Pai */}
-      <PaiNotebookFAB />
+        {/* O CADERNO, como linha e dentro da rolagem.
+          *
+          * Não aparece no `acompanhando`: ali ela está esperando na porta, e
+          * recado de semana passada não compete com "onde ele está agora".
+          * Nos outros dois estados fica no fim, que é onde vai quem terminou
+          * de ler o que a tela tinha a dizer. */}
+        {estadoDoDia !== 'acompanhando' && <PaiNotebookFAB />}
+      </div>
 
       <ChildDetailSheet
         open={fichaAberta}

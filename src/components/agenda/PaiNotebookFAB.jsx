@@ -19,6 +19,7 @@ import {
   watchParentAgenda,
 } from '../../services/agendaService';
 import { playSound } from '../../services/soundService';
+import AppSheet from '../common/AppSheet';
 
 const MONTH_NAMES = [
   'Janeiro',
@@ -82,24 +83,49 @@ export default function PaiNotebookFAB() {
 
   return (
     <>
-      {/* FAB com label persistente "Veja a agenda" — convida o Pai a abrir
-        * o caderno mesmo quando não tem notificação chamando atenção. */}
+      {/* A PORTA É UMA LINHA, e não um botão flutuante.
+        *
+        * Era uma pílula violeta com gradiente, presa acima da barra de abas,
+        * chamando "Veja a agenda" o tempo todo. Três problemas:
+        *
+        *   1. TRÊS AÇÕES DISPUTANDO O MESMO CANTO — a aba, o cartão do dia e
+        *      o FAB. Convite permanente pra uma consulta que é MENSAL é o
+        *      oposto da prioridade dela, que é a hora de hoje.
+        *   2. O violeta é uma família de cor que NÃO EXISTE no
+        *      `tailwind.config.js`. Cor fora do sistema num elemento
+        *      permanente ensina que o sistema é sugestão.
+        *   3. Flutuando, ele cobre conteúdo — e a tela dela já é curta.
+        *
+        * A METÁFORA DO PAPEL FICA. O caderno pautado, a espiral, a margem
+        * vermelha e o som ao virar página continuam: essa segunda linguagem
+        * está certa, porque diz "isto é recado, não é o app falando". O que
+        * não podia é ela estar do lado de FORA, competindo com a tela que
+        * responde "onde está meu filho". */}
       <button
         type="button"
         onClick={() => setAbertoNoToque(true)}
-        aria-label="Veja a agenda"
-        className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-500/30 flex items-center gap-2 tap font-bold print:hidden"
+        className="tap flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-card px-4 py-3 text-left"
       >
-        <Notebook size={22} />
-        <span className="text-sm">Veja a agenda</span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+          <Notebook size={17} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-text">
+            Caderno de recados
+          </span>
+          <span className="block text-[11px] text-textMuted">
+            O que o motorista mandou este mês
+          </span>
+        </span>
+        <ChevronRight size={17} className="shrink-0 text-textMuted" />
       </button>
 
-      {open && <NotebookView onClose={fechar} />}
+      <NotebookView open={open} onClose={fechar} />
     </>
   );
 }
 
-function NotebookView({ onClose }) {
+function NotebookView({ open, onClose }) {
   const { user } = useAuth();
   const { child } = useActiveChild();
   const [entries, setEntries] = useState([]);
@@ -166,7 +192,15 @@ function NotebookView({ onClose }) {
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
 
   return (
-    <div className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm max-w-mobile mx-auto flex flex-col">
+    /* O PAPEL VIRA O CONTEÚDO DA FOLHA, e não uma sobreposição própria.
+     *
+     * Era um `fixed inset-0` com backdrop e z-index inventados — uma terceira
+     * forma de cobrir a tela, ao lado do `Sheet` e do `AppSheet`. Dentro do
+     * AppSheet ele ganha de graça o que as outras folhas já têm: puxador,
+     * fecha no X, no toque fora e ARRASTANDO PRA BAIXO, e o portal que o tira
+     * do teto de empilhamento do cabeçalho. */
+    <AppSheet open={open} onClose={onClose} title="Caderno de recados" icon={Notebook} size="full">
+    <div className="flex flex-col h-full">
       {/* Topo — header do caderno */}
       <div className="bg-gradient-to-b from-amber-50 to-amber-100 px-4 py-3 flex items-center gap-2 border-b border-amber-200">
         {view === 'pages' ? (
@@ -265,6 +299,7 @@ function NotebookView({ onClose }) {
         </div>
       )}
     </div>
+    </AppSheet>
   );
 }
 
