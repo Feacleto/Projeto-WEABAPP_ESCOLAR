@@ -8,8 +8,14 @@
  * números diferentes pro mesmo filho no mesmo dia.
  *
  * `dateKey` é 'YYYY-MM-DD', o mesmo id que `absenceDeclarations` usa.
+ *
+ * A ARITMÉTICA DE MÊS NÃO MORA AQUI. `addMonths`, `getCurrentMonthKey` e
+ * `formatMonthLabel` já existiam em `formatters` e são usados pelas TELAS
+ * direto — esta
+ * primeira versão os reescreveu com outro nome, que é exatamente o que o
+ * `taxaService` avisa em voz alta: "três funções somando mês no mesmo código
+ * é como elas divergem numa virada de ano". Duas já bastavam pra doer.
  */
-
 /** 'YYYY-MM-DD' → Date local à meia-noite. Fora do formato, `null`. */
 export function dataDaChave(dateKey) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ''));
@@ -18,28 +24,6 @@ export function dataDaChave(dateKey) {
   // Date('2026-08-29')`) evita o parse como UTC — que joga o dia pra trás em
   // qualquer fuso a oeste de Greenwich, o Brasil inteiro incluído.
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-}
-
-/** 'YYYY-MM' do mês que contém a data. */
-export function chaveDoMes(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
-
-/** Soma meses a uma chave 'YYYY-MM'. Aceita negativo. */
-export function somaMeses(mesKey, n) {
-  const [ano, mes] = String(mesKey).split('-').map(Number);
-  const d = new Date(ano, mes - 1 + n, 1);
-  return chaveDoMes(d);
-}
-
-/** 'agosto de 2026' — pra ler, não pra ordenar. */
-export function rotuloDoMes(mesKey) {
-  const [ano, mes] = String(mesKey).split('-').map(Number);
-  if (!ano || !mes) return '';
-  return new Intl.DateTimeFormat('pt-BR', {
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(ano, mes - 1, 1));
 }
 
 /**
@@ -64,8 +48,10 @@ export function faltasDoMes(historico, mesKey) {
  */
 export function resumoDeFaltas(historico, hoje = new Date()) {
   const lista = historico || [];
-  const chaveHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
-  const mes = chaveDoMes(hoje);
+  const ano = hoje.getFullYear();
+  const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+  const chaveHoje = `${ano}-${mm}-${String(hoje.getDate()).padStart(2, '0')}`;
+  const mes = `${ano}-${mm}`;
 
   let noMes = 0;
   let total = 0;

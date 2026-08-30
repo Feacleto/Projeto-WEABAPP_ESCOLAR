@@ -24,13 +24,12 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { horariosCombinados, horaCurta } from '../services/horariosService';
+import { faltasDoMes, resumoDeFaltas } from '../utils/faltas';
 import {
-  chaveDoMes,
-  faltasDoMes,
-  resumoDeFaltas,
-  rotuloDoMes,
-  somaMeses,
-} from '../utils/faltas';
+  addMonths,
+  formatMonthLabel,
+  getCurrentMonthKey,
+} from '../utils/formatters';
 import { useChildAbsenceHistory } from '../hooks/useAbsences';
 import { updateChild } from '../services/childrenService';
 import EditarOndeSheet from '../components/children/EditarOndeSheet';
@@ -529,7 +528,7 @@ export function ChildDetailSheet({ open, childId, onClose }) {
  */
 function FaltasDaCrianca({ childId }) {
   const { history, loading } = useChildAbsenceHistory(childId);
-  const [mes, setMes] = useState(() => chaveDoMes());
+  const [mes, setMes] = useState(() => getCurrentMonthKey());
 
   const doMes = useMemo(() => faltasDoMes(history, mes), [history, mes]);
   const futuras = useMemo(() => resumoDeFaltas(history).futuras, [history]);
@@ -537,7 +536,7 @@ function FaltasDaCrianca({ childId }) {
   // Só anda PRA TRÁS a partir do mês corrente. Mês à frente só teria aviso
   // marcado, que não é falta e já aparece separado logo abaixo — navegar pra
   // lá daria meses vazios sem fim e a sensação de que a tela travou.
-  const podeAvancar = mes < chaveDoMes();
+  const podeAvancar = mes < getCurrentMonthKey();
 
   return (
     <Card className="space-y-3">
@@ -557,7 +556,7 @@ function FaltasDaCrianca({ childId }) {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => setMes((m) => somaMeses(m, -1))}
+          onClick={() => setMes((m) => addMonths(m, -1))}
           aria-label="Mês anterior"
           className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-textMuted"
         >
@@ -573,7 +572,7 @@ function FaltasDaCrianca({ childId }) {
                 {doMes.length}
               </p>
               <p className="mt-1 text-[11px] capitalize leading-tight text-textMuted">
-                {rotuloDoMes(mes)}
+                {formatMonthLabel(mes)}
               </p>
             </>
           )}
@@ -582,7 +581,7 @@ function FaltasDaCrianca({ childId }) {
         <button
           type="button"
           disabled={!podeAvancar}
-          onClick={() => podeAvancar && setMes((m) => somaMeses(m, 1))}
+          onClick={() => podeAvancar && setMes((m) => addMonths(m, 1))}
           aria-label="Próximo mês"
           className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-textMuted disabled:opacity-30"
         >

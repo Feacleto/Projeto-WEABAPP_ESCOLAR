@@ -14,13 +14,12 @@ import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useChildAbsenceHistory } from '../../hooks/useAbsences';
 import { ABSENCE_LABELS } from '../../services/absencesService';
+import { dataDaChave, faltasDoMes } from '../../utils/faltas';
 import {
-  chaveDoMes,
-  dataDaChave,
-  faltasDoMes,
-  rotuloDoMes,
-  somaMeses,
-} from '../../utils/faltas';
+  addMonths,
+  formatMonthLabel,
+  getCurrentMonthKey,
+} from '../../utils/formatters';
 
 /**
  * AS FALTAS DO FILHO — mês a mês, pra trás.
@@ -47,7 +46,7 @@ export default function PaiFaltas() {
   const { child, loading: carregandoCrianca } = useActiveChild();
   const { history, loading } = useChildAbsenceHistory(child?.id);
 
-  const [mes, setMes] = useState(() => chaveDoMes());
+  const [mes, setMes] = useState(() => getCurrentMonthKey());
   const [avisando, setAvisando] = useState(false);
 
   const doMes = useMemo(() => faltasDoMes(history, mes), [history, mes]);
@@ -58,7 +57,7 @@ export default function PaiFaltas() {
   // lista já vive no painel, onde ele consegue desmarcar. Deixar navegar pra
   // frente aqui criaria meses vazios sem fim, e a sensação de que a tela
   // quebrou quando não quebrou.
-  const mesAtual = chaveDoMes();
+  const mesAtual = getCurrentMonthKey();
   const podeAvancar = mes < mesAtual;
 
   if (carregandoCrianca || !child) {
@@ -82,7 +81,7 @@ export default function PaiFaltas() {
         <div className="sticky top-14 z-10 -mx-5 flex items-center gap-2 border-b border-gray-100 bg-bg px-5 pb-3 pt-1">
           <button
             type="button"
-            onClick={() => setMes((m) => somaMeses(m, -1))}
+            onClick={() => setMes((m) => addMonths(m, -1))}
             aria-label="Mês anterior"
             className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-textMuted"
           >
@@ -91,7 +90,7 @@ export default function PaiFaltas() {
 
           <div className="min-w-0 flex-1 text-center">
             <p className="text-sm font-bold capitalize leading-tight text-text">
-              {rotuloDoMes(mes)}
+              {formatMonthLabel(mes)}
             </p>
             <p className="text-[11px] text-textMuted">
               {doMes.length === 0
@@ -103,7 +102,7 @@ export default function PaiFaltas() {
           <button
             type="button"
             disabled={!podeAvancar}
-            onClick={() => podeAvancar && setMes((m) => somaMeses(m, 1))}
+            onClick={() => podeAvancar && setMes((m) => addMonths(m, 1))}
             aria-label="Próximo mês"
             className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-textMuted disabled:opacity-30"
           >
@@ -117,7 +116,7 @@ export default function PaiFaltas() {
           <Card className="py-8 text-center">
             <CalendarDays size={30} className="mx-auto text-textMuted" />
             <p className="mt-2 text-sm font-semibold text-text">
-              Nenhuma falta em {rotuloDoMes(mes)}
+              Nenhuma falta em {formatMonthLabel(mes)}
             </p>
             <p className="mx-auto mt-1 max-w-[20rem] text-xs leading-relaxed text-textMuted">
               Só aparece aqui o que foi avisado pelo app. Falta combinada por

@@ -2,9 +2,10 @@
  * Testes da conta de faltas — Node puro, sem runner, como o resto de scripts/.
  * Rodar: node scripts/testar-faltas.mjs
  */
-import {
-  dataDaChave, chaveDoMes, somaMeses, rotuloDoMes, faltasDoMes, resumoDeFaltas,
-} from '../src/utils/faltas.js';
+import { dataDaChave, faltasDoMes, resumoDeFaltas } from '../src/utils/faltas.js';
+// A aritmética de mês é a de `formatters`, e não uma cópia: o teste passa por
+// ela de propósito, porque é a que as telas de falta usam.
+import { addMonths, formatMonthLabel } from '../src/utils/formatters.js';
 
 let ok = 0, falhou = 0;
 const eq = (nome, a, b) => {
@@ -22,10 +23,10 @@ eq('formato errado devolve null', dataDaChave('29/08/2026'), null);
 eq('vazio devolve null', dataDaChave(''), null);
 
 console.log('\n\x1b[1m2. Aritmética de mês atravessa o ano\x1b[0m');
-eq('mês anterior', somaMeses('2026-01', -1), '2025-12');
-eq('mês seguinte', somaMeses('2026-12', 1), '2027-01');
-eq('doze pra trás', somaMeses('2026-08', -12), '2025-08');
-eq('rótulo por extenso', rotuloDoMes('2026-08'), 'agosto de 2026');
+eq('mês anterior', addMonths('2026-01', -1), '2025-12');
+eq('mês seguinte', addMonths('2026-12', 1), '2027-01');
+eq('doze pra trás', addMonths('2026-08', -12), '2025-08');
+eq('rótulo por extenso', formatMonthLabel('2026-08'), 'agosto de 2026');
 
 console.log('\n\x1b[1m3. Faltas do mês saem ordenadas e sem vizinho\x1b[0m');
 const hist = [
