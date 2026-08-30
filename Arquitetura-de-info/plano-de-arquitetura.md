@@ -517,3 +517,75 @@ Cada proposta foi confrontada com os cabeçalhos. **O que mudou:**
   propõe funcionalidade nova, e nenhum acrescenta tela, rota, aba ou elemento de
   interface. A16 e A14 movem UI que já existe; A5 e A13 movem lógica; o resto é
   rules, functions, testes e modelo de dados.
+
+---
+
+## 7. Estado da execução — 30/08/2026
+
+14 commits, 79 arquivos, +3.399/−993 linhas. Cada commit foi validado com
+`npm run lint`, `npm run testar`, `npm run build` e, quando tocou rules,
+`npm run testar:regras` contra o emulador.
+
+**Testes: 182 → 363** casos de lógica · **69 → 101** casos de rules.
+
+### Executado
+
+| Item | Estado |
+|---|---|
+| **Fase 0** — bugs vivos, CI, `.env` | completa |
+| **A1** ponteiro único de inquilino | completa (7 lugares) |
+| **A2** cobertura de rules | completa (+2 atores, +8 coleções) |
+| **A3** `isAdmin()` sem escopo | completa (7 furos) |
+| **A4** gate de papel nas callables | completa |
+| **A5** regra pura para `utils/` | completa (taxa, contrato, status, pix, auth) |
+| **A6** CI | completa |
+| **A7** id determinístico de `payments` | completa |
+| **A8** tetos nas consultas | completa (4 tetos + 1 recusa deliberada) |
+| **A9** contador de vagas | completa (transação + `updateChild` recusa `active`) |
+| **A11** violações de camada | completa (`grep` sai vazio) |
+| **A12** comentários com garantia falsa | completa (5) |
+| **A13** duplicação de helpers | completa |
+| **A14** bundle | parcial — ver abaixo |
+| **A17** `.env` rastreado | completa |
+
+### Não executado, e por quê
+
+**A16 — os oito arquivos acima de 900 linhas.** É o item de maior volume e
+menor risco removido do plano inteiro, e o único que exige **verificar tela a
+tela**: mover subcomponente é mecânico, mas o que prova que deu certo é olhar
+a tela, e eu não tenho como olhar. `npm run lint` e `npm run build` pegam
+import quebrado; não pegam layout quebrado. Fica como o próximo trabalho, com
+o corte de cada arquivo já mapeado na seção 2.
+
+**A migração das nove folhas para `AppSheet`.** Mesma razão. O cabeçalho da
+peça agora diz a verdade sobre isso, e o `grep` que encontra as pendentes está
+escrito dentro dele.
+
+**A14 (bundle), a metade que sobrou.** `Welcome`, `PartnerPitch` e o Cloud
+Storage saíram do caminho crítico. `Home` e `Familia` NÃO foram tornadas lazy:
+o ganho é real (a mãe baixa a home do motorista inteira para abrir
+`/convite`), mas `App.jsx` registra por escrito que "adiantado fica só o
+caminho de quem chega de fora", e primeira pintura da página que vende é
+decisão de produto — não minha.
+
+**A15 — reconciliação de índices.** Três índices declarados parecem mortos e
+quatro pares de igualdade pura parecem desnecessários. Deixei os dois grupos
+como estão: remover índice que na verdade é usado quebra em produção sem
+quebrar no emulador, e o ganho é custo de escrita. Precisa da medição contra
+projeto limpo que a seção 2 descreve, não de palpite. Os dois índices que as
+consultas NOVAS exigem foram acrescentados.
+
+**A10, a metade cara.** A consolidação por provedor não foi feita — e a
+própria varredura concluiu que o preço não é rede duplicada (o SDK compartilha
+target para consultas idênticas), e que os tetos de A8 resolvem o volume. Foi
+feito o que ela recomendou de fato: a folha que assinava fechada, a assinatura
+duplicada de `liveLocation` no `TioDashboard`, e o código morto de `altPickups`.
+
+### O que precisa de você
+
+1. **Deploy.** Nada disso está no ar. `deploy.ps1` já ordena functions antes de
+   hosting. As rules e os dois índices novos vão junto.
+2. **Secrets do CI** — `VITE_FIREBASE_*` no GitHub, senão o passo de build
+   falha.
+3. **`adminUids`** só passa a ser preenchido depois que `redeemInvite` subir.
+   Sem dado real, não há backfill a fazer.
