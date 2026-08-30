@@ -6,7 +6,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { precisaDaPerua } from './horariosService';
+import { precisaDaPerua } from '../utils/horarios';
 
 /**
  * A VIAGEM DE CADA CRIANÇA, DIA A DIA — `children/{id}/rides/{YYYY-MM-DD}`.

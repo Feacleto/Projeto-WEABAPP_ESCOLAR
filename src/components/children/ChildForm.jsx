@@ -33,7 +33,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLimiteCriancas } from '../../hooks/useLimiteCriancas';
 import { devWhatsAppLink } from '../../config/developer';
 import { searchAddress } from '../../services/locationService';
-import { normalizaHora, periodoDaHora, horaCurta } from '../../services/horariosService';
+import { normalizaHora, periodoDaHora, horaCurta } from '../../utils/horarios';
 import { useEscolas } from '../../hooks/useEscolas';
 import {
   maskPhone,

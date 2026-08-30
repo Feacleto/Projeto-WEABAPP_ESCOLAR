@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 /**
- * Testes do modelo de horários (src/services/horariosService.js).
+ * Testes do modelo de horários (src/utils/horarios.js).
  *
  * POR QUE UM SCRIPT E NÃO UM FRAMEWORK
  * O projeto não tem runner de teste, e trazer um só pra isto custaria mais que
@@ -20,7 +20,7 @@ import {
   estadoNoDia, ESTADOS, precisaDaPerua,
   blocosDaDirecao, diaCompleto, blocoDoMomento, esperaAte,
   avisosDeTempo, proporCascata,
-} from '../src/services/horariosService.js';
+} from '../src/utils/horarios.js';
 import { chaveDoNome, proporEscolasDasCriancas } from '../src/utils/nomeEscola.js';
 import {
   diasUteis,

@@ -1,4 +1,4 @@
-import { horariosCombinados, horaCurta } from '../services/horariosService.js';
+import { horariosCombinados, horaCurta } from './horarios.js';
 
 /**
  * A DECISÃO DE QUANDO AVISAR — separada da tarja que a desenha.

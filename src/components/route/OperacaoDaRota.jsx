@@ -39,7 +39,7 @@ import {
   ROTULO_ESTADO,
   getDateKey,
   formataEspera,
-} from '../../services/horariosService';
+} from '../../utils/horarios';
 
 import {
   declareAbsence,

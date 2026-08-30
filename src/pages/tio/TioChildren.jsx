@@ -12,7 +12,7 @@ import { ChildDetailSheet } from '../../pages/ChildDetail';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { useChildren } from '../../hooks/useChildren';
 import { useAbsences } from '../../hooks/useAbsences';
-import { getDateKey } from '../../services/horariosService';
+import { getDateKey } from '../../utils/horarios';
 import {
   getActionForStatus,
   advanceChild,

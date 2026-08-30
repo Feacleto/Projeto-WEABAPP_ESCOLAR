@@ -23,7 +23,7 @@ import {
   CalendarX2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { horariosCombinados, horaCurta } from '../services/horariosService';
+import { horariosCombinados, horaCurta } from '../utils/horarios';
 import { faltasDoMes, resumoDeFaltas } from '../utils/faltas';
 import {
   addMonths,

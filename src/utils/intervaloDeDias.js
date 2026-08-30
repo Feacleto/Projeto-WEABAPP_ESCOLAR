@@ -1,7 +1,7 @@
 // A extensão `.js` é explícita de propósito: este módulo é carregado direto
 // pelo Node em `scripts/testar-horarios.mjs`, e o resolvedor de ESM do Node
 // não completa extensão como o Vite completa.
-import { getDateKey } from '../services/horariosService.js';
+import { getDateKey } from './horarios.js';
 
 /**
  * Intervalos de dias — a parte PURA do aviso de "sem aula".

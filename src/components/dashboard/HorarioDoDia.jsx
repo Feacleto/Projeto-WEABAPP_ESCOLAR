@@ -1,5 +1,5 @@
 import { Bus, Home, CircleAlert, UserCheck } from 'lucide-react';
-import { horariosCombinados, horaCurta } from '../../services/horariosService';
+import { horariosCombinados, horaCurta } from '../../utils/horarios';
 import { ABSENCE_TYPES } from '../../services/absencesService';
 import { primeiroNome } from '../../utils/formatters';
 

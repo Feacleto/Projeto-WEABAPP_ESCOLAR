@@ -47,7 +47,7 @@ import { describeRoutePresence, PRESENCE } from '../../utils/routePresence';
 import { formatCurrency } from '../../utils/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS, ABSENCE_TYPES } from '../../services/absencesService';
-import { getDateKey } from '../../services/horariosService';
+import { getDateKey } from '../../utils/horarios';
 import { playSound } from '../../services/soundService';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 import PaiNotebookFAB from '../../components/agenda/PaiNotebookFAB';

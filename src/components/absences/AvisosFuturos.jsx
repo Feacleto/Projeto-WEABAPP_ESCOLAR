@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CalendarDays, X, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ABSENCE_LABELS, removeAbsence } from '../../services/absencesService';
-import { getDateKey } from '../../services/horariosService';
+import { getDateKey } from '../../utils/horarios';
 
 /**
  * O QUE O RESPONSÁVEL JÁ AVISOU, E AINDA NÃO ACONTECEU.

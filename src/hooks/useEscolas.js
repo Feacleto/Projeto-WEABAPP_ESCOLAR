@@ -10,7 +10,7 @@ import { useAuth } from './useAuth';
  * na tela de cadastro se confunde com "ainda não cadastrei nenhuma escola" e
  * faz o motorista cadastrar a mesma escola de novo.
  *
- * Devolve `mapa` junto porque `horariosService` consome { id: escola }.
+ * Devolve `mapa` junto porque `utils/horarios` consome { id: escola }.
  */
 export function useEscolas() {
   const { user } = useAuth();

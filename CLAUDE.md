@@ -17,7 +17,8 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # horarios + faltas + aviso + contraste + travessia
+npm run testar                   # 363 casos: horarios, faltas, aviso, contraste,
+                                 # travessia, taxa, contrato, pix, status, auth
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -89,12 +90,14 @@ src/
 │   └── legal/         termos e privacidade
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive…
-├── services/          38 módulos — TODO acesso ao Firestore passa aqui
+├── services/          37 módulos — TODO acesso ao Firestore passa aqui
 ├── hooks/             23 hooks, quase todos onSnapshot de um service
 ├── config/            capabilities, rodada, developer, vitrine,
 │                      paletaCategorica (o único lugar com cor crua)
 ├── context/           AuthContext (perfil + papel)
-├── utils/             puros e testáveis, sem Firebase
+├── utils/             puros e testáveis, sem Firebase. Import interno leva
+│                      extensão .js EXPLÍCITA — o Vite resolve sem, o Node
+│                      não, e é o Node que roda os testes
 └── firebase/config.js
 functions/             Cloud Functions v2 (CommonJS, Node 22)
   └── lib/             billing, invites, push, routes, entryBonus, receiptGuard…
@@ -125,12 +128,17 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 ### Conceitos que não dá pra adivinhar do nome
 
 **Não existe mais "turno" nem "corrida".**
-[horariosService.js](src/services/horariosService.js) — o dia do motorista é
+[utils/horarios.js](src/utils/horarios.js) — o dia do motorista é
 uma **lista de paradas ordenada pela hora**, calculada de toda criança ativa
 com horário. Os seis turnos fixos e a janela de tempo foram descartados (o
 arquivo explica por quê). Não há array de membros salvo, então não há fila pra
 envelhecer. **Esse arquivo não importa nada de propósito** — é o que o mantém
 testável sem Firebase. Não adicione import ali.
+
+Ele MUDOU DE CASA em 30/08/2026: era `services/horariosService.js`, e dois
+utils (`avisoDoMomento`, `intervaloDeDias`) importavam dele — a seta da camada
+ao contrário, funcionando só porque ele não tinha imports. Agora a garantia é
+do diretório e não de um comentário.
 
 **`rides` é a viagem do dia**, um doc por criança por data, id = a data (logo,
 idempotente). Guarda os marcos com hora — `onboard`, `atSchool`, `delivered` —

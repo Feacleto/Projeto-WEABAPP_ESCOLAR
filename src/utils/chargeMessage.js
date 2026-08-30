@@ -1,4 +1,4 @@
-import { formatCurrency, formatMonthLabel } from './formatters';
+import { formatCurrency, formatMonthLabel } from './formatters.js';
 
 /**
  * Monta a mensagem de cobrança que o tio manda no WhatsApp.

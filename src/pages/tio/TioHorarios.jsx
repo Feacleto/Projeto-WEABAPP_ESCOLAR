@@ -30,7 +30,7 @@ import {
   periodoDaHora,
   CAMPO_DA_DIRECAO,
   horaNaDirecao,
-} from '../../services/horariosService';
+} from '../../utils/horarios';
 
 /**
  * "Horários" — onde o motorista monta a rota padrão.

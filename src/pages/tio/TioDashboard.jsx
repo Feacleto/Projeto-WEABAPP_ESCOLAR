@@ -39,7 +39,7 @@ import {
   semHorarioCombinado,
   ROTULO_ESTADO,
   formataEspera,
-} from '../../services/horariosService';
+} from '../../utils/horarios';
 import {
   statusNaDirecao,
   getActionForStatus,
