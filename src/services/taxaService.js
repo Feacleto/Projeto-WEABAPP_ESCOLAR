@@ -70,8 +70,15 @@ import { validatePixKey } from './userService';
  * fica falsa e a plataforma passa a ser intermediária — com tudo que vem junto.
  *
  * POR QUE O CÁLCULO RODA NO NAVEGADOR DO DONO
- * A Cloud Functions API está desativada no projeto (sem Blaze), então não existe
- * servidor onde rodar. Aqui isso é aceitável, e é o inverso do caso pai→tio:
+ *
+ * ATENÇÃO AO QUE ESTE PARÁGRAFO DIZIA ANTES: "a Cloud Functions API está
+ * desativada no projeto (sem Blaze), então não existe servidor onde rodar".
+ * Isso deixou de ser verdade — há quinze functions em produção, e uma delas
+ * (`generateMonthlyPayments`) faz exatamente esta forma de trabalho do outro
+ * lado do dinheiro. A premissa era falsa, e é ela que a próxima sessão leria
+ * antes de decidir o que pode ir pro servidor.
+ *
+ * O ARGUMENTO, ESSE, CONTINUA VALENDO, e é o inverso do caso pai→tio:
  * quem calcula é quem COBRA, e o cobrado não tem escrita na fatura. As rules
  * garantem — `faturasParceiro` é `write: isOwner()`, e o motorista só lê a dele.
  *

@@ -23,10 +23,22 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../config/capabilities';
 /**
  * Códigos que significam "esta função não está no ar".
  *
- * `not-found` é o caso limpo. `internal` entra porque o SDK cai nele quando a
- * chamada nem chega a ser roteada — o que, na prática, é o mesmo sintoma.
+ * `not-found` é o caso limpo.
+ *
+ * `internal` SAIU DAQUI, e o motivo é a própria correção que este arquivo
+ * celebra. Ele entrou como "a chamada nem chegou a ser roteada", que era o
+ * sintoma de Blaze desligado. Só que `internal` é TAMBÉM — e hoje, quase
+ * exclusivamente — o que o SDK devolve quando a function EXISTE e lançou uma
+ * exceção que não é `HttpsError`. Desde que `exigirCloud()` passou a barrar
+ * antes da chamada, o caso "não publicada" já não chega aqui; sobrou o caso
+ * oposto, sendo diagnosticado ao contrário.
+ *
+ * É exatamente a forma do bug que o cabeçalho abaixo descreve: um código
+ * significando duas coisas, e o app afirmando a errada com confiança. Um
+ * crash de verdade virava "esta parte ainda não está publicada", e quem fosse
+ * depurar iria ligar faturamento em vez de ler o log.
  */
-const FORA_DO_AR = ['functions/not-found', 'functions/internal'];
+const FORA_DO_AR = ['functions/not-found'];
 
 const MENSAGENS = {
   'functions/unauthenticated': 'Faça login de novo pra continuar.',
@@ -37,6 +49,11 @@ const MENSAGENS = {
     'O servidor demorou demais pra responder. Tente de novo.',
   'functions/unavailable':
     'Sem conexão com o servidor. Confira a internet e tente de novo.',
+  // O crash do servidor tem a própria frase, e ela precisa dizer DE QUEM é o
+  // problema. Antes caía em "ainda não está publicada", que manda a pessoa
+  // esperar por algo que já está no ar e manda quem depura ligar faturamento.
+  'functions/internal':
+    'O servidor falhou ao processar. Tente de novo — se insistir, o erro é do nosso lado.',
 };
 
 /**

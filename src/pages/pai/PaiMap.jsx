@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import LiveMap from '../../components/map/LiveMap';
 import Skeleton from '../../components/common/Skeleton';
 import RouteTracker from '../../components/dashboard/RouteTracker';
-import { describeRoutePresence, PRESENCE } from '../../utils/routePresence';
+import { describeRoutePresence, PRESENCE, formatDistance } from '../../utils/routePresence';
 import { playSound } from '../../services/soundService';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
@@ -319,7 +319,7 @@ function StatusPanel({
             Tá chegando!
           </p>
           <p className="text-xs text-warningText mt-0.5">
-            {formatDistance(realDistanceKm)} daqui · prepare a criança
+            {formatDistance(realDistanceKm) || '—'} daqui · prepare a criança
           </p>
         </div>
       </div>
@@ -362,8 +362,3 @@ function ReferenceRow({ icon: Icon, color, label, value }) {
   );
 }
 
-function formatDistance(km) {
-  if (km == null) return '—';
-  if (km < 1) return `${Math.round(km * 1000)} m`;
-  return `${km.toFixed(1)} km`;
-}

@@ -43,7 +43,7 @@ import { usePaymentsByParent } from '../../hooks/usePayments';
 import { useAbsenceForChild, useChildAbsenceHistory } from '../../hooks/useAbsences';
 import { useDailyAltPickup } from '../../hooks/useAltPickup';
 import { haversineDistance } from '../../utils/haversine';
-import { describeRoutePresence, PRESENCE } from '../../utils/routePresence';
+import { describeRoutePresence, PRESENCE, formatDistance } from '../../utils/routePresence';
 import { formatCurrency } from '../../utils/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS, ABSENCE_TYPES } from '../../services/absencesService';
@@ -864,7 +864,7 @@ function PresencePanel({ presence, onOpenMap }) {
           <p className="text-[11px] text-textMuted mt-1">
             {presence.freshness}
             {presence.distanceKm != null &&
-              ` · ${formatDistance(presence.distanceKm)} daqui`}
+              ` · ${formatDistance(presence.distanceKm) || '—'} daqui`}
           </p>
         )}
       </div>
@@ -873,11 +873,6 @@ function PresencePanel({ presence, onOpenMap }) {
   );
 }
 
-function formatDistance(km) {
-  if (km == null) return '—';
-  if (km < 1) return `${Math.round(km * 1000)} m`;
-  return `${km.toFixed(1)} km`;
-}
 
 /* ─────────────── Pagamento ─────────────── */
 
