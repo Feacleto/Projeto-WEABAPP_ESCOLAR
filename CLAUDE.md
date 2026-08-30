@@ -306,9 +306,12 @@ se mexer. O `<Logo />` aparece em 8 telas e TODAS são públicas ou de exceção
 dentro de `/tio` e `/pai` ele não aparece nenhuma vez, porque ali o
 [Header](src/components/layout/Header.jsx) põe a marca do MOTORISTA. Sobrou a
 travessia, que não é de ninguém: [Travessia.jsx](src/components/common/Travessia.jsx)
-cobre a tela ao entrar e ao sair, com a cena viajando pelo `state` da navegação
-(o mesmo caminho de `frentes.js`) — assim a cortina chega na MESMA renderização
-que o destino e o painel nunca pisca antes de ser coberto. Três cenas:
+cobre a tela ao entrar e ao sair. **A cena NÃO viaja pelo `state` da
+navegação** — tentou, e a saída nunca aparecia: ao zerar a sessão o
+`PrivateRoute` devolve `<Navigate to="/login">`, que navega dentro de um
+efeito e podia chegar depois, levando o `state` junto. A cortina sobe ANTES
+(`travessar()`), fica montada no topo das rotas e não desmonta na troca de
+tela; logout e navegação acontecem por baixo dela. Três cenas:
 `abertura` só no primeiro acesso (o balão de fala cresce e vira a tela),
 `entrada` no login e `saida` no logout. **A fala não tem nome, hora nem
 contagem** — isso a pessoa vê lá dentro dois segundos depois, e citar aqui

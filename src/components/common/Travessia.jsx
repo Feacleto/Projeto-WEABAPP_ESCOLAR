@@ -1,31 +1,25 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { LogoMark } from './Logo';
 import { MARK } from './logoPaths';
 import {
   CENA_ABERTURA,
+  assinarTravessia,
   duracaoDaTravessia,
-  estadoSemTravessia,
   falaDaTravessia,
-  lerTravessia,
 } from '../../utils/travessia';
 
 /**
  * A CORTINA — o teatro de entrar e de sair.
  *
- * Montada UMA vez, no topo das rotas. Ela lê a cena do `state` da navegação
- * (ver src/utils/travessia.js) e toca por cima da tela que acabou de chegar.
+ * Montada UMA vez, no topo das rotas, e ela NÃO desmonta em troca de tela.
+ * É isso que faz a peça atravessar a navegação inteira: quem sai levanta a
+ * cortina, o logout e a mudança de rota acontecem por baixo dela, e ela só
+ * sai no fim, já sobre a porta pública.
  *
- * POR QUE PELO `state` DA NAVEGAÇÃO, E NÃO POR CONTEXTO OU BARRAMENTO
- * A cortina e a tela de destino chegam na MESMA renderização, então a tela
- * nova nunca pisca antes de ser coberta. Qualquer outra abordagem — contexto,
- * emissor de eventos, estado no topo — montaria a cortina depois da rota, e o
- * primeiro quadro entregaria o destino. Além disso é o mesmo caminho que a
- * frente já usa em frentes.js: nada de mecanismo novo.
- *
- * É a mesma razão de o estado ser ajustado DURANTE a renderização, e não num
- * efeito: efeito roda depois da pintura, e um quadro do painel aparecendo
- * antes da cortina é exatamente o defeito que isto tudo existe pra cobrir.
+ * Ela não lê a rota. A cena chega por `assinarTravessia` — o porquê está no
+ * cabeçalho de utils/travessia.js, e resume-se a isto: mandar a cena no
+ * `state` da navegação fazia a saída perder a corrida contra o `<Navigate>`
+ * que o PrivateRoute dispara quando a sessão morre.
  *
  * AS TRÊS CENAS
  *   abertura — só no PRIMEIRO acesso. O balão de fala cresce até virar a tela
@@ -36,30 +30,15 @@ import {
  *
  * UM TOQUE PULA O TEATRO
  * A cortina não trava ninguém: qualquer toque nela a encerra na hora. Prender
- * o motorista por um segundo e pouco enquanto ele está no portão da escola
+ * o motorista por quase dois segundos enquanto ele está no portão da escola
  * seria pior do que não ter teatro nenhum — e deixar `pointer-events: none`
  * seria pior ainda, porque ele acertaria um botão que não consegue ver.
  */
 export default function Travessia() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const idBase = useId();
   const maskId = `abtv${idBase.replace(/:/g, '')}`;
-
-  const pedida = lerTravessia(location);
-  // O selo vem do nosso lado (ver estadoDaTravessia). Chavear em `location.key`
-  // parecia natural e quebrava a saída: entrada e saída usam `replace`, e o
-  // replace reaproveita a chave — a guarda via a mesma e engolia a segunda cena.
-  const chave = pedida ? pedida.selo : null;
-
   const [cenaAtiva, setCenaAtiva] = useState(null);
-  const [chaveVista, setChaveVista] = useState(null);
   const prazo = useRef(null);
-
-  if (chave && chave !== chaveVista) {
-    setChaveVista(chave);
-    setCenaAtiva(pedida);
-  }
 
   const encerrar = useCallback(() => {
     clearTimeout(prazo.current);
@@ -67,38 +46,35 @@ export default function Travessia() {
   }, []);
 
   useEffect(() => {
-    if (!cenaAtiva) return undefined;
+    const desligar = assinarTravessia((pedido) => {
+      clearTimeout(prazo.current);
+      setCenaAtiva(pedido);
 
-    // Tira a cena do histórico: sem isso, um F5 ou um gesto de voltar
-    // repetiriam o teatro.
-    navigate(location.pathname + location.search, {
-      replace: true,
-      state: estadoSemTravessia(location.state),
+      const reduzido =
+        typeof window !== 'undefined' &&
+        Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+
+      prazo.current = setTimeout(
+        () => setCenaAtiva(null),
+        duracaoDaTravessia(pedido.cena, reduzido)
+      );
     });
-
-    const reduzido =
-      typeof window !== 'undefined' &&
-      Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
-
-    prazo.current = setTimeout(
-      () => setCenaAtiva(null),
-      duracaoDaTravessia(cenaAtiva.cena, reduzido)
-    );
-    return () => clearTimeout(prazo.current);
-    // O `navigate` acima muda o location de propósito; reentrar por causa
-    // dele derrubaria a cortina no quadro seguinte.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cenaAtiva]);
+    return () => {
+      desligar();
+      clearTimeout(prazo.current);
+    };
+  }, []);
 
   if (!cenaAtiva) return null;
 
-  const { cena, role } = cenaAtiva;
+  const { cena, role, selo } = cenaAtiva;
   const fala = falaDaTravessia(cena, role);
   const classePapel = role === 'parent' ? ' travessia--familia' : '';
 
   if (cena === CENA_ABERTURA) {
     return (
       <div
+        key={selo}
         className={`travessia travessia--abertura${classePapel}`}
         onPointerDown={encerrar}
         aria-hidden="true"
@@ -147,7 +123,15 @@ export default function Travessia() {
   }
 
   return (
-    <div className={`travessia${classePapel}`} onPointerDown={encerrar} aria-hidden="true">
+    // `key` no selo: sair e entrar de novo na mesma sessão remonta o bloco, e
+    // sem remontar as animações CSS não reiniciam — a segunda cena apareceria
+    // já no último quadro da primeira.
+    <div
+      key={selo}
+      className={`travessia${classePapel}`}
+      onPointerDown={encerrar}
+      aria-hidden="true"
+    >
       <div className="travessia-corpo">
         <LogoMark className="travessia-marca" tone="onDark" height={78} />
         {fala && (

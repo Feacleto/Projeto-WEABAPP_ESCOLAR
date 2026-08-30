@@ -13,7 +13,7 @@ import Logo from '../common/Logo';
 import SupportSheet from '../support/SupportSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { destinoAposSair } from '../../utils/frentes';
-import { CENA_SAIDA, estadoDaTravessia } from '../../utils/travessia';
+import { CENA_SAIDA, travessar } from '../../utils/travessia';
 
 /**
  * O perfil como MENU SUSPENSO, não como viagem.
@@ -66,20 +66,23 @@ export default function ProfileMenu({ role, basePath, active = false }) {
    */
   const sair = async () => {
     const destino = destinoAposSair(role);
-    await logout();
-    // A cortina de saída viaja no `state`, então ela cobre a porta pública no
-    // mesmo quadro em que a porta monta. E o papel vai junto porque foi lido
-    // ANTES do logout — depois dele o profile é null. A frase da saída é a
-    // única da marca que fala de permanência ("continua aqui"), e ela cai
-    // aqui de propósito: é o único momento em que a pessoa poderia achar que
-    // fechou e perdeu.
+
+    // A CORTINA SOBE ANTES DO LOGOUT, e essa ordem é o conserto.
     //
-    // Se a cortina falhar por qualquer motivo, o logout e a navegação já
-    // aconteceram — sair nunca depende do teatro.
-    navigate(destino, {
-      replace: true,
-      state: estadoDaTravessia(CENA_SAIDA, role),
-    });
+    // Ela viajava no `state` da navegação e a saída nunca aparecia: ao zerar a
+    // sessão, o PrivateRoute devolve `<Navigate to="/login">`, que navega
+    // dentro de um efeito — podendo chegar DEPOIS do nosso `navigate` e levar
+    // o `state` embora. Subindo antes, a cortina cobre a tela atual e o
+    // logout, a troca de rota e qualquer redirecionamento acontecem por baixo
+    // dela. De quebra é a ordem dramática certa: o ambiente fecha, e só então
+    // a pessoa está do lado de fora.
+    //
+    // O papel é lido antes do logout — depois dele o profile é null. E se a
+    // cortina falhar, o logout e a navegação acontecem do mesmo jeito: sair
+    // nunca depende do teatro.
+    travessar(CENA_SAIDA, role);
+    await logout();
+    navigate(destino, { replace: true });
   };
 
   // Fecha com ESC e com toque fora. As duas saídas importam: no celular o

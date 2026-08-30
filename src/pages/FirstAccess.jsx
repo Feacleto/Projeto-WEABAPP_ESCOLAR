@@ -20,11 +20,7 @@ import { authenticateAndRedeem, googleAndRedeem } from '../services/authService'
 import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
-import {
-  CENA_ABERTURA,
-  CENA_ENTRADA,
-  estadoDaTravessia,
-} from '../utils/travessia';
+import { CENA_ABERTURA, CENA_ENTRADA, travessar } from '../utils/travessia';
 import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
 
 /**
@@ -142,13 +138,8 @@ export default function FirstAccess() {
       // criança ganha a entrada normal. A abertura é cara e existe pra um
       // único momento na vida da pessoa — o instante em que ela descobre se
       // aquele link do WhatsApp era um produto de verdade.
-      navigate('/pai', {
-        replace: true,
-        state: estadoDaTravessia(
-          created ? CENA_ABERTURA : CENA_ENTRADA,
-          'parent'
-        ),
-      });
+      travessar(created ? CENA_ABERTURA : CENA_ENTRADA, 'parent');
+      navigate('/pai', { replace: true });
     } catch (err) {
       toast.error(err?.message || mapAuthError(err));
     } finally {
@@ -187,13 +178,8 @@ export default function FirstAccess() {
       // criança ganha a entrada normal. A abertura é cara e existe pra um
       // único momento na vida da pessoa — o instante em que ela descobre se
       // aquele link do WhatsApp era um produto de verdade.
-      navigate('/pai', {
-        replace: true,
-        state: estadoDaTravessia(
-          created ? CENA_ABERTURA : CENA_ENTRADA,
-          'parent'
-        ),
-      });
+      travessar(created ? CENA_ABERTURA : CENA_ENTRADA, 'parent');
+      navigate('/pai', { replace: true });
     } catch (err) {
       if (err?.code !== 'auth/popup-closed-by-user') {
         toast.error(err?.message || mapAuthError(err));

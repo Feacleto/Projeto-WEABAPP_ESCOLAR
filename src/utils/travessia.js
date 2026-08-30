@@ -99,68 +99,53 @@ export function duracaoDaTravessia(cena, movimentoReduzido = false) {
 }
 
 /**
- * Um selo por disparo.
+ * O DISPARO — e por que ele NÃO passa pelo `state` da navegação.
  *
- * A primeira versão chaveava a cortina em `location.key`, do react-router, e
- * isso QUEBROU A SAÍDA: as duas navegações usam `replace`, e o replace
- * reaproveita a chave da entrada anterior. A guarda de "já toquei esta" via a
- * mesma chave duas vezes e engolia a segunda cena — o teatro de entrar
- * funcionava e o de sair nunca aparecia.
+ * A primeira versão mandava a cena no `state` do react-router, junto com a
+ * navegação. Funcionava na entrada e NUNCA funcionou na saída, por uma corrida
+ * que não dá pra ganhar:
  *
- * A lição é a de sempre: não chaveie em identidade que outro dono gera. Este
- * selo é nosso, é único por disparo, e não depende de detalhe interno de
- * biblioteca nenhuma.
+ *   1. `logout()` zera o `user` no AuthContext.
+ *   2. O `PrivateRoute` re-renderiza e devolve `<Navigate to="/login" replace>`.
+ *   3. Esse `<Navigate>` navega DENTRO DE UM EFEITO — ou seja, depois da
+ *      pintura, e possivelmente depois do nosso `navigate(destino)`.
+ *   4. Quando ele chega por último, substitui a entrada de histórico e leva o
+ *      `state` da cortina junto. A cena some antes de alguém ver.
+ *
+ * Dá pra tentar vencer a corrida com atraso ou com flag. Não vale: decoração
+ * não deve disputar ordem de efeito com o roteamento de sessão, e qualquer
+ * redirecionamento futuro reabriria o mesmo buraco.
+ *
+ * Então a cortina não escuta a rota. Ela escuta AQUI. Quem sai avisa antes de
+ * deslogar, a cortina sobe sobre a tela que ainda está lá, e o logout e a
+ * navegação acontecem por baixo dela — que é também a ordem dramática certa:
+ * o ambiente fecha, e só então a pessoa está do lado de fora.
+ *
+ * A cortina é montada uma vez, no topo das rotas, e não desmonta em troca de
+ * tela. É isso que faz a peça atravessar a navegação inteira.
  */
+const ouvintes = new Set();
 let selo = 0;
 
-/**
- * O estado de navegação que dispara a cortina.
- *
- * A cena viaja pelo `state` do react-router, do mesmo jeito que a frente viaja
- * em `frentes.js` — sem contexto novo e sem barramento de eventos. Quem navega
- * já sabe a cena e o papel; a cortina só lê.
- *
- * Isso resolve sozinho o problema que qualquer outra abordagem teria: a
- * cortina e a tela de destino chegam na MESMA renderização, então a tela nova
- * nunca pisca antes de ser coberta.
- */
-export function estadoDaTravessia(cena, role, extra) {
-  selo += 1;
-  return {
-    ...extra,
-    travessia: cena,
-    papelDaTravessia: role || null,
-    seloDaTravessia: `${Date.now()}-${selo}`,
+/** Liga a cortina. Devolve a função que desliga — use no cleanup do efeito. */
+export function assinarTravessia(fn) {
+  ouvintes.add(fn);
+  return () => {
+    ouvintes.delete(fn);
   };
 }
 
 /**
- * Lê a cena de um `location` do react-router. Devolve `null` quando não há
- * travessia pedida — inclusive se alguém mandar um valor que não existe, que
- * é o caso de link velho ou estado adulterado.
+ * Pede uma cena. Devolve o pedido, ou `null` se a cena não existe — estado
+ * adulterado ou chamada errada não podem acender uma cena inventada.
+ *
+ * O selo é único por disparo. Sem ele, sair e entrar de novo na mesma sessão
+ * pediriam a mesma cena e a cortina não teria como saber que é outra vez.
  */
-export function lerTravessia(location) {
-  const cena = location?.state?.travessia;
+export function travessar(cena, role) {
   if (!CENAS.includes(cena)) return null;
-  return {
-    cena,
-    role: location.state.papelDaTravessia || null,
-    selo: location.state.seloDaTravessia || cena,
-  };
-}
-
-/**
- * O `state` sem a travessia, pra limpar depois que a cortina tocou.
- *
- * Sem isso, um F5 no painel repetiria o teatro — o `state` fica no histórico.
- * Devolve `undefined` quando não sobra nada, porque `state: {}` e `state:
- * undefined` não são a mesma coisa pro react-router.
- */
-export function estadoSemTravessia(state) {
-  if (!state) return undefined;
-  const resto = { ...state };
-  delete resto.travessia;
-  delete resto.papelDaTravessia;
-  delete resto.seloDaTravessia;
-  return Object.keys(resto).length ? resto : undefined;
+  selo += 1;
+  const pedido = { cena, role: role || null, selo: `${Date.now()}-${selo}` };
+  ouvintes.forEach((fn) => fn(pedido));
+  return pedido;
 }

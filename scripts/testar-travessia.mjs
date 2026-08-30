@@ -11,11 +11,10 @@ import {
   CENA_ABERTURA,
   CENA_ENTRADA,
   CENA_SAIDA,
+  assinarTravessia,
   duracaoDaTravessia,
-  estadoDaTravessia,
-  estadoSemTravessia,
   falaDaTravessia,
-  lerTravessia,
+  travessar,
 } from '../src/utils/travessia.js';
 
 let ok = 0, falhou = 0;
@@ -75,38 +74,33 @@ eq('nenhuma promessa de estado',
    TODAS.filter((t) => /preparando|pronto|carregando|montado/i.test(t)), []);
 eq('as falas existem mesmo', TODAS.length > 0, true);
 
-console.log('\n\x1b[1m5. A cena viaja pelo state e volta inteira\x1b[0m');
-const semSelo = ({ seloDaTravessia, ...r }) => r;
-eq('estado carrega cena e papel', semSelo(estadoDaTravessia(CENA_ENTRADA, 'admin')),
-   { travessia: 'entrada', papelDaTravessia: 'admin' });
-eq('estado preserva o que já existia',
-   semSelo(estadoDaTravessia(CENA_ENTRADA, 'admin', { from: '/tio/agenda' })),
-   { from: '/tio/agenda', travessia: 'entrada', papelDaTravessia: 'admin' });
-const lido = lerTravessia({ state: estadoDaTravessia(CENA_SAIDA, 'parent') });
-eq('lê de volta', { cena: lido.cena, role: lido.role }, { cena: 'saida', role: 'parent' });
-eq('e o selo volta junto', typeof lido.selo, 'string');
-eq('sem state, sem cortina', lerTravessia({}), null);
-// Chavear em location.key quebrou a saída: replace reaproveita a chave da
-// entrada e a guarda engolia a segunda cena. O selo é nosso e é por disparo.
-eq('dois disparos, dois selos',
-   estadoDaTravessia(CENA_ENTRADA, 'admin').seloDaTravessia
-     !== estadoDaTravessia(CENA_SAIDA, 'admin').seloDaTravessia, true);
-eq('a mesma cena duas vezes também troca de selo',
-   estadoDaTravessia(CENA_SAIDA, 'admin').seloDaTravessia
-     !== estadoDaTravessia(CENA_SAIDA, 'admin').seloDaTravessia, true);
-eq('location ausente não quebra', lerTravessia(undefined), null);
-// Estado adulterado ou link velho não pode acender uma cena que não existe.
-eq('cena inventada é ignorada',
-   lerTravessia({ state: { travessia: 'explodir' } }), null);
+console.log('\n\x1b[1m5. O disparo chega em quem esta ouvindo\x1b[0m');
+// A cena NAO viaja mais pelo `state` da navegacao: ao zerar a sessao, o
+// PrivateRoute devolve um <Navigate> que roda em efeito e podia chegar depois
+// do nosso, levando o `state` junto. Era por isso que sair nao tinha teatro.
+const recebidos = [];
+const desligar = assinarTravessia((x) => recebidos.push(x));
 
-console.log('\n\x1b[1m6. Limpar o state impede o teatro de repetir no F5\x1b[0m');
-eq('sobra o resto',
-   estadoSemTravessia(estadoDaTravessia(CENA_ENTRADA, 'parent', { from: '/pai' })),
-   { from: '/pai' });
-// `state: {}` e `state: undefined` não são a mesma coisa pro react-router.
-eq('sem resto vira undefined, selo incluído',
-   estadoSemTravessia(estadoDaTravessia(CENA_ENTRADA, 'parent')), undefined);
-eq('state nulo não quebra', estadoSemTravessia(null), undefined);
+travessar(CENA_SAIDA, 'admin');
+eq('a cena chega no ouvinte', recebidos.length, 1);
+eq('com cena e papel',
+   { cena: recebidos[0].cena, role: recebidos[0].role },
+   { cena: 'saida', role: 'admin' });
+
+travessar(CENA_ENTRADA, 'parent');
+eq('dois disparos, dois selos', recebidos[0].selo !== recebidos[1].selo, true);
+travessar(CENA_SAIDA, 'admin');
+eq('a MESMA cena duas vezes tambem troca de selo',
+   recebidos[0].selo !== recebidos[2].selo, true);
+
+// Estado adulterado ou chamada errada nao pode acender cena inventada.
+eq('cena inventada nao dispara', travessar('explodir', 'admin'), null);
+eq('e nem chega em ninguem', recebidos.length, 3);
+eq('papel ausente vira null', travessar(CENA_ENTRADA).role, null);
+
+desligar();
+travessar(CENA_SAIDA, 'admin');
+eq('depois de desligar, ninguem recebe', recebidos.length, 4);
 
 console.log('\n\x1b[1m7. Movimento reduzido encurta, mas não corta seco\x1b[0m');
 // Zerar devolveria o piscão que a cortina existe pra cobrir.
