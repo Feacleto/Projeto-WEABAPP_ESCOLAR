@@ -14,9 +14,11 @@
     "testar:horarios": "node scripts/testar-horarios.mjs",
     "testar:faltas": "node scripts/testar-faltas.mjs",
     "testar:aviso": "node scripts/testar-aviso.mjs",
-    "testar": "npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste && npm run testar:travessia",
+    "testar": "npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste && npm run testar:travessia && npm run testar:taxa && npm run testar:contrato",
     "testar:contraste": "node scripts/testar-contraste.mjs",
     "testar:travessia": "node scripts/testar-travessia.mjs",
+    "testar:taxa": "node scripts/testar-taxa.mjs",
+    "testar:contrato": "node scripts/testar-contrato.mjs",
     "testar:avatar": "node scripts/testar-avatar.mjs"
   },
   "dependencies": {
