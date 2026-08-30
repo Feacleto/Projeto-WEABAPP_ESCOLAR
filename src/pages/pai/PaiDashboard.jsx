@@ -202,7 +202,7 @@ export default function PaiDashboard() {
   if (childLoading) {
     return (
       <>
-        <Header title="Início" />
+        <Header title="Início" marca />
         <div className="p-5 space-y-3">
           <Skeleton className="h-48" />
           <Skeleton className="h-24" />
@@ -214,7 +214,7 @@ export default function PaiDashboard() {
   if (!child) {
     return (
       <>
-        <Header title="Início" />
+        <Header title="Início" marca />
         <EmptyState
           icon={MapPin}
           title="Cadastro não encontrado"
@@ -258,7 +258,7 @@ export default function PaiDashboard() {
 
   return (
     <>
-      <Header title="Início" />
+      <Header title="Início" marca />
 
       <div className="p-5 space-y-5">
         {/* Só aparece a partir do segundo filho — quem tem um vê a tela
@@ -270,7 +270,7 @@ export default function PaiDashboard() {
         {estadoDoDia !== 'acompanhando' && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
-              {greet(new Date(), admin?.greetingHours)}, {firstName}!
+              {greet(new Date())}, {firstName}!
             </h1>
             <FestiveBadge />
           </div>

@@ -6,6 +6,7 @@ rules_version = '2';
 //
 // Estrutura:
 //   profilePhotos/{uid}     — foto do próprio usuário (tio ou pai)
+//   marcaLogos/{uid}        — logo da marca do motorista (o pai dele vê)
 //   childPhotos/{childId}   — foto de uma criança (só admin escreve)
 //
 // Princípios:
@@ -61,6 +62,29 @@ service firebase.storage {
     // profilePhotos/{uid} — foto do tio ou pai
     // --------------------------------------------------------------------
     match /profilePhotos/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && isWithinSizeLimit();
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --------------------------------------------------------------------
+    // marcaLogos/{uid} — o logo que o motorista mostra pras famílias dele
+    //
+    // Separado de `profilePhotos` de propósito: são duas imagens com públicos
+    // diferentes. A foto de perfil é o rosto DELE, some num avatar de 32px no
+    // canto; o logo é a marca do negócio e aparece no cabeçalho de todo
+    // responsável que ele atende. Trocar uma não pode trocar a outra, e o
+    // path é o id — sobrescrever é o comportamento certo aqui.
+    //
+    // `read: isSignedIn()` como as outras: o responsável precisa ver o logo
+    // do motorista dele, e o cabeçalho carrega antes de qualquer vínculo ser
+    // resolvido. Imagem de marca não é dado sensível — ela existe pra ser
+    // mostrada.
+    // --------------------------------------------------------------------
+    match /marcaLogos/{uid} {
       allow read: if isSignedIn();
       allow write: if isSignedIn()
         && request.auth.uid == uid

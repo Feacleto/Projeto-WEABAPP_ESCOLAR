@@ -78,6 +78,40 @@ export async function uploadProfilePhoto(uid, file) {
 }
 
 /**
+ * O LOGO DA MARCA DO MOTORISTA — o que aparece no cabeçalho das famílias.
+ * Path: marcaLogos/{uid}
+ *
+ * NÃO É A FOTO DE PERFIL, e por isso não reusa o path dela. A foto de perfil
+ * é o rosto dele num avatar de 32px; o logo é a identidade do negócio, e ele
+ * vai pro topo da tela de todo responsável que ele atende. Um motorista pode
+ * querer o próprio rosto nos dois lugares — mas quem decide é ele, e com um
+ * path só essa escolha não existiria.
+ *
+ * Passa pelo mesmo `resizeAndCompress`: logo vem de print de rede social, de
+ * foto de adesivo da van, de PNG de 4 MB que alguém mandou no WhatsApp. Sem
+ * reduzir, o cabeçalho do pai — que carrega em dado móvel, toda vez — pagaria
+ * por isso.
+ */
+export async function uploadMarcaLogo(uid, file) {
+  if (!uid) throw new Error('Sem uid.');
+  const blob = await resizeAndCompress(file);
+  if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
+
+  const storageRef = ref(storage, `marcaLogos/${uid}`);
+  await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+  return await getDownloadURL(storageRef);
+}
+
+export async function deleteMarcaLogo(uid) {
+  if (!uid) return;
+  try {
+    await deleteObject(ref(storage, `marcaLogos/${uid}`));
+  } catch {
+    // Já não existia. Apagar o que não está lá não é erro.
+  }
+}
+
+/**
  * Upload de foto de criança. Só admin pode (verificado nas storage.rules).
  * Path: childPhotos/{childId}
  */

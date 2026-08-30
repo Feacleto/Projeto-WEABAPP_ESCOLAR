@@ -6,6 +6,7 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { usePaymentsByParent } from '../../hooks/usePayments';
 import ProfileMenu from './ProfileMenu';
 import NotificationsSheet from '../notifications/NotificationsSheet';
+import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
 
 /**
  * Header sticky comum às páginas autenticadas.
@@ -45,6 +46,14 @@ export default function Header({
   backTo = null,
   action = null,
   showGlobal = true,
+  // A MARCA NO LUGAR DO TÍTULO — só onde a tela é "a casa" da pessoa.
+  //
+  // Nas duas telas iniciais o título era "Início", que não informa nada: a
+  // pessoa sabe que está no início porque acabou de abrir o app. O espaço
+  // rende mais mostrando de quem é o transporte — logo e nome que o motorista
+  // escolheu. Nas telas internas o título continua sendo o nome da tela,
+  // porque ali a pergunta volta a ser "onde eu estou".
+  marca = false,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,9 +106,13 @@ export default function Header({
               )}
             </button>
           )}
-          <h1 className="text-base font-semibold text-text truncate">
-            {title}
-          </h1>
+          {marca ? (
+            <MarcaOuTitulo titulo={title} />
+          ) : (
+            <h1 className="text-base font-semibold text-text truncate">
+              {title}
+            </h1>
+          )}
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -114,6 +127,46 @@ export default function Header({
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * A marca do motorista, com o título como rede de segurança.
+ *
+ * SUBCOMPONENTE PELO MESMO MOTIVO DO `GlobalActions`: o hook lê o perfil do
+ * motorista (e, no lado do pai, abre uma assinatura). Chamado direto no
+ * `Header`, isso rodaria em toda tela do app, inclusive nas que passam
+ * `marca={false}` — a maioria. Aqui só roda quando a marca é pedida.
+ *
+ * SEM MARCA CADASTRADA, VOLTA O TÍTULO. O motorista que ainda não configurou
+ * não pode ficar com um cabeçalho vazio, e as famílias dele muito menos.
+ */
+function MarcaOuTitulo({ titulo }) {
+  const { nome, logoURL } = useMarcaDoTio();
+
+  if (!nome && !logoURL) {
+    return (
+      <h1 className="text-base font-semibold text-text truncate">{titulo}</h1>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      {logoURL && (
+        <img
+          src={logoURL}
+          alt=""
+          /* `alt` VAZIO de propósito: o nome vem escrito ao lado, e um leitor
+           * de tela anunciando "logo da Tio Nino, Tio Nino" repete sem
+           * acrescentar. Quando não há nome, o logo sozinho também não é
+           * informação nova — o app inteiro é dele. */
+          className="h-8 w-8 shrink-0 rounded-lg object-cover"
+        />
+      )}
+      <h1 className="text-base font-semibold text-text truncate">
+        {nome || titulo}
+      </h1>
+    </div>
   );
 }
 
