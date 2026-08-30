@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserX, Sunrise, Sunset, Check, Pencil } from 'lucide-react';
+import { UserX, Sunrise, Sunset, Check, Pencil, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   ABSENCE_TYPES,
@@ -33,7 +33,20 @@ import { getDateKey, horaCurta, horariosCombinados } from '../../services/horari
  * um toque de todo mundo pra proteger de poucos — e o estrago aqui é
  * reversível em um segundo.
  */
-export default function AvisoRapido({ child, absenceHoje, absenceAmanha, onDetalhes }) {
+export default function AvisoRapido({
+  child,
+  absenceHoje,
+  absenceAmanha,
+  onDetalhes,
+  // A QUARTA RESPOSTA — quem vai buscar no lugar dela.
+  //
+  // "Não vai", "eu levo", "eu busco" e "a avó busca" são quatro respostas da
+  // MESMA pergunta: quem encosta na criança hoje. Moravam em dois cartões de
+  // cores diferentes, e ela descobria a quarta rolando. Juntas, ela lê as
+  // quatro de uma vez.
+  onOutraPessoa,
+  altPickup = null,
+}) {
   const [dia, setDia] = useState('hoje');
   const [enviando, setEnviando] = useState(null);
 
@@ -88,6 +101,10 @@ export default function AvisoRapido({ child, absenceHoje, absenceAmanha, onDetal
     { tipo: ABSENCE_TYPES.NO_DROPOFF, icon: Sunset, titulo: 'Eu busco' },
   ];
 
+  // A quarta NÃO é um ABSENCE_TYPE, e é a única que abre folha: precisa de
+  // nome e telefone de terceiro. As outras três continuam sendo um toque.
+  const outraAtiva = !!altPickup;
+
   return (
     <section className="bg-card rounded-3xl shadow-sm p-4 space-y-3">
       <div className="flex items-center gap-2">
@@ -126,7 +143,7 @@ export default function AvisoRapido({ child, absenceHoje, absenceAmanha, onDetal
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {OPCOES.map((o) => {
           const ativo = declarado?.type === o.tipo;
           return (
@@ -161,6 +178,39 @@ export default function AvisoRapido({ child, absenceHoje, absenceAmanha, onDetal
             </button>
           );
         })}
+
+        {/* A QUARTA: "outra pessoa busca". Abre folha porque precisa de nome
+          * e telefone de um terceiro — as outras três resolvem num toque.
+          * Acesa, mostra o primeiro nome de quem vai buscar; é o que
+          * substitui o cartão separado de "Hoje quem pega: Vovó Cida". */}
+        {onOutraPessoa && (
+          <button
+            type="button"
+            disabled={!!enviando}
+            onClick={onOutraPessoa}
+            aria-pressed={outraAtiva}
+            className={`tap flex flex-col items-center gap-1.5 rounded-2xl border-2 px-1 py-3 transition-colors disabled:opacity-60 ${
+              outraAtiva ? 'border-primary bg-primary/10' : 'border-gray-200 bg-card'
+            }`}
+          >
+            <UserCheck
+              size={20}
+              className={outraAtiva ? 'text-primary' : 'text-textMuted'}
+            />
+            <span
+              className={`text-center text-xs font-bold leading-tight ${
+                outraAtiva ? 'text-primary' : 'text-text'
+              }`}
+            >
+              Outra pessoa
+            </span>
+            {outraAtiva && (
+              <span className="max-w-full truncate text-[10px] font-semibold text-primary">
+                {String(altPickup.name || '').split(' ')[0]}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       <p className="text-[11px] text-textMuted leading-relaxed">

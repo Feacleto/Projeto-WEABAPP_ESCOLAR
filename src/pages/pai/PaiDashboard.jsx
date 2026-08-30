@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
 import {
   MapPin,
-  MessageCircle,
   Calendar,
   Bell,
   HelpCircle,
@@ -37,7 +36,6 @@ import { maskPhone } from '../../utils/masks';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
-import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { usePaymentsByParent } from '../../hooks/usePayments';
 import { useAbsenceForChild, useChildAbsenceHistory } from '../../hooks/useAbsences';
 import { useDailyAltPickup } from '../../hooks/useAltPickup';
@@ -92,7 +90,6 @@ export default function PaiDashboard() {
   const { openTutorial } = useOutletContext() || {};
   const { child, loading: childLoading } = useActiveChild();
   const { location: liveLocation } = useLiveLocation(child?.adminUid);
-  const { admin } = useAdminProfile(child?.adminUid);
   const { payments } = usePaymentsByParent(user?.uid);
   const todayKey = getDateKey();
   // Ausência, histórico e responsável alternativo são POR CRIANÇA: têm que
@@ -265,9 +262,6 @@ export default function PaiDashboard() {
       : routeActive || status === 'onboard'
       ? 'acompanhando'
       : 'esperando';
-  const whatsappUrl = admin?.phone
-    ? `https://wa.me/55${String(admin.phone).replace(/\D/g, '')}`
-    : null;
 
   return (
     <>
@@ -314,6 +308,8 @@ export default function PaiDashboard() {
                 absenceHoje={absence}
                 absenceAmanha={absenceAmanha}
                 onDetalhes={() => setAbsenceOpen(true)}
+                onOutraPessoa={() => setAltPickupOpen(true)}
+                altPickup={altPickup}
               />
             </div>
 
@@ -332,15 +328,18 @@ export default function PaiDashboard() {
           </>
         )}
 
-        {/* QUEM PEGA HOJE — visível ANTES e DURANTE a rota.
+        {/* O CARTÃO SEPARADO DE "QUEM PEGA HOJE" SAIU.
           *
-          * Ele estava só no estado "esperando", e sumia quando a perua saía.
-          * Só que "não consigo pegar hoje" quase nunca é uma decisão da
-          * manhã: é o chefe segurando às 16h, o carro que não pegou, a
-          * consulta que atrasou. O botão desaparecia exatamente na hora em
-          * que a pessoa corre pra indicar alguém — e aí a indicação vai por
-          * WhatsApp, fora do app, sem o motorista ter onde conferir. */}
-        {estadoDoDia !== 'encerrado' && (
+          * Ele virou a quarta pastilha do bloco de avisar, porque "não vai",
+          * "eu levo", "eu busco" e "a avó busca" são quatro respostas da MESMA
+          * pergunta — quem encosta na criança hoje. Em dois cartões de cores
+          * diferentes, ela descobria a quarta rolando.
+          *
+          * DURANTE A ROTA o bloco de avisar não existe (a perua já passou na
+          * porta dela), e é por isso que a indicação continua alcançável aqui
+          * nesse estado: "não consigo buscar hoje" quase nunca é decisão da
+          * manhã — é o chefe segurando às 16h. */}
+        {estadoDoDia === 'acompanhando' && (
           <AltPickupCTA
             pickup={altPickup}
             onClick={() => setAltPickupOpen(true)}
@@ -364,32 +363,13 @@ export default function PaiDashboard() {
           </div>
         )}
 
-        {/* Falar com o motorista — direto, fora de gaveta.
-          * É o que ele procura quando alguma coisa fugiu do combinado, e
-          * procurar dentro de "Mais opções" com a criança na porta é o
-          * momento errado pra explorar menu. */}
-        <button
-          type="button"
-          onClick={() => {
-            if (whatsappUrl) window.open(whatsappUrl, '_blank');
-            else toast('Telefone do motorista não cadastrado.');
-          }}
-          disabled={!whatsappUrl}
-          className="tap w-full bg-card border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-3 disabled:opacity-50"
-        >
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-            <MessageCircle size={17} />
-          </div>
-          <span className="flex-1 min-w-0 text-left">
-            <span className="block text-sm font-semibold text-text">
-              Falar com o motorista
-            </span>
-            <span className="block text-[11px] text-textMuted">
-              {whatsappUrl ? 'Abre o WhatsApp' : 'Telefone não cadastrado'}
-            </span>
-          </span>
-          <ChevronRight size={17} className="text-textMuted shrink-0" />
-        </button>
+        {/* O "falar com o motorista" SUBIU PRO CABEÇALHO.
+          *
+          * Era um bloco no meio da rolagem, e desabilitava quando o motorista
+          * não tinha telefone. Emergência não pode rolar, não pode mudar de
+          * lugar conforme o estado do dia, e não pode ser um botão apagado —
+          * ver `FalarComOMotorista` em `Header.jsx`. */}
+
 
         {/* Pagamento pendente aparece já na espera: é a única pendência que
           * não deve esperar o fim do dia pra ser vista. */}

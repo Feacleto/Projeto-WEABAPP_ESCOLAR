@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { ArrowLeft, Bell } from 'lucide-react';
+import { ArrowLeft, Bell, MessageCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { usePaymentsByParent } from '../../hooks/usePayments';
 import ProfileMenu from './ProfileMenu';
 import NotificationsSheet from '../notifications/NotificationsSheet';
+import AppSheet from '../common/AppSheet';
+import { useActiveChild } from '../../hooks/useActiveChild';
+import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
 
 /**
@@ -191,6 +194,20 @@ function GlobalActions({ role, basePath, currentPath }) {
 
   return (
     <>
+      {/* FALAR COM O MOTORISTA — só do lado do responsável, e no cabeçalho.
+        *
+        * É a saída de emergência dela, e emergência não pode ROLAR nem mudar
+        * de lugar conforme o estado do dia. Estava num bloco no meio do
+        * Início: quando ela mais precisa — a perua atrasou, o filho não foi
+        * marcado como entregue — é justamente quando ela não vai procurar.
+        * Aqui fica no mesmo pixel em toda tela dela, inclusive em `/pai/faltas`
+        * e `/pai/map`, onde não existia.
+        *
+        * NUNCA DESABILITADO. Sem telefone cadastrado, o botão de antes ficava
+        * a 50% de opacidade e não fazia nada — ela toca, nada acontece, e a
+        * leitura é "o app travou". Agora ele sempre responde: ou abre o
+        * WhatsApp, ou explica por que não dá e o que fazer. */}
+      {isParent && <FalarComOMotorista />}
       {/* O SINO ABRE FOLHA, NÃO OUTRA TELA.
         * Ele existe no cabeçalho de todas as telas; navegar daqui custava a
         * rolagem, o filtro e o lugar de quem só queria dar uma olhada. A
@@ -224,6 +241,66 @@ function GlobalActions({ role, basePath, currentPath }) {
         open={notifOpen}
         onClose={() => setNotifOpen(false)}
       />
+    </>
+  );
+}
+
+/**
+ * O BOTÃO DE FALAR COM O MOTORISTA, no cabeçalho do responsável.
+ *
+ * O telefone vem do doc do motorista DELA — o `adminUid` da criança ativa.
+ * Se ela tem filhos com motoristas diferentes, trocar de filho troca o
+ * destino, que é o comportamento certo.
+ *
+ * SEM TELEFONE, ELE NÃO APAGA: explica. Botão desabilitado não é resposta —
+ * ela toca, nada acontece, e conclui que o app travou. Pior, fica sem
+ * NENHUM caminho até o motorista dentro do app, e é exatamente no dia ruim
+ * que ela precisa dele.
+ */
+function FalarComOMotorista() {
+  const { child } = useActiveChild();
+  const { admin } = useAdminProfile(child?.adminUid);
+  const [semTelefone, setSemTelefone] = useState(false);
+
+  const digitos = String(admin?.phone || '').replace(/\D/g, '');
+  const nome = admin?.marcaNome?.trim() || admin?.name?.split(' ')[0] || 'o motorista';
+
+  const tocar = () => {
+    if (!digitos) {
+      setSemTelefone(true);
+      return;
+    }
+    const numero = digitos.startsWith('55') ? digitos : `55${digitos}`;
+    window.open(`https://wa.me/${numero}`, '_blank', 'noopener');
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={tocar}
+        aria-label={`Falar com ${nome}`}
+        className="tap flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700"
+      >
+        <MessageCircle size={18} />
+      </button>
+
+      <AppSheet
+        open={semTelefone}
+        onClose={() => setSemTelefone(false)}
+        title="Sem telefone cadastrado"
+        icon={MessageCircle}
+      >
+        <div className="space-y-3 px-5 pb-6">
+          <p className="text-sm leading-relaxed text-text">
+            {nome} ainda não cadastrou o telefone dele aqui no app.
+          </p>
+          <p className="text-[13px] leading-relaxed text-textMuted">
+            Por enquanto, fale com ele no WhatsApp — é o mesmo número que te
+            mandou o link do convite.
+          </p>
+        </div>
+      </AppSheet>
     </>
   );
 }
