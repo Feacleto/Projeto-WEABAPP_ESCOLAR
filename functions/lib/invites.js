@@ -90,8 +90,14 @@ function makeLookupInvite(db) {
     let driverName = '';
     let companyName = '';
     try {
-      const initSnap = await db.doc('appState/init').get();
-      const adminUid = initSnap.exists ? initSnap.data().adminUid : null;
+      // O MOTORISTA VEM DA CRIANÇA, e não de `appState/init`.
+      //
+      // O ponteiro global resolve UM motorista pra plataforma inteira: com
+      // dois parceiros, o responsável que resgatava o convite via o nome e a
+      // marca do motorista ERRADO — logo na tela que existe pra ele
+      // reconhecer com quem o filho vai andar. A criança já está carregada
+      // duas linhas acima e carrega o dono certo.
+      const adminUid = child.adminUid || null;
       if (adminUid) {
         const adminSnap = await db.doc(`users/${adminUid}`).get();
         if (adminSnap.exists) {

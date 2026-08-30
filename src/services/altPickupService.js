@@ -9,9 +9,9 @@ import {
   onSnapshot,
   serverTimestamp,
   addDoc,
-  getDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { resolveAdminUid } from './notificationsService';
 
 /**
  * Responsáveis alternativos — quem pode buscar a criança no lugar do pai.
@@ -180,14 +180,27 @@ export function watchAllAltPickupsByDate(dateKey, onUpdate, onError) {
 
 /**
  * Cria notificação pro Tio quando o pai indica responsável alternativo.
+ *
+ * O DESTINATÁRIO SAI DA CRIANÇA, E NÃO DE `appState/init`.
+ * Mesmo conserto de `notifyAbsence`, pelo mesmo motivo: o ponteiro global
+ * resolve UM motorista pra plataforma inteira, e a rule de `notifications`
+ * (firestore.rules:869-872) só deixa quem não é motorista escrever para o
+ * próprio `userDoc().adminUid`. Com dois motoristas a escrita era negada e
+ * caía no `catch` abaixo — o pai avisava que outra pessoa ia buscar a criança
+ * e o motorista nunca recebia. Esse é o aviso que não pode se perder.
+ *
+ * `adminUidDaCrianca` vem do chamador (que já tem a criança); o fallback lê o
+ * doc do próprio responsável. Nenhum dos dois é global.
  */
-export async function notifyAltPickup({ childName, name, phone, dateKey }) {
+export async function notifyAltPickup({
+  childName,
+  name,
+  phone,
+  dateKey,
+  adminUid: adminUidDaCrianca,
+}) {
   try {
-    // Resolver adminUid via appState/init (público)
-    const initSnap = await getDoc(doc(db, 'appState', 'init'));
-    const adminUid = initSnap.exists()
-      ? initSnap.data().adminUid || null
-      : null;
+    const adminUid = adminUidDaCrianca || (await resolveAdminUid());
     if (!adminUid) return;
 
     const dateLabel = formatDateLabel(dateKey);

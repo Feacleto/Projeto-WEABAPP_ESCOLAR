@@ -8,10 +8,10 @@ import {
   onSnapshot,
   serverTimestamp,
   addDoc,
-  getDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { playSound } from './soundService';
+import { resolveAdminUid } from './notificationsService';
 
 /**
  * Ausências declaradas — coleção separada de `dailyRoutes` pra deixar as rules
@@ -225,35 +225,37 @@ export function watchAbsenceForChild(dateKey, childId, onUpdate, onError) {
  * Cria notificação informando a declaração de ausência.
  *
  * Quem é o destinatário é determinado por `declaredBy`:
- *   - 'parent' → admin (busca uid em appState/init, sempre disponível)
+ *   - 'parent' → o motorista DESTA criança (`child.adminUid`)
  *   - 'admin'  → pai (usa parentUid passado em child)
  *
- * Importante: a busca do admin acontece DENTRO da função pra evitar
- * race condition (se o pai abre o sheet antes do useAdminProfile carregar,
- * a notif ainda funciona).
+ * O DESTINATÁRIO SAI DA CRIANÇA, E NÃO DE `appState/init`.
+ * Até 30/08/2026 esta função lia `appState/init.adminUid` — um ponteiro ÚNICO
+ * pra plataforma inteira. Com um motorista dava no mesmo; com dois, o efeito
+ * não era entregar ao motorista errado, era não entregar a ninguém: a rule de
+ * `notifications` (firestore.rules:869-872) exige que quem não é motorista só
+ * escreva para o próprio `userDoc().adminUid`. A escrita era NEGADA, caía no
+ * `catch` abaixo, e a tela do pai mostrava sucesso — o motorista nunca ficava
+ * sabendo da falta e o pai achava que tinha avisado.
+ *
+ * `child.adminUid` é a verdade por criança e o chamador já tem; o fallback
+ * `resolveAdminUid()` lê o doc do próprio responsável, que também é por
+ * inquilino. Nenhum dos dois é global.
+ *
+ * A resolução acontece DENTRO da função pra evitar race condition (se o pai
+ * abre o sheet antes do useAdminProfile carregar, a notif ainda funciona).
  */
 export async function notifyAbsence({
-  child, // { parentUid, name }
+  child, // { parentUid, name, adminUid }
   type,
   dateKey,
   declaredBy,
 }) {
-  let targetUid = null;
-
-  if (declaredBy === 'parent') {
-    // Notifica o admin — busca uid de appState/init (leitura pública)
-    try {
-      const initSnap = await getDoc(doc(db, 'appState', 'init'));
-      if (initSnap.exists()) {
-        targetUid = initSnap.data().adminUid || null;
-      }
-    } catch (err) {
-      console.error('[notifyAbsence] Falha ao ler appState/init:', err);
-    }
-  } else {
-    // Tio declarando → notifica o pai vinculado
-    targetUid = child?.parentUid || null;
-  }
+  // Pai declarando → o motorista DESTA criança.
+  // Tio declarando → o pai vinculado.
+  const targetUid =
+    declaredBy === 'parent'
+      ? child?.adminUid || (await resolveAdminUid())
+      : child?.parentUid || null;
 
   if (!targetUid) {
     console.warn('[notifyAbsence] Sem destinatário — notif não criada.');

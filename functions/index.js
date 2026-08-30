@@ -139,9 +139,19 @@ async function processReminders(apiKey, now = new Date()) {
 
   // Cache simples de parents/children/admin pra evitar N reads quando
   // tem várias mensalidades do mesmo pai/criança/admin.
+  //
+  // `adminCache` É UM MAPA, E NÃO UM SÓ — o motivo vale dinheiro.
+  // Ele era `let adminCache = null`, preenchido UMA vez a partir de
+  // `appState/init.adminUid` e reusado no laço inteiro. Ou seja: a chave PIX
+  // de UM motorista ia no e-mail de cobrança de TODOS os pagamentos da
+  // plataforma. Com dois parceiros, o responsável do B recebia a chave do A e
+  // pagava nela — o dinheiro ia pra conta errada e nada no sistema saberia.
+  //
+  // É o mesmo bug que o cliente já tinha consertado e documentado em
+  // src/services/userService.js:76-86; a cópia do servidor ficou pra trás.
   const parentCache = new Map();
   const childCache = new Map();
-  let adminCache = null;
+  const adminCache = new Map();
 
   for (const paymentDoc of paymentsSnap.docs) {
     evaluated += 1;
@@ -199,25 +209,31 @@ async function processReminders(apiKey, now = new Date()) {
         }
       }
 
-      // Carrega admin (motorista) — cacheia 1x
-      if (!adminCache) {
-        const initSnap = await db.doc('appState/init').get();
-        const adminUid = initSnap.exists ? initSnap.data().adminUid : null;
-        if (adminUid) {
-          const as = await db.doc(`users/${adminUid}`).get();
-          if (as.exists) adminCache = as.data();
-        }
-        adminCache = adminCache || {};
+      // Carrega o motorista DESTE pagamento — cacheia por uid.
+      //
+      // `p.adminUid` é a verdade: billing.js:99 grava e se RECUSA a gerar
+      // mensalidade sem ele (:91). `child.adminUid` cobre pagamento antigo,
+      // e a criança já foi carregada logo acima. Os dois são por inquilino;
+      // `appState/init` saiu daqui e não volta.
+      const adminUid = p.adminUid || child?.adminUid || null;
+      let admin = adminUid ? adminCache.get(adminUid) : null;
+      if (!admin && adminUid) {
+        const as = await db.doc(`users/${adminUid}`).get();
+        admin = as.exists ? as.data() : {};
+        adminCache.set(adminUid, admin);
       }
+      admin = admin || {};
 
       // Monta payload do template
       const monthLabel = p.monthLabel || formatMonthLabel(dueDate);
-      const pixKey = adminCache.pixKey || null;
-      const pixKeyType = pixKey
-        ? PIX_TYPE_LABELS[adminCache.pixKeyType] || ''
-        : '';
-      const adminName = adminCache.name || '';
-      const companyName = adminCache.companyName || 'Alô Buzinou!';
+      // SEM MOTORISTA RESOLVIDO, SEM CHAVE — e é a falha para o lado certo.
+      // O e-mail sai sem o PIX (o template já trata `pixKey: null`) e o
+      // responsável cobra o motorista pelo caminho de sempre. Mandar a chave
+      // de outra pessoa seria pior que não mandar chave nenhuma.
+      const pixKey = admin.pixKey || null;
+      const pixKeyType = pixKey ? PIX_TYPE_LABELS[admin.pixKeyType] || '' : '';
+      const adminName = admin.name || '';
+      const companyName = admin.companyName || 'Alô Buzinou!';
 
       const html = buildEmailHtml({
         milestone: milestone.key,

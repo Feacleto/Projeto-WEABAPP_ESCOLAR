@@ -62,11 +62,17 @@ function monthLabel(monthKey) {
   return `${MONTHS[m - 1]} de ${y}`;
 }
 
-/** Dados públicos do motorista, pra prévia se apresentar. */
-async function loadDriver(db) {
+/**
+ * Dados públicos do motorista DESTA criança, pra prévia se apresentar.
+ *
+ * O `adminUid` vem por parâmetro, da criança do convite. Antes saía de
+ * `appState/init` — um ponteiro único pra plataforma inteira —, e com dois
+ * parceiros a prévia apresentava o motorista errado a quem estava abrindo o
+ * link do WhatsApp pra saber com quem o filho vai andar. É a primeira tela
+ * que a família vê, e era a que mais tinha o que acertar.
+ */
+async function loadDriver(db, adminUid) {
   try {
-    const initSnap = await db.doc('appState/init').get();
-    const adminUid = initSnap.exists ? initSnap.data().adminUid : null;
     if (!adminUid) return {};
     const adminSnap = await db.doc(`users/${adminUid}`).get();
     if (!adminSnap.exists) return {};
@@ -196,7 +202,7 @@ function makeGetInvitePreview(db) {
 
     const childDoc = snap.docs[0];
     const child = { id: childDoc.id, ...childDoc.data() };
-    const driver = await loadDriver(db);
+    const driver = await loadDriver(db, child.adminUid);
 
     const callerUid = request.auth?.uid || null;
     const claimed = child.inviteStatus !== 'pending' || !!child.parentUid;

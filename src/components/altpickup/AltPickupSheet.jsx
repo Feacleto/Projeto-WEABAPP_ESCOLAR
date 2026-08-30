@@ -66,6 +66,8 @@ export default function AltPickupSheet({
         name: resp.name,
         phone: resp.phone,
         dateKey,
+        // Sem isto o aviso cai no ponteiro global e a rule nega a escrita.
+        adminUid: child.adminUid,
       });
       toast.success(`Avisamos o motorista que ${resp.name} vai buscar hoje.`);
       onClose?.();
@@ -330,6 +332,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
         name,
         phone: cleanPhone,
         dateKey,
+        adminUid: child.adminUid,
       });
       toast.success(`${name} cadastrado e avisado pro motorista.`);
       onSaved?.();

@@ -80,7 +80,14 @@ export default function AbsenceSheet({
       // Notifica o outro lado — fire-and-forget. A função encontra o
       // destinatário internamente (admin via appState/init ou parent via child).
       notifyAbsence({
-        child: { name: child.name, parentUid: child.parentUid },
+        // `adminUid` viaja junto: é ele que diz a QUAL motorista o aviso
+        // pertence. Sem ele a notificação caía no ponteiro global da
+        // plataforma e a rule negava a escrita (ver notifyAbsence).
+        child: {
+          name: child.name,
+          parentUid: child.parentUid,
+          adminUid: child.adminUid,
+        },
         type,
         dateKey: targetDate,
         declaredBy,

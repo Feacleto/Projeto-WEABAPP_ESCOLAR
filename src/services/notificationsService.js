@@ -28,8 +28,20 @@ import { primeiroNome } from '../utils/formatters';
  *
  * O doc do próprio responsável carrega `adminUid` desde o resgate do convite,
  * e ele sempre pode ler o próprio doc.
+ *
+ * EXPORTADO desde 30/08/2026, e o motivo é que ele era a ÚNICA cópia certa.
+ * `absencesService` e `altPickupService` resolviam o motorista lendo
+ * `appState/init.adminUid` — um ponteiro ÚNICO pra plataforma inteira. Com dois
+ * motoristas isso não entregava ao motorista errado: a rule de `notifications`
+ * exige `userId == userDoc().adminUid` pra quem não é motorista, então a
+ * escrita era NEGADA, morria num `console.error`, e a tela do pai mostrava
+ * sucesso. O aviso de falta simplesmente não chegava.
+ *
+ * Quem chama deve preferir `child.adminUid`, que é a verdade por criança e não
+ * custa leitura. Isto aqui é o fallback pra quando o chamador não tem a criança
+ * em mãos.
  */
-async function resolveAdminUid() {
+export async function resolveAdminUid() {
   const uid = auth.currentUser?.uid;
   if (!uid) return null;
   try {

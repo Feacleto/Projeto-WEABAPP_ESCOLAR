@@ -80,7 +80,13 @@ export default function AvisoRapido({
           declaredBy: 'parent',
         });
         notifyAbsence({
-          child: { name: child.name, parentUid: child.parentUid },
+          // `adminUid` já é passado à declaração logo acima; ele precisa vir
+          // aqui também, senão a notificação cai no ponteiro global.
+          child: {
+            name: child.name,
+            parentUid: child.parentUid,
+            adminUid: child.adminUid,
+          },
           type: tipo,
           dateKey,
           declaredBy: 'parent',
