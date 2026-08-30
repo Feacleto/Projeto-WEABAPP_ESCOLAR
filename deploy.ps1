@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Continue'
 # As 12 functions que NÃO dependem de segredo. As duas de e-mail
 # (sendPaymentReminders, runPaymentRemindersNow) declaram RESEND_API_KEY, e o
 # CLI para esperando o valor ser digitado — o que travaria este script. Elas
-# sobem à parte, quando existir chave do Resend. Ver DEPLOY.md.
+# sobem à parte, quando existir chave do Resend. Ver docs/deploy.md.
 $FuncoesNucleo = @(
   'functions:lookupInvite',
   'functions:redeemInvite',
@@ -45,7 +45,7 @@ function Passo($titulo) {
 function Parar($msg) {
   Write-Host ''
   Write-Host "PAROU: $msg" -ForegroundColor Red
-  Write-Host 'Nada depois disto foi executado. Ver DEPLOY.md.' -ForegroundColor Yellow
+  Write-Host 'Nada depois disto foi executado. Ver docs/deploy.md.' -ForegroundColor Yellow
   exit 1
 }
 
@@ -131,7 +131,7 @@ if ($LASTEXITCODE -ne 0) { Parar 'hosting falhou (o backend já subiu)' }
 Write-Host ''
 Write-Host 'No ar: https://projeto-tio-nino-digital.web.app' -ForegroundColor Green
 Write-Host ''
-Write-Host 'Agora, as tres verificacoes do DEPLOY.md:' -ForegroundColor Cyan
+Write-Host 'Agora, as tres verificacoes do docs/deploy.md:' -ForegroundColor Cyan
 Write-Host '  1. a home carrega e mostra o parceiro'
 Write-Host '  2. /admin -> Manutencao -> Verificar (o backfill de privacidade)'
 Write-Host '  3. cadastrar uma crianca e abrir o link do convite em outro aparelho'

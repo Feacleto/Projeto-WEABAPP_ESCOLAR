@@ -34,8 +34,8 @@ esse padrão em vez de introduzir um framework.
 `.env` a partir de [.env.example](.env.example). `VITE_USE_EMULATORS=false`
 por padrão — **rodar local sem isso grava no Firebase de produção**.
 
-Deploy: [DEPLOY.md](DEPLOY.md) (a ordem importa e há dois pré-requisitos de
-console). Acessos de teste por papel: [TESTES.md](TESTES.md).
+Deploy: [docs/deploy.md](docs/deploy.md) (a ordem importa e há dois pré-requisitos de
+console). Acessos de teste por papel: [docs/testes.md](docs/testes.md).
 
 ## Stack
 
@@ -44,8 +44,9 @@ Functions v2 em `southamerica-east1`, FCM) · react-router 7 · Leaflet 1.9 +
 react-leaflet 5 (OSM, sem chave) · vite-plugin-pwa · lucide-react ·
 react-hot-toast. JavaScript puro — **não há TypeScript**.
 
-> O [README.md](README.md) está defasado (fala React 18, Firebase 10, router 6
-> e "Tio Nino Digital"). Prefira este arquivo.
+> O [README.md](README.md) é a porta de entrada e ROTEIA — ele não repete o que
+> está aqui. Foi reescrito em 30/08/2026; a versão antiga falava de React 18,
+> Firebase 10, router 6 e "Tio Nino Digital", e estava três versões atrás.
 
 ---
 
@@ -69,7 +70,29 @@ conta dele não tem outra prova até a migração manual pelo console.
 cai em `/login` quando não há papel (devolver `null` dava tela branca calada).
 
 O cliente **não escreve `role`** — foi assim que a auto-promoção se fechou.
-Conta de responsável só nasce pela function `redeemInvite`.
+
+**Quem cria o quê no cadastro do responsável** (esta linha já esteve errada
+aqui): a SESSÃO nasce no cliente, em `authenticateAndRedeem`
+([authService.js](src/services/authService.js)) — é ele que chama
+`createUserWithEmailAndPassword`. O que a function `redeemInvite` faz com
+Admin SDK é o que o cliente não pode: escrever o DOCUMENTO `users/{uid}` com
+`role: 'parent'` e vincular a criança. Dizer que "a conta só nasce pela
+function" confunde as duas coisas e manda o próximo a procurar criação de
+conta onde só há vínculo.
+
+---
+
+## Decisões de arquitetura
+
+[docs/decisoes.md](docs/decisoes.md) — regras que NÃO podem ser quebradas por
+conveniência, cada uma com o teste que a prova. **Leia antes de mexer em
+permissão, dinheiro, vínculo de família ou dado sensível.** Se uma mudança
+parece uma melhoria óbvia e contraria uma decisão de lá, a decisão vence até
+alguém mudá-la explicitamente naquele arquivo.
+
+Referência longa: [docs/arquitetura.md](docs/arquitetura.md) (alicerce técnico)
+e [docs/evolucao.md](docs/evolucao.md) (para onde o produto anda). O índice de
+tudo isso é [docs/README.md](docs/README.md).
 
 ---
 

@@ -330,7 +330,7 @@ async function main() {
   console.log('  c) Firestore > children/<ID> > parentUid = ' + p.uid);
   console.log('                                 inviteStatus = used');
   console.log('');
-  console.log('Ver TESTES.md pro formato das mensalidades de exemplo.');
+  console.log('Ver docs/testes.md pro formato das mensalidades de exemplo.');
 }
 
 main().catch((e) => {

@@ -687,7 +687,8 @@ async function tetoDeGets(tio) {
  *
  * ALGUNS CASOS AQUI NASCEM VERMELHOS, E ISSO E O PONTO.
  * Eles afirmam o comportamento CERTO, nao o atual. Sao a rede que o item A3 do
- * plano de arquitetura precisa pra ser aplicado com seguranca: sem eles, mexer
+ * plano de arquitetura (docs/plano-de-arquitetura.md) precisa pra ser aplicado
+ * com seguranca: sem eles, mexer
  * em rule e trocar um furo conhecido por um desconhecido.
  */
 async function oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon }) {

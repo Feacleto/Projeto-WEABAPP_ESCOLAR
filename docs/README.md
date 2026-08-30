@@ -1,12 +1,28 @@
-# Documentação de arquitetura
+# Documentação
 
-Três arquivos, três usos diferentes. **Leia este primeiro** para saber onde procurar.
+**Leia este primeiro** para saber onde procurar. Seis arquivos, três grupos.
+
+### Normativo — o que não se quebra por conveniência
 
 | Arquivo | Para quem | Quando ler |
 |---|---|---|
 | [`decisoes.md`](decisoes.md) | agente e pessoa | **Sempre.** Cada decisão em ~30 linhas, com o que a prova. É o que impede uma "melhoria" plausível de quebrar uma regra de negócio. |
+
+### Referência — o alicerce e o rumo
+
+| Arquivo | Para quem | Quando ler |
+|---|---|---|
 | [`arquitetura.md`](arquitetura.md) | pessoa, e agente sob demanda | Antes de mexer em permissão, dado sensível, cobrança ou fronteira de camada. |
 | [`evolucao.md`](evolucao.md) | pessoa | Ao decidir o que construir depois. Nenhum estágio tem data — todos têm gatilho. |
+| [`plano-de-arquitetura.md`](plano-de-arquitetura.md) | pessoa e agente | Backlog técnico com evidência `arquivo:linha`. A seção 7 registra o que foi executado e **o que ficou de fora, com o motivo**. |
+| [`decisao-porta-aberta.md`](decisao-porta-aberta.md) | pessoa | Proposta de abandonar a fila de espera do motorista. Não implementada — é uma decisão de produto esperando sim ou não. |
+
+### Operação — como colocar no ar e como testar
+
+| Arquivo | Para quem | Quando ler |
+|---|---|---|
+| [`deploy.md`](deploy.md) | pessoa | Antes de publicar. A ordem importa, há dois pré-requisitos de console, e a CSP está em Report-Only esperando uma passada de navegador. |
+| [`testes.md`](testes.md) | pessoa | Para entrar como motorista, dono ou responsável. Os três acessos são diferentes por natureza. |
 
 Versões longas e navegáveis (mesmo conteúdo, mais contexto e diagramas) estão publicadas como páginas privadas no Claude. `decisoes.md` é a fonte normativa: se algo divergir, vale ele.
 
@@ -14,9 +30,9 @@ Versões longas e navegáveis (mesmo conteúdo, mais contexto e diagramas) estã
 
 Escrito em 30/08/2026, com o projeto **em desenvolvimento, sem usuário real**. Essa premissa é o que torna várias decisões baratas — não há dado para migrar. Boa parte delas fica cara no dia em que a primeira família entrar.
 
-## Trecho para colar no CLAUDE.md
+## O ponteiro no CLAUDE.md — JÁ COLADO
 
-Cole isto no `CLAUDE.md`, logo depois da seção "Os quatro papéis". É curto de propósito: o `CLAUDE.md` é carregado em toda sessão, então ele aponta, não repete.
+O trecho abaixo está no `CLAUDE.md` desde 30/08/2026, logo depois da seção "Os quatro papéis". Fica aqui como referência do que ele deve dizer, se alguém precisar reescrevê-lo. É curto de propósito: o `CLAUDE.md` é carregado em toda sessão, então ele aponta, não repete.
 
 ```markdown
 ## Decisões de arquitetura
@@ -31,12 +47,26 @@ Referência longa: [docs/arquitetura.md](docs/arquitetura.md) (alicerce técnico
 e [docs/evolucao.md](docs/evolucao.md) (para onde o produto anda).
 ```
 
-## Divergências conhecidas entre o CLAUDE.md e o código
+## Divergências que existiam entre o CLAUDE.md e o código
 
 Achadas na análise. Enquanto não forem corrigidas, o índice está mentindo para todo agente que abrir uma sessão:
 
-1. Diz **"38 services"** — são **36**.
-2. Diz que **`redeemInvite` cria a conta do responsável**. Não cria: a conta nasce no cliente (`authService.js:151-213`) e a function apenas **vincula** uma sessão existente (`invites.js:126-130`).
-3. `papeis.js` afirma no comentário que o fallback `superAdmin` **foi removido**. Não foi — está na linha 49.
-4. `firestore.rules:428` afirma que o parceiro não escreve o próprio `limiteCriancas`. Escreve (ver decisão 12).
-5. `accountService.js:196` descreve uma regra de contador que **não existe** nas rules.
+**As cinco foram fechadas em 30/08/2026.** Ficam registradas porque o padrão
+importa mais que os itens: toda uma delas era prosa afirmando garantia que o
+código ao lado não dava, e é assim que o defeito volta — alguém lê, confia, e
+constrói em cima.
+
+1. ~~Diz "38 services" — são 36.~~ São **37**, e o índice já diz 37. (A própria
+   contagem desta lista tinha envelhecido: o número mudou duas vezes entre a
+   análise e a correção. É o argumento contra guardar contagem em prosa.)
+2. ~~`redeemInvite` cria a conta do responsável.~~ Corrigido no `CLAUDE.md`: a
+   SESSÃO nasce no cliente (`authenticateAndRedeem`), e a function escreve o
+   DOCUMENTO com `role: 'parent'` e o vínculo — que é o que o cliente não pode.
+3. ~~`papeis.js` diz que o fallback `superAdmin` foi removido.~~ O cabeçalho
+   agora diz que ele continua lá, por que, e o que fecha a pendência.
+4. ~~`firestore.rules` afirma que o parceiro não escreve o próprio
+   `limiteCriancas`.~~ Agora é verdade, com o teste que prova
+   (`motorista_nao_escreve_o_proprio_limiteCriancas`).
+5. ~~`accountService.js` descreve uma regra de contador que não existe.~~ A
+   regra existe (o contador anda de ±1) — e a descrição antiga estava
+   **invertida**: ela prometia "descida livre", que era justamente o ataque.
