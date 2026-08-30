@@ -1,4 +1,7 @@
-import { isValidInviteCodeFormat } from './generateInviteCode';
+// Extensao explicita: o Vite resolve sem ela, o Node nao — e e o Node que
+// roda os scripts de teste. Sem isto, qualquer util que importe daqui volta a
+// ser intestavel (ver o cabecalho de utils/contratoAssociacao.js).
+import { isValidInviteCodeFormat } from './generateInviteCode.js';
 
 // "TN" + 6 caracteres do formato novo. O legado (TN + 4 dígitos) cabe
 // dentro deste limite, então uma constante serve pros dois.

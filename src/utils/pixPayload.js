@@ -1,3 +1,5 @@
+import { normalizePixKey } from './pix.js';
+
 /**
  * Gera o "PIX Copia e Cola" (BR Code, padrão EMV do Banco Central).
  *
@@ -45,24 +47,6 @@ function sanitizeText(value, maxLength) {
     .slice(0, maxLength);
 }
 
-/**
- * Chave PIX normalizada por tipo.
- *
- * Os tipos vêm de userService.PIX_KEY_TYPES ('phone' | 'email' | 'random').
- * 'cpf'/'cnpj'/'aleatoria' seguem aceitos por compatibilidade, caso algum
- * cadastro antigo tenha sido feito direto no console do Firebase.
- */
-export function normalizePixKey(key, type) {
-  const raw = String(key || '').trim();
-  if (type === 'cpf' || type === 'cnpj') return raw.replace(/\D/g, '');
-  if (type === 'phone') {
-    const digits = raw.replace(/\D/g, '');
-    // Telefone no PIX vai no formato +55DDNNNNNNNNN
-    return digits.startsWith('55') ? `+${digits}` : `+55${digits}`;
-  }
-  if (type === 'email') return raw.toLowerCase();
-  return raw; // random / aleatoria — vai como está
-}
 
 /**
  * Monta o BR Code estático.
@@ -83,7 +67,9 @@ export function buildPixPayload({
   amount = null,
   txid = '',
 }) {
-  const pixKey = normalizePixKey(key, keyType);
+  // ORDEM (type, value) — a mesma de `validatePixKey`. A cópia que morava
+  // aqui recebia (key, type), invertida em relação à do userService.
+  const pixKey = normalizePixKey(keyType, key);
   if (!pixKey) return null;
 
   const merchantAccount =

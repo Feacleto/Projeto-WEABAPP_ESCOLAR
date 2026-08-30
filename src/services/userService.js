@@ -1,5 +1,15 @@
 import { doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
+// A CHAVE PIX TEM UMA DEFINIÇÃO SÓ, e ela mora em `utils/pix.js`.
+//
+// Aqui existiam `validatePixKey` e `normalizePixKey`, e havia uma SEGUNDA
+// `normalizePixKey` em `utils/pixPayload.js` — com a ordem dos argumentos
+// invertida. Trocar um import pelo outro compilava, passava no lint e gerava
+// chave inválida em silêncio. O reexport mantém este módulo como a porta que
+// as telas já usam.
+import { PIX_KEY_TYPES, validatePixKey, normalizePixKey } from '../utils/pix';
+
+export { PIX_KEY_TYPES, validatePixKey, normalizePixKey };
 
 /**
  * Marca que o usuário concluiu o tutorial de boas-vindas.
@@ -18,14 +28,6 @@ export async function markTutorialDone(uid) {
 // PIX (admin/tio)
 // ============================================================================
 
-export const PIX_KEY_TYPES = {
-  phone: { label: 'Celular', placeholder: '(11) 99999-9999' },
-  email: { label: 'Email', placeholder: 'tio@email.com' },
-  random: {
-    label: 'Chave aleatória',
-    placeholder: '12345678-1234-1234-1234-123456789012',
-  },
-};
 
 /**
  * A MARCA DO MOTORISTA — o nome e o logo que as famílias dele veem.
@@ -100,42 +102,4 @@ export function watchAdminProfile(adminUid, onUpdate, onError) {
   );
 }
 
-export function validatePixKey(type, value) {
-  const v = (value || '').trim();
-  if (!v) return 'Informe a chave PIX.';
 
-  switch (type) {
-    case 'phone': {
-      const digits = v.replace(/\D/g, '');
-      if (digits.length !== 10 && digits.length !== 11) {
-        return 'Celular inválido. Use DDD + número (10 ou 11 dígitos).';
-      }
-      return null;
-    }
-    case 'email':
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? null : 'Email inválido.';
-    case 'random': {
-      const uuid =
-        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-      return uuid.test(v)
-        ? null
-        : 'Chave aleatória deve seguir o formato UUID (32 caracteres com hífens).';
-    }
-    default:
-      return 'Tipo de chave inválido.';
-  }
-}
-
-/**
- * Normaliza a chave pra exibir e copiar (ex: telefone com +55).
- * Se for outro tipo, retorna o valor sem alteração.
- */
-export function normalizePixKey(type, value) {
-  const v = (value || '').trim();
-  if (!v) return v;
-  if (type === 'phone') {
-    const digits = v.replace(/\D/g, '');
-    return digits.startsWith('55') ? `+${digits}` : `+55${digits}`;
-  }
-  return v;
-}
