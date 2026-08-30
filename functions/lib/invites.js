@@ -220,6 +220,19 @@ function makeRedeemInvite(db) {
         // motorista aqui; o vínculo por criança continua em `child.adminUid`,
         // que é o dado real. Este campo é a chave de escopo, não a verdade.
         adminUid: existing?.adminUid || child.adminUid || null,
+        // TODOS os motoristas dos filhos dela, e não só o primeiro.
+        //
+        // O campo singular acima é a chave de escopo histórica e guarda quem
+        // veio primeiro. Mas a interface resolve o motorista pelo `adminUid`
+        // da CRIANÇA ATIVA, então a mãe com filhos em peruas diferentes
+        // precisa alcançar os dois documentos — é de lá que saem a chave PIX
+        // e a marca de cada um. A rule de `users` lê esta lista.
+        //
+        // `arrayUnion` não duplica quando é o mesmo motorista, que é o caso
+        // comum (irmãos na mesma perua).
+        ...(child.adminUid
+          ? { adminUids: admin.firestore.FieldValue.arrayUnion(child.adminUid) }
+          : {}),
         childIds: admin.firestore.FieldValue.arrayUnion(childRef.id),
         // Campo legado: as telas do pai ainda leem `childId`. Só definimos
         // quando não havia nenhum, pra não trocar o filho ativo de quem

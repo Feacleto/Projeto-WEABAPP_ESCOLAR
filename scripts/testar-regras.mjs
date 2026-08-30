@@ -69,6 +69,26 @@ async function criarLogin(email) {
   return { uid: j.localId, t: j.idToken };
 }
 
+/**
+ * SESSAO ANONIMA — o ator que faltava, e que motivou metade das correcoes
+ * deste arquivo.
+ *
+ * A landing chama `signInAnonymously` pra gravar lead. Isso significa que
+ * qualquer VISITANTE do site passa em `isSignedIn()`. Toda regra que para
+ * nesse predicado esta aberta pra internet, e ate aqui nenhum teste tinha
+ * como perceber: o elenco so tinha gente com papel.
+ */
+async function criarAnonimo() {
+  const r = await fetch(`${AUTH}:signUp?key=fake`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ returnSecureToken: true }),
+  });
+  const j = await r.json();
+  if (j.error) throw new Error(`anonimo: ${j.error.message}`);
+  return { uid: j.localId, t: j.idToken };
+}
+
 const semear = (caminho, fields) =>
   fetch(`${FS}/${caminho}`, { method: 'PATCH', headers: ADM, body: JSON.stringify({ fields }) });
 
@@ -180,6 +200,11 @@ async function main() {
   const tio1 = await criarLogin(`tio1.${Date.now()}@teste.local`);
   const tio2 = await criarLogin(`tio2.${Date.now()}@teste.local`);
   const pai1 = await criarLogin(`pai1.${Date.now()}@teste.local`);
+  // Os dois atores que faltavam. `espera` e o motorista inscrito e nao
+  // aprovado: o isolamento dele inteiro depende de `isAppUser()` exclui-lo,
+  // e nada testava isso. `anon` e o visitante da landing.
+  const espera = await criarLogin(`espera.${Date.now()}@teste.local`);
+  const anon = await criarAnonimo();
 
   await semear(`users/${dono.uid}`, { role: S('owner'), name: S('Dono') });
   await semear(`users/${tio1.uid}`, { role: S('admin'), name: S('Tio Um') });
@@ -190,6 +215,7 @@ async function main() {
     adminUid: S(tio1.uid),
     childId: S('kid1'),
   });
+  await semear(`users/${espera.uid}`, { role: S('aguardando'), name: S('Inscrito') });
   await semear('appState/init', { hasAdmin: B(true), adminUid: S(tio1.uid) });
 
   await semear('children/kid1', {
@@ -451,6 +477,7 @@ async function main() {
 
   await tetoDeGets(tio1);
   await vagaContratada(tio1, tio2);
+  await oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -625,6 +652,168 @@ async function tetoDeGets(tio) {
     checar('teto', `CHUNK de ${arq.split('/').pop()} ≤ ${TETO_SEGURO}`, 'PASSA',
       valor > 0 && valor <= TETO_SEGURO ? 200 : 403);
   }
+}
+
+/**
+ * O QUE NINGUEM TESTAVA — as oito colecoes sem um unico caso, mais os dois
+ * atores que o elenco nao tinha.
+ *
+ * POR QUE ESTE BLOCO EXISTE
+ * A suite cobria treze dos vinte e quatro blocos de `firestore.rules`. Os onze
+ * de fora incluiam `payments` (o dinheiro do pai) e as cinco colecoes da taxa
+ * (o dinheiro da plataforma) — as duas metades do modelo financeiro, sem uma
+ * sonda. Nao era descuido de quem escreveu: e o efeito de a suite ter nascido
+ * de uma auditoria de ISOLAMENTO entre motoristas, e dinheiro nao ter
+ * aparecido naquela auditoria.
+ *
+ * ALGUNS CASOS AQUI NASCEM VERMELHOS, E ISSO E O PONTO.
+ * Eles afirmam o comportamento CERTO, nao o atual. Sao a rede que o item A3 do
+ * plano de arquitetura precisa pra ser aplicado com seguranca: sem eles, mexer
+ * em rule e trocar um furo conhecido por um desconhecido.
+ */
+async function oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon }) {
+  // RESTAURA O ELENCO ANTES DE MEDIR — e o motivo e uma armadilha real.
+  //
+  // `vagaContratada` cria criancas por `:commit`, e um write de `update` no
+  // REST do Firestore SUBSTITUI o documento quando nao vai mascara junto. O
+  // efeito e que `users/{tio1}` sai de la com `criancasAtivas` e MAIS NADA:
+  // sem `role`, o tio deixa de passar em `isAdmin()` e em `isAppUser()`.
+  //
+  // Enquanto esse era o ultimo bloco do arquivo, ninguem via. Qualquer teste
+  // acrescentado depois dele nasce com o ator sem papel — e o 403 resultante
+  // se parece com isolamento funcionando, que e exatamente a mentira que o
+  // `conferirElenco()` deste arquivo existe pra impedir.
+  await semear('users/' + tio1.uid, {
+    role: S('admin'), name: S('Tio Um'), pixKey: S('tio1@pix.com'), phone: S('11999990000'),
+  });
+  await semear('users/' + tio2.uid, {
+    role: S('admin'), name: S('Tio Dois'), pixKey: S('tio2@pix.com'),
+  });
+
+  console.log('\n=== O DINHEIRO — as duas metades, sem cobertura ate aqui ===');
+
+  await semear('payments/pag1', {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childId: S('kid1'),
+    childName: S('Ana'), month: S('2026-08'), amount: N(300), status: S('pending'),
+  });
+  await semear('payments/pag1/events/ev1', { tipo: S('criado'), por: S(tio1.uid) });
+
+  checar('pos', 'tio1 le o proprio pagamento', 'PASSA', await ler('payments/pag1', tio1));
+  checar('pos', 'o pai le a propria mensalidade', 'PASSA', await ler('payments/pag1', pai1));
+  checar('dinheiro', 'tio2 le o pagamento do tio1', 'NEGA', await ler('payments/pag1', tio2));
+  checar('dinheiro', 'tio2 da baixa no pagamento do tio1', 'NEGA',
+    await escrever('payments/pag1', tio2, { status: S('paid') }, ['status']));
+
+  // A trilha e append-only DE PROPOSITO (update e delete sao false). Isso torna
+  // o `create` a unica porta — e um evento forjado por outro motorista fica la
+  // pra sempre, porque nem o dono consegue apagar.
+  checar('dinheiro', 'tio2 le a trilha do pagamento alheio', 'NEGA',
+    await ler('payments/pag1/events/ev1', tio2));
+  checar('dinheiro', 'tio2 forja evento na trilha alheia', 'NEGA',
+    await criar('payments/pag1/events', 'forjado', tio2, { tipo: S('pago'), por: S(tio2.uid) }));
+
+  await semear('taxaConfig/app', { percentual: N(6), piso: N(50), pixKey: S('plataforma@x.com') });
+  await semear('taxaParceiros/' + tio1.uid, { modo: S('percentual'), valor: N(6) });
+  await semear('faturasParceiro/' + tio1.uid + '_2026-08', { tioUid: S(tio1.uid), total: N(180) });
+
+  checar('pos', 'o motorista le a regua da taxa (pra saber pra onde pagar)', 'PASSA',
+    await ler('taxaConfig/app', tio1));
+  // A estrutura de preco da plataforma nao e assunto do responsavel: ele nao
+  // tem tela que leia isto, e o bloco vizinho (taxaParceiros) ja argumenta que
+  // preco nao pode vazar nem pro proprio motorista.
+  checar('taxa', 'o responsavel le a estrutura de preco da plataforma', 'NEGA',
+    await ler('taxaConfig/app', pai1));
+  checar('taxa', 'tio2 le a negociacao do tio1', 'NEGA',
+    await ler('taxaParceiros/' + tio1.uid, tio2));
+  checar('taxa', 'tio2 le a fatura do tio1', 'NEGA',
+    await ler('faturasParceiro/' + tio1.uid + '_2026-08', tio2));
+  checar('pos', 'o dono le a fatura que emitiu', 'PASSA',
+    await ler('faturasParceiro/' + tio1.uid + '_2026-08', dono));
+
+  console.log('\n=== O BENEFICIO E A FILA ===');
+
+  await semear('entryBonuses/' + tio1.uid, { meses: N(3), sorteadoEm: S('2026-08-01') });
+  checar('pos', 'o motorista le o proprio premio', 'PASSA',
+    await ler('entryBonuses/' + tio1.uid, tio1));
+  checar('bonus', 'tio2 le o premio do tio1', 'NEGA',
+    await ler('entryBonuses/' + tio1.uid, tio2));
+  // `entryBonuses` e beneficio em dinheiro e ninguem escreve dali — nem o dono.
+  checar('bonus', 'o motorista escreve o proprio premio', 'NEGA',
+    await escrever('entryBonuses/' + tio1.uid, tio1, { meses: N(4) }, ['meses']));
+  checar('bonus', 'o motorista varre a lista de premios', 'NEGA',
+    await listar('entryBonuses', tio1));
+
+  await semear('waitlistParents/lead1', {
+    name: S('Familia Souza'), email: S('souza@x.com'), createdAt: S('2026-08-01'),
+  });
+  // A gemea `waitlistDrivers` foi fechada porque anonimo enchia de lixo. Esta
+  // ficou aberta tres linhas abaixo, sem uma linha de justificativa.
+  checar('fila', 'o motorista le os leads de familia da plataforma', 'NEGA',
+    await ler('waitlistParents/lead1', tio1));
+  checar('fila', 'o motorista APAGA um lead de familia', 'NEGA',
+    await apagar('waitlistParents/lead1', tio1));
+
+  console.log('\n=== O INSCRITO NAO APROVADO — `aguardando` nao alcanca nada ===');
+
+  // O papel existe pra que esquecer uma checagem faca ele ver MENOS, nao mais.
+  // Nada media isso ate aqui.
+  checar('espera', 'inscrito le a crianca de um parceiro', 'NEGA',
+    await ler('children/kid1', espera));
+  checar('espera', 'inscrito le o recado de escola do parceiro', 'NEGA',
+    await ler('schoolBroadcasts/br1', espera));
+  checar('espera', 'inscrito le a agenda do parceiro', 'NEGA',
+    await ler('agendaEntries/ag1', espera));
+  checar('espera', 'inscrito le a mensalidade de uma familia', 'NEGA',
+    await ler('payments/pag1', espera));
+  checar('espera', 'inscrito le a regua da taxa', 'NEGA',
+    await ler('taxaConfig/app', espera));
+  checar('pos', 'inscrito le o proprio documento (a fila dele)', 'PASSA',
+    await ler('users/' + espera.uid, espera));
+
+  console.log('\n=== A SESSAO ANONIMA — o visitante da landing ===');
+
+  checar('anon', 'visitante le a crianca', 'NEGA', await ler('children/kid1', anon));
+  checar('anon', 'visitante le o doc de um motorista', 'NEGA',
+    await ler('users/' + tio1.uid, anon));
+  checar('anon', 'visitante le uma mensalidade', 'NEGA', await ler('payments/pag1', anon));
+  checar('anon', 'visitante varre os depoimentos', 'NEGA', await listar('feedbacks', anon));
+
+  console.log('\n=== O DOC DO MOTORISTA — a chave PIX ===');
+
+  // O pai PRECISA ler o doc do motorista dele — e onde esta a chave pra pagar.
+  checar('pos', 'o pai le o doc do motorista DELE', 'PASSA',
+    await ler('users/' + tio1.uid, pai1));
+  // Mas so o dele. A regra hoje libera qualquer `isAppUser()` a ler qualquer
+  // doc com role admin: nome, telefone, e-mail e CHAVE PIX de todo parceiro.
+  checar('pix', 'o pai le o doc de um motorista que nao e o dele', 'NEGA',
+    await ler('users/' + tio2.uid, pai1));
+  checar('pix', 'inscrito nao aprovado le o doc de um motorista', 'NEGA',
+    await ler('users/' + tio1.uid, espera));
+
+  // A MAE COM DOIS FILHOS EM PERUAS DIFERENTES.
+  //
+  // `users.adminUid` guarda o PRIMEIRO motorista — o proprio redeemInvite diz
+  // isso: "o vinculo por criança continua em child.adminUid, que e o dado
+  // real". Mas a interface resolve o motorista pelo adminUid da CRIANCA
+  // ATIVA. Escopar so pelo campo singular fazia ela perder a chave PIX e a
+  // marca ao trocar pro segundo filho — falha silenciosa, em cima de dinheiro.
+  //
+  // `adminUids` e a lista que o resgate do convite alimenta por arrayUnion.
+  // Este caso e o que impede de "simplificar" a regra de volta.
+  await semear('users/' + pai1.uid, {
+    role: S('parent'), name: S('Pai Um'), adminUid: S(tio1.uid), childId: S('kid1'),
+    adminUids: { arrayValue: { values: [S(tio1.uid), S(tio2.uid)] } },
+  });
+  checar('pos', 'a mae de dois filhos le o doc do SEGUNDO motorista', 'PASSA',
+    await ler('users/' + tio2.uid, pai1));
+
+  // E a lista nao e curinga: motorista que nao leva filho dela continua fora.
+  await semear('users/' + pai1.uid, {
+    role: S('parent'), name: S('Pai Um'), adminUid: S(tio1.uid), childId: S('kid1'),
+    adminUids: { arrayValue: { values: [S(tio1.uid)] } },
+  });
+  checar('pix', 'com a lista sem ele, o segundo motorista volta a ser negado', 'NEGA',
+    await ler('users/' + tio2.uid, pai1));
 }
 
 /**

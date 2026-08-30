@@ -235,10 +235,53 @@ service cloud.firestore {
       // isAppUser(), não isSignedIn(): a landing chama signInAnonymously
       // pra gravar leads, e com isSignedIn() qualquer visitante do site
       // lia nome, email, telefone e CHAVE PIX do motorista.
+      // O RESPONSÁVEL LÊ O DOC DO MOTORISTA DELE — E SÓ DELE.
+      //
+      // O ramo existia porque o pai precisa da chave PIX e do telefone pra
+      // pagar e pra falar com quem leva o filho. Mas ele dizia
+      // `isAppUser() && role == 'admin'`, ou seja: QUALQUER usuário do app
+      // lia o doc de QUALQUER motorista — nome, e-mail, telefone e CHAVE PIX
+      // de todo parceiro da plataforma, bastando ter o uid.
+      //
+      // E o uid não era segredo: o `allow list` público de `feedbacks` (mais
+      // abaixo) devolve o documento inteiro, com `uid` e `role` dentro. Duas
+      // regras corretas isoladamente compunham a cadeia.
+      //
+      // POR QUE DOIS CAMPOS, E NÃO SÓ `adminUid`
+      // `users.adminUid` guarda o PRIMEIRO motorista, e o `redeemInvite` diz
+      // isso com todas as letras: "um responsável com filhos em peruas
+      // diferentes fica com o primeiro motorista aqui; o vínculo por criança
+      // continua em `child.adminUid`, que é o dado real".
+      //
+      // Só que a interface resolve o motorista pelo `adminUid` da CRIANÇA
+      // ATIVA (useMarcaDoTio, useAdminProfile). Escopar só pelo campo singular
+      // faria a mãe com dois filhos em peruas diferentes perder a chave PIX e
+      // a marca ao trocar para o segundo filho — falha silenciosa, em cima de
+      // dinheiro.
+      //
+      // `adminUids` é a lista de todos os motoristas dos filhos dela,
+      // mantida por `arrayUnion` no resgate do convite. O campo singular
+      // continua valendo pra quem foi cadastrado antes da lista existir.
+      //
+      // Sem `.get(...,padrão)` a chave ausente é erro de avaliação, não
+      // negação — e conta antiga não tem nenhum dos dois.
+      //
+      // AINDA EM ABERTO, e de propósito: o ramo `isAdmin()` continua deixando
+      // um motorista ler o doc de qualquer usuário. Escopá-lo exige mapear os
+      // fluxos em que o motorista lê o doc do responsável (resgate de convite,
+      // financeiro) e vem com teste próprio — trocar por um predicado não
+      // exercitado seria trocar um furo conhecido por um desconhecido.
       allow get: if isSignedIn() && (
         request.auth.uid == uid
         || isAdmin()
-        || (isAppUser() && resource.data.role == 'admin')
+        || (
+          isAppUser()
+          && resource.data.role == 'admin'
+          && (
+            userDoc().get('adminUid', '') == uid
+            || uid in userDoc().get('adminUids', [])
+          )
+        )
       );
       // SÓ O DONO LISTA. O motorista não tem por que varrer `users`.
       //
@@ -792,12 +835,26 @@ service cloud.firestore {
         return get(/databases/$(database)/documents/payments/$(paymentId)).data;
       }
 
+      // O MOTORISTA DAQUELE PAGAMENTO, e não "um motorista qualquer".
+      //
+      // Era `isAdmin()` nu, enquanto o bloco PAI (`payments`) já exigia
+      // `ehDoMotorista()`. Metade do dinheiro escopada e a outra metade não —
+      // e a metade de fora é justamente a TRILHA, que é `update, delete: if
+      // false` logo abaixo. A imutabilidade aqui amplificava o furo em vez de
+      // conter: um parceiro escrevia um evento na trilha do pagamento de
+      // outro, e ninguém — nem o dono — conseguia apagar depois.
+      //
+      // O `get()` já é feito no outro ramo, então o custo de leitura não muda.
       allow read: if isSignedIn() && (
-        isAdmin() || paymentDoc().parentUid == request.auth.uid
+        paymentDoc().get('adminUid', '') == request.auth.uid
+        || paymentDoc().parentUid == request.auth.uid
       );
 
       allow create: if isSignedIn()
-        && (isAdmin() || paymentDoc().parentUid == request.auth.uid)
+        && (
+          paymentDoc().get('adminUid', '') == request.auth.uid
+          || paymentDoc().parentUid == request.auth.uid
+        )
         && request.resource.data.keys().hasAll(['type', 'at'])
         && request.resource.data.actorUid == request.auth.uid;
 
@@ -1067,9 +1124,26 @@ service cloud.firestore {
       allow read, update, delete: if isOwner();
     }
     match /waitlistParents/{id} {
+      // A GÊMEA DE `waitlistDrivers`, QUE DIVERGIU SEM NINGUÉM DECIDIR.
+      //
+      // As duas nasceram no mesmo comentário, com a mesma regra. A de cima foi
+      // fechada — o `create` saiu do anônimo — e esta ficou três linhas abaixo,
+      // aberta, sem uma linha explicando por quê.
+      //
+      // O `read/update/delete` era `isAdmin()`, que aqui significa QUALQUER
+      // motorista: um parceiro lia — e APAGAVA — os leads de família de toda a
+      // plataforma. É lista de aquisição do dono, não dado de operação de
+      // ninguém. Passa a `isOwner()`.
+      //
+      // O `create` continua aberto a quem tem sessão (a landing grava por
+      // sessão anônima), mas agora com whitelist de campos: sem ela, qualquer
+      // um escrevia qualquer coisa, de qualquer tamanho, nesta coleção.
       allow create: if isSignedIn()
-        && request.resource.data.keys().hasAll(['name', 'email', 'createdAt']);
-      allow read, update, delete: if isAdmin();
+        && request.resource.data.keys().hasAll(['name', 'email', 'createdAt'])
+        && request.resource.data.keys().hasOnly([
+          'name', 'email', 'phone', 'city', 'message', 'createdAt'
+        ]);
+      allow read, update, delete: if isOwner();
     }
 
     // -----------------------------------------------------------------
@@ -1295,9 +1369,17 @@ service cloud.firestore {
     // O id do documento é o uid de propósito: é o que garante "uma vez
     // por conta" sem depender de contagem nem de campo de controle.
     match /entryBonuses/{uid} {
+      // O DONO DO PRÊMIO, OU O DONO DA PLATAFORMA — e mais ninguém.
+      //
+      // Era `isAdmin()`, que aqui significa QUALQUER motorista: um parceiro
+      // lia quanto de isenção outro tinha sorteado, e o `list` entregava a
+      // tabela inteira de quem entrou com quantos meses de graça. É a
+      // condição comercial de cada associado, e ela não é assunto entre eles.
+      //
+      // Quem precisa varrer é o dono, pra conciliar isenção com fatura.
       allow get: if isSignedIn()
-        && (request.auth.uid == uid || isAdmin());
-      allow list: if isAdmin();
+        && (request.auth.uid == uid || isOwner());
+      allow list: if isOwner();
       allow create, update, delete: if false;
     }
 
@@ -1318,7 +1400,20 @@ service cloud.firestore {
     // Leitura pro motorista também: é onde está a chave PIX pra ele pagar.
     // Esconder isso dele seria cobrar sem dizer pra onde mandar.
     match /taxaConfig/{docId} {
-      allow read: if isAppUser();
+      // MOTORISTA E DONO. O RESPONSÁVEL NÃO.
+      //
+      // Era `isAppUser()`, que inclui todo responsável — e o comentário acima
+      // diz "leitura pro motorista também", ou seja, a intenção era o
+      // motorista e o predicado escolhido foi "qualquer usuário do app".
+      //
+      // O que vazava é a estrutura de preço da plataforma: `percentual`,
+      // `piso` e a chave PIX de cobrança. O bloco logo abaixo
+      // (`taxaParceiros`) argumenta que preço não pode vazar nem entre
+      // parceiros; entregá-lo à família é a mesma coisa, com menos motivo
+      // ainda — nenhuma tela do `/pai` lê esta coleção.
+      //
+      // É o mesmo raciocínio que fechou `schools` para o responsável.
+      allow read: if isAdmin() || isOwner();
       allow write: if isOwner();
     }
 
