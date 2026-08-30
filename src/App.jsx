@@ -26,9 +26,14 @@ import Familia from './pages/Familia';
 import Invite from './pages/Invite';
 import Login from './pages/Login';
 import FirstAccess from './pages/FirstAccess';
-import Welcome from './pages/Welcome';
+
 import AuthAction from './pages/AuthAction';
 
+// `Welcome` era o UNICO import adiantado sem justificativa, e nenhuma tela do
+// app aponta pra ele: e rota de link antigo (ver o redirecionamento la
+// embaixo). Sao 171 linhas na primeira pintura de TODO MUNDO, inclusive da
+// mae abrindo o convite no WhatsApp em dado movel.
+const Welcome = lazy(() => import('./pages/Welcome'));
 const DriverSignup = lazy(() => import('./pages/DriverSignup'));
 const FirstAdmin = lazy(() => import('./pages/FirstAdmin'));
 const Aguardando = lazy(() => import('./pages/Aguardando'));

@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 // `firebase/analytics` NÃO é importado no topo — ver `ligarAnalytics()`.
 
@@ -20,7 +19,37 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+/**
+ * O CLOUD STORAGE ENTRA SOB DEMANDA, e não no topo do módulo.
+ *
+ * POR QUE ISSO IMPORTA AQUI ESPECIFICAMENTE
+ * Este arquivo é importado por todo service, então tudo que ele instancia no
+ * topo cai no chunk de entrada e ganha `modulepreload` — baixado antes da
+ * primeira pintura, por TODO visitante. E o único consumidor do Storage é
+ * `photoService`, que só é tocado quando alguém anexa um arquivo.
+ *
+ * É exatamente o bug que este arquivo já corrigiu logo abaixo, com o
+ * analytics: o `import` no topo anulava o gate de consentimento e fazia ~56 KB
+ * serem baixados inclusive pelo responsável que abre o link do WhatsApp em
+ * dado móvel. O Storage é maior que o analytics.
+ *
+ * Devolve sempre a MESMA instância — `getStorage` é idempotente, e o módulo
+ * do SDK fica no cache do bundler depois do primeiro `import()`.
+ */
+let storagePromise = null;
+
+export function getStorageLazy() {
+  if (!storagePromise) {
+    storagePromise = import('firebase/storage').then(async (mod) => {
+      const inst = mod.getStorage(app);
+      if (USE_EMULATORS) {
+        mod.connectStorageEmulator(inst, '127.0.0.1', 9199);
+      }
+      return inst;
+    });
+  }
+  return storagePromise;
+}
 // Mesma região das Cloud Functions (firebase.json / functions/index.js).
 // Sem passar a região, o SDK chama us-central1 e recebe 404.
 export const functions = getFunctions(app, 'southamerica-east1');
@@ -47,7 +76,6 @@ if (USE_EMULATORS) {
   const host = '127.0.0.1';
   connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
   connectFirestoreEmulator(db, host, 8085);
-  connectStorageEmulator(storage, host, 9199);
   connectFunctionsEmulator(functions, host, 5001);
   console.info('%c🔧 EMULADOR LOCAL — nenhum dado vai pra produção', 'color:#1F5F3F;font-weight:bold');
 } else if (import.meta.env.DEV) {

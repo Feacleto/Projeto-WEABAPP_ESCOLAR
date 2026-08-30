@@ -5,7 +5,7 @@ import {
   deleteObject,
 } from 'firebase/storage';
 import { STORAGE_ENABLED, STORAGE_OFF_MESSAGE } from '../config/capabilities';
-import { storage } from '../firebase/config';
+import { getStorageLazy } from '../firebase/config';
 
 /**
  * Upload de fotos pra Firebase Storage.
@@ -72,7 +72,7 @@ export async function uploadProfilePhoto(uid, file) {
   // o próximo a debugar a conexão do usuário.
   if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
 
-  const storageRef = ref(storage, `profilePhotos/${uid}`);
+  const storageRef = ref(await getStorageLazy(), `profilePhotos/${uid}`);
   await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
   return await getDownloadURL(storageRef);
 }
@@ -97,7 +97,7 @@ export async function uploadMarcaLogo(uid, file) {
   const blob = await resizeAndCompress(file);
   if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
 
-  const storageRef = ref(storage, `marcaLogos/${uid}`);
+  const storageRef = ref(await getStorageLazy(), `marcaLogos/${uid}`);
   await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
   return await getDownloadURL(storageRef);
 }
@@ -105,7 +105,7 @@ export async function uploadMarcaLogo(uid, file) {
 export async function deleteMarcaLogo(uid) {
   if (!uid) return;
   try {
-    await deleteObject(ref(storage, `marcaLogos/${uid}`));
+    await deleteObject(ref(await getStorageLazy(), `marcaLogos/${uid}`));
   } catch {
     // Já não existia. Apagar o que não está lá não é erro.
   }
@@ -124,7 +124,7 @@ export async function uploadChildPhoto(childId, file) {
   // o próximo a debugar a conexão do usuário.
   if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
 
-  const storageRef = ref(storage, `childPhotos/${childId}`);
+  const storageRef = ref(await getStorageLazy(), `childPhotos/${childId}`);
   await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
   return await getDownloadURL(storageRef);
 }
@@ -132,7 +132,7 @@ export async function uploadChildPhoto(childId, file) {
 export async function deleteProfilePhoto(uid) {
   if (!uid) return;
   try {
-    await deleteObject(ref(storage, `profilePhotos/${uid}`));
+    await deleteObject(ref(await getStorageLazy(), `profilePhotos/${uid}`));
   } catch (err) {
     // 404 / object-not-found é OK (não existia)
     if (err?.code !== 'storage/object-not-found') {
@@ -144,7 +144,7 @@ export async function deleteProfilePhoto(uid) {
 export async function deleteChildPhoto(childId) {
   if (!childId) return;
   try {
-    await deleteObject(ref(storage, `childPhotos/${childId}`));
+    await deleteObject(ref(await getStorageLazy(), `childPhotos/${childId}`));
   } catch (err) {
     if (err?.code !== 'storage/object-not-found') {
       console.error('Falha ao apagar foto da criança:', err);
@@ -178,7 +178,7 @@ export async function uploadPaymentReceipt(paymentId, file) {
   // o próximo a debugar a conexão do usuário.
   if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
 
-  const fileRef = ref(storage, `paymentReceipts/${paymentId}`);
+  const fileRef = ref(await getStorageLazy(), `paymentReceipts/${paymentId}`);
   await uploadBytes(fileRef, payload, {
     contentType: isPdf ? 'application/pdf' : 'image/jpeg',
   });
@@ -217,7 +217,7 @@ export async function uploadContratoAnterior(childId, file) {
   const payload = isPdf ? file : await resizeAndCompress(file);
   if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
 
-  const fileRef = ref(storage, `contratosAnteriores/${childId}`);
+  const fileRef = ref(await getStorageLazy(), `contratosAnteriores/${childId}`);
   await uploadBytes(fileRef, payload, {
     contentType: isPdf ? 'application/pdf' : 'image/jpeg',
   });
@@ -227,7 +227,7 @@ export async function uploadContratoAnterior(childId, file) {
 export async function deleteContratoAnterior(childId) {
   if (!childId) return;
   try {
-    await deleteObject(ref(storage, `contratosAnteriores/${childId}`));
+    await deleteObject(ref(await getStorageLazy(), `contratosAnteriores/${childId}`));
   } catch {
     // Já não existia. Apagar o que não está lá não é erro.
   }
@@ -236,7 +236,7 @@ export async function deleteContratoAnterior(childId) {
 /** Remove o comprovante (pai trocando o arquivo errado, ou admin limpando). */
 export async function deletePaymentReceipt(paymentId) {
   try {
-    await deleteObject(ref(storage, `paymentReceipts/${paymentId}`));
+    await deleteObject(ref(await getStorageLazy(), `paymentReceipts/${paymentId}`));
   } catch (err) {
     // Não existir não é erro — o chamador só quer garantir que não está lá.
     if (err?.code !== 'storage/object-not-found') throw err;

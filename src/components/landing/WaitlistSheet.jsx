@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bus,
@@ -12,7 +12,11 @@ import {
 import toast from 'react-hot-toast';
 import Input from '../common/Input';
 import Sheet, { SheetCard, SheetCTA, SheetGhost } from '../common/Sheet';
-import PartnerPitch from './PartnerPitch';
+// SOB DEMANDA: sao 459 linhas que so aparecem depois de um clique, dentro de
+// uma folha que so abre depois de outro. Adiantado, elas viajavam no chunk de
+// entrada de TODO visitante -- inclusive o responsavel que abre o convite e
+// nunca vai ver a apresentacao da associacao.
+const PartnerPitch = lazy(() => import('./PartnerPitch'));
 import ConsultorButton from './ConsultorButton';
 import AssociadosCard from './AssociadosCard';
 import WhatsAppIcon from '../common/WhatsAppIcon';
@@ -229,12 +233,14 @@ export default function WaitlistSheet({
         {/* O "Voltar" do pitch mora no rodapé dele, colado no "Continuar":
           * andar pra frente e pra trás é o mesmo gesto, na mesma mão. Na
           * primeira tela não há passo anterior — aí ele fecha a folha. */}
-        <PartnerPitch
-          indice={passoPitch}
-          onIndice={setPassoPitch}
-          onSair={onClose}
-          onDone={() => setFase('form')}
-        />
+        <Suspense fallback={null}>
+          <PartnerPitch
+            indice={passoPitch}
+            onIndice={setPassoPitch}
+            onSair={onClose}
+            onDone={() => setFase('form')}
+          />
+        </Suspense>
       </Sheet>
     );
   }
