@@ -190,6 +190,29 @@ Check é quem impede de passar.
 (App Check → reCAPTCHA v3 para web) ANTES de ligar `enforceAppCheck` em
 qualquer function. Ligado antes do registro, ele derruba o app inteiro.
 
+## O e-mail de cobrança: domínio próprio e custo
+
+Estava em `functions/README.md`, que descrevia 2 das 15 functions e por isso
+saiu — quem abria achava que `functions/` era sobre e-mail.
+
+**Enquanto não há domínio próprio**, o remetente é o sandbox do Resend
+(`onboarding@resend.dev`), fixo em `functions/index.js`. Para trocar:
+
+1. Resend → **Domains** → "Add Domain" → `alobuzinou.com.br`
+2. Configurar os três registros DNS que ele mostra (MX, SPF/TXT, DKIM)
+3. Aguardar a verificação (~1h)
+4. Atualizar `FROM_EMAIL` em `functions/index.js`
+5. `firebase deploy --only functions`
+
+**Custo, na ordem de grandeza deste projeto:** o Resend dá 3.000 e-mails/mês
+grátis (acima, ~US$ 0,40 por mil). As functions somam uma execução por dia mais
+~3 operações por mensalidade — com 50 alunos ativos são ~150 operações/dia, o
+que no Blaze custa centavos por ano.
+
+O que muda essa conta não é o volume de uso legítimo: é abuso nas quatro
+callables públicas. Por isso elas têm `maxInstances` apertado — ver
+`functions/lib/limites.js`.
+
 ## O que fica de fora, de propósito
 
 - **App Check** nas quatro callables públicas (`getShowcase`, `lookupInvite`,

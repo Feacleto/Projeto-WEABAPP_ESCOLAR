@@ -243,7 +243,7 @@ export async function setLimiteCriancas(uid, limite) {
  * e responde a contagem; falta o par dele para a soma de mensalidades,
  * mantido no mesmo batch de `addChild`/`updateChild`/`deactivateChild`. Aí
  * esta varredura vira conferência sob demanda em vez de caminho de abertura de
- * tela. Está em docs/plano-de-arquitetura.md (item A8) como trabalho seguinte
+ * tela. Está em docs/arquitetura.md (seção 13) como trabalho seguinte
  * — e depende do
  * contador ser confiável primeiro (ver `childrenService`, transação do
  * decremento).

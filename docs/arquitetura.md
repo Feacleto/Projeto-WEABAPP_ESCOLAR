@@ -231,6 +231,86 @@ Cabeçalhos de segurança no `firebase.json` · senhas de teste fora do reposit�
 
 ---
 
+---
+
+## 13. Dívida técnica aberta
+
+Restou de uma varredura de arquitetura executada em 30/08/2026 (14 commits;
+testes de lógica de 182 → 363, de rules de 69 → 113). O que foi **feito** está
+no git e não precisa de documento. O que ficou **de fora** precisa, porque
+senão vira descoberta de novo daqui a seis meses.
+
+Cada item diz por que parou, e o motivo é sempre o mesmo tipo de coisa: ou
+exige olho humano, ou é decisão de produto, ou o palpite custaria mais que a
+espera.
+
+### A16 · Oito arquivos acima de 900 linhas
+
+O maior volume e o menor risco removido do backlog inteiro, e o único que
+exige **verificar tela a tela**. Mover subcomponente é mecânico; o que prova
+que deu certo é olhar a tela. `npm run lint` e `npm run build` pegam import
+quebrado — não pegam layout quebrado.
+
+Os oito, com o corte já mapeado: `Profile.jsx` (1145), `Home.jsx` (1090),
+`ChildForm.jsx` (1085), `TioFinance.jsx` (1062), `AdminPanel.jsx` (1011),
+`OperacaoDaRota.jsx` (954), `PaiDashboard.jsx` (938), `ChildDetail.jsx` (932).
+
+`OperacaoDaRota` é o pior: um único componente de 765 linhas. A regra de "quem
+falta ser marcado" deveria sair para `utils/horarios.js`, que é puro e testável.
+
+**É aqui que o tamanho dói, e não na organização de pastas** — churn e tamanho
+coincidem quase perfeitamente nesses arquivos.
+
+### A migração das nove folhas para `AppSheet`
+
+Mesma razão: mecânico, mas verificável só a olho. O cabeçalho de
+`AppSheet.jsx` já diz a verdade sobre a promessa não cumprida, e o `grep` que
+encontra as pendentes está escrito dentro dele.
+
+### `Home` e `Familia` sob demanda — decisão de produto
+
+O ganho é real: a mãe baixa a home do motorista inteira para abrir
+`/convite/:codigo`. Mas `App.jsx` registra por escrito que "adiantado fica só o
+caminho de quem chega de fora", e primeira pintura da página que vende não é
+decisão de arquitetura.
+
+### A15 · Reconciliação de índices
+
+Três índices declarados parecem mortos, e quatro pares de igualdade pura
+parecem desnecessários. Os dois grupos ficaram como estão: **remover índice que
+na verdade é usado quebra em produção sem quebrar no emulador**, e o ganho é
+custo de escrita. Precisa de medição contra projeto limpo, não de palpite.
+
+### A fronteira de import, verificada por lint
+
+O passo mais barato que sobrou, e o de melhor retorno. A seção 4 diz que a
+fronteira que importa é a de import — uma regra `no-restricted-imports`
+barrando `firebase/*` fora das camadas certas.
+
+**Hoje são 6 violações, e todas explicáveis** — o momento mais barato que vai
+existir para ligar a regra, porque ela nasce quase verde:
+
+| Onde | O quê | Veredicto |
+|---|---|---|
+| `AuthContext.jsx` | `onAuthStateChanged` | legítimo — é a raiz da sessão |
+| `useLiveLocation` · `useLimiteCriancas` | `onSnapshot` direto | hooks, não telas; os únicos 2 de 23 |
+| `Home` · `Familia` · `AdminPanel` | `httpsCallable` | 3 telas chamando callable direto |
+
+E 26 dos 27 utils já são puros, sem uma linha de Firebase — eles migram para
+`packages/core` sem alterar lógica, no dia em que a seção 4 acontecer.
+
+### O que depende de você, não de código
+
+1. **Deploy.** As rules endurecidas, os tetos das functions e os cabeçalhos de
+   segurança **não estão no ar**.
+2. **Secrets do CI** — `VITE_FIREBASE_*` no GitHub, senão o passo de build falha.
+3. **A CSP está em `Report-Only`** esperando uma passada de navegador. Ver
+   [`deploy.md`](deploy.md).
+4. **Contas de teste em produção** — as senhas antigas estão no histórico do
+   git; rotacionar ou apagar pelo console.
+
+---
+
 ## O que este plano não vê
 
 - **Erro de domínio passa pelo tipo.** "Mensalidade com o mês errado" é um tipo válido. Falta reconciliação — um job que confere que a soma das faturas bate com a base real.

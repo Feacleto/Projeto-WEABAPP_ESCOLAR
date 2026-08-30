@@ -23,8 +23,8 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  * qual o bug volta — alguém lê, confia, e constrói em cima.
  *
  * A migração das nove é trabalho mecânico e verificável tela a tela, e está no
- * plano de arquitetura ([docs/plano-de-arquitetura.md](../../../docs/plano-de-arquitetura.md),
- * item A16). Enquanto não acontecer, o `grep` é a fonte da verdade:
+ * dívida técnica aberta ([docs/arquitetura.md](../../../docs/arquitetura.md),
+ * seção 13). Enquanto não acontecer, o `grep` é a fonte da verdade:
  *   grep -rln "fixed inset-0 z-50 max-w-mobile" src
  */
 

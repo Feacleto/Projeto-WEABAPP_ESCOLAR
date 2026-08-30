@@ -223,6 +223,26 @@ Avaliação do responsável **sobre o motorista** só faz sentido a partir do mo
 
 ---
 
+## 16. A fila de espera do motorista, e o link que não abre porta
+
+**Estado:** proposta — decisão de produto esperando sim ou não
+
+**Contexto.** Duas dores chegaram como assuntos separados e são a mesma. Indicar um colega parecia estranho porque `indicar` significava **mandar alguém para uma porta que não abre**: o sistema é fechado, quem chega pelo link não entra. E a fila cobra caro por pouco — o motorista se inscreve, sai com conta criada e cai numa sala de espera com o app desfocado atrás (`Aguardando.jsx`), esperando aprovação negociada fora do sistema. Ele queria entrar e saber que já pode usar; recebeu vidro fosco.
+
+**Decisão proposta.** Abandonar a fila **e** a ideia de que o acesso é concedido por link. A forma recomendada é **porta aberta com teto**: ele se cadastra, entra como motorista de verdade e usa hoje, limitado por `users.limiteCriancas` — que já existe e já é cobrado pelas rules via `getAfter`. A urgência sai da vaga (que vira falsa com porta aberta) e vai para a condição da roleta, que é honesta por construção.
+
+**Consequência.** Três coisas quebram junto e não são opcionais:
+
+1. **A conta com `role: 'admin'` tem de nascer de Cloud Function.** Abrir esse ramo nas rules ao cliente reabre a escalada de privilégio que já custou uma refatoração de papel inteira. Porta aberta ≠ rule aberta.
+2. **`VAGAS_NA_RODADA` sai da home.** Com cadastro aberto, "restam 2 vagas" vira falso — e falso na tela é o que o próprio `config/rodada.js` chama de propaganda enganosa (CDC art. 37).
+3. **`appState/init.adminUid` fica mais errado** — o ponteiro único já foi removido de sete lugares, mas "dois motoristas" deixa de ser hipótese.
+
+O prêmio da indicação, se houver, é **só do motorista**: a plataforma não tem moeda para dar ao responsável — a mensalidade é do motorista, e descontá-la quebraria o item 7 dos Termos.
+
+**Como verificar.** Enquanto for proposta, nada. Se for aceita: um caso de rule provando que o cliente **não** consegue criar `role: 'admin'` sozinho, e a remoção da frase de escassez da home no mesmo commit.
+
+---
+
 ## Como adicionar uma decisão
 
 Copie o formato. Contexto em duas linhas, decisão em uma, consequência no que ela custa, e **sempre** a linha de como verificar. Decisão sem teste é comentário — e comentário que promete garantia sem prová-la já foi problema recorrente neste repositório.

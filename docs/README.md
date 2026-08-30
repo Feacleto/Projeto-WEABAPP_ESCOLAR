@@ -1,6 +1,6 @@
 # Documentação
 
-**Leia este primeiro** para saber onde procurar. Seis arquivos, três grupos.
+**Leia este primeiro** para saber onde procurar. Seis arquivos, três grupos — e nada fora daqui: a raiz guarda só o README, que roteia.
 
 ### Normativo — o que não se quebra por conveniência
 
@@ -14,8 +14,6 @@
 |---|---|---|
 | [`arquitetura.md`](arquitetura.md) | pessoa, e agente sob demanda | Antes de mexer em permissão, dado sensível, cobrança ou fronteira de camada. |
 | [`evolucao.md`](evolucao.md) | pessoa | Ao decidir o que construir depois. Nenhum estágio tem data — todos têm gatilho. |
-| [`plano-de-arquitetura.md`](plano-de-arquitetura.md) | pessoa e agente | Backlog técnico com evidência `arquivo:linha`. A seção 7 registra o que foi executado e **o que ficou de fora, com o motivo**. |
-| [`decisao-porta-aberta.md`](decisao-porta-aberta.md) | pessoa | Proposta de abandonar a fila de espera do motorista. Não implementada — é uma decisão de produto esperando sim ou não. |
 
 ### Operação — como colocar no ar e como testar
 

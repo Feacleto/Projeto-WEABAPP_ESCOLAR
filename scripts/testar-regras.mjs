@@ -687,7 +687,7 @@ async function tetoDeGets(tio) {
  *
  * ALGUNS CASOS AQUI NASCEM VERMELHOS, E ISSO E O PONTO.
  * Eles afirmam o comportamento CERTO, nao o atual. Sao a rede que o item A3 do
- * plano de arquitetura (docs/plano-de-arquitetura.md) precisa pra ser aplicado
+ * plano de arquitetura (docs/arquitetura.md) precisa pra ser aplicado
  * com seguranca: sem eles, mexer
  * em rule e trocar um furo conhecido por um desconhecido.
  */
