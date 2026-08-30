@@ -262,6 +262,22 @@ nome e telefone de terceiro que não usa o app. Sobrescrever é o recurso: apaga
 o histórico na mesma escrita, e mantém a permissão das rules intacta
 (`hasOnly(['altResponsibles'])`).
 
+**O Início do responsável é UM cartão**, não uma pilha.
+[PaiDashboard](src/pages/pai/PaiDashboard.jsx) — rosto, hora e a perua na
+mesma superfície, com a tarja do momento (`HOJE` / `AO VIVO` / `DIA
+ENCERRADO`) dizendo qual dos três estados é. Sem ela, a tela troca de cara
+três vezes por dia e nada anuncia. O "falar com o motorista" mora no
+CABEÇALHO ([Header](src/components/layout/Header.jsx)) e nunca desabilita:
+emergência não pode rolar nem virar botão apagado.
+
+**A tarja de aviso só aparece quando o app MENTE** —
+[avisoDoMomento.js](src/utils/avisoDoMomento.js), testado com hora injetada
+(`npm run testar:aviso`). Dois casos, não cinco: rota não iniciada depois da
+hora de pegar, e criança "na perua" muito depois da hora de chegar. Atraso
+comum NÃO gera tarja — ali o app está calado, não mentindo, e tarja semanal
+ensina a pular tarja. Quando o grave dispara, o anel pulsante e o "AO VIVO"
+PARAM: animação viva sobre dado morto é a pior parte.
+
 **Falta tem teto de 14 dias** — o aviso do responsável não passa disso, e o
 motivo está em [AbsenceSheet.jsx](src/components/absences/AbsenceSheet.jsx):
 plano muda, ninguém desmarca, e no dia o motorista não passa na porta. O

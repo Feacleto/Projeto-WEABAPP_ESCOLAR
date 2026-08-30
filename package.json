@@ -13,7 +13,8 @@
     "emu": "firebase emulators:start --only auth,firestore",
     "testar:horarios": "node scripts/testar-horarios.mjs",
     "testar:faltas": "node scripts/testar-faltas.mjs",
-    "testar": "npm run testar:horarios && npm run testar:faltas"
+    "testar:aviso": "node scripts/testar-aviso.mjs",
+    "testar": "npm run testar:horarios && npm run testar:faltas && npm run testar:aviso"
   },
   "dependencies": {
     "firebase": "^12.12.1",

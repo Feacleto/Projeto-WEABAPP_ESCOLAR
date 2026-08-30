@@ -35,6 +35,9 @@ import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
 import { maskPhone } from '../../utils/masks';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveChild } from '../../hooks/useActiveChild';
+import { useRelogio } from '../../hooks/useRelogio';
+import TarjaDeAviso from '../../components/dashboard/TarjaDeAviso';
+import { avisoDoMomento } from '../../utils/avisoDoMomento';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { usePaymentsByParent } from '../../hooks/usePayments';
 import { useAbsenceForChild, useChildAbsenceHistory } from '../../hooks/useAbsences';
@@ -108,6 +111,17 @@ export default function PaiDashboard() {
   // Hora real de cada etapa e posição na fila — nenhuma das duas o
   // responsável consegue derivar do que ele pode ler.
   const { ride } = useRide(child?.id, todayKey);
+
+  // O RELÓGIO ANDANDO É O QUE FAZ O AVISO DISPARAR.
+  //
+  // Os dois gatilhos comparam a hora combinada com AGORA. Sem re-render, o
+  // app aberto às 6h10 continuaria mostrando a tela das 6h10 às 6h50 — e o
+  // aviso, que existe exatamente pra esse intervalo, nunca apareceria.
+  // `useRelogio` bate de minuto em minuto e para com a aba escondida.
+  //
+  // Fica AQUI, junto dos outros hooks: abaixo há returns antecipados
+  // (carregando, sem criança), e hook atrás de return quebra a ordem.
+  const agora = useRelogio();
 
   // A ficha abre POR CIMA do painel.
   //
@@ -263,11 +277,23 @@ export default function PaiDashboard() {
       ? 'acompanhando'
       : 'esperando';
 
+  const aviso = avisoDoMomento({
+    child,
+    status,
+    presence,
+    ride,
+    absence,
+    agora,
+  });
+
   return (
     <>
       <Header title="Início" marca />
 
       <div className="p-5 space-y-5">
+        {/* O AVISO VEM ANTES DE TUDO, inclusive do seletor de filho: quando
+          * ele existe, é a coisa mais importante da tela. */}
+        <TarjaDeAviso aviso={aviso} />
         {/* Só aparece a partir do segundo filho — quem tem um vê a tela
           * igual a antes. */}
         <ChildSwitcher />
@@ -287,6 +313,7 @@ export default function PaiDashboard() {
             status={status}
             phrase={phrase}
             estadoDoDia={estadoDoDia}
+            semAtualizacao={aviso?.nivel === 'grave'}
             absence={absence}
             ride={ride}
             presence={estadoDoDia === 'esperando' ? presence : null}
@@ -535,6 +562,14 @@ function CartaoDeHoje({
   status,
   phrase,
   estadoDoDia,
+  // NADA DE ANIMAÇÃO VIVA SOBRE DADO MORTO.
+  //
+  // Quando o app não recebe atualização há tempo demais, o anel pulsante e a
+  // palavra "AO VIVO" viram a pior parte da tela: elas afirmam que o app está
+  // sabendo, com movimento, justamente quando ele não sabe. A tarja de aviso
+  // logo acima diz o que aconteceu; aqui o mínimo é PARAR de dizer o
+  // contrário.
+  semAtualizacao = false,
   absence,
   ride,
   presence,
@@ -542,7 +577,7 @@ function CartaoDeHoje({
   onMapa,
 }) {
   const gradient = STATUS_GRADIENTS[status] || STATUS_GRADIENTS.home;
-  const isLive = estadoDoDia === 'acompanhando';
+  const isLive = estadoDoDia === 'acompanhando' && !semAtualizacao;
   const destaqueFrase = isLive ? 'text-[19px]' : 'text-2xl';
 
   return (
@@ -574,7 +609,7 @@ function CartaoDeHoje({
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
                   </span>
                 )}
-                {TARJA[estadoDoDia]}
+                {semAtualizacao ? 'sem atualização' : TARJA[estadoDoDia]}
               </span>
               <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/80">
                 {child.name?.split(' ')[0]}
