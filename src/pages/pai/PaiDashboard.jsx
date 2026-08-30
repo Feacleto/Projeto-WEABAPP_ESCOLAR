@@ -246,14 +246,27 @@ export default function PaiDashboard() {
    * porque a perua continua rodando pra outras famílias depois de entregar
    * esta — e pra este pai o dia já acabou.
    */
+  // AS TRÊS LINHAS ABAIXO VÊM ANTES DO `estadoDoDia`, E A ORDEM NÃO É ESTILO.
+  //
+  // `estadoDoDia` LÊ `status`. Com a declaração depois, `const` não sofre
+  // hoisting de valor: a leitura cai na zona morta temporal e lança
+  // `ReferenceError: Cannot access 'status' before initialization` no
+  // primeiro render. O painel inteiro do responsável não abria — tela branca.
+  //
+  // Ficou assim por cinco dias sem ninguém ver, e o motivo é o mesmo que
+  // esconde qualquer defeito deste lado do app: sem Cloud Functions no ar,
+  // `redeemInvite` não roda e NENHUMA conta de responsável consegue nascer.
+  // Ninguém abriu a tela porque ninguém consegue entrar nela.
+  //
+  // Lint, build e os 92 testes passavam: nada disso executa o componente.
+  const status = getEffectiveStatus(child);
+  const phrase = statusPhrase(status, routeActive, new Date().getHours());
   const estadoDoDia =
     status === 'delivered' || absence?.type === ABSENCE_TYPES.FULL
       ? 'encerrado'
       : routeActive || status === 'onboard'
       ? 'acompanhando'
       : 'esperando';
-  const status = getEffectiveStatus(child);
-  const phrase = statusPhrase(status, routeActive, new Date().getHours());
   const whatsappUrl = admin?.phone
     ? `https://wa.me/55${String(admin.phone).replace(/\D/g, '')}`
     : null;

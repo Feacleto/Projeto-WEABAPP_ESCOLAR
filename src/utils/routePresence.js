@@ -17,13 +17,6 @@
 // O tracking grava a cada 30 s, então 5 min são ~10 gravações perdidas.
 const STALE_MS = 5 * 60 * 1000;
 
-// Velocidade urbana assumida quando o GPS não informa (parado no farol,
-// speed nulo em alguns aparelhos). 18 km/h é conservador pra perua em
-// bairro com paradas.
-const FALLBACK_KMH = 18;
-const MIN_KMH = 8;
-const MAX_KMH = 60;
-
 export const PRESENCE = {
   NO_ROUTE: 'no-route',
   STALE: 'stale',
@@ -54,21 +47,29 @@ export function formatFreshness(ms) {
 }
 
 /**
- * Minutos estimados até a casa.
+ * A DISTÂNCIA, QUE É MEDIDA — no lugar do minuto, que era palpite.
  *
- * Usa a velocidade do GPS quando ela é plausível; senão cai numa velocidade
- * urbana fixa. Devolve null quando não há distância — melhor não mostrar
- * tempo nenhum do que mostrar um tempo inventado.
+ * Aqui existia `estimateMinutes`: distância em LINHA RETA dividida por uma
+ * velocidade urbana fixa de 18 km/h. Ela estampava "Chega em uns 7 minutos"
+ * no bloco de maior confiança da tela do responsável.
+ *
+ * É exatamente a conta que foi ARRANCADA do `HorarioDoDia`, e o cabeçalho de
+ * lá diz por quê: "um número que o app inventava". Ela sobreviveu aqui
+ * porque ninguém olhou duas vezes pro mesmo erro em dois arquivos.
+ *
+ * O que ela ignora não é detalhe: quarteirão, sentido de mão, semáforo, e as
+ * OUTRAS CRIANÇAS. A perua a 2 km de linha reta pode ter quatro paradas pela
+ * frente. A mãe lê sete minutos, desce com a criança, e espera vinte na
+ * calçada — e quem errou, pra ela, foi o motorista.
+ *
+ * Distância é fato: sai do GPS dele e do endereço dela, sem inferência no
+ * meio. Ela não responde "quando", mas não mente — e quem responde "quando" é
+ * o aviso de proximidade, que dispara por faixa e não por conta.
  */
-export function estimateMinutes(distanceKm, speedMetersPerSecond) {
-  if (distanceKm == null || distanceKm < 0) return null;
-  let kmh = Number(speedMetersPerSecond) * 3.6;
-  if (!Number.isFinite(kmh) || kmh < MIN_KMH || kmh > MAX_KMH) {
-    kmh = FALLBACK_KMH;
-  }
-  const minutes = (distanceKm / kmh) * 60;
-  if (!Number.isFinite(minutes)) return null;
-  return Math.max(1, Math.round(minutes));
+export function formatDistance(km) {
+  if (km == null || !Number.isFinite(km) || km < 0) return null;
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(1).replace('.', ',')} km`;
 }
 
 /**
@@ -124,18 +125,17 @@ export function describeRoutePresence({
     };
   }
 
-  const etaMinutes = estimateMinutes(distanceKm, liveLocation?.speed);
+  const distancia = formatDistance(distanceKm);
 
   return {
     kind: PRESENCE.MOVING,
-    title:
-      etaMinutes != null
-        ? `Chega em uns ${etaMinutes} ${etaMinutes === 1 ? 'minuto' : 'minutos'}`
-        : 'Perua em rota',
-    detail: null,
+    title: distancia ? `A perua está a ${distancia} daqui` : 'Perua em rota',
+    // A frase que devolve o "quando" sem inventá-lo: o app avisa, ela não
+    // precisa ficar calculando na cabeça a partir da distância.
+    detail: distancia ? 'Avisamos quando estiver perto.' : null,
     freshness: `atualizado ${formatFreshness(ageMs)}`,
     isStale: false,
     distanceKm,
-    etaMinutes,
+    etaMinutes: null,
   };
 }
