@@ -17,6 +17,7 @@
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 
 const REGION = 'southamerica-east1';
@@ -72,7 +73,7 @@ async function findPendingChild(db, code) {
  * dado pessoal útil — só descobre que um código existe.
  */
 function makeLookupInvite(db) {
-  return onCall({ region: REGION }, async (request) => {
+  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
     const code = normalizeCode(request.data?.code);
     if (!isValidCode(code)) {
       throw new HttpsError('invalid-argument', 'Código em formato inválido.');
@@ -129,7 +130,7 @@ function makeLookupInvite(db) {
  * ainda o leem. Quem já tinha conta ganha a criança no array.
  */
 function makeRedeemInvite(db) {
-  return onCall({ region: REGION }, async (request) => {
+  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
       throw new HttpsError('unauthenticated', 'Faça login antes de usar o convite.');
@@ -294,7 +295,7 @@ function makeRedeemInvite(db) {
  * Aqui contamos no servidor e devolvemos só o número.
  */
 function makeJoinDriverWaitlist(db) {
-  return onCall({ region: REGION }, async (request) => {
+  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
     const d = request.data || {};
     const name = String(d.name || '').trim().slice(0, 120);
     const phone = String(d.phone || '').replace(/\D/g, '').slice(0, 15);
@@ -443,7 +444,7 @@ module.exports = {
  * na camada de parceiro), é ELA que entra aqui. Avatar de perfil, nunca.
  */
 function makeGetShowcase(db) {
-  return onCall({ region: REGION }, async () => {
+  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async () => {
     try {
       const initSnap = await db.doc('appState/init').get();
       if (!initSnap.exists) return { drivers: [], hasAdmin: false };

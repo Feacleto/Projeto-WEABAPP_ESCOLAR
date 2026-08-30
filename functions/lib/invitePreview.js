@@ -30,6 +30,7 @@
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 
 const REGION = 'southamerica-east1';
 
@@ -182,7 +183,7 @@ async function loadNoticeSummary(db, child) {
  *   'taken'   → vinculado a outra conta: manda pro login, sem alarme
  */
 function makeGetInvitePreview(db) {
-  return onCall({ region: REGION }, async (request) => {
+  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
     const code = normalizeCode(request.data?.code);
     if (!isValidCode(code)) {
       throw new HttpsError('invalid-argument', 'Código em formato inválido.');

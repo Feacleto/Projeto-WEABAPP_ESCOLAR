@@ -11,6 +11,7 @@
     "testar:regras": "node scripts/testar-regras.mjs",
     "testar:storage": "node scripts/testar-storage.mjs",
     "emu": "firebase emulators:start --only auth,firestore",
+    "servir": "node scripts/servir-com-cabecalhos.mjs",
     "testar:horarios": "node scripts/testar-horarios.mjs",
     "testar:faltas": "node scripts/testar-faltas.mjs",
     "testar:aviso": "node scripts/testar-aviso.mjs",

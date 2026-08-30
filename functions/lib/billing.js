@@ -17,6 +17,7 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./papeis');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 
 const REGION = 'southamerica-east1';
@@ -208,6 +209,7 @@ function makeGenerateMonthlyPayments(db) {
       timeZone: 'America/Sao_Paulo',
       region: REGION,
       retryCount: 2,
+      maxInstances: LIMITES.AGENDADO,
     },
     async () => {
       const result = await generateForMonth(db, monthKeyOf(new Date()));
@@ -232,7 +234,7 @@ function makeGenerateMonthlyPayments(db) {
 
 /** Disparo manual pelo admin — usado pra fechar mês fora de hora. */
 function makeRunBillingNow(db) {
-  return onCall({ region: REGION }, async (request) => {
+  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     // O ESCOPO SAI DO CHAMADOR, NUNCA DO PAYLOAD.
     // `exigirMotorista` devolve o uid autenticado — é ele que limita a
     // geração à base deste parceiro. Aceitar um `adminUid` vindo do

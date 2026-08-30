@@ -12,6 +12,7 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 
 const REGION = 'southamerica-east1';
@@ -26,6 +27,7 @@ function makeCloseStaleRoutes(db) {
       schedule: 'every 15 minutes',
       timeZone: 'America/Sao_Paulo',
       region: REGION,
+      maxInstances: LIMITES.AGENDADO,
     },
     async () => {
       // UM DOCUMENTO POR MOTORISTA, não mais `liveLocation/current`.

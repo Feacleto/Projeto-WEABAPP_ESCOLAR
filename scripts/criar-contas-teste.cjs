@@ -60,24 +60,83 @@ const path = require('node:path');
 
 const RAIZ = path.resolve(__dirname, '..');
 
+// ─────────────────────── SÓ RODA CONTRA O EMULADOR ───────────────────────
+//
+// POR QUE ISTO É UM ABORTO E NÃO UM AVISO
+// Este script chamava `identitytoolkit.googleapis.com` e
+// `firestore.googleapis.com` DIRETO, com a chave do projeto lida do `.env` —
+// ou seja, o caminho padrão dele era criar conta em PRODUÇÃO. E as senhas
+// estavam escritas aqui dentro, versionadas, no histórico do Git desde o
+// primeiro commit.
+//
+// Um comentário dizendo "cuidado, rode só no emulador" não impede nada: quem
+// roda um script de semear normalmente está com pressa e não lê o cabeçalho.
+// O endereço tem que ser IMPOSSÍVEL de acertar por engano — por isso as URLs
+// abaixo são MONTADAS a partir das variáveis do emulador. Sem elas definidas,
+// não existe endereço pra onde chamar, e o script morre antes da primeira
+// requisição.
+//
+// Note que o guarda e o endereço são a MESMA coisa aqui: não é um `if` que
+// alguém possa comentar pra "testar rápido em produção" — sem as variáveis,
+// não há host.
+const AUTH_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+const FS_HOST = process.env.FIRESTORE_EMULATOR_HOST;
+
+if (!AUTH_HOST || !FS_HOST) {
+  console.error(`
+  Este script cria contas e NÃO roda fora do emulador.
+
+  Faltou:${!AUTH_HOST ? '\n    FIREBASE_AUTH_EMULATOR_HOST' : ''}${!FS_HOST ? '\n    FIRESTORE_EMULATOR_HOST' : ''}
+
+  Suba o emulador e exporte as duas:
+
+    npm run emu
+    FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \\
+    FIRESTORE_EMULATOR_HOST=127.0.0.1:8085 \\
+    SENHA_DONO=... SENHA_MOTORISTA=... SENHA_RESPONSAVEL=... \\
+    node scripts/criar-contas-teste.cjs
+
+  As portas batem com o bloco \`emulators\` do firebase.json.
+`);
+  process.exit(1);
+}
+
+const AUTH_BASE = `http://${AUTH_HOST}/identitytoolkit.googleapis.com/v1/accounts`;
+
+/**
+ * As senhas vêm do ambiente, e NÃO têm padrão.
+ *
+ * Padrão seria o mesmo problema com outra roupa: uma senha conhecida, igual
+ * pra todo mundo que clonar o repositório. Sem valor, quem roda precisa
+ * escolher — e o que ele escolher não entra no Git.
+ */
+function exigirSenha(nome) {
+  const v = process.env[nome];
+  if (!v) {
+    console.error(`\n  Faltou a variável ${nome}. Ver o cabeçalho deste arquivo.\n`);
+    process.exit(1);
+  }
+  return v;
+}
+
 // ── as três contas ───────────────────────────────────────────────────────
 const DONO = {
   email: 'dono.teste@alobuzinou.com',
-  senha: 'TesteDono2026!',
+  senha: exigirSenha('SENHA_DONO'),
   nome: 'Dono da Plataforma',
   telefone: '11999990001',
 };
 
 const MOTORISTA = {
   email: 'motorista.teste@alobuzinou.com',
-  senha: 'TesteTio2026!',
+  senha: exigirSenha('SENHA_MOTORISTA'),
   nome: 'Motorista Teste',
   telefone: '11999990000',
 };
 
 const RESPONSAVEL = {
   email: 'pai.teste@alobuzinou.com',
-  senha: 'TestePai2026!',
+  senha: exigirSenha('SENHA_RESPONSAVEL'),
   nome: 'Responsável Teste',
 };
 
@@ -97,7 +156,7 @@ function lerEnv() {
 
 async function criarLogin(apiKey, email, password) {
   const r = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+    `${AUTH_BASE}:signUp?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -109,7 +168,7 @@ async function criarLogin(apiKey, email, password) {
   // Conta já existente não é erro: o script é seguro de rodar de novo.
   if (j.error?.message === 'EMAIL_EXISTS') {
     const r2 = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+      `${AUTH_BASE}:signInWithPassword?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +219,7 @@ async function main() {
   const PID = env.VITE_FIREBASE_PROJECT_ID;
   if (!KEY || !PID) throw new Error('Faltam VITE_FIREBASE_* no .env');
 
-  const DOCS = `https://firestore.googleapis.com/v1/projects/${PID}/databases/(default)/documents/`;
+  const DOCS = `http://${FS_HOST}/v1/projects/${PID}/databases/(default)/documents/`;
   const agora = new Date().toISOString();
 
   const init = await (await fetch(`${DOCS}appState/init?key=${KEY}`)).json();

@@ -24,6 +24,7 @@ const { onCall } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./lib/papeis');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./lib/limites');
 const admin = require('firebase-admin');
 
 const { buildEmailHtml, buildEmailText, subjectFor } = require('./lib/emailTemplate');
@@ -318,6 +319,7 @@ exports.sendPaymentReminders = onSchedule(
     region: 'southamerica-east1',
     secrets: [RESEND_API_KEY],
     retryCount: 2,
+    maxInstances: LIMITES.AGENDADO,
   },
   async () => {
     const apiKey = RESEND_API_KEY.value();
@@ -332,6 +334,7 @@ exports.runPaymentRemindersNow = onCall(
   {
     region: 'southamerica-east1',
     secrets: [RESEND_API_KEY],
+    maxInstances: LIMITES.AUTENTICADO,
   },
   async (request) => {
     // O ESCOPO SAI DO CHAMADOR. Ver o cabeçalho de `processReminders`: sem

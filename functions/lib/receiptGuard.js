@@ -17,12 +17,17 @@
 
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 
 const REGION = 'southamerica-east1';
 
 function makeFlagDuplicateReceipts(db) {
   return onDocumentWritten(
-    { document: 'payments/{paymentId}', region: REGION },
+    {
+      document: 'payments/{paymentId}',
+      region: REGION,
+      maxInstances: LIMITES.GATILHO,
+    },
     async (event) => {
       const before = event.data?.before?.data();
       const after = event.data?.after?.data();

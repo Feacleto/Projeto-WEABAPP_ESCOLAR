@@ -114,6 +114,82 @@ firebase deploy --only functions:sendPaymentReminders,functions:runPaymentRemind
 
 ---
 
+## Os cabeçalhos de segurança, e a CSP em duas etapas
+
+O bloco `headers` do `firebase.json` deixou de ter só `Cache-Control`. Como
+JSON não aceita comentário, o porquê mora aqui.
+
+**Não dá pra conferir cabeçalho com o emulador.** O emulador de hosting
+**ignora o bloco `headers`** — nem o `Cache-Control: immutable` de
+`/assets/**`, que está no arquivo há semanas, sai na resposta dele. Conferido
+com `curl -I`. Pra ver os cabeçalhos de verdade antes de publicar:
+
+```bash
+npm run build
+npm run servir          # dist/ em :5050, aplicando o firebase.json
+curl -sI http://127.0.0.1:5050/ | grep -i security
+```
+
+### A CSP está em `Report-Only`. Isso é a etapa 1 de 2.
+
+`Content-Security-Policy-Report-Only` **não bloqueia nada** — só relata no
+console do navegador o que seria bloqueado. É o único jeito honesto de subir
+uma política: a alternativa é descobrir a origem esquecida em produção, com o
+app quebrado na mão de quem está usando.
+
+**Antes de trocar para enforcing,** percorra com o console aberto (use
+`npm run servir`, não o emulador) e confirme ZERO violação em:
+
+| Tela | O que ela exercita |
+|---|---|
+| `/` (home) | fontes do Google, avatar do dicebear, callable `getShowcase` |
+| `/familia` | mesma callable, outra porta |
+| login com Google | o iframe do `authDomain` — `frame-src` |
+| `/pai/map` ou `/tio/route` | tiles do OpenStreetMap |
+| cadastro de criança | **Nominatim** (geocoding) e o `capture` da câmera |
+| qualquer foto/comprovante | download do Firebase Storage |
+| receber uma notificação | o service worker do FCM, que importa de `gstatic` |
+
+**A troca é de uma palavra:** em `firebase.json`, o `key`
+`Content-Security-Policy-Report-Only` vira `Content-Security-Policy`. Nada
+mais muda.
+
+### Origens que precisaram entrar, e por quê
+
+Todas foram confirmadas no código, não copiadas de um modelo:
+
+- **`www.gstatic.com` em `script-src`** — `public/firebase-messaging-sw.js` faz
+  `importScripts` de lá. Sem isso, push para de registrar.
+- **`'unsafe-inline'` em `style-src`** — o `react-hot-toast` usa `goober`, que
+  injeta `<style>` em runtime. Não há equivalente em `script-src`: o HTML
+  gerado não tem um único script inline.
+- **`nominatim.openstreetmap.org`** — o geocoding do cadastro de criança.
+- **`*.tile.openstreetmap.org`** — os tiles do Leaflet (`{s}` é subdomínio).
+- **`api.dicebear.com`** — avatares, e em `img-src`, não `connect-src`.
+- **`*.googleusercontent.com`** — foto de quem entrou com conta Google.
+- **`firebasestorage.googleapis.com`** — foto, comprovante e logo.
+- **O `authDomain` em `frame-src`** — o `firebase/auth` monta um iframe lá pro
+  login com Google, e é outra origem que a do site.
+
+**O que NÃO entrou, e é decisão:** `firebaseio.com` (Realtime Database). Ele
+aparece em todo exemplo de CSP do Firebase, mas este projeto não usa RTDB —
+conferido. Origem que o app não alcança só enfraquece o controle.
+
+**`connect-src` é enumerado, não `*.googleapis.com`.** É ele o controle
+antiexfiltração: com a lista fechada, nem um script malicioso rodando na
+origem consegue mandar dado pra fora. Curinga em `googleapis.com` devolveria
+metade dessa garantia.
+
+## O próximo passo: App Check
+
+Ele responde a pergunta que a CSP não responde — *esta chamada veio do meu
+app?*. Os `maxInstances` das functions limitam o dano de quem passa; o App
+Check é quem impede de passar.
+
+**A ordem importa e não é opcional:** registre o app no console
+(App Check → reCAPTCHA v3 para web) ANTES de ligar `enforceAppCheck` em
+qualquer function. Ligado antes do registro, ele derruba o app inteiro.
+
 ## O que fica de fora, de propósito
 
 - **App Check** nas quatro callables públicas (`getShowcase`, `lookupInvite`,

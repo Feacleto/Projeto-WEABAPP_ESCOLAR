@@ -28,6 +28,7 @@
 
 const { onCall } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 const { exigirDono } = require('./papeis');
 
@@ -40,7 +41,7 @@ function firstNameOf(full) {
 }
 
 function makeBackfillTestimonialPrivacy(db) {
-  return onCall({ region: REGION }, async (request) => {
+  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     // ESTA FUNÇÃO É DO DONO, E PEDIA PAPEL DE MOTORISTA.
     //
     // Ela é chamada de `/admin` (AdminPanel.jsx) e reescreve a privacidade dos

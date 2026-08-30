@@ -34,6 +34,7 @@
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 const { randomInt } = require('node:crypto');
 
@@ -78,7 +79,7 @@ function sortear() {
 }
 
 function makeSpinEntryBonus(db) {
-  return onCall({ region: REGION }, async (request) => {
+  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Login obrigatório.');
 

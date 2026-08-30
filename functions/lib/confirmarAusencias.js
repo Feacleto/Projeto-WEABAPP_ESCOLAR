@@ -31,6 +31,7 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 
 const REGION = 'southamerica-east1';
@@ -72,6 +73,7 @@ function makeConfirmarAusencias(db) {
       timeZone: FUSO,
       region: REGION,
       retryCount: 2,
+      maxInstances: LIMITES.AGENDADO,
     },
     async () => {
       const amanha = chaveDoDia(1);

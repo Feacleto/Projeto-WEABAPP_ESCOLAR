@@ -12,6 +12,7 @@
 
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 
 const REGION = 'southamerica-east1';
@@ -50,7 +51,11 @@ const URL_BY_TYPE = {
 
 function makeSendPushOnNotification(db) {
   return onDocumentCreated(
-    { document: 'notifications/{notifId}', region: REGION },
+    {
+      document: 'notifications/{notifId}',
+      region: REGION,
+      maxInstances: LIMITES.GATILHO,
+    },
     async (event) => {
       const notif = event.data?.data();
       if (!notif?.userId || !notif.title) return;
