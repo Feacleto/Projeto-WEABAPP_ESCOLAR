@@ -23,15 +23,24 @@ import { MARK, TEXT, LOCKUP, STACKED } from './logoPaths';
  *
  * O circunflexo do "ô" é a buzina: as mesmas ondas do ícone, com peso
  * recalculado pro corpo do texto.
+ *
+ * UMA BUZINA POR PEÇA
+ * No logotipo COM a palavra, o ícone entra sem ondas (`LOCKUP.markArcs`).
+ * Elas apareciam duas vezes na mesma peça e os dois picos não alinhavam.
+ * No <LogoMark /> sozinho as ondas ficam — ali não há palavra pra
+ * carregá-las. Ver o cabeçalho de lockup() no build_brand.py.
  */
 
 const TONES = {
   color: {
     body: '#1F5F3F',
     window: '#FFFFFF',
-    arcs: '#52C41A',
+    // Verde um degrau abaixo em fundo CLARO: #52C41A dá 2,27:1 sobre branco
+    // e as ondas são o que carrega o sentido da marca. É o `accentDark` do
+    // tailwind.config.js, não uma cor nova.
+    arcs: '#3F9B12',
     alo: '#1F5F3F',
-    buzinou: '#52C41A',
+    buzinou: '#3F9B12',
   },
   onDark: {
     body: '#FFFFFF',
@@ -52,9 +61,14 @@ const TONES = {
 const [MX, MY, MW, MH] = MARK.viewBox.split(' ').map(Number);
 
 function Arcs({ paths, width, color }) {
-  return paths.map((d) => (
+  // As classes saem SEMPRE, mesmo parado. Elas não pintam nada — existem pro
+  // CSS da travessia ter onde pegar cada peça (ver src/utils/travessia.js e o
+  // bloco "A TRAVESSIA" no index.css). Emitir só quando anima obrigaria o
+  // componente a saber que existe animação, e ele não precisa saber.
+  return paths.map((d, i) => (
     <path
       key={d}
+      className={`ab-mk-a${i + 1}`}
       d={d}
       stroke={color}
       strokeWidth={width}
@@ -65,16 +79,16 @@ function Arcs({ paths, width, color }) {
 }
 
 /** A marca sozinha (perua + balão + ondas), no espaço de design do mark. */
-function MarkShapes({ t, maskId }) {
+function MarkShapes({ t, maskId, arcs = true }) {
   // Janela vazada precisa de máscara, não de fill-rule: as rodas ENCOSTAM na
   // carroceria, e com evenodd a sobreposição delas viraria buraco também.
   if (t.window === null) {
     return (
       <>
         <mask id={maskId} maskUnits="userSpaceOnUse" x={MX} y={MY} width={MW} height={MH}>
-          <path d={MARK.body} fill="#fff" />
-          <Arcs paths={MARK.arcs} width={MARK.arcWidth} color="#fff" />
-          <path d={MARK.window} fill="#000" />
+          <path className="ab-mk-body" d={MARK.body} fill="#fff" />
+          {arcs && <Arcs paths={MARK.arcs} width={MARK.arcWidth} color="#fff" />}
+          <path className="ab-mk-win" d={MARK.window} fill="#000" />
         </mask>
         <g mask={`url(#${maskId})`}>
           <rect x={MX} y={MY} width={MW} height={MH} fill={t.body} />
@@ -84,9 +98,9 @@ function MarkShapes({ t, maskId }) {
   }
   return (
     <>
-      <path d={MARK.body} fill={t.body} />
-      <path d={MARK.window} fill={t.window} />
-      <Arcs paths={MARK.arcs} width={MARK.arcWidth} color={t.arcs} />
+      <path className="ab-mk-body" d={MARK.body} fill={t.body} />
+      <path className="ab-mk-win" d={MARK.window} fill={t.window} />
+      {arcs && <Arcs paths={MARK.arcs} width={MARK.arcWidth} color={t.arcs} />}
     </>
   );
 }
@@ -147,7 +161,7 @@ export default function Logo({
   return (
     <Svg viewBox={L.viewBox} height={height} className={className} label={label} {...rest}>
       <g transform={L.markTransform}>
-        <MarkShapes t={t} maskId={maskId} />
+        <MarkShapes t={t} maskId={maskId} arcs={L.markArcs !== false} />
       </g>
       <g transform={L.textTransform}>
         <path d={TEXT.alo} fill={t.alo} />

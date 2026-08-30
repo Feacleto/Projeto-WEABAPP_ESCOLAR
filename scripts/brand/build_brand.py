@@ -18,8 +18,10 @@ path (fontTools). Assim o logo sai idêntico no PDF do relatório, no preview
 do WhatsApp e no celular do pai que está offline.
 """
 
+import io
 import math
 import os
+import struct
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from fontTools.ttLib import TTFont
@@ -39,6 +41,18 @@ SS = 8  # supersample: desenha grande e reduz, que é o antialias mais limpo
 # ─────────── paleta (espelha tailwind.config.js) ───────────
 EMERALD = '#1F5F3F'
 GREEN = '#52C41A'
+# O MESMO verde, um degrau abaixo, pra fundo CLARO. Não é cor nova: é o
+# `accentDark` que já está no tailwind.config.js.
+#
+# As ondas e a palavra "Buzinou" carregam o sentido inteiro da marca — o "e
+# te avisou" — e eram a coisa menos visível dela: #52C41A dá 2,27:1 sobre
+# branco e 1,99:1 sobre o #EEF1EF do app, quando a WCAG 1.4.11 pede 3:1 pra
+# gráfico com significado. A carroceria, que é só carroceria, tem 7,59:1.
+# Com #3F9B12 sobe pra 3,55:1 / 3,12:1.
+#
+# Em fundo ESCURO nada disso vale: ali o #52C41A dá 8,36:1 e continua sendo
+# a escolha certa. Por isso são duas constantes e não uma troca global.
+GREEN_ON_LIGHT = '#3F9B12'
 NEAR_BLACK = '#0B1210'
 WHITE = '#FFFFFF'
 
@@ -53,19 +67,52 @@ def rgba(h, a=255):
 
 TRANSPARENT = (0, 0, 0, 0)
 
+# ─────────── o invariante das ondas ───────────
+# A assinatura que o ícone e o circunflexo do "ô" compartilham NÃO é a razão
+# entre os raios — essa ninguém enxerga. É o VÃO SOBRE O TRAÇO: quando o vão
+# entre dois arcos passa da espessura deles, o olho para de ler "um gesto" e
+# passa a ler "dois objetos soltos".
+#
+# O comentário antigo do ACC prometia "mesma razão entre os raios". Era falso:
+# o ícone estava em 126/70 = 1,80 e o acento em 0,208/0,082 = 2,54. Pior, no
+# que importa os dois estavam a um fator de 2 de distância — vão/traço de
+# 1,80 no ícone contra 0,91 no acento. O acento é que estava certo.
+#
+# Agora existe um número só, e os dois raios externos DERIVAM dele. Não dá
+# mais pra um andar sem o outro, que é a razão de este gerador existir.
+VAO_SOBRE_TRACO = 0.91
+
+
+def raio_externo(r_interno, traco):
+    """Raio externo que põe o vão entre os dois arcos em VAO_SOBRE_TRACO."""
+    return r_interno + traco * (1 + VAO_SOBRE_TRACO)
+
+
 # ─────────── geometria, em espaço de design ───────────
 # Frente da perua = retângulo arredondado; janela = balão de fala; as ondas da
 # buzina saem do canto superior direito, POR FORA da carroceria (o raio do
 # canto abre a folga na diagonal).
-BODY = (0, 74, 360, 298, 58)                       # x, y, w, h, raio
+#
+# Os raios do corpo e da janela são CONCÊNTRICOS-ISH de propósito. Entre os
+# dois há 52 un. em cima, embaixo e nos lados; na diagonal do canto a conta é
+# outra, e com 58 por fora contra 44 por dentro dava 67,7 — a moldura verde
+# ficava 30% mais gorda nos quatro cantos. Concêntrico de verdade exigiria
+# janela com raio 6 (interno = externo − vão), o que mataria o balão; 68/32
+# é o meio-termo que derruba a distorção pra 13%.
+BODY = (0, 74, 360, 298, 68)                       # x, y, w, h, raio
 WHEELS = [(32, 356, 52, 56, 18), (276, 356, 52, 56, 18)]
-BUBBLE = (52, 126, 256, 170, 44)
+BUBBLE = (52, 126, 256, 170, 32)
 TAIL = [(200, 268), (268, 268), (256, 348)]        # rabicho do balão
-TAIL_R = 12
+# Um raio POR CANTO, não um escalar. O bico é um ângulo de 43,5°, e um raio
+# de 12 num ângulo desses consome 30 un. de cada aresta: o desenho pedia a
+# ponta em y=348 e o gerador entregava y=328,5 — um quarto do bico comido
+# antes de sair daqui. O bico é o que separa balão de fala de para-brisa.
+TAIL_R = (12, 12, 6)                               # dois ombros macios, ponta afiada
 ARC_C = (314, 126)                                 # centro virtual das ondas
-ARC_RR = (70, 126)                                 # raio interno e externo
-ARC_W = 20                                         # espessura do traço
-ARC_A = (272, 358)                                 # varredura (0 grau = leste, y p/ baixo)
+ARC_W = 24                                         # espessura do traço
+ARC_R_IN = 74                                      # raio interno
+ARC_RR = (ARC_R_IN, raio_externo(ARC_R_IN, ARC_W))
+ARC_A = (282, 344)                                 # varredura (0 grau = leste, y p/ baixo)
 
 
 # ─────────── vetor 2D mínimo ───────────
@@ -100,9 +147,16 @@ def arc_points(c, r, a0, a1, step=1.5):
 
 
 def corners(pts, r):
-    """Cantos arredondados de um polígono: (entrada, saída, centro, raio, ang0, ang1)."""
+    """Cantos arredondados de um polígono: (entrada, saída, centro, raio, ang0, ang1).
+
+    `r` pode ser um número (mesmo raio em todo canto) ou uma sequência com um
+    raio por ponto. O bico do balão precisa da segunda forma: num ângulo agudo
+    o arredondamento consome muito mais aresta do que num canto reto, e um
+    raio único deixava a ponta cega.
+    """
     out = []
     n = len(pts)
+    radii = [r] * n if isinstance(r, (int, float)) else list(r)
     for i in range(n):
         prev, p, nxt = pts[(i - 1) % n], pts[i], pts[(i + 1) % n]
         v1, v2 = _norm(_sub(prev, p)), _norm(_sub(nxt, p))
@@ -110,7 +164,7 @@ def corners(pts, r):
         if ang < 1e-6 or abs(ang - math.pi) < 1e-6:
             out.append((p, p, p, 0, 0, 0))
             continue
-        tan = min(r / math.tan(ang / 2), _len(_sub(prev, p)) / 2, _len(_sub(nxt, p)) / 2)
+        tan = min(radii[i] / math.tan(ang / 2), _len(_sub(prev, p)) / 2, _len(_sub(nxt, p)) / 2)
         rr = tan * math.tan(ang / 2)
         a, b = _add(p, _mul(v1, tan)), _add(p, _mul(v2, tan))
         bis = _norm(_add(v1, v2))
@@ -154,10 +208,11 @@ def rrect_d(x, y, w, h, r):
         y + r, r, r, x + r, y)
 
 
-def arc_path(cx, cy, r):
-    """Uma onda: arco de raio r varrendo ARC_A, com tampas redondas no traço."""
-    p0 = (cx + r * math.cos(math.radians(ARC_A[0])), cy + r * math.sin(math.radians(ARC_A[0])))
-    p1 = (cx + r * math.cos(math.radians(ARC_A[1])), cy + r * math.sin(math.radians(ARC_A[1])))
+def arc_path(cx, cy, r, a=None):
+    """Uma onda: arco de raio r varrendo `a`, com tampas redondas no traço."""
+    a = a or ARC_A
+    p0 = (cx + r * math.cos(math.radians(a[0])), cy + r * math.sin(math.radians(a[0])))
+    p1 = (cx + r * math.cos(math.radians(a[1])), cy + r * math.sin(math.radians(a[1])))
     return 'M{:.2f} {:.2f} A{:.2f} {:.2f} 0 0 1 {:.2f} {:.2f}'.format(
         p0[0], p0[1], r, r, p1[0], p1[1])
 
@@ -166,21 +221,66 @@ def arc_d(r):
     return arc_path(ARC_C[0], ARC_C[1], r)
 
 
+# ─────────── degraus de tamanho ───────────
+# Uma geometria, três reduções. Reduzir o desenho inteiro pra 16 px punha o
+# traço da onda em 0,6 px e a roda em 1,6 px: abaixo de um pixel não existe
+# desenho, existe cinza. Cada degrau joga fora o que não sobrevive naquele
+# tamanho, em vez de entregar a mesma arte encolhida.
+#
+# A ordem de descarte é a ordem em que os elementos MORREM, e ela sai da
+# espessura de cada um: a onda é um traço de 24, a roda é um bloco de 52×56,
+# o balão tem 256×170. Some a onda primeiro, a roda nunca — foi o que a
+# primeira tentativa errou (cortava a roda e segurava a onda, que a 32 px
+# virava um risco branco de 5 px no canto, lido como reflexo e não como som).
+#
+#   A  ≥ 64 px   completo — corpo, rodas, balão, as duas ondas
+#   B  24–64 px  sem ondas: fica a silhueta, que é o que se reconhece
+#   C  ≤ 24 px   ladrilho: só o balão, que é o que carrega o sentido
+#
+# O degrau B é a MESMA caixa do lockup (LOCK_BBOX) — mark sem ondas —, então
+# a perua ocupa a largura inteira do quadro em vez de ceder 13% pro vazio
+# onde as ondas estariam.
+TIER_B = dict(radii=())
+TIER_C_RX = 0.219                                  # 112/512, raio do ladrilho
+TIER_C_PAD = 0.19                                  # folga do balão dentro dele
+
+
+def mark_bbox(wheels=True, radii=ARC_RR, arc_w=ARC_W):
+    pts = [p for r in radii for p in arc_points(ARC_C, r, *ARC_A)]
+    hw = arc_w / 2
+    bottom = (WHEELS[0][1] + WHEELS[0][3]) if wheels else (BODY[1] + BODY[3])
+    return (
+        min([BODY[0]] + [p[0] - hw for p in pts]),
+        min([BODY[1]] + [p[1] - hw for p in pts]),
+        max([BODY[0] + BODY[2]] + [p[0] + hw for p in pts]),
+        max([bottom] + [p[1] + hw for p in pts]),
+    )
+
+
 # paths do mark em espaço de design — servem pro SVG e pro componente React
 MARK_BODY_D = ' '.join([rrect_d(*BODY)] + [rrect_d(*w) for w in WHEELS])
 MARK_WINDOW_D = rounded_poly_d(TAIL, TAIL_R) + ' ' + rrect_d(*BUBBLE)
 MARK_ARC_D = [arc_d(r) for r in ARC_RR]
 
-_pts = [p for r in ARC_RR for p in arc_points(ARC_C, r, *ARC_A)]
-_hw = ARC_W / 2
-MARK_BBOX = (
-    min([BODY[0]] + [p[0] - _hw for p in _pts]),
-    min([BODY[1]] + [p[1] - _hw for p in _pts]),
-    max([BODY[0] + BODY[2]] + [p[0] + _hw for p in _pts]),
-    max([WHEELS[0][1] + WHEELS[0][3]] + [p[1] + _hw for p in _pts]),
-)
+MARK_BBOX = mark_bbox()
 MARK_W = MARK_BBOX[2] - MARK_BBOX[0]
 MARK_H = MARK_BBOX[3] - MARK_BBOX[1]
+
+# Caixa do mark SEM as ondas — é a que o lockup usa. Medir pela caixa com
+# ondas e depois não desenhá-las reservaria 25 un. de vazio entre a perua e
+# a palavra, e encolheria a perua pelo mesmo tanto.
+LOCK_BBOX = mark_bbox(radii=())
+LOCK_W = LOCK_BBOX[2] - LOCK_BBOX[0]
+LOCK_H = LOCK_BBOX[3] - LOCK_BBOX[1]
+
+# Caixa só do balão (bolha + bico) — é o que o degrau C mostra.
+_wp = rounded_poly_pts(TAIL, TAIL_R)
+WINDOW_BBOX = (
+    min([BUBBLE[0]] + [p[0] for p in _wp]),
+    min([BUBBLE[1]] + [p[1] for p in _wp]),
+    max([BUBBLE[0] + BUBBLE[2]] + [p[0] for p in _wp]),
+    max([BUBBLE[1] + BUBBLE[3]] + [p[1] for p in _wp]),
+)
 
 
 class T:
@@ -211,24 +311,30 @@ def fit(bbox, W, H, pad):
 
 
 # ─────────── desenho raster ───────────
-def stroke_arcs(d, cx, cy, radii, w, fill):
+def stroke_arcs(d, cx, cy, radii, w, fill, sweep=None):
+    sweep = sweep or ARC_A
     hw = w / 2
     for R in radii:
         d.arc([cx - R - hw, cy - R - hw, cx + R + hw, cy + R + hw],
-              ARC_A[0], ARC_A[1], fill=fill, width=max(1, int(round(w))))
-        for a in ARC_A:  # tampas redondas — o arc() do Pillow corta reto
+              sweep[0], sweep[1], fill=fill, width=max(1, int(round(w))))
+        for a in sweep:  # tampas redondas — o arc() do Pillow corta reto
             p = (cx + R * math.cos(math.radians(a)), cy + R * math.sin(math.radians(a)))
             d.ellipse([p[0] - hw, p[1] - hw, p[0] + hw, p[1] + hw], fill=fill)
 
 
-def draw_arcs(d, t, fill):
+def draw_arcs(d, t, fill, radii=ARC_RR, arc_w=ARC_W):
     c = t.pt(ARC_C)
-    stroke_arcs(d, c[0], c[1], [t.n(r) for r in ARC_RR], t.n(ARC_W), fill)
+    stroke_arcs(d, c[0], c[1], [t.n(r) for r in radii], t.n(arc_w), fill)
 
 
-def draw_mark(d, t, body, window, arcs):
-    """window=None não desenha a janela; window=TRANSPARENT vaza o fundo (mono)."""
-    for (x, y, w, h, r) in [BODY] + WHEELS:
+def draw_mark(d, t, body, window, arcs, wheels=True, radii=ARC_RR, arc_w=ARC_W):
+    """window=None não desenha a janela; window=TRANSPARENT vaza o fundo (mono).
+
+    arcs=None não desenha as ondas. Dois usos: os degraus menores, onde o
+    traço não caberia em pixel nenhum, e o LOCKUP — no logotipo com a palavra
+    quem buzina é o circunflexo do "ô", e a buzina aparece uma vez por peça.
+    """
+    for (x, y, w, h, r) in [BODY] + (WHEELS if wheels else []):
         x0, y0 = t.pt((x, y))
         x1, y1 = t.pt((x + w, y + h))
         d.rounded_rectangle([x0, y0, x1, y1], radius=t.n(r), fill=body)
@@ -238,7 +344,8 @@ def draw_mark(d, t, body, window, arcs):
         x0, y0 = t.pt((x, y))
         x1, y1 = t.pt((x + w, y + h))
         d.rounded_rectangle([x0, y0, x1, y1], radius=t.n(r), fill=window)
-    draw_arcs(d, t, arcs)
+    if arcs is not None:
+        draw_arcs(d, t, arcs, radii, arc_w)
 
 
 def canvas(W, H, bg=TRANSPARENT):
@@ -253,10 +360,61 @@ def finish(im, W, H, path):
     return im
 
 
-def render_icon(path, size, pad, bg, body, window, arcs):
+def icon_image(size, pad, bg, body, window, arcs, tier='A'):
+    kw = TIER_B if tier == 'B' else {}
     im, d = canvas(size, size, bg)
-    draw_mark(d, fit(MARK_BBOX, size, size, pad).scaled(SS), body, window, arcs)
-    return finish(im, size, size, path)
+    draw_mark(d, fit(mark_bbox(**kw), size, size, pad).scaled(SS),
+              body, window, arcs, **kw)
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def tile_image(size, bg, fg):
+    """Degrau C rasterizado: ladrilho cheio com o balão dentro."""
+    im, d = canvas(size, size)
+    S = size * SS
+    d.rounded_rectangle([0, 0, S - 1, S - 1], radius=TIER_C_RX * S, fill=bg)
+    t = fit(WINDOW_BBOX, size, size, TIER_C_PAD).scaled(SS)
+    d.polygon([t.pt(p) for p in rounded_poly_pts(TAIL, TAIL_R)], fill=fg)
+    x, y, w, h, r = BUBBLE
+    d.rounded_rectangle([t.pt((x, y)), t.pt((x + w, y + h))], radius=t.n(r), fill=fg)
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def render_icon(path, size, pad, bg, body, window, arcs, tier='A'):
+    im = icon_image(size, pad, bg, body, window, arcs, tier)
+    im.save(path)
+    print('   {} {}x{}'.format(os.path.relpath(path, ROOT), size, size))
+    return im
+
+
+def write_ico(path, images):
+    """.ico com uma arte POR TAMANHO, cada uma no seu degrau.
+
+    O Pillow só sabe redimensionar UMA imagem pros vários tamanhos do .ico —
+    e era exatamente isso que punha a roda de 1,6 px e o traço de 0,6 px no
+    quadro de 16. Aqui cada entrada é um PNG próprio: 16 e 24 recebem o
+    ladrilho com o balão, 32 e 48 recebem a perua sem rodas com uma onda.
+
+    PNG dentro de .ico é aceito desde o Vista, e todo navegador que ainda
+    pede .ico entende. O container em si é meia dúzia de campos.
+    """
+    blobs = []
+    for im in images:
+        buf = io.BytesIO()
+        im.save(buf, format='PNG')
+        blobs.append(buf.getvalue())
+    off = 6 + 16 * len(blobs)
+    out = struct.pack('<HHH', 0, 1, len(blobs))
+    for im, blob in zip(images, blobs):
+        out += struct.pack('<BBBBHHII',
+                           0 if im.width >= 256 else im.width,
+                           0 if im.height >= 256 else im.height,
+                           0, 0, 1, 32, len(blob), off)
+        off += len(blob)
+    with open(path, 'wb') as fh:
+        fh.write(out + b''.join(blobs))
+    print('   {} {}'.format(os.path.relpath(path, ROOT),
+                            '/'.join(str(i.width) for i in images)))
 
 
 # ─────────── tipografia ───────────
@@ -286,11 +444,13 @@ class Type:
         return self.hmtx[self.cmap[ord(ch)]][0] * size / self.upem
 
     def layout(self, text, size, x, tracking):
-        """[(char, x)] e x final, com tracking em fração do corpo."""
+        """[(char, x)] e x final, com tracking e kerning em fração do corpo."""
         out = []
-        for ch in text:
+        for i, ch in enumerate(text):
             out.append((ch, x))
             x += self.adv(ch, size) + tracking * size
+            if i + 1 < len(text):
+                x += KERN.get(text[i:i + 2], 0.0) * size
         return out, x - tracking * size
 
     def d(self, text, size, x, baseline, tracking):
@@ -317,19 +477,53 @@ class Type:
 TYPE = Type(FONT_PATH)
 TRACK = -0.028          # tracking do wordmark: apertado, como o resto da UI
 
+# ─── kerning: quatro pares fora da faixa ───
+# TRACK sozinho é uniforme, e tracking uniforme preserva as laterais que a
+# fonte trouxe — feitas pra texto corrido, não pra um logotipo em peso 900.
+# Medido na própria Nunito, o vão de tinta ia de 0,0023 a 0,0653 em: 28 vezes
+# de diferença entre o par mais apertado e o mais aberto.
+#
+# E o pior caía no pior lugar: o "l" e o "o" de "Alo" se TOCAVAM (0,0023 em,
+# dois décimos de pixel a 100 de corpo) — e é esse "o" que recebe o
+# circunflexo-buzina. A letra mais importante da marca era a espremida.
+#
+# Só os quatro fora da faixa entram aqui. "Al", "uz", "no" e "ou" já estavam
+# entre 0,039 e 0,057 e não se toca neles. Valores em fração do corpo.
+KERN = {'lo': +0.038, 'zi': +0.013, 'in': -0.015, 'Bu': -0.012}
+
 # ─── o circunflexo do "ô" É a buzina ───
 # Não é o arco do mark reduzido: naquela escala o traço viraria fio de cabelo
-# do lado de um Nunito 900. Mesma varredura e mesma razão entre os raios (a
-# assinatura do desenho), peso recalculado pro corpo — compensação óptica,
-# igual ao que uma fonte faz com o próprio acento. Valores em fração do corpo.
-ACC = dict(r1=0.082, r2=0.208, w=0.066, lift=0.600)
+# do lado de um Nunito 900. O peso é recalculado pro corpo do texto —
+# compensação óptica, igual ao que uma fonte faz com o próprio acento.
+#
+# O que ele COMPARTILHA com o ícone é a varredura (ARC_A) e o VAO_SOBRE_TRACO,
+# de onde o raio externo deriva. O comentário antigo prometia "mesma razão
+# entre os raios" e isso era falso — 2,54 aqui contra 1,80 lá. Agora não é
+# promessa: r2 não existe como número digitado, sai da conta.
+ACC = dict(r1=0.105, w=0.066, lift=0.577)
+ACC['r2'] = raio_externo(ACC['r1'], ACC['w'])
+
+# A VARREDURA é própria, e isso não é inconsistência — é o que a âncora pede.
+# As ondas do ícone saem de um CANTO, então varrem do topo pra direita e a
+# assimetria é o próprio sentido ("está saindo dali"). O acento se apoia numa
+# LETRA, e acento assimétrico não lê como acento: com a varredura do ícone
+# ele virava um tique solto em cima e à direita do "o", não um circunflexo.
+#
+# Aqui a varredura é simétrica em torno do topo (270°), o que centra a tinta
+# sobre a letra. O que os dois compartilham é o VAO_SOBRE_TRACO, que é o que
+# faz duas linhas lerem como um gesto — e essa parte o código garante.
+ACC_A = (215, 325)
+
+# Meio da corda, pra centrar o acento sobre o "o" seja qual for a varredura.
+_ACC_MID = (math.cos(math.radians(ACC_A[0])) + math.cos(math.radians(ACC_A[1]))) / 2
 
 
 def accent(size, o_x, o_w, baseline):
     """Ondas que substituem o circunflexo, já em coordenadas do texto."""
     r1, r2, w = ACC['r1'] * size, ACC['r2'] * size, ACC['w'] * size
-    return dict(cx=o_x + o_w / 2 - r2 / 2, cy=baseline - ACC['lift'] * size,
-                radii=[r1, r2], w=w, top=baseline - ACC['lift'] * size - r2 - w / 2)
+    return dict(cx=o_x + o_w / 2 - _ACC_MID * r2, cy=baseline - ACC['lift'] * size,
+                radii=[r1, r2], w=w, a=ACC_A,
+                top=baseline - ACC['lift'] * size - r2 - w / 2)
 
 
 def lockup(size=100, stacked=False, pad=0.0):
@@ -337,6 +531,17 @@ def lockup(size=100, stacked=False, pad=0.0):
 
     O mark é o MESMO do ícone (sólido) — era exatamente aí que o par vinha
     divergindo: ícone cheio, wordmark contornado.
+
+    UMA BUZINA POR PEÇA
+    Aqui o mark entra SEM ondas. Elas apareciam duas vezes na mesma peça — no
+    ícone e no acento do "ô" — e os dois picos caíam a 0,24 da altura das
+    maiúsculas um do outro: perto demais pra lerem como coisas diferentes,
+    longe demais pra lerem como alinhados. Alinhar de verdade custaria
+    encolher o ícone em 25% ou pendurar a perua meia maiúscula abaixo da
+    linha de base, então a resposta não é alinhar, é não repetir.
+    Quem buzina no logotipo é o acento, que é a parte espirituosa e está
+    dentro do nome. No ícone SOZINHO as ondas ficam — ali não há palavra
+    pra carregá-las.
     """
     cap = TYPE.cap * size
     words = [('Alo', EMERALD), ('Buzinou', GREEN)]
@@ -346,17 +551,17 @@ def lockup(size=100, stacked=False, pad=0.0):
     if stacked:
         mark_h = 2.35 * cap
         gap = 0.46 * cap
-        s = mark_h / MARK_H
-        tmark = T(s, text_w / 2 - MARK_W * s / 2 - MARK_BBOX[0] * s, -MARK_BBOX[1] * s)
+        s = mark_h / LOCK_H
+        tmark = T(s, text_w / 2 - LOCK_W * s / 2 - LOCK_BBOX[0] * s, -LOCK_BBOX[1] * s)
         baseline = mark_h + gap + cap
         W, H = text_w, baseline
         x0 = 0.0
     else:
         mark_h = 1.86 * cap
         gap = 0.34 * cap
-        s = mark_h / MARK_H
-        tmark = T(s, -MARK_BBOX[0] * s, -MARK_BBOX[1] * s)
-        x0 = MARK_W * s + gap
+        s = mark_h / LOCK_H
+        tmark = T(s, -LOCK_BBOX[0] * s, -LOCK_BBOX[1] * s)
+        x0 = LOCK_W * s + gap
         baseline = mark_h / 2 + cap / 2
         W, H = x0 + text_w, mark_h
 
@@ -384,7 +589,7 @@ def _arc_svg(color, w=None):
 def accent_svg(acc, color):
     return ''.join(
         '<path d="{}" stroke="{}" stroke-width="{:.2f}" stroke-linecap="round"/>'.format(
-            arc_path(acc['cx'], acc['cy'], r), color, acc['w'])
+            arc_path(acc['cx'], acc['cy'], r, acc['a']), color, acc['w'])
         for r in acc['radii'])
 
 
@@ -412,21 +617,22 @@ def mark_svg(size=512, pad=0.06, mono=None, dark_aware=False, tile=False):
     tem contraste contra aba clara E escura, então não há nada pra adaptar.
     """
     if tile:
-        t = fit(MARK_BBOX, size, size, 0.14)
+        # DEGRAU C. O favicon é visto a 16–20 px numa aba, e ali a perua
+        # inteira não cabe: mesmo em ladrilho, a roda dava 1,3 px e a onda
+        # 1,0 px — dois borrões que só engordavam a silhueta. Fica o BALÃO,
+        # que é o elemento maior e o que carrega o sentido, em cheio dentro
+        # do ladrilho. Continua sendo esta marca, sem o que não sobrevive.
+        t = fit(WINDOW_BBOX, size, size, TIER_C_PAD)
         L = [
           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {s} {s}" fill="none">',
           '  <rect width="{s}" height="{s}" rx="{r}" fill="{bg}"/>',
-          '  <g transform="{t}">',
-          '    <path d="{body}" fill="{fg}"/>',
-          '    <path d="{win}" fill="{bg}"/>',
-          '    {arcs}',
-          '  </g>',
+          '  <g transform="{t}"><path d="{win}" fill="{fg}"/></g>',
           '</svg>',
           '',
         ]
         return chr(10).join(L).format(
-            s=size, r=int(size * 0.16), bg=EMERALD, fg=WHITE, t=t.svg(),
-            body=MARK_BODY_D, win=MARK_WINDOW_D, arcs=_arc_svg(WHITE, ARC_W * 2))
+            s=size, r=round(size * TIER_C_RX), bg=EMERALD, fg=WHITE,
+            t=t.svg(), win=MARK_WINDOW_D)
     t = fit(MARK_BBOX, size, size, pad)
     if mono:
         return (
@@ -443,13 +649,14 @@ def mark_svg(size=512, pad=0.06, mono=None, dark_aware=False, tile=False):
         ).format(s=size, t=t.svg(), body=MARK_BODY_D, win=MARK_WINDOW_D,
                  arcs=_arc_svg('#fff'), mono=mono)
 
-    style, body, window, arcs = '', EMERALD, WHITE, GREEN
+    style, body, window, arcs = '', EMERALD, WHITE, GREEN_ON_LIGHT
     if dark_aware:
         # Favicon em aba escura: a carroceria vira branca e a janela vira o
         # quase-preto do app, senão o verde escuro afunda no chrome escuro.
+        # E o verde volta ao claro: sobre #0B1210 o #52C41A dá 8,36:1.
         style = ('<style>:root{{--b:{};--w:{};--a:{}}}'
                  '@media (prefers-color-scheme:dark){{:root{{--b:{};--w:{};--a:{}}}}}</style>'
-                 ).format(EMERALD, WHITE, GREEN, WHITE, NEAR_BLACK, GREEN)
+                 ).format(EMERALD, WHITE, GREEN_ON_LIGHT, WHITE, NEAR_BLACK, GREEN)
         body, window, arcs = 'var(--b)', 'var(--w)', 'var(--a)'
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {s} {s}" fill="none">\n'
@@ -465,37 +672,42 @@ def mark_svg(size=512, pad=0.06, mono=None, dark_aware=False, tile=False):
 
 
 def wordmark_svg(stacked=False, white=False):
+    """Logotipo horizontal ou empilhado. O ícone entra SEM ondas — ver lockup()."""
     L = lockup(100, stacked=stacked, pad=0.02)
     vb = L['vb']
     body = WHITE if white else EMERALD
     window = NEAR_BLACK if white else WHITE
     c1 = WHITE if white else EMERALD
+    c2 = GREEN if white else GREEN_ON_LIGHT
     parts = ['<g transform="{}">'.format(L['mark'].svg()),
              '<path d="{}" fill="{}"/>'.format(MARK_BODY_D, body),
              '<path d="{}" fill="{}"/>'.format(MARK_WINDOW_D, window),
-             _arc_svg(GREEN),
              '</g>']
     for text, x, color in L['runs']:
         parts.append('<path d="{}" fill="{}"/>'.format(
             TYPE.d(text, L['size'], x, L['baseline'], TRACK),
-            c1 if color == EMERALD else GREEN))
-    parts.append(accent_svg(L['accent'], GREEN))
+            c1 if color == EMERALD else c2))
+    parts.append(accent_svg(L['accent'], c2))
     return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="{:.2f} {:.2f} {:.2f} {:.2f}" '
             'fill="none">\n  '.format(*vb) + '\n  '.join(parts) + '\n</svg>\n')
 
 
-def draw_lockup(d, L, k, off, body, window, arcs, c1, c2):
-    """Rasteriza um lockup: k = escala do canvas, off = deslocamento (x, y)."""
+def draw_lockup(d, L, k, off, body, window, c1, c2):
+    """Rasteriza um lockup: k = escala do canvas, off = deslocamento (x, y).
+
+    O mark vai com arcs=None: no logotipo com a palavra, quem buzina é o
+    acento do "ô".
+    """
     def T2(t):
         return T(t.s * k, t.tx * k + off[0], t.ty * k + off[1])
 
-    draw_mark(d, T2(L['mark']), body, window, arcs)
+    draw_mark(d, T2(L['mark']), body, window, None)
     for text, x, color in L['runs']:
         TYPE.draw(d, text, L['size'] * k, x * k + off[0], L['baseline'] * k + off[1],
                   TRACK, c1 if color == EMERALD else c2)
     acc = L['accent']
     stroke_arcs(d, acc['cx'] * k + off[0], acc['cy'] * k + off[1],
-                [r * k for r in acc['radii']], acc['w'] * k, c2)
+                [r * k for r in acc['radii']], acc['w'] * k, c2, acc['a'])
 
 
 def wordmark_png(path, height=260, white=False):
@@ -507,8 +719,8 @@ def wordmark_png(path, height=260, white=False):
     draw_lockup(d, L, k * SS, (-L['vb'][0] * k * SS, -L['vb'][1] * k * SS),
                 rgba(WHITE if white else EMERALD),
                 TRANSPARENT if white else rgba(WHITE),
-                rgba(GREEN),
-                rgba(WHITE if white else EMERALD), rgba(GREEN))
+                rgba(WHITE if white else EMERALD),
+                rgba(GREEN if white else GREEN_ON_LIGHT))
     finish(im, W, H, path)
 
 
@@ -550,7 +762,7 @@ def og_image(path, W=1200, H=630):
     k = 300 / L['vb'][3]
     off = ((W - L['vb'][2] * k) / 2 - L['vb'][0] * k, 96 - L['vb'][1] * k)
     draw_lockup(od, L, k * SS, (off[0] * SS, off[1] * SS),
-                rgba(WHITE), TRANSPARENT, rgba(GREEN), rgba(WHITE), rgba(GREEN))
+                rgba(WHITE), TRANSPARENT, rgba(WHITE), rgba(GREEN))
     for text, size, y, color in (('Onde a perua está, agora.', 46, 500, rgba(WHITE, 235)),
                                  ('Rota, avisos e mensalidade num lugar só.', 30, 556, rgba(WHITE, 150))):
         w = TYPE.width(text, size, -0.01)
@@ -585,11 +797,12 @@ def js_paths():
         '};',
         '',
         '// "Alo" + "Buzinou" em corpo 100, na origem. O circunflexo do "ô" é a',
-        '// buzina: mesmas ondas do mark, com peso recalculado pro corpo do texto.',
+        '// buzina: mesma varredura do mark e mesmo vão-sobre-traço, com o peso',
+        '// recalculado pro corpo do texto.',
         'export const TEXT = {',
         "  alo: '{}',".format(TYPE.d('Alo', size, 0, 0, TRACK)),
         "  buzinou: '{}',".format(TYPE.d('Buzinou', size, buz_x, 0, TRACK)),
-        '  accent: [' + ', '.join("'{}'".format(arc_path(acc0['cx'], acc0['cy'], r))
+        '  accent: [' + ', '.join("'{}'".format(arc_path(acc0['cx'], acc0['cy'], r, acc0['a']))
                                   for r in acc0['radii']) + '],',
         '  accentWidth: {:.2f},'.format(acc0['w']),
         '};',
@@ -602,6 +815,9 @@ def js_paths():
             "  viewBox: '{:.2f} {:.2f} {:.2f} {:.2f}',".format(*L['vb']),
             "  markTransform: '{}',".format(L['mark'].svg()),
             "  textTransform: 'translate({:.3f} {:.3f})',".format(L['runs'][0][1], L['baseline']),
+            '  // Uma buzina por peça: no logotipo com a palavra quem buzina é o',
+            '  // acento do "ô". No <LogoMark /> sozinho as ondas voltam.',
+            '  markArcs: false,',
             '};',
             '',
         ]
@@ -626,7 +842,7 @@ def main():
         print('   public/brand/' + name)
 
     print('PNG')
-    C = (rgba(EMERALD), rgba(WHITE), rgba(GREEN))    # mark colorido
+    C = (rgba(EMERALD), rgba(WHITE), rgba(GREEN_ON_LIGHT))   # mark colorido, fundo claro
     # Ícones do PWA: fundo branco cheio — o launcher aplica a máscara dele.
     render_icon(os.path.join(OUT, 'icon-192.png'), 192, 0.10, rgba(WHITE), *C)
     render_icon(os.path.join(OUT, 'icon-512.png'), 512, 0.10, rgba(WHITE), *C)
@@ -644,16 +860,24 @@ def main():
     wordmark_png(os.path.join(OUT, 'wordmark-white.png'), white=True)
     og_image(os.path.join(OUT, 'og-image.png'))
 
-    # Favicon .ico: em 16px o desenho vazado some, então vai tile esmeralda
-    # com o mark branco — legível em aba clara E escura.
-    master = os.path.join(OUT, '_ico-master.png')
+    # Favicon .ico: ladrilho esmeralda em todos os tamanhos — é o que dá
+    # contraste em aba clara E escura, e por isso o fundo não muda. O que
+    # muda é o CONTEÚDO, por degrau:
+    #
+    #   16 e 24  só o balão (degrau C). A perua inteira ali dava roda de
+    #            1,3 px e onda de 1,0 px: dois borrões que engordavam a
+    #            silhueta sem desenhar nada.
+    #   32 e 48  a perua sem ondas (degrau B), em branco — em fundo
+    #            esmeralda o verde não separa.
+    #
     # A janela vai na COR DO FUNDO, não vazada: com alfa 0 sobre carroceria
-    # branca o balão simplesmente desaparecia. E as ondas em branco, porque
-    # em 16 px o verde sobre esmeralda não separa.
-    ico = render_icon(master, 256, 0.14, rgba(EMERALD), rgba(WHITE), rgba(EMERALD), rgba(WHITE))
-    ico.save(os.path.join(OUT, 'favicon.ico'), sizes=[(16, 16), (32, 32), (48, 48)])
-    os.remove(master)
-    print('   public/brand/favicon.ico 16/32/48')
+    # branca o balão simplesmente desaparecia.
+    write_ico(os.path.join(OUT, 'favicon.ico'), [
+        tile_image(16, rgba(EMERALD), rgba(WHITE)),
+        tile_image(24, rgba(EMERALD), rgba(WHITE)),
+        icon_image(32, 0.13, rgba(EMERALD), rgba(WHITE), rgba(EMERALD), rgba(WHITE), tier='B'),
+        icon_image(48, 0.13, rgba(EMERALD), rgba(WHITE), rgba(EMERALD), rgba(WHITE), tier='B'),
+    ])
 
     print('JS')
     js_paths()
