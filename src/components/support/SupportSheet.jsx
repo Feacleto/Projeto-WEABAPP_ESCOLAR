@@ -163,8 +163,8 @@ export default function SupportSheet({ open, onClose, uid, role }) {
 function Success({ onClose }) {
   return (
     <div className="text-center space-y-4 py-4">
-      <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center">
-        <CheckCircle2 size={36} className="text-emerald-600" />
+      <div className="w-16 h-16 mx-auto rounded-full bg-primaryChip flex items-center justify-center">
+        <CheckCircle2 size={36} className="text-accentText" />
       </div>
       <div>
         <p className="text-sm text-textMuted leading-relaxed">

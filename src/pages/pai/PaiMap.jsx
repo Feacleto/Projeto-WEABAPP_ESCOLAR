@@ -165,10 +165,10 @@ export default function PaiMap() {
           </p>
         </div>
         {routeActive && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primaryChip text-primary text-[11px] font-bold">
             <span className="relative inline-flex">
-              <span className="absolute inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 opacity-75 animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-1.5 w-1.5 rounded-full bg-primary opacity-75 animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
             </span>
             AO VIVO
           </span>
@@ -210,7 +210,7 @@ export default function PaiMap() {
         <div className="bg-bg rounded-2xl p-3 space-y-2">
           <ReferenceRow
             icon={Home}
-            color="bg-emerald-500"
+            color="bg-primary"
             label="Casa"
             value={child?.address || 'Endereço não cadastrado'}
           />
@@ -230,7 +230,7 @@ export default function PaiMap() {
             else toast('Telefone do motorista não cadastrado.');
           }}
           disabled={!whatsappUrl}
-          className="tap w-full rounded-2xl py-3.5 bg-emerald-600 text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          className="tap w-full rounded-2xl py-3.5 bg-primary text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <MessageCircle size={18} />
           Falar com o Tio
@@ -292,15 +292,15 @@ function StatusPanel({
 
   if (hasArrived) {
     return (
-      <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 p-4 flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 border border-primaryBorder p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
           <Bus size={22} />
         </div>
         <div className="flex-1">
-          <p className="font-bold text-emerald-900 leading-tight text-lg">
+          <p className="font-bold text-primary leading-tight text-lg">
             Tio Nino chegou!
           </p>
-          <p className="text-xs text-emerald-800 mt-0.5">
+          <p className="text-xs text-primary mt-0.5">
             Tá na sua porta — pode levar a criança.
           </p>
         </div>

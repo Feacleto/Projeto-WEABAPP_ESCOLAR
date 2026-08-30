@@ -86,7 +86,7 @@ function MockNav({ active }) {
 function MockHeader({ titulo, chip, chipTone = 'primary' }) {
   const skin =
     chipTone === 'live'
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      ? 'bg-primarySoft text-primary border-primaryBorder'
       : 'bg-primary/10 text-primary border-primary/15';
   return (
     <div className="px-3 flex items-center justify-between">
@@ -197,7 +197,7 @@ function ScreenInicio() {
         <MockRow
           nome="Bia"
           chip="entregue"
-          chipClass="bg-emerald-600 text-white"
+          chipClass="bg-primary text-white"
         />
         <MockRow nome="Téo" chip="faltou" chipClass="bg-gray-400 text-white" />
       </div>
@@ -252,7 +252,7 @@ function ScreenMapa() {
           />
         </svg>
 
-        <span className="absolute left-[4px] bottom-[6px] w-4 h-4 rounded-full bg-emerald-600 border-2 border-white flex items-center justify-center shadow">
+        <span className="absolute left-[4px] bottom-[6px] w-4 h-4 rounded-full bg-primary border-2 border-white flex items-center justify-center shadow">
           <HomeIcon size={7} className="text-white" />
         </span>
         <span className="absolute right-[6px] top-[6px] w-4 h-4 rounded-full bg-escola border-2 border-white flex items-center justify-center shadow">
@@ -348,7 +348,7 @@ function ScreenFinanceiro() {
 
       <div className="mx-3 mt-1.5 grid grid-cols-3 gap-1">
         {[
-          ['R$ 2.880', 'recebido', 'text-emerald-600'],
+          ['R$ 2.880', 'recebido', 'text-accentText'],
           ['R$ 1.240', 'a receber', 'text-secondary'],
           ['R$ 320', 'atrasado', 'text-danger'],
         ].map(([valor, label, cor]) => (
@@ -384,19 +384,19 @@ function ScreenFinanceiro() {
           nome="Lucas"
           info="R$ 320,00 · pago dia 6"
           chip="pago"
-          chipClass="bg-emerald-100 text-emerald-700"
+          chipClass="bg-primaryChip text-primary"
         />
         <MockRow
           nome="Téo"
           info="R$ 280,00 · pago dia 3"
           chip="pago"
-          chipClass="bg-emerald-100 text-emerald-700"
+          chipClass="bg-primaryChip text-primary"
         />
       </div>
 
       <div className="mx-3 mt-2 rounded-xl bg-surface border border-border p-2 flex items-center gap-1.5">
-        <span className="w-3.5 h-3.5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
-          <Check size={7} className="text-emerald-600" />
+        <span className="w-3.5 h-3.5 rounded-full bg-primarySoft border border-primaryBorder flex items-center justify-center shrink-0">
+          <Check size={7} className="text-accentText" />
         </span>
         <p className="text-[6px] leading-relaxed text-textMuted">
           A mensalidade de cada criança é gerada sozinha todo mês.
@@ -512,7 +512,7 @@ export default function PhoneDemo() {
             <span
               key={sc.id}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                idx === i ? 'w-4 bg-emerald-300' : 'w-1.5 bg-white/25'
+                idx === i ? 'w-4 bg-primary' : 'w-1.5 bg-white/25'
               }`}
             />
           ))}
@@ -521,7 +521,7 @@ export default function PhoneDemo() {
 
       {/* Explicação da tela aberta — o demo ensina, não só enfeita. */}
       <div key={s.id} className="mt-4 animate-demo-screen-in">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-emerald-300/80">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary/80">
           {s.role}
         </p>
         <h3 className="text-base font-extrabold tracking-tight mt-1">

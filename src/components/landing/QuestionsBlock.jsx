@@ -168,7 +168,7 @@ export default function QuestionsBlock({ onFinish }) {
               >
                 <Art />
 
-                <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70">
+                <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-onNightAccent/70">
                   {idx + 1} de 3
                 </p>
                 <h3 className="mt-2 text-[1.6rem] font-extrabold leading-[1.15] tracking-tight">
@@ -176,8 +176,8 @@ export default function QuestionsBlock({ onFinish }) {
                 </h3>
 
                 <div className="mt-4 flex items-start gap-3 rounded-3xl border border-white/10 bg-white/[0.055] p-5">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-400/20">
-                    <Check size={16} className="text-emerald-300" />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-onNightAccent/30 bg-onNightAccentFill/20">
+                    <Check size={16} className="text-onNightAccent" />
                   </span>
                   <div className="min-w-0">
                     <p className="text-lg font-extrabold leading-tight tracking-tight">
@@ -215,7 +215,7 @@ export default function QuestionsBlock({ onFinish }) {
             <span
               key={p.id}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                idx === i ? 'w-5 bg-emerald-300' : 'w-1.5 bg-white/20'
+                idx === i ? 'w-5 bg-onNightAccent' : 'w-1.5 bg-white/20'
               }`}
             />
           ))}
@@ -224,7 +224,7 @@ export default function QuestionsBlock({ onFinish }) {
         <button
           type="button"
           onClick={avancar}
-          className="tap cta-shine-white relative inline-flex h-11 items-center gap-2 overflow-hidden rounded-full bg-emerald-400 px-5 text-sm font-extrabold text-[#0B1210]"
+          className="tap cta-shine-white relative inline-flex h-11 items-center gap-2 overflow-hidden rounded-full bg-onNightAccentFill px-5 text-sm font-extrabold text-[#0B1210]"
         >
           {ultima ? 'Ver o app' : 'Próxima'}
           <ArrowRight size={16} />

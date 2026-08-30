@@ -147,13 +147,13 @@ export default function Sheet({
 
           <div className="relative flex items-start gap-3">
             {Icon && (
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-400/15 text-emerald-300">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/15 text-primary">
                 <Icon size={19} />
               </span>
             )}
             <div className="min-w-0 flex-1">
               {eyebrow && (
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-emerald-300/70">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary/70">
                   {eyebrow}
                 </p>
               )}

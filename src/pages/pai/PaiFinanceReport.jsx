@@ -109,11 +109,11 @@ export default function PaiFinanceReport() {
               </p>
             </section>
           ) : (
-            <section className="bg-emerald-50 rounded-2xl p-4">
-              <p className="text-sm font-bold text-emerald-900">
+            <section className="bg-primarySoft rounded-2xl p-4">
+              <p className="text-sm font-bold text-primary">
                 Tudo em dia
               </p>
-              <p className="text-xs text-emerald-900/75 mt-0.5">
+              <p className="text-xs text-primary/75 mt-0.5">
                 Nenhuma mensalidade em aberto.
               </p>
             </section>
@@ -186,8 +186,8 @@ const STATUS_CONFIG = {
   paid: {
     icon: CheckCircle2,
     label: 'Pago',
-    color: 'bg-emerald-100 text-emerald-700',
-    text: 'text-emerald-700',
+    color: 'bg-primaryChip text-primary',
+    text: 'text-primary',
   },
   claimed: {
     icon: Hourglass,

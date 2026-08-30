@@ -95,7 +95,7 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
         type="button"
         data-tour="start-route"
         onClick={iniciar}
-        className="tap w-full rounded-2xl bg-emerald-600 text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+        className="tap w-full rounded-2xl bg-primary text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
         style={{ height: 56 }}
       >
         <Play size={20} />
@@ -108,8 +108,8 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
   const semSinal = precisao == null;
 
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+    <div className="rounded-2xl border border-primaryBorder bg-primarySoft p-3 flex items-center gap-3">
+      <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
         {semSinal ? <CircleAlert size={17} /> : <Satellite size={17} />}
       </div>
       {/* O NOME DO MODO, ESCRITO.
@@ -125,12 +125,12 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
         * que ele espera ver na lista. Sem `direcao`, degrada pra "MODO ROTA"
         * seco — nunca fica pela metade. */}
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 leading-tight">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-primary leading-tight">
           modo rota
           {direcao === 'ida' && ' · levando pra escola'}
           {direcao === 'volta' && ' · trazendo pra casa'}
         </p>
-        <p className="text-[11px] text-emerald-900/75 mt-0.5">
+        <p className="text-[11px] text-primary/75 mt-0.5">
           {semSinal
             ? 'procurando sinal de GPS…'
             : `o responsável está te vendo · precisão ${Math.round(precisao)} m`}
@@ -143,7 +143,7 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
         className={`tap shrink-0 h-10 px-3 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-60 ${
           confirmandoParada
             ? 'bg-danger text-white'
-            : 'bg-card border border-emerald-200 text-emerald-900'
+            : 'bg-card border border-primaryBorder text-primary'
         }`}
       >
         <Square size={13} />

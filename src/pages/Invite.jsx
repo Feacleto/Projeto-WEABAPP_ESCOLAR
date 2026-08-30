@@ -469,8 +469,8 @@ function SignInToContinue({ childFirstName, driverLabel }) {
 function AlreadyUsed({ childFirstName }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
-      <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center">
-        <HeartHandshake size={30} className="text-emerald-700" />
+      <div className="w-16 h-16 rounded-2xl bg-primaryChip flex items-center justify-center">
+        <HeartHandshake size={30} className="text-primary" />
       </div>
       <div className="space-y-1.5">
         <h1 className="text-xl font-bold text-text">Este convite já foi usado</h1>

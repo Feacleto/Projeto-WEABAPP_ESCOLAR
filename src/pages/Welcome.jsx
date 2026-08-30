@@ -81,7 +81,7 @@ export default function Welcome() {
             <Link to="/" aria-label="Conhecer o Alô Buzinou" className="tap inline-block">
               <Logo variant="stacked" tone="onDark" height={92} className="mx-auto" />
             </Link>
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
               primeira vez aqui
             </p>
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight">

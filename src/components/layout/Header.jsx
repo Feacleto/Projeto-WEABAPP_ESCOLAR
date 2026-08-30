@@ -280,7 +280,7 @@ function FalarComOMotorista() {
         type="button"
         onClick={tocar}
         aria-label={`Falar com ${nome}`}
-        className="tap flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700"
+        className="tap flex h-9 w-9 items-center justify-center rounded-lg bg-primarySoft text-primary"
       >
         <MessageCircle size={18} />
       </button>

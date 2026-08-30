@@ -108,14 +108,14 @@ export default function StepsSequence() {
             <span
               className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg font-mono text-xs font-bold transition-all duration-300 ${
                 ativo
-                  ? 'scale-110 bg-emerald-400 text-[#0B1210]'
-                  : 'bg-emerald-400/15 text-emerald-300'
+                  ? 'scale-110 bg-onNightAccentFill text-[#0B1210]'
+                  : 'bg-onNightAccentFill/15 text-onNightAccent'
               } mt-0.5`}
             >
               {ativo && (
                 <span
                   aria-hidden
-                  className="demo-ping absolute inset-0 rounded-lg bg-emerald-400/40"
+                  className="demo-ping absolute inset-0 rounded-lg bg-onNightAccentFill/40"
                 />
               )}
               <span className="relative">{p.n}</span>

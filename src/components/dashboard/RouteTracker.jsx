@@ -55,7 +55,7 @@ export default function RouteTracker({ status = 'home', compact = false, ride = 
                 <div
                   aria-hidden
                   className={`absolute top-4 right-1/2 w-full h-0.5 ${
-                    i <= currentIdx ? 'bg-emerald-500' : 'bg-border'
+                    i <= currentIdx ? 'bg-primary' : 'bg-border'
                   }`}
                   style={{ zIndex: 0 }}
                 />
@@ -65,7 +65,7 @@ export default function RouteTracker({ status = 'home', compact = false, ride = 
               <div
                 className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                   done
-                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                    ? 'bg-primary text-white shadow-md shadow-emerald-500/30'
                     : active
                     ? 'bg-primary text-white ring-4 ring-primary/20'
                     : 'bg-neutro text-textMuted border-2 border-border'

@@ -178,7 +178,7 @@ export default function AdminPanel() {
           >
             <LogOut size={15} /> Sair
           </button>
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-primary/80">
             só pra você
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
@@ -547,7 +547,7 @@ function PrivacidadeDosDepoimentos() {
         </p>
 
         {feito && (
-          <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
+          <p className="mt-3 rounded-xl border border-primaryBorder bg-primarySoft px-3 py-2 text-xs font-semibold text-primary">
             {feito.corrigidos > 0
               ? `Corrigidos ${feito.corrigidos} de ${feito.avaliados} depoimentos públicos.`
               : `Nada a corrigir — ${feito.avaliados} depoimentos públicos, todos limpos.`}
@@ -566,7 +566,7 @@ function PrivacidadeDosDepoimentos() {
               <span>
                 a corrigir:{' '}
                 <strong
-                  className={`tabular-nums ${aCorrigir > 0 ? 'text-warning' : 'text-emerald-600'}`}
+                  className={`tabular-nums ${aCorrigir > 0 ? 'text-warning' : 'text-accentText'}`}
                 >
                   {aCorrigir}
                 </strong>
@@ -719,7 +719,7 @@ function Pesquisa({ s }) {
                 <span
                   className={`rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest ${
                     c.papel === 'admin'
-                      ? 'bg-emerald-50 text-emerald-700'
+                      ? 'bg-primarySoft text-primary'
                       : 'bg-indigo-50 text-indigo-700'
                   }`}
                 >
@@ -783,7 +783,7 @@ const STATUS_LABEL = {
 const STATUS_SKIN = {
   pending: 'bg-neutro text-textMuted',
   contacted: 'bg-warningSoft text-warningText',
-  approved: 'bg-emerald-50 text-emerald-700',
+  approved: 'bg-primarySoft text-primary',
   rejected: 'bg-dangerSoft text-dangerText',
 };
 

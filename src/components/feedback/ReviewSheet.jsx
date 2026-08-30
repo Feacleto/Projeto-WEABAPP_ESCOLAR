@@ -305,11 +305,11 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
       <div className="space-y-5">
         {/* O contrato, antes da primeira estrela. */}
         {isTio ? (
-          <SheetCard className="!border-emerald-200 !bg-emerald-50">
+          <SheetCard className="!border-primaryBorder !bg-primarySoft">
             <p className="text-sm font-bold text-text">
               O que aparece na home do app
             </p>
-            <ul className="mt-2 space-y-1 text-xs leading-relaxed text-emerald-900/80">
+            <ul className="mt-2 space-y-1 text-xs leading-relaxed text-primary/80">
               <li>· suas estrelas</li>
               <li>· seu depoimento, até {PUBLIC_COMMENT_MAX} caracteres</li>
               <li>
@@ -318,7 +318,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                   : '· seu primeiro nome e o avatar do app'}
               </li>
             </ul>
-            <p className="mt-2 text-xs leading-relaxed text-emerald-900/70">
+            <p className="mt-2 text-xs leading-relaxed text-primary/70">
               Nada é publicado sem você marcar a autorização no fim.
             </p>
           </SheetCard>

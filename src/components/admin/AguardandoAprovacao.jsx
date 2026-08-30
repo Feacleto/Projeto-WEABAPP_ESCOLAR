@@ -57,7 +57,7 @@ export default function AguardandoAprovacao() {
   if (lista === null || lista.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+    <section className="rounded-2xl border border-primaryBorder bg-primarySoft/60 p-4">
       <p className="flex items-center gap-2 text-sm font-bold text-text">
         <UserCheck size={16} className="text-primary" />
         Esperando sua aprovação

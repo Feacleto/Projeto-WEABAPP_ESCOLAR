@@ -533,17 +533,17 @@ export default function OperacaoDaRota({
 
         {/* Viagem concluída — e quando é a próxima */}
         {!loading && blocoAtual && !foco && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center space-y-2">
-            <CheckCircle2 size={36} className="text-emerald-600 mx-auto" />
+          <div className="bg-primarySoft border border-primaryBorder rounded-2xl p-5 text-center space-y-2">
+            <CheckCircle2 size={36} className="text-accentText mx-auto" />
             <p className="font-bold text-text">Viagem concluída</p>
             {espera ? (
-              <p className="text-sm text-emerald-900/75">
+              <p className="text-sm text-primary/75">
                 Próxima parada só às{' '}
                 <b>{horaCurta(deMinutos(espera.bloco.inicio))}</b>
                 {espera.minutos > 0 && ` · daqui a ${formataEspera(espera.minutos)}`}
               </p>
             ) : (
-              <p className="text-sm text-emerald-900/75">
+              <p className="text-sm text-primary/75">
                 Era a última viagem do dia.
               </p>
             )}
@@ -773,7 +773,7 @@ export default function OperacaoDaRota({
                     )}
                   </span>
                   {feito && (
-                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <CheckCircle2 size={16} className="text-accentText shrink-0" />
                   )}
                 </div>
               );
@@ -881,13 +881,13 @@ function JaFeitos({ itens, direcao }) {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="fila-entra tap w-full rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-center gap-2.5"
+        className="fila-entra tap w-full rounded-xl bg-primarySoft border border-primaryBorder px-3 py-2.5 flex items-center gap-2.5"
       >
-        <CheckCircle2 size={17} className="text-emerald-600 shrink-0" />
-        <span className="flex-1 text-left text-sm font-semibold text-emerald-900">
+        <CheckCircle2 size={17} className="text-accentText shrink-0" />
+        <span className="flex-1 text-left text-sm font-semibold text-primary">
           {itens.length} {verbo}
         </span>
-        <span className="text-[11px] font-semibold text-emerald-700 shrink-0">
+        <span className="text-[11px] font-semibold text-primary shrink-0">
           ver
         </span>
       </button>
@@ -897,7 +897,7 @@ function JaFeitos({ itens, direcao }) {
   return (
     <section className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-700">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
           {verbo}
         </p>
         {compacto && (
@@ -913,9 +913,9 @@ function JaFeitos({ itens, direcao }) {
       {itens.map((q) => (
         <div
           key={q.child.id}
-          className="fila-entra rounded-xl px-3 py-2 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200"
+          className="fila-entra rounded-xl px-3 py-2 flex items-center gap-2.5 bg-primarySoft border border-primaryBorder"
         >
-          <span className="font-mono text-xs tabular-nums shrink-0 w-11 text-emerald-800">
+          <span className="font-mono text-xs tabular-nums shrink-0 w-11 text-primary">
             {horaCurta(q.hora)}
           </span>
           <Avatar
@@ -925,10 +925,10 @@ function JaFeitos({ itens, direcao }) {
             kind="child"
             size="sm"
           />
-          <span className="flex-1 min-w-0 text-sm font-semibold text-emerald-900 truncate">
+          <span className="flex-1 min-w-0 text-sm font-semibold text-primary truncate">
             {q.child.name}
           </span>
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+          <CheckCircle2 size={16} className="text-accentText shrink-0" />
         </div>
       ))}
     </section>

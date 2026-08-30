@@ -240,7 +240,7 @@ export default function AbsenceSheet({
                 title="Já peguei na escola"
                 subtitle="O motorista não precisa passar lá hoje"
                 gradient="from-emerald-50 to-green-100"
-                iconBg="bg-emerald-600"
+                iconBg="bg-primary"
                 active={currentAbsence?.type === ABSENCE_TYPES.ALREADY_PICKED}
                 disabled={submitting}
                 onClick={() => handleSelect(ABSENCE_TYPES.ALREADY_PICKED)}

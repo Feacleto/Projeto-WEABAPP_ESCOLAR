@@ -163,7 +163,7 @@ export default function WaitlistSheet({
           <div className="relative flex h-20 w-20 items-center justify-center">
             <span
               aria-hidden
-              className="demo-ping absolute inset-0 rounded-full bg-emerald-400/25"
+              className="demo-ping absolute inset-0 rounded-full bg-primary/25"
             />
             <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-primary text-white shadow-lg shadow-emerald-500/25">
               <Check size={32} strokeWidth={3} />
@@ -193,12 +193,12 @@ export default function WaitlistSheet({
             * vira âncora antes de existir proposta, e cada operação tem um
             * tamanho. O que fica é o próximo passo concreto — que é o que
             * quem acabou de mandar os dados quer saber. */}
-          <div className="w-full rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left">
+          <div className="w-full rounded-2xl border border-primaryBorder bg-primarySoft p-4 text-left">
             <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
               <MessageCircle size={15} className="text-primary" />
               O que acontece agora
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-emerald-900/80">
+            <p className="mt-1 text-xs leading-relaxed text-primary/80">
               Um consultor fala com você no WhatsApp pra entender sua operação,
               te ajudar a <strong>cadastrar suas crianças</strong> e mostrar
               como usar o app no dia a dia. As condições da associação são

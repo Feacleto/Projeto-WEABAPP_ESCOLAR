@@ -38,7 +38,7 @@ const PAGE_INCREMENT = 6;
 
 // Cores do pill "Hoje / Ontem / Há X dias" — sinaliza recência em uma piscadela.
 const TONE_STYLES = {
-  today: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  today: 'bg-primaryChip text-primary border border-primaryBorder',
   yesterday: 'bg-warningChip text-warningText border border-warningBorder',
   recent: 'bg-blue-50 text-blue-700 border border-blue-200',
   older: 'bg-neutro text-textMuted border border-border',

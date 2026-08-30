@@ -433,13 +433,13 @@ export default function TioDashboard() {
           <div className="px-5 pt-4 space-y-4">
             <div
               data-tour="hero"
-              className="bg-emerald-50 border border-emerald-200 rounded-3xl p-5 text-center"
+              className="bg-primarySoft border border-primaryBorder rounded-3xl p-5 text-center"
             >
-              <CheckCircle2 size={34} className="text-emerald-600 mx-auto" />
+              <CheckCircle2 size={34} className="text-accentText mx-auto" />
               <p className="font-bold text-text mt-2">
                 {blocos.length && bloco ? 'Nada agora' : 'Dia livre'}
               </p>
-              <p className="text-sm text-emerald-900/75 mt-1">
+              <p className="text-sm text-primary/75 mt-1">
                 {bloco && faltamMin != null && faltamMin > 0 ? (
                   <>
                     Próxima viagem às{' '}

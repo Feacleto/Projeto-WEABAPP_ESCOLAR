@@ -224,7 +224,7 @@ export default function FirstAccess() {
               height={80}
               className="mx-auto"
             />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
               primeiro acesso
             </p>
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
@@ -246,12 +246,12 @@ export default function FirstAccess() {
 
       <main className="flex flex-1 flex-col px-6 py-5">
         {/* O caminho fácil primeiro: quem tem o link não precisa de nada disso. */}
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="rounded-2xl border border-primaryBorder bg-primarySoft p-4">
           <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
             <Link2 size={15} className="text-primary" />
             O motorista te mandou um link?
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-emerald-900/80">
+          <p className="mt-1 text-xs leading-relaxed text-primary/80">
             Então abre o link — ele já vem com o convite dentro, e sua conta se
             cria por lá. <strong>Você não precisa de código nenhum.</strong>
           </p>

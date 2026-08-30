@@ -325,7 +325,7 @@ export default function ChildForm() {
           onClick={onAdvance}
           loading={submitting}
           icon={step === TOTAL_STEPS ? Check : ArrowRight}
-          className="shadow-2xl shadow-emerald-500/30 !bg-emerald-600 hover:!bg-emerald-700 !h-14 !text-base"
+          className="shadow-2xl shadow-emerald-500/30 !bg-primary hover:!bg-primary !h-14 !text-base"
         >
           {step === TOTAL_STEPS ? 'Cadastrar criança' : 'Avançar'}
         </Button>
@@ -368,9 +368,9 @@ function ProgressBar({ step, total }) {
             key={i}
             className={`h-1.5 rounded-full flex-1 transition-colors ${
               done
-                ? 'bg-emerald-500'
+                ? 'bg-primary'
                 : current
-                ? 'bg-emerald-500'
+                ? 'bg-primary'
                 : 'bg-border'
             }`}
           />
@@ -510,7 +510,7 @@ function Step2Home({ form, setForm, setField, errors }) {
       </Button>
 
       {hasCoord && (
-        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl">
+        <div className="flex items-center gap-2 text-sm text-primary bg-primarySoft border border-primaryBorder px-4 py-3 rounded-xl">
           <MapPin size={18} />
           <span>Local confirmado!</span>
         </div>
@@ -664,7 +664,7 @@ function Step3School({ form, setForm, setField, errors }) {
 
       {/* Os dois horários que o pai vai ler na tela dele */}
       <div className="pt-2 space-y-4">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 leading-relaxed">
+        <div className="bg-primarySoft border border-primaryBorder rounded-2xl p-3 text-xs text-primary leading-relaxed">
           <b className="block text-sm mb-0.5">O horário que você vai cumprir</b>
           É o que o pai vê pra ficar esperando na hora certa, e é por ele que
           sua rota se organiza sozinha. O horário da escola é outra coisa e não
@@ -897,8 +897,8 @@ function InviteCodeSuccess({ code, childId, childName, parentPhone, onDone }) {
   return (
     <div className="min-h-screen flex flex-col p-6 gap-5 justify-center">
       <div className="text-center space-y-3">
-        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-          <Check size={32} className="text-emerald-600" />
+        <div className="w-16 h-16 rounded-full bg-primaryChip flex items-center justify-center mx-auto">
+          <Check size={32} className="text-accentText" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-text">
@@ -1050,7 +1050,7 @@ function AnexarContratoAnterior({ childId }) {
 
   if (pronto) {
     return (
-      <p className="flex items-center justify-center gap-1.5 text-xs text-emerald-700">
+      <p className="flex items-center justify-center gap-1.5 text-xs text-primary">
         <Check size={14} />
         Contrato anterior guardado na ficha
       </p>

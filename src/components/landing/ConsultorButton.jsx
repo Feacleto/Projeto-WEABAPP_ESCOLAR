@@ -33,17 +33,17 @@ export default function ConsultorButton({
   const skin =
     tone === 'light'
       ? 'border-primary/25 bg-primary/5 text-primary'
-      : 'border-emerald-300/30 bg-emerald-400/10 text-emerald-200';
+      : 'border-onNightAccent/30 bg-onNightAccentFill/10 text-onNightAccent';
 
   return (
     <div className={`relative ${className}`}>
       <span
         aria-hidden
-        className="cta-ring absolute inset-0 rounded-full border border-emerald-400/40"
+        className="cta-ring absolute inset-0 rounded-full border border-onNightAccentFill/40"
       />
       <span
         aria-hidden
-        className="cta-ring cta-ring-2 absolute inset-0 rounded-full border border-emerald-400/30"
+        className="cta-ring cta-ring-2 absolute inset-0 rounded-full border border-onNightAccentFill/30"
       />
       <a
         href={salesWhatsAppLink(

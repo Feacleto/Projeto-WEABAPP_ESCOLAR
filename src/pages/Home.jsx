@@ -370,7 +370,7 @@ export default function Home() {
                   aria-current={active === id}
                   className={`block w-1.5 rounded-full transition-all duration-300 ${
                     active === id
-                      ? 'h-5 bg-emerald-300'
+                      ? 'h-5 bg-onNightAccent'
                       : 'h-1.5 bg-white/25 hover:bg-white/50'
                   }`}
                 />
@@ -394,7 +394,7 @@ export default function Home() {
             tabIndex={ctaVisivel ? 0 : -1}
             aria-hidden={!ctaVisivel}
             onClick={() => setSheet('lista')}
-            className="tap cta-shine relative w-full overflow-hidden rounded-3xl bg-emerald-400 px-4 py-2.5 text-[#0B1210] shadow-2xl shadow-black/50"
+            className="tap cta-shine relative w-full overflow-hidden rounded-3xl bg-onNightAccentFill px-4 py-2.5 text-[#0B1210] shadow-2xl shadow-black/50"
           >
             <span className="flex items-center justify-center gap-2 text-sm font-extrabold">
               <Sparkles size={15} />
@@ -427,7 +427,7 @@ export default function Home() {
             role pra ver mais
             <ChevronDown
               size={15}
-              className="animate-hint-bounce text-emerald-300"
+              className="animate-hint-bounce text-onNightAccent"
             />
           </button>
         </div>
@@ -467,7 +467,7 @@ export default function Home() {
               * acompanha todos os blocos — aqui o hero começa direto na
               * conversa. */}
             <p
-              className="font-mono text-[11px] uppercase tracking-[0.2em] text-emerald-300/80 rise"
+              className="font-mono text-[11px] uppercase tracking-[0.2em] text-onNightAccent/80 rise"
               style={{ '--d': '80ms' }}
             >
               app pra transporte escolar
@@ -478,7 +478,7 @@ export default function Home() {
               style={{ '--d': '160ms' }}
             >
               Você faz seu transporte.{' '}
-              <span className="text-emerald-300">
+              <span className="text-onNightAccent">
                 O app avisa, cobra e organiza
               </span>
               .
@@ -540,7 +540,7 @@ export default function Home() {
             <div className="mt-6 rise" style={{ '--d': '400ms' }}>
               <AssociarButton onClick={() => setSheet('lista')} />
               <p className="mt-2.5 flex items-center justify-center gap-1.5 text-[11px] text-white/45">
-                <Users size={12} className="text-emerald-300/70" />
+                <Users size={12} className="text-onNightAccent/70" />
                 {rodada.comPrazo}
               </p>
             </div>
@@ -553,7 +553,7 @@ export default function Home() {
         * três gestos aqui e chegava cansado no resto da página. */}
       <Snap id="perguntas" className={CLEAR_CTA}>
         <Reveal once={false} className="px-6 pb-10 pt-16">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70 rise">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-onNightAccent/70 rise">
             o que você ouve todo dia
           </p>
           <h2
@@ -576,7 +576,7 @@ export default function Home() {
               <ArtScreens />
             </div>
             <p
-              className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70 rise"
+              className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-onNightAccent/70 rise"
               style={{ '--d': '80ms' }}
             >
               como é por dentro
@@ -626,7 +626,7 @@ export default function Home() {
               style={{ '--d': '80ms' }}
             >
               Somos o seu principal parceiro pra{' '}
-              <span className="text-emerald-300">facilitar o seu dia a dia</span>.
+              <span className="text-onNightAccent">facilitar o seu dia a dia</span>.
             </h2>
             <p
               className="text-sm text-white/70 leading-relaxed mt-3 rise"
@@ -637,7 +637,7 @@ export default function Home() {
             </p>
 
             <p
-              className="font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70 mt-7 rise"
+              className="font-mono text-[11px] uppercase tracking-[0.18em] text-onNightAccent/70 mt-7 rise"
               style={{ '--d': '200ms' }}
             >
               quem já é associado
@@ -673,7 +673,7 @@ export default function Home() {
             </p>
           
           <p
-            className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70 rise"
+            className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-onNightAccent/70 rise"
             style={{ '--d': '80ms' }}
           >
             quem usa, recomenda
@@ -710,7 +710,7 @@ export default function Home() {
             </div>
             <div className={`${GLASS} p-6 space-y-5 mt-2 rise`}>
               <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300/70">
+                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-onNightAccent/70">
                   começar é simples
                 </p>
                 <h2 className="text-xl font-extrabold tracking-tight mt-1">
@@ -780,7 +780,7 @@ export default function Home() {
                   * vitrine vira âncora antes de existir proposta, e cada
                   * operação tem um tamanho — a conversa com o consultor é
                   * onde isso se resolve, e ela já é prometida no pitch. */}
-                <p className="rounded-xl border border-emerald-300/25 bg-emerald-400/10 p-3.5 text-[13px] leading-relaxed text-white/85">
+                <p className="rounded-xl border border-onNightAccent/25 bg-onNightAccentFill/10 p-3.5 text-[13px] leading-relaxed text-white/85">
                   <strong className="font-bold text-white">
                     A mensalidade das suas famílias é sua.
                   </strong>{' '}
@@ -823,7 +823,7 @@ export default function Home() {
             <div className="flex items-start gap-2.5">
               <ShieldCheck
                 size={16}
-                className="text-emerald-300 shrink-0 mt-0.5"
+                className="text-onNightAccent shrink-0 mt-0.5"
               />
               <p className="text-xs text-white/60 leading-relaxed">
                 Todos os dados são tratados conforme a LGPD. Endereço e
@@ -849,22 +849,22 @@ export default function Home() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-white"
                 >
-                  <Phone size={13} className="shrink-0 text-emerald-300" />
+                  <Phone size={13} className="shrink-0 text-onNightAccent" />
                   <span className="font-semibold">{DEV_PHONE_DISPLAY}</span>
                 </a>
                 <a
                   href={devMailLink('Quero o Alô Buzinou pro meu transporte')}
                   className="flex items-center gap-2 hover:text-white"
                 >
-                  <Mail size={13} className="shrink-0 text-emerald-300" />
+                  <Mail size={13} className="shrink-0 text-onNightAccent" />
                   <span className="font-semibold break-all">{DEV_EMAIL}</span>
                 </a>
                 <p className="flex items-center gap-2">
-                  <MapPin size={13} className="shrink-0 text-emerald-300" />
+                  <MapPin size={13} className="shrink-0 text-onNightAccent" />
                   {DEV_CITY}
                 </p>
                 <p className="flex items-center gap-2">
-                  <Check size={13} className="shrink-0 text-emerald-300" />
+                  <Check size={13} className="shrink-0 text-onNightAccent" />
                   <span className="font-mono">CNPJ {DEV_CNPJ}</span>
                 </p>
               </div>
@@ -989,16 +989,16 @@ function AssociarButton({ onClick }) {
     <div className="relative">
       <span
         aria-hidden
-        className="cta-ring absolute inset-0 rounded-2xl border border-emerald-300/60"
+        className="cta-ring absolute inset-0 rounded-2xl border border-onNightAccent/60"
       />
       <span
         aria-hidden
-        className="cta-ring cta-ring-2 absolute inset-0 rounded-2xl border border-emerald-300/40"
+        className="cta-ring cta-ring-2 absolute inset-0 rounded-2xl border border-onNightAccent/40"
       />
       <button
         type="button"
         onClick={onClick}
-        className="tap group cta-shine-white relative h-14 w-full overflow-hidden rounded-2xl bg-emerald-400 text-base font-extrabold text-[#0B1210] shadow-xl shadow-emerald-500/25 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+        className="tap group cta-shine-white relative h-14 w-full overflow-hidden rounded-2xl bg-onNightAccentFill text-base font-extrabold text-[#0B1210] shadow-xl shadow-emerald-500/25 focus:outline-none focus:ring-2 focus:ring-onNightAccent/60"
       >
         <span className="relative z-10 inline-flex w-full items-center justify-center gap-2">
           <Sparkles size={17} />

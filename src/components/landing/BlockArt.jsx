@@ -36,8 +36,8 @@ export function ArtRoad() {
       className="relative h-[72px] rounded-2xl bg-white/[0.04] border border-white/10 overflow-hidden"
     >
       <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-white/20" />
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-300/30 flex items-center justify-center">
-        <HomeIcon size={13} className="text-emerald-300" />
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-onNightAccentFill/20 border border-onNightAccent/30 flex items-center justify-center">
+        <HomeIcon size={13} className="text-onNightAccent" />
       </span>
       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-escola/20 border border-escolaBorder/30 flex items-center justify-center">
         <School size={13} className="text-escolaBorder" />
@@ -58,7 +58,7 @@ export function ArtRadar() {
         {[0, 660, 1320].map((d) => (
           <span
             key={d}
-            className="demo-ping absolute inset-0 rounded-full bg-emerald-400/35"
+            className="demo-ping absolute inset-0 rounded-full bg-onNightAccentFill/35"
             style={{ animationDelay: `${d}ms` }}
           />
         ))}
@@ -68,11 +68,11 @@ export function ArtRadar() {
       </div>
       {/* Dois celulares recebendo: o sinal vai pra família, não pro vazio. */}
       <span className="absolute left-4 top-3 w-6 h-9 rounded-md border border-white/25 bg-white/[0.06] flex items-start justify-center pt-1">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 demo-ping" />
+        <span className="w-1.5 h-1.5 rounded-full bg-onNightAccent demo-ping" />
       </span>
       <span className="absolute right-4 bottom-3 w-6 h-9 rounded-md border border-white/25 bg-white/[0.06] flex items-start justify-center pt-1">
         <span
-          className="w-1.5 h-1.5 rounded-full bg-emerald-300 demo-ping"
+          className="w-1.5 h-1.5 rounded-full bg-onNightAccent demo-ping"
           style={{ animationDelay: '900ms' }}
         />
       </span>
@@ -98,8 +98,8 @@ export function ArtCoins() {
       </div>
       <div className="relative w-24 h-10 rounded-xl bg-white/[0.07] border border-white/15 flex items-center justify-center">
         <span className="absolute -top-1 inset-x-3 h-1.5 rounded-full bg-white/10" />
-        <span className="w-6 h-6 rounded-full bg-emerald-400/20 border border-emerald-300/40 flex items-center justify-center">
-          <Check size={13} className="text-emerald-300" />
+        <span className="w-6 h-6 rounded-full bg-onNightAccentFill/20 border border-onNightAccent/40 flex items-center justify-center">
+          <Check size={13} className="text-onNightAccent" />
         </span>
       </div>
     </div>
@@ -111,8 +111,8 @@ export function ArtCoins() {
 export function ArtChat() {
   return (
     <div aria-hidden className="relative h-[80px] flex items-center justify-center gap-2">
-      <span className="w-10 h-10 rounded-xl bg-emerald-400/15 border border-emerald-300/25 flex items-center justify-center shrink-0">
-        <MessageSquare size={18} className="text-emerald-300" />
+      <span className="w-10 h-10 rounded-xl bg-onNightAccentFill/15 border border-onNightAccent/25 flex items-center justify-center shrink-0">
+        <MessageSquare size={18} className="text-onNightAccent" />
       </span>
       <div className="flex flex-col gap-1.5">
         {[0, 420, 840].map((d, i) => (
@@ -126,7 +126,7 @@ export function ArtChat() {
                 {[0, 160, 320].map((td) => (
                   <span
                     key={td}
-                    className="art-typing w-1 h-1 rounded-full bg-emerald-300"
+                    className="art-typing w-1 h-1 rounded-full bg-onNightAccent"
                     style={{ animationDelay: `${td}ms` }}
                   />
                 ))}
@@ -162,7 +162,7 @@ export function ArtScreens() {
           <span className="w-4 h-[3px] rounded-full bg-white/30" />
           <span className="w-6 h-[3px] rounded-full bg-white/15" />
           <span className="w-6 h-[3px] rounded-full bg-white/15" />
-          <span className="mt-auto mb-1.5 w-5 h-1 rounded-full bg-emerald-300/70" />
+          <span className="mt-auto mb-1.5 w-5 h-1 rounded-full bg-onNightAccent/70" />
         </span>
       ))}
     </div>
@@ -186,13 +186,13 @@ export function ArtSteps() {
         ].map(([n, left]) => (
           <span
             key={n}
-            className="absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-white/[0.08] border border-white/20 font-mono text-[11px] font-bold text-emerald-300 flex items-center justify-center"
+            className="absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-white/[0.08] border border-white/20 font-mono text-[11px] font-bold text-onNightAccent flex items-center justify-center"
             style={{ left }}
           >
             {n}
           </span>
         ))}
-        <span className="art-travel absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-emerald-400 shadow-lg shadow-emerald-500/40" />
+        <span className="art-travel absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-onNightAccentFill shadow-lg shadow-emerald-500/40" />
       </div>
     </div>
   );
@@ -203,13 +203,13 @@ export function ArtSteps() {
 export function ArtBadge() {
   return (
     <div aria-hidden className="relative h-[76px] flex items-center justify-center">
-      <span className="absolute w-16 h-16 rounded-full bg-emerald-400/20 demo-ping" />
+      <span className="absolute w-16 h-16 rounded-full bg-onNightAccentFill/20 demo-ping" />
       <span className="art-orbit absolute w-[74px] h-[74px]">
-        <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-emerald-300" />
+        <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-onNightAccent" />
         <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-secondary" />
       </span>
       <span className="relative w-12 h-12 rounded-2xl bg-white/[0.09] border border-white/20 flex items-center justify-center">
-        <Handshake size={22} className="text-emerald-300" />
+        <Handshake size={22} className="text-onNightAccent" />
       </span>
     </div>
   );
@@ -229,10 +229,10 @@ export function ArtSeats() {
           <Users size={16} className="text-white/45" />
         </span>
       ))}
-      <span className="art-blink w-10 h-12 rounded-xl border-2 border-dashed border-emerald-300/70 bg-emerald-400/10 flex items-center justify-center">
-        <Plus size={18} className="text-emerald-300" />
+      <span className="art-blink w-10 h-12 rounded-xl border-2 border-dashed border-onNightAccent/70 bg-onNightAccentFill/10 flex items-center justify-center">
+        <Plus size={18} className="text-onNightAccent" />
       </span>
-      <ArrowRight size={16} className="text-emerald-300/60" />
+      <ArrowRight size={16} className="text-onNightAccent/60" />
     </div>
   );
 }

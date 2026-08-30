@@ -103,14 +103,14 @@ function AddChildBody({ onDone }) {
         </form>
       ) : (
         <div className="space-y-4">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-800">
+          <div className="bg-primarySoft border border-primaryBorder rounded-2xl p-4 space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
               encontramos
             </p>
             <p className="text-xl font-bold text-text">
               {preview.childFirstName}
             </p>
-            <p className="text-xs text-emerald-900/75">
+            <p className="text-xs text-primary/75">
               {preview.companyName ||
                 (preview.driverFirstName
                   ? `Perua do Tio ${preview.driverFirstName}`

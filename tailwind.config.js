@@ -56,6 +56,14 @@ export default {
         onNightMuted: '#B3B6B5', // 9,3:1. Substitui SEIS opacidades de branco
         // (white/70 a white/40) usadas pro mesmo papel, duas das quais
         // reprovavam contraste — inclusive o CNPJ e os links legais do rodapé.
+        //
+        // O VERDE NO ESCURO é outro verde. O `primary` da marca (#1F5F3F) é
+        // quase invisível sobre o quase-preto — 1,4:1 — então a porta escura
+        // sempre usou um verde claro, e ele merece nome em vez de continuar
+        // como `emerald-300` solto em onze arquivos. São dois porque têm dois
+        // papéis, igual ao âmbar: um é palavra e ícone, o outro é massa.
+        onNightAccent: '#6EE7B7', // texto, ícone e borda sobre night
+        onNightAccentFill: '#34D399', // preenchimento e tinta sobre night
 
         // ── TEXTO ───────────────────────────────────────────────────────
         text: '#111827', // 15,6:1 sobre bg. Não mexer: é a folga do sol.

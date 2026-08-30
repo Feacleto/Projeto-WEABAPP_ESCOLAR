@@ -137,7 +137,7 @@ function Conteudo() {
         </p>
         <p
           className={`mt-1 text-3xl font-bold ${
-            abertas.length === 0 ? 'text-emerald-700' : 'text-text'
+            abertas.length === 0 ? 'text-primary' : 'text-text'
           }`}
         >
           {formatCurrency(total)}
@@ -172,7 +172,7 @@ function Conteudo() {
                       {f.criancas} criança(s) · base {formatCurrency(f.base)}
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-primary">
                     <Check size={13} />
                     {f.isento ? 'isento' : formatCurrency(f.total)}
                   </span>

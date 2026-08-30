@@ -60,7 +60,7 @@ export default function ReceiptPicker({ file, onChange }) {
 
   if (file) {
     return (
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-3">
+      <div className="bg-primarySoft border border-primaryBorder rounded-xl p-3 flex items-center gap-3">
         {preview ? (
           <img
             src={preview}
@@ -68,13 +68,13 @@ export default function ReceiptPicker({ file, onChange }) {
             className="w-12 h-12 rounded-lg object-cover shrink-0"
           />
         ) : (
-          <div className="w-12 h-12 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-lg bg-primaryChip text-primary flex items-center justify-center shrink-0">
             <FileText size={22} />
           </div>
         )}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-text flex items-center gap-1">
-            <Check size={14} className="text-emerald-600" />
+            <Check size={14} className="text-accentText" />
             Comprovante anexado
           </p>
           <p className="text-xs text-textMuted truncate">{file.name}</p>

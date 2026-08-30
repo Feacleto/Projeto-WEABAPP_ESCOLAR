@@ -79,7 +79,7 @@ export const PAGO_ATRASADO = { label: 'Pago atrasado', tone: 'late-ok' };
 
 /** Classes Tailwind do chip por tom — mesma cor nas duas pontas. */
 export const TONE_CLASSES = {
-  ok: 'bg-emerald-100 text-emerald-800',
+  ok: 'bg-primaryChip text-primary',
   wait: 'bg-warningChip text-warningText',
   late: 'bg-dangerChip text-dangerText',
   // Entrou, mas atrasado. Verde-acinzentado com texto âmbar: lê como

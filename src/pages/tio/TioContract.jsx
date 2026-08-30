@@ -79,15 +79,15 @@ export default function TioContract() {
       <div className="p-5 space-y-4">
         {/* Status do aceite */}
         {accepted ? (
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 p-4 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+          <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 border border-primaryBorder p-4 flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
               <CheckCircle2 size={22} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-emerald-900 leading-tight">
+              <p className="font-bold text-primary leading-tight">
                 Aceito pelo responsável
               </p>
-              <p className="text-xs text-emerald-800 mt-0.5">
+              <p className="text-xs text-primary mt-0.5">
                 {child.contractAcceptedName}
               </p>
             </div>

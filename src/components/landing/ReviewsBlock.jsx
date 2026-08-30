@@ -70,7 +70,7 @@ export function ReviewCard({ review, exemplo }) {
 
   return (
     <article className="flex w-[17.5rem] shrink-0 snap-center flex-col rounded-3xl border border-white/10 bg-white/[0.055] p-5">
-      <Quote size={20} className="mb-2 text-emerald-300/60" />
+      <Quote size={20} className="mb-2 text-onNightAccent/60" />
       <p className="flex-1 text-sm leading-relaxed text-white/85">
         “{comment}”
       </p>

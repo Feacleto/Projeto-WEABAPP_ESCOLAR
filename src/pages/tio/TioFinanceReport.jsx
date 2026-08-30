@@ -219,14 +219,14 @@ export default function TioFinanceReport() {
 
           {/* Resumo geral */}
           <section className="grid grid-cols-2 gap-3">
-            <div className="bg-emerald-50 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-900">
+            <div className="bg-primarySoft rounded-2xl p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
                 Total recebido
               </p>
-              <p className="text-2xl font-bold text-emerald-900 tabular-nums mt-1">
+              <p className="text-2xl font-bold text-primary tabular-nums mt-1">
                 {formatCurrency(totalReceived)}
               </p>
-              <p className="text-[11px] text-emerald-700 mt-1">12 meses</p>
+              <p className="text-[11px] text-primary mt-1">12 meses</p>
             </div>
             <div className="bg-warningSoft rounded-2xl p-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-warningText">
@@ -328,7 +328,7 @@ export default function TioFinanceReport() {
                           <td className="py-2 px-2 capitalize">
                             {formatMonthLabel(mk)}
                           </td>
-                          <td className="py-2 px-2 text-right tabular-nums text-emerald-700 font-semibold">
+                          <td className="py-2 px-2 text-right tabular-nums text-primary font-semibold">
                             {formatCurrency(slot.received)}
                           </td>
                           <td className="py-2 px-2 text-right tabular-nums text-warningText">

@@ -799,7 +799,7 @@ function QuemPagou({ pagos, childById }) {
                 />
                 <span
                   aria-hidden
-                  className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-emerald-500 text-white"
+                  className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-primary text-white"
                 >
                   <Check size={10} strokeWidth={3.5} />
                 </span>
@@ -998,7 +998,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
               title="PIX"
               subtitle="Recebido por PIX"
               gradient="from-emerald-50 to-green-100"
-              iconBg="bg-emerald-600"
+              iconBg="bg-primary"
               onClick={() => onPick('pix')}
               disabled={loading}
             />

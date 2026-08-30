@@ -226,7 +226,7 @@ export default function PartnerPitch({ indice, onIndice, onDone, onSair }) {
             {mudo ? (
               <VolumeX size={13} className="text-white/50" />
             ) : (
-              <Volume2 size={13} className="text-emerald-300" />
+              <Volume2 size={13} className="text-onNightAccent" />
             )}
             {mudo && <span className="text-white/50">som off</span>}
             {!mudo && falando && (
@@ -234,7 +234,7 @@ export default function PartnerPitch({ indice, onIndice, onDone, onSair }) {
                 {[0, 160, 320].map((d) => (
                   <span
                     key={d}
-                    className="art-typing block w-[2px] rounded-full bg-emerald-300"
+                    className="art-typing block w-[2px] rounded-full bg-onNightAccent"
                     style={{ height: 8, animationDelay: `${d}ms` }}
                   />
                 ))}
@@ -260,7 +260,7 @@ export default function PartnerPitch({ indice, onIndice, onDone, onSair }) {
       <div key={passo.id} className="animate-demo-screen-in relative">
         <Art />
 
-        <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
+        <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
           {passo.eyebrow}
         </p>
         <h3 className="mt-1.5 text-xl font-extrabold leading-tight tracking-tight">
@@ -286,9 +286,9 @@ export default function PartnerPitch({ indice, onIndice, onDone, onSair }) {
               key={p.id}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 idx === i
-                  ? 'w-5 bg-emerald-300'
+                  ? 'w-5 bg-onNightAccent'
                   : idx < i
-                    ? 'w-1.5 bg-emerald-300/50'
+                    ? 'w-1.5 bg-onNightAccent/50'
                     : 'w-1.5 bg-white/20'
               }`}
             />
@@ -307,7 +307,7 @@ export default function PartnerPitch({ indice, onIndice, onDone, onSair }) {
         <button
           type="button"
           onClick={avancar}
-          className="tap cta-shine-white relative inline-flex h-11 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-emerald-400 px-5 text-sm font-extrabold text-[#0B1210]"
+          className="tap cta-shine-white relative inline-flex h-11 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-onNightAccentFill px-5 text-sm font-extrabold text-[#0B1210]"
         >
           {ultimo ? 'Quero ser associado' : 'Continuar'}
           <ArrowRight size={16} />
@@ -337,13 +337,13 @@ export default function PartnerPitch({ indice, onIndice, onDone, onSair }) {
 function ArtParceria() {
   return (
     <div aria-hidden className="relative flex h-24 items-center justify-center">
-      <span className="absolute h-20 w-20 rounded-full bg-emerald-400/20 demo-ping" />
+      <span className="absolute h-20 w-20 rounded-full bg-onNightAccentFill/20 demo-ping" />
       <span className="art-orbit absolute h-[86px] w-[86px]">
-        <span className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-emerald-300" />
+        <span className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-onNightAccent" />
         <span className="absolute -bottom-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-secondary" />
       </span>
       <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/[0.09]">
-        <Handshake size={26} className="text-emerald-300" />
+        <Handshake size={26} className="text-onNightAccent" />
       </span>
     </div>
   );
@@ -358,19 +358,19 @@ function ArtInfra() {
         {[0, 300, 600].map((d) => (
           <span
             key={d}
-            className="art-typing h-1.5 w-1.5 rounded-full bg-emerald-300"
+            className="art-typing h-1.5 w-1.5 rounded-full bg-onNightAccent"
             style={{ animationDelay: `${d}ms` }}
           />
         ))}
       </div>
 
       <span className="flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-xl border border-white/15 bg-white/[0.07]">
-        <Database size={20} className="text-emerald-300" />
+        <Database size={20} className="text-onNightAccent" />
         <span className="flex gap-1">
           {[0, 200].map((d) => (
             <span
               key={d}
-              className="art-typing h-1 w-1 rounded-full bg-emerald-300/80"
+              className="art-typing h-1 w-1 rounded-full bg-onNightAccent/80"
               style={{ animationDelay: `${d}ms` }}
             />
           ))}
@@ -410,9 +410,9 @@ function ArtVagas() {
           <Bus size={13} className="text-white/40" />
         </span>
       ))}
-      <span className="art-blink flex h-16 w-12 flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-emerald-300/70 bg-emerald-400/10">
-        <Plus size={16} className="text-emerald-300" />
-        <span className="font-mono text-[8px] uppercase tracking-wider text-emerald-300">
+      <span className="art-blink flex h-16 w-12 flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-onNightAccent/70 bg-onNightAccentFill/10">
+        <Plus size={16} className="text-onNightAccent" />
+        <span className="font-mono text-[8px] uppercase tracking-wider text-onNightAccent">
           vaga
         </span>
       </span>
@@ -434,8 +434,8 @@ function ArtConsultor() {
       aria-hidden
       className="relative flex h-24 items-center justify-center gap-3"
     >
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-400/15">
-        <MessageCircle size={20} className="text-emerald-300" />
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-onNightAccent/30 bg-onNightAccentFill/15">
+        <MessageCircle size={20} className="text-onNightAccent" />
       </span>
 
       {/* a conversa indo e voltando */}
@@ -444,7 +444,7 @@ function ArtConsultor() {
           <span
             key={d}
             className={`art-typing h-2.5 rounded-full ${
-              i === 1 ? 'ml-4 w-12 bg-emerald-300/40' : 'w-16 bg-white/25'
+              i === 1 ? 'ml-4 w-12 bg-onNightAccent/40' : 'w-16 bg-white/25'
             }`}
             style={{ animationDelay: `${d}ms` }}
           />

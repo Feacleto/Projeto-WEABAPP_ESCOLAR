@@ -170,11 +170,11 @@ export default function TioChildStatement() {
           </header>
 
           <section className="grid grid-cols-2 gap-3">
-            <div className="bg-emerald-50 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-900">
+            <div className="bg-primarySoft rounded-2xl p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
                 Pago
               </p>
-              <p className="text-2xl font-bold text-emerald-900 tabular-nums mt-1">
+              <p className="text-2xl font-bold text-primary tabular-nums mt-1">
                 {formatCurrency(totais.pago)}
               </p>
             </div>
@@ -278,7 +278,7 @@ export default function TioChildStatement() {
 }
 
 const SITUACAO = {
-  paid: { rotulo: 'Pago', classe: 'font-semibold text-emerald-700' },
+  paid: { rotulo: 'Pago', classe: 'font-semibold text-primary' },
   claimed: {
     rotulo: 'Aguardando confirmação',
     classe: 'font-semibold text-blue-700',

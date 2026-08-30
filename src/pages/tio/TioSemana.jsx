@@ -270,7 +270,7 @@ const ESTILO = {
   [ABSENCE_TYPES.FULL]: { letra: 'F', classe: 'bg-rose-100 text-rose-700 border-rose-200' },
   [ABSENCE_TYPES.NO_PICKUP]: { letra: 'L', classe: 'bg-warningChip text-warningText border-warningBorder' },
   [ABSENCE_TYPES.NO_DROPOFF]: { letra: 'B', classe: 'bg-escolaChip text-escola border-escolaBorder' },
-  [ABSENCE_TYPES.ALREADY_PICKED]: { letra: 'P', classe: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  [ABSENCE_TYPES.ALREADY_PICKED]: { letra: 'P', classe: 'bg-primaryChip text-primary border-primaryBorder' },
 };
 
 function Marca({ tipo }) {

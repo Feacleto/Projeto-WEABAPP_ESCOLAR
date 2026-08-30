@@ -396,7 +396,7 @@ export default function TioEscolas() {
               </Button>
 
               {editando.lat != null && (
-                <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl">
+                <div className="flex items-center gap-2 text-sm text-primary bg-primarySoft border border-primaryBorder px-4 py-3 rounded-xl">
                   <Check size={18} />
                   <span>Local confirmado</span>
                 </div>

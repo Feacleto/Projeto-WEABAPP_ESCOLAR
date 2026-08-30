@@ -525,7 +525,7 @@ function Delta({ calc }) {
   return (
     <span
       className={`text-xs font-semibold ${
-        abaixo ? 'text-danger' : 'text-emerald-700'
+        abaixo ? 'text-danger' : 'text-primary'
       }`}
     >
       {abaixo ? '−' : '+'}
@@ -845,7 +845,7 @@ function Aviso({ children }) {
 
 const TONS = {
   neutral: 'bg-neutro text-textMuted',
-  emerald: 'bg-emerald-100 text-emerald-700',
+  emerald: 'bg-primaryChip text-primary',
   warning: 'bg-warningChip text-warningText',
   violet: 'bg-escolaChip text-escola',
 };

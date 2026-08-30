@@ -170,7 +170,7 @@ export default function IncomingCallModal({ call, adminName }) {
             icon={CheckCircle2}
             onClick={onDismiss}
             loading={submitting}
-            className="!h-16 !text-lg !bg-white !text-emerald-700 hover:!bg-white"
+            className="!h-16 !text-lg !bg-white !text-primary hover:!bg-white"
           >
             Fechar
           </Button>
@@ -180,7 +180,7 @@ export default function IncomingCallModal({ call, adminName }) {
               icon={CheckCircle2}
               onClick={onAck}
               loading={submitting}
-              className="!h-16 !text-lg !bg-white !text-emerald-700 hover:!bg-white shadow-2xl"
+              className="!h-16 !text-lg !bg-white !text-primary hover:!bg-white shadow-2xl"
             >
               Estou indo!
             </Button>

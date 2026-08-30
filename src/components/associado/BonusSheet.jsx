@@ -158,12 +158,12 @@ export default function BonusSheet({ open, onClose }) {
 
         {meses ? (
           <>
-            <SheetCard className="w-full !border-emerald-200 !bg-emerald-50 text-center">
+            <SheetCard className="w-full !border-primaryBorder !bg-primarySoft text-center">
               <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
                 <PartyPopper size={15} className="text-primary" />
                 {meses} {meses === 1 ? 'mês' : 'meses'} sem taxa
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-emerald-900/80">
+              <p className="mt-1 text-xs leading-relaxed text-primary/80">
                 Vale a partir do primeiro mês em que a taxa passaria a ser
                 cobrada. Fica registrado na sua conta — ninguém precisa lembrar.
               </p>

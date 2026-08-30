@@ -169,7 +169,7 @@ export default function ContratoDoc({ dados, aceite }) {
         {aceite?.aceitoEm ? (
           <>
             <p>
-              <strong className="text-emerald-700">Aceito eletronicamente</strong>{' '}
+              <strong className="text-primary">Aceito eletronicamente</strong>{' '}
               por {aceite.aceitoPorNome} em{' '}
               {new Date(
                 aceite.aceitoEm?.toDate?.() || aceite.aceitoEm

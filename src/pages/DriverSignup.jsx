@@ -151,7 +151,7 @@ export default function DriverSignup() {
             <ArrowLeft size={16} /> Voltar
           </Link>
 
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
             vaga limitada por estrutura
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
