@@ -44,6 +44,22 @@ export function useArrastarPraFechar(onClose) {
     // Só o botão principal / o dedo. Botão do meio e caneta com o botão
     // lateral apertado não são intenção de fechar nada.
     if (e.button !== undefined && e.button !== 0) return;
+
+    // O GESTO NÃO COMEÇA EM CIMA DE UM CONTROLE — e ignorar isto quebrou o X.
+    //
+    // `setPointerCapture` redireciona todo evento seguinte, `pointerup`
+    // incluído, pro elemento que capturou. Como a área de arrasto é a barra do
+    // título e o X mora dentro dela, o `pointerup` deixava de acontecer sobre
+    // o botão e o navegador nunca disparava o `click`: o X ficava inerte, sem
+    // erro nenhum no console.
+    //
+    // Vale pra qualquer controle, e não só pro X: voltar, abas e campos de
+    // busca também moram em cabeçalho de folha por aí. Quem toca num controle
+    // quer o controle; quem quer arrastar toca no vazio ou na alça.
+    if (e.target?.closest?.('button, a, input, textarea, select, label, [role="button"]')) {
+      return;
+    }
+
     inicio.current = { y: e.clientY, t: Date.now() };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
