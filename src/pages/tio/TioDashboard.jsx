@@ -53,6 +53,8 @@ import {
 } from '../../services/routeStatusService';
 import { publicarOrdemDoDia } from '../../services/ridesService';
 import { greet } from '../../utils/greeting';
+import { ChildDetailSheet } from '../ChildDetail';
+import { useRelogio } from '../../hooks/useRelogio';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 
 /**
@@ -115,6 +117,16 @@ export default function TioDashboard() {
   const { payments } = usePaymentsByMonth(getCurrentMonthKey());
   const todayKey = getDateKey();
   const { absences, byChildId: declaracoes } = useAbsences(todayKey);
+
+  // A hora do cabeçalho, andando de minuto em minuto.
+  const agora = useRelogio();
+  const horaAgora = agora.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  // Qual criança está com a ficha aberta. `null` = nenhuma.
+  const [fichaDe, setFichaDe] = useState(null);
 
   const [rotaAtiva, setRotaAtiva] = useState(false);
   const [mostrarReceber, setMostrarReceber] = useState(false);
@@ -239,12 +251,21 @@ export default function TioDashboard() {
     }
   }
 
-  const primeiroNome = profile?.name?.split(' ')[0] || 'Tio';
+  // A SAUDAÇÃO CHAMA ELE PELA MARCA, e não pelo nome da conta.
+  //
+  // `name` é o nome civil — o que vai no contrato e na fila do dono. Muita
+  // gente do ramo é conhecida só pelo apelido, e o app cumprimentando "José
+  // Ednaldo" quem o mundo chama de Tio Nino soa como carta de banco.
+  //
+  // Cai no primeiro nome quando a marca não foi configurada, e em "Tio" quando
+  // nem o nome existe: a saudação nunca fica pela metade.
+  const primeiroNome =
+    profile?.marcaNome?.trim() || profile?.name?.split(' ')[0] || 'Tio';
   const proximo = pendentes[0] || null;
 
   return (
     <>
-      <Header title="Início" />
+      <Header title="Início" marca />
 
       {/* INICIAR / ENCERRAR ROTA — FIXO NO TOPO, SEMPRE.
         *
@@ -273,10 +294,22 @@ export default function TioDashboard() {
           * tela é caro demais pra gastar com cortesia enquanto ele dirige. */}
         {estado !== 'dirigindo' && (
           <div className="px-5 pt-5">
-            <p className="text-xs text-textMuted capitalize">{formatLongDate()}</p>
+            {/* A HORA AO LADO DA DATA.
+              *
+              * O cartão de cima fala em horário ("próxima viagem 17h30") e a
+              * tela não dizia que horas são. Ele conferia no relógio do
+              * sistema pra saber se dava tempo — duas leituras pra uma
+              * pergunta só. O relógio anda sozinho: `useRelogio` re-renderiza
+              * a cada minuto, senão a hora congela na abertura do app e
+              * mente com cara de informação. */}
+            <p className="text-xs text-textMuted">
+              <span className="capitalize">{formatLongDate()}</span>
+              <span className="mx-1.5 text-textMuted/50">·</span>
+              <span className="tabular-nums">{horaAgora}</span>
+            </p>
             <div className="flex items-center gap-3 mt-1">
               <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
-                {greet(new Date(), profile?.greetingHours)}, {primeiroNome}!
+                {greet(new Date())}, {primeiroNome}!
               </h1>
               <FestiveBadge />
             </div>
@@ -309,17 +342,37 @@ export default function TioDashboard() {
                 <span className="text-4xl font-extrabold text-primary tabular-nums leading-none">
                   {horaCurta(deMinutos(bloco.inicio))}
                 </span>
-                <span className="text-sm text-textMuted">
-                  {faltamMin > 1
-                    ? `daqui a ${formataEspera(faltamMin)}`
-                    : faltamMin >= 0
-                    ? 'agora'
-                    : `atrasado ${formataEspera(-faltamMin)}`}
-                </span>
+                {/* NÃO EXISTE "ATRASADO" AQUI, e a conta que existia mentia.
+                  *
+                  * `faltamMin` é a distância até o horário do bloco, e quando
+                  * ele já passou o número vira negativo — a tela dizia
+                  * "atrasado 3h09". Só que a viagem das 17h30 não está
+                  * atrasada às 20h39 de um sábado: ela é a PRÓXIMA, e o
+                  * horário que aparece é o de amanhã.
+                  *
+                  * Mesmo dentro do dia útil o rótulo acusa quem não fez nada
+                  * de errado: quem entregou todo mundo e não tocou em "iniciar
+                  * rota" lia que estava atrasado. Cobrança sobre um fato que o
+                  * app não sabe é o tipo de aviso que se aprende a ignorar —
+                  * e aí o aviso que importa some junto.
+                  *
+                  * Só a contagem PRA FRENTE sobrou, que é informação de
+                  * verdade: quanto falta pra sair. */}
+                {faltamMin > 1 ? (
+                  <span className="text-sm text-textMuted">
+                    daqui a {formataEspera(faltamMin)}
+                  </span>
+                ) : faltamMin >= 0 ? (
+                  <span className="text-sm text-textMuted">agora</span>
+                ) : null}
               </div>
 
               {proximo && (
-                <div className="flex items-center gap-3 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setFichaDe(proximo.child.id)}
+                  className="tap flex w-full items-center gap-3 text-left mt-3"
+                >
                   <Avatar
                     photoURL={proximo.child.photoURL}
                     gender={proximo.child.gender}
@@ -340,7 +393,8 @@ export default function TioDashboard() {
                       {pendentes.length === 1 ? 'criança' : 'crianças'}
                     </p>
                   </div>
-                </div>
+                  <ChevronRight size={16} className="shrink-0 text-textMuted" />
+                </button>
               )}
 
               {/* O botão de iniciar subiu pra barra fixa no topo da tela.
@@ -349,7 +403,7 @@ export default function TioDashboard() {
                 * gesto que antecede a partida. */}
             </div>
 
-            <ListaDaViagem bloco={bloco} />
+            <ListaDaViagem bloco={bloco} onAbrirFicha={setFichaDe} />
             <AcoesDeCadastro
               totalCriancas={children.length}
               totalEscolas={escolas.length}
@@ -439,7 +493,7 @@ export default function TioDashboard() {
                 Sua turma ainda está vazia
               </p>
               <p className="text-sm text-textMuted mt-1 max-w-xs mx-auto">
-                Cadastre a escola, depois as crianças e a hora que você combinou
+                Cadastre a escola, depois as crianças e a hora que você definiu
                 com cada responsável. A rota se monta a partir disso.
               </p>
               <button
@@ -463,6 +517,15 @@ export default function TioDashboard() {
         )}
       </div>
 
+      {/* A ficha da criança, por cima do painel — mesma folha que o pai usa.
+        * `childId` só existe quando alguém tocou numa criança, e é o que
+        * mantém a assinatura da ficha fechada enquanto ninguém pediu. */}
+      <ChildDetailSheet
+        open={!!fichaDe}
+        childId={fichaDe}
+        onClose={() => setFichaDe(null)}
+      />
+
       <SchoolBroadcastSheet
         open={broadcastOpen}
         onClose={() => setBroadcastOpen(false)}
@@ -484,7 +547,7 @@ export default function TioDashboard() {
  * Substitui os quatro cartões de contagem que ficavam aqui. Eles diziam
  * QUANTOS; isto diz QUEM — e "quem" é a pergunta que ele faz antes de sair.
  */
-function ListaDaViagem({ bloco }) {
+function ListaDaViagem({ bloco, onAbrirFicha }) {
   if (!bloco?.paradas?.length) return null;
   return (
     <section className="space-y-2">
@@ -496,12 +559,24 @@ function ListaDaViagem({ bloco }) {
         <ParadaEscola escolas={bloco.escolas} />
       )}
 
+      {/* CADA CRIANÇA ABRE A FICHA DELA.
+        *
+        * O nome estava ali, com foto e horário, e não levava a lugar nenhum:
+        * pra conferir endereço, telefone da mãe ou a escola, o motorista saía
+        * do Início, entrava em Minha turma, procurava na lista e voltava. Três
+        * telas pra ler um dado que já estava com o dedo em cima.
+        *
+        * A ficha abre como FOLHA por cima, e não como navegação: ele está
+        * olhando a viagem do dia, e perder essa tela pra ver um telefone é o
+        * pedágio que a folha existe pra não cobrar. */}
       {bloco.paradas.map((p) => {
         const fora = !precisaDaPerua(p.estado);
         return (
-          <div
+          <button
+            type="button"
             key={p.child.id}
-            className={`rounded-xl px-3 py-2 flex items-center gap-2.5 border ${
+            onClick={() => onAbrirFicha?.(p.child.id)}
+            className={`tap w-full text-left rounded-xl px-3 py-2 flex items-center gap-2.5 border ${
               fora ? 'bg-gray-50 border-gray-200 opacity-70' : 'bg-card border-gray-200'
             }`}
           >
@@ -533,7 +608,8 @@ function ListaDaViagem({ bloco }) {
                 </span>
               )}
             </span>
-          </div>
+            <ChevronRight size={16} className="shrink-0 text-textMuted" />
+          </button>
         );
       })}
 
@@ -678,7 +754,7 @@ function AcoesDeCadastro({ totalCriancas, totalEscolas, semHorario, onBroadcast,
           icon={ListOrdered}
           tour="horarios"
           titulo="Editar rota padrão"
-          subtitulo="Os horários que você combinou com cada família"
+          subtitulo="Os horários que você definiu — é o que cada família vê"
           aviso={semHorario > 0 ? `${semHorario} a confirmar` : null}
           onClick={() => navigate('/tio/horarios')}
         />

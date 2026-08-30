@@ -4,12 +4,24 @@ import Header from '../../components/layout/Header';
 import EmptyState from '../../components/common/EmptyState';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
+import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { AGENDA_TYPES, watchAdminAgenda } from '../../services/agendaService';
 import { formatDateTime } from '../../utils/formatters';
 
 /**
- * Histórico de avisos da agenda enviados pelo Tio.
- * Filtragem simples por escopo (todos / criança / escola) na barra superior.
+ * A AGENDA — e a razão de parecerem duas.
+ *
+ * Só existe UMA: `agendaEntries`, com um serviço só. O que havia eram duas
+ * PORTAS que não se encontravam — o botão "Avisar pais" morava na tela de
+ * crianças e escrevia; esta tela lia e não escrevia. Quem chegava aqui
+ * encontrava um vazio dizendo "use o botão na tela de crianças", ou seja: a
+ * tela do assunto mandava a pessoa embora pra fazer o assunto.
+ *
+ * O botão agora mora nas duas. Não é duplicação de estado — `TioAgendaFAB` é
+ * o mesmo componente, gravando na mesma coleção, e o histórico embaixo é a
+ * lista dele. Mandar um aviso e ver o que foi mandado viraram um lugar só.
+ *
+ * Filtragem por escopo (todos / criança / escola) na barra superior.
  */
 export default function TioAgenda() {
   const { user } = useAuth();
@@ -73,7 +85,7 @@ export default function TioAgenda() {
           <EmptyState
             icon={Notebook}
             title="Nenhum aviso ainda"
-            description="Use o botão de agenda na tela de crianças pra mandar o primeiro aviso pros pais."
+            description="Toque em “Avisar pais”, aqui embaixo, pra mandar o primeiro."
           />
         ) : (
           <div className="space-y-2">
@@ -83,6 +95,10 @@ export default function TioAgenda() {
           </div>
         )}
       </div>
+
+      {/* O MESMO botão da tela de crianças, e não uma cópia: escrever e ler a
+        * agenda passam a caber num lugar só. */}
+      <TioAgendaFAB />
     </>
   );
 }
