@@ -4,6 +4,8 @@ export default {
   theme: {
     extend: {
       colors: {
+        // ── SUPERFÍCIES CLARAS ──────────────────────────────────────────
+        //
         // FUNDO DA PÁGINA — cinza com viés verde levíssimo.
         //
         // O valor anterior (#F7F8F7) tinha só 6% de separação do branco dos
@@ -23,17 +25,87 @@ export default {
         // de observação). Nome próprio pra o código novo não precisar de
         // bg-gray-50 solto, que perde o sentido se o fundo mudar de novo.
         surface: '#F6F8F7',
-        primary: '#1F5F3F',
+        // A LINHA DESATIVADA: criança fora da rota de hoje, campo disabled.
+        // Não é o mesmo que `surface` — aquilo é um bloco que RECUA, este é
+        // um item que APAGOU. Substitui os usos de gray-50.
+        sunken: '#F9FAFB',
+
+        // AS TRÊS BORDAS, do mais fraco pro mais forte. Existiam como
+        // gray-100/200/300 espalhados (~340 usos), e a escolha entre eles
+        // era pelo dedo, não pela regra.
+        divider: '#F3F4F6', // separador DENTRO de um cartão; base do cabeçalho
+        border: '#E5E7EB', // a borda de tudo — a maioria absoluta
+        borderStrong: '#D1D5DB', // borda de campo, tracejado, e a ALÇA de
+        // arrastar das folhas (que é affordance física: precisa ser vista)
+
+        // ── SUPERFÍCIE ESCURA — só a home pública do motorista ───────────
+        //
+        // Ela está COMPRANDO: escuro, negócio, decisão. A porta da família é
+        // clara, igual ao app dela — ver o cabeçalho de Familia.jsx.
+        night: '#0B1210',
+        glass: 'rgba(255,255,255,0.055)',
+        glassBorder: 'rgba(255,255,255,0.1)',
+        onNight: '#FFFFFF', // 18,7:1 sobre night
+        onNightMuted: '#B3B6B5', // 9,3:1. Substitui SEIS opacidades de branco
+        // (white/70 a white/40) usadas pro mesmo papel, duas das quais
+        // reprovavam contraste — inclusive o CNPJ e os links legais do rodapé.
+
+        // ── TEXTO ───────────────────────────────────────────────────────
+        text: '#111827', // 15,6:1 sobre bg. Não mexer: é a folga do sol.
+        // CORRIGIDO. Era #6B7280, que dava 4,8:1 sobre o branco do cartão e
+        // só 4,3:1 sobre o fundo da PÁGINA — passava onde foi testado e
+        // reprovava onde mais aparece. É o segundo texto mais usado do app.
+        // Agora: 5,6:1 sobre bg, 6,4:1 sobre card, 5,8:1 sobre divider.
+        textMuted: '#55606E',
+
+        // ── MARCA E AÇÃO ────────────────────────────────────────────────
+        primary: '#1F5F3F', // 6,7:1 sobre bg; branco sobre ele dá 7,6:1
         primaryDark: '#143F2A',
-        secondary: '#F5A623',
-        secondaryDark: '#D48816',
+        // O verde-limão das ondas da marca. Em interface significa CONCLUÍDO.
+        // Só preenchimento e ícone — como TEXTO dá 2,3:1 e é ilegível.
         accent: '#52C41A',
+        // O verde quando ele precisa ser PALAVRA. Já existia à mão como
+        // text-lime-700 (#4D7C0F) no PaymentRow e no StatusBadge — mas aquele
+        // dá 4,4:1 sobre o fundo da página, a mesma armadilha do textMuted.
+        // Este é o lime-800: 6,2:1 sobre bg, 7,1:1 sobre card, 6,5:1 sobre o
+        // chip de success/10 onde ele de fato vive.
+        accentText: '#3F6212',
+
+        // ── SINAIS ──────────────────────────────────────────────────────
+        //
+        // ÂMBAR É AVISO E NADA MAIS: algo que a pessoa precisa atender.
+        // Fatura vencida, falta marcada, criança sem horário. Ele tinha um
+        // gêmeo (`secondary`, o mesmo hex) que era usado como enfeite — e
+        // gastar a cor de alerta em decoração queima o sinal.
+        warning: '#F5A623', // preenchimento e ícone. Como texto dá 2,0:1.
+        warningText: '#92400E', // 7,1:1 sobre branco, 6,8:1 sobre warningSoft
+        warningSoft: '#FFFBEB',
+        warningBorder: '#FDE68A',
+        // Perda e irreversível: encerrar rota por engano, apagar, atraso.
+        danger: '#EF4444', // preenchimento. Como texto dá 3,8:1 — reprovava
+        // justamente na mensagem de erro do Input, que aparece no pior momento.
+        dangerText: '#B91C1C', // 6,5:1 sobre branco, 5,9:1 sobre dangerSoft
+        dangerSoft: '#FEF2F2',
+        dangerBorder: '#FECACA',
+
+        // ── SEMÂNTICA DO PRODUTO ────────────────────────────────────────
+        //
+        // A ESCOLA, em toda tela: a parada na lista do motorista, o pin no
+        // mapa, o recado da escola. É LEGENDA, não decoração — casa é verde,
+        // perua é âmbar, escola é violeta — e legenda precisa de nome, senão
+        // diverge entre telas (eram violet-700 e violet-900 pro mesmo rótulo).
+        escola: '#6D28D9', // branco sobre ele dá 7,1:1
+        escolaSoft: '#F5F3FF',
+        escolaBorder: '#DDD6FE',
+
+        // ── A SAIR NA FASE 4 ────────────────────────────────────────────
+        // Quatro nomes pra duas tintas que já existem acima. Ficam só até os
+        // 39 usos serem decididos um a um (aviso ou enfeite?); removê-los
+        // antes é build vermelha e pressa pra escolher errado.
+        secondary: '#F5A623', // = warning
+        secondaryDark: '#D48816',
         accentDark: '#3F9B12',
-        text: '#111827',
-        textMuted: '#6B7280',
-        success: '#52C41A',
-        danger: '#EF4444',
-        warning: '#F5A623',
+        success: '#52C41A', // = accent
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
