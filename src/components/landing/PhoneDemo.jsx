@@ -473,7 +473,7 @@ export default function PhoneDemo() {
             onClick={() => setI(idx)}
             className={`tap shrink-0 rounded-full px-3 h-8 text-xs font-bold transition-colors ${
               idx === i
-                ? 'bg-white text-[#0B1210] shadow-lg shadow-black/25'
+                ? 'bg-white text-[#0B1210] shadow-float'
                 : 'bg-white/[0.07] border border-white/15 text-white/70 hover:bg-white/[0.12]'
             }`}
           >
@@ -491,7 +491,7 @@ export default function PhoneDemo() {
       >
         {/* Moldura sobre fundo escuro: preta com fio branco, senão o aparelho
           * desaparece dentro do próprio fundo da página. */}
-        <div className="rounded-[1.9rem] bg-[#050908] border border-white/15 p-[6px] shadow-2xl shadow-black/50">
+        <div className="rounded-[1.9rem] bg-[#050908] border border-white/15 p-[6px] shadow-float">
           <div className="relative rounded-[1.55rem] overflow-hidden bg-bg aspect-[9/17]">
             <span
               aria-hidden

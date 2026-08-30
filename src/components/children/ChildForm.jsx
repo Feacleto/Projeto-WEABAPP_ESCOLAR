@@ -325,7 +325,7 @@ export default function ChildForm() {
           onClick={onAdvance}
           loading={submitting}
           icon={step === TOTAL_STEPS ? Check : ArrowRight}
-          className="shadow-2xl shadow-emerald-500/30 !bg-primary hover:!bg-primary !h-14 !text-base"
+          className="shadow-focus !bg-primary hover:!bg-primary !h-14 !text-base"
         >
           {step === TOTAL_STEPS ? 'Cadastrar criança' : 'Avançar'}
         </Button>

@@ -140,7 +140,7 @@ export default function Aguardando() {
 
       {/* ── o cartão, nítido ─────────────────────────────────────────────── */}
       <div className="relative flex min-h-screen items-center justify-center px-5 py-10">
-        <div className="w-full max-w-[26rem] rounded-3xl border border-white/12 bg-white/[0.07] p-7 shadow-2xl shadow-black/40 backdrop-blur-xl">
+        <div className="w-full max-w-[26rem] rounded-3xl border border-white/12 bg-white/[0.07] p-7 shadow-float backdrop-blur-xl">
           <Logo tone="onDark" height={24} />
 
           <p className="mt-7 font-mono text-[11px] uppercase tracking-[0.16em] text-white/45">
@@ -188,7 +188,7 @@ export default function Aguardando() {
             )}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="tap mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-bold text-primaryDark shadow-lg shadow-black/25"
+            className="tap mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-bold text-primaryDark shadow-float"
           >
             <MessageCircle size={19} />
             Pedir ajuda a um consultor

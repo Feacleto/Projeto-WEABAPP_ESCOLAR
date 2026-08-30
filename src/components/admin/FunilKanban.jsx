@@ -176,7 +176,7 @@ export default function FunilKanban({ onOrcar }) {
               key={etapa.id}
               className={daEtapa.length ? undefined : 'hidden lg:block'}
             >
-              <p className="mb-1.5 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-textMuted">
+              <p className="mb-1.5 flex items-center justify-between font-mono text-xs uppercase tracking-[0.1em] text-textMuted">
                 {etapa.rotulo}
                 <span className="font-bold text-text">{daEtapa.length}</span>
               </p>
@@ -200,7 +200,7 @@ export default function FunilKanban({ onOrcar }) {
 
       {perdidos.length > 0 && (
         <section>
-          <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-textMuted">
+          <p className="mb-1.5 font-mono text-xs uppercase tracking-[0.1em] text-textMuted">
             Perdidos · {perdidos.length}
           </p>
           <div className="space-y-1.5">
@@ -213,12 +213,12 @@ export default function FunilKanban({ onOrcar }) {
                   {l.nome}
                 </p>
                 {l.motivoPerda && (
-                  <p className="text-[11.5px] text-textMuted">{l.motivoPerda}</p>
+                  <p className="text-xs text-textMuted">{l.motivoPerda}</p>
                 )}
               </div>
             ))}
           </div>
-          <p className="mt-2 text-[11.5px] leading-relaxed text-textMuted">
+          <p className="mt-2 text-xs leading-relaxed text-textMuted">
             Os motivos aqui são o que diz se o problema é preço, produto ou
             momento — e é a única parte do funil que ensina a vender melhor.
           </p>
@@ -234,13 +234,13 @@ function Cartao({ lead, ultima, ocupado, onAvancar, onPerder, onOrcar }) {
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-bold text-text">{lead.nome}</p>
-          <p className="text-[11.5px] text-textMuted">
+          <p className="text-xs text-textMuted">
             {[lead.cidade, lead.criancasEstimadas && `${lead.criancasEstimadas} crianças`]
               .filter(Boolean)
               .join(' · ')}
           </p>
           {lead.propostaMensal > 0 && (
-            <p className="mt-1 font-mono text-[11px] font-semibold text-primary">
+            <p className="mt-1 font-mono text-xs font-semibold text-primary">
               {formatBRL(lead.propostaMensal)}/mês proposto
             </p>
           )}
@@ -250,7 +250,7 @@ function Cartao({ lead, ultima, ocupado, onAvancar, onPerder, onOrcar }) {
         <button
           type="button"
           onClick={onOrcar}
-          className="tap rounded-lg border border-borderStrong px-2.5 py-1.5 text-[11.5px] font-semibold text-textMuted"
+          className="tap rounded-lg border border-borderStrong px-2.5 py-1.5 text-xs font-semibold text-textMuted"
         >
           {lead.propostaMensal ? 'Rever orçamento' : 'Orçar'}
         </button>
@@ -259,7 +259,7 @@ function Cartao({ lead, ultima, ocupado, onAvancar, onPerder, onOrcar }) {
             type="button"
             onClick={onAvancar}
             disabled={ocupado}
-            className="tap inline-flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1.5 text-[11.5px] font-bold text-primary disabled:opacity-50"
+            className="tap inline-flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1.5 text-xs font-bold text-primary disabled:opacity-50"
           >
             Avançar <ArrowRight size={12} />
           </button>
@@ -268,7 +268,7 @@ function Cartao({ lead, ultima, ocupado, onAvancar, onPerder, onOrcar }) {
           type="button"
           onClick={onPerder}
           disabled={ocupado}
-          className="tap inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11.5px] font-semibold text-textMuted disabled:opacity-50"
+          className="tap inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-textMuted disabled:opacity-50"
         >
           <XCircle size={12} /> Perdi
         </button>
@@ -280,13 +280,13 @@ function Cartao({ lead, ultima, ocupado, onAvancar, onPerder, onOrcar }) {
 function Metrica({ rotulo, valor, nota }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-3">
-      <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-textMuted">
+      <p className="font-mono text-xs uppercase tracking-[0.1em] text-textMuted">
         {rotulo}
       </p>
       <p className="mt-1 text-[19px] font-extrabold tabular-nums tracking-tight text-text">
         {valor}
       </p>
-      <p className="text-[10.5px] leading-tight text-textMuted">{nota}</p>
+      <p className="text-xs leading-tight text-textMuted">{nota}</p>
     </div>
   );
 }

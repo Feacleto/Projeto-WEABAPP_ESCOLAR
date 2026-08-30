@@ -34,7 +34,7 @@ export default function AssociadosCard({ associados = 1, className = '' }) {
       className={`rounded-2xl border border-primaryBorder bg-primarySoft p-4 ${className}`}
     >
       <div className="flex items-center gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-sm shadow-primary/25">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-focus">
           <span className="text-2xl font-extrabold leading-none tabular-nums">
             {n}
           </span>

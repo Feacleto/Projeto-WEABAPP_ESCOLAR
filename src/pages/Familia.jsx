@@ -300,7 +300,7 @@ export default function Familia() {
           <button
             type="button"
             onClick={() => setLoginAberto(true)}
-            className="tap flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-bold text-white shadow-lg shadow-primary/25"
+            className="tap flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-bold text-white shadow-focus"
           >
             Entrar na minha conta
             <ArrowRight size={18} />

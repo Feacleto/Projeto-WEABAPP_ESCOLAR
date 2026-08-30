@@ -163,6 +163,28 @@ export default {
         // porta de entrada, e o botão verde de confirmar ficou com rótulo
         // branco em 2,3:1. Nome vago não é economia, é permissão.
       },
+      // ── ELEVAÇÃO ───────────────────────────────────────────────────
+      //
+      // As sombras do app carregavam COR, e cada arquivo escolhia a sua:
+      // esmeralda a 15%, 20%, 25%, 30% e 40%, índigo, violeta, âmbar, preto
+      // em seis opacidades. Vinte e cinco combinações pra três situações.
+      //
+      // O custo não é a bagunça, é que sombra colorida CHAMA. Quando cinco
+      // coisas chamam na mesma tela, nenhuma chama — e a que precisava
+      // chamar (a criança em foco, o botão de iniciar rota) perde a briga
+      // pro cartão decorativo do lado.
+      //
+      // Três níveis, e o do meio tem cota:
+      boxShadow: {
+        // Em repouso. Cinza, discreta, e a maioria absoluta dos cartões.
+        rest: '0 1px 3px 0 rgb(17 24 39 / 0.07), 0 1px 2px -1px rgb(17 24 39 / 0.05)',
+        // O foco da tela — colorida com o verde da marca. UMA POR TELA.
+        // Duas sombras coloridas na mesma tela e nenhuma das duas chama.
+        focus: '0 8px 24px -6px rgb(31 95 63 / 0.28)',
+        // O que de fato FLUTUA: folha, barra de abas, modal, chamada em
+        // tela cheia. Preta e forte, porque tem conteúdo por baixo.
+        float: '0 12px 32px -8px rgb(0 0 0 / 0.38)',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },

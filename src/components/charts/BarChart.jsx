@@ -10,6 +10,7 @@ import { formatCurrency } from '../../utils/formatters';
  *
  * Pensado pra idosos: barras GROSSAS, labels claros, ordem fácil de seguir.
  */
+import { SERIE_GRAFICO } from '../../config/paletaCategorica';
 export default function BarChart({
   data = [],
   color = 'emerald',
@@ -17,13 +18,7 @@ export default function BarChart({
 }) {
   const max = Math.max(...data.map((d) => Number(d.value) || 0), 1);
 
-  const colorMap = {
-    emerald: 'bg-emerald-500',
-    blue: 'bg-blue-500',
-    amber: 'bg-amber-500',
-    red: 'bg-red-500',
-  };
-  const fillClass = colorMap[color] || colorMap.emerald;
+  const fillClass = SERIE_GRAFICO[color] || SERIE_GRAFICO.emerald;
 
   return (
     <div className="space-y-2">

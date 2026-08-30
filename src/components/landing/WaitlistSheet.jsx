@@ -165,7 +165,7 @@ export default function WaitlistSheet({
               aria-hidden
               className="demo-ping absolute inset-0 rounded-full bg-primary/25"
             />
-            <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-primary text-white shadow-lg shadow-emerald-500/25">
+            <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-primary text-white shadow-focus">
               <Check size={32} strokeWidth={3} />
             </span>
           </div>

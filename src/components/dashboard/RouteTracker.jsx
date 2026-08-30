@@ -65,7 +65,7 @@ export default function RouteTracker({ status = 'home', compact = false, ride = 
               <div
                 className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                   done
-                    ? 'bg-primary text-white shadow-md shadow-emerald-500/30'
+                    ? 'bg-primary text-white shadow-focus'
                     : active
                     ? 'bg-primary text-white ring-4 ring-primary/20'
                     : 'bg-neutro text-textMuted border-2 border-border'

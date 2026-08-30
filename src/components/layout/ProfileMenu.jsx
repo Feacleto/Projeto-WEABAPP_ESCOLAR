@@ -116,7 +116,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         <div
           role="menu"
           aria-label="Menu do perfil"
-          className="animate-fest-balloon-in absolute right-0 top-full mt-2 w-[min(17rem,calc(100vw-1.5rem))] origin-top-right overflow-hidden rounded-2xl border border-neutro bg-card shadow-2xl shadow-black/20"
+          className="animate-fest-balloon-in absolute right-0 top-full mt-2 w-[min(17rem,calc(100vw-1.5rem))] origin-top-right overflow-hidden rounded-2xl border border-neutro bg-card shadow-float"
         >
           {/* Quem está logado. É a pergunta silenciosa de quem toca aqui —
            * principalmente em casa, onde pai e mãe usam o mesmo celular. */}

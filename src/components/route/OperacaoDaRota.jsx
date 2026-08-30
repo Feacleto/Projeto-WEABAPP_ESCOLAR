@@ -558,7 +558,7 @@ export default function OperacaoDaRota({
 
         {/* A criança em foco */}
         {foco && (
-          <div className="bg-card border-2 border-primary rounded-2xl p-4 space-y-3 shadow-lg shadow-emerald-600/15">
+          <div className="bg-card border-2 border-primary rounded-2xl p-4 space-y-3 shadow-focus">
             <div className="flex items-center gap-3">
               <Avatar
                 photoURL={foco.child.photoURL}

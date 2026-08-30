@@ -27,7 +27,7 @@ export default function BottomNav({ items }) {
       {/* rounded-full em vez de rounded-3xl: pílula de verdade, e o formato
         * já sugere que ela flutua acima do conteúdo. */}
       <div
-        className="pointer-events-auto bg-card/95 backdrop-blur-md rounded-full shadow-2xl shadow-black/15 border border-neutro grid"
+        className="pointer-events-auto bg-card/95 backdrop-blur-md rounded-full shadow-float border border-neutro grid"
         style={{
           gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
         }}

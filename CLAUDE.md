@@ -91,7 +91,8 @@ src/
 │                      call, notifications, landing, tutorial, festive…
 ├── services/          38 módulos — TODO acesso ao Firestore passa aqui
 ├── hooks/             23 hooks, quase todos onSnapshot de um service
-├── config/            capabilities, rodada, developer
+├── config/            capabilities, rodada, developer, vitrine,
+│                      paletaCategorica (o único lugar com cor crua)
 ├── context/           AuthContext (perfil + papel)
 ├── utils/             puros e testáveis, sem Firebase
 └── firebase/config.js
@@ -365,6 +366,39 @@ promete garantia sem prová-la já foi um problema recorrente aqui**.
 "O pai é avisado quando a criança chega", "Aviso antigo deixa de virar criança
 na calçada". Prefixos `fix()/test()/chore()` aparecem, mas o corpo é sempre
 humano.
+
+**Cor tem nome, e o nome é o papel.** Todos os tokens estão em
+[tailwind.config.js](tailwind.config.js), com o porquê de cada um no próprio
+arquivo, e `npm run testar:contraste` mede 43 pares contra os fundos reais.
+Cinco regras, e todas nasceram de um bug:
+
+1. **Âmbar é aviso e nada mais** — algo que a pessoa precisa atender. Havia um
+   `secondary` com o mesmo hex do `warning`, e "a segunda cor" serve pra
+   qualquer coisa: foi assim que o sinal virou enfeite. Nome vago não é
+   economia, é permissão. As duas exceções têm nome próprio: `perua` (a
+   legenda casa/perua/escola) e `ouro` (estrela, moeda, enfeite).
+2. **Verde e âmbar não são texto** — `accent` como palavra dá 2,3:1 e
+   `warning` dá 2,0:1. Quando precisam ser lidos, existem `accentText` e
+   `warningText`.
+3. **Meça contra o fundo REAL, não contra um representante** — o `textMuted`
+   passava sobre o branco do cartão (4,8:1) e reprovava sobre o cinza da
+   página (4,3:1), que é onde ele mais aparece. Foi medir num lugar só.
+4. **Sombra colorida é uma por tela** — `shadow-focus` chama; cinco coisas
+   chamando é nenhuma chamando. `rest` no resto, `float` no que flutua.
+5. **Cor crua do Tailwind só em três endereços:**
+   [components/festive/](src/components/festive/),
+   [utils/festivities.js](src/utils/festivities.js) e
+   [config/paletaCategorica.js](src/config/paletaCategorica.js) — as paletas
+   em que a cor não significa nada e só precisa diferir da vizinha (dez tipos
+   de recado, quatro estados da criança, cinco fatias de gráfico). Um lugar
+   com licença é o que evita que o resto peça licença.
+
+**O painel do dono tem piso de 12px.** O resto do app é de bolso, lido a 30cm;
+[/admin](src/pages/admin/AdminPanel.jsx) é de mesa, e a 60cm o mesmo 11px tem
+metade do tamanho aparente. A largura já tinha sido corrigida lá, a escala
+não. Não há sistema tipográfico próprio — é só um piso, e o
+[ContratoDoc](src/components/admin/ContratoDoc.jsx) é a exceção porque é
+impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa

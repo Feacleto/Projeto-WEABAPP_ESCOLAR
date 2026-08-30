@@ -251,7 +251,7 @@ export default function ContractAcceptanceGate() {
 
       {/* Form de aceite — fixo no rodapé */}
       <div
-        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto bg-card border-t border-border shadow-2xl shadow-black/10 p-4 space-y-3"
+        className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto bg-card border-t border-border shadow-rest p-4 space-y-3"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 1rem)' }}
       >
         <input

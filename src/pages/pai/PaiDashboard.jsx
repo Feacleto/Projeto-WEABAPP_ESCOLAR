@@ -51,17 +51,11 @@ import { getDateKey } from '../../services/horariosService';
 import { playSound } from '../../services/soundService';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 import PaiNotebookFAB from '../../components/agenda/PaiNotebookFAB';
+import { GRADIENTE_STATUS } from '../../config/paletaCategorica';
 
 const NEAR_KM = 2;
 const ARRIVED_KM = 0.4;
 const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
-
-const STATUS_GRADIENTS = {
-  home: 'from-slate-500 via-slate-600 to-slate-700',
-  onboard: 'from-blue-500 via-indigo-600 to-violet-700',
-  atSchool: 'from-purple-500 via-fuchsia-600 to-pink-600',
-  delivered: 'from-emerald-500 via-emerald-600 to-green-700',
-};
 
 /**
  * Frase humana que descreve o estado do filho em UMA linha — adapta pra
@@ -581,12 +575,12 @@ function CartaoDeHoje({
   onTap,
   onMapa,
 }) {
-  const gradient = STATUS_GRADIENTS[status] || STATUS_GRADIENTS.home;
+  const gradient = GRADIENTE_STATUS[status] || GRADIENTE_STATUS.home;
   const isLive = estadoDoDia === 'acompanhando' && !semAtualizacao;
   const destaqueFrase = isLive ? 'text-[19px]' : 'text-2xl';
 
   return (
-    <div className="rounded-3xl overflow-hidden shadow-xl shadow-indigo-500/15 bg-card">
+    <div className="rounded-3xl overflow-hidden shadow-focus bg-card">
       <button
         onClick={onTap}
         className={`tap w-full text-left bg-gradient-to-br ${gradient} text-white p-6 relative overflow-hidden block`}

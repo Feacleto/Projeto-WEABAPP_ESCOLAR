@@ -220,7 +220,7 @@ export function SheetCTA({
     <button
       type={type}
       disabled={disabled || loading}
-      className={`tap cta-shine-white relative inline-flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-primary text-base font-bold text-white shadow-lg shadow-primary/25 hover:bg-primaryDark focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60 ${className}`}
+      className={`tap cta-shine-white relative inline-flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-primary text-base font-bold text-white shadow-focus hover:bg-primaryDark focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60 ${className}`}
       {...rest}
     >
       {loading ? <Spinner size={19} /> : Icon && <Icon size={19} />}
@@ -286,8 +286,8 @@ export function RoleCard({
 }) {
   const skin =
     tone === 'indigo'
-      ? 'from-blue-500 via-indigo-600 to-violet-700 shadow-indigo-500/20'
-      : 'from-emerald-500 via-emerald-600 to-primary shadow-emerald-500/20';
+      ? 'from-blue-500 via-indigo-600 to-violet-700 shadow-focus'
+      : 'from-emerald-500 via-emerald-600 to-primary shadow-focus';
   return (
     <button
       type="button"

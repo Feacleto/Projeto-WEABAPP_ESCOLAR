@@ -735,7 +735,7 @@ export default function TioFinance() {
  */
 function FinanceHero({ paid, monthKey }) {
   return (
-    <div className="overflow-hidden rounded-3xl shadow-xl shadow-emerald-500/15">
+    <div className="overflow-hidden rounded-3xl shadow-focus">
       <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 p-5 text-white">
         <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
           Recebido

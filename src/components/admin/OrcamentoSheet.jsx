@@ -235,7 +235,7 @@ export default function OrcamentoSheet({
           * contratado; sem limite, "de graça" vira ilimitado por descuido. */}
         <Grupo rotulo="Vagas de criança contratadas">
           <Campo value={vagas} onChange={setVagas} type="number" />
-          <p className="mt-1.5 text-[11px] leading-relaxed text-textMuted">
+          <p className="mt-1.5 text-xs leading-relaxed text-textMuted">
             É o teto que o app vai impor: acima disso ele não cadastra e cai
             numa tela pedindo pra falar com você.{' '}
             {base?.criancas > 0 && (
@@ -267,7 +267,7 @@ export default function OrcamentoSheet({
                 cor="text-warning"
                 total
               />
-              <p className="mt-2 text-[11.5px] leading-relaxed text-textMuted">
+              <p className="mt-2 text-xs leading-relaxed text-textMuted">
                 A gratuidade aparece no painel como decisão, e o que ela deixa
                 de render entra no custo de aquisição — em vez de sumir num
                 campo zerado.
@@ -307,7 +307,7 @@ export default function OrcamentoSheet({
                 total
               />
               {per !== PERIODICIDADES.MENSAL && (
-                <p className="mt-2 text-[11.5px] leading-relaxed text-textMuted">
+                <p className="mt-2 text-xs leading-relaxed text-textMuted">
                   As duas linhas são números diferentes e continuam diferentes
                   no painel. Somar caixa antecipado como se fosse receita
                   mensal multiplica o resultado pelo número de meses.

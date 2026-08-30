@@ -1,3 +1,5 @@
+import { GRADIENTE_AGENDA } from '../config/paletaCategorica';
+
 import {
   collection,
   addDoc,
@@ -61,49 +63,49 @@ export const AGENDA_TYPES = {
   sick: {
     label: 'Criança não tá bem',
     emoji: '🤒',
-    color: 'from-amber-500 to-orange-600',
+    color: GRADIENTE_AGENDA.sick,
     template: (name) =>
       `${name} não tá se sentindo bem hoje. Vale ficar atento(a) quando chegar em casa.`,
   },
   conflict: {
     label: 'Conflito / briga',
     emoji: '😡',
-    color: 'from-rose-500 to-red-600',
+    color: GRADIENTE_AGENDA.conflict,
     template: (name) =>
       `${name} se desentendeu com um colega hoje. Conversei com a turma — fica bom acompanhar em casa também.`,
   },
   read_agenda: {
     label: 'Professora pediu ler a agenda',
     emoji: '📓',
-    color: 'from-blue-500 to-indigo-600',
+    color: GRADIENTE_AGENDA.read_agenda,
     template: () =>
       'A professora pediu que vocês leiam a agenda da escola hoje. Tem aviso novo lá.',
   },
   teacher_request: {
     label: 'Professora pediu algo',
     emoji: '📋',
-    color: 'from-violet-500 to-purple-600',
+    color: GRADIENTE_AGENDA.teacher_request,
     template: () =>
       'A professora pediu um recado pra vocês. Verificar a agenda da escola pra ver o que é.',
   },
   meeting: {
     label: 'Reunião de pais',
     emoji: '👨‍👩‍👧',
-    color: 'from-emerald-500 to-green-700',
+    color: GRADIENTE_AGENDA.meeting,
     template: () =>
       'Vai ter reunião de pais. Confira o dia e horário na agenda da escola.',
   },
   event: {
     label: 'Evento da escola',
     emoji: '🎉',
-    color: 'from-fuchsia-500 to-pink-600',
+    color: GRADIENTE_AGENDA.event,
     template: () =>
       'A escola vai ter um evento. Detalhes na agenda — confirma se a criança vai participar.',
   },
   no_class: {
     label: 'Não vai ter aula',
     emoji: '🏫',
-    color: 'from-slate-500 to-slate-700',
+    color: GRADIENTE_AGENDA.no_class,
     template: () =>
       'A escola avisou que não vai ter aula. Confirma direitinho na agenda escolar.',
   },
@@ -113,21 +115,21 @@ export const AGENDA_TYPES = {
   atraso: {
     label: 'Vou atrasar',
     emoji: '⏰',
-    color: 'from-amber-500 to-orange-600',
+    color: GRADIENTE_AGENDA.atraso,
     template: () =>
       'Hoje vou atrasar um pouco na rota. Assim que eu estiver chegando, o app avisa vocês.',
   },
   quebrou: {
     label: 'Problema com a perua',
     emoji: '🚨',
-    color: 'from-rose-600 to-red-700',
+    color: GRADIENTE_AGENDA.quebrou,
     template: () =>
       'Tive um problema com a perua hoje. Estou resolvendo e aviso vocês assim que tiver notícia. Se puderem, se organizem para levar a criança hoje.',
   },
   other: {
     label: 'Outro aviso',
     emoji: '✏️',
-    color: 'from-cyan-500 to-blue-600',
+    color: GRADIENTE_AGENDA.other,
     template: () => '',
   },
 };

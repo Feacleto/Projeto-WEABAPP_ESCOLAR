@@ -273,7 +273,7 @@ export default function TaxaTab() {
               {formatCurrency(previsto)}
             </span>
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+          <p className="mt-1 text-xs leading-relaxed text-textMuted">
             Esta é a <strong>receita da plataforma</strong> — não o GMV. O GMV é
             o dinheiro que passou entre pai e motorista, e a plataforma não toca
             nele.
@@ -283,7 +283,7 @@ export default function TaxaTab() {
               Fechar {formatMonthLabel(mes)} — {linhas.length} fatura(s)
             </Button>
           </div>
-          <p className="mt-2 text-[11px] text-textMuted">
+          <p className="mt-2 text-xs text-textMuted">
             Fechar congela a régua usada em cada fatura. Renegociar depois não
             reescreve o que já foi cobrado.
           </p>
@@ -345,7 +345,7 @@ function ReguaDaCasa({ config }) {
           />
           <CampoCurto label="Vence dia" value={dia} onChange={setDia} />
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+        <p className="mt-2 text-xs leading-relaxed text-textMuted">
           O piso não é ganância: fatura de R$ 4,50 custa mais pra emitir e
           conferir do que rende.
         </p>
@@ -354,7 +354,7 @@ function ReguaDaCasa({ config }) {
           * roda em lote — ver o cabeçalho de `diaVencimento` no service.
           * Mudar aqui não mexe em fatura já fechada: o dia viaja congelado
           * dentro dela, como o percentual e o piso. */}
-        <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+        <p className="mt-1 text-xs leading-relaxed text-textMuted">
           O vencimento entra no contrato de quem assinar daqui pra frente — e é
           ele que define o que conta como atraso. Entre 1 e 28: dia 30 não
           existe em fevereiro.
@@ -442,7 +442,7 @@ function PixDaPlataforma({ config }) {
             Salvar chave
           </Button>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+        <p className="mt-2 text-xs leading-relaxed text-textMuted">
           Ela é copiada pra dentro de cada fatura no fechamento. Trocar aqui não
           altera fatura já emitida.
         </p>
@@ -619,7 +619,7 @@ function Ficha({ linha, mes, config, onSalvou, ownerUid }) {
           }
         />
         {resumo.semMensalidade > 0 && (
-          <p className="mt-1 text-[11px] text-warning">
+          <p className="mt-1 text-xs text-warning">
             {resumo.semMensalidade} criança(s) sem mensalidade configurada — não
             entram na base.
           </p>
@@ -657,7 +657,7 @@ function Ficha({ linha, mes, config, onSalvou, ownerUid }) {
             onChange={setValor}
           />
           <div className="pb-1">
-            <p className="text-[11px] text-textMuted">dá</p>
+            <p className="text-xs text-textMuted">dá</p>
             <p className="text-lg font-bold text-text">
               {formatCurrency(previa.cobrada)}
             </p>
@@ -701,7 +701,7 @@ function Ficha({ linha, mes, config, onSalvou, ownerUid }) {
               : 'sem isenção'}
           </p>
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+        <p className="mt-1 text-xs leading-relaxed text-textMuted">
           Conta a partir de {formatMonthLabel(mes)}. A roleta de entrada não
           gira hoje (depende de Cloud Functions), então a isenção é lançada aqui
           à mão.
@@ -718,7 +718,7 @@ function Ficha({ linha, mes, config, onSalvou, ownerUid }) {
           placeholder="O que foi combinado, e por quê."
           className="w-full rounded-xl border border-border bg-card p-3 text-sm text-text placeholder:text-textMuted/60 focus:border-primary focus:outline-none"
         />
-        <p className="mt-1 text-[11px] text-textMuted">
+        <p className="mt-1 text-xs text-textMuted">
           Só o dono lê. O motorista não tem acesso a este campo.
         </p>
       </div>
@@ -785,7 +785,7 @@ function Seta({ dir, onClick }) {
 function CampoCurto({ label, value, onChange, prefixo, sufixo }) {
   return (
     <label className="flex-1">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-textMuted">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-textMuted">
         {label}
       </span>
       <span className="flex items-center gap-1 rounded-xl border border-border bg-card px-3">
@@ -814,7 +814,7 @@ function Titulo({ icon: Icon, children }) {
 
 function Rotulo({ children }) {
   return (
-    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+    <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-textMuted">
       {children}
     </p>
   );
@@ -837,7 +837,7 @@ function Par({ label, valor, forte }) {
 
 function Aviso({ children }) {
   return (
-    <p className="mt-2 rounded-xl border border-warningBorder bg-warningSoft p-2.5 text-[11px] leading-relaxed text-warningText/90">
+    <p className="mt-2 rounded-xl border border-warningBorder bg-warningSoft p-2.5 text-xs leading-relaxed text-warningText/90">
       {children}
     </p>
   );
@@ -853,7 +853,7 @@ const TONS = {
 function Etiqueta({ tone = 'neutral', children }) {
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${TONS[tone]}`}
+      className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${TONS[tone]}`}
     >
       {children}
     </span>

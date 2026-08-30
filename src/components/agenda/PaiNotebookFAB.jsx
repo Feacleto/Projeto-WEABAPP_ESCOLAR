@@ -344,7 +344,7 @@ function NotebookPage({ children, flipping }) {
   return (
     <div className="max-w-md mx-auto">
       <div
-        className={`relative bg-[#fffbe9] rounded-xl shadow-xl shadow-amber-900/10 overflow-hidden border border-warningBorder transition-transform duration-300 ease-in-out origin-left ${
+        className={`relative bg-[#fffbe9] rounded-xl shadow-rest overflow-hidden border border-warningBorder transition-transform duration-300 ease-in-out origin-left ${
           flipping ? 'scale-x-90 skew-y-2' : ''
         }`}
         style={{

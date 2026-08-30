@@ -61,7 +61,7 @@ export default function AguardandoAprovacao() {
       <p className="flex items-center gap-2 text-sm font-bold text-text">
         <UserCheck size={16} className="text-primary" />
         Esperando sua aprovação
-        <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-white tabular-nums">
+        <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white tabular-nums">
           {lista.length}
         </span>
       </p>
@@ -78,14 +78,14 @@ export default function AguardandoAprovacao() {
                 <p className="truncate text-sm font-bold text-text">
                   {i.name || 'Sem nome'}
                   {i.posicaoNaFila ? (
-                    <span className="ml-1.5 text-[11px] font-semibold text-textMuted">
+                    <span className="ml-1.5 text-xs font-semibold text-textMuted">
                       {i.posicaoNaFila}º da fila
                     </span>
                   ) : null}
                 </p>
                 <p className="truncate text-[12px] text-textMuted">{i.email}</p>
                 {(i.city || i.criancasEstimadas > 0) && (
-                  <p className="mt-0.5 text-[11px] text-textMuted">
+                  <p className="mt-0.5 text-xs text-textMuted">
                     {[i.city, i.criancasEstimadas > 0 && `${i.criancasEstimadas} criança(s)`]
                       .filter(Boolean)
                       .join(' · ')}
@@ -128,7 +128,7 @@ export default function AguardandoAprovacao() {
             </div>
 
             {confirmando === i.id && (
-              <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+              <p className="mt-2 text-xs leading-relaxed text-textMuted">
                 Isso dá acesso completo ao app. Para desfazer depois, o caminho
                 é suspender — que fica registrado.
               </p>

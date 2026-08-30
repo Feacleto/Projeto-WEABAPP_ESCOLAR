@@ -95,7 +95,7 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
         type="button"
         data-tour="start-route"
         onClick={iniciar}
-        className="tap w-full rounded-2xl bg-primary text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+        className="tap w-full rounded-2xl bg-primary text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-focus"
         style={{ height: 56 }}
       >
         <Play size={20} />

@@ -394,7 +394,7 @@ export default function Home() {
             tabIndex={ctaVisivel ? 0 : -1}
             aria-hidden={!ctaVisivel}
             onClick={() => setSheet('lista')}
-            className="tap cta-shine relative w-full overflow-hidden rounded-3xl bg-onNightAccentFill px-4 py-2.5 text-[#0B1210] shadow-2xl shadow-black/50"
+            className="tap cta-shine relative w-full overflow-hidden rounded-3xl bg-onNightAccentFill px-4 py-2.5 text-[#0B1210] shadow-float"
           >
             <span className="flex items-center justify-center gap-2 text-sm font-extrabold">
               <Sparkles size={15} />
@@ -649,7 +649,7 @@ export default function Home() {
                 * O tile é BRANCO, o único da página escura: logo de marca é
                 * desenhado pra fundo claro, e vidro escuro comeria o dele. */}
               <ul className="flex flex-wrap gap-3">
-                <li className="flex min-w-[10rem] flex-1 items-center justify-center rounded-3xl bg-white p-5 shadow-lg shadow-black/20">
+                <li className="flex min-w-[10rem] flex-1 items-center justify-center rounded-3xl bg-white p-5 shadow-float">
                   {/* Só marca — nunca o avatar do perfil. Ver a nota em
                     * LOGO_ASSOCIADO: foto de rosto aqui seria publicar a
                     * imagem de uma pessoa sem ela ter dito sim pra isso. */}
@@ -998,7 +998,7 @@ function AssociarButton({ onClick }) {
       <button
         type="button"
         onClick={onClick}
-        className="tap group cta-shine-white relative h-14 w-full overflow-hidden rounded-2xl bg-onNightAccentFill text-base font-extrabold text-[#0B1210] shadow-xl shadow-emerald-500/25 focus:outline-none focus:ring-2 focus:ring-onNightAccent/60"
+        className="tap group cta-shine-white relative h-14 w-full overflow-hidden rounded-2xl bg-onNightAccentFill text-base font-extrabold text-[#0B1210] shadow-focus focus:outline-none focus:ring-2 focus:ring-onNightAccent/60"
       >
         <span className="relative z-10 inline-flex w-full items-center justify-center gap-2">
           <Sparkles size={17} />

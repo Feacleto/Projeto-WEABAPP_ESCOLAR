@@ -6,16 +6,10 @@
  *  - segments: [{ label, value, color, count? }]
  *     Cores: 'emerald' | 'blue' | 'amber' | 'red' | 'gray'
  */
+import { SERIE_GRAFICO } from '../../config/paletaCategorica';
 export default function StackedBar({ segments = [] }) {
   const total = segments.reduce((acc, s) => acc + (Number(s.value) || 0), 0);
 
-  const colorMap = {
-    emerald: 'bg-emerald-500',
-    blue: 'bg-blue-500',
-    amber: 'bg-amber-500',
-    red: 'bg-red-500',
-    gray: 'bg-gray-400',
-  };
 
   return (
     <div className="space-y-3">
@@ -27,7 +21,7 @@ export default function StackedBar({ segments = [] }) {
           return (
             <div
               key={i}
-              className={`h-full ${colorMap[s.color] || colorMap.gray} transition-all`}
+              className={`h-full ${SERIE_GRAFICO[s.color] || SERIE_GRAFICO.gray} transition-all`}
               style={{ width: `${pct}%` }}
               title={`${s.label}: ${pct.toFixed(0)}%`}
             />
@@ -47,7 +41,7 @@ export default function StackedBar({ segments = [] }) {
             >
               <span className="flex items-center gap-2">
                 <span
-                  className={`w-3 h-3 rounded ${colorMap[s.color] || colorMap.gray}`}
+                  className={`w-3 h-3 rounded ${SERIE_GRAFICO[s.color] || SERIE_GRAFICO.gray}`}
                 />
                 <span className="text-text font-medium">{s.label}</span>
               </span>

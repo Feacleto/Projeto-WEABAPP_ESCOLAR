@@ -206,7 +206,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
         className="absolute inset-x-0 px-3 flex justify-center transition-all duration-300 ease-out"
         style={cardPos}
       >
-        <div className="pointer-events-auto w-full max-w-sm bg-card rounded-3xl shadow-2xl shadow-black/40 overflow-hidden">
+        <div className="pointer-events-auto w-full max-w-sm bg-card rounded-3xl shadow-float overflow-hidden">
           <div className="bg-gradient-to-br from-primary to-primaryDark text-white p-4">
             <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">

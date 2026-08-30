@@ -131,7 +131,21 @@ export default function AdminPanel() {
   };
 
   return (
-    /* `data-painel="web"` é o que solta o teto de 480px do #root — a regra
+    /* O PISO DE TEXTO DESTA TELA É 12px (`text-xs`), e não é preferência.
+     *
+     * O app inteiro é de bolso: o motorista e o responsável leem a 30cm do
+     * olho. Esta tela é de MESA — negociar taxa, fechar o mês, abrir um
+     * número numa reunião — e a 60cm o mesmo 11px tem metade do tamanho
+     * aparente. A largura já tinha sido corrigida aqui (é o que a regra
+     * abaixo faz); a escala tinha ficado a do celular, e quem negocia
+     * contrato num monitor estava lendo letra de bula.
+     *
+     * Não existe escala tipográfica própria pro painel — seria um segundo
+     * sistema por cima do do Tailwind, e isso é burocracia. É só um piso:
+     * nada abaixo de `text-xs`. O ContratoDoc é a exceção, e por outro
+     * motivo: ele é IMPRESSO, e 11px no papel é corpo de contrato.
+     *
+     * `data-painel="web"` é o que solta o teto de 480px do #root — a regra
      * mora em index.css, junto do teto que ela abre. Ver lá o porquê. */
     <div data-painel="web" className="min-h-screen flex flex-col bg-bg">
       {/* Tampa escura — mesma regra das outras portas do produto. */}
@@ -178,7 +192,7 @@ export default function AdminPanel() {
           >
             <LogOut size={15} /> Sair
           </button>
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-primary/80">
+          <p className="mt-4 font-mono text-xs uppercase tracking-[0.2em] text-primary/80">
             só pra você
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
@@ -352,7 +366,7 @@ function Geral({ ov, onVerFila }) {
               <p className="text-xl font-extrabold tabular-nums tracking-tight text-text">
                 {ov.filaParceiros}
               </p>
-              <p className="mt-0.5 text-[11px] leading-tight text-textMuted">
+              <p className="mt-0.5 text-xs leading-tight text-textMuted">
                 Motoristas pedindo acesso — toque pra aprovar ou recusar
               </p>
             </div>
@@ -471,7 +485,7 @@ function PeriodoDeAvaliacao() {
       </div>
 
       <label className="mt-3 block">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-textMuted">
+        <span className="text-xs font-semibold uppercase tracking-wide text-textMuted">
           Fecha sozinho em
         </span>
         <input
@@ -483,7 +497,7 @@ function PeriodoDeAvaliacao() {
         />
       </label>
 
-      <p className="mt-2 text-[11px] text-textMuted">
+      <p className="mt-2 text-xs text-textMuted">
         {ativa
           ? ateISO
             ? `Aberto — fecha sozinho em ${ateISO.split('-').reverse().join('/')}.`
@@ -589,7 +603,7 @@ function PrivacidadeDosDepoimentos() {
               )}
             </div>
             {aCorrigir === 0 && (
-              <p className="mt-1.5 text-[11px] text-textMuted">
+              <p className="mt-1.5 text-xs text-textMuted">
                 Nada exposto. Não precisa aplicar nada.
               </p>
             )}
@@ -618,7 +632,7 @@ function PrivacidadeDosDepoimentos() {
           )}
         </div>
 
-        <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+        <p className="mt-2 text-xs leading-relaxed text-textMuted">
           A verificação não muda nada. Aplicar apaga campos e não tem desfazer.
         </p>
       </div>
@@ -717,7 +731,7 @@ function Pesquisa({ s }) {
               <div className="mb-1.5 flex items-center gap-2">
                 <Stars value={c.nota} size={12} />
                 <span
-                  className={`rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest ${
+                  className={`rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${
                     c.papel === 'admin'
                       ? 'bg-primarySoft text-primary'
                       : 'bg-indigo-50 text-indigo-700'
@@ -726,13 +740,13 @@ function Pesquisa({ s }) {
                   {c.papel === 'admin' ? 'motorista' : 'responsável'}
                 </span>
                 {c.publico && (
-                  <span className="rounded bg-warningSoft px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-warningText">
+                  <span className="rounded bg-warningSoft px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest text-warningText">
                     na home
                   </span>
                 )}
               </div>
               <p className="text-sm leading-relaxed text-text">“{c.texto}”</p>
-              <p className="mt-1.5 text-[11px] text-textMuted">
+              <p className="mt-1.5 text-xs text-textMuted">
                 {c.nome || 'anônimo'}
                 {c.em ? ` · ${c.em.toLocaleDateString('pt-BR')}` : ''}
               </p>
@@ -829,7 +843,7 @@ function Parceiros({ leads, onMarcar }) {
                 <p className="truncate text-sm font-bold text-text">
                   {l.name || 'sem nome'}
                 </p>
-                <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-textMuted">
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-textMuted">
                   {l.city && (
                     <span className="inline-flex items-center gap-1">
                       <MapPin size={11} />
@@ -848,7 +862,7 @@ function Parceiros({ leads, onMarcar }) {
                 </p>
               </div>
               <span
-                className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest ${STATUS_SKIN[status]}`}
+                className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${STATUS_SKIN[status]}`}
               >
                 {STATUS_LABEL[status]}
               </span>
@@ -906,7 +920,7 @@ function Parceiros({ leads, onMarcar }) {
             </div>
 
             {status === 'approved' && (
-              <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+              <p className="mt-2 text-xs leading-relaxed text-textMuted">
                 Aprovado é <strong>decisão</strong>, não acesso: criar a conta
                 dele precisa da função de provisionamento (Admin SDK). Sem ela,
                 a conta ainda é criada à mão.
@@ -923,7 +937,7 @@ function Parceiros({ leads, onMarcar }) {
 
 function Titulo({ icon: Icon, children }) {
   return (
-    <h2 className="mb-2 inline-flex items-center gap-1.5 px-1 font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+    <h2 className="mb-2 inline-flex items-center gap-1.5 px-1 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
       <Icon size={12} />
       {children}
     </h2>
@@ -942,7 +956,7 @@ function Tile({ label, value, tone = 'neutral' }) {
       <p className={`text-xl font-extrabold tabular-nums tracking-tight ${cor}`}>
         {value}
       </p>
-      <p className="mt-0.5 text-[11px] leading-tight text-textMuted">{label}</p>
+      <p className="mt-0.5 text-xs leading-tight text-textMuted">{label}</p>
     </div>
   );
 }

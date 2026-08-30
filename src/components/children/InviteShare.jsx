@@ -64,7 +64,7 @@ export default function InviteShare({ code, childName, parentPhone }) {
         href={waHref}
         target="_blank"
         rel="noreferrer"
-        className="tap w-full h-14 rounded-xl bg-[#25D366] text-white font-semibold inline-flex items-center justify-center gap-2 shadow-md shadow-green-600/25"
+        className="tap w-full h-14 rounded-xl bg-[#25D366] text-white font-semibold inline-flex items-center justify-center gap-2 shadow-focus"
       >
         <WhatsAppIcon size={20} colored={false} />
         Mandar convite no WhatsApp

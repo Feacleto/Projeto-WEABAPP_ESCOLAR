@@ -42,7 +42,7 @@ export function ArtRoad() {
       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-escola/20 border border-escolaBorder/30 flex items-center justify-center">
         <School size={13} className="text-escolaBorder" />
       </span>
-      <div className="demo-van absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-perua flex items-center justify-center shadow-lg shadow-black/40">
+      <div className="demo-van absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-perua flex items-center justify-center shadow-float">
         <Bus size={16} className="text-white" />
       </div>
     </div>
@@ -62,7 +62,7 @@ export function ArtRadar() {
             style={{ animationDelay: `${d}ms` }}
           />
         ))}
-        <span className="relative w-11 h-11 rounded-2xl bg-perua flex items-center justify-center shadow-lg shadow-black/40">
+        <span className="relative w-11 h-11 rounded-2xl bg-perua flex items-center justify-center shadow-float">
           <Bus size={20} className="text-white" />
         </span>
       </div>
@@ -192,7 +192,7 @@ export function ArtSteps() {
             {n}
           </span>
         ))}
-        <span className="art-travel absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-onNightAccentFill shadow-lg shadow-emerald-500/40" />
+        <span className="art-travel absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-onNightAccentFill shadow-focus" />
       </div>
     </div>
   );

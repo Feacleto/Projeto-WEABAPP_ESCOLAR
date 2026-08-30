@@ -353,7 +353,7 @@ export default function TioDashboard() {
           <div className="px-5 pt-4 space-y-4">
             <div
               data-tour="hero"
-              className="bg-card border-2 border-primary rounded-3xl p-4 shadow-lg shadow-emerald-600/15"
+              className="bg-card border-2 border-primary rounded-3xl p-4 shadow-focus"
             >
               <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
                 próxima viagem
