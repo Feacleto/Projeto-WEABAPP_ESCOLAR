@@ -281,7 +281,16 @@ function makeJoinDriverWaitlist(db) {
     const phone = String(d.phone || '').replace(/\D/g, '').slice(0, 15);
     const email = String(d.email || '').trim().toLowerCase().slice(0, 160);
     const city = String(d.city || '').trim().slice(0, 120);
-    const fleet = ['1', '2-3', '4+'].includes(d.fleet) ? d.fleet : '1';
+    // Quantas crianças ele transporta hoje. Substituiu o tamanho da frota:
+    // van é patrimônio dele, criança é o tamanho da operação — e é sobre
+    // criança que a associação é dimensionada e contratada.
+    //
+    // Teto de 500 pra recusar dedo escorregado e lixo de bot sem barrar
+    // ninguém real: a maior frota escolar plausível não chega perto.
+    const criancas = Math.min(
+      500,
+      Math.max(0, Math.trunc(Number(d.criancas) || 0))
+    );
     const message = String(d.message || '').trim().slice(0, 600);
 
     if (!name || (!phone && !email)) {
@@ -309,7 +318,7 @@ function makeJoinDriverWaitlist(db) {
       phone,
       email,
       city,
-      fleet,
+      criancas,
       message,
       contacted: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),

@@ -16,6 +16,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Calendar,
+  MessageCircle,
+  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../common/Card';
@@ -24,6 +26,9 @@ import InviteShare from './InviteShare';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { addChild } from '../../services/childrenService';
+import { useAuth } from '../../hooks/useAuth';
+import { useLimiteCriancas } from '../../hooks/useLimiteCriancas';
+import { devWhatsAppLink } from '../../config/developer';
 import { searchAddress } from '../../services/locationService';
 import { normalizaHora, periodoDaHora, horaCurta } from '../../services/horariosService';
 import { useEscolas } from '../../hooks/useEscolas';
@@ -91,6 +96,8 @@ const EMPTY_FORM = {
  */
 export default function ChildForm() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const limite = useLimiteCriancas(user?.uid);
   const [form, setForm] = useState(EMPTY_FORM);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -221,6 +228,21 @@ export default function ChildForm() {
         onDone={() => navigate('/tio/children', { replace: true })}
       />
     );
+  }
+
+  // VAGAS ESGOTADAS — a porta fecha ANTES do formulário.
+  //
+  // Não é o botão de salvar que fica cinza no fim: ele preencheria oito
+  // campos, escolheria o ponto no mapa, e só então descobriria que não cabe.
+  // O limite é do contrato, não do preenchimento — então ele aparece onde a
+  // decisão começa.
+  //
+  // Quem impede de verdade são as rules (`allow create` em `children` valida
+  // o contador contra o limite). Esta tela existe pra dizer o que aconteceu e
+  // dar o caminho: sem ela, o cadastro falharia com erro de permissão, que
+  // não é informação pra ninguém.
+  if (limite.lotado) {
+    return <SemVaga limite={limite} onVoltar={() => navigate('/tio/children')} />;
   }
 
   return (
@@ -559,7 +581,7 @@ function Step3School({ form, setForm, setField, errors }) {
     <>
       <Heading
         title="Escola e horários"
-        subtitle="Onde estuda e a que horas você combinou de pegar e entregar."
+        subtitle="Onde estuda e a que horas você vai pegar e entregar."
       />
 
       <div>
@@ -637,7 +659,7 @@ function Step3School({ form, setForm, setField, errors }) {
       {/* Os dois horários que o pai vai ler na tela dele */}
       <div className="pt-2 space-y-4">
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 leading-relaxed">
-          <b className="block text-sm mb-0.5">O combinado com o responsável</b>
+          <b className="block text-sm mb-0.5">O horário que você vai cumprir</b>
           É o que o pai vê pra ficar esperando na hora certa, e é por ele que
           sua rota se organiza sozinha. O horário da escola é outra coisa e não
           entra aqui.
@@ -888,6 +910,77 @@ function InviteCodeSuccess({ code, childName, parentPhone, onDone }) {
       <InviteShare code={code} childName={childName} parentPhone={parentPhone} />
 
       <Button onClick={onDone}>Concluir</Button>
+    </div>
+  );
+}
+
+/**
+ * A TELA DE "NÃO CABE MAIS" — e por que ela não é um erro.
+ *
+ * O tom importa. Ele não fez nada errado: preencheu o contrato dele e ele
+ * encheu, o que é a melhor notícia possível sobre o negócio dele. Uma tela
+ * vermelha de bloqueio trata crescimento como infração.
+ *
+ * O NÚMERO VEM PRIMEIRO porque é a única pergunta que ele tem ao bater aqui:
+ * quantas eu contratei? E o botão é a resposta pra segunda: como aumento?
+ *
+ * ABRE O WHATSAPP COM O TEXTO PRONTO. Ampliar limite é renegociar contrato e
+ * orçamento — não existe botão que faça isso sozinho, e fingir que existe
+ * (um "solicitar aumento" que só grava um pedido em algum lugar) criaria uma
+ * espera sem prazo. A conversa é o caminho real; o app encurta ela.
+ */
+function SemVaga({ limite, onVoltar }) {
+  const zap = devWhatsAppLink(
+    `Olá! Contratei ${limite.limite} vaga(s) de criança no Alô Buzinou e ` +
+      'preciso de mais. Podemos atualizar meu contrato?'
+  );
+
+  return (
+    <div className="min-h-screen px-5 pt-4">
+      <button
+        type="button"
+        onClick={onVoltar}
+        className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
+      >
+        <ArrowLeft size={18} /> Voltar
+      </button>
+
+      <div className="mx-auto mt-8 max-w-md text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Users size={26} />
+        </div>
+
+        <h1 className="mt-4 text-xl font-extrabold tracking-tight text-text">
+          Suas vagas acabaram
+        </h1>
+
+        <p className="mt-2 text-sm leading-relaxed text-textMuted">
+          Você contratou <strong className="text-text">{limite.limite}</strong>{' '}
+          {limite.limite === 1 ? 'vaga' : 'vagas'} e está usando{' '}
+          <strong className="text-text">{limite.usadas}</strong>. Pra cadastrar
+          mais uma criança, a gente atualiza seu contrato e o orçamento junto —
+          é rápido.
+        </p>
+
+        <a
+          href={zap}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-bold text-white"
+        >
+          <MessageCircle size={17} />
+          Falar sobre ampliar
+        </a>
+
+        {/* A SAÍDA QUE NÃO CUSTA NADA, e ela é real: o limite conta crianças
+          * ATIVAS. Quem parou de atender uma família libera a vaga ao
+          * desativá-la, sem falar com ninguém. Esconder isso pra empurrar
+          * renegociação seria vender vaga que ele já tem. */}
+        <p className="mt-4 text-xs leading-relaxed text-textMuted">
+          Parou de atender alguma família? Desative a criança na sua turma — a
+          vaga volta na hora, e o histórico dela não se perde.
+        </p>
+      </div>
     </div>
   );
 }

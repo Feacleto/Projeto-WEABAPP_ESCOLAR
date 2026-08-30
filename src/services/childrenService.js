@@ -1,13 +1,14 @@
 import {
   collection,
   doc,
-  addDoc,
   getDoc,
+  increment,
   query,
   where,
   onSnapshot,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { generateInviteCode } from '../utils/generateInviteCode';
@@ -148,7 +149,27 @@ export async function addChild(data) {
     createdAt: serverTimestamp(),
   };
 
-  const docRef = await addDoc(collection(db, 'children'), payload);
+  // CRIANÇA E CONTADOR NO MESMO BATCH — e não é opção.
+  //
+  // As rules exigem as duas escritas juntas: `allow create` em `children`
+  // valida, com `getAfter`, o contador do motorista JÁ incrementado, e a
+  // regra do contador recusa passar do `limiteCriancas` contratado. Um
+  // `addDoc` solto é recusado por permissão — não é otimização, é o caminho.
+  //
+  // Rules não sabem contar documentos: este contador é a contagem
+  // materializada, e é ele que torna o limite verificável no servidor.
+  //
+  // `increment(1)` e não um número calculado aqui: duas abas cadastrando ao
+  // mesmo tempo leriam o mesmo valor e gravariam o mesmo, e uma criança
+  // entraria sem ocupar vaga. O incremento é resolvido pelo servidor, e as
+  // rules enxergam o valor já resolvido.
+  const docRef = doc(collection(db, 'children'));
+  const lote = writeBatch(db);
+  lote.set(docRef, payload);
+  lote.update(doc(db, 'users', payload.adminUid), {
+    criancasAtivas: increment(1),
+  });
+  await lote.commit();
 
   // Aqui havia um `addChildToDefaultPlan`, que enfileirava a criança nos seis
   // turnos de `routePlans`. Saiu junto com os turnos: a fila não é mais uma
@@ -221,8 +242,27 @@ export async function setChildPhotoURL(id, photoURL) {
 }
 
 export async function deactivateChild(id) {
-  // Soft delete — preserva histórico de pagamentos e rotas.
-  await updateDoc(doc(db, 'children', id), { active: false });
+  // DESATIVAR LIBERA A VAGA — o limite conta crianças ATIVAS.
+  //
+  // É o mesmo recorte que `resumirBase` usa pra calcular a taxa (`active !==
+  // false`), e manter os dois iguais é o que faz contrato, fatura e limite
+  // falarem do mesmo número. Se aqui contasse tudo já cadastrado, um
+  // motorista que perdeu um cliente continuaria pagando a vaga dele.
+  //
+  // O decremento vai no mesmo batch pelo mesmo motivo do cadastro — só que
+  // aqui as rules não exigem: descer o contador é livre. Junto porque
+  // separado é como ele desanda no dia em que a segunda escrita falha.
+  const atual = await getChild(id);
+  const lote = writeBatch(db);
+  lote.update(doc(db, 'children', id), { active: false });
+  // Só desconta se ela ESTAVA ativa: desativar duas vezes não pode gerar
+  // duas vagas do nada.
+  if (atual?.active !== false && atual?.adminUid) {
+    lote.update(doc(db, 'users', atual.adminUid), {
+      criancasAtivas: increment(-1),
+    });
+  }
+  await lote.commit();
   // `active: false` basta: a fila do dia filtra por ele. Não há mais lista
   // salva de onde a criança precise ser retirada — e portanto não há mais
   // como ela sobrar numa rota depois de desativada.

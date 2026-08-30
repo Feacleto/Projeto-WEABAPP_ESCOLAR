@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bus, Check, Gift, Handshake, Mail, MapPin, User } from 'lucide-react';
+import {
+  Bus,
+  Check,
+  Handshake,
+  Mail,
+  MapPin,
+  MessageCircle,
+  User,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import Input from '../common/Input';
 import Sheet, { SheetCard, SheetCTA, SheetGhost } from '../common/Sheet';
@@ -16,12 +24,6 @@ import {
   maskPhone,
   unmaskPhone,
 } from '../../utils/masks';
-
-const FLEET_OPTIONS = [
-  { value: '1', label: '1' },
-  { value: '2-3', label: '2 a 3' },
-  { value: '4+', label: '4 ou +' },
-];
 
 /**
  * Folha da vaga de associado — o mesmo cadastro de
@@ -48,7 +50,10 @@ export default function WaitlistSheet({
   pularPitch = false,
 }) {
   // O pitch vem ANTES do formulário e existe por um motivo específico: é
-  // onde a TAXA é dita. Descobrir que existe taxa na terceira conversa faz o
+  // onde o CONSULTOR é prometido. O preço não é dito na vitrine — número
+  // solto vira âncora antes de existir proposta —, mas a conversa sobre ele é
+  // anunciada antes do formulário, pra ninguém entrar na fila achando que
+  // nunca se falará de dinheiro. Descobrir isso na terceira conversa faz o
   // motorista se sentir enganado; ler isso antes de digitar o nome faz ele
   // chegar pra negociar. Quem já leu pode pular.
   const [fase, setFase] = useState(pularPitch ? 'form' : 'pitch'); // pitch | form
@@ -60,7 +65,7 @@ export default function WaitlistSheet({
     phone: '',
     email: '',
     city: '',
-    fleet: '1',
+    criancas: '',
     message: '',
   });
   const [errors, setErrors] = useState({});
@@ -76,7 +81,7 @@ export default function WaitlistSheet({
   const marcar = (campo) => () =>
     setTocou((p) => (p[campo] ? p : { ...p, [campo]: true }));
 
-  // Toda vez que a folha abre, o pitch abre com ela. A explicação da taxa
+  // Toda vez que a folha abre, o pitch abre com ela. A explicação da estrutura
   // não é aviso de cookie: não é "leu uma vez, nunca mais". Quem já conhece
   // pula em um toque; quem voltou pra reler encontra no mesmo lugar.
   // (Se já enviou, a folha continua sendo o comprovante.)
@@ -182,17 +187,22 @@ export default function WaitlistSheet({
           {/* O bônus de entrada é anunciado aqui, mas SORTEADO dentro do app,
             * no primeiro acesso, com a conta já criada. Sorteio em página
             * pública seria uma tentativa por aba aberta. */}
-          <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
+          {/* O QUE ACONTECE AGORA, e não o que ele vai pagar.
+            * Aqui havia a promessa da roleta ("de 1 a 4 meses sem taxa"), que
+            * saiu junto com as telas de preço do pitch: número na vitrine
+            * vira âncora antes de existir proposta, e cada operação tem um
+            * tamanho. O que fica é o próximo passo concreto — que é o que
+            * quem acabou de mandar os dados quer saber. */}
+          <div className="w-full rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left">
             <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
-              <Gift size={15} className="text-warning" />
-              Sua condição de entrada
+              <MessageCircle size={15} className="text-primary" />
+              O que acontece agora
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
-              O sistema está em teste, então você não começa pagando: no seu
-              <strong>primeiro acesso</strong> você gira a roleta uma vez e
-              pode tirar <strong>de 1 a 4 meses sem taxa</strong>. Uma
-              tentativa por associado — o resultado fica registrado na sua
-              conta.
+            <p className="mt-1 text-xs leading-relaxed text-emerald-900/80">
+              Um consultor fala com você no WhatsApp pra entender sua operação,
+              te ajudar a <strong>cadastrar suas crianças</strong> e mostrar
+              como usar o app no dia a dia. As condições da associação são
+              combinadas nessa conversa.
             </p>
           </div>
 
@@ -260,7 +270,7 @@ export default function WaitlistSheet({
       <div className="mb-5">
         <ConsultorButton
           tone="light"
-          assunto="a vaga de associado e a taxa"
+          assunto="a vaga de associado"
         />
         <p className="mt-2 text-center text-[11px] text-textMuted">
           prefere conversar antes de preencher? é por aqui
@@ -340,30 +350,30 @@ export default function WaitlistSheet({
           </div>
         )}
 
+        {/* CRIANÇAS, E NÃO VANS.
+          * Van é patrimônio dele; criança é o tamanho da operação — e é
+          * sobre criança que a associação é dimensionada, cobrada e
+          * contratada. Perguntar van obrigava a estimar o resto na conversa.
+          *
+          * Número exato, não faixa: é a âncora da proposta, e faixa larga
+          * ("11 a 25") faz a negociação começar do teto ou do piso conforme
+          * quem fala primeiro. */}
         {mostraVans && (
         <div className="animate-step-in">
-          <p className="mb-2 block text-sm font-semibold text-text">
-            Quantas vans
-          </p>
-          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-gray-100 p-1">
-            {FLEET_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  setForm((p) => ({ ...p, fleet: opt.value }));
-                  setTocou((p) => (p.vans ? p : { ...p, vans: true }));
-                }}
-                className={`tap rounded-xl py-3 text-sm font-bold transition-colors ${
-                  form.fleet === opt.value
-                    ? 'bg-card text-primary shadow-sm'
-                    : 'text-textMuted'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <Input
+            id="waitlist-criancas"
+            label="Quantas crianças você transporta hoje"
+            type="number"
+            inputMode="numeric"
+            min="0"
+            placeholder="Ex.: 18"
+            value={form.criancas}
+            onChange={(e) => {
+              set('criancas')(e);
+              setTocou((p) => (p.vans ? p : { ...p, vans: true }));
+            }}
+            hint="É por esse número que a associação é dimensionada."
+          />
         </div>
         )}
 

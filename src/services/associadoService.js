@@ -72,7 +72,7 @@ export async function proximaPosicao() {
  * compartilhado. Um caminho que falha na metade dos aparelhos é pior que um
  * campo de senha a mais.
  */
-export async function inscreverAssociado({ email, senha, nome, telefone, cidade, frota }) {
+export async function inscreverAssociado({ email, senha, nome, telefone, cidade, criancas }) {
   const emailLimpo = String(email || '').trim().toLowerCase();
 
   let uid;
@@ -107,7 +107,10 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
     email: emailLimpo,
     phone: String(telefone || '').trim(),
     city: String(cidade || '').trim(),
-    fleet: String(frota || '').trim(),
+    // Quantas crianças ele DIZ que transporta — estimativa da inscrição, e
+    // não o limite contratado. O limite nasce no orçamento, em
+    // `users.limiteCriancas`, e só o dono escreve.
+    criancasEstimadas: Math.max(0, Number(criancas) || 0),
     createdAt: serverTimestamp(),
   };
   if (posicao != null) payload.posicaoNaFila = posicao;

@@ -11,12 +11,6 @@ import { inscreverAssociado } from '../services/associadoService';
 import { useAuth } from '../hooks/useAuth';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../utils/masks';
 
-const FLEET_OPTIONS = [
-  { value: '1', label: '1' },
-  { value: '2-3', label: '2 a 3' },
-  { value: '4+', label: '4 ou +' },
-];
-
 /**
  * Inscrição de motorista — /quero-fazer-parte
  *
@@ -36,7 +30,7 @@ export default function DriverSignup() {
     email: '',
     senha: '',
     city: '',
-    fleet: '1',
+    criancas: '',
     message: '',
   });
   const { refreshProfile } = useAuth();
@@ -82,7 +76,7 @@ export default function DriverSignup() {
         nome: form.name,
         telefone: unmaskPhone(form.phone),
         cidade: form.city,
-        frota: form.fleet,
+        criancas: form.criancas,
       });
 
       await refreshProfile();
@@ -247,25 +241,20 @@ export default function DriverSignup() {
           />
 
           <div>
-            <p className="block text-sm font-semibold text-text mb-2">
-              Quantas vans
-            </p>
-            <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 rounded-2xl">
-              {FLEET_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setForm((p) => ({ ...p, fleet: opt.value }))}
-                  className={`tap py-3 text-sm font-semibold rounded-xl transition-colors ${
-                    form.fleet === opt.value
-                      ? 'bg-card text-text shadow-sm'
-                      : 'text-textMuted'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            {/* Criança, e não van — é sobre ela que o contrato é
+              * dimensionado. Ver o mesmo campo no WaitlistSheet. */}
+            <Input
+              id="signup-criancas"
+              label="Quantas crianças você transporta hoje"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              placeholder="Ex.: 18"
+              value={form.criancas}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, criancas: e.target.value }))
+              }
+            />
           </div>
 
           <div>
