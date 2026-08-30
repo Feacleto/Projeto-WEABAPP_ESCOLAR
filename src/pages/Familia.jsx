@@ -3,10 +3,10 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import {
   ArrowRight,
-  BellRing,
+  Bus,
   CalendarX2,
+  Clock,
   Check,
-  FileText,
   Link2,
   MapPin,
   MessageCircle,
@@ -99,17 +99,43 @@ const GLASS = 'bg-white/[0.055] border border-white/10 rounded-3xl';
 /**
  * O que ele encontra dentro. Quatro, não seis: é o que ele realmente abre o
  * app pra fazer. Cada linha é uma frase, no presente, sem adjetivo.
+ *
+ * A ORDEM MUDOU, E ERA UM DESENCONTRO DE VERDADE.
+ *
+ * A lista prometia mensalidade, recados, avisar falta e contrato — e deixava
+ * de fora as DUAS coisas que o app lidera. O cabeçalho do `HorarioDoDia` diz,
+ * com essas palavras, que o horário é "a pergunta que traz o responsável até
+ * aqui"; o painel da perua é o único bloco presente nos três estados do dia.
+ * Nenhum dos dois estava aqui.
+ *
+ * A porta vendia contrato e comprovante; o app entrega "que horas eu desço" e
+ * "onde está meu filho agora". Quem entra esperando uma coisa encontra outra
+ * — e ela é melhor, o que é o tipo de desalinhamento de que ninguém reclama e
+ * que todo mundo sente.
+ *
+ * Saíram "os recados" e "o contrato". Os dois continuam no app, e nenhum dos
+ * dois é motivo de abrir o app amanhã de manhã.
+ *
+ * `destaque` marca as duas linhas que respondem "está tudo certo com meu
+ * filho?" — as outras duas são consequência, não motivo.
+ *
+ * ATENÇÃO AO TEXTO DO RASTREIO: "onde a perua está agora", nunca "quantos
+ * minutos faltam". A porta não pode prometer o número que o painel se recusa
+ * a mostrar — foi por inventar esse minuto que a estimativa por linha reta
+ * saiu do app duas vezes.
  */
 const DENTRO = [
   {
-    Icon: Receipt,
-    titulo: 'A mensalidade e o comprovante',
-    texto: 'O que está pago, o que está em aberto, e o comprovante de cada mês.',
+    Icon: Clock,
+    titulo: 'A hora de estar na porta',
+    texto: 'O horário que o motorista combinou com você, para hoje.',
+    destaque: true,
   },
   {
-    Icon: BellRing,
-    titulo: 'Os recados do motorista',
-    texto: 'Aviso de atraso, de mudança de horário e de dia sem aula.',
+    Icon: Bus,
+    titulo: 'Onde a perua está agora',
+    texto: 'E um aviso no celular quando ela estiver chegando.',
+    destaque: true,
   },
   {
     Icon: CalendarX2,
@@ -117,9 +143,9 @@ const DENTRO = [
     texto: 'Sem depender de alguém ler mensagem no meio da rota.',
   },
   {
-    Icon: FileText,
-    titulo: 'O contrato',
-    texto: 'O que foi combinado, disponível quando você precisar conferir.',
+    Icon: Receipt,
+    titulo: 'A mensalidade e o comprovante',
+    texto: 'O que está pago, o que está em aberto, e o PIX pronto.',
   },
 ];
 
@@ -231,7 +257,7 @@ export default function Familia() {
             )}
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-white/70">
-            Entre para ver a mensalidade, os recados e o contrato. É a mesma
+            Entre para ver a hora de hoje e acompanhar a perua. É a mesma
             conta que você criou pelo link do motorista.
           </p>
 
@@ -324,9 +350,20 @@ export default function Familia() {
             o que você encontra
           </h2>
           <ul className="mt-4 space-y-3">
-            {DENTRO.map(({ Icon, titulo, texto }) => (
-              <li key={titulo} className={`${GLASS} flex gap-3.5 p-4`}>
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.08]">
+            {DENTRO.map(({ Icon, titulo, texto, destaque }) => (
+              <li
+                key={titulo}
+                className={`flex gap-3.5 rounded-3xl border p-4 ${
+                  destaque
+                    ? 'border-emerald-300/30 bg-emerald-500/10'
+                    : 'border-white/10 bg-white/[0.055]'
+                }`}
+              >
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                    destaque ? 'bg-emerald-400/15' : 'bg-white/[0.08]'
+                  }`}
+                >
                   <Icon size={18} className="text-emerald-300" />
                 </span>
                 <div className="min-w-0">

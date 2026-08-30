@@ -24,7 +24,15 @@ import { primeiroNome } from '../../utils/formatters';
  * mostrar esse chute aqui seria pior que não mostrar nada: o pai desceria com
  * a criança na hora errada e a culpa cairia no app — com razão.
  */
-export default function HorarioDoDia({ child, absence, ride = null }) {
+export default function HorarioDoDia({
+  child,
+  absence,
+  ride = null,
+  // SEM CASCA: quando o bloco vive DENTRO do cartão de hoje, quem desenha a
+  // superfície é o cartão. Duas bordas arredondadas coladas leem como dois
+  // cartões empilhados, e o ponto do cartão único é justamente parecer um.
+  semCasca = false,
+}) {
   if (!child) return null;
 
   const { pega, entrega, presumido } = horariosCombinados(child);
@@ -48,13 +56,19 @@ export default function HorarioDoDia({ child, absence, ride = null }) {
     // encontrasse — que nem sempre é a que está na tela.
     <section
       data-tour="horario-dia"
-      className="bg-card rounded-3xl shadow-sm overflow-hidden"
+      className={
+        semCasca ? 'overflow-hidden' : 'bg-card rounded-3xl shadow-sm overflow-hidden'
+      }
       aria-label="Horários de hoje"
     >
       <div className="px-5 pt-4 pb-1 flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-textMuted">
-          Hoje
-        </h2>
+        {/* O título "Hoje" some dentro do cartão: a tarja do topo já diz o
+          * momento, e repetir a palavra a 20px de distância é ruído. */}
+        {!semCasca && (
+          <h2 className="text-sm font-bold uppercase tracking-widest text-textMuted">
+            Hoje
+          </h2>
+        )}
         {tipo === ABSENCE_TYPES.FULL && (
           <span className="text-[11px] font-semibold text-amber-700">
             você avisou que não vai

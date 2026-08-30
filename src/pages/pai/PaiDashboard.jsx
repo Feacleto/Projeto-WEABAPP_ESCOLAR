@@ -48,7 +48,6 @@ import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS, ABSENCE_TYPES } from '../../services/absencesService';
 import { getDateKey } from '../../services/horariosService';
 import { playSound } from '../../services/soundService';
-import { greet } from '../../utils/greeting';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 import PaiNotebookFAB from '../../components/agenda/PaiNotebookFAB';
 
@@ -89,7 +88,7 @@ function daysUntil(date) {
 
 export default function PaiDashboard() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { openTutorial } = useOutletContext() || {};
   const { child, loading: childLoading } = useActiveChild();
   const { location: liveLocation } = useLiveLocation(child?.adminUid);
@@ -226,7 +225,6 @@ export default function PaiDashboard() {
     );
   }
 
-  const firstName = profile?.name?.split(' ')[0] || '';
 
   /**
    * QUAL DAS TRÊS CARAS — o espelho da home do motorista.
@@ -280,35 +278,32 @@ export default function PaiDashboard() {
           * igual a antes. */}
         <ChildSwitcher />
 
-        {/* Saudação — some enquanto a perua está andando: ali o topo da tela
-          * é caro demais pra gastar com cortesia. */}
-        {estadoDoDia !== 'acompanhando' && (
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
-              {greet(new Date())}, {firstName}!
-            </h1>
-            <FestiveBadge />
-          </div>
-        )}
+        {/* A SAUDAÇÃO SAIU.
+          *
+          * Ele mora no app o dia inteiro e a cortesia cabe; ela fica vinte
+          * segundos e a linha empurrava a HORA pra baixo da dobra em 320px.
+          * O `FestiveBadge` foi pro cartão, ao lado da criança — é lá que ele
+          * faz sentido, porque o aniversário é dela. */}
 
-        {/* HERO — em todos os estados. É a âncora do tutorial e o lugar onde
-          * o responsável olha primeiro, aconteça o que acontecer. */}
+        {/* O CARTÃO DE HOJE — rosto, hora e a perua, numa superfície só. É a
+          * âncora do tutorial e o lugar onde ela olha primeiro. */}
         <div data-tour="hero">
-          <ChildHero
+          <CartaoDeHoje
             child={child}
             status={status}
             phrase={phrase}
+            estadoDoDia={estadoDoDia}
+            absence={absence}
+            ride={ride}
+            presence={estadoDoDia === 'esperando' ? presence : null}
             onTap={() => setFichaAberta(true)}
+            onMapa={() => navigate('/pai/map')}
           />
         </div>
 
         {/* ───────── ESPERANDO — "que horas eu preciso estar na porta?" ───────── */}
         {estadoDoDia === 'esperando' && (
           <>
-            {/* O horário combinado vem antes de tudo: é a pergunta que traz
-              * o responsável até aqui. */}
-            <HorarioDoDia child={child} absence={absence} ride={ride} />
-
             {/* Três respostas escritas na tela, um toque envia.
               * Antes era um botão que abria uma folha pra depois escolher —
               * dois toques e uma tela no meio, no minuto em que o responsável
@@ -334,7 +329,6 @@ export default function PaiDashboard() {
         {estadoDoDia === 'acompanhando' && (
           <>
             <RouteTracker status={status} ride={ride} />
-            <HorarioDoDia child={child} absence={absence} ride={ride} />
           </>
         )}
 
@@ -353,16 +347,22 @@ export default function PaiDashboard() {
           />
         )}
 
-        {/* O painel da perua fica nos TRÊS estados — é o que mantém a âncora
-          * `map` do tutorial sempre presente, e a frase dele é honesta em
-          * qualquer um deles: "ainda não começou", "chega em uns X minutos",
-          * "sem posição do motorista". */}
-        <div data-tour="map">
-          <PresencePanel
-            presence={presence}
-            onOpenMap={() => navigate('/pai/map')}
-          />
-        </div>
+        {/* O PAINEL DA PERUA SÓ ONDE ELE TEM O QUE DIZER.
+          *
+          * No `esperando` ele repetia "a rota ainda não começou" num bloco
+          * inteiro, e virou a linha do pé do cartão. Aqui ele fica pros dois
+          * estados em que a posição muda de fato.
+          *
+          * A âncora `map` do tutorial mora AQUI e no pé do cartão: nos três
+          * estados existe um alvo, que é o que o teste de âncoras exige. */}
+        {estadoDoDia !== 'esperando' && (
+          <div data-tour="map">
+            <PresencePanel
+              presence={presence}
+              onOpenMap={() => navigate('/pai/map')}
+            />
+          </div>
+        )}
 
         {/* Falar com o motorista — direto, fora de gaveta.
           * É o que ele procura quando alguma coisa fugiu do combinado, e
@@ -520,19 +520,56 @@ export default function PaiDashboard() {
   );
 }
 
-/* ─────────────── HERO ─────────────── */
+/* ─────────────── O CARTÃO DE HOJE ─────────────── */
 
-function ChildHero({ child, status, phrase, onTap }) {
+/**
+ * UM CARTÃO SÓ, no lugar de dois blocos.
+ *
+ * O herói e o horário eram cartões separados, e no estado `esperando` o herói
+ * informava ZERO: "Tá em casa · ainda não saiu", dito sobre uma criança que
+ * está de pijama do lado dela. Custava ~200px do topo pra contar o óbvio e
+ * empurrava a HORA — a única coisa que ela precisa ler de longe, com a
+ * criança no colo — pra baixo da dobra num aparelho de 320px.
+ *
+ * Agora o rosto e a hora são a mesma superfície: o topo diz de quem é o dia,
+ * o corpo diz a que horas, e o pé diz onde a perua está.
+ *
+ * A TARJA DO MOMENTO é o conserto de "a tela mudou sozinha e nada disse".
+ * O Início dela troca de cara três vezes por dia — some a saudação, entra o
+ * rastreio — e quem abre o app às 12h20 não acompanhou a transição. É o mesmo
+ * conserto que o "MODO ROTA" fez no painel do motorista, pelo mesmo motivo:
+ * a pessoa precisa ler onde está antes de tocar em qualquer coisa.
+ *
+ * A HIERARQUIA SE INVERTE POR ESTADO. Em `esperando` a frase de status é
+ * apoio e os números são os protagonistas; em `acompanhando` a frase sobe,
+ * porque a pergunta virou "onde ele está agora".
+ */
+const TARJA = {
+  esperando: 'hoje',
+  acompanhando: 'ao vivo',
+  encerrado: 'dia encerrado',
+};
+
+function CartaoDeHoje({
+  child,
+  status,
+  phrase,
+  estadoDoDia,
+  absence,
+  ride,
+  presence,
+  onTap,
+  onMapa,
+}) {
   const gradient = STATUS_GRADIENTS[status] || STATUS_GRADIENTS.home;
-  const isLive = status === 'onboard';
+  const isLive = estadoDoDia === 'acompanhando';
+  const destaqueFrase = isLive ? 'text-[19px]' : 'text-2xl';
 
   return (
-    <button
-      onClick={onTap}
-      className="tap w-full text-left rounded-3xl overflow-hidden shadow-xl shadow-indigo-500/15"
-    >
-      <div
-        className={`bg-gradient-to-br ${gradient} text-white p-6 relative overflow-hidden`}
+    <div className="rounded-3xl overflow-hidden shadow-xl shadow-indigo-500/15 bg-card">
+      <button
+        onClick={onTap}
+        className={`tap w-full text-left bg-gradient-to-br ${gradient} text-white p-6 relative overflow-hidden block`}
       >
         {/* Ilustração animada de fundo — muda com o estado da criança */}
         <StateIllustration status={status} />
@@ -548,10 +585,22 @@ function ChildHero({ child, status, phrase, onTap }) {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
-              {child.name?.split(' ')[0]}
-            </p>
-            <p className="text-2xl font-bold leading-tight mt-1">
+            <div className="flex items-center gap-2">
+              {/* A TARJA DIZ QUAL DOS TRÊS MOMENTOS É — ver o cabeçalho. */}
+              <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest">
+                {isLive && (
+                  <span className="relative mr-1 inline-flex align-middle">
+                    <span className="absolute inline-flex h-1.5 w-1.5 rounded-full bg-white opacity-75 animate-ping" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+                  </span>
+                )}
+                {TARJA[estadoDoDia]}
+              </span>
+              <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/80">
+                {child.name?.split(' ')[0]}
+              </p>
+            </div>
+            <p className={`${destaqueFrase} font-bold leading-tight mt-1.5`}>
               {phrase.split(' · ')[0]}
             </p>
             {phrase.includes(' · ') && (
@@ -560,25 +609,47 @@ function ChildHero({ child, status, phrase, onTap }) {
               </p>
             )}
           </div>
+          {/* O ANIVERSÁRIO É DA CRIANÇA, então o badge mora ao lado dela e
+            * não ao lado da saudação, que saiu. */}
+          <span className="shrink-0">
+            <FestiveBadge />
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-white/70" />
         </div>
 
-        {isLive && (
-          <div className="relative mt-4 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5">
-            <span className="relative inline-flex">
-              <span className="absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75 animate-ping" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-            </span>
-            <span className="text-xs font-bold uppercase tracking-widest">
-              Ao vivo
-            </span>
-          </div>
-        )}
+      </button>
 
-        <div className="relative mt-4 text-xs text-white/80 inline-flex items-center gap-1">
-          Ver perfil completo <ChevronRight size={14} />
-        </div>
-      </div>
-    </button>
+      {/* O CORPO: a hora, que é o motivo de ela abrir o app.
+        * `semCasca` porque quem desenha a superfície agora é este cartão. */}
+      <HorarioDoDia child={child} absence={absence} ride={ride} semCasca />
+
+      {/* O PÉ: onde a perua está, em UMA linha.
+        *
+        * No `esperando` o painel da perua dizia sempre a mesma coisa — "a
+        * rota ainda não começou" — num bloco inteiro. Bloco cujo conteúdo é
+        * "nada aconteceu" ensina a pular blocos. A frase cabe numa linha, e
+        * tocar leva pro mapa. */}
+      {presence && (
+        <button
+          type="button"
+          onClick={onMapa}
+          className="tap flex w-full items-center gap-2.5 border-t border-gray-100 bg-surface px-5 py-3 text-left"
+        >
+          <MapPin size={15} className="shrink-0 text-textMuted" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs font-semibold text-text">
+              {presence.title}
+            </span>
+            {presence.detail && (
+              <span className="block truncate text-[11px] text-textMuted">
+                {presence.detail}
+              </span>
+            )}
+          </span>
+          <ChevronRight size={15} className="shrink-0 text-textMuted" />
+        </button>
+      )}
+    </div>
   );
 }
 
