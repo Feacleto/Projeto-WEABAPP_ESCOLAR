@@ -19,6 +19,7 @@ import {
   clearDailyAltPickup,
   notifyAltPickup,
 } from '../../services/altPickupService';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
  * Sheet "Quem vai buscar hoje?" — pai indica quem pega a criança.
@@ -39,6 +40,7 @@ export default function AltPickupSheet({
   dateKey,
   currentPickup,
 }) {
+  const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const [mode, setMode] = useState('default');
   const [submitting, setSubmitting] = useState(false);
 
@@ -95,10 +97,13 @@ export default function AltPickupSheet({
     >
       <div
         className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="pt-3 pb-1 flex justify-center sticky top-0 bg-card z-10">
+        <div
+          {...alcaProps}
+          className={`pt-3 pb-1 flex justify-center sticky top-0 bg-card z-10 ${alcaProps.className}`}
+        >
           <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
         </div>
 

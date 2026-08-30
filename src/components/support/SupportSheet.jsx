@@ -3,6 +3,7 @@ import { X, Send, CheckCircle2, LifeBuoy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
 import { SUPPORT_CATEGORIES, openSupportTicket } from '../../services/supportService';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
  * Sheet "Abrir chamado" — usuário escolhe uma categoria (chips) e
@@ -12,6 +13,7 @@ import { SUPPORT_CATEGORIES, openSupportTicket } from '../../services/supportSer
  * do navegador: safe-area top + header sticky + conteúdo scrollável.
  */
 export default function SupportSheet({ open, onClose, uid, role }) {
+  const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const [category, setCategory] = useState(null);
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -57,12 +59,15 @@ export default function SupportSheet({ open, onClose, uid, role }) {
     >
       <div
         className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header sticky */}
         <div className="shrink-0 bg-card rounded-t-3xl border-b border-gray-100">
-          <div className="pt-3 pb-1 flex justify-center">
+          <div
+          {...alcaProps}
+          className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
+        >
             <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
           </div>
           <div className="px-5 pt-2 pb-3 flex items-start justify-between gap-3">

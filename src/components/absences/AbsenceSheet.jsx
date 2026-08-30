@@ -8,6 +8,7 @@ import {
   notifyAbsence,
 } from '../../services/absencesService';
 import { getDateKey } from '../../services/horariosService';
+import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
  * Sheet (bottom sheet) reusável pra declarar ausência.
@@ -34,6 +35,7 @@ export default function AbsenceSheet({
   // o responsável está com pressa.
   status,
 }) {
+  const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const [submitting, setSubmitting] = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -128,11 +130,14 @@ export default function AbsenceSheet({
     >
       <div
         className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl transition-transform duration-200 ${sheet}`}
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Handle */}
-        <div className="pt-3 pb-1 flex justify-center">
+        <div
+          {...alcaProps}
+          className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
+        >
           <span className="block w-10 h-1.5 rounded-full bg-gray-300" />
         </div>
 
