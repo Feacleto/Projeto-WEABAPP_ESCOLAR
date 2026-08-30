@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
   CalendarPlus,
@@ -42,6 +43,7 @@ import {
  * envelhecesse seria justamente a que ninguém abriu pra revisar.
  */
 export default function PaiFaltas() {
+  const navigate = useNavigate();
   const { child, loading: carregandoCrianca } = useActiveChild();
   const { history, loading } = useChildAbsenceHistory(child?.id);
 
@@ -149,6 +151,38 @@ export default function PaiFaltas() {
           mudar, e um aviso que ninguém lembra de desmarcar faz o motorista
           não passar na porta.
         </p>
+
+        {/* A RESPOSTA JUNTO DA PERGUNTA.
+          *
+          * Esta tela mostra "7 faltas em maio" — e a pergunta seguinte é
+          * sempre "então pago menos?". A resposta já está assinada na
+          * cláusula 7ª, mas ela mora no contrato, três telas adiante: criar a
+          * dúvida aqui e guardar a resposta lá é o desenho que produz a
+          * mensagem no WhatsApp do motorista.
+          *
+          * Não é letra miúda escondendo nada — é o contrário: o pai leu e
+          * aceitou isso pra entrar, e relembrar no momento certo evita que
+          * ele se sinta enganado por uma regra que ele já conhecia. */}
+        {doMes.length > 0 && (
+          <div className="rounded-2xl border border-gray-200 bg-surface p-4">
+            <p className="text-xs font-semibold text-text">
+              Falta não muda a mensalidade
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+              O valor é pela <strong>vaga na perua</strong> — ela fica
+              reservada para o seu filho todos os dias, inclusive nas férias,
+              independente de quantos dias ele usou. É a cláusula 7ª do
+              contrato que você aceitou.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/pai/contrato')}
+              className="tap mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary"
+            >
+              Ver o contrato <ChevronRight size={12} />
+            </button>
+          </div>
+        )}
       </div>
 
       <AbsenceSheet

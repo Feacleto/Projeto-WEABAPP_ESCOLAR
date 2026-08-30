@@ -13,6 +13,7 @@ import {
   Camera,
   FileText,
   ChevronRight,
+  ChevronLeft,
   Printer,
   UserRound,
   Link2,
@@ -22,7 +23,13 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { horariosCombinados, horaCurta } from '../services/horariosService';
-import { resumoDeFaltas } from '../utils/faltas';
+import {
+  chaveDoMes,
+  faltasDoMes,
+  resumoDeFaltas,
+  rotuloDoMes,
+  somaMeses,
+} from '../utils/faltas';
 import { useChildAbsenceHistory } from '../hooks/useAbsences';
 import { updateChild } from '../services/childrenService';
 import EditarOndeSheet from '../components/children/EditarOndeSheet';
@@ -495,7 +502,15 @@ export function ChildDetailSheet({ open, childId, onClose }) {
  */
 function FaltasDaCrianca({ childId }) {
   const { history, loading } = useChildAbsenceHistory(childId);
-  const resumo = useMemo(() => resumoDeFaltas(history), [history]);
+  const [mes, setMes] = useState(() => chaveDoMes());
+
+  const doMes = useMemo(() => faltasDoMes(history, mes), [history, mes]);
+  const futuras = useMemo(() => resumoDeFaltas(history).futuras, [history]);
+
+  // Só anda PRA TRÁS a partir do mês corrente. Mês à frente só teria aviso
+  // marcado, que não é falta e já aparece separado logo abaixo — navegar pra
+  // lá daria meses vazios sem fim e a sensação de que a tela travou.
+  const podeAvancar = mes < chaveDoMes();
 
   return (
     <Card className="space-y-3">
@@ -504,46 +519,68 @@ function FaltasDaCrianca({ childId }) {
         Faltas
       </h3>
 
-      {loading ? (
-        <p className="text-sm text-textMuted">carregando…</p>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-2">
-            <Numero rotulo="Neste mês" valor={resumo.noMes} />
-            <Numero rotulo="Desde o começo" valor={resumo.total} />
-          </div>
+      {/* MÊS A MÊS, E SEM TOTAL ACUMULADO.
+        *
+        * O "desde o começo" saiu: ele responde uma pergunta que ninguém faz.
+        * A conversa real é sempre sobre um mês — a mensalidade é mensal, a
+        * reunião da escola é sobre o bimestre, e "faltou muito" quer dizer
+        * "muito neste mês". Um número que só cresce vira ruído: depois de um
+        * ano ele diz 40 e não distingue a criança que faltou toda semana da
+        * que teve uma catapora e nunca mais. */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setMes((m) => somaMeses(m, -1))}
+          aria-label="Mês anterior"
+          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-textMuted"
+        >
+          <ChevronLeft size={15} />
+        </button>
 
-          {resumo.futuras > 0 && (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
-              <strong>
-                {resumo.futuras}{' '}
-                {resumo.futuras === 1 ? 'aviso marcado' : 'avisos marcados'}
-              </strong>{' '}
-              pra frente. Não entram na conta acima — ainda não aconteceram.
-            </p>
+        <div className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-surface px-3 py-2 text-center">
+          {loading ? (
+            <p className="text-sm text-textMuted">carregando…</p>
+          ) : (
+            <>
+              <p className="text-xl font-extrabold leading-none tabular-nums text-text">
+                {doMes.length}
+              </p>
+              <p className="mt-1 text-[11px] capitalize leading-tight text-textMuted">
+                {rotuloDoMes(mes)}
+              </p>
+            </>
           )}
+        </div>
 
-          {resumo.total === 0 && resumo.futuras === 0 && (
-            <p className="text-xs leading-relaxed text-textMuted">
-              Nenhuma falta registrada. Só conta o que foi avisado pelo app.
-            </p>
-          )}
-        </>
+        <button
+          type="button"
+          disabled={!podeAvancar}
+          onClick={() => podeAvancar && setMes((m) => somaMeses(m, 1))}
+          aria-label="Próximo mês"
+          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-textMuted disabled:opacity-30"
+        >
+          <ChevronRight size={15} />
+        </button>
+      </div>
+
+      {futuras > 0 && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+          <strong>
+            {futuras} {futuras === 1 ? 'aviso marcado' : 'avisos marcados'}
+          </strong>{' '}
+          pra frente. Não entra na conta — ainda não aconteceu.
+        </p>
+      )}
+
+      {!loading && doMes.length === 0 && futuras === 0 && (
+        <p className="text-xs leading-relaxed text-textMuted">
+          Só conta o que foi avisado pelo app.
+        </p>
       )}
     </Card>
   );
 }
 
-function Numero({ rotulo, valor }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-surface px-3 py-2.5">
-      <p className="text-xl font-extrabold tabular-nums leading-none text-text">
-        {valor}
-      </p>
-      <p className="mt-1 text-[11px] leading-tight text-textMuted">{rotulo}</p>
-    </div>
-  );
-}
 
 /**
  * O bloco do link, que muda de conversa conforme o estado do convite.
