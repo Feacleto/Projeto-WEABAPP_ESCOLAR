@@ -76,7 +76,27 @@ export default function Profile() {
   const basePath = isAdmin ? '/tio' : '/pai';
 
   const [editing, setEditing] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
+  /**
+   * SAIR É DIRETO, igual ao menu do rosto — e a consistência é o ponto.
+   *
+   * A mesma ação tinha dois comportamentos: aqui pedia confirmação, e no
+   * `ProfileMenu` também. Tirar de um só ensinaria que "Sair" às vezes
+   * pergunta e às vezes não, o que é pior que qualquer um dos dois.
+   *
+   * O que a confirmação evitava era barato (reentrar) e o que cobrava era de
+   * todo mundo, toda vez. A exclusão de conta, logo abaixo, CONTINUA com
+   * diálogo: aquilo é irreversível, e é outra conversa.
+   *
+   * O papel é lido ANTES do logout — depois dele o profile vira null. Cada
+   * papel volta pra porta dele: o motorista pra home, que é a vitrine DELE;
+   * o responsável pra `/familia`, e não pra uma página que vende associação
+   * com escassez que, pra ele, sugere que a vaga do filho corre risco.
+   */
+  const sair = async () => {
+    const destino = destinoAposSair(role);
+    await logout();
+    navigate(destino, { replace: true });
+  };
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -421,7 +441,7 @@ export default function Profile() {
 
           <button
             type="button"
-            onClick={() => setConfirmLogout(true)}
+            onClick={sair}
             className="w-full flex items-center gap-3 tap py-2"
           >
             <LogOut size={20} className="text-danger shrink-0" />
@@ -465,27 +485,6 @@ export default function Profile() {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={confirmLogout}
-        title="Sair da conta?"
-        description="Você precisará entrar de novo com email e senha (ou Google) na próxima vez."
-        confirmLabel="Sim, sair"
-        variant="danger"
-        onConfirm={async () => {
-          // O papel tem que ser lido ANTES do logout: depois dele o
-          // profile vira null e a informação já não existe.
-          const destino = destinoAposSair(role);
-          await logout();
-          // Cada papel volta pra porta dele. O motorista vai pra home,
-          // que é a vitrine DELE e faz sentido ele ver. O responsável ia
-          // pro mesmo lugar — uma página que vende associação, fala de
-          // taxa e de vaga limitada. Conteúdo endereçado a outra pessoa,
-          // e escassez que, pra ele, sugere que a vaga do filho corre
-          // risco.
-          navigate(destino, { replace: true });
-        }}
-        onCancel={() => setConfirmLogout(false)}
-      />
 
       <PixSheet open={pixOpen} onClose={() => setPixOpen(false)} />
 

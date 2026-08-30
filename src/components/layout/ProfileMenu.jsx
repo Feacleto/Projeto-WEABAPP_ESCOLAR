@@ -9,7 +9,6 @@ import {
   Receipt,
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
-import ConfirmDialog from '../common/ConfirmDialog';
 import SupportSheet from '../support/SupportSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { destinoAposSair } from '../../utils/frentes';
@@ -44,9 +43,30 @@ export default function ProfileMenu({ role, basePath, active = false }) {
   const navigate = useNavigate();
   const { user, profile, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const wrapRef = useRef(null);
+
+  /**
+   * SAIR É DIRETO — sem confirmação.
+   *
+   * Havia um "Sair da conta?" no caminho, e ele custava mais do que
+   * protegia. Sair já exige dois toques deliberados: abrir o menu no rosto e
+   * escolher o último item, que é o único vermelho da lista. Ninguém chega
+   * ali sem querer.
+   *
+   * E o que ele evitava era barato: reentrar. O que ele cobrava era de todo
+   * mundo, toda vez — inclusive de quem troca de conta com frequência, que é
+   * o caso de quem tem o app instalado num celular compartilhado.
+   *
+   * O papel é lido ANTES do logout: depois dele o profile vira null e a
+   * informação já não existe. É o que decide se a pessoa volta pra porta da
+   * família ou pra do motorista.
+   */
+  const sair = async () => {
+    const destino = destinoAposSair(role);
+    await logout();
+    navigate(destino, { replace: true });
+  };
 
   // Fecha com ESC e com toque fora. As duas saídas importam: no celular o
   // toque fora é o gesto natural, no desktop é o ESC.
@@ -160,7 +180,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
             icon={LogOut}
             label="Sair da conta"
             danger
-            onClick={() => go(() => setConfirmLogout(true))}
+            onClick={() => go(sair)}
           />
         </div>
       )}
@@ -168,37 +188,20 @@ export default function ProfileMenu({ role, basePath, active = false }) {
       {/* PORTAL, E NÃO FILHO DO CABEÇALHO.
        *
        * O cabeçalho é `sticky z-20`, e isso abre um contexto de empilhamento
-       * próprio: um `fixed z-50` declarado aqui dentro continua preso ao
-       * teto de 20 do pai. A barra inferior é z-30 — o "Sair da conta?"
-       * apareceria POR BAIXO dela, com o botão de confirmar tapado pela
-       * pílula de navegação. Levar as duas superfícies pro body tira elas
-       * desse teto. */}
+       * próprio: um `fixed z-50` declarado aqui dentro continua preso ao teto
+       * de 20 do pai. A barra inferior é z-30 — a folha apareceria POR BAIXO
+       * dela, com o rodapé tapado pela pílula de navegação. O portal tira essa
+       * superfície do teto.
+       *
+       * Era o mesmo motivo do diálogo de sair, que morava aqui e saiu junto
+       * com a confirmação. */}
       {createPortal(
-        <>
-          <SupportSheet
-            open={supportOpen}
-            onClose={() => setSupportOpen(false)}
-            uid={user?.uid}
-            role={role}
-          />
-
-          <ConfirmDialog
-            open={confirmLogout}
-            title="Sair da conta?"
-            description="Você precisará entrar de novo com email e senha (ou Google) na próxima vez."
-            confirmLabel="Sim, sair"
-            variant="danger"
-            onConfirm={async () => {
-              // O papel tem que ser lido ANTES do logout: depois dele o
-              // profile vira null e a informação já não existe. Mesma regra
-              // do perfil.
-              const destino = destinoAposSair(role);
-              await logout();
-              navigate(destino, { replace: true });
-            }}
-            onCancel={() => setConfirmLogout(false)}
-          />
-        </>,
+        <SupportSheet
+          open={supportOpen}
+          onClose={() => setSupportOpen(false)}
+          uid={user?.uid}
+          role={role}
+        />,
         document.body,
       )}
     </div>
