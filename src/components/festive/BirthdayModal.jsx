@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { primeiroNome } from '../../utils/formatters';
 import { PartyPopper, X } from 'lucide-react';
 import Avatar from '../common/Avatar';
-import { playSound } from '../../services/soundService';
+import { playSound, stopSound } from '../../services/soundService';
 
 const CONFETTI_COLORS = [
   '#f43f5e', // rose
@@ -29,9 +29,21 @@ export default function BirthdayModal({ children = [], onClose, role = 'tio' }) 
   // Confetti — pré-calculado pra não re-randomizar a cada render
   const confetti = useMemo(() => generateConfetti(40), []);
 
+  // A MÚSICA MORRE COM O MODAL.
+  //
+  // Aqui estava escrito que não havia cleanup necessário "porque toca uma vez
+  // só, sem loop". As duas metades da frase são verdade e a conclusão não:
+  // sem loop quer dizer que ela não recomeça, não que ela para. O parabéns
+  // dura mais que a vontade de ouvi-lo — quem fechava no segundo três seguia
+  // com música tocando por cima da rota, sem nenhum botão na tela pra
+  // interromper, porque a tela que a iniciou já tinha saído.
+  //
+  // O cleanup do efeito cobre as duas saídas de uma vez ("Vamos começar" e o
+  // X, que chamam o mesmo `onClose`) e mais a que ninguém lembra: trocar de
+  // rota com o modal aberto.
   useEffect(() => {
     playSound('birthday');
-    // birthday.mp3 toca uma vez só (sem loop) — não há cleanup necessário
+    return () => stopSound('birthday');
   }, []);
 
   if (!children.length) return null;
