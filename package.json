@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "testar:regras": "node scripts/testar-regras.mjs",
+    "testar:storage": "node scripts/testar-storage.mjs",
     "emu": "firebase emulators:start --only auth,firestore",
     "testar:horarios": "node scripts/testar-horarios.mjs",
     "testar:faltas": "node scripts/testar-faltas.mjs",

@@ -43,6 +43,18 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('suspenso', false) != true;
     }
 
+    // O MOTORISTA DAQUELA CRIANÇA — e não qualquer motorista.
+    //
+    // `isAdmin()` neste projeto significa TODO parceiro cadastrado. Onde o
+    // caminho é determinístico (`childPhotos/{childId}`), usá-lo sozinho
+    // libera a plataforma inteira pra quem souber um id. É o mesmo furo que
+    // `paymentReceipts` teve e que o comentário lá embaixo conta.
+    function isAdminDe(childId) {
+      return isAdmin()
+        && firestore.exists(/databases/(default)/documents/children/$(childId))
+        && firestore.get(/databases/(default)/documents/children/$(childId)).data.get('adminUid', '') == request.auth.uid;
+    }
+
     // Pai/mãe da criança — autorizado a trocar a foto do próprio filho.
     // O backend valida via children/{childId}.parentUid.
     function isParentOf(childId) {
@@ -97,12 +109,27 @@ service firebase.storage {
     // --------------------------------------------------------------------
     // childPhotos/{childId} — foto da criança (gerenciada pelo Tio)
     // --------------------------------------------------------------------
+    // ESCOPADO PELA CRIANÇA, e não por `isAdmin()` puro.
+    //
+    // Encontrado pelo `scripts/testar-storage.mjs` na primeira vez que estas
+    // regras foram testadas: um segundo motorista sobrescrevia e apagava a
+    // FOTO DE QUALQUER CRIANÇA da plataforma, e lia a de todas. O caminho é o
+    // id da criança, então bastava conhecer um.
+    //
+    // Passava despercebido pelo mesmo motivo que o furo gêmeo de `children`
+    // no Firestore: com um parceiro só, ninguém vê o problema. É a classe de
+    // falha que aparece no dia em que o produto dá certo.
+    //
+    // A LEITURA TAMBÉM FECHOU. Era `isSignedIn()`, com o argumento de que
+    // "avatares são públicos dentro do app". Não são: é o rosto de uma
+    // criança, e quem precisa vê-lo são o motorista dela e o responsável
+    // dela. Mais ninguém — nem o pai da turma do lado.
     match /childPhotos/{childId} {
-      allow read: if isSignedIn();
-      allow write: if (isAdmin() || isParentOf(childId))
+      allow read: if isAdminDe(childId) || isParentOf(childId);
+      allow write: if (isAdminDe(childId) || isParentOf(childId))
         && isImage()
         && isWithinSizeLimit();
-      allow delete: if isAdmin() || isParentOf(childId);
+      allow delete: if isAdminDe(childId) || isParentOf(childId);
     }
 
     // --------------------------------------------------------------------

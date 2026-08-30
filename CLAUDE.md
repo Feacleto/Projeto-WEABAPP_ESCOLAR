@@ -18,7 +18,8 @@ npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
 npm run testar                   # = testar:horarios (node puro, sem runner)
-npm run testar:regras            # precisa dos emuladores: npm run emu
+npm run testar:regras            # rules do Firestore — precisa do emulador
+npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
 ```
 
@@ -97,6 +98,9 @@ src/
 functions/             Cloud Functions v2 (CommonJS, Node 22)
   └── lib/             billing, invites, push, routes, entryBonus, receiptGuard…
 firestore.rules        71 KB — a segurança real do app mora aqui
+storage.rules          foto, comprovante, logo e contrato de papel. Caminho
+                       DETERMINÍSTICO (`childPhotos/{childId}`): `isAdmin()`
+                       sozinho ali libera a plataforma inteira
 scripts/               testes e utilitários de manutenção (Node puro)
 ```
 
@@ -291,6 +295,21 @@ significado só. `getShowcase` fica de fora de propósito: já degrada calado.
 [src/config/rodada.js](src/config/rodada.js) — `VAGAS_NA_RODADA` é escassez
 **real** e precisa ser baixada à mão quando um associado entra; contador falso
 que reinicia sozinho é propaganda enganosa (CDC art. 37).
+
+[src/config/vitrine.js](src/config/vitrine.js) — **a exceção à regra de cima, e
+não é bug.** `PISO_DA_VITRINE` (27) é um piso sobre os dois contadores de
+vitrine: abaixo dele a tela mostra o piso, não o real. Decisão de produto,
+tomada com o ponto do CDC na mesa. Quem for "consertar" isso leia o arquivo
+primeiro — baixar para 0 desliga o piso inteiro.
+
+Os dois contadores medem coisas **diferentes**, e trocá-los faz as duas portas
+se contradizerem: a home do motorista mostra `families` (crianças ativas, o
+tamanho da operação); a porta da família mostra `responsaveis` (contas com
+login). O segundo é sempre menor — a mãe de dois irmãos é um responsável com
+duas crianças (`childIds`), e criança cadastrada existe antes do pai resgatar o
+convite. Ambos vêm da callable pública `getShowcase`. **Nenhum piso encosta em
+`rating`**: média de avaliação é opinião de terceiro, e piso ali seria
+falsificar depoimento.
 
 ---
 

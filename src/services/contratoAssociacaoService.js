@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -224,14 +223,6 @@ export async function contratoVigente(tioUid) {
   return docs.find((c) => c.aceitoEm) || docs[0] || null;
 }
 
-/** Tudo que ele já assinou, do mais novo pro mais velho. */
-export async function historicoDe(tioUid) {
-  const snap = await getDocs(
-    query(COL(), where('tioUid', '==', tioUid), orderBy('emitidoEm', 'desc'), limit(30))
-  );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
 /** Acompanha todos os contratos — pro painel do dono. */
 export function watchContratos(cb, onError) {
   return onSnapshot(
@@ -242,12 +233,6 @@ export function watchContratos(cb, onError) {
       onError?.(err);
     }
   );
-}
-
-/** Um contrato específico. */
-export async function getContrato(id) {
-  const snap = await getDoc(DOC(id));
-  return snap.exists() ? { id, ...snap.data() } : null;
 }
 
 /**
