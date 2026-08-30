@@ -205,7 +205,7 @@ export default function TaxaTab() {
         * sincronizando prop em estado — e efeito assim encadeia render.
         * Digitar não muda a key: só salvar muda, e aí o valor já é o novo. */}
       <ReguaDaCasa
-        key={`${config.percentual}-${config.piso}`}
+        key={`${config.percentual}-${config.piso}-${config.diaVencimento}`}
         config={config}
       />
 
@@ -285,16 +285,18 @@ export default function TaxaTab() {
 function ReguaDaCasa({ config }) {
   const [percentual, setPercentual] = useState(String(config.percentual));
   const [piso, setPiso] = useState(String(config.piso));
+  const [dia, setDia] = useState(String(config.diaVencimento));
   const [salvando, setSalvando] = useState(false);
 
   const mudou =
     Number(percentual) !== Number(config.percentual) ||
-    Number(piso) !== Number(config.piso);
+    Number(piso) !== Number(config.piso) ||
+    Number(dia) !== Number(config.diaVencimento);
 
   const salvar = async () => {
     setSalvando(true);
     try {
-      await setTaxaConfig({ percentual, piso });
+      await setTaxaConfig({ percentual, piso, diaVencimento: dia });
       toast.success('Régua atualizada.');
     } catch (err) {
       toast.error(err.message || 'Não deu pra salvar.');
@@ -320,10 +322,21 @@ function ReguaDaCasa({ config }) {
             value={piso}
             onChange={setPiso}
           />
+          <CampoCurto label="Vence dia" value={dia} onChange={setDia} />
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
           O piso não é ganância: fatura de R$ 4,50 custa mais pra emitir e
           conferir do que rende.
+        </p>
+        {/* O DIA VALE PRA TODO MUNDO, e o contrato passa a dizer isso.
+          * Data por parceiro seria N datas pra acompanhar num fechamento que
+          * roda em lote — ver o cabeçalho de `diaVencimento` no service.
+          * Mudar aqui não mexe em fatura já fechada: o dia viaja congelado
+          * dentro dela, como o percentual e o piso. */}
+        <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+          O vencimento entra no contrato de quem assinar daqui pra frente — e é
+          ele que define o que conta como atraso. Entre 1 e 28: dia 30 não
+          existe em fevereiro.
         </p>
         {mudou && (
           <div className="mt-3">

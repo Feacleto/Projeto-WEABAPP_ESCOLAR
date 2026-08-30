@@ -16,10 +16,14 @@ import { formatBRL } from '../../services/contractService';
 /**
  * O FUNIL COMERCIAL, EM COLUNAS.
  *
- * Sem arrastar: num painel que se abre no celular, arrastar entre cinco
- * colunas horizontais é gesto que erra mais do que acerta. Cada cartão tem o
- * botão de avançar, e o de perder — dois alvos grandes valem mais que um
- * arrasto elegante que não pega no dedo.
+ * Colunas de verdade a partir de `lg` — este painel é de mesa. Abaixo disso
+ * elas empilham em seções, porque cinco colunas num celular dariam 60px cada.
+ *
+ * Sem arrastar, nas duas larguras. No celular o arrasto entre colunas erra
+ * mais do que acerta; no monitor ele funcionaria, mas manter dois modos de
+ * mover cartão custa mais do que rende — e o botão continua sendo o caminho
+ * que funciona no teclado e no leitor de tela. Cada cartão tem o de avançar e
+ * o de perder.
  *
  * PERDIDO NÃO É A ÚLTIMA COLUNA. Ele é saída lateral, e fica numa lista
  * separada embaixo: tratá-lo como fim do caminho faria o funil parecer que
@@ -118,12 +122,27 @@ export default function FunilKanban({ onOrcar }) {
         </div>
       )}
 
-      <div className="space-y-3">
+      {/* AS COLUNAS SÓ EXISTEM DE FATO A PARTIR DE `lg`.
+        *
+        * Cinco etapas lado a lado num celular dariam 60px de largura cada —
+        * cartão nenhum cabe. Empilhado, o funil vira uma lista com títulos, que
+        * é a leitura certa pra tela estreita. Na tela larga, que é onde este
+        * painel mora, ele volta a ser o que o nome promete: dá pra ver de
+        * relance onde o negócio empaca.  */}
+      <div className="space-y-3 lg:grid lg:grid-cols-5 lg:items-start lg:gap-3 lg:space-y-0">
         {ETAPAS.map((etapa) => {
           const daEtapa = leads.filter((l) => l.etapa === etapa.id);
-          if (!daEtapa.length) return null;
+          // Etapa vazia SOME no celular e FICA na web.
+          //
+          // Empilhado, um título com nada embaixo é só linha desperdiçada. Em
+          // colunas é o contrário: a coluna vazia é a informação — some ela e
+          // "Negociando" com zero vira indistinguível de uma etapa que não
+          // existe, e o buraco do funil deixa de aparecer.
           return (
-            <section key={etapa.id}>
+            <section
+              key={etapa.id}
+              className={daEtapa.length ? undefined : 'hidden lg:block'}
+            >
               <p className="mb-1.5 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-textMuted">
                 {etapa.rotulo}
                 <span className="font-bold text-text">{daEtapa.length}</span>
