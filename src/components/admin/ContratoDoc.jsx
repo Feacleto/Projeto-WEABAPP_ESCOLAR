@@ -116,7 +116,7 @@ export default function ContratoDoc({ dados, aceite }) {
           </tbody>
         </table>
         {t.modo === 'gratuito' && (
-          <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[12px] text-amber-900">
+          <p className="mt-2 rounded-lg bg-warningSoft p-2 text-[12px] text-warningText">
             <strong>Gratuidade integral.</strong> Nenhuma taxa é devida enquanto
             vigorar esta condição.
           </p>

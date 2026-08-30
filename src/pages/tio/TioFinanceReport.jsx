@@ -228,14 +228,14 @@ export default function TioFinanceReport() {
               </p>
               <p className="text-[11px] text-emerald-700 mt-1">12 meses</p>
             </div>
-            <div className="bg-amber-50 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-900">
+            <div className="bg-warningSoft rounded-2xl p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-warningText">
                 Em aberto
               </p>
-              <p className="text-2xl font-bold text-amber-900 tabular-nums mt-1">
+              <p className="text-2xl font-bold text-warningText tabular-nums mt-1">
                 {formatCurrency(totalOpen)}
               </p>
-              <p className="text-[11px] text-amber-700 mt-1">12 meses</p>
+              <p className="text-[11px] text-warningText mt-1">12 meses</p>
             </div>
           </section>
 
@@ -331,7 +331,7 @@ export default function TioFinanceReport() {
                           <td className="py-2 px-2 text-right tabular-nums text-emerald-700 font-semibold">
                             {formatCurrency(slot.received)}
                           </td>
-                          <td className="py-2 px-2 text-right tabular-nums text-amber-700">
+                          <td className="py-2 px-2 text-right tabular-nums text-warningText">
                             {formatCurrency(open)}
                           </td>
                           <td className="py-2 px-2 text-right tabular-nums font-bold text-text">
@@ -371,11 +371,11 @@ export default function TioFinanceReport() {
                       {c.nome}
                     </span>
                     {c.emAberto > 0 && (
-                      <span className="shrink-0 text-[11px] font-semibold tabular-nums text-red-700">
+                      <span className="shrink-0 text-[11px] font-semibold tabular-nums text-dangerText">
                         {formatCurrency(c.emAberto)} em aberto
                       </span>
                     )}
-                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-amber-800">
+                    <span className="shrink-0 rounded-full bg-warningChip px-2 py-0.5 text-[11px] font-bold tabular-nums text-warningText">
                       {c.vezes}x
                     </span>
                   </div>

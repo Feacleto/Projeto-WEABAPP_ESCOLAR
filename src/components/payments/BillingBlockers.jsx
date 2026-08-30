@@ -139,18 +139,18 @@ export default function BillingBlockers({
 
 function Blocker({ icon: Icon, title, detail, actionLabel, onAction, disabled }) {
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-start gap-3">
-      <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+    <div className="bg-warningSoft border border-warningBorder rounded-2xl p-3.5 flex items-start gap-3">
+      <div className="w-9 h-9 rounded-xl bg-warningChip text-warningText flex items-center justify-center shrink-0">
         <Icon size={18} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-amber-900 leading-tight">{title}</p>
-        <p className="text-xs text-amber-800/85 mt-0.5 leading-snug">{detail}</p>
+        <p className="text-sm font-bold text-warningText leading-tight">{title}</p>
+        <p className="text-xs text-warningText/85 mt-0.5 leading-snug">{detail}</p>
         <button
           type="button"
           onClick={onAction}
           disabled={disabled}
-          className="tap mt-2 inline-flex items-center gap-1 text-xs font-bold text-amber-900 underline disabled:opacity-60"
+          className="tap mt-2 inline-flex items-center gap-1 text-xs font-bold text-warningText underline disabled:opacity-60"
         >
           {actionLabel}
           <ChevronRight size={13} />

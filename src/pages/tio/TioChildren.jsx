@@ -129,7 +129,7 @@ export default function TioChildren() {
           onClick={() => navigate('/tio/children/escolas')}
           className="tap w-full bg-card border border-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left"
         >
-          <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-escolaSoft text-escola flex items-center justify-center shrink-0">
             <School size={17} />
           </div>
           <div className="flex-1 min-w-0">

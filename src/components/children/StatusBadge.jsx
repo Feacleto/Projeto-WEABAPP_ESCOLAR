@@ -6,8 +6,8 @@ import { STATUS_LABELS } from '../../services/childrenService';
 const VISUAL = {
   home: { icon: Home, color: 'bg-neutro text-textMuted' },
   onboard: { icon: Bus, color: 'bg-primary/10 text-primaryDark' },
-  atSchool: { icon: School, color: 'bg-purple-100 text-purple-700' },
-  delivered: { icon: CheckCircle2, color: 'bg-success/10 text-lime-700' },
+  atSchool: { icon: School, color: 'bg-escolaChip text-escola' },
+  delivered: { icon: CheckCircle2, color: 'bg-success/10 text-accentText' },
 };
 
 export default function StatusBadge({ status, size = 'md' }) {

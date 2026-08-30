@@ -86,13 +86,17 @@ export default {
         // gastar a cor de alerta em decoração queima o sinal.
         warning: '#F5A623', // preenchimento e ícone. Como texto dá 2,0:1.
         warningText: '#92400E', // 7,1:1 sobre branco, 6,8:1 sobre warningSoft
-        warningSoft: '#FFFBEB',
+        warningSoft: '#FFFBEB', // o PAINEL inteiro de um aviso
+        warningChip: '#FEF3C7', // o CHIP e o quadradinho atrás do ícone. Era o
+        // degrau que faltava: com só Soft e Border, um chip sobre cartão branco
+        // ou sumia (Soft é quase branco) ou virava borda usada como fundo.
         warningBorder: '#FDE68A',
         // Perda e irreversível: encerrar rota por engano, apagar, atraso.
         danger: '#EF4444', // preenchimento. Como texto dá 3,8:1 — reprovava
         // justamente na mensagem de erro do Input, que aparece no pior momento.
         dangerText: '#B91C1C', // 6,5:1 sobre branco, 5,9:1 sobre dangerSoft
-        dangerSoft: '#FEF2F2',
+        dangerSoft: '#FEF2F2', // o painel
+        dangerChip: '#FEE2E2', // o chip — 5,3:1 com o dangerText
         dangerBorder: '#FECACA',
 
         // ── SEMÂNTICA DO PRODUTO ────────────────────────────────────────
@@ -101,9 +105,27 @@ export default {
         // mapa, o recado da escola. É LEGENDA, não decoração — casa é verde,
         // perua é âmbar, escola é violeta — e legenda precisa de nome, senão
         // diverge entre telas (eram violet-700 e violet-900 pro mesmo rótulo).
-        escola: '#6D28D9', // branco sobre ele dá 7,1:1
-        escolaSoft: '#F5F3FF',
-        escolaBorder: '#DDD6FE',
+        // Ele serve de texto E de preenchimento: 7,1:1 nas duas direções
+        // contra o branco, o que é raro e vale registrar — por isso a escola
+        // não precisa de um `escolaText` como o âmbar e o vermelho precisam.
+        escola: '#6D28D9',
+        escolaSoft: '#F5F3FF', // o painel
+        escolaChip: '#EDE9FE', // o chip — 6,0:1 com o escola
+        escolaBorder: '#DDD6FE', // e o ícone de escola sobre `night`: 13,6:1
+
+        // A ESTRELA DE AVALIAÇÃO — âmbar, e NÃO é a cor de aviso.
+        //
+        // A regra do sistema é que âmbar significa "atender": fatura vencida,
+        // falta marcada. A estrela de nota não é nada disso, mas é dourada em
+        // todo lugar do mundo, e recolori-la de marrom pra obedecer à regra
+        // seria consertar o texto e quebrar o significado. Então ela tem nome
+        // próprio, e o `warning` continua querendo dizer uma coisa só.
+        //
+        // Ela fica em 1,7:1 sobre o branco, abaixo do piso de 3:1 pra objeto
+        // gráfico. É dívida herdada, registrada aqui de propósito: quem for
+        // consertar, o conserto é CONTORNO na estrela vazia, não ouro mais
+        // escuro — escurecer o ouro resolve a medição e estraga a leitura.
+        estrela: '#FBBF24',
 
         // ── A SAIR NA FASE 4 ────────────────────────────────────────────
         // Quatro nomes pra duas tintas que já existem acima. Ficam só até os

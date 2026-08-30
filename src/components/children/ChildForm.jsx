@@ -519,9 +519,9 @@ function Step2Home({ form, setForm, setField, errors }) {
       {/* Endereço não encontrado NÃO é erro de preenchimento — é limite do
         * mapa. A mensagem diz isso e oferece as duas saídas. */}
       {!hasCoord && searchState === 'notFound' && (
-        <div className="text-sm bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl space-y-1">
+        <div className="text-sm bg-warningSoft border border-warningBorder text-warningText px-4 py-3 rounded-xl space-y-1">
           <p className="font-semibold">Não achamos esse endereço no mapa.</p>
-          <p className="text-amber-700">
+          <p className="text-warningText">
             Sem problema — dá pra marcar na mão agora ou seguir e ajustar
             depois. A criança fica salva do mesmo jeito.
           </p>
@@ -700,7 +700,7 @@ function Step3School({ form, setForm, setField, errors }) {
         />
 
         {escolhida?.geoPending && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          <p className="text-xs text-warningText bg-warningSoft border border-warningBorder rounded-xl px-3 py-2">
             {escolhida.nome} está sem localização no mapa. Dá pra resolver
             depois em Crianças → Escolas.
           </p>

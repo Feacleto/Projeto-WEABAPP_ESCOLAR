@@ -395,11 +395,11 @@ export default function WaitlistSheet({
           />
 
           {falhou && (
-            <div className="animate-step-in rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="animate-step-in rounded-2xl border border-warningBorder bg-warningSoft p-4">
               <p className="text-sm font-bold text-text">
                 Não conseguimos registrar agora
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+              <p className="mt-1 text-xs leading-relaxed text-warningText/80">
                 Pode ser a nossa fila fora do ar ou a sua internet. Seu pedido
                 não se perde: fale com o consultor que a gente registra do
                 outro lado.

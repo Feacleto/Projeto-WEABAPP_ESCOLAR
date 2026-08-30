@@ -6,7 +6,7 @@ const variants = {
   secondary:
     'bg-card border border-border text-text hover:bg-sunken disabled:opacity-60',
   danger:
-    'bg-danger text-white hover:bg-red-600 disabled:bg-danger/50',
+    'bg-danger text-white hover:bg-danger disabled:bg-danger/50',
   success:
     'bg-success text-white hover:bg-accentDark disabled:bg-success/50',
   ghost: 'bg-transparent text-text hover:bg-neutro disabled:opacity-60',

@@ -317,7 +317,7 @@ export default function SchoolBroadcastSheet({ open, onClose }) {
                         {c.name}
                       </span>
                       {!c.parentUid && (
-                        <span className="text-[10px] text-amber-700 shrink-0">
+                        <span className="text-[10px] text-warningText shrink-0">
                           sem app
                         </span>
                       )}

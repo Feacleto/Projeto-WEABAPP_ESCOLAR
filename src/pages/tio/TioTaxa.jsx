@@ -226,7 +226,7 @@ function FaturaAberta({ fatura }) {
       </div>
 
       {isento ? (
-        <p className="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs leading-relaxed text-violet-900">
+        <p className="mt-3 rounded-xl border border-escolaBorder bg-escolaSoft p-3 text-xs leading-relaxed text-escola">
           Este mês está <strong>isento</strong> — nada a pagar. A conta acima
           fica à vista pra você saber como ela é calculada quando a isenção
           terminar.

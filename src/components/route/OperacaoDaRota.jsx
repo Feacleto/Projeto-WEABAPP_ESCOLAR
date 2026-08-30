@@ -511,7 +511,7 @@ export default function OperacaoDaRota({
               </p>
             </div>
             {blocoAtual.escolas.length > 0 && (
-              <span className="text-[10px] text-violet-700 bg-violet-50 border border-violet-200 px-2 py-1 rounded-full shrink-0 max-w-[40%] truncate">
+              <span className="text-[10px] text-escola bg-escolaSoft border border-escolaBorder px-2 py-1 rounded-full shrink-0 max-w-[40%] truncate">
                 {blocoAtual.escolas.map((e) => e.nome).join(' · ')}
               </span>
             )}
@@ -755,7 +755,7 @@ export default function OperacaoDaRota({
                       {q.child.name}
                     </span>
                     {fora && (
-                      <span className="block text-[11px] text-amber-700 font-medium">
+                      <span className="block text-[11px] text-warningText font-medium">
                         {ROTULO_ESTADO[q.estado] || 'Fora hoje'}
                         {/* A IDADE DO AVISO É O QUE DIZ SE ELE AINDA VALE.
                           * Um aviso de ontem quase certamente vale; um de duas

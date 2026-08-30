@@ -106,7 +106,7 @@ export default function PaiNotebookFAB() {
         onClick={() => setAbertoNoToque(true)}
         className="tap flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warningSoft text-warningText">
           <Notebook size={17} />
         </span>
         <span className="min-w-0 flex-1">
@@ -202,22 +202,22 @@ function NotebookView({ open, onClose }) {
     <AppSheet open={open} onClose={onClose} title="Caderno de recados" icon={Notebook} size="full">
     <div className="flex flex-col h-full">
       {/* Topo — header do caderno */}
-      <div className="bg-gradient-to-b from-amber-50 to-amber-100 px-4 py-3 flex items-center gap-2 border-b border-amber-200">
+      <div className="bg-gradient-to-b from-amber-50 to-amber-100 px-4 py-3 flex items-center gap-2 border-b border-warningBorder">
         {view === 'pages' ? (
           <>
             <button
               type="button"
               onClick={() => setView('index')}
               aria-label="Ver índice"
-              className="tap w-10 h-10 rounded-full bg-white text-amber-800 flex items-center justify-center shadow-sm"
+              className="tap w-10 h-10 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
             >
               <CalendarDays size={18} />
             </button>
             <div className="flex-1 text-center">
-              <p className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">
+              <p className="text-[10px] uppercase tracking-widest text-warningText font-bold">
                 {isCurrentMonth ? 'Este mês' : 'Mês passado'}
               </p>
-              <p className="text-sm font-bold text-amber-900">
+              <p className="text-sm font-bold text-warningText">
                 {MONTH_NAMES[month]} de {year}
               </p>
             </div>
@@ -228,15 +228,15 @@ function NotebookView({ open, onClose }) {
               type="button"
               onClick={() => setView('pages')}
               aria-label="Voltar"
-              className="tap w-10 h-10 rounded-full bg-white text-amber-800 flex items-center justify-center shadow-sm"
+              className="tap w-10 h-10 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
             >
               <ArrowLeft size={18} />
             </button>
             <div className="flex-1 text-center">
-              <p className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">
+              <p className="text-[10px] uppercase tracking-widest text-warningText font-bold">
                 Índice
               </p>
-              <p className="text-sm font-bold text-amber-900">
+              <p className="text-sm font-bold text-warningText">
                 Todos os meses
               </p>
             </div>
@@ -246,14 +246,14 @@ function NotebookView({ open, onClose }) {
           type="button"
           onClick={onClose}
           aria-label="Fechar agenda"
-          className="tap w-10 h-10 rounded-full bg-white text-amber-800 flex items-center justify-center shadow-sm"
+          className="tap w-10 h-10 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
         >
           <X size={18} />
         </button>
       </div>
 
       {/* Corpo */}
-      <div className="flex-1 overflow-y-auto p-4 bg-amber-50/60">
+      <div className="flex-1 overflow-y-auto p-4 bg-warningSoft/60">
         {view === 'pages' ? (
           <PagesView
             loading={loading}
@@ -274,17 +274,17 @@ function NotebookView({ open, onClose }) {
 
       {/* Rodapé com setas — só quando tá em pages e há entradas */}
       {view === 'pages' && currentMonthEntries.length > 0 && (
-        <div className="bg-amber-100 border-t border-amber-200 px-4 py-3 flex items-center gap-3">
+        <div className="bg-warningChip border-t border-warningBorder px-4 py-3 flex items-center gap-3">
           <button
             type="button"
             onClick={() => flip(-1)}
             disabled={page === 0 || flipping}
             aria-label="Folha anterior"
-            className="tap w-12 h-12 rounded-full bg-white text-amber-900 shadow-sm disabled:opacity-30 flex items-center justify-center"
+            className="tap w-12 h-12 rounded-full bg-white text-warningText shadow-sm disabled:opacity-30 flex items-center justify-center"
           >
             <ChevronLeft size={22} />
           </button>
-          <p className="flex-1 text-center text-xs text-amber-900 font-semibold tabular-nums">
+          <p className="flex-1 text-center text-xs text-warningText font-semibold tabular-nums">
             Folha {page + 1} de {currentMonthEntries.length}
           </p>
           <button
@@ -292,7 +292,7 @@ function NotebookView({ open, onClose }) {
             onClick={() => flip(1)}
             disabled={page >= currentMonthEntries.length - 1 || flipping}
             aria-label="Próxima folha"
-            className="tap w-12 h-12 rounded-full bg-white text-amber-900 shadow-sm disabled:opacity-30 flex items-center justify-center"
+            className="tap w-12 h-12 rounded-full bg-white text-warningText shadow-sm disabled:opacity-30 flex items-center justify-center"
           >
             <ChevronRight size={22} />
           </button>
@@ -306,7 +306,7 @@ function NotebookView({ open, onClose }) {
 function PagesView({ loading, entries, page, flipping, childName }) {
   if (loading) {
     return (
-      <div className="text-center text-amber-800 text-sm py-8">
+      <div className="text-center text-warningText text-sm py-8">
         Abrindo o caderno...
       </div>
     );
@@ -315,9 +315,9 @@ function PagesView({ loading, entries, page, flipping, childName }) {
     return (
       <NotebookPage>
         <div className="text-center py-8 px-4">
-          <Notebook size={48} className="mx-auto text-amber-300 mb-3" />
-          <p className="text-amber-900 font-bold">Nada anotado este mês</p>
-          <p className="text-amber-700 text-sm mt-2 leading-relaxed">
+          <Notebook size={48} className="mx-auto text-warningBorder mb-3" />
+          <p className="text-warningText font-bold">Nada anotado este mês</p>
+          <p className="text-warningText text-sm mt-2 leading-relaxed">
             Quando o motorista mandar um aviso sobre{' '}
             <span className="font-semibold">
               {childName?.split(' ')[0] || 'a criança'}
@@ -344,7 +344,7 @@ function NotebookPage({ children, flipping }) {
   return (
     <div className="max-w-md mx-auto">
       <div
-        className={`relative bg-[#fffbe9] rounded-xl shadow-xl shadow-amber-900/10 overflow-hidden border border-amber-200 transition-transform duration-300 ease-in-out origin-left ${
+        className={`relative bg-[#fffbe9] rounded-xl shadow-xl shadow-amber-900/10 overflow-hidden border border-warningBorder transition-transform duration-300 ease-in-out origin-left ${
           flipping ? 'scale-x-90 skew-y-2' : ''
         }`}
         style={{
@@ -357,12 +357,12 @@ function NotebookPage({ children, flipping }) {
           {Array.from({ length: 10 }, (_, i) => (
             <span
               key={i}
-              className="block w-2 h-2 rounded-full bg-amber-700/40 shadow-inner"
+              className="block w-2 h-2 rounded-full bg-warningText/40 shadow-inner"
             />
           ))}
         </div>
         {/* Margem vermelha vertical estilo caderno escolar */}
-        <div className="absolute left-9 top-0 bottom-0 w-px bg-red-300/70 pointer-events-none" />
+        <div className="absolute left-9 top-0 bottom-0 w-px bg-dangerBorder/70 pointer-events-none" />
 
         <div className="pl-12 pr-4 py-5 min-h-[320px]">{children}</div>
       </div>
@@ -390,7 +390,7 @@ function Entry({ entry }) {
           {t.emoji}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">
+          <p className="text-[10px] uppercase tracking-widest text-warningText font-bold">
             {date
               ? new Intl.DateTimeFormat('pt-BR', {
                   day: '2-digit',
@@ -400,13 +400,13 @@ function Entry({ entry }) {
                 }).format(date)
               : ''}
           </p>
-          <p className="text-base font-bold text-amber-900 leading-tight">
+          <p className="text-base font-bold text-warningText leading-tight">
             {t.label}
           </p>
         </div>
       </div>
 
-      <p className="text-xs text-amber-700 inline-flex items-center gap-1">
+      <p className="text-xs text-warningText inline-flex items-center gap-1">
         <ScopeIcon size={11} /> {scopeLabel}
       </p>
 
@@ -415,16 +415,16 @@ function Entry({ entry }) {
         * tinha que achar a data no meio do recado, e o aviso de um passeio da
         * semana que vem parecia igual ao de hoje. */}
       {entry.eventDate && (
-        <p className="inline-flex items-center gap-1.5 rounded-lg bg-amber-200/60 px-2.5 py-1.5 text-xs font-bold text-amber-900">
+        <p className="inline-flex items-center gap-1.5 rounded-lg bg-warningBorder/60 px-2.5 py-1.5 text-xs font-bold text-warningText">
           <CalendarDays size={13} />
           {rotuloDoEvento(entry.eventDate)}
         </p>
       )}
 
       <div className="pt-2">
-        <p className="text-[15px] text-amber-950 leading-relaxed whitespace-pre-wrap font-serif">
+        <p className="text-[15px] text-warningText leading-relaxed whitespace-pre-wrap font-serif">
           {entry.message || (
-            <em className="text-amber-600">(sem mensagem extra)</em>
+            <em className="text-warningText">(sem mensagem extra)</em>
           )}
         </p>
       </div>
@@ -435,7 +435,7 @@ function Entry({ entry }) {
 function IndexView({ groups, onPick, currentYear, currentMonth }) {
   if (groups.length === 0) {
     return (
-      <p className="text-center text-amber-800 text-sm py-8">
+      <p className="text-center text-warningText text-sm py-8">
         Ainda não há avisos no caderno.
       </p>
     );
@@ -451,22 +451,22 @@ function IndexView({ groups, onPick, currentYear, currentMonth }) {
             onClick={() => onPick(g.year, g.month)}
             className={`tap w-full text-left rounded-2xl p-4 border flex items-center gap-3 ${
               isCurrent
-                ? 'bg-amber-200 border-amber-400'
-                : 'bg-white border-amber-200'
+                ? 'bg-warningBorder border-estrela'
+                : 'bg-white border-warningBorder'
             }`}
           >
-            <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-warningChip text-warningText flex items-center justify-center shrink-0">
               <CalendarDays size={20} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-amber-900 leading-tight">
+              <p className="font-bold text-warningText leading-tight">
                 {MONTH_NAMES[g.month]} de {g.year}
               </p>
-              <p className="text-xs text-amber-700 mt-0.5">
+              <p className="text-xs text-warningText mt-0.5">
                 {g.count} {g.count === 1 ? 'aviso' : 'avisos'}
               </p>
             </div>
-            <ChevronRight size={18} className="text-amber-600 shrink-0" />
+            <ChevronRight size={18} className="text-warningText shrink-0" />
           </button>
         );
       })}

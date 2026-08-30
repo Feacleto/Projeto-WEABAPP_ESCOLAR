@@ -295,12 +295,12 @@ function Geral({ ov, onVerFila }) {
 
         {/* A distinção que decide valuation. Fica escrita na tela pra não
           * depender de alguém lembrar dela na hora da reunião. */}
-        <div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div className="mt-2 rounded-2xl border border-warningBorder bg-warningSoft p-4">
           <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
             <TrendingUp size={15} className="text-warning" />
             GMV não é receita
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+          <p className="mt-1 text-xs leading-relaxed text-warningText/80">
             <strong>{moeda(ov.gmvTotal)}</strong> é o volume que passou entre
             pai e motorista dentro do app — é o que prova que o produto está no
             meio de uma transação real. A receita do Alô Buzinou é{' '}
@@ -316,7 +316,7 @@ function Geral({ ov, onVerFila }) {
             * "R$ 0,00 em aberto" vira ruído que se aprende a pular — e aí ela
             * não é vista no dia em que passa a ter número. */}
           {ov.receitaEmAberto > 0 && (
-            <p className="mt-2 border-t border-amber-200/70 pt-2 text-xs leading-relaxed text-amber-900/80">
+            <p className="mt-2 border-t border-warningBorder/70 pt-2 text-xs leading-relaxed text-warningText/80">
               Mais <strong>{moeda(ov.receitaEmAberto)}</strong> estão faturados
               e não recebidos. Não entram na receita porque o dinheiro não caiu
               — é a mesma linha que separa “o pai disse que pagou” de “o
@@ -324,7 +324,7 @@ function Geral({ ov, onVerFila }) {
             </p>
           )}
           {ov.receitaPropria === 0 && ov.receitaEmAberto === 0 && (
-            <p className="mt-2 border-t border-amber-200/70 pt-2 text-xs leading-relaxed text-amber-900/80">
+            <p className="mt-2 border-t border-warningBorder/70 pt-2 text-xs leading-relaxed text-warningText/80">
               Ainda é zero porque nenhuma fatura foi fechada. A régua e a
               negociação vivem na aba <strong>Taxa</strong>; a receita começa a
               existir quando o mês é fechado lá.
@@ -680,11 +680,11 @@ function Pesquisa({ s }) {
             <div key={n} className="flex items-center gap-2">
               <span className="inline-flex w-8 shrink-0 items-center gap-0.5 text-xs font-bold text-textMuted">
                 {n}
-                <Star size={11} className="fill-amber-400 text-amber-400" />
+                <Star size={11} className="fill-estrela text-estrela" />
               </span>
               <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutro">
                 <span
-                  className="block h-full rounded-full bg-amber-400"
+                  className="block h-full rounded-full bg-warning"
                   style={{ width: `${(s.estrelas[n] / maxEstrela) * 100}%` }}
                 />
               </span>
@@ -726,7 +726,7 @@ function Pesquisa({ s }) {
                   {c.papel === 'admin' ? 'motorista' : 'responsável'}
                 </span>
                 {c.publico && (
-                  <span className="rounded bg-amber-50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-amber-700">
+                  <span className="rounded bg-warningSoft px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-warningText">
                     na home
                   </span>
                 )}
@@ -782,9 +782,9 @@ const STATUS_LABEL = {
 
 const STATUS_SKIN = {
   pending: 'bg-neutro text-textMuted',
-  contacted: 'bg-amber-50 text-amber-700',
+  contacted: 'bg-warningSoft text-warningText',
   approved: 'bg-emerald-50 text-emerald-700',
-  rejected: 'bg-red-50 text-red-700',
+  rejected: 'bg-dangerSoft text-dangerText',
 };
 
 /**
@@ -958,9 +958,9 @@ function Carregando() {
 
 function Erro() {
   return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+    <div className="rounded-2xl border border-dangerBorder bg-dangerSoft p-4">
       <p className="text-sm font-bold text-text">Não deu pra ler os números</p>
-      <p className="mt-1 text-xs leading-relaxed text-red-900/80">
+      <p className="mt-1 text-xs leading-relaxed text-dangerText/80">
         As regras do Firestore precisam liberar leitura destas coleções pra
         este usuário. Confira se o seu doc em <code>users</code> tem{' '}
         <code>role: &quot;admin&quot;</code>.

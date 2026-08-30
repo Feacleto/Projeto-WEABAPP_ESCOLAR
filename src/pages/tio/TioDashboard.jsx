@@ -603,7 +603,7 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
                 {p.child.name}
               </span>
               {fora && (
-                <span className="block text-[11px] text-amber-700 font-medium">
+                <span className="block text-[11px] text-warningText font-medium">
                   {ROTULO_ESTADO[p.estado] || 'Fora hoje'}
                 </span>
               )}
@@ -622,12 +622,12 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
 
 function ParadaEscola({ escolas }) {
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-violet-50 border border-violet-200">
-      <span className="w-11 shrink-0 text-[10px] uppercase tracking-wide text-violet-700 font-semibold">
+    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-escolaSoft border border-escolaBorder">
+      <span className="w-11 shrink-0 text-[10px] uppercase tracking-wide text-escola font-semibold">
         depois
       </span>
-      <School size={15} className="text-violet-700 shrink-0" />
-      <span className="flex-1 min-w-0 text-sm font-semibold text-violet-900 truncate">
+      <School size={15} className="text-escola shrink-0" />
+      <span className="flex-1 min-w-0 text-sm font-semibold text-escola truncate">
         {escolas.map((e) => e.nome).join(' · ')}
       </span>
     </div>
@@ -694,13 +694,13 @@ function Pendencias({
           key={i.texto}
           type="button"
           onClick={i.onClick}
-          className="tap w-full text-left bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-center gap-2.5"
+          className="tap w-full text-left bg-warningSoft border border-warningBorder rounded-xl px-3 py-2.5 flex items-center gap-2.5"
         >
-          <i.icon size={16} className="text-amber-700 shrink-0" />
-          <span className="flex-1 min-w-0 text-[13px] font-semibold text-amber-900">
+          <i.icon size={16} className="text-warningText shrink-0" />
+          <span className="flex-1 min-w-0 text-[13px] font-semibold text-warningText">
             {i.texto}
           </span>
-          <ChevronRight size={16} className="text-amber-700 shrink-0" />
+          <ChevronRight size={16} className="text-warningText shrink-0" />
         </button>
       ))}
     </section>

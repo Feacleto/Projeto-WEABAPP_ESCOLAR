@@ -148,14 +148,14 @@ export default function ChildCard({
             {/* A ausência vem PRIMEIRO: é a informação mais perecível e a
               * única que muda a rota de hoje. */}
             {absenceLabel && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-dangerText bg-dangerChip px-2 py-0.5 rounded-full">
                 <UserX size={10} />
                 {absenceLabel}
               </span>
             )}
             <StatusBadge status={status} />
             {pendingInvite && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-warningText bg-warningChip px-2 py-0.5 rounded-full">
                 <AlertTriangle size={10} />
                 Convite pendente
               </span>

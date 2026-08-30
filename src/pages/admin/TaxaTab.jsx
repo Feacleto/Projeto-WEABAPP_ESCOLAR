@@ -208,12 +208,12 @@ export default function TaxaTab() {
       {/* A base incompleta tem que gritar ANTES dos números, senão o dono
         * fecha o mês somando o que sobrou e a fatura sai menor que a real. */}
       {semDono.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
           <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
             <AlertTriangle size={15} className="text-warning" />
             {semDono.length} criança(s) sem motorista definido
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+          <p className="mt-1 text-xs leading-relaxed text-warningText/80">
             Elas não entram na base de ninguém, então a fatura de algum parceiro
             sai menor que o real. Rode o backfill de <code>adminUid</code> antes
             de fechar o mês.
@@ -837,7 +837,7 @@ function Par({ label, valor, forte }) {
 
 function Aviso({ children }) {
   return (
-    <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-900/90">
+    <p className="mt-2 rounded-xl border border-warningBorder bg-warningSoft p-2.5 text-[11px] leading-relaxed text-warningText/90">
       {children}
     </p>
   );
@@ -846,8 +846,8 @@ function Aviso({ children }) {
 const TONS = {
   neutral: 'bg-neutro text-textMuted',
   emerald: 'bg-emerald-100 text-emerald-700',
-  warning: 'bg-amber-100 text-amber-800',
-  violet: 'bg-violet-100 text-violet-700',
+  warning: 'bg-warningChip text-warningText',
+  violet: 'bg-escolaChip text-escola',
 };
 
 function Etiqueta({ tone = 'neutral', children }) {
@@ -897,13 +897,13 @@ function ContratosVencendo({ contratos }) {
   if (fila.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+    <section className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
       <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
         <AlertTriangle size={15} className="text-warning" />
         {fila.length}{' '}
         {fila.length === 1 ? 'contrato pra renovar' : 'contratos pra renovar'}
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+      <p className="mt-1 text-xs leading-relaxed text-warningText/80">
         Vencer não suspende ninguém — quem está em dia continua operando. Mas
         renovar antes é o que evita cobrar sem papel vigente.
       </p>
@@ -918,7 +918,7 @@ function ContratosVencendo({ contratos }) {
             </span>
             <span
               className={`shrink-0 text-xs font-bold tabular-nums ${
-                dias < 0 ? 'text-red-600' : 'text-amber-700'
+                dias < 0 ? 'text-dangerText' : 'text-warningText'
               }`}
             >
               {dias < 0

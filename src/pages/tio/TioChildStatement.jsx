@@ -178,11 +178,11 @@ export default function TioChildStatement() {
                 {formatCurrency(totais.pago)}
               </p>
             </div>
-            <div className="bg-amber-50 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-900">
+            <div className="bg-warningSoft rounded-2xl p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-warningText">
                 Em aberto
               </p>
-              <p className="text-2xl font-bold text-amber-900 tabular-nums mt-1">
+              <p className="text-2xl font-bold text-warningText tabular-nums mt-1">
                 {formatCurrency(totais.aberto)}
               </p>
             </div>
@@ -283,8 +283,8 @@ const SITUACAO = {
     rotulo: 'Aguardando confirmação',
     classe: 'font-semibold text-blue-700',
   },
-  overdue: { rotulo: 'Atrasado', classe: 'font-semibold text-red-700' },
-  pending: { rotulo: 'Em aberto', classe: 'font-semibold text-amber-700' },
+  overdue: { rotulo: 'Atrasado', classe: 'font-semibold text-dangerText' },
+  pending: { rotulo: 'Em aberto', classe: 'font-semibold text-warningText' },
 };
 
 const METODO = {

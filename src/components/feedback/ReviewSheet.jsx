@@ -351,7 +351,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                   size={38}
                   className={
                     n <= rating
-                      ? 'fill-amber-400 text-amber-400'
+                      ? 'fill-estrela text-estrela'
                       : 'fill-border text-borderStrong'
                   }
                 />
@@ -421,12 +421,12 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-4">
+              <div className="rounded-2xl border-2 border-dashed border-warningBorder bg-warningSoft p-4">
                 <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
                   <Camera size={15} className="text-warning" />
                   Falta sua foto
                 </p>
-                <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+                <p className="mt-1 text-xs leading-relaxed text-warningText/80">
                   Pra aparecer na home o card precisa do seu rosto — é ele que
                   faz outro motorista confiar. Sem foto, você ainda pode mandar
                   a avaliação em modo privado.

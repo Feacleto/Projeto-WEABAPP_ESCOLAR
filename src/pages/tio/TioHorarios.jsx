@@ -161,9 +161,9 @@ export default function TioHorarios() {
 
         {/* Quem ainda opera com horário chutado */}
         {!loading && pendentes.length > 0 && (
-          <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl p-3">
-            <AlertTriangle size={18} className="text-amber-700 shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-900 leading-relaxed">
+          <div className="flex items-start gap-2.5 bg-warningSoft border border-warningBorder rounded-2xl p-3">
+            <AlertTriangle size={18} className="text-warningText shrink-0 mt-0.5" />
+            <div className="text-xs text-warningText leading-relaxed">
               <b className="block text-sm">
                 {pendentes.length}{' '}
                 {pendentes.length === 1
@@ -183,11 +183,11 @@ export default function TioHorarios() {
             {avisos.map((a, i) => (
               <div
                 key={`${a.de.id}-${a.para.id}-${i}`}
-                className="bg-rust-50 border border-red-200 rounded-2xl p-3 flex items-start gap-2.5"
+                className="bg-rust-50 border border-dangerBorder rounded-2xl p-3 flex items-start gap-2.5"
                 style={{ background: 'rgb(254 242 242)' }}
               >
                 <AlertTriangle size={17} className="text-danger shrink-0 mt-0.5" />
-                <p className="text-xs text-red-900 leading-relaxed">
+                <p className="text-xs text-dangerText leading-relaxed">
                   <b>Não fecha:</b> de {a.de.name.split(' ')[0]} (
                   {horaCurta(a.horaDe)}) até {a.para.name.split(' ')[0]} (
                   {horaCurta(a.horaPara)}) são {a.km} km. Dá {a.minutosDisponiveis}{' '}
@@ -244,7 +244,7 @@ export default function TioHorarios() {
                 >
                   <span
                     className={`font-mono text-sm font-semibold tabular-nums shrink-0 w-14 ${
-                      p.presumido ? 'text-amber-600' : 'text-text'
+                      p.presumido ? 'text-warningText' : 'text-text'
                     }`}
                   >
                     {horaCurta(p.hora)}
@@ -372,14 +372,14 @@ export default function TioHorarios() {
  */
 function ParadaEscola({ escolas }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-violet-50 border border-violet-200">
-      <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-violet-700 font-semibold">
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-escolaSoft border border-escolaBorder">
+      <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-escola font-semibold">
         depois
       </span>
-      <div className="w-8 h-8 rounded-lg bg-violet-600 text-white flex items-center justify-center shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-escola text-white flex items-center justify-center shrink-0">
         <School size={15} />
       </div>
-      <span className="flex-1 min-w-0 text-sm font-semibold text-violet-900 truncate">
+      <span className="flex-1 min-w-0 text-sm font-semibold text-escola truncate">
         {escolas.map((e) => e.nome).join(' · ')}
       </span>
     </div>

@@ -884,7 +884,7 @@ function CompanyDataCard({ profile, onSaved }) {
           />
         </>
       ) : (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 leading-relaxed">
+        <div className="bg-warningSoft border border-warningBorder rounded-xl p-3 text-xs text-warningText leading-relaxed">
           Preencha pra aparecer no contrato dos pais. Enquanto não preenche,
           o app usa placeholders.
         </div>

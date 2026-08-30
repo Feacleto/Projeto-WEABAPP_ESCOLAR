@@ -34,7 +34,7 @@ export default function ReviewsBlock({ items = [], stats = null, loaded }) {
       {/* Média — pastilha âmbar, a única cor quente da página escura.
         * Estrela é a linguagem universal de avaliação; o âmbar existe pra
         * ela ser encontrada sem leitura. */}
-      <div className="inline-flex items-center gap-3 rounded-2xl border border-amber-300/25 bg-amber-400/10 px-4 py-2.5">
+      <div className="inline-flex items-center gap-3 rounded-2xl border border-warningBorder/25 bg-warning/10 px-4 py-2.5">
         <Stars value={media} />
         <div>
           <p className="text-lg font-extrabold leading-tight tabular-nums text-white">
@@ -117,7 +117,7 @@ export function Stars({ value, size = 16 }) {
       {[1, 2, 3, 4, 5].map((n) => {
         if (n <= cheias) {
           return (
-            <Star key={n} size={size} className="fill-amber-400 text-amber-400" />
+            <Star key={n} size={size} className="fill-estrela text-estrela" />
           );
         }
         if (n === cheias + 1 && resto > 0) {
@@ -130,7 +130,7 @@ export function Stars({ value, size = 16 }) {
               >
                 <Star
                   size={size}
-                  className="fill-amber-400 text-amber-400"
+                  className="fill-estrela text-estrela"
                 />
               </span>
             </span>

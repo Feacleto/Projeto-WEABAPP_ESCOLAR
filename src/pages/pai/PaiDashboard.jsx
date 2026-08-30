@@ -745,9 +745,9 @@ function AbsenceStatus({ absence, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="tap w-full text-left rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 p-4 flex items-center gap-3"
+      className="tap w-full text-left rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-warningBorder p-4 flex items-center gap-3"
     >
-      <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+      <div className="w-10 h-10 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
         <CheckCircle2 size={20} />
       </div>
       <div className="flex-1 min-w-0">
@@ -771,9 +771,9 @@ function AltPickupCTA({ pickup, onClick }) {
     return (
       <button
         onClick={onClick}
-        className="tap w-full text-left rounded-2xl bg-gradient-to-br from-violet-50 to-purple-100 border border-violet-200 p-4 flex items-center gap-3"
+        className="tap w-full text-left rounded-2xl bg-gradient-to-br from-violet-50 to-purple-100 border border-escolaBorder p-4 flex items-center gap-3"
       >
-        <div className="w-10 h-10 rounded-xl bg-violet-500 text-white flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-escola text-white flex items-center justify-center shrink-0">
           <UserCheck size={20} />
         </div>
         <div className="flex-1 min-w-0">
@@ -794,7 +794,7 @@ function AltPickupCTA({ pickup, onClick }) {
       onClick={onClick}
       className="tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border border-dashed border-border"
     >
-      <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+      <div className="w-10 h-10 rounded-xl bg-escolaChip text-escola flex items-center justify-center shrink-0">
         <UserCheck size={20} />
       </div>
       <div className="flex-1 min-w-0">
@@ -834,8 +834,8 @@ function PresencePanel({ presence, onOpenMap }) {
       icon: MapIcon,
     },
     [PRESENCE.STALE]: {
-      ring: 'border-amber-200',
-      iconBg: 'bg-amber-100 text-amber-700',
+      ring: 'border-warningBorder',
+      iconBg: 'bg-warningChip text-warningText',
       icon: CircleAlert,
     },
     [PRESENCE.MOVING]: {
@@ -893,9 +893,9 @@ function PaymentBanner({ payment, onClick }) {
   const urgent = dleft != null && dleft >= 0 && dleft <= 3;
 
   const bg = overdue
-    ? 'from-red-50 to-rose-100 border-red-200'
+    ? 'from-red-50 to-rose-100 border-dangerBorder'
     : urgent
-    ? 'from-amber-50 to-orange-100 border-amber-200'
+    ? 'from-amber-50 to-orange-100 border-warningBorder'
     : 'from-blue-50 to-indigo-100 border-blue-200';
 
   const headline = overdue

@@ -361,22 +361,22 @@ export default function TioFinance() {
         {/* Só aparece quando ele SAIU do mês vigente. Barra de "você não está
           * em casa", com a porta de volta do lado. */}
         {!isCurrentMonthView && (
-          <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
+          <div className="flex items-center gap-3 rounded-2xl border border-warningBorder bg-warningSoft p-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-warning text-white">
               <History size={17} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-amber-700/80">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-warningText/80">
                 Histórico
               </p>
-              <p className="truncate text-sm font-bold capitalize text-amber-900">
+              <p className="truncate text-sm font-bold capitalize text-warningText">
                 {formatMonthLabel(monthKey)}
               </p>
             </div>
             <button
               type="button"
               onClick={() => setMonthKey(getCurrentMonthKey())}
-              className="tap shrink-0 rounded-full bg-amber-600 px-3 py-1.5 text-xs font-bold text-white"
+              className="tap shrink-0 rounded-full bg-warning px-3 py-1.5 text-xs font-bold text-white"
             >
               Voltar pra hoje
             </button>
@@ -421,12 +421,12 @@ export default function TioFinance() {
             className={`tap w-full text-left rounded-2xl p-4 flex items-center gap-3 border ${
               hasPix
                 ? 'bg-card border-border'
-                : 'bg-gradient-to-br from-amber-50 to-orange-100 border-amber-200'
+                : 'bg-gradient-to-br from-amber-50 to-orange-100 border-warningBorder'
             }`}
           >
             <div
               className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                hasPix ? 'bg-primary/10' : 'bg-amber-500 text-white'
+                hasPix ? 'bg-primary/10' : 'bg-warning text-white'
               }`}
             >
               <Key size={20} className={hasPix ? 'text-primary' : ''} />
@@ -843,20 +843,20 @@ function Atrasados({
   if (!items.length) return null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-red-200 bg-red-50">
+    <div className="overflow-hidden rounded-2xl border border-dangerBorder bg-dangerSoft">
       <div className="flex items-center gap-3 p-4 pb-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500 text-white">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-danger text-white">
           <AlertTriangle size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-red-700/80">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-dangerText/80">
             Atrasado
           </p>
-          <p className="text-2xl font-bold leading-none tabular-nums text-red-700">
+          <p className="text-2xl font-bold leading-none tabular-nums text-dangerText">
             {formatCurrency(total)}
           </p>
         </div>
-        <p className="shrink-0 text-xs font-semibold text-red-900/60">
+        <p className="shrink-0 text-xs font-semibold text-dangerText/60">
           {items.length} cobrança{items.length > 1 ? 's' : ''}
         </p>
       </div>
@@ -899,7 +899,7 @@ function Atrasados({
               <button
                 type="button"
                 onClick={() => onCharge(p)}
-                className="tap shrink-0 rounded-full bg-red-600 px-3 py-1.5 text-xs font-bold text-white"
+                className="tap shrink-0 rounded-full bg-danger px-3 py-1.5 text-xs font-bold text-white"
               >
                 Cobrar
               </button>
@@ -1007,7 +1007,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
               title="Dinheiro"
               subtitle="Recebido em mãos"
               gradient="from-amber-50 to-orange-100"
-              iconBg="bg-amber-600"
+              iconBg="bg-warning"
               onClick={() => onPick('cash')}
               disabled={loading}
             />
@@ -1016,7 +1016,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
               title="Cartão"
               subtitle="Na maquininha"
               gradient="from-violet-50 to-purple-100"
-              iconBg="bg-violet-600"
+              iconBg="bg-escola"
               onClick={() => onPick('card')}
               disabled={loading}
             />

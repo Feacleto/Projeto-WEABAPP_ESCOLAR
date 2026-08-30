@@ -154,8 +154,8 @@ export default function ContractAcceptanceGate() {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center p-5">
         <div className="bg-card rounded-3xl shadow-lg p-6 max-w-sm w-full text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-amber-100 flex items-center justify-center">
-            <AlertCircle size={32} className="text-amber-600" />
+          <div className="w-16 h-16 mx-auto rounded-full bg-warningChip flex items-center justify-center">
+            <AlertCircle size={32} className="text-warningText" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-text">

@@ -189,7 +189,7 @@ function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, onClick }) {
         )}
       </span>
       {aviso ? (
-        <span className="text-[11px] font-semibold text-amber-700 shrink-0">
+        <span className="text-[11px] font-semibold text-warningText shrink-0">
           {aviso}
         </span>
       ) : contagem != null ? (

@@ -183,9 +183,9 @@ export default function TioEscolas() {
         {/* Migração: escolas que ainda são texto solto dentro das crianças */}
         {!carregando && propostas.length > 0 && (
           <section className="space-y-2">
-            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl p-3">
-              <Wand2 size={18} className="text-amber-700 shrink-0 mt-0.5" />
-              <div className="text-xs text-amber-900 leading-relaxed">
+            <div className="flex items-start gap-2.5 bg-warningSoft border border-warningBorder rounded-2xl p-3">
+              <Wand2 size={18} className="text-warningText shrink-0 mt-0.5" />
+              <div className="text-xs text-warningText leading-relaxed">
                 <b className="block text-sm">
                   Achei {propostas.length}{' '}
                   {propostas.length === 1 ? 'escola' : 'escolas'} nos seus
@@ -262,7 +262,7 @@ export default function TioEscolas() {
                 key={e.id}
                 className="bg-card border border-border rounded-2xl p-3 flex items-start gap-3"
               >
-                <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-escolaSoft text-escola flex items-center justify-center shrink-0">
                   <School size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -280,7 +280,7 @@ export default function TioEscolas() {
                       {contagem[e.id] || 0}
                     </span>
                     {e.geoPending && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-amber-700">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-warningText">
                         <MapPin size={12} />
                         sem localização
                       </span>

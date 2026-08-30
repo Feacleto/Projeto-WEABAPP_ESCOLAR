@@ -201,7 +201,7 @@ export default function AbsenceSheet({
               title="Não vai à escola"
               subtitle="Motorista não busca nem traz hoje"
               gradient="from-red-50 to-rose-100"
-              iconBg="bg-red-500"
+              iconBg="bg-danger"
               active={currentAbsence?.type === ABSENCE_TYPES.FULL}
               disabled={submitting}
               onClick={() => handleSelect(ABSENCE_TYPES.FULL)}
@@ -211,7 +211,7 @@ export default function AbsenceSheet({
               title="Eu vou levar de manhã"
               subtitle="Motorista só busca à tarde"
               gradient="from-amber-50 to-orange-100"
-              iconBg="bg-amber-500"
+              iconBg="bg-warning"
               active={currentAbsence?.type === ABSENCE_TYPES.NO_PICKUP}
               disabled={submitting}
               onClick={() => handleSelect(ABSENCE_TYPES.NO_PICKUP)}
@@ -221,7 +221,7 @@ export default function AbsenceSheet({
               title="Eu vou buscar à tarde"
               subtitle="Motorista só leva de manhã"
               gradient="from-violet-50 to-purple-100"
-              iconBg="bg-violet-600"
+              iconBg="bg-escola"
               active={currentAbsence?.type === ABSENCE_TYPES.NO_DROPOFF}
               disabled={submitting}
               onClick={() => handleSelect(ABSENCE_TYPES.NO_DROPOFF)}

@@ -255,7 +255,7 @@ function ScreenMapa() {
         <span className="absolute left-[4px] bottom-[6px] w-4 h-4 rounded-full bg-emerald-600 border-2 border-white flex items-center justify-center shadow">
           <HomeIcon size={7} className="text-white" />
         </span>
-        <span className="absolute right-[6px] top-[6px] w-4 h-4 rounded-full bg-violet-600 border-2 border-white flex items-center justify-center shadow">
+        <span className="absolute right-[6px] top-[6px] w-4 h-4 rounded-full bg-escola border-2 border-white flex items-center justify-center shadow">
           <School size={7} className="text-white" />
         </span>
         <div className="demo-van-map absolute top-0 left-0 w-5 h-5">
@@ -321,7 +321,7 @@ function ScreenCriancas() {
             chip={turno}
             chipClass={
               turno === 'manhã'
-                ? 'bg-amber-100 text-amber-700'
+                ? 'bg-warningChip text-warningText'
                 : 'bg-indigo-100 text-indigo-700'
             }
           />
@@ -370,14 +370,14 @@ function ScreenFinanceiro() {
           nome="Ana Clara"
           info="R$ 320,00 · venceu dia 10"
           chip="atrasado"
-          chipClass="bg-red-100 text-red-700"
+          chipClass="bg-dangerChip text-dangerText"
           acao="cobrar"
         />
         <MockRow
           nome="Bianca"
           info="R$ 320,00 · vence dia 10"
           chip="em aberto"
-          chipClass="bg-amber-100 text-amber-700"
+          chipClass="bg-warningChip text-warningText"
           acao="PIX"
         />
         <MockRow

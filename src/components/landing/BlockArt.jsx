@@ -39,8 +39,8 @@ export function ArtRoad() {
       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-300/30 flex items-center justify-center">
         <HomeIcon size={13} className="text-emerald-300" />
       </span>
-      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-violet-500/20 border border-violet-300/30 flex items-center justify-center">
-        <School size={13} className="text-violet-200" />
+      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-escola/20 border border-escolaBorder/30 flex items-center justify-center">
+        <School size={13} className="text-escolaBorder" />
       </span>
       <div className="demo-van absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-secondary flex items-center justify-center shadow-lg shadow-black/40">
         <Bus size={16} className="text-white" />

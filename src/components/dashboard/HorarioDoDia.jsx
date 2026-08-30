@@ -70,7 +70,7 @@ export default function HorarioDoDia({
           </h2>
         )}
         {tipo === ABSENCE_TYPES.FULL && (
-          <span className="text-[11px] font-semibold text-amber-700">
+          <span className="text-[11px] font-semibold text-warningText">
             você avisou que não vai
           </span>
         )}
@@ -78,7 +78,7 @@ export default function HorarioDoDia({
 
       {presumido ? (
         <div className="px-5 pb-5 pt-2 flex items-start gap-3">
-          <CircleAlert size={20} className="text-amber-600 shrink-0 mt-0.5" />
+          <CircleAlert size={20} className="text-warningText shrink-0 mt-0.5" />
           <p className="text-sm text-textMuted leading-relaxed">
             O motorista ainda não informou os horários de{' '}
             {child.name?.split(' ')[0] || 'seu filho'}.{' '}
@@ -183,7 +183,7 @@ function Linha({ icon: Icon, hora, titulo, cancelado, motivo }) {
         <p
           className={`mt-1 ${
             cancelado
-              ? 'text-xs text-amber-700 font-semibold'
+              ? 'text-xs text-warningText font-semibold'
               : 'text-sm text-textMuted'
           }`}
         >

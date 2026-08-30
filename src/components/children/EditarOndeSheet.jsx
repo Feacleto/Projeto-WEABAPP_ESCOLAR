@@ -138,7 +138,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
               </p>
             </>
           ) : (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+            <p className="rounded-xl bg-warningSoft px-3 py-2 text-[11px] leading-relaxed text-warningText">
               Sem ponto no mapa esta criança não entra no traçado da rota.
               Busque o endereço pra marcar.
             </p>

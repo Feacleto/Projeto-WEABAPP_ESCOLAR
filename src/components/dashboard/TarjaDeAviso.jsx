@@ -55,25 +55,25 @@ export default function TarjaDeAviso({ aviso }) {
       role="status"
       className={`-mx-5 -mt-5 mb-1 flex items-start gap-2.5 border-b px-5 py-3 ${
         grave
-          ? 'border-red-200 bg-red-50'
-          : 'border-amber-200 bg-amber-50'
+          ? 'border-dangerBorder bg-dangerSoft'
+          : 'border-warningBorder bg-warningSoft'
       }`}
     >
       <Icone
         size={15}
-        className={`mt-0.5 shrink-0 ${grave ? 'text-red-600' : 'text-amber-600'}`}
+        className={`mt-0.5 shrink-0 ${grave ? 'text-dangerText' : 'text-warningText'}`}
       />
       <div className="min-w-0">
         <p
           className={`text-[12.5px] font-bold leading-snug ${
-            grave ? 'text-red-900' : 'text-amber-900'
+            grave ? 'text-dangerText' : 'text-warningText'
           }`}
         >
           {aviso.titulo}
         </p>
         <p
           className={`mt-0.5 text-[11.5px] leading-relaxed ${
-            grave ? 'text-red-800/90' : 'text-amber-800'
+            grave ? 'text-dangerText/90' : 'text-warningText'
           }`}
         >
           {aviso.corpo}

@@ -93,15 +93,15 @@ export default function TioContract() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 p-4 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+          <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-warningBorder p-4 flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
               <MessageCircle size={22} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-amber-900 leading-tight">
+              <p className="font-bold text-warningText leading-tight">
                 Aguardando aceite
               </p>
-              <p className="text-xs text-amber-900 mt-0.5">
+              <p className="text-xs text-warningText mt-0.5">
                 O responsável aceita quando entrar no app com o código de
                 convite.
               </p>

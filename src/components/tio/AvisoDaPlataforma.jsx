@@ -111,7 +111,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
         className={`relative w-full rounded-2xl border p-4 ${
           suspenso
             ? 'max-w-[26rem] border-white/15 bg-white/[0.07] text-white shadow-2xl backdrop-blur-xl'
-            : 'border-amber-300 bg-amber-50'
+            : 'border-warningBorder bg-warningSoft'
         }`}
       >
         {!suspenso && (
@@ -119,7 +119,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
             type="button"
             onClick={fechar}
             aria-label="Fechar aviso"
-            className="tap absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-amber-800/70"
+            className="tap absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-warningText/70"
           >
             <X size={16} />
           </button>
@@ -127,7 +127,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
 
         <p
           className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] ${
-            suspenso ? 'text-[#E8867C]' : 'text-amber-700'
+            suspenso ? 'text-[#E8867C]' : 'text-warningText'
           }`}
         >
           <AlertTriangle size={12} />
@@ -168,7 +168,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
               {formatBRL(valor)}
               {dias > 0 ? ` · venceu há ${dias} dia${dias > 1 ? 's' : ''}` : ''}
             </h2>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-amber-900/85">
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-warningText/85">
               Você continua trabalhando normal — por enquanto. Se o acesso for
               suspenso, <strong>você para de cobrar as mensalidades pelo app</strong>
               {aReceber > 0 ? ` e ${formatBRL(aReceber)} do mês voltam pro caderno` : ''}.
@@ -191,7 +191,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
           target="_blank"
           rel="noopener noreferrer"
           className={`tap mt-2 flex items-center justify-center gap-1.5 py-1.5 text-[12px] font-semibold ${
-            suspenso ? 'text-white/55' : 'text-amber-800/80'
+            suspenso ? 'text-white/55' : 'text-warningText/80'
           }`}
         >
           <MessageCircle size={13} />

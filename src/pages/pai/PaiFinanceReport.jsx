@@ -100,11 +100,11 @@ export default function PaiFinanceReport() {
           {/* Total no topo só quando há dívida. Em dia, o extrato é a
             * lista — sem número grande dizendo zero. */}
           {debtTotal > 0 ? (
-            <section className="bg-amber-50 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-900">
+            <section className="bg-warningSoft rounded-2xl p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-warningText">
                 A pagar
               </p>
-              <p className="text-2xl font-bold text-amber-900 tabular-nums mt-1">
+              <p className="text-2xl font-bold text-warningText tabular-nums mt-1">
                 {formatCurrency(debtTotal)}
               </p>
             </section>
@@ -198,14 +198,14 @@ const STATUS_CONFIG = {
   pending: {
     icon: Clock,
     label: 'Pendente',
-    color: 'bg-amber-100 text-amber-700',
-    text: 'text-amber-700',
+    color: 'bg-warningChip text-warningText',
+    text: 'text-warningText',
   },
   overdue: {
     icon: AlertCircle,
     label: 'Atrasado',
-    color: 'bg-red-100 text-red-700',
-    text: 'text-red-700',
+    color: 'bg-dangerChip text-dangerText',
+    text: 'text-dangerText',
   },
 };
 

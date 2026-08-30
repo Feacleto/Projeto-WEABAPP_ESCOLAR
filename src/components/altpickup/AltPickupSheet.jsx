@@ -140,15 +140,15 @@ export default function AltPickupSheet({
             <>
               {/* Status atual */}
               {currentPickup && (
-                <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 p-3 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-warningBorder p-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
                     <UserCheck size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-amber-900 leading-tight">
+                    <p className="text-sm font-bold text-warningText leading-tight">
                       Hoje quem pega: {currentPickup.name}
                     </p>
-                    <p className="text-xs text-amber-800 mt-0.5">
+                    <p className="text-xs text-warningText mt-0.5">
                       {currentPickup.relationship && (
                         <span>{currentPickup.relationship} · </span>
                       )}
@@ -158,7 +158,7 @@ export default function AltPickupSheet({
                   <button
                     onClick={handleClear}
                     disabled={submitting}
-                    className="tap text-xs font-semibold text-amber-900 underline"
+                    className="tap text-xs font-semibold text-warningText underline"
                   >
                     Trocar
                   </button>
@@ -207,7 +207,7 @@ export default function AltPickupSheet({
                     disabled={submitting}
                     className="tap flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-escolaChip text-escola">
                       <UserIcon size={18} />
                     </div>
                     <div className="min-w-0 flex-1">

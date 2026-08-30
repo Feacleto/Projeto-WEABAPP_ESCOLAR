@@ -216,7 +216,7 @@ export default function PaiMap() {
           />
           <ReferenceRow
             icon={School}
-            color="bg-violet-500"
+            color="bg-escola"
             label="Escola"
             value={
               child?.schoolAddress || child?.school || 'Não cadastrada'
@@ -256,13 +256,13 @@ function StatusPanel({
   // parecer errado custa mais caro que parecer incompleto.
   if (presence?.kind === PRESENCE.STALE) {
     return (
-      <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+      <div className="rounded-2xl bg-warningSoft border border-warningBorder p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-warningChip text-warningText flex items-center justify-center shrink-0">
           <ParkingCircle size={22} />
         </div>
         <div className="flex-1">
           <p className="font-bold text-text leading-tight">{presence.title}</p>
-          <p className="text-xs text-amber-800 mt-0.5 leading-snug">
+          <p className="text-xs text-warningText mt-0.5 leading-snug">
             {presence.detail}
           </p>
         </div>
@@ -310,15 +310,15 @@ function StatusPanel({
 
   if (isNearby) {
     return (
-      <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 p-4 flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+      <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-warningBorder p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
           <Bus size={22} />
         </div>
         <div className="flex-1">
-          <p className="font-bold text-amber-900 leading-tight text-lg">
+          <p className="font-bold text-warningText leading-tight text-lg">
             Tá chegando!
           </p>
-          <p className="text-xs text-amber-900 mt-0.5">
+          <p className="text-xs text-warningText mt-0.5">
             {formatDistance(realDistanceKm)} daqui · prepare a criança
           </p>
         </div>

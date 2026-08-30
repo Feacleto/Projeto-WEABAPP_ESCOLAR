@@ -30,13 +30,13 @@ import { foiPagoAtrasado } from '../../services/paymentsService';
 // pro papel de quem está lendo. O estado 'claimed' era o pior caso: o tio
 // lia "aguardando confirmação" sem saber que a bola estava com ele.
 const STATUS_CONFIG = {
-  paid: { color: 'text-lime-700 bg-success/10', Icon: CheckCircle2 },
+  paid: { color: 'text-accentText bg-success/10', Icon: CheckCircle2 },
   // 'paid' que entrou depois do vencimento. Não é estado novo — é o mesmo
   // 'paid' com outra cara. Ver foiPagoAtrasado em services/paymentsService.
   paidLate: { color: '', Icon: CheckCircle2 },
-  claimed: { color: 'text-amber-700 bg-warning/10', Icon: Hourglass },
+  claimed: { color: 'text-warningText bg-warning/10', Icon: Hourglass },
   pending: { color: 'text-textMuted bg-neutro', Icon: Clock },
-  overdue: { color: 'text-red-700 bg-danger/10', Icon: AlertCircle },
+  overdue: { color: 'text-dangerText bg-danger/10', Icon: AlertCircle },
 };
 
 /**
@@ -127,7 +127,7 @@ export default function PaymentRow({
             * pega o print errado. Uma heurística que acusa sozinha erra e
             * estraga uma relação que precisa durar anos. */}
           {role === 'admin' && payment.receiptDuplicateOf && (
-            <p className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 inline-flex items-start gap-1.5 mt-1">
+            <p className="text-[11px] font-semibold text-warningText bg-warningSoft border border-warningBorder rounded-lg px-2 py-1.5 inline-flex items-start gap-1.5 mt-1">
               <TriangleAlert size={12} className="shrink-0 mt-0.5" />
               <span>
                 Comprovante igual ao de{' '}

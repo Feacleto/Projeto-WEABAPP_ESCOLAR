@@ -67,11 +67,11 @@ export default function OpenInBrowser({ onContinueHere }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1">
-        <p className="text-sm font-bold text-amber-900">
+      <div className="bg-warningSoft border border-warningBorder rounded-xl p-3 space-y-1">
+        <p className="text-sm font-bold text-warningText">
           Abra no {browser} pra continuar
         </p>
-        <p className="text-xs text-amber-800 leading-relaxed">
+        <p className="text-xs text-warningText leading-relaxed">
           {appName
             ? `Você está no navegador do ${appName}. Aqui o acesso não fica salvo — você teria que entrar de novo a cada vez.`
             : 'Neste navegador o acesso não fica salvo — você teria que entrar de novo a cada vez.'}

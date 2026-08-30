@@ -62,14 +62,14 @@ export default function AvisosFuturos({ child, historico }) {
     <section className="space-y-2">
       {/* A pergunta da véspera */}
       {vespera && (
-        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-3.5">
+        <div className="rounded-2xl border-2 border-warningBorder bg-warningSoft p-3.5">
           <div className="flex items-start gap-2.5">
-            <AlertTriangle size={18} className="text-amber-700 shrink-0 mt-0.5" />
+            <AlertTriangle size={18} className="text-warningText shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-amber-900 leading-tight">
+              <p className="text-sm font-bold text-warningText leading-tight">
                 Amanhã: {ABSENCE_LABELS[vespera.type]?.toLowerCase() || 'ausência'}
               </p>
-              <p className="text-xs text-amber-900/80 mt-0.5">
+              <p className="text-xs text-warningText/80 mt-0.5">
                 Você avisou {haQuantoTempo(vespera.createdAt)}. Continua assim?
               </p>
             </div>
@@ -79,14 +79,14 @@ export default function AvisosFuturos({ child, historico }) {
               type="button"
               disabled={removendo === vespera.dateKey}
               onClick={() => desfazer(vespera)}
-              className="tap h-10 rounded-xl bg-card border border-amber-300 text-amber-900 text-xs font-bold disabled:opacity-60"
+              className="tap h-10 rounded-xl bg-card border border-warningBorder text-warningText text-xs font-bold disabled:opacity-60"
             >
               Mudou, ela vai
             </button>
             <button
               type="button"
               onClick={() => toast.success('Combinado. O motorista já está avisado.')}
-              className="tap h-10 rounded-xl bg-amber-600 text-white text-xs font-bold"
+              className="tap h-10 rounded-xl bg-warning text-white text-xs font-bold"
             >
               Continua
             </button>

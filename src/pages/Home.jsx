@@ -807,7 +807,7 @@ export default function Home() {
                   * argumento de "por que agora" que não depende de prazo
                   * inventado. O sorteio acontece no primeiro acesso, dentro
                   * do app — nunca numa página pública. */}
-                <p className="flex items-center justify-center gap-1.5 rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-[11px] font-semibold text-amber-200">
+                <p className="flex items-center justify-center gap-1.5 rounded-xl border border-warningBorder/25 bg-warning/10 px-3 py-2 text-[11px] font-semibold text-warningBorder">
                   <Gift size={13} />
                   {rodada.brinde}
                 </p>
@@ -1018,7 +1018,7 @@ function Metric({ value, label, icon: Icon, countUp }) {
   return (
     <div className="min-w-0">
       <p className="text-2xl font-extrabold tracking-tight tabular-nums inline-flex items-center gap-1">
-        {Icon && <Icon size={16} className="text-amber-400 fill-amber-400" />}
+        {Icon && <Icon size={16} className="text-estrela fill-estrela" />}
         {countUp ? shown : value}
       </p>
       <p className="text-[11px] text-white/50 leading-tight">{label}</p>
