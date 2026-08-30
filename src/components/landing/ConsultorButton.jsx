@@ -2,7 +2,12 @@ import WhatsAppIcon from '../common/WhatsAppIcon';
 import { salesWhatsAppLink } from '../../config/developer';
 
 /**
- * "Falar com um consultor" — o humano a um toque.
+ * "Pedir ajuda a um consultor" — o humano a um toque.
+ *
+ * O rótulo era "Falar com um consultor", e "falar" soa como etapa de venda:
+ * quem já desconfia que vai ouvir uma proposta não toca. "Pedir ajuda" diz o
+ * que ele de fato ganha do outro lado — alguém que configura o app com ele —
+ * e é a mesma promessa que o pitch faz na última tela.
  *
  * POR QUE ELE EXISTE, E ONDE
  * A página explica a associação, o custo e a taxa. Isso responde a dúvida
@@ -49,7 +54,7 @@ export default function ConsultorButton({
         className={`tap animate-talk-pulse relative flex h-12 w-full items-center justify-center gap-2 rounded-full border text-sm font-bold ${skin}`}
       >
         <WhatsAppIcon size={17} colored={false} />
-        Falar com um consultor
+        Pedir ajuda a um consultor
       </a>
     </div>
   );

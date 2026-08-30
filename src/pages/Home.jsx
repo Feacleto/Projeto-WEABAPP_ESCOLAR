@@ -759,7 +759,7 @@ export default function Home() {
                 </p>
 
                 <div className="pt-1">
-                  <ConsultorButton assunto="a vaga de associado e a taxa" />
+                  <ConsultorButton assunto="a vaga de associado" />
                 </div>
               </div>
             </div>
