@@ -701,9 +701,19 @@ t('o modelo de horários aparece nos dois tours', () => {
   // O conceito central do app passou a ser a hora combinada com cada família,
   // e o tutorial ficou dois modelos atrás. Sem isto, o motorista abre o app,
   // vê "3 a confirmar" e não tem onde aprender o que é.
+  // AFIRMA A INTENÇÃO, NÃO A ÂNCORA.
+  //
+  // Este teste checava `anchor: 'horarios'`, que era o NOME do alvo na tela.
+  // Quando a linha dos horários saiu do Início e entrou na folha "Meu
+  // transporte", o passo continuou ensinando a mesma coisa por outra âncora —
+  // e o teste falhou por uma mudança que não tirou nada de ninguém.
+  //
+  // O que ele existe pra proteger é o ENSINO: se algum dia o tour do motorista
+  // parar de dizer onde se define a hora, isto tem que quebrar. Nome de
+  // âncora é implementação; "rota padrão" é o que o motorista lê.
   assert(
-    fonteDoTour.includes("anchor: 'horarios'"),
-    'o motorista precisa saber onde combina as horas'
+    /rota padrão/i.test(fonteDoTour),
+    'o motorista precisa saber onde define as horas'
   );
   assert(
     fonteDoTour.includes("anchor: 'horario-dia'"),

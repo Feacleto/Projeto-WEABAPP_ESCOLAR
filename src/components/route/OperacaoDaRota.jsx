@@ -432,7 +432,12 @@ export default function OperacaoDaRota({
         {/* O interruptor do GPS vem primeiro. Sem ele ligado, o painel do
           * responsável diz "a rota ainda não começou" o dia inteiro — e essa
           * é a falha que o pai percebe antes de qualquer outra. */}
-        {mostrarControle && <ControleDeRota onIniciar={publicarOrdem} />}
+        {mostrarControle && (
+          <ControleDeRota
+            onIniciar={publicarOrdem}
+            direcao={blocoAtual?.direcao}
+          />
+        )}
 
         {loading && <Skeleton className="h-56 rounded-2xl" />}
 

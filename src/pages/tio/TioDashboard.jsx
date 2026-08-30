@@ -5,18 +5,11 @@ import {
   Clock,
   Users,
   School,
-  Megaphone,
-  ListOrdered,
-  Notebook,
-  HelpCircle,
-  History,
   CircleAlert,
   AlertTriangle,
   ChevronRight,
+  LayoutGrid,
   CheckCircle2,
-  CalendarDays,
-  Eye,
-  EyeOff,
   MailWarning,
 } from 'lucide-react';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
@@ -35,7 +28,7 @@ import { useEscolas } from '../../hooks/useEscolas';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useAbsences } from '../../hooks/useAbsences';
 import { db } from '../../firebase/config';
-import { formatCurrency, getCurrentMonthKey } from '../../utils/formatters';
+import { getCurrentMonthKey } from '../../utils/formatters';
 import {
   getDateKey,
   diaCompleto,
@@ -54,6 +47,7 @@ import {
 import { publicarOrdemDoDia } from '../../services/ridesService';
 import { greet } from '../../utils/greeting';
 import { ChildDetailSheet } from '../ChildDetail';
+import MeuTransporteSheet from '../../components/tio/MeuTransporteSheet';
 import { useRelogio } from '../../hooks/useRelogio';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 
@@ -80,13 +74,26 @@ import FestiveBadge from '../../components/festive/FestiveBadge';
  *               resolve pendência. Então é a pendência que aparece.
  *
  * O QUE SAIU, E POR QUÊ
- * A gaveta "Mais opções" escondia turma, rota padrão e aviso de escola atrás
- * de um toque. Gaveta esconde justamente de quem tem medo de procurar — as
- * quatro ações viraram linhas escritas e visíveis.
+ * A gaveta "Mais opções" virou linhas escritas, e depois as linhas saíram pra
+ * folha "Meu transporte". NÃO é a gaveta de volta, e a diferença é a que
+ * motivou a mudança: a gaveta escondia sem nome e sem lugar fixo, e sumia no
+ * estado `dirigindo`. A folha tem nome escrito, mora sempre no fim da rolagem
+ * — e continua alcançável COM A ROTA LIGADA.
+ *
+ * Esse último ponto é o motivo inteiro. O bloco de cadastro desaparecia
+ * durante a rota, que é justamente quando o motorista está parado no portão
+ * da escola com seis minutos livres. Pra avisar uma escola ele precisava
+ * ENCERRAR a rota — o que apaga a perua do mapa de todas as famílias — e
+ * ligar de novo.
  *
  * Os quatro cartões de contagem (Crianças / Ausentes / Manhã / Tarde) também
  * saíram. Eles diziam QUANTOS; a lista da viagem diz QUEM, na ordem, com quem
  * faltou já em cinza. É o mesmo dado fazendo trabalho em vez de decorar.
+ *
+ * E o "a receber no mês" foi APAGADO, não movido. Era previsão — soma do que
+ * ainda não entrou — e o Financeiro responde melhor a mesma pergunta com dois
+ * números reais: "Recebido" no topo e a lista de quem está devendo. Duas
+ * superfícies pro mesmo assunto é como elas divergem.
  */
 
 const WEEK_DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -129,7 +136,7 @@ export default function TioDashboard() {
   const [fichaDe, setFichaDe] = useState(null);
 
   const [rotaAtiva, setRotaAtiva] = useState(false);
-  const [mostrarReceber, setMostrarReceber] = useState(false);
+  const [indiceAberto, setIndiceAberto] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [listaAusentesOpen, setListaAusentesOpen] = useState(false);
 
@@ -209,20 +216,18 @@ export default function TioDashboard() {
     return faltamMin != null && faltamMin <= JANELA_DE_PARTIDA ? 'antes' : 'entre';
   }, [rotaAtiva, carregandoCriancas, blocos.length, bloco, pendentes.length, faltamMin]);
 
-  const { aReceber, atrasados, marcados } = useMemo(() => {
-    let receber = 0;
+  const { atrasados, marcados } = useMemo(() => {
     let atraso = 0;
     let claimed = 0;
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     for (const p of payments) {
       if (p.status === 'paid') continue;
-      receber += Number(p.amount) || 0;
       if (p.status === 'claimed') claimed++;
       const venc = p.dueDate?.toDate?.() || (p.dueDate ? new Date(p.dueDate) : null);
       if (venc && venc < hoje && p.status !== 'claimed') atraso++;
     }
-    return { aReceber: receber, atrasados: atraso, marcados: claimed };
+    return { atrasados: atraso, marcados: claimed };
   }, [payments]);
 
   const semHorario = useMemo(() => semHorarioCombinado(children), [children]);
@@ -286,7 +291,7 @@ export default function TioDashboard() {
         className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-gray-100"
         style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
       >
-        <ControleDeRota onIniciar={publicarOrdem} />
+        <ControleDeRota onIniciar={publicarOrdem} direcao={bloco?.direcao} />
       </div>
 
       <div className="pb-4">
@@ -318,7 +323,22 @@ export default function TioDashboard() {
 
         {/* ─────────── DIRIGINDO — a home é a operação ─────────── */}
         {estado === 'dirigindo' && (
-          <OperacaoDaRota mostrarRodape={false} mostrarControle={false} />
+          <>
+            <OperacaoDaRota mostrarRodape={false} mostrarControle={false} />
+            {/* O CADASTRO DEIXA DE SUMIR DURANTE A ROTA.
+              * Ele sumia inteiro neste estado — e a rota é justamente quando o
+              * motorista fica parado no portão da escola com seis minutos
+              * livres. Pra avisar uma escola ele tinha que ENCERRAR a rota, o
+              * que apaga a perua do mapa de todas as famílias, e ligar de
+              * novo. Uma linha de 56px no fim da rolagem é o preço de não ter
+              * mais esse buraco. */}
+            <div className="px-5 pt-2">
+              <LinhaMeuTransporte
+                dirigindo
+                onClick={() => setIndiceAberto(true)}
+              />
+            </div>
+          </>
         )}
 
         {estado === 'carregando' && (
@@ -404,13 +424,7 @@ export default function TioDashboard() {
             </div>
 
             <ListaDaViagem bloco={bloco} onAbrirFicha={setFichaDe} />
-            <AcoesDeCadastro
-              totalCriancas={children.length}
-              totalEscolas={escolas.length}
-              semHorario={semHorario.length}
-              onBroadcast={() => setBroadcastOpen(true)}
-              navigate={navigate}
-            />
+            <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
           </div>
         )}
 
@@ -453,29 +467,7 @@ export default function TioDashboard() {
             {ENTRY_BONUS_ENABLED && <BonusNudge />}
             <ReviewNudge />
 
-            <AcoesDeCadastro
-              totalCriancas={children.length}
-              totalEscolas={escolas.length}
-              semHorario={semHorario.length}
-              onBroadcast={() => setBroadcastOpen(true)}
-              navigate={navigate}
-            />
-
-            <ReceberRow
-              amount={aReceber}
-              visivel={mostrarReceber}
-              onToggle={() => setMostrarReceber((v) => !v)}
-              onClick={() => navigate('/tio/finance')}
-            />
-
-            <button
-              type="button"
-              onClick={() => openTutorial?.()}
-              className="tap w-full flex items-center gap-2 text-xs text-textMuted justify-center py-2"
-            >
-              <HelpCircle size={14} />
-              Como usar o app
-            </button>
+            <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
           </div>
         )}
 
@@ -506,13 +498,7 @@ export default function TioDashboard() {
               </button>
             </div>
 
-            <AcoesDeCadastro
-              totalCriancas={children.length}
-              totalEscolas={escolas.length}
-              semHorario={semHorario.length}
-              onBroadcast={() => setBroadcastOpen(true)}
-              navigate={navigate}
-            />
+            <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
           </div>
         )}
       </div>
@@ -524,6 +510,20 @@ export default function TioDashboard() {
         open={!!fichaDe}
         childId={fichaDe}
         onClose={() => setFichaDe(null)}
+      />
+
+      {/* O ÍNDICE. As contagens vão por prop: esta tela já assina `children`
+        * e `escolas`, e reassinar dentro da folha abriria duas leituras
+        * permanentes do mesmo dado — permanentes porque o hook roda com a
+        * folha fechada — e duas fontes que podem discordar por um instante. */}
+      <MeuTransporteSheet
+        open={indiceAberto}
+        onClose={() => setIndiceAberto(false)}
+        onBroadcast={() => setBroadcastOpen(true)}
+        onTutorial={() => openTutorial?.()}
+        criancas={children.length}
+        escolas={escolas.length}
+        semHorario={semHorario.length}
       />
 
       <SchoolBroadcastSheet
@@ -709,145 +709,52 @@ function Pendencias({
 
 /* ─────────────── cadastro, escrito e visível ─────────────── */
 
+
 /**
- * As quatro ações que viviam na gaveta "Mais opções".
+ * A LINHA QUE ABRE O ÍNDICE.
  *
- * Saíram da gaveta porque gaveta esconde justamente de quem tem medo de
- * procurar — e é exatamente esse o usuário deste app. Elas não aparecem no
- * estado "dirigindo": ali ele está com o veículo em movimento.
+ * Ela existe em TODOS os estados do Início — inclusive "dirigindo", e esse é
+ * o ponto inteiro da mudança. O bloco de cadastro antigo sumia durante a
+ * rota, e a rota é justamente quando ele está parado no portão da escola com
+ * seis minutos livres.
+ *
+ * Fica no FIM da rolagem em todos os estados: é destino de quem terminou de
+ * ler o que a tela tinha a dizer, não competidor do assunto de agora.
+ *
+ * `tour="turma"` mora aqui porque o tutorial precisa de um alvo VISÍVEL — e
+ * "Minha turma" agora está dentro de uma folha fechada. Passo que aponta pra
+ * elemento escondido não quebra: vira um balão no rodapé e o tutorial segue,
+ * ensinando sem mostrar. Já aconteceu duas vezes neste projeto.
  */
-function AcoesDeCadastro({ totalCriancas, totalEscolas, semHorario, onBroadcast, navigate }) {
-  return (
-    <div className="space-y-4">
-      {/* CADASTRO — quem anda na perua e de onde. */}
-      <section className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
-          cadastro
-        </p>
-        <Linha
-          icon={Users}
-          titulo="Minha turma"
-          contagem={totalCriancas}
-          tour="turma"
-          onClick={() => navigate('/tio/children')}
-        />
-        {/* A semana fica no cadastro e não nas pendências porque ele consulta
-          * isso pra PLANEJAR — domingo à noite, sábado de manhã — e não só
-          * quando há aviso novo. */}
-        <Linha
-          icon={CalendarDays}
-          titulo="Faltas da semana"
-          subtitulo="Quem falta em qual dia, de segunda a sexta"
-          onClick={() => navigate('/tio/semana')}
-        />
-        <Linha
-          icon={School}
-          titulo="Escolas"
-          contagem={totalEscolas}
-          onClick={() => navigate('/tio/children/escolas')}
-        />
-        {/* "Horários" não dizia que ali se edita a rota.
-          * O motorista pensa "minha rota padrão"; o app respondia com uma
-          * palavra que, pra ele, era sobre relógio. É a mesma tela — o nome é
-          * que estava falando a língua do modelo em vez da língua dele. */}
-        <Linha
-          icon={ListOrdered}
-          tour="horarios"
-          titulo="Editar rota padrão"
-          subtitulo="Os horários que você definiu — é o que cada família vê"
-          aviso={semHorario > 0 ? `${semHorario} a confirmar` : null}
-          onClick={() => navigate('/tio/horarios')}
-        />
-      </section>
-
-      {/* AVISOS — tudo que chega na agenda das famílias, junto.
-        *
-        * "Avisar que não tem aula" ficava solto no meio do cadastro, sem nada
-        * dizendo que o recado aparece no caderno digital do responsável. Do
-        * lado do motorista pareciam duas coisas diferentes; do lado do pai
-        * chegam no mesmo lugar. Agora o grupo diz isso — e o "avisos
-        * enviados", que só existia escondido, entra aqui. */}
-      <section className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
-          avisos que vão pra agenda das famílias
-        </p>
-        <Linha
-          icon={Megaphone}
-          titulo="Avisar que não tem aula"
-          subtitulo="Marca a falta e avisa quem você escolher"
-          onClick={onBroadcast}
-        />
-        <Linha
-          icon={Notebook}
-          titulo="Avisos enviados"
-          subtitulo="O que já foi pro caderno de cada família"
-          onClick={() => navigate('/tio/agenda')}
-        />
-      </section>
-    </div>
-  );
-}
-
-function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, tour, onClick }) {
+function LinhaMeuTransporte({ onClick, dirigindo = false }) {
   return (
     <button
       type="button"
-      data-tour={tour}
+      data-tour="turma"
       onClick={onClick}
       className="tap w-full text-left bg-card border border-gray-200 rounded-xl px-3 py-3 flex items-center gap-3"
     >
-      <div className="w-8 h-8 rounded-lg bg-gray-100 text-textMuted flex items-center justify-center shrink-0">
-        <Icon size={16} />
+      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <LayoutGrid size={16} />
       </div>
       <span className="flex-1 min-w-0">
         <span className="block text-sm font-semibold text-text truncate">
-          {titulo}
+          Meu transporte
         </span>
-        {subtitulo && (
-          <span className="block text-[11px] text-textMuted truncate">
-            {subtitulo}
-          </span>
-        )}
+        {/* O subtítulo MUDA durante a rota, e é a única coisa que muda. Fora
+          * de rota ele é um sumário; dirigindo, responde a pergunta do
+          * momento — e é a resposta que o motorista não tinha: sim, dá pra
+          * avisar a escola sem encerrar a rota. */}
+        <span className="block text-[11px] text-textMuted truncate">
+          {dirigindo
+            ? 'Dá pra avisar a escola aqui mesmo'
+            : 'Turma, escolas, rota padrão, avisos'}
+        </span>
       </span>
-      {aviso ? (
-        <span className="text-[11px] font-semibold text-amber-700 shrink-0">
-          {aviso}
-        </span>
-      ) : contagem != null ? (
-        <span className="font-mono text-xs text-textMuted shrink-0">{contagem}</span>
-      ) : null}
       <ChevronRight size={16} className="text-textMuted shrink-0" />
     </button>
   );
 }
 
-/**
- * O total a receber fica ESCONDIDO até ele tocar.
- *
- * É a única informação da home que ele não quer que apareça sem querer: o
- * celular na mão dentro da perua, com um pai olhando pela janela.
- */
-function ReceberRow({ amount, visivel, onToggle, onClick }) {
-  return (
-    <div className="bg-card border border-gray-200 rounded-xl px-3 py-3 flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-gray-100 text-textMuted flex items-center justify-center shrink-0">
-        <History size={16} />
-      </div>
-      <button type="button" onClick={onClick} className="tap flex-1 min-w-0 text-left">
-        <span className="block text-sm font-semibold text-text">A receber no mês</span>
-        <span className="block text-[11px] text-textMuted">
-          {visivel ? formatCurrency(amount) : '••••••'}
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={visivel ? 'Esconder valor' : 'Mostrar valor'}
-        className="tap w-8 h-8 rounded-lg flex items-center justify-center text-textMuted shrink-0"
-      >
-        {visivel ? <EyeOff size={16} /> : <Eye size={16} />}
-      </button>
-    </div>
-  );
-}
+
 

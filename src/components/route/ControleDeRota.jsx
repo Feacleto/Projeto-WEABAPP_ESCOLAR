@@ -22,7 +22,7 @@ import { playSound } from '../../services/soundService';
  * mundo, e um diálogo modal no celular em movimento é mais fácil de confirmar
  * sem ler do que um botão que muda de cara.
  */
-export default function ControleDeRota({ onIniciar }) {
+export default function ControleDeRota({ onIniciar, direcao = null }) {
   const { user } = useAuth();
   const { watching, position, error, stopping, start, stop } = useGeolocation();
   const { location: liveLocation } = useLiveLocation();
@@ -112,11 +112,25 @@ export default function ControleDeRota({ onIniciar }) {
       <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
         {semSinal ? <CircleAlert size={17} /> : <Satellite size={17} />}
       </div>
+      {/* O NOME DO MODO, ESCRITO.
+        *
+        * "Rota ativa" descreve o GPS, não a tela. E a tela inteira acabou de
+        * trocar de papel: some a saudação, some o índice do cadastro, aparece
+        * a operação da rota. Quem abre o app no meio da tarde não acompanhou
+        * essa transição — precisa ler onde está antes de tocar em qualquer
+        * coisa.
+        *
+        * A DIREÇÃO importa mais que o modo: às 12h o motorista faz as duas
+        * viagens com uma hora de diferença, e "levando" ou "trazendo" muda o
+        * que ele espera ver na lista. Sem `direcao`, degrada pra "MODO ROTA"
+        * seco — nunca fica pela metade. */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-emerald-900 leading-tight">
-          Rota ativa
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 leading-tight">
+          modo rota
+          {direcao === 'ida' && ' · levando pra escola'}
+          {direcao === 'volta' && ' · trazendo pra casa'}
         </p>
-        <p className="text-[11px] text-emerald-900/70">
+        <p className="text-[11px] text-emerald-900/75 mt-0.5">
           {semSinal
             ? 'procurando sinal de GPS…'
             : `o responsável está te vendo · precisão ${Math.round(precisao)} m`}

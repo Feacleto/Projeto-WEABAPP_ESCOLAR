@@ -79,18 +79,26 @@ export const ADMIN_TOUR = [
   },
   {
     path: '/tio',
-    anchor: 'horarios',
+    // A ÂNCORA MUDOU DE `horarios` PRA `turma`, e as duas apontam pra mesma
+    // linha: "Meu transporte". Os horários deixaram de morar no Início — eles
+    // estão dentro da folha, e passo que ilumina elemento escondido não
+    // quebra, vira um balão no rodapé e o tutorial segue ensinando sem
+    // mostrar. Já aconteceu duas vezes aqui.
+    anchor: 'turma',
     icon: Clock,
     title: 'A hora de cada criança',
-    body: 'Seu dia é montado com as horas que VOCÊ define pra cada criança. Aqui você ajusta uma a uma. Se aparecer "presumido", é criança que o app chutou o horário — e esse chute não aparece pro responsável até você definir o seu.',
+    body: 'Seu dia é montado com as horas que VOCÊ define pra cada criança. Toque em "Meu transporte" e depois em "Editar rota padrão" pra ajustar uma a uma. Se aparecer "presumido", é criança que o app chutou o horário — e esse chute não aparece pro responsável até você definir o seu.',
   },
   {
     path: '/tio',
     anchor: 'turma',
-    interact: true,
     icon: Users,
-    title: 'Agora toque em "Minha turma"',
-    body: 'Pode tocar aí — eu espero você.',
+    title: 'Tudo que você cadastra mora aqui',
+    // O `interact: true` saiu junto com a mudança. Ele esperava o toque em
+    // "Minha turma", que agora está dentro da folha: o toque abriria a folha
+    // e o tour ficaria esperando uma navegação que não vem. O passo seguinte
+    // já leva pra /tio/children sozinho (o motor navega pelo `path`).
+    body: 'Turma, escolas, rota padrão e avisos ficam em "Meu transporte" — e continua alcançável com a rota ligada, parado no portão da escola.',
   },
   {
     path: '/tio/children',

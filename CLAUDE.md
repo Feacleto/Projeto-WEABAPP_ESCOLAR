@@ -329,6 +329,16 @@ humano.
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
 passar por lá — e `npm run testar:regras` cobre o payload real.
 
+**O Início do motorista tem um ÍNDICE, não um bloco de cadastro.**
+[MeuTransporteSheet](src/components/tio/MeuTransporteSheet.jsx) — turma,
+escolas, rota padrão, semana, avisos e contrato, atrás de uma linha no fim da
+rolagem. O motivo não é limpeza: o bloco antigo **sumia no estado
+`dirigindo`**, e pra avisar uma escola no portão o motorista precisava
+ENCERRAR a rota (o que apaga a perua do mapa de todas as famílias) e ligar de
+novo. A folha existe em todos os estados, inclusive dirigindo. Contagens vão
+por **prop** — o `TioDashboard` já assina `children` e `escolas`, e reassinar
+dentro dela abriria leitura permanente duplicada do mesmo dado.
+
 **Navegação: uma tela só.** Cada troca de tela cobra pedágio — resolva em folha
 onde couber, e rotule o "voltar" onde não couber.
 
