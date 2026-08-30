@@ -3,6 +3,8 @@ import {
   doc,
   query,
   where,
+  orderBy,
+  limit,
   onSnapshot,
   addDoc,
   updateDoc,
@@ -178,19 +180,46 @@ export async function notifyPaymentConfirmed({
 // Subscribe / mark read
 // =============================================================================
 
+/**
+ * Quantas notificações a assinatura carrega.
+ *
+ * POR QUE EXISTE UM TETO, E POR QUE ELE É ALTO
+ * A consulta era `where('userId','==',uid)` e mais nada: sem `limit`, sem
+ * janela, com a ordenação feita em JS DEPOIS de baixar tudo. E ela é assinada
+ * no `Header`, que está montado em TODAS as telas dos dois papéis — então o
+ * custo é pago em toda sessão, o dia inteiro.
+ *
+ * Nada apaga notificação: o único `delete` da coleção está no encerramento de
+ * conta. Um motorista com 20 crianças recebe algo como 40 a 60 por mês; em
+ * dois anos são mais de mil documentos baixados a cada abertura do app, no
+ * mesmo aparelho que está segurando mapa e GPS.
+ *
+ * O TETO MUDA O SIGNIFICADO DO CONTADOR, e isso é assumido: o "não lidas" do
+ * sino passa a ser "não lidas ENTRE AS 100 MAIS RECENTES". 100 cobre uns dois
+ * meses do usuário mais ativo, e notificação não lida há dois meses não é mais
+ * uma pendência — é histórico. Se um dia o número precisar ser exato, o
+ * caminho é um `count()` separado só pro contador, não subir este teto.
+ *
+ * A ordenação agora é do SERVIDOR (`orderBy`), senão o `limit` cortaria um
+ * pedaço arbitrário em vez das mais recentes. Isso exige o índice composto
+ * `(userId ASC, createdAt DESC)` — declarado em firestore.indexes.json.
+ */
+const TETO_DE_NOTIFICACOES = 100;
+
 export function watchUserNotifications(userId, onUpdate, onError) {
-  const q = query(collection(db, 'notifications'), where('userId', '==', userId));
+  const q = query(
+    collection(db, 'notifications'),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc'),
+    limit(TETO_DE_NOTIFICACOES)
+  );
   return onSnapshot(
     q,
     (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      // Sort por createdAt desc (mais recente primeiro)
-      list.sort((a, b) => {
-        const ta = a.createdAt?.toMillis?.() || 0;
-        const tb = b.createdAt?.toMillis?.() || 0;
-        return tb - ta;
-      });
-      onUpdate(list);
+      // Já vem ordenado do servidor. A ordenação em JS que existia aqui era
+      // consequência de não haver `orderBy` — e ela só conseguia ordenar o
+      // que tivesse sido baixado, que era tudo.
+      onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     },
     (err) => {
       console.error('watchUserNotifications error:', err);

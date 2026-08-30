@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   updateDoc,
   writeBatch,
+  runTransaction,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { generateInviteCode } from '../utils/generateInviteCode';
@@ -191,6 +192,23 @@ export async function getChild(id) {
 // Atualiza dados gerais (não usar pra mudar status — use updateChildStatus).
 export async function updateChild(id, data) {
   const updates = { ...data };
+
+  // `active` NÃO PASSA POR AQUI, e a recusa é barata perto do estrago.
+  //
+  // Esta função repassava o payload inteiro. `updateChild(id, {active: true})`
+  // reativaria a criança SEM incrementar `criancasAtivas` — criando uma
+  // criança ativa que não ocupa vaga, e furando o `limiteCriancas` que as
+  // rules validam com `getAfter`.
+  //
+  // Hoje nenhum chamador faz isso (conferido nos quatro call sites), então é
+  // armadilha e não bug — do tipo que alguém arma sem perceber, meses depois,
+  // passando um objeto de formulário inteiro. Ativação e desativação têm dois
+  // caminhos próprios, e são eles que mantêm o contador honesto.
+  if ('active' in updates) {
+    throw new Error(
+      'Use ativarCrianca/deactivateChild: `active` mexe no contador de vagas.'
+    );
+  }
   if ('lat' in updates) updates.lat = toCoord(updates.lat);
   if ('lng' in updates) updates.lng = toCoord(updates.lng);
   if ('schoolLat' in updates) updates.schoolLat = toCoord(updates.schoolLat);
@@ -252,17 +270,32 @@ export async function deactivateChild(id) {
   // O decremento vai no mesmo batch pelo mesmo motivo do cadastro — só que
   // aqui as rules não exigem: descer o contador é livre. Junto porque
   // separado é como ele desanda no dia em que a segunda escrita falha.
-  const atual = await getChild(id);
-  const lote = writeBatch(db);
-  lote.update(doc(db, 'children', id), { active: false });
-  // Só desconta se ela ESTAVA ativa: desativar duas vezes não pode gerar
-  // duas vagas do nada.
-  if (atual?.active !== false && atual?.adminUid) {
-    lote.update(doc(db, 'users', atual.adminUid), {
-      criancasAtivas: increment(-1),
-    });
-  }
-  await lote.commit();
+  // EM TRANSAÇÃO, E NÃO "LER E DEPOIS GRAVAR".
+  //
+  // Era `await getChild(id)` FORA do batch, e a decisão de descontar saía
+  // dessa leitura. Duas abas desativando a mesma criança leem `active: true`
+  // as duas e descontam DUAS vagas — e a rule não impede, porque descer o
+  // contador é livre (é subir que ela vigia). O motorista perderia uma vaga
+  // contratada em silêncio, e só a fatura do mês seguinte mostraria a
+  // diferença.
+  //
+  // `runTransaction` fecha a janela: a leitura e a escrita acontecem no mesmo
+  // instante lógico, e a segunda tentativa relê `active: false` e não desconta.
+  await runTransaction(db, async (tx) => {
+    const ref = doc(db, 'children', id);
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const atual = snap.data();
+
+    tx.update(ref, { active: false });
+    // Só desconta se ela ESTAVA ativa: desativar duas vezes não pode gerar
+    // duas vagas do nada.
+    if (atual.active !== false && atual.adminUid) {
+      tx.update(doc(db, 'users', atual.adminUid), {
+        criancasAtivas: increment(-1),
+      });
+    }
+  });
   // `active: false` basta: a fila do dia filtra por ele. Não há mais lista
   // salva de onde a criança precise ser retirada — e portanto não há mais
   // como ela sobrar numa rota depois de desativada.

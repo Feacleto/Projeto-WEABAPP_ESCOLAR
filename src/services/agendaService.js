@@ -6,6 +6,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -56,6 +57,21 @@ async function pushNotification({ userId, type, title, body, meta = {} }) {
  */
 
 export const AGENDA_COLLECTION = 'agendaEntries';
+
+/**
+ * Quantos recados o caderno carrega, por fonte.
+ *
+ * As duas assinaturas do responsável não tinham teto nem janela: baixavam
+ * TODOS os recados dele e da escola desde sempre, e o recorte por mês era
+ * feito em JS depois. Um responsável de três anos abriria o caderno baixando
+ * uns 150 documentos — e o motorista que usa "vou atrasar" toda semana produz
+ * um recado de escola por vez para a turma inteira.
+ *
+ * 100 por fonte cobre bem mais que a janela que a tela desenha. O `orderBy`
+ * já existia nas duas consultas, então o corte pega os MAIS RECENTES e os
+ * índices declarados continuam servindo — nenhum índice novo.
+ */
+const TETO_DO_CADERNO = 100;
 
 // Tipos pré-definidos com label + emoji + template. Tio escolhe um e o
 // template aparece já preenchido — ele pode editar antes de enviar.
@@ -368,7 +384,8 @@ export function watchParentAgenda({ parentUid, adminUid }, onUpdate, onError) {
       collection(db, AGENDA_COLLECTION),
       where('scope', '==', 'child'),
       where('parentUid', '==', parentUid),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(TETO_DO_CADERNO)
     ),
     (snap) => {
       childList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -409,7 +426,8 @@ export function watchParentAgenda({ parentUid, adminUid }, onUpdate, onError) {
         where('parentUids', 'array-contains', parentUid),
         where('scope', '==', 'school'),
         where('adminUid', '==', adminUid),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(TETO_DO_CADERNO)
       ),
       (snap) => {
         schoolList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));

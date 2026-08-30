@@ -226,6 +226,27 @@ export async function setLimiteCriancas(uid, limite) {
  * incompleta e a fatura dele sairia menor que a real. A tela precisa dizer isso
  * em voz alta em vez de somar o que sobrou.
  */
+/**
+ * ESTA CONSULTA NÃO PODE RECEBER `limit()`, e isso é decisão, não esquecimento.
+ *
+ * Ela é a única sem teto que sobrou depois da varredura de escala — e é assim
+ * de propósito: o resultado vira a BASE DE CÁLCULO da fatura de cada parceiro.
+ * Um teto aqui não deixaria a tela mais leve; faria a cobrança sair MENOR que
+ * o devido, em silêncio, e o parceiro seria subfaturado sem ninguém notar.
+ * Consulta que alimenta dinheiro ou conta tudo, ou não serve.
+ *
+ * O custo é real e está medido: com mil crianças, mil documentos — com
+ * endereço, escola e telefone de família — trafegam pro navegador do dono toda
+ * vez que a aba Taxa abre, pra produzir um punhado de somas por parceiro.
+ *
+ * A SAÍDA CERTA É MATERIALIZAR, NÃO TRUNCAR: `users.criancasAtivas` já existe
+ * e responde a contagem; falta o par dele para a soma de mensalidades,
+ * mantido no mesmo batch de `addChild`/`updateChild`/`deactivateChild`. Aí
+ * esta varredura vira conferência sob demanda em vez de caminho de abertura de
+ * tela. Está no plano de arquitetura como trabalho seguinte — e depende do
+ * contador ser confiável primeiro (ver `childrenService`, transação do
+ * decremento).
+ */
 export async function carregarBasePorMotorista() {
   const snap = await getDocs(
     query(collection(db, 'children'), where('active', '==', true))

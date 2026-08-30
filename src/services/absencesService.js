@@ -5,6 +5,8 @@ import {
   deleteDoc,
   query,
   where,
+  orderBy,
+  limit,
   onSnapshot,
   serverTimestamp,
   addDoc,
@@ -173,10 +175,23 @@ export function watchAbsencesRange(adminUid, deKey, ateKey, onUpdate, onError) {
 }
 
 /**
- * Subscribe a TODAS as ausências de uma criança ao longo do tempo.
- * Usado pelo Pai pra ver histórico de faltas (semana/mês).
- * Filtragem por período é feita no client.
+ * Subscribe às ausências recentes de uma criança. Usado pelo Pai.
+ *
+ * O TETO EXISTE PORQUE ISTO MORA NO INÍCIO, não numa tela de histórico.
+ * A consulta era `where('childId','==',id)` e nada mais — a coleção INTEIRA
+ * da criança, ao vivo, ordenada em JS depois de baixar tudo. E ela está
+ * montada no `PaiDashboard`, que é a primeira tela do app: uma criança com
+ * três anos de uso acumula umas 150 declarações baixadas a cada abertura.
+ *
+ * A regra de produto já dizia isto e a consulta não sabia: o aviso cabe em 14
+ * dias (ver `AbsenceSheet`). 200 documentos cobrem muito mais que qualquer
+ * janela que a tela realmente desenhe.
+ *
+ * `orderBy` no SERVIDOR, senão o `limit` cortaria um pedaço arbitrário em vez
+ * dos mais recentes. O índice `(childId ASC, dateKey DESC)` sustenta isso.
  */
+const TETO_DE_FALTAS = 200;
+
 export function watchAllAbsencesForChild(childId, onUpdate, onError) {
   if (!childId) {
     onUpdate([]);
@@ -184,15 +199,15 @@ export function watchAllAbsencesForChild(childId, onUpdate, onError) {
   }
   const q = query(
     collection(db, 'absenceDeclarations'),
-    where('childId', '==', childId)
+    where('childId', '==', childId),
+    orderBy('dateKey', 'desc'),
+    limit(TETO_DE_FALTAS)
   );
   return onSnapshot(
     q,
     (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      // Ordena por dateKey desc (mais recentes primeiro)
-      list.sort((a, b) => (b.dateKey || '').localeCompare(a.dateKey || ''));
-      onUpdate(list);
+      // Ja vem ordenado do servidor.
+      onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     },
     (err) => {
       console.error('watchAllAbsencesForChild error:', err);

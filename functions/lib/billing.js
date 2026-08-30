@@ -114,7 +114,27 @@ async function generateForMonth(db, monthKey, adminUid = null) {
       continue;
     }
 
-    batch.set(db.collection('payments').doc(), {
+    // O ID É `{criança}_{mês}`, E É ELE QUE GARANTE "UMA COBRANÇA POR MÊS".
+    //
+    // Era `doc()` — id aleatório — e a idempotência que o cabeçalho promete
+    // vinha de CONSULTAR ANTES DE CRIAR. Entre a leitura da linha 59 e o
+    // commit não há nada: duas execuções concorrentes (a agendada das 6h mais
+    // um `runBillingNow`, ou o retry do Scheduler sobre um commit parcial)
+    // leem o mesmo `existing` vazio e criam DUAS cobranças da mesma criança no
+    // mesmo mês. E `paymentsService.js` afirma ao usuário, com essas palavras,
+    // que "chamar isto nunca duplica nada".
+    //
+    // `create()` em vez de `set()`: com id determinístico, `set` sobrescreveria
+    // — e sobrescrever uma cobrança já PAGA a devolveria para `pending`. Aqui
+    // a segunda tentativa precisa falhar, não vencer.
+    //
+    // O `existing` continua, mas mudou de papel: era a garantia, virou
+    // otimização (evita o erro no caminho comum). A garantia é o id.
+    //
+    // É o padrão que a casa já usa em cinco coleções: rides/{data},
+    // faturasParceiro/{uid}_{mes}, entryBonuses/{uid},
+    // absenceDeclarations/{dia}_{criança}, notifications/confirm_{dia}_{criança}.
+    batch.create(db.collection('payments').doc(`${childDoc.id}_${monthKey}`), {
       adminUid: child.adminUid,
       childId: childDoc.id,
       childName: child.name || '', // denormalizado pra evitar join na leitura
@@ -148,18 +168,32 @@ async function purgeOld(db, retentionMonths = RETENTION_MONTHS) {
   cutoff.setMonth(cutoff.getMonth() - retentionMonths);
   const cutoffKey = monthKeyOf(cutoff);
 
-  const snap = await db
-    .collection('payments')
-    .where('month', '<', cutoffKey)
-    .get();
-  if (snap.empty) return { deleted: 0, cutoffKey };
+  // EM LAÇO, COM TETO — e não uma leitura só.
+  //
+  // Era `.get()` sem `limit()`, e o corte em lotes de 400 protegia só a
+  // ESCRITA: o `.get()` já tinha materializado a cauda inteira em memória.
+  // Com 20 crianças isso são 20 documentos. Com mil, é a base de um mês
+  // inteiro por dia — e qualquer janela em que a função tenha ficado sem
+  // rodar (deploy, falha do agendador) multiplica isso até ela morrer por
+  // memória sem apagar nada.
+  let apagados = 0;
+  for (;;) {
+    const snap = await db
+      .collection('payments')
+      .where('month', '<', cutoffKey)
+      .limit(BATCH_LIMIT)
+      .get();
+    if (snap.empty) break;
 
-  for (let i = 0; i < snap.docs.length; i += BATCH_LIMIT) {
     const batch = db.batch();
-    snap.docs.slice(i, i + BATCH_LIMIT).forEach((d) => batch.delete(d.ref));
+    snap.docs.forEach((d) => batch.delete(d.ref));
     await batch.commit();
+    apagados += snap.docs.length;
+
+    // Lote incompleto significa que acabou — evita uma consulta extra.
+    if (snap.docs.length < BATCH_LIMIT) break;
   }
-  return { deleted: snap.docs.length, cutoffKey };
+  return { deleted: apagados, cutoffKey };
 }
 
 /**
