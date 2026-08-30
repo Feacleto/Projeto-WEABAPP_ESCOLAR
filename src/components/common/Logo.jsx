@@ -35,9 +35,14 @@ const TONES = {
   color: {
     body: '#1F5F3F',
     window: '#FFFFFF',
-    // Verde um degrau abaixo em fundo CLARO: #52C41A dá 2,27:1 sobre branco
-    // e as ondas são o que carrega o sentido da marca. É o `accentDark` do
-    // tailwind.config.js, não uma cor nova.
+    // Verde um degrau abaixo em fundo CLARO: #52C41A dá 2,3:1 sobre branco
+    // e as ondas são o que carrega o sentido da marca.
+    //
+    // Este hex era o token `accentDark`, que saiu do tailwind.config.js na
+    // varredura de cor — ele era um dos quatro nomes que apontavam pra tinta
+    // já existente. Aqui ele fica escrito à mão de propósito: a marca não
+    // segue o sistema de cor da interface, é o contrário. Trocar um token de
+    // UI não pode repintar o logotipo.
     arcs: '#3F9B12',
     alo: '#1F5F3F',
     buzinou: '#3F9B12',

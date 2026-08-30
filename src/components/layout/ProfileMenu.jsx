@@ -9,6 +9,7 @@ import {
   Receipt,
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
+import Logo from '../common/Logo';
 import SupportSheet from '../support/SupportSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { destinoAposSair } from '../../utils/frentes';
@@ -208,13 +209,23 @@ export default function ProfileMenu({ role, basePath, active = false }) {
             * loja, e quando precisa reclamar de algo que não é do motorista.
             *
             * Aqui não disputa nada — está no fim de um menu que ela abre pra
-            * outra coisa, em texto secundário — e resolve os dois casos.
+            * outra coisa — e resolve os dois casos.
+            *
+            * É o LOGOTIPO e não o nome escrito, e pro caso que motivou isto a
+            * diferença conta: quem troca de celular vai procurar o app na
+            * loja, e ali o que ela varre é a lista de ÍCONES. Reconhecer o
+            * desenho é mais rápido que lembrar como se escreve. O nome não se
+            * perde pra quem usa leitor de tela — o <Logo> emite `role="img"`
+            * com `aria-label="Alô Buzinou"`.
+            *
+            * Pequeno de propósito (15px de altura): é assinatura de rodapé, e
+            * o único item colorido do menu tem que continuar sendo o "Sair".
             *
             * Sem número de versão junto: o package.json está em 0.0.0, e
             * versão falsa no rodapé é pior que versão nenhuma. */}
-          <p className="border-t border-neutro px-3 py-2.5 text-center text-xs text-textMuted">
-            Alô Buzinou
-          </p>
+          <div className="flex justify-center border-t border-neutro px-3 py-3">
+            <Logo height={15} />
+          </div>
         </div>
       )}
 
