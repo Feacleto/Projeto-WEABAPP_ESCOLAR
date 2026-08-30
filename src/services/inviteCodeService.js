@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase/config';
+import { exigirCloud } from './callableError';
 
 // Aceita os dois formatos de convite: legado (2 letras + 4 dígitos) e
 // novo (2 letras + 6 caracteres sem ambiguidade visual).
@@ -42,6 +43,7 @@ export async function lookupInvite(rawCode) {
   if (!CODE_RE.test(code)) {
     throw new Error('Código inválido. São 2 letras e 4 números (ex: TN4582).');
   }
+  exigirCloud('conferir o convite');
   const fn = httpsCallable(functions, 'lookupInvite');
   try {
     const res = await fn({ code });
@@ -90,6 +92,7 @@ export async function getInvitePreview(rawCode) {
   if (!CODE_RE.test(code)) {
     throw new Error('Link de convite inválido. Peça outro ao motorista.');
   }
+  exigirCloud('abrir o convite');
   const fn = httpsCallable(functions, 'getInvitePreview');
   try {
     const res = await fn({ code });

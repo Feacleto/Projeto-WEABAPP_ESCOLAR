@@ -1,6 +1,7 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase/config';
+import { exigirCloud } from './callableError';
 
 /**
  * A roleta de entrada — os meses sem taxa que o motorista sorteia ao começar.
@@ -34,6 +35,7 @@ import { auth, db, functions } from '../firebase/config';
  * Animar de novo dá a impressão de um segundo sorteio que não aconteceu.
  */
 export async function spinEntryBonus() {
+  exigirCloud('girar a roleta');
   const fn = httpsCallable(functions, 'spinEntryBonus');
   const { data } = await fn();
   return data;

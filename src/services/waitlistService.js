@@ -12,6 +12,7 @@ import {
 import { signInAnonymously } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase/config';
+import { exigirCloud } from './callableError';
 
 /**
  * Listas de espera / interesse — formulários públicos da landing.
@@ -66,6 +67,7 @@ export async function submitDriverWaitlist({
   message,
 }) {
   await ensureSignedIn();
+  exigirCloud('entrar na fila');
   const fn = httpsCallable(functions, 'joinDriverWaitlist');
   try {
     const res = await fn({ name, email, phone, city, criancas, message });

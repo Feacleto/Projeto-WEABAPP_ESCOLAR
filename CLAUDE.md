@@ -265,6 +265,14 @@ HISTÓRICO anda meses pra trás (`/pai/faltas`); o aviso continua cabendo em
 duas semanas. A conta é pura e testada em [utils/faltas.js](src/utils/faltas.js)
 (`npm run testar:faltas`) — aviso marcado pra frente nunca é somado como falta.
 
+**Chamar Cloud Function passa por `exigirCloud()`** —
+[callableError.js](src/services/callableError.js). Sem Blaze, a API desativada
+responde sem CORS e o erro que chega na tela é "falha de rede": quem usa troca
+de rede, quem depura procura CORS, e o conserto é ligar o faturamento. Pior,
+`functions/not-found` significava duas coisas — e o app acusava convite VÁLIDO
+de não existir. O guarda vem antes do `try`, então esse código volta a ter um
+significado só. `getShowcase` fica de fora de propósito: já degrada calado.
+
 **PWA: instalar e atualizar** — as duas conversas com o aparelho.
 
 - [InstallPrompt.jsx](src/components/common/InstallPrompt.jsx) convida a pôr na
