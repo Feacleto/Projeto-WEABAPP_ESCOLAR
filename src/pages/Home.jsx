@@ -34,6 +34,7 @@ import {
 import { functions } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
+import { comPiso } from '../config/vitrine';
 import { frenteLembrada, lembrarFrente, FRENTE_FAMILIA } from '../utils/frentes';
 import {
   listPublicTestimonials,
@@ -214,7 +215,15 @@ export default function Home() {
   }, []);
 
   const driver = showcase?.drivers?.[0] || null;
-  const families = driver?.families || 0;
+
+  // CRIANÇAS ATIVAS — o tamanho da operação, que é o que "família atendida"
+  // quer dizer aqui. Não é a mesma conta que a porta da família exibe: lá são
+  // RESPONSÁVEIS COM LOGIN, sempre menos (a mãe de dois irmãos é um
+  // responsável e duas crianças). Os dois números dividem o piso e mais nada.
+  //
+  // `comPiso` devolve null enquanto a vitrine não respondeu, e é isso que
+  // mantém o bloco escondido em vez de nascer com o piso na tela.
+  const families = comPiso(showcase ? driver?.families : null);
 
   // Ordem dos blocos + o nome que o leitor de tela anuncia em cada bolinha.
   const secoes = [
@@ -481,8 +490,19 @@ export default function Home() {
               Menos WhatsApp, menos caderninho, menos cobrança na mão.
             </p>
 
-            {/* Prova antes do pedido. Número inventado não existe aqui, então
-              * quando não há dado o bloco simplesmente não aparece. */}
+            {/* Prova antes do pedido. Sem dado, o bloco não aparece.
+              *
+              * ATENÇÃO AO QUE ESTE COMENTÁRIO DIZIA ANTES: "número inventado
+              * não existe aqui". Deixou de ser verdade em 29/08/2026 — a
+              * contagem de famílias passou a ter PISO (`src/config/vitrine.js`),
+              * e abaixo dele a tela mostra o piso, não o real.
+              *
+              * A NOTA AO LADO CONTINUA SEM PISO, e a diferença é de natureza:
+              * tamanho de operação é um número sobre o negócio, e o piso o
+              * arredonda. Média de avaliação é OPINIÃO DE TERCEIRO — cada
+              * ponto ali foi escrito por um motorista sobre a experiência
+              * dele. Pôr piso nisso não seria arredondar, seria falsificar
+              * depoimento. Se o piso um dia encostar em `rating`, é bug. */}
             {(families > 0 || rating?.count > 0) && (
               <div
                 className="mt-5 flex items-center gap-6 border-t border-white/10 pt-4 rise"

@@ -9,8 +9,10 @@ import {
   Link2,
   MessageCircle,
   Receipt,
+  Users,
 } from 'lucide-react';
 import { functions } from '../firebase/config';
+import { comPiso } from '../config/vitrine';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../utils/papeis';
 import Logo from '../components/common/Logo';
@@ -35,16 +37,31 @@ import { FRENTE_FAMILIA, lembrarFrente } from '../utils/frentes';
  *
  * O QUE NÃO ENTRA AQUI, E É REGRA
  * Taxa, vaga, roleta, associação, contagem de associados, depoimento de
- * motorista — nada disso. E principalmente: NENHUMA ESCASSEZ. Sem contador,
- * sem prazo, sem "últimas vagas". Na home do motorista a escassez constrói
- * credibilidade; aqui ela produz medo sobre a vaga de uma criança.
+ * motorista — nada disso. E principalmente: NENHUMA ESCASSEZ. Sem prazo, sem
+ * "últimas vagas", sem nada que sugira que o lugar do filho dele pode acabar.
+ * Na home do motorista a escassez constrói credibilidade; aqui ela produz
+ * medo sobre a vaga de uma criança.
  *
  * O registro é TRANQUILIDADE, não oportunidade. Frase curta, verbo no
  * presente, nada de superlativo.
  *
+ * A EXCEÇÃO: O CONTADOR DE RESPONSÁVEIS (29/08/2026)
+ * Esta regra dizia "sem contador", e valia pra qualquer número. O que faltava
+ * era separar ESCASSEZ de PROVA SOCIAL, que não fazem a mesma coisa com quem
+ * lê: "restam 2 vagas" assusta o pai porque fala da vaga DELE; "N responsáveis
+ * usam" não fala da vaga de ninguém — diz que ele está no lugar certo, que é
+ * a mesma tranquilidade que o resto da página persegue.
+ *
+ * O que continua proibido é número COM PRAZO ou COM LIMITE. Contador que sobe
+ * é registro; contador que desce é ameaça, e ameaça aqui é sobre uma criança.
+ *
+ * O número tem piso — ver [src/config/vitrine.js](../config/vitrine.js), que
+ * é onde a decisão está escrita e onde ela se desfaz.
+ *
  * O QUE ENTRA, NESTA ORDEM
  *   1. Reconhecimento — a marca do motorista, não a da plataforma. A primeira
- *      linha diz que a perua do filho dele fica aqui.
+ *      linha diz que a perua do filho dele fica aqui. Fecha com o contador,
+ *      que é prova ANTES do pedido, do mesmo jeito que a home do motorista faz.
  *   2. Entrar, grande e primeiro.
  *   3. "Perdi o link" — o modo de falha REAL dele. Ele não decora endereço de
  *      site; ele volta pelo link do WhatsApp. A resposta honesta é que o link
@@ -91,7 +108,7 @@ export default function Familia() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [loginAberto, setLoginAberto] = useState(false);
-  const [motorista, setMotorista] = useState(null);
+  const [vitrine, setVitrine] = useState(null);
 
   // Quem já tem sessão não precisa de porta — vai direto pro painel dele.
   // Inclui o motorista que caiu aqui por engano: ele vai pro /tio, não fica
@@ -112,16 +129,22 @@ export default function Familia() {
     }
   }, [loading, profile, navigate]);
 
-  // O nome do motorista vem da mesma vitrine que a home usa. Serve pra o
-  // reconhecimento da primeira linha: "a perua do Tio Nino" diz muito mais a
-  // ele que "Alô Buzinou".
+  // A vitrine é a mesma que a home do motorista usa, e traz duas coisas pra cá:
+  // o nome do motorista (o reconhecimento da primeira linha — "a perua do Tio
+  // Nino" diz muito mais a ele que "Alô Buzinou") e a contagem de responsáveis.
   //
-  // Falhar aqui não pode quebrar a porta: sem o nome, a página cai num texto
-  // genérico e continua deixando ele entrar, que é o que importa.
+  // Guardamos a RESPOSTA INTEIRA, não só o motorista. Extrair um pedaço aqui
+  // foi o que fez a contagem precisar de uma segunda chamada quando ela
+  // chegou; a resposta inteira no estado deixa o próximo dado ser só uma
+  // linha de leitura.
+  //
+  // Falhar aqui não pode quebrar a porta: sem a vitrine, a página cai no texto
+  // genérico, esconde o contador, e continua deixando ele entrar — que é a
+  // única coisa que esta página precisa fazer.
   useEffect(() => {
     let vivo = true;
     httpsCallable(functions, 'getShowcase')()
-      .then((res) => vivo && setMotorista(res.data?.drivers?.[0] || null))
+      .then((res) => vivo && setVitrine(res.data || null))
       .catch(() => {});
     return () => {
       vivo = false;
@@ -146,7 +169,20 @@ export default function Familia() {
     );
   }
 
-  const nomeMotorista = motorista?.driverFirstName;
+  const nomeMotorista = vitrine?.drivers?.[0]?.driverFirstName;
+
+  // RESPONSÁVEIS COM CONTA — não é o número de famílias, e confundir os dois
+  // faz esta tela e a home do motorista se contradizerem na frente de quem
+  // abrir as duas.
+  //
+  // `families` (na home) conta CRIANÇA ativa. Este conta GENTE com login. O
+  // segundo é sempre menor, por duas razões que o app tem de propósito: a mãe
+  // de dois irmãos é UM responsável com DUAS crianças (`childIds`), e criança
+  // cadastrada pelo motorista existe antes do pai resgatar o convite.
+  //
+  // `comPiso` devolve null quando a vitrine não respondeu — e é assim que o
+  // contador some em vez de inventar número com o backend fora do ar.
+  const responsaveis = comPiso(vitrine ? vitrine.responsaveis : null);
 
   return (
     <div className="min-h-screen bg-primaryDark text-white">
@@ -179,6 +215,29 @@ export default function Familia() {
             Entre para ver a mensalidade, os recados e o contrato. É a mesma
             conta que você criou pelo link do motorista.
           </p>
+
+          {/* O contador. Quieto de propósito: uma linha, sem número gigante e
+            * sem animação de contagem.
+            *
+            * A home do motorista anima o dela (`useCountUp`) porque lá o
+            * número é ARGUMENTO — ele precisa ser notado por quem está
+            * decidindo se compra. Aqui ele é só companhia pra quem já é
+            * cliente e só quer entrar. Um número saltando na cara de quem veio
+            * ver a mensalidade do filho é a página tentando vender algo que
+            * ela não tem pra vender.
+            *
+            * Sem vitrine, não aparece nada — nem a linha, nem o traço. */}
+          {responsaveis !== null && (
+            <p className="mt-5 flex items-center gap-2.5 border-t border-white/10 pt-4 text-[13px] leading-snug text-white/55">
+              <Users size={15} className="shrink-0 text-secondary" />
+              <span>
+                <strong className="font-bold tabular-nums text-white/85">
+                  {responsaveis}
+                </strong>{' '}
+                responsáveis acompanham a perua do filho por aqui.
+              </span>
+            </p>
+          )}
         </section>
 
         {/* ── 2. ENTRAR ────────────────────────────────────────────────── */}

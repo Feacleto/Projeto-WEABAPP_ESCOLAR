@@ -442,8 +442,31 @@ function makeGetShowcase(db) {
         .count()
         .get();
 
+      // Responsáveis COM CONTA — não é o mesmo número que `families`, e a
+      // diferença importa pra quem for usar um ou outro.
+      //
+      // `families` conta CRIANÇA ativa: é o tamanho da operação do motorista,
+      // e existe desde o cadastro dela, antes de qualquer pai entrar no app.
+      // Isto aqui conta GENTE que resgatou o convite e tem login. É sempre
+      // menor, e é o que responde "quantas pessoas usam isto".
+      //
+      // Não existe sinal de atividade em `users` (sem lastSeen, sem
+      // lastLogin), então "ativo" aqui significa TER CONTA, não ter aberto o
+      // app recentemente. Se um dia a distinção importar, é este contador que
+      // muda — e o nome do campo já não vai servir.
+      //
+      // A contagem é agregação no servidor: não baixa documento nenhum, então
+      // nada de nome, e-mail ou telefone de responsável trafega pra montar um
+      // número que vai pra uma página pública.
+      const responsaveisSnap = await db
+        .collection('users')
+        .where('role', '==', 'parent')
+        .count()
+        .get();
+
       return {
         hasAdmin: true,
+        responsaveis: responsaveisSnap.data().count || 0,
         drivers: [
           {
             name: a.companyName || (a.name ? `Perua do ${a.name}` : 'Perua parceira'),
