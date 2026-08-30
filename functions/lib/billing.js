@@ -15,6 +15,7 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { exigirMotorista } = require('./papeis');
 const { logger } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 
@@ -30,16 +31,34 @@ function monthKeyOf(date) {
 /**
  * Cria as mensalidades do mês pra toda criança ativa que ainda não tem.
  * Idempotente: consulta o que já existe antes de criar.
+ *
+ * `adminUid` OPCIONAL, E A DIFERENÇA IMPORTA:
+ *   - ausente  → a plataforma inteira. É o modo da AGENDADA, e é o certo pra
+ *                ela: ninguém dispara, e todo parceiro precisa ser faturado.
+ *   - presente → só a base daquele motorista. É o modo do disparo MANUAL.
+ *
+ * Sem o parâmetro, `runBillingNow` fazia um parceiro gerar a cobrança dos
+ * outros: as duas consultas abaixo não tinham filtro de dono, e o gate da
+ * callable era `role === 'admin'` — que neste projeto significa QUALQUER
+ * motorista. Um toque no botão escrevia na base alheia, e o log não
+ * distinguia quem pediu de quem foi cobrado.
  */
-async function generateForMonth(db, monthKey) {
+async function generateForMonth(db, monthKey, adminUid = null) {
   const [year, month] = String(monthKey).split('-').map(Number);
   if (!year || !month) {
     throw new HttpsError('invalid-argument', 'monthKey inválido (use "YYYY-MM").');
   }
 
+  let criancas = db.collection('children').where('active', '==', true);
+  let pagamentos = db.collection('payments').where('month', '==', monthKey);
+  if (adminUid) {
+    criancas = criancas.where('adminUid', '==', adminUid);
+    pagamentos = pagamentos.where('adminUid', '==', adminUid);
+  }
+
   const [childrenSnap, existingSnap] = await Promise.all([
-    db.collection('children').where('active', '==', true).get(),
-    db.collection('payments').where('month', '==', monthKey).get(),
+    criancas.get(),
+    pagamentos.get(),
   ]);
 
   const existing = new Set(existingSnap.docs.map((d) => d.data().childId));
@@ -180,16 +199,14 @@ function makeGenerateMonthlyPayments(db) {
 /** Disparo manual pelo admin — usado pra fechar mês fora de hora. */
 function makeRunBillingNow(db) {
   return onCall({ region: REGION }, async (request) => {
-    const uid = request.auth?.uid;
-    if (!uid) throw new HttpsError('unauthenticated', 'Login obrigatório.');
-
-    const userSnap = await db.doc(`users/${uid}`).get();
-    if (!userSnap.exists || userSnap.data().role !== 'admin') {
-      throw new HttpsError('permission-denied', 'Apenas o motorista responsável.');
-    }
+    // O ESCOPO SAI DO CHAMADOR, NUNCA DO PAYLOAD.
+    // `exigirMotorista` devolve o uid autenticado — é ele que limita a
+    // geração à base deste parceiro. Aceitar um `adminUid` vindo do
+    // `request.data` seria devolver exatamente o furo que isto fecha.
+    const uid = await exigirMotorista(db, request);
 
     const monthKey = request.data?.monthKey || monthKeyOf(new Date());
-    return await generateForMonth(db, monthKey);
+    return await generateForMonth(db, monthKey, uid);
   });
 }
 

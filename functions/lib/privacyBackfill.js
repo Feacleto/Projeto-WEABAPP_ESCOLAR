@@ -26,9 +26,10 @@
  * primeiro o que vai apagar é como a gente perde dado achando que corrigiu.
  */
 
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
+const { exigirDono } = require('./papeis');
 
 const REGION = 'southamerica-east1';
 const BATCH_LIMIT = 400;
@@ -40,13 +41,15 @@ function firstNameOf(full) {
 
 function makeBackfillTestimonialPrivacy(db) {
   return onCall({ region: REGION }, async (request) => {
-    const uid = request.auth?.uid;
-    if (!uid) throw new HttpsError('unauthenticated', 'Login obrigatório.');
-
-    const userSnap = await db.doc(`users/${uid}`).get();
-    if (!userSnap.exists || userSnap.data().role !== 'admin') {
-      throw new HttpsError('permission-denied', 'Apenas o motorista responsável.');
-    }
+    // ESTA FUNÇÃO É DO DONO, E PEDIA PAPEL DE MOTORISTA.
+    //
+    // Ela é chamada de `/admin` (AdminPanel.jsx) e reescreve a privacidade dos
+    // depoimentos PÚBLICOS de todos os usuários. Com `role === 'admin'` — que
+    // neste projeto significa MOTORISTA — qualquer parceiro podia rodá-la, e o
+    // dono só passava porque a conta dele ainda carrega o legado `superAdmin`.
+    // Depois da migração para `role: 'owner'` o dono perderia o acesso e o
+    // motorista manteria.
+    await exigirDono(db, request);
 
     // Padrão é NÃO escrever. Quem quer aplicar manda { apply: true }.
     const apply = request.data?.apply === true;

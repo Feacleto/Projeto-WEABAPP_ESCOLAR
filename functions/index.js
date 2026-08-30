@@ -20,7 +20,8 @@
  */
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall } = require('firebase-functions/v2/https');
+const { exigirMotorista } = require('./lib/papeis');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
@@ -124,13 +125,23 @@ const PIX_TYPE_LABELS = {
  * Processa todos os pagamentos pendentes/claimed e envia emails dos
  * milestones aplicáveis. Retorna sumário com contagens.
  */
-async function processReminders(apiKey, now = new Date()) {
+/**
+ * `adminUid` OPCIONAL — mesma divisão de `generateForMonth`:
+ * ausente é o modo da AGENDADA (a plataforma inteira, que é o certo pra ela);
+ * presente é o disparo MANUAL, limitado à base de quem disparou.
+ *
+ * Sem isso, o botão de um parceiro mandava e-mail de cobrança para as famílias
+ * de todos os outros — e o gate da callable era `role === 'admin'`, que neste
+ * projeto significa qualquer motorista.
+ */
+async function processReminders(apiKey, now = new Date(), adminUid = null) {
   const today = startOfDay(now);
 
-  const paymentsSnap = await db
+  let consulta = db
     .collection('payments')
-    .where('status', 'in', ['pending', 'claimed'])
-    .get();
+    .where('status', 'in', ['pending', 'claimed']);
+  if (adminUid) consulta = consulta.where('adminUid', '==', adminUid);
+  const paymentsSnap = await consulta.get();
 
   let evaluated = 0;
   let sent = 0;
@@ -323,17 +334,12 @@ exports.runPaymentRemindersNow = onCall(
     secrets: [RESEND_API_KEY],
   },
   async (request) => {
-    const uid = request.auth?.uid;
-    if (!uid) {
-      throw new HttpsError('unauthenticated', 'Login obrigatório.');
-    }
-    // Só admin pode disparar manualmente
-    const userSnap = await db.doc(`users/${uid}`).get();
-    if (!userSnap.exists || userSnap.data().role !== 'admin') {
-      throw new HttpsError('permission-denied', 'Apenas admin.');
-    }
+    // O ESCOPO SAI DO CHAMADOR. Ver o cabeçalho de `processReminders`: sem
+    // ele, o botão de um parceiro disparava e-mail de cobrança para as
+    // famílias de todos os outros.
+    const uid = await exigirMotorista(db, request);
     const apiKey = RESEND_API_KEY.value();
-    return await processReminders(apiKey);
+    return await processReminders(apiKey, new Date(), uid);
   }
 );
 
