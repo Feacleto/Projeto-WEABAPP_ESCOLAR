@@ -1,4 +1,4 @@
-import { formatCurrency, formatMonthLabel } from '../utils/formatters';
+import { formatCurrency, formatMonthLabel } from '../compartilhado/formatters';
 
 /**
  * Recibo em imagem, gerado no próprio celular do motorista.

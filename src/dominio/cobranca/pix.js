@@ -5,7 +5,7 @@
  * Havia DUAS `normalizePixKey`, com a ORDEM DOS ARGUMENTOS INVERTIDA:
  *
  *   services/userService.js →  normalizePixKey(type, value)
- *   utils/pixPayload.js     →  normalizePixKey(key,  type)
+ *   dominio/cobranca/pixPayload.js     →  normalizePixKey(key,  type)
  *
  * Trocar um import pelo outro compilava, passava no lint e produzia uma chave
  * PIX inválida em silêncio — o QR sairia apontando para o nada, e ninguém
@@ -22,7 +22,7 @@
  * dinheiro; ele não pode continuar sendo o único do fluxo sem cobertura.
  */
 
-import { unmaskPhone, isValidEmail } from './masks.js';
+import { unmaskPhone, isValidEmail } from '../../compartilhado/masks.js';
 
 /** Os tipos que o app oferece no cadastro. */
 export const PIX_KEY_TYPES = {

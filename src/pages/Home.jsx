@@ -32,9 +32,9 @@ import {
 } from '../components/landing/BlockArt';
 import { functions } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
-import { painelDe } from '../utils/papeis';
+import { painelDe } from '../dominio/identidade/papeis';
 import { comPiso } from '../config/vitrine';
-import { frenteLembrada, lembrarFrente, FRENTE_FAMILIA } from '../utils/frentes';
+import { frenteLembrada, lembrarFrente, FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
 import {
   listPublicTestimonials,
   getPublicRatingStats,

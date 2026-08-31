@@ -7,7 +7,7 @@ import {
   removeAbsence,
   notifyAbsence,
 } from '../../services/absencesService';
-import { getDateKey, horaCurta, horariosCombinados } from '../../utils/horarios';
+import { getDateKey, horaCurta, horariosCombinados } from '../../dominio/rota/horarios';
 
 /**
  * O AVISO EM UM TOQUE — direto na home do responsável.

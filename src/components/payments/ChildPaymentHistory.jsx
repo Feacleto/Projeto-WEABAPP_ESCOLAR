@@ -11,14 +11,14 @@ import {
   formatCurrency,
   formatMonthLabel,
   emCentavos,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 import {
   paymentLabel,
   paymentChipClasses,
   parentClaimedLabel,
   parentClaimedTone,
   TONE_CLASSES,
-} from '../../utils/paymentVocabulary';
+} from '../../dominio/cobranca/paymentVocabulary';
 
 const INITIAL_ROWS = 4;
 

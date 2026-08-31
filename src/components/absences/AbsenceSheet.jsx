@@ -7,7 +7,7 @@ import {
   removeAbsence,
   notifyAbsence,
 } from '../../services/absencesService';
-import { getDateKey } from '../../utils/horarios';
+import { getDateKey } from '../../dominio/rota/horarios';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**

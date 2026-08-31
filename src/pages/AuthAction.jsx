@@ -12,7 +12,7 @@ import {
   applyAuthActionCode,
   inspectActionCode,
 } from '../services/authService';
-import { mensagemDeAuth } from '../utils/authErrors';
+import { mensagemDeAuth } from '../dominio/identidade/authErrors';
 
 /**
  * Handler in-app dos links de ação do Firebase Auth.

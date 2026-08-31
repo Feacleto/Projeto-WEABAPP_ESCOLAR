@@ -17,7 +17,7 @@
  *
  * Então este arquivo é uma licença poética com endereço fixo. A regra do
  * projeto passa a ser: **cor crua do Tailwind é permitida em
- * `src/components/festive/`, em `src/utils/festivities.js` e aqui — e
+ * `src/components/festive/`, em `src/marca/festivities.js` e aqui — e
  * proibida em qualquer outro lugar.** Um lugar com licença é o que evita que
  * o resto do código peça licença.
  *
@@ -92,7 +92,7 @@ export const SERIE_GRAFICO = {
  * quando o gênero não foi informado, e é a maioria.
  *
  * Vale lembrar que o avatar DESENHADO respeita gênero pelo cabelo (ver
- * utils/avatarUrl.js) — isto aqui é só o fundo de quando não há desenho.
+ * marca/avatarUrl.js) — isto aqui é só o fundo de quando não há desenho.
  */
 export const COR_GENERO = {
   male: 'bg-sky-100 text-sky-700',

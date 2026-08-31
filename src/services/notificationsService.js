@@ -16,10 +16,10 @@ import {
 import { auth, db } from './../firebase/config';
 import { computeDisplayStatus } from './paymentsService';
 // O COMENTARIO QUE JUSTIFICAVA AS COPIAS LOCAIS ERA FALSO.
-// Dizia 'evita dependencia circular com utils/formatters' -- e utils/
-// formatters nao tem uma unica linha de import. Nao havia ciclo possivel;
+// Dizia 'evita dependencia circular com utils/formatters' -- e o formatters
+// nao tem uma unica linha de import. Nao havia ciclo possivel;
 // havia duas definicoes de dinheiro que ja divergiam no valor vazio.
-import { primeiroNome, formatBRL, formatMonthLabel } from '../utils/formatters';
+import { primeiroNome, formatBRL, formatMonthLabel } from '../compartilhado/formatters';
 
 /**
  * O motorista DESTE responsável — não o motorista da plataforma.
@@ -278,11 +278,11 @@ export function deriveParentReminders(payments, now = Date.now()) {
     const amount = formatBRL(p.amount);
     // Prefixo com o nome da criança quando o pagamento tem essa informação
     // denormalizada — necessário pra quem acompanha dois filhos.
-    // `primeiroNome` do utils, e não um split local: o split que estava aqui
+    // `primeiroNome` do compartilhado, e não um split local: o que estava aqui
     // era `/s+/` — sem a barra invertida —, então ele quebrava na LETRA "s" e
     // não no espaço. "Vanessa Silva" virava "Vane" no push de cobrança.
-    // É exatamente o que o utils foi extraído para acabar ("estava reinventado
-    // em 40 lugares", formatters.js:41).
+    // É exatamente o que o módulo foi extraído para acabar ("estava
+    // reinventado em 40 lugares", compartilhado/formatters.js:41).
     const who = p.childName ? `${primeiroNome(p.childName)}: ` : '';
     const diffDays = Math.floor((due - now) / DAY_MS);
     const overdueDays = Math.floor((now - due) / DAY_MS);

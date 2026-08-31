@@ -33,14 +33,14 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLimiteCriancas } from '../../hooks/useLimiteCriancas';
 import { devWhatsAppLink } from '../../config/developer';
 import { searchAddress } from '../../services/locationService';
-import { normalizaHora, periodoDaHora, horaCurta } from '../../utils/horarios';
+import { normalizaHora, periodoDaHora, horaCurta } from '../../dominio/rota/horarios';
 import { useEscolas } from '../../hooks/useEscolas';
 import {
   maskPhone,
   unmaskPhone,
   isValidPhone,
   isValidEmail,
-} from '../../utils/masks';
+} from '../../compartilhado/masks';
 
 const GENDERS = [
   { value: 'male', label: 'Menino' },

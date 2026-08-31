@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 /**
- * Testes do modelo de horários (src/utils/horarios.js).
+ * Testes do modelo de horários (src/dominio/rota/horarios.js).
  *
  * POR QUE UM SCRIPT E NÃO UM FRAMEWORK
  * O projeto não tem runner de teste, e trazer um só pra isto custaria mais que
@@ -20,23 +20,23 @@ import {
   estadoNoDia, ESTADOS, precisaDaPerua,
   blocosDaDirecao, diaCompleto, blocoDoMomento, esperaAte,
   avisosDeTempo, proporCascata,
-} from '../src/utils/horarios.js';
-import { chaveDoNome, proporEscolasDasCriancas } from '../src/utils/nomeEscola.js';
+} from '../src/dominio/rota/horarios.js';
+import { chaveDoNome, proporEscolasDasCriancas } from '../src/dominio/escola/nomeEscola.js';
 import {
   diasUteis,
   rotuloDoPeriodo,
   parseDia,
   MAX_DIAS,
   truncouIntervalo,
-} from '../src/utils/intervaloDeDias.js';
-import { primeiroNome } from '../src/utils/formatters.js';
+} from '../src/dominio/rota/intervaloDeDias.js';
+import { primeiroNome } from '../src/compartilhado/formatters.js';
 import {
   frenteDoCaminho,
   portaDaFrente,
   estadoDaFrente,
   destinoAposSair,
   FRENTE_FAMILIA,
-} from '../src/utils/frentes.js';
+} from '../src/dominio/vitrine/frentes.js';
 
 let ok = 0;
 let fail = 0;

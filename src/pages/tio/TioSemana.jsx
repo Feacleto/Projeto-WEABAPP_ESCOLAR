@@ -12,7 +12,7 @@ import {
   getDateKey,
   diaCompleto,
   horaCurta,
-} from '../../utils/horarios';
+} from '../../dominio/rota/horarios';
 
 /**
  * A SEMANA — quem falta em qual dia, com antecedência.

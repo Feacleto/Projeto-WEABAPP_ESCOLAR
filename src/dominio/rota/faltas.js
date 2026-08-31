@@ -1,7 +1,7 @@
 /**
  * A CONTA DE FALTAS — pura, sem Firebase, testável.
  *
- * Mora em `utils` e não no serviço pelo mesmo motivo do `utils/horarios`:
+ * Mora em `utils` e não no serviço pelo mesmo motivo do `dominio/rota/horarios`:
  * três telas precisam do mesmo número (a ficha da criança, o painel do pai e
  * o histórico por mês), e contagem repetida em três lugares é como elas
  * divergem — uma conta "últimos 7 dias", outra "esta semana", e o pai lê dois

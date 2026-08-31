@@ -15,7 +15,7 @@ import {
   formatMonthLabel,
   getCurrentMonthKey,
   addMonths,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 import { useAuth } from '../../hooks/useAuth';
 
 /**
@@ -44,7 +44,7 @@ export default function TioFinanceReport() {
   // por ano o motorista abria o relatório e via um mês sem faturamento que
   // teve faturamento.
   //
-  // `addMonths` já existia em utils/formatters, escrito exatamente pra isso, e
+  // `addMonths` já existia em compartilhado/formatters, escrito exatamente pra isso, e
   // `getLast12MonthKeys` neste mesmo arquivo já a usava — as duas metades do
   // gráfico calculavam a mesma janela por caminhos diferentes.
   const fromKey = useMemo(() => addMonths(getCurrentMonthKey(), -11), []);

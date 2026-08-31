@@ -52,7 +52,7 @@ react-hot-toast. JavaScript puro — **não há TypeScript**.
 
 ## Os quatro papéis — leia antes de mexer em permissão
 
-Definidos e explicados em [src/utils/papeis.js](src/utils/papeis.js). A
+Definidos e explicados em [src/dominio/identidade/papeis.js](src/dominio/identidade/papeis.js). A
 armadilha central do projeto:
 
 | `role` | Quem é | Painel |
@@ -118,9 +118,21 @@ src/
 ├── config/            capabilities, rodada, developer, vitrine,
 │                      paletaCategorica (o único lugar com cor crua)
 ├── context/           AuthContext (perfil + papel)
-├── utils/             puros e testáveis, sem Firebase. Import interno leva
-│                      extensão .js EXPLÍCITA — o Vite resolve sem, o Node
-│                      não, e é o Node que roda os testes
+├── dominio/           AS REGRAS. Puro, sem Firebase, sem React — um contexto
+│                      por pasta (ver "Os seis contextos" abaixo)
+│   ├── rota/          horarios, avisoDoMomento, routePresence, faltas,
+│   │                  intervaloDeDias
+│   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
+│   │                  paymentVocabulary
+│   ├── associacao/    taxa, contratoAssociacao
+│   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
+│   │                  authErrors
+│   ├── escola/        nomeEscola
+│   └── vitrine/       frentes
+├── marca/             a personalidade: avatarUrl, greeting, festivities,
+│                      travessia. Tem regra, mas de apresentação
+├── compartilhado/     SEM regra nenhuma: formatters, masks, haversine,
+│                      browserEnv. Não conhece o domínio (o lint recusa)
 └── firebase/config.js
 functions/             Cloud Functions v2 (CommonJS, Node 22)
   └── lib/             billing, invites, push, routes, entryBonus, receiptGuard…
@@ -132,7 +144,39 @@ scripts/               testes e utilitários de manutenção (Node puro)
 ```
 
 **Regra de camada:** tela → hook → service → Firestore. Componente que importa
-`firebase/firestore` direto está fora do padrão.
+`firebase/firestore` direto está fora do padrão. **O lint recusa** — não é
+convenção, é erro de CI ([eslint.config.js](eslint.config.js)).
+
+**A outra direção também:** `dominio/`, `marca/` e `compartilhado/` não
+importam service, hook, componente, tela, Firebase **nem React**, e
+`compartilhado/` não importa nem o domínio. Se uma regra precisa de dado do
+banco, quem busca é o service e passa **por parâmetro**.
+
+Isso não é zelo: a máquina de estado da criança e o teto de vagas ficaram sem
+teste por anos porque moravam atrás de um `import { db }` — não por descuido,
+mas porque o Node não conseguia carregar o arquivo. Regra pura é regra
+testável, e é essa a troca.
+
+Import interno do núcleo leva extensão `.js` EXPLÍCITA — o Vite resolve sem, o
+Node não, e é o Node que roda os testes.
+
+### Os seis contextos
+
+Não são pastas por tipo de arquivo, são as seis conversas diferentes que o
+sistema tem. Regra nova mora no contexto de quem decide sobre ela:
+
+| Contexto | A pergunta que ele responde | Quem manda |
+|---|---|---|
+| `rota` | onde a criança está e o que o app sabe da perua | motorista |
+| `cobranca` | quanto a família deve e como ela paga | motorista ↔ família |
+| `associacao` | quanto o motorista paga à plataforma | dono |
+| `identidade` | quem é essa pessoa e a que ela está ligada | plataforma |
+| `escola` | que escola é essa e quem avisar | motorista |
+| `vitrine` | o que cada porta pública promete | dono |
+
+Os dois dinheiros são contextos SEPARADOS de propósito — misturá-los quebra o
+item 7 dos Termos, e a separação em pastas é o que torna a mistura visível
+antes de ela virar código.
 
 ---
 
@@ -151,17 +195,20 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 ### Conceitos que não dá pra adivinhar do nome
 
 **Não existe mais "turno" nem "corrida".**
-[utils/horarios.js](src/utils/horarios.js) — o dia do motorista é
+[dominio/rota/horarios.js](src/dominio/rota/horarios.js) — o dia do motorista é
 uma **lista de paradas ordenada pela hora**, calculada de toda criança ativa
 com horário. Os seis turnos fixos e a janela de tempo foram descartados (o
 arquivo explica por quê). Não há array de membros salvo, então não há fila pra
 envelhecer. **Esse arquivo não importa nada de propósito** — é o que o mantém
 testável sem Firebase. Não adicione import ali.
 
-Ele MUDOU DE CASA em 30/08/2026: era `services/horariosService.js`, e dois
-utils (`avisoDoMomento`, `intervaloDeDias`) importavam dele — a seta da camada
-ao contrário, funcionando só porque ele não tinha imports. Agora a garantia é
-do diretório e não de um comentário.
+Ele mudou de casa DUAS vezes, e a segunda é o ponto. Era
+`services/horariosService.js`, e `avisoDoMomento` e `intervaloDeDias`
+importavam dele — a seta da camada ao contrário, funcionando só porque ele não
+tinha imports. Virou `utils/horarios.js`, e a garantia passou a ser do
+diretório. Hoje é `dominio/rota/horarios.js`, junto dos dois que dependem
+dele: o contexto que os três descrevem é o mesmo, e agora o diretório diz
+qual é.
 
 **`rides` é a viagem do dia**, um doc por criança por data, id = a data (logo,
 idempotente). Guarda os marcos com hora — `onboard`, `atSchool`, `delivered` —
@@ -266,7 +313,7 @@ Nino"). Não é `name`, que é o nome civil do contrato. Resolve em
 DELE, pelo `adminUid` da criança ativa. Sem marca, volta o título.
 
 **Avatar respeita gênero pelo CABELO**, em
-[avatarUrl.js](src/utils/avatarUrl.js). O estilo é `adventurer` — 26 cortes
+[avatarUrl.js](src/marca/avatarUrl.js). O estilo é `adventurer` — 26 cortes
 `long*` e 19 `short*`, nenhum ambíguo. Já foi `notionists`, que não expunha
 gênero nenhum (64 cortes chamados `variant01`…`variant64`, e menina saía com
 cara de menino), e depois `avataaars`, que resolvia o gênero mas repetia rosto:
@@ -310,7 +357,7 @@ CABEÇALHO ([Header](src/components/layout/Header.jsx)) e nunca desabilita:
 emergência não pode rolar nem virar botão apagado.
 
 **A tarja de aviso só aparece quando o app MENTE** —
-[avisoDoMomento.js](src/utils/avisoDoMomento.js), testado com hora injetada
+[avisoDoMomento.js](src/dominio/rota/avisoDoMomento.js), testado com hora injetada
 (`npm run testar:aviso`). Dois casos, não cinco: rota não iniciada depois da
 hora de pegar, e criança "na perua" muito depois da hora de chegar. Atraso
 comum NÃO gera tarja — ali o app está calado, não mentindo, e tarja semanal
@@ -321,7 +368,7 @@ PARAM: animação viva sobre dado morto é a pior parte.
 motivo está em [AbsenceSheet.jsx](src/components/absences/AbsenceSheet.jsx):
 plano muda, ninguém desmarca, e no dia o motorista não passa na porta. O
 HISTÓRICO anda meses pra trás (`/pai/faltas`); o aviso continua cabendo em
-duas semanas. A conta é pura e testada em [utils/faltas.js](src/utils/faltas.js)
+duas semanas. A conta é pura e testada em [dominio/rota/faltas.js](src/dominio/rota/faltas.js)
 (`npm run testar:faltas`) — aviso marcado pra frente nunca é somado como falta.
 
 **Chamar Cloud Function passa por `exigirCloud()`** —
@@ -347,7 +394,7 @@ tela; logout e navegação acontecem por baixo dela. Três cenas:
 `entrada` no login e `saida` no logout. **A fala não tem nome, hora nem
 contagem** — isso a pessoa vê lá dentro dois segundos depois, e citar aqui
 criaria dependência de dado que pode não ter chegado. As frases e as quatro
-regras que as filtraram estão em [utils/travessia.js](src/utils/travessia.js),
+regras que as filtraram estão em [marca/travessia.js](src/marca/travessia.js),
 testadas com `npm run testar:travessia`. Um toque na cortina pula o teatro:
 prender o motorista no portão da escola seria pior que não ter teatro.
 
@@ -363,7 +410,7 @@ em toda navegação não é lembrada como capricho, é lembrada como lentidão.
   tela de início, montado nos layouts do tio **e** do pai. Android usa
   `beforeinstallprompt` (um toque); iOS não tem esse evento e recebe o passo a
   passo do Compartilhar. Quem decide é `isIOS()` em
-  [browserEnv.js](src/utils/browserEnv.js). Não aparece na 1ª visita, nem já
+  [browserEnv.js](src/compartilhado/browserEnv.js). Não aparece na 1ª visita, nem já
   instalado, nem dentro da webview do WhatsApp.
 - `registerType: 'prompt'` (não `autoUpdate`) em [vite.config.js](vite.config.js):
   versão nova AVISA em vez de assumir calada.
@@ -450,7 +497,7 @@ Cinco regras, e todas nasceram de um bug:
    chamando é nenhuma chamando. `rest` no resto, `float` no que flutua.
 5. **Cor crua do Tailwind só em três endereços:**
    [components/festive/](src/components/festive/),
-   [utils/festivities.js](src/utils/festivities.js) e
+   [marca/festivities.js](src/marca/festivities.js) e
    [config/paletaCategorica.js](src/config/paletaCategorica.js) — as paletas
    em que a cor não significa nada e só precisa diferir da vizinha (dez tipos
    de recado, quatro estados da criança, cinco fatias de gráfico). Um lugar

@@ -27,7 +27,7 @@ import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useAbsences } from '../../hooks/useAbsences';
-import { getCurrentMonthKey } from '../../utils/formatters';
+import { getCurrentMonthKey } from '../../compartilhado/formatters';
 import {
   getDateKey,
   diaCompleto,
@@ -38,13 +38,13 @@ import {
   semHorarioCombinado,
   ROTULO_ESTADO,
   formataEspera,
-} from '../../utils/horarios';
+} from '../../dominio/rota/horarios';
 import {
   statusNaDirecao,
   getActionForStatus,
 } from '../../services/routeStatusService';
 import { publicarOrdemDoDia } from '../../services/ridesService';
-import { greet } from '../../utils/greeting';
+import { greet } from '../../marca/greeting';
 import { ChildDetailSheet } from '../ChildDetail';
 import MeuTransporteSheet from '../../components/tio/MeuTransporteSheet';
 import { useRelogio } from '../../hooks/useRelogio';

@@ -11,13 +11,13 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-// A RÉGUA PURA MORA EM `utils/taxa.js`, E NÃO AQUI.
+// A RÉGUA PURA MORA EM `dominio/associacao/taxa.js`, E NÃO AQUI.
 //
 // Tudo que é aritmética de dinheiro saiu deste arquivo: enquanto morava atrás
 // do `import { db }` acima, era IMPOSSÍVEL testar — o projeto testa com
 // scripts Node puros, e o script não consegue nem importar o módulo sem
 // inicializar o Firebase. Duas vezes o contrato de associação saiu com valor
-// zero por causa disso (ver o cabeçalho de `utils/taxa.js`).
+// zero por causa disso (ver o cabeçalho de `dominio/associacao/taxa.js`).
 //
 // Aqui ficou só o que fala com o Firestore. O reexport abaixo mantém
 // `taxaService` como a porta pública: nenhuma tela precisou trocar de import,
@@ -34,7 +34,7 @@ import {
   calcularTaxa,
   isentoEm,
   dataDeVencimento,
-} from '../utils/taxa';
+} from '../dominio/associacao/taxa';
 
 export {
   PADRAO,
@@ -50,7 +50,7 @@ export {
 };
 // Aritmética de mês reusada de formatters: já existia, e três funções
 // somando mês no mesmo código é como elas divergem numa virada de ano.
-import { addMonths, getCurrentMonthKey } from '../utils/formatters';
+import { addMonths, getCurrentMonthKey } from '../compartilhado/formatters';
 // A validação de chave PIX já existe e é a mesma regra — reusar evita duas
 // definições de "chave válida" divergindo entre a tela do tio e a do dono.
 import { validatePixKey } from './userService';

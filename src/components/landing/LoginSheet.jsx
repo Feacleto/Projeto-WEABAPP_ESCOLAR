@@ -24,8 +24,8 @@ import {
   loginWithGoogleExistingOnly,
   resetPassword,
 } from '../../services/authService';
-import { canUseGoogleSignIn, isInAppBrowser } from '../../utils/browserEnv';
-import { mensagemDeAuth } from '../../utils/authErrors';
+import { canUseGoogleSignIn, isInAppBrowser } from '../../compartilhado/browserEnv';
+import { mensagemDeAuth } from '../../dominio/identidade/authErrors';
 
 /**
  * Folha de entrada — uma porta só, sem pedir papel.

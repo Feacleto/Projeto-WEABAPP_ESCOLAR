@@ -1,4 +1,4 @@
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency } from '../../compartilhado/formatters';
 
 /**
  * Gráfico de barras horizontais minimalista — sem libs externas.

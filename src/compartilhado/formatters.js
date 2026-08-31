@@ -68,7 +68,7 @@ export function formatCurrency(value) {
  * ESTAVA ESCRITA EM QUATRO LUGARES: aqui não, mas em `contractService`,
  * `notificationsService` e `PixBlock`, mais uma variante curta. A cópia de
  * `notificationsService` vinha sob o comentário "evita dependência circular
- * com utils/formatters" — e o ciclo NÃO EXISTIA: este arquivo não tem uma
+ * com compartilhado/formatters" — e o ciclo NÃO EXISTIA: este arquivo não tem uma
  * única linha de `import`. Era uma justificativa falsa mantendo viva uma
  * divergência real, e cinco componentes importavam um service que fala com o
  * Firestore só para formatar moeda.

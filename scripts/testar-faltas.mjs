@@ -2,10 +2,10 @@
  * Testes da conta de faltas — Node puro, sem runner, como o resto de scripts/.
  * Rodar: node scripts/testar-faltas.mjs
  */
-import { dataDaChave, faltasDoMes, resumoDeFaltas } from '../src/utils/faltas.js';
+import { dataDaChave, faltasDoMes, resumoDeFaltas } from '../src/dominio/rota/faltas.js';
 // A aritmética de mês é a de `formatters`, e não uma cópia: o teste passa por
 // ela de propósito, porque é a que as telas de falta usam.
-import { addMonths, formatMonthLabel } from '../src/utils/formatters.js';
+import { addMonths, formatMonthLabel } from '../src/compartilhado/formatters.js';
 
 let ok = 0, falhou = 0;
 const eq = (nome, a, b) => {

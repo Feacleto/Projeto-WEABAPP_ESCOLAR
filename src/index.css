@@ -155,7 +155,7 @@
 
 /* ============================================================
  * Animações festivas — bolinha clicável ao lado da saudação.
- * Cada mês tem uma "vibe" visual distinta (ver src/utils/festivities.js).
+ * Cada mês tem uma "vibe" visual distinta (ver src/marca/festivities.js).
  * Todas leves o suficiente pra rodar em loop sem incomodar.
  * ============================================================ */
 
@@ -908,7 +908,7 @@
  * A marca do app aparece em 8 telas, todas públicas. Dentro de /tio e /pai
  * ela não aparece nenhuma vez: ali o cabeçalho é da marca do MOTORISTA. A
  * travessia é o único momento que não é de ninguém, e é por isso que o
- * movimento da marca mora só aqui. Ver src/utils/travessia.js.
+ * movimento da marca mora só aqui. Ver src/marca/travessia.js.
  *
  * O RITMO foi afrouxado ~1,4x depois de ver no aparelho: a 1,2 s a peça
  * passava antes de o olho chegar na frase, e o que sobrava era a sensação de

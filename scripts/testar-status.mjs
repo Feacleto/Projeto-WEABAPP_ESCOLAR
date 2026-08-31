@@ -23,7 +23,7 @@ import {
   computeDisplayStatus,
   foiPagoAtrasado,
   canUndoReceipt,
-} from '../src/utils/statusPagamento.js';
+} from '../src/dominio/cobranca/statusPagamento.js';
 
 let ok = 0;
 let bad = 0;

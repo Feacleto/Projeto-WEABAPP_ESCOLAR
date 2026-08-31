@@ -15,7 +15,7 @@ import { auth, db } from '../firebase/config';
 import { playSound } from './soundService';
 
 // A parte pura da migração mora em utils pra poder ser testada sem Firebase.
-export { chaveDoNome, proporEscolasDasCriancas } from '../utils/nomeEscola';
+export { chaveDoNome, proporEscolasDasCriancas } from '../dominio/escola/nomeEscola';
 
 /**
  * ESCOLAS — as que este motorista atende.
@@ -36,7 +36,7 @@ export { chaveDoNome, proporEscolasDasCriancas } from '../utils/nomeEscola';
  *
  * DE PROPÓSITO SEM HORÁRIO DE ENTRADA E SAÍDA
  * A escola não guarda horário escolar. O que organiza o dia é o horário que o
- * motorista combinou com cada pai (ver `utils/horarios`), e o horário da
+ * motorista combinou com cada pai (ver `dominio/rota/horarios`), e o horário da
  * escola só existiria pra validar — validação que ele não pediu e que custaria
  * mais um campo obrigatório em cada cadastro.
  */
@@ -132,7 +132,7 @@ export async function listEscolas(adminUid) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => e.ativa !== false);
 }
 
-/** Mapa { id: escola } — formato que `utils/horarios` consome. */
+/** Mapa { id: escola } — formato que `dominio/rota/horarios` consome. */
 export function porId(escolas) {
   const m = {};
   for (const e of escolas || []) m[e.id] = e;

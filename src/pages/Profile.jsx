@@ -30,7 +30,7 @@ import {
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
-import { getChildIds } from '../utils/childIds';
+import { getChildIds } from '../dominio/identidade/childIds';
 import {
   isPushAvailable,
   permissionState,
@@ -55,12 +55,12 @@ import {
   deleteMarcaLogo,
 } from '../services/photoService';
 import { STORAGE_ENABLED } from '../config/capabilities';
-import { destinoAposSair } from '../utils/frentes';
+import { destinoAposSair } from '../dominio/vitrine/frentes';
 import { setProfilePhotoURL } from '../services/profileService';
 import { useSoundsEnabled } from '../hooks/useSoundsEnabled';
 import { playSound } from '../services/soundService';
-import { maskPhone, unmaskPhone, isValidPhone } from '../utils/masks';
-import { formatPhone } from '../utils/formatters';
+import { maskPhone, unmaskPhone, isValidPhone } from '../compartilhado/masks';
+import { formatPhone } from '../compartilhado/formatters';
 import { PIX_KEY_TYPES, setMarca } from '../services/userService';
 import { APP_VERSION } from '../version';
 import ReviewSheet from '../components/feedback/ReviewSheet';

@@ -37,7 +37,7 @@ import {
   formatCurrency,
   formatMonthLabel,
   emCentavos,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 
 export default function PaiFinance() {
   const navigate = useNavigate();

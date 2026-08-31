@@ -14,12 +14,12 @@ import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useChildAbsenceHistory } from '../../hooks/useAbsences';
 import { ABSENCE_LABELS } from '../../services/absencesService';
-import { dataDaChave, faltasDoMes } from '../../utils/faltas';
+import { dataDaChave, faltasDoMes } from '../../dominio/rota/faltas';
 import {
   addMonths,
   formatMonthLabel,
   getCurrentMonthKey,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 
 /**
  * AS FALTAS DO FILHO — mês a mês, pra trás.

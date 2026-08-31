@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { maskPhone, unmaskPhone, isValidPhone } from '../../utils/masks';
+import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
 import {
   lembrarAvulso,
   ultimoAvulso,

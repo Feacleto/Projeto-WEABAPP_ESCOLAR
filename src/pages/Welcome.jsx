@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Bus, LogIn, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { painelDe } from '../utils/papeis';
+import { painelDe } from '../dominio/identidade/papeis';
 import Logo from '../components/common/Logo';
 import { RoleCard } from '../components/common/Sheet';
 import { ArtRoad } from '../components/landing/BlockArt';

@@ -47,7 +47,10 @@ esse padrão em vez de trazer um framework.
 Isso tem uma consequência que vale saber antes de escrever código: **lógica
 pura atrás de um `import` de Firebase é lógica que não tem como ser testada** —
 o script não consegue nem importar o módulo. Por isso a regra de negócio mora
-em [`src/utils/`](src/utils/), sem Firebase, e os services só falam com o banco.
+em [`src/dominio/`](src/dominio/) — sem Firebase, sem React, uma pasta por
+contexto de negócio — e os services só falam com o banco. **O lint recusa as
+duas direções**: componente não alcança Firebase, e domínio não alcança
+service. Ver [eslint.config.js](eslint.config.js).
 
 ## A armadilha que custa mais caro
 
@@ -62,7 +65,7 @@ está no código inteiro — incluindo `isAdmin()` nas security rules.
 | `aguardando` | motorista inscrito, ainda não aprovado | `/aguardando` |
 
 Ler `admin` como "administrador" inverte todo raciocínio de permissão. Os
-papéis estão explicados em [`src/utils/papeis.js`](src/utils/papeis.js).
+papéis estão explicados em [`src/dominio/identidade/papeis.js`](src/dominio/identidade/papeis.js).
 
 ## Stack
 

@@ -67,7 +67,7 @@ const [MX, MY, MW, MH] = MARK.viewBox.split(' ').map(Number);
 
 function Arcs({ paths, width, color }) {
   // As classes saem SEMPRE, mesmo parado. Elas não pintam nada — existem pro
-  // CSS da travessia ter onde pegar cada peça (ver src/utils/travessia.js e o
+  // CSS da travessia ter onde pegar cada peça (ver src/marca/travessia.js e o
   // bloco "A TRAVESSIA" no index.css). Emitir só quando anima obrigaria o
   // componente a saber que existe animação, e ele não precisa saber.
   return paths.map((d, i) => (

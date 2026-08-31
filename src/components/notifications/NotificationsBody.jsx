@@ -20,7 +20,7 @@ import {
   markAllNotificationsRead,
   markAllDerivedRead,
 } from '../../services/notificationsService';
-import { formatRelativeTime } from '../../utils/formatters';
+import { formatRelativeTime } from '../../compartilhado/formatters';
 
 const TYPE_VISUAL = {
   payment_claimed: { Icon: Hourglass, color: 'text-primary bg-primary/10' },

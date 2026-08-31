@@ -1,11 +1,3 @@
-// Extensao explicita: o Vite resolve sem ela, o Node nao — e e o Node que
-// roda os scripts de teste. Sem isto, qualquer util que importe daqui volta a
-// ser intestavel (ver o cabecalho de utils/contratoAssociacao.js).
-import { isValidInviteCodeFormat } from './generateInviteCode.js';
-
-// "TN" + 6 caracteres do formato novo. O legado (TN + 4 dígitos) cabe
-// dentro deste limite, então uma constante serve pros dois.
-const MAX_INVITE_LENGTH = 8;
 // Máscaras e validações usadas em formulários (Brasil-first).
 
 /**
@@ -82,26 +74,3 @@ export function isValidEmail(value) {
   return EMAIL_RE.test(String(value || '').trim());
 }
 
-/**
- * Máscara do invite code: força maiúsculas, prefixo TN + 4 dígitos.
- * Aceita digitação progressiva — usado em onChange.
- */
-export function maskInviteCode(value) {
-  const upper = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  // Se o usuário começou direto com dígitos, prefixa TN automaticamente
-  if (/^\d/.test(upper)) {
-    return ('TN' + upper).slice(0, MAX_INVITE_LENGTH);
-  }
-  return upper.slice(0, MAX_INVITE_LENGTH);
-}
-
-/**
- * Valida o código de convite nos DOIS formatos.
- *
- * A regra vive em generateInviteCode porque é lá que o formato é
- * definido. Duplicar o regex aqui foi o que gerou divergência entre
- * cliente e Cloud Function na primeira versão.
- */
-export function isValidInviteCode(value) {
-  return isValidInviteCodeFormat(value);
-}

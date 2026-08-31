@@ -11,7 +11,7 @@ import {
   clearAdminPixKey,
   validatePixKey,
 } from '../../services/userService';
-import { formatPhone } from '../../utils/formatters';
+import { formatPhone } from '../../compartilhado/formatters';
 
 /**
  * O formulário da chave PIX — o conteúdo, sem casca.

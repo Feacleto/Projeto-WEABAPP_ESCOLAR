@@ -82,13 +82,13 @@ import Respiro from './components/common/Respiro';
 import Travessia from './components/common/Travessia';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
-import { painelDe, ehDono, ehAguardando } from './utils/papeis';
+import { painelDe, ehDono, ehAguardando } from './dominio/identidade/papeis';
 import {
   frenteDoCaminho,
   estadoDaFrente,
   portaDaFrente,
   frenteLembrada,
-} from './utils/frentes';
+} from './dominio/vitrine/frentes';
 
 /**
  * A espera de tela cheia — a MESMA nos dois usos, como já era.

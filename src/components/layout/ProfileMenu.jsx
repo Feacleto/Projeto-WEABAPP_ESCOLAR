@@ -12,8 +12,8 @@ import Avatar from '../common/Avatar';
 import Logo from '../common/Logo';
 import SupportSheet from '../support/SupportSheet';
 import { useAuth } from '../../hooks/useAuth';
-import { destinoAposSair } from '../../utils/frentes';
-import { CENA_SAIDA, travessar } from '../../utils/travessia';
+import { destinoAposSair } from '../../dominio/vitrine/frentes';
+import { CENA_SAIDA, travessar } from '../../marca/travessia';
 
 /**
  * O perfil como MENU SUSPENSO, não como viagem.

@@ -79,42 +79,67 @@ Leitura continua `onSnapshot` direto — realtime é o produto. O que muda é o 
 
 ---
 
-## 4. Camadas e monorepo
+## 4. Camadas, e onde fica a fronteira
+
+O plano original desta seção era um monorepo (`packages/core`, `packages/sdk`, `apps/web`, `apps/api`). **Não foi feito, e a decisão é para ficar.** O que ele comprava era uma fronteira; o que ele cobrava era build, versionamento e uma mudança de esqueleto num projeto de uma pessoa. A frase que sobreviveu do plano é esta, e ela era o ponto o tempo todo:
+
+> **A fronteira que importa é a de import, não a de `package.json`.**
+
+Então foi a de import que se construiu — sem monorepo, sem TypeScript, sem mudar o build.
 
 ```
-packages/
-  core/        contratos (Zod + tipos) e domínio puro, sem I/O
-  sdk/         cliente tipado dos casos de uso + readModel com cache
-apps/
-  web/         React 19 + Vite + Tailwind
-  api/         Cloud Functions v2 — casos de uso e adaptadores
-  mobile/      Expo (depois)
-infra/
-  rules/       um arquivo por contexto, concatenado no build
+src/
+  dominio/         AS REGRAS, uma pasta por contexto. Puro.
+    rota/ cobranca/ associacao/ identidade/ escola/ vitrine/
+  marca/           a personalidade do app. Puro.
+  compartilhado/   sem regra nenhuma. Puro, e não conhece o domínio.
+  ─────────────────────────────────────────────────────────────
+  services/        TODO acesso ao Firestore
+  hooks/           assinam services
+  pages/ components/
 ```
 
-Comece com **dois** pacotes, não três. O monorepo se justifica porque `functions/` é CommonJS e `src/` é ESM, e não há como compartilhar domínio entre eles sem isso — não porque três pacotes sejam melhores que dois.
+A linha no meio é verificada por `no-restricted-imports` em [eslint.config.js](../eslint.config.js), **nas duas direções**:
 
-**A fronteira que importa é a de import, não a de `package.json`.** Uma regra ESLint `no-restricted-imports` barrando `firebase/*` fora de `api` e `sdk` pega hoje as 8 violações de camada existentes — incluindo a *mesma* query `users where role=='admin'` escrita duas vezes, em `TaxaTab` e `FunilTab`.
+- de fora pra dentro — componente e tela não alcançam `firebase/*` (6 exceções nomeadas, cada uma com o motivo);
+- de dentro pra fora — `dominio/`, `marca/` e `compartilhado/` não alcançam service, hook, componente, tela, Firebase **nem React**; e `compartilhado/` não alcança nem o domínio.
 
-Migram para `core/domain` sem alterar lógica, porque já são puros: `horariosService`, `faltas`, `avisoDoMomento`, `haversine`, `pixPayload`, `papeis`.
+**A segunda direção é a que adoece calada.** A primeira falha alto: a tela quebra, alguém vê. A segunda não quebra nada — a regra de negócio "só precisa de uma consulta rápida", importa um service, e o custo aparece meses depois, quando o módulo não carrega mais no Node e o teste dele nunca foi escrito. Foi assim que a máquina de estado da criança e o teto de vagas ficaram sem verificação: não por descuido, mas porque moravam atrás de um `import { db }`.
+
+**Regra pura é regra testável.** É essa a troca, e é a única razão da fronteira.
+
+### O que a mudança de 31/08/2026 fez, exatamente
+
+Os 27 módulos de `src/utils/` **já eram puros** — nenhum importava Firebase. O domínio existia; não tinha nome nem endereço, e por isso ninguém sabia se um módulo novo pertencia a ele. Foram distribuídos nos seis contextos, mais `marca/` e `compartilhado/`.
+
+Uma única seta estava ao contrário, e era invisível justamente porque os dois lados se chamavam "utils": `masks.js` importava `generateInviteCode` para validar o código que ele mascarava — um formatador genérico dependendo de uma regra de identidade. `maskInviteCode` foi morar com o formato que ela obedece, e `masks.js` voltou a ser só formatação.
+
+Nada de lógica mudou. 363 testes seguiram verdes, o que é a prova de que foi mudança de endereço e não de comportamento.
 
 ---
 
-## 5. Bounded contexts
+## 5. Os seis contextos
 
-Derivados do código, não inventados.
+Derivados do código, não inventados — e agora **são diretórios**, não uma tabela num documento. Regra nova mora no contexto de quem decide sobre ela.
 
-| Contexto | Tipo | Agregados |
-|---|---|---|
-| **Operação da Rota** | core | Aluno (raiz), Viagem do dia, PosiçãoAoVivo, Escola, DeclaraçãoDeFalta, IndicaçãoDeBusca, Buzina |
-| **Cobrança da Família** | core | Mensalidade (com `events` como log) |
-| **Associação** | suporte | Lead, Negociação, Fatura do Parceiro, Contrato, RéguaDaTaxa |
-| **Identidade & Acesso** | suporte | Conta, Vínculo, **Convite** — hoje escondido dentro de `children` |
-| **Comunicação** | genérico | Canal, não domínio. Deve **consumir eventos**, não ser chamado pelos services |
-| **Vitrine & Plataforma** | genérico | Depoimento, fila, config pública, bônus |
+| Contexto | A pergunta | Quem decide | Tipo |
+|---|---|---|---|
+| **`rota`** | onde a criança está, e o que o app sabe da perua | motorista | core |
+| **`cobranca`** | quanto a família deve, e como ela paga | motorista ↔ família | core |
+| **`associacao`** | quanto o motorista paga à plataforma | dono | suporte |
+| **`identidade`** | quem é essa pessoa, e a que ela está ligada | plataforma | suporte |
+| **`escola`** | que escola é essa, e quem avisar | motorista | suporte |
+| **`vitrine`** | o que cada porta pública promete | dono | genérico |
 
-**Comunicação é o contexto mais mal posicionado hoje:** o fan-out de notificação está *dentro* dos services de rota, agenda e broadcast, rodando no navegador. Deve virar consumidor de evento (`AlunoEmbarcou` → push, `MensalidadeQuitada` → notificação, `EscolaSemAula` → falta + aviso).
+**`cobranca` e `associacao` são separados de propósito.** São os dois dinheiros, e misturá-los quebra o item 7 dos Termos — a plataforma não intermedeia a mensalidade. Enquanto era tudo "utils", a mistura só apareceria quando alguém a escrevesse; agora ela aparece como um import cruzando pasta.
+
+### O que ainda não tem endereço
+
+**`comunicacao` não é uma pasta, e a ausência é informação.** Não sobrou nenhum módulo puro para ela porque o fan-out de notificação está *dentro* dos services de rota, agenda e broadcast, rodando no navegador. É o contexto mais mal posicionado do sistema, e a pasta vazia seria mentira: o dia em que ele tiver uma regra pura é o dia em que ele deixou de ser chamado pelos services e passou a consumir evento (`AlunoEmbarcou` → push, `MensalidadeQuitada` → notificação, `EscolaSemAula` → falta + aviso).
+
+**`escola` tem um módulo só** (`nomeEscola`), e é honesto dizer que a evidência para separá-lo de `rota` é fina. Ficou separado porque quem avisa a escola e quem dirige a perua respondem a perguntas diferentes — mas se em seis meses ele continuar com um arquivo, a resposta certa é dobrá-lo em `rota`.
+
+**`config/` não virou domínio.** São constantes que o dono ajusta — o CNPJ da contratada, o piso da vitrine, a régua de vagas. São dados, não camada; o domínio pode lê-los sem passar a depender de infraestrutura.
 
 ---
 
@@ -256,7 +281,7 @@ Os oito, com o corte já mapeado: `Profile.jsx` (1145), `Home.jsx` (1090),
 `OperacaoDaRota.jsx` (954), `PaiDashboard.jsx` (938), `ChildDetail.jsx` (932).
 
 `OperacaoDaRota` é o pior: um único componente de 765 linhas. A regra de "quem
-falta ser marcado" deveria sair para `utils/horarios.js`, que é puro e testável.
+falta ser marcado" deveria sair para `dominio/rota/horarios.js`, que é puro e testável.
 
 **É aqui que o tamanho dói, e não na organização de pastas** — churn e tamanho
 coincidem quase perfeitamente nesses arquivos.
@@ -281,14 +306,11 @@ parecem desnecessários. Os dois grupos ficaram como estão: **remover índice q
 na verdade é usado quebra em produção sem quebrar no emulador**, e o ganho é
 custo de escrita. Precisa de medição contra projeto limpo, não de palpite.
 
-### A fronteira de import, verificada por lint
+### A fronteira de import — FEITA (31/08/2026)
 
-O passo mais barato que sobrou, e o de melhor retorno. A seção 4 diz que a
-fronteira que importa é a de import — uma regra `no-restricted-imports`
-barrando `firebase/*` fora das camadas certas.
+Era o passo mais barato que restava, e virou as duas regras da seção 4. Ficou aqui o que ela **não** consertou.
 
-**Hoje são 6 violações, e todas explicáveis** — o momento mais barato que vai
-existir para ligar a regra, porque ela nasce quase verde:
+As 6 exceções de `firebase/*` continuam de pé, cada uma nomeada em [eslint.config.js](../eslint.config.js). A regra não as conserta — impede a sétima.
 
 | Onde | O quê | Veredicto |
 |---|---|---|
@@ -296,8 +318,9 @@ existir para ligar a regra, porque ela nasce quase verde:
 | `useLiveLocation` · `useLimiteCriancas` | `onSnapshot` direto | hooks, não telas; os únicos 2 de 23 |
 | `Home` · `Familia` · `AdminPanel` | `httpsCallable` | 3 telas chamando callable direto |
 
-E 26 dos 27 utils já são puros, sem uma linha de Firebase — eles migram para
-`packages/core` sem alterar lógica, no dia em que a seção 4 acontecer.
+O conserto dos dois hooks é `watchLiveLocation` em `locationService` e `watchLimite` em `userService`. O das três telas é passar por `exigirCloud()` — hoje `AdminPanel` chama sem, e sem Blaze o erro chega ao usuário como "falha de rede".
+
+**A dívida que a mudança expôs:** `escola` tem um módulo só, e `comunicacao` não tem nenhum — ver o fim da seção 5. Nenhuma das duas é urgente; ambas são visíveis agora, que é o que a pasta comprou.
 
 ### O que depende de você, não de código
 

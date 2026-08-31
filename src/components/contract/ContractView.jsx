@@ -1,5 +1,5 @@
-import { formatBRL } from '../../utils/formatters';
-import { formatPhone } from '../../utils/formatters';
+import { formatBRL } from '../../compartilhado/formatters';
+import { formatPhone } from '../../compartilhado/formatters';
 
 /**
  * Renderização visual do contrato. Recebe `data` montado por

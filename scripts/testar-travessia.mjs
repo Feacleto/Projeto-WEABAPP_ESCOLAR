@@ -15,7 +15,7 @@ import {
   duracaoDaTravessia,
   falaDaTravessia,
   travessar,
-} from '../src/utils/travessia.js';
+} from '../src/marca/travessia.js';
 
 let ok = 0, falhou = 0;
 const eq = (nome, a, b) => {

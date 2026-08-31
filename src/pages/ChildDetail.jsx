@@ -23,13 +23,13 @@ import {
   CalendarX2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { horariosCombinados, horaCurta } from '../utils/horarios';
-import { faltasDoMes, resumoDeFaltas } from '../utils/faltas';
+import { horariosCombinados, horaCurta } from '../dominio/rota/horarios';
+import { faltasDoMes, resumoDeFaltas } from '../dominio/rota/faltas';
 import {
   addMonths,
   formatMonthLabel,
   getCurrentMonthKey,
-} from '../utils/formatters';
+} from '../compartilhado/formatters';
 import { useChildAbsenceHistory } from '../hooks/useAbsences';
 import { updateChild } from '../services/childrenService';
 import EditarOndeSheet from '../components/children/EditarOndeSheet';
@@ -54,7 +54,7 @@ import {
   deleteChildPhoto,
 } from '../services/photoService';
 import { setChildPhotoURL } from '../services/childrenService';
-import { PERIOD_LABELS, formatPhone } from '../utils/formatters';
+import { PERIOD_LABELS, formatPhone } from '../compartilhado/formatters';
 
 /**
  * Mini-perfil da criança. Funciona pra Tio (com edit/delete) e pra Pai (read-only).
@@ -665,7 +665,7 @@ function LinkDoResponsavel({ child }) {
  * `/familia` e não `/`: a raiz é a vitrine de associação, que fala de taxa,
  * de vaga e de negócio — conteúdo endereçado ao motorista. Mandar o pai pra
  * lá é, no mínimo, confuso; no pior caso sugere que a vaga do filho dele
- * corre risco. A regra vive em utils/frentes.js e vale aqui também.
+ * corre risco. A regra vive em dominio/vitrine/frentes.js e vale aqui também.
  */
 function AppLinkShare({ childName, parentPhone }) {
   const [copiado, setCopiado] = useState(false);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { destinoAposSair } from '../../utils/frentes';
+import { destinoAposSair } from '../../dominio/vitrine/frentes';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, LogOut, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';

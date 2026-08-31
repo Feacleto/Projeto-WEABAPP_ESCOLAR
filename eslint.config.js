@@ -126,4 +126,107 @@ export default defineConfig([
     ],
     rules: { 'no-restricted-imports': 'off' },
   },
+
+  // ── O NÚCLEO NÃO ALCANÇA NADA ─────────────────────────────────────────────
+  //
+  // `src/dominio/` é a regra de negócio; `src/marca/` é a personalidade do
+  // app; `src/compartilhado/` não tem regra nenhuma. Os três são PUROS — e a
+  // pureza deles não é uma qualidade que alguém mantém lembrando, é o que
+  // esta regra recusa quebrar.
+  //
+  // POR QUE ISTO É O CORAÇÃO DA ARQUITETURA
+  // A camada `tela → hook → service → Firestore` já era verificada na direção
+  // de fora pra dentro (a regra acima: componente não fala com Firebase). Só
+  // que a direção que ADOECE é a de dentro pra fora — a regra de negócio que
+  // "só precisa de uma consulta rápida" e passa a importar um service. No dia
+  // em que isso acontece, o módulo deixa de carregar no Node, o teste dele
+  // morre, e a regra volta a ser verificável apenas rodando o app inteiro.
+  //
+  // Foi exatamente assim que a máquina de estado da criança e o teto de vagas
+  // ficaram sem teste: não por descuido, mas porque moravam atrás de um
+  // `import { db }`.
+  //
+  // O QUE FICA PERMITIDO, E POR QUÊ
+  // `config/` — constantes que o dono ajusta (o CNPJ da contratada, o piso da
+  // vitrine). São dados, não camada: ler configuração não faz o domínio
+  // depender de infraestrutura.
+  // `compartilhado/` — formatar dinheiro e telefone não é regra de ninguém.
+  //
+  // E `react` está na lista de proibidos de propósito. Domínio que importa
+  // React virou componente, e a próxima pessoa vai pôr um `useState` na regra
+  // de cobrança.
+  {
+    files: [
+      'src/dominio/**/*.js',
+      'src/marca/**/*.js',
+      'src/compartilhado/**/*.js',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                'firebase',
+                'firebase/*',
+                '**/services/**',
+                '**/hooks/**',
+                '**/components/**',
+                '**/pages/**',
+                '**/context/**',
+                '**/firebase/**',
+                'react',
+                'react-*',
+              ],
+              message:
+                'O núcleo (dominio/, marca/, compartilhado/) é puro: nada de ' +
+                'Firebase, service, hook, componente, tela ou React. Se a regra ' +
+                'precisa de um dado do banco, quem busca é o service e passa por ' +
+                'parâmetro. Ver docs/arquitetura.md, seção 4.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // `compartilhado/` é o mais interno de todos: ele não conhece NEM o domínio.
+  //
+  // Esta linha nasceu de um caso real, não de zelo: `masks.js` importava
+  // `generateInviteCode` pra validar o código que ele mascarava. Um formatador
+  // genérico dependendo de uma regra de identidade — a única seta ao contrário
+  // do projeto, e invisível porque os dois eram "utils". A máscara do convite
+  // mudou de casa e foi morar com o formato que ela obedece.
+  {
+    files: ['src/compartilhado/**/*.js'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                'firebase',
+                'firebase/*',
+                '**/dominio/**',
+                '**/marca/**',
+                '**/services/**',
+                '**/hooks/**',
+                '**/components/**',
+                '**/pages/**',
+                '**/context/**',
+                '**/config/**',
+                'react',
+                'react-*',
+              ],
+              message:
+                'compartilhado/ não conhece o domínio. Se precisa de uma regra, ' +
+                'o módulo não é compartilhado — ele pertence ao contexto da regra.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

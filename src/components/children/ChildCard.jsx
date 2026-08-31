@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import StatusBadge from './StatusBadge';
-import { PERIOD_LABELS, formatAge, formatPhone } from '../../utils/formatters';
+import { PERIOD_LABELS, formatAge, formatPhone } from '../../compartilhado/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS } from '../../services/absencesService';
 

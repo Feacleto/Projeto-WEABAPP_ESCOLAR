@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, LogOut, MessageCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
-import { destinoAposSair } from '../utils/frentes';
+import { destinoAposSair } from '../dominio/vitrine/frentes';
 import Logo from '../components/common/Logo';
 
 /**

@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { primeiroNome } from '../../utils/formatters';
+import { primeiroNome } from '../../compartilhado/formatters';
 import { PartyPopper, X } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import { playSound, stopSound } from '../../services/soundService';

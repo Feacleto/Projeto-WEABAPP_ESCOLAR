@@ -19,10 +19,14 @@ import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import { authenticateAndRedeem, googleAndRedeem } from '../services/authService';
 import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
-import { painelDe } from '../utils/papeis';
-import { CENA_ABERTURA, CENA_ENTRADA, travessar } from '../utils/travessia';
-import { isValidEmail, maskInviteCode, isValidInviteCode } from '../utils/masks';
-import { mensagemDeAuth } from '../utils/authErrors';
+import { painelDe } from '../dominio/identidade/papeis';
+import { CENA_ABERTURA, CENA_ENTRADA, travessar } from '../marca/travessia';
+import { isValidEmail } from '../compartilhado/masks';
+import {
+  maskInviteCode,
+  isValidInviteCodeFormat,
+} from '../dominio/identidade/generateInviteCode';
+import { mensagemDeAuth } from '../dominio/identidade/authErrors';
 
 /**
  * Primeiro acesso do responsável — /first-access
@@ -86,7 +90,7 @@ export default function FirstAccess() {
   const marcar = (campo) => () =>
     setTocou((p) => (p[campo] ? p : { ...p, [campo]: true }));
 
-  const codigoOk = isValidInviteCode(code);
+  const codigoOk = isValidInviteCodeFormat(code);
   // Os passos: cada campo entra quando o anterior recebeu o dedo. Uso FOCO e
   // não "está válido" de propósito — validar antes de a pessoa terminar de
   // digitar é o jeito mais rápido de irritar.

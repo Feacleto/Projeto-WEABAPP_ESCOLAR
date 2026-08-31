@@ -12,7 +12,7 @@ import {
   formatCurrency,
   formatMonthLabel,
   formatDate,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 
 /**
  * Histórico financeiro do Pai pra leitura / impressão.

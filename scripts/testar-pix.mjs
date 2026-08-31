@@ -17,7 +17,7 @@
  *   node scripts/testar-pix.mjs      (ou: npm run testar:pix)
  */
 
-import { validatePixKey, normalizePixKey, PIX_KEY_TYPES } from '../src/utils/pix.js';
+import { validatePixKey, normalizePixKey, PIX_KEY_TYPES } from '../src/dominio/cobranca/pix.js';
 
 let ok = 0;
 let bad = 0;

@@ -8,7 +8,7 @@
  * com scripts Node puros — o script não conseguia nem importar o módulo.
  *
  *   1. `montarContrato` lia `base.mensalidadeMedia`, nome que ninguém
- *      produzia (registrado em utils/taxa.js, no `resumirBase`).
+ *      produzia (registrado em dominio/associacao/taxa.js, no `resumirBase`).
  *   2. Com periodicidade MENSAL e qualquer carência, `mesesCobrados` era
  *      `max(0, 1 - carencia)` = ZERO. O contrato saía com R$ 0,00 por mês,
  *      pelos doze meses de vigência — não só durante a carência — e era
@@ -19,7 +19,7 @@
  *
  * O QUE ESTE ARQUIVO IMPORTA, E POR QUÊ
  * Só constantes puras: os dados da contratada (`config/developer`) e o teto do
- * dia de vencimento (`utils/taxa`). Nada que toque Firebase — é o que o mantém
+ * dia de vencimento (`dominio/associacao/taxa`). Nada que toque Firebase — é o que o mantém
  * testável. Se precisar de dado do banco, receba por parâmetro.
  */
 
@@ -39,7 +39,7 @@ import {
   DEV_CITY,
   DEV_EMAIL,
   DEV_PHONE_DISPLAY,
-} from '../config/developer.js';
+} from '../../config/developer.js';
 // O teto de 28 é a mesma regra da fatura — duas definições de "dia possível"
 // divergindo entre o contrato e a cobrança é como um promete o que a outra
 // não cumpre.

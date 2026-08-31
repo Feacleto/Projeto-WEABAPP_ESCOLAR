@@ -24,7 +24,7 @@
  * O DONO MUDOU, E ESTE SCRIPT NÃO CRIA MAIS O PERFIL DELE
  * Ele era um motorista com `superAdmin: true` por cima. Não é mais: agora é
  * `role: 'owner'`, e `superAdmin` não vale nada — nem no cliente
- * (`ehDono()` em src/utils/papeis.js) nem nas regras (`isOwner()`).
+ * (`ehDono()` em src/dominio/identidade/papeis.js) nem nas regras (`isOwner()`).
  *
  * O create de `users` só aceita `role == 'admin'`, então criar um dono pelo
  * cliente é impossível por construção — e afrouxar isso pra semear teste

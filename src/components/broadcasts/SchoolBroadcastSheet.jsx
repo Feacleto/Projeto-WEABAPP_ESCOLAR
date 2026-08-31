@@ -12,8 +12,8 @@ import {
   rotuloDoDia,
   MAX_DIAS,
 } from '../../services/broadcastService';
-import { getDateKey } from '../../utils/horarios';
-import { chaveDoNome } from '../../utils/nomeEscola';
+import { getDateKey } from '../../dominio/rota/horarios';
+import { chaveDoNome } from '../../dominio/escola/nomeEscola';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**

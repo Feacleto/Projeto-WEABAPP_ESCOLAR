@@ -18,11 +18,11 @@ import { functions } from '../firebase/config';
 import { comPiso } from '../config/vitrine';
 import { DEV_CITY, DEV_CNPJ } from '../config/developer';
 import { useAuth } from '../hooks/useAuth';
-import { painelDe } from '../utils/papeis';
+import { painelDe } from '../dominio/identidade/papeis';
 import Logo from '../components/common/Logo';
 import Spinner from '../components/common/Spinner';
 import LoginSheet from '../components/landing/LoginSheet';
-import { FRENTE_FAMILIA, lembrarFrente } from '../utils/frentes';
+import { FRENTE_FAMILIA, lembrarFrente } from '../dominio/vitrine/frentes';
 
 /**
  * A PORTA DA FAMÍLIA — a home do responsável.

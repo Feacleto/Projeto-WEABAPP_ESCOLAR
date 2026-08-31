@@ -4,7 +4,7 @@ import {
   childAvatarUrl,
   adultAvatarUrl,
   adminAvatarUrl,
-} from '../../utils/avatarUrl';
+} from '../../marca/avatarUrl';
 import { COR_GENERO } from '../../config/paletaCategorica';
 
 /**

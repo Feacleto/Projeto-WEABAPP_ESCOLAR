@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Share, Plus, X, Smartphone } from 'lucide-react';
 import Button from './Button';
-import { isIOS, isStandalone, isInAppBrowser } from '../../utils/browserEnv';
+import { isIOS, isStandalone, isInAppBrowser } from '../../compartilhado/browserEnv';
 
 const DISMISS_KEY = 'ab_install_prompt_v1';
 

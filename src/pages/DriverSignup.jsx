@@ -9,7 +9,7 @@ import AssociadosCard from '../components/landing/AssociadosCard';
 import { submitDriverWaitlist } from '../services/waitlistService';
 import { inscreverAssociado } from '../services/associadoService';
 import { useAuth } from '../hooks/useAuth';
-import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../utils/masks';
+import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../compartilhado/masks';
 
 /**
  * Inscrição de motorista — /quero-fazer-parte

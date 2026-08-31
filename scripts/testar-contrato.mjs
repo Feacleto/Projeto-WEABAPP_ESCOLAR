@@ -24,7 +24,7 @@ import {
   montarContrato,
   diasParaVencer,
   precisaRenovar,
-} from '../src/utils/contratoAssociacao.js';
+} from '../src/dominio/associacao/contratoAssociacao.js';
 
 let ok = 0;
 let bad = 0;

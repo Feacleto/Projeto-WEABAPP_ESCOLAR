@@ -7,17 +7,17 @@ import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
-import { painelDe } from '../utils/papeis';
-import { CENA_ENTRADA, travessar } from '../utils/travessia';
-import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../utils/frentes';
+import { painelDe } from '../dominio/identidade/papeis';
+import { CENA_ENTRADA, travessar } from '../marca/travessia';
+import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
 import {
   resetPassword,
   loginWithGoogleExistingOnly,
 } from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
 import OpenInBrowser from '../components/auth/OpenInBrowser';
-import { canUseGoogleSignIn, isInAppBrowser } from '../utils/browserEnv';
-import { mensagemDeAuth } from '../utils/authErrors';
+import { canUseGoogleSignIn, isInAppBrowser } from '../compartilhado/browserEnv';
+import { mensagemDeAuth } from '../dominio/identidade/authErrors';
 
 export default function Login() {
   const { login, profile, loading: authLoading, refreshProfile } = useAuth();

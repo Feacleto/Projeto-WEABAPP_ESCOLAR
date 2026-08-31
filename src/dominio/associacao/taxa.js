@@ -19,7 +19,7 @@
  *   2. Com periodicidade mensal e qualquer carência, `mesesCobrados` dava
  *      zero — e o associado assinava, com hash, R$ 0,00 por doze meses.
  *
- * As duas passaram pelo mesmo buraco. `utils/horarios.js` é a prova de que
+ * As duas passaram pelo mesmo buraco. `dominio/rota/horarios.js` é a prova de que
  * dá pra fazer diferente neste projeto: 587 linhas de regra, zero imports,
  * bateria de teste própria.
  *

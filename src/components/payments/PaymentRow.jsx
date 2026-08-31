@@ -16,17 +16,17 @@ import {
   formatCurrency,
   formatDate,
   formatMonthLabel,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 import {
   paymentLabel,
   paymentChipClasses,
   parentClaimedLabel,
   parentClaimedTone,
   TONE_CLASSES,
-} from '../../utils/paymentVocabulary';
+} from '../../dominio/cobranca/paymentVocabulary';
 import { foiPagoAtrasado } from '../../services/paymentsService';
 
-// A COR fica aqui; o TEXTO vem de utils/paymentVocabulary, que sabe falar
+// A COR fica aqui; o TEXTO vem de dominio/cobranca/paymentVocabulary, que sabe falar
 // pro papel de quem está lendo. O estado 'claimed' era o pior caso: o tio
 // lia "aguardando confirmação" sem saber que a bola estava com ele.
 const STATUS_CONFIG = {

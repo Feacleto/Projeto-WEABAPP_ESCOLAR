@@ -28,7 +28,7 @@ import PaymentRow from '../../components/payments/PaymentRow';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useChildren } from '../../hooks/useChildren';
-import { buildChargeMessage } from '../../utils/chargeMessage';
+import { buildChargeMessage } from '../../dominio/cobranca/chargeMessage';
 import {
   confirmReceipt,
   undoReceipt,
@@ -53,7 +53,7 @@ import {
   formatCurrency,
   getCurrentMonthKey,
   emCentavos,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 import { PIX_KEY_TYPES } from '../../services/userService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 

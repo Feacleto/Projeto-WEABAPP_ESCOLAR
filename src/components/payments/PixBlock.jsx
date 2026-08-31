@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { Copy, Check, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
-import { buildPixPayload } from '../../utils/pixPayload';
+import { buildPixPayload } from '../../dominio/cobranca/pixPayload';
 import { PIX_KEY_TYPES } from '../../services/userService';
 
 /**

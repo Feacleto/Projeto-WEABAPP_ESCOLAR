@@ -15,8 +15,8 @@ import {
   registrarPerda,
   metricasDoFunil,
 } from '../../services/funilService';
-import { formatBRL } from '../../utils/formatters';
-import { maskPhone } from '../../utils/masks';
+import { formatBRL } from '../../compartilhado/formatters';
+import { maskPhone } from '../../compartilhado/masks';
 
 /**
  * O FUNIL COMERCIAL, EM COLUNAS.

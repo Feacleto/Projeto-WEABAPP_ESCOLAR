@@ -4,7 +4,7 @@ import { Copy, Check, QrCode, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
 import WhatsAppIcon from '../common/WhatsAppIcon';
-import { inviteUrl } from '../../utils/inviteUrl';
+import { inviteUrl } from '../../dominio/identidade/inviteUrl';
 
 /**
  * Compartilhamento do convite pelo tio.

@@ -9,14 +9,14 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-// A CHAVE PIX TEM UMA DEFINIÇÃO SÓ, e ela mora em `utils/pix.js`.
+// A CHAVE PIX TEM UMA DEFINIÇÃO SÓ, e ela mora em `dominio/cobranca/pix.js`.
 //
 // Aqui existiam `validatePixKey` e `normalizePixKey`, e havia uma SEGUNDA
-// `normalizePixKey` em `utils/pixPayload.js` — com a ordem dos argumentos
+// `normalizePixKey` em `dominio/cobranca/pixPayload.js` — com a ordem dos argumentos
 // invertida. Trocar um import pelo outro compilava, passava no lint e gerava
 // chave inválida em silêncio. O reexport mantém este módulo como a porta que
 // as telas já usam.
-import { PIX_KEY_TYPES, validatePixKey, normalizePixKey } from '../utils/pix';
+import { PIX_KEY_TYPES, validatePixKey, normalizePixKey } from '../dominio/cobranca/pix';
 
 export { PIX_KEY_TYPES, validatePixKey, normalizePixKey };
 

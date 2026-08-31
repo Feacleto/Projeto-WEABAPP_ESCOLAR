@@ -14,7 +14,7 @@ import {
   montarContrato,
   emitirContrato,
 } from '../../services/contratoAssociacaoService';
-import { formatBRL } from '../../utils/formatters';
+import { formatBRL } from '../../compartilhado/formatters';
 
 /**
  * O ORÇAMENTO — e o contrato que nasce dele.

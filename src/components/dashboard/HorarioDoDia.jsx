@@ -1,7 +1,7 @@
 import { Bus, Home, CircleAlert, UserCheck } from 'lucide-react';
-import { horariosCombinados, horaCurta } from '../../utils/horarios';
+import { horariosCombinados, horaCurta } from '../../dominio/rota/horarios';
 import { ABSENCE_TYPES } from '../../services/absencesService';
-import { primeiroNome } from '../../utils/formatters';
+import { primeiroNome } from '../../compartilhado/formatters';
 
 /**
  * "Hoje" — os dois horários que o responsável abre o app pra ver.

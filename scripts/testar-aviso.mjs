@@ -6,7 +6,7 @@
  * manhã em que se está programando, e mente às 6h40 de uma terça. Aqui a hora
  * é injetada, então todo caso é reprodutível.
  */
-import { avisoDoMomento } from '../src/utils/avisoDoMomento.js';
+import { avisoDoMomento } from '../src/dominio/rota/avisoDoMomento.js';
 
 let ok = 0, falhou = 0;
 const eq = (nome, a, b) => {

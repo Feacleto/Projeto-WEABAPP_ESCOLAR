@@ -78,7 +78,7 @@ const config = {
   appId: process.env.VITE_FIREBASE_APP_ID,
 };
 
-/** Mesma normalização de src/utils/nomeEscola.js — se mudar lá, muda aqui. */
+/** Mesma normalização de src/dominio/escola/nomeEscola.js — se mudar lá, muda aqui. */
 function chaveDoNome(nome) {
   return String(nome || '')
     .normalize('NFD')

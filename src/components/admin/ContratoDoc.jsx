@@ -1,4 +1,4 @@
-import { formatBRL } from '../../utils/formatters';
+import { formatBRL } from '../../compartilhado/formatters';
 
 /**
  * O CONTRATO DE ASSOCIAÇÃO, RENDERIZADO.

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, MessageCircle, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { formatBRL } from '../../utils/formatters';
+import { formatBRL } from '../../compartilhado/formatters';
 import { devWhatsAppLink } from '../../config/developer';
 
 /**

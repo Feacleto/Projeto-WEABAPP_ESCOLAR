@@ -28,7 +28,7 @@ import {
   calcularTaxa,
   isentoEm,
   dataDeVencimento,
-} from '../src/utils/taxa.js';
+} from '../src/dominio/associacao/taxa.js';
 
 let ok = 0;
 let bad = 0;

@@ -243,6 +243,27 @@ O prêmio da indicação, se houver, é **só do motorista**: a plataforma não 
 
 ---
 
+## 17. A regra de negócio mora em `src/dominio/`, e não alcança nada
+
+**Estado:** aceita — em vigor desde 31/08/2026, verificada no CI
+
+**Contexto.** A lógica pura vivia em `src/utils/`: 27 módulos num saco plano, com `avatarUrl` ao lado de `taxa` ao lado de `travessia`. Todos já eram puros — nenhum importava Firebase —, então o domínio existia. O que não existia era **endereço**: nada dizia se um módulo novo pertencia a ele, e a resposta para "onde mora esta regra?" era "em algum lugar, procure". Quando a resposta é essa, a regra acaba escrita duas vezes — foi o que aconteceu com o avanço de status da criança (uma escada de `if` em `childrenService`) e a ação da tela (outra escada em `routeStatusService`), duas descrições da mesma coisa.
+
+**Decisão.** O núcleo é `src/dominio/` (uma pasta por contexto), `src/marca/` (a personalidade) e `src/compartilhado/` (sem regra nenhuma). Os três são puros, e a pureza é **verificada**: o lint recusa que eles importem service, hook, componente, tela, Firebase ou React — e recusa que `compartilhado/` importe o domínio.
+
+Regra nova nasce no contexto de quem decide sobre ela. Se ela precisa de dado do banco, quem busca é o service e **passa por parâmetro**.
+
+**Consequência.**
+
+1. **Regra atrás de `import { db }` deixa de ser possível**, e essa é a razão inteira. Não é organização: um módulo que importa Firebase não carrega no Node, e os testes deste projeto são Node puro rodando o arquivo direto. Regra impura é regra sem teste — foi assim que a máquina de estado da criança e o teto de vagas ficaram sem verificação nenhuma.
+2. **Os dois dinheiros ficam em pastas diferentes** (`cobranca` é pai→motorista, `associacao` é motorista→plataforma). Misturá-los quebra o item 7 dos Termos, e agora a mistura aparece como um import cruzando contexto — antes só apareceria depois de escrita.
+3. **`comunicacao` não tem pasta, e isso é o achado.** Não sobrou módulo puro para ela: o fan-out de notificação está dentro dos services, rodando no navegador. A ausência da pasta é o sintoma visível de um contexto mal posicionado.
+4. **Não houve monorepo, e não vai haver.** O plano original pedia `packages/core` + `packages/sdk`; o que ele comprava era esta fronteira, e ela se compra com uma regra de lint. Ver [arquitetura.md](arquitetura.md), seção 4.
+
+**Como verificar.** `npm run lint` — plante `import { db } from '../../services/childrenService'` em qualquer arquivo de `src/dominio/` e o CI reprova com a mensagem que diz o que fazer no lugar. O mesmo para um import de domínio dentro de `src/compartilhado/`. As duas direções foram plantadas e removidas na entrega desta decisão.
+
+---
+
 ## Como adicionar uma decisão
 
 Copie o formato. Contexto em duas linhas, decisão em uma, consequência no que ela custa, e **sempre** a linha de como verificar. Decisão sem teste é comentário — e comentário que promete garantia sem prová-la já foi problema recorrente neste repositório.

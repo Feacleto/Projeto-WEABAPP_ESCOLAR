@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebase/config';
-// O ESTADO DO PAGAMENTO MORA EM `utils/statusPagamento.js`.
+// O ESTADO DO PAGAMENTO MORA EM `dominio/cobranca/statusPagamento.js`.
 //
 // `computeDisplayStatus` é a definição de "atrasado" no app inteiro — o
 // cabeçalho dela diz que dezessete lugares perguntam `=== 'paid'` — e nada
@@ -23,7 +23,7 @@ import {
   computeDisplayStatus,
   foiPagoAtrasado,
   canUndoReceipt,
-} from '../utils/statusPagamento';
+} from '../dominio/cobranca/statusPagamento';
 
 export {
   UNDO_WINDOW_HOURS,

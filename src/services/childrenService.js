@@ -12,7 +12,7 @@ import {
   runTransaction,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
-import { generateInviteCode } from '../utils/generateInviteCode';
+import { generateInviteCode } from '../dominio/identidade/generateInviteCode';
 import { inviteCodeExists } from './inviteCodeService';
 import { playSound } from './soundService';
 
@@ -117,7 +117,7 @@ export async function addChild(data) {
     // A VOLTA SEGUE A IDA, e o default 'afternoon' era uma viagem inventada.
     //
     // Todo cadastro sem `dropoffPeriod` explícito nascia 'afternoon', e
-    // 'afternoon' presume entrega às 17h30 (utils/horarios). Resultado: uma
+    // 'afternoon' presume entrega às 17h30 (dominio/rota/horarios). Resultado: uma
     // criança da manhã, que volta ~12h30, ganhava uma volta fantasma às 17h30
     // no dia do motorista — e ao meio-dia, entregando de verdade, a tela
     // apontava pra ela.

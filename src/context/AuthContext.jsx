@@ -7,7 +7,7 @@ import {
   login as loginService,
   logout as logoutService,
 } from '../services/authService';
-import { getChildIds, resolveActiveChildId } from '../utils/childIds';
+import { getChildIds, resolveActiveChildId } from '../dominio/identidade/childIds';
 
 // Filho ativo escolhido pelo responsável. Fica em localStorage pra o app
 // abrir no mesmo filho da última vez — trocar de filho a cada reload seria

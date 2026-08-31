@@ -20,7 +20,7 @@ import {
   sumExpenses,
   monthKeyOf,
 } from '../../services/expensesService';
-import { formatCurrency, formatMonthLabel, formatDate } from '../../utils/formatters';
+import { formatCurrency, formatMonthLabel, formatDate } from '../../compartilhado/formatters';
 
 /**
  * Despesas do mês — /tio/finance/expenses

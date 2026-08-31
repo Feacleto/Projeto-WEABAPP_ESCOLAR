@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FRENTE_FAMILIA } from '../utils/frentes';
+import { FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
 import {
   Link,
   useNavigate,
@@ -22,8 +22,8 @@ import AuthSheet from '../components/auth/AuthSheet';
 import { useAuth } from '../hooks/useAuth';
 import { getInvitePreview, normalizeInviteCode } from '../services/inviteCodeService';
 import { redeemInvite } from '../services/authService';
-import { formatCurrency } from '../utils/formatters';
-import { isInAppBrowser, openForAuth } from '../utils/browserEnv';
+import { formatCurrency } from '../compartilhado/formatters';
+import { isInAppBrowser, openForAuth } from '../compartilhado/browserEnv';
 
 /**
  * Convite por link — /convite/:codigo

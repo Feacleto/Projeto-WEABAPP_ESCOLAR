@@ -17,7 +17,7 @@ import {
   montarContrato,
   diasParaVencer,
   precisaRenovar,
-} from '../utils/contratoAssociacao';
+} from '../dominio/associacao/contratoAssociacao';
 
 export { VERSAO_CONTRATO, montarContrato, diasParaVencer, precisaRenovar };
 

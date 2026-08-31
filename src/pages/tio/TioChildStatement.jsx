@@ -13,7 +13,7 @@ import {
   formatCurrency,
   formatDate,
   formatMonthLabel,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 
 /**
  * Extrato de mensalidades de UM aluno — pra imprimir, mandar ou anotar em cima.

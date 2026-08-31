@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { chaveDoNome } from '../../utils/nomeEscola';
-import { primeiroNome } from '../../utils/formatters';
+import { chaveDoNome } from '../../dominio/escola/nomeEscola';
+import { primeiroNome } from '../../compartilhado/formatters';
 import { useNavigate } from 'react-router-dom';
 import {
   Notebook,

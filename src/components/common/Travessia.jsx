@@ -6,7 +6,7 @@ import {
   assinarTravessia,
   duracaoDaTravessia,
   falaDaTravessia,
-} from '../../utils/travessia';
+} from '../../marca/travessia';
 
 /**
  * A CORTINA — o teatro de entrar e de sair.
@@ -17,7 +17,7 @@ import {
  * sai no fim, já sobre a porta pública.
  *
  * Ela não lê a rota. A cena chega por `assinarTravessia` — o porquê está no
- * cabeçalho de utils/travessia.js, e resume-se a isto: mandar a cena no
+ * cabeçalho de marca/travessia.js, e resume-se a isto: mandar a cena no
  * `state` da navegação fazia a saída perder a corrida contra o `<Navigate>`
  * que o PrivateRoute dispara quando a sessão morre.
  *

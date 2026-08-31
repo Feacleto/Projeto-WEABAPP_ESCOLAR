@@ -56,3 +56,26 @@ export function isNewInviteCode(code) {
 export function isValidInviteCodeFormat(code) {
   return isLegacyInviteCode(code) || isNewInviteCode(code);
 }
+
+// "TN" + 6 caracteres do formato novo. O legado (TN + 4 dígitos) cabe dentro
+// deste limite, então uma constante serve pros dois.
+const MAX_INVITE_LENGTH = 8;
+
+/**
+ * A máscara do código, digitada progressivamente — força maiúsculas e
+ * prefixa `TN` sozinha quando a pessoa começa pelos dígitos.
+ *
+ * MORAVA EM `masks.js`, e era a única seta ao contrário do projeto: um
+ * formatador genérico importando uma regra de identidade pra validar o que
+ * ele mesmo mascarava. Quem digita o código não está formatando texto — está
+ * dizendo quem é. O formato do convite tem UM dono, e é este arquivo.
+ */
+export function maskInviteCode(value) {
+  const upper = String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+  if (/^\d/.test(upper)) {
+    return (INVITE_PREFIX + upper).slice(0, MAX_INVITE_LENGTH);
+  }
+  return upper.slice(0, MAX_INVITE_LENGTH);
+}

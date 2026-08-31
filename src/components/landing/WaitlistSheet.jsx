@@ -27,7 +27,7 @@ import {
   isValidPhone,
   maskPhone,
   unmaskPhone,
-} from '../../utils/masks';
+} from '../../compartilhado/masks';
 
 /**
  * Folha da vaga de associado — o mesmo cadastro de

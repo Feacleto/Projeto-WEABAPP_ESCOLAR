@@ -8,7 +8,7 @@ import Input from '../../components/common/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { redeemInvite } from '../../services/authService';
 import { lookupInvite, normalizeInviteCode } from '../../services/inviteCodeService';
-import { isValidInviteCodeFormat } from '../../utils/generateInviteCode';
+import { isValidInviteCodeFormat } from '../../dominio/identidade/generateInviteCode';
 
 /**
  * Adicionar outro filho a uma conta que já existe — /pai/adicionar-filho

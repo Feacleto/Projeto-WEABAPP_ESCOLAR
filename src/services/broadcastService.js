@@ -10,7 +10,7 @@ import { ABSENCE_TYPES } from './absencesService';
 import { playSound } from './soundService';
 // A parte pura (intervalo, dias úteis, rótulos) mora em utils pra poder ser
 // testada sem Firebase — e é ela que decide em que dia a ausência é gravada.
-import { diasUteis, rotuloDoPeriodo } from '../utils/intervaloDeDias';
+import { diasUteis, rotuloDoPeriodo } from '../dominio/rota/intervaloDeDias';
 
 export {
   diasUteis,
@@ -18,7 +18,7 @@ export {
   rotuloDoDia,
   MAX_DIAS,
   truncouIntervalo,
-} from '../utils/intervaloDeDias';
+} from '../dominio/rota/intervaloDeDias';
 
 /**
  * "Sem aula" — o aviso que o motorista dispara e que já sai virando ausência.

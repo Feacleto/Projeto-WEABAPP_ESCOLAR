@@ -6,8 +6,8 @@ import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import Spinner from '../../components/common/Spinner';
 import { useAuth } from '../../hooks/useAuth';
-import { buildPixPayload } from '../../utils/pixPayload';
-import { formatCurrency, formatMonthLabel } from '../../utils/formatters';
+import { buildPixPayload } from '../../dominio/cobranca/pixPayload';
+import { formatCurrency, formatMonthLabel } from '../../compartilhado/formatters';
 import { watchFaturasDoParceiro } from '../../services/taxaService';
 
 /**

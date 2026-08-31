@@ -7,7 +7,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { playSound } from './soundService';
-import { haversineDistance } from '../utils/haversine';
+import { haversineDistance } from '../compartilhado/haversine';
 import { getEffectiveStatus } from './childrenService';
 import { ABSENCE_TYPES } from './absencesService';
 import { anotarMarco } from './ridesService';

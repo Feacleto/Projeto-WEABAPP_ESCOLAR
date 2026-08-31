@@ -15,7 +15,7 @@
  *   node scripts/testar-auth.mjs      (ou: npm run testar:auth)
  */
 
-import { mensagemDeAuth } from '../src/utils/authErrors.js';
+import { mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 
 let ok = 0;
 let bad = 0;

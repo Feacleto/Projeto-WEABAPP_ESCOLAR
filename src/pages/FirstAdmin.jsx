@@ -19,7 +19,7 @@ import {
   isValidPhone,
   isValidEmail,
   unmaskPhone,
-} from '../utils/masks';
+} from '../compartilhado/masks';
 
 /**
  * Bootstrap do primeiro admin do app.

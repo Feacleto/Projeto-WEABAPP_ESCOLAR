@@ -9,7 +9,7 @@ import { db } from '../firebase/config';
  * `allow update: if isAdmin()`, e neste projeto `admin` significa MOTORISTA.
  * Qualquer parceiro poderia abrir e fechar o período de avaliação da
  * plataforma inteira. A separação de papéis é recente e custou caro (ver
- * utils/papeis.js); jogar um interruptor de plataforma numa porta de
+ * dominio/identidade/papeis.js); jogar um interruptor de plataforma numa porta de
  * operação desfaria isso em silêncio.
  *
  * Então `platformConfig/*` nasce com a regra certa: leitura pra todo mundo

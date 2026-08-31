@@ -12,13 +12,13 @@ import { ChildDetailSheet } from '../../pages/ChildDetail';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { useChildren } from '../../hooks/useChildren';
 import { useAbsences } from '../../hooks/useAbsences';
-import { getDateKey } from '../../utils/horarios';
+import { getDateKey } from '../../dominio/rota/horarios';
 import {
   getActionForStatus,
   advanceChild,
 } from '../../services/routeStatusService';
 import { getEffectiveStatus } from '../../services/childrenService';
-import { PERIOD_LABELS } from '../../utils/formatters';
+import { PERIOD_LABELS } from '../../compartilhado/formatters';
 
 const FILTERS = [
   { value: 'all', label: 'Todos' },

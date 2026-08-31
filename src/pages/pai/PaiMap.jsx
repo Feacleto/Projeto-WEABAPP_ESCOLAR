@@ -12,13 +12,13 @@ import toast from 'react-hot-toast';
 import LiveMap from '../../components/map/LiveMap';
 import Skeleton from '../../components/common/Skeleton';
 import RouteTracker from '../../components/dashboard/RouteTracker';
-import { describeRoutePresence, PRESENCE, formatDistance } from '../../utils/routePresence';
+import { describeRoutePresence, PRESENCE, formatDistance } from '../../dominio/rota/routePresence';
 import { playSound } from '../../services/soundService';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
-import { haversineDistance } from '../../utils/haversine';
-import { formatDateTime } from '../../utils/formatters';
+import { haversineDistance } from '../../compartilhado/haversine';
+import { formatDateTime } from '../../compartilhado/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 
 const NEAR_KM = 2; // ≤ 2 km da casa do pai = "zona próxima"

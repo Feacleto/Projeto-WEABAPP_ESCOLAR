@@ -21,7 +21,7 @@ import {
   formatCurrency,
   formatMonthLabel,
   getCurrentMonthKey,
-} from '../../utils/formatters';
+} from '../../compartilhado/formatters';
 import {
   MODOS,
   PADRAO,

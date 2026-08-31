@@ -24,7 +24,7 @@ import {
   childAvatarUrl,
   adultAvatarUrl,
   adminAvatarUrl,
-} from '../src/utils/avatarUrl.js';
+} from '../src/marca/avatarUrl.js';
 
 let ok = 0;
 let falhou = 0;

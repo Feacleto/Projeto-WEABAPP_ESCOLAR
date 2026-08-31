@@ -7,7 +7,7 @@ import {
   externalBrowserLabel,
   inAppBrowserName,
   isIOS,
-} from '../../utils/browserEnv';
+} from '../../compartilhado/browserEnv';
 
 /**
  * Ponte da webview pro navegador de verdade.

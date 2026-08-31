@@ -1,7 +1,7 @@
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-// `formatBRL` mora em `utils/formatters.js`. Ele nao precisa de Firestore,
+// `formatBRL` mora em `compartilhado/formatters.js`. Ele nao precisa de Firestore,
 // e cinco componentes importavam ESTE service so pra formatar moeda.
-import { formatBRL } from '../utils/formatters';
+import { formatBRL } from '../compartilhado/formatters';
 
 export { formatBRL };
 import { db } from '../firebase/config';

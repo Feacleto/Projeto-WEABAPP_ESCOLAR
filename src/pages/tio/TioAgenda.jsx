@@ -6,7 +6,7 @@ import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { AGENDA_TYPES, watchAdminAgenda } from '../../services/agendaService';
-import { formatDateTime } from '../../utils/formatters';
+import { formatDateTime } from '../../compartilhado/formatters';
 
 /**
  * A AGENDA — e a razão de parecerem duas.

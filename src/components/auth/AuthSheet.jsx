@@ -11,7 +11,7 @@ import {
   resetPassword,
 } from '../../services/authService';
 import OpenInBrowser from './OpenInBrowser';
-import { canUseGoogleSignIn, isInAppBrowser } from '../../utils/browserEnv';
+import { canUseGoogleSignIn, isInAppBrowser } from '../../compartilhado/browserEnv';
 
 /**
  * Folha de autenticação que aparece na PRIMEIRA AÇÃO do responsável.

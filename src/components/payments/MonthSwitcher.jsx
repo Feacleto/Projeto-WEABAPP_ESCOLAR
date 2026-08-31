@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatMonthLabel, getCurrentMonthKey, addMonths } from '../../utils/formatters';
+import { formatMonthLabel, getCurrentMonthKey, addMonths } from '../../compartilhado/formatters';
 
 /**
  * Navegação de mês, compartilhada pelas telas de dinheiro.

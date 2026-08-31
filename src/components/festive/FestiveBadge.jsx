@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { getFestivityForDate } from '../../utils/festivities';
+import { getFestivityForDate } from '../../marca/festivities';
 import { getSound, stopSound, areSoundsEnabled } from '../../services/soundService';
 
 /**
  * Bolinha animada festiva ao lado da saudação. Tema vem do mês corrente
- * (Halloween em outubro, Natal nov/dez etc — ver utils/festivities.js).
+ * (Halloween em outubro, Natal nov/dez etc — ver marca/festivities.js).
  *
  * Comportamento ao clicar:
  *   - Abre um balão explicativo posicionado abaixo da bolinha com
