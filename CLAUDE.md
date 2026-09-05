@@ -102,6 +102,39 @@ escrita em lugar nenhum. Leia antes de mexer em cobrança da plataforma ou em
 qualquer peça de marketing. **A unidade de cobrança é a CRIANÇA ATIVA** e o app
 é completo em qualquer tamanho — não existe plano capado.
 
+**Com quem o produto fala está em [docs/personas.md](docs/personas.md)** — três
+personas e os dois canvas de valor. A regra que ele estabelece: **quem paga (o
+motorista) não é quem usa (a responsável)**, e por isso são dois canvas
+separados. A coluna de encaixe registra o que o produto **não** resolve, que é
+o que nenhuma peça de marketing pode prometer. Leia antes de escrever pitch,
+landing ou texto de aquisição.
+
+**O negócio como um todo está em [docs/canvas-negocio.md](docs/canvas-negocio.md)**
+— os nove blocos, e o que cada um ainda não tem. A tensão que o quadro
+revelou: **o canal é escalável e a conversão não é** (a indicação entrega o
+lead, o consultor fecha um por vez), então o número que governa o negócio não é
+o preço, é hora de consultor por associado fechado — e ele não é medido.
+
+**A voz da marca e o manifesto estão em [docs/marca.md](docs/marca.md)** — oito
+declarações, cada uma com o jeito de pegar a marca mentindo. É teste, não
+cartaz: se o código passar a fazer o que uma delas proíbe, ou a declaração sai
+ou o código volta atrás. Registra também **por que não existe valor de
+segurança** — a plataforma não inspeciona van nem confere CNH, e prometer isso
+seria a única mentira grande do conjunto.
+
+**O roteiro de venda está em [docs/pitch-comercial.md](docs/pitch-comercial.md)**
+— e a seção 5 dele é a que interessa a quem mexe no produto: a lista das frases
+que soam ótimas e são **falsas hoje**. Fechou um "pela metade" ou um "não
+resolve" de [docs/personas.md](docs/personas.md)? A linha correspondente sai de
+lá na mesma alteração.
+
+**O que ainda não foi decidido está em [docs/pendencias.md](docs/pendencias.md)**
+— pauta com recomendação, em cinco blocos, e com prazo de validade: a decisão é
+registrada no documento DONO e a linha é riscada de lá. Não confundir com
+[docs/decisoes.md](docs/decisoes.md), que é normativo. Captação foi decidida
+como **não** ([docs/pitch-investidor.md](docs/pitch-investidor.md)): o plano é
+crescer com receita.
+
 ---
 
 ## Onde está cada coisa

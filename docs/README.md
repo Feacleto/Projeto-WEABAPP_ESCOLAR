@@ -1,6 +1,6 @@
 # Documentação
 
-**Leia este primeiro** para saber onde procurar. Sete arquivos, três grupos — e nada fora daqui: a raiz guarda só o README, que roteia.
+**Leia este primeiro** para saber onde procurar. Treze arquivos, quatro grupos — e nada fora daqui: a raiz guarda só o README, que roteia.
 
 ### Normativo — o que não se quebra por conveniência
 
@@ -15,6 +15,17 @@
 | [`arquitetura.md`](arquitetura.md) | pessoa, e agente sob demanda | Antes de mexer em permissão, dado sensível, cobrança ou fronteira de camada. |
 | [`evolucao.md`](evolucao.md) | pessoa | Ao decidir o que construir depois. Nenhum estágio tem data — todos têm gatilho. |
 | [`negocio.md`](negocio.md) | pessoa | Antes de mexer em preço, taxa, trial, indicação ou meio de pagamento — e antes de escrever qualquer peça de marketing. Escrito **depois** do produto, em 04/09/2026: o app existia e o modelo estava implícito no código. |
+| [`personas.md`](personas.md) | pessoa | Antes de escrever pitch, landing ou qualquer texto que fale COM alguém. Quem paga (o motorista) não é quem usa (a responsável), e por isso são dois canvas de valor. A coluna de encaixe diz o que o produto ainda **não** resolve — e o que o pitch, portanto, não pode prometer. |
+| [`canvas-negocio.md`](canvas-negocio.md) | pessoa | Ao pensar o negócio como um todo — canal, custo, parceria, quem faz o quê. Os nove blocos não resumem `negocio.md`: eles mostram o que falta. A tensão que o quadro revelou é que **o canal é escalável e a conversão não é**. |
+| [`marca.md`](marca.md) | pessoa | Antes de escrever qualquer texto público, e sempre que uma proposta parecer boa e cheirar a promessa. O manifesto tem oito declarações, e cada uma vem com o jeito de pegar a gente mentindo — é isso que o torna teste, e não cartaz. Registra também **por que não existe valor de segurança**. |
+| [`pitch-comercial.md`](pitch-comercial.md) | pessoa | Antes de falar com um motorista. Roteiro de 40 segundos, as seis objeções (a última é a que ele **não** faz), e a peça que ele encaminha sozinho. A seção 5 lista as frases que soam ótimas e são **falsas hoje** — é a parte que envelhece primeiro. |
+| [`pitch-investidor.md`](pitch-investidor.md) | pessoa | Só se aparecer uma conversa. **A captação foi decidida como "não"** — o plano é crescer com receita. O documento existe pela tese, pelos onze slides e pelo portão da seção 7: não capte antes de medir hora de consultor, porque é a única coisa que o dinheiro compraria. |
+
+### Pauta — o que ainda não foi decidido
+
+| Arquivo | Para quem | Quando ler |
+|---|---|---|
+| [`pendencias.md`](pendencias.md) | pessoa | Quando sentar para decidir. **Toda pendência aberta dos outros documentos, com recomendação e ordem** — cinco blocos, do que destrava tudo ao que pode esperar. Tem prazo de validade: some quando esvaziar, e não é fonte de nada (a decisão é registrada no documento dono). |
 
 ### Operação — como colocar no ar e como testar
 
