@@ -4,7 +4,7 @@ Este arquivo existe porque o deploy tem **uma ordem que não é opcional** e
 **dois pré-requisitos de console** que nenhum comando resolve. Seguindo daqui
 de cima pra baixo, funciona.
 
-Projeto: `projeto-tio-nino-digital` · Região das functions: `southamerica-east1`
+Projeto: `alobuzinou` · Região das functions: `southamerica-east1`
 
 ---
 
@@ -37,16 +37,25 @@ criança. **O app funciona sem ele** — `src/config/capabilities.js` desliga os
 botões de anexo em vez de deixar o upload falhar como erro de rede. Mas com
 Blaze ativo não há razão pra deixar desligado.
 
-### 3. O campo que te deixa entrar no /admin
+### 3. O documento que te deixa entrar no /admin
 
-O painel do dono é protegido por `superAdmin: true` no seu documento de
-usuário, e **nada no app grava esse campo** — as rules até proíbem o usuário de
-gravá-lo em si mesmo. É de propósito: é o gate da plataforma.
+O painel do dono é protegido por `role: 'owner'`, e **nada no app grava esse
+papel** — o `create` de `users` só aceita `role == 'admin'`, e as rules
+proíbem o usuário de mexer no próprio papel. É de propósito: foi assim que a
+escalada de privilégio se fechou, e é por isso que o gate da plataforma
+precisa nascer fora do app.
 
-Depois de criar sua conta de motorista no app:
+Crie o LOGIN pelo app (ou pelo Authentication do console), copie o uid e:
 
-> Console → Firestore → coleção `users` → seu documento → Adicionar campo
-> `superAdmin` (boolean) = `true`
+> Console → Firestore → coleção `users` → **Adicionar documento** com o uid
+> como ID → campo `role` (string) = `owner`
+
+**Não use `superAdmin: true` em projeto novo.** Ele ainda funciona
+([papeis.js](../src/dominio/identidade/papeis.js) e `isOwner()` nas rules
+aceitam os dois), mas existe só porque a conta do dono do projeto ANTIGO
+nasceu como motorista com a flag por cima e migrar exigia console. Base zero é
+a única chance de o fallback nunca ter usuário — usá-lo agora seria recriar de
+graça a dívida que ele representa.
 
 ---
 
@@ -54,10 +63,16 @@ Depois de criar sua conta de motorista no app:
 
 Desde 05/09/2026 o projeto serve **dois sites do mesmo projeto Firebase**:
 
-| Target | Pasta | Domínio | O que é |
-|---|---|---|---|
-| `app` | `dist/` | `app.alobuzinou.com.br` | o PWA — motorista, responsável e dono |
-| `landing` | `landing/` | `alobuzinou.com.br` | a página institucional, HTML estático |
+| Target | Site do Hosting | Pasta | Domínio | O que é |
+|---|---|---|---|---|
+| `app` | `alobuzinou-app` (criado) | `dist/` | `app.alobuzinou.com.br` | o PWA — motorista, responsável e dono |
+| `landing` | `alobuzinou` (padrão) | `landing/` | `alobuzinou.com.br` | a página institucional, HTML estático |
+
+**A landing está no site PADRÃO e o app num site criado**, e é o inverso do que
+parece natural. O site padrão herda o ID do projeto e é o único que não pode
+ser apagado; o canônico da marca é `alobuzinou.com.br`, e quem atende ali é a
+landing. Pôr o app no endereço mais permanente do projeto seria dar a âncora à
+peça que muda mais.
 
 **`firebase deploy --only hosting` agora sobe os dois.** Para subir um só:
 
@@ -69,15 +84,16 @@ firebase deploy --only hosting:landing    # só a landing (não precisa de build
 A landing **não passa por build**: é um `index.html` só, com CSS e JS inline.
 Editar o arquivo e rodar o deploy do target é o ciclo inteiro.
 
-### Antes do primeiro deploy da landing — um comando de console
+### Antes do primeiro deploy do app — um comando de console
 
-O site `alobuzinou` ainda não existe no projeto. Uma vez só:
+O site `alobuzinou` nasce junto com o projeto (é o padrão) e já atende o
+target `landing`. O do app não existe. Uma vez só:
 
 ```bash
-firebase hosting:sites:create alobuzinou
+firebase hosting:sites:create alobuzinou-app
 ```
 
-O `.firebaserc` já aponta o target `landing` para esse ID. Se você criar com
+O `.firebaserc` já aponta o target `app` para esse ID. Se você criar com
 outro nome, mude lá.
 
 ### Os domínios: um canônico, o resto redireciona
@@ -86,8 +102,8 @@ Comprados os dois (`.com.br` e `.com`), **o canônico é o `.com.br`** — o pú
 é 100% brasileiro e o nome é português. O `.com` existe como defesa de marca.
 
 ```
-alobuzinou.com.br       →  site "alobuzinou"   (conteúdo)
-app.alobuzinou.com.br   →  site do projeto     (o PWA)
+alobuzinou.com.br       →  site "alobuzinou"       (a landing, site padrão)
+app.alobuzinou.com.br   →  site "alobuzinou-app"   (o PWA)
 alobuzinou.com          →  301 → alobuzinou.com.br
 www.*                   →  301 → alobuzinou.com.br
 ```
@@ -106,9 +122,10 @@ recomendado**:
 
 ### ⚠️ Mudar o app de domínio quebra três coisas de quem já usa
 
-Isso vale para o dia em que o PWA sair de `projeto-tio-nino-digital.web.app`
-para `app.alobuzinou.com.br`. Com um motorista e dezoito famílias reais, é
-gerenciável — mas precisa ser planejado, não descoberto depois:
+Isso vale para o dia em que o PWA sair de `alobuzinou-app.web.app` para
+`app.alobuzinou.com.br`. **Hoje a base é zero**, então o custo também é — e é
+por isso que a hora de amarrar o domínio é ANTES do primeiro convite circular
+no WhatsApp, não depois. Feito depois, cada linha abaixo tem dono:
 
 | O quê | Por quê |
 |---|---|
@@ -326,3 +343,62 @@ callables públicas. Por isso elas têm `maxInstances` apertado — ver
 | `Failed to list functions` | Quase sempre é o Blaze também. |
 | Deploy parado pedindo um valor | É o `RESEND_API_KEY`. Suba as 12 do núcleo. |
 | Login do pai dá erro de função | Hosting subiu antes das functions. Suba functions e recarregue. |
+
+---
+
+## Anexo: trocar de projeto Firebase
+
+Escrito em 05/09/2026, quando `projeto-tio-nino-digital` foi excluído e tudo
+recomeçou em `alobuzinou`. Havia zero usuário, então **não houve migração** —
+não teve export de Firestore, de Auth nem de Storage. O trabalho foi
+reapontar configuração e refazer console.
+
+### Dois nomes são globais, e é o que trava
+
+| O quê | Regra |
+|---|---|
+| **Project ID** | Permanente, e o Google **nunca reusa** ID de projeto excluído. `projeto-tio-nino-digital` está fora para sempre. |
+| **Site ID do Hosting** | Global entre todos os projetos do Firebase. E o site padrão herda o ID do projeto — então um site preso bloqueia até a criação do projeto de mesmo nome. |
+
+Projeto excluído entra em **exclusão pendente por 30 dias** segurando os dois.
+Se a criação falhar por conflito de nome, é isso: ou você restaura o projeto
+velho pra liberar o nome, ou escolhe outro. Não adianta insistir.
+
+### Os lugares que ficam presos ao ID antigo
+
+Nenhum deles é encontrado por teste — o `npm run testar` é de domínio puro e
+passa igual com o projeto errado. A busca é `grep -rn "<id-antigo>"`.
+
+| Arquivo | O que tem |
+|---|---|
+| `.env` | as 7 `VITE_FIREBASE_*` |
+| [`.firebaserc`](../.firebaserc) | projeto padrão e os dois targets de hosting |
+| [`firebase.json`](../firebase.json) | **a CSP** — `southamerica-east1-<id>.cloudfunctions.net` e o `frame-src` do `authDomain` |
+| [`functions/index.js`](../functions/index.js) | `APP_URL`, que vai nos e-mails de cobrança |
+| [`index.html`](../index.html) | `og:url` e `og:image` |
+| `deploy.ps1` | a URL impressa no fim |
+| `scripts/testar-regras.mjs`, `scripts/testar-storage.mjs` | o `PID` do emulador |
+
+**A CSP é a que morde tarde.** Ela está em `Report-Only`, então ID errado ali
+não quebra nada hoje — quebra no dia em que virar enforcing, e aí param de uma
+vez todas as callables e o login com Google. Report-Only é justamente o que
+esconde o erro até o pior momento.
+
+O que **não** precisa mexer, pra não caçar fantasma:
+[`inviteUrl.js`](../src/dominio/identidade/inviteUrl.js) monta o link do
+`window.location.origin`; os scripts `.cjs` leem do `.env`; a `landing/`
+não fala com Firebase nenhum.
+
+### A janela de bootstrap fica aberta no meio do caminho
+
+A regra de `users` permite criar documento com `role: 'admin'` enquanto
+`appState/init` não existir, e **não restringe os outros campos**
+([firestore.rules](../firestore.rules)). É a única forma de existir o primeiro
+motorista — e enquanto ela está aberta, qualquer pessoa na internet pode se
+cadastrar como motorista no seu projeto.
+
+Ela abre no `deploy --only firestore:rules` e fecha no último passo do
+`node scripts/criar-contas-teste.cjs`. **Rode os dois na mesma sessão.** Com
+base zero o dano possível é nenhum, mas o intervalo é a única fresta de
+escalada de privilégio que o projeto tem por construção — e ela não se fecha
+sozinha com o tempo.

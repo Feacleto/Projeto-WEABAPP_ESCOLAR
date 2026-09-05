@@ -25,7 +25,7 @@
  * CADA CASO TEM SONDA POSITIVA E NEGATIVA, pela mesma razão de lá: negativa
  * sozinha passa verde até com o `match` inteiro apagado.
  */
-const PID = 'projeto-tio-nino-digital';
+const PID = 'alobuzinou';
 const BUCKET = `${PID}.firebasestorage.app`;
 const AUTH = 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts';
 const FS = `http://127.0.0.1:8085/v1/projects/${PID}/databases/(default)/documents`;
