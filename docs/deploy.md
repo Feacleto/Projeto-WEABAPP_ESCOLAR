@@ -4,7 +4,7 @@ Este arquivo existe porque o deploy tem **uma ordem que não é opcional** e
 **dois pré-requisitos de console** que nenhum comando resolve. Seguindo daqui
 de cima pra baixo, funciona.
 
-Projeto: `alobuzinou` · Região das functions: `southamerica-east1`
+Projeto: `alobuzinou-be81f` · Região das functions: `southamerica-east1`
 
 ---
 
@@ -65,14 +65,14 @@ Desde 05/09/2026 o projeto serve **dois sites do mesmo projeto Firebase**:
 
 | Target | Site do Hosting | Pasta | Domínio | O que é |
 |---|---|---|---|---|
-| `app` | `alobuzinou-app` (criado) | `dist/` | `app.alobuzinou.com.br` | o PWA — motorista, responsável e dono |
-| `landing` | `alobuzinou` (padrão) | `landing/` | `alobuzinou.com.br` | a página institucional, HTML estático |
+| `app` | `alobuzinou-be81f` (padrão) | `dist/` | `app.alobuzinou.com.br` | o PWA — motorista, responsável e dono |
+| `landing` | `alobuzinou-landing` (criado) | `landing/` | `alobuzinou.com.br` | a página institucional, HTML estático |
 
-**A landing está no site PADRÃO e o app num site criado**, e é o inverso do que
-parece natural. O site padrão herda o ID do projeto e é o único que não pode
-ser apagado; o canônico da marca é `alobuzinou.com.br`, e quem atende ali é a
-landing. Pôr o app no endereço mais permanente do projeto seria dar a âncora à
-peça que muda mais.
+**Os nomes dos sites não têm valor de marca, e isso não é descuido.** O site
+padrão herda o ID do projeto, que saiu `alobuzinou-be81f` porque `alobuzinou`
+estava preso pelo projeto excluído. Com o padrão já sem nome bonito, tanto faz
+qual peça mora nele — o ID do site só aparece na URL `.web.app`, que some
+assim que o domínio próprio entra.
 
 **`firebase deploy --only hosting` agora sobe os dois.** Para subir um só:
 
@@ -84,17 +84,21 @@ firebase deploy --only hosting:landing    # só a landing (não precisa de build
 A landing **não passa por build**: é um `index.html` só, com CSS e JS inline.
 Editar o arquivo e rodar o deploy do target é o ciclo inteiro.
 
-### Antes do primeiro deploy do app — um comando de console
+### Antes do primeiro deploy da landing — um comando de console
 
-O site `alobuzinou` nasce junto com o projeto (é o padrão) e já atende o
-target `landing`. O do app não existe. Uma vez só:
+O site `alobuzinou-be81f` nasce junto com o projeto (é o padrão) e já atende
+o target `app`. O da landing não existe. Uma vez só:
 
 ```bash
-firebase hosting:sites:create alobuzinou-app
+firebase hosting:sites:create alobuzinou-landing
 ```
 
-O `.firebaserc` já aponta o target `app` para esse ID. Se você criar com
+O `.firebaserc` já aponta o target `landing` para esse ID. Se você criar com
 outro nome, mude lá.
+
+**Por que não `alobuzinou`:** o nome está preso pelo projeto excluído, que
+fica em exclusão pendente por 30 dias. Não vale esperar por ele — quem alcança
+a landing digita `alobuzinou.com.br`, nunca o ID do site.
 
 ### Os domínios: um canônico, o resto redireciona
 
@@ -102,8 +106,8 @@ Comprados os dois (`.com.br` e `.com`), **o canônico é o `.com.br`** — o pú
 é 100% brasileiro e o nome é português. O `.com` existe como defesa de marca.
 
 ```
-alobuzinou.com.br       →  site "alobuzinou"       (a landing, site padrão)
-app.alobuzinou.com.br   →  site "alobuzinou-app"   (o PWA)
+alobuzinou.com.br       →  site "alobuzinou-landing"  (a landing)
+app.alobuzinou.com.br   →  site "alobuzinou-be81f"    (o PWA, site padrão)
 alobuzinou.com          →  301 → alobuzinou.com.br
 www.*                   →  301 → alobuzinou.com.br
 ```
@@ -122,7 +126,7 @@ recomendado**:
 
 ### ⚠️ Mudar o app de domínio quebra três coisas de quem já usa
 
-Isso vale para o dia em que o PWA sair de `alobuzinou-app.web.app` para
+Isso vale para o dia em que o PWA sair de `alobuzinou-be81f.web.app` para
 `app.alobuzinou.com.br`. **Hoje a base é zero**, então o custo também é — e é
 por isso que a hora de amarrar o domínio é ANTES do primeiro convite circular
 no WhatsApp, não depois. Feito depois, cada linha abaixo tem dono:
@@ -349,7 +353,7 @@ callables públicas. Por isso elas têm `maxInstances` apertado — ver
 ## Anexo: trocar de projeto Firebase
 
 Escrito em 05/09/2026, quando `projeto-tio-nino-digital` foi excluído e tudo
-recomeçou em `alobuzinou`. Havia zero usuário, então **não houve migração** —
+recomeçou em `alobuzinou-be81f`. Havia zero usuário, então **não houve migração** —
 não teve export de Firestore, de Auth nem de Storage. O trabalho foi
 reapontar configuração e refazer console.
 
@@ -359,6 +363,14 @@ reapontar configuração e refazer console.
 |---|---|
 | **Project ID** | Permanente, e o Google **nunca reusa** ID de projeto excluído. `projeto-tio-nino-digital` está fora para sempre. |
 | **Site ID do Hosting** | Global entre todos os projetos do Firebase. E o site padrão herda o ID do projeto — então um site preso bloqueia até a criação do projeto de mesmo nome. |
+
+**E aconteceu na primeira tentativa.** O projeto foi criado com o nome de
+exibição `alobuzinou` e saiu com o ID `alobuzinou-be81f`: o Firebase acrescenta
+um sufixo EM SILÊNCIO quando o nome está tomado, e o cabeçalho do console
+mostra o nome, não o ID. Quem confia no cabeçalho configura o repositório
+inteiro errado. O ID real aparece em `firebase projects:list`, em ⚙️
+Configurações → Geral, e no remetente dos e-mails do Auth
+(`noreply@<id>.firebaseapp.com`) — foi por esse último que este aqui apareceu.
 
 Projeto excluído entra em **exclusão pendente por 30 dias** segurando os dois.
 Se a criação falhar por conflito de nome, é isso: ou você restaura o projeto

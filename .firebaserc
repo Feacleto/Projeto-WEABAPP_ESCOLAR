@@ -1,15 +1,15 @@
 {
   "projects": {
-    "default": "alobuzinou"
+    "default": "alobuzinou-be81f"
   },
   "targets": {
-    "alobuzinou": {
+    "alobuzinou-be81f": {
       "hosting": {
         "app": [
-          "alobuzinou-app"
+          "alobuzinou-be81f"
         ],
         "landing": [
-          "alobuzinou"
+          "alobuzinou-landing"
         ]
       }
     }

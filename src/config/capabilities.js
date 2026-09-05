@@ -66,7 +66,7 @@ export const STORAGE_OFF_MESSAGE =
  * estar desligada não é a roleta: é que NENHUMA Cloud Function está no ar
  * neste projeto. Conferido contra o ambiente: `firebase functions:list`
  * responde 403 `SERVICE_DISABLED` — "Cloud Functions API has not been used in
- * project alobuzinou before or it is disabled". Functions v2 só roda no plano
+ * project alobuzinou-be81f before or it is disabled". Functions v2 só roda no plano
  * Blaze, e o projeto está no Spark.
  *
  * Com duas bandeiras separadas escondendo consequências da MESMA causa, uma

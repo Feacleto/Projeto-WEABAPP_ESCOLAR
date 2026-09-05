@@ -129,7 +129,7 @@ npx firebase deploy --only hosting
 if ($LASTEXITCODE -ne 0) { Parar 'hosting falhou (o backend já subiu)' }
 
 Write-Host ''
-Write-Host 'No ar: https://alobuzinou-app.web.app' -ForegroundColor Green
+Write-Host 'No ar: https://alobuzinou-be81f.web.app' -ForegroundColor Green
 Write-Host ''
 Write-Host 'Agora, as tres verificacoes do docs/deploy.md:' -ForegroundColor Cyan
 Write-Host '  1. a home carrega e mostra o parceiro'
