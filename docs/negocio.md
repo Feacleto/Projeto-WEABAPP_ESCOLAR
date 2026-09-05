@@ -61,7 +61,7 @@ Usados no rodapé de toda peça pública, nos Termos e no contrato.
 |---|---|
 | **Razão** | Alô Buzinou |
 | **CNPJ** | `65.000.217/0001-47` |
-| **Endereço** | Rua das Trovas, 64 — Socorro, São Paulo/SP |
+| **Endereço** | Rua das Trovas — Socorro, São Paulo/SP |
 | **E-mail** | `contato@alobuzinou.com.br` |
 | **WhatsApp** | +55 11 96917-0709 |
 | **Instagram** | `@alobuzinou` |

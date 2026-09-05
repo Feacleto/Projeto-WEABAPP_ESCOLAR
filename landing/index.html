@@ -111,6 +111,31 @@ nav.scrolled{border-bottom-color:var(--linha);box-shadow:0 4px 24px rgba(11,18,1
 .burger[aria-expanded=true] span:nth-child(2){opacity:0}
 .burger[aria-expanded=true] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
 
+
+/* RI — fala com outro público, então tem forma própria.
+   No desktop vira pílula com divisor à esquerda; no mobile
+   volta a ser item de lista como os outros. */
+.links .ri{display:flex;align-items:center;gap:26px}
+.links .ri::before{content:'';width:1px;height:17px;background:var(--linha);flex:none}
+.links .ri a{
+  padding:7px 15px;border-radius:100px;border:1.5px solid var(--linha);
+  font-size:.84rem;font-weight:600;opacity:.9;
+  transition:border-color .26s,background .26s,opacity .2s;
+}
+.links .ri a::after{display:none}
+.links .ri a:hover{opacity:1;border-color:var(--verde-claro);background:rgba(14,168,95,.08)}
+@media (max-width:900px){
+  .links .ri{display:block}
+  .links .ri::before{display:none}
+  .links .ri a{border:0;padding:16px 0;border-radius:0;font-size:1rem;font-weight:500}
+  .links .ri a:hover{background:none}
+}
+/* Com 7 itens, telas médias precisam apertar o gap antes de virar hambúrguer. */
+@media (max-width:1080px) and (min-width:901px){
+  .links{gap:18px;font-size:.88rem}
+  .links .ri{gap:18px}
+  .links .ri a{padding:6px 12px}
+}
 /* ── BOTÕES ──────────────────────────────────────── */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:9px;
@@ -366,6 +391,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       <li><a href="#sobre">Sobre</a></li>
       <li><a href="#duvidas">Dúvidas</a></li>
       <li><a href="#contato">Contato</a></li>
+      <li class="ri"><a href="#ri" aria-label="RI — Relações com Investidores" title="Relações com Investidores">RI</a></li>
     </ul>
     <button class="burger" id="burger" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu">
       <span></span><span></span><span></span>
@@ -629,7 +655,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 </section>
 
 <!-- ══ INVESTIDORES ══ -->
-<section class="sec claro" style="background:var(--areia-2)">
+<section class="sec claro" id="ri" style="background:var(--areia-2)">
   <div class="wrap" style="max-width:840px">
     <span class="chapeu rv">para quem investe</span>
     <h2 class="rv" style="--d:80ms">A tese, em três linhas.</h2>
@@ -727,12 +753,13 @@ footer a:hover{opacity:1;transform:translateX(3px)}
           <li><a href="#sobre">Sobre</a></li>
           <li><a href="#duvidas">Dúvidas</a></li>
           <li><a href="#contato">Contato</a></li>
+          <li><a href="#ri">RI · Investidores</a></li>
         </ul>
       </div>
       <div>
         <h4>Onde estamos</h4>
         <p style="font-size:.92rem;opacity:.82;line-height:1.7">
-          Rua das Trovas, 64<br>Socorro — São Paulo/SP
+          Rua das Trovas<br>Socorro — São Paulo/SP
         </p>
         <p style="font-size:.92rem;opacity:.82;margin-top:13px">
           <a href="mailto:contato@alobuzinou.com.br">contato@alobuzinou.com.br</a><br>
