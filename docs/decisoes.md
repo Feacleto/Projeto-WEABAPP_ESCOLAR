@@ -264,6 +264,38 @@ Regra nova nasce no contexto de quem decide sobre ela. Se ela precisa de dado do
 
 ---
 
+## 18. A unidade de cobrança é a criança ativa, e o app é completo em qualquer tamanho
+
+**Estado:** aceita — desde 04/09/2026 · valor ainda pendente
+
+**Contexto.** O produto foi construído antes do modelo de negócio, e a taxa era um número digitado caso a caso no orçamento. Sem unidade declarada, cada negociação inventava a própria régua — e nada no código dizia qual era a certa. Enquanto isso, `users.limiteCriancas` e `users.criancasAtivas` já existiam, já eram cobrados pelas rules via `getAfter`, e `fecharFatura` já contava as crianças reais: a unidade estava implementada e sem nome.
+
+**Decisão.** O preço é **proporcional ao número de crianças ativas**. Não existe plano Básico, Pro ou Premium — todo motorista tem o app inteiro, e paga pelo tamanho da operação. Descartados: preço fixo único (perde o pequeno e subcobra o grande), planos por funcionalidade (obrigam o cliente a adivinhar do que precisa e criam duas versões do produto para manter) e percentual da mensalidade (quebra a decisão 19 e o item 7 dos Termos).
+
+**Consequência.** A sazonalidade se resolve sem código: em janeiro o motorista desativa quem parou e a fatura cai sozinha, porque `criancasAtivas` já conta só o ativo — e é exatamente no mês em que ele não fatura que um autônomo cancela software. A expansão de receita também deixa de exigir venda nova. Em troca, **o preço passa a ser derivado e não digitado**: `taxaConfig` precisa carregar a régua, e o orçamento deixa de ser o lugar onde o valor nasce.
+
+O raciocínio completo, com as alternativas e a faixa de referência, está em [negocio.md](negocio.md), seção 4.
+
+**Como verificar.** Teste de que a fatura fechada para um parceiro com N crianças ativas bate com a régua de `taxaConfig` para N — e que desativar uma criança antes do fechamento muda o valor. Enquanto o preço não estiver definido, o teste existe com a régua de exemplo.
+
+---
+
+## 19. A plataforma nunca retém a mensalidade — split, nunca escrow
+
+**Estado:** aceita · **firme**
+
+**Contexto.** A dor mais forte relatada pelo cliente é cobrar a família todo mês: *"tem tio que quer receber a mensalidade dos pais pra não precisar ficar cobrando o pai toda vez."* O alvo declarado é pagamento recorrente por cartão. O caminho óbvio — a plataforma recebe e repassa — torna falsa a frase que está publicada hoje na home e no item 7 dos Termos: *"a plataforma não entra no caminho desse dinheiro e não fica com percentual nenhum dele."*
+
+**Decisão.** Quando houver cartão recorrente, ele será feito por **split em PSP já regulado**: o dinheiro cai direto na subconta do motorista e a plataforma orquestra a cobrança sem nunca reter. **Escrow está recusado.** Enquanto o split não existir, o app continua apenas gerando o PIX e registrando o recebimento — e a comunicação diz isso com essas palavras, em vez de prometer data.
+
+**Consequência.** A frase pública continua verdadeira sem ajuste, o item 7 dos Termos continua de pé, e nenhum valor da marca precisa ser reescrito — foi esse o critério da escolha, não a conveniência técnica. Evita também reter recurso de terceiro, que empurraria a operação para terreno de arranjo de pagamento sem necessidade. Em contrapartida, a plataforma fica dependente da política do PSP para abrir subconta de pessoa física ou MEI: se o motorista não conseguir cumprir o cadastro, o recurso não chega a ele — e isso precisa ser testado com um motorista real antes de virar promessa.
+
+Subir a `VERSAO_CONTRATO` faz parte da entrega, não é etapa posterior.
+
+**Como verificar.** Teste de que nenhum caso de uso credita valor de `payments` em conta da plataforma. Quando o PSP entrar: teste de que o `split` nomeia a subconta do motorista como destino do valor da mensalidade, e a da plataforma apenas da taxa.
+
+---
+
 ## Como adicionar uma decisão
 
 Copie o formato. Contexto em duas linhas, decisão em uma, consequência no que ela custa, e **sempre** a linha de como verificar. Decisão sem teste é comentário — e comentário que promete garantia sem prová-la já foi problema recorrente neste repositório.

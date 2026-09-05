@@ -1,6 +1,6 @@
 # Documentação
 
-**Leia este primeiro** para saber onde procurar. Seis arquivos, três grupos — e nada fora daqui: a raiz guarda só o README, que roteia.
+**Leia este primeiro** para saber onde procurar. Sete arquivos, três grupos — e nada fora daqui: a raiz guarda só o README, que roteia.
 
 ### Normativo — o que não se quebra por conveniência
 
@@ -8,12 +8,13 @@
 |---|---|---|
 | [`decisoes.md`](decisoes.md) | agente e pessoa | **Sempre.** Cada decisão em ~30 linhas, com o que a prova. É o que impede uma "melhoria" plausível de quebrar uma regra de negócio. |
 
-### Referência — o alicerce e o rumo
+### Referência — o alicerce, o rumo e o dinheiro
 
 | Arquivo | Para quem | Quando ler |
 |---|---|---|
 | [`arquitetura.md`](arquitetura.md) | pessoa, e agente sob demanda | Antes de mexer em permissão, dado sensível, cobrança ou fronteira de camada. |
 | [`evolucao.md`](evolucao.md) | pessoa | Ao decidir o que construir depois. Nenhum estágio tem data — todos têm gatilho. |
+| [`negocio.md`](negocio.md) | pessoa | Antes de mexer em preço, taxa, trial, indicação ou meio de pagamento — e antes de escrever qualquer peça de marketing. Escrito **depois** do produto, em 04/09/2026: o app existia e o modelo estava implícito no código. |
 
 ### Operação — como colocar no ar e como testar
 

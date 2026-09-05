@@ -94,6 +94,14 @@ Referência longa: [docs/arquitetura.md](docs/arquitetura.md) (alicerce técnico
 e [docs/evolucao.md](docs/evolucao.md) (para onde o produto anda). O índice de
 tudo isso é [docs/README.md](docs/README.md).
 
+**O modelo de negócio mora em [docs/negocio.md](docs/negocio.md)** — preço,
+trial, indicação, funil e meio de pagamento. Ele foi escrito DEPOIS do produto
+(04/09/2026): o app existia e o modelo estava implícito no código, espalhado
+entre `taxaConfig`, `limiteCriancas` e uma conversa de consultor que não estava
+escrita em lugar nenhum. Leia antes de mexer em cobrança da plataforma ou em
+qualquer peça de marketing. **A unidade de cobrança é a CRIANÇA ATIVA** e o app
+é completo em qualquer tamanho — não existe plano capado.
+
 ---
 
 ## Onde está cada coisa
