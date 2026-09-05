@@ -37,8 +37,18 @@
  *      constante continua recebendo merge da principal pra sempre.
  */
 
-/** Padrão do ambiente. A branch sem Storage troca ESTA linha, e só ela. */
-const STORAGE_ENABLED_DEFAULT = true;
+/**
+ * Padrão do ambiente. A branch sem Storage troca ESTA linha, e só ela.
+ *
+ * `false` NESTA BRANCH (`alobuzinou`, 05/09/2026), e o motivo mudou de nome:
+ * não é mais "Storage não configurado", é "Storage indisponível". Projeto
+ * criado depois de 2024 não ganha bucket padrão fora do Blaze, e este está no
+ * Spark. A consequência pro app é a mesma, e o tratamento também.
+ *
+ * Volta a `true` no mesmo merge que ligar o Blaze — junto de
+ * `CLOUD_FUNCTIONS_ENABLED_DEFAULT`, que está desligado pela mesma causa.
+ */
+const STORAGE_ENABLED_DEFAULT = false;
 
 export const STORAGE_ENABLED =
   import.meta.env.VITE_STORAGE_ENABLED === 'false'
