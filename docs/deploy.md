@@ -50,6 +50,94 @@ Depois de criar sua conta de motorista no app:
 
 ---
 
+## São DOIS sites agora, e o comando mudou
+
+Desde 05/09/2026 o projeto serve **dois sites do mesmo projeto Firebase**:
+
+| Target | Pasta | Domínio | O que é |
+|---|---|---|---|
+| `app` | `dist/` | `app.alobuzinou.com.br` | o PWA — motorista, responsável e dono |
+| `landing` | `landing/` | `alobuzinou.com.br` | a página institucional, HTML estático |
+
+**`firebase deploy --only hosting` agora sobe os dois.** Para subir um só:
+
+```bash
+firebase deploy --only hosting:app        # só o PWA
+firebase deploy --only hosting:landing    # só a landing (não precisa de build)
+```
+
+A landing **não passa por build**: é um `index.html` só, com CSS e JS inline.
+Editar o arquivo e rodar o deploy do target é o ciclo inteiro.
+
+### Antes do primeiro deploy da landing — um comando de console
+
+O site `alobuzinou` ainda não existe no projeto. Uma vez só:
+
+```bash
+firebase hosting:sites:create alobuzinou
+```
+
+O `.firebaserc` já aponta o target `landing` para esse ID. Se você criar com
+outro nome, mude lá.
+
+### Os domínios: um canônico, o resto redireciona
+
+Comprados os dois (`.com.br` e `.com`), **o canônico é o `.com.br`** — o público
+é 100% brasileiro e o nome é português. O `.com` existe como defesa de marca.
+
+```
+alobuzinou.com.br       →  site "alobuzinou"   (conteúdo)
+app.alobuzinou.com.br   →  site do projeto     (o PWA)
+alobuzinou.com          →  301 → alobuzinou.com.br
+www.*                   →  301 → alobuzinou.com.br
+```
+
+**Nunca sirva conteúdo nos dois domínios.** Google trata como conteúdo
+duplicado e divide a autoridade; pior, o motorista recebe dois links e pergunta
+qual é o verdadeiro. O `<link rel="canonical">` da landing já aponta para o
+`.com.br`.
+
+O 301 do `.com` se faz de dois jeitos — **o segundo é mais simples e é o
+recomendado**:
+
+1. Um terceiro site no Firebase só com `redirects` no `firebase.json`.
+2. **Encaminhamento com 301 no próprio registrador.** Registro.br e a maioria
+   dos registradores oferecem isso sem custo. Zero infraestrutura.
+
+### ⚠️ Mudar o app de domínio quebra três coisas de quem já usa
+
+Isso vale para o dia em que o PWA sair de `projeto-tio-nino-digital.web.app`
+para `app.alobuzinou.com.br`. Com um motorista e dezoito famílias reais, é
+gerenciável — mas precisa ser planejado, não descoberto depois:
+
+| O quê | Por quê |
+|---|---|
+| **PWA instalado** | `start_url` é `/?atalho=1` no domínio antigo. O ícone na tela deles aponta para lá. |
+| **Links de convite** | `/convite/:codigo` já circulou no WhatsApp, e a `/familia` **promete** que o link "não vence e não se gasta". |
+| **Sessões** | Auth do Firebase é por domínio. Todo mundo é deslogado. |
+
+**A saída:** manter o domínio antigo respondendo com **301 preservando o path**
+para o novo. Aí `/convite/ABC123` continua funcionando e a promessa da
+`/familia` permanece verdadeira.
+
+Adicione também o domínio novo em **Authentication → Settings → Authorized
+domains**, senão o login quebra em silêncio.
+
+### A CSP da landing é outra, e mais fechada
+
+A landing não fala com o Firebase, então a CSP dela não abre `connect-src` para
+nada além de `'self'`. Ela já entra em **enforcement**, não em Report-Only —
+é página estática, sem autenticação e sem dado de usuário, então não há o risco
+que justificou as duas etapas no app.
+
+A exceção é `script-src 'unsafe-inline'`: o JS da landing é inline, num arquivo
+só. Trocar por hash SHA-256 exigiria recalcular a cada edição do arquivo, e a
+página não renderiza nenhuma entrada de usuário — o `encodeURIComponent` do
+formulário é o único ponto que toca texto digitado, e ele vira URL de WhatsApp,
+nunca DOM.
+
+---
+
 ## O deploy, na ordem
 
 A ordem importa em **um** ponto crítico: **functions antes de hosting**. Site
@@ -73,7 +161,7 @@ firebase deploy --only storage
 # 4. Functions — o núcleo, 12 de 14. Ver a nota do Resend abaixo.
 firebase deploy --only functions:lookupInvite,functions:redeemInvite,functions:joinDriverWaitlist,functions:getShowcase,functions:spinEntryBonus,functions:closeStaleRoutes,functions:sendPushOnNotification,functions:generateMonthlyPayments,functions:runBillingNow,functions:getInvitePreview,functions:flagDuplicateReceipts,functions:backfillTestimonialPrivacy
 
-# 5. Por último o site
+# 5. Por último os sites (os DOIS — ver a seção acima para subir um só)
 firebase deploy --only hosting
 ```
 

@@ -34,8 +34,8 @@ esse padrão em vez de introduzir um framework.
 `.env` a partir de [.env.example](.env.example). `VITE_USE_EMULATORS=false`
 por padrão — **rodar local sem isso grava no Firebase de produção**.
 
-Deploy: [docs/deploy.md](docs/deploy.md) (a ordem importa e há dois pré-requisitos de
-console). Acessos de teste por papel: [docs/testes.md](docs/testes.md).
+Deploy: [docs/deploy.md](docs/deploy.md) (a ordem importa, há dois pré-requisitos de
+console, e desde 05/09/2026 são **dois sites** — `hosting:app` e `hosting:landing`). Acessos de teste por papel: [docs/testes.md](docs/testes.md).
 
 ## Stack
 
@@ -142,6 +142,11 @@ src/
 ├── compartilhado/     SEM regra nenhuma: formatters, masks, haversine,
 │                      browserEnv. Não conhece o domínio (o lint recusa)
 └── firebase/config.js
+landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
+                       `alobuzinou.com.br`. Não é o app: um index.html com CSS
+                       e JS inline, deploy por `--only hosting:landing`. As
+                       duas home públicas antigas (`/` do motorista) morreram
+                       aqui dentro; a `/familia` continua no app.
 functions/             Cloud Functions v2 (CommonJS, Node 22)
   └── lib/             billing, invites, push, routes, entryBonus, receiptGuard…
 firestore.rules        71 KB — a segurança real do app mora aqui

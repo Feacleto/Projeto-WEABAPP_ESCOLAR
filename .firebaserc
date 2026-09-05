@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "projeto-tio-nino-digital"
+  },
+  "targets": {
+    "projeto-tio-nino-digital": {
+      "hosting": {
+        "app": [
+          "projeto-tio-nino-digital"
+        ],
+        "landing": [
+          "alobuzinou"
+        ]
+      }
+    }
   }
 }

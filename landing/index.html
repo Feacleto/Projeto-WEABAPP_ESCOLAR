@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F5F3F">
+<meta name="color-scheme" content="light">
+<meta name="description" content="O app que organiza o transporte escolar: rota ao vivo, aviso de chegada e mensalidade num lugar so. A mensalidade das familias e do motorista - a plataforma nao entra no caminho dela.">
+<link rel="canonical" href="https://alobuzinou.com.br/">
+
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+<link rel="alternate icon" href="/brand/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+
+<meta property="og:url" content="https://alobuzinou.com.br/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Alô Buzinou">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="Alô Buzinou — o transporte escolar saiu do caderno">
+<meta property="og:description" content="Rota ao vivo, aviso de chegada e mensalidade organizada. O app que liga o motorista escolar às famílias.">
+<meta property="og:image" content="https://alobuzinou.com.br/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Alô Buzinou — transporte escolar organizado">
+<meta name="twitter:card" content="summary_large_image">
+
+<title>Alô Buzinou</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────────────────────────────────────
+   ALÔ BUZINOU — landing institucional
+   Tema único, comprometido: a página tem a cara da marca em
+   qualquer contexto do visitante. Tudo pintado explicitamente.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --preto:#0B1210;
+  --verde-esc:#1F5F3F;
+  --verde-vivo:#52C41A;
+  --verde-claro:#0EA85F;
+  --areia:#FAF9F6;
+  --areia-2:#F1EFEA;
+  --cinza:#5A6660;
+  --cinza-cl:#8A948E;
+  --amarelo:#F2B705;
+  --branco:#FFFFFF;
+  --linha:rgba(11,18,16,.10);
+  --linha-esc:rgba(255,255,255,.14);
+
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --corpo:'Instrument Sans','Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+
+  --lg:min(1140px,92vw);
+  --r:22px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:74px}
+body{
+  margin:0;background:var(--areia);color:var(--preto);
+  font-family:var(--corpo);font-size:17px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.02em;line-height:1.08}
+h1{font-size:clamp(2.5rem,6.2vw,4.3rem);font-weight:800}
+h2{font-size:clamp(1.95rem,4.2vw,3rem);font-weight:800}
+h3{font-size:1.16rem;font-weight:600;line-height:1.3}
+p{margin:0}
+a{color:inherit}
+img{max-width:100%}
+.wrap{width:var(--lg);margin-inline:auto}
+.sec{padding:clamp(78px,11vw,140px) 0;position:relative}
+.escuro{background:var(--preto);color:var(--areia)}
+.verde{background:var(--verde-esc);color:#EAF6EF}
+.chapeu{
+  font-family:var(--mono);font-size:.7rem;text-transform:uppercase;
+  letter-spacing:.19em;color:var(--verde-claro);margin-bottom:14px;display:block;
+}
+.escuro .chapeu,.verde .chapeu{color:var(--verde-vivo)}
+.lead{font-size:clamp(1.02rem,1.9vw,1.16rem);color:var(--cinza);max-width:60ch}
+.escuro .lead,.verde .lead{color:rgba(234,246,239,.76)}
+
+/* ── NAV ─────────────────────────────────────────── */
+nav{
+  position:fixed;inset:0 0 auto;z-index:100;
+  background:rgba(250,249,246,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid transparent;transition:border-color .3s,box-shadow .3s;
+}
+nav.scrolled{border-bottom-color:var(--linha);box-shadow:0 4px 24px rgba(11,18,16,.05)}
+.navin{width:var(--lg);margin-inline:auto;display:flex;align-items:center;justify-content:space-between;height:70px;gap:18px}
+.marca{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:800;font-size:1.14rem;text-decoration:none;letter-spacing:-.02em}
+.buzina{width:27px;height:27px;flex:none;position:relative}
+.buzina i{position:absolute;inset:0;border-radius:50%;background:var(--verde-esc)}
+.buzina i::after{
+  content:'';position:absolute;left:52%;top:50%;transform:translate(-50%,-50%);
+  width:9px;height:9px;border-radius:2px 7px 7px 2px;background:var(--amarelo);
+}
+.buzina b{position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--verde-vivo);opacity:0;animation:onda 2.8s ease-out infinite}
+@keyframes onda{0%{transform:scale(.75);opacity:.85}70%,100%{transform:scale(1.5);opacity:0}}
+.links{display:flex;gap:26px;list-style:none;margin:0;padding:0;font-size:.92rem;font-weight:500}
+.links a{text-decoration:none;position:relative;padding-block:4px;color:var(--preto);opacity:.78;transition:opacity .2s}
+.links a::after{content:'';position:absolute;left:0;bottom:0;width:100%;height:2px;background:var(--verde-claro);transform:scaleX(0);transform-origin:left;transition:transform .32s cubic-bezier(.2,.7,.3,1)}
+.links a:hover{opacity:1}
+.links a:hover::after{transform:scaleX(1)}
+.burger{display:none;background:none;border:0;padding:9px;cursor:pointer}
+.burger span{display:block;width:22px;height:2px;background:var(--preto);border-radius:2px;transition:.3s}
+.burger span+span{margin-top:5px}
+.burger[aria-expanded=true] span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger[aria-expanded=true] span:nth-child(2){opacity:0}
+.burger[aria-expanded=true] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+/* ── BOTÕES ──────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  padding:15px 27px;border-radius:100px;font:600 .97rem/1 var(--corpo);
+  text-decoration:none;border:0;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .18s,box-shadow .28s;
+}
+.btn:active{transform:translateY(1px)}
+.btn svg{transition:transform .3s}
+.btn:hover svg{transform:translateX(4px)}
+.btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 32%,rgba(255,255,255,.42) 50%,transparent 68%);
+  transform:translateX(-130%);
+}
+.btn:hover::before{animation:brilho .85s ease-out}
+@keyframes brilho{to{transform:translateX(130%)}}
+.b1{background:var(--verde-esc);color:#fff;box-shadow:0 5px 20px rgba(31,95,63,.26)}
+.b1:hover{box-shadow:0 9px 30px rgba(31,95,63,.36)}
+.b2{background:transparent;color:var(--preto);box-shadow:inset 0 0 0 1.5px var(--linha)}
+.b2:hover{box-shadow:inset 0 0 0 1.5px var(--verde-claro)}
+.escuro .b2,.verde .b2{color:var(--areia);box-shadow:inset 0 0 0 1.5px var(--linha-esc)}
+.escuro .b2:hover,.verde .b2:hover{box-shadow:inset 0 0 0 1.5px var(--verde-vivo)}
+.b3{background:var(--verde-vivo);color:var(--preto);box-shadow:0 5px 22px rgba(82,196,26,.3)}
+.b3:hover{box-shadow:0 10px 34px rgba(82,196,26,.42)}
+
+/* ── REVEAL ──────────────────────────────────────── */
+.rv{opacity:0;transform:translateY(22px);transition:opacity .78s cubic-bezier(.2,.7,.3,1),transform .78s cubic-bezier(.2,.7,.3,1);transition-delay:var(--d,0ms)}
+.rv.on{opacity:1;transform:none}
+
+/* ── HERO ────────────────────────────────────────── */
+.hero{padding-top:150px;padding-bottom:96px;position:relative;overflow:hidden}
+.hero::before{
+  content:'';position:absolute;top:-320px;right:-180px;width:760px;height:760px;
+  background:radial-gradient(circle,rgba(82,196,26,.14),transparent 66%);
+  pointer-events:none;animation:deriva 22s ease-in-out infinite;
+}
+@keyframes deriva{0%,100%{transform:translate(0,0)}50%{transform:translate(-52px,42px)}}
+.herogrid{display:grid;grid-template-columns:1.06fr .94fr;gap:clamp(34px,5vw,66px);align-items:center;position:relative}
+.hero h1 span{color:var(--verde-esc);display:inline-block}
+.herobtns{display:flex;gap:13px;flex-wrap:wrap;margin-top:34px}
+
+/* Composição animada — ocupa o lugar da foto (3:2) */
+.cena{
+  position:relative;aspect-ratio:3/2;border-radius:38% 62% 55% 45%/48% 42% 58% 52%;
+  overflow:hidden;background:linear-gradient(168deg,#173F2C,#0B1210);
+  box-shadow:0 26px 66px rgba(11,18,16,.24);
+  animation:blob 17s ease-in-out infinite;
+}
+@keyframes blob{
+  0%,100%{border-radius:38% 62% 55% 45%/48% 42% 58% 52%}
+  50%{border-radius:56% 44% 40% 60%/54% 58% 42% 46%}
+}
+.cena .ceu{position:absolute;inset:0;background:radial-gradient(circle at 68% 24%,rgba(82,196,26,.2),transparent 58%)}
+.cena .chao{position:absolute;left:0;right:0;bottom:0;height:31%;background:#0A1512;border-top:2px solid rgba(255,255,255,.09)}
+.cena .faixa{position:absolute;left:0;right:0;bottom:15%;height:3px;background:repeating-linear-gradient(90deg,var(--amarelo) 0 26px,transparent 26px 60px);animation:corre 1.05s linear infinite}
+@keyframes corre{to{background-position:-60px 0}}
+.van{position:absolute;left:50%;bottom:20%;transform:translateX(-50%);width:41%;animation:sobe 1.7s ease-in-out infinite}
+@keyframes sobe{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-3px)}}
+.van .corpo{height:52px;border-radius:13px 17px 8px 8px;background:linear-gradient(178deg,#FDFDFB,#DDE3DF);position:relative;box-shadow:0 7px 20px rgba(0,0,0,.36)}
+.van .corpo::after{content:'';position:absolute;left:0;right:0;bottom:12px;height:11px;background:var(--amarelo)}
+.van .vidro{position:absolute;top:8px;left:9px;width:38%;height:17px;border-radius:5px;background:rgba(140,190,225,.62)}
+.van .vidro2{position:absolute;top:8px;right:10px;width:26%;height:17px;border-radius:4px;background:rgba(140,190,225,.38)}
+.van .roda{position:absolute;bottom:-8px;width:17px;height:17px;border-radius:50%;background:#11201A;border:3px solid #2C3A33}
+.van .roda.e{left:16%}.van .roda.d{right:16%}
+.pin{position:absolute;left:50%;top:20%;transform:translateX(-50%);width:22px;height:22px}
+.pin::before{content:'';position:absolute;inset:0;border-radius:50% 50% 50% 4px;background:var(--verde-vivo);transform:rotate(-45deg);box-shadow:0 3px 12px rgba(82,196,26,.6)}
+.pin::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#0B1210}
+.pulso{position:absolute;left:50%;top:calc(20% + 11px);transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;border:2px solid var(--verde-vivo);animation:pulsa 2.1s ease-out infinite}
+@keyframes pulsa{0%{transform:translate(-50%,-50%) scale(.6);opacity:.9}100%{transform:translate(-50%,-50%) scale(3.4);opacity:0}}
+.casinha{position:absolute;bottom:22%;width:26px;height:22px;background:#1B3428;border-radius:3px}
+.casinha::before{content:'';position:absolute;left:-3px;top:-9px;border:16px solid transparent;border-bottom-color:#254936;border-bottom-width:11px}
+.casinha.esq{left:8%}
+.escola{position:absolute;bottom:22%;right:7%;width:34px;height:28px;background:#1B3428;border-radius:3px}
+.escola::after{content:'';position:absolute;left:50%;top:-13px;transform:translateX(-50%);width:2px;height:13px;background:var(--amarelo)}
+
+/* ── ONDAS ───────────────────────────────────────── */
+.onda{display:block;width:100%;height:auto;margin-bottom:-2px}
+.onda+.sec{margin-top:-1px}
+
+/* ── PROBLEMA ────────────────────────────────────── */
+.probgrid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(34px,5vw,70px);align-items:center}
+.probtxt p+p{margin-top:19px}
+.tarja{
+  position:relative;aspect-ratio:3/2;border-radius:var(--r);overflow:hidden;
+  background:#12211B;display:grid;place-items:center;
+}
+.tarja .diag{position:absolute;inset:-24%;background:var(--amarelo);transform:rotate(-13deg);opacity:.94}
+.tarja .diag::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 62px,rgba(11,18,16,.07) 62px 66px)}
+.tarja .selo{position:relative;text-align:center;padding:26px}
+.tarja .n{font-family:var(--display);font-size:clamp(3.4rem,8vw,5.4rem);font-weight:800;color:var(--preto);line-height:.9;letter-spacing:-.04em}
+.tarja .t{font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(11,18,16,.68);margin-top:9px}
+
+/* ── TIMELINE ────────────────────────────────────── */
+.tl{position:relative;margin-top:58px;padding-left:46px}
+.tl::before{content:'';position:absolute;left:14px;top:8px;bottom:8px;width:2px;background:var(--linha-esc)}
+.tlprog{position:absolute;left:14px;top:8px;width:2px;background:var(--verde-vivo);height:0;transition:height .1s linear;box-shadow:0 0 12px rgba(82,196,26,.55)}
+.passo{position:relative;padding-bottom:44px}
+.passo:last-child{padding-bottom:0}
+.passo .no{
+  position:absolute;left:-40px;top:2px;width:30px;height:30px;border-radius:50%;
+  background:var(--preto);border:2px solid var(--linha-esc);display:grid;place-items:center;
+  font:700 .84rem/1 var(--display);color:var(--cinza-cl);transition:.42s;
+}
+.passo.on .no{border-color:var(--verde-vivo);color:var(--preto);background:var(--verde-vivo);transform:scale(1.12)}
+.passo h3{margin-bottom:7px}
+.passo p{color:rgba(234,246,239,.72);font-size:.99rem;max-width:52ch}
+
+/* ── CARDS ───────────────────────────────────────── */
+.grid{display:grid;gap:15px;margin-top:40px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.card{
+  padding:26px;border-radius:var(--r);background:var(--branco);
+  border:1px solid var(--linha);transition:transform .3s cubic-bezier(.2,.7,.3,1),box-shadow .3s,border-color .3s;
+}
+.card:hover{transform:translateY(-5px);box-shadow:0 16px 42px rgba(11,18,16,.09);border-color:rgba(14,168,95,.34)}
+.escuro .card,.verde .card{background:rgba(255,255,255,.05);border-color:var(--linha-esc)}
+.escuro .card:hover,.verde .card:hover{background:rgba(255,255,255,.08);border-color:rgba(82,196,26,.4);box-shadow:0 16px 42px rgba(0,0,0,.3)}
+.card .ic{width:41px;height:41px;border-radius:12px;display:grid;place-items:center;background:rgba(14,168,95,.11);margin-bottom:15px;transition:transform .35s}
+.card:hover .ic{transform:rotate(-7deg) scale(1.09)}
+.escuro .card .ic,.verde .card .ic{background:rgba(82,196,26,.16)}
+.card p{font-size:.95rem;color:var(--cinza);margin-top:7px}
+.escuro .card p,.verde .card p{color:rgba(234,246,239,.7)}
+
+/* lista de benefícios */
+.bens{list-style:none;padding:0;margin:32px 0 0;display:grid;gap:11px}
+.bens li{
+  display:flex;gap:13px;align-items:flex-start;padding:15px 18px;border-radius:15px;
+  background:rgba(255,255,255,.045);border:1px solid var(--linha-esc);
+  transition:transform .26s,background .26s,border-color .26s;
+}
+.bens li:hover{transform:translateX(6px);background:rgba(255,255,255,.08);border-color:rgba(82,196,26,.36)}
+.bens svg{flex:none;margin-top:3px;color:var(--verde-vivo)}
+.claro .bens li{background:var(--branco);border-color:var(--linha)}
+.claro .bens li:hover{border-color:rgba(14,168,95,.36)}
+.claro .bens svg{color:var(--verde-claro)}
+
+/* destaque */
+.dest{
+  margin-top:32px;padding:27px;border-radius:var(--r);
+  background:rgba(82,196,26,.09);border:1px solid rgba(82,196,26,.28);
+}
+.dest strong{font-family:var(--display);font-size:1.24rem;font-weight:800;display:block;margin-bottom:9px;color:var(--verde-vivo)}
+.dest p{font-size:.97rem;color:rgba(234,246,239,.8)}
+
+/* ── SPOTLIGHT (valores) ─────────────────────────── */
+.spot{position:relative;overflow:hidden}
+.spot::before{
+  content:'';position:absolute;inset:0;opacity:0;transition:opacity .34s;pointer-events:none;
+  background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%),rgba(82,196,26,.13),transparent 62%);
+}
+.spot:hover::before{opacity:1}
+
+/* ── CHIPS + ACCORDION ───────────────────────────── */
+.chips{display:flex;flex-wrap:wrap;gap:9px;margin:28px 0 34px}
+.chip{
+  padding:9px 17px;border-radius:100px;font:500 .85rem/1 var(--corpo);
+  background:transparent;border:1.5px solid var(--linha);cursor:pointer;
+  position:relative;overflow:hidden;color:var(--preto);transition:color .3s,border-color .3s;
+}
+.chip::before{content:'';position:absolute;inset:0;background:var(--verde-esc);transform:scaleX(0);transform-origin:left;transition:transform .34s cubic-bezier(.2,.7,.3,1);z-index:-1}
+.chip{z-index:0}
+.chip:hover{color:#fff;border-color:var(--verde-esc)}
+.chip:hover::before{transform:scaleX(1)}
+.faq{border-top:1px solid var(--linha)}
+.item{border-bottom:1px solid var(--linha)}
+.q{
+  width:100%;background:none;border:0;padding:23px 44px 23px 0;text-align:left;cursor:pointer;
+  font:600 1.03rem/1.42 var(--corpo);color:var(--preto);position:relative;
+  display:block;transition:color .22s;
+}
+.q:hover{color:var(--verde-esc)}
+.q::after{
+  content:'';position:absolute;right:8px;top:50%;width:9px;height:9px;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:translateY(-70%) rotate(45deg);transition:transform .34s;
+}
+.item.open .q::after{transform:translateY(-30%) rotate(-135deg)}
+.a{max-height:0;overflow:hidden;transition:max-height .42s cubic-bezier(.3,.8,.3,1)}
+.a p{padding:0 34px 25px 0;color:var(--cinza);font-size:.98rem}
+
+/* ── CONTATO ─────────────────────────────────────── */
+.canais{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:32px 0 40px}
+.canal{
+  display:flex;align-items:center;gap:15px;padding:21px 24px;border-radius:var(--r);
+  background:var(--branco);border:1px solid var(--linha);text-decoration:none;
+  transition:transform .28s,box-shadow .28s,border-color .28s;
+}
+.canal:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(11,18,16,.09);border-color:rgba(14,168,95,.36)}
+.canal .ic{width:44px;height:44px;flex:none;border-radius:13px;display:grid;place-items:center;background:rgba(14,168,95,.11);transition:transform .3s}
+.canal:hover .ic{transform:scale(1.09)}
+.canal b{display:block;font-family:var(--display);font-weight:600;font-size:1rem}
+.canal span{font-size:.88rem;color:var(--cinza)}
+form{display:grid;gap:13px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+input,textarea,select{
+  width:100%;padding:15px 17px;border-radius:14px;border:1px solid var(--linha);
+  background:var(--branco);font:400 .97rem/1.5 var(--corpo);color:var(--preto);
+  transition:border-color .24s,box-shadow .24s;
+}
+input:focus,textarea:focus,select:focus{outline:0;border-color:var(--verde-claro);box-shadow:0 0 0 4px rgba(14,168,95,.13)}
+textarea{min-height:118px;resize:vertical}
+label{font-size:.83rem;font-weight:600;color:var(--cinza);margin-bottom:-5px;display:block}
+
+/* ── RODAPÉ ──────────────────────────────────────── */
+footer{background:var(--verde-esc);color:#DCEDE3;padding:64px 0 34px}
+.frow{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:38px;padding-bottom:38px;border-bottom:1px solid rgba(255,255,255,.15)}
+footer h4{font-family:var(--mono);font-size:.7rem;letter-spacing:.19em;text-transform:uppercase;color:var(--verde-vivo);margin:0 0 15px;font-weight:400}
+footer a{color:#DCEDE3;text-decoration:none;opacity:.82;transition:opacity .22s,transform .22s;display:inline-block}
+footer a:hover{opacity:1;transform:translateX(3px)}
+.flinks{list-style:none;padding:0;margin:0;display:grid;gap:9px;font-size:.92rem}
+.social{display:flex;gap:11px;margin-top:19px}
+.social a{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.1);transition:.28s}
+.social a:hover{background:var(--verde-vivo);color:var(--preto);transform:translateY(-4px)}
+.fbot{padding-top:26px;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;font-size:.82rem;opacity:.72}
+.lgpd{display:flex;gap:11px;align-items:flex-start;margin-top:22px;font-size:.85rem;opacity:.8;max-width:44ch}
+
+/* ── RESPONSIVO ──────────────────────────────────── */
+@media (max-width:900px){
+  .herogrid,.probgrid{grid-template-columns:1fr}
+  .cena{order:-1;max-width:440px;margin-inline:auto}
+  .g3,.g2,.canais,.f2,.frow{grid-template-columns:1fr}
+  .links{
+    position:fixed;inset:70px 0 auto;flex-direction:column;gap:0;
+    background:var(--areia);padding:14px 6vw 24px;border-bottom:1px solid var(--linha);
+    transform:translateY(-115%);transition:transform .38s cubic-bezier(.2,.7,.3,1);
+  }
+  .links.open{transform:none}
+  .links li{border-bottom:1px solid var(--linha)}
+  .links a{display:block;padding:16px 0;font-size:1rem}
+  .links a::after{display:none}
+  .burger{display:block}
+  body.trava{overflow:hidden}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  .rv{opacity:1;transform:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+<nav id="nav">
+  <div class="navin">
+    <a href="#topo" class="marca">
+      <span class="buzina"><i></i><b></b></span>Alô Buzinou
+    </a>
+    <ul class="links" id="menu">
+      <li><a href="#como">Como funciona</a></li>
+      <li><a href="#motorista">Pro motorista</a></li>
+      <li><a href="#familia">Pra família</a></li>
+      <li><a href="#sobre">Sobre</a></li>
+      <li><a href="#duvidas">Dúvidas</a></li>
+      <li><a href="#contato">Contato</a></li>
+    </ul>
+    <button class="burger" id="burger" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ══ HERO ══ -->
+<header class="sec hero" id="topo">
+  <div class="wrap herogrid">
+    <div>
+      <span class="chapeu rv">app pra transporte escolar</span>
+      <h1 class="rv" style="--d:90ms">O transporte escolar <span>saiu do caderno.</span></h1>
+      <p class="lead rv" style="--d:190ms;margin-top:24px">
+        A gente tirou a rota, o aviso de chegada e a mensalidade do caderno e do grupo
+        de WhatsApp. Agora tudo mora num lugar só — e a família acompanha em tempo real.
+      </p>
+      <div class="herobtns rv" style="--d:290ms">
+        <a href="#motorista" class="btn b1">Sou motorista
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a href="#familia" class="btn b2">Sou família</a>
+      </div>
+    </div>
+    <div class="cena rv" style="--d:230ms" aria-hidden="true">
+      <div class="ceu"></div>
+      <div class="casinha esq"></div>
+      <div class="escola"></div>
+      <div class="chao"></div>
+      <div class="faixa"></div>
+      <div class="van">
+        <div class="corpo">
+          <div class="vidro"></div><div class="vidro2"></div>
+          <div class="roda e"></div><div class="roda d"></div>
+        </div>
+      </div>
+      <div class="pin"></div><div class="pulso"></div>
+    </div>
+  </div>
+</header>
+
+<svg class="onda" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M0,44 C240,88 480,0 720,26 C960,52 1200,88 1440,52 L1440,90 L0,90 Z" fill="#0B1210"/>
+</svg>
+
+<!-- ══ PROBLEMA ══ -->
+<section class="sec escuro">
+  <div class="wrap probgrid">
+    <div class="probtxt">
+      <span class="chapeu rv">o que ninguém fala</span>
+      <h2 class="rv" style="--d:80ms">Onde tem confiança, o dinheiro atrapalha.</h2>
+      <p class="lead rv" style="--d:170ms;margin-top:22px">
+        O tio conhece a família há anos. Levou o irmão mais velho, agora leva o caçula.
+        Aí chega o dia 10 e a mensalidade não caiu.
+      </p>
+      <p class="lead rv" style="--d:230ms">
+        Ele não quer cobrar. Cobrar amigo é ruim. Então deixa passar — e no mês seguinte
+        são dois. A conversa que era sobre criança vira conversa sobre dinheiro.
+      </p>
+      <p class="lead rv" style="--d:290ms">
+        Do outro lado, o pai também não queria dever. Só esqueceu, e ninguém avisou.
+      </p>
+      <p class="lead rv" style="--d:350ms"><strong style="color:#EAF6EF">
+        A gente não resolve isso com sermão. Resolve com organização: a cobrança fica
+        registrada, o comprovante fica guardado, e a conversa volta a ser sobre a criança.
+      </strong></p>
+    </div>
+    <div class="tarja rv" style="--d:200ms" aria-hidden="true">
+      <div class="diag"></div>
+      <div class="selo">
+        <div class="n">dia 10</div>
+        <div class="t">e ninguém quer tocar no assunto</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ COMO FUNCIONA ══ -->
+<section class="sec escuro" id="como" style="padding-top:0">
+  <div class="wrap">
+    <span class="chapeu rv">do começo ao fim</span>
+    <h2 class="rv" style="--d:80ms">Como funciona</h2>
+    <div class="tl" id="tl">
+      <div class="tlprog" id="tlprog"></div>
+      <div class="passo rv"><div class="no">1</div>
+        <h3>O tio cadastra a turma</h3>
+        <p>Cada criança com nome, endereço, escola e horário. Uma vez só, e o dia já se monta sozinho na ordem certa.</p>
+      </div>
+      <div class="passo rv" style="--d:70ms"><div class="no">2</div>
+        <h3>A família entra pelo link</h3>
+        <p>O tio manda um link no WhatsApp. A conta do responsável nasce dali, sem senha pra inventar e sem código pra digitar.</p>
+      </div>
+      <div class="passo rv" style="--d:140ms"><div class="no">3</div>
+        <h3>A rota roda e todo mundo vê</h3>
+        <p>O tio dá partida no app. A família acompanha a perua no mapa e recebe um aviso no celular quando ela está chegando.</p>
+      </div>
+      <div class="passo rv" style="--d:210ms"><div class="no">4</div>
+        <h3>A mensalidade se organiza</h3>
+        <p>O app mostra quem pagou, quem está em aberto e deixa o PIX pronto. Sem caderno, sem planilha e sem cobrar de boca.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PRO MOTORISTA ══ -->
+<section class="sec verde" id="motorista">
+  <div class="wrap" style="max-width:920px">
+    <span class="chapeu rv">pra quem dirige</span>
+    <h2 class="rv" style="--d:80ms">Seu trabalho, com estrutura de empresa.</h2>
+    <p class="lead rv" style="--d:160ms;margin-top:22px">
+      A gente não vem te ensinar a dirigir nem a cuidar de criança. Nisso você já é bom —
+      é por isso que as mesmas famílias confiam em você há anos. A gente vem tirar o resto do seu ombro.
+    </p>
+    <ul class="bens">
+      <li class="rv"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>A rota do dia pronta, na ordem dos horários</span></li>
+      <li class="rv" style="--d:50ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>Aviso automático pra família quando você está chegando</span></li>
+      <li class="rv" style="--d:100ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>Quem pagou, quem falta, e o PIX pronto pra mandar</span></li>
+      <li class="rv" style="--d:150ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>Contrato digital, aceito pelo celular do responsável</span></li>
+      <li class="rv" style="--d:200ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>Falta avisada pela família antes de você sair de casa</span></li>
+      <li class="rv" style="--d:250ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>A escola avisada sem você precisar encostar o carro</span></li>
+    </ul>
+    <div class="dest rv">
+      <strong>A mensalidade das suas famílias é sua.</strong>
+      <p>PIX, dinheiro ou maquininha, direto com quem paga. A gente não entra no caminho
+      desse dinheiro e não fica com percentual nenhum dele. Nunca ficou, e não é isso que a gente quer ser.</p>
+    </div>
+    <div class="card rv" style="margin-top:15px">
+      <h3 style="color:#EAF6EF">E a gente vive de quê?</h3>
+      <p>De uma taxa mensal pelo uso do app, proporcional ao tamanho da sua operação: quem
+      leva 8 crianças paga menos que quem leva 40. Nas férias, você desativa quem parou e a
+      conta cai junto. São dois dinheiros diferentes, e eles nunca se encontram.</p>
+    </div>
+    <div class="rv" style="margin-top:32px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <a href="#contato" class="btn b3">Quero conhecer
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <span style="font-size:.9rem;opacity:.72">3 meses grátis pra experimentar</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PRA FAMÍLIA ══ -->
+<section class="sec claro" id="familia">
+  <div class="wrap" style="max-width:920px">
+    <span class="chapeu rv">pra quem confia</span>
+    <h2 class="rv" style="--d:80ms">Saber onde seu filho está não deveria ser um favor.</h2>
+    <p class="lead rv" style="--d:160ms;margin-top:22px">
+      Você não precisa mandar mensagem no grupo perguntando se a perua já saiu. Não precisa
+      ficar na janela. Não precisa ligar pro tio no meio da rota — ele está dirigindo.
+    </p>
+    <ul class="bens">
+      <li class="rv"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>A hora de estar na porta, combinada com o seu motorista</span></li>
+      <li class="rv" style="--d:50ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>Onde a perua está agora, no mapa</span></li>
+      <li class="rv" style="--d:100ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>Um aviso no celular quando ela está chegando</span></li>
+      <li class="rv" style="--d:150ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>Avisar que hoje não vai, sem depender de alguém ler mensagem</span></li>
+      <li class="rv" style="--d:200ms"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg><span>A mensalidade, o que está pago e o PIX pronto</span></li>
+    </ul>
+    <div class="card rv" style="margin-top:32px;background:rgba(14,168,95,.07);border-color:rgba(14,168,95,.26)">
+      <h3>Sua conta quem cria é o seu motorista.</h3>
+      <p>Ele te manda um link, você entra, e pronto. Não existe cadastro aberto aqui — e é
+      justamente isso que protege os dados do seu filho. Endereço e localização só aparecem
+      pra quem tem vínculo real com aquela criança.</p>
+    </div>
+  </div>
+</section>
+
+<svg class="onda" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M0,52 C240,14 480,80 720,58 C960,36 1200,4 1440,40 L1440,90 L0,90 Z" fill="#0B1210"/>
+</svg>
+
+<!-- ══ A GENTE ESTÁ COMEÇANDO ══ -->
+<section class="sec escuro">
+  <div class="wrap">
+    <span class="chapeu rv">sem enrolação</span>
+    <h2 class="rv" style="--d:80ms">A gente está começando.<br>E está construindo com você.</h2>
+    <p class="lead rv" style="--d:160ms;margin-top:20px">Não vamos vender o que a gente ainda não tem.</p>
+    <div class="grid g3">
+      <div class="card rv">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <h3 style="color:#EAF6EF">Hoje</h3>
+        <p>Organiza o seu dia e tira você do caderno. Você ganha um ambiente de trabalho
+        digital: rota, avisos, contrato e controle de quem pagou. A cobrança sai por PIX,
+        e o pagamento em dinheiro você marca com um toque.</p>
+      </div>
+      <div class="card rv" style="--d:80ms">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <h3 style="color:#EAF6EF">O seu dinheiro</h3>
+        <p>Vai direto pra você. A gente não recebe no seu lugar, não retém nada e não fica
+        com percentual. O que a família te paga é seu, inteiro.</p>
+      </div>
+      <div class="card rv" style="--d:160ms">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <h3 style="color:#EAF6EF">O que vem</h3>
+        <p>Queremos que o pai possa te pagar no cartão, todo mês, automaticamente — pra você
+        nunca mais precisar cobrar ninguém. E hoje o Alô Buzinou é um app que instala direto
+        do navegador. Com a ajuda dos motoristas que estão com a gente, a gente chega nas lojas.</p>
+      </div>
+    </div>
+    <p class="lead rv" style="margin-top:34px;font-size:1.1rem;color:#EAF6EF">
+      Você não está comprando um app pronto. Está entrando numa coisa que ainda está sendo
+      construída — e construída junto com quem usa.
+    </p>
+  </div>
+</section>
+
+<!-- ══ COMUNIDADE ══ -->
+<section class="sec claro">
+  <div class="wrap" style="max-width:920px">
+    <span class="chapeu rv">como a gente cresce</span>
+    <h2 class="rv" style="--d:80ms">Tio indica tio.<br>É assim que a gente cresce.</h2>
+    <p class="lead rv" style="--d:160ms;margin-top:22px">
+      Quem trabalha com perua sabe: o maior parceiro de um motorista é outro motorista. Um
+      avisa o outro da rua que fechou. Um indica cliente pro outro. Um cobre a rota do colega
+      quando a van quebra.
+    </p>
+    <p class="lead rv" style="--d:220ms;margin-top:17px">
+      A gente não quer competir com isso. Quer andar junto. Por isso o Alô Buzinou não cresce
+      com anúncio — cresce com indicação.
+    </p>
+    <div class="grid g3">
+      <div class="card spot rv"><h3>1. Você passa o contato</h3><p>O WhatsApp de um colega motorista que você acha que ia gostar.</p></div>
+      <div class="card spot rv" style="--d:80ms"><h3>2. Ele entra</h3><p>Se cadastra com aquele número e vira associado.</p></div>
+      <div class="card spot rv" style="--d:160ms"><h3>3. Você ganha 10%</h3><p>De desconto na sua conta, todo mês, enquanto ele estiver com a gente.</p></div>
+    </div>
+    <p class="lead rv" style="margin-top:26px;font-size:.97rem">
+      Pode indicar quantos quiser. O desconto vai até a metade da sua conta — cinco colegas
+      e você paga metade.
+    </p>
+  </div>
+</section>
+
+<!-- ══ SOBRE ══ -->
+<section class="sec verde" id="sobre">
+  <div class="wrap">
+    <span class="chapeu rv">quem somos</span>
+    <h2 class="rv" style="--d:80ms">Quem é o Alô Buzinou</h2>
+    <p class="lead rv" style="--d:160ms;margin-top:22px;max-width:64ch">
+      A gente nasceu olhando pra um trabalho que move milhares de crianças todo dia e que,
+      mesmo assim, roda em caderno, planilha e grupo de WhatsApp. Não é falta de capricho de
+      quem dirige. É falta de ferramenta feita pra ele.
+    </p>
+    <div class="grid g2" style="margin-top:44px">
+      <div class="card rv">
+        <h4 style="font-family:var(--mono);font-size:.7rem;letter-spacing:.19em;text-transform:uppercase;color:#52C41A;margin:0 0 11px;font-weight:400">Missão</h4>
+        <h3 style="color:#EAF6EF;font-size:1.42rem">Ligar as duas pontas com confiança.</h3>
+        <p>Conectar quem dirige e quem confia, com a mesma informação chegando dos dois lados.</p>
+      </div>
+      <div class="card rv" style="--d:80ms">
+        <h4 style="font-family:var(--mono);font-size:.7rem;letter-spacing:.19em;text-transform:uppercase;color:#52C41A;margin:0 0 11px;font-weight:400">Visão</h4>
+        <h3 style="color:#EAF6EF;font-size:1.42rem">Ser referência em confiança, não em tamanho.</h3>
+        <p>A gente prefere ser o app que motorista e família recomendam a ser o app com mais downloads.</p>
+      </div>
+    </div>
+    <h4 style="font-family:var(--mono);font-size:.7rem;letter-spacing:.19em;text-transform:uppercase;color:#52C41A;margin:46px 0 0;font-weight:400" class="rv">Nossos valores</h4>
+    <div class="grid g3">
+      <div class="card spot rv"><h3 style="color:#EAF6EF">O dinheiro do motorista é do motorista</h3><p>A mensalidade não passa pela gente. Nunca passou, e não é isso que a gente quer ser.</p></div>
+      <div class="card spot rv" style="--d:80ms"><h3 style="color:#EAF6EF">A gente é comunidade</h3><p>Tio indica tio, tia avisa tia. A gente cresce assim — e não por anúncio.</p></div>
+      <div class="card spot rv" style="--d:160ms"><h3 style="color:#EAF6EF">Do lado de quem dirige</h3><p>A gente existe pra apoiar o motorista, não pra fiscalizar ele.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ INVESTIDORES ══ -->
+<section class="sec claro" style="background:var(--areia-2)">
+  <div class="wrap" style="max-width:840px">
+    <span class="chapeu rv">para quem investe</span>
+    <h2 class="rv" style="--d:80ms">A tese, em três linhas.</h2>
+    <div class="grid" style="gap:13px;margin-top:36px">
+      <div class="card rv"><h3>O mercado</h3><p>O transporte escolar move crianças todo dia no Brasil inteiro, e a quase totalidade da operação roda sem nenhum sistema de gestão — em caderno, planilha e grupo de WhatsApp.</p></div>
+      <div class="card rv" style="--d:70ms"><h3>Por que agora</h3><p>PIX, smartphone barato e app que instala pelo navegador tornaram viável digitalizar um profissional autônomo que nunca instalaria um software de gestão.</p></div>
+      <div class="card rv" style="--d:140ms"><h3>Por que nós</h3><p>Produto rodando com operação real, arquitetura que já separa o dinheiro do motorista do dinheiro da plataforma, e um canal de aquisição — a própria comunidade de motoristas — que não depende de mídia paga.</p></div>
+    </div>
+    <p class="lead rv" style="margin-top:30px;font-size:.98rem">
+      Os números da operação, o modelo de cobrança e o roadmap estão no material completo.
+      Deixa seu e-mail que a gente manda.
+    </p>
+    <div class="rv" style="margin-top:22px">
+      <a href="#contato" class="btn b1">Receber o deck
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ DÚVIDAS ══ -->
+<section class="sec claro" id="duvidas">
+  <div class="wrap" style="max-width:820px">
+    <span class="chapeu rv">perguntas frequentes</span>
+    <h2 class="rv" style="--d:80ms">Dúvidas de quem dirige</h2>
+    <div class="chips rv" style="--d:160ms" id="chips"></div>
+    <div class="faq" id="faq"></div>
+  </div>
+</section>
+
+<!-- ══ CONTATO ══ -->
+<section class="sec claro" id="contato" style="background:var(--areia-2)">
+  <div class="wrap" style="max-width:760px">
+    <span class="chapeu rv">fala com a gente</span>
+    <h2 class="rv" style="--d:80ms">Fala com a gente</h2>
+    <p class="lead rv" style="--d:160ms;margin-top:18px">Dúvida, sugestão ou reclamação — a gente responde tudo.</p>
+    <div class="canais rv">
+      <a class="canal" href="https://wa.me/5511969170709" target="_blank" rel="noopener">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="#0EA85F"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-5.8c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.7.9-.3.2-.5 0a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4 5.2 5.2 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg></span>
+        <span><b>WhatsApp</b><span>(11) 96917-0709</span></span>
+      </a>
+      <a class="canal" href="mailto:contato@alobuzinou.com.br">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0EA85F" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2.5 7l9.5 6.5L21.5 7"/></svg></span>
+        <span><b>E-mail</b><span>contato@alobuzinou.com.br</span></span>
+      </a>
+    </div>
+    <form class="rv" id="form">
+      <div class="f2">
+        <div><label for="n">Nome</label><input id="n" name="nome" required placeholder="Como a gente te chama?"></div>
+        <div><label for="e">E-mail</label><input id="e" name="email" type="email" required placeholder="seu@email.com"></div>
+      </div>
+      <div><label for="q">Eu sou</label>
+        <select id="q" name="quem">
+          <option>Motorista escolar</option>
+          <option>Família</option>
+          <option>Escola</option>
+          <option>Investidor</option>
+          <option>Outro</option>
+        </select>
+      </div>
+      <div><label for="m">Mensagem</label><textarea id="m" name="msg" required placeholder="Conta pra gente o que você precisa."></textarea></div>
+      <button type="submit" class="btn b1" style="justify-self:start">Enviar pelo WhatsApp
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+  </div>
+</section>
+
+<!-- ══ RODAPÉ ══ -->
+<footer>
+  <div class="wrap">
+    <div class="frow">
+      <div>
+        <a href="#topo" class="marca" style="color:#fff;margin-bottom:14px">
+          <span class="buzina"><i style="background:#fff"></i></span>Alô Buzinou
+        </a>
+        <p style="font-size:.92rem;opacity:.82;max-width:34ch;margin-top:10px">
+          O transporte escolar do seu filho, organizado.
+        </p>
+        <div class="social">
+          <a href="https://instagram.com/alobuzinou" target="_blank" rel="noopener" aria-label="Instagram">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.6" cy="6.4" r="1.2" fill="currentColor"/></svg>
+          </a>
+          <a href="https://wa.me/5511969170709" target="_blank" rel="noopener" aria-label="WhatsApp">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div>
+        <h4>Navegar</h4>
+        <ul class="flinks">
+          <li><a href="#como">Como funciona</a></li>
+          <li><a href="#motorista">Pro motorista</a></li>
+          <li><a href="#familia">Pra família</a></li>
+          <li><a href="#sobre">Sobre</a></li>
+          <li><a href="#duvidas">Dúvidas</a></li>
+          <li><a href="#contato">Contato</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Onde estamos</h4>
+        <p style="font-size:.92rem;opacity:.82;line-height:1.7">
+          Rua das Trovas, 64<br>Socorro — São Paulo/SP
+        </p>
+        <p style="font-size:.92rem;opacity:.82;margin-top:13px">
+          <a href="mailto:contato@alobuzinou.com.br">contato@alobuzinou.com.br</a><br>
+          <a href="https://wa.me/5511969170709" target="_blank" rel="noopener">(11) 96917-0709</a>
+        </p>
+      </div>
+    </div>
+    <div class="lgpd">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2" style="flex:none;margin-top:2px"><path d="M12 2.5l8 3.2v5.6c0 5-3.4 9.3-8 10.2-4.6-.9-8-5.2-8-10.2V5.7z"/><path d="M9 12l2 2 4-4"/></svg>
+      <span>Todos os dados são tratados conforme a LGPD. Endereço e localização só aparecem pra quem tem vínculo.</span>
+    </div>
+    <div class="fbot">
+      <span>CNPJ 65.000.217/0001-47 · © 2026 Alô Buzinou</span>
+      <span><a href="#">Termos de Uso</a> · <a href="#">Política de Privacidade</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+  var reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── FAQ ─────────────────────────────────── */
+  var perguntas = [
+    ['Vocês ficam com meu dinheiro?','Vocês ficam com uma parte da minha mensalidade?',
+     'Não. Nem um centavo. O que o pai te paga vai direto pra você — PIX, dinheiro ou maquininha. A gente cobra uma taxa separada pelo uso do app, e ela não tem nada a ver com quanto você fatura.'],
+    ['Quanto custa?','Quanto custa?',
+     'Depende de quantas crianças você leva. Quem tem 8 paga menos que quem tem 40 — a conta é proporcional ao tamanho da sua operação, e todo mundo tem o app completo, sem plano capado. Pra você ter uma ideia: a conta do mês inteiro custa menos do que você recebe de uma família.'],
+    ['E nas férias?','E nas férias, quando as crianças param?',
+     'Você desativa quem parou e a sua conta cai junto. Em janeiro você não paga pelo que não está usando.'],
+    [null,'Como eu cobro quem atrasou?',
+     'O app mostra quem pagou e quem está em aberto, e deixa o PIX pronto pra você mandar. Você não precisa mais lembrar de cabeça nem abrir caderno — e não precisa começar a conversa cobrando.'],
+    ['Preciso mexer bem no celular?','Preciso saber mexer bem no celular?',
+     'Se você usa WhatsApp, você usa o Alô Buzinou. O app foi desenhado pra ser usado em pé, na rua, com uma mão só.'],
+    [null,'Quanto tempo eu tenho pra testar?',
+     'Três meses. E o app te avisa quando o período estiver chegando ao fim — a gente não deixa ninguém ser pego de surpresa.'],
+    ['Posso sair quando quiser?','Posso sair quando quiser?',
+     'Pode. Sem multa e sem carência. Se não serviu pra você, a gente prefere saber por quê.'],
+    [null,'Preciso ter CNPJ pra usar?',
+     'Não precisa. Se você dirige e tem suas famílias, você usa. A gente não pede MEI, não pede CNPJ e não pede papelada pra você começar.'],
+    [null,'Os dados das crianças ficam onde?',
+     'Em servidor seguro, tratados conforme a LGPD. Endereço, foto e localização de criança só aparecem pra quem tem vínculo real com ela — nem outro motorista consegue ver.']
+  ];
+  var faq = document.getElementById('faq'), chips = document.getElementById('chips');
+  perguntas.forEach(function(p, i){
+    var d = document.createElement('div');
+    d.className = 'item rv'; d.id = 'p' + i;
+    d.style.setProperty('--d', (i * 40) + 'ms');
+    var b = document.createElement('button');
+    b.className = 'q'; b.type = 'button'; b.textContent = p[1];
+    b.setAttribute('aria-expanded', 'false');
+    var a = document.createElement('div');
+    a.className = 'a';
+    var t = document.createElement('p'); t.textContent = p[2]; a.appendChild(t);
+    b.addEventListener('click', function(){
+      var aberto = d.classList.contains('open');
+      document.querySelectorAll('.item.open').forEach(function(o){
+        o.classList.remove('open');
+        o.querySelector('.a').style.maxHeight = '';
+        o.querySelector('.q').setAttribute('aria-expanded', 'false');
+      });
+      if (!aberto){
+        d.classList.add('open');
+        a.style.maxHeight = a.scrollHeight + 'px';
+        b.setAttribute('aria-expanded', 'true');
+      }
+    });
+    d.appendChild(b); d.appendChild(a); faq.appendChild(d);
+    if (p[0]){
+      var c = document.createElement('button');
+      c.className = 'chip'; c.type = 'button'; c.textContent = p[0];
+      c.addEventListener('click', function(){
+        d.scrollIntoView({behavior: reduz ? 'auto' : 'smooth', block: 'center'});
+        if (!d.classList.contains('open')) b.click();
+      });
+      chips.appendChild(c);
+    }
+  });
+
+  /* ── REVEAL ──────────────────────────────── */
+  var alvos = document.querySelectorAll('.rv');
+  if ('IntersectionObserver' in window && !reduz){
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); } });
+    }, {rootMargin: '0px 0px -8% 0px', threshold: .08});
+    alvos.forEach(function(n){ io.observe(n); });
+  } else {
+    alvos.forEach(function(n){ n.classList.add('on'); });
+  }
+
+  /* ── TIMELINE que se desenha ─────────────── */
+  var tl = document.getElementById('tl'), prog = document.getElementById('tlprog');
+  var passos = tl ? tl.querySelectorAll('.passo') : [];
+  function desenha(){
+    if (!tl || reduz){ if (prog) prog.style.height = '100%'; passos.forEach(function(p){ p.classList.add('on'); }); return; }
+    var r = tl.getBoundingClientRect(), h = window.innerHeight;
+    var p = (h * .72 - r.top) / r.height;
+    prog.style.height = Math.max(0, Math.min(1, p)) * 100 + '%';
+    passos.forEach(function(s){
+      var sr = s.getBoundingClientRect();
+      s.classList.toggle('on', sr.top < h * .74);
+    });
+  }
+
+  /* ── NAV ─────────────────────────────────── */
+  var nav = document.getElementById('nav'), menu = document.getElementById('menu'), burger = document.getElementById('burger');
+  burger.addEventListener('click', function(){
+    var ab = menu.classList.toggle('open');
+    burger.setAttribute('aria-expanded', ab);
+    document.body.classList.toggle('trava', ab);
+  });
+  menu.addEventListener('click', function(e){
+    if (e.target.tagName === 'A'){
+      menu.classList.remove('open');
+      burger.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('trava');
+    }
+  });
+
+  var tick = false;
+  function onScroll(){
+    if (tick) return; tick = true;
+    requestAnimationFrame(function(){
+      nav.classList.toggle('scrolled', scrollY > 12);
+      desenha();
+      tick = false;
+    });
+  }
+  addEventListener('scroll', onScroll, {passive: true});
+  addEventListener('resize', desenha, {passive: true});
+  desenha();
+
+  /* ── SPOTLIGHT ───────────────────────────── */
+  if (!reduz && matchMedia('(hover:hover)').matches){
+    document.querySelectorAll('.spot').forEach(function(el){
+      el.addEventListener('pointermove', function(ev){
+        var r = el.getBoundingClientRect();
+        el.style.setProperty('--mx', (ev.clientX - r.left) + 'px');
+        el.style.setProperty('--my', (ev.clientY - r.top) + 'px');
+      });
+    });
+  }
+
+  /* ── FORM → WhatsApp ─────────────────────── */
+  document.getElementById('form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var f = e.target;
+    var txt = 'Olá! Vim pelo site do Alô Buzinou.\n\n'
+            + 'Nome: ' + f.nome.value + '\n'
+            + 'E-mail: ' + f.email.value + '\n'
+            + 'Sou: ' + f.quem.value + '\n\n'
+            + f.msg.value;
+    open('https://wa.me/5511969170709?text=' + encodeURIComponent(txt), '_blank', 'noopener');
+  });
+})();
+</script>
+</body>
+</html>
