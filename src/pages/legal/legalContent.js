@@ -6,11 +6,23 @@
 export const LEGAL_VERSION = '1.0';
 export const LEGAL_DATE = '29 de abril de 2026';
 
-// IMPORTANTE: substituir antes de ir pra produção
+/**
+ * A MARCA E OS ENDEREÇOS DE VERDADE.
+ *
+ * Isto aqui era `Tio Nino Digital` e `@tionino.digital` — um nome que a
+ * plataforma não usa mais e um domínio que não é nosso. Não é detalhe de
+ * texto: é a identificação da parte num documento que a pessoa ACEITA, e o
+ * canal por onde ela exerce direito de LGPD. Endereço que não existe é
+ * pedido de titular que ninguém recebe.
+ *
+ * `dpoEmail` aponta pro mesmo endereço do contato de propósito: uma caixa que
+ * é lida todo dia responde melhor que um `dpo@` que ninguém abriu ainda.
+ * Quando existir caixa dedicada, é trocar esta linha — e só esta.
+ */
 export const COMPANY_INFO = {
-  name: 'Tio Nino Digital',
-  email: 'contato@tionino.digital',
-  dpoEmail: 'dpo@tionino.digital',
+  name: 'Alô Buzinou',
+  email: 'contato@alobuzinou.com.br',
+  dpoEmail: 'contato@alobuzinou.com.br',
 };
 
 export const TERMS_SECTIONS = [
