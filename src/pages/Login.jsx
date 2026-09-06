@@ -183,194 +183,230 @@ export default function Login() {
   const voltarProps = daFamilia ? { to: voltarPara } : { href: voltarPara };
 
   return (
-    // `data-painel="web"` solta o teto de 480px do #root (ver index.css).
-    // Sem ele esta tela vive numa coluna de celular no meio de um monitor
-    // vazio: as classes `md:` ATIVAM (breakpoint olha a viewport, não o
-    // contêiner) e não adiantam nada — a faixa da marca fica com 220px e a
-    // frase quebra uma palavra por linha.
-    //
-    // `flex flex-col` no celular e `grid` a partir do md: sem o flex, o
-    // `flex-1` do cartão não tem pai flexível e o empilhamento fica solto.
+    /**
+     * ESTA TELA SAI DO CONTÊINER DO APP, E POR DOIS CAMINHOS.
+     *
+     * O #root tem teto de 480px porque o app é de bolso — motorista e
+     * responsável usam o produto na rua, com uma mão. A porta é outra coisa:
+     * quem chega nela veio de um site de largura cheia.
+     *
+     * 1. `data-painel="web"` solta o teto pela regra `:has()` do index.css,
+     *    que é o mecanismo que o painel do dono já usa.
+     * 2. `w-screen` com `left-1/2` e `-translate-x-1/2` é a GARANTIA: ocupa a
+     *    largura da janela mesmo se a regra de cima não pegar. Sem ela o modo
+     *    de falhar é o pior possível — as classes `lg:` ativam (breakpoint
+     *    olha a VIEWPORT, não o contêiner) e espremem duas colunas em 480px,
+     *    o que fica pior que a versão empilhada.
+     *
+     * O `overflow-x: clip` do #root, que já existe como rede contra rolagem
+     * lateral, é o que impede o 100vw de arrastar a página de lado.
+     */
     <div
       data-painel="web"
-      className="flex min-h-screen flex-col md:grid md:grid-cols-[5fr_6fr]"
+      className="relative left-1/2 w-screen -translate-x-1/2"
     >
-      {/* ── A faixa da marca ─────────────────────────────────────────── */}
-      <div className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-primary to-primaryDark px-6 py-7 md:px-12 md:py-12">
-        {/* Um halo só, e atrás de tudo. A porta não é lugar de enfeite. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-32 -right-28 h-80 w-80 rounded-full bg-accent/10"
-        />
+      {/* Duas colunas só a partir de lg (1024px). Em md, um cartão de 380px
+        * dividindo 768px deixaria a faixa da marca com menos de 340px — e
+        * empilhada é melhor que uma coluna apertada. */}
+      <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-[minmax(0,44fr)_minmax(0,56fr)]">
 
-        <VoltarTag
-          {...voltarProps}
-          className="tap relative z-10 -ml-1 inline-flex w-fit items-center gap-1 p-1 text-sm text-onNightMuted hover:text-onNight"
-        >
-          <ArrowLeft size={16} /> Voltar
-        </VoltarTag>
+        {/* ── A faixa da marca ───────────────────────────────────────── */}
+        <div className="relative flex flex-col overflow-hidden bg-gradient-to-br from-primary to-primaryDark px-6 py-6 lg:justify-between lg:px-14 lg:py-12">
+          {/* Um halo só, e atrás de tudo. A porta não é lugar de enfeite. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-40 -right-32 h-96 w-96 rounded-full bg-accent/10"
+          />
 
-        <div className="relative z-10 mt-6 md:mt-0">
-          <Logo variant="lockup" tone="onDark" height={38} className="md:hidden" />
-          <Logo variant="lockup" tone="onDark" height={52} className="hidden md:block" />
-          {/* O logo já diz o nome em desenho. O h1 continua existindo pra
-            * leitor de tela não perder o cabeçalho da página. */}
-          <h1 className="sr-only">Alô Buzinou</h1>
+          <VoltarTag
+            {...voltarProps}
+            className="tap relative z-10 -ml-1 inline-flex w-fit items-center gap-1 p-1 text-sm text-onNightMuted hover:text-onNight"
+          >
+            <ArrowLeft size={16} /> Voltar
+          </VoltarTag>
 
-          {/* A frase quebra em duas alturas de propósito: a primeira diz o
-            * que é, a segunda diz o que faz. O peso separa as duas funções
-            * sem precisar de dois tamanhos de fonte. */}
-          <p className="mt-4 max-w-[26ch] text-lg font-semibold leading-snug text-onNight md:mt-8 md:text-3xl">
-            O app do transporte escolar.
-            <br />
-            <span className="text-onNightMuted">
-              Um ambiente que avisa, cobra e organiza.
-            </span>
-          </p>
-        </div>
+          <div className="relative z-10 mt-5 lg:mt-0">
+            {/* Teto em volta do logo: ele é vetor e escala, mas sem limite de
+              * largura ele é CORTADO quando a faixa aperta — foi o que
+              * aconteceu enquanto esta tela vivia dentro dos 480px. */}
+            <div className="max-w-full">
+              <Logo
+                variant="lockup"
+                tone="onDark"
+                height={34}
+                className="max-w-full lg:hidden"
+              />
+              <Logo
+                variant="lockup"
+                tone="onDark"
+                height={50}
+                className="hidden max-w-full lg:block"
+              />
+            </div>
+            {/* O logo já diz o nome em desenho. O h1 continua existindo pra
+              * leitor de tela não perder o cabeçalho da página. */}
+            <h1 className="sr-only">Alô Buzinou</h1>
 
-        <div className="relative z-10 hidden text-xs text-onNightMuted md:block">
-          alobuzinou.com.br
-        </div>
-      </div>
-
-      {/* ── O cartão ─────────────────────────────────────────────────── */}
-      <div className="flex flex-1 items-center justify-center bg-bg px-5 py-8 md:px-8">
-        <div className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-6 shadow-rest md:p-7">
-          <div>
-            <h2 className="text-xl font-bold text-text">Entrar</h2>
-            <p className="mt-0.5 text-sm text-textMuted">
-              Motorista, responsável ou administração.
+            {/* A frase quebra em duas alturas de propósito: a primeira diz o
+              * que é, a segunda diz o que faz. O peso separa as duas funções
+              * sem precisar de dois tamanhos de fonte.
+              *
+              * `text-balance` evita a linha órfã de uma palavra só, que é
+              * como ela quebrava quando a faixa era estreita. */}
+            <p className="mt-3 max-w-[26ch] text-balance text-xl font-semibold leading-snug text-onNight lg:mt-8 lg:max-w-[15ch] lg:text-4xl">
+              O app do transporte escolar.
+              <br />
+              <span className="text-onNightMuted">
+                Um ambiente que avisa, cobra e organiza.
+              </span>
             </p>
           </div>
 
-          {showBridge && (
-            <OpenInBrowser onContinueHere={() => setBridgeDismissed(true)} />
-          )}
+          <div className="relative z-10 hidden text-xs text-onNightMuted lg:block">
+            alobuzinou.com.br
+          </div>
+        </div>
 
-          {/* Google em destaque — opção principal pra reduzir fricção
-            * (não precisa digitar email/senha). Email/senha vem depois. */}
-          {!showBridge && googleWorks && (
-            <>
-              <Button
-                loading={googleSubmitting}
-                onClick={onGoogleLogin}
-                variant="secondary"
-                className="!border-borderStrong"
-              >
-                {!googleSubmitting && <GoogleIcon size={20} />}
-                Continuar com Google
-              </Button>
-
-              <div className="relative py-1">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border"></div>
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-card px-3 text-textMuted">
-                    ou com email e senha
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
-
-          <form
-            onSubmit={onSubmit}
-            className={`space-y-3 ${showBridge ? 'hidden' : ''}`}
-          >
-            <Input
-              type="email"
-              inputMode="email"
-              label="Email"
-              placeholder="seu@email.com"
-              icon={Mail}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-            <Input
-              type="password"
-              revealable
-              label="Senha"
-              placeholder="sua senha"
-              icon={Lock}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-
-            {/* Antes do botão, e alinhado à direita: quem chegou aqui e não
-              * lembra a senha precisa achar isto ANTES de errar três vezes. */}
-            <button
-              type="button"
-              onClick={onForgotPassword}
-              disabled={resetting}
-              className="tap ml-auto block text-sm font-semibold text-primary disabled:opacity-50"
-            >
-              {resetting ? 'Enviando...' : 'Esqueci minha senha'}
-            </button>
-
-            <Button type="submit" loading={submitting}>
-              Entrar
-            </Button>
-          </form>
-
-          {/* ── Cadastrar ────────────────────────────────────────────
-            * O rodapé do cartão serve a MINORIA: quem chega no login quase
-            * sempre já tem conta. Por isso é linha, não botão — destaque
-            * igual ao do "Entrar" competiria com ele por nada.
-            *
-            * As duas saídas de trás dele (motorista e convite) chegam na
-            * fase 3; hoje o link leva ao caminho do motorista, que é o
-            * único que funciona sem Cloud Function. */}
-          {!showBridge && (
-            <div className="border-t border-border pt-4 text-center text-sm text-textMuted">
-              {daFamilia ? (
-                <>
-                  Recebeu um convite?{' '}
-                  <Link
-                    to="/first-access"
-                    className="font-semibold text-primary hover:underline"
-                  >
-                    Usar meu código
-                  </Link>
-                </>
-              ) : (
-                <>
-                  Ainda não tem conta?{' '}
-                  <Link
-                    to="/quero-fazer-parte"
-                    className="font-semibold text-primary hover:underline"
-                  >
-                    Cadastrar
-                  </Link>
-                </>
-              )}
+        {/* ── O cartão ───────────────────────────────────────────────── */}
+        <div className="flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10">
+          <div className="w-full max-w-[380px] space-y-4 rounded-2xl border border-border bg-card p-6 shadow-rest sm:p-7">
+            <div>
+              <h2 className="text-xl font-bold text-text">Entrar</h2>
+              <p className="mt-0.5 text-sm text-textMuted">
+                Motorista, responsável ou administração.
+              </p>
             </div>
-          )}
 
-          {/* O bootstrap do dono só aparece enquanto NÃO existe admin — e a
-            * rule fecha a janela junto. Some sozinho depois do primeiro. */}
-          {!hasAdmin && !daFamilia && (
-            <Link
-              to="/first-admin"
-              className="block text-center text-xs text-textMuted underline"
+            {showBridge && (
+              <OpenInBrowser onContinueHere={() => setBridgeDismissed(true)} />
+            )}
+
+            {/* Google em destaque — opção principal pra reduzir fricção (não
+              * precisa digitar email/senha). Email/senha vem depois.
+              *
+              * `whitespace-nowrap`: o rótulo quebrava em TRÊS linhas quando o
+              * cartão apertava, e botão de três linhas não lê como botão. */}
+            {!showBridge && googleWorks && (
+              <>
+                <Button
+                  loading={googleSubmitting}
+                  onClick={onGoogleLogin}
+                  variant="secondary"
+                  className="!whitespace-nowrap !border-borderStrong"
+                >
+                  {!googleSubmitting && <GoogleIcon size={20} />}
+                  Continuar com Google
+                </Button>
+
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="whitespace-nowrap bg-card px-3 text-textMuted">
+                      ou com email e senha
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <form
+              onSubmit={onSubmit}
+              className={`space-y-3 ${showBridge ? 'hidden' : ''}`}
             >
-              Configurar primeiro administrador
-            </Link>
-          )}
+              <Input
+                type="email"
+                inputMode="email"
+                label="Email"
+                placeholder="seu@email.com"
+                icon={Mail}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+              <Input
+                type="password"
+                revealable
+                label="Senha"
+                placeholder="sua senha"
+                icon={Lock}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
 
-          <div className="flex items-center justify-center gap-3 text-[11px] text-textMuted">
-            <Link to="/termos" className="hover:underline">
-              Termos de Uso
-            </Link>
-            <span aria-hidden>·</span>
-            <Link to="/privacidade" className="hover:underline">
-              Política de Privacidade
-            </Link>
+              {/* Antes do botão, e alinhado à direita: quem chegou aqui e não
+                * lembra a senha precisa achar isto ANTES de errar três vezes. */}
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                disabled={resetting}
+                className="tap ml-auto block whitespace-nowrap text-sm font-semibold text-primary disabled:opacity-50"
+              >
+                {resetting ? 'Enviando...' : 'Esqueci minha senha'}
+              </button>
+
+              <Button type="submit" loading={submitting}>
+                Entrar
+              </Button>
+            </form>
+
+            {/* ── Cadastrar ────────────────────────────────────────────
+              * O rodapé do cartão serve a MINORIA: quem chega no login quase
+              * sempre já tem conta. Por isso é linha, não botão — destaque
+              * igual ao do "Entrar" competiria com ele por nada.
+              *
+              * Fora da frente da família ele leva à sala de espera, que é
+              * onde as duas saídas do cadastro moram desde a decisão 20. */}
+            {!showBridge && (
+              <p className="border-t border-border pt-4 text-center text-sm text-textMuted">
+                {daFamilia ? (
+                  <>
+                    Recebeu um convite?{' '}
+                    <Link
+                      to="/first-access"
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      Usar meu código
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    Ainda não tem conta?{' '}
+                    <Link
+                      to="/comecar"
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      Cadastrar
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
+
+            {/* O bootstrap do dono só aparece enquanto NÃO existe admin — e a
+              * rule fecha a janela junto. Some sozinho depois do primeiro. */}
+            {!hasAdmin && !daFamilia && (
+              <Link
+                to="/first-admin"
+                className="block text-center text-xs text-textMuted underline"
+              >
+                Configurar primeiro administrador
+              </Link>
+            )}
+
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-textMuted">
+              <Link to="/termos" className="hover:underline">
+                Termos de Uso
+              </Link>
+              <span aria-hidden>·</span>
+              <Link to="/privacidade" className="hover:underline">
+                Política de Privacidade
+              </Link>
+            </div>
           </div>
         </div>
       </div>
