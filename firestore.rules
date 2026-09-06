@@ -513,6 +513,30 @@ service cloud.firestore {
                // o comentário da linha 428 já afirmava que isso era proibido.
                'adminUid', 'limiteCriancas'
              ])
+
+        // `trialInicio` — GRAVÁVEL UMA VEZ, NUNCA ALTERÁVEL.
+        //
+        // Ele não entra na lista proibida acima porque quem o grava é o
+        // PRÓPRIO motorista, no cliente, no instante em que inicia a primeira
+        // rota. Não há Cloud Function nesse caminho, e não deve haver: o GPS
+        // liga no meio-fio, às vezes sem sinal, e esperar cold start com o
+        // passageiro na porta é a regressão que a decisão 2 já recusou.
+        //
+        // O QUE A REGRA PRECISA IMPEDIR NÃO É A ESCRITA, É A REESCRITA.
+        // Livre, o motorista reinicia o próprio teste para sempre: roda uma
+        // rota e o campo grava; três meses depois grava de novo e ganha mais
+        // três. Seria `limiteCriancas` com outro nome — o devedor editando a
+        // própria cláusula.
+        //
+        // Então: ou a escrita não toca o campo, ou o campo ainda não existe.
+        // Uma vez presente, ele é imutável por este ramo. O ramo do dono,
+        // acima, também não o lista — mudar data de trial é decisão que
+        // precisa deixar rastro, não conveniência de suporte.
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['trialInicio'])
+          || !('trialInicio' in resource.data)
+        )
         // `criancasAtivas` NÃO ENTRA NA LISTA ACIMA, e o motivo é que proibi-lo
         // por completo quebraria o cadastro de criança.
         //

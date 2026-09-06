@@ -5,6 +5,7 @@ import {
   subscribePosition,
   isTracking,
 } from '../services/locationService';
+import { ligarRelogioDoTrial } from '../services/trialService';
 
 /**
  * Hook do lado do motorista (Tio): controla o tracking GPS.
@@ -52,6 +53,19 @@ export function useGeolocation() {
     try {
       startTracking(driverUid);
       setWatching(true);
+      // O RELÓGIO DOS TRÊS MESES COMEÇA AQUI, e este é o único lugar.
+      //
+      // A primeira rota é o momento em que o produto começa a entregar —
+      // antes dela não há posição no mapa nem aviso de chegada, e contar do
+      // cadastro faria o motorista que conhece o app em dezembro chegar em
+      // fevereiro com três semanas de teste.
+      //
+      // Sem esperar de propósito: a rota NÃO PODE aguardar por isto. O GPS
+      // liga no meio-fio, às vezes sem sinal, com vinte famílias esperando a
+      // perua — e o relógio do teste é problema da plataforma, não delas. O
+      // service engole o próprio erro e a próxima rota tenta de novo; o pior
+      // caso é o motorista ganhar um dia a mais.
+      ligarRelogioDoTrial(driverUid);
     } catch (err) {
       setError(err);
     }

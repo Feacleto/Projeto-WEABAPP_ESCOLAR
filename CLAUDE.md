@@ -17,8 +17,9 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 363 casos: horarios, faltas, aviso, contraste,
-                                 # travessia, taxa, contrato, pix, status, auth
+npm run testar                   # 393 casos: horarios, faltas, aviso, contraste,
+                                 # travessia, taxa, contrato, pix, status, auth,
+                                 # trial
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -175,7 +176,7 @@ src/
 │   │                  intervaloDeDias
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
-│   ├── associacao/    taxa, contratoAssociacao
+│   ├── associacao/    taxa, contratoAssociacao, trial
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
@@ -326,6 +327,21 @@ negociação **e** emite o contrato na mesma folha) → `contratosAssociacao`
   [AvisoDaPlataforma](src/components/tio/AvisoDaPlataforma.jsx) só explica.
   Ele mora no `TioLayout` e é omitido em `/tio/taxa` de propósito: cobrança
   que cobre a própria tela de pagamento não deixa ninguém pagar.
+
+**O relógio dos três meses começa na PRIMEIRA ROTA**, não no cadastro —
+`users.trialInicio`, gravado por [trialService](src/services/trialService.js)
+no mesmo gesto que liga o GPS. Motorista escolar tem calendário: contando do
+cadastro, quem conhece o app em dezembro chega em fevereiro com três semanas de
+teste, e a primeira experiência real dele é a tela de cobrança.
+
+O campo é **gravável uma vez e nunca alterável**, e a trava mora nas
+[rules](firestore.rules) — livre, ele reinicia o próprio teste pra sempre, que
+é `limiteCriancas` com outro nome. Quanto falta e qual aviso mostrar é conta
+pura em [dominio/associacao/trial.js](src/dominio/associacao/trial.js)
+(`npm run testar:trial`). **São três avisos e eles são FAIXAS, não datas** —
+30 dias (linha), 7 (cartão âmbar), o último dia (não fecha). A urgência é
+comunicada pela FORMA, porque cinco avisos em vinte dias ensinariam a pular
+aviso, que é a mesma lição de `avisoDoMomento`.
 
 **A "buzina" é `pendingCalls`** — o motorista chega e o pai não desce; em vez de
 buzinar na rua, dispara uma chamada que toca em tela cheia no celular do pai.
@@ -570,7 +586,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (101 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (116 casos, com
 atores **anônimo** e **`aguardando`**; ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 

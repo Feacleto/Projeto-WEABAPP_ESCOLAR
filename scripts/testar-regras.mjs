@@ -599,6 +599,36 @@ async function vagaContratada(tio1, tio2) {
   checar('vaga', 'tio1 mexe no limite do tio2', 'NEGA',
     await escrever(`users/${tio2.uid}`, tio1,
       { limiteCriancas: { integerValue: '99' } }, ['limiteCriancas']));
+
+
+  // ── trialInicio — gravável UMA VEZ, nunca alterável ─────────────────
+  //
+  // O relógio dos três meses começa na primeira rota, e quem o liga é o
+  // PRÓPRIO motorista, no cliente: o GPS liga no meio-fio e esperar cold
+  // start de function com o passageiro na porta é a regressão que a decisão
+  // 2 já recusou. Então a rule não pode proibir a escrita — ela precisa
+  // proibir a REESCRITA.
+  //
+  // Sem isso o motorista reinicia o próprio teste para sempre: roda uma
+  // rota, o campo grava; três meses depois grava de novo e ganha mais três.
+  // Seria o devedor editando a própria cláusula, igual a limiteCriancas.
+  //
+  // OS DOIS CASOS SÃO SEQUENCIAIS DE PROPÓSITO: o primeiro grava de verdade,
+  // e é o que faz o campo existir para o segundo. Testar a imutabilidade
+  // contra um campo semeado à mão provaria menos — provaria a regra contra
+  // um estado que o app nunca produz.
+  checar('trial', 'o motorista liga o próprio relógio na primeira rota', 'PASSA',
+    await escrever(`users/${tio1.uid}`, tio1,
+      { trialInicio: { timestampValue: '2026-03-01T12:00:00Z' } }, ['trialInicio']));
+
+  checar('trial', 'e não consegue ligá-lo de novo depois', 'NEGA',
+    await escrever(`users/${tio1.uid}`, tio1,
+      { trialInicio: { timestampValue: '2026-09-01T12:00:00Z' } }, ['trialInicio']));
+
+  // O vizinho: nem o relógio do colega ele encosta.
+  checar('trial', 'tio1 liga o relógio do tio2', 'NEGA',
+    await escrever(`users/${tio2.uid}`, tio1,
+      { trialInicio: { timestampValue: '2026-03-01T12:00:00Z' } }, ['trialInicio']));
 }
 
 /**

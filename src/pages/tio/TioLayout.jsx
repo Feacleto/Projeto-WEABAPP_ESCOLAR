@@ -5,6 +5,7 @@ import BottomNav from '../../components/layout/BottomNav';
 import InstallPrompt from '../../components/common/InstallPrompt';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import AvisoDaPlataforma from '../../components/tio/AvisoDaPlataforma';
+import AvisoDoTrial from '../../components/tio/AvisoDoTrial';
 import { useAuth } from '../../hooks/useAuth';
 import { useAutoBilling } from '../../hooks/useAutoBilling';
 import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
@@ -132,6 +133,12 @@ export default function TioLayout() {
       {!naTelaDaTaxa && (
         <AvisoDaPlataforma fatura={fatura} criancas={children?.length || 0} />
       )}
+      {/* O aviso do teste fica ABAIXO do da plataforma, e some sozinho quando
+        * o outro importa: quem já tem fatura passou do trial, e avisoDoTrial
+        * devolve null pra quem tem contrato. Duas cobranças na mesma tela
+        * seria o app falando de dinheiro duas vezes antes de o motorista ver
+        * a rota do dia. */}
+      {!naTelaDaTaxa && <AvisoDoTrial temContrato={!!fatura} />}
       <Outlet context={{ openTutorial }} />
       <BottomNav items={NAV_ITEMS} />
       <InstallPrompt />
