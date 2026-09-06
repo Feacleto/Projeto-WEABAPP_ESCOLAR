@@ -555,11 +555,24 @@ decisão 5 de [docs/decisoes.md](docs/decisoes.md), que estava com estado
 **E ele tem DUAS ABAS desde 06/09/2026** — "Já tenho conta" e "Criar conta",
 no mesmo cartão. O "Cadastrar" antigo era um link pra `/comecar`, e `/comecar`
 devolve pro login quem não tem sessão: quem clicava deslogado voltava pra
-mesma tela. Na aba de cadastro o **código do convite vem ANTES do Google**,
-porque `googleAndRedeem` cria sessão e resgata o convite numa transação só —
-e apaga a conta recém-nascida se o resgate falhar. Pedir depois deixaria
-sessão pendurada com a pessoa achando que virou cliente. A aba pode vir da
-URL (`/login?criar=1`): a landing está em outro domínio e não tem `state`.
+mesma tela. A aba pode vir da URL (`/login?criar=1`): a landing está em outro
+domínio e não tem `state`.
+
+**A aba "Criar conta" NÃO cadastra ninguém — ela faz UMA pergunta**, e manda
+pra `/quero-fazer-parte` (motorista) ou `/first-access` (responsável). Ela já
+pediu o código do convite, e era erro: código é coisa de responsável, e o
+motorista — que é o usuário principal — lia aquilo como "preciso de código pra
+me cadastrar". As duas portas têm **pesos diferentes de propósito**: a do
+motorista é cheia e vem primeiro, a da família é de contorno. Elas viajam com
+`state: { de: 'escolha' }`, e é isso que faz o "Voltar" das duas telas
+retornar pra bifurcação em vez de jogar pra fora do app quem estava
+escolhendo — e que abre o campo de código já expandido no `/first-access`.
+
+**As duas telas de cadastro são de MONITOR também**, com `data-painel="web"`:
+o motorista decide sentado, e a responsável que perdeu o link volta pelo site.
+As formas são OPOSTAS, e isso vem da landing — ele está comprando (denso,
+escuro, campos em pares), ela está sendo tranquilizada (claro, arejado, uma
+coluna). O empilhado do celular continua sendo o desenho principal das duas.
 
 **O código do convite se lê de qualquer texto** — `codigoDoTexto` em
 [generateInviteCode.js](src/dominio/identidade/generateInviteCode.js) aceita o

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Bus, MapPin, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
@@ -25,6 +25,15 @@ import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../compartil
  */
 export default function DriverSignup() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // DE ONDE ELE VEIO DECIDE PRA ONDE O "VOLTAR" LEVA.
+  //
+  // Quem chega pela bifurcação do login está NO MEIO de uma escolha, e jogar
+  // essa pessoa pra fora do app (pro site institucional) desfaz mais do que
+  // ela pediu — ela queria trocar de porta, não sair. Quem chega por link
+  // direto ou pela landing continua saindo pro site, que é de onde veio.
+  const veioDaEscolha = location.state?.de === 'escolha';
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -113,12 +122,30 @@ export default function DriverSignup() {
   // ponto em que o interesse esfriava.
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
+    /**
+     * DUAS COLUNAS NO MONITOR, EMPILHADO NO CELULAR.
+     *
+     * Esta tela vivia só dentro dos 480px do #root, e é a tela onde o
+     * MOTORISTA decide entrar — ele costuma abrir isso sentado, no
+     * computador, depois de conversar com o consultor. Numa tira estreita no
+     * meio de um monitor vazio, um formulário de sete campos lê como
+     * formulário sem fim.
+     *
+     * `data-painel="web"` solta o teto pela regra `:has()` do index.css, e o
+     * `w-screen` com translate é a garantia pra navegador sem `:has()` — o
+     * mesmo par que a tela de login usa. Aqui ele é seguro porque nada nesta
+     * tela é `sticky`.
+     */
+    <div
+      data-painel="web"
+      className="relative left-1/2 w-screen -translate-x-1/2 bg-bg"
+    >
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)]">
       {/* Tampa escura, corpo claro — a mesma regra da folha modal e das
         * outras portas: marca em cima, produto embaixo. Assim o motorista
         * que vem do cartão "sou motorista escolar" não sente que trocou de
         * aplicativo no meio do caminho. */}
-      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white">
+      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div
             className="absolute inset-0 opacity-80 animate-glow-drift"
@@ -144,17 +171,35 @@ export default function DriverSignup() {
           />
         </div>
 
+        {/* TRÊS FILHOS NO FLEX DA COLUNA ESCURA: o voltar no alto, o miolo no
+          * meio, o domínio embaixo. É o mesmo arranjo da tela de login, e é o
+          * que impede o texto de flutuar no meio de um vazio de 300px quando
+          * a coluna tem a altura de um monitor. */}
         <div className="relative">
-          {/* Volta pro site institucional, que é OUTRO domínio — por isso <a> e
-            * não <Link>. Ver SITE_INSTITUCIONAL em config/vitrine.js. */}
-          <a
-            href={SITE_INSTITUCIONAL}
-            className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
-          >
-            <ArrowLeft size={16} /> Voltar
-          </a>
+          {/* Quem veio da bifurcação volta PRA ELA — trocar de porta é o
+            * arrependimento provável aqui, e ele é de dentro do app. Quem
+            * chegou de fora volta pro site institucional, que é OUTRO
+            * domínio: por isso `<a>` e não `<Link>`, que montaria caminho
+            * relativo. Ver SITE_INSTITUCIONAL em config/vitrine.js. */}
+          {veioDaEscolha ? (
+            <Link
+              to="/login?criar=1"
+              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+            >
+              <ArrowLeft size={16} /> Voltar para a escolha
+            </Link>
+          ) : (
+            <a
+              href={SITE_INSTITUCIONAL}
+              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+            >
+              <ArrowLeft size={16} /> Voltar
+            </a>
+          )}
+        </div>
 
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
+        <div className="relative">
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80 lg:mt-0">
             vaga limitada por estrutura
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
@@ -169,14 +214,21 @@ export default function DriverSignup() {
             <ArtRoad />
           </div>
         </div>
+
+        <p className="relative hidden text-xs text-white/40 lg:block">
+          alobuzinou.com.br
+        </p>
       </header>
 
+      {/* A costura entre marca e produto só existe empilhado: lado a lado, a
+        * borda entre as duas colunas já faz esse trabalho. */}
       <div
         aria-hidden
-        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary"
+        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
       />
 
-      <div className="flex flex-1 flex-col px-6 py-6">
+      <div className="flex flex-1 flex-col px-6 py-6 lg:px-12 lg:py-16">
+        <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col">
         {/* Mesmo cartão da folha da home: um lugar só pra contagem, senão
           * uma tela diz "1" e a outra diz "um" no dia em que virar 2. */}
         <AssociadosCard className="mb-5" />
@@ -192,56 +244,65 @@ export default function DriverSignup() {
             error={errors.name}
             required
           />
-          <Input
-            label="WhatsApp"
-            placeholder="(11) 90000-0000"
-            inputMode="tel"
-            value={form.phone}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))
-            }
-            autoComplete="tel"
-            error={errors.phone}
-            hint="É por aqui que falamos com você."
-            required
-          />
-          <Input
-            type="email"
-            inputMode="email"
-            label="Email"
-            placeholder="seu@email.com"
-            icon={Mail}
-            value={form.email}
-            onChange={set('email')}
-            autoComplete="email"
-            error={errors.email}
-            hint="É por ele que você entra na sua conta."
-          />
-          {/* A senha aparece aqui porque a inscrição CRIA A CONTA. Google
-            * fica de fora de propósito: dentro da webview do WhatsApp o
-            * OAuth é recusado, e este formulário costuma ser aberto a
-            * partir de um link compartilhado. Caminho que falha em metade
-            * dos aparelhos é pior que um campo a mais. */}
-          <Input
-            type="password"
-            revealable
-            label="Crie uma senha"
-            placeholder="mínimo 6 caracteres"
-            icon={Lock}
-            value={form.senha}
-            onChange={set('senha')}
-            autoComplete="new-password"
-            error={errors.senha}
-          />
-          <Input
-            label="Cidade onde você roda"
-            placeholder="Ex: Cidade Ademar, SP"
-            icon={MapPin}
-            value={form.city}
-            onChange={set('city')}
-            error={errors.city}
-            required
-          />
+          {/* PARES NO MONITOR, UM POR LINHA NO CELULAR.
+            * Sete campos numa coluna só num monitor viram uma escada que
+            * não acaba. Os pares são por ASSUNTO — como a gente fala com
+            * você, e como você entra na sua conta —, não por caberem
+            * lado a lado. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Input
+              label="WhatsApp"
+              placeholder="(11) 90000-0000"
+              inputMode="tel"
+              value={form.phone}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))
+              }
+              autoComplete="tel"
+              error={errors.phone}
+              hint="É por aqui que falamos com você."
+              required
+            />
+            <Input
+              label="Cidade onde você roda"
+              placeholder="Ex: Cidade Ademar, SP"
+              icon={MapPin}
+              value={form.city}
+              onChange={set('city')}
+              error={errors.city}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Input
+              type="email"
+              inputMode="email"
+              label="Email"
+              placeholder="seu@email.com"
+              icon={Mail}
+              value={form.email}
+              onChange={set('email')}
+              autoComplete="email"
+              error={errors.email}
+              hint="É por ele que você entra na sua conta."
+            />
+            {/* A senha aparece aqui porque a inscrição CRIA A CONTA. Google
+              * fica de fora de propósito: dentro da webview do WhatsApp o
+              * OAuth é recusado, e este formulário costuma ser aberto a
+              * partir de um link compartilhado. Caminho que falha em metade
+              * dos aparelhos é pior que um campo a mais. */}
+            <Input
+              type="password"
+              revealable
+              label="Crie uma senha"
+              placeholder="mínimo 6 caracteres"
+              icon={Lock}
+              value={form.senha}
+              onChange={set('senha')}
+              autoComplete="new-password"
+              error={errors.senha}
+            />
+          </div>
 
           <div>
             {/* Criança, e não van — é sobre ela que o contrato é
@@ -296,5 +357,7 @@ export default function DriverSignup() {
         </div>
         </div>
       </div>
-    );
-  }
+      </div>
+    </div>
+  );
+}

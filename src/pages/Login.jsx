@@ -1,31 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft, Ticket } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, ArrowRight, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
-import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
-import { CENA_ABERTURA, CENA_ENTRADA, travessar } from '../marca/travessia';
+import { CENA_ENTRADA, travessar } from '../marca/travessia';
 import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
-import {
-  resetPassword,
-  loginComGoogle,
-  googleAndRedeem,
-} from '../services/authService';
-import { acceptTerms } from '../services/consentService';
+import { resetPassword, loginComGoogle } from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
 import OpenInBrowser from '../components/auth/OpenInBrowser';
 import { canUseGoogleSignIn, isInAppBrowser } from '../compartilhado/browserEnv';
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
-import {
-  codigoDoTexto,
-  isValidInviteCodeFormat,
-} from '../dominio/identidade/generateInviteCode';
 
 /** As duas abas do cartão, na ordem em que aparecem. */
 const ABAS = [
@@ -95,12 +85,6 @@ export default function Login() {
     new URLSearchParams(location.search || '').get('criar') ? 'criar' : 'entrar'
   );
   const ehEntrar = aba === 'entrar';
-
-  // Estado da aba de cadastro. Vive aqui e não dentro dela porque trocar de
-  // aba não pode apagar o código que a pessoa já digitou.
-  const [code, setCode] = useState('');
-  const [semCodigo, setSemCodigo] = useState(false);
-  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   // Mesmo tratamento da folha de convite: dentro do navegador embutido do
   // WhatsApp/Instagram, o Google recusa o OAuth e a sessão criada aqui fica
@@ -177,62 +161,6 @@ export default function Login() {
     } catch (err) {
       if (err?.code !== 'auth/popup-closed-by-user') {
         toast.error(mensagemDeAuth(err, 'entrar'));
-      }
-    } finally {
-      setGoogleSubmitting(false);
-    }
-  };
-
-  /**
-   * Criar conta com Google — o caminho do responsável convidado.
-   *
-   * O CÓDIGO E A CONTA NASCEM JUNTOS. `googleAndRedeem` abre o popup, cria a
-   * sessão e resgata o convite numa transação só; se o resgate falhar, ele
-   * apaga a conta que acabou de nascer — mas só ela, nunca a conta Google de
-   * quem já usava o app. É o que impede o pior estado possível aqui: sessão
-   * criada, vínculo não, e a pessoa achando que já é cliente.
-   *
-   * SEM CÓDIGO ELE NÃO CRIA NADA. Cai no login normal, e quem não tiver
-   * perfil vai pra sala de espera escolher por onde chegou. Fingir que dá pra
-   * criar conta de responsável sem convite seria repetir o erro que a sala de
-   * espera existe pra consertar.
-   */
-  const onCriarComGoogle = async () => {
-    const limpo = codigoDoTexto(code);
-
-    if (!limpo) {
-      toast.error('Digite o código do convite — ou toque em "Não tenho o código".');
-      return;
-    }
-    if (!isValidInviteCodeFormat(limpo)) {
-      toast.error('Confira o código com o motorista: ele tem 8 caracteres.');
-      return;
-    }
-    if (!acceptedLegal) {
-      toast.error('Aceite os termos antes de continuar.');
-      return;
-    }
-
-    setGoogleSubmitting(true);
-    try {
-      const { user, created } = await googleAndRedeem({ inviteCode: limpo });
-      try {
-        await acceptTerms(user.uid);
-      } catch (err) {
-        console.error('Falha ao registrar aceite:', err);
-      }
-      await refreshProfile();
-      toast.success(
-        created ? 'Conta criada com Google!' : 'Pronto! Criança vinculada.'
-      );
-      // Mesma regra do /first-access: conta NOVA ganha a abertura, conta que
-      // já existia e só vinculou mais uma criança ganha a entrada. A abertura
-      // é cara e existe pra um único momento na vida da pessoa.
-      travessar(created ? CENA_ABERTURA : CENA_ENTRADA, 'parent');
-      navigate('/pai', { replace: true });
-    } catch (err) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
-        toast.error(mensagemDeAuth(err, 'criar'));
       }
     } finally {
       setGoogleSubmitting(false);
@@ -507,103 +435,93 @@ export default function Login() {
                   </form>
                 </>
               ) : (
-                /* ── CRIAR CONTA ────────────────────────────────────────
-                 * O CÓDIGO VEM ANTES DO GOOGLE, e a ordem não é estética.
-                 * `googleAndRedeem` cria a sessão e resgata o convite no mesmo
-                 * gesto — e se o resgate falhar, ele APAGA a conta que acabou
-                 * de nascer. Pedir o código depois quebraria isso em dois:
-                 * código errado deixaria uma sessão pendurada, e a pessoa
-                 * cairia na sala de espera achando que tinha criado conta.
+                /* ── CRIAR CONTA — SÓ A PERGUNTA ────────────────────────
+                 * ESTA ABA JÁ PEDIU O CÓDIGO DO CONVITE, E ERA UM ERRO.
+                 * O código é coisa de responsável, e o motorista é o usuário
+                 * principal do produto: ele abria "Criar conta", via um campo
+                 * de código como primeira coisa da tela e concluía que
+                 * precisava de um código pra se cadastrar. Não precisa — a
+                 * conta dele nasce de um formulário, não de um convite.
                  *
-                 * Aqui só existe o Google. Quem não tem conta Google acha a
-                 * saída de e-mail e senha no fim, com o código digitado indo
-                 * junto — redigitar o código é o tipo de pedágio que faz
-                 * desistir no último passo.
+                 * Então a aba não cadastra ninguém: ela FAZ A PERGUNTA e
+                 * manda cada um pra tela que é dele. Cada porta diz o que
+                 * acontece depois, porque "motorista" e "responsável" são
+                 * rótulos do sistema, e o que a pessoa reconhece é o que ela
+                 * tem na mão: uma van, ou um convite.
+                 *
+                 * PESOS DIFERENTES, DE PROPÓSITO. A porta do motorista é
+                 * cheia e vem primeiro; a da família é de contorno. Ele paga
+                 * e usa o dia inteiro, ela chega pelo link dele em 9 de 10
+                 * casos — duas portas do mesmo peso mentiriam sobre isso.
+                 *
+                 * O `state` diz de onde a pessoa veio, e é o que faz o
+                 * "Voltar" das duas telas retornar pra cá em vez de jogar
+                 * pra fora do app quem estava escolhendo.
                  */
                 <>
                   <div>
                     <h2 className="text-xl font-bold text-text">Criar conta</h2>
                     <p className="mt-0.5 text-sm text-textMuted">
-                      Quem entra aqui foi convidado por um motorista.
+                      Primeiro: como você usa o Alô Buzinou?
                     </p>
                   </div>
 
                   {!showBridge && (
-                    <>
-                      <Input
-                        label="Código do convite"
-                        placeholder="TN000000"
-                        icon={Ticket}
-                        value={code}
-                        onChange={(e) => setCode(codigoDoTexto(e.target.value))}
-                        autoCapitalize="characters"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        hint="Pode colar o link inteiro que o motorista mandou."
-                      />
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate('/quero-fazer-parte', {
+                            state: { de: 'escolha' },
+                          })
+                        }
+                        className="tap relative block w-full overflow-hidden rounded-2xl border border-night bg-night p-4 text-left shadow-float transition-colors hover:border-onNightAccent"
+                      >
+                        <Bus
+                          size={92}
+                          strokeWidth={1.4}
+                          aria-hidden
+                          className="pointer-events-none absolute -bottom-4 -right-3 text-white/[0.07]"
+                        />
+                        <span className="relative block font-mono text-[10px] uppercase tracking-[0.18em] text-onNightAccent">
+                          quem dirige a perua
+                        </span>
+                        <span className="relative mt-2 block text-base font-extrabold tracking-tight text-white">
+                          Sou motorista ou operador
+                        </span>
+                        <span className="relative mt-1 block text-sm leading-snug text-onNightMuted">
+                          Você tem uma van e quer organizar a operação: rota,
+                          avisos, contrato e mensalidade.
+                        </span>
+                        <span className="relative mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-onNightAccent">
+                          Criar minha operação <ArrowRight size={15} />
+                        </span>
+                      </button>
 
                       <button
                         type="button"
-                        onClick={() => setSemCodigo((v) => !v)}
-                        aria-expanded={semCodigo}
-                        className="tap -mt-1 block text-sm font-semibold text-primary"
+                        onClick={() =>
+                          navigate('/first-access', {
+                            state: { de: 'escolha' },
+                          })
+                        }
+                        className="tap relative block w-full overflow-hidden rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary"
                       >
-                        {semCodigo ? 'Fechar' : 'Não tenho o código'}
+                        <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-primary">
+                          quem recebe o convite
+                        </span>
+                        <span className="mt-2 block text-base font-extrabold tracking-tight text-text">
+                          Sou família ou responsável
+                        </span>
+                        <span className="mt-1 block text-sm leading-snug text-textMuted">
+                          Um motorista te mandou um link ou um código para
+                          acompanhar seu filho.
+                        </span>
+                        <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+                          Usar meu convite <ArrowRight size={15} />
+                        </span>
                       </button>
-
-                      {/* A resposta é curta de propósito: quem abriu isto está
-                        * travado, e texto longo aqui é mais uma parede. */}
-                      {semCodigo && (
-                        <p className="rounded-xl bg-sunken p-3 text-sm leading-relaxed text-textMuted">
-                          O código é do motorista, e ele tem um por criança.
-                          Peça a ele o link ou o código do seu filho — é o mesmo
-                          que ele mandou no WhatsApp quando cadastrou a criança.
-                          Cadastro aberto não existe aqui, e é isso que protege
-                          os dados dela.
-                        </p>
-                      )}
-
-                      <LegalAcceptCheckbox
-                        checked={acceptedLegal}
-                        onChange={setAcceptedLegal}
-                      />
-
-                      {googleWorks && (
-                        <Button
-                          loading={googleSubmitting}
-                          onClick={onCriarComGoogle}
-                          className="!whitespace-nowrap"
-                        >
-                          {!googleSubmitting && <GoogleIcon size={20} />}
-                          Criar conta com Google
-                        </Button>
-                      )}
-
-                      <p className="text-center text-sm text-textMuted">
-                        Prefere e-mail e senha?{' '}
-                        <Link
-                          to="/first-access"
-                          state={{ code }}
-                          className="font-semibold text-primary hover:underline"
-                        >
-                          Criar assim
-                        </Link>
-                      </p>
-
-                      {/* O MOTORISTA NÃO NASCE AQUI, e por isso ele é uma linha
-                        * e não um botão: a conta dele passa por aprovação e por
-                        * um formulário com cidade e frota. Botão do mesmo
-                        * tamanho prometeria uma simetria que o fluxo não tem. */}
-                      <p className="border-t border-border pt-4 text-center text-sm text-textMuted">
-                        É motorista escolar?{' '}
-                        <Link
-                          to="/quero-fazer-parte"
-                          className="font-semibold text-primary hover:underline"
-                        >
-                          Cadastre sua operação
-                        </Link>
-                      </p>
-                    </>
+                    </div>
                   )}
                 </>
               )}

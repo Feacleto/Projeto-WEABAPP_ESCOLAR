@@ -72,7 +72,18 @@ export default function FirstAccess() {
   // no último passo, e é onde se desiste. Se ele veio, a seção abre junto:
   // campo preenchido atrás de um "tenho um código" fechado é campo invisível.
   const codigoRecebido = codigoDoTexto(location.state?.code || '');
-  const [abriuCodigo, setAbriuCodigo] = useState(Boolean(codigoRecebido));
+
+  // Quem veio da bifurcação do login está NO MEIO de uma escolha: o
+  // arrependimento provável dela é trocar de porta, não sair do app. Quem
+  // chegou de qualquer outro jeito continua voltando pra porta da família.
+  const veioDaEscolha = location.state?.de === 'escolha';
+  // Também abre pra quem veio da bifurcação: ela acabou de tocar em "usar meu
+  // convite", e receber um "tenho um código de convite" fechado logo depois é
+  // a mesma pergunta feita duas vezes. Quem chega por outro caminho continua
+  // vendo o aviso do link primeiro, que é o que serve a 9 de 10.
+  const [abriuCodigo, setAbriuCodigo] = useState(
+    Boolean(codigoRecebido) || veioDaEscolha
+  );
   const [abriuSenha, setAbriuSenha] = useState(false);
   const [code, setCode] = useState(codigoRecebido);
   const [name, setName] = useState('');
@@ -208,9 +219,25 @@ export default function FirstAccess() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
+    /**
+     * DUAS COLUNAS NO MONITOR, EMPILHADO NO CELULAR.
+     *
+     * A responsável é quem mais chega pelo celular — é o link do WhatsApp
+     * que a traz —, e por isso o empilhado continua sendo o desenho
+     * principal. Mas ela não é SÓ celular: quem perdeu a mensagem e volta
+     * pelo site costuma estar no computador, e ali a tira de 480px no meio
+     * do monitor lê como app quebrado.
+     *
+     * Mesmo par da tela de login: `data-painel="web"` solta o teto e o
+     * `w-screen` com translate é a garantia pra navegador sem `:has()`.
+     */
+    <div
+      data-painel="web"
+      className="relative left-1/2 w-screen -translate-x-1/2 bg-bg"
+    >
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)]">
       {/* ── tampa escura: a marca, no mesmo material da home ── */}
-      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white">
+      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div
             className="absolute inset-0 opacity-80 animate-glow-drift"
@@ -240,20 +267,27 @@ export default function FirstAccess() {
           {/* Voltar vai pra porta da FAMÍLIA, não pra "/". Esta tela existe
             * só pra criar conta de responsável — quem está aqui está no
             * caminho dele, e Voltar tem que devolver ele pra frente dele.
-            * Antes apontava pra home do motorista, que vende associação. */}
+            * Antes apontava pra home do motorista, que vende associação.
+            * A exceção é quem veio da bifurcação: essa pessoa volta pra ela. */}
           <Link
-            to="/familia"
+            to={veioDaEscolha ? '/login?criar=1' : '/familia'}
             className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
           >
-            <ArrowLeft size={16} /> Voltar
+            <ArrowLeft size={16} />{' '}
+            {veioDaEscolha ? 'Voltar para a escolha' : 'Voltar'}
           </Link>
+        </div>
 
-          <div className="mt-3 text-center">
+        {/* Mesmo arranjo da tela do motorista: voltar no alto, miolo no meio,
+          * domínio embaixo — senão o texto flutua num vazio de 300px quando a
+          * coluna tem a altura de um monitor. */}
+        <div className="relative">
+          <div className="text-center lg:text-left">
             <Logo
               variant="stacked"
               tone="onDark"
               height={80}
-              className="mx-auto"
+              className="mx-auto lg:mx-0"
             />
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
               primeiro acesso
@@ -261,21 +295,28 @@ export default function FirstAccess() {
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
               Criar sua conta
             </h1>
-            <p className="mx-auto mt-2 max-w-[19rem] text-sm leading-relaxed text-white/65">
+            <p className="mx-auto mt-2 max-w-[19rem] text-sm leading-relaxed text-white/65 lg:mx-0">
               Sua conta nasce do convite do motorista — é ele que liga seu filho
               a você.
             </p>
           </div>
         </div>
+
+        <p className="relative hidden text-xs text-white/40 lg:block">
+          alobuzinou.com.br
+        </p>
       </header>
 
       {/* Costura entre a marca e o produto. */}
+      {/* A costura entre marca e produto só existe empilhado: lado a lado, a
+        * borda entre as duas colunas já faz esse trabalho. */}
       <div
         aria-hidden
-        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary"
+        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
       />
 
-      <main className="flex flex-1 flex-col px-6 py-5">
+      <main className="flex flex-1 flex-col px-6 py-5 lg:px-12 lg:py-16">
+        <div className="mx-auto flex w-full max-w-[520px] flex-1 flex-col lg:justify-center">
         {/* O caminho fácil primeiro: quem tem o link não precisa de nada disso. */}
         <div className="rounded-2xl border border-primaryBorder bg-primarySoft p-4">
           <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
@@ -434,7 +475,7 @@ export default function FirstAccess() {
           * empurravam o assunto da tela pra cima. Como par de links discretos
           * eles continuam acháveis por quem procura, sem competir com quem
           * está aqui pelo motivo certo. */}
-        <div className="mt-auto flex items-center justify-center gap-3 pt-8 text-sm font-semibold text-textMuted">
+        <div className="mt-auto flex items-center justify-center gap-3 pt-8 text-sm font-semibold text-textMuted lg:mt-8">
           <button
             type="button"
             onClick={() => navigate('/login')}
@@ -465,7 +506,9 @@ export default function FirstAccess() {
             Política de Privacidade
           </Link>
         </div>
+        </div>
       </main>
+      </div>
     </div>
   );
 }
