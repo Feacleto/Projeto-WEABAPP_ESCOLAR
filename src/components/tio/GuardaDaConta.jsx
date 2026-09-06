@@ -27,6 +27,16 @@ import ContaInativa from '../../pages/tio/ContaInativa';
  * pelo caminho que sempre teve: o cartão do `AvisoDaPlataforma` e a suspensão
  * decidida por gente.
  *
+ * O CAMINHO DE VOLTAR NÃO PASSA POR AQUI, E ISSO É ESTRUTURAL.
+ * `/tio/planos`, `/tio/taxa` e `/tio/contrato-plataforma` foram movidas para
+ * FORA deste guarda em 06/09/2026 (ver `App.jsx`). Elas moravam dentro do
+ * layout, e quando a conta inativa o layout inteiro é substituído — o botão
+ * "Ver planos" da tela de conta inativa navegava e a tela não mudava.
+ *
+ * Quem quer pagar precisa conseguir chegar na tela de pagar. É o gêmeo, na
+ * interface, do `temPapelDeMotorista()` das rules: as duas metades da mesma
+ * saída, e sem qualquer uma delas a tranca prende quem está tentando sair.
+ *
  * `assinaturaAte` É O QUE TORNA O BLOQUEIO POR TESTE POSSÍVEL. Sem ele, o
  * primeiro cliente pagante seria trancado no dia 90 — nenhuma regra alcança o
  * contrato de associação, cujo id é `${tioUid}_${Date.now()}` e não se

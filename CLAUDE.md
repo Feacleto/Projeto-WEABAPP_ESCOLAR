@@ -726,9 +726,27 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (143 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (152 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
+
+**A TRANCA MORA EM `isAdmin()`** — desde 06/09/2026 ele nega também quem está
+com o teste vencido e sem assinatura, além de `suspenso`. Tela não é tranca: o
+`GuardaDaConta` esconde o painel, mas o token continua válido e uma aba antiga
+escreve igual.
+
+⚠️ **A rule é o PISO, não o espelho da tela.** `contaAtiva.js` bloqueia antes
+(dez dias depois do vencimento da fatura); a rule só conhece `assinaturaAte` +
+folga, o que dá algumas semanas a mais. A assimetria é deliberada: errar
+permissivo custa uma aba velha escrevendo; errar restritivo tranca um motorista
+**pagante** às seis da manhã, sem conserto dentro do produto.
+
+⚠️ **E ela tem DUAS metades de saída, que só funcionam juntas.** Nas rules,
+`temPapelDeMotorista()` — usado SÓ na emissão de contrato — deixa o bloqueado
+contratar, que é o que o desbloqueia. Na interface, `/tio/planos`, `/tio/taxa`
+e `/tio/contrato-plataforma` ficam FORA do `GuardaDaConta` em
+[App.jsx](src/App.jsx): dentro dele, o botão "Ver planos" navegava e a tela não
+mudava. Sem qualquer uma das duas, a tranca prende quem está tentando sair.
 
 **`isAdmin()` nas rules significa QUALQUER MOTORISTA** — nunca é escopo
 sozinho. Quem escopa é `ehDoMotorista()`/`doDono()`, que comparam `adminUid`.

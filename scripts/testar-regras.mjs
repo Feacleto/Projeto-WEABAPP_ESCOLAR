@@ -42,6 +42,10 @@ const H = (s) => ({ 'Content-Type': 'application/json', Authorization: `Bearer $
 const S = (v) => ({ stringValue: v });
 const B = (v) => ({ booleanValue: v });
 const N = (v) => ({ doubleValue: v });
+/** Timestamp. `dias` negativos = no passado. */
+const T = (dias) => ({
+  timestampValue: new Date(Date.now() + dias * 86400000).toISOString(),
+});
 
 let ok = 0;
 let bad = 0;
@@ -89,6 +93,12 @@ async function criarAnonimo() {
   return { uid: j.localId, t: j.idToken };
 }
 
+// ⚠️ `semear` SUBSTITUI o documento inteiro — é PATCH sem `updateMask`, e o
+// Firestore trata isso como escrita completa. Semear `{ planoId }` sobre um
+// usuário APAGA `role`, `trialInicio` e o resto, e o caso seguinte falha por
+// um motivo que não tem nada a ver com a regra sendo testada. Aconteceu.
+//
+// Para acrescentar campo, repita o documento inteiro.
 const semear = (caminho, fields) =>
   fetch(`${FS}/${caminho}`, { method: 'PATCH', headers: ADM, body: JSON.stringify({ fields }) });
 
@@ -854,6 +864,82 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     await escrever('users/' + tio1.uid, dono, { planoId: S('ate25') }, ['planoId']));
   checar('pos', 'e a condicao de fundador', 'PASSA',
     await escrever('users/' + tio1.uid, dono, { condicaoFundador: S('metade') }, ['condicaoFundador']));
+
+  console.log('\n=== A TRANCA — teste vencido e atraso nao sao motorista ===');
+
+  // ESTE BLOCO E O MAIS CARO DE ERRAR DO ARQUIVO.
+  //
+  // Ele prova que a conta inativa para de escrever de VERDADE, e nao so na
+  // tela — `GuardaDaConta` esconde o painel, mas o token continua valido e uma
+  // aba antiga escreve igual. E prova, junto, que o bloqueado NAO fica preso:
+  // ele ainda alcanca o caminho de voltar a pagar.
+  const vencido = await criarLogin(`vencido.${Date.now()}@teste.local`);
+  const emDia = await criarLogin(`emdia.${Date.now()}@teste.local`);
+  const carencia = await criarLogin(`carencia.${Date.now()}@teste.local`);
+
+  // Teste iniciado ha 100 dias, nunca pagou. Acabou.
+  await semear(`users/${vencido.uid}`, {
+    role: S('admin'), name: S('Vencido'), trialInicio: T(-100),
+  });
+  // Teste vencido, mas com assinatura em dia: e cliente.
+  await semear(`users/${emDia.uid}`, {
+    role: S('admin'), name: S('Em dia'), trialInicio: T(-200), assinaturaAte: T(20),
+  });
+  // Assinatura venceu ha 3 dias — dentro da folga. A TELA ja bloqueou; a rule
+  // ainda deixa passar, e a assimetria e deliberada: errar para o lado
+  // permissivo custa uma aba velha escrevendo; errar para o outro tranca um
+  // motorista PAGANTE as seis da manha.
+  await semear(`users/${carencia.uid}`, {
+    role: S('admin'), name: S('Carencia'), trialInicio: T(-200), assinaturaAte: T(-3),
+  });
+
+  checar('tranca', 'quem esta com o teste vencido cadastra crianca', 'NEGA',
+    await criar('children', `kid-vencido-${Date.now()}`, vencido, {
+      name: S('X'), adminUid: S(vencido.uid), active: B(true),
+    }));
+  checar('tranca', 'e nem escreve a propria posicao ao vivo', 'NEGA',
+    await escrever('liveLocation/' + vencido.uid, vencido, { lat: N(-23) }, ['lat']));
+  checar('tranca', 'nem cria recado de escola', 'NEGA',
+    await criar('schoolBroadcasts', `br-vencido-${Date.now()}`, vencido, {
+      adminUid: S(vencido.uid), texto: S('oi'),
+    }));
+
+  checar('pos', 'quem esta com a assinatura em dia opera normalmente', 'PASSA',
+    await criar('children', `kid-emdia-${Date.now()}`, emDia, {
+      name: S('Y'), adminUid: S(emDia.uid), active: B(true),
+    }));
+  checar('pos', 'e quem venceu ha 3 dias ainda opera (a folga da rule)', 'PASSA',
+    await criar('children', `kid-carencia-${Date.now()}`, carencia, {
+      name: S('Z'), adminUid: S(carencia.uid), active: B(true),
+    }));
+  // Quem nunca rodou uma rota nao tem `trialInicio`: o relogio nao comecou.
+  // Bloquear aqui seria bloquear todo mundo no primeiro dia.
+  checar('pos', 'quem nunca rodou rota nao e bloqueado', 'PASSA',
+    await criar('children', `kid-novato-${Date.now()}`, novato, {
+      name: S('W'), adminUid: S(novato.uid), active: B(true),
+    }));
+
+  // ⚠️ O RESPIRO. Sem ele, o bloqueado nao consegue CONTRATAR — que e
+  // exatamente o que o desbloqueia — e o beco nao tem saida dentro do produto.
+  checar('pos', 'o bloqueado ainda le o proprio cadastro', 'PASSA',
+    await ler('users/' + vencido.uid, vencido));
+  await semear('faturasParceiro/' + vencido.uid + '_2026-09', {
+    tioUid: S(vencido.uid), total: N(149), status: S('aberta'),
+  });
+  checar('pos', 'o bloqueado ainda le a propria fatura (pra pagar)', 'PASSA',
+    await ler('faturasParceiro/' + vencido.uid + '_2026-09', vencido));
+  // O documento INTEIRO de novo — ver o aviso em `semear`.
+  await semear(`users/${vencido.uid}`, {
+    role: S('admin'), name: S('Vencido'), trialInicio: T(-100), planoId: S('ate25'),
+  });
+  checar('pos', 'e o bloqueado AINDA EMITE contrato — o caminho de voltar', 'PASSA',
+    await criar('contratosAssociacao', vencido.uid + '_' + Date.now(), vencido, {
+      tioUid: S(vencido.uid),
+      aceitoEm: { nullValue: null },
+      conteudo: {
+        mapValue: { fields: { plano: { mapValue: { fields: { id: S('ate25') } } } } },
+      },
+    }));
 
   // ── O ASSOCIADO EMITE O PROPRIO CONTRATO ─────────────────────────────
   //

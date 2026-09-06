@@ -444,25 +444,51 @@ export default function App() {
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
-        {/* O contrato com a PLATAFORMA — outro documento e outro nível do que
-          * o contrato com as famílias, que vive em children/:id/contract. */}
-        <Route path="contrato-plataforma" element={<TioContratoAssociacao />} />
-        {/* A TAXA que ele deve à plataforma — o outro lado do painel do dono.
-          *
-          * Não fica sob /tio/finance de propósito: lá é o dinheiro que ele
-          * RECEBE das famílias, e a plataforma não está no caminho daquele
-          * dinheiro. Misturar as duas telas é o começo de misturar os dois
-          * dinheiros, que é o que os Termos de Uso proíbem. */}
-        <Route path="taxa" element={<TioTaxa />} />
-        {/* A escolha do teto de crianças, que é o que o plano capa. Fora do
-          * BottomNav de propósito: ninguém procura plano no meio do dia de
-          * trabalho — chega-se aqui pelo aviso do teste ou pela taxa. */}
-        <Route path="planos" element={<TioPlanos />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 
       {/* Painel do Pai (parent) — rotas aninhadas com layout compartilhado */}
+      {/* ⚠️ AS TRÊS TELAS DE VOLTAR A PAGAR FICAM FORA DO GUARDA (06/09/2026).
+        *
+        * Elas moravam dentro do `TioLayout`, que o `GuardaDaConta` envolve por
+        * fora. Quando a conta inativa, o guarda substitui o layout inteiro —
+        * e o `<Outlet />` some junto. O botão "Ver planos" da tela de conta
+        * inativa navegava e a tela NÃO MUDAVA: o mesmo bloqueio de novo.
+        *
+        * Beco sem saída, e do pior tipo: quem quer pagar não consegue chegar
+        * na tela de pagar. É o gêmeo, na interface, do respiro que as rules
+        * ganharam em `temPapelDeMotorista()` — e as duas metades precisavam
+        * existir, senão a tranca prendia quem estava tentando sair.
+        *
+        * Elas não perdem nada fora do layout: as três já são de tela cheia,
+        * com o próprio "Voltar". O que elas perdem é a barra de navegação da
+        * operação, que é exatamente o que a conta inativa não tem. */}
+      <Route
+        path="/tio/planos"
+        element={
+          <PrivateRoute requireRole="admin">
+            <TioPlanos />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/tio/taxa"
+        element={
+          <PrivateRoute requireRole="admin">
+            <TioTaxa />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/tio/contrato-plataforma"
+        element={
+          <PrivateRoute requireRole="admin">
+            <TioContratoAssociacao />
+          </PrivateRoute>
+        }
+      />
+
       <Route
         path="/pai"
         element={
