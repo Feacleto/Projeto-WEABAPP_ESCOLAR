@@ -50,12 +50,17 @@ Crie o LOGIN pelo app (ou pelo Authentication do console), copie o uid e:
 > Console → Firestore → coleção `users` → **Adicionar documento** com o uid
 > como ID → campo `role` (string) = `owner`
 
-**Não use `superAdmin: true` em projeto novo.** Ele ainda funciona
-([papeis.js](../src/dominio/identidade/papeis.js) e `isOwner()` nas rules
-aceitam os dois), mas existe só porque a conta do dono do projeto ANTIGO
-nasceu como motorista com a flag por cima e migrar exigia console. Base zero é
-a única chance de o fallback nunca ter usuário — usá-lo agora seria recriar de
-graça a dívida que ele representa.
+⚠️ **`superAdmin: true` NÃO FUNCIONA MAIS** — o fallback saiu em 06/09/2026 de
+[papeis.js](../src/dominio/identidade/papeis.js), de
+[functions/lib/papeis.js](../functions/lib/papeis.js) e do `isOwner()` das
+rules. Ele existia só porque a conta do dono do projeto ANTIGO nasceu como
+motorista com a flag por cima; esse projeto foi excluído, e base zero era a
+única janela em que a ponte podia cair sem trancar ninguém.
+
+**Podem existir VÁRIOS donos.** `isOwner()` checa o papel, não a identidade —
+cada pessoa da administração ganha um documento com `role: 'owner'`, criado do
+mesmo jeito. Não há papel de "observador": quem entra no painel vê tudo,
+inclusive CPF e chave PIX dos parceiros.
 
 ---
 

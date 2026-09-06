@@ -23,47 +23,31 @@
  * Agora a separação é de papel, e vale nos dois lados: as rules têm
  * `isOwner()` e a interface tem isto.
  *
- * O DONO É UMA CONTA SÓ — E O FALLBACK `superAdmin` AINDA ESTÁ AQUI
+ * O DONO PODE SER MAIS DE UMA CONTA, E O LEGADO `superAdmin` SAIU (06/09/2026)
  *
- * Este parágrafo dizia que o fallback "foi REMOVIDO". Não foi: ele está na
- * última linha de `ehDono()`, e o comentário lá dentro sempre explicou por
- * quê. O cabeçalho descrevia o destino como se fosse o presente, e as duas
- * coisas conviveram no mesmo arquivo, uma contradizendo a outra.
+ * As duas coisas andaram juntas. `isOwner()` nas rules e `ehDono()` aqui
+ * sempre checaram o PAPEL, nunca a identidade — então duas contas com
+ * `role: 'owner'` sempre foram duas donas. O que dizia o contrário era um
+ * comentário, e comentário não é regra.
  *
- * O que continua verdadeiro é o ARGUMENTO: ponte que ninguém atravessa vira
- * porta dos fundos. Enquanto duas coisas diferentes derem poder de dono,
- * "quantos donos existem?" não tem resposta olhando o código — depende de
- * quantos docs têm um booleano esquecido. Quando a conta do dono for migrada
- * para `role: 'owner'` pelo console, o fallback sai de `ehDono()` e de
- * `functions/lib/papeis.js`, e aí a pergunta vira uma query só.
+ * O fallback `superAdmin: true` existia porque a conta do dono do projeto
+ * ANTIGO nasceu como motorista com a flag por cima, e migrar exigia console.
+ * Esse projeto foi excluído. A base atual é zero e a conta de dono ainda vai
+ * ser criada — então esta é a única janela em que o fallback pode sair sem
+ * trancar ninguém, e ponte que ninguém atravessa vira porta dos fundos.
  *
- * Até lá, o número de donos se confere assim, e está escrito porque não é
- * óbvio:
- *   users where role == 'owner'  +  users where superAdmin == true
+ * ⚠️ CONSEQUÊNCIA DIRETA: a conta de dono precisa nascer com
+ * `role: 'owner'`. `superAdmin: true` não abre mais nada — nem aqui, nem em
+ * `functions/lib/papeis.js`, nem nas rules. Está escrito no `deploy.md`.
  *
- * A MIGRAÇÃO É MANUAL, E TEM QUE VIR ANTES
- * O cliente não escreve `role` (foi assim que a auto-promoção foi fechada),
- * então a conta do dono passa a `role: 'owner'` pelo console. Publicar esta
- * versão ANTES da migração tranca o dono fora do próprio painel — a conta
- * antiga (`role: 'admin'` + `superAdmin`) cai como motorista.
+ * E agora "quantos donos existem?" é uma query só:
+ *   users where role == 'owner'
  */
 
-/** É o dono da plataforma? */
+/** É o dono da plataforma? Pode haver mais de um. */
 export function ehDono(profile) {
-  // `superAdmin` continua valendo, e o motivo é o dono não ter outra prova.
-  //
-  // O papel `owner` é o destino, e conta nova nasce com ele. Mas a conta do
-  // dono hoje é `role: 'admin'` + `superAdmin: true`, e migrar exige console
-  // — a regra proíbe escrever `role` pelo cliente, que foi como a
-  // auto-promoção do motorista se fechou. Exigir só `owner` trancaria ele
-  // fora do próprio painel, e o conserto não existiria dentro do app.
-  //
-  // Aceitar não afrouxa nada: `superAdmin` está entre as chaves que nenhum
-  // cliente escreve, e a sondagem confirma isso contra produção (HTTP 403).
-  // Documento que tem esse campo recebeu do console ou do Admin SDK.
-  return profile?.role === 'owner' || profile?.superAdmin === true;
+  return profile?.role === 'owner';
 }
-
 /** É motorista (opera uma perua)? */
 export function ehMotorista(profile) {
   return profile?.role === 'admin';

@@ -26,7 +26,19 @@
  * pelo mesmo motivo: constante que mora sozinha continua recebendo merge pra
  * sempre, lógica espalhada em duas páginas diverge na primeira mudança.
  */
-export const PISO_DA_VITRINE = 27;
+/**
+ * ⚠️ DESLIGADO EM 06/09/2026 — zero significa "sem piso", e a tela passa a
+ * mostrar o número real.
+ *
+ * O argumento acima continua registrado porque foi uma decisão de produto
+ * tomada com o ponto do CDC na mesa, e pode voltar à pauta. O que a desfez foi
+ * outra coisa: um número inventado é um passivo em qualquer conversa em que
+ * alguém possa abrir a página e perguntar de onde ele vem. Com base zero, o
+ * piso mostraria 27 responsáveis que não existem.
+ *
+ * Voltar a ligar é trocar este número — e reler o arquivo inteiro antes.
+ */
+export const PISO_DA_VITRINE = 0;
 
 /**
  * O número que vai pra tela.

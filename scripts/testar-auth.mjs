@@ -115,7 +115,15 @@ console.log('7. Para onde cada papel é mandado');
 // pergunta, e ela nunca teve teste. Em 06/09/2026 ganhou um destino novo,
 // que é o tipo de caso que quebra sem ninguém ver.
 checar('o dono vai pro painel dele', '/admin', painelDe({ role: 'owner' }));
-checar('o legado superAdmin também', '/admin', painelDe({ role: 'admin', superAdmin: true }));
+// O LEGADO `superAdmin` SAIU EM 06/09/2026, e este caso trocou de lado por
+// isso. Ele existia como ponte para a conta do dono do projeto ANTIGO, que
+// nasceu como motorista com o booleano por cima. O projeto foi excluído e a
+// base é zero — a única janela em que a ponte podia cair sem trancar ninguém.
+//
+// Agora o booleano não abre nada: quem o tiver é o que o `role` disser, e
+// aqui isso é MOTORISTA. Conta de dono nasce com `role: 'owner'`.
+checar('o legado superAdmin não promove mais ninguém', '/tio', painelDe({ role: 'admin', superAdmin: true }));
+checar('e um segundo dono vai pro mesmo painel', '/admin', painelDe({ role: 'owner' }));
 checar('role admin significa MOTORISTA', '/tio', painelDe({ role: 'admin' }));
 checar('o responsável', '/pai', painelDe({ role: 'parent' }));
 // A FILA MORREU EM 06/09/2026, e este caso mudou de lado por isso: o papel

@@ -10,6 +10,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { resumirCarteira } from '../dominio/associacao/carteira.js';
 
 /**
  * Métricas da plataforma pro painel do super-admin.
@@ -75,24 +76,6 @@ async function conta(q) {
   }
 }
 
-/**
- * Quantos PARCEIROS existem — e agora é uma query só.
- *
- * Aqui havia duas consultas e uma subtração: contava `role == 'admin'` e
- * descontava quem tinha `superAdmin`, porque a conta do dono precisava
- * carregar papel de MOTORISTA pras rules liberarem as leituras deste painel.
- * O dono entrava na própria contagem de parceiros, e com um parceiro real a
- * tela dizia 2.
- *
- * Isso deixou de ser verdade quando o dono ganhou papel próprio (`role:
- * 'owner'`, com `isOwner()` nas rules): ele não tem mais papel de motorista,
- * então não há o que descontar. Manter a subtração custaria uma leitura por
- * abertura do painel pra sempre devolver zero — e, pior, manteria escrito na
- * tela um raciocínio que já não descreve o sistema.
- */
-async function contaParceiros(users) {
-  return conta(query(users, where('role', '==', 'admin')));
-}
 
 /** YYYY-MM do mês corrente, no mesmo formato do campo `month` de payments. */
 export function mesAtual() {
@@ -101,11 +84,28 @@ export function mesAtual() {
 }
 
 /**
- * Visão geral da plataforma — os números que importam pra valuation.
+ * Visão geral da plataforma.
  *
- * Retorna { usuarios, motoristas, responsaveis, criancas, gmvTotal,
- *           gmvMes, ticketMedio, receitaPropria, receitaEmAberto,
- *           filaParceiros }
+ * ── ELA MEDIA O FUNIL ANTIGO ATÉ 06/09/2026
+ * Tamanho da base e dinheiro que passou pelo app. Nenhum dos dois diz como o
+ * negócio vai: GMV é o dinheiro da família para o motorista, e a plataforma
+ * não está no caminho dele. Continua aqui porque é o tamanho da operação que o
+ * produto sustenta — mas não é receita, e o painel não deixa confundir.
+ *
+ * O que entrou junto é a CARTEIRA: em que degrau cada associado está e quanto
+ * entra por mês. Ver `dominio/associacao/carteira.js`, que faz a conta e é
+ * testado sem Firebase.
+ *
+ * ⚠️ A CONTAGEM DA FILA SAIU, E ELA ESTAVA QUEBRANDO ESTA TELA INTEIRA.
+ * `conta(query(collection(db, 'waitlistDrivers')))` continuou aqui depois de a
+ * coleção sair das rules na fase 2 — a consulta passou a ser negada, o
+ * `Promise.all` rejeitava, e a Visão geral caía no estado de erro. Um número
+ * que ninguém mais olhava derrubando três que todo mundo olha.
+ *
+ * ── UMA LEITURA DOS PARCEIROS, NÃO CINCO CONTAGENS
+ * A carteira precisa dos documentos (faixa, descontos, início do teste), não
+ * de contagens. Como são um por associado — dezenas, não milhares —, ler a
+ * lista uma vez sai mais barato que as contagens que ela substitui.
  */
 export async function getPlatformOverview() {
   const users = collection(db, 'users');
@@ -115,20 +115,21 @@ export async function getPlatformOverview() {
 
   const [
     usuarios,
-    motoristas,
+    parceiros,
     responsaveis,
     criancas,
     gmvTotal,
     gmvMes,
     receitaPropria,
     receitaEmAberto,
-    filaParceiros,
   ] = await Promise.all([
     conta(query(users)),
-    // MOTORISTAS SÃO OS PARCEIROS — e o dono, que agora tem papel próprio
-    // (`role: 'owner'`), não aparece nesta conta nem precisa ser descontado.
-    // Um número de vitrine errado pra mais é o pior tipo: ninguém desconfia.
-    contaParceiros(users),
+    // OS DOCUMENTOS, não a contagem: a carteira precisa da faixa e dos
+    // descontos de cada um. O dono, que tem papel próprio (`role: 'owner'`),
+    // não entra nesta lista nem precisa ser descontado.
+    getDocs(query(users, where('role', '==', 'admin'))).then((snap) =>
+      snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
+    ),
     conta(query(users, where('role', '==', 'parent'))),
     conta(query(children, where('active', '==', true))),
     somaCampo(query(payments, where('status', '==', 'paid')), 'amount'),
@@ -146,14 +147,20 @@ export async function getPlatformOverview() {
     somaCampo(query(faturas, where('status', '==', 'quitada')), 'total'),
     // Faturada e não recebida. Fica SEPARADA — ver o cabeçalho.
     somaCampo(query(faturas, where('status', '==', 'aberta')), 'total'),
-    conta(query(collection(db, 'waitlistDrivers'))),
   ]);
+
+  const carteira = resumirCarteira({
+    parceiros,
+    agora: new Date(),
+    mes: mesAtual(),
+  });
 
   return {
     usuarios,
-    motoristas,
+    motoristas: parceiros.length,
     responsaveis,
     criancas,
+    carteira,
     gmvTotal,
     gmvMes,
     // Mensalidade média por criança ativa no mês — a base de qualquer conta
@@ -161,7 +168,6 @@ export async function getPlatformOverview() {
     ticketMedio: criancas > 0 ? gmvMes / criancas : 0,
     receitaPropria,
     receitaEmAberto,
-    filaParceiros,
   };
 }
 

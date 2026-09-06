@@ -865,6 +865,30 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('pos', 'e a condicao de fundador', 'PASSA',
     await escrever('users/' + tio1.uid, dono, { condicaoFundador: S('metade') }, ['condicaoFundador']));
 
+  // ── VARIOS DONOS, E O LEGADO `superAdmin` NAO ABRE MAIS NADA ─────────
+  //
+  // `isOwner()` sempre checou o PAPEL, nunca a identidade — duas contas com
+  // `role: 'owner'` sempre foram duas donas. O que dizia o contrario era um
+  // comentario, e o bloco das rules chegou a se contradizer dentro de si.
+  //
+  // O fallback `superAdmin` saiu em 06/09/2026: a base e zero e a conta de
+  // dono ainda vai ser criada, entao era a unica janela em que ele podia sair
+  // sem trancar ninguem.
+  const dono2 = await criarLogin(`dono2.${Date.now()}@teste.local`);
+  const falsoDono = await criarLogin(`falso.${Date.now()}@teste.local`);
+  await semear(`users/${dono2.uid}`, { role: S('owner'), name: S('Dona Dois') });
+  await semear(`users/${falsoDono.uid}`, {
+    role: S('admin'), name: S('Legado'), superAdmin: B(true),
+  });
+
+  checar('pos', 'o SEGUNDO dono le a regua de preco', 'PASSA',
+    await ler('taxaConfig/app', dono2));
+  checar('pos', 'e lista users como o primeiro', 'PASSA', await listar('users', dono2));
+  checar('priv', 'o legado superAdmin nao abre mais o painel', 'NEGA',
+    await listar('users', falsoDono));
+  checar('priv', 'nem le a regua de preco', 'NEGA',
+    await ler('taxaConfig/app', falsoDono));
+
   console.log('\n=== A TRANCA — teste vencido e atraso nao sao motorista ===');
 
   // ESTE BLOCO E O MAIS CARO DE ERRAR DO ARQUIVO.

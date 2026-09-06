@@ -20,10 +20,13 @@
  * `role: 'owner'` que `src/utils/papeis.js` descreve, o dono perderia o acesso
  * e o motorista manteria — o pior resultado possível dos dois.
  *
- * O LEGADO `superAdmin` É ACEITO AQUI PELO MESMO MOTIVO DO CLIENTE
- * A conta do dono não tem outra prova até a migração manual pelo console, e
- * `superAdmin` está entre as chaves que nenhum cliente escreve (as rules
- * proíbem). Documento que tem esse campo recebeu do console ou do Admin SDK.
+ * O LEGADO `superAdmin` SAIU EM 06/09/2026, junto com o do cliente.
+ * Ele existia porque a conta do dono do projeto ANTIGO nasceu como motorista
+ * com a flag por cima. Esse projeto foi excluído, a base é zero e a conta de
+ * dono ainda vai ser criada — a única janela em que o fallback podia sair sem
+ * trancar ninguém. Ponte que ninguém atravessa vira porta dos fundos.
+ *
+ * ⚠️ A conta de dono precisa nascer com `role: 'owner'`.
  */
 
 const { HttpsError } = require('firebase-functions/v2/https');
@@ -42,9 +45,9 @@ async function carregarUsuario(db, request) {
   return { uid, dados: snap.data() };
 }
 
-/** É o dono da plataforma? Aceita o legado `superAdmin`. */
+/** É o dono da plataforma? Pode haver mais de um. */
 function ehDono(dados) {
-  return dados?.role === 'owner' || dados?.superAdmin === true;
+  return dados?.role === 'owner';
 }
 
 /** É motorista (opera uma perua)? */

@@ -153,37 +153,34 @@ service cloud.firestore {
     // escrita na operação: criança, pagamento, rota e agenda continuam
     // exigindo `isAdmin()`.
     //
-    // O DONO É UMA CONTA SÓ, E `superAdmin` SAIU DAQUI.
-    // O fallback existia como ponte pra conta antiga. Ele criava duas
-    // assimetrias, e as duas doem só num incidente:
+    // ⚠️ ESTE BLOCO CONTRADIZIA A SI MESMO até 06/09/2026: abria com
+    // "`superAdmin` SAIU DAQUI" e três parágrafos depois afirmava que ele
+    // "CONTINUA VALENDO". As duas versões conviveram porque a segunda foi
+    // escrita para justificar a linha real sem apagar a primeira. Quem lesse
+    // até a metade concluía o oposto de quem lesse até o fim.
     //
-    //   - o cliente (`ehDono()` em src/utils/papeis.js) já não aceita o
-    //     booleano. Cliente e servidor discordando sobre quem é dono é a
-    //     pior classe de bug: a tela mostra uma coisa e o banco decide outra;
-    //   - "quantos donos existem?" deixava de ser uma query e passava a ser
-    //     uma auditoria de campo esquecido em doc antigo.
+    // AGORA SAIU DE VERDADE. O fallback existia como ponte para a conta do
+    // dono do projeto ANTIGO, que nasceu como motorista com o booleano por
+    // cima. Esse projeto foi excluído; a base é zero e a conta de dono ainda
+    // vai ser criada — a única janela em que o fallback pode sair sem trancar
+    // ninguém. Ponte que ninguém atravessa vira porta dos fundos.
     //
-    // A migração é MANUAL e vem antes: o doc do dono passa a `role: 'owner'`
-    // pelo console, porque o cliente não escreve `role` de propósito.
-    // `superAdmin` CONTINUA VALENDO, e não é dívida — é a única prova que a
-    // conta atual do dono tem.
+    // As duas assimetrias que ele criava, e que doem só num incidente:
+    //   - cliente e servidor podiam discordar sobre quem é dono, e a tela
+    //     mostrar uma coisa enquanto o banco decide outra;
+    //   - "quantos donos existem?" deixava de ser uma query e virava uma
+    //     auditoria de campo esquecido em documento antigo.
     //
-    // O papel `owner` é o destino certo, e conta nova nasce com ele. Mas a
-    // conta do dono hoje é `role: 'admin'` + `superAdmin: true`, e migrar
-    // exige console: a regra de update proíbe escrever `role` pelo cliente
-    // (foi assim que a auto-promoção do motorista foi fechada, e vale pra
-    // todo mundo). Exigir só `owner` trancaria o dono fora do próprio painel,
-    // sem caminho no app pra sair.
+    // O DONO PODE SER MAIS DE UM, e sempre pôde: esta função checa o PAPEL,
+    // nunca a identidade. O que dizia o contrário era comentário, não regra.
     //
-    // E aceitar o campo é SEGURO, não é concessão: `superAdmin` está na lista
-    // de chaves que nenhum cliente escreve — sondado contra produção, HTTP
-    // 403. Se um documento tem esse campo, quem o pôs foi o console ou o
-    // Admin SDK. A objeção legítima ao fallback é de legibilidade ("quantos
-    // donos existem?" vira duas perguntas em vez de uma), não de segurança.
+    // ⚠️ A conta de dono precisa nascer com `role: 'owner'`, pelo console —
+    // o cliente não escreve `role`, e foi assim que a auto-promoção do
+    // motorista se fechou. Está no `deploy.md`.
     function isOwner() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && (userDoc().role == 'owner' || userDoc().superAdmin == true);
+        && userDoc().role == 'owner';
     }
 
     // DONO DO DOCUMENTO OPERACIONAL. O campo `adminUid` no corpo é o que dá

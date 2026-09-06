@@ -254,8 +254,16 @@ O que falta, na ordem:
 2. **A tranca nas rules** — bloqueio por teste vencido e por atraso
 3. ~~**A roleta na conversão**~~ — feita: `girarPremio`, coleção `premios`,
    quatro prêmios, girando só para quem contratou
-4. **Painel do dono** — vira acompanhamento, não aprovação. E a conta
-   `role: 'owner'`, que **ainda não existe**: ninguém consegue abrir `/admin`
+- **Fase 7 · o painel mede a carteira.** Em que degrau cada associado está e o
+  MRR, que não existia. Vários donos pelo papel que já existia, legado
+  `superAdmin` removido, piso da vitrine desligado. E a contagem de
+  `waitlistDrivers`, que sobrou da fase 2 e estava **derrubando a Visão geral
+  inteira**
+
+**O que falta é UM PASSO, e ele não é código:** a conta `role: 'owner'` ainda
+não existe. Ninguém consegue abrir `/admin`. Console → Authentication →
+adicionar usuário; depois Firestore → `users/{uid}` com `role: 'owner'`. O
+passo a passo está no [deploy.md](deploy.md).
 
 ✅ **A soma dos descontos foi decidida:** fundador e antecipação **não somam,
 vale o maior** — `FUNDADOR_E_ANTECIPACAO_SOMAM = false` em `planos.js`, com

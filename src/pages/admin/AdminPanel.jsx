@@ -236,6 +236,78 @@ function Geral({ ov }) {
         </div>
       </section>
 
+      {/* A CARTEIRA — em que degrau cada associado está.
+        *
+        * Esta seção não existia: o painel media o tamanho da base e o dinheiro
+        * que passou, e nenhum dos dois diz como o NEGÓCIO vai. O caminho que
+        * passou a existir tem quatro degraus, e cada um é um campo:
+        * cadastrou → rodou a 1ª rota → contratou → pagou. */}
+      <section>
+        <Titulo icon={TrendingUp}>A carteira</Titulo>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <Tile label="Em teste" value={ov.carteira.emTeste} />
+          <Tile label="Contratados" value={ov.carteira.contratados} tone="emerald" />
+          <Tile label="Bloqueados" value={ov.carteira.bloqueados} tone="warning" />
+          <Tile label="Ainda não rodaram" value={ov.carteira.naoComecou} />
+        </div>
+
+        {/* O AVISO QUE PEDE AÇÃO, e por isso só aparece quando há ação a
+          * tomar. Linha permanente de "0 acabando" vira ruído que se aprende a
+          * pular — e aí não é vista no dia em que tem número. */}
+        {ov.carteira.acabandoEm7 > 0 && (
+          <p className="mt-2 rounded-xl bg-warningSoft p-3 text-xs leading-relaxed text-warningText">
+            <strong>
+              {ov.carteira.acabandoEm7}{' '}
+              {ov.carteira.acabandoEm7 === 1 ? 'associado está' : 'associados estão'} a
+              menos de 7 dias do fim do teste.
+            </strong>{' '}
+            É a semana em que a decisão acontece — e quem contrata antes do fim
+            leva metade pelos 12 meses.
+          </p>
+        )}
+      </section>
+
+      <section>
+        <Titulo icon={CircleDollarSign}>A receita da plataforma</Titulo>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {/* O MRR OLHA PRA FRENTE. `receitaPropria`, logo abaixo, é soma de
+            * fatura quitada: olha pra trás. Os dois são receita e respondem
+            * perguntas diferentes — quanto entra por mês, e quanto já entrou. */}
+          <Tile label="MRR (por mês)" value={moeda(ov.carteira.mrr)} tone="emerald" />
+          <Tile
+            label="Ticket por associado"
+            value={naoMedido(ov.carteira.ticketPorAssociado, moeda)}
+          />
+          <Tile
+            label="Desconto médio"
+            value={naoMedido(ov.carteira.descontoMedio, pct)}
+          />
+          <Tile
+            label="Conversão pós-teste"
+            value={naoMedido(ov.carteira.conversao, pct)}
+          />
+        </div>
+
+        {/* A DIFERENÇA ENTRE A TABELA E O MRR É O QUE A PLATAFORMA ABRE MÃO, e
+          * este número não existia em lugar nenhum. Só aparece quando há
+          * desconto — sem ninguém pagando, ele não tem o que dizer. */}
+        {ov.carteira.mrrDeTabela > 0 && ov.carteira.descontoMedio > 0 && (
+          <p className="mt-2 rounded-xl border border-border bg-card p-3 text-xs leading-relaxed text-textMuted">
+            De <strong>{moeda(ov.carteira.mrrDeTabela)}</strong> de tabela, entram{' '}
+            <strong>{moeda(ov.carteira.mrr)}</strong>. A diferença é fundador,
+            indicação, antecipação e roleta somados.
+            {ov.carteira.antecipados > 0 && (
+              <>
+                {' '}
+                {ov.carteira.antecipados}{' '}
+                {ov.carteira.antecipados === 1 ? 'contratou' : 'contrataram'} antes
+                do fim do teste.
+              </>
+            )}
+          </p>
+        )}
+      </section>
+
       <section>
         <Titulo icon={CircleDollarSign}>Dinheiro que passou pelo app</Titulo>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -281,9 +353,9 @@ function Geral({ ov }) {
           )}
           {ov.receitaPropria === 0 && ov.receitaEmAberto === 0 && (
             <p className="mt-2 border-t border-warningBorder/70 pt-2 text-xs leading-relaxed text-warningText/80">
-              Ainda é zero porque nenhuma fatura foi fechada. A régua e a
-              negociação vivem na aba <strong>Taxa</strong>; a receita começa a
-              existir quando o mês é fechado lá.
+              Ainda é zero porque nenhuma fatura foi fechada. A régua da casa
+              e a faixa de cada parceiro vivem na aba <strong>Taxa</strong>; a
+              receita recebida começa a existir quando o mês é fechado lá.
             </p>
           )}
         </div>
@@ -708,6 +780,24 @@ function Titulo({ icon: Icon, children }) {
       {children}
     </h2>
   );
+}
+
+/**
+ * ONDE O NÚMERO NÃO EXISTE, A TELA DIZ "não medimos" — NUNCA ZERO.
+ *
+ * Num painel que alguém abre para decidir, zero e ausência são opostos: um diz
+ * que ninguém converteu, o outro diz que ninguém terminou o teste ainda. No
+ * primeiro mês de operação, 0% de conversão pareceria fracasso onde não houve
+ * nem tentativa.
+ */
+function naoMedido(valor, formatar) {
+  if (valor === null || valor === undefined) return '—';
+  return formatar(valor);
+}
+
+/** Fração para porcentagem inteira. */
+function pct(f) {
+  return `${Math.round((Number(f) || 0) * 100)}%`;
 }
 
 function Tile({ label, value, tone = 'neutral' }) {

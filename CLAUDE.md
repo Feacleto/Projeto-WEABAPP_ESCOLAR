@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 538 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 580 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth,
                                  # trial, planos, conta, cobranca, gateway
 npm run testar:regras            # rules do Firestore — precisa do emulador
@@ -74,8 +74,15 @@ armadilha central do projeto:
 | *(sem papel)* | Sessão criada, escolha ainda não feita | `/comecar` |
 
 **`role: 'admin'` significa motorista.** Ler isso como "administrador" é o erro
-mais caro possível aqui. O dono aceita também o legado `superAdmin: true` — a
-conta dele não tem outra prova até a migração manual pelo console.
+mais caro possível aqui.
+
+**O DONO PODE SER MAIS DE UM, e o legado `superAdmin` SAIU em 06/09/2026.**
+`isOwner()` e `ehDono()` sempre checaram o PAPEL, nunca a identidade — duas
+contas com `role: 'owner'` sempre foram duas donas; o que dizia o contrário era
+comentário (e o bloco das rules chegou a se contradizer dentro de si). O
+fallback era ponte para a conta do projeto antigo, que foi excluído. ⚠️ **A
+conta de dono precisa nascer com `role: 'owner'`**, pelo console — `superAdmin:
+true` não abre mais nada.
 
 **A ENTRADA VIROU AUTOATENDIMENTO EM 06/09/2026, e isso muda como se escreve
 regra.** O motorista se cadastra em `/quero-fazer-parte` e a conta JÁ NASCE
@@ -209,7 +216,8 @@ src/
 │   │                  intervaloDeDias
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
-│   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva
+│   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
+│   │                  carteira
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
@@ -672,11 +680,13 @@ seria o contador falso que reinicia sozinho, ou seja, propaganda enganosa (CDC
 art. 37). O argumento fica registrado porque vale para qualquer contador que
 alguém queira pôr numa vitrine.
 
-[src/config/vitrine.js](src/config/vitrine.js) — **a exceção a essa regra, e
-não é bug.** `PISO_DA_VITRINE` (27) é um piso sobre os dois contadores de
-vitrine: abaixo dele a tela mostra o piso, não o real. Decisão de produto,
-tomada com o ponto do CDC na mesa. Quem for "consertar" isso leia o arquivo
-primeiro — baixar para 0 desliga o piso inteiro.
+[src/config/vitrine.js](src/config/vitrine.js) — **`PISO_DA_VITRINE` foi a 0 em
+06/09/2026, ou seja, DESLIGADO.** Ele era 27: um piso sobre os contadores de
+vitrine, que mostrava o piso quando a base era menor. Foi decisão de produto
+tomada com o ponto do CDC na mesa, e o argumento continua escrito no arquivo —
+o que a desfez foi outra coisa: com base zero, a tela mostrava 27 responsáveis
+que não existem, e número inventado é passivo em qualquer conversa em que
+alguém possa abrir a página e perguntar de onde ele vem.
 
 Os dois contadores medem coisas **diferentes**, e trocá-los faz as duas portas
 se contradizerem: a home do motorista mostra `families` (crianças ativas, o
@@ -727,6 +737,23 @@ Cinco regras, e todas nasceram de um bug:
    de recado, quatro estados da criança, cinco fatias de gráfico). Um lugar
    com licença é o que evita que o resto peça licença.
 
+**O painel do dono mede a CARTEIRA, não o tamanho da base.** Ele media
+`usuarios`, `criancas` e GMV — e nenhum desses é receita da plataforma. Agora
+mostra em que degrau cada associado está (**cadastrou → rodou a 1ª rota →
+contratou → pagou**, um campo por degrau) e o **MRR**, soma de `precoDoMes` de
+quem tem contrato. `receitaPropria` olha pra trás (fatura quitada); o MRR olha
+pra frente. A conta é pura em
+[carteira.js](src/dominio/associacao/carteira.js) (`npm run testar:carteira`).
+
+⚠️ **Onde o número não existe, a tela diz "—", nunca zero.** No primeiro mês,
+0% de conversão pareceria fracasso onde não houve nem tentativa — ninguém saiu
+do teste ainda. `resumirCarteira` devolve `null` nesses casos de propósito.
+
+**Quem contratou e parou de pagar conta como BLOQUEADO, não contratado** — ele
+continua com `planoId`, e classificá-lo pelo campo inflaria o MRR com dinheiro
+que não entra mais. É o jeito mais comum de um painel mentir para o próprio
+dono.
+
 **O painel do dono tem piso de 12px.** O resto do app é de bolso, lido a 30cm;
 [/admin](src/pages/admin/AdminPanel.jsx) é de mesa, e a 60cm o mesmo 11px tem
 metade do tamanho aparente. A largura já tinha sido corrigida lá, a escala
@@ -736,7 +763,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (152 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (156 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 
