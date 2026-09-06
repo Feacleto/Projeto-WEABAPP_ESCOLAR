@@ -855,6 +855,31 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('pos', 'e a condicao de fundador', 'PASSA',
     await escrever('users/' + tio1.uid, dono, { condicaoFundador: S('metade') }, ['condicaoFundador']));
 
+  // ── O ASSOCIADO EMITE O PROPRIO CONTRATO ─────────────────────────────
+  //
+  // O dono acabou de gravar 'ate25' na faixa do tio1 (caso acima). A regra
+  // exige que a faixa DENTRO do contrato bata com essa — senao ele assinaria
+  // um documento dizendo R$ 69 com teto de 40, e e o documento que aparece
+  // numa discussao.
+  const contrato = (planoId) => ({
+    tioUid: S(tio1.uid),
+    aceitoEm: { nullValue: null },
+    conteudo: {
+      mapValue: {
+        fields: { plano: { mapValue: { fields: { id: S(planoId) } } } },
+      },
+    },
+  });
+  checar('pos', 'o motorista emite o contrato da faixa que o dono gravou', 'PASSA',
+    await criar('contratosAssociacao', tio1.uid + '_1', tio1, contrato('ate25')));
+  checar('preco', 'mas nao um contrato de faixa DIFERENTE', 'NEGA',
+    await criar('contratosAssociacao', tio1.uid + '_2', tio1, contrato('ate10')));
+  checar('preco', 'nem emite contrato no nome de outro motorista', 'NEGA',
+    await criar('contratosAssociacao', tio2.uid + '_1', tio2, contrato('ate25')));
+  // Quem nao contratou nada nao tem `planoId`, entao nao ha faixa com que bater.
+  checar('preco', 'quem nao contratou nao emite contrato nenhum', 'NEGA',
+    await criar('contratosAssociacao', novato.uid + '_1', novato, contrato('ate25')));
+
   // A prospeccao saiu das rules junto com o orcamento.
   await semear('leadsFunil/lead1', { nome: S('Motorista X'), etapa: S('novo') });
   checar('funil', 'nem o dono alcanca o funil que saiu das rules', 'NEGA',

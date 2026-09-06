@@ -245,7 +245,14 @@ mais fácil do que se imagina; sem saque, o pior caso é cobrança indevida — 
 se estorna — e não dinheiro saindo da conta, que não volta.
 
 **O ambiente é um parâmetro, não um segredo:** `ASAAS_AMBIENTE`, padrão
-`sandbox`. Chave de sandbox contra o host de produção devolve 401, que é falha
+`sandbox`, em `functions/.env.alobuzinou-be81f` — **versionado de propósito**.
+
+⚠️ **O `default` do `defineString` NÃO vale em modo não-interativo.** Sem esse
+arquivo o deploy para com *"In non-interactive mode but have no value for the
+following environment variables: ASAAS_AMBIENTE"* e não sai do lugar, mesmo
+com o padrão declarado no código. Por isso ele tem uma exceção no
+`functions/.gitignore`, que ignora `.env.*`: o valor não é segredo, e quem
+clonar o repositório precisa conseguir publicar. Chave de sandbox contra o host de produção devolve 401, que é falha
 barulhenta; apontar para produção sem querer cobra gente de verdade. Para virar,
 `ASAAS_AMBIENTE=producao` no `.env.alobuzinou-be81f` dentro de `functions/`.
 

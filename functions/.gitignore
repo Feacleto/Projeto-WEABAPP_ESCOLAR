@@ -4,3 +4,13 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# ...MENOS o ambiente do gateway, que NÃO é segredo e QUEBRA O DEPLOY se faltar.
+#
+# `defineString('ASAAS_AMBIENTE')` não aceita o default em modo não-interativo:
+# sem este arquivo, `firebase deploy` para pedindo o valor e não sai do lugar.
+# Versionar deixa o deploy reproduzível por quem clonar o repositório.
+#
+# O que é segredo — chave da API, token do webhook — vive em
+# `functions:secrets` e continua fora daqui.
+!.env.alobuzinou-be81f

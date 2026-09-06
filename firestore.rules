@@ -1594,7 +1594,34 @@ service cloud.firestore {
     match /contratosAssociacao/{id} {
       allow read: if isOwner()
         || (isSignedIn() && resource.data.tioUid == request.auth.uid);
-      allow create, delete: if isOwner();
+      allow delete: if isOwner();
+
+      // ── O ASSOCIADO EMITE O PRÓPRIO CONTRATO (06/09/2026) ──────────────
+      //
+      // Autoatendimento exige isto: a tela de planos terminava no WhatsApp do
+      // consultor justamente porque só o dono escrevia aqui.
+      //
+      // A DIVISÃO É: o SERVIDOR é dono dos números, o CLIENTE monta o
+      // DOCUMENTO, e esta regra amarra um no outro. `users.planoId` é escrito
+      // pela callable `contratarPlano` e está na lista de campos que o cliente
+      // nunca toca — então exigir que a faixa DENTRO do contrato seja igual à
+      // que o servidor gravou torna impossível assinar um documento dizendo
+      // R$ 69 com teto de 40.
+      //
+      // Sem essa amarra, ele montaria o conteúdo que quisesse: a fatura
+      // continuaria certa (ela lê `users.planoId`), mas existiria um documento
+      // assinado dizendo outra coisa — e é o documento que aparece numa
+      // discussão.
+      //
+      // `aceitoEm == null` na criação porque aceitar é OUTRA escrita, no ramo
+      // de update abaixo, que grava o hash e o user agent. Nascer aceito
+      // pularia o registro de que ele leu.
+      allow create: if isOwner() || (
+        isAdmin()
+        && request.resource.data.tioUid == request.auth.uid
+        && request.resource.data.aceitoEm == null
+        && request.resource.data.conteudo.plano.id == userDoc().get('planoId', '')
+      );
 
       allow update: if (
         // o associado aceitando o próprio contrato, uma vez só

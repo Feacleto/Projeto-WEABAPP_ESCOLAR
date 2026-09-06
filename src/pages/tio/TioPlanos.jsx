@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, MessageCircle, Users } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { formatCurrency } from '../../compartilhado/formatters';
 import { salesWhatsAppLink } from '../../config/developer';
+import { contratarPlano } from '../../services/contratacaoService';
+import { montarContrato } from '../../dominio/associacao/contratoAssociacao.js';
+import { emitirContrato } from '../../services/contratoAssociacaoService';
 import {
+  ANTECIPACAO,
   PLANOS,
   planoPara,
+  planoPorId,
   excedentes,
   precoDoMes,
 } from '../../dominio/associacao/planos.js';
@@ -44,7 +50,7 @@ import {
  */
 export default function TioPlanos() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
 
   const ativas = Number(profile?.criancasAtivas) || 0;
   const recomendado = planoPara(ativas);
@@ -52,6 +58,58 @@ export default function TioPlanos() {
   const indicacoes = Number(profile?.indicacoesAtivas) || 0;
 
   const [escolhido, setEscolhido] = useState(recomendado?.id || null);
+  const [assinando, setAssinando] = useState(false);
+
+  // JÁ CONTRATOU? A tela então não é mais de escolha, é de troca de faixa.
+  const jaContratou = Boolean(profile?.planoId);
+
+  /**
+   * CONTRATAR — dois passos, e a ordem é a garantia.
+   *
+   * 1. A callable `contratarPlano` grava a CLÁUSULA (`planoId`,
+   *    `limiteCriancas`, o desconto de antecipação). O cliente não escreve
+   *    nenhum desses campos: as rules recusam, porque cláusula que o devedor
+   *    edita não é cláusula.
+   * 2. Só então o contrato é emitido, e a rule exige que a faixa DENTRO dele
+   *    seja igual à que o servidor acabou de gravar.
+   *
+   * Invertida, a ordem não funciona: emitir antes seria emitir um documento
+   * cuja faixa ainda não existe em `users`, e a rule negaria.
+   */
+  const contratar = async () => {
+    const plano = planoPorId(escolhido);
+    if (!plano) return;
+    setAssinando(true);
+    try {
+      const clausula = await contratarPlano(plano.id);
+
+      const conteudo = montarContrato({
+        motorista: { uid: profile?.uid, ...profile },
+        plano,
+        fundador: profile?.condicaoFundador || null,
+        indicacoesAtivas: indicacoes,
+        descontos: clausula.descontos,
+        diaVencimento: profile?.diaVencimento,
+        isencaoAte: profile?.isencaoAte || null,
+      });
+      await emitirContrato({ tioUid: profile?.uid, conteudo, emitidoPor: profile?.uid });
+
+      await refreshProfile();
+      if (clausula.antecipacao) {
+        toast.success(
+          `Faixa contratada com ${Math.round(ANTECIPACAO.fracao * 100)}% de desconto pelos 12 meses.`,
+          { duration: 7000 }
+        );
+      } else {
+        toast.success('Faixa contratada. Falta só aceitar o contrato.');
+      }
+      navigate('/tio/contrato-plataforma');
+    } catch (err) {
+      toast.error(err?.message || 'Não deu pra contratar agora.');
+    } finally {
+      setAssinando(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-bg px-4 py-5">
@@ -177,27 +235,58 @@ export default function TioPlanos() {
           </div>
         )}
 
-        {/* A FASE 6B TROCA ISTO POR "ASSINAR AGORA".
-          * Emitir o contrato sem o dono mexe em `contratosAssociacao` e em
-          * `limiteCriancas`, que são as rules de dinheiro. Até lá, o caminho
-          * que termina em alguma coisa é o consultor. */}
-        <a
-          href={salesWhatsAppLink(
-            recomendado
-              ? `Oi! Quero contratar o plano "${
-                  PLANOS.find((p) => p.id === escolhido)?.rotulo || recomendado.rotulo
-                }" do Alô Buzinou. Tenho ${ativas} crianças ativas.`
-              : `Oi! Tenho ${ativas} crianças ativas no Alô Buzinou e quero conversar sobre o plano.`
-          )}
-          target="_blank"
-          rel="noopener"
-          className="block"
-        >
-          <Button>
-            <MessageCircle size={18} />
-            {recomendado ? 'Quero este plano' : 'Falar sobre meu plano'}
-          </Button>
-        </a>
+        {/* CONTRATAR ACONTECE AQUI DENTRO desde 06/09/2026.
+          *
+          * Este botão abria o WhatsApp do consultor, e o comentário anterior
+          * explicava por quê: emitir contrato mexia em `contratosAssociacao` e
+          * em `limiteCriancas`, que são as rules de dinheiro.
+          *
+          * A saída não foi abrir essas rules — foi mover a escrita para o
+          * servidor. A callable grava a cláusula, e a rule do contrato exige
+          * que o documento bata com ela. O cliente ganhou o botão sem ganhar a
+          * caneta.
+          *
+          * ACIMA DA TABELA CONTINUA SENDO CONVERSA, e é o único caso em que o
+          * WhatsApp sobra: mostrar um preço ali seria cobrar menos do que
+          * qualquer conversa produziria. */}
+        {recomendado || escolhido ? (
+          <>
+            <Button onClick={contratar} disabled={assinando || !escolhido}>
+              {assinando
+                ? 'Contratando…'
+                : jaContratou
+                  ? 'Trocar para esta faixa'
+                  : 'Contratar esta faixa'}
+            </Button>
+
+            {/* A OFERTA APARECE ONDE A DECISÃO ACONTECE, e some sozinha quando
+              * deixa de valer — quem já contratou não vê promessa que já
+              * recebeu, e quem passou do teste não vê uma que não vai receber. */}
+            {!jaContratou && (
+              <p className="text-center text-xs leading-relaxed text-textMuted">
+                Contratando antes de o seu teste acabar, você fica com{' '}
+                <strong className="text-accentText">
+                  {Math.round(ANTECIPACAO.fracao * 100)}% de desconto
+                </strong>{' '}
+                pelos {ANTECIPACAO.meses} meses de contrato.
+              </p>
+            )}
+          </>
+        ) : (
+          <a
+            href={salesWhatsAppLink(
+              `Oi! Tenho ${ativas} crianças ativas no Alô Buzinou e quero conversar sobre o plano.`
+            )}
+            target="_blank"
+            rel="noopener"
+            className="block"
+          >
+            <Button>
+              <MessageCircle size={18} />
+              Falar sobre meu plano
+            </Button>
+          </a>
+        )}
 
         <p className="pb-4 text-center text-xs text-textMuted">
           A mensalidade que você cobra das famílias continua sendo sua. A

@@ -1,15 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 import {
-  Users,
-  School,
-  ListOrdered,
   CalendarDays,
-  Megaphone,
-  Notebook,
+  ChevronRight,
   FileText,
   HelpCircle,
-  ChevronRight,
   LayoutGrid,
+  ListOrdered,
+  Megaphone,
+  Notebook,
+  Receipt,
+  School,
+  Users,
 } from 'lucide-react';
 import AppSheet from '../common/AppSheet';
 
@@ -137,6 +138,22 @@ export default function MeuTransporteSheet({
         </Grupo>
 
         <Grupo titulo="minha conta">
+          {/* O PREÇO MORA AQUI, E É DE PROPÓSITO QUE ELE SEJA DISCRETO.
+            *
+            * Durante os três meses de teste o app fica calado sobre dinheiro —
+            * quem está provando não deveria estar decidindo compra. Mas calado
+            * não é escondido: quem for procurar precisa achar, e o fim da
+            * rolagem de "meu transporte" é onde ele procura.
+            *
+            * Quem contrata antes de o teste acabar leva metade pelos doze
+            * meses, e essa oferta é dita no aviso de fim de teste — que é o
+            * momento em que a decisão acontece. Ver `AvisoDoTrial`. */}
+          <Linha
+            icon={Receipt}
+            titulo="Planos e valores"
+            subtitulo="Quanto custa o app depois do teste"
+            onClick={() => ir('/tio/planos')}
+          />
           <Linha
             icon={FileText}
             titulo="Contrato da plataforma"

@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 530 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 538 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth,
                                  # trial, planos, conta, cobranca, gateway
 npm run testar:regras            # rules do Firestore — precisa do emulador
@@ -340,6 +340,23 @@ havia base real.
   cobra, o outro é o que as rules cobram no cadastro de criança: separados,
   existiria a janela em que ele paga R$ 69 com teto de 40, e cada campo estaria
   certo do ponto de vista de quem o lê.
+- **Contratar é do MOTORISTA; a cláusula é do SERVIDOR.** `/tio/planos` tem o
+  botão desde 06/09/2026 — ele abria o WhatsApp do consultor. A saída não foi
+  abrir as rules de dinheiro: a callable `contratarPlano` grava `planoId` e
+  `limiteCriancas`, e a rule de `contratosAssociacao` exige que a faixa DENTRO
+  do contrato bata com a que o servidor gravou. **O cliente ganhou o botão sem
+  ganhar a caneta** — sem essa amarra, a fatura continuaria certa (ela lê
+  `users.planoId`) e existiria um documento assinado dizendo outra coisa.
+- **A antecipação é decidida pelo relógio do SERVIDOR.** Quem contrata antes de
+  o teste acabar leva 50% pelos 12 meses, e quem decide se ainda está dentro é
+  `functions/lib/contratacao.js` lendo `trialInicio`. No cliente, seria o
+  relógio do aparelho — a coisa mais fácil de mudar num telefone, valendo
+  metade da conta por um ano. Concedida **uma vez**: quem troca de faixa no
+  décimo mês mantém a data original, senão o desconto se renovaria para sempre.
+- **A tabela de faixas está espelhada em `functions/lib/contratacao.js`** — só
+  os DADOS (id, teto, preço), nenhuma aritmética, porque o deploy das functions
+  não alcança `src/`. `npm run testar:gateway` compara as duas faixa por faixa.
+  Espelhar a régua inteira (200 linhas) foi recusado pelo mesmo motivo.
 - **Desconto tem PRAZO, e sem ele vira preço.** `users.descontos` é uma lista
   de `{origem, fracao, ate}` com `ate` em 'AAAA-MM'
   ([planos.js](src/dominio/associacao/planos.js)). Duas origens: `antecipacao`
@@ -445,6 +462,10 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `sendPaymentReminders`, `runPaymentRemindersNow`
 - **Operação:** `closeStaleRoutes`, `confirmarAusencias`
 - **Push:** `sendPushOnNotification` (dispara FCM a partir de `notifications`)
+- **Contratação:** `contratarPlano` — o MOTORISTA escolhe a faixa e o servidor
+  escreve a cláusula (`planoId` + `limiteCriancas` no mesmo write, mais o
+  desconto de antecipação se ele ainda estiver no teste). É function porque os
+  dois campos estão na lista que o cliente nunca escreve.
 - **Gateway (taxa do motorista):** `criarCobrancaDaFatura` (o DONO gera a
   cobrança de uma `faturasParceiro`) e `asaasWebhook` (a baixa vem de fora).
   As duas metades do mesmo elo: o webhook acha a fatura por `asaasPaymentId`,
@@ -705,7 +726,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (139 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (143 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 

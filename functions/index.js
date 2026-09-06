@@ -24,6 +24,7 @@ const { onCall } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./lib/papeis');
 const { makeAsaasWebhook } = require('./lib/asaasWebhook');
 const { makeCriarCobrancaDaFatura } = require('./lib/asaasCobranca');
+const { makeContratarPlano } = require('./lib/contratacao');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./lib/limites');
@@ -460,3 +461,15 @@ exports.criarCobrancaDaFatura = makeCriarCobrancaDaFatura(
   ASAAS_API_KEY,
   ASAAS_AMBIENTE
 );
+
+// ===== Contratação (ver functions/lib/contratacao.js) =====
+//
+// O motorista escolhe a faixa e o SERVIDOR escreve a cláusula: `planoId` e
+// `limiteCriancas` no mesmo write, mais o desconto de antecipação se ele ainda
+// estiver dentro do teste.
+//
+// É function porque os dois campos estão na lista que o cliente nunca escreve:
+// um é o que a fatura cobra, o outro é o que as rules cobram a cada criança
+// cadastrada. Autoatendimento sem isto seria abrir a cláusula ao devedor.
+
+exports.contratarPlano = makeContratarPlano(db);

@@ -25,6 +25,8 @@ import {
 import { urlDoAmbiente, SANDBOX, PRODUCAO } from '../functions/lib/asaasApi.js';
 import { assinaturaAteDoMes as noServidor } from '../functions/lib/eventoDeCobranca.js';
 import { assinaturaAteDoMes as noApp } from '../src/dominio/associacao/contaAtiva.js';
+import { PLANOS as planosNoServidor, ANTECIPACAO as antecipacaoNoServidor, dentroDoTrial } from '../functions/lib/contratacao.js';
+import { PLANOS as planosNoApp, ANTECIPACAO as antecipacaoNoApp } from '../src/dominio/associacao/planos.js';
 
 let ok = 0;
 let bad = 0;
@@ -235,6 +237,36 @@ checar('setenta e dois meses seguidos, nenhuma divergência', null, divergiu);
 // diferente. Ancorado aqui além da varredura acima.
 checar('dezembro vira janeiro nas duas', iso(noApp('2026-12')), iso(noServidor('2026-12')));
 checar('e mês inválido devolve nulo nas duas', null, noServidor('maio'));
+
+bloco('8. A régua espelhada no servidor bate com a do app');
+
+// POR QUE HÁ DUAS. `contratarPlano` roda nas functions, que não alcançam
+// `src/dominio` — o deploy só leva a pasta `functions/`. O que foi espelhado é
+// só a TABELA (id, teto, preço), nenhuma aritmética; e é este bloco que impede
+// a cópia de virar divergência.
+//
+// Divergir aqui não dá erro: dá um motorista pagando R$ 149 com teto de 10,
+// descoberto na primeira fatura.
+checar(
+  'as faixas são as mesmas, na mesma ordem',
+  planosNoApp.map((p) => `${p.id}:${p.ate}:${p.preco}`),
+  planosNoServidor.map((p) => `${p.id}:${p.ate}:${p.preco}`)
+);
+checar('a antecipação vale o mesmo', antecipacaoNoApp.fracao, antecipacaoNoServidor.fracao);
+checar('e dura o mesmo', antecipacaoNoApp.meses, antecipacaoNoServidor.meses);
+
+bloco('9. Quem ainda merece o desconto de antecipação');
+
+const agora = dia('2026-09-15');
+// QUEM NUNCA RODOU UMA ROTA conta como dentro do teste: o relógio dele nem
+// começou, e recusar o desconto puniria justamente quem decidiu antes de
+// precisar.
+checar('sem trialInicio, está dentro', true, dentroDoTrial(null, agora));
+checar('no primeiro dia, dentro', true, dentroDoTrial(dia('2026-09-15'), agora));
+checar('no octogésimo nono dia, ainda dentro', true, dentroDoTrial(dia('2026-06-18'), agora));
+// 90 dias corridos a partir de 17/06 fecham em 15/09 — o dia 90 já é fora.
+checar('no nonagésimo, acabou', false, dentroDoTrial(dia('2026-06-17'), agora));
+checar('muito depois, fora', false, dentroDoTrial(dia('2026-01-01'), agora));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

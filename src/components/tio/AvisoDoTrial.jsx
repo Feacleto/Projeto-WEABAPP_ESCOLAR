@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowRight, Clock, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { avisoDoTrial, fimDoTrial } from '../../dominio/associacao/trial.js';
+import { ANTECIPACAO } from '../../dominio/associacao/planos.js';
 import { Link } from 'react-router-dom';
 
 /**
@@ -87,6 +88,23 @@ export default function AvisoDoTrial({ temContrato = false }) {
             seus dados continuam aqui.
           </p>
 
+          {/* A OFERTA MORA AQUI, E ISSO NÃO É ESPERTEZA DE VENDA.
+            *
+            * O preço fica discreto durante o teste de propósito: quem está
+            * provando o app não deveria estar decidindo compra. Só que o
+            * desconto de contratação antecipada precisa de UM momento em que
+            * seja dito — senão ninguém contrata antes, e o mecanismo não
+            * existe na prática.
+            *
+            * Este aviso é esse momento: ele já é sobre o fim do teste, e a
+            * antecipação ainda vale enquanto ele aparece. Dizer no último dia
+            * seria oferecer desconto a quem já está decidindo sob pressão. */}
+          <p className="mt-1.5 text-xs leading-relaxed text-warningText">
+            Contratando <strong>antes</strong> do fim, você fica com{' '}
+            <strong>{Math.round(ANTECIPACAO.fracao * 100)}% de desconto</strong> pelos{' '}
+            {ANTECIPACAO.meses} meses de contrato.
+          </p>
+
           {/* A tela de planos já existe e mostra o preço DELE, com os
             * descontos aplicados. Antes dela isto abria o WhatsApp — o que
             * era honesto enquanto não havia para onde ir. */}
@@ -94,7 +112,7 @@ export default function AvisoDoTrial({ temContrato = false }) {
             to="/tio/planos"
             className="tap mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-warningText underline"
           >
-            <ArrowRight size={15} /> Ver planos
+            <ArrowRight size={15} /> Ver planos e contratar
           </Link>
         </div>
 
