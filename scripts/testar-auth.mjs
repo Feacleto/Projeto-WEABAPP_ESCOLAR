@@ -16,6 +16,7 @@
  */
 
 import { mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
+import { painelDe } from '../src/dominio/identidade/papeis.js';
 
 let ok = 0;
 let bad = 0;
@@ -102,6 +103,25 @@ checar('no link nunca vaza o texto do SDK', 'Não foi possível concluir. Tente 
 checar('erro nulo não estoura', 'Erro. Tente novamente.', mensagemDeAuth(null, 'entrar'));
 checar('sem contexto assume entrar', 'Email ou senha incorretos.',
   mensagemDeAuth(erro('auth/wrong-password')));
+
+console.log('');
+console.log('7. Para onde cada papel é mandado');
+
+// PARA ONDE MANDAR ESSA PESSOA é a única resposta do sistema a essa
+// pergunta, e ela nunca teve teste. Em 06/09/2026 ganhou um destino novo,
+// que é o tipo de caso que quebra sem ninguém ver.
+checar('o dono vai pro painel dele', '/admin', painelDe({ role: 'owner' }));
+checar('o legado superAdmin também', '/admin', painelDe({ role: 'admin', superAdmin: true }));
+checar('role admin significa MOTORISTA', '/tio', painelDe({ role: 'admin' }));
+checar('o responsável', '/pai', painelDe({ role: 'parent' }));
+checar('o inscrito não aprovado tem a tela da fila', '/aguardando', painelDe({ role: 'aguardando' }));
+
+// SESSÃO SEM DOCUMENTO DE USUÁRIO é estado normal desde que o login com
+// Google parou de apagar a conta órfã. Antes daqui saía o login, o que
+// viraria laço: entra, não tem papel, volta pro login, entra de novo.
+checar('sem papel, a sala de espera', '/comecar', painelDe({}));
+checar('perfil nulo também', '/comecar', painelDe(null));
+checar('papel inventado não abre porta nenhuma', '/comecar', painelDe({ role: 'chefe' }));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

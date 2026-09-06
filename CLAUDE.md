@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 437 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 445 casos: horarios, faltas, aviso, contraste,
                                  # travessia, taxa, contrato, pix, status, auth,
                                  # trial, planos
 npm run testar:regras            # rules do Firestore — precisa do emulador
@@ -72,13 +72,28 @@ armadilha central do projeto:
 | `admin` | **MOTORISTA**, não dono. Nome histórico. | `/tio` |
 | `parent` | Responsável | `/pai` |
 | `aguardando` | Motorista inscrito, ainda não aprovado | `/aguardando` |
+| *(sem papel)* | Sessão criada, escolha ainda não feita | `/comecar` |
 
 **`role: 'admin'` significa motorista.** Ler isso como "administrador" é o erro
 mais caro possível aqui. O dono aceita também o legado `superAdmin: true` — a
 conta dele não tem outra prova até a migração manual pelo console.
 
-`painelDe(profile)` é a única resposta para "pra onde mando essa pessoa"; ela
-cai em `/login` quando não há papel (devolver `null` dava tela branca calada).
+`painelDe(profile)` é a única resposta para "pra onde mando essa pessoa", e
+desde 06/09/2026 ela responde `/comecar` — a SALA DE ESPERA — quando não há
+papel. **Sessão sem documento em `users` deixou de ser lixo e virou estado do
+produto:** o login com Google parou de apagar a conta órfã, porque apagar era
+desfazer o que a pessoa acabou de fazer e devolver erro no lugar de caminho.
+
+A conta **não nasce como motorista**, e é isso que evita o pior caso: a mãe que
+ignora o link do convite e toca em "Entrar com Google" viraria motorista, e o
+`redeemInvite` recusaria o convite dela depois (ele já barra motorista virando
+responsável) — ela ficaria presa, sem saída no app. A sala de espera pergunta
+o que ela FEZ (recebi convite / tenho uma van), não o que ela É: papel é uma
+classificação que ela nunca viu, e obriga a mentir quem é as duas coisas.
+
+**Quem chega pelo link nunca vê essa tela** — o código está na URL e a frente
+já é conhecida. E a conta pendurada é INERTE: toda leitura passa por
+`isAppUser()` nas rules, que exige o documento.
 
 O cliente **não escreve `role`** — foi assim que a auto-promoção se fechou.
 

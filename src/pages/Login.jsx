@@ -13,7 +13,7 @@ import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../dominio/vitri
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import {
   resetPassword,
-  loginWithGoogleExistingOnly,
+  loginComGoogle,
 } from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
 import OpenInBrowser from '../components/auth/OpenInBrowser';
@@ -116,29 +116,35 @@ export default function Login() {
   };
 
   /**
-   * Login com Google: só funciona pra usuários JÁ cadastrados.
-   * Se o user fizer login Google sem ter doc users/{uid}, deslogamos
-   * e direcionamos pro fluxo de "primeiro acesso" com invite code.
+   * Login com Google — para quem já tem conta E para quem está chegando.
    *
-   * ISTO VAI MUDAR NA FASE 3/4 — o Google passa a CRIAR a conta de quem não
-   * tem. Não mudou junto com o layout de propósito: criar conta de motorista
-   * pelo cliente é o ramo de rule que a escalada de privilégio fechou, e a
-   * decisão 16 exige que ela nasça de Cloud Function. Sem Blaze, esta tela
-   * ficaria prometendo um cadastro que morre no meio.
+   * O serviço parou de apagar a conta órfã, então "sem perfil" deixou de ser
+   * erro e virou um estado do produto: sessão válida, papel ainda não
+   * escolhido. Quem cai nisso vai pra sala de espera.
+   *
+   * A CONTA NÃO NASCE COMO MOTORISTA, e essa é a decisão que evita o pior
+   * caso: a mãe que ignora o link do convite e toca aqui viraria motorista,
+   * e o `redeemInvite` recusaria o convite dela depois — ele já barra conta
+   * de motorista virando responsável. Ela ficaria presa, sem saída no app.
    */
   const onGoogleLogin = async () => {
     setGoogleSubmitting(true);
     try {
-      // A limpeza de conta orfa vive no servico: duas telas fazem este
-      // login, e deixar a checagem em cada uma garante que a terceira
-      // esquece.
-      const { profile: userProfile } = await loginWithGoogleExistingOnly();
-      await refreshProfile();
-      toast.success(`Bem-vindo, ${userProfile.name || 'Tio'}!`);
+      const { profile: userProfile } = await loginComGoogle();
+      if (userProfile) {
+        await refreshProfile();
+        toast.success(`Bem-vindo, ${userProfile.name || 'Tio'}!`);
+        return;
+      }
+      // SEM PERFIL NÃO É ERRO — é gente chegando.
+      //
+      // O serviço parou de apagar a conta órfã, então este caso deixou de
+      // ser lixo e virou o começo do cadastro. Quem veio da porta da
+      // família vai direto pro convite: o caminho dela já foi declarado, e
+      // perguntar de novo seria fingir que o app não sabe.
+      navigate(daFamilia ? '/first-access' : '/comecar', { replace: true });
     } catch (err) {
-      if (err?.code === 'app/no-profile') {
-        toast.error(err.message, { duration: 7000 });
-      } else if (err?.code !== 'auth/popup-closed-by-user') {
+      if (err?.code !== 'auth/popup-closed-by-user') {
         toast.error(mensagemDeAuth(err, 'entrar'));
       }
     } finally {

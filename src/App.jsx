@@ -33,6 +33,7 @@ import AuthAction from './pages/AuthAction';
 // embaixo). Sao 171 linhas na primeira pintura de TODO MUNDO, inclusive da
 // mae abrindo o convite no WhatsApp em dado movel.
 const Welcome = lazy(() => import('./pages/Welcome'));
+const Comecar = lazy(() => import('./pages/Comecar'));
 const DriverSignup = lazy(() => import('./pages/DriverSignup'));
 const FirstAdmin = lazy(() => import('./pages/FirstAdmin'));
 const Aguardando = lazy(() => import('./pages/Aguardando'));
@@ -158,7 +159,14 @@ function PrivateRoute({ children, requireRole }) {
       />
     );
   }
-  if (!profile) return <FullScreenLoader />;
+  // LOGADO, SEM DOCUMENTO DE USUÁRIO: a sala de espera, não um loader.
+  //
+  // `loading` só vira false DEPOIS do await de `getUserDoc` (ver
+  // AuthContext), então aqui "sem perfil" é conclusivo e não transitório.
+  // Enquanto a conta órfã do Google era apagada, este caso não existia e
+  // o loader eterno passava despercebido; sem a limpeza, ele seria uma
+  // tela travada para todo mundo que entra pela primeira vez.
+  if (!profile) return <Navigate to="/comecar" replace />;
   // O DONO NÃO ENTRA EM PAINEL DE OPERAÇÃO, nem que o papel dele deixasse.
   //
   // A checagem de `ehDono` vem junto de propósito. Conta antiga de dono foi
@@ -239,7 +247,14 @@ function SalaDeEspera() {
       />
     );
   }
-  if (!profile) return <FullScreenLoader />;
+  // LOGADO, SEM DOCUMENTO DE USUÁRIO: a sala de espera, não um loader.
+  //
+  // `loading` só vira false DEPOIS do await de `getUserDoc` (ver
+  // AuthContext), então aqui "sem perfil" é conclusivo e não transitório.
+  // Enquanto a conta órfã do Google era apagada, este caso não existia e
+  // o loader eterno passava despercebido; sem a limpeza, ele seria uma
+  // tela travada para todo mundo que entra pela primeira vez.
+  if (!profile) return <Navigate to="/comecar" replace />;
   if (!ehAguardando(profile)) {
     return <Navigate to={painelDe(profile)} replace />;
   }
@@ -273,7 +288,14 @@ function SuperAdminRoute({ children }) {
       />
     );
   }
-  if (!profile) return <FullScreenLoader />;
+  // LOGADO, SEM DOCUMENTO DE USUÁRIO: a sala de espera, não um loader.
+  //
+  // `loading` só vira false DEPOIS do await de `getUserDoc` (ver
+  // AuthContext), então aqui "sem perfil" é conclusivo e não transitório.
+  // Enquanto a conta órfã do Google era apagada, este caso não existia e
+  // o loader eterno passava despercebido; sem a limpeza, ele seria uma
+  // tela travada para todo mundo que entra pela primeira vez.
+  if (!profile) return <Navigate to="/comecar" replace />;
   if (!ehDono(profile)) {
     return <Navigate to={painelDe(profile)} replace />;
   }
@@ -389,6 +411,10 @@ export default function App() {
           * responde "quem é você", não "o que é isto". */}
         <Route path="/conheca" element={<ParaOSite />} />
         <Route path="/welcome" element={<Welcome />} />
+        {/* A sala de espera de quem tem sessão e ainda não tem papel. Não é
+          * pública: exige estar logado, e é para onde `painelDe` manda quem
+          * não tem documento de usuário. */}
+        <Route path="/comecar" element={<Comecar />} />
         <Route path="/login" element={<Login />} />
         <Route path="/first-access" element={<FirstAccess />} />
         <Route path="/first-admin" element={<FirstAdmin />} />

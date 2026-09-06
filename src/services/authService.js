@@ -309,42 +309,32 @@ export async function createFirstAdminWithGoogle({ phone }) {
 }
 
 /**
- * Login com Google que EXIGE conta já existente no app.
+ * Login com Google — para quem já tem conta E para quem está chegando.
  *
- * POR QUE ISTO É UMA FUNÇÃO E NÃO UMA CHECAGEM NA TELA
- * `signInWithPopup` cria o usuário no Firebase Auth ANTES de qualquer
- * verificação nossa. Se ele não tem doc em users/, a tela desloga — mas a
- * conta Auth fica no projeto pra sempre. Ou seja: qualquer visitante cria uma
- * conta no seu projeto tocando em "Entrar com Google", e elas acumulam.
+ * ELE APAGAVA A CONTA ÓRFÃ, E DEIXOU DE APAGAR EM 06/09/2026.
  *
- * Duas telas fazem esse login (Login.jsx e a folha da home). Deixar a limpeza
- * em cada uma garante que a terceira tela vai esquecer. Aqui, quem chamar já
- * recebe o comportamento certo.
+ * O motivo antigo estava certo para o mundo antigo: signInWithPopup cria o
+ * usuário no Firebase Auth ANTES de qualquer verificação nossa, então
+ * qualquer visitante criava uma conta no projeto tocando no botão, e elas
+ * acumulavam. Enquanto a única forma legítima de entrar era JÁ TER conta,
+ * apagar era limpeza.
  *
- * A conta órfã é apagada na hora: a sessão tem segundos de idade, então
- * `delete()` não exige reautenticação. Se o delete falhar, desloga — nunca
- * deixa a sessão pendurada.
+ * Deixou de ser: o Google virou também o caminho de quem chega. Apagar a
+ * conta de quem acabou de entrar é desfazer o que a pessoa acabou de fazer,
+ * e devolver um erro no lugar de um caminho.
  *
- * Lança Error com mensagem pronta pra exibir quando não há conta.
- * Retorna { user, profile } quando existe.
+ * O QUE SUBSTITUI A LIMPEZA é o fato de a conta pendurada ser INERTE. Sessão
+ * sem documento em `users` não lê nada: toda regra do app passa por
+ * `isAppUser()`, que exige o documento. O custo que sobra é um registro de
+ * autenticação vazio por visitante que desistiu — que não custa dinheiro e
+ * não abre porta.
+ *
+ * Devolve `{ user, profile }`. Com `profile` nulo, quem chamou manda para a
+ * sala de espera (`/comecar`) — que é o que `painelDe` já responde.
  */
-export async function loginWithGoogleExistingOnly() {
+export async function loginComGoogle() {
   const credential = await signInWithPopup(auth, googleProvider);
   const user = credential.user;
   const profile = await getUserDoc(user.uid);
-
-  if (profile) return { user, profile };
-
-  try {
-    await user.delete();
-  } catch (err) {
-    console.error('Falha ao limpar conta Google órfã:', err);
-    await signOut(auth);
-  }
-
-  const e = new Error(
-    'Esta conta Google ainda não tem acesso. Se o motorista te mandou um convite, abra o link que ele enviou.'
-  );
-  e.code = 'app/no-profile';
-  throw e;
+  return { user, profile };
 }

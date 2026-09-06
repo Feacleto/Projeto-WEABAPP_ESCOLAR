@@ -127,5 +127,19 @@ export function painelDe(profile) {
   // do fallback de propósito — sem isto ele cairia no /login, entraria de
   // novo, e voltaria pro /login num laço que parece o app estar quebrado.
   if (ehAguardando(profile)) return '/aguardando';
-  return '/login';
+  // SEM PAPEL NÃO É ERRO — É O ESTADO NORMAL DE QUEM ACABOU DE ENTRAR.
+  //
+  // A conta do Firebase nasce antes de qualquer escolha: quem toca em
+  // "Entrar com Google" tem sessão válida e nenhum documento em `users`.
+  // Isso deixou de ser lixo a ser apagado e virou um estado do produto — a
+  // sala de espera com duas saídas da decisão 5.
+  //
+  // Antes daqui saía '/login', e com a conta órfã sendo apagada isso nunca
+  // acontecia. Sem a limpeza, '/login' viraria laço: entra, não tem papel,
+  // volta pro login, entra de novo.
+  //
+  // Uma sessão sem documento de usuário NÃO ALCANÇA NADA: toda leitura do
+  // app passa por `isAppUser()` nas rules, que exige o documento. A conta
+  // pendurada é inerte, não é porta aberta.
+  return '/comecar';
 }

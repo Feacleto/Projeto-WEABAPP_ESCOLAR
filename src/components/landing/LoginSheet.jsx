@@ -21,7 +21,7 @@ import Sheet, {
 import OpenInBrowser from '../auth/OpenInBrowser';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  loginWithGoogleExistingOnly,
+  loginComGoogle,
   resetPassword,
 } from '../../services/authService';
 import { canUseGoogleSignIn, isInAppBrowser } from '../../compartilhado/browserEnv';
@@ -128,7 +128,15 @@ export default function LoginSheet({
   const onGoogleLogin = async () => {
     setGoogleSubmitting(true);
     try {
-      const { profile: userProfile } = await loginWithGoogleExistingOnly();
+      const { profile: userProfile } = await loginComGoogle();
+      if (!userProfile) {
+        // Sem perfil é gente chegando, não erro. Na frente da família o
+        // caminho já está declarado — ela vai pro convite, e não para a
+        // sala de espera que pergunta de novo o que já se sabe.
+        fechar();
+        navigate(naFamilia ? '/first-access' : '/comecar');
+        return;
+      }
       toast.success(`Bem-vindo, ${userProfile.name || 'Tio'}!`);
     } catch (err) {
       if (err?.code === 'app/no-profile') {
