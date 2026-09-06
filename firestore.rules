@@ -145,27 +145,20 @@ service cloud.firestore {
     // signInAnonymously pra gravar leads, então `isSignedIn()` sozinho
     // inclui qualquer visitante do site — e não deveria dar acesso a
     // nada que fale de crianças, escolas ou avisos.
-    // AGUARDANDO NÃO É USUÁRIO DO APP, e a exclusão aqui é o que impede a
-    // fila de espera de virar porta.
+    // O PAPEL `aguardando` FOI REMOVIDO EM 06/09/2026, junto com a aprovação.
     //
-    // Quem se inscreve como associado sai com conta criada (`role:
-    // 'aguardando'`) e entra no app pra ver a própria posição na fila. Isso
-    // dá a ele um documento em `users` — e `isAppUser()` significa
-    // literalmente "tem documento em users".
+    // Ele existia porque a conta do motorista nascia numa fila e precisava
+    // NÃO valer nada enquanto esperava — sem a exclusão daqui, um inscrito
+    // não aprovado leria `schoolBroadcasts` e `agendaEntries` de quem já
+    // estava dentro.
     //
-    // Sem esta linha, um inscrito não aprovado passaria a ler
-    // `schoolBroadcasts` e `agendaEntries` do parceiro que JÁ está dentro:
-    // nome de escola, recado do motorista pras famílias, aviso de dia sem
-    // aula. Alguém que preencheu um formulário lendo a operação de quem
-    // paga pra estar aqui.
-    //
-    // É exatamente o mesmo erro da sessão anônima, com outra roupa: um estado
-    // intermediário que ninguém classificou como "usuário" acabando dentro da
-    // definição por acidente.
+    // Hoje a conta nasce operando e não há estado intermediário. O que sobrou
+    // sem papel é a SESSÃO SEM DOCUMENTO (quem tocou em "entrar com Google" e
+    // ainda não escolheu nada), e essa continua barrada pela primeira linha:
+    // `isAppUser()` significa literalmente "tem documento em users".
     function isAppUser() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && userDoc().role != 'aguardando';
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     // -----------------------------------------------------------------
@@ -393,51 +386,43 @@ service cloud.firestore {
       // no `update`, e passava verde. É o mesmo aprendizado de antes, na
       // forma que mais custa: sempre que o `update` for restritivo, pergunte
       // "e se ele criar o documento do zero?".
-      allow create: if (
-        isSignedIn()
+      // ⚠️ TRÊS RAMOS VIRARAM UM EM 06/09/2026 — A ENTRADA É AUTOATENDIMENTO.
+      //
+      // Havia o bootstrap do primeiro motorista (só enquanto `appState/init`
+      // não existisse), o provisionamento pelo dono, e a inscrição na fila
+      // (`role: 'aguardando'`). Os três descreviam formas de alguém AUTORIZAR
+      // a entrada de outra pessoa — e ninguém autoriza mais nada: o motorista
+      // se cadastra e começa a operar.
+      //
+      // O ramo do provisionamento já era letra morta: ele apontava para
+      // `src/services/provisionamentoService.js`, arquivo que NÃO EXISTE no
+      // repositório. Uma regra viva descrevendo um código que nunca foi
+      // escrito.
+      //
+      // O QUE MUDOU DE VERDADE, E PRECISA SER LIDO ANTES DE ESCREVER REGRA
+      // NOVA: até aqui `role: 'admin'` era um conjunto escolhido a dedo, e
+      // regra que parava num `isAdmin()` solto era um furo com plateia
+      // limitada. Agora `isAdmin()` significa "tem uma conta", e nada mais.
+      // Quem escopa é o vínculo — `ehDoMotorista()`, `adminUid`, `adminUids`.
+      //
+      // A WHITELIST É O QUE SEGURA A CONTA MAGRA. Fora dela ficam, e cada
+      // ausência é uma fraude que não acontece:
+      //   superAdmin       virar dono da plataforma
+      //   childIds/childId auto-atribuir filhos (quem vincula é o redeemInvite)
+      //   limiteCriancas   nascer com teto de crianças que não contratou
+      //   trialInicio      escolher quando o próprio teste começa
+      //   assinaturaAte    nascer pago
+      //   criancasAtivas   zerar o contador que as rules usam pra cobrar a vaga
+      //   suspenso         nascer não-suspenso é o padrão; escrever é do dono
+      //   termsVersion     forjar o próprio aceite de termos
+      allow create: if isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.role == 'admin'
-        && !exists(/databases/$(database)/documents/appState/init)
-        && request.resource.data.keys().hasOnly([
-          'role', 'name', 'email', 'phone', 'city', 'createdAt'
-        ])
-      ) || (
-        isOwner()
-        && request.resource.data.role == 'admin'
-        && request.resource.data.keys().hasAll(['role', 'name', 'createdAt'])
-        && request.resource.data.keys().hasOnly([
-          'role', 'name', 'email', 'phone', 'city',
-          'createdAt', 'provisionedBy', 'provisionedFromLead'
-        ])
-        && request.resource.data.provisionedBy == request.auth.uid
-      ) || (
-        // INSCRIÇÃO NA LISTA DE ASSOCIADOS — a conta nasce AGUARDANDO.
-        //
-        // A inscrição É o cadastro do motorista: ele preenche, entra, e vê a
-        // própria posição na fila enquanto a aprovação é negociada fora do
-        // sistema. Por isso o create é aberto pra qualquer um que acabou de
-        // se autenticar — e por isso `aguardando` não pode valer nada.
-        //
-        // O QUE TORNA ISTO SEGURO não é a whitelist abaixo, é o papel:
-        // `aguardando` não passa em `isAdmin()`, não passa em `isOwner()` e
-        // foi EXCLUÍDO de `isAppUser()`. Quem cria uma conta dessas alcança
-        // exatamente nada além do próprio documento. Se amanhã alguém
-        // esquecer uma checagem numa regra nova, o esquecimento não abre
-        // porta — o papel já não abria.
-        //
-        // A whitelist existe pra ele não nascer com campo que não é dele:
-        // sem `superAdmin`, sem `childIds`, sem `adminUid`. E `role` fixo em
-        // 'aguardando' impede a auto-promoção no ato da criação, que seria o
-        // caminho óbvio — criar já como 'admin'.
-        isSignedIn()
-        && request.auth.uid == uid
-        && request.resource.data.role == 'aguardando'
         && request.resource.data.keys().hasAll(['role', 'createdAt'])
         && request.resource.data.keys().hasOnly([
-          'role', 'name', 'email', 'phone', 'city', 'fleet',
-          'createdAt', 'posicaoNaFila'
-        ])
-      );
+          'role', 'name', 'email', 'phone', 'city',
+          'criancasEstimadas', 'createdAt'
+        ]);
 
       // O dono atualiza o próprio doc, mas NÃO pode mexer em role nem no
       // vínculo de crianças. Quem escreve childIds/childId é a Cloud
@@ -477,32 +462,14 @@ service cloud.firestore {
       //
       // Agora o ramo do DONO vem primeiro e é fechado em si (só os campos de
       // gestão), e o ramo de todo mundo proíbe privilégio E gestão juntos.
+      // A TRANSIÇÃO `aguardando` → `admin` SAIU DAQUI (06/09/2026).
+      //
+      // Era a única escrita de `role` que o cliente conseguia fazer, e existia
+      // para o dono aprovar um inscrito. Sem fila, não há o que aprovar — e o
+      // resultado é melhor do que "uma exceção estreita": agora NENHUM
+      // caminho do cliente escreve `role`. A proibição abaixo é total.
       allow update: if (
-        // APROVAR UM INSCRITO — a única transição de `role` que existe.
-        //
-        // Trocar `role` é a escrita mais protegida do sistema: foi por ela
-        // que um motorista se promovia a dono. Esta exceção é estreita de
-        // propósito, e cada termo fecha um caminho:
-        //
-        //   isOwner()                     só o dono aprova
-        //   resource.role == 'aguardando' só sai da fila; conta ativa não
-        //                                 pode ser rebaixada nem mexida
-        //   request.role == 'admin'       só chega em MOTORISTA. Não existe
-        //                                 caminho pra virar 'owner' — o dono
-        //                                 não se multiplica por aqui
-        //   hasOnly([...])                e nada mais viaja junto: nem
-        //                                 superAdmin, nem childIds, nem
-        //                                 adminUid
-        //
-        // Aprovação é irreversível por aqui de propósito. Desfazer um aceite
-        // é suspender (`suspenso`), que é o ramo abaixo e deixa rastro — não
-        // é apagar o fato de que a conta foi aprovada um dia.
-        isOwner()
-        && resource.data.role == 'aguardando'
-        && request.resource.data.role == 'admin'
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['role', 'aprovadoEm', 'aprovadoPor'])
-      ) || (
+
         // O DONO GERENCIA, NÃO EDITA CADASTRO ALHEIO.
         // QUATRO campos, e nenhum é dado do parceiro: suspender, quando
         // suspendeu, a nota interna da plataforma e a vaga contratada. Nome,
@@ -1233,52 +1200,18 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
-    // waitlistDrivers/{id} e waitlistParents/{id}
-    //   Leads da landing (/conheca). Coleções públicas só pra create
-    //   (com auth anônimo). Leitura/edição/delete apenas admin — assim o
-    //   admin atual vê quem quer entrar sem expor leads pra outros usuários.
+    // waitlistDrivers e waitlistParents SAÍRAM EM 06/09/2026.
+    //
+    // Eram as duas listas de interesse da landing antiga. A de motorista virou
+    // o próprio cadastro — ele não entra numa lista, ele entra no app. A de
+    // família nunca teve tela que a lesse, e o `create` dela dependia de login
+    // anônimo, que está DESLIGADO neste projeto (ADMIN_ONLY_OPERATION): ela
+    // falharia se alguém a ligasse.
+    //
+    // Sem match, elas caem no `match /{document=**}` do fim, que nega tudo.
+    // Documento que porventura tenha sobrado fica ilegível para o cliente e
+    // alcançável só pelo console — que é o certo para um resto de dado.
     // -----------------------------------------------------------------
-    match /waitlistDrivers/{id} {
-      // Criação NEGADA pro cliente: quem grava é a Cloud Function
-      // joinDriverWaitlist (Admin SDK), que valida campos, deduplica por
-      // email e devolve a posição na fila. Com o create aberto, qualquer
-      // visitante anônimo podia inflar a lista do tio com lixo.
-      // Continua FECHADO pro público: era por aqui que um visitante anônimo
-      // inflava a lista com lixo, e a entrada pública é a callable
-      // `joinDriverWaitlist` (que deduplica por e-mail e devolve a posição).
-      //
-      // O dono cria porque hoje ele é o único canal que funciona: sem Cloud
-      // Functions no ar, o formulário da home não grava nada, e o interessado
-      // que chega por WhatsApp precisa entrar na fila de algum jeito. Sem
-      // isto, a fila fica vazia e o funil não tem o que gerenciar.
-      allow create: if isOwner();
-      // A fila de parceiros é GESTÃO DA PLATAFORMA, não operação de perua:
-      // quem aprova ou recusa um motorista é o dono. O parceiro não tem o
-      // que fazer aqui — e ver a fila é ver os concorrentes dele.
-      allow read, update, delete: if isOwner();
-    }
-    match /waitlistParents/{id} {
-      // A GÊMEA DE `waitlistDrivers`, QUE DIVERGIU SEM NINGUÉM DECIDIR.
-      //
-      // As duas nasceram no mesmo comentário, com a mesma regra. A de cima foi
-      // fechada — o `create` saiu do anônimo — e esta ficou três linhas abaixo,
-      // aberta, sem uma linha explicando por quê.
-      //
-      // O `read/update/delete` era `isAdmin()`, que aqui significa QUALQUER
-      // motorista: um parceiro lia — e APAGAVA — os leads de família de toda a
-      // plataforma. É lista de aquisição do dono, não dado de operação de
-      // ninguém. Passa a `isOwner()`.
-      //
-      // O `create` continua aberto a quem tem sessão (a landing grava por
-      // sessão anônima), mas agora com whitelist de campos: sem ela, qualquer
-      // um escrevia qualquer coisa, de qualquer tamanho, nesta coleção.
-      allow create: if isSignedIn()
-        && request.resource.data.keys().hasAll(['name', 'email', 'createdAt'])
-        && request.resource.data.keys().hasOnly([
-          'name', 'email', 'phone', 'city', 'message', 'createdAt'
-        ]);
-      allow read, update, delete: if isOwner();
-    }
 
     // -----------------------------------------------------------------
     // pendingCalls/{id} — "ligação" Tio → Pai pra avisar urgência.

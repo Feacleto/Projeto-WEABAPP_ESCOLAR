@@ -221,6 +221,48 @@ queda dentro dela deixaria cobrança órfã lá e nenhum vestígio aqui.
 
 ---
 
+## O modelo novo — o que já foi feito (06/09/2026)
+
+O plano de nove fases acima descreve o produto que existia até aqui. Em
+06/09/2026 o modelo comercial mudou, e três coisas foram decididas de uma vez:
+**ninguém aprova motorista**, **o preço é fixo** (some o orçamento) e **a
+roleta só aparece quando o teste acaba**. O modelo antigo é apagado, não
+migrado — não há base real.
+
+Fechado até agora:
+
+- **Fase 0 · fechar antes de abrir.** `allow get` de `users` escopado por
+  vínculo nas duas direções; `taxaConfig` fechado ao dono. As duas eram furos
+  que a aprovação segurava — ver a [decisão 16](decisoes.md)
+- **Fase 1 · pagamento destrava a conta.** O webhook do gateway passou a
+  escrever `users.assinaturaAte` no mesmo lote da baixa. Sem isso, quem pagasse
+  pelo gateway continuaria bloqueado com o comprovante na mão
+- **Fase 2 · a conta nasce operando.** Some `aguardando`, a fila, a sala de
+  espera, `waitlistDrivers`, `waitlistParents`, `joinDriverWaitlist`,
+  `config/rodada.js`, a aba **Fila** do painel e as duas telas de landing que
+  ninguém mais importava (`WaitlistSheet`, `PartnerPitch`)
+
+O que falta, na ordem:
+
+1. **Preço fixo** — fatura e contrato passam a sair de `planos.js`. Apagar
+   `taxa.js`, `OrcamentoSheet`, `FunilTab`, `funilService`, `leadsFunil`
+2. **Contratar dentro do app** — contrato de 12 meses, renovando de 12 em 12.
+   Preço discreto durante o teste; quem contrata ANTES do fim leva 50% nos 12
+   meses. Exige um conceito que não existe: **desconto com prazo**
+3. **A tranca nas rules** — bloqueio por teste vencido e por atraso
+4. **A roleta na conversão** — quatro prêmios: +2 meses, 30% por 12 meses,
+   +1 mês, 10% por 12 meses
+5. **Painel do dono** — vira acompanhamento, não aprovação. E a conta
+   `role: 'owner'`, que **ainda não existe**: ninguém consegue abrir `/admin`
+
+⚠️ **A soma dos descontos precisa de decisão.** Fundador metade (50%) mais
+antecipação (50%) fecha em 100% pelos 12 meses — e a partir daí roleta e
+indicação valem zero justamente para os treze primeiros, que são quem mais
+indica. A recomendação em cima da mesa é **fundador e antecipação não somarem,
+valendo o maior**.
+
+---
+
 ## O que continua em aberto
 
 - **A condição de fundador precisa de dono.** Quem marca é o dono, num campo

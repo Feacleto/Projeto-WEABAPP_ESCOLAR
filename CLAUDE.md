@@ -17,9 +17,9 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 445 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 565 casos: horarios, faltas, aviso, contraste,
                                  # travessia, taxa, contrato, pix, status, auth,
-                                 # trial, planos
+                                 # trial, planos, conta, cobranca, gateway
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -68,23 +68,36 @@ armadilha central do projeto:
 
 | `role` | Quem é | Painel |
 |---|---|---|
-| `owner` | **Dono da plataforma** — aprova motorista, vê os números | `/admin` |
+| `owner` | **Dono da plataforma** — acompanha a base, vê os números | `/admin` |
 | `admin` | **MOTORISTA**, não dono. Nome histórico. | `/tio` |
 | `parent` | Responsável | `/pai` |
-| `aguardando` | Motorista inscrito, ainda não aprovado | `/aguardando` |
 | *(sem papel)* | Sessão criada, escolha ainda não feita | `/comecar` |
 
 **`role: 'admin'` significa motorista.** Ler isso como "administrador" é o erro
 mais caro possível aqui. O dono aceita também o legado `superAdmin: true` — a
 conta dele não tem outra prova até a migração manual pelo console.
 
+**A ENTRADA VIROU AUTOATENDIMENTO EM 06/09/2026, e isso muda como se escreve
+regra.** O motorista se cadastra em `/quero-fazer-parte` e a conta JÁ NASCE
+`role: 'admin'`: não há mais fila, aprovação, nem o papel `aguardando`. Quem
+controla o acesso agora é o teste de três meses, que começa na primeira rota.
+
+A consequência é a linha mais importante desta seção: **`isAdmin()` deixou de
+ser um conjunto escolhido a dedo e virou "tem uma conta"** — qualquer pessoa
+com um e-mail chega lá em trinta segundos. Regra que para num `isAdmin()` solto
+é porta pública. Foi por isso que o `allow get` de `users` e a leitura de
+`taxaConfig` foram escopados ANTES de a porta abrir. O teste de rules tem um
+ator só pra isso: `novato`, motorista legítimo com zero vínculo, que precisa
+não alcançar nada.
+
 `painelDe(profile)` é a única resposta para "pra onde mando essa pessoa", e
-desde 06/09/2026 ela responde `/comecar` — a SALA DE ESPERA — quando não há
-papel. **Sessão sem documento em `users` deixou de ser lixo e virou estado do
+quando não há papel ela responde `/comecar` — a bifurcação de quem acabou de
+criar sessão. **Sessão sem documento em `users` deixou de ser lixo e virou estado do
 produto:** o login com Google parou de apagar a conta órfã, porque apagar era
 desfazer o que a pessoa acabou de fazer e devolver erro no lugar de caminho.
 
-A conta **não nasce como motorista**, e é isso que evita o pior caso: a mãe que
+A conta do GOOGLE **não nasce como motorista** (só o formulário de cadastro
+cria motorista), e é isso que evita o pior caso: a mãe que
 ignora o link do convite e toca em "Entrar com Google" viraria motorista, e o
 `redeemInvite` recusaria o convite dela depois (ele já barra motorista virando
 responsável) — ela ficaria presa, sem saída no app. A sala de espera pergunta
@@ -180,14 +193,14 @@ src/
 │   ├── tio/           16 telas do motorista
 │   ├── pai/           8 telas do responsável
 │   ├── admin/         AdminPanel, TaxaTab — o dono tem UMA tela só, com
-│   │                  cinco abas. `/admin/parceiros` era a segunda e virou
-│   │                  redirecionamento; a fila mora na aba "Fila".
+│   │                  quatro abas. A aba "Fila" morreu com a aprovação:
+│   │                  ninguém pede acesso, o motorista entra sozinho.
 │   └── legal/         termos e privacidade
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive…
 ├── services/          37 módulos — TODO acesso ao Firestore passa aqui
 ├── hooks/             23 hooks, quase todos onSnapshot de um service
-├── config/            capabilities, rodada, developer, vitrine,
+├── config/            capabilities, developer, vitrine,
 │                      paletaCategorica (o único lugar com cor crua)
 ├── context/           AuthContext (perfil + papel)
 ├── dominio/           AS REGRAS. Puro, sem Firebase, sem React — um contexto
@@ -265,8 +278,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `users` · `children` (+ subcoleção `rides/{YYYY-MM-DD}`) · `payments`
 (+ `events`) · `liveLocation` · `notifications` · `altPickups` · `schools` ·
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
-`feedbacks` · `supportTickets` · `expenses` · `waitlistDrivers` ·
-`waitlistParents` · `entryBonuses` · `taxaConfig` · `taxaParceiros` ·
+`feedbacks` · `supportTickets` · `expenses` · `entryBonuses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `leadsFunil` · `contratosAssociacao` · `platformConfig` ·
 `appState`
 
@@ -313,10 +325,10 @@ negociação **e** emite o contrato na mesma folha) → `contratosAssociacao`
 (o associado aceita em `/tio/contrato-plataforma`) → `faturasParceiro`
 (fechada na aba **Taxa**, paga em `/tio/taxa`).
 
-- **`leadsFunil` não é `waitlistDrivers`.** O funil é registro comercial; a
-  fila (aba **Fila** do painel) é a porta do app. Mover cartão de
-  vendas não dá acesso a sistema nenhum — ver o cabeçalho de
-  [funilService.js](src/services/funilService.js).
+- **O funil é registro comercial, e nunca foi porta de acesso.** Mover cartão
+  de vendas não dá acesso a sistema nenhum — ver o cabeçalho de
+  [funilService.js](src/services/funilService.js). A porta era a aba **Fila**,
+  que morreu com a aprovação em 06/09/2026: hoje o motorista entra sozinho.
 - **Orçar exige conta aprovada.** O id do lead é o uid só quando a pessoa se
   inscreveu pelo app; pra quem chegou por fora, salvar produziria um contrato
   que ninguém consegue aceitar. Quem recusa é
@@ -419,7 +431,7 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   cobrança de uma `faturasParceiro`) e `asaasWebhook` (a baixa vem de fora).
   As duas metades do mesmo elo: o webhook acha a fatura por `asaasPaymentId`,
   e é a callable que grava esse campo.
-- **Outros:** `joinDriverWaitlist`, `getShowcase`, `spinEntryBonus`,
+- **Outros:** `getShowcase`, `spinEntryBonus`,
   `flagDuplicateReceipts`, `backfillTestimonialPrivacy`
 
 Cobrança e limpeza **saíram do cliente** de propósito: no cliente, o mês em que
@@ -604,11 +616,14 @@ mensalidade das suas famílias é sua, a plataforma não entra no caminho dela".
 é conversa com o consultor — número solto vira âncora antes de existir
 proposta.
 
-[src/config/rodada.js](src/config/rodada.js) — `VAGAS_NA_RODADA` é escassez
-**real** e precisa ser baixada à mão quando um associado entra; contador falso
-que reinicia sozinho é propaganda enganosa (CDC art. 37).
+`src/config/rodada.js` **foi apagado em 06/09/2026** junto com a fila.
+`VAGAS_NA_RODADA` era escassez real — vaga na rodada do mês — e só fazia
+sentido enquanto alguém controlava a porta. Sem porta, um contador de vagas
+seria o contador falso que reinicia sozinho, ou seja, propaganda enganosa (CDC
+art. 37). O argumento fica registrado porque vale para qualquer contador que
+alguém queira pôr numa vitrine.
 
-[src/config/vitrine.js](src/config/vitrine.js) — **a exceção à regra de cima, e
+[src/config/vitrine.js](src/config/vitrine.js) — **a exceção a essa regra, e
 não é bug.** `PISO_DA_VITRINE` (27) é um piso sobre os dois contadores de
 vitrine: abaixo dele a tela mostra o piso, não o real. Decisão de produto,
 tomada com o ponto do CDC na mesa. Quem for "consertar" isso leia o arquivo
@@ -672,8 +687,8 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (116 casos, com
-atores **anônimo** e **`aguardando`**; ele roda fora do CI porque precisa do
+passar por lá — e `npm run testar:regras` cobre o payload real (131 casos, com
+atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 
 **`isAdmin()` nas rules significa QUALQUER MOTORISTA** — nunca é escopo

@@ -7,7 +7,6 @@ import Input from '../components/common/Input';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { ArtRoad } from '../components/landing/BlockArt';
 import AssociadosCard from '../components/landing/AssociadosCard';
-import { submitDriverWaitlist } from '../services/waitlistService';
 import { inscreverAssociado } from '../services/associadoService';
 import { useAuth } from '../hooks/useAuth';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../compartilhado/masks';
@@ -68,19 +67,16 @@ export default function DriverSignup() {
 
     setSubmitting(true);
     try {
-      // A ORDEM IMPORTA: a lista primeiro, a conta depois.
+      // A CONTA NASCE OPERANDO — não há mais lista, nem fila, nem espera.
       //
-      // A lista é o registro de intenção e é o que o dono usa pra
-      // decidir. Se a criação da conta falhar (email já usado com outra
-      // senha, rede caindo), o pedido dele NÃO se perde — ele continua
-      // na fila e alguém consegue chamar. O contrário deixaria uma conta
-      // órfã sem ninguém saber que aquela pessoa quis entrar.
-      await submitDriverWaitlist({
-        ...form,
-        phone: unmaskPhone(form.phone),
-      });
-
-      const { posicao } = await inscreverAssociado({
+      // Antes daqui saíam DUAS escritas: um lead em `waitlistDrivers` e a
+      // conta em `aguardando`. A lista existia porque quem decidia era uma
+      // pessoa, e o pedido não podia se perder enquanto ela não decidisse.
+      //
+      // Ninguém decide mais: ele entra e roda. O que o segura é o teste de
+      // três meses, que começa na primeira rota — e o registro de intenção
+      // virou o próprio cadastro, que é um documento só.
+      await inscreverAssociado({
         email: form.email,
         senha: form.senha,
         nome: form.name,
@@ -90,10 +86,8 @@ export default function DriverSignup() {
       });
 
       await refreshProfile();
-      toast.success(
-        posicao ? `Pronto! Você é o ${posicao}º da fila.` : 'Pronto! Você está na fila.'
-      );
-      navigate('/aguardando', { replace: true });
+      toast.success('Pronto! Sua conta está criada. Bem-vindo ao Alô Buzinou.');
+      navigate('/tio', { replace: true });
     } catch (err) {
       // Conta criada mas perfil recusado deixaria ele autenticado sem
       // lugar nenhum. A mensagem tem que dizer o que fazer, e a única
@@ -111,15 +105,15 @@ export default function DriverSignup() {
     }
   };
 
-  // A TELA DE CONFIRMAÇÃO SAIU DAQUI.
+  // A TELA DE CONFIRMAÇÃO SAIU DAQUI, E DEPOIS A SALA DE ESPERA TAMBÉM.
   //
-  // Ela mostrava a posição na fila e um botão de voltar pra home. Agora a
-  // inscrição CRIA A CONTA e entra: quem termina o formulário cai na sala de
-  // espera (/aguardando), que mostra a mesma posição, é persistente — ele
-  // reencontra ao abrir o app de novo — e tem o caminho pro consultor.
+  // A primeira mostrava "recebemos seu pedido" e um botão de voltar — o ponto
+  // exato em que o interesse esfriava. A segunda mostrava a posição na fila,
+  // e era persistente, o que era melhor.
   //
-  // Uma tela de "recebemos seu pedido" que ele vê uma vez e nunca mais era o
-  // ponto em que o interesse esfriava.
+  // Agora não há o que esperar: quem termina o formulário cai no painel dele,
+  // com a perua vazia e o cadastro de turma na frente. A melhor tela pós-
+  // cadastro é o produto.
 
   return (
     /**

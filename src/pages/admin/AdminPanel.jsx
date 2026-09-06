@@ -3,24 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import {
   BarChart3,
-  Bus,
-  Check,
   CircleDollarSign,
   LogOut,
-  MapPin,
   MessageSquare,
-  Phone,
   ShieldCheck,
   Star,
   TrendingUp,
   Users,
-  X,
-  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import AguardandoAprovacao from '../../components/admin/AguardandoAprovacao';
 import TaxaTab from './TaxaTab';
 import FunilTab from '../../components/admin/FunilTab';
 import { functions } from '../../firebase/config';
@@ -37,10 +30,8 @@ import {
   getSurveyResults,
   mesAtual,
 } from '../../services/adminMetricsService';
-import { setLeadStatus, watchDriverLeads } from '../../services/waitlistService';
 import { logout } from '../../services/authService';
 import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
-import { devWhatsAppLink } from '../../config/developer';
 
 /**
  * Painel do dono — /admin
@@ -91,13 +82,12 @@ import { devWhatsAppLink } from '../../config/developer';
  * está no brief de arquitetura.
  */
 export default function AdminPanel() {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('geral');
 
   const [ov, setOv] = useState(null);
   const [survey, setSurvey] = useState(null);
-  const [leads, setLeads] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -107,28 +97,10 @@ export default function AdminPanel() {
     getSurveyResults()
       .then((d) => alive && setSurvey(d))
       .catch(() => alive && setSurvey(false));
-    const unsub = watchDriverLeads(
-      (l) => alive && setLeads(l),
-      () => alive && setLeads([])
-    );
     return () => {
       alive = false;
-      unsub?.();
     };
   }, []);
-
-  const marcar = async (lead, status) => {
-    try {
-      await setLeadStatus(lead.id, status, user?.uid);
-      toast.success(
-        status === 'approved'
-          ? 'Marcado como aprovado. Falta provisionar a conta.'
-          : 'Atualizado.'
-      );
-    } catch (err) {
-      toast.error(err.message || 'Não deu pra atualizar.');
-    }
-  };
 
   return (
     /* O PISO DE TEXTO DESTA TELA É 12px (`text-xs`), e não é preferência.
@@ -226,51 +198,28 @@ export default function AdminPanel() {
           * que CHEGA nele (a fila de inscritos e o que os usuários responderam). */}
         <div className="mb-5 space-y-1 rounded-2xl bg-neutro p-1 sm:flex sm:space-y-0 sm:gap-1">
           {[
-            [
-              ['geral', 'Visão geral'],
-              ['funil', 'Funil'],
-              ['taxa', 'Taxa'],
-            ],
-            [
-              ['parceiros', 'Fila'],
-              ['pesquisa', 'Pesquisa'],
-            ],
-          ].map((fileira, i) => (
-            <div
-              key={i}
-              // `flex-[3]` e `flex-[2]` e não `flex-1`: lado a lado, as duas
-              // fileiras têm 3 e 2 abas, então dividir o espaço meio a meio
-              // deixaria as duas da direita mais largas que as três da
-              // esquerda. Proporcional ao número de abas, todas ficam iguais.
-              className={`grid gap-1 ${
-                fileira.length === 3
-                  ? 'grid-cols-3 sm:flex-[3]'
-                  : 'grid-cols-2 sm:flex-[2]'
+            ['geral', 'Visão geral'],
+            ['funil', 'Funil'],
+            ['taxa', 'Taxa'],
+            ['pesquisa', 'Pesquisa'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={`tap rounded-xl py-2.5 text-xs font-bold transition-colors sm:flex-1 ${
+                tab === id ? 'bg-card text-primary shadow-sm' : 'text-textMuted'
               }`}
             >
-              {fileira.map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setTab(id)}
-                  className={`tap rounded-xl py-2.5 text-xs font-bold transition-colors ${
-                    tab === id
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-textMuted'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+              {label}
+            </button>
           ))}
         </div>
 
-        {tab === 'geral' && <Geral ov={ov} onVerFila={() => setTab('parceiros')} />}
+        {tab === 'geral' && <Geral ov={ov} />}
         {tab === 'funil' && <FunilTab />}
         {tab === 'taxa' && <TaxaTab />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
-        {tab === 'parceiros' && <Parceiros leads={leads} onMarcar={marcar} />}
       </main>
     </div>
   );
@@ -278,7 +227,7 @@ export default function AdminPanel() {
 
 /* ─────────────── aba 1: visão geral ─────────────── */
 
-function Geral({ ov, onVerFila }) {
+function Geral({ ov }) {
   if (ov === null) return <Carregando />;
   if (ov === false) return <Erro />;
 
@@ -345,34 +294,6 @@ function Geral({ ov, onVerFila }) {
             </p>
           )}
         </div>
-      </section>
-
-      <section>
-        <Titulo icon={Bus}>Fila de parceiros</Titulo>
-        {/* Número que não leva a lugar nenhum é número que ninguém usa:
-          * saber que há 3 motoristas esperando só serve se der pra abrir
-          * a fila e decidir sobre eles.
-          *
-          * TROCA DE ABA, e não navega. A fila tinha duas casas — esta ficha
-          * levava pra /admin/parceiros enquanto a aba ao lado mostrava a
-          * mesma coleção. Uma tela só: o dono decide sem sair de onde está. */}
-        <button
-          type="button"
-          onClick={onVerFila}
-          className="tap w-full text-left"
-        >
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
-            <div className="flex-1">
-              <p className="text-xl font-extrabold tabular-nums tracking-tight text-text">
-                {ov.filaParceiros}
-              </p>
-              <p className="mt-0.5 text-xs leading-tight text-textMuted">
-                Motoristas pedindo acesso — toque pra aprovar ou recusar
-              </p>
-            </div>
-            <ChevronRight size={18} className="shrink-0 text-textMuted" />
-          </div>
-        </button>
       </section>
 
       <section>
@@ -781,154 +702,6 @@ function Ranking({ itens, vazio }) {
           </span>
         </div>
       ))}
-    </div>
-  );
-}
-
-/* ─────────────── aba 3: parceiros ─────────────── */
-
-const STATUS_LABEL = {
-  pending: 'na fila',
-  contacted: 'contatado',
-  approved: 'aprovado',
-  rejected: 'recusado',
-};
-
-const STATUS_SKIN = {
-  pending: 'bg-neutro text-textMuted',
-  contacted: 'bg-warningSoft text-warningText',
-  approved: 'bg-primarySoft text-primary',
-  rejected: 'bg-dangerSoft text-dangerText',
-};
-
-/**
- * A FILA — e as duas coisas diferentes que moram nela.
- *
- * `AguardandoAprovacao` vem primeiro porque é outra urgência: ali são CONTAS
- * que já existem e estão vendo a sala de espera NESTE momento; abaixo são
- * LEADS, gente que deixou contato. Quem espera na porta vem antes de quem
- * deixou recado — a ordem veio da tela `/admin/parceiros`, que esta aba
- * substituiu.
- *
- * Ele se esconde sozinho quando não há ninguém esperando (devolve `null`), e é
- * por isso que aparece nos dois galhos sem precisar de condição aqui.
- */
-function Parceiros({ leads, onMarcar }) {
-  if (leads === null) return <Carregando />;
-  if (!leads.length) {
-    return (
-      <div className="space-y-4">
-        <AguardandoAprovacao />
-        <Vazio
-          icon={Bus}
-          titulo="Ninguém na fila"
-          texto="Quando um motorista entrar na lista pela home, ele aparece aqui."
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <AguardandoAprovacao />
-      {leads.map((l) => {
-        const status = l.status || (l.contacted ? 'contacted' : 'pending');
-        return (
-          <article
-            key={l.id}
-            className="rounded-2xl border border-border bg-card p-4"
-          >
-            <div className="flex items-start gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-text">
-                  {l.name || 'sem nome'}
-                </p>
-                <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-textMuted">
-                  {l.city && (
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin size={11} />
-                      {l.city}
-                    </span>
-                  )}
-                  {l.criancas > 0 && (
-                    <span className="inline-flex items-center gap-1">
-                      <Bus size={11} />
-                      {l.criancas} {l.criancas === 1 ? 'criança' : 'crianças'}
-                    </span>
-                  )}
-                  {l.position != null && (
-                    <span className="font-mono">#{l.position}</span>
-                  )}
-                </p>
-              </div>
-              <span
-                className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${STATUS_SKIN[status]}`}
-              >
-                {STATUS_LABEL[status]}
-              </span>
-            </div>
-
-            {l.message && (
-              <p className="mt-2 rounded-xl bg-surface p-3 text-xs leading-relaxed text-textMuted">
-                “{l.message}”
-              </p>
-            )}
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {l.phone && (
-                <a
-                  href={devWhatsAppLink(
-                    `Oi ${(l.name || '').split(' ')[0]}! Aqui é do Alô Buzinou, sobre sua vaga de associado.`
-                  ).replace('/5511969170709', `/${l.phone}`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold text-text"
-                >
-                  <Phone size={13} />
-                  WhatsApp
-                </a>
-              )}
-              {status !== 'contacted' && status !== 'approved' && (
-                <button
-                  type="button"
-                  onClick={() => onMarcar(l, 'contacted')}
-                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white"
-                >
-                  Marcar contatado
-                </button>
-              )}
-              {status !== 'approved' && (
-                <button
-                  type="button"
-                  onClick={() => onMarcar(l, 'approved')}
-                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white"
-                >
-                  <Check size={13} />
-                  Aprovar
-                </button>
-              )}
-              {status !== 'rejected' && (
-                <button
-                  type="button"
-                  onClick={() => onMarcar(l, 'rejected')}
-                  className="tap inline-flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold text-textMuted"
-                >
-                  <X size={13} />
-                  Recusar
-                </button>
-              )}
-            </div>
-
-            {status === 'approved' && (
-              <p className="mt-2 text-xs leading-relaxed text-textMuted">
-                Aprovado é <strong>decisão</strong>, não acesso: criar a conta
-                dele precisa da função de provisionamento (Admin SDK). Sem ela,
-                a conta ainda é criada à mão.
-              </p>
-            )}
-          </article>
-        );
-      })}
     </div>
   );
 }

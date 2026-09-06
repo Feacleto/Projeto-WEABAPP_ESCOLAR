@@ -6,8 +6,12 @@
  * MOTORISTA — quem opera uma perua. É esse papel que libera criança,
  * pagamento, rota e agenda.
  *
- * Quem administra a PLATAFORMA é outro: aprova motorista, abre e fecha
+ * Quem administra a PLATAFORMA é outro: acompanha a base, abre e fecha
  * depoimento, olha os números do negócio. Esse é `role: 'owner'`.
+ *
+ * Ele NÃO aprova mais motorista — a entrada virou autoatendimento em
+ * 06/09/2026. Ver o bloco do papel `aguardando`, mais abaixo, que ficou como
+ * registro do que existia e por quê.
  *
  * POR QUE ISTO VIROU PAPEL, E NÃO CONTINUOU UMA FLAG
  * Antes o dono era um motorista com `superAdmin: true` por cima, porque as
@@ -71,32 +75,22 @@ export function ehResponsavel(profile) {
 }
 
 /**
- * Motorista que se inscreveu e ainda não foi aprovado.
+ * O PAPEL `aguardando` DEIXOU DE EXISTIR EM 06/09/2026, junto com a
+ * aprovação. A conta do motorista passou a nascer operando: ele preenche o
+ * cadastro, entra e roda: quem controla o acesso agora é o TESTE DE TRÊS
+ * MESES, não uma fila.
  *
- * A INSCRIÇÃO É O CADASTRO. Não existe "entrar na lista" e depois "criar
- * conta": quem preenche a lista de associados sai dali com conta criada, entra
- * no app e vê a própria posição na fila. O que falta é a aprovação do dono,
- * que é negociada fora do sistema.
+ * Ficou registrado aqui porque o argumento que criou esse papel continua
+ * valendo para o próximo estado que alguém for inventar: ele era PAPEL e não
+ * `role: admin` + `ativo: false`, porque com flag cada regra do Firestore
+ * precisaria lembrar de checar — e uma que esquecesse abriria criança,
+ * pagamento e rota de quem já estava dentro. Com papel próprio, esquecer uma
+ * checagem fazia ele ver MENOS, não mais.
  *
- * POR QUE ISTO É PAPEL, E NÃO `role: 'admin'` + `ativo: false`
- * Esta é a decisão que decide se o desenho falha pro lado seguro.
- *
- * Com flag, ele JÁ É motorista pra toda regra do Firestore, e cada uma
- * precisaria lembrar de checar `ativo`. Uma que esquecesse — uma só, hoje ou
- * daqui a seis meses — e um inscrito não aprovado alcançaria criança,
- * pagamento e rota de quem já está dentro.
- *
- * Com papel próprio, `isAdmin()` é falso e ele não alcança nada. Esquecer uma
- * checagem faz ele ver MENOS, não mais. É a diferença entre uma garantia que
- * depende de vigilância e uma que depende da forma.
- *
- * ATENÇÃO: `isAppUser()` nas rules significa "tem documento em users" — e o
- * aguardando tem. Ele foi ajustado pra EXCLUIR este papel, senão a fila de
- * espera viraria porta pros recados de escola e pra agenda do parceiro atual.
+ * Se um dia voltar a existir "conta que existe mas não opera", que volte
+ * assim: pela forma, não por um booleano.
  */
-export function ehAguardando(profile) {
-  return profile?.role === 'aguardando';
-}
+
 
 /**
  * O painel DESTE usuário — a resposta para "pra onde eu mando essa pessoa".
@@ -123,10 +117,6 @@ export function painelDe(profile) {
   if (ehDono(profile)) return '/admin';
   if (ehMotorista(profile)) return '/tio';
   if (ehResponsavel(profile)) return '/pai';
-  // Inscrito e ainda não aprovado tem uma tela só: a da fila. Ela vem ANTES
-  // do fallback de propósito — sem isto ele cairia no /login, entraria de
-  // novo, e voltaria pro /login num laço que parece o app estar quebrado.
-  if (ehAguardando(profile)) return '/aguardando';
   // SEM PAPEL NÃO É ERRO — É O ESTADO NORMAL DE QUEM ACABOU DE ENTRAR.
   //
   // A conta do Firebase nasce antes de qualquer escolha: quem toca em

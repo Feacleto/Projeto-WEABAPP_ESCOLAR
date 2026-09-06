@@ -223,23 +223,29 @@ Avaliação do responsável **sobre o motorista** só faz sentido a partir do mo
 
 ---
 
-## 16. A fila de espera do motorista, e o link que não abre porta
+## 16. A porta é aberta, e o teto substitui a fila
 
-**Estado:** proposta — decisão de produto esperando sim ou não
+**Estado:** aceita — em vigor desde 06/09/2026, verificada em `npm run testar:regras`
 
-**Contexto.** Duas dores chegaram como assuntos separados e são a mesma. Indicar um colega parecia estranho porque `indicar` significava **mandar alguém para uma porta que não abre**: o sistema é fechado, quem chega pelo link não entra. E a fila cobra caro por pouco — o motorista se inscreve, sai com conta criada e cai numa sala de espera com o app desfocado atrás (`Aguardando.jsx`), esperando aprovação negociada fora do sistema. Ele queria entrar e saber que já pode usar; recebeu vidro fosco.
+**Contexto.** Duas dores chegaram como assuntos separados e eram a mesma. Indicar um colega era estranho porque `indicar` significava **mandar alguém para uma porta que não abre**. E a fila cobrava caro por pouco: o motorista se inscrevia, saía com conta criada e caía numa sala de espera com o app desfocado atrás, aguardando uma aprovação negociada fora do sistema. Ele queria entrar e saber que já pode usar; recebeu vidro fosco.
 
-**Decisão proposta.** Abandonar a fila **e** a ideia de que o acesso é concedido por link. A forma recomendada é **porta aberta com teto**: ele se cadastra, entra como motorista de verdade e usa hoje, limitado por `users.limiteCriancas` — que já existe e já é cobrado pelas rules via `getAfter`. A urgência sai da vaga (que vira falsa com porta aberta) e vai para a condição da roleta, que é honesta por construção.
+O [canvas do negócio](canvas-negocio.md) nomeava o custo real: *"o canal é escalável e a conversão não é — o consultor fecha um por vez"*. A fila não protegia o produto, protegia a agenda de uma pessoa, e era ela o teto de crescimento.
 
-**Consequência.** Três coisas quebram junto e não são opcionais:
+**Decisão.** O motorista se cadastra e a conta nasce `role: 'admin'`. Não há fila, não há aprovação, e o papel `aguardando` foi removido. Quem controla o acesso é o **teste de três meses**, que começa na primeira rota ([decisão 21](#21-o-relógio-do-teste-começa-na-primeira-rota-e-só-pode-ser-ligado-uma-vez)) e termina em conta inativa. O portão saiu da entrada e foi para o fim do teste, onde custa uma decisão de compra em vez de custar uma espera.
 
-1. **A conta com `role: 'admin'` tem de nascer de Cloud Function.** Abrir esse ramo nas rules ao cliente reabre a escalada de privilégio que já custou uma refatoração de papel inteira. Porta aberta ≠ rule aberta.
-2. **`VAGAS_NA_RODADA` sai da home.** Com cadastro aberto, "restam 2 vagas" vira falso — e falso na tela é o que o próprio `config/rodada.js` chama de propaganda enganosa (CDC art. 37).
-3. **`appState/init.adminUid` fica mais errado** — o ponteiro único já foi removido de sete lugares, mas "dois motoristas" deixa de ser hipótese.
+**⚠️ DIVERGÊNCIA DA PROPOSTA ORIGINAL, REGISTRADA DE PROPÓSITO.** A proposta dizia: *"a conta com `role: 'admin'` tem de nascer de Cloud Function; abrir esse ramo nas rules ao cliente reabre a escalada de privilégio"*. **Ela nasce pelas rules, no cliente.** O motivo de a proposta estar certa na época e não hoje:
 
-O prêmio da indicação, se houver, é **só do motorista**: a plataforma não tem moeda para dar ao responsável — a mensalidade é do motorista, e descontá-la quebraria o item 7 dos Termos.
+A escalada que ela temia não vinha de "o cliente cria conta de motorista" — vinha de **create sem whitelist**. O ramo de bootstrap era o único sem lista de campos, e era o terceiro passo de uma escalada real: apagar `appState/init`, apagar o próprio doc, recriar-se com `superAdmin: true`. O ramo de hoje tem `hasOnly` exaustivo, e fora dele ficam `superAdmin`, `childIds`, `limiteCriancas`, `trialInicio`, `assinaturaAte`, `criancasAtivas`, `suspenso` e `termsVersion` — cada ausência é uma fraude que não acontece.
 
-**Como verificar.** Enquanto for proposta, nada. Se for aceita: um caso de rule provando que o cliente **não** consegue criar `role: 'admin'` sozinho, e a remoção da frase de escassez da home no mesmo commit.
+Além disso, a Cloud Function não acrescentaria segurança aqui: o Firebase Auth **já** deixa qualquer pessoa criar login com e-mail e senha, e o documento é o único portão. Fechá-lo numa function protegeria contra criação em massa, não contra escalada.
+
+**O que empurraria isso para uma function:** abuso de volume. No dia em que contas falsas passarem a custar dinheiro (leitura, storage, push), a criação vai para uma callable com App Check e limite por IP. Não antes — function que não acrescenta garantia acrescenta só um lugar a mais para o cadastro quebrar.
+
+**Consequência que vale mais que a decisão.** `isAdmin()` deixou de ser um conjunto escolhido a dedo e virou **"tem uma conta"**. Toda regra que parava num `isAdmin()` solto virou porta pública no mesmo dia — e duas estavam assim: o `allow get` de `users` (nome, e-mail, telefone e chave PIX de toda a base) e a leitura de `taxaConfig`. As duas foram fechadas **antes** de a porta abrir, e é essa a ordem correta de fazer esta mudança.
+
+`VAGAS_NA_RODADA` e o `config/rodada.js` inteiro saíram junto: com cadastro aberto, "restam 2 vagas" é falso, e falso na tela é o que o próprio arquivo chamava de propaganda enganosa (CDC art. 37).
+
+**Como verificar.** O ator `novato` em `scripts/testar-regras.mjs` — motorista legítimo, recém-cadastrado, zero vínculo — precisa ser negado em criança, agenda, recado de escola, mensalidade, régua de preço, doc de outro motorista, doc de responsável alheio, listagem de `users`, despesa e posição ao vivo. Onze casos, e o próprio documento dele passando.
 
 ---
 

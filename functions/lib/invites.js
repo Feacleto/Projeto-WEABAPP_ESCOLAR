@@ -288,86 +288,6 @@ function makeRedeemInvite(db) {
 }
 
 /**
- * joinDriverWaitlist — inscrição de motorista + posição na fila.
- *
- * Existe como função porque as rules (corretamente) não deixam o próprio
- * inscrito ler a coleção, então ele não conseguiria saber sua posição.
- * Aqui contamos no servidor e devolvemos só o número.
- */
-function makeJoinDriverWaitlist(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
-    const d = request.data || {};
-    const name = String(d.name || '').trim().slice(0, 120);
-    const phone = String(d.phone || '').replace(/\D/g, '').slice(0, 15);
-    const email = String(d.email || '').trim().toLowerCase().slice(0, 160);
-    const city = String(d.city || '').trim().slice(0, 120);
-    // Quantas crianças ele transporta hoje. Substituiu o tamanho da frota:
-    // van é patrimônio dele, criança é o tamanho da operação — e é sobre
-    // criança que a associação é dimensionada e contratada.
-    //
-    // Teto de 500 pra recusar dedo escorregado e lixo de bot sem barrar
-    // ninguém real: a maior frota escolar plausível não chega perto.
-    const criancas = Math.min(
-      500,
-      Math.max(0, Math.trunc(Number(d.criancas) || 0))
-    );
-    const message = String(d.message || '').trim().slice(0, 600);
-
-    if (!name || (!phone && !email)) {
-      throw new HttpsError(
-        'invalid-argument',
-        'Precisamos do seu nome e de um WhatsApp ou email pra falar com você.'
-      );
-    }
-
-    // Já se inscreveu antes? Devolve a posição existente em vez de duplicar.
-    if (email) {
-      const dup = await db
-        .collection('waitlistDrivers')
-        .where('email', '==', email)
-        .limit(1)
-        .get();
-      if (!dup.empty) {
-        const position = await positionOf(db, dup.docs[0]);
-        return { position, alreadyOnList: true };
-      }
-    }
-
-    const ref = await db.collection('waitlistDrivers').add({
-      name,
-      phone,
-      email,
-      city,
-      criancas,
-      message,
-      contacted: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    const created = await ref.get();
-    const position = await positionOf(db, created);
-    return { position, alreadyOnList: false };
-  });
-}
-
-/**
- * Posição na fila = quantos ainda-não-contatados entraram antes dele, +1.
- * Quem já foi contatado sai da conta — a fila é de espera, não histórico.
- */
-async function positionOf(db, docSnap) {
-  const createdAt = docSnap.data()?.createdAt;
-  if (!createdAt) return 1;
-  const before = await db
-    .collection('waitlistDrivers')
-    .where('contacted', '==', false)
-    .where('createdAt', '<', createdAt)
-    .count()
-    .get();
-  return (before.data().count || 0) + 1;
-}
-
-
-/**
  * Contagem de tentativas erradas por conta, em `inviteAttempts/{uid}`.
  *
  * A coleção não aparece nas Security Rules de propósito: só o Admin SDK
@@ -416,7 +336,6 @@ async function registerFailedAttempt(db, uid) {
 module.exports = {
   makeLookupInvite,
   makeRedeemInvite,
-  makeJoinDriverWaitlist,
   normalizeCode,
   isValidCode,
 };

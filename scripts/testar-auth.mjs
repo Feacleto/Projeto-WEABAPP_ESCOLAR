@@ -118,7 +118,10 @@ checar('o dono vai pro painel dele', '/admin', painelDe({ role: 'owner' }));
 checar('o legado superAdmin também', '/admin', painelDe({ role: 'admin', superAdmin: true }));
 checar('role admin significa MOTORISTA', '/tio', painelDe({ role: 'admin' }));
 checar('o responsável', '/pai', painelDe({ role: 'parent' }));
-checar('o inscrito não aprovado tem a tela da fila', '/aguardando', painelDe({ role: 'aguardando' }));
+// A FILA MORREU EM 06/09/2026, e este caso mudou de lado por isso: o papel
+// `aguardando` não existe mais, então ele agora é só um papel inventado — e
+// papel inventado cai na bifurcação, nunca num painel.
+checar('o papel da fila antiga não abre porta nenhuma', '/comecar', painelDe({ role: 'aguardando' }));
 
 // SESSÃO SEM DOCUMENTO DE USUÁRIO é estado normal desde que o login com
 // Google parou de apagar a conta órfã. Antes daqui saía o login, o que

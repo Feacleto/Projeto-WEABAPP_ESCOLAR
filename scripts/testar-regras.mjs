@@ -200,10 +200,14 @@ async function main() {
   const tio1 = await criarLogin(`tio1.${Date.now()}@teste.local`);
   const tio2 = await criarLogin(`tio2.${Date.now()}@teste.local`);
   const pai1 = await criarLogin(`pai1.${Date.now()}@teste.local`);
-  // Os dois atores que faltavam. `espera` e o motorista inscrito e nao
-  // aprovado: o isolamento dele inteiro depende de `isAppUser()` exclui-lo,
-  // e nada testava isso. `anon` e o visitante da landing.
-  const espera = await criarLogin(`espera.${Date.now()}@teste.local`);
+  // `novato` e o ator que a AUTOINSCRICAO criou: um motorista de verdade,
+  // com conta legitima, zero criancas e zero vinculo. Ele nao existia antes
+  // porque `role: 'admin'` so nascia com aprovacao do dono — e e exatamente
+  // por isso que ele precisa existir agora: e o perfil que passa a existir aos
+  // milhares, e o unico que exercita "isAdmin() sem nada por tras".
+  //
+  // O antigo `espera` (role 'aguardando') morreu com a fila.
+  const novato = await criarLogin(`novato.${Date.now()}@teste.local`);
   const anon = await criarAnonimo();
 
   await semear(`users/${dono.uid}`, { role: S('owner'), name: S('Dono') });
@@ -215,7 +219,7 @@ async function main() {
     adminUid: S(tio1.uid),
     childId: S('kid1'),
   });
-  await semear(`users/${espera.uid}`, { role: S('aguardando'), name: S('Inscrito') });
+  await semear(`users/${novato.uid}`, { role: S('admin'), name: S('Novato') });
   await semear('appState/init', { hasAdmin: B(true), adminUid: S(tio1.uid) });
 
   await semear('children/kid1', {
@@ -505,7 +509,7 @@ async function main() {
 
   await tetoDeGets(tio1);
   await vagaContratada(tio1, tio2);
-  await oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon });
+  await oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon });
   await decisao12({ tio1, tio2, pai1 });
 
   console.log(`\n${'═'.repeat(64)}`);
@@ -766,7 +770,7 @@ async function tetoDeGets(tio) {
  * com seguranca: sem eles, mexer
  * em rule e trocar um furo conhecido por um desconhecido.
  */
-async function oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon }) {
+async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   // RESTAURA O ELENCO ANTES DE MEDIR — e o motivo e uma armadilha real.
   //
   // `vagaContratada` cria criancas por `:commit`, e um write de `update` no
@@ -848,32 +852,49 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon }) {
   checar('bonus', 'o motorista varre a lista de premios', 'NEGA',
     await listar('entryBonuses', tio1));
 
+  // As duas listas de espera SAIRAM das rules em 06/09/2026 — sem match, elas
+  // caem no default deny. O caso continua aqui porque o dado pode ter sobrado
+  // no banco, e o que importa e que ninguem alcance o que sobrou.
   await semear('waitlistParents/lead1', {
     name: S('Familia Souza'), email: S('souza@x.com'), createdAt: S('2026-08-01'),
   });
-  // A gemea `waitlistDrivers` foi fechada porque anonimo enchia de lixo. Esta
-  // ficou aberta tres linhas abaixo, sem uma linha de justificativa.
   checar('fila', 'o motorista le os leads de familia da plataforma', 'NEGA',
     await ler('waitlistParents/lead1', tio1));
-  checar('fila', 'o motorista APAGA um lead de familia', 'NEGA',
-    await apagar('waitlistParents/lead1', tio1));
+  checar('fila', 'nem o DONO alcanca a lista que saiu das rules', 'NEGA',
+    await ler('waitlistParents/lead1', dono));
 
-  console.log('\n=== O INSCRITO NAO APROVADO — `aguardando` nao alcanca nada ===');
+  console.log('\n=== O MOTORISTA RECEM-CADASTRADO — `isAdmin()` sem nada por tras ===');
 
-  // O papel existe pra que esquecer uma checagem faca ele ver MENOS, nao mais.
-  // Nada media isso ate aqui.
-  checar('espera', 'inscrito le a crianca de um parceiro', 'NEGA',
-    await ler('children/kid1', espera));
-  checar('espera', 'inscrito le o recado de escola do parceiro', 'NEGA',
-    await ler('schoolBroadcasts/br1', espera));
-  checar('espera', 'inscrito le a agenda do parceiro', 'NEGA',
-    await ler('agendaEntries/ag1', espera));
-  checar('espera', 'inscrito le a mensalidade de uma familia', 'NEGA',
-    await ler('payments/pag1', espera));
-  checar('espera', 'inscrito le a regua da taxa', 'NEGA',
-    await ler('taxaConfig/app', espera));
-  checar('pos', 'inscrito le o proprio documento (a fila dele)', 'PASSA',
-    await ler('users/' + espera.uid, espera));
+  // ESTE BLOCO E A CONSEQUENCIA DIRETA DA AUTOINSCRICAO.
+  //
+  // Antes, `role: 'admin'` era um conjunto escolhido a dedo pelo dono, e uma
+  // regra frouxa tinha plateia limitada. Agora qualquer pessoa com um e-mail
+  // chega aqui em trinta segundos — entao toda regra que para num `isAdmin()`
+  // solto virou porta publica no mesmo dia.
+  //
+  // O `novato` e o unico ator que prova isso: conta legitima, zero vinculo.
+  checar('novato', 'novato le a crianca de outro motorista', 'NEGA',
+    await ler('children/kid1', novato));
+  checar('novato', 'novato le o recado de escola de outro', 'NEGA',
+    await ler('schoolBroadcasts/br1', novato));
+  checar('novato', 'novato le a agenda de outro', 'NEGA',
+    await ler('agendaEntries/ag1', novato));
+  checar('novato', 'novato le a mensalidade de uma familia alheia', 'NEGA',
+    await ler('payments/pag1', novato));
+  checar('novato', 'novato le a regua de preco da plataforma', 'NEGA',
+    await ler('taxaConfig/app', novato));
+  checar('novato', 'novato le o doc de outro motorista', 'NEGA',
+    await ler('users/' + tio1.uid, novato));
+  checar('novato', 'novato le o doc de um responsavel alheio', 'NEGA',
+    await ler('users/' + pai1.uid, novato));
+  checar('novato', 'novato varre users atras da base', 'NEGA',
+    await listar('users', novato));
+  checar('novato', 'novato le a despesa de outro motorista', 'NEGA',
+    await ler('expenses/desp1', novato));
+  checar('novato', 'novato le a posicao ao vivo de outra perua', 'NEGA',
+    await ler('liveLocation/' + tio1.uid, novato));
+  checar('pos', 'novato le o proprio documento', 'PASSA',
+    await ler('users/' + novato.uid, novato));
 
   console.log('\n=== A SESSAO ANONIMA — o visitante da landing ===');
 
@@ -892,8 +913,8 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon }) {
   // doc com role admin: nome, telefone, e-mail e CHAVE PIX de todo parceiro.
   checar('pix', 'o pai le o doc de um motorista que nao e o dele', 'NEGA',
     await ler('users/' + tio2.uid, pai1));
-  checar('pix', 'inscrito nao aprovado le o doc de um motorista', 'NEGA',
-    await ler('users/' + tio1.uid, espera));
+  checar('pix', 'um motorista recem-cadastrado le o doc de outro', 'NEGA',
+    await ler('users/' + tio1.uid, novato));
 
   // A MAE COM DOIS FILHOS EM PERUAS DIFERENTES.
   //

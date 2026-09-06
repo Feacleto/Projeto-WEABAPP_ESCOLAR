@@ -36,7 +36,6 @@ const Welcome = lazy(() => import('./pages/Welcome'));
 const Comecar = lazy(() => import('./pages/Comecar'));
 const DriverSignup = lazy(() => import('./pages/DriverSignup'));
 const FirstAdmin = lazy(() => import('./pages/FirstAdmin'));
-const Aguardando = lazy(() => import('./pages/Aguardando'));
 const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 
 const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
@@ -85,7 +84,7 @@ import { SITE_INSTITUCIONAL } from './config/vitrine';
 import Travessia from './components/common/Travessia';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
-import { painelDe, ehDono, ehAguardando } from './dominio/identidade/papeis';
+import { painelDe, ehDono } from './dominio/identidade/papeis';
 import {
   frenteDoCaminho,
   estadoDaFrente,
@@ -213,55 +212,6 @@ function PrivateRoute({ children, requireRole }) {
  * claim o privilégio viveria no token, fora do alcance do cliente. Está no
  * backlog.
  */
-/**
- * Guarda da sala de espera.
- *
- * Ela é o oposto das outras: em vez de exigir um papel pra DEIXAR entrar,
- * ela exige o papel pra deixar FICAR. Quem já foi aprovado é empurrado pro
- * painel dele — senão o motorista aprovado continuaria vendo a fila por ter
- * o endereço no histórico do navegador, e acharia que a aprovação não valeu.
- */
-function SalaDeEspera() {
-  const { user, profile, loading } = useAuth();
-  const location = useLocation();
-
-  if (loading) return <FullScreenLoader />;
-  if (!user) {
-    // A FRENTE VIAJA JUNTO COM O `from`.
-    //
-    // Aqui o perfil já não existe (é este o caso: sem sessão), então o papel
-    // não pode dizer de que lado a pessoa está. A URL pode: quem foi barrado
-    // em `/pai/finance` é responsável, e o login precisa saber disso pra não
-    // oferecer a ele "Sou motorista e quero fazer parte" nem devolvê-lo à
-    // vitrine de associação no botão Voltar.
-    //
-    // Toda expiração de sessão de responsável passa por aqui — era o caminho
-    // de maior alcance dos seis.
-    return (
-      <Navigate
-        to="/login"
-        state={{
-          from: location.pathname,
-          ...estadoDaFrente(frenteDoCaminho(location.pathname)),
-        }}
-        replace
-      />
-    );
-  }
-  // LOGADO, SEM DOCUMENTO DE USUÁRIO: a sala de espera, não um loader.
-  //
-  // `loading` só vira false DEPOIS do await de `getUserDoc` (ver
-  // AuthContext), então aqui "sem perfil" é conclusivo e não transitório.
-  // Enquanto a conta órfã do Google era apagada, este caso não existia e
-  // o loader eterno passava despercebido; sem a limpeza, ele seria uma
-  // tela travada para todo mundo que entra pela primeira vez.
-  if (!profile) return <Navigate to="/comecar" replace />;
-  if (!ehAguardando(profile)) {
-    return <Navigate to={painelDe(profile)} replace />;
-  }
-  return <Aguardando />;
-}
-
 function SuperAdminRoute({ children }) {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
@@ -419,10 +369,6 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/first-access" element={<FirstAccess />} />
         <Route path="/first-admin" element={<FirstAdmin />} />
-        {/* A sala de espera de quem se inscreveu como associado. Não é rota
-          * pública: exige sessão, porque a conta já existe. Quem cai aqui
-          * sem ser `aguardando` é devolvido pro painel dele. */}
-        <Route path="/aguardando" element={<SalaDeEspera />} />
         <Route path="/auth-action" element={<AuthAction />} />
         <Route path="/termos" element={<Terms />} />
         <Route path="/privacidade" element={<Privacy />} />

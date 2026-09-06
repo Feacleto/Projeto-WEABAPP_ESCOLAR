@@ -34,7 +34,6 @@ const { sendEmail } = require('./lib/resend');
 const {
   makeLookupInvite,
   makeRedeemInvite,
-  makeJoinDriverWaitlist,
   makeGetShowcase,
 } = require('./lib/invites');
 const { makeCloseStaleRoutes } = require('./lib/routes');
@@ -357,7 +356,6 @@ exports.runPaymentRemindersNow = onCall(
 
 exports.lookupInvite = makeLookupInvite(db);
 exports.redeemInvite = makeRedeemInvite(db);
-exports.joinDriverWaitlist = makeJoinDriverWaitlist(db);
 exports.getShowcase = makeGetShowcase(db);
 
 /**
