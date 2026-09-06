@@ -195,6 +195,29 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
   transition:box-shadow .26s,background .26s,color .26s,transform .2s;
 }
 .entrar:hover{box-shadow:inset 0 0 0 1.5px var(--verde-vivo);background:var(--verde-vivo);color:var(--preto);transform:translateY(-1px)}
+/* A LINHA DE QUEM JÁ É DE CASA.
+   O topo tem UM "Entrar", e ele fica no cabeçalho — que some da vista assim
+   que a pessoa rola. Daí o cliente que abriu o site pra usar o app (e não pra
+   conhecer) tinha que rolar até o rodapé ou voltar ao topo. Estas linhas e
+   botões são os pontos onde ele lembra que quer entrar: logo abaixo da
+   escolha, e no fim de cada faixa, onde a leitura termina.
+   Elas não competem com os CTAs de venda: são menores, sem sombra, e o verbo
+   é outro — "entrar", não "conhecer". */
+.jatenho{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin-top:18px;font-size:.93rem;color:var(--cinza);
+}
+.jatenho a{
+  color:var(--verde-esc);font-weight:600;text-decoration:none;
+  display:inline-flex;align-items:center;gap:5px;
+  border-bottom:1.5px solid rgba(31,95,63,.28);transition:border-color .25s,color .25s;
+}
+.jatenho a:hover{border-bottom-color:var(--verde-claro)}
+.jatenho a svg{transition:transform .3s}
+.jatenho a:hover svg{transform:translateX(3px)}
+.protege-btns{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
+.escuro .jatenho,.verde .jatenho,.mot .jatenho{color:#A9BCB2}
+.escuro .jatenho a,.verde .jatenho a,.mot .jatenho a{color:var(--verde-vivo);border-bottom-color:rgba(82,196,26,.4)}
 .entrar svg{transition:transform .3s}
 .entrar:hover svg{transform:translateX(3px)}
 .navdir{display:flex;align-items:center;gap:12px}
@@ -674,17 +697,31 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .a p{padding:0 34px 25px 0;color:var(--cinza);font-size:.98rem}
 
 /* ══ CONTATO ══════════════════════════════════════ */
-.canais{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:32px 0 40px}
-.canal{
-  display:flex;align-items:center;gap:15px;padding:21px 24px;border-radius:var(--r);
-  background:var(--branco);border:1px solid var(--linha);text-decoration:none;
-  transition:transform .28s,box-shadow .28s,border-color .28s;
+/* O SWITCH ESCOLHE O CANAL ANTES DE PERGUNTAR QUALQUER COISA.
+   Os dois cartões que abriam o WhatsApp e o e-mail saíram daqui: eram o mesmo
+   caminho oferecido duas vezes na mesma tela, e quem quer só o número ou só o
+   endereço encontra os dois no rodapé. O que sobra é UMA decisão — por onde
+   você quer ser respondido — e o formulário se ajusta a ela.
+   São radios de verdade, não botão com `aria-selected`: seta do teclado,
+   leitor de tela e o canal dentro do FormData vêm de graça, e a escolha deixa
+   de morar numa variável solta do script. */
+.switch{
+  display:flex;gap:6px;padding:6px;margin:32px 0 10px;max-width:430px;
+  background:rgba(11,18,16,.045);border:1px solid var(--linha);border-radius:17px;
 }
-.canal:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(11,18,16,.09);border-color:rgba(14,168,95,.36)}
-.canal .ic{width:44px;height:44px;flex:none;border-radius:13px;display:grid;place-items:center;background:rgba(14,168,95,.11);transition:transform .3s}
-.canal:hover .ic{transform:scale(1.09)}
-.canal b{display:block;font-family:var(--display);font-weight:600;font-size:1rem}
-.canal span{font-size:.88rem;color:var(--cinza)}
+.switch input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.switch label{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:0;padding:12px 10px;border-radius:12px;cursor:pointer;
+  font-size:.93rem;font-weight:600;color:var(--cinza);
+  transition:background .24s,color .24s,box-shadow .24s;
+}
+.switch label svg{flex:none}
+.switch input:checked + label{background:var(--branco);color:var(--preto);box-shadow:0 4px 14px rgba(11,18,16,.09)}
+.switch input:focus-visible + label{outline:3px solid var(--verde-vivo);outline-offset:2px}
+/* Sem o campo de e-mail, a linha do nome vira uma coluna só — senão sobra
+   meia linha vazia do lado dele. */
+.f2.uma{grid-template-columns:1fr}
 form{display:grid;gap:13px}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
 input,textarea,select{
@@ -696,18 +733,17 @@ input:focus,textarea:focus,select:focus{outline:0;border-color:var(--verde-claro
 textarea{min-height:118px;resize:vertical}
 label{font-size:.83rem;font-weight:600;color:var(--cinza);margin-bottom:-5px;display:block}
 .opt{font-weight:400;color:var(--cinza-cl)}
-/* Os dois canais lado a lado, e empilhados quando não couberem. O WhatsApp
-   vem primeiro por ser onde este público mora — mas os dois têm o mesmo
-   tamanho: escolher canal não é escolher entre principal e alternativa. */
+/* Um botão só, e ele não estica a largura toda: o canal já foi escolhido lá
+   em cima, e botão de linha inteira aqui pesaria mais que a decisão. */
 .envio{display:flex;flex-wrap:wrap;gap:11px;margin-top:4px}
-.envio .btn{flex:1 1 220px;justify-content:center}
+.envio .btn{flex:0 1 250px;justify-content:center}
 .envio-nota{font-size:.82rem;color:var(--cinza-cl);margin:-4px 0 0}
 @media (max-width:520px){.f2{grid-template-columns:1fr}}
 
 /* ══ RODAPÉ ═══════════════════════════════════════ */
 footer{background:var(--verde-esc);color:#DCEDE3;padding:64px 0 34px;position:relative}
 footer::before{content:'';position:absolute;left:0;right:0;top:0;height:6px;background:repeating-linear-gradient(90deg,var(--verde-vivo) 0 46px,transparent 46px 92px)}
-.frow{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:38px;padding-bottom:38px;border-bottom:1px solid rgba(255,255,255,.15)}
+.frow{display:grid;grid-template-columns:1.1fr .95fr .95fr .98fr;gap:32px;padding-bottom:38px;border-bottom:1px solid rgba(255,255,255,.15)}
 footer h4{font-family:var(--mono);font-size:.7rem;letter-spacing:.19em;text-transform:uppercase;color:var(--verde-vivo);margin:0 0 15px;font-weight:400}
 footer a{color:#DCEDE3;text-decoration:none;opacity:.86;transition:opacity .22s,transform .22s;display:inline-block}
 footer a:hover{opacity:1;transform:translateX(3px)}
@@ -715,6 +751,20 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 .social{display:flex;gap:11px;margin-top:19px}
 .social a{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.1);transition:.28s}
 .social a:hover{background:var(--verde-vivo);color:var(--preto);transform:translateY(-4px)}
+/* OS SELOS DAS LOJAS SÃO INERTES, E ISSO É O DESENHO.
+   Não há link porque não há app publicado. Selo que leva a lugar nenhum é
+   pior que selo que ainda não leva, então eles são <span>: sem hover, sem
+   cursor de link, com o "em breve" impresso no próprio selo. Vira <a> no dia
+   em que a URL existir — e a promessa da seção "O que vem" fecha junto. */
+.badges{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+.badge{
+  display:inline-flex;align-items:center;gap:10px;min-width:166px;
+  padding:8px 14px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);color:#DCEDE3;
+}
+.badge small{display:block;font-family:var(--mono);font-size:.56rem;letter-spacing:.13em;text-transform:uppercase;opacity:.72}
+.badge b{display:block;font-family:var(--display);font-size:.95rem;font-weight:600;line-height:1.2;color:#fff}
+.loja-nota{font-size:.8rem;opacity:.72;line-height:1.6;margin-top:14px;max-width:25ch}
 .fbot{padding-top:26px;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;font-size:.82rem;opacity:.78}
 .lgpd{display:flex;gap:11px;align-items:flex-start;margin-top:22px;font-size:.85rem;opacity:.84;max-width:44ch}
 
@@ -726,7 +776,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
   .eco{width:112vw}
   .percurso .rot{font-size:.58rem}
   .cena{order:-1;max-width:440px;margin-inline:auto}
-  .g3,.g2,.canais,.f2,.frow,.portas,.tres{grid-template-columns:1fr}
+  .g3,.g2,.f2,.frow,.portas,.tres{grid-template-columns:1fr}
   .tres > div{border-right:0;border-bottom:2px solid rgba(11,18,16,.16);padding:26px 0}
   .tres > div:last-child{border-bottom:0;padding-bottom:0}
   .tres > div:not(:first-child){padding-left:0}
@@ -824,6 +874,10 @@ footer a:hover{opacity:1;transform:translateX(3px)}
         </a>
         <a href="#escolha" class="btn b2">Sou família</a>
       </div>
+      <p class="jatenho rv" style="--d:360ms">
+        Já usa o Alô Buzinou?
+        <a href="https://alobuzinou.com/login">Entrar no app <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </p>
     </div>
     <div class="cena rv" style="--d:230ms" aria-hidden="true">
       <div class="ceu"></div>
@@ -1027,6 +1081,10 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       <a href="#contato" class="btn b3">Quero conhecer
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
+      <!-- Dois verbos diferentes lado a lado: "conhecer" é pra quem está
+           decidindo, "entrar no ambiente" é pra quem já decidiu. O segundo
+           não tem sombra nem cor cheia porque não está disputando nada. -->
+      <a href="https://alobuzinou.com/login" class="btn b2">Entrar no ambiente</a>
       <span style="font-size:.92rem;color:#C7D3CD">3 meses grátis pra experimentar</span>
     </div>
     <a href="#familia" class="troca rv" style="--d:340ms">
@@ -1110,6 +1168,16 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       <p>Ele te manda um link, você entra, e pronto. Não existe cadastro aberto aqui — e é
       justamente isso que protege os dados do seu filho. Endereço e localização só aparecem
       pra quem tem vínculo real com aquela criança.</p>
+      <!-- OS DOIS BOTÕES SÃO OS DOIS ESTADOS DA MESMA PESSOA: a que já entrou
+           uma vez, e a que está com o convite na mão e nunca entrou. O segundo
+           leva `?criar=1`, que abre a aba de cadastro já aberta — a landing
+           está em outro domínio e não tem como passar isso de outro jeito. -->
+      <div class="protege-btns">
+        <a href="https://alobuzinou.com/login" class="btn b1">Entrar no app
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a href="https://alobuzinou.com/login?criar=1" class="btn b2">Recebi um convite</a>
+      </div>
     </div>
 
     <a href="#motorista" class="troca rv">
@@ -1265,23 +1333,33 @@ footer a:hover{opacity:1;transform:translateX(3px)}
     <span class="chapeu rv">fala com a gente</span>
     <h2 class="rv" style="--d:80ms">Fala com a gente</h2>
     <p class="lead rv" style="--d:160ms;margin-top:18px">Dúvida, sugestão ou reclamação — a gente responde tudo.</p>
-    <div class="canais rv">
-      <a class="canal" href="https://wa.me/5511969170709" target="_blank" rel="noopener">
-        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="#0EA85F"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-5.8c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.7.9-.3.2-.5 0a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4 5.2 5.2 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg></span>
-        <span><b>WhatsApp</b><span>(11) 96917-0709</span></span>
-      </a>
-      <a class="canal" href="mailto:contato@alobuzinou.com.br">
-        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0EA85F" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2.5 7l9.5 6.5L21.5 7"/></svg></span>
-        <span><b>E-mail</b><span>contato@alobuzinou.com.br</span></span>
-      </a>
-    </div>
     <form class="rv" id="form">
-      <div class="f2">
+      <!-- O CANAL É A PRIMEIRA PERGUNTA, NÃO A ÚLTIMA.
+           Antes eram dois botões no fim: a pessoa preenchia tudo sem saber que
+           estava escolhendo por onde seria respondida, e o campo de e-mail
+           ficava lá pedindo dado que o caminho do WhatsApp não usa. Escolhendo
+           primeiro, o formulário mostra só o que aquele canal precisa. -->
+      <div class="switch" role="radiogroup" aria-label="Por onde você quer falar com a gente">
+        <input type="radio" name="canal" id="c-zap" value="zap" checked>
+        <label for="c-zap">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-5.8c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.7.9-.3.2-.5 0a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4 5.2 5.2 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>
+          WhatsApp
+        </label>
+        <input type="radio" name="canal" id="c-mail" value="mail">
+        <label for="c-mail">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2.5 7l9.5 6.5L21.5 7"/></svg>
+          E-mail
+        </label>
+      </div>
+      <div class="f2" id="linha-nome">
         <div><label for="n">Nome</label><input id="n" name="nome" required placeholder="Como a gente te chama?"></div>
-        <!-- E-mail deixou de ser obrigatório: quem escreve pelo WhatsApp já
-             entrega o número ao mandar a mensagem, e exigir e-mail pra isso é
-             pedágio. Ele serve a quem quer ser respondido por e-mail. -->
-        <div><label for="e">E-mail <span class="opt">(opcional)</span></label><input id="e" name="email" type="email" placeholder="seu@email.com"></div>
+        <!-- O e-mail só existe no caminho do e-mail, e ali ele é obrigatório:
+             é o endereço da resposta. No WhatsApp o número vai junto com a
+             mensagem, e pedir e-mail pra isso seria pedágio — era por isso que
+             o campo era opcional quando os dois canais dividiam um formulário
+             só. Quem some é o script, que também tira o `required`: campo
+             escondido e obrigatório trava o envio sem dizer onde. -->
+        <div id="campo-email"><label for="e">E-mail</label><input id="e" name="email" type="email" placeholder="seu@email.com"></div>
       </div>
       <div class="f2">
         <div><label for="q">Eu sou</label>
@@ -1304,22 +1382,20 @@ footer a:hover{opacity:1;transform:translateX(3px)}
         </div>
       </div>
       <div><label for="m">Mensagem</label><textarea id="m" name="msg" required placeholder="Conta pra gente o que você precisa."></textarea></div>
-      <!-- DOIS BOTÕES, UM POR CANAL.
+      <!-- UM BOTÃO SÓ.
            O formulário não envia nada sozinho — a CSP da landing tem
            `connect-src 'self'` e não existe backend. O que ele faz é MONTAR a
            mensagem e abrir o canal com ela pronta, pra conversa não começar
            num "oi" seguido de silêncio.
-           Os dois são `type="submit"` de propósito: assim a validação nativa
-           dos campos obrigatórios vale para os dois caminhos. -->
+           Eram dois botões, um por canal. Com o switch em cima, dois botões
+           passariam a perguntar a mesma coisa duas vezes — e o segundo poderia
+           contradizer a escolha já feita. -->
       <div class="envio">
-        <button type="submit" id="b-zap" class="btn b1">Enviar pelo WhatsApp
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </button>
-        <button type="submit" id="b-mail" class="btn b3">Enviar por e-mail
+        <button type="submit" id="b-enviar" class="btn b1"><span id="b-txt">Enviar pelo WhatsApp</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
       </div>
-      <p class="envio-nota">A mensagem abre já escrita — você só confere e envia.</p>
+      <p class="envio-nota" id="envio-nota">A mensagem abre no WhatsApp já escrita — você só confere e envia.</p>
     </form>
   </div>
 </section>
@@ -1339,8 +1415,11 @@ footer a:hover{opacity:1;transform:translateX(3px)}
           <a href="https://instagram.com/alobuzinou" target="_blank" rel="noopener" aria-label="Instagram">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.6" cy="6.4" r="1.2" fill="currentColor"/></svg>
           </a>
+          <!-- O balão sozinho é balão de qualquer app de conversa; o que faz
+               alguém reconhecer o WhatsApp num ícone de 19px é o FONE dentro
+               dele. -->
           <a href="https://wa.me/5511969170709" target="_blank" rel="noopener" aria-label="WhatsApp">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20z"/></svg>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-5.8c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.7.9-.3.2-.5 0a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4 5.2 5.2 0 0 0 3.2.7 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>
           </a>
         </div>
       </div>
@@ -1366,6 +1445,36 @@ footer a:hover{opacity:1;transform:translateX(3px)}
           <a href="mailto:contato@alobuzinou.com.br">contato@alobuzinou.com.br</a><br>
           <a href="https://wa.me/5511969170709" target="_blank" rel="noopener">(11) 96917-0709</a>
         </p>
+      </div>
+      <div>
+        <h4>Baixe o app</h4>
+        <!-- SELO SEM LINK, DE PROPÓSITO.
+             Não há app publicado em loja nenhuma ainda — é a promessa da
+             seção "O que vem". Selo que leva a lugar nenhum é pior que selo
+             que ainda não leva, então estes são <span>, não <a>: sem hover,
+             sem cursor de link, com o "em breve" impresso no próprio selo.
+             Quando a URL existir, é trocar a tag e a primeira linha.
+             Os dois desenhos são vetor nosso, redesenhado nas cores da loja:
+             PNG de badge oficial fica borrado no retina e some no fundo
+             verde. -->
+        <div class="badges">
+          <span class="badge">
+            <svg width="20" height="20" viewBox="0 0 512 512" aria-hidden="true">
+              <path d="M60 18 292 256 60 494Z" fill="#00A0FF"/>
+              <path d="M60 18 317 166 292 256Z" fill="#00E676"/>
+              <path d="M60 494 317 346 292 256Z" fill="#FF3A44"/>
+              <path d="M317 166 474 256 317 346 292 256Z" fill="#FFCE00"/>
+            </svg>
+            <span><small>em breve no</small><b>Google Play</b></span>
+          </span>
+          <span class="badge">
+            <svg width="20" height="20" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
+              <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+            </svg>
+            <span><small>em breve na</small><b>App Store</b></span>
+          </span>
+        </div>
+        <p class="loja-nota">Hoje o app instala direto do navegador, na tela de início do celular.</p>
       </div>
     </div>
     <div class="lgpd">
@@ -1582,7 +1691,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
     });
   }
 
-  /* ── O FORMULÁRIO MONTA A MENSAGEM; O BOTÃO ESCOLHE O CANAL ──────────
+  /* ── O SWITCH ESCOLHE O CANAL; O FORMULÁRIO MONTA A MENSAGEM ────────
    *
    * Ele NÃO envia nada. A CSP desta página tem `connect-src 'self'` e não há
    * backend — nenhum dado sai daqui por rede, e isso é proteção, não falta.
@@ -1592,19 +1701,42 @@ footer a:hover{opacity:1;transform:translateX(3px)}
    * manda "oi" e trava. Chegando com assunto, quem é e o que precisa, a
    * conversa começa no segundo passo.
    *
-   * QUAL BOTÃO FOI CLICADO vem de uma variável marcada no `click`, e não de
-   * `e.submitter`: o clique sempre dispara antes do submit, e isso funciona
-   * em navegador velho — que é metade do público de motorista escolar.
+   * QUAL CANAL não mora mais numa variável marcada no clique de um dos dois
+   * botões: é um radio dentro do formulário, então ele chega no FormData
+   * junto com o resto e não tem como divergir do que a tela mostra.
+   * O que sobra pro script é a FORMA — mostrar o campo de e-mail só no canal
+   * de e-mail, e dizer no botão pra onde aquele clique leva.
    */
-  var canal = 'zap';
-  var bZap = document.getElementById('b-zap');
-  var bMail = document.getElementById('b-mail');
-  if (bZap) bZap.addEventListener('click', function(){ canal = 'zap'; });
-  if (bMail) bMail.addEventListener('click', function(){ canal = 'mail'; });
+  var rZap = document.getElementById('c-zap');
+  var rMail = document.getElementById('c-mail');
+  var campoEmail = document.getElementById('campo-email');
+  var inpEmail = document.getElementById('e');
+  var linhaNome = document.getElementById('linha-nome');
+  var bTxt = document.getElementById('b-txt');
+  var nota = document.getElementById('envio-nota');
+
+  function pintarCanal(){
+    var mail = rMail.checked;
+    campoEmail.hidden = !mail;
+    /* Sem o campo ao lado, a linha do nome vira uma coluna só. */
+    linhaNome.className = mail ? 'f2' : 'f2 uma';
+    /* Escondido E obrigatório trava o envio sem mostrar onde: o navegador
+       tenta focar um campo que não está na tela e o clique parece morto. */
+    inpEmail.required = mail;
+    bTxt.textContent = mail ? 'Enviar por e-mail' : 'Enviar pelo WhatsApp';
+    nota.textContent = mail
+      ? 'A mensagem abre no seu e-mail já escrita — você só confere e envia.'
+      : 'A mensagem abre no WhatsApp já escrita — você só confere e envia.';
+  }
+  rZap.addEventListener('change', pintarCanal);
+  rMail.addEventListener('change', pintarCanal);
+  /* Roda de saída porque o navegador restaura a escolha anterior num F5. */
+  pintarCanal();
 
   document.getElementById('form').addEventListener('submit', function(e){
     e.preventDefault();
     var d = new FormData(e.target);
+    var canal = d.get('canal');
     var email = (d.get('email') || '').trim();
 
     var corpo =
