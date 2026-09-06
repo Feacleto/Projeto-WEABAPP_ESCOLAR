@@ -183,7 +183,18 @@ export default function Login() {
   const voltarProps = daFamilia ? { to: voltarPara } : { href: voltarPara };
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[5fr_6fr]">
+    // `data-painel="web"` solta o teto de 480px do #root (ver index.css).
+    // Sem ele esta tela vive numa coluna de celular no meio de um monitor
+    // vazio: as classes `md:` ATIVAM (breakpoint olha a viewport, não o
+    // contêiner) e não adiantam nada — a faixa da marca fica com 220px e a
+    // frase quebra uma palavra por linha.
+    //
+    // `flex flex-col` no celular e `grid` a partir do md: sem o flex, o
+    // `flex-1` do cartão não tem pai flexível e o empilhamento fica solto.
+    <div
+      data-painel="web"
+      className="flex min-h-screen flex-col md:grid md:grid-cols-[5fr_6fr]"
+    >
       {/* ── A faixa da marca ─────────────────────────────────────────── */}
       <div className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-primary to-primaryDark px-6 py-7 md:px-12 md:py-12">
         {/* Um halo só, e atrás de tudo. A porta não é lugar de enfeite. */}
