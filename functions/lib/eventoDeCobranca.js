@@ -112,9 +112,44 @@ function efeitoDoEvento(evento, statusAtual = null) {
   return { status: null, motivo: null };
 }
 
+/**
+ * Até quando uma fatura paga deixa a conta em dia.
+ *
+ * ── POR QUE ESTA FUNÇÃO EXISTE DOS DOIS LADOS
+ * Ela é gêmea de `assinaturaAteDoMes` em `src/dominio/associacao/contaAtiva.js`,
+ * e a cópia é deliberada: o deploy das functions só leva a pasta `functions/`,
+ * então o servidor não alcança o `src/`. A alternativa seria o webhook não
+ * escrever a assinatura — e era exatamente esse o defeito que ela conserta.
+ *
+ * A duplicação NÃO É CONFIADA À DISCIPLINA: `npm run testar:gateway` importa
+ * as DUAS e prova que concordam mês a mês, ano a ano. Divergir passa a ser
+ * teste vermelho, não descoberta tardia numa fatura.
+ *
+ * Pagar a fatura de maio cobre até o FIM DE JUNHO. Parece generoso e não é: a
+ * fatura de junho vence dentro de junho, e quem não a pagar é bloqueado pelo
+ * caminho do atraso, que é mais curto. Este campo é o PISO ("ele é cliente");
+ * a fatura em aberto é a lâmina.
+ */
+function assinaturaAteDoMes(mes) {
+  const m = String(mes || '').trim();
+  if (!/^[0-9]{4}-[0-9]{2}$/.test(m)) return null;
+  const ano = Number(m.slice(0, 4));
+  const numero = Number(m.slice(5, 7));
+  // Dia 0 do mês seguinte ao seguinte = último dia do mês seguinte.
+  // Meio-dia, e não meia-noite: fuso de uma hora não pode roubar um dia.
+  return new Date(ano, numero + 1, 0, 12, 0, 0);
+}
+
 /** Este evento vale a pena assinar no painel do gateway? */
 function eventoAssinado(evento) {
   return EVENTOS_ASSINADOS.includes(String(evento || '').trim().toUpperCase());
 }
 
-module.exports = { QUITADA, ABERTA, EVENTOS_ASSINADOS, efeitoDoEvento, eventoAssinado };
+module.exports = {
+  QUITADA,
+  ABERTA,
+  EVENTOS_ASSINADOS,
+  efeitoDoEvento,
+  eventoAssinado,
+  assinaturaAteDoMes,
+};

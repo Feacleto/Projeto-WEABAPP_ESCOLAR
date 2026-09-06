@@ -332,6 +332,34 @@ async function main() {
     await escrever('appState/init', tio2, { adminUid: S(tio2.uid) }, ['adminUid']));
   checar('priv', 'tio2 apaga appState/init (elo 1 da escalada)', 'NEGA', await apagar('appState/init', tio2));
 
+  // ── users/{uid} escopado por vínculo ───────────────────────────────────
+  //
+  // O `|| isAdmin()` solto do `allow get` saiu em 06/09/2026, e este bloco é
+  // o que prova. Ele deixava QUALQUER motorista ler o doc de QUALQUER
+  // usuário — nome, e-mail, telefone e CHAVE PIX de toda a base, bastando o
+  // uid (que o `allow list` público de `feedbacks` já entrega).
+  //
+  // Era furo conhecido e assumido, segurado pela APROVAÇÃO: `role: 'admin'`
+  // só existia depois do aval do dono. Com a entrada por autoatendimento,
+  // "quem passa aqui" deixa de ser um conjunto escolhido a dedo e vira
+  // qualquer pessoa com um e-mail — e o mesmo furo vira a base inteira a um
+  // getDocs de distância.
+  checar('priv', 'tio1 lê o doc do responsável DELE', 'PASSA',
+    await ler(`users/${pai1.uid}`, tio1));
+  checar('priv', 'tio2 lê o doc do responsável de OUTRA perua', 'NEGA',
+    await ler(`users/${pai1.uid}`, tio2));
+  checar('priv', 'tio2 lê o doc de outro motorista', 'NEGA',
+    await ler(`users/${tio1.uid}`, tio2));
+  checar('priv', 'tio2 lê o doc do dono', 'NEGA', await ler(`users/${dono.uid}`, tio2));
+  checar('priv', 'o dono lê o doc de um motorista', 'PASSA',
+    await ler(`users/${tio1.uid}`, dono));
+  // A outra ponta, que já valia e continua valendo: sem ela o responsável
+  // perde a chave PIX e o telefone de quem leva o filho dele.
+  checar('priv', 'o pai lê o doc do motorista dele', 'PASSA',
+    await ler(`users/${tio1.uid}`, pai1));
+  checar('priv', 'o pai lê o doc de OUTRO motorista', 'NEGA',
+    await ler(`users/${tio2.uid}`, pai1));
+
   // ── o pai não passa do próprio quintal ─────────────────────────────────
   console.log('\n═══ O RESPONSÁVEL ═══');
   checar('pai', 'pai lê a criança de outro motorista', 'NEGA', await ler('children/kid2', pai1));
@@ -783,8 +811,18 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, espera, anon }) {
   await semear('taxaParceiros/' + tio1.uid, { modo: S('percentual'), valor: N(6) });
   await semear('faturasParceiro/' + tio1.uid + '_2026-08', { tioUid: S(tio1.uid), total: N(180) });
 
-  checar('pos', 'o motorista le a regua da taxa (pra saber pra onde pagar)', 'PASSA',
+  // ESTE CASO ESPERAVA 'PASSA', COM A JUSTIFICATIVA "pra saber pra onde pagar"
+  // — e a justificativa era falsa. `fecharFatura` COPIA a chave PIX pra dentro
+  // da fatura, e o comentário dele diz por quê: "o motorista não lê a
+  // estrutura de preço da plataforma, e não deveria".
+  //
+  // Três arquivos afirmavam que esta coleção era `read: isOwner()`. A rule
+  // dizia `isAdmin() || isOwner()`, e o teste carimbava a rule. Um invariante
+  // documentado em três lugares, violado ao lado, e um caso verde por cima.
+  checar('taxa', 'o motorista le a regua de preco da plataforma', 'NEGA',
     await ler('taxaConfig/app', tio1));
+  checar('pos', 'o dono le a regua de preco', 'PASSA',
+    await ler('taxaConfig/app', dono));
   // A estrutura de preco da plataforma nao e assunto do responsavel: ele nao
   // tem tela que leia isto, e o bloco vizinho (taxaParceiros) ja argumenta que
   // preco nao pode vazar nem pro proprio motorista.

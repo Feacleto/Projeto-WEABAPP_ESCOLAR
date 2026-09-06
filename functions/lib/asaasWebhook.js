@@ -1,6 +1,6 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
-const { efeitoDoEvento } = require('./eventoDeCobranca');
+const { QUITADA, efeitoDoEvento, assinaturaAteDoMes } = require('./eventoDeCobranca');
 const LIMITES = require('./limites');
 
 const REGION = 'southamerica-east1';
@@ -33,6 +33,12 @@ const REGION = 'southamerica-east1';
  * `eventoDeCobranca.js`, que é regra pura com 30 casos de teste
  * (`npm run testar:cobranca`). Aqui só há transporte: valida, encontra a
  * fatura, aplica o que a regra disse.
+ *
+ * O ESTORNO NÃO APAGA `assinaturaAte`, E ISSO É DE PROPÓSITO
+ * Uma cobrança estornada reabre a fatura, e quem bloqueia a partir daí é o
+ * caminho do ATRASO — que `estadoDaConta` avalia ANTES da assinatura, e que dá
+ * dez dias. Zerar o campo na hora bloquearia na mesma tarde alguém que talvez
+ * esteja contestando uma cobrança indevida. A ordem das checagens já resolve.
  *
  * ENQUANTO NENHUMA COBRANÇA FOR CRIADA PELA API, nenhuma fatura tem
  * `asaasPaymentId` — e este endpoint vai receber eventos que não casam com
@@ -106,7 +112,26 @@ function makeAsaasWebhook(db, tokenSecret) {
           return;
         }
 
-        await doc.ref.update({
+        // DOIS DOCUMENTOS, UM LOTE — e o segundo é o que destrava a conta.
+        //
+        // Este webhook marcava a fatura como quitada e parava aí. Só que quem
+        // decide se o app abre é `users.assinaturaAte`, e só a baixa manual do
+        // painel escrevia esse campo. O efeito era o pior desfecho que existe
+        // em cobrança: o motorista pagava o PIX do gateway, a fatura virava
+        // quitada, e o app continuava dizendo que a conta estava inativa — com
+        // o comprovante na mão dele.
+        //
+        // Passou despercebido porque as duas metades foram escritas em
+        // momentos diferentes e cada uma estava certa sozinha.
+        //
+        // O LOTE não é zelo: separados, uma falha entre as duas escritas
+        // recria exatamente o mesmo defeito, só que raro — e raro em cobrança
+        // é o que ninguém consegue reproduzir depois.
+        const tioUid = doc.get('tioUid');
+        const ate = novo === QUITADA ? assinaturaAteDoMes(doc.get('mes')) : null;
+
+        const lote = db.batch();
+        lote.update(doc.ref, {
           status: novo,
           // A trilha de POR QUE mudou. Sem ela, uma fatura que reabriu sozinha
           // vira mistério — e mistério em cobrança vira desconfiança.
@@ -114,12 +139,17 @@ function makeAsaasWebhook(db, tokenSecret) {
           asaasUltimoMotivo: motivo,
           atualizadoEm: new Date(),
         });
+        if (ate && tioUid) {
+          lote.set(db.doc(`users/${tioUid}`), { assinaturaAte: ate }, { merge: true });
+        }
+        await lote.commit();
 
         logger.info('[asaas] fatura atualizada', {
           fatura: doc.id,
           evento,
           novo,
           motivo,
+          assinaturaAte: ate ? ate.toISOString().slice(0, 10) : null,
         });
         res.status(200).send('ok');
       } catch (err) {

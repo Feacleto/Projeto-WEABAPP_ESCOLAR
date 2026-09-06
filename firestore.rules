@@ -271,15 +271,57 @@ service cloud.firestore {
       // fluxos em que o motorista lê o doc do responsável (resgate de convite,
       // financeiro) e vem com teste próprio — trocar por um predicado não
       // exercitado seria trocar um furo conhecido por um desconhecido.
+      // ⚠️ O `|| isAdmin()` SOLTO SAIU DAQUI EM 06/09/2026, E A RAZÃO É A
+      // AUTO-INSCRIÇÃO.
+      //
+      // Ele deixava QUALQUER motorista ler o doc de QUALQUER usuário — nome,
+      // e-mail, telefone e CHAVE PIX de todo responsável e de todo parceiro
+      // concorrente, bastando ter o uid. E o uid não é segredo: o `allow list`
+      // público de `feedbacks` devolve o documento inteiro, com `uid` dentro.
+      //
+      // Isso era um furo CONHECIDO e assumido: o comentário anterior dizia
+      // "ainda em aberto, e de propósito", e o que segurava o estrago era a
+      // aprovação — `role: 'admin'` só existia depois de o dono aprovar, ou
+      // seja, o conjunto de quem passava aqui era escolhido a dedo.
+      //
+      // Com a entrada por autoatendimento, esse conjunto passa a ser
+      // "qualquer pessoa com um e-mail". O mesmo furo deixa de ser risco
+      // controlado e vira a base inteira a um `getDocs` de distância.
+      //
+      // A SIMETRIA QUE O SUBSTITUI. O responsável já lia o doc do motorista
+      // dele pelo vínculo (o ramo abaixo). Agora o motorista lê o doc do
+      // responsável DELE pelo mesmo vínculo, na direção contrária:
+      // `users.adminUids` é a lista dos motoristas dos filhos daquela família,
+      // mantida por `arrayUnion` no `redeemInvite`. Estar nela é a prova.
+      //
+      // Nenhuma tela perdeu dado com isso: o motorista lê nome e telefone do
+      // responsável de `children.parentName`/`parentPhone`, não daqui —
+      // conferido nos quatro lugares que os exibem (TioContract, TioFinance,
+      // TioChildStatement e o cadastro).
       allow get: if isSignedIn() && (
         request.auth.uid == uid
-        || isAdmin()
+        || isOwner()
         || (
+          // O responsável lê o doc do motorista dele (chave PIX, telefone).
           isAppUser()
           && resource.data.role == 'admin'
           && (
             userDoc().get('adminUid', '') == uid
             || uid in userDoc().get('adminUids', [])
+          )
+        )
+        || (
+          // E o motorista lê o doc do responsável dele — só dele.
+          //
+          // Os DOIS campos, pelo mesmo motivo do ramo de cima: `adminUid`
+          // guarda só o PRIMEIRO motorista daquela família, e escopar apenas
+          // por ele deixaria o segundo motorista de fora — a mãe com filhos em
+          // peruas diferentes, vista da outra ponta.
+          isAdmin()
+          && resource.data.role == 'parent'
+          && (
+            resource.data.get('adminUid', '') == request.auth.uid
+            || request.auth.uid in resource.data.get('adminUids', [])
           )
         )
       );
@@ -1533,7 +1575,21 @@ service cloud.firestore {
       // ainda — nenhuma tela do `/pai` lê esta coleção.
       //
       // É o mesmo raciocínio que fechou `schools` para o responsável.
-      allow read: if isAdmin() || isOwner();
+      //
+      // ⚠️ E EM 06/09/2026 O MOTORISTA SAIU TAMBÉM. Três arquivos do código já
+      // afirmavam que esta coleção era `read: isOwner()` — o cabeçalho de
+      // `TioTaxa.jsx`, o de `TaxaTab.jsx` e o comentário de `fecharFatura`,
+      // que copia a chave PIX pra dentro da fatura JUSTAMENTE porque "o
+      // motorista não lê a estrutura de preço da plataforma".
+      //
+      // A regra dizia outra coisa. É o padrão que mais custou caro neste
+      // projeto: comentário que promete garantia sem prová-la. O código estava
+      // certo e a rule estava atrás dele.
+      //
+      // Fechar não tira nada de ninguém — nenhuma tela do `/tio` chama
+      // `getTaxaConfig()`. O que o motorista precisa (a chave pra pagar) já
+      // viaja copiado dentro da própria fatura.
+      allow read: if isOwner();
       allow write: if isOwner();
     }
 

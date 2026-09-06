@@ -23,6 +23,8 @@ import {
   paraDiaISO,
 } from '../functions/lib/cobrancaDaTaxa.js';
 import { urlDoAmbiente, SANDBOX, PRODUCAO } from '../functions/lib/asaasApi.js';
+import { assinaturaAteDoMes as noServidor } from '../functions/lib/eventoDeCobranca.js';
+import { assinaturaAteDoMes as noApp } from '../src/dominio/associacao/contaAtiva.js';
 
 let ok = 0;
 let bad = 0;
@@ -209,6 +211,30 @@ bloco('6. O rótulo do mês');
 checar('setembro', 'setembro/2026', rotuloDoMes('2026-09'));
 checar('janeiro', 'janeiro/2027', rotuloDoMes('2027-01'));
 checar('mês fora da faixa devolve o cru em vez de inventar', '2026-13', rotuloDoMes('2026-13'));
+
+bloco('7. As duas cópias de "até quando a conta está paga" concordam');
+
+// POR QUE HÁ DUAS. O deploy das functions só leva a pasta `functions/`, então
+// o webhook não alcança `src/dominio`. A cópia é deliberada — e é ESTE bloco
+// que impede que ela vire divergência: sem ele, o app e o servidor poderiam
+// discordar sobre até quando alguém está pago, e a diferença só apareceria na
+// tela de um motorista bloqueado que acabou de pagar.
+const iso = (d) => (d ? d.toISOString() : null);
+let divergiu = null;
+for (let ano = 2026; ano <= 2031 && !divergiu; ano += 1) {
+  for (let m = 1; m <= 12; m += 1) {
+    const mes = `${ano}-${String(m).padStart(2, '0')}`;
+    if (iso(noServidor(mes)) !== iso(noApp(mes))) {
+      divergiu = mes;
+      break;
+    }
+  }
+}
+checar('setenta e dois meses seguidos, nenhuma divergência', null, divergiu);
+// A virada de ano é onde um cálculo ingênuo erra, e onde as duas errariam
+// diferente. Ancorado aqui além da varredura acima.
+checar('dezembro vira janeiro nas duas', iso(noApp('2026-12')), iso(noServidor('2026-12')));
+checar('e mês inválido devolve nulo nas duas', null, noServidor('maio'));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 
