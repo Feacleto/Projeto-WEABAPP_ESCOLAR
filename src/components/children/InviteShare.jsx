@@ -49,9 +49,23 @@ export default function InviteShare({ code, childName, parentPhone }) {
     }
   };
 
+  /**
+   * A MENSAGEM LEVA O LINK **E** O CÓDIGO ESCRITO.
+   *
+   * Ela só levava o link, e o código ficava escondido dentro dele. Funciona
+   * enquanto a mensagem existir — e ela some: a responsável limpa a conversa,
+   * troca de celular, ou o link vira texto morto num aparelho que abriu o
+   * WhatsApp Web. Aí ela chega no app pra digitar um código que nunca viu
+   * escrito, e o único jeito de recuperar é pedir de novo pro motorista.
+   *
+   * Duas linhas em vez de uma, com uma quebra no meio: a segunda só é lida
+   * por quem precisou dela, e quem tocou no link nem chega lá.
+   */
   const waText = encodeURIComponent(
     `Oi! Aqui é do transporte escolar${firstName ? ` do/da ${firstName}` : ''}. ` +
-      `Abra este link pra acompanhar a rota e as mensalidades pelo app: ${url}`
+      `Abra este link pra acompanhar a rota e as mensalidades pelo app: ${url}` +
+      `\n\nSe o link não abrir, o código do convite é ${code} — ` +
+      `dá pra digitar ele no app, em "Criar conta".`
   );
   const waHref = parentPhone
     ? `https://wa.me/${parentPhone.startsWith('55') ? parentPhone : `55${parentPhone}`}?text=${waText}`
