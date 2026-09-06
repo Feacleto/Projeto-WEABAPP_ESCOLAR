@@ -63,7 +63,7 @@ const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 // APP_URL: URL de produção da hospedagem (Firebase Hosting).
 //   Trocar pelo domínio próprio quando configurar.
 const FROM_EMAIL = 'Alô Buzinou! <onboarding@resend.dev>';
-const APP_URL = 'https://alobuzinou-be81f.web.app';
+const APP_URL = 'https://alobuzinou.com';
 
 // Milestones de cobrança (dias em relação ao vencimento).
 //   diffDays positivo = ainda falta vencer
