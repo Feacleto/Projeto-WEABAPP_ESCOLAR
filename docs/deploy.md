@@ -65,7 +65,7 @@ Desde 05/09/2026 o projeto serve **dois sites do mesmo projeto Firebase**:
 
 | Target | Site do Hosting | Pasta | Domínio | O que é |
 |---|---|---|---|---|
-| `app` | `alobuzinou-be81f` (padrão) | `dist/` | `app.alobuzinou.com.br` | o PWA — motorista, responsável e dono |
+| `app` | `alobuzinou-be81f` (padrão) | `dist/` | `alobuzinou.com` | o PWA — motorista, responsável e dono |
 | `landing` | `alobuzinou-landing` (criado) | `landing/` | `alobuzinou.com.br` | a página institucional, HTML estático |
 
 **Os nomes dos sites não têm valor de marca, e isso não é descuido.** O site
@@ -100,34 +100,40 @@ outro nome, mude lá.
 fica em exclusão pendente por 30 dias. Não vale esperar por ele — quem alcança
 a landing digita `alobuzinou.com.br`, nunca o ID do site.
 
-### Os domínios: um canônico, o resto redireciona
+### Os domínios: um por peça, decidido em 05/09/2026
 
-Comprados os dois (`.com.br` e `.com`), **o canônico é o `.com.br`** — o público
-é 100% brasileiro e o nome é português. O `.com` existe como defesa de marca.
+Os dois domínios estão na Hostinger e **cada um serve uma coisa diferente**.
+Não há subdomínio.
 
 ```
 alobuzinou.com.br       →  site "alobuzinou-landing"  (a landing)
-app.alobuzinou.com.br   →  site "alobuzinou-be81f"    (o PWA, site padrão)
-alobuzinou.com          →  301 → alobuzinou.com.br
-www.*                   →  301 → alobuzinou.com.br
+alobuzinou.com          →  site "alobuzinou-be81f"    (o PWA)
+www.alobuzinou.com.br   →  301 → alobuzinou.com.br
+www.alobuzinou.com      →  301 → alobuzinou.com
 ```
 
-**Nunca sirva conteúdo nos dois domínios.** Google trata como conteúdo
-duplicado e divide a autoridade; pior, o motorista recebe dois links e pergunta
-qual é o verdadeiro. O `<link rel="canonical">` da landing já aponta para o
-`.com.br`.
+**A alternativa descartada era `app.alobuzinou.com.br`**, com o `.com` inteiro
+virando 301 de defesa de marca. Ela mantinha a marca num domínio só, e perdeu
+para a simplicidade de usar os dois domínios que já existiam sem criar
+subdomínio nenhum.
 
-O 301 do `.com` se faz de dois jeitos — **o segundo é mais simples e é o
-recomendado**:
+**O que a escolha custa, e precisa ficar escrito:** a marca passa a ter dois
+endereços. Quem se anuncia em `.com.br` e manda link de `.com` está pedindo
+para a mãe conferir duas vezes — e link de terceiro com domínio que não bate
+tem a forma de um golpe. Não há conteúdo duplicado (são páginas diferentes, não
+a mesma em dois lugares), e o `<link rel="canonical">` da landing segue no
+`.com.br`. O risco é de leitura, não de SEO.
 
-1. Um terceiro site no Firebase só com `redirects` no `firebase.json`.
-2. **Encaminhamento com 301 no próprio registrador.** Registro.br e a maioria
-   dos registradores oferecem isso sem custo. Zero infraestrutura.
+E o `.com` deixou de ser defesa de marca: **se ele expirar, o app cai junto.**
+Renovação automática nos dois não é zelo, virou dependência.
+
+Os dois `www` redirecionam pelo próprio Firebase — ao adicionar o domínio,
+escolha a opção de redirecionar em vez de servir conteúdo.
 
 ### ⚠️ Mudar o app de domínio quebra três coisas de quem já usa
 
 Isso vale para o dia em que o PWA sair de `alobuzinou-be81f.web.app` para
-`app.alobuzinou.com.br`. **Hoje a base é zero**, então o custo também é — e é
+`alobuzinou.com`. **Hoje a base é zero**, então o custo também é — e é
 por isso que a hora de amarrar o domínio é ANTES do primeiro convite circular
 no WhatsApp, não depois. Feito depois, cada linha abaixo tem dono:
 
