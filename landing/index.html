@@ -695,6 +695,14 @@ input,textarea,select{
 input:focus,textarea:focus,select:focus{outline:0;border-color:var(--verde-claro);box-shadow:0 0 0 4px rgba(14,168,95,.13)}
 textarea{min-height:118px;resize:vertical}
 label{font-size:.83rem;font-weight:600;color:var(--cinza);margin-bottom:-5px;display:block}
+.opt{font-weight:400;color:var(--cinza-cl)}
+/* Os dois canais lado a lado, e empilhados quando não couberem. O WhatsApp
+   vem primeiro por ser onde este público mora — mas os dois têm o mesmo
+   tamanho: escolher canal não é escolher entre principal e alternativa. */
+.envio{display:flex;flex-wrap:wrap;gap:11px;margin-top:4px}
+.envio .btn{flex:1 1 220px;justify-content:center}
+.envio-nota{font-size:.82rem;color:var(--cinza-cl);margin:-4px 0 0}
+@media (max-width:520px){.f2{grid-template-columns:1fr}}
 
 /* ══ RODAPÉ ═══════════════════════════════════════ */
 footer{background:var(--verde-esc);color:#DCEDE3;padding:64px 0 34px;position:relative}
@@ -1270,21 +1278,48 @@ footer a:hover{opacity:1;transform:translateX(3px)}
     <form class="rv" id="form">
       <div class="f2">
         <div><label for="n">Nome</label><input id="n" name="nome" required placeholder="Como a gente te chama?"></div>
-        <div><label for="e">E-mail</label><input id="e" name="email" type="email" required placeholder="seu@email.com"></div>
+        <!-- E-mail deixou de ser obrigatório: quem escreve pelo WhatsApp já
+             entrega o número ao mandar a mensagem, e exigir e-mail pra isso é
+             pedágio. Ele serve a quem quer ser respondido por e-mail. -->
+        <div><label for="e">E-mail <span class="opt">(opcional)</span></label><input id="e" name="email" type="email" placeholder="seu@email.com"></div>
       </div>
-      <div><label for="q">Eu sou</label>
-        <select id="q" name="quem">
-          <option>Motorista escolar</option>
-          <option>Família</option>
-          <option>Escola</option>
-          <option>Investidor</option>
-          <option>Outro</option>
-        </select>
+      <div class="f2">
+        <div><label for="q">Eu sou</label>
+          <select id="q" name="quem">
+            <option>Motorista escolar</option>
+            <option>Família</option>
+            <option>Escola</option>
+            <option>Investidor</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div><label for="s">Assunto</label>
+          <select id="s" name="assunto">
+            <option>Dúvida</option>
+            <option>Quero contratar</option>
+            <option>Atendimento</option>
+            <option>Reclamação</option>
+            <option>Outro</option>
+          </select>
+        </div>
       </div>
       <div><label for="m">Mensagem</label><textarea id="m" name="msg" required placeholder="Conta pra gente o que você precisa."></textarea></div>
-      <button type="submit" class="btn b1" style="justify-self:start">Enviar pelo WhatsApp
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
+      <!-- DOIS BOTÕES, UM POR CANAL.
+           O formulário não envia nada sozinho — a CSP da landing tem
+           `connect-src 'self'` e não existe backend. O que ele faz é MONTAR a
+           mensagem e abrir o canal com ela pronta, pra conversa não começar
+           num "oi" seguido de silêncio.
+           Os dois são `type="submit"` de propósito: assim a validação nativa
+           dos campos obrigatórios vale para os dois caminhos. -->
+      <div class="envio">
+        <button type="submit" id="b-zap" class="btn b1">Enviar pelo WhatsApp
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button type="submit" id="b-mail" class="btn b3">Enviar por e-mail
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+      <p class="envio-nota">A mensagem abre já escrita — você só confere e envia.</p>
     </form>
   </div>
 </section>
@@ -1547,17 +1582,54 @@ footer a:hover{opacity:1;transform:translateX(3px)}
     });
   }
 
-  /* ── FORMULÁRIO → WHATSAPP ───────────────────────── */
+  /* ── O FORMULÁRIO MONTA A MENSAGEM; O BOTÃO ESCOLHE O CANAL ──────────
+   *
+   * Ele NÃO envia nada. A CSP desta página tem `connect-src 'self'` e não há
+   * backend — nenhum dado sai daqui por rede, e isso é proteção, não falta.
+   * O que ele faz é escrever a mensagem e abrir o canal com ela pronta.
+   *
+   * A razão é de conversa, não técnica: quem chega por um formulário vazio
+   * manda "oi" e trava. Chegando com assunto, quem é e o que precisa, a
+   * conversa começa no segundo passo.
+   *
+   * QUAL BOTÃO FOI CLICADO vem de uma variável marcada no `click`, e não de
+   * `e.submitter`: o clique sempre dispara antes do submit, e isso funciona
+   * em navegador velho — que é metade do público de motorista escolar.
+   */
+  var canal = 'zap';
+  var bZap = document.getElementById('b-zap');
+  var bMail = document.getElementById('b-mail');
+  if (bZap) bZap.addEventListener('click', function(){ canal = 'zap'; });
+  if (bMail) bMail.addEventListener('click', function(){ canal = 'mail'; });
+
   document.getElementById('form').addEventListener('submit', function(e){
     e.preventDefault();
     var d = new FormData(e.target);
-    var txt =
+    var email = (d.get('email') || '').trim();
+
+    var corpo =
       'Olá! Vim pelo site do Alô Buzinou.\n\n' +
+      'Assunto: ' + d.get('assunto') + '\n' +
+      'Eu sou: ' + d.get('quem') + '\n' +
       'Nome: ' + d.get('nome') + '\n' +
-      'E-mail: ' + d.get('email') + '\n' +
-      'Eu sou: ' + d.get('quem') + '\n\n' +
-      d.get('msg');
-    open('https://wa.me/5511969170709?text=' + encodeURIComponent(txt), '_blank', 'noopener');
+      /* Linha só existe se ela preencheu. "E-mail:" seguido de nada faria a
+         mensagem parecer truncada — e o campo é opcional justamente pra não
+         cobrar o que não é necessário. */
+      (email ? 'E-mail: ' + email + '\n' : '') +
+      '\n' + d.get('msg');
+
+    if (canal === 'mail') {
+      /* O assunto carrega a triagem: chega na caixa já dizendo o que é e de
+         quem, sem precisar abrir. */
+      var assunto = '[Alô Buzinou] ' + d.get('assunto') + ' — ' + d.get('quem');
+      location.href =
+        'mailto:contato@alobuzinou.com.br' +
+        '?subject=' + encodeURIComponent(assunto) +
+        '&body=' + encodeURIComponent(corpo);
+      return;
+    }
+
+    open('https://wa.me/5511969170709?text=' + encodeURIComponent(corpo), '_blank', 'noopener');
   });
 })();
 </script>
