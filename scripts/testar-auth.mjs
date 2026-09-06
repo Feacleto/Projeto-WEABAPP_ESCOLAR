@@ -17,6 +17,10 @@
 
 import { mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 import { painelDe } from '../src/dominio/identidade/papeis.js';
+import {
+  codigoDoTexto,
+  isValidInviteCodeFormat,
+} from '../src/dominio/identidade/generateInviteCode.js';
 
 let ok = 0;
 let bad = 0;
@@ -122,6 +126,67 @@ checar('o inscrito não aprovado tem a tela da fila', '/aguardando', painelDe({ 
 checar('sem papel, a sala de espera', '/comecar', painelDe({}));
 checar('perfil nulo também', '/comecar', painelDe(null));
 checar('papel inventado não abre porta nenhuma', '/comecar', painelDe({ role: 'chefe' }));
+
+// ── O CÓDIGO TIRADO DO QUE A PESSOA COLOU ───────────────────────────
+//
+// O responsável nunca vê o código separado: ele mora dentro do link. Quem
+// perde a mensagem e depois reencontra o link faz a coisa natural — cola o
+// link inteiro. A máscara sozinha limpava tudo que não era letra ou número e
+// devolvia `HTTPSALOB`, então o app dizia "código inválido" pra quem estava
+// com o código certo na mão.
+console.log('\n── o código, colado de onde vier ──');
+
+checar(
+  'o link inteiro entrega o código',
+  'TNAB23CD',
+  codigoDoTexto('https://alobuzinou.com/convite/TNAB23CD')
+);
+checar(
+  'a mensagem inteira do WhatsApp também',
+  'TNAB23CD',
+  codigoDoTexto(
+    'Oi! Aqui é do transporte escolar do/da Ana. Abra este link pra ' +
+      'acompanhar a rota e as mensalidades pelo app: ' +
+      'https://alobuzinou.com/convite/TNAB23CD'
+  )
+);
+checar('minúsculo sobe', 'TNAB23CD', codigoDoTexto('tnab23cd'));
+checar(
+  'link com parâmetro depois não leva lixo junto',
+  'TNAB23CD',
+  codigoDoTexto('https://alobuzinou.com/convite/TNAB23CD?utm=zap')
+);
+
+// O FORMATO LEGADO (TN + 4 dígitos) É O QUE PEGA O ESCAPE ERRADO.
+// Dentro de template literal, `\d` simples vira a letra `d` sem erro nenhum —
+// o convite antigo deixaria de casar, calado, e só quem tem um descobriria.
+checar(
+  'o formato legado no link',
+  'TN1234',
+  codigoDoTexto('https://alobuzinou.com/convite/TN1234')
+);
+checar('o formato legado solto na frase', 'TN1234', codigoDoTexto('o codigo e TN1234 viu'));
+
+// DIGITAR LETRA POR LETRA CONTINUA VALENDO — sem isto o campo ficaria vazio
+// até o oitavo caractere, e ninguém digita no escuro.
+checar('digitando: uma letra', 'T', codigoDoTexto('t'));
+checar('digitando: meio código', 'TNA', codigoDoTexto('tna'));
+checar('quem começa pelos dígitos ganha o TN', 'TN1234', codigoDoTexto('1234'));
+checar('texto vazio devolve vazio', '', codigoDoTexto(''));
+checar('nulo não quebra', '', codigoDoTexto(null));
+
+// O QUE SAI DAQUI TEM QUE PASSAR NA VALIDAÇÃO — senão a extração seria
+// enfeite: entregaria algo que a tela recusaria no passo seguinte.
+checar(
+  'o que sai do link é aceito pela validação',
+  true,
+  isValidInviteCodeFormat(codigoDoTexto('https://alobuzinou.com/convite/TNAB23CD'))
+);
+checar(
+  'e meio código continua sendo recusado',
+  false,
+  isValidInviteCodeFormat(codigoDoTexto('tna'))
+);
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

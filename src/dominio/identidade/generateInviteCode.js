@@ -62,6 +62,49 @@ export function isValidInviteCodeFormat(code) {
 const MAX_INVITE_LENGTH = 8;
 
 /**
+ * O CÓDIGO TIRADO DE QUALQUER TEXTO — digitado, colado ou dentro do link.
+ *
+ * POR QUE ISTO EXISTE
+ * O caminho natural do responsável é o LINK, e o código nunca aparece pra ele
+ * separado: ele mora dentro da URL (`/convite/TNAB23CD`). Quem perde a
+ * mensagem, troca de celular ou apaga a conversa e depois acha o link antigo
+ * numa outra conversa faz a coisa mais natural do mundo — copia o link
+ * inteiro e cola no campo. A máscara sozinha recusava isso: ela limpa tudo
+ * que não é letra ou número, então `https://alobuzinou.com/convite/TNAB23CD`
+ * virava `HTTPSALOB` e o app respondia "código inválido" com o código certo
+ * na mão da pessoa.
+ *
+ * TRÊS LEITURAS, NESTA ORDEM
+ * 1. O que vem depois de `/convite/` — é o caso do link colado, e é o mais
+ *    específico: um link tem "TN" em mais de um lugar possível, e só a
+ *    posição depois de `/convite/` diz qual é o código.
+ * 2. Um código solto no meio de uma frase — cobre quem cola a mensagem
+ *    inteira do WhatsApp, e quem recebeu o código ditado por telefone junto
+ *    de outras palavras.
+ * 3. Nada reconhecível: devolve o que a pessoa digitou, mascarado. É o que
+ *    mantém a digitação letra por letra funcionando — sem isso, o campo
+ *    ficaria vazio até o oitavo caractere.
+ *
+ * Os dois formatos valem, porque `isValidInviteCodeFormat` aceita os dois.
+ */
+export function codigoDoTexto(texto) {
+  const cru = String(texto || '').toUpperCase();
+
+  const doLink = cru.match(/CONVITE\/([A-Z0-9]+)/);
+  if (doLink) return maskInviteCode(doLink[1]);
+
+  // `\\d` e não `\d`: dentro de template literal o escape simples vira a
+  // letra `d` calada, e o formato legado (TN + 4 dígitos) deixaria de casar
+  // sem erro nenhum aparecer.
+  const solto = cru.match(
+    new RegExp(`${INVITE_PREFIX}(?:[${ALPHABET}]{${NEW_LENGTH}}|\\d{4})(?![A-Z0-9])`)
+  );
+  if (solto) return maskInviteCode(solto[0]);
+
+  return maskInviteCode(cru);
+}
+
+/**
  * A máscara do código, digitada progressivamente — força maiúsculas e
  * prefixa `TN` sozinha quando a pessoa começa pelos dígitos.
  *
