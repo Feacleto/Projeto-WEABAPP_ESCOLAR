@@ -835,14 +835,22 @@ footer a:hover{opacity:1;transform:translateX(3px)}
         <span class="wm" aria-hidden="true">Al<span class="ac">o<svg viewBox="0 0 24 12"><path d="M2.6 11 A10 10 0 0 1 21.4 11"/><path d="M7.6 11 A5 5 0 0 1 16.4 11"/></svg></span><b>Buzinou</b></span>
       </span>
     </a>
+    <!-- A ORDEM DAQUI É A ORDEM DA PÁGINA, e isso é obrigação, não capricho.
+         O menu marca o link da seção em que a pessoa está (`aria-current` no
+         script do fim). Com o RI no fim da lista e a seção dele no meio da
+         página, o sublinhado ANDAVA PARA TRÁS enquanto a pessoa rolava para
+         frente: passava do "Sobre" para o último item, voltava para "Dúvidas"
+         e só então ia para "Contato". Indicador de posição que volta ensina
+         que ele não vale nada.
+         Item novo no menu entra na posição que a seção ocupa na página. -->
     <ul class="links" id="menu">
       <li><a href="#como">Como funciona</a></li>
       <li><a href="#motorista">Pro motorista</a></li>
       <li><a href="#familia">Pra família</a></li>
       <li><a href="#sobre">Sobre</a></li>
+      <li><a href="#ri" title="Relações com Investidores">RI</a></li>
       <li><a href="#duvidas">Dúvidas</a></li>
       <li><a href="#contato">Contato</a></li>
-      <li><a href="#ri" title="Relações com Investidores">RI</a></li>
     </ul>
     <div class="navdir">
       <!-- O app mora no `.com`, a landing no `.com.br`. Não há subdomínio:
@@ -1430,9 +1438,9 @@ footer a:hover{opacity:1;transform:translateX(3px)}
           <li><a href="#motorista">Pro motorista</a></li>
           <li><a href="#familia">Pra família</a></li>
           <li><a href="#sobre">Sobre</a></li>
+          <li><a href="#ri">RI · Investidores</a></li>
           <li><a href="#duvidas">Dúvidas</a></li>
           <li><a href="#contato">Contato</a></li>
-          <li><a href="#ri">RI · Investidores</a></li>
           <li style="margin-top:6px"><a href="https://alobuzinou.com/login" style="font-weight:600;color:#fff">Entrar na minha conta →</a></li>
         </ul>
       </div>
