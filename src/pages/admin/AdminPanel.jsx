@@ -15,7 +15,6 @@ import toast from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import TaxaTab from './TaxaTab';
-import FunilTab from '../../components/admin/FunilTab';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
@@ -48,20 +47,20 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * 1.900px de largura não se lê, se varre —, abas numa fileira só a partir de
  * `sm`, e as fichas de número abrindo em quatro colunas em `lg`.
  *
- * CINCO ABAS, E O QUE CADA UMA RESPONDE
+ * TRÊS ABAS, E O QUE CADA UMA RESPONDE
  * 1. Visão geral: o tamanho real da coisa (usuários, crianças, dinheiro que
  *    passou pelo app). É o que se leva pra uma conversa de investimento.
- * 2. Funil: a prospecção comercial em colunas, e o orçamento que nasce dela —
- *    salvar a negociação já emite o contrato pro associado aceitar.
- * 3. Taxa: a régua da casa, a negociação de cada parceiro e o fechamento das
+ * 2. Taxa: a régua da casa, a faixa de cada parceiro e o fechamento das
  *    faturas do mês. É aqui que a receita da plataforma deixa de ser zero.
- * 4. Fila: os motoristas pedindo acesso (`waitlistDrivers`), com
- *    pendente → contatado → aprovado / recusado. NÃO é o funil da aba 2: ali
- *    é registro comercial, aqui é a porta do app. Separadas de propósito —
- *    ver o cabeçalho de `funilService`.
- * 5. Pesquisa: o que os usuários responderam — inclusive as avaliações de
+ * 3. Pesquisa: o que os usuários responderam — inclusive as avaliações de
  *    responsável, que nunca vão pra home mas dizem se o app está servindo a
  *    ponta que não paga pela ferramenta.
+ *
+ * ERAM CINCO EM 06/09/2026, E DUAS SUMIRAM COM O MODELO ANTIGO.
+ * **Fila** era os motoristas pedindo acesso — ninguém pede mais, ele entra
+ * sozinho. **Funil** era a prospecção em colunas e o orçamento que nascia
+ * dela; sem negociação não há orçamento a montar. As duas descreviam o
+ * trabalho de uma pessoa no meio do caminho, e o caminho deixou de ter meio.
  *
  * GMV NÃO É RECEITA — e o painel não deixa confundir
  * O dinheiro que passa entre pai e motorista dentro do app é GMV (volume).
@@ -186,20 +185,15 @@ export default function AdminPanel() {
         {/* Abas — UMA FILEIRA NA WEB, DUAS NO CELULAR.
           *
           * Esta tela é de mesa: é onde se negocia, se fecha mês e se abre
-          * número numa reunião. Em tela larga as cinco abas cabem numa linha
-          * e é assim que elas ficam.
+          * número numa reunião.
           *
-          * No celular, cinco rótulos em 320px viram texto ilegível — e a saída
-          * comum, a tira que rola, esconde o fim: quem não arrasta nunca
-          * descobre que existe mais. Foi assim que a taxa e o funil ficaram
-          * invisíveis por tanto tempo, só que ali eles nem estavam na tela.
-          *
-          * A quebra separa o que É o negócio (o dinheiro e quem vai pagar) do
-          * que CHEGA nele (a fila de inscritos e o que os usuários responderam). */}
+          * ERAM CINCO ABAS E VIRARAM TRÊS, então a quebra em duas fileiras
+          * saiu junto: ela existia porque cinco rótulos em 320px viram texto
+          * ilegível, e a saída comum — a tira que rola — esconde o fim, que é
+          * como a Taxa ficou invisível por tanto tempo. Com três, cabem. */}
         <div className="mb-5 space-y-1 rounded-2xl bg-neutro p-1 sm:flex sm:space-y-0 sm:gap-1">
           {[
             ['geral', 'Visão geral'],
-            ['funil', 'Funil'],
             ['taxa', 'Taxa'],
             ['pesquisa', 'Pesquisa'],
           ].map(([id, label]) => (
@@ -217,7 +211,6 @@ export default function AdminPanel() {
         </div>
 
         {tab === 'geral' && <Geral ov={ov} />}
-        {tab === 'funil' && <FunilTab />}
         {tab === 'taxa' && <TaxaTab />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
       </main>

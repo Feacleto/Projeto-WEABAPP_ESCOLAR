@@ -2,18 +2,22 @@
  * O CONTEÚDO DO CONTRATO DE ASSOCIAÇÃO — o documento que o motorista assina.
  *
  * POR QUE ESTE ARQUIVO EXISTE
- * Este contrato saiu com valor ZERO duas vezes, em duas causas diferentes, e
- * as duas vezes ele foi hasheado com SHA-256 e aceito eletronicamente. Um
+ * Este contrato já saiu com valor ZERO duas vezes, por duas causas diferentes,
+ * e as duas vezes ele foi hasheado com SHA-256 e aceito eletronicamente. Um
  * documento assinado dizendo que o associado não deve nada.
  *
- * As duas passaram pelo mesmo buraco de forma: `montarContrato` é pura, mas
- * morava dentro de um service que importa Firestore — e este projeto testa com
- * scripts Node puros, então nenhum teste conseguia sequer importá-la.
+ * As duas vinham de aritmética de COMBINAÇÃO: percentual sobre base de
+ * crianças, vezes periodicidade, menos carência. Cinco números negociáveis se
+ * cruzando, e cada cruzamento um caminho que ninguém tinha percorrido.
  *
- * O CASO QUE MAIS IMPORTA AQUI é o bloco 2. Ele afirma que um contrato MENSAL
- * com carência cobra a mensalidade cheia: a carência adia o início, não zera o
- * preço. Quem "simplificar" `mesesCobrados` de volta para
- * `max(0, mesesDoPeriodo - carencia)` derruba exatamente esse bloco.
+ * O MODELO NEGOCIADO MORREU EM 06/09/2026, e com ele as duas causas. Hoje o
+ * contrato sai de uma FAIXA de tabela, doze meses para todo mundo, cobrança
+ * mensal. Este arquivo mudou junto — mas continua existindo pela mesma razão:
+ * o número que vai para o hash não pode nascer de código sem teste.
+ *
+ * O QUE ELE PROTEGE AGORA são os dois novos jeitos de errar:
+ *   - desconto SEM PRAZO, que vira preço para sempre;
+ *   - o contrato apontando para a régua da casa em vez de congelar o combinado.
  *
  * COMO RODAR
  *   node scripts/testar-contrato.mjs      (ou: npm run testar:contrato)
@@ -21,10 +25,17 @@
 
 import {
   VERSAO_CONTRATO,
+  JANELA_DE_RENOVACAO,
   montarContrato,
   diasParaVencer,
   precisaRenovar,
 } from '../src/dominio/associacao/contratoAssociacao.js';
+import {
+  FUNDADOR,
+  ORIGEM,
+  PLANOS,
+  planoPorId,
+} from '../src/dominio/associacao/planos.js';
 
 let ok = 0;
 let bad = 0;
@@ -41,147 +52,163 @@ function checar(nome, esperado, obtido) {
 }
 
 function bloco(t) {
-  console.log(`\n\x1b[1m${t}\x1b[0m`);
+  console.log('');
+  console.log(t);
 }
 
-const motorista = {
+const MOTORISTA = {
   uid: 'tio1',
-  name: 'Nino da Silva',
-  city: 'Santo André',
-  email: 'nino@x.com',
-  phone: '11999990000',
+  name: 'Nino Silva',
+  city: 'São Paulo',
+  email: 'nino@exemplo.com',
+  phone: '11988887777',
 };
 
-// 10 crianças × R$ 300 = base de R$ 3.000.
-const base = { criancas: 10, mensalidadeMedia: 300 };
-const config = { diaVencimento: 10 };
+/** Meio-dia: em 00:00 qualquer fuso de uma hora rouba um dia. */
+const dia = (iso) => new Date(`${iso}T12:00:00`);
+const HOJE = dia('2026-09-15');
 
-// 6% de 3.000 = R$ 180/mês.
-const seisPorCento = { modo: 'percentual', valor: 6, periodicidade: 'mensal' };
-
-bloco('1. O contrato mensal sem carência');
-
-const simples = montarContrato({ motorista, negociacao: seisPorCento, base, config });
-checar('versão do contrato viaja dentro dele', VERSAO_CONTRATO, simples.versao);
-checar('valor por período é a mensalidade', 180, simples.taxa.valorPorPeriodo);
-checar('valor mensal reconhecido é o mesmo', 180, simples.taxa.valorMensalReconhecido);
-checar('vigência de 12 meses', 12, simples.vigenciaMeses);
-checar('a base viaja junto', 10, simples.taxa.baseCriancas);
-checar('e a mensalidade média também', 300, simples.taxa.baseMensalidade);
-checar('o dia de vencimento é congelado no documento', 10, simples.taxa.diaVencimento);
-checar('o associado é identificado', 'Nino da Silva', simples.associado.nome);
-checar('a contratada também', true, !!simples.contratada.cnpj);
-
-bloco('2. CARÊNCIA NÃO ZERA A MENSALIDADE — o bug que já foi assinado duas vezes');
-
-// A roleta de entrada concede de 1 a 4 meses. Este é o caminho COMUM.
-for (const carencia of [1, 2, 3, 4]) {
-  const c = montarContrato({
-    motorista, base, config,
-    negociacao: { ...seisPorCento, isencaoMeses: carencia },
+const montar = (extra = {}) =>
+  montarContrato({
+    motorista: MOTORISTA,
+    plano: planoPorId('ate25'),
+    diaVencimento: 10,
+    agora: HOJE,
+    ...extra,
   });
-  checar(
-    `mensal com ${carencia} ${carencia === 1 ? 'mês' : 'meses'} de carência cobra 180`,
-    180,
-    c.taxa.valorPorPeriodo
-  );
-  checar(
-    `  e o mensal reconhecido também é 180 (não ${carencia > 0 ? '0' : '—'})`,
-    180,
-    c.taxa.valorMensalReconhecido
-  );
-  checar('  a carência é dita no documento, não descontada do preço', carencia, c.taxa.carenciaMeses);
-}
 
-bloco('3. No período em BLOCO, a carência desconta — e aí faz sentido');
+// ───────────────────────── o contrato de tabela ────────────────────────────
 
-// Semestral: o período são 6 meses pagos de uma vez. Dois de carência = paga 4.
-const semestral = montarContrato({
-  motorista, base, config,
-  negociacao: { modo: 'percentual', valor: 6, periodicidade: 'semestral', isencaoMeses: 2 },
+bloco('1. O contrato sai de uma FAIXA, não de uma negociação');
+
+const base = montar();
+
+checar('a faixa contratada viaja no documento', 'ate25', base.plano.id);
+checar('e o rótulo dela também', 'De 11 a 25 crianças', base.plano.rotulo);
+// O TETO É A ÚNICA COISA QUE O PLANO CAPA. Não existe Básico/Pro, e é essa a
+// cláusula que o associado precisa poder cobrar de volta.
+checar('o teto de crianças é cláusula', 25, base.plano.teto);
+checar('o preço de tabela fica registrado', 149, base.plano.precoTabela);
+checar('sem desconto, paga a tabela', 149, base.valores.valorMensal);
+checar('a cobrança é mensal', 'mensal', base.valores.periodicidade);
+
+bloco('2. Doze meses para todo mundo — não há periodicidade a escolher');
+
+checar('a vigência é de doze meses', 12, base.vigenciaMeses);
+checar('e a data de fim confere', '2027-09-15', base.vigenciaFim.slice(0, 10));
+checar('começa hoje', '2026-09-15', base.vigenciaInicio.slice(0, 10));
+
+// ───────────────────────────── os descontos ────────────────────────────────
+
+bloco('3. Desconto entra com a data em que acaba');
+
+const anteci = { origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-09' };
+const comAntecipacao = montar({ descontos: [anteci] });
+
+checar('metade da conta', 74.5, comAntecipacao.valores.valorMensal);
+checar('e a fração fica registrada', 0.5, comAntecipacao.valores.descontoAntecipacao);
+// ESTA É A LINHA QUE IMPEDE O DESCONTO DE VIRAR PREÇO. Sem a data dentro do
+// contrato, o desconto de conversão passa a ser a tabela daquele associado —
+// e a receita prevista deixa de bater com a real sem ninguém apontar quando.
+checar('a validade viaja junto', '2027-09', comAntecipacao.valores.descontos[0].ate);
+checar('sem desconto, a lista é vazia e não nula', [], base.valores.descontos);
+
+bloco('4. Fundador e antecipação não somam — vale o maior');
+
+// Somando, os treze primeiros chegariam a 100% e a partir dali indicação e
+// roleta valeriam zero justamente para quem mais indica.
+const fundadorAntecipado = montar({ fundador: FUNDADOR.METADE, descontos: [anteci] });
+checar('metade + metade continua metade', 0.5, fundadorAntecipado.valores.descontoTotal);
+checar('e o valor é o mesmo de quem só antecipou', 74.5, fundadorAntecipado.valores.valorMensal);
+
+// O vitalício não é rebaixado pela regra do maior.
+checar(
+  'o vitalício continua não pagando',
+  0,
+  montar({ fundador: FUNDADOR.VITALICIO, descontos: [anteci] }).valores.valorMensal
+);
+
+bloco('5. A conta nunca vira crédito');
+
+const tudo = montar({
+  fundador: FUNDADOR.METADE,
+  indicacoesAtivas: 5,
+  descontos: [anteci, { origem: ORIGEM.ROLETA, fracao: 0.3, ate: '2027-09' }],
 });
-checar('semestral com 2 de carência paga 4 meses', 720, semestral.taxa.valorPorPeriodo);
-// O reconhecido dilui o total pelos 6 meses do período.
-checar('e o reconhecido dilui pelos 6 meses', 120, semestral.taxa.valorMensalReconhecido);
-checar('vigência do semestral são 6 meses', 6, semestral.vigenciaMeses);
+checar('quatro fontes de desconto param em 100%', 1, tudo.valores.descontoTotal);
+checar('e o mensal para em zero, nunca negativo', 0, tudo.valores.valorMensal);
 
-// Carência maior que o período inteiro não vira número negativo.
-const semestralGratis = montarContrato({
-  motorista, base, config,
-  negociacao: { modo: 'percentual', valor: 6, periodicidade: 'semestral', isencaoMeses: 9 },
-});
-checar('carência maior que o período não fica negativa', 0, semestralGratis.taxa.valorPorPeriodo);
+bloco('6. Isenção não é desconto de 100%');
 
-bloco('4. Os três modos de cobrança');
+// As duas chegam a zero e contam histórias diferentes: uma produz fatura de
+// R$ 0, a outra diz que aquele mês não tem fatura. Confundir as duas apaga o
+// registro do que foi concedido.
+const comIsencao = montar({ isencaoAte: '2026-11' });
+checar('os meses sem taxa ficam no contrato', '2026-11', comIsencao.valores.isencaoAte);
+checar('e o valor mensal continua sendo o de tabela', 149, comIsencao.valores.valorMensal);
+checar('sem prêmio, não há isenção', null, base.valores.isencaoAte);
 
-const fixo = montarContrato({
-  motorista, base, config,
-  negociacao: { modo: 'fixo', valor: 150, periodicidade: 'mensal' },
-});
-checar('fixo ignora a base', 150, fixo.taxa.valorPorPeriodo);
-checar('e o rótulo diz que é fixo', true, fixo.taxa.rotuloRegra.includes('fixos'));
+// ──────────────────────────── o vencimento ─────────────────────────────────
 
-const gratuito = montarContrato({
-  motorista, base, config,
-  negociacao: { modo: 'gratuito', valor: 0, periodicidade: 'mensal' },
-});
-checar('gratuito cobra zero', 0, gratuito.taxa.valorPorPeriodo);
-checar('e o rótulo diz gratuidade', 'gratuidade integral', gratuito.taxa.rotuloRegra);
+bloco('7. O dia de vencimento respeita o teto de 28');
 
-const comDesconto = montarContrato({
-  motorista, base, config,
-  negociacao: { ...seisPorCento, descontoAntecipacao: 10 },
-});
-checar('desconto de antecipação de 10% sobre 180', 162, comDesconto.taxa.valorPorPeriodo);
+// Dia 30 não existe em todo mês, e "o último dia" muda de número quatro vezes
+// por ano. Uma fatura de fevereiro nasceria sem data.
+checar('dia 31 vira 28', 28, montar({ diaVencimento: 31 }).valores.diaVencimento);
+checar('dia 0 vira 1', 1, montar({ diaVencimento: 0 }).valores.diaVencimento);
+checar('dia válido passa', 5, montar({ diaVencimento: 5 }).valores.diaVencimento);
+checar('lixo cai no padrão da casa', 10, montar({ diaVencimento: 'qualquer' }).valores.diaVencimento);
 
-bloco('5. Base vazia não inventa número');
+// O CONTRATO DIZ O DIA, e não aponta pra régua. Um documento que dissesse
+// "vence no dia que a plataforma escolher" não prometeria nada.
+checar('o dia está DENTRO do documento', true, typeof base.valores.diaVencimento === 'number');
 
-const semBase = montarContrato({
-  motorista, config, negociacao: seisPorCento,
-  base: { criancas: 0, mensalidadeMedia: 0 },
-});
-checar('sem criança, sem cobrança', 0, semBase.taxa.valorPorPeriodo);
-checar('e sem NaN', true, Number.isFinite(semBase.taxa.valorMensalReconhecido));
+// ────────────────────────── vigência e renovação ───────────────────────────
 
-const semNegociacao = montarContrato({ motorista, base, config, negociacao: null });
-checar('sem negociação não estoura', true, Number.isFinite(semNegociacao.taxa.valorPorPeriodo));
+bloco('8. A janela de renovação');
 
-bloco('6. O dia de vencimento respeita o teto de 28');
+const emitido = { conteudo: base };
+checar('faltam 365 dias no dia da emissão', 365, diasParaVencer(emitido, HOJE));
+checar('não precisa renovar ainda', false, precisaRenovar(emitido, JANELA_DE_RENOVACAO, HOJE));
+checar(
+  'a 30 dias do fim, precisa',
+  true,
+  precisaRenovar(emitido, JANELA_DE_RENOVACAO, dia('2027-08-20'))
+);
+// Vencer NÃO suspende: cortar por vencimento de papel bloquearia quem está
+// pagando em dia. Suspensão continua sendo coisa de inadimplência.
+checar('vencido dá dias negativos, e só', -16, diasParaVencer(emitido, dia('2027-10-01')));
+checar('contrato sem conteúdo não quebra', null, diasParaVencer(null, HOJE));
 
-const dia31 = montarContrato({
-  motorista, base, config,
-  negociacao: { ...seisPorCento, diaVencimento: 31 },
-});
-checar('dia 31 vira 28 dentro do contrato', 28, dia31.taxa.diaVencimento);
-// A negociação ganha da régua da casa, e o contrato congela o resultado.
-const dia5 = montarContrato({
-  motorista, base, config,
-  negociacao: { ...seisPorCento, diaVencimento: 5 },
-});
-checar('a negociação vence a régua da casa', 5, dia5.taxa.diaVencimento);
+// ────────────────────────── o hash e a estabilidade ────────────────────────
 
-bloco('7. A vigência e a janela de renovação');
+bloco('9. O documento é estável — é ele que vira hash');
 
-const agora = new Date();
-const daquiA30 = new Date(agora.getTime() + 30 * 86400000).toISOString();
-const daquiA200 = new Date(agora.getTime() + 200 * 86400000).toISOString();
+// Duas montagens com a MESMA entrada precisam dar o mesmo objeto, byte a byte.
+// Se algo aqui dependesse do relógio, o hash mudaria entre a tela que a pessoa
+// leu e o registro do que ela aceitou.
+checar('mesma entrada, mesmo documento', JSON.stringify(base), JSON.stringify(montar()));
 
-checar('30 dias para vencer', 30, diasParaVencer({ conteudo: { vigenciaFim: daquiA30 } }));
-checar('está na janela de 60 dias', true, precisaRenovar({ conteudo: { vigenciaFim: daquiA30 } }));
-checar('200 dias ainda não pede renovação', false, precisaRenovar({ conteudo: { vigenciaFim: daquiA200 } }));
-checar('sem vigência não é erro, é null', null, diasParaVencer({ conteudo: {} }));
-checar('e sem contrato também', null, diasParaVencer(null));
-checar('contrato sem data não pede renovação', false, precisaRenovar(null));
+checar('a versão é a 3 — o preço de tabela', 3, VERSAO_CONTRATO);
+checar('e ela viaja no documento', 3, base.versao);
 
-bloco('8. O documento é estável — é ele que vira hash');
+// A contratada e o associado são identificados: contrato sem parte é papel.
+checar('o associado é identificado', 'tio1', base.associado.uid);
+checar('a contratada tem CNPJ', true, Boolean(base.contratada.cnpj));
 
-// Se a forma mudar sem querer, o hash de um contrato reemitido não bate com o
-// do aceito, e a prova de "o que foi assinado" se perde.
-const chaves = Object.keys(simples).sort();
-checar('as chaves de topo são as esperadas', [
-  'associado', 'contratada', 'emitidoEm', 'taxa',
-  'versao', 'vigenciaFim', 'vigenciaInicio', 'vigenciaMeses',
-], chaves);
+bloco('10. Acima da tabela é conversa, não zero');
+
+// Aplicar desconto sobre um preço inexistente produziria R$ 0 —
+// indistinguível de "não paga" — e é exatamente o caso em que alguém precisa
+// conversar.
+const acima = montar({ plano: null });
+checar('sem faixa, não há valor mensal', null, acima.valores.valorMensal);
+checar('nem preço de tabela', null, acima.plano.precoTabela);
+checar('nem teto', null, acima.plano.teto);
+
+checar('a régua tem três faixas', 3, PLANOS.length);
+
+// ──────────────────────────────── resumo ───────────────────────────────────
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

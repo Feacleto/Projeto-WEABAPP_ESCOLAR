@@ -1,38 +1,42 @@
 /**
  * O CONTEÚDO DO CONTRATO DE ASSOCIAÇÃO — aritmética e texto, sem Firebase.
  *
- * POR QUE ISTO SAIU DO SERVICE
+ * POR QUE ISTO É PURO
  * Este objeto é o que o associado assina: ele vira o hash SHA-256 que prova o
- * que foi aceito. E ele já saiu ERRADO duas vezes, pela mesma razão de forma:
- * a função é pura, morava atrás de um `import { db }`, e este projeto testa
- * com scripts Node puros — o script não conseguia nem importar o módulo.
+ * que foi aceito. E ele já saiu ERRADO duas vezes, pela mesma razão de forma —
+ * a função era pura, morava atrás de um `import { db }`, e este projeto testa
+ * com scripts Node puros: o script não conseguia nem importar o módulo.
  *
- *   1. `montarContrato` lia `base.mensalidadeMedia`, nome que ninguém
- *      produzia (registrado em dominio/associacao/taxa.js, no `resumirBase`).
- *   2. Com periodicidade MENSAL e qualquer carência, `mesesCobrados` era
- *      `max(0, 1 - carencia)` = ZERO. O contrato saía com R$ 0,00 por mês,
- *      pelos doze meses de vigência — não só durante a carência — e era
- *      hasheado e aceito assim. A roleta de entrada concede de 1 a 4 meses,
- *      então o caminho COMUM caía exatamente aí.
+ *   1. `montarContrato` lia `base.mensalidadeMedia`, nome que ninguém produzia.
+ *   2. Com periodicidade mensal e qualquer carência, os meses cobrados davam
+ *      ZERO — e o contrato era hasheado e aceito por R$ 0,00 durante doze
+ *      meses.
  *
- * Duas vezes o mesmo furo. Agora tem teste: `npm run testar:contrato`.
+ * As duas vinham do mesmo lugar: o contrato era montado a partir de uma
+ * NEGOCIAÇÃO com percentual, base de crianças, periodicidade e carência. Eram
+ * cinco números negociáveis se combinando, e cada combinação era um caminho
+ * que ninguém tinha percorrido.
  *
- * O QUE ESTE ARQUIVO IMPORTA, E POR QUÊ
- * Só constantes puras: os dados da contratada (`config/developer`) e o teto do
- * dia de vencimento (`dominio/associacao/taxa`). Nada que toque Firebase — é o que o mantém
- * testável. Se precisar de dado do banco, receba por parâmetro.
+ * ── AGORA ELE SAI DE UM PLANO, E É POR ISSO QUE ENCOLHEU (06/09/2026)
+ * O modelo negociado morreu. O preço é de tabela, o contrato é de doze meses
+ * para todo mundo, e a cobrança é mensal. Não há periodicidade a escolher, não
+ * há percentual sobre base, não há carência a descontar do período — sobrou
+ * uma faixa, os descontos que a pessoa tem, e a data.
+ *
+ * Isso não é só menos código: é menos superfície de erro. Os dois bugs acima
+ * eram aritmética de combinação, e a combinação deixou de existir.
+ *
+ * ── O QUE ELE IMPORTA
+ * Só constantes e regras puras: os dados da contratada e a régua de preço.
+ * Nada que toque Firebase. Se precisar de dado do banco, receba por parâmetro.
  */
 
 // A EXTENSÃO `.js` É EXPLÍCITA AQUI, E NÃO É DESCUIDO.
 //
-// O resto do app importa sem extensão porque o Vite resolve. O Node não —
-// e o Node é quem roda `scripts/testar-contrato.mjs`. Sem a extensão, o
-// teste morre em ERR_MODULE_NOT_FOUND antes da primeira asserção, e este
-// arquivo volta a ser exatamente o que ele deixou de ser: intestável.
-//
-// Vite aceita a extensão explícita sem reclamar. É o único formato que
-// funciona nos dois, então é o formato que vale para tudo que precisa ser
-// testado com Node puro.
+// O resto do app importa sem extensão porque o Vite resolve. O Node não — e o
+// Node é quem roda `scripts/testar-contrato.mjs`. Sem a extensão, o teste
+// morre em ERR_MODULE_NOT_FOUND antes da primeira asserção, e este arquivo
+// volta a ser exatamente o que ele deixou de ser: intestável.
 import {
   DEV_NAME,
   DEV_CNPJ,
@@ -40,34 +44,29 @@ import {
   DEV_EMAIL,
   DEV_PHONE_DISPLAY,
 } from '../../config/developer.js';
-// O teto de 28 é a mesma regra da fatura — duas definições de "dia possível"
-// divergindo entre o contrato e a cobrança é como um promete o que a outra
-// não cumpre.
-import { limitarDiaVencimento } from './taxa.js';
+import {
+  MESES_DE_CONTRATO,
+  centavos,
+  limitarDiaVencimento,
+  precoDoMes,
+} from './planos.js';
 
 /**
  * Versão do texto das cláusulas. Subir aqui exige novo aceite.
  *
- * 2 — o contrato passou a dizer QUANDO a taxa vence.
+ * 1 — mandava suspender por atraso sem definir atraso.
+ * 2 — passou a dizer QUANDO a taxa vence.
+ * 3 — o preço virou de TABELA. Saíram percentual sobre mensalidade, base de
+ *     crianças, periodicidade e carência; entraram a faixa contratada, o teto
+ *     de crianças que ela dá e os descontos com prazo de validade.
  *
- * A versão 1 tinha a cláusula de suspensão por inadimplência sem nenhuma
- * cláusula definindo atraso: "havendo atraso" sobre um documento que não
- * marcava data. O associado assinava, com hash, um papel que não dizia o
- * prazo — e depois recebia um aviso de fatura em aberto. Subir a versão custa
- * uma rodada de reassinatura, e custava zero enquanto nenhum contrato tinha
- * sido emitido.
+ * Subir custa uma rodada de reassinatura, e custou zero aqui: nenhum contrato
+ * tinha sido emitido.
  */
-export const VERSAO_CONTRATO = 2;
+export const VERSAO_CONTRATO = 3;
 
-/** Quantos meses de vigência cada periodicidade gera. */
-const VIGENCIA_MESES = { mensal: 12, semestral: 6, anual: 12, anual12: 12 };
-
-const ROTULO_PER = {
-  mensal: 'mensal',
-  semestral: 'semestral',
-  anual: 'anual à vista',
-  anual12: 'anual em 12×',
-};
+/** Janela padrão para avisar que a vigência está acabando. */
+export const JANELA_DE_RENOVACAO = 60;
 
 function somaMeses(data, n) {
   const d = new Date(data);
@@ -75,64 +74,61 @@ function somaMeses(data, n) {
   return d;
 }
 
+/** 'AAAA-MM' de uma data. É o formato que fatura e desconto já usam. */
+function mesDe(data) {
+  const d = new Date(data);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 /**
- * Monta o conteúdo do contrato a partir da negociação.
+ * Monta o conteúdo do contrato.
  *
  * Devolve um objeto puro — nada de JSX. É o mesmo dado que a tela renderiza e
  * que entra no hash: se a tela montasse o texto por conta própria, o hash
  * provaria um conteúdo e a pessoa teria lido outro.
+ *
+ * ── O CONTRATO CONGELA O QUE FOI COMBINADO, E ISSO É O TRABALHO DELE
+ * Preço, teto de crianças, dia de vencimento e a validade de cada desconto
+ * viajam DENTRO do objeto — nunca como ponteiro para a régua da casa. Um
+ * contrato que dissesse "custa o que a tabela disser" e "vence no dia que a
+ * plataforma escolher" não prometeria nada, e é justamente sobre isso que uma
+ * conversa de cobrança acontece seis meses depois.
+ *
+ * ── DESCONTO SEM PRAZO SERIA PREÇO
+ * Cada desconto entra com o mês em que acaba. Sem isso, o desconto de
+ * conversão vira a tabela nova daquele associado — e a receita prevista deixa
+ * de bater com a real para sempre, sem ninguém conseguir apontar quando mudou.
  */
-export function montarContrato({ motorista, negociacao, base, config }) {
-  const agora = new Date();
-  const per = negociacao?.periodicidade || 'mensal';
-  const meses = VIGENCIA_MESES[per] || 12;
-  const modo = negociacao?.modo || 'percentual';
-  const valor = Number(negociacao?.valor) || 0;
-  const carencia = Math.max(0, Number(negociacao?.isencaoMeses) || 0);
-  const desconto = Math.max(0, Number(negociacao?.descontoAntecipacao) || 0);
+export function montarContrato({
+  motorista,
+  plano,
+  fundador = null,
+  indicacoesAtivas = 0,
+  descontos = null,
+  diaVencimento,
+  isencaoAte = null,
+  agora = new Date(),
+}) {
+  const inicio = new Date(agora);
+  const fim = somaMeses(inicio, MESES_DE_CONTRATO);
 
-  const criancas = Number(base?.criancas) || 0;
-  const mensalidadeMedia = Number(base?.mensalidadeMedia) || 0;
-  const baseMensal = criancas * mensalidadeMedia;
-
-  const cheia = modo === 'gratuito' ? 0 : modo === 'fixo' ? valor : baseMensal * (valor / 100);
-
-  // Quantos meses o PERÍODO DE COBRANÇA cobre. Não confundir com a vigência:
-  // o mensal vige 12 meses e cobra 1 de cada vez; semestral e anual cobram o
-  // bloco inteiro de uma vez.
-  const mesesDoPeriodo = per === 'mensal' ? 1 : meses;
-
-  // A CARÊNCIA NÃO REDUZ A MENSALIDADE — ELA ADIA O INÍCIO DA COBRANÇA.
-  //
-  // Descontá-la do período só faz sentido onde o período é um BLOCO pago de
-  // uma vez: dois meses de carência num semestral significam pagar quatro.
-  //
-  // No mensal o período é UM mês, e `1 - carencia` dava ZERO para qualquer
-  // carência. O contrato saía com `valorPorPeriodo: 0` e
-  // `valorMensalReconhecido: 0` — R$ 0,00 por mês, pelos doze meses de
-  // vigência, não só durante a carência — e era hasheado e assinado assim.
-  // A roleta de entrada concede de 1 a 4 meses (functions/lib/entryBonus.js),
-  // então o caminho comum caía exatamente aqui.
-  //
-  // É a SEGUNDA vez que este contrato sai zerado por um campo mal lido; a
-  // primeira está registrada em taxaService.js:269-280 (`mensalidadeMedia`
-  // que ninguém produzia). As duas vezes passaram porque esta função é pura
-  // e mora atrás de um import de Firestore, que a torna intestável.
-  //
-  // A carência continua dita em dois lugares que estão corretos:
-  // `carenciaMeses` logo abaixo, e `isencaoAte` na fatura — que é quem de
-  // fato zera a cobrança dos primeiros meses (taxaService.isentoEm).
-  const mesesCobrados =
-    per === 'mensal' ? 1 : Math.max(0, mesesDoPeriodo - carencia);
-
-  const totalPeriodo = cheia * mesesCobrados * (1 - desconto / 100);
+  // O preço é calculado para o PRIMEIRO mês da vigência. Ele não muda por
+  // conta da régua depois — o que muda é a validade dos descontos, que está
+  // escrita no próprio contrato.
+  const conta = precoDoMes({
+    plano,
+    fundador,
+    indicacoesAtivas,
+    descontos,
+    mes: mesDe(inicio),
+  });
 
   return {
     versao: VERSAO_CONTRATO,
-    emitidoEm: agora.toISOString(),
-    vigenciaInicio: agora.toISOString(),
-    vigenciaFim: somaMeses(agora, meses).toISOString(),
-    vigenciaMeses: meses,
+    emitidoEm: inicio.toISOString(),
+    vigenciaInicio: inicio.toISOString(),
+    vigenciaFim: fim.toISOString(),
+    vigenciaMeses: MESES_DE_CONTRATO,
 
     contratada: {
       razao: DEV_NAME,
@@ -149,31 +145,32 @@ export function montarContrato({ motorista, negociacao, base, config }) {
       telefone: motorista?.phone || '',
     },
 
-    taxa: {
-      modo,
-      valor,
-      rotuloRegra:
-        modo === 'gratuito'
-          ? 'gratuidade integral'
-          : modo === 'fixo'
-            ? `R$ ${valor.toFixed(2)} fixos por mês`
-            : `${valor}% sobre a mensalidade das crianças ativas`,
-      periodicidade: per,
-      rotuloPeriodicidade: ROTULO_PER[per] || per,
-      // O DIA VIAJA DENTRO DO CONTRATO, não como ponteiro pra régua.
-      //
-      // Mesma razão de todo o resto deste objeto: o que foi aceito tem que
-      // continuar legível depois que a casa mudar de padrão. Um contrato que
-      // dissesse "vence no dia definido pela plataforma" não prometeria nada.
-      diaVencimento: limitarDiaVencimento(
-        negociacao?.diaVencimento ?? config?.diaVencimento
-      ),
-      carenciaMeses: carencia,
-      descontoAntecipacao: desconto,
-      baseCriancas: criancas,
-      baseMensalidade: mensalidadeMedia,
-      valorPorPeriodo: Number(totalPeriodo.toFixed(2)),
-      valorMensalReconhecido: Number((totalPeriodo / mesesDoPeriodo).toFixed(2)),
+    plano: {
+      id: plano?.id || null,
+      rotulo: plano?.rotulo || '',
+      // O TETO DE CRIANÇAS É A ÚNICA COISA QUE O PLANO CAPA. Não existe
+      // Básico/Pro: mapa ao vivo, cobrança, agenda e relatório valem igual nas
+      // três faixas. Está escrito aqui porque é a cláusula que o associado
+      // precisa poder cobrar de volta.
+      teto: plano?.ate ?? null,
+      precoTabela: plano ? centavos(plano.preco) : null,
+    },
+
+    valores: {
+      // A cobrança é mensal, sempre. O que dura doze meses é o ACORDO.
+      periodicidade: 'mensal',
+      valorMensal: conta.liquido,
+      descontoTotal: conta.desconto,
+      descontoFundador: conta.descontoFundador,
+      descontoAntecipacao: conta.descontoAntecipacao,
+      descontoIndicacao: conta.descontoIndicacao,
+      descontoRoleta: conta.descontoRoleta,
+      // Cada desconto com a data em que ele acaba — ver o cabeçalho.
+      descontos: Array.isArray(descontos) ? descontos : [],
+      // Meses sem fatura (prêmio de roleta). Isenção não é desconto de 100%:
+      // uma produz fatura de R$ 0, a outra diz que não há fatura.
+      isencaoAte: isencaoAte || null,
+      diaVencimento: limitarDiaVencimento(diaVencimento),
     },
   };
 }
@@ -183,16 +180,16 @@ export function montarContrato({ motorista, negociacao, base, config }) {
  *
  * Vencer NÃO suspende ninguém, e isso é decisão: cortar por vencimento de
  * papel suspenderia quem está pagando em dia. Suspensão continua sendo coisa
- * de inadimplência. O que o vencimento faz é entrar na fila do dono.
+ * de inadimplência. O que o vencimento faz é entrar na fila de renovação.
  */
-export function diasParaVencer(contrato) {
+export function diasParaVencer(contrato, agora = new Date()) {
   const fim = contrato?.conteudo?.vigenciaFim;
   if (!fim) return null;
-  return Math.ceil((new Date(fim) - new Date()) / 86400000);
+  return Math.ceil((new Date(fim) - new Date(agora)) / 86400000);
 }
 
 /** Está na janela de renovação? */
-export function precisaRenovar(contrato, janelaDias = 60) {
-  const d = diasParaVencer(contrato);
+export function precisaRenovar(contrato, janelaDias = JANELA_DE_RENOVACAO, agora = new Date()) {
+  const d = diasParaVencer(contrato, agora);
   return d !== null && d <= janelaDias;
 }

@@ -19,15 +19,15 @@ import { formatBRL } from '../../compartilhado/formatters';
 export default function ContratoDoc({ dados, aceite }) {
   if (!dados) return null;
 
-  const { contratada: c, associado: a, taxa: t } = dados;
+  const { contratada: c, associado: a, plano: p, valores: v } = dados;
   const data = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
+  const pct = (f) => `${Math.round((Number(f) || 0) * 100)}%`;
 
-  const periodoLabel =
-    t.periodicidade === 'mensal'
-      ? 'mês'
-      : t.periodicidade === 'semestral'
-        ? 'semestre'
-        : 'ano';
+  // O mês em que cada desconto acaba, por origem. Um desconto sem data no
+  // documento é um desconto para sempre — e "para sempre" numa cláusula de
+  // preço é a diferença entre um acordo de doze meses e uma tabela nova.
+  const ate = (origem) =>
+    (v.descontos || []).find((d) => d.origem === origem)?.ate || null;
 
   return (
     <article className="text-[13px] leading-relaxed text-text print:text-black">
@@ -76,60 +76,99 @@ export default function ContratoDoc({ dados, aceite }) {
         — a mensalidade das crianças é recebida diretamente pelo ASSOCIADO.
       </Clausula>
 
-      <Clausula n="3" titulo="Taxa de associação">
+      <Clausula n="3" titulo="Faixa contratada e taxa">
         <table className="w-full text-[12.5px]">
           <tbody>
-            <Linha rotulo="Regra" valor={t.rotuloRegra} forte />
-            <Linha
-              rotulo="Base na assinatura"
-              valor={`${t.baseCriancas} criança(s) × ${formatBRL(t.baseMensalidade)}`}
-            />
-            <Linha rotulo="Periodicidade" valor={t.rotuloPeriodicidade} />
-            {/* Contrato da versão 1 não tem o campo. Some a linha em vez de
-              * escrever "vence todo dia undefined" num documento assinado. */}
-            {t.diaVencimento > 0 && (
-              <Linha
-                rotulo="Vencimento"
-                valor={`todo dia ${t.diaVencimento}`}
-              />
+            <Linha rotulo="Faixa" valor={p.rotulo || '—'} forte />
+            {/* O TETO É A ÚNICA COISA QUE A FAIXA CAPA, e está escrito porque é
+              * a cláusula que o ASSOCIADO precisa poder cobrar de volta. Não
+              * existe Básico/Pro: mapa ao vivo, cobrança, agenda e relatório
+              * valem igual nas três faixas. */}
+            {p.teto != null && (
+              <Linha rotulo="Até" valor={`${p.teto} crianças ativas`} />
             )}
-            {t.descontoAntecipacao > 0 && (
+            {p.precoTabela != null && (
+              <Linha rotulo="Preço de tabela" valor={`${formatBRL(p.precoTabela)} por mês`} />
+            )}
+            <Linha rotulo="Cobrança" valor="mensal" />
+
+            {v.descontoFundador > 0 && (
               <Linha
-                rotulo="Desconto por antecipação"
-                valor={`−${t.descontoAntecipacao}%`}
+                rotulo="Condição de fundador"
+                valor={`−${pct(v.descontoFundador)}, sem prazo`}
                 cor="text-warning"
               />
             )}
-            {t.carenciaMeses > 0 && (
+            {v.descontoAntecipacao > 0 && (
               <Linha
-                rotulo="Carência concedida"
-                valor={`${t.carenciaMeses} mês(es) sem cobrança`}
+                rotulo="Contratação antecipada"
+                valor={`−${pct(v.descontoAntecipacao)}${ate('antecipacao') ? ` até ${ate('antecipacao')}` : ''}`}
                 cor="text-warning"
               />
             )}
+            {v.descontoIndicacao > 0 && (
+              <Linha
+                rotulo="Indicações ativas"
+                valor={`−${pct(v.descontoIndicacao)} enquanto ativas`}
+                cor="text-warning"
+              />
+            )}
+            {v.descontoRoleta > 0 && (
+              <Linha
+                rotulo="Prêmio da roleta"
+                valor={`−${pct(v.descontoRoleta)}${ate('roleta') ? ` até ${ate('roleta')}` : ''}`}
+                cor="text-warning"
+              />
+            )}
+            {v.isencaoAte && (
+              <Linha
+                rotulo="Meses sem taxa"
+                valor={`nenhuma fatura até ${v.isencaoAte}`}
+                cor="text-warning"
+              />
+            )}
+
+            {v.diaVencimento > 0 && (
+              <Linha rotulo="Vencimento" valor={`todo dia ${v.diaVencimento}`} />
+            )}
+
             <tr className="border-t border-borderStrong">
-              <td className="pt-2 font-bold">Valor por {periodoLabel}</td>
+              <td className="pt-2 font-bold">Valor por mês</td>
               <td className="pt-2 text-right text-[16px] font-extrabold tabular-nums">
-                {formatBRL(t.valorPorPeriodo)}
+                {v.valorMensal == null ? 'a combinar' : formatBRL(v.valorMensal)}
               </td>
             </tr>
           </tbody>
         </table>
-        {t.modo === 'gratuito' && (
+
+        {v.valorMensal === 0 && (
           <p className="mt-2 rounded-lg bg-warningSoft p-2 text-[12px] text-warningText">
-            <strong>Gratuidade integral.</strong> Nenhuma taxa é devida enquanto
-            vigorar esta condição.
+            <strong>Nenhuma taxa é devida</strong> enquanto vigorarem as
+            condições acima. Terminado o prazo de cada uma, a taxa volta ao que
+            sobrar da tabela.
           </p>
         )}
+
+        {/* A FAIXA MUDA COM O TAMANHO DA OPERAÇÃO, e dizer isso aqui evita a
+          * conversa mais desagradável que existe: a cobrança que subiu sem
+          * aviso. Quem escolhe continuar na faixa menor aponta quais crianças
+          * saem — o app nunca escolhe por ele. */}
+        <p className="mt-2 text-[11.5px] text-textMuted">
+          Passando do teto, o ASSOCIADO escolhe entre subir de faixa ou indicar
+          quais crianças saem. A plataforma não desativa criança por conta
+          própria.
+        </p>
       </Clausula>
 
       <Clausula n="4" titulo="Vigência">
         De <strong>{data(dados.vigenciaInicio)}</strong> a{' '}
         <strong>{data(dados.vigenciaFim)}</strong> ({dados.vigenciaMeses} meses).
-        Ao fim do prazo, a CONTRATADA apresenta nova proposta; não havendo
-        renovação,{' '}
-        <strong>o acesso permanece ativo em regime mensal</strong> até
-        manifestação de qualquer das partes.
+        {/* RENOVA DE 12 EM 12, e é isso que dá prazo aos descontos da cláusula
+          * 3 — eles duram exatamente um período. */}
+        Ao fim do prazo o contrato se <strong>renova por mais 12 meses</strong>{' '}
+        nas condições de tabela então vigentes, salvo manifestação de qualquer
+        das partes.{' '}
+        <strong>Os descontos com prazo não se renovam automaticamente.</strong>
       </Clausula>
 
       <Clausula n="5" titulo="Suspensão por inadimplência">
@@ -137,10 +176,10 @@ export default function ContratoDoc({ dados, aceite }) {
           * A cláusula falava em "havendo atraso" sobre um contrato que não
           * marcava data nenhuma. Suspender alguém por descumprir um prazo que
           * o documento não diz é o tipo de cláusula que não se sustenta. */}
-        {t.diaVencimento > 0 && (
+        {v.diaVencimento > 0 && (
           <>
             Considera-se em atraso a taxa não paga até o{' '}
-            <strong>dia {t.diaVencimento}</strong> do mês de referência.{' '}
+            <strong>dia {v.diaVencimento}</strong> do mês de referência.{' '}
           </>
         )}
         Havendo atraso, a CONTRATADA comunica o ASSOCIADO pelo próprio

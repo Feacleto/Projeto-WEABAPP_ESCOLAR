@@ -241,25 +241,27 @@ Fechado até agora:
   espera, `waitlistDrivers`, `waitlistParents`, `joinDriverWaitlist`,
   `config/rodada.js`, a aba **Fila** do painel e as duas telas de landing que
   ninguém mais importava (`WaitlistSheet`, `PartnerPitch`)
+- **Fase 3 · preço fixo.** Fatura e contrato saem de `planos.js`. Apagados
+  `taxa.js`, `OrcamentoSheet`, `FunilTab`, `FunilKanban`, `funilService`,
+  `leadsFunil` e a aba **Funil**. `VERSAO_CONTRATO = 3`. Desconto com PRAZO
+  passou a existir, e com ele a regra de que fundador e antecipação não somam
 
 O que falta, na ordem:
 
-1. **Preço fixo** — fatura e contrato passam a sair de `planos.js`. Apagar
-   `taxa.js`, `OrcamentoSheet`, `FunilTab`, `funilService`, `leadsFunil`
-2. **Contratar dentro do app** — contrato de 12 meses, renovando de 12 em 12.
+1. **Contratar dentro do app** — contrato de 12 meses, renovando de 12 em 12.
    Preço discreto durante o teste; quem contrata ANTES do fim leva 50% nos 12
    meses. Exige um conceito que não existe: **desconto com prazo**
-3. **A tranca nas rules** — bloqueio por teste vencido e por atraso
-4. **A roleta na conversão** — quatro prêmios: +2 meses, 30% por 12 meses,
-   +1 mês, 10% por 12 meses
-5. **Painel do dono** — vira acompanhamento, não aprovação. E a conta
+2. **A tranca nas rules** — bloqueio por teste vencido e por atraso
+3. **A roleta na conversão** — quatro prêmios: +2 meses, 30% por 12 meses,
+   +1 mês, 10% por 12 meses. A régua já existe em `PREMIOS_DA_ROLETA`; falta o
+   sorteio no servidor mudar de prêmio e de momento
+4. **Painel do dono** — vira acompanhamento, não aprovação. E a conta
    `role: 'owner'`, que **ainda não existe**: ninguém consegue abrir `/admin`
 
-⚠️ **A soma dos descontos precisa de decisão.** Fundador metade (50%) mais
-antecipação (50%) fecha em 100% pelos 12 meses — e a partir daí roleta e
-indicação valem zero justamente para os treze primeiros, que são quem mais
-indica. A recomendação em cima da mesa é **fundador e antecipação não somarem,
-valendo o maior**.
+✅ **A soma dos descontos foi decidida:** fundador e antecipação **não somam,
+vale o maior** — `FUNDADOR_E_ANTECIPACAO_SOMAM = false` em `planos.js`, com
+teste. Somando, os treze primeiros chegariam a 100% e a partir dali roleta e
+indicação valeriam zero justamente para quem mais indica.
 
 ---
 

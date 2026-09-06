@@ -491,7 +491,15 @@ service cloud.firestore {
         isOwner()
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['suspenso', 'suspensoEm', 'notaInterna', 'limiteCriancas',
-                       'assinaturaAte'])
+                       'assinaturaAte',
+                       // A CLÁUSULA DE PREÇO, que em 06/09/2026 virou faixa de
+                       // tabela. `planoId` é o que a fatura cobra;
+                       // `condicaoFundador`, `indicacoesAtivas`, `descontos` e
+                       // `isencaoAte` são o que a desconta. Todos escritos por
+                       // quem COBRA, nunca pelo cobrado — é a mesma forma de
+                       // `limiteCriancas`, e pelo mesmo motivo.
+                       'planoId', 'condicaoFundador', 'indicacoesAtivas',
+                       'descontos', 'isencaoAte'])
       ) || (
         isSignedIn()
         // PRIVILÉGIO E GESTÃO: NINGUÉM ESCREVE DAQUI, NEM EM SI MESMO.
@@ -530,7 +538,20 @@ service cloud.firestore {
                //
                // Quem escreve é quem cobra: o ramo do dono, logo acima,
                // lista o campo junto de `suspenso`.
-               'assinaturaAte'
+               'assinaturaAte',
+               // A CLÁUSULA DE PREÇO INTEIRA (06/09/2026). Livre, o motorista
+               // se põe na faixa de R$ 69 com teto de 40, se marca fundador
+               // vitalício, se dá cinco indicações que não existem e se isenta
+               // até 2099. Cada um desses campos é `limiteCriancas` com outra
+               // roupa: cláusula que o devedor edita não é cláusula.
+               //
+               // `planoId` merece atenção especial porque ele anda em par com
+               // `limiteCriancas` — os dois são gravados no MESMO batch pelo
+               // dono. Deixar um passar e barrar o outro produziria a
+               // combinação que não deveria existir: preço de uma faixa com
+               // teto de outra.
+               'planoId', 'condicaoFundador', 'indicacoesAtivas',
+               'descontos', 'isencaoAte'
              ])
 
         // `trialInicio` — GRAVÁVEL UMA VEZ, NUNCA ALTERÁVEL.
@@ -1550,14 +1571,16 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // leadsFunil/{id} — a prospecção comercial.
+    // leadsFunil SAIU EM 06/09/2026, junto com o modelo negociado.
     //
-    // Fechada pro dono e só. A fila de quem está negociando é a lista de
-    // concorrentes de quem já é parceiro, e o valor proposto a cada um é
-    // informação que muda negociação.
-    match /leadsFunil/{id} {
-      allow read, write: if isOwner();
-    }
+    // Era a prospecção comercial em colunas, e o orçamento nascia dela: mover
+    // o cartão para "fechado" abria a folha que gravava a negociação e emitia
+    // o contrato. Sem negociação não há orçamento a montar — o preço é de
+    // tabela e o motorista entra sozinho.
+    //
+    // Sem match, a coleção cai no `match /{document=**}` do fim, que nega
+    // tudo. O que porventura tenha sobrado no banco fica alcançável só pelo
+    // console, que é o certo para um resto de dado comercial.
 
     // contratosAssociacao/{id} — o documento entre a plataforma e ele.
     //

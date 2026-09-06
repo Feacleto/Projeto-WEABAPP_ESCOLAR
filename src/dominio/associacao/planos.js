@@ -66,6 +66,113 @@ export const DESCONTO_POR_INDICACAO = 0.1;
 /** E o total das indicações para aqui — cinco zeram metade da conta. */
 export const TETO_DE_INDICACAO = 0.5;
 
+/**
+ * O CONTRATO É DE 12 MESES, E RENOVA DE 12 EM 12.
+ *
+ * Não há mensal, semestral nem anual à vista — isso era do modelo negociado,
+ * que morreu. A cobrança continua MENSAL; o que dura doze meses é o acordo.
+ * É esse período que dá prazo aos descontos abaixo.
+ */
+export const MESES_DE_CONTRATO = 12;
+
+/**
+ * QUEM CONTRATA ANTES DE O TESTE ACABAR LEVA METADE, PELOS 12 MESES.
+ *
+ * O incentivo existe por uma razão de caixa: sem ele, ninguém tem motivo para
+ * decidir antes do último dia — e o último dia é justamente quando a decisão
+ * concorre com a irritação de ser bloqueado. Antecipar troca "decidir sob
+ * pressão" por "decidir gostando".
+ */
+export const ANTECIPACAO = { fracao: 0.5, meses: MESES_DE_CONTRATO };
+
+/**
+ * A ROLETA DA CONVERSÃO — quatro divisões, e ela só aparece ao contratar.
+ *
+ * Ela era de ENTRADA e girava no primeiro acesso, para o motorista usar o app
+ * antes de existir cobrança. Esse papel passou a ser do teste de três meses, e
+ * duas coisas grátis empilhadas na entrada custavam meses de receita por
+ * associado sem comprar nada que o teste já não comprasse.
+ *
+ * Agora ela é prêmio de CONVERSÃO: gira quando ele fecha o contrato. Dois
+ * prêmios são meses sem taxa e dois são desconto pelos 12 meses do contrato —
+ * é por isso que o prazo do desconto é o mesmo do acordo.
+ */
+export const PREMIOS_DA_ROLETA = [
+  { id: 'meses2', rotulo: '2 meses sem taxa', meses: 2 },
+  { id: 'desconto30', rotulo: '30% por 12 meses', fracao: 0.3, meses: MESES_DE_CONTRATO },
+  { id: 'mes1', rotulo: '1 mês sem taxa', meses: 1 },
+  { id: 'desconto10', rotulo: '10% por 12 meses', fracao: 0.1, meses: MESES_DE_CONTRATO },
+];
+
+/**
+ * ⚠️ FUNDADOR E ANTECIPAÇÃO NÃO SOMAM — VALE O MAIOR. É decisão de negócio, e
+ * está aqui como uma constante para poder ser desfeita numa linha.
+ *
+ * Somando, um fundador de metade (50%) que contratasse antecipado (50%) já
+ * chegaria a 100% — e, a partir daí, roleta e indicação valeriam ZERO
+ * justamente para os treze primeiros associados, que são quem mais indica. O
+ * programa de indicação deixaria de recompensar exatamente quem ele precisa
+ * recompensar.
+ *
+ * O fundador já tem o melhor negócio da casa; a antecipação existe para quem
+ * não tem.
+ */
+export const FUNDADOR_E_ANTECIPACAO_SOMAM = false;
+
+/**
+ * O DIA EM QUE A TAXA VENCE — da CASA, não de cada parceiro.
+ *
+ * Veio de `taxa.js`, que era o modelo negociado e foi apagado. O teto de 28 é o
+ * que impede uma fatura de fevereiro nascer sem data: dia 30 não existe em
+ * todo mês, e "o último dia" muda de número quatro vezes por ano.
+ *
+ * Do outro lado do dinheiro, o vencimento da mensalidade é POR CRIANÇA
+ * (`billing.js`), e a diferença é de quem negocia: lá é o motorista com cada
+ * família; aqui é a plataforma com todo mundo, no mesmo dia.
+ */
+export const DIA_DE_VENCIMENTO = 10;
+
+export function limitarDiaVencimento(dia) {
+  const n = Math.trunc(Number(dia));
+  if (!Number.isFinite(n)) return DIA_DE_VENCIMENTO;
+  return Math.min(Math.max(1, n), 28);
+}
+
+/**
+ * A data concreta em que a fatura de `mes` vence.
+ *
+ * DIA VIRA DATA NO FECHAMENTO, e não na leitura — mesma escolha do
+ * `billing.js` do outro lado. Guardar só o dia obrigaria toda tela que mostra
+ * atraso a refazer esta conta, e bastaria uma delas errar a virada de mês.
+ *
+ * Meio-dia, e não meia-noite: `new Date(ano, mes, dia)` nasce no fuso local, e
+ * em 00:00 qualquer conversão de uma hora joga a data pro dia anterior.
+ */
+export function dataDeVencimento(mes, dia = DIA_DE_VENCIMENTO) {
+  const [ano, m] = String(mes).split('-').map(Number);
+  if (!ano || !m) return null;
+  return new Date(ano, m - 1, limitarDiaVencimento(dia), 12, 0, 0, 0);
+}
+
+/**
+ * Este mês está isento? `ate` é 'AAAA-MM', inclusive.
+ *
+ * É o caminho dos meses sem taxa da roleta. Isenção NÃO é desconto de 100%: o
+ * desconto entra na conta e produz uma fatura de R$ 0; a isenção diz que
+ * aquele mês não tem fatura a pagar. Os dois chegam a zero e contam histórias
+ * diferentes na hora de conferir o que foi concedido.
+ */
+export function isentoEm(isencaoAte, mes) {
+  if (!isencaoAte) return false;
+  return String(mes) <= String(isencaoAte);
+}
+
+/** As origens possíveis de um desconto com prazo. */
+export const ORIGEM = {
+  ANTECIPACAO: 'antecipacao',
+  ROLETA: 'roleta',
+};
+
 /** Arredonda para centavo. Uma vez, aqui, e não em cada `toFixed` de tela. */
 export function centavos(v) {
   return Math.round((Number(v) || 0) * 100) / 100;
@@ -131,6 +238,31 @@ export function descontoDeIndicacoes(indicacoesAtivas) {
 }
 
 /**
+ * Os descontos COM PRAZO que ainda valem neste mês, somados por origem.
+ *
+ * Cada desconto é `{ origem, fracao, ate }`, com `ate` no formato 'AAAA-MM' —
+ * o último mês em que ele vale, inclusive. Comparar texto de mês funciona
+ * porque o formato é ordenável por construção; é a mesma escolha de
+ * `isentoEm`, que já fazia isso na régua antiga.
+ *
+ * PRAZO IMPORTA MAIS DO QUE PARECE. Um desconto sem data é para sempre, e
+ * "para sempre" numa planilha de receita é a diferença entre um negócio que
+ * fecha a conta e um que não fecha. Desconto de conversão que não expira vira
+ * preço.
+ */
+export function descontosVigentes(descontos, mes) {
+  const m = String(mes || '');
+  const soma = { antecipacao: 0, roleta: 0 };
+  (Array.isArray(descontos) ? descontos : []).forEach((d) => {
+    if (!d || !d.ate || m > String(d.ate)) return;
+    const fracao = Math.max(0, Number(d.fracao) || 0);
+    if (d.origem === ORIGEM.ANTECIPACAO) soma.antecipacao += fracao;
+    else if (d.origem === ORIGEM.ROLETA) soma.roleta += fracao;
+  });
+  return soma;
+}
+
+/**
  * A conta fechada de um mês.
  *
  * O DESCONTO TOTAL É SOMA, E É LIMITADO A 100%. Fundador com metade mais cinco
@@ -146,7 +278,13 @@ export function descontoDeIndicacoes(indicacoesAtivas) {
  * Aplicar 50% sobre um preço inexistente produziria R$ 0 — indistinguível de
  * "não paga" —, e é exatamente o caso em que alguém precisa conversar.
  */
-export function precoDoMes({ plano, fundador = null, indicacoesAtivas = 0 } = {}) {
+export function precoDoMes({
+  plano,
+  fundador = null,
+  indicacoesAtivas = 0,
+  descontos = null,
+  mes = null,
+} = {}) {
   if (!plano || typeof plano.preco !== 'number') {
     return {
       bruto: null,
@@ -156,15 +294,26 @@ export function precoDoMes({ plano, fundador = null, indicacoesAtivas = 0 } = {}
     };
   }
 
+  const comPrazo = descontosVigentes(descontos, mes);
   const dFundador = descontoDoFundador(fundador);
+  const dAntecipacao = comPrazo.antecipacao;
   const dIndicacao = descontoDeIndicacoes(indicacoesAtivas);
-  const desconto = Math.min(1, dFundador + dIndicacao);
+  const dRoleta = comPrazo.roleta;
+
+  // Ver `FUNDADOR_E_ANTECIPACAO_SOMAM`: por padrão vale o maior dos dois.
+  const base = FUNDADOR_E_ANTECIPACAO_SOMAM
+    ? dFundador + dAntecipacao
+    : Math.max(dFundador, dAntecipacao);
+
+  const desconto = Math.min(1, base + dIndicacao + dRoleta);
 
   return {
     bruto: centavos(plano.preco),
     desconto,
     descontoFundador: dFundador,
+    descontoAntecipacao: dAntecipacao,
     descontoIndicacao: dIndicacao,
+    descontoRoleta: dRoleta,
     liquido: centavos(plano.preco * (1 - desconto)),
     motivo: null,
   };

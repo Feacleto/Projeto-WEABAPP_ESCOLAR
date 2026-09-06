@@ -17,8 +17,8 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 565 casos: horarios, faltas, aviso, contraste,
-                                 # travessia, taxa, contrato, pix, status, auth,
+npm run testar                   # 530 casos: horarios, faltas, aviso, contraste,
+                                 # travessia, contrato, pix, status, auth,
                                  # trial, planos, conta, cobranca, gateway
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
@@ -209,7 +209,7 @@ src/
 │   │                  intervaloDeDias
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
-│   ├── associacao/    taxa, planos, contratoAssociacao, trial
+│   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
@@ -279,7 +279,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 (+ `events`) · `liveLocation` · `notifications` · `altPickups` · `schools` ·
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `entryBonuses` · `taxaConfig` · `taxaParceiros` ·
-`faturasParceiro` · `leadsFunil` · `contratosAssociacao` · `platformConfig` ·
+`faturasParceiro` · `contratosAssociacao` · `platformConfig` ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -317,40 +317,59 @@ em [childrenService.js](src/services/childrenService.js). `home` é o que
 - `taxaParceiros` / `faturasParceiro` — taxa de associação do **motorista → a
   plataforma**. [taxaService.js](src/services/taxaService.js)
 
-**A associação, ponta a ponta** — escrito inteiro nas Fases 2 e 3 (24/08/2026)
-e ligado à navegação em 29/08. Quatro paradas:
-`leadsFunil` (prospecção, aba **Funil** do `/admin`) → orçamento
-([OrcamentoSheet](src/components/admin/OrcamentoSheet.jsx), que grava a
-negociação **e** emite o contrato na mesma folha) → `contratosAssociacao`
-(o associado aceita em `/tio/contrato-plataforma`) → `faturasParceiro`
-(fechada na aba **Taxa**, paga em `/tio/taxa`).
+**A associação, ponta a ponta** — reescrita em 06/09/2026, quando o preço
+virou de TABELA. Três paradas, e a primeira é o próprio motorista:
+faixa escolhida (`users.planoId`, escrita pelo dono na aba **Taxa**) →
+`contratosAssociacao` (aceito em `/tio/contrato-plataforma`) →
+`faturasParceiro` (fechada na aba **Taxa**, paga em `/tio/taxa`).
 
-- **O funil é registro comercial, e nunca foi porta de acesso.** Mover cartão
-  de vendas não dá acesso a sistema nenhum — ver o cabeçalho de
-  [funilService.js](src/services/funilService.js). A porta era a aba **Fila**,
-  que morreu com a aprovação em 06/09/2026: hoje o motorista entra sozinho.
-- **Orçar exige conta aprovada.** O id do lead é o uid só quando a pessoa se
-  inscreveu pelo app; pra quem chegou por fora, salvar produziria um contrato
-  que ninguém consegue aceitar. Quem recusa é
-  [FunilTab.jsx](src/components/admin/FunilTab.jsx) — as rules deixam passar,
-  porque a escrita é do dono.
+O que sumiu junto foi a **negociação**: `leadsFunil`, o orçamento, a aba
+**Funil**, `taxa.js` e os seis eixos que ela cruzava (percentual, piso, modo,
+periodicidade, carência, desconto de antecipação). Nenhuma migração — não
+havia base real.
+
+- **A varredura de `children` morreu com o percentual.** O modelo antigo
+  cobrava sobre a soma das mensalidades, então a aba Taxa baixava TODA criança
+  ativa da plataforma — com endereço, escola e telefone de família — só para
+  somar; e não podia limitar a consulta, porque teto ali fazia a cobrança sair
+  menor que a devida. A faixa depende só do NÚMERO, que já está em
+  `users.criancasAtivas`. Um documento por parceiro em vez de mil por
+  plataforma.
+- **`planoId` e `limiteCriancas` vão no MESMO batch**
+  ([setPlanoDoParceiro](src/services/taxaService.js)). Um é o que a fatura
+  cobra, o outro é o que as rules cobram no cadastro de criança: separados,
+  existiria a janela em que ele paga R$ 69 com teto de 40, e cada campo estaria
+  certo do ponto de vista de quem o lê.
+- **Desconto tem PRAZO, e sem ele vira preço.** `users.descontos` é uma lista
+  de `{origem, fracao, ate}` com `ate` em 'AAAA-MM'
+  ([planos.js](src/dominio/associacao/planos.js)). Duas origens: `antecipacao`
+  (contratou antes de o teste acabar → 50% por 12 meses) e `roleta`. A lista é
+  SUBSTITUÍDA, nunca acrescida — `arrayUnion` acumularia o mesmo prêmio numa
+  reemissão de contrato.
+- **Fundador e antecipação NÃO somam — vale o maior.** É decisão de negócio, e
+  mora em `FUNDADOR_E_ANTECIPACAO_SOMAM` justamente para poder ser desfeita
+  numa linha. Somando, os treze primeiros associados chegariam a 100% e a
+  partir dali roleta e indicação valeriam zero — para exatamente as pessoas que
+  mais indicam.
+- **Isenção não é desconto de 100%.** `users.isencaoAte` diz que aquele mês não
+  tem fatura; desconto de 100% produz uma fatura de R$ 0. Os dois chegam a zero
+  e contam histórias diferentes na hora de conferir o que foi concedido.
 - **O vencimento é da CASA**, não de cada parceiro: `taxaConfig.diaVencimento`
   (1–28, padrão 10). `fecharFatura` congela a data pronta em `vencimento`, como
   o [billing.js](functions/lib/billing.js) faz com o `dueDay` da criança — e lá
-  a data é por criança porque quem negocia é o motorista com cada família. Se
-  alguém pedir dia diferente, o lugar é `diaVencimento` na negociação:
-  `dataDeVencimento` já prefere ela sobre a régua.
-- **O contrato diz o dia** desde a `VERSAO_CONTRATO = 2` — a 1 mandava
-  suspender por atraso sem definir atraso. Subir a versão exige novo aceite.
+  a data é por criança porque quem negocia é o motorista com cada família.
+- **O contrato é de 12 MESES e renova de 12 em 12**, com cobrança mensal.
+  `VERSAO_CONTRATO = 3` — a 1 mandava suspender por atraso sem definir atraso,
+  a 2 passou a dizer o dia, a 3 trocou percentual sobre base por faixa de
+  tabela. Subir a versão exige novo aceite.
 - **Vaga de criança é contratada.** `users.limiteCriancas` (só o dono escreve,
-  definido no orçamento) contra `users.criancasAtivas`, contador que sobe no
-  MESMO batch do cadastro. Rules não sabem contar documentos: `allow create` em
+  e vem da faixa) contra `users.criancasAtivas`, contador que sobe no MESMO
+  batch do cadastro. Rules não sabem contar documentos: `allow create` em
   `children` valida o contador com `getAfter` — um `addDoc` solto é recusado.
-  Limite ausente = sem limite. Conta só crianças ATIVAS, mesmo recorte de
-  `resumirBase`, então desativar libera vaga.
+  Limite ausente = sem limite, **e é isso que vale durante o teste**: ele
+  cadastra a operação inteira e o app prova o valor no tamanho real.
   **Não é à prova de devtools** — nenhuma rule exige que o contador ande junto
   de uma criança de verdade; quem pega é a fatura, que conta as crianças reais.
-  Vira Cloud Function quando o Blaze entrar.
 - **Receita é fatura `quitada`**, e sai de `faturasParceiro` em
   [adminMetricsService.js](src/services/adminMetricsService.js) — mesmo
   critério do GMV, que só soma `payments` com `paid`. Fatura `aberta` viaja
@@ -371,14 +390,13 @@ criar lá e gravar aqui existe uma janela. **O gateway não cria cliente sem
 CPF/CNPJ e o app não coleta esse campo** em lugar nenhum: ele entra pela mão do
 dono e fica em `taxaParceiros/{uid}`, que só o dono lê.
 
-**Há DOIS modelos de preço, e eles não podem valer pro mesmo parceiro.**
-[taxa.js](src/dominio/associacao/taxa.js) é o NEGOCIADO — percentual sobre a
-soma das mensalidades, ajustado caso a caso pelo dono no orçamento, e é o que
-sustenta os contratos e faturas que já existem.
-[planos.js](src/dominio/associacao/planos.js) é o de AUTOATENDIMENTO — faixa
-fixa por número de crianças ativas (R$ 69 / 149 / 229), escolhida pelo próprio
-motorista. Somar os dois na mesma fatura cobra duas vezes; a migração de um
-pro outro é pendência aberta do [negocio.md](docs/negocio.md).
+**HÁ UM MODELO DE PREÇO SÓ, desde 06/09/2026.**
+[planos.js](src/dominio/associacao/planos.js) — faixa fixa por número de
+crianças ativas (R$ 69 / 149 / 229). O `taxa.js`, que era o modelo NEGOCIADO
+(percentual sobre a soma das mensalidades, ajustado caso a caso num orçamento),
+foi APAGADO. Os dois conviveram por dias, e o CLAUDE.md avisava que somá-los na
+mesma fatura cobraria duas vezes; a saída foi apagar um, não escolher entre os
+dois a cada leitura.
 
 **O plano capa QUANTIDADE, nunca funcionalidade** — não existe Básico/Pro. O
 app é completo em qualquer faixa, e o que muda é `users.limiteCriancas`, que
@@ -687,7 +705,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (131 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (139 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 

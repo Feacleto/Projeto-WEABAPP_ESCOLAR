@@ -2,60 +2,33 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   onSnapshot,
   query,
-  setDoc,
-  writeBatch,
   serverTimestamp,
-  Timestamp,
+  setDoc,
   where,
+  writeBatch,
+  Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-// A RÉGUA PURA MORA EM `dominio/associacao/taxa.js`, E NÃO AQUI.
+// A RÉGUA PURA MORA EM `dominio/associacao/planos.js`, E NÃO AQUI.
 //
-// Tudo que é aritmética de dinheiro saiu deste arquivo: enquanto morava atrás
-// do `import { db }` acima, era IMPOSSÍVEL testar — o projeto testa com
+// Tudo que é aritmética de dinheiro fica fora deste arquivo: enquanto morava
+// atrás do `import { db }` acima, era IMPOSSÍVEL testar — o projeto testa com
 // scripts Node puros, e o script não consegue nem importar o módulo sem
 // inicializar o Firebase. Duas vezes o contrato de associação saiu com valor
-// zero por causa disso (ver o cabeçalho de `dominio/associacao/taxa.js`).
-//
-// Aqui ficou só o que fala com o Firestore. O reexport abaixo mantém
-// `taxaService` como a porta pública: nenhuma tela precisou trocar de import,
-// e quem quiser testar a régua importa direto do utils.
+// zero por causa disso.
 import {
-  PADRAO,
-  MODOS,
-  PERIODICIDADES,
-  MESES_DA_PERIODICIDADE,
-  limitarDiaVencimento,
-  resumirBase,
-  centavos,
-  taxaPadrao,
-  calcularTaxa,
-  isentoEm,
+  DIA_DE_VENCIMENTO,
   dataDeVencimento,
-} from '../dominio/associacao/taxa';
-
-export {
-  PADRAO,
-  MODOS,
-  PERIODICIDADES,
-  MESES_DA_PERIODICIDADE,
-  limitarDiaVencimento,
-  resumirBase,
-  taxaPadrao,
-  calcularTaxa,
   isentoEm,
-  dataDeVencimento,
-};
-// Aritmética de mês reusada de formatters: já existia, e três funções
-// somando mês no mesmo código é como elas divergem numa virada de ano.
-import { addMonths, getCurrentMonthKey } from '../compartilhado/formatters';
-// A validação de chave PIX já existe e é a mesma regra — reusar evita duas
-// definições de "chave válida" divergindo entre a tela do tio e a do dono.
-import { validatePixKey } from './userService';
+  limitarDiaVencimento,
+  planoPorId,
+  precoDoMes,
+} from '../dominio/associacao/planos.js';
 import { assinaturaAteDoMes } from '../dominio/associacao/contaAtiva.js';
+
+export { dataDeVencimento, isentoEm, limitarDiaVencimento, planoPorId, precoDoMes };
 
 /**
  * A TAXA DE ASSOCIAÇÃO — o que a plataforma cobra do MOTORISTA.
@@ -69,43 +42,76 @@ import { assinaturaAteDoMes } from '../dominio/associacao/contaAtiva.js';
  * Manter os dois separados não é preciosismo de modelagem: é o que sustenta o
  * item 7 dos Termos de Uso ("não processa nem intermedeia transações
  * financeiras"). No dia em que a taxa sair de dentro da mensalidade, essa frase
- * fica falsa e a plataforma passa a ser intermediária — com tudo que vem junto.
+ * fica falsa e a plataforma passa a ser intermediária.
  *
- * POR QUE O CÁLCULO RODA NO NAVEGADOR DO DONO
+ * ── O MODELO NEGOCIADO MORREU EM 06/09/2026, E O ARQUIVO ENCOLHEU À METADE
+ * Havia percentual sobre a soma das mensalidades, piso, modo (`percentual` /
+ * `fixo` / `gratuito`), periodicidade (mensal / semestral / anual / anual em
+ * 12×), carência em meses e desconto de antecipação — tudo ajustado caso a
+ * caso num orçamento. Seis eixos negociáveis, e a fatura era o cruzamento
+ * deles.
  *
- * ATENÇÃO AO QUE ESTE PARÁGRAFO DIZIA ANTES: "a Cloud Functions API está
- * desativada no projeto (sem Blaze), então não existe servidor onde rodar".
- * Isso deixou de ser verdade — há quinze functions em produção, e uma delas
- * (`generateMonthlyPayments`) faz exatamente esta forma de trabalho do outro
- * lado do dinheiro. A premissa era falsa, e é ela que a próxima sessão leria
- * antes de decidir o que pode ir pro servidor.
+ * Hoje é uma FAIXA de tabela por número de crianças ativas, escolhida pelo
+ * próprio motorista. A fatura é `preço da faixa menos os descontos dele`.
  *
- * O ARGUMENTO, ESSE, CONTINUA VALENDO, e é o inverso do caso pai→tio:
- * quem calcula é quem COBRA, e o cobrado não tem escrita na fatura. As rules
- * garantem — `faturasParceiro` é `write: isOwner()`, e o motorista só lê a dele.
+ * ── A CONSEQUÊNCIA TÉCNICA QUE VALE MAIS QUE A COMERCIAL
+ * O cálculo antigo precisava da SOMA DAS MENSALIDADES de cada parceiro, e para
+ * isso este arquivo varria `children` inteira — mil documentos com endereço,
+ * escola e telefone de família viajando para o navegador do dono toda vez que
+ * a aba Taxa abria, para produzir um punhado de somas. A varredura não podia
+ * ter `limit()`: teto ali faria a cobrança sair MENOR que a devida, em
+ * silêncio.
  *
- * No caso do pai era o contrário: cálculo no cliente colocava a caneta na mão de
- * quem se beneficiava do erro.
+ * O preço de tabela não depende de mensalidade nenhuma. Depende do NÚMERO de
+ * crianças ativas, que já está materializado em `users.criancasAtivas` e sobe
+ * no mesmo batch do cadastro. A varredura foi apagada — não otimizada,
+ * apagada.
  *
- * TRÊS COLEÇÕES, TRÊS REGRAS — E NÃO UM `match {docId}` SÓ
- * Rules em Firestore são OR: um match abrangente que permite não é apertado por
- * um match específico que nega. Se as três morassem numa coleção só, a regra
- * mais frouxa das três valeria para todas — e a mais frouxa aqui precisa deixar
- * o motorista ler a própria fatura. Isso abriria a nota interna e a estrutura de
- * preço junto.
+ * ── QUEM CALCULA É QUEM COBRA
+ * O cálculo roda no navegador do DONO, e o cobrado não tem escrita na fatura:
+ * `faturasParceiro` é `write: isOwner()`, e o motorista só lê a dele. No caso
+ * do pai era o contrário — cálculo no cliente colocava a caneta na mão de quem
+ * se beneficiava do erro.
+ *
+ * ── TRÊS COLEÇÕES, TRÊS REGRAS — E NÃO UM `match {docId}` SÓ
+ * Rules em Firestore são OR: um match abrangente que permite não é apertado
+ * por um match específico que nega. Se as três morassem numa coleção só, a
+ * mais frouxa valeria para todas — e a mais frouxa precisa deixar o motorista
+ * ler a própria fatura. Isso abriria a nota interna junto.
  */
 
 // ── as três coleções ────────────────────────────────────────────────────────
 
-/** O padrão da casa: percentual e piso. Só o dono lê e escreve. */
+/**
+ * A configuração da CASA: para onde pagar e em que dia. Só o dono.
+ *
+ * O que ela NÃO tem mais: `percentual` e `piso`. Eram a régua do modelo
+ * negociado, e um percentual sobrando aqui é a chance de alguém somá-lo ao
+ * preço de tabela e cobrar duas vezes.
+ */
 const CONFIG = () => doc(db, 'taxaConfig', 'app');
 
-/** A negociação de um motorista + nota interna. Só o dono, nem ele mesmo lê. */
+/**
+ * O que o motorista NÃO pode ver sobre si: nota interna do dono, CPF/CNPJ e o
+ * id dele no gateway. Só o dono, nem ele mesmo.
+ *
+ * A negociação saiu daqui junto com o modelo. O que define quanto ele paga —
+ * plano, condição de fundador, descontos — mora em `users`, porque ele PRECISA
+ * ver: é o que a tela de planos mostra.
+ */
 const PARCEIRO = (uid) => doc(db, 'taxaParceiros', uid);
 
 /** A fatura de um mês. O dono escreve; o motorista lê a dele. */
 const FATURA = (uid, mes) => doc(db, 'faturasParceiro', `${uid}_${mes}`);
 
+/** O padrão quando `taxaConfig/app` ainda não existe. */
+export const PADRAO = {
+  diaVencimento: DIA_DE_VENCIMENTO,
+  pixKey: '',
+  pixKeyType: 'random',
+  nomePlataforma: '',
+  cidadePlataforma: '',
+};
 
 // ── config global ───────────────────────────────────────────────────────────
 
@@ -126,316 +132,254 @@ export function watchTaxaConfig(cb) {
     CONFIG(),
     (snap) => cb(snap.exists() ? { ...PADRAO, ...snap.data() } : { ...PADRAO }),
     (err) => {
-      console.error('[taxa] assinatura da config falhou:', err);
+      console.error('[taxa] config não assinou:', err);
       cb({ ...PADRAO });
     }
   );
 }
 
-/**
- * Onde o motorista paga a taxa.
- *
- * Separado de `setTaxaConfig` porque são duas decisões diferentes com ritmos
- * diferentes: a régua muda quando o negócio muda, a chave muda quando a conta
- * muda. Junto num formulário só, mexer numa obrigaria a reenviar a outra.
- */
+/** Para onde o motorista paga a taxa. */
 export async function setPixPlataforma({ pixKey, pixKeyType, nome, cidade }) {
-  const erro = validatePixKey(pixKeyType, pixKey);
-  if (erro) throw new Error(erro);
   await setDoc(
     CONFIG(),
     {
-      pixKey: String(pixKey).trim(),
-      pixKeyType,
-      nomePlataforma: (nome || '').trim(),
-      cidadePlataforma: (cidade || '').trim(),
+      pixKey: String(pixKey || '').trim(),
+      pixKeyType: pixKeyType || 'random',
+      nomePlataforma: String(nome || '').trim(),
+      cidadePlataforma: String(cidade || '').trim(),
       atualizadoEm: serverTimestamp(),
     },
     { merge: true }
   );
 }
 
-export async function setTaxaConfig({ percentual, piso, diaVencimento }) {
-  const p = Number(percentual);
-  const f = Number(piso);
-  if (!Number.isFinite(p) || p < 0 || p > 100) {
-    throw new Error('Percentual tem que estar entre 0 e 100.');
-  }
-  if (!Number.isFinite(f) || f < 0) throw new Error('Piso não pode ser negativo.');
-
-  // O dia RECUSA em vez de corrigir calado.
-  //
-  // `limitarDiaVencimento` existe pra defender o cálculo de dado que já está
-  // gravado; aqui há uma pessoa digitando, e salvar 30 como 28 sem dizer nada
-  // deixaria o contrato prometendo um dia e a fatura cobrando outro.
-  const d = Math.trunc(Number(diaVencimento));
-  if (!Number.isFinite(d) || d < 1 || d > 28) {
-    throw new Error(
-      'Dia do vencimento tem que estar entre 1 e 28 — dia 29, 30 ou 31 não existe em todo mês.'
-    );
-  }
-
+/**
+ * O DIA DO VENCIMENTO É DA CASA, e vale para todo mundo.
+ *
+ * Do outro lado do dinheiro, o vencimento da mensalidade é por CRIANÇA — e a
+ * diferença é de quem negocia: lá é o motorista com cada família; aqui é a
+ * plataforma com todos os associados, no mesmo dia.
+ */
+export async function setDiaVencimento(dia) {
   await setDoc(
     CONFIG(),
-    { percentual: p, piso: f, diaVencimento: d, atualizadoEm: serverTimestamp() },
+    { diaVencimento: limitarDiaVencimento(dia), atualizadoEm: serverTimestamp() },
     { merge: true }
   );
 }
 
-/**
- * QUANTAS CRIANÇAS ATIVAS ELE PODE CADASTRAR — a vaga contratada.
- *
- * MORA EM `users/{uid}`, e não em `taxaParceiros`, apesar de ser cláusula de
- * negociação. O motivo é a regra que o consome: `allow create` em `children`
- * confere o contador do motorista contra este teto a cada cadastro, via
- * `getAfter` no doc dele. Guardar o limite noutra coleção obrigaria a rule a
- * uma segunda leitura de documento em TODA criação de criança, pra sempre.
- *
- * A separação de leitura continua respeitada: `taxaParceiros` guarda o que o
- * motorista não pode ver (nota interna, estrutura de preço) e por isso é
- * `read: isOwner()`. O limite é o contrário — ele PRECISA ver, porque é o
- * número que a tela dele mostra quando as vagas acabam.
- *
- * Só o dono escreve: as rules põem `limiteCriancas` na mesma lista de campos
- * de gestão que `suspenso`, fora do alcance do próprio parceiro. Limite que o
- * limitado aumenta não é limite.
- */
-export async function setLimiteCriancas(uid, limite) {
-  if (!uid) throw new Error('Sem motorista.');
-  const n = Math.trunc(Number(limite));
-  if (!Number.isFinite(n) || n < 0) {
-    throw new Error('O número de vagas não pode ser negativo.');
-  }
-  await setDoc(
-    doc(db, 'users', uid),
-    { limiteCriancas: n },
-    { merge: true }
-  );
-}
+// ── o que a plataforma sabe de cada parceiro ────────────────────────────────
 
-// ── a base: o que o motorista contratou ─────────────────────────────────────
-
-
-/**
- * Lê as crianças ativas de TODOS os motoristas e agrupa por `adminUid`.
- *
- * Só o dono consegue: as rules de `children` liberam leitura ampla para
- * `isOwner()` de propósito — ele conta a base e resume o negócio, sem poder
- * operar nada.
- *
- * Documento legado sem `adminUid` cai em `semDono`, e isso é informação e não
- * detrito: enquanto esse balde não estiver vazio, a base de algum parceiro está
- * incompleta e a fatura dele sairia menor que a real. A tela precisa dizer isso
- * em voz alta em vez de somar o que sobrou.
- */
-/**
- * ESTA CONSULTA NÃO PODE RECEBER `limit()`, e isso é decisão, não esquecimento.
- *
- * Ela é a única sem teto que sobrou depois da varredura de escala — e é assim
- * de propósito: o resultado vira a BASE DE CÁLCULO da fatura de cada parceiro.
- * Um teto aqui não deixaria a tela mais leve; faria a cobrança sair MENOR que
- * o devido, em silêncio, e o parceiro seria subfaturado sem ninguém notar.
- * Consulta que alimenta dinheiro ou conta tudo, ou não serve.
- *
- * O custo é real e está medido: com mil crianças, mil documentos — com
- * endereço, escola e telefone de família — trafegam pro navegador do dono toda
- * vez que a aba Taxa abre, pra produzir um punhado de somas por parceiro.
- *
- * A SAÍDA CERTA É MATERIALIZAR, NÃO TRUNCAR: `users.criancasAtivas` já existe
- * e responde a contagem; falta o par dele para a soma de mensalidades,
- * mantido no mesmo batch de `addChild`/`updateChild`/`deactivateChild`. Aí
- * esta varredura vira conferência sob demanda em vez de caminho de abertura de
- * tela. Está em docs/arquitetura.md (seção 13) como trabalho seguinte
- * — e depende do
- * contador ser confiável primeiro (ver `childrenService`, transação do
- * decremento).
- */
-export async function carregarBasePorMotorista() {
-  const snap = await getDocs(
-    query(collection(db, 'children'), where('active', '==', true))
-  );
-
-  const porUid = new Map();
-  const semDono = [];
-
-  for (const d of snap.docs) {
-    const c = { id: d.id, ...d.data() };
-    const uid = c.adminUid;
-    if (!uid) {
-      semDono.push(c);
-      continue;
-    }
-    if (!porUid.has(uid)) porUid.set(uid, []);
-    porUid.get(uid).push(c);
-  }
-
-  const resumos = {};
-  for (const [uid, lista] of porUid) resumos[uid] = resumirBase(lista);
-
-  return { resumos, semDono };
-}
-
-// ── a negociação de cada motorista ──────────────────────────────────────────
-
-/** Modo `percentual` acompanha o crescimento; `fixo` não. Ver `taxaDe`. */
-
-
-export async function getNegociacao(uid) {
+export async function getParceiro(uid) {
   if (!uid) return null;
   const snap = await getDoc(PARCEIRO(uid));
   return snap.exists() ? { uid, ...snap.data() } : null;
 }
 
-export function watchNegociacoes(cb, onError) {
+export function watchParceiros(cb, onError) {
   return onSnapshot(
     collection(db, 'taxaParceiros'),
-    (snap) => {
-      const porUid = {};
-      snap.docs.forEach((d) => {
-        porUid[d.id] = { uid: d.id, ...d.data() };
-      });
-      cb(porUid);
-    },
+    (snap) => cb(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
     (err) => {
-      console.error('[taxa] assinatura das negociações falhou:', err);
+      console.error('[taxa] parceiros não assinou:', err);
       onError?.(err);
     }
   );
 }
 
-/**
- * Grava o que foi combinado com aquele motorista.
- *
- * `isencaoMeses` guarda a quantidade combinada, e `isencaoAte` guarda o MÊS em
- * que ela termina. Os dois, porque respondem perguntas diferentes: "quantos
- * meses eu dei" é o histórico da negociação, "até quando vale" é o que o
- * fechamento do mês consulta. Derivar o segundo do primeiro exigiria uma data de
- * início que ninguém garante estar preenchida.
- */
-export async function setNegociacao(
-  uid,
-  { modo, valor, isencaoMeses, notas, desdeMes, periodicidade, descontoAntecipacao }
-) {
-  if (!uid) throw new Error('Sem uid do motorista.');
-
-  const m = modo || MODOS.PERCENTUAL;
-  if (!Object.values(MODOS).includes(m)) {
-    throw new Error('Modo tem que ser percentual, fixo ou gratuito.');
-  }
-  // Gratuidade não tem valor a validar: o valor É zero, por definição.
-  const v = m === MODOS.GRATUITO ? 0 : Number(valor);
-  if (!Number.isFinite(v) || v < 0) throw new Error('Valor inválido.');
-  if (m === MODOS.PERCENTUAL && v > 100) {
-    throw new Error('Percentual não pode passar de 100.');
-  }
-
-  const per = periodicidade || PERIODICIDADES.MENSAL;
-  if (!Object.values(PERIODICIDADES).includes(per)) {
-    throw new Error('Periodicidade inválida.');
-  }
-  const desc = Math.min(100, Math.max(0, Number(descontoAntecipacao) || 0));
-
-  const meses = Math.max(0, Math.floor(Number(isencaoMeses) || 0));
-
+/** A nota interna do dono sobre um parceiro. Ele nunca lê isto. */
+export async function setNotaInterna(uid, nota) {
+  if (!uid) throw new Error('Sem motorista.');
   await setDoc(
     PARCEIRO(uid),
-    {
-      modo: m,
-      valor: v,
-      periodicidade: per,
-      descontoAntecipacao: desc,
-      isencaoMeses: meses,
-      isencaoAte:
-        meses > 0 ? addMonths(desdeMes || getCurrentMonthKey(), meses - 1) : null,
-      notas: (notas || '').trim(),
-      atualizadoEm: serverTimestamp(),
-    },
+    { notaInterna: String(nota || '').slice(0, 2000), atualizadoEm: serverTimestamp() },
     { merge: true }
   );
 }
 
-// ── o cálculo ───────────────────────────────────────────────────────────────
+// ── a cláusula: o que define quanto ele paga ────────────────────────────────
 
+/**
+ * A FAIXA CONTRATADA, e o teto de crianças que vem com ela.
+ *
+ * OS DOIS CAMPOS VÃO NO MESMO BATCH de propósito. `planoId` é o que a fatura
+ * cobra; `limiteCriancas` é o que as rules cobram no cadastro de criança. Se
+ * eles pudessem ser gravados separado, existiria uma janela em que o motorista
+ * paga a faixa de R$ 69 com teto de 40 — e ninguém veria, porque cada campo
+ * está certo do ponto de vista de quem o lê.
+ *
+ * `limiteCriancas` MORA EM `users`, e não em `taxaParceiros`, apesar de ser
+ * cláusula. O motivo é a regra que o consome: `allow create` em `children`
+ * confere o contador contra este teto a cada cadastro, via `getAfter` no doc
+ * do motorista. Guardá-lo noutra coleção obrigaria a rule a uma segunda
+ * leitura de documento em TODA criação de criança, para sempre.
+ *
+ * `teto` opcional é a saída para quem está ACIMA DA TABELA (mais de 40
+ * crianças): ali não há preço de prateleira, é conversa, e o teto entra à mão.
+ *
+ * Só o dono escreve — as rules põem os dois campos na lista de gestão, fora do
+ * alcance do parceiro. Limite que o limitado aumenta não é limite, e preço que
+ * o devedor escolhe não é preço.
+ */
+export async function setPlanoDoParceiro(uid, planoId, { teto = null } = {}) {
+  if (!uid) throw new Error('Sem motorista.');
+  const plano = planoPorId(planoId);
+  if (!plano && teto === null) {
+    throw new Error('Faixa desconhecida. Acima da tabela, informe o teto à mão.');
+  }
+  const limite = teto === null ? plano.ate : Math.max(0, Math.trunc(Number(teto) || 0));
+
+  const lote = writeBatch(db);
+  lote.set(
+    doc(db, 'users', uid),
+    { planoId: plano ? plano.id : null, limiteCriancas: limite },
+    { merge: true }
+  );
+  await lote.commit();
+}
+
+/**
+ * A condição de fundador — quem entrou primeiro, e o que ganhou.
+ *
+ * QUEM MARCA É O DONO, e nunca um contador automático. A tentação é óbvia
+ * ("o primeiro motorista do banco é o fundador"), e ela premiaria a primeira
+ * conta de TESTE que alguém criou — com gratuidade vitalícia, que por
+ * definição não expira.
+ */
+export async function setCondicaoFundador(uid, condicao) {
+  if (!uid) throw new Error('Sem motorista.');
+  await setDoc(doc(db, 'users', uid), { condicaoFundador: condicao || null }, { merge: true });
+}
+
+/**
+ * Os descontos COM PRAZO de um parceiro (antecipação e roleta).
+ *
+ * A lista inteira é substituída, e é de propósito: `arrayUnion` acumularia o
+ * mesmo prêmio duas vezes numa reemissão de contrato, e desconto duplicado
+ * numa fatura é dinheiro que a plataforma deixa de receber sem ninguém somar.
+ *
+ * Cada item é `{ origem, fracao, ate }`, com `ate` em 'AAAA-MM'. Ver
+ * `descontosVigentes` em `planos.js` — desconto sem prazo vira preço.
+ */
+export async function setDescontos(uid, descontos) {
+  if (!uid) throw new Error('Sem motorista.');
+  await setDoc(
+    doc(db, 'users', uid),
+    { descontos: Array.isArray(descontos) ? descontos : [] },
+    { merge: true }
+  );
+}
+
+/** Até que mês ele não recebe fatura (meses sem taxa da roleta). */
+export async function setIsencao(uid, isencaoAte) {
+  if (!uid) throw new Error('Sem motorista.');
+  await setDoc(doc(db, 'users', uid), { isencaoAte: isencaoAte || null }, { merge: true });
+}
+
+// ── a base ──────────────────────────────────────────────────────────────────
+//
+// NÃO HÁ MAIS FUNÇÃO DE BASE AQUI, e a ausência é o resultado da mudança.
+//
+// O modelo negociado cobrava percentual sobre a soma das mensalidades, então
+// este arquivo varria `children` inteira — mil documentos com endereço, escola
+// e telefone de família viajando para o navegador do dono toda vez que a aba
+// Taxa abria, só para produzir somas. E a consulta não podia ter `limit()`:
+// teto ali fazia a cobrança sair MENOR que a devida, em silêncio.
+//
+// O preço de tabela depende só do NÚMERO de crianças ativas, que já está em
+// `users.criancasAtivas` e sobe no mesmo batch do cadastro. Quem lista os
+// parceiros é `userService.listarParceiros()`, que já existia: um documento
+// por parceiro, e nenhum dado de criança sai do lugar.
 
 // ── a fatura ────────────────────────────────────────────────────────────────
 
-
 /**
- * Fecha a fatura do mês — e CONGELA a régua usada.
+ * Fecha a fatura de um mês para um parceiro.
  *
- * A fatura guarda o modo e o valor VIGENTES no fechamento, não um ponteiro para
- * `taxaParceiros`. Renegociar em novembro não pode reescrever o que foi cobrado
- * em setembro: numa conversa de "combinamos 4%", quem tem o histórico congelado
- * tem o que mostrar, e quem tem ponteiro só tem a régua de hoje.
+ * A FATURA CONGELA TUDO O QUE USOU, e isso é o trabalho dela. Faixa, preço de
+ * tabela, cada desconto aplicado, a data pronta de vencimento e a chave PIX
+ * para onde pagar viajam DENTRO do documento — nunca como ponteiro para a
+ * régua da casa.
  *
- * É o mesmo princípio do `premiosNaEpoca` no `entryBonuses` — a régua viaja
- * junto com o lançamento, senão o lançamento antigo fica impossível de explicar.
+ * Mudar o preço da tabela em dezembro não pode mexer no que já foi cobrado em
+ * setembro, pelo mesmo motivo que renegociar não reescreve fatura antiga: o
+ * histórico é o que se mostra numa conversa sobre atraso.
+ *
+ * A CHAVE PIX É COPIADA, NÃO REFERENCIADA. `taxaConfig` é `read: isOwner()` —
+ * o motorista não lê a estrutura de preço da plataforma, e não deveria. Mas
+ * ele precisa da chave para pagar. Copiar resolve os dois de uma vez.
+ *
+ * O id é `{uid}_{mes}` — determinístico, um por parceiro por mês. É ele que
+ * vira `externalReference` no gateway e permite perguntar "este mês já foi
+ * cobrado?" antes de criar outra cobrança.
  */
-export async function fecharFatura({
-  tioUid,
-  mes,
-  resumo,
-  negociacao,
-  config,
-  desconto = 0,
-  ownerUid,
-}) {
+export async function fecharFatura({ motorista, mes, config, ownerUid }) {
+  const tioUid = motorista?.uid;
   if (!tioUid || !mes) throw new Error('Sem motorista ou mês.');
 
-  const calc = calcularTaxa({ base: resumo.base, negociacao, config });
-  const isento = isentoEm(negociacao, mes);
-  const desc = centavos(Math.max(0, Number(desconto) || 0));
-  const total = isento ? 0 : centavos(Math.max(0, calc.cobrada - desc));
+  const plano = planoPorId(motorista.planoId);
+  const isento = isentoEm(motorista.isencaoAte, mes);
 
-  await setDoc(FATURA(tioUid, mes), {
-    tioUid,
+  const conta = precoDoMes({
+    plano,
+    fundador: motorista.condicaoFundador || null,
+    indicacoesAtivas: Number(motorista.indicacoesAtivas) || 0,
+    descontos: motorista.descontos,
     mes,
+  });
 
-    // a base, como ela era neste mês
-    criancas: resumo.criancas,
-    semMensalidade: resumo.semMensalidade,
-    base: resumo.base,
-    ticketMedio: resumo.ticketMedio,
+  // ACIMA DA TABELA NÃO VIRA FATURA DE ZERO. `precoDoMes` devolve `liquido:
+  // null` quando não há faixa, e zero ali seria indistinguível de "não paga" —
+  // exatamente o caso em que alguém precisa conversar antes de cobrar.
+  if (!isento && conta.liquido === null) {
+    throw new Error('Este parceiro está acima da tabela: defina a faixa antes de fechar.');
+  }
 
-    // a régua, congelada
-    reguaPercentual: Number(config?.percentual ?? PADRAO.percentual),
-    reguaPiso: Number(config?.piso ?? PADRAO.piso),
+  const total = isento ? 0 : conta.liquido;
+  const dia = limitarDiaVencimento(config?.diaVencimento ?? PADRAO.diaVencimento);
 
-    // QUANDO VENCE — data pronta, congelada junto com o resto da régua.
-    //
-    // Mudar o dia na régua em dezembro não pode mexer no que já venceu em
-    // setembro, pelo mesmo motivo que renegociar o percentual não reescreve
-    // fatura antiga: o histórico é o que se mostra numa conversa sobre atraso.
-    vencimento: (() => {
-      const d = dataDeVencimento(mes, { negociacao, config });
-      return d ? Timestamp.fromDate(d) : null;
-    })(),
+  await setDoc(
+    FATURA(tioUid, mes),
+    {
+      tioUid,
+      mes,
 
-    // PARA ONDE PAGAR — copiado, não referenciado.
-    //
-    // `taxaConfig` é `read: isOwner()`: o motorista não lê a estrutura de
-    // preço da plataforma, e não deveria. Mas ele precisa da chave pra pagar.
-    // Copiar na fatura resolve os dois de uma vez, e de graça ganha o que a
-    // régua congelada já dá: se a conta da plataforma mudar, a fatura antiga
-    // continua mostrando a chave que valia quando ela foi emitida.
-    pixKey: config?.pixKey || '',
-    pixKeyType: config?.pixKeyType || 'random',
-    nomePlataforma: config?.nomePlataforma || '',
-    cidadePlataforma: config?.cidadePlataforma || '',
-    modo: negociacao?.modo || null,
-    valorNegociado: negociacao ? Number(negociacao.valor) : null,
+      // a faixa, como ela era neste mês
+      planoId: plano?.id || null,
+      planoRotulo: plano?.rotulo || '',
+      planoTeto: plano?.ate ?? null,
+      precoTabela: plano ? plano.preco : null,
+      criancasAtivas: Number(motorista.criancasAtivas) || 0,
 
-    // o resultado
-    taxaPadrao: calc.padrao,
-    taxaCobrada: calc.cobrada,
-    isento,
-    desconto: desc,
-    total,
+      // os descontos, abertos — para a conversa que vem depois
+      descontoTotal: conta.desconto,
+      descontoFundador: conta.descontoFundador,
+      descontoAntecipacao: conta.descontoAntecipacao,
+      descontoIndicacao: conta.descontoIndicacao,
+      descontoRoleta: conta.descontoRoleta,
+      isento,
 
-    status: total === 0 ? 'quitada' : 'aberta',
-    lancadaPor: ownerUid || null,
-    lancadaEm: serverTimestamp(),
-  }, { merge: true });
+      total,
+
+      // a data pronta, congelada junto com o resto
+      vencimento: (() => {
+        const d = dataDeVencimento(mes, dia);
+        return d ? Timestamp.fromDate(d) : null;
+      })(),
+      diaVencimento: dia,
+
+      // para onde pagar — copiado, não referenciado (ver o cabeçalho)
+      pixKey: config?.pixKey || '',
+      pixKeyType: config?.pixKeyType || 'random',
+      nomePlataforma: config?.nomePlataforma || '',
+      cidadePlataforma: config?.cidadePlataforma || '',
+
+      status: total === 0 ? 'quitada' : 'aberta',
+      lancadaPor: ownerUid || null,
+      lancadaEm: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   return { tioUid, mes, total, isento };
 }
@@ -456,10 +400,7 @@ export async function fecharFatura({
  * OS DOIS VÃO NO MESMO LOTE de propósito. Separados, uma falha de rede entre
  * eles deixa a fatura paga e a conta bloqueada — o pior desfecho possível,
  * porque o motorista tem o comprovante na mão e o app diz que ele não pagou.
- *
- * Quem escreve é quem cobra, nunca o motorista. Mesma forma de
- * `limiteCriancas`, e pelo mesmo motivo: cláusula que o devedor edita não é
- * cláusula. As rules recusam o campo no ramo dele.
+ * O webhook do gateway faz exatamente o mesmo par, pela mesma razão.
  */
 export async function marcarFaturaPaga(tioUid, mes, ownerUid) {
   if (!tioUid || !mes) throw new Error('Sem motorista ou mês.');
@@ -498,6 +439,10 @@ export function watchFaturasDoMes(mes, cb, onError) {
 
 /** O histórico de um parceiro — mais recente primeiro. */
 export function watchFaturasDoParceiro(tioUid, cb, onError) {
+  if (!tioUid) {
+    cb([]);
+    return () => {};
+  }
   return onSnapshot(
     query(collection(db, 'faturasParceiro'), where('tioUid', '==', tioUid)),
     (snap) => {
@@ -506,9 +451,8 @@ export function watchFaturasDoParceiro(tioUid, cb, onError) {
       cb(lista);
     },
     (err) => {
-      console.error('[taxa] assinatura do histórico falhou:', err);
+      console.error('[taxa] faturas do parceiro não assinou:', err);
       onError?.(err);
     }
   );
 }
-

@@ -811,8 +811,8 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('dinheiro', 'tio2 forja evento na trilha alheia', 'NEGA',
     await criar('payments/pag1/events', 'forjado', tio2, { tipo: S('pago'), por: S(tio2.uid) }));
 
-  await semear('taxaConfig/app', { percentual: N(6), piso: N(50), pixKey: S('plataforma@x.com') });
-  await semear('taxaParceiros/' + tio1.uid, { modo: S('percentual'), valor: N(6) });
+  await semear('taxaConfig/app', { diaVencimento: N(10), pixKey: S('plataforma@x.com') });
+  await semear('taxaParceiros/' + tio1.uid, { notaInterna: S('conversou em agosto') });
   await semear('faturasParceiro/' + tio1.uid + '_2026-08', { tioUid: S(tio1.uid), total: N(180) });
 
   // ESTE CASO ESPERAVA 'PASSA', COM A JUSTIFICATIVA "pra saber pra onde pagar"
@@ -834,6 +834,32 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     await ler('taxaConfig/app', pai1));
   checar('taxa', 'tio2 le a negociacao do tio1', 'NEGA',
     await ler('taxaParceiros/' + tio1.uid, tio2));
+  // ── A CLÁUSULA DE PREÇO (06/09/2026) ─────────────────────────────────
+  //
+  // O modelo virou faixa de tabela, e cada campo abaixo é `limiteCriancas` com
+  // outra roupa: livre, o motorista se poe na faixa de R$ 69 com teto de 40,
+  // se marca fundador vitalicio, se da cinco indicacoes que nao existem e se
+  // isenta ate 2099. Clausula que o devedor edita nao e clausula.
+  checar('preco', 'o motorista escolhe a propria faixa', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1, { planoId: S('ate40') }, ['planoId']));
+  checar('preco', 'o motorista se marca fundador vitalicio', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1, { condicaoFundador: S('vitalicio') }, ['condicaoFundador']));
+  checar('preco', 'o motorista inventa indicacoes', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1, { indicacoesAtivas: N(5) }, ['indicacoesAtivas']));
+  checar('preco', 'o motorista se isenta ate 2099', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1, { isencaoAte: S('2099-12') }, ['isencaoAte']));
+  checar('preco', 'e o vizinho tambem nao mexe na faixa dele', 'NEGA',
+    await escrever('users/' + tio1.uid, tio2, { planoId: S('ate10') }, ['planoId']));
+  checar('pos', 'o dono define a faixa do parceiro', 'PASSA',
+    await escrever('users/' + tio1.uid, dono, { planoId: S('ate25') }, ['planoId']));
+  checar('pos', 'e a condicao de fundador', 'PASSA',
+    await escrever('users/' + tio1.uid, dono, { condicaoFundador: S('metade') }, ['condicaoFundador']));
+
+  // A prospeccao saiu das rules junto com o orcamento.
+  await semear('leadsFunil/lead1', { nome: S('Motorista X'), etapa: S('novo') });
+  checar('funil', 'nem o dono alcanca o funil que saiu das rules', 'NEGA',
+    await ler('leadsFunil/lead1', dono));
+
   checar('taxa', 'tio2 le a fatura do tio1', 'NEGA',
     await ler('faturasParceiro/' + tio1.uid + '_2026-08', tio2));
   checar('pos', 'o dono le a fatura que emitiu', 'PASSA',

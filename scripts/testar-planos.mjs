@@ -24,6 +24,12 @@ import {
   descontoDoFundador,
   descontoDeIndicacoes,
   precoDoMes,
+  descontosVigentes,
+  ANTECIPACAO,
+  PREMIOS_DA_ROLETA,
+  MESES_DE_CONTRATO,
+  FUNDADOR_E_ANTECIPACAO_SOMAM,
+  ORIGEM,
 } from '../src/dominio/associacao/planos.js';
 
 let ok = 0;
@@ -175,6 +181,95 @@ checar(
   true,
   PLANOS.every((p, i) => i === 0 || p.preco / p.ate < PLANOS[i - 1].preco / PLANOS[i - 1].ate)
 );
+
+bloco('7. Desconto com PRAZO — o que a antecipação e a roleta criaram');
+
+const medio = planoPorId('ate25');
+const anteci = { origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-09' };
+const roleta30 = { origem: ORIGEM.ROLETA, fracao: 0.3, ate: '2027-09' };
+
+// PRAZO É O PONTO. Desconto de conversão que não expira vira preço — e "para
+// sempre" numa planilha de receita é a diferença entre fechar a conta e não.
+checar('dentro do prazo, vale', 0.5, descontosVigentes([anteci], '2027-09').antecipacao);
+checar('no mês seguinte ao fim, não vale mais', 0, descontosVigentes([anteci], '2027-10').antecipacao);
+checar('antes do fim, vale', 0.5, descontosVigentes([anteci], '2026-10').antecipacao);
+checar('desconto sem data não vale nada', 0,
+  descontosVigentes([{ origem: ORIGEM.ANTECIPACAO, fracao: 0.5 }], '2026-10').antecipacao);
+checar('lista vazia não quebra', 0, descontosVigentes(null, '2026-10').roleta);
+checar('as origens não se misturam', 0.3, descontosVigentes([anteci, roleta30], '2026-10').roleta);
+
+bloco('8. A regra que protege o programa de indicação');
+
+// ⚠️ ESTE É O BLOCO QUE GUARDA UMA DECISÃO DE NEGÓCIO.
+//
+// Somando fundador (50%) com antecipação (50%), os treze primeiros associados
+// chegariam a 100% e, a partir dali, roleta e indicação valeriam ZERO — para
+// exatamente as pessoas que mais indicam. O programa de aquisição deixaria de
+// recompensar quem ele precisa recompensar.
+checar('a decisão está registrada como constante', false, FUNDADOR_E_ANTECIPACAO_SOMAM);
+checar(
+  'fundador metade + antecipação = 50%, não 100%',
+  0.5,
+  precoDoMes({ plano: medio, fundador: FUNDADOR.METADE, descontos: [anteci], mes: '2026-10' }).desconto
+);
+checar(
+  'e ele continua ganhando com a roleta por cima',
+  0.8,
+  precoDoMes({
+    plano: medio,
+    fundador: FUNDADOR.METADE,
+    descontos: [anteci, roleta30],
+    mes: '2026-10',
+  }).desconto
+);
+checar(
+  'quem NÃO é fundador ganha os 50% da antecipação inteiros',
+  0.5,
+  precoDoMes({ plano: medio, descontos: [anteci], mes: '2026-10' }).desconto
+);
+checar(
+  'e o valor sai certo',
+  74.5,
+  precoDoMes({ plano: medio, descontos: [anteci], mes: '2026-10' }).liquido
+);
+// O vitalício continua sendo o único que zera sozinho, e a antecipação não
+// tira nada dele: max(1, 0.5) segue 1.
+checar(
+  'o vitalício não é rebaixado pelo maior-dos-dois',
+  1,
+  precoDoMes({ plano: medio, fundador: FUNDADOR.VITALICIO, descontos: [anteci], mes: '2026-10' }).desconto
+);
+
+bloco('9. O teto de 100% continua valendo com quatro fontes');
+
+// Quatro descontos ao mesmo tempo somam mais de 1 — e fatura negativa é
+// dinheiro saindo da plataforma para quem devia estar pagando.
+const tudo = precoDoMes({
+  plano: medio,
+  fundador: FUNDADOR.METADE,
+  indicacoesAtivas: 5,
+  descontos: [anteci, roleta30],
+  mes: '2026-10',
+});
+checar('desconto para em 1', 1, tudo.desconto);
+checar('e o líquido para em zero, nunca negativo', 0, tudo.liquido);
+
+bloco('10. O contrato e a roleta da conversão');
+
+checar('o contrato é de doze meses', 12, MESES_DE_CONTRATO);
+checar('a antecipação dura o contrato inteiro', 12, ANTECIPACAO.meses);
+checar('a antecipação é metade', 0.5, ANTECIPACAO.fracao);
+checar('a roleta tem quatro divisões', 4, PREMIOS_DA_ROLETA.length);
+// Duas dão mês sem taxa, duas dão desconto — e nenhum prêmio dá as duas
+// coisas, senão o mesmo giro entraria em dois caminhos de cobrança.
+checar('duas dão mês sem taxa', 2, PREMIOS_DA_ROLETA.filter((p) => p.meses && !p.fracao).length);
+checar('duas dão desconto', 2, PREMIOS_DA_ROLETA.filter((p) => p.fracao).length);
+checar(
+  'todo desconto da roleta dura o contrato inteiro',
+  true,
+  PREMIOS_DA_ROLETA.filter((p) => p.fracao).every((p) => p.meses === MESES_DE_CONTRATO)
+);
+checar('nenhum prêmio zera a conta sozinho', true, PREMIOS_DA_ROLETA.every((p) => (p.fracao || 0) < 1));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 
