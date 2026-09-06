@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Clock, MessageCircle, X } from 'lucide-react';
+import { ArrowRight, Clock, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { avisoDoTrial, fimDoTrial } from '../../dominio/associacao/trial.js';
-import { salesWhatsAppLink } from '../../config/developer';
+import { Link } from 'react-router-dom';
 
 /**
  * O AVISO DO TESTE GRÁTIS — três formas, e o silêncio como estado padrão.
@@ -87,20 +87,15 @@ export default function AvisoDoTrial({ temContrato = false }) {
             seus dados continuam aqui.
           </p>
 
-          {/* A FASE 6 TROCA ISTO POR "VER PLANOS".
-            * Enquanto a tela de assinatura não existe, mandar pro consultor é
-            * o caminho que de fato termina em alguma coisa — botão que abre
-            * uma tela vazia é pior que botão nenhum. */}
-          <a
-            href={salesWhatsAppLink(
-              'Oi! Meu teste do Alô Buzinou está acabando e eu quero continuar.'
-            )}
-            target="_blank"
-            rel="noopener"
+          {/* A tela de planos já existe e mostra o preço DELE, com os
+            * descontos aplicados. Antes dela isto abria o WhatsApp — o que
+            * era honesto enquanto não havia para onde ir. */}
+          <Link
+            to="/tio/planos"
             className="tap mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-warningText underline"
           >
-            <MessageCircle size={15} /> Quero continuar
-          </a>
+            <ArrowRight size={15} /> Ver planos
+          </Link>
         </div>
 
         {!ultimo && (

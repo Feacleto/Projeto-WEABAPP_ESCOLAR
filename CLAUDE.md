@@ -17,9 +17,9 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 393 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 437 casos: horarios, faltas, aviso, contraste,
                                  # travessia, taxa, contrato, pix, status, auth,
-                                 # trial
+                                 # trial, planos
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -176,7 +176,7 @@ src/
 │   │                  intervaloDeDias
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
-│   ├── associacao/    taxa, contratoAssociacao, trial
+│   ├── associacao/    taxa, planos, contratoAssociacao, trial
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
@@ -327,6 +327,27 @@ negociação **e** emite o contrato na mesma folha) → `contratosAssociacao`
   [AvisoDaPlataforma](src/components/tio/AvisoDaPlataforma.jsx) só explica.
   Ele mora no `TioLayout` e é omitido em `/tio/taxa` de propósito: cobrança
   que cobre a própria tela de pagamento não deixa ninguém pagar.
+
+**Há DOIS modelos de preço, e eles não podem valer pro mesmo parceiro.**
+[taxa.js](src/dominio/associacao/taxa.js) é o NEGOCIADO — percentual sobre a
+soma das mensalidades, ajustado caso a caso pelo dono no orçamento, e é o que
+sustenta os contratos e faturas que já existem.
+[planos.js](src/dominio/associacao/planos.js) é o de AUTOATENDIMENTO — faixa
+fixa por número de crianças ativas (R$ 69 / 149 / 229), escolhida pelo próprio
+motorista. Somar os dois na mesma fatura cobra duas vezes; a migração de um
+pro outro é pendência aberta do [negocio.md](docs/negocio.md).
+
+**O plano capa QUANTIDADE, nunca funcionalidade** — não existe Básico/Pro. O
+app é completo em qualquer faixa, e o que muda é `users.limiteCriancas`, que
+já existe e já é cobrado pelas rules. Escolher plano menor que o uso é
+permitido, e **quem aponta as crianças que saem é o motorista**: corte
+automático apagaria clientes que ele não escolheu perder.
+
+**Só fundador chega a zero**, e é o desenho: 1º motorista vitalício, os 12
+seguintes com 50%, indicação vale 10% cada com teto de 50%. Metade + cinco
+indicações fecha em zero; quem não é fundador para em 50%. O desconto somado é
+cortado em 100% — sem isso, seis indicações sobre um fundador dariam 110% e a
+fatura viraria crédito. Testado em `npm run testar:planos`.
 
 **O relógio dos três meses começa na PRIMEIRA ROTA**, não no cadastro —
 `users.trialInicio`, gravado por [trialService](src/services/trialService.js)

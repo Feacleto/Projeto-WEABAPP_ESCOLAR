@@ -54,6 +54,7 @@ const TioPixConfig = lazy(() => import('./pages/tio/TioPixConfig'));
 const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
 const TioContratoAssociacao = lazy(() => import('./pages/tio/TioContratoAssociacao'));
 const TioTaxa = lazy(() => import('./pages/tio/TioTaxa'));
+const TioPlanos = lazy(() => import('./pages/tio/TioPlanos'));
 const ChildForm = lazy(() => import('./components/children/ChildForm'));
 
 const PaiLayout = lazy(() => import('./pages/pai/PaiLayout'));
@@ -473,6 +474,10 @@ export default function App() {
           * dinheiro. Misturar as duas telas é o começo de misturar os dois
           * dinheiros, que é o que os Termos de Uso proíbem. */}
         <Route path="taxa" element={<TioTaxa />} />
+        {/* A escolha do teto de crianças, que é o que o plano capa. Fora do
+          * BottomNav de propósito: ninguém procura plano no meio do dia de
+          * trabalho — chega-se aqui pelo aviso do teste ou pela taxa. */}
+        <Route path="planos" element={<TioPlanos />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>
