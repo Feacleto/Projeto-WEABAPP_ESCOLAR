@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ArrowUpCircle, X } from 'lucide-react';
 import Respiro from './Respiro';
+import EstradaCarregando from './EstradaCarregando';
 
 /**
  * "SAIU UMA VERSÃO NOVA" — o aviso, e o teatro de trocar.
@@ -104,6 +105,11 @@ export default function AtualizacaoDisponivel() {
             Só um instante — a tela volta sozinha.
           </p>
         </div>
+        {/* A estrada vem DEPOIS do texto, e é a única parte que se move
+          * junto do respiro da marca. Antes do texto ela roubaria a leitura:
+          * quem chega nesta tela precisa saber o que está acontecendo antes
+          * de ver algo andando. */}
+        <EstradaCarregando className="mt-1" />
       </div>
     );
   }

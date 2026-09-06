@@ -1130,3 +1130,56 @@
     animation: none;
   }
 }
+
+/* ── A ESTRADA DA TELA DE ATUALIZAÇÃO ──────────────────────────────────
+ *
+ * A van fica parada e a rua corre embaixo. Ver o cabeçalho de
+ * `components/common/EstradaCarregando.jsx` para por que não é a van que
+ * atravessa: barra de progresso afirma saber quanto falta, e aqui ninguém
+ * sabe.
+ *
+ * O tracejado é um gradiente repetido com `background-position` animado — a
+ * alternativa (uma fila de divs) anima layout, e esta tela aparece justamente
+ * no aparelho que já está ocupado trocando o service worker.
+ *
+ * O período do gradiente (28px) e o deslocamento do keyframe são o MESMO
+ * número de propósito: se divergirem, o tracejado dá um salto a cada volta.
+ */
+.ab-estrada-asfalto {
+  background-image: repeating-linear-gradient(
+    90deg,
+    theme('colors.accent') 0 14px,
+    transparent 14px 28px
+  );
+  animation: ab-estrada-correr 0.45s linear infinite;
+}
+
+.ab-estrada-van {
+  animation: ab-estrada-solavanco 1.1s ease-in-out infinite;
+}
+
+@keyframes ab-estrada-correr {
+  to {
+    background-position-x: -28px;
+  }
+}
+
+@keyframes ab-estrada-solavanco {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-2px);
+  }
+}
+
+/* Movimento reduzido: a rua PARA, mas continua desenhada. Sumir com ela
+ * devolveria uma van flutuando no vazio, e a tela perderia o único sinal de
+ * que algo está acontecendo. Mesmo critério do respiro logo acima. */
+@media (prefers-reduced-motion: reduce) {
+  .ab-estrada-asfalto,
+  .ab-estrada-van {
+    animation: none;
+  }
+}
