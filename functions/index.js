@@ -45,7 +45,7 @@ const {
   makeRunBillingNow,
 } = require('./lib/billing');
 const { makeGetInvitePreview } = require('./lib/invitePreview');
-const { makeSpinEntryBonus } = require('./lib/entryBonus');
+const { makeGirarPremio } = require('./lib/premioDeConversao');
 const { makeFlagDuplicateReceipts } = require('./lib/receiptGuard');
 const {
   makeBackfillTestimonialPrivacy,
@@ -360,11 +360,12 @@ exports.redeemInvite = makeRedeemInvite(db);
 exports.getShowcase = makeGetShowcase(db);
 
 /**
- * A roleta de entrada. O SERVIDOR sorteia e grava antes de responder — a
- * animação do cliente encena um resultado que já existe. Uma vez por conta,
- * garantido pelo id do documento ser o uid.
+ * A roleta — prêmio de CONVERSÃO, girado depois de contratar (era de entrada
+ * até 06/09/2026). O SERVIDOR sorteia, grava e APLICA na mesma transação antes
+ * de responder; a animação do cliente encena um resultado que já existe. Uma
+ * vez por conta, garantido pelo id do documento ser o uid.
  */
-exports.spinEntryBonus = makeSpinEntryBonus(db);
+exports.girarPremio = makeGirarPremio(db);
 
 // ===== Rota abandonada (ver functions/lib/routes.js) =====
 //

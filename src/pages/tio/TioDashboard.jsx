@@ -13,8 +13,7 @@ import {
   MailWarning,
 } from 'lucide-react';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
-import BonusNudge from '../../components/associado/BonusNudge';
-import { ENTRY_BONUS_ENABLED } from '../../config/capabilities';
+import PremioNudge from '../../components/associado/PremioNudge';
 import Header from '../../components/layout/Header';
 import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
@@ -462,7 +461,7 @@ export default function TioDashboard() {
               onAusentes={() => setListaAusentesOpen(true)}
             />
 
-            {ENTRY_BONUS_ENABLED && <BonusNudge />}
+            <PremioNudge />
             <ReviewNudge />
 
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />

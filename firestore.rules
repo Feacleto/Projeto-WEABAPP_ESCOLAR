@@ -1545,15 +1545,23 @@ service cloud.firestore {
     //
     // O id do documento é o uid de propósito: é o que garante "uma vez
     // por conta" sem depender de contagem nem de campo de controle.
-    match /entryBonuses/{uid} {
-      // O DONO DO PRÊMIO, OU O DONO DA PLATAFORMA — e mais ninguém.
-      //
-      // Era `isAdmin()`, que aqui significa QUALQUER motorista: um parceiro
-      // lia quanto de isenção outro tinha sorteado, e o `list` entregava a
-      // tabela inteira de quem entrou com quantos meses de graça. É a
-      // condição comercial de cada associado, e ela não é assunto entre eles.
-      //
-      // Quem precisa varrer é o dono, pra conciliar isenção com fatura.
+    // premios/{uid} — o prêmio da roleta, sorteado ao CONTRATAR.
+    //
+    // Era `entryBonuses`: bônus de ENTRADA, de 1 a 4 meses sem taxa, girado no
+    // primeiro acesso. Virou prêmio de conversão em 06/09/2026 — dois meses
+    // sem taxa e dois descontos pelos 12 meses do contrato — e mudou de nome
+    // junto, porque coleção com nome de outra coisa é a próxima pessoa lendo
+    // errado com confiança.
+    //
+    // O DONO DO PRÊMIO, OU O DONO DA PLATAFORMA — e mais ninguém. O `list`
+    // entregava a tabela de quem entrou com qual condição: é a condição
+    // comercial de cada associado, e ela não é assunto entre eles.
+    //
+    // `create, update, delete: if false` PARA TODOS, inclusive o dono. Só o
+    // Admin SDK escreve. Benefício que o beneficiário reescreve não é
+    // benefício; e um que a plataforma reescreve depois não sustenta discussão
+    // nenhuma sobre o que foi combinado.
+    match /premios/{uid} {
       allow get: if isSignedIn()
         && (request.auth.uid == uid || isOwner());
       allow list: if isOwner();

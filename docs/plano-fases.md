@@ -252,9 +252,8 @@ O que falta, na ordem:
    Preço discreto durante o teste; quem contrata ANTES do fim leva 50% nos 12
    meses. Exige um conceito que não existe: **desconto com prazo**
 2. **A tranca nas rules** — bloqueio por teste vencido e por atraso
-3. **A roleta na conversão** — quatro prêmios: +2 meses, 30% por 12 meses,
-   +1 mês, 10% por 12 meses. A régua já existe em `PREMIOS_DA_ROLETA`; falta o
-   sorteio no servidor mudar de prêmio e de momento
+3. ~~**A roleta na conversão**~~ — feita: `girarPremio`, coleção `premios`,
+   quatro prêmios, girando só para quem contratou
 4. **Painel do dono** — vira acompanhamento, não aprovação. E a conta
    `role: 'owner'`, que **ainda não existe**: ninguém consegue abrir `/admin`
 

@@ -26,7 +26,8 @@ import { urlDoAmbiente, SANDBOX, PRODUCAO } from '../functions/lib/asaasApi.js';
 import { assinaturaAteDoMes as noServidor } from '../functions/lib/eventoDeCobranca.js';
 import { assinaturaAteDoMes as noApp } from '../src/dominio/associacao/contaAtiva.js';
 import { PLANOS as planosNoServidor, ANTECIPACAO as antecipacaoNoServidor, dentroDoTrial } from '../functions/lib/contratacao.js';
-import { PLANOS as planosNoApp, ANTECIPACAO as antecipacaoNoApp } from '../src/dominio/associacao/planos.js';
+import { PLANOS as planosNoApp, ANTECIPACAO as antecipacaoNoApp, PREMIOS_DA_ROLETA } from '../src/dominio/associacao/planos.js';
+import { PREMIOS as premiosNoServidor, mesDaqui } from '../functions/lib/premioDeConversao.js';
 
 let ok = 0;
 let bad = 0;
@@ -267,6 +268,30 @@ checar('no octogésimo nono dia, ainda dentro', true, dentroDoTrial(dia('2026-06
 // 90 dias corridos a partir de 17/06 fecham em 15/09 — o dia 90 já é fora.
 checar('no nonagésimo, acabou', false, dentroDoTrial(dia('2026-06-17'), agora));
 checar('muito depois, fora', false, dentroDoTrial(dia('2026-01-01'), agora));
+
+bloco('10. A roleta: o que a tela mostra é o que o servidor sorteia');
+
+// A RÉGUA APARECE NOS DOIS LADOS: a roda desenha `PREMIOS_DA_ROLETA` e o
+// sorteio acontece sobre `PREMIOS` das functions. Divergir faria a roleta
+// prometer uma coisa na fatia e conceder outra na conta — e a fatia em que ela
+// para é escolhida pela POSIÇÃO na lista, então até trocar a ordem estraga.
+checar(
+  'os quatro prêmios, na mesma ordem',
+  PREMIOS_DA_ROLETA.map((p) => `${p.id}:${p.meses ?? ''}:${p.fracao ?? ''}`),
+  premiosNoServidor.map((p) => `${p.id}:${p.meses ?? ''}:${p.fracao ?? ''}`)
+);
+checar('todos com o mesmo peso — 25% cada', true,
+  premiosNoServidor.every((p) => p.peso === premiosNoServidor[0].peso));
+
+bloco('11. Até quando o prêmio vale');
+
+// INCLUSIVE O MÊS ATUAL: "2 meses sem taxa" girado em setembro cobre setembro
+// e outubro, não setembro até novembro. Um mês a mais por acidente de
+// aritmética é o tipo de erro que ninguém confere.
+const setembro = new Date(2026, 8, 15, 12);
+checar('1 mês cobre só o mês corrente', '2026-09', mesDaqui(1, setembro));
+checar('2 meses cobrem este e o próximo', '2026-10', mesDaqui(2, setembro));
+checar('12 meses viram o ano', '2027-08', mesDaqui(12, setembro));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

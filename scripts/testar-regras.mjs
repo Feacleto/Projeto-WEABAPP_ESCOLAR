@@ -978,16 +978,16 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
 
   console.log('\n=== O BENEFICIO E A FILA ===');
 
-  await semear('entryBonuses/' + tio1.uid, { meses: N(3), sorteadoEm: S('2026-08-01') });
+  await semear('premios/' + tio1.uid, { premioId: S('desconto30'), fracao: N(0.3) });
   checar('pos', 'o motorista le o proprio premio', 'PASSA',
-    await ler('entryBonuses/' + tio1.uid, tio1));
+    await ler('premios/' + tio1.uid, tio1));
   checar('bonus', 'tio2 le o premio do tio1', 'NEGA',
-    await ler('entryBonuses/' + tio1.uid, tio2));
-  // `entryBonuses` e beneficio em dinheiro e ninguem escreve dali — nem o dono.
+    await ler('premios/' + tio1.uid, tio2));
+  // `premios` e beneficio em dinheiro e ninguem escreve dali — nem o dono.
   checar('bonus', 'o motorista escreve o proprio premio', 'NEGA',
-    await escrever('entryBonuses/' + tio1.uid, tio1, { meses: N(4) }, ['meses']));
+    await escrever('premios/' + tio1.uid, tio1, { meses: N(4) }, ['meses']));
   checar('bonus', 'o motorista varre a lista de premios', 'NEGA',
-    await listar('entryBonuses', tio1));
+    await listar('premios', tio1));
 
   // As duas listas de espera SAIRAM das rules em 06/09/2026 — sem match, elas
   // caem no default deny. O caso continua aqui porque o dado pode ter sobrado

@@ -226,7 +226,8 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        duas home públicas antigas (`/` do motorista) morreram
                        aqui dentro; a `/familia` continua no app.
 functions/             Cloud Functions v2 (CommonJS, Node 22)
-  └── lib/             billing, invites, push, routes, entryBonus, receiptGuard…
+  └── lib/             billing, invites, push, routes, contratacao,
+                       premioDeConversao, asaasCobranca, receiptGuard…
 firestore.rules        71 KB — a segurança real do app mora aqui
 storage.rules          foto, comprovante, logo e contrato de papel. Caminho
                        DETERMINÍSTICO (`childPhotos/{childId}`): `isAdmin()`
@@ -278,8 +279,8 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `users` · `children` (+ subcoleção `rides/{YYYY-MM-DD}`) · `payments`
 (+ `events`) · `liveLocation` · `notifications` · `altPickups` · `schools` ·
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
-`feedbacks` · `supportTickets` · `expenses` · `entryBonuses` · `taxaConfig` · `taxaParceiros` ·
-`faturasParceiro` · `contratosAssociacao` · `platformConfig` ·
+`feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
+`faturasParceiro` · `contratosAssociacao` · `premios` · `platformConfig` ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -368,6 +369,15 @@ havia base real.
   numa linha. Somando, os treze primeiros associados chegariam a 100% e a
   partir dali roleta e indicação valeriam zero — para exatamente as pessoas que
   mais indicam.
+- **A roleta virou prêmio de CONVERSÃO** (`girarPremio`, coleção `premios`).
+  Ela era de entrada e sorteava 1 a 4 meses sem taxa no primeiro acesso — esse
+  papel virou do teste de três meses, e as duas coisas juntas custavam até
+  **cinco meses e meio sem receita por associado**, comprando o que o teste já
+  comprava. Agora são quatro prêmios (2 meses · 30% por 12 meses · 1 mês · 10%
+  por 12 meses), e ela só gira para quem tem `planoId`.
+  **O sorteio e a APLICAÇÃO acontecem na mesma transação** — separados, uma
+  falha entre os dois deixaria o prêmio registrado sem chegar na conta, e ele
+  veria a animação e pagaria cheio.
 - **Isenção não é desconto de 100%.** `users.isencaoAte` diz que aquele mês não
   tem fatura; desconto de 100% produz uma fatura de R$ 0. Os dois chegam a zero
   e contam histórias diferentes na hora de conferir o que foi concedido.
@@ -470,7 +480,7 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   cobrança de uma `faturasParceiro`) e `asaasWebhook` (a baixa vem de fora).
   As duas metades do mesmo elo: o webhook acha a fatura por `asaasPaymentId`,
   e é a callable que grava esse campo.
-- **Outros:** `getShowcase`, `spinEntryBonus`,
+- **Outros:** `getShowcase`, `girarPremio`,
   `flagDuplicateReceipts`, `backfillTestimonialPrivacy`
 
 Cobrança e limpeza **saíram do cliente** de propósito: no cliente, o mês em que

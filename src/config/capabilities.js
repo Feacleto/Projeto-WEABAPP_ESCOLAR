@@ -90,7 +90,7 @@ export const STORAGE_OFF_MESSAGE =
  * e cada recurso deriva dela.
  *
  * O QUE DEPENDE DISTO (tudo httpsCallable):
- *   - a roleta de entrada (`spinEntryBonus`) — ver ENTRY_BONUS_ENABLED acima;
+ *   - a roleta de conversão (`girarPremio`);
  *   - o resgate de convite do responsável (`redeemInvite`, `lookupInvite`) e
  *     por consequência o /first-access;
  *   - a geração de mensalidade e as cobranças (`generateMonthlyPayments`);
@@ -118,28 +118,15 @@ export const CLOUD_FUNCTIONS_ENABLED =
       : CLOUD_FUNCTIONS_ENABLED_DEFAULT;
 
 /**
- * A ROLETA DA CONDIÇÃO DE ENTRADA — ligada ou desligada NO APP.
+ * A BANDEIRA `ENTRY_BONUS_ENABLED` FOI REMOVIDA EM 06/09/2026.
  *
- * POR QUE ESTÁ DESLIGADA
- * A roleta promete meses sem taxa e grava o resultado numa Cloud Function.
- * Enquanto o cloud não está de pé, o cartão "Girar agora" ocupa o topo do
- * painel do motorista — o lugar mais caro da tela — pra oferecer algo que
- * não fecha o ciclo. Ele abre o painel pra ver a rota do dia e a primeira
- * coisa que lê é um brinde.
+ * Ela existia porque a roleta era de ENTRADA: aparecia no topo do painel de
+ * quem acabou de criar conta, e sem cloud o cartão "Girar agora" ocupava o
+ * lugar mais caro da tela para oferecer algo que não fechava o ciclo.
  *
- * O QUE ESTA BANDEIRA NÃO TOCA
- * A VITRINE. `Home`, `Familia`, `PartnerPitch` e `WaitlistSheet` seguem
- * anunciando a roleta, por decisão de produto: ela é argumento de venda e o
- * texto da rodada é o que traz associado. A consequência é conhecida e
- * aceita — quem se associar por causa dela não vai encontrá-la no app até o
- * cloud subir. E não é preciso lembrar desta linha quando ele subir: ela
- * DERIVA de `CLOUD_FUNCTIONS_ENABLED` acima, então o cartão reaparece junto
- * com o resto. `BonusNudge`, `BonusSheet` e `entryBonusService` continuam no
- * repositório, intactos — desligar não é apagar.
- *
- * O override `VITE_ENTRY_BONUS_ENABLED=false` continua valendo, pro caso de
- * o cloud estar de pé e a roleta ainda não ser pra mostrar.
+ * A roleta virou prêmio de CONVERSÃO, e quem a esconde agora não é bandeira de
+ * build — é o estado da conta: `PremioNudge` só renderiza para quem tem
+ * `users.planoId`, ou seja, para quem já contratou. Condição que vem do dado é
+ * melhor que condição que vem do deploy, porque ela não precisa ser lembrada.
  */
-export const ENTRY_BONUS_ENABLED =
-  CLOUD_FUNCTIONS_ENABLED &&
-  import.meta.env.VITE_ENTRY_BONUS_ENABLED !== 'false';
+
