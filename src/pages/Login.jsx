@@ -1,24 +1,37 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, Ticket } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
+import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
-import { CENA_ENTRADA, travessar } from '../marca/travessia';
+import { CENA_ABERTURA, CENA_ENTRADA, travessar } from '../marca/travessia';
 import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import {
   resetPassword,
   loginComGoogle,
+  googleAndRedeem,
 } from '../services/authService';
+import { acceptTerms } from '../services/consentService';
 import { adminExists } from '../services/inviteCodeService';
 import OpenInBrowser from '../components/auth/OpenInBrowser';
 import { canUseGoogleSignIn, isInAppBrowser } from '../compartilhado/browserEnv';
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
+import {
+  codigoDoTexto,
+  isValidInviteCodeFormat,
+} from '../dominio/identidade/generateInviteCode';
+
+/** As duas abas do cartão, na ordem em que aparecem. */
+const ABAS = [
+  { id: 'entrar', rotulo: 'Já tenho conta' },
+  { id: 'criar', rotulo: 'Criar conta' },
+];
 
 /**
  * A ÚNICA PORTA DE ENTRADA — motorista, responsável e dono.
@@ -70,6 +83,24 @@ export default function Login() {
   const [resetting, setResetting] = useState(false);
   // Assumimos que admin existe até confirmar — evita "flicker" do link de bootstrap
   const [hasAdmin, setHasAdmin] = useState(true);
+
+  // ── A ABA, E POR QUE ELA PODE VIR DA URL ──────────────────────────
+  //
+  // A landing mora em OUTRO domínio, então ela não tem como passar `state`
+  // na navegação: o botão "criar conta" de lá só consegue mandar um endereço.
+  // `?criar=1` é esse endereço. Sem ele, quem clica em "criar conta" no site
+  // cai na aba de entrar e precisa descobrir a segunda aba sozinho — que é
+  // exatamente o passo perdido que este trabalho veio consertar.
+  const [aba, setAba] = useState(() =>
+    new URLSearchParams(location.search || '').get('criar') ? 'criar' : 'entrar'
+  );
+  const ehEntrar = aba === 'entrar';
+
+  // Estado da aba de cadastro. Vive aqui e não dentro dela porque trocar de
+  // aba não pode apagar o código que a pessoa já digitou.
+  const [code, setCode] = useState('');
+  const [semCodigo, setSemCodigo] = useState(false);
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   // Mesmo tratamento da folha de convite: dentro do navegador embutido do
   // WhatsApp/Instagram, o Google recusa o OAuth e a sessão criada aqui fica
@@ -152,6 +183,62 @@ export default function Login() {
     }
   };
 
+  /**
+   * Criar conta com Google — o caminho do responsável convidado.
+   *
+   * O CÓDIGO E A CONTA NASCEM JUNTOS. `googleAndRedeem` abre o popup, cria a
+   * sessão e resgata o convite numa transação só; se o resgate falhar, ele
+   * apaga a conta que acabou de nascer — mas só ela, nunca a conta Google de
+   * quem já usava o app. É o que impede o pior estado possível aqui: sessão
+   * criada, vínculo não, e a pessoa achando que já é cliente.
+   *
+   * SEM CÓDIGO ELE NÃO CRIA NADA. Cai no login normal, e quem não tiver
+   * perfil vai pra sala de espera escolher por onde chegou. Fingir que dá pra
+   * criar conta de responsável sem convite seria repetir o erro que a sala de
+   * espera existe pra consertar.
+   */
+  const onCriarComGoogle = async () => {
+    const limpo = codigoDoTexto(code);
+
+    if (!limpo) {
+      toast.error('Digite o código do convite — ou toque em "Não tenho o código".');
+      return;
+    }
+    if (!isValidInviteCodeFormat(limpo)) {
+      toast.error('Confira o código com o motorista: ele tem 8 caracteres.');
+      return;
+    }
+    if (!acceptedLegal) {
+      toast.error('Aceite os termos antes de continuar.');
+      return;
+    }
+
+    setGoogleSubmitting(true);
+    try {
+      const { user, created } = await googleAndRedeem({ inviteCode: limpo });
+      try {
+        await acceptTerms(user.uid);
+      } catch (err) {
+        console.error('Falha ao registrar aceite:', err);
+      }
+      await refreshProfile();
+      toast.success(
+        created ? 'Conta criada com Google!' : 'Pronto! Criança vinculada.'
+      );
+      // Mesma regra do /first-access: conta NOVA ganha a abertura, conta que
+      // já existia e só vinculou mais uma criança ganha a entrada. A abertura
+      // é cara e existe pra um único momento na vida da pessoa.
+      travessar(created ? CENA_ABERTURA : CENA_ENTRADA, 'parent');
+      navigate('/pai', { replace: true });
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        toast.error(mensagemDeAuth(err, 'criar'));
+      }
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  };
+
   const onForgotPassword = async () => {
     if (!email) {
       toast.error('Digite seu email primeiro.');
@@ -226,10 +313,27 @@ export default function Login() {
           </VoltarTag>
 
           <div className="relative z-10 mt-5 lg:mt-0">
-            {/* Teto em volta do logo: ele é vetor e escala, mas sem limite de
+            {/* O LOGO É A PORTA DE SAÍDA PRA VITRINE, e é sempre a mesma.
+              *
+              * Clicar na marca pra voltar ao site é gesto de web que a pessoa
+              * já traz de fora — e aqui ela veio de fora, de um site com esta
+              * marca no canto. Sem isso a marca era enfeite: a única saída era
+              * o "Voltar", que fica no alto e não parece um caminho.
+              *
+              * DESTINO ÚNICO, diferente do "Voltar" ali em cima, que tem dois:
+              * ele desfaz o passo que a pessoa deu (volta pra `/familia` se foi
+              * de lá), enquanto o logo é a marca — e a casa da marca é a
+              * landing, venha ela de onde vier. `<a>` e não `<Link>`: é outro
+              * domínio, e o roteador montaria caminho relativo.
+              *
+              * Teto em volta do logo: ele é vetor e escala, mas sem limite de
               * largura ele é CORTADO quando a faixa aperta — foi o que
               * aconteceu enquanto esta tela vivia dentro dos 480px. */}
-            <div className="max-w-full">
+            <a
+              href={SITE_INSTITUCIONAL}
+              aria-label="Conhecer o Alô Buzinou"
+              className="tap block w-fit max-w-full rounded-lg"
+            >
               <Logo
                 variant="lockup"
                 tone="onDark"
@@ -242,7 +346,7 @@ export default function Login() {
                 height={50}
                 className="hidden max-w-full lg:block"
               />
-            </div>
+            </a>
             {/* O logo já diz o nome em desenho. O h1 continua existindo pra
               * leitor de tela não perder o cabeçalho da página. */}
             <h1 className="sr-only">Alô Buzinou</h1>
@@ -270,126 +374,244 @@ export default function Login() {
         {/* ── O cartão ───────────────────────────────────────────────── */}
         <div className="flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10">
           <div className="w-full max-w-[380px] space-y-4 rounded-2xl border border-border bg-card p-6 shadow-rest sm:p-7">
-            <div>
-              <h2 className="text-xl font-bold text-text">Entrar</h2>
-              <p className="mt-0.5 text-sm text-textMuted">
-                Motorista, responsável ou administração.
-              </p>
+            {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
+              * "Cadastrar" era um link no rodapé do cartão que levava pra
+              * `/comecar` — e `/comecar` devolve pro login quem não tem
+              * sessão. Quem clicava sem estar logado voltava pra esta mesma
+              * tela sem nada ter acontecido: a saída do cadastro só existia
+              * DEPOIS do Google, que é justamente o passo que a pessoa ainda
+              * não deu.
+              *
+              * Aba em vez de rota porque as duas são a mesma conversa com
+              * dois começos, e trocar de tela pra descobrir que era a tela
+              * errada cobra o pedágio duas vezes. Trocar de aba não cria
+              * sessão nenhuma: só o botão cria.
+              */}
+            <div
+              role="tablist"
+              aria-label="Entrar ou criar conta"
+              className="-mx-6 grid grid-cols-2 border-b border-border sm:-mx-7"
+            >
+              {ABAS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  role="tab"
+                  id={`aba-${a.id}`}
+                  aria-selected={aba === a.id}
+                  aria-controls="painel-conta"
+                  onClick={() => setAba(a.id)}
+                  className={`-mb-px border-b-2 px-2 pb-3 pt-1 text-sm font-semibold transition-colors ${
+                    aba === a.id
+                      ? 'border-primary text-text'
+                      : 'border-transparent text-textMuted hover:text-text'
+                  }`}
+                >
+                  {a.rotulo}
+                </button>
+              ))}
             </div>
 
             {showBridge && (
               <OpenInBrowser onContinueHere={() => setBridgeDismissed(true)} />
             )}
 
-            {/* Google em destaque — opção principal pra reduzir fricção (não
-              * precisa digitar email/senha). Email/senha vem depois.
-              *
-              * `whitespace-nowrap`: o rótulo quebrava em TRÊS linhas quando o
-              * cartão apertava, e botão de três linhas não lê como botão. */}
-            {!showBridge && googleWorks && (
-              <>
-                <Button
-                  loading={googleSubmitting}
-                  onClick={onGoogleLogin}
-                  variant="secondary"
-                  className="!whitespace-nowrap !border-borderStrong"
-                >
-                  {!googleSubmitting && <GoogleIcon size={20} />}
-                  Continuar com Google
-                </Button>
-
-                <div className="relative py-1">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border"></div>
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="whitespace-nowrap bg-card px-3 text-textMuted">
-                      ou com email e senha
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <form
-              onSubmit={onSubmit}
-              className={`space-y-3 ${showBridge ? 'hidden' : ''}`}
+            <div
+              id="painel-conta"
+              role="tabpanel"
+              aria-labelledby={`aba-${aba}`}
+              className="space-y-4"
             >
-              <Input
-                type="email"
-                inputMode="email"
-                label="Email"
-                placeholder="seu@email.com"
-                icon={Mail}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
-              <Input
-                type="password"
-                revealable
-                label="Senha"
-                placeholder="sua senha"
-                icon={Lock}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
+              {ehEntrar ? (
+                <>
+                  <div>
+                    <h2 className="text-xl font-bold text-text">Entrar</h2>
+                    <p className="mt-0.5 text-sm text-textMuted">
+                      Motorista, responsável ou administração.
+                    </p>
+                  </div>
 
-              {/* Antes do botão, e alinhado à direita: quem chegou aqui e não
-                * lembra a senha precisa achar isto ANTES de errar três vezes. */}
-              <button
-                type="button"
-                onClick={onForgotPassword}
-                disabled={resetting}
-                className="tap ml-auto block whitespace-nowrap text-sm font-semibold text-primary disabled:opacity-50"
-              >
-                {resetting ? 'Enviando...' : 'Esqueci minha senha'}
-              </button>
+                  {/* Google em destaque — opção principal pra reduzir fricção
+                    * (não precisa digitar email/senha). Email/senha vem depois.
+                    *
+                    * `whitespace-nowrap`: o rótulo quebrava em TRÊS linhas
+                    * quando o cartão apertava, e botão de três linhas não lê
+                    * como botão. */}
+                  {!showBridge && googleWorks && (
+                    <>
+                      <Button
+                        loading={googleSubmitting}
+                        onClick={onGoogleLogin}
+                        variant="secondary"
+                        className="!whitespace-nowrap !border-borderStrong"
+                      >
+                        {!googleSubmitting && <GoogleIcon size={20} />}
+                        Continuar com Google
+                      </Button>
 
-              <Button type="submit" loading={submitting}>
-                Entrar
-              </Button>
-            </form>
+                      <div className="relative py-1">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-border"></div>
+                        </div>
+                        <div className="relative flex justify-center text-xs">
+                          <span className="whitespace-nowrap bg-card px-3 text-textMuted">
+                            ou com email e senha
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
-            {/* ── Cadastrar ────────────────────────────────────────────
-              * O rodapé do cartão serve a MINORIA: quem chega no login quase
-              * sempre já tem conta. Por isso é linha, não botão — destaque
-              * igual ao do "Entrar" competiria com ele por nada.
-              *
-              * Fora da frente da família ele leva à sala de espera, que é
-              * onde as duas saídas do cadastro moram desde a decisão 20. */}
-            {!showBridge && (
-              <p className="border-t border-border pt-4 text-center text-sm text-textMuted">
-                {daFamilia ? (
-                  <>
-                    Recebeu um convite?{' '}
-                    <Link
-                      to="/first-access"
-                      className="font-semibold text-primary hover:underline"
+                  <form
+                    onSubmit={onSubmit}
+                    className={`space-y-3 ${showBridge ? 'hidden' : ''}`}
+                  >
+                    <Input
+                      type="email"
+                      inputMode="email"
+                      label="Email"
+                      placeholder="seu@email.com"
+                      icon={Mail}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
+                      required
+                    />
+                    <Input
+                      type="password"
+                      revealable
+                      label="Senha"
+                      placeholder="sua senha"
+                      icon={Lock}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                    />
+
+                    {/* Antes do botão, e alinhado à direita: quem chegou aqui e
+                      * não lembra a senha precisa achar isto ANTES de errar
+                      * três vezes. */}
+                    <button
+                      type="button"
+                      onClick={onForgotPassword}
+                      disabled={resetting}
+                      className="tap ml-auto block whitespace-nowrap text-sm font-semibold text-primary disabled:opacity-50"
                     >
-                      Usar meu código
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    Ainda não tem conta?{' '}
-                    <Link
-                      to="/comecar"
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      Cadastrar
-                    </Link>
-                  </>
-                )}
-              </p>
-            )}
+                      {resetting ? 'Enviando...' : 'Esqueci minha senha'}
+                    </button>
+
+                    <Button type="submit" loading={submitting}>
+                      Entrar
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                /* ── CRIAR CONTA ────────────────────────────────────────
+                 * O CÓDIGO VEM ANTES DO GOOGLE, e a ordem não é estética.
+                 * `googleAndRedeem` cria a sessão e resgata o convite no mesmo
+                 * gesto — e se o resgate falhar, ele APAGA a conta que acabou
+                 * de nascer. Pedir o código depois quebraria isso em dois:
+                 * código errado deixaria uma sessão pendurada, e a pessoa
+                 * cairia na sala de espera achando que tinha criado conta.
+                 *
+                 * Aqui só existe o Google. Quem não tem conta Google acha a
+                 * saída de e-mail e senha no fim, com o código digitado indo
+                 * junto — redigitar o código é o tipo de pedágio que faz
+                 * desistir no último passo.
+                 */
+                <>
+                  <div>
+                    <h2 className="text-xl font-bold text-text">Criar conta</h2>
+                    <p className="mt-0.5 text-sm text-textMuted">
+                      Quem entra aqui foi convidado por um motorista.
+                    </p>
+                  </div>
+
+                  {!showBridge && (
+                    <>
+                      <Input
+                        label="Código do convite"
+                        placeholder="TN000000"
+                        icon={Ticket}
+                        value={code}
+                        onChange={(e) => setCode(codigoDoTexto(e.target.value))}
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        hint="Pode colar o link inteiro que o motorista mandou."
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setSemCodigo((v) => !v)}
+                        aria-expanded={semCodigo}
+                        className="tap -mt-1 block text-sm font-semibold text-primary"
+                      >
+                        {semCodigo ? 'Fechar' : 'Não tenho o código'}
+                      </button>
+
+                      {/* A resposta é curta de propósito: quem abriu isto está
+                        * travado, e texto longo aqui é mais uma parede. */}
+                      {semCodigo && (
+                        <p className="rounded-xl bg-sunken p-3 text-sm leading-relaxed text-textMuted">
+                          O código é do motorista, e ele tem um por criança.
+                          Peça a ele o link ou o código do seu filho — é o mesmo
+                          que ele mandou no WhatsApp quando cadastrou a criança.
+                          Cadastro aberto não existe aqui, e é isso que protege
+                          os dados dela.
+                        </p>
+                      )}
+
+                      <LegalAcceptCheckbox
+                        checked={acceptedLegal}
+                        onChange={setAcceptedLegal}
+                      />
+
+                      {googleWorks && (
+                        <Button
+                          loading={googleSubmitting}
+                          onClick={onCriarComGoogle}
+                          className="!whitespace-nowrap"
+                        >
+                          {!googleSubmitting && <GoogleIcon size={20} />}
+                          Criar conta com Google
+                        </Button>
+                      )}
+
+                      <p className="text-center text-sm text-textMuted">
+                        Prefere e-mail e senha?{' '}
+                        <Link
+                          to="/first-access"
+                          state={{ code }}
+                          className="font-semibold text-primary hover:underline"
+                        >
+                          Criar assim
+                        </Link>
+                      </p>
+
+                      {/* O MOTORISTA NÃO NASCE AQUI, e por isso ele é uma linha
+                        * e não um botão: a conta dele passa por aprovação e por
+                        * um formulário com cidade e frota. Botão do mesmo
+                        * tamanho prometeria uma simetria que o fluxo não tem. */}
+                      <p className="border-t border-border pt-4 text-center text-sm text-textMuted">
+                        É motorista escolar?{' '}
+                        <Link
+                          to="/quero-fazer-parte"
+                          className="font-semibold text-primary hover:underline"
+                        >
+                          Cadastre sua operação
+                        </Link>
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* O bootstrap do dono só aparece enquanto NÃO existe admin — e a
               * rule fecha a janela junto. Some sozinho depois do primeiro. */}
-            {!hasAdmin && !daFamilia && (
+            {!hasAdmin && !daFamilia && ehEntrar && (
               <Link
                 to="/first-admin"
                 className="block text-center text-xs text-textMuted underline"

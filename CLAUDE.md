@@ -552,6 +552,23 @@ dono — ninguém escolhe papel pra entrar, `painelDe()` resolve depois. É a
 decisão 5 de [docs/decisoes.md](docs/decisoes.md), que estava com estado
 "alvo".
 
+**E ele tem DUAS ABAS desde 06/09/2026** — "Já tenho conta" e "Criar conta",
+no mesmo cartão. O "Cadastrar" antigo era um link pra `/comecar`, e `/comecar`
+devolve pro login quem não tem sessão: quem clicava deslogado voltava pra
+mesma tela. Na aba de cadastro o **código do convite vem ANTES do Google**,
+porque `googleAndRedeem` cria sessão e resgata o convite numa transação só —
+e apaga a conta recém-nascida se o resgate falhar. Pedir depois deixaria
+sessão pendurada com a pessoa achando que virou cliente. A aba pode vir da
+URL (`/login?criar=1`): a landing está em outro domínio e não tem `state`.
+
+**O código do convite se lê de qualquer texto** — `codigoDoTexto` em
+[generateInviteCode.js](src/dominio/identidade/generateInviteCode.js) aceita o
+link inteiro (`/convite/TNAB23CD`), a mensagem inteira do WhatsApp e o código
+digitado letra por letra. A máscara sozinha devolvia `HTTPSALOB` pra quem
+colava o link e o app dizia "código inválido" com o código certo na mão. A
+mensagem que o motorista manda passou a trazer **o código escrito** além do
+link, porque a conversa some e o link vai junto.
+
 **Preço não aparece na vitrine.** O que aparece é a FORMA do dinheiro: "a
 mensalidade das suas famílias é sua, a plataforma não entra no caminho dela".
 É verdade verificável (`payments` é PIX direto pai→motorista; a taxa vive em

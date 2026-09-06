@@ -23,7 +23,7 @@ import { painelDe } from '../dominio/identidade/papeis';
 import { CENA_ABERTURA, CENA_ENTRADA, travessar } from '../marca/travessia';
 import { isValidEmail } from '../compartilhado/masks';
 import {
-  maskInviteCode,
+  codigoDoTexto,
   isValidInviteCodeFormat,
 } from '../dominio/identidade/generateInviteCode';
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
@@ -67,9 +67,14 @@ export default function FirstAccess() {
   const location = useLocation();
   const { profile, loading: authLoading, refreshProfile } = useAuth();
 
-  const [abriuCodigo, setAbriuCodigo] = useState(false);
+  // O CÓDIGO PODE CHEGAR PRONTO. Quem veio da aba "Criar conta" do login e
+  // preferiu e-mail e senha já digitou o código lá — redigitar seria pedágio
+  // no último passo, e é onde se desiste. Se ele veio, a seção abre junto:
+  // campo preenchido atrás de um "tenho um código" fechado é campo invisível.
+  const codigoRecebido = codigoDoTexto(location.state?.code || '');
+  const [abriuCodigo, setAbriuCodigo] = useState(Boolean(codigoRecebido));
   const [abriuSenha, setAbriuSenha] = useState(false);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(codigoRecebido);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -305,7 +310,7 @@ export default function FirstAccess() {
               placeholder="TN2K9F4B"
               icon={Ticket}
               value={code}
-              onChange={(e) => setCode(maskInviteCode(e.target.value))}
+              onChange={(e) => setCode(codigoDoTexto(e.target.value))}
               autoCapitalize="characters"
               maxLength={8}
               hint="8 caracteres, começa com TN."
