@@ -40,8 +40,8 @@ João é motorista escolar. Um colega mandou o link no WhatsApp.
 |---|---|---|
 | 1 | A porta pública sai do app | ✅ |
 | 2 | A tela de entrada | ✅ |
-| 3 | Conta sem papel e as duas saídas | 🟡 parcial |
-| 4 | Blaze | ⛔ travada |
+| 3 | Conta sem papel e as duas saídas | 🟡 falta a conversão |
+| 4 | Blaze | ✅ **06/09/2026** |
 | 5 | O relógio do teste | ✅ |
 | 6 | Planos e assinatura | 🟡 régua e tela prontas |
 | 7 | A conta inativa | ⬜ |
@@ -53,22 +53,29 @@ João é motorista escolar. Um colega mandou o link no WhatsApp.
 ## O que falta, fase por fase
 
 ### Fase 3 · o que ainda não roda
-A sala de espera existe e mostra as duas saídas. **A saída do responsável leva
-ao `/first-access`, que chama `redeemInvite` — Cloud Function.** E a conversão
-de motorista vazio para responsável (aprovada: só quando a conta tem zero
-crianças e zero rotas, porque aí nada se perde) é escrita de papel, que também
-precisa ser Function. As duas destravam junto com o Blaze, sem tocar na tela.
+A sala de espera existe, e desde 06/09 **as duas saídas funcionam** — o
+`redeemInvite` está no ar.
 
-### Fase 4 · Blaze
-Travada no pagamento do cartão, não em código. Quando entrar:
+Falta a **conversão de motorista vazio para responsável**, aprovada assim: só
+quando a conta tem zero crianças e zero rotas, porque aí nada se perde.
+`admin → parent` é descida de privilégio, não subida — a escrita perigosa é a
+que sobe, e foi por ela que um motorista se promovia a dono. Com UMA criança
+cadastrada o app precisa recusar: ali existe operação de verdade.
 
-- subir as 12 functions do núcleo (a ordem está no [deploy.md](deploy.md))
-- virar `CLOUD_FUNCTIONS_ENABLED` **e** `STORAGE_ENABLED` no mesmo commit
-- trazer a branch `alobuzinou` de volta para a principal — ela perde a razão de
-  existir nesse momento
-- **push volta**, e com ele o *aviso de chegada* que está prometido na
-  `og:description` da landing. Enquanto não volta, esse aviso só existe dentro
-  do app aberto
+E a mensagem de recusa hoje é um beco. Ela diz só *"esta conta é de motorista e
+não pode ser vinculada como responsável"* e para aí — precisa dizer o que
+fazer.
+
+### Fase 4 · Blaze — FEITA em 06/09/2026
+As 12 functions estão no ar em `southamerica-east1`, as duas bandeiras viradas
+no mesmo commit, a branch `alobuzinou` fundida de volta na principal. Push,
+anexos, cobrança automática e resgate de convite passaram a existir.
+
+Foram três bloqueios encadeados, e **nenhum era código** — os três estão
+escritos no [deploy.md](deploy.md) para não custarem de novo: conta de
+faturamento fechada continua vinculada e o Firebase não avisa; `--only` não
+evita a consulta ao segredo; e projeto dentro de organização não ganha sozinho
+o papel de build.
 
 ### Fase 6 · o que falta para o autoatendimento fechar
 A régua e a tela estão prontas. O botão ainda abre o WhatsApp do consultor, e
