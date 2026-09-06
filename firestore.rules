@@ -481,7 +481,8 @@ service cloud.firestore {
         // contador se conserta pelo passo de ±1 que o ramo de baixo permite.
         isOwner()
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['suspenso', 'suspensoEm', 'notaInterna', 'limiteCriancas'])
+             .hasOnly(['suspenso', 'suspensoEm', 'notaInterna', 'limiteCriancas',
+                       'assinaturaAte'])
       ) || (
         isSignedIn()
         // PRIVILÉGIO E GESTÃO: NINGUÉM ESCREVE DAQUI, NEM EM SI MESMO.
@@ -511,7 +512,16 @@ service cloud.firestore {
                // escrita por quem negocia. O ramo do dono, logo acima, já a
                // lista. Sem ela aqui, o devedor editava o próprio limite — e
                // o comentário da linha 428 já afirmava que isso era proibido.
-               'adminUid', 'limiteCriancas'
+               'adminUid', 'limiteCriancas',
+               // `assinaturaAte` diz ATÉ QUANDO esta conta está paga, e é o
+               // que decide se o app bloqueia por fim de teste. Livre, o
+               // motorista escreve o ano 2099 em si mesmo e nunca mais paga
+               // — seria `limiteCriancas` com outro nome, o devedor
+               // editando a própria cláusula.
+               //
+               // Quem escreve é quem cobra: o ramo do dono, logo acima,
+               // lista o campo junto de `suspenso`.
+               'assinaturaAte'
              ])
 
         // `trialInicio` — GRAVÁVEL UMA VEZ, NUNCA ALTERÁVEL.

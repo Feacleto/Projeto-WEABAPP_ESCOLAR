@@ -22,6 +22,7 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./lib/papeis');
+const { makeAsaasWebhook } = require('./lib/asaasWebhook');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./lib/limites');
@@ -422,3 +423,17 @@ exports.flagDuplicateReceipts = makeFlagDuplicateReceipts(db);
 // Padrao e dry-run. Pra aplicar: { apply: true }.
 
 exports.backfillTestimonialPrivacy = makeBackfillTestimonialPrivacy(db);
+
+// ===== Webhook do gateway de cobrança (ver functions/lib/asaasWebhook.js) =====
+//
+// A única porta por onde o dinheiro entra no app, e a mais exposta: webhook
+// não tem sessão, então a URL sozinha não pode valer nada. O token vem no
+// cabeçalho `asaas-access-token`, é gerado no painel do gateway e vive em
+// `functions:secrets` — sem ele, 401 antes de o corpo ser lido.
+//
+// Qual evento libera, qual reabre e qual é ruído NÃO se decide aqui: está em
+// `lib/eventoDeCobranca.js`, regra pura com 30 casos (`npm run testar:cobranca`).
+
+const ASAAS_WEBHOOK_TOKEN = defineSecret('ASAAS_WEBHOOK_TOKEN');
+
+exports.asaasWebhook = makeAsaasWebhook(db, ASAAS_WEBHOOK_TOKEN);

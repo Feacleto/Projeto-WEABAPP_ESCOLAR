@@ -6,6 +6,7 @@ import {
   onSnapshot,
   query,
   setDoc,
+  writeBatch,
   serverTimestamp,
   Timestamp,
   where,
@@ -54,6 +55,7 @@ import { addMonths, getCurrentMonthKey } from '../compartilhado/formatters';
 // A validação de chave PIX já existe e é a mesma regra — reusar evita duas
 // definições de "chave válida" divergindo entre a tela do tio e a do dono.
 import { validatePixKey } from './userService';
+import { assinaturaAteDoMes } from '../dominio/associacao/contaAtiva.js';
 
 /**
  * A TAXA DE ASSOCIAÇÃO — o que a plataforma cobra do MOTORISTA.
@@ -438,10 +440,32 @@ export async function fecharFatura({
   return { tioUid, mes, total, isento };
 }
 
-/** O dono dá baixa quando o PIX do motorista cai. Não há gateway envolvido. */
+/**
+ * O dono dá baixa quando o PIX do motorista cai.
+ *
+ * ELE ESCREVE DOIS DOCUMENTOS, E O SEGUNDO É O QUE DESTRAVA O RESTO.
+ * A fatura vira `quitada`, e `users.assinaturaAte` passa a dizer ATÉ QUANDO
+ * esta conta está paga.
+ *
+ * Esse campo existe por um motivo específico: nenhuma regra do Firestore
+ * alcança o contrato de associação, porque o id dele é
+ * `${tioUid}_${Date.now()}` e não se calcula. Sem um campo em `users`, o
+ * bloqueio por fim de trial não teria como poupar quem já assinou — e o
+ * primeiro cliente pagante seria trancado no dia 90.
+ *
+ * OS DOIS VÃO NO MESMO LOTE de propósito. Separados, uma falha de rede entre
+ * eles deixa a fatura paga e a conta bloqueada — o pior desfecho possível,
+ * porque o motorista tem o comprovante na mão e o app diz que ele não pagou.
+ *
+ * Quem escreve é quem cobra, nunca o motorista. Mesma forma de
+ * `limiteCriancas`, e pelo mesmo motivo: cláusula que o devedor edita não é
+ * cláusula. As rules recusam o campo no ramo dele.
+ */
 export async function marcarFaturaPaga(tioUid, mes, ownerUid) {
   if (!tioUid || !mes) throw new Error('Sem motorista ou mês.');
-  await setDoc(
+
+  const lote = writeBatch(db);
+  lote.set(
     FATURA(tioUid, mes),
     {
       status: 'quitada',
@@ -450,6 +474,15 @@ export async function marcarFaturaPaga(tioUid, mes, ownerUid) {
     },
     { merge: true }
   );
+
+  // `null` sai quando o mês vem fora do formato — e aí o campo não é tocado,
+  // em vez de gravar uma data inventada sobre a que já existia.
+  const ate = assinaturaAteDoMes(mes);
+  if (ate) {
+    lote.set(doc(db, 'users', tioUid), { assinaturaAte: ate }, { merge: true });
+  }
+
+  await lote.commit();
 }
 
 export function watchFaturasDoMes(mes, cb, onError) {

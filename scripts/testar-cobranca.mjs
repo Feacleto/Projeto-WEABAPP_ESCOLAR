@@ -18,7 +18,7 @@ import {
   EVENTOS_ASSINADOS,
   efeitoDoEvento,
   eventoAssinado,
-} from '../src/dominio/associacao/eventoDeCobranca.js';
+} from '../functions/lib/eventoDeCobranca.js';
 
 let ok = 0;
 let bad = 0;

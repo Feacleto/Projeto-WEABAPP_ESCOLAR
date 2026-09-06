@@ -1,4 +1,5 @@
 import { useAuth } from '../../hooks/useAuth';
+import { estadoDaConta } from '../../dominio/associacao/contaAtiva.js';
 import ContaInativa from '../../pages/tio/ContaInativa';
 
 /**
@@ -14,25 +15,36 @@ import ContaInativa from '../../pages/tio/ContaInativa';
  * aqui fora, quando a conta está inativa o layout **nunca monta** e nenhum
  * `onSnapshot` de criança, rota ou posição chega a existir.
  *
- * HOJE ELE SÓ TRATA `suspenso`, E ISSO É SEQUENCIAMENTO, NÃO ESQUECIMENTO
- * Bloquear por fim de trial exige saber quem JÁ ASSINOU — senão o primeiro
- * cliente pagante é trancado no dia 90. E esse sinal não existe: o id do
- * contrato é `${tioUid}_${Date.now()}`, que uma regra não alcança, e não há
- * campo em `users` dizendo "esta conta está paga até quando".
+ * ELE LÊ SÓ O PERFIL, E ISSO NÃO É ECONOMIA — É O PONTO
+ * Suspensão, início do teste e `assinaturaAte` já vêm no documento do usuário
+ * que o AuthContext carregou. Nenhuma assinatura nova é aberta para decidir se
+ * a conta está ativa, então a decisão acontece antes de existir qualquer
+ * leitura de operação.
  *
- * Enquanto esse campo não existir, bloquear por trial trancaria justamente
- * quem paga. Então o guarda cobre o caso que já é inequívoco — suspensão é
- * decisão de uma pessoa e já nega em `isAdmin()` nas rules — e os outros dois
- * motivos entram quando houver o que os desfaça.
+ * O ATRASO NÃO ENTRA AQUI, e é de propósito. Ele depende da fatura em aberto,
+ * que é outro documento — e buscá-lo aqui abriria uma segunda assinatura da
+ * mesma coleção que o `TioLayout` já assina. Enquanto isso, o atraso segue
+ * pelo caminho que sempre teve: o cartão do `AvisoDaPlataforma` e a suspensão
+ * decidida por gente.
  *
- * O GANHO JÁ VALE HOJE: a conta suspensa já era negada pelas rules, então o
- * app abria e quebrava por dentro, com um cartão explicando por cima de telas
- * vazias. Agora ela recebe uma tela inteira que diz o que aconteceu.
+ * `assinaturaAte` É O QUE TORNA O BLOQUEIO POR TESTE POSSÍVEL. Sem ele, o
+ * primeiro cliente pagante seria trancado no dia 90 — nenhuma regra alcança o
+ * contrato de associação, cujo id é `${tioUid}_${Date.now()}` e não se
+ * calcula. Quem escreve o campo é quem cobra, e as rules recusam o motorista.
  */
 export default function GuardaDaConta({ children }) {
   const { profile } = useAuth();
 
-  if (profile?.suspenso === true) return <ContaInativa motivo="suspenso" />;
+  const { ativa, motivo } = estadoDaConta({
+    suspenso: profile?.suspenso === true,
+    trialInicio: profile?.trialInicio || null,
+    assinaturaAte: profile?.assinaturaAte || null,
+    // Ver acima: o atraso não é decidido aqui.
+    fatura: null,
+    agora: new Date(),
+  });
+
+  if (!ativa) return <ContaInativa motivo={motivo} />;
 
   return children;
 }

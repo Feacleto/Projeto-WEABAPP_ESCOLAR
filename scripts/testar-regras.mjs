@@ -629,6 +629,23 @@ async function vagaContratada(tio1, tio2) {
   checar('trial', 'tio1 liga o relógio do tio2', 'NEGA',
     await escrever(`users/${tio2.uid}`, tio1,
       { trialInicio: { timestampValue: '2026-03-01T12:00:00Z' } }, ['trialInicio']));
+
+  // ── assinaturaAte — quem cobra escreve, quem deve não ───────────────
+  //
+  // O campo diz ATÉ QUANDO a conta está paga, e é o que decide se o app
+  // bloqueia por fim de teste. Ele existe porque nenhuma regra alcança o
+  // contrato de associação: o id dele é `${tioUid}_${Date.now()}`, que não
+  // se calcula.
+  //
+  // Livre, o motorista grava o ano 2099 em si mesmo e nunca mais paga —
+  // `limiteCriancas` com outro nome, o devedor editando a própria cláusula.
+  checar('assinatura', 'o motorista escreve a própria assinaturaAte', 'NEGA',
+    await escrever(`users/${tio1.uid}`, tio1,
+      { assinaturaAte: { timestampValue: '2099-01-01T12:00:00Z' } }, ['assinaturaAte']));
+
+  checar('assinatura', 'nem a do colega', 'NEGA',
+    await escrever(`users/${tio2.uid}`, tio1,
+      { assinaturaAte: { timestampValue: '2099-01-01T12:00:00Z' } }, ['assinaturaAte']));
 }
 
 /**

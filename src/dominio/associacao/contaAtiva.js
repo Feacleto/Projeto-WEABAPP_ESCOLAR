@@ -76,6 +76,46 @@ export function diasDeAtraso(fatura, agora) {
 }
 
 /**
+ * A assinatura cobre o dia de hoje?
+ *
+ * `assinaturaAte` é o campo que responde "até quando esta conta está paga", e
+ * ele existe porque nenhuma regra do Firestore alcança o contrato: o id dele é
+ * `${tioUid}_${Date.now()}`, que não se calcula. Sem um campo em `users`, a
+ * tranca por fim de trial não teria como poupar quem já assinou — e o primeiro
+ * cliente pagante seria bloqueado no dia 90.
+ *
+ * Quem escreve é quem cobra, nunca o motorista. É a mesma forma de
+ * `limiteCriancas`, e pelo mesmo motivo: cláusula que o devedor edita não é
+ * cláusula.
+ */
+export function assinaturaValida(assinaturaAte, agora) {
+  const ate = paraData(assinaturaAte);
+  const hoje = paraData(agora);
+  if (!ate || !hoje) return false;
+  return hoje.getTime() < ate.getTime();
+}
+
+/**
+ * Até quando uma fatura paga deixa a conta em dia.
+ *
+ * Pagar a fatura de maio cobre até o FIM DE JUNHO. Parece generoso e não é: a
+ * fatura de junho vence dentro de junho, e quem não a pagar é bloqueado pelo
+ * caminho do atraso — que é mais curto. Este campo é o PISO ("ele é cliente"),
+ * e a fatura em aberto é a lâmina.
+ *
+ * O mês entra como 'AAAA-MM', que é o formato que `faturasParceiro` já usa.
+ */
+export function assinaturaAteDoMes(mes) {
+  const m = String(mes || '').trim();
+  if (!/^\d{4}-\d{2}$/.test(m)) return null;
+  const ano = Number(m.slice(0, 4));
+  const numero = Number(m.slice(5, 7));
+  // Dia 0 do mês seguinte ao seguinte = último dia do mês seguinte.
+  // Meio-dia, e não meia-noite: fuso de uma hora não pode roubar um dia.
+  return new Date(ano, numero + 1, 0, 12, 0, 0);
+}
+
+/**
  * O estado da conta do motorista.
  *
  *   { ativa: true,  motivo: null }         opera normalmente
@@ -94,7 +134,7 @@ export function diasDeAtraso(fatura, agora) {
 export function estadoDaConta({
   suspenso = false,
   trialInicio = null,
-  temContrato = false,
+  assinaturaAte = null,
   fatura = null,
   agora = null,
   tolerancia = TOLERANCIA_DE_ATRASO,
@@ -106,11 +146,20 @@ export function estadoDaConta({
     return { ativa: false, motivo: 'atraso', dias: atraso };
   }
 
-  // Quem tem contrato nunca está em trial — `estadoDoTrial` já responde
-  // 'contratado' nesse caso, e é por isso que `temContrato` atravessa até
-  // aqui em vez de virar um `if` neste arquivo.
-  const trial = estadoDoTrial({ inicio: trialInicio, agora, temContrato });
-  if (trial === 'expirado') return { ativa: false, motivo: 'trial', dias: null };
+  const paga = assinaturaValida(assinaturaAte, agora);
+  if (paga) return { ativa: true, motivo: null, dias: atraso };
+
+  // JÁ FOI CLIENTE E DEIXOU DE SER recebe a frase do atraso, não a do teste.
+  // Dizer "seu teste acabou" a quem pagou meses é uma mentira que ele
+  // reconhece na hora — e quem desconfia da cobrança para de pagar.
+  const jaFoiCliente = paraData(assinaturaAte) !== null;
+
+  // `estadoDoTrial` já responde 'contratado' quando há assinatura, e é por
+  // isso que o sinal atravessa até ele em vez de virar um `if` daqui.
+  const trial = estadoDoTrial({ inicio: trialInicio, agora, temContrato: paga });
+  if (trial === 'expirado') {
+    return { ativa: false, motivo: jaFoiCliente ? 'atraso' : 'trial', dias: atraso };
+  }
 
   return { ativa: true, motivo: null, dias: atraso };
 }

@@ -14,10 +14,15 @@
 
 import {
   TOLERANCIA_DE_ATRASO,
+  assinaturaAteDoMes,
+  assinaturaValida,
   diasDeAtraso,
   estadoDaConta,
   lembreteDeAtraso,
 } from '../src/dominio/associacao/contaAtiva.js';
+
+/** Quem pagou a fatura de abril está coberto até o fim de maio. */
+const ASSINADO = assinaturaAteDoMes('2026-04');
 
 let ok = 0;
 let bad = 0;
@@ -76,14 +81,14 @@ checar(
   estadoDaConta({ trialInicio: null, agora: dia('2026-12-01') })
 );
 checar(
-  'com contrato, o trial deixa de significar qualquer coisa',
+  'assinatura em dia faz o trial deixar de significar qualquer coisa',
   { ativa: true, motivo: null, dias: null },
-  estadoDaConta({ trialInicio: TRIAL, temContrato: true, agora: dia('2026-09-01') })
+  estadoDaConta({ trialInicio: TRIAL, assinaturaAte: assinaturaAteDoMes('2026-08'), agora: dia('2026-09-01') })
 );
 checar(
   'fatura em aberto dentro da tolerância',
   { ativa: true, motivo: null, dias: 9 },
-  estadoDaConta({ temContrato: true, fatura: emAberto, agora: dia('2026-05-19') })
+  estadoDaConta({ assinaturaAte: ASSINADO, fatura: emAberto, agora: dia('2026-05-19') })
 );
 
 bloco('3. Quando ela para');
@@ -93,12 +98,12 @@ bloco('3. Quando ela para');
 checar(
   'no décimo dia ainda opera',
   true,
-  estadoDaConta({ temContrato: true, fatura: emAberto, agora: dia('2026-05-20') }).ativa
+  estadoDaConta({ assinaturaAte: ASSINADO, fatura: emAberto, agora: dia('2026-05-20') }).ativa
 );
 checar(
   'no décimo primeiro, para',
   { ativa: false, motivo: 'atraso', dias: 11 },
-  estadoDaConta({ temContrato: true, fatura: emAberto, agora: dia('2026-05-21') })
+  estadoDaConta({ assinaturaAte: ASSINADO, fatura: emAberto, agora: dia('2026-05-21') })
 );
 checar(
   'trial vencido sem contrato',
@@ -113,7 +118,7 @@ bloco('4. A ordem da checagem é parte da regra');
 checar(
   'suspenso vence tudo, mesmo em dia',
   { ativa: false, motivo: 'suspenso', dias: null },
-  estadoDaConta({ suspenso: true, temContrato: true, fatura: quitada, agora: VENCE })
+  estadoDaConta({ suspenso: true, assinaturaAte: ASSINADO, fatura: quitada, agora: VENCE })
 );
 checar(
   'suspenso vence até o trial correndo',
@@ -133,6 +138,31 @@ checar(
 );
 
 // ───────────────────────────── os lembretes ────────────────────────────────
+
+bloco('4b. A assinatura — o campo que diz até quando a conta está paga');
+
+checar('pagar a fatura de maio cobre até o fim de junho', '2026-06-30', assinaturaAteDoMes('2026-05').toISOString().slice(0, 10));
+// Dezembro precisa virar o ano, e é o caso que um cálculo ingênuo erra.
+checar('dezembro vira janeiro do ano seguinte', '2027-01-31', assinaturaAteDoMes('2026-12').toISOString().slice(0, 10));
+checar('mês em formato errado não inventa data', null, assinaturaAteDoMes('maio'));
+
+checar('dentro da cobertura, vale', true, assinaturaValida(ASSINADO, dia('2026-05-10')));
+checar('depois dela, não vale', false, assinaturaValida(ASSINADO, dia('2026-07-01')));
+checar('sem assinatura nenhuma, não vale', false, assinaturaValida(null, dia('2026-05-10')));
+
+// A LINHA QUE PROTEGE A CONFIANÇA: dizer "seu teste acabou" a quem pagou meses
+// é uma mentira que ele reconhece na hora — e quem desconfia da cobrança para
+// de pagar. Trial vencido + assinatura vencida = ele é um cliente em atraso.
+checar(
+  'quem já foi cliente recebe a frase do ATRASO, não a do teste',
+  'atraso',
+  estadoDaConta({ trialInicio: TRIAL, assinaturaAte: ASSINADO, agora: dia('2026-08-01') }).motivo
+);
+checar(
+  'e quem nunca pagou recebe a do teste',
+  'trial',
+  estadoDaConta({ trialInicio: TRIAL, assinaturaAte: null, agora: dia('2026-08-01') }).motivo
+);
 
 bloco('5. O lembrete de PIX — e o silêncio, que é a resposta comum');
 

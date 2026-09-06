@@ -1,7 +1,7 @@
 /**
  * O QUE CADA EVENTO DO GATEWAY FAZ COM A FATURA.
  *
- * POR QUE ISTO É REGRA PURA E NÃO UM `switch` DENTRO DO WEBHOOK
+ * POR QUE ELA MORA EM functions/lib E NÃO EM src/dominio
  * Esta função decide se um motorista está pago ou devendo. Ela roda num
  * endpoint público, disparada por um sistema de fora, sobre eventos que
  * chegam fora de ordem e repetidos. É o pedaço mais difícil de testar em
@@ -41,16 +41,16 @@
  */
 
 /** Pago: o motorista volta a operar. */
-export const QUITADA = 'quitada';
+const QUITADA = 'quitada';
 /** Devendo: volta a contar atraso. */
-export const ABERTA = 'aberta';
+const ABERTA = 'aberta';
 
 /**
  * Os eventos que a plataforma assina. Assinar menos é o que o próprio painel
  * do gateway recomenda — cada evento a mais é uma chamada a mais no endpoint
  * público, e nenhum destes é decorativo.
  */
-export const EVENTOS_ASSINADOS = [
+const EVENTOS_ASSINADOS = [
   // Libera
   'PAYMENT_CONFIRMED',
   'PAYMENT_RECEIVED',
@@ -90,7 +90,7 @@ const REABRE = {
  * desfaz pagamento, e reabrir uma fatura que já está aberta não é uma
  * mudança. Quem chama não precisa saber disso; precisa só aplicar o que sai.
  */
-export function efeitoDoEvento(evento, statusAtual = null) {
+function efeitoDoEvento(evento, statusAtual = null) {
   const nome = String(evento || '').trim().toUpperCase();
 
   if (LIBERA[nome]) {
@@ -113,6 +113,8 @@ export function efeitoDoEvento(evento, statusAtual = null) {
 }
 
 /** Este evento vale a pena assinar no painel do gateway? */
-export function eventoAssinado(evento) {
+function eventoAssinado(evento) {
   return EVENTOS_ASSINADOS.includes(String(evento || '').trim().toUpperCase());
 }
+
+module.exports = { QUITADA, ABERTA, EVENTOS_ASSINADOS, efeitoDoEvento, eventoAssinado };
