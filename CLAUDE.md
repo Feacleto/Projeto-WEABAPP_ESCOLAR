@@ -17,9 +17,10 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 580 casos: horarios, faltas, aviso, contraste,
-                                 # travessia, contrato, pix, status, auth,
-                                 # trial, planos, conta, cobranca, gateway
+npm run testar                   # 616 casos: horarios, faltas, aviso, contraste,
+                                 # travessia, contrato, pix, status, auth, trial,
+                                 # planos, conta, cobranca, gateway, carteira,
+                                 # proposta
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -199,9 +200,10 @@ src/
 │   ├── Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
 │   ├── tio/           16 telas do motorista
 │   ├── pai/           8 telas do responsável
-│   ├── admin/         AdminPanel, TaxaTab — o dono tem UMA tela só, com
-│   │                  quatro abas. A aba "Fila" morreu com a aprovação:
-│   │                  ninguém pede acesso, o motorista entra sozinho.
+│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com quatro
+│   │                  abas: Motoristas (lista + FICHA, o dia a dia), Mês
+│   │                  (régua e fechamento), Números, Pesquisa. A ficha mora
+│   │                  em components/admin/FichaDoMotorista.
 │   └── legal/         termos e privacidade
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive…
@@ -217,7 +219,7 @@ src/
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
 │   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
-│   │                  carteira
+│   │                  carteira, proposta
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
@@ -736,6 +738,27 @@ Cinco regras, e todas nasceram de um bug:
    em que a cor não significa nada e só precisa diferir da vizinha (dez tipos
    de recado, quatro estados da criança, cinco fatias de gráfico). Um lugar
    com licença é o que evita que o resto peça licença.
+
+**O painel abre na lista de MOTORISTAS, não num relatório.** Relatório não
+pede ação: abrir na carteira muda a pergunta de "como vai o negócio" (uma vez
+por mês) para "com quem eu preciso falar hoje" (todo dia). A
+[ficha](src/components/admin/FichaDoMotorista.jsx) reúne plano, contrato,
+faturas, nota das famílias e nota interna numa superfície só, com as ações no
+TOPO — enterrar o botão no fim da rolagem devolve a tela à condição de
+relatório.
+
+**A nota das famílias exige uma JUNÇÃO**, e é por isso que ela mora em
+[carteira.js](src/dominio/associacao/carteira.js): `feedbacks` não guarda
+`adminUid`, e quem sabe a que motorista uma família pertence é o `adminUid` do
+documento dela em `users`. A atribuição usa o campo SINGULAR — somar nos dois
+motoristas de uma mãe de perua dupla contaria a mesma opinião duas vezes.
+
+**A proposta lê o DEGRAU e escreve a mensagem daquele degrau**
+([proposta.js](src/dominio/associacao/proposta.js)), com os números dele
+dentro, e abre o WhatsApp para o dono LER antes de enviar. **Ela nunca inventa
+preço** — todo número sai da régua. No dia em que ela oferecer um valor que não
+está na tabela, o orçamento voltou com outro nome e sem contrato que registre;
+o caminho para isso é a concessão, com motivo e prazo.
 
 **O painel do dono mede a CARTEIRA, não o tamanho da base.** Ele media
 `usuarios`, `criancas` e GMV — e nenhum desses é receita da plataforma. Agora

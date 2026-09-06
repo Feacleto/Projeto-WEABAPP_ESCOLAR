@@ -161,3 +161,58 @@ export function resumirCarteira({ parceiros = [], agora = new Date(), mes = null
         : null,
   };
 }
+
+/**
+ * A NOTA QUE AS FAMÍLIAS DERAM A CADA MOTORISTA.
+ *
+ * ── POR QUE ISTO PRECISA DE UMA JUNÇÃO
+ * O documento de `feedbacks` guarda `uid` e `role` de quem escreveu, e **não
+ * guarda `adminUid`**. Quem sabe a que motorista uma família pertence é o
+ * documento do responsável, em `users.adminUid`.
+ *
+ * Então a nota por motorista só existe cruzando as duas listas — que é
+ * exatamente o que o dono já carrega para o painel. Nenhuma consulta nova.
+ *
+ * ── SÓ FAMÍLIA CONTA
+ * Feedback de motorista é ele avaliando o APP; feedback de responsável é ele
+ * avaliando o transporte. Misturar os dois faria a nota do motorista subir
+ * porque ele gostou do aplicativo, que é o oposto do sinal procurado.
+ *
+ * ── A ATRIBUIÇÃO USA `adminUid`, O SINGULAR, E ISSO TEM LIMITE
+ * `users.adminUid` guarda o PRIMEIRO motorista da família; a lista completa é
+ * `adminUids`. Uma mãe com filhos em peruas diferentes tem a nota atribuída ao
+ * primeiro — e é o certo aqui: somar a nota nos dois contaria a mesma opinião
+ * duas vezes, e não há como saber sobre qual dos dois ela escreveu.
+ *
+ * Vale saber que existe: com muitas famílias de perua dupla, o segundo
+ * motorista fica com menos avaliações do que recebeu de fato.
+ */
+export function notasPorMotorista(feedbacks = [], usuarios = []) {
+  const motoristaDoResponsavel = new Map();
+  (Array.isArray(usuarios) ? usuarios : []).forEach((u) => {
+    if (u?.role === 'parent' && u?.adminUid) {
+      motoristaDoResponsavel.set(u.uid || u.id, u.adminUid);
+    }
+  });
+
+  const soma = new Map();
+  (Array.isArray(feedbacks) ? feedbacks : []).forEach((f) => {
+    if (f?.role !== 'parent') return;
+    const nota = Number(f?.answers?.rating);
+    if (!(nota >= 1 && nota <= 5)) return;
+    const uid = motoristaDoResponsavel.get(f.uid);
+    if (!uid) return;
+    const atual = soma.get(uid) || { n: 0, total: 0 };
+    atual.n += 1;
+    atual.total += nota;
+    soma.set(uid, atual);
+  });
+
+  const saida = {};
+  soma.forEach((v, uid) => {
+    // Arredonda a UMA casa: "4.8" é o que se lê; "4.833333" é ruído que faz a
+    // tela parecer precisa sobre uma média de nove opiniões.
+    saida[uid] = { media: Math.round((v.total / v.n) * 10) / 10, n: v.n };
+  });
+  return saida;
+}

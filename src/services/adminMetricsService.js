@@ -10,7 +10,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { resumirCarteira } from '../dominio/associacao/carteira.js';
+import { notasPorMotorista, resumirCarteira } from '../dominio/associacao/carteira.js';
 
 /**
  * Métricas da plataforma pro painel do super-admin.
@@ -260,4 +260,69 @@ export async function getSurveyResults(max = 500) {
     satisfeitos: respondentes > 0 ? promotores / respondentes : 0,
     respondentes,
   };
+}
+
+/**
+ * O QUE A ABA MOTORISTAS PRECISA — três listas, uma vez.
+ *
+ * Parceiros, responsáveis e avaliações. Os responsáveis entram porque
+ * `feedbacks` NÃO guarda `adminUid`: quem sabe a que motorista uma família
+ * pertence é o documento dela (`users.adminUid`), e a nota por motorista só
+ * existe cruzando as duas listas. Ver `notasPorMotorista` em `carteira.js`.
+ *
+ * TRÊS CONSULTAS NA ABERTURA DA ABA, e não uma por ficha. Com dezenas de
+ * associados, carregar tudo de uma vez e filtrar em memória é mais barato — e,
+ * mais importante, deixa a lista responder ao toque sem esperar rede.
+ *
+ * ⚠️ Isto NÃO carrega crianças. O contador `users.criancasAtivas` já responde
+ * o tamanho de cada operação, e foi por precisar da soma das mensalidades que
+ * a versão antiga desta tela varria `children` inteira — trazendo endereço,
+ * escola e telefone de família para o navegador do dono. Não repita.
+ */
+export async function carregarConsole(max = 500) {
+  const users = collection(db, 'users');
+
+  const [parceiros, responsaveis, avaliacoes] = await Promise.all([
+    getDocs(query(users, where('role', '==', 'admin'))).then((s) =>
+      s.docs.map((d) => ({ uid: d.id, ...d.data() }))
+    ),
+    getDocs(query(users, where('role', '==', 'parent'))).then((s) =>
+      s.docs.map((d) => ({ uid: d.id, ...d.data() }))
+    ),
+    getDocs(query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'), limit(max)))
+      .then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })))
+      // A vitrine degrada calada e esta também: sem avaliação, a ficha mostra
+      // "sem avaliações" em vez de a aba inteira cair.
+      .catch(() => []),
+  ]);
+
+  return { parceiros, notas: notasPorMotorista(avaliacoes, responsaveis) };
+}
+
+/**
+ * O GMV de UM parceiro — o tamanho da operação dele, em dinheiro.
+ *
+ * Não é receita da plataforma: é o que passou entre as famílias dele e ele. Na
+ * ficha ele diz uma coisa útil que nenhum outro número diz — se a operação é
+ * grande ou pequena em reais, e não só em crianças.
+ *
+ * Sob demanda, ao abrir a ficha. Carregar isso para todo mundo na abertura da
+ * aba seria somar a base inteira de pagamentos para mostrar um número por vez.
+ */
+export async function gmvDoParceiro(uid) {
+  if (!uid) return null;
+  try {
+    return await somaCampo(
+      query(
+        collection(db, 'payments'),
+        where('adminUid', '==', uid),
+        where('status', '==', 'paid')
+      ),
+      'amount'
+    );
+  } catch (err) {
+    // Índice faltando ou consulta negada: a ficha mostra "—" em vez de sumir.
+    console.error('[admin] GMV do parceiro não carregou:', err);
+    return null;
+  }
 }

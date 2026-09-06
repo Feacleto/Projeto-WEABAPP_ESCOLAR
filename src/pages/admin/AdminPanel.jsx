@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import TaxaTab from './TaxaTab';
+import MotoristasTab from '../../components/admin/MotoristasTab';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
@@ -47,14 +48,21 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * 1.900px de largura não se lê, se varre —, abas numa fileira só a partir de
  * `sm`, e as fichas de número abrindo em quatro colunas em `lg`.
  *
- * TRÊS ABAS, E O QUE CADA UMA RESPONDE
- * 1. Visão geral: o tamanho real da coisa (usuários, crianças, dinheiro que
- *    passou pelo app). É o que se leva pra uma conversa de investimento.
- * 2. Taxa: a régua da casa, a faixa de cada parceiro e o fechamento das
- *    faturas do mês. É aqui que a receita da plataforma deixa de ser zero.
- * 3. Pesquisa: o que os usuários responderam — inclusive as avaliações de
+ * QUATRO ABAS, E O QUE CADA UMA RESPONDE
+ * 1. Motoristas: a lista e a FICHA de cada associado — plano, contrato,
+ *    faturas, nota das famílias, nota interna, e o botão de propor. É o dia a
+ *    dia, e por isso abre por padrão.
+ * 2. Mês: a régua da casa e o fechamento das faturas. É o trabalho mensal.
+ * 3. Números: a carteira, o MRR e o funil. É a leitura do negócio.
+ * 4. Pesquisa: o que os usuários responderam — inclusive as avaliações de
  *    responsável, que nunca vão pra home mas dizem se o app está servindo a
  *    ponta que não paga pela ferramenta.
+ *
+ * ── A ABA PADRÃO MUDOU DE "VISÃO GERAL" PARA "MOTORISTAS" EM 06/09/2026
+ * O painel abria num relatório, e relatório não pede ação. Abrir na lista de
+ * associados muda a pergunta que a tela faz: de "como vai o negócio" para "com
+ * quem eu preciso falar hoje". A primeira se responde uma vez por mês; a
+ * segunda, todo dia.
  *
  * ERAM CINCO EM 06/09/2026, E DUAS SUMIRAM COM O MODELO ANTIGO.
  * **Fila** era os motoristas pedindo acesso — ninguém pede mais, ele entra
@@ -83,7 +91,7 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
 export default function AdminPanel() {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState('geral');
+  const [tab, setTab] = useState('motoristas');
 
   const [ov, setOv] = useState(null);
   const [survey, setSurvey] = useState(null);
@@ -193,8 +201,9 @@ export default function AdminPanel() {
           * como a Taxa ficou invisível por tanto tempo. Com três, cabem. */}
         <div className="mb-5 space-y-1 rounded-2xl bg-neutro p-1 sm:flex sm:space-y-0 sm:gap-1">
           {[
-            ['geral', 'Visão geral'],
-            ['taxa', 'Taxa'],
+            ['motoristas', 'Motoristas'],
+            ['mes', 'Mês'],
+            ['numeros', 'Números'],
             ['pesquisa', 'Pesquisa'],
           ].map(([id, label]) => (
             <button
@@ -210,15 +219,16 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        {tab === 'geral' && <Geral ov={ov} />}
-        {tab === 'taxa' && <TaxaTab />}
+        {tab === 'motoristas' && <MotoristasTab />}
+        {tab === 'mes' && <TaxaTab />}
+        {tab === 'numeros' && <Geral ov={ov} />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
       </main>
     </div>
   );
 }
 
-/* ─────────────── aba 1: visão geral ─────────────── */
+/* ─────────────── aba 3: números ─────────────── */
 
 function Geral({ ov }) {
   if (ov === null) return <Carregando />;
@@ -226,16 +236,6 @@ function Geral({ ov }) {
 
   return (
     <div className="space-y-5">
-      <section>
-        <Titulo icon={Users}>Tamanho da base</Titulo>
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <Tile label="Usuários no app" value={ov.usuarios} />
-          <Tile label="Crianças ativas" value={ov.criancas} />
-          <Tile label="Motoristas parceiros" value={ov.motoristas} tone="emerald" />
-          <Tile label="Responsáveis" value={ov.responsaveis} />
-        </div>
-      </section>
-
       {/* A CARTEIRA — em que degrau cada associado está.
         *
         * Esta seção não existia: o painel media o tamanho da base e o dinheiro
@@ -358,6 +358,21 @@ function Geral({ ov }) {
               receita recebida começa a existir quando o mês é fechado lá.
             </p>
           )}
+        </div>
+      </section>
+
+      {/* O TAMANHO DA BASE SAIU DA MANCHETE EM 06/09/2026, e virou contexto.
+        *
+        * "Usuários no app" e "Motoristas parceiros" eram números de vaidade:
+        * não decidem nada, e o segundo agora é a carteira lá em cima, com o
+        * degrau de cada um. Ficaram os dois que dão escala ao GMV logo acima —
+        * crianças, que é a unidade de cobrança, e responsáveis, que é quanta
+        * gente o produto alcança do outro lado. */}
+      <section>
+        <Titulo icon={Users}>Tamanho da base</Titulo>
+        <div className="grid grid-cols-2 gap-2">
+          <Tile label="Crianças ativas" value={ov.criancas} />
+          <Tile label="Responsáveis" value={ov.responsaveis} />
         </div>
       </section>
 

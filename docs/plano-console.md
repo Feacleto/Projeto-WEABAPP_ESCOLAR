@@ -53,7 +53,7 @@ O console tem um objetivo só: transformar "olhar o painel" em "resolver a fila"
 
 ---
 
-# Fase 8 · A aba Motoristas e a ficha
+# ✅ Fase 8 · A aba Motoristas e a ficha — FEITA em 06/09/2026
 
 **Por que primeiro:** é o recipiente de quase tudo o que vem depois, e sozinha
 já é o console que faltava.
@@ -76,9 +76,21 @@ já é o console que faltava.
 | 8.12 | Botão **Propor**, com o texto do degrau em que ele está | `carteira.js` |
 | 8.13 | Sair da Visão geral: "Tamanho da base" como manchete e o GMV do destaque | — |
 
-⚠️ **8.7 e 8.9 são regressões minhas.** A `TaxaTab` antiga acompanhava
-`contratosAssociacao` e mostrava a nota interna; a reescrita da fase 3 removeu
-as duas sem repor. Hoje **não há como ver o que o motorista assinou**.
+**Todos os 13 itens entregues.** A nota das famílias (8.10) precisou de uma
+junção que não existia: `feedbacks` não guarda `adminUid`, e quem sabe a que
+motorista uma família pertence é o documento dela. A conta ficou em
+`notasPorMotorista()`, pura e testada.
+
+E a proposta (8.12) virou régua própria em `dominio/associacao/proposta.js`,
+com 29 casos — quatro mensagens, e a garantia de que a de resgate **não promete
+desconto** e a de quem está acima da tabela **não escreve preço nenhum**.
+
+⚠️ **8.7 e 8.9 eram regressões minhas, e foram repostas.** A `TaxaTab` antiga
+acompanhava `contratosAssociacao` e mostrava a nota interna; a reescrita da fase
+3 removeu as duas sem repor, e por dois dias não houve como ver o que o
+motorista assinou. Ficam registradas aqui porque a lição não é sobre elas: toda
+reescrita de tela precisa listar o que a versão anterior mostrava antes de
+apagar o arquivo.
 
 ### As quatro mensagens de proposta (8.12)
 

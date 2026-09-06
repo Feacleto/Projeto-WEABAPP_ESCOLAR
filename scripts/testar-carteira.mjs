@@ -15,7 +15,7 @@
  *   node scripts/testar-carteira.mjs      (ou: npm run testar:carteira)
  */
 
-import { degrauDo, mensalidadeDe, resumirCarteira } from '../src/dominio/associacao/carteira.js';
+import { degrauDo, mensalidadeDe, notasPorMotorista, resumirCarteira } from '../src/dominio/associacao/carteira.js';
 import { FUNDADOR, ORIGEM } from '../src/dominio/associacao/planos.js';
 
 let ok = 0;
@@ -167,6 +167,53 @@ checar('total zero', 0, vazia.total);
 checar('MRR zero', 0, vazia.mrr);
 checar('conversão não medida', null, vazia.conversao);
 checar('lista ausente também não quebra', 0, resumirCarteira().total);
+
+bloco('8. A nota que as famílias deram a cada motorista');
+
+// A JUNÇÃO EXISTE PORQUE `feedbacks` NÃO GUARDA `adminUid`. Quem sabe a que
+// motorista uma família pertence é o documento do responsável.
+const usuarios = [
+  { uid: 'p1', role: 'parent', adminUid: 'd' },
+  { uid: 'p2', role: 'parent', adminUid: 'd' },
+  { uid: 'p3', role: 'parent', adminUid: 'x' },
+  { uid: 'd', role: 'admin' },
+];
+const feedbacks = [
+  { uid: 'p1', role: 'parent', answers: { rating: 5 } },
+  { uid: 'p2', role: 'parent', answers: { rating: 4 } },
+  { uid: 'p3', role: 'parent', answers: { rating: 2 } },
+  // Feedback de MOTORISTA é ele avaliando o APP, não o transporte dele.
+  // Contá-lo faria a nota subir porque ele gostou do aplicativo.
+  { uid: 'd', role: 'admin', answers: { rating: 5 } },
+];
+
+const notas = notasPorMotorista(feedbacks, usuarios);
+checar('a média das famílias dele', { media: 4.5, n: 2 }, notas.d);
+checar('e a do vizinho não se mistura', { media: 2, n: 1 }, notas.x);
+checar('a autoavaliação do motorista não entra', undefined, notas.d2);
+
+// Ruído: "4.833333" faz a tela parecer precisa sobre nove opiniões.
+checar('arredonda a uma casa', 4.7, notasPorMotorista(
+  [
+    { uid: 'p1', role: 'parent', answers: { rating: 5 } },
+    { uid: 'p2', role: 'parent', answers: { rating: 5 } },
+    { uid: 'p3', role: 'parent', answers: { rating: 4 } },
+  ],
+  [
+    { uid: 'p1', role: 'parent', adminUid: 'd' },
+    { uid: 'p2', role: 'parent', adminUid: 'd' },
+    { uid: 'p3', role: 'parent', adminUid: 'd' },
+  ]
+).d.media);
+
+checar('nota fora da faixa é ignorada', undefined, notasPorMotorista(
+  [{ uid: 'p1', role: 'parent', answers: { rating: 0 } }],
+  [{ uid: 'p1', role: 'parent', adminUid: 'd' }]
+).d);
+checar('responsável sem motorista não quebra', {}, notasPorMotorista(
+  [{ uid: 'p9', role: 'parent', answers: { rating: 5 } }], []
+));
+checar('listas vazias não quebram', {}, notasPorMotorista());
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 
