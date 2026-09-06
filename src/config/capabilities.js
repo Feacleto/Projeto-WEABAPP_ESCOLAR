@@ -40,15 +40,18 @@
 /**
  * Padrão do ambiente. A branch sem Storage troca ESTA linha, e só ela.
  *
- * `false` NESTA BRANCH (`alobuzinou`, 05/09/2026), e o motivo mudou de nome:
- * não é mais "Storage não configurado", é "Storage indisponível". Projeto
- * criado depois de 2024 não ganha bucket padrão fora do Blaze, e este está no
- * Spark. A consequência pro app é a mesma, e o tratamento também.
+ * De volta a `true` em 06/09/2026: o Blaze entrou e o bucket padrão foi
+ * criado em `southamerica-east1`, a mesma região do Firestore e das
+ * functions. As `storage.rules` estão publicadas.
  *
- * Volta a `true` no mesmo merge que ligar o Blaze — junto de
- * `CLOUD_FUNCTIONS_ENABLED_DEFAULT`, que está desligado pela mesma causa.
+ * Ela passou por `false` durante um dia, enquanto o projeto rodava no Spark
+ * — projeto criado depois de 2024 não ganha bucket fora do Blaze. Voltou
+ * junto de `CLOUD_FUNCTIONS_ENABLED_DEFAULT`, no mesmo commit, porque as
+ * duas estavam desligadas pela MESMA causa. É por isso que elas são duas
+ * constantes e não uma: cada recurso deriva da sua, e nenhuma apodrece
+ * escondendo o que a outra já resolveu.
  */
-const STORAGE_ENABLED_DEFAULT = false;
+const STORAGE_ENABLED_DEFAULT = true;
 
 export const STORAGE_ENABLED =
   import.meta.env.VITE_STORAGE_ENABLED === 'false'
@@ -72,12 +75,14 @@ export const STORAGE_OFF_MESSAGE =
  * CLOUD FUNCTIONS — a bandeira de baixo, da qual as outras dependem.
  *
  * POR QUE ELA É SEPARADA DA ROLETA
- * A roleta estava desligada por uma bandeira própria, e o motivo real dela
- * estar desligada não é a roleta: é que NENHUMA Cloud Function está no ar
- * neste projeto. Conferido contra o ambiente: `firebase functions:list`
- * responde 403 `SERVICE_DISABLED` — "Cloud Functions API has not been used in
- * project alobuzinou-be81f before or it is disabled". Functions v2 só roda no plano
- * Blaze, e o projeto está no Spark.
+ * A roleta esteve desligada por uma bandeira própria, e o motivo real não
+ * era a roleta: era que NENHUMA Cloud Function estava no ar. Uma bandeira
+ * por recurso escondendo a mesma causa é o caminho para uma delas apodrecer
+ * — alguém liga o Blaze, vira a que lembra, e a outra fica escondendo algo
+ * que já funcionava. Então a CAUSA virou constante, e cada recurso deriva.
+ *
+ * LIGADA EM 06/09/2026. As 12 functions do núcleo estão publicadas em
+ * `southamerica-east1`, e `firebase functions:list` responde com elas.
  *
  * Com duas bandeiras separadas escondendo consequências da MESMA causa, uma
  * delas apodrece: alguém liga o Blaze, vira a que lembra, e a outra fica
@@ -100,10 +105,10 @@ export const STORAGE_OFF_MESSAGE =
  *     leitura direta. Ela degrada calada, sem erro na tela: não precisa de
  *     bandeira, precisa continuar degradando.
  *
- * COMO LIGAR quando o Blaze entrar: `VITE_CLOUD_FUNCTIONS_ENABLED=true` no
- * .env pra testar, ou esta linha vira `true` de vez.
+ * O override `VITE_CLOUD_FUNCTIONS_ENABLED=false` continua valendo, pro caso
+ * de precisar simular o ambiente sem cloud sem desfazer o deploy.
  */
-const CLOUD_FUNCTIONS_ENABLED_DEFAULT = false;
+const CLOUD_FUNCTIONS_ENABLED_DEFAULT = true;
 
 export const CLOUD_FUNCTIONS_ENABLED =
   import.meta.env.VITE_CLOUD_FUNCTIONS_ENABLED === 'true'

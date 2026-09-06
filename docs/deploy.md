@@ -198,18 +198,92 @@ uma linha por vez, ou separe com `;`.
 ### Por que as functions estão listadas uma por uma
 
 Duas das 14 (`sendPaymentReminders` e `runPaymentRemindersNow`, o lembrete por
-e-mail) declaram o segredo `RESEND_API_KEY`. O CLI **exige o valor do segredo
-antes de subir** — sem ele, o deploy para e fica esperando digitação. Como
-e-mail não é o caminho principal (a cobrança real acontece no WhatsApp), o
-comando acima sobe as 12 que não dependem de nada e deixa o app inteiro
-funcionando.
+e-mail) declaram o segredo `RESEND_API_KEY`. Como e-mail não é o caminho
+principal (a cobrança real acontece no WhatsApp), o comando acima sobe as 12
+que não dependem de nada.
 
-Quando você tiver uma conta no [Resend](https://resend.com) e a chave:
+⚠️ **O `--only` NÃO evita o segredo, e isto custou uma tarde.** O CLI carrega e
+analisa o código do projeto INTEIRO antes de aplicar o filtro — e o
+`defineSecret('RESEND_API_KEY')` no topo do módulo faz ele consultar o Secret
+Manager nessa análise. Em projeto novo a API do Secret Manager está desligada, e
+o deploy morre com 403 antes de olhar a lista de funções.
+
+O destravamento é criar o segredo, o que liga a API junto:
+
+```powershell
+firebase functions:secrets:set RESEND_API_KEY
+```
+
+Enquanto não houver conta no [Resend](https://resend.com), use um valor que se
+denuncie — `PLACEHOLDER-substitua-pela-chave-real-do-resend`. Se alguém publicar
+as duas functions de e-mail sem trocar, o Resend recusa com chave inválida em
+vez de falhar em silêncio.
+
+Quando a chave real existir:
 
 ```powershell
 firebase functions:secrets:set RESEND_API_KEY
 firebase deploy --only functions:sendPaymentReminders,functions:runPaymentRemindersNow
 ```
+
+---
+
+## ⚠️ Projeto dentro de ORGANIZAÇÃO: o papel que trava tudo
+
+Registrado em 06/09/2026, depois de as 12 functions falharem em bloco com a
+mesma mensagem — e nenhuma delas por causa de código:
+
+> *Could not build the function due to a missing permission on the build service
+> account. (…) this could be caused by a change in the organization policies.*
+
+**A causa.** Cloud Functions v2 não publica o código direto: ele empacota num
+container antes, e quem faz isso é a conta de serviço padrão do Compute Engine
+(`<número-do-projeto>-compute@developer.gserviceaccount.com`). Ela precisa do
+papel **`roles/cloudbuild.builds.builder`** para gravar o resultado do build.
+
+Em projeto solto o Google concede sozinho. **Em projeto dentro de organização,
+não** — e o `alobuzinou-be81f` nasceu dentro de `felipe-anacleto2002-org`,
+criada junto com a conta de faturamento.
+
+**O conserto**, no console:
+
+> IAM e administrador → IAM → marcar **"Incluir concessões de papéis fornecidas
+> pelo Google"** (sem isso a conta nem aparece na lista) → editar a conta
+> `<número>-compute@developer.gserviceaccount.com` → adicionar
+> `roles/cloudbuild.builds.builder`
+
+Espere um ou dois minutos: permissão de IAM não vale na hora.
+
+**Passe `--force` no primeiro deploy de functions**, ou rode
+`firebase functions:artifacts:setpolicy` depois. Sem política de limpeza, as
+imagens de container se acumulam no Artifact Registry e viram alguns centavos
+por mês para sempre.
+
+---
+
+## Trocar a conta de faturamento sem mexer no projeto
+
+Conta de faturamento e projeto são coisas separadas, e **a conta se anexa a um
+projeto que já existe** — inclusive de outra conta Google. Recriar o projeto
+para trocar de pagador joga fora ID, DNS, sites, verificação de domínio e o
+domínio no ar.
+
+O caminho, quando o pagador está noutra conta Google:
+
+1. Na conta que TEM o faturamento: Faturamento → Gerenciamento da conta →
+   **Adicionar principal** → o e-mail da conta dona do projeto, papel
+   **Usuário da conta de faturamento** (Admin também serve)
+2. Na conta DONA do projeto: `console.cloud.google.com/billing/linkedaccount?project=<id>`
+   → **Alterar conta de faturamento**
+
+**Confira pelo ID, não pelo nome.** Contas de faturamento nascem todas como
+"Minha conta de faturamento", e escolher a errada de uma lista de três iguais é
+o erro fácil. Renomeie as suas.
+
+**Conta de faturamento FECHADA continua vinculada** e não avisa em lugar nenhum
+do Firebase — o sintoma é a API de Functions responder `SERVICE_DISABLED` como
+se o projeto estivesse no Spark. Quem denuncia é o banner vermelho da tela de
+gerenciamento da conta, no Google Cloud.
 
 ---
 
