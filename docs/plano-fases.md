@@ -47,6 +47,7 @@ João é motorista escolar. Um colega mandou o link no WhatsApp.
 | 7 | A conta inativa | ⬜ |
 | 8 | Indicação | ⬜ |
 | 9 | A avaliação do 1º mês | ⬜ |
+| 10 | O painel do dono, e quem entra nele | ⬜ |
 
 ---
 
@@ -117,6 +118,66 @@ A janela de avaliação **já existe** em `platformConfig`, ligada pelo dono sem
 deploy. Falta o gatilho dos 30 dias de uso. É plugar, não construir.
 
 ---
+
+### Fase 10 · O painel do dono, e quem entra nele
+
+**Passo zero: a conta de dono não existe.** Ela foi adiada em 06/09 e nunca
+voltou à pauta — hoje ninguém consegue entrar no `/admin`. Cria-se no console:
+Authentication → adicionar usuário, e `users/{uid}` com `role: 'owner'`.
+
+#### Três papéis na administração, e o segundo é novo
+
+Múltiplos donos **já funcionam** — `isOwner()` nas rules checa o PAPEL, não a
+identidade, então duas contas com `role: 'owner'` são as duas donas. O que o
+código diz é outra coisa: *"O DONO É UMA CONTA SÓ"*. Isso é suposição
+declarada, não limite técnico, e a frase sai do `firestore.rules` e do
+`papeis.js` na mesma alteração que aceitar a segunda.
+
+| Papel | O que faz |
+|---|---|
+| `owner` | aprova motorista, fecha fatura, emite contrato, vê tudo |
+| `observador` | vê números, funil e fila. **Não muda nada** |
+| `admin` | é MOTORISTA. Nome histórico — ver a tabela de papéis do CLAUDE.md |
+
+O `observador` existe por um motivo concreto: o painel mostra **chave PIX de
+cada parceiro**, GMV e a fila de concorrentes. Quem entra para montar deck ou
+ajudar na venda precisa VER, não precisa MEXER. E é mais barato criar o papel
+com duas pessoas dentro do que com cinco.
+
+**Os dois papéis nascem no console, sempre.** Não haverá botão de promover a
+dono: hoje NÃO EXISTE caminho para `role: 'owner'` pelo cliente — o `create` de
+`users` só aceita `admin`, e o `update` só deixa o dono promover
+`aguardando → admin`. Criar esse caminho seria abrir a primeira porta, e quem
+passasse por ela veria tudo. Com duas a quatro pessoas, um botão economizaria
+minutos por ano e custaria a garantia que a refatoração de papel comprou.
+
+#### A aba do investidor
+
+O `adminMetricsService` já entrega usuários, motoristas, responsáveis,
+crianças, GMV total e do mês, ticket médio, receita própria e receita em
+aberto. O que falta não é cálculo: é a tela que junta isso no formato do
+[pitch-investidor.md](pitch-investidor.md).
+
+⚠️ **A regra que decide se essa aba presta:** onde o número não existe, ela
+precisa dizer **"não medimos"** — e não mostrar zero. Num deck, zero e
+"não medimos" são coisas opostas, e confundir os dois é o erro que não se
+desfaz numa reunião.
+
+E o número que mais falta é justamente o que o
+[canvas-negocio.md](canvas-negocio.md) aponta como o que governa o negócio:
+**hora de consultor por associado fechado**. O
+[pitch-investidor.md](pitch-investidor.md) transforma isso em portão — *não
+capte antes de medir* —, e a [pendencias.md](pendencias.md) já recomenda o
+conserto: um campo `horasConsultor` no lead, preenchido à mão.
+
+A aba existindo é o que torna essa ausência visível toda vez que alguém a abre.
+Hoje ela não incomoda ninguém porque não aparece em lugar nenhum.
+
+#### O que ainda não está decidido aqui
+
+**O que melhorar no painel além disso.** Ele tem cinco abas hoje — Visão geral,
+Funil, Taxa, Fila, Pesquisa — e nenhuma reclamação registrada. Melhorar sem
+saber o que incomoda produz retrabalho: a lista sai de usar, não de supor.
 
 ## O gateway, quando entrar
 
