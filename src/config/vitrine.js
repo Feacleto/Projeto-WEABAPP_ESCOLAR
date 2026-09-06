@@ -42,3 +42,21 @@ export function comPiso(valor) {
   if (valor === null || valor === undefined) return null;
   return Math.max(Number(valor) || 0, PISO_DA_VITRINE);
 }
+
+/**
+ * O SITE INSTITUCIONAL — a porta pública, e ela mora FORA do app.
+ *
+ * Até 06/09/2026 a apresentação da plataforma era a rota `/` do próprio app
+ * (`pages/Home.jsx`, 1090 linhas). Ela foi apagada: a landing estática em
+ * `landing/` cobre tudo que ela fazia, e o `/` do app passou a ser o login.
+ *
+ * POR QUE ISTO É UMA CONSTANTE E NÃO UM `<Link to="/">`
+ * O destino deixou de ser uma rota do react-router e virou OUTRO DOMÍNIO —
+ * `alobuzinou.com` é o app e `alobuzinou.com.br` é a landing. `<Link>` monta
+ * caminho relativo e mandaria a pessoa para `alobuzinou.com/`, que é o login
+ * de novo. Quem sai daqui precisa de `<a href>`.
+ *
+ * Ver "Os domínios" em docs/deploy.md para por que são dois endereços, e o
+ * que essa escolha custa.
+ */
+export const SITE_INSTITUCIONAL = 'https://alobuzinou.com.br';

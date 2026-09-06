@@ -1,9 +1,8 @@
 /**
  * As duas frentes do produto, e como uma tela sabe em qual está.
  *
- * O app fala com dois públicos opostos. A home `/` vende associação: taxa,
- * vaga, credibilidade de negócio. A `/familia` não vende nada — ela só precisa
- * deixar o responsável entrar. A regra do dono é assimétrica de propósito:
+ * O app fala com dois públicos opostos. A regra do dono é assimétrica de
+ * propósito:
  *
  *   o motorista PODE ver coisa de responsável; o responsável NÃO pode ver
  *   coisa de motorista.
@@ -17,8 +16,16 @@
  * dela.
  *
  * A rota não tem esse problema. A mesma pessoa, no mesmo celular, vê a frente
- * da família quando está em `/familia` e a do motorista quando está em `/`.
+ * da família quando está em `/familia` e a do motorista quando não está.
  * Nada fica trancado, e ninguém precisa ser classificado.
+ *
+ * O QUE MUDOU EM 06/09/2026, E POR QUE ESTE ARQUIVO SOBREVIVEU
+ * A frente do motorista era a rota `/` — 1090 linhas de página de vendas
+ * dentro do app. Ela foi apagada, e a apresentação virou a landing estática,
+ * em outro domínio. Este módulo continua valendo porque ele nunca tratou de
+ * VENDER: ele decide o que uma tela COMPARTILHADA (o login, hoje a única
+ * porta) pode mostrar a quem chegou por onde. Sumiu a página; a assimetria
+ * entre os dois públicos não sumiu.
  *
  * COMO A FRENTE VIAJA ENTRE TELAS
  * Telas compartilhadas (o login, por exemplo) recebem a frente pelo `state` da
@@ -42,7 +49,7 @@ export const FRENTE_FAMILIA = 'familia';
  * informação já não existe.
  */
 export function destinoAposSair(role) {
-  return role === 'parent' ? '/familia' : '/';
+  return role === 'parent' ? '/familia' : '/login';
 }
 
 /**
@@ -89,22 +96,23 @@ export function estadoDaFrente(frente) {
  * Sem frente conhecida, a do motorista — que é a apresentação da plataforma.
  */
 export function portaDaFrente(frente) {
-  return frente === FRENTE_FAMILIA ? '/familia' : '/';
+  return frente === FRENTE_FAMILIA ? '/familia' : '/login';
 }
 
 /**
  * A ÚLTIMA PORTA USADA — uma dica, e só pro atalho instalado.
  *
  * O manifesto do PWA tem UM `start_url` pro app inteiro. O responsável
- * instala pela `/familia` e o atalho abre em `/`: com sessão a home o
- * reencaminha, sem sessão ele fica na página que vende associação.
+ * instala pela `/familia` e o atalho abre em `/`, que hoje é o login: com
+ * sessão ele é reencaminhado pro painel, sem sessão ele fica numa tela que
+ * não sabe de onde ele veio — e é essa dica que esta chave devolve.
  *
  * ISTO NÃO É A MARCA DE APARELHO QUE FOI REJEITADA no topo deste arquivo, e a
  * diferença importa. Aquela CLASSIFICAVA a pessoa e ESCONDIA dela as portas do
  * outro papel — o motorista que também é pai ficava trancado. Esta aqui só
  * escolhe onde a porta se abre quando ninguém disse nada, e:
  *
- *   - nunca esconde nada: `/` continua sendo `/` pra quem digitar ou tocar;
+ *   - nunca esconde nada: quem digitar um endereço vai pra ele;
  *   - perde pra URL explícita, sempre;
  *   - perde pra sessão ativa, que manda direto pro painel.
  *

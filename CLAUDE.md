@@ -155,7 +155,7 @@ src/
 │                      chega de fora é eager; o resto é lazy (ver o topo
 │                      do arquivo — era 1,47 MB num bundle só)
 ├── pages/
-│   ├── Home, Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
+│   ├── Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
 │   ├── tio/           16 telas do motorista
 │   ├── pai/           8 telas do responsável
 │   ├── admin/         AdminPanel, TaxaTab — o dono tem UMA tela só, com
@@ -476,23 +476,24 @@ em toda navegação não é lembrada como capricho, é lembrada como lentidão.
   de 8s se o worker não assumir. Montado no `main.jsx`, fora do `AuthProvider`
   — atualizar não depende de quem está logado.
 
-**As duas portas públicas: decidir mora em `/`, entrar mora em `/familia`.**
-Nada mora nas duas. A home do motorista tem 6 blocos, e a ordem segue a
-decisão: o que faz → **por que confiar** → como começa → a vaga. A prova
-social é UM bloco (parceiro e avaliações eram dois respondendo a mesma
-pergunta, e prova pouca dividida em dois parece menos ainda). A porta da
-família tem rodapé legal próprio — é onde está a pessoa cujos dados e os do
-filho vivem no sistema — e **nenhuma** palavra de aquisição: sem vaga, sem
-taxa, sem escassez.
+**Decidir mora FORA do app; entrar mora dentro dele.** Desde 06/09/2026 `/`
+não é mais a home do motorista — ela foi APAGADA (eram 1090 linhas, e eager no
+bundle de entrada). Quem chega em `alobuzinou.com` cai no `/login`, e quem
+quer conhecer o produto está em `alobuzinou.com.br`, a landing estática, que
+não passa pelo bundle do app. `SITE_INSTITUCIONAL` em
+[config/vitrine.js](src/config/vitrine.js) é o único endereço dela no código —
+sair do app exige `<a href>`, porque `<Link>` monta caminho relativo e
+devolveria a pessoa pro login.
 
-**A porta dele é ESCURA, a dela é CLARA** — e o motivo não é coerência de
-sistema, é o caminho de cada um. Ela nunca vê a home do motorista: o que ela
-vê é o link no WhatsApp, a porta e o app. Então a única coerência que a
-alcança é entre a porta e o APP dela, que é claro — porta escura prometia um
-produto que não é o que abre em seguida. E link pelado de terceiro numa
-página escura pedindo login tem a forma exata de um golpe, risco que o
-[index.html](index.html) já reconhece pro preview do link. Ele está
-comprando (escuro, negócio); ela está entrando em casa.
+**A `/familia` continua**, e continua sendo a porta da responsável: rodapé
+legal próprio — é onde está a pessoa cujos dados e os do filho vivem no
+sistema — e **nenhuma** palavra de aquisição. Hoje ela está ÓRFÃ: a landing
+nova não linka pra ela, e só o link de convite chega lá. Decisão pendente.
+
+**O login é a única superfície de entrada**, para motorista, responsável e
+dono — ninguém escolhe papel pra entrar, `painelDe()` resolve depois. É a
+decisão 5 de [docs/decisoes.md](docs/decisoes.md), que estava com estado
+"alvo".
 
 **Preço não aparece na vitrine.** O que aparece é a FORMA do dinheiro: "a
 mensalidade das suas famílias é sua, a plataforma não entra no caminho dela".

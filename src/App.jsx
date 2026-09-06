@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 /**
@@ -21,7 +21,6 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
  * o PrivateRoute já usa — a espera parece com a espera que o app já tinha,
  * e não com uma tela nova aparecendo do nada.
  */
-import Home from './pages/Home';
 import Familia from './pages/Familia';
 import Invite from './pages/Invite';
 import Login from './pages/Login';
@@ -79,6 +78,7 @@ import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
 import { hasAcceptedContract } from './services/contractService';
 import Respiro from './components/common/Respiro';
+import { SITE_INSTITUCIONAL } from './config/vitrine';
 import Travessia from './components/common/Travessia';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
@@ -318,6 +318,24 @@ function ParentContractGate({ children }) {
  * "Entrar" e resolve; e quem nunca usou o app não tem migalha nenhuma,
  * então visitante novo sempre cai na home — que é o que a gente quer.
  */
+/**
+ * Sai do app e vai pro site institucional.
+ *
+ * Precisa existir porque a landing mora em OUTRO DOMÍNIO
+ * (`alobuzinou.com.br`; o app é `alobuzinou.com`), e o <Navigate> do
+ * react-router só alcança rotas deste bundle — ele montaria um caminho
+ * relativo e devolveria a pessoa pra cá.
+ *
+ * `replace` em vez de `href`: quem veio de um link velho não deve ganhar
+ * uma parada a mais no histórico do "voltar".
+ */
+function ParaOSite() {
+  useEffect(() => {
+    window.location.replace(SITE_INSTITUCIONAL);
+  }, []);
+  return <Respiro />;
+}
+
 export default function App() {
   // Som global de clique em qualquer elemento .tap — desabilitável no Profile
   useGlobalClickSound();
@@ -337,7 +355,21 @@ export default function App() {
         <ErrorBoundary>
         <Routes>
         {/* Rotas públicas */}
-        <Route path="/" element={<Home />} />
+        {/* A APRESENTAÇÃO DA PLATAFORMA SAIU DO APP.
+          *
+          * Até 06/09/2026 `/` era `pages/Home.jsx` — 1090 linhas de página
+          * de vendas, carregadas de forma EAGER por todo visitante, inclusive
+          * pela mãe que abre o link do convite em dado móvel.
+          *
+          * Ela foi apagada: a landing estática em `landing/` (outro domínio,
+          * outro site do Hosting) faz o mesmo trabalho sem passar pelo bundle
+          * do app. Quem chega em `alobuzinou.com` está entrando, não
+          * conhecendo — e o que ele precisa é do login.
+          *
+          * O redirecionamento é INTERNO de propósito: mandar quem digitou o
+          * endereço do app para a landing seria devolvê-lo à porta de onde ele
+          * acabou de sair. */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
         {/* A porta da família — a home do responsável. Mesmo sistema
           * visual da home do motorista, porque é o mesmo produto e ele
           * precisa reconhecer onde está; conteúdo completamente outro,
@@ -347,18 +379,14 @@ export default function App() {
           * URL, então ele não digita nada além de email e senha. */}
         <Route path="/convite/:codigo" element={<Invite />} />
         <Route path="/quero-fazer-parte" element={<DriverSignup />} />
-        {/* A /conheca (o folheto verde antigo) saiu do ar: a home nova
-          * cobre tudo que ela fazia. Link velho, QR impresso e favorito
-          * caem na home em vez de numa versão do produto que não existe
-          * mais.
+        {/* /conheca — o folheto verde antigo. Link velho, QR impresso e
+          * favorito continuam funcionando; hoje eles chegam na landing.
           *
-          * O Landing.jsx foi APAGADO, e com ele imagemvanescolar.png —
-          * 7,9 MB, 2392x1792. A imagem era usada só por aquela página e
-          * respondia por 55% do precache do PWA: todo mundo que instalava
-          * o app baixava 7,9 MB pra servir uma tela que ninguém alcançava.
-          * O limite de tamanho no precache tinha sido subido de 2 pra 10
-          * MiB só pra ela caber; voltou ao padrão. */}
-        <Route path="/conheca" element={<Navigate to="/" replace />} />
+          * Este é o ÚNICO redirecionamento que sai do app, e por isso não é
+          * <Navigate>: quem pediu "conheça" quer a apresentação, e ela mudou
+          * de domínio. Mandar pro `/` interno cairia no login — a tela que
+          * responde "quem é você", não "o que é isto". */}
+        <Route path="/conheca" element={<ParaOSite />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/first-access" element={<FirstAccess />} />

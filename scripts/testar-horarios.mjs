@@ -615,9 +615,12 @@ t('prefixo parecido não conta como área da família', () => {
   eq(frenteDoCaminho('/familiares'), null);
 });
 
-t('cada frente tem a sua porta, e a ausência de frente é a do motorista', () => {
+t('cada frente tem a sua porta, e a ausência de frente cai no login', () => {
   eq(portaDaFrente(FRENTE_FAMILIA), '/familia');
-  eq(portaDaFrente(null), '/');
+  // Era '/' — a home do motorista, apagada em 06/09/2026. A apresentação
+  // saiu do app pra landing, em outro domínio, e uma porta INTERNA não pode
+  // apontar pra fora: quem está no app já entrou. Sobra o login.
+  eq(portaDaFrente(null), '/login');
 });
 
 t('o estado de navegação só carrega a frente quando ela existe', () => {
@@ -627,9 +630,9 @@ t('o estado de navegação só carrega a frente quando ela existe', () => {
 
 t('sair da conta devolve cada um à sua porta', () => {
   eq(destinoAposSair('parent'), '/familia');
-  eq(destinoAposSair('admin'), '/');
-  eq(destinoAposSair('owner'), '/');
-  eq(destinoAposSair(undefined), '/', 'sem papel, a apresentação da plataforma');
+  eq(destinoAposSair('admin'), '/login');
+  eq(destinoAposSair('owner'), '/login');
+  eq(destinoAposSair(undefined), '/login', 'sem papel, a porta de entrada');
 });
 
 // ────────────────── 12. o tutorial ──────────────────

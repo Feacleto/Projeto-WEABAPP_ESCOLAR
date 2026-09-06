@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Bus, LogIn, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
 import Logo from '../components/common/Logo';
+import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { RoleCard } from '../components/common/Sheet';
 import { ArtRoad } from '../components/landing/BlockArt';
 
@@ -70,17 +71,23 @@ export default function Welcome() {
         </div>
 
         <div className="relative">
-          <Link
-            to="/"
+          {/* Volta pro site institucional, que é OUTRO domínio — por isso <a> e
+            * não <Link>. Ver SITE_INSTITUCIONAL em config/vitrine.js. */}
+          <a
+            href={SITE_INSTITUCIONAL}
             className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
           >
             <ArrowLeft size={16} /> Voltar
-          </Link>
+          </a>
 
           <div className="mt-3 text-center">
-            <Link to="/" aria-label="Conhecer o Alô Buzinou" className="tap inline-block">
+            <a
+              href={SITE_INSTITUCIONAL}
+              aria-label="Conhecer o Alô Buzinou"
+              className="tap inline-block"
+            >
               <Logo variant="stacked" tone="onDark" height={92} className="mx-auto" />
-            </Link>
+            </a>
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
               primeira vez aqui
             </p>

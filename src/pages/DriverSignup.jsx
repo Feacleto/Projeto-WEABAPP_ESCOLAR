@@ -4,6 +4,7 @@ import { ArrowLeft, User, Mail, Bus, MapPin, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { ArtRoad } from '../components/landing/BlockArt';
 import AssociadosCard from '../components/landing/AssociadosCard';
 import { submitDriverWaitlist } from '../services/waitlistService';
@@ -144,12 +145,14 @@ export default function DriverSignup() {
         </div>
 
         <div className="relative">
-          <Link
-            to="/"
+          {/* Volta pro site institucional, que é OUTRO domínio — por isso <a> e
+            * não <Link>. Ver SITE_INSTITUCIONAL em config/vitrine.js. */}
+          <a
+            href={SITE_INSTITUCIONAL}
             className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
           >
             <ArrowLeft size={16} /> Voltar
-          </Link>
+          </a>
 
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
             vaga limitada por estrutura
