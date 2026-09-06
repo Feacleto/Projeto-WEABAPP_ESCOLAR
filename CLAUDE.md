@@ -37,6 +37,16 @@ por padrão — **rodar local sem isso grava no Firebase de produção**.
 Deploy: [docs/deploy.md](docs/deploy.md) (a ordem importa, há dois pré-requisitos de
 console, e desde 05/09/2026 são **dois sites** — `hosting:app` e `hosting:landing`). Acessos de teste por papel: [docs/testes.md](docs/testes.md).
 
+**O projeto Firebase é `alobuzinou-be81f`**, e o sufixo não é engano: o nome
+`alobuzinou` ficou preso pelo projeto anterior, excluído em 05/09/2026. O
+console mostra o NOME de exibição, não o ID — quem confia no cabeçalho aponta
+o repositório inteiro para um projeto que não existe. O ID real sai de
+`firebase projects:list`, e o anexo do [deploy.md](docs/deploy.md) conta o resto.
+
+**Os dois domínios servem peças diferentes:** `alobuzinou.com` é o APP e
+`alobuzinou.com.br` é a landing. Não há subdomínio — e o `.com` deixou de ser
+defesa de marca: se ele expirar, o app cai junto.
+
 ## Stack
 
 React 19 · Vite 8 · Tailwind 3 · Firebase 12 (Auth, Firestore, Storage,
@@ -176,7 +186,8 @@ src/
 │                      browserEnv. Não conhece o domínio (o lint recusa)
 └── firebase/config.js
 landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
-                       `alobuzinou.com.br`. Não é o app: um index.html com CSS
+                       `alobuzinou.com.br` (o app é o `.com`, não um
+                       subdomínio). Não é o app: um index.html com CSS
                        e JS inline, deploy por `--only hosting:landing`. As
                        duas home públicas antigas (`/` do motorista) morreram
                        aqui dentro; a `/familia` continua no app.
