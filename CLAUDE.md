@@ -537,7 +537,7 @@ humano.
 
 **Cor tem nome, e o nome é o papel.** Todos os tokens estão em
 [tailwind.config.js](tailwind.config.js), com o porquê de cada um no próprio
-arquivo, e `npm run testar:contraste` mede 43 pares contra os fundos reais.
+arquivo, e `npm run testar:contraste` mede 50 pares contra os fundos reais.
 Cinco regras, e todas nasceram de um bug:
 
 1. **Âmbar é aviso e nada mais** — algo que a pessoa precisa atender. Havia um

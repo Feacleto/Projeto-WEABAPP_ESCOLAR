@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
 import { CENA_ENTRADA, travessar } from '../marca/travessia';
 import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
+import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import {
   resetPassword,
   loginWithGoogleExistingOnly,
@@ -19,6 +20,30 @@ import OpenInBrowser from '../components/auth/OpenInBrowser';
 import { canUseGoogleSignIn, isInAppBrowser } from '../compartilhado/browserEnv';
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
 
+/**
+ * A ÚNICA PORTA DE ENTRADA — motorista, responsável e dono.
+ *
+ * POR QUE ELA VIROU DUAS COLUNAS EM 06/09/2026
+ * Até aqui esta tela era um formulário centrado numa página em branco, e o
+ * contexto vinha da home do motorista, que ficava atrás dela. Essa home foi
+ * apagada: a apresentação da plataforma mudou de domínio e virou a landing
+ * estática. Quem chega aqui acabou de clicar em "Entrar" num site com marca,
+ * e caía num formulário sem nenhuma.
+ *
+ * A faixa da esquerda é essa continuidade. Ela não vende nada e não tem
+ * botão — carrega a marca e uma frase, e é o que impede a tela de parecer o
+ * login genérico de qualquer sistema logo depois de a pessoa ter clicado num
+ * botão de marca.
+ *
+ * NO CELULAR ELA NÃO SOME, ENCOLHE. Some seria voltar ao problema: a mãe que
+ * abre o link do WhatsApp num aparelho barato é justamente quem mais precisa
+ * reconhecer onde está antes de digitar e-mail e senha.
+ *
+ * NINGUÉM ESCOLHE PAPEL AQUI, e isso é decisão. O papel já está na conta, e
+ * `painelDe()` resolve o destino depois do login. Tela de "sou motorista / sou
+ * responsável" antes de autenticar obriga a pessoa a saber como o sistema é
+ * organizado por dentro — e erra com quem é os dois.
+ */
 export default function Login() {
   const { login, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -94,6 +119,12 @@ export default function Login() {
    * Login com Google: só funciona pra usuários JÁ cadastrados.
    * Se o user fizer login Google sem ter doc users/{uid}, deslogamos
    * e direcionamos pro fluxo de "primeiro acesso" com invite code.
+   *
+   * ISTO VAI MUDAR NA FASE 3/4 — o Google passa a CRIAR a conta de quem não
+   * tem. Não mudou junto com o layout de propósito: criar conta de motorista
+   * pelo cliente é o ramo de rule que a escalada de privilégio fechou, e a
+   * decisão 16 exige que ela nasça de Cloud Function. Sem Blaze, esta tela
+   * ficaria prometendo um cadastro que morre no meio.
    */
   const onGoogleLogin = async () => {
     setGoogleSubmitting(true);
@@ -134,156 +165,188 @@ export default function Login() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col px-6 py-6">
-      {/* Volta pra frente de onde a pessoa veio. */}
-      <Link
-        to={daFamilia ? '/familia' : '/'}
-        className="inline-flex items-center gap-1 text-sm text-textMuted mb-4 tap"
-      >
-        <ArrowLeft size={16} /> Voltar
-      </Link>
+  /**
+   * O "voltar" tem dois destinos, e um deles sai do app.
+   *
+   * Quem veio da `/familia` volta pra ela — é rota daqui. Quem chegou sem
+   * contexto veio da landing, que é OUTRO domínio: `<Link>` montaria caminho
+   * relativo e devolveria a pessoa pra esta mesma tela.
+   */
+  const voltarPara = daFamilia ? '/familia' : SITE_INSTITUCIONAL;
+  const VoltarTag = daFamilia ? Link : 'a';
+  const voltarProps = daFamilia ? { to: voltarPara } : { href: voltarPara };
 
-      <div className="flex-1 flex flex-col justify-center">
-        <div className="text-center mb-6">
-          <Link
-            to={daFamilia ? '/familia' : '/'}
-            aria-label="Voltar"
-            className="tap inline-block"
-          >
-            <Logo variant="stacked" height={104} className="mx-auto" />
-          </Link>
+  return (
+    <div className="min-h-screen md:grid md:grid-cols-[5fr_6fr]">
+      {/* ── A faixa da marca ─────────────────────────────────────────── */}
+      <div className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-primary to-primaryDark px-6 py-7 md:px-12 md:py-12">
+        {/* Um halo só, e atrás de tudo. A porta não é lugar de enfeite. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 -right-28 h-80 w-80 rounded-full bg-accent/10"
+        />
+
+        <VoltarTag
+          {...voltarProps}
+          className="tap relative z-10 -ml-1 inline-flex w-fit items-center gap-1 p-1 text-sm text-onNightMuted hover:text-onNight"
+        >
+          <ArrowLeft size={16} /> Voltar
+        </VoltarTag>
+
+        <div className="relative z-10 mt-6 md:mt-0">
+          <Logo variant="lockup" tone="onDark" height={38} className="md:hidden" />
+          <Logo variant="lockup" tone="onDark" height={52} className="hidden md:block" />
           {/* O logo já diz o nome em desenho. O h1 continua existindo pra
             * leitor de tela não perder o cabeçalho da página. */}
           <h1 className="sr-only">Alô Buzinou</h1>
-          <p className="text-sm text-textMuted mt-3">
-            Entre com sua conta
+
+          {/* A frase quebra em duas alturas de propósito: a primeira diz o
+            * que é, a segunda diz o que faz. O peso separa as duas funções
+            * sem precisar de dois tamanhos de fonte. */}
+          <p className="mt-4 max-w-[26ch] text-lg font-semibold leading-snug text-onNight md:mt-8 md:text-3xl">
+            O app do transporte escolar.
+            <br />
+            <span className="text-onNightMuted">
+              Um ambiente que avisa, cobra e organiza.
+            </span>
           </p>
         </div>
 
-        {showBridge && (
-          <div className="mb-5">
+        <div className="relative z-10 hidden text-xs text-onNightMuted md:block">
+          alobuzinou.com.br
+        </div>
+      </div>
+
+      {/* ── O cartão ─────────────────────────────────────────────────── */}
+      <div className="flex flex-1 items-center justify-center bg-bg px-5 py-8 md:px-8">
+        <div className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-6 shadow-rest md:p-7">
+          <div>
+            <h2 className="text-xl font-bold text-text">Entrar</h2>
+            <p className="mt-0.5 text-sm text-textMuted">
+              Motorista, responsável ou administração.
+            </p>
+          </div>
+
+          {showBridge && (
             <OpenInBrowser onContinueHere={() => setBridgeDismissed(true)} />
-          </div>
-        )}
+          )}
 
-        {/* Google em destaque — opção principal pra reduzir fricção
-          * (não precisa digitar email/senha). Email/senha vem depois. */}
-        {!showBridge && googleWorks && (
-          <>
-            <Button
-              loading={googleSubmitting}
-              onClick={onGoogleLogin}
-              className="!bg-white !text-text !border-2 !border-borderStrong hover:!bg-sunken !h-14 !text-base shadow-md"
-            >
-              {!googleSubmitting && <GoogleIcon size={22} />}
-              Entrar com Google
-            </Button>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border"></div>
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-bg px-3 text-textMuted">
-                  ou com email e senha
-                </span>
-              </div>
-            </div>
-          </>
-        )}
-
-        <form
-          onSubmit={onSubmit}
-          className={`space-y-4 ${showBridge ? 'hidden' : ''}`}
-        >
-          <Input
-            type="email"
-            inputMode="email"
-            label="Email"
-            placeholder="seu@email.com"
-            icon={Mail}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
-          <Input
-            type="password"
-            revealable
-            label="Senha"
-            placeholder="sua senha"
-            icon={Lock}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-          <Button type="submit" variant="secondary" loading={submitting}>
-            Entrar
-          </Button>
-
-          <button
-            type="button"
-            onClick={onForgotPassword}
-            disabled={resetting}
-            className="block w-full text-sm text-textMuted hover:text-text disabled:opacity-50"
-          >
-            {resetting ? 'Enviando...' : 'Esqueci minha senha'}
-          </button>
-        </form>
-
-        <div className="mt-8 pt-6 border-t border-border text-center space-y-3">
-          {/* Pai de primeira viagem não escolhe papel nem digita código: ele
-            * abre o link que o motorista mandou. Aqui só explicamos isso. */}
-          <div className="text-left bg-sunken border border-border rounded-xl px-4 py-3 space-y-1">
-            <p className="text-sm font-semibold text-text">
-              Recebeu um convite do seu motorista?
-            </p>
-            <p className="text-xs text-textMuted">
-              Abra o link que ele mandou — sua conta se cria por lá.
-            </p>
-            {/* Plano B pra quem recebeu o convite ditado por telefone e não
-              * tem o link. Deliberadamente discreto: o link é o caminho. */}
-            <Link
-              to="/first-access"
-              className="inline-block text-xs font-semibold text-primary underline pt-1"
-            >
-              Só tenho o código, sem o link
-            </Link>
-          </div>
-
-          {/* AS DUAS PORTAS DO MOTORISTA, escondidas de quem é responsável.
-            *
-            * Esta tela é compartilhada, e num aparelho de responsável ela
-            * oferecia o cadastro de parceiro e — pior — o "configurar
-            * primeiro administrador", que é o bootstrap do dono do sistema.
-            * As rules impedem o segundo de funcionar depois que existe um
-            * admin, então não era brecha de acesso; era um responsável
-            * olhando uma porta que não é dele e podendo achar que errou de
-            * app.
-            *
-            * A assimetria é intencional: o motorista PODE ver coisa de
-            * responsável, o responsável NÃO pode ver coisa de motorista. */}
-          {!daFamilia && (
+          {/* Google em destaque — opção principal pra reduzir fricção
+            * (não precisa digitar email/senha). Email/senha vem depois. */}
+          {!showBridge && googleWorks && (
             <>
-              <Link
-                to="/quero-fazer-parte"
-                className="block text-sm font-semibold text-primary hover:underline"
+              <Button
+                loading={googleSubmitting}
+                onClick={onGoogleLogin}
+                variant="secondary"
+                className="!border-borderStrong"
               >
-                Sou motorista e quero fazer parte →
-              </Link>
-              {!hasAdmin && (
-                <Link
-                  to="/first-admin"
-                  className="block text-xs text-textMuted underline"
-                >
-                  Configurar primeiro administrador
-                </Link>
-              )}
+                {!googleSubmitting && <GoogleIcon size={20} />}
+                Continuar com Google
+              </Button>
+
+              <div className="relative py-1">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-card px-3 text-textMuted">
+                    ou com email e senha
+                  </span>
+                </div>
+              </div>
             </>
           )}
-          <div className="text-[11px] text-textMuted pt-2 flex items-center justify-center gap-3">
+
+          <form
+            onSubmit={onSubmit}
+            className={`space-y-3 ${showBridge ? 'hidden' : ''}`}
+          >
+            <Input
+              type="email"
+              inputMode="email"
+              label="Email"
+              placeholder="seu@email.com"
+              icon={Mail}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+            />
+            <Input
+              type="password"
+              revealable
+              label="Senha"
+              placeholder="sua senha"
+              icon={Lock}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+
+            {/* Antes do botão, e alinhado à direita: quem chegou aqui e não
+              * lembra a senha precisa achar isto ANTES de errar três vezes. */}
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              disabled={resetting}
+              className="tap ml-auto block text-sm font-semibold text-primary disabled:opacity-50"
+            >
+              {resetting ? 'Enviando...' : 'Esqueci minha senha'}
+            </button>
+
+            <Button type="submit" loading={submitting}>
+              Entrar
+            </Button>
+          </form>
+
+          {/* ── Cadastrar ────────────────────────────────────────────
+            * O rodapé do cartão serve a MINORIA: quem chega no login quase
+            * sempre já tem conta. Por isso é linha, não botão — destaque
+            * igual ao do "Entrar" competiria com ele por nada.
+            *
+            * As duas saídas de trás dele (motorista e convite) chegam na
+            * fase 3; hoje o link leva ao caminho do motorista, que é o
+            * único que funciona sem Cloud Function. */}
+          {!showBridge && (
+            <div className="border-t border-border pt-4 text-center text-sm text-textMuted">
+              {daFamilia ? (
+                <>
+                  Recebeu um convite?{' '}
+                  <Link
+                    to="/first-access"
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    Usar meu código
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Ainda não tem conta?{' '}
+                  <Link
+                    to="/quero-fazer-parte"
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    Cadastrar
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* O bootstrap do dono só aparece enquanto NÃO existe admin — e a
+            * rule fecha a janela junto. Some sozinho depois do primeiro. */}
+          {!hasAdmin && !daFamilia && (
+            <Link
+              to="/first-admin"
+              className="block text-center text-xs text-textMuted underline"
+            >
+              Configurar primeiro administrador
+            </Link>
+          )}
+
+          <div className="flex items-center justify-center gap-3 text-[11px] text-textMuted">
             <Link to="/termos" className="hover:underline">
               Termos de Uso
             </Link>
@@ -297,5 +360,3 @@ export default function Login() {
     </div>
   );
 }
-
-// Traduz códigos de erro do Firebase Auth para mensagens amigáveis em PT-BR.

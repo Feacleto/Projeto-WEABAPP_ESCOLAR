@@ -149,6 +149,17 @@ par('onNightAccent sobre night', C.onNightAccent, C.night);
 par('onNightAccentFill sobre night', C.onNightAccentFill, C.night, 3);
 par('escolaBorder sobre night (ícone de escola)', C.escolaBorder, C.night);
 
+console.log('\n\x1b[1m6b. A faixa da marca no login — o verde, não o quase-preto\x1b[0m');
+// A porta de entrada (Login.jsx) pinta a faixa da esquerda com o `primary`
+// da marca, e não com `night`. É outro fundo, então os pares de cima NÃO
+// cobrem esta tela — e ignorar isso seria repetir o erro que a regra 3 deste
+// arquivo registra: medir contra um representante em vez do fundo real.
+par('onNight sobre primary (a frase da entrada)', C.onNight, C.primary);
+// A segunda linha da frase é TEXTO GRANDE (30px no computador, 18px em
+// negrito no celular), e por isso o mínimo é 3 e não 4,5. Se algum dia ela
+// virar corpo de texto, esta linha reprova antes de alguém reclamar.
+par('onNightMuted sobre primary (a segunda linha)', C.onNightMuted, C.primary, 3);
+
 console.log('\n\x1b[1m7. O QUE NÃO PODE SER TEXTO — a regra, medida\x1b[0m');
 // Estas linhas passam quando REPROVAM: é o motivo de accentText e
 // warningText existirem. Se um dia alguém "consertar" o accent pra ele
