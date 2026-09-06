@@ -179,28 +179,45 @@ Hoje ela não incomoda ninguém porque não aparece em lugar nenhum.
 Funil, Taxa, Fila, Pesquisa — e nenhuma reclamação registrada. Melhorar sem
 saber o que incomoda produz retrabalho: a lista sai de usar, não de supor.
 
-## O gateway, quando entrar
+## O gateway — escrito em 06/09/2026, ainda não exercitado
 
-A conta do Asaas foi aprovada em 06/09/2026. A integração está travada no mesmo
-Blaze: webhook precisa de endereço, e endereço é Function. A chave da API vai
-em `functions:secrets`, nunca em `.env` com prefixo `VITE_` — tudo com esse
-prefixo entra no bundle, público por construção.
+A conta do Asaas foi aprovada em 06/09/2026 e as duas metades existem em
+código. A chave da API vive em `functions:secrets`, nunca em `.env` com prefixo
+`VITE_` — tudo com esse prefixo entra no bundle, público por construção.
 
 **O gateway cobra a TAXA, nunca a mensalidade.** Não é preferência: é a
 [decisão 19](decisoes.md), o item 7 dos Termos e a frase que está publicada na
 landing. O Asaas oferece split e subconta, e é natural pensar em processar tudo
 por ele — processar a mensalidade transformaria a plataforma em intermediária
-de dinheiro de terceiro.
+de dinheiro de terceiro. A trava é o formato:
+`functions/lib/cobrancaDaTaxa.js` só sabe ler `faturasParceiro`.
 
-Duas coisas a acertar antes de escrever código, e as duas cobram caro se
-erradas:
+As duas coisas que cobravam caro se erradas foram decididas e testadas:
 
-1. **Qual evento marca a fatura como quitada.** Há diferença entre "pagamento
-   confirmado" e "dinheiro disponível". Escolher errado dá baixa em algo que
-   ainda pode ser estornado — ou deixa bloqueado quem já pagou.
-2. **A baixa precisa ser idempotente.** O Asaas repete o webhook quando não
-   recebe confirmação, e o mesmo aviso chega duas ou três vezes. Mesmo padrão
-   do `rides`, cujo id é a data por esse motivo.
+1. **Qual evento marca a fatura como quitada.** `PAYMENT_CONFIRMED`, não
+   `PAYMENT_RECEIVED`: esperar o dinheiro cair deixaria bloqueado por dias
+   quem já pagou. O risco que sobra — estorno depois — é o que os eventos de
+   `REFUNDED` e `CHARGEBACK` tratam.
+2. **A baixa é idempotente pela FORMA.** Cada evento devolve um estado
+   absoluto, nunca um passo relativo: aplicar duas vezes dá no mesmo. Mesmo
+   padrão do `rides`, cujo id é a data por esse motivo.
+
+E uma terceira, que só apareceu ao escrever a criação: **cobrar duas vezes o
+mesmo mês tem duas guardas.** A fatura recusa quando já carrega
+`asaasPaymentId`, e antes de criar se pergunta ao próprio gateway pelo
+`externalReference` — entre criar lá e gravar aqui existe uma janela, e uma
+queda dentro dela deixaria cobrança órfã lá e nenhum vestígio aqui.
+
+**O que falta**, e nada disso é código:
+
+- **O app não coleta CPF/CNPJ** em lugar nenhum — nem o cadastro, nem o
+  contrato. O gateway não cria cliente sem ele. Hoje entra pela mão do dono e
+  fica em `taxaParceiros/{uid}`, que só o dono lê; quando o cadastro pedir, a
+  função não muda
+- **Nunca rodou de verdade.** Tudo o que existe é teste puro (42 casos) — o
+  caminho até o Asaas não foi exercitado nem em sandbox
+- **Não há botão.** A aba **Taxa** do `/admin` fecha a fatura e não oferece
+  "gerar cobrança"; a callable existe sem tela
 
 ---
 

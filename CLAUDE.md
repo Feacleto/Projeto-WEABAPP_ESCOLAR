@@ -348,6 +348,17 @@ negociação **e** emite o contrato na mesma folha) → `contratosAssociacao`
   Ele mora no `TioLayout` e é omitido em `/tio/taxa` de propósito: cobrança
   que cobre a própria tela de pagamento não deixa ninguém pagar.
 
+**O gateway cobra a TAXA e só ela.** `criarCobrancaDaFatura` só sabe ler
+`faturasParceiro`; a mensalidade da família continua PIX direto pai→motorista.
+No dia em que uma cobrança de `payments` nascer ali, o item 7 dos Termos fica
+falso. A trava é o formato: [cobrancaDaTaxa.js](functions/lib/cobrancaDaTaxa.js)
+não conhece outro documento. **Cobrar duas vezes o mesmo mês tem duas
+guardas** — a fatura recusa quando já tem `asaasPaymentId`, e antes de criar se
+PERGUNTA ao gateway pelo `externalReference` (o id da fatura), porque entre
+criar lá e gravar aqui existe uma janela. **O gateway não cria cliente sem
+CPF/CNPJ e o app não coleta esse campo** em lugar nenhum: ele entra pela mão do
+dono e fica em `taxaParceiros/{uid}`, que só o dono lê.
+
 **Há DOIS modelos de preço, e eles não podem valer pro mesmo parceiro.**
 [taxa.js](src/dominio/associacao/taxa.js) é o NEGOCIADO — percentual sobre a
 soma das mensalidades, ajustado caso a caso pelo dono no orçamento, e é o que
@@ -404,6 +415,10 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `sendPaymentReminders`, `runPaymentRemindersNow`
 - **Operação:** `closeStaleRoutes`, `confirmarAusencias`
 - **Push:** `sendPushOnNotification` (dispara FCM a partir de `notifications`)
+- **Gateway (taxa do motorista):** `criarCobrancaDaFatura` (o DONO gera a
+  cobrança de uma `faturasParceiro`) e `asaasWebhook` (a baixa vem de fora).
+  As duas metades do mesmo elo: o webhook acha a fatura por `asaasPaymentId`,
+  e é a callable que grava esse campo.
 - **Outros:** `joinDriverWaitlist`, `getShowcase`, `spinEntryBonus`,
   `flagDuplicateReceipts`, `backfillTestimonialPrivacy`
 

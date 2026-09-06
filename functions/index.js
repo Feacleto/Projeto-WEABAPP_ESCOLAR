@@ -23,7 +23,8 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./lib/papeis');
 const { makeAsaasWebhook } = require('./lib/asaasWebhook');
-const { defineSecret } = require('firebase-functions/params');
+const { makeCriarCobrancaDaFatura } = require('./lib/asaasCobranca');
+const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./lib/limites');
 const admin = require('firebase-admin');
@@ -437,3 +438,27 @@ exports.backfillTestimonialPrivacy = makeBackfillTestimonialPrivacy(db);
 const ASAAS_WEBHOOK_TOKEN = defineSecret('ASAAS_WEBHOOK_TOKEN');
 
 exports.asaasWebhook = makeAsaasWebhook(db, ASAAS_WEBHOOK_TOKEN);
+
+// ===== Gerar a cobrança (ver functions/lib/asaasCobranca.js) =====
+//
+// A OUTRA METADE DO WEBHOOK. Ele encontra a fatura por `asaasPaymentId`, e
+// esse campo não nascia em lugar nenhum — todo evento respondia `no-match`.
+// Aqui é onde o vínculo é criado.
+//
+// Quem chama é o DONO, nunca o motorista: cobrança criada pelo cobrado é
+// cláusula editada pelo devedor. E ela só sabe ler `faturasParceiro` — a
+// mensalidade da família não passa pelo gateway, que é o item 7 dos Termos.
+//
+// O AMBIENTE PADRÃO É O SANDBOX de propósito. Chave de sandbox em produção
+// devolve 401, que é falha barulhenta; apontar para produção sem querer cobra
+// gente de verdade. Para virar a chave, `ASAAS_AMBIENTE=producao` no
+// `.env.alobuzinou-be81f` das functions.
+
+const ASAAS_API_KEY = defineSecret('ASAAS_API_KEY');
+const ASAAS_AMBIENTE = defineString('ASAAS_AMBIENTE', { default: 'sandbox' });
+
+exports.criarCobrancaDaFatura = makeCriarCobrancaDaFatura(
+  db,
+  ASAAS_API_KEY,
+  ASAAS_AMBIENTE
+);

@@ -226,6 +226,29 @@ firebase functions:secrets:set RESEND_API_KEY
 firebase deploy --only functions:sendPaymentReminders,functions:runPaymentRemindersNow
 ```
 
+### Os segredos do gateway de cobrança
+
+Dois, e eles não se substituem:
+
+```powershell
+firebase functions:secrets:set ASAAS_WEBHOOK_TOKEN   # gerado no painel, em Integrações
+firebase functions:secrets:set ASAAS_API_KEY         # a chave da API, SEM permissão de saque
+```
+
+⚠️ **Cole no prompt escondido, nunca na linha de comando.** Chave em linha de
+comando fica no histórico do PowerShell, e um `$` no início dela vira nome de
+variável — foi assim que uma chave chegou vazia ao Secret Manager e devolveu
+401 sem dizer por quê.
+
+⚠️ **A chave da API não pode ter permissão de transferência.** Ela vaza em log
+mais fácil do que se imagina; sem saque, o pior caso é cobrança indevida — que
+se estorna — e não dinheiro saindo da conta, que não volta.
+
+**O ambiente é um parâmetro, não um segredo:** `ASAAS_AMBIENTE`, padrão
+`sandbox`. Chave de sandbox contra o host de produção devolve 401, que é falha
+barulhenta; apontar para produção sem querer cobra gente de verdade. Para virar,
+`ASAAS_AMBIENTE=producao` no `.env.alobuzinou-be81f` dentro de `functions/`.
+
 ---
 
 ## ⚠️ Projeto dentro de ORGANIZAÇÃO: o papel que trava tudo
