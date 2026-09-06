@@ -40,6 +40,7 @@ const Aguardando = lazy(() => import('./pages/Aguardando'));
 const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 
 const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
+const GuardaDaConta = lazy(() => import('./components/tio/GuardaDaConta'));
 const TioDashboard = lazy(() => import('./pages/tio/TioDashboard'));
 const TioChildren = lazy(() => import('./pages/tio/TioChildren'));
 const TioEscolas = lazy(() => import('./pages/tio/TioEscolas'));
@@ -458,7 +459,14 @@ export default function App() {
         path="/tio"
         element={
           <PrivateRoute requireRole="admin">
-            <TioLayout />
+            {/* O guarda envolve o layout de fora, e não de dentro: o
+              * TioLayout assina crianças, chamadas e faturas no topo, e hook
+              * não pode ser condicional. Um cartão de conta inativa lá
+              * dentro chegaria DEPOIS de todo o dado ter sido carregado —
+              * e desfoque sobre dado carregado é CSS, não proteção. */}
+            <GuardaDaConta>
+              <TioLayout />
+            </GuardaDaConta>
           </PrivateRoute>
         }
       >
