@@ -1,6 +1,6 @@
 # Documentação
 
-**Leia este primeiro** para saber onde procurar. Treze arquivos, quatro grupos — e nada fora daqui: a raiz guarda só o README, que roteia.
+**Leia este primeiro** para saber onde procurar. Quatorze arquivos, cinco grupos — e nada fora daqui: a raiz guarda só o README, que roteia.
 
 ### Normativo — o que não se quebra por conveniência
 
@@ -20,6 +20,12 @@
 | [`marca.md`](marca.md) | pessoa | Antes de escrever qualquer texto público, e sempre que uma proposta parecer boa e cheirar a promessa. O manifesto tem oito declarações, e cada uma vem com o jeito de pegar a gente mentindo — é isso que o torna teste, e não cartaz. Registra também **por que não existe valor de segurança**. |
 | [`pitch-comercial.md`](pitch-comercial.md) | pessoa | Antes de falar com um motorista. Roteiro de 40 segundos, as seis objeções (a última é a que ele **não** faz), e a peça que ele encaminha sozinho. A seção 5 lista as frases que soam ótimas e são **falsas hoje** — é a parte que envelhece primeiro. |
 | [`pitch-investidor.md`](pitch-investidor.md) | pessoa | Só se aparecer uma conversa. **A captação foi decidida como "não"** — o plano é crescer com receita. O documento existe pela tese, pelos onze slides e pelo portão da seção 7: não capte antes de medir hora de consultor, porque é a única coisa que o dinheiro compraria. |
+
+### Caminho — o que está sendo construído, e em que ordem
+
+| Arquivo | Para quem | Quando ler |
+|---|---|---|
+| [`plano-fases.md`](plano-fases.md) | pessoa, e agente | Antes de pegar uma fase. Nove fases, o que trava cada uma e **por que cada escolha foi feita assim** — que é a parte que some quando ninguém escreve. Não é normativo: o que virou lei está em `decisoes.md`. **Tem prazo de validade:** some quando a última fase fechar. |
 
 ### Pauta — o que ainda não foi decidido
 

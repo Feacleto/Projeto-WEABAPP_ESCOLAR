@@ -296,6 +296,60 @@ Subir a `VERSAO_CONTRATO` faz parte da entrega, não é etapa posterior.
 
 ---
 
+## 20. A conta nasce sem papel — a porta não adivinha quem chegou
+
+**Estado:** aceita — em vigor desde 06/09/2026
+
+**Contexto.** O login com Google criava um usuário no Firebase Auth antes de qualquer verificação nossa, e o app apagava a conta órfã na hora. Isso valia enquanto a única entrada legítima era JÁ TER conta. Deixou de valer quando o Google virou também o caminho de quem chega — e a saída óbvia, criar a conta como motorista, tem um custo concreto: a mãe que recebe o convite no WhatsApp, ignora o link e toca em "Entrar com Google" viraria motorista. Ao abrir o convite depois, o `redeemInvite` recusaria (ele já barra conta de motorista virando responsável) e ela ficaria presa: e-mail queimado, convite morto, nenhuma saída dentro do app.
+
+**Decisão.** A conta nasce **sem papel**, e a sala de espera (`/comecar`) pergunta **por onde a pessoa chegou** — não o que ela é. Nada é gravado antes da escolha, então nenhuma escolha errada é possível. Quem chega pelo link nunca vê essa tela: o código está na URL e a frente já é conhecida.
+
+Perguntar "você é motorista ou responsável?" está recusado, e por três motivos: a pessoa não sabe responder na língua do sistema (ela pensa *"sou mãe do Pedro"*), quem é as duas coisas é obrigado a mentir, e o que separa os casos não é quem ela é — é o que ela tem na mão.
+
+**Consequência.** O app parou de apagar a conta órfã, então sobra um registro de autenticação vazio por visitante que desistiu. Isso é aceitável porque a conta pendurada é **inerte**: toda leitura passa por `isAppUser()` nas rules, que exige o documento de `users`. Em troca, o `PrivateRoute` não pode mais devolver um loader quando há sessão sem perfil — seria tela travada para todo mundo que entra pela primeira vez.
+
+**Como verificar.** `npm run testar:auth`, bloco 7: `painelDe` devolve `/comecar` para perfil ausente, vazio e com papel desconhecido. E os cinco papéis conhecidos continuam indo para os painéis deles.
+
+---
+
+## 21. O relógio do teste começa na primeira rota, e só pode ser ligado uma vez
+
+**Estado:** aceita — em vigor desde 06/09/2026
+
+**Contexto.** Não existia campo de trial em lugar nenhum: "três meses grátis" era frase de conversa comercial que o app não sabia contar. Contar do cadastro parece o óbvio e erra com o público real — motorista escolar tem calendário. Quem conhece o app em dezembro, entra em férias e volta a operar em fevereiro chegaria em fevereiro com três semanas, e a primeira experiência real dele com o produto seria a tela de cobrança.
+
+**Decisão.** `users.trialInicio` é gravado no instante em que ele **inicia a primeira rota** — o momento em que o produto começa a entregar. Só o início é guardado; o fim, os dias restantes e o aviso do momento são conta pura em `dominio/associacao/trial.js`.
+
+E o campo é **gravável uma vez e nunca alterável**, com a trava nas rules e não no cliente. Livre, o motorista roda uma rota, o campo grava, e três meses depois grava de novo e ganha mais três — seria `limiteCriancas` com outro nome, o devedor editando a própria cláusula.
+
+**Consequência.** Quem cadastra criança e cobra mensalidade sem nunca iniciar rota usa de graça. É pouco (sem rota o app é meia agenda), e o contrário — cobrar de quem não recebeu nada — é pior. A escrita não é esperada pelo app: o GPS liga no meio-fio, às vezes sem sinal, e a rota não pode aguardar. Falhou, a próxima tenta; o pior caso é um dia a mais de teste.
+
+**São três avisos, em FAIXAS e não em datas.** Cinco avisos (20, 15, 7, 5 e 3 dias) está recusado pela mesma lição de `dominio/rota/avisoDoMomento.js`: tarja semanal ensina a pular tarja, e o quinto aviso — o mais importante — seria o menos lido. Faixa também alcança quem não abriu o app no dia exato.
+
+**Como verificar.** `npm run testar:trial` (28 casos, com a hora injetada). E `npm run testar:regras`, três casos: ele liga o próprio relógio, não consegue ligar de novo, e não encosta no do colega.
+
+---
+
+## 22. Só o fundador chega a zero, e o desconto nunca vira crédito
+
+**Estado:** aceita — em vigor desde 06/09/2026
+
+**Contexto.** O preço da associação era digitado à mão no orçamento, caso a caso pelo dono. Funciona com um parceiro e não funciona com autoatendimento, onde ninguém digita nada às 23h de um domingo. E com dois programas de desconto somando — condição de fundador e indicação —, soma sem teto vira fatura negativa.
+
+**Decisão.** O preço sai de uma **faixa por número de crianças ativas** (`dominio/associacao/planos.js`), separada do modelo negociado que continua em `taxa.js` — os dois não podem valer para o mesmo parceiro, porque somá-los cobra duas vezes.
+
+Sobre ela incidem dois descontos: **fundador** (o 1º motorista vitalício, os 12 seguintes com 50%) e **indicação** (10% por indicação ativa, teto de 50%, 12 meses, contando só a partir do 1º mês PAGO do indicado). O total é **cortado em 100%**.
+
+O desenho está nesse corte: fundador de metade mais cinco indicações fecha exatamente em zero; quem não é fundador para em 50% pelo teto. **Gratuidade só existe para fundador, e só trazendo cinco clientes pagantes.**
+
+**Consequência.** Sem o corte, seis indicações sobre um fundador de metade dariam 110% — dinheiro saindo da plataforma para quem devia estar pagando. Acima de 40 crianças o preço é `null` e nenhum desconto é aplicado: 50% sobre um preço inexistente produziria R$ 0, indistinguível de "não paga", e é exatamente o caso que precisa de conversa.
+
+**O plano capa QUANTIDADE, nunca funcionalidade** — o app é completo em qualquer faixa, e o que muda é `users.limiteCriancas`. Escolher plano menor que o uso é permitido, e **quem aponta as crianças que saem é o motorista**: corte automático apagaria clientes que ele não escolheu perder.
+
+**Como verificar.** `npm run testar:planos` (44 casos). Os quatro que travam a economia: vitalício não paga nunca; metade mais cinco fecha em zero; quem não é fundador para em 50% mesmo com vinte indicações; e o desconto somado passa de 100% e é cortado em 100%.
+
+---
+
 ## Como adicionar uma decisão
 
 Copie o formato. Contexto em duas linhas, decisão em uma, consequência no que ela custa, e **sempre** a linha de como verificar. Decisão sem teste é comentário — e comentário que promete garantia sem prová-la já foi problema recorrente neste repositório.

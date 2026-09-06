@@ -154,6 +154,11 @@ que soam ótimas e são **falsas hoje**. Fechou um "pela metade" ou um "não
 resolve" de [docs/personas.md](docs/personas.md)? A linha correspondente sai de
 lá na mesma alteração.
 
+**O caminho em construção está em [docs/plano-fases.md](docs/plano-fases.md)**
+— nove fases, o que trava cada uma, e por que cada escolha foi feita assim.
+Não é normativo (o que virou lei está em decisoes.md 20, 21 e 22) e tem prazo
+de validade: some quando a última fase fechar.
+
 **O que ainda não foi decidido está em [docs/pendencias.md](docs/pendencias.md)**
 — pauta com recomendação, em cinco blocos, e com prazo de validade: a decisão é
 registrada no documento DONO e a linha é riscada de lá. Não confundir com
