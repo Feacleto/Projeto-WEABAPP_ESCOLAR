@@ -20,6 +20,7 @@ import MotoristasTab from '../../components/admin/MotoristasTab';
 import ChamadosTab from '../../components/admin/ChamadosTab';
 import SelosTab from '../../components/admin/SelosTab';
 import IndicacoesTab from '../../components/admin/IndicacoesTab';
+import { listarInteresses } from '../../services/interesseService';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
@@ -290,12 +291,65 @@ export default function AdminPanel() {
 
 /* ─────────────── aba 3: números ─────────────── */
 
+/**
+ * QUEM QUER RECEBER A MENSALIDADE POR CARTÃO — a pesquisa, e só isso.
+ *
+ * ⚠️ ELA MOSTRA **QUEM**, NÃO SÓ QUANTOS. Um contador responde "quantos
+ * querem" e para aí; o que decide a fase é quem — cinco interessados que são os
+ * cinco maiores da base é uma conversa, cinco de uma criança cada é outra.
+ *
+ * O caminho é split, nunca escrow: o dinheiro cairia na subconta do motorista,
+ * e a plataforma nunca reteria — senão "a mensalidade é sua" vira falsa e o
+ * item 7 dos Termos cai junto. O risco que esta pesquisa mede é outro: boa
+ * parte dos PSPs exige CNPJ para subconta com split, e o modelo decidiu que o
+ * motorista não precisa de MEI. Se ninguém aceitar pessoa física, o recurso não
+ * existe para a maior parte da base.
+ *
+ * Custo quase zero, e o resultado mata ou justifica uma fase inteira.
+ */
+function InteressePorCartaoResumo() {
+  const [lista, setLista] = useState(null);
+  useEffect(() => {
+    listarInteresses()
+      .then(setLista)
+      .catch(() => setLista([]));
+  }, []);
+
+  // Sem ninguém, a linha não aparece: zero interessados numa pesquisa que
+  // acabou de subir é ruído, não resultado.
+  if (!lista?.length) return null;
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+        Querem receber por cartão
+      </h3>
+      <p className="mt-1 text-sm font-extrabold text-text">
+        {lista.length} {lista.length === 1 ? 'motorista' : 'motoristas'}
+      </p>
+      <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+        Pesquisa, não recurso. Antes de qualquer promessa, é preciso achar um
+        PSP que abra subconta com split para <strong>pessoa física sem
+        CNPJ</strong> — o modelo decidiu que o motorista não precisa de MEI.
+      </p>
+      <ul className="mt-2 space-y-0.5 text-[11px] text-textMuted">
+        {lista.slice(0, 12).map((i) => (
+          <li key={i.id} className="font-mono">
+            {i.tioUid}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Geral({ ov }) {
   if (ov === null) return <Carregando />;
   if (ov === false) return <Erro />;
 
   return (
     <div className="space-y-5">
+      <InteressePorCartaoResumo />
       {/* A CARTEIRA — em que degrau cada associado está.
         *
         * Esta seção não existia: o painel media o tamanho da base e o dinheiro

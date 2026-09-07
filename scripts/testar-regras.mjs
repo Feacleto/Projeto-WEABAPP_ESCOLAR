@@ -1014,6 +1014,24 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     await escrever('indicacoes/' + tio1.uid + '_11911112222', dono,
       { estado: S('ativa') }, ['estado']));
 
+  // ── A PESQUISA (06/09/2026) ──────────────────────────────────────────
+  //
+  // Nao ha dinheiro nem promessa aqui: alguem levantou a mao para um recurso
+  // que ainda nao existe. O que a rule protege e a LISTAGEM — quem na base
+  // quer o que e informacao comercial da plataforma, nao dado do motorista.
+  checar('interesse', 'o motorista levanta a mao', 'PASSA',
+    await escrever('interesses/' + tio1.uid + '_cartao', tio1,
+      { tioUid: S(tio1.uid), assunto: S('cartao') }));
+  checar('interesse', 'e le o proprio', 'PASSA',
+    await ler('interesses/' + tio1.uid + '_cartao', tio1));
+  checar('interesse', 'mas nao levanta a mao pelo vizinho', 'NEGA',
+    await escrever('interesses/' + tio2.uid + '_cartao', tio1,
+      { tioUid: S(tio2.uid), assunto: S('cartao') }));
+  checar('interesse', 'e nao lista a pesquisa da casa', 'NEGA',
+    await listar('interesses', tio1));
+  checar('pos', 'o dono le a pesquisa', 'PASSA',
+    await listar('interesses', dono));
+
   // ── AS SETE PORTAS QUE A AUTOINSCRICAO ABRIU (06/09/2026) ────────────
   //
   // Auditoria depois da virada comercial. Cada caso aqui e um ataque que uma

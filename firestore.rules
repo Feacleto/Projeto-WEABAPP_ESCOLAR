@@ -1795,6 +1795,29 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    // interesses/{uid}_{assunto} — a pesquisa, e ela é só isso.
+    //
+    // Alguém levantou a mão para um recurso que AINDA NÃO EXISTE. Não há
+    // dinheiro, prazo nem promessa aqui — `docs/negocio.md` é explícito sobre
+    // não anunciar antes de existir.
+    //
+    // Ele escreve o dele e lê o dele (a tela precisa saber para não repetir a
+    // pergunta). A LISTAGEM é do dono, pelo motivo de sempre: `isAdmin()`
+    // sozinho num `list` é porta pública, e aqui ela entregaria quem na base
+    // quer o quê — informação comercial da plataforma, não dado do motorista.
+    //
+    // O id embute o uid, então a rule confere o dono pelo campo `tioUid` em vez
+    // de decompor a string: comparação de prefixo em rule é frágil, e o campo
+    // já está lá.
+    match /interesses/{id} {
+      allow read: if isOwner()
+        || (isSignedIn() && resource.data.tioUid == request.auth.uid);
+      allow list: if isOwner();
+      allow create, update: if isSignedIn()
+        && request.resource.data.tioUid == request.auth.uid;
+      allow delete: if isOwner();
+    }
+
     // indicacoes/{id} — quem trouxe quem, e quando isso virou desconto.
     //
     // ⚠️ O MOTORISTA CRIA E LÊ AS DELE. Mudar estado é do DONO, e isso não é

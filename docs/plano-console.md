@@ -490,6 +490,36 @@ um autônomo e não cumprir custa a confiança que é a visão da empresa"*.
 Pode ser feita a qualquer momento. É a única fase que **não depende de nenhuma
 outra**.
 
+**Os três itens entregues**, com 5 casos em `testar:regras` (198 no total).
+A pergunta mora no **fim do Financeiro do motorista** — onde ela já está na
+cabeça de quem está lendo, logo depois de ele olhar quem pagou — e a lista de
+quem levantou a mão aparece na aba **Números**.
+
+⚠️ **Ela não é um modal.** Interromper a operação de alguém para fazer pesquisa
+é cobrar atenção por um benefício que ainda não existe.
+
+⚠️ **Sem data e sem "em breve".** O texto diz que está sendo estudado, que não
+existe e que não há data. Um "em breve" seria a promessa mais barata de fazer e
+a mais cara de quebrar: quem depende do dinheiro da mensalidade organiza o mês
+em cima dela.
+
+**O painel mostra QUEM, não só quantos.** Um contador responde "quantos querem"
+e para aí; o que decide a fase é quem — cinco interessados que são os cinco
+maiores da base é uma conversa, cinco de uma criança cada é outra.
+
+---
+
+# Todas as fases fechadas
+
+**8 → 15 entregues.** O que este plano previa está no produto, e as três
+reversões estão registradas na fase correspondente: o sinal de uso ficou fora
+da lista proibida (10.5), o endereço do adesivo não foi para `taxaParceiros`
+(13a.1), e o casamento da indicação acontece do lado do dono (14.4).
+
+Este arquivo tem prazo de validade — ele descreve um caminho que acabou. O que
+virou lei está em [decisoes.md](decisoes.md) e no CLAUDE.md; o resto pode ser
+apagado quando alguém precisar do espaço.
+
 ---
 
 ## Ordem recomendada

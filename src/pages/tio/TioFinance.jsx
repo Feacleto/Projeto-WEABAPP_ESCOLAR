@@ -25,6 +25,7 @@ import EmptyState from '../../components/common/EmptyState';
 import Skeleton from '../../components/common/Skeleton';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import PaymentRow from '../../components/payments/PaymentRow';
+import InteressePorCartao from '../../components/tio/InteressePorCartao';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useChildren } from '../../hooks/useChildren';
@@ -621,6 +622,20 @@ export default function TioFinance() {
           </div>
           <ChevronRight size={18} className="shrink-0 text-textMuted" />
         </button>
+
+        {/* A PESQUISA DO CARTÃO, no fim e sem prometer nada.
+          *
+          * Ela mora AQUI porque é aqui que a pergunta já está na cabeça de quem
+          * está lendo — ele acabou de olhar quem pagou e quem não pagou. E ela
+          * NÃO é modal: interromper a operação de alguém para fazer pesquisa é
+          * cobrar atenção por um benefício que ainda não existe.
+          *
+          * O texto não tem data e não diz "em breve". Prometer prazo para um
+          * autônomo e não cumprir custa a confiança que é a visão da empresa —
+          * `docs/negocio.md` é explícito. */}
+        <div className="pt-2">
+          <InteressePorCartao />
+        </div>
       </div>
 
       <PixSheet open={pixOpen} onClose={() => setPixOpen(false)} />

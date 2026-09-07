@@ -201,10 +201,11 @@ src/
 │   ├── Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
 │   ├── tio/           16 telas do motorista
 │   ├── pai/           8 telas do responsável
-│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com seis
+│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com OITO
 │   │                  abas: Hoje (a fila), Motoristas (lista + FICHA),
-│   │                  Chamados, Mês (régua e fechamento), Números, Pesquisa.
-│   │                  A fila e a ficha moram em components/admin/.
+│   │                  Chamados, Mês (régua e fechamento), Números, Selos,
+│   │                  Indicações, Pesquisa. As abas moram em
+│   │                  components/admin/.
 │   └── legal/         termos e privacidade
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive…
@@ -298,7 +299,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `premios` · `pedidosAdesivo` ·
-`indicacoes` · `platformConfig` · `appState`
+`indicacoes` · `interesses` · `platformConfig` · `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
 
@@ -857,6 +858,16 @@ de uma function seria esperar cold start com o passageiro na porta. O caso
 `uso` em `testar-regras.mjs` existe para essa decisão aparecer se alguém
 mudá-la.
 
+**A PESQUISA DO CARTÃO PERGUNTA, NUNCA ANUNCIA** — `interesses/{uid}_{assunto}`,
+no fim do Financeiro do motorista. Sem data e sem "em breve": prometer prazo a
+um autônomo e não cumprir custa a confiança que é a visão da empresa, e quem
+depende do dinheiro da mensalidade organiza o mês em cima dela. O painel mostra
+**quem** levantou a mão, não só quantos — cinco interessados que são os maiores
+da base é uma conversa, cinco de uma criança cada é outra. O caminho seria
+**split, nunca escrow**, e o risco que a pesquisa mede é o CNPJ: boa parte dos
+PSPs o exige para subconta, e o modelo decidiu que o motorista não precisa de
+MEI.
+
 **A INDICAÇÃO tem REGISTRO desde 06/09/2026** —
 [indicacao.js](src/dominio/identidade/indicacao.js)
 (`npm run testar:indicacao`). Antes existia só `users.indicacoesAtivas`, um
@@ -970,7 +981,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (193 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (198 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 
