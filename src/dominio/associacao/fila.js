@@ -27,6 +27,13 @@
  * A exceção é o chamado, que é uma linha por chamado: cada um é uma resposta
  * diferente, mesmo que sejam da mesma pessoa.
  *
+ * ── O ALVARÁ É A OUTRA EXCEÇÃO, E POR OUTRO MOTIVO
+ * Um associado pode estar ótimo — rodando, pagando, crescendo — e ter um alvará
+ * esperando conferência há três dias. As duas coisas são verdade ao mesmo
+ * tempo, e esconder a segunda atrás da primeira faria a conferência parar de
+ * acontecer. Ela é a única parte do produto que depende de uma pessoa, e é
+ * assim de propósito: valor não vem de preço, vem de exigência.
+ *
  * ── O FECHAMENTO DO MÊS É UMA LINHA SÓ
  * Vinte faturas por fechar são um gesto na aba Mês, não vinte pendências. Uma
  * linha por fatura enterraria as conversas do dia debaixo de trabalho que se
@@ -52,6 +59,11 @@ import { estadoDaConta } from './contaAtiva.js';
 import { pesoDoRisco, riscoDo } from './risco.js';
 import { diasRestantes } from './trial.js';
 import { aguardando, diasEsperando } from '../suporte/chamados.js';
+import {
+  AVISO_DE_VENCIMENTO,
+  ESTADO as VERIFICACAO,
+  diasParaVencer,
+} from '../identidade/verificacao.js';
 
 /** Faltando isto ou menos para o teste acabar, vira conversa. */
 export const TESTE_ACABANDO = 7;
@@ -226,6 +238,57 @@ export function montarFila({
       agora,
     });
     if (p) itens.push(p);
+  });
+
+  // ── OS ALVARÁS ──────────────────────────────────────────────────────────
+  //
+  // ⚠️ ESTAS LINHAS NÃO SÃO "UMA POR MOTORISTA", e a exceção é deliberada: elas
+  // não competem com a pendência comercial dele. Um associado pode estar
+  // ótimo — rodando, pagando, crescendo — e ter um alvará esperando
+  // conferência há três dias. As duas coisas são verdade ao mesmo tempo, e
+  // esconder a segunda atrás da primeira faria a conferência parar de acontecer.
+  //
+  // Quem confere é uma pessoa, e isso está decidido: valor não vem de preço,
+  // vem de exigência. Uma fila que não mostra o que conferir é a maneira mais
+  // rápida de o selo virar automático — e automático não vale nada.
+  (Array.isArray(parceiros) ? parceiros : []).forEach((mot) => {
+    if (!mot?.uid) return;
+    const nome = String(mot.name || '').trim().split(/\s+/)[0] || 'Motorista';
+
+    if (mot.verificacao === VERIFICACAO.ENVIADA) {
+      const dias = diasEntre(mot.alvaraEnviadoEm, agora) ?? 0;
+      itens.push({
+        id: `alvara:${mot.uid}`,
+        // Dois dias esperando conferência já é uma promessa quebrada: ele
+        // mandou o documento e ficou olhando a tela dizer "vamos conferir".
+        nivel: dias >= 2 ? 'alto' : 'medio',
+        titulo:
+          dias === 0
+            ? `Alvará de ${nome} para conferir`
+            : `Alvará de ${nome} esperando há ${dias} ${dias === 1 ? 'dia' : 'dias'}`,
+        detalhe: 'na aba Selos',
+        destino: { aba: 'selos' },
+        espera: dias,
+      });
+      return;
+    }
+
+    // VENCENDO. Ele some do selo sozinho no dia seguinte ao vencimento
+    // (`estadoDaVerificacao`), e é justamente por isso que o aviso precisa vir
+    // ANTES: o motorista perderia o selo sem ninguém ter dito nada.
+    if (mot.verificacao === VERIFICACAO.VERIFICADA) {
+      const faltam = diasParaVencer(mot, agora);
+      if (faltam !== null && faltam <= AVISO_DE_VENCIMENTO && faltam >= 0) {
+        itens.push({
+          id: `alvara:${mot.uid}`,
+          nivel: 'baixo',
+          titulo: `Alvará de ${nome} vence em ${faltam} ${faltam === 1 ? 'dia' : 'dias'}`,
+          detalhe: 'avise antes de o selo cair sozinho',
+          destino: { aba: 'motoristas', uid: mot.uid },
+          espera: AVISO_DE_VENCIMENTO - faltam,
+        });
+      }
+    }
   });
 
   (Array.isArray(chamados) ? chamados : []).forEach((c) => {

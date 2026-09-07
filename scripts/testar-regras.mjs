@@ -919,6 +919,60 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('pos', 'o dono concede', 'PASSA',
     await escrever('users/' + tio1.uid, dono, { concessoes: CONCESSAO }, ['concessoes']));
 
+  // ── O SELO (06/09/2026) ──────────────────────────────────────────────
+  //
+  // A forma desta trava e DIFERENTE das outras deste bloco, e o motivo e que
+  // aqui nao da pra proibir a ESCRITA: o motorista precisa poder dizer "enviei
+  // o alvara". Entao a rule prende o VALOR — a unica coisa que distingue
+  // "enviei" de "estou verificado".
+  //
+  // Sem isto o selo nao valeria nada, e valeria MENOS que nada: a familia veria
+  // "alvara municipal conferido" numa tela em que ninguem conferiu. E a
+  // decisao 6 — verificacao e selo, e selo que o proprio se da e propaganda.
+  checar('selo', 'o motorista diz que enviou o alvara', 'PASSA',
+    await escrever('users/' + tio1.uid, tio1, { verificacao: S('enviada') }, ['verificacao']));
+  checar('selo', 'mas nao se marca verificado', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1, { verificacao: S('verificada') }, ['verificacao']));
+  checar('selo', 'nem assina a data da conferencia', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1,
+      { verificadoEm: { timestampValue: '2026-09-15T12:00:00Z' } }, ['verificadoEm']));
+  checar('selo', 'nem estica a validade do proprio alvara', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1,
+      { alvaraValidade: { timestampValue: '2099-01-01T12:00:00Z' } }, ['alvaraValidade']));
+  checar('selo', 'e nao verifica o vizinho', 'NEGA',
+    await escrever('users/' + tio2.uid, tio1, { verificacao: S('verificada') }, ['verificacao']));
+  checar('pos', 'o dono confere', 'PASSA',
+    await escrever('users/' + tio1.uid, dono, { verificacao: S('verificada') }, ['verificacao']));
+
+  // ── O ADESIVO: a colecao que existe por causa do ENDERECO ────────────
+  //
+  // Ele nao pode morar em `users` (as familias leem, e a perua sai da casa do
+  // motorista) nem em `taxaParceiros` (que guarda a nota interna do dono sobre
+  // ele, e rules nao escondem campo). Daqui: o dono le tudo, ele le so o dele.
+  const ADESIVO = (uid) => ({
+    tioUid: S(uid),
+    estado: S('pedido'),
+    endereco: { mapValue: { fields: { cep: S('13000-000'), numero: S('10') } } },
+  });
+  checar('adesivo', 'o motorista pede o proprio', 'PASSA',
+    await escrever('pedidosAdesivo/' + tio1.uid, tio1, ADESIVO(tio1.uid)));
+  checar('adesivo', 'e le o proprio pedido', 'PASSA',
+    await ler('pedidosAdesivo/' + tio1.uid, tio1));
+  // ⚠️ O ENDERECO DE UM NAO E DO OUTRO. `isAdmin()` sozinho aqui entregaria o
+  // endereco residencial de todo parceiro a qualquer conta de motorista.
+  checar('adesivo', 'tio2 le o endereco do tio1', 'NEGA',
+    await ler('pedidosAdesivo/' + tio1.uid, tio2));
+  checar('adesivo', 'e nao pede no lugar dele', 'NEGA',
+    await escrever('pedidosAdesivo/' + tio2.uid, tio1, ADESIVO(tio2.uid)));
+  // Quem posta e o dono: um motorista que se marca "entregue" apaga a unica
+  // linha que faria o adesivo sair.
+  checar('adesivo', 'o motorista se marca entregue', 'NEGA',
+    await escrever('pedidosAdesivo/' + tio1.uid, tio1, { estado: S('entregue') }, ['estado']));
+  checar('pos', 'o dono posta o adesivo', 'PASSA',
+    await escrever('pedidosAdesivo/' + tio1.uid, dono, { estado: S('postado') }, ['estado']));
+  checar('pos', 'e le a fila inteira', 'PASSA',
+    await listar('pedidosAdesivo', dono));
+
   // ── AS SETE PORTAS QUE A AUTOINSCRICAO ABRIU (06/09/2026) ────────────
   //
   // Auditoria depois da virada comercial. Cada caso aqui e um ataque que uma

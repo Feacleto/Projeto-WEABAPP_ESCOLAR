@@ -18,6 +18,7 @@ import TaxaTab from './TaxaTab';
 import FilaTab from '../../components/admin/FilaTab';
 import MotoristasTab from '../../components/admin/MotoristasTab';
 import ChamadosTab from '../../components/admin/ChamadosTab';
+import SelosTab from '../../components/admin/SelosTab';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
@@ -50,7 +51,7 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * 1.900px de largura não se lê, se varre —, abas numa fileira só a partir de
  * `sm`, e as fichas de número abrindo em quatro colunas em `lg`.
  *
- * SEIS ABAS, E O QUE CADA UMA RESPONDE
+ * SETE ABAS, E O QUE CADA UMA RESPONDE
  * 0. Hoje: a fila do dia. Não tem conteúdo próprio — é a soma das outras,
  *    apresentada como trabalho. Cada linha é um toque e leva à aba onde a
  *    coisa se resolve.
@@ -62,7 +63,10 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  *    recebe resposta cancela sem dizer por quê.
  * 3. Mês: a régua da casa e o fechamento das faturas. É o trabalho mensal.
  * 4. Números: a carteira, o MRR e o funil. É a leitura do negócio.
- * 5. Pesquisa: o que os usuários responderam — inclusive as avaliações de
+ * 5. Selos: os alvarás para conferir e os adesivos para postar. É a ÚNICA
+ *    aba que põe você no caminho crítico — e é de propósito: valor não vem de
+ *    preço, vem de exigência, e conferir é o que faz o selo valer.
+ * 6. Pesquisa: o que os usuários responderam — inclusive as avaliações de
  *    responsável, que nunca vão pra home mas dizem se o app está servindo a
  *    ponta que não paga pela ferramenta.
  *
@@ -238,6 +242,7 @@ export default function AdminPanel() {
             ['chamados', 'Chamados'],
             ['mes', 'Mês'],
             ['numeros', 'Números'],
+            ['selos', 'Selos'],
             ['pesquisa', 'Pesquisa'],
           ].map(([id, label]) => (
             <button
@@ -270,6 +275,7 @@ export default function AdminPanel() {
         {tab === 'chamados' && <ChamadosTab />}
         {tab === 'mes' && <TaxaTab />}
         {tab === 'numeros' && <Geral ov={ov} />}
+        {tab === 'selos' && <SelosTab />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
       </main>
     </div>

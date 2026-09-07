@@ -17,10 +17,11 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 777 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 853 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth, trial,
                                  # planos, conta, cobranca, gateway, carteira,
-                                 # proposta, chamados, risco, fila, concessao
+                                 # proposta, chamados, risco, fila, concessao,
+                                 # selo
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -219,14 +220,14 @@ src/
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
 │   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
-│   │                  carteira, proposta, risco, fila, concessao
+│   │                  carteira, proposta, risco, fila, concessao, adesivo
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
-│   │                  authErrors
+│   │                  authErrors, verificacao
 │   ├── escola/        nomeEscola
 │   ├── suporte/       chamados
 │   └── vitrine/       frentes
 ├── marca/             a personalidade: avatarUrl, greeting, festivities,
-│                      travessia. Tem regra, mas de apresentação
+│                      travessia, promessas. Tem regra, mas de apresentação
 ├── compartilhado/     SEM regra nenhuma: formatters, masks, haversine,
 │                      browserEnv. Não conhece o domínio (o lint recusa)
 └── firebase/config.js
@@ -296,8 +297,8 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 (+ `events`) · `liveLocation` · `notifications` · `altPickups` · `schools` ·
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
-`faturasParceiro` · `contratosAssociacao` · `premios` · `platformConfig` ·
-`appState`
+`faturasParceiro` · `contratosAssociacao` · `premios` · `pedidosAdesivo` ·
+`platformConfig` · `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
 
@@ -856,6 +857,49 @@ de uma function seria esperar cold start com o passageiro na porta. O caso
 `uso` em `testar-regras.mjs` existe para essa decisão aparecer se alguém
 mudá-la.
 
+**SÃO DOIS SELOS, com economias OPOSTAS** — e tratá-los como um só foi o que
+confundiu a conversa inicial. O **adesivo** de rua diz "usa Alô Buzinou", todo
+associado tem, e se ganha **pedindo**
+([adesivo.js](src/dominio/associacao/adesivo.js)). O **certificado** diz
+"alvará conferido · 09/2026", só quem enviou e foi aprovado tem, e se ganha
+**conquistando** ([verificacao.js](src/dominio/identidade/verificacao.js)).
+Valor não vem de preço, vem de exigência: pago, o selo parece abusivo;
+automático, não vale nada. `npm run testar:selo`.
+
+⚠️ **NENHUM DELES AFIRMA SEGURANÇA, e isso é TESTE, não lembrete.**
+[promessas.js](src/marca/promessas.js) guarda as raízes proibidas e o teste bate
+cada string impressa contra elas — a plataforma não inspeciona van, não confere
+CNH e não treina ninguém. "Certificado" está na lista com exceção só para o
+painel: na tela da família a palavra vira "a plataforma certifica que este
+motorista é bom".
+
+⚠️ **A ausência do selo NÃO é um alerta.** Quem não enviou o alvará não é
+suspeito — o modelo parte de que a família já conhece o motorista offline, e a
+plataforma não apresenta ninguém a ninguém. Tem selo, aparece; não tem, não
+aparece nada. É a decisão 6: pressão social, nunca técnica.
+
+⚠️ **Alvará vencido deixa de ser "verificado" sozinho** (`alvaraValidade`
+decide, não o campo de estado) — senão o selo diria "conferido" três anos
+depois. Por isso a fila avisa 30 dias antes: ele perderia o selo sem ninguém
+ter dito nada.
+
+**ALVARÁ, NÃO CNH — e o motivo é técnico.** Para emitir o alvará a prefeitura
+já exigiu CNH D, curso, antecedentes e vistoria; conferir o alvará apoia a
+plataforma numa conferência que o poder público já fez, **sem guardar documento
+de identidade**, que se vazar é material de fraude pronto. Storage em
+`alvaras/{uid}` — o único caminho não legível por qualquer logado.
+
+**O ENDEREÇO DO ADESIVO MORA EM `pedidosAdesivo/{uid}`**, e não em `users` nem
+em `taxaParceiros`. `users` as famílias leem (e a perua sai da casa dele);
+`taxaParceiros` guarda a nota interna do DONO sobre ele, e rules não escondem
+campo. Foi essa coleção que tornou possível o estado aparecer nos dois lados
+sem vazar nada.
+
+⚠️ **A trava do selo nas rules tem forma diferente das outras**: aqui não dá
+para proibir a escrita — ele precisa poder dizer "enviei". A rule prende o
+**valor**, e ele só escreve `verificacao: 'enviada'`. Selo que o próprio se dá
+é propaganda.
+
 **A CONCESSÃO é a porta pela qual o orçamento pode voltar, e prazo e motivo
 são a tranca** — [concessao.js](src/dominio/associacao/concessao.js)
 (`npm run testar:concessao`). Ela existe porque retenção real precisa de
@@ -896,7 +940,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (171 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (184 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 

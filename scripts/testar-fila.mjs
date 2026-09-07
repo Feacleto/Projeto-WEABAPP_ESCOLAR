@@ -244,7 +244,78 @@ checar('quem não tem faixa não conta', 1, montarFila({
   agora: HOJE,
 }).length);
 
-bloco('9. As réguas estão onde foram combinadas');
+// ───────────────────────── os alvarás ──────────────────────────────────────
+
+bloco('9. O alvará é a outra exceção à regra de uma linha por pessoa');
+
+// ⚠️ UM ASSOCIADO PODE ESTAR ÓTIMO E TER UM ALVARÁ ESPERANDO. As duas coisas
+// são verdade ao mesmo tempo, e esconder a segunda atrás da primeira faria a
+// conferência parar de acontecer — ela é a única parte do produto que depende
+// de uma pessoa, e é assim de propósito.
+const otimoComAlvara = {
+  uid: 'r', name: 'Otimo Silva', planoId: 'p1',
+  trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
+  verificacao: 'enviada', alvaraEnviadoEm: atras(4),
+};
+const comAlvara = montarFila({ parceiros: [otimoComAlvara], agora: HOJE });
+checar('quem está bem e enviou alvará gera UMA linha', 1, comAlvara.length);
+checar('e ela é do alvará', 'alvara:r', comAlvara[0].id);
+checar('quatro dias esperando é alto', 'alto', comAlvara[0].nivel);
+checar('leva para a aba Selos', { aba: 'selos' }, comAlvara[0].destino);
+checar('chegou hoje ainda é médio', 'medio', montarFila({
+  parceiros: [{ ...otimoComAlvara, alvaraEnviadoEm: HOJE }],
+  agora: HOJE,
+})[0].nivel);
+
+// E ela NÃO substitui a pendência comercial: quem parou de rodar E mandou
+// alvará gera as duas, porque são duas ações diferentes suas.
+const duasCoisas = montarFila({
+  parceiros: [{
+    uid: 's', name: 'Parado Com Alvara', planoId: 'p1',
+    trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(20),
+    verificacao: 'enviada', alvaraEnviadoEm: atras(3),
+  }],
+  agora: HOJE,
+});
+checar('parou de rodar E mandou alvará: duas linhas', 2, duasCoisas.length);
+
+bloco('10. O vencimento avisa ANTES de o selo cair');
+
+// O selo some sozinho no dia seguinte ao vencimento (`estadoDaVerificacao`), e
+// é por isso que o aviso precisa vir antes: sem ele, o motorista perderia o
+// selo sem ninguém ter dito nada.
+const vencendo = montarFila({
+  parceiros: [{
+    uid: 't', name: 'Vencendo', planoId: 'p1',
+    trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
+    verificacao: 'verificada', alvaraValidade: dia('2026-10-01'),
+  }],
+  agora: HOJE,
+});
+checar('vence em 16 dias e entra', 1, vencendo.length);
+checar('no nível mais baixo', 'baixo', vencendo[0].nivel);
+checar('com os dias dentro', true, vencendo[0].titulo.includes('16 dias'));
+// Longe de vencer não é pendência de hoje.
+checar('vence em cinco meses e não entra', 0, montarFila({
+  parceiros: [{
+    uid: 'u', name: 'Tranquilo', planoId: 'p1',
+    trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
+    verificacao: 'verificada', alvaraValidade: dia('2027-02-01'),
+  }],
+  agora: HOJE,
+}).length);
+// Já venceu: o selo já caiu sozinho, e avisar agora é tarde — vira conversa
+// normal, não linha de fila.
+checar('já vencido não entra mais', 0, montarFila({
+  parceiros: [{
+    uid: 'v', name: 'Vencido', planoId: 'p1',
+    trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
+    verificacao: 'verificada', alvaraValidade: dia('2026-08-01'),
+  }],
+  agora: HOJE,
+}).length);
+
+bloco('11. As réguas estão onde foram combinadas');
 
 checar('uma semana de teste acende', 7, TESTE_ACABANDO);
 checar('três dias sem começar acende', 3, DIAS_SEM_COMECAR);

@@ -72,6 +72,26 @@ function monthLabel(monthKey) {
  * link do WhatsApp pra saber com quem o filho vai andar. É a primeira tela
  * que a família vê, e era a que mais tinha o que acertar.
  */
+/**
+ * O selo do motorista, ou `null`.
+ *
+ * ⚠️ ESPELHA `dominio/identidade/verificacao.js`, e o espelho é consciente: o
+ * deploy das functions não alcança `src/`. São seis linhas e nenhuma
+ * aritmética — a régua inteira ficaria desatualizada aqui, esta não.
+ */
+function seloDoMotorista(a) {
+  if (a?.verificacao !== 'verificada') return null;
+  const validade = a?.alvaraValidade?.toDate?.() || null;
+  if (validade && validade.getTime() < Date.now()) return null;
+  const conferido = a?.verificadoEm?.toDate?.() || null;
+  return {
+    texto: 'Alvará municipal de transporte escolar conferido',
+    conferidoEm: conferido
+      ? `${String(conferido.getMonth() + 1).padStart(2, '0')}/${conferido.getFullYear()}`
+      : null,
+  };
+}
+
 async function loadDriver(db, adminUid) {
   try {
     if (!adminUid) return {};
@@ -82,6 +102,23 @@ async function loadDriver(db, adminUid) {
       driverFirstName: firstName(a.name),
       companyName: a.companyName || '',
       driverPhotoURL: a.photoURL || null,
+      // O SELO — decisão 6, e é aqui que ela encosta na família.
+      //
+      // Vai só o SELO, nunca o documento: um fato com data ("alvará municipal
+      // conferido em 03/2026") em vez do papel com nome, CPF e placa. Mostrar o
+      // documento seria distribuir dado de terceiro para resolver um problema
+      // que uma frase resolve.
+      //
+      // ⚠️ A AUSÊNCIA NÃO VIRA AVISO. Quem não enviou o alvará não é suspeito —
+      // o modelo inteiro parte de que esta família JÁ conhece este motorista
+      // offline; a plataforma não apresenta ninguém a ninguém. Um alerta ali
+      // cobraria dela uma desconfiança que não é dela, e faria a plataforma de
+      // avalista de quem ela não conhece. A pressão é social: quem tem, exibe.
+      //
+      // Vencido some sozinho: `alvaraValidade` decide, não o campo de estado.
+      // Sem isso o selo diria "conferido" três anos depois, e aí ele passaria a
+      // afirmar uma coisa falsa — pior do que não existir.
+      selo: seloDoMotorista(a),
     };
   } catch (err) {
     logger.warn('getInvitePreview: falha ao ler motorista', err);

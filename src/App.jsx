@@ -56,6 +56,7 @@ const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
 const TioContratoAssociacao = lazy(() => import('./pages/tio/TioContratoAssociacao'));
 const TioTaxa = lazy(() => import('./pages/tio/TioTaxa'));
 const TioPlanos = lazy(() => import('./pages/tio/TioPlanos'));
+const TioSelo = lazy(() => import('./pages/tio/TioSelo'));
 const ChildForm = lazy(() => import('./components/children/ChildForm'));
 
 const PaiLayout = lazy(() => import('./pages/pai/PaiLayout'));
@@ -466,6 +467,10 @@ export default function App() {
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
+        {/* O selo fica DENTRO do guarda: quem está bloqueado não precisa de
+          * adesivo, precisa de voltar a operar. As três telas de voltar a
+          * pagar são as únicas de fora, e o motivo está logo abaixo. */}
+        <Route path="selo" element={<TioSelo />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>

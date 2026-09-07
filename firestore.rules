@@ -575,6 +575,13 @@ service cloud.firestore {
                        // `limiteCriancas`, e pelo mesmo motivo.
                        'planoId', 'condicaoFundador', 'indicacoesAtivas',
                        'descontos', 'isencaoAte',
+                       // O CERTIFICADO — o dono confere o alvara e assina a
+                       // conferencia. `verificacao` esta aqui E no ramo de
+                       // baixo, com uma diferenca: o motorista so consegue
+                       // escrever o valor 'enviada' (ver la). Os outros tres
+                       // campos sao decisao dele e so dele.
+                       'verificacao', 'verificadoEm', 'verificadoPor',
+                       'alvaraValidade', 'alvaraMotivoRecusa',
                        // A CONCESSÃO — o registro da exceção (tipo, prazo,
                        // motivo, quem concedeu). O EFEITO dela já está na
                        // lista: `descontos` para o desconto, `isencaoAte` para
@@ -633,6 +640,16 @@ service cloud.firestore {
                // teto de outra.
                'planoId', 'condicaoFundador', 'indicacoesAtivas',
                'descontos', 'isencaoAte',
+               // O RESULTADO DA CONFERENCIA — nunca do conferido.
+               //
+               // Se o enviado pudesse se marcar verificado, o selo nao valeria
+               // nada, e valeria menos ainda por PARECER que vale: a familia
+               // veria "alvara conferido" numa tela em que ninguem conferiu
+               // coisa nenhuma. O campo `verificacao` fica de fora desta lista
+               // porque ele PRECISA aceitar 'enviada' vindo do motorista — a
+               // trava dele e a linha logo abaixo, que prende o VALOR.
+               'verificadoEm', 'verificadoPor', 'alvaraValidade',
+               'alvaraMotivoRecusa',
                // `concessoes` É CLÁUSULA, e da espécie mais perigosa: ela é a
                // exceção que o dono abre à tabela. Livre, o motorista se
                // concede 90% por doze meses com o motivo que quiser, e a
@@ -644,6 +661,27 @@ service cloud.firestore {
                // ser uma regra, e este é o padrão que a decisão 12 nomeia.
                'concessoes'
              ])
+
+        // `verificacao` — O MOTORISTA SÓ CONSEGUE DIZER "ENVIEI".
+        //
+        // Este campo é o único da verificação que ele escreve, e escreve com um
+        // valor só: `enviada`. Ele diz "mandei o papel"; quem diz "conferi" é o
+        // dono, pelo ramo de cima.
+        //
+        // A forma é diferente da dos outros campos de dinheiro, e o motivo é
+        // que aqui não dá para proibir a ESCRITA — o motorista precisa poder
+        // enviar. Então a rule prende o VALOR, que é a única coisa que
+        // distingue "enviei" de "estou verificado".
+        //
+        // Sem isto, o selo não valeria nada e valeria MENOS que nada: a família
+        // veria "alvará municipal conferido" numa tela em que ninguém conferiu.
+        // É a decisão 6 — verificação é selo, e selo que o próprio se dá é
+        // propaganda.
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['verificacao'])
+          || request.resource.data.verificacao == 'enviada'
+        )
 
         // `trialInicio` — GRAVÁVEL UMA VEZ, NUNCA ALTERÁVEL.
         //
@@ -1755,6 +1793,34 @@ service cloud.firestore {
       allow read: if isOwner()
         || (isSignedIn() && resource.data.tioUid == request.auth.uid);
       allow write: if isOwner();
+    }
+
+    // pedidosAdesivo/{uid} — o adesivo de rua, e o endereço para onde ele vai.
+    //
+    // ⚠️ ELA EXISTE POR CAUSA DO ENDEREÇO, e o endereço é o motivo de ela não
+    // ser `users` nem `taxaParceiros`.
+    //
+    // NÃO PODE SER `users`: o documento do motorista é legível pelas FAMÍLIAS
+    // dele — é a regra que dá à mãe a chave PIX e o telefone. Endereço
+    // residencial ali expõe onde ele mora a toda família que ele atende, e a
+    // maior parte dessas peruas sai da casa dele.
+    //
+    // NÃO PODE SER `taxaParceiros`: aquela coleção guarda a NOTA INTERNA do
+    // dono sobre o parceiro, além do CPF, e é `read: isOwner()`. Rules não
+    // sabem esconder campo — liberar a leitura para ele acompanhar o próprio
+    // pedido entregaria junto o que o dono anotou a seu respeito.
+    //
+    // Aqui: o dono lê tudo, o motorista lê SÓ o dele. O pedido é `create` (uma
+    // vez, e já nasce em 'pedido'); mover para postado/entregue é do dono,
+    // porque quem posta é ele — e um motorista que se marca "entregue" apaga a
+    // única linha que faria o adesivo sair.
+    match /pedidosAdesivo/{uid} {
+      allow read: if isOwner() || (isSignedIn() && request.auth.uid == uid);
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.estado == 'pedido'
+        && request.resource.data.tioUid == uid;
+      allow update, delete: if isOwner();
     }
 
     // leadsFunil SAIU EM 06/09/2026, junto com o modelo negociado.

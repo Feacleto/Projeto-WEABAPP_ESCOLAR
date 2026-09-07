@@ -9,6 +9,7 @@ rules_version = '2';
 //   marcaLogos/{uid}        — logo da marca do motorista (o pai dele vê)
 //   contratosAnteriores/{childId} — o contrato de papel, antes do app
 //   childPhotos/{childId}   — foto de uma criança (só admin escreve)
+//   alvaras/{uid}           — o alvará de transporte escolar, para o selo
 //
 // Princípios:
 //   - Read: qualquer signed-in (avatares são "públicos" dentro do app)
@@ -63,12 +64,53 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/children/$(childId)).data.parentUid == request.auth.uid;
     }
 
+    // O DONO DA PLATAFORMA. Cópia da função do Firestore, e a cópia é o
+    // problema: quem mexer numa tem que mexer na outra. O comentário do
+    // `isAdmin()` acima conta o bug que isso já causou.
+    function isOwner() {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'owner';
+    }
+
     function isImage() {
       return request.resource.contentType.matches('image/.*');
     }
 
     function isWithinSizeLimit() {
       return request.resource.size < 2 * 1024 * 1024; // 2 MB
+    }
+
+    // --------------------------------------------------------------------
+    // alvaras/{uid} — o alvará de transporte escolar
+    // --------------------------------------------------------------------
+    //
+    // ⚠️ ESTE É O ÚNICO CAMINHO DO STORAGE QUE NÃO É LEGÍVEL POR QUALQUER
+    // USUÁRIO LOGADO. Os outros são avatares e comprovantes, "públicos" dentro
+    // do app; este é um documento oficial com nome, CPF, placa e endereço.
+    //
+    // Lê: o dono da plataforma (que confere) e o próprio motorista (que
+    // mandou). A família NÃO lê — ela vê o SELO, que é um fato com data, e não
+    // o documento. Mostrar o papel a ela seria distribuir dado de terceiro para
+    // resolver um problema que uma frase resolve.
+    //
+    // ALVARÁ, NÃO CNH — e o motivo é técnico: para emitir o alvará a prefeitura
+    // já exigiu CNH D, curso, antecedentes e vistoria. Conferir o alvará apoia
+    // a plataforma numa conferência que o poder público já fez, sem guardar
+    // documento de identidade — que, se vazar, é material de fraude pronto.
+    //
+    // PDF é aceito além de imagem: prefeitura emite PDF, e obrigar a fotografar
+    // a tela faria o documento chegar ilegível.
+    match /alvaras/{uid} {
+      allow read: if isOwner() || (isSignedIn() && request.auth.uid == uid);
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && isAdmin()
+        && isWithinSizeLimit()
+        && (isImage() || request.resource.contentType == 'application/pdf');
+      // APAGAR É DO DONO. O conferido apagando o documento que sustenta o selo
+      // deixaria o selo de pé sem nada por trás.
+      allow delete: if isOwner();
     }
 
     // --------------------------------------------------------------------

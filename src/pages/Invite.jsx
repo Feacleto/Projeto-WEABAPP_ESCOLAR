@@ -7,6 +7,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import {
+  BadgeCheck,
   Bus,
   Lock,
   MessageSquare,
@@ -234,6 +235,35 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
           {driverLabel} te convidou pra acompanhar mensalidade e recados num
           lugar só.
         </p>
+
+        {/* O SELO — decisão 6, e é aqui que ela encosta na família.
+          *
+          * ⚠️ A AUSÊNCIA NÃO VIRA AVISO, e isso é a metade importante da
+          * regra. Quem não enviou o alvará NÃO é suspeito: o modelo parte de
+          * que esta família já conhece este motorista offline — a plataforma
+          * não apresenta ninguém a ninguém. Um alerta aqui cobraria dela uma
+          * desconfiança que não é dela, e faria a plataforma de avalista de
+          * quem ela não conhece.
+          *
+          * Então: tem selo, aparece. Não tem, não aparece NADA. A pressão é
+          * social — quem tem, exibe, e é isso que faz o vizinho querer o dele.
+          *
+          * E ele NÃO afirma segurança. A plataforma não inspeciona van, não
+          * confere CNH e não treina ninguém; ela conferiu um papel, numa data,
+          * e é exatamente isso que a frase diz. Ver `marca/promessas.js`. */}
+        {preview.selo && (
+          <p className="mt-4 inline-flex items-start gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-xs leading-relaxed text-white">
+            <BadgeCheck size={14} className="mt-0.5 shrink-0" />
+            <span>
+              {preview.selo.texto}
+              {preview.selo.conferidoEm && (
+                <span className="block text-white/70">
+                  conferido pela plataforma em {preview.selo.conferidoEm}
+                </span>
+              )}
+            </span>
+          </p>
+        )}
       </header>
 
       <main className="flex-1 px-6 py-6 space-y-4">

@@ -1,3 +1,4 @@
+import { Sticker } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
@@ -158,6 +159,16 @@ export default function MeuTransporteSheet({
             icon={FileText}
             titulo="Contrato da plataforma"
             onClick={() => ir('/tio/contrato-plataforma')}
+          />
+          {/* O SELO fica neste grupo e não no de cima: ele é assunto da
+            * PLATAFORMA com o motorista, não da operação dele com as
+            * famílias. E é uma linha só para os dois selos — separá-los aqui
+            * repetiria a confusão que a tela lá dentro existe para desfazer. */}
+          <Linha
+            icon={Sticker}
+            titulo="Seu selo na van"
+            subtitulo="Adesivo e certificado de alvará"
+            onClick={() => ir('/tio/selo')}
           />
           <Linha
             icon={HelpCircle}

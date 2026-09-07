@@ -374,6 +374,41 @@ campo, tela nem regra. Esta fase é a primeira implementação dela — e o
 ⚠️ **A conferência é trabalho seu e não escala sozinha.** É a primeira coisa
 desde que o consultor morreu que **volta a te pôr no caminho crítico**.
 
+**Os dez itens entregues** (13a.1–4 e 13b.1–6), com 65 casos em
+`npm run testar:selo` e 13 em `testar:regras` (184 no total).
+
+⚠️ **13a.1 FOI DECIDIDO AO CONTRÁRIO: o endereço não foi para `taxaParceiros`.**
+O motivo do plano continua valendo — endereço residencial não pode ir para
+`users`, que as famílias dele leem. Só que `taxaParceiros` guarda a **nota
+interna do dono** sobre o parceiro, e rules do Firestore não escondem campo:
+liberar a leitura para ele acompanhar o próprio pedido entregaria junto o que o
+dono anotou a seu respeito. Daí `pedidosAdesivo/{uid}` — e só com ela o item
+13a.4 ("o estado aparece nos dois lados") ficou expressável sem vazar nada.
+
+⚠️ **"O selo não afirma segurança" virou TESTE, não lembrete.**
+`marca/promessas.js` guarda a lista de raízes proibidas, e o teste bate cada
+string que o produto imprime contra ela. Um lembrete num documento não
+sobrevive à quarta pessoa que escreve texto de selo às onze da noite. A palavra
+"certificado" está na lista **com exceção para o painel**: na tela da família
+ela soa como "a plataforma certifica que este motorista é bom", que é
+exatamente a promessa que não se pode fazer.
+
+⚠️ **A AUSÊNCIA DO SELO NÃO É UM ALERTA**, e essa é a metade importante da
+decisão 6. Quem não enviou o alvará não é suspeito: o modelo parte de que a
+família já conhece o motorista offline. Tem selo, aparece; não tem, não aparece
+**nada**. Um aviso ali cobraria dela uma desconfiança que não é dela.
+
+⚠️ **Alvará vencido deixa de ser "verificado" sozinho.** `alvaraValidade`
+decide, não o campo de estado — sem isso o selo diria "conferido" três anos
+depois, e aí passaria a afirmar uma coisa falsa, que é pior do que não existir.
+E é por isso que 13b.6 avisa **antes**: o motorista perderia o selo sem ninguém
+ter dito nada.
+
+⚠️ **A trava da rule tem forma diferente das outras.** Aqui não dá para proibir
+a ESCRITA — o motorista precisa poder dizer "enviei". Então a rule prende o
+**valor**: ele só consegue escrever `verificacao: 'enviada'`. Selo que o
+próprio se dá é propaganda.
+
 ---
 
 # Fase 14 · Indicação, completa
