@@ -34,6 +34,19 @@ import { db } from '../firebase/config';
  * `serverTimestamp()` e não `new Date()`: a data de vencimento da conta não
  * pode sair do relógio do celular de quem é cobrado por ela.
  */
+// ⚠️ ESTE NÃO É O ÚNICO GATILHO, desde 06/09/2026.
+//
+// A rota é o gatilho do CLIENTE, e tem que ser: o GPS liga no meio-fio, às
+// vezes sem sinal, e esperar cold start com o passageiro na porta é a
+// regressão que a decisão 2 recusou.
+//
+// Os outros dois moram no servidor (`functions/lib/relogioDoTeste.js`) e são
+// disparados pelo primeiro responsável entrando e pela primeira mensalidade
+// gerada. Sem eles havia um buraco de graça ilimitada: o app tem duas metades,
+// e dava para usar a da cobrança para sempre sem nunca tocar em "iniciar
+// rota".
+//
+// A guarda é a mesma nos três: só grava se o campo não existe.
 export async function ligarRelogioDoTrial(uid) {
   if (!uid) return false;
   try {

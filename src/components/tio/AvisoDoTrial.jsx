@@ -56,7 +56,7 @@ export default function AvisoDoTrial({ temContrato = false }) {
     const fim = fimDoTrial(profile?.trialInicio);
     return (
       <div className="border-b border-border bg-sunken px-4 py-2 text-center text-xs text-textMuted">
-        Seu teste grátis vai até{' '}
+        Seu teste vai até{' '}
         <strong className="font-semibold text-text">
           {fim?.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
         </strong>
@@ -70,9 +70,9 @@ export default function AvisoDoTrial({ temContrato = false }) {
 
   const quantos = ultimo
     ? aviso.dias <= 1
-      ? 'Seu teste grátis termina amanhã.'
-      : `Seu teste grátis termina em ${aviso.dias} dias.`
-    : `Seu teste grátis termina em ${aviso.dias} dias.`;
+      ? 'Seu teste termina amanhã.'
+      : `Seu teste termina em ${aviso.dias} dias.`
+    : `Seu teste termina em ${aviso.dias} dias.`;
 
   return (
     <div className="border-b border-warningBorder bg-warningSoft px-4 py-3">

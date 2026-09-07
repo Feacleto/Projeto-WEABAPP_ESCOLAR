@@ -8,7 +8,11 @@ import Button from '../../components/common/Button';
 import ContractView from '../../components/contract/ContractView';
 import { useAuth } from '../../hooks/useAuth';
 import { useChild } from '../../hooks/useChild';
-import { buildContractData, hasAcceptedContract } from '../../services/contractService';
+import {
+  buildContractData,
+  dadosDaContratadaFaltando,
+  hasAcceptedContract,
+} from '../../services/contractService';
 
 /**
  * Tela do Tio: visualizar contrato da criança + imprimir/salvar PDF +
@@ -27,13 +31,52 @@ export default function TioContract() {
     return buildContractData({ child, admin: profile });
   }, [child, profile]);
 
-  if (loading || !contractData) {
+  if (loading) {
     return (
       <>
         <Header title="Contrato" showBack />
         <div className="p-5 space-y-3">
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />
+        </div>
+      </>
+    );
+  }
+
+  // ⚠️ O QUE FALTA, DITO — E ESTA É A TELA DELE, NÃO A DA FAMÍLIA.
+  //
+  // Até 06/09/2026 o contrato saía com uma CONTRATADA fictícia ("Tio Nino
+  // Transporte Escolar", CNPJ 00.000.000/0000-00) sempre que este cadastro
+  // estivesse vazio — e o responsável assinava isso, com nome digitado, hash
+  // SHA-256 e data. O placeholder foi removido, e agora o documento não existe
+  // até a parte contratada ter nome.
+  //
+  // Quem é avisado é ELE, aqui, com o caminho de resolver a um toque. A mãe
+  // passa direto (ver `ParentContractGate`): ela não tem como consertar um
+  // formulário que não é dela.
+  const faltando = dadosDaContratadaFaltando(profile);
+  if (faltando.length > 0) {
+    return (
+      <>
+        <Header title="Contrato" showBack />
+        <div className="p-5">
+          <div className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
+            <p className="text-sm font-bold text-warningText">
+              Falta o seu cadastro para emitir o contrato
+            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-warningText/85">
+              O contrato precisa dizer quem é a parte contratada — você. Sem{' '}
+              <strong>{faltando.join(', ')}</strong>, ele não pode ser emitido, e
+              a família não tem o que assinar.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/tio/profile')}
+              className="tap mt-3 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-bold text-white"
+            >
+              Completar meu cadastro
+            </button>
+          </div>
         </div>
       </>
     );

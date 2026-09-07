@@ -78,6 +78,8 @@ import CookieBanner from './components/legal/CookieBanner';
 import { useAuth } from './hooks/useAuth';
 import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
+import { dadosDaContratadaFaltando } from './services/contractService';
+import { useAdminProfile } from './hooks/useAdminProfile';
 import { hasAcceptedContract } from './services/contractService';
 import Respiro from './components/common/Respiro';
 import { SITE_INSTITUCIONAL } from './config/vitrine';
@@ -255,14 +257,34 @@ function SuperAdminRoute({ children }) {
 
 /**
  * Sub-gate específico do Pai: bloqueia até aceitar o contrato.
- * Carrega o child do profile, verifica `hasAcceptedContract`.
+ *
+ * ⚠️ ELE PRECISA SABER SE HÁ CONTRATO A MONTAR, e não só se foi aceito.
+ *
+ * `buildContractData` devolve `null` quando o motorista não preencheu os dados
+ * da parte contratada — nome, CPF ou CNPJ e cidade. Antes de 06/09/2026 isso
+ * nunca acontecia porque havia um placeholder fictício, e o contrato saía com
+ * uma empresa que não existe e CNPJ zerado. O placeholder foi removido.
+ *
+ * Sem esta checagem aqui, o `ContractAcceptanceGate` recebia `contractData`
+ * nulo e caía num esqueleto cinza PERMANENTE: a mãe terminava o cadastro, era
+ * levada ao `/pai` e via dois retângulos, sem texto, sem botão e sem sair da
+ * conta — o gate bloqueia 100% do app por desenho, então não havia navegação
+ * por baixo.
+ *
+ * Ela passa. Bloquear a mãe por um formulário que o MOTORISTA não preencheu é
+ * punir quem não tem como consertar — e quem é avisado do que falta é ele, na
+ * tela de contrato dele.
  */
 function ParentContractGate({ children }) {
   const { child, loading } = useActiveChild();
+  const { admin, loading: adminLoading } = useAdminProfile(child?.adminUid);
 
   if (loading) return <FullScreenLoader />;
   // Se não tem child vinculado, deixa entrar — o próprio dashboard mostra erro
   if (!child) return children;
+  if (adminLoading) return <FullScreenLoader />;
+  // Sem os dados da contratada não há documento a assinar. Ver acima.
+  if (dadosDaContratadaFaltando(admin).length > 0) return children;
   if (!hasAcceptedContract(child)) {
     return <ContractAcceptanceGate />;
   }

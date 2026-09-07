@@ -38,7 +38,7 @@ import { salesWhatsAppLink } from '../../config/developer';
 
 const TEXTO = {
   trial: {
-    titulo: 'Seu teste grátis terminou',
+    titulo: 'Seu teste terminou',
     corpo:
       'Escolha um plano para voltar a rodar. Suas crianças, os horários e o histórico continuam aqui, exatamente como você deixou.',
     acao: { para: '/tio/planos', rotulo: 'Ver planos' },

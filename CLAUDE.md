@@ -447,7 +447,24 @@ indicações fecha em zero; quem não é fundador para em 50%. O desconto somado
 cortado em 100% — sem isso, seis indicações sobre um fundador dariam 110% e a
 fatura viraria crédito. Testado em `npm run testar:planos`.
 
-**O relógio dos três meses começa na PRIMEIRA ROTA**, não no cadastro —
+**O relógio dos três meses tem TRÊS GATILHOS, e vale o que vier primeiro:**
+primeira rota, primeiro responsável entrando, primeira mensalidade gerada
+([relogioDoTeste.js](functions/lib/relogioDoTeste.js)). Nunca o cadastro.
+
+Por um dia o único gatilho foi a rota, e isso deixou um buraco de graça
+ilimitada: o app tem DUAS metades, e dava para cadastrar a turma, convidar as
+famílias, emitir contrato e cobrar mensalidade **para sempre** sem tocar em
+"iniciar rota". O erro não foi escolher a rota — foi confundir ROTA com USO.
+
+A rota liga pelo CLIENTE (o GPS liga no meio-fio, às vezes sem sinal); os
+outros dois ligam no SERVIDOR, com Admin SDK — é o que permite ligar o relógio
+do motorista a partir de um gesto do responsável sem abrir permissão nova.
+
+**Diga TESTE, nunca "grátis".** O que ele ganha é tempo para experimentar, não
+uma doação — e "grátis" na porta prepara a pessoa para achar que a cobrança
+depois é pegadinha.
+
+O relógio começa no primeiro uso, não no cadastro —
 `users.trialInicio`, gravado por [trialService](src/services/trialService.js)
 no mesmo gesto que liga o GPS. Motorista escolar tem calendário: contando do
 cadastro, quem conhece o app em dezembro chega em fevereiro com três semanas de
@@ -526,6 +543,19 @@ catálogo devolve **HTTP 400** e a imagem some — não vira avatar feio, vira
 buraco, e só pra quem tem aquele gênero. `npm run testar:avatar` bate as URLs
 reais contra a API (precisa de rede, fica fora da bateria padrão). Sem gênero
 informado, nenhum `hair` é passado e o sorteio é o padrão.
+
+**O CONTRATO NÃO NASCE SEM A PARTE CONTRATADA.** `buildContractData` devolve
+`null` quando o motorista não preencheu nome, CPF/CNPJ e cidade
+([contractService.js](src/services/contractService.js)). Havia um PLACEHOLDER
+fictício — "Tio Nino Transporte Escolar", CNPJ `00.000.000/0000-00` — e o
+responsável assinava isso com nome digitado, hash SHA-256 e data. Fidelidade
+visual num documento com valor probatório era a única coisa que ele não podia
+ter.
+
+**E a mãe PASSA quando não há contrato** ([App.jsx](src/App.jsx),
+`ParentContractGate`): bloqueá-la por um formulário que o MOTORISTA não
+preencheu é punir quem não tem como consertar. Quem é avisado do que falta é
+ele, em `/tio/children/:id/contract`.
 
 **Migrar quem já tinha contrato de papel** — o contrato do app **não é um
 arquivo**: é gerado dos campos (mensalidade, `dueDay`, vigência) por

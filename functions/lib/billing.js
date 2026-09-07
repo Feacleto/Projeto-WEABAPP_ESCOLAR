@@ -17,6 +17,7 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./papeis');
 const { logger } = require('firebase-functions/v2');
+const { ligarRelogio } = require('./relogioDoTeste');
 const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 
@@ -66,6 +67,9 @@ async function generateForMonth(db, monthKey, adminUid = null) {
   const lastDayOfMonth = new Date(year, month, 0).getDate();
 
   let created = 0;
+  // Um relógio por motorista, não um por criança: numa perua de 25, seriam 25
+  // leituras do mesmo documento para gravar o mesmo campo uma vez.
+  const relogiosLigados = new Set();
   let withoutParent = 0;
   let withoutFee = 0;
   let batch = db.batch();
@@ -133,7 +137,7 @@ async function generateForMonth(db, monthKey, adminUid = null) {
     // otimização (evita o erro no caminho comum). A garantia é o id.
     //
     // É o padrão que a casa já usa em cinco coleções: rides/{data},
-    // faturasParceiro/{uid}_{mes}, entryBonuses/{uid},
+    // faturasParceiro/{uid}_{mes}, premios/{uid},
     // absenceDeclarations/{dia}_{criança}, notifications/confirm_{dia}_{criança}.
     batch.create(db.collection('payments').doc(`${childDoc.id}_${monthKey}`), {
       adminUid: child.adminUid,
@@ -161,6 +165,23 @@ async function generateForMonth(db, monthKey, adminUid = null) {
       status: 'pending',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    // ⚠️ O TERCEIRO GATILHO DO RELÓGIO DO TESTE (06/09/2026).
+    //
+    // Gerar mensalidade é o dinheiro dele passando por aqui — é uso do
+    // produto, tanto quanto rodar a rota. Sem este gatilho, um motorista
+    // cobrava as famílias pelo app para sempre sem nunca entrar no relógio.
+    //
+    // FORA DO BATCH de propósito: o batch é da COBRANÇA, e uma falha ao ligar
+    // o relógio não pode fazer a mensalidade do mês não existir. `ligarRelogio`
+    // engole o próprio erro pelo mesmo motivo.
+    //
+    // O `Set` evita reler o doc do mesmo motorista uma vez por criança — numa
+    // perua de 25, seriam 25 leituras do mesmo documento para gravar um campo.
+    if (!relogiosLigados.has(child.adminUid)) {
+      relogiosLigados.add(child.adminUid);
+      await ligarRelogio(db, child.adminUid, 'primeira mensalidade');
+    }
+
     created += 1;
     inBatch += 1;
 

@@ -200,7 +200,7 @@ export default function DriverSignup() {
             * vai acontecer é pior que não prometer nada: a pessoa fica
             * esperando o telefone tocar em vez de usar o app que já é dela. */}
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80 lg:mt-0">
-            3 meses grátis
+            3 meses de teste
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
             Comece a usar hoje

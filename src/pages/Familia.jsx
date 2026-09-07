@@ -224,7 +224,21 @@ export default function Familia() {
     );
   }
 
-  const nomeMotorista = vitrine?.drivers?.[0]?.driverFirstName;
+  // ⚠️ O NOME DO MOTORISTA SAIU DAQUI EM 06/09/2026, e a razão é estrutural.
+  //
+  // Esta linha era `vitrine?.drivers?.[0]?.driverFirstName` — e esse `[0]` não
+  // era o motorista DELA: `getShowcase` resolve o motorista lendo
+  // `appState/init.adminUid`, um ponteiro ÚNICO e global que guarda UM uid para
+  // a plataforma inteira. Nasceu quando existia um parceiro só, e ali estava
+  // certo por acidente.
+  //
+  // Com dez motoristas ele continua apontando para um. A mãe do Tio Marcos
+  // abria esta página e lia "A perua do Tio Nino" — o nome errado, na porta de
+  // entrada dela.
+  //
+  // E não há conserto possível AQUI: `/familia` é um link genérico, sem código
+  // e sem sessão. Nada nesta página diz de quem é a visitante, então qualquer
+  // nome é chute. A página passa a falar do produto, não de uma pessoa.
 
   // RESPONSÁVEIS COM CONTA — não é o número de famílias, e confundir os dois
   // faz esta tela e a home do motorista se contradizerem na frente de quem
@@ -252,19 +266,9 @@ export default function Familia() {
             área da família
           </p>
           <h1 className="mt-3 text-[2rem] font-extrabold leading-[1.08] tracking-tight text-balance">
-            {nomeMotorista ? (
-              <>
-                A perua do Tio {nomeMotorista}
-                <br />
-                fica aqui.
-              </>
-            ) : (
-              <>
-                A perua do seu filho
-                <br />
-                fica aqui.
-              </>
-            )}
+            A perua do seu filho
+            <br />
+            fica aqui.
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-textMuted">
             Entre para ver a hora de hoje e acompanhar a perua. É a mesma

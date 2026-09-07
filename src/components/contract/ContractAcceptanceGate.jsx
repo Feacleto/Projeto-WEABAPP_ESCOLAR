@@ -60,11 +60,43 @@ export default function ContractAcceptanceGate() {
     return buildContractData({ child, admin });
   }, [child, admin]);
 
-  if (childLoading || adminLoading || !contractData) {
+  if (childLoading || adminLoading) {
     return (
       <div className="min-h-screen bg-bg p-5 space-y-3">
         <Skeleton className="h-20" />
         <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  // ⚠️ SEM CONTRATO A MONTAR, A MÃE PASSA — ela não é quem tem que resolver.
+  //
+  // Aqui o `!contractData` caía no esqueleto acima, e isso era o pior beco do
+  // app: a pessoa terminava o cadastro, era levada ao `/pai`, e recebia dois
+  // retângulos cinzas PARA SEMPRE — sem texto, sem botão, sem sair da conta.
+  // O gate bloqueia 100% do app por desenho, então não havia navegação por
+  // baixo. E acontecia depois de ela já ter criado conta.
+  //
+  // Ficou mais provável em 06/09/2026, quando o placeholder de empresa
+  // fictícia foi removido: agora `buildContractData` devolve `null` sempre que
+  // o motorista não preencheu os dados dele. Bloquear a mãe por causa de um
+  // formulário que o MOTORISTA não preencheu é punir quem não pode consertar.
+  //
+  // Ela entra e usa (a passagem acontece no `ParentContractGate`, em
+  // `App.jsx`). Esta tela é defesa em profundidade: se alguém montar o gate
+  // direto, sem aquela checagem, ela DIZ o que houve em vez de ficar cinza.
+  if (!contractData) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6 text-center">
+        <div>
+          <h2 className="text-lg font-bold text-text">
+            O contrato ainda não está pronto
+          </h2>
+          <p className="mt-2 text-sm text-textMuted">
+            O motorista precisa completar o cadastro dele para o contrato poder
+            ser emitido. Fale com ele — nada do que você já fez se perde.
+          </p>
+        </div>
       </div>
     );
   }

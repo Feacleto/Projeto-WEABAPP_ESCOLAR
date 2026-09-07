@@ -21,17 +21,38 @@ import { db } from '../firebase/config';
 
 export const CONTRACT_VERSION = 1;
 
-const PLACEHOLDER = {
-  companyName: 'Tio Nino Transporte Escolar',
-  companyDocument: '00.000.000/0000-00',
-  companyAddress: 'São Paulo - SP',
-};
-
 /**
- * Monta o objeto de dados que alimenta o template do contrato.
- * Se algum campo da empresa do admin não está preenchido, usa placeholder.
+ * ⚠️ O PLACEHOLDER FOI REMOVIDO EM 06/09/2026, e ele era um problema jurídico.
+ *
+ * Havia três valores fictícios de reserva — `'Tio Nino Transporte Escolar'`,
+ * CNPJ `'00.000.000/0000-00'` e `'São Paulo - SP'` — usados sempre que o
+ * motorista não tinha preenchido o perfil. O comentário justificava: "pra
+ * preservar a alta fidelidade visual do MVP".
+ *
+ * O efeito real: todo motorista que cadastrava a primeira criança antes de
+ * preencher o perfil fazia o responsável DIGITAR O NOME COMPLETO, marcar "li e
+ * aceito todas as cláusulas" e gravar hash SHA-256, data e user agent — sobre
+ * um contrato cuja CONTRATADA era uma empresa que não existe, com CNPJ zerado.
+ *
+ * Fidelidade visual num documento com valor probatório declarado é a única
+ * coisa que ele não podia ter.
+ *
+ * Agora a função devolve `null` quando falta o dado da parte contratada, e
+ * quem chama mostra o que falta em vez de inventar. Contrato sem parte não é
+ * contrato — e um documento assinado com parte inventada é pior que nenhum.
  */
+export function dadosDaContratadaFaltando(admin) {
+  const faltando = [];
+  if (!admin?.companyName?.trim()) faltando.push('nome');
+  if (!admin?.companyDocument?.trim()) faltando.push('CPF ou CNPJ');
+  if (!admin?.companyAddress?.trim()) faltando.push('cidade');
+  return faltando;
+}
+
 export function buildContractData({ child, admin }) {
+  // Sem a parte contratada identificada, não há documento a montar.
+  if (dadosDaContratadaFaltando(admin).length > 0) return null;
+
   const today = new Date();
   const year = today.getFullYear();
   const monthlyFee = Number(child?.monthlyFee) || 0;
@@ -42,12 +63,11 @@ export function buildContractData({ child, admin }) {
     issuedAt: today.toISOString(),
     contractedYear: year,
 
-    // CONTRATADA — Tio
+    // CONTRATADA — o motorista, com os dados que ELE preencheu.
     company: {
-      name: admin?.companyName?.trim() || PLACEHOLDER.companyName,
-      document:
-        admin?.companyDocument?.trim() || PLACEHOLDER.companyDocument,
-      address: admin?.companyAddress?.trim() || PLACEHOLDER.companyAddress,
+      name: admin.companyName.trim(),
+      document: admin.companyDocument.trim(),
+      address: admin.companyAddress.trim(),
       representative: admin?.name?.trim() || 'Representante legal',
       phone: admin?.phone || '',
       email: admin?.email || '',

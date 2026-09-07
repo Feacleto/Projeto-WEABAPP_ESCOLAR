@@ -19,6 +19,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const admin = require('firebase-admin');
+const { ligarRelogio } = require('./relogioDoTeste');
 
 const REGION = 'southamerica-east1';
 
@@ -205,6 +206,20 @@ function makeRedeemInvite(db) {
         inviteStatus: 'used',
         inviteUsedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      // ⚠️ O RELÓGIO DO TESTE DO MOTORISTA LIGA AQUI TAMBÉM (06/09/2026).
+      //
+      // Durante um dia o único gatilho foi a primeira ROTA, e isso deixou um
+      // buraco de graça ilimitada: dava para cadastrar a turma, convidar as
+      // famílias, emitir contrato e cobrar mensalidade para sempre sem tocar
+      // em "iniciar rota". `trialInicio` nunca existia.
+      //
+      // Uma família entrando no app É o produto entregando valor — tanto
+      // quanto a perua aparecer no mapa. Ver `relogioDoTeste.js`.
+      //
+      // Dentro da MESMA transação: por fora, dois resgates simultâneos
+      // escreveriam dois `trialInicio` e o segundo empurraria a data adiante.
+      await ligarRelogio(db, child.adminUid, 'primeiro responsável', tx);
 
       const userPayload = {
         role: 'parent',
