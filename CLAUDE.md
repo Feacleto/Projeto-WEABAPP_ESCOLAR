@@ -17,10 +17,10 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 653 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 687 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth, trial,
                                  # planos, conta, cobranca, gateway, carteira,
-                                 # proposta
+                                 # proposta, chamados, risco
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -219,7 +219,7 @@ src/
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
 │   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
-│   │                  carteira, proposta
+│   │                  carteira, proposta, risco
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
@@ -813,6 +813,41 @@ continua com `planoId`, e classificá-lo pelo campo inflaria o MRR com dinheiro
 que não entra mais. É o jeito mais comum de um painel mentir para o próprio
 dono.
 
+**O termômetro de risco não é um score, é uma LISTA DE MOTIVOS** —
+[risco.js](src/dominio/associacao/risco.js) (`npm run testar:risco`). Quatro
+sinais, e nenhum precisou de coleta nova: parou de rodar (`users.ultimaRota`),
+está encolhendo (a série de `criancasAtivas` que cada fatura já guarda),
+atrasou (`faturasParceiro` vencida) e famílias reclamando (a nota dele).
+Número sem explicação ninguém usa duas vezes: o peso existe só para ORDENAR, e
+o que a ficha mostra é a frase que diz por quê.
+
+⚠️ **Ele desempata DENTRO do degrau, nunca por cima.** O degrau é o estado da
+relação; o risco é um aviso dentro dele. Mandar na ordem geral misturaria um
+contratado que parou de rodar com um teste que vence amanhã — e a segunda
+conversa tem data.
+
+⚠️ **"Nunca rodou" não é "parou de rodar", e nem entra na conta.** Quem não
+iniciou uma rota ainda não entrou; medir risco de saída dele encheria a fila
+com quem acabou de se cadastrar. Bloqueado também fica fora, pelo motivo
+oposto.
+
+**O sinal de uso é gravado pelo PRÓPRIO motorista** — `users.ultimaRota` e
+`users.rotasNoMes`, por `registrarRota` em
+[trialService](src/services/trialService.js), no mesmo gesto que liga o
+relógio do teste. Eles **não** estão na lista de campos proibidos das rules, e
+a troca é consciente: mentir ali faz ele parecer ativo e sumir de uma lista de
+acompanhamento; mentir em `trialInicio`, `limiteCriancas` ou `assinaturaAte`
+seria não pagar. Um é sinal de saúde, o outro é cláusula — e pôr o sinal atrás
+de uma function seria esperar cold start com o passageiro na porta. O caso
+`uso` em `testar-regras.mjs` existe para essa decisão aparecer se alguém
+mudá-la.
+
+**A data decide, o contador contextualiza.** `ultimaRota` não desanda;
+`rotasNoMes` é contador, e contador desanda — `criancasAtivas` já ensinou isso
+aqui. Por isso o risco se resolve pela data, e o contador só aparece na ficha:
+"roda todo dia" e "roda às terças" são operações diferentes, e a última rota
+sozinha não distingue as duas.
+
 **O painel do dono tem piso de 12px.** O resto do app é de bolso, lido a 30cm;
 [/admin](src/pages/admin/AdminPanel.jsx) é de mesa, e a 60cm o mesmo 11px tem
 metade do tamanho aparente. A largura já tinha sido corrigida lá, a escala
@@ -822,7 +857,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (156 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (168 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 

@@ -6,6 +6,7 @@ import FichaDoMotorista from './FichaDoMotorista';
 import { carregarConsole } from '../../services/adminMetricsService';
 import { suspenderParceiro } from '../../services/taxaService';
 import { degrauDo, mensalidadeDe } from '../../dominio/associacao/carteira.js';
+import { pesoDoRisco, riscoDo } from '../../dominio/associacao/risco.js';
 import { diasRestantes } from '../../dominio/associacao/trial.js';
 import { planoPorId } from '../../dominio/associacao/planos.js';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
@@ -24,6 +25,14 @@ import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatte
  * meses. Ordem alfabética é o padrão que faz uma lista de gestão virar uma
  * lista telefônica: o que precisa de você fica no meio, e você rola até
  * cansar.
+ *
+ * ── O RISCO DESEMPATA DENTRO DO DEGRAU, NÃO POR CIMA DELE
+ * O degrau é o ESTADO da relação (não começou, em teste, contratado,
+ * bloqueado) e o risco é um aviso DENTRO desse estado. Deixar o risco mandar
+ * na ordem geral misturaria um contratado que parou de rodar com um teste que
+ * vence amanhã — duas conversas diferentes, e a segunda tem data. Dentro do
+ * bloco de contratados, que é o maior, quem está de saída sobe ao topo, que é
+ * onde a lista precisava dele.
  *
  * ── UMA CARGA, NÃO UMA POR FICHA
  * `carregarConsole()` traz parceiros e notas de uma vez. Trocar de motorista
@@ -55,19 +64,28 @@ export default function MotoristasTab() {
     const agora = new Date();
     const lista = dados.parceiros.map((mot) => {
       const degrau = degrauDo(mot, agora);
+      const nota = dados.notas?.[mot.uid] || null;
+      const faturas = dados.faturas?.[mot.uid] || [];
       return {
         mot,
         degrau,
+        faturas,
         plano: planoPorId(mot.planoId),
         conta: mensalidadeDe(mot, mes),
         faltam: mot.trialInicio ? diasRestantes(mot.trialInicio, agora) : null,
-        nota: dados.notas?.[mot.uid] || null,
+        nota,
+        // O termômetro é calculado UMA VEZ, aqui, e desce por prop para a
+        // ficha. Recalcular lá com outra fonte faria o mesmo motorista
+        // aparecer em dois níveis na mesma tela.
+        risco: riscoDo({ motorista: mot, faturas, nota, degrau, agora }),
       };
     });
 
     lista.sort((a, b) => {
       const p = PESO[a.degrau] - PESO[b.degrau];
       if (p !== 0) return p;
+      const r = pesoDoRisco(b.risco.nivel) - pesoDoRisco(a.risco.nivel);
+      if (r !== 0) return r;
       // Dentro do mesmo degrau, quem tem menos tempo primeiro. Sem prazo, o
       // nome — que é o único critério estável que sobra.
       if (a.faltam !== null && b.faltam !== null) return a.faltam - b.faltam;
@@ -141,8 +159,22 @@ export default function MotoristasTab() {
                   }`}
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-xs font-bold text-text">
-                      {l.mot.name || l.mot.uid}
+                    <span className="flex min-w-0 items-baseline gap-1.5">
+                      {/* O PONTO É O ÚNICO SINAL DE RISCO NA LISTA, e o
+                        * motivo vai no `title`: a linha tem 20rem e uma frase
+                        * a mais empurraria o nome para fora. O que decide é a
+                        * ficha, que abre com um toque. */}
+                      {l.risco.nivel !== 'nenhum' && (
+                        <span
+                          title={l.risco.sinais.map((s) => s.texto).join(' · ')}
+                          className={`h-1.5 w-1.5 shrink-0 translate-y-[-1px] rounded-full ${
+                            l.risco.nivel === 'alto' ? 'bg-danger' : 'bg-warning'
+                          }`}
+                        />
+                      )}
+                      <span className="truncate text-xs font-bold text-text">
+                        {l.mot.name || l.mot.uid}
+                      </span>
                     </span>
                     <Pastilha degrau={l.degrau} faltam={l.faltam} />
                   </div>
@@ -167,6 +199,7 @@ export default function MotoristasTab() {
             key={aberto.mot.uid}
             motorista={aberto.mot}
             nota={aberto.nota}
+            risco={aberto.risco}
             mes={mes}
             onVoltar={() => setEscolhido(null)}
             onSuspender={suspender}

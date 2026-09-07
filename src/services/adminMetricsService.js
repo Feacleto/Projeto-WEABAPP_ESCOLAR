@@ -270,9 +270,20 @@ export async function getSurveyResults(max = 500) {
  * pertence é o documento dela (`users.adminUid`), e a nota por motorista só
  * existe cruzando as duas listas. Ver `notasPorMotorista` em `carteira.js`.
  *
- * TRÊS CONSULTAS NA ABERTURA DA ABA, e não uma por ficha. Com dezenas de
+ * QUATRO CONSULTAS NA ABERTURA DA ABA, e não uma por ficha. Com dezenas de
  * associados, carregar tudo de uma vez e filtrar em memória é mais barato — e,
  * mais importante, deixa a lista responder ao toque sem esperar rede.
+ *
+ * ── AS FATURAS VÊM JUNTO PORQUE O TERMÔMETRO PRECISA DELAS
+ * `risco.js` decide por quatro sinais, e dois moram em `faturasParceiro`: a
+ * fatura vencida e a série de `criancasAtivas` que revela encolhimento. Sem a
+ * lista inteira aqui, o termômetro da LISTA sairia mais fraco que o da FICHA —
+ * e o mesmo motorista apareceria em dois níveis diferentes na mesma tela.
+ *
+ * ⚠️ É a coleção INTEIRA, e é uma fatura por associado por mês. Em dezenas de
+ * associados isso é barato; passando de alguns milhares de documentos, o
+ * caminho é uma agregação por parceiro (o campo já existiria em
+ * `taxaParceiros`), não paginar aqui.
  *
  * ⚠️ Isto NÃO carrega crianças. O contador `users.criancasAtivas` já responde
  * o tamanho de cada operação, e foi por precisar da soma das mensalidades que
@@ -282,7 +293,7 @@ export async function getSurveyResults(max = 500) {
 export async function carregarConsole(max = 500) {
   const users = collection(db, 'users');
 
-  const [parceiros, responsaveis, avaliacoes] = await Promise.all([
+  const [parceiros, responsaveis, avaliacoes, faturas] = await Promise.all([
     getDocs(query(users, where('role', '==', 'admin'))).then((s) =>
       s.docs.map((d) => ({ uid: d.id, ...d.data() }))
     ),
@@ -294,9 +305,26 @@ export async function carregarConsole(max = 500) {
       // A vitrine degrada calada e esta também: sem avaliação, a ficha mostra
       // "sem avaliações" em vez de a aba inteira cair.
       .catch(() => []),
+    getDocs(collection(db, 'faturasParceiro'))
+      .then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })))
+      // Mesma degradação: sem fatura o termômetro perde dois sinais e mantém
+      // os outros dois, em vez de a aba não abrir.
+      .catch(() => []),
   ]);
 
-  return { parceiros, notas: notasPorMotorista(avaliacoes, responsaveis) };
+  // Agrupadas por parceiro aqui, e não na tela: quem consome é o termômetro,
+  // que recebe a lista de UM motorista por vez.
+  const faturasPorParceiro = {};
+  faturas.forEach((f) => {
+    if (!f?.tioUid) return;
+    (faturasPorParceiro[f.tioUid] ||= []).push(f);
+  });
+
+  return {
+    parceiros,
+    notas: notasPorMotorista(avaliacoes, responsaveis),
+    faturas: faturasPorParceiro,
+  };
 }
 
 /**

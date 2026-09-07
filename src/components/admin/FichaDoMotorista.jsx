@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowLeft,
   Ban,
   FileText,
   MessageSquare,
   Receipt,
+  Route,
   Save,
   Star,
   TrendingUp,
@@ -15,6 +17,7 @@ import ContratoDoc from './ContratoDoc';
 import Spinner from '../common/Spinner';
 import { formatCurrency, formatMonthLabel } from '../../compartilhado/formatters';
 import { degrauDo, mensalidadeDe } from '../../dominio/associacao/carteira.js';
+import { diasSemRodar } from '../../dominio/associacao/risco.js';
 import { diasRestantes } from '../../dominio/associacao/trial.js';
 import { estadoDaConta } from '../../dominio/associacao/contaAtiva.js';
 import { linkDaProposta, mensagemDeProposta } from '../../dominio/associacao/proposta.js';
@@ -44,13 +47,29 @@ import { gmvDoParceiro } from '../../services/adminMetricsService';
  * vez. Aqui é uma leitura por ficha aberta, e a lista responde ao toque na
  * hora.
  *
+ * ── O TERMÔMETRO VEM DE FORA, PRONTO
+ * `risco` desce por prop da lista, que já o calculou com as faturas de todo
+ * mundo. Recalcular aqui, com outra fonte, faria o mesmo motorista aparecer
+ * num nível na lista e noutro na ficha — e quem visse os dois pararia de
+ * confiar nos dois.
+ *
+ * E ele aparece como LISTA DE MOTIVOS, nunca como número: score sem
+ * explicação ninguém usa duas vezes.
+ *
  * ── A PROPOSTA LÊ O DEGRAU
  * O botão não é um só com quatro textos escritos na tela: `proposta.js` decide
  * o que dizer a partir do degrau, com os números dele dentro. E abre o WhatsApp
  * com o texto pronto — que o dono LÊ e edita antes de enviar. É o que separa
  * proposta de disparo.
  */
-export default function FichaDoMotorista({ motorista, nota, mes, onVoltar, onSuspender }) {
+export default function FichaDoMotorista({
+  motorista,
+  nota,
+  risco,
+  mes,
+  onVoltar,
+  onSuspender,
+}) {
   const [parceiro, setParceiro] = useState(null);
   const [contrato, setContrato] = useState(undefined);
   const [faturas, setFaturas] = useState(null);
@@ -94,6 +113,7 @@ export default function FichaDoMotorista({ motorista, nota, mes, onVoltar, onSus
     agora,
   });
 
+  const parado = diasSemRodar(motorista, agora);
   const proposta = mensagemDeProposta({ motorista, degrau, conta, diasRestantes: faltam });
   const link = linkDaProposta(motorista.phone, proposta.texto);
 
@@ -154,7 +174,64 @@ export default function FichaDoMotorista({ motorista, nota, mes, onVoltar, onSus
         </div>
       </header>
 
+      {/* ⚠️ SÓ APARECE QUANDO ACENDE. Um bloco permanente de "tudo bem" vira
+        * moldura, e moldura não é lida — e aí não é vista no dia em que tem
+        * algo dentro. É a mesma regra do cabeçalho da caixa de chamados. */}
+      {risco && risco.nivel !== 'nenhum' && (
+        <section
+          className={`rounded-2xl border p-4 ${
+            risco.nivel === 'alto'
+              ? 'border-dangerBorder bg-dangerSoft'
+              : 'border-warningBorder bg-warningSoft'
+          }`}
+        >
+          <h3
+            className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] ${
+              risco.nivel === 'alto' ? 'text-dangerText' : 'text-warningText'
+            }`}
+          >
+            <AlertTriangle size={11} />
+            {risco.nivel === 'alto' ? 'Pode estar de saída' : 'Vale uma conversa'}
+          </h3>
+          <ul
+            className={`mt-2 space-y-1 text-xs leading-relaxed ${
+              risco.nivel === 'alto' ? 'text-dangerText' : 'text-warningText'
+            }`}
+          >
+            {risco.sinais.map((s) => (
+              <li key={s.id}>· {s.texto}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="grid gap-4 xl:grid-cols-2">
+        <Bloco icon={Route} titulo="Uso">
+          {/* A DATA É O SINAL, O CONTADOR É O CONTEXTO. "Roda todo dia" e
+            * "roda às terças" são operações diferentes, e a última rota
+            * sozinha não distingue as duas. Ver `trialService.registrarRota`. */}
+          <Linha
+            rotulo="Última rota"
+            valor={
+              parado === null
+                ? 'nunca rodou'
+                : parado === 0
+                  ? 'hoje'
+                  : `há ${parado} ${parado === 1 ? 'dia' : 'dias'}`
+            }
+            forte
+            alerta={parado !== null && parado >= 7}
+          />
+          <Linha
+            rotulo="Rotas neste mês"
+            valor={
+              motorista.rotasNoMes?.mes === mes
+                ? String(motorista.rotasNoMes.total || 0)
+                : '0'
+            }
+          />
+        </Bloco>
+
         <Bloco icon={Users} titulo="Plano e operação">
           <Linha rotulo="Faixa" valor={plano ? plano.rotulo : 'sem faixa'} forte />
           <Linha

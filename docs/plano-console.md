@@ -155,7 +155,7 @@ invisível.
 | 10.2 | `users.rotasNoMes` — `{ mes, total }`, por `increment()` no mesmo lote | idem |
 | 10.3 | Série de crianças por mês | **já existe**: cada fatura guarda `criancasAtivas` |
 | 10.4 | Termômetro de risco, com os sinais listados | puro, testável |
-| 10.5 | Rules: os dois campos novos vão para a lista que o cliente não escreve | `firestore.rules` |
+| 10.5 | Rules: decidir se os dois campos novos entram na lista proibida | `firestore.rules` |
 
 ### O termômetro (10.4)
 
@@ -173,6 +173,35 @@ ordenar a lista; o que decide é a frase que diz por quê.
 
 ⚠️ **A data é o número principal, o contador é o complemento.** Data não
 desanda; contador desanda — `criancasAtivas` já ensinou isso aqui.
+
+**Os cinco itens entregues.** A régua ficou pura em
+`dominio/associacao/risco.js` (34 casos, `npm run testar:risco`), o ponto de
+risco entrou na lista de motoristas e o bloco de motivos entrou na ficha.
+
+⚠️ **O item 10.5 foi decidido AO CONTRÁRIO do que este plano dizia**, e o
+registro fica aqui porque é uma reversão, não um esquecimento. Os dois campos
+NÃO entraram na lista proibida: o motorista escreve o próprio sinal de uso.
+
+A diferença dos campos que estão na lista é o que está em jogo. Mentir em
+`ultimaRota` faz ele parecer ativo e sumir de uma lista de acompanhamento;
+mentir em `trialInicio`, `limiteCriancas` ou `assinaturaAte` seria não pagar.
+Um é sinal de saúde, o outro é cláusula — e só a cláusula justifica travar. Pôr
+o sinal atrás de uma function significaria esperar cold start com o passageiro
+na porta, que é a regressão que a decisão 2 já recusou.
+
+No dia em que o uso valer desconto ou prazo, ele vira cláusula e sobe para a
+lista. `scripts/testar-regras.mjs` tem o caso `uso` escrito para essa mudança
+de ideia aparecer.
+
+⚠️ **O risco desempata dentro do degrau, não por cima dele.** O degrau é o
+ESTADO da relação; o risco é um aviso dentro desse estado. Deixá-lo mandar na
+ordem geral misturaria um contratado que parou de rodar com um teste que vence
+amanhã — duas conversas diferentes, e a segunda tem data.
+
+⚠️ **O termômetro é calculado UMA VEZ, na lista, e desce por prop para a
+ficha.** Recalcular lá com outra fonte faria o mesmo motorista aparecer em dois
+níveis na mesma tela. Por isso `carregarConsole()` passou a trazer também
+`faturasParceiro` inteira, agrupada por parceiro.
 
 ---
 

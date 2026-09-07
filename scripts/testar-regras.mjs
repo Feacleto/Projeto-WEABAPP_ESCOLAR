@@ -688,6 +688,27 @@ async function vagaContratada(tio1, tio2) {
   checar('assinatura', 'nem a do colega', 'NEGA',
     await escrever(`users/${tio2.uid}`, tio1,
       { assinaturaAte: { timestampValue: '2099-01-01T12:00:00Z' } }, ['assinaturaAte']));
+
+  // ── uso — o motorista ESCREVE, e essa é a troca ─────────────────────
+  //
+  // `ultimaRota` e `rotasNoMes` são gravados pelo próprio motorista, no mesmo
+  // gesto que liga o GPS — e, ao contrário de `trialInicio`, `limiteCriancas` e
+  // `assinaturaAte`, NÃO estão na lista proibida. A diferença é o que está em
+  // jogo: mentir aqui faz ele parecer ativo e sumir de uma lista de
+  // acompanhamento; mentir lá seria não pagar. Um é sinal de saúde, o outro é
+  // cláusula.
+  //
+  // ESTE TESTE EXISTE PARA A TROCA FICAR ESCRITA. Se alguém um dia decidir que
+  // o sinal de uso passa a valer dinheiro, este caso vira 'NEGA' e a gravação
+  // migra para uma function — e o teste é onde a mudança de ideia aparece.
+  checar('uso', 'o motorista registra a própria última rota', 'PASSA',
+    await escrever(`users/${tio1.uid}`, tio1,
+      { ultimaRota: { timestampValue: '2026-09-15T12:00:00Z' } }, ['ultimaRota']));
+
+  // E o vizinho continua fora: o sinal é fraco, mas é dele.
+  checar('uso', 'e não a do colega', 'NEGA',
+    await escrever(`users/${tio2.uid}`, tio1,
+      { ultimaRota: { timestampValue: '2026-09-15T12:00:00Z' } }, ['ultimaRota']));
 }
 
 /**

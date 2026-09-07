@@ -652,6 +652,24 @@ service cloud.firestore {
              .hasAny(['trialInicio'])
           || !('trialInicio' in resource.data)
         )
+        // `ultimaRota` e `rotasNoMes` TAMBÉM FICAM DE FORA DA LISTA, e essa é
+        // uma troca consciente, não um esquecimento.
+        //
+        // Eles são o sinal de USO — quando ele rodou pela última vez, e quantas
+        // rotas neste mês —, gravados pelo próprio motorista no mesmo gesto que
+        // liga o GPS (`trialService.registrarRota`). Pelo mesmo motivo do
+        // `trialInicio`: não há function nesse caminho, e não deve haver.
+        //
+        // A DIFERENÇA PARA OS CAMPOS PROIBIDOS É O QUE ESTÁ EM JOGO. Mentir
+        // aqui faz o motorista parecer ativo e sumir de uma lista de
+        // acompanhamento do dono; mentir em `trialInicio`, `limiteCriancas` ou
+        // `assinaturaAte` seria não pagar. Um é sinal de saúde, o outro é
+        // cláusula — e só a cláusula justifica travar.
+        //
+        // No dia em que o uso passar a valer desconto ou prazo, ele vira
+        // cláusula e sobe para a lista. `scripts/testar-regras.mjs` tem o caso
+        // 'uso' escrito exatamente para essa mudança de ideia aparecer.
+
         // `criancasAtivas` NÃO ENTRA NA LISTA ACIMA, e o motivo é que proibi-lo
         // por completo quebraria o cadastro de criança.
         //
