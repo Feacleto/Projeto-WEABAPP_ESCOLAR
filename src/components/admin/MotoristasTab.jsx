@@ -59,15 +59,19 @@ export default function MotoristasTab({ inicial = null }) {
   const [escolhido, setEscolhido] = useState(inicial);
   const mes = getCurrentMonthKey();
 
-  const carregar = useCallback(() => {
-    carregarConsole()
+  // `forcar` depois de escrever: ler cache logo apos suspender um parceiro
+  // mostraria a tela contradizendo a acao que a pessoa acabou de fazer.
+  const carregar = useCallback((forcar = false) => {
+    carregarConsole({ forcar })
       .then(setDados)
       .catch((err) => {
         console.error('[admin] console não carregou:', err);
         setDados(false);
       });
   }, []);
-  useEffect(carregar, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   const linhas = useMemo(() => {
     if (!dados?.parceiros) return null;
@@ -113,7 +117,7 @@ export default function MotoristasTab({ inicial = null }) {
     try {
       await suspenderParceiro(mot.uid, !mot.suspenso);
       toast.success(mot.suspenso ? 'Reativado.' : 'Suspenso.');
-      carregar();
+      carregar(true);
     } catch (err) {
       toast.error(err.message || 'Não deu pra mudar.');
     }
@@ -215,7 +219,7 @@ export default function MotoristasTab({ inicial = null }) {
             mes={mes}
             onVoltar={() => setEscolhido(null)}
             onSuspender={suspender}
-            onMudou={carregar}
+            onMudou={() => carregar(true)}
           />
         ) : (
           // Vazio que ORIENTA, e não um retângulo em branco: a coluna da

@@ -192,6 +192,34 @@ checar('em março só sobra a régua sem prazo', ['fundador', 'indicacao', 'ante
   condicoesVigentes(motorista, '2027-03').map((l) => l.id));
 checar('sem condição nenhuma, lista vazia', [], condicoesVigentes({}, '2026-10'));
 
+// ⚠️ O DESCONTO ÓRFÃO — o efeito existe e o registro não.
+//
+// Acontece se alguém gravar `users.descontos` sem passar por `conceder`, ou se
+// o par registro+efeito se separar por qualquer motivo. A primeira versão
+// desta função IGNORAVA a entrada de origem `concessao` em `descontos`
+// (confiando que a linha completa viria de `concessoes`): o desconto continuava
+// saindo da fatura e sumia da tabela que existe justamente para que nenhum
+// desconto seja invisível.
+const orfao = condicoesVigentes(
+  { descontos: [{ origem: 'concessao', fracao: 0.4, ate: '2027-02' }] },
+  '2026-10'
+);
+checar('o desconto sem registro APARECE', 1, orfao.length);
+checar('como exceção', 'excecao', orfao[0].especie);
+checar('com o valor certo', '40%', orfao[0].valor);
+checar('e dizendo que está órfão', true, orfao[0].motivo.includes('sem registro'));
+
+// Com registro, ele NÃO duplica: a linha completa vem de `concessoes`.
+const comRegistro = condicoesVigentes(
+  {
+    descontos: [{ origem: 'concessao', fracao: 0.3, ate: '2027-02' }],
+    concessoes: [c],
+  },
+  '2026-10'
+);
+checar('com registro, uma linha só', 1, comRegistro.length);
+checar('e ela traz o motivo', MOTIVO, comRegistro[0].motivo);
+
 // ───────────────────────── o contador de fundadores ────────────────────────
 
 bloco('6. O contador de fundadores, que não existia');

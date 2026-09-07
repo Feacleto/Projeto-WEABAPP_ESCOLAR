@@ -127,16 +127,20 @@ export async function casarEAtivar(indicado) {
     );
     if (!minhas.length) return 0;
 
-    // ⚠️ SE DOIS MOTORISTAS INDICARAM A MESMA PESSOA, VALE QUEM INDICOU
-    // PRIMEIRO. Premiar os dois pagaria 20% por um cliente; premiar o último
-    // premiaria quem chegou depois de o trabalho estar feito.
-    const porIndicador = new Map();
-    minhas
-      .sort((a, b) => (a.em?.toMillis?.() || 0) - (b.em?.toMillis?.() || 0))
-      .forEach((i) => {
-        if (!porIndicador.size) porIndicador.set(i.indicadorUid, i);
-      });
-    const escolhida = [...porIndicador.values()][0];
+    // A ESCOLHA, e ela tem duas regras nesta ordem.
+    //
+    // 1. UMA JÁ CASADA COM ESTE UID GANHA DE QUALQUER PENDENTE. Ela já foi
+    //    resolvida antes; reabrir a disputa entregaria o crédito a quem
+    //    apenas indicou mais cedo, depois de outro já ter sido reconhecido.
+    //
+    // 2. ⚠️ ENTRE AS PENDENTES, VALE QUEM INDICOU PRIMEIRO. Premiar os dois
+    //    pagaria 20% por um cliente; premiar o último premiaria quem chegou
+    //    depois de o trabalho estar feito.
+    const porData = (a, b) => (a.em?.toMillis?.() || 0) - (b.em?.toMillis?.() || 0);
+    const jaCasada = minhas
+      .filter((i) => i.estado === ESTADO.CADASTRADO && i.indicadoUid === indicado.uid)
+      .sort(porData)[0];
+    const escolhida = jaCasada || minhas.filter((i) => i.estado === ESTADO.PENDENTE).sort(porData)[0];
     if (!escolhida) return 0;
 
     // O indicador NÃO pode ser o próprio indicado. O domínio já barra isso na

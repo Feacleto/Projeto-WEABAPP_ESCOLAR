@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 904 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 920 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth, trial,
                                  # planos, conta, cobranca, gateway, carteira,
                                  # proposta, chamados, risco, fila, concessao,
@@ -941,6 +941,13 @@ para proibir a escrita — ele precisa poder dizer "enviei". A rule prende o
 **valor**, e ele só escreve `verificacao: 'enviada'`. Selo que o próprio se dá
 é propaganda.
 
+⚠️ **AS LINHAS DO CONTRATO PRECISAM FECHAR COM O TOTAL**, e essa invariante é
+testada (`npm run testar:contrato`). Ela nasceu de um bug: a concessão descia o
+`valorMensal` e nenhuma linha a explicava, porque `montarContrato` não copiava
+`descontoConcessao` — o documento saía se contradizendo, assinado com hash e
+data. O teste que pega isso não é "a concessão aparece", é a soma fechar: essa
+pega o próximo desconto que alguém esquecer de listar.
+
 **A CONCESSÃO é a porta pela qual o orçamento pode voltar, e prazo e motivo
 são a tranca** — [concessao.js](src/dominio/associacao/concessao.js)
 (`npm run testar:concessao`). Ela existe porque retenção real precisa de
@@ -981,7 +988,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (198 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (201 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 

@@ -44,8 +44,9 @@ export default function SelosTab() {
   const [dados, setDados] = useState(null);
   const [pedidos, setPedidos] = useState(null);
 
-  const carregar = () =>
-    carregarConsole()
+  // Mesma regra da aba Motoristas: montar le cache, agir forca releitura.
+  const carregar = (forcar = false) =>
+    carregarConsole({ forcar })
       .then(setDados)
       .catch(() => setDados(false));
   useEffect(() => {
@@ -94,7 +95,7 @@ export default function SelosTab() {
           </p>
         ) : (
           paraConferir.map((m) => (
-            <Conferir key={m.uid} motorista={m} ownerUid={user?.uid} onPronto={carregar} />
+            <Conferir key={m.uid} motorista={m} ownerUid={user?.uid} onPronto={() => carregar(true)} />
           ))
         )}
 

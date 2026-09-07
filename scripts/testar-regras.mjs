@@ -1032,6 +1032,39 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('pos', 'o dono le a pesquisa', 'PASSA',
     await listar('interesses', dono));
 
+  // ── AS CONSULTAS QUE O APP REALMENTE FAZ ─────────────────────────────
+  //
+  // ⚠️ `read` COBRE `list`, MAS SÓ PARA CONSULTA ESCOPADA. `indicar` e a tela
+  // `/tio/indicar` fazem `where('indicadorUid', '==', uid)` ANTES de gravar —
+  // se essa consulta for negada, o motorista nao consegue indicar ninguem e a
+  // tela dele fica vazia, sem erro visivel.
+  //
+  // A listagem SEM filtro ja e testada acima como NEGA. Este caso e o outro
+  // lado: sem ele, so provamos o que nao funciona.
+  checar('indicacao', 'o motorista consulta as indicacoes DELE', 'PASSA',
+    await consultar('indicacoes', 'indicadorUid', tio1.uid, tio1));
+  // E a mesma consulta apontada pro vizinho continua fechada.
+  checar('indicacao', 'e nao consulta as do vizinho', 'NEGA',
+    await consultar('indicacoes', 'indicadorUid', tio2.uid, tio1));
+
+  // ── O `conceder` COM O PAYLOAD REAL ──────────────────────────────────
+  //
+  // `hasOnly` e avaliado sobre o conjunto INTEIRO de campos tocados. Testar
+  // `concessoes` sozinho nao prova nada sobre a escrita que o app faz: ela leva
+  // `concessoes` + `descontos` + `isencaoAte` no MESMO lote, porque o registro e
+  // o efeito nao podem se separar. Se um deles ficasse de fora da lista, a
+  // concessao falharia inteira — em producao, na primeira vez.
+  checar('pos', 'o dono concede registro e efeito juntos', 'PASSA',
+    await escrever('users/' + tio1.uid, dono, {
+      concessoes: CONCESSAO,
+      descontos: { arrayValue: { values: [
+        { mapValue: { fields: {
+          origem: S('concessao'), fracao: N(0.3), ate: S('2027-02'),
+        } } },
+      ] } },
+      isencaoAte: S('2026-11'),
+    }, ['concessoes', 'descontos', 'isencaoAte']));
+
   // ── AS SETE PORTAS QUE A AUTOINSCRICAO ABRIU (06/09/2026) ────────────
   //
   // Auditoria depois da virada comercial. Cada caso aqui e um ataque que uma

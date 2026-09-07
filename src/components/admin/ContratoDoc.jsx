@@ -120,6 +120,13 @@ export default function ContratoDoc({ dados, aceite }) {
                 cor="text-warning"
               />
             )}
+            {v.descontoConcessao > 0 && (
+              <Linha
+                rotulo="Condição concedida"
+                valor={`−${pct(v.descontoConcessao)}${ate('concessao') ? ` até ${ate('concessao')}` : ''}`}
+                cor="text-warning"
+              />
+            )}
             {v.isencaoAte && (
               <Linha
                 rotulo="Meses sem taxa"

@@ -19,6 +19,7 @@ import {
 import {
   ESTADO as VERIF,
   TEXTO as TEXTO_SELO,
+  diasParaVencer,
   estadoDaVerificacao,
   mesAno,
 } from '../../dominio/identidade/verificacao.js';
@@ -42,6 +43,20 @@ import {
  * ── A RECUSA VOLTA COM MOTIVO
  * Sem o motivo na tela, ele reenvia o mesmo documento e os dois perdem a
  * viagem. O texto vem de `alvaraMotivoRecusa`, escrito pelo dono.
+ *
+ * ── ⚠️ O `profile` NÃO É UM STREAM, E ISSO JÁ FOI UM BUG AQUI
+ * `AuthContext` lê `users/{uid}` uma vez, no login — não há `onSnapshot`. Sem
+ * `updateProfile`, o motorista enviava o alvará, via o toast de sucesso e a
+ * tela continuava dizendo "Enviar meu alvará": ele mandava de novo, e de novo.
+ *
+ * `updateProfile` existe exatamente para isto — atualizar o estado local
+ * quando já se sabe o que mudou no banco, sem refetch.
+ *
+ * ── E O VENCIMENTO É DITO, NÃO SILENCIADO
+ * `estadoDaVerificacao` faz o selo cair sozinho no dia seguinte ao vencimento,
+ * e isso é certo. Mas o campo `verificacao` continua dizendo `verificada`:
+ * quem só olhasse o estado derivado mostraria a tela de primeiro envio a quem
+ * teve o selo por dois anos, sem uma palavra sobre por que ele sumiu.
  *
  * ── SEM STORAGE, O CERTIFICADO SOME EM VEZ DE FALHAR
  * Mesma regra do comprovante e da foto da criança (`config/capabilities.js`):
@@ -185,8 +200,15 @@ function Adesivo({ uid, profile }) {
 /* ─────────────── o certificado ─────────────── */
 
 function Certificado({ uid, profile }) {
+  const { updateProfile } = useAuth();
   const [enviando, setEnviando] = useState(false);
   const estado = estadoDaVerificacao(profile, new Date());
+
+  // O selo caiu porque o alvará venceu — e não porque ele nunca enviou. O
+  // estado derivado é o mesmo (`nao_iniciada`); o que os separa é o campo.
+  const venceu =
+    profile?.verificacao === VERIF.VERIFICADA && estado !== VERIF.VERIFICADA;
+  const diasVencido = venceu ? Math.abs(diasParaVencer(profile, new Date()) || 0) : 0;
 
   const escolher = async (e) => {
     const arquivo = e.target.files?.[0];
@@ -194,6 +216,9 @@ function Certificado({ uid, profile }) {
     setEnviando(true);
     try {
       await enviarAlvara(uid, arquivo);
+      // ⚠️ SEM ISTO A TELA NÃO MUDA. `profile` é lido uma vez no login, não é
+      // stream — ele veria o toast de sucesso e o mesmo botão de enviar.
+      updateProfile({ verificacao: VERIF.ENVIADA, alvaraEnviadoEm: new Date() });
       toast.success('Alvará enviado. Vamos conferir e te avisar.');
     } catch (err) {
       toast.error(err.message || 'Não deu pra enviar.');
@@ -224,6 +249,17 @@ function Certificado({ uid, profile }) {
         </p>
       ) : (
         <>
+          {/* O VENCIMENTO, DITO. Sem esta linha ele veria a tela de primeiro
+            * envio depois de dois anos com o selo, sem uma palavra sobre por
+            * que ele sumiu — e concluiria que o app perdeu o documento dele. */}
+          {venceu && (
+            <p className="mt-3 rounded-xl border border-warningBorder bg-warningSoft p-3 text-xs leading-relaxed text-warningText">
+              <strong>Seu alvará venceu</strong>
+              {diasVencido > 0 ? ` há ${diasVencido} ${diasVencido === 1 ? 'dia' : 'dias'}` : ''}, e
+              o selo saiu do ar. Envie o renovado para ele voltar.
+            </p>
+          )}
+
           {/* A RECUSA VOLTA COM O MOTIVO. Sem ele, ele reenvia o mesmo
             * documento e os dois perdem a viagem. */}
           {profile?.verificacao === VERIF.RECUSADA && profile?.alvaraMotivoRecusa && (

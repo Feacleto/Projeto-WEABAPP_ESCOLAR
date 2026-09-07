@@ -18,6 +18,7 @@
  *   node scripts/testar-selo.mjs      (ou: npm run testar:selo)
  */
 
+import { readFileSync } from 'node:fs';
 import { PROIBIDAS, podeDizer, promessaProibida } from '../src/marca/promessas.js';
 import {
   ESTADO as ADESIVO,
@@ -97,6 +98,20 @@ checar('mas segurança continua barrada mesmo no painel', 'segur',
 
 checar('texto vazio passa', true, podeDizer(''));
 checar('a lista não está vazia', true, PROIBIDAS.length > 5);
+
+// ⚠️ O ESPELHO — a mesma frase mora em DOIS arquivos.
+//
+// `functions/lib/invitePreview.js` repete o texto do selo porque o deploy das
+// functions NAO alcanca `src/`. O espelho e consciente (e a mesma escolha da
+// tabela de faixas em `contratacao.js`), mas espelho sem teste e so uma copia
+// esperando divergir — e aqui a divergencia apareceria justamente na tela que a
+// familia le antes de entregar o filho.
+const fonteDaFunction = readFileSync(
+  new URL('../functions/lib/invitePreview.js', import.meta.url),
+  'utf8'
+);
+checar('a function repete o texto do selo, igual', true,
+  fonteDaFunction.includes(TEXTO_SELO.familia));
 
 // ═══════════════════════ 2. O CERTIFICADO ══════════════════════════════════
 

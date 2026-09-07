@@ -76,7 +76,7 @@ export default function TioIndicar() {
     }
   };
 
-  const convite = `Oi! Eu uso o Alô Buzinou pra organizar meu transporte escolar — rota ao ${''}vivo pras famílias, mensalidade e recados num lugar só. Dá uma olhada: ${SITE_INSTITUCIONAL}`;
+  const convite = `Oi! Eu uso o Alô Buzinou pra organizar meu transporte escolar — rota ao vivo pras famílias, mensalidade e recados num lugar só. Dá uma olhada: ${SITE_INSTITUCIONAL}`;
 
   return (
     <div className="min-h-screen bg-bg pb-16">

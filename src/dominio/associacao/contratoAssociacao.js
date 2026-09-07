@@ -180,6 +180,18 @@ export function montarContrato({
       descontoAntecipacao: conta.descontoAntecipacao,
       descontoIndicacao: conta.descontoIndicacao,
       descontoRoleta: conta.descontoRoleta,
+      // ⚠️ A CONCESSÃO ENTRA COMO QUALQUER OUTRO DESCONTO, e ela FALTAVA aqui.
+      //
+      // `conta.liquido` já a descontava (ela vive em `users.descontos`), e
+      // `descontoTotal` já a somava — mas nenhuma linha a explicava. O contrato
+      // saía se contradizendo: o valor mensal menor que a soma das linhas
+      // conseguia justificar, num documento com valor probatório, assinado com
+      // hash e data.
+      //
+      // O teste que pega isso não é "a concessão aparece": é a soma das linhas
+      // fechar com o total (`npm run testar:contrato`). Ele vale para o
+      // próximo desconto que alguém inventar.
+      descontoConcessao: conta.descontoConcessao,
       // Cada desconto com a data em que ele acaba — ver o cabeçalho.
       descontos: Array.isArray(descontos) ? descontos : [],
       // Meses sem fatura (prêmio de roleta). Isenção não é desconto de 100%:

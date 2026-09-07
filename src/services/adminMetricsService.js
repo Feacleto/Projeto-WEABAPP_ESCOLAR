@@ -289,8 +289,52 @@ export async function getSurveyResults(max = 500) {
  * o tamanho de cada operação, e foi por precisar da soma das mensalidades que
  * a versão antiga desta tela varria `children` inteira — trazendo endereço,
  * escola e telefone de família para o navegador do dono. Não repita.
+ *
+ * ── ⚠️ ELA É CACHEADA, E O CACHE NASCEU DE UM PROBLEMA REAL
+ * QUATRO abas consomem esta função — Hoje, Motoristas, Selos e Indicações — e
+ * elas DESMONTAM ao trocar de aba. Sem cache, cada toque na barra relia a base
+ * de usuários inteira, 500 avaliações e toda a `faturasParceiro`: o painel
+ * ficava mais lento quanto mais o dono trabalhasse nele, que é o oposto do que
+ * uma ferramenta de mesa deve fazer.
+ *
+ * O cache é de 60 segundos e guarda a PROMESSA, não o resultado — duas abas
+ * montando ao mesmo tempo compartilham a mesma ida ao banco em vez de fazerem
+ * duas.
+ *
+ * ⚠️ QUEM ACABOU DE ESCREVER PASSA `forcar: true`. Ler cache depois de
+ * suspender um parceiro ou conceder um desconto mostraria a tela contradizendo
+ * a ação que a pessoa acabou de fazer — e ela repetiria a ação.
  */
-export async function carregarConsole(max = 500) {
+let cache = null;
+let cacheEm = 0;
+const VALIDADE_DO_CACHE = 60 * 1000;
+
+// Joga o cache fora. NÃO é exportada de propósito: quem escreve já passa
+// `forcar: true` na leitura seguinte, e isso substitui o cache. Uma segunda
+// porta pública para a mesma coisa seria API sem consumidor.
+function invalidarConsole() {
+  cache = null;
+  cacheEm = 0;
+}
+
+export async function carregarConsole({ forcar = false, max = 500 } = {}) {
+  const agora = Date.now();
+  if (!forcar && cache && agora - cacheEm < VALIDADE_DO_CACHE) return cache;
+
+  const promessa = buscarConsole(max);
+  cache = promessa;
+  cacheEm = agora;
+  try {
+    return await promessa;
+  } catch (err) {
+    // Falhou: o cache não pode guardar a falha, senão a aba seguinte recebe o
+    // mesmo erro por um minuto sem ter tentado nada.
+    invalidarConsole();
+    throw err;
+  }
+}
+
+async function buscarConsole(max) {
   const users = collection(db, 'users');
 
   const [parceiros, responsaveis, avaliacoes, faturas] = await Promise.all([

@@ -208,9 +208,34 @@ export function condicoesVigentes(motorista, mes) {
   }
 
   const m = String(mes || '');
+  const concessoes = (Array.isArray(motorista.concessoes) ? motorista.concessoes : []).filter(
+    (c) => concessaoVigente(c, m)
+  );
+
   (Array.isArray(motorista.descontos) ? motorista.descontos : []).forEach((d) => {
     if (!d?.ate || !m || m > String(d.ate)) return;
-    if (d.origem === ORIGEM.CONCESSAO) return; // A concessão vem abaixo, completa.
+
+    if (d.origem === ORIGEM.CONCESSAO) {
+      // Normalmente a linha completa vem de `concessoes`, logo abaixo, com
+      // motivo e autor. Mas se o EFEITO existe e o REGISTRO não, o desconto
+      // sumiria da tabela e continuaria saindo da fatura — um desconto
+      // invisível, que é exatamente o que esta tabela existe para impedir.
+      //
+      // Então ele aparece, e aparece dizendo que está órfão: uma linha feia é
+      // melhor que um desconto que ninguém vê.
+      if (!concessoes.length) {
+        linhas.push({
+          id: 'concessao:orfa',
+          especie: 'excecao',
+          rotulo: 'Desconto concedido',
+          valor: `${Math.round((Number(d.fracao) || 0) * 100)}%`,
+          ate: d.ate,
+          motivo: 'sem registro — conceda de novo para gravar o motivo',
+        });
+      }
+      return;
+    }
+
     linhas.push({
       id: d.origem,
       especie: 'regua',
@@ -221,8 +246,7 @@ export function condicoesVigentes(motorista, mes) {
     });
   });
 
-  (Array.isArray(motorista.concessoes) ? motorista.concessoes : []).forEach((c, i) => {
-    if (!concessaoVigente(c, m)) return;
+  concessoes.forEach((c, i) => {
     linhas.push({
       id: `concessao:${i}`,
       especie: 'excecao',

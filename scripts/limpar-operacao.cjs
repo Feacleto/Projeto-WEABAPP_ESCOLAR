@@ -41,28 +41,53 @@ const RAIZ = path.resolve(__dirname, '..');
 const APLICAR = process.argv.includes('--aplicar');
 const TUDO = process.argv.includes('--tudo');
 
-/** Operação: some tudo. */
+/**
+ * Operação: some tudo.
+ *
+ * ⚠️ ESTA LISTA ENVELHECE EM SILÊNCIO, e é o pior tipo de dívida deste script:
+ * coleção que falta aqui SOBREVIVE à limpeza, e quem rodou acha que zerou a
+ * base. Ao criar coleção nova, acrescente-a — o mapa de coleções do CLAUDE.md é
+ * a conferência.
+ */
 const OPERACAO = [
   'children',
   'payments',
   'absenceDeclarations',
   'agendaEntries',
   'altPickups',
-  'dailyRoutes',
   'liveLocation',
   'notifications',
   'pendingCalls',
-  'routePlans',
   'schoolBroadcasts',
+  'schools',
   'expenses',
   'feedbacks',
-  'entryBonuses',
-  'waitlistDrivers',
-  'waitlistParents',
+  'supportTickets',
+  // A associação — o que o motorista deve à plataforma, e o que ele ganhou.
+  'taxaParceiros',
+  'faturasParceiro',
+  'contratosAssociacao',
+  'premios',
+  // Nasceram em 06/09/2026 com as fases do console. Sem elas aqui, uma base
+  // "limpa" continuaria com indicações valendo desconto e adesivos na fila.
+  'indicacoes',
+  'interesses',
+  'pedidosAdesivo',
 ];
 
+/**
+ * Saíram daqui em 06/09/2026 porque as coleções não existem mais:
+ * `dailyRoutes` e `routePlans` (morreram com os turnos), `entryBonuses` (o
+ * bônus de entrada virou prêmio de conversão) e `waitlistDrivers` /
+ * `waitlistParents` (a fila morreu com o autoatendimento).
+ *
+ * Ficam registradas em vez de apagadas sem nota: quem rodar este script contra
+ * um banco antigo pode querer varrê-las à mão uma vez.
+ */
+const MORTAS = ['dailyRoutes', 'routePlans', 'entryBonuses', 'waitlistDrivers', 'waitlistParents'];
+
 /** Acesso: só com --tudo. */
-const ACESSO = ['users', 'appState'];
+const ACESSO = ['users', 'appState', 'taxaConfig', 'platformConfig'];
 
 function lerEnv() {
   const bruto = fs.readFileSync(path.join(RAIZ, '.env'), 'utf8');

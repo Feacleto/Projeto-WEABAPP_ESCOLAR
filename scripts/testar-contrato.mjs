@@ -208,6 +208,65 @@ checar('nem teto', null, acima.plano.teto);
 
 checar('a régua tem três faixas', 3, PLANOS.length);
 
+// ═══════ A INVARIANTE QUE PEGA O DESCONTO INVISÍVEL ════════════════════════
+
+bloco('11. As linhas do contrato fecham com o total');
+
+/**
+ * ⚠️ ESTE BLOCO NASCEU DE UM BUG REAL, e o bug era meu.
+ *
+ * A concessão (06/09/2026) entrou em `users.descontos`, então `valorMensal` e
+ * `descontoTotal` já a levavam em conta — mas nenhuma LINHA do contrato a
+ * explicava, porque `montarContrato` não copiava `descontoConcessao`.
+ *
+ * O documento saía se contradizendo: um valor mensal que a soma das linhas não
+ * conseguia justificar. Num contrato assinado com hash e data, isso não é um
+ * detalhe de tela.
+ *
+ * O teste certo não é "a concessão aparece" — esse pega UM caso. É a soma
+ * fechar, e essa invariante pega o PRÓXIMO desconto que alguém inventar e
+ * esquecer de listar.
+ */
+const somaDasLinhas = (v) =>
+  // Fundador e antecipação não somam entre si — vale o maior (ver
+  // FUNDADOR_E_ANTECIPACAO_SOMAM). O resto soma.
+  Math.min(
+    1,
+    Math.max(v.descontoFundador || 0, v.descontoAntecipacao || 0) +
+      (v.descontoIndicacao || 0) +
+      (v.descontoRoleta || 0) +
+      (v.descontoConcessao || 0)
+  );
+
+const conferirSoma = (nome, contrato) =>
+  checar(nome, contrato.valores.descontoTotal, somaDasLinhas(contrato.valores));
+
+conferirSoma('sem desconto nenhum', base);
+conferirSoma('só antecipação', comAntecipacao);
+conferirSoma('fundador com antecipação', fundadorAntecipado);
+
+const concessao = { origem: ORIGEM.CONCESSAO, fracao: 0.3, ate: '2027-02' };
+const comConcessao = montar({ descontos: [concessao] });
+// Era ESTE o caso que faltava: o valor descia e nenhuma linha dizia por quê.
+checar('a concessão desce o valor', 104.3, comConcessao.valores.valorMensal);
+checar('e o contrato a LISTA', 0.3, comConcessao.valores.descontoConcessao);
+conferirSoma('só concessão', comConcessao);
+
+conferirSoma('concessão sobre fundador', montar({
+  fundador: FUNDADOR.METADE,
+  descontos: [concessao],
+}));
+conferirSoma('tudo junto', montar({
+  fundador: FUNDADOR.METADE,
+  indicacoesAtivas: 2,
+  descontos: [concessao, { origem: ORIGEM.ROLETA, fracao: 0.1, ate: '2027-06' }],
+}));
+
+// E a data da concessão viaja junto, como a das outras — é ela que o
+// ContratoDoc imprime ao lado da linha.
+checar('a validade da concessão está no contrato', '2027-02',
+  comConcessao.valores.descontos.find((d) => d.origem === ORIGEM.CONCESSAO)?.ate);
+
 // ──────────────────────────────── resumo ───────────────────────────────────
 
 console.log(`\n${'═'.repeat(64)}`);

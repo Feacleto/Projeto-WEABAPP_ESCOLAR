@@ -254,7 +254,17 @@ export default function AdminPanel() {
             <button
               key={id}
               type="button"
-              onClick={() => setTab(id)}
+              onClick={() => {
+                // ⚠️ O ALVO DA FILA MORRE AO TROCAR DE ABA À MÃO.
+                //
+                // Ele fica no `AdminPanel` porque a linha da fila está em
+                // OUTRA aba. Sem esta linha ele nunca era limpo: quem abrisse
+                // um motorista pela fila e depois tocasse em "Motoristas" na
+                // barra reabria a ficha daquele mesmo motorista, em vez da
+                // lista — e sem nada na tela explicando por quê.
+                setMotoristaAlvo(null);
+                setTab(id);
+              }}
               className={`tap min-w-[5.5rem] flex-1 rounded-xl py-2.5 text-xs font-bold transition-colors ${
                 tab === id ? 'bg-card text-primary shadow-sm' : 'text-textMuted'
               }`}
