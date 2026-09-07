@@ -15,6 +15,7 @@ import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { resetPassword, loginComGoogle } from '../services/authService';
 import { adminExists } from '../services/inviteCodeService';
 import OpenInBrowser from '../components/auth/OpenInBrowser';
+import Reveal from '../components/common/Reveal';
 import { canUseGoogleSignIn, isInAppBrowser } from '../compartilhado/browserEnv';
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
 
@@ -494,8 +495,32 @@ export default function Login() {
                     </p>
                   </div>
 
+                  {/* ⚠️ O TEXTO CHEGA EM DOIS TEMPOS, e o motivo é que texto
+                    * estático não é lido.
+                    *
+                    * As duas portas traziam, cada uma, uma frase de catorze
+                    * palavras — e as quatro linhas juntas viravam um bloco que
+                    * o olho pula inteiro para achar o botão. A informação é
+                    * necessária (ela é o que separa "tenho uma van" de "recebi
+                    * um link"), então o conserto não é apagar: é fazer com que
+                    * ela CHEGUE.
+                    *
+                    * Primeiro tempo: o rótulo e o título das duas portas. É a
+                    * resposta à pergunta do topo, e cabe num relance.
+                    * Segundo tempo: a linha que confirma quem é você, e o
+                    * botão. Movimento puxa o olho — o que aparece é lido, o
+                    * que já estava lá é pulado.
+                    *
+                    * O MECANISMO JÁ EXISTIA E ESTAVA SEM USO: `Reveal` é o
+                    * gatilho (um IntersectionObserver, que dispara de imediato
+                    * porque o cartão já está na tela) e `.rise` escalona os
+                    * filhos por `--d`. Um observer, N elementos.
+                    *
+                    * `prefers-reduced-motion` mostra tudo de uma vez — o
+                    * `Reveal` cuida disso, e a informação nunca depende da
+                    * animação para existir. */}
                   {!showBridge && (
-                    <div className="space-y-3">
+                    <Reveal className="space-y-3">
                       <button
                         type="button"
                         onClick={() =>
@@ -517,11 +542,28 @@ export default function Login() {
                         <span className="relative mt-2 block text-base font-extrabold tracking-tight text-white">
                           Sou motorista ou operador
                         </span>
-                        <span className="relative mt-1 block text-sm leading-snug text-onNightMuted">
-                          Você tem uma van e quer organizar a operação: rota,
-                          avisos, contrato e mensalidade.
+                        {/* QUATRO PALAVRAS EM VEZ DE UMA FRASE. Os quatro
+                          * substantivos ERAM o conteúdo — o resto da frase só
+                          * os embalava. Como lista, eles se leem num relance;
+                          * como prosa, eram catorze palavras que ninguém
+                          * termina. */}
+                        <span
+                          className="rise relative mt-1 block text-sm leading-snug text-onNightMuted"
+                          style={{ '--d': '160ms' }}
+                        >
+                          Você tem uma van.
+                          {/* Em VERDE e sem opacidade: estes quatro são o que
+                            * ele veio buscar, e `/80` sobre o cartão escuro
+                            * seria mistura com o fundo — o mesmo erro das
+                            * opacidades que o `onNightMuted` veio substituir. */}
+                          <span className="mt-0.5 block text-onNightAccent">
+                            rota · avisos · contrato · mensalidade
+                          </span>
                         </span>
-                        <span className="relative mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-onNightAccent">
+                        <span
+                          className="rise relative mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-onNightAccent"
+                          style={{ '--d': '260ms' }}
+                        >
                           Criar minha operação <ArrowRight size={15} />
                         </span>
                       </button>
@@ -541,15 +583,25 @@ export default function Login() {
                         <span className="mt-2 block text-base font-extrabold tracking-tight text-text">
                           Sou família ou responsável
                         </span>
-                        <span className="mt-1 block text-sm leading-snug text-textMuted">
-                          Um motorista te mandou um link ou um código para
-                          acompanhar seu filho.
+                        {/* A porta da família chega DEPOIS da do motorista,
+                          * e a ordem é a mesma dos pesos: ele paga e usa o dia
+                          * inteiro, ela chega pelo link dele em 9 de 10 casos.
+                          * Quem é família reconhece "link ou código" antes de
+                          * ler o resto. */}
+                        <span
+                          className="rise mt-1 block text-sm leading-snug text-textMuted"
+                          style={{ '--d': '340ms' }}
+                        >
+                          Você recebeu um link ou um código do motorista.
                         </span>
-                        <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+                        <span
+                          className="rise mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
+                          style={{ '--d': '420ms' }}
+                        >
                           Usar meu convite <ArrowRight size={15} />
                         </span>
                       </button>
-                    </div>
+                    </Reveal>
                   )}
                 </>
               )}
