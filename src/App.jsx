@@ -57,6 +57,7 @@ const TioContratoAssociacao = lazy(() => import('./pages/tio/TioContratoAssociac
 const TioTaxa = lazy(() => import('./pages/tio/TioTaxa'));
 const TioPlanos = lazy(() => import('./pages/tio/TioPlanos'));
 const TioSelo = lazy(() => import('./pages/tio/TioSelo'));
+const TioIndicar = lazy(() => import('./pages/tio/TioIndicar'));
 const ChildForm = lazy(() => import('./components/children/ChildForm'));
 
 const PaiLayout = lazy(() => import('./pages/pai/PaiLayout'));
@@ -471,6 +472,7 @@ export default function App() {
           * adesivo, precisa de voltar a operar. As três telas de voltar a
           * pagar são as únicas de fora, e o motivo está logo abaixo. */}
         <Route path="selo" element={<TioSelo />} />
+        <Route path="indicar" element={<TioIndicar />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>

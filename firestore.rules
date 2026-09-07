@@ -1795,6 +1795,34 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    // indicacoes/{id} — quem trouxe quem, e quando isso virou desconto.
+    //
+    // ⚠️ O MOTORISTA CRIA E LÊ AS DELE. Mudar estado é do DONO, e isso não é
+    // zelo: o estado `ativa` vale 10% de desconto. Se o indicador pudesse
+    // escrevê-lo, ele indicaria cinco cadastros de teste e zeraria a própria
+    // conta com receita que nunca entrou — a carência deixaria de existir.
+    //
+    // ⚠️ E A LEITURA É ESCOPADA POR `indicadorUid`, com o mesmo cuidado que
+    // `payments` e `children`. Uma consulta por `chave` (o telefone
+    // normalizado) NÃO é escopada por dono, e liberá-la entregaria a lista de
+    // telefones que a base inteira indicou a quem criar uma conta em trinta
+    // segundos. Foi por isso que o casamento da indicação passou a acontecer
+    // do lado do dono, na baixa da fatura — ver `indicacaoService`.
+    //
+    // O id é `{indicadorUid}_{chave}`, determinístico: indicar o mesmo número
+    // duas vezes sobrescreve em vez de contar em dobro.
+    match /indicacoes/{id} {
+      allow read: if isOwner()
+        || (isSignedIn() && resource.data.indicadorUid == request.auth.uid);
+      allow list: if isOwner();
+      allow create: if isSignedIn()
+        && request.resource.data.indicadorUid == request.auth.uid
+        // Ela NASCE pendente. Nascer `ativa` seria a carência inteira pulada
+        // numa única escrita.
+        && request.resource.data.estado == 'pendente';
+      allow update, delete: if isOwner();
+    }
+
     // pedidosAdesivo/{uid} — o adesivo de rua, e o endereço para onde ele vai.
     //
     // ⚠️ ELA EXISTE POR CAUSA DO ENDEREÇO, e o endereço é o motivo de ela não

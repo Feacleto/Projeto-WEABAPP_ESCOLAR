@@ -436,6 +436,35 @@ recebi"* —, e numa rede de indicação a reclamação viaja mais rápido que a
 indicação. Por isso 14.2 e 14.3 vêm com teste próprio **antes** de qualquer
 tela.
 
+**Os sete itens entregues**, com 51 casos em `npm run testar:indicacao` e 9 em
+`testar:regras` (193 no total). A régua saiu antes das telas, como o plano
+pedia.
+
+⚠️ **14.4 SAIU DIFERENTE: o casamento acontece do lado do DONO, na baixa da
+fatura.** A ideia natural era casar no cadastro do indicado — ele digita o
+telefone, o app procura a indicação. Foi recusada: uma consulta
+`where('chave', '==', ...)` **não é escopada por dono**, e para ela passar
+`indicacoes` precisaria de `allow list` para qualquer motorista. Isso entrega a
+lista de telefones que a base inteira indicou a quem criar uma conta em trinta
+segundos — o mesmo furo que a chave PIX e os leads de família já custaram aqui.
+
+O momento novo é melhor, não pior: a indicação só vale quando o indicado
+**paga**, e a baixa da fatura é exatamente esse instante. Os dois estados
+continuam existindo no registro, e `podeTransitar` continua recusando pular a
+etapa.
+
+⚠️ **RECONTA, NÃO INCREMENTA.** O webhook do gateway e a baixa manual do dono
+podem quitar a mesma fatura; um `increment(1)` daria dois descontos por um
+cliente e o erro ficaria para sempre. A recontagem é idempotente.
+
+⚠️ **Se dois motoristas indicaram a mesma pessoa, vale quem indicou primeiro.**
+Premiar os dois pagaria 20% por um cliente; premiar o último premiaria quem
+chegou depois de o trabalho estar feito.
+
+⚠️ **Não há botão de "ativar" no painel**, e é de propósito: seria a carência
+virando opinião. Se uma indicação legítima não ativou, o conserto é dar baixa
+na fatura que falta.
+
 ---
 
 # Fase 15 · Subconta no gateway — a pesquisa

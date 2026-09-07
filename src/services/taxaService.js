@@ -27,6 +27,7 @@ import {
   precoDoMes,
 } from '../dominio/associacao/planos.js';
 import { assinaturaAteDoMes } from '../dominio/associacao/contaAtiva.js';
+import { casarEAtivar } from './indicacaoService';
 import {
   TIPO as TIPO_CONCESSAO,
   descontoDaConcessao,
@@ -561,6 +562,22 @@ export async function marcarFaturaPaga(tioUid, mes, ownerUid) {
   }
 
   await lote.commit();
+
+  // ── A INDICAÇÃO VIRA DESCONTO AQUI, e o lugar não é um consolo: é o certo.
+  //
+  // A carência diz que a indicação vale quando o indicado PAGA — não quando se
+  // cadastra. Sem ela, cinco cadastros de teste dariam 50% de desconto real
+  // sobre receita que nunca entrou. Este é o instante exato em que a receita
+  // entrou.
+  //
+  // DEPOIS do commit e engolindo o próprio erro: a baixa da fatura já
+  // aconteceu, e ela não pode ser desfeita por causa do desconto de um
+  // terceiro. `casarEAtivar` é idempotente — rodar duas vezes chega no mesmo
+  // número, porque ela reconta em vez de incrementar.
+  const dono = await getDoc(doc(db, 'users', tioUid));
+  if (dono.exists()) {
+    await casarEAtivar({ uid: tioUid, ...dono.data() });
+  }
 }
 
 export function watchFaturasDoMes(mes, cb, onError) {

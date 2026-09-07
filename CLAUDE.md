@@ -17,11 +17,11 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 853 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 904 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth, trial,
                                  # planos, conta, cobranca, gateway, carteira,
                                  # proposta, chamados, risco, fila, concessao,
-                                 # selo
+                                 # selo, indicacao
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -222,7 +222,7 @@ src/
 │   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
 │   │                  carteira, proposta, risco, fila, concessao, adesivo
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
-│   │                  authErrors, verificacao
+│   │                  authErrors, verificacao, indicacao
 │   ├── escola/        nomeEscola
 │   ├── suporte/       chamados
 │   └── vitrine/       frentes
@@ -298,7 +298,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `premios` · `pedidosAdesivo` ·
-`platformConfig` · `appState`
+`indicacoes` · `platformConfig` · `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
 
@@ -857,6 +857,36 @@ de uma function seria esperar cold start com o passageiro na porta. O caso
 `uso` em `testar-regras.mjs` existe para essa decisão aparecer se alguém
 mudá-la.
 
+**A INDICAÇÃO tem REGISTRO desde 06/09/2026** —
+[indicacao.js](src/dominio/identidade/indicacao.js)
+(`npm run testar:indicacao`). Antes existia só `users.indicacoesAtivas`, um
+número que o dono escrevia à mão, sem nenhum registro de quem indicou quem.
+
+⚠️ **As duas falhas possíveis produzem a MESMA queixa** — *"indiquei e não
+recebi"* —, e numa rede de indicação ela viaja mais rápido que a indicação:
+o telefone que não bateu, e a indicação que não devia valer. Por isso a
+**normalização** e a **auto-indicação** vieram com teste antes de qualquer
+tela.
+
+**A chave é o telefone normalizado**, com o nono dígito: `(11) 8765-4321` e
+`(11) 98765-4321` são a mesma pessoa, e comparar texto perderia a indicação de
+quem ditou o número antigo. Fixo (2–5) **não** ganha o 9 — seria um número que
+não existe.
+
+⚠️ **O casamento acontece do lado do DONO, na baixa da fatura.** Casar no
+cadastro do indicado exigiria `allow list` de `indicacoes` para qualquer
+motorista — uma consulta por `chave` não é escopada por dono —, e isso entrega
+os telefones que a base inteira indicou. O momento é o certo de qualquer forma:
+a indicação vale quando o indicado **paga**.
+
+**A carência não é burocracia**: sem ela, cinco cadastros de teste dariam 50%
+de desconto real sobre receita que nunca entrou. E `casarEAtivar` **reconta**
+em vez de incrementar — o webhook e a baixa manual podem quitar a mesma fatura,
+e um incremento duplicado ficaria errado para sempre.
+
+**Dois indicaram a mesma pessoa? Vale quem indicou primeiro.** Premiar os dois
+pagaria 20% por um cliente.
+
 **SÃO DOIS SELOS, com economias OPOSTAS** — e tratá-los como um só foi o que
 confundiu a conversa inicial. O **adesivo** de rua diz "usa Alô Buzinou", todo
 associado tem, e se ganha **pedindo**
@@ -940,7 +970,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (184 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (193 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 

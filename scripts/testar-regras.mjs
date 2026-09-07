@@ -973,6 +973,47 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('pos', 'e le a fila inteira', 'PASSA',
     await listar('pedidosAdesivo', dono));
 
+  // ── A INDICACAO (06/09/2026) ─────────────────────────────────────────
+  //
+  // O estado `ativa` vale 10% de desconto. Se o indicador pudesse escreve-lo,
+  // ele indicaria cinco cadastros de teste e zeraria a propria conta com
+  // receita que nunca entrou — a carencia deixaria de existir.
+  const IND = (uid) => ({
+    indicadorUid: S(uid),
+    chave: S('11911112222'),
+    telefoneDigitado: S('(11) 91111-2222'),
+    estado: S('pendente'),
+  });
+  checar('indicacao', 'o motorista indica alguem', 'PASSA',
+    await escrever('indicacoes/' + tio1.uid + '_11911112222', tio1, IND(tio1.uid)));
+  checar('indicacao', 'e le a propria', 'PASSA',
+    await ler('indicacoes/' + tio1.uid + '_11911112222', tio1));
+  // ⚠️ A indicacao de um NAO e do outro: ela carrega o telefone de um terceiro
+  // que ainda nem e usuario da plataforma.
+  checar('indicacao', 'tio2 le a indicacao do tio1', 'NEGA',
+    await ler('indicacoes/' + tio1.uid + '_11911112222', tio2));
+  // ⚠️ E A LISTAGEM E DO DONO. Uma consulta por `chave` nao e escopada por
+  // dono: liberada, ela entrega a lista de telefones que a base inteira
+  // indicou a quem criar uma conta em trinta segundos.
+  checar('indicacao', 'o motorista lista todas as indicacoes', 'NEGA',
+    await listar('indicacoes', tio1));
+  checar('pos', 'o dono lista as indicacoes', 'PASSA',
+    await listar('indicacoes', dono));
+  // Nascer ativa seria a carencia pulada numa unica escrita.
+  checar('indicacao', 'ela nao nasce ativa', 'NEGA',
+    await escrever('indicacoes/' + tio1.uid + '_11933334444', tio1,
+      { ...IND(tio1.uid), chave: S('11933334444'), estado: S('ativa') }));
+  checar('indicacao', 'nem indica em nome do vizinho', 'NEGA',
+    await escrever('indicacoes/' + tio2.uid + '_11955556666', tio1,
+      { ...IND(tio2.uid), chave: S('11955556666') }));
+  // O DESCONTO E DO DONO. Este e o campo que a fatura le.
+  checar('indicacao', 'o motorista se ativa a propria indicacao', 'NEGA',
+    await escrever('indicacoes/' + tio1.uid + '_11911112222', tio1,
+      { estado: S('ativa') }, ['estado']));
+  checar('pos', 'o dono ativa a indicacao', 'PASSA',
+    await escrever('indicacoes/' + tio1.uid + '_11911112222', dono,
+      { estado: S('ativa') }, ['estado']));
+
   // ── AS SETE PORTAS QUE A AUTOINSCRICAO ABRIU (06/09/2026) ────────────
   //
   // Auditoria depois da virada comercial. Cada caso aqui e um ataque que uma

@@ -1,4 +1,4 @@
-import { Sticker } from 'lucide-react';
+import { Share2, Sticker } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
@@ -169,6 +169,12 @@ export default function MeuTransporteSheet({
             titulo="Seu selo na van"
             subtitulo="Adesivo e certificado de alvará"
             onClick={() => ir('/tio/selo')}
+          />
+          <Linha
+            icon={Share2}
+            titulo="Indicar outro motorista"
+            subtitulo="Cada indicação que paga vale 10% na sua conta"
+            onClick={() => ir('/tio/indicar')}
           />
           <Linha
             icon={HelpCircle}
