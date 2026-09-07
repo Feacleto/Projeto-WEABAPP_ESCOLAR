@@ -34,6 +34,12 @@ import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatte
  * bloco de contratados, que é o maior, quem está de saída sobe ao topo, que é
  * onde a lista precisava dele.
  *
+ * ── ELA TAMBÉM É DESTINO DA FILA
+ * `inicial` chega quando o dono tocou numa linha da fila do dia: a ficha já
+ * abre naquele motorista. Quem remonta a aba é a `key` no `AdminPanel` — sem
+ * ela, tocar numa segunda linha não mudaria nada, porque estado inicial só é
+ * lido na montagem.
+ *
  * ── UMA CARGA, NÃO UMA POR FICHA
  * `carregarConsole()` traz parceiros e notas de uma vez. Trocar de motorista
  * na lista não espera rede — o que a ficha busca sob demanda é só o que é
@@ -43,10 +49,13 @@ import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatte
 /** A ordem em que cada degrau aparece. Menor vem primeiro. */
 const PESO = { bloqueado: 0, em_teste: 1, nao_comecou: 2, contratado: 3 };
 
-export default function MotoristasTab() {
+export default function MotoristasTab({ inicial = null }) {
   const [dados, setDados] = useState(null);
   const [busca, setBusca] = useState('');
-  const [escolhido, setEscolhido] = useState(null);
+  // `inicial` é o motorista que a FILA mandou abrir. Ele entra como estado
+  // inicial e não como efeito: por efeito, a lista apareceria por um render
+  // antes de a ficha abrir, e no celular isso é a tela piscando.
+  const [escolhido, setEscolhido] = useState(inicial);
   const mes = getCurrentMonthKey();
 
   const carregar = useCallback(() => {

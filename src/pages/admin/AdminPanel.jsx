@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import TaxaTab from './TaxaTab';
+import FilaTab from '../../components/admin/FilaTab';
 import MotoristasTab from '../../components/admin/MotoristasTab';
 import ChamadosTab from '../../components/admin/ChamadosTab';
 import { functions } from '../../firebase/config';
@@ -49,10 +50,13 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * 1.900px de largura não se lê, se varre —, abas numa fileira só a partir de
  * `sm`, e as fichas de número abrindo em quatro colunas em `lg`.
  *
- * CINCO ABAS, E O QUE CADA UMA RESPONDE
+ * SEIS ABAS, E O QUE CADA UMA RESPONDE
+ * 0. Hoje: a fila do dia. Não tem conteúdo próprio — é a soma das outras,
+ *    apresentada como trabalho. Cada linha é um toque e leva à aba onde a
+ *    coisa se resolve.
  * 1. Motoristas: a lista e a FICHA de cada associado — plano, contrato,
- *    faturas, nota das famílias, nota interna, e o botão de propor. É o dia a
- *    dia, e por isso abre por padrão.
+ *    faturas, nota das famílias, nota interna, e o botão de propor. É onde se
+ *    navega a carteira inteira.
  * 2. Chamados: quem pediu ajuda e há quanto tempo espera. `supportTickets`
  *    recebia desde sempre e NENHUMA tela do dono lia — quem pede ajuda e não
  *    recebe resposta cancela sem dizer por quê.
@@ -62,11 +66,20 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  *    responsável, que nunca vão pra home mas dizem se o app está servindo a
  *    ponta que não paga pela ferramenta.
  *
- * ── A ABA PADRÃO MUDOU DE "VISÃO GERAL" PARA "MOTORISTAS" EM 06/09/2026
- * O painel abria num relatório, e relatório não pede ação. Abrir na lista de
- * associados muda a pergunta que a tela faz: de "como vai o negócio" para "com
- * quem eu preciso falar hoje". A primeira se responde uma vez por mês; a
- * segunda, todo dia.
+ * ── A ABA PADRÃO ANDOU DUAS VEZES, E PELO MESMO MOTIVO
+ * Era "Visão geral", um relatório — e relatório não pede ação. Virou
+ * "Motoristas" em 06/09/2026, que muda a pergunta de "como vai o negócio" para
+ * "com quem eu preciso falar hoje".
+ *
+ * Só que a lista de motoristas ainda EXIGE que o dono varra a carteira para
+ * descobrir com quem. A fila já responde, então ela virou a primeira. A lista
+ * continua sendo onde se navega a carteira inteira — o que mudou é que ela
+ * deixou de ser o único caminho até uma conversa.
+ *
+ * ⚠️ E A FILA PRECISA ESVAZIAR. Uma que nunca zera deixa de ser lida, e depois
+ * disso não volta a ser lida no dia em que tiver algo grave. Por isso só entra
+ * o que tem ação possível hoje, e por isso a régua está em
+ * `dominio/associacao/fila.js`, com teste.
  *
  * ERAM CINCO EM 06/09/2026, E DUAS SUMIRAM COM O MODELO ANTIGO.
  * **Fila** era os motoristas pedindo acesso — ninguém pede mais, ele entra
@@ -85,17 +98,26 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * cartão amarelo da Visão geral lê `faturasParceiro`, não a negociação. Acordo
  * combinado e não faturado não é receita — e o painel não antecipa.
  *
- * O GATE AQUI É DE PRODUTO, NÃO DE SEGURANÇA
- * Esta tela só aparece pra quem tem `superAdmin: true` no doc de usuário. Só
- * que TODO usuário com role 'admin' já pode ler estes dados pelas rules —
- * então esconder a tela não protege nada, só evita mostrar o negócio inteiro
- * pra um parceiro. Segurança de verdade é custom claim + rules dedicadas:
- * está no brief de arquitetura.
+ * O GATE É `role: 'owner'`, E ELE VALE NAS RULES TAMBÉM
+ * Este parágrafo dizia `superAdmin: true` e que "todo usuário com role 'admin'
+ * já pode ler estes dados pelas rules" — as duas metades ficaram falsas em
+ * 06/09/2026. O legado `superAdmin` saiu, e o que decide é `isOwner()`, que
+ * sempre checou o PAPEL: dono pode ser mais de um, e é assim que se cria o
+ * segundo.
+ *
+ * E a leitura foi escopada ANTES de a porta abrir: com o autoatendimento,
+ * `isAdmin()` passou a significar "tem uma conta", então `allow list` de
+ * `users`, `faturasParceiro`, `feedbacks` e `supportTickets` são de dono. A
+ * tela esconde por UX; quem impede são as rules.
  */
 export default function AdminPanel() {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState('motoristas');
+  const [tab, setTab] = useState('hoje');
+  // O MOTORISTA QUE A FILA MANDOU ABRIR. Ele sobe até aqui porque quem escolhe
+  // deixou de ser só a lista: a linha da fila está em OUTRA aba, e um estado
+  // que mora dentro da `MotoristasTab` não é alcançável de fora dela.
+  const [motoristaAlvo, setMotoristaAlvo] = useState(null);
 
   const [ov, setOv] = useState(null);
   const [survey, setSurvey] = useState(null);
@@ -211,6 +233,7 @@ export default function AdminPanel() {
           * escondem nada. */}
         <div className="mb-5 flex flex-wrap gap-1 rounded-2xl bg-neutro p-1">
           {[
+            ['hoje', 'Hoje'],
             ['motoristas', 'Motoristas'],
             ['chamados', 'Chamados'],
             ['mes', 'Mês'],
@@ -230,7 +253,20 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        {tab === 'motoristas' && <MotoristasTab />}
+        {tab === 'hoje' && (
+          <FilaTab
+            onIr={(destino) => {
+              setMotoristaAlvo(destino?.uid || null);
+              setTab(destino?.aba || 'motoristas');
+            }}
+          />
+        )}
+        {tab === 'motoristas' && (
+          // A `key` remonta a aba quando a fila manda abrir outro motorista.
+          // Sem ela, a lista já montada ignoraria o alvo novo — o estado
+          // inicial de um componente só é lido uma vez.
+          <MotoristasTab key={motoristaAlvo || 'lista'} inicial={motoristaAlvo} />
+        )}
         {tab === 'chamados' && <ChamadosTab />}
         {tab === 'mes' && <TaxaTab />}
         {tab === 'numeros' && <Geral ov={ov} />}

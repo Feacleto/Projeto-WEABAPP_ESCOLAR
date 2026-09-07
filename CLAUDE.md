@@ -17,10 +17,10 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 687 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 724 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth, trial,
                                  # planos, conta, cobranca, gateway, carteira,
-                                 # proposta, chamados, risco
+                                 # proposta, chamados, risco, fila
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -200,10 +200,10 @@ src/
 │   ├── Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
 │   ├── tio/           16 telas do motorista
 │   ├── pai/           8 telas do responsável
-│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com quatro
-│   │                  abas: Motoristas (lista + FICHA, o dia a dia), Mês
-│   │                  (régua e fechamento), Números, Pesquisa. A ficha mora
-│   │                  em components/admin/FichaDoMotorista.
+│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com seis
+│   │                  abas: Hoje (a fila), Motoristas (lista + FICHA),
+│   │                  Chamados, Mês (régua e fechamento), Números, Pesquisa.
+│   │                  A fila e a ficha moram em components/admin/.
 │   └── legal/         termos e privacidade
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive…
@@ -219,7 +219,7 @@ src/
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
 │   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
-│   │                  carteira, proposta, risco
+│   │                  carteira, proposta, risco, fila
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
@@ -775,7 +775,21 @@ Cinco regras, e todas nasceram de um bug:
    de recado, quatro estados da criança, cinco fatias de gráfico). Um lugar
    com licença é o que evita que o resto peça licença.
 
-**O painel abre na lista de MOTORISTAS, não num relatório.** Relatório não
+**O painel abre na FILA DO DIA, não num relatório nem numa lista.**
+[fila.js](src/dominio/associacao/fila.js) (`npm run testar:fila`) soma degrau,
+termômetro, chamados e fechamento numa lista de coisas a fazer hoje, e cada
+linha leva à aba onde a coisa se resolve. A aba padrão andou duas vezes pelo
+mesmo motivo: "Visão geral" era relatório, e "Motoristas" ainda exigia varrer a
+carteira para descobrir com quem falar.
+
+⚠️ **Fila que nunca esvazia deixa de ser lida** — e depois disso não volta a
+ser lida no dia em que tiver algo grave. Só entra o que tem ação possível hoje.
+Suspenso não entra (quem suspendeu foi o dono). É **uma linha por motorista, a
+mais urgente**: quatro sinais viram uma linha com três detalhes, senão o
+contador diria "7" onde o dia tem três conversas. Chamado é linha por chamado;
+o fechamento do mês é UMA linha para todas as faturas.
+
+**A lista de MOTORISTAS é onde se navega a carteira.** Relatório não
 pede ação: abrir na carteira muda a pergunta de "como vai o negócio" (uma vez
 por mês) para "com quem eu preciso falar hoje" (todo dia). A
 [ficha](src/components/admin/FichaDoMotorista.jsx) reúne plano, contrato,

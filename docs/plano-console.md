@@ -233,6 +233,31 @@ PRECISA DE VOCÊ HOJE                          7
 ⚠️ **Fila que nunca esvazia deixa de ser lida.** Só entra o que tem ação
 possível — "3 associados sem indicar há 60 dias" é relatório, não fila.
 
+**Os quatro itens entregues.** A régua ficou pura em
+`dominio/associacao/fila.js` (37 casos, `npm run testar:fila`), e a aba **Hoje**
+virou a primeira do painel — a terceira aba padrão desde que o painel existe, e
+pelo mesmo motivo das duas anteriores: a lista de motoristas responde "com quem
+eu falo", mas ainda exige varrer a carteira para descobrir com quem.
+
+⚠️ **UMA LINHA POR MOTORISTA, A MAIS URGENTE.** Um associado pode disparar
+quatro sinais ao mesmo tempo. Quatro linhas fariam o contador dizer "7" onde o
+dia tem três conversas — e o número no topo é a única coisa que alguém lê antes
+de decidir se abre a tela. Os outros motivos viram detalhe da mesma linha.
+
+A exceção é o chamado (uma linha por chamado: cada um é uma resposta
+diferente) e o fechamento do mês, que é UMA linha para todas as faturas —
+vinte faturas por fechar são um gesto na aba Mês, não vinte pendências.
+
+⚠️ **Suspenso não entra.** Quem suspendeu foi o dono; a fila cobrando dele uma
+decisão que ele já tomou é exatamente o ruído que a faz parar de ser lida.
+
+⚠️ **O teste acabando ganha do termômetro**, e o motivo é a data: a conversa do
+risco pode ser amanhã, a do teste que vence em dois dias não pode.
+
+**11.3 saiu sem âncora.** O bloco de risco é a primeira coisa dentro da ficha,
+acima de plano e contrato — então "abrir na seção certa" é abrir a ficha.
+Âncora dentro de uma tela que cabe numa dobra é precisão falsa.
+
 ---
 
 # Fase 12 · Concessões e condições
