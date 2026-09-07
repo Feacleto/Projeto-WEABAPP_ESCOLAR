@@ -564,7 +564,7 @@ export default function Login() {
                           className="rise relative mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-onNightAccent"
                           style={{ '--d': '260ms' }}
                         >
-                          Criar minha operação <ArrowRight size={15} />
+                          Iniciar minha operação <ArrowRight size={15} />
                         </span>
                       </button>
 
