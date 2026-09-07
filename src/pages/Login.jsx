@@ -4,6 +4,7 @@ import { Mail, Lock, ArrowLeft, ArrowRight, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import FundoNoturno from '../components/common/FundoNoturno';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
@@ -300,8 +301,9 @@ export default function Login() {
         </div>
 
         {/* ── O cartão ───────────────────────────────────────────────── */}
-        <div className="flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10">
-          <div className="w-full max-w-[380px] space-y-4 rounded-2xl border border-border bg-card p-6 shadow-rest sm:p-7">
+        <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-night px-4 py-8 sm:px-6 lg:px-10">
+          <FundoNoturno />
+          <div className="relative z-10 w-full max-w-[380px] space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float sm:p-7">
             {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
               * "Cadastrar" era um link no rodapé do cartão que levava pra
               * `/comecar` — e `/comecar` devolve pro login quem não tem
@@ -329,10 +331,36 @@ export default function Login() {
                   aria-selected={aba === a.id}
                   aria-controls="painel-conta"
                   onClick={() => setAba(a.id)}
-                  className={`-mb-px border-b-2 px-2 pb-3 pt-1 text-sm font-semibold transition-colors ${
-                    aba === a.id
-                      ? 'border-primary text-text'
-                      : 'border-transparent text-textMuted hover:text-text'
+                  /* AS DUAS ABAS SÃO VERDES E EM NEGRITO — é a marca na porta,
+                   * e a porta é a primeira coisa que qualquer pessoa vê.
+                   *
+                   * ⚠️ MAS O VERDE DA LETRA NÃO É O #52C41A DO LOGOTIPO.
+                   * Aquele é o verde das ondas sobre o fundo ESCURO; aqui o
+                   * cartão é branco, e ele daria 2,3:1 — o próprio logotipo
+                   * troca de tom em fundo claro (`TONES.color` em Logo.jsx)
+                   * pelo mesmo motivo. `accentText` é o verde da marca quando
+                   * ele precisa ser PALAVRA: 7,1:1 sobre o cartão.
+                   *
+                   * O #52C41A continua aqui, no SUBLINHADO — ali ele é massa,
+                   * não letra, e é onde ele pode ser ele mesmo. É a regra 2 da
+                   * cor (tailwind.config.js), e este par está em
+                   * `npm run testar:contraste`.
+                   *
+                   * O QUE SEPARA A ABA ATIVA passou a ser o sublinhado, já que
+                   * a cor da letra agora é a mesma nas duas. Por isso ele
+                   * engrossou e ganhou o verde-limão: com duas letras iguais,
+                   * um traço fino em verde-escuro não anunciaria nada.
+                   *
+                   * ⚠️ E A INATIVA NÃO LEVA `opacity`. A tentação era apagar a
+                   * aba de trás com 70% — só que opacidade sobre texto é
+                   * mistura com o fundo: o mesmo `accentText` cairia de 7,1:1
+                   * para 3,5:1 e reprovaria. É o erro que as seis opacidades
+                   * de branco do rodapé já custaram aqui (ver `onNightMuted`
+                   * no tailwind.config.js). O sublinhado carrega o estado
+                   * sozinho — e ele não é a única pista: o painel de baixo
+                   * troca junto. */
+                  className={`-mb-px border-b-[3px] px-2 pb-3 pt-1 text-sm font-bold text-accentText transition-colors ${
+                    aba === a.id ? 'border-accent' : 'border-transparent'
                   }`}
                 >
                   {a.rotulo}

@@ -120,6 +120,13 @@ par('dangerText sobre dangerChip', C.dangerText, C.dangerChip);
 par('dangerText sobre dangerSoft', C.dangerText, C.dangerSoft);
 par('dangerText sobre bg', C.dangerText, C.bg);
 par('accentText sobre card', C.accentText, C.card);
+// AS ABAS DO LOGIN — a porta do produto, e o par mais lido dele.
+//
+// ⚠️ ELAS NÃO USAM O #52C41A DO LOGOTIPO. Aquele é o verde das ondas sobre o
+// fundo ESCURO; sobre o cartão branco ele daria 2,3:1, e o proprio logotipo
+// troca de tom em fundo claro (`TONES.color` em Logo.jsx). O #52C41A continua
+// no SUBLINHADO, onde e massa e nao letra.
+par('abas do login: accentText sobre card', C.accentText, C.card);
 par('accentText sobre bg', C.accentText, C.bg);
 // O chip real onde o accentText vive: accent a 10% sobre branco.
 par('accentText sobre chip de accent/10', C.accentText, sobre(C.accent, 0.1, C.card));
