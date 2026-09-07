@@ -401,6 +401,24 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
     { merge: true }
   );
 
+  // ⚠️ FATURA DE R$ 0 TAMBEM E FATURA PAGA, e isso quase trancou o fundador.
+  //
+  // Fundador vitalicio, desconto somado em 100% e mes isento produzem
+  // `total: 0`, que nasce `quitada`. E `quitada` nunca passa por
+  // `marcarFaturaPaga` (o botao de dar baixa so aparece em fatura aberta) nem
+  // pelo webhook (`podeCobrar` recusa fatura quitada). Ninguem escrevia
+  // `assinaturaAte` — e no dia 90 o primeiro motorista da plataforma, o que
+  // nao paga por decisao, era bloqueado com a fatura marcada como quitada.
+  //
+  // Pior: `carteira.js` o classificava como BLOQUEADO, entao ele sumia do MRR
+  // e entrava na conta de churn.
+  if (total === 0) {
+    const ate = assinaturaAteDoMes(mes);
+    if (ate) {
+      await setDoc(doc(db, 'users', tioUid), { assinaturaAte: ate }, { merge: true });
+    }
+  }
+
   return { tioUid, mes, total, isento };
 }
 

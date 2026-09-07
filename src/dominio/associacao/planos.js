@@ -1,20 +1,17 @@
 /**
  * OS PLANOS — quanto o motorista paga à plataforma, e por quê esse valor.
  *
- * ATENÇÃO: EXISTEM DOIS MODELOS DE PREÇO NESTE PROJETO, E ELES NÃO PODEM
- * VALER PARA O MESMO PARCEIRO AO MESMO TEMPO.
+ * ESTE É O ÚNICO MODELO DE PREÇO DO PROJETO, desde 06/09/2026.
  *
- *   taxa.js   o modelo NEGOCIADO: percentual sobre a soma das mensalidades,
- *             ajustado caso a caso pelo dono no orçamento. É o que sustenta
- *             os contratos e faturas que já existem.
+ * O cabeçalho anterior abria avisando que existiam DOIS — este e o `taxa.js`,
+ * que era o negociado (percentual sobre a soma das mensalidades, ajustado caso
+ * a caso num orçamento) — e mandava o leitor tratar a migração como pendência
+ * aberta. O `taxa.js` foi APAGADO junto com o orçamento, o funil e a
+ * aprovação. Não há segundo modelo, não há migração pendente, e não há como
+ * somar os dois numa fatura.
  *
- *   este      o modelo de AUTOATENDIMENTO: faixa fixa pelo número de crianças
- *             ativas, escolhida pelo próprio motorista, sem ninguém no meio.
- *
- * A migração de um para o outro é decisão em aberto (pendência 1 da seção 12
- * de docs/negocio.md). Enquanto ela não acontece, um parceiro com negociação
- * salva continua no caminho do `taxa.js` — e quem entra sozinho vem por aqui.
- * Somar os dois na mesma fatura cobraria duas vezes.
+ * Ficou registrado porque o aviso era correto enquanto os dois existiam, e a
+ * saída foi apagar um — não escolher entre eles a cada leitura.
  *
  * O PLANO CAPA QUANTIDADE, NUNCA FUNCIONALIDADE
  * Isto não é Básico/Pro/Premium. O app é COMPLETO em qualquer faixa: mapa ao
@@ -253,6 +250,17 @@ export function descontoDeIndicacoes(indicacoesAtivas) {
 export function descontosVigentes(descontos, mes) {
   const m = String(mes || '');
   const soma = { antecipacao: 0, roleta: 0 };
+
+  // SEM MES DE REFERENCIA, NENHUM DESCONTO VALE — e antes valiam TODOS.
+  //
+  // A comparacao abaixo e de texto, e `'' > '2026-09'` e `false`: com `mes`
+  // ausente nada era filtrado, e todo desconto expirado voltava a valer. O
+  // padrao de `precoDoMes` e `mes = null`, entao bastava um chamador esquecer
+  // o parametro para a conta sair com desconto vencido ha um ano.
+  //
+  // Ausencia de referencia e ausencia de resposta, nunca "vale tudo": e a
+  // mesma escolha de `resumirCarteira`, que devolve `null` em vez de zero.
+  if (!m) return soma;
   (Array.isArray(descontos) ? descontos : []).forEach((d) => {
     if (!d || !d.ate || m > String(d.ate)) return;
     const fracao = Math.max(0, Number(d.fracao) || 0);

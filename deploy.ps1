@@ -18,23 +18,35 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
-# As 12 functions que NÃO dependem de segredo. As duas de e-mail
-# (sendPaymentReminders, runPaymentRemindersNow) declaram RESEND_API_KEY, e o
-# CLI para esperando o valor ser digitado — o que travaria este script. Elas
-# sobem à parte, quando existir chave do Resend. Ver docs/deploy.md.
+# As functions que NAO dependem do segredo do Resend. As duas de e-mail
+# (sendPaymentReminders, runPaymentRemindersNow) declaram RESEND_API_KEY e
+# sobem a parte. Ver docs/deploy.md.
+#
+# ATENCAO: `firebase deploy --only <lista>` aborta INTEIRO quando um nome da
+# lista nao existe — "the following filters do not exist". Esta lista tinha
+# `joinDriverWaitlist` e `spinEntryBonus`, apagadas em 06/09/2026, e o efeito
+# nao era perder as duas: era NADA subir. Inclusive `redeemInvite` e
+# `getInvitePreview`, que sao o caminho inteiro do responsavel — o pai abria o
+# link e lia "este convite nao existe" com o codigo certo na mao.
+#
+# Nome de function apagada nesta lista e um deploy que falha por completo.
+# Conferir com `grep "^exports\." functions/index.js` antes de mexer.
 $FuncoesNucleo = @(
   'functions:lookupInvite',
   'functions:redeemInvite',
-  'functions:joinDriverWaitlist',
   'functions:getShowcase',
-  'functions:spinEntryBonus',
+  'functions:getInvitePreview',
+  'functions:girarPremio',
+  'functions:contratarPlano',
   'functions:closeStaleRoutes',
+  'functions:confirmarAusencias',
   'functions:sendPushOnNotification',
   'functions:generateMonthlyPayments',
   'functions:runBillingNow',
-  'functions:getInvitePreview',
   'functions:flagDuplicateReceipts',
-  'functions:backfillTestimonialPrivacy'
+  'functions:backfillTestimonialPrivacy',
+  'functions:asaasWebhook',
+  'functions:criarCobrancaDaFatura'
 ) -join ','
 
 function Passo($titulo) {

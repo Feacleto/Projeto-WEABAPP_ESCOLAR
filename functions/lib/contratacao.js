@@ -75,11 +75,46 @@ function paraData(valor) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** 'AAAA-MM' de N meses à frente — o fim da validade de um desconto. */
+/**
+ * 'AAAA-MM' do ULTIMO mes em que um desconto de N meses ainda vale.
+ *
+ * O DIA VAI PARA 1 ANTES DE SOMAR, e isso nao e detalhe: `setMonth` preserva
+ * o dia, e 31 nao existe em todo mes. Contratar em 31/03 com `setMonth(+12)`
+ * produzia 31/02/2027, que o JavaScript normaliza para 03/03 — um mes a mais
+ * de desconto, de graca, para sempre.
+ *
+ * E o `- 1` faz o prazo ser INCLUSIVO do mes corrente: 12 meses a partir de
+ * setembro terminam em agosto do ano seguinte, nao em setembro. Sem ele o
+ * desconto durava 13 meses — meia mensalidade extra por associado, silenciosa,
+ * crescendo com a base.
+ *
+ * A copia em `premioDeConversao.js` ja fazia certo. As duas divergiam, e
+ * `npm run testar:gateway` compara as duas agora.
+ */
 function mesDaqui(meses, agora = new Date()) {
   const d = new Date(agora);
-  d.setMonth(d.getMonth() + meses);
+  d.setDate(1);
+  d.setMonth(d.getMonth() + meses - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Ate quando a conta fica destravada por ter CONTRATADO.
+ *
+ * Fim do mes seguinte, meio-dia. E a mesma regra de `assinaturaAteDoMes`: quem
+ * fecha um acordo hoje opera ate a primeira fatura vencer e ser paga.
+ *
+ * SEM ISTO, CONTRATAR NAO DESTRAVAVA NADA. `estadoDaConta` e `isAdmin()`
+ * consultam `assinaturaAte`, e so a baixa de fatura escrevia esse campo — o
+ * motorista assinava o contrato e voltava para a tela dizendo pra contratar.
+ * Beco sem saida depois de a pessoa ter decidido pagar.
+ *
+ * Meio-dia, e nao meia-noite: o processo das functions roda em UTC, e a data
+ * construida a 00:00 volta um dia quando lida no fuso de Brasilia.
+ */
+function cobertoAteOMesSeguinte(agora = new Date()) {
+  const d = new Date(agora);
+  return new Date(d.getFullYear(), d.getMonth() + 2, 0, 12, 0, 0);
 }
 
 /**
@@ -133,6 +168,14 @@ function makeContratarPlano(db) {
         });
       }
 
+      // `assinaturaAte` VAI JUNTO, e e o campo que destrava a conta.
+      //
+      // Nunca REDUZ: quem ja esta coberto por um pagamento mais longo nao pode
+      // perder cobertura por trocar de faixa. `Math.max` de datas nao existe,
+      // entao a comparacao e explicita.
+      const jaCoberto = dados.assinaturaAte?.toDate?.() || null;
+      const cobertura = cobertoAteOMesSeguinte(agora);
+
       await ref.set(
         {
           planoId: plano.id,
@@ -140,6 +183,8 @@ function makeContratarPlano(db) {
           limiteCriancas: plano.ate,
           descontos,
           contratadoEm: agora,
+          assinaturaAte:
+            jaCoberto && jaCoberto > cobertura ? jaCoberto : cobertura,
         },
         { merge: true }
       );
@@ -163,4 +208,11 @@ function makeContratarPlano(db) {
   );
 }
 
-module.exports = { makeContratarPlano, PLANOS, ANTECIPACAO, dentroDoTrial, mesDaqui };
+module.exports = {
+  makeContratarPlano,
+  PLANOS,
+  ANTECIPACAO,
+  dentroDoTrial,
+  mesDaqui,
+  cobertoAteOMesSeguinte,
+};

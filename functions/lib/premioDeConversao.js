@@ -92,9 +92,18 @@ function sortear() {
   return PREMIOS[0];
 }
 
-/** 'AAAA-MM' de N meses à frente, inclusive o mês atual. */
+/**
+ * 'AAAA-MM' de N meses à frente, inclusive o mês atual.
+ *
+ * ⚠️ O DIA VAI PARA 1 ANTES DE SOMAR. `setMonth` preserva o dia, e 31 não
+ * existe em todo mês: girar a roleta em 31/01 e tirar "2 meses sem taxa"
+ * produzia 31/02, que o JavaScript normaliza para 03/03 — e `isentoEm` isenta
+ * por comparação de texto, então janeiro, fevereiro E março. Três meses de
+ * prêmio de dois, para quem girasse num dia 29, 30 ou 31.
+ */
 function mesDaqui(meses, agora = new Date()) {
   const d = new Date(agora);
+  d.setDate(1);
   d.setMonth(d.getMonth() + meses - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }

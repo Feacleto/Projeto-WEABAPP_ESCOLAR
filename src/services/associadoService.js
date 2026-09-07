@@ -63,19 +63,44 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
 
   let uid;
   let jaExistia = false;
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, emailLimpo, senha);
-    uid = cred.user.uid;
-  } catch (err) {
-    // Já se cadastrou antes e voltou. Entrar com a mesma senha é o caminho
-    // certo — mandar ele "recuperar a senha" de uma conta que ele acabou de
-    // tentar criar é o tipo de beco que faz a pessoa desistir.
-    if (err?.code === 'auth/email-already-in-use') {
-      const cred = await signInWithEmailAndPassword(auth, emailLimpo, senha);
+
+  // ⚠️ QUEM JÁ ENTROU COM O GOOGLE NÃO CRIA CONTA DE NOVO — ELE SÓ COMPLETA.
+  //
+  // Este era um beco fechado, e no caminho que o próprio plano recomenda:
+  // "sem conta, entra com o Google" → `/comecar` → "tenho uma van" → aqui.
+  // A tela ignorava a sessão ativa e chamava `createUserWithEmailAndPassword`
+  // com o e-mail do Google, que já existe → `auth/email-already-in-use` → o
+  // `catch` tentava entrar com uma senha que NUNCA existiu para aquela conta
+  // → `auth/invalid-credential` → "use a senha que você criou", que ele nunca
+  // criou. Voltar ao login e entrar com Google devolvia para `/comecar`, que
+  // devolvia para cá. Loop, sem saída.
+  //
+  // Com sessão de pé, o documento é escrito no uid que já existe. A senha
+  // digitada é ignorada de propósito: vincular provedor de credencial exige
+  // reautenticação e é outro fluxo — e ele já tem como entrar, que é o que
+  // importa agora.
+  const sessao = auth.currentUser;
+  const mesmaPessoa =
+    sessao && String(sessao.email || '').toLowerCase() === emailLimpo;
+
+  if (mesmaPessoa) {
+    uid = sessao.uid;
+    jaExistia = true;
+  } else {
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, emailLimpo, senha);
       uid = cred.user.uid;
-      jaExistia = true;
-    } else {
-      throw err;
+    } catch (err) {
+      // Já se cadastrou antes e voltou. Entrar com a mesma senha é o caminho
+      // certo — mandar ele "recuperar a senha" de uma conta que ele acabou de
+      // tentar criar é o tipo de beco que faz a pessoa desistir.
+      if (err?.code === 'auth/email-already-in-use') {
+        const cred = await signInWithEmailAndPassword(auth, emailLimpo, senha);
+        uid = cred.user.uid;
+        jaExistia = true;
+      } else {
+        throw err;
+      }
     }
   }
 

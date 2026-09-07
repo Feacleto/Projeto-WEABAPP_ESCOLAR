@@ -262,10 +262,18 @@ service cloud.firestore {
     // visitante que souber a URL.
     match /appState/{docId} {
       allow read: if true;
-      // Bootstrap exige sessão: sem isso, um anônimo cria o doc com o
-      // adminUid que quiser antes do dono legítimo chegar.
-      allow create: if isSignedIn()
-        && !exists(/databases/$(database)/documents/appState/init);
+      // A JANELA DO BOOTSTRAP FECHOU EM 06/09/2026.
+      //
+      // A regra era "qualquer sessao cria, enquanto `init` nao existir" — e
+      // essa janela esta ABERTA sempre que o documento nao existe. O primeiro
+      // cadastrado gravava `adminUid` apontando para si, e `getShowcase` usa
+      // esse ponteiro para montar a vitrine publica da landing. Depois disso so
+      // o console conserta, porque `update` e `delete` sao do dono.
+      //
+      // O bootstrap perdeu a razao de existir quando a entrada virou
+      // autoatendimento: nao ha mais "primeiro motorista" a promover — todo
+      // mundo se cadastra igual.
+      allow create: if isOwner();
       allow update, delete: if isOwner();
     }
 
@@ -473,7 +481,16 @@ service cloud.firestore {
       //   criancasAtivas   zerar o contador que as rules usam pra cobrar a vaga
       //   suspenso         nascer não-suspenso é o padrão; escrever é do dono
       //   termsVersion     forjar o próprio aceite de termos
+      // SESSAO ANONIMA NAO VIRA MOTORISTA.
+      //
+      // `isSignedIn()` e so "tem token", e token anonimo se cria aos milhares
+      // por script. Cada um viraria uma conta com `isAdmin()` valido e 90 dias
+      // de teste. O login anonimo esta DESLIGADO neste projeto hoje — e e
+      // exatamente por isso que a regra nao pode depender disso: regra que se
+      // apoia num interruptor do console cai no dia em que alguem o liga por
+      // outro motivo.
       allow create: if isSignedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
         && request.auth.uid == uid
         && request.resource.data.role == 'admin'
         && request.resource.data.keys().hasAll(['role', 'createdAt'])
@@ -707,10 +724,37 @@ service cloud.firestore {
       // a plataforma sem como desligar um parceiro que saiu — descoberto na
       // hora de limpar uma conta de teste, que é onde esse tipo de aperto
       // demais costuma aparecer.
+      // APAGAR E RECRIAR ERA A VOLTA POR FORA DE TODA A TRANCA (06/09/2026).
+      //
+      // O `update` foi blindado campo a campo — `suspenso`, `trialInicio`,
+      // `limiteCriancas`, `assinaturaAte` e a clausula de preco inteira estao
+      // na lista proibida. E o proprio arquivo avisa, na regra de `create`:
+      // "sempre que o update for restritivo, pergunte 'e se ele criar o
+      // documento do zero?'". A pergunta nao tinha sido feita para o par
+      // delete -> create.
+      //
+      // O ataque tinha tres escritas e nenhuma exigia mais que uma conta
+      // comum: apagar o proprio doc, recria-lo com {role:'admin'} — que a
+      // whitelist aceita —, e voltar operando SEM suspensao, com o relogio dos
+      // 90 dias zerado (repetivel para sempre) e sem teto de criancas. O uid do
+      // Auth e o mesmo, entao `children.adminUid` e `users.adminUids` das
+      // familias continuam apontando para ele: nada se perde no caminho.
+      //
+      // O QUE FECHA: conta que carrega HISTORIA nao se apaga daqui. Quem ja
+      // rodou uma rota (`trialInicio`) ou foi suspenso passa pelo dono.
+      //
+      // ISSO CUSTA UMA FUNCIONALIDADE, e a divida fica registrada: o "excluir
+      // minha conta" do perfil deixa de funcionar para quem tem historia.
+      // Encerramento com dado e trabalho de Admin SDK — precisa apagar o
+      // usuario do AUTH junto, senao o uid volta e o problema volta com ele.
       allow delete: if isSignedIn() && (
-        request.auth.uid == uid
-        || isOwner()
+        isOwner()
         || (isAdmin() && resource.data.get('adminUid', '') == request.auth.uid)
+        || (
+          request.auth.uid == uid
+          && !('trialInicio' in resource.data)
+          && resource.data.get('suspenso', false) != true
+        )
       );
     }
 
@@ -772,8 +816,17 @@ service cloud.firestore {
       // impedido de trabalhar por uma cláusula que ninguém combinou com ele.
       // O default alto vale pros dois lados da comparação, então a conta
       // continua exigindo o incremento — o que some é só o teto.
+      // `parentUid` NASCE VAZIO, SEMPRE. Quem o preenche e o `redeemInvite`
+      // com Admin SDK, quando a familia resgata o convite — `childrenService`
+      // grava `parentUid: null` no cadastro, e e isso que a regra exige agora.
+      //
+      // Livre, o motorista cadastrava uma crianca apontando para o uid de uma
+      // familia alheia: o documento aparecia no app daquela familia (a regra
+      // de leitura libera por `parentUid`), com nome, endereco e coordenada
+      // escolhidos por ele.
       allow create: if isAdmin()
         && request.resource.data.adminUid == request.auth.uid
+        && request.resource.data.get('parentUid', null) == null
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
              .data.get('criancasAtivas', 0)
            <= getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -962,8 +1015,21 @@ service cloud.firestore {
       // gravar `adminUid` no pagamento — o Admin SDK não passa por rules, mas
       // um pagamento sem `adminUid` fica invisível pro motorista dono dele,
       // porque a consulta da tela filtra por esse campo.
-      allow create: if isAdmin()
-        && request.resource.data.adminUid == request.auth.uid;
+      // O CLIENTE NAO CRIA COBRANCA, E AGORA A REGRA DIZ ISSO.
+      //
+      // Ela era `isAdmin() && adminUid == me` — e `parentUid` ficava livre.
+      // Com a entrada aberta, qualquer pessoa cria conta de motorista, pega o
+      // uid de uma familia (o `list` publico de `feedbacks` devolve o
+      // documento inteiro, com `uid` dentro) e grava uma cobranca apontada
+      // para ela. A tela do responsavel filtra por `parentUid`, e a regra de
+      // leitura libera pelo mesmo campo: a cobranca forjada aparece no
+      // financeiro daquela familia como se fosse do motorista dela.
+      //
+      // Quem cria mensalidade e `generateMonthlyPayments`, com Admin SDK, que
+      // nao passa por rules — conferido: nao ha um `addDoc`/`setDoc` de
+      // `payments` em `src/` inteiro. A regra existia sem nenhum chamador, e
+      // permissao sem chamador e so superficie.
+      allow create: if false;
       allow delete: if ehDoMotorista();
       allow update: if (
         ehDoMotorista()
@@ -1310,8 +1376,22 @@ service cloud.firestore {
         || resource.data.parentUid == request.auth.uid
         || resource.data.adminUid == request.auth.uid
       );
+      // A BUZINA PRECISA PROVAR QUE A CRIANCA E DELE.
+      //
+      // A regra pedia so `adminUid == me`, e `parentUid` era livre: com o uid
+      // de uma familia estranha, um motorista recem-cadastrado fazia tocar em
+      // tela cheia, no celular de quem ele nao atende, um alerta de "a perua
+      // chegou" com o nome de uma crianca dentro. A consequencia nao e
+      // vazamento — e a crianca descendo para uma van errada.
+      //
+      // O `get()` na crianca amarra as duas pontas de uma vez: ela tem que ser
+      // dele, e o `parentUid` da buzina tem que ser o do responsavel DELA.
       allow create: if isAdmin()
-        && request.resource.data.adminUid == request.auth.uid;
+        && request.resource.data.adminUid == request.auth.uid
+        && get(/databases/$(database)/documents/children/$(request.resource.data.childId))
+             .data.get('adminUid', '') == request.auth.uid
+        && get(/databases/$(database)/documents/children/$(request.resource.data.childId))
+             .data.get('parentUid', '') == request.resource.data.parentUid;
       // METADE DO BLOCO TINHA SIDO ESCOPADA, E A OUTRA METADE NÃO.
       //
       // O `read` acima perdeu o `isAdmin()` solto, o `delete` abaixo já usa
@@ -1415,13 +1495,19 @@ service cloud.firestore {
       // gravar. Comentário em rule não impede código de escrever — se
       // um campo novo aparecer aqui, confira o que o serviço manda.
       // Público só vê depoimento autorizado E não escondido pelo dono.
+      // O `isAdmin()` SOLTO SOBREVIVEU A DECISAO 12, e so aqui.
+      //
+      // Ela tirou o ramo do `list` (logo abaixo, com teste que prova), e o
+      // `get` ficou. Com um id de avaliacao — que o `list` publico devolve —
+      // qualquer motorista lia a avaliacao NAO publica de qualquer pessoa:
+      // uid, papel e as respostas da pesquisa, inclusive das familias de um
+      // concorrente. Meia decisao aplicada e o jeito mais comum de um furo
+      // sobreviver a uma auditoria.
       allow get: if (
         resource.data.allowTestimonial == true
         && resource.data.get("hiddenByOwner", false) == false
       ) || (
-        isSignedIn() && (
-          isAdmin() || isOwner() || resource.data.uid == request.auth.uid
-        )
+        isSignedIn() && (isOwner() || resource.data.uid == request.auth.uid)
       );
       // A MODERAÇÃO SÓ FUNCIONA SE O `list` TAMBÉM FILTRAR.
       //

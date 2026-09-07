@@ -865,6 +865,72 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('pos', 'e a condicao de fundador', 'PASSA',
     await escrever('users/' + tio1.uid, dono, { condicaoFundador: S('metade') }, ['condicaoFundador']));
 
+  // ── AS SETE PORTAS QUE A AUTOINSCRICAO ABRIU (06/09/2026) ────────────
+  //
+  // Auditoria depois da virada comercial. Cada caso aqui e um ataque que uma
+  // conta de motorista criada em trinta segundos executava.
+
+  // 1. APAGAR E RECRIAR era a volta por fora de TODA a tranca: some
+  // `suspenso`, some `trialInicio` (90 dias de novo, repetivel pra sempre) e
+  // some `limiteCriancas`. O `update` estava blindado campo a campo; o par
+  // delete -> create passava por fora da lista inteira.
+  const comHistoria = await criarLogin(`historia.${Date.now()}@teste.local`);
+  await semear(`users/${comHistoria.uid}`, {
+    role: S('admin'), name: S('Com Historia'), trialInicio: T(-100), suspenso: B(true),
+  });
+  checar('porta', 'suspenso apaga o proprio doc pra se recriar limpo', 'NEGA',
+    await apagar('users/' + comHistoria.uid, comHistoria));
+  // Conta nova, sem historia, continua podendo sair — e e o caso comum de
+  // LGPD: "criei e me arrependi".
+  const semHistoria = await criarLogin(`limpo.${Date.now()}@teste.local`);
+  await semear(`users/${semHistoria.uid}`, { role: S('admin'), name: S('Limpo') });
+  checar('pos', 'conta sem historia ainda se apaga', 'PASSA',
+    await apagar('users/' + semHistoria.uid, semHistoria));
+
+  // 2. COBRANCA FORJADA na familia de outro motorista. O cliente nunca criou
+  // `payments` — quem cria e a Cloud Function, com Admin SDK.
+  checar('porta', 'motorista cria cobranca apontada pra familia alheia', 'NEGA',
+    await criar('payments', 'forjado-' + Date.now(), tio2, {
+      adminUid: S(tio2.uid), parentUid: S(pai1.uid), amount: N(300), status: S('pending'),
+    }));
+
+  // 3. BUZINA na familia de outro motorista: toca em tela cheia, com o nome de
+  // uma crianca dentro. A consequencia nao e vazamento — e a crianca descendo
+  // para uma van errada.
+  checar('porta', 'motorista buzina na familia de outro', 'NEGA',
+    await criar('pendingCalls', 'buzina-' + Date.now(), tio2, {
+      adminUid: S(tio2.uid), parentUid: S(pai1.uid), childId: S('kid1'),
+      childName: S('Ana'), status: S('ringing'),
+    }));
+  checar('pos', 'mas buzina na propria familia continua', 'PASSA',
+    await criar('pendingCalls', 'ok-' + Date.now(), tio1, {
+      adminUid: S(tio1.uid), parentUid: S(pai1.uid), childId: S('kid1'),
+      childName: S('Ana'), status: S('ringing'),
+    }));
+
+  // 4. CRIANCA PLANTADA na conta de uma familia alheia: `parentUid` e do
+  // `redeemInvite`, e o cadastro grava `null`.
+  checar('porta', 'motorista cadastra crianca apontando familia alheia', 'NEGA',
+    await criar('children', 'plantada-' + Date.now(), tio2, {
+      name: S('Fantasma'), adminUid: S(tio2.uid), parentUid: S(pai1.uid), active: B(true),
+    }));
+
+  // 5. AVALIACAO PRIVADA de terceiro, lida por id. A decisao 12 tirou o
+  // `isAdmin()` do `list` e esqueceu o `get`.
+  await semear('feedbacks/privado1', {
+    uid: S(pai1.uid), role: S('parent'), allowTestimonial: B(false),
+    answers: { mapValue: { fields: { rating: N(2) } } },
+  });
+  checar('porta', 'motorista le a avaliacao privada de um responsavel', 'NEGA',
+    await ler('feedbacks/privado1', tio2));
+  checar('pos', 'o dono le', 'PASSA', await ler('feedbacks/privado1', dono));
+  checar('pos', 'e o autor le a propria', 'PASSA', await ler('feedbacks/privado1', pai1));
+
+  // 6. O PONTEIRO DA VITRINE. A janela do bootstrap ficava aberta sempre que
+  // `appState/init` nao existisse — e o primeiro cadastrado apontava pra si.
+  checar('porta', 'motorista cria appState/init apontando pra si', 'NEGA',
+    await criar('appState', 'novo-' + Date.now(), tio2, { adminUid: S(tio2.uid) }));
+
   // ── VARIOS DONOS, E O LEGADO `superAdmin` NAO ABRE MAIS NADA ─────────
   //
   // `isOwner()` sempre checou o PAPEL, nunca a identidade — duas contas com

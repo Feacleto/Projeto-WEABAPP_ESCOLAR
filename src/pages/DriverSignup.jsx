@@ -6,7 +6,6 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { ArtRoad } from '../components/landing/BlockArt';
-import AssociadosCard from '../components/landing/AssociadosCard';
 import { inscreverAssociado } from '../services/associadoService';
 import { useAuth } from '../hooks/useAuth';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../compartilhado/masks';
@@ -193,15 +192,22 @@ export default function DriverSignup() {
         </div>
 
         <div className="relative">
+          {/* ⚠️ ESTA TELA PROMETIA UMA FILA E UMA LIGAÇÃO, e o botão dela cria
+            * a conta e entra no app. O texto sobreviveu à decisão 16.
+            *
+            * "Vaga limitada por estrutura" e "a gente chama" descreviam o
+            * modelo em que alguém aprovava — e prometer uma conversa que não
+            * vai acontecer é pior que não prometer nada: a pessoa fica
+            * esperando o telefone tocar em vez de usar o app que já é dela. */}
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80 lg:mt-0">
-            vaga limitada por estrutura
+            3 meses grátis
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
-            Quero ser associado
+            Comece a usar hoje
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-white/65">
-            Você manda seus dados, a gente chama e configura o app com você.
-            Entrar na fila não custa nada e não compromete você.
+            Você preenche, entra e já cadastra a sua turma. Os três meses de
+            teste só começam a contar na sua primeira rota — não no cadastro.
           </p>
 
           <div className="mt-5">
@@ -223,9 +229,18 @@ export default function DriverSignup() {
 
       <div className="flex flex-1 flex-col px-6 py-6 lg:px-12 lg:py-16">
         <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col">
-        {/* Mesmo cartão da folha da home: um lugar só pra contagem, senão
-          * uma tela diz "1" e a outra diz "um" no dia em que virar 2. */}
-        <AssociadosCard className="mb-5" />
+        {/* ⚠️ O CARTÃO DE ESCASSEZ SAIU DAQUI EM 06/09/2026.
+          *
+          * Ele mostrava "1 associado atendido hoje" — número FIXO no código,
+          * sem prop, sem `getShowcase` — ao lado de "vaga limitada por
+          * estrutura", numa página pública de aquisição onde o cadastro é
+          * ABERTO. Escassez declarada onde qualquer um se cadastra em trinta
+          * segundos é falsa por construção, e contador inventado em peça de
+          * aquisição é o mesmo passivo de CDC art. 37 que desligou o
+          * `PISO_DA_VITRINE` e apagou o `config/rodada.js`.
+          *
+          * Era o último resto da fila: a decisão 16 tirou a porta, e a
+          * promessa de porta estreita ficou. */}
 
         <form onSubmit={onSubmit} className="space-y-4">
           <Input
@@ -333,7 +348,7 @@ export default function DriverSignup() {
           </div>
 
           <Button type="submit" loading={submitting} icon={Bus}>
-            Quero minha vaga
+            Criar minha conta
           </Button>
           <p className="text-xs text-textMuted text-center">
             Sem cobrança e sem compromisso.

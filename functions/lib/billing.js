@@ -142,8 +142,21 @@ async function generateForMonth(db, monthKey, adminUid = null) {
       parentUid: child.parentUid,
       month: monthKey,
       amount: fee,
+      // MEIO-DIA, E NAO MEIA-NOITE. As functions rodam em UTC — nao ha `TZ`
+      // no `firebase.json` nem no `package.json`, e o `timeZone` do
+      // `onSchedule` governa so o gatilho, nunca o `new Date()` de dentro.
+      //
+      // A 00:00, um vencimento combinado para o dia 10 nascia
+      // `2026-10-10T00:00Z`, que no Brasil e 09/10 as 21h: a tela do
+      // responsavel imprimia "Vence: 09/10", `statusPagamento` o marcava
+      // atrasado 27 horas cedo, e o e-mail de "vence hoje" — que usa outra
+      // conta, com `startOfDay` em UTC — disparava no dia 10. A tela e o
+      // e-mail discordavam sobre a mesma data.
+      //
+      // `dataDeVencimento` da taxa ja fazia certo, com este mesmo comentario.
+      // O CLAUDE.md chegou a afirmar que este arquivo tambem fazia.
       dueDate: admin.firestore.Timestamp.fromDate(
-        new Date(year, month - 1, safeDueDay)
+        new Date(year, month - 1, safeDueDay, 12, 0, 0)
       ),
       status: 'pending',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),

@@ -63,15 +63,18 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
     : null;
   const dias = venc ? Math.floor((new Date() - venc) / 86400000) : 0;
 
-  // O número que dá o susto verdadeiro: o que ELE tem a receber e não
-  // consegue cobrar enquanto estiver parado.
+  // ⚠️ `fatura.base` NÃO EXISTE MAIS, e este é o MESMO bug pela terceira vez.
   //
-  // `base` é o campo que `fecharFatura` grava — a soma das mensalidades das
-  // crianças ativas dele no mês. Aqui se lia `baseDoMes`, nome que nenhum
-  // gravador produzia: o cartão de suspensão caía calado no galho sem número
-  // ("Seu acesso está suspenso") justamente na hora em que o número é o
-  // argumento inteiro.
-  const aReceber = Number(fatura?.base) || 0;
+  // Ele já foi `baseDoMes` — "nome que nenhum gravador produzia" — e virou
+  // `base`. Em 06/09/2026 o preço passou a ser de tabela, `fecharFatura`
+  // encolheu à metade e `base` saiu junto: o cartão voltou a mostrar R$ 0,00
+  // exatamente onde o número é o argumento inteiro.
+  //
+  // A soma das mensalidades deixou de ser calculada de propósito — ela exigia
+  // varrer `children` da plataforma inteira. O que a fatura guarda agora é
+  // quantas crianças ele tem, e é isso que o cartão passa a dizer: menos
+  // impressionante que um valor em reais, e verdadeiro.
+  // (o número de crianças já chega por prop, de quem tem a contagem viva)
 
   const fechar = () => {
     setFechado(true);
@@ -137,20 +140,19 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
         {suspenso ? (
           <>
             <h2 className="mt-2 text-[19px] font-extrabold leading-tight tracking-tight">
-              {aReceber > 0 ? (
+              {criancas > 0 ? (
                 <>
-                  Você tem {formatBRL(aReceber)}
+                  {criancas} {criancas === 1 ? 'família' : 'famílias'}
                   <br />
-                  travados pra receber
+                  sem cobrança pelo app
                 </>
               ) : (
                 'Seu acesso está suspenso'
               )}
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-white/70">
-              Sem o app você não emite nem dá baixa em mensalidade nenhuma
-              {criancas > 0 ? ` das ${criancas} famílias` : ''} — volta a cobrar
-              no caderno e de porta em porta.
+              Sem o app você não emite nem dá baixa em mensalidade nenhuma —
+              volta a cobrar no caderno e de porta em porta.
             </p>
             <div className="mt-3 rounded-xl border border-[#E8867C]/30 bg-[#A32017]/25 p-3">
               <p className="text-[13px] font-bold">
@@ -171,7 +173,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-warningText/85">
               Você continua trabalhando normal — por enquanto. Se o acesso for
               suspenso, <strong>você para de cobrar as mensalidades pelo app</strong>
-              {aReceber > 0 ? ` e ${formatBRL(aReceber)} do mês voltam pro caderno` : ''}.
+              {criancas > 0 ? ` das suas ${criancas} famílias` : ''}.
             </p>
           </>
         )}

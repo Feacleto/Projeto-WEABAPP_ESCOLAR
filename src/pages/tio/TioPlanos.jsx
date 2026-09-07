@@ -4,7 +4,7 @@ import { ArrowLeft, Check, MessageCircle, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
-import { formatCurrency } from '../../compartilhado/formatters';
+import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
 import { salesWhatsAppLink } from '../../config/developer';
 import { contratarPlano } from '../../services/contratacaoService';
 import { montarContrato } from '../../dominio/associacao/contratoAssociacao.js';
@@ -42,11 +42,15 @@ import {
  * com o valor de tabela riscado ao lado — desconto que só aparece na fatura,
  * um mês depois, não ajuda ninguém a decidir hoje.
  *
- * O QUE AINDA NÃO ESTÁ AQUI, e está marcado no lugar: aceitar o plano ainda
- * abre o WhatsApp do consultor. A emissão de contrato pelo próprio motorista
- * mexe em `contratosAssociacao` e em `limiteCriancas` — que hoje só o dono
- * escreve —, e essas duas rules são a parte de dinheiro do sistema. Botão que
- * promete autoatendimento e cai numa tela quebrada é pior que botão honesto.
+ * ELE CONTRATA AQUI DENTRO desde 06/09/2026. Este parágrafo dizia o contrário
+ * — "aceitar o plano ainda abre o WhatsApp do consultor" — e continuou dizendo
+ * depois de o botão existir, vinte linhas abaixo.
+ *
+ * A objeção que ele levantava era real: emitir contrato mexe em
+ * `contratosAssociacao` e em `limiteCriancas`, que são a parte de dinheiro do
+ * sistema. A saída não foi abrir essas rules ao cliente — foi mover a escrita
+ * para o servidor (`contratarPlano`) e fazer a rule do contrato exigir que o
+ * documento bata com a faixa que o servidor gravou.
  */
 export default function TioPlanos() {
   const navigate = useNavigate();
@@ -58,6 +62,7 @@ export default function TioPlanos() {
   const indicacoes = Number(profile?.indicacoesAtivas) || 0;
 
   const [escolhido, setEscolhido] = useState(recomendado?.id || null);
+  const mesAtual = getCurrentMonthKey();
   const [assinando, setAssinando] = useState(false);
 
   // JÁ CONTRATOU? A tela então não é mais de escolha, é de troca de faixa.
@@ -146,7 +151,23 @@ export default function TioPlanos() {
         <div className="space-y-3">
           {PLANOS.map((plano) => {
             const sobram = excedentes(plano, ativas);
-            const preco = precoDoMes({ plano, fundador, indicacoesAtivas: indicacoes });
+            // `descontos` E `mes` SAO OBRIGATORIOS AQUI, e faltavam.
+            //
+            // Esta era a unica das cinco chamadas a `precoDoMes` sem os dois —
+            // e sao eles que carregam a antecipacao (50%) e o premio da roleta
+            // (30%/10%), os unicos descontos que `users.descontos` guarda. O
+            // cabecalho deste arquivo afirma "O PRECO MOSTRADO JA E O DELE", e
+            // era falso: a tela mostrava R$ 149 e a fatura cobrava R$ 74,50.
+            //
+            // Decidir contra um numero que o sistema nao vai cobrar e a forma
+            // mais rapida de perder a confianca de quem esta pagando.
+            const preco = precoDoMes({
+              plano,
+              fundador,
+              indicacoesAtivas: indicacoes,
+              descontos: profile?.descontos,
+              mes: mesAtual,
+            });
             const temDesconto = preco.desconto > 0;
             const selecionado = escolhido === plano.id;
             const cabe = sobram === 0;

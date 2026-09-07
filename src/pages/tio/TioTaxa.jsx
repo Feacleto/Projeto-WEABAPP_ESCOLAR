@@ -169,7 +169,8 @@ function Conteudo() {
                       {formatMonthLabel(f.mes)}
                     </p>
                     <p className="text-[11px] text-textMuted">
-                      {f.criancas} criança(s) · base {formatCurrency(f.base)}
+                      {f.criancasAtivas ?? 0} criança(s) ·{' '}
+                      {f.planoRotulo || 'sem faixa'}
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-primary">
@@ -201,25 +202,32 @@ function FaturaAberta({ fatura }) {
 
       {/* A CONTA ABERTA.
         *
-        * Ele vê de onde saiu o número — quantas crianças e qual o total que ele
-        * mesmo contratou. Valor de cobrança sem a conta do lado é o que
-        * transforma cada fatura numa pergunta, e a pergunta chega no WhatsApp. */}
+        * Ele vê de onde saiu o número — a faixa, o preço de tabela e o desconto
+        * que ele tem. Valor de cobrança sem a conta do lado é o que transforma
+        * cada fatura numa pergunta, e a pergunta chega no WhatsApp.
+        *
+        * ⚠️ ESTA SEÇÃO LIA CINCO CAMPOS QUE DEIXARAM DE EXISTIR quando o preço
+        * virou de tabela em 06/09/2026: `criancas`, `base`, `modo`,
+        * `valorNegociado` e `desconto` eram do modelo negociado. `fecharFatura`
+        * encolheu à metade e ninguém veio conferir quem lia do outro lado — a
+        * tela passou a mostrar "Crianças ativas —" e "Total R$ 0,00" na própria
+        * cobrança da plataforma.
+        *
+        * É o padrão que o CLAUDE.md nomeia como o mais caro do projeto:
+        * comentário que promete garantia sobre um campo cujo gravador mudou. */}
       <div className="mt-3 space-y-0.5 border-t border-neutro pt-3">
-        <Linha label="Crianças ativas" valor={String(fatura.criancas ?? '—')} />
         <Linha
-          label="Total que você cobra"
-          valor={formatCurrency(fatura.base)}
+          label="Crianças ativas"
+          valor={String(fatura.criancasAtivas ?? '—')}
         />
-        {fatura.modo === 'percentual' && fatura.valorNegociado != null && (
-          <Linha
-            label="Taxa combinada"
-            valor={`${fatura.valorNegociado}%`}
-          />
+        <Linha label="Sua faixa" valor={fatura.planoRotulo || '—'} />
+        {fatura.precoTabela != null && (
+          <Linha label="Preço de tabela" valor={formatCurrency(fatura.precoTabela)} />
         )}
-        {fatura.desconto > 0 && (
+        {fatura.descontoTotal > 0 && (
           <Linha
-            label="Desconto"
-            valor={`− ${formatCurrency(fatura.desconto)}`}
+            label="Seu desconto"
+            valor={`− ${Math.round(fatura.descontoTotal * 100)}%`}
           />
         )}
         <Linha label="Total" valor={formatCurrency(fatura.total)} forte />

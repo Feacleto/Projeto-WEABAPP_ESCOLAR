@@ -68,9 +68,24 @@ export const VERSAO_CONTRATO = 3;
 /** Janela padrão para avisar que a vigência está acabando. */
 export const JANELA_DE_RENOVACAO = 60;
 
+/**
+ * Soma meses preservando o dia — e recuando quando o dia não existe no destino.
+ *
+ * ⚠️ `setMonth` sozinho TRANSBORDA: 31/03 + 12 meses vira 31/03/2028? Não —
+ * vira 31 de fevereiro, que o JavaScript normaliza para 02/03. A vigência de
+ * um contrato assinado saía dois dias mais longa, e o hash provava isso.
+ *
+ * Aqui o dia importa (é uma data de vigência, não um mês de referência), então
+ * a saída é grampear no último dia do mês de destino em vez de normalizar
+ * para 1 como `mesDaqui` faz.
+ */
 function somaMeses(data, n) {
   const d = new Date(data);
+  const dia = d.getDate();
+  d.setDate(1);
   d.setMonth(d.getMonth() + n);
+  const ultimoDia = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(dia, ultimoDia));
   return d;
 }
 

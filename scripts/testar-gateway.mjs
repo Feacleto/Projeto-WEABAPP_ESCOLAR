@@ -25,7 +25,7 @@ import {
 import { urlDoAmbiente, SANDBOX, PRODUCAO } from '../functions/lib/asaasApi.js';
 import { assinaturaAteDoMes as noServidor } from '../functions/lib/eventoDeCobranca.js';
 import { assinaturaAteDoMes as noApp } from '../src/dominio/associacao/contaAtiva.js';
-import { PLANOS as planosNoServidor, ANTECIPACAO as antecipacaoNoServidor, dentroDoTrial } from '../functions/lib/contratacao.js';
+import { PLANOS as planosNoServidor, ANTECIPACAO as antecipacaoNoServidor, dentroDoTrial, mesDaqui as mesDaquiContrato, cobertoAteOMesSeguinte } from '../functions/lib/contratacao.js';
 import { PLANOS as planosNoApp, ANTECIPACAO as antecipacaoNoApp, PREMIOS_DA_ROLETA } from '../src/dominio/associacao/planos.js';
 import { PREMIOS as premiosNoServidor, mesDaqui } from '../functions/lib/premioDeConversao.js';
 
@@ -292,6 +292,42 @@ const setembro = new Date(2026, 8, 15, 12);
 checar('1 mês cobre só o mês corrente', '2026-09', mesDaqui(1, setembro));
 checar('2 meses cobrem este e o próximo', '2026-10', mesDaqui(2, setembro));
 checar('12 meses viram o ano', '2027-08', mesDaqui(12, setembro));
+
+bloco('12. As duas cópias de `mesDaqui` — divergiam em um mês inteiro');
+
+// ⚠️ ELAS TINHAM SEMÂNTICAS DIFERENTES. A da contratação somava os meses sem o
+// `-1`, então "12 meses" durava TREZE — meia mensalidade extra por associado
+// antecipado, silenciosa, crescendo com a base. E `npm run testar:gateway`
+// comparava só a TABELA de faixas, nunca a aritmética.
+const jan31 = new Date(2027, 0, 31, 12);
+checar('as duas concordam em 12 meses', mesDaqui(12, setembro), mesDaquiContrato(12, setembro));
+checar('e em 1 mês', mesDaqui(1, setembro), mesDaquiContrato(1, setembro));
+checar('12 meses a partir de setembro terminam em agosto', '2027-08', mesDaquiContrato(12, setembro));
+
+// ⚠️ `setMonth` PRESERVA O DIA, e 31 não existe em todo mês. Girar a roleta em
+// 31/01 com "2 meses" produzia 31/02 → 03/03: TRÊS meses de prêmio de dois.
+checar('31 de janeiro + 2 meses não vaza para março', '2027-02', mesDaqui(2, jan31));
+checar('31 de março + 12 meses não vaza', '2028-02', mesDaqui(12, new Date(2027, 2, 31, 12)));
+// 12 meses INCLUSIVOS a partir de fevereiro de 2028 terminam em janeiro de
+// 2029 — fev/28 é o primeiro dos doze. (Escrevi '2029-02' na primeira versão
+// deste caso; o teste estava errado, não o código.)
+checar('29 de fevereiro bissexto não vaza', '2029-01', mesDaquiContrato(12, new Date(2028, 1, 29, 12)));
+
+bloco('13. Contratar destrava a conta');
+
+// ⚠️ O BECO SEM SAÍDA: `contratarPlano` gravava `planoId` e não `assinaturaAte`
+// — e é só esse campo que `estadoDaConta` e `isAdmin()` consultam. O motorista
+// contratava, aceitava o contrato, voltava ao painel e via a MESMA tela
+// dizendo pra contratar. Depois de ter decidido pagar.
+const emSetembro = cobertoAteOMesSeguinte(setembro);
+checar('contratar cobre até o fim do mês seguinte', '2026-10-31',
+  `${emSetembro.getFullYear()}-${String(emSetembro.getMonth() + 1).padStart(2, '0')}-${String(emSetembro.getDate()).padStart(2, '0')}`);
+// Meio-dia: as functions rodam em UTC, e a data a 00:00 volta um dia no Brasil.
+checar('e nasce ao meio-dia, não à meia-noite', 12, emSetembro.getHours());
+// Dezembro precisa virar o ano — o caso que um cálculo ingênuo erra.
+const emDezembro = cobertoAteOMesSeguinte(new Date(2026, 11, 15, 12));
+checar('dezembro cobre até o fim de janeiro', 2027, emDezembro.getFullYear());
+checar('e o mês é janeiro', 1, emDezembro.getMonth() + 1);
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 
