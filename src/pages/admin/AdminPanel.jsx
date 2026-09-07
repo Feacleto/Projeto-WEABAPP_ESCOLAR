@@ -16,6 +16,7 @@ import Spinner from '../../components/common/Spinner';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import TaxaTab from './TaxaTab';
 import MotoristasTab from '../../components/admin/MotoristasTab';
+import ChamadosTab from '../../components/admin/ChamadosTab';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
@@ -48,13 +49,16 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * 1.900px de largura não se lê, se varre —, abas numa fileira só a partir de
  * `sm`, e as fichas de número abrindo em quatro colunas em `lg`.
  *
- * QUATRO ABAS, E O QUE CADA UMA RESPONDE
+ * CINCO ABAS, E O QUE CADA UMA RESPONDE
  * 1. Motoristas: a lista e a FICHA de cada associado — plano, contrato,
  *    faturas, nota das famílias, nota interna, e o botão de propor. É o dia a
  *    dia, e por isso abre por padrão.
- * 2. Mês: a régua da casa e o fechamento das faturas. É o trabalho mensal.
- * 3. Números: a carteira, o MRR e o funil. É a leitura do negócio.
- * 4. Pesquisa: o que os usuários responderam — inclusive as avaliações de
+ * 2. Chamados: quem pediu ajuda e há quanto tempo espera. `supportTickets`
+ *    recebia desde sempre e NENHUMA tela do dono lia — quem pede ajuda e não
+ *    recebe resposta cancela sem dizer por quê.
+ * 3. Mês: a régua da casa e o fechamento das faturas. É o trabalho mensal.
+ * 4. Números: a carteira, o MRR e o funil. É a leitura do negócio.
+ * 5. Pesquisa: o que os usuários responderam — inclusive as avaliações de
  *    responsável, que nunca vão pra home mas dizem se o app está servindo a
  *    ponta que não paga pela ferramenta.
  *
@@ -199,9 +203,16 @@ export default function AdminPanel() {
           * saiu junto: ela existia porque cinco rótulos em 320px viram texto
           * ilegível, e a saída comum — a tira que rola — esconde o fim, que é
           * como a Taxa ficou invisível por tanto tempo. Com três, cabem. */}
-        <div className="mb-5 space-y-1 rounded-2xl bg-neutro p-1 sm:flex sm:space-y-0 sm:gap-1">
+        {/* CINCO ABAS, E ELAS QUEBRAM EM DUAS LINHAS NO CELULAR.
+          *
+          * `flex-wrap` em vez da tira que rola: tira esconde o fim, e quem não
+          * arrasta nunca descobre que existe mais — foi assim que a Taxa ficou
+          * invisível por tanto tempo. Duas linhas ocupam mais espaço e não
+          * escondem nada. */}
+        <div className="mb-5 flex flex-wrap gap-1 rounded-2xl bg-neutro p-1">
           {[
             ['motoristas', 'Motoristas'],
+            ['chamados', 'Chamados'],
             ['mes', 'Mês'],
             ['numeros', 'Números'],
             ['pesquisa', 'Pesquisa'],
@@ -210,7 +221,7 @@ export default function AdminPanel() {
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`tap rounded-xl py-2.5 text-xs font-bold transition-colors sm:flex-1 ${
+              className={`tap min-w-[5.5rem] flex-1 rounded-xl py-2.5 text-xs font-bold transition-colors ${
                 tab === id ? 'bg-card text-primary shadow-sm' : 'text-textMuted'
               }`}
             >
@@ -220,6 +231,7 @@ export default function AdminPanel() {
         </div>
 
         {tab === 'motoristas' && <MotoristasTab />}
+        {tab === 'chamados' && <ChamadosTab />}
         {tab === 'mes' && <TaxaTab />}
         {tab === 'numeros' && <Geral ov={ov} />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}

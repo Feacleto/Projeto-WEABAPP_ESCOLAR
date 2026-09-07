@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 616 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 653 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth, trial,
                                  # planos, conta, cobranca, gateway, carteira,
                                  # proposta
@@ -223,6 +223,7 @@ src/
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
+│   ├── suporte/       chamados
 │   └── vitrine/       frentes
 ├── marca/             a personalidade: avatarUrl, greeting, festivities,
 │                      travessia. Tem regra, mas de apresentação
@@ -262,7 +263,7 @@ testável, e é essa a troca.
 Import interno do núcleo leva extensão `.js` EXPLÍCITA — o Vite resolve sem, o
 Node não, e é o Node que roda os testes.
 
-### Os seis contextos
+### Os sete contextos
 
 Não são pastas por tipo de arquivo, são as seis conversas diferentes que o
 sistema tem. Regra nova mora no contexto de quem decide sobre ela:
@@ -274,7 +275,12 @@ sistema tem. Regra nova mora no contexto de quem decide sobre ela:
 | `associacao` | quanto o motorista paga à plataforma | dono |
 | `identidade` | quem é essa pessoa e a que ela está ligada | plataforma |
 | `escola` | que escola é essa e quem avisar | motorista |
+| `suporte` | quem pediu ajuda e há quanto tempo espera | plataforma |
 | `vitrine` | o que cada porta pública promete | dono |
+
+`suporte` nasceu em 06/09/2026 e é o sétimo — a tabela dizia SEIS. Ele existe
+porque `supportTickets` recebia desde sempre e nenhuma tela do dono lia: quem
+pede ajuda e não recebe resposta cancela sem dizer por quê.
 
 Os dois dinheiros são contextos SEPARADOS de propósito — misturá-los quebra o
 item 7 dos Termos, e a separação em pastas é o que torna a mistura visível

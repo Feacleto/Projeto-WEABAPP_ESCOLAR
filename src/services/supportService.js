@@ -1,7 +1,12 @@
 import {
   collection,
   addDoc,
+  doc,
+  onSnapshot,
+  query,
+  limit,
   serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { APP_VERSION } from '../version';
@@ -97,4 +102,64 @@ export async function openSupportTicket({ uid, role, category, description }) {
     status: 'open',
     createdAt: serverTimestamp(),
   });
+}
+
+/**
+ * A CAIXA DE ENTRADA DO DONO — e ela não existia até 06/09/2026.
+ *
+ * O motorista E o responsável abrem chamado pelo menu de perfil, `addDoc`
+ * grava, as rules liberam a leitura ao dono — e NENHUMA tela lia. Quem pedia
+ * ajuda não recebia resposta, e não dizia por quê: cancelava.
+ *
+ * `limit` alto e ordenação no cliente, de propósito: a ordem que a caixa
+ * precisa não é a de data (ver `dominio/suporte/chamados.js` — quem espera há
+ * mais tempo vem primeiro), e ordenar isso no Firestore exigiria um índice
+ * composto por um critério que muda de sentido conforme o status.
+ */
+export function watchChamados(cb, onError, max = 300) {
+  return onSnapshot(
+    query(collection(db, COLLECTION), limit(max)),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('[suporte] a caixa não assinou:', err);
+      onError?.(err);
+    }
+  );
+}
+
+/**
+ * Marca que a plataforma respondeu.
+ *
+ * NÃO É "FECHADO", e a diferença é o ponto: a maior parte dos chamados precisa
+ * de uma segunda mensagem antes de acabar. Fundir os dois faria "respondi" e
+ * "resolvi" virarem a mesma coisa — e aí ou a caixa nunca esvazia, ou fecha o
+ * que não terminou.
+ *
+ * O texto da resposta NÃO é gravado: ela sai pelo WhatsApp, que é onde a
+ * conversa continua. Guardar aqui uma cópia do que foi dito criaria um
+ * histórico pela metade — sem o que a pessoa respondeu depois — e é pior que
+ * não ter nenhum.
+ */
+export async function marcarRespondido(id, ownerUid) {
+  if (!id) throw new Error('Sem chamado.');
+  await updateDoc(doc(db, COLLECTION, id), {
+    status: 'respondido',
+    respondidoEm: serverTimestamp(),
+    respondidoPor: ownerUid || null,
+  });
+}
+
+/** Acabou. */
+export async function fecharChamado(id, ownerUid) {
+  if (!id) throw new Error('Sem chamado.');
+  await updateDoc(doc(db, COLLECTION, id), {
+    status: 'fechado',
+    fechadoEm: serverTimestamp(),
+    fechadoPor: ownerUid || null,
+  });
+}
+
+/** O rótulo da categoria, para a tela e para o texto da resposta. */
+export function rotuloDaCategoria(valor) {
+  return SUPPORT_CATEGORIES.find((c) => c.value === valor)?.label || 'Outro problema';
 }

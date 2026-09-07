@@ -108,7 +108,7 @@ Você lê e edita antes de enviar. **Nada sai sem você ver.**
 
 ---
 
-# Fase 9 · A caixa de chamados
+# ✅ Fase 9 · A caixa de chamados — FEITA em 06/09/2026
 
 **Por que agora:** é a maior lacuna do painel, e é a única em que alguém já
 está falando com você.
@@ -127,10 +127,18 @@ dono lê**. Quem pede ajuda e não recebe resposta cancela, e não diz por quê.
 | 9.4 | O chamado aparece na ficha de quem o abriu |
 | 9.5 | Contador de chamados sem resposta, para a fila da Fase 11 |
 
+**Os cinco itens entregues**, e o painel voltou a ter cinco abas: Motoristas ·
+**Chamados** · Mês · Números · Pesquisa. Elas quebram em duas linhas no celular
+com `flex-wrap` — a tira que rola esconde o fim, e foi assim que a Taxa ficou
+invisível por tanto tempo.
+
+A régua ficou pura em `dominio/suporte/chamados.js` (27 casos), e ela nasceu com
+o SÉTIMO contexto do projeto — a tabela do CLAUDE.md dizia seis.
+
 ⚠️ **Chamado de responsável não é chamado de motorista.** O responsável é
 cliente do motorista, não seu — responder direto a ele passa por cima de quem
-presta o serviço. A caixa separa os dois, e o de responsável normalmente vira
-"avisar o motorista dele".
+presta o serviço. A caixa separa os dois, e a TELA diz isso: o de responsável
+sugere avisar o motorista dele em vez de responder por cima.
 
 ---
 

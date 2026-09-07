@@ -60,6 +60,30 @@ export async function listarParceiros() {
 }
 
 /**
+ * TODOS os usuários do app — motoristas e responsáveis.
+ *
+ * Existe porque a caixa de chamados precisa do NOME e do TELEFONE de quem
+ * abriu, e `supportTickets` guarda só o `uid` e o papel. E o chamado vem dos
+ * dois lados: `listarParceiros` acima traz só `role == 'admin'`, então usá-la
+ * ali deixaria todo chamado de família sem nome e sem botão de responder.
+ *
+ * Só o dono lista `users` (`allow list: if isOwner()`), e são dezenas de
+ * documentos pequenos — uma leitura na abertura da tela, não uma por chamado.
+ */
+export async function listarUsuarios() {
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    return {
+      lista: snap.docs.map((d) => ({ uid: d.id, ...d.data() })),
+      falhou: false,
+    };
+  } catch (err) {
+    console.error('[users] não deu pra listar:', err);
+    return { lista: [], falhou: true };
+  }
+}
+
+/**
  * Marca que o usuário concluiu o tutorial de boas-vindas.
  *
  * Esse update é permitido pelas Firestore rules: o dono do doc users/{uid}
