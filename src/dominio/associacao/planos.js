@@ -58,6 +58,24 @@ export const FUNDADOR = {
   METADE: 'metade',
 };
 
+/**
+ * QUANTAS CONDIÇÕES DE FUNDADOR EXISTEM — e por que isto precisou virar número.
+ *
+ * São 1 vitalício e 12 pela metade: treze, e acabou. O desenho inteiro do
+ * desconto depende disso — "só fundador chega a zero" só é verdade enquanto o
+ * conjunto for pequeno e fechado.
+ *
+ * Só que não havia contador nenhum. `condicaoFundador` era um campo que o dono
+ * escrevia por motorista, sem nada somando: dava para conceder o 14º sem
+ * perceber, e o vitalício NÃO EXPIRA — o erro não se conserta no mês seguinte.
+ *
+ * Quem conta é `contarFundadores` em `concessao.js`. A régua mora aqui porque é
+ * política de preço, e a política é o que a ficha precisa mostrar antes de o
+ * dono clicar.
+ */
+export const FUNDADORES_VITALICIO = 1;
+export const FUNDADORES_METADE = 12;
+
 /** Cada indicação ativa vale isto. */
 export const DESCONTO_POR_INDICACAO = 0.1;
 /** E o total das indicações para aqui — cinco zeram metade da conta. */
@@ -168,6 +186,19 @@ export function isentoEm(isencaoAte, mes) {
 export const ORIGEM = {
   ANTECIPACAO: 'antecipacao',
   ROLETA: 'roleta',
+  /**
+   * A EXCEÇÃO, e ela é diferente das outras duas em espécie.
+   *
+   * `antecipacao` e `roleta` são RÉGUA: quem cumpre a condição ganha, sempre, e
+   * ninguém decide caso a caso. `concessao` é o dono abrindo mão de dinheiro
+   * para uma pessoa específica, por um motivo específico.
+   *
+   * Misturar as duas na mesma leitura é como o orçamento volta: seis meses
+   * depois, metade da carteira tem "desconto" e ninguém sabe dizer qual parte é
+   * política e qual é exceção. Por isso a origem é separada, o painel as
+   * separa, e a concessão exige motivo e prazo (`concessao.js`).
+   */
+  CONCESSAO: 'concessao',
 };
 
 /** Arredonda para centavo. Uma vez, aqui, e não em cada `toFixed` de tela. */
@@ -249,7 +280,7 @@ export function descontoDeIndicacoes(indicacoesAtivas) {
  */
 export function descontosVigentes(descontos, mes) {
   const m = String(mes || '');
-  const soma = { antecipacao: 0, roleta: 0 };
+  const soma = { antecipacao: 0, roleta: 0, concessao: 0 };
 
   // SEM MES DE REFERENCIA, NENHUM DESCONTO VALE — e antes valiam TODOS.
   //
@@ -266,6 +297,7 @@ export function descontosVigentes(descontos, mes) {
     const fracao = Math.max(0, Number(d.fracao) || 0);
     if (d.origem === ORIGEM.ANTECIPACAO) soma.antecipacao += fracao;
     else if (d.origem === ORIGEM.ROLETA) soma.roleta += fracao;
+    else if (d.origem === ORIGEM.CONCESSAO) soma.concessao += fracao;
   });
   return soma;
 }
@@ -307,13 +339,18 @@ export function precoDoMes({
   const dAntecipacao = comPrazo.antecipacao;
   const dIndicacao = descontoDeIndicacoes(indicacoesAtivas);
   const dRoleta = comPrazo.roleta;
+  // A CONCESSÃO SOMA, não compete. Ela é exceção sobre a régua, não outra
+  // régua: quem já tem metade por ser fundador e recebe 20% de concessão fica
+  // com 70%. O teto de 100% abaixo continua sendo o que impede fatura
+  // negativa.
+  const dConcessao = comPrazo.concessao;
 
   // Ver `FUNDADOR_E_ANTECIPACAO_SOMAM`: por padrão vale o maior dos dois.
   const base = FUNDADOR_E_ANTECIPACAO_SOMAM
     ? dFundador + dAntecipacao
     : Math.max(dFundador, dAntecipacao);
 
-  const desconto = Math.min(1, base + dIndicacao + dRoleta);
+  const desconto = Math.min(1, base + dIndicacao + dRoleta + dConcessao);
 
   return {
     bruto: centavos(plano.preco),
@@ -322,6 +359,7 @@ export function precoDoMes({
     descontoAntecipacao: dAntecipacao,
     descontoIndicacao: dIndicacao,
     descontoRoleta: dRoleta,
+    descontoConcessao: dConcessao,
     liquido: centavos(plano.preco * (1 - desconto)),
     motivo: null,
   };

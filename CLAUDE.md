@@ -17,10 +17,10 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 724 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 777 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth, trial,
                                  # planos, conta, cobranca, gateway, carteira,
-                                 # proposta, chamados, risco, fila
+                                 # proposta, chamados, risco, fila, concessao
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — idem, com --only storage
 npm run build
@@ -219,7 +219,7 @@ src/
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
 │   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
-│   │                  carteira, proposta, risco, fila
+│   │                  carteira, proposta, risco, fila, concessao
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors
 │   ├── escola/        nomeEscola
@@ -856,6 +856,31 @@ de uma function seria esperar cold start com o passageiro na porta. O caso
 `uso` em `testar-regras.mjs` existe para essa decisão aparecer se alguém
 mudá-la.
 
+**A CONCESSÃO é a porta pela qual o orçamento pode voltar, e prazo e motivo
+são a tranca** — [concessao.js](src/dominio/associacao/concessao.js)
+(`npm run testar:concessao`). Ela existe porque retenção real precisa de
+exceção: um associado bom, num mês ruim, pede desconto, e "não" é a resposta
+que o faz cancelar. O que não pode é a exceção virar a regra sem ninguém ter
+decidido isso.
+
+⚠️ **O REGISTRO E O EFEITO SÃO CAMPOS DIFERENTES, E VÃO NO MESMO LOTE.**
+`users.concessoes` guarda tipo, prazo, motivo, quem concedeu e quando;
+`users.descontos` (ou `users.isencaoAte`) é o que `precoDoMes` e `fecharFatura`
+leem — elas cobram, não julgam, e não sabem o que é uma concessão. Separados,
+existiria a concessão registrada que nunca chega na fatura, ou o desconto que
+ninguém explica. Mesma amarra de `planoId` + `limiteCriancas`.
+
+**Uma concessão por vez: a nova SUBSTITUI a anterior.** Empilhar é como o preço
+desanda sem decisão — 30% em março mais 30% em agosto, e a ficha diz 30%
+enquanto a fatura cobra 60%. A ficha mostra as condições vigentes com a espécie
+de cada uma (**régua** ou **exceção**), e sem essa coluna "50% de fundador" e
+"50% de concessão" parecem a mesma coisa.
+
+**E existe um CONTADOR DE FUNDADORES**, que não existia: são 1 vitalício + 12
+pela metade e nada os somava, então dava para conceder o 14º sem perceber — e o
+vitalício não expira. `contarFundadores` deixa `restam` ficar **negativo** de
+propósito: zerar em zero esconderia justamente o caso que ele pega.
+
 **A data decide, o contador contextualiza.** `ultimaRota` não desanda;
 `rotasNoMes` é contador, e contador desanda — `criancasAtivas` já ensinou isso
 aqui. Por isso o risco se resolve pela data, e o contador só aparece na ficha:
@@ -871,7 +896,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (168 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (171 casos, com
 atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
 emulador, então rode à mão antes de publicar rule).
 

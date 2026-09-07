@@ -284,6 +284,35 @@ são a tranca. E se daqui a três meses metade dos associados tiver concessão
 ativa, **a tabela é que está errada** — o painel mostra isso em vez de esconder
 numa média.
 
+**Os sete itens entregues.** A régua ficou pura em
+`dominio/associacao/concessao.js` (53 casos, `npm run testar:concessao`), e
+`users.concessoes` nasceu já na lista de campos que o cliente não escreve — com
+três casos em `testar:regras` (171 no total).
+
+⚠️ **REGISTRO E EFEITO SÃO CAMPOS DIFERENTES, E VÃO NO MESMO LOTE.**
+`users.concessoes` guarda tipo, prazo, motivo, quem concedeu e quando — é o que
+alguém lê seis meses depois. `users.descontos` (ou `users.isencaoAte`) é o que
+`precoDoMes` e `fecharFatura` leem para a conta sair menor; nenhuma das duas
+sabe o que é uma concessão, e não deveria — elas cobram, não julgam.
+
+Separados, existiriam os dois estados errados: a concessão registrada que nunca
+chega na fatura (e o associado paga cheio depois de ouvir que não pagaria), e o
+desconto na fatura que ninguém consegue explicar. É a mesma amarra de `planoId`
++ `limiteCriancas`.
+
+⚠️ **UMA CONCESSÃO POR VEZ — a nova substitui a anterior.** Empilhar é como o
+preço desanda sem ninguém decidir: 30% em março mais 30% em agosto, e a ficha
+diz 30% enquanto a fatura cobra 60%.
+
+⚠️ **Isenção não é desconto de 100%**, e a folha recusa 100% mandando usar o
+outro botão. Uma diz que o mês não tem fatura, a outra produz fatura de R$ 0 —
+os dois chegam a zero e contam histórias diferentes no extrato.
+
+**12.6 entregue, e o contador aceita ficar negativo.** `restamVitalicio: -1` é
+exatamente o caso que ele existe para pegar; zerar em zero o esconderia. A
+linha aparece acima da lista de motoristas, e fica âmbar quando estourou ou
+quando metade da carteira tem exceção ativa.
+
 ---
 
 # Fase 13 · O selo

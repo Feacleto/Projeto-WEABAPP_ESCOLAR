@@ -7,6 +7,7 @@ import { carregarConsole } from '../../services/adminMetricsService';
 import { suspenderParceiro } from '../../services/taxaService';
 import { degrauDo, mensalidadeDe } from '../../dominio/associacao/carteira.js';
 import { pesoDoRisco, riscoDo } from '../../dominio/associacao/risco.js';
+import { contarFundadores, resumirConcessoes } from '../../dominio/associacao/concessao.js';
 import { diasRestantes } from '../../dominio/associacao/trial.js';
 import { planoPorId } from '../../dominio/associacao/planos.js';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
@@ -140,6 +141,8 @@ export default function MotoristasTab({ inicial = null }) {
       {/* No celular a lista SOME quando há ficha aberta — duas superfícies
         * empilhadas em 360px viram uma rolagem que ninguém percorre. */}
       <div className={aberto ? 'hidden lg:block' : ''}>
+        <Fundadores parceiros={dados?.parceiros} mes={mes} />
+
         <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-card px-3">
           <Search size={14} className="shrink-0 text-textMuted" />
           <input
@@ -212,6 +215,7 @@ export default function MotoristasTab({ inicial = null }) {
             mes={mes}
             onVoltar={() => setEscolhido(null)}
             onSuspender={suspender}
+            onMudou={carregar}
           />
         ) : (
           // Vazio que ORIENTA, e não um retângulo em branco: a coluna da
@@ -224,6 +228,49 @@ export default function MotoristasTab({ inicial = null }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * O CONTADOR DE FUNDADORES — o que não existia, e é dinheiro.
+ *
+ * São 1 vitalício e 12 pela metade, e nada os somava: `condicaoFundador` era um
+ * campo por motorista, escrito um de cada vez, sem nenhuma tela dizendo quantos
+ * já saíram. Dava para conceder o 14º sem perceber — e o vitalício NÃO EXPIRA,
+ * então o erro não se conserta no mês seguinte.
+ *
+ * ⚠️ ELE MOSTRA A FRAÇÃO DE CONCESSÕES AO LADO, e isso não é enfeite: uma
+ * exceção é retenção, trinta são um preço que ninguém teve coragem de mudar na
+ * tabela. A distribuição só aparece se estiver na tela — diluída numa média de
+ * receita, ela some.
+ */
+function Fundadores({ parceiros, mes }) {
+  const f = contarFundadores(parceiros);
+  const c = resumirConcessoes(parceiros, mes);
+  if (!parceiros?.length) return null;
+
+  const estourou = f.restamVitalicio < 0 || f.restamMetade < 0;
+  const muitas = c.fracao !== null && c.fracao >= 0.5;
+
+  return (
+    <div
+      className={`mb-2 rounded-xl border p-2.5 text-[11px] leading-relaxed ${
+        estourou || muitas
+          ? 'border-warningBorder bg-warningSoft text-warningText'
+          : 'border-border bg-card text-textMuted'
+      }`}
+    >
+      <span className="font-bold">
+        Fundadores: {f.total} de {f.limite}
+      </span>
+      {estourou && <span className="block">Passou do combinado — o vitalício não expira.</span>}
+      {c.comConcessao > 0 && (
+        <span className="block">
+          {c.comConcessao} com concessão ativa
+          {muitas && ' — se metade da carteira tem exceção, a tabela é que está errada.'}
+        </span>
+      )}
     </div>
   );
 }

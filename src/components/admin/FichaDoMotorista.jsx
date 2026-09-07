@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Ban,
   FileText,
+  HandCoins,
   MessageSquare,
   Receipt,
   Route,
@@ -14,15 +15,22 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ContratoDoc from './ContratoDoc';
+import ConcederSheet from './ConcederSheet';
 import Spinner from '../common/Spinner';
 import { formatCurrency, formatMonthLabel } from '../../compartilhado/formatters';
 import { degrauDo, mensalidadeDe } from '../../dominio/associacao/carteira.js';
+import { condicoesVigentes } from '../../dominio/associacao/concessao.js';
 import { diasSemRodar } from '../../dominio/associacao/risco.js';
 import { diasRestantes } from '../../dominio/associacao/trial.js';
 import { estadoDaConta } from '../../dominio/associacao/contaAtiva.js';
 import { linkDaProposta, mensagemDeProposta } from '../../dominio/associacao/proposta.js';
 import { planoPara, planoPorId } from '../../dominio/associacao/planos.js';
-import { getParceiro, setNotaInterna, watchFaturasDoParceiro } from '../../services/taxaService';
+import {
+  getParceiro,
+  revogarConcessao,
+  setNotaInterna,
+  watchFaturasDoParceiro,
+} from '../../services/taxaService';
 import { contratoVigente } from '../../services/contratoAssociacaoService';
 import { gmvDoParceiro } from '../../services/adminMetricsService';
 
@@ -69,12 +77,14 @@ export default function FichaDoMotorista({
   mes,
   onVoltar,
   onSuspender,
+  onMudou,
 }) {
   const [parceiro, setParceiro] = useState(null);
   const [contrato, setContrato] = useState(undefined);
   const [faturas, setFaturas] = useState(null);
   const [gmv, setGmv] = useState(undefined);
   const [verContrato, setVerContrato] = useState(false);
+  const [concedendo, setConcedendo] = useState(false);
 
   const uid = motorista?.uid;
 
@@ -163,6 +173,14 @@ export default function FichaDoMotorista({
               Sem telefone cadastrado
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => setConcedendo(true)}
+            className="tap inline-flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold text-text"
+          >
+            <HandCoins size={13} />
+            Conceder
+          </button>
           <button
             type="button"
             onClick={() => onSuspender?.(motorista)}
@@ -335,9 +353,102 @@ export default function FichaDoMotorista({
           )}
         </Bloco>
 
+        <Condicoes motorista={motorista} mes={mes} onMudou={onMudou} />
+
         <NotaInterna uid={uid} parceiro={parceiro} />
       </div>
+
+      {concedendo && (
+        <ConcederSheet
+          motorista={motorista}
+          onFechar={() => setConcedendo(false)}
+          onPronto={onMudou}
+        />
+      )}
     </div>
+  );
+}
+
+/* ─────────────── as condições especiais ─────────────── */
+
+/**
+ * TUDO O QUE ESTE ASSOCIADO TEM DE CONDIÇÃO ESPECIAL, com a espécie de cada.
+ *
+ * ⚠️ A COLUNA "RÉGUA / EXCEÇÃO" É O PONTO DA TABELA. Sem ela, "50%" de fundador
+ * e "50%" de concessão parecem a mesma coisa — e são opostas: uma é política
+ * que vale para todo mundo que se qualificar, a outra é dinheiro que o dono
+ * abriu mão para uma pessoa.
+ *
+ * É essa distinção que impede o modelo negociado de voltar por dentro: sem ela,
+ * seis meses depois metade da carteira tem "desconto" e ninguém sabe dizer qual
+ * parte é tabela.
+ */
+function Condicoes({ motorista, mes, onMudou }) {
+  const [revogando, setRevogando] = useState(false);
+  const linhas = condicoesVigentes(motorista, mes);
+  const temExcecao = linhas.some((l) => l.especie === 'excecao');
+
+  const revogar = async () => {
+    setRevogando(true);
+    try {
+      await revogarConcessao(motorista.uid);
+      toast.success('Concessão revogada.');
+      onMudou?.();
+    } catch (err) {
+      toast.error(err.message || 'Não deu pra revogar.');
+    } finally {
+      setRevogando(false);
+    }
+  };
+
+  return (
+    <Bloco icon={HandCoins} titulo="Condições vigentes">
+      {!linhas.length ? (
+        // Paga a tabela cheia — e isso é uma informação, não um vazio.
+        <p className="text-xs text-textMuted">
+          Nenhuma. Ele paga o preço de tabela da faixa dele.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {linhas.map((l) => (
+            <li key={l.id} className="border-b border-border pb-1.5 last:border-0 last:pb-0">
+              <p className="flex items-baseline justify-between gap-3">
+                <span className="flex min-w-0 items-baseline gap-1.5">
+                  <span
+                    className={`shrink-0 rounded px-1 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
+                      l.especie === 'excecao'
+                        ? 'bg-warningSoft text-warningText'
+                        : 'bg-neutro text-textMuted'
+                    }`}
+                  >
+                    {l.especie === 'excecao' ? 'exceção' : 'régua'}
+                  </span>
+                  <span className="truncate text-textMuted">{l.rotulo}</span>
+                </span>
+                <span className="shrink-0 text-right font-bold text-text">{l.valor}</span>
+              </p>
+              <p className="mt-0.5 text-[11px] text-textMuted">
+                {/* ⚠️ "não expira" É UM AVISO, não um detalhe: o vitalício não
+                  * se conserta no mês seguinte. */}
+                {l.ate ? `até ${l.ate}` : 'não expira'}
+                {l.motivo ? ` · ${l.motivo}` : ''}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {temExcecao && (
+        <button
+          type="button"
+          onClick={revogar}
+          disabled={revogando}
+          className="tap mt-3 text-xs font-bold text-dangerText underline disabled:opacity-40"
+        >
+          {revogando ? 'Revogando…' : 'Revogar a concessão'}
+        </button>
+      )}
+    </Bloco>
   );
 }
 

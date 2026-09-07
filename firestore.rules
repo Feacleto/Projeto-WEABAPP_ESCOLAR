@@ -574,7 +574,13 @@ service cloud.firestore {
                        // quem COBRA, nunca pelo cobrado — é a mesma forma de
                        // `limiteCriancas`, e pelo mesmo motivo.
                        'planoId', 'condicaoFundador', 'indicacoesAtivas',
-                       'descontos', 'isencaoAte'])
+                       'descontos', 'isencaoAte',
+                       // A CONCESSÃO — o registro da exceção (tipo, prazo,
+                       // motivo, quem concedeu). O EFEITO dela já está na
+                       // lista: `descontos` para o desconto, `isencaoAte` para
+                       // os meses sem fatura, e os três vão no mesmo write
+                       // (`conceder` em taxaService).
+                       'concessoes'])
       ) || (
         isSignedIn()
         // PRIVILÉGIO E GESTÃO: NINGUÉM ESCREVE DAQUI, NEM EM SI MESMO.
@@ -626,7 +632,17 @@ service cloud.firestore {
                // combinação que não deveria existir: preço de uma faixa com
                // teto de outra.
                'planoId', 'condicaoFundador', 'indicacoesAtivas',
-               'descontos', 'isencaoAte'
+               'descontos', 'isencaoAte',
+               // `concessoes` É CLÁUSULA, e da espécie mais perigosa: ela é a
+               // exceção que o dono abre à tabela. Livre, o motorista se
+               // concede 90% por doze meses com o motivo que quiser, e a
+               // fatura sai obedecendo — `precoDoMes` não julga concessão, ele
+               // soma a fração que encontrar.
+               //
+               // O campo nasceu em 06/09/2026 já nesta lista. Todo campo que
+               // decide dinheiro que entrou aqui DEPOIS foi um furo antes de
+               // ser uma regra, e este é o padrão que a decisão 12 nomeia.
+               'concessoes'
              ])
 
         // `trialInicio` — GRAVÁVEL UMA VEZ, NUNCA ALTERÁVEL.

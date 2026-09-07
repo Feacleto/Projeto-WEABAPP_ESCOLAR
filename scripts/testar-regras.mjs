@@ -886,6 +886,39 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('pos', 'e a condicao de fundador', 'PASSA',
     await escrever('users/' + tio1.uid, dono, { condicaoFundador: S('metade') }, ['condicaoFundador']));
 
+  // ── A CONCESSAO (06/09/2026) ─────────────────────────────────────────
+  //
+  // Ela e a clausula mais perigosa da lista, e nasceu ja protegida.
+  //
+  // `concessoes` e a EXCECAO que o dono abre a tabela. Livre, o motorista se
+  // concede 90% por doze meses com o motivo que quiser, e a fatura sai
+  // obedecendo: `precoDoMes` nao julga concessao, ele soma a fracao que
+  // encontrar. O efeito ja estava barrado (`descontos`, `isencaoAte`), mas o
+  // REGISTRO tambem precisa estar — senao a ficha mostraria uma concessao que
+  // o dono nunca abriu, e a proxima tela que ler dali gravaria o efeito.
+  const CONCESSAO = {
+    arrayValue: {
+      values: [
+        {
+          mapValue: {
+            fields: {
+              tipo: S('desconto'),
+              fracao: N(0.9),
+              ate: S('2027-12'),
+              motivo: S('porque eu quis'),
+            },
+          },
+        },
+      ],
+    },
+  };
+  checar('preco', 'o motorista se concede 90%', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1, { concessoes: CONCESSAO }, ['concessoes']));
+  checar('preco', 'nem o vizinho concede pra ele', 'NEGA',
+    await escrever('users/' + tio1.uid, tio2, { concessoes: CONCESSAO }, ['concessoes']));
+  checar('pos', 'o dono concede', 'PASSA',
+    await escrever('users/' + tio1.uid, dono, { concessoes: CONCESSAO }, ['concessoes']));
+
   // ── AS SETE PORTAS QUE A AUTOINSCRICAO ABRIU (06/09/2026) ────────────
   //
   // Auditoria depois da virada comercial. Cada caso aqui e um ataque que uma

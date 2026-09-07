@@ -27,6 +27,11 @@ import {
   precoDoMes,
 } from '../dominio/associacao/planos.js';
 import { assinaturaAteDoMes } from '../dominio/associacao/contaAtiva.js';
+import {
+  TIPO as TIPO_CONCESSAO,
+  descontoDaConcessao,
+  montarConcessao,
+} from '../dominio/associacao/concessao.js';
 
 export { dataDeVencimento, isentoEm, limitarDiaVencimento, planoPorId, precoDoMes };
 
@@ -296,6 +301,96 @@ export async function setIsencao(uid, isencaoAte) {
   await setDoc(doc(db, 'users', uid), { isencaoAte: isencaoAte || null }, { merge: true });
 }
 
+/**
+ * CONCEDER — a exceção, com registro e efeito no MESMO lote.
+ *
+ * ── POR QUE SÃO DUAS ESCRITAS E NÃO UMA
+ * `users.concessoes` é o REGISTRO: tipo, prazo, motivo, quem concedeu e
+ * quando. É o que alguém lê seis meses depois para entender a decisão.
+ *
+ * `users.descontos` (ou `users.isencaoAte`) é o EFEITO: é o que `precoDoMes` e
+ * `fecharFatura` leem para a conta sair menor. Nenhuma das duas funções sabe o
+ * que é uma concessão, e não deveria — elas cobram, não julgam.
+ *
+ * ⚠️ SEPARADAS, EXISTIRIAM OS DOIS ESTADOS ERRADOS: a concessão registrada que
+ * nunca chega na fatura (e o associado paga cheio depois de ouvir que não
+ * pagaria), e o desconto na fatura que ninguém consegue explicar. É a mesma
+ * amarra de `planoId` + `limiteCriancas`, e pelo mesmo motivo.
+ *
+ * ── UMA POR VEZ: A NOVA SUBSTITUI A ANTERIOR
+ * Empilhar é como o preço desanda sem ninguém decidir — 30% em março mais 30%
+ * em agosto, e a ficha diz 30% enquanto a fatura cobra 60%. Conceder de novo é
+ * REVER, não somar. Vale para as duas listas: a entrada de `origem:
+ * 'concessao'` em `descontos` também é substituída, e as outras origens
+ * (antecipação, roleta) são preservadas — é o mesmo filtro que
+ * `contratarPlano` e `girarPremio` já fazem.
+ *
+ * ── A VALIDAÇÃO NÃO MORA AQUI
+ * `montarConcessao` levanta erro sem prazo, sem motivo ou com 100% de desconto.
+ * A folha valida antes para dar mensagem boa; isto valida de novo porque a
+ * próxima tela que conceder não vai passar pela folha.
+ */
+export async function conceder(uid, { tipo, fracao, meses, motivo }, ownerUid) {
+  if (!uid) throw new Error('Sem motorista.');
+
+  const agora = new Date();
+  const concessao = montarConcessao({ tipo, fracao, meses, motivo, por: ownerUid, agora });
+
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+  const dados = snap.exists() ? snap.data() : {};
+
+  const descontos = (Array.isArray(dados.descontos) ? dados.descontos : []).filter(
+    (d) => d?.origem !== 'concessao'
+  );
+  const efeito = descontoDaConcessao(concessao);
+  if (efeito) descontos.push(efeito);
+
+  const patch = {
+    concessoes: [concessao],
+    descontos,
+    // Isenção escreve o mês; desconto NÃO limpa uma isenção que veio da roleta
+    // — são coisas de origens diferentes, e apagar aqui seria a concessão
+    // tomando de volta um prêmio que o motorista já ganhou.
+    ...(tipo === TIPO_CONCESSAO.ISENCAO ? { isencaoAte: concessao.ate } : {}),
+  };
+
+  await setDoc(ref, patch, { merge: true });
+  return concessao;
+}
+
+/**
+ * REVOGAR — tira a exceção e devolve o associado à tabela.
+ *
+ * O registro sai junto do efeito, pelo mesmo motivo de eles entrarem juntos.
+ * Não guardamos concessão revogada: o histórico útil aqui é a fatura, que
+ * congelou o desconto do mês em que valeu (`descontoConcessao` em
+ * `fecharFatura`) — e essa, sim, ninguém reescreve.
+ */
+export async function revogarConcessao(uid) {
+  if (!uid) throw new Error('Sem motorista.');
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+  const dados = snap.exists() ? snap.data() : {};
+
+  const eraIsencao = (Array.isArray(dados.concessoes) ? dados.concessoes : []).some(
+    (c) => c?.tipo === TIPO_CONCESSAO.ISENCAO
+  );
+
+  await setDoc(
+    ref,
+    {
+      concessoes: [],
+      descontos: (Array.isArray(dados.descontos) ? dados.descontos : []).filter(
+        (d) => d?.origem !== 'concessao'
+      ),
+      // Só limpa a isenção se ela veio DESTA concessão. A da roleta continua.
+      ...(eraIsencao ? { isencaoAte: null } : {}),
+    },
+    { merge: true }
+  );
+}
+
 // ── a base ──────────────────────────────────────────────────────────────────
 //
 // NÃO HÁ MAIS FUNÇÃO DE BASE AQUI, e a ausência é o resultado da mudança.
@@ -377,6 +472,10 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
       descontoAntecipacao: conta.descontoAntecipacao,
       descontoIndicacao: conta.descontoIndicacao,
       descontoRoleta: conta.descontoRoleta,
+      // A CONCESSÃO ENTRA NA FATURA COMO QUALQUER OUTRO DESCONTO, aberta.
+      // Congelada aqui, ela é o único registro que sobrevive a uma revogação —
+      // e é o que responde "por que agosto saiu mais barato" um ano depois.
+      descontoConcessao: conta.descontoConcessao,
       isento,
 
       total,
