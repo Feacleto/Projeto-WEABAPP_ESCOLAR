@@ -19,7 +19,18 @@ import { inviteUrl } from '../../dominio/identidade/inviteUrl';
  *   - childName: string — usado na mensagem do WhatsApp
  *   - parentPhone: string opcional (só dígitos) — abre a conversa certa
  */
-export default function InviteShare({ code, childName, parentPhone }) {
+/**
+ * `jaEntrou` MUDA A CONVERSA, NÃO O LINK.
+ *
+ * O mesmo endereço serve para as duas coisas, e é isso que o torna simples: se
+ * a conta ainda não existe, `/convite/CÓDIGO` a cria; se já existe e é dela,
+ * `Invite.jsx` reconhece (`preview.status === 'yours'`) e ABRE O APP DIRETO NA
+ * CRIANÇA CERTA. Um link, dois destinos, decididos pelo servidor.
+ *
+ * O que não pode ser o mesmo é o TEXTO. Mandar "crie sua conta" para quem já
+ * tem conta faz a pessoa achar que perdeu o acesso e ligar para perguntar.
+ */
+export default function InviteShare({ code, childName, parentPhone, jaEntrou = false }) {
   const [copied, setCopied] = useState(null); // 'link' | 'code' | null
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [showQr, setShowQr] = useState(false);
@@ -62,10 +73,19 @@ export default function InviteShare({ code, childName, parentPhone }) {
    * por quem precisou dela, e quem tocou no link nem chega lá.
    */
   const waText = encodeURIComponent(
-    `Oi! Aqui é do transporte escolar${firstName ? ` do/da ${firstName}` : ''}. ` +
-      `Abra este link pra acompanhar a rota e as mensalidades pelo app: ${url}` +
-      `\n\nSe o link não abrir, o código do convite é ${code} — ` +
-      `dá pra digitar ele no app, em "Criar conta".`
+    jaEntrou
+      ? `Oi! Aqui é do transporte escolar${firstName ? ` do/da ${firstName}` : ''}. ` +
+          `Este é o link de volta pro app: ${url}` +
+          `\n\nEle abre direto na página ${firstName ? `do/da ${firstName}` : 'da criança'}. ` +
+          `Sua conta continua a mesma — é só entrar.`
+      : `Oi! Aqui é do transporte escolar${firstName ? ` do/da ${firstName}` : ''}. ` +
+          `Abra este link pra acompanhar a rota e as mensalidades pelo app: ${url}` +
+          `\n\nSe o link não abrir, o código do convite é ${code} — ` +
+          // A aba "Criar conta" NAO tem campo de codigo: ela e uma
+          // bifurcacao. O campo esta dois toques adiante, atras de "Sou
+          // familia ou responsavel" — e a instrucao mandava a pessoa
+          // procurar onde nao ha.
+          `dá pra digitar ele no app, em "Criar conta" › "Sou família".`
   );
   const waHref = parentPhone
     ? `https://wa.me/${parentPhone.startsWith('55') ? parentPhone : `55${parentPhone}`}?text=${waText}`
@@ -81,13 +101,13 @@ export default function InviteShare({ code, childName, parentPhone }) {
         className="tap w-full h-14 rounded-xl bg-[#25D366] text-white font-semibold inline-flex items-center justify-center gap-2 shadow-focus"
       >
         <WhatsAppIcon size={20} colored={false} />
-        Mandar convite no WhatsApp
+        {jaEntrou ? 'Mandar o link no WhatsApp' : 'Mandar convite no WhatsApp'}
       </a>
 
       <div className="bg-card border border-border rounded-xl p-3 space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted flex items-center gap-1.5">
           <Link2 size={12} />
-          link do convite
+          {jaEntrou ? 'link de acesso' : 'link do convite'}
         </p>
         <p className="text-xs text-text break-all font-mono leading-relaxed">
           {url}

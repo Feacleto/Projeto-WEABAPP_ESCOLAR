@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   User,
   MapPin,
@@ -16,7 +16,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Calendar,
-  MessageCircle,
   Paperclip,
   Users,
 } from 'lucide-react';
@@ -30,8 +29,8 @@ import { addChild, updateChild } from '../../services/childrenService';
 import { uploadContratoAnterior } from '../../services/photoService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import { useAuth } from '../../hooks/useAuth';
+import { dadosDaContratadaFaltando } from '../../services/contractService';
 import { useLimiteCriancas } from '../../hooks/useLimiteCriancas';
-import { devWhatsAppLink } from '../../config/developer';
 import { searchAddress } from '../../services/locationService';
 import { normalizaHora, periodoDaHora, horaCurta } from '../../dominio/rota/horarios';
 import { useEscolas } from '../../hooks/useEscolas';
@@ -195,6 +194,9 @@ export default function ChildForm() {
     try {
       const horaPega = normalizaHora(form.horaPega);
       const horaEntrega = normalizaHora(form.horaEntrega);
+      // (o aviso de cadastro incompleto aparece DEPOIS de salvar — ver
+      // `AvisoDeCadastro` no fim deste arquivo. Salvar primeiro é deliberado:
+      // barrar aqui perderia o que ele acabou de digitar.)
       const { id, inviteCode } = await addChild({
         ...form,
         horaPega: horaPega || '',
@@ -893,6 +895,38 @@ function SelectorButton({ label, icon: Icon, active, onClick }) {
  * um código pra ditar; agora ele sai com um LINK pronto pra mandar no
  * WhatsApp. O código continua visível pra quando precisar ditar por telefone.
  */
+/**
+ * O que falta no cadastro DELE para o contrato poder existir.
+ *
+ * Some sozinho quando não falta nada — aviso permanente vira moldura, e
+ * moldura não é lida. E o texto diz a consequência, não a tarefa: "a família
+ * não tem o que assinar" move mais que "complete seu perfil".
+ */
+function AvisoDeCadastro() {
+  const { profile } = useAuth();
+  const faltando = dadosDaContratadaFaltando(profile);
+  if (faltando.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
+      <p className="text-sm font-bold text-warningText">
+        Falta o seu cadastro para o contrato existir
+      </p>
+      <p className="mt-1.5 text-xs leading-relaxed text-warningText/85">
+        O contrato precisa dizer quem é a parte contratada — você. Sem{' '}
+        <strong>{faltando.join(', ')}</strong>, ele não pode ser emitido, e a
+        família não tem o que assinar.
+      </p>
+      <Link
+        to="/tio/profile"
+        className="tap mt-3 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-bold text-white"
+      >
+        Completar agora
+      </Link>
+    </div>
+  );
+}
+
 function InviteCodeSuccess({ code, childId, childName, parentPhone, onDone }) {
   return (
     <div className="min-h-screen flex flex-col p-6 gap-5 justify-center">
@@ -914,6 +948,22 @@ function InviteCodeSuccess({ code, childId, childName, parentPhone, onDone }) {
       </div>
 
       <InviteShare code={code} childName={childName} parentPhone={parentPhone} />
+
+      {/* ⚠️ O CONTRATO NÃO EXISTE SEM A PARTE CONTRATADA, e este é o instante
+        * de dizer isso.
+        *
+        * Até 06/09/2026 o contrato saía com uma CONTRATADA fictícia — "Tio Nino
+        * Transporte Escolar", CNPJ 00.000.000/0000-00 — sempre que este
+        * cadastro estivesse vazio, e o responsável assinava isso com nome
+        * digitado e hash SHA-256. O placeholder foi removido, e agora o
+        * documento simplesmente não nasce.
+        *
+        * O AVISO VEM AQUI, e não no meio do formulário: barrar antes de salvar
+        * perderia tudo o que ele acabou de digitar, e o contrato só passa a
+        * fazer falta quando existe uma família para assiná-lo. É o mesmo
+        * raciocínio do anexo abaixo — o instante em que ele está com essa
+        * família na cabeça. */}
+      <AvisoDeCadastro />
 
       {/* O CONTRATO QUE ELE JÁ TEM — oferecido AQUI, e não num menu.
         *
@@ -944,16 +994,18 @@ function InviteCodeSuccess({ code, childId, childName, parentPhone, onDone }) {
  * O NÚMERO VEM PRIMEIRO porque é a única pergunta que ele tem ao bater aqui:
  * quantas eu contratei? E o botão é a resposta pra segunda: como aumento?
  *
- * ABRE O WHATSAPP COM O TEXTO PRONTO. Ampliar limite é renegociar contrato e
- * orçamento — não existe botão que faça isso sozinho, e fingir que existe
- * (um "solicitar aumento" que só grava um pedido em algum lugar) criaria uma
- * espera sem prazo. A conversa é o caminho real; o app encurta ela.
+ * ⚠️ ELE MANDAVA PARA O WHATSAPP, E ISSO DEIXOU DE SER VERDADE (06/09/2026).
+ *
+ * O texto dizia: "ampliar limite é renegociar contrato e orçamento — não existe
+ * botão que faça isso sozinho, e fingir que existe criaria uma espera sem
+ * prazo". Estava certo enquanto o preço era negociado.
+ *
+ * Hoje existe o botão, e é `/tio/planos`: ele troca de faixa sozinho, a
+ * callable grava o teto novo, e o contrato sai na hora. Mandar para o WhatsApp
+ * agora é o inverso do problema antigo — é criar a espera que a tela dizia
+ * querer evitar, com um caminho pronto ao lado.
  */
 function SemVaga({ limite, onVoltar }) {
-  const zap = devWhatsAppLink(
-    `Olá! Contratei ${limite.limite} vaga(s) de criança no Alô Buzinou e ` +
-      'preciso de mais. Podemos atualizar meu contrato?'
-  );
 
   return (
     <div className="min-h-screen px-5 pt-4">
@@ -977,20 +1029,17 @@ function SemVaga({ limite, onVoltar }) {
         <p className="mt-2 text-sm leading-relaxed text-textMuted">
           Você contratou <strong className="text-text">{limite.limite}</strong>{' '}
           {limite.limite === 1 ? 'vaga' : 'vagas'} e está usando{' '}
-          <strong className="text-text">{limite.usadas}</strong>. Pra cadastrar
-          mais uma criança, a gente atualiza seu contrato e o orçamento junto —
-          é rápido.
+          <strong className="text-text">{limite.usadas}</strong>. Subir de faixa
+          leva um toque, e o contrato novo sai na hora.
         </p>
 
-        <a
-          href={zap}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to="/tio/planos"
           className="tap mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-bold text-white"
         >
-          <MessageCircle size={17} />
-          Falar sobre ampliar
-        </a>
+          <Users size={17} />
+          Ver as faixas
+        </Link>
 
         {/* A SAÍDA QUE NÃO CUSTA NADA, e ela é real: o limite conta crianças
           * ATIVAS. Quem parou de atender uma família libera a vaga ao

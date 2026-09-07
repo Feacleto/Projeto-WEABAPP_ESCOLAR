@@ -18,8 +18,6 @@ import {
   Printer,
   UserRound,
   Link2,
-  Copy,
-  Check,
   CalendarX2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -38,7 +36,6 @@ import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
 import AppSheet from '../components/common/AppSheet';
 import InviteShare from '../components/children/InviteShare';
-import WhatsAppIcon from '../components/common/WhatsAppIcon';
 import ChildPaymentHistory from '../components/payments/ChildPaymentHistory';
 import Avatar from '../components/common/Avatar';
 import { STORAGE_ENABLED } from '../config/capabilities';
@@ -638,6 +635,20 @@ function LinkDoResponsavel({ child }) {
     );
   }
 
+  // ⚠️ AQUI IA O LINK GENÉRICO DA `/familia`, e ele era o caminho pior.
+  //
+  // Nove telas do app dizem "peça um link novo pro motorista" — e o motorista
+  // abria a ficha e encontrava um link que leva a uma página de entrada onde a
+  // mãe precisa se achar sozinha. Não existe botão de regerar convite em lugar
+  // nenhum do repositório: `generateUniqueInviteCode` tem UM chamador, o
+  // cadastro da criança.
+  //
+  // O convite JÁ É o ponto de reconexão, e sempre foi: `Invite.jsx` reconhece
+  // quando o convite é de quem abriu e abre o app DIRETO na criança certa. É o
+  // caminho mais percorrido do app — o pai não guarda endereço de site, ele
+  // volta na conversa do WhatsApp e toca no mesmo link, semana após semana.
+  //
+  // Então o link não muda; muda o texto. Ver `jaEntrou` em `InviteShare`.
   return (
     <Card className="space-y-3">
       <div className="flex items-start gap-3">
@@ -650,68 +661,35 @@ function LinkDoResponsavel({ child }) {
           </p>
           <p className="mt-1 text-xs text-textMuted">
             {child.parentName || 'O responsável'} já tem conta. Se perdeu o
-            caminho de volta, mande este link.
+            caminho de volta, mande este link — ele abre direto na página
+            {child.name
+              ? ` do/da ${String(child.name).split(' ')[0]}`
+              : ' da criança'}
+            .
           </p>
         </div>
       </div>
-      <AppLinkShare childName={child.name} parentPhone={child.parentPhone} />
+      <InviteShare
+        code={child.inviteCode}
+        childName={child.name}
+        parentPhone={child.parentPhone}
+        jaEntrou
+      />
     </Card>
   );
 }
 
-/**
- * Copiar / mandar no WhatsApp a porta da família.
- *
- * `/familia` e não `/`: a raiz é a vitrine de associação, que fala de taxa,
- * de vaga e de negócio — conteúdo endereçado ao motorista. Mandar o pai pra
- * lá é, no mínimo, confuso; no pior caso sugere que a vaga do filho dele
- * corre risco. A regra vive em dominio/vitrine/frentes.js e vale aqui também.
- */
-function AppLinkShare({ childName, parentPhone }) {
-  const [copiado, setCopiado] = useState(false);
-  const url =
-    typeof window !== 'undefined' ? `${window.location.origin}/familia` : '';
+// `AppLinkShare` FOI REMOVIDO EM 06/09/2026.
+//
+// Ele mandava o link genérico da `/familia` para o responsável que já tinha
+// conta — a porta de entrada, onde ela precisa se achar sozinha. O link do
+// CONVITE faz melhor: abre o app direto na criança dela. Ver `LinkDoResponsavel`
+// logo acima.
+//
+// A regra que ele carregava continua valendo e mora em `dominio/vitrine/
+// frentes.js`: mandar o pai para a raiz é confuso, porque a raiz fala de taxa e
+// de negócio — conteúdo endereçado ao motorista.
 
-  const primeiro = String(childName || '').trim().split(/\s+/)[0] || '';
-  const texto = `Oi! Aqui é o link pra você acompanhar o transporte d${
-    primeiro ? `o(a) ${primeiro}` : 'a criança'
-  }: ${url}`;
-
-  const copiar = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
-    } catch {
-      toast.error('Não deu pra copiar. Segure no link pra copiar à mão.');
-    }
-  };
-
-  const digits = String(parentPhone || '').replace(/\D/g, '');
-  const e164 = digits ? (digits.startsWith('55') ? digits : `55${digits}`) : '';
-
-  return (
-    <div className="flex gap-2">
-      <button
-        type="button"
-        onClick={copiar}
-        className="tap flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-border bg-card text-sm font-bold text-text"
-      >
-        {copiado ? <Check size={16} /> : <Copy size={16} />}
-        {copiado ? 'Copiado' : 'Copiar link'}
-      </button>
-      <a
-        href={`https://wa.me/${e164}?text=${encodeURIComponent(texto)}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="tap flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-white"
-      >
-        <WhatsAppIcon size={16} />
-        WhatsApp
-      </a>
-    </div>
-  );
-}
 
 function ChildPhotoEditor({ child }) {
   const [uploading, setUploading] = useState(false);
