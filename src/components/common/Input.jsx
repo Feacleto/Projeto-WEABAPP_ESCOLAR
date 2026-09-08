@@ -8,6 +8,11 @@ const Input = forwardRef(function Input(
     hint,
     icon: Icon,
     className = '',
+    // Classes para o <input> em si. O `className` acima vai no INVÓLUCRO
+    // (rótulo, campo, dica), e usá-lo para estilizar o campo deixava o
+    // rótulo e a dica em mono espaçado — ilegíveis. São dois alvos
+    // diferentes, e agora têm dois nomes.
+    inputClassName = '',
     id: idProp,
     type = 'text',
     revealable = false,
@@ -53,6 +58,7 @@ const Input = forwardRef(function Input(
             ${error ? 'border-danger' : 'border-border'}
             focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
             placeholder:text-textMuted disabled:bg-sunken disabled:text-textMuted
+            ${inputClassName}
           `}
           {...rest}
         />

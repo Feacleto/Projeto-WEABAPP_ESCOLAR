@@ -4,7 +4,6 @@ import { Mail, Lock, ArrowLeft, ArrowRight, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
-import FundoNoturno from '../components/common/FundoNoturno';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
@@ -229,11 +228,41 @@ export default function Login() {
 
         {/* ── A faixa da marca ───────────────────────────────────────── */}
         <div className="relative flex flex-col overflow-hidden bg-gradient-to-br from-primary to-primaryDark px-6 py-6 lg:justify-between lg:px-14 lg:py-12">
-          {/* Um halo só, e atrás de tudo. A porta não é lugar de enfeite. */}
+          {/* DUAS FORMAS, E NENHUMA DELAS DISPUTA COM O TEXTO.
+            *
+            * O disco embaixo à esquerda ancora a faixa — sem ele o verde é um
+            * retângulo chapado, e a coluna toda parece um placeholder. O arco
+            * fino em cima à direita é a onda da marca, e é o único traço com
+            * desenho: ele diz de que marca é a porta sem repetir o logotipo,
+            * que já está no meio.
+            *
+            * Os dois vivem a 8% e 24%. É pouco de propósito: a porta não é
+            * lugar de enfeite, e qualquer contraste a mais aqui competiria
+            * com a única frase que a pessoa precisa ler. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute -bottom-40 -right-32 h-96 w-96 rounded-full bg-accent/10"
+            className="pointer-events-none absolute -bottom-32 -left-24 h-[26rem] w-[26rem] rounded-full bg-primaryDark/50"
           />
+          <svg
+            aria-hidden
+            viewBox="0 0 200 200"
+            className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 text-accent/25"
+          >
+            <path
+              d="M40 190A150 150 0 0 1 190 40"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+            <path
+              d="M78 192A114 114 0 0 1 192 78"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </svg>
 
           <VoltarTag
             {...voltarProps}
@@ -287,12 +316,17 @@ export default function Login() {
               *
               * `text-balance` evita a linha órfã de uma palavra só, que é
               * como ela quebrava quando a faixa era estreita. */}
-            <p className="mt-3 max-w-[26ch] text-balance text-xl font-semibold leading-snug text-onNight lg:mt-8 lg:max-w-[15ch] lg:text-4xl">
+            {/* ⚠️ DOIS TAMANHOS, E ANTES ERAM UM SÓ.
+              * As duas frases dizem coisas de peso diferente — a primeira é o
+              * que o produto É, a segunda é o que ele FAZ — e no mesmo corpo
+              * de 36px elas viravam um bloco de seis linhas grandes que a
+              * pessoa varre sem ler. O título carrega o peso; a linha de baixo
+              * é uma frase, e frase se lê no tamanho de frase. */}
+            <p className="mt-3 max-w-[22ch] text-balance text-2xl font-extrabold leading-[1.08] tracking-tight text-onNight lg:mt-8 lg:text-[2.6rem]">
               O app do transporte escolar.
-              <br />
-              <span className="text-onNightMuted">
-                Um ambiente que avisa, cobra e organiza.
-              </span>
+            </p>
+            <p className="mt-3 max-w-[30ch] text-balance text-sm leading-relaxed text-onNightMuted lg:mt-5 lg:text-base">
+              Um ambiente de trabalho que avisa, cobra e organiza.
             </p>
           </div>
 
@@ -301,9 +335,20 @@ export default function Login() {
           </div>
         </div>
 
-        {/* ── O cartão ───────────────────────────────────────────────── */}
-        <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-night px-4 py-8 sm:px-6 lg:px-10">
-          <FundoNoturno />
+        {/* ── O cartão ───────────────────────────────────────────────────
+          * ⚠️ O LADO DO CARTÃO É CLARO, e antes era escuro com fundo animado.
+          *
+          * Cartão branco sobre fundo escuro põe a superfície de MAIOR contraste
+          * da tela ao lado da faixa da marca, que também é escura: duas áreas
+          * densas competindo, e o olho não sabe qual é o assunto. Sobre o cinza
+          * claro, o cartão é a única coisa acesa da metade direita — ele deixa
+          * de ser um retângulo flutuando e passa a ser a folha onde se
+          * preenche.
+          *
+          * O `FundoNoturno` saiu daqui junto. Ele continua nas duas telas de
+          * cadastro, onde a faixa ocupa a tela inteira no celular e o
+          * movimento tem espaço para existir. */}
+        <div className="relative flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10">
           <div className="relative z-10 w-full max-w-[380px] space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float sm:p-7">
             {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
               * "Cadastrar" era um link no rodapé do cartão que levava pra
@@ -318,10 +363,26 @@ export default function Login() {
               * errada cobra o pedágio duas vezes. Trocar de aba não cria
               * sessão nenhuma: só o botão cria.
               */}
+            {/* ⚠️ ELAS VIRARAM UM CONTROLE SEGMENTADO em 08/09/2026, e antes
+              * eram duas abas sublinhadas.
+              *
+              * O sublinhado é o padrão de aba de CONTEÚDO — o que muda embaixo
+              * dele é informação da mesma natureza. Aqui as duas metades são
+              * ações OPOSTAS: uma devolve quem já tem conta, a outra cria uma.
+              * A pastilha é o padrão de escolha entre dois estados, e ela
+              * mostra o estado atual como um objeto sólido em vez de um traço.
+              *
+              * O QUE ISTO DESFAZ: as duas letras verdes em negrito que o dono
+              * pediu no dia 07. A cor da marca saiu da letra e voltou para o
+              * estado — a pastilha branca é o que anuncia onde a pessoa está,
+              * e duas letras iguais em cima de uma pastilha resolvem sozinhas.
+              * O texto ativo é `text` (15,6:1) e o inativo `textMuted`
+              * (6,4:1 sobre o trilho), então nenhuma das duas depende de cor
+              * de marca para ser legível. */}
             <div
               role="tablist"
               aria-label="Entrar ou criar conta"
-              className="-mx-6 grid grid-cols-2 border-b border-border sm:-mx-7"
+              className="grid grid-cols-2 gap-1 rounded-xl bg-neutro p-1"
             >
               {ABAS.map((a) => (
                 <button
@@ -360,8 +421,10 @@ export default function Login() {
                    * no tailwind.config.js). O sublinhado carrega o estado
                    * sozinho — e ele não é a única pista: o painel de baixo
                    * troca junto. */
-                  className={`-mb-px border-b-[3px] px-2 pb-3 pt-1 text-sm font-bold text-accentText transition-colors ${
-                    aba === a.id ? 'border-accent' : 'border-transparent'
+                  className={`tap rounded-lg px-2 py-2 text-[13px] font-bold transition-colors ${
+                    aba === a.id
+                      ? 'bg-card text-text shadow-rest'
+                      : 'text-textMuted hover:text-text'
                   }`}
                 >
                   {a.rotulo}
@@ -384,7 +447,7 @@ export default function Login() {
                   <div>
                     <h2 className="text-xl font-bold text-text">Entrar</h2>
                     <p className="mt-0.5 text-sm text-textMuted">
-                      Motorista, responsável ou administração.
+                      Motorista ou família — a entrada é a mesma.
                     </p>
                   </div>
 
@@ -491,7 +554,7 @@ export default function Login() {
                   <div>
                     <h2 className="text-xl font-bold text-text">Criar conta</h2>
                     <p className="mt-0.5 text-sm text-textMuted">
-                      Primeiro: como você usa o Alô Buzinou?
+                      Leva menos de um minuto. Primeiro, quem é você?
                     </p>
                   </div>
 
@@ -539,8 +602,13 @@ export default function Login() {
                         <span className="relative block font-mono text-[10px] uppercase tracking-[0.18em] text-onNightAccent">
                           quem dirige a perua
                         </span>
+                        {/* "EU DIRIJO A PERUA" e não "Sou motorista ou
+                          * operador". A pessoa não se apresenta por cargo
+                          * quando está escolhendo uma porta — ela se reconhece
+                          * pelo que FAZ. E "operador" é palavra de cadastro,
+                          * não de quem dirige. */}
                         <span className="relative mt-2 block text-base font-extrabold tracking-tight text-white">
-                          Sou motorista ou operador
+                          Eu dirijo a perua
                         </span>
                         {/* QUATRO PALAVRAS EM VEZ DE UMA FRASE. Os quatro
                           * substantivos ERAM o conteúdo — o resto da frase só
@@ -551,20 +619,21 @@ export default function Login() {
                           className="rise relative mt-1 block text-sm leading-snug text-onNightMuted"
                           style={{ '--d': '160ms' }}
                         >
-                          Você tem uma van.
-                          {/* Em VERDE e sem opacidade: estes quatro são o que
-                            * ele veio buscar, e `/80` sobre o cartão escuro
-                            * seria mistura com o fundo — o mesmo erro das
-                            * opacidades que o `onNightMuted` veio substituir. */}
-                          <span className="mt-0.5 block text-onNightAccent">
-                            rota · avisos · contrato · mensalidade
-                          </span>
+                          Você organiza rota, avisos, contrato e
+                          mensalidade num lugar só.
                         </span>
+                        {/* ⚠️ AQUI É BOTÃO CHEIO, e do outro lado é link.
+                          * As duas portas continuam com pesos diferentes de
+                          * propósito — ele paga e usa o dia inteiro, ela chega
+                          * pelo link dele em 9 de 10 casos. O que mudou é a
+                          * distância entre os dois pesos: um `<span>` com seta
+                          * ao lado de outro `<span>` com seta não dizia qual
+                          * era a porta principal. */}
                         <span
-                          className="rise relative mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-onNightAccent"
+                          className="rise relative mt-4 flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent text-sm font-bold text-[#06210A]"
                           style={{ '--d': '260ms' }}
                         >
-                          Iniciar minha operação <ArrowRight size={15} />
+                          Criar minha conta <ArrowRight size={15} />
                         </span>
                       </button>
 
@@ -581,7 +650,7 @@ export default function Login() {
                           quem recebe o convite
                         </span>
                         <span className="mt-2 block text-base font-extrabold tracking-tight text-text">
-                          Sou família ou responsável
+                          Meu filho anda na perua
                         </span>
                         {/* A porta da família chega DEPOIS da do motorista,
                           * e a ordem é a mesma dos pesos: ele paga e usa o dia

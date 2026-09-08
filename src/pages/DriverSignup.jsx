@@ -4,11 +4,13 @@ import { ArrowLeft, User, Mail, Bus, MapPin, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import FundoNoturno from '../components/common/FundoNoturno';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { ArtRoad } from '../components/landing/BlockArt';
 import { inscreverAssociado } from '../services/associadoService';
 import { useAuth } from '../hooks/useAuth';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../compartilhado/masks';
+import { resolverOrigem } from '../dominio/identidade/origem.js';
 
 /**
  * Inscrição de motorista — /quero-fazer-parte
@@ -32,6 +34,28 @@ export default function DriverSignup() {
   // ela pediu — ela queria trocar de porta, não sair. Quem chega por link
   // direto ou pela landing continua saindo pro site, que é de onde veio.
   const veioDaEscolha = location.state?.de === 'escolha';
+
+  // DE ONDE ELE VEIO — lido da URL, nunca perguntado.
+  //
+  // A landing repassa `?o=` (o `utm_source` que a casa publicou) e `?r=` (o
+  // host de onde a pessoa clicou). Quem traduz isso num canal da lista
+  // fechada é `dominio/identidade/origem.js` — aqui só se lê e se guarda.
+  //
+  // ⚠️ É TEXTO DE URL, logo é de quem visita: qualquer pessoa edita `?o=` na
+  // barra de endereço. `resolverOrigem` devolve sempre um canal da lista, e o
+  // texto cru sobrevive truncado em `detalhe` — nada disso vira permissão,
+  // preço ou prazo, então mentir aqui só suja a própria contagem.
+  //
+  // `useState` com inicializador, e não `useMemo`: a origem é do INSTANTE em
+  // que a tela abriu. Se a pessoa mexer na URL depois, o que valeu é o que
+  // trouxe ela até aqui.
+  const [origem] = useState(() => {
+    const q = new URLSearchParams(location.search);
+    return resolverOrigem({
+      utmSource: q.get('o') || q.get('utm_source') || '',
+      referrer: q.get('r') || '',
+    });
+  });
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -39,7 +63,6 @@ export default function DriverSignup() {
     senha: '',
     city: '',
     criancas: '',
-    message: '',
   });
   const { refreshProfile } = useAuth();
   const [errors, setErrors] = useState({});
@@ -82,6 +105,7 @@ export default function DriverSignup() {
         telefone: unmaskPhone(form.phone),
         cidade: form.city,
         criancas: form.criancas,
+        origem,
       });
 
       await refreshProfile();
@@ -139,30 +163,7 @@ export default function DriverSignup() {
         * que vem do cartão "sou motorista escolar" não sente que trocou de
         * aplicativo no meio do caminho. */}
       <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div
-            className="absolute inset-0 opacity-80 animate-glow-drift"
-            style={{
-              background:
-                'radial-gradient(110% 80% at 10% 0%, rgba(31,95,63,.6) 0%, rgba(11,18,16,0) 62%)',
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-60 animate-glow-drift-slow"
-            style={{
-              background:
-                'radial-gradient(90% 70% at 100% 10%, rgba(82,196,26,.2) 0%, rgba(11,18,16,0) 58%)',
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.06] animate-grid-drift"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
-              backgroundSize: '44px 44px',
-            }}
-          />
-        </div>
+        <FundoNoturno />
 
         {/* TRÊS FILHOS NO FLEX DA COLUNA ESCURA: o voltar no alto, o miolo no
           * meio, o domínio embaixo. É o mesmo arranjo da tela de login, e é o
@@ -199,15 +200,34 @@ export default function DriverSignup() {
             * modelo em que alguém aprovava — e prometer uma conversa que não
             * vai acontecer é pior que não prometer nada: a pessoa fica
             * esperando o telefone tocar em vez de usar o app que já é dela. */}
+          {/* O CHAPÉU DIZ DE QUEM É A PORTA, e antes dizia o prazo do teste.
+            *
+            * "3 meses de teste" é a oferta, e oferta no chapéu obriga a frase
+            * de baixo a explicar a oferta em vez de explicar a tela. "Pra quem
+            * dirige" faz o par com "pra quem espera na porta" da tela da
+            * família: quem trocou de porta por engano descobre no chapéu, que
+            * é a primeira coisa acima do título. */}
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80 lg:mt-0">
-            3 meses de teste
+            pra quem dirige
           </p>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
             Comece a usar hoje
           </h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/65">
-            Você preenche, entra e já cadastra a sua turma. Os três meses de
-            teste só começam a contar na sua primeira rota — não no cadastro.
+          {/* ⚠️ A FRASE RESPONDE "O QUE ACONTECE DEPOIS QUE EU MANDAR".
+            *
+            * Ela falava de quando o relógio do teste começa — informação
+            * verdadeira e da tela ERRADA: quem está com o dedo no formulário
+            * não pergunta pelo prazo, pergunta se vai ter que esperar alguém.
+            * Esta tela já foi a porta de uma fila, e o texto dela prometeu
+            * uma ligação que não acontece mais (decisão 16). Dizer que não há
+            * fila é desfazer essa promessa no único lugar onde ela ainda
+            * podia ser lida. */}
+          <p className="mt-3 text-sm leading-relaxed text-white/65">
+            Você preenche, entra e já cadastra a sua turma.{' '}
+            <strong className="font-semibold text-white">
+              Não tem fila e não tem ninguém pra aprovar
+            </strong>{' '}
+            — a conta é sua no fim do formulário.
           </p>
 
           <div className="mt-5">
@@ -227,8 +247,19 @@ export default function DriverSignup() {
         className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
       />
 
-      <div className="flex flex-1 flex-col px-6 py-6 lg:px-12 lg:py-16">
-        <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col">
+      {/* ⚠️ O FORMULÁRIO VIROU UM CARTÃO SOBRE CINZA, e antes era uma coluna
+        * branca colada na faixa escura.
+        *
+        * Sem o cartão, os campos flutuavam no branco da página e a fronteira
+        * entre a marca e o trabalho era só a troca de cor de fundo — o que
+        * lia como duas metades do mesmo pôster. O cartão é a folha que se
+        * preenche: ele tem borda, sombra e fim, e é isso que diz "o que você
+        * tem que fazer é aqui dentro".
+        *
+        * É a mesma superfície do login, e de propósito: quem vem da
+        * bifurcação atravessa as duas telas na mesma sessão. */}
+      <div className="flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16">
+        <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:p-8">
         {/* ⚠️ O CARTÃO DE ESCASSEZ SAIU DAQUI EM 06/09/2026.
           *
           * Ele mostrava "1 associado atendido hoje" — número FIXO no código,
@@ -242,23 +273,50 @@ export default function DriverSignup() {
           * Era o último resto da fila: a decisão 16 tirou a porta, e a
           * promessa de porta estreita ficou. */}
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <Input
-            label="Seu nome"
-            placeholder="Nome completo"
-            icon={User}
-            value={form.name}
-            onChange={set('name')}
-            autoComplete="name"
-            error={errors.name}
-            required
-          />
-          {/* PARES NO MONITOR, UM POR LINHA NO CELULAR.
-            * Sete campos numa coluna só num monitor viram uma escada que
-            * não acaba. Os pares são por ASSUNTO — como a gente fala com
-            * você, e como você entra na sua conta —, não por caberem
-            * lado a lado. */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="mb-6">
+          {/* "CRIAR SUA CONTA", e não "a gente vai preparar o seu ambiente".
+            *
+            * O título de um formulário nomeia o que o formulário FAZ. A frase
+            * antiga era promessa de marca — bonita, e no lugar de quem tem
+            * seis campos para preencher ela vira ruído entre o dedo e o
+            * primeiro campo. A promessa já está na faixa ao lado. */}
+          <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
+            Criar sua conta
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-textMuted">
+            Seis campos, em três linhas. No fim deles você entra direto no seu
+            painel.
+          </p>
+        </div>
+
+        <form onSubmit={onSubmit} className="space-y-5">
+          {/* ⚠️ TRÊS GRUPOS COM RÓTULO, e antes eram seis campos numa pilha.
+            *
+            * Seis campos sem agrupamento se leem como seis perguntas
+            * independentes, e a pessoa não sabe quantas faltam. Em três linhas
+            * rotuladas ela vê o tamanho do trabalho de uma vez — e o subtítulo
+            * pode prometer "seis campos, em três linhas" porque agora isso é
+            * verificável na tela.
+            *
+            * OS RÓTULOS DIZEM O ASSUNTO, NÃO O TIPO DE DADO: "quem você é",
+            * "como você entra na sua conta", "sobre a sua operação". Ninguém
+            * pensa em "dados de acesso" — pensa em como vai voltar amanhã.
+            *
+            * E OS PARES MUDARAM DE COMPANHIA. A cidade estava ao lado do
+            * WhatsApp, e ela não é contato: é a operação. Agora ela desce para
+            * o grupo dela, junto do número de crianças, que é o outro dado que
+            * descreve o tamanho do que ele roda. */}
+          <Grupo rotulo="quem você é">
+            <Input
+              label="Seu nome"
+              placeholder="Nome completo"
+              icon={User}
+              value={form.name}
+              onChange={set('name')}
+              autoComplete="name"
+              error={errors.name}
+              required
+            />
             <Input
               label="WhatsApp"
               placeholder="(11) 90000-0000"
@@ -269,20 +327,11 @@ export default function DriverSignup() {
               }
               autoComplete="tel"
               error={errors.phone}
-              hint="É por aqui que falamos com você."
               required
             />
-            <Input
-              label="Cidade onde você roda"
-              placeholder="Ex: Cidade Ademar, SP"
-              icon={MapPin}
-              value={form.city}
-              onChange={set('city')}
-              error={errors.city}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          </Grupo>
+
+          <Grupo rotulo="como você entra na sua conta">
             <Input
               type="email"
               inputMode="email"
@@ -293,32 +342,40 @@ export default function DriverSignup() {
               onChange={set('email')}
               autoComplete="email"
               error={errors.email}
-              hint="É por ele que você entra na sua conta."
             />
             {/* A senha aparece aqui porque a inscrição CRIA A CONTA. Google
               * fica de fora de propósito: dentro da webview do WhatsApp o
-              * OAuth é recusado, e este formulário costuma ser aberto a
-              * partir de um link compartilhado. Caminho que falha em metade
-              * dos aparelhos é pior que um campo a mais. */}
+              * OAuth é recusado, e este formulário costuma ser aberto a partir
+              * de um link compartilhado. Caminho que falha em metade dos
+              * aparelhos é pior que um campo a mais. */}
             <Input
               type="password"
               revealable
-              label="Crie uma senha"
-              placeholder="mínimo 6 caracteres"
+              label="Senha"
+              placeholder="mínimo 6"
               icon={Lock}
               value={form.senha}
               onChange={set('senha')}
               autoComplete="new-password"
               error={errors.senha}
             />
-          </div>
+          </Grupo>
 
-          <div>
+          <Grupo rotulo="sobre a sua operação">
+            <Input
+              label="Cidade onde você roda"
+              placeholder="Cidade Ademar, SP"
+              icon={MapPin}
+              value={form.city}
+              onChange={set('city')}
+              error={errors.city}
+              required
+            />
             {/* Criança, e não van — é sobre ela que o contrato é
-              * dimensionado. Ver o mesmo campo no WaitlistSheet. */}
+              * dimensionado. */}
             <Input
               id="signup-criancas"
-              label="Quantas crianças você transporta hoje"
+              label="Quantas crianças hoje"
               type="number"
               inputMode="numeric"
               min="0"
@@ -328,27 +385,26 @@ export default function DriverSignup() {
                 setForm((p) => ({ ...p, criancas: e.target.value }))
               }
             />
-          </div>
+          </Grupo>
 
-          <div>
-            <label
-              htmlFor="msg"
-              className="block text-sm font-semibold text-text mb-2"
-            >
-              Quer contar algo? (opcional)
-            </label>
-            <textarea
-              id="msg"
-              rows={3}
-              value={form.message}
-              onChange={set('message')}
-              placeholder="Há quanto tempo roda, quantas crianças atende..."
-              className="w-full rounded-2xl border-2 border-border bg-card text-text p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted"
-            />
-          </div>
+          {/* ⚠️ O CAMPO DE MENSAGEM SAIU EM 08/09/2026, e ele era um campo
+            * MORTO: `form.message` não era enviado a lugar nenhum. Ele
+            * sobrou de quando esta tela era um pedido de entrada na fila, e
+            * alguém do outro lado leria "há quanto tempo você roda".
+            *
+            * Sem fila não há leitor, e um textarea que a pessoa preenche para
+            * ninguém é pior que campo nenhum: ela gasta o tempo mais caro do
+            * formulário — o de escrever texto livre — no único campo que não
+            * produz efeito.
+            *
+            * E ele fazia o subtítulo mentir: "seis campos" com sete na tela. */}
 
+          {/* "E ENTRAR" no rótulo do botão. Ele não manda um pedido: ele cria
+            * a conta e abre o painel. Um botão que diz só "criar minha conta"
+            * deixa a pessoa esperando uma confirmação que não vem — ela já
+            * está dentro. */}
           <Button type="submit" loading={submitting} icon={Bus}>
-            Criar minha conta
+            Criar minha conta e entrar
           </Button>
           <p className="text-xs text-textMuted text-center">
             Sem cobrança e sem compromisso.
@@ -367,6 +423,23 @@ export default function DriverSignup() {
         </div>
       </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * UM GRUPO DE CAMPOS, com o assunto escrito em cima.
+ *
+ * Par no monitor, um por linha no celular — e o rótulo é o que transforma
+ * seis perguntas soltas em três linhas com tamanho conhecido.
+ */
+function Grupo({ rotulo, children }) {
+  return (
+    <div>
+      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+        {rotulo}
+      </p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>
     </div>
   );
 }

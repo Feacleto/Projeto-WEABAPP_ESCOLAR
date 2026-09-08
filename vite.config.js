@@ -112,6 +112,40 @@ export default defineConfig(({ mode }) => {
         ],
       },
       workbox: {
+        /**
+         * ⚠️ `clientsClaim` É O QUE FAZ O BOTÃO "ATUALIZAR AGORA" FUNCIONAR.
+         *
+         * Ele FALTAVA, e a falta produzia o pior defeito possível num botão de
+         * atualizar: um LAÇO. A pessoa tocava, via a tela de "atualizando",
+         * esperava, a tela voltava igual — e o aviso reaparecia. Tocava de
+         * novo, mesma coisa. Depois da terceira vez ninguém toca mais, e aí uma
+         * correção de conta de mensalidade deixa de chegar em quem está com o
+         * número errado.
+         *
+         * A MECÂNICA: com `registerType: 'prompt'`, o toque manda
+         * `SKIP_WAITING` para o worker que está esperando. Ele ativa — e para
+         * aí. Sem `clientsClaim`, o worker recém-ativado NÃO assume as páginas
+         * já abertas: `navigator.serviceWorker.controller` não muda, o evento
+         * `controllerchange` nunca dispara, e o recarregamento automático que o
+         * plugin agenda nesse evento nunca acontece.
+         *
+         * O que sobrava era o prazo de oito segundos do
+         * `AtualizacaoDisponivel` recarregando na marra — e um recarregamento
+         * sob o worker ANTIGO serve o mesmo `index.html` antigo do precache.
+         * Nada muda, o worker novo continua esperando, o aviso volta.
+         *
+         * Com `clientsClaim`, o worker assume na hora, o `controllerchange`
+         * dispara, a página recarrega em milissegundos e vem NOVA. O prazo de
+         * oito segundos volta a ser o que ele foi escrito para ser: uma rede de
+         * segurança rara, não o caminho normal.
+         *
+         * Ele é seguro aqui porque o precache é do SHELL: dado do Firestore
+         * nunca passa pelo worker (ver `runtimeCaching` abaixo), então não
+         * existe o risco clássico de uma aba passar a ser servida por uma
+         * versão de API diferente da que ela carregou.
+         */
+        clientsClaim: true,
+
         // O QUE ENTRA NO PRECACHE É O QUE TODO MUNDO BAIXA PRA INSTALAR.
         //
         // Isto não é ajuste de vaidade: o primeiro acesso do responsável

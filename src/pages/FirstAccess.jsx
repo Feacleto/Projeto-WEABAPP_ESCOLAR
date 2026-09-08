@@ -13,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import FundoNoturno from '../components/common/FundoNoturno';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
@@ -77,13 +78,10 @@ export default function FirstAccess() {
   // arrependimento provável dela é trocar de porta, não sair do app. Quem
   // chegou de qualquer outro jeito continua voltando pra porta da família.
   const veioDaEscolha = location.state?.de === 'escolha';
-  // Também abre pra quem veio da bifurcação: ela acabou de tocar em "usar meu
-  // convite", e receber um "tenho um código de convite" fechado logo depois é
-  // a mesma pergunta feita duas vezes. Quem chega por outro caminho continua
-  // vendo o aviso do link primeiro, que é o que serve a 9 de 10.
-  const [abriuCodigo, setAbriuCodigo] = useState(
-    Boolean(codigoRecebido) || veioDaEscolha
-  );
+  // O `abriuCodigo` SAIU em 08/09/2026: o campo de código não fica mais atrás
+  // de um toque, então não há o que abrir. O motivo dele existir continua
+  // resolvido — por hierarquia, não por esconderijo — e o comentário está no
+  // divisor "ou digite o código", lá embaixo.
   const [abriuSenha, setAbriuSenha] = useState(false);
   const [code, setCode] = useState(codigoRecebido);
   const [name, setName] = useState('');
@@ -238,30 +236,7 @@ export default function FirstAccess() {
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)]">
       {/* ── tampa escura: a marca, no mesmo material da home ── */}
       <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div
-            className="absolute inset-0 opacity-80 animate-glow-drift"
-            style={{
-              background:
-                'radial-gradient(110% 80% at 10% 0%, rgba(31,95,63,.6) 0%, rgba(11,18,16,0) 62%)',
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-60 animate-glow-drift-slow"
-            style={{
-              background:
-                'radial-gradient(90% 70% at 100% 10%, rgba(82,196,26,.2) 0%, rgba(11,18,16,0) 58%)',
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.06] animate-grid-drift"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
-              backgroundSize: '44px 44px',
-            }}
-          />
-        </div>
+        <FundoNoturno />
 
         <div className="relative">
           {/* Voltar vai pra porta da FAMÍLIA, não pra "/". Esta tela existe
@@ -289,15 +264,31 @@ export default function FirstAccess() {
               height={80}
               className="mx-auto lg:mx-0"
             />
+          {/* ⚠️ A FAIXA DIZ O QUE ELA GANHA, e antes dizia o que ela tem que
+            *   fazer.
+            *
+            * "Primeiro acesso" / "Criar sua conta" descrevem o FORMULÁRIO, e o
+            * formulário já está do lado direito, com esse nome. Do lado da
+            * marca, a pergunta é outra: por que eu faria isso. A resposta é
+            * ver onde a perua está, saber quando ela chega e avisar quando o
+            * filho não vai.
+            *
+            * "Pra quem espera na porta" faz o par com "pra quem dirige" da
+            * tela do motorista. As duas portas passaram a se anunciar pelo
+            * mesmo gesto, e quem entrou na errada descobre no chapéu. */}
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
-              primeiro acesso
+              pra quem espera na porta
             </p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
-              Criar sua conta
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
+              Acompanhe a perua do seu filho
             </h1>
-            <p className="mx-auto mt-2 max-w-[19rem] text-sm leading-relaxed text-white/65 lg:mx-0">
-              Sua conta nasce do convite do motorista — é ele que liga seu filho
-              a você.
+            <p className="mx-auto mt-3 max-w-[22rem] text-sm leading-relaxed text-white/65 lg:mx-0">
+              Você vê onde ela está, recebe o aviso quando ela chega e avisa
+              quando ele não vai.{' '}
+              <strong className="font-semibold text-white">
+                Sua conta nasce do convite do motorista
+              </strong>{' '}
+              — é ele que liga o seu filho a você.
             </p>
           </div>
         </div>
@@ -315,37 +306,62 @@ export default function FirstAccess() {
         className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
       />
 
-      <main className="flex flex-1 flex-col px-6 py-5 lg:px-12 lg:py-16">
-        <div className="mx-auto flex w-full max-w-[520px] flex-1 flex-col lg:justify-center">
+      {/* O cartão sobre cinza, igual ao do login e ao da tela do motorista:
+        * as três portas do produto passaram a ter a mesma superfície, porque
+        * são a mesma sessão para quem atravessa duas delas. */}
+      <main className="flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16">
+        <div className="mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8">
+          <div className="mb-5">
+            <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
+              Usar meu convite
+            </h2>
+            {/* A FRASE PROMETE O CAMINHO CURTO ANTES DE MOSTRAR O LONGO.
+              * São duas formas, e a que serve 9 de 10 não pede nada digitado —
+              * dizer isso primeiro evita que ela comece a caçar o código que
+              * talvez ela não tenha. */}
+            <p className="mt-2 text-sm leading-relaxed text-textMuted">
+              Duas formas de entrar, e a primeira não pede nada digitado.
+            </p>
+          </div>
         {/* O caminho fácil primeiro: quem tem o link não precisa de nada disso. */}
         <div className="rounded-2xl border border-primaryBorder bg-primarySoft p-4">
           <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
             <Link2 size={15} className="text-primary" />
-            O motorista te mandou um link?
+            Recebeu um link no WhatsApp?
           </p>
           <p className="mt-1 text-xs leading-relaxed text-primary/80">
-            Então abre o link — ele já vem com o convite dentro, e sua conta se
-            cria por lá. <strong>Você não precisa de código nenhum.</strong>
+            É só abrir o link — o convite já vem dentro dele e a sua conta se
+            cria por lá, <strong>sem digitar código nenhum.</strong>
           </p>
         </div>
 
-        {/* O CÓDIGO É EXCEÇÃO, E AGORA TEM O TAMANHO DE UMA EXCEÇÃO
-          * Ele era um cartão do mesmo peso do aviso do link — e dois blocos
-          * do mesmo tamanho lado a lado leem como duas opções equivalentes,
-          * quando na verdade 9 de 10 responsáveis chegam pelo link. Virou uma
-          * linha de texto: continua a um toque, mas não disputa a tela com a
-          * resposta que quase todo mundo precisa. */}
-        {!abriuCodigo ? (
-          <button
-            type="button"
-            onClick={() => setAbriuCodigo(true)}
-            className="tap mt-3 inline-flex w-full items-center justify-center gap-1.5 py-2 text-sm font-semibold text-textMuted hover:text-text"
-          >
-            <Ticket size={14} />
-            Tenho um código de convite
-          </button>
-        ) : (
-          <div className="animate-step-in mt-4 space-y-4">
+        {/* ⚠️ O CÓDIGO SAIU DE TRÁS DO TOQUE em 08/09/2026, por decisão do
+          * dono, e o argumento que o escondia fica registrado porque ele não
+          * era errado: 9 de 10 responsáveis chegam pelo link, e um campo de
+          * código do mesmo peso do aviso do link fazia as duas coisas
+          * parecerem opções equivalentes.
+          *
+          * O QUE SUBSTITUI AQUELE ARGUMENTO É A HIERARQUIA, não o
+          * esconderijo. O aviso do link continua em cima, em cartão verde, e
+          * o código vem depois de um "ou digite o código" — a ordem e o
+          * divisor dizem qual é o caminho principal sem exigir um toque de
+          * quem já está com o código na mão.
+          *
+          * E era esse toque o problema: quem veio da bifurcação com o código
+          * copiado do WhatsApp encontrava um campo fechado e tinha que
+          * descobrir que ele existia. */}
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center" aria-hidden>
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-card px-3 text-xs text-textMuted">
+              ou digite o código
+            </span>
+          </div>
+        </div>
+        {(
+          <div className="space-y-4">
             <Input
               label="Código de convite"
               placeholder="TN2K9F4B"
@@ -354,9 +370,13 @@ export default function FirstAccess() {
               onChange={(e) => setCode(codigoDoTexto(e.target.value))}
               autoCapitalize="characters"
               maxLength={8}
-              hint="8 caracteres, começa com TN."
+              hint="8 caracteres, começa com TN. Se você veio da tela anterior, ele já vem preenchido."
               error={errors.code}
               required
+              // O código é lido em voz alta e conferido letra por letra: mono e
+              // espaçado. No INPUT, não no invólucro — senão o rótulo e a dica
+              // saem espaçados também.
+              inputClassName="font-mono tracking-[0.3em] uppercase"
             />
 
             {/* Só depois do código a criação de conta faz sentido: sem ele não
