@@ -108,6 +108,15 @@ img{max-width:100%}
    Fundo igual, regra igual: quem pinta é a cor de fundo, não o apelido. */
 .verde .lead,.mot .lead{color:#D6E7DC}   /* 5,6:1 sobre #1F5F3F */
 
+/* O TESTE, em corpo de texto e não em legenda. Fica ABAIXO dos botões porque
+   não é o que faz ele clicar — é o que faz ele não ter medo de clicar. */
+.teste-hero{
+  margin-top:16px;font-size:.97rem;color:var(--cinza);max-width:48ch;
+}
+.teste-hero strong{color:var(--preto);font-weight:600}
+.escuro .teste-hero,.verde .teste-hero,.mot .teste-hero{color:#C7D3CD}
+.escuro .teste-hero strong,.verde .teste-hero strong,.mot .teste-hero strong{color:var(--branco)}
+
 /* ══ NAV ══════════════════════════════════════════ */
 /* A barra é VERDE, sólida. Sólida e não translúcida porque a janela da
    perua no logo é preenchida com o mesmo verde — sobre fundo translúcido
@@ -176,8 +185,8 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .b1:hover{box-shadow:0 9px 30px rgba(31,95,63,.36)}
 .b2{background:transparent;color:var(--preto);box-shadow:inset 0 0 0 1.5px var(--linha)}
 .b2:hover{box-shadow:inset 0 0 0 1.5px var(--verde-claro)}
-.escuro .b2,.verde .b2,.mot .b2{color:var(--areia);box-shadow:inset 0 0 0 1.5px var(--linha-esc)}
-.escuro .b2:hover,.verde .b2:hover,.mot .b2:hover{box-shadow:inset 0 0 0 1.5px var(--verde-vivo)}
+.escuro .b2,.verde .b2,.mot .b2,.jura .b2{color:var(--areia);box-shadow:inset 0 0 0 1.5px var(--linha-esc)}
+.escuro .b2:hover,.verde .b2:hover,.mot .b2:hover,.jura .b2:hover{box-shadow:inset 0 0 0 1.5px var(--verde-vivo)}
 .b3{background:var(--verde-vivo);color:var(--preto);box-shadow:0 5px 22px rgba(82,196,26,.3)}
 .b3:hover{box-shadow:0 10px 34px rgba(82,196,26,.42)}
 .b4{background:var(--preto);color:var(--areia);box-shadow:0 5px 20px rgba(11,18,16,.24)}
@@ -234,8 +243,17 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .percurso.on .pt{border-color:rgba(82,196,26,.42);background:rgba(82,196,26,.1)}
 .percurso .via{flex:1;height:2px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.26) 0 10px,transparent 10px 22px)}
 .percurso .pvan{position:absolute;top:50%;left:56px;width:34px;height:34px;margin-top:-17px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.45))}
-.percurso.on .pvan{animation:percorre 3.6s cubic-bezier(.42,0,.5,1) .35s forwards}
-@keyframes percorre{from{left:56px}to{left:calc(100% - 90px)}}
+.percurso.on .pvan{animation:percorre 7.2s cubic-bezier(.42,0,.5,1) .35s infinite}
+@media (prefers-reduced-motion:reduce){
+  .percurso.on .pvan{animation:none;left:calc(50% - 17px)}
+}
+@keyframes percorre{
+  0%{left:56px;transform:scaleX(1)}
+  42%{left:calc(100% - 90px);transform:scaleX(1)}
+  50%{left:calc(100% - 90px);transform:scaleX(-1)}
+  92%{left:56px;transform:scaleX(-1)}
+  100%{left:56px;transform:scaleX(1)}
+}
 .percurso .rot{position:absolute;left:0;right:0;top:100%;margin-top:12px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cinza-cl)}
 .percurso .rot span{white-space:nowrap}
 
@@ -332,6 +350,93 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .herogrid{display:grid;grid-template-columns:1.06fr .94fr;gap:clamp(34px,5vw,66px);align-items:center;position:relative}
 .hero h1 span{color:var(--verde-esc);display:inline-block}
 .herobtns{display:flex;gap:13px;flex-wrap:wrap;margin-top:34px}
+
+/* ══ O CONVITE DO VÍDEO ═══════════════════════════════════════════
+ * Ele NÃO toca sozinho, e a decisão é o produto inteiro desta peça.
+ *
+ * O vídeo tem 26,8 s. Uma abertura que cobrisse a tela faria o "pular"
+ * ser o primeiro gesto de quase todo visitante — a primeira coisa que
+ * a pessoa faz no site seria fugir dele. E autoplay só roda no MUDO:
+ * navegador nenhum solta som sem gesto, então uma abertura automática
+ * entregaria o vídeo sem a metade que ele tem de melhor.
+ *
+ * Então o vídeo espera um toque. Quem toca vê inteiro, COM SOM, porque
+ * o gesto é o que destrava o áudio. Poucos veem, e são os certos.
+ *
+ * ── O QUADRADINHO É O PRÓPRIO VÍDEO, PARADO NO PRIMEIRO QUADRO
+ * Sem imagem de pôster separada: uma a menos para baixar, e nunca
+ * existe a versão em que o pôster mostra uma coisa e o vídeo outra.
+ *
+ * ── E ELE PROMETE O TEMPO
+ * "em 30 segundos" é o que decide o toque. Um play sem duração é um
+ * convite para um compromisso que a pessoa não sabe o tamanho. */
+.convite-video{
+  display:flex;align-items:center;gap:13px;
+  width:100%;max-width:430px;margin-top:22px;
+  padding:10px 18px 10px 10px;
+  background:var(--branco);border:1px solid #DDE3DF;border-radius:16px;
+  box-shadow:0 8px 22px rgba(11,18,16,.06);
+  cursor:pointer;text-align:left;font:inherit;color:inherit;
+  transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.convite-video:hover{border-color:var(--verde-vivo);box-shadow:0 12px 30px rgba(11,18,16,.11)}
+.convite-video:active{transform:translateY(1px)}
+.convite-video:focus-visible{outline:2px solid var(--verde-esc);outline-offset:3px}
+.escuro .convite-video,.verde .convite-video,.mot .convite-video{
+  background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.16);
+}
+
+.cv-quadro{
+  position:relative;flex:0 0 58px;width:58px;height:58px;
+  border-radius:12px;overflow:hidden;background:var(--preto);
+}
+.cv-quadro video{width:100%;height:100%;object-fit:cover;display:block}
+.cv-play{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.26)}
+.cv-play i{
+  width:26px;height:26px;border-radius:999px;background:var(--verde-vivo);
+  display:grid;place-items:center;
+}
+.cv-play i::after{
+  content:'';border-left:9px solid #06210A;
+  border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:3px;
+}
+.cv-txt b{display:block;font-size:.97rem;font-weight:600;color:var(--preto);line-height:1.25}
+.cv-txt i{font-style:normal;display:block;font-size:.85rem;color:var(--cinza);margin-top:3px}
+.escuro .cv-txt b,.verde .cv-txt b,.mot .cv-txt b{color:var(--branco)}
+.escuro .cv-txt i,.verde .cv-txt i,.mot .cv-txt i{color:#C7D3CD}
+
+/* A luz apagada em volta do vídeo. `position:fixed` cobre a página
+ * inteira: o vídeo é vertical e alto, e um lightbox preso ao herói
+ * cortaria o topo dele em telas baixas. */
+.cv-luz{
+  position:fixed;inset:0;z-index:90;
+  background:rgba(4,9,7,.94);
+  display:grid;place-items:center;padding:64px 20px 24px;
+  opacity:0;pointer-events:none;transition:opacity .28s ease;
+}
+.cv-luz.on{opacity:1;pointer-events:auto}
+.cv-caixa{
+  position:relative;width:100%;
+  /* O 9:16 manda, e a ALTURA é o limite real: sem o segundo termo, num
+   * notebook o vídeo estouraria a janela e os controles ficariam fora
+   * do alcance. */
+  max-width:min(400px,calc((100vh - 108px) * 9 / 16));
+  aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:#000;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);
+}
+.cv-luz video{width:100%;height:100%;object-fit:contain;display:block}
+.cv-fechar{
+  position:absolute;top:16px;right:16px;
+  width:38px;height:38px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);
+  color:var(--branco);font-size:20px;line-height:1;cursor:pointer;
+}
+.cv-fechar:hover{background:rgba(255,255,255,.18)}
+.cv-fechar:focus-visible{outline:2px solid var(--verde-vivo);outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){
+  .convite-video,.cv-luz{transition:none}
+}
 /* A faixa amarela fecha o hero e emenda na seção seguinte: é o mesmo
    traço da régua do topo, agora na largura toda. */
 .faixa-marca{height:10px;background:repeating-linear-gradient(90deg,var(--verde-vivo) 0 46px,var(--preto) 46px 92px);margin-top:clamp(56px,8vw,96px)}
@@ -413,24 +518,62 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .forka-topo{width:var(--lg);margin-inline:auto;padding:clamp(58px,8vw,86px) 0 clamp(34px,4vw,48px);text-align:center}
 .forka-topo h2{max-width:16ch;margin-inline:auto}
 .portas{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--verde-vivo)}
+.forka-topo .forka-lead{
+  margin:16px auto 0;max-width:44ch;color:#C7D3CD;
+  font-size:clamp(1rem,1.8vw,1.08rem);
+}
+/* O CARTAO TEM DUAS ACOES, e por isso deixou de ser um <a> gigante: a leitura
+   fica no texto, a entrada fica no botao. Duas colunas — texto a esquerda,
+   botao encostado na direita e CENTRADO na vertical (`align-items:center`),
+   que e onde o polegar chega sem cobrir o texto. */
 .porta{
-  position:relative;display:block;text-decoration:none;padding:clamp(38px,5vw,62px) clamp(26px,4vw,52px) clamp(44px,5vw,66px);
+  position:relative;display:grid;grid-template-columns:1fr auto;
+  align-items:center;gap:clamp(20px,3vw,34px);
+  padding:clamp(38px,5vw,62px) clamp(26px,4vw,52px) clamp(44px,5vw,66px);
   background:var(--preto);color:var(--areia);overflow:hidden;
   transition:background .38s cubic-bezier(.2,.7,.3,1);
+}
+.porta:hover,.porta:focus-within{background:#101C18}
+.porta:hover::after,.porta:focus-within::after{transform:scaleX(1)}
+.porta-txt{min-width:0}
+.porta-btn{
+  position:relative;z-index:2;flex:none;
+  display:inline-flex;align-items:center;gap:9px;white-space:nowrap;
+  padding:15px 24px;border-radius:100px;text-decoration:none;
+  background:var(--verde-vivo);color:var(--preto);
+  font-weight:700;font-size:.95rem;letter-spacing:-.01em;
+  box-shadow:0 6px 20px rgba(82,196,26,.24);
+  transition:transform .26s,box-shadow .26s;
+}
+.porta-btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(82,196,26,.34)}
+.porta-btn:focus-visible{outline:2.5px solid #fff;outline-offset:3px}
+.porta-btn svg{transition:transform .3s}
+.porta-btn:hover svg{transform:translateX(4px)}
+/* No celular o cartao empilha: o botao vai pro fim, largura cheia. Botao
+   "encostado na direita" num cartao de 340px seria botao apertado. */
+@media (max-width:880px){
+  .porta{grid-template-columns:1fr;align-items:start;gap:26px}
+  .porta-btn{width:100%;justify-content:center}
 }
 .porta::after{
   content:'';position:absolute;left:0;right:0;bottom:0;height:5px;
   background:var(--verde-vivo);transform:scaleX(0);transform-origin:left;
   transition:transform .44s cubic-bezier(.2,.7,.3,1);
 }
-.porta:hover,.porta:focus-visible{background:#101C18}
-.porta:hover::after,.porta:focus-visible::after{transform:scaleX(1)}
 .porta .rot{font-family:var(--mono);font-size:.7rem;letter-spacing:.19em;text-transform:uppercase;color:var(--verde-vivo);display:block;margin-bottom:16px}
 .porta h3{font-size:clamp(1.5rem,3.1vw,2.15rem);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-bottom:12px}
 .porta p{color:#C7D3CD;font-size:.98rem;max-width:34ch}
-.porta .seta{display:inline-flex;align-items:center;gap:9px;margin-top:24px;font-weight:600;font-size:.95rem;color:var(--verde-vivo)}
+.porta .seta{
+  position:relative;z-index:2;
+  display:inline-flex;align-items:center;gap:9px;margin-top:24px;
+  font-weight:600;font-size:.95rem;color:var(--verde-vivo);
+  text-decoration:none;border-bottom:1.5px solid transparent;
+}
+.porta .seta:hover{border-bottom-color:var(--verde-vivo)}
+.porta .seta:focus-visible{outline:2px solid var(--verde-vivo);outline-offset:4px;border-radius:3px}
 .porta .seta svg{transition:transform .3s}
 .porta:hover .seta svg{transform:translateX(6px)}
+.porta p{max-width:34ch}
 /* Duas silhuetas, pra diferenciar as portas sem depender do texto. */
 .porta .sil{position:absolute;right:-14px;bottom:-16px;width:132px;opacity:.09;pointer-events:none}
 
@@ -451,6 +594,23 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .razoes li:hover{background:rgba(255,255,255,.045);padding-left:12px}
 .razoes .num{font-family:var(--mono);font-size:.76rem;letter-spacing:.14em;color:var(--verde-vivo)}
 .razoes .txt{font-size:1.03rem;font-weight:500}
+/* A DÚVIDA DELE SOBRE ELA.
+   Não é cartão e não tem fundo próprio: cartão diz "outro assunto", e esta
+   pergunta é a continuação da lista de cima. O que a separa é o filete e o
+   fato de ser a única pergunta escrita como pergunta na seção. */
+.duvida{
+  border-left:3px solid var(--verde-vivo);
+  padding:6px 0 6px clamp(18px,2.4vw,26px);
+  max-width:62ch;
+}
+.duvida h3{
+  font-family:var(--display);font-weight:700;
+  font-size:clamp(1.2rem,2.4vw,1.5rem);letter-spacing:-.015em;
+  margin:0 0 14px;color:#FFFFFF;
+}
+.duvida p{margin:0;color:#D6E7DC;font-size:1.01rem}   /* 5,6:1 sobre #1F5F3F */
+.duvida p + p{margin-top:13px}
+.duvida b{color:#FFFFFF;font-weight:600}
 /* A declaração que mata a objeção silenciosa. É o maior bloco de texto
    da página inteira, de propósito — a restrição pede destaque. */
 .jura{background:var(--preto);color:var(--areia);padding:clamp(58px,8vw,104px) 0;position:relative;overflow:hidden}
@@ -461,25 +621,112 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 }
 .jura .fr em{font-style:normal;color:var(--verde-vivo)}
 .jura .ap{margin-top:26px;max-width:56ch;color:#C7D3CD;font-size:clamp(1rem,1.8vw,1.1rem)}
-.dois-dinheiros{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-top:38px;max-width:660px}
-.dd{border:1px solid var(--linha-esc);border-radius:16px;padding:18px 20px;background:rgba(255,255,255,.04)}
-.dd b{display:block;font-family:var(--display);font-size:1.02rem;font-weight:600;margin-bottom:5px}
-.dd span{font-size:.88rem;color:#BAC7C1;display:block}
-.dd.seu{border-color:rgba(82,196,26,.4);background:rgba(82,196,26,.08)}
-.nunca{font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cinza-cl);text-align:center;padding:0 4px;line-height:1.5}
+/* O DIA 91. Era um <span> de .92rem colado no fim da fileira de botões, e a
+   pergunta que ele responde — "e quando acabar?" — é a última antes do
+   clique. Virou parágrafo, com o "quero conversar" como saída lateral. */
+.dia91{margin-top:22px;max-width:58ch}
+.dia91 p{font-size:.97rem;line-height:1.68;color:#C7D3CD;margin:0}
+.dia91 p + p{margin-top:11px}
+.dia91 b{color:var(--branco);font-weight:600}
+.dia91 a{
+  display:inline-block;margin-top:11px;
+  color:var(--verde-vivo);font-weight:600;text-decoration:none;
+  border-bottom:1.5px solid rgba(82,196,26,.4);transition:border-color .25s;
+}
+.dia91 a:hover{border-bottom-color:var(--verde-vivo)}
+/* O CAMINHO DO DINHEIRO — grafico, nao lista.
+   Duas fileiras: a de cima e o caminho que existe (familia -> voce), a de
+   baixo e quem NAO esta nele. A plataforma nao ganha seta nenhuma, e isso e
+   o argumento: nao ha por onde ela entrar. O tracejado com o X liga as duas
+   fileiras justamente para mostrar a ligacao que foi cortada. */
+.caminho{margin-top:40px;max-width:600px}
+.cm-linha{display:grid;grid-template-columns:auto 1fr auto;gap:clamp(10px,2vw,20px);align-items:start}
+.cm-no{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;width:84px}
+.cm-ico{
+  width:56px;height:56px;border-radius:16px;display:grid;place-items:center;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);
+  color:var(--areia);
+}
+.cm-ico svg{width:26px;height:26px}
+.cm-no.forte .cm-ico{background:var(--verde-vivo);border-color:var(--verde-vivo);color:var(--preto)}
+.cm-no b{font-size:.88rem;font-weight:600;color:var(--areia);line-height:1.3}
+.cm-no.forte b{color:var(--verde-vivo)}
+.cm-seta{position:relative;padding-top:27px;color:var(--verde-vivo)}
+.cm-seta svg{width:100%;height:12px;display:block}
+.cm-rot{
+  position:absolute;left:0;right:0;top:0;text-align:center;
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--verde-vivo);
+}
+.cm-fora{display:flex;flex-direction:column;align-items:center;gap:0;width:84px;margin:2px auto 0}
+.cm-corte{display:flex;flex-direction:column;align-items:center;color:rgba(255,255,255,.34)}
+.cm-corte i{width:2px;height:26px;background:repeating-linear-gradient(180deg,currentColor 0 5px,transparent 5px 10px)}
+.cm-corte em{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  border:1.5px solid currentColor;margin:4px 0;
+}
+.cm-corte em svg{width:13px;height:13px}
+.cm-no.apagado{opacity:.42;margin-top:4px}
+.cm-no.apagado .cm-ico{background:transparent;border-style:dashed}
+/* No celular a fileira de cima vira coluna: seta apontando pra baixo seria
+   outro desenho, entao ela so encurta e o rotulo sobe. */
+@media (max-width:560px){
+  .cm-linha{grid-template-columns:auto 1fr auto;gap:8px}
+  .cm-no{width:72px}
+  .cm-ico{width:48px;height:48px;border-radius:14px}
+  .cm-ico svg{width:22px;height:22px}
+  .cm-no b{font-size:.8rem}
+}
 
 /* — faixa da família: arejada — */
 .fam{background:var(--areia);color:var(--preto)}
 .fam .cab{max-width:23ch}
 .fam h2{font-size:clamp(2rem,4.6vw,3.3rem)}
-.calmas{margin:clamp(42px,6vw,66px) 0 0;display:grid;gap:0;max-width:640px}
+.calmas{
+  margin:clamp(42px,6vw,66px) 0 0;padding:0;list-style:none;
+  display:grid;gap:0;max-width:660px;
+}
 .calma{
-  padding:26px 0;border-top:1px solid var(--linha);
-  display:grid;grid-template-columns:26px 1fr;gap:18px;align-items:start;
+  padding:24px 6px;border-top:1px solid var(--linha);
+  display:grid;grid-template-columns:38px 1fr;gap:16px;align-items:baseline;
+  border-radius:10px;
+  transition:background .26s cubic-bezier(.2,.7,.3,1),padding-left .26s cubic-bezier(.2,.7,.3,1);
 }
 .calma:last-child{border-bottom:1px solid var(--linha)}
-.calma svg{margin-top:4px;color:var(--verde-claro);flex:none}
-.calma p{font-size:clamp(1.05rem,2vw,1.22rem);font-weight:500;line-height:1.42;letter-spacing:-.012em}
+/* A MICROINTERACAO E A MESMA DA LISTA DO MOTORISTA, de propósito: as duas
+   faixas passam a responder ao dedo do mesmo jeito. O item desliza um tico e
+   o numero acende — movimento curto, porque cinco linhas que pulam viram
+   ruido. No toque, `:active` cobre o que o celular nao tem de hover. */
+.calma:hover,.calma:active{background:rgba(31,95,63,.055);padding-left:16px}
+.calma:hover .cn,.calma:active .cn{color:var(--verde-claro);transform:translateY(-1px)}
+.calma .cn{
+  font-family:var(--mono);font-size:.78rem;letter-spacing:.1em;
+  color:var(--cinza-cl);font-variant-numeric:tabular-nums;
+  transition:color .26s,transform .26s;
+}
+.calma p{margin:0;font-size:clamp(1.05rem,2vw,1.22rem);font-weight:500;line-height:1.42;letter-spacing:-.012em}
+@media (prefers-reduced-motion:reduce){
+  .calma,.calma .cn{transition:none}
+  .calma:hover,.calma:active{padding-left:6px}
+}
+/* A DECLARACAO 6. Fica ao lado do .protege e NAO e cartao como ele: sao dois
+   registros diferentes. O .protege e regra da casa (fundo branco, cartao); esta
+   e promessa de comportamento, e promessa se le no corpo do texto. */
+.cala{
+  margin-top:clamp(40px,5vw,58px);
+  padding:4px 0 4px clamp(18px,2.4vw,26px);
+  border-left:3px solid var(--verde-claro);
+  max-width:60ch;
+}
+.cala h3{
+  font-size:clamp(1.18rem,2.4vw,1.46rem);font-weight:800;
+  letter-spacing:-.02em;margin:0 0 12px;
+}
+.cala p{margin:0;color:var(--cinza);font-size:1.02rem}
+.cala b{
+  color:var(--preto);font-weight:600;font-family:var(--mono);
+  font-size:.86em;letter-spacing:.04em;
+}
 .protege{
   margin-top:clamp(42px,6vw,64px);padding:clamp(28px,4vw,40px);border-radius:var(--r);
   background:var(--branco);border:1px solid var(--linha);
@@ -487,6 +734,58 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 }
 .protege h3{font-size:clamp(1.24rem,2.6vw,1.62rem);font-weight:800;letter-spacing:-.02em;margin-bottom:12px}
 .protege p{color:var(--cinza);font-size:1rem}
+.portas-fam{
+  margin-top:clamp(42px,6vw,64px);
+  display:grid;grid-template-columns:1fr;gap:clamp(16px,2vw,22px);
+  max-width:760px;
+}
+@media (min-width:900px){
+  .portas-fam{grid-template-columns:1.08fr .92fr;align-items:start}
+}
+/* O DESVIO: sem fundo e sem filete, so borda. Ele nao compete com o cartao
+   branco do lado — quem cai aqui e minoria, e a forma admite isso. */
+.pede{
+  padding:clamp(26px,3.4vw,36px);border-radius:var(--r);
+  border:1.5px solid rgba(11,18,16,.16);   /* mais forte que --linha (.10): sem fundo, a borda é o único limite */
+  background:transparent;
+}
+.pede-rot{
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--verde-claro);
+  display:block;margin-bottom:12px;
+}
+.pede h3{
+  font-size:clamp(1.14rem,2.3vw,1.4rem);font-weight:800;
+  letter-spacing:-.02em;margin:0 0 10px;
+}
+.pede p{color:var(--cinza);font-size:.95rem;max-width:46ch;margin:0 0 18px}
+/* O CAMPO E O BOTAO SAO UMA PECA. Campo separado do botao vira formulario, e
+   ninguem preenche formulario pra copiar um link. */
+.copia{
+  display:flex;align-items:stretch;gap:0;
+  border:1.5px solid rgba(11,18,16,.16);border-radius:12px;
+  background:var(--branco);overflow:hidden;max-width:420px;
+}
+.copia-txt{
+  flex:1 1 auto;min-width:0;border:0;background:transparent;
+  padding:13px 14px;font-family:var(--mono);font-size:.84rem;
+  color:var(--preto);text-overflow:ellipsis;
+}
+.copia-txt:focus{outline:2px solid var(--verde-claro);outline-offset:-2px}
+.copia-btn{
+  flex:none;border:0;cursor:pointer;
+  padding:13px 18px;font-family:var(--corpo);font-weight:700;font-size:.88rem;
+  background:var(--verde-esc);color:#fff;
+  transition:background .22s;
+}
+.copia-btn:hover{background:var(--verde-claro)}
+.copia-btn:focus-visible{outline:2.5px solid var(--preto);outline-offset:-4px}
+.copia.feito .copia-btn{background:var(--verde-claro)}
+.copia-dica{font-size:.86rem;color:var(--cinza-cl);margin:12px 0 0}
+@media (max-width:420px){
+  .copia{flex-direction:column;max-width:none}
+  .copia-btn{padding:14px}
+}
 /* O elo entre as duas faixas: quem leu a errada acha a certa. */
 .troca{
   display:inline-flex;align-items:center;gap:11px;margin-top:clamp(38px,5vw,56px);
@@ -514,7 +813,10 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 }
 .tela{width:100%;height:100%;border-radius:26px;overflow:hidden;position:relative;background:#EEF1EF}
 .tela .top{height:34px;background:#fff;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:7px;padding:0 12px}
-.tela .top .av{width:19px;height:19px;border-radius:6px;background:var(--verde-esc);flex:none}
+.tela .top .av{
+  width:19px;height:19px;border-radius:50%;background:var(--verde-esc);
+  flex:none;object-fit:cover;display:block;
+}
 .tela .top .nm{font-size:9.5px;font-weight:600;color:#111827;white-space:nowrap}
 .fones{display:flex;gap:clamp(14px,2.4vw,26px);justify-content:center;flex-wrap:wrap}
 .fone-leg{text-align:center;margin-top:15px;font-family:var(--mono);font-size:.66rem;letter-spacing:.15em;text-transform:uppercase;color:var(--cinza-cl)}
@@ -544,7 +846,11 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 @keyframes pulsa2{0%{transform:scale(.7);opacity:.85}100%{transform:scale(3.6);opacity:0}}
 .t-mapa .cartao{position:absolute;left:9px;right:9px;bottom:9px;background:#fff;border-radius:15px;padding:11px 12px;box-shadow:0 6px 18px rgba(11,18,16,.14)}
 .t-mapa .cartao .l1{font-family:var(--mono);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;color:#5A6660}
-.t-mapa .cartao .l2{font-size:14px;font-weight:700;color:#111827;margin-top:3px;letter-spacing:-.02em}
+.t-mapa .cartao .l2{
+  font-size:14px;font-weight:700;color:#111827;margin-top:3px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:7px;
+}
+.t-mapa .cartao .l2-av{width:22px;height:22px;border-radius:50%;flex:none;object-fit:cover;background:#E5E7EB}
 .t-mapa .cartao .l3{font-size:9.5px;color:#5A6660;margin-top:2px}
 .t-mapa .cartao .barra{height:4px;border-radius:3px;background:#E4E9E5;margin-top:9px;overflow:hidden}
 .t-mapa .cartao .barra i{display:block;height:100%;border-radius:3px;background:var(--verde-esc);width:62%;animation:enche 7s cubic-bezier(.45,0,.55,1) infinite}
@@ -583,13 +889,19 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .t-pag .resumo .v{font-family:var(--display);font-size:23px;font-weight:800;letter-spacing:-.03em;margin-top:2px;line-height:1}
 .t-pag .resumo .s{font-size:8.5px;opacity:.75;margin-top:3px}
 .t-pag .lin{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;background:#fff;border-radius:11px;padding:8px 9px;margin-bottom:6px;border:1px solid #E5E7EB}
-.t-pag .lin .bo{width:22px;height:22px;border-radius:50%;background:#E5E7EB}
+.t-pag .lin .bo{
+  width:22px;height:22px;border-radius:50%;background:#E5E7EB;
+  flex:none;object-fit:cover;display:block;
+}
 .t-pag .lin .nn{display:block;font-size:10px;font-weight:600;color:#111827;line-height:1.25}
 .t-pag .lin .vv{display:block;font-size:8.5px;color:#5A6660;margin-top:1px;line-height:1.3}
 .t-pag .lin > span:nth-child(2){min-width:0}
 .t-pag .tag{font-size:7.5px;font-weight:700;padding:4px 8px;border-radius:100px;letter-spacing:.02em}
 .t-pag .tag.ok{background:rgba(82,196,26,.16);color:#3F6212}
 .t-pag .tag.ab{background:#FEF3C7;color:#92400E}
+.t-pag .tag.at{background:#FEE2E2;color:#991B1B}   /* 7,0:1 — atrasado */
+.t-pag .lin.vermelha .nn{color:#991B1B}
+.t-pag .lin.vermelha .vv{color:#B91C1C}
 .t-pag .lin.destaque{border-color:rgba(245,166,35,.5);box-shadow:0 0 0 3px rgba(245,166,35,.14);animation:acende 5s ease-in-out infinite}
 @keyframes acende{0%,60%,100%{box-shadow:0 0 0 3px rgba(245,166,35,.14)}30%{box-shadow:0 0 0 6px rgba(245,166,35,.26)}}
 .t-pag .pixbtn{margin-top:9px;background:var(--verde-esc);color:#fff;border-radius:11px;text-align:center;padding:9px;font-size:9.5px;font-weight:700}
@@ -606,7 +918,12 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .quebra h2{font-size:clamp(2.3rem,6.6vw,4.6rem);letter-spacing:-.03em;max-width:15ch}
 .quebra .naovende{
   font-family:var(--display);font-weight:600;font-size:clamp(1.1rem,2.4vw,1.5rem);
-  margin-top:22px;padding-bottom:clamp(38px,5vw,58px);border-bottom:2px solid rgba(11,18,16,.22);
+  margin-top:22px;
+}
+.quebra .quer{
+  font-size:clamp(.98rem,1.8vw,1.1rem);color:rgba(11,18,16,.7);
+  margin-top:12px;max-width:46ch;
+  padding-bottom:clamp(38px,5vw,58px);border-bottom:2px solid rgba(11,18,16,.22);
 }
 .tres{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
 .tres > div{padding:clamp(28px,3.4vw,42px) clamp(22px,2.6vw,34px) clamp(28px,3.4vw,42px) 0;border-right:2px solid rgba(11,18,16,.16)}
@@ -764,7 +1081,10 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 }
 .badge small{display:block;font-family:var(--mono);font-size:.56rem;letter-spacing:.13em;text-transform:uppercase;opacity:.72}
 .badge b{display:block;font-family:var(--display);font-size:.95rem;font-weight:600;line-height:1.2;color:#fff}
-.loja-nota{font-size:.8rem;opacity:.72;line-height:1.6;margin-top:14px;max-width:25ch}
+/* A nota cresceu: ela deixou de repetir o selo e passou a responder a
+   pergunta que ele faz na loja, longe daqui. 25ch era largura de legenda. */
+.loja-nota{font-size:.82rem;opacity:.78;line-height:1.65;margin-top:14px;max-width:44ch}
+.loja-nota b{opacity:1;font-weight:600;color:#fff}
 .fbot{padding-top:26px;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;font-size:.82rem;opacity:.78}
 .lgpd{display:flex;gap:11px;align-items:flex-start;margin-top:22px;font-size:.85rem;opacity:.84;max-width:44ch}
 
@@ -780,14 +1100,14 @@ footer a:hover{opacity:1;transform:translateX(3px)}
   .tres > div{border-right:0;border-bottom:2px solid rgba(11,18,16,.16);padding:26px 0}
   .tres > div:last-child{border-bottom:0;padding-bottom:0}
   .tres > div:not(:first-child){padding-left:0}
-  .dois-dinheiros{grid-template-columns:1fr;gap:12px}
-  .nunca{padding:4px 0}
   .tese > div{grid-template-columns:1fr;gap:8px}
 }
 
-/* O menu vira hambúrguer ANTES do resto do layout: são sete itens mais o
-   botão de Entrar, e a 1000px eles já quebram em duas linhas. Breakpoint
-   próprio, porque nav e grid não têm o mesmo ponto de aperto. */
+/* O menu vira hambúrguer ANTES do resto do layout: eram sete itens mais o
+   botão de Entrar, e a 1000px eles já quebravam em duas linhas. Hoje são
+   quatro e cabem folgados, mas o breakpoint fica: ele é o ponto em que a
+   barra encosta no botão, não em que o texto quebra. Breakpoint próprio,
+   porque nav e grid não têm o mesmo ponto de aperto. */
 @media (max-width:1000px){
   .links{
     position:fixed;inset:72px 0 auto;flex-direction:column;gap:0;
@@ -842,15 +1162,20 @@ footer a:hover{opacity:1;transform:translateX(3px)}
          frente: passava do "Sobre" para o último item, voltava para "Dúvidas"
          e só então ia para "Contato". Indicador de posição que volta ensina
          que ele não vale nada.
-         Item novo no menu entra na posição que a seção ocupa na página. -->
+         Item novo no menu entra na posição que a seção ocupa na página.
+
+         SÓ ENTRA AQUI O QUE O MOTORISTA PRECISA, e por isso o menu tem
+         quatro itens em vez de sete. "Sobre", "Contato" e "RI" continuam na
+         página e no rodapé — o que saiu foi a disputa pela atenção de quem
+         lê em pé, com uma mão. O RI é o caso mais claro: captação foi
+         decidida como "não" (docs/pitch-investidor.md), então oferecer
+         "Relações com Investidores" no topo faz a página parecer startup
+         atrás de dinheiro exatamente para quem já desconfia de aplicativo. -->
     <ul class="links" id="menu">
       <li><a href="#como">Como funciona</a></li>
       <li><a href="#motorista">Pro motorista</a></li>
       <li><a href="#familia">Pra família</a></li>
-      <li><a href="#sobre">Sobre</a></li>
-      <li><a href="#ri" title="Relações com Investidores">RI</a></li>
       <li><a href="#duvidas">Dúvidas</a></li>
-      <li><a href="#contato">Contato</a></li>
     </ul>
     <div class="navdir">
       <!-- O app mora no `.com`, a landing no `.com.br`. Não há subdomínio:
@@ -870,11 +1195,13 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 <header class="hero" id="topo">
   <div class="wrap herogrid">
     <div>
-      <span class="chapeu rv">app pra transporte escolar</span>
-      <h1 class="rv" style="--d:90ms">O transporte escolar <span>saiu do caderno.</span></h1>
+      <span class="chapeu rv">o seu novo app</span>
+      <h1 class="rv" style="--d:90ms">O transporte escolar <span>com operação digitalizada.</span></h1>
       <p class="lead rv" style="--d:190ms;margin-top:24px">
-        A gente tirou a rota, o aviso de chegada e a mensalidade do caderno e do grupo
-        de WhatsApp. Agora tudo mora num lugar só — e a família acompanha em tempo real.
+        A gente digitaliza a sua rota, o aviso da criança que vai faltar chega mais rápido,
+        a mensalidade atrasada fica anotada no app, e a cobrança do mês nasce sozinha para
+        os pais. Tudo isso num lugar só: <b>o seu novo ambiente digital de trabalho</b> — com o
+        app você dirige, e a gente vem tirar o resto do seu ombro.
       </p>
       <div class="herobtns rv" style="--d:290ms">
         <a href="#escolha" class="btn b1">Sou motorista
@@ -882,7 +1209,42 @@ footer a:hover{opacity:1;transform:translateX(3px)}
         </a>
         <a href="#escolha" class="btn b2">Sou família</a>
       </div>
-      <p class="jatenho rv" style="--d:360ms">
+      <!-- O TESTE SAIU DA LEGENDA. Ele era o menor corpo de texto da página,
+           embaixo de um botão secundário, e é a maior alavanca de clique que
+           existe aqui: é o que responde "e se eu não gostar".
+
+           "ATÉ 3 MESES DE TESTE GRÁTIS" — decidido pelo dono em 07/09/2026, e
+           é uma mudança de voz: o padrão do projeto era dizer TESTE e nunca
+           "grátis", porque "grátis" na porta prepara a pessoa pra achar que a
+           cobrança depois é pegadinha. O "até" é o que segura essa leitura —
+           ele descreve um teto, não uma doação, e o relógio só começa no
+           primeiro uso de verdade. Se a leitura de pegadinha aparecer em
+           conversa de venda, a palavra sai daqui e de `dia91`, e o CLAUDE.md
+           volta atrás junto. -->
+      <p class="teste-hero rv" style="--d:330ms">
+        <strong>Até 3 meses de teste grátis.</strong> Cadastra a turma inteira,
+        roda o mês, e decide depois.
+      </p>
+      <!-- O CONVITE fica DEPOIS da promessa do teste, e a ordem é a da
+           conversa: primeiro o que ele faz aqui (os dois botões), depois
+           o que ele arrisca (o teste), e só então a curiosidade. Antes do
+           teste, o vídeo competiria com a única linha que responde "e se
+           eu não gostar". -->
+      <button type="button" class="convite-video rv" id="cv-abre" style="--d:370ms">
+        <span class="cv-quadro">
+          <!-- O pôster é o próprio vídeo parado. `preload="metadata"` é o
+               teto: 1,8 MB baixados por quem nunca vai tocar é dado móvel
+               do motorista. -->
+          <video src="/brand/abertura.mp4" muted playsinline preload="metadata"
+                 tabindex="-1" aria-hidden="true" id="cv-poster"></video>
+          <span class="cv-play"><i></i></span>
+        </span>
+        <span class="cv-txt">
+          <b>Veja o app em 30 segundos</b>
+          <i>com som — toque para assistir</i>
+        </span>
+      </button>
+      <p class="jatenho rv" style="--d:440ms">
         Já usa o Alô Buzinou?
         <a href="https://alobuzinou.com/login">Entrar no app <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </p>
@@ -913,26 +1275,49 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       <span class="chapeu rv">o que ninguém fala</span>
       <h2 class="rv" style="--d:80ms">Onde tem confiança, o dinheiro atrapalha.</h2>
       <p class="lead rv" style="--d:170ms;margin-top:22px">
-        O tio conhece a família há anos. Levou o irmão mais velho, agora leva o caçula.
-        Aí chega o dia 10 e a mensalidade não caiu.
+        O tio conhece todo mundo. Levou o irmão mais velho, agora leva o caçula da
+        família. Aí chega o dia 10 e a mensalidade não caiu.
       </p>
       <p class="lead rv" style="--d:230ms">
         Ele não quer cobrar. Cobrar amigo é ruim. Então deixa passar — e no mês seguinte
         são dois. A conversa que era sobre criança vira conversa sobre dinheiro.
       </p>
       <p class="lead rv" style="--d:290ms">
-        Do outro lado, o pai também não queria dever. Só esqueceu, e ninguém avisou.
+        Do outro lado, o pai também não queria dever. Só esqueceu, e não tinha nada
+        que o avisasse antes.
       </p>
+      <!-- O FECHO PROMETE SÓ O QUE O APP FAZ, e a lista foi conferida uma por uma:
+           · a mensalidade com a data à vista dos dois lados — `payments` nasce com
+             `dueDate` e o pai vê em /pai/financeiro antes de vencer;
+           · o histórico dos meses anteriores — extrato por criança em
+             /tio/children/:id/statement e o histórico do pai;
+           · a agenda — `agendaEntries` grava o recado e cria `notifications`, que
+             viram push (sendPushOnNotification). Os tipos existem: criança não tá
+             bem, conflito, pedido da professora.
+
+           ⚠️ O QUE FICOU FORA, DE PROPÓSITO: o "aviso antecipado do vencimento".
+           Ele EXISTE (3 dias antes, no dia e 3 depois, em functions/index.js
+           MILESTONES) mas sai por e-mail com remetente `onboarding@resend.dev`, o
+           sandbox do Resend — que não entrega em endereço de terceiro. Enquanto o
+           domínio próprio não estiver verificado, prometer que o aviso chega no pai
+           é prometer um e-mail que não sai. Verificado o domínio e trocado o
+           FROM_EMAIL, esta frase pode ganhar "com aviso três dias antes". -->
       <p class="lead rv" style="--d:350ms"><strong style="color:#EAF6EF">
-        A gente não resolve isso com sermão. Resolve com organização: a cobrança fica
-        registrada, o comprovante fica guardado, e a conversa volta a ser sobre a criança.
+        A gente não resolve isso com sermão. Resolve com organização: a mensalidade
+        fica no app, com a data à vista dos dois lados, e o histórico dos meses
+        anteriores fica registrado — acaba a dúvida sobre quem pagou o quê em março.
+      </strong></p>
+      <p class="lead rv" style="--d:410ms"><strong style="color:#EAF6EF">
+        E a conversa volta a ser sobre a criança, porque o assunto passa a ser a
+        agenda: o dia que não vai ter aula, a criança que não passou bem, o que
+        aconteceu na van.
       </strong></p>
     </div>
     <div class="tarja rv" style="--d:200ms" aria-hidden="true">
       <div class="diag"></div>
       <div class="selo">
         <div class="n">dia 10</div>
-        <div class="t">e ninguém quer tocar no assunto</div>
+        <div class="t">já passou, e fica difícil tocar no assunto</div>
       </div>
     </div>
   </div>
@@ -941,8 +1326,8 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 <!-- ══ COMO FUNCIONA ══ -->
 <section class="sec escuro" id="como" style="padding-top:0">
   <div class="wrap">
-    <span class="chapeu rv">do começo ao fim</span>
-    <h2 class="rv" style="--d:80ms">Como funciona</h2>
+    <span class="chapeu rv">o seu ambiente digital de trabalho</span>
+    <h2 class="rv" style="--d:80ms">Como o app funciona?</h2>
     <div class="percurso rv" style="--d:150ms;margin-bottom:52px">
       <span class="pt"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.6V20h11V9.6"/><path d="M10 20v-5h4v5"/></svg></span>
       <span class="via"></span>
@@ -954,19 +1339,33 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       <div class="tlprog" id="tlprog"></div>
       <div class="passo rv"><div class="no">1</div>
         <h3>O tio cadastra a turma</h3>
-        <p>Cada criança com nome, endereço, escola e horário. Uma vez só, e o dia já se monta sozinho na ordem certa.</p>
+        <p>Cada criança com nome, foto, endereço, escola e o horário combinado com os pais.
+        Você preenche uma vez, e a rota do dia se monta sozinha na ordem das horas — sem
+        você arrastar nada.</p>
       </div>
       <div class="passo rv" style="--d:70ms"><div class="no">2</div>
         <h3>A família entra pelo link</h3>
-        <p>O tio manda um link no WhatsApp. A conta do responsável nasce dali, sem senha pra inventar e sem código pra digitar.</p>
+        <!-- "SEM CADASTRO", não "sem senha": a tela real tem o campo "Crie uma
+             senha" (src/pages/FirstAccess.jsx), e só o caminho do Google
+             dispensa senha. A frase antiga prometia o que o primeiro minuto
+             de uso desmentia — e promessa que quebra no primeiro minuto é a
+             pior de todas, porque ensina a pessoa a duvidar do resto. -->
+        <p>O tio manda um link no WhatsApp e pronto: a conta dela nasce dali, com o Google
+        em dois toques. A partir daí ela vê o embarque e o desembarque, avisa a falta sem
+        depender de ninguém ler mensagem, e o celular dela toca quando você quiser — a
+        buzina digital, pra ninguém buzinar na rua.</p>
       </div>
       <div class="passo rv" style="--d:140ms"><div class="no">3</div>
         <h3>A rota roda e todo mundo vê</h3>
-        <p>O tio dá partida no app. A família acompanha a perua no mapa e recebe um aviso no celular quando ela está chegando.</p>
+        <p>Todo dia você dá partida no app. A família acompanha a perua no mapa, vê quando a
+        criança subiu, chegou na escola e desceu em casa, e recebe um aviso no celular
+        quando você está chegando.</p>
       </div>
       <div class="passo rv" style="--d:210ms"><div class="no">4</div>
-        <h3>A mensalidade se organiza</h3>
-        <p>O app mostra quem pagou, quem está em aberto e deixa o PIX pronto. Sem caderno, sem planilha e sem cobrar de boca.</p>
+        <h3>A mensalidade se organiza sozinha</h3>
+        <p>O app mostra quem pagou, quem atrasou e quem ainda está em aberto, e põe o seu PIX
+        na frente do pai na hora de pagar. Depois fica a lista do mês inteiro, registrada —
+        sem caderno, sem planilha e sem cobrar de boca.</p>
       </div>
     </div>
   </div>
@@ -976,27 +1375,62 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 <section class="forka" id="escolha">
   <div class="forka-topo">
     <span class="chapeu rv">daqui em diante</span>
-    <h2 class="rv" style="--d:80ms">O resto depende de quem é você.</h2>
+    <!-- AQUI E O PONTO DE DECISAO, e antes era so uma placa de bifurcacao.
+         Quem chegou lendo ate aqui ja viu o problema, os quatro passos e o que
+         acontece com o dinheiro dele: a pergunta que ele esta se fazendo nao e
+         mais "o que e isso", e "eu entro ou nao". Uma secao que so pergunta
+         "quem e voce" devolve a decisao pra depois, e cada rolagem a mais custa
+         gente. -->
+    <h2 class="rv" style="--d:80ms">Daqui em diante, você decide.</h2>
+    <p class="forka-lead rv" style="--d:150ms">
+      Digitalizar a sua rota começa com uma conta. Escolha por onde você entra.
+    </p>
   </div>
   <div class="portas">
-    <a href="#motorista" class="porta rv">
-      <span class="rot">quem dirige</span>
-      <h3>Sou motorista escolar</h3>
-      <p>Você está decidindo se vale a pena. Vai ver o app por dentro, o que ele tira do seu ombro e o que acontece com o seu dinheiro.</p>
-      <span class="seta">Ver a parte do motorista
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </span>
+    <div class="porta rv">
+      <div class="porta-txt">
+        <span class="rot">quem dirige</span>
+        <h3>Sou motorista escolar</h3>
+        <p>Você está decidindo se vale a pena. Vai ver o seu ambiente digital de trabalho por dentro, o que ele tira do seu ombro e o que acontece com o seu dinheiro.</p>
+        <a class="seta" href="#motorista">Ver a parte do motorista
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+      <a class="porta-btn" href="https://alobuzinou.com/quero-fazer-parte">Entrar como quem dirige
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
       <svg class="sil" viewBox="0 0 120 80" fill="currentColor" aria-hidden="true"><rect x="6" y="18" width="86" height="42" rx="10"/><rect x="14" y="26" width="30" height="16" rx="4" fill="#0B1210"/><circle cx="26" cy="64" r="8"/><circle cx="74" cy="64" r="8"/><rect x="96" y="30" width="18" height="18" rx="4"/></svg>
-    </a>
-    <a href="#familia" class="porta rv" style="--d:90ms">
-      <span class="rot">quem confia</span>
-      <h3>Tenho filho na perua</h3>
-      <p>Você quer saber onde seu filho está. Vai ver o mapa ao vivo, o aviso de chegada e o que protege os dados dele.</p>
-      <span class="seta">Ver a parte da família
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </span>
+    </div>
+    <div class="porta rv" style="--d:90ms">
+      <div class="porta-txt">
+        <span class="rot">quem confia</span>
+        <h3>Tenho filho na perua</h3>
+        <p>Você quer saber onde seu filho está. Vai ver o mapa ao vivo, o aviso de chegada e o que protege os dados dele.</p>
+        <a class="seta" href="#familia">Ver a parte da família
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+      <!-- A PORTA DA FAMILIA LEVA AO /first-access, e NUNCA ao
+           /quero-fazer-parte: esse cria MOTORISTA. Uma mae que caisse la
+           viraria motorista, e o redeemInvite recusaria o convite dela depois
+           (ele barra motorista virando responsavel) — ela ficaria presa, sem
+           saida dentro do app.
+
+           Era `/login?criar=1`, que e uma parada a mais: aquela aba faz UMA
+           pergunta ("recebi convite" ou "tenho uma van") que este cartao ja
+           respondeu. Ir direto ao /first-access economiza o passo.
+
+           SEM `state`, e isso e o desenho certo aqui: a tela abre com o aviso
+           do link na frente e o campo de codigo recolhido — que serve a 9 de
+           10, porque quem tem convite tem o LINK, nao o codigo digitado
+           (src/pages/FirstAccess.jsx). O `state: {de:'escolha'}` que abre o
+           campo existe pra quem vem da bifurcacao DENTRO do app, e a landing
+           esta em outro dominio: nao ha como passar state, nem faz falta. -->
+      <a class="porta-btn" href="https://alobuzinou.com/first-access">Entrar como quem confia
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
       <svg class="sil" viewBox="0 0 120 80" fill="currentColor" aria-hidden="true"><path d="M14 44 L52 14 L90 44 V72 H14 Z"/><rect x="40" y="50" width="24" height="22" rx="3" fill="#0B1210"/></svg>
-    </a>
+    </div>
   </div>
 </section>
 
@@ -1006,7 +1440,12 @@ footer a:hover{opacity:1;transform:translateX(3px)}
     <div class="cab">
       <div>
         <span class="chapeu rv">pra quem dirige</span>
-        <h2 class="rv" style="--d:80ms">Seu trabalho, com estrutura de empresa.</h2>
+        <!-- "ESTRUTURA DE EMPRESA" SAIU. O FAQ desta mesma página tem "Preciso
+             ter CNPJ pra usar?", e o modelo decidiu que ele NÃO precisa de MEI.
+             Para um autônomo, "estrutura de empresa" soa a contador, imposto e
+             burocracia: o título plantava a objeção cinco blocos antes de a
+             resposta aparecer. O caderno é o inimigo nomeado, não a informalidade. -->
+        <h2 class="rv" style="--d:80ms">O seu ambiente digital de trabalho.</h2>
       </div>
       <p class="lead rv" style="--d:160ms">
         A gente não vem te ensinar a dirigir nem a cuidar de criança. Nisso você já é bom —
@@ -1020,31 +1459,62 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       <li class="rv" style="--d:80ms"><span class="num">03</span><span class="txt">Quem pagou, quem falta, e o PIX pronto pra mandar</span></li>
       <li class="rv" style="--d:120ms"><span class="num">04</span><span class="txt">Contrato digital, aceito pelo celular do responsável</span></li>
       <li class="rv" style="--d:160ms"><span class="num">05</span><span class="txt">Falta avisada pela família antes de você sair de casa</span></li>
-      <li class="rv" style="--d:200ms"><span class="num">06</span><span class="txt">A escola avisada sem você precisar encostar o carro</span></li>
+      <li class="rv" style="--d:200ms"><span class="num">06</span><span class="txt">Dia sem aula na escola avisado pra todos os pais com um clique só — e a rota do dia já nasce sem eles</span></li>
+      <!-- PROVAR QUE PASSOU é uma das quatro tarefas do motorista em
+           docs/personas.md, com encaixe "resolve" — `rides` grava um documento
+           por criança por dia, com a hora de cada marco, no mesmo lote da
+           mudança de status. É a dor de maior carga emocional do ofício (a
+           acusação injusta) e não estava em nenhum lugar da página. -->
+      <li class="rv" style="--d:240ms"><span class="num">07</span><span class="txt">A hora que a criança subiu, chegou na escola e desceu em casa, registrada todo dia</span></li>
+      <li class="rv" style="--d:280ms"><span class="num">08</span><span class="txt">O horário combinado de embarque e desembarque, acompanhado pela família todo dia</span></li>
     </ul>
 
     <div class="comonda rv" style="margin-top:clamp(40px,5vw,64px)">
       <span class="eco" aria-hidden="true"><i></i><i></i><i></i><i></i><b class="e"></b><b class="d"></b></span>
       <div class="fone t-pag">
         <div class="tela">
-          <div class="top"><span class="av"></span><span class="nm">Tio Nino</span></div>
+          <div class="top"><img class="av" src="/brand/av/tio.svg" alt="" loading="lazy" decoding="async"><span class="nm">Tio Nino</span></div>
           <div class="corpo">
             <div class="resumo">
               <div class="k">Recebido em agosto</div>
               <div class="v">R$ 2.340,00</div>
               <div class="s">6 de 9 famílias em dia</div>
             </div>
-            <div class="lin"><span class="bo"></span><span><span class="nn">Miguel Antunes</span><span class="vv">R$ 230,00 · pago em 05/08</span></span><span class="tag ok">pago</span></div>
-            <div class="lin"><span class="bo"></span><span><span class="nn">Helena Prado</span><span class="vv">R$ 230,00 · pago em 07/08</span></span><span class="tag ok">pago</span></div>
-            <div class="lin destaque"><span class="bo"></span><span><span class="nn">Davi Rocha</span><span class="vv">R$ 230,00 · venceu 10/08</span></span><span class="tag ab">em aberto</span></div>
+            <div class="lin"><img class="bo" src="/brand/av/miguel.svg" alt="" loading="lazy" decoding="async"><span><span class="nn">Miguel Antunes</span><span class="vv">R$ 230,00 · pago em 05/08</span></span><span class="tag ok">pago</span></div>
+            <div class="lin"><img class="bo" src="/brand/av/helena.svg" alt="" loading="lazy" decoding="async"><span><span class="nn">Helena Prado</span><span class="vv">R$ 230,00 · pago em 07/08</span></span><span class="tag ok">pago</span></div>
+            <div class="lin destaque"><img class="bo" src="/brand/av/davi.svg" alt="" loading="lazy" decoding="async"><span><span class="nn">Davi Rocha</span><span class="vv">R$ 230,00 · vence 10/09</span></span><span class="tag ab">em aberto</span></div>
             <div class="pixbtn">Mandar o PIX pro Davi</div>
-            <div class="lin" style="margin-top:6px"><span class="bo"></span><span><span class="nn">Lara Bezerra</span><span class="vv">R$ 230,00 · pago em 03/08</span></span><span class="tag ok">pago</span></div>
-            <div class="lin"><span class="bo"></span><span><span class="nn">Theo Nakamura</span><span class="vv">R$ 230,00 · vence 10/09</span></span><span class="tag ok">pago</span></div>
-            <div class="lin"><span class="bo"></span><span><span class="nn">Cecília Duarte</span><span class="vv">R$ 230,00 · pago em 02/08</span></span><span class="tag ok">pago</span></div>
+            <div class="lin" style="margin-top:6px"><img class="bo" src="/brand/av/lara.svg" alt="" loading="lazy" decoding="async"><span><span class="nn">Lara Bezerra</span><span class="vv">R$ 230,00 · pago em 03/08</span></span><span class="tag ok">pago</span></div>
+            <div class="lin vermelha"><img class="bo" src="/brand/av/theo.svg" alt="" loading="lazy" decoding="async"><span><span class="nn">Theo Nakamura</span><span class="vv">R$ 230,00 · venceu 10/07</span></span><span class="tag at">atrasado</span></div>
+            <div class="lin"><img class="bo" src="/brand/av/cecilia.svg" alt="" loading="lazy" decoding="async"><span><span class="nn">Cecília Duarte</span><span class="vv">R$ 230,00 · pago em 02/08</span></span><span class="tag ok">pago</span></div>
           </div>
         </div>
       </div>
-      <p class="fone-leg">quem pagou, quem falta, e o pix pronto</p>
+      <p class="fone-leg">tela de exemplo &middot; quem pagou, quem falta, e o pix pronto</p>
+    </div>
+
+    <!-- A PERGUNTA QUE A PAGINA NAO RESPONDIA EM LUGAR NENHUM.
+         "E se a mae nao usar?" e a duvida mais pratica do motorista, e a
+         resposta JA ESTAVA na pagina — escrita na secao dela, para ela. Ele
+         nao le a parte dela. Aqui e o mesmo conteudo virado para o outro
+         lado do balcao.
+
+         Nao e detalhe de copy: quem sustenta a receita e ele, quem sustenta
+         o habito e ela (docs/personas.md, secao 1). Se ela nao abre o app, o
+         valor dele evapora e ele cancela — e nenhum numero do painel do dono
+         muda antes disso. E o unico risco que faz um motorista satisfeito
+         cancelar, e a pagina precisava encara-lo de frente.
+
+         E CURTO DE PROPOSITO. A versao longa listava as tres coisas que ela nao
+         precisa fazer (nao baixa, nao inventa senha, nao preenche cadastro) —
+         tres negacoes para tranquilizar, que e o jeito de uma resposta curta
+         soar defensiva. Duas frases afirmativas fecham a duvida mais rapido, e
+         a pergunta mudou de "nao usar" para "nao SOUBER usar", que e o medo
+         real: nao e falta de vontade dela, e medo de tecnologia. -->
+    <div class="duvida rv" style="--d:80ms;margin-top:clamp(40px,5vw,60px)">
+      <h3>E se a mãe não souber usar?</h3>
+      <p>Se você sabe mexer no WhatsApp, sabe mexer nesse app.</p>
+      <p>O tio cria a conta, e com um clique no link ela já entra.</p>
     </div>
   </div>
 </section>
@@ -1070,20 +1540,35 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       desse dinheiro e não fica com percentual nenhum dele. Nunca ficou, e não é isso
       que a gente quer ser.
     </p>
-    <div class="dois-dinheiros rv" style="--d:170ms">
-      <div class="dd seu">
-        <b>A mensalidade</b>
-        <span>Da família direto pra você. A gente não vê, não retém, não recebe.</span>
+    <div class="caminho rv" style="--d:170ms">
+      <div class="cm-linha">
+        <div class="cm-no">
+          <span class="cm-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M9.5 20v-5h5v5"/></svg></span>
+          <b>a família</b>
+        </div>
+        <div class="cm-seta" aria-hidden="true">
+          <span class="cm-rot">a mensalidade</span>
+          <svg viewBox="0 0 200 12" preserveAspectRatio="none"><path d="M0 6h188" stroke="currentColor" stroke-width="2.6" fill="none"/><path d="M186 1.5 197 6l-11 4.5z" fill="currentColor"/></svg>
+        </div>
+        <div class="cm-no forte">
+          <span class="cm-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="6" width="16" height="10" rx="2.4"/><path d="M5.5 9.2h5"/><circle cx="7" cy="18" r="1.9"/><circle cx="15" cy="18" r="1.9"/><path d="M20 9.5c1.2 1.2 1.2 3.8 0 5"/></svg></span>
+          <b>você</b>
+        </div>
       </div>
-      <div class="nunca">nunca<br>se<br>encontram</div>
-      <div class="dd">
-        <b>A taxa do app</b>
-        <span>Sua, pra gente. Proporcional ao tamanho da operação — quem leva 8 paga menos que quem leva 40.</span>
+      <div class="cm-fora">
+        <span class="cm-corte" aria-hidden="true">
+          <i></i>
+          <em><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg></em>
+        </span>
+        <div class="cm-no apagado">
+          <span class="cm-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="15" rx="2.6"/><path d="M3 9h18M8 14h8"/></svg></span>
+          <b>a plataforma</b>
+        </div>
       </div>
     </div>
-    <p class="ap rv" style="--d:230ms;margin-top:28px">
-      Nas férias, você desativa quem parou e a conta cai junto. São dois dinheiros
-      diferentes, e eles nunca se encontram.
+    <p class="ap rv" style="--d:230ms;margin-top:30px">
+      A <b>conta do app</b> é a única coisa que você paga pra gente, e ela acompanha o
+      tamanho da sua operação: quem leva 8 paga menos que quem leva 40.
     </p>
     <div class="rv" style="--d:290ms;margin-top:34px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
       <!-- A PORTA DE AUTOATENDIMENTO, e ela nao existia ate 06/09/2026.
@@ -1096,26 +1581,41 @@ footer a:hover{opacity:1;transform:translateX(3px)}
            formulario que precisa de retorno recria o gargalo que a mudanca
            comercial acabou de apagar.
 
-           "TESTE", nao "gratis": decisao de voz. O que ele ganha e tempo pra
-           experimentar, nao uma doacao — e "gratis" na porta prepara a pessoa
-           pra achar que a cobranca depois e uma pegadinha. -->
+           O TEXTO DO TESTE mora em duas linhas desta pagina — aqui e no
+           `.teste-hero` do hero — e as duas dizem a MESMA frase. Elas mudam
+           juntas ou a pagina passa a oferecer duas coisas diferentes na mesma
+           rolagem. O comentario do hero explica a escolha da palavra. -->
       <a href="https://alobuzinou.com/quero-fazer-parte" class="btn b3">Criar minha conta
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
-      <!-- Dois verbos diferentes lado a lado: "criar conta" e pra quem
-           decidiu agora, "entrar" e pra quem ja tem. O segundo nao tem sombra
-           nem cor cheia porque nao esta disputando nada.
-
-           O PRECO NAO APARECE AQUI, e e decisao: ele mora discreto dentro do
-           app e aparece por inteiro quando o teste esta acabando. Quem quiser
-           saber antes pergunta — e o "quero conversar" abaixo e essa porta. -->
-      <a href="https://alobuzinou.com/login" class="btn b2">Entrar no ambiente</a>
-      <span style="font-size:.92rem;color:#C7D3CD">3 meses de teste &middot; <a href="#contato" style="color:#C7D3CD;text-decoration:underline">quero conversar antes</a></span>
     </div>
-    <a href="#familia" class="troca rv" style="--d:340ms">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--verde-vivo)" stroke-width="2.2"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
-      <span>É a sua família que anda de perua? <b>Veja a parte dela</b></span>
-    </a>
+    <!-- O DIA 91, DITO ANTES DE O FAQ SER ABERTO. O medo dele nao e o preco,
+         e a pegadinha — e a segunda frase responde exatamente isso.
+
+         A primeira e uma vantagem verificavel que a pagina nao usava: o
+         relogio liga no PRIMEIRO USO (users.trialInicio, tres gatilhos), nunca
+         no cadastro. Motorista escolar tem calendario: contando do cadastro,
+         quem conhece o app em dezembro chegaria em fevereiro com tres semanas
+         de teste, e a primeira tela real dele seria a de cobranca. -->
+    <div class="dia91 rv" style="--d:320ms">
+      <p>Até 3 meses de teste grátis. Se você criar a conta hoje e só começar a
+      rodar em fevereiro, <b>o teste começa em fevereiro</b>.</p>
+      <!-- ⚠️ A FATURA ISENTA E DITA SO AQUI, e isso NAO quebra a regra dos dois
+           lugares: a regra e sobre a OFERTA ("ate 3 meses de teste gratis"),
+           que continua identica no hero e aqui. O CTA e onde a pessoa esta
+           DECIDINDO, e por isso ele carrega o detalhe; no hero, a mesma frase
+           mataria o impulso.
+
+           Ela existe porque o dia 91 e o medo real dele, e o conserto nao e
+           prometer mais tempo — e tirar a surpresa. Noventa dias de silencio
+           sobre dinheiro fazem o dia 91 ser uma decisao de compra; tres faturas
+           isentas com o preco na frente fazem dele uma continuacao. Ver
+           docs/descontos.md, peca 1. -->
+      <p>Você recebe a fatura todo mês desde o primeiro, <b>marcada como isenta</b> —
+      para saber o valor antes de ele valer. Nada de surpresa no fim.</p>
+      <p>Quando acabar, você escolhe a faixa e paga. <b>Ninguém trava a sua rota e
+      ninguém apaga a sua turma.</b></p>
+    </div>
   </div>
 </section>
 
@@ -1123,10 +1623,15 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 <section class="sec fam" id="familia">
   <div class="wrap">
     <span class="chapeu rv">pra quem confia</span>
-    <h2 class="rv cab" style="--d:80ms">Saber onde seu filho está não deveria ser um favor.</h2>
+    <h2 class="rv cab" style="--d:80ms">Saber onde seu filho está faz parte do serviço que você já paga.</h2>
     <p class="lead rv" style="--d:160ms;margin-top:24px">
-      Você não precisa mandar mensagem no grupo perguntando se a perua já saiu. Não precisa
-      ficar na janela. Não precisa ligar pro tio no meio da rota — ele está dirigindo.
+      <b>&ldquo;Que horas o tio vai chegar?&rdquo;</b> &ldquo;Será que ele já passou?&rdquo;
+      Você não precisa ficar se perguntando, nem ficar na janela, nem ligar pro tio no meio
+      da rota — ele está dirigindo.
+      </p>
+      <p class="lead rv" style="--d:215ms">
+      E quando você esquece de avisar que hoje o seu filho não vai, o aviso deixa de
+      esperar a perua encostar na porta: <b>você avisa antes, de onde estiver</b>.
     </p>
 
     <div class="rv" style="--d:220ms;margin-top:clamp(46px,6vw,72px)">
@@ -1134,7 +1639,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
         <div>
           <div class="fone t-mapa">
             <div class="tela">
-              <div class="top"><span class="av"></span><span class="nm">Tio Nino</span></div>
+              <div class="top"><img class="av" src="/brand/av/tio.svg" alt="" loading="lazy" decoding="async"><span class="nm">Tio Nino</span></div>
               <div class="mapa">
                 <span class="quadra" style="left:5%;top:5%;width:44%;height:30%"></span>
                 <span class="quadra" style="left:57%;top:5%;width:38%;height:30%"></span>
@@ -1151,13 +1656,13 @@ footer a:hover{opacity:1;transform:translateX(3px)}
               </div>
               <div class="cartao">
                 <div class="l1">a perua está a caminho</div>
-                <div class="l2">Miguel · voltando pra casa</div>
+                <div class="l2"><img class="l2-av" src="/brand/av/miguel.svg" alt="" loading="lazy" decoding="async">Miguel · voltando pra casa</div>
                 <div class="l3">Saiu da escola às 12:04</div>
                 <div class="barra"><i></i></div>
               </div>
             </div>
           </div>
-          <p class="fone-leg">onde a perua está agora</p>
+          <p class="fone-leg">tela de exemplo &middot; onde a perua está agora</p>
         </div>
         <div>
           <div class="fone t-aviso">
@@ -1175,33 +1680,76 @@ footer a:hover{opacity:1;transform:translateX(3px)}
               <div class="rodape">deslize para abrir</div>
             </div>
           </div>
-          <p class="fone-leg">o aviso chega no celular</p>
+          <p class="fone-leg">tela de exemplo &middot; o aviso chega no celular</p>
         </div>
       </div>
     </div>
 
-    <div class="calmas">
-      <div class="calma rv"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg><p>A hora de estar na porta, combinada com o seu motorista.</p></div>
-      <div class="calma rv" style="--d:50ms"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg><p>Onde a perua está agora, no mapa.</p></div>
-      <div class="calma rv" style="--d:100ms"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><p>Um aviso no celular quando ela está chegando.</p></div>
-      <div class="calma rv" style="--d:150ms"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="3" y="5" width="18" height="16" rx="2.6"/><path d="M8 3v4M16 3v4M9.5 14l5 4M14.5 14l-5 4"/></svg><p>Avisar que hoje não vai, sem depender de alguém ler mensagem.</p></div>
-      <div class="calma rv" style="--d:200ms"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="2.5" y="5.5" width="19" height="13" rx="2.6"/><path d="M2.5 10h19"/></svg><p>A mensalidade, o que está pago e o PIX pronto.</p></div>
+    <ul class="calmas">
+      <li class="calma rv"><span class="cn">01</span><p>A hora de estar na porta, combinada com o motorista.</p></li>
+      <li class="calma rv" style="--d:50ms"><span class="cn">02</span><p>Onde a perua está agora, no mapa.</p></li>
+      <li class="calma rv" style="--d:100ms"><span class="cn">03</span><p>Um aviso no celular quando ela está chegando.</p></li>
+      <li class="calma rv" style="--d:150ms"><span class="cn">04</span><p>Avisar que hoje não vai — e o tio já vê o aviso na rota dele, do lado do nome do seu filho.</p></li>
+      <li class="calma rv" style="--d:200ms"><span class="cn">05</span><p>A mensalidade, o mês que está pago e o PIX do tio, fácil.</p></li>
+    </ul>
+
+    <!-- A DECLARACAO 6 DO MANIFESTO — "quando a gente nao sabe, a gente cala".
+         docs/marca.md recomenda quatro declaracoes para a landing: 1, 3, 6 e 8.
+         A pagina tinha tres; esta era a ausente, e e a unica que fala de
+         honestidade TECNICA. Ela blinda a maior critica futura possivel ("o
+         mapa travou e ninguem me avisou") e descreve um comportamento que o
+         codigo realmente tem: quando o dado morre, o anel pulsante e o AO VIVO
+         param (src/dominio/rota/avisoDoMomento.js). -->
+    <div class="cala rv">
+      <h3>A agenda digital do seu filho.</h3>
+      <p>
+        O tio avisa pelo app, e o recado fica guardado: <b>dia sem aula na escola</b>,
+        o dia em que ele não estava se sentindo bem, o desentendimento com um colega.
+        Não é mais mensagem que se perde na conversa — fica na agenda dele, com data.
+      </p>
     </div>
 
-    <div class="protege rv">
-      <h3>Sua conta quem cria é o seu motorista.</h3>
-      <p>Ele te manda um link, você entra, e pronto. Não existe cadastro aberto aqui — e é
-      justamente isso que protege os dados do seu filho. Endereço e localização só aparecem
-      pra quem tem vínculo real com aquela criança.</p>
-      <!-- OS DOIS BOTÕES SÃO OS DOIS ESTADOS DA MESMA PESSOA: a que já entrou
-           uma vez, e a que está com o convite na mão e nunca entrou. O segundo
-           leva `?criar=1`, que abre a aba de cadastro já aberta — a landing
-           está em outro domínio e não tem como passar isso de outro jeito. -->
-      <div class="protege-btns">
-        <a href="https://alobuzinou.com/login" class="btn b1">Entrar no app
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
-        <a href="https://alobuzinou.com/login?criar=1" class="btn b2">Recebi um convite</a>
+    <div class="portas-fam">
+      <div class="protege rv">
+        <h3>Sua conta é criada pelo motorista.</h3>
+        <p>Ele te manda um link de convite, você entra, e pronto: já tem acesso. Não existe
+        cadastro aberto aqui — e é justamente isso que protege os dados do seu filho. Endereço
+        e localização só aparecem pra quem tem vínculo real com aquela criança.</p>
+        <!-- OS DOIS BOTÕES SÃO OS DOIS ESTADOS DA MESMA PESSOA: a que já entrou
+             uma vez, e a que está com o convite na mão e nunca entrou. O segundo
+             leva ao `/first-access` — a tela do primeiro acesso do responsável.
+             Era `/login?criar=1`, que punha no caminho uma pergunta ("recebi
+             convite" ou "tenho uma van") que o próprio rótulo do botão já
+             respondeu. -->
+        <div class="protege-btns">
+          <a href="https://alobuzinou.com/login" class="btn b1">Entrar no app
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="https://alobuzinou.com/first-access" class="btn b2">Recebi um convite</a>
+        </div>
+      </div>
+
+      <!-- BLOCO SEPARADO, e nao um rodape do cartao de cima: sao duas pessoas
+           diferentes. Ali e a mae cujo motorista JA usa o app; aqui e a que
+           chegou sozinha e o tio dela nem conhece. Grudados, o segundo lia
+           como letra miuda do primeiro.
+
+           E COPIAR O LINK, NAO ABRIR O WHATSAPP. Abrir o WhatsApp obriga ela a
+           escolher o contato dentro de uma tela que ela nao pediu, e no
+           desktop nem abre. Com o link copiado ela manda de onde quiser — da
+           conversa que ja tem aberta com o tio, do grupo da escola, por SMS.
+           O link fica VISIVEL como texto tambem: se o clipboard falhar (aba
+           sem foco, navegador antigo, permissao negada), ela le e digita. -->
+      <div class="pede rv" style="--d:80ms">
+        <span class="pede-rot">o seu tio ainda não usa?</span>
+        <h3>Envie este link pro seu tio.</h3>
+        <p>Quem abre a conta da família é ele. Manda o link pra ele conhecer e ver se vale a
+        pena — é você quem leva o Alô Buzinou pra sua perua.</p>
+        <div class="copia" data-copia>
+          <input class="copia-txt" type="text" readonly value="https://alobuzinou.com.br" aria-label="Link para enviar ao seu motorista">
+          <button class="copia-btn" type="button" data-rot="Copiar link">Copiar link</button>
+        </div>
+        <p class="copia-dica">Cole na conversa do WhatsApp dele.</p>
       </div>
     </div>
 
@@ -1216,31 +1764,43 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 <section class="quebra">
   <div class="wrap">
     <span class="chapeu rv">sem enrolação</span>
-    <h2 class="rv" style="--d:80ms">A gente está começando. E está construindo com você.</h2>
+    <h2 class="rv" style="--d:80ms">A gente está começando, e estamos evoluindo com você.</h2>
     <p class="naovende rv" style="--d:160ms">Não vamos vender o que a gente ainda não tem.</p>
+    <p class="quer rv" style="--d:200ms">Queremos entregar qualidade no seu atendimento com as famílias.</p>
     <div class="tres">
       <div class="rv">
         <span class="k">Hoje</span>
-        <h3>Organiza o seu dia e tira você do caderno.</h3>
-        <p>Você ganha um ambiente de trabalho digital: rota, avisos, contrato e controle de
-        quem pagou. A cobrança sai por PIX, e o pagamento em dinheiro você marca com um toque.</p>
+        <h3>Você dirige, e o seu dia fica mais leve.</h3>
+        <p>Você ganha o seu ambiente digital de trabalho: rota, avisos, contrato e controle de
+        pagamentos. A cobrança sai direto na sua chave PIX cadastrada, e o pagamento em
+        dinheiro você marca como pago com um toque.</p>
       </div>
       <div class="rv" style="--d:90ms">
         <span class="k">O seu dinheiro</span>
-        <h3>Vai direto pra você.</h3>
-        <p>A gente não recebe no seu lugar, não retém nada e não fica com percentual. O que a
-        família te paga é seu, inteiro.</p>
+        <h3>Vai direto pro seu PIX.</h3>
+        <p>A gente não se envolve na sua mensalidade: não recebe no seu lugar, não retém nada
+        e não fica com percentual. O que a família te paga é seu, por inteiro.</p>
       </div>
       <div class="rv" style="--d:180ms">
         <span class="k">O que vem</span>
-        <h3>Cartão automático, e as lojas.</h3>
-        <p>Queremos que o pai possa te pagar no cartão, todo mês, automaticamente — pra você
-        nunca mais precisar cobrar ninguém. E hoje o Alô Buzinou é um app que instala direto
-        do navegador. Com a ajuda dos motoristas que estão com a gente, a gente chega nas lojas.</p>
+        <!-- O CARTAO E DIRECAO, NUNCA DATA. E a dor mais forte do motorista
+             (docs/personas.md, 5.1) e o unico item do roteiro que ainda nao
+             existe — prometer prazo a um autonomo e nao cumprir custa a
+             confianca que e a visao declarada da empresa.
+             A PARTE DAS LOJAS SAIU DAQUI e virou bloco proprio no rodape, que
+             e onde a duvida nasce: misturar promessa de produto com promessa
+             de distribuicao enfraquece as duas, e a de distribuicao ainda
+             chegava como "com a ajuda dos motoristas" — o que le como se
+             faltasse esforco dele pra o app entrar na loja. -->
+        <h3>Uma cobrança automática no cartão do seu cliente. Seria incrível, né?</h3>
+        <p>É pra lá que a gente quer evoluir: o pai te pagando no cartão, todo mês,
+        automaticamente — pra você nunca mais passar o perrengue de cobrar alguém.
+        <b>Ainda não existe, e a gente não vai dar data:</b> quando existir, você vai saber
+        porque vai estar no app.</p>
       </div>
     </div>
-    <p class="fecho rv">Você não está comprando um app pronto. Está entrando numa coisa que
-    ainda está sendo construída — e construída junto com quem usa.</p>
+    <p class="fecho rv">Você está adquirindo um app que digitaliza o seu ambiente de
+    trabalho — e que ainda está sendo construído, junto com quem usa.</p>
   </div>
 </section>
 
@@ -1260,13 +1820,36 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       com anúncio — cresce com indicação.
     </p>
     <div class="grid g3">
-      <div class="card spot rv"><span class="passo-n">01</span><h3>Você passa o contato</h3><p>O WhatsApp de um colega motorista que você acha que ia gostar.</p></div>
-      <div class="card spot rv" style="--d:80ms"><span class="passo-n">02</span><h3>Ele entra</h3><p>Se cadastra com aquele número e vira associado.</p></div>
+      <div class="card spot rv"><span class="passo-n">01</span><h3>Você manda o app pro colega</h3><p>O WhatsApp de um motorista que você acha que ia gostar. É o link de indicação, com o número dele.</p></div>
+      <div class="card spot rv" style="--d:80ms"><span class="passo-n">02</span><h3>Ele recebe e entra</h3><p>Chega no WhatsApp dele o aviso de um app que ele ia gostar. Ele se cadastra com aquele número e digitaliza o trabalho também.</p></div>
       <div class="card spot rv" style="--d:160ms"><span class="passo-n">03</span><h3>Você ganha 10%</h3><p>De desconto na sua conta, todo mês, enquanto ele estiver com a gente.</p></div>
     </div>
+    <!-- O TETO DA INDICACAO SAIU EM 07/09/2026, e a frase antiga ("metade e
+         onde o desconto de indicacao para") ficou FALSA: nao ha mais teto
+         percentual. Ele nao protegia margem nenhuma — com o desconto de
+         fechamento somando por cima, a fatura chegava a ZERO com teto e tudo,
+         porque porcentagem nao e medida na moeda do custo.
+
+         Quem limita agora e um PISO em reais. E ele NAO aparece aqui: piso e
+         preco, e preco nao aparece na vitrine (CLAUDE.md) — o que aparece e a
+         FORMA do dinheiro. Ver docs/descontos.md, peca 4. -->
     <p class="lead rv" style="margin-top:26px;font-size:.97rem">
-      Pode indicar quantos quiser. O desconto vai até a metade da sua conta — cinco colegas
-      e você paga metade.
+      Pode indicar quantos quiser: <b>cinco colegas e você paga metade da sua conta</b>, todo
+      mês, enquanto eles estiverem com a gente. Dez e você paga só a manutenção do
+      ambiente — e é aí que para.
+    </p>
+    <p class="lead rv" style="margin-top:13px;font-size:.97rem">
+      E ele só entra na sua conta quando o colega estiver pagando de verdade — indicação vale
+      quando vira associado, não quando vira cadastro.
+    </p>
+    <!-- O DESCONTO DE INDICACAO E O UNICO SEM PRAZO, e dizer isso aqui e o que
+         torna a indicacao a pista de aterrissagem do mes 13: o desconto de
+         fechamento expira depois de doze meses, e o unico que sobra e o que ele
+         renova trazendo gente. Sem esta frase, a pagina promete um desconto e a
+         fatura do decimo terceiro mes desmente. -->
+    <p class="lead rv" style="margin-top:13px;font-size:.97rem">
+      Esse desconto <b>não tem prazo</b>: enquanto o colega estiver com a gente, ele vale.
+      É o único aqui que não vence.
     </p>
   </div>
 </section>
@@ -1279,7 +1862,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
     <h2 class="rv" style="--d:80ms">Quem é o Alô Buzinou</h2>
     <p class="lead rv" style="--d:160ms;margin-top:22px;max-width:64ch">
       A gente nasceu olhando pra um trabalho que move milhares de crianças todo dia e que,
-      mesmo assim, roda em caderno, planilha e grupo de WhatsApp. Não é falta de capricho de
+      mesmo assim, roda em caderno, planilha e conversa de WhatsApp. Não é falta de capricho de
       quem dirige. É falta de ferramenta feita pra ele.
     </p>
     <div class="grid g2" style="margin-top:44px">
@@ -1303,7 +1886,28 @@ footer a:hover{opacity:1;transform:translateX(3px)}
   </div>
 </section>
 
-<!-- ══ RI ══ -->
+<!-- ══ DÚVIDAS ══ -->
+<section class="sec" id="duvidas" style="background:var(--areia-2)">
+  <div class="wrap" style="max-width:820px">
+    <span class="chapeu rv">perguntas frequentes</span>
+    <h2 class="rv" style="--d:80ms">Dúvidas</h2>
+    <div class="publico rv" style="--d:140ms" role="tablist" aria-label="Escolha o público">
+      <button type="button" role="tab" id="tab-mot" aria-selected="true" aria-controls="faq">Quem dirige</button>
+      <button type="button" role="tab" id="tab-fam" aria-selected="false" aria-controls="faq">Quem confia</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="faq" id="faq"></div>
+  </div>
+</section>
+
+<!-- ══ RI — depois do FAQ, e nao no meio da leitura ══
+     Captacao foi decidida como "nao" (docs/pitch-investidor.md): o plano e
+     crescer com receita, e este bloco existe para PARCEIRO ESTRATEGICO, que
+     nao e investidor. Ele estava entre "Sobre" e "Duvidas" — ou seja, no meio
+     do caminho do cliente, que e o publico primario da pagina. Desceu para
+     depois das duvidas: quem procura RI usa o rodape ou rola ate o fim, e
+     quem esta decidindo se vale a pena nao tromba mais numa secao que
+     conversa com dinheiro de terceiro. -->
 <section class="sec ri" id="ri">
   <div class="wrap" style="max-width:860px">
     <span class="chapeu rv">para quem investe</span>
@@ -1313,7 +1917,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       <div class="rv">
         <span class="rot">O mercado</span>
         <p>O transporte escolar move crianças todo dia no Brasil inteiro, e a quase totalidade
-        da operação roda sem nenhum sistema de gestão — em caderno, planilha e grupo de WhatsApp.</p>
+        da operação roda sem nenhum sistema de gestão — em caderno, planilha e conversa de WhatsApp.</p>
       </div>
       <div class="rv" style="--d:70ms">
         <span class="rot">Por que agora</span>
@@ -1337,19 +1941,6 @@ footer a:hover{opacity:1;transform:translateX(3px)}
   </div>
 </section>
 
-<!-- ══ DÚVIDAS ══ -->
-<section class="sec" id="duvidas" style="background:var(--areia-2)">
-  <div class="wrap" style="max-width:820px">
-    <span class="chapeu rv">perguntas frequentes</span>
-    <h2 class="rv" style="--d:80ms">Dúvidas</h2>
-    <div class="publico rv" style="--d:140ms" role="tablist" aria-label="Escolha o público">
-      <button type="button" role="tab" id="tab-mot" aria-selected="true" aria-controls="faq">Quem dirige</button>
-      <button type="button" role="tab" id="tab-fam" aria-selected="false" aria-controls="faq">Quem confia</button>
-    </div>
-    <div class="chips" id="chips"></div>
-    <div class="faq" id="faq"></div>
-  </div>
-</section>
 
 <!-- ══ CONTATO ══ -->
 <section class="sec" id="contato" style="overflow:hidden">
@@ -1455,8 +2046,8 @@ footer a:hover{opacity:1;transform:translateX(3px)}
           <li><a href="#motorista">Pro motorista</a></li>
           <li><a href="#familia">Pra família</a></li>
           <li><a href="#sobre">Sobre</a></li>
-          <li><a href="#ri">RI · Investidores</a></li>
           <li><a href="#duvidas">Dúvidas</a></li>
+          <li><a href="#ri">RI · Investidores</a></li>
           <li><a href="#contato">Contato</a></li>
           <li style="margin-top:6px"><a href="https://alobuzinou.com/login" style="font-weight:600;color:#fff">Entrar na minha conta →</a></li>
         </ul>
@@ -1474,14 +2065,18 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       <div>
         <h4>Baixe o app</h4>
         <!-- SELO SEM LINK, DE PROPÓSITO.
-             Não há app publicado em loja nenhuma ainda — é a promessa da
-             seção "O que vem". Selo que leva a lugar nenhum é pior que selo
-             que ainda não leva, então estes são <span>, não <a>: sem hover,
-             sem cursor de link, com o "em breve" impresso no próprio selo.
-             Quando a URL existir, é trocar a tag e a primeira linha.
+             Não há app publicado em loja nenhuma ainda, e estes são <span>,
+             não <a>: sem hover, sem cursor de link. Quando a URL existir, é
+             trocar a tag e a primeira linha.
              Os dois desenhos são vetor nosso, redesenhado nas cores da loja:
              PNG de badge oficial fica borrado no retina e some no fundo
-             verde. -->
+             verde.
+
+             "EM BREVE" SAIU DOS DOIS SELOS. Era promessa de prazo sem data,
+             no rodapé de uma página que diz "não vamos vender o que a gente
+             ainda não tem" — e não respondia a pergunta que ele faz sozinho,
+             LONGE DAQUI: ele procura na Play Store, não acha, e conclui que
+             o app não é sério. A nota abaixo chega antes dessa conclusão. -->
         <div class="badges">
           <span class="badge">
             <svg width="20" height="20" viewBox="0 0 512 512" aria-hidden="true">
@@ -1490,16 +2085,19 @@ footer a:hover{opacity:1;transform:translateX(3px)}
               <path d="M60 494 317 346 292 256Z" fill="#FF3A44"/>
               <path d="M317 166 474 256 317 346 292 256Z" fill="#FFCE00"/>
             </svg>
-            <span><small>em breve no</small><b>Google Play</b></span>
+            <span><small>ainda não estamos no</small><b>Google Play</b></span>
           </span>
           <span class="badge">
             <svg width="20" height="20" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
               <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
             </svg>
-            <span><small>em breve na</small><b>App Store</b></span>
+            <span><small>ainda não estamos na</small><b>App Store</b></span>
           </span>
         </div>
-        <p class="loja-nota">Hoje o app instala direto do navegador, na tela de início do celular.</p>
+        <p class="loja-nota"><b>Você não vai achar o Alô Buzinou na loja, e a gente explica por quê:</b>
+        hoje ele instala direto do navegador. Abre o site, toca em &ldquo;adicionar à tela de
+        início&rdquo;, e o ícone fica lá do lado dos outros. Funciona igual e não ocupa espaço
+        no celular.</p>
       </div>
     </div>
     <div class="lgpd">
@@ -1508,7 +2106,12 @@ footer a:hover{opacity:1;transform:translateX(3px)}
     </div>
     <div class="fbot">
       <span>CNPJ 65.000.217/0001-47 · © 2026 Alô Buzinou</span>
-      <span><a href="#">Termos de Uso</a> · <a href="#">Política de Privacidade</a></span>
+      <!-- ESTES DOIS ERAM href="#" — links mortos no rodapé, do lado da linha da
+           LGPD, numa marca cuja visão é "referência em confiança". As páginas
+           existem no app desde sempre (src/App.jsx, /termos e /privacidade); o
+           rodapé é que nunca foi ligado nelas. Vão para o `.com`, não para o
+           `.com.br`: quem hospeda documento legal é o app. -->
+      <span><a href="https://alobuzinou.com/termos">Termos de Uso</a> · <a href="https://alobuzinou.com/privacidade">Política de Privacidade</a></span>
     </div>
   </div>
 </footer>
@@ -1525,11 +2128,11 @@ footer a:hover{opacity:1;transform:translateX(3px)}
   var BANCO = {
     mot: [
       ['Vocês ficam com meu dinheiro?','Vocês ficam com uma parte da minha mensalidade?',
-       'Não. Nem um centavo. O que o pai te paga vai direto pra você — PIX, dinheiro ou maquininha. A gente cobra uma taxa separada pelo uso do app, e ela não tem nada a ver com quanto você fatura.'],
+       'Não. Nem um centavo. O que o pai te paga vai direto pra você — PIX, dinheiro ou maquininha. A conta do app é separada, e ela não tem nada a ver com quanto você fatura.'],
       ['Quanto custa?','Quanto custa?',
        'Depende de quantas crianças você leva. Quem tem 8 paga menos que quem tem 40 — a conta é proporcional ao tamanho da sua operação, e todo mundo tem o app completo, sem plano capado. Pra você ter uma ideia: a conta do mês inteiro custa menos do que você recebe de uma família.'],
       ['E nas férias?','E nas férias, quando as crianças param?',
-       'Você desativa quem parou e a sua conta cai junto. Em janeiro você não paga pelo que não está usando.'],
+       'A sua conta segue a faixa de tamanho da sua operação. Se a turma diminuir o bastante pra você mudar de faixa, a conta cai junto; se continuar na mesma faixa, é o mesmo valor. E quem escolhe as crianças que saem é você — a gente nunca desativa ninguém no seu lugar.'],
       [null,'Como eu cobro quem atrasou?',
        'O app mostra quem pagou e quem está em aberto, e deixa o PIX pronto pra você mandar. Você não precisa mais lembrar de cabeça nem abrir caderno — e não precisa começar a conversa cobrando.'],
       ['Preciso mexer bem no celular?','Preciso saber mexer bem no celular?',
@@ -1541,11 +2144,11 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       ['Preciso de CNPJ?','Preciso ter CNPJ pra usar?',
        'Não precisa. Se você dirige e tem suas famílias, você usa. A gente não pede MEI, não pede CNPJ e não pede papelada pra você começar.'],
       ['Onde ficam os dados?','Os dados das crianças ficam onde?',
-       'Em servidor seguro, tratados conforme a LGPD. Endereço, foto e localização de criança só aparecem pra quem tem vínculo real com ela — nem outro motorista consegue ver.']
+       'Na infraestrutura do Google (Firebase), tratados conforme a LGPD. Endereço, foto e localização de criança só aparecem pra quem tem vínculo real com ela — nem outro motorista consegue ver.']
     ],
     fam: [
       ['Como eu crio minha conta?','Como eu crio minha conta?',
-       'Quem cria é o seu motorista. Ele te manda um link no WhatsApp, você abre e entra — sem senha pra inventar e sem código pra digitar. Não existe cadastro aberto aqui, e é isso que protege os dados do seu filho.'],
+       'Quem cria é o seu motorista. Ele te manda um link no WhatsApp, você abre e entra com o Google em dois toques — sem cadastro pra preencher e sem código pra digitar. Não existe cadastro aberto aqui, e é isso que protege os dados do seu filho.'],
       ['Quem vê onde meu filho está?','Quem consegue ver onde meu filho está?',
        'Só você e o motorista dele. Endereço, foto e localização aparecem exclusivamente pra quem tem vínculo real com aquela criança — nem outro motorista da plataforma consegue ver.'],
       ['E se eu perder o link?','E se eu perder o link?',
@@ -1787,6 +2390,180 @@ footer a:hover{opacity:1;transform:translateX(3px)}
     }
 
     open('https://wa.me/5511969170709?text=' + encodeURIComponent(corpo), '_blank', 'noopener');
+  });
+
+  /* ══ DE ONDE A PESSOA VEIO — repassado, nunca decidido aqui ═══════════
+   *
+   * A landing NÃO registra nada e continua sem registrar: a CSP tem
+   * `connect-src 'self'` e não há backend. O que ela faz é PASSAR ADIANTE
+   * duas coisas que o navegador já entregou de graça, no link que leva ao app:
+   *
+   *   `?o=` — o `utm_source` que a própria casa escreveu no link publicado
+   *           (o da bio do Instagram, o da descrição do YouTube);
+   *   `?r=` — o host de onde a pessoa clicou, quando não há UTM. É como o
+   *           Google e o tráfego orgânico aparecem sem precisar de nada.
+   *
+   * ⚠️ ELA NÃO TRADUZ, e isso é o ponto: quem transforma "ig" em "instagram" é
+   * `src/dominio/identidade/origem.js`, do outro lado. Se a tabela de canais
+   * fosse escrita aqui também, os dois lados divergiriam no primeiro canal
+   * novo — e divergiriam em silêncio, porque nenhuma tela quebra por isso.
+   *
+   * Sem UTM e sem referrer o link vai limpo, e o app resolve como "direto".
+   * Nenhum cookie, nenhum rastreador, nenhuma requisição. */
+  (function(){
+    var q = new URLSearchParams(location.search);
+    var utm = q.get('utm_source') || q.get('o') || '';
+    var ref = '';
+    try {
+      ref = document.referrer || '';
+    } catch (e) {
+      ref = '';
+    }
+    if (!utm && !ref) return;
+
+    var extra = [];
+    if (utm) extra.push('o=' + encodeURIComponent(utm.slice(0, 60)));
+    else if (ref) {
+      var host = ref.replace(/^[a-z]+:\/\//, '').split('/')[0];
+      if (host) extra.push('r=' + encodeURIComponent(host.slice(0, 60)));
+    }
+    if (!extra.length) return;
+    var cauda = extra.join('&');
+
+    /* Só os links que levam ao APP — os âncora da própria página não têm o que
+     * fazer com isso, e sujar todo href tornaria a barra de endereço confusa
+     * pra quem copia link pra mandar pro colega. */
+    document.querySelectorAll('a[href^="https://alobuzinou.com/"]').forEach(function(a){
+      var href = a.getAttribute('href');
+      a.setAttribute('href', href + (href.indexOf('?') === -1 ? '?' : '&') + cauda);
+    });
+  })();
+
+  /* COPIAR O LINK PRA MANDAR PRO TIO.
+     `navigator.clipboard` exige contexto seguro e pode ser negado (aba sem
+     foco, permissao bloqueada, navegador antigo). Por isso ha DOIS caminhos e
+     um terceiro que nao depende de nenhum: o link fica visivel no campo, e o
+     clique nele seleciona tudo — a pessoa copia com o dedo se preciso.
+     Nada disso toca a rede, entao a CSP (`connect-src 'self'`) nao entra. */
+  var caixa = document.querySelector('[data-copia]');
+  if (caixa) {
+    var campo = caixa.querySelector('.copia-txt');
+    var bt = caixa.querySelector('.copia-btn');
+    var volta;
+
+    campo.addEventListener('focus', function(){ campo.select(); });
+    campo.addEventListener('click', function(){ campo.select(); });
+
+    function avisa(txt) {
+      bt.textContent = txt;
+      caixa.classList.add('feito');
+      clearTimeout(volta);
+      volta = setTimeout(function(){
+        bt.textContent = bt.getAttribute('data-rot');
+        caixa.classList.remove('feito');
+      }, 2200);
+    }
+
+    function antigo() {
+      campo.select();
+      try {
+        return document.execCommand('copy');
+      } catch (e) {
+        return false;
+      }
+    }
+
+    bt.addEventListener('click', function(){
+      var texto = campo.value;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(function(){
+          avisa('Copiado!');
+        }, function(){
+          avisa(antigo() ? 'Copiado!' : 'Copie do campo');
+        });
+        return;
+      }
+      avisa(antigo() ? 'Copiado!' : 'Copie do campo');
+    });
+  }
+})();
+</script>
+<!-- ══ O VÍDEO, EM TELA E COM SOM ══════════════════════════════════
+     Fora do herói de propósito: `position:fixed` precisa de um pai que
+     não tenha `overflow:hidden`, e `.hero` tem. Dentro dele, o lightbox
+     seria cortado. -->
+<div class="cv-luz" id="cv-luz" role="dialog" aria-modal="true" aria-hidden="true"
+     aria-label="Vídeo de apresentação do Alô Buzinou">
+  <button type="button" class="cv-fechar" id="cv-fechar" aria-label="Fechar vídeo">&times;</button>
+  <div class="cv-caixa">
+    <!-- `controls` porque são 27 segundos COM SOM: sem pausa e sem mudo,
+         quem abriu no ônibus não tem como se defender do próprio toque.
+         `preload="none"` — o download começa quando ela decide ver. -->
+    <video id="cv-video" src="/brand/abertura.mp4" playsinline preload="none" controls></video>
+  </div>
+</div>
+
+<script>
+/* O CONVITE DO VÍDEO — abre com som, e devolve o foco.
+ *
+ * ⚠️ O SOM SÓ EXISTE PORQUE HOUVE UM GESTO. É a regra do navegador, e é
+ * também o desenho: o vídeo tem 26,8 s, e som que começa sem pedir é a
+ * forma mais rápida de alguém fechar a aba.
+ *
+ * E se o navegador recusar o som mesmo com gesto (acontece em modo de
+ * economia de dados), ele toca no MUDO em vez de não tocar. A pessoa
+ * tocou; alguma coisa tem que acontecer. */
+(function () {
+  var abre = document.getElementById('cv-abre');
+  var luz = document.getElementById('cv-luz');
+  var video = document.getElementById('cv-video');
+  var poster = document.getElementById('cv-poster');
+  var fechar = document.getElementById('cv-fechar');
+  if (!abre || !luz || !video || !fechar) return;
+
+  /* Parar no primeiro quadro em vez de mostrar preto. Um retângulo
+     preto parece vídeo que não carregou; o quadro parado parece vídeo. */
+  if (poster) {
+    poster.addEventListener('loadeddata', function () {
+      try { poster.currentTime = 0.1; } catch (e) { /* sem quadro: fica o play */ }
+    }, { once: true });
+  }
+
+  var focoAnterior = null;
+
+  function abrir() {
+    focoAnterior = document.activeElement;
+    luz.classList.add('on');
+    luz.setAttribute('aria-hidden', 'false');
+    /* Travar a rolagem: o vídeo é modal, e a página rolando atrás faz a
+       pessoa perder o lugar onde estava. */
+    document.body.style.overflow = 'hidden';
+    video.currentTime = 0;
+    video.muted = false;
+    video.play().catch(function () {
+      video.muted = true;
+      video.play().catch(function () { /* nem no mudo: os controles ficam */ });
+    });
+    fechar.focus();
+  }
+
+  function encerrar() {
+    luz.classList.remove('on');
+    luz.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    video.pause();
+    /* Devolver o foco ao botão que abriu — sem isso, quem navega por
+       teclado volta para o topo da página e perde o lugar. */
+    if (focoAnterior && focoAnterior.focus) focoAnterior.focus();
+  }
+
+  abre.addEventListener('click', abrir);
+  fechar.addEventListener('click', encerrar);
+  /* Clicar no escuro fecha; clicar no vídeo, não. */
+  luz.addEventListener('click', function (e) { if (e.target === luz) encerrar(); });
+  video.addEventListener('ended', encerrar);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && luz.classList.contains('on')) encerrar();
   });
 })();
 </script>
