@@ -76,11 +76,38 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
   --r:22px;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:76px}
+/* ⚠️ O ARRASTE HORIZONTAL — a página "solta", com os cantos aparecendo
+   em branco quando o dedo empurra pro lado.
+
+   A CAUSA ERA MEDIDA, NÃO ADIVINHADA: `.eco{width:112vw}` na seção do
+   motorista é uma onda decorativa centralizada, e ela vazava 23px de cada
+   lado. `document.scrollWidth` dava 413 num viewport de 390 — e é essa
+   sobra que a pessoa arrasta. O fundo do `body` (areia) pinta a largura
+   inteira da rolagem, mas as seções de sangria só medem 100% da tela: por
+   isso o que aparece na beirada é claro, e não a cor da seção.
+
+   O conserto de verdade é cortar a onda (ver `.mot`, que ganhou
+   `overflow:hidden` como as outras três seções decoradas já tinham).
+
+   ISTO AQUI É A CINTA DE SEGURANÇA, e ela existe porque este arquivo tem
+   cinco decorações com deslocamento negativo e ondas em `vw`: a próxima
+   vai vazar de novo, e a página não pode ficar arrastável por causa de um
+   enfeite.
+
+   `clip` E NÃO `hidden` no html: `hidden` transforma o elemento em
+   contêiner de rolagem e mataria `position:sticky` em qualquer descendente.
+   `clip` corta sem criar rolagem. E `overscroll-behavior-x:none` mata o
+   efeito elástico — sem ele, o dedo ainda "puxa" a página no iOS mesmo sem
+   nada para rolar. */
+html{
+  scroll-behavior:smooth;scroll-padding-top:76px;
+  overflow-x:clip;overscroll-behavior-x:none;
+}
 body{
   margin:0;background:var(--areia);color:var(--preto);
   font-family:var(--corpo);font-size:17px;line-height:1.62;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:clip;overscroll-behavior-x:none;
 }
 h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.022em;line-height:1.08}
 h1{font-size:clamp(2.6rem,6.4vw,4.5rem);font-weight:800}
@@ -162,7 +189,9 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .burger[aria-expanded=true] span:nth-child(1){transform:translateY(7px) rotate(45deg)}
 .burger[aria-expanded=true] span:nth-child(2){opacity:0}
 .burger[aria-expanded=true] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
-@media (max-width:1180px) and (min-width:1001px){ .links{gap:17px;font-size:.87rem} }
+/* Sete itens em vez de quatro: a faixa apertada desceu de 17px para 13px e
+   passou a valer até 1280px, senão o menu encosta no botão "Entrar". */
+@media (max-width:1280px) and (min-width:1001px){ .links{gap:13px;font-size:.84rem} }
 
 /* ══ BOTÕES ═══════════════════════════════════════ */
 .btn{
@@ -583,7 +612,11 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
    tranquilizada (claro, arejado, frases curtas, muito respiro). */
 
 /* — faixa do motorista: densa — */
-.mot{background:var(--verde-esc);color:#EAF6EF}
+/* `overflow:hidden` porque a onda `.eco` tem 112vw e é centralizada: sem
+   isto ela vaza 23px de cada lado e a página inteira fica arrastável. As
+   outras três seções decoradas já cortavam (por style inline); esta era a
+   que faltava. */
+.mot{background:var(--verde-esc);color:#EAF6EF;overflow:hidden}
 .mot .cab{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(30px,4vw,58px);align-items:end}
 .razoes{list-style:none;padding:0;margin:clamp(38px,5vw,58px) 0 0;border-top:1px solid var(--linha-esc)}
 .razoes li{
@@ -1108,6 +1141,21 @@ footer a:hover{opacity:1;transform:translateX(3px)}
    quatro e cabem folgados, mas o breakpoint fica: ele é o ponto em que a
    barra encosta no botão, não em que o texto quebra. Breakpoint próprio,
    porque nav e grid não têm o mesmo ponto de aperto. */
+/* ⚠️ ALVO DE TOQUE — medido em 25px de altura, e o dedo não tem 25px.
+ *
+ * Estes três são links de TEXTO puro: "Entrar no app", "Ver a parte do
+ * motorista" e "Ver a parte da família". Eles passam o mínimo da norma
+ * (24px), mas quem usa este site está em pé, com uma mão, muitas vezes
+ * dentro da própria perua — e errar o toque num link de navegação é o tipo
+ * de atrito que a pessoa atribui ao app, não ao dedo.
+ *
+ * `padding-block` em elemento INLINE não aumenta a caixa de linha: a área
+ * de toque cresce e nada na página se move. É por isso que o conserto cabe
+ * numa regra e não pede rearranjo. */
+@media (max-width:1000px){
+  .jatenho a,.seta{padding-block:10px}
+}
+
 @media (max-width:1000px){
   .links{
     position:fixed;inset:72px 0 auto;flex-direction:column;gap:0;
@@ -1117,14 +1165,34 @@ footer a:hover{opacity:1;transform:translateX(3px)}
   }
   .links.open{transform:none}
   .links li{border-bottom:1px solid rgba(255,255,255,.14)}
+  /* ⚠️ O ÚLTIMO ITEM NÃO LEVA RISCO. Ele levava, e a linha ficava
+     flutuando sobre os 24px de respiro do rodapé do painel — um traço
+     debaixo de nada, que é o que se lê como "o menu está com uma linha".
+     Separador serve para separar dois itens; embaixo do último não há o
+     que separar. */
+  .links li:last-child{border-bottom:0}
   .links a{display:block;padding:16px 0;font-size:1rem}
   .links a::after{display:none}
   .burger{display:block}
   body.trava{overflow:hidden}
+  /* A régua de progresso da rolagem mora no pé do nav — exatamente onde o
+     painel aberto começa. Com o menu aberto ela virava um traço verde
+     atravessando o topo da lista, medindo uma rolagem que está travada. */
+  body.trava .reg{opacity:0}
 }
 @media (max-width:560px){
   .fones{gap:26px}
-  .fone{max-width:250px}
+  /* ⚠️ A MOLDURA NÃO ENCOLHE MAIS, e o motivo é que o miolo dela não
+     encolhe junto.
+     O conteúdo da telinha é desenhado em pixel FIXO (cabeçalho de 34px,
+     nome em 9,5px, o cartão de baixo em 14px) para uma moldura de 290px.
+     Baixar a moldura para 250px mantinha o miolo do mesmo tamanho: "Miguel
+     · voltando pra casa" passava a encostar nas duas bordas do cartão, e
+     num aparelho mais estreito era cortado pelo `overflow:hidden` da
+     `.tela` — o que se lê como conteúdo passando da tela do celular.
+     Em 290px ela ainda cabe em 320px de viewport (`--lg` dá 294px), que é
+     o aparelho mais estreito que ainda existe. */
+  .fone{max-width:290px}
   .lockup{padding:7px 12px 7px 9px;gap:7px}
   .lockup .mk{width:20px;height:20px}
   .wm{font-size:.94rem}
@@ -1171,11 +1239,25 @@ footer a:hover{opacity:1;transform:translateX(3px)}
          decidida como "não" (docs/pitch-investidor.md), então oferecer
          "Relações com Investidores" no topo faz a página parecer startup
          atrás de dinheiro exatamente para quem já desconfia de aplicativo. -->
+    <!-- ⚠️ SOBRE, RI E CONTATO VOLTARAM AO MENU EM 08/09/2026, por decisão
+         do dono, e o comentário acima registra o argumento CONTRÁRIO — que
+         continua valendo como argumento: as três seções existiam na página e
+         no rodapé, e o topo ficou com quatro itens para não disputar a
+         atenção de quem lê em pé, com uma mão. O RI era o caso mais forte
+         (captação foi decidida como "não").
+         Fica escrito para que, se a leitura de "startup atrás de dinheiro"
+         aparecer em conversa de venda, se saiba exatamente o que reverter.
+
+         A ORDEM É A DA PÁGINA, não a da importância: indicador de posição
+         que anda para trás ensina que ele não vale nada. -->
     <ul class="links" id="menu">
       <li><a href="#como">Como funciona</a></li>
       <li><a href="#motorista">Pro motorista</a></li>
       <li><a href="#familia">Pra família</a></li>
+      <li><a href="#sobre">Sobre nós</a></li>
       <li><a href="#duvidas">Dúvidas</a></li>
+      <li><a href="#ri">RI</a></li>
+      <li><a href="#contato">Contato</a></li>
     </ul>
     <div class="navdir">
       <!-- O app mora no `.com`, a landing no `.com.br`. Não há subdomínio:
