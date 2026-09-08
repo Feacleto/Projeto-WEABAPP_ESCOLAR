@@ -815,9 +815,41 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .copia-btn:focus-visible{outline:2.5px solid var(--preto);outline-offset:-4px}
 .copia.feito .copia-btn{background:var(--verde-claro)}
 .copia-dica{font-size:.86rem;color:var(--cinza-cl);margin:12px 0 0}
+/* ══ ENVIAR — o botão que abre a bandeja do celular ══════════════
+ * Ele só existe onde `navigator.share` existe, e o JS é quem o revela:
+ * no desktop a API não está lá, e um botão que abre nada é pior que
+ * botão nenhum. Por isso ele nasce `hidden`.
+ *
+ * ── ELE É O PRIMÁRIO NO CELULAR, E COPIAR VIRA O SECUNDÁRIO
+ * O comentário do bloco de markup defendia copiar em vez de abrir o
+ * WhatsApp, e o argumento estava certo: abrir o WhatsApp escolhe o app
+ * pela pessoa e a joga numa tela de contatos que ela não pediu.
+ *
+ * A bandeja do sistema é a resposta que faltava para aquele argumento —
+ * ela não escolhe nada. Quem escolhe é a pessoa, e ali estão o WhatsApp,
+ * o Status, o Instagram, o Telegram e o que mais ela tiver instalado.
+ * Então no celular ENVIAR passa a ser a ação, e copiar continua ali para
+ * quem quer colar numa conversa que já está aberta. */
+.enviar-btn{
+  flex:none;border:0;cursor:pointer;
+  padding:13px 18px;font-family:var(--corpo);font-weight:700;font-size:.88rem;
+  background:var(--verde-vivo);color:#06210A;
+  display:inline-flex;align-items:center;gap:8px;
+  transition:filter .2s;
+}
+.enviar-btn:hover{filter:brightness(1.07)}
+.enviar-btn:focus-visible{outline:2.5px solid var(--preto);outline-offset:-4px}
+.enviar-btn[hidden]{display:none}
+.enviar-btn svg{flex:none}
+/* Com o Enviar na tela, o Copiar recua: dois botões cheios lado a lado
+   disputam, e a pessoa para para escolher entre dois verdes. */
+.copia.tem-enviar .copia-btn{background:transparent;color:var(--verde-esc);box-shadow:inset 0 0 0 1.5px rgba(11,18,16,.16)}
+.copia.tem-enviar .copia-btn:hover{background:rgba(11,18,16,.05)}
+.copia.tem-enviar.feito .copia-btn{background:var(--verde-claro);color:#fff}
+
 @media (max-width:420px){
   .copia{flex-direction:column;max-width:none}
-  .copia-btn{padding:14px}
+  .copia-btn,.enviar-btn{padding:14px;justify-content:center}
 }
 /* O elo entre as duas faixas: quem leu a errada acha a certa. */
 .troca{
@@ -1829,9 +1861,15 @@ footer a:hover{opacity:1;transform:translateX(3px)}
         pena — é você quem leva o Alô Buzinou pra sua perua.</p>
         <div class="copia" data-copia>
           <input class="copia-txt" type="text" readonly value="https://alobuzinou.com.br" aria-label="Link para enviar ao seu motorista">
+          <!-- Nasce escondido: quem o revela é o JS, e só onde
+               `navigator.share` existe. -->
+          <button class="enviar-btn" type="button" data-enviar hidden>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v13M7 8l5-5 5 5"/></svg>
+            Enviar
+          </button>
           <button class="copia-btn" type="button" data-rot="Copiar link">Copiar link</button>
         </div>
-        <p class="copia-dica">Cole na conversa do WhatsApp dele.</p>
+        <p class="copia-dica" data-dica>Cole na conversa do WhatsApp dele.</p>
       </div>
     </div>
 
@@ -2567,6 +2605,109 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       }
       avisa(antigo() ? 'Copiado!' : 'Copie do campo');
     });
+
+    /* ══ ENVIAR — a bandeja do sistema ═══════════════════════════════
+     * `navigator.share` abre a bandeja do próprio aparelho: WhatsApp,
+     * Status, Instagram, Telegram, SMS, o que ela tiver. A plataforma não
+     * escolhe o app por ela — e era exatamente essa a objeção que fez este
+     * bloco nascer com "copiar" em vez de "abrir o WhatsApp".
+     *
+     * ⚠️ ELA EXIGE GESTO VIVO, e é isso que decide a arquitetura abaixo.
+     * `navigator.share` só é aceito enquanto o toque ainda "vale"
+     * (transient activation). Um `await` de rede antes da chamada mata
+     * essa validade e a bandeja não abre — erro que aparece como nada
+     * acontecendo.
+     *
+     * Por isso o vídeo é buscado ANTES, quando a seção aparece na tela, e
+     * não no toque. Se ele estiver pronto, vai junto; se não, vai só o
+     * link. O toque nunca espera rede.
+     *
+     * ── POR QUE MANDAR O VÍDEO JUNTO
+     * Story de Instagram e Status de WhatsApp não aceitam link: eles
+     * aceitam MÍDIA. Compartilhar só a URL faz esses dois destinos nem
+     * aparecerem na bandeja em parte dos aparelhos. Com o arquivo, eles
+     * aparecem — e o que ela posta é o vídeo da marca, que é a peça que
+     * existe justamente para isso.
+     */
+    var btEnviar = caixa.querySelector('[data-enviar]');
+    var dica = document.querySelector('[data-dica]');
+
+    if (btEnviar && navigator.share) {
+      btEnviar.hidden = false;
+      caixa.classList.add('tem-enviar');
+      if (dica) dica.textContent = 'Abre a lista do seu celular: WhatsApp, Status, Instagram, onde você quiser.';
+
+      var TEXTO = 'Achei este app pra organizar o transporte escolar — a família '
+        + 'acompanha a rota no mapa e a mensalidade fica tudo registrada. '
+        + 'Dá uma olhada:';
+      var LINK = campo.value;
+      var arquivo = null;
+      var pedido = false;
+
+      /* ⚠️ O VÍDEO É BUSCADO NO `pointerdown`, NÃO NA ROLAGEM.
+       *
+       * A primeira versão pré-carregava quando o bloco chegava perto da
+       * tela. Bonito no papel e IMPOSSÍVEL DE VERIFICAR aqui: o
+       * `IntersectionObserver` não dispara no navegador headless da sonda,
+       * então o caminho do arquivo ia para produção sem nunca ter rodado.
+       * Caminho não verificado é caminho que quebra na mão do usuário.
+       *
+       * `pointerdown` acontece ANTES do `click` e não gasta o gesto. E ele
+       * tem uma propriedade melhor que a rolagem: quem já assistiu ao vídeo
+       * no herói tem o arquivo no cache do navegador, e aí o fetch resolve
+       * em milissegundos. Ou seja, o Story funciona exatamente para quem
+       * mais provavelmente vai postar — quem viu o vídeo.
+       *
+       * Quem não viu manda o link, que é o que ela pediu de todo jeito.
+       * Ninguém espera rede, e ninguém baixa 1,8 MB sem ter tocado em nada. */
+      function prepararVideo() {
+        if (arquivo || pedido || !navigator.canShare) return;
+        pedido = true;
+        fetch('/brand/abertura.mp4').then(function (r) {
+          return r.ok ? r.blob() : null;
+        }).then(function (b) {
+          if (!b) return;
+          var f = new File([b], 'alo-buzinou.mp4', { type: 'video/mp4' });
+          if (navigator.canShare({ files: [f] })) arquivo = f;
+        }).catch(function () { /* sem vídeo: vai o link, e ninguém percebe */ });
+      }
+
+      btEnviar.addEventListener('pointerdown', prepararVideo);
+      /* Teclado não gera `pointerdown`: sem isto, quem usa Tab + Enter nunca
+         chegaria ao caminho do arquivo. */
+      btEnviar.addEventListener('focus', prepararVideo);
+
+      btEnviar.addEventListener('click', function () {
+        /* NADA DE `await` ANTES DAQUI. Ver o cabeçalho: o gesto perde a
+           validade e a bandeja não abre. */
+        var carga = { title: 'Alô Buzinou', text: TEXTO, url: LINK };
+        if (arquivo) carga.files = [arquivo];
+
+        var p;
+        try {
+          p = navigator.share(carga);
+        } catch (e) {
+          /* Alguns aparelhos recusam a carga com arquivo de forma
+             síncrona. O link sozinho sempre passa. */
+          p = navigator.share({ title: 'Alô Buzinou', text: TEXTO, url: LINK });
+        }
+
+        Promise.resolve(p).catch(function (err) {
+          /* AbortError é a pessoa fechando a bandeja — não é falha, e não
+             merece aviso nenhum. Qualquer outra coisa cai no copiar, que
+             é o caminho que nunca depende de API. */
+          if (err && err.name === 'AbortError') return;
+          if (arquivo) {
+            arquivo = null;
+            navigator.share({ title: 'Alô Buzinou', text: TEXTO, url: LINK }).catch(function () {
+              bt.click();
+            });
+            return;
+          }
+          bt.click();
+        });
+      });
+    }
   }
 })();
 </script>
