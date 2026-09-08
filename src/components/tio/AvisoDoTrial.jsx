@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { ArrowRight, Clock, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { avisoDoTrial, fimDoTrial } from '../../dominio/associacao/trial.js';
-import { ANTECIPACAO } from '../../dominio/associacao/planos.js';
+import {
+  avisoDoTrial,
+  fimDoTrial,
+  degrauDaDecisao,
+} from '../../dominio/associacao/trial.js';
+import { descontoDoFechamento } from '../../dominio/associacao/planos.js';
 import { Link } from 'react-router-dom';
 
 /**
@@ -51,6 +55,12 @@ export default function AvisoDoTrial({ temContrato = false }) {
     temContrato,
   });
 
+  // O desconto do degrau em que ele está AGORA — ver o comentário da oferta,
+  // mais abaixo. Zero quando a escada já passou, e aí a oferta não aparece.
+  const fracaoDoDegrau = descontoDoFechamento(
+    degrauDaDecisao({ inicio: profile?.trialInicio, agora: new Date() })
+  );
+
   if (!aviso || aviso.nivel === 'expirado') return null;
   if (aviso.nivel === 'discreto') {
     const fim = fimDoTrial(profile?.trialInicio);
@@ -92,18 +102,22 @@ export default function AvisoDoTrial({ temContrato = false }) {
             *
             * O preço fica discreto durante o teste de propósito: quem está
             * provando o app não deveria estar decidindo compra. Só que o
-            * desconto de contratação antecipada precisa de UM momento em que
-            * seja dito — senão ninguém contrata antes, e o mecanismo não
-            * existe na prática.
+            * desconto de fechamento precisa de UM momento em que seja dito —
+            * senão ninguém contrata antes, e o mecanismo não existe na prática.
             *
-            * Este aviso é esse momento: ele já é sobre o fim do teste, e a
-            * antecipação ainda vale enquanto ele aparece. Dizer no último dia
-            * seria oferecer desconto a quem já está decidindo sob pressão. */}
-          <p className="mt-1.5 text-xs leading-relaxed text-warningText">
-            Contratando <strong>antes</strong> do fim, você fica com{' '}
-            <strong>{Math.round(ANTECIPACAO.fracao * 100)}% de desconto</strong> pelos{' '}
-            {ANTECIPACAO.meses} meses de contrato.
-          </p>
+            * Este aviso é esse momento: ele já é sobre o fim do teste.
+            *
+            * ⚠️ O NÚMERO É O DO DEGRAU ATUAL, não um valor fixo. Quando este
+            * cartão aparece (7 dias do fim) o degrau já é o 3º, e prometer os
+            * 50% do 1º mês aqui seria anunciar um desconto que o servidor não
+            * vai gravar — o motorista veria 50% na tela e 15% na fatura. */}
+          {fracaoDoDegrau > 0 && (
+            <p className="mt-1.5 text-xs leading-relaxed text-warningText">
+              Contratando <strong>antes</strong> do fim, você fica com{' '}
+              <strong>{Math.round(fracaoDoDegrau * 100)}% de desconto</strong> pelos
+              12 meses de contrato.
+            </p>
+          )}
 
           {/* A tela de planos já existe e mostra o preço DELE, com os
             * descontos aplicados. Antes dela isto abria o WhatsApp — o que

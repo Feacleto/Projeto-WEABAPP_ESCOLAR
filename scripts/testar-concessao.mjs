@@ -234,9 +234,44 @@ const f = contarFundadores(carteira);
 checar('um vitalício', 1, f.vitalicio);
 checar('dois pela metade', 2, f.metade);
 checar('três de treze', 3, f.total);
-checar('o limite é treze', 13, f.limite);
-checar('restam dez metades', 10, f.restamMetade);
-checar('e nenhum vitalício', 0, f.restamVitalicio);
+// ⚠️ O LIMITE CAIU DE TREZE PARA UM em 07/09/2026, e não foi por economia.
+//
+// As doze vagas de "metade" eram o único desconto que ninguém pode reproduzir
+// — ninguém pode chegar antes —, e por isso não sobreviviam à conversa no
+// portão da escola. A condição virou TÍTULO (certificado, nome na página,
+// prioridade), e o desconto de 50% ficou disponível a qualquer um pela escada
+// de fechamento: quem fecha no primeiro mês leva o mesmo.
+//
+// O contador NÃO foi apagado junto, e é o ponto: zerar a régua sem manter o
+// contador deixaria a porta aberta para "só essa vez".
+checar('o limite agora é um', 1, f.limite);
+// ⚠️ NEGATIVO DE PROPÓSITO, e agora os dois campos usam isso. Os dois `metade`
+// desta carteira são históricos e continuam valendo (`descontoDoFundador`
+// ainda os lê); o −2 é o contador dizendo que não há mais vaga, não um erro.
+checar('as duas metades históricas aparecem como -2', -2, f.restamMetade);
+checar('e nenhum vitalício restante', 0, f.restamVitalicio);
+
+// Carteira sem nenhum fundador: uma vaga de vitalício, nenhuma de metade.
+const semFundador = contarFundadores([{ uid: 'x' }, { uid: 'y' }]);
+checar('sem fundador, resta o vitalício', 1, semFundador.restamVitalicio);
+checar('e nenhuma metade a conceder', 0, semFundador.restamMetade);
+
+// ⚠️ `restamMetade < 0` NÃO É ESTOURO — e o painel acusava o dono por isso.
+//
+// Com `FUNDADORES_METADE = 0`, todo fundador de metade histórico deixa o
+// contador negativo. Ele foi concedido sob a régua que valia; ler só o sinal
+// fazia a tela dizer "passou do combinado" por causa de uma mudança de
+// política. O estouro real é o do VITALÍCIO, que sempre foi um e não expira.
+checar('duas metades históricas NÃO são estouro', false, f.estourou);
+checar('mas aparecem como histórico', true, f.metadeHistorica);
+checar('carteira limpa não tem histórico a mostrar', false, semFundador.metadeHistorica);
+checar('e não estourou', false, semFundador.estourou);
+
+const doisVitalicios = contarFundadores([
+  { condicaoFundador: 'vitalicio' },
+  { condicaoFundador: 'vitalicio' },
+]);
+checar('DOIS vitalícios são estouro de verdade', true, doisVitalicios.estourou);
 
 // ⚠️ NEGATIVO DE PROPÓSITO. Zerar em zero esconderia exatamente o caso que o
 // contador existe para pegar — e o vitalício NÃO EXPIRA.

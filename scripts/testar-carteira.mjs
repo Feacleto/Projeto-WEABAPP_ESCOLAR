@@ -83,12 +83,12 @@ checar(
 );
 // DESCONTO COM PRAZO SOME SOZINHO. Sem o mês na conta, um desconto vencido
 // continuaria sendo descontado do MRR para sempre.
-const comRoleta = {
+const comFechamento = {
   ...CONTRATADO,
-  descontos: [{ origem: ORIGEM.ROLETA, fracao: 0.3, ate: '2026-09' }],
+  descontos: [{ origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: '2026-09', degrau: 2 }],
 };
-checar('desconto vigente entra', 104.3, mensalidadeDe(comRoleta, '2026-09').liquido);
-checar('e no mês seguinte já não entra', 149, mensalidadeDe(comRoleta, '2026-10').liquido);
+checar('desconto vigente entra', 104.3, mensalidadeDe(comFechamento, '2026-09').liquido);
+checar('e no mês seguinte já não entra', 149, mensalidadeDe(comFechamento, '2026-10').liquido);
 
 // ───────────────────────────── a carteira ──────────────────────────────────
 

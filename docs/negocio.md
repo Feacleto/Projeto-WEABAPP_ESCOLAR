@@ -221,6 +221,14 @@ já prefere ela sobre a régua.
 
 ## 5. Como o motorista entra
 
+> ⚠️ **SUPERADO EM PARTE por [descontos.md](descontos.md) (07/09/2026).** O
+> ritmo dos três meses abaixo (mês 1 pede avaliação, mês 2 certifica, mês 3
+> conta para trás) continua valendo. O que mudou: **a fatura passa a ser emitida
+> todo mês desde o mês 1, marcada como isenta**, e a decisão de fechar tem uma
+> **escada de desconto decrescente** (50/30/15 por mês de decisão). E a
+> avaliação do mês 1 **não** dá mês grátis — o prêmio dela é status, não
+> dinheiro.
+
 **Três meses grátis, e cada mês tem um trabalho diferente.** A régua abaixo foi
 definida em 04/09/2026 e resolve a pendência que estava aberta.
 
@@ -357,6 +365,14 @@ paga.
   operação aqui, é custo de aquisição.
 
 ### Programa de indicação
+
+> ⚠️ **O TETO DE 50% FOI SUBSTITUÍDO POR UM PISO DE FATURA em 07/09/2026** — ver
+> [descontos.md](descontos.md), peça 4. O motivo: teto percentual não protege
+> margem, porque não é medido na moeda do custo. Existia teto e a fatura chegava
+> a R$ 0,00 de qualquer forma. O resto desta seção (10% por indicação **paga**,
+> validação por telefone normalizado, auto-indicação recusada) continua valendo
+> integralmente. A carência, que estava "em aberto" no fim da seção, foi
+> **decidida como sim** e já está no código.
 
 **Regra recomendada: 10% de desconto por indicação ativa, com teto de 50%.**
 

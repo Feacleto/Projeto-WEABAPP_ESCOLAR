@@ -239,7 +239,7 @@ export function condicoesVigentes(motorista, mes) {
     linhas.push({
       id: d.origem,
       especie: 'regua',
-      rotulo: d.origem === ORIGEM.ANTECIPACAO ? 'Contratou antecipado' : 'Prêmio da roleta',
+      rotulo: 'Contratou dentro do teste',
       valor: `${Math.round((Number(d.fracao) || 0) * 100)}%`,
       ate: d.ate,
       motivo: null,
@@ -283,6 +283,20 @@ export function contarFundadores(parceiros = []) {
     limite: FUNDADORES_VITALICIO + FUNDADORES_METADE,
     restamVitalicio: FUNDADORES_VITALICIO - vitalicio,
     restamMetade: FUNDADORES_METADE - metade,
+    /**
+     * ⚠️ ALGUÉM CONCEDEU ALÉM DO LIMITE? Não é o mesmo que `restam < 0`.
+     *
+     * `FUNDADORES_METADE` foi a ZERO em 07/09/2026, quando a condição virou
+     * título em vez de preço. A partir daí, TODO fundador de metade histórico
+     * deixa `restamMetade` negativo — e ele foi concedido corretamente, sob a
+     * régua que valia. A tela que lia só o sinal passou a acusar o dono de ter
+     * passado do combinado por causa de uma mudança de política.
+     *
+     * O estouro real é o do VITALÍCIO, que sempre foi um e nunca expira. Para a
+     * metade, o que existe é histórico — contado, mostrado, e não acusado.
+     */
+    estourou: FUNDADORES_VITALICIO - vitalicio < 0,
+    metadeHistorica: FUNDADORES_METADE === 0 && metade > 0,
   };
 }
 

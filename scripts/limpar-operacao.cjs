@@ -4,8 +4,8 @@
  * O QUE ELE APAGA
  * Tudo que o dia a dia produz: crianças, pagamentos e a trilha deles, rotas,
  * planos de rota, agenda, avisos de escola, ausências, caronas alternativas,
- * chamadas pendentes, notificações, posição ao vivo, despesas, depoimentos,
- * bônus da roleta e as filas de espera.
+ * chamadas pendentes, notificações, posição ao vivo, despesas, depoimentos e
+ * as filas de espera.
  *
  * O QUE ELE PRESERVA, E POR QUÊ
  *   users/      os perfis. Sem eles, quem loga vira "conta sem perfil" e o
@@ -67,7 +67,10 @@ const OPERACAO = [
   'taxaParceiros',
   'faturasParceiro',
   'contratosAssociacao',
-  'premios',
+  // `premios` saiu daqui em 07/09/2026: a colecao foi apagada junto com a
+  // roleta. Documento orfao em producao continua existindo — ver
+  // docs/descontos.md antes de considerar a remocao terminada.
+
   // Nasceram em 06/09/2026 com as fases do console. Sem elas aqui, uma base
   // "limpa" continuaria com indicações valendo desconto e adesivos na fila.
   'indicacoes',

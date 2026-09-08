@@ -25,9 +25,24 @@ import {
 import { urlDoAmbiente, SANDBOX, PRODUCAO } from '../functions/lib/asaasApi.js';
 import { assinaturaAteDoMes as noServidor } from '../functions/lib/eventoDeCobranca.js';
 import { assinaturaAteDoMes as noApp } from '../src/dominio/associacao/contaAtiva.js';
-import { PLANOS as planosNoServidor, ANTECIPACAO as antecipacaoNoServidor, dentroDoTrial, mesDaqui as mesDaquiContrato, cobertoAteOMesSeguinte } from '../functions/lib/contratacao.js';
-import { PLANOS as planosNoApp, ANTECIPACAO as antecipacaoNoApp, PREMIOS_DA_ROLETA } from '../src/dominio/associacao/planos.js';
-import { PREMIOS as premiosNoServidor, mesDaqui } from '../functions/lib/premioDeConversao.js';
+import {
+  PLANOS as planosNoServidor,
+  ESCADA as escadaNoServidor,
+  RETORNO as retornoNoServidor,
+  dentroDoTrial,
+  degrauDaDecisao as degrauNoServidor,
+  descontoDoDegrau,
+  mesDaqui as mesDaquiContrato,
+  cobertoAteOMesSeguinte,
+} from '../functions/lib/contratacao.js';
+import {
+  PLANOS as planosNoApp,
+  ESCADA_DE_FECHAMENTO as escadaNoApp,
+  RETORNO as retornoNoApp,
+  descontoDoFechamento,
+} from '../src/dominio/associacao/planos.js';
+import { degrauDaDecisao as degrauNoApp } from '../src/dominio/associacao/trial.js';
+import { MESES_DE_CONTRATO as mesesNoServidor } from '../functions/lib/contratacao.js';
 
 let ok = 0;
 let bad = 0;
@@ -253,8 +268,9 @@ checar(
   planosNoApp.map((p) => `${p.id}:${p.ate}:${p.preco}`),
   planosNoServidor.map((p) => `${p.id}:${p.ate}:${p.preco}`)
 );
-checar('a antecipação vale o mesmo', antecipacaoNoApp.fracao, antecipacaoNoServidor.fracao);
-checar('e dura o mesmo', antecipacaoNoApp.meses, antecipacaoNoServidor.meses);
+// A antecipação (50% fixo em qualquer dia do teste) virou a ESCADA em
+// 07/09/2026, e o espelhamento dela está no bloco 10.
+checar('o contrato dura 12 meses nos dois lados', 12, mesesNoServidor);
 
 bloco('9. Quem ainda merece o desconto de antecipação');
 
@@ -269,45 +285,95 @@ checar('no octogésimo nono dia, ainda dentro', true, dentroDoTrial(dia('2026-06
 checar('no nonagésimo, acabou', false, dentroDoTrial(dia('2026-06-17'), agora));
 checar('muito depois, fora', false, dentroDoTrial(dia('2026-01-01'), agora));
 
-bloco('10. A roleta: o que a tela mostra é o que o servidor sorteia');
+bloco('10. A ESCADA DE FECHAMENTO nos dois lados');
 
-// A RÉGUA APARECE NOS DOIS LADOS: a roda desenha `PREMIOS_DA_ROLETA` e o
-// sorteio acontece sobre `PREMIOS` das functions. Divergir faria a roleta
-// prometer uma coisa na fatia e conceder outra na conta — e a fatia em que ela
-// para é escolhida pela POSIÇÃO na lista, então até trocar a ordem estraga.
+// ⚠️ A ESCADA É A SEGUNDA COISA ESPELHADA, depois da tabela de faixas — e é a
+// que mais dói se divergir. A tela ANUNCIA um degrau (`planos.js`, com o
+// relógio do aparelho) e o servidor GRAVA um (`contratacao.js`, com o dele).
+// Divergir aqui é o motorista lendo 50% e recebendo uma fatura de 30%, com um
+// contrato assinado no meio.
 checar(
-  'os quatro prêmios, na mesma ordem',
-  PREMIOS_DA_ROLETA.map((p) => `${p.id}:${p.meses ?? ''}:${p.fracao ?? ''}`),
-  premiosNoServidor.map((p) => `${p.id}:${p.meses ?? ''}:${p.fracao ?? ''}`)
+  'os três degraus, na mesma ordem e com a mesma fração',
+  escadaNoApp.map((e) => `${e.degrau}:${e.fracao}`),
+  escadaNoServidor.map((e) => `${e.degrau}:${e.fracao}`)
 );
-checar('todos com o mesmo peso — 25% cada', true,
-  premiosNoServidor.every((p) => p.peso === premiosNoServidor[0].peso));
+checar('e o retorno também', retornoNoApp.fracao, retornoNoServidor.fracao);
+checar('com o mesmo prazo', retornoNoApp.prazoDias, retornoNoServidor.prazoDias);
+checar('e o mesmo rótulo de degrau', retornoNoApp.degrau, retornoNoServidor.degrau);
 
-bloco('11. Até quando o prêmio vale');
+// A escada DESCE nos dois lados. Um degrau posterior valendo mais inverteria o
+// incentivo inteiro, e é um erro de digitação de distância.
+checar(
+  'ela desce no servidor',
+  true,
+  escadaNoServidor.every((e, i) => i === 0 || e.fracao < escadaNoServidor[i - 1].fracao)
+);
 
-// INCLUSIVE O MÊS ATUAL: "2 meses sem taxa" girado em setembro cobre setembro
-// e outubro, não setembro até novembro. Um mês a mais por acidente de
-// aritmética é o tipo de erro que ninguém confere.
+bloco('10b. E as duas contas de DEGRAU concordam, dia por dia');
+
+// ⚠️ SÃO DUAS IMPLEMENTAÇÕES DA MESMA CONTA, e isso é deliberado: a do app é
+// para MOSTRAR (relógio do aparelho), a do servidor é para GRAVAR. A régua de
+// tempo mora em `trial.js`, a fração em `planos.js`, e a autoridade em
+// `contratacao.js` — três arquivos, uma resposta, e este bloco é o que prova.
+//
+// O laço vai até 125 para cobrir os três degraus, a janela de retorno (90–119)
+// e o nada que vem depois.
+const base = new Date(2026, 5, 1, 12);
+let degrausIguais = true;
+let fracoesIguais = true;
+for (let d = 0; d <= 125; d += 1) {
+  const agoraD = new Date(base.getTime() + d * 86400000);
+  const noApp = degrauNoApp({ inicio: base, agora: agoraD });
+  const noSrv = degrauNoServidor(base, agoraD);
+  if (JSON.stringify(noApp) !== JSON.stringify(noSrv)) degrausIguais = false;
+  if (descontoDoFechamento(noApp) !== descontoDoDegrau(noSrv)) fracoesIguais = false;
+}
+checar('o degrau é o mesmo em todos os 126 dias', true, degrausIguais);
+checar('e a fração também', true, fracoesIguais);
+
+// Os pontos de virada, nomeados — o laço acima pega a divergência, estes dizem
+// QUAL é a régua, e é isso que alguém confere ao mudá-la.
+const emDia = (n) => degrauNoServidor(base, new Date(base.getTime() + n * 86400000));
+checar('dia 0 é o primeiro degrau', 1, emDia(0));
+checar('dia 29 ainda é o primeiro', 1, emDia(29));
+checar('dia 30 vira o segundo', 2, emDia(30));
+checar('dia 60 vira o terceiro', 3, emDia(60));
+checar('dia 89 é o último dia do terceiro', 3, emDia(89));
+checar('dia 90 já é retorno', 'retorno', emDia(90));
+checar('dia 119 é o último do retorno', 'retorno', emDia(119));
+checar('dia 120 não tem mais degrau', null, emDia(120));
+// ⚠️ SEM `trialInicio` O DEGRAU É 1 nos dois lados: quem nunca rodou uma rota
+// não gastou um dia do teste, e é o mais antecipado de todos.
+checar('sem trialInicio, degrau 1 no servidor', 1, degrauNoServidor(null, agora));
+checar('e no app também', 1, degrauNoApp({ inicio: null, agora }));
+
+bloco('11. Até quando o desconto vale');
+
+// INCLUSIVE O MÊS ATUAL: 12 meses a partir de setembro terminam em AGOSTO do
+// ano seguinte, não em setembro. Um mês a mais por acidente de aritmética é o
+// tipo de erro que ninguém confere — e era meia mensalidade extra por
+// associado, silenciosa, crescendo com a base.
 const setembro = new Date(2026, 8, 15, 12);
-checar('1 mês cobre só o mês corrente', '2026-09', mesDaqui(1, setembro));
-checar('2 meses cobrem este e o próximo', '2026-10', mesDaqui(2, setembro));
-checar('12 meses viram o ano', '2027-08', mesDaqui(12, setembro));
+checar('1 mês cobre só o mês corrente', '2026-09', mesDaquiContrato(1, setembro));
+checar('2 meses cobrem este e o próximo', '2026-10', mesDaquiContrato(2, setembro));
+checar('12 meses viram o ano', '2027-08', mesDaquiContrato(12, setembro));
 
-bloco('12. As duas cópias de `mesDaqui` — divergiam em um mês inteiro');
+bloco('12. `mesDaqui` — houve DUAS cópias, e elas divergiam em um mês inteiro');
 
-// ⚠️ ELAS TINHAM SEMÂNTICAS DIFERENTES. A da contratação somava os meses sem o
-// `-1`, então "12 meses" durava TREZE — meia mensalidade extra por associado
-// antecipado, silenciosa, crescendo com a base. E `npm run testar:gateway`
-// comparava só a TABELA de faixas, nunca a aritmética.
+// ⚠️ SOBROU UMA, e é por isso que este bloco encurtou. A segunda vivia em
+// `premioDeConversao.js`, apagado em 07/09/2026 junto com a roleta. As duas
+// tinham semânticas diferentes: a da contratação somava os meses sem o `-1`,
+// então "12 meses" durava TREZE.
+//
+// Os casos abaixo ficam porque a ARMADILHA continua — ela é do `setMonth`, não
+// da cópia —, e quem escrever a próxima função de prazo precisa vê-los.
 const jan31 = new Date(2027, 0, 31, 12);
-checar('as duas concordam em 12 meses', mesDaqui(12, setembro), mesDaquiContrato(12, setembro));
-checar('e em 1 mês', mesDaqui(1, setembro), mesDaquiContrato(1, setembro));
 checar('12 meses a partir de setembro terminam em agosto', '2027-08', mesDaquiContrato(12, setembro));
 
-// ⚠️ `setMonth` PRESERVA O DIA, e 31 não existe em todo mês. Girar a roleta em
-// 31/01 com "2 meses" produzia 31/02 → 03/03: TRÊS meses de prêmio de dois.
-checar('31 de janeiro + 2 meses não vaza para março', '2027-02', mesDaqui(2, jan31));
-checar('31 de março + 12 meses não vaza', '2028-02', mesDaqui(12, new Date(2027, 2, 31, 12)));
+// ⚠️ `setMonth` PRESERVA O DIA, e 31 não existe em todo mês. Contratar em
+// 31/01 com "2 meses" produzia 31/02 → 03/03: TRÊS meses de desconto por dois.
+checar('31 de janeiro + 2 meses não vaza para março', '2027-02', mesDaquiContrato(2, jan31));
+checar('31 de março + 12 meses não vaza', '2028-02', mesDaquiContrato(12, new Date(2027, 2, 31, 12)));
 // 12 meses INCLUSIVOS a partir de fevereiro de 2028 terminam em janeiro de
 // 2029 — fev/28 é o primeiro dos doze. (Escrevi '2029-02' na primeira versão
 // deste caso; o teste estava errado, não o código.)

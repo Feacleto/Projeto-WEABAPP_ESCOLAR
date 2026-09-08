@@ -46,6 +46,7 @@ import {
 } from '../../config/developer.js';
 import {
   MESES_DE_CONTRATO,
+  PISO_DA_FATURA,
   centavos,
   limitarDiaVencimento,
   precoDoMes,
@@ -59,11 +60,19 @@ import {
  * 3 — o preço virou de TABELA. Saíram percentual sobre mensalidade, base de
  *     crianças, periodicidade e carência; entraram a faixa contratada, o teto
  *     de crianças que ela dá e os descontos com prazo de validade.
+ * 4 — a ESCADA DE FECHAMENTO substituiu a antecipação (50% em qualquer dia do
+ *     teste virou 50/30/15 pelo mês da decisão), o PISO DE FATURA entrou como
+ *     cláusula, o teto percentual da indicação saiu, e a roleta foi apagada.
+ *     Entrou também a saída livre nos primeiros 30 dias pagos.
  *
- * Subir custa uma rodada de reassinatura, e custou zero aqui: nenhum contrato
- * tinha sido emitido.
+ * ⚠️ A 4 precisa do piso ESCRITO, não só aplicado. Sem a cláusula, um associado
+ * com 100% de desconto nominal recebe fatura de R$ 34 e o contrato não
+ * consegue justificar de onde ela veio — que é a mesma contradição que o
+ * `npm run testar:contrato` pega desde a concessão.
+ *
+ * Subir custa uma rodada de reassinatura.
  */
-export const VERSAO_CONTRATO = 3;
+export const VERSAO_CONTRATO = 4;
 
 /** Janela padrão para avisar que a vigência está acabando. */
 export const JANELA_DE_RENOVACAO = 60;
@@ -177,9 +186,8 @@ export function montarContrato({
       valorMensal: conta.liquido,
       descontoTotal: conta.desconto,
       descontoFundador: conta.descontoFundador,
-      descontoAntecipacao: conta.descontoAntecipacao,
+      descontoFechamento: conta.descontoFechamento,
       descontoIndicacao: conta.descontoIndicacao,
-      descontoRoleta: conta.descontoRoleta,
       // ⚠️ A CONCESSÃO ENTRA COMO QUALQUER OUTRO DESCONTO, e ela FALTAVA aqui.
       //
       // `conta.liquido` já a descontava (ela vive em `users.descontos`), e
@@ -194,8 +202,25 @@ export function montarContrato({
       descontoConcessao: conta.descontoConcessao,
       // Cada desconto com a data em que ele acaba — ver o cabeçalho.
       descontos: Array.isArray(descontos) ? descontos : [],
-      // Meses sem fatura (prêmio de roleta). Isenção não é desconto de 100%:
-      // uma produz fatura de R$ 0, a outra diz que não há fatura.
+
+      // ⚠️ O PISO É CLÁUSULA, E POR ISSO ELE VAI ESCRITO AQUI.
+      //
+      // Sem estas três linhas o documento se contradiz de um jeito novo: o
+      // desconto total pode dizer 100% e o valor mensal dizer R$ 34, e nenhuma
+      // linha explica a diferença. É a MESMA falha da concessão — o valor
+      // sabia de algo que o texto não contava —, só que pelo outro lado da
+      // conta: lá faltava desconto, aqui falta o limite do desconto.
+      //
+      // `pisoDaFatura` vai SEMPRE, aplicado ou não: é a regra que o associado
+      // precisa poder cobrar de volta, e uma cláusula que só aparece quando
+      // pesa contra ele é uma cláusula que ele descobre na fatura.
+      pisoDaFatura: PISO_DA_FATURA,
+      pisoAplicado: conta.pisoAplicado,
+      descontoAbsorvido: conta.descontoAbsorvido,
+
+      // Meses sem fatura (concessão de isenção). Isenção não é desconto de
+      // 100%: uma produz fatura de R$ 0, a outra diz que não há fatura. E ela
+      // passa por cima do piso — ver PISO_DA_FATURA.
       isencaoAte: isencaoAte || null,
       diaVencimento: limitarDiaVencimento(diaVencimento),
     },

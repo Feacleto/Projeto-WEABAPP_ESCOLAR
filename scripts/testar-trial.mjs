@@ -19,11 +19,17 @@
 
 import {
   DIAS_DE_TRIAL,
+  DIAS_POR_DEGRAU,
   fimDoTrial,
   diasRestantes,
   estadoDoTrial,
   avisoDoTrial,
+  degrauDaDecisao,
+  fimDoDegrau,
+  mesDeTesteDe,
 } from '../src/dominio/associacao/trial.js';
+
+const dia2 = (d, n) => new Date(d.getTime() + n * 86400000);
 
 let ok = 0;
 let bad = 0;
@@ -176,6 +182,88 @@ checar(
   null,
   avisoDoTrial({ inicio: INICIO, agora: dia('2026-05-29'), temContrato: true })
 );
+
+// ═══════ A ESCADA DE FECHAMENTO — o degrau é o mês do teste ════════════════
+
+bloco('A escada: em que degrau ele está');
+
+const INI = dia('2026-03-01');
+const noDia = (n) => degrauDaDecisao({ inicio: INI, agora: dia2(INI, n) });
+
+checar('dia 0 é o primeiro degrau', 1, noDia(0));
+checar('dia 29 ainda é o primeiro', 1, noDia(29));
+checar('dia 30 vira o segundo', 2, noDia(30));
+checar('dia 59 ainda é o segundo', 2, noDia(59));
+checar('dia 60 vira o terceiro', 3, noDia(60));
+checar('dia 89 é o último do terceiro', 3, noDia(89));
+// ⚠️ NÃO EXISTE QUARTO DEGRAU. Escada que premia quem esperou é exatamente a
+// lição que ela existe para não ensinar — depois dos 90 dias o desconto é
+// ZERO, e a conta fica inativa até ele fechar.
+checar('dia 90 já é a janela de retorno', 'retorno', noDia(90));
+checar('dia 119 é o último do retorno', 'retorno', noDia(119));
+checar('dia 120 não tem mais degrau', null, noDia(120));
+
+// ⚠️ SEM `inicio` O DEGRAU É 1, e não zero: quem nunca rodou uma rota não
+// gastou um dia do teste, e é o mais antecipado de todos. Cobrar-lhe o preço
+// cheio puniria quem decidiu antes de precisar.
+checar('sem início, o primeiro degrau', 1, degrauDaDecisao({ inicio: null, agora: INI }));
+checar('sem agora, nenhuma resposta', null, degrauDaDecisao({ inicio: INI, agora: null }));
+checar('sem nada, ainda o primeiro', 1, degrauDaDecisao({}));
+
+// ⚠️ RELÓGIO ATRASADO NÃO REBAIXA NINGUÉM. Sem o piso de zero,
+// `floor(-1 / 30) + 1` daria degrau 0 — nenhum desconto para quem acabou de
+// começar, que é o oposto do desenho.
+checar('data futura não vira degrau zero', 1, degrauDaDecisao({ inicio: INI, agora: dia2(INI, -3) }));
+
+bloco('A escada: até quando cada degrau vale');
+
+// A OFERTA VEM COM DATA. "Decida logo" não é um prazo — urgência sem data é
+// pressão, e a tela precisa poder dizer quando o desconto piora.
+checar('o primeiro degrau vira em 30 dias', '2026-03-31', fimDoDegrau(INI, 1).toISOString().slice(0, 10));
+checar('o segundo, em 60', '2026-04-30', fimDoDegrau(INI, 2).toISOString().slice(0, 10));
+checar('o terceiro, no fim do teste', '2026-05-30', fimDoDegrau(INI, 3).toISOString().slice(0, 10));
+// Não há próximo degrau melhor depois do terceiro, nem no retorno.
+checar('não há quarto degrau para datar', null, fimDoDegrau(INI, 4));
+checar('nem o retorno tem data de virada', null, fimDoDegrau(INI, 'retorno'));
+checar('sem início, sem data', null, fimDoDegrau(null, 1));
+checar('cada degrau é um mês de trinta dias', 30, DIAS_POR_DEGRAU);
+checar('e três deles fecham o teste', DIAS_DE_TRIAL, 3 * DIAS_POR_DEGRAU);
+
+// ═══════ A FATURA ISENTA DO TESTE ══════════════════════════════════════════
+
+bloco('A fatura de teste: em que mês de teste ela cai');
+
+// O teste passou a EMITIR fatura todo mês, isenta, com o preço cheio visível —
+// o hábito que faltava era receber e reconhecer uma fatura. Ver
+// docs/descontos.md, peça 1.
+const INICIO_20_09 = new Date(2026, 8, 20, 12);
+
+checar('o mês anterior ao início não é mês de teste', null, mesDeTesteDe(INICIO_20_09, '2026-08'));
+checar('o mês em que começou é o 1º', 1, mesDeTesteDe(INICIO_20_09, '2026-09'));
+checar('o seguinte é o 2º', 2, mesDeTesteDe(INICIO_20_09, '2026-10'));
+checar('e o outro, o 3º', 3, mesDeTesteDe(INICIO_20_09, '2026-11'));
+
+// ⚠️ ELE PASSA DE 3, E É POR ISSO QUE O RÓTULO NÃO DIZ "DE 3".
+//
+// O teste tem 90 dias CORRIDOS e a fatura é por mês de CALENDÁRIO: começando
+// em 20/09 ele acaba em 19/12 e encosta em QUATRO meses. "Mês 4 de 3" num
+// documento de cobrança é o tipo de contradição que este projeto testa para
+// não ter — quem diz o fim é a data, que vai congelada na fatura.
+checar('começando no fim do mês, o teste encosta num 4º', 4, mesDeTesteDe(INICIO_20_09, '2026-12'));
+checar('e janeiro já não é teste', null, mesDeTesteDe(INICIO_20_09, '2027-01'));
+
+// Começando no dia 1º, ele encosta em exatamente três.
+const INICIO_01_09 = new Date(2026, 8, 1, 12);
+checar('começando no dia 1º, o 3º é o último', 3, mesDeTesteDe(INICIO_01_09, '2026-11'));
+checar('e dezembro já não é teste', null, mesDeTesteDe(INICIO_01_09, '2026-12'));
+
+// ⚠️ SEM `inicio`, TODA FATURA É MÊS 1 — isenção sem fim. É o custo conhecido
+// de o gatilho ser a primeira rota, e agora ele fica VISÍVEL: o dono passa a
+// ver uma fatura isenta por mês em vez de nenhuma fatura.
+checar('sem início, qualquer mês é o 1º', 1, mesDeTesteDe(null, '2028-07'));
+checar('mês malformado não vira mês de teste', null, mesDeTesteDe(INICIO_20_09, '2026-9'));
+checar('nem texto solto', null, mesDeTesteDe(INICIO_20_09, 'setembro'));
+checar('nem ausência', null, mesDeTesteDe(INICIO_20_09, null));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

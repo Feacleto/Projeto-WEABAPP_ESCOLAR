@@ -11,9 +11,10 @@ import {
 } from '../../dominio/identidade/indicacao.js';
 import {
   DESCONTO_POR_INDICACAO,
-  TETO_DE_INDICACAO,
+  PISO_DA_FATURA,
 } from '../../dominio/associacao/planos.js';
 import { maskPhone } from '../../compartilhado/masks';
+import { formatCurrency } from '../../compartilhado/formatters';
 import { SITE_INSTITUCIONAL } from '../../config/vitrine';
 
 /**
@@ -59,8 +60,14 @@ export default function TioIndicar() {
   const resumo = resumoDoIndicador(lista || []);
 
   const porIndicacao = Math.round(DESCONTO_POR_INDICACAO * 100);
-  const teto = Math.round(TETO_DE_INDICACAO * 100);
-  const quantasZeram = Math.round(TETO_DE_INDICACAO / DESCONTO_POR_INDICACAO);
+  // ⚠️ NÃO HÁ MAIS TETO PERCENTUAL, E A TELA PRECISA DIZER O QUE HÁ.
+  //
+  // A frase antiga era "até 50% — 5 indicações zeram metade dela", e o teto
+  // saiu porque não protegia margem nenhuma (a fatura chegava a zero de
+  // qualquer forma). O que limita agora é o PISO, em reais — e ele é publicado
+  // aqui de propósito: piso aplicado em silêncio é a origem da queixa que esta
+  // tela inteira existe para evitar.
+  const piso = PISO_DA_FATURA;
 
   const enviar = async () => {
     setSalvando(true);
@@ -95,7 +102,9 @@ export default function TioIndicar() {
           * desconto não veio, ela pareceria desculpa. */}
         <p className="mt-1 text-xs leading-relaxed text-textMuted">
           Cada motorista que você trouxer vale <strong>{porIndicacao}%</strong> na
-          sua conta, até {teto}% — {quantasZeram} indicações zeram metade dela. O
+          sua conta, todo mês, enquanto ele estiver com a gente — sem limite de
+          quantidade. Os descontos descem até o piso de {formatCurrency(piso)},
+          que é a manutenção do ambiente. O
           desconto entra quando <strong>ele pagar o primeiro mês</strong>, não
           quando se cadastra.
         </p>

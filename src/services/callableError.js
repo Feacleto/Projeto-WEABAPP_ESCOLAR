@@ -61,8 +61,8 @@ const MENSAGENS = {
  *
  * @param {unknown} err        o erro que veio do callable
  * @param {string}  [oQueFazia] o que estava sendo feito, pra frase ficar
- *                              específica: "gerar as cobranças", "girar a
- *                              roleta". Entra na mensagem de fora-do-ar.
+ *                              específica: "gerar as cobranças", "contratar a
+ *                              faixa". Entra na mensagem de fora-do-ar.
  */
 export function mensagemDeErro(err, oQueFazia) {
   const code = err?.code || '';

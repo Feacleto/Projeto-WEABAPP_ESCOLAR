@@ -74,12 +74,15 @@ export const STORAGE_OFF_MESSAGE =
 /**
  * CLOUD FUNCTIONS — a bandeira de baixo, da qual as outras dependem.
  *
- * POR QUE ELA É SEPARADA DA ROLETA
- * A roleta esteve desligada por uma bandeira própria, e o motivo real não
- * era a roleta: era que NENHUMA Cloud Function estava no ar. Uma bandeira
- * por recurso escondendo a mesma causa é o caminho para uma delas apodrecer
- * — alguém liga o Blaze, vira a que lembra, e a outra fica escondendo algo
- * que já funcionava. Então a CAUSA virou constante, e cada recurso deriva.
+ * POR QUE ELA É UMA CAUSA, E NÃO UMA BANDEIRA POR RECURSO
+ * Houve uma bandeira só para a roleta, e o motivo real não era a roleta: era
+ * que NENHUMA Cloud Function estava no ar. Uma bandeira por recurso escondendo
+ * a mesma causa é o caminho para uma delas apodrecer — alguém liga o Blaze,
+ * vira a que lembra, e a outra fica escondendo algo que já funcionava. Então a
+ * CAUSA virou constante, e cada recurso deriva.
+ *
+ * (A roleta foi apagada em 07/09/2026. O raciocínio fica porque ele vale para
+ * a próxima bandeira que alguém quiser criar por recurso.)
  *
  * LIGADA EM 06/09/2026. As 12 functions do núcleo estão publicadas em
  * `southamerica-east1`, e `firebase functions:list` responde com elas.
@@ -90,7 +93,7 @@ export const STORAGE_OFF_MESSAGE =
  * e cada recurso deriva dela.
  *
  * O QUE DEPENDE DISTO (tudo httpsCallable):
- *   - a roleta de conversão (`girarPremio`);
+ *   - a contratação de faixa (`contratarPlano`);
  *   - o resgate de convite do responsável (`redeemInvite`, `lookupInvite`) e
  *     por consequência o /first-access;
  *   - a geração de mensalidade e as cobranças (`generateMonthlyPayments`);
@@ -118,15 +121,21 @@ export const CLOUD_FUNCTIONS_ENABLED =
       : CLOUD_FUNCTIONS_ENABLED_DEFAULT;
 
 /**
- * A BANDEIRA `ENTRY_BONUS_ENABLED` FOI REMOVIDA EM 06/09/2026.
+ * A BANDEIRA `ENTRY_BONUS_ENABLED` FOI REMOVIDA EM 06/09/2026, E A ROLETA
+ * INTEIRA EM 07/09/2026.
  *
- * Ela existia porque a roleta era de ENTRADA: aparecia no topo do painel de
- * quem acabou de criar conta, e sem cloud o cartão "Girar agora" ocupava o
- * lugar mais caro da tela para oferecer algo que não fechava o ciclo.
+ * A bandeira existia porque a roleta era de ENTRADA: aparecia no topo do painel
+ * de quem acabou de criar conta, e sem cloud o cartão "Girar agora" ocupava o
+ * lugar mais caro da tela para oferecer algo que não fechava o ciclo. Ela virou
+ * prêmio de CONVERSÃO, e a bandeira deu lugar a uma condição de DADO
+ * (`users.planoId`) — condição que vem do dado é melhor que condição que vem do
+ * deploy, porque ela não precisa ser lembrada.
  *
- * A roleta virou prêmio de CONVERSÃO, e quem a esconde agora não é bandeira de
- * build — é o estado da conta: `PremioNudge` só renderiza para quem tem
- * `users.planoId`, ou seja, para quem já contratou. Condição que vem do dado é
- * melhor que condição que vem do deploy, porque ela não precisa ser lembrada.
+ * Depois a roleta saiu de vez: o critério dela era SORTE, e sorte não sobrevive
+ * à conversa no portão da escola. Quem faz esse papel agora é a escada de
+ * fechamento, que é pública, reproduzível e com data — ver docs/descontos.md.
+ *
+ * As duas lições ficam registradas porque valem para o próximo recurso que
+ * alguém quiser esconder: prefira dado a bandeira, e prefira régua a sorteio.
  */
 

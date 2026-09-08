@@ -137,7 +137,7 @@ async function generateForMonth(db, monthKey, adminUid = null) {
     // otimização (evita o erro no caminho comum). A garantia é o id.
     //
     // É o padrão que a casa já usa em cinco coleções: rides/{data},
-    // faturasParceiro/{uid}_{mes}, premios/{uid},
+    // faturasParceiro/{uid}_{mes},
     // absenceDeclarations/{dia}_{criança}, notifications/confirm_{dia}_{criança}.
     batch.create(db.collection('payments').doc(`${childDoc.id}_${monthKey}`), {
       adminUid: child.adminUid,

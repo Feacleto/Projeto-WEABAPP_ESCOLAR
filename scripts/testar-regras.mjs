@@ -1268,12 +1268,18 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
 
   console.log('\n=== O BENEFICIO E A FILA ===');
 
+  // `premios` SAIU das rules em 07/09/2026 junto com a roleta — sem match, ela
+  // cai no default deny. Os casos continuam aqui pelo mesmo motivo das filas de
+  // espera abaixo: o dado pode ter sobrado no banco, e o que importa e que
+  // ninguem alcance o que sobrou. Um premio orfao ainda e beneficio em
+  // dinheiro.
   await semear('premios/' + tio1.uid, { premioId: S('desconto30'), fracao: N(0.3) });
-  checar('pos', 'o motorista le o proprio premio', 'PASSA',
+  checar('bonus', 'o motorista nao le nem o proprio premio orfao', 'NEGA',
     await ler('premios/' + tio1.uid, tio1));
   checar('bonus', 'tio2 le o premio do tio1', 'NEGA',
     await ler('premios/' + tio1.uid, tio2));
-  // `premios` e beneficio em dinheiro e ninguem escreve dali — nem o dono.
+  checar('bonus', 'nem o dono alcanca o que sobrou', 'NEGA',
+    await ler('premios/' + tio1.uid, dono));
   checar('bonus', 'o motorista escreve o proprio premio', 'NEGA',
     await escrever('premios/' + tio1.uid, tio1, { meses: N(4) }, ['meses']));
   checar('bonus', 'o motorista varre a lista de premios', 'NEGA',

@@ -29,7 +29,8 @@
  * testável sem Firebase (`npm run testar:proposta`).
  */
 
-import { ACIMA_DA_TABELA, ANTECIPACAO, planoPara } from './planos.js';
+import { ACIMA_DA_TABELA, descontoDoFechamento, planoPara } from './planos.js';
+import { DIAS_DE_TRIAL, DIAS_POR_DEGRAU } from './trial.js';
 
 /** Só o primeiro nome — a mensagem é de pessoa para pessoa. */
 function primeiroNome(nome) {
@@ -66,7 +67,30 @@ export function mensagemDeProposta({
   const nome = primeiroNome(motorista?.name);
   const ativas = Math.max(0, Number(motorista?.criancasAtivas) || 0);
   const sugerido = planoPara(ativas);
-  const pctAntecipacao = Math.round(ANTECIPACAO.fracao * 100);
+  // ⚠️ A PROPOSTA LÊ O DEGRAU E ESCREVE O NÚMERO DAQUELE DEGRAU.
+  //
+  // Ela nunca inventa preço, e aqui isso passou a valer para o DESCONTO
+  // também: a escada de fechamento é 50/30/15 pelo mês da decisão, então uma
+  // mensagem que diz sempre "50%" oferece, a quem está no terceiro mês, uma
+  // condição que o servidor não vai gravar. O dono leria a mensagem, mandaria,
+  // e o motorista veria outro número na fatura.
+  //
+  // O degrau sai de `diasRestantes`, que já chega aqui — este arquivo não tem
+  // relógio, de propósito (`npm run testar:proposta` injeta o dia).
+  const degrauDeFechamento =
+    diasRestantes == null
+      ? 1
+      : diasRestantes > 0
+        ? Math.min(
+            DIAS_DE_TRIAL / DIAS_POR_DEGRAU,
+            // O piso de zero é o mesmo de `degrauDaDecisao`, e pelo mesmo
+            // motivo: relógio adiantado produz "mais de 90 dias restantes", e
+            // `floor(-1 / 30) + 1` daria degrau ZERO — a proposta ofereceria 0%
+            // a quem tem direito a 50%.
+            Math.max(0, Math.floor((DIAS_DE_TRIAL - diasRestantes) / DIAS_POR_DEGRAU)) + 1
+          )
+        : null;
+  const pctFechamento = Math.round(descontoDoFechamento(degrauDeFechamento) * 100);
 
   // ACIMA DA TABELA NÃO RECEBE PREÇO NENHUM na mensagem. Escrever um número
   // ali seria cobrar menos do que a conversa produziria — e `precoDoMes` já
@@ -118,9 +142,8 @@ export function mensagemDeProposta({
         `${precoCheio} por mês` +
         (precoDele && precoDele !== precoCheio ? ` — ${precoDele} com os seus descontos` : '') +
         `.\n\n` +
-        `Contratando ANTES do fim do teste, você fica com ${pctAntecipacao}% de ` +
-        `desconto pelos ${ANTECIPACAO.meses} meses de contrato. É só abrir ` +
-        `Planos no app.`,
+        `Contratando ANTES do fim do teste, você fica com ${pctFechamento}% de ` +
+        `desconto pelos 12 meses de contrato. É só abrir Planos no app.`,
     };
   }
 

@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 920 casos: horarios, faltas, aviso, contraste,
+npm run testar                   # 1038 casos: horarios, faltas, aviso, contraste,
                                  # travessia, contrato, pix, status, auth, trial,
                                  # planos, conta, cobranca, gateway, carteira,
                                  # proposta, chamados, risco, fila, concessao,
@@ -149,6 +149,22 @@ entre `taxaConfig`, `limiteCriancas` e uma conversa de consultor que não estava
 escrita em lugar nenhum. Leia antes de mexer em cobrança da plataforma ou em
 qualquer peça de marketing. **A unidade de cobrança é a CRIANÇA ATIVA** e o app
 é completo em qualquer tamanho — não existe plano capado.
+
+**O DESCONTO TEM DOCUMENTO PRÓPRIO desde 07/09/2026:
+[docs/descontos.md](docs/descontos.md)** — escada de fechamento (50/30/15 por mês
+de decisão), piso de fatura, indicação e a condição de fundador. Leia antes de
+mexer em qualquer desconto. Ele supera partes das seções 5 e 7 do
+[negocio.md](docs/negocio.md), que estão marcadas no lugar, e a **Parte 2 dele é
+a lista do que foi mudado no código** (implementada em 07/09/2026 — a régua
+descrita lá é o que `planos.js` faz hoje) e some quando a última linha for
+conferida em produção.
+
+O critério que ele estabelece vale para qualquer desconto novo: **o teste da fila
+do portão**. Motorista de perua faz fila no mesmo portão todo dia, e um desconto
+só pode existir se sobreviver a ser dito em voz alta entre dois deles — motivo
+público, reproduzível por qualquer um, verificável. Foi ele que aposentou o
+fundador-por-ordem-de-chegada (ninguém pode chegar antes) e a roleta (o critério
+é sorte).
 
 **Com quem o produto fala está em [docs/personas.md](docs/personas.md)** — três
 personas e os dois canvas de valor. A regra que ele estabelece: **quem paga (o
@@ -298,7 +314,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 (+ `events`) · `liveLocation` · `notifications` · `altPickups` · `schools` ·
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
-`faturasParceiro` · `contratosAssociacao` · `premios` · `pedidosAdesivo` ·
+`faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `platformConfig` · `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -366,36 +382,59 @@ havia base real.
   do contrato bata com a que o servidor gravou. **O cliente ganhou o botão sem
   ganhar a caneta** — sem essa amarra, a fatura continuaria certa (ela lê
   `users.planoId`) e existiria um documento assinado dizendo outra coisa.
-- **A antecipação é decidida pelo relógio do SERVIDOR.** Quem contrata antes de
-  o teste acabar leva 50% pelos 12 meses, e quem decide se ainda está dentro é
+- **A ESCADA DE FECHAMENTO é decidida pelo relógio do SERVIDOR.** Quem fecha no
+  1º mês do teste leva 50% pelos 12 meses; no 2º, 30%; no 3º, 15%; depois dos 90
+  dias, nada (e 10% se voltar em 30 dias). Quem decide o degrau é
   `functions/lib/contratacao.js` lendo `trialInicio`. No cliente, seria o
-  relógio do aparelho — a coisa mais fácil de mudar num telefone, valendo
-  metade da conta por um ano. Concedida **uma vez**: quem troca de faixa no
-  décimo mês mantém a data original, senão o desconto se renovaria para sempre.
-- **A tabela de faixas está espelhada em `functions/lib/contratacao.js`** — só
-  os DADOS (id, teto, preço), nenhuma aritmética, porque o deploy das functions
-  não alcança `src/`. `npm run testar:gateway` compara as duas faixa por faixa.
-  Espelhar a régua inteira (200 linhas) foi recusado pelo mesmo motivo.
+  relógio do aparelho — e agora mentir nele TROCA DE DEGRAU, não só adianta o
+  inevitável. Concedida **uma vez**: quem troca de faixa no décimo mês mantém a
+  fração e a data originais.
+  A escada substituiu a `ANTECIPACAO` (50% em qualquer dia dos 90) em
+  07/09/2026, e o motivo é que ela não antecipava nada: quem fechava no dia 3 e
+  no dia 89 levavam o mesmo prêmio.
+  ⚠️ **O preço NUNCA sobe quando ele recusa.** Não há segunda oferta na tela —
+  desconto que sobe a cada "não" ensina a recusar e prova que o preço era
+  teatro. Ver [descontos.md](docs/descontos.md), peça 3.
+- **A tabela de faixas E a escada estão espelhadas em
+  `functions/lib/contratacao.js`** — só os DADOS, nenhuma aritmética, porque o
+  deploy das functions não alcança `src/`. `npm run testar:gateway` compara as
+  duas faixa por faixa, degrau por degrau, e as duas contas de degrau dia a dia
+  (`trial.js` contra `contratacao.js`).
 - **Desconto tem PRAZO, e sem ele vira preço.** `users.descontos` é uma lista
-  de `{origem, fracao, ate}` com `ate` em 'AAAA-MM'
-  ([planos.js](src/dominio/associacao/planos.js)). Duas origens: `antecipacao`
-  (contratou antes de o teste acabar → 50% por 12 meses) e `roleta`. A lista é
-  SUBSTITUÍDA, nunca acrescida — `arrayUnion` acumularia o mesmo prêmio numa
-  reemissão de contrato.
-- **Fundador e antecipação NÃO somam — vale o maior.** É decisão de negócio, e
-  mora em `FUNDADOR_E_ANTECIPACAO_SOMAM` justamente para poder ser desfeita
-  numa linha. Somando, os treze primeiros associados chegariam a 100% e a
-  partir dali roleta e indicação valeriam zero — para exatamente as pessoas que
+  de `{origem, fracao, ate, degrau}` com `ate` em 'AAAA-MM'
+  ([planos.js](src/dominio/associacao/planos.js)). Uma origem de régua:
+  `fechamento` (mais o legado `antecipacao`, que cai no mesmo balde de
+  propósito — ignorá-lo faria a fatura de quem o tem subir em silêncio). A
+  lista é SUBSTITUÍDA, nunca acrescida.
+- ⚠️ **A INDICAÇÃO NÃO TEM TETO PERCENTUAL — QUEM PROTEGE A MARGEM É O PISO.**
+  `PISO_DA_FATURA = 34`: nenhuma fatura fica abaixo disso (exceto o vitalício).
+  O teto de 50% existia e **não protegia nada** — com o fechamento somando por
+  cima, a fatura chegava a R$ 0,00, e o comentário que jurava o contrário durou
+  meses porque o teste passava indicações SEM o outro desconto. Porcentagem não
+  protege margem porque não é medida na moeda do custo. O número é derivado:
+  metade da menor faixa, para o "50%" ser verdade em toda faixa sem asterisco.
+  `precoDoMes` devolve `pisoAplicado` e `descontoAbsorvido` porque **a tela
+  precisa dizer quando o piso comeu desconto** — calar produz o *"indiquei e não
+  recebi"*.
+- **A CONDIÇÃO DE FUNDADOR VIROU TÍTULO, NÃO PREÇO** (07/09/2026).
+  `FUNDADORES_METADE = 0`: as doze vagas de metade não são mais concedidas —
+  era o único desconto que ninguém podia reproduzir, e não sobrevivia à conversa
+  no portão da escola. Custou zero, porque quem fecha no mês 1 já leva 50% pela
+  escada. O **vitalício já concedido continua** (é contrato assinado, e é um
+  só), e `descontoDoFundador` ainda lê `metade` — não conceder é diferente de
+  desfazer o que foi concedido.
+- **Fundador e fechamento NÃO somam — vale o maior**
+  (`FUNDADOR_E_FECHAMENTO_SOMAM`). Somando, um fundador de metade chegaria a
+  100% e a partir dali a indicação valeria zero — para exatamente as pessoas que
   mais indicam.
-- **A roleta virou prêmio de CONVERSÃO** (`girarPremio`, coleção `premios`).
-  Ela era de entrada e sorteava 1 a 4 meses sem taxa no primeiro acesso — esse
-  papel virou do teste de três meses, e as duas coisas juntas custavam até
-  **cinco meses e meio sem receita por associado**, comprando o que o teste já
-  comprava. Agora são quatro prêmios (2 meses · 30% por 12 meses · 1 mês · 10%
-  por 12 meses), e ela só gira para quem tem `planoId`.
-  **O sorteio e a APLICAÇÃO acontecem na mesma transação** — separados, uma
-  falha entre os dois deixaria o prêmio registrado sem chegar na conta, e ele
-  veria a animação e pagaria cheio.
+- **A ROLETA FOI APAGADA em 07/09/2026** — `girarPremio`, a coleção `premios`,
+  `premioService`, `PremioNudge`/`PremioSheet` e `premioDeConversao.js`. O
+  critério dela era SORTE, e sorte não sobrevive ao portão: *"o Zé girou e tirou
+  2 meses, eu tirei 10%"* não tem resposta. O papel de prêmio de conversão é da
+  escada, que é pública, reproduzível e com data.
+  ⚠️ `descontosVigentes` não reconhece mais `origem: 'roleta'` — documento órfão
+  em produção deixa de valer em silêncio. **Confira `users.descontos` antes de
+  considerar a remoção terminada.**
 - **Isenção não é desconto de 100%.** `users.isencaoAte` diz que aquele mês não
   tem fatura; desconto de 100% produz uma fatura de R$ 0. Os dois chegam a zero
   e contam histórias diferentes na hora de conferir o que foi concedido.
@@ -404,9 +443,15 @@ havia base real.
   o [billing.js](functions/lib/billing.js) faz com o `dueDay` da criança — e lá
   a data é por criança porque quem negocia é o motorista com cada família.
 - **O contrato é de 12 MESES e renova de 12 em 12**, com cobrança mensal.
-  `VERSAO_CONTRATO = 3` — a 1 mandava suspender por atraso sem definir atraso,
+  `VERSAO_CONTRATO = 4` — a 1 mandava suspender por atraso sem definir atraso,
   a 2 passou a dizer o dia, a 3 trocou percentual sobre base por faixa de
-  tabela. Subir a versão exige novo aceite.
+  tabela, a 4 trouxe a escada de fechamento, o **piso como cláusula** e a saída
+  livre nos 30 primeiros dias pagos. Subir a versão exige novo aceite.
+  ⚠️ **O piso vai escrito no contrato mesmo quando não morde.** Sem a cláusula,
+  um associado com 100% de desconto nominal recebe fatura de R$ 34 e o documento
+  não explica de onde ela veio — a mesma contradição da concessão, pelo outro
+  lado da conta. `npm run testar:contrato` tem DUAS invariantes agora: as
+  frações fecham com o total, **e** o valor mensal se explica pelas linhas.
 - **Vaga de criança é contratada.** `users.limiteCriancas` (só o dono escreve,
   e vem da faixa) contra `users.criancasAtivas`, contador que sobe no MESMO
   batch do cadastro. Rules não sabem contar documentos: `allow create` em
@@ -449,11 +494,11 @@ já existe e já é cobrado pelas rules. Escolher plano menor que o uso é
 permitido, e **quem aponta as crianças que saem é o motorista**: corte
 automático apagaria clientes que ele não escolheu perder.
 
-**Só fundador chega a zero**, e é o desenho: 1º motorista vitalício, os 12
-seguintes com 50%, indicação vale 10% cada com teto de 50%. Metade + cinco
-indicações fecha em zero; quem não é fundador para em 50%. O desconto somado é
-cortado em 100% — sem isso, seis indicações sobre um fundador dariam 110% e a
-fatura viraria crédito. Testado em `npm run testar:planos`.
+**Só o fundador VITALÍCIO chega a zero**, e todo o resto para no piso de
+R$ 34. O desconto somado é cortado em 100% antes disso — sem o corte, dez
+indicações dariam 200% e a fatura viraria crédito. As duas travas são em série e
+protegem coisas diferentes: o teto impede fatura NEGATIVA, o piso impede fatura
+IRRISÓRIA. Testado em `npm run testar:planos`, incluindo o caso que vazava.
 
 **O relógio dos três meses tem TRÊS GATILHOS, e vale o que vier primeiro:**
 primeira rota, primeiro responsável entrando, primeira mensalidade gerada
@@ -509,13 +554,13 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 - **Push:** `sendPushOnNotification` (dispara FCM a partir de `notifications`)
 - **Contratação:** `contratarPlano` — o MOTORISTA escolhe a faixa e o servidor
   escreve a cláusula (`planoId` + `limiteCriancas` no mesmo write, mais o
-  desconto de antecipação se ele ainda estiver no teste). É function porque os
+  desconto do degrau da escada em que ele está). É function porque os
   dois campos estão na lista que o cliente nunca escreve.
 - **Gateway (taxa do motorista):** `criarCobrancaDaFatura` (o DONO gera a
   cobrança de uma `faturasParceiro`) e `asaasWebhook` (a baixa vem de fora).
   As duas metades do mesmo elo: o webhook acha a fatura por `asaasPaymentId`,
   e é a callable que grava esse campo.
-- **Outros:** `getShowcase`, `girarPremio`,
+- **Outros:** `getShowcase`,
   `flagDuplicateReceipts`, `backfillTestimonialPrivacy`
 
 Cobrança e limpeza **saíram do cliente** de propósito: no cliente, o mês em que
@@ -988,9 +1033,12 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (201 casos, com
-atores **anônimo** e **`novato`** (motorista recém-cadastrado, sem vínculo); ele roda fora do CI porque precisa do
-emulador, então rode à mão antes de publicar rule).
+passar por lá — e `npm run testar:regras` cobre o payload real (202 casos, com
+atores **anônimo** e **`novato`**, motorista recém-cadastrado e sem vínculo). Ele
+roda fora do CI porque precisa do emulador, então rode à mão antes de publicar
+rule: `firebase emulators:exec --only auth,firestore "node
+scripts/testar-regras.mjs"`. Ele e os 16 casos de `testar:storage` passavam em
+08/09/2026.
 
 **A TRANCA MORA EM `isAdmin()`** — desde 06/09/2026 ele nega também quem está
 com o teste vencido e sem assinatura, além de `suspenso`. Tela não é tranca: o
@@ -1013,7 +1061,7 @@ mudava. Sem qualquer uma das duas, a tranca prende quem está tentando sair.
 **`isAdmin()` nas rules significa QUALQUER MOTORISTA** — nunca é escopo
 sozinho. Quem escopa é `ehDoMotorista()`/`doDono()`, que comparam `adminUid`.
 Regra nova que pare em `isAdmin()` está entregando o dado de um parceiro aos
-outros; foi assim que a chave PIX, a trilha de pagamento, a roleta e os leads
+outros; foi assim que a chave PIX, a trilha de pagamento, o prêmio e os leads
 de família ficaram legíveis por quem não devia.
 
 **O responsável alcança o doc do motorista por `users.adminUids`** — a LISTA,

@@ -366,6 +366,55 @@ function Geral({ ov }) {
         * que passou, e nenhum dos dois diz como o NEGÓCIO vai. O caminho que
         * passou a existir tem quatro degraus, e cada um é um campo:
         * cadastrou → rodou a 1ª rota → contratou → pagou. */}
+      {/* DE ONDE VÊM OS ASSOCIADOS — lido da URL no cadastro, nunca
+        * perguntado num formulário (`dominio/identidade/origem.js`).
+        *
+        * TABELA, E NÃO GRÁFICO: com base pequena, pizza de dez fatias sobre
+        * cinco pessoas é desenho fingindo medição. Lista ordenada pelo maior
+        * responde "de onde vem a maioria" sem inventar precisão. */}
+      {ov.origens && (
+        <section>
+          <Titulo icon={TrendingUp}>De onde eles vêm</Titulo>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            {ov.origens.linhas.map((l, i) => (
+              <div
+                key={l.canal}
+                className={`flex items-center gap-3 px-4 py-2.5 text-xs ${
+                  i > 0 ? 'border-t border-border' : ''
+                }`}
+              >
+                <span className="min-w-0 flex-1 truncate font-semibold text-text">
+                  {l.rotulo}
+                </span>
+                {/* A barra é a comparação; o número é o dado. Barra sozinha
+                  * obriga a estimar, número sozinho obriga a comparar de
+                  * cabeça. */}
+                <span
+                  aria-hidden
+                  className="h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-sunken"
+                >
+                  <span
+                    className="block h-full rounded-full bg-primary"
+                    style={{ width: `${Math.max(4, l.percentual)}%` }}
+                  />
+                </span>
+                <span className="w-16 shrink-0 text-right tabular-nums text-textMuted">
+                  {l.quantos} · {l.percentual}%
+                </span>
+              </div>
+            ))}
+          </div>
+          {/* ⚠️ A RESSALVA É PARTE DO DADO, não rodapé de cortesia. */}
+          <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+            <strong>Sem origem</strong> reúne quem digitou o endereço, quem
+            salvou nos favoritos — e quem viu o adesivo na van ou ouviu de um
+            colega, porque esses dois não têm link pra trazer. Número alto aí
+            não quer dizer que ninguém indicou; quer dizer que não houve como
+            saber.
+          </p>
+        </section>
+      )}
+
       <section>
         <Titulo icon={TrendingUp}>A carteira</Titulo>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -419,7 +468,7 @@ function Geral({ ov }) {
           <p className="mt-2 rounded-xl border border-border bg-card p-3 text-xs leading-relaxed text-textMuted">
             De <strong>{moeda(ov.carteira.mrrDeTabela)}</strong> de tabela, entram{' '}
             <strong>{moeda(ov.carteira.mrr)}</strong>. A diferença é fundador,
-            indicação, antecipação e roleta somados.
+            indicação e fechamento somados, limitados pelo piso da fatura.
             {ov.carteira.antecipados > 0 && (
               <>
                 {' '}

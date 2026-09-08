@@ -19,6 +19,7 @@ import {
   diasDeAtraso,
   estadoDaConta,
   lembreteDeAtraso,
+  faturaZeradaEstendeAssinatura,
 } from '../src/dominio/associacao/contaAtiva.js';
 
 /** Quem pagou a fatura de abril está coberto até o fim de maio. */
@@ -202,6 +203,59 @@ checar('sem fatura, idem', null, lembreteDeAtraso({ fatura: null, agora: VENCE }
 bloco('6. A régua está onde foi combinada');
 
 checar('dez dias de tolerância', 10, TOLERANCIA_DE_ATRASO);
+
+// ═══════ A FATURA ZERADA QUE COMPRA TEMPO — E A QUE NAO COMPRA ═════════════
+
+bloco('Fatura de R$ 0: quando ela estende a assinatura');
+
+/**
+ * ⚠️ ESTE BLOCO NASCEU DE UM BUG DE AUDITORIA, e ele custava o paywall inteiro.
+ *
+ * A fatura isenta do TESTE passou a existir em 07/09/2026 (uma por mes, com o
+ * preco cheio visivel). Ela nasce com `total: 0`, e `fecharFatura` escrevia
+ * `assinaturaAte` para toda fatura zerada — regra que existia para o fundador
+ * vitalicio, que sem ela era bloqueado no dia 90 com a fatura quitada.
+ *
+ * So que `estadoDaConta` devolve `ativa` no instante em que ve `assinaturaAte`
+ * no futuro, ANTES de olhar o trial. Entao a fatura de teste comprava tempo de
+ * assinatura e o teste deixava de acabar: conta destravada depois do dia 90
+ * (nas rules tambem), `avisoDoTrial` mudo, e no fim a frase do ATRASO para quem
+ * nunca teve fatura.
+ *
+ * A distincao e de ESPECIE: isencao CONCEDIDA e um acordo, mes de teste e o
+ * relogio correndo. So o primeiro compra tempo.
+ */
+checar('fatura zerada por isencao concedida estende', true,
+  faturaZeradaEstendeAssinatura({ total: 0, isencaoDeTeste: false }));
+checar('fatura zerada do fundador vitalicio estende', true,
+  faturaZeradaEstendeAssinatura({ total: 0 }));
+// ⚠️ A LINHA QUE O BUG ATRAVESSAVA.
+checar('mas a isencao do TESTE nao estende', false,
+  faturaZeradaEstendeAssinatura({ total: 0, isencaoDeTeste: true }));
+checar('fatura com valor nao estende (quem estende e a baixa)', false,
+  faturaZeradaEstendeAssinatura({ total: 149, isencaoDeTeste: false }));
+checar('nem a de teste com valor, que nao deveria existir', false,
+  faturaZeradaEstendeAssinatura({ total: 149, isencaoDeTeste: true }));
+checar('entrada vazia nao estende nada', false, faturaZeradaEstendeAssinatura());
+
+bloco('E o efeito disso em estadoDaConta — o porque da regra acima');
+
+// A PROVA DE QUE A ORDEM IMPORTA: com `assinaturaAte` no futuro, o trial
+// vencido nem e consultado. E por isso que escrever esse campo por causa de uma
+// fatura de teste apaga o dia 90.
+const trialVencido = new Date(2026, 0, 1, 12);
+const hojeDepois = new Date(2026, 5, 1, 12);
+checar('teste vencido, sem assinatura: bloqueado', false,
+  estadoDaConta({ trialInicio: trialVencido, agora: hojeDepois }).ativa);
+checar('e o motivo e o do teste', 'trial',
+  estadoDaConta({ trialInicio: trialVencido, agora: hojeDepois }).motivo);
+checar('o MESMO teste vencido, com assinaturaAte no futuro: ATIVO', true,
+  estadoDaConta({
+    trialInicio: trialVencido,
+    assinaturaAte: new Date(2026, 11, 31, 12),
+    agora: hojeDepois,
+  }).ativa);
+
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

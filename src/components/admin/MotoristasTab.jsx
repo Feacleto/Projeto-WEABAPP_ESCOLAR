@@ -254,7 +254,12 @@ function Fundadores({ parceiros, mes }) {
   const c = resumirConcessoes(parceiros, mes);
   if (!parceiros?.length) return null;
 
-  const estourou = f.restamVitalicio < 0 || f.restamMetade < 0;
+  // ⚠️ NÃO É `restamMetade < 0`. As doze vagas de metade foram a zero quando a
+  // condição virou título (07/09/2026), então todo fundador histórico deixa o
+  // contador negativo — e ele foi concedido sob a régua que valia. Acusar o
+  // dono de "passou do combinado" por uma mudança de política é o painel
+  // mentindo para quem confia nele. Ver `contarFundadores`.
+  const estourou = f.estourou;
   const muitas = c.fracao !== null && c.fracao >= 0.5;
 
   return (
@@ -266,9 +271,14 @@ function Fundadores({ parceiros, mes }) {
       }`}
     >
       <span className="font-bold">
-        Fundadores: {f.total} de {f.limite}
+        Fundadores: {f.total} — {f.restamVitalicio > 0 ? 'a vaga vitalícia está aberta' : 'a vaga vitalícia está preenchida'}
       </span>
       {estourou && <span className="block">Passou do combinado — o vitalício não expira.</span>}
+      {f.metadeHistorica && (
+        <span className="block">
+          {f.metade} pela metade, histórico — a condição virou título e não se concede mais.
+        </span>
+      )}
       {c.comConcessao > 0 && (
         <span className="block">
           {c.comConcessao} com concessão ativa

@@ -9,7 +9,7 @@
  * POR QUE ISTO VIROU MÓDULO
  * O portão de papel estava copiado em quatro callables, com quatro mensagens
  * diferentes para a mesma recusa ("Apenas admin.", "Apenas o motorista
- * responsável.", "A roleta é do motorista associado."). Copiado não é o
+ * responsável.", "A faixa é do motorista associado."). Copiado não é o
  * problema; copiado e DIVERGENTE é: uma das quatro cópias guardava uma função
  * do DONO exigindo papel de MOTORISTA.
  *

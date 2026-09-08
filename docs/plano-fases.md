@@ -229,6 +229,12 @@ O plano de nove fases acima descreve o produto que existia até aqui. Em
 roleta só aparece quando o teste acaba**. O modelo antigo é apagado, não
 migrado — não há base real.
 
+⚠️ **A terceira foi DESFEITA em 07/09/2026: a roleta foi apagada.** O critério
+dela era sorte, e sorte não sobrevive à conversa no portão da escola. O papel de
+prêmio de conversão passou para a **escada de fechamento** (50/30/15 pelo mês da
+decisão), que é pública, reproduzível e com data — ver
+[descontos.md](descontos.md), que é a fonte do assunto desde então.
+
 Fechado até agora:
 
 - **Fase 0 · fechar antes de abrir.** `allow get` de `users` escopado por
@@ -252,8 +258,9 @@ O que falta, na ordem:
    Preço discreto durante o teste; quem contrata ANTES do fim leva 50% nos 12
    meses. Exige um conceito que não existe: **desconto com prazo**
 2. **A tranca nas rules** — bloqueio por teste vencido e por atraso
-3. ~~**A roleta na conversão**~~ — feita: `girarPremio`, coleção `premios`,
-   quatro prêmios, girando só para quem contratou
+3. ~~**A roleta na conversão**~~ — feita e depois **APAGADA** em 07/09/2026.
+   `girarPremio`, a coleção `premios` e os quatro prêmios saíram do código; o
+   incentivo de conversão virou a escada de fechamento
 - **Fase 7 · o painel mede a carteira.** Em que degrau cada associado está e o
   MRR, que não existia. Vários donos pelo papel que já existia, legado
   `superAdmin` removido, piso da vitrine desligado. E a contagem de
@@ -265,10 +272,18 @@ não existe. Ninguém consegue abrir `/admin`. Console → Authentication →
 adicionar usuário; depois Firestore → `users/{uid}` com `role: 'owner'`. O
 passo a passo está no [deploy.md](deploy.md).
 
-✅ **A soma dos descontos foi decidida:** fundador e antecipação **não somam,
-vale o maior** — `FUNDADOR_E_ANTECIPACAO_SOMAM = false` em `planos.js`, com
-teste. Somando, os treze primeiros chegariam a 100% e a partir dali roleta e
-indicação valeriam zero justamente para quem mais indica.
+✅ **A soma dos descontos foi decidida:** fundador e fechamento **não somam,
+vale o maior** — `FUNDADOR_E_FECHAMENTO_SOMAM = false` em `planos.js`, com
+teste. Somando, um fundador de metade chegaria a 100% e a partir dali a
+indicação valeria zero justamente para quem mais indica.
+
+⚠️ **E a soma tinha um VAZAMENTO que a decisão não cobria**, corrigido em
+07/09/2026: `antecipacao` (50%) somava com indicação (50%) e QUALQUER associado
+chegava a R$ 0,00. O comentário de `precoDoMes` jurava o contrário e o teste
+passava cinco indicações sem a antecipação — o caso que vazava não era coberto.
+Quem fecha isso agora é o **piso de fatura** (R$ 34), porque porcentagem não
+protege margem: ela não é medida na moeda do custo. As doze vagas de fundador
+pela metade saíram junto — ver [descontos.md](descontos.md).
 
 ---
 

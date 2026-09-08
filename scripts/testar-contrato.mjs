@@ -33,7 +33,9 @@ import {
 import {
   FUNDADOR,
   ORIGEM,
+  PISO_DA_FATURA,
   PLANOS,
+  centavos,
   planoPorId,
 } from '../src/dominio/associacao/planos.js';
 
@@ -102,22 +104,41 @@ checar('começa hoje', '2026-09-15', base.vigenciaInicio.slice(0, 10));
 
 bloco('3. Desconto entra com a data em que acaba');
 
-const anteci = { origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-09' };
-const comAntecipacao = montar({ descontos: [anteci] });
+const fecha1 = { origem: ORIGEM.FECHAMENTO, fracao: 0.5, ate: '2027-09', degrau: 1 };
+const comAntecipacao = montar({ descontos: [fecha1] });
 
 checar('metade da conta', 74.5, comAntecipacao.valores.valorMensal);
-checar('e a fração fica registrada', 0.5, comAntecipacao.valores.descontoAntecipacao);
+checar('e a fração fica registrada', 0.5, comAntecipacao.valores.descontoFechamento);
+// O DEGRAU VIAJA NO DOCUMENTO. A fração sozinha não distingue 15% de
+// fechamento de 15% de concessão, e são espécies diferentes: uma é régua, a
+// outra é exceção com dono e motivo.
+checar('e o degrau também', 1, comAntecipacao.valores.descontos[0].degrau);
+
+// ⚠️ O LEGADO `antecipacao` PRODUZ O MESMO CONTRATO. É o mesmo instrumento com
+// o nome antigo; ignorá-lo faria a fatura de quem já o tem subir em silêncio, e
+// o contrato dele deixaria de explicar o valor.
+const legado = { origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-09' };
+checar(
+  'antecipação antiga vale como fechamento',
+  74.5,
+  montar({ descontos: [legado] }).valores.valorMensal
+);
+checar(
+  'e aparece na linha de fechamento',
+  0.5,
+  montar({ descontos: [legado] }).valores.descontoFechamento
+);
 // ESTA É A LINHA QUE IMPEDE O DESCONTO DE VIRAR PREÇO. Sem a data dentro do
 // contrato, o desconto de conversão passa a ser a tabela daquele associado —
 // e a receita prevista deixa de bater com a real sem ninguém apontar quando.
 checar('a validade viaja junto', '2027-09', comAntecipacao.valores.descontos[0].ate);
 checar('sem desconto, a lista é vazia e não nula', [], base.valores.descontos);
 
-bloco('4. Fundador e antecipação não somam — vale o maior');
+bloco('4. Fundador e fechamento não somam — vale o maior');
 
-// Somando, os treze primeiros chegariam a 100% e a partir dali indicação e
-// roleta valeriam zero justamente para quem mais indica.
-const fundadorAntecipado = montar({ fundador: FUNDADOR.METADE, descontos: [anteci] });
+// Somando, um fundador de metade chegaria a 100% e a partir dali a INDICAÇÃO
+// valeria zero justamente para quem mais indica.
+const fundadorAntecipado = montar({ fundador: FUNDADOR.METADE, descontos: [fecha1] });
 checar('metade + metade continua metade', 0.5, fundadorAntecipado.valores.descontoTotal);
 checar('e o valor é o mesmo de quem só antecipou', 74.5, fundadorAntecipado.valores.valorMensal);
 
@@ -125,18 +146,37 @@ checar('e o valor é o mesmo de quem só antecipou', 74.5, fundadorAntecipado.va
 checar(
   'o vitalício continua não pagando',
   0,
-  montar({ fundador: FUNDADOR.VITALICIO, descontos: [anteci] }).valores.valorMensal
+  montar({ fundador: FUNDADOR.VITALICIO, descontos: [fecha1] }).valores.valorMensal
 );
 
-bloco('5. A conta nunca vira crédito');
+bloco('5. A conta nunca vira crédito — e agora nunca vira migalha');
 
 const tudo = montar({
   fundador: FUNDADOR.METADE,
   indicacoesAtivas: 5,
-  descontos: [anteci, { origem: ORIGEM.ROLETA, fracao: 0.3, ate: '2027-09' }],
+  descontos: [fecha1],
 });
-checar('quatro fontes de desconto param em 100%', 1, tudo.valores.descontoTotal);
-checar('e o mensal para em zero, nunca negativo', 0, tudo.valores.valorMensal);
+checar('as fontes de desconto param em 100%', 1, tudo.valores.descontoTotal);
+// ⚠️ ANTES ISTO ERA ZERO, e era o vazamento: um contrato assinado dizendo que
+// o associado não deve nada. O piso é o que o fecha.
+checar('e o mensal para no PISO, não em zero', PISO_DA_FATURA, tudo.valores.valorMensal);
+checar('o contrato registra que o piso mordeu', true, tudo.valores.pisoAplicado);
+checar('e quanto ele absorveu', 34, tudo.valores.descontoAbsorvido);
+
+// ⚠️ A CLÁUSULA DO PISO VAI SEMPRE, aplicada ou não. Uma cláusula que só
+// aparece quando pesa contra o associado é uma cláusula que ele descobre na
+// fatura.
+checar('o piso é cláusula mesmo sem morder', PISO_DA_FATURA, base.valores.pisoDaFatura);
+checar('e sem morder, nada foi absorvido', false, base.valores.pisoAplicado);
+checar('nem em reais', 0, base.valores.descontoAbsorvido);
+
+// O vitalício escapa do piso: é 100% sem prazo, contratado quando o produto
+// não tinha nenhum caso de uso.
+checar(
+  'o vitalício não é alcançado pelo piso',
+  0,
+  montar({ fundador: FUNDADOR.VITALICIO, indicacoesAtivas: 5 }).valores.valorMensal
+);
 
 bloco('6. Isenção não é desconto de 100%');
 
@@ -189,8 +229,8 @@ bloco('9. O documento é estável — é ele que vira hash');
 // leu e o registro do que ela aceitou.
 checar('mesma entrada, mesmo documento', JSON.stringify(base), JSON.stringify(montar()));
 
-checar('a versão é a 3 — o preço de tabela', 3, VERSAO_CONTRATO);
-checar('e ela viaja no documento', 3, base.versao);
+checar('a versão é a 4 — a escada e o piso', 4, VERSAO_CONTRATO);
+checar('e ela viaja no documento', 4, base.versao);
 
 // A contratada e o associado são identificados: contrato sem parte é papel.
 checar('o associado é identificado', 'tio1', base.associado.uid);
@@ -228,22 +268,48 @@ bloco('11. As linhas do contrato fecham com o total');
  * esquecer de listar.
  */
 const somaDasLinhas = (v) =>
-  // Fundador e antecipação não somam entre si — vale o maior (ver
-  // FUNDADOR_E_ANTECIPACAO_SOMAM). O resto soma.
+  // Fundador e fechamento não somam entre si — vale o maior (ver
+  // FUNDADOR_E_FECHAMENTO_SOMAM). O resto soma.
   Math.min(
     1,
-    Math.max(v.descontoFundador || 0, v.descontoAntecipacao || 0) +
+    Math.max(v.descontoFundador || 0, v.descontoFechamento || 0) +
       (v.descontoIndicacao || 0) +
-      (v.descontoRoleta || 0) +
       (v.descontoConcessao || 0)
   );
 
 const conferirSoma = (nome, contrato) =>
   checar(nome, contrato.valores.descontoTotal, somaDasLinhas(contrato.valores));
 
+// ═══════ A SEGUNDA INVARIANTE: O VALOR SE EXPLICA PELAS LINHAS ═════════════
+//
+// ⚠️ A soma das FRAÇÕES fechar não basta mais, e é o piso que abriu esse
+// buraco. Um contrato pode dizer "desconto total: 100%" e "valor mensal:
+// R$ 34" — as frações somam certo, e o documento continua se contradizendo,
+// porque nada liga uma coisa à outra.
+//
+// Esta invariante fecha o elo: o valor mensal precisa ser o preço de tabela
+// menos o desconto total, MAIS o que o piso absorveu. Se alguém acrescentar
+// uma trava nova (um teto por faixa, um mínimo por criança) sem registrá-la no
+// documento, é aqui que aparece.
+const valorSeExplica = (nome, c) => {
+  const v = c.valores;
+  if (v.valorMensal == null) return checar(nome, null, v.valorMensal);
+  const esperado = centavos(
+    centavos(c.plano.precoTabela * (1 - v.descontoTotal)) + (v.descontoAbsorvido || 0)
+  );
+  return checar(nome, esperado, v.valorMensal);
+};
+
+valorSeExplica('sem desconto', base);
+valorSeExplica('com fechamento', comAntecipacao);
+valorSeExplica('com o piso mordendo', tudo);
+valorSeExplica('fundador com fechamento', fundadorAntecipado);
+valorSeExplica('acima da tabela', montar({ plano: null }));
+valorSeExplica('vitalício, que escapa do piso', montar({ fundador: FUNDADOR.VITALICIO }));
+
 conferirSoma('sem desconto nenhum', base);
-conferirSoma('só antecipação', comAntecipacao);
-conferirSoma('fundador com antecipação', fundadorAntecipado);
+conferirSoma('só fechamento', comAntecipacao);
+conferirSoma('fundador com fechamento', fundadorAntecipado);
 
 const concessao = { origem: ORIGEM.CONCESSAO, fracao: 0.3, ate: '2027-02' };
 const comConcessao = montar({ descontos: [concessao] });
@@ -259,7 +325,7 @@ conferirSoma('concessão sobre fundador', montar({
 conferirSoma('tudo junto', montar({
   fundador: FUNDADOR.METADE,
   indicacoesAtivas: 2,
-  descontos: [concessao, { origem: ORIGEM.ROLETA, fracao: 0.1, ate: '2027-06' }],
+  descontos: [concessao, fecha1],
 }));
 
 // E a data da concessão viaja junto, como a das outras — é ela que o

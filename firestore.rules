@@ -1686,42 +1686,21 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
-    // entryBonuses/{uid} — o que a roleta sorteou pra esta conta.
+    // ⚠️ A COLEÇÃO `premios` FOI APAGADA EM 07/09/2026, junto com a roleta.
     //
-    // NINGUÉM ESCREVE DAQUI. Nem o dono, nem o admin: create, update e
-    // delete são `false` pra todos, e quem grava é a callable
-    // spinEntryBonus com Admin SDK, que não passa por rules.
+    // Ela nasceu `entryBonuses` (bônus de ENTRADA, 1 a 4 meses sem taxa no
+    // primeiro acesso), virou prêmio de CONVERSÃO em 06/09/2026, e saiu de vez
+    // com o programa novo de desconto: o critério dela era SORTE, e sorte não
+    // sobrevive à conversa no portão da escola — "o Zé girou e tirou 2 meses, eu
+    // tirei 10%" não tem resposta. Quem faz esse papel agora é a escada de
+    // fechamento, que é pública, reproduzível e com data (docs/descontos.md).
     //
-    // O motivo é o que o documento é: um benefício em dinheiro. Se o
-    // beneficiário pudesse escrever, ele escolheria o prêmio — e a
-    // roleta seria enfeite em cima de um campo editável. Se a plataforma
-    // pudesse reescrever depois, o registro não sustentaria nenhuma
-    // conversa sobre o que foi combinado. Definitivo dos dois lados.
-    //
-    // O id do documento é o uid de propósito: é o que garante "uma vez
-    // por conta" sem depender de contagem nem de campo de controle.
-    // premios/{uid} — o prêmio da roleta, sorteado ao CONTRATAR.
-    //
-    // Era `entryBonuses`: bônus de ENTRADA, de 1 a 4 meses sem taxa, girado no
-    // primeiro acesso. Virou prêmio de conversão em 06/09/2026 — dois meses
-    // sem taxa e dois descontos pelos 12 meses do contrato — e mudou de nome
-    // junto, porque coleção com nome de outra coisa é a próxima pessoa lendo
-    // errado com confiança.
-    //
-    // O DONO DO PRÊMIO, OU O DONO DA PLATAFORMA — e mais ninguém. O `list`
-    // entregava a tabela de quem entrou com qual condição: é a condição
-    // comercial de cada associado, e ela não é assunto entre eles.
-    //
-    // `create, update, delete: if false` PARA TODOS, inclusive o dono. Só o
-    // Admin SDK escreve. Benefício que o beneficiário reescreve não é
-    // benefício; e um que a plataforma reescreve depois não sustenta discussão
-    // nenhuma sobre o que foi combinado.
-    match /premios/{uid} {
-      allow get: if isSignedIn()
-        && (request.auth.uid == uid || isOwner());
-      allow list: if isOwner();
-      allow create, update, delete: if false;
-    }
+    // SEM MATCH, ELA CAI NO DEFAULT DENY — inclusive para o dono. É a mesma
+    // saída das duas filas de espera removidas em 06/09/2026, e pelo mesmo
+    // motivo: documento órfão em produção continua existindo, e um prêmio órfão
+    // ainda é benefício em dinheiro. `testar-regras.mjs` tem os casos que
+    // provam que ninguém alcança o que sobrou.
+    // -----------------------------------------------------------------
 
     // =================================================================
     // A PLATAFORMA COBRANDO O MOTORISTA

@@ -23,10 +23,15 @@ import {
   dataDeVencimento,
   isentoEm,
   limitarDiaVencimento,
+  planoPara,
   planoPorId,
   precoDoMes,
 } from '../dominio/associacao/planos.js';
-import { assinaturaAteDoMes } from '../dominio/associacao/contaAtiva.js';
+import { fimDoTrial, mesDeTesteDe } from '../dominio/associacao/trial.js';
+import {
+  assinaturaAteDoMes,
+  faturaZeradaEstendeAssinatura,
+} from '../dominio/associacao/contaAtiva.js';
 import { casarEAtivar } from './indicacaoService';
 import {
   TIPO as TIPO_CONCESSAO,
@@ -278,7 +283,7 @@ export async function setCondicaoFundador(uid, condicao) {
 }
 
 /**
- * Os descontos COM PRAZO de um parceiro (antecipação e roleta).
+ * Os descontos COM PRAZO de um parceiro (fechamento e concessão).
  *
  * A lista inteira é substituída, e é de propósito: `arrayUnion` acumularia o
  * mesmo prêmio duas vezes numa reemissão de contrato, e desconto duplicado
@@ -296,7 +301,7 @@ export async function setDescontos(uid, descontos) {
   );
 }
 
-/** Até que mês ele não recebe fatura (meses sem taxa da roleta). */
+/** Até que mês ele não recebe fatura (isenção concedida, ou mês de teste). */
 export async function setIsencao(uid, isencaoAte) {
   if (!uid) throw new Error('Sem motorista.');
   await setDoc(doc(db, 'users', uid), { isencaoAte: isencaoAte || null }, { merge: true });
@@ -322,9 +327,8 @@ export async function setIsencao(uid, isencaoAte) {
  * Empilhar é como o preço desanda sem ninguém decidir — 30% em março mais 30%
  * em agosto, e a ficha diz 30% enquanto a fatura cobra 60%. Conceder de novo é
  * REVER, não somar. Vale para as duas listas: a entrada de `origem:
- * 'concessao'` em `descontos` também é substituída, e as outras origens
- * (antecipação, roleta) são preservadas — é o mesmo filtro que
- * `contratarPlano` e `girarPremio` já fazem.
+ * 'concessao'` em `descontos` também é substituída, e a outra origem
+ * (`fechamento`) é preservada — é o mesmo filtro que `contratarPlano` faz.
  *
  * ── A VALIDAÇÃO NÃO MORA AQUI
  * `montarConcessao` levanta erro sem prazo, sem motivo ou com 100% de desconto.
@@ -350,9 +354,9 @@ export async function conceder(uid, { tipo, fracao, meses, motivo }, ownerUid) {
   const patch = {
     concessoes: [concessao],
     descontos,
-    // Isenção escreve o mês; desconto NÃO limpa uma isenção que veio da roleta
-    // — são coisas de origens diferentes, e apagar aqui seria a concessão
-    // tomando de volta um prêmio que o motorista já ganhou.
+    // Isenção escreve o mês; desconto NÃO limpa uma isenção que veio de
+    // outra origem (um mês de teste, por exemplo) — são coisas diferentes, e
+    // apagar aqui seria a concessão tomando de volta o que ele já tinha.
     ...(tipo === TIPO_CONCESSAO.ISENCAO ? { isencaoAte: concessao.ate } : {}),
   };
 
@@ -385,7 +389,8 @@ export async function revogarConcessao(uid) {
       descontos: (Array.isArray(dados.descontos) ? dados.descontos : []).filter(
         (d) => d?.origem !== 'concessao'
       ),
-      // Só limpa a isenção se ela veio DESTA concessão. A da roleta continua.
+      // Só limpa a isenção se ela veio DESTA concessão. A do mês de teste
+      // continua — ela não é concedida por ninguém, é régua.
       ...(eraIsencao ? { isencaoAte: null } : {}),
     },
     { merge: true }
@@ -433,8 +438,29 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
   const tioUid = motorista?.uid;
   if (!tioUid || !mes) throw new Error('Sem motorista ou mês.');
 
-  const plano = planoPorId(motorista.planoId);
-  const isento = isentoEm(motorista.isencaoAte, mes);
+  // ── A FAIXA: CONTRATADA, OU A QUE O TAMANHO DELE PEDE ──────────────────
+  //
+  // Durante o teste ele não tem `planoId`, e a fatura mostra a faixa em que ele
+  // CAIRIA. Isso é o ponto inteiro da fatura isenta: ele vê o preço três vezes
+  // antes de ele importar. Sem isso a fatura de teste sairia sem preço nenhum,
+  // e uma fatura sem valor não ensina nada.
+  const planoContratado = planoPorId(motorista.planoId);
+  const planoDoTamanho = planoPara(Number(motorista.criancasAtivas) || 0);
+  const plano = planoContratado || planoDoTamanho;
+
+  // ── ISENTO POR QUÊ: concessão, ou mês de teste ─────────────────────────
+  //
+  // ⚠️ SÃO DUAS ORIGENS E A FATURA GUARDA QUAL FOI. As duas produzem total
+  // zero e contam histórias diferentes na hora de conferir o que foi
+  // concedido — a mesma razão pela qual isenção não é desconto de 100%.
+  //
+  // O teste só isenta quem NÃO contratou: quem assina no dia 40 passa a pagar
+  // pelo contrato, e `estadoDoTrial` já diz que quem tem contrato nunca está em
+  // trial. Continuar isentando seria dar o resto do teste de graça a quem
+  // acabou de aceitar o desconto por decidir cedo.
+  const mesDeTeste = planoContratado ? null : mesDeTesteDe(motorista.trialInicio, mes);
+  const isentoPorConcessao = isentoEm(motorista.isencaoAte, mes);
+  const isento = isentoPorConcessao || mesDeTeste !== null;
 
   const conta = precoDoMes({
     plano,
@@ -443,6 +469,21 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
     descontos: motorista.descontos,
     mes,
   });
+
+  // ⚠️ NÃO SE COBRA UMA FAIXA QUE ELE NUNCA CONTRATOU.
+  //
+  // Fora do teste e sem `planoId`, `plano` acima é a faixa que o TAMANHO dele
+  // pede — uma projeção, boa para MOSTRAR numa fatura isenta e péssima para
+  // cobrar. Sem esta guarda, o motorista que deixou o teste vencer sem fechar
+  // recebia uma fatura de R$ 149 num preço que ele nunca aceitou, e o dono
+  // podia mandá-la ao gateway sem perceber.
+  //
+  // A versão anterior desta função barrava o caso por acidente: sem `planoId`
+  // ela caía em "acima da tabela" e lançava. Ao fazer a fatura de teste passar
+  // a existir, essa barreira sumiu — e precisou virar uma regra explícita.
+  if (!isento && !planoContratado) {
+    throw new Error('Este parceiro ainda não contratou uma faixa: não há preço a cobrar.');
+  }
 
   // ACIMA DA TABELA NÃO VIRA FATURA DE ZERO. `precoDoMes` devolve `liquido:
   // null` quando não há faixa, e zero ali seria indistinguível de "não paga" —
@@ -466,18 +507,45 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
       planoTeto: plano?.ate ?? null,
       precoTabela: plano ? plano.preco : null,
       criancasAtivas: Number(motorista.criancasAtivas) || 0,
+      // ⚠️ A FAIXA FOI CONTRATADA OU SUPOSTA? A fatura de teste mostra a faixa
+      // do TAMANHO dele, que é uma projeção — e projeção apresentada como
+      // cláusula é o começo de uma discussão sobre quanto foi combinado.
+      faixaContratada: Boolean(planoContratado),
 
       // os descontos, abertos — para a conversa que vem depois
       descontoTotal: conta.desconto,
       descontoFundador: conta.descontoFundador,
-      descontoAntecipacao: conta.descontoAntecipacao,
+      descontoFechamento: conta.descontoFechamento,
       descontoIndicacao: conta.descontoIndicacao,
-      descontoRoleta: conta.descontoRoleta,
+      // ⚠️ O PISO VAI CONGELADO NA FATURA, como o vencimento. Sem ele, uma
+      // fatura de R$ 34 com 100% de desconto nominal não se explica sozinha —
+      // e é a fatura, não a tela, que sobra para conferir um ano depois.
+      pisoAplicado: conta.pisoAplicado,
+      descontoAbsorvido: conta.descontoAbsorvido,
       // A CONCESSÃO ENTRA NA FATURA COMO QUALQUER OUTRO DESCONTO, aberta.
       // Congelada aqui, ela é o único registro que sobrevive a uma revogação —
       // e é o que responde "por que agosto saiu mais barato" um ano depois.
       descontoConcessao: conta.descontoConcessao,
       isento,
+      // ⚠️ POR QUE ELE NÃO PAGA ESTE MÊS: 'teste' ou 'concessao'. Sem isto, as
+      // duas isenções ficam indistinguíveis na conferência — e uma delas é
+      // régua (todo mundo tem) enquanto a outra é exceção com dono e motivo.
+      //
+      // A concessão vem primeiro na precedência porque ela é a decisão de
+      // alguém: se as duas valem, o que precisa aparecer no histórico é a que
+      // uma pessoa concedeu.
+      motivoIsencao: isentoPorConcessao ? 'concessao' : mesDeTeste !== null ? 'teste' : null,
+      // O ÍNDICE do mês de teste, não "N de 3" — o teste tem 90 dias corridos e
+      // encosta em até QUATRO meses de calendário. Ver `mesDeTesteDe`.
+      mesDeTeste,
+      // A data pronta do fim do teste, congelada como o vencimento. É ela que a
+      // fatura usa para dizer até quando a isenção vale, em vez de um contador
+      // que pode passar de três.
+      testeAte: (() => {
+        if (mesDeTeste === null) return null;
+        const f = fimDoTrial(motorista.trialInicio);
+        return f ? Timestamp.fromDate(f) : null;
+      })(),
 
       total,
 
@@ -512,7 +580,14 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
   //
   // Pior: `carteira.js` o classificava como BLOQUEADO, entao ele sumia do MRR
   // e entrava na conta de churn.
-  if (total === 0) {
+  //
+  // ⚠️ MENOS QUANDO A ISENCAO E DO TESTE — ver `faturaZeradaEstendeAssinatura`.
+  // O teste tem relogio proprio, e `estadoDaConta` devolve `ativa` assim que ve
+  // `assinaturaAte` no futuro, ANTES de olhar o trial. Estender aqui daria ao
+  // motorista em teste meses de acesso alem do dia 90 — nas rules inclusive —,
+  // emudeceria os tres avisos do trial, e no fim entregaria a ele a frase do
+  // atraso por uma fatura que nunca existiu.
+  if (faturaZeradaEstendeAssinatura({ total, isencaoDeTeste: mesDeTeste !== null })) {
     const ate = assinaturaAteDoMes(mes);
     if (ate) {
       await setDoc(doc(db, 'users', tioUid), { assinaturaAte: ate }, { merge: true });

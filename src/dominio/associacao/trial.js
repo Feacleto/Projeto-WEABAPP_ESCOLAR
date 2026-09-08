@@ -51,6 +51,20 @@
 /** Três meses. Ver "A conta dos três meses grátis" em docs/negocio.md. */
 export const DIAS_DE_TRIAL = 90;
 
+/**
+ * Cada degrau da escada de fechamento é um mês de teste: 90 / 3.
+ *
+ * A ESCADA É DE TEMPO, E O TEMPO MORA AQUI. A FRAÇÃO de cada degrau mora em
+ * `planos.js` (`descontoDoFechamento`), e a separação é a mesma dos dois
+ * arquivos: este sabe QUANDO, aquele sabe QUANTO. Juntar faria `planos.js`
+ * precisar de um relógio, e ele é a régua de preço — a coisa que mais precisa
+ * ser testável sem data.
+ */
+export const DIAS_POR_DEGRAU = 30;
+
+/** Janela para voltar depois de o teste vencer. Ver `RETORNO` em planos.js. */
+export const DIAS_DE_RETORNO = 30;
+
 /** O aviso discreto começa a 30 dias do fim. */
 export const FAIXA_DISCRETO = 30;
 /** O aviso âmbar, a 7. */
@@ -86,6 +100,107 @@ export function fimDoTrial(inicio, dias = DIAS_DE_TRIAL) {
   const d = paraData(inicio);
   if (!d) return null;
   return new Date(d.getTime() + dias * MS_POR_DIA);
+}
+
+/**
+ * EM QUE DEGRAU DA ESCADA DE FECHAMENTO ELE ESTÁ — 1, 2, 3, 'retorno' ou null.
+ *
+ * ⚠️ ESTA FUNÇÃO É A CÓPIA DE LEITURA, NÃO A AUTORIDADE. Quem decide o degrau
+ * que vale dinheiro é `degrauDaDecisao` em `functions/lib/contratacao.js`, com
+ * o relógio do SERVIDOR — aqui o "agora" é o relógio do aparelho, e ele é a
+ * coisa mais fácil de mudar num telefone. Esta serve para a TELA dizer em que
+ * degrau ele está e até quando; se as duas discordarem, vale a do servidor, e
+ * o motorista vê um número e recebe outro.
+ *
+ * É por isso que `npm run testar:gateway` compara as duas degrau por degrau.
+ * Duas cópias de aritmética de dinheiro divergindo em silêncio é o problema
+ * que este projeto já teve.
+ *
+ * ⚠️ SEM `inicio` O DEGRAU É 1, e não zero: quem nunca rodou uma rota não
+ * gastou um dia do teste, e é o mais antecipado de todos.
+ */
+export function degrauDaDecisao({ inicio, agora } = {}) {
+  const d = paraData(inicio);
+  if (!d) return 1;
+  const hoje = paraData(agora);
+  if (!hoje) return null;
+
+  // O piso de zero é explícito: relógio atrasado produziria dia NEGATIVO, e
+  // `floor(-1 / 30) + 1` daria degrau 0 — nenhum desconto para quem acabou de
+  // começar, que é o oposto do desenho.
+  const passados = Math.max(0, Math.floor((hoje.getTime() - d.getTime()) / MS_POR_DIA));
+  if (passados < DIAS_DE_TRIAL) return Math.floor(passados / DIAS_POR_DEGRAU) + 1;
+  if (passados < DIAS_DE_TRIAL + DIAS_DE_RETORNO) return 'retorno';
+  return null;
+}
+
+/**
+ * A data em que o degrau atual VIRA o próximo — a que a tela precisa mostrar.
+ *
+ * Sem ela a oferta é "50% se você decidir logo", e "logo" não é uma data:
+ * urgência sem prazo não é urgência, é pressão. `null` para quem está no
+ * retorno ou fora da escada, porque ali não há próximo degrau melhor.
+ */
+export function fimDoDegrau(inicio, degrau) {
+  const d = paraData(inicio);
+  const n = Math.trunc(Number(degrau));
+  if (!d || !(n >= 1 && n <= DIAS_DE_TRIAL / DIAS_POR_DEGRAU)) return null;
+  return new Date(d.getTime() + n * DIAS_POR_DEGRAU * MS_POR_DIA);
+}
+
+/**
+ * EM QUE MÊS DE TESTE CAI A FATURA DE `mes` — 1, 2, 3… ou `null`.
+ *
+ * ── POR QUE ESTA FUNÇÃO EXISTE
+ * O teste passou a EMITIR FATURA todo mês, isenta, com o preço cheio visível.
+ * O hábito que faltava não era pagar R$ 149 — era receber e reconhecer uma
+ * fatura —, e noventa dias de silêncio sobre dinheiro faziam o dia 91 ser uma
+ * decisão de compra em vez de uma continuação. Ver docs/descontos.md, peça 1.
+ *
+ * ── ⚠️ ELE PODE PASSAR DE 3, E O RÓTULO NÃO DIZ "DE 3"
+ * A fatura é por MÊS DE CALENDÁRIO e o teste tem 90 DIAS CORRIDOS: começando
+ * em 20/09, ele acaba em 19/12 e ENCOSTA em quatro meses — setembro, outubro,
+ * novembro e dezembro. Um rótulo "mês 4 de 3" num documento de cobrança é o
+ * tipo de contradição que este projeto testa para não ter.
+ *
+ * Então o número é o ÍNDICE do mês (1º, 2º, 3º, 4º) e quem diz o fim é a DATA,
+ * que vai congelada na fatura. Contar meses de calendário como se fossem os
+ * três meses do teste seria mais bonito e mentiria em um mês a cada quatro
+ * inícios.
+ *
+ * ── O CRITÉRIO É O PRIMEIRO DIA DO MÊS
+ * A fatura de dezembro é isenta se o teste ainda estava correndo em 01/12,
+ * mesmo acabando no dia 19. Cobrar meio mês exigiria pró-rata, e a régua
+ * inteira deste projeto é mensal — do `dueDay` da criança ao vencimento da
+ * casa. A escolha é generosa de propósito: errar para o lado de cobrar meio mês
+ * que o motorista considerava de teste é a briga que custa mais do que vale.
+ *
+ * ── ⚠️ SEM `inicio`, TODA FATURA É O MÊS 1
+ * Quem nunca rodou uma rota tem o relógio parado, e isso significa isenção sem
+ * fim. É o custo conhecido do gatilho ser a primeira rota (ver o cabeçalho
+ * deste arquivo) — e agora ele fica VISÍVEL, porque o dono passa a ver uma
+ * fatura isenta por mês em vez de nenhuma fatura.
+ */
+export function mesDeTesteDe(inicio, mes) {
+  const m = String(mes || '');
+  if (!/^\d{4}-\d{2}$/.test(m)) return null;
+
+  const d = paraData(inicio);
+  if (!d) return 1;
+
+  const [ano, mm] = m.split('-').map(Number);
+  // Meio-dia, como em `dataDeVencimento`: à meia-noite qualquer conversão de
+  // fuso joga a data para o dia anterior, e aqui isso trocaria o mês inteiro.
+  const primeiroDia = new Date(ano, mm - 1, 1, 12, 0, 0, 0);
+
+  const fim = fimDoTrial(inicio);
+  if (!fim || primeiroDia > fim) return null;
+
+  const indice =
+    (ano - d.getFullYear()) * 12 + (mm - 1 - d.getMonth()) + 1;
+  // Fatura de um mês ANTERIOR ao início do teste não é mês de teste nenhum —
+  // ela é de antes de existir relógio.
+  return indice >= 1 ? indice : null;
 }
 
 /**

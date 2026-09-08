@@ -99,10 +99,10 @@ export default function ContratoDoc({ dados, aceite }) {
                 cor="text-warning"
               />
             )}
-            {v.descontoAntecipacao > 0 && (
+            {v.descontoFechamento > 0 && (
               <Linha
-                rotulo="Contratação antecipada"
-                valor={`−${pct(v.descontoAntecipacao)}${ate('antecipacao') ? ` até ${ate('antecipacao')}` : ''}`}
+                rotulo="Contratação no período de teste"
+                valor={`−${pct(v.descontoFechamento)}${ate('fechamento') || ate('antecipacao') ? ` até ${ate('fechamento') || ate('antecipacao')}` : ''}`}
                 cor="text-warning"
               />
             )}
@@ -113,11 +113,17 @@ export default function ContratoDoc({ dados, aceite }) {
                 cor="text-warning"
               />
             )}
-            {v.descontoRoleta > 0 && (
+            {/*
+              ⚠️ O PISO APARECE SÓ QUANDO MORDE, mas a cláusula existe sempre
+              (`valores.pisoDaFatura`). Sem esta linha o documento mostra o
+              desconto cheio e um valor mensal que ele não justifica — a mesma
+              contradição da concessão, pelo outro lado da conta.
+            */}
+            {v.pisoAplicado && (
               <Linha
-                rotulo="Prêmio da roleta"
-                valor={`−${pct(v.descontoRoleta)}${ate('roleta') ? ` até ${ate('roleta')}` : ''}`}
-                cor="text-warning"
+                rotulo="Piso de manutenção do ambiente"
+                valor={`+${formatBRL(v.descontoAbsorvido)} — nenhuma fatura abaixo de ${formatBRL(v.pisoDaFatura)}`}
+                cor="text-textMuted"
               />
             )}
             {v.descontoConcessao > 0 && (

@@ -40,7 +40,7 @@ import { FRENTE_FAMILIA, lembrarFrente } from '../dominio/vitrine/frentes';
  * sugere que o lugar do filho dele está em risco.
  *
  * O QUE NÃO ENTRA AQUI, E É REGRA
- * Taxa, vaga, roleta, associação, contagem de associados, depoimento de
+ * Taxa, vaga, associação, contagem de associados, depoimento de
  * motorista — nada disso. E principalmente: NENHUMA ESCASSEZ. Sem prazo, sem
  * "últimas vagas", sem nada que sugira que o lugar do filho dele pode acabar.
  * Na home do motorista a escassez constrói credibilidade; aqui ela produz

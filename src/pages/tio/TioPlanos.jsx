@@ -10,13 +10,14 @@ import { contratarPlano } from '../../services/contratacaoService';
 import { montarContrato } from '../../dominio/associacao/contratoAssociacao.js';
 import { emitirContrato } from '../../services/contratoAssociacaoService';
 import {
-  ANTECIPACAO,
   PLANOS,
   planoPara,
   planoPorId,
   excedentes,
   precoDoMes,
+  descontoDoFechamento,
 } from '../../dominio/associacao/planos.js';
+import { degrauDaDecisao, fimDoDegrau } from '../../dominio/associacao/trial.js';
 
 /**
  * A TELA DE PLANOS — o motorista vê o próprio tamanho e escolhe o teto.
@@ -65,6 +66,26 @@ export default function TioPlanos() {
   const mesAtual = getCurrentMonthKey();
   const [assinando, setAssinando] = useState(false);
 
+  // ── O DEGRAU DA ESCADA, para a oferta do rodapé ─────────────────────────
+  //
+  // ⚠️ ESTA CONTA É SÓ PARA MOSTRAR. Quem grava o desconto é `contratarPlano`,
+  // com o relógio do SERVIDOR, e é de lá que sai o número do toast — aqui o
+  // "agora" é o relógio do aparelho. As duas usam a mesma régua e
+  // `npm run testar:gateway` prova a igualdade; se divergirem, vale a do
+  // servidor, e a tela é a que fica errada.
+  const degrauAtual = degrauDaDecisao({
+    inicio: profile?.trialInicio,
+    agora: new Date(),
+  });
+  const fracaoDoDegrau = descontoDoFechamento(degrauAtual);
+  const viraEm = fimDoDegrau(profile?.trialInicio, degrauAtual);
+  // O degrau SEGUINTE, para a frase dizer para o que o desconto cai. Sem isso
+  // a data é uma ameaça sem conteúdo: ele sabe que piora, não sabe quanto.
+  const fracaoSeguinte =
+    typeof degrauAtual === 'number' ? descontoDoFechamento(degrauAtual + 1) : 0;
+  const dataCurta = (d) =>
+    d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+
   // JÁ CONTRATOU? A tela então não é mais de escolha, é de troca de faixa.
   const jaContratou = Boolean(profile?.planoId);
 
@@ -100,9 +121,13 @@ export default function TioPlanos() {
       await emitirContrato({ tioUid: profile?.uid, conteudo, emitidoPor: profile?.uid });
 
       await refreshProfile();
-      if (clausula.antecipacao) {
+      // ⚠️ O NÚMERO DO TOAST VEM DO SERVIDOR, não da régua local. `clausula` é
+      // a resposta de `contratarPlano`, e é o servidor que decidiu o degrau
+      // pelo relógio DELE. Recalcular aqui pelo relógio do aparelho poderia
+      // anunciar 50% e gravar 30%.
+      if (clausula.fechamento) {
         toast.success(
-          `Faixa contratada com ${Math.round(ANTECIPACAO.fracao * 100)}% de desconto pelos 12 meses.`,
+          `Faixa contratada com ${Math.round((clausula.fracao || 0) * 100)}% de desconto pelos 12 meses.`,
           { duration: 7000 }
         );
       } else {
@@ -154,10 +179,10 @@ export default function TioPlanos() {
             // `descontos` E `mes` SAO OBRIGATORIOS AQUI, e faltavam.
             //
             // Esta era a unica das cinco chamadas a `precoDoMes` sem os dois —
-            // e sao eles que carregam a antecipacao (50%) e o premio da roleta
-            // (30%/10%), os unicos descontos que `users.descontos` guarda. O
-            // cabecalho deste arquivo afirma "O PRECO MOSTRADO JA E O DELE", e
-            // era falso: a tela mostrava R$ 149 e a fatura cobrava R$ 74,50.
+            // e sao eles que carregam o desconto de FECHAMENTO, o unico que
+            // `users.descontos` guarda por regua. O cabecalho deste arquivo
+            // afirma "O PRECO MOSTRADO JA E O DELE", e era falso: a tela
+            // mostrava R$ 149 e a fatura cobrava R$ 74,50.
             //
             // Decidir contra um numero que o sistema nao vai cobrar e a forma
             // mais rapida de perder a confianca de quem esta pagando.
@@ -283,13 +308,28 @@ export default function TioPlanos() {
             {/* A OFERTA APARECE ONDE A DECISÃO ACONTECE, e some sozinha quando
               * deixa de valer — quem já contratou não vê promessa que já
               * recebeu, e quem passou do teste não vê uma que não vai receber. */}
-            {!jaContratou && (
+            {/* ⚠️ A OFERTA VEM COM A DATA EM QUE ELA MUDA, e sem a data ela
+              * não é urgência, é pressão: "decida logo" não é um prazo. É o
+              * degrau que dá o número, e o degrau é o mês do teste em que ele
+              * está — quanto antes decidir, menor a conta pelos 12 meses.
+              *
+              * ⚠️ E O PREÇO NUNCA SOBE SE ELE RECUSAR. Não há segunda oferta
+              * nesta tela, e é decisão de negócio: desconto que sobe a cada
+              * "não" ensina a recusar, e prova que o preço era teatro. Ver
+              * docs/descontos.md, peça 3 — as respostas ao "não" cedem
+              * informação, risco e prazo, nunca preço. */}
+            {!jaContratou && fracaoDoDegrau > 0 && (
               <p className="text-center text-xs leading-relaxed text-textMuted">
-                Contratando antes de o seu teste acabar, você fica com{' '}
+                Contratando {viraEm ? <>até <strong>{dataCurta(viraEm)}</strong></> : 'agora'}, você
+                fica com{' '}
                 <strong className="text-accentText">
-                  {Math.round(ANTECIPACAO.fracao * 100)}% de desconto
+                  {Math.round(fracaoDoDegrau * 100)}% de desconto
                 </strong>{' '}
-                pelos {ANTECIPACAO.meses} meses de contrato.
+                pelos 12 meses de contrato.
+                {fracaoSeguinte > 0 && (
+                  <> Depois dessa data, o desconto passa a ser de{' '}
+                  {Math.round(fracaoSeguinte * 100)}%.</>
+                )}
               </p>
             )}
           </>

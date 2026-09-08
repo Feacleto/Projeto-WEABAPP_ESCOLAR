@@ -116,6 +116,40 @@ export function assinaturaAteDoMes(mes) {
 }
 
 /**
+ * ⚠️ ESTA FATURA DE R$ 0 DEVE ESTENDER `assinaturaAte`?
+ *
+ * Fatura zerada tambem e fatura paga: o fundador vitalicio, o desconto somado
+ * em 100% e a isencao concedida produzem `total: 0`, e nenhum deles passa por
+ * `marcarFaturaPaga` (o botao de baixa so aparece em fatura aberta) nem pelo
+ * webhook. Sem alguem escrever `assinaturaAte`, o primeiro motorista da
+ * plataforma — o que nao paga por decisao — era bloqueado no dia 90 com a
+ * fatura marcada como quitada.
+ *
+ * ⚠️ MAS A ISENCAO DO TESTE E DIFERENTE EM ESPECIE, e confundir as duas destroi
+ * o paywall. O teste JA TEM relogio proprio (`trialInicio`), e `estadoDaConta`
+ * devolve `ativa` no instante em que ve `assinaturaAte` no futuro — ANTES de
+ * chegar na checagem do trial. Estender a assinatura por causa de uma fatura de
+ * teste sobrescreve o relogio do teste por um mais longo:
+ *
+ *   - a conta continua destravada depois do dia 90, nas rules inclusive
+ *     (`isAdmin()` le `assinaturaAte`);
+ *   - `avisoDoTrial` emudece, porque `temContrato` vira true e os tres avisos
+ *     nunca disparam;
+ *   - e quando a data enfim vence, `jaFoiCliente` e true e a pessoa recebe a
+ *     frase do ATRASO — "sua fatura venceu" para quem nunca teve fatura.
+ *
+ * Uma isencao que a plataforma CONCEDEU e um acordo; um mes de teste e o
+ * relogio correndo. So o primeiro compra tempo de assinatura.
+ *
+ * Regra pura porque quem a executa (`fecharFatura`) mora atras do Firestore e
+ * nao e testavel — e esta decisao vale meses de acesso gratuito.
+ */
+export function faturaZeradaEstendeAssinatura({ total, isencaoDeTeste = false } = {}) {
+  if (Number(total) !== 0) return false;
+  return !isencaoDeTeste;
+}
+
+/**
  * O estado da conta do motorista.
  *
  *   { ativa: true,  motivo: null }         opera normalmente

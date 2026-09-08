@@ -16,7 +16,7 @@
  */
 
 import { mensagemDeProposta, linkDaProposta } from '../src/dominio/associacao/proposta.js';
-import { ANTECIPACAO, planoPorId, precoDoMes } from '../src/dominio/associacao/planos.js';
+import { descontoDoFechamento, planoPorId, precoDoMes } from '../src/dominio/associacao/planos.js';
 import { FUNDADOR } from '../src/dominio/associacao/planos.js';
 
 let ok = 0;
@@ -64,7 +64,33 @@ const emTeste = mensagemDeProposta({
 checar('quem está em teste recebe a proposta', 'Propor contratação', emTeste.assunto);
 checar('com o prazo dele', true, emTeste.texto.includes('5 dias'));
 checar('e o preço da faixa dele', true, emTeste.texto.includes('R$ 149,00'));
-checar('e a oferta de antecipação', true, emTeste.texto.includes(`${Math.round(ANTECIPACAO.fracao * 100)}%`));
+// ⚠️ A OFERTA É A DO DEGRAU DELE, NÃO UM NÚMERO FIXO.
+//
+// Faltando 5 dias, ele está no TERCEIRO degrau — 15%, não os 50% do primeiro
+// mês. A mensagem antiga dizia sempre 50%, e o dono a leria, mandaria, e o
+// servidor gravaria outra coisa: o motorista veria 50% no WhatsApp e 15% na
+// fatura. A proposta nunca inventa preço, e agora também não inventa desconto.
+checar('e a oferta é a do TERCEIRO degrau', true, emTeste.texto.includes('15%'));
+checar('e NÃO a do primeiro', false, emTeste.texto.includes('50%'));
+
+// O degrau anda com o prazo. Estes três casos são a régua vista de fora.
+const noDegrau = (dias) =>
+  mensagemDeProposta({
+    motorista: NINO,
+    degrau: 'em_teste',
+    conta: contaDe('ate25'),
+    diasRestantes: dias,
+  }).texto;
+checar('faltando 90 dias, primeiro degrau', true, noDegrau(90).includes('50%'));
+checar('faltando 61, ainda o primeiro', true, noDegrau(61).includes('50%'));
+checar('faltando 60, o segundo', true, noDegrau(60).includes('30%'));
+checar('faltando 31, ainda o segundo', true, noDegrau(31).includes('30%'));
+checar('faltando 30, o terceiro', true, noDegrau(30).includes('15%'));
+checar('faltando 1, ainda o terceiro', true, noDegrau(1).includes('15%'));
+// Sem prazo conhecido, o degrau é o primeiro — quem não rodou rota não gastou
+// um dia do teste. Mesma escolha de `degrauDaDecisao`.
+checar('sem prazo, o primeiro degrau', true, noDegrau(null).includes('50%'));
+checar('e a régua bate com planos.js', 0.15, descontoDoFechamento(3));
 
 const bloqueado = mensagemDeProposta({ motorista: NINO, degrau: 'bloqueado' });
 checar('quem parou recebe resgate', 'Chamar de volta', bloqueado.assunto);

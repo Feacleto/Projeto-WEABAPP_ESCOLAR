@@ -24,12 +24,18 @@ const REGION = 'southamerica-east1';
  * que ele paga uma faixa e cadastra na outra — e cada campo estaria certo do
  * ponto de vista de quem o lê.
  *
- * ── O DESCONTO DE ANTECIPAÇÃO É DECIDIDO AQUI, E SÓ AQUI
- * Quem contrata ANTES de o teste acabar leva metade pelos doze meses. Quem
- * decide se ainda está dentro do teste é o servidor, olhando `trialInicio` —
- * um campo que o motorista grava uma vez e nunca mais (as rules garantem), mas
- * cuja LEITURA no cliente aconteceria no relógio do aparelho dele. Relógio de
- * cliente é a coisa mais fácil de mudar num telefone.
+ * ── O DEGRAU DA ESCADA É DECIDIDO AQUI, E SÓ AQUI
+ * Quem contrata no 1º mês do teste leva 50% pelos doze meses; no 2º, 30%; no
+ * 3º, 15%. Quem decide EM QUE MÊS ele está é o servidor, olhando `trialInicio`
+ * — um campo que o motorista grava uma vez e nunca mais (as rules garantem),
+ * mas cuja LEITURA no cliente aconteceria no relógio do aparelho dele. Relógio
+ * de cliente é a coisa mais fácil de mudar num telefone.
+ *
+ * ⚠️ ISSO PESA MAIS DO QUE PESAVA. A antecipação anterior era 50% em QUALQUER
+ * dia dos 90: mentir no relógio só adiantava o inevitável. Com a escada, mentir
+ * no relógio TROCA DE DEGRAU — é a diferença entre R$ 74,50 e R$ 126,65 por
+ * doze meses. O incentivo para falsificar cresceu, e a defesa é a mesma: o
+ * cliente não tem voto.
  *
  * ── O QUE ELE NÃO FAZ: EMITIR O DOCUMENTO
  * O contrato em `contratosAssociacao` é escrito pelo cliente logo depois, e as
@@ -59,8 +65,28 @@ const PLANOS = [
   { id: 'ate40', ate: 40, preco: 229 },
 ];
 
-/** Contratou antes de o teste acabar: metade da conta pelos 12 meses. */
-const ANTECIPACAO = { fracao: 0.5, meses: 12 };
+/**
+ * A escada de fechamento, espelhada — SÓ OS DADOS, como a tabela de faixas.
+ *
+ * `npm run testar:gateway` compara esta cópia com `ESCADA_DE_FECHAMENTO` de
+ * `src/dominio/associacao/planos.js` degrau por degrau. Divergir aqui é o
+ * servidor gravando uma fração que a régua do app não reconhece — e a fatura
+ * cobraria uma coisa enquanto o contrato assinado diria outra.
+ */
+const ESCADA = [
+  { degrau: 1, fracao: 0.5 },
+  { degrau: 2, fracao: 0.3 },
+  { degrau: 3, fracao: 0.15 },
+];
+
+/** Quem deixou o teste vencer e volta em até 30 dias. */
+const RETORNO = { fracao: 0.1, prazoDias: 30, degrau: 'retorno' };
+
+/** Os descontos duram o contrato inteiro. */
+const MESES_DE_CONTRATO = 12;
+
+/** Cada degrau é um mês de teste: 90 dias divididos por 3. */
+const DIAS_POR_DEGRAU = 30;
 
 /** Os mesmos 90 dias de `dominio/associacao/trial.js`. */
 const DIAS_DE_TRIAL = 90;
@@ -88,8 +114,10 @@ function paraData(valor) {
  * desconto durava 13 meses — meia mensalidade extra por associado, silenciosa,
  * crescendo com a base.
  *
- * A copia em `premioDeConversao.js` ja fazia certo. As duas divergiam, e
- * `npm run testar:gateway` compara as duas agora.
+ * HOUVE UMA SEGUNDA COPIA, em `premioDeConversao.js`, e ela ja fazia certo —
+ * as duas divergiam em um mes inteiro. Esse arquivo foi apagado em 07/09/2026
+ * junto com a roleta, e sobrou esta. `npm run testar:gateway` continua
+ * guardando a armadilha do `setMonth`, que e do JavaScript e nao da copia.
  */
 function mesDaqui(meses, agora = new Date()) {
   const d = new Date(agora);
@@ -121,14 +149,52 @@ function cobertoAteOMesSeguinte(agora = new Date()) {
  * O teste ainda está correndo?
  *
  * Quem nunca rodou uma rota não tem `trialInicio` — e conta como DENTRO do
- * teste, porque o relógio dele nem começou. Recusar a antecipação a essa
- * pessoa puniria justamente quem decidiu antes de precisar.
+ * teste, porque o relógio dele nem começou. Recusar o desconto a essa pessoa
+ * puniria justamente quem decidiu antes de precisar.
  */
 function dentroDoTrial(trialInicio, agora) {
   const inicio = paraData(trialInicio);
   if (!inicio) return true;
   const passados = Math.floor((agora.getTime() - inicio.getTime()) / MS_POR_DIA);
   return passados < DIAS_DE_TRIAL;
+}
+
+/**
+ * EM QUE DEGRAU DA ESCADA ELE ESTÁ — 1, 2, 3, 'retorno' ou null.
+ *
+ * `null` é "nenhum desconto", e é o caso de quem deixou os 90 dias e mais 30
+ * passarem. Não existe quarto degrau: escada que premia quem esperou é
+ * exatamente a lição que ela existe para não ensinar.
+ *
+ * ⚠️ SEM `trialInicio` O DEGRAU É 1, e não zero. Quem nunca rodou uma rota
+ * ainda não gastou um dia do teste; ele é o mais antecipado de todos, e
+ * cobrar-lhe o preço cheio puniria quem decidiu antes de precisar.
+ *
+ * ⚠️ O PISO DO DIA ZERO É EXPLÍCITO. Relógio de servidor atrasado em relação ao
+ * do aparelho que gravou `trialInicio` produz dias NEGATIVOS, e
+ * `floor(-1 / 30) + 1` daria degrau ZERO — nenhum desconto para quem acabou de
+ * começar, que é o oposto do desenho.
+ */
+function degrauDaDecisao(trialInicio, agora = new Date()) {
+  const inicio = paraData(trialInicio);
+  if (!inicio) return 1;
+
+  const passados = Math.max(
+    0,
+    Math.floor((agora.getTime() - inicio.getTime()) / MS_POR_DIA)
+  );
+  if (passados < DIAS_DE_TRIAL) {
+    return Math.floor(passados / DIAS_POR_DEGRAU) + 1;
+  }
+  if (passados < DIAS_DE_TRIAL + RETORNO.prazoDias) return RETORNO.degrau;
+  return null;
+}
+
+/** A fração daquele degrau. Espelha `descontoDoFechamento` do app. */
+function descontoDoDegrau(degrau) {
+  if (degrau === RETORNO.degrau) return RETORNO.fracao;
+  const passo = ESCADA.find((e) => e.degrau === degrau);
+  return passo ? passo.fracao : 0;
 }
 
 function makeContratarPlano(db) {
@@ -148,23 +214,36 @@ function makeContratarPlano(db) {
       const dados = snap.data() || {};
       const agora = new Date();
 
-      // ── o desconto de antecipação ──────────────────────────────────────
+      // ── o desconto do degrau ───────────────────────────────────────────
       //
       // UMA VEZ SÓ. A lista de descontos é SUBSTITUÍDA, e quem já tem o de
-      // antecipação mantém a data original: sem isso, trocar de faixa no
-      // décimo mês renovaria o desconto por mais doze, e o desconto de
-      // conversão viraria a tabela definitiva daquele associado.
+      // fechamento mantém a data E A FRAÇÃO originais: sem isso, trocar de
+      // faixa no décimo mês renovaria o desconto por mais doze, e o desconto
+      // de conversão viraria a tabela definitiva daquele associado.
+      //
+      // ⚠️ O LEGADO `antecipacao` CONTA COMO JÁ TENDO. É o mesmo instrumento
+      // com o nome antigo, e tratá-lo como ausente daria um SEGUNDO desconto
+      // de fechamento a quem já tem um — com data nova, doze meses à frente.
       const anteriores = Array.isArray(dados.descontos) ? dados.descontos : [];
-      const jaTinha = anteriores.find((d) => d?.origem === 'antecipacao');
-      const ganhaAgora = !jaTinha && dentroDoTrial(dados.trialInicio, agora);
+      const eDeFechamento = (d) =>
+        d?.origem === 'fechamento' || d?.origem === 'antecipacao';
 
-      const descontos = anteriores.filter((d) => d?.origem !== 'antecipacao');
+      const jaTinha = anteriores.find(eDeFechamento);
+      const degrau = jaTinha ? null : degrauDaDecisao(dados.trialInicio, agora);
+      const fracao = degrau === null ? 0 : descontoDoDegrau(degrau);
+      const ganhaAgora = !jaTinha && fracao > 0;
+
+      const descontos = anteriores.filter((d) => !eDeFechamento(d));
       if (jaTinha) descontos.push(jaTinha);
       else if (ganhaAgora) {
         descontos.push({
-          origem: 'antecipacao',
-          fracao: ANTECIPACAO.fracao,
-          ate: mesDaqui(ANTECIPACAO.meses, agora),
+          origem: 'fechamento',
+          fracao,
+          ate: mesDaqui(MESES_DE_CONTRATO, agora),
+          // O DEGRAU VAI GRAVADO junto da fração. A ficha do dono precisa
+          // dizer QUAL degrau foi, e a fração sozinha não distingue 15% de
+          // fechamento de 15% de concessão — que são espécies diferentes.
+          degrau,
         });
       }
 
@@ -192,17 +271,20 @@ function makeContratarPlano(db) {
       logger.info('[contratacao] faixa contratada', {
         uid,
         planoId: plano.id,
-        antecipacao: ganhaAgora,
+        degrau,
+        fracao,
       });
 
       return {
         planoId: plano.id,
         limiteCriancas: plano.ate,
         descontos,
-        // A tela precisa saber se o desconto foi concedido AGORA para dizer
-        // isso à pessoa. Descobrir depois, na primeira fatura, transforma um
-        // presente em desconfiança.
-        antecipacao: ganhaAgora,
+        // A tela precisa saber se o desconto foi concedido AGORA, e QUAL foi,
+        // para dizer isso à pessoa. Descobrir depois, na primeira fatura,
+        // transforma um presente em desconfiança.
+        fechamento: ganhaAgora,
+        degrau: ganhaAgora ? degrau : null,
+        fracao: ganhaAgora ? fracao : 0,
       };
     }
   );
@@ -211,8 +293,12 @@ function makeContratarPlano(db) {
 module.exports = {
   makeContratarPlano,
   PLANOS,
-  ANTECIPACAO,
+  ESCADA,
+  RETORNO,
+  MESES_DE_CONTRATO,
   dentroDoTrial,
+  degrauDaDecisao,
+  descontoDoDegrau,
   mesDaqui,
   cobertoAteOMesSeguinte,
 };
