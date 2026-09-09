@@ -163,7 +163,12 @@ export default function Login() {
     veioDaFamilia(location) ||
     frenteDoCaminho(location?.state?.from) === FRENTE_FAMILIA;
 
-  const [email, setEmail] = useState('');
+  // O E-MAIL PODE CHEGAR PRONTO de quem acabou de redefinir a senha.
+  //
+  // `AuthAction` termina em "Entrar com a senha nova" e manda o endereço pelo
+  // `state`. Antes ela caía aqui com os dois campos vazios — e o e-mail é
+  // justamente o campo que ela pode não lembrar qual usou.
+  const [email, setEmail] = useState(location.state?.email || '');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
@@ -194,6 +199,24 @@ export default function Login() {
   const googleWorks = canUseGoogleSignIn();
   const [bridgeDismissed, setBridgeDismissed] = useState(false);
   const showBridge = inApp && !bridgeDismissed;
+
+  /* EMAIL E SENHA ATRÁS DE UM TOQUE, E NÃO LADO A LADO COM O GOOGLE.
+   *
+   * Não é preferência de layout: lado a lado, as duas portas parecem
+   * equivalentes, e a que pede menos AGORA (digitar dois campos que ela acha
+   * que lembra) cobra mais DEPOIS — senha é usada raramente, e por isso é
+   * esquecida; a recuperação sai por email, que boa parte das famílias não
+   * lê. O Google não tem esse custo: quem cuida da lembrança é o Google.
+   *
+   * O `AuthSheet` do convite já fazia exatamente isto, com o rótulo "Não uso
+   * Google — entrar com email". Esta tela era a última que ainda mostrava as
+   * duas de frente. Mesma decisão, mesmo texto, agora nos dois lugares.
+   *
+   * ⚠️ QUANDO O GOOGLE NÃO FUNCIONA, O FORMULÁRIO APARECE SOZINHO. Dentro da
+   * webview do WhatsApp o Google recusa OAuth, então ali email e senha não é
+   * a exceção — é a única porta que existe. Esconder atrás de um link uma
+   * porta que é a única seria trancar quem não conseguiu sair pro navegador. */
+  const [mostrarEmail, setMostrarEmail] = useState(false);
 
   useEffect(() => {
     adminExists()
@@ -303,7 +326,14 @@ export default function Login() {
         { duration: 6000 }
       );
     } catch (err) {
-      toast.error(mensagemDeAuth(err, 'entrar'));
+      // ⚠️ CONTEXTO `reset`, NÃO `entrar`.
+      //
+      // `ENTRAR` responde "Email ou senha incorretos." a `user-not-found` — e
+      // aqui ela não digitou senha nenhuma. Ela lia uma frase sobre senha,
+      // voltava ao formulário e tentava de novo, em laço. `reset` tem frase
+      // própria, discreta (não confirma se a conta existe) e cobre os códigos
+      // de configuração, que antes vazavam em inglês.
+      toast.error(mensagemDeAuth(err, 'reset'));
     } finally {
       setResetting(false);
     }
@@ -773,22 +803,23 @@ export default function Login() {
                         Continuar com Google
                       </Button>
 
-                      <div className="relative py-1">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-border"></div>
-                        </div>
-                        <div className="relative flex justify-center text-xs">
-                          <span className="whitespace-nowrap bg-card px-3 text-textMuted">
-                            ou com email e senha
-                          </span>
-                        </div>
-                      </div>
+                      {!mostrarEmail && (
+                        <button
+                          type="button"
+                          onClick={() => setMostrarEmail(true)}
+                          className="tap w-full py-2 text-sm font-semibold text-primary"
+                        >
+                          Não uso Google — entrar com email
+                        </button>
+                      )}
                     </>
                   )}
 
                   <form
                     onSubmit={onSubmit}
-                    className={`space-y-3 ${showBridge ? 'hidden' : ''}`}
+                    className={`space-y-3 ${
+                      showBridge || (googleWorks && !mostrarEmail) ? 'hidden' : ''
+                    }`}
                   >
                     <Input
                       type="email"

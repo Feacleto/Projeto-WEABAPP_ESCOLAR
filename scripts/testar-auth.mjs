@@ -15,6 +15,7 @@
  *   node scripts/testar-auth.mjs      (ou: npm run testar:auth)
  */
 
+import { readFileSync } from 'node:fs';
 import { mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 import { painelDe } from '../src/dominio/identidade/papeis.js';
 import {
@@ -198,6 +199,113 @@ checar(
   false,
   isValidInviteCodeFormat(codigoDoTexto('tna'))
 );
+
+// ─────────── 5. PEDIR O LINK — o contexto que faltava ───────────────────
+//
+// As três telas que pedem o link chamavam `mensagemDeAuth(err, 'entrar')`, e
+// `ENTRAR` responde "Email ou senha incorretos." a `user-not-found`. Quem
+// pedia o link para um e-mail sem conta lia uma frase sobre SENHA num momento
+// em que não digitou senha nenhuma, e voltava ao formulário em laço.
+console.log('');
+console.log('5. Pedir o link de redefinição tem frases próprias');
+
+const erroDe = (code) => ({ code, message: 'RAW SDK TEXT, IN ENGLISH' });
+
+// ⚠️ A DISCRIÇÃO CONTINUA VALENDO: a frase não confirma se a conta existe.
+// Dizer confirmaria ao atacante quem tem conta no app — é a mesma decisão do
+// bloco 4, aplicada ao outro fluxo.
+checar(
+  'e-mail sem conta nao e confirmado como inexistente',
+  false,
+  /nao (existe|encontrad)|não (existe|encontrad)/i.test(
+    mensagemDeAuth(erroDe('auth/user-not-found'), 'reset')
+  )
+);
+checar(
+  'e a frase do reset NAO fala de senha errada',
+  false,
+  /senha (incorreta|errada)|senha incorretos/i.test(
+    mensagemDeAuth(erroDe('auth/user-not-found'), 'reset')
+  )
+);
+
+// A INVARIANTE, e não um caso: nenhum código do fluxo de pedir link pode
+// vazar o texto do SDK. Erro de CONFIGURAÇÃO não é culpa dela, e antes saía
+// em inglês num toast vermelho, porque estes códigos não estavam em tabela
+// nenhuma e o contexto 'entrar' cai em `err.message`.
+const CODIGOS_DE_RESET = [
+  'auth/invalid-email',
+  'auth/user-not-found',
+  'auth/too-many-requests',
+  'auth/network-request-failed',
+  'auth/missing-email',
+  'auth/unauthorized-continue-uri',
+  'auth/invalid-continue-uri',
+  'auth/missing-continue-uri',
+];
+checar(
+  'nenhum codigo do fluxo de reset vaza o texto do SDK',
+  true,
+  CODIGOS_DE_RESET.every(
+    (c) => !mensagemDeAuth(erroDe(c), 'reset').includes('RAW SDK TEXT')
+  )
+);
+checar(
+  'nem um codigo desconhecido',
+  false,
+  mensagemDeAuth(erroDe('auth/algo-que-nao-existe'), 'reset').includes('RAW SDK TEXT')
+);
+
+// ─────────── 6. O continueUrl NAO pode exigir oobCode ────────────────────
+//
+// ⚠️ ESTA É A INVARIANTE QUE PEGA O DEFEITO MAIS CARO DESTE FLUXO.
+//
+// `actionCodeSettings.url` NÃO é o destino do link — o SDK o converte em
+// `continueUrl` (`request.continueUrl = actionCodeSettings.url`), e quem
+// decide o destino é o Action URL do CONSOLE. O `url` é só "para onde ir
+// depois de concluir".
+//
+// Ele apontava para `/auth-action`, que sem `mode` e sem `oobCode` cai no ramo
+// de erro e imprime "Link inválido. Solicite um novo email." Ou seja: a pessoa
+// redefinia a senha com sucesso e a última coisa que o app dizia era que havia
+// falhado.
+//
+// O teste lê o ARQUIVO porque a montagem depende de `window.location.origin`,
+// que não existe no Node — e ler o texto é o que permite provar a invariante
+// sem subir navegador.
+console.log('');
+console.log('6. O continueUrl nao aponta para uma rota que exige oobCode');
+
+const fonteAuthService = readFileSync(
+  new URL('../src/services/authService.js', import.meta.url),
+  'utf8'
+);
+const urlsDeContinuacao = [
+  ...fonteAuthService.matchAll(/url:\s*`\$\{window\.location\.origin\}([^`]*)`/g),
+].map((m) => m[1]);
+
+checar('ha pelo menos um continueUrl para medir', true, urlsDeContinuacao.length > 0);
+checar(
+  'e nenhum deles e /auth-action',
+  true,
+  urlsDeContinuacao.every((u) => !u.startsWith('/auth-action'))
+);
+checar('o destino declarado e o login', true, urlsDeContinuacao.includes('/login'));
+
+// `handleCodeInApp` saiu: pela doc do SDK ela só decide Universal Link para
+// app NATIVO instalado, e este projeto não tem bundleId nem packageName. O
+// comentário antigo lhe atribuía o efeito de "preservar o oobCode na query",
+// que ela não tem — e foi por isso que o fluxo passou por pronto.
+// A busca é pela PROPRIEDADE (`handleCodeInApp:`), não pelo nome solto — o
+// comentário do próprio `authService` explica por que a flag saiu, e medir a
+// menção reprovaria a explicação junto com o defeito. Foi o que aconteceu na
+// primeira versão deste caso.
+checar(
+  'handleCodeInApp nao e declarada (e inerte em PWA)',
+  false,
+  /handleCodeInApp\s*:/.test(fonteAuthService)
+);
+
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

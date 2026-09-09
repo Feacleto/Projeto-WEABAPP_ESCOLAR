@@ -63,19 +63,61 @@ const LINK = {
   'auth/user-not-found': 'Usuário não encontrado.',
 };
 
+/**
+ * PEDIR O LINK DE REDEFINIÇÃO — e por que este contexto precisou existir.
+ *
+ * As três telas que pedem o link chamavam `mensagemDeAuth(err, 'entrar')`, e
+ * `ENTRAR` responde "Email ou senha incorretos." a `user-not-found`. Ou seja:
+ * quem pedia o link para um e-mail sem conta lia uma frase sobre SENHA num
+ * momento em que não digitou senha nenhuma — e voltava ao formulário para
+ * tentar de novo, em laço.
+ *
+ * ⚠️ A DISCRIÇÃO CONTINUA VALENDO AQUI, e por isso `user-not-found` NÃO diz
+ * que a conta não existe. Dizer confirmaria ao atacante quem tem conta no app,
+ * que é exatamente o que `ENTRAR` foi desenhado para impedir. A frase é a
+ * mesma que a pessoa legítima veria — e é verdadeira nos dois casos, porque
+ * ela precisa conferir o endereço de qualquer forma.
+ *
+ * (Com a proteção contra enumeração LIGADA no console — e ela deve ficar —
+ * este código nem chega: o Firebase responde sucesso sem enviar nada. É a
+ * mesma decisão, aplicada no servidor.)
+ *
+ * `unauthorized-continue-uri` e companhia são erro de CONFIGURAÇÃO, não da
+ * pessoa. Sem eles na tabela, o texto cru do SDK vazava em inglês num toast
+ * vermelho — e o motorista concluía que o app estava quebrado.
+ */
+const RESET = {
+  'auth/user-not-found':
+    'Se existir conta com esse email, o link chega em alguns minutos. Confira o endereço e o spam.',
+  'auth/missing-email': 'Digite seu email primeiro.',
+  'auth/unauthorized-continue-uri':
+    'Não foi possível enviar o link deste endereço. Avise a gente — é configuração nossa, não sua.',
+  'auth/invalid-continue-uri':
+    'Não foi possível enviar o link deste endereço. Avise a gente — é configuração nossa, não sua.',
+  'auth/missing-continue-uri':
+    'Não foi possível enviar o link deste endereço. Avise a gente — é configuração nossa, não sua.',
+};
+
 const PADRAO = {
   entrar: 'Erro. Tente novamente.',
   criar: 'Erro. Tente novamente.',
   // O fluxo de link não expõe `err.message`: ali a pessoa chegou de um e-mail
   // e não tem o que fazer com o texto do SDK.
   link: 'Não foi possível concluir. Tente novamente.',
+  // Pedir o link também não expõe: os códigos que sobram aqui são de
+  // configuração do projeto, e o texto do SDK sobre eles é em inglês.
+  reset: 'Não conseguimos enviar o link agora. Tente de novo em um minuto.',
 };
 
 /**
  * A frase que a tela mostra.
  *
  * @param err       o erro do Firebase Auth
- * @param contexto  'entrar' (padrão) | 'criar' | 'link'
+ * @param contexto  'entrar' (padrão) | 'criar' | 'link' | 'reset'
+ *
+ * `link`  = a pessoa CLICOU num link de e-mail e ele falhou.
+ * `reset` = a pessoa PEDIU um link e o envio falhou. São momentos diferentes,
+ *           com frases diferentes — e nenhum dos dois expõe `err.message`.
  *
  * Em `entrar` e `criar`, um código desconhecido cai em `err.message` antes do
  * texto genérico — é informação a mais para quem está depurando, e o SDK
@@ -86,6 +128,10 @@ export function mensagemDeAuth(err, contexto = 'entrar') {
 
   if (contexto === 'link') {
     return LINK[code] || COMUNS[code] || PADRAO.link;
+  }
+
+  if (contexto === 'reset') {
+    return RESET[code] || COMUNS[code] || PADRAO.reset;
   }
 
   const especifico = COMUNS[code] || ENTRAR[code];

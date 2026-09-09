@@ -33,13 +33,48 @@ export async function logout() {
   return signOut(auth);
 }
 
-// O link enviado pelo Firebase aponta de volta pra nossa rota /auth-action
-// (em vez da página hospedada do Firebase em inglês). handleCodeInApp:true
-// preserva o oobCode na query string ao invés de processá-lo automaticamente.
+/**
+ * ⚠️ ESTE `url` NÃO É O DESTINO DO LINK — É O `continueUrl`.
+ *
+ * O comentário anterior afirmava que ele "aponta de volta pra nossa rota
+ * /auth-action (em vez da página hospedada do Firebase em inglês)". Falso, e
+ * foi o que fez este fluxo passar por pronto:
+ *
+ *   node_modules/@firebase/auth/.../index-*.js →
+ *     request.continueUrl = actionCodeSettings.url;
+ *
+ * e a doc do próprio SDK diz que este campo é "the deep link in the
+ * `continueUrl` query parameter". Quem decide o destino do link é o **Action
+ * URL do console** (Authentication → Templates), cujo padrão é
+ * `<projeto>.firebaseapp.com/__/auth/action`.
+ *
+ * ── O QUE ISSO CUSTAVA
+ * Com o Action URL no padrão, a pessoa redefine a senha num domínio sem marca
+ * — que parece phishing — e o botão "Continuar" do widget a manda para o
+ * `continueUrl`. Como este apontava para `/auth-action` SEM `mode` nem
+ * `oobCode`, `AuthAction` caía no ramo de erro e imprimia
+ * "Link inválido. Solicite um novo email."
+ *
+ * Ou seja: ela fazia tudo certo, a senha nova ficava ativa, e a última coisa
+ * que o app dizia era que havia falhado.
+ *
+ * ── POR QUE `/login` É O DESTINO CERTO AQUI
+ * `continueUrl` é "para onde ir DEPOIS de concluir", e depois de trocar a
+ * senha o lugar é a tela de entrar. `/auth-action` só faz sentido recebendo
+ * `oobCode`, e quem entrega isso é o console.
+ *
+ * Isto continua valendo depois de o Action URL ser corrigido: link antigo já
+ * enviado, ou um template que ficou fora do ajuste, seguem passando pelo
+ * widget — e agora terminam no lugar certo.
+ *
+ * `handleCodeInApp` SAIU: pela doc do SDK ela só decide se o link vira
+ * Universal Link / App Link para um app NATIVO instalado, e não há
+ * `iOS.bundleId` nem `android.packageName` neste projeto. Para PWA é inerte, e
+ * o comentário antigo lhe atribuía um efeito que ela não tem.
+ */
 export async function resetPassword(email) {
   const actionCodeSettings = {
-    url: `${window.location.origin}/auth-action`,
-    handleCodeInApp: true,
+    url: `${window.location.origin}/login`,
   };
   return sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
 }
@@ -153,18 +188,49 @@ export async function authenticateAndRedeem({ inviteCode, email, password, name 
   let user;
   let created = false;
 
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-    user = cred.user;
-    created = true;
-  } catch (err) {
-    if (err?.code === 'auth/email-already-in-use') {
-      // Já tem conta: a mesma senha resolve. Se estiver errada, o erro que
-      // sobe é de credencial inválida, e a tela oferece redefinir senha.
-      const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+  // ⚠️ A SESSÃO ABERTA VALE, E IGNORÁ-LA CRIAVA UM BECO SEM SAÍDA.
+  //
+  // Cenário real, e comum: a mãe abre o link do convite, toca em "Continuar
+  // com Google", cai na sala de espera, volta ao convite e escolhe "não uso
+  // Google — entrar com email". Ela digita o MESMO endereço e inventa uma
+  // senha.
+  //
+  // Sem esta checagem: `createUserWithEmailAndPassword` devolve
+  // `email-already-in-use` (a conta do Google existe), o código cai no
+  // `signInWithEmailAndPassword` com uma senha que aquela conta NUNCA teve, e
+  // o Firebase responde `invalid-credential`. A tela então informa que "essa
+  // senha não confere" — de uma senha que ela acabou de inventar.
+  //
+  // E pior: conta que nasceu no Google não tem provedor de senha, então
+  // "esqueci minha senha" também não a salva. Beco fechado, na primeira tela.
+  //
+  // `inscreverAssociado` já resolve isto do lado do motorista, com o mesmo
+  // argumento — a correção não tinha sido trazida para cá.
+  const sessaoAberta = auth.currentUser;
+  const mesmaPessoa =
+    sessaoAberta &&
+    String(sessaoAberta.email || '').trim().toLowerCase() === cleanEmail.toLowerCase();
+
+  if (mesmaPessoa) {
+    // Aproveita a sessão: ela já provou quem é pelo Google. A senha digitada
+    // é descartada de propósito — associá-la exigiria `linkWithCredential`, e
+    // criar um segundo jeito de entrar sem ela pedir seria decidir por ela.
+    user = sessaoAberta;
+  } else {
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       user = cred.user;
-    } else {
-      throw err;
+      created = true;
+    } catch (err) {
+      if (err?.code === 'auth/email-already-in-use') {
+        // Já tem conta: a mesma senha resolve. Se estiver errada, o erro que
+        // sobe é de credencial inválida, e a tela oferece redefinir senha
+        // (`AuthSheet` e `/first-access` — os dois passaram a oferecer).
+        const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        user = cred.user;
+      } else {
+        throw err;
+      }
     }
   }
 

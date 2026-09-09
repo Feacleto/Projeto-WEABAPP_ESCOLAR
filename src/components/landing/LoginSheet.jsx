@@ -175,7 +175,14 @@ export default function LoginSheet({
         { duration: 6000 }
       );
     } catch (err) {
-      toast.error(mensagemDeAuth(err, 'entrar'));
+      // ⚠️ CONTEXTO `reset`, NÃO `entrar`.
+      //
+      // `ENTRAR` responde "Email ou senha incorretos." a `user-not-found` — e
+      // aqui ela não digitou senha nenhuma. Ela lia uma frase sobre senha,
+      // voltava ao formulário e tentava de novo, em laço. `reset` tem frase
+      // própria, discreta (não confirma se a conta existe) e cobre os códigos
+      // de configuração, que antes vazavam em inglês.
+      toast.error(mensagemDeAuth(err, 'reset'));
     } finally {
       setResetting(false);
     }

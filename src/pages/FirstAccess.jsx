@@ -17,7 +17,7 @@ import FundoNoturno from '../components/common/FundoNoturno';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
-import { authenticateAndRedeem, googleAndRedeem } from '../services/authService';
+import { authenticateAndRedeem, googleAndRedeem, resetPassword } from '../services/authService';
 import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
@@ -68,10 +68,19 @@ export default function FirstAccess() {
   const location = useLocation();
   const { profile, loading: authLoading, refreshProfile } = useAuth();
 
-  // O CÓDIGO PODE CHEGAR PRONTO. Quem veio da aba "Criar conta" do login e
-  // preferiu e-mail e senha já digitou o código lá — redigitar seria pedágio
-  // no último passo, e é onde se desiste. Se ele veio, a seção abre junto:
-  // campo preenchido atrás de um "tenho um código" fechado é campo invisível.
+  // O CÓDIGO PODE CHEGAR PRONTO — mas HOJE NUNCA CHEGA, e isso é deliberado.
+  //
+  // A aba "Criar conta" do login pedia o código, e este comentário descrevia
+  // aquele fluxo. O campo saiu de lá em 06/09/2026 (código é coisa de
+  // responsável, e o motorista lia aquilo como "preciso de código pra me
+  // cadastrar"), então o `state` que chega aqui traz só `{ de: 'escolha' }`:
+  // `codigoRecebido` é sempre `''`.
+  //
+  // A leitura fica porque a porta é legítima — quem chegar aqui com o código
+  // na mão continua sendo atendido, e o link do convite pode passar a usá-la.
+  // O que saiu foi a PROMESSA na tela: a dica dizia "se você veio da tela
+  // anterior, ele já vem preenchido", e a pessoa olhava o campo vazio e
+  // desconfiava de ter aberto a tela errada.
   const codigoRecebido = codigoDoTexto(location.state?.code || '');
 
   // Quem veio da bifurcação do login está NO MEIO de uma escolha: o
@@ -91,6 +100,9 @@ export default function FirstAccess() {
   const [tocou, setTocou] = useState({});
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  // A conta já existe com outra senha — ver o `catch` de `onSubmit`.
+  const [contaExiste, setContaExiste] = useState(false);
+  const [enviandoReset, setEnviandoReset] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   // Já autenticado? Vai pro painel — inclusive quem cair aqui por link antigo.
@@ -169,8 +181,55 @@ export default function FirstAccess() {
       // mesmo erro, duas respostas. A traducao ja cai em err.message quando
       // nao conhece o codigo.
       toast.error(mensagemDeAuth(err, 'criar'));
+      // ⚠️ E QUANDO O E-MAIL JÁ TEM CONTA COM OUTRA SENHA, OFERECE A SAÍDA.
+      //
+      // Este é o beco da responsável que "perdeu o link e voltou pelo site":
+      // `authenticateAndRedeem` tenta criar, cai em `email-already-in-use`,
+      // tenta entrar com a mesma senha e falha com `invalid-credential`. O
+      // toast dizia "Email ou senha incorretos." e a tela não oferecia NADA —
+      // enquanto o comentário de `authenticateAndRedeem` promete, com essas
+      // palavras, que "a tela oferece redefinir senha".
+      //
+      // Agora ela oferece. O botão só aparece neste caso, porque é o único em
+      // que redefinir é a resposta: quem nunca teve conta não tem senha a
+      // redefinir.
+      const codigo = err?.code || '';
+      if (
+        codigo === 'auth/invalid-credential' ||
+        codigo === 'auth/wrong-password' ||
+        codigo === 'auth/email-already-in-use'
+      ) {
+        setContaExiste(true);
+      }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * Pede o link de redefinição para o e-mail que ela já digitou.
+   *
+   * Sem estado ocupado próprio ela toca duas vezes e leva
+   * `too-many-requests`, que a bloqueia por minutos — no último passo do
+   * cadastro, que é justo onde se desiste.
+   */
+  const onEsqueciSenha = async () => {
+    const alvo = String(email || '').trim();
+    if (!alvo) {
+      toast.error('Digite seu email primeiro.');
+      return;
+    }
+    setEnviandoReset(true);
+    try {
+      await resetPassword(alvo);
+      toast.success(
+        'Enviamos um link para redefinir sua senha. Confira sua caixa de entrada (e o spam!).',
+        { duration: 6000 }
+      );
+    } catch (err) {
+      toast.error(mensagemDeAuth(err, 'reset'));
+    } finally {
+      setEnviandoReset(false);
     }
   };
 
@@ -370,7 +429,7 @@ export default function FirstAccess() {
               onChange={(e) => setCode(codigoDoTexto(e.target.value))}
               autoCapitalize="characters"
               maxLength={8}
-              hint="8 caracteres, começa com TN. Se você veio da tela anterior, ele já vem preenchido."
+              hint="8 caracteres, começa com TN. Está no link que o motorista mandou."
               error={errors.code}
               required
               // O código é lido em voz alta e conferido letra por letra: mono e
@@ -475,6 +534,32 @@ export default function FirstAccess() {
                           Criar minha conta
                           <ArrowRight size={17} />
                         </Button>
+                      </div>
+                    )}
+
+                    {/* A SAÍDA DO BECO — só aparece quando ela é a resposta.
+                      *
+                      * Este e-mail já tem conta e a senha digitada não é a
+                      * dela. Sem este bloco, a tela dizia "Email ou senha
+                      * incorretos." e não oferecia nada — e é a tela de quem
+                      * perdeu o link do convite e voltou pelo site. */}
+                    {contaExiste && (
+                      <div className="animate-step-in rounded-2xl border border-warningBorder bg-warningSoft p-3">
+                        <p className="text-xs leading-relaxed text-warningText">
+                          Este email já tem conta no Alô Buzinou, e a senha não
+                          confere. Se você não lembra, a gente manda um link
+                          para você criar outra.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={onEsqueciSenha}
+                          disabled={enviandoReset}
+                          className="tap mt-2 w-full text-sm font-bold text-warningText underline disabled:opacity-50"
+                        >
+                          {enviandoReset
+                            ? 'Enviando...'
+                            : 'Enviar link para redefinir minha senha'}
+                        </button>
                       </div>
                     )}
                   </form>

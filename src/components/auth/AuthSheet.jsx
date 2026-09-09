@@ -12,6 +12,7 @@ import {
 } from '../../services/authService';
 import OpenInBrowser from './OpenInBrowser';
 import { canUseGoogleSignIn, isInAppBrowser } from '../../compartilhado/browserEnv';
+import { mensagemDeAuth } from '../../dominio/identidade/authErrors';
 
 /**
  * Folha de autenticação que aparece na PRIMEIRA AÇÃO do responsável.
@@ -67,6 +68,7 @@ export default function AuthSheet({
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [wrongPassword, setWrongPassword] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [errors, setErrors] = useState({});
 
   // Fecha com Esc — a folha cobre a tela inteira no celular.
@@ -129,18 +131,37 @@ export default function AuthSheet({
     }
   };
 
+  /**
+   * ⚠️ ESTE `catch` NÃO TINHA BINDING, e engolia o código do erro.
+   *
+   * Era `catch { toast.error('Não conseguimos enviar agora.'); }`. Com isso,
+   * e-mail digitado errado, bloqueio por tentativas e erro de configuração
+   * viravam a MESMA frase — e `mensagemDeAuth` nem era chamada. É a
+   * divergência de quatro cópias que `authErrors.js` nasceu para matar,
+   * sobrevivendo justamente no arquivo que a unificação não alcançou.
+   *
+   * E esta é a folha do LINK DO CONVITE: a primeira tela que a mãe vê. Ela
+   * recebia "Não conseguimos enviar agora" quando o problema era o endereço
+   * que ela mesma digitou, e ficava tentando reenviar.
+   *
+   * O estado ocupado também faltava: sem ele, dois toques rendem
+   * `too-many-requests` — que naquele `catch` saía como a mesma frase.
+   */
   const onForgot = async () => {
     if (!email.trim()) {
       toast.error('Escreva seu email primeiro.');
       return;
     }
+    setResetting(true);
     try {
       await resetPassword(email.trim());
       toast.success('Enviamos um link pra redefinir sua senha. Olhe o email.', {
         duration: 6000,
       });
-    } catch {
-      toast.error('Não conseguimos enviar agora.');
+    } catch (err) {
+      toast.error(mensagemDeAuth(err, 'reset'));
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -243,15 +264,25 @@ export default function AuthSheet({
             <Button type="submit" loading={busy}>
               Continuar
             </Button>
-            {wrongPassword && (
-              <button
-                type="button"
-                onClick={onForgot}
-                className="tap w-full text-sm font-semibold text-primary underline py-1"
-              >
-                Esqueci minha senha
-              </button>
-            )}
+            {/* ⚠️ SEMPRE VISÍVEL, E ANTES SÓ APARECIA DEPOIS DO ERRO.
+              *
+              * A condição era `{wrongPassword && …}`: a mãe que já tem conta e
+              * não lembra a senha tinha que ERRAR primeiro para descobrir que
+              * havia saída. O comentário da tela de login já sabe a regra
+              * certa — "quem chegou aqui e não lembra a senha precisa achar
+              * isto ANTES de errar três vezes" — e esta folha fazia o
+              * contrário, sendo a primeira tela que ela vê.
+              *
+              * `disabled` enquanto envia porque o segundo toque rende
+              * `too-many-requests` e a bloqueia por minutos. */}
+            <button
+              type="button"
+              onClick={onForgot}
+              disabled={resetting || busy}
+              className="tap w-full text-sm font-semibold text-primary underline py-1 disabled:opacity-50"
+            >
+              {resetting ? 'Enviando...' : 'Esqueci minha senha'}
+            </button>
           </form>
         )}
 

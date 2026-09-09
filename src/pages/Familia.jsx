@@ -218,6 +218,13 @@ export default function Familia() {
   // normal de login resolver em vez de mostrar a porta pra quem já entrou.
   // Leva a frente junto: sem isso o /login mostra as portas do motorista a
   // quem estava na porta da família.
+  //
+  // ⚠️ ISTO DEPENDE DE O `/login` MANDAR SESSÃO SEM PAPEL PARA `/comecar`.
+  //
+  // Enquanto o efeito de redirecionamento do login exigia `profile?.role`,
+  // este `Navigate` fechava um laço: a `/familia` devolvia para o `/login`, e
+  // no `/login` nada acontecia — nem navegação, nem erro. Mandar para cá só é
+  // "deixar o login resolver" porque agora ele resolve.
   if (user && !profile) {
     return (
       <Navigate to="/login" replace state={{ frente: FRENTE_FAMILIA }} />
