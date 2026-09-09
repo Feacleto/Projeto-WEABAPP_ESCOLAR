@@ -520,7 +520,7 @@ async function main() {
   await tetoDeGets(tio1);
   await vagaContratada(tio1, tio2);
   await oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon });
-  await decisao12({ tio1, tio2, pai1 });
+  await decisao12({ tio1, tio2, pai1, novato });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -819,6 +819,76 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   await semear('users/' + tio2.uid, {
     role: S('admin'), name: S('Tio Dois'), pixKey: S('tio2@pix.com'),
   });
+
+  console.log('\n=== A PORTA DA FRENTE — o payload REAL de `inscreverAssociado` ===');
+  //
+  // POR QUE ESTE BLOCO EXISTE, e e o caso mais caro que este arquivo ja
+  // deixou passar.
+  //
+  // Todo motorista deste teste e SEMEADO com `semear`, que usa o bearer de
+  // Admin SDK e ignora regras. Isso monta o cenario, mas significa que o
+  // `allow create` de `users` — a porta por onde TODO motorista entra — nunca
+  // era exercitado por um cliente de verdade.
+  //
+  // Quando `origem` nasceu no `inscreverAssociado` e nao subiu para o
+  // `hasOnly`, os 202 casos daqui continuaram verdes e o produto parou de
+  // aceitar cadastro: `permission-denied` em 100% das inscricoes, com a conta
+  // do Auth ja criada e a pessoa presa numa sessao sem documento.
+  //
+  // O caso NEGATIVO abaixo e o que da valor ao positivo: ele prova que a
+  // whitelist ainda e whitelist. Sem ele, alguem "conserta" um create
+  // recusado trocando o `hasOnly` por `hasAll` e nada acusa.
+  {
+    const recem = await criarLogin(`inscricao.${Date.now()}@teste.local`);
+    // Exatamente o que `src/services/associadoService.js` grava — inclusive
+    // `origem`, que `resolverOrigem` SEMPRE devolve (`{canal:'direto'}` no
+    // pior caso), e por isso vai em todo cadastro.
+    const payloadDeInscricao = {
+      role: S('admin'),
+      name: S('Tio Recem Chegado'),
+      email: S('recem@teste.local'),
+      phone: S('11988887777'),
+      city: S('Sao Paulo'),
+      criancasEstimadas: N(12),
+      createdAt: T(0),
+      origem: {
+        mapValue: { fields: { canal: S('direto'), detalhe: S('') } },
+      },
+    };
+    checar('inscricao', 'o motorista se cadastra com o payload REAL do app', 'PASSA',
+      await criar('users', recem.uid, recem, payloadDeInscricao));
+
+    const outro = await criarLogin(`inscricao2.${Date.now()}@teste.local`);
+    checar('inscricao', 'e sem `origem` tambem passa (o campo e opcional)', 'PASSA',
+      await criar('users', outro.uid, outro, {
+        role: S('admin'), name: S('Tio Sem Origem'), email: S('so@teste.local'),
+        phone: S('11977776666'), city: S('Osasco'), criancasEstimadas: N(3),
+        createdAt: T(0),
+      }));
+
+    // A WHITELIST CONTINUA SENDO WHITELIST. Um campo a mais e recusa, e cada
+    // um destes seria uma fraude: nascer com teto, com o teste escolhido, ja
+    // pago, ou dono.
+    const comExtra = (extra) => {
+      const terceiro = criarLogin(`inscricao.extra.${Date.now()}.${Math.random()}@teste.local`);
+      return terceiro.then((s) =>
+        criar('users', s.uid, s, {
+          role: S('admin'), name: S('Tio Esperto'), email: S('e@teste.local'),
+          phone: S('11966665555'), city: S('Diadema'), criancasEstimadas: N(1),
+          createdAt: T(0), ...extra,
+        }));
+    };
+    checar('inscricao', 'mas nao nasce com `limiteCriancas`', 'NEGA',
+      await comExtra({ limiteCriancas: N(999) }));
+    checar('inscricao', 'nem com `trialInicio` escolhido a dedo', 'NEGA',
+      await comExtra({ trialInicio: T(0) }));
+    checar('inscricao', 'nem com `assinaturaAte` no futuro', 'NEGA',
+      await comExtra({ assinaturaAte: T(365) }));
+    checar('inscricao', 'nem com `superAdmin`', 'NEGA',
+      await comExtra({ superAdmin: B(true) }));
+    checar('inscricao', 'nem com o aceite de termos ja forjado', 'NEGA',
+      await comExtra({ termsVersion: S('v1') }));
+  }
 
   console.log('\n=== O DINHEIRO — as duas metades, sem cobertura ate aqui ===');
 
@@ -1366,6 +1436,44 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('pos', 'a mae de dois filhos le o doc do SEGUNDO motorista', 'PASSA',
     await ler('users/' + tio2.uid, pai1));
 
+  // ⚠️ E AS OUTRAS TRES SUPERFICIES DA MESMA MAE.
+  //
+  // Quando este `allow get` passou a aceitar `adminUids`, o idioma foi escrito
+  // inline e TRES regras ficaram atras, cada uma comparando so o singular:
+  // `liveLocation`, `notifications` e `agendaEntries`. Como o unico caso aqui
+  // era a leitura do doc do motorista, a bateria seguiu verde e a mae de perua
+  // dupla ficou sem o mapa do segundo filho, sem nenhum aviso trocado com o
+  // segundo motorista, e sem os recados de escola dele no caderno.
+  //
+  // Os quatro casos abaixo existem para que o helper `ehMotoristaDaFamilia`
+  // nao possa ser desfeito em um lugar so.
+  await semear('liveLocation/' + tio2.uid, {
+    lat: N(-23.55), lng: N(-46.63), updatedAt: T(0),
+  });
+  checar('pos', 'e ve a PERUA do segundo motorista no mapa', 'PASSA',
+    await ler('liveLocation/' + tio2.uid, pai1));
+
+  checar('pos', 'e avisa o SEGUNDO motorista ("paguei")', 'PASSA',
+    await criar('notifications', 'nt-dupla-' + Date.now(), pai1, {
+      userId: S(tio2.uid), type: S('payment_claimed'),
+      title: S('Mensalidade paga'), createdAt: T(0),
+    }));
+
+  await semear('agendaEntries/ag-escola-tio2', {
+    scope: S('school'), schoolName: S('EMEF Teste'), adminUid: S(tio2.uid),
+    parentUids: { arrayValue: { values: [S(pai1.uid)] } },
+    createdAt: T(0), type: S('aviso'),
+  });
+  checar('pos', 'e le o recado de escola do segundo motorista', 'PASSA',
+    await ler('agendaEntries/ag-escola-tio2', pai1));
+
+  // A lista nao e curinga em NENHUMA das tres: motorista de fora continua fora.
+  await semear('liveLocation/' + novato.uid, {
+    lat: N(-23.5), lng: N(-46.6), updatedAt: T(0),
+  });
+  checar('pix', 'mas nao a perua de um motorista que nao leva filho dela', 'NEGA',
+    await ler('liveLocation/' + novato.uid, pai1));
+
   // E a lista nao e curinga: motorista que nao leva filho dela continua fora.
   await semear('users/' + pai1.uid, {
     role: S('parent'), name: S('Pai Um'), adminUid: S(tio1.uid), childId: S('kid1'),
@@ -1392,7 +1500,7 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
  * Cada um destes falhou contra as rules antes do conserto — é por isso que
  * eles existem, e é o que a decisão exige.
  */
-async function decisao12({ tio1, tio2, pai1 }) {
+async function decisao12({ tio1, tio2, pai1, novato }) {
   console.log('\n=== DECISÃO 12 — a lista de campos proibidos ===');
 
   // Restaura o elenco: `vagaContratada` e o bloco anterior reescrevem estes
@@ -1528,6 +1636,127 @@ async function decisao12({ tio1, tio2, pai1 }) {
   });
   checar('decisao12', 'motorista_nao_lista_feedbacks_da_plataforma', 'NEGA',
     await listar('feedbacks', tio2));
+
+  // ── O MOTORISTA NAO FORJA O CONSENTIMENTO DA FAMILIA DELE ───────────────
+  //
+  // O ramo do motorista no `allow update` de `users` estava escopado por
+  // `adminUid` e SEM lista de campos. Isso fechou "qualquer motorista em
+  // qualquer doc" e deixou aberto "o motorista dele em tudo que nao esta na
+  // lista de proibidos" — que incluia dois campos que nao sao cadastro.
+  //
+  // Sondado no emulador antes do conserto: HTTP 200 nos dois.
+  //
+  //   termsVersion  aceite de LGPD escrito por OUTRA pessoa. O `allow create`
+  //                 exclui esse campo dizendo que "consentimento que a
+  //                 plataforma escreve pelo usuario nao e consentimento" — e
+  //                 o `update` o deixava passar na mao de terceiro.
+  //   fcmTokens     apagar = a familia para de receber push, inclusive a
+  //                 buzina. ACRESCENTAR O PROPRIO = o motorista passa a
+  //                 receber os pushes dela.
+  //
+  // O caso POSITIVO existe pelo motivo de sempre: sem ele, este bloco fica
+  // verde no dia em que o ramo do motorista desaparecer por inteiro, e
+  // ninguem descobre que a correcao de cadastro parou de funcionar.
+  await semear('users/' + pai1.uid, {
+    role: S('parent'), name: S('Mae'), phone: S('11911112222'),
+    email: S('mae@teste.local'), adminUid: S(tio1.uid),
+    childIds: { arrayValue: { values: [S('kid1')] } },
+    termsVersion: S('v1'),
+  });
+
+  checar('consentimento', 'motorista_nao_forja_o_aceite_de_termos_da_familia', 'NEGA',
+    await escrever('users/' + pai1.uid, tio1, { termsVersion: S('v9') }, ['termsVersion']));
+  checar('consentimento', 'nem a data do aceite', 'NEGA',
+    await escrever('users/' + pai1.uid, tio1, { termsAcceptedAt: T(0) }, ['termsAcceptedAt']));
+  checar('consentimento', 'motorista_nao_mexe_nos_tokens_de_push_da_familia', 'NEGA',
+    await escrever('users/' + pai1.uid, tio1,
+      { fcmTokens: { arrayValue: { values: [S('token-do-tio')] } } }, ['fcmTokens']));
+  checar('consentimento', 'e outro motorista continua nao alcancando nada dela', 'NEGA',
+    await escrever('users/' + pai1.uid, tio2, { phone: S('11900000000') }, ['phone']));
+  // ⚠️ NEM O TELEFONE — o ramo do motorista SAIU do `allow update` de `users`.
+  //
+  // Estreitar para `['name','email','phone']` foi o primeiro conserto, e a
+  // varredura seguinte mostrou que nem isso tem consumidor: `updateProfile` só
+  // é chamado com o próprio uid, e o contato que o motorista edita vive em
+  // `children.parentName`/`parentPhone`. Permissão sem razão é como uma lista
+  // de exceção vira lista de permissão.
+  checar('consentimento', 'e nem o telefone — nao ha ramo de motorista aqui', 'NEGA',
+    await escrever('users/' + pai1.uid, tio1, { phone: S('11933334444') }, ['phone']));
+  checar('pos', 'e a propria familia continua registrando o aceite dela', 'PASSA',
+    await escrever('users/' + pai1.uid, pai1, { termsVersion: S('v2') }, ['termsVersion']));
+
+  // ── SAUDE DA CRIANCA: SO A RESPONSAVEL ESCREVE ──────────────────────────
+  //
+  // ⚠️ POR QUE ESTE BLOCO EXISTE
+  //
+  // O campo era do MOTORISTA: o cadastro de crianca pedia "Alergias,
+  // instrucoes especiais...", ou seja, o app CONVIDAVA ele a escrever dado de
+  // saude de menor — sensivel pela LGPD (art. 5o II), exigindo consentimento
+  // especifico e destacado (art. 11 I) e, sendo crianca, o art. 14 §1o. E quem
+  // digitava nao era quem consentia: a crianca e cadastrada ANTES do convite,
+  // e a mae pode nunca resgata-lo.
+  //
+  // O ramo do motorista no `allow update` de `children` permite QUALQUER outro
+  // campo — entao sem esta prova o desenho de `docs/consentimento-saude.md`
+  // seria so interface. Interface nao e tranca.
+  await semear('children/kid-saude', {
+    name: S('Ana'), adminUid: S(tio1.uid), parentUid: S(pai1.uid), active: B(true),
+  });
+
+  checar('saude', 'o motorista NAO escreve nota de saude da crianca dele', 'NEGA',
+    await escrever('children/kid-saude', tio1,
+      { saudeNotas: S('alergia a amendoim') }, ['saudeNotas']));
+  checar('saude', 'nem a data do consentimento', 'NEGA',
+    await escrever('children/kid-saude', tio1,
+      { saudeConsentidaEm: T(0) }, ['saudeConsentidaEm']));
+  checar('saude', 'e outro motorista muito menos', 'NEGA',
+    await escrever('children/kid-saude', tio2,
+      { saudeNotas: S('x') }, ['saudeNotas']));
+
+  // ⚠️ OS DOIS CAMPOS ANDAM JUNTOS: nota sem data e o dado sem o registro do
+  // consentimento — o passivo sem a defesa.
+  checar('saude', 'a responsavel nao grava a nota SEM a data do consentimento', 'NEGA',
+    await escrever('children/kid-saude', pai1,
+      { saudeNotas: S('alergia a amendoim') }, ['saudeNotas']));
+  checar('pos', 'mas grava os dois juntos', 'PASSA',
+    await escrever('children/kid-saude', pai1,
+      { saudeNotas: S('alergia a amendoim'), saudeConsentidaEm: T(0) },
+      ['saudeNotas', 'saudeConsentidaEm']));
+  // ⚠️ ORDEM IMPORTA AQUI, e a primeira versao deste bloco errou por isso.
+  //
+  // O caso da nota orfa vem ANTES do de apagar: se ele viesse depois, o
+  // documento ja estaria com os dois campos vazios, e apagar "so a nota"
+  // satisfaria a regra dos dois vazios — passando verde pelo motivo errado.
+  // Aqui o documento ainda tem a data, entao limpar so a nota deixaria a data
+  // orfa, que e o que a regra recusa.
+  checar('saude', 'nao apaga so a nota, deixando a data orfa', 'NEGA',
+    await escrever('children/kid-saude', pai1,
+      { saudeNotas: S('') }, ['saudeNotas']));
+  checar('saude', 'nem apaga so a data, deixando a nota sem consentimento', 'NEGA',
+    await escrever('children/kid-saude', pai1,
+      { saudeConsentidaEm: { nullValue: null } }, ['saudeConsentidaEm']));
+  // E APAGAR OS DOIS JUNTOS PASSA: guardar a data de um consentimento sem o
+  // dado que ele autorizava nao serve a ninguem, e o art. 18 VI (revogacao)
+  // precisa de saida dentro do produto.
+  checar('pos', 'e apaga os dois juntos (o direito de revogar)', 'PASSA',
+    await escrever('children/kid-saude', pai1,
+      { saudeNotas: S(''), saudeConsentidaEm: { nullValue: null } },
+      ['saudeNotas', 'saudeConsentidaEm']));
+  // Responsavel de OUTRA crianca nao alcanca esta.
+  checar('saude', 'responsavel alheio nao escreve saude desta crianca', 'NEGA',
+    await escrever('children/kid-saude', novato,
+      { saudeNotas: S('x'), saudeConsentidaEm: T(0) },
+      ['saudeNotas', 'saudeConsentidaEm']));
+  // O motorista LE — e e o ponto do dado existir.
+  checar('pos', 'o motorista DELA le a crianca (e a nota vem com ela)', 'PASSA',
+    await ler('children/kid-saude', tio1));
+
+  // A PORTA QUE CONTINUA ABERTA, e tem consumidor: remover pai vinculado.
+  //
+  // ⚠️ POR ÚLTIMO DE PROPÓSITO — este caso APAGA o documento, e qualquer
+  // asserção depois dele mediria a ausência do doc em vez da regra.
+  checar('pos', 'mas o motorista DELA ainda APAGA o doc dela (remover vinculado)', 'PASSA',
+    await apagar('users/' + pai1.uid, tio1));
 }
 
 /**

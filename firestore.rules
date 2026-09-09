@@ -118,6 +118,34 @@ service cloud.firestore {
         && userDoc().role == 'admin';
     }
 
+    /**
+     * "ESTE MOTORISTA É DE UM DOS FILHOS DE QUEM ESTÁ LOGADO?"
+     *
+     * ⚠️ SEMPRE OS DOIS CAMPOS, E ESTE HELPER EXISTE PORQUE O IDIOMA SOLTO
+     * FALHOU EM TRÊS LUGARES.
+     *
+     * `users.adminUid` é SINGULAR e guarda só o PRIMEIRO motorista daquela
+     * família — quem chegou primeiro no `redeemInvite`. `users.adminUids` é a
+     * lista de todos, mantida por `arrayUnion`. A interface resolve o
+     * motorista pelo `adminUid` da CRIANÇA ATIVA, então a mãe com filhos em
+     * peruas diferentes precisa alcançar os dois documentos.
+     *
+     * Quando o `allow get` de `users` foi corrigido para aceitar a lista, o
+     * idioma foi escrito inline — e `liveLocation`, `notifications` e
+     * `agendaEntries` ficaram atrás, cada uma comparando só o singular. O
+     * efeito era silencioso e específico: a mãe de perua dupla perdia o MAPA
+     * do segundo filho, nenhum aviso passava entre ela e o segundo motorista,
+     * e os recados de escola dele desapareciam do caderno. Três telas, um
+     * campo, nenhum erro visível.
+     *
+     * Regra nova que escope por motorista da família chama ISTO, nunca
+     * `userDoc().adminUid` direto.
+     */
+    function ehMotoristaDaFamilia(uidDoMotorista) {
+      return userDoc().get('adminUid', '') == uidDoMotorista
+        || uidDoMotorista in userDoc().get('adminUids', []);
+    }
+
     // "ESTE DOCUMENTO É DESTE MOTORISTA?" — o escopo por parceiro.
     //
     // Vale pra `children` e `payments`, as duas coleções que carregam a
@@ -426,8 +454,18 @@ service cloud.firestore {
       //
       // O QUE O DONO NÃO CONSEGUE FAZER AQUI, mesmo tendo o create liberado:
       //   - criar outro DONO. `role` tem que ser 'admin', e o `hasOnly`
-      //     abaixo nem admite a chave `superAdmin`. O dono é uma conta só, e
-      //     essa contagem não pode depender de bom comportamento do cliente;
+      //     abaixo nem admite a chave `superAdmin`.
+      //
+      //     ⚠️ ESTA LINHA DIZIA "o dono é uma conta só", e era o oposto do
+      //     resto do projeto: `isOwner()` aqui e `ehDono()` no cliente sempre
+      //     checaram o PAPEL, nunca a identidade — duas contas com
+      //     `role: 'owner'` sempre foram duas donas (ver `papeis.js` e o
+      //     CLAUDE.md). Quem lesse só isto concluiria o contrário, no bloco
+      //     que governa criação de conta.
+      //
+      //     O que a regra garante não é a contagem: é que quem NASCE por aqui
+      //     nasce motorista. Conta de dono se cria pelo console, e é assim de
+      //     propósito;
       //   - vincular criança. `childId`/`childIds` estão fora da whitelist:
       //     quem cria vínculo é o resgate de convite, não a gestão;
       //   - forjar aceite de termos. `termsVersion` e companhia estão fora:
@@ -435,10 +473,17 @@ service cloud.firestore {
       //     login. Consentimento que a plataforma escreve pelo usuário não é
       //     consentimento.
       //
-      // A criação do login no Firebase Auth acontece no cliente, numa
-      // instância secundária (src/services/provisionamentoService.js) — o
-      // Auth já permite a qualquer pessoa criar conta com e-mail e senha,
-      // então o privilégio de verdade é ESTE doc, e é aqui que ele é gateado.
+      // A criação do login no Firebase Auth acontece no CLIENTE
+      // (`inscreverAssociado`, em `src/services/associadoService.js`) — o Auth
+      // já permite a qualquer pessoa criar conta com e-mail e senha, então o
+      // privilégio de verdade é ESTE doc, e é aqui que ele é gateado.
+      //
+      // ⚠️ ESTA LINHA APONTAVA PARA `provisionamentoService.js`, que não
+      // existe: saiu com o provisionamento pelo dono. Ponteiro morto no
+      // arquivo que é a segurança real do app manda o próximo leitor procurar
+      // a criação de conta num lugar que nunca vai encontrar — e o bloco
+      // 30 linhas abaixo já registrava que o arquivo não existe, o que fazia
+      // o mesmo comentário se contradizer dentro de si.
       // O RAMO DE BOOTSTRAP TAMBÉM TEM WHITELIST — ele era o único sem.
       //
       // Os outros dois ramos listam os campos permitidos, e `superAdmin` fica
@@ -481,6 +526,19 @@ service cloud.firestore {
       //   criancasAtivas   zerar o contador que as rules usam pra cobrar a vaga
       //   suspenso         nascer não-suspenso é o padrão; escrever é do dono
       //   termsVersion     forjar o próprio aceite de termos
+      //
+      // `origem` ENTRA, e pelo mesmo critério que deixa `ultimaRota` fora da
+      // lista de proibidos do `update`: mentir nela não vira desconto, prazo
+      // nem permissão — suja a contagem de canal do dono e nada mais. É sinal,
+      // não cláusula.
+      //
+      // ⚠️ E ELA PRECISA ESTAR AQUI PORQUE ESTA LISTA É DE PERMITIDOS. O
+      // `update` é lista de PROIBIDOS e aceita campo novo calado; o `create`
+      // recusa. Quando `origem` nasceu no `inscreverAssociado` e não subiu
+      // para cá, TODO cadastro de motorista passou a devolver
+      // `permission-denied` — com a conta do Auth já criada e a pessoa presa
+      // numa sessão sem documento. Campo novo no payload de inscrição entra
+      // nesta lista na MESMA alteração, ou fecha a porta da frente do produto.
       // SESSAO ANONIMA NAO VIRA MOTORISTA.
       //
       // `isSignedIn()` e so "tem token", e token anonimo se cria aos milhares
@@ -496,7 +554,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['role', 'createdAt'])
         && request.resource.data.keys().hasOnly([
           'role', 'name', 'email', 'phone', 'city',
-          'criancasEstimadas', 'createdAt'
+          'criancasEstimadas', 'createdAt', 'origem'
         ]);
 
       // O dono atualiza o próprio doc, mas NÃO pode mexer em role nem no
@@ -776,11 +834,63 @@ service cloud.firestore {
           //
           // `adminUid` no doc do responsável é o que dá escopo: quem o grava
           // é o resgate de convite (Admin SDK), copiado de `child.adminUid`.
-          (isAdmin() && resource.data.get('adminUid', '') == request.auth.uid)
-          || (
-            request.auth.uid == uid
-            && request.resource.data.role == resource.data.role
-          )
+          //
+          // ⚠️ E O ESCOPO NÃO BASTAVA: FALTAVA A LISTA DE CAMPOS.
+          //
+          // Escopar em `adminUid` fechou "qualquer motorista em qualquer
+          // doc". Sobrou "o motorista dele em TUDO que não está na lista de
+          // proibidos" — e dois campos ali não são cadastro:
+          //
+          //   termsVersion / termsAcceptedAt / privacyVersion
+          //     O `allow create` exclui esses campos com o argumento de que
+          //     "consentimento que a plataforma escreve pelo usuário não é
+          //     consentimento". O `update` os deixava passar na mão de OUTRA
+          //     PESSOA — aceite de LGPD forjado por terceiro. Sondado no
+          //     emulador: HTTP 200.
+          //
+          //   fcmTokens
+          //     Apagar = a família para de receber push, inclusive a buzina.
+          //     ACRESCENTAR O PRÓPRIO = o motorista passa a receber os
+          //     pushes dela. Sondado: HTTP 200.
+          //
+          // O que sobra é o que ele legitimamente corrige quando a mãe dita
+          // o dado errado no cadastro. Campo novo no doc do responsável NÃO
+          // entra aqui por padrão: entra se alguém decidir que o motorista
+          // pode escrevê-lo.
+          // ⚠️ NÃO HÁ RAMO DE MOTORISTA AQUI, E A AUSÊNCIA É A DECISÃO.
+          //
+          // Havia um: `isAdmin() && resource.data.adminUid == auth.uid`, sem
+          // lista de campos. Ele fechava "qualquer motorista em qualquer doc"
+          // e deixava aberto "o motorista dela em tudo que não está na lista
+          // de proibidos" — o que incluía dois campos que não são cadastro:
+          //
+          //   termsVersion / termsAcceptedAt / privacyVersion
+          //     Aceite de LGPD escrito por OUTRA pessoa. O `allow create` já
+          //     exclui esses campos dizendo que "consentimento que a
+          //     plataforma escreve pelo usuário não é consentimento" — e o
+          //     `update` os entregava a um terceiro. Sondado: HTTP 200.
+          //   fcmTokens
+          //     Apagar = a família para de receber push, inclusive a buzina.
+          //     Acrescentar o próprio = o motorista recebe os pushes dela.
+          //     Sondado: HTTP 200.
+          //
+          // ESTREITAR PARA `['name','email','phone']` FOI O PRIMEIRO CONSERTO,
+          // E DEPOIS A VARREDURA MOSTROU QUE NEM ISSO TEM CONSUMIDOR:
+          // `updateProfile` só é chamado com o próprio uid (conferido nos 4
+          // call sites), e o contato do responsável que o motorista edita vive
+          // em `children.parentName`/`parentPhone`, não aqui. Era permissão
+          // para nada — e permissão sem razão é como esta lista deixa de medir
+          // alguma coisa.
+          //
+          // O motorista continua APAGANDO o doc do responsável dele (`allow
+          // delete`, abaixo), que é o caminho de "remover pai vinculado" e
+          // esse tem consumidor.
+          //
+          // Se um dia ele precisar corrigir um dado ditado errado: volte o
+          // ramo COM `diff().affectedKeys().hasOnly([...])` e um caso de teste
+          // — nunca sem a lista.
+          request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
         )
       );
 
@@ -921,6 +1031,21 @@ service cloud.firestore {
       allow update: if (
         ehDoMotorista()
         && request.resource.data.adminUid == resource.data.adminUid
+        // ⚠️ O MOTORISTA NÃO TOCA NA INFORMAÇÃO DE SAÚDE. NUNCA.
+        //
+        // Este ramo permite qualquer outro campo, e é por isso que a proibição
+        // tem que estar escrita aqui: sem ela, o desenho de
+        // `docs/consentimento-saude.md` seria só interface, e interface não é
+        // tranca. Ele lê (o `allow read` cobre) e a responsável escreve.
+        //
+        // O campo NASCEU dele — o placeholder do cadastro pedia "Alergias,
+        // instruções especiais…" e ele digitava dado de saúde de uma criança
+        // cuja mãe ainda não tinha aceitado nada. A saída não foi confiar no
+        // formulário novo: foi tirar a caneta.
+        //
+        // Campo de saúde novo entra NESTA lista na mesma alteração.
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['saudeNotas', 'saudeConsentidaEm'])
       ) || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
@@ -957,6 +1082,50 @@ service cloud.firestore {
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['altResponsibles'])
+      ) || (
+        // ⚠️ INFORMAÇÃO DE SAÚDE — SÓ A RESPONSÁVEL ESCREVE, E NUNCA O
+        // MOTORISTA. Ver `docs/consentimento-saude.md`.
+        //
+        // O campo era do MOTORISTA: o placeholder do cadastro de criança pedia
+        // "Alergias, instruções especiais…", ou seja, o app convidava ele a
+        // escrever dado de SAÚDE DE MENOR — sensível pela LGPD (art. 5º II),
+        // exigindo consentimento específico e destacado (art. 11 I) e, sendo
+        // criança, o art. 14 §1º. E quem digitava não era quem consentia.
+        //
+        // Agora quem escreve é a responsável, na tela dela, com o
+        // consentimento no mesmo gesto. Três razões, e a terceira decide: ela
+        // sabe melhor; tira o motorista da cadeia de coleta de dado sensível
+        // de terceiro; e consentimento coletado numa tela por uma pessoa, com
+        // o dado digitado noutra por outra, é consentimento que ninguém prova
+        // depois.
+        //
+        // ⚠️ OS DOIS CAMPOS ANDAM JUNTOS, E É A REGRA CENTRAL DAQUI.
+        // `saudeNotas` sem `saudeConsentidaEm` é o dado sem o registro do
+        // consentimento — o passivo sem a defesa. A rule exige que quem
+        // escreve a nota escreva também a data, e que apagar a nota apague a
+        // data: os dois nascem e morrem no mesmo write.
+        //
+        // O motorista LÊ (o ramo `ehDoMotorista()` no `allow read` já cobre) e
+        // não escreve: o ramo dele acima permite qualquer campo, então esta é
+        // a única proteção real, e ela está na LISTA de campos que ele NÃO
+        // pode tocar — ver o `allow update` dele, logo no início.
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['saudeNotas', 'saudeConsentidaEm'])
+        && (
+          // Informando: a nota vem com a data do consentimento.
+          (
+            request.resource.data.get('saudeNotas', '') != ''
+            && request.resource.data.get('saudeConsentidaEm', null) != null
+          )
+          // Ou apagando: as duas saem juntas. Guardar a data de um
+          // consentimento sem o dado que ele autorizava não serve a ninguém.
+          || (
+            request.resource.data.get('saudeNotas', '') == ''
+            && request.resource.data.get('saudeConsentidaEm', null) == null
+          )
+        )
       ) || (
         // Pai atualiza foto da própria criança (reflete pro Tio).
         isSignedIn()
@@ -1046,7 +1215,9 @@ service cloud.firestore {
           // perua de um estranho no mapa da família, e o aviso "está
           // chegando" disparado pela van errada.
           || (
-            userDoc().get('adminUid', '') == docId
+            // Os DOIS campos, via `ehMotoristaDaFamilia` — ver o helper. Só o
+            // singular aqui apagava a perua do segundo filho do mapa da mãe.
+            ehMotoristaDaFamilia(docId)
             && (
               userDoc().childId != null
               // childIds é o modelo novo (um responsável, vários filhos).
@@ -1242,8 +1413,17 @@ service cloud.firestore {
         && request.resource.data.userId is string
         && request.resource.data.type is string
         && (
-          (isAdmin() && destinatario().get('adminUid', '') == request.auth.uid)
-          || request.resource.data.userId == userDoc().get('adminUid', '')
+          // O motorista avisa o responsável DELE. Os dois campos: o
+          // destinatário pode ter este motorista na lista sem ele ser o
+          // primeiro (mãe de perua dupla).
+          (isAdmin() && (
+            destinatario().get('adminUid', '') == request.auth.uid
+            || request.auth.uid in destinatario().get('adminUids', [])
+          ))
+          // E a família avisa qualquer motorista dela — não só o primeiro.
+          // Com o singular, nada passava entre ela e o segundo motorista:
+          // nem "paguei", nem contrato aceito, nem falta.
+          || ehMotoristaDaFamilia(request.resource.data.userId)
         );
 
       allow update: if isSignedIn()
@@ -1530,7 +1710,11 @@ service cloud.firestore {
             // publicava recado de 1500 caracteres no caderno da familia de
             // outro — bastava conhecer o uid, que a listagem de notificacoes
             // entregava.
-            && userDoc().get('adminUid', '') == resource.data.get('adminUid', ''))
+            // Os dois campos — ver `ehMotoristaDaFamilia`. Só o singular aqui
+            // fazia o recado de escola do segundo motorista desaparecer do
+            // caderno, e a consulta era recusada inteira: caderno vazio, com
+            // um `console.error` como único sinal.
+            && ehMotoristaDaFamilia(resource.data.get('adminUid', '')))
       );
 
       allow create: if isAdmin()
@@ -1567,14 +1751,24 @@ service cloud.firestore {
       // gravar. Comentário em rule não impede código de escrever — se
       // um campo novo aparecer aqui, confira o que o serviço manda.
       // Público só vê depoimento autorizado E não escondido pelo dono.
-      // O `isAdmin()` SOLTO SOBREVIVEU A DECISAO 12, e so aqui.
+      // ⚠️ O `isAdmin()` SOLTO DAQUI JÁ FOI FECHADO — no passado.
       //
-      // Ela tirou o ramo do `list` (logo abaixo, com teste que prova), e o
-      // `get` ficou. Com um id de avaliacao — que o `list` publico devolve —
-      // qualquer motorista lia a avaliacao NAO publica de qualquer pessoa:
-      // uid, papel e as respostas da pesquisa, inclusive das familias de um
-      // concorrente. Meia decisao aplicada e o jeito mais comum de um furo
+      // Este parágrafo estava escrito no PRESENTE ("sobrevive a decisao 12, e
+      // so aqui"), e a regra logo abaixo não tem `isAdmin()` nenhum. Quem o
+      // lesse sairia caçando um furo já corrigido, ou pior: acreditaria que
+      // ele existe e "consertaria" outra coisa.
+      //
+      // O que houve: a decisão 12 tirou o ramo do `list` e o `get` ficou
+      // atrás. Com um id de avaliação — que o `list` público devolve —
+      // qualquer motorista lia a avaliação NÃO pública de qualquer pessoa:
+      // uid, papel e as respostas da pesquisa, inclusive das famílias de um
+      // concorrente. Meia decisão aplicada é o jeito mais comum de um furo
       // sobreviver a uma auditoria.
+      //
+      // Hoje o `get` tem dois ramos e nenhum deles é de motorista: público vê
+      // depoimento autorizado e não escondido; o autor vê o próprio; o dono vê
+      // tudo. `motorista_nao_lista_feedbacks_da_plataforma`, em
+      // `testar-regras.mjs`, é o caso que guarda isso.
       allow get: if (
         resource.data.allowTestimonial == true
         && resource.data.get("hiddenByOwner", false) == false

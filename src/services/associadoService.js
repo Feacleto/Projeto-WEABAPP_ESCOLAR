@@ -58,7 +58,7 @@ import { auth, db } from '../firebase/config';
  * compartilhado. Um caminho que falha na metade dos aparelhos é pior que um
  * campo de senha a mais.
  */
-export async function inscreverAssociado({ email, senha, nome, telefone, cidade, criancas }) {
+export async function inscreverAssociado({ email, senha, nome, telefone, cidade, criancas, origem }) {
   const emailLimpo = String(email || '').trim().toLowerCase();
 
   let uid;
@@ -123,6 +123,21 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
       // plano, e só o servidor escreve.
       criancasEstimadas: Math.max(0, Number(criancas) || 0),
       createdAt: serverTimestamp(),
+      // DE ONDE ELE VEIO — resolvido na tela a partir da URL
+      // (`dominio/identidade/origem.js`), nunca perguntado num formulário.
+      //
+      // NÃO precisou de rule nova: a política de `users` é lista de PROIBIDOS
+      // (trialInicio, limiteCriancas, assinaturaAte, planoId), não de
+      // permitidos. E este campo fica fora dela pelo mesmo critério que deixa
+      // `ultimaRota` fora — mentir aqui não vira desconto, prazo nem
+      // permissão: suja a contagem do dono e nada mais. No dia em que a
+      // origem valer prêmio, ela vira cláusula e sobe para a lista.
+      //
+      // A data é o `createdAt` acima: a origem é a do cadastro, e guardar um
+      // segundo timestamp para o mesmo instante só criaria duas verdades.
+      ...(origem?.canal
+        ? { origem: { canal: origem.canal, detalhe: origem.detalhe || '' } }
+        : {}),
     },
     { merge: true }
   );
