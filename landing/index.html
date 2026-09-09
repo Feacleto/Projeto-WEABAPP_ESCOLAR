@@ -380,59 +380,116 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .hero h1 span{color:var(--verde-esc);display:inline-block}
 .herobtns{display:flex;gap:13px;flex-wrap:wrap;margin-top:34px}
 
-/* ══ O CONVITE DO VÍDEO ═══════════════════════════════════════════
- * Ele NÃO toca sozinho, e a decisão é o produto inteiro desta peça.
+/* ══ O BANNER DE 10 SEGUNDOS ══════════════════════════════════════
+ * O vídeo deixou de ser um convite discreto e passou a ser uma
+ * APRESENTAÇÃO que começa sozinha. Um banner diz o que o app é, uma
+ * contagem de 10 s avisa que vai começar, e o play fura a espera.
  *
- * O vídeo tem 26,8 s. Uma abertura que cobrisse a tela faria o "pular"
- * ser o primeiro gesto de quase todo visitante — a primeira coisa que
- * a pessoa faz no site seria fugir dele. E autoplay só roda no MUDO:
- * navegador nenhum solta som sem gesto, então uma abertura automática
- * entregaria o vídeo sem a metade que ele tem de melhor.
+ * ── ⚠️ COMEÇAR SOZINHO CUSTA O SOM, E ISSO NÃO É NEGOCIÁVEL
+ * Chrome, Safari e Firefox só deixam tocar sem gesto se estiver MUDO. Então
+ * a peça tem dois caminhos e nenhum deles esconde que existe áudio: quem
+ * toca no play já ouve; quem deixa começar vê o vídeo rodando com um botão
+ * verde de "Tocar o som" em cima dele.
  *
- * Então o vídeo espera um toque. Quem toca vê inteiro, COM SOM, porque
- * o gesto é o que destrava o áudio. Poucos veem, e são os certos.
+ * ── A JANELINHA É AMBIENTE, O LIGHTBOX É ASSISTIR
+ * No cartão o vídeo tem ~170px de largura: o suficiente para o movimento
+ * puxar o olho, longe do suficiente para se ler o que aparece nele. Por isso
+ * "Tocar o som" e o play abrem o lightbox — quem quer ouvir quer ver.
  *
- * ── O QUADRADINHO É O PRÓPRIO VÍDEO, PARADO NO PRIMEIRO QUADRO
- * Sem imagem de pôster separada: uma a menos para baixar, e nunca
- * existe a versão em que o pôster mostra uma coisa e o vídeo outra.
- *
- * ── E ELE PROMETE O TEMPO
- * "em 30 segundos" é o que decide o toque. Um play sem duração é um
- * convite para um compromisso que a pessoa não sabe o tamanho. */
-.convite-video{
-  display:flex;align-items:center;gap:13px;
-  width:100%;max-width:430px;margin-top:22px;
-  padding:10px 18px 10px 10px;
-  background:var(--branco);border:1px solid #DDE3DF;border-radius:16px;
-  box-shadow:0 8px 22px rgba(11,18,16,.06);
-  cursor:pointer;text-align:left;font:inherit;color:inherit;
-  transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+ * ── HORIZONTAL NO COMPUTADOR, EMPILHADO NO CELULAR
+ * É o mesmo bloco; o que muda é a direção. No celular a janelinha cresce,
+ * porque ali ela é a peça e não um enfeite ao lado do texto.
+ */
+.vb{
+  width:100%;max-width:460px;margin-top:22px;
+  display:grid;grid-template-columns:1fr 170px;
+  background:var(--branco);border:1px solid #DDE3DF;border-radius:18px;
+  box-shadow:0 10px 26px rgba(11,18,16,.07);overflow:hidden;
 }
-.convite-video:hover{border-color:var(--verde-vivo);box-shadow:0 12px 30px rgba(11,18,16,.11)}
-.convite-video:active{transform:translateY(1px)}
-.convite-video:focus-visible{outline:2px solid var(--verde-esc);outline-offset:3px}
-.escuro .convite-video,.verde .convite-video,.mot .convite-video{
+.escuro .vb,.verde .vb,.mot .vb{
   background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.16);
 }
-
-.cv-quadro{
-  position:relative;flex:0 0 58px;width:58px;height:58px;
-  border-radius:12px;overflow:hidden;background:var(--preto);
+@media (max-width:620px){
+  .vb{grid-template-columns:1fr;max-width:none}
 }
-.cv-quadro video{width:100%;height:100%;object-fit:cover;display:block}
-.cv-play{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.26)}
-.cv-play i{
-  width:26px;height:26px;border-radius:999px;background:var(--verde-vivo);
+
+.vb-txt{padding:16px 18px;min-width:0}
+.vb-t{
+  font-family:var(--display);font-weight:800;font-size:1.06rem;
+  letter-spacing:-.02em;line-height:1.15;color:var(--preto);margin:0;
+}
+.vb-f{font-size:.86rem;line-height:1.5;color:var(--cinza);margin:6px 0 0}
+.escuro .vb-t,.verde .vb-t,.mot .vb-t{color:var(--branco)}
+.escuro .vb-f,.verde .vb-f,.mot .vb-f{color:#C7D3CD}
+
+/* a linha da contagem */
+.vb-linha{display:flex;align-items:center;gap:11px;margin:14px 0 0}
+.vb-play{
+  flex:none;width:38px;height:38px;border-radius:999px;
+  background:var(--verde-vivo);border:0;cursor:pointer;padding:0;
   display:grid;place-items:center;
 }
-.cv-play i::after{
-  content:'';border-left:9px solid #06210A;
-  border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:3px;
+.vb-play::after{
+  content:'';border-left:12px solid #06210A;
+  border-top:8px solid transparent;border-bottom:8px solid transparent;margin-left:4px;
 }
-.cv-txt b{display:block;font-size:.97rem;font-weight:600;color:var(--preto);line-height:1.25}
-.cv-txt i{font-style:normal;display:block;font-size:.85rem;color:var(--cinza);margin-top:3px}
-.escuro .cv-txt b,.verde .cv-txt b,.mot .cv-txt b{color:var(--branco)}
-.escuro .cv-txt i,.verde .cv-txt i,.mot .cv-txt i{color:#C7D3CD}
+.vb-play:focus-visible{outline:2px solid var(--verde-esc);outline-offset:3px}
+.vb-conta{min-width:0;flex:1}
+.vb-conta p{margin:0;font-size:.78rem;font-weight:600;color:var(--cinza)}
+.escuro .vb-conta p,.verde .vb-conta p,.mot .vb-conta p{color:#C7D3CD}
+.vb-barra{margin:6px 0 0;height:3px;border-radius:99px;background:rgba(11,18,16,.12);overflow:hidden}
+.escuro .vb-barra,.verde .vb-barra,.mot .vb-barra{background:rgba(255,255,255,.16)}
+.vb-barra i{display:block;height:100%;width:100%;background:var(--verde-vivo);transform-origin:left;transform:scaleX(0)}
+
+/* o pé: as duas ações */
+.vb-pe{display:flex;gap:8px;margin:14px 0 0}
+.vb-cta{
+  flex:1 1 auto;min-width:0;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:var(--verde-esc);color:var(--branco);text-decoration:none;
+  font-family:var(--corpo);font-weight:700;font-size:.85rem;
+  border:0;border-radius:11px;padding:11px 12px;white-space:nowrap;
+  transition:background .2s;
+}
+.vb-cta:hover{background:var(--verde-claro)}
+.vb-cta:focus-visible{outline:2px solid var(--preto);outline-offset:2px}
+.vb-env{
+  flex:none;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:transparent;color:var(--verde-esc);cursor:pointer;
+  font-family:var(--corpo);font-weight:700;font-size:.85rem;
+  border:1.5px solid rgba(11,18,16,.16);border-radius:11px;padding:11px 14px;
+  white-space:nowrap;transition:border-color .2s,background .2s;
+}
+.vb-env:hover{border-color:var(--verde-vivo);background:rgba(11,18,16,.04)}
+.vb-env:focus-visible{outline:2px solid var(--verde-esc);outline-offset:2px}
+.vb-env[hidden]{display:none}
+.escuro .vb-env,.verde .vb-env,.mot .vb-env{color:var(--branco);border-color:rgba(255,255,255,.28)}
+.escuro .vb-env:hover,.verde .vb-env:hover,.mot .vb-env:hover{background:rgba(255,255,255,.08)}
+
+/* a janelinha */
+.vb-tela{position:relative;background:#000;aspect-ratio:9/16;overflow:hidden;cursor:pointer}
+@media (max-width:620px){
+  .vb-tela{aspect-ratio:9/12;border-top:1px solid #DDE3DF}
+  .escuro .vb-tela,.verde .vb-tela,.mot .vb-tela{border-top-color:rgba(255,255,255,.14)}
+}
+.vb-tela video{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ⚠️ O BOTÃO DO SOM É O PREÇO DO INÍCIO AUTOMÁTICO, e ele é grande de
+ * propósito: é a única pista de que existe áudio para quem não tocou em
+ * nada. Escondido, o vídeo passaria mudo do começo ao fim e a pessoa nem
+ * saberia o que perdeu. */
+.vb-som{
+  position:absolute;left:8px;right:8px;bottom:8px;
+  border:0;cursor:pointer;font-family:var(--corpo);font-weight:700;
+  font-size:.72rem;color:#06210A;background:var(--verde-vivo);
+  border-radius:9px;padding:7px 6px;
+  display:none;align-items:center;justify-content:center;gap:5px;
+}
+.vb-som.on{display:flex}
+@media (max-width:620px){
+  .vb-som{font-size:.85rem;padding:11px;left:14px;right:14px;bottom:14px}
+}
 
 /* A luz apagada em volta do vídeo. `position:fixed` cobre a página
  * inteira: o vídeo é vertical e alto, e um lightbox preso ao herói
@@ -464,7 +521,10 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .cv-fechar:focus-visible{outline:2px solid var(--verde-vivo);outline-offset:2px}
 
 @media (prefers-reduced-motion:reduce){
-  .convite-video,.cv-luz{transition:none}
+  .vb-cta,.vb-env,.cv-luz{transition:none}
+  /* A barra da contagem para de correr: em `prefers-reduced-motion` o
+     bloco não arranca sozinho, então não há contagem para animar. */
+  .vb-barra i{transition:none}
 }
 /* A faixa amarela fecha o hero e emenda na seção seguinte: é o mesmo
    traço da régua do topo, agora na largura toda. */
@@ -1339,26 +1399,63 @@ footer a:hover{opacity:1;transform:translateX(3px)}
         <strong>Até 3 meses de teste grátis.</strong> Cadastra a turma inteira,
         roda o mês, e decide depois.
       </p>
-      <!-- O CONVITE fica DEPOIS da promessa do teste, e a ordem é a da
-           conversa: primeiro o que ele faz aqui (os dois botões), depois
-           o que ele arrisca (o teste), e só então a curiosidade. Antes do
-           teste, o vídeo competiria com a única linha que responde "e se
-           eu não gostar". -->
-      <button type="button" class="convite-video rv" id="cv-abre" style="--d:370ms">
-        <span class="cv-quadro">
-          <!-- O pôster é o próprio vídeo parado. `preload="metadata"` é o
-               teto: 1,8 MB baixados por quem nunca vai tocar é dado móvel
-               do motorista. -->
-          <video src="/brand/abertura.mp4" muted playsinline preload="metadata"
-                 tabindex="-1" aria-hidden="true" id="cv-poster"></video>
-          <span class="cv-play"><i></i></span>
-        </span>
-        <span class="cv-txt">
-          <b>Veja o app em 30 segundos</b>
-          <i>com som — toque para assistir</i>
-        </span>
-      </button>
-      <p class="jatenho rv" style="--d:440ms">
+      <!-- O BANNER fica DEPOIS da promessa do teste, e a ordem é a da
+           conversa: primeiro o que ele faz aqui (os dois botões), depois o
+           que ele arrisca (o teste), e só então a apresentação. Antes do
+           teste, o vídeo competiria com a única linha que responde "e se eu
+           não gostar". -->
+      <div class="vb rv" style="--d:370ms" data-vb>
+        <div class="vb-txt">
+          <p class="vb-t">Este é o seu novo app.</p>
+          <p class="vb-f">
+            Um ambiente digital de trabalho que avisa, cobra e organiza — pra
+            tirar o peso do seu ombro.
+          </p>
+
+          <div class="vb-linha" data-linha>
+            <button class="vb-play" type="button" data-play aria-label="Assistir agora, com som"></button>
+            <span class="vb-conta">
+              <p data-conta>O vídeo começa em 10s</p>
+              <span class="vb-barra" aria-hidden="true"><i data-barra></i></span>
+            </span>
+          </div>
+
+          <div class="vb-pe">
+            <!-- ⚠️ ELE VAI PARA A PORTA DO MOTORISTA, e não para a
+                 bifurcação. O vídeo e o banner falam com quem dirige;
+                 devolver essa pessoa a uma escolha depois de ela assistir a
+                 um pitch dirigido a ela seria perguntar o que a peça já
+                 respondeu.
+                 E ele não briga com os dois botões de cima: aqueles ROLAM
+                 até a seção de escolha, este SAI da landing e abre o
+                 formulário. Um leva a decidir, o outro leva a fazer. -->
+            <a class="vb-cta" href="https://alobuzinou.com/quero-fazer-parte">
+              Criar conta e entrar
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <!-- Nasce escondido: quem o revela é o JS, e só onde
+                 `navigator.share` existe. Botão que abre nada é pior que
+                 botão nenhum. -->
+            <button class="vb-env" type="button" data-enviar hidden>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v13M7 8l5-5 5 5"/></svg>
+              Enviar
+            </button>
+          </div>
+        </div>
+
+        <!-- A janelinha é AMBIENTE, não é onde se assiste: com ~170px de
+             largura o movimento puxa o olho e o conteúdo não se lê. Tocar
+             nela abre o lightbox, com som. -->
+        <div class="vb-tela" data-abrir-tela role="button" tabindex="0"
+             aria-label="Assistir o vídeo com som">
+          <video data-video muted playsinline preload="metadata" src="/brand/abertura.mp4"></video>
+          <button class="vb-som" type="button" data-som>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg>
+            Tocar o som
+          </button>
+        </div>
+      </div>
+      <p class="jatenho rv" style="--d:440ms">      <p class="jatenho rv" style="--d:440ms">
         Já usa o Alô Buzinou?
         <a href="https://alobuzinou.com/login">Entrar no app <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </p>
@@ -2663,13 +2760,17 @@ footer a:hover{opacity:1;transform:translateX(3px)}
       function prepararVideo() {
         if (arquivo || pedido || !navigator.canShare) return;
         pedido = true;
-        fetch('/brand/abertura.mp4').then(function (r) {
+        /* ⚠️ A PEÇA, NÃO O VÍDEO (08/09/2026). 221 KB contra 1,8 MB, e ela
+           leva o ENDEREÇO ESCRITO dentro — em Story o link não é clicável, e
+           o vídeo nunca teve como resolver isso. O texto da peça é "pra quem
+           dirige perua escolar", que é exatamente quem a mãe convida daqui. */
+        fetch('/brand/convite.jpg').then(function (r) {
           return r.ok ? r.blob() : null;
         }).then(function (b) {
           if (!b) return;
-          var f = new File([b], 'alo-buzinou.mp4', { type: 'video/mp4' });
+          var f = new File([b], 'alo-buzinou.jpg', { type: 'image/jpeg' });
           if (navigator.canShare({ files: [f] })) arquivo = f;
-        }).catch(function () { /* sem vídeo: vai o link, e ninguém percebe */ });
+        }).catch(function () { /* sem a peça: vai o link, e ninguém percebe */ });
       }
 
       btEnviar.addEventListener('pointerdown', prepararVideo);
@@ -2727,67 +2828,273 @@ footer a:hover{opacity:1;transform:translateX(3px)}
 </div>
 
 <script>
-/* O CONVITE DO VÍDEO — abre com som, e devolve o foco.
+/* ══ O BANNER DE 10 SEGUNDOS ══════════════════════════════════════════
+ * Três coisas acontecem aqui: a contagem, o vídeo (ambiente na janelinha,
+ * grande no lightbox) e as duas ações do pé.
  *
- * ⚠️ O SOM SÓ EXISTE PORQUE HOUVE UM GESTO. É a regra do navegador, e é
- * também o desenho: o vídeo tem 26,8 s, e som que começa sem pedir é a
- * forma mais rápida de alguém fechar a aba.
+ * ── ⚠️ A CONTAGEM SÓ COMEÇA QUANDO O BLOCO ESTÁ NA TELA
+ * Começar no `load` faria o vídeo tocar para quem já rolou a página, e
+ * baixaria 1,8 MB de quem nunca ia ver. O observer é o gatilho.
  *
- * E se o navegador recusar o som mesmo com gesto (acontece em modo de
- * economia de dados), ele toca no MUDO em vez de não tocar. A pessoa
- * tocou; alguma coisa tem que acontecer. */
+ * ── ⚠️ E UMA VEZ POR VISITA
+ * Rolar, voltar e ver a apresentação recomeçar deixa de ser apresentação e
+ * passa a ser incômodo. Depois de arrancar (ou de a pessoa tocar), o
+ * automático não volta.
+ *
+ * ── QUEM NÃO ARRANCA
+ * `prefers-reduced-motion` (quem pediu menos movimento ao sistema não pediu
+ * um vídeo começando sozinho), economia de dados ligada, e conexão 2g/3g.
+ * Nesses casos fica o convite com o play — o que existia antes.
+ */
 (function () {
-  var abre = document.getElementById('cv-abre');
-  var luz = document.getElementById('cv-luz');
-  var video = document.getElementById('cv-video');
-  var poster = document.getElementById('cv-poster');
-  var fechar = document.getElementById('cv-fechar');
-  if (!abre || !luz || !video || !fechar) return;
+  var bloco = document.querySelector('[data-vb]');
+  if (!bloco) return;
 
-  /* Parar no primeiro quadro em vez de mostrar preto. Um retângulo
-     preto parece vídeo que não carregou; o quadro parado parece vídeo. */
-  if (poster) {
-    poster.addEventListener('loadeddata', function () {
-      try { poster.currentTime = 0.1; } catch (e) { /* sem quadro: fica o play */ }
-    }, { once: true });
+  var video = bloco.querySelector('[data-video]');
+  var play = bloco.querySelector('[data-play]');
+  var som = bloco.querySelector('[data-som]');
+  var conta = bloco.querySelector('[data-conta]');
+  var barra = bloco.querySelector('[data-barra]');
+  var linha = bloco.querySelector('[data-linha]');
+  var tela = bloco.querySelector('[data-abrir-tela]');
+
+  var ESPERA = 10;
+  var timer = null;
+  var t0 = null;
+  var jaArrancou = false;
+
+  var conexao = navigator.connection || {};
+  var pouparDados = conexao.saveData === true ||
+    /^(slow-)?2g$|^3g$/.test(conexao.effectiveType || '');
+  var menosMovimento = window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var podeArrancar = !pouparDados && !menosMovimento;
+
+  function texto(t) { conta.textContent = t; }
+
+  /* ── a contagem ─────────────────────────────────────────────────── */
+  function contar() {
+    if (jaArrancou || timer) return;
+    t0 = Date.now();
+    barra.style.transition = 'none';
+    barra.style.transform = 'scaleX(0)';
+    /* dois quadros: sem eles o navegador aplica o estado final de uma vez e
+       a barra pula para o fim em vez de correr */
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        barra.style.transition = 'transform ' + ESPERA + 's linear';
+        barra.style.transform = 'scaleX(1)';
+      });
+    });
+    texto('O vídeo começa em ' + ESPERA + 's');
+    timer = setInterval(function () {
+      var falta = Math.max(0, ESPERA - Math.round((Date.now() - t0) / 1000));
+      texto('O vídeo começa em ' + falta + 's');
+      if (falta <= 0) { pararContagem(); arrancar(); }
+    }, 250);
   }
 
+  function pararContagem() {
+    clearInterval(timer);
+    timer = null;
+    barra.style.transition = 'none';
+    barra.style.transform = 'scaleX(0)';
+  }
+
+  /* ── começou sozinho: MUDO, e o botão do som diz que há áudio ───── */
+  function arrancar() {
+    jaArrancou = true;
+    linha.hidden = true;
+    video.muted = true;
+    video.currentTime = 0;
+    video.play().then(function () {
+      som.classList.add('on');
+    }).catch(function () {
+      /* recusou até no mudo: volta ao convite, que sempre funciona */
+      linha.hidden = false;
+      texto('Assistir agora');
+    });
+  }
+
+  /* ── assistir de verdade: lightbox, com som ─────────────────────── */
+  function assistir() {
+    jaArrancou = true;
+    pararContagem();
+    linha.hidden = true;
+    som.classList.remove('on');
+    video.pause();
+    abrirLuz();
+  }
+
+  play.addEventListener('click', assistir);
+  som.addEventListener('click', function (e) { e.stopPropagation(); assistir(); });
+  tela.addEventListener('click', assistir);
+  tela.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); assistir(); }
+  });
+
+  video.addEventListener('ended', function () {
+    som.classList.remove('on');
+    linha.hidden = false;
+    texto('Assistir de novo');
+  });
+
+  /* ── ⚠️ A PARTIDA E A PAUSA SAEM DO RETÂNGULO, NÃO DE UM OBSERVER.
+   *
+   * A primeira versão usava `IntersectionObserver`, e ele NÃO DISPARA no
+   * navegador headless da sonda: a contagem ia para produção sem nunca ter
+   * rodado num teste. É o mesmo tropeço do pré-carregamento do vídeo, duas
+   * semanas atrás, e a lição é a mesma — caminho que não dá para verificar é
+   * caminho que quebra na mão do usuário.
+   *
+   * `getBoundingClientRect` responde a mesma pergunta, é sincrono e é
+   * medível. O custo é ouvir `scroll`, e ele é pago com `passive` e um
+   * `requestAnimationFrame` de guarda: uma medição por quadro, no máximo.
+   *
+   * As duas coisas moram na mesma função de propósito — "está na tela" é uma
+   * pergunta só, e responder duas vezes em dois lugares é como as duas
+   * respostas divergem. */
+  function naTela() {
+    var r = bloco.getBoundingClientRect();
+    var alt = window.innerHeight || document.documentElement.clientHeight;
+    var visivel = Math.min(r.bottom, alt) - Math.max(r.top, 0);
+    return visivel > 0 && visivel >= Math.min(r.height, alt) * 0.45;
+  }
+
+  var agendado = false;
+  function verificar() {
+    agendado = false;
+    if (naTela()) {
+      if (podeArrancar) contar();
+      return;
+    }
+    /* Fora da tela: a contagem para e o vídeo pausa. Vídeo tocando onde
+       ninguém vê gasta bateria e dado para nada. */
+    pararContagem();
+    if (!video.paused) video.pause();
+  }
+
+  function agendar() {
+    if (agendado) return;
+    agendado = true;
+    requestAnimationFrame(verificar);
+  }
+
+  addEventListener('scroll', agendar, { passive: true });
+  addEventListener('resize', agendar, { passive: true });
+  verificar();
+
+  if (!podeArrancar) texto('Assistir agora');
+
+  /* ══ O LIGHTBOX ═════════════════════════════════════════════════ */
+  var luz = document.getElementById('cv-luz');
+  var grande = document.getElementById('cv-video');
+  var fechar = document.getElementById('cv-fechar');
   var focoAnterior = null;
 
-  function abrir() {
+  function abrirLuz() {
+    if (!luz || !grande) return;
     focoAnterior = document.activeElement;
     luz.classList.add('on');
     luz.setAttribute('aria-hidden', 'false');
-    /* Travar a rolagem: o vídeo é modal, e a página rolando atrás faz a
-       pessoa perder o lugar onde estava. */
     document.body.style.overflow = 'hidden';
-    video.currentTime = 0;
-    video.muted = false;
-    video.play().catch(function () {
-      video.muted = true;
-      video.play().catch(function () { /* nem no mudo: os controles ficam */ });
+    grande.currentTime = 0;
+    grande.muted = false;
+    grande.play().catch(function () {
+      /* recusou o som mesmo com gesto (economia de dados agressiva): toca no
+         mudo em vez de não tocar. A pessoa tocou; algo tem que acontecer. */
+      grande.muted = true;
+      grande.play().catch(function () {});
     });
     fechar.focus();
   }
 
-  function encerrar() {
+  function fecharLuz() {
+    if (!luz) return;
     luz.classList.remove('on');
     luz.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
-    video.pause();
-    /* Devolver o foco ao botão que abriu — sem isso, quem navega por
-       teclado volta para o topo da página e perde o lugar. */
+    grande.pause();
+    linha.hidden = false;
+    texto('Assistir de novo');
     if (focoAnterior && focoAnterior.focus) focoAnterior.focus();
   }
 
-  abre.addEventListener('click', abrir);
-  fechar.addEventListener('click', encerrar);
-  /* Clicar no escuro fecha; clicar no vídeo, não. */
-  luz.addEventListener('click', function (e) { if (e.target === luz) encerrar(); });
-  video.addEventListener('ended', encerrar);
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && luz.classList.contains('on')) encerrar();
-  });
+  if (luz) {
+    fechar.addEventListener('click', fecharLuz);
+    luz.addEventListener('click', function (e) { if (e.target === luz) fecharLuz(); });
+    grande.addEventListener('ended', fecharLuz);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && luz.classList.contains('on')) fecharLuz();
+    });
+  }
+
+  /* ══ ENVIAR — a bandeja do sistema, com a PEÇA anexada ══════════ */
+  /* ⚠️ VAI O JPG, NÃO O VÍDEO. Ele é 8× mais leve (221 KB contra 1,8 MB) e
+   * — o que decide — CARREGA O ENDEREÇO ESCRITO. Em Story o link não é
+   * clicável: sem o endereço dentro da imagem, a peça não leva ninguém a
+   * lugar nenhum.
+   *
+   * E o arquivo é buscado no `pointerdown`, nunca no toque: a bandeja só
+   * abre enquanto o gesto ainda vale, e um `await` de rede antes dela mata
+   * essa validade — falha que aparece como nada acontecendo. */
+  var btEnviar = bloco.querySelector('[data-enviar]');
+  var TEXTO_CONVITE =
+    'Olha esse app que achei pro transporte escolar. A família acompanha a ' +
+    'rota no mapa, o aviso de falta chega na hora e a mensalidade fica tudo ' +
+    'registrada — e dá pra testar sem pagar nada.';
+  var LINK = 'https://alobuzinou.com.br';
+
+  if (btEnviar && navigator.share) {
+    btEnviar.hidden = false;
+    var peca = null;
+    var pedida = false;
+
+    function prepararPeca() {
+      if (peca || pedida || !navigator.canShare) return;
+      pedida = true;
+      fetch('/brand/convite.jpg').then(function (r) {
+        return r.ok ? r.blob() : null;
+      }).then(function (b) {
+        if (!b) return;
+        var f = new File([b], 'alo-buzinou.jpg', { type: 'image/jpeg' });
+        if (navigator.canShare({ files: [f] })) peca = f;
+      }).catch(function () { /* sem a peça vai o link, e ninguém percebe */ });
+    }
+    btEnviar.addEventListener('pointerdown', prepararPeca);
+    btEnviar.addEventListener('focus', prepararPeca);
+
+    btEnviar.addEventListener('click', function () {
+      var carga = { title: 'Alô Buzinou', text: TEXTO_CONVITE, url: LINK };
+      if (peca) carga.files = [peca];
+      var pr;
+      try { pr = navigator.share(carga); }
+      catch (e) { pr = navigator.share({ title: 'Alô Buzinou', text: TEXTO_CONVITE, url: LINK }); }
+      Promise.resolve(pr).catch(function (err) {
+        /* AbortError é a pessoa fechando a bandeja: não é falha. */
+        if (err && err.name === 'AbortError') return;
+        if (peca) {
+          peca = null;
+          navigator.share({ title: 'Alô Buzinou', text: TEXTO_CONVITE, url: LINK }).catch(function () {});
+        }
+      });
+    });
+  } else if (btEnviar) {
+    /* Sem a API (Firefox, navegador antigo): copiar o convite inteiro. */
+    btEnviar.hidden = false;
+    btEnviar.lastChild.textContent = ' Copiar convite';
+    btEnviar.addEventListener('click', function () {
+      var t = TEXTO_CONVITE + ' ' + LINK;
+      var avisa = function () {
+        var antes = btEnviar.lastChild.textContent;
+        btEnviar.lastChild.textContent = ' Copiado!';
+        setTimeout(function () { btEnviar.lastChild.textContent = antes; }, 2200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t).then(avisa, avisa);
+      } else { avisa(); }
+    });
+  }
 })();
 </script>
 </body>
