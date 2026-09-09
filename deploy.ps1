@@ -30,13 +30,17 @@ $ErrorActionPreference = 'Continue'
 # link e lia "este convite nao existe" com o codigo certo na mao.
 #
 # Nome de function apagada nesta lista e um deploy que falha por completo.
-# Conferir com `grep "^exports\." functions/index.js` antes de mexer.
-$FuncoesNucleo = @(
+#
+# A CONFERENCIA AGORA E AUTOMATICA (ver `Conferir-Funcoes` abaixo), porque
+# pedir "confira com grep antes de mexer" ja falhou duas vezes: a lista voltou
+# a ter um nome morto (`girarPremio`, apagada com a roleta em 07/09/2026)
+# depois de o comentario acima ser escrito justamente sobre esse incidente.
+# Lembrete em comentario nao e verificacao.
+$FuncoesNucleoLista = @(
   'functions:lookupInvite',
   'functions:redeemInvite',
   'functions:getShowcase',
   'functions:getInvitePreview',
-  'functions:girarPremio',
   'functions:contratarPlano',
   'functions:closeStaleRoutes',
   'functions:confirmarAusencias',
@@ -47,11 +51,55 @@ $FuncoesNucleo = @(
   'functions:backfillTestimonialPrivacy',
   'functions:asaasWebhook',
   'functions:criarCobrancaDaFatura'
-) -join ','
+)
+$FuncoesNucleo = $FuncoesNucleoLista -join ','
+
+# As duas de e-mail ficam FORA da lista de propósito (dependem do segredo do
+# Resend e sobem à parte), então a conferência abaixo não pode exigir que a
+# lista cubra todos os exports — só que todo nome DELA exista.
+$FuncoesDeEmail = @('sendPaymentReminders', 'runPaymentRemindersNow')
 
 function Passo($titulo) {
   Write-Host ''
   Write-Host "== $titulo" -ForegroundColor Cyan
+}
+
+# CONFERE A LISTA CONTRA O CODIGO, e para ANTES de gastar um deploy.
+#
+# `firebase deploy --only <lista>` recusa a lista inteira quando um nome nao
+# existe, e a mensagem dele ("the following filters do not exist") aparece
+# depois de alguns minutos de build. Aqui a checagem custa milissegundos e diz
+# exatamente qual nome sobrou — e tambem qual export NOVO ninguem incluiu, que
+# e o erro oposto e mais silencioso: a function existe, nunca sobe, e o
+# sintoma aparece em producao semanas depois.
+function Conferir-Funcoes {
+  $indice = Join-Path $PSScriptRoot 'functions\index.js'
+  if (-not (Test-Path $indice)) {
+    Parar "Nao achei $indice para conferir a lista de functions."
+  }
+  $exportados = Select-String -Path $indice -Pattern '^exports\.([A-Za-z0-9_]+)' |
+    ForEach-Object { $_.Matches[0].Groups[1].Value }
+
+  $naLista = $FuncoesNucleoLista | ForEach-Object { $_ -replace '^functions:', '' }
+
+  $fantasmas = $naLista | Where-Object { $exportados -notcontains $_ }
+  if ($fantasmas) {
+    Parar ("A lista de functions cita nome que nao existe mais em functions/index.js: " +
+      ($fantasmas -join ', ') +
+      ". O deploy abortaria INTEIRO (nada subiria, inclusive redeemInvite). Apague da lista.")
+  }
+
+  $esquecidos = $exportados | Where-Object {
+    $naLista -notcontains $_ -and $FuncoesDeEmail -notcontains $_
+  }
+  if ($esquecidos) {
+    Parar ("Estes exports de functions/index.js nao estao na lista e nao subiriam: " +
+      ($esquecidos -join ', ') +
+      ". Acrescente a `$FuncoesNucleoLista (ou a `$FuncoesDeEmail, se dependerem do Resend).")
+  }
+
+  Write-Host ("  lista conferida: " + $naLista.Count + " no nucleo + " +
+    $FuncoesDeEmail.Count + " de e-mail = " + $exportados.Count + " exports") -ForegroundColor DarkGray
 }
 
 function Parar($msg) {
@@ -129,7 +177,8 @@ if ($SemStorage) {
 }
 
 # ── 4) Functions ─────────────────────────────────────────────────────────
-Passo 'Functions (as 12 do núcleo)'
+Passo "Functions (as $($FuncoesNucleoLista.Count) do núcleo)"
+Conferir-Funcoes
 npx firebase deploy --only $FuncoesNucleo
 if ($LASTEXITCODE -ne 0) {
   Parar 'Functions falharam. Se a mensagem fala de billing, o plano Blaze não está ativo — e sem functions o login do responsável não existe.'

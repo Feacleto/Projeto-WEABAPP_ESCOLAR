@@ -34,7 +34,7 @@ import {
   descontoDoDegrau,
   mesDaqui as mesDaquiContrato,
   cobertoAteOMesSeguinte,
-} from '../functions/lib/contratacao.js';
+} from '../functions/lib/reguaDoServidor.js';
 import {
   PLANOS as planosNoApp,
   ESCADA_DE_FECHAMENTO as escadaNoApp,
@@ -42,7 +42,17 @@ import {
   descontoDoFechamento,
 } from '../src/dominio/associacao/planos.js';
 import { degrauDaDecisao as degrauNoApp } from '../src/dominio/associacao/trial.js';
-import { MESES_DE_CONTRATO as mesesNoServidor } from '../functions/lib/contratacao.js';
+// ⚠️ DE `reguaDoServidor.js`, NUNCA DE `contratacao.js`.
+//
+// `contratacao.js` requer `firebase-functions`, que só existe em
+// `functions/node_modules` — não rastreado pelo git, e o CI roda um `npm ci` na
+// raiz. Enquanto este arquivo importava de lá, ele MORRIA no CI com
+// `Cannot find module 'firebase-functions/v2/https'` e levava os 11 scripts
+// seguintes da bateria com ele, pelo `&&` do `package.json`.
+//
+// `scripts/testar-imports.mjs` prova que nenhum script da bateria alcança um
+// módulo que requer o SDK — é o que impede o fio de partir de novo.
+import { MESES_DE_CONTRATO as mesesNoServidor } from '../functions/lib/reguaDoServidor.js';
 
 let ok = 0;
 let bad = 0;

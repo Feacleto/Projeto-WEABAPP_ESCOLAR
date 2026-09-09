@@ -92,7 +92,7 @@ export default defineConfig([
     rules: { 'no-restricted-imports': 'off' },
   },
 
-  // ── AS SEIS EXCEÇÕES, UMA A UMA ───────────────────────────────────────────
+  // ── AS EXCEÇÕES, UMA A UMA ────────────────────────────────────────────────
   //
   // Cada arquivo aqui é uma dívida com prazo ou uma decisão. Nenhuma entra sem
   // o porquê escrito — lista de exceção sem razão vira lista de permissão, e
@@ -114,13 +114,18 @@ export default defineConfig([
     rules: { 'no-restricted-imports': 'off' },
   },
 
-  // Três telas chamando callable direto. Não tocam o banco, então o risco é
+  // DUAS telas chamando callable direto. Não tocam o banco, então o risco é
   // menor — mas `AdminPanel` chama sem passar pelo `exigirCloud()` de
   // `callableError`, e sem Blaze o erro chega ao usuário como "falha de rede".
-  // `Home` e `Familia` fazem a MESMA chamada (`getShowcase`), duplicada.
+  //
+  // ⚠️ `src/pages/Home.jsx` SAIU DAQUI: o arquivo não existe mais (eram 1090
+  // linhas, apagadas em 06/09/2026 quando `/` virou `Navigate to /login`).
+  // Isentar arquivo inexistente é permissão para nada — e o comentário ainda
+  // descrevia uma duplicação de `getShowcase` entre `Home` e `Familia` que
+  // deixou de existir junto. Exceção que não aponta para código é exatamente
+  // o que transforma esta lista em lista de permissão.
   {
     files: [
-      'src/pages/Home.jsx',
       'src/pages/Familia.jsx',
       'src/pages/admin/AdminPanel.jsx',
     ],
