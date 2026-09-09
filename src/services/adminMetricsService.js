@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { notasPorMotorista, resumirCarteira } from '../dominio/associacao/carteira.js';
+import { contarPorCanal } from '../dominio/identidade/origem.js';
 
 /**
  * Métricas da plataforma pro painel do super-admin.
@@ -168,6 +169,13 @@ export async function getPlatformOverview() {
     ticketMedio: criancas > 0 ? gmvMes / criancas : 0,
     receitaPropria,
     receitaEmAberto,
+    // DE ONDE VÊM OS ASSOCIADOS — e não custa leitura nova: `parceiros` já
+    // são os documentos inteiros, baixados acima para a carteira. A conta é
+    // pura, em `dominio/identidade/origem.js`.
+    //
+    // ⚠️ `null` com base vazia, de propósito: onde o número não existe a tela
+    // diz "—", nunca zero. Dez canais zerados parecem medição e não são.
+    origens: contarPorCanal(parceiros),
   };
 }
 

@@ -28,22 +28,45 @@ import {
  *   index.css) — a arte fica parada, e continua legível parada.
  */
 
-/* Estradinha com a van cruzando — abre o hero. A promessa em movimento. */
+/* Estradinha com a van cruzando — abre o hero. A promessa em movimento.
+ *
+ * ELA ESPELHA O GRAFISMO DA LANDING (`.percurso` em landing/index.html), e
+ * isso não é capricho: quem chega em `/quero-fazer-parte` vem de
+ * `alobuzinou.com.br`, e a travessia entre os dois domínios é o instante em
+ * que a pessoa decide se é a mesma empresa. Três coisas foram copiadas de lá —
+ * o par de nós quadrados com canto arredondado, a linha tracejada no meio, e
+ * os rótulos em mono minúsculo embaixo das pontas.
+ *
+ * ⚠️ A LEGENDA CASA/PERUA/ESCOLA NÃO VALE AQUI, e a diferença é de público.
+ * Dentro do produto, casa é verde, perua é âmbar e escola é violeta
+ * (tailwind.config.js) — porque ali as três cores IDENTIFICAM o estado da
+ * criança, e o motorista aprende a legenda usando. Nesta tela ninguém aprendeu
+ * legenda nenhuma ainda: a van âmbar e a escola violeta ao lado de uma landing
+ * inteira verde leem como outro produto. Aqui a cor é marca, não legenda.
+ *
+ * O verde é o do tema (`onNightAccent`, medido contra `night`), não o
+ * #52C41A cru da landing — cada superfície usa o verde calibrado pra ela. O
+ * que faz as duas parecerem a mesma família é a FORMA. */
 export function ArtRoad() {
   return (
-    <div
-      aria-hidden
-      className="relative h-[72px] rounded-2xl bg-white/[0.04] border border-white/10 overflow-hidden"
-    >
-      <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-white/20" />
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-onNightAccentFill/20 border border-onNightAccent/30 flex items-center justify-center">
-        <HomeIcon size={13} className="text-onNightAccent" />
-      </span>
-      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-escola/20 border border-escolaBorder/30 flex items-center justify-center">
-        <School size={13} className="text-escolaBorder" />
-      </span>
-      <div className="demo-van absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-perua flex items-center justify-center shadow-float">
-        <Bus size={16} className="text-white" />
+    <div aria-hidden className="relative">
+      <div className="relative h-[72px] rounded-2xl bg-white/[0.04] border border-white/10 overflow-hidden">
+        <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-white/25" />
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-onNightAccentFill/10 border border-onNightAccent/40 flex items-center justify-center">
+          <HomeIcon size={16} className="text-onNightAccent" />
+        </span>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-onNightAccentFill/10 border border-onNightAccent/40 flex items-center justify-center">
+          <School size={16} className="text-onNightAccent" />
+        </span>
+        {/* A van é o único elemento cheio: na landing ela também é o que tem
+          * peso, porque é ela que se move. */}
+        <div className="demo-van absolute top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-onNightAccentFill flex items-center justify-center shadow-float">
+          <Bus size={17} className="text-night" />
+        </div>
+      </div>
+      <div className="mt-3 flex justify-between font-mono text-[10px] uppercase tracking-[0.16em] text-white/40">
+        <span>a casa</span>
+        <span>a escola</span>
       </div>
     </div>
   );
