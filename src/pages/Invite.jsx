@@ -24,7 +24,17 @@ import { useAuth } from '../hooks/useAuth';
 import { getInvitePreview, normalizeInviteCode } from '../services/inviteCodeService';
 import { redeemInvite } from '../services/authService';
 import { formatCurrency } from '../compartilhado/formatters';
-import { isInAppBrowser, openForAuth } from '../compartilhado/browserEnv';
+import {
+  isInAppBrowser,
+  isIOS,
+  openForAuth,
+  openInExternalBrowser,
+} from '../compartilhado/browserEnv';
+
+/* Marca que a ponte automática já foi tentada NESTA sessão da webview.
+   Sem isso, quem escolheu ficar aqui seria empurrado de novo a cada
+   recarga — e insistir depois de um 'não' é o que faz a pessoa fechar. */
+const CHAVE_DA_PONTE = 'ab_ponte_tentada';
 
 /**
  * Convite por link — /convite/:codigo
@@ -76,6 +86,62 @@ export default function Invite() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingAction({ reason: 'acompanhar seu filho', destination: '/pai' });
   }, [resumeAuth]);
+
+  /* ── A PONTE PRO NAVEGADOR DE VERDADE, AGORA AUTOMÁTICA ──────────────
+   *
+   * ESTE É O CAMINHO MAIS PERCORRIDO DO APP, e ele estava quebrado pela
+   * metade. A mãe não guarda o endereço do site: ela volta na conversa do
+   * WhatsApp e toca no MESMO link, semana após semana. E o WhatsApp abre
+   * numa webview embutida, onde as duas coisas de que ela depende falham:
+   *
+   *   1. O Google recusa OAuth ali (`disallowed_useragent`) — e o Google é
+   *      a base do app. Dentro da webview a porta principal está fechada,
+   *      e o app chega a esconder o botão pra não entregar erro.
+   *   2. O armazenamento é separado do Chrome. A sessão dela VIVE no
+   *      Chrome, então aqui dentro ela aparece deslogada — e o app pedia
+   *      login justamente na única tela onde o Google não aparece.
+   *
+   * Sair pro navegador de verdade resolve os dois de uma vez: lá a sessão
+   * já existe, `preview.status` volta 'yours' e ela cai direto na criança,
+   * sem digitar nada. Era esse o desfecho que a webview impedia.
+   *
+   * ⚠️ SEM `?auth=1`, DE PROPÓSITO. `openForAuth` leva pra folha de login,
+   * e é o certo quando ela TOCOU numa ação. Aqui não: ela pode já estar
+   * logada do outro lado, e abrir folha de login por cima de sessão válida
+   * é pedir senha a quem não precisa de senha nenhuma.
+   *
+   * ⚠️ E É ANUNCIADA, NÃO SILENCIOSA. Trocar de app sozinho, num link sobre
+   * o filho dela, parece golpe — e parte das pessoas fecha e não volta.
+   * Um segundo dizendo o que vai acontecer transforma susto em
+   * continuidade. Foi por isso que o redirecionamento no carregamento
+   * tinha sido descartado; o aviso é o que o torna possível.
+   *
+   * ⚠️ NO IPHONE PODE NÃO SAIR DO LUGAR, e isso não tem conserto: a Apple
+   * não tem equivalente do `intent://`, e `googlechrome://` só pega se o
+   * Chrome estiver instalado. Por isso o prazo de 1,5s devolve a prévia
+   * aqui mesmo — quem não saiu segue no fluxo normal, com a ponte manual
+   * e o login por email, que funcionam dentro da webview. */
+  const [saindoDaWebview, setSaindoDaWebview] = useState(() => {
+    if (typeof window === 'undefined' || !isInAppBrowser()) return false;
+    try {
+      return sessionStorage.getItem(CHAVE_DA_PONTE) !== '1';
+    } catch {
+      // Modo privado ou storage bloqueado: tentar é melhor que não tentar.
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    if (!saindoDaWebview) return;
+    try {
+      sessionStorage.setItem(CHAVE_DA_PONTE, '1');
+    } catch {
+      /* Sem storage a única perda é tentar de novo numa recarga. */
+    }
+    openInExternalBrowser();
+    const t = setTimeout(() => setSaindoDaWebview(false), 1500);
+    return () => clearTimeout(t);
+  }, [saindoDaWebview]);
 
   /**
    * Uma ação da prévia foi tocada.
@@ -131,6 +197,10 @@ export default function Invite() {
     await refreshProfile();
     navigate(destination || '/pai', { replace: true });
   };
+
+  /* Antes de tudo, inclusive do erro: se o link está quebrado, a mensagem
+     também é melhor lida no navegador onde ela vai ficar. */
+  if (saindoDaWebview) return <SaindoDaWebview />;
 
   if (loadError) return <InviteBroken message={loadError} />;
 
@@ -203,6 +273,36 @@ export default function Invite() {
         onSuccess={() => finish(pendingAction?.destination)}
       />
     </>
+  );
+}
+
+/**
+ * O segundo em que o app avisa que vai trocar de navegador.
+ *
+ * Não é tela de espera — é o aviso que impede a troca de app de parecer
+ * golpe. Diz O QUE vai acontecer antes do POR QUÊ, porque o motivo sozinho
+ * não prepara ninguém pra ver outro aplicativo abrir sozinho.
+ *
+ * E o motivo é dito no ganho dela ('seu acesso fica salvo'), não no nosso
+ * ('a webview tem armazenamento separado'), que não quer dizer nada pra
+ * quem está com o filho na porta da escola.
+ */
+function SaindoDaWebview() {
+  /* No Android abrimos o Chrome nominalmente. No iPhone depende do que ela
+     tem instalado, e prometer 'Safari' seria mentira quando o
+     `googlechrome://` pega — então lá a frase não promete marca. */
+  const destino = isIOS() ? 'no navegador do celular' : 'no Chrome';
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-8 text-center">
+      <Spinner size={30} className="text-primary" />
+      <div className="space-y-1.5">
+        <p className="text-base font-bold text-text">Abrindo {destino}</p>
+        <p className="text-sm text-textMuted leading-relaxed">
+          É lá que sua conta do Google funciona — e é onde seu acesso fica
+          salvo pra próxima vez.
+        </p>
+      </div>
+    </div>
   );
 }
 
