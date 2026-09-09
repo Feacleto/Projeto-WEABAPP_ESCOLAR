@@ -45,7 +45,19 @@ export default function PixBlock({ admin, amount, txid }) {
   }, [showQr, qrDataUrl, payload]);
 
   // Sem chave cadastrada não há o que mostrar — e é o tio que resolve isso.
-  if (!admin?.pixKey) {
+  //
+  // ⚠️ O GUARDA OLHA O PAYLOAD, NÃO SÓ A CHAVE.
+  //
+  // Era `if (!admin?.pixKey)`. Chave PRESENTE e inválida passava daqui, e o
+  // bloco renderizava um copia-e-cola vazio: `buildPixPayload` devolve `null`
+  // e a tela seguia mostrando o botão de copiar. A família copiava nada, colava
+  // no banco, e concluía que o PIX do motorista estava quebrado.
+  //
+  // As duas condições dizem coisas diferentes e as duas importam: sem chave, é
+  // ele que não cadastrou; com chave inválida, é ele que cadastrou errado. A
+  // frase é a mesma de propósito — para a família, as duas terminam em "combine
+  // direto com ele", e explicar a diferença seria expor um erro dele a ela.
+  if (!admin?.pixKey || !payload) {
     return (
       <div className="bg-sunken border border-border rounded-2xl p-4">
         <p className="text-sm font-semibold text-text">

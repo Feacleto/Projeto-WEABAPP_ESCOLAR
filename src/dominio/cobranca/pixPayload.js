@@ -1,4 +1,4 @@
-import { normalizePixKey } from './pix.js';
+import { normalizePixKey, validatePixKey } from './pix.js';
 
 /**
  * Gera o "PIX Copia e Cola" (BR Code, padrão EMV do Banco Central).
@@ -67,6 +67,24 @@ export function buildPixPayload({
   amount = null,
   txid = '',
 }) {
+  // ⚠️ VALIDA ANTES DE NORMALIZAR, E FALHA FECHADO.
+  //
+  // `normalizePixKey` NÃO valida — ela formata. `'119'` como telefone vira
+  // `+55119`, e o código saía com uma chave que não existe: o app do banco
+  // recusa sem dizer por quê, e a família conclui que o PIX do motorista é que
+  // está quebrado.
+  //
+  // `PixForm` valida na entrada, então isto é defesa em profundidade — vale
+  // para chave gravada antes da validação existir, ou pelo console. Mas o
+  // custo de não ter era alto e o de ter é zero: `null` já é a resposta de
+  // "não há código", e quem chama sabe tratá-la.
+  //
+  // ⚠️ FALHAR FECHADO SÓ SERVE SE QUEM CHAMA OLHAR O RETORNO. `PixBlock`
+  // guardava em `!admin.pixKey` — a CHAVE, não o payload —, então chave
+  // presente e inválida passava do guarda e renderizava um copia-e-cola vazio.
+  // Os dois lados foram corrigidos juntos; não mexa num sem o outro.
+  if (validatePixKey(keyType, key)) return null;
+
   // ORDEM (type, value) — a mesma de `validatePixKey`. A cópia que morava
   // aqui recebia (key, type), invertida em relação à do userService.
   const pixKey = normalizePixKey(keyType, key);
