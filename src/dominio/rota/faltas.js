@@ -68,3 +68,35 @@ export function resumoDeFaltas(historico, hoje = new Date()) {
   }
   return { noMes, total, futuras };
 }
+
+/**
+ * ATÉ QUANTOS DIAS À FRENTE UM AVISO DE FALTA PODE SER MARCADO.
+ *
+ * ── POR QUE ELE EXISTE, E POR QUE É PEQUENO
+ * Plano muda, ninguém desmarca, e no dia o motorista não passa na porta. Duas
+ * semanas é o horizonte em que a família ainda lembra do que combinou. O
+ * HISTÓRICO anda meses para trás (`/pai/faltas`) — o teto é só do AVISO.
+ *
+ * ── POR QUE ELE MORA AQUI
+ * Era literal de JSX, escrito DUAS vezes em `AbsenceSheet.jsx`: no `max` do
+ * campo de data e no texto "dá pra avisar até 14 dias à frente". Mudar um e
+ * esquecer o outro produz uma tela que oferece 21 dias e diz 14 — e o
+ * CLAUDE.md afirmava que "a conta é testada", misturando este teto (que não
+ * era) com a conta de faltas passadas (que é).
+ *
+ * Constante no domínio é constante testável, e é a troca que este diretório
+ * inteiro existe para fazer.
+ */
+export const DIAS_DE_AVISO_DE_FALTA = 14;
+
+/**
+ * A data máxima que o campo de aviso aceita, dado o "hoje".
+ *
+ * Recebe o agora por parâmetro — o domínio não lê relógio, pelo mesmo motivo
+ * que não lê Firebase.
+ */
+export function limiteDoAviso(agora = new Date()) {
+  const d = new Date(agora);
+  d.setDate(d.getDate() + DIAS_DE_AVISO_DE_FALTA);
+  return d;
+}

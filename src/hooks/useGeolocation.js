@@ -53,7 +53,7 @@ export function useGeolocation() {
     try {
       startTracking(driverUid);
       setWatching(true);
-      // O RELÓGIO DOS TRÊS MESES COMEÇA AQUI, e este é o único lugar.
+      // O RELÓGIO DOS TRÊS MESES COMEÇA AQUI, e este é o único gatilho do CLIENTE — os outros dois (primeiro responsável, primeira mensalidade) são do servidor, em `functions/lib/relogioDoTeste.js`.
       //
       // A primeira rota é o momento em que o produto começa a entregar —
       // antes dela não há posição no mapa nem aviso de chegada, e contar do

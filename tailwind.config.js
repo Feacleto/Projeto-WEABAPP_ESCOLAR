@@ -45,6 +45,21 @@ export default {
         borderStrong: '#D1D5DB', // borda de campo, tracejado, e a ALÇA de
         // arrastar das folhas (que é affordance física: precisa ser vista)
 
+        // ── O PAPEL É OUTRO SUPORTE, E PEDE OUTRA BORDA ──────────────────
+        //
+        // `borderStrong` (#D1D5DB) é calibrado para tela. Numa impressora a
+        // jato quase sem tinta — que é a que o motorista tem — ele
+        // simplesmente não sai, e linha de assinatura invisível é folha
+        // inutilizada.
+        //
+        // Este token existe para que essa exceção tenha NOME. Ela estava no
+        // extrato como `border-gray-400` cru, e cor crua fora dos três
+        // endereços de paleta é o que a regra 1 proíbe: nome vago (ou nenhum
+        // nome) é permissão para o próximo uso.
+        //
+        // Só em superfície IMPRESSA: extrato, contrato, recibo.
+        linhaImpressa: '#9CA3AF',
+
         // ── SUPERFÍCIE ESCURA — só a home pública do motorista ───────────
         //
         // Ela está COMPRANDO: escuro, negócio, decisão. A porta da família é

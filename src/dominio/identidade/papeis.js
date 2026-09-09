@@ -1,5 +1,5 @@
 /**
- * Os três papéis do app, e pra onde cada um vai.
+ * Os papéis do app — três nomeados, mais a AUSÊNCIA de papel, que é estado de produto e tem tela própria (`/comecar`), e pra onde cada um vai.
  *
  * O NOME `admin` NÃO QUER DIZER DONO
  * Ele é histórico e confunde: no código inteiro `role: 'admin'` significa
@@ -82,7 +82,13 @@ export function ehResponsavel(profile) {
  * Os três papéis são exclusivos, então a ordem aqui é só legibilidade — mas
  * ela segue a do produto: plataforma, operação, família.
  *
- * SEM PAPEL, A RESPOSTA É `/login` — E ANTES ERA `null`, QUE VIROU BUG
+ * SEM PAPEL, A RESPOSTA É `/comecar` — E JÁ FOI `null`, QUE VIROU BUG
+ *
+ * ⚠️ ESTE TÍTULO DIZIA `/login`, E O CORPO ABAIXO EXPLICA `/comecar`.
+ * Título é a linha que se lê com pressa, e este afirmava o comportamento de
+ * duas versões atrás — numa função que decide para onde vai TODO MUNDO que
+ * acaba de entrar. `/login` devolveria a pessoa para a tela de onde ela
+ * acabou de vir.
  * O docstring anterior dizia que devolver `null` era de propósito, pra "quem
  * chama decide o que fazer". Só que nenhum dos dois chamadores decidia nada:
  * `App.jsx` jogava o retorno direto em `<Navigate to={...}>`, nas duas rotas

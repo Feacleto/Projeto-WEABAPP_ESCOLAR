@@ -18,8 +18,8 @@
  *
  * Se um dia ela passar a oferecer um valor que não está na régua, o orçamento
  * voltou — com outro nome, e sem contrato que registre. A concessão existe e
- * tem caminho próprio: motivo, prazo e registro (ver a Fase 12 do
- * `plano-console.md`).
+ * tem caminho próprio: motivo, prazo e registro (ver
+ * `dominio/associacao/concessao.js`).
  *
  * ── O TEXTO É EDITÁVEL ANTES DE SAIR
  * A tela abre o WhatsApp com isto preenchido e o dono lê antes de enviar.
@@ -148,9 +148,22 @@ export function mensagemDeProposta({
   }
 
   if (degrau === 'bloqueado') {
-    // RESGATE. Ele perdeu o prazo — a antecipação já expirou. O texto NÃO
-    // promete o desconto: quem concede é o dono, com motivo e prazo, na folha
-    // de concessão. Prometer aqui e não conceder depois é pior que não falar.
+    // RESGATE. Ele perdeu o prazo da ESCADA — mas não perdeu tudo.
+    //
+    // ⚠️ ESTE COMENTÁRIO DIZIA "a antecipação já expirou", E ISSO MANDAVA O
+    // DONO PELO CAMINHO ERRADO. A régua tem um degrau de RETORNO: quem volta
+    // dentro de 30 dias depois do dia 90 leva 10%, e quem decide isso é
+    // `functions/lib/contratacao.js` pelo relógio do servidor, sozinho —
+    // automático, sem ninguém conceder nada.
+    //
+    // Quem lesse a versão anterior concluiria que o resgate exige exceção, e
+    // abriria uma concessão (com motivo, prazo e registro) para dar um
+    // desconto que a régua já dá.
+    //
+    // O texto continua NÃO prometendo número, e isso segue certo: se ele
+    // voltar depois dos 30 dias, não há degrau nenhum, e prometer aqui para
+    // não conceder depois é pior que não falar. O que o dono precisa saber é
+    // que talvez não haja nada a conceder.
     return {
       assunto: 'Chamar de volta',
       texto:

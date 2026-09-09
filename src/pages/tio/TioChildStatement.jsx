@@ -263,10 +263,10 @@ export default function TioChildStatement() {
               * impressora a jato quase sem tinta, que é a que o motorista
               * tem — e linha de assinatura invisível é folha inutilizada. */}
             <div className="mt-10 flex gap-8 text-[11px] text-textMuted">
-              <div className="flex-1 border-t border-gray-400 pt-1">
+              <div className="flex-1 border-t border-linhaImpressa pt-1">
                 Assinatura do responsável
               </div>
-              <div className="flex-1 border-t border-gray-400 pt-1">
+              <div className="flex-1 border-t border-linhaImpressa pt-1">
                 Assinatura do motorista
               </div>
             </div>

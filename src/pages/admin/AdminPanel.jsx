@@ -230,16 +230,20 @@ export default function AdminPanel() {
           * Esta tela é de mesa: é onde se negocia, se fecha mês e se abre
           * número numa reunião.
           *
-          * ERAM CINCO ABAS E VIRARAM TRÊS, então a quebra em duas fileiras
-          * saiu junto: ela existia porque cinco rótulos em 320px viram texto
-          * ilegível, e a saída comum — a tira que rola — esconde o fim, que é
-          * como a Taxa ficou invisível por tanto tempo. Com três, cabem. */}
-        {/* CINCO ABAS, E ELAS QUEBRAM EM DUAS LINHAS NO CELULAR.
+          * SÃO OITO ABAS, E ELAS QUEBRAM EM VÁRIAS FILEIRAS NO CELULAR.
           *
           * `flex-wrap` em vez da tira que rola: tira esconde o fim, e quem não
           * arrasta nunca descobre que existe mais — foi assim que a Taxa ficou
-          * invisível por tanto tempo. Duas linhas ocupam mais espaço e não
-          * escondem nada. */}
+          * invisível por tanto tempo. Fileiras ocupam mais espaço e não
+          * escondem nada.
+          *
+          * ⚠️ AQUI HAVIA DOIS COMENTÁRIOS EMPILHADOS, com o MESMO argumento e
+          * contagens diferentes: um dizia "eram cinco e viraram três, com três
+          * cabem", o outro "cinco abas, quebram em duas linhas". São oito
+          * (`ABAS`, abaixo), e a linha 56 deste arquivo já dizia oito.
+          *
+          * O número é o que alguém usa para conferir se a lista está completa,
+          * então ele não fica escrito à mão aqui: quem conta é o array. */}
         <div className="mb-5 flex flex-wrap gap-1 rounded-2xl bg-neutro p-1">
           {[
             ['hoje', 'Hoje'],

@@ -8,6 +8,10 @@ import {
   notifyAbsence,
 } from '../../services/absencesService';
 import { getDateKey } from '../../dominio/rota/horarios';
+import {
+  DIAS_DE_AVISO_DE_FALTA,
+  limiteDoAviso,
+} from '../../dominio/rota/faltas.js';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
@@ -190,14 +194,13 @@ export default function AbsenceSheet({
               type="date"
               value={dataEscolhida}
               min={getDateKey()}
-              max={getDateKey(
-                new Date(new Date().setDate(new Date().getDate() + 14))
-              )}
+              max={getDateKey(limiteDoAviso())}
               onChange={(e) => setDataEscolhida(e.target.value || getDateKey())}
               className="w-full h-12 rounded-2xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
             />
             <span className="block text-[11px] text-textMuted mt-1">
-              {rotuloDoDia(dataEscolhida)} · dá pra avisar até 14 dias à frente
+              {rotuloDoDia(dataEscolhida)} · dá pra avisar até{' '}
+              {DIAS_DE_AVISO_DE_FALTA} dias à frente
             </span>
           </label>
 

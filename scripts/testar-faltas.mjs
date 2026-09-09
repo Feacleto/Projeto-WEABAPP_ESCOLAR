@@ -2,7 +2,13 @@
  * Testes da conta de faltas — Node puro, sem runner, como o resto de scripts/.
  * Rodar: node scripts/testar-faltas.mjs
  */
-import { dataDaChave, faltasDoMes, resumoDeFaltas } from '../src/dominio/rota/faltas.js';
+import {
+  DIAS_DE_AVISO_DE_FALTA,
+  dataDaChave,
+  faltasDoMes,
+  limiteDoAviso,
+  resumoDeFaltas,
+} from '../src/dominio/rota/faltas.js';
 // A aritmética de mês é a de `formatters`, e não uma cópia: o teste passa por
 // ela de propósito, porque é a que as telas de falta usam.
 import { addMonths, formatMonthLabel } from '../src/compartilhado/formatters.js';
@@ -49,6 +55,25 @@ const r = resumoDeFaltas([
 eq('no mês corrente', r.noMes, 2);
 eq('total já ocorrido', r.total, 3);
 eq('futuras contadas à parte', r.futuras, 1);
+
+// ── O TETO DO AVISO — agora é constante do domínio, e é testável.
+//
+// Era literal de JSX escrito DUAS vezes em `AbsenceSheet.jsx` (o `max` do
+// campo e o texto ao lado). Mudar um e esquecer o outro produz uma tela que
+// oferece 21 dias e diz 14 — e o CLAUDE.md afirmava que "a conta é testada",
+// misturando este teto (que não era) com a contagem de faltas (que é).
+eq('o teto do aviso é de duas semanas', DIAS_DE_AVISO_DE_FALTA, 14);
+eq(
+  'o limite cai 14 dias à frente',
+  limiteDoAviso(new Date('2026-09-09T12:00:00Z')).toISOString().slice(0, 10),
+  '2026-09-23'
+);
+// Vira o mês sem esforço: é `setDate`, não aritmética de string.
+eq(
+  'e atravessa a virada do mês',
+  limiteDoAviso(new Date('2026-09-25T12:00:00Z')).toISOString().slice(0, 10),
+  '2026-10-09'
+);
 
 console.log('\n' + '─'.repeat(66));
 console.log(`\x1b[1m${ok} passaram, ${falhou} falharam\x1b[0m`);

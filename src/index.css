@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* A LEGENDA DO MAPA — casa, perua, escola.
+ *
+ * A única paleta do app em que a cor não é papel e sim IDENTIDADE de um dos
+ * três lugares. A regra 5 do projeto nomeia esta legenda como exceção com
+ * nome próprio; o que faltava era ela usar o nome.
+ *
+ * Os valores base são os tokens de `tailwind.config.js` (`accent`-família,
+ * `escola`, `perua`). O segundo tom de cada par é o mesmo matiz escurecido
+ * para o gradiente do pino, e é o único número literal aqui.
+ *
+ * Não use estas variáveis fora da legenda do mapa: fora dali, cor tem papel,
+ * e papel tem token com nome no config.
+ */
+:root {
+  --pino-casa: #10b981;
+  --pino-casa-fundo: #047857;
+  --pino-escola: #8b5cf6;
+  --pino-escola-fundo: #6d28d9;
+  --pino-perua: #f59e0b;
+  --pino-perua-fundo: #d97706;
+}
+
 /* Reset básico mobile-first com fonte Inter via fallback do sistema */
 @layer base {
   html,
@@ -334,14 +356,27 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.12);
   border: 3px solid white;
 }
+/* ⚠️ OS TRÊS PINOS LEEM OS TOKENS, E ANTES ERAM HEX CRU AQUI.
+ *
+ * `#f59e0b` é exatamente o token `perua` do tailwind.config.js, e `#8b5cf6`
+ * é vizinho do `escola`. A regra 5 do projeto nomeia a legenda
+ * casa/perua/escola como a exceção COM NOME PRÓPRIO — e ela era a única que
+ * não usava o nome: trocar o âmbar da perua exigia achar três lugares, um
+ * deles fora do sistema de tokens e invisível para `npm run testar:contraste`,
+ * que só conhece o config.
+ *
+ * As variáveis são declaradas em `:root` mais abaixo, a partir dos tokens.
+ * O segundo tom de cada gradiente é o mesmo token escurecido, e continua
+ * literal por não ter nome no config — se ganhar um, ele vem para cá também.
+ */
 .tn-pin-home .tn-pin-dot {
-  background: linear-gradient(135deg, #10b981, #047857);
+  background: linear-gradient(135deg, var(--pino-casa), var(--pino-casa-fundo));
 }
 .tn-pin-school .tn-pin-dot {
-  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  background: linear-gradient(135deg, var(--pino-escola), var(--pino-escola-fundo));
 }
 .tn-pin-van .tn-pin-dot {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, var(--pino-perua), var(--pino-perua-fundo));
 }
 .tn-pin-halo {
   position: absolute;
@@ -530,14 +565,31 @@
 /* Perua cruzando a "estrada" do card de status. */
 @keyframes demo-van-run {
   0% {
-    left: -18%;
+    left: 52px;
+    transform: translateY(-50%) scaleX(1);
+  }
+  42% {
+    left: calc(100% - 108px);
+    transform: translateY(-50%) scaleX(1);
+  }
+  50% {
+    left: calc(100% - 108px);
+    transform: translateY(-50%) scaleX(-1);
+  }
+  92% {
+    left: 52px;
+    transform: translateY(-50%) scaleX(-1);
   }
   100% {
-    left: 104%;
+    left: 52px;
+    transform: translateY(-50%) scaleX(1);
   }
 }
+/* O `transform` do keyframe SUBSTITUI o `-translate-y-1/2` da classe utilitária
+   — as duas escrevem a mesma propriedade, e a animação ganha. Por isso o
+   translateY entra em todo passo: sem ele a van desce meio corpo ao animar. */
 .demo-van {
-  animation: demo-van-run 5s linear infinite;
+  animation: demo-van-run 9s cubic-bezier(0.42, 0, 0.5, 1) infinite;
 }
 
 /* Ponto "ao vivo" — o mesmo halo do pin do mapa, em escala de mock. */
