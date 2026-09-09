@@ -37,6 +37,33 @@ service firebase.storage {
     //
     // É o custo de ter a mesma decisão escrita em dois arquivos. Quem mexer
     // em `isAdmin()` num deles tem que mexer no outro.
+    //
+    // ⚠️ AS DUAS CÓPIAS DIVERGEM DE PROPÓSITO NUM PONTO, E ISTO É DECISÃO.
+    //
+    // Desde 06/09/2026 o `isAdmin()` do FIRESTORE nega também quem está com o
+    // teste vencido e sem assinatura (`assinaturaCobreHoje() ||
+    // trialCorrendo()`). Esta cópia nega apenas `suspenso`.
+    //
+    // Não é esquecimento — é a mesma assimetria que `firestore.rules` já
+    // assume por escrito: errar permissivo custa uma aba velha escrevendo;
+    // errar restritivo tranca um motorista PAGANTE às seis da manhã, sem
+    // conserto dentro do produto. E aqui o custo de acertar é maior que lá:
+    //
+    //   - upload não é cláusula. Quem está bloqueado não consegue escrever
+    //     NADA no Firestore, então uma foto ou um comprovante que ele suba
+    //     fica inerte — não vira criança, não vira baixa de pagamento.
+    //   - a semântica do prazo é sutil: `trialInicio` AUSENTE significa "o
+    //     relógio nem começou", e tem que PASSAR. Replicar isso errado aqui
+    //     bloquearia a foto da primeira criança do motorista recém-cadastrado
+    //     — a primeira coisa que ele faz no app.
+    //
+    // Então o que a plataforma perde é bytes de quem não paga, e o que ela
+    // evita é trancar quem paga. Se essa conta mudar, a trava entra aqui
+    // COM caso de teste para `trialInicio` ausente.
+    //
+    // O que NÃO pode voltar é a assimetria ficar implícita: o CLAUDE.md
+    // afirmava "A TRANCA MORA EM `isAdmin()`" sem dizer em qual dos dois
+    // arquivos.
     function isAdmin() {
       return isSignedIn()
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
@@ -140,12 +167,32 @@ service firebase.storage {
     // mostrada.
     // --------------------------------------------------------------------
     match /marcaLogos/{uid} {
+      // ⚠️ A ESCRITA PASSA POR `isAdmin()`, E A LEITURA NÃO — os dois lados
+      // têm motivo diferente.
+      //
+      // LEITURA aberta a qualquer logado porque a família precisa ver: o logo
+      // vai no CABEÇALHO do `/pai`, no lugar de "Início" (ver
+      // `useMarcaDoTio`). É como o motorista escolhe ser chamado.
+      //
+      // ESCRITA passou a exigir `isAdmin()` em 09/09/2026, e o que faltava era
+      // a SUSPENSÃO: a regra era `isSignedIn() && auth.uid == uid`, então um
+      // motorista suspenso pela plataforma continuava trocando a imagem que
+      // aparece na tela de todas as famílias dele. Suspensão é decisão de uma
+      // pessoa, tomada por causa — e enquanto ela vale, ele não empurra
+      // conteúdo para ninguém.
+      //
+      // Achado por um caso de teste novo, não por leitura: o bloco A CONTA em
+      // `scripts/testar-storage.mjs` esperava NEGA e recebeu 200.
+      //
+      // `auth.uid == uid` continua, e é o que impede um motorista de trocar o
+      // logo de OUTRO — `isAdmin()` aqui significa "tem uma conta", nunca
+      // escopo.
       allow read: if isSignedIn();
-      allow write: if isSignedIn()
+      allow write: if isAdmin()
         && request.auth.uid == uid
         && isImage()
         && isWithinSizeLimit();
-      allow delete: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin() && request.auth.uid == uid;
     }
 
     // --------------------------------------------------------------------
