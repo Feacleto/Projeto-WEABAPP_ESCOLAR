@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, DollarSign } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
+import { indiceDaAba } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import { useAuth } from '../../hooks/useAuth';
@@ -85,9 +86,34 @@ export default function PaiLayout() {
   // Usado pelo "Como usar o app" do painel
   const openTutorial = () => setTour('review');
 
+  const abaAtiva = indiceDaAba(location.pathname, NAV_ITEMS);
+  /* `motion-reduce:animate-none` porque quem pediu menos movimento ao sistema
+     não pediu telas deslizando. A informação continua toda lá — o desenho
+     nunca dependeu da animação para ser entendido. */
+  const entradaDaTela = `motion-reduce:animate-none ${
+    abaAtiva < 0
+      ? 'animate-entra-plano'
+      : abaAtiva === 0
+        ? 'animate-entra-esq'
+        : 'animate-entra-dir'
+  }`;
+
   return (
     <div className="min-h-screen pb-28">
-      <Outlet context={{ openTutorial }} />
+      {/* ⚠️ A TELA ENTRA PELO LADO DA PRÓPRIA ABA, e a `key` é o ÍNDICE, não
+        * o caminho.
+        *
+        * Pelo caminho, navegar de uma criança para outra remontaria a mesma
+        * tela e ela piscaria — e isso não é troca de aba, é navegação dentro
+        * dela. Pelo índice, a animação toca exatamente quando o rodapé muda de
+        * lugar, que é o movimento que ela existe para explicar.
+        *
+        * O lado sai do índice: 0 é o Início (mora à esquerda), 1 é o
+        * Financeiro (à direita). Quem não é aba entra sem direção — inventar
+        * um lado ensinaria uma geografia que não existe. */}
+      <div key={abaAtiva} className={entradaDaTela} >
+        <Outlet context={{ openTutorial }} />
+      </div>
       <BottomNav items={NAV_ITEMS} />
 
       {/* Sem um ícone na tela de início, o link do WhatsApp continua sendo

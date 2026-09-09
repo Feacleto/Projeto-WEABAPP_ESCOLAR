@@ -15,7 +15,7 @@
     "testar:horarios": "node scripts/testar-horarios.mjs",
     "testar:faltas": "node scripts/testar-faltas.mjs",
     "testar:aviso": "node scripts/testar-aviso.mjs",
-    "testar": "npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste && npm run testar:travessia && npm run testar:contrato && npm run testar:pix && npm run testar:status && npm run testar:auth && npm run testar:trial && npm run testar:planos && npm run testar:conta && npm run testar:cobranca && npm run testar:gateway && npm run testar:carteira && npm run testar:proposta && npm run testar:chamados && npm run testar:risco && npm run testar:fila && npm run testar:concessao && npm run testar:selo && npm run testar:indicacao",
+    "testar": "npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste && npm run testar:travessia && npm run testar:contrato && npm run testar:pix && npm run testar:status && npm run testar:auth && npm run testar:trial && npm run testar:planos && npm run testar:conta && npm run testar:cobranca && npm run testar:gateway && npm run testar:carteira && npm run testar:proposta && npm run testar:chamados && npm run testar:risco && npm run testar:fila && npm run testar:concessao && npm run testar:selo && npm run testar:indicacao && npm run testar:origem && npm run testar:abas",
     "testar:contraste": "node scripts/testar-contraste.mjs",
     "testar:travessia": "node scripts/testar-travessia.mjs",
     "testar:contrato": "node scripts/testar-contrato.mjs",
@@ -35,7 +35,9 @@
     "testar:fila": "node scripts/testar-fila.mjs",
     "testar:concessao": "node scripts/testar-concessao.mjs",
     "testar:selo": "node scripts/testar-selo.mjs",
-    "testar:indicacao": "node scripts/testar-indicacao.mjs"
+    "testar:indicacao": "node scripts/testar-indicacao.mjs",
+    "testar:abas": "node scripts/testar-abas.mjs",
+    "testar:origem": "node scripts/testar-origem.mjs"
   },
   "dependencies": {
     "firebase": "^12.12.1",

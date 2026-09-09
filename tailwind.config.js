@@ -203,6 +203,53 @@ export default {
         // tela cheia. Preta e forte, porque tem conteúdo por baixo.
         float: '0 12px 32px -8px rgb(0 0 0 / 0.38)',
       },
+      /* ══ A ENTRADA DA TELA — a microinteração do rodapé ══════════════
+       * A tela nova entra PELO LADO DA PRÓPRIA ABA: o Início mora à esquerda
+       * e o Financeiro à direita. Assim a direção sai de graça nos dois
+       * caminhos — indo pro Financeiro ele entra pela direita, voltando, pela
+       * esquerda — e ninguém precisa guardar de onde a pessoa veio.
+       *
+       * ⚠️ DEZ PIXELS, NÃO UMA TELA INTEIRA. Deslizamento longo é lento e
+       * embaralha quem está dentro de um veículo em movimento. O deslocamento
+       * existe para dar SENTIDO, não para transportar.
+       *
+       * ⚠️ E É `animation`, NÃO `transition` COM `requestAnimationFrame`.
+       * A primeira tentativa foi rAF em dois passos, e ela tem uma falha real:
+       * com a aba do navegador em segundo plano o rAF é suspenso, o segundo
+       * passo não roda e a tela nova fica PRESA INVISÍVEL. Animação declarada
+       * roda na montagem, sem estado transitório para ficar preso — quem
+       * interpola é o navegador.
+       *
+       * A opacidade termina em 69% do tempo (180 ms de 260 ms): o conteúdo
+       * fica legível antes de parar de andar, em vez de chegar e só então
+       * aparecer.
+       *
+       * ⚠️ POR QUE AQUI E NÃO NO `index.css`, que é onde moram os outros
+       * keyframes do projeto: aquele arquivo estava em edição por outra
+       * sessão, e um arquivo por vez é a regra deste repositório. Uma duração,
+       * uma curva e uma distância são token de desenho — este arquivo é uma
+       * casa defensável para eles. */
+      keyframes: {
+        'entra-esq': {
+          from: { opacity: '0', transform: 'translateX(-10px)' },
+          '69%': { opacity: '1' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        'entra-dir': {
+          from: { opacity: '0', transform: 'translateX(10px)' },
+          '69%': { opacity: '1' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        /* Sem direção: as telas que não são aba (children, rota, agenda) não
+           têm lado, e inventar um ensinaria uma geografia que não existe. */
+        'entra-plano': { from: { opacity: '0' }, to: { opacity: '1' } },
+      },
+      animation: {
+        'entra-esq': 'entra-esq 260ms cubic-bezier(.22,.9,.24,1) both',
+        'entra-dir': 'entra-dir 260ms cubic-bezier(.22,.9,.24,1) both',
+        'entra-plano': 'entra-plano 180ms linear both',
+      },
+
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
