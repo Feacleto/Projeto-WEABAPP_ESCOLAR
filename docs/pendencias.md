@@ -41,7 +41,7 @@ Nenhuma pede opinião. Todas pedem que alguém olhe.
 
 | Pendência | Dono | **Recomendação** | Custo |
 |---|---|---|---|
-| **Horas de consultor por fechamento** | [canvas-negocio.md](canvas-negocio.md) 2 | **Campo `horasConsultor` no lead, preenchido à mão.** O ciclo em dias já é derivável de `criadoEm`/`fechadoEm`, mas tempo decorrido não é esforço — e é o esforço que vira CAC | um campo |
+| **Horas de consultor por fechamento** | [canvas-negocio.md](canvas-negocio.md) 2 | ⚠️ **PRECISA DE NOVO LAR.** A recomendação era "campo `horasConsultor` no lead, preenchido à mão" — e `leadsFunil` saiu das rules em 06/09/2026, junto com o funil e o orçamento. Não há lead. O candidato natural é `taxaParceiros/{uid}`, que só o dono lê e já guarda a nota interna dele. A métrica continua sendo a que este arquivo chama de "o número que governa o negócio", então ela não pode ficar sem endereço | um campo, em outra coleção |
 | **Ponto de cruzamento da infra** | [negocio.md](negocio.md) 4 | **Console → Firestore → Uso**, leituras por dia ÷ motoristas ativos. **Não** a fatura: com 1 motorista você está dentro da cota gratuita e ela mostra zero | 20 min |
 | **Padronizar `motivoPerda`** | [pitch-comercial.md](pitch-comercial.md) 3 | **Usar os seis nomes das objeções** como vocabulário fixo. O mapa vira dado: em vinte perdas você descobre qual objeção merece produto | zero, sem código |
 | **Adoção da responsável** | [personas.md](personas.md) 2 | **Sim — carimbo de último acesso.** ⚠️ Dado pessoal com finalidade nova: entra na política de privacidade **antes** do código, e a finalidade é medir adoção, não vigiar família | pequeno |

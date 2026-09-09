@@ -317,13 +317,27 @@ LGPD.
 
 ## 6. O funil comercial
 
-Quatro paradas, já construídas e ligadas à navegação desde 29/08/2026:
+> ⚠️ **REESCRITO EM 09/09/2026.** O diagrama abaixo tinha QUATRO paradas e
+> começava em `leadsFunil` — coleção que saiu das rules em 06/09/2026 junto com
+> o funil, o orçamento e a aba Funil. Ele descrevia o caminho do modelo
+> NEGOCIADO, que não existe mais.
+
+**TRÊS paradas, e a primeira é o próprio motorista:**
 
 ```
-leadsFunil ──► orçamento ──► contratosAssociacao ──► faturasParceiro
-(aba Funil)   (OrcamentoSheet)  (/tio/contrato-      (aba Taxa →
-                                 plataforma)          /tio/taxa)
+users.planoId ──► contratosAssociacao ──► faturasParceiro
+(o motorista      (/tio/contrato-          (aba Mês →
+ escolhe em        plataforma)              /tio/taxa)
+ /tio/planos;
+ quem grava é a
+ callable
+ contratarPlano)
 ```
+
+A diferença que importa: **ninguém negocia nada**. O preço é de tabela, o
+motorista contrata sozinho, e o que o servidor grava (`planoId` +
+`limiteCriancas`, no mesmo write) é o que a fatura cobra e o que as rules
+cobram no cadastro de criança.
 
 Três armadilhas registradas, todas já documentadas no `CLAUDE.md`:
 

@@ -190,8 +190,13 @@ firebase deploy --only firestore:rules
 # 3. Regras do Storage (só depois do "Get Started" no console)
 firebase deploy --only storage
 
-# 4. Functions — o núcleo, 12 de 14. Ver a nota do Resend abaixo.
-firebase deploy --only functions:lookupInvite,functions:redeemInvite,functions:joinDriverWaitlist,functions:getShowcase,functions:spinEntryBonus,functions:closeStaleRoutes,functions:sendPushOnNotification,functions:generateMonthlyPayments,functions:runBillingNow,functions:getInvitePreview,functions:flagDuplicateReceipts,functions:backfillTestimonialPrivacy
+# 4. Functions — o núcleo, 14 de 16. Ver a nota do Resend abaixo.
+#    ⚠️ PREFIRA `.\deploy.ps1`: ele CONFERE esta lista contra os `exports.` de
+#    functions/index.js antes de gastar o deploy. Um nome apagado aqui aborta
+#    o deploy INTEIRO ("the following filters do not exist") e nada sobe —
+#    inclusive redeemInvite, que é o caminho todo do responsável. Esta lista
+#    já esteve errada duas vezes.
+firebase deploy --only functions:lookupInvite,functions:redeemInvite,functions:getShowcase,functions:getInvitePreview,functions:contratarPlano,functions:closeStaleRoutes,functions:confirmarAusencias,functions:sendPushOnNotification,functions:generateMonthlyPayments,functions:runBillingNow,functions:flagDuplicateReceipts,functions:backfillTestimonialPrivacy,functions:asaasWebhook,functions:criarCobrancaDaFatura
 
 # 5. Por último os sites (os DOIS — ver a seção acima para subir um só)
 firebase deploy --only hosting
@@ -324,8 +329,15 @@ gerenciamento da conta, no Google Cloud.
 
 ## Depois que subir: três verificações
 
-1. **A home carrega e mostra o parceiro.** Se o nome do motorista aparecer, o
-   `getShowcase` está no ar e o Firestore respondeu.
+1. **A `/familia` carrega e mostra os contadores.** É a porta que realmente
+   chama `getShowcase`. Se os números aparecerem, a callable está no ar e o
+   Firestore respondeu.
+
+   ⚠️ Esta verificação dizia "a home carrega e mostra o parceiro". A home
+   pública do motorista foi APAGADA em 06/09/2026 — `/` é
+   `<Navigate to="/login">` —, então o passo era inexecutável como escrito. E
+   `/familia` só é alcançável pelo link de convite ou pelo endereço direto: a
+   landing não linka para ela.
 
 2. **O backfill de privacidade.** `/admin` → Manutenção → **Verificar**. É
    simulação, não escreve nada: conta quantos depoimentos públicos ainda
@@ -439,17 +451,36 @@ callables públicas. Por isso elas têm `maxInstances` apertado — ver
 
 ## O que fica de fora, de propósito
 
-- **App Check** nas quatro callables públicas (`getShowcase`, `lookupInvite`,
-  `getInvitePreview`, `joinDriverWaitlist`). Elas aceitam chamada sem login e
-  têm freio de tentativa por hora, mas nada prova que quem chama é o app.
-  Precisa de uma chave reCAPTCHA v3 criada por você.
-- **Testes das rules.** Quatro casos valem: pai não lê filho de outro; anônimo
-  não cria documento de usuário; depoimento público não carrega nome completo
-  nem foto sem consentimento; anônimo não lê a posição ao vivo da perua.
-  Exige acrescentar dependência de teste ao projeto.
-- **Gate de admin em custom claim.** Hoje `superAdmin` é campo em documento, e
-  está seguro por três regras que precisam continuar todas certas. Em claim,
-  viraria uma garantia em vez de três.
+- **App Check** nas **três** callables públicas (`getShowcase`,
+  `lookupInvite`, `getInvitePreview`). Elas aceitam chamada sem login e têm
+  freio de tentativa por hora (`maxInstances: 3`), mas nada prova que quem
+  chama é o app. Precisa de uma chave reCAPTCHA v3 criada por você, e ela tem
+  que ser registrada no console **antes** de qualquer `enforceAppCheck` —
+  invertido, derruba o app.
+
+  A mais custosa é `getInvitePreview`: cada chamada lê a criança, os pagamentos
+  em aberto e conta os recados.
+
+  ⚠️ `joinDriverWaitlist` saiu desta lista: a function foi apagada em
+  06/09/2026 com a fila.
+- ~~**Testes das rules.**~~ **FEITO.** `scripts/testar-regras.mjs` existe com
+  **219 casos** e `scripts/testar-storage.mjs` com **32**, os dois contra o
+  emulador, contra o arquivo do disco, **sem nenhuma dependência nova** — são
+  scripts Node puros, no padrão de `scripts/`. Esta linha dizia que era preciso
+  "acrescentar dependência de teste ao projeto", e era o que fazia o item
+  parecer caro.
+
+  Rode os dois à mão antes de publicar rule:
+  `firebase emulators:exec --only auth,firestore "node scripts/testar-regras.mjs"`
+  e
+  `firebase emulators:exec --only auth,firestore,storage "node scripts/testar-storage.mjs"`.
+- **Gate de dono em custom claim.** Hoje é `users.role == 'owner'`, lido por
+  `isOwner()` nas rules e `ehDono()` no cliente. Em claim, viraria uma garantia
+  no token em vez de uma leitura de documento por regra.
+
+  ⚠️ Esta linha dizia "hoje `superAdmin` é campo em documento" — e o mesmo
+  arquivo, 400 linhas acima, já diz que `superAdmin` não abre mais nada
+  (saiu em 06/09/2026). O gate é o PAPEL.
 
 ---
 

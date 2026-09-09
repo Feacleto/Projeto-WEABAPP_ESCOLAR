@@ -171,6 +171,28 @@ Quatro cabem numa página: **1** (o dinheiro dele é dele), **3** (do lado de qu
 dirige), **6** (quando a gente não sabe, a gente cala) e **8** (a gente diz em
 que pé está).
 
+**Três estão na landing, e a quarta entrou e saiu no mesmo dia (07/09/2026).**
+Onde as três moram: a **1** abre o hero e tem o gráfico do caminho do dinheiro
+como prova, a **3** está nos valores, e a **8** é a faixa "a gente está
+começando".
+
+⚠️ **A 6 ficou de fora, e o lugar dela na faixa da família foi ocupado pela
+agenda digital** — decisão de produto: a agenda é uma função que a responsável
+quer, e a declaração 6 é uma promessa de comportamento. Quem manda na página é
+o cliente, e a troca foi pedida.
+
+**Fica registrado o que se perdeu, porque não é pequeno.** A 6 é a única das
+oito que descreve um comportamento que o código tem
+([avisoDoMomento.js](../src/dominio/rota/avisoDoMomento.js)): quando o dado
+morre, o "AO VIVO" apaga e a bolinha para. As outras prometem; ela é
+verificável. É também a que blinda a maior crítica futura possível — *"o mapa
+travou e ninguém me avisou"* —, e depois que essa reclamação existe, dizer que
+o app sempre soube calar não vale mais nada.
+
+**O jeito mais barato de recolocá-la** é dentro da própria lista numerada da
+faixa da família, como um item: *"e quando o GPS cai, o AO VIVO apaga — a gente
+prefere dizer que não sabe"*. Uma linha, sem ocupar bloco.
+
 ⚠️ **A declaração 8 é a que vão querer cortar, e é a que não pode sair.** Ela é
 o que torna a visão verificável em vez de slogan — já está escrito na seção 2 de
 [negocio.md](negocio.md): quem suavizar esse texto está trocando o único
@@ -216,7 +238,7 @@ conserto uma decisão de marca, não de societário. Duas consequências:
 | 1 | Tirar `Desenvolva Algo` da vitrine e do contrato | Coerência da declaração 7 | **aberta** — pendência 12 de [negocio.md](negocio.md), agora com o inventário dos três lugares |
 | 2 | Trocar o e-mail legal para `contato@alobuzinou.com.br` | Credibilidade do rodapé | **nova, aberta** |
 | 3 | Subir a `VERSAO_CONTRATO` junto com a troca de nome | Novo aceite do associado | **nova, aberta** — barato agora, caro depois |
-| 4 | Escolher as quatro declarações que vão para a landing | Peça pública | recomendadas na seção 4 |
+| 4 | Escolher as quatro declarações que vão para a landing | Peça pública | **reaberta em 07/09/2026** — a 6 saiu da landing, ver seção 4 |
 
 ---
 

@@ -44,10 +44,15 @@ João é motorista escolar. Um colega mandou o link no WhatsApp.
 | 4 | Blaze | ✅ **06/09/2026** |
 | 5 | O relógio do teste | ✅ |
 | 6 | Planos e assinatura | 🟡 régua e tela prontas |
-| 7 | A conta inativa | ⬜ |
-| 8 | Indicação | ⬜ |
+| 7 | A conta inativa | ✅ `GuardaDaConta` + `ContaInativa`, montados no `App.jsx` |
+| 8 | Indicação | ✅ `dominio/identidade/indicacao.js` + aba Indicações |
 | 9 | A avaliação do 1º mês | ⬜ |
-| 10 | O painel do dono, e quem entra nele | ⬜ |
+| 10 | O painel do dono, e quem entra nele | ✅ oito abas, fila do dia como padrão |
+
+> ⚠️ **Três destas linhas estavam ⬜ com a fase ENTREGUE** (conferido em
+> 09/09/2026). Este arquivo declara que "some quando a última fase fechar" — com
+> fase pronta marcada em branco, ele nunca some, e o estado real do produto fica
+> ilegível para quem o usa como mapa.
 
 ---
 
@@ -296,5 +301,7 @@ pela metade saíram junto — ver [descontos.md](descontos.md).
   chega lá. Linkar é uma linha; aposentar é irreversível
 - **Motorista que também é pai** continua impossível de representar — `role` é
   um só. Decidido: deixar assim, com mensagem clara mandando usar outro e-mail
-- **Os dois modelos de preço** (`taxa.js` negociado e `planos.js` por faixa)
-  convivem. A migração é pendência do [negocio.md](negocio.md)
+- ~~**Os dois modelos de preço** (`taxa.js` negociado e `planos.js` por faixa)
+  convivem~~ — **RESOLVIDO em 06/09/2026: `taxa.js` foi APAGADO.** Há um modelo
+  só, o de faixa. Não existe migração pendente, e recriar o segundo modelo é o
+  que esta linha faria alguém tentar.

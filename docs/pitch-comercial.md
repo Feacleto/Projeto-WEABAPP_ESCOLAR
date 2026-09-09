@@ -247,7 +247,7 @@ abaixo é uma frase que soa ótima e é falsa hoje.**
 
 | # | Pendência | Trava | Estado |
 |---|---|---|---|
-| 1 | Ratificar a régua de preço | O consultor está negociando número não fechado | **aberta** — pendência 1 de [negocio.md](negocio.md) |
+| 1 | ~~Ratificar a régua de preço~~ | — | **FECHADA em 06/09/2026** — R$ 69 / 149 / 229 por faixa de crianças ativas, em `dominio/associacao/planos.js`, com teste. `/tio/planos` já mostra os três, e `contratarPlano` já grava a faixa. Esta linha instruía o consultor a não citar preço por não estar fechado, e ele está. |
 | 2 | Ratificar o alvo da rodada | O roteiro da seção 2 inteiro | **aberta** — herdada de [personas.md](personas.md) |
 | 3 | Padronizar `motivoPerda` com os seis nomes da seção 3 | Transformar o mapa de objeções em dado | **nova** — custa zero, sem código |
 | 4 | Validar o roteiro em campo | Tudo aqui é dedução | **aberta** — as 5 a 8 conversas de [personas.md](personas.md) |

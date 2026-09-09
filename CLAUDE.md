@@ -17,13 +17,20 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 1038 casos: horarios, faltas, aviso, contraste,
-                                 # travessia, contrato, pix, status, auth, trial,
-                                 # planos, conta, cobranca, gateway, carteira,
-                                 # proposta, chamados, risco, fila, concessao,
-                                 # selo, indicacao
+npm run testar                   # 1248 casos em 27 scripts. O PRIMEIRO é
+                                 # `testar:imports`, e ele existe porque a
+                                 # bateria já esteve partida no meio — ver a
+                                 # nota abaixo. Depois: horarios, faltas,
+                                 # aviso, contraste, travessia, contrato, pix,
+                                 # status, auth, trial, planos, conta, cobranca,
+                                 # gateway, carteira, proposta, chamados, risco,
+                                 # fila, concessao, selo, indicacao, origem,
+                                 # abas, transacoes
 npm run testar:regras            # rules do Firestore — precisa do emulador
-npm run testar:storage           # rules do Storage — idem, com --only storage
+npm run testar:storage           # rules do Storage — precisa de auth,firestore
+                                 # E storage juntos (ele semeia usuário e
+                                 # criança antes de testar). Só `--only storage`
+                                 # morre em `fetch failed`.
 npm run build
 ```
 
@@ -33,6 +40,26 @@ peer e o projeto usa Vite 8.
 **Não existe runner de teste** (sem Jest/Vitest, de propósito). Os testes são
 scripts Node em [scripts/](scripts/) rodados direto. Ao criar teste novo, siga
 esse padrão em vez de introduzir um framework.
+
+⚠️ **A BATERIA JÁ RODOU PELA METADE NO CI SEM NINGUÉM VER, E ISSO TEM TESTE
+AGORA.** `testar-gateway.mjs` importava `functions/lib/contratacao.js`, cuja
+primeira linha requer `firebase-functions` — pacote que só existe em
+`functions/node_modules`, não rastreado pelo git, e o CI roda **um** `npm ci` na
+raiz. Num checkout limpo o script morria, e o `&&` do encadeamento levava os
+**11 seguintes** com ele: carteira, proposta, chamados, risco, fila, concessao,
+selo, indicacao, origem, abas, transacoes. Na máquina de quem desenvolve tudo
+passava.
+
+A régua pura saiu para
+[functions/lib/reguaDoServidor.js](functions/lib/reguaDoServidor.js), que **não
+faz `require` nenhum**, e a regra virou: **módulo de `functions/lib/` que é
+RÉGUA não requer `firebase-admin` nem `firebase-functions`.** Quem precisa do
+SDK é o `onCall`, e ele mora noutro arquivo.
+`npm run testar:imports` segue os imports de cada script da bateria e falha se
+algum alcançar o SDK — e é o **primeiro** da bateria de propósito: quando o elo
+parte, o mais rápido a saber deve ser quem mede o elo, não o 15º script a
+morrer. Ele também exige que todo `scripts/testar-*.mjs` tenha porta no
+`package.json`, com uma lista nomeada das exceções (emulador, rede, navegador).
 
 `.env` a partir de [.env.example](.env.example). `VITE_USE_EMULATORS=false`
 por padrão — **rodar local sem isso grava no Firebase de produção**.
@@ -215,23 +242,42 @@ src/
 │                      do arquivo — era 1,47 MB num bundle só)
 ├── pages/
 │   ├── Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
-│   ├── tio/           16 telas do motorista
+│   ├── tio/           20 telas do motorista
 │   ├── pai/           8 telas do responsável
 │   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com OITO
 │   │                  abas: Hoje (a fila), Motoristas (lista + FICHA),
 │   │                  Chamados, Mês (régua e fechamento), Números, Selos,
 │   │                  Indicações, Pesquisa. As abas moram em
 │   │                  components/admin/.
-│   └── legal/         termos e privacidade
+│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.1
+│                       (09/09/2026): o controlador passou a ser IDENTIFICADO
+│                       (razão social + CNPJ + cidade; os dois primeiros já
+│                       estavam no repo e concordavam) e a seção 2b passou a
+│                       declarar Resend e Asaas como operadores. Subir a versão
+│                       obriga todo mundo a reaceitar — feito com base quase
+│                       zero, custa uma conversa.
+│                       ⚠️ SEDE e FORO são coisas DIFERENTES, mesmo quando
+│                       coincidem. A sede é `DEV_ENDERECO` (Rua das Trovas,
+│                       bairro Socorro, São Paulo/SP, CEP 04763-110) e a
+│                       comarca é `DEV_COMARCA` — eleição é escolha (CPC 63),
+│                       não consequência do endereço. A cláusula DECLARA, nunca
+│                       deriva, e traz a ressalva do art. 101 I do CDC, sem a
+│                       qual ela é abusiva e cai inteira.
+│                       ⚠️ `Socorro` É BAIRRO, não cidade — o rodapé da landing
+│                       dizia "Socorro — São Paulo/SP" e isso foi lido errado
+│                       DUAS vezes numa auditoria (primeiro o estado como
+│                       cidade, depois o bairro como cidade). O CEP é o que
+│                       fecha a dúvida, e por isso ele está no endereço.
+│                       Falta só o NÚMERO, em `DEV_NUMERO`
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive…
-├── services/          37 módulos — TODO acesso ao Firestore passa aqui
+├── services/          39 módulos — TODO acesso ao Firestore passa aqui
 ├── hooks/             23 hooks, quase todos onSnapshot de um service
 ├── config/            capabilities, developer, vitrine,
 │                      paletaCategorica (o único lugar com cor crua)
 ├── context/           AuthContext (perfil + papel)
 ├── dominio/           AS REGRAS. Puro, sem Firebase, sem React — um contexto
-│                      por pasta (ver "Os seis contextos" abaixo)
+│                      por pasta (ver "Os sete contextos" abaixo)
 │   ├── rota/          horarios, avisoDoMomento, routePresence, faltas,
 │   │                  intervaloDeDias
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
@@ -239,14 +285,15 @@ src/
 │   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
 │   │                  carteira, proposta, risco, fila, concessao, adesivo
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
-│   │                  authErrors, verificacao, indicacao
+│   │                  authErrors, verificacao, indicacao, origem
 │   ├── escola/        nomeEscola
 │   ├── suporte/       chamados
 │   └── vitrine/       frentes
 ├── marca/             a personalidade: avatarUrl, greeting, festivities,
 │                      travessia, promessas. Tem regra, mas de apresentação
 ├── compartilhado/     SEM regra nenhuma: formatters, masks, haversine,
-│                      browserEnv. Não conhece o domínio (o lint recusa)
+│                      abaAtiva, browserEnv. Não conhece o domínio (o lint
+│                      recusa)
 └── firebase/config.js
 landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        `alobuzinou.com.br` (o app é o `.com`, não um
@@ -255,9 +302,12 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        duas home públicas antigas (`/` do motorista) morreram
                        aqui dentro; a `/familia` continua no app.
 functions/             Cloud Functions v2 (CommonJS, Node 22)
-  └── lib/             billing, invites, push, routes, contratacao,
-                       premioDeConversao, asaasCobranca, receiptGuard…
-firestore.rules        71 KB — a segurança real do app mora aqui
+  └── lib/             reguaDoServidor (a régua PURA — sem require),
+                       billing, invites, push, routes, contratacao,
+                       relogioDoTeste, asaasCobranca, asaasWebhook,
+                       confirmarAusencias, receiptGuard, papeis, limites,
+                       indicacao + casarIndicacao (espelho da indicação)…
+firestore.rules        108 KB — a segurança real do app mora aqui
 storage.rules          foto, comprovante, logo e contrato de papel. Caminho
                        DETERMINÍSTICO (`childPhotos/{childId}`): `isAdmin()`
                        sozinho ali libera a plataforma inteira
@@ -400,6 +450,12 @@ havia base real.
   deploy das functions não alcança `src/`. `npm run testar:gateway` compara as
   duas faixa por faixa, degrau por degrau, e as duas contas de degrau dia a dia
   (`trial.js` contra `contratacao.js`).
+  ⚠️ **Há uma TERCEIRA cópia da conta de degrau**, em
+  [proposta.js](src/dominio/associacao/proposta.js), e o teste dela só confere a
+  STRING ("contém 50%"), não a régua. A proposta é a mensagem que o dono manda
+  pelo WhatsApp: divergir ali é o motorista lendo 50% e recebendo fatura de 30%,
+  com contrato assinado no meio. As três coincidem hoje por construção, não por
+  prova.
 - **Desconto tem PRAZO, e sem ele vira preço.** `users.descontos` é uma lista
   de `{origem, fracao, ate, degrau}` com `ate` em 'AAAA-MM'
   ([planos.js](src/dominio/associacao/planos.js)). Uma origem de régua:
@@ -460,6 +516,18 @@ havia base real.
   cadastra a operação inteira e o app prova o valor no tamanho real.
   **Não é à prova de devtools** — nenhuma rule exige que o contador ande junto
   de uma criança de verdade; quem pega é a fatura, que conta as crianças reais.
+- ⚠️ **APAGAR A COBRANÇA NO GATEWAY NÃO DESFAZ PAGAMENTO FEITO POR FORA.**
+  `PAYMENT_DELETED` reabre a fatura — e o caminho natural é: o motorista paga o
+  PIX direto, o dono dá baixa à mão, o dono apaga a cobrança redundante no
+  painel do Asaas, e dez dias depois quem PAGOU é bloqueado. `quitadaPor` (que
+  só a baixa manual grava) é o sinal que segura isso em
+  [eventoDeCobranca.js](functions/lib/eventoDeCobranca.js). Estorno e chargeback
+  continuam reabrindo: neles o dinheiro **voltou**.
+- **Retenção de `payments` é de 60 MESES, e o número vem da Política de
+  Privacidade** — não o contrário. Era 12, e a seção 8 prometia 5 anos por
+  obrigação fiscal: o app apagava em um ano o que o documento diz guardar por
+  cinco, e das duas a que vale contra a plataforma é a escrita. **Se mudar aqui,
+  muda lá na mesma alteração.**
 - **Receita é fatura `quitada`**, e sai de `faturasParceiro` em
   [adminMetricsService.js](src/services/adminMetricsService.js) — mesmo
   critério do GMV, que só soma `payments` com `paid`. Fatura `aberta` viaja
@@ -513,9 +581,14 @@ A rota liga pelo CLIENTE (o GPS liga no meio-fio, às vezes sem sinal); os
 outros dois ligam no SERVIDOR, com Admin SDK — é o que permite ligar o relógio
 do motorista a partir de um gesto do responsável sem abrir permissão nova.
 
-**Diga TESTE, nunca "grátis".** O que ele ganha é tempo para experimentar, não
-uma doação — e "grátis" na porta prepara a pessoa para achar que a cobrança
-depois é pegadinha.
+**Na landing é "ATÉ 3 meses de teste grátis"** — decidido pelo dono em
+07/09/2026, e é uma reversão. A regra anterior era *diga TESTE, nunca "grátis"*,
+porque "grátis" na porta prepara a pessoa para achar que a cobrança depois é
+pegadinha. O que segura essa leitura agora é o **"até"**: ele descreve um teto,
+não uma doação. ⚠️ **A frase mora em DOIS lugares da landing** (`.teste-hero` no
+hero e o parágrafo do CTA de autoatendimento) e as duas mudam juntas — separadas,
+a página oferece duas coisas diferentes na mesma rolagem. Dentro do app o
+vocabulário continua sendo TESTE ([trial.js](src/dominio/associacao/trial.js)).
 
 O relógio começa no primeiro uso, não no cadastro —
 `users.trialInicio`, gravado por [trialService](src/services/trialService.js)
@@ -621,6 +694,24 @@ como aceite, e as duas telas dizem isso, senão alguém opera sem contrato
 válido achando que o papel bastou. Quem sobe é o MOTORISTA — documento que
 define quanto o pai paga não entra pela mão de quem paga.
 
+⚠️ **DADO DE SAÚDE DA CRIANÇA: SÓ A RESPONSÁVEL ESCREVE, E NUNCA O
+MOTORISTA.** `children.saudeNotas` + `children.saudeConsentidaEm`, e os dois
+**andam no mesmo write** — nota sem data é o dado sem o registro do
+consentimento, ou seja, o passivo sem a defesa. Apagar também é os dois juntos
+(art. 18, VI). O ramo do motorista no `allow update` de `children` permite
+qualquer outro campo, então a proibição está escrita LÁ, não na tela.
+
+O campo era DELE: o cadastro pedia *"Alergias, instruções especiais…"* — o app
+convidava o motorista a escrever dado sensível de uma criança cuja mãe ainda não
+tinha aceitado nada (ela é cadastrada ANTES do convite, e pode nunca resgatá-lo).
+A saída não foi confiar num formulário novo: foi **tirar a caneta**.
+
+São **duas camadas que não se substituem** — a declaração dele no cadastro
+(`autorizacaoDeclarada`, obrigatória e com data) e o consentimento específico
+dela, destacado, na tela dela. O desenho, os textos em rascunho e o que fica de
+fora estão em [docs/consentimento-saude.md](docs/consentimento-saude.md), que
+tem prazo de validade: quando a redação for ratificada, ela vai para o código.
+
 **Falta não gera desconto**, e a cláusula 7ª já dizia: o valor é pela VAGA,
 inclusive nas férias, `independentemente da quantidade de dias letivos`. A tela
 de faltas repete isso onde a dúvida nasce.
@@ -647,12 +738,43 @@ comum NÃO gera tarja — ali o app está calado, não mentindo, e tarja semanal
 ensina a pular tarja. Quando o grave dispara, o anel pulsante e o "AO VIVO"
 PARAM: animação viva sobre dado morto é a pior parte.
 
-**Falta tem teto de 14 dias** — o aviso do responsável não passa disso, e o
-motivo está em [AbsenceSheet.jsx](src/components/absences/AbsenceSheet.jsx):
-plano muda, ninguém desmarca, e no dia o motorista não passa na porta. O
-HISTÓRICO anda meses pra trás (`/pai/faltas`); o aviso continua cabendo em
-duas semanas. A conta é pura e testada em [dominio/rota/faltas.js](src/dominio/rota/faltas.js)
-(`npm run testar:faltas`) — aviso marcado pra frente nunca é somado como falta.
+**Falta tem teto de 14 dias** — `DIAS_DE_AVISO_DE_FALTA` em
+[dominio/rota/faltas.js](src/dominio/rota/faltas.js), com `limiteDoAviso()` para
+a data. Plano muda, ninguém desmarca, e no dia o motorista não passa na porta. O
+HISTÓRICO anda meses pra trás (`/pai/faltas`); o aviso continua cabendo em duas
+semanas. O teto **e** a conta são puros e testados (`npm run testar:faltas`) —
+aviso marcado pra frente nunca é somado como falta.
+⚠️ O teto era literal de JSX escrito DUAS vezes na
+[AbsenceSheet](src/components/absences/AbsenceSheet.jsx) (o `max` do campo e o
+texto ao lado), e esta linha afirmava que "a conta é testada" misturando as duas
+coisas: a contagem era testada, o teto não. Mudar um e esquecer o outro produz
+uma tela que oferece 21 dias e diz 14.
+
+⚠️ **O "ESQUECI A SENHA" DEPENDE DE UM CAMPO DO CONSOLE, NÃO DO CÓDIGO.**
+`actionCodeSettings.url` **não é o destino do link** — o SDK o converte em
+`continueUrl` (`request.continueUrl = actionCodeSettings.url`, e a doc dele
+confirma). Quem decide o destino é o **Action URL** em
+Authentication → Templates, cujo padrão é
+`<projeto>.firebaseapp.com/__/auth/action`.
+
+Enquanto ele estiver no padrão, a tela [AuthAction.jsx](src/pages/AuthAction.jsx)
+— que é completa e boa — é **código morto**, e a pessoa redefine a senha num
+domínio sem marca que parece phishing. Um comentário afirmava o contrário, e foi
+o que fez este fluxo passar por pronto.
+
+O `continueUrl` aponta para `/login` (não para `/auth-action`, que sem `oobCode`
+cai no ramo de erro e imprimia "Link inválido" **depois de a senha ter sido
+trocada com sucesso**). A invariante está travada em `npm run testar:auth`:
+*nenhum `continueUrl` do projeto pode apontar para uma rota que exige
+`oobCode`*.
+
+**Erro de autenticação tem QUATRO contextos**, não três
+([authErrors.js](src/dominio/identidade/authErrors.js)): `entrar`, `criar`,
+`link` (ela CLICOU num link e ele falhou) e `reset` (ela PEDIU um link e o envio
+falhou). As três telas que pedem o link usavam `'entrar'`, que responde "Email
+ou senha incorretos." a `user-not-found` — uma frase sobre senha num momento em
+que ela não digitou senha nenhuma. `reset` também não confirma se a conta
+existe: é a mesma discrição de `entrar`, pelo mesmo motivo.
 
 **Chamar Cloud Function passa por `exigirCloud()`** —
 [callableError.js](src/services/callableError.js). Sem Blaze, a API desativada
@@ -822,6 +944,14 @@ Cinco regras, e todas nasceram de um bug:
    de recado, quatro estados da criança, cinco fatias de gráfico). Um lugar
    com licença é o que evita que o resto peça licença.
 
+   ⚠️ **A legenda do mapa é o QUARTO endereço**, e a exceção que mais custou:
+   os três pinos (casa/perua/escola) eram hex cru em
+   [index.css](src/index.css) — `#f59e0b` é exatamente o token `perua`. Agora
+   são variáveis CSS declaradas num `:root` no topo do arquivo, com o porquê
+   ali. Cor de impressão também ganhou nome: `linhaImpressa`, porque
+   `borderStrong` não sai numa jato quase sem tinta e linha de assinatura
+   invisível é folha inutilizada.
+
 **O painel abre na FILA DO DIA, não num relatório nem numa lista.**
 [fila.js](src/dominio/associacao/fila.js) (`npm run testar:fila`) soma degrau,
 termômetro, chamados e fechamento numa lista de coisas a fazer hoje, e cada
@@ -943,6 +1073,23 @@ e um incremento duplicado ficaria errado para sempre.
 **Dois indicaram a mesma pessoa? Vale quem indicou primeiro.** Premiar os dois
 pagaria 20% por um cliente.
 
+⚠️ **A ESCOLHA DE QUEM GANHA O CRÉDITO VIVE NO DOMÍNIO E TEM ESPELHO NO
+SERVIDOR** — `escolherParaAtivar` em
+[indicacao.js](src/dominio/identidade/indicacao.js), copiada em
+[functions/lib/indicacao.js](functions/lib/indicacao.js), com
+`npm run testar:indicacao` comparando as duas **caso por caso**. Foi a segunda
+vez que este projeto precisou de espelho (a primeira é a régua de preço em
+`contratacao.js`), e pelo mesmo motivo: o deploy das functions não alcança
+`src/`.
+
+⚠️ **E O CASAMENTO ACONTECE NOS DOIS CAMINHOS DE BAIXA.** Ele existia só no
+CLIENTE, chamado depois da baixa manual — então ligar o gateway apagaria o
+gatilho da indicação para **100% dos indicadores, em silêncio**: ninguém
+receberia erro, o desconto simplesmente não apareceria na fatura seguinte.
+[casarIndicacao.js](functions/lib/casarIndicacao.js) roda no webhook, DEPOIS do
+commit e fora do lote — o desconto de um terceiro não pode fazer a baixa da
+fatura falhar.
+
 **SÃO DOIS SELOS, com economias OPOSTAS** — e tratá-los como um só foi o que
 confundiu a conversa inicial. O **adesivo** de rua diz "usa Alô Buzinou", todo
 associado tem, e se ganha **pedindo**
@@ -1033,17 +1180,38 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (202 casos, com
-atores **anônimo** e **`novato`**, motorista recém-cadastrado e sem vínculo). Ele
-roda fora do CI porque precisa do emulador, então rode à mão antes de publicar
-rule: `firebase emulators:exec --only auth,firestore "node
-scripts/testar-regras.mjs"`. Ele e os 16 casos de `testar:storage` passavam em
-08/09/2026.
+passar por lá — e `npm run testar:regras` cobre o payload real (230 casos, com
+atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
+**recém-inscrito**, que exercita o payload de `inscreverAssociado` como
+cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes
+de publicar rule:
+`firebase emulators:exec --only auth,firestore "node scripts/testar-regras.mjs"`.
 
-**A TRANCA MORA EM `isAdmin()`** — desde 06/09/2026 ele nega também quem está
-com o teste vencido e sem assinatura, além de `suspenso`. Tela não é tranca: o
-`GuardaDaConta` esconde o painel, mas o token continua válido e uma aba antiga
-escreve igual.
+`testar:storage` são **37 casos** e precisa dos TRÊS emuladores:
+`firebase emulators:exec --only auth,firestore,storage "node scripts/testar-storage.mjs"`.
+Ele cobria 3 dos 6 caminhos até 09/09/2026 — `alvaras/` (o único não legível por
+qualquer logado, que é a afirmação mais forte do arquivo), `paymentReceipts/` e o
+catch-all não tinham um único caso. Os dois passavam em 09/09/2026.
+
+**A TRANCA MORA NO `isAdmin()` DO FIRESTORE** — desde 06/09/2026 ele nega
+também quem está com o teste vencido e sem assinatura, além de `suspenso`. Tela
+não é tranca: o `GuardaDaConta` esconde o painel, mas o token continua válido e
+uma aba antiga escreve igual.
+
+⚠️ **`storage.rules` tem uma CÓPIA de `isAdmin()` e ela checa só `suspenso`** —
+assimetria **decidida** em 09/09/2026, escrita nos dois arquivos e **travada por
+teste** (bloco "A CONTA" em `testar-storage.mjs`). Upload não é cláusula: quem
+está bloqueado não escreve nada no Firestore, então foto ou comprovante que ele
+suba fica inerte. E replicar o prazo ali erra fácil no caso que importa —
+`trialInicio` AUSENTE significa "o relógio nem começou" e tem que PASSAR, senão
+a primeira foto do motorista recém-cadastrado é recusada. Os dois casos
+positivos existem para que a "correção" errada falhe no teste em vez de aparecer
+no primeiro cadastro real.
+
+⚠️ **A SUSPENSÃO, essa vale nos dois** — e `marcaLogos` era a exceção que
+ninguém media: a rule era `isSignedIn() && auth.uid == uid`, então um motorista
+suspenso continuava trocando a imagem que aparece no cabeçalho de todas as
+famílias dele. Achado por caso de teste novo, não por leitura.
 
 ⚠️ **A rule é o PISO, não o espelho da tela.** `contaAtiva.js` bloqueia antes
 (dez dias depois do vencimento da fatura); a rule só conhece `assinaturaAte` +
@@ -1069,6 +1237,31 @@ mantida por `arrayUnion` no `redeemInvite`. O campo singular `adminUid` guarda
 só o PRIMEIRO motorista, e a interface resolve pelo `adminUid` da criança
 ATIVA: escopar só pelo singular faz a mãe com filhos em peruas diferentes
 perder a chave PIX do segundo filho, em silêncio.
+
+⚠️ **Quem escopa por motorista da família chama `ehMotoristaDaFamilia()`** — o
+helper nas rules que testa os DOIS campos. Ele existe porque o idioma solto
+falhou em três lugares: quando o `allow get` de `users` foi corrigido para
+aceitar a lista, `liveLocation`, `notifications` e `agendaEntries` ficaram
+atrás. A mãe de perua dupla perdia o MAPA do segundo filho, nenhum aviso
+passava entre ela e o segundo motorista, e os recados de escola dele
+desapareciam do caderno — três telas, um campo, nenhum erro visível. Os quatro
+casos que guardam isso estão em `testar-regras.mjs`.
+
+⚠️ **O `allow create` de `users` é lista de PERMITIDOS; o `update` é de
+PROIBIDOS.** Confundir os dois fechou a porta da frente do produto: `origem`
+nasceu no `inscreverAssociado` e não subiu para o `hasOnly` do create, e TODO
+cadastro de motorista passou a devolver `permission-denied` — com a conta do
+Auth já criada e a pessoa presa numa sessão sem documento. **Campo novo no
+payload de inscrição entra na whitelist na MESMA alteração.** O caso que
+exercita o payload real como CLIENTE está em `testar-regras.mjs`, bloco "A
+PORTA DA FRENTE" — antes disso todo motorista do teste era semeado com Admin
+SDK, que ignora rules, e o create nunca era medido.
+
+⚠️ **O motorista escreve no doc da família dele só em `name`, `email` e
+`phone`.** O ramo era escopado por `adminUid` e SEM lista de campos, então
+`termsVersion` (aceite de LGPD escrito por terceiro) e `fcmTokens` (acrescentar
+o próprio = receber os pushes dela) passavam — sondado no emulador, HTTP 200 nos
+dois. Campo novo no doc do responsável não entra ali por padrão.
 
 **As functions têm o próprio guarda de papel** —
 [functions/lib/papeis.js](functions/lib/papeis.js), com `exigirMotorista` e

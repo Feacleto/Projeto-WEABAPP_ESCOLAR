@@ -332,7 +332,7 @@ E o campo é **gravável uma vez e nunca alterável**, com a trava nas rules e n
 
 **São três avisos, em FAIXAS e não em datas.** Cinco avisos (20, 15, 7, 5 e 3 dias) está recusado pela mesma lição de `dominio/rota/avisoDoMomento.js`: tarja semanal ensina a pular tarja, e o quinto aviso — o mais importante — seria o menos lido. Faixa também alcança quem não abriu o app no dia exato.
 
-**Como verificar.** `npm run testar:trial` (28 casos, com a hora injetada). E `npm run testar:regras`, três casos: ele liga o próprio relógio, não consegue ligar de novo, e não encosta no do colega.
+**Como verificar.** `npm run testar:trial` (61 casos, com a hora injetada). E `npm run testar:regras`, três casos: ele liga o próprio relógio, não consegue ligar de novo, e não encosta no do colega.
 
 ---
 
@@ -342,17 +342,29 @@ E o campo é **gravável uma vez e nunca alterável**, com a trava nas rules e n
 
 **Contexto.** O preço da associação era digitado à mão no orçamento, caso a caso pelo dono. Funciona com um parceiro e não funciona com autoatendimento, onde ninguém digita nada às 23h de um domingo. E com dois programas de desconto somando — condição de fundador e indicação —, soma sem teto vira fatura negativa.
 
-**Decisão.** O preço sai de uma **faixa por número de crianças ativas** (`dominio/associacao/planos.js`), separada do modelo negociado que continua em `taxa.js` — os dois não podem valer para o mesmo parceiro, porque somá-los cobra duas vezes.
+> ⚠️ **PARTES DESTA DECISÃO FORAM SUPERADAS EM 07/09/2026** por
+> [descontos.md](descontos.md), e o que está riscado abaixo **não descreve mais
+> o código**. Corrigido aqui em 09/09/2026, porque um agente que leia este
+> arquivo como fonte normativa reintroduziria o teto percentual — que foi
+> removido de propósito — e reabriria o vazamento para R$ 0,00.
 
-Sobre ela incidem dois descontos: **fundador** (o 1º motorista vitalício, os 12 seguintes com 50%) e **indicação** (10% por indicação ativa, teto de 50%, 12 meses, contando só a partir do 1º mês PAGO do indicado). O total é **cortado em 100%**.
+**Decisão.** O preço sai de uma **faixa por número de crianças ativas** (`dominio/associacao/planos.js`). ~~separada do modelo negociado que continua em `taxa.js`~~ — **`taxa.js` foi APAGADO em 06/09/2026**: há um modelo de preço só, e é este. A frase original existia porque os dois conviveram por dias, e a saída foi apagar um em vez de escolher entre os dois a cada leitura.
 
-O desenho está nesse corte: fundador de metade mais cinco indicações fecha exatamente em zero; quem não é fundador para em 50% pelo teto. **Gratuidade só existe para fundador, e só trazendo cinco clientes pagantes.**
+Sobre ela incidem:
+
+- **fechamento** — a escada de 50/30/15% por mês de decisão dentro do teste, mais 10% de retorno em 30 dias. Ela SUBSTITUIU a antecipação em 07/09/2026 (ver [descontos.md](descontos.md)), e é a origem que todo desconto de régua usa hoje;
+- **indicação** — 10% por indicação ativa, 12 meses, contando só a partir do 1º mês PAGO do indicado. ~~teto de 50%~~ **SEM TETO PERCENTUAL**: ele existia e não protegia nada, porque com o fechamento somando por cima a fatura chegava a R$ 0,00 de qualquer forma. Porcentagem não é medida na moeda do custo;
+- **fundador** — ~~o 1º motorista vitalício, os 12 seguintes com 50%~~ `FUNDADORES_METADE = 0`: as doze vagas de metade **não são mais concedidas**. Era o único desconto que ninguém podia reproduzir, e não sobrevivia à conversa no portão da escola. O vitalício já concedido continua (é contrato assinado, e é um só).
+
+**Quem protege a margem é o PISO, não o teto.** `PISO_DA_FATURA = 34` — nenhuma fatura fica abaixo disso, exceto o vitalício. As duas travas são em série e protegem coisas diferentes: o **teto de 100%** impede fatura NEGATIVA, o **piso** impede fatura IRRISÓRIA. `precoDoMes` devolve `pisoAplicado` e `descontoAbsorvido` porque a tela precisa dizer quando o piso comeu desconto — calar produz o *"indiquei e não recebi"*.
+
+**Gratuidade só existe para o fundador vitalício.** Todo o resto para no piso.
 
 **Consequência.** Sem o corte, seis indicações sobre um fundador de metade dariam 110% — dinheiro saindo da plataforma para quem devia estar pagando. Acima de 40 crianças o preço é `null` e nenhum desconto é aplicado: 50% sobre um preço inexistente produziria R$ 0, indistinguível de "não paga", e é exatamente o caso que precisa de conversa.
 
 **O plano capa QUANTIDADE, nunca funcionalidade** — o app é completo em qualquer faixa, e o que muda é `users.limiteCriancas`. Escolher plano menor que o uso é permitido, e **quem aponta as crianças que saem é o motorista**: corte automático apagaria clientes que ele não escolheu perder.
 
-**Como verificar.** `npm run testar:planos` (44 casos). Os quatro que travam a economia: vitalício não paga nunca; metade mais cinco fecha em zero; quem não é fundador para em 50% mesmo com vinte indicações; e o desconto somado passa de 100% e é cortado em 100%.
+**Como verificar.** `npm run testar:planos` (98 casos). Os que travam a economia: vitalício não paga nunca; o desconto somado passa de 100% e é cortado em 100%; e ~~quem não é fundador para em 50% mesmo com vinte indicações~~ — o teste real diz o OPOSTO desta linha antiga: *"nem vinte"* indicações zeram a fatura, mas param no **PISO**, não em 50%. Somam-se `npm run testar:concessao` (a ficha do dono tem que mostrar a mesma fração que a fatura desconta) e `npm run testar:gateway`, que compara a régua e a escada faixa por faixa e dia por dia contra a cópia do servidor.
 
 ---
 
