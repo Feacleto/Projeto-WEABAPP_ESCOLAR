@@ -1,6 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft, ArrowRight, Bus } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bell,
+  Bus,
+  ChevronDown,
+  ChevronUp,
+  CircleX,
+  CreditCard,
+  FileText,
+  Lock,
+  Mail,
+  Route,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -17,6 +30,89 @@ import OpenInBrowser from '../components/auth/OpenInBrowser';
 import Reveal from '../components/common/Reveal';
 import { canUseGoogleSignIn, isInAppBrowser } from '../compartilhado/browserEnv';
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
+
+/**
+ * O QUE O APP TIRA DO OMBRO DELE — as quatro linhas do painel.
+ *
+ * ⚠️ CADA UMA FALA DO DIA DELE, NÃO DO SOFTWARE. "A família sabe que você
+ * chegou", nunca "sistema de notificações". Quem lê esta tela está decidindo
+ * se troca o caderninho por um aplicativo, e nome de recurso não responde isso.
+ *
+ * ⚠️ E NÃO HÁ PRAZO, PREÇO NEM ESCASSEZ AQUI. Sem "3 meses", sem "grátis", sem
+ * contador de vagas. A tela convida a ver funcionando; o pedágio é ter conta, e
+ * quem diz isso é o subtítulo do cartão.
+ *
+ * "O dinheiro vai direto pra você" é a ÚNICA linha de negócio da lista, e ela
+ * está lá porque a objeção nº 1 de quem nunca usou app é achar que a plataforma
+ * fica com um percentual. Ela TIRA uma dúvida, não vende.
+ *
+ * "não gasta combustível pra buscar quem não vai" é o argumento mais forte da
+ * lista: é dinheiro no bolso dele, e caderninho nenhum entrega isso.
+ */
+const BENEFICIOS = [
+  {
+    icone: Route,
+    titulo: 'A rota do dia já montada',
+    texto:
+      'Você cadastra a sua turma e a rota aparece na ordem dos horários combinados.',
+  },
+  {
+    icone: Bell,
+    titulo: 'A família sabe que você chegou',
+    texto:
+      'O celular dela toca quando a perua está chegando. Você não fica esperando na porta.',
+  },
+  {
+    icone: CircleX,
+    titulo: 'A falta avisada antes',
+    texto:
+      'Quando a criança não vai, você sabe antes de sair — e não gasta combustível pra buscar quem não vai.',
+  },
+  {
+    icone: CreditCard,
+    titulo: 'A mensalidade cobrada sozinha',
+    texto:
+      'Quem pagou, quem está aberto, e o seu PIX pronto pra usar. O dinheiro vai direto pra você.',
+  },
+];
+
+/**
+ * A QUINTA LINHA SÓ EXISTE ABERTA, e é de propósito.
+ *
+ * O contrato é o que menos pesa na decisão de quem está espiando e o que mais
+ * tranquiliza quem já se interessou. Então ele é a RECOMPENSA do toque, não
+ * competidor da primeira tela — onde cada linha a mais empurra o formulário
+ * para fora da dobra.
+ */
+const BENEFICIO_ABERTO = {
+  icone: FileText,
+  titulo: 'O contrato guardado',
+  texto: 'Assinado no app e guardado pra consultar a qualquer momento.',
+};
+
+/**
+ * O PAINEL TROCA DE ARGUMENTO QUANDO A ABA TROCA (só no monitor).
+ *
+ * São dois estados mentais. Em "já tenho conta" a maioria é usuário voltando, e
+ * o painel é lembrete de valor. Em "criar conta" a pessoa já se interessou e
+ * precisa SE RECONHECER — daí o caderninho, a planilha e as cobranças no
+ * WhatsApp, que é o que ela faz hoje.
+ */
+const CAIXAS = [
+  { titulo: 'A rota do dia', texto: 'Pronta antes de você sair da garagem.' },
+  {
+    titulo: 'O aviso de chegada',
+    texto: 'Toca no celular da família pra ela se preparar pra sua chegada.',
+  },
+  {
+    titulo: 'A mensalidade',
+    texto: 'Quem pagou, quem falta, e o seu PIX pronto pra receber.',
+  },
+  {
+    titulo: 'O contrato',
+    texto: 'Assinado no app e guardado pra consultar a qualquer momento.',
+  },
+];
 
 /** As duas abas do cartão, na ordem em que aparecem. */
 const ABAS = [
@@ -49,7 +145,7 @@ const ABAS = [
  * organizado por dentro — e erra com quem é os dois.
  */
 export default function Login() {
-  const { login, profile, loading: authLoading, refreshProfile } = useAuth();
+  const { login, user, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -82,6 +178,9 @@ export default function Login() {
   // `?criar=1` é esse endereço. Sem ele, quem clica em "criar conta" no site
   // cai na aba de entrar e precisa descobrir a segunda aba sozinho — que é
   // exatamente o passo perdido que este trabalho veio consertar.
+  /* A expansão do painel no celular. Nasce FECHADA: é isso que mantém o
+     cartão do formulário na primeira tela — ver o comentário do painel. */
+  const [aberto, setAberto] = useState(false);
   const [aba, setAba] = useState(() =>
     new URLSearchParams(location.search || '').get('criar') ? 'criar' : 'entrar'
   );
@@ -106,13 +205,36 @@ export default function Login() {
   //
   // A cortina sobe ANTES da navegação, sobre esta tela, e não desmonta na
   // troca de rota — então o painel nunca pisca antes de ser coberto.
+  //
+  // ⚠️ SESSÃO SEM DOCUMENTO EM `users` TAMBÉM É DESTINO, E ANTES ERA UM POÇO.
+  //
+  // A condição era `profile?.role`, ou seja: quem entrava com e-mail e senha
+  // e não tinha documento em `users` não navegava para lugar nenhum — o
+  // efeito não disparava, o `catch` do submit não era acionado, e a tela
+  // ficava IDÊNTICA. A pessoa concluía que a senha estava errada e ia
+  // redefinir uma senha que estava certa.
+  //
+  // Isso não é caso de borda: é o estado de quem teve o cadastro recusado
+  // pelas rules no meio do caminho (a conta do Auth nasce antes do
+  // documento), e é a `/comecar` que existe justamente para resolvê-lo.
+  //
+  // `painelDe()` já responde `/comecar` para perfil sem papel, e é o que o
+  // `PrivateRoute` e o login com Google fazem. Esta tela era a única que
+  // tratava "sem perfil" como condição de ESPERA em vez de destino.
   useEffect(() => {
-    if (!authLoading && profile?.role) {
+    if (authLoading || !user) return;
+
+    if (profile?.role) {
       const target = painelDe(profile);
       travessar(CENA_ENTRADA, profile.role);
       navigate(location.state?.from || target, { replace: true });
+      return;
     }
-  }, [authLoading, profile, navigate, location.state]);
+
+    // Autenticado e sem papel: a sala de espera pergunta o que ele FEZ
+    // (recebi convite / tenho uma van) em vez de tentar adivinhar.
+    navigate('/comecar', { replace: true });
+  }, [authLoading, user, profile, navigate, location.state]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -224,10 +346,10 @@ export default function Login() {
       {/* Duas colunas só a partir de lg (1024px). Em md, um cartão de 380px
         * dividindo 768px deixaria a faixa da marca com menos de 340px — e
         * empilhada é melhor que uma coluna apertada. */}
-      <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-[minmax(0,44fr)_minmax(0,56fr)]">
+      <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-[minmax(0,46fr)_minmax(0,54fr)]">
 
         {/* ── A faixa da marca ───────────────────────────────────────── */}
-        <div className="relative flex flex-col overflow-hidden bg-gradient-to-br from-primary to-primaryDark px-6 py-6 lg:justify-between lg:px-14 lg:py-12">
+        <div className="relative flex flex-col overflow-hidden rounded-b-[26px] bg-gradient-to-br from-primary to-primaryDark px-6 pb-7 pt-6 lg:justify-between lg:rounded-none lg:px-14 lg:py-12">
           {/* DUAS FORMAS, E NENHUMA DELAS DISPUTA COM O TEXTO.
             *
             * O disco embaixo à esquerda ancora a faixa — sem ele o verde é um
@@ -310,24 +432,206 @@ export default function Login() {
               * leitor de tela não perder o cabeçalho da página. */}
             <h1 className="sr-only">Alô Buzinou</h1>
 
-            {/* A frase quebra em duas alturas de propósito: a primeira diz o
-              * que é, a segunda diz o que faz. O peso separa as duas funções
-              * sem precisar de dois tamanhos de fonte.
+            {/* ⚠️ ESTA TELA É MAIS ACESSADA QUE A LANDING, e por muito tempo
+              * usou 46% de um monitor para dizer uma frase, com 400px de vazio
+              * no meio. Era o espaço de marca mais visto do produto, e estava
+              * mudo.
               *
-              * `text-balance` evita a linha órfã de uma palavra só, que é
-              * como ela quebrava quando a faixa era estreita. */}
-            {/* ⚠️ DOIS TAMANHOS, E ANTES ERAM UM SÓ.
-              * As duas frases dizem coisas de peso diferente — a primeira é o
-              * que o produto É, a segunda é o que ele FAZ — e no mesmo corpo
-              * de 36px elas viravam um bloco de seis linhas grandes que a
-              * pessoa varre sem ler. O título carrega o peso; a linha de baixo
-              * é uma frase, e frase se lê no tamanho de frase. */}
-            <p className="mt-3 max-w-[22ch] text-balance text-2xl font-extrabold leading-[1.08] tracking-tight text-onNight lg:mt-8 lg:text-[2.6rem]">
-              O app do transporte escolar.
-            </p>
-            <p className="mt-3 max-w-[30ch] text-balance text-sm leading-relaxed text-onNightMuted lg:mt-5 lg:text-base">
-              Um ambiente de trabalho que avisa, cobra e organiza.
-            </p>
+              * O trabalho dele agora é APRESENTAR O APP. Sem preço, prazo nem
+              * escassez: o convite é mostrar o que sai do ombro do motorista,
+              * e o pedágio para ver funcionando é ter conta — quem diz isso é
+              * o subtítulo do cartão, não este painel.
+              *
+              * ── POR QUE DUAS VERSÕES DO MIOLO
+              * No monitor ele troca com a aba (lembrete de valor × se
+              * reconhecer). No CELULAR ele é sempre a lista, porque ali ele
+              * também precisa COLAPSAR — e um painel que troca de conteúdo E
+              * de altura ao mesmo tempo é duas coisas se explicando de uma
+              * vez. */}
+
+            {/* ══ CELULAR ══════════════════════════════════════════════ */}
+            <div className="lg:hidden">
+              <p className="mt-4 text-[21px] font-extrabold leading-[1.12] tracking-[-0.03em] text-onNight">
+                Você faz seu transporte.
+                <br />
+                <span className="text-primaryBorder">
+                  O app avisa, cobra e organiza.
+                </span>
+              </p>
+
+              {/* ⚠️ O ESTADO FECHADO É ÍCONE E TÍTULO, E NADA MAIS.
+                * É a única coisa que sustenta a inversão de ordem: com as
+                * descrições abertas por padrão o painel passa de ~330px para
+                * ~700px, o formulário nasce fora da tela, e quem só quer
+                * entrar passa a pagar pedágio por uma apresentação que não
+                * pediu. A promessa inteira cabe num título. */}
+              <ul className="mt-5 space-y-0">
+                {(aberto ? [...BENEFICIOS, BENEFICIO_ABERTO] : BENEFICIOS).map(
+                  (b, i) => (
+                    <li
+                      key={b.titulo}
+                      className={`flex gap-3 border-t border-onNight/[0.14] py-3 ${
+                        i === (aberto ? BENEFICIOS.length : BENEFICIOS.length - 1)
+                          ? 'border-b'
+                          : ''
+                      }`}
+                    >
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primaryBorder/15 text-primaryBorder">
+                        <b.icone size={15} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-bold leading-snug text-onNight">
+                          {b.titulo}
+                        </span>
+                        {/* A descrição cresce de 0fr para 1fr: é o único jeito
+                          * de animar até `auto` sem medir altura no JS. */}
+                        <span
+                          className={`grid transition-[grid-template-rows] duration-[240ms] ease-[cubic-bezier(.22,.9,.24,1)] motion-reduce:transition-none ${
+                            aberto ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                          }`}
+                        >
+                          <span className="overflow-hidden">
+                            <span className="block pt-1 text-[13px] leading-relaxed text-primaryChip">
+                              {b.texto}
+                            </span>
+                          </span>
+                        </span>
+                      </span>
+                    </li>
+                  )
+                )}
+              </ul>
+
+              <span
+                className={`grid transition-[grid-template-rows] duration-[240ms] ease-[cubic-bezier(.22,.9,.24,1)] motion-reduce:transition-none ${
+                  aberto ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                }`}
+              >
+                <span className="overflow-hidden">
+                  <span className="block pt-4 text-[13.5px] leading-relaxed text-primaryChip">
+                    E do outro lado, a família avisa quando a criança não vai e
+                    vê as mensalidades —{' '}
+                    <strong className="font-semibold text-onNight">
+                      no app que leva o seu logo e o seu nome
+                    </strong>
+                    .
+                  </span>
+                </span>
+              </span>
+
+              {/* ⚠️ O RÓTULO PROMETE CONTEÚDO, e a seta avisa que a página
+                * CRESCE — então ninguém teme que o formulário desapareça.
+                * "Saiba mais" e "Sobre o app" não dizem nem uma coisa nem
+                * outra.
+                *
+                * Fechado ele tem fundo, aberto é só contorno: o convite pesa
+                * mais que o recuo. E ele fica NO MESMO LUGAR nos dois estados,
+                * para o caminho de volta ser onde a mão já está.
+                *
+                * Sem `scrollIntoView`: a pessoa está lendo de cima para baixo,
+                * e mover a página sob o dedo dela é desorientador. */}
+              <button
+                type="button"
+                onClick={() => setAberto((v) => !v)}
+                aria-expanded={aberto}
+                className={`tap mt-4 flex h-[46px] w-full items-center justify-center gap-2 rounded-[13px] border border-primaryBorder/30 text-[14.5px] font-bold text-primaryBorder transition-colors ${
+                  aberto ? 'bg-transparent' : 'bg-primaryBorder/[0.14]'
+                }`}
+              >
+                {aberto ? 'Ver menos' : 'Ver tudo o que tem dentro'}
+                {aberto ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+              </button>
+            </div>
+
+            {/* ══ MONITOR ══════════════════════════════════════════════ */}
+            <div className="hidden lg:block">
+              {ehEntrar ? (
+                <>
+                  {/* Sem teto de largura: a coluna já limita, e um `max-w` em `ch` num
+                    * corpo de 42px quebrava "Você faz seu transporte." em duas
+                    * linhas num monitor de 1280 — quatro linhas de título onde
+                    * cabem três. */}
+                  <p className="mt-8 text-[42px] font-extrabold leading-[1.06] tracking-[-0.03em] text-onNight">
+                    Você faz seu transporte.
+                    <br />
+                    <span className="text-primaryBorder">
+                      O app avisa, cobra e organiza.
+                    </span>
+                  </p>
+
+                  <ul className="mt-8 max-w-[34rem]">
+                    {BENEFICIOS.map((b, i) => (
+                      <li
+                        key={b.titulo}
+                        className={`flex gap-4 border-t border-onNight/[0.14] py-4 ${
+                          i === BENEFICIOS.length - 1 ? 'border-b' : ''
+                        }`}
+                      >
+                        <span className="mt-0.5 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl bg-primaryBorder/15 text-primaryBorder">
+                          <b.icone size={18} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[16.5px] font-bold leading-snug text-onNight">
+                            {b.titulo}
+                          </span>
+                          <span className="mt-1 block text-sm leading-relaxed text-primaryChip">
+                            {b.texto}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className="mt-6 max-w-[52ch] text-[14.5px] leading-relaxed text-primaryChip">
+                    E do outro lado, a família avisa quando a criança não vai e
+                    vê as mensalidades —{' '}
+                    <strong className="font-semibold text-onNight">
+                      no app que leva o seu logo e o seu nome
+                    </strong>
+                    .
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-8 max-w-[18ch] text-balance text-[42px] font-extrabold leading-[1.06] tracking-[-0.03em] text-onNight">
+                    O caderninho, a planilha e as cobranças no WhatsApp.
+                    <br />
+                    <span className="text-primaryBorder">
+                      Faça tudo nesse app.
+                    </span>
+                  </p>
+
+                  <div className="mt-8 grid max-w-[540px] grid-cols-2 gap-3">
+                    {CAIXAS.map((c) => (
+                      <div
+                        key={c.titulo}
+                        className="rounded-2xl border border-onNight/[0.13] bg-onNight/[0.08] p-4"
+                      >
+                        <p className="text-[15.5px] font-bold leading-snug text-onNight">
+                          {c.titulo}
+                        </p>
+                        <p className="mt-1 text-[13.5px] leading-relaxed text-primaryChip">
+                          {c.texto}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ⚠️ A ÚNICA LINHA DE RESPEITO PROFISSIONAL DA TELA, e ela
+                    * existe porque o medo dele não é tecnologia — é parecer
+                    * que entregou o controle do próprio negócio a um
+                    * aplicativo. */}
+                  <p className="mt-6 max-w-[50ch] text-[15.5px] leading-relaxed text-onNight">
+                    A gente não vem te ensinar a dirigir nem a cuidar de
+                    criança.{' '}
+                    <strong className="font-bold text-primaryBorder">
+                      Nisso você já é bom.
+                    </strong>{' '}
+                    A gente vem tirar o resto do seu ombro.
+                  </p>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="relative z-10 hidden text-xs text-onNightMuted lg:block">
@@ -554,7 +858,12 @@ export default function Login() {
                   <div>
                     <h2 className="text-xl font-bold text-text">Criar conta</h2>
                     <p className="mt-0.5 text-sm text-textMuted">
-                      Leva menos de um minuto. Primeiro, quem é você?
+                      {/* ⚠️ É AQUI QUE A TELA DIZ O PEDÁGIO, e sem prometer
+                        * prazo: para ver o app com a turma DELE, ele precisa de
+                        * conta. O painel ao lado apresenta; esta linha explica
+                        * por que existe um formulário no caminho. */}
+                      Pra ver o app funcionando com a sua turma, ele precisa
+                      saber quem é você. Primeiro, quem você é?
                     </p>
                   </div>
 
