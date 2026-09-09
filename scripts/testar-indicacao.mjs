@@ -28,8 +28,17 @@ import {
   podeTransitar,
   resumoDoIndicador,
   situacaoDaIndicacao,
+  escolherParaAtivar,
   validarIndicacao,
 } from '../src/dominio/identidade/indicacao.js';
+// A CÓPIA DO SERVIDOR, importada com outro nome para poder ser comparada.
+// O deploy das functions não alcança `src/`, então a duplicação é obrigatória
+// — o que este arquivo garante é que ela não divirja.
+import {
+  chaveDoTelefone as chaveServidor,
+  contarAtivas as contarServidor,
+  escolherParaAtivar as escolherServidor,
+} from '../functions/lib/indicacao.js';
 
 let ok = 0;
 let bad = 0;
@@ -210,6 +219,132 @@ checar('já ativa não é reaproveitada', null, acharIndicacao(pendentes, '21933
 checar('quem ninguém indicou não acha nada', null,
   acharIndicacao(pendentes, '(31) 95555-6666'));
 checar('telefone inválido não acha nada', null, acharIndicacao(pendentes, 'abc'));
+
+// ═══════════ A ESCOLHA, E O ESPELHO DO SERVIDOR ══════════════════════════
+//
+// ⚠️ POR QUE ESTE BLOCO EXISTE
+//
+// `casarEAtivar` vivia só no cliente, chamada depois da baixa MANUAL da
+// fatura. A regra do produto é que a indicação vale quando o indicado PAGA — e
+// "pagar" passou a ter dois caminhos quando o gateway entrou.
+//
+// Sem uma cópia no servidor, ligar o gateway apagaria o gatilho da indicação
+// para 100% dos indicadores, EM SILÊNCIO. Ninguém receberia erro; o desconto
+// simplesmente não apareceria na fatura seguinte, e a queixa que isso produz
+// — "indiquei e não recebi" — viaja mais rápido que a própria indicação.
+//
+// A cópia é obrigatória (o deploy das functions não alcança `src/`), então o
+// que este bloco garante é que ela não DIVERGE. Caso por caso, não por
+// leitura: é a mesma proteção que `testar:gateway` dá à régua de preço.
+console.log('');
+console.log('A ESCOLHA DA INDICAÇÃO — e a cópia do servidor');
+
+const CHAVE = '11987654321';
+const linha = (id, estado, extra) => ({ id, estado, ...extra });
+
+// ── as duas regras de ordem ──────────────────────────────────────────────
+// 1. ENTRE PENDENTES, VALE QUEM INDICOU PRIMEIRO. Premiar os dois pagaria 20%
+//    por um cliente; premiar o último premiaria quem chegou depois de o
+//    trabalho estar feito.
+const duasPendentes = [
+  linha('depois', ESTADO.PENDENTE, { chave: CHAVE, indicadorUid: 'x', em: 200 }),
+  linha('antes', ESTADO.PENDENTE, { chave: CHAVE, indicadorUid: 'y', em: 100 }),
+];
+checar(
+  'entre pendentes ganha quem indicou primeiro',
+  'antes',
+  escolherParaAtivar({ indicacoes: duasPendentes, indicadoUid: 'novo', chave: CHAVE })?.id
+);
+
+// 2. UMA JÁ CASADA COM ESTE UID GANHA DE QUALQUER PENDENTE — mesmo sendo mais
+//    recente. Ela já foi resolvida antes; reabrir a disputa entregaria o
+//    crédito a quem apenas indicou mais cedo.
+const casadaEPendente = [
+  linha('pendente-antiga', ESTADO.PENDENTE, { chave: CHAVE, indicadorUid: 'x', em: 10 }),
+  linha('casada-nova', ESTADO.CADASTRADO, { indicadoUid: 'novo', indicadorUid: 'y', em: 900 }),
+];
+checar(
+  'uma ja casada ganha de qualquer pendente',
+  'casada-nova',
+  escolherParaAtivar({ indicacoes: casadaEPendente, indicadoUid: 'novo', chave: CHAVE })?.id
+);
+
+// ── o que fica de fora ───────────────────────────────────────────────────
+// JÁ ATIVA não é escolhida: reativar contaria a mesma indicação duas vezes, e
+// é o erro que aparece quando o webhook e a baixa manual quitam a mesma
+// fatura.
+checar(
+  'quem ja esta ativa fica fora',
+  undefined,
+  escolherParaAtivar({
+    indicacoes: [linha('ja', ESTADO.ATIVA, { chave: CHAVE, indicadorUid: 'x', em: 1 })],
+    indicadoUid: 'novo',
+    chave: CHAVE,
+  })?.id
+);
+// AUTO-INDICAÇÃO é barrada aqui também — último ponto antes de o desconto
+// virar dinheiro. As rules não sabem comparar telefone.
+checar(
+  'auto-indicacao e barrada',
+  null,
+  escolherParaAtivar({
+    indicacoes: [linha('eu', ESTADO.PENDENTE, { chave: CHAVE, indicadorUid: 'novo', em: 1 })],
+    indicadoUid: 'novo',
+    chave: CHAVE,
+  })
+);
+checar('sem chave nao escolhe nada', null,
+  escolherParaAtivar({ indicacoes: duasPendentes, indicadoUid: 'novo', chave: null }));
+checar('sem uid do indicado nao escolhe nada', null,
+  escolherParaAtivar({ indicacoes: duasPendentes, indicadoUid: null, chave: CHAVE }));
+checar('lista vazia nao quebra', null,
+  escolherParaAtivar({ indicacoes: [], indicadoUid: 'novo', chave: CHAVE }));
+
+// ── AS DUAS CÓPIAS DECIDEM IGUAL ─────────────────────────────────────────
+//
+// Não é "leia e confie": é o mesmo caso passado nas duas funções, com o
+// resultado comparado. Divergência aqui é fatura errada.
+const CASOS = [
+  { nome: 'duas pendentes', indicacoes: duasPendentes, indicadoUid: 'novo', chave: CHAVE },
+  { nome: 'casada x pendente', indicacoes: casadaEPendente, indicadoUid: 'novo', chave: CHAVE },
+  { nome: 'auto-indicacao', indicacoes: [linha('eu', ESTADO.PENDENTE, { chave: CHAVE, indicadorUid: 'novo', em: 1 })], indicadoUid: 'novo', chave: CHAVE },
+  { nome: 'ja ativa', indicacoes: [linha('ja', ESTADO.ATIVA, { chave: CHAVE, indicadorUid: 'x', em: 1 })], indicadoUid: 'novo', chave: CHAVE },
+  { nome: 'chave de outro', indicacoes: duasPendentes, indicadoUid: 'novo', chave: '11900000000' },
+  { nome: 'vazia', indicacoes: [], indicadoUid: 'novo', chave: CHAVE },
+  { nome: 'em como Date', indicacoes: [linha('d', ESTADO.PENDENTE, { chave: CHAVE, indicadorUid: 'x', em: new Date(5) })], indicadoUid: 'novo', chave: CHAVE },
+];
+for (const c of CASOS) {
+  checar(
+    `cliente e servidor escolhem igual: ${c.nome}`,
+    escolherParaAtivar(c)?.id ?? null,
+    escolherServidor(c)?.id ?? null
+  );
+}
+
+// E A CHAVE DO TELEFONE TAMBÉM — é ela que decide SE alguém é o indicado.
+// Divergir aqui faz a indicação simplesmente não ser encontrada.
+const TELEFONES = [
+  '(11) 98765-4321', '11987654321', '(11) 8765-4321', '011 98765-4321',
+  '+55 11 98765-4321', '055 11 98765-4321', '(11) 3456-7890', '11 3456-7890',
+  '', null, 'abc', '119', '5511987654321',
+];
+checar(
+  'chaveDoTelefone: as duas copias concordam em todos os formatos',
+  TELEFONES.map(chaveDoTelefone),
+  TELEFONES.map(chaveServidor)
+);
+// Sonda positiva: se as duas quebrassem juntas, a comparação passaria verde.
+checar('e a chave do celular tem o nono digito', '11987654321', chaveDoTelefone('(11) 8765-4321'));
+checar('fixo NAO ganha o nono digito', '1134567890', chaveDoTelefone('(11) 3456-7890'));
+
+// `contarAtivas` fecha o trio: é ela que produz o número que a fatura cobra.
+const MISTURA = [
+  linha('a', ESTADO.ATIVA, {}), linha('b', ESTADO.PENDENTE, {}),
+  linha('c', ESTADO.ATIVA, {}), linha('d', ESTADO.CADASTRADO, {}),
+];
+checar('contarAtivas: as duas copias concordam', contarAtivas(MISTURA), contarServidor(MISTURA));
+checar('e o numero e dois', 2, contarAtivas(MISTURA));
+
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

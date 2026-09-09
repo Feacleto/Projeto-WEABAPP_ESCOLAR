@@ -14,6 +14,7 @@ import {
   ESTADO,
   chaveDoTelefone,
   contarAtivas,
+  escolherParaAtivar,
   montarIndicacao,
 } from '../dominio/identidade/indicacao.js';
 
@@ -117,36 +118,23 @@ export async function casarEAtivar(indicado) {
     const chave = chaveDoTelefone(indicado?.phone);
     if (!chave || !indicado?.uid) return 0;
 
-    // Só as pendentes e as já casadas com ESTE uid. Quem já está `ativa` fica
-    // de fora: reativar contaria a mesma indicação duas vezes.
+    // A ESCOLHA MORA NO DOMÍNIO, e saiu daqui em 09/09/2026.
+    //
+    // As duas regras de ordem (uma já casada ganha de qualquer pendente; entre
+    // pendentes vale quem indicou primeiro) e a barreira da auto-indicação
+    // estavam escritas aqui dentro. Quando a baixa da fatura passou a poder vir
+    // do GATEWAY, o casamento precisou existir no servidor também — e regra de
+    // dinheiro escrita duas vezes é regra que diverge.
+    //
+    // Agora ela é pura, testável, e tem uma cópia espelhada em
+    // `functions/lib/indicacao.js` que `npm run testar:indicacao` compara.
     const todas = await listarTodasIndicacoes();
-    const minhas = todas.filter(
-      (i) =>
-        (i.estado === ESTADO.PENDENTE && i.chave === chave) ||
-        (i.estado === ESTADO.CADASTRADO && i.indicadoUid === indicado.uid)
-    );
-    if (!minhas.length) return 0;
-
-    // A ESCOLHA, e ela tem duas regras nesta ordem.
-    //
-    // 1. UMA JÁ CASADA COM ESTE UID GANHA DE QUALQUER PENDENTE. Ela já foi
-    //    resolvida antes; reabrir a disputa entregaria o crédito a quem
-    //    apenas indicou mais cedo, depois de outro já ter sido reconhecido.
-    //
-    // 2. ⚠️ ENTRE AS PENDENTES, VALE QUEM INDICOU PRIMEIRO. Premiar os dois
-    //    pagaria 20% por um cliente; premiar o último premiaria quem chegou
-    //    depois de o trabalho estar feito.
-    const porData = (a, b) => (a.em?.toMillis?.() || 0) - (b.em?.toMillis?.() || 0);
-    const jaCasada = minhas
-      .filter((i) => i.estado === ESTADO.CADASTRADO && i.indicadoUid === indicado.uid)
-      .sort(porData)[0];
-    const escolhida = jaCasada || minhas.filter((i) => i.estado === ESTADO.PENDENTE).sort(porData)[0];
+    const escolhida = escolherParaAtivar({
+      indicacoes: todas,
+      indicadoUid: indicado.uid,
+      chave,
+    });
     if (!escolhida) return 0;
-
-    // O indicador NÃO pode ser o próprio indicado. O domínio já barra isso na
-    // criação, mas a rule não sabe comparar telefones — e este é o último
-    // ponto antes de o desconto virar dinheiro.
-    if (escolhida.indicadorUid === indicado.uid) return 0;
 
     const dele = await listarIndicacoesDe(escolhida.indicadorUid);
     const jaAtivas = contarAtivas(dele);

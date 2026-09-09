@@ -152,6 +152,67 @@ export function podeTransitar(de, para) {
 }
 
 /** Quantas indicações DESTE indicador já valem desconto. */
+/**
+ * QUAL INDICAÇÃO GANHA O CRÉDITO, dado um indicado que acabou de pagar.
+ *
+ * ── POR QUE ISTO SAIU DO SERVICE
+ * A regra vivia dentro de `casarEAtivar`, no cliente. Quando a baixa da fatura
+ * passou a poder vir do GATEWAY (webhook, servidor), o casamento precisou
+ * existir nos dois lados — e regra de dinheiro escrita duas vezes é regra que
+ * diverge. Aqui ela é pura e testável; a cópia do servidor está em
+ * `functions/lib/indicacao.js`, e `npm run testar:indicacao` compara as duas.
+ *
+ * ── AS DUAS REGRAS, NESTA ORDEM
+ *
+ * 1. UMA JÁ CASADA COM ESTE UID GANHA DE QUALQUER PENDENTE. Ela já foi
+ *    resolvida antes; reabrir a disputa entregaria o crédito a quem apenas
+ *    indicou mais cedo, depois de outro já ter sido reconhecido.
+ *
+ * 2. ⚠️ ENTRE AS PENDENTES, VALE QUEM INDICOU PRIMEIRO. Premiar os dois
+ *    pagaria 20% por um cliente; premiar o último premiaria quem chegou depois
+ *    de o trabalho estar feito.
+ *
+ * Quem já está `ativa` fica FORA: reativar contaria a mesma indicação duas
+ * vezes, e é o erro que aparece quando o webhook e a baixa manual quitam a
+ * mesma fatura.
+ *
+ * ⚠️ E A AUTO-INDICAÇÃO É BARRADA AQUI TAMBÉM, no último ponto antes de o
+ * desconto virar dinheiro. `validarIndicacao` já barra na criação, mas as
+ * rules não sabem comparar telefone.
+ *
+ * `em` é lido por `.toMillis?.()` ou como número/Date, porque o Timestamp do
+ * cliente e o do Admin SDK não são o mesmo objeto.
+ */
+export function escolherParaAtivar({ indicacoes = [], indicadoUid, chave } = {}) {
+  if (!indicadoUid || !chave) return null;
+  const lista = Array.isArray(indicacoes) ? indicacoes : [];
+
+  const minhas = lista.filter(
+    (i) =>
+      (i?.estado === ESTADO.PENDENTE && i?.chave === chave) ||
+      (i?.estado === ESTADO.CADASTRADO && i?.indicadoUid === indicadoUid)
+  );
+  if (!minhas.length) return null;
+
+  const ms = (i) => {
+    const v = i?.em;
+    if (v?.toMillis) return v.toMillis();
+    if (v instanceof Date) return v.getTime();
+    return Number(v) || 0;
+  };
+  const porData = (a, b) => ms(a) - ms(b);
+
+  const jaCasada = minhas
+    .filter((i) => i.estado === ESTADO.CADASTRADO && i.indicadoUid === indicadoUid)
+    .sort(porData)[0];
+  const escolhida =
+    jaCasada || minhas.filter((i) => i.estado === ESTADO.PENDENTE).sort(porData)[0];
+  if (!escolhida) return null;
+
+  if (escolhida.indicadorUid === indicadoUid) return null;
+  return escolhida;
+}
+
 export function contarAtivas(indicacoes = []) {
   return (Array.isArray(indicacoes) ? indicacoes : []).filter(
     (i) => i?.estado === ESTADO.ATIVA

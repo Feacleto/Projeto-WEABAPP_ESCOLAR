@@ -89,9 +89,39 @@ const REABRE = {
  * `statusAtual` entra porque duas decisões dependem dele: o vencimento não
  * desfaz pagamento, e reabrir uma fatura que já está aberta não é uma
  * mudança. Quem chama não precisa saber disso; precisa só aplicar o que sai.
+ *
+ * `quitadaPorPessoa` entra por um terceiro motivo — ver o bloco do
+ * `PAYMENT_DELETED`, abaixo. É `true` quando a fatura foi baixada À MÃO pelo
+ * dono, e não pelo gateway.
  */
-function efeitoDoEvento(evento, statusAtual = null) {
+function efeitoDoEvento(evento, statusAtual = null, quitadaPorPessoa = false) {
   const nome = String(evento || '').trim().toUpperCase();
+
+  // ⚠️ APAGAR A COBRANÇA NO GATEWAY NÃO DESFAZ UM PAGAMENTO FEITO POR FORA.
+  //
+  // `PAYMENT_DELETED` está em `REABRE`, e com razão: cobrança removida deixa
+  // de ter como ser paga. Mas há um caminho em que ele chega sobre uma fatura
+  // que JÁ FOI PAGA — e é o caminho natural, não a exceção:
+  //
+  //   1. o motorista paga o PIX direto da plataforma;
+  //   2. o dono dá baixa à mão na aba Mês;
+  //   3. o dono abre o painel do Asaas e apaga a cobrança redundante,
+  //      que é a limpeza que qualquer pessoa faria;
+  //   4. chega `PAYMENT_DELETED`, a fatura volta para `aberta`.
+  //
+  // A partir daí `estadoDaConta` avalia o ATRASO antes da assinatura, com
+  // tolerância de dez dias — então dez dias depois o motorista que pagou é
+  // bloqueado, com o comprovante na mão. É exatamente o desfecho que o resto
+  // deste arquivo e o do webhook foram escritos para impedir.
+  //
+  // Estorno e chargeback continuam reabrindo mesmo assim: neles o dinheiro
+  // VOLTOU. Aqui não voltou nada — só o registro no gateway deixou de existir.
+  if (nome === 'PAYMENT_DELETED' && statusAtual === QUITADA && quitadaPorPessoa) {
+    return {
+      status: null,
+      motivo: 'cobrança removida no gateway, mas a fatura foi baixada à mão',
+    };
+  }
 
   if (LIBERA[nome]) {
     if (statusAtual === QUITADA) return { status: null, motivo: 'já estava quitada' };

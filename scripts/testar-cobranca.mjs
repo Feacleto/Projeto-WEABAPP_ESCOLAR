@@ -65,6 +65,49 @@ checar('chargeback reabre', ABERTA, status('PAYMENT_CHARGEBACK_REQUESTED', QUITA
 checar('recebimento em dinheiro desfeito reabre', ABERTA, status('PAYMENT_RECEIVED_IN_CASH_UNDONE', QUITADA));
 checar('cobrança removida no gateway reabre', ABERTA, status('PAYMENT_DELETED', QUITADA));
 
+// ⚠️ MAS NÃO REABRE O QUE FOI PAGO POR FORA — e este era o caminho NATURAL.
+//
+// A sequência: o motorista paga o PIX direto da plataforma, o dono dá baixa à
+// mão na aba Mês, e depois abre o painel do Asaas e apaga a cobrança
+// redundante — a limpeza que qualquer pessoa faria. Chega `PAYMENT_DELETED`,
+// a fatura voltava para `aberta`, e dez dias depois o motorista que PAGOU era
+// bloqueado com o comprovante na mão.
+//
+// `quitadaPor` é o sinal: ele só existe na baixa manual (`marcarFaturaPaga` o
+// grava; o webhook não). Estorno e chargeback continuam reabrindo mesmo assim,
+// porque neles o dinheiro VOLTOU — aqui não voltou nada, só o registro no
+// gateway deixou de existir.
+checar(
+  'mas NÃO reabre fatura que o dono baixou à mão',
+  null,
+  efeitoDoEvento('PAYMENT_DELETED', QUITADA, true).status
+);
+checar(
+  'e o motivo diz por quê',
+  true,
+  /baixada à mão/.test(efeitoDoEvento('PAYMENT_DELETED', QUITADA, true).motivo)
+);
+// A guarda é ESTREITA de propósito: vale só para este evento e só sobre
+// fatura quitada. Estorno sobre baixa manual continua reabrindo — o dinheiro
+// voltou de verdade.
+checar(
+  'estorno sobre baixa manual AINDA reabre',
+  ABERTA,
+  efeitoDoEvento('PAYMENT_REFUNDED', QUITADA, true).status
+);
+checar(
+  'e chargeback também',
+  ABERTA,
+  efeitoDoEvento('PAYMENT_CHARGEBACK_REQUESTED', QUITADA, true).status
+);
+// Sem o sinal, o comportamento é o de sempre — o padrão do parâmetro não
+// pode mudar o que já funcionava.
+checar(
+  'sem o sinal, PAYMENT_DELETED reabre como antes',
+  ABERTA,
+  efeitoDoEvento('PAYMENT_DELETED', QUITADA, false).status
+);
+
 bloco('3. A guarda que impede o pior caso');
 
 // Eventos chegam FORA DE ORDEM: um OVERDUE gerado às 00:00 pode ser entregue

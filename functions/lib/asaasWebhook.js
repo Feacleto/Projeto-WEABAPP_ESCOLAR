@@ -1,6 +1,7 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const { QUITADA, efeitoDoEvento, assinaturaAteDoMes } = require('./eventoDeCobranca');
+const { casarEAtivarIndicacao } = require('./casarIndicacao');
 const LIMITES = require('./limites');
 
 const REGION = 'southamerica-east1';
@@ -104,7 +105,17 @@ function makeAsaasWebhook(db, tokenSecret) {
         }
 
         const doc = busca.docs[0];
-        const { status: novo, motivo } = efeitoDoEvento(evento, doc.get('status'));
+        // `quitadaPor` só existe quando a baixa foi MANUAL, na aba Mês
+        // (`marcarFaturaPaga` o grava; o webhook não). É esse sinal que
+        // distingue "o gateway confirmou" de "o dono conferiu o extrato" — e
+        // a distinção importa para o `PAYMENT_DELETED`, que sobre uma fatura
+        // baixada à mão não pode reabrir nada. Ver `efeitoDoEvento`.
+        const quitadaPorPessoa = Boolean(doc.get('quitadaPor'));
+        const { status: novo, motivo } = efeitoDoEvento(
+          evento,
+          doc.get('status'),
+          quitadaPorPessoa
+        );
 
         if (!novo) {
           logger.info('[asaas] evento sem efeito', { evento, fatura: doc.id, motivo });
@@ -130,6 +141,46 @@ function makeAsaasWebhook(db, tokenSecret) {
         const tioUid = doc.get('tioUid');
         const ate = novo === QUITADA ? assinaturaAteDoMes(doc.get('mes')) : null;
 
+        // ⚠️ `assinaturaAte` NUNCA ANDA PARA TRÁS.
+        //
+        // A escrita era `set({ assinaturaAte: ate }, { merge: true })` sem
+        // comparar com o que já estava lá. Como o próprio cabeçalho deste
+        // arquivo diz que evento do gateway CHEGA FORA DE ORDEM, e como uma
+        // fatura antiga em atraso pode ser quitada depois de uma nova, a data
+        // podia RECUAR — e `isAdmin()` nas rules bloqueia a conta de quem está
+        // em dia, às seis da manhã, com o comprovante na mão.
+        //
+        // `contratacao.js` faz exatamente esta comparação, com um comentário
+        // explicando ("nunca REDUZ… `Math.max` de datas não existe, então a
+        // comparação é explícita"). A metade do webhook ficou sem ela.
+        //
+        // A leitura vem ANTES do lote de propósito: o `set` com merge não sabe
+        // o valor anterior, e uma transação aqui custaria a idempotência
+        // simples que este handler tem hoje.
+        let ateFinal = ate;
+        if (ate && tioUid) {
+          const tioSnap = await db.doc(`users/${tioUid}`).get();
+          const atual = tioSnap.exists ? tioSnap.get('assinaturaAte') : null;
+          const atualData = atual?.toDate?.() || (atual ? new Date(atual) : null);
+          if (atualData && atualData >= ate) ateFinal = null;
+        }
+
+        // FATURA SEM `tioUid` É FALHA NOSSA, E CALAR RECRIA O DEFEITO.
+        //
+        // O `if (ate && tioUid)` antigo pulava a escrita em silêncio e o
+        // `logger.info` do fim registrava `assinaturaAte: null` como se fosse
+        // normal — ou seja, fatura quitada, app dizendo que a conta está
+        // inativa, e nenhum sinal em lugar nenhum. Devolver 500 faz o gateway
+        // reenviar, o que é o certo quando o defeito é do nosso lado.
+        if (ate && !tioUid) {
+          logger.error('[asaas] fatura quitada SEM tioUid — conta não destravada', {
+            fatura: doc.id,
+            evento,
+          });
+          res.status(500).send('fatura-sem-tioUid');
+          return;
+        }
+
         const lote = db.batch();
         lote.update(doc.ref, {
           status: novo,
@@ -138,18 +189,48 @@ function makeAsaasWebhook(db, tokenSecret) {
           asaasUltimoEvento: evento,
           asaasUltimoMotivo: motivo,
           atualizadoEm: new Date(),
+          // QUEM DEU BAIXA E QUANDO — e a baixa manual já gravava isto.
+          //
+          // Sem estes dois campos, a ficha do parceiro mostrava `quitada` sem
+          // data nem autor quando a baixa vinha do gateway, e não havia como
+          // distinguir "o Asaas confirmou" de "o dono conferiu o extrato".
+          //
+          // `quitadaPor` fica com a marca do gateway, NÃO com um uid: é ela
+          // que `efeitoDoEvento` usa para saber que a baixa foi de pessoa, e
+          // uma baixa automática não pode se passar por manual.
+          ...(novo === QUITADA
+            ? { quitadaEm: new Date(), quitadaPeloGateway: true }
+            : {}),
         });
-        if (ate && tioUid) {
-          lote.set(db.doc(`users/${tioUid}`), { assinaturaAte: ate }, { merge: true });
+        if (ateFinal && tioUid) {
+          lote.set(db.doc(`users/${tioUid}`), { assinaturaAte: ateFinal }, { merge: true });
         }
         await lote.commit();
+
+        // ⚠️ A INDICAÇÃO É CASADA AQUI, DEPOIS DO COMMIT.
+        //
+        // A regra do produto é que a indicação vale quando o indicado PAGA — e
+        // até 09/09/2026 isso só acontecia na baixa MANUAL, porque
+        // `casarEAtivar` existia apenas no cliente. Ligar o gateway apagaria o
+        // gatilho para 100% dos indicadores, em silêncio.
+        //
+        // FORA DO LOTE de propósito: o lote é da fatura, e o desconto de um
+        // terceiro não pode fazer a baixa falhar. `casarEAtivarIndicacao`
+        // nunca lança, pelo mesmo motivo — e RECONTA em vez de incrementar,
+        // porque o webhook e a baixa manual podem quitar a mesma fatura.
+        if (novo === QUITADA && tioUid) {
+          await casarEAtivarIndicacao(db, tioUid);
+        }
 
         logger.info('[asaas] fatura atualizada', {
           fatura: doc.id,
           evento,
           novo,
           motivo,
-          assinaturaAte: ate ? ate.toISOString().slice(0, 10) : null,
+          assinaturaAte: ateFinal ? ateFinal.toISOString().slice(0, 10) : null,
+          // Distingue "não havia data a escrever" de "a data de lá já era
+          // maior ou igual" — sem isto, os dois casos logam o mesmo `null`.
+          assinaturaAteMantida: Boolean(ate && !ateFinal),
         });
         res.status(200).send('ok');
       } catch (err) {
