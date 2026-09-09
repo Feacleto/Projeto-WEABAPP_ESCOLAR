@@ -126,34 +126,71 @@ export async function deactivateChildAndParent({ childId }) {
   const child = childSnap.data();
   const parentUid = child.parentUid || null;
 
+  // ⚠️ AS TRÊS CONSULTAS ABAIXO PRECISAM DE `adminUid`, E A FALTA DELE
+  // QUEBRAVA A REMOÇÃO INTEIRA.
+  //
+  // `absenceDeclarations`, `altPickups` e `agendaEntries` têm `allow read`
+  // escopado em `ehDoMotorista()`, que compara `resource.data.adminUid` com o
+  // uid da sessão. Rule que exige campo obriga a CONSULTA a provar o filtro —
+  // consulta sem ele é recusada INTEIRA, não parcialmente.
+  //
+  // A primeira delas não tinha `catch`, então a função lançava e a tela dizia
+  // "Erro ao remover. Tente novamente." para sempre: a criança nunca era
+  // desativada, o pai nunca era desvinculado e a VAGA NUNCA VOLTAVA — o
+  // motorista batia no teto do plano com menos crianças do que contratou, e
+  // culpava a cobrança.
+  //
+  // O idioma está registrado em `altPickupService.js` ("`where('adminUid',
+  // '==', uid)` primeiro"), escrito quando o mesmo defeito foi consertado lá.
+  const adminUid = child.adminUid || null;
+  if (!adminUid) throw new Error('Criança sem motorista — não é possível remover.');
+
   // 1. Apaga ausências futuras (hoje em diante) — não fazem sentido.
   //    Ausências passadas ficam pra auditoria.
   const todaysKey = todayKey();
   const absSnap = await getDocs(
-    query(collection(db, 'absenceDeclarations'), where('childId', '==', childId))
+    query(
+      collection(db, 'absenceDeclarations'),
+      where('adminUid', '==', adminUid),
+      where('childId', '==', childId)
+    )
   );
   const futureAbs = absSnap.docs.filter((d) => {
     const k = d.data().dateKey || '';
     return k >= todaysKey;
   });
 
-  // 2. Apaga notificações do pai (limpeza)
-  let parentNotifs = { docs: [] };
-  if (parentUid) {
-    parentNotifs = await getDocs(
-      query(collection(db, 'notifications'), where('userId', '==', parentUid))
-    );
-  }
+  // 2. Notificações do pai — ESTA LIMPEZA NÃO CABE NO CLIENTE DO MOTORISTA.
+  //
+  // `notifications` tem `allow read: resource.data.userId == request.auth.uid`
+  // e a coleção não carrega `adminUid`, então não existe consulta que o
+  // motorista possa provar. A varredura antiga era negada e, junto com a de
+  // ausências, derrubava a remoção inteira.
+  //
+  // Fica registrado como pendência de function em vez de tentar e falhar: a
+  // caixa do responsável some quando o doc dele é apagado no passo 3 (sem
+  // documento em `users`, `isAppUser()` nega toda leitura), então o dado fica
+  // inerte — mas fica. Abrir uma rule para o motorista listar a caixa da
+  // família seria pagar com privacidade uma limpeza de banco.
+  const parentNotifs = { docs: [] };
 
   // 3. Dados pessoais atrelados à criança que não fazem sentido sobreviver:
   //    - altPickups: nome/telefone de quem buscou a criança em cada dia
   //    - agendaEntries (scope=child): recados nominais sobre a criança
   //    Sem essa limpeza, os dois ficavam órfãos no banco pra sempre (LGPD).
   const altPickupsSnap = await getDocs(
-    query(collection(db, 'altPickups'), where('childId', '==', childId))
+    query(
+      collection(db, 'altPickups'),
+      where('adminUid', '==', adminUid),
+      where('childId', '==', childId)
+    )
   );
   const agendaSnap = await getDocs(
-    query(collection(db, 'agendaEntries'), where('childId', '==', childId))
+    query(
+      collection(db, 'agendaEntries'),
+      where('adminUid', '==', adminUid),
+      where('childId', '==', childId)
+    )
   );
 
   await deleteInBatches([
@@ -248,6 +285,32 @@ export async function deleteOwnParentAccount({ uid, childIds = [] }) {
   // filhos). Antes só desvinculava uma, e o segundo filho ficava preso a um
   // parentUid de conta apagada — invisível pro pai e sem convite reutilizável.
   const ids = Array.isArray(childIds) ? childIds.filter(Boolean) : [];
+
+  // ⚠️ OS DADOS DE TERCEIRO SAEM ANTES DA DESVINCULAÇÃO, E A ORDEM É O BUG.
+  //
+  // `altPickups` guarda nome e telefone de quem buscou a criança — gente que
+  // nem usa o app. A rule de delete é `ownsChild(resource.data.childId)`, que
+  // se apoia em `children.parentUid == auth.uid`.
+  //
+  // A limpeza estava DEPOIS do laço que grava `parentUid: null`: quando ela
+  // rodava, `ownsChild()` já era falso e todo delete era negado. O `catch`
+  // engolia, e o comentário ao lado afirmava "as rules permitem o dono
+  // apagar" — permitiam, até a desvinculação tirar o vínculo três linhas
+  // acima. Resultado: a pessoa pedia exclusão de conta e o nome e o telefone
+  // de terceiros ficavam no banco para sempre.
+  //
+  // Este bloco não pode voltar para baixo do laço.
+  for (const childId of ids) {
+    try {
+      const altSnap = await getDocs(
+        query(collection(db, 'altPickups'), where('childId', '==', childId))
+      );
+      await deleteInBatches(altSnap.docs);
+    } catch (err) {
+      console.error('Falha ao apagar altPickups de ' + childId + ':', err);
+    }
+  }
+
   for (const childId of ids) {
     try {
       await updateDoc(doc(db, 'children', childId), {
@@ -270,22 +333,12 @@ export async function deleteOwnParentAccount({ uid, childIds = [] }) {
     console.error('Falha ao apagar notificações:', err);
   }
 
-  // Apaga as indicações de busca (altPickups) — carregam nome e telefone
-  // de terceiros que o pai cadastrou. As rules permitem o dono apagar.
+  // NOTA: `agendaEntries` sobre o filho NÃO podem ser apagadas aqui — as
+  // rules só deixam o motorista apagar. Ficam pendentes até ele remover a
+  // criança (`deactivateChildAndParent`) ou encerrar a operação.
   //
-  // NOTA: agendaEntries sobre o filho NÃO podem ser apagadas aqui — as rules
-  // só deixam o admin apagar. Ficam pendentes até o Tio remover a criança
-  // (deactivateChildAndParent) ou encerrar a operação.
-  for (const childId of ids) {
-    try {
-      const altSnap = await getDocs(
-        query(collection(db, 'altPickups'), where('childId', '==', childId))
-      );
-      await deleteInBatches(altSnap.docs);
-    } catch (err) {
-      console.error('Falha ao apagar altPickups de ' + childId + ':', err);
-    }
-  }
+  // A limpeza de `altPickups` subiu para o começo desta função, ANTES da
+  // desvinculação — ver o aviso lá.
 
   // Apaga doc users
   await deleteDoc(doc(db, 'users', uid));

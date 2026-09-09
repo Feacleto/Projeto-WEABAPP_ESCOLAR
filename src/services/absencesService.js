@@ -192,13 +192,32 @@ export function watchAbsencesRange(adminUid, deKey, ateKey, onUpdate, onError) {
  */
 const TETO_DE_FALTAS = 200;
 
-export function watchAllAbsencesForChild(childId, onUpdate, onError) {
-  if (!childId) {
+/**
+ * ⚠️ `adminUid` NÃO É OPCIONAL, E A TELA DO MOTORISTA É O MOTIVO.
+ *
+ * O histórico é lido pelos DOIS papéis (`ChildDetail` está montada em `/tio`
+ * e em `/pai`). O `allow read` de `absenceDeclarations` tem dois ramos:
+ * `ehDoMotorista()`, que compara `resource.data.adminUid`, e
+ * `ownsChild(childId)`.
+ *
+ * Só com `where('childId')` a responsável passava (o ramo dela é provado pelo
+ * filtro) e o MOTORISTA era negado — consulta recusada inteira, erro morrendo
+ * num `console.error`, e ele via uma lista vazia onde havia faltas. O
+ * cabeçalho do arquivo dizia "uso do Pai" porque a tela do tio herdou o hook
+ * depois.
+ *
+ * Filtrar por `adminUid` sempre satisfaz os dois ramos e mantém UM caminho de
+ * código. Custa o índice `(adminUid, childId, dateKey DESC)` — duas
+ * igualdades mais `orderBy` num terceiro campo exigem composto de verdade.
+ */
+export function watchAllAbsencesForChild(childId, adminUid, onUpdate, onError) {
+  if (!childId || !adminUid) {
     onUpdate([]);
     return () => {};
   }
   const q = query(
     collection(db, 'absenceDeclarations'),
+    where('adminUid', '==', adminUid),
     where('childId', '==', childId),
     orderBy('dateKey', 'desc'),
     limit(TETO_DE_FALTAS)

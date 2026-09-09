@@ -89,12 +89,12 @@ export function useAbsenceForChild(dateKey, childId) {
  * Subscribe a todas as ausências históricas de uma criança (uso do Pai).
  * Retorna o array completo — caller filtra por período (semana/mês).
  */
-export function useChildAbsenceHistory(childId) {
+export function useChildAbsenceHistory(childId, adminUid) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!childId) {
+    if (!childId || !adminUid) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setHistory([]);
       setLoading(false);
@@ -103,6 +103,7 @@ export function useChildAbsenceHistory(childId) {
     setLoading(true);
     const unsub = watchAllAbsencesForChild(
       childId,
+      adminUid,
       (list) => {
         setHistory(list);
         setLoading(false);
@@ -110,7 +111,7 @@ export function useChildAbsenceHistory(childId) {
       () => setLoading(false)
     );
     return unsub;
-  }, [childId]);
+  }, [childId, adminUid]);
 
   return { history, loading };
 }

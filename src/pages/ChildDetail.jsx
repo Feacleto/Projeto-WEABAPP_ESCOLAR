@@ -327,7 +327,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           * O aviso marcado pra frente aparece separado e nunca somado: é
           * combinado, não falta. Somar faria a ficha dizer que a criança
           * faltou num dia que ainda não chegou. */}
-        <FaltasDaCrianca childId={child.id} />
+        <FaltasDaCrianca childId={child.id} adminUid={child.adminUid} />
 
         {/* Responsáveis */}
         <Card className="space-y-3">
@@ -523,8 +523,8 @@ export function ChildDetailSheet({ open, childId, onClose }) {
  * o histórico por prop obrigaria os quatro a carregá-lo — inclusive os que
  * abrem a ficha e nunca rolam até aqui.
  */
-function FaltasDaCrianca({ childId }) {
-  const { history, loading } = useChildAbsenceHistory(childId);
+function FaltasDaCrianca({ childId, adminUid }) {
+  const { history, loading } = useChildAbsenceHistory(childId, adminUid);
   const [mes, setMes] = useState(() => getCurrentMonthKey());
 
   const doMes = useMemo(() => faltasDoMes(history, mes), [history, mes]);

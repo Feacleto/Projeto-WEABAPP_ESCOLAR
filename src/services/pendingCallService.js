@@ -49,11 +49,24 @@ export async function createCall({
     throw new Error('Dados insuficientes pra criar chamada.');
   }
 
-  // Encerra chamadas anteriores ativas pro mesmo pai
+  // Encerra chamadas anteriores ativas pro mesmo pai.
+  //
+  // ⚠️ `adminUid` NO FILTRO: sem ele isto nunca funcionou.
+  //
+  // A rule de `pendingCalls` libera quem é ponta da chamada
+  // (`resource.data.parentUid == auth.uid || resource.data.adminUid ==
+  // auth.uid`). Quem roda esta consulta é o MOTORISTA, então provar
+  // `parentUid == <uid da família>` não prova nada sobre ele — a consulta era
+  // recusada inteira e o `catch` abaixo engolia.
+  //
+  // O efeito era o contrário do que o cabeçalho promete: chamadas `ringing`
+  // acumulavam no celular da família, uma por buzinada. Duas igualdades mais
+  // um `in` de campo único não pedem índice composto.
   try {
     const existing = await getDocs(
       query(
         collection(db, 'pendingCalls'),
+        where('adminUid', '==', adminUid),
         where('parentUid', '==', parentUid),
         where('status', 'in', [CALL_STATUS.RINGING, CALL_STATUS.ACKNOWLEDGED])
       )

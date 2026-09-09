@@ -1,6 +1,5 @@
 import {
   collection,
-  addDoc,
   serverTimestamp,
   writeBatch,
   doc,
@@ -75,19 +74,29 @@ export async function createSchoolBroadcast({
   const alcancadas = (children || []).filter((c) => c?.active !== false);
   if (!alcancadas.length) throw new Error('Escolha pelo menos uma criança.');
 
-  const broadcastRef = await addDoc(collection(db, 'schoolBroadcasts'), {
-    escolaId: escolaId || null,
-    schoolName: escolaNome || '',
-    dias,
-    // `date` (singular) continua gravado pro histórico antigo continuar
-    // legível junto do novo, sem migração.
-    date: dias[0],
-    message: message?.trim() || '',
-    createdBy: adminUid,
-    adminUid,
-    affectedChildIds: alcancadas.map((c) => c.id),
-    createdAt: serverTimestamp(),
-  });
+  // ⚠️ O HISTÓRICO NASCE POR ÚLTIMO, E ISSO NÃO É DETALHE DE ORDEM.
+  //
+  // Este documento era gravado AQUI, com `addDoc`, antes dos lotes de aviso.
+  // Quando um lote falhava (ver o CHUNK abaixo), sobrava um registro dizendo
+  // que a escola foi avisada com ninguém avisado — e o motorista confiava
+  // nele. A referência é criada sem escrever, o id continua disponível para
+  // os avisos, e o `set` vai no ÚLTIMO lote: se qualquer coisa antes dele
+  // falhar, o histórico não existe e o erro sobe para a tela.
+  const broadcastRef = doc(collection(db, 'schoolBroadcasts'));
+  const gravarHistorico = (batch) =>
+    batch.set(broadcastRef, {
+      escolaId: escolaId || null,
+      schoolName: escolaNome || '',
+      dias,
+      // `date` (singular) continua gravado pro histórico antigo continuar
+      // legível junto do novo, sem migração.
+      date: dias[0],
+      message: message?.trim() || '',
+      createdBy: adminUid,
+      adminUid,
+      affectedChildIds: alcancadas.map((c) => c.id),
+      createdAt: serverTimestamp(),
+    });
 
   const periodo = rotuloDoPeriodo(dias);
   const corpo = message?.trim()
@@ -137,13 +146,32 @@ export async function createSchoolBroadcast({
     }
   }
 
-  // Firestore aceita 500 operações por batch. Vinte crianças por vinte dias
-  // são quatrocentas ausências — fatiar deixou de ser precaução e virou
-  // requisito quando o intervalo entrou.
-  const CHUNK = 400;
-  for (let i = 0; i < ops.length; i += CHUNK) {
+  // ⚠️ 15, NÃO 400 — E O TETO QUE MANDA NÃO É O DE 500 OPERAÇÕES.
+  //
+  // O comentário anterior olhava só o limite de escritas do Firestore (500) e
+  // concluiu 400. O limite que morde primeiro é OUTRO: as rules podem fazer
+  // no máximo 20 acessos a documento por lote, e cada `create` em
+  // `notifications` faz um `get(users/{userId})` — caminho diferente por
+  // família, então sem cache.
+  //
+  // Com ~19 responsáveis distintos no mesmo aviso o lote era negado INTEIRO
+  // (batch é atômico): nenhuma notificação, nenhuma ausência. E uma escola
+  // com vinte famílias é uso absolutamente normal.
+  //
+  // `ridesService` e `routeStatusService` usam 15 por este exato motivo, e
+  // `scripts/testar-regras.mjs` fixa TETO_SEGURO = 18. 15 deixa folga para a
+  // regra ganhar mais um `get()` sem quebrar em produção.
+  const CHUNK = 15;
+  const lotes = [];
+  for (let i = 0; i < ops.length; i += CHUNK) lotes.push(ops.slice(i, i + CHUNK));
+  // Garante um lote para o histórico mesmo quando não há nenhuma operação.
+  if (!lotes.length) lotes.push([]);
+
+  for (let i = 0; i < lotes.length; i += 1) {
     const batch = writeBatch(db);
-    for (const aplicar of ops.slice(i, i + CHUNK)) aplicar(batch);
+    for (const aplicar of lotes[i]) aplicar(batch);
+    // O histórico entra no último lote — ver o aviso na criação da referência.
+    if (i === lotes.length - 1) gravarHistorico(batch);
     await batch.commit();
   }
 
