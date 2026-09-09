@@ -19,7 +19,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const admin = require('firebase-admin');
-const { ligarRelogio } = require('./relogioDoTeste');
+const { ligarRelogioComSnap } = require('./relogioDoTeste');
 
 const REGION = 'southamerica-east1';
 
@@ -193,13 +193,40 @@ function makeRedeemInvite(db) {
       const userSnap = await tx.get(userRef);
       const existing = userSnap.exists ? userSnap.data() : null;
 
-      // Uma conta de admin não pode virar responsável de criança.
-      if (existing && existing.role === 'admin') {
+      // ⚠️ QUALQUER PAPEL EXISTENTE QUE NÃO SEJA `parent` RECUSA — E ANTES A
+      // CONDIÇÃO ERA SÓ `=== 'admin'`.
+      //
+      // O `userPayload` abaixo sempre traz `role: 'parent'` e é escrito com
+      // Admin SDK, que não passa por rules. Com a checagem olhando só para
+      // motorista, o DONO que abrisse um link de convite — o gesto de suporte
+      // mais natural que existe, "deixa eu ver o que a mãe vê" — tinha o
+      // `role: 'owner'` sobrescrito e perdia o `/admin`.
+      //
+      // E era IRREVERSÍVEL pelo produto: o cliente não escreve `role`
+      // (firestore.rules), então o conserto é console.
+      //
+      // Papel ausente continua passando: é o caso normal de quem acabou de
+      // criar sessão pelo link.
+      if (existing && existing.role && existing.role !== 'parent') {
         throw new HttpsError(
           'failed-precondition',
-          'Esta conta é de motorista e não pode ser vinculada como responsável.'
+          existing.role === 'admin'
+            ? 'Esta conta é de motorista e não pode ser vinculada como responsável.'
+            : 'Esta conta não pode ser vinculada como responsável. Entre com a conta da família.'
         );
       }
+
+      // ⚠️ LEITURA DO DOC DO MOTORISTA AQUI, NA FASE DE LEITURA DA TRANSAÇÃO.
+      //
+      // O relógio do teste é ligado mais abaixo, DEPOIS das escritas — e o
+      // Admin SDK exige todas as leituras antes de todas as escritas. Enquanto
+      // `ligarRelogio` fazia o próprio `tx.get()` lá embaixo, ele lançava e o
+      // `catch` silencioso dele engolia: o gatilho "primeiro responsável"
+      // nunca gravou `trialInicio`, em nenhum resgate.
+      //
+      // Ver `relogioDoTeste.ligarRelogioComSnap`.
+      const relogioRef = child.adminUid ? db.doc(`users/${child.adminUid}`) : null;
+      const relogioSnap = relogioRef ? await tx.get(relogioRef) : null;
 
       tx.update(childRef, {
         parentUid: uid,
@@ -219,7 +246,13 @@ function makeRedeemInvite(db) {
       //
       // Dentro da MESMA transação: por fora, dois resgates simultâneos
       // escreveriam dois `trialInicio` e o segundo empurraria a data adiante.
-      await ligarRelogio(db, child.adminUid, 'primeiro responsável', tx);
+      //
+      // A leitura já foi feita na fase de leitura, acima — esta chamada só
+      // decide e escreve. Não a troque de volta por `ligarRelogio(…, tx)`:
+      // aquela lê, e ler aqui (depois do `tx.update`) é o que a deixou morta.
+      if (relogioRef) {
+        ligarRelogioComSnap(relogioRef, relogioSnap, 'primeiro responsável', tx);
+      }
 
       const userPayload = {
         role: 'parent',

@@ -64,16 +64,11 @@ async function ligarRelogio(db, uid, motivo, tx = null) {
   try {
     const ref = db.doc(`users/${uid}`);
     const snap = tx ? await tx.get(ref) : await ref.get();
-
-    // Sem documento não há o que ligar — e criar aqui seria criar conta por um
-    // caminho que não é o de criar conta.
-    if (!snap.exists) return false;
-    if (snap.data()?.trialInicio) return false;
-
-    const valor = { trialInicio: admin.firestore.FieldValue.serverTimestamp() };
-    if (tx) tx.set(ref, valor, { merge: true });
-    else await ref.set(valor, { merge: true });
-
+    if (!deveLigar(snap)) return false;
+    // Sem transação a escrita é AGUARDADA: em Cloud Functions, promessa solta
+    // pode ser congelada com o processo e a escrita simplesmente não acontece.
+    if (tx) tx.set(ref, valorDoRelogio(), { merge: true });
+    else await ref.set(valorDoRelogio(), { merge: true });
     logger.info('[teste] relógio ligado', { uid, motivo });
     return true;
   } catch (err) {
@@ -85,4 +80,63 @@ async function ligarRelogio(db, uid, motivo, tx = null) {
   }
 }
 
-module.exports = { ligarRelogio };
+/**
+ * ⚠️ A VERSÃO PARA QUEM JÁ ESTÁ DENTRO DE UMA TRANSAÇÃO COM ESCRITAS.
+ *
+ * ISTO EXISTE PORQUE O GATILHO DO CONVITE FICOU MORTO POR DIAS, SEM SINAL.
+ *
+ * `redeemInvite` chamava `ligarRelogio(..., tx)` DEPOIS de já ter feito
+ * `tx.update(childRef, …)`. O Admin SDK exige que todas as leituras de uma
+ * transação venham antes de todas as escritas, então o `tx.get()` daqui
+ * lançava — e o `catch` acima, que é deliberadamente silencioso, engolia.
+ *
+ * O convite era resgatado normalmente e `trialInicio` NUNCA era gravado por
+ * esse caminho. Ou seja: dos "três gatilhos" que o cabeçalho descreve,
+ * sobraram dois, e metade do buraco de graça ilimitada voltou. Ninguém
+ * sentiu nada, que é o pior desfecho possível.
+ *
+ * O conserto não é mover a chamada — é separar a LEITURA da ESCRITA, para que
+ * quem chama possa ler junto das outras leituras dele. Assine assim:
+ *
+ *   const relogioSnap = await tx.get(db.doc(`users/${adminUid}`));  // fase 1
+ *   …                                                              // escritas
+ *   ligarRelogioComSnap(ref, relogioSnap, 'motivo', tx);           // fase 2
+ *
+ * Não é `async` de propósito: se voltar a ter `await` aqui, alguém a chamou de
+ * um lugar que ainda lê depois de escrever.
+ */
+function ligarRelogioComSnap(ref, snap, motivo, tx) {
+  try {
+    if (!deveLigar(snap)) return false;
+    tx.set(ref, valorDoRelogio(), { merge: true });
+    logger.info('[teste] relógio ligado', { uid: ref.id, motivo });
+    return true;
+  } catch (err) {
+    logger.error('[teste] não deu para ligar o relógio', {
+      uid: ref?.id || null,
+      motivo,
+      err,
+    });
+    return false;
+  }
+}
+
+/**
+ * A DECISÃO, comum às duas portas — e ela é só leitura, de propósito.
+ *
+ * Separar a decisão da escrita é o que permite `ligarRelogioComSnap` existir
+ * sem duplicar a regra do "uma vez e nunca mais".
+ */
+function deveLigar(snap) {
+  // Sem documento não há o que ligar — e criar aqui seria criar conta por um
+  // caminho que não é o de criar conta.
+  if (!snap || !snap.exists) return false;
+  if (snap.data()?.trialInicio) return false;
+  return true;
+}
+
+function valorDoRelogio() {
+  return { trialInicio: admin.firestore.FieldValue.serverTimestamp() };
+}
+
+module.exports = { ligarRelogio, ligarRelogioComSnap };

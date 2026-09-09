@@ -229,13 +229,29 @@ async function processReminders(apiKey, now = new Date(), adminUid = null) {
       // e a criança já foi carregada logo acima. Os dois são por inquilino;
       // `appState/init` saiu daqui e não volta.
       const adminUid = p.adminUid || child?.adminUid || null;
-      let admin = adminUid ? adminCache.get(adminUid) : null;
-      if (!admin && adminUid) {
+      // ⚠️ `motorista`, NUNCA `admin` — E O NOME ERA UM BUG, NÃO ESTILO.
+      //
+      // `const admin = require('firebase-admin')` está no topo do arquivo.
+      // Um `let admin` aqui sombreia o MÓDULO no bloco inteiro, e a linha que
+      // marca a idempotência mais abaixo chama
+      // `admin.firestore.FieldValue.serverTimestamp()` — que passava a operar
+      // sobre o documento do motorista e era `undefined`.
+      //
+      // O estrago ficava escondido pela ORDEM: o `TypeError` estourava DEPOIS
+      // do `sendEmail`. O e-mail saía, `emailSentMilestones` nunca era
+      // gravado, `sent` nunca incrementava, e a função devolvia `sent: 0` com
+      // N erros tendo entregue N e-mails. Rodada duas vezes no mesmo dia, a
+      // mesma mãe recebia "vence hoje" duas vezes — exatamente a duplicação
+      // que o cabeçalho deste arquivo promete impedir.
+      //
+      // `no-shadow` não está no config do eslint, então o lint não pega.
+      let motorista = adminUid ? adminCache.get(adminUid) : null;
+      if (!motorista && adminUid) {
         const as = await db.doc(`users/${adminUid}`).get();
-        admin = as.exists ? as.data() : {};
-        adminCache.set(adminUid, admin);
+        motorista = as.exists ? as.data() : {};
+        adminCache.set(adminUid, motorista);
       }
-      admin = admin || {};
+      motorista = motorista || {};
 
       // Monta payload do template
       const monthLabel = p.monthLabel || formatMonthLabel(dueDate);
@@ -243,10 +259,10 @@ async function processReminders(apiKey, now = new Date(), adminUid = null) {
       // O e-mail sai sem o PIX (o template já trata `pixKey: null`) e o
       // responsável cobra o motorista pelo caminho de sempre. Mandar a chave
       // de outra pessoa seria pior que não mandar chave nenhuma.
-      const pixKey = admin.pixKey || null;
-      const pixKeyType = pixKey ? PIX_TYPE_LABELS[admin.pixKeyType] || '' : '';
-      const adminName = admin.name || '';
-      const companyName = admin.companyName || 'Alô Buzinou!';
+      const pixKey = motorista.pixKey || null;
+      const pixKeyType = pixKey ? PIX_TYPE_LABELS[motorista.pixKeyType] || '' : '';
+      const adminName = motorista.name || '';
+      const companyName = motorista.companyName || 'Alô Buzinou!';
 
       const html = buildEmailHtml({
         milestone: milestone.key,
@@ -308,6 +324,27 @@ async function processReminders(apiKey, now = new Date(), adminUid = null) {
     }
   }
 
+  // ⚠️ FALHA TOTAL NÃO É FALHA PONTUAL, E CONCLUIR COM SUCESSO ESCONDIA A
+  // PIOR DAS DUAS.
+  //
+  // Cada erro por pagamento virava uma linha em `errors` e a função concluía
+  // bem. Com a chave do Resend errada — e o `docs/deploy.md` chega a
+  // recomendar subir `PLACEHOLDER-substitua-…` no primeiro deploy — TODO
+  // e-mail falha, o `logger.info` do fim grava um objeto de sucesso, e nada
+  // no mundo avisa que ninguém foi cobrado este mês.
+  //
+  // Erro pontual continua sendo tolerado (um e-mail recusado não pode
+  // impedir os outros 40). Erro em TUDO é problema de configuração, e tem
+  // que estourar: em function agendada, `throw` é o que produz retentativa e
+  // dispara alerta de log.
+  if (errors.length > 0 && errors.length === evaluated) {
+    const primeiro = errors[0]?.error || 'sem detalhe';
+    throw new Error(
+      `Nenhum lembrete saiu: ${errors.length} de ${evaluated} falharam. ` +
+      `Primeiro erro: ${primeiro}. Confira o segredo RESEND_API_KEY.`
+    );
+  }
+
   return { evaluated, sent, skipped, errors };
 }
 
@@ -321,6 +358,9 @@ exports.sendPaymentReminders = onSchedule(
     secrets: [RESEND_API_KEY],
     retryCount: 2,
     maxInstances: LIMITES.AGENDADO,
+    // Envio em série contra o teto de 60 s — ver limites.js.
+    timeoutSeconds: LIMITES.TEMPO_AGENDADO,
+    memory: LIMITES.MEMORIA_AGENDADO,
   },
   async () => {
     const apiKey = RESEND_API_KEY.value();

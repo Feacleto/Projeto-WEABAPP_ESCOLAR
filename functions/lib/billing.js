@@ -23,7 +23,30 @@ const admin = require('firebase-admin');
 
 const REGION = 'southamerica-east1';
 const FALLBACK_DUE_DAY = 10;
-const RETENTION_MONTHS = 12;
+/**
+ * ⚠️ 60 MESES, E O NÚMERO VEM DA POLÍTICA DE PRIVACIDADE — NÃO O CONTRÁRIO.
+ *
+ * Era 12, e a seção 8 da Política promete, com estas palavras: "dados
+ * financeiros podem ser retidos pelo prazo de 5 (cinco) anos para cumprimento
+ * de obrigações fiscais e contábeis (art. 16, II da LGPD)".
+ *
+ * Ou seja: o app apagava em 12 meses o que o documento diz guardar por 5 anos.
+ * Das duas versões, a que vale contra a plataforma é a ESCRITA — e a outra
+ * apagava justamente a prova de que a obrigação fiscal foi cumprida.
+ *
+ * O custo prático de guardar é irrisório (uma linha por criança por mês), e o
+ * custo de ter apagado aparece na pior hora: numa conversa sobre atraso, num
+ * pedido de titular, ou numa conferência fiscal.
+ *
+ * Havia um segundo defeito no mesmo lugar: a varredura não filtra `status`,
+ * então ela apagava mensalidade PAGA — com `receiptHash` e trilha de eventos —
+ * sem nenhum export antes. Com 60 meses isso deixa de morder no primeiro ano,
+ * mas continua sendo o que precisa de export quando o prazo chegar.
+ *
+ * SE ESTE NÚMERO MUDAR, a seção 8 da Política muda na mesma alteração. Os dois
+ * já discordaram uma vez.
+ */
+const RETENTION_MONTHS = 60;
 const BATCH_LIMIT = 400;
 
 function monthKeyOf(date) {
@@ -66,14 +89,27 @@ async function generateForMonth(db, monthKey, adminUid = null) {
   const existing = new Set(existingSnap.docs.map((d) => d.data().childId));
   const lastDayOfMonth = new Date(year, month, 0).getDate();
 
-  let created = 0;
   // Um relógio por motorista, não um por criança: numa perua de 25, seriam 25
   // leituras do mesmo documento para gravar o mesmo campo uma vez.
   const relogiosLigados = new Set();
   let withoutParent = 0;
   let withoutFee = 0;
-  let batch = db.batch();
-  let inBatch = 0;
+  // ⚠️ AS ESCRITAS VÃO PARA UMA FILA, NÃO DIRETO PARA O BATCH.
+  //
+  // `batch.create()` sobre um id que já existe REJEITA, e o commit é atômico:
+  // um único documento fora do formato levava até 400 mensalidades com ele. O
+  // filtro `existing` só protege quando o pagamento tem o campo `month`
+  // daquele mês — e o `docs/testes.md` chega a ensinar a criar pagamentos à
+  // mão pelo console, sem esse campo.
+  //
+  // Para o motorista a falha era muda: ele abria o Financeiro e o mês estava
+  // vazio. O Scheduler retentava duas vezes e falhava igual.
+  //
+  // A fila permite o que o batch não permite: quando o lote falha, cada item
+  // é tentado sozinho, e só o documento problemático fica de fora. O id
+  // determinístico continua sendo a garantia de "uma cobrança por mês" — o
+  // que faltava era não deixar um documento levar 399.
+  const fila = [];
 
   for (const childDoc of childrenSnap.docs) {
     const child = childDoc.data();
@@ -139,31 +175,35 @@ async function generateForMonth(db, monthKey, adminUid = null) {
     // É o padrão que a casa já usa em cinco coleções: rides/{data},
     // faturasParceiro/{uid}_{mes},
     // absenceDeclarations/{dia}_{criança}, notifications/confirm_{dia}_{criança}.
-    batch.create(db.collection('payments').doc(`${childDoc.id}_${monthKey}`), {
-      adminUid: child.adminUid,
+    fila.push({
+      ref: db.collection('payments').doc(`${childDoc.id}_${monthKey}`),
+      dados: {
+        adminUid: child.adminUid,
+        childId: childDoc.id,
+        childName: child.name || '', // denormalizado pra evitar join na leitura
+        parentUid: child.parentUid,
+        month: monthKey,
+        amount: fee,
+        // MEIO-DIA, E NAO MEIA-NOITE. As functions rodam em UTC — nao ha `TZ`
+        // no `firebase.json` nem no `package.json`, e o `timeZone` do
+        // `onSchedule` governa so o gatilho, nunca o `new Date()` de dentro.
+        //
+        // A 00:00, um vencimento combinado para o dia 10 nascia
+        // `2026-10-10T00:00Z`, que no Brasil e 09/10 as 21h: a tela do
+        // responsavel imprimia "Vence: 09/10", `statusPagamento` o marcava
+        // atrasado 27 horas cedo, e o e-mail de "vence hoje" — que usa outra
+        // conta, com `startOfDay` em UTC — disparava no dia 10. A tela e o
+        // e-mail discordavam sobre a mesma data.
+        //
+        // `dataDeVencimento` da taxa ja fazia certo, com este mesmo comentario.
+        // O CLAUDE.md chegou a afirmar que este arquivo tambem fazia.
+        dueDate: admin.firestore.Timestamp.fromDate(
+          new Date(year, month - 1, safeDueDay, 12, 0, 0)
+        ),
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
       childId: childDoc.id,
-      childName: child.name || '', // denormalizado pra evitar join na leitura
-      parentUid: child.parentUid,
-      month: monthKey,
-      amount: fee,
-      // MEIO-DIA, E NAO MEIA-NOITE. As functions rodam em UTC — nao ha `TZ`
-      // no `firebase.json` nem no `package.json`, e o `timeZone` do
-      // `onSchedule` governa so o gatilho, nunca o `new Date()` de dentro.
-      //
-      // A 00:00, um vencimento combinado para o dia 10 nascia
-      // `2026-10-10T00:00Z`, que no Brasil e 09/10 as 21h: a tela do
-      // responsavel imprimia "Vence: 09/10", `statusPagamento` o marcava
-      // atrasado 27 horas cedo, e o e-mail de "vence hoje" — que usa outra
-      // conta, com `startOfDay` em UTC — disparava no dia 10. A tela e o
-      // e-mail discordavam sobre a mesma data.
-      //
-      // `dataDeVencimento` da taxa ja fazia certo, com este mesmo comentario.
-      // O CLAUDE.md chegou a afirmar que este arquivo tambem fazia.
-      dueDate: admin.firestore.Timestamp.fromDate(
-        new Date(year, month - 1, safeDueDay, 12, 0, 0)
-      ),
-      status: 'pending',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     // ⚠️ O TERCEIRO GATILHO DO RELÓGIO DO TESTE (06/09/2026).
     //
@@ -182,19 +222,78 @@ async function generateForMonth(db, monthKey, adminUid = null) {
       await ligarRelogio(db, child.adminUid, 'primeira mensalidade');
     }
 
-    created += 1;
-    inBatch += 1;
+  }
 
-    if (inBatch >= BATCH_LIMIT) {
+  // `created` vem de quem grava, não de um contador do laço: enfileirar não é
+  // criar, e a diferença entre os dois é exatamente o que o lote pode recusar.
+  const { criadas: created, recusadas } = await gravarEmLotes(db, fila);
+
+  if (recusadas.length) {
+    logger.error('[cobranca] mensalidades recusadas', {
+      monthKey,
+      quantas: recusadas.length,
+      // Os ids importam: quase sempre é documento fora do formato que já
+      // ocupa o id determinístico, e é preciso saber qual para consertar.
+      ids: recusadas.slice(0, 20).map((r) => r.id),
+      primeiroErro: recusadas[0]?.erro || null,
+    });
+  }
+
+  return {
+    monthKey,
+    created,
+    skipped: existing.size,
+    withoutParent,
+    withoutFee,
+    recusadas: recusadas.length,
+  };
+}
+
+/**
+ * GRAVA A FILA EM LOTES, E DEGRADA PARA ITEM A ITEM QUANDO UM LOTE CAI.
+ *
+ * O caminho comum é um commit por 400 mensalidades. O caminho ruim é um
+ * documento já ocupando o id determinístico com formato divergente: aí o lote
+ * inteiro é rejeitado, e cada item é retentado sozinho para que apenas o
+ * problemático fique de fora.
+ *
+ * ⚠️ NÃO troque `create` por `set` no caminho de degradação. `set`
+ * sobrescreveria — e sobrescrever uma cobrança já PAGA a devolve para
+ * `pending`. Aqui a segunda tentativa precisa FALHAR, não vencer.
+ */
+async function gravarEmLotes(db, fila) {
+  let criadas = 0;
+  const recusadas = [];
+
+  for (let i = 0; i < fila.length; i += BATCH_LIMIT) {
+    const pedaco = fila.slice(i, i + BATCH_LIMIT);
+    const batch = db.batch();
+    for (const item of pedaco) batch.create(item.ref, item.dados);
+
+    try {
       await batch.commit();
-      batch = db.batch();
-      inBatch = 0;
+      criadas += pedaco.length;
+    } catch (erroDoLote) {
+      logger.warn('[cobranca] lote recusado, tentando uma a uma', {
+        tamanho: pedaco.length,
+        erro: erroDoLote?.message || String(erroDoLote),
+      });
+      for (const item of pedaco) {
+        try {
+          await item.ref.create(item.dados);
+          criadas += 1;
+        } catch (erro) {
+          recusadas.push({
+            id: item.ref.id,
+            childId: item.childId,
+            erro: erro?.message || String(erro),
+          });
+        }
+      }
     }
   }
 
-  if (inBatch > 0) await batch.commit();
-
-  return { monthKey, created, skipped: existing.size, withoutParent, withoutFee };
+  return { criadas, recusadas };
 }
 
 /** Apaga mensalidades mais antigas que a janela de retenção. */
@@ -244,6 +343,9 @@ function makeGenerateMonthlyPayments(db) {
       region: REGION,
       retryCount: 2,
       maxInstances: LIMITES.AGENDADO,
+      // Varredura da plataforma + purgeOld na mesma execução — ver limites.js.
+      timeoutSeconds: LIMITES.TEMPO_AGENDADO,
+      memory: LIMITES.MEMORIA_AGENDADO,
     },
     async () => {
       const result = await generateForMonth(db, monthKeyOf(new Date()));

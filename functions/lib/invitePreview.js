@@ -205,8 +205,25 @@ async function loadNoticeSummary(db, child) {
     }
     return { count, latestMs };
   } catch (err) {
-    // Índice faltando não deve derrubar a prévia inteira.
-    logger.warn('getInvitePreview: falha ao contar recados', err);
+    // A PRÉVIA NÃO CAI POR CAUSA DO CONTADOR — mas o log tem que dizer POR QUE
+    // ele zerou, e antes não dizia.
+    //
+    // O comentário anterior era "índice faltando não deve derrubar a prévia",
+    // e ele mandou uma auditoria concluir que este contador estava
+    // permanentemente em zero. Não estava: as duas consultas acima são
+    // IGUALDADES SEM `orderBy`, e o Firestore serve isso por merge join de
+    // índices de campo único — não existe índice composto a faltar aqui.
+    // Comentário que nomeia a causa errada custa mais que comentário nenhum.
+    //
+    // O que realmente pode zerar o contador é o casamento de texto:
+    // `children.school` contra `agendaEntries.schoolName`, os dois digitados à
+    // mão. Grafia diferente devolve zero SEM erro, e nem chega neste `catch`.
+    const semIndice = err?.code === 9 || /index/i.test(err?.message || '');
+    logger.warn('getInvitePreview: falha ao contar recados', {
+      causa: semIndice ? 'consulta sem índice' : 'erro de leitura',
+      escola: child.school || null,
+      erro: err?.message || String(err),
+    });
     return { count: 0, latestMs: null };
   }
 }

@@ -38,8 +38,36 @@ function makeFlagDuplicateReceipts(db) {
       // dispararia a varredura de novo.
       if (!hash || hash === before?.receiptHash) return;
 
+      // ⚠️ ESCOPADO POR `adminUid` — SEM ISSO A BUSCA ATRAVESSAVA CARTEIRAS.
+      //
+      // A varredura era por `receiptHash` na coleção inteira. Como isto roda
+      // com Admin SDK, não passa por rules: o isolamento que `payments`
+      // conquistou era furado por dentro.
+      //
+      // O estrago não é a detecção errada, é o que ela ESCREVE: o bloco
+      // abaixo grava `childName` e `month` do outro pagamento dentro do
+      // documento deste — e o motorista tem permissão de ler o documento
+      // dele. Ou seja, o nome de uma criança de outra operação aparecia na
+      // tela de financeiro de um parceiro que não deveria conhecê-la.
+      //
+      // Colisão de hash entre inquilinos não é só teórica: o mesmo print
+      // genérico de comprovante reencaminhado dá o mesmo hash. E o pai pode
+      // escrever `receiptHash` à mão, o que torna a colisão forjável.
+      //
+      // Duplicata que interessa é sempre dentro da MESMA carteira: quem cobra
+      // é o motorista, e "este comprovante é igual ao de julho" só faz sentido
+      // entre os pagamentos dele.
+      const adminUid = after.adminUid || before?.adminUid || null;
+      if (!adminUid) {
+        logger.warn('[comprovante] pagamento sem adminUid — duplicata não conferida', {
+          paymentId: event.params.paymentId,
+        });
+        return;
+      }
+
       const dupSnap = await db
         .collection('payments')
+        .where('adminUid', '==', adminUid)
         .where('receiptHash', '==', hash)
         .limit(5)
         .get();

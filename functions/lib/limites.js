@@ -83,4 +83,38 @@ const GATILHO = 10;
  */
 const AGENDADO = 1;
 
-module.exports = { PUBLICO, AUTENTICADO, GATILHO, AGENDADO };
+/**
+ * ⚠️ O TEMPO E A MEMÓRIA DAS AGENDADAS PESADAS.
+ *
+ * O padrão de Functions v2 é 256 MiB e **60 segundos**, e nenhuma das 16
+ * declarava nada — o que só não aparecia porque a base é pequena. As três
+ * agendadas que varrem a plataforma inteira estouram esse teto antes de
+ * qualquer outra coisa:
+ *
+ *   sendPaymentReminders     manda e-mail EM SÉRIE, um `await` por
+ *                            pagamento. ~150 mensalidades a ~300 ms cada já
+ *                            passa de 60 s — e o que estourar depois do
+ *                            último envio fica sem marcação de idempotência,
+ *                            então a próxima execução manda de novo.
+ *   generateMonthlyPayments  faz a varredura de `children` + `payments` da
+ *                            plataforma MAIS o `purgeOld`, na mesma execução.
+ *   confirmarAusencias       varre toda declaração de ausência da véspera.
+ *
+ * 540 s é o teto de agendada v2 sem virar Cloud Run job, e é o valor certo
+ * aqui: estas rodam de madrugada, sem ninguém esperando, e o custo de uma
+ * execução longa é irrelevante perto do de uma cobrança que não saiu.
+ *
+ * NÃO use isto em callable: ali quem espera é uma pessoa com o celular na
+ * mão, e 540 s de espera é a mesma coisa que travar.
+ */
+const TEMPO_AGENDADO = 540;
+const MEMORIA_AGENDADO = '512MiB';
+
+module.exports = {
+  PUBLICO,
+  AUTENTICADO,
+  GATILHO,
+  AGENDADO,
+  TEMPO_AGENDADO,
+  MEMORIA_AGENDADO,
+};

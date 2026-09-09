@@ -74,6 +74,9 @@ function makeConfirmarAusencias(db) {
       region: REGION,
       retryCount: 2,
       maxInstances: LIMITES.AGENDADO,
+      // Varre a véspera inteira da plataforma — ver limites.js.
+      timeoutSeconds: LIMITES.TEMPO_AGENDADO,
+      memory: LIMITES.MEMORIA_AGENDADO,
     },
     async () => {
       const amanha = chaveDoDia(1);
@@ -89,9 +92,28 @@ function makeConfirmarAusencias(db) {
         return;
       }
 
+      // ⚠️ EM LOTES DE 400 — UM BATCH SÓ QUEBRA NA VÉSPERA DE FERIADO.
+      //
+      // A consulta acima pega TODA declaração de ausência de amanhã na
+      // plataforma. Isto era um `db.batch()` único, e o Firestore recusa batch
+      // com mais de 500 escritas — recusa o lote INTEIRO.
+      //
+      // O efeito: passando de 500 avisos, NENHUM responsável recebe a
+      // pergunta da véspera, que é a única defesa contra "a criança ficou na
+      // calçada". E o dia em que mais gente marca ausência é exatamente a
+      // véspera de feriado — ou seja, ele quebraria primeiro no dia em que
+      // mais importa.
+      //
+      // 400 é o mesmo tamanho que `billing.js` e `privacyBackfill.js` usam,
+      // pelo mesmo motivo. Aqui não há teto de `get()` a respeitar (Admin SDK
+      // não passa por rules), então não precisa dos 15 do cliente.
+      const TAMANHO_DO_LOTE = 400;
+
       let enviados = 0;
       let pulados = 0;
-      const lote = db.batch();
+      let lote = db.batch();
+      let noLote = 0;
+      const commits = [];
 
       for (const doc of snap.docs) {
         const a = doc.data();
@@ -130,10 +152,36 @@ function makeConfirmarAusencias(db) {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         enviados += 1;
+        noLote += 1;
+
+        if (noLote >= TAMANHO_DO_LOTE) {
+          commits.push(lote.commit());
+          lote = db.batch();
+          noLote = 0;
+        }
       }
 
-      if (enviados > 0) await lote.commit();
-      logger.info('confirmarAusencias concluído', { amanha, enviados, pulados });
+      if (noLote > 0) commits.push(lote.commit());
+      // `allSettled` e não `all`: um lote que falhe não pode impedir os
+      // outros de chegar. A véspera é hoje, e não há segunda chance amanhã.
+      const fim = await Promise.allSettled(commits);
+      const falhos = fim.filter((r) => r.status === 'rejected');
+      if (falhos.length) {
+        logger.error('confirmarAusencias: lote(s) falharam', {
+          amanha,
+          lotes: commits.length,
+          falhos: falhos.length,
+          primeiro: falhos[0]?.reason?.message || null,
+        });
+      }
+
+      logger.info('confirmarAusencias concluído', {
+        amanha,
+        enviados,
+        pulados,
+        lotes: commits.length,
+        lotesFalhos: falhos.length,
+      });
     }
   );
 }
