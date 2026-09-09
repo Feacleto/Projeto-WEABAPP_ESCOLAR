@@ -380,10 +380,18 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .hero h1 span{color:var(--verde-esc);display:inline-block}
 .herobtns{display:flex;gap:13px;flex-wrap:wrap;margin-top:34px}
 
-/* ══ O BANNER DE 10 SEGUNDOS ══════════════════════════════════════
+/* ══ O BANNER DE 6 SEGUNDOS ═══════════════════════════════════════
  * O vídeo deixou de ser um convite discreto e passou a ser uma
  * APRESENTAÇÃO que começa sozinha. Um banner diz o que o app é, uma
- * contagem de 10 s avisa que vai começar, e o play fura a espera.
+ * contagem de 6 s avisa que vai começar, e o play fura a espera.
+ *
+ * ── ⚠️ POR QUE 6 E NÃO 10
+ * A espera não é suspense, é pedágio. Dez segundos é mais tempo do que a
+ * pessoa fica parada num bloco que ela não pediu para ver — quem rolou até
+ * aqui já leu o título e a frase, e a partir daí só está esperando. Seis
+ * cobre a leitura das duas linhas e devolve o movimento antes de a barra
+ * virar uma sala de espera. Quem não quer esperar continua tendo o play,
+ * que fura a contagem inteira.
  *
  * ── ⚠️ COMEÇAR SOZINHO CUSTA O SOM, E ISSO NÃO É NEGOCIÁVEL
  * Chrome, Safari e Firefox só deixam tocar sem gesto se estiver MUDO. Então
@@ -442,7 +450,12 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .vb-barra i{display:block;height:100%;width:100%;background:var(--verde-vivo);transform-origin:left;transform:scaleX(0)}
 
 /* o pé: as duas ações */
-.vb-pe{display:flex;gap:8px;margin:14px 0 0}
+/* ⚠️ ELES PODEM QUEBRAR PARA DUAS LINHAS, e é por isso que `flex-wrap`
+   existe aqui. Os dois rótulos ficaram mais longos ("Quero começar agora" e
+   "Compartilhar app"), e com `nowrap` nos dois eles simplesmente estouravam
+   a coluna do texto, que no computador tem menos de 320px. Empilhados eles
+   continuam legíveis; espremidos, nenhum dos dois se lê. */
+.vb-pe{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
 .vb-cta{
   flex:1 1 auto;min-width:0;
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
@@ -454,7 +467,9 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .vb-cta:hover{background:var(--verde-claro)}
 .vb-cta:focus-visible{outline:2px solid var(--preto);outline-offset:2px}
 .vb-env{
-  flex:none;
+  /* Cresce quando cai para a segunda linha: botão secundário sozinho numa
+     linha, ocupando meia largura, parece um resto de layout. */
+  flex:1 1 auto;
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
   background:transparent;color:var(--verde-esc);cursor:pointer;
   font-family:var(--corpo);font-weight:700;font-size:.85rem;
@@ -494,11 +509,26 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 /* A luz apagada em volta do vídeo. `position:fixed` cobre a página
  * inteira: o vídeo é vertical e alto, e um lightbox preso ao herói
  * cortaria o topo dele em telas baixas. */
+/* ⚠️ 120, E O NUMERO E O CONSERTO — O `nav` DO SITE E `z-index:100`.
+ *
+ * Este bloco era 90. O menu do topo e `position:fixed` e OPACO, entao ele
+ * pintava por cima do lightbox — e a faixa que ele cobre e exatamente a de
+ * cima, onde mora o unico botao de sair. Nao era um botao dificil de ver:
+ * `elementFromPoint` no centro dele devolvia `div.navdir`, ou seja, o toque
+ * nem chegava. No celular a pessoa abria a apresentacao e ficava presa nela,
+ * porque `Escape` nao existe num telefone e tocar fora exige acertar a
+ * moldura de 20px em volta do video.
+ *
+ * Modal fica acima de tudo, inclusive da navegacao: menu clicavel por cima
+ * de um video tocando tambem levaria a pessoa embora sem parar o som. */
 .cv-luz{
-  position:fixed;inset:0;z-index:90;
+  position:fixed;inset:0;z-index:120;
   background:rgba(4,9,7,.94);
-  display:grid;place-items:center;padding:64px 20px 24px;
+  display:grid;place-items:center;
+  /* O topo abre espaço para o botão de fechar, e respeita o entalhe. */
+  padding:calc(72px + env(safe-area-inset-top, 0px)) 20px 24px;
   opacity:0;pointer-events:none;transition:opacity .28s ease;
+  overscroll-behavior:contain;
 }
 .cv-luz.on{opacity:1;pointer-events:auto}
 .cv-caixa{
@@ -506,18 +536,46 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
   /* O 9:16 manda, e a ALTURA é o limite real: sem o segundo termo, num
    * notebook o vídeo estouraria a janela e os controles ficariam fora
    * do alcance. */
-  max-width:min(400px,calc((100vh - 108px) * 9 / 16));
+  max-width:min(400px,calc((100vh - 140px) * 9 / 16));
+  /* ⚠️ `dvh` E NÃO `vh` NO CELULAR, e esta linha conserta um jeito de a
+   * pessoa ficar presa. `vh` é o viewport GRANDE — a altura que a tela teria
+   * com a barra de endereço escondida. Com a barra visível, a conta
+   * superestima o espaço, a caixa nasce mais alta do que cabe, e o
+   * `place-items:center` empurra o excedente para os DOIS lados: o topo do
+   * vídeo sobe para fora da tela e leva o botão de fechar junto. `dvh` é a
+   * altura que existe agora. A linha acima fica como reserva para navegador
+   * sem suporte. */
+  max-width:min(400px,calc((100dvh - 140px) * 9 / 16));
   aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:#000;
   box-shadow:0 30px 80px rgba(0,0,0,.6);
 }
 .cv-luz video{width:100%;height:100%;object-fit:contain;display:block}
+/* ⚠️ O JEITO DE SAIR PRECISA SER ACHÁVEL NO CELULAR, E NÃO ERA.
+ *
+ * Era um círculo de 38px com fundo de 10% de branco e um `×` fino, solto no
+ * preto ao lado do vídeo. Sobre um fundo quase preto isso não lê como
+ * botão — lê como detalhe do fundo. E as outras duas saídas não servem para
+ * quem está no celular: `Escape` não existe num telefone, e tocar fora
+ * exige acertar a moldura escura de 20px em volta do vídeo. Resultado: a
+ * pessoa abria a apresentação e ficava presa nela.
+ *
+ * Agora ele é SÓLIDO, tem 44px de altura (o piso de toque do projeto) e diz
+ * a palavra FECHAR. Ícone sozinho num canto escuro é charada; a palavra não
+ * depende de reconhecer um símbolo enquanto um vídeo toca ao lado.
+ *
+ * ⚠️ E O `z-index` NÃO É ENFEITE: `.cv-caixa` vem DEPOIS no DOM e também é
+ * posicionada, então na ordem de pintura ela ganha. Em qualquer tela onde os
+ * dois se encostem, o vídeo cobria justamente o único jeito de sair. */
 .cv-fechar{
-  position:absolute;top:16px;right:16px;
-  width:38px;height:38px;border-radius:999px;
-  border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);
-  color:var(--branco);font-size:20px;line-height:1;cursor:pointer;
+  position:absolute;z-index:2;
+  top:calc(14px + env(safe-area-inset-top, 0px));right:14px;
+  height:44px;padding:0 16px;border-radius:999px;
+  border:0;background:var(--branco);color:var(--preto);
+  font-family:var(--corpo);font-weight:700;font-size:.85rem;
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  transition:filter .2s;
 }
-.cv-fechar:hover{background:rgba(255,255,255,.18)}
+.cv-fechar:hover{filter:brightness(.92)}
 .cv-fechar:focus-visible{outline:2px solid var(--verde-vivo);outline-offset:2px}
 
 @media (prefers-reduced-motion:reduce){
@@ -1415,7 +1473,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
           <div class="vb-linha" data-linha>
             <button class="vb-play" type="button" data-play aria-label="Assistir agora, com som"></button>
             <span class="vb-conta">
-              <p data-conta>O vídeo começa em 10s</p>
+              <p data-conta>O vídeo começa em 6s</p>
               <span class="vb-barra" aria-hidden="true"><i data-barra></i></span>
             </span>
           </div>
@@ -1430,7 +1488,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
                  até a seção de escolha, este SAI da landing e abre o
                  formulário. Um leva a decidir, o outro leva a fazer. -->
             <a class="vb-cta" href="https://alobuzinou.com/quero-fazer-parte">
-              Criar conta e entrar
+              Quero começar agora
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </a>
             <!-- Nasce escondido: quem o revela é o JS, e só onde
@@ -1438,7 +1496,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
                  botão nenhum. -->
             <button class="vb-env" type="button" data-enviar hidden>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v13M7 8l5-5 5 5"/></svg>
-              Enviar
+              Compartilhar app
             </button>
           </div>
         </div>
@@ -1455,7 +1513,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
           </button>
         </div>
       </div>
-      <p class="jatenho rv" style="--d:440ms">      <p class="jatenho rv" style="--d:440ms">
+      <p class="jatenho rv" style="--d:440ms">
         Já usa o Alô Buzinou?
         <a href="https://alobuzinou.com/login">Entrar no app <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </p>
@@ -2823,17 +2881,28 @@ footer a:hover{opacity:1;transform:translateX(3px)}
      seria cortado. -->
 <div class="cv-luz" id="cv-luz" role="dialog" aria-modal="true" aria-hidden="true"
      aria-label="Vídeo de apresentação do Alô Buzinou">
-  <button type="button" class="cv-fechar" id="cv-fechar" aria-label="Fechar vídeo">&times;</button>
+  <button type="button" class="cv-fechar" id="cv-fechar" aria-label="Fechar vídeo">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    Fechar
+  </button>
   <div class="cv-caixa">
     <!-- `controls` porque são 27 segundos COM SOM: sem pausa e sem mudo,
          quem abriu no ônibus não tem como se defender do próprio toque.
          `preload="none"` — o download começa quando ela decide ver. -->
+    <!-- ⚠️ A TELA CHEIA NATIVA CONTINUA DISPONÍVEL, e tentei tirar.
+         `controlsList="nofullscreen"` esteve aqui e foi removido depois de
+         medido: o botão de tela cheia seguiu nos controles. Deixar o atributo
+         com um comentário dizendo que ele resolve seria a garantia não
+         provada que este projeto persegue em toda revisão.
+         Não é perda: quem entra na tela cheia nativa sai por ela, que sempre
+         mostra o próprio controle. O caminho que prendia era outro — o
+         "Fechar" coberto pelo menu do site —, e esse está resolvido acima. -->
     <video id="cv-video" src="/brand/abertura.mp4" playsinline preload="none" controls></video>
   </div>
 </div>
 
 <script>
-/* ══ O BANNER DE 10 SEGUNDOS ══════════════════════════════════════════
+/* ══ O BANNER DE 6 SEGUNDOS ═══════════════════════════════════════════
  * Três coisas acontecem aqui: a contagem, o vídeo (ambiente na janelinha,
  * grande no lightbox) e as duas ações do pé.
  *
@@ -2863,7 +2932,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
   var linha = bloco.querySelector('[data-linha]');
   var tela = bloco.querySelector('[data-abrir-tela]');
 
-  var ESPERA = 10;
+  var ESPERA = 6;
   var timer = null;
   var t0 = null;
   var jaArrancou = false;
