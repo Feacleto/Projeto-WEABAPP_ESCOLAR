@@ -30,6 +30,20 @@ import {
   diasParaVencer,
   precisaRenovar,
 } from '../src/dominio/associacao/contratoAssociacao.js';
+// A identidade da plataforma e os documentos que a citam. Os três têm que ler
+// a mesma fonte — ver o bloco no fim deste arquivo.
+import {
+  DEV_CIDADE_UF,
+  DEV_CNPJ,
+  DEV_COMARCA,
+  DEV_ENDERECO,
+  DEV_NAME,
+} from '../src/config/developer.js';
+import {
+  COMPANY_INFO,
+  CONTROLADOR_POR_EXTENSO,
+  TERMS_SECTIONS,
+} from '../src/pages/legal/legalContent.js';
 import {
   FUNDADOR,
   ORIGEM,
@@ -334,6 +348,110 @@ checar('a validade da concessão está no contrato', '2027-02',
   comConcessao.valores.descontos.find((d) => d.origem === ORIGEM.CONCESSAO)?.ate);
 
 // ──────────────────────────────── resumo ───────────────────────────────────
+
+// ═══════ A IDENTIDADE DA PLATAFORMA TEM UM LUGAR SÓ ══════════════════════
+//
+// ⚠️ POR QUE ESTE BLOCO EXISTE
+//
+// Em 09/09/2026 a identidade do controlador foi escrita nos documentos legais
+// COPIANDO os valores à mão — e a cidade saiu errada: inferida do rodapé da
+// landing, que traz "São Paulo/SP" como ESTADO. A sede é em Socorro.
+//
+// O efeito era uma cláusula de foro elegendo a comarca da capital, que não é
+// a competente — cláusula que não se executa. E o defeito é do tipo que só
+// aparece quando alguém precisa dela.
+//
+// O que este bloco garante não é o VALOR (esse muda quando a empresa mudar de
+// endereço): é que os três documentos leiam a MESMA fonte. Enquanto isso for
+// verdade, um conserto num lugar conserta os três.
+console.log('');
+console.log('A identidade da plataforma vem de um lugar so');
+
+checar(
+  'os Termos usam a razao social de developer.js',
+  DEV_NAME,
+  COMPANY_INFO.razaoSocial
+);
+checar('e o CNPJ tambem', DEV_CNPJ, COMPANY_INFO.cnpj);
+checar('e a cidade — a de DOCUMENTO, nao a de exibicao', DEV_CIDADE_UF, COMPANY_INFO.cidade);
+checar('e o endereco', DEV_ENDERECO, COMPANY_INFO.endereco);
+
+// O contrato de associação lê a MESMA fonte, e é o outro documento que a
+// mesma pessoa assina. Antes ele dizia "Desenvolva Algo" enquanto os Termos
+// diziam só "Alô Buzinou".
+{
+  const c = montarContrato({
+    motorista: { name: 'Tio Teste', city: 'Amparo/SP' },
+    plano: { id: 'ate25', nome: 'Ate 25', ate: 25, preco: 149 },
+    mes: '2026-09',
+  });
+  checar('o contrato de associacao usa a mesma razao social', DEV_NAME, c.contratada.razao);
+  checar('e o mesmo CNPJ', DEV_CNPJ, c.contratada.cnpj);
+  checar('e a cidade de DOCUMENTO, sem o separador visual', DEV_CIDADE_UF, c.contratada.cidade);
+  checar('e o endereco da sede', DEV_ENDERECO, c.contratada.endereco);
+}
+
+// ⚠️ A CLÁUSULA DE FORO PRECISA NOMEAR UMA COMARCA, e a de exibição não serve.
+//
+// `DEV_CITY` é 'Socorro · São Paulo, SP' — o "·" é separador visual. Num
+// documento legal isso não é o nome de uma comarca.
+const clausulaDeForo = TERMS_SECTIONS
+  .flatMap((sec) => sec.paragraphs)
+  .find((par) => /comarca/i.test(par));
+
+checar('existe clausula de foro para medir', true, Boolean(clausulaDeForo));
+checar(
+  'o foro nomeia a comarca DECLARADA',
+  true,
+  clausulaDeForo.includes(DEV_COMARCA)
+);
+checar(
+  'e NAO usa a string de exibicao, com o separador visual',
+  false,
+  clausulaDeForo.includes('·')
+);
+
+// ⚠️ A CLÁUSULA NÃO PODE AMARRAR O FORO À SEDE — e amarrou, duas vezes.
+//
+// Foro de eleição é ESCOLHA (CPC art. 63); sede é fato. **Hoje as duas
+// coincidem** (sede na capital, comarca da capital), e é por coincidirem que
+// este caso importa: sem ele, a amarração passa despercebida até a empresa
+// mudar de endereço, e aí a cláusula muda sozinha sem ninguém decidir.
+//
+// O valor errado veio duas vezes de inferência sobre o rodapé da landing
+// ("Rua das Trovas · Socorro — São Paulo/SP"): primeiro lendo São Paulo/SP
+// como cidade quando é o estado, depois lendo Socorro como cidade quando é o
+// BAIRRO. O erro nunca foi o valor — foi derivar em vez de declarar.
+checar(
+  'e NAO afirma que a comarca eleita e a sede',
+  false,
+  /sede do controlador/i.test(clausulaDeForo)
+);
+
+// A RESSALVA DO CONSUMIDOR não é cortesia: sem ela a cláusula é abusiva
+// (CDC art. 51, IV) e o juiz a afasta inteira. Com ela, vale onde pode valer —
+// e nos Termos a outra parte é a FAMÍLIA.
+const ressalva = TERMS_SECTIONS
+  .flatMap((sec) => sec.paragraphs)
+  .find((par) => /domic[íi]lio/i.test(par));
+checar('a eleicao de foro traz a ressalva do consumidor', true, Boolean(ressalva));
+
+// ⚠️ O BAIRRO NÃO É A CIDADE, e foi essa confusão que produziu os dois erros.
+// `Socorro` é bairro da capital (CEP 04763-110); a cidade é São Paulo. Um
+// endereço legal que troque os dois nomeia um município que não é o certo.
+checar('a cidade da sede e a capital, nao o bairro', 'São Paulo/SP', DEV_CIDADE_UF);
+checar('o bairro aparece no endereco', true, DEV_ENDERECO.includes('Socorro'));
+checar('e o CEP tambem — e ele e o que fecha a duvida', true, DEV_ENDERECO.includes('04763-110'));
+checar('a comarca eleita nao e um bairro', false, DEV_COMARCA.includes('Socorro'));
+checar('e cita o artigo que a sustenta', true, /101/.test(ressalva || ''));
+
+// E o controlador se identifica por extenso — sem isso, o art. 9º I da LGPD
+// e o art. 33 do CDC ficam sem resposta no documento.
+checar('o controlador se identifica com razao social', true,
+  CONTROLADOR_POR_EXTENSO.includes(DEV_NAME));
+checar('com CNPJ', true, CONTROLADOR_POR_EXTENSO.includes(DEV_CNPJ));
+checar('e com a sede', true, CONTROLADOR_POR_EXTENSO.includes(DEV_ENDERECO));
+
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

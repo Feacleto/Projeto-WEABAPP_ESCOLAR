@@ -55,9 +55,20 @@ export default function ContratoDoc({ dados, aceite }) {
       </p>
 
       <Clausula n="1" titulo="As partes">
+        {/* ⚠️ A QUALIFICAÇÃO DA CONTRATADA INCLUI A SEDE.
+          *
+          * Faltava, e é o que a cláusula de foro dos Termos precisa poder
+          * nomear — ela elege "a comarca da sede do controlador". Um contrato
+          * que não diz onde a contratada fica deixa a cláusula sem referência.
+          *
+          * `c.endereco` vem de `config/developer.js`, a mesma fonte que os
+          * Termos e a Política usam desde 09/09/2026: antes disso a identidade
+          * estava escrita em três lugares e eles discordavam. */}
         <p className="mb-2">
           <strong>CONTRATADA:</strong> {c.razao}, inscrita no CNPJ sob nº{' '}
-          {c.cnpj}, mantenedora da plataforma Alô Buzinou.
+          {c.cnpj}
+          {c.endereco ? `, com sede em ${c.endereco}` : ''}, mantenedora da
+          plataforma Alô Buzinou.
         </p>
         <p>
           <strong>ASSOCIADO:</strong> {a.nome || '—'}, transportador escolar

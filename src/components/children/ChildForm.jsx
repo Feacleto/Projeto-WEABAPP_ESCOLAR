@@ -49,6 +49,16 @@ const GENDERS = [
 const TOTAL_STEPS = 4;
 
 const EMPTY_FORM = {
+  // A DECLARAÇÃO DE AUTORIZAÇÃO — camada 1 do consentimento.
+  //
+  // Ver `docs/consentimento-saude.md`. Ela NÃO é o consentimento da família:
+  // é a afirmação do motorista de que tem autorização dela, e existe porque
+  // hoje ninguém declarava nada — a criança é cadastrada ANTES do convite, e a
+  // responsável pode nunca resgatá-lo.
+  //
+  // Fica registrada no documento (não só na tela) porque o valor dela é ser
+  // rastreável: quem declarou e quando.
+  autorizacaoDeclarada: false,
   name: '',
   // VAZIO, E NÃO 'male'.
   //
@@ -120,6 +130,14 @@ export default function ChildForm() {
       // o rosto que a criança vai ter na lista, e um chute do sistema custa
       // mais caro do que um toque a mais aqui.
       if (!form.gender) errs.gender = 'Escolha menino ou menina.';
+      // OBRIGATÓRIA, e é o ponto: uma declaração opcional não declara nada.
+      // Fica no passo 1, junto do nome, porque é sobre a criança inteira — e
+      // não no fim, onde ela seria um pedágio no momento em que ele já quer
+      // salvar.
+      if (!form.autorizacaoDeclarada) {
+        errs.autorizacaoDeclarada =
+          'Confirme que você tem autorização do responsável.';
+      }
     }
     if (s === 2) {
       // Só o texto do endereço é obrigatório. A coordenada NÃO bloqueia:
@@ -215,6 +233,10 @@ export default function ChildForm() {
         parent2Phone: form.parent2Phone ? unmaskPhone(form.parent2Phone) : '',
         monthlyFee: parseFloat(form.monthlyFee) || 0,
         dueDay: parseInt(form.dueDay, 10) || 10,
+        // A DATA da declaração, não só o `true`. Um booleano sozinho não diz
+        // QUANDO, e é o quando que a torna uma declaração em vez de uma
+        // caixa marcada.
+        autorizacaoDeclaradaEm: new Date().toISOString(),
       });
       setCreatedCode(inviteCode);
       setCreatedId(id);
@@ -436,6 +458,45 @@ function Step1Child({ form, setForm, setField, errors }) {
       {/* O seletor de período saiu daqui. Ele era um botão a mais pedindo
         * ao motorista que traduzisse "entra 7h" pra "manhã" — tradução que o
         * app faz sozinho a partir da hora combinada, no passo 3. */}
+
+      {/* ⚠️ A DECLARAÇÃO DE AUTORIZAÇÃO — camada 1. Ver
+        * `docs/consentimento-saude.md`.
+        *
+        * ELA NÃO É O CONSENTIMENTO DA FAMÍLIA, e o texto tem cuidado de não
+        * parecer: fala dos dados OPERACIONAIS (nome, endereço, contato) e não
+        * menciona saúde. Consentimento para dado sensível é da responsável, na
+        * tela dela, e não pode ser coberto por uma caixa que outra pessoa
+        * marca.
+        *
+        * O que ela resolve é a janela em que ninguém declarava nada: a criança
+        * é cadastrada ANTES do convite, e a mãe pode nunca resgatá-lo. A
+        * declaração é verossímil porque o modelo do produto já parte de que a
+        * família conhece o motorista offline — a plataforma não apresenta
+        * ninguém a ninguém.
+        *
+        * Fica no passo 1 porque é sobre a criança inteira, e no FIM do passo
+        * porque ela confirma o que ele acabou de digitar. */}
+      <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-surface p-3">
+        <input
+          type="checkbox"
+          checked={form.autorizacaoDeclarada}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, autorizacaoDeclarada: e.target.checked }))
+          }
+          className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+        />
+        <span className="text-xs leading-relaxed text-text">
+          Confirmo que tenho <strong>autorização do responsável legal</strong>{' '}
+          desta criança para cadastrar no Alô Buzinou o nome, o endereço de
+          embarque e os dados de contato, com a finalidade de operar o
+          transporte escolar.
+        </span>
+      </label>
+      {errors.autorizacaoDeclarada && (
+        <p className="-mt-1 text-xs font-semibold text-danger">
+          {errors.autorizacaoDeclarada}
+        </p>
+      )}
     </>
   );
 }
@@ -842,6 +903,27 @@ function Step4Parent({ form, setField, setPhone, errors }) {
         />
       </Card>
 
+      {/* ⚠️ ESTE CAMPO PEDIA DADO DE SAÚDE DE MENOR, E NÃO HAVIA CONSENTIMENTO.
+        *
+        * O placeholder era "Alergias, instruções especiais..." — ou seja, o app
+        * CONVIDAVA a escrever dado de saúde de uma criança. Pela LGPD isso é
+        * dado sensível (art. 5º II), exige consentimento específico e
+        * destacado (art. 11 I) e, tratando-se de criança, o art. 14 §1.
+        *
+        * A Política afirma que o consentimento é dado "no aceite do primeiro
+        * acesso" — mas a criança é cadastrada ANTES do convite, e a mãe pode
+        * nunca resgatá-lo. Quem digita aqui é o motorista, sobre um terceiro
+        * que ainda não aceitou nada.
+        *
+        * O convite saiu. O campo fica, porque a operação precisa dele (portão
+        * que fica atrás, quem busca de segunda) — o que mudou é que ele deixou
+        * de PEDIR o que a plataforma não tem base para guardar.
+        *
+        * ⚠️ O CONSERTO COMPLETO É DECISÃO DO DONO e está registrado no
+        * checklist de lançamento: declaração do motorista de que tem
+        * autorização da família, mais consentimento específico dela no
+        * primeiro acesso. Enquanto não existir, o app não deve sugerir o
+        * assunto. */}
       <Card>
         <label className="block text-sm font-bold text-text mb-2">
           Observações (opcional)
@@ -850,9 +932,14 @@ function Step4Parent({ form, setField, setPhone, errors }) {
           value={form.notes}
           onChange={setField('notes')}
           rows={3}
-          placeholder="Alergias, instruções especiais..."
+          placeholder="Ex.: portão de trás, quem busca na segunda..."
           className="w-full rounded-xl border border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-textMuted"
         />
+        <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+          Só o que ajuda na rota. Informação de saúde, remédio ou alergia é
+          assunto para você combinar direto com a família — este campo não é o
+          lugar de guardar isso.
+        </p>
       </Card>
     </>
   );

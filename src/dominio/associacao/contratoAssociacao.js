@@ -40,7 +40,8 @@
 import {
   DEV_NAME,
   DEV_CNPJ,
-  DEV_CITY,
+  DEV_CIDADE_UF,
+  DEV_ENDERECO,
   DEV_EMAIL,
   DEV_PHONE_DISPLAY,
 } from '../../config/developer.js';
@@ -157,7 +158,12 @@ export function montarContrato({
     contratada: {
       razao: DEV_NAME,
       cnpj: DEV_CNPJ,
-      cidade: DEV_CITY,
+      // ⚠️ `DEV_CIDADE_UF`, NÃO `DEV_CITY`. A segunda é de exibição e traz um
+      // separador visual ('Socorro · São Paulo, SP') — num documento que
+      // qualifica as partes, isso não é o nome de uma comarca. Os Termos
+      // passaram a usar a mesma forma, e é ela que a cláusula de foro cita.
+      cidade: DEV_CIDADE_UF,
+      endereco: DEV_ENDERECO,
       email: DEV_EMAIL,
       telefone: DEV_PHONE_DISPLAY,
     },

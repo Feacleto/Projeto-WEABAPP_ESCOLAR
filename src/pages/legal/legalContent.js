@@ -1,10 +1,39 @@
+import {
+  DEV_CIDADE_UF,
+  DEV_CNPJ,
+  DEV_COMARCA,
+  DEV_ENDERECO,
+  DEV_NAME,
+} from '../../config/developer.js';
+
 /**
  * Conteúdo dos textos legais — fonte única.
  * Versão semântica: incrementar quando houver mudança material; obriga
  * o usuário a aceitar de novo (via TermsGate).
+ *
+ * ── 1.1 (09/09/2026): O CONTROLADOR PASSOU A SER IDENTIFICADO
+ * A versão 1.0 dizia apenas "Alô Buzinou", sem razão social e sem CNPJ,
+ * enquanto o contrato de associação era assinado por "Desenvolva Algo" e a
+ * landing publicava o CNPJ. A mesma pessoa aceitava documentos que nomeavam
+ * partes diferentes, e a cláusula de foro elegia "a sede do controlador" sem
+ * dizer qual era.
+ *
+ * Mudou também: a seção 2b (com quem os dados são compartilhados) passou a
+ * existir — Resend e Asaas recebem dado pessoal e não estavam declarados, e um
+ * deles é internacional, com nome de criança no corpo do e-mail; e a seção 8
+ * passou a descrever o que o código faz com o registro de mensalidades.
+ *
+ * ⚠️ SUBIR ESTA VERSÃO OBRIGA TODO MUNDO A ACEITAR DE NOVO. Feito agora, com
+ * a base quase zero, custa uma conversa; com trinta associados custaria
+ * trinta. É o argumento que `docs/pendencias.md` já registrava, e por isso o
+ * momento é este.
+ *
+ * ⚠️ AINDA FALTA O ENDEREÇO COMPLETO em `COMPANY_INFO.enderecoCompleto` — o
+ * único campo destes documentos que ninguém pode preencher por inferência.
+ * Ver o aviso lá.
  */
-export const LEGAL_VERSION = '1.0';
-export const LEGAL_DATE = '29 de abril de 2026';
+export const LEGAL_VERSION = '1.1';
+export const LEGAL_DATE = '9 de setembro de 2026';
 
 /**
  * A MARCA E OS ENDEREÇOS DE VERDADE.
@@ -19,18 +48,63 @@ export const LEGAL_DATE = '29 de abril de 2026';
  * é lida todo dia responde melhor que um `dpo@` que ninguém abriu ainda.
  * Quando existir caixa dedicada, é trocar esta linha — e só esta.
  */
+/**
+ * QUEM RESPONDE PELOS DADOS — e por que faltava.
+ *
+ * ⚠️ ESTE OBJETO TINHA SÓ NOME E E-MAIL, e a mesma pessoa aceitava dois
+ * documentos que nomeavam PARTES DIFERENTES:
+ *
+ *   - Termos e Política diziam "Alô Buzinou", sem razão social e sem CNPJ;
+ *   - o contrato de associação era assinado por "Desenvolva Algo", com CNPJ e
+ *     um Gmail (`src/config/developer.js`);
+ *   - a landing publicava "Alô Buzinou · CNPJ 65.000.217/0001-47".
+ *
+ * A LGPD (art. 9º I) e o CDC (art. 33) exigem identificação clara do
+ * controlador, e a cláusula de foro dos Termos elege "a comarca da sede do
+ * controlador" — inexequível quando o documento não diz qual é.
+ *
+ * `razaoSocial` e `cnpj` NÃO foram inventados aqui: os dois já estavam no
+ * repositório, nos dois lugares acima, e concordam entre si. O que faltava era
+ * o documento legal dizer o mesmo.
+ *
+ * ⚠️ FALTA O NÚMERO E O CEP, e só isso. Logradouro, cidade e UF vêm de
+ * `config/developer.js`, alimentado pelo rodapé "Onde estamos" da landing —
+ * mesma informação, mesmo domínio, mesmo público. Número e CEP não existem no
+ * repositório: complete `DEV_LOGRADOURO` lá e estes documentos mudam junto.
+ */
 export const COMPANY_INFO = {
+  // O nome pelo qual o produto é conhecido — o que aparece no corpo do texto.
   name: 'Alô Buzinou',
+  // ⚠️ A PESSOA JURÍDICA VEM DE `config/developer.js`, E NÃO É COPIADA AQUI.
+  //
+  // A primeira versão deste objeto repetiu razão social, CNPJ e cidade à mão —
+  // e a cidade saiu ERRADA: foi inferida do rodapé da landing, que traz
+  // "São Paulo/SP" como ESTADO. A sede é em Socorro. A cláusula de foro
+  // passou a eleger a comarca da capital, que não é a competente.
+  //
+  // Copiar identidade legal em dois arquivos é como as três versões deste
+  // produto passaram a existir (Termos dizendo uma coisa, contrato outra,
+  // landing uma terceira). `developer.js` já dizia, no próprio cabeçalho, o
+  // que fazer: "um lugar pra mudar, todas as telas mudam".
+  razaoSocial: DEV_NAME,
+  cnpj: DEV_CNPJ,
+  cidade: DEV_CIDADE_UF,
+  endereco: DEV_ENDERECO,
   email: 'contato@alobuzinou.com.br',
   dpoEmail: 'contato@alobuzinou.com.br',
 };
+
+/** Como o controlador se identifica por extenso, num documento legal. */
+export const CONTROLADOR_POR_EXTENSO =
+  `${COMPANY_INFO.razaoSocial} ("${COMPANY_INFO.name}"), ` +
+  `CNPJ ${COMPANY_INFO.cnpj}, com sede em ${COMPANY_INFO.endereco}`;
 
 export const TERMS_SECTIONS = [
   {
     id: 'aceite',
     title: '1. Aceite dos Termos',
     paragraphs: [
-      `Ao criar uma conta no aplicativo ${COMPANY_INFO.name} ("Aplicativo"), você declara ter lido, compreendido e concordado integralmente com estes Termos de Uso e com a Política de Privacidade.`,
+      `Ao criar uma conta no aplicativo ${COMPANY_INFO.name} ("Aplicativo"), operado por ${CONTROLADOR_POR_EXTENSO}, você declara ter lido, compreendido e concordado integralmente com estes Termos de Uso e com a Política de Privacidade.`,
       'Se você não concorda com qualquer disposição, não utilize o Aplicativo.',
       'O uso continuado do Aplicativo após eventuais alterações implica aceite das novas versões. Notificaremos mudanças relevantes com pelo menos 15 (quinze) dias de antecedência.',
     ],
@@ -136,7 +210,18 @@ export const TERMS_SECTIONS = [
     title: '12. Lei Aplicável e Foro',
     paragraphs: [
       'Estes Termos são regidos pelas leis da República Federativa do Brasil.',
-      'Fica eleito o foro da comarca da sede do controlador de dados para dirimir quaisquer controvérsias, com renúncia expressa a qualquer outro, por mais privilegiado que seja.',
+      // ⚠️ A COMARCA É DECLARADA, NÃO DERIVADA DA SEDE.
+      //
+      // Foro de eleição é escolha das partes (CPC art. 63). A sede é em
+      // Socorro e a comarca eleita é São Paulo — as duas são verdadeiras ao
+      // mesmo tempo, e uma cláusula que diga "comarca X, sede do controlador"
+      // fica falsa por dentro. Ver `DEV_COMARCA` em `config/developer.js`.
+      //
+      // A ressalva do consumidor vem no parágrafo seguinte, e não é cortesia:
+      // sem ela a cláusula é abusiva (CDC art. 51, IV) e o juiz a afasta
+      // inteira. Com ela, ela vale onde pode valer.
+      `Fica eleito o foro da comarca de ${DEV_COMARCA} para dirimir quaisquer controvérsias decorrentes destes Termos.`,
+      `Esta eleição não afasta o direito do consumidor de propor ação no foro de seu próprio domicílio, nos termos do art. 101, I do Código de Defesa do Consumidor.`,
     ],
   },
   {
@@ -162,8 +247,25 @@ export const PRIVACY_SECTIONS = [
     id: 'controlador',
     title: '2. Controlador de Dados',
     paragraphs: [
-      `O controlador dos dados pessoais tratados no Aplicativo é o ${COMPANY_INFO.name}.`,
+      `O controlador dos dados pessoais tratados no Aplicativo é ${CONTROLADOR_POR_EXTENSO}.`,
       `Encarregado pelo Tratamento de Dados Pessoais (DPO): ${COMPANY_INFO.dpoEmail}.`,
+    ],
+  },
+  {
+    id: 'operadores',
+    title: '2b. Com quem os dados são compartilhados',
+    paragraphs: [
+      // ⚠️ ESTA SEÇÃO FALTAVA, e a §6 listava só Firebase/Google.
+      //
+      // Dois operadores recebem dado pessoal e não estavam declarados — um
+      // deles internacional, com NOME DE CRIANÇA no corpo do e-mail. LGPD
+      // art. 9º II (informação sobre compartilhamento) e art. 33
+      // (transferência internacional).
+      'Google Firebase (Google LLC): hospedagem, autenticação, banco de dados, armazenamento de arquivos e notificações. Servidores no Brasil (São Paulo) para o banco de dados e as funções.',
+      'Resend (Estados Unidos): envio dos e-mails transacionais de cobrança. Recebe o nome e o e-mail do responsável e o primeiro nome da criança, apenas para compor a mensagem.',
+      'Asaas (Brasil): emissão das cobranças da taxa de associação devida pelo motorista à plataforma. Recebe nome, CPF/CNPJ, e-mail e telefone do MOTORISTA. Nenhum dado de responsável ou de criança é enviado ao Asaas — a mensalidade da família não passa pela plataforma.',
+      'A transferência internacional para o Resend se apoia no art. 33, II da LGPD (cláusulas contratuais padrão do fornecedor) e se limita ao necessário para o envio do aviso de vencimento.',
+      'Não vendemos, alugamos nem cedemos dados pessoais a terceiros para fins publicitários.',
     ],
   },
   {
@@ -225,7 +327,7 @@ export const PRIVACY_SECTIONS = [
     title: '8. Período de Retenção',
     paragraphs: [
       'Mantemos os dados enquanto a conta estiver ativa e enquanto necessário para as finalidades descritas.',
-      'Após encerramento da conta, dados financeiros podem ser retidos pelo prazo de 5 (cinco) anos para cumprimento de obrigações fiscais e contábeis (art. 16, II da LGPD).',
+      'Após encerramento da conta, dados financeiros podem ser retidos pelo prazo de 5 (cinco) anos para cumprimento de obrigações fiscais e contábeis (art. 16, II da LGPD). O registro de mensalidades é apagado automaticamente após esse prazo.',
       'Localização em tempo real é mantida apenas durante a rota ativa; ao encerrar, mantém-se apenas o último ponto registrado para fins de auditoria limitada.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
