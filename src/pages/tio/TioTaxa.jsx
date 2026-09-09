@@ -46,12 +46,33 @@ import { watchFaturasDoParceiro } from '../../services/taxaService';
 export default function TioTaxa() {
   const navigate = useNavigate();
 
+  // Ver o aviso no botão de Voltar, abaixo.
+  const voltar = () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/tio', { replace: true });
+  };
+
   return (
     <div className="min-h-screen pb-10">
       <header className="sticky top-0 z-20 border-b border-border bg-bg px-5 pb-3 pt-4">
+        {/* ⚠️ DESTINO NOMEADO NA FALTA DE HISTÓRIA, NUNCA `navigate(-1)` SOLTO.
+          *
+          * Estas três telas ficam FORA do `TioLayout` (têm que ficar: dentro do
+          * `GuardaDaConta` o botão "Ver planos" navegava e a tela não mudava),
+          * então não passam pelo `Header`, que é quem sabe checar histórico.
+          *
+          * Com `navigate(-1)` puro, quem chega aqui pelo aviso de cobrança, por
+          * um link, ou recarregando a página sai DO APLICATIVO ao tocar em
+          * Voltar — e sai justamente de uma tela de pagamento, que é a última
+          * de onde alguém deveria ser expulso.
+          *
+          * `history.state.idx > 0` é o mesmo teste que o `Header` usa: consome
+          * história quando ela existe (não empilha uma entrada nova, que faria
+          * o botão físico do Android voltar para cá) e cai no destino quando
+          * não existe. */}
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={voltar}
           className="tap -ml-1 mb-2 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
         >
           <ArrowLeft size={18} /> Voltar

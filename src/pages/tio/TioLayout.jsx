@@ -126,6 +126,17 @@ export default function TioLayout() {
   // cobrança que impede o pagamento é a única falha que este aviso não pode
   // ter. `startsWith` e não igualdade: qualquer coisa que venha a pendurar
   // sob esse caminho continua alcançável.
+  // ⚠️ ESTA CHECAGEM É MORTA HOJE, E ELA FICA — COM O AVISO.
+  //
+  // `/tio/taxa`, `/tio/planos` e `/tio/contrato-plataforma` saíram de dentro
+  // deste layout em `App.jsx` (ficam FORA do `GuardaDaConta`, senão o botão
+  // "Ver planos" navegava e a tela não mudava). Então `location.pathname`
+  // nunca começa com `/tio/taxa` aqui dentro, e quem omite os dois avisos na
+  // tela de pagamento é a ROTA, não esta linha.
+  //
+  // O CLAUDE.md atribuía a omissão a esta checagem, e quem lesse aquilo
+  // confiaria numa proteção que não roda. Ela continua por ser barata e por
+  // ser a rede se a rota voltar para cá — mas a garantia é da rota.
   const naTelaDaTaxa = location.pathname.startsWith('/tio/taxa');
   const { fatura } = useFaturaPlataforma(user?.uid);
 

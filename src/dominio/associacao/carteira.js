@@ -31,7 +31,7 @@
  */
 
 import { estadoDaConta } from './contaAtiva.js';
-import { centavos, planoPorId, precoDoMes } from './planos.js';
+import { centavos, ORIGEM, planoPorId, precoDoMes } from './planos.js';
 import { diasRestantes } from './trial.js';
 
 /**
@@ -121,7 +121,23 @@ export function resumirCarteira({ parceiros = [], agora = new Date(), mes = null
         mrr += conta.liquido;
         tabela += conta.bruto;
       }
-      if ((p.descontos || []).some((d) => d?.origem === 'antecipacao')) {
+      // ⚠️ AS DUAS ORIGENS, E CONTAR SÓ A LEGADA ZERAVA ESTA LINHA.
+      //
+      // `antecipacao` é o nome ANTIGO do instrumento. Desde 07/09/2026 quem
+      // fecha dentro do teste recebe `origem: 'fechamento'`
+      // (`functions/lib/contratacao.js`), e este era o único lugar do projeto
+      // que não tratava as duas juntas — `descontosVigentes`, `eDeFechamento`
+      // e `montarContrato` já tratam.
+      //
+      // O efeito: a partir daquela data o número virou 0 permanente, e a
+      // linha desaparece da tela do dono (ela é condicional a `> 0`). Ele lia
+      // "ninguém contratou antes do fim do teste" numa carteira em que todos
+      // contrataram — o jeito mais comum de um painel mentir para o próprio
+      // dono.
+      const antecipou = (p.descontos || []).some(
+        (d) => d?.origem === ORIGEM.FECHAMENTO || d?.origem === ORIGEM.ANTECIPACAO
+      );
+      if (antecipou) {
         antecipados += 1;
       }
     }

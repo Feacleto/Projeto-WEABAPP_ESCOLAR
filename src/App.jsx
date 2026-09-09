@@ -254,6 +254,16 @@ function SuperAdminRoute({ children }) {
   if (!ehDono(profile)) {
     return <Navigate to={painelDe(profile)} replace />;
   }
+  // ⚠️ O DONO TAMBÉM ACEITA OS TERMOS — E ANTES ERA O ÚNICO QUE NÃO.
+  //
+  // `PrivateRoute` bloqueia motorista e responsável em
+  // `hasAcceptedCurrentTerms`, e este guarda não tinha a checagem. Quando
+  // `LEGAL_VERSION` sobe, todo mundo reaceita menos a conta que responde pela
+  // plataforma — ou seja, o registro de aceite tem um buraco exatamente onde
+  // ele mais precisa existir.
+  if (!hasAcceptedCurrentTerms(profile)) {
+    return <TermsAcceptanceGate />;
+  }
   return children;
 }
 

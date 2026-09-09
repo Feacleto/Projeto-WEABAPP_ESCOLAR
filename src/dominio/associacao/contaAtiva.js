@@ -192,7 +192,20 @@ export function estadoDaConta({
   // isso que o sinal atravessa até ele em vez de virar um `if` daqui.
   const trial = estadoDoTrial({ inicio: trialInicio, agora, temContrato: paga });
   if (trial === 'expirado') {
-    return { ativa: false, motivo: jaFoiCliente ? 'atraso' : 'trial', dias: atraso };
+    // ⚠️ TRÊS MOTIVOS, E NÃO DOIS — `renovar` NÃO É `atraso`.
+    //
+    // Quem já foi cliente recebia `motivo: 'atraso'`, e a tela do atraso diz
+    // "está em aberto há mais de dez dias". Mas este ramo dispara no DIA
+    // SEGUINTE ao fim da cobertura, e `dias` vem `null` porque o guarda não
+    // passa fatura (de propósito, para não abrir uma segunda assinatura).
+    //
+    // O resultado era um pagante em dia com o mês, que só não renovou, sendo
+    // acusado de dez dias de inadimplência às seis da manhã. Cobrança que
+    // erra o fato é o jeito mais rápido de perder quem estava pagando.
+    //
+    // `atraso` continua existindo e continua vindo da fatura vencida, no
+    // ramo de cima — lá o número é real.
+    return { ativa: false, motivo: jaFoiCliente ? 'renovar' : 'trial', dias: atraso };
   }
 
   return { ativa: true, motivo: null, dias: atraso };

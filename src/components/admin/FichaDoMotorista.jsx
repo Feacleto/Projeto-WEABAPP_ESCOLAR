@@ -19,6 +19,7 @@ import ConcederSheet from './ConcederSheet';
 import Spinner from '../common/Spinner';
 import { formatCurrency, formatMonthLabel } from '../../compartilhado/formatters';
 import { degrauDo, mensalidadeDe } from '../../dominio/associacao/carteira.js';
+import { rotuloDoCanal } from '../../dominio/identidade/origem.js';
 import { condicoesVigentes } from '../../dominio/associacao/concessao.js';
 import { diasSemRodar } from '../../dominio/associacao/risco.js';
 import { diasRestantes } from '../../dominio/associacao/trial.js';
@@ -147,7 +148,21 @@ export default function FichaDoMotorista({
               {motorista.name || motorista.uid}
             </h2>
             <p className="mt-0.5 text-xs text-textMuted">
-              {[motorista.email, motorista.city].filter(Boolean).join(' · ') || '—'}
+              {[
+                motorista.email,
+                motorista.city,
+                // DE ONDE ELE VEIO, na mesma linha do e-mail e da cidade.
+                // Aqui a pergunta não é "de onde vem a base" (isso é a tabela
+                // em Números) e sim "de onde veio ESTE" — que é o que muda a
+                // conversa: quem chegou por indicação de colega abre diferente
+                // de quem caiu de uma busca. Só aparece quando há origem: a
+                // linha não ganha um "Sem origem" para toda conta antiga.
+                motorista.origem?.canal && motorista.origem.canal !== 'direto'
+                  ? rotuloDoCanal(motorista.origem.canal)
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || '—'}
             </p>
           </div>
           <Estado degrau={degrau} motivo={motivo} faltam={faltam} />
@@ -517,6 +532,13 @@ function NotaInterna({ uid, parceiro }) {
 
 /* ─────────────── peças ─────────────── */
 
+const ROTULO_DO_MOTIVO = {
+  suspenso: 'Suspenso',
+  atraso: 'Em atraso',
+  renovar: 'Não renovou',
+  trial: 'Teste vencido',
+};
+
 function Estado({ degrau, motivo, faltam }) {
   const mapa = {
     contratado: ['bg-primarySoft text-primary', 'Ativo'],
@@ -524,7 +546,12 @@ function Estado({ degrau, motivo, faltam }) {
     nao_comecou: ['bg-neutro text-textMuted', 'Não rodou ainda'],
     bloqueado: [
       'bg-dangerSoft text-dangerText',
-      motivo === 'suspenso' ? 'Suspenso' : motivo === 'atraso' ? 'Em atraso' : 'Teste vencido',
+      // Quatro motivos, e a diferença muda a conversa que o dono vai ter:
+      // `atraso` tem fatura vencida em aberto, `renovar` só chegou ao fim do
+      // período pago (não deve nada), `suspenso` foi decisão dele mesmo, e o
+      // resto é teste vencido. Antes `renovar` caía no `else` e aparecia como
+      // "Teste vencido" para quem já tinha pagado meses.
+      ROTULO_DO_MOTIVO[motivo] || 'Teste vencido',
     ],
   };
   const [skin, rotulo] = mapa[degrau] || mapa.nao_comecou;

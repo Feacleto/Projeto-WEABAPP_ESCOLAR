@@ -49,6 +49,20 @@ const TEXTO = {
       'A mensalidade da plataforma está em aberto há mais de dez dias. Assim que o pagamento entrar, tudo volta no mesmo lugar.',
     acao: { para: '/tio/taxa', rotulo: 'Pagar agora' },
   },
+  // ⚠️ COBERTURA VENCIDA NÃO É INADIMPLÊNCIA, E O TEXTO NÃO PODE CITAR PRAZO.
+  //
+  // Este caso vinha com `motivo: 'atraso'` e lia a frase acima — "em aberto há
+  // mais de dez dias" — no dia seguinte ao fim da cobertura, com `dias` vindo
+  // `null`. Quem só não renovou era acusado de dez dias de atraso.
+  //
+  // Aqui não há fatura em mão, então a frase afirma só o que é verdade: o
+  // período pago terminou.
+  renovar: {
+    titulo: 'Seu período pago terminou',
+    corpo:
+      'Renove para voltar a rodar. Suas crianças, os horários e o histórico continuam aqui, exatamente como você deixou.',
+    acao: { para: '/tio/taxa', rotulo: 'Renovar agora' },
+  },
   // Suspensão é decisão de uma pessoa, e por isso não tem botão de
   // autoatendimento: não existe pagamento que a desfaça. O caminho é conversa.
   suspenso: {

@@ -55,7 +55,19 @@ import { degrauDaDecisao, fimDoDegrau } from '../../dominio/associacao/trial.js'
  */
 export default function TioPlanos() {
   const navigate = useNavigate();
-  const { profile, refreshProfile } = useAuth();
+  // ⚠️ O `uid` VEM DO `user`, NUNCA DO `profile`.
+  //
+  // `profile` é o `snap.data()` de `users/{uid}` (ver `getUserDoc`), e o
+  // documento não guarda o próprio id — `uid` não está na whitelist do
+  // `allow create` nem no payload do `redeemInvite`. `profile.uid` é
+  // `undefined`, e `emitirContrato` começa com `if (!tioUid) throw`.
+  //
+  // O estrago era invisível porque a ORDEM é a pior possível: `contratarPlano`
+  // já gravou faixa, limite, degrau e `assinaturaAte` quando a emissão
+  // estoura. O motorista ficava cobrado, sem contrato, e a tela dele dizia
+  // "Nenhum contrato emitido ainda" — sem botão. `TioContratoAssociacao` já
+  // lia o `user.uid`; esta tela era a única que não.
+  const { user, profile, refreshProfile } = useAuth();
 
   const ativas = Number(profile?.criancasAtivas) || 0;
   const recomendado = planoPara(ativas);
@@ -110,7 +122,7 @@ export default function TioPlanos() {
       const clausula = await contratarPlano(plano.id);
 
       const conteudo = montarContrato({
-        motorista: { uid: profile?.uid, ...profile },
+        motorista: { uid: user?.uid, ...profile },
         plano,
         fundador: profile?.condicaoFundador || null,
         indicacoesAtivas: indicacoes,
@@ -118,7 +130,7 @@ export default function TioPlanos() {
         diaVencimento: profile?.diaVencimento,
         isencaoAte: profile?.isencaoAte || null,
       });
-      await emitirContrato({ tioUid: profile?.uid, conteudo, emitidoPor: profile?.uid });
+      await emitirContrato({ tioUid: user?.uid, conteudo, emitidoPor: user?.uid });
 
       await refreshProfile();
       // ⚠️ O NÚMERO DO TOAST VEM DO SERVIDOR, não da régua local. `clausula` é
@@ -141,12 +153,33 @@ export default function TioPlanos() {
     }
   };
 
+  // Ver o aviso no botão de Voltar, abaixo.
+  const voltar = () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/tio', { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-bg px-4 py-5">
       <div className="mx-auto max-w-mobile space-y-5">
+        {/* ⚠️ DESTINO NOMEADO NA FALTA DE HISTÓRIA, NUNCA `navigate(-1)` SOLTO.
+          *
+          * Estas três telas ficam FORA do `TioLayout` (têm que ficar: dentro do
+          * `GuardaDaConta` o botão "Ver planos" navegava e a tela não mudava),
+          * então não passam pelo `Header`, que é quem sabe checar histórico.
+          *
+          * Com `navigate(-1)` puro, quem chega aqui pelo aviso de cobrança, por
+          * um link, ou recarregando a página sai DO APLICATIVO ao tocar em
+          * Voltar — e sai justamente de uma tela de pagamento, que é a última
+          * de onde alguém deveria ser expulso.
+          *
+          * `history.state.idx > 0` é o mesmo teste que o `Header` usa: consome
+          * história quando ela existe (não empilha uma entrada nova, que faria
+          * o botão físico do Android voltar para cá) e cai no destino quando
+          * não existe. */}
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={voltar}
           className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
         >
           <ArrowLeft size={16} /> Voltar

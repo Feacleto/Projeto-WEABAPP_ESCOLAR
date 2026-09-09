@@ -153,11 +153,38 @@ checar('sem assinatura nenhuma, não vale', false, assinaturaValida(null, dia('2
 
 // A LINHA QUE PROTEGE A CONFIANÇA: dizer "seu teste acabou" a quem pagou meses
 // é uma mentira que ele reconhece na hora — e quem desconfia da cobrança para
-// de pagar. Trial vencido + assinatura vencida = ele é um cliente em atraso.
+// de pagar.
+//
+// ⚠️ MAS TAMBÉM NÃO É `atraso`, E ESTE CASO JÁ AFIRMOU QUE ERA.
+//
+// `atraso` é a frase que diz "está em aberto há mais de dez dias", e ela vem
+// da FATURA vencida — no ramo de cima, onde o número é real. Este ramo aqui
+// dispara no DIA SEGUINTE ao fim da cobertura, sem fatura em mão e com `dias`
+// vindo `null`: um pagante em dia com o mês, que só não renovou, era acusado
+// de dez dias de inadimplência.
+//
+// São três estados, não dois. O que este caso protege continua protegido: o
+// motivo não é `trial`.
 checar(
-  'quem já foi cliente recebe a frase do ATRASO, não a do teste',
-  'atraso',
+  'quem já foi cliente NÃO recebe a frase do teste',
+  'renovar',
   estadoDaConta({ trialInicio: TRIAL, assinaturaAte: ASSINADO, agora: dia('2026-08-01') }).motivo
+);
+// E a distinção que faltava: sem fatura em mão, não se afirma prazo.
+checar(
+  'e `renovar` não é `atraso` — a frase dos dez dias exige fatura',
+  true,
+  estadoDaConta({ trialInicio: TRIAL, assinaturaAte: ASSINADO, agora: dia('2026-08-01') }).motivo !== 'atraso'
+);
+checar(
+  'com fatura vencida em mão, aí sim é atraso',
+  'atraso',
+  estadoDaConta({
+    trialInicio: TRIAL,
+    assinaturaAte: ASSINADO,
+    fatura: { status: 'aberta', vencimento: dia('2026-06-20') },
+    agora: dia('2026-08-01'),
+  }).motivo
 );
 checar(
   'e quem nunca pagou recebe a do teste',

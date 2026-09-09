@@ -192,6 +192,28 @@ checar('em março só sobra a régua sem prazo', ['fundador', 'indicacao', 'ante
   condicoesVigentes(motorista, '2027-03').map((l) => l.id));
 checar('sem condição nenhuma, lista vazia', [], condicoesVigentes({}, '2026-10'));
 
+// ⚠️ A FICHA NÃO APLICA TETO NA INDICAÇÃO, E ESTE É O CASO QUE FALTAVA.
+//
+// Havia um `Math.min(indicacoes * 10, 50)` no rótulo. O teto de 50% saiu de
+// `descontoDeIndicacoes` em 07/09/2026 (porcentagem não protege margem; quem
+// protege é `PISO_DA_FATURA`), e a ficha ficou atrás.
+//
+// Os casos existentes usavam 5 e 2 indicações — com 5, `Math.min(50, 50)`
+// coincide com o valor certo e o teto NUNCA morde. Por isso são 8 aqui: é o
+// primeiro valor em que a ficha e a fatura discordavam.
+//
+// A ficha é onde o dono confere o que concedeu. Dizer 50% enquanto a fatura
+// desconta 80% é o "indiquei e não recebi" pelo lado de quem responde.
+const muitasIndicacoes = condicoesVigentes({ indicacoesAtivas: 8 }, '2026-10');
+checar('8 indicações mostram 80%, não 50%', '80%',
+  muitasIndicacoes.find((l) => l.id === 'indicacao').valor);
+checar('e o rótulo bate com o que a fatura desconta', 0.8,
+  precoDoMes({ plano, indicacoesAtivas: 8, mes: '2026-10' }).descontoIndicacao);
+// Uma só continua no singular e sem teto por baixo.
+checar('1 indicação mostra 10%', '10%',
+  condicoesVigentes({ indicacoesAtivas: 1 }, '2026-10')
+    .find((l) => l.id === 'indicacao').valor);
+
 // ⚠️ O DESCONTO ÓRFÃO — o efeito existe e o registro não.
 //
 // Acontece se alguém gravar `users.descontos` sem passar por `conceder`, ou se

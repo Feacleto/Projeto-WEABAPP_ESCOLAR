@@ -160,6 +160,39 @@ checar('e um, com o desconto de antecipação', 1, resumirCarteira({
   mes: MES,
 }).antecipados);
 
+// ⚠️ E COM A ORIGEM NOVA — O CASO QUE FALTAVA, E QUE ZERAVA A LINHA INTEIRA.
+//
+// Este bloco passava só `ORIGEM.ANTECIPACAO`, que é o nome LEGADO. Todo
+// fechamento gravado desde 07/09/2026 usa `ORIGEM.FECHAMENTO`, e
+// `resumirCarteira` contava apenas o antigo: o número virou 0 permanente e a
+// linha sumiu da tela do dono, que é condicional a `> 0`.
+//
+// É a terceira vez que este projeto vê a mesma forma de bug: uma regra
+// aplicada em N lugares, com o teste passando justamente o caso em que a
+// divergência não aparece.
+checar('e um, com o desconto de FECHAMENTO (a origem de hoje)', 1, resumirCarteira({
+  parceiros: [
+    { ...CONTRATADO, descontos: [{ origem: ORIGEM.FECHAMENTO, fracao: 0.5, ate: '2027-09', degrau: 1 }] },
+  ],
+  agora: HOJE,
+  mes: MES,
+}).antecipados);
+// As duas origens no MESMO parceiro contam UMA vez: é a mesma concessão com
+// dois nomes, e somar produziria mais antecipados que contratados.
+checar('as duas origens no mesmo parceiro contam uma vez', 1, resumirCarteira({
+  parceiros: [
+    {
+      ...CONTRATADO,
+      descontos: [
+        { origem: ORIGEM.FECHAMENTO, fracao: 0.5, ate: '2027-09', degrau: 1 },
+        { origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-09' },
+      ],
+    },
+  ],
+  agora: HOJE,
+  mes: MES,
+}).antecipados);
+
 bloco('7. Carteira vazia não quebra');
 
 const vazia = resumirCarteira({ parceiros: [], agora: HOJE, mes: MES });

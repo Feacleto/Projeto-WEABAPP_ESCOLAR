@@ -31,6 +31,7 @@ import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
 import { getChildIds } from '../dominio/identidade/childIds';
+import { ehDono } from '../dominio/identidade/papeis';
 import {
   isPushAvailable,
   permissionState,
@@ -123,6 +124,27 @@ export default function Profile() {
   };
 
   const onDeleteAccount = async () => {
+    // ⚠️ QUEM JÁ RODOU UMA ROTA NÃO PASSA DAQUI, E O MOTIVO É UM WIPE PARCIAL.
+    //
+    // O `allow delete` de `users` exige `!('trialInicio' in resource.data)` —
+    // ou seja, motorista que já ligou o relógio do teste NÃO pode apagar o
+    // próprio documento. E `deleteAdminAccount` apaga o doc dele por ÚLTIMO:
+    // rides, crianças, pagamentos, escolas, agenda e despesas já foram
+    // apagados quando a negação chega.
+    //
+    // Resultado: a operação inteira destruída, a conta ainda de pé, e nenhuma
+    // forma de terminar — exatamente o wipe parcial que o cabeçalho de
+    // `accountService` foi reescrito para evitar. A rule assume essa dívida
+    // por escrito; a interface continuava oferecendo o botão.
+    //
+    // Enquanto não existir a function de encerramento, é melhor não começar.
+    if (isAdmin && profile?.trialInicio) {
+      toast.error(
+        'Operação com histórico não é encerrada por aqui — fale com a gente para apagar tudo de uma vez, sem deixar pedaços.'
+      );
+      return;
+    }
+
     // Lido AGORA, antes de qualquer coisa: `deleteUser` derruba a sessão e
     // `profile` vira null no meio do caminho.
     const destinoDaExclusao = destinoAposSair(profile?.role);
@@ -162,6 +184,28 @@ export default function Profile() {
       }
     }
   };
+
+  /* COMO ELA ENTRA, e não só qual é o email.
+   *
+   * ⚠️ `user.email` E NÃO `profile.email`. O segundo é um CAMPO do Firestore,
+   * e no caso do responsável ele pode ter sido digitado pelo MOTORISTA no
+   * cadastro da criança (`child.parentEmail`) — o `redeemInvite` até grava
+   * `linkedEmailMatchesCadastro` porque sabe que os dois divergem. Esta linha
+   * existe para responder "em qual conta eu estou", e só o email da SESSÃO
+   * responde isso. Mostrar o campo aqui é responder a pergunta errada com
+   * cara de resposta certa.
+   *
+   * E o provedor vai junto porque a pergunta seguinte é sempre a mesma: "então
+   * eu aperto qual botão da próxima vez?". Saber o email sem saber se ele
+   * entra pelo Google ou por senha não fecha a dúvida — e é justamente na
+   * próxima vez, num aparelho novo, que ela precisa acertar de primeira. */
+  const provedorDaConta = user?.providerData?.[0]?.providerId;
+  const comoEntra =
+    provedorDaConta === 'google.com'
+      ? 'Você entra com o Google'
+      : provedorDaConta === 'password'
+        ? 'Você entra com email e senha'
+        : null;
 
   return (
     <>
@@ -214,7 +258,12 @@ export default function Profile() {
             </div>
 
             <InfoRow icon={UserIcon} label="Nome" value={profile.name} />
-            <InfoRow icon={Mail} label="Email" value={profile.email} />
+            <InfoRow
+              icon={Mail}
+              label="Email da conta"
+              value={user?.email || profile.email}
+              hint={comoEntra}
+            />
             <InfoRow
               icon={Phone}
               label="Telefone"
@@ -414,8 +463,17 @@ export default function Profile() {
           </button>
 
           {/* Painel do dono — aparece só pra quem carrega o negócio nas
-            * costas. Um parceiro nunca vê esta linha. */}
-          {profile?.superAdmin && (
+            * costas. Um parceiro nunca vê esta linha.
+            *
+            * ⚠️ `ehDono(profile)`, NÃO `profile.superAdmin`. O campo legado
+            * saiu em 06/09/2026: nada o escreve, e as rules o mantêm fora de
+            * toda whitelist de `users`. A condição nunca disparava, então esta
+            * linha simplesmente não existia para ninguém — e o acesso ao
+            * `/admin` sobrevivia só por `painelDe()`.
+            *
+            * Não era tranca (quem entra pelo endereço continua entrando pelo
+            * papel), mas era a linha que a próxima tela ia copiar. */}
+          {ehDono(profile) && (
             <>
               <div className="border-t border-neutro -mx-4" />
               <button
@@ -626,7 +684,7 @@ function ProfilePhotoEditor({
   );
 }
 
-function InfoRow({ icon: Icon, label, value }) {
+function InfoRow({ icon: Icon, label, value, hint }) {
   return (
     <div className="flex items-start gap-3 py-1">
       <Icon size={16} className="text-textMuted shrink-0 mt-0.5" />
@@ -635,6 +693,9 @@ function InfoRow({ icon: Icon, label, value }) {
           {label}
         </p>
         <p className="text-sm text-text break-words">{value || '—'}</p>
+        {/* A dica fica ABAIXO do valor e menor: ela explica o valor, não
+            compete com ele. */}
+        {hint && <p className="text-[11px] text-textMuted mt-0.5">{hint}</p>}
       </div>
     </div>
   );

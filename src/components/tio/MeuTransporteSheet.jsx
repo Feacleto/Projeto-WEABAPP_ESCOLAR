@@ -14,6 +14,8 @@ import {
   Users,
 } from 'lucide-react';
 import AppSheet from '../common/AppSheet';
+import { useAuth } from '../../hooks/useAuth';
+import { dadosDaContratadaFaltando } from '../../services/contractService';
 
 /**
  * O ÍNDICE DO APP — "Meu transporte".
@@ -64,6 +66,20 @@ export default function MeuTransporteSheet({
   semHorario = 0,
 }) {
   const navigate = useNavigate();
+  const { profile } = useAuth();
+
+  // ⚠️ O QUE FALTA PARA EMITIR CONTRATO, DITO ANTES DE A FAMÍLIA ESPERAR.
+  //
+  // `buildContractData` devolve `null` sem nome, CPF/CNPJ e cidade da parte
+  // contratada — e o motorista só descobria isso ao abrir o contrato de uma
+  // criança, com a família do outro lado. A tela de lá trata bem (nomeia o que
+  // falta e leva ao perfil), mas o MOMENTO é o pior possível.
+  //
+  // Aqui ele descobre num momento calmo, no índice que ele já abre para ver
+  // turma, escolas e semana. É aviso, não formulário: pedir os três campos no
+  // cadastro custaria desistência na porta do funil, e ele não precisa de
+  // contrato no primeiro dia.
+  const faltaContratada = dadosDaContratadaFaltando(profile);
 
   // Navegar FECHA a folha: sem isso ela continua montada por cima da tela
   // nova, e o "voltar" do Android fecharia a folha em vez de voltar de tela.
@@ -160,6 +176,15 @@ export default function MeuTransporteSheet({
             titulo="Contrato da plataforma"
             onClick={() => ir('/tio/contrato-plataforma')}
           />
+          {faltaContratada.length > 0 && (
+            <Linha
+              icon={FileText}
+              titulo="Complete seus dados de contrato"
+              subtitulo={`Sem ${faltaContratada.join(', ')}, você não emite contrato para as famílias`}
+              onClick={() => ir('/tio/profile')}
+              aviso="falta"
+            />
+          )}
           {/* O SELO fica neste grupo e não no de cima: ele é assunto da
             * PLATAFORMA com o motorista, não da operação dele com as
             * famílias. E é uma linha só para os dois selos — separá-los aqui

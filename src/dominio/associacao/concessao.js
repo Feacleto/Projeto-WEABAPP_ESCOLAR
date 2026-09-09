@@ -36,11 +36,21 @@
  */
 
 import {
+  DESCONTO_POR_INDICACAO,
   FUNDADOR,
   FUNDADORES_METADE,
   FUNDADORES_VITALICIO,
   ORIGEM,
 } from './planos.js';
+
+/**
+ * O rótulo da indicação em PONTOS PERCENTUAIS, derivado da régua.
+ *
+ * Vem de `DESCONTO_POR_INDICACAO` em vez de um `10` escrito à mão: se a régua
+ * mudar, a ficha muda com ela. Foi um número solto aqui que deixou a ficha
+ * dizer 50% enquanto a fatura descontava 80%.
+ */
+const PORCENTO_POR_INDICACAO = Math.round(DESCONTO_POR_INDICACAO * 100);
 
 /** Os dois tipos, e eles não são intercambiáveis — ver o cabeçalho. */
 export const TIPO = {
@@ -201,7 +211,25 @@ export function condicoesVigentes(motorista, mes) {
       id: 'indicacao',
       especie: 'regua',
       rotulo: `${indicacoes} ${indicacoes === 1 ? 'indicação' : 'indicações'}`,
-      valor: `${Math.min(indicacoes * 10, 50)}%`,
+      // ⚠️ SEM TETO — E O `Math.min(…, 50)` QUE ESTAVA AQUI FAZIA A FICHA
+      // MENTIR PARA O DONO.
+      //
+      // O teto de 50% saiu de `descontoDeIndicacoes` em 07/09/2026, com o
+      // argumento de que porcentagem não protege margem (quem protege é
+      // `PISO_DA_FATURA`) e de que, no teto, a indicação seguinte valia ZERO
+      // justamente para quem mais indica.
+      //
+      // Esta linha ficou atrás. Um associado com 8 indicações aparecia na
+      // ficha como "50%" enquanto `precoDoMes` descontava 80% — e a ficha é
+      // onde o dono confere o que concedeu. É o "indiquei e não recebi" visto
+      // do lado de quem tem que responder a ele.
+      //
+      // O teste passava 5 indicações, onde `Math.min(50, 50)` coincide com o
+      // valor certo e o teto nunca morde.
+      //
+      // O número é a régua, sem corte: `DESCONTO_POR_INDICACAO` por indicação
+      // ativa. O que o piso absorve é dito pela tela de preço, não aqui.
+      valor: `${indicacoes * PORCENTO_POR_INDICACAO}%`,
       ate: null,
       motivo: null,
     });
@@ -264,7 +292,7 @@ export function condicoesVigentes(motorista, mes) {
 /**
  * QUANTOS FUNDADORES JÁ FORAM CONCEDIDOS — o contador que não existia.
  *
- * São 13 condições e nada as somava: o campo era escrito por motorista, um de
+ * São 13 vagas no desenho original (1 vitalício + 12 pela metade) e nada as somava — hoje `FUNDADORES_METADE = 0` e o limite calculado é 1, mas o contador continua sendo o que impede conceder a 14ª sem perceber: o campo era escrito por motorista, um de
  * cada vez, sem nenhuma tela dizendo quantos já saíram. Dava para conceder o
  * 14º sem perceber — e o vitalício NÃO EXPIRA, então o erro não se conserta no
  * mês seguinte, ele fica.
