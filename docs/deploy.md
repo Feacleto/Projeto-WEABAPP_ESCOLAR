@@ -299,6 +299,76 @@ Espere um ou dois minutos: permissão de IAM não vale na hora.
 imagens de container se acumulam no Artifact Registry e viram alguns centavos
 por mês para sempre.
 
+### ⚠️ E O BUILD NÃO ERA A ÚNICA PERMISSÃO QUE FALTAVA
+
+Registrado em 09/09/2026. A seção acima resolveu o **build** — as functions
+passaram a subir. O que ninguém mediu foi se elas **funcionavam** depois de
+subir, e a resposta era não, das duas maneiras possíveis:
+
+**1 · Elas não liam o Firestore.** `closeStaleRoutes` roda de 15 em 15 minutos
+e falhava com `Error: 7 PERMISSION_DENIED: Missing or insufficient
+permissions.` **desde 06/09** — cerca de mil falhas em três dias, sem que nada
+avisasse. Toda function que usa Admin SDK estava igual; ela só era a única
+frequente o bastante para aparecer.
+
+⚠️ **Admin SDK ignora `firestore.rules`, mas não ignora IAM.** Procurar esse
+erro nas rules é perder o dia: elas não têm nada com isso.
+
+**2 · Nenhuma callable respondia.** `getShowcase`, `lookupInvite` e
+`getInvitePreview` devolviam **403 do Google Front End** — antes de o código
+rodar. Com `ingressSettings: ALLOW_ALL`, o que faltava era o papel de
+INVOCAÇÃO. Isso mata o caminho inteiro do responsável: a mãe abre o link do
+convite e recebe erro.
+
+**A origem comum:** a **API do Compute Engine nunca tinha sido ativada** no
+projeto. O `firebase deploy --debug` diz em texto:
+
+> *unable to look up default compute service account. Falling back to
+> `<número>-compute@developer.gserviceaccount.com`. Error: Compute Engine API
+> has not been used in project … or it is disabled.*
+
+As functions foram implantadas apontando para uma conta que existia só de
+nome. O build funcionava (ele usa outra conta), a execução não.
+
+**O conserto, na ordem:**
+
+1. Ative a API: `console.developers.google.com/apis/api/compute.googleapis.com/overview?project=<número>`
+2. IAM → editar `<número>-compute@developer.gserviceaccount.com` → acrescentar,
+   além do `cloudbuild.builds.builder` da seção acima:
+   - **Cloud Datastore User** — o Firestore pelo Admin SDK
+   - **Firebase Cloud Messaging Admin** — o push de `functions/lib/push.js`
+   - **Secret Manager Secret Accessor** — os três `defineSecret` do `index.js`
+3. Cloud Run → selecionar **todos** os serviços → `Permissions` → `ADD
+   PRINCIPAL` → principal `allUsers`, papel **Cloud Run Invoker**
+
+⚠️ **`allUsers` no Cloud Run NÃO abre o app.** Callable do Firebase funciona
+assim por desenho: o Cloud Run aceita a chamada e quem valida o token é o
+código, em [functions/lib/papeis.js](../functions/lib/papeis.js). Recusar esse
+papel é recusar o produto inteiro.
+
+**Nenhum dos dois precisa de deploy novo** — permissão de IAM vale para as
+revisões já no ar, em um ou dois minutos.
+
+### A lição que fica, e ela é sobre teste, não sobre IAM
+
+Deploy verde não é sistema funcionando. As 16 functions apareciam como
+`Successful update operation`, o `functions:list` listava todas, e **nenhuma
+respondia**. O que revelou foi o Logs Explorer com `severity>=ERROR`, aberto
+por outro motivo.
+
+Por isso o **alerta de erro por log** (a seção do console mais abaixo) não é
+capricho: cinco funções agendadas rodam sem plateia, e o sintoma de uma delas
+falhando é a fatura que não chegou, descoberta um mês depois. **Depois de
+qualquer deploy em projeto novo, chame uma callable pública com `curl` antes
+de dar por pronto:**
+
+```bash
+curl -s -X POST   "https://southamerica-east1-<projeto>.cloudfunctions.net/getShowcase"   -H "Content-Type: application/json" -d '{"data":{}}'
+# 200 + JSON  → o caminho inteiro está de pé (invocação E leitura do Firestore)
+# 403 HTML    → falta o Cloud Run Invoker
+# 500         → subiu, mas não lê o banco: é IAM da conta de execução
+```
+
 ---
 
 ## Trocar a conta de faturamento sem mexer no projeto
