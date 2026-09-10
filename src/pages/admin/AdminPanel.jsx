@@ -439,7 +439,7 @@ function Geral({ ov }) {
               menos de 7 dias do fim do teste.
             </strong>{' '}
             É a semana em que a decisão acontece — e quem contrata antes do fim
-            leva metade pelos 12 meses.
+            trava o desconto do degrau, que não expira.
           </p>
         )}
       </section>

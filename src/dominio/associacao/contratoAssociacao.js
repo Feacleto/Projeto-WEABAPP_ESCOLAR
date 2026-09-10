@@ -48,7 +48,12 @@ import {
 import {
   MESES_DE_CONTRATO,
   PISO_DA_FATURA,
-  centavos,
+  PLANO,
+  TAXA,
+  TAXA_ACIMA_DE_40,
+  CRIANCAS_NA_TAXA_CHEIA,
+  MINIMO,
+  planoValido,
   limitarDiaVencimento,
   precoDoMes,
 } from './planos.js';
@@ -73,7 +78,7 @@ import {
  *
  * Subir custa uma rodada de reassinatura.
  */
-export const VERSAO_CONTRATO = 4;
+export const VERSAO_CONTRATO = 5;
 
 /** Janela padrão para avisar que a vigência está acabando. */
 export const JANELA_DE_RENOVACAO = 60;
@@ -126,7 +131,8 @@ function mesDe(data) {
  */
 export function montarContrato({
   motorista,
-  plano,
+  plano = PLANO.MENSAL,
+  criancas = 0,
   fundador = null,
   indicacoesAtivas = 0,
   descontos = null,
@@ -141,6 +147,7 @@ export function montarContrato({
   // conta da régua depois — o que muda é a validade dos descontos, que está
   // escrita no próprio contrato.
   const conta = precoDoMes({
+    criancas,
     plano,
     fundador,
     indicacoesAtivas,
@@ -176,19 +183,47 @@ export function montarContrato({
     },
 
     plano: {
-      id: plano?.id || null,
-      rotulo: plano?.rotulo || '',
-      // O TETO DE CRIANÇAS É A ÚNICA COISA QUE O PLANO CAPA. Não existe
-      // Básico/Pro: mapa ao vivo, cobrança, agenda e relatório valem igual nas
-      // três faixas. Está escrito aqui porque é a cláusula que o associado
-      // precisa poder cobrar de volta.
-      teto: plano?.ate ?? null,
-      precoTabela: plano ? centavos(plano.preco) : null,
+      id: planoValido(plano) ? plano : null,
+      rotulo: plano === PLANO.ANUAL ? 'Anual' : 'Mensal',
+      // ⚠️ O QUE O CONTRATO DECLARA É A TAXA, NÃO UM VALOR.
+      //
+      // Até a versão 4 ele congelava o preço da FAIXA contratada, e o efeito
+      // colateral era pesado: crescer de faixa exigia emitir contrato novo, com
+      // aceite novo, por ter ganhado uma criança. O documento virava burocracia
+      // no pior momento possível — logo depois de o motorista fechar um cliente.
+      //
+      // Declarando a taxa, a mesma cláusula continua verdadeira em qualquer
+      // tamanho, e o que muda de mês para mês é uma multiplicação que o próprio
+      // associado consegue conferir. É o que elimina a reassinatura por
+      // crescimento sem afrouxar nada: a regra está escrita, só o número da
+      // multiplicação é que acompanha a operação dele.
+      taxaPorCrianca: TAXA[plano] ?? null,
+      taxaAcimaDe40: TAXA_ACIMA_DE_40[plano] ?? null,
+      criancasNaTaxaCheia: CRIANCAS_NA_TAXA_CHEIA,
+      minimoMensal: MINIMO[plano] ?? null,
+
+      // ⚠️ ISTO É EXEMPLO, NÃO CLÁUSULA — e o rótulo importa.
+      //
+      // O tamanho da operação no dia da assinatura, e a conta que ele produz.
+      // Serve para o associado ver o número concreto que a taxa gera hoje; ele
+      // NÃO congela nada, porque a fatura segue o tamanho real do mês. Um
+      // documento que apresentasse este valor como o preço acordado
+      // contradiria a primeira fatura em que ele cadastrasse uma criança.
+      criancasNaAssinatura: Math.max(0, Math.floor(Number(criancas) || 0)),
+      precoTabela: conta.bruto,
+
+      // ⚠️ NÃO HÁ MAIS TETO DE CRIANÇAS. `limiteCriancas` era a única coisa que
+      // o plano capava, e ele saiu junto com as faixas: nada trava quando a
+      // operação cresce. Deixar o campo aqui com `null` seria pior que
+      // removê-lo — um teto nulo se lê como "sem limite acordado" em vez de
+      // "não existe teto neste modelo".
     },
 
     valores: {
       // A cobrança é mensal, sempre. O que dura doze meses é o ACORDO.
       periodicidade: 'mensal',
+      // O valor DO MÊS DA ASSINATURA. Ver `plano.criancasNaAssinatura`: é
+      // exemplo da taxa aplicada hoje, e a fatura acompanha o tamanho real.
       valorMensal: conta.liquido,
       descontoTotal: conta.desconto,
       descontoFundador: conta.descontoFundador,

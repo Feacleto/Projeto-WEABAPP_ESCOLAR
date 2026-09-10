@@ -20,11 +20,12 @@ import { db } from '../firebase/config';
 // zero por causa disso.
 import {
   DIA_DE_VENCIMENTO,
+  PLANO,
+  TAXA,
   dataDeVencimento,
   isentoEm,
   limitarDiaVencimento,
-  planoPara,
-  planoPorId,
+  planoValido,
   precoDoMes,
 } from '../dominio/associacao/planos.js';
 import { fimDoTrial, mesDeTesteDe } from '../dominio/associacao/trial.js';
@@ -39,7 +40,7 @@ import {
   montarConcessao,
 } from '../dominio/associacao/concessao.js';
 
-export { dataDeVencimento, isentoEm, limitarDiaVencimento, planoPorId, precoDoMes };
+export { dataDeVencimento, isentoEm, limitarDiaVencimento, planoValido, precoDoMes };
 
 /**
  * A TAXA DE ASSOCIAÇÃO — o que a plataforma cobra do MOTORISTA.
@@ -231,41 +232,36 @@ export async function setNotaInterna(uid, nota) {
 // ── a cláusula: o que define quanto ele paga ────────────────────────────────
 
 /**
- * A FAIXA CONTRATADA, e o teto de crianças que vem com ela.
+ * O PLANO CONTRATADO — 'mensal' ou 'anual', e mais nada.
  *
- * OS DOIS CAMPOS VÃO NO MESMO BATCH de propósito. `planoId` é o que a fatura
- * cobra; `limiteCriancas` é o que as rules cobram no cadastro de criança. Se
- * eles pudessem ser gravados separado, existiria uma janela em que o motorista
- * paga a faixa de R$ 69 com teto de 40 — e ninguém veria, porque cada campo
- * está certo do ponto de vista de quem o lê.
+ * ── ⚠️ ESTA FUNÇÃO ESCREVIA DOIS CAMPOS, E O SEGUNDO DEIXOU DE EXISTIR
+ * Ela gravava `planoId` (a faixa) e `limiteCriancas` (o teto de crianças) no
+ * MESMO batch, porque separá-los abria uma janela em que o motorista pagava a
+ * faixa de R$ 69 com teto de 40 — e ninguém via, porque cada campo estava
+ * certo do ponto de vista de quem o lia.
  *
- * `limiteCriancas` MORA EM `users`, e não em `taxaParceiros`, apesar de ser
- * cláusula. O motivo é a regra que o consome: `allow create` em `children`
- * confere o contador contra este teto a cada cadastro, via `getAfter` no doc
- * do motorista. Guardá-lo noutra coleção obrigaria a rule a uma segunda
- * leitura de documento em TODA criação de criança, para sempre.
+ * A amarra sumiu junto com o problema. Em 10/09/2026 o preço virou linear e o
+ * teto foi APAGADO do modelo: nada trava quando a operação cresce, e a fatura
+ * segue o número real de crianças. Não há mais dois campos para manter
+ * coerentes — há um.
  *
- * `teto` opcional é a saída para quem está ACIMA DA TABELA (mais de 40
- * crianças): ali não há preço de prateleira, é conversa, e o teto entra à mão.
+ * `users.limiteCriancas` não é mais escrito por ninguém. Documentos antigos
+ * ficam com o campo órfão de propósito: apagá-lo em massa é migração, não
+ * efeito colateral de uma gravação de plano.
  *
- * Só o dono escreve — as rules põem os dois campos na lista de gestão, fora do
- * alcance do parceiro. Limite que o limitado aumenta não é limite, e preço que
- * o devedor escolhe não é preço.
+ * Só o dono escreve — as rules põem o campo na lista de gestão, fora do
+ * alcance do parceiro. Preço que o devedor escolhe não é preço. O caminho do
+ * MOTORISTA é a callable `contratarPlano`, que grava a mesma coisa com o
+ * relógio do servidor.
  */
-export async function setPlanoDoParceiro(uid, planoId, { teto = null } = {}) {
+export async function setPlanoDoParceiro(uid, plano) {
   if (!uid) throw new Error('Sem motorista.');
-  const plano = planoPorId(planoId);
-  if (!plano && teto === null) {
-    throw new Error('Faixa desconhecida. Acima da tabela, informe o teto à mão.');
+  if (plano !== null && !planoValido(plano)) {
+    throw new Error('Plano desconhecido — use mensal ou anual.');
   }
-  const limite = teto === null ? plano.ate : Math.max(0, Math.trunc(Number(teto) || 0));
 
   const lote = writeBatch(db);
-  lote.set(
-    doc(db, 'users', uid),
-    { planoId: plano ? plano.id : null, limiteCriancas: limite },
-    { merge: true }
-  );
+  lote.set(doc(db, 'users', uid), { plano: plano || null }, { merge: true });
   await lote.commit();
 }
 
@@ -438,15 +434,20 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
   const tioUid = motorista?.uid;
   if (!tioUid || !mes) throw new Error('Sem motorista ou mês.');
 
-  // ── A FAIXA: CONTRATADA, OU A QUE O TAMANHO DELE PEDE ──────────────────
+  // ── O PLANO: CONTRATADO, OU O MENSAL COMO VITRINE ──────────────────────
   //
-  // Durante o teste ele não tem `planoId`, e a fatura mostra a faixa em que ele
-  // CAIRIA. Isso é o ponto inteiro da fatura isenta: ele vê o preço três vezes
-  // antes de ele importar. Sem isso a fatura de teste sairia sem preço nenhum,
+  // Durante o teste ele não tem `plano`, e a fatura mostra o que ele PAGARIA no
+  // mensal. Isso é o ponto inteiro da fatura isenta: ele vê o preço três vezes
+  // antes de ele importar. Sem isso a fatura de teste sairia sem valor nenhum,
   // e uma fatura sem valor não ensina nada.
-  const planoContratado = planoPorId(motorista.planoId);
-  const planoDoTamanho = planoPara(Number(motorista.criancasAtivas) || 0);
-  const plano = planoContratado || planoDoTamanho;
+  //
+  // ⚠️ A VITRINE É O MENSAL, e não o anual, mesmo o anual sendo mais barato.
+  // Mostrar o menor dos dois faria a primeira fatura de verdade parecer um
+  // aumento para quem escolhesse o mensal — e a peça existe justamente para
+  // que o dia 91 não tenha surpresa.
+  const plano = planoValido(motorista.plano) ? motorista.plano : null;
+  const planoDaConta = plano || PLANO.MENSAL;
+  const criancas = Number(motorista.criancasAtivas) || 0;
 
   // ── ISENTO POR QUÊ: concessão, ou mês de teste ─────────────────────────
   //
@@ -458,38 +459,40 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
   // pelo contrato, e `estadoDoTrial` já diz que quem tem contrato nunca está em
   // trial. Continuar isentando seria dar o resto do teste de graça a quem
   // acabou de aceitar o desconto por decidir cedo.
-  const mesDeTeste = planoContratado ? null : mesDeTesteDe(motorista.trialInicio, mes);
+  const mesDeTeste = plano ? null : mesDeTesteDe(motorista.trialInicio, mes);
   const isentoPorConcessao = isentoEm(motorista.isencaoAte, mes);
   const isento = isentoPorConcessao || mesDeTeste !== null;
 
   const conta = precoDoMes({
-    plano,
+    criancas,
+    plano: planoDaConta,
     fundador: motorista.condicaoFundador || null,
     indicacoesAtivas: Number(motorista.indicacoesAtivas) || 0,
     descontos: motorista.descontos,
     mes,
   });
 
-  // ⚠️ NÃO SE COBRA UMA FAIXA QUE ELE NUNCA CONTRATOU.
+  // ⚠️ NÃO SE COBRA UM PLANO QUE ELE NUNCA ESCOLHEU.
   //
-  // Fora do teste e sem `planoId`, `plano` acima é a faixa que o TAMANHO dele
-  // pede — uma projeção, boa para MOSTRAR numa fatura isenta e péssima para
-  // cobrar. Sem esta guarda, o motorista que deixou o teste vencer sem fechar
-  // recebia uma fatura de R$ 149 num preço que ele nunca aceitou, e o dono
-  // podia mandá-la ao gateway sem perceber.
+  // Fora do teste e sem `plano`, a conta acima é a VITRINE do mensal — boa para
+  // mostrar numa fatura isenta e péssima para cobrar. Sem esta guarda, o
+  // motorista que deixou o teste vencer sem fechar receberia uma fatura num
+  // preço que ele nunca aceitou, e o dono podia mandá-la ao gateway sem
+  // perceber.
   //
-  // A versão anterior desta função barrava o caso por acidente: sem `planoId`
-  // ela caía em "acima da tabela" e lançava. Ao fazer a fatura de teste passar
-  // a existir, essa barreira sumiu — e precisou virar uma regra explícita.
-  if (!isento && !planoContratado) {
-    throw new Error('Este parceiro ainda não contratou uma faixa: não há preço a cobrar.');
+  // A versão de faixas barrava o caso por acidente (sem `planoId` ela caía em
+  // "acima da tabela" e lançava). Ao fazer a fatura de teste existir, essa
+  // barreira sumiu — e precisou virar regra explícita. Ela continua explícita
+  // aqui, porque o preço linear tirou o último acidente que a substituía: hoje
+  // TODA operação tem preço, inclusive a de quem nunca contratou nada.
+  if (!isento && !plano) {
+    throw new Error('Este parceiro ainda não escolheu um plano: não há preço a cobrar.');
   }
 
-  // ACIMA DA TABELA NÃO VIRA FATURA DE ZERO. `precoDoMes` devolve `liquido:
-  // null` quando não há faixa, e zero ali seria indistinguível de "não paga" —
-  // exatamente o caso em que alguém precisa conversar antes de cobrar.
+  // Plano inválido não vira fatura de zero. `precoDoMes` devolve
+  // `liquido: null`, e zero ali seria indistinguível de "não paga".
   if (!isento && conta.liquido === null) {
-    throw new Error('Este parceiro está acima da tabela: defina a faixa antes de fechar.');
+    throw new Error('Plano desconhecido: corrija antes de fechar.');
   }
 
   const total = isento ? 0 : conta.liquido;
@@ -501,16 +504,18 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
       tioUid,
       mes,
 
-      // a faixa, como ela era neste mês
-      planoId: plano?.id || null,
-      planoRotulo: plano?.rotulo || '',
-      planoTeto: plano?.ate ?? null,
-      precoTabela: plano ? plano.preco : null,
-      criancasAtivas: Number(motorista.criancasAtivas) || 0,
-      // ⚠️ A FAIXA FOI CONTRATADA OU SUPOSTA? A fatura de teste mostra a faixa
-      // do TAMANHO dele, que é uma projeção — e projeção apresentada como
-      // cláusula é o começo de uma discussão sobre quanto foi combinado.
-      faixaContratada: Boolean(planoContratado),
+      // o plano e a conta, como eram neste mês
+      plano: planoDaConta,
+      planoRotulo: planoDaConta === PLANO.ANUAL ? 'Anual' : 'Mensal',
+      // ⚠️ A CONTA ABERTA VIAJA NA FATURA, e é ela que a tela imprime linha a
+      // linha. Guardar só o total transformaria cada fatura numa pergunta.
+      criancas,
+      taxaPorCrianca: TAXA[planoDaConta],
+      precoTabela: conta.bruto,
+      // ⚠️ O PLANO FOI ESCOLHIDO OU É VITRINE? A fatura de teste mostra o
+      // mensal como projeção — e projeção apresentada como cláusula é o começo
+      // de uma discussão sobre quanto foi combinado.
+      planoContratado: Boolean(plano),
 
       // os descontos, abertos — para a conversa que vem depois
       descontoTotal: conta.desconto,
@@ -518,7 +523,7 @@ export async function fecharFatura({ motorista, mes, config, ownerUid }) {
       descontoFechamento: conta.descontoFechamento,
       descontoIndicacao: conta.descontoIndicacao,
       // ⚠️ O PISO VAI CONGELADO NA FATURA, como o vencimento. Sem ele, uma
-      // fatura de R$ 34 com 100% de desconto nominal não se explica sozinha —
+      // fatura de R$ 19 com 100% de desconto nominal não se explica sozinha —
       // e é a fatura, não a tela, que sobra para conferir um ano depois.
       pisoAplicado: conta.pisoAplicado,
       descontoAbsorvido: conta.descontoAbsorvido,

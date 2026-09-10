@@ -24,9 +24,23 @@ import {
 } from '../functions/lib/cobrancaDaTaxa.js';
 import { urlDoAmbiente, SANDBOX, PRODUCAO } from '../functions/lib/asaasApi.js';
 import { assinaturaAteDoMes as noServidor } from '../functions/lib/eventoDeCobranca.js';
-import { assinaturaAteDoMes as noApp } from '../src/dominio/associacao/contaAtiva.js';
 import {
-  PLANOS as planosNoServidor,
+  assinaturaAteDoMes as noApp,
+  faturaZeradaEstendeAssinatura as zeradaNoApp,
+} from '../src/dominio/associacao/contaAtiva.js';
+// ⚠️ DE `fechamento.js` NÃO SE IMPORTA NADA AQUI — ele requer o SDK, e
+// `testar:imports` derrubaria a bateria. A cópia que este bloco protege é a
+// que MORA nele, e a proteção é indireta: ele importa `assinaturaAteDoMes` de
+// `eventoDeCobranca.js` em vez de ter a própria, então comparar as duas antigas
+// continua cobrindo as três.
+import {
+  TAXA as taxaNoServidor,
+  TAXA_ACIMA_DE_40 as marginalNoServidor,
+  CRIANCAS_NA_TAXA_CHEIA as tetoCheioNoServidor,
+  MINIMO as minimoNoServidor,
+  precoDaTabela as precoNoServidor,
+  precoDoMes as contaNoServidor,
+  mesDeTesteDe as mesDeTesteNoServidor,
   ESCADA as escadaNoServidor,
   RETORNO as retornoNoServidor,
   dentroDoTrial,
@@ -36,12 +50,24 @@ import {
   cobertoAteOMesSeguinte,
 } from '../functions/lib/reguaDoServidor.js';
 import {
-  PLANOS as planosNoApp,
+  PLANO,
+  PLANOS_DISPONIVEIS,
+  TAXA as taxaNoApp,
+  TAXA_ACIMA_DE_40 as marginalNoApp,
+  CRIANCAS_NA_TAXA_CHEIA as tetoCheioNoApp,
+  MINIMO as minimoNoApp,
+  precoDaTabela as precoNoApp,
+  precoDoMes as contaNoApp,
+  FUNDADOR,
+  ORIGEM,
   ESCADA_DE_FECHAMENTO as escadaNoApp,
   RETORNO as retornoNoApp,
   descontoDoFechamento,
 } from '../src/dominio/associacao/planos.js';
-import { degrauDaDecisao as degrauNoApp } from '../src/dominio/associacao/trial.js';
+import {
+  degrauDaDecisao as degrauNoApp,
+  mesDeTesteDe as mesDeTesteNoApp,
+} from '../src/dominio/associacao/trial.js';
 // ⚠️ DE `reguaDoServidor.js`, NUNCA DE `contratacao.js`.
 //
 // `contratacao.js` requer `firebase-functions`, que só existe em
@@ -266,20 +292,116 @@ checar('e mês inválido devolve nulo nas duas', null, noServidor('maio'));
 
 bloco('8. A régua espelhada no servidor bate com a do app');
 
-// POR QUE HÁ DUAS. `contratarPlano` roda nas functions, que não alcançam
-// `src/dominio` — o deploy só leva a pasta `functions/`. O que foi espelhado é
-// só a TABELA (id, teto, preço), nenhuma aritmética; e é este bloco que impede
-// a cópia de virar divergência.
+// POR QUE HÁ DUAS. `contratarPlano` e o fechamento rodam nas functions, que não
+// alcançam `src/dominio` — o deploy só leva a pasta `functions/`. Espelhamos a
+// TAXA e a conta que a usa, e é este bloco que impede a cópia de virar
+// divergência.
 //
-// Divergir aqui não dá erro: dá um motorista pagando R$ 149 com teto de 10,
-// descoberto na primeira fatura.
-checar(
-  'as faixas são as mesmas, na mesma ordem',
-  planosNoApp.map((p) => `${p.id}:${p.ate}:${p.preco}`),
-  planosNoServidor.map((p) => `${p.id}:${p.ate}:${p.preco}`)
-);
+// Divergir aqui não dá erro: dá um motorista cobrado por um preço que o app
+// nunca mostrou, descoberto na primeira fatura.
+checar('a taxa mensal é a mesma nos dois lados', taxaNoApp[PLANO.MENSAL], taxaNoServidor.mensal);
+checar('a taxa anual é a mesma', taxaNoApp[PLANO.ANUAL], taxaNoServidor.anual);
+checar('a marginal mensal é a mesma', marginalNoApp[PLANO.MENSAL], marginalNoServidor.mensal);
+checar('a marginal anual é a mesma', marginalNoApp[PLANO.ANUAL], marginalNoServidor.anual);
+checar('o mínimo mensal é o mesmo', minimoNoApp[PLANO.MENSAL], minimoNoServidor.mensal);
+checar('o mínimo anual é o mesmo', minimoNoApp[PLANO.ANUAL], minimoNoServidor.anual);
+checar('a 40ª criança marca a virada nos dois', tetoCheioNoApp, tetoCheioNoServidor);
+
+// ⚠️ COMPARAR AS CONSTANTES NÃO BASTA — A CONTA TAMBÉM É ESPELHADA.
+// O que gera a fatura é `precoDaTabela`, e ela existe dos dois lados: a ordem
+// (soma marginal, depois mínimo) é tão espelhável quanto os números, e inverter
+// só de um lado cobraria três mínimos de quem tem três crianças. Varremos 0 a
+// 60 crianças nos dois planos — 122 comparações.
+let precoDivergiu = null;
+for (const plano of PLANOS_DISPONIVEIS) {
+  for (let n = 0; n <= 60 && !precoDivergiu; n += 1) {
+    const app = precoNoApp({ criancas: n, plano });
+    const servidor = precoNoServidor(n, plano);
+    if (app !== servidor) precoDivergiu = `${plano}/${n}: app ${app} × servidor ${servidor}`;
+  }
+}
+checar('o preço de tabela bate criança por criança, 0 a 60, nos dois planos', null, precoDivergiu);
+checar('plano desconhecido é nulo nos dois lados', precoNoApp({ criancas: 20, plano: 'x' }), precoNoServidor(20, 'x'));
+
 // A antecipação (50% fixo em qualquer dia do teste) virou a ESCADA em
 // 07/09/2026, e o espelhamento dela está no bloco 10.
+// ⚠️ E A CONTA INTEIRA TAMBÉM É ESPELHADA DESDE 10/09/2026.
+//
+// O fechamento saiu do cliente e virou agendada, então o servidor precisou de
+// `precoDoMes` — descontos, teto de 100%, piso e tudo. É o TERCEIRO espelho
+// deste projeto, e o maior. Duplicar aritmética só é aceitável com um teste
+// que a compare caso a caso, e é este: a matriz abaixo cruza tamanho, plano,
+// fundador, indicações e descontos, e falha na primeira divergência.
+//
+// Divergir aqui é a fatura cobrando um número que o app nunca mostrou.
+const FUNDADORES = [null, FUNDADOR.METADE, FUNDADOR.VITALICIO];
+const DESCONTOS = [
+  null,
+  [],
+  [{ origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: null }],
+  [{ origem: ORIGEM.FECHAMENTO, fracao: 0.2, ate: null }],
+  [{ origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-08' }],
+  [{ origem: ORIGEM.CONCESSAO, fracao: 0.25, ate: '2026-12' }],
+  [{ origem: ORIGEM.CONCESSAO, fracao: 0.25, ate: '2026-08' }],
+  [{ origem: ORIGEM.FECHAMENTO, fracao: 0.3 }],
+  [{ origem: 'roleta', fracao: 0.5, ate: null }],
+];
+const MESES_MATRIZ = ['2026-09', '2027-09', null];
+
+let contaDivergiu = null;
+let casos = 0;
+for (const plano of PLANOS_DISPONIVEIS) {
+  for (const criancas of [0, 3, 9, 20, 40, 41, 60]) {
+    for (const fundador of FUNDADORES) {
+      for (const indicacoesAtivas of [0, 3, 10]) {
+        for (const descontos of DESCONTOS) {
+          for (const mes of MESES_MATRIZ) {
+            if (contaDivergiu) break;
+            const args = { criancas, plano, fundador, indicacoesAtivas, descontos, mes };
+            const a = JSON.stringify(contaNoApp(args));
+            const b = JSON.stringify(contaNoServidor(args));
+            casos += 1;
+            if (a !== b) {
+              contaDivergiu = `${plano}/${criancas}/${fundador}/${indicacoesAtivas}/${mes}: ${a} × ${b}`;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+checar('a conta fechada bate caso a caso, app × servidor', null, contaDivergiu);
+checar('e a matriz cobriu mais de mil casos', true, casos > 1000);
+
+// O mês de teste decide se a fatura sai isenta, e ele também virou espelho.
+// ⚠️ Ele NÃO conta "de 3": 90 dias corridos encostam em quatro meses de
+// calendário para quem começa no fim do mês.
+const inicio = new Date('2026-09-20T12:00:00');
+for (const m of ['2026-09', '2026-10', '2026-11', '2026-12', '2027-01']) {
+  checar(
+    `mês de teste de ${m} bate nos dois lados`,
+    mesDeTesteNoApp(inicio, m),
+    mesDeTesteNoServidor(inicio, m)
+  );
+}
+checar('e dezembro ainda é mês de teste para quem começou em 20/09', 4, mesDeTesteNoServidor(inicio, '2026-12'));
+
+// ⚠️ A REGRA QUE DECIDE SE UMA FATURA DE R$ 0 COMPRA TEMPO DE ASSINATURA.
+//
+// Ela existe porque fundador vitalício e isenção concedida produzem total zero
+// e nascem `quitada` — e `quitada` nunca passa por baixa nem por webhook. Sem
+// estender, o primeiro motorista da plataforma seria bloqueado no dia 90 com a
+// fatura marcada como paga.
+//
+// E o mês de TESTE é a exceção que custou o paywall inteiro uma vez: estender
+// ali daria acesso além do dia 90, calaria os três avisos do trial e
+// entregaria a frase do atraso por uma fatura que nunca existiu. Com o
+// fechamento agendado emitindo três faturas isentas por motorista, este
+// caminho deixou de ser raro — passou a ser o normal.
+checar('fatura zerada por concessão estende', true, zeradaNoApp({ total: 0, isencaoDeTeste: false }));
+checar('fatura zerada pelo TESTE não estende', false, zeradaNoApp({ total: 0, isencaoDeTeste: true }));
+checar('fatura com valor não estende', false, zeradaNoApp({ total: 82.6, isencaoDeTeste: false }));
+
 checar('o contrato dura 12 meses nos dois lados', 12, mesesNoServidor);
 
 bloco('9. Quem ainda merece o desconto de antecipação');

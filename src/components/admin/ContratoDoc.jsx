@@ -87,19 +87,37 @@ export default function ContratoDoc({ dados, aceite }) {
         — a mensalidade das crianças é recebida diretamente pelo ASSOCIADO.
       </Clausula>
 
-      <Clausula n="3" titulo="Faixa contratada e taxa">
+      <Clausula n="3" titulo="Plano contratado e taxa">
         <table className="w-full text-[12.5px]">
           <tbody>
-            <Linha rotulo="Faixa" valor={p.rotulo || '—'} forte />
-            {/* O TETO É A ÚNICA COISA QUE A FAIXA CAPA, e está escrito porque é
-              * a cláusula que o ASSOCIADO precisa poder cobrar de volta. Não
-              * existe Básico/Pro: mapa ao vivo, cobrança, agenda e relatório
-              * valem igual nas três faixas. */}
-            {p.teto != null && (
-              <Linha rotulo="Até" valor={`${p.teto} crianças ativas`} />
+            <Linha rotulo="Plano" valor={p.rotulo || '—'} forte />
+            {/* ⚠️ O QUE A CLÁUSULA DECLARA É A TAXA, NÃO UM VALOR.
+              * A versão 4 congelava o preço da faixa e o teto de crianças, e o
+              * efeito era pesado: crescer exigia contrato novo, com aceite
+              * novo, por ter ganhado um cliente. Declarando a taxa, a mesma
+              * cláusula continua verdadeira em qualquer tamanho.
+              * Não existe Básico/Pro: o app é completo nos dois planos. */}
+            {p.taxaPorCrianca != null && (
+              <Linha
+                rotulo="Taxa por criança ativa"
+                valor={`${formatBRL(p.taxaPorCrianca)} por mês`}
+                forte
+              />
+            )}
+            {p.minimoMensal != null && (
+              <Linha rotulo="Mínimo mensal" valor={formatBRL(p.minimoMensal)} />
+            )}
+            {p.taxaAcimaDe40 != null && (
+              <Linha
+                rotulo={`Acima de ${p.criancasNaTaxaCheia} crianças`}
+                valor={`${formatBRL(p.taxaAcimaDe40)} por criança excedente`}
+              />
             )}
             {p.precoTabela != null && (
-              <Linha rotulo="Preço de tabela" valor={`${formatBRL(p.precoTabela)} por mês`} />
+              <Linha
+                rotulo={`Hoje, com ${p.criancasNaAssinatura} ${p.criancasNaAssinatura === 1 ? 'criança' : 'crianças'}`}
+                valor={`${formatBRL(p.precoTabela)} por mês`}
+              />
             )}
             <Linha rotulo="Cobrança" valor="mensal" />
 
@@ -173,14 +191,17 @@ export default function ContratoDoc({ dados, aceite }) {
           </p>
         )}
 
-        {/* A FAIXA MUDA COM O TAMANHO DA OPERAÇÃO, e dizer isso aqui evita a
-          * conversa mais desagradável que existe: a cobrança que subiu sem
-          * aviso. Quem escolhe continuar na faixa menor aponta quais crianças
-          * saem — o app nunca escolhe por ele. */}
+        {/* A CONTA ACOMPANHA O TAMANHO, E DIZER ISSO AQUI EVITA A CONVERSA MAIS
+          * DESAGRADÁVEL QUE EXISTE: a cobrança que subiu sem aviso.
+          *
+          * ⚠️ O texto anterior dizia "passando do teto, o ASSOCIADO escolhe
+          * entre subir de faixa ou indicar quais crianças saem". Não há mais
+          * teto: nada trava quando ele cresce, e nenhuma criança precisa sair
+          * para a próxima entrar. */}
         <p className="mt-2 text-[11.5px] text-textMuted">
-          Passando do teto, o ASSOCIADO escolhe entre subir de faixa ou indicar
-          quais crianças saem. A plataforma não desativa criança por conta
-          própria.
+          O valor mensal é a taxa acima multiplicada pelo número de crianças
+          ativas, apurado no fechamento de cada mês. Não há teto de crianças, e
+          o ASSOCIADO é avisado antes de a conta mudar.
         </p>
       </Clausula>
 
@@ -222,9 +243,23 @@ export default function ContratoDoc({ dados, aceite }) {
       </Clausula>
 
       <Clausula n="6" titulo="Encerramento e dados">
-        Qualquer das partes pode encerrar mediante aviso de 30 dias. O ASSOCIADO
-        pode solicitar a exportação dos seus dados a qualquer tempo, e a
-        exclusão após o encerramento, na forma da LGPD.
+        {/* ⚠️ A CLÁUSULA É ASSIMÉTRICA DE PROPÓSITO, E SÓ UMA METADE MUDOU.
+          *
+          * Ela dizia "qualquer das partes pode encerrar mediante aviso de 30
+          * dias". O prazo saiu do lado do ASSOCIADO — cancelou, cancelou — e
+          * ficou do lado da CONTRATADA.
+          *
+          * Tirar os dois lados seria pior que não mexer: deixaria a plataforma
+          * podendo cortar da noite pro dia quem depende dela para trabalhar, o
+          * que é rescisão unilateral sem direito equivalente (CDC art. 51, XI).
+          * Quem tem mais poder é quem carrega a obrigação. */}
+        <strong>O ASSOCIADO pode encerrar a qualquer momento</strong>, sem aviso
+        prévio e sem multa, pelo próprio aplicativo. Não há nova cobrança a
+        partir do encerramento, e ele opera até o fim do período já pago.{' '}
+        <strong>A CONTRATADA</strong>, para encerrar, comunica com{' '}
+        <strong>30 dias de antecedência</strong>. O ASSOCIADO pode solicitar a
+        exportação dos seus dados a qualquer tempo, e a exclusão após o
+        encerramento, na forma da LGPD.
       </Clausula>
 
       {/* ── o rodapé do aceite ── */}

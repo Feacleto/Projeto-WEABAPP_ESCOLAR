@@ -40,13 +40,13 @@ const TEXTO = {
   trial: {
     titulo: 'Seu teste terminou',
     corpo:
-      'Escolha um plano para voltar a rodar. Suas crianças, os horários e o histórico continuam aqui, exatamente como você deixou.',
+      'Seus três meses de teste chegaram ao fim, e por isso a conta está pausada. Escolha um plano para voltar a operar — suas crianças, horários e histórico continuam salvos.',
     acao: { para: '/tio/planos', rotulo: 'Ver planos' },
   },
   atraso: {
     titulo: 'Sua conta está pausada',
     corpo:
-      'A mensalidade da plataforma está em aberto há mais de dez dias. Assim que o pagamento entrar, tudo volta no mesmo lugar.',
+      'Sua associação está em aberto há mais de dez dias, e por isso o acesso foi suspenso. Ele volta assim que o pagamento for confirmado.',
     acao: { para: '/tio/taxa', rotulo: 'Pagar agora' },
   },
   // ⚠️ COBERTURA VENCIDA NÃO É INADIMPLÊNCIA, E O TEXTO NÃO PODE CITAR PRAZO.
@@ -60,7 +60,7 @@ const TEXTO = {
   renovar: {
     titulo: 'Seu período pago terminou',
     corpo:
-      'Renove para voltar a rodar. Suas crianças, os horários e o histórico continuam aqui, exatamente como você deixou.',
+      'O período que você pagou chegou ao fim. Renove para voltar a operar — suas crianças, horários e histórico continuam salvos.',
     acao: { para: '/tio/taxa', rotulo: 'Renovar agora' },
   },
   // Suspensão é decisão de uma pessoa, e por isso não tem botão de
@@ -68,7 +68,7 @@ const TEXTO = {
   suspenso: {
     titulo: 'Sua conta está suspensa',
     corpo:
-      'Isso foi uma decisão da plataforma, e não um pagamento em aberto. Fale com a gente para entender e resolver.',
+      'A suspensão foi uma decisão da plataforma, não uma cobrança em aberto. Fale com a gente para resolver.',
     acao: null,
   },
 };
@@ -138,8 +138,7 @@ export default function ContaInativa({ motivo = 'trial' }) {
         * é gentileza: é o que impede o motorista de achar que os clientes dele
         * foram bloqueados junto, e ligar para vinte pessoas por engano. */}
       <p className="relative z-10 mt-6 max-w-[340px] text-center text-xs leading-relaxed text-textMuted">
-        As famílias continuam com o app delas. Elas não perdem o acesso por
-        causa disto.
+        As famílias continuam com o app delas. Elas não perdem o acesso.
       </p>
     </div>
   );

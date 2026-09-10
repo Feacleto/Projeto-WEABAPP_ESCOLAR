@@ -46,9 +46,9 @@ const MES = '2026-09';
 const NOVATO = { uid: 'a' };
 const EM_TESTE = { uid: 'b', trialInicio: dia('2026-09-01') };
 const ACABANDO = { uid: 'c', trialInicio: dia('2026-06-22') };
-const CONTRATADO = { uid: 'd', trialInicio: dia('2026-01-01'), planoId: 'ate25', assinaturaAte: dia('2026-10-31') };
+const CONTRATADO = { uid: 'd', trialInicio: dia('2026-01-01'), plano: 'mensal', criancasAtivas: 20, assinaturaAte: dia('2026-10-31') };
 const BLOQUEADO = { uid: 'e', trialInicio: dia('2026-01-01') };
-const DESISTENTE = { uid: 'f', trialInicio: dia('2026-01-01'), planoId: 'ate25', assinaturaAte: dia('2026-05-31') };
+const DESISTENTE = { uid: 'f', trialInicio: dia('2026-01-01'), plano: 'mensal', criancasAtivas: 20, assinaturaAte: dia('2026-05-31') };
 
 // ───────────────────────────── os degraus ──────────────────────────────────
 
@@ -60,7 +60,7 @@ checar('contratou e está em dia', 'contratado', degrauDo(CONTRATADO, HOJE));
 checar('teste acabou sem contrato', 'bloqueado', degrauDo(BLOQUEADO, HOJE));
 
 // ⚠️ O CASO QUE INFLA MRR. Quem contratou e parou de pagar continua com
-// `planoId`. Contá-lo como "contratado" somaria ao MRR dinheiro que não entra
+// `plano`. Contá-lo como "contratado" somaria ao MRR dinheiro que não entra
 // mais — e é o jeito mais comum de um painel mentir para o próprio dono.
 checar('contratou e parou de pagar é BLOQUEADO, não contratado', 'bloqueado', degrauDo(DESISTENTE, HOJE));
 checar('suspenso pelo dono também', 'bloqueado', degrauDo({ ...CONTRATADO, suspenso: true }, HOJE));
@@ -70,10 +70,10 @@ checar('suspenso pelo dono também', 'bloqueado', degrauDo({ ...CONTRATADO, susp
 bloco('2. Quanto cada um paga');
 
 checar('sem faixa não é zero, é ausência', null, mensalidadeDe(NOVATO, MES));
-checar('faixa média, sem desconto', 149, mensalidadeDe(CONTRATADO, MES).liquido);
+checar('operação de 20 crianças, sem desconto', 118, mensalidadeDe(CONTRATADO, MES).liquido);
 checar(
   'fundador de metade paga metade',
-  74.5,
+  59,
   mensalidadeDe({ ...CONTRATADO, condicaoFundador: FUNDADOR.METADE }, MES).liquido
 );
 checar(
@@ -87,8 +87,8 @@ const comFechamento = {
   ...CONTRATADO,
   descontos: [{ origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: '2026-09', degrau: 2 }],
 };
-checar('desconto vigente entra', 104.3, mensalidadeDe(comFechamento, '2026-09').liquido);
-checar('e no mês seguinte já não entra', 149, mensalidadeDe(comFechamento, '2026-10').liquido);
+checar('desconto vigente entra', 82.6, mensalidadeDe(comFechamento, '2026-09').liquido);
+checar('e no mês seguinte já não entra', 118, mensalidadeDe(comFechamento, '2026-10').liquido);
 
 // ───────────────────────────── a carteira ──────────────────────────────────
 
@@ -112,10 +112,10 @@ bloco('4. O MRR — o número que olha pra frente');
 
 // `receitaPropria` do painel antigo era soma de fatura QUITADA: olha pra trás.
 // Isto é quanto entra por mês enquanto ninguém sair.
-checar('o MRR é a soma de quem paga', 149, carteira.mrr);
-checar('e o de tabela, sem desconto nenhum', 149, carteira.mrrDeTabela);
+checar('o MRR é a soma de quem paga', 118, carteira.mrr);
+checar('e o de tabela, sem desconto nenhum', 118, carteira.mrrDeTabela);
 checar('sem desconto, a fração é zero', 0, carteira.descontoMedio);
-checar('o ticket por associado pagante', 149, carteira.ticketPorAssociado);
+checar('o ticket por associado pagante', 118, carteira.ticketPorAssociado);
 
 const comDescontos = resumirCarteira({
   parceiros: [
@@ -125,8 +125,8 @@ const comDescontos = resumirCarteira({
   agora: HOJE,
   mes: MES,
 });
-checar('dois contratados, um com metade', 223.5, comDescontos.mrr);
-checar('a tabela some os dois cheios', 298, comDescontos.mrrDeTabela);
+checar('dois contratados, um com metade', 177, comDescontos.mrr);
+checar('a tabela some os dois cheios', 236, comDescontos.mrrDeTabela);
 // A DIFERENÇA ENTRE OS DOIS É O QUE A PLATAFORMA ABRE MÃO, e este número não
 // existia em lugar nenhum antes.
 checar('e a fração abdicada é 25%', 0.25, comDescontos.descontoMedio);

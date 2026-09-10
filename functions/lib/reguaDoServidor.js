@@ -34,27 +34,54 @@
  * bateria e falha se algum alcançar um módulo que requer o SDK.
  *
  * ── O QUE MORA AQUI
- * A tabela de faixas, a escada de fechamento, o degrau de retorno e as contas
+ * A taxa por criança, a escada de fechamento, o degrau de retorno e as contas
  * de data que decidem o degrau. Nada disto toca banco: recebe `agora` por
  * parâmetro, como o resto do domínio deste projeto.
  */
 
 /**
- * A régua, espelhada — SÓ OS DADOS, nenhuma aritmética.
+ * A TAXA POR CRIANÇA, espelhada — SÓ OS DADOS E A CONTA, nada de banco.
  *
- * É a única coisa que precisa existir dos dois lados, e é uma tabela de três
- * linhas: id, teto, preço. `npm run testar:gateway` compara esta cópia com
- * `src/dominio/associacao/planos.js` faixa por faixa, então divergir é teste
- * vermelho e não descoberta numa fatura.
+ * Era uma tabela de faixas até 10/09/2026, quando o preço virou LINEAR: uma
+ * taxa por criança ativa, com um mínimo por fatura e uma taxa marginal acima
+ * da 40ª. O motivo está no cabeçalho de `src/dominio/associacao/planos.js` —
+ * na faixa, a criança da fronteira custava o preço de sete.
+ *
+ * `npm run testar:gateway` compara esta cópia com a do app criança por
+ * criança, então divergir é teste vermelho e não descoberta numa fatura.
  */
-const PLANOS = [
-  { id: 'ate10', ate: 10, preco: 69 },
-  { id: 'ate25', ate: 25, preco: 149 },
-  { id: 'ate40', ate: 40, preco: 229 },
-];
+const PLANO = { MENSAL: 'mensal', ANUAL: 'anual' };
+
+const TAXA = { mensal: 5.9, anual: 2.9 };
+const TAXA_ACIMA_DE_40 = { mensal: 4.9, anual: 2.4 };
+const CRIANCAS_NA_TAXA_CHEIA = 40;
+const MINIMO = { mensal: 49, anual: 29 };
+
+function centavos(v) {
+  return Math.round((Number(v) || 0) * 100) / 100;
+}
+
+function planoValido(plano) {
+  return plano === PLANO.MENSAL || plano === PLANO.ANUAL;
+}
 
 /**
- * A escada de fechamento, espelhada — SÓ OS DADOS, como a tabela de faixas.
+ * O preço de tabela, antes de qualquer desconto. Espelha `precoDaTabela`.
+ *
+ * ⚠️ A ORDEM É SOMA MARGINAL PRIMEIRO, MÍNIMO DEPOIS — o mínimo é um piso sobre
+ * o TOTAL, não sobre a taxa de cada criança.
+ */
+function precoDaTabela(criancas, plano) {
+  if (!planoValido(plano)) return null;
+  const n = Math.max(0, Math.floor(Number(criancas) || 0));
+  const cheias = Math.min(n, CRIANCAS_NA_TAXA_CHEIA);
+  const excedentes = Math.max(0, n - CRIANCAS_NA_TAXA_CHEIA);
+  const soma = cheias * TAXA[plano] + excedentes * TAXA_ACIMA_DE_40[plano];
+  return centavos(Math.max(soma, MINIMO[plano]));
+}
+
+/**
+ * A escada de fechamento, espelhada — SÓ OS DADOS, como a taxa acima.
  *
  * `npm run testar:gateway` compara esta cópia com `ESCADA_DE_FECHAMENTO` de
  * `src/dominio/associacao/planos.js` degrau por degrau. Divergir aqui é o
@@ -62,15 +89,22 @@ const PLANOS = [
  * cobraria uma coisa enquanto o contrato assinado diria outra.
  */
 const ESCADA = [
-  { degrau: 1, fracao: 0.5 },
-  { degrau: 2, fracao: 0.3 },
-  { degrau: 3, fracao: 0.15 },
+  { degrau: 1, fracao: 0.3 },
+  { degrau: 2, fracao: 0.2 },
+  { degrau: 3, fracao: 0.1 },
 ];
 
 /** Quem deixou o teste vencer e volta em até 30 dias. */
 const RETORNO = { fracao: 0.1, prazoDias: 30, degrau: 'retorno' };
 
-/** Os descontos duram o contrato inteiro. */
+/**
+ * O contrato dura isto, e renova de 12 em 12. É o prazo da MULTA do anual.
+ *
+ * ⚠️ NÃO É MAIS O PRAZO DO DESCONTO. Desde 10/09/2026 o desconto de fechamento
+ * é VITALÍCIO — `contratarPlano` grava `ate: null` — e o mês 13 deixou de
+ * existir como problema. `mesDaqui` continua aqui porque a CONCESSÃO, que é
+ * exceção e não régua, segue tendo prazo.
+ */
 const MESES_DE_CONTRATO = 12;
 
 /** Cada degrau é um mês de teste: 90 dias divididos por 3. */
@@ -185,8 +219,204 @@ function descontoDoDegrau(degrau) {
   return passo ? passo.fracao : 0;
 }
 
+/**
+ * ── A CONTA COMPLETA, ESPELHADA (10/09/2026) ────────────────────────────────
+ *
+ * ⚠️ ESTE É O SEGUNDO ESPELHO DESTE ARQUIVO, E ELE É MAIOR QUE O PRIMEIRO.
+ *
+ * Até aqui o servidor só precisava do PREÇO DE TABELA e da escada — quem
+ * fechava a fatura era o cliente, em `services/taxaService.js`, com o dono
+ * clicando "fechar todas". Isso deixava a peça central da conversão dependendo
+ * de um clique: enquanto a fatura não nascia, o degrau da escada decaía no
+ * relógio do servidor do mesmo jeito, e o motorista perdia 30% sem nunca ter
+ * recebido um preço.
+ *
+ * Para o fechamento virar agendado, a conta inteira precisa existir aqui:
+ * descontos, teto de 100%, piso e isenção. Duplicar aritmética é caro e este
+ * projeto já pagou por isso duas vezes (a régua de preço em `contratacao.js` e
+ * a escolha do indicado em `indicacao.js`), então a regra é a mesma das outras
+ * duas: **a cópia só é aceitável com um teste que a compare caso a caso.**
+ * `npm run testar:gateway` varre a matriz inteira — crianças × plano × fundador
+ * × indicações × descontos — e falha na primeira divergência.
+ *
+ * O que NÃO foi espelhado: nada de banco, nada de `require`. Continua sendo
+ * régua pura, e `npm run testar:imports` continua guardando isso.
+ */
+
+/** Espelha `FUNDADOR` de planos.js. */
+const FUNDADOR = { VITALICIO: 'vitalicio', METADE: 'metade' };
+
+/** Espelha `ORIGEM`. `roleta` continua fora, e é de propósito. */
+const ORIGEM = {
+  FECHAMENTO: 'fechamento',
+  ANTECIPACAO: 'antecipacao',
+  CONCESSAO: 'concessao',
+};
+
+const DESCONTO_POR_INDICACAO = 0.05;
+const PISO_DA_FATURA = 19;
+const FUNDADOR_E_FECHAMENTO_SOMAM = false;
+
+/** Quatro casas — ver o motivo em `planos.js`. */
+function fracaoDeDesconto(v) {
+  return Math.round((Number(v) || 0) * 10000) / 10000;
+}
+
+function descontoDoFundador(condicao) {
+  if (condicao === FUNDADOR.VITALICIO) return 1;
+  if (condicao === FUNDADOR.METADE) return 0.5;
+  return 0;
+}
+
+function descontoDeIndicacoes(indicacoesAtivas) {
+  const n = Math.max(0, Math.floor(Number(indicacoesAtivas) || 0));
+  return fracaoDeDesconto(n * DESCONTO_POR_INDICACAO);
+}
+
+/**
+ * ⚠️ `ate: null` É VITALÍCIO, E `ate` AUSENTE NÃO É — a mesma distinção
+ * estrita do app, e pelo mesmo motivo: campo esquecido virando desconto eterno
+ * vaza receita em silêncio, enquanto vitalício tratado como vencido tira do
+ * motorista um desconto prometido. Escrever `null` é deliberado.
+ */
+function descontosVigentes(descontos, mes) {
+  const m = String(mes || '');
+  const soma = { fechamento: 0, concessao: 0 };
+  if (!m) return soma;
+
+  (Array.isArray(descontos) ? descontos : []).forEach((d) => {
+    if (!d) return;
+    const vitalicio = d.ate === null;
+    if (!vitalicio) {
+      if (typeof d.ate !== 'string' || !d.ate) return;
+      if (m > d.ate) return;
+    }
+    const fracao = Math.max(0, Number(d.fracao) || 0);
+    if (d.origem === ORIGEM.FECHAMENTO || d.origem === ORIGEM.ANTECIPACAO) {
+      soma.fechamento += fracao;
+    } else if (d.origem === ORIGEM.CONCESSAO) soma.concessao += fracao;
+  });
+
+  soma.fechamento = fracaoDeDesconto(soma.fechamento);
+  soma.concessao = fracaoDeDesconto(soma.concessao);
+  return soma;
+}
+
+/** Espelha `isentoEm`. 'AAAA-MM', inclusive. */
+function isentoEm(isencaoAte, mes) {
+  if (!isencaoAte) return false;
+  return String(mes) <= String(isencaoAte);
+}
+
+/**
+ * Em que mês do teste cai esta fatura — 1, 2, 3… ou `null` se já passou.
+ *
+ * Espelha `mesDeTesteDe` de `trial.js`. NÃO conta "de 3": o teste tem 90 dias
+ * corridos e a fatura é por mês de calendário, então quem começa em 20/09
+ * encosta em QUATRO meses. Quem diz o fim é a data.
+ */
+function mesDeTesteDe(trialInicio, mes) {
+  const m = String(mes || '');
+  if (!/^\d{4}-\d{2}$/.test(m)) return null;
+
+  const d = paraData(trialInicio);
+  if (!d) return 1;
+
+  const [ano, mm] = m.split('-').map(Number);
+  // Meio-dia: à meia-noite qualquer conversão de fuso troca o mês inteiro.
+  const primeiroDia = new Date(ano, mm - 1, 1, 12, 0, 0, 0);
+  const fim = new Date(d.getTime() + DIAS_DE_TRIAL * MS_POR_DIA);
+  if (primeiroDia > fim) return null;
+
+  const indice = (ano - d.getFullYear()) * 12 + (mm - 1 - d.getMonth()) + 1;
+  return indice >= 1 ? indice : null;
+}
+
+/**
+ * A conta fechada de um mês. Espelha `precoDoMes`.
+ *
+ * A ORDEM É MÍNIMO → DESCONTO → PISO, e inverter os extremos é o erro caro:
+ * com o mínimo depois do desconto, quem tem 10 crianças e 30% travado pagaria
+ * o mínimo em vez de R$ 41,30, e o desconto sumiria sem nenhuma linha.
+ */
+function precoDoMes({
+  criancas = 0,
+  plano = PLANO.MENSAL,
+  fundador = null,
+  indicacoesAtivas = 0,
+  descontos = null,
+  mes = null,
+} = {}) {
+  const bruto = precoDaTabela(criancas, plano);
+
+  if (bruto === null) {
+    return {
+      bruto: null,
+      desconto: 0,
+      descontoFundador: 0,
+      descontoFechamento: 0,
+      descontoIndicacao: 0,
+      descontoConcessao: 0,
+      liquido: null,
+      pisoAplicado: false,
+      descontoAbsorvido: 0,
+      motivo: 'plano-desconhecido',
+    };
+  }
+
+  const comPrazo = descontosVigentes(descontos, mes);
+  const dFundador = descontoDoFundador(fundador);
+  const dFechamento = comPrazo.fechamento;
+  const dIndicacao = descontoDeIndicacoes(indicacoesAtivas);
+  const dConcessao = comPrazo.concessao;
+
+  const base = FUNDADOR_E_FECHAMENTO_SOMAM
+    ? dFundador + dFechamento
+    : Math.max(dFundador, dFechamento);
+
+  const desconto = Math.min(1, fracaoDeDesconto(base + dIndicacao + dConcessao));
+  const semPiso = centavos(bruto * (1 - desconto));
+  const piso = Math.min(PISO_DA_FATURA, bruto);
+  const isento = dFundador >= 1;
+  const liquido = isento ? semPiso : Math.max(semPiso, piso);
+
+  return {
+    bruto,
+    desconto,
+    descontoFundador: dFundador,
+    descontoFechamento: dFechamento,
+    descontoIndicacao: dIndicacao,
+    descontoConcessao: dConcessao,
+    liquido,
+    pisoAplicado: liquido > semPiso,
+    descontoAbsorvido: centavos(liquido - semPiso),
+    motivo: null,
+  };
+}
+
+/** O dia do vencimento, limitado a 28 — fevereiro não tem 30. */
+function limitarDiaVencimento(dia) {
+  const n = Math.trunc(Number(dia));
+  if (!Number.isFinite(n)) return 10;
+  return Math.min(Math.max(1, n), 28);
+}
+
+/** A data concreta de vencimento de um mês. Meio-dia, como o resto. */
+function dataDeVencimento(mes, dia = 10) {
+  const [ano, m] = String(mes).split('-').map(Number);
+  if (!ano || !m) return null;
+  return new Date(ano, m - 1, limitarDiaVencimento(dia), 12, 0, 0, 0);
+}
+
 module.exports = {
-  PLANOS,
+  PLANO,
+  TAXA,
+  TAXA_ACIMA_DE_40,
+  CRIANCAS_NA_TAXA_CHEIA,
+  MINIMO,
+  centavos,
+  planoValido,
+  precoDaTabela,
   ESCADA,
   RETORNO,
   MESES_DE_CONTRATO,
@@ -198,4 +428,17 @@ module.exports = {
   dentroDoTrial,
   degrauDaDecisao,
   descontoDoDegrau,
+  FUNDADOR,
+  ORIGEM,
+  DESCONTO_POR_INDICACAO,
+  PISO_DA_FATURA,
+  FUNDADOR_E_FECHAMENTO_SOMAM,
+  descontoDoFundador,
+  descontoDeIndicacoes,
+  descontosVigentes,
+  isentoEm,
+  mesDeTesteDe,
+  precoDoMes,
+  limitarDiaVencimento,
+  dataDeVencimento,
 };

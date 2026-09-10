@@ -24,9 +24,10 @@ import {
 } from '../../services/taxaService';
 import {
   FUNDADOR,
-  PLANOS,
-  planoPara,
-  planoPorId,
+    PLANO,
+  PLANOS_DISPONIVEIS,
+  TAXA,
+  planoValido,
   precoDoMes,
 } from '../../dominio/associacao/planos.js';
 
@@ -91,9 +92,10 @@ export default function TaxaTab() {
     if (!motoristas) return null;
     return motoristas.map((mot) => {
       const ativas = Number(mot.criancasAtivas) || 0;
-      const plano = planoPorId(mot.planoId);
+      const plano = planoValido(mot.plano) ? mot.plano : null;
       const conta = precoDoMes({
-        plano,
+        criancas: ativas,
+        plano: plano || PLANO.MENSAL,
         fundador: mot.condicaoFundador || null,
         indicacoesAtivas: Number(mot.indicacoesAtivas) || 0,
         descontos: mot.descontos,
@@ -103,9 +105,6 @@ export default function TaxaTab() {
         mot,
         ativas,
         plano,
-        // O plano que a operação dele PEDE hoje, que pode não ser o contratado.
-        // A diferença é a conversa: ou ele sobe de faixa, ou aponta quem sai.
-        sugerido: planoPara(ativas),
         conta,
         fatura: porUid[mot.uid] || null,
       };
@@ -136,7 +135,7 @@ export default function TaxaTab() {
     if (ok) toast.success(`${ok} fatura${ok > 1 ? 's' : ''} fechada${ok > 1 ? 's' : ''}.`);
   };
 
-  const semFaixa = linhas ? linhas.filter((l) => !l.plano).length : 0;
+  const semPlano = linhas ? linhas.filter((l) => !l.plano).length : 0;
 
   return (
     <div className="space-y-5">
@@ -156,14 +155,14 @@ export default function TaxaTab() {
           <SeletorDeMes mes={mes} onChange={setMes} />
         </div>
 
-        {/* PARCEIRO SEM FAIXA NÃO É DETALHE, É FATURA QUE NÃO SAI. Dizer em voz
+        {/* PARCEIRO SEM PLANO NÃO É DETALHE, É FATURA QUE NÃO SAI. Dizer em voz
           * alta evita o fechamento silencioso que cobra de nove e esquece um. */}
-        {semFaixa > 0 && (
+        {semPlano > 0 && (
           <p className="rounded-xl bg-warningSoft p-3 text-xs leading-relaxed text-warningText">
             <strong>
-              {semFaixa} parceiro{semFaixa > 1 ? 's' : ''} sem faixa definida.
+              {semPlano} parceiro{semPlano > 1 ? 's' : ''} sem plano definido.
             </strong>{' '}
-            Enquanto a faixa não for escolhida, o mês dele não fecha e ele não
+            Enquanto o plano não for escolhido, o mês dele não fecha e ele não
             recebe fatura.
           </p>
         )}
@@ -311,14 +310,14 @@ function ConfigDaCasa({ config }) {
 /* ─────────────── um parceiro ─────────────── */
 
 function LinhaDoParceiro({ linha, mes, config, ownerUid, onMudou }) {
-  const { mot, ativas, plano, sugerido, conta, fatura } = linha;
+  const { mot, ativas, plano, conta, fatura } = linha;
   const [salvando, setSalvando] = useState(false);
 
-  const trocarPlano = async (planoId) => {
+  const trocarPlano = async (novo) => {
     setSalvando(true);
     try {
-      await setPlanoDoParceiro(mot.uid, planoId);
-      toast.success('Faixa atualizada.');
+      await setPlanoDoParceiro(mot.uid, novo || null);
+      toast.success('Plano atualizado.');
       onMudou();
     } catch (err) {
       toast.error(err.message || 'Não deu pra salvar.');
@@ -367,7 +366,7 @@ function LinhaDoParceiro({ linha, mes, config, ownerUid, onMudou }) {
   // A faixa contratada é menor do que a operação dele pede. Não é erro: ele
   // PODE escolher menos do que usa. É conversa — ou sobe de faixa, ou aponta
   // quais crianças saem. O app nunca escolhe por ele.
-  const apertado = plano && ativas > plano.ate;
+
 
   return (
     <article className="rounded-2xl border border-border bg-card p-4 text-xs">
@@ -380,17 +379,17 @@ function LinhaDoParceiro({ linha, mes, config, ownerUid, onMudou }) {
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block font-bold text-text">Faixa contratada</span>
+          <span className="mb-1 block font-bold text-text">Plano contratado</span>
           <select
-            value={plano?.id || ''}
+            value={plano || ''}
             onChange={(e) => trocarPlano(e.target.value)}
             disabled={salvando}
             className="h-9 w-full rounded-xl border border-border bg-surface px-2 text-xs text-text"
           >
-            <option value="">— sem faixa —</option>
-            {PLANOS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.rotulo} · {formatCurrency(p.preco)}
+            <option value="">— sem plano —</option>
+            {PLANOS_DISPONIVEIS.map((p) => (
+              <option key={p} value={p}>
+                {p === PLANO.ANUAL ? 'Anual' : 'Mensal'} · {formatCurrency(TAXA[p])}/criança
               </option>
             ))}
           </select>
@@ -411,18 +410,10 @@ function LinhaDoParceiro({ linha, mes, config, ownerUid, onMudou }) {
         </label>
       </div>
 
-      {apertado && (
-        <p className="mt-2 rounded-xl bg-warningSoft p-2 leading-relaxed text-warningText">
-          A operação dele pede a faixa <strong>{sugerido?.rotulo || 'acima da tabela'}</strong>.
-          Com a faixa atual, {ativas - plano.ate} criança
-          {ativas - plano.ate > 1 ? 's ficam' : ' fica'} fora do teto.
-        </p>
-      )}
-
       <div className="mt-3 flex flex-wrap items-baseline gap-3 border-t border-border pt-3">
         <div className="flex-1">
           {conta.liquido === null ? (
-            <p className="text-textMuted">Acima da tabela — precisa de conversa.</p>
+            <p className="text-textMuted">Plano desconhecido — corrija acima.</p>
           ) : (
             <p className="tabular-nums">
               <span className="text-base font-extrabold text-text">

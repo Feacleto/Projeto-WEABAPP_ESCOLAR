@@ -55,6 +55,7 @@
  */
 
 import { degrauDo } from './carteira.js';
+import { planoValido } from './planos.js';
 import { estadoDaConta } from './contaAtiva.js';
 import { pesoDoRisco, riscoDo } from './risco.js';
 import { diasRestantes } from './trial.js';
@@ -309,13 +310,16 @@ export function montarFila({
     });
   });
 
-  // O FECHAMENTO DO MÊS, EM UMA LINHA. Só conta quem tem faixa: sem `planoId`
-  // não há o que faturar, e cobrar quem está em teste seria o erro que a linha
-  // estaria justamente ajudando a cometer.
+  // O FECHAMENTO DO MÊS, EM UMA LINHA. Só conta quem tem PLANO: sem
+  // `users.plano` não há o que faturar, e cobrar quem está em teste seria o
+  // erro que a linha estaria justamente ajudando a cometer.
+  //
+  // ⚠️ O campo é `plano` ('mensal' | 'anual'), não o antigo `planoId`, que
+  // guardava a faixa e morreu com elas em 10/09/2026.
   if (mes) {
     const aFechar = (Array.isArray(parceiros) ? parceiros : []).filter(
       (m) =>
-        m?.planoId &&
+        planoValido(m?.plano) &&
         m?.suspenso !== true &&
         !(faturas?.[m.uid] || []).some((f) => f?.mes === mes)
     ).length;

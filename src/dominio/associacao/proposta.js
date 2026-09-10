@@ -29,7 +29,7 @@
  * testável sem Firebase (`npm run testar:proposta`).
  */
 
-import { ACIMA_DA_TABELA, descontoDoFechamento, planoPara } from './planos.js';
+import { PLANO, descontoDoFechamento, precoDaTabela } from './planos.js';
 import { DIAS_DE_TRIAL, DIAS_POR_DEGRAU } from './trial.js';
 
 /** Só o primeiro nome — a mensagem é de pessoa para pessoa. */
@@ -66,12 +66,16 @@ export function mensagemDeProposta({
 } = {}) {
   const nome = primeiroNome(motorista?.name);
   const ativas = Math.max(0, Number(motorista?.criancasAtivas) || 0);
-  const sugerido = planoPara(ativas);
+  // O PREÇO DE TABELA DELE, nos dois planos. Com preço linear não existe mais
+  // "faixa sugerida" nem "acima da tabela": toda operação tem preço, de três a
+  // trezentas crianças, e a proposta pode sempre dizer um número.
+  const cheioMensal = precoDaTabela({ criancas: ativas, plano: PLANO.MENSAL });
+  const cheioAnual = precoDaTabela({ criancas: ativas, plano: PLANO.ANUAL });
   // ⚠️ A PROPOSTA LÊ O DEGRAU E ESCREVE O NÚMERO DAQUELE DEGRAU.
   //
   // Ela nunca inventa preço, e aqui isso passou a valer para o DESCONTO
-  // também: a escada de fechamento é 50/30/15 pelo mês da decisão, então uma
-  // mensagem que diz sempre "50%" oferece, a quem está no terceiro mês, uma
+  // também: a escada de fechamento é 30/20/10 pelo mês da decisão, então uma
+  // mensagem que diz sempre "30%" oferece, a quem está no terceiro mês, uma
   // condição que o servidor não vai gravar. O dono leria a mensagem, mandaria,
   // e o motorista veria outro número na fatura.
   //
@@ -92,12 +96,16 @@ export function mensagemDeProposta({
         : null;
   const pctFechamento = Math.round(descontoDoFechamento(degrauDeFechamento) * 100);
 
-  // ACIMA DA TABELA NÃO RECEBE PREÇO NENHUM na mensagem. Escrever um número
-  // ali seria cobrar menos do que a conversa produziria — e `precoDoMes` já
-  // devolve `motivo: 'conversa'` justamente para isso.
-  const acimaDaTabela = ativas > 0 && !sugerido;
-  const precoCheio = sugerido ? reais(sugerido.preco) : null;
-  const precoDele = conta && conta.motivo !== ACIMA_DA_TABELA ? reais(conta.liquido) : null;
+  // ⚠️ "ACIMA DA TABELA" DEIXOU DE EXISTIR em 10/09/2026, e com ele some o
+  // único caso em que a proposta ficava sem número. O preço é linear: a
+  // operação de 60 crianças tem preço tanto quanto a de 6, e mandar uma
+  // mensagem sem valor para o grande era mandá-lo perguntar.
+  //
+  // O que continua valendo é a regra: ela nunca INVENTA preço. Todo número
+  // abaixo sai de `precoDaTabela` ou de `conta`, que é `precoDoMes`.
+  const precoCheio = cheioMensal == null ? null : reais(cheioMensal);
+  const precoAnual = cheioAnual == null ? null : reais(cheioAnual);
+  const precoDele = conta && conta.liquido != null ? reais(conta.liquido) : null;
 
   if (degrau === 'nao_comecou') {
     // ATIVAÇÃO. Ele criou a conta e não rodou — o relógio do teste nem começou,
@@ -123,27 +131,32 @@ export function mensagemDeProposta({
         ? 'Seu teste está acabando'
         : `Seu teste termina em ${plural(diasRestantes, 'dia', 'dias')}`;
 
-    if (acimaDaTabela) {
-      return {
-        assunto: 'Falar sobre o plano',
-        texto:
-          `Oi ${nome}! ${prazo}.\n\n` +
-          `Com ${plural(ativas, 'criança', 'crianças')}, sua operação passou da ` +
-          `tabela — nesse tamanho o valor a gente conversa. Me chama que eu te ` +
-          `passo os números.`,
-      };
-    }
-
+    // ⚠️ OS DOIS PLANOS VÃO NA MESMA MENSAGEM, e isso não é enfeite: se o dono
+    // manda só o mensal, o motorista que quer economizar acha que o preço da
+    // plataforma é o mais alto dos dois. A comparação é a oferta.
+    //
+    // ⚠️ "ACIMA DA TABELA" DEIXOU DE EXISTIR, e com ele o ramo em que a
+    // proposta ficava sem número. Preço linear tem valor em qualquer tamanho, e
+    // mandar uma mensagem sem valor para o maior associado era mandá-lo
+    // perguntar.
     return {
       assunto: 'Propor contratação',
       texto:
-        `Oi ${nome}! ${prazo}.\n\n` +
-        `Com ${plural(ativas, 'criança', 'crianças')} você fica na faixa de ` +
-        `${precoCheio} por mês` +
-        (precoDele && precoDele !== precoCheio ? ` — ${precoDele} com os seus descontos` : '') +
-        `.\n\n` +
-        `Contratando ANTES do fim do teste, você fica com ${pctFechamento}% de ` +
-        `desconto pelos 12 meses de contrato. É só abrir Planos no app.`,
+        `Oi ${nome}! ${prazo}.
+
+` +
+        `Com ${plural(ativas, 'criança', 'crianças')}, sua associação fica em ` +
+        `${precoCheio} por mês no plano mensal` +
+        (precoDele && precoDele !== precoCheio ? ` (${precoDele} com os seus descontos)` : '') +
+        `, ou ${precoAnual} por mês no anual, com compromisso de 12 meses.
+
+` +
+        `Quanto antes você contratar, menor fica a mensalidade — e o desconto ` +
+        `não tem prazo para acabar. Contratando o mensal antes do fim do teste, ` +
+        `você garante ${pctFechamento}%.
+
+` +
+        `É só abrir Planos no app.`,
     };
   }
 

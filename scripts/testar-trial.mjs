@@ -26,6 +26,7 @@ import {
   avisoDoTrial,
   degrauDaDecisao,
   fimDoDegrau,
+  ultimoDiaDoDegrau,
   mesDeTesteDe,
 } from '../src/dominio/associacao/trial.js';
 
@@ -226,6 +227,24 @@ checar('o terceiro, no fim do teste', '2026-05-30', fimDoDegrau(INI, 3).toISOStr
 checar('não há quarto degrau para datar', null, fimDoDegrau(INI, 4));
 checar('nem o retorno tem data de virada', null, fimDoDegrau(INI, 'retorno'));
 checar('sem início, sem data', null, fimDoDegrau(null, 1));
+
+// ⚠️ A DATA QUE A TELA MOSTRA É UM DIA ANTES, E ISSO JÁ FOI UM BUG.
+//
+// `fimDoDegrau` é o limite EXCLUSIVO: no dia que ela devolve, `degrauDaDecisao`
+// já responde o degrau seguinte. A tela imprimia essa data em "contratando até
+// 31/03 você garante 30%" — e quem contratasse em 31/03 receberia 20%, porque
+// o dia 30 do teste já é o segundo degrau.
+//
+// Os dois casos abaixo cercam a fronteira: o último dia que ainda vale, e o
+// primeiro que não vale mais.
+checar('o último dia do primeiro degrau é 30/03', '2026-03-30', ultimoDiaDoDegrau(INI, 1).toISOString().slice(0, 10));
+checar('e nesse dia o degrau ainda é o primeiro', 1,
+  degrauDaDecisao({ inicio: INI, agora: new Date(ultimoDiaDoDegrau(INI, 1).getTime() + 9 * 60 * 60 * 1000) }));
+checar('no dia da virada já é o segundo', 2,
+  degrauDaDecisao({ inicio: INI, agora: new Date(fimDoDegrau(INI, 1).getTime() + 9 * 60 * 60 * 1000) }));
+checar('o último dia do segundo é 29/04', '2026-04-29', ultimoDiaDoDegrau(INI, 2).toISOString().slice(0, 10));
+checar('sem degrau, sem data', null, ultimoDiaDoDegrau(INI, 4));
+checar('sem início, sem data', null, ultimoDiaDoDegrau(null, 1));
 checar('cada degrau é um mês de trinta dias', 30, DIAS_POR_DEGRAU);
 checar('e três deles fecham o teste', DIAS_DE_TRIAL, 3 * DIAS_POR_DEGRAU);
 

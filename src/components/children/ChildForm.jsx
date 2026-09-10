@@ -17,7 +17,6 @@ import {
   ArrowRight,
   Calendar,
   Paperclip,
-  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../common/Card';
@@ -30,8 +29,7 @@ import { uploadContratoAnterior } from '../../services/photoService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import { useAuth } from '../../hooks/useAuth';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
-import { useLimiteCriancas } from '../../hooks/useLimiteCriancas';
-import { searchAddress } from '../../services/locationService';
+import { searchAddress, buscarCep } from '../../services/locationService';
 import { normalizaHora, periodoDaHora, horaCurta } from '../../dominio/rota/horarios';
 import { useEscolas } from '../../hooks/useEscolas';
 import {
@@ -39,7 +37,11 @@ import {
   unmaskPhone,
   isValidPhone,
   isValidEmail,
+  maskCep,
+  unmaskCep,
+  isValidCep,
 } from '../../compartilhado/masks';
+import { montarEndereco } from '../../compartilhado/formatters';
 
 const GENDERS = [
   { value: 'male', label: 'Menino' },
@@ -76,6 +78,24 @@ const EMPTY_FORM = {
   parent2Name: '',
   parent2Phone: '',
   address: '',
+  // O CEP É GRAVADO; NÚMERO E COMPLEMENTO NÃO.
+  //
+  // Os três entram no `address`, que é a única string que a rota, o mapa, o
+  // contrato e a tela do pai leem. Guardar o número num campo próprio TAMBÉM
+  // criaria duas versões do mesmo dado e um jeito de elas discordarem — e
+  // discordância silenciosa em endereço de criança é o pior tipo.
+  //
+  // O CEP é a exceção porque ele não é texto de endereço, é a CHAVE dele:
+  // guardado, dá pra reconsultar a rua e recalcular a coordenada depois sem
+  // pedir nada a ninguém. `addChild` persiste só o que está na lista dele, e
+  // os outros dois morrem no formulário de propósito.
+  cep: '',
+  numero: '',
+  complemento: '',
+  // O que o ViaCEP devolveu, guardado pra montar a consulta do Nominatim com
+  // as partes separadas. `null` significa "este endereço é digitado à mão", e
+  // é o que faz o campo livre parar de ser reescrito — ver `Step2Home`.
+  cepPartes: null,
   lat: '',
   lng: '',
   schoolId: '',
@@ -108,8 +128,6 @@ const EMPTY_FORM = {
  */
 export default function ChildForm() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const limite = useLimiteCriancas(user?.uid);
   const [form, setForm] = useState(EMPTY_FORM);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -145,6 +163,18 @@ export default function ChildForm() {
       // exigir o geocoding deixava o tio sem conseguir cadastrar a criança.
       // Quem ficar sem coordenada é salvo com geoPending e resolve depois.
       if (!form.address.trim()) errs.address = 'Diga o endereço de casa.';
+      // O NÚMERO SÓ É EXIGIDO DE QUEM USOU O CEP, e a assimetria é o ponto.
+      //
+      // Com a rua preenchida pelo ViaCEP, o número é a única coisa que separa
+      // "a rua certa" da "casa certa" — e é exatamente o que se esquece num
+      // campo livre. Aqui ele tem campo próprio, então pode ser cobrado.
+      //
+      // Quem NÃO consultou o CEP segue digitando tudo numa linha, como sempre:
+      // cobrar o campo separado de quem não tem a rua preenchida devolveria o
+      // pedágio que o CEP veio tirar.
+      if (form.cepPartes?.logradouro && !form.numero.trim()) {
+        errs.numero = 'Falta o número da casa.';
+      }
     }
     // Escola é OPCIONAL: o tio muitas vezes cadastra a criança no meio da
     // rota e completa a ficha depois. Validamos só o que foi preenchido.
@@ -260,21 +290,6 @@ export default function ChildForm() {
     );
   }
 
-  // VAGAS ESGOTADAS — a porta fecha ANTES do formulário.
-  //
-  // Não é o botão de salvar que fica cinza no fim: ele preencheria oito
-  // campos, escolheria o ponto no mapa, e só então descobriria que não cabe.
-  // O limite é do contrato, não do preenchimento — então ele aparece onde a
-  // decisão começa.
-  //
-  // Quem impede de verdade são as rules (`allow create` em `children` valida
-  // o contador contra o limite). Esta tela existe pra dizer o que aconteceu e
-  // dar o caminho: sem ela, o cadastro falharia com erro de permissão, que
-  // não é informação pra ninguém.
-  if (limite.lotado) {
-    return <SemVaga limite={limite} onVoltar={() => navigate('/tio/children')} />;
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header próprio do wizard — sem o Header global pra ter mais espaço */}
@@ -311,12 +326,7 @@ export default function ChildForm() {
           />
         )}
         {step === 2 && (
-          <Step2Home
-            form={form}
-            setForm={setForm}
-            setField={setField}
-            errors={errors}
-          />
+          <Step2Home form={form} setForm={setForm} errors={errors} />
         )}
         {step === 3 && (
           <Step3School
@@ -503,13 +513,112 @@ function Step1Child({ form, setForm, setField, errors }) {
 
 /* ─────────────── Passo 2: Casa ─────────────── */
 
-function Step2Home({ form, setForm, setField, errors }) {
+function Step2Home({ form, setForm, errors }) {
   const [searching, setSearching] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false);
   // null = nunca buscou · 'found' · 'notFound' — controla a mensagem exibida
   const [searchState, setSearchState] = useState(null);
+  // null = nunca consultou · 'ok' · 'notFound' · 'offline'
+  const [cepState, setCepState] = useState(null);
+  // O último CEP realmente consultado — ver `onCepChange`.
+  const [cepConsultado, setCepConsultado] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const hasCoord = form.lat !== '' && form.lng !== '' && form.lat != null;
+  const veioDoCep = !!form.cepPartes?.logradouro;
+
+  /**
+   * O ENDEREÇO OU É DERIVADO DO CEP, OU É DIGITADO À MÃO — nunca os dois.
+   *
+   * Enquanto `cepPartes` existir, o campo livre é remontado a cada mudança de
+   * número ou complemento. No instante em que a pessoa digita NELE, ela passa
+   * a ser dona dele: `cepPartes` vira `null` e nada mais reescreve o texto.
+   *
+   * Sem essa regra, corrigir "Rua" para "Estrada" à mão e depois ajustar o
+   * número apagaria a correção — e o motorista não teria como saber o que comeu
+   * o texto dele. Um estado, um dono.
+   */
+  const consultarCep = async (digitos) => {
+    setBuscandoCep(true);
+    setCepConsultado(digitos);
+    setCepState(null);
+    try {
+      const partes = await buscarCep(digitos);
+      setForm((prev) => ({
+        ...prev,
+        cepPartes: partes,
+        address: montarEndereco({
+          ...partes,
+          numero: prev.numero,
+          complemento: prev.complemento,
+        }),
+        // ENDEREÇO NOVO ZERA A COORDENADA VELHA.
+        //
+        // Sem isto a tela seguiria estampando "Local confirmado!" sobre o ponto
+        // do endereço ANTERIOR — a mesma afirmação confiante em cima de
+        // coordenada errada que motivou esta mudança inteira, agora causada por
+        // ela.
+        lat: '',
+        lng: '',
+      }));
+      setSearchState(null);
+      setCepState('ok');
+    } catch (err) {
+      setCepState(/consultar/.test(err?.message || '') ? 'offline' : 'notFound');
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
+
+  /**
+   * A CONSULTA DISPARA SOZINHA NO OITAVO DÍGITO, e não num botão.
+   *
+   * CEP tem tamanho FIXO — é o único dado deste formulário com essa
+   * propriedade, e é o que permite ao app saber que a pessoa terminou de
+   * digitar sem precisar perguntar. Um botão "Buscar CEP" ao lado seria um
+   * toque a mais num cadastro que é feito com uma mão, no portão da escola.
+   *
+   * `cepConsultado` existe porque o `onChange` continua disparando depois do
+   * oitavo dígito — apagar e redigitar o último número, por exemplo. Sem a
+   * guarda, cada tecla viraria uma requisição: o ViaCEP não cobra, mas
+   * atropelar serviço de terceiro de graça é como se perde o de graça.
+   */
+  const onCepChange = (e) => {
+    const cep = maskCep(e.target.value);
+    setForm((prev) => ({ ...prev, cep }));
+
+    const digitos = unmaskCep(cep);
+    if (digitos.length < 8) {
+      setCepState(null);
+      setCepConsultado('');
+      return;
+    }
+    if (!isValidCep(cep) || digitos === cepConsultado) return;
+    consultarCep(digitos);
+  };
+
+  // Número e complemento remontam o endereço — mas só enquanto ele for
+  // derivado do CEP (ver o comentário de `consultarCep`).
+  const setParteDoEndereco = (campo) => (e) => {
+    const valor = e.target.value;
+    setForm((prev) => {
+      if (!prev.cepPartes?.logradouro) return { ...prev, [campo]: valor };
+      return {
+        ...prev,
+        [campo]: valor,
+        address: montarEndereco({
+          ...prev.cepPartes,
+          numero: campo === 'numero' ? valor : prev.numero,
+          complemento: campo === 'complemento' ? valor : prev.complemento,
+        }),
+      };
+    });
+  };
+
+  const onEnderecoDigitado = (e) => {
+    const valor = e.target.value;
+    setForm((prev) => ({ ...prev, address: valor, cepPartes: null }));
+  };
 
   const onSearch = async () => {
     if (!form.address.trim()) {
@@ -518,12 +627,27 @@ function Step2Home({ form, setForm, setField, errors }) {
     }
     setSearching(true);
     try {
-      const result = await searchAddress(form.address);
+      // Com as partes do CEP em mão, a consulta vai MONTADA (número na frente
+      // do nome da rua, sem o complemento) em vez de mandar a frase inteira —
+      // ver `consultaDoEndereco` no locationService.
+      const partes = form.cepPartes
+        ? { ...form.cepPartes, numero: form.numero }
+        : null;
+      const result = await searchAddress(form.address, partes);
       setForm((prev) => ({
         ...prev,
         lat: result.lat,
         lng: result.lng,
-        address: result.displayName || prev.address,
+        // O `display_name` do Nominatim SÓ substitui o texto quando o endereço
+        // foi digitado à mão — ali ele costuma sair mais completo que a frase.
+        //
+        // Vindo do CEP é o contrário: ele é verboso, traz "Região
+        // Metropolitana" e microrregião, e com frequência PERDE O NÚMERO.
+        // Trocar o endereço dos Correios por ele desfaria exatamente o conserto
+        // que o número em campo próprio acabou de fazer.
+        address: prev.cepPartes
+          ? prev.address
+          : result.displayName || prev.address,
       }));
       setSearchState('found');
       toast.success('Encontramos o local!');
@@ -550,17 +674,82 @@ function Step2Home({ form, setForm, setField, errors }) {
         subtitle="O endereço da casa pra você passar todo dia."
       />
 
+      {/* O CEP É ATALHO, NUNCA REQUISITO.
+        * Ele preenche rua, bairro e cidade sozinho, e o ganho de verdade é o
+        * que sobra: o NÚMERO ganha campo próprio, e é ele que decide em que
+        * calçada a perua para. Quem não tem o CEP na mão digita tudo no campo
+        * de baixo, como sempre — cadastro feito no meio da rota não pode passar
+        * a depender de consultar papel. */}
+      <Input
+        label="CEP"
+        placeholder="00000-000"
+        icon={MapPin}
+        value={form.cep}
+        onChange={onCepChange}
+        inputMode="numeric"
+        maxLength={9}
+        hint="Opcional — preenche a rua sozinho."
+      />
+
+      {buscandoCep && (
+        <p className="text-sm text-textMuted">Consultando o CEP…</p>
+      )}
+
+      {/* CEP não encontrado e consulta fora do ar dizem coisas DIFERENTES: uma
+        * é "confira o que você digitou", a outra é "não é você". Um texto só
+        * pros dois manda a pessoa reconferir um CEP que está certo. */}
+      {cepState === 'notFound' && (
+        <div className="text-sm bg-warningSoft border border-warningBorder text-warningText px-4 py-3 rounded-xl space-y-1">
+          <p className="font-semibold">Não achamos esse CEP.</p>
+          <p>Confira os números — ou digite o endereço completo abaixo.</p>
+        </div>
+      )}
+
+      {cepState === 'offline' && (
+        <div className="text-sm bg-warningSoft border border-warningBorder text-warningText px-4 py-3 rounded-xl space-y-1">
+          <p className="font-semibold">A consulta de CEP está fora do ar.</p>
+          <p>Sem problema — digite o endereço completo abaixo.</p>
+        </div>
+      )}
+
       <Input
         label="Endereço completo"
         placeholder="Rua, número, bairro, cidade"
         icon={Home}
         value={form.address}
-        onChange={setField('address')}
-        hint="Quanto mais completo, melhor o sistema encontra."
+        onChange={onEnderecoDigitado}
+        hint={
+          veioDoCep
+            ? 'Preenchido pelo CEP. Se editar aqui, o texto passa a ser seu.'
+            : 'Quanto mais completo, melhor o sistema encontra.'
+        }
         error={errors.address}
         required
         autoFocus
       />
+
+      {/* Número e complemento só aparecem depois do CEP porque é ele que dá
+        * sentido a eles: sem a rua preenchida, "123" sozinho não é endereço.
+        * Aqui o número é OBRIGATÓRIO — ver a validação do passo 2. */}
+      {veioDoCep && (
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Número"
+            placeholder="123"
+            value={form.numero}
+            onChange={setParteDoEndereco('numero')}
+            inputMode="numeric"
+            error={errors.numero}
+            required
+          />
+          <Input
+            label="Complemento"
+            placeholder="apto 42"
+            value={form.complemento}
+            onChange={setParteDoEndereco('complemento')}
+          />
+        </div>
+      )}
 
       <Button
         type="button"
@@ -1071,75 +1260,6 @@ function InviteCodeSuccess({ code, childId, childName, parentPhone, onDone }) {
   );
 }
 
-/**
- * A TELA DE "NÃO CABE MAIS" — e por que ela não é um erro.
- *
- * O tom importa. Ele não fez nada errado: preencheu o contrato dele e ele
- * encheu, o que é a melhor notícia possível sobre o negócio dele. Uma tela
- * vermelha de bloqueio trata crescimento como infração.
- *
- * O NÚMERO VEM PRIMEIRO porque é a única pergunta que ele tem ao bater aqui:
- * quantas eu contratei? E o botão é a resposta pra segunda: como aumento?
- *
- * ⚠️ ELE MANDAVA PARA O WHATSAPP, E ISSO DEIXOU DE SER VERDADE (06/09/2026).
- *
- * O texto dizia: "ampliar limite é renegociar contrato e orçamento — não existe
- * botão que faça isso sozinho, e fingir que existe criaria uma espera sem
- * prazo". Estava certo enquanto o preço era negociado.
- *
- * Hoje existe o botão, e é `/tio/planos`: ele troca de faixa sozinho, a
- * callable grava o teto novo, e o contrato sai na hora. Mandar para o WhatsApp
- * agora é o inverso do problema antigo — é criar a espera que a tela dizia
- * querer evitar, com um caminho pronto ao lado.
- */
-function SemVaga({ limite, onVoltar }) {
-
-  return (
-    <div className="min-h-screen px-5 pt-4">
-      <button
-        type="button"
-        onClick={onVoltar}
-        className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
-      >
-        <ArrowLeft size={18} /> Voltar
-      </button>
-
-      <div className="mx-auto mt-8 max-w-md text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Users size={26} />
-        </div>
-
-        <h1 className="mt-4 text-xl font-extrabold tracking-tight text-text">
-          Suas vagas acabaram
-        </h1>
-
-        <p className="mt-2 text-sm leading-relaxed text-textMuted">
-          Você contratou <strong className="text-text">{limite.limite}</strong>{' '}
-          {limite.limite === 1 ? 'vaga' : 'vagas'} e está usando{' '}
-          <strong className="text-text">{limite.usadas}</strong>. Subir de faixa
-          leva um toque, e o contrato novo sai na hora.
-        </p>
-
-        <Link
-          to="/tio/planos"
-          className="tap mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-bold text-white"
-        >
-          <Users size={17} />
-          Ver as faixas
-        </Link>
-
-        {/* A SAÍDA QUE NÃO CUSTA NADA, e ela é real: o limite conta crianças
-          * ATIVAS. Quem parou de atender uma família libera a vaga ao
-          * desativá-la, sem falar com ninguém. Esconder isso pra empurrar
-          * renegociação seria vender vaga que ele já tem. */}
-        <p className="mt-4 text-xs leading-relaxed text-textMuted">
-          Parou de atender alguma família? Desative a criança na sua turma — a
-          vaga volta na hora, e o histórico dela não se perde.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 /**
  * ANEXAR O CONTRATO QUE JÁ EXISTIA — foto ou arquivo.

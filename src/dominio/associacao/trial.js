@@ -135,11 +135,22 @@ export function degrauDaDecisao({ inicio, agora } = {}) {
 }
 
 /**
- * A data em que o degrau atual VIRA o próximo — a que a tela precisa mostrar.
+ * A data em que o degrau atual VIRA o próximo.
  *
- * Sem ela a oferta é "50% se você decidir logo", e "logo" não é uma data:
- * urgência sem prazo não é urgência, é pressão. `null` para quem está no
- * retorno ou fora da escada, porque ali não há próximo degrau melhor.
+ * ⚠️ ESTA DATA NÃO É A QUE A TELA MOSTRA — use `ultimoDiaDoDegrau`.
+ *
+ * Ela é o limite EXCLUSIVO: no dia que ela devolve, `degrauDaDecisao` já
+ * responde o degrau seguinte. Contratar em 10/10, quando o primeiro degrau
+ * vira em 10/10, grava 20% e não 30%.
+ *
+ * O texto "contratando até 10/10 você garante 30%" saiu daqui e prometia um
+ * desconto que o servidor não ia gravar — a mesma classe de erro que a régua
+ * espelhada existe para impedir, só que entre a tela e a régua em vez de entre
+ * dois arquivos. Ela continua exportada porque é a fronteira de verdade; o que
+ * mudou é quem pode imprimi-la.
+ *
+ * `null` para quem está no retorno ou fora da escada, porque ali não há
+ * próximo degrau melhor.
  */
 export function fimDoDegrau(inicio, degrau) {
   const d = paraData(inicio);
@@ -147,6 +158,23 @@ export function fimDoDegrau(inicio, degrau) {
   if (!d || !(n >= 1 && n <= DIAS_DE_TRIAL / DIAS_POR_DEGRAU)) return null;
   return new Date(d.getTime() + n * DIAS_POR_DEGRAU * MS_POR_DIA);
 }
+/**
+ * O ÚLTIMO DIA EM QUE O DEGRAU AINDA VALE — a data que a tela mostra.
+ *
+ * Um dia antes de `fimDoDegrau`, e essa diferença de 24 horas é a distância
+ * entre uma promessa cumprida e um motorista lendo 30% na tela e recebendo uma
+ * fatura de 20%.
+ *
+ * Sem uma data a oferta é "decida logo", e "logo" não é prazo: urgência sem
+ * data não é urgência, é pressão. Com a data errada é pior — é urgência que
+ * mente.
+ */
+export function ultimoDiaDoDegrau(inicio, degrau) {
+  const vira = fimDoDegrau(inicio, degrau);
+  if (!vira) return null;
+  return new Date(vira.getTime() - MS_POR_DIA);
+}
+
 
 /**
  * EM QUE MÊS DE TESTE CAI A FATURA DE `mes` — 1, 2, 3… ou `null`.

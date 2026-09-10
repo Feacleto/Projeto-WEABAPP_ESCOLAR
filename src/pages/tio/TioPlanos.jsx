@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, MessageCircle, Users } from 'lucide-react';
+import { ArrowLeft, Check, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
+import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
-import { salesWhatsAppLink } from '../../config/developer';
 import { contratarPlano } from '../../services/contratacaoService';
 import { montarContrato } from '../../dominio/associacao/contratoAssociacao.js';
 import { emitirContrato } from '../../services/contratoAssociacaoService';
 import {
-  PLANOS,
-  planoPara,
-  planoPorId,
-  excedentes,
+  PLANO,
+  PLANOS_DISPONIVEIS,
+  TAXA,
+  MINIMO,
   precoDoMes,
   descontoDoFechamento,
 } from '../../dominio/associacao/planos.js';
@@ -51,7 +51,7 @@ import { degrauDaDecisao, fimDoDegrau } from '../../dominio/associacao/trial.js'
  * `contratosAssociacao` e em `limiteCriancas`, que são a parte de dinheiro do
  * sistema. A saída não foi abrir essas rules ao cliente — foi mover a escrita
  * para o servidor (`contratarPlano`) e fazer a rule do contrato exigir que o
- * documento bata com a faixa que o servidor gravou.
+ * documento bata com o plano que o servidor gravou.
  */
 export default function TioPlanos() {
   const navigate = useNavigate();
@@ -70,11 +70,16 @@ export default function TioPlanos() {
   const { user, profile, refreshProfile } = useAuth();
 
   const ativas = Number(profile?.criancasAtivas) || 0;
-  const recomendado = planoPara(ativas);
   const fundador = profile?.condicaoFundador || null;
   const indicacoes = Number(profile?.indicacoesAtivas) || 0;
 
-  const [escolhido, setEscolhido] = useState(recomendado?.id || null);
+  // ⚠️ O MENSAL NASCE SELECIONADO, E NÃO O MAIS BARATO.
+  //
+  // O anual custa metade, então a tentação é abri-lo marcado. Mas ele pede
+  // doze meses e tem multa de saída — pré-selecionar o compromisso é escolher
+  // pela pessoa na única dimensão em que ela precisa escolher. O mensal é o
+  // que não pede nada dela.
+  const [escolhido, setEscolhido] = useState(PLANO.MENSAL);
   const mesAtual = getCurrentMonthKey();
   const [assinando, setAssinando] = useState(false);
 
@@ -98,32 +103,31 @@ export default function TioPlanos() {
   const dataCurta = (d) =>
     d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
 
-  // JÁ CONTRATOU? A tela então não é mais de escolha, é de troca de faixa.
-  const jaContratou = Boolean(profile?.planoId);
+  // JÁ CONTRATOU? A tela então não é de escolha, é de troca de plano.
+  const jaContratou = Boolean(profile?.plano);
 
   /**
    * CONTRATAR — dois passos, e a ordem é a garantia.
    *
-   * 1. A callable `contratarPlano` grava a CLÁUSULA (`planoId`,
-   *    `limiteCriancas`, o desconto de antecipação). O cliente não escreve
-   *    nenhum desses campos: as rules recusam, porque cláusula que o devedor
-   *    edita não é cláusula.
-   * 2. Só então o contrato é emitido, e a rule exige que a faixa DENTRO dele
-   *    seja igual à que o servidor acabou de gravar.
+   * 1. A callable `contratarPlano` grava a CLÁUSULA (`users.plano` e o
+   *    desconto do degrau). O cliente não escreve nenhum desses campos: as
+   *    rules recusam, porque cláusula que o devedor edita não é cláusula.
+   * 2. Só então o contrato é emitido, e a rule exige que o plano DENTRO dele
+   *    seja igual ao que o servidor acabou de gravar.
    *
    * Invertida, a ordem não funciona: emitir antes seria emitir um documento
-   * cuja faixa ainda não existe em `users`, e a rule negaria.
+   * cujo plano ainda não existe em `users`, e a rule negaria.
    */
   const contratar = async () => {
-    const plano = planoPorId(escolhido);
-    if (!plano) return;
+    if (!escolhido) return;
     setAssinando(true);
     try {
-      const clausula = await contratarPlano(plano.id);
+      const clausula = await contratarPlano(escolhido);
 
       const conteudo = montarContrato({
         motorista: { uid: user?.uid, ...profile },
-        plano,
+        plano: escolhido,
+        criancas: ativas,
         fundador: profile?.condicaoFundador || null,
         indicacoesAtivas: indicacoes,
         descontos: clausula.descontos,
@@ -136,14 +140,14 @@ export default function TioPlanos() {
       // ⚠️ O NÚMERO DO TOAST VEM DO SERVIDOR, não da régua local. `clausula` é
       // a resposta de `contratarPlano`, e é o servidor que decidiu o degrau
       // pelo relógio DELE. Recalcular aqui pelo relógio do aparelho poderia
-      // anunciar 50% e gravar 30%.
+      // anunciar 30% e gravar 10%.
       if (clausula.fechamento) {
         toast.success(
-          `Faixa contratada com ${Math.round((clausula.fracao || 0) * 100)}% de desconto pelos 12 meses.`,
+          `Plano contratado com ${Math.round((clausula.fracao || 0) * 100)}% de desconto travado — ele não expira.`,
           { duration: 7000 }
         );
       } else {
-        toast.success('Faixa contratada. Falta só aceitar o contrato.');
+        toast.success('Plano contratado. Falta só aceitar o contrato.');
       }
       navigate('/tio/contrato-plataforma');
     } catch (err) {
@@ -188,8 +192,8 @@ export default function TioPlanos() {
         <header>
           <h1 className="text-2xl font-bold text-text">Escolha seu plano</h1>
           <p className="mt-1 text-sm text-textMuted">
-            O app é completo em qualquer plano. O que muda é quantas crianças
-            você pode ter ativas ao mesmo tempo.
+            O app é completo nos dois. O que muda é o prazo e a forma de sair.
+            Sua mensalidade acompanha o número de crianças ativas.
           </p>
         </header>
 
@@ -203,23 +207,30 @@ export default function TioPlanos() {
             <p className="text-lg font-bold text-text">
               {ativas} {ativas === 1 ? 'criança ativa' : 'crianças ativas'}
             </p>
+            {/* ⚠️ CRESCER NÃO CUSTA O DESCONTO DELE, e o medo natural é o
+              * oposto. O degrau travado é uma FRAÇÃO, então 30% de uma
+              * operação maior é um desconto maior — dizer isso aqui é o que
+              * impede a tela de parecer uma punição por crescer. */}
+            <p className="mt-0.5 text-xs text-textMuted">
+              Cadastrou mais uma criança? A conta ajusta sozinha, e seu desconto
+              continua valendo.
+            </p>
           </div>
         </div>
 
         <div className="space-y-3">
-          {PLANOS.map((plano) => {
-            const sobram = excedentes(plano, ativas);
-            // `descontos` E `mes` SAO OBRIGATORIOS AQUI, e faltavam.
+          {PLANOS_DISPONIVEIS.map((plano) => {
+            // `descontos` E `mes` SAO OBRIGATORIOS AQUI, e ja faltaram uma vez.
             //
-            // Esta era a unica das cinco chamadas a `precoDoMes` sem os dois —
-            // e sao eles que carregam o desconto de FECHAMENTO, o unico que
+            // Sao eles que carregam o desconto de FECHAMENTO, o unico que
             // `users.descontos` guarda por regua. O cabecalho deste arquivo
-            // afirma "O PRECO MOSTRADO JA E O DELE", e era falso: a tela
-            // mostrava R$ 149 e a fatura cobrava R$ 74,50.
+            // afirma "O PRECO MOSTRADO JA E O DELE", e ja foi falso: a tela
+            // mostrava a tabela e a fatura cobrava com desconto.
             //
             // Decidir contra um numero que o sistema nao vai cobrar e a forma
             // mais rapida de perder a confianca de quem esta pagando.
             const preco = precoDoMes({
+              criancas: ativas,
               plano,
               fundador,
               indicacoesAtivas: indicacoes,
@@ -227,14 +238,39 @@ export default function TioPlanos() {
               mes: mesAtual,
             });
             const temDesconto = preco.desconto > 0;
-            const selecionado = escolhido === plano.id;
-            const cabe = sobram === 0;
+            const selecionado = escolhido === plano;
+            const anual = plano === PLANO.ANUAL;
+
+            // ⚠️ O PREÇO COM O DESCONTO PRECISA SER UM NÚMERO NA TELA.
+            //
+            // O cartão mostrava R$ 118 e a linha abaixo prometia "30%" — e a
+            // conta ficava com o motorista. É exatamente o que o preço linear
+            // existe para eliminar: ele não deveria precisar multiplicar nada
+            // para comparar os dois planos. Sem esta linha, o anual parece
+            // metade do mensal quando na verdade é 30% mais barato que ele.
+            const travando =
+              !anual && !jaContratou && fracaoDoDegrau > 0
+                ? precoDoMes({
+                    criancas: ativas,
+                    plano,
+                    fundador,
+                    indicacoesAtivas: indicacoes,
+                    descontos: [
+                      { origem: 'fechamento', fracao: fracaoDoDegrau, ate: null },
+                    ],
+                    mes: mesAtual,
+                  })
+                : null;
+            // ⚠️ O MÍNIMO PRECISA APARECER QUANDO ELE MORDE, e só quando morde.
+            // Quem tem 5 crianças paga o mínimo, e sem esta linha a conta
+            // "5 × R$ 5,90" não fecha com o número grande ao lado.
+            const noMinimo = ativas * TAXA[plano] < MINIMO[plano];
 
             return (
               <button
-                key={plano.id}
+                key={plano}
                 type="button"
-                onClick={() => setEscolhido(plano.id)}
+                onClick={() => setEscolhido(plano)}
                 className={`tap w-full rounded-xl border-2 p-4 text-left transition ${
                   selecionado
                     ? 'border-primary bg-primarySoft shadow-focus'
@@ -243,12 +279,18 @@ export default function TioPlanos() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-text">{plano.rotulo}</p>
-                    {cabe && recomendado?.id === plano.id && (
-                      <p className="mt-0.5 text-xs font-semibold text-accentText">
-                        O seu tamanho hoje
-                      </p>
-                    )}
+                    <p className="font-semibold text-text">
+                      {anual ? 'Anual' : 'Mensal'}
+                    </p>
+                    <p className="mt-0.5 text-xs text-textMuted">
+                      {noMinimo ? (
+                        <>mínimo de {formatCurrency(MINIMO[plano])} por mês</>
+                      ) : (
+                        <>
+                          {ativas} × {formatCurrency(TAXA[plano])} por criança
+                        </>
+                      )}
+                    </p>
                   </div>
 
                   <div className="shrink-0 text-right">
@@ -258,23 +300,44 @@ export default function TioPlanos() {
                       </p>
                     )}
                     <p className="text-xl font-bold text-text">
-                      {formatCurrency(preco.liquido)}
+                      {formatCurrency(travando ? travando.liquido : preco.liquido)}
                     </p>
                     <p className="text-[11px] text-textMuted">por mês</p>
+                    {/* O de tabela fica visível ao lado do travado — sem ele o
+                      * desconto é uma afirmação sem referência. */}
+                    {travando && (
+                      <p className="text-[11px] text-textMuted line-through">
+                        {formatCurrency(preco.liquido)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* O aviso do plano apertado. Ele não bloqueia a escolha — só
-                  * diz o preço real dela, em crianças, antes de ele pagar. */}
-                {!cabe && (
-                  <p className="mt-3 rounded-lg bg-warningSoft px-3 py-2 text-xs text-warningText">
-                    <strong className="font-semibold">
-                      {sobram} {sobram === 1 ? 'criança ficaria' : 'crianças ficariam'} de
-                      fora.
-                    </strong>{' '}
-                    Você escolhe quais desativar — o app não escolhe por você.
-                  </p>
-                )}
+                {/* ⚠️ O QUE CADA PLANO TROCA, e não o que ele inclui.
+                  * Nenhum cartão lista "recursos", porque não existe recurso
+                  * excluído: o app é completo nos dois. O que muda é prazo e
+                  * saída, e é só isso que estas linhas dizem. */}
+                <ul className="mt-3 space-y-1 text-xs leading-relaxed text-textMuted">
+                  {anual ? (
+                    <>
+                      <li>· Compromisso de 12 meses.</li>
+                      <li>· Saída antes do prazo: multa de 20% do valor restante.</li>
+                      <li>· Nos primeiros 30 dias, sem multa.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>· Sem prazo. Cancele quando quiser.</li>
+                      <li>· Sem multa e sem aviso prévio.</li>
+                      {travando && (
+                        <li className="font-semibold text-accentText">
+                          · Contratando hoje:{' '}
+                          {Math.round(fracaoDoDegrau * 100)}% de desconto
+                          permanente.
+                        </li>
+                      )}
+                    </>
+                  )}
+                </ul>
 
                 {selecionado && (
                   <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
@@ -285,20 +348,6 @@ export default function TioPlanos() {
             );
           })}
         </div>
-
-        {/* Fora da tabela não tem preço, e mostrar um seria cobrar menos do que
-          * qualquer conversa produziria. */}
-        {!recomendado && (
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-sm font-semibold text-text">
-              Sua operação passou da tabela
-            </p>
-            <p className="mt-1 text-sm text-textMuted">
-              Acima de 40 crianças o valor é conversado — a régua de faixas
-              deixa de fazer sentido nesse tamanho.
-            </p>
-          </div>
-        )}
 
         {(fundador || indicacoes > 0) && (
           <div className="rounded-xl border border-primaryBorder bg-primarySoft p-4 text-sm">
@@ -314,77 +363,79 @@ export default function TioPlanos() {
           </div>
         )}
 
+        {/* ⚠️ ESTA TELA SÓ FALAVA DA INDICAÇÃO PARA QUEM JÁ TINHA UMA.
+          *
+          * O bloco acima existe desde sempre e mostra o desconto que ele JÁ
+          * ganhou. Quem tem zero — que é todo mundo no começo — nunca via a
+          * palavra "indicação" aqui, na única tela do produto em que ele está
+          * comparando dois preços e pensando em quanto paga.
+          *
+          * E é a única alavanca que ELE controla: o degrau depende de quando
+          * decidir, o plano é uma escolha de uma vez só, e o tamanho da
+          * operação não é escolha nenhuma. Indicar é a coisa que ele pode
+          * fazer amanhã e ver na conta. */}
+        <ConviteParaIndicar
+          className="mt-4"
+          titulo="Dá para baixar isso ainda mais"
+        />
+
         {/* CONTRATAR ACONTECE AQUI DENTRO desde 06/09/2026.
           *
-          * Este botão abria o WhatsApp do consultor, e o comentário anterior
-          * explicava por quê: emitir contrato mexia em `contratosAssociacao` e
-          * em `limiteCriancas`, que são as rules de dinheiro.
+          * Este botão abria o WhatsApp do consultor, e o motivo era real:
+          * emitir contrato mexe em `contratosAssociacao`, que é rule de
+          * dinheiro. A saída não foi abrir essa rule — foi mover a escrita
+          * para o servidor. A callable grava a cláusula, e a rule do contrato
+          * exige que o documento bata com ela. O cliente ganhou o botão sem
+          * ganhar a caneta.
           *
-          * A saída não foi abrir essas rules — foi mover a escrita para o
-          * servidor. A callable grava a cláusula, e a rule do contrato exige
-          * que o documento bata com ela. O cliente ganhou o botão sem ganhar a
-          * caneta.
-          *
-          * ACIMA DA TABELA CONTINUA SENDO CONVERSA, e é o único caso em que o
-          * WhatsApp sobra: mostrar um preço ali seria cobrar menos do que
-          * qualquer conversa produziria. */}
-        {recomendado || escolhido ? (
-          <>
-            <Button onClick={contratar} disabled={assinando || !escolhido}>
-              {assinando
-                ? 'Contratando…'
-                : jaContratou
-                  ? 'Trocar para esta faixa'
-                  : 'Contratar esta faixa'}
-            </Button>
+          * ⚠️ NÃO HÁ MAIS RAMO DE WHATSAPP. Ele existia para quem estava ACIMA
+          * DA TABELA, e "acima da tabela" deixou de existir em 10/09/2026: com
+          * preço linear, a operação de 60 crianças tem preço tanto quanto a de
+          * 6. Mandar o maior associado da base conversar era o único caso em
+          * que esta tela não sabia responder. */}
+        <Button onClick={contratar} disabled={assinando || !escolhido}>
+          {assinando
+            ? 'Contratando…'
+            : jaContratou
+              ? 'Trocar para este plano'
+              : escolhido === PLANO.ANUAL
+                ? 'Contratar o anual'
+                : 'Contratar o mensal'}
+        </Button>
 
-            {/* A OFERTA APARECE ONDE A DECISÃO ACONTECE, e some sozinha quando
-              * deixa de valer — quem já contratou não vê promessa que já
-              * recebeu, e quem passou do teste não vê uma que não vai receber. */}
-            {/* ⚠️ A OFERTA VEM COM A DATA EM QUE ELA MUDA, e sem a data ela
-              * não é urgência, é pressão: "decida logo" não é um prazo. É o
-              * degrau que dá o número, e o degrau é o mês do teste em que ele
-              * está — quanto antes decidir, menor a conta pelos 12 meses.
-              *
-              * ⚠️ E O PREÇO NUNCA SOBE SE ELE RECUSAR. Não há segunda oferta
-              * nesta tela, e é decisão de negócio: desconto que sobe a cada
-              * "não" ensina a recusar, e prova que o preço era teatro. Ver
-              * docs/descontos.md, peça 3 — as respostas ao "não" cedem
-              * informação, risco e prazo, nunca preço. */}
-            {!jaContratou && fracaoDoDegrau > 0 && (
-              <p className="text-center text-xs leading-relaxed text-textMuted">
-                Contratando {viraEm ? <>até <strong>{dataCurta(viraEm)}</strong></> : 'agora'}, você
-                fica com{' '}
-                <strong className="text-accentText">
-                  {Math.round(fracaoDoDegrau * 100)}% de desconto
-                </strong>{' '}
-                pelos 12 meses de contrato.
-                {fracaoSeguinte > 0 && (
-                  <> Depois dessa data, o desconto passa a ser de{' '}
-                  {Math.round(fracaoSeguinte * 100)}%.</>
-                )}
-              </p>
+        {/* A OFERTA APARECE ONDE A DECISÃO ACONTECE, e some sozinha quando
+          * deixa de valer — quem já contratou não vê promessa que já recebeu,
+          * e quem passou do teste não vê uma que não vai receber.
+          *
+          * ⚠️ ELA VEM COM A DATA EM QUE MUDA, e sem a data não é urgência, é
+          * pressão: "decida logo" não é um prazo.
+          *
+          * ⚠️ E O PREÇO NUNCA SOBE SE ELE RECUSAR. Não há segunda oferta nesta
+          * tela, e é decisão de negócio: desconto que sobe a cada "não" ensina
+          * a recusar, e prova que o preço era teatro. Ver docs/descontos.md,
+          * peça 3 — as respostas ao "não" cedem informação, risco e prazo,
+          * nunca preço.
+          *
+          * ⚠️ E A OFERTA É DO MENSAL, SÓ DELE. A escada não existe no anual,
+          * cujo desconto já está no preço. Mostrar a frase com o anual
+          * selecionado prometeria um desconto que o servidor não vai gravar. */}
+        {!jaContratou && escolhido === PLANO.MENSAL && fracaoDoDegrau > 0 && (
+          <p className="text-center text-xs leading-relaxed text-textMuted">
+            Contratando {viraEm ? <>até <strong>{dataCurta(viraEm)}</strong></> : 'agora'}, você
+            garante{' '}
+            <strong className="text-accentText">
+              {Math.round(fracaoDoDegrau * 100)}% de desconto permanente
+            </strong>.
+            {fracaoSeguinte > 0 && (
+              <> Depois dessa data, a melhor condição passa a ser{' '}
+              {Math.round(fracaoSeguinte * 100)}%.</>
             )}
-          </>
-        ) : (
-          <a
-            href={salesWhatsAppLink(
-              `Oi! Tenho ${ativas} crianças ativas no Alô Buzinou e quero conversar sobre o plano.`
-            )}
-            target="_blank"
-            rel="noopener"
-            className="block"
-          >
-            <Button>
-              <MessageCircle size={18} />
-              Falar sobre meu plano
-            </Button>
-          </a>
+          </p>
         )}
 
         <p className="pb-4 text-center text-xs text-textMuted">
-          A mensalidade que você cobra das famílias continua sendo sua. A
-          plataforma não entra no caminho dela.
+          A mensalidade que você cobra das famílias é sua. A plataforma não
+          entra no caminho dela.
         </p>
       </div>
     </div>

@@ -127,7 +127,7 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
       // (`dominio/identidade/origem.js`), nunca perguntado num formulário.
       //
       // NÃO precisou de rule nova: a política de `users` é lista de PROIBIDOS
-      // (trialInicio, limiteCriancas, assinaturaAte, planoId), não de
+      // (trialInicio, assinaturaAte, plano), não de
       // permitidos. E este campo fica fora dela pelo mesmo critério que deixa
       // `ultimaRota` fora — mentir aqui não vira desconto, prazo nem
       // permissão: suja a contagem do dono e nada mais. No dia em que a

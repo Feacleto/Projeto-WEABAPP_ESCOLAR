@@ -31,21 +31,27 @@
  */
 
 import { estadoDaConta } from './contaAtiva.js';
-import { centavos, ORIGEM, planoPorId, precoDoMes } from './planos.js';
+import { centavos, ORIGEM, planoValido, precoDoMes } from './planos.js';
 import { diasRestantes } from './trial.js';
 
 /**
  * Em que degrau este motorista está.
  *
  *   'bloqueado'   a conta parou: teste vencido sem contrato, ou atraso
- *   'contratado'  tem faixa e está operando
+ *   'contratado'  escolheu um plano e está operando
  *   'em_teste'    rodou a primeira rota e o relógio está correndo
  *   'nao_comecou' criou a conta e ainda não rodou rota nenhuma
  *
  * A ORDEM É PARTE DA REGRA. `bloqueado` vem primeiro porque quem contratou e
- * parou de pagar continua com `planoId` — classificá-lo como "contratado"
+ * parou de pagar continua com `plano` — classificá-lo como "contratado"
  * inflaria o MRR com dinheiro que não entra mais, que é o jeito mais comum de
  * um painel mentir para o próprio dono.
+ *
+ * ⚠️ O CAMPO É `users.plano` ('mensal' | 'anual'), NÃO `planoId`. O antigo
+ * guardava a faixa ('ate25') e morreu junto com as faixas em 10/09/2026. Um
+ * documento que ainda tenha só `planoId` conta como EM TESTE aqui, de
+ * propósito: melhor um MRR que subestima do que um que cobra uma faixa que não
+ * existe mais. Quem conserta isso é a migração, não uma leitura tolerante.
  */
 export function degrauDo(parceiro, agora) {
   const { ativa } = estadoDaConta({
@@ -57,7 +63,7 @@ export function degrauDo(parceiro, agora) {
   });
 
   if (!ativa) return 'bloqueado';
-  if (parceiro?.planoId) return 'contratado';
+  if (planoValido(parceiro?.plano)) return 'contratado';
   if (parceiro?.trialInicio) return 'em_teste';
   return 'nao_comecou';
 }
@@ -65,14 +71,19 @@ export function degrauDo(parceiro, agora) {
 /**
  * Quanto ESTE parceiro paga por mês, já com os descontos dele.
  *
- * `null` quando não há faixa — e `null` não é zero. Somar zero por "ainda não
+ * `null` quando não há plano — e `null` não é zero. Somar zero por "ainda não
  * escolheu" mistura quem não paga com quem paga nada, e as duas coisas pedem
  * ações opostas: uma é uma conversa, a outra é um fundador.
+ *
+ * O TAMANHO ENTRA NA CONTA, e é o que muda com o preço linear: o MRR de um
+ * associado deixa de ser o preço de uma faixa e passa a acompanhar a operação
+ * dele mês a mês. `criancasAtivas` é o mesmo contador que a fatura lê.
  */
 export function mensalidadeDe(parceiro, mes) {
-  const plano = planoPorId(parceiro?.planoId);
-  if (!plano) return null;
+  const plano = parceiro?.plano;
+  if (!planoValido(plano)) return null;
   return precoDoMes({
+    criancas: Number(parceiro?.criancasAtivas) || 0,
     plano,
     fundador: parceiro?.condicaoFundador || null,
     indicacoesAtivas: Number(parceiro?.indicacoesAtivas) || 0,

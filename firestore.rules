@@ -625,13 +625,19 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['suspenso', 'suspensoEm', 'notaInterna', 'limiteCriancas',
                        'assinaturaAte',
-                       // A CLÁUSULA DE PREÇO, que em 06/09/2026 virou faixa de
-                       // tabela. `planoId` é o que a fatura cobra;
-                       // `condicaoFundador`, `indicacoesAtivas`, `descontos` e
-                       // `isencaoAte` são o que a desconta. Todos escritos por
-                       // quem COBRA, nunca pelo cobrado — é a mesma forma de
-                       // `limiteCriancas`, e pelo mesmo motivo.
-                       'planoId', 'condicaoFundador', 'indicacoesAtivas',
+                       // A CLÁUSULA DE PREÇO, que em 10/09/2026 virou taxa por
+                       // criança. `plano` ('mensal' | 'anual') é o que a
+                       // fatura multiplica; `condicaoFundador`,
+                       // `indicacoesAtivas`, `descontos` e `isencaoAte` são o
+                       // que a desconta. Todos escritos por quem COBRA, nunca
+                       // pelo cobrado.
+                       //
+                       // ⚠️ `planoId` e `limiteCriancas` continuam na lista
+                       // mesmo sem gravador. São campos MORTOS em documentos
+                       // antigos, e tirá-los daqui os tornaria editáveis pelo
+                       // ramo do motorista — um campo que ninguém escreve mais
+                       // não é um campo que qualquer um pode escrever.
+                       'plano', 'planoId', 'condicaoFundador', 'indicacoesAtivas',
                        'descontos', 'isencaoAte',
                        // O CERTIFICADO — o dono confere o alvara e assina a
                        // conferencia. `verificacao` esta aqui E no ramo de
@@ -691,12 +697,12 @@ service cloud.firestore {
                // até 2099. Cada um desses campos é `limiteCriancas` com outra
                // roupa: cláusula que o devedor edita não é cláusula.
                //
-               // `planoId` merece atenção especial porque ele anda em par com
-               // `limiteCriancas` — os dois são gravados no MESMO batch pelo
-               // dono. Deixar um passar e barrar o outro produziria a
-               // combinação que não deveria existir: preço de uma faixa com
-               // teto de outra.
-               'planoId', 'condicaoFundador', 'indicacoesAtivas',
+               // ⚠️ `plano` É O CAMPO NOVO, E OS DOIS ANTIGOS FICAM.
+               // `planoId` e `limiteCriancas` não têm mais gravador nenhum
+               // desde 10/09/2026, mas seguem proibidos: documento antigo
+               // ainda os tem, e campo sem dono não é campo livre. Quem
+               // escreve `plano` é a callable `contratarPlano` ou o dono.
+               'plano', 'planoId', 'condicaoFundador', 'indicacoesAtivas',
                'descontos', 'isencaoAte',
                // O RESULTADO DA CONFERENCIA — nunca do conferido.
                //
@@ -988,16 +994,37 @@ service cloud.firestore {
       //
       // `getAfter` lê o doc do motorista COMO ELE FICA depois desta escrita —
       // é o que permite validar duas gravações juntas sem servidor. Criar
-      // criança sem incrementar não passa; incrementar além do contratado não
-      // passa (a regra do contador vive em `users`). O cliente que cadastra
-      // tem que mandar as duas coisas num `writeBatch` — ver
+      // criança sem incrementar não passa. O cliente que cadastra tem que
+      // mandar as duas coisas num `writeBatch` — ver
       // `childrenService.criarCrianca`.
       //
-      // `limiteCriancas` ausente = SEM LIMITE, de propósito: o número nasce
-      // no orçamento, e parceiro que ainda não negociou não pode ficar
-      // impedido de trabalhar por uma cláusula que ninguém combinou com ele.
-      // O default alto vale pros dois lados da comparação, então a conta
-      // continua exigindo o incremento — o que some é só o teto.
+      // ⚠️ O TETO SAIU DAQUI EM 10/09/2026, E O CONTADOR FICOU.
+      //
+      // A regra comparava `criancasAtivas` com `limiteCriancas` e RECUSAVA a
+      // criança que passasse do contratado. Com preço por faixa isso era a
+      // cláusula sendo cobrada; com preço por criança virou só uma porta na
+      // cara de quem acabou de ganhar um cliente — e no pior momento
+      // possível, porque a fatura já sabe acompanhar o tamanho sozinha.
+      //
+      // O que NÃO saiu é a exigência de o contador subir junto. Ela não é
+      // teto, é integridade: `criancasAtivas` é o número que a fatura
+      // multiplica pela taxa, e uma criança criada sem ele seria uma criança
+      // que o app serve e ninguém cobra. Confundir as duas coisas e remover as
+      // duas juntas seria trocar uma tranca por um vazamento.
+      //
+      // ⚠️ E ELA PASSOU A SER VERDADE AGORA, PELA PRIMEIRA VEZ.
+      //
+      // O comentário anterior afirmava "criar criança sem incrementar não
+      // passa", e era falso para a maioria: a conta era
+      // `criancasAtivas <= limiteCriancas`, com `limiteCriancas` ausente
+      // valendo 999999. Para todo motorista sem teto definido — que era todo
+      // mundo em teste — `0 <= 999999` passava sem incremento nenhum. A
+      // garantia estava no comentário e não no código.
+      //
+      // A forma abaixo compara o contador DEPOIS com o contador ANTES, e é
+      // isso que ela sempre deveria ter sido. Custa uma segunda leitura do
+      // mesmo documento, e é o preço de a frase acima ser conferível.
+      //
       // `parentUid` NASCE VAZIO, SEMPRE. Quem o preenche e o `redeemInvite`
       // com Admin SDK, quando a familia resgata o convite — `childrenService`
       // grava `parentUid: null` no cadastro, e e isso que a regra exige agora.
@@ -1011,8 +1038,8 @@ service cloud.firestore {
         && request.resource.data.get('parentUid', null) == null
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
              .data.get('criancasAtivas', 0)
-           <= getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
-                .data.get('limiteCriancas', 999999);
+           > get(/databases/$(database)/documents/users/$(request.auth.uid))
+               .data.get('criancasAtivas', 0);
       allow delete: if ehDoMotorista();
 
       // Updates permitidos (não-admin):
@@ -2078,16 +2105,22 @@ service cloud.firestore {
       // consultor justamente porque só o dono escrevia aqui.
       //
       // A DIVISÃO É: o SERVIDOR é dono dos números, o CLIENTE monta o
-      // DOCUMENTO, e esta regra amarra um no outro. `users.planoId` é escrito
+      // DOCUMENTO, e esta regra amarra um no outro. `users.plano` é escrito
       // pela callable `contratarPlano` e está na lista de campos que o cliente
-      // nunca toca — então exigir que a faixa DENTRO do contrato seja igual à
-      // que o servidor gravou torna impossível assinar um documento dizendo
-      // R$ 69 com teto de 40.
+      // nunca toca — então exigir que o plano DENTRO do contrato seja igual ao
+      // que o servidor gravou torna impossível assinar um documento com o
+      // preço do anual e o compromisso do mensal.
       //
       // Sem essa amarra, ele montaria o conteúdo que quisesse: a fatura
-      // continuaria certa (ela lê `users.planoId`), mas existiria um documento
+      // continuaria certa (ela lê `users.plano`), mas existiria um documento
       // assinado dizendo outra coisa — e é o documento que aparece numa
       // discussão.
+      //
+      // ⚠️ A AMARRA É SOBRE O PLANO, NÃO SOBRE O VALOR — e agora é obrigatório
+      // que seja. Com preço por criança o valor muda todo mês; exigir que o
+      // contrato repita um número faria o documento nascer inválido no dia em
+      // que ele cadastrasse a criança seguinte. O que o contrato declara é a
+      // TAXA, e a taxa vem do plano.
       //
       // `aceitoEm == null` na criação porque aceitar é OUTRA escrita, no ramo
       // de update abaixo, que grava o hash e o user agent. Nascer aceito
@@ -2099,7 +2132,7 @@ service cloud.firestore {
         temPapelDeMotorista()
         && request.resource.data.tioUid == request.auth.uid
         && request.resource.data.aceitoEm == null
-        && request.resource.data.conteudo.plano.id == userDoc().get('planoId', '')
+        && request.resource.data.conteudo.plano.id == userDoc().get('plano', '')
       );
 
       allow update: if (

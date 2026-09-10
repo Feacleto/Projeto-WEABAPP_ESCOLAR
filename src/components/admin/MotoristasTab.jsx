@@ -9,7 +9,7 @@ import { degrauDo, mensalidadeDe } from '../../dominio/associacao/carteira.js';
 import { pesoDoRisco, riscoDo } from '../../dominio/associacao/risco.js';
 import { contarFundadores, resumirConcessoes } from '../../dominio/associacao/concessao.js';
 import { diasRestantes } from '../../dominio/associacao/trial.js';
-import { planoPorId } from '../../dominio/associacao/planos.js';
+import { PLANO, planoValido } from '../../dominio/associacao/planos.js';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
 
 /**
@@ -84,7 +84,7 @@ export default function MotoristasTab({ inicial = null }) {
         mot,
         degrau,
         faturas,
-        plano: planoPorId(mot.planoId),
+        plano: planoValido(mot.plano) ? mot.plano : null,
         conta: mensalidadeDe(mot, mes),
         faltam: mot.trialInicio ? diasRestantes(mot.trialInicio, agora) : null,
         nota,
@@ -196,8 +196,10 @@ export default function MotoristasTab({ inicial = null }) {
                   </div>
                   <p className="mt-0.5 truncate text-[11px] text-textMuted">
                     {Number(l.mot.criancasAtivas) || 0}
-                    {l.plano ? `/${l.plano.ate}` : ''} crianças
-                    {l.plano ? ` · ${l.plano.rotulo.replace('crianças', '').trim()}` : ' · sem faixa'}
+                    {' '}crianças
+                    {l.plano
+                      ? ` · ${l.plano === PLANO.ANUAL ? 'anual' : 'mensal'}`
+                      : ' · sem plano'}
                     {l.conta?.liquido != null ? ` · ${formatCurrency(l.conta.liquido)}` : ''}
                   </p>
                 </button>

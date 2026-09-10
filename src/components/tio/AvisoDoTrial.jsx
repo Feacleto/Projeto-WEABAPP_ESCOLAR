@@ -66,11 +66,11 @@ export default function AvisoDoTrial({ temContrato = false }) {
     const fim = fimDoTrial(profile?.trialInicio);
     return (
       <div className="border-b border-border bg-sunken px-4 py-2 text-center text-xs text-textMuted">
-        Seu teste vai até{' '}
+        Você está no período de teste, até{' '}
         <strong className="font-semibold text-text">
           {fim?.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
         </strong>
-        .
+        . Nada é cobrado até lá.
       </div>
     );
   }
@@ -94,8 +94,8 @@ export default function AvisoDoTrial({ temContrato = false }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-warningText">{quantos}</p>
           <p className="mt-0.5 text-xs text-textMuted">
-            Depois disso o app pausa até você escolher um plano. Suas crianças e
-            seus dados continuam aqui.
+            Depois dessa data o app pausa até você escolher um plano. Suas
+            crianças, horários e histórico continuam salvos.
           </p>
 
           {/* A OFERTA MORA AQUI, E ISSO NÃO É ESPERTEZA DE VENDA.
@@ -109,13 +109,21 @@ export default function AvisoDoTrial({ temContrato = false }) {
             *
             * ⚠️ O NÚMERO É O DO DEGRAU ATUAL, não um valor fixo. Quando este
             * cartão aparece (7 dias do fim) o degrau já é o 3º, e prometer os
-            * 50% do 1º mês aqui seria anunciar um desconto que o servidor não
-            * vai gravar — o motorista veria 50% na tela e 15% na fatura. */}
+            * 30% do 1º mês aqui seria anunciar um desconto que o servidor não
+            * vai gravar — o motorista veria 30% na tela e 10% na fatura.
+            *
+            * ⚠️ E O PRAZO SAIU DA FRASE (10/09/2026). Ela dizia "pelos 12 meses
+            * de contrato", que era verdade enquanto o desconto expirava. Hoje
+            * ele é VITALÍCIO, e a frase antiga prometia MENOS do que o sistema
+            * dá — um desconto que a tela diz durar um ano e a fatura mantém
+            * para sempre é o raro caso de erro a favor do cliente, e mesmo
+            * assim é erro: ele decide contra um número que não é o dele. */}
           {fracaoDoDegrau > 0 && (
             <p className="mt-1.5 text-xs leading-relaxed text-warningText">
-              Contratando <strong>antes</strong> do fim, você fica com{' '}
-              <strong>{Math.round(fracaoDoDegrau * 100)}% de desconto</strong> pelos
-              12 meses de contrato.
+              Quanto antes contratar, menor fica sua mensalidade. Contratando
+              agora você garante{' '}
+              <strong>{Math.round(fracaoDoDegrau * 100)}% de desconto</strong>, sem
+              prazo para acabar.
             </p>
           )}
 
@@ -126,7 +134,7 @@ export default function AvisoDoTrial({ temContrato = false }) {
             to="/tio/planos"
             className="tap mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-warningText underline"
           >
-            <ArrowRight size={15} /> Ver planos e contratar
+            <ArrowRight size={15} /> Ver planos
           </Link>
         </div>
 

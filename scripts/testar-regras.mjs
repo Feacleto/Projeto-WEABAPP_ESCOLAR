@@ -94,7 +94,7 @@ async function criarAnonimo() {
 }
 
 // ⚠️ `semear` SUBSTITUI o documento inteiro — é PATCH sem `updateMask`, e o
-// Firestore trata isso como escrita completa. Semear `{ planoId }` sobre um
+// Firestore trata isso como escrita completa. Semear `{ plano }` sobre um
 // usuário APAGA `role`, `trialInicio` e o resto, e o caso seguinte falha por
 // um motivo que não tem nada a ver com a regra sendo testada. Aconteceu.
 //
@@ -533,31 +533,83 @@ async function main() {
 }
 
 /**
- * A VAGA CONTRATADA — a única regra do projeto que usa `getAfter`.
+ * O CONTADOR DE CRIANÇAS — a única regra do projeto que usa `getAfter`.
  *
- * Ela é a que impõe o contrato: `children` só aceita `create` se o contador
- * `criancasAtivas` do motorista, JÁ INCREMENTADO, couber no `limiteCriancas`
- * que o dono negociou. Como rules não sabem contar documentos, a contagem
- * precisa estar materializada — e as duas escritas precisam vir no mesmo
- * commit, que é o que `getAfter` enxerga.
+ * ── ⚠️ ISTO ERA "A VAGA CONTRATADA", E O TETO SAIU EM 10/09/2026
+ * A regra recusava a criança que passasse de `limiteCriancas`. Com preço por
+ * faixa isso era a cláusula sendo cobrada; com preço por criança virou só uma
+ * porta na cara de quem acabou de ganhar um cliente. O teto saiu do modelo:
+ * NADA trava quando a operação cresce, e a fatura acompanha o tamanho.
+ *
+ * O que ficou é a INTEGRIDADE: `children` só aceita `create` se
+ * `criancasAtivas` subir no MESMO commit. Não é teto, é o número que a fatura
+ * multiplica pela taxa — criança criada sem ele é criança que o app serve e
+ * ninguém cobra.
  *
  * POR ISSO O TESTE USA `:commit`, e não o PATCH de documento único usado no
  * resto do arquivo: com escritas separadas o `getAfter` vê o contador ANTIGO,
  * e o teste passaria por um motivo que não é o da regra.
  *
- * OS QUATRO CASOS CERCAM A DECISÃO:
- *   1. dentro do limite, com incremento  → PASSA  (prova que a regra existe)
- *   2. estourando o limite               → NEGA   (prova que ela morde)
- *   3. criando sem incrementar           → NEGA   (o furo óbvio)
- *   4. o motorista aumentando o próprio limite → NEGA
+ * ── ⚠️ E O CASO 2 É NOVO, PORQUE A GARANTIA ERA FALSA
+ * A conta antiga era `criancasAtivas <= limiteCriancas`, com o limite ausente
+ * valendo 999999. Para todo motorista sem teto definido — que era todo mundo
+ * em teste — `0 <= 999999` passava SEM incremento nenhum. O comentário da rule
+ * afirmava "criar criança sem incrementar não passa" e isso só valia para quem
+ * já estava no teto.
  *
- * O quarto é o que mais importa e é o mais fácil de esquecer: foi assim que o
+ * A regra passou a comparar o contador DEPOIS com o de ANTES, e os casos
+ * abaixo cercam a decisão nova:
+ *   1. criando com incremento              → PASSA
+ *   2. criando SEM incremento, sem teto    → NEGA  (o furo que existia)
+ *   3. criando com o contador DESCENDO     → NEGA
+ *   4. passando do antigo teto             → PASSA (o teto não existe mais)
+ *   5. o motorista aumentando o próprio limiteCriancas → NEGA
+ *
+ * O quinto é o que mais importa e é o mais fácil de esquecer: foi assim que o
  * `suspenso` vazou uma vez — campo de gestão que a lista de proibidos não
- * acompanhou, e o suspenso se liberava sozinho. Limite que o limitado aumenta
- * não é limite.
+ * acompanhou. `limiteCriancas` não tem mais gravador, e continua proibido:
+ * campo sem dono não é campo livre.
  */
-async function vagaContratada(tio1, tio2) {
+/**
+ * CRIAR CRIANÇA COM O CONTADOR SUBINDO, no MESMO commit.
+ *
+ * ⚠️ É O ÚNICO JEITO DE CRIAR CRIANÇA QUE AS RULES ACEITAM, e por isso este
+ * helper é de módulo e não do bloco da vaga. Três casos deste arquivo criavam
+ * criança com um POST solto para provar OUTRA coisa (que a conta em dia
+ * opera), e passaram a dar 403 quando a regra passou a exigir o incremento de
+ * verdade — falhando pelo motivo errado, que é o que este arquivo inteiro foi
+ * escrito para não fazer.
+ *
+ * O PATCH de documento único não serve: `getAfter` só enxerga o que vem no
+ * mesmo commit, então com escritas separadas ele vê o contador ANTIGO.
+ */
+function criarCriancaComContador(sessao, uid, idCrianca, contador) {
   const doc = (c) => `projects/${PID}/databases/(default)/documents/${c}`;
+  return fetch(`${FS}:commit`, {
+    method: 'POST',
+    headers: H(sessao),
+    body: JSON.stringify({
+      writes: [
+        {
+          update: {
+            name: doc(`children/${idCrianca}`),
+            fields: { name: S('Nova'), adminUid: S(uid), active: B(true) },
+          },
+          currentDocument: { exists: false },
+        },
+        {
+          update: {
+            name: doc(`users/${uid}`),
+            fields: { criancasAtivas: { integerValue: String(contador) } },
+          },
+          updateMask: { fieldPaths: ['criancasAtivas'] },
+        },
+      ],
+    }),
+  }).then((r) => r.status);
+}
+
+async function vagaContratada(tio1, tio2) {
 
   // Cenário: tio1 contratou 2 vagas e está usando 1.
   await semear(`users/${tio1.uid}`, {
@@ -567,40 +619,36 @@ async function vagaContratada(tio1, tio2) {
     criancasAtivas: { integerValue: '1' },
   });
 
-  const criarComContador = (sessao, uid, idCrianca, contador) =>
-    fetch(`${FS}:commit`, {
-      method: 'POST',
-      headers: H(sessao),
-      body: JSON.stringify({
-        writes: [
-          {
-            update: {
-              name: doc(`children/${idCrianca}`),
-              fields: { name: S('Nova'), adminUid: S(uid), active: B(true) },
-            },
-            currentDocument: { exists: false },
-          },
-          {
-            update: {
-              name: doc(`users/${uid}`),
-              fields: { criancasAtivas: { integerValue: String(contador) } },
-            },
-            updateMask: { fieldPaths: ['criancasAtivas'] },
-          },
-        ],
-      }),
-    }).then((r) => r.status);
+  // 1. Segunda criança, contador subindo de 1 para 2.
+  checar('vaga', 'cria a criança incrementando o contador', 'PASSA',
+    await criarCriancaComContador(tio1, tio1.uid, `vaga_ok_${Date.now()}`, 2));
 
-  // 1. Segunda criança, contador indo a 2, limite 2. Cabe.
-  checar('vaga', 'cria a 2ª criança dentro do limite de 2', 'PASSA',
-    await criarComContador(tio1, tio1.uid, `vaga_ok_${Date.now()}`, 2));
+  // 2. ⚠️ O FURO QUE EXISTIA. Contador parado em 2, e este motorista NÃO tem
+  // teto definido — que era o caso da base inteira em teste. Com a conta
+  // antiga (`0 <= 999999`) isto passava.
+  await semear(`users/${tio1.uid}`, {
+    role: S('admin'), name: S('Tio Um'),
+    criancasAtivas: { integerValue: '2' },
+  });
+  checar('vaga', 'criar sem incrementar, mesmo sem teto definido', 'NEGA',
+    await criarCriancaComContador(tio1, tio1.uid, `vaga_parado_${Date.now()}`, 2));
 
-  // 2. Terceira, contador a 3, limite 2. Não cabe.
-  await semear(`users/${tio1.uid}`, { criancasAtivas: { integerValue: '2' } });
-  checar('vaga', 'a 3ª criança estoura o limite de 2', 'NEGA',
-    await criarComContador(tio1, tio1.uid, `vaga_no_${Date.now()}`, 3));
+  // 3. Contador DESCENDO junto de uma criança nova. Absurdo, e por isso mesmo
+  // é o caso que um `>=` mal escrito deixaria passar.
+  checar('vaga', 'criar com o contador descendo', 'NEGA',
+    await criarCriancaComContador(tio1, tio1.uid, `vaga_desce_${Date.now()}`, 1));
 
-  // 3. Criar sem mexer no contador — o furo óbvio.
+  // 4. ⚠️ PASSAR DO ANTIGO TETO AGORA PASSA, e este caso é a decisão de
+  // 10/09/2026 escrita em teste. Limite 2, contador indo a 3.
+  await semear(`users/${tio1.uid}`, {
+    role: S('admin'), name: S('Tio Um'),
+    limiteCriancas: { integerValue: '2' },
+    criancasAtivas: { integerValue: '2' },
+  });
+  checar('vaga', 'a 3ª criança passa do antigo teto de 2 e ENTRA', 'PASSA',
+    await criarCriancaComContador(tio1, tio1.uid, `vaga_cresce_${Date.now()}`, 3));
+
+  // Criar sem mexer no contador, pelo caminho de documento único.
   const semContador = await fetch(`${FS}/children?documentId=vaga_solta_${Date.now()}`, {
     method: 'POST',
     headers: H(tio1),
@@ -610,13 +658,13 @@ async function vagaContratada(tio1, tio2) {
   }).then((r) => r.status);
   checar('vaga', 'criar criança sem incrementar o contador', 'NEGA', semContador);
 
-  // 4. O motorista aumentando o próprio teto. É a fraude que paga a conta.
+  // 5. O motorista aumentando o próprio teto. O campo morreu, a trava não.
   //
   // ESTE CASO PASSAVA PELO MOTIVO ERRADO, e só apareceu quando um caso de
   // forma IDÊNTICA, escrito no bloco da decisão 12, deu 200 contra as mesmas
   // rules. A diferença não estava na regra: estava no ator.
   //
-  // O `criarComContador` acima usa `:commit`, e um write de `update` no REST
+  // O `criarCriancaComContador` acima usa `:commit`, e um write de `update` no REST
   // do Firestore SUBSTITUI o documento quando não vai máscara junto — então
   // `users/{tio1}` saía de lá só com `criancasAtivas`, sem `role`. Sem papel,
   // `isAdmin()` é falso e o outro ramo compara `role` sobre chave ausente,
@@ -937,11 +985,15 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     await ler('taxaParceiros/' + tio1.uid, tio2));
   // ── A CLÁUSULA DE PREÇO (06/09/2026) ─────────────────────────────────
   //
-  // O modelo virou faixa de tabela, e cada campo abaixo é `limiteCriancas` com
-  // outra roupa: livre, o motorista se poe na faixa de R$ 69 com teto de 40,
-  // se marca fundador vitalicio, se da cinco indicacoes que nao existem e se
-  // isenta ate 2099. Clausula que o devedor edita nao e clausula.
-  checar('preco', 'o motorista escolhe a propria faixa', 'NEGA',
+  // O modelo virou taxa por crianca, e cada campo abaixo e clausula: livre, o
+  // motorista se poe no plano mais barato, se marca fundador vitalicio, se da
+  // cinco indicacoes que nao existem e se isenta ate 2099. Clausula que o
+  // devedor edita nao e clausula.
+  checar('preco', 'o motorista escolhe o proprio plano', 'NEGA',
+    await escrever('users/' + tio1.uid, tio1, { plano: S('anual') }, ['plano']));
+  // ⚠️ `planoId` MORREU COMO CAMPO E CONTINUA PROIBIDO. Documento antigo ainda
+  // o tem, e campo sem gravador nao e campo livre.
+  checar('preco', 'nem escreve o planoId morto', 'NEGA',
     await escrever('users/' + tio1.uid, tio1, { planoId: S('ate40') }, ['planoId']));
   checar('preco', 'o motorista se marca fundador vitalicio', 'NEGA',
     await escrever('users/' + tio1.uid, tio1, { condicaoFundador: S('vitalicio') }, ['condicaoFundador']));
@@ -949,10 +1001,10 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     await escrever('users/' + tio1.uid, tio1, { indicacoesAtivas: N(5) }, ['indicacoesAtivas']));
   checar('preco', 'o motorista se isenta ate 2099', 'NEGA',
     await escrever('users/' + tio1.uid, tio1, { isencaoAte: S('2099-12') }, ['isencaoAte']));
-  checar('preco', 'e o vizinho tambem nao mexe na faixa dele', 'NEGA',
-    await escrever('users/' + tio1.uid, tio2, { planoId: S('ate10') }, ['planoId']));
-  checar('pos', 'o dono define a faixa do parceiro', 'PASSA',
-    await escrever('users/' + tio1.uid, dono, { planoId: S('ate25') }, ['planoId']));
+  checar('preco', 'e o vizinho tambem nao mexe no plano dele', 'NEGA',
+    await escrever('users/' + tio1.uid, tio2, { plano: S('anual') }, ['plano']));
+  checar('pos', 'o dono define o plano do parceiro', 'PASSA',
+    await escrever('users/' + tio1.uid, dono, { plano: S('mensal') }, ['plano']));
   checar('pos', 'e a condicao de fundador', 'PASSA',
     await escrever('users/' + tio1.uid, dono, { condicaoFundador: S('metade') }, ['condicaoFundador']));
 
@@ -1264,20 +1316,17 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
       adminUid: S(vencido.uid), texto: S('oi'),
     }));
 
+  // ⚠️ ESTES TRES CASOS MEDEM O ESTADO DA CONTA, NAO O CONTADOR — e por isso
+  // usam o commit com incremento. Com um POST solto eles davam 403 pela regra
+  // do contador e "provavam" um bloqueio que nao existe.
   checar('pos', 'quem esta com a assinatura em dia opera normalmente', 'PASSA',
-    await criar('children', `kid-emdia-${Date.now()}`, emDia, {
-      name: S('Y'), adminUid: S(emDia.uid), active: B(true),
-    }));
+    await criarCriancaComContador(emDia, emDia.uid, `kid-emdia-${Date.now()}`, 1));
   checar('pos', 'e quem venceu ha 3 dias ainda opera (a folga da rule)', 'PASSA',
-    await criar('children', `kid-carencia-${Date.now()}`, carencia, {
-      name: S('Z'), adminUid: S(carencia.uid), active: B(true),
-    }));
+    await criarCriancaComContador(carencia, carencia.uid, `kid-carencia-${Date.now()}`, 1));
   // Quem nunca rodou uma rota nao tem `trialInicio`: o relogio nao comecou.
   // Bloquear aqui seria bloquear todo mundo no primeiro dia.
   checar('pos', 'quem nunca rodou rota nao e bloqueado', 'PASSA',
-    await criar('children', `kid-novato-${Date.now()}`, novato, {
-      name: S('W'), adminUid: S(novato.uid), active: B(true),
-    }));
+    await criarCriancaComContador(novato, novato.uid, `kid-novato-${Date.now()}`, 1));
 
   // ⚠️ O RESPIRO. Sem ele, o bloqueado nao consegue CONTRATAR — que e
   // exatamente o que o desbloqueia — e o beco nao tem saida dentro do produto.
@@ -1290,41 +1339,45 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     await ler('faturasParceiro/' + vencido.uid + '_2026-09', vencido));
   // O documento INTEIRO de novo — ver o aviso em `semear`.
   await semear(`users/${vencido.uid}`, {
-    role: S('admin'), name: S('Vencido'), trialInicio: T(-100), planoId: S('ate25'),
+    role: S('admin'), name: S('Vencido'), trialInicio: T(-100), plano: S('mensal'),
   });
   checar('pos', 'e o bloqueado AINDA EMITE contrato — o caminho de voltar', 'PASSA',
     await criar('contratosAssociacao', vencido.uid + '_' + Date.now(), vencido, {
       tioUid: S(vencido.uid),
       aceitoEm: { nullValue: null },
       conteudo: {
-        mapValue: { fields: { plano: { mapValue: { fields: { id: S('ate25') } } } } },
+        mapValue: { fields: { plano: { mapValue: { fields: { id: S('mensal') } } } } },
       },
     }));
 
   // ── O ASSOCIADO EMITE O PROPRIO CONTRATO ─────────────────────────────
   //
-  // O dono acabou de gravar 'ate25' na faixa do tio1 (caso acima). A regra
-  // exige que a faixa DENTRO do contrato bata com essa — senao ele assinaria
-  // um documento dizendo R$ 69 com teto de 40, e e o documento que aparece
-  // numa discussao.
-  const contrato = (planoId) => ({
+  // O dono acabou de gravar 'mensal' no plano do tio1 (caso acima). A regra
+  // exige que o plano DENTRO do contrato bata com esse — senao ele assinaria
+  // um documento com o preco do anual e o compromisso do mensal, e e o
+  // documento que aparece numa discussao.
+  //
+  // ⚠️ A AMARRA E SOBRE O PLANO, NAO SOBRE O VALOR. Com preco por crianca o
+  // valor muda todo mes; exigir que o contrato repita um numero faria o
+  // documento nascer invalido na crianca seguinte.
+  const contrato = (plano) => ({
     tioUid: S(tio1.uid),
     aceitoEm: { nullValue: null },
     conteudo: {
       mapValue: {
-        fields: { plano: { mapValue: { fields: { id: S(planoId) } } } },
+        fields: { plano: { mapValue: { fields: { id: S(plano) } } } },
       },
     },
   });
-  checar('pos', 'o motorista emite o contrato da faixa que o dono gravou', 'PASSA',
-    await criar('contratosAssociacao', tio1.uid + '_1', tio1, contrato('ate25')));
-  checar('preco', 'mas nao um contrato de faixa DIFERENTE', 'NEGA',
-    await criar('contratosAssociacao', tio1.uid + '_2', tio1, contrato('ate10')));
+  checar('pos', 'o motorista emite o contrato do plano que o dono gravou', 'PASSA',
+    await criar('contratosAssociacao', tio1.uid + '_1', tio1, contrato('mensal')));
+  checar('preco', 'mas nao um contrato de plano DIFERENTE', 'NEGA',
+    await criar('contratosAssociacao', tio1.uid + '_2', tio1, contrato('anual')));
   checar('preco', 'nem emite contrato no nome de outro motorista', 'NEGA',
-    await criar('contratosAssociacao', tio2.uid + '_1', tio2, contrato('ate25')));
-  // Quem nao contratou nada nao tem `planoId`, entao nao ha faixa com que bater.
+    await criar('contratosAssociacao', tio2.uid + '_1', tio2, contrato('mensal')));
+  // Quem nao contratou nada nao tem `plano`, entao nao ha o que bater.
   checar('preco', 'quem nao contratou nao emite contrato nenhum', 'NEGA',
-    await criar('contratosAssociacao', novato.uid + '_1', novato, contrato('ate25')));
+    await criar('contratosAssociacao', novato.uid + '_1', novato, contrato('mensal')));
 
   // A prospeccao saiu das rules junto com o orcamento.
   await semear('leadsFunil/lead1', { nome: S('Motorista X'), etapa: S('novo') });

@@ -65,7 +65,7 @@ checar('suspenso não é pendência', null,
 // Contratado, pagando, rodando: não há o que fazer com ele hoje.
 checar('quem está bem não entra', null,
   pendencia({
-    uid: 'b', name: 'Em Dia', planoId: 'p1',
+    uid: 'b', name: 'Em Dia', plano: 'mensal', criancasAtivas: 20,
     trialInicio: atras(200), assinaturaAte: dia('2026-12-01'),
     ultimaRota: atras(1),
   }));
@@ -83,7 +83,7 @@ bloco('2. Uma linha por motorista, a mais urgente');
 // fariam o contador dizer que o dia tem quatro conversas quando tem uma.
 const tudoDeRuim = pendencia(
   {
-    uid: 'd', name: 'Carlos Souza', planoId: 'p1',
+    uid: 'd', name: 'Carlos Souza', plano: 'mensal', criancasAtivas: 20,
     trialInicio: atras(200), assinaturaAte: dia('2026-12-01'),
     ultimaRota: atras(30),
   },
@@ -154,7 +154,7 @@ const parceiros = [
   { uid: 'e', name: 'Bloqueado', trialInicio: atras(120), ultimaRota: atras(60) },
   // nada
   {
-    uid: 'b', name: 'Em Dia', planoId: 'p1',
+    uid: 'b', name: 'Em Dia', plano: 'mensal', criancasAtivas: 20,
     trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
   },
 ];
@@ -213,7 +213,7 @@ bloco('8. O fechamento do mês é UMA linha');
 // Uma linha por fatura enterraria as conversas do dia debaixo de trabalho que
 // se resolve num clique.
 const comContrato = (uid, name) => ({
-  uid, name, planoId: 'p1',
+  uid, name, plano: 'mensal', criancasAtivas: 20,
   trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
 });
 const fechamento = montarFila({
@@ -253,7 +253,7 @@ bloco('9. O alvará é a outra exceção à regra de uma linha por pessoa');
 // conferência parar de acontecer — ela é a única parte do produto que depende
 // de uma pessoa, e é assim de propósito.
 const otimoComAlvara = {
-  uid: 'r', name: 'Otimo Silva', planoId: 'p1',
+  uid: 'r', name: 'Otimo Silva', plano: 'mensal', criancasAtivas: 20,
   trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
   verificacao: 'enviada', alvaraEnviadoEm: atras(4),
 };
@@ -271,7 +271,7 @@ checar('chegou hoje ainda é médio', 'medio', montarFila({
 // alvará gera as duas, porque são duas ações diferentes suas.
 const duasCoisas = montarFila({
   parceiros: [{
-    uid: 's', name: 'Parado Com Alvara', planoId: 'p1',
+    uid: 's', name: 'Parado Com Alvara', plano: 'mensal', criancasAtivas: 20,
     trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(20),
     verificacao: 'enviada', alvaraEnviadoEm: atras(3),
   }],
@@ -286,7 +286,7 @@ bloco('10. O vencimento avisa ANTES de o selo cair');
 // selo sem ninguém ter dito nada.
 const vencendo = montarFila({
   parceiros: [{
-    uid: 't', name: 'Vencendo', planoId: 'p1',
+    uid: 't', name: 'Vencendo', plano: 'mensal', criancasAtivas: 20,
     trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
     verificacao: 'verificada', alvaraValidade: dia('2026-10-01'),
   }],
@@ -298,7 +298,7 @@ checar('com os dias dentro', true, vencendo[0].titulo.includes('16 dias'));
 // Longe de vencer não é pendência de hoje.
 checar('vence em cinco meses e não entra', 0, montarFila({
   parceiros: [{
-    uid: 'u', name: 'Tranquilo', planoId: 'p1',
+    uid: 'u', name: 'Tranquilo', plano: 'mensal', criancasAtivas: 20,
     trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
     verificacao: 'verificada', alvaraValidade: dia('2027-02-01'),
   }],
@@ -308,7 +308,7 @@ checar('vence em cinco meses e não entra', 0, montarFila({
 // normal, não linha de fila.
 checar('já vencido não entra mais', 0, montarFila({
   parceiros: [{
-    uid: 'v', name: 'Vencido', planoId: 'p1',
+    uid: 'v', name: 'Vencido', plano: 'mensal', criancasAtivas: 20,
     trialInicio: atras(200), assinaturaAte: dia('2026-12-01'), ultimaRota: atras(1),
     verificacao: 'verificada', alvaraValidade: dia('2026-08-01'),
   }],

@@ -32,7 +32,7 @@ import {
   resumirConcessoes,
   validarConcessao,
 } from '../src/dominio/associacao/concessao.js';
-import { PLANOS, precoDoMes } from '../src/dominio/associacao/planos.js';
+import { PLANO, precoDoMes } from '../src/dominio/associacao/planos.js';
 
 let ok = 0;
 let bad = 0;
@@ -135,14 +135,17 @@ checar('o desconto sai da concessão', { origem: 'concessao', fracao: 0.3, ate: 
 checar('isenção não vira desconto', null,
   descontoDaConcessao({ tipo: TIPO.ISENCAO, ate: '2026-10' }));
 
-const plano = PLANOS[1]; // R$ 149
-const comConcessao = precoDoMes({ plano, descontos: [efeito], mes: '2026-10' });
+// Uma operação de 20 crianças no mensal: R$ 118 de tabela.
+const plano = PLANO.MENSAL;
+const criancas = 20;
+const comConcessao = precoDoMes({ criancas, plano, descontos: [efeito], mes: '2026-10' });
 checar('a fatura cai', 0.3, comConcessao.descontoConcessao);
-checar('e o líquido também', 104.3, comConcessao.liquido);
+checar('e o líquido também', 82.6, comConcessao.liquido);
 
 // ⚠️ A CONCESSÃO SOMA COM A RÉGUA, não compete com ela: fundador de metade com
 // 20% de concessão fica com 70%.
 const fundadorComConcessao = precoDoMes({
+  criancas,
   plano,
   fundador: 'metade',
   descontos: [{ origem: 'concessao', fracao: 0.2, ate: '2027-02' }],
@@ -152,6 +155,7 @@ checar('fundador mais concessão soma', 0.7, fundadorComConcessao.desconto);
 
 // E o teto de 100% continua sendo o que impede fatura negativa.
 checar('nunca passa de 100%', 1, precoDoMes({
+  criancas,
   plano,
   fundador: 'metade',
   indicacoesAtivas: 5,
@@ -161,7 +165,7 @@ checar('nunca passa de 100%', 1, precoDoMes({
 
 // Vencida, a concessão para de descontar sozinha. É a prova do prazo.
 checar('vencida não desconta mais', 0,
-  precoDoMes({ plano, descontos: [efeito], mes: '2027-03' }).descontoConcessao);
+  precoDoMes({ criancas, plano, descontos: [efeito], mes: '2027-03' }).descontoConcessao);
 
 // ───────────────────────── régua contra exceção ────────────────────────────
 
@@ -199,18 +203,27 @@ checar('sem condição nenhuma, lista vazia', [], condicoesVigentes({}, '2026-10
 // protege é `PISO_DA_FATURA`), e a ficha ficou atrás.
 //
 // Os casos existentes usavam 5 e 2 indicações — com 5, `Math.min(50, 50)`
-// coincide com o valor certo e o teto NUNCA morde. Por isso são 8 aqui: é o
-// primeiro valor em que a ficha e a fatura discordavam.
+// coincide com o valor certo e o teto NUNCA morde. Por isso são 12 aqui: com
+// a taxa em 5% (era 10%), 12 é o primeiro valor que ultrapassa os 50% do teto
+// que existiu, ou seja, o primeiro em que ficha e fatura voltariam a
+// discordar se alguém recolocasse o corte.
 //
 // A ficha é onde o dono confere o que concedeu. Dizer 50% enquanto a fatura
-// desconta 80% é o "indiquei e não recebi" pelo lado de quem responde.
-const muitasIndicacoes = condicoesVigentes({ indicacoesAtivas: 8 }, '2026-10');
-checar('8 indicações mostram 80%, não 50%', '80%',
+// desconta 60% é o "indiquei e não recebi" pelo lado de quem responde.
+//
+// ⚠️ O NÚMERO ESPERADO SAI DA RÉGUA, NÃO DE UM LITERAL. Trocar a taxa outra
+// vez não deve exigir reescrever este caso — o que ele prova é que os dois
+// lados concordam, e foi por um literal aqui que eles divergiram antes.
+const QUANTAS = 12;
+const esperado = precoDoMes({ criancas, plano, indicacoesAtivas: QUANTAS, mes: '2026-10' })
+  .descontoIndicacao;
+const muitasIndicacoes = condicoesVigentes({ indicacoesAtivas: QUANTAS }, '2026-10');
+checar(`${QUANTAS} indicações passam de 50% e a ficha acompanha`, '60%',
   muitasIndicacoes.find((l) => l.id === 'indicacao').valor);
-checar('e o rótulo bate com o que a fatura desconta', 0.8,
-  precoDoMes({ plano, indicacoesAtivas: 8, mes: '2026-10' }).descontoIndicacao);
+checar('e o rótulo bate com o que a fatura desconta', `${Math.round(esperado * 100)}%`,
+  muitasIndicacoes.find((l) => l.id === 'indicacao').valor);
 // Uma só continua no singular e sem teto por baixo.
-checar('1 indicação mostra 10%', '10%',
+checar('1 indicação mostra 5%', '5%',
   condicoesVigentes({ indicacoesAtivas: 1 }, '2026-10')
     .find((l) => l.id === 'indicacao').valor);
 

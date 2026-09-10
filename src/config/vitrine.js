@@ -72,3 +72,39 @@ export function comPiso(valor) {
  * que essa escolha custa.
  */
 export const SITE_INSTITUCIONAL = 'https://alobuzinou.com.br';
+
+/**
+ * O ENDEREÇO QUE VAI NA MENSAGEM DE CONVITE — e por que ele NÃO é o
+ * `SITE_INSTITUCIONAL`.
+ *
+ * As duas mensagens que a plataforma escreve para quem ainda não tem conta
+ * mandavam a pessoa para a landing: o convite que o motorista manda ao colega
+ * (`pages/tio/TioIndicar.jsx`) e o pedido que a responsável manda ao motorista
+ * dela (`marca/pedidoAoMotorista.js`).
+ *
+ * ⚠️ ISSO PÕE UMA APRESENTAÇÃO NO CAMINHO DE QUEM JÁ FOI APRESENTADO. Quem
+ * recebe essas mensagens acabou de ser convencido por alguém em quem confia —
+ * e a landing responde "o que é isso?", que é a única pergunta que a mensagem
+ * já tinha respondido. O pedido da responsável era o caso mais visível: ele
+ * diz *"você cria a sua conta aqui"* e linkava para a página onde não se cria
+ * conta nenhuma.
+ *
+ * ⚠️ E A LANDING PERDE A ORIGEM NO MEIO DO CAMINHO. `DriverSignup` lê `?o=` /
+ * `?utm_source=` da PRÓPRIA URL (ver o comentário lá), então o canal só chega
+ * ao painel do dono se o link apontar direto para o cadastro. Passando pela
+ * landing, o cadastro que veio de uma indicação aparece como tráfego solto —
+ * e a indicação é justamente o canal que o negócio aposta em medir.
+ *
+ * Por isso o destino é o cadastro do motorista, no domínio do APP, com o
+ * `utm_source` que diz de onde veio. `conviteDeMotorista` existe para o canal ser
+ * escolhido por quem escreve a mensagem: a lista fechada que traduz esse
+ * texto num canal está em `dominio/identidade/origem.js`.
+ */
+export const CADASTRO_DE_MOTORISTA = 'https://alobuzinou.com/quero-fazer-parte';
+
+/** O mesmo endereço, carimbado com o canal de onde a mensagem sai. */
+export function conviteDeMotorista(utmSource) {
+  return utmSource
+    ? `${CADASTRO_DE_MOTORISTA}?utm_source=${encodeURIComponent(utmSource)}`
+    : CADASTRO_DE_MOTORISTA;
+}

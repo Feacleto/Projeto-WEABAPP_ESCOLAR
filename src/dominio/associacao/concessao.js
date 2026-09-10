@@ -132,7 +132,8 @@ export function validarConcessao({ tipo, fracao, meses, motivo } = {}) {
  * em `users.descontos` (desconto) ou `users.isencaoAte` (isenção) — e as duas
  * escritas vão no MESMO lote que esta. Separadas, existiria a concessão
  * registrada que nunca chegou na conta, ou o desconto na fatura que ninguém
- * consegue explicar. É a mesma amarra de `planoId` + `limiteCriancas`.
+ * consegue explicar. É a mesma amarra que `planoId` + `limiteCriancas` tinham
+ * antes de as faixas saírem.
  */
 export function montarConcessao({ tipo, fracao, meses, motivo, por, agora = new Date() } = {}) {
   const { ok, erro } = validarConcessao({ tipo, fracao, meses, motivo });

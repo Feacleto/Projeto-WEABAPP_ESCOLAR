@@ -48,9 +48,10 @@ import {
   FUNDADOR,
   ORIGEM,
   PISO_DA_FATURA,
-  PLANOS,
+  PLANO,
+  PLANOS_DISPONIVEIS,
   centavos,
-  planoPorId,
+  precoDaTabela,
 } from '../src/dominio/associacao/planos.js';
 
 let ok = 0;
@@ -87,7 +88,8 @@ const HOJE = dia('2026-09-15');
 const montar = (extra = {}) =>
   montarContrato({
     motorista: MOTORISTA,
-    plano: planoPorId('ate25'),
+    plano: PLANO.MENSAL,
+    criancas: 20,
     diaVencimento: 10,
     agora: HOJE,
     ...extra,
@@ -95,18 +97,40 @@ const montar = (extra = {}) =>
 
 // ───────────────────────── o contrato de tabela ────────────────────────────
 
-bloco('1. O contrato sai de uma FAIXA, não de uma negociação');
+bloco('1. O contrato declara uma TAXA, não um valor');
 
 const base = montar();
 
-checar('a faixa contratada viaja no documento', 'ate25', base.plano.id);
-checar('e o rótulo dela também', 'De 11 a 25 crianças', base.plano.rotulo);
-// O TETO É A ÚNICA COISA QUE O PLANO CAPA. Não existe Básico/Pro, e é essa a
-// cláusula que o associado precisa poder cobrar de volta.
-checar('o teto de crianças é cláusula', 25, base.plano.teto);
-checar('o preço de tabela fica registrado', 149, base.plano.precoTabela);
-checar('sem desconto, paga a tabela', 149, base.valores.valorMensal);
+checar('o plano contratado viaja no documento', 'mensal', base.plano.id);
+checar('e o rótulo dele também', 'Mensal', base.plano.rotulo);
+
+// ⚠️ A CLÁUSULA É A TAXA, E É ISSO QUE ELIMINA A REASSINATURA POR CRESCIMENTO.
+// Na versão 4 o contrato congelava o preço da FAIXA, então ganhar uma criança
+// que cruzasse a fronteira exigia documento novo e aceite novo — burocracia no
+// exato momento em que ele acabara de fechar um cliente.
+checar('a taxa por criança é cláusula', 5.9, base.plano.taxaPorCrianca);
+checar('a marginal acima da 40ª também', 4.9, base.plano.taxaAcimaDe40);
+checar('e o mínimo mensal também', 49, base.plano.minimoMensal);
+checar('a virada da taxa é na 40ª', 40, base.plano.criancasNaTaxaCheia);
+
+// ⚠️ O TAMANHO E O VALOR SÃO EXEMPLO, NÃO ACORDO. A fatura acompanha a
+// operação; um documento que apresentasse este número como o preço contratado
+// se contradiria na primeira criança nova.
+checar('o tamanho da operação na assinatura fica registrado', 20, base.plano.criancasNaAssinatura);
+checar('e a conta que ele produz hoje', 118, base.plano.precoTabela);
+checar('sem desconto, paga a taxa vezes o tamanho', 118, base.valores.valorMensal);
 checar('a cobrança é mensal', 'mensal', base.valores.periodicidade);
+
+// ⚠️ NÃO EXISTE MAIS TETO DE CRIANÇAS, e o campo não pode voltar nem como
+// `null`: teto nulo se lê como "sem limite acordado" em vez de "não há teto
+// neste modelo". Nada trava quando a operação cresce.
+checar('o contrato não fala em teto de crianças', undefined, base.plano.teto);
+
+// O anual é o mesmo documento com outra taxa.
+const anual = montar({ plano: PLANO.ANUAL });
+checar('o anual declara a própria taxa', 2.9, anual.plano.taxaPorCrianca);
+checar('e o próprio mínimo', 29, anual.plano.minimoMensal);
+checar('vinte crianças no anual custam R$ 58', 58, anual.valores.valorMensal);
 
 bloco('2. Doze meses para todo mundo — não há periodicidade a escolher');
 
@@ -118,11 +142,15 @@ checar('começa hoje', '2026-09-15', base.vigenciaInicio.slice(0, 10));
 
 bloco('3. Desconto entra com a data em que acaba');
 
-const fecha1 = { origem: ORIGEM.FECHAMENTO, fracao: 0.5, ate: '2027-09', degrau: 1 };
+// ⚠️ `ate: null` É O VITALÍCIO, e ele é o caso NORMAL do fechamento desde
+// 10/09/2026. O contrato precisa saber registrar um desconto sem data — a
+// versão 4 só sabia registrar prazo, porque prazo era tudo o que existia.
+const fecha1 = { origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: null, degrau: 1 };
 const comAntecipacao = montar({ descontos: [fecha1] });
 
-checar('metade da conta', 74.5, comAntecipacao.valores.valorMensal);
-checar('e a fração fica registrada', 0.5, comAntecipacao.valores.descontoFechamento);
+checar('trinta por cento da conta', 82.6, comAntecipacao.valores.valorMensal);
+checar('e a fração fica registrada', 0.3, comAntecipacao.valores.descontoFechamento);
+checar('o documento registra que ele não expira', null, comAntecipacao.valores.descontos[0].ate);
 // O DEGRAU VIAJA NO DOCUMENTO. A fração sozinha não distingue 15% de
 // fechamento de 15% de concessão, e são espécies diferentes: uma é régua, a
 // outra é exceção com dono e motivo.
@@ -134,7 +162,7 @@ checar('e o degrau também', 1, comAntecipacao.valores.descontos[0].degrau);
 const legado = { origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-09' };
 checar(
   'antecipação antiga vale como fechamento',
-  74.5,
+  59,
   montar({ descontos: [legado] }).valores.valorMensal
 );
 checar(
@@ -142,10 +170,15 @@ checar(
   0.5,
   montar({ descontos: [legado] }).valores.descontoFechamento
 );
-// ESTA É A LINHA QUE IMPEDE O DESCONTO DE VIRAR PREÇO. Sem a data dentro do
-// contrato, o desconto de conversão passa a ser a tabela daquele associado —
-// e a receita prevista deixa de bater com a real sem ninguém apontar quando.
-checar('a validade viaja junto', '2027-09', comAntecipacao.valores.descontos[0].ate);
+// ⚠️ QUANDO HÁ PRAZO, ELE VIAJA JUNTO — e continua sendo o que impede um
+// desconto COM data de virar preço por omissão. O que mudou em 10/09/2026 é
+// que o fechamento deixou de ter data (ver o bloco 3): a linha abaixo passou a
+// ser exercitada pelo LEGADO e pela CONCESSÃO, que seguem tendo prazo.
+checar(
+  'a validade viaja junto quando existe',
+  '2027-09',
+  montar({ descontos: [legado] }).valores.descontos[0].ate
+);
 checar('sem desconto, a lista é vazia e não nula', [], base.valores.descontos);
 
 bloco('4. Fundador e fechamento não somam — vale o maior');
@@ -153,8 +186,9 @@ bloco('4. Fundador e fechamento não somam — vale o maior');
 // Somando, um fundador de metade chegaria a 100% e a partir dali a INDICAÇÃO
 // valeria zero justamente para quem mais indica.
 const fundadorAntecipado = montar({ fundador: FUNDADOR.METADE, descontos: [fecha1] });
-checar('metade + metade continua metade', 0.5, fundadorAntecipado.valores.descontoTotal);
-checar('e o valor é o mesmo de quem só antecipou', 74.5, fundadorAntecipado.valores.valorMensal);
+// Metade (fundador) contra 30% (fechamento): vale o maior, que é a metade.
+checar('vale o maior dos dois, não a soma', 0.5, fundadorAntecipado.valores.descontoTotal);
+checar('e o valor é o do fundador', 59, fundadorAntecipado.valores.valorMensal);
 
 // O vitalício não é rebaixado pela regra do maior.
 checar(
@@ -165,9 +199,12 @@ checar(
 
 bloco('5. A conta nunca vira crédito — e agora nunca vira migalha');
 
+// ⚠️ ERAM 5 INDICAÇÕES, e viraram 10 quando a taxa caiu de 10% para 5%. O que
+// este bloco prova não é o número, é que existe um caminho até 100% nominais
+// que NÃO passa pelo fundador vitalício — e que o piso o segura.
 const tudo = montar({
   fundador: FUNDADOR.METADE,
-  indicacoesAtivas: 5,
+  indicacoesAtivas: 10,
   descontos: [fecha1],
 });
 checar('as fontes de desconto param em 100%', 1, tudo.valores.descontoTotal);
@@ -175,7 +212,7 @@ checar('as fontes de desconto param em 100%', 1, tudo.valores.descontoTotal);
 // o associado não deve nada. O piso é o que o fecha.
 checar('e o mensal para no PISO, não em zero', PISO_DA_FATURA, tudo.valores.valorMensal);
 checar('o contrato registra que o piso mordeu', true, tudo.valores.pisoAplicado);
-checar('e quanto ele absorveu', 34, tudo.valores.descontoAbsorvido);
+checar('e quanto ele absorveu', 19, tudo.valores.descontoAbsorvido);
 
 // ⚠️ A CLÁUSULA DO PISO VAI SEMPRE, aplicada ou não. Uma cláusula que só
 // aparece quando pesa contra o associado é uma cláusula que ele descobre na
@@ -199,7 +236,7 @@ bloco('6. Isenção não é desconto de 100%');
 // registro do que foi concedido.
 const comIsencao = montar({ isencaoAte: '2026-11' });
 checar('os meses sem taxa ficam no contrato', '2026-11', comIsencao.valores.isencaoAte);
-checar('e o valor mensal continua sendo o de tabela', 149, comIsencao.valores.valorMensal);
+checar('e o valor mensal continua sendo o de tabela', 118, comIsencao.valores.valorMensal);
 checar('sem prêmio, não há isenção', null, base.valores.isencaoAte);
 
 // ──────────────────────────── o vencimento ─────────────────────────────────
@@ -243,24 +280,32 @@ bloco('9. O documento é estável — é ele que vira hash');
 // leu e o registro do que ela aceitou.
 checar('mesma entrada, mesmo documento', JSON.stringify(base), JSON.stringify(montar()));
 
-checar('a versão é a 4 — a escada e o piso', 4, VERSAO_CONTRATO);
-checar('e ela viaja no documento', 4, base.versao);
+// A 5 trouxe a taxa por criança, o desconto vitalício e a saída assimétrica —
+// o associado encerra na hora, a plataforma mantém 30 dias de aviso.
+checar('a versão é a 5', 5, VERSAO_CONTRATO);
+checar('e ela viaja no documento', 5, base.versao);
 
 // A contratada e o associado são identificados: contrato sem parte é papel.
 checar('o associado é identificado', 'tio1', base.associado.uid);
 checar('a contratada tem CNPJ', true, Boolean(base.contratada.cnpj));
 
-bloco('10. Acima da tabela é conversa, não zero');
+bloco('10. Plano desconhecido é recusa, não zero');
 
 // Aplicar desconto sobre um preço inexistente produziria R$ 0 —
 // indistinguível de "não paga" — e é exatamente o caso em que alguém precisa
 // conversar.
-const acima = montar({ plano: null });
-checar('sem faixa, não há valor mensal', null, acima.valores.valorMensal);
+const acima = montar({ plano: 'trimestral' });
+checar('sem plano válido, não há valor mensal', null, acima.valores.valorMensal);
 checar('nem preço de tabela', null, acima.plano.precoTabela);
-checar('nem teto', null, acima.plano.teto);
+checar('nem taxa por criança', null, acima.plano.taxaPorCrianca);
+checar('e o id não é inventado', null, acima.plano.id);
 
-checar('a régua tem três faixas', 3, PLANOS.length);
+checar('há dois planos, e só dois', 2, PLANOS_DISPONIVEIS.length);
+
+// ⚠️ NÃO HÁ MAIS "ACIMA DA TABELA". Com preço linear toda operação tem preço,
+// de três a trezentas crianças — o caso que exigia conversa deixou de existir,
+// e com ele a única porta pela qual um contrato podia nascer sem valor.
+checar('toda operação tem preço, inclusive a muito grande', true, precoDaTabela({ criancas: 300, plano: PLANO.MENSAL }) > 0);
 
 // ═══════ A INVARIANTE QUE PEGA O DESCONTO INVISÍVEL ════════════════════════
 
@@ -284,12 +329,21 @@ bloco('11. As linhas do contrato fecham com o total');
 const somaDasLinhas = (v) =>
   // Fundador e fechamento não somam entre si — vale o maior (ver
   // FUNDADOR_E_FECHAMENTO_SOMAM). O resto soma.
-  Math.min(
-    1,
-    Math.max(v.descontoFundador || 0, v.descontoFechamento || 0) +
-      (v.descontoIndicacao || 0) +
-      (v.descontoConcessao || 0)
-  );
+  //
+  // ⚠️ ARREDONDA COMO A RÉGUA ARREDONDA, e isto não é preciosismo: a soma
+  // acontece em ponto flutuante dos dois lados, e `precoDoMes` passa o
+  // resultado por `fracaoDeDesconto` (quatro casas). Somando cru aqui,
+  // 0,5 + 0,1 + 0,3 dá 0,8999999999999999 e a invariante reprova um contrato
+  // que está correto. Ficou escondido enquanto os números escolhidos calhavam
+  // de somar exato — a taxa de indicação mudou de 10% para 5% e apareceu.
+  Math.round(
+    Math.min(
+      1,
+      Math.max(v.descontoFundador || 0, v.descontoFechamento || 0) +
+        (v.descontoIndicacao || 0) +
+        (v.descontoConcessao || 0)
+    ) * 10000
+  ) / 10000;
 
 const conferirSoma = (nome, contrato) =>
   checar(nome, contrato.valores.descontoTotal, somaDasLinhas(contrato.valores));
@@ -318,7 +372,7 @@ valorSeExplica('sem desconto', base);
 valorSeExplica('com fechamento', comAntecipacao);
 valorSeExplica('com o piso mordendo', tudo);
 valorSeExplica('fundador com fechamento', fundadorAntecipado);
-valorSeExplica('acima da tabela', montar({ plano: null }));
+valorSeExplica('plano desconhecido', montar({ plano: 'trimestral' }));
 valorSeExplica('vitalício, que escapa do piso', montar({ fundador: FUNDADOR.VITALICIO }));
 
 conferirSoma('sem desconto nenhum', base);
@@ -328,7 +382,7 @@ conferirSoma('fundador com fechamento', fundadorAntecipado);
 const concessao = { origem: ORIGEM.CONCESSAO, fracao: 0.3, ate: '2027-02' };
 const comConcessao = montar({ descontos: [concessao] });
 // Era ESTE o caso que faltava: o valor descia e nenhuma linha dizia por quê.
-checar('a concessão desce o valor', 104.3, comConcessao.valores.valorMensal);
+checar('a concessão desce o valor', 82.6, comConcessao.valores.valorMensal);
 checar('e o contrato a LISTA', 0.3, comConcessao.valores.descontoConcessao);
 conferirSoma('só concessão', comConcessao);
 
@@ -382,7 +436,8 @@ checar('e o endereco', DEV_ENDERECO, COMPANY_INFO.endereco);
 {
   const c = montarContrato({
     motorista: { name: 'Tio Teste', city: 'Amparo/SP' },
-    plano: { id: 'ate25', nome: 'Ate 25', ate: 25, preco: 149 },
+    plano: PLANO.MENSAL,
+    criancas: 20,
     mes: '2026-09',
   });
   checar('o contrato de associacao usa a mesma razao social', DEV_NAME, c.contratada.razao);

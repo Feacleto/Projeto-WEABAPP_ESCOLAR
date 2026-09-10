@@ -128,7 +128,7 @@ export const CLOUD_FUNCTIONS_ENABLED =
  * de quem acabou de criar conta, e sem cloud o cartão "Girar agora" ocupava o
  * lugar mais caro da tela para oferecer algo que não fechava o ciclo. Ela virou
  * prêmio de CONVERSÃO, e a bandeira deu lugar a uma condição de DADO
- * (`users.planoId`) — condição que vem do dado é melhor que condição que vem do
+ * (`users.plano`) — condição que vem do dado é melhor que condição que vem do
  * deploy, porque ela não precisa ser lembrada.
  *
  * Depois a roleta saiu de vez: o critério dela era SORTE, e sorte não sobrevive

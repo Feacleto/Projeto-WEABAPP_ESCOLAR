@@ -9,8 +9,8 @@ const REGION = 'southamerica-east1';
  * O MOTORISTA CONTRATA SOZINHO — e o servidor é quem escreve a cláusula.
  *
  * ── POR QUE ISTO É CLOUD FUNCTION E NÃO UMA ESCRITA DO CLIENTE
- * A faixa contratada não é preferência de tela: é `users.planoId`, que a fatura
- * cobra, e `users.limiteCriancas`, que as rules cobram a cada criança
+ * O plano contratado não é preferência de tela: é `users.plano`, que a fatura
+ * cobra a cada mês
  * cadastrada. As duas estão na lista de campos que o cliente NUNCA escreve —
  * cláusula que o devedor edita não é cláusula.
  *
@@ -68,7 +68,7 @@ const REGION = 'southamerica-east1';
  * `scripts/testar-imports.mjs` falha se alguém desfizer isso.
  */
 const {
-  PLANOS,
+  planoValido,
   ESCADA,
   RETORNO,
   MESES_DE_CONTRATO,
@@ -85,10 +85,9 @@ function makeContratarPlano(db) {
     async (request) => {
       const uid = await exigirMotorista(db, request);
 
-      const planoId = String(request.data?.planoId || '').trim();
-      const plano = PLANOS.find((p) => p.id === planoId);
-      if (!plano) {
-        throw new HttpsError('invalid-argument', 'Faixa desconhecida.');
+      const plano = String(request.data?.plano || '').trim();
+      if (!planoValido(plano)) {
+        throw new HttpsError('invalid-argument', 'Plano desconhecido — use mensal ou anual.');
       }
 
       const ref = db.doc(`users/${uid}`);
@@ -99,9 +98,14 @@ function makeContratarPlano(db) {
       // ── o desconto do degrau ───────────────────────────────────────────
       //
       // UMA VEZ SÓ. A lista de descontos é SUBSTITUÍDA, e quem já tem o de
-      // fechamento mantém a data E A FRAÇÃO originais: sem isso, trocar de
-      // faixa no décimo mês renovaria o desconto por mais doze, e o desconto
-      // de conversão viraria a tabela definitiva daquele associado.
+      // fechamento mantém A FRAÇÃO original: sem isso, trocar de plano no
+      // décimo mês daria a ele o degrau de hoje, e quem entrou no mês 3 podia
+      // "melhorar" o próprio desconto trocando de plano ida e volta.
+      //
+      // ⚠️ ELE JÁ FOI DE PRAZO, E AGORA É VITALÍCIO. Até 09/09/2026 o objeto
+      // levava `ate` doze meses à frente, e o risco era renovar esse prazo a
+      // cada troca. Hoje o prazo não existe (`ate: null`) e o risco virou
+      // outro: reescrever a FRAÇÃO. A guarda é a mesma, o motivo mudou.
       //
       // ⚠️ O LEGADO `antecipacao` CONTA COMO JÁ TENDO. É o mesmo instrumento
       // com o nome antigo, e tratá-lo como ausente daria um SEGUNDO desconto
@@ -121,10 +125,18 @@ function makeContratarPlano(db) {
         descontos.push({
           origem: 'fechamento',
           fracao,
-          ate: mesDaqui(MESES_DE_CONTRATO, agora),
+          // ⚠️ `null` É O VITALÍCIO, E ELE PRECISA SER EXPLÍCITO.
+          //
+          // `descontosVigentes` trata `ate: null` como sem prazo e DESCARTA a
+          // chave ausente — a distinção é estrita de propósito, porque as duas
+          // falhas custam coisas diferentes: campo esquecido virando desconto
+          // eterno vaza receita em silêncio; vitalício tratado como vencido
+          // tira do motorista um desconto prometido. Escrever `null` é um ato
+          // deliberado; esquecer a chave não é.
+          ate: null,
           // O DEGRAU VAI GRAVADO junto da fração. A ficha do dono precisa
-          // dizer QUAL degrau foi, e a fração sozinha não distingue 15% de
-          // fechamento de 15% de concessão — que são espécies diferentes.
+          // dizer QUAL degrau foi, e a fração sozinha não distingue 10% de
+          // fechamento de 10% de concessão — que são espécies diferentes.
           degrau,
         });
       }
@@ -132,16 +144,20 @@ function makeContratarPlano(db) {
       // `assinaturaAte` VAI JUNTO, e e o campo que destrava a conta.
       //
       // Nunca REDUZ: quem ja esta coberto por um pagamento mais longo nao pode
-      // perder cobertura por trocar de faixa. `Math.max` de datas nao existe,
+      // perder cobertura por trocar de plano. `Math.max` de datas nao existe,
       // entao a comparacao e explicita.
       const jaCoberto = dados.assinaturaAte?.toDate?.() || null;
       const cobertura = cobertoAteOMesSeguinte(agora);
 
       await ref.set(
         {
-          planoId: plano.id,
-          // O TETO VEM DA FAIXA, no mesmo write. Ver o cabeçalho.
-          limiteCriancas: plano.ate,
+          plano,
+          // ⚠️ `limiteCriancas` NÃO É MAIS ESCRITO AQUI, e a ausência é a
+          // mudança. Ele era gravado no MESMO write que a faixa, porque
+          // separá-los abria a janela em que o motorista pagava uma faixa e
+          // tinha o teto de outra. O teto saiu do modelo em 10/09/2026: nada
+          // trava quando a operação cresce, e a fatura segue o número real de
+          // crianças. Não há mais dois campos para manter coerentes.
           descontos,
           contratadoEm: agora,
           assinaturaAte:
@@ -150,16 +166,15 @@ function makeContratarPlano(db) {
         { merge: true }
       );
 
-      logger.info('[contratacao] faixa contratada', {
+      logger.info('[contratacao] plano contratado', {
         uid,
-        planoId: plano.id,
+        plano,
         degrau,
         fracao,
       });
 
       return {
-        planoId: plano.id,
-        limiteCriancas: plano.ate,
+        plano,
         descontos,
         // A tela precisa saber se o desconto foi concedido AGORA, e QUAL foi,
         // para dizer isso à pessoa. Descobrir depois, na primeira fatura,
@@ -174,7 +189,6 @@ function makeContratarPlano(db) {
 
 module.exports = {
   makeContratarPlano,
-  PLANOS,
   ESCADA,
   RETORNO,
   MESES_DE_CONTRATO,

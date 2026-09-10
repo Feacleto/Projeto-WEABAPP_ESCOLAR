@@ -1,33 +1,43 @@
 /**
- * A RÉGUA DOS PLANOS — a faixa, a escada de fechamento, o piso e o zero.
+ * A RÉGUA DOS PLANOS — a taxa por criança, a escada vitalícia, o mínimo e o piso.
  *
  * POR QUE ESTE TESTE É O MAIS IMPORTANTE DA PASTA DE ASSOCIAÇÃO
- * Aqui sai o número que vira fatura. O vizinho `taxa.js` já custou caro duas
- * vezes pelo mesmo tipo de erro — o contrato de associação saiu com valor ZERO
- * em duas ocasiões, assinado com hash, por um campo mal lido. A diferença é
- * que lá o erro precisava de um humano para acontecer; aqui o desconto é somado
- * por código, e soma sem trava vira crédito.
+ * Aqui sai o número que vira fatura. O contrato de associação já saiu com valor
+ * ZERO em duas ocasiões, assinado com hash, por um campo mal lido. A diferença
+ * é que lá o erro precisava de um humano; aqui o desconto é somado por código,
+ * e soma sem trava vira crédito.
  *
- * ⚠️ E ELE JÁ DEIXOU UM VAZAMENTO PASSAR, o que explica o bloco 6.
+ * ⚠️ ELE JÁ DEIXOU UM VAZAMENTO PASSAR, o que explica o bloco 6.
  * O comentário de `precoDoMes` afirmava que quem não é fundador nunca zera. Não
- * era verdade: `antecipacao` (50%) somava com indicação (50%) e a fatura ia a
- * R$ 0,00. O teste que "provava" o invariante passava cinco indicações SEM a
- * antecipação — o caso que vazava não era coberto. O bloco 6 agora cobre a
- * SOMA, que é o que pega o próximo desconto que alguém esquecer de considerar.
+ * era verdade: o fechamento somava com indicação e a fatura ia a R$ 0,00. O
+ * teste que "provava" o invariante passava cinco indicações SEM o fechamento —
+ * o caso que vazava não era coberto. O bloco 6 cobre a SOMA, que é o que pega o
+ * próximo desconto que alguém esquecer de considerar.
+ *
+ * ⚠️ E O BLOCO 2 EXISTE POR CAUSA DE UM DEGRAU QUE NÃO PODE VOLTAR.
+ * O preço era por faixa até 10/09/2026, e na fronteira uma criança custava o
+ * preço de sete. A taxa marginal acima da 40ª é a única descontinuidade que
+ * sobrou na régua, e ela é marginal justamente para não virar degrau: o bloco 2
+ * varre 1 a 60 crianças e exige que o preço NUNCA desça quando o número sobe.
  *
  * COMO RODAR
  *   node scripts/testar-planos.mjs      (ou: npm run testar:planos)
  */
 
 import {
-  PLANOS,
+  PLANO,
+  PLANOS_DISPONIVEIS,
+  TAXA,
+  TAXA_ACIMA_DE_40,
+  CRIANCAS_NA_TAXA_CHEIA,
+  MINIMO,
   FUNDADOR,
-  ACIMA_DA_TABELA,
   PISO_DA_FATURA,
   DESCONTO_POR_INDICACAO,
-  planoPara,
-  planoPorId,
-  excedentes,
+  valorDaIndicacao,
+  planoValido,
+  precoDaTabela,
+  custoDaProximaCrianca,
   descontoDoFundador,
   descontoDeIndicacoes,
   descontoDoFechamento,
@@ -35,7 +45,6 @@ import {
   descontosVigentes,
   ESCADA_DE_FECHAMENTO,
   RETORNO,
-  RENOVACAO,
   MESES_DE_CONTRATO,
   FUNDADORES_VITALICIO,
   FUNDADORES_METADE,
@@ -61,342 +70,309 @@ function bloco(t) {
   console.log(`\n\x1b[1m${t}\x1b[0m`);
 }
 
-const id = (p) => (p ? p.id : null);
+const tabela = (criancas, plano = PLANO.MENSAL) => precoDaTabela({ criancas, plano });
 const liq = (args) => precoDoMes(args).liquido;
 
-// ───────────────────────────────── a faixa ─────────────────────────────────
+// ────────────────────────── 1. o preço de tabela ───────────────────────────
 
-bloco('1. Em que faixa a operação cai');
+bloco('1. A taxa por criança');
 
-checar('três crianças cabem na primeira', 'ate10', id(planoPara(3)));
-checar('a borda de cima da primeira é inclusiva', 'ate10', id(planoPara(10)));
-checar('onze já é a segunda', 'ate25', id(planoPara(11)));
-checar('vinte e cinco ainda é a segunda', 'ate25', id(planoPara(25)));
-checar('vinte e seis é a terceira', 'ate40', id(planoPara(26)));
-checar('quarenta é o fim da tabela', 'ate40', id(planoPara(40)));
+checar('vinte crianças no mensal', 118, tabela(20));
+checar('vinte crianças no anual', 58, tabela(20, PLANO.ANUAL));
+// ⚠️ O ANUAL É MENOS QUE METADE, e a frase de venda tem que dizer isso e não
+// "exatamente metade": metade de R$ 5,90 seria R$ 2,95, e a taxa é R$ 2,90.
+// A primeira versão deste teste afirmava "exatamente metade" e falhou aqui —
+// o número é generoso e o texto é que estava errado.
+checar('o anual custa MENOS que metade do mensal', true, TAXA[PLANO.ANUAL] * 2 < TAXA[PLANO.MENSAL]);
+checar('e a diferença é de cinco centavos por criança', 0.05, Math.round((TAXA[PLANO.MENSAL] / 2 - TAXA[PLANO.ANUAL]) * 100) / 100);
+checar('quinze no mensal', 88.5, tabela(15));
+checar('dezesseis no mensal', 94.4, tabela(16));
 
-// Devolver o maior plano como consolo cobraria R$ 229 de quem tem 60 crianças
-// — menos do que qualquer conversa produziria. Fora da tabela é `null`, e quem
-// consome precisa tratar.
-checar('quarenta e um sai da tabela', null, id(planoPara(41)));
-checar('conta zerada cabe na primeira', 'ate10', id(planoPara(0)));
-checar('lixo não inventa faixa', 'ate10', id(planoPara(undefined)));
+// ⚠️ O MOTIVO DE TODA A MUDANÇA DE 10/09/2026.
+// Em faixas, a 16ª criança custava R$ 40 — o preço de 6,8 crianças. Este
+// número é o argumento inteiro do modelo linear, e se ele voltar a subir
+// alguém reintroduziu um degrau.
+checar('a 16ª criança custa uma criança, não sete', 5.9, custoDaProximaCrianca({ criancas: 15 }));
 
-checar('o id salvo volta a ser plano', 'ate25', id(planoPorId('ate25')));
-checar('id que saiu da régua devolve null', null, id(planoPorId('ate99')));
+checar('dez no mensal', 59, tabela(10));
+checar('quarenta no mensal', 236, tabela(40));
+checar('quarenta no anual', 116, tabela(40, PLANO.ANUAL));
 
-// ─────────────────────────── o plano menor que o uso ───────────────────────
+checar('plano desconhecido não tem preço', null, tabela(20, 'trimestral'));
+checar('e nem cai no mensal como consolo', false, tabela(20, 'trimestral') === 118);
+checar('mensal é plano válido', true, planoValido(PLANO.MENSAL));
+checar('anual é plano válido', true, planoValido(PLANO.ANUAL));
+checar('e "gratis" não é', false, planoValido('gratis'));
+checar('há dois planos, e só dois', 2, PLANOS_DISPONIVEIS.length);
 
-bloco('2. Ele pode escolher um plano menor — e quantas ficam de fora');
+// ─────────────────── 2. o mínimo e a taxa marginal ─────────────────────────
 
-checar('cabe: nenhuma sobra', 0, excedentes(planoPorId('ate25'), 14));
-checar('exatamente no teto: nenhuma sobra', 0, excedentes(planoPorId('ate10'), 10));
-// O número existe pra tela pedir que ELE aponte quais saem. Corte automático
-// apagaria clientes que ele não escolheu perder.
-checar('quatorze crianças no plano de dez: sobram 4', 4, excedentes(planoPorId('ate10'), 14));
-checar('sem plano não há excedente a calcular', 0, excedentes(null, 30));
+bloco('2. O mínimo da tabela e a taxa acima da 40ª');
 
-// ──────────────────────────────── os descontos ─────────────────────────────
+checar('cinco crianças pagam o mínimo, não R$ 29,50', 49, tabela(5));
+checar('uma criança também paga o mínimo', 49, tabela(1));
+checar('zero criança paga o mínimo', 49, tabela(0));
+checar('oito crianças ainda estão no mínimo', 49, tabela(8));
+checar('nove já passam do mínimo', 53.1, tabela(9));
+checar('no anual o mínimo é 29', 29, tabela(5, PLANO.ANUAL));
+checar('e dez no anual empatam com ele', 29, tabela(10, PLANO.ANUAL));
 
-bloco('3. Os descontos, separados');
+// ⚠️ O MÍNIMO É SOBRE O TOTAL, NUNCA POR CRIANÇA. Aplicado por criança, a
+// operação de três pagaria três mínimos.
+checar('o mínimo não multiplica por criança', 49, tabela(3));
 
-checar('o primeiro motorista não paga, e não é por tempo', 1, descontoDoFundador(FUNDADOR.VITALICIO));
-// O valor de METADE continua sendo LIDO mesmo tendo sido aposentado: quem já
-// tem a concessão não pode ver a fatura subir por um deploy.
-checar('metade continua valendo para quem já tem', 0.5, descontoDoFundador(FUNDADOR.METADE));
-checar('quem não é fundador não ganha nada por isso', 0, descontoDoFundador(null));
-checar('condição inventada também não vale', 0, descontoDoFundador('amigo-do-dono'));
+checar('a 41ª criança usa a taxa marginal', 240.9, tabela(41));
+checar('e as 40 primeiras seguem na taxa cheia', 236, tabela(40));
+checar('a 41ª custa R$ 4,90, não R$ 5,90', 4.9, custoDaProximaCrianca({ criancas: 40 }));
+checar('a taxa cheia vale até a 40ª', 40, CRIANCAS_NA_TAXA_CHEIA);
 
-checar('nenhuma indicação, nenhum desconto', 0, descontoDeIndicacoes(0));
-checar('uma indicação vale 10%', 0.1, descontoDeIndicacoes(1));
-checar('cinco indicações valem metade da conta', 0.5, descontoDeIndicacoes(5));
-// ⚠️ O TETO DE 50% SAIU. Ele não protegia nada (a fatura ia a zero com teto e
-// tudo, porque o fechamento somava por cima) e criava um efeito perverso: no
-// limite, a indicação seguinte valia ZERO — o programa parava de recompensar
-// quem mais indica. Quem protege a margem agora é o PISO, e ele é em reais.
-checar('a sexta CONTINUA valendo — não há mais teto percentual', 0.6, descontoDeIndicacoes(6));
-checar('dez indicações valem 100% nominais', 1, descontoDeIndicacoes(10));
-checar('e vinte passam de 100% no nominal', 2, descontoDeIndicacoes(20));
-checar('número negativo não vira crédito', 0, descontoDeIndicacoes(-3));
-checar('meia indicação não existe', 0.1, descontoDeIndicacoes(1.9));
+// ⚠️ A INVARIANTE QUE IMPEDE A TAXA MARGINAL DE VIRAR DEGRAU.
+// Sem marginalidade — aplicando R$ 4,90 a TODAS as crianças de quem passa de
+// 40 — `preco(41)` seria R$ 200,90, MENOR que os R$ 236 de quem tem 40, e
+// crescer daria desconto. Varremos 1 a 60 nos dois planos.
+let monotonico = true;
+let quebra = null;
+for (const plano of PLANOS_DISPONIVEIS) {
+  for (let n = 1; n <= 60; n += 1) {
+    if (tabela(n, plano) < tabela(n - 1, plano)) {
+      monotonico = false;
+      quebra = `${plano} em ${n}`;
+      break;
+    }
+  }
+}
+checar('o preço nunca desce quando o número de crianças sobe', true, monotonico);
+checar('e não há ponto de quebra', null, quebra);
 
-bloco('4. A escada de fechamento — o degrau é o mês da decisão');
+checar('a próxima criança custa a taxa cheia no meio da tabela', 5.9, custoDaProximaCrianca({ criancas: 20 }));
+checar('custa a marginal acima de 40', 4.9, custoDaProximaCrianca({ criancas: 41 }));
+// Quem está abaixo do mínimo pode crescer de graça, e a tela deve poder dizer.
+checar('e custa zero para quem ainda está no mínimo', 0, custoDaProximaCrianca({ criancas: 3 }));
 
-checar('fechou no mês 1: metade', 0.5, descontoDoFechamento(1));
-checar('no mês 2: 30%', 0.3, descontoDoFechamento(2));
-checar('no mês 3: 15%', 0.15, descontoDoFechamento(3));
-// ⚠️ Fora dos 90 dias o desconto é ZERO, e a conta fica inativa até ele
-// fechar. Um quarto degrau seria a escada premiando quem esperou — exatamente
-// a lição que ela existe para não ensinar.
-checar('depois do 90º dia não há degrau', 0, descontoDoFechamento(4));
-checar('degrau zero não existe', 0, descontoDoFechamento(0));
-checar('quem volta em 30 dias tem o retorno', 0.1, descontoDoFechamento(RETORNO.degrau));
-checar('lixo não inventa degrau', 0, descontoDoFechamento('metade-por-favor'));
-checar('nem ausência', 0, descontoDoFechamento(undefined));
+// ──────────────────────── 3. a escada de fechamento ────────────────────────
 
-// A escada DESCE. Se algum dia um degrau posterior valer mais que o anterior,
-// o incentivo inteiro se inverte — e é um erro de digitação de distância.
+bloco('3. A escada de fechamento');
+
+checar('quem fecha no primeiro mês leva 30%', 0.3, descontoDoFechamento(1));
+checar('no segundo, 20%', 0.2, descontoDoFechamento(2));
+checar('no terceiro, 10%', 0.1, descontoDoFechamento(3));
+checar('não existe quarto degrau', 0, descontoDoFechamento(4));
+checar('quem volta em 30 dias leva 10%', 0.1, descontoDoFechamento(RETORNO.degrau));
+checar('degrau zero não dá nada', 0, descontoDoFechamento(0));
+checar('e nem um degrau inventado', 0, descontoDoFechamento('sempre'));
+checar('a escada tem três degraus', 3, ESCADA_DE_FECHAMENTO.length);
+
+// ⚠️ A ESCADA ENCOLHEU PORQUE CONVIVE COM O PLANO ANUAL.
+// A 50% (o valor antigo), o mensal com desconto máximo custaria R$ 59 numa
+// operação de 20 crianças e o anual custa R$ 58 — o anual perderia a razão de
+// existir. Este teste é o que impede alguém de "melhorar" a oferta e apagar um
+// dos dois planos sem perceber.
+const mensalNoMelhorDegrau = liq({
+  criancas: 20,
+  plano: PLANO.MENSAL,
+  descontos: [{ origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: null }],
+  mes: '2026-09',
+});
+checar('o mensal no melhor degrau custa R$ 82,60', 82.6, mensalNoMelhorDegrau);
+checar('e o anual continua sendo mais barato que ele', true, tabela(20, PLANO.ANUAL) < mensalNoMelhorDegrau);
+
+// ───────────────── 4. o desconto vitalício e o prazo ───────────────────────
+
+bloco('4. Vitalício é `ate: null`, e ausente NÃO é');
+
+const vitalicio = [{ origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: null }];
+
+checar('vale no mês em que foi concedido', 0.3, descontosVigentes(vitalicio, '2026-09').fechamento);
+checar('vale um ano depois', 0.3, descontosVigentes(vitalicio, '2027-09').fechamento);
+checar('vale dez anos depois', 0.3, descontosVigentes(vitalicio, '2036-12').fechamento);
+
+// ⚠️ A LINHA MAIS PERIGOSA DA RÉGUA.
+// `undefined` (chave ausente) NÃO é vitalício. Sem este caso, um documento
+// legado ou malformado viraria desconto eterno em silêncio — e a comparação
+// `'2026-09' > 'undefined'` é FALSA (dígito ordena antes de letra), então o
+// acidente passaria despercebido justamente por parecer intencional.
+checar('desconto sem a chave `ate` é descartado', 0, descontosVigentes([{ origem: ORIGEM.FECHAMENTO, fracao: 0.3 }], '2026-09').fechamento);
+checar('e `ate` vazio também', 0, descontosVigentes([{ origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: '' }], '2026-09').fechamento);
+checar('e `ate` numérico também', 0, descontosVigentes([{ origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: 202609 }], '2026-09').fechamento);
+
+const comPrazo = [{ origem: ORIGEM.CONCESSAO, fracao: 0.2, ate: '2026-12' }];
+checar('concessão vale dentro do prazo', 0.2, descontosVigentes(comPrazo, '2026-11').concessao);
+checar('vale no último mês, inclusive', 0.2, descontosVigentes(comPrazo, '2026-12').concessao);
+checar('e para de valer no mês seguinte', 0, descontosVigentes(comPrazo, '2027-01').concessao);
+
+// SEM MÊS DE REFERÊNCIA, NENHUM DESCONTO VALE — nem o vitalício. Ausência de
+// referência é ausência de resposta, e não "vale tudo".
+checar('sem mês de referência nada vale', 0, descontosVigentes(vitalicio, null).fechamento);
+checar('nem mesmo o vitalício', 0, descontosVigentes(vitalicio, '').fechamento);
+
+// O legado `antecipacao` cai no mesmo balde: é o mesmo instrumento com o nome
+// antigo, e ignorá-lo faria a fatura de quem o tem subir em silêncio.
+checar('o legado `antecipacao` soma no fechamento', 0.5, descontosVigentes([{ origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-08' }], '2026-09').fechamento);
+checar('e `roleta` não é reconhecida', 0, descontosVigentes([{ origem: 'roleta', fracao: 0.5, ate: null }], '2026-09').fechamento);
+
+// ───────────────────── 5. o mínimo ANTES do desconto ───────────────────────
+
+bloco('5. O mínimo vem antes do desconto, e o piso depois');
+
+// ⚠️ A ORDEM É A COISA MAIS IMPORTANTE DESTE ARQUIVO DEPOIS DO PISO.
+// Dez crianças custam R$ 59 de tabela (acima do mínimo de R$ 49). Com 30%
+// travado, a conta é 59 × 0,7 = R$ 41,30. Se o mínimo fosse aplicado DEPOIS,
+// ele cobraria R$ 49 e o desconto prometido sumiria sem nenhuma linha
+// explicando — que é exatamente a queixa que o programa de indicação foi
+// escrito para evitar.
 checar(
-  'a escada desce, degrau por degrau',
-  true,
-  ESCADA_DE_FECHAMENTO.every((e, i) => i === 0 || e.fracao < ESCADA_DE_FECHAMENTO[i - 1].fracao)
+  'dez crianças com 30% pagam R$ 41,30, não o mínimo de R$ 49',
+  41.3,
+  liq({ criancas: 10, descontos: vitalicio, mes: '2026-09' })
 );
-checar('são três degraus, um por mês de teste', 3, ESCADA_DE_FECHAMENTO.length);
-checar('e o retorno é menor que o último degrau', true, RETORNO.fracao < ESCADA_DE_FECHAMENTO[2].fracao);
 
-// ───────────────────────────── a conta do mês ──────────────────────────────
-
-bloco('5. O valor que vira fatura');
-
-checar('sem desconto nenhum, o preço de tabela', 149, liq({ plano: planoPorId('ate25') }));
-checar('a faixa pequena', 69, liq({ plano: planoPorId('ate10') }));
-checar('a faixa grande', 229, liq({ plano: planoPorId('ate40') }));
-
+// E quem está NO mínimo tem desconto sobre o mínimo, não sobre a soma crua.
 checar(
-  'duas indicações tiram 20%',
-  119.2,
-  liq({ plano: planoPorId('ate25'), indicacoesAtivas: 2 })
+  'cinco crianças com 30% pagam 30% menos que o mínimo',
+  34.3,
+  liq({ criancas: 5, descontos: vitalicio, mes: '2026-09' })
 );
 
-const fecha1 = { origem: ORIGEM.FECHAMENTO, fracao: 0.5, ate: '2027-09', degrau: 1 };
-const fecha2 = { origem: ORIGEM.FECHAMENTO, fracao: 0.3, ate: '2027-09', degrau: 2 };
+const conta = precoDoMes({ criancas: 10, descontos: vitalicio, mes: '2026-09' });
+checar('o bruto informado é o de tabela', 59, conta.bruto);
+checar('o desconto informado é o nominal', 0.3, conta.desconto);
+checar('e o piso não mordeu', false, conta.pisoAplicado);
 
-checar(
-  'fechou no mês 1 e paga metade — e o centavo fecha',
-  74.5,
-  liq({ plano: planoPorId('ate25'), descontos: [fecha1], mes: '2026-10' })
-);
-checar(
-  'fechou no mês 2',
-  104.3,
-  liq({ plano: planoPorId('ate25'), descontos: [fecha2], mes: '2026-10' })
-);
+// ─────────────────────── 6. o piso e o zero ────────────────────────────────
 
-// ─────────────────────────────────── o piso ────────────────────────────────
+bloco('6. O piso, e as duas únicas portas para o zero');
 
-bloco('6. O PISO — a trava de margem, e o vazamento que ela fecha');
+checar('o piso é R$ 19', 19, PISO_DA_FATURA);
+checar('cada indicação vale 5%', 0.05, DESCONTO_POR_INDICACAO);
+checar('cinco indicações valem 25%', 0.25, descontoDeIndicacoes(5));
+checar('vinte indicações valem 100% nominais', 1, descontoDeIndicacoes(20));
+checar('e não há teto percentual na indicação', 1.5, descontoDeIndicacoes(30));
 
-// ⚠️ ESTE É O CASO QUE VAZAVA, e o teste antigo não o cobria.
+// ⚠️ ONDE O PISO MORDE, e este número é publicado na tela de indicar.
 //
-// Não-fundador + fechamento (50%) + 5 indicações pagas (50%) = 100% nominais.
-// Antes disto, a fatura saía R$ 0,00 — o comentário do arquivo jurava que "só
-// fundador chega a zero", e não era verdade para NINGUÉM que somasse os dois.
-const vazamento = precoDoMes({
-  plano: planoPorId('ate25'),
-  indicacoesAtivas: 5,
-  descontos: [fecha1],
-  mes: '2026-10',
+// A 10% ele mordia na 4ª indicação de quem tem 8 crianças, e essa era a maior
+// objeção contra a régua: o motorista pequeno trazia cinco clientes e recebia
+// por três. A 5% ele morde na 7ª. O caso existe para que baixar a taxa de
+// novo, ou mexer no piso, mostre o efeito aqui em vez de na fatura de alguém.
+const pequeno = (n) =>
+  precoDoMes({ criancas: 8, descontos: vitalicio, indicacoesAtivas: n, mes: '2026-09' });
+checar('com 8 crianças, a 6ª indicação ainda desconta inteira', false, pequeno(6).pisoAplicado);
+checar('e a 7ª é a primeira que o piso corta', true, pequeno(7).pisoAplicado);
+
+// ⚠️ E É POR ISSO QUE A TELA NÃO PODE DIZER "cada colega vale 5% da sua conta".
+//
+// `valorDaIndicacao` responde a pergunta que o convite faz — quanto a PRÓXIMA
+// tira, em reais — e ela não é `bruto × 5%` perto do piso. Para quem tem 8
+// crianças, a 7ª vale sessenta centavos e a 8ª vale zero. Prometer R$ 2,45 a
+// essa pessoa é prometer quatro vezes o que ela vai receber, e a queixa que
+// nasce disso é a que a coleção `indicacoes` inteira existe para evitar.
+const vale = (criancas, numero, plano = PLANO.MENSAL) =>
+  valorDaIndicacao({ criancas, plano, descontos: vitalicio, mes: '2026-09', numero });
+
+checar('a 1ª indicação de quem tem 20 crianças vale R$ 5,90', 5.9, vale(20, 1));
+checar('e a 6ª também — longe do piso, todas valem igual', 5.9, vale(20, 6));
+checar('com 8 crianças a 6ª vale R$ 2,45', 2.45, vale(8, 6));
+checar('a 7ª vale só o que sobra até o piso', 0.6, vale(8, 7));
+checar('e a 8ª não vale nada', 0, vale(8, 8));
+checar('no anual vale metade', 2.9, vale(20, 1, PLANO.ANUAL));
+// "não sei" e "não vale nada" são respostas diferentes na tela.
+checar('plano desconhecido devolve null, não zero', null,
+  valorDaIndicacao({ criancas: 20, plano: 'trimestral', numero: 1 }));
+
+// ⚠️ E QUEM ESTÁ NO TESTE TAMBÉM: sem plano contratado, `precoDoMes` assume o
+// mensal como VITRINE, e sem um guarda explícito esta função responderia
+// "R$ 5,90" para uma fatura isenta — que não desconta nada. Foi exatamente o
+// que ela fez na primeira versão.
+checar('sem plano nenhum também é null, não o mensal presumido', null,
+  valorDaIndicacao({ criancas: 20, numero: 1 }));
+checar('nem com plano vazio', null,
+  valorDaIndicacao({ criancas: 20, plano: '', numero: 1 }));
+
+// ⚠️ O CASO QUE VAZAVA, agora coberto: fechamento SOMADO com indicação.
+// Sem o piso, 30% + 70% davam 100% e a fatura ia a R$ 0,00 para um associado
+// que não é fundador. O teste antigo passava indicações SEM o fechamento.
+const empilhado = precoDoMes({
+  criancas: 20,
+  descontos: vitalicio,
+  indicacoesAtivas: 14,
+  mes: '2026-09',
 });
-checar('o desconto nominal chega a 100%', 1, vazamento.desconto);
-checar('mas a fatura NÃO é zero — para no piso', PISO_DA_FATURA, vazamento.liquido);
-checar('e a tela sabe que o piso mordeu', true, vazamento.pisoAplicado);
-checar('e quanto ele comeu, em reais', 34, vazamento.descontoAbsorvido);
+checar('30% travados mais catorze indicações somam 100%', 1, empilhado.desconto);
+checar('mas a fatura para no piso', 19, empilhado.liquido);
+checar('e a tela sabe que o piso mordeu', true, empilhado.pisoAplicado);
+checar('e quanto ele comeu', 19, empilhado.descontoAbsorvido);
 
-// A DERIVAÇÃO DO PISO: ele é metade da menor faixa, e é isso que faz o "50% no
-// primeiro mês" ser verdade em TODA faixa. Um piso maior transformaria a oferta
-// em mentira para o motorista pequeno, que é a maior parte do mercado.
-checar('metade da menor faixa fica ACIMA do piso, por 50 centavos', 34.5, liq({
-  plano: planoPorId('ate10'),
-  descontos: [fecha1],
-  mes: '2026-10',
-}));
-checar('logo o piso não desmente a oferta de 50%', true, PLANOS[0].preco / 2 >= PISO_DA_FATURA);
+// O desconto nunca passa de 100%: fatura negativa é crédito saindo da
+// plataforma para quem devia estar pagando.
+const exagerado = precoDoMes({ criancas: 20, indicacoesAtivas: 30, mes: '2026-09' });
+checar('o desconto é cortado em 100%', 1, exagerado.desconto);
+checar('e a fatura nunca fica negativa', 19, exagerado.liquido);
 
-// O motorista pequeno que indica: o piso absorve quase tudo no ano 1, e é
-// exatamente por isso que `pisoAplicado` existe — a tela precisa DIZER.
-const pequenoQueIndica = precoDoMes({
-  plano: planoPorId('ate10'),
-  indicacoesAtivas: 1,
-  descontos: [fecha1],
-  mes: '2026-10',
-});
-checar('ele paga o piso', 34, pequenoQueIndica.liquido);
-checar('a indicação valeu 50 centavos no ano 1', 0.5, 34.5 - pequenoQueIndica.liquido);
-checar('e o piso absorveu R$ 6,40', 6.4, pequenoQueIndica.descontoAbsorvido);
+// ⚠️ O PISO NÃO SOBE ACIMA DO BRUTO. Uma taxa de entrada futura mais barata
+// que R$ 19 não pode ser encarecida por uma trava de margem.
+checar('o piso nunca cobra mais que a tabela', true, liq({ criancas: 20, plano: PLANO.ANUAL, indicacoesAtivas: 30, mes: '2026-09' }) <= tabela(20, PLANO.ANUAL));
 
-// ⚠️ E A INDICAÇÃO NÃO SE PERDE — FICA DORMENTE. No mês 13 o fechamento expira
-// (o `ate` passou), o piso deixa de morder, e ela aparece inteira. É o desenho
-// do mês 13: o único desconto permanente é o que ele renova trazendo gente.
-const mes13 = precoDoMes({
-  plano: planoPorId('ate10'),
-  indicacoesAtivas: 1,
-  descontos: [fecha1],
-  mes: '2027-10',
-});
-checar('no mês 13 o fechamento expirou', 0, mes13.descontoFechamento);
-checar('e a indicação aparece inteira', 62.1, mes13.liquido);
-checar('sem piso mordendo', false, mes13.pisoAplicado);
+// ─────────────────────────── 7. o fundador ─────────────────────────────────
 
-// O piso nunca cobra MAIS que a tabela. Hoje nenhuma faixa é mais barata que
-// ele; uma faixa de entrada futura seria, e piso acima do bruto é a plataforma
-// cobrando a mais por causa de uma trava de margem.
-const faixaBarata = { id: 'ate3', ate: 3, preco: 19, rotulo: 'até 3' };
-checar('faixa mais barata que o piso não é inflada', 19, liq({ plano: faixaBarata }));
-checar(
-  'e com desconto ela para no próprio preço, não no piso',
-  19,
-  liq({ plano: faixaBarata, descontos: [fecha1], mes: '2026-10' })
-);
+bloco('7. O fundador');
 
-bloco('7. O zero — quem alcança, e quem nunca alcança');
+checar('o vitalício não paga', 1, descontoDoFundador(FUNDADOR.VITALICIO));
+checar('a metade histórica continua sendo lida', 0.5, descontoDoFundador(FUNDADOR.METADE));
+checar('quem não é fundador não ganha nada', 0, descontoDoFundador(null));
 
-// ⚠️ SÓ O VITALÍCIO. Ele escapa do piso porque é 100% sem prazo, contratado
-// quando o produto não tinha nenhum caso de uso — cobrar R$ 34 dele agora
-// desfaria um acordo assinado por causa de uma regra que nasceu depois.
-checar(
-  'fundador vitalício não paga, com ou sem indicação',
-  0,
-  liq({ plano: planoPorId('ate40'), fundador: FUNDADOR.VITALICIO })
-);
-checar(
-  'e o piso não o alcança',
-  0,
-  liq({ plano: planoPorId('ate40'), fundador: FUNDADOR.VITALICIO, indicacoesAtivas: 5 })
-);
-// Todo o resto para no piso. Não existe mais "chega a zero por acumular".
-checar(
-  'nem dez indicações zeram quem não é vitalício',
-  PISO_DA_FATURA,
-  liq({ plano: planoPorId('ate25'), indicacoesAtivas: 10 })
-);
-checar(
-  'nem vinte',
-  PISO_DA_FATURA,
-  liq({ plano: planoPorId('ate25'), indicacoesAtivas: 20 })
-);
-checar(
-  'nem o fundador de metade com cinco indicações',
-  PISO_DA_FATURA,
-  liq({ plano: planoPorId('ate25'), fundador: FUNDADOR.METADE, indicacoesAtivas: 5 })
-);
+// O vitalício é a ÚNICA via para o zero que passa por aqui — a outra é a
+// isenção, que não passa por `precoDoMes`.
+checar('o vitalício zera a fatura', 0, liq({ criancas: 20, fundador: FUNDADOR.VITALICIO, mes: '2026-09' }));
+checar('e ele escapa do piso', 0, liq({ criancas: 20, fundador: FUNDADOR.VITALICIO, indicacoesAtivas: 3, mes: '2026-09' }));
 
-bloco('8. O que nunca pode acontecer');
-
-// Sem o limite de 100%, vinte indicações dariam 200% e a fatura viraria
-// CRÉDITO — dinheiro saindo da plataforma para quem devia estar pagando. O
-// piso já impediria o negativo, mas o teto é a trava que existe ANTES dele.
-checar(
-  'desconto somado passa de 100% e é cortado em 100%',
-  1,
-  precoDoMes({ plano: planoPorId('ate25'), indicacoesAtivas: 20 }).desconto
-);
-checar(
-  'e a fatura nunca fica negativa',
-  true,
-  liq({ plano: planoPorId('ate25'), indicacoesAtivas: 20 }) >= 0
-);
-checar(
-  'nem para o vitalício, que escapa do piso',
-  0,
-  liq({ plano: planoPorId('ate25'), fundador: FUNDADOR.VITALICIO, indicacoesAtivas: 20 })
-);
-
-// Aplicar 50% sobre um preço inexistente produz R$ 0, que na tela é
-// indistinguível de "não paga" — e é exatamente o caso que precisa de conversa.
-const foraDaTabela = precoDoMes({ plano: planoPara(60), indicacoesAtivas: 5 });
-checar('acima da tabela não tem preço', null, foraDaTabela.liquido);
-checar('e o motivo diz o que fazer', ACIMA_DA_TABELA, foraDaTabela.motivo);
-checar('e o piso não inventa fatura onde não há preço', false, foraDaTabela.pisoAplicado);
-checar('sem plano nenhum, mesma resposta', null, precoDoMes({}).liquido);
-
-bloco('9. A régua está inteira');
-
-checar('são três faixas', 3, PLANOS.length);
-checar('e elas sobem', true, PLANOS.every((p, i) => i === 0 || p.ate > PLANOS[i - 1].ate));
-checar('o preço também sobe', true, PLANOS.every((p, i) => i === 0 || p.preco > PLANOS[i - 1].preco));
-// O efetivo por criança CAI conforme a operação cresce — é a progressão que
-// não pune o pequeno, e o negocio.md a lista como uma das três âncoras.
-checar(
-  'o efetivo no teto de cada faixa cai',
-  true,
-  PLANOS.every((p, i) => i === 0 || p.preco / p.ate < PLANOS[i - 1].preco / PLANOS[i - 1].ate)
-);
-
-bloco('10. Desconto com PRAZO — e o legado que não pode sumir');
-
-// PRAZO É O PONTO. Desconto de conversão que não expira vira preço — e "para
-// sempre" numa planilha de receita é a diferença entre fechar a conta e não.
-checar('dentro do prazo, vale', 0.5, descontosVigentes([fecha1], '2027-09').fechamento);
-checar('no mês seguinte ao fim, não vale mais', 0, descontosVigentes([fecha1], '2027-10').fechamento);
-checar('antes do fim, vale', 0.5, descontosVigentes([fecha1], '2026-10').fechamento);
-checar('desconto sem data não vale nada', 0,
-  descontosVigentes([{ origem: ORIGEM.FECHAMENTO, fracao: 0.5 }], '2026-10').fechamento);
-checar('lista vazia não quebra', 0, descontosVigentes(null, '2026-10').fechamento);
-checar('sem mês de referência, nada vale', 0, descontosVigentes([fecha1], null).fechamento);
-
-// ⚠️ O LEGADO `antecipacao` CAI NO BALDE DO FECHAMENTO. É o mesmo instrumento
-// com o nome antigo (era 50% fixo em qualquer dia do teste): ignorá-lo faria a
-// fatura de quem já o tem subir em silêncio, e um deploy não pode aumentar a
-// conta de ninguém.
-const legado = { origem: ORIGEM.ANTECIPACAO, fracao: 0.5, ate: '2027-09' };
-checar('antecipação antiga continua valendo', 0.5, descontosVigentes([legado], '2026-10').fechamento);
-checar(
-  'e produz a mesma fatura que o degrau 1',
-  74.5,
-  liq({ plano: planoPorId('ate25'), descontos: [legado], mes: '2026-10' })
-);
-
-// ⚠️ A ROLETA SAIU. Origem desconhecida não é somada — se houver documento em
-// produção com ela, o desconto para de valer. Foi decisão, não descuido: o
-// critério era sorte, e sorte não sobrevive à conversa no portão da escola.
-const roletaMorta = { origem: 'roleta', fracao: 0.3, ate: '2027-09' };
-checar('roleta não entra em balde nenhum', 0, descontosVigentes([roletaMorta], '2026-10').fechamento);
-checar('nem no da concessão', 0, descontosVigentes([roletaMorta], '2026-10').concessao);
-checar(
-  'e não desconta nada da fatura',
-  149,
-  liq({ plano: planoPorId('ate25'), descontos: [roletaMorta], mes: '2026-10' })
-);
-
-// A concessão é RÉGUA à parte: ela SOMA, porque é exceção sobre a política, não
-// outra política. Ver `concessao.js`.
-const concessao = { origem: ORIGEM.CONCESSAO, fracao: 0.2, ate: '2027-03' };
-checar('as origens não se misturam', 0.2, descontosVigentes([fecha1, concessao], '2026-10').concessao);
-checar(
-  'e a concessão soma sobre o fechamento',
-  0.7,
-  precoDoMes({ plano: planoPorId('ate25'), descontos: [fecha1, concessao], mes: '2026-10' }).desconto
-);
-
-bloco('11. As decisões de negócio, registradas como constante');
-
-// ⚠️ ESTE BLOCO GUARDA DECISÕES, e é para elas aparecerem se alguém as mudar.
+// Fundador e fechamento NÃO somam: vale o maior. Somando, o vitalício receberia
+// mais 30% e a fatura viraria crédito.
 checar('fundador e fechamento não somam', false, FUNDADOR_E_FECHAMENTO_SOMAM);
 checar(
-  'fundador de metade + fechamento = 50%, não 100%',
+  'e quem tem os dois leva o maior',
   0.5,
-  precoDoMes({
-    plano: planoPorId('ate25'),
-    fundador: FUNDADOR.METADE,
-    descontos: [fecha1],
-    mes: '2026-10',
-  }).desconto
-);
-// O vitalício não é rebaixado pelo maior-dos-dois: max(1, 0.5) segue 1.
-checar(
-  'o vitalício não é rebaixado',
-  1,
-  precoDoMes({
-    plano: planoPorId('ate25'),
-    fundador: FUNDADOR.VITALICIO,
-    descontos: [fecha1],
-    mes: '2026-10',
-  }).desconto
+  precoDoMes({ criancas: 20, fundador: FUNDADOR.METADE, descontos: vitalicio, mes: '2026-09' }).desconto
 );
 
-// ⚠️ AS VAGAS DE FUNDADOR PELA METADE ESTÃO FECHADAS — era o único desconto que
-// ninguém podia reproduzir, e por isso não sobrevivia ao portão. O contador
-// continua existindo para `contarFundadores` recusar a concessão: zerar a régua
-// sem zerar o contador deixaria a porta aberta para "só essa vez".
 checar('não há mais vaga de fundador pela metade', 0, FUNDADORES_METADE);
 checar('e o vitalício é um só', 1, FUNDADORES_VITALICIO);
 
+// ─────────────────────── 8. as constantes da régua ─────────────────────────
+
+bloco('8. As constantes');
+
+checar('a taxa mensal é R$ 5,90 por criança', 5.9, TAXA[PLANO.MENSAL]);
+checar('a anual é R$ 2,90', 2.9, TAXA[PLANO.ANUAL]);
+checar('a marginal mensal é R$ 4,90', 4.9, TAXA_ACIMA_DE_40[PLANO.MENSAL]);
+checar('a marginal anual é R$ 2,40', 2.4, TAXA_ACIMA_DE_40[PLANO.ANUAL]);
+checar('o mínimo mensal é R$ 49', 49, MINIMO[PLANO.MENSAL]);
+checar('o mínimo anual é R$ 29', 29, MINIMO[PLANO.ANUAL]);
 checar('o contrato é de doze meses', 12, MESES_DE_CONTRATO);
-checar('a renovação dura o contrato inteiro', 12, RENOVACAO.meses);
-checar('e ela é pequena de propósito', 0.1, RENOVACAO.fracao);
 checar('o retorno tem prazo de 30 dias', 30, RETORNO.prazoDias);
-checar('cada indicação vale 10%', 0.1, DESCONTO_POR_INDICACAO);
-checar('o piso é metade da menor faixa, arredondado para baixo', 34, PISO_DA_FATURA);
+
+// ⚠️ A ÂNCORA DO PROJETO, EM FORMA DE TESTE — E ELA TEM UM LIMITE.
+//
+// A frase é *"a conta inteira do app custa menos que UMA mensalidade"*, e o
+// motorista cobra de R$ 200 a R$ 400 por criança. A primeira versão deste
+// teste afirmava que ela vale até 60 crianças, e é FALSO: a R$ 5,90 a conta
+// passa de R$ 200 na 34ª criança.
+//
+// O que é verdade, e está travado abaixo: contra a mensalidade mais BARATA da
+// faixa (R$ 200) a âncora vale até 33 crianças; contra uma de R$ 250 — que é o
+// que uma operação desse tamanho cobra — vale até 42. É para esticar esse
+// limite que existe a taxa marginal; ela não o elimina.
+//
+// Acima disso a frase continua verdadeira na prática, mas a conversa passa a
+// ancorar na mensalidade REAL dele, não no piso da faixa. Se alguém mexer na
+// taxa, este teste diz na hora quanto a âncora encolheu.
+function ancoraAte(mensalidade) {
+  let n = 0;
+  while (tabela(n + 1) < mensalidade) n += 1;
+  return n;
+}
+checar('contra uma mensalidade de R$ 200, a âncora vale até 33 crianças', 33, ancoraAte(200));
+checar('contra uma de R$ 250, até 42', 42, ancoraAte(250));
+checar('e a taxa marginal é o que estica esse limite', true, ancoraAte(250) > 40);
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

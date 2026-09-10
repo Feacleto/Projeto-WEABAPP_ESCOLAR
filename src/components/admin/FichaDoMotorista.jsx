@@ -25,7 +25,7 @@ import { diasSemRodar } from '../../dominio/associacao/risco.js';
 import { diasRestantes } from '../../dominio/associacao/trial.js';
 import { estadoDaConta } from '../../dominio/associacao/contaAtiva.js';
 import { linkDaProposta, mensagemDeProposta } from '../../dominio/associacao/proposta.js';
-import { planoPara, planoPorId } from '../../dominio/associacao/planos.js';
+import { PLANO, TAXA, planoValido, custoDaProximaCrianca } from '../../dominio/associacao/planos.js';
 import {
   getParceiro,
   revogarConcessao,
@@ -113,7 +113,7 @@ export default function FichaDoMotorista({
   const agora = new Date();
   const degrau = degrauDo(motorista, agora);
   const conta = mensalidadeDe(motorista, mes);
-  const plano = planoPorId(motorista.planoId);
+  const plano = planoValido(motorista.plano) ? motorista.plano : null;
   const ativas = Number(motorista.criancasAtivas) || 0;
   const faltam = motorista.trialInicio ? diasRestantes(motorista.trialInicio, agora) : null;
   const { motivo } = estadoDaConta({
@@ -266,16 +266,29 @@ export default function FichaDoMotorista({
         </Bloco>
 
         <Bloco icon={Users} titulo="Plano e operação">
-          <Linha rotulo="Faixa" valor={plano ? plano.rotulo : 'sem faixa'} forte />
+          <Linha
+            rotulo="Plano"
+            valor={plano ? (plano === PLANO.ANUAL ? 'Anual' : 'Mensal') : 'sem plano'}
+            forte
+          />
+          {/* ⚠️ NÃO HÁ MAIS TETO A COMPARAR — e por isso não há mais alerta.
+            * A linha dizia "20 de 25" e acendia quando ele passava do limite.
+            * Com preço por criança nada é ultrapassado: a conta acompanha, e o
+            * que o dono precisa saber é quanto a próxima criança acrescenta. */}
           <Linha
             rotulo="Crianças"
             valor={
               plano
-                ? `${ativas} de ${plano.ate}`
-                : `${ativas} — pede ${planoPara(ativas)?.rotulo || 'conversa'}`
+                ? `${ativas} · ${formatCurrency(TAXA[plano])} cada`
+                : `${ativas} — ainda sem plano`
             }
-            alerta={Boolean(plano && ativas > plano.ate)}
           />
+          {plano && (
+            <Linha
+              rotulo="Próxima criança"
+              valor={`+ ${formatCurrency(custoDaProximaCrianca({ criancas: ativas, plano }))}`}
+            />
+          )}
           <Linha
             rotulo="Mensalidade"
             valor={conta && conta.liquido !== null ? formatCurrency(conta.liquido) : '—'}

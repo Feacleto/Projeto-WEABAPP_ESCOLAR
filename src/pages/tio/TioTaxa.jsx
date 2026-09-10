@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import Spinner from '../../components/common/Spinner';
 import { useAuth } from '../../hooks/useAuth';
+import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { buildPixPayload } from '../../dominio/cobranca/pixPayload';
 import { formatCurrency, formatMonthLabel } from '../../compartilhado/formatters';
 import { watchFaturasDoParceiro } from '../../services/taxaService';
@@ -79,7 +80,7 @@ export default function TioTaxa() {
         </button>
         <h1 className="text-xl font-bold text-text">Taxa de associação</h1>
         <p className="text-sm text-textMuted">
-          O que você paga ao Alô Buzinou — separado do que as famílias pagam a
+          O que você paga ao Alô Buzinou. É separado do que as famílias pagam a
           você.
         </p>
         {/* O CONTRATO A UM TOQUE DA COBRANÇA.
@@ -141,7 +142,7 @@ function Conteudo() {
           Nenhuma taxa lançada ainda
         </p>
         <p className="mt-1 text-xs leading-relaxed text-textMuted">
-          Quando a plataforma fechar o mês, a sua taxa aparece aqui com a conta
+          Sua primeira fatura aparece aqui no fechamento do mês, com a conta
           que gerou o valor.
         </p>
       </div>
@@ -173,6 +174,21 @@ function Conteudo() {
       {abertas.map((f) => (
         <FaturaAberta key={f.id} fatura={f} />
       ))}
+
+      {/* ⚠️ O CONVITE A INDICAR APARECE COM A FATURA PAGA, NUNCA COM ELA EM
+        * ABERTO — e é a única regra de posição desta tela.
+        *
+        * Pedir um favor a quem está te devendo é cobrança disfarçada: o
+        * cartão apareceria logo abaixo de um valor a pagar, e a leitura seria
+        * "traga um colega para conseguir quitar isso". Depois que ele pagou,
+        * o mesmo cartão é agradecimento — e é o instante em que ele acabou de
+        * ver o número, que é quando um desconto significa alguma coisa.
+        *
+        * `abertas` é a lista das não quitadas: enquanto houver uma, o convite
+        * não sai. */}
+      {abertas.length === 0 && faturas.some((f) => f.status === 'quitada') && (
+        <ConviteParaIndicar titulo="Obrigado. Dá para a próxima vir menor" />
+      )}
 
       {faturas.some((f) => f.status === 'quitada') && (
         <section>
@@ -223,42 +239,97 @@ function FaturaAberta({ fatura }) {
 
       {/* A CONTA ABERTA.
         *
-        * Ele vê de onde saiu o número — a faixa, o preço de tabela e o desconto
-        * que ele tem. Valor de cobrança sem a conta do lado é o que transforma
-        * cada fatura numa pergunta, e a pergunta chega no WhatsApp.
+        * Ele vê de onde saiu o número — a taxa, o tamanho da operação e cada
+        * desconto, um por um. Valor de cobrança sem a conta do lado é o que
+        * transforma cada fatura numa pergunta, e a pergunta chega no WhatsApp.
         *
-        * ⚠️ ESTA SEÇÃO LIA CINCO CAMPOS QUE DEIXARAM DE EXISTIR quando o preço
-        * virou de tabela em 06/09/2026: `criancas`, `base`, `modo`,
-        * `valorNegociado` e `desconto` eram do modelo negociado. `fecharFatura`
-        * encolheu à metade e ninguém veio conferir quem lia do outro lado — a
-        * tela passou a mostrar "Crianças ativas —" e "Total R$ 0,00" na própria
-        * cobrança da plataforma.
+        * ⚠️ ESTA SEÇÃO JÁ LEU CINCO CAMPOS QUE DEIXARAM DE EXISTIR quando o
+        * preço virou de tabela em 06/09/2026. `fecharFatura` encolheu à metade
+        * e ninguém veio conferir quem lia do outro lado — a tela passou a
+        * mostrar "Crianças ativas —" e "Total R$ 0,00" na própria cobrança da
+        * plataforma. É o padrão que o CLAUDE.md nomeia como o mais caro do
+        * projeto: comentário que promete garantia sobre um campo cujo gravador
+        * mudou.
         *
-        * É o padrão que o CLAUDE.md nomeia como o mais caro do projeto:
-        * comentário que promete garantia sobre um campo cujo gravador mudou. */}
+        * ⚠️ E OS DESCONTOS AGORA SÃO ABERTOS UM A UM, e não somados num
+        * percentual só. `fecharFatura` sempre gravou os quatro separados
+        * (`descontoFechamento`, `descontoIndicacao`, `descontoFundador`,
+        * `descontoConcessao`) e esta tela imprimia a soma — que é exatamente
+        * como nasce a queixa "indiquei e não recebi": ele vê 60% e não sabe
+        * qual parte é da indicação dele. */}
       <div className="mt-3 space-y-0.5 border-t border-neutro pt-3">
         <Linha
-          label="Crianças ativas"
-          valor={String(fatura.criancasAtivas ?? '—')}
+          label={`${fatura.criancas ?? fatura.criancasAtivas ?? 0} crianças × ${
+            fatura.taxaPorCrianca != null ? formatCurrency(fatura.taxaPorCrianca) : '—'
+          }`}
+          valor={fatura.precoTabela != null ? formatCurrency(fatura.precoTabela) : '—'}
         />
-        <Linha label="Sua faixa" valor={fatura.planoRotulo || '—'} />
-        {fatura.precoTabela != null && (
-          <Linha label="Preço de tabela" valor={formatCurrency(fatura.precoTabela)} />
-        )}
-        {fatura.descontoTotal > 0 && (
+
+        {fatura.descontoFechamento > 0 && (
           <Linha
-            label="Seu desconto"
-            valor={`− ${Math.round(fatura.descontoTotal * 100)}%`}
+            label="Desconto de fechamento"
+            valor={`− ${Math.round(fatura.descontoFechamento * 100)}%`}
           />
         )}
+        {fatura.descontoIndicacao > 0 && (
+          <Linha
+            label="Suas indicações"
+            valor={`− ${Math.round(fatura.descontoIndicacao * 100)}%`}
+          />
+        )}
+        {fatura.descontoFundador > 0 && (
+          <Linha
+            label="Condição de fundador"
+            valor={`− ${Math.round(fatura.descontoFundador * 100)}%`}
+          />
+        )}
+        {fatura.descontoConcessao > 0 && (
+          <Linha
+            label="Condição concedida"
+            valor={`− ${Math.round(fatura.descontoConcessao * 100)}%`}
+          />
+        )}
+
+        {/* ⚠️ O PISO PRECISA DIZER QUANTO COMEU, e é a linha que o programa de
+          * indicação depende. Sem ela, quem indicou cinco colegas vê a fatura
+          * parar num valor e conclui que a indicação não valeu — e essa queixa
+          * viaja mais rápido numa rede de indicação do que a própria
+          * indicação. */}
+        {fatura.pisoAplicado && (
+          <Linha
+            label="Valor mínimo da fatura"
+            valor={`+ ${formatCurrency(fatura.descontoAbsorvido || 0)}`}
+          />
+        )}
+
         <Linha label="Total" valor={formatCurrency(fatura.total)} forte />
       </div>
 
+      {/* ⚠️ A VALIDADE DO DESCONTO FICA AO LADO DELE, e com o vitalício ela
+        * virou a frase mais valiosa da tela. O desconto de fechamento não
+        * expira enquanto ele ficar — dizer isso onde ele confere a conta é o
+        * que transforma um número numa razão para não sair. */}
+      {fatura.descontoFechamento > 0 && (
+        <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+          Seu desconto é <strong>permanente</strong>. Ele não tem prazo de
+          validade.
+        </p>
+      )}
+
+      {/* O plano da fatura de teste é VITRINE, e apresentar projeção como
+        * cláusula é o começo de uma discussão sobre quanto foi combinado. */}
+      {fatura.planoContratado === false && (
+        <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+          O cálculo acima usa o plano mensal, porque você ainda não escolheu
+          um. No anual, o valor é menor.
+        </p>
+      )}
+
       {isento ? (
         <p className="mt-3 rounded-xl border border-escolaBorder bg-escolaSoft p-3 text-xs leading-relaxed text-escola">
-          Este mês está <strong>isento</strong> — nada a pagar. A conta acima
-          fica à vista pra você saber como ela é calculada quando a isenção
-          terminar.
+          <strong>Nada a pagar: você está no período de teste.</strong> O valor
+          acima é o que sua associação custaria hoje, para você já saber como a
+          conta é feita.
         </p>
       ) : (
         <PagamentoPix fatura={fatura} />
