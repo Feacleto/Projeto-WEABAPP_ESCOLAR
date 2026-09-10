@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://alobuzinou.com.br/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>
+<!-- lastmod: o unico sinal deste arquivo que o Google leva a serio, e so
+     enquanto for VERDADE. Data que nao acompanha a pagina vira ruido e ele
+     passa a ignorar o arquivo inteiro.
+     ATUALIZE ESTA DATA quando mexer no landing/index.html. -->
+  <url><loc>https://alobuzinou.com.br/</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>
 </urlset>

@@ -112,6 +112,15 @@ checar('o sitemap aponta a home canonica', true,
 checar('e a canonica concorda com ele', 'https://alobuzinou.com.br/',
   tag(landing, /<link rel="canonical" href="([^"]+)"/));
 
+// O `lastmod` e o unico sinal do sitemap que o Google leva a serio — e so
+// enquanto for verdade. Data no futuro e a forma mais rapida de ele passar a
+// ignorar o arquivo, entao o teste mede as duas coisas: formato e sanidade.
+const lastmod = tag(sitemap, /<lastmod>([^<]+)<\/lastmod>/);
+checar('o sitemap declara lastmod', true, Boolean(lastmod));
+checar('no formato AAAA-MM-DD', true, /^\d{4}-\d{2}-\d{2}$/.test(lastmod || ''));
+checar('e nao esta no futuro', true,
+  Boolean(lastmod) && lastmod <= new Date().toISOString().slice(0, 10));
+
 // ─────────────────────────────────────────────────────────────────────────
 bloco('3. Os dois dominios nao competem pela mesma busca');
 
