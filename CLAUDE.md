@@ -242,6 +242,10 @@ src/
 │                      do arquivo — era 1,47 MB num bundle só)
 ├── pages/
 │   ├── Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
+│   ├── Acompanhar    /acompanhar/:token — a tela de quem vai PEGAR a criança
+│   │                 hoje. Pública, sem conta, sem sessão do Firebase e sem
+│   │                 mapa ao vivo: a posição da perua é o veículo de um
+│   │                 autônomo e ele não decidiu compartilhá-la com terceiros
 │   ├── tio/           20 telas do motorista
 │   ├── pai/           8 telas do responsável
 │   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com OITO
@@ -625,14 +629,44 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `sendPaymentReminders`, `runPaymentRemindersNow`
 - **Operação:** `closeStaleRoutes`, `confirmarAusencias`
 - **Push:** `sendPushOnNotification` (dispara FCM a partir de `notifications`)
-- **Contratação:** `contratarPlano` — o MOTORISTA escolhe a faixa e o servidor
-  escreve a cláusula (`planoId` + `limiteCriancas` no mesmo write, mais o
-  desconto do degrau da escada em que ele está). É function porque os
-  dois campos estão na lista que o cliente nunca escreve.
+- **Contratação:** `contratarPlano` — o MOTORISTA escolhe mensal ou anual e o
+  servidor escreve a cláusula (`users.plano` mais o desconto do degrau, com
+  `ate: null`). É function porque esses campos estão na lista que o cliente
+  nunca escreve.
+- **Fechamento (agendado):** `fecharMesDosParceiros` (todo dia 1 às 5h, emite a
+  fatura de todo motorista sem uma) e `fecharMesAgora` (o mesmo, à mão, para o
+  dono). ⚠️ Até 10/09/2026 a fatura da plataforma só nascia por CLIQUE, e isso
+  custava conversão: o degrau da escada decai no relógio do servidor mesmo
+  quando ninguém fecha nada, então o motorista perdia 30% sem nunca ter
+  recebido um preço. A régua é pura
+  ([reguaDoServidor.js](functions/lib/reguaDoServidor.js)); quem escreve é
+  [fechamento.js](functions/lib/fechamento.js).
+- **Avisos comerciais (agendado):** `enviarAvisosComerciais`, todo dia às 9h.
+  É o único canal que alcança quem PAROU de abrir o app — e ele já existia:
+  um doc em `notifications` escrito pelo Admin SDK dispara
+  `sendPushOnNotification`. A régua é
+  [avisosComerciais.js](functions/lib/avisosComerciais.js), pura e testada:
+  janela de silêncio (6h–8h30 e 16h30–19h, ele está dirigindo com criança
+  dentro), um assunto por semana, nada para quem já contratou, e nenhum número
+  que não venha da tabela. ⚠️ **O aviso de conta pausada FURA o guarda
+  semanal** — um assunto por semana vale para OFERTA, nunca para o app avisar
+  que parou de funcionar.
 - **Gateway (taxa do motorista):** `criarCobrancaDaFatura` (o DONO gera a
   cobrança de uma `faturasParceiro`) e `asaasWebhook` (a baixa vem de fora).
   As duas metades do mesmo elo: o webhook acha a fatura por `asaasPaymentId`,
   e é a callable que grava esse campo.
+- **Acompanhamento do dia:** `gerarAcessoDoDia` (o responsável cria) e
+  `verAcompanhamento` (pública, sem conta) — quem vai pegar a criança hoje
+  acompanha a entrega por um link que morre à meia-noite. O token é
+  `AAAA-MM-DD_childId.SEGREDO`: a primeira metade endereça, a segunda é
+  comparada contra um SHA-256 guardado em `altPickups/{dia}_{crianca}`. Por
+  morar nesse documento, **a revogação já existia** — "Trocar" apaga a
+  indicação e o link junto. A régua pura (o que pode ser visto, e se ainda
+  vale) é [reguaDoAcompanhamento.js](functions/lib/reguaDoAcompanhamento.js),
+  com `npm run testar:acompanhamento`.
+  ⚠️ **O caminho público NUNCA escreve**, e o recorte é uma LISTA FECHADA de
+  campos, não um spread do doc da criança — o teste procura endereço,
+  coordenada, telefone, mensalidade e dado de saúde dentro do JSON, um por um.
 - **Outros:** `getShowcase`,
   `flagDuplicateReceipts`, `backfillTestimonialPrivacy`
 

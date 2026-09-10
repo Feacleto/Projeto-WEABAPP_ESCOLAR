@@ -6,6 +6,7 @@ import {
   User as UserIcon,
   Plus,
   Heart,
+  Send,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Input from '../common/Input';
@@ -20,6 +21,7 @@ import {
   notifyAltPickup,
 } from '../../services/altPickupService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
+import { gerarAcessoDoDia } from '../../services/acompanhamentoService';
 
 /**
  * Sheet "Quem vai buscar hoje?" — pai indica quem pega a criança.
@@ -32,6 +34,58 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  * Ao selecionar um responsável, grava em `altPickups/{date}_{child}` e
  * notifica o Tio.
  */
+/**
+ * O botão que abre o WhatsApp com o link do dia.
+ *
+ * ⚠️ O TOKEN NÃO FICA EM ESTADO NEM EM VARIÁVEL DE MÓDULO. Ele é pedido no
+ * toque, entra na URL do WhatsApp e sai de cena. É uma credencial: cada cópia
+ * que a gente guarda é uma cópia a mais para vazar, e no banco só mora o hash
+ * dela.
+ *
+ * ⚠️ E CADA TOQUE GERA UM LINK NOVO, derrubando o anterior. Não é desperdício:
+ * é a rotação. Se ele mandou pra pessoa errada, mandar de novo pra certa
+ * invalida o primeiro — sem tela de gerenciamento, sem lista, sem nada pra
+ * ele aprender.
+ */
+function BotaoDoLink({ child, pickup }) {
+  const [gerando, setGerando] = useState(false);
+
+  const mandar = async () => {
+    if (gerando) return;
+    setGerando(true);
+    try {
+      const url = await gerarAcessoDoDia(child.id);
+      const nome = (child.name || '').split(' ')[0] || 'a criança';
+      const texto = encodeURIComponent(
+        `Oi! Você vai pegar ${nome} hoje. ` +
+          `Neste link dá pra acompanhar a entrega: ${url}` +
+          `\n\nEle vale só hoje.`
+      );
+      const fone = (pickup.phone || '').replace(/\D/g, '');
+      const destino = fone
+        ? `https://wa.me/${fone.startsWith('55') ? fone : `55${fone}`}?text=${texto}`
+        : `https://wa.me/?text=${texto}`;
+      window.open(destino, '_blank', 'noopener');
+    } catch (err) {
+      toast.error(err.message || 'Não deu pra criar o link.');
+    } finally {
+      setGerando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Button variant="secondary" icon={Send} loading={gerando} onClick={mandar}>
+        Mandar o link pra {(pickup.name || '').split(' ')[0]}
+      </Button>
+      <p className="px-1 text-[11px] leading-relaxed text-textMuted">
+        Ela vê só se a criança embarcou e a que horas chegou — sem endereço,
+        sem telefone e sem o mapa. O link vale até meia-noite.
+      </p>
+    </div>
+  );
+}
+
 export default function AltPickupSheet({
   open,
   onClose,
@@ -165,6 +219,22 @@ export default function AltPickupSheet({
                     Trocar
                   </button>
                 </div>
+              )}
+
+              {/* MANDAR O LINK PRA ELA — e o lugar é este, não uma tela nova.
+                *
+                * O pai acabou de dizer ao app quem vai pegar a criança, e o
+                * app avisava só o MOTORISTA (`alt_pickup`). A pessoa que vai
+                * ficar na calçada não sabia de nada: pra descobrir se a perua
+                * saiu ela ligava pro pai, que ligava pro motorista. O
+                * telefone dela está aqui na tela, digitado dez segundos
+                * atrás.
+                *
+                * ⚠️ O LINK SÓ EXISTE DEPOIS DA INDICAÇÃO, e é isso que faz a
+                * revogação ser de graça: ele vive no MESMO documento. Tocar
+                * em "Trocar" apaga os dois juntos. */}
+              {currentPickup && (
+                <BotaoDoLink child={child} pickup={currentPickup} />
               )}
 
               {/* Botão "Sou eu mesmo" */}

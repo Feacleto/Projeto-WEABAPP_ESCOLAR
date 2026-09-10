@@ -32,6 +32,13 @@ import AuthAction from './pages/AuthAction';
 // app aponta pra ele: e rota de link antigo (ver o redirecionamento la
 // embaixo). Sao 171 linhas na primeira pintura de TODO MUNDO, inclusive da
 // mae abrindo o convite no WhatsApp em dado movel.
+/* PREGUIÇOSA DE PROPÓSITO, mesmo sendo caminho de quem chega de fora.
+ *
+ * O convite é eager porque é o caminho de TODA família. Este é o de uma
+ * pessoa por dia, numa tarde — pôr esta tela no pacote de entrada cobraria o
+ * download dela de todo mundo que abre o app pra ver a rota. O `Respiro`
+ * cobre os 300ms dela, e é exatamente pra isso que ele existe. */
+const Acompanhar = lazy(() => import('./pages/Acompanhar'));
 const Welcome = lazy(() => import('./pages/Welcome'));
 const Comecar = lazy(() => import('./pages/Comecar'));
 const DriverSignup = lazy(() => import('./pages/DriverSignup'));
@@ -386,6 +393,12 @@ export default function App() {
         {/* O convite é o caminho principal do responsável: o código vem na
           * URL, então ele não digita nada além de email e senha. */}
         <Route path="/convite/:codigo" element={<Invite />} />
+        {/* O LINK DO DIA — quem vai pegar a criança hoje acompanha a entrega
+          * sem ter conta. Público de propósito: a avó não vai criar login
+          * pra uma tarde. O que ela vê é decidido no servidor, campo a
+          * campo (`functions/lib/reguaDoAcompanhamento.js`), e o link morre
+          * à meia-noite. */}
+        <Route path="/acompanhar/:token" element={<Acompanhar />} />
         <Route path="/quero-fazer-parte" element={<DriverSignup />} />
         {/* /conheca — o folheto verde antigo. Link velho, QR impresso e
           * favorito continuam funcionando; hoje eles chegam na landing.

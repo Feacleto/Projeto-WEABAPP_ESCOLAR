@@ -25,6 +25,11 @@ const { exigirMotorista } = require('./lib/papeis');
 const { makeAsaasWebhook } = require('./lib/asaasWebhook');
 const { makeCriarCobrancaDaFatura } = require('./lib/asaasCobranca');
 const { makeContratarPlano } = require('./lib/contratacao');
+const {
+  makeFecharMesDosParceiros,
+  makeFecharMesAgora,
+} = require('./lib/fechamento');
+const { makeEnviarAvisosComerciais } = require('./lib/enviarAvisos');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./lib/limites');
@@ -45,6 +50,10 @@ const {
   makeRunBillingNow,
 } = require('./lib/billing');
 const { makeGetInvitePreview } = require('./lib/invitePreview');
+const {
+  makeGerarAcessoDoDia,
+  makeVerAcompanhamento,
+} = require('./lib/acompanhamento');
 const { makeFlagDuplicateReceipts } = require('./lib/receiptGuard');
 const {
   makeBackfillTestimonialPrivacy,
@@ -438,6 +447,14 @@ exports.runBillingNow = makeRunBillingNow(db);
 
 exports.getInvitePreview = makeGetInvitePreview(db);
 
+/* ══ O LINK DO DIA ═══════════════════════════════════════════════════════
+ * Quem vai pegar a criança hoje acompanha a entrega sem ter conta. As duas
+ * pontas e o porquê de cada decisão estão em `lib/acompanhamento.js`; a régua
+ * pura (o que pode ser visto, e se o link ainda vale) está em
+ * `lib/reguaDoAcompanhamento.js`, que não requer nada de propósito. */
+exports.gerarAcessoDoDia = makeGerarAcessoDoDia(db);
+exports.verAcompanhamento = makeVerAcompanhamento(db);
+
 // ===== Comprovante reusado (ver functions/lib/receiptGuard.js) =====
 //
 // Nao verifica se o pagamento existiu — so a conciliacao com o extrato do
@@ -505,3 +522,27 @@ exports.criarCobrancaDaFatura = makeCriarCobrancaDaFatura(
 // cadastrada. Autoatendimento sem isto seria abrir a cláusula ao devedor.
 
 exports.contratarPlano = makeContratarPlano(db);
+
+/**
+ * O FECHAMENTO DO MÊS DA ASSOCIAÇÃO — agendado, e à mão.
+ *
+ * ⚠️ ATÉ 10/09/2026 A FATURA DA PLATAFORMA SÓ NASCIA POR CLIQUE, e isso custava
+ * conversão: o degrau da escada decai no relógio do servidor mesmo quando
+ * ninguém fecha nada, então o motorista perdia 30% de desconto sem nunca ter
+ * recebido um preço. As três faturas isentas do teste são a peça que ensina o
+ * valor antes de ele importar — e dependiam de disciplina humana repetida.
+ *
+ * A callable continua existindo de propósito: agendada que falha em silêncio é
+ * pior que clique, e o dono precisa poder fechar o mês que não rodou.
+ */
+exports.fecharMesDosParceiros = makeFecharMesDosParceiros(db);
+exports.fecharMesAgora = makeFecharMesAgora(db);
+
+/**
+ * OS AVISOS COMERCIAIS — o único canal que alcança quem parou de abrir o app.
+ *
+ * Todo dia às 9h, entre um turno e outro. A régua está em
+ * `lib/avisosComerciais.js` e é pura: janela de silêncio, um assunto por
+ * semana, nada para quem já contratou, e nenhum número que não venha da tabela.
+ */
+exports.enviarAvisosComerciais = makeEnviarAvisosComerciais(db);
