@@ -57,6 +57,18 @@ function bloco(t) {
 
 const ler = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 
+/**
+ * As dimensoes de um PNG, lidas do cabecalho IHDR.
+ *
+ * Sem dependencia de proposito: o que este teste precisa saber e se a imagem
+ * e QUADRADA e do tamanho certo, e isso esta nos primeiros 24 bytes.
+ */
+function medidaPng(rel) {
+  const b = readFileSync(new URL(`../${rel}`, import.meta.url));
+  if (!(b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47)) return null;
+  return { largura: b.readUInt32BE(16), altura: b.readUInt32BE(20) };
+}
+
 const app = ler('index.html');
 const robotsApp = ler('public/robots.txt');
 const landing = ler('landing/index.html');
@@ -197,6 +209,51 @@ if (dados) {
   // O canal do Encarregado tem que RECEBER: e por isso que ele e o `.com`.
   checar('o e-mail e do dominio que tem caixa', true,
     dados.email.endsWith('@alobuzinou.com'));
+}
+
+// -----------------------------------------------------------------------
+bloco('5. O icone e o logo, que sao o que APARECE na busca');
+
+// ⚠️ O GOOGLE EXIGE ICONE QUADRADO COM LADO MULTIPLO DE 48px. As medidas do
+// .ico (16, 32, 48) nao bastam na pratica, e era por isso que os dois
+// dominios apareciam com um GLOBO GENERICO em 09/09/2026 — nao havia icone
+// que ele aceitasse. Nao e escolha estetica: e requisito publicado.
+const declaradoPng = tag(
+  landing,
+  /<link rel="icon" type="image[/]png" sizes="[0-9]+x[0-9]+" href="([^"]+)"/
+);
+checar('a landing declara um icone PNG para a busca', true, Boolean(declaradoPng));
+
+if (declaradoPng) {
+  const ic = medidaPng(`landing${declaradoPng}`);
+  checar('e o arquivo existe de verdade', true, Boolean(ic));
+  if (ic) {
+    console.log(`       icone: ${declaradoPng} = ${ic.largura}x${ic.altura}`);
+    checar('o icone e quadrado', true, ic.largura === ic.altura);
+    checar('e o lado e multiplo de 48', 0, ic.largura % 48);
+  }
+}
+
+// ⚠️ ESTE BLOCO GUARDA UM DEFEITO ESCRITO E CORRIGIDO NO MESMO DIA: o `logo`
+// do JSON-LD apontava para `og-image.png`, que e o CARTAO de compartilhamento
+// — 1200x630, retangular. Logo de organizacao tem que ser quadrado, e o
+// cartao social tem campo proprio (`image`). Virou `mark-512.png`, a marca
+// sozinha.
+if (dados) {
+  const caminhoLogo = String(dados.logo || '').replace('https://alobuzinou.com.br', '');
+  const lg = medidaPng(`landing${caminhoLogo}`);
+  checar('o logo do JSON-LD existe como arquivo', true, Boolean(lg));
+  if (lg) {
+    console.log(`       logo: ${caminhoLogo} = ${lg.largura}x${lg.altura}`);
+    checar('o logo e quadrado', true, lg.largura === lg.altura);
+    // O minimo do Google e 112px; 512 da folga para o painel.
+    checar('e tem pelo menos 112px de lado', true, lg.largura >= 112);
+  }
+
+  // A sonda que guarda o defeito: o cartao social nao pode voltar a ser logo.
+  checar('o logo NAO e o cartao social', false, String(dados.logo).includes('og-image'));
+  checar('e o cartao social esta no campo dele', true,
+    String(dados.image || '').includes('og-image'));
 }
 
 console.log(`\n${'═'.repeat(64)}`);
