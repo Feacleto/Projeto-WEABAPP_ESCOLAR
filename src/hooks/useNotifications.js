@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  watchUserNotifications,
-  deriveParentReminders,
-  getDerivedReadIds,
-} from '../services/notificationsService';
+import { watchUserNotifications } from '../services/notificationsService';
 import { playSound } from '../services/soundService';
 
 /**
@@ -15,7 +11,7 @@ import { playSound } from '../services/soundService';
  * Re-renderiza quando o conjunto de pagamentos muda — assim os lembretes
  * derivados acompanham (ex: pagamento confirmado deixa de gerar lembrete).
  */
-export function useNotifications({ userId, payments = [], deriveFor = 'parent' }) {
+export function useNotifications({ userId }) {
   const [stored, setStored] = useState([]);
   const [loading, setLoading] = useState(true);
   // Bump pra forçar re-cálculo de derivados após "marcar tudo como lido".
@@ -64,26 +60,31 @@ export function useNotifications({ userId, payments = [], deriveFor = 'parent' }
     return unsub;
   }, [userId]);
 
-  const derived = useMemo(() => {
-    if (deriveFor !== 'parent') return [];
-    return deriveParentReminders(payments);
-  }, [deriveFor, payments]);
-
+  /* ⚠️ OS LEMBRETES DE MENSALIDADE DEIXARAM DE SER DERIVADOS AQUI.
+   *
+   * Eles eram calculados na hora, a partir de `payments`, e nunca viravam
+   * documento — existiam só pra desenhar esta lista. Sem documento não há
+   * push, e um lembrete que só aparece pra quem abre o app é exatamente o que
+   * um lembrete existe pra evitar.
+   *
+   * Agora quem os escreve é a varredura diária (`enviarAvisosDoDia`), com os
+   * MESMOS nomes de tipo — o desenho do sino não mudou. E a derivação teve que
+   * sair junto: esta lista concatenava os derivados com os gravados, então as
+   * duas de pé mostrariam cada lembrete DUAS VEZES.
+   *
+   * Foi embora com ela a leitura por `localStorage`, que existia só porque
+   * lembrete derivado não tinha doc onde gravar `readAt`. Agora tem. */
   const merged = useMemo(() => {
-    const readIds = getDerivedReadIds();
-    const all = [
-      ...stored.map((n) => ({ ...n, isRead: !!n.readAt })),
-      ...derived.map((n) => ({ ...n, isRead: readIds.has(n.id) })),
-    ];
+    const all = stored.map((n) => ({ ...n, isRead: !!n.readAt }));
     all.sort((a, b) => {
       const ta = a.createdAt?.toMillis?.() || 0;
       const tb = b.createdAt?.toMillis?.() || 0;
       return tb - ta;
     });
     return all;
-    // readBump força recomputo após marcar como lido localmente
+    // readBump força recomputo após marcar tudo como lido.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stored, derived, readBump]);
+  }, [stored, readBump]);
 
   const unreadCount = useMemo(
     () => merged.filter((n) => !n.isRead).length,

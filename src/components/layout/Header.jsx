@@ -3,7 +3,6 @@ import { ArrowLeft, Bell, MessageCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
-import { usePaymentsByParent } from '../../hooks/usePayments';
 import ProfileMenu from './ProfileMenu';
 import NotificationsSheet from '../notifications/NotificationsSheet';
 import AppSheet from '../common/AppSheet';
@@ -182,12 +181,7 @@ function GlobalActions({ role, basePath, currentPath }) {
   const { user } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const isParent = role === 'parent';
-  const { payments } = usePaymentsByParent(isParent ? user?.uid : null);
-  const { unreadCount } = useNotifications({
-    userId: user?.uid,
-    payments: isParent ? payments : [],
-    deriveFor: isParent ? 'parent' : 'admin',
-  });
+  const { unreadCount } = useNotifications({ userId: user?.uid });
 
   const isOnNotifications = currentPath === `${basePath}/notifications`;
   const isOnProfile = currentPath === `${basePath}/profile`;

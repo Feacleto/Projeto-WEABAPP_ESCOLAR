@@ -54,6 +54,7 @@ const {
   makeGerarAcessoDoDia,
   makeVerAcompanhamento,
 } = require('./lib/acompanhamento');
+const { makeEnviarAvisosDoDia } = require('./lib/enviarAvisosDoDia');
 const { makeFlagDuplicateReceipts } = require('./lib/receiptGuard');
 const {
   makeBackfillTestimonialPrivacy,
@@ -546,3 +547,10 @@ exports.fecharMesAgora = makeFecharMesAgora(db);
  * semana, nada para quem já contratou, e nenhum número que não venha da tabela.
  */
 exports.enviarAvisosComerciais = makeEnviarAvisosComerciais(db);
+
+/* ══ OS AVISOS DE TEMPO ═══════════════════════════════════════════════════
+ * Mensalidade vencendo, convite parado, fatura da plataforma e alvará. Todos
+ * nascem de uma DATA chegando, e por isso precisam de alguém varrendo — não
+ * há gesto que os dispare. A régua é pura (`reguaDosAvisos.js`) e testada sem
+ * Firebase; este é só o relógio. */
+exports.enviarAvisosDoDia = makeEnviarAvisosDoDia(db);

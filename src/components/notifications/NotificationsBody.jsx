@@ -13,12 +13,10 @@ import toast from 'react-hot-toast';
 import EmptyState from '../common/EmptyState';
 import Skeleton from '../common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
-import { usePaymentsByParent } from '../../hooks/usePayments';
 import { useNotifications } from '../../hooks/useNotifications';
 import {
   markNotificationRead,
   markAllNotificationsRead,
-  markAllDerivedRead,
 } from '../../services/notificationsService';
 import { formatRelativeTime } from '../../compartilhado/formatters';
 
@@ -72,35 +70,24 @@ export default function NotificationsBody({ onNavigate }) {
   const isParent = profile?.role === 'parent';
   const [visibleCount, setVisibleCount] = useState(INITIAL_PAGE_SIZE);
 
-  // Pai: lê seus pagamentos pra derivar lembretes. Tio: payments=[] (não usa).
-  const { payments } = usePaymentsByParent(isParent ? user?.uid : null);
-
   const { notifications, loading, refreshReads } = useNotifications({
     userId: user?.uid,
-    payments: isParent ? payments : [],
-    deriveFor: isParent ? 'parent' : 'admin',
   });
 
   // Auto-marca como lidas as que ele acabou de ver (com debounce de 1.5s)
   useEffect(() => {
     if (loading || notifications.length === 0) return;
     const t = setTimeout(async () => {
-      const unreadDerived = notifications
-        .filter((n) => n.derived && !n.isRead)
-        .map((n) => n.id);
-      const unreadStored = notifications.filter(
-        (n) => !n.derived && !n.isRead
-      );
+      // Não há mais notificação "derivada": toda ela é documento, e a
+      // leitura se grava em `readAt` como a de qualquer outra.
+      const unreadStored = notifications.filter((n) => !n.isRead);
 
-      if (unreadDerived.length > 0) {
-        markAllDerivedRead(unreadDerived);
-      }
       if (unreadStored.length > 0) {
         await Promise.all(
           unreadStored.map((n) => markNotificationRead(n.id).catch(() => {}))
         );
       }
-      if (unreadDerived.length > 0 || unreadStored.length > 0) {
+      if (unreadStored.length > 0) {
         refreshReads();
       }
     }, 1500);
@@ -109,10 +96,6 @@ export default function NotificationsBody({ onNavigate }) {
 
   const onMarkAll = async () => {
     try {
-      const unreadDerived = notifications
-        .filter((n) => n.derived && !n.isRead)
-        .map((n) => n.id);
-      markAllDerivedRead(unreadDerived);
       await markAllNotificationsRead(user.uid);
       refreshReads();
       toast.success('Tudo marcado como lido.');
@@ -172,6 +155,20 @@ export default function NotificationsBody({ onNavigate }) {
 
     if (n.type === 'school_no_class') {
       onNavigate(isParent ? '/pai' : '/tio/semana');
+      return;
+    }
+
+    // ⚠️ OS AVISOS COMERCIAIS LEVAM À TELA ONDE A DECISÃO ACONTECE, e este ramo
+    // espelha o `URL_BY_TYPE` de `functions/lib/push.js` — os dois respondem a
+    // mesma pergunta, um para quem toca no push e outro para quem toca na
+    // lista. Divergir aqui é o motorista tocar no aviso de desconto pelo sino e
+    // cair na tela inicial.
+    if (
+      n.type === 'comercial_teste_comecou' ||
+      n.type === 'comercial_degrau_vira' ||
+      n.type === 'comercial_retorno'
+    ) {
+      onNavigate('/tio/planos');
     }
   };
 

@@ -15,12 +15,11 @@ import {
 } from 'firebase/firestore';
 import { avisoDeMudancaDeHorario } from '../dominio/rota/horarios';
 import { auth, db } from './../firebase/config';
-import { computeDisplayStatus } from './paymentsService';
 // O COMENTARIO QUE JUSTIFICAVA AS COPIAS LOCAIS ERA FALSO.
 // Dizia 'evita dependencia circular com utils/formatters' -- e o formatters
 // nao tem uma unica linha de import. Nao havia ciclo possivel;
 // havia duas definicoes de dinheiro que ja divergiam no valor vazio.
-import { primeiroNome, formatBRL, formatMonthLabel } from '../compartilhado/formatters';
+import { formatBRL } from '../compartilhado/formatters';
 
 /**
  * O motorista DESTE responsável — não o motorista da plataforma.
@@ -311,132 +310,17 @@ export async function markAllNotificationsRead(userId) {
   return unread.length;
 }
 
-// =============================================================================
-// Lembretes derivados (não persistidos)
-// =============================================================================
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Gera lembretes virtuais a partir dos pagamentos do pai.
- * Cada lembrete tem id estável (`${paymentId}-${kind}`) pra que a UI consiga
- * mesclar com eventos reais e marcar leitura via localStorage.
- */
-export function deriveParentReminders(payments, now = Date.now()) {
-  const reminders = [];
-
-  for (const p of payments) {
-    const display = computeDisplayStatus(p);
-    if (display === 'paid') continue;
-
-    const due = p.dueDate?.toDate?.()?.getTime();
-    if (!due) continue;
-
-    const monthLabel = formatMonthLabel(p.month);
-    const amount = formatBRL(p.amount);
-    // Prefixo com o nome da criança quando o pagamento tem essa informação
-    // denormalizada — necessário pra quem acompanha dois filhos.
-    // `primeiroNome` do compartilhado, e não um split local: o que estava aqui
-    // era `/s+/` — sem a barra invertida —, então ele quebrava na LETRA "s" e
-    // não no espaço. "Vanessa Silva" virava "Vane" no push de cobrança.
-    // É exatamente o que o módulo foi extraído para acabar ("estava
-    // reinventado em 40 lugares", compartilhado/formatters.js:41).
-    const who = p.childName ? `${primeiroNome(p.childName)}: ` : '';
-    const diffDays = Math.floor((due - now) / DAY_MS);
-    const overdueDays = Math.floor((now - due) / DAY_MS);
-
-    // Pré-vencimento: pendente ou claimed (pai já adiantou)
-    if (display !== 'paid') {
-      if (diffDays === 5) {
-        reminders.push(reminder(p, 'payment_due_5d', due, {
-          title: 'Vencimento em 5 dias',
-          body: `${who}sua mensalidade de ${amount} (${monthLabel}) vence em 5 dias.`,
-        }));
-      }
-      if (diffDays === 3) {
-        reminders.push(reminder(p, 'payment_due_3d', due, {
-          title: 'Vencimento em 3 dias',
-          body: `${who}sua mensalidade de ${amount} (${monthLabel}) vence em 3 dias.`,
-        }));
-      }
-      if (diffDays === 0) {
-        reminders.push(reminder(p, 'payment_due_0d', due, {
-          title: 'Vencimento hoje',
-          body: `${who}sua mensalidade de ${amount} (${monthLabel}) vence hoje.`,
-        }));
-      }
-    }
-
-    // Pós-vencimento: SÓ se não-claimed (regra do produto: pai informou
-    // pagamento -> sem alertas de atraso até o tio confirmar/recusar)
-    if (display === 'overdue') {
-      if (overdueDays === 3) {
-        reminders.push(reminder(p, 'payment_overdue_3d', due + 3 * DAY_MS, {
-          title: 'Pagamento atrasado',
-          body: `${who}sua mensalidade de ${amount} (${monthLabel}) está 3 dias atrasada.`,
-        }));
-      }
-      if (overdueDays === 7) {
-        reminders.push(reminder(p, 'payment_overdue_7d', due + 7 * DAY_MS, {
-          title: 'Pagamento atrasado há uma semana',
-          body: `${who}sua mensalidade de ${amount} (${monthLabel}) está 7 dias atrasada.`,
-        }));
-      }
-    }
-  }
-
-  return reminders;
-}
-
-function reminder(payment, type, atMs, { title, body }) {
-  return {
-    id: `derived:${payment.id}:${type}`,
-    derived: true,
-    type,
-    title,
-    body,
-    paymentId: payment.id,
-    createdAt: { toMillis: () => atMs, toDate: () => new Date(atMs) },
-  };
-}
-
-// =============================================================================
-// Read tracking pra lembretes derivados (localStorage)
-// =============================================================================
-
-const READ_KEY = 'tn_derived_reads_v1';
-
-function loadDerivedReads() {
-  try {
-    const raw = localStorage.getItem(READ_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function saveDerivedReads(set) {
-  try {
-    localStorage.setItem(READ_KEY, JSON.stringify(Array.from(set)));
-  } catch (err) {
-    console.error('Falha ao salvar leituras derivadas:', err);
-  }
-}
-
-export function getDerivedReadIds() {
-  return loadDerivedReads();
-}
-
-export function markDerivedRead(id) {
-  const set = loadDerivedReads();
-  set.add(id);
-  saveDerivedReads(set);
-}
-
-export function markAllDerivedRead(ids) {
-  const set = loadDerivedReads();
-  ids.forEach((id) => set.add(id));
-  saveDerivedReads(set);
-}
-
-
+/* ⚠️ OS LEMBRETES DERIVADOS FORAM EMBORA DAQUI (10/09/2026), e não foram
+ * substituídos: foram PROMOVIDOS.
+ *
+ * Eram cinco lembretes de mensalidade calculados na hora, a partir dos
+ * `payments` do responsável, que NUNCA viravam documento. Sem documento não
+ * há push — então o lembrete só existia pra quem já tinha aberto o app, que
+ * é exatamente o que um lembrete existe pra evitar.
+ *
+ * Os limiares agora moram em `functions/lib/reguaDosAvisos.js` e quem grava
+ * é a varredura diária. Os NOMES DE TIPO são os mesmos, então o desenho do
+ * sino (`NotificationsBody`) não mudou uma linha.
+ *
+ * A leitura por `localStorage` saiu junto: ela existia só porque lembrete
+ * derivado não tinha doc onde gravar `readAt`. Agora tem. */

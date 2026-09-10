@@ -33,7 +33,23 @@ const REGION = 'southamerica-east1';
 const URL_BY_TYPE = {
   payment_claimed: '/tio/finance',
   payment_confirmed: '/pai/finance',
-  payment_due: '/pai/finance',
+  /* ⚠️ OS CINCO NOMES REAIS, e não `payment_due`.
+   *
+   * Havia `payment_due` aqui, e tipo nenhum se chama assim: os lembretes são
+   * `payment_due_5d`, `_3d`, `_0d`, `payment_overdue_3d` e `_7d`. Nenhum
+   * casava, então o push deles nasceria caindo em '/' em vez do financeiro
+   * dela — uma armadilha armada esperando o dia em que eles virassem
+   * documento. Esse dia é hoje. */
+  payment_due_5d: '/pai/finance',
+  payment_due_3d: '/pai/finance',
+  payment_due_0d: '/pai/finance',
+  payment_overdue_3d: '/pai/finance',
+  payment_overdue_7d: '/pai/finance',
+
+  // Os avisos de tempo do motorista.
+  convite_parado: '/tio/children',
+  fatura_vence: '/tio/taxa',
+  alvara_vence: '/tio/selo',
   contract_accepted: '/tio',
 
   // O toque cai no Início dela, que é onde `HorarioDoDia` mostra a hora.
@@ -52,6 +68,14 @@ const URL_BY_TYPE = {
 
   child_arrived_school: '/pai',
   child_arrived_home: '/pai',
+
+  // ⚠️ OS AVISOS COMERCIAIS PRECISAM DE ROTA, senão o push abre o app na tela
+  // inicial e a pessoa que tocou nele por causa de um desconto não encontra o
+  // desconto. Todos levam a `/tio/planos`, que é onde a decisão acontece —
+  // inclusive o de conta pausada, porque o caminho de voltar é contratar.
+  comercial_teste_comecou: '/tio/planos',
+  comercial_degrau_vira: '/tio/planos',
+  comercial_retorno: '/tio/planos',
 };
 
 function makeSendPushOnNotification(db) {
