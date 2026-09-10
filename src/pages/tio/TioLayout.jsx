@@ -4,6 +4,7 @@ import { Home, DollarSign } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import { indiceDaAba } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
+import ConvitePush from '../../components/tio/ConvitePush';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import AvisoDaPlataforma from '../../components/tio/AvisoDaPlataforma';
 import AvisoDoTrial from '../../components/tio/AvisoDoTrial';
@@ -163,6 +164,18 @@ export default function TioLayout() {
         * seria o app falando de dinheiro duas vezes antes de o motorista ver
         * a rota do dia. */}
       {!naTelaDaTaxa && <AvisoDoTrial temContrato={!!fatura} />}
+      {/* ⚠️ O CONVITE DE PUSH SÓ APARECE QUANDO NÃO HÁ COBRANÇA NA TELA.
+        *
+        * Ele vive aqui, e não no perfil, porque `enablePush` só era chamada de
+        * `/tio/perfil` — quem nunca abriu aquela tela nunca ligou o push, e
+        * push desligado desliga o canal inteiro: os avisos de degrau, de
+        * fatura e de conta pausada viram documentos que ninguém vê.
+        *
+        * Mas ele cede a vez para dinheiro. Pedir permissão de notificação em
+        * cima de um aviso de fatura em aberto é competir com a coisa que o
+        * motorista precisa resolver — e a permissão negada por pressa é
+        * definitiva no navegador. */}
+      {!naTelaDaTaxa && !fatura && <ConvitePush />}
       {/* ⚠️ A TELA ENTRA PELO LADO DA PRÓPRIA ABA, e a `key` é o ÍNDICE, não
         * o caminho.
         *
