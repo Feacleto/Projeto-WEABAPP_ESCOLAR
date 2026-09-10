@@ -410,9 +410,21 @@ const DURACAO = { 1: '', 2: 'fundo-flutua-b', 3: 'fundo-flutua-c' };
  * cartão ainda centrado — sobreposição, que é a regra número um sendo
  * quebrada. Foi `npm run testar:fundo` que pegou.
  *
- * As duas variantes são LITERAIS de propósito: o Tailwind gera classe lendo
- * o código-fonte, então `min-[${n}px]:block` montado em tempo de execução não
- * existiria no CSS — a classe sairia no HTML e não pintaria nada.
+ * As duas variantes são LITERAIS de propósito: o Tailwind gera classe lendo o
+ * TEXTO do código-fonte. Uma classe montada em tempo de execução, com a
+ * largura interpolada numa variável, não existiria no CSS — ela sairia no
+ * HTML e não pintaria nada.
+ *
+ * ⚠️ E ESTE COMENTÁRIO JÁ QUEBROU A TELA. Ele trazia o exemplo da classe
+ * interpolada escrito por extenso, com a sintaxe de colchete e um `${...}`
+ * dentro. O extrator não sabe o que é comentário: ele leu aquilo como um
+ * candidato de classe com valor inválido e **derrubou a geração inteira da
+ * variante de largura mínima** — inclusive as classes válidas deste arquivo e
+ * as do `Login.jsx`. O fundo nunca apareceu, e a única pista era o CSS
+ * publicado não ter nenhuma media query de 1340px.
+ *
+ * Por isso o exemplo agora está em PROSA. `npm run testar:fundo` recusa
+ * qualquer `min-[` com interpolação em `src/`, em comentário ou não.
  */
 const PORTEIRA = {
   1340: 'hidden min-[1340px]:block',

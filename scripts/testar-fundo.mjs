@@ -28,7 +28,7 @@
  *   node scripts/testar-fundo.mjs      (ou: npm run testar:fundo)
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { TRIOS, SLOTS, ASSUNTOS, BLOCOS, textosDoFundo } from '../src/marca/fundoDoLogin.js';
 
 let ok = 0;
@@ -215,6 +215,58 @@ checar('e ele e inerte ao toque', true, fonteFundo.includes('pointer-events-none
 checar('e invisivel para leitor de tela', true, fonteFundo.includes('aria-hidden'));
 
 // ─────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------
+bloco('4b. Nenhuma classe de largura minima e montada em tempo de execucao');
+
+// ⚠️ ESTE BLOCO EXISTE POR UM DEFEITO QUE APAGOU A TELA INTEIRA E NAO DEU
+// ERRO NENHUM.
+//
+// O Tailwind gera classe lendo o TEXTO dos arquivos, e ele nao sabe o que e
+// comentario. Um comentario deste projeto trazia o exemplo
+// "min-[<interpolacao>px]:block" escrito por extenso, para explicar por que a
+// classe precisa ser literal. O extrator leu aquilo como candidato com valor
+// invalido e DERRUBOU A GERACAO INTEIRA da variante de largura minima —
+// inclusive as classes validas do proprio arquivo e as do Login.jsx.
+//
+// Resultado: o fundo do login nunca apareceu, o build passou, o lint passou,
+// os 56 casos deste arquivo passaram, e a unica pista era o CSS publicado nao
+// ter nenhuma media query de 1340px.
+//
+// A regra que fica: `min-[` em `src/` so aceita um comprimento literal.
+const arquivosSrc = [];
+(function varrer(dir) {
+  for (const nome of readdirSync(dir, { withFileTypes: true })) {
+    const caminho = `${dir}/${nome.name}`;
+    if (nome.isDirectory()) varrer(caminho);
+    else if (/[.](jsx?|css)$/.test(nome.name)) arquivosSrc.push(caminho);
+  }
+})(new URL('../src', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1'));
+
+checar('o varredor achou arquivos', true, arquivosSrc.length > 50);
+
+const suspeitos = [];
+for (const caminho of arquivosSrc) {
+  const texto = readFileSync(caminho, 'utf8');
+  // A classe de uma variante nunca atravessa linha. Sem o fim-de-linha na
+  // classe negada, uma MENCAO em prosa a `min-` seguida de colchete aberto
+  // casava ate o proximo colchete fechado do arquivo, varios paragrafos
+  // abaixo — e este teste reprovava o comentario que explica o proprio
+  // teste. Foi a segunda vez na mesma hora que a prosa reprovou a decisao.
+  for (const m of texto.matchAll(/min-\[([^\]\n]*)\]/g)) {
+    // Vale so um comprimento literal: digitos + unidade.
+    if (!/^[0-9]+(px|rem|em)$/.test(m[1])) {
+      suspeitos.push(`${caminho.split('/src/')[1]}: min-[${m[1]}]`);
+    }
+  }
+}
+checar('nenhum min-[] com valor nao literal', [], suspeitos);
+
+// A sonda positiva: o detector precisa reconhecer a forma que quebrou.
+const formaQueQuebrou = 'min-[' + '${n}' + 'px]:block';
+checar('o detector reconhece a forma que quebrou (sonda positiva)', true,
+  [...formaQueQuebrou.matchAll(/min-\[([^\]\n]*)\]/g)]
+    .some((m) => !/^[0-9]+(px|rem|em)$/.test(m[1])));
+
 bloco('5. A animacao e tempero, nao estrutura');
 
 const fonteCss = ler('src/index.css');
