@@ -19,6 +19,7 @@ import {
   markAllNotificationsRead,
 } from '../../services/notificationsService';
 import { formatRelativeTime } from '../../compartilhado/formatters';
+import PreferenciasDeAviso from './PreferenciasDeAviso';
 
 const TYPE_VISUAL = {
   payment_claimed: { Icon: Hourglass, color: 'text-primary bg-primary/10' },
@@ -233,6 +234,17 @@ export default function NotificationsBody({ onNavigate }) {
           </>
         )}
       </div>
+
+      {/* ⚠️ AS PREFERÊNCIAS MORAM AQUI, no fim do sino, e não numa tela de
+        * ajustes que não existe.
+        *
+        * É o único lugar do app em que a pessoa já está pensando em avisos —
+        * e é onde ela está no minuto em que se irrita com um. Uma tela de
+        * configurações separada seria mais arrumada e ninguém acharia: quem
+        * quer parar de receber algo não vai procurar um menu, vai desligar o
+        * push no sistema operacional. Que é exatamente o que isto veio
+        * evitar. */}
+      <PreferenciasDeAviso />
     </>
   );
 }

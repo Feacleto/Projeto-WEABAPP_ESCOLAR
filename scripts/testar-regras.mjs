@@ -757,6 +757,30 @@ async function vagaContratada(tio1, tio2) {
   checar('uso', 'e não a do colega', 'NEGA',
     await escrever(`users/${tio2.uid}`, tio1,
       { ultimaRota: { timestampValue: '2026-09-15T12:00:00Z' } }, ['ultimaRota']));
+
+  // ── preferência de aviso — a pessoa escolhe o que toca no aparelho ───
+  //
+  // `avisosDesligados` NÃO precisou de rule nova: o `update` de `users` é
+  // lista de PROIBIDOS, e preferência de notificação não é cláusula de
+  // contrato. O caso existe justamente porque isso é fácil de quebrar SEM
+  // querer — no dia em que alguém apertar a lista para uma whitelist, ou
+  // acrescentar o campo aos proibidos "por segurança", a tela de
+  // preferências para de salvar e o sintoma é um interruptor que volta
+  // sozinho, sem erro visível.
+  //
+  // ⚠️ E O VIZINHO NÃO ESCREVE A PREFERÊNCIA DE NINGUÉM. Calar o aviso de
+  // outra pessoa é desligar o "chegou em casa" dela pelo lado de fora — e o
+  // ramo do motorista no doc do responsável não existe mais justamente para
+  // esse tipo de coisa não ter porta.
+  checar('preferencia', 'a pessoa desliga os próprios avisos', 'PASSA',
+    await escrever(`users/${tio1.uid}`, tio1,
+      { avisosDesligados: { arrayValue: { values: [{ stringValue: 'oferta' }] } } },
+      ['avisosDesligados']));
+
+  checar('preferencia', 'e não os do colega', 'NEGA',
+    await escrever(`users/${tio2.uid}`, tio1,
+      { avisosDesligados: { arrayValue: { values: [{ stringValue: 'oferta' }] } } },
+      ['avisosDesligados']));
 }
 
 /**

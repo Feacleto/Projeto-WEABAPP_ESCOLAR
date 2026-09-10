@@ -12,8 +12,10 @@ import {
   getDoc,
   getDocs,
   writeBatch,
+  setDoc,
 } from 'firebase/firestore';
 import { avisoDeMudancaDeHorario } from '../dominio/rota/horarios';
+import { normalizarPreferencias } from '../dominio/identidade/avisos.js';
 import { auth, db } from './../firebase/config';
 // O COMENTARIO QUE JUSTIFICAVA AS COPIAS LOCAIS ERA FALSO.
 // Dizia 'evita dependencia circular com utils/formatters' -- e o formatters
@@ -444,3 +446,25 @@ export async function notifyIndicacaoAtivou({ indicadorUid, ativas, descontoEmRe
  *
  * A leitura por `localStorage` saiu junto: ela existia só porque lembrete
  * derivado não tinha doc onde gravar `readAt`. Agora tem. */
+
+/**
+ * GRAVA AS PREFERÊNCIAS DE AVISO DA PRÓPRIA PESSOA.
+ *
+ * ⚠️ NORMALIZA ANTES DE GRAVAR, e não é zelo: `tocaNoAparelho` ignora o que
+ * não é desligável, mas gravar `['fato']` deixaria no documento uma
+ * preferência que a tela nunca mostra e ninguém consegue desfazer por lá.
+ * O que não vale não entra.
+ *
+ * ⚠️ É O PRÓPRIO DONO DO DOCUMENTO QUE ESCREVE. As rules abrem
+ * `avisosDesligados` só para `auth.uid == uid` — nem o motorista escreve no
+ * documento da família dele, que é a lista de campos mais estreita das rules
+ * inteiras, e uma preferência de aparelho não entra nela.
+ */
+export async function salvarPreferenciasDeAviso(uid, desligadas) {
+  if (!uid) throw new Error('sem uid');
+  await setDoc(
+    doc(db, 'users', uid),
+    { avisosDesligados: normalizarPreferencias(desligadas) },
+    { merge: true }
+  );
+}

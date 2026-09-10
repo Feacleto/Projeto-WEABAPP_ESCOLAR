@@ -14,6 +14,7 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const admin = require('firebase-admin');
+const { tocaNoAparelho } = require('./avisos');
 
 const REGION = 'southamerica-east1';
 
@@ -89,6 +90,7 @@ const URL_BY_TYPE = {
   comercial_teste_comecou: '/tio/planos',
   comercial_degrau_vira: '/tio/planos',
   comercial_retorno: '/tio/planos',
+  comercial_indicacao: '/tio/indicar',
 };
 
 function makeSendPushOnNotification(db) {
@@ -104,6 +106,25 @@ function makeSendPushOnNotification(db) {
 
       const userSnap = await db.doc(`users/${notif.userId}`).get();
       if (!userSnap.exists) return;
+
+      // ⚠️ O ÚNICO GUARDA DE PREFERÊNCIA DO PROJETO MORA AQUI, e é de
+      // propósito: este gatilho é o ponto por onde TODO aviso passa antes de
+      // chegar num aparelho. Espalhar a checagem pelos dez remetentes faria
+      // o próximo remetente nascer sem ela — e o sintoma seria a pessoa
+      // desligar uma categoria e continuar recebendo, que é pior que não ter
+      // preferência nenhuma.
+      //
+      // ⚠️ SILENCIA O TOQUE, NÃO O REGISTRO. O documento em `notifications`
+      // já foi escrito quando este gatilho roda, e continua no sino. Quem
+      // pediu silêncio não pediu amnésia — e ela precisa poder conferir
+      // depois o que foi dito sobre o dinheiro dela.
+      if (!tocaNoAparelho(notif.type, userSnap.data().avisosDesligados)) {
+        logger.info('[push] calado por preferência', {
+          tipo: notif.type,
+          notifId: event.params.notifId,
+        });
+        return;
+      }
 
       const tokens = userSnap.data().fcmTokens;
       if (!Array.isArray(tokens) || tokens.length === 0) return;
