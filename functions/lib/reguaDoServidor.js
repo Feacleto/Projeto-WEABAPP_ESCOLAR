@@ -115,6 +115,42 @@ const DIAS_DE_TRIAL = 90;
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
+/** O fuso do negócio. As functions rodam em UTC; nada aqui pode assumir isso. */
+const FUSO = 'America/Sao_Paulo';
+
+/**
+ * O ANO E O MÊS DE UM INSTANTE, EM BRASÍLIA — nunca no fuso do processo.
+ *
+ * ⚠️ AS FUNCTIONS RODAM EM UTC, E ISSO JÁ CUSTOU TRÊS CONTAS ERRADAS.
+ * `getMonth()` num instante das 22h de Brasília devolve o mês SEGUINTE,
+ * porque lá já é 01:00 do outro dia. Medido:
+ *
+ *   trialInicio 31/08 22:00 BRT → `mesDeTesteDe(…, '2026-08')` devolvia
+ *   `null` em vez de 1, e a primeira fatura do teste saía COBRADA;
+ *   `cobertoAteOMesSeguinte` devolvia 31/10 em vez de 30/09, dando um mês
+ *   inteiro de acesso de graça; e `mesDaqui(12)` dava '2027-08' em vez de
+ *   '2027-07', uma mensalidade a mais de concessão.
+ *
+ * Nenhum dos três aparecia em teste porque a bateria roda no fuso de quem
+ * desenvolve, que é o de Brasília. Só `TZ=UTC` os mostra — e é assim que o
+ * CI e a produção rodam.
+ *
+ * `mes` volta 1-12, não 0-11: quem lê a chave 'AAAA-MM' pensa em 1-12, e
+ * misturar as duas convenções no mesmo arquivo é o próximo erro.
+ */
+function partesEmBrasilia(data) {
+  const [ano, mes, dia] = new Intl.DateTimeFormat('en-CA', {
+    timeZone: FUSO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(data)
+    .split('-')
+    .map(Number);
+  return { ano, mes, dia };
+}
+
 function paraData(valor) {
   if (!valor) return null;
   if (valor instanceof Date) return Number.isNaN(valor.getTime()) ? null : valor;
@@ -142,10 +178,15 @@ function paraData(valor) {
  * guardando a armadilha do `setMonth`, que e do JavaScript e nao da copia.
  */
 function mesDaqui(meses, agora = new Date()) {
-  const d = new Date(agora);
-  d.setDate(1);
-  d.setMonth(d.getMonth() + meses - 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  // O mês de PARTIDA é o de Brasília — ver `partesEmBrasilia`. Com
+  // `getMonth()`, uma concessão dada às 22h do dia 31 nascia com um mês a
+  // mais de validade.
+  const { ano, mes } = partesEmBrasilia(agora);
+  // O dia vai para 1 antes de somar (ver acima): `setMonth` preserva o dia, e
+  // 31 não existe em todo mês.
+  const d = new Date(Date.UTC(ano, mes - 1, 1, 12, 0, 0));
+  d.setUTCMonth(d.getUTCMonth() + meses - 1);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 /**
@@ -163,8 +204,16 @@ function mesDaqui(meses, agora = new Date()) {
  * construida a 00:00 volta um dia quando lida no fuso de Brasilia.
  */
 function cobertoAteOMesSeguinte(agora = new Date()) {
-  const d = new Date(agora);
-  return new Date(d.getFullYear(), d.getMonth() + 2, 0, 12, 0, 0);
+  // ⚠️ O MÊS SAI DE BRASÍLIA, NÃO DO PROCESSO. O comentário acima sabia que
+  // as functions rodam em UTC e consertava só a HORA (meio-dia), não o MÊS:
+  // contratar às 22h do dia 31 dava um mês inteiro de acesso de graça.
+  const { ano, mes } = partesEmBrasilia(agora);
+  // ⚠️ 15:00 UTC É MEIO-DIA EM BRASÍLIA, e o meio-dia é o ponto inteiro: a
+  // data a 00:00 volta um dia em qualquer conversão de fuso, e aqui isso
+  // trocaria o mês da cobertura. Ancorar em 12:00 UTC (09:00 no Brasil)
+  // também funcionaria, mas dizer "meio-dia" e gravar nove da manhã é o tipo
+  // de meia verdade que o próximo leitor herda.
+  return new Date(Date.UTC(ano, mes + 1, 0, 15, 0, 0));
 }
 
 /**
@@ -327,7 +376,11 @@ function mesDeTesteDe(trialInicio, mes) {
   const fim = new Date(d.getTime() + DIAS_DE_TRIAL * MS_POR_DIA);
   if (primeiroDia > fim) return null;
 
-  const indice = (ano - d.getFullYear()) * 12 + (mm - 1 - d.getMonth()) + 1;
+  // O mês do início é o de Brasília: com `getMonth()`, um teste que começa
+  // às 22h do último dia do mês nascia com a escada inteira andada um mês, e
+  // a primeira fatura saía cobrada.
+  const inicioBR = partesEmBrasilia(d);
+  const indice = (ano - inicioBR.ano) * 12 + (mm - inicioBR.mes) + 1;
   return indice >= 1 ? indice : null;
 }
 

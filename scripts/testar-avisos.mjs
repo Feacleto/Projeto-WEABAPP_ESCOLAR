@@ -50,16 +50,34 @@ function bloco(t) {
 }
 
 const MS_DIA = 24 * 60 * 60 * 1000;
-// ⚠️ MEIA-NOITE, e não meio-dia. Com o início às 12h, `noDia(27)` às 9h dava
-// 26 dias inteiros e o caso do degrau não disparava — o teste falharia por
-// aritmética de fuso em vez de por regra.
-const INICIO = new Date('2026-09-10T00:00:00');
 
-/** `agora` no dia N do teste, às 9h — o horário em que o agendador roda. */
+/**
+ * ⚠️ AS HORAS AQUI SÃO DE BRASÍLIA, ANCORADAS EM UTC — e não construídas no
+ * fuso de quem roda.
+ *
+ * A versão anterior fazia `new Date('2026-09-10T00:00:00')` e `setHours()`,
+ * que são LOCAIS. Isso passava na máquina de quem desenvolve (Brasília) e
+ * quebrava sob `TZ=UTC`, que é como o CI e as Cloud Functions rodam: `9h`
+ * virava 9h UTC, ou seja 6h no Brasil — dentro da janela de silêncio.
+ *
+ * O teste então media uma coisa aqui e outra lá, e o pior caso não era
+ * falhar: era PASSAR nos dois com a régua errada. Foi exatamente assim que o
+ * bug de `getHours()` em `emSilencio` sobreviveu — a régua lia UTC, o teste
+ * escrevia local, e os dois erros se cancelavam.
+ *
+ * Brasília é UTC−3 o ano inteiro desde 2019 (não há mais horário de verão),
+ * então somar 3 horas é exato e não precisa de biblioteca.
+ */
+const BRT = (iso, hora = 9, minuto = 0) =>
+  new Date(`${iso}T${String(hora + 3).padStart(2, '0')}:${String(minuto).padStart(2, '0')}:00Z`);
+
+const INICIO = BRT('2026-09-10', 0);
+
+/** `agora` no dia N do teste, às 9h de Brasília — quando o agendador roda. */
 const noDia = (n, hora = 9, minuto = 0) => {
-  const d = new Date(INICIO.getTime() + n * MS_DIA);
-  d.setHours(hora, minuto, 0, 0);
-  return d;
+  const base = new Date(INICIO.getTime() + n * MS_DIA);
+  const iso = base.toISOString().slice(0, 10);
+  return BRT(iso, hora, minuto);
 };
 
 const TIO = {
@@ -436,8 +454,10 @@ checar('e o dia seguinte é o seguinte', '2026-09-16',
 
 bloco('A indicação — a exceção nomeada, e os dois guardas que ela quase perdeu');
 
-const INICIO_IND = new Date(2026, 0, 1, 7, 0, 0);
-const noDiaInd = (n, hora = 9) => new Date(2026, 0, 1 + n, hora, 0, 0);
+// Mesmas horas de Brasília, mesma âncora — ver `BRT` acima.
+const INICIO_IND = BRT('2026-01-01', 7);
+const noDiaInd = (n, hora = 9) =>
+  BRT(new Date(Date.UTC(2026, 0, 1 + n)).toISOString().slice(0, 10), hora);
 const clienteInd = (extra = {}) => ({
   trialInicio: INICIO_IND,
   plano: 'mensal',

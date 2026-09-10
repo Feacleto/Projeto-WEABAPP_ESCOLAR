@@ -519,16 +519,63 @@ bloco('13. Contratar destrava a conta');
 // contratava, aceitava o contrato, voltava ao painel e via a MESMA tela
 // dizendo pra contratar. Depois de ter decidido pagar.
 const emSetembro = cobertoAteOMesSeguinte(setembro);
+// ⚠️ A LEITURA TAMBÉM É EM BRASÍLIA. Esta asserção usava `getFullYear()` e
+// `getHours()`, que respondem no fuso do PROCESSO — ela media uma coisa na
+// máquina de quem desenvolve e outra no CI. Um teste sobre fuso não pode
+// depender do fuso.
+const emBR = (d, opcoes) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', ...opcoes }).format(d);
 checar('contratar cobre até o fim do mês seguinte', '2026-10-31',
-  `${emSetembro.getFullYear()}-${String(emSetembro.getMonth() + 1).padStart(2, '0')}-${String(emSetembro.getDate()).padStart(2, '0')}`);
-// Meio-dia: as functions rodam em UTC, e a data a 00:00 volta um dia no Brasil.
-checar('e nasce ao meio-dia, não à meia-noite', 12, emSetembro.getHours());
+  emBR(emSetembro, { year: 'numeric', month: '2-digit', day: '2-digit' }));
+// Meio-dia: a data a 00:00 volta um dia em qualquer conversão de fuso, e aqui
+// isso trocaria o mês inteiro da cobertura.
+checar('e nasce ao meio-dia de Brasília, não à meia-noite', '12',
+  emBR(emSetembro, { hour: '2-digit', hour12: false }));
 // Dezembro precisa virar o ano — o caso que um cálculo ingênuo erra.
 const emDezembro = cobertoAteOMesSeguinte(new Date(2026, 11, 15, 12));
 checar('dezembro cobre até o fim de janeiro', 2027, emDezembro.getFullYear());
 checar('e o mês é janeiro', 1, emDezembro.getMonth() + 1);
 
-// ═══════════ O RELATÓRIO DE LEGADO — A PENDÊNCIA QUE PAROU DE DEPENDER ═══
+// ═══════════ A VIRADA DO MÊS EM UTC — TRÊS CONTAS DE DINHEIRO ═══════════
+//
+// ⚠️ AS CLOUD FUNCTIONS RODAM EM UTC, E A BATERIA RODA NO FUSO DE QUEM
+// DESENVOLVE. Foi assim que três bugs de mês viveram escondidos: as duas
+// cópias erravam IGUAL, então a comparação espelho-contra-espelho passava
+// verde, e o valor certo só aparecia sob `TZ=UTC`.
+//
+// Estes casos usam um instante das 22h de Brasília no ÚLTIMO dia do mês —
+// que em UTC já é o dia 1 do mês seguinte. É o único horário em que o erro
+// aparece, e é horário normal: pai aceitando convite à noite, motorista
+// contratando depois da rota da tarde.
+bloco('A virada do mês, no fuso em que o servidor roda');
+
+// 31/08/2026 22:00 BRT === 01/09/2026 01:00Z
+const VIRADA = new Date('2026-09-01T01:00:00Z');
+
+// 1. O mês de teste. Errado, a PRIMEIRA fatura do teste sai cobrada.
+checar('agosto é o 1º mês do teste, não "nenhum"', 1,
+  mesDeTesteNoServidor(VIRADA, '2026-08'));
+checar('e setembro é o 2º', 2, mesDeTesteNoServidor(VIRADA, '2026-09'));
+checar('as duas cópias concordam nisso',
+  mesDeTesteNoApp(VIRADA, '2026-08'), mesDeTesteNoServidor(VIRADA, '2026-08'));
+
+// 2. Até quando contratar destrava. Errado, é um mês de acesso de graça.
+checar('contratar em 31/08 cobre até 30/09, não até 31/10', '2026-09-30',
+  cobertoAteOMesSeguinte(VIRADA).toISOString().slice(0, 10));
+
+// 3. O prazo de uma concessão. Errado, é uma mensalidade a mais.
+checar('12 meses a partir de 31/08 terminam em julho', '2027-07',
+  mesDaquiContrato(12, VIRADA));
+
+// ⚠️ SONDA POSITIVA: no meio do mês nada disto muda. Sem ela, uma função que
+// devolvesse sempre o mês anterior passaria nos três casos acima.
+const MEIO = new Date('2026-09-15T15:00:00Z');
+checar('no meio do mês o coberto-até continua sendo o fim do seguinte', '2026-10-31',
+  cobertoAteOMesSeguinte(MEIO).toISOString().slice(0, 10));
+checar('e os 12 meses continuam terminando em agosto', '2027-08',
+  mesDaquiContrato(12, MEIO));
+
+// ══════════ O RELATÓRIO DE LEGADO — A PENDÊNCIA QUE PAROU DE DEPENDER ═══
 //
 // Quatro instrumentos descrevem casos que não existem mais. A pendência de
 // conferi-los na base estava escrita no CLAUDE.md desde 07/09/2026 e nunca

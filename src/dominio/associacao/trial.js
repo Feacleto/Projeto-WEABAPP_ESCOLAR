@@ -209,6 +209,26 @@ export function ultimoDiaDoDegrau(inicio, degrau) {
  * deste arquivo) — e agora ele fica VISÍVEL, porque o dono passa a ver uma
  * fatura isenta por mês em vez de nenhuma fatura.
  */
+/**
+ * O ANO E O MÊS DE UM INSTANTE, EM BRASÍLIA — espelho de `partesEmBrasilia`
+ * em `functions/lib/reguaDoServidor.js`. Ver lá o porquê e os três valores
+ * errados que ele consertou.
+ *
+ * `mes` volta 1-12, não 0-11.
+ */
+function partesEmBrasilia(data) {
+  const [ano, mes, dia] = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(data)
+    .split('-')
+    .map(Number);
+  return { ano, mes, dia };
+}
+
 export function mesDeTesteDe(inicio, mes) {
   const m = String(mes || '');
   if (!/^\d{4}-\d{2}$/.test(m)) return null;
@@ -224,8 +244,21 @@ export function mesDeTesteDe(inicio, mes) {
   const fim = fimDoTrial(inicio);
   if (!fim || primeiroDia > fim) return null;
 
-  const indice =
-    (ano - d.getFullYear()) * 12 + (mm - 1 - d.getMonth()) + 1;
+  // ⚠️ O MÊS DO INÍCIO SAI DE BRASÍLIA, NÃO DO FUSO DE QUEM LÊ.
+  //
+  // `getMonth()` num instante das 22h do dia 31 devolve o mês SEGUINTE
+  // quando lido em UTC — e é assim que as Cloud Functions rodam. O espelho
+  // desta função em `reguaDoServidor.js` devolvia `null` para a primeira
+  // fatura do teste, que então saía COBRADA.
+  //
+  // Aqui, no cliente, o aparelho quase sempre está em Brasília e o erro não
+  // aparecia. Mas as duas cópias são comparadas por `testar:gateway`, e a
+  // comparação só é honesta se as duas responderem a mesma pergunta: "que
+  // mês era este instante NO BRASIL". Deixar o cliente no fuso do aparelho
+  // faria o teste passar aqui e falhar no CI — ou, pior, passar nos dois e
+  // divergir no telefone de alguém em viagem.
+  const inicioBR = partesEmBrasilia(d);
+  const indice = (ano - inicioBR.ano) * 12 + (mm - inicioBR.mes) + 1;
   // Fatura de um mês ANTERIOR ao início do teste não é mês de teste nenhum —
   // ela é de antes de existir relógio.
   return indice >= 1 ? indice : null;
