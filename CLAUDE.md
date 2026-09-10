@@ -837,8 +837,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   um doc em `notifications` escrito pelo Admin SDK dispara
   `sendPushOnNotification`. A régua é
   [avisosComerciais.js](functions/lib/avisosComerciais.js), pura e testada:
-  janela de silêncio (6h–8h30 e 16h30–19h, ele está dirigindo com criança
-  dentro), um assunto por semana, nada para quem já contratou, e nenhum número
+  janela de silêncio (6h–8h30 e 16h30–19h **no fuso de Brasília**, ele está
+  dirigindo com criança dentro), um assunto por semana, nada para quem já contratou, e nenhum número
   que não venha da tabela. ⚠️ **O aviso de conta pausada FURA o guarda
   semanal** — um assunto por semana vale para OFERTA, nunca para o app avisar
   que parou de funcionar.
@@ -1719,6 +1719,17 @@ teste porque cada régua estava certa sozinha:
   conversa. ⚠️ Isso exige ordem: o comercial passou para **as 10h**, senão o
   carimbo poderia não existir ainda quando a régua o lesse, e o silêncio seria
   sorteado a cada manhã.
+  ⚠️ **O CARIMBO É 'AAAA-MM-DD', NÃO TIMESTAMP.** Com `diasDesde(...) === 0`,
+  um carimbo de ontem ao meio-dia lido hoje às 10h dá 22 horas — zero dias —
+  e calava a oferta num dia em que o operacional não falou nada. Pego pelo
+  `testar:envio`, não por leitura.
+  ⚠️ **E A JANELA DE SILÊNCIO LIA `agora.getHours()`, QUE É UTC NAS
+  FUNCTIONS.** 10h de Brasília é 13h lá, então a faixa da tarde estava sendo
+  medida contra 19h30–22h. O cron das 10h escondia isso por coincidência —
+  cai fora das duas faixas nas duas leituras. Mover o agendado para as 17h
+  mandaria oferta comercial para quem está dirigindo com criança dentro. Hoje
+  a hora e o dia saem de `Intl` no fuso certo, e `testar:avisos` mede em UTC
+  de propósito, que é onde o erro aparecia.
 - **Para a FAMÍLIA:** push e e-mail sobre a mesma mensalidade, no mesmo
   minuto, em três dos cinco marcos. Quem decide agora é
   [canalDaCobranca.js](functions/lib/canalDaCobranca.js): **um marco, um
