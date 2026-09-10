@@ -20,8 +20,9 @@
  * ── AS TRÊS REGRAS QUE GOVERNAM O QUE SAI
  *
  * 1. **JANELA DE SILÊNCIO.** Nada entre 6h e 8h30, nem entre 16h30 e 19h. Ele
- *    está dirigindo com criança dentro. As peças de dinheiro saem às 9h, que é
- *    quando ele está parado entre um turno e outro.
+ *    está dirigindo com criança dentro. As peças de dinheiro saem às 10h, que
+ *    é quando ele está parado entre um turno e outro — e uma hora depois do
+ *    operacional, para o carimbo dele já existir quando esta régua o ler.
  *
  * 2. **UM ASSUNTO POR SEMANA.** Se o degrau vira na mesma semana em que a
  *    fatura fecha, sai só o degrau. Cinco avisos em vinte dias ensinam a pular
@@ -95,7 +96,10 @@ const DIA_DO_AVISO_DE_INDICACAO = 30;
  * A JANELA DE SILÊNCIO, em horas do fuso de Brasília.
  *
  * Manhã: 6h00–8h30, a rota de ida. Tarde: 16h30–19h00, a de volta. Fora disso
- * ele está parado — e às 9h, especificamente, está entre os dois turnos.
+ * ele está parado — e às 10h, especificamente, está entre os dois turnos.
+ *
+ * ⚠️ AS HORAS SÃO DE BRASÍLIA, e a régua as calcula com `Intl` porque as
+ * functions rodam em UTC. Ver `minutosEmBrasilia`.
  */
 const SILENCIO = [
   { de: 6 * 60, ate: 8 * 60 + 30 },
@@ -210,7 +214,7 @@ function avisoDoDia({ motorista, agora = new Date() } = {}) {
   if (motorista.suspenso === true) return null;
 
   // ⚠️ A JANELA DE SILÊNCIO É CHECADA AQUI, E NÃO SÓ NO AGENDADOR.
-  // O agendador roda às 9h, então na prática ela nunca morde — e é exatamente
+  // O agendador roda às 10h, então na prática ela raramente morde — e é
   // por isso que ela precisa estar na régua: no dia em que alguém mudar o cron
   // ou chamar isto de outro lugar, a garantia continua sendo do código e não
   // do horário.

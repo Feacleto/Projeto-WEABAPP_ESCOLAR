@@ -17,6 +17,7 @@ import {
 import AppSheet from '../common/AppSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
+import { DESCONTO_POR_INDICACAO } from '../../dominio/associacao/planos.js';
 
 /**
  * O ÍNDICE DO APP — "Meu transporte".
@@ -225,7 +226,13 @@ export default function MeuTransporteSheet({
           <Linha
             icon={Share2}
             titulo="Indicar outro motorista"
-            subtitulo="Cada indicação que paga vale 10% na sua conta"
+            /* ⚠️ NÃO ESCREVA A PORCENTAGEM À MÃO AQUI. Esta linha dizia
+              * "10%" depois de a régua ter ido para 5% — o motorista lia o
+              * DOBRO do que a fatura ia descontar, e nenhum teste pega texto
+              * de JSX. O número sai da régua; e ele é sobre a conta dele,
+              * então o valor exato em reais fica em `/tio/indicar`, que é
+              * onde `valorDaIndicacao` sabe o tamanho da operação. */
+            subtitulo={`Cada indicação que paga vale ${Math.round(DESCONTO_POR_INDICACAO * 100)}% na sua conta`}
             onClick={() => ir('/tio/indicar')}
           />
           <Linha

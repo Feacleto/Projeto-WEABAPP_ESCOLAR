@@ -562,7 +562,7 @@ exports.fecharMesAgora = makeFecharMesAgora(db);
 /**
  * OS AVISOS COMERCIAIS — o único canal que alcança quem parou de abrir o app.
  *
- * Todo dia às 9h, entre um turno e outro. A régua está em
+ * Todo dia às 10h — uma hora DEPOIS do operacional, de propósito. A régua está em
  * `lib/avisosComerciais.js` e é pura: janela de silêncio, um assunto por
  * semana, nada para quem já contratou, e nenhum número que não venha da tabela.
  */

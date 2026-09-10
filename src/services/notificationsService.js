@@ -416,7 +416,7 @@ export async function notifyIndicacaoAtivou({ indicadorUid, ativas, descontoEmRe
       // sem nunca ser dito em número. "Já entra na sua próxima fatura" não é
       // um número: ele não sabe se são dez centavos ou dez reais.
       //
-      // O desconto por indicação é 10% da fatura dele. Quanto isso vale em
+      // O desconto por indicação é uma fração da fatura dele. Quanto isso vale em
       // reais depende do tamanho da operação, e quem tem esse número é o
       // service que chama — por isso `descontoEmReais` entra por parâmetro, e
       // a frase cai para a versão sem valor quando ele não vem.

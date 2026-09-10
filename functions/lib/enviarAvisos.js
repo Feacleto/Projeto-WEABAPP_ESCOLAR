@@ -104,7 +104,7 @@ async function enviarAvisos(db, { agora = new Date() } = {}) {
   return resultado;
 }
 
-/** Todo dia às 9h de Brasília — entre um turno e outro. */
+/** Todo dia às 10h de Brasília — ver o cabeçalho: a hora é parte da regra. */
 function makeEnviarAvisosComerciais(db) {
   return onSchedule(
     {

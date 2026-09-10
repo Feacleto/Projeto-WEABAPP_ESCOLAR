@@ -31,7 +31,8 @@ import { formatCurrency } from '../compartilhado/formatters';
  * fatura"* não diz se são dez centavos ou dez reais, então a dúvida
  * sobrevive ao aviso que deveria matá-la.
  *
- * O desconto é 10% da fatura dele, e quanto isso vale depende do tamanho da
+ * O desconto é `DESCONTO_POR_INDICACAO` da fatura dele, e quanto isso vale
+ * depende do tamanho da
  * operação dele. Só o documento dele tem esse número, então é preciso lê-lo.
  * Uma leitura, num caminho que roda no máximo uma vez por indicado.
  *
