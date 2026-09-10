@@ -16,6 +16,7 @@ import Input from '../components/common/Input';
 import FundoNoturno from '../components/common/FundoNoturno';
 import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
+import FundoDoLogin from '../components/auth/FundoDoLogin';
 import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
 import { authenticateAndRedeem, googleAndRedeem, resetPassword } from '../services/authService';
 import { acceptTerms } from '../services/consentService';
@@ -368,8 +369,28 @@ export default function FirstAccess() {
       {/* O cartão sobre cinza, igual ao do login e ao da tela do motorista:
         * as três portas do produto passaram a ter a mesma superfície, porque
         * são a mesma sessão para quem atravessa duas delas. */}
-      <main className="flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16">
-        <div className="mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8">
+      {/* ── O FUNDO AQUI LIGA MAIS TARDE QUE NO LOGIN, E A CONTA DIZ POR QUÊ
+        *
+        * Mesmo fundo, mesmo trio de regras
+        * ([FundoDoLogin](../components/auth/FundoDoLogin.jsx)) — o que muda é
+        * que o cartão desta tela tem **520px**, contra 380 do login. A faixa
+        * livre à esquerda encolhe na mesma medida:
+        *
+        *   esquerda do cartão = 0,58·L − 52 (padding) − 520 (cartão)
+        *   o cartão de fundo mais avançado alcança 284px
+        *   0,58·L − 572 ≥ 284  →  L ≥ 1497px
+        *
+        * Por isso `min-[1500px]` e não `min-[1340px]`. Numa tela de 1440 o
+        * slot do meio invadiria o formulário por ~21px, e a regra número um
+        * do fundo é nunca ficar atrás do cartão — valor em reais cortado pela
+        * borda de um formulário lê como bug, não como profundidade.
+        *
+        * ⚠️ Se um dia o cartão desta tela estreitar, ESTE número desce junto.
+        * `npm run testar:fundo` refaz as duas contas a partir dos arquivos,
+        * então a divergência falha no teste em vez de aparecer na tela. */}
+      <main className="relative flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16 min-[1500px]:pl-10 min-[1500px]:pr-[52px]">
+        <FundoDoLogin assunto="convite" desde={1500} />
+        <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8 min-[1500px]:mx-0 min-[1500px]:ml-auto">
           <div className="mb-5">
             <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
               Usar meu convite

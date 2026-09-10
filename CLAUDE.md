@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 1267 casos em 27 scripts. O PRIMEIRO é
+npm run testar                   # 1324 casos em 28 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois: horarios, faltas,
@@ -25,7 +25,7 @@ npm run testar                   # 1267 casos em 27 scripts. O PRIMEIRO é
                                  # status, auth, trial, planos, conta, cobranca,
                                  # gateway, carteira, proposta, chamados, risco,
                                  # fila, concessao, selo, indicacao, origem,
-                                 # abas, transacoes
+                                 # abas, transacoes, fundo
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — precisa de auth,firestore
                                  # E storage juntos (ele semeia usuário e
@@ -868,6 +868,35 @@ no mesmo cartão. O "Cadastrar" antigo era um link pra `/comecar`, e `/comecar`
 devolve pro login quem não tem sessão: quem clicava deslogado voltava pra
 mesma tela. A aba pode vir da URL (`/login?criar=1`): a landing está em outro
 domínio e não tem `state`.
+
+**A COLUNA DIREITA DO LOGIN TEM FUNDO desde 09/09/2026, e ele TROCA DE
+ASSUNTO com a aba** — [FundoDoLogin](src/components/auth/FundoDoLogin.jsx), com
+as nove peças em [marca/fundoDoLogin.js](src/marca/fundoDoLogin.js). Era uma
+superfície branca com um cartão no meio, e o login é a tela **mais acessada do
+produto** (mais que a landing): aquele vazio era o maior espaço de produto do
+app sem nada dentro. Três cartões por assunto — o dia rodando (entrar), o
+caminho até funcionar (criar conta), o lado da responsável (`/first-access`).
+
+⚠️ **Os cartões são RECRIADOS, nunca print de tela.** Print de produto real
+levaria nome e rosto de criança para uma página pública, que é dado sensível.
+Iniciais em pastilha e primeiro nome fictício.
+
+⚠️ **O QUE NÃO PODE APARECER LÁ É TESTE, NÃO LEMBRETE** (`npm run testar:fundo`,
+56 casos). Cada item da lista é um número que EXISTIU no app e saiu por decisão:
+o "a receber" (previsão no dia 3 é quase o faturamento inteiro), a contagem de
+inadimplentes (virou nome e valor), qualquer ETA em minutos (era linha reta ÷ 18
+km/h). Fundo que mostra a interface errada é pior que fundo abstrato — ele
+promete uma tela que não existe. As frases que o app já diz são **copiadas da
+fonte**, e o teste confere que elas ainda existem lá.
+
+⚠️ **E O CARTÃO DO FORMULÁRIO ENCOSTA À DIREITA — isso é geometria.** Centrado,
+sobram ~159px de cada lado e nenhum cartão de fundo cabe sem ser cortado; o
+problema é o eixo X e nenhum ajuste de altura resolve. O fundo só liga onde a
+conta fecha: **1340px** no login (cartão de 380) e **1500px** no
+`/first-access` (cartão de 520). Abaixo disso ele não existe, em vez de ser
+apertado. `testar:fundo` **refaz a conta a partir dos arquivos** — alargar o
+formulário falha no teste em vez de aparecer como cartão cortado do outro lado
+da tela. Foi ele que pegou o fundo ligando antes de o cartão se mover.
 
 **A aba "Criar conta" NÃO cadastra ninguém — ela faz UMA pergunta**, e manda
 pra `/quero-fazer-parte` (motorista) ou `/first-access` (responsável). Ela já

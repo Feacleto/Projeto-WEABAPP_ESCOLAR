@@ -217,6 +217,14 @@ export default {
         // O que de fato FLUTUA: folha, barra de abas, modal, chamada em
         // tela cheia. Preta e forte, porque tem conteúdo por baixo.
         float: '0 12px 32px -8px rgb(0 0 0 / 0.38)',
+        // O CARTÃO DE FUNDO do login — e ele é o oposto do `float`.
+        //
+        // `float` é 0.38 de preto porque tem conteúdo por baixo e precisa
+        // vencer. Estes cartões precisam PERDER: eles mostram o app
+        // funcionando atrás do formulário, e sombra forte os promove a
+        // primeiro plano — a pessoa tenta ler o fundo em vez de entrar.
+        // Descola do fundo e para aí. Ver marca/fundoDoLogin.js.
+        fundo: '0 10px 30px -6px rgb(11 18 16 / 0.10)',
       },
       /* ══ A ENTRADA DA TELA — a microinteração do rodapé ══════════════
        * A tela nova entra PELO LADO DA PRÓPRIA ABA: o Início mora à esquerda

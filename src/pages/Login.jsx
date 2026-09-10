@@ -21,6 +21,7 @@ import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
+import FundoDoLogin from '../components/auth/FundoDoLogin';
 import { CENA_ENTRADA, travessar } from '../marca/travessia';
 import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
@@ -682,7 +683,32 @@ export default function Login() {
           * O `FundoNoturno` saiu daqui junto. Ele continua nas duas telas de
           * cadastro, onde a faixa ocupa a tela inteira no celular e o
           * movimento tem espaço para existir. */}
-        <div className="relative flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10">
+        {/* ── A COLUNA DIREITA, E POR QUE O CARTÃO SAI DO CENTRO ──────
+          *
+          * Ela era uma superfície branca com um cartão no meio — e como o
+          * login é a tela MAIS ACESSADA do produto (mais que a landing),
+          * aquele vazio era o maior espaço de produto do app sem nada dentro.
+          * O que entrou está em
+          * [FundoDoLogin](../components/auth/FundoDoLogin.jsx): três cartões
+          * que mostram o app rodando e TROCAM DE ASSUNTO com a aba.
+          *
+          * ⚠️ O CARTÃO ENCOSTA À DIREITA, E ISSO É GEOMETRIA, NÃO ESTÉTICA.
+          * Centrado, sobram ~159px de cada lado numa tela de 1440 — e nenhum
+          * cartão de fundo cabe em 159px sem ser cortado. Nenhum ajuste de
+          * altura resolve, porque o problema é o eixo X. Encostado, abre uma
+          * faixa livre de ~300px à esquerda, que é onde (e só onde) o fundo
+          * vive.
+          *
+          * ⚠️ E OS DOIS ANDAM NO MESMO BREAKPOINT, de propósito. O
+          * `min-[1340px]` aqui é o mesmo que liga o fundo (a conta está no
+          * cabeçalho dele). Empurrar o cartão para a direita sem o fundo
+          * deixaria uma faixa vazia de 300px do lado, que não lê como
+          * respiro — lê como coisa que não carregou.
+          *
+          * O efeito colateral é bom: cartão mais perto do painel verde põe
+          * marca e ação no mesmo eixo de leitura. */}
+        <div className="relative flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10 min-[1340px]:justify-end min-[1340px]:py-10 min-[1340px]:pl-10 min-[1340px]:pr-[52px]">
+          <FundoDoLogin assunto={aba} assuntos={['entrar', 'criar']} desde={1340} />
           <div className="relative z-10 w-full max-w-[380px] space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float sm:p-7">
             {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
               * "Cadastrar" era um link no rodapé do cartão que levava pra

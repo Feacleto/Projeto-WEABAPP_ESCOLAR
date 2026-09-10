@@ -22,6 +22,22 @@
   --pino-escola-fundo: #6d28d9;
   --pino-perua: #f59e0b;
   --pino-perua-fundo: #d97706;
+
+  /* A TEXTURA DO FUNDO DO LOGIN.
+   *
+   * Mesmo motivo dos pinos acima: é cor que precisa viver num
+   * `background-image`, e gradiente não aceita classe do Tailwind. Então ela
+   * tem NOME aqui em vez de virar hex cru dentro de um `style=`.
+   *
+   * As duas são o `primary` (#1F5F3F) com alfa — a textura é a marca
+   * diluída, não um cinza decorativo.
+   *
+   * ⚠️ O fim do brilho é `#EEF1EF` com alfa ZERO, e não `transparent`: alguns
+   * navegadores interpolam `transparent` passando por preto transparente, e o
+   * halo ganha uma auréola cinza no meio do degradê. */
+  --fundo-ponto: rgb(31 95 63 / 0.09);
+  --fundo-brilho: rgb(31 95 63 / 0.10);
+  --fundo-brilho-fim: rgb(238 241 239 / 0);
 }
 
 /* Reset básico mobile-first com fonte Inter via fallback do sistema */
@@ -1234,4 +1250,60 @@
   .ab-estrada-van {
     animation: none;
   }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * O FUNDO DO LOGIN — flutuação e halo
+ *
+ * As duas são TEMPERO. O fundo tem que estar completo e legível parado: se
+ * a animação for cortada por escopo ou por preferência do sistema, não falta
+ * nada. Ver o cabeçalho de src/marca/fundoDoLogin.js.
+ *
+ * A flutuação é LONGA de propósito — 11 a 14 segundos por ciclo. Movimento
+ * rápido num fundo é o que rouba o olho de quem está digitando uma senha, e
+ * essa é a única coisa que a pessoa veio fazer aqui.
+ *
+ * Os atrasos vêm do JS (SLOTS), não daqui: três cartões subindo juntos é
+ * exatamente o que denuncia que aquilo é enfeite.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes fundo-flutua {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-14px); }
+  100% { transform: translateY(0); }
+}
+
+.fundo-flutua {
+  animation: fundo-flutua 12.5s ease-in-out infinite;
+}
+.fundo-flutua-b { animation-duration: 11s; }
+.fundo-flutua-c { animation-duration: 14s; }
+
+/* O anel do Buzinar e do ícone da perua. Ele existe porque as duas coisas
+ * que ele marca são as que CHAMAM alguém — a buzina toca o celular da mãe, a
+ * perua está chegando. Halo em qualquer outro cartão seria enfeite. */
+@keyframes fundo-halo {
+  0%   { transform: scale(1);    opacity: 0.55; }
+  70%  { transform: scale(1.55); opacity: 0; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+
+.fundo-halo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid currentColor;
+  animation: fundo-halo 3.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fundo-flutua,
+  .fundo-halo::after {
+    animation: none;
+  }
+  /* O anel para de pulsar E some: anel parado no tamanho máximo lê como
+   * borda dupla, que é um defeito visual, não um estado de repouso. */
+  .fundo-halo::after { display: none; }
 }
