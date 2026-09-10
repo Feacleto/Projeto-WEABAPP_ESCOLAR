@@ -83,6 +83,32 @@ export function diasEsperando(chamado, agora = new Date()) {
 }
 
 /**
+ * Quantos dias a pessoa esperou até a resposta. `null` enquanto não houve.
+ *
+ * ⚠️ ISTO EXISTE PORQUE `respondidoEm` ERA CAMPO SEM LEITOR. Ele é gravado
+ * desde que a aba existe, junto de `respondidoPor`, e nenhuma tela o abria: a
+ * lista dizia só "respondido", e o número que interessa a quem toca o suporte
+ * — quanto tempo alguém ficou esperando — não estava em lugar nenhum, nem
+ * depois de ter sido medido e guardado.
+ *
+ * É o mesmo defeito que criou a aba: `supportTickets` recebia e ninguém lia.
+ * Aqui era um degrau adiante, e por isso mais fácil de não ver.
+ *
+ * `diasEsperando` responde pelo chamado ABERTO e este pelo tratado — os dois
+ * nunca respondem juntos, de propósito: um é dívida, o outro é histórico.
+ */
+export function diasAteResponder(chamado) {
+  if (aguardando(chamado)) return null;
+  const criado = paraData(chamado?.createdAt);
+  const respondido = paraData(chamado?.respondidoEm || chamado?.fechadoEm);
+  if (!criado || !respondido) return null;
+  return Math.max(
+    0,
+    Math.floor((respondido.getTime() - criado.getTime()) / MS_POR_DIA)
+  );
+}
+
+/**
  * A caixa, na ordem em que se trabalha nela.
  *
  * Quem espera vem primeiro, e entre eles o MAIS ANTIGO na frente — o oposto de

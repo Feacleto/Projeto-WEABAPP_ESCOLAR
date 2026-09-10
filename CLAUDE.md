@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 2080 casos em 37 scripts. O PRIMEIRO é
+npm run testar                   # 2089 casos em 37 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -413,6 +413,13 @@ sistema tem. Regra nova mora no contexto de quem decide sobre ela:
 `suporte` nasceu em 06/09/2026 e é o sétimo — a tabela dizia SEIS. Ele existe
 porque `supportTickets` recebia desde sempre e nenhuma tela do dono lia: quem
 pede ajuda e não recebe resposta cancela sem dizer por quê.
+
+⚠️ **E O MESMO DEFEITO ESTAVA UM DEGRAU ADIANTE:** `respondidoEm` e
+`fechadoEm` eram gravados pela própria aba e nenhuma tela os abria — a lista
+dizia só "respondido", então o número que diz se o suporte está de pé (quanto
+tempo alguém esperou) estava medido, guardado e invisível. `diasAteResponder`
+([chamados.js](src/dominio/suporte/chamados.js)) o lê, e ele **nunca responde
+junto** com `diasEsperando`: um é dívida, o outro é histórico.
 
 Os dois dinheiros são contextos SEPARADOS de propósito — misturá-los quebra o
 item 7 dos Termos, e a separação em pastas é o que torna a mistura visível

@@ -15,11 +15,13 @@
  *   node scripts/testar-chamados.mjs      (ou: npm run testar:chamados)
  */
 
+import { readFileSync } from 'node:fs';
 import {
   ABERTO,
   FECHADO,
   RESPONDIDO,
   aguardando,
+  diasAteResponder,
   diasEsperando,
   mensagemDeResposta,
   ordenarChamados,
@@ -146,6 +148,64 @@ checar('sem nome não quebra', true, mensagemDeResposta({}).startsWith('Oi!'));
 // devolução do texto inteiro.
 const longo = mensagemDeResposta({ description: 'x'.repeat(400) });
 checar('descrição longa é cortada com reticências', true, longo.includes('…'));
+
+bloco('Quanto tempo a pessoa esperou pela resposta');
+
+// ⚠️ `respondidoEm` ERA CAMPO SEM LEITOR. Ele é gravado desde que a aba
+// existe e nenhuma tela o abria: a lista dizia só "respondido", e o número
+// que diz se o suporte está de pé — quanto tempo alguém esperou — não estava
+// em lugar nenhum, apesar de medido e guardado. É o mesmo defeito que criou a
+// aba (`supportTickets` recebia e ninguém lia), um degrau adiante.
+const CRIADO = new Date('2026-09-01T09:00:00');
+
+checar('respondido no mesmo dia é zero, não null', 0,
+  diasAteResponder({
+    status: RESPONDIDO,
+    createdAt: CRIADO,
+    respondidoEm: new Date('2026-09-01T18:00:00'),
+  }));
+checar('dois dias depois são dois', 2,
+  diasAteResponder({
+    status: RESPONDIDO,
+    createdAt: CRIADO,
+    respondidoEm: new Date('2026-09-03T10:00:00'),
+  }));
+
+// ⚠️ OS DOIS NÚMEROS NUNCA RESPONDEM JUNTOS: um é dívida (ainda espera), o
+// outro é histórico (já foi tratado). Se ambos respondessem, a mesma linha
+// mostraria dois tempos diferentes sobre o mesmo chamado.
+const aberto = { status: ABERTO, createdAt: CRIADO };
+checar('chamado aberto não tem tempo de resposta', null, diasAteResponder(aberto));
+checar('e é ele quem tem tempo de espera', true,
+  diasEsperando(aberto, new Date('2026-09-04T09:00:00')) !== null);
+
+const tratado = {
+  status: RESPONDIDO,
+  createdAt: CRIADO,
+  respondidoEm: new Date('2026-09-02T09:00:00'),
+};
+checar('chamado tratado não tem tempo de espera', null, diasEsperando(tratado));
+
+// FECHADO SEM PASSAR POR RESPONDIDO cai no `fechadoEm` — senão o caminho
+// mais rápido do dono (resolver e fechar) seria o único sem medida.
+checar('fechado direto usa fechadoEm', 1,
+  diasAteResponder({
+    status: FECHADO,
+    createdAt: CRIADO,
+    fechadoEm: new Date('2026-09-02T12:00:00'),
+  }));
+
+// Chamado antigo, de antes do campo: a tela volta a dizer só "respondido".
+checar('sem data não inventa número', null,
+  diasAteResponder({ status: RESPONDIDO, createdAt: CRIADO }));
+checar('sem criação também não', null,
+  diasAteResponder({ status: RESPONDIDO, respondidoEm: CRIADO }));
+
+// E ALGUÉM LÊ — sem esta linha o campo continua órfão, só que com função.
+const fonteAba = readFileSync(
+  new URL('../src/components/admin/ChamadosTab.jsx', import.meta.url), 'utf8');
+checar('a aba mostra o tempo de resposta', true,
+  fonteAba.includes('diasAteResponder(chamado)'));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

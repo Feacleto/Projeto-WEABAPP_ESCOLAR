@@ -12,6 +12,7 @@ import {
 } from '../../services/supportService';
 import {
   aguardando,
+  diasAteResponder,
   diasEsperando,
   mensagemDeResposta,
   ordenarChamados,
@@ -183,6 +184,7 @@ function Chamado({ chamado, pessoa, dias, ocupado, onResponder, onFechar }) {
   const deMotorista = chamado.role === 'admin';
   const rotulo = rotuloDaCategoria(chamado.category);
 
+  const atraso = diasAteResponder(chamado);
   const texto = mensagemDeResposta({ ...chamado, nome: pessoa?.name }, rotulo);
   const link = linkDaProposta(pessoa?.phone, texto);
 
@@ -206,7 +208,14 @@ function Chamado({ chamado, pessoa, dias, ocupado, onResponder, onFechar }) {
           </span>
         ) : (
           <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-textMuted">
+            {/* ⚠️ O TEMPO ATÉ RESPONDER ESTAVA MEDIDO E GUARDADO, e nenhuma
+              * tela o abria: `respondidoEm` era campo sem leitor. "Respondido"
+              * sozinho não distingue quem esperou duas horas de quem esperou
+              * nove dias — e é essa diferença que diz se o suporte está de pé.
+              * Sem a data (chamado antigo), volta a palavra sozinha. */}
             {chamado.status === 'fechado' ? 'fechado' : 'respondido'}
+            {atraso !== null &&
+              (atraso === 0 ? ' no mesmo dia' : ` em ${atraso}d`)}
           </span>
         )}
       </div>
