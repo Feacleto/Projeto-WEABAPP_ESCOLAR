@@ -17,15 +17,18 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 1350 casos em 28 scripts. O PRIMEIRO é
+npm run testar                   # 1904 casos em 36 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
-                                 # nota abaixo. Depois: horarios, faltas,
-                                 # aviso, contraste, travessia, contrato, pix,
-                                 # status, auth, trial, planos, conta, cobranca,
-                                 # gateway, carteira, proposta, chamados, risco,
-                                 # fila, concessao, selo, indicacao, origem,
-                                 # abas, transacoes, fundo
+                                 # nota abaixo. Depois, na ordem da cadeia:
+                                 # horarios, faltas, endereco, aviso,
+                                 # contraste, travessia, contrato, pix, brcode,
+                                 # status, auth, trial, planos, avisos, multa,
+                                 # conta, cobranca, gateway, carteira,
+                                 # proposta, chamados, risco, fila, concessao,
+                                 # selo, indicacao, origem, abas,
+                                 # acompanhamento, transacoes, fundo, busca,
+                                 # tutorial
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — precisa de auth,firestore
                                  # E storage juntos (ele semeia usuário e
@@ -81,8 +84,30 @@ defesa de marca: se ele expirar, o app cai junto.
 
 React 19 · Vite 8 · Tailwind 3 · Firebase 12 (Auth, Firestore, Storage,
 Functions v2 em `southamerica-east1`, FCM) · react-router 7 · Leaflet 1.9 +
-react-leaflet 5 (OSM, sem chave) · vite-plugin-pwa · lucide-react ·
+react-leaflet 5 · vite-plugin-pwa · lucide-react ·
 react-hot-toast. JavaScript puro — **não há TypeScript**.
+
+⚠️ **OS TILES DO MAPA VÊM DO MAPTILER desde 10/09/2026, e o motivo não é
+custo** — [config/mapa.js](src/config/mapa.js). Eles vinham do servidor do
+**próprio OpenStreetMap**, cuja *Tile Usage Policy* destina aquela
+infraestrutura doada a uso leve e não comercial: **rota ao vivo é exatamente o
+padrão que ela exclui**, e bloqueio ali deixa o mapa cinza para todas as
+famílias ao mesmo tempo, sem erro na tela.
+
+A escolha entre MapTiler e OpenFreeMap foi de FORMATO, não de preço: o
+OpenFreeMap serve só tiles vetoriais, que exigem MapLibre GL e **WebGL** —
+trocar de provedor viraria trocar a biblioteca de mapa e levar WebGL para o
+"Android barato" que este projeto trata como público principal em toda outra
+decisão. O Leaflet tem 144 KB e desenha com `<img>`.
+
+⚠️ **A chave aparece no bundle por desenho** (é o navegador que pede a
+imagem, em qualquer provedor). Quem protege é a **restrição por domínio** no
+painel do MapTiler — chave restrita e visível é segura; chave secreta em app
+de navegador não existe. Sem `VITE_MAPTILER_KEY` o app volta ao OSM, que é o
+caminho de **desenvolvimento** e é a própria política que isto veio deixar de
+violar. `npm run testar:mapa` (25 casos) recusa qualquer mapa que escreva a
+URL do provedor à mão — ela é curta, não pede chave e funciona na máquina de
+quem testa, então voltar a escrevê-la é a coisa mais fácil do mundo.
 
 > O [README.md](README.md) é a porta de entrada e ROTEIA — ele não repete o que
 > está aqui. Foi reescrito em 30/08/2026; a versão antiga falava de React 18,
@@ -286,7 +311,7 @@ src/
 │   │                  intervaloDeDias
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary
-│   ├── associacao/    planos, contratoAssociacao, trial, contaAtiva,
+│   ├── associacao/    planos, multa, contratoAssociacao, trial, contaAtiva,
 │   │                  carteira, proposta, risco, fila, concessao, adesivo
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors, verificacao, indicacao, origem
@@ -306,16 +331,25 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        duas home públicas antigas (`/` do motorista) morreram
                        aqui dentro; a `/familia` continua no app.
 functions/             Cloud Functions v2 (CommonJS, Node 22)
-  └── lib/             reguaDoServidor (a régua PURA — sem require),
-                       billing, invites, push, routes, contratacao,
-                       relogioDoTeste, asaasCobranca, asaasWebhook,
+  └── lib/             reguaDoServidor (a régua PURA — sem require, e desde
+                       10/09/2026 ela espelha `precoDoMes` INTEIRO, porque o
+                       fechamento virou agendada), avisosComerciais (a outra
+                       régua pura), fechamento + enviarAvisos (os dois
+                       agendados que ESCREVEM), billing, invites, push, routes,
+                       contratacao, relogioDoTeste, asaasCobranca, asaasWebhook,
                        confirmarAusencias, receiptGuard, papeis, limites,
                        indicacao + casarIndicacao (espelho da indicação)…
 firestore.rules        108 KB — a segurança real do app mora aqui
 storage.rules          foto, comprovante, logo e contrato de papel. Caminho
                        DETERMINÍSTICO (`childPhotos/{childId}`): `isAdmin()`
                        sozinho ali libera a plataforma inteira
-scripts/               testes e utilitários de manutenção (Node puro)
+scripts/               testes e utilitários de manutenção (Node puro).
+                       `varrer-descontos.cjs` é SÓ LEITURA e não tem flag para
+                       escrever: ele procura em `users` os descontos que a
+                       régua vai deixar de reconhecer (`antecipacao`,
+                       `roleta`, `condicaoFundador: 'metade'`) antes de
+                       apagá-los. Apagar cedo demais falha em SILÊNCIO — a
+                       fatura de alguém sobe e nenhum erro aparece
 ```
 
 **Regra de camada:** tela → hook → service → Firestore. Componente que importa
@@ -394,6 +428,72 @@ idempotente). Guarda os marcos com hora — `onboard`, `atSchool`, `delivered` �
 e é gravado **no mesmo batch da mudança de status**, nunca depois.
 [ridesService.js](src/services/ridesService.js)
 
+⚠️ **O ENDEREÇO TEM UM MODO DE FALHAR QUE NÃO É QUEBRAR — É AFIRMAR.** O campo
+era um texto livre só, e o pedaço que se esquece nele é o **número**. Sem número
+o Nominatim acha a RUA, centraliza no meio dela, e a tela escreve *"Local
+confirmado!"* sobre uma coordenada na quadra errada — ninguém desconfia de um
+pino que parece certo.
+
+Desde 10/09/2026 há um campo de **CEP** antes dele, pelo
+[ViaCEP](https://viacep.com.br) (grátis, sem chave, sem cota): ele preenche rua,
+bairro e cidade, e o ganho de verdade é o que sobra — **o número fica num campo
+próprio, e campo próprio pode ser exigido**. O CEP é ATALHO, nunca requisito:
+quem não tem digita tudo no campo livre, como antes. Cadastro feito no meio da
+rota não pode passar a depender de consultar papel.
+
+- **Ou o endereço é derivado do CEP, ou é digitado — nunca os dois.** Enquanto
+  as partes do ViaCEP existirem, o texto é remontado a cada mudança de número.
+  No instante em que a pessoa digita no campo livre, ela vira dona dele e nada
+  mais o reescreve. Sem essa regra, corrigir "Rua" para "Estrada" à mão e depois
+  ajustar o número apagava a correção, sem nada explicando o que comeu o texto.
+- **São DUAS strings com dois leitores**, e as duas são puras e testadas
+  (`npm run testar:endereco`, 55 casos): `montarEndereco` é o que a pessoa lê
+  (formato dos Correios) e `consultaDoEndereco` é o que o geocodificador lê
+  (número ANTES da rua, sem o complemento, "Brasil" sempre no fim). Ambas em
+  [compartilhado/formatters.js](src/compartilhado/formatters.js) — a segunda
+  morou no `locationService` por uma hora, atrás de um `import` do Firestore
+  onde o Node não a alcançava.
+- ⚠️ **O `display_name` do Nominatim NÃO substitui o endereço que veio do CEP.**
+  Ele é verboso, traz "Região Metropolitana" e microrregião, e com frequência
+  **perde o número** — trocar o texto dos Correios por ele desfaz exatamente o
+  conserto que o campo separado acabou de fazer. Só substitui quando o endereço
+  foi digitado à mão.
+- ⚠️ **`countrycodes=br` não é detalhe, e isso foi SONDADO.** Sem ele, "Rua
+  Augusta, 100" e "Avenida da Liberdade, 100" voltaram as duas de **Lisboa** no
+  Nominatim (10/09/2026) — e as duas são ruas brasileiras banais. O parâmetro
+  troca uma classificação por uma garantia: sem ele o resultado é brasileiro
+  quando o Nominatim decide que é. Passou meses aqui porque "Rua das Flores,
+  100" vem do Brasil sozinha, então quem testa com um endereço qualquer não vê
+  nada.
+- **CEP inexistente responde HTTP 200** com `{"erro": "true"}` no corpo. Quem
+  confere só `res.ok` grava endereço vazio por cima do que a pessoa digitou.
+- **Só o `cep` é GRAVADO** (em `children` e em `schools`); número e complemento
+  vivem dentro de `address`/`endereco`, que é a única string que rota, mapa,
+  contrato e tela do pai leem. Uma segunda cópia do número seria uma segunda
+  verdade sobre onde a criança mora. O CEP é a exceção porque não é texto de
+  endereço, é a **chave** dele: guardado, dá pra reconsultar a rua e recalcular
+  a coordenada de um cadastro antigo sem pedir nada a ninguém. Nenhuma mudança
+  de rules — `children` e `schools` não têm whitelist de campos no `create`.
+- **O número é cobrado na casa da criança e NÃO na escola.** A perua encosta
+  numa PORTA: errar o número ali é parar na calçada errada com a mãe esperando
+  na outra. Escola é prédio grande, muitas vezes de esquina ou num campus sem
+  número útil — cobrar por simetria travaria o cadastro no caso em que a
+  informação legitimamente não existe.
+
+**E NÃO É GOOGLE MAPS, com a conta escrita.** O tile é MapTiler sobre Leaflet
+([config/mapa.js](src/config/mapa.js)) — a saída do servidor doado do OSM está
+contada no commit que a fez. A cota grátis do Google cobre ~10.000
+carregamentos/mês, ou seja **250 crianças na plataforma inteira**; acima disso o
+mapa ao vivo custaria ~R$ 1,55 por criança/mês contra os R$ 5,90 que a criança
+paga — 26% da receita, e mais da metade no plano anual. ETA pela Routes API
+sairia **sete vezes** a receita da criança.
+
+O Google só se pagaria no **geocoding**, que é chamada única e fica gravada no
+documento — e mesmo ali o ViaCEP chega primeiro, de graça. ⚠️ E os tiles dele
+**não podem** ser servidos pelo Leaflet: é violação dos Termos, não uma
+economia. Trocar de provedor de tile é trocar a URL em `config/mapa.js`; trocar
+para o Google é reescrever os três componentes de mapa.
+
 **Status da criança:** `STATUS_CYCLE = ['home','onboard','atSchool','delivered']`
 em [childrenService.js](src/services/childrenService.js). `home` é o que
 `getEffectiveStatus` devolve quando o dia vira.
@@ -406,11 +506,12 @@ em [childrenService.js](src/services/childrenService.js). `home` é o que
 - `taxaParceiros` / `faturasParceiro` — taxa de associação do **motorista → a
   plataforma**. [taxaService.js](src/services/taxaService.js)
 
-**A associação, ponta a ponta** — reescrita em 06/09/2026, quando o preço
-virou de TABELA. Três paradas, e a primeira é o próprio motorista:
-faixa escolhida (`users.planoId`, escrita pelo dono na aba **Taxa**) →
-`contratosAssociacao` (aceito em `/tio/contrato-plataforma`) →
-`faturasParceiro` (fechada na aba **Taxa**, paga em `/tio/taxa`).
+**A associação, ponta a ponta** — reescrita em 10/09/2026, quando o preço
+virou LINEAR. Três paradas, e a primeira é o próprio motorista:
+plano escolhido (`users.plano`, 'mensal' ou 'anual', gravado por
+`contratarPlano`) → `contratosAssociacao` (aceito em
+`/tio/contrato-plataforma`) → `faturasParceiro` (fechada por AGENDADA todo dia
+1, paga em `/tio/taxa`).
 
 O que sumiu junto foi a **negociação**: `leadsFunil`, o orçamento, a aba
 **Funil**, `taxa.js` e os seis eixos que ela cruzava (percentual, piso, modo,
@@ -424,63 +525,110 @@ havia base real.
   menor que a devida. A faixa depende só do NÚMERO, que já está em
   `users.criancasAtivas`. Um documento por parceiro em vez de mil por
   plataforma.
-- **`planoId` e `limiteCriancas` vão no MESMO batch**
-  ([setPlanoDoParceiro](src/services/taxaService.js)). Um é o que a fatura
-  cobra, o outro é o que as rules cobram no cadastro de criança: separados,
-  existiria a janela em que ele paga R$ 69 com teto de 40, e cada campo estaria
-  certo do ponto de vista de quem o lê.
+- ⚠️ **`limiteCriancas` DEIXOU DE EXISTIR COMO TRANCA** (10/09/2026), e com ele
+  a amarra de dois campos que este parágrafo descrevia. As rules recusavam a
+  criança que passasse do teto — com preço por faixa isso era a cláusula sendo
+  cobrada; com preço por criança virou uma porta na cara de quem acabou de
+  ganhar um cliente. O campo não é mais escrito por ninguém e continua PROIBIDO
+  nas rules: campo sem gravador não é campo livre.
+  O que ficou no `allow create` de `children` é o contador subindo no mesmo
+  batch — e ele passou a ser verdade agora: a conta antiga era
+  `criancasAtivas <= limiteCriancas` com o limite ausente valendo 999999, então
+  `0 <= 999999` passava SEM incremento para todo mundo em teste. Hoje compara o
+  contador DEPOIS com o de ANTES.
 - **Contratar é do MOTORISTA; a cláusula é do SERVIDOR.** `/tio/planos` tem o
   botão desde 06/09/2026 — ele abria o WhatsApp do consultor. A saída não foi
-  abrir as rules de dinheiro: a callable `contratarPlano` grava `planoId` e
-  `limiteCriancas`, e a rule de `contratosAssociacao` exige que a faixa DENTRO
-  do contrato bata com a que o servidor gravou. **O cliente ganhou o botão sem
+  abrir as rules de dinheiro: a callable `contratarPlano` grava `users.plano` e
+  o degrau, e a rule de `contratosAssociacao` exige que o plano DENTRO do
+  contrato bata com o que o servidor gravou. ⚠️ A amarra é sobre o PLANO, não
+  sobre o valor: com preço por criança o valor muda todo mês, e exigir que o
+  contrato repita um número o faria nascer inválido na criança seguinte. **O cliente ganhou o botão sem
   ganhar a caneta** — sem essa amarra, a fatura continuaria certa (ela lê
   `users.planoId`) e existiria um documento assinado dizendo outra coisa.
-- **A ESCADA DE FECHAMENTO é decidida pelo relógio do SERVIDOR.** Quem fecha no
-  1º mês do teste leva 50% pelos 12 meses; no 2º, 30%; no 3º, 15%; depois dos 90
-  dias, nada (e 10% se voltar em 30 dias). Quem decide o degrau é
-  `functions/lib/contratacao.js` lendo `trialInicio`. No cliente, seria o
-  relógio do aparelho — e agora mentir nele TROCA DE DEGRAU, não só adianta o
-  inevitável. Concedida **uma vez**: quem troca de faixa no décimo mês mantém a
-  fração e a data originais.
+- **A ESCADA DE FECHAMENTO é decidida pelo relógio do SERVIDOR, e é VITALÍCIA.**
+  Quem fecha no 1º mês do teste trava 30%; no 2º, 20%; no 3º, 10%; depois dos 90
+  dias, nada (e 10% se voltar em 30 dias). ⚠️ **O desconto não expira** — vale
+  enquanto ele ficar, e morre se ele cancelar. Foi assim que o problema do mês
+  13 deixou de existir: não há data para chegar, e as três defesas que o
+  desenho anterior previa (rampa, renovação, mensagem do mês 10) viraram
+  desnecessárias. Em troca, o custo de sair passou a ser dele.
+  ⚠️ **Ela vale só no MENSAL.** O anual já é metade do preço; a 50% (o valor
+  antigo) o mensal com desconto máximo empatava com o anual e o anual perdia a
+  razão de existir — é por isso que a escada encolheu junto com o preço.
+  Quem decide o degrau é `functions/lib/contratacao.js` lendo `trialInicio`. No
+  cliente, seria o relógio do aparelho — e mentir nele agora não vale doze meses
+  de conta, vale a conta inteira. Concedida **uma vez**: quem troca de plano no
+  décimo mês mantém a FRAÇÃO original, senão trocar ida e volta a melhoraria.
   A escada substituiu a `ANTECIPACAO` (50% em qualquer dia dos 90) em
   07/09/2026, e o motivo é que ela não antecipava nada: quem fechava no dia 3 e
   no dia 89 levavam o mesmo prêmio.
   ⚠️ **O preço NUNCA sobe quando ele recusa.** Não há segunda oferta na tela —
   desconto que sobe a cada "não" ensina a recusar e prova que o preço era
   teatro. Ver [descontos.md](docs/descontos.md), peça 3.
-- **A tabela de faixas E a escada estão espelhadas em
-  `functions/lib/contratacao.js`** — só os DADOS, nenhuma aritmética, porque o
-  deploy das functions não alcança `src/`. `npm run testar:gateway` compara as
-  duas faixa por faixa, degrau por degrau, e as duas contas de degrau dia a dia
-  (`trial.js` contra `contratacao.js`).
+- ⚠️ **A CONTA INTEIRA ESTÁ ESPELHADA EM
+  [reguaDoServidor.js](functions/lib/reguaDoServidor.js)**, e não só a tabela.
+  O espelho cresceu em 10/09/2026 porque o fechamento saiu do cliente e virou
+  agendada: o servidor passou a precisar de `precoDoMes` completo — descontos,
+  teto de 100%, piso e isenção. O deploy das functions não alcança `src/`.
+  **Duplicar aritmética só é aceitável com um teste que a compare caso a caso**,
+  e `npm run testar:gateway` varre a MATRIZ (tamanho × plano × fundador ×
+  indicações × descontos × mês, mais de mil combinações) além dos degraus dia a
+  dia. É o terceiro espelho do projeto, depois da escolha do indicado e da
+  antiga tabela.
   ⚠️ **Há uma TERCEIRA cópia da conta de degrau**, em
-  [proposta.js](src/dominio/associacao/proposta.js), e o teste dela só confere a
-  STRING ("contém 50%"), não a régua. A proposta é a mensagem que o dono manda
-  pelo WhatsApp: divergir ali é o motorista lendo 50% e recebendo fatura de 30%,
-  com contrato assinado no meio. As três coincidem hoje por construção, não por
-  prova.
-- **Desconto tem PRAZO, e sem ele vira preço.** `users.descontos` é uma lista
-  de `{origem, fracao, ate, degrau}` com `ate` em 'AAAA-MM'
-  ([planos.js](src/dominio/associacao/planos.js)). Uma origem de régua:
-  `fechamento` (mais o legado `antecipacao`, que cai no mesmo balde de
-  propósito — ignorá-lo faria a fatura de quem o tem subir em silêncio). A
-  lista é SUBSTITUÍDA, nunca acrescida.
+  [proposta.js](src/dominio/associacao/proposta.js), e o teste dela confere a
+  fração da régua mas monta a STRING por conta própria. A proposta é a mensagem
+  que o dono manda pelo WhatsApp: divergir ali é o motorista lendo um número e
+  recebendo fatura de outro, com contrato assinado no meio.
+- ⚠️ **O DESCONTO DE FECHAMENTO É VITALÍCIO, E `ate: null` É O JEITO DE DIZER
+  ISSO.** `users.descontos` é uma lista de `{origem, fracao, ate, degrau}`
+  ([planos.js](src/dominio/associacao/planos.js)); `ate` em 'AAAA-MM' é prazo,
+  e `null` é sem prazo. A CONCESSÃO segue tendo data — ela é exceção, não régua.
+  **`ate` AUSENTE não é vitalício: é descartado.** A distinção é estrita porque
+  as duas falhas custam coisas diferentes — chave esquecida virando desconto
+  eterno vaza receita em silêncio; vitalício tratado como vencido tira do
+  motorista o que foi prometido. Escrever `null` é deliberado, esquecer não é.
+  A lista é SUBSTITUÍDA, nunca acrescida, e quem já tem fechamento mantém a
+  FRAÇÃO original — senão trocar de plano ida e volta melhoraria o desconto.
+- **A INDICAÇÃO VALE 5% POR INDICADO PAGANTE, SEM PRAZO, E CAI QUANDO ELE
+  SAI** (10/09/2026). Era 10%, e o problema não era o tamanho: **o desconto
+  sai da fatura de QUEM INDICA e a receita vem de QUEM FOI INDICADO**, dois
+  números sem relação. Medido contra `precoDoMes`, um motorista de 60 crianças
+  trazendo um de 8 custava R$ 14,10 por mês — para sempre, contra R$ 10 a
+  R$ 20 de infra. A 5% o pior caso fica em −R$ 2,70 e some assim que o
+  indicado ganha uma criança.
+  ⚠️ **NÃO TEM PRAZO, e isso é decisão.** A alternativa era pagar 12 meses por
+  indicação; simulada contra o caso real (indica 5 no mês 3, mais 5 no mês 7,
+  cada indicado levando ~4 meses para pagar), ela produz **doze mudanças de
+  fatura em 30 meses, seis delas para cima** — o degrau que o preço linear e a
+  escada vitalícia tinham acabado de eliminar, voltando pela porta do desconto.
+  Sem prazo, a conta dele só desce e o escalonamento das entradas é invisível.
+  ⚠️ **QUEM GANHA É QUEM INDICA, nunca o indicado.** Desconto por *ter sido*
+  indicado faria dois motoristas que se cadastram no mesmo dia pagarem
+  diferente por conhecerem ou não alguém — é o teste da fila do portão ao
+  contrário. O indicado já leva o maior desconto da casa (30% por fechar no
+  mês 1); o que falta é a mensagem de convite DIZER isso.
 - ⚠️ **A INDICAÇÃO NÃO TEM TETO PERCENTUAL — QUEM PROTEGE A MARGEM É O PISO.**
-  `PISO_DA_FATURA = 34`: nenhuma fatura fica abaixo disso (exceto o vitalício).
+  `PISO_DA_FATURA = 19`: nenhuma fatura fica abaixo disso (exceto o vitalício).
   O teto de 50% existia e **não protegia nada** — com o fechamento somando por
   cima, a fatura chegava a R$ 0,00, e o comentário que jurava o contrário durou
   meses porque o teste passava indicações SEM o outro desconto. Porcentagem não
   protege margem porque não é medida na moeda do custo. O número é derivado:
-  metade da menor faixa, para o "50%" ser verdade em toda faixa sem asterisco.
+  ele desceu junto com o preço em 10/09/2026 — em R$ 34 ficaria ACIMA do menor
+  plano novo (o anual mínimo, R$ 29) e o motorista pequeno nunca receberia nada
+  por indicar, que é a queixa que o programa existe para evitar. ⚠️ Não
+  confundir com o **MÍNIMO DE TABELA** (R$ 49 mensal / R$ 29 anual), que vem
+  ANTES do desconto: invertidos, quem tem 10 crianças e 30% travado pagaria
+  R$ 49 em vez de R$ 41,30 e o desconto sumiria sem nenhuma linha.
   `precoDoMes` devolve `pisoAplicado` e `descontoAbsorvido` porque **a tela
   precisa dizer quando o piso comeu desconto** — calar produz o *"indiquei e não
-  recebi"*.
+  recebi"*. A 5% ele quase não encosta: mordia na 4ª indicação de quem tem 8
+  crianças, agora morde na 7ª.
 - **A CONDIÇÃO DE FUNDADOR VIROU TÍTULO, NÃO PREÇO** (07/09/2026).
   `FUNDADORES_METADE = 0`: as doze vagas de metade não são mais concedidas —
   era o único desconto que ninguém podia reproduzir, e não sobrevivia à conversa
-  no portão da escola. Custou zero, porque quem fecha no mês 1 já leva 50% pela
-  escada. O **vitalício já concedido continua** (é contrato assinado, e é um
+  no portão da escola. Custou zero, porque quem fecha no mês 1 já leva o degrau
+  cheio pela escada. O **vitalício já concedido continua** (é contrato assinado, e é um
   só), e `descontoDoFundador` ainda lê `metade` — não conceder é diferente de
   desfazer o que foi concedido.
 - **Fundador e fechamento NÃO somam — vale o maior**
@@ -503,23 +651,32 @@ havia base real.
   o [billing.js](functions/lib/billing.js) faz com o `dueDay` da criança — e lá
   a data é por criança porque quem negocia é o motorista com cada família.
 - **O contrato é de 12 MESES e renova de 12 em 12**, com cobrança mensal.
-  `VERSAO_CONTRATO = 4` — a 1 mandava suspender por atraso sem definir atraso,
+  `VERSAO_CONTRATO = 5` — a 1 mandava suspender por atraso sem definir atraso,
   a 2 passou a dizer o dia, a 3 trocou percentual sobre base por faixa de
-  tabela, a 4 trouxe a escada de fechamento, o **piso como cláusula** e a saída
-  livre nos 30 primeiros dias pagos. Subir a versão exige novo aceite.
+  tabela, a 4 trouxe a escada de fechamento e o **piso como cláusula**, e a 5
+  trocou a faixa pela TAXA POR CRIANÇA e tornou a cláusula 6 assimétrica.
+  Subir a versão exige novo aceite.
+  ⚠️ **A cláusula 3 declara a TAXA, não um valor** — é isso que elimina a
+  reassinatura por crescimento. Na versão 4 ganhar uma criança que cruzasse a
+  fronteira exigia documento novo, no exato momento em que ele fechou um cliente.
+  ⚠️ **A cláusula 6 tem duas metades e só uma mudou.** O ASSOCIADO encerra na
+  hora, sem aviso e sem multa; a CONTRATADA mantém os 30 dias. Tirar as duas
+  seria rescisão unilateral sem direito equivalente (CDC art. 51, XI).
   ⚠️ **O piso vai escrito no contrato mesmo quando não morde.** Sem a cláusula,
   um associado com 100% de desconto nominal recebe fatura de R$ 34 e o documento
   não explica de onde ela veio — a mesma contradição da concessão, pelo outro
   lado da conta. `npm run testar:contrato` tem DUAS invariantes agora: as
   frações fecham com o total, **e** o valor mensal se explica pelas linhas.
-- **Vaga de criança é contratada.** `users.limiteCriancas` (só o dono escreve,
-  e vem da faixa) contra `users.criancasAtivas`, contador que sobe no MESMO
-  batch do cadastro. Rules não sabem contar documentos: `allow create` em
-  `children` valida o contador com `getAfter` — um `addDoc` solto é recusado.
-  Limite ausente = sem limite, **e é isso que vale durante o teste**: ele
-  cadastra a operação inteira e o app prova o valor no tamanho real.
+- **NADA TRAVA QUANDO A OPERAÇÃO CRESCE** (10/09/2026). Não há teto de
+  crianças: `users.criancasAtivas` é o número que a fatura multiplica pela taxa,
+  e o `allow create` de `children` exige apenas que ele SUBA no mesmo batch —
+  `getAfter` contra `get`. Um `addDoc` solto é recusado.
   **Não é à prova de devtools** — nenhuma rule exige que o contador ande junto
   de uma criança de verdade; quem pega é a fatura, que conta as crianças reais.
+  ⚠️ A conta desce sozinha também: perdeu três crianças, a fatura do mês
+  seguinte vem menor. Antes ela continuava vindo no valor da faixa contratada
+  até alguém mexer à mão, o que é pior que burocracia — é cobrar a mais em
+  silêncio.
 - ⚠️ **APAGAR A COBRANÇA NO GATEWAY NÃO DESFAZ PAGAMENTO FEITO POR FORA.**
   `PAYMENT_DELETED` reabre a fatura — e o caminho natural é: o motorista paga o
   PIX direto, o dono dá baixa à mão, o dono apaga a cobrança redundante no
@@ -552,22 +709,31 @@ criar lá e gravar aqui existe uma janela. **O gateway não cria cliente sem
 CPF/CNPJ e o app não coleta esse campo** em lugar nenhum: ele entra pela mão do
 dono e fica em `taxaParceiros/{uid}`, que só o dono lê.
 
-**HÁ UM MODELO DE PREÇO SÓ, desde 06/09/2026.**
-[planos.js](src/dominio/associacao/planos.js) — faixa fixa por número de
-crianças ativas (R$ 69 / 149 / 229). O `taxa.js`, que era o modelo NEGOCIADO
-(percentual sobre a soma das mensalidades, ajustado caso a caso num orçamento),
-foi APAGADO. Os dois conviveram por dias, e o CLAUDE.md avisava que somá-los na
-mesma fatura cobraria duas vezes; a saída foi apagar um, não escolher entre os
-dois a cada leitura.
+**O PREÇO É POR CRIANÇA, desde 10/09/2026.**
+[planos.js](src/dominio/associacao/planos.js) — `TAXA` de R$ 5,90 por criança
+ativa no **mensal** e R$ 2,90 no **anual**, com `MINIMO` de R$ 49 e R$ 29, e
+`TAXA_ACIMA_DE_40` (R$ 4,90 / R$ 2,40) para o excedente da 40ª criança.
 
-**O plano capa QUANTIDADE, nunca funcionalidade** — não existe Básico/Pro. O
-app é completo em qualquer faixa, e o que muda é `users.limiteCriancas`, que
-já existe e já é cobrado pelas rules. Escolher plano menor que o uso é
-permitido, e **quem aponta as crianças que saem é o motorista**: corte
-automático apagaria clientes que ele não escolheu perder.
+⚠️ **AS FAIXAS SAÍRAM PORQUE A CRIANÇA DA FRONTEIRA CUSTAVA SETE.** Eram três
+(R$ 69 / 149 / 229), e no limite de uma para outra ganhar UMA criança subia a
+conta em R$ 40 — 6,8 vezes a taxa por criança. O motorista não sentia que pagou
+por uma, sentia que pagou por sete, e comparava com um concorrente que cobra
+por aluno. Franquia de tolerância não resolvia: empurra o degrau uma criança
+adiante. A troca também fechou um vazamento — a faixa cobrava R$ 4,76 por
+criança de quem tinha 25 e R$ 7,44 de quem tinha 16.
+
+⚠️ **A TAXA MARGINAL É MARGINAL, como faixa de imposto**, e é isso que a impede
+de virar o degrau que acabou de sair: sem marginalidade `preco(41)` seria MENOR
+que `preco(40)` e crescer daria desconto. `npm run testar:planos` varre 1 a 60
+crianças nos dois planos e exige que o preço nunca desça.
+
+**O plano capa PRAZO E SAÍDA, nunca funcionalidade** — não existe Básico/Pro. O
+app é completo nos dois: o mensal não tem prazo nem multa e trava o desconto da
+escada; o anual custa menos da metade e pede doze meses, com multa de 20% do
+saldo ([multa.js](src/dominio/associacao/multa.js)).
 
 **Só o fundador VITALÍCIO chega a zero**, e todo o resto para no piso de
-R$ 34. O desconto somado é cortado em 100% antes disso — sem o corte, dez
+R$ 19. O desconto somado é cortado em 100% antes disso — sem o corte, dez
 indicações dariam 200% e a fatura viraria crédito. As duas travas são em série e
 protegem coisas diferentes: o teto impede fatura NEGATIVA, o piso impede fatura
 IRRISÓRIA. Testado em `npm run testar:planos`, incluindo o caso que vazava.
@@ -878,6 +1044,27 @@ em toda navegação não é lembrada como capricho, é lembrada como lentidão.
   de 8s se o worker não assumir. Montado no `main.jsx`, fora do `AuthProvider`
   — atualizar não depende de quem está logado.
 
+⚠️ **E QUEM APARECE NA BUSCA É A LANDING, NUNCA O APP** (09/09/2026). Medido
+no Google: `alobuzinou.com` — a tela de LOGIN — aparecia **acima** de
+`alobuzinou.com.br`. Os dois tinham o mesmo `<title>` e competiam pela mesma
+busca; quem procurava o produto caía numa porta trancada. O app declara
+`noindex, follow` no [index.html](index.html) e a landing ganhou título com a
+CATEGORIA (marca sozinha só é achável por quem já sabe o nome) mais um
+`JSON-LD` de `Organization` com razão social e CNPJ.
+
+⚠️ **A ARMADILHA, e ela é contraintuitiva: `Disallow: /` NÃO tira da busca.**
+Ele impede a LEITURA — e o resultado é a URL indexada sem descrição, que era
+exatamente o estado do `.com.br` ("o site não nos permite exibir a
+descrição"). Para SAIR é o contrário: deixar rastrear e declarar `noindex`.
+Por isso [public/robots.txt](public/robots.txt) do app libera tudo, e por isso
+ele **não** bloqueia `/convite/` — bloqueado, o buscador listaria a URL crua
+**com o código do convite dentro dela**. `npm run testar:busca` trava as duas
+metades juntas, porque separadas cada uma parece um erro.
+
+⚠️ E o `JSON-LD` duplica razão social e CNPJ à mão: a landing é HTML estático
+sem build e não alcança o `developer.js`. O teste compara os dois — sem isso
+seria a quarta versão da identidade da empresa.
+
 **Decidir mora FORA do app; entrar mora dentro dele.** Desde 06/09/2026 `/`
 não é mais a home do motorista — ela foi APAGADA (eram 1090 linhas, e eager no
 bundle de entrada). Quem chega em `alobuzinou.com` cai no `/login`, e quem
@@ -886,6 +1073,20 @@ não passa pelo bundle do app. `SITE_INSTITUCIONAL` em
 [config/vitrine.js](src/config/vitrine.js) é o único endereço dela no código —
 sair do app exige `<a href>`, porque `<Link>` monta caminho relativo e
 devolveria a pessoa pro login.
+
+⚠️ **MAS CONVITE NÃO VAI PRA LANDING** (09/09/2026). As duas mensagens que a
+plataforma escreve para quem ainda não tem conta — o convite do motorista ao
+colega ([TioIndicar](src/pages/tio/TioIndicar.jsx)) e o pedido da responsável
+ao motorista dela ([pedidoAoMotorista.js](src/marca/pedidoAoMotorista.js)) —
+mandavam para `SITE_INSTITUCIONAL`, ou seja, punham uma apresentação na frente
+de quem já tinha sido apresentado por alguém de confiança. O pedido dela era o
+caso visível: dizia *"você cria a sua conta aqui"* e linkava a página onde não
+se cria conta. Agora vão para `CADASTRO_DE_MOTORISTA`
+([config/vitrine.js](src/config/vitrine.js)), e o convite carrega
+`utm_source=indicacao` — **`DriverSignup` lê a UTM da PRÓPRIA URL**, então
+indicação que passa pela landing chega ao painel do dono como tráfego solto.
+O caso que segura isso está em `npm run testar:selo`, e são DOIS: o endereço
+certo estar lá, e a landing **não** estar.
 
 **A `/familia` continua**, e continua sendo a porta da responsável: rodapé
 legal próprio — é onde está a pessoa cujos dados e os do filho vivem no
@@ -1183,10 +1384,58 @@ motorista — uma consulta por `chave` não é escopada por dono —, e isso ent
 os telefones que a base inteira indicou. O momento é o certo de qualquer forma:
 a indicação vale quando o indicado **paga**.
 
-**A carência não é burocracia**: sem ela, cinco cadastros de teste dariam 50%
-de desconto real sobre receita que nunca entrou. E `casarEAtivar` **reconta**
+**A carência não é burocracia**: sem ela, cinco cadastros de teste dariam
+desconto real sobre receita que nunca entrou. E `casarEAtivar` **reconta**
 em vez de incrementar — o webhook e a baixa manual podem quitar a mesma fatura,
 e um incremento duplicado ficaria errado para sempre.
+
+**O CONVITE A INDICAR APARECE EM QUATRO TELAS, E A LISTA É FECHADA POR
+TESTE** — [ConviteParaIndicar](src/components/tio/ConviteParaIndicar.jsx), em
+`/tio/planos`, `/tio/taxa` (só com a fatura **quitada**), `/tio/selo` (só
+depois de pedido) e na confirmação do contrato. O desconto estava inteiro no
+código e **a oferta não existia**: o único convite era uma linha no fim da
+rolagem do Início, dentro de uma folha.
+
+⚠️ **O NÚMERO É A DIFERENÇA REAL, NUNCA "5% DA SUA CONTA".**
+`valorDaIndicacao` ([planos.js](src/dominio/associacao/planos.js)) devolve
+quanto a PRÓXIMA indicação tira, com o piso já dentro — para quem tem 8
+crianças e 30% travado, a 7ª vale sessenta centavos e a 8ª vale zero. E ela
+devolve `null` sem plano contratado: durante o teste a fatura é isenta, então
+o convite fala no futuro e sem número. ⚠️ O parâmetro `plano` **não tem
+padrão**, ao contrário de `precoDoMes` — com o padrão herdado, o guarda ficava
+inalcançável e a tela prometia R$ 5,90 a quem não paga nada.
+
+⚠️ **ONDE ELE NUNCA APARECE É TESTE, NÃO LEMBRETE** (`npm run testar:indicacao`
+varre `src/` e compara com a lista de permitidos): app da família, durante a
+rota, sino nos 90 dias, e **tela de cancelamento**. O mesmo bloco trava que o
+INDICADO não ganha desconto por ter sido indicado — origem inventada em
+`users.descontos` é ignorada, com sonda positiva ao lado.
+
+⚠️ **O DESCONTO PRECISA CAIR, E ATÉ 10/09/2026 NÃO CAÍA.**
+`users.indicacoesAtivas` só era escrito PARA CIMA: `casarEAtivar` reconta, mas
+só quando OUTRA indicação do mesmo indicador ativa, e **nenhum caminho do
+projeto baixava o número quando o indicado cancelava** — o desconto sobrevivia
+ao cliente que o justificava. Enquanto se cogitou dar prazo à indicação, o
+calendário resolveria isso de lado; sem prazo, este é o único limite que
+existe.
+
+Quem fecha isso é `reconciliarIndicacoes`, em
+[indicacao.js](src/dominio/identidade/indicacao.js) com espelho em
+[functions/lib/indicacao.js](functions/lib/indicacao.js), chamada por
+`fechamento.js` **antes** de emitir as faturas do mês — `fecharFaturaDe` lê
+`indicacoesAtivas`, então reconciliar depois gravaria o número velho num
+documento já entregue. O quarto estado é `ESTADO.ENCERRADA`, e ele é
+**reversível**: se o indicado voltar a pagar, a indicação volta a valer.
+
+⚠️ **ATRASO NÃO DERRUBA, SAIR DERRUBA.** O critério de "ainda é cliente" é
+grosso de propósito — tem plano e não está suspenso. Usar o estado fino da
+conta faria o desconto piscar de mês em mês por causa de uma fatura atrasada,
+e desconto que oscila é tão ruim de explicar quanto desconto que não cai.
+
+⚠️ E a contagem devolvida inclui **os zeros**: sem uma entrada explícita para
+quem perdeu a última indicação, o gravador nunca aprenderia a zerar ninguém e
+o contador ficaria parado no valor antigo — o mesmo bug reaparecendo pela
+porta da escrita.
 
 **Dois indicaram a mesma pessoa? Vale quem indicou primeiro.** Premiar os dois
 pagaria 20% por um cliente.
@@ -1298,7 +1547,7 @@ impresso.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (230 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (233 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes
@@ -1398,6 +1647,30 @@ ENCERRAR a rota (o que apaga a perua do mapa de todas as famílias) e ligar de
 novo. A folha existe em todos os estados, inclusive dirigindo. Contagens vão
 por **prop** — o `TioDashboard` já assina `children` e `escolas`, e reassinar
 dentro dela abriria leitura permanente duplicada do mesmo dado.
+
+**O TOUR GUIADO CITA A LANDING, e as duas metades disso são teste**
+([interactiveSteps.js](src/components/tutorial/interactiveSteps.js),
+`npm run testar:tutorial`). Cada passo do motorista carrega em `cita` a frase
+do site que ele fecha — *"a rota do dia pronta, na ordem dos horários"*, *"sem
+caderno, sem planilha e sem cobrar de boca"* — e o balão a mostra citada, acima
+do texto. Dizer a mesma coisa com outras palavras faz o app parecer um segundo
+produto, e a promessa parecer propaganda. A landing é HTML estático sem build,
+ninguém edita os dois juntos: o teste confere que cada `cita` existe de verdade
+em [landing/index.html](landing/index.html).
+
+⚠️ **E `interact: true` SÓ ONDE O TOQUE NÃO CUSTA NADA A NINGUÉM.** Quatro
+âncoras são iluminadas e nunca tocadas: `start-route` (liga o GPS, publica a
+perua e **escreve `trialInicio`** — o toque do tutorial gastaria o primeiro dia
+do teste), `avancar-status` (muda o estado da criança e avisa a família),
+`buzinar` (faz o celular de um responsável tocar) e `lista-pagamentos` (dá
+baixa em dinheiro). A lista está travada no teste, com sonda positiva: pôr
+`interact` num deles falha a bateria em vez de aparecer como rota ligada
+sozinha no primeiro acesso de alguém.
+
+⚠️ **A âncora órfã SAIU da seção 12 de `testar-horarios`** e mora no teste
+novo, que varre `src/` inteiro. A lista de sete arquivos de tela escrita à mão
+reprovou quatro âncoras que existiam — invariante que depende de alguém lembrar
+de acrescentar um arquivo não é invariante.
 
 **Navegação: uma tela só.** Cada troca de tela cobra pedágio — resolva em folha
 onde couber, e rotule o "voltar" onde não couber.
