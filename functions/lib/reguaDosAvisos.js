@@ -61,6 +61,27 @@ const DIAS_DA_FATURA = 3;
 /** Antecedência do alvará — a mesma que a fila do dono já usa. */
 const DIAS_DO_ALVARA = 30;
 
+/**
+ * ⚠️ O ESTADO EM QUE O SELO VALE — e ele estava ESCRITO ERRADO.
+ *
+ * A régua procurava `'aprovada'`, e esse valor não existe: o enum em
+ * `src/dominio/identidade/verificacao.js` tem `nao_iniciada`, `enviada`,
+ * `verificada` e `recusada`. Nada, em lugar nenhum do projeto, jamais gravou
+ * `'aprovada'`.
+ *
+ * O efeito era total e mudo: a varredura consultava
+ * `where('verificacao','==','aprovada')`, voltava ZERO documentos todo dia, e
+ * o log dizia "0 avisos". **O aviso de alvará nunca disparou para ninguém** —
+ * e ele existe justamente porque `alvaraValidade` faz o selo cair sozinho:
+ * sem ele, o motorista perde o selo da tela das famílias sem ninguém ter
+ * pedido o papel novo.
+ *
+ * Pior, o teste semeava `'aprovada'` também, então a bateria confirmava o
+ * erro em verde. `testar:avisos-do-dia` agora compara esta constante com o
+ * enum do domínio — o literal virou espelho conferido.
+ */
+const SELO_VALE_EM = 'verificada';
+
 // ── utilitários de data, todos no fuso de Brasília ─────────────────────────
 
 function paraData(valor) {
@@ -269,7 +290,7 @@ function avisoDaFatura({ fatura, agora = new Date() } = {}) {
  */
 function avisoDoAlvara({ motorista, agora = new Date() } = {}) {
   const m = motorista || {};
-  if (m.verificacao !== 'aprovada') return null;
+  if (m.verificacao !== SELO_VALE_EM) return null;
 
   const validade = paraData(m.alvaraValidade);
   if (!validade) return null;
@@ -408,6 +429,7 @@ module.exports = {
   DIAS_DO_CONVITE,
   DIAS_DA_FATURA,
   DIAS_DO_ALVARA,
+  SELO_VALE_EM,
   chaveDoDia,
   diasAte,
   dataCurta,

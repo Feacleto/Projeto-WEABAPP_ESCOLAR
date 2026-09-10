@@ -30,6 +30,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const R = require('../functions/lib/reguaDosAvisos.js');
 import { avisoDoMomento } from '../src/dominio/rota/avisoDoMomento.js';
+import { ESTADO as ESTADO_SELO } from '../src/dominio/identidade/verificacao.js';
 
 let ok = 0;
 let bad = 0;
@@ -163,7 +164,7 @@ bloco('═══ ALVARÁ — 30 dias, a mesma antecedência da fila do dono ═�
 
 const alv = (venc, extra = {}) =>
   R.avisoDoAlvara({
-    motorista: { verificacao: 'aprovada', alvaraValidade: meioDia(venc), ...extra },
+    motorista: { verificacao: ESTADO_SELO.VERIFICADA, alvaraValidade: meioDia(venc), ...extra },
     agora: HOJE,
   });
 
@@ -171,7 +172,28 @@ eq('30 dias antes', R.TIPO.ALVARA_VENCE, alv('2026-10-10').tipo);
 checar('31 dias antes não', alv('2026-10-11') === null);
 checar('29 dias antes não', alv('2026-10-09') === null);
 checar('quem não tem selo aprovado não é avisado', alv('2026-10-10', { verificacao: 'enviada' }) === null);
-checar('sem validade não avisa', R.avisoDoAlvara({ motorista: { verificacao: 'aprovada' }, agora: HOJE }) === null);
+checar('sem validade não avisa', R.avisoDoAlvara({ motorista: { verificacao: ESTADO_SELO.VERIFICADA }, agora: HOJE }) === null);
+
+// ⚠️ O ESTADO ERA UM LITERAL DOS DOIS LADOS, E OS DOIS ESTAVAM ERRADOS.
+//
+// A régua procurava `'aprovada'` e este teste semeava `'aprovada'` — então
+// a bateria confirmava o erro em verde, enquanto a consulta real
+// (`where('verificacao','==','aprovada')`) voltava ZERO documentos todo dia.
+// O aviso de alvará nunca disparou para ninguém, e ele existe porque o selo
+// cai sozinho na data: o motorista perdia o selo sem ninguém ter pedido o
+// papel novo.
+//
+// Agora o literal do servidor é comparado com o enum do domínio. Renomear o
+// estado num lado passa a falhar aqui, em vez de emudecer um aviso.
+checar('o estado que vale o selo é o mesmo dos dois lados',
+  ESTADO_SELO.VERIFICADA === R.SELO_VALE_EM,
+  `dominio=${ESTADO_SELO.VERIFICADA} servidor=${R.SELO_VALE_EM}`);
+// Sonda: um estado que existe mas não vale o selo não pode disparar aviso.
+checar('quem só ENVIOU o alvará não recebe aviso de vencimento',
+  R.avisoDoAlvara({
+    motorista: { verificacao: ESTADO_SELO.ENVIADA, alvaraValidade: meioDia('2026-10-10') },
+    agora: HOJE,
+  }) === null);
 eq('o toque leva ao selo', '/tio/selo', alv('2026-10-10').destino);
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -213,7 +235,15 @@ function hojeAs(hh, mm) {
   return d;
 }
 
-function comparar(nome, { status, rotaAtiva, agora, falta = null }) {
+//
+// ⚠️ O NÍVEL ESPERADO É PARÂMETRO, E NÃO SÓ A COMPARAÇÃO ENTRE OS DOIS LADOS.
+//
+// A asserção era `a === b`, e os nomes prometiam mais do que ela media:
+// "os dois dizem GRAVE" passava com `null === null`. Se um limiar
+// compartilhado mudasse — ou se as duas réguas passassem a calar — os nove
+// casos ficariam verdes anunciando um nível que ninguém produziu. É o
+// espelho protegendo a igualdade e perdendo o valor.
+function comparar(nome, { status, rotaAtiva, agora, falta = null, nivel = null }) {
   const original = avisoDoMomento({
     child: CRIANCA,
     status,
@@ -231,32 +261,32 @@ function comparar(nome, { status, rotaAtiva, agora, falta = null }) {
 
   const a = original ? original.nivel : null;
   const b = espelho ? espelho.nivel : null;
-  checar(nome, a === b, `original=${a} espelho=${b}`);
+  checar(nome, `${nivel}|${nivel}`, `${a}|${b}`);
 }
 
 comparar('sem atraso, rota rodando: nenhum dos dois avisa',
-  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 40) });
+  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 40)  });
 
 comparar('20 min depois da entrega — no limiar, nenhum avisa',
-  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 55) });
+  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 55)  });
 
 comparar('21 min depois da entrega — os dois dizem GRAVE',
-  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 56) });
+  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 56) , nivel: 'grave' });
 
 comparar('10 min depois de pegar, sem rota — no limiar, nenhum avisa',
-  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 40) });
+  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 40)  });
 
 comparar('11 min depois de pegar, sem rota — os dois dizem ATENÇÃO',
-  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 41) });
+  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 41) , nivel: 'atencao' });
 
 comparar('rota rodando e ainda em casa: nenhum avisa',
-  { status: 'home', rotaAtiva: true, agora: hojeAs(6, 41) });
+  { status: 'home', rotaAtiva: true, agora: hojeAs(6, 41)  });
 
 comparar('falta declarada cala os dois',
-  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 41), falta: { type: 'falta' } });
+  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 41), falta: { type: 'falta' }  });
 
 comparar('os dois gatilhos valendo: o GRAVE ganha nos dois',
-  { status: 'onboard', rotaAtiva: false, agora: hojeAs(13, 30) });
+  { status: 'onboard', rotaAtiva: false, agora: hojeAs(13, 30) , nivel: 'grave' });
 
 checar('horário presumido não vira atraso — é chute do app',
   R.avisoDeAtraso({

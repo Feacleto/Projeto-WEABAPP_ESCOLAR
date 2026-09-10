@@ -46,6 +46,7 @@ const {
   jaAvisado,
   jaAvisadoHoje,
   chaveDoDia,
+  SELO_VALE_EM,
 } = require('./reguaDosAvisos');
 
 const REGION = 'southamerica-east1';
@@ -197,7 +198,9 @@ async function varrerAlvaras(db, agora) {
   let n = 0;
   const snap = await db
     .collection('users')
-    .where('verificacao', '==', 'aprovada')
+    // ⚠️ `SELO_VALE_EM`, NUNCA UM LITERAL. Era `'aprovada'`, valor que nada
+    // no projeto grava — a consulta voltava zero todo dia, sem erro.
+    .where('verificacao', '==', SELO_VALE_EM)
     .limit(TETO)
     .get();
 
