@@ -27,7 +27,9 @@ import {
   criarEscolaEVincular,
   proporEscolasDasCriancas,
 } from '../../services/escolasService';
-import { searchAddress } from '../../services/locationService';
+import { searchAddress, buscarCep } from '../../services/locationService';
+import { maskCep, unmaskCep, isValidCep } from '../../compartilhado/masks';
+import { montarEndereco } from '../../compartilhado/formatters';
 
 /**
  * "Escolas" — as que este motorista atende.
@@ -48,7 +50,8 @@ export default function TioEscolas() {
   const { children, loading: carregandoCriancas } = useChildren();
   const { escolas, loading } = useEscolas();
 
-  const [editando, setEditando] = useState(null); // { id?, nome, endereco, lat, lng }
+  // { id?, nome, cep, endereco, numero, complemento, cepPartes, lat, lng }
+  const [editando, setEditando] = useState(null);
 
   // O ARRASTO RESPEITA O SALVAMENTO — e é por isso que esta folha não entrou
   // no lote das outras.
@@ -62,6 +65,10 @@ export default function TioEscolas() {
     if (!salvando) setEditando(null);
   });
   const [buscandoEndereco, setBuscandoEndereco] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  // null = nunca consultou · 'ok' · 'notFound' · 'offline'
+  const [cepState, setCepState] = useState(null);
+  const [cepConsultado, setCepConsultado] = useState('');
   const [paraApagar, setParaApagar] = useState(null);
   const [migrando, setMigrando] = useState(null);
 
@@ -81,8 +88,93 @@ export default function TioEscolas() {
     [children]
   );
 
-  const abrirNova = () =>
-    setEditando({ nome: '', endereco: '', lat: null, lng: null });
+  const abrirNova = () => {
+    setCepState(null);
+    setCepConsultado('');
+    setEditando({
+      nome: '',
+      cep: '',
+      endereco: '',
+      numero: '',
+      complemento: '',
+      cepPartes: null,
+      lat: null,
+      lng: null,
+    });
+  };
+
+  /**
+   * O CEP DA ESCOLA PREENCHE A RUA, e o número fica num campo próprio.
+   *
+   * ── MAS AQUI ELE NÃO É COBRADO, e a diferença com o cadastro da criança é
+   * deliberada. A casa da criança precisa do número porque a perua encosta numa
+   * PORTA: errar o número é parar na calçada errada com a mãe esperando na
+   * outra. Escola é prédio grande, muitas vezes numa esquina ou num campus sem
+   * número útil — e o fluxo já aceita `geoPending`, porque o motorista está
+   * tentando cadastrar uma criança, não catalogar a cidade.
+   *
+   * Cobrar o número aqui por simetria travaria o cadastro no caso em que a
+   * informação legitimamente não existe.
+   */
+  const consultarCep = async (digitos) => {
+    setBuscandoCep(true);
+    setCepConsultado(digitos);
+    setCepState(null);
+    try {
+      const partes = await buscarCep(digitos);
+      setEditando((e) => ({
+        ...e,
+        cepPartes: partes,
+        endereco: montarEndereco({
+          ...partes,
+          numero: e?.numero || '',
+          complemento: e?.complemento || '',
+        }),
+        // Endereço novo, coordenada velha não vale — a mesma razão que já
+        // estava escrita no `onChange` do campo de endereço logo abaixo.
+        lat: null,
+        lng: null,
+      }));
+      setCepState('ok');
+    } catch (err) {
+      setCepState(/consultar/.test(err?.message || '') ? 'offline' : 'notFound');
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
+
+  // Consulta sozinha no oitavo dígito: CEP tem tamanho fixo, então dá pra saber
+  // que a pessoa terminou sem precisar de botão. `cepConsultado` evita uma
+  // requisição por tecla depois disso.
+  const onCepChange = (valorBruto) => {
+    const cep = maskCep(valorBruto);
+    setEditando((s) => ({ ...s, cep }));
+    const digitos = unmaskCep(cep);
+    if (digitos.length < 8) {
+      setCepState(null);
+      setCepConsultado('');
+      return;
+    }
+    if (!isValidCep(cep) || digitos === cepConsultado) return;
+    consultarCep(digitos);
+  };
+
+  // Número e complemento remontam o endereço enquanto ele for derivado do CEP.
+  const setParteDoEndereco = (campo) => (valor) =>
+    setEditando((s) => {
+      if (!s?.cepPartes?.logradouro) return { ...s, [campo]: valor };
+      return {
+        ...s,
+        [campo]: valor,
+        endereco: montarEndereco({
+          ...s.cepPartes,
+          numero: campo === 'numero' ? valor : s.numero || '',
+          complemento: campo === 'complemento' ? valor : s.complemento || '',
+        }),
+        lat: null,
+        lng: null,
+      };
+    });
 
   async function buscarEndereco() {
     const q = editando?.endereco?.trim();
@@ -92,12 +184,19 @@ export default function TioEscolas() {
     }
     setBuscandoEndereco(true);
     try {
-      const r = await searchAddress(q);
+      // Com as partes do CEP, a consulta vai montada (número na frente, sem o
+      // complemento) — ver `consultaDoEndereco` no locationService.
+      const partes = editando?.cepPartes
+        ? { ...editando.cepPartes, numero: editando.numero || '' }
+        : null;
+      const r = await searchAddress(q, partes);
       setEditando((e) => ({
         ...e,
         lat: r.lat,
         lng: r.lng,
-        endereco: r.displayName || e.endereco,
+        // Vindo do CEP o texto NÃO é trocado pelo `display_name`: ele é verboso
+        // e costuma perder o número que o campo próprio acabou de garantir.
+        endereco: e.cepPartes ? e.endereco : r.displayName || e.endereco,
       }));
       toast.success('Encontramos a escola!');
     } catch (err) {
@@ -118,6 +217,9 @@ export default function TioEscolas() {
         await updateEscola(editando.id, {
           nome: editando.nome,
           endereco: editando.endereco,
+          // Só escreve quando há CEP: `''` por cima de um CEP válido perderia
+          // dado numa edição que nem tocou nele.
+          ...(unmaskCep(editando.cep) ? { cep: maskCep(editando.cep) } : {}),
           lat: editando.lat,
           lng: editando.lng,
         });
@@ -295,7 +397,11 @@ export default function TioEscolas() {
                       setEditando({
                         id: e.id,
                         nome: e.nome || '',
+                        cep: maskCep(e.cep || ''),
                         endereco: e.endereco || '',
+                        numero: '',
+                        complemento: '',
+                        cepPartes: null,
                         lat: e.lat ?? null,
                         lng: e.lng ?? null,
                       })
@@ -369,6 +475,39 @@ export default function TioEscolas() {
                 }
               />
 
+              {/* O CEP É ATALHO, NUNCA REQUISITO — quem sabe a escola de cabeça
+                * digita o endereço no campo de baixo, como antes. */}
+              <Input
+                label="CEP"
+                icon={MapPin}
+                placeholder="00000-000"
+                value={editando.cep || ''}
+                onChange={(ev) => onCepChange(ev.target.value)}
+                inputMode="numeric"
+                maxLength={9}
+                hint="Opcional — preenche a rua sozinho."
+              />
+
+              {buscandoCep && (
+                <p className="text-sm text-textMuted">Consultando o CEP…</p>
+              )}
+
+              {/* "Não achamos" e "está fora do ar" dizem coisas diferentes: a
+                * primeira pede pra reconferir, a segunda avisa que não é ela. */}
+              {cepState === 'notFound' && (
+                <p className="rounded-xl bg-warningSoft px-4 py-3 text-sm leading-relaxed text-warningText">
+                  Não achamos esse CEP. Confira os números — ou escreva o
+                  endereço completo abaixo.
+                </p>
+              )}
+
+              {cepState === 'offline' && (
+                <p className="rounded-xl bg-warningSoft px-4 py-3 text-sm leading-relaxed text-warningText">
+                  A consulta de CEP está fora do ar. Escreva o endereço completo
+                  abaixo.
+                </p>
+              )}
+
               <Input
                 label="Endereço"
                 icon={MapPin}
@@ -378,13 +517,44 @@ export default function TioEscolas() {
                   setEditando((s) => ({
                     ...s,
                     endereco: ev.target.value,
+                    // Digitar aqui torna a pessoa dona do texto: as partes do
+                    // CEP são soltas e a remontagem para de acontecer.
+                    cepPartes: null,
                     // Mexeu no endereço, a coordenada antiga não vale mais.
                     // Guardá-la seria manter a perua indo pro lugar antigo.
                     lat: null,
                     lng: null,
                   }))
                 }
+                hint={
+                  editando.cepPartes
+                    ? 'Preenchido pelo CEP. Se editar aqui, o texto passa a ser seu.'
+                    : undefined
+                }
               />
+
+              {/* Número e complemento só aparecem depois do CEP: sem a rua
+                * preenchida, "123" sozinho não é endereço. Aqui o número NÃO é
+                * obrigatório — ver o comentário de `consultarCep`. */}
+              {editando.cepPartes?.logradouro && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Número"
+                    placeholder="123"
+                    value={editando.numero || ''}
+                    onChange={(ev) => setParteDoEndereco('numero')(ev.target.value)}
+                    inputMode="numeric"
+                  />
+                  <Input
+                    label="Complemento"
+                    placeholder="bloco B"
+                    value={editando.complemento || ''}
+                    onChange={(ev) =>
+                      setParteDoEndereco('complemento')(ev.target.value)
+                    }
+                  />
+                </div>
+              )}
 
               <Button
                 variant="secondary"

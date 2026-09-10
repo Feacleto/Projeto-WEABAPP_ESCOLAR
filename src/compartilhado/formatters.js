@@ -279,3 +279,129 @@ export function addMonths(monthKey, delta) {
   const d = new Date(y, m - 1 + delta, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
+
+/**
+ * Monta o endereço de uma linha a partir das partes que o ViaCEP devolve,
+ * mais o número e o complemento que a pessoa digita.
+ *
+ * Saída no formato dos Correios — `Logradouro, número, complemento — Bairro,
+ * Cidade/UF`:
+ *
+ *   Avenida Paulista, 1578, apto 42 — Bela Vista, São Paulo/SP
+ *
+ * ── O CASO QUE DERRUBA A VERSÃO INGÊNUA: `logradouro` VAZIO
+ * Interpolar as partes num template devolve `", 123 — , /SP"` sempre que uma
+ * delas falta, e ELAS FALTAM. Cidade pequena costuma ter um CEP único para o
+ * município inteiro, e aí o ViaCEP responde com `logradouro` e `bairro` em
+ * branco — só `localidade` e `uf`. Empresa grande e prédio dos Correios têm
+ * CEP próprio, com o mesmo efeito. Então cada junção é filtrada antes de
+ * existir, e um endereço só com cidade sai `Socorro/SP`, limpo.
+ *
+ * ── E O NÚMERO SEM RUA FICA
+ * Quando não há logradouro, um número solto produz `123 — Socorro/SP`, que é
+ * estranho. A tentação é descartá-lo. Mas apagar em silêncio o que a pessoa
+ * acabou de digitar é a pior das duas falhas: ela vê o campo preenchido, salva,
+ * e o número não está no endereço. Estranho ela conserta; invisível, não.
+ * A saída pra esse caso é o campo livre, que a opção do formulário mantém.
+ */
+/**
+ * Monta a CONSULTA que vai pro geocodificador a partir das partes do endereço.
+ *
+ * ── ELA NÃO É O ENDEREÇO QUE APARECE NA TELA, E ISSO É DE PROPÓSITO
+ * O que a pessoa lê é `montarEndereco`, logo abaixo, no formato dos Correios
+ * (`Avenida Paulista, 1578 — Bela Vista, São Paulo/SP`). O que o Nominatim lê é
+ * outra coisa: número ANTES do nome da rua, que é a forma que o parser dele
+ * espera (`1600 Pennsylvania Ave` está na documentação). São duas strings com
+ * dois leitores, e forçar uma só pioraria a de alguém.
+ *
+ * ── O COMPLEMENTO FICA DE FORA
+ * "apto 42" e "fundos" não existem no mapa. Mandar isso na consulta só dá ao
+ * parser texto que ele não sabe encaixar, e o encaixe errado custa a rua.
+ *
+ * ── POR QUE NÃO A BUSCA ESTRUTURADA DO NOMINATIM
+ * Ele aceita `street`/`city`/`state`/`postalcode` em campos separados, e a
+ * documentação promete mais precisão. O problema é que esses campos são
+ * combinados com E: um campo que o OSM não tem para aquele endereço não baixa
+ * a pontuação do resultado, ele ELIMINA o resultado. A cobertura de CEP e de
+ * `state` no Brasil é irregular, então o modo "mais preciso" devolveria ZERO
+ * justamente nas cidades onde o dado é mais pobre — e zero resultado é a tela
+ * de "não achamos" para um endereço que existe.
+ *
+ * ── E "Brasil" VAI SEMPRE NO FIM
+ * O `countrycodes=br` da requisição já restringe o país, e mesmo assim o nome
+ * entra na frase: quem chama esta função pode não ser quem monta a URL, e uma
+ * consulta que só está certa por causa de um parâmetro em outro arquivo é a
+ * garantia que se perde na primeira refatoração.
+ *
+ * Que a falta do país custa caro está SONDADO, não suposto: em 10/09/2026,
+ * "Rua Augusta, 100" e "Avenida da Liberdade, 100" voltaram as duas de LISBOA
+ * no Nominatim sem a restrição de país — e as duas são ruas brasileiras banais.
+ */
+export function consultaDoEndereco({
+  logradouro,
+  numero,
+  bairro,
+  localidade,
+  uf,
+} = {}) {
+  const limpo = (v) => String(v ?? '').trim();
+  const rua = [limpo(numero), limpo(logradouro)].filter(Boolean).join(' ');
+  return [rua, limpo(bairro), limpo(localidade), limpo(uf), 'Brasil']
+    .filter(Boolean)
+    .join(', ');
+}
+
+export function montarEndereco({
+  logradouro,
+  numero,
+  complemento,
+  bairro,
+  localidade,
+  uf,
+} = {}) {
+  const limpo = (v) => String(v ?? '').trim();
+
+  const rua = [limpo(logradouro), limpo(numero), limpo(complemento)]
+    .filter(Boolean)
+    .join(', ');
+
+  const cidadeUf = [limpo(localidade), limpo(uf)].filter(Boolean).join('/');
+  const regiao = [limpo(bairro), cidadeUf].filter(Boolean).join(', ');
+
+  return [rua, regiao].filter(Boolean).join(' — ');
+}
+
+/**
+ * O RESUMO DE UM TEXTO LONGO PARA CABER NUM AVISO.
+ *
+ * ── POR QUE ISTO PRECISOU EXISTIR
+ * Os três avisos de agenda mandavam, no corpo do push, o RÓTULO DO TIPO em vez
+ * do recado: a mãe recebia *"Novo aviso sobre Lucas · Recado"* e tinha que
+ * abrir o app para saber se importava. São os avisos mais frequentes do
+ * produto — depois de três "Recado" ela para de abrir, e aí o quarto, que era
+ * o importante, também não é lido.
+ *
+ * O corpo passa a carregar o conteúdo. Como o recado pode ter até 1500
+ * caracteres e o push mostra umas duas linhas, ele precisa ser encurtado — e
+ * encurtar bem é o trabalho desta função.
+ *
+ * ── CORTA NA PALAVRA, NUNCA NA LETRA
+ * "vai atrasar 15 minu…" é pior que uma frase mais curta e inteira. O corte
+ * volta até o último espaço, e só então acrescenta a reticência.
+ *
+ * ── E A FRASE INTEIRA VENCE O CORTE
+ * Se o texto termina antes do limite, ele sai limpo, sem reticência. A maior
+ * parte dos recados é curta — cortar o que já cabia seria inventar um problema.
+ */
+export function resumirParaAviso(texto, limite = 90) {
+  const t = String(texto || '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  if (t.length <= limite) return t;
+
+  const cortado = t.slice(0, limite);
+  const ultimoEspaco = cortado.lastIndexOf(' ');
+  // Texto sem espaço nenhum (um link colado, por exemplo) não tem onde
+  // quebrar: corta na letra mesmo, que é melhor que devolver o texto inteiro.
+  const base = ultimoEspaco > limite * 0.5 ? cortado.slice(0, ultimoEspaco) : cortado;
+  return `${base.replace(/[.,;:!?\s]+$/, '')}…`;
+}

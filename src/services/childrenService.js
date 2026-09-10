@@ -84,6 +84,14 @@ export async function addChild(data) {
     parent2Name: data.parent2Name?.trim() || '',
     parent2Phone: data.parent2Phone?.trim() || '',
     address: data.address?.trim() || '',
+    // O CEP, quando a pessoa consultou um. Ele NÃO é pedaço do endereço aqui —
+    // `address` já traz rua, número e cidade prontos pra leitura. Ele é a
+    // CHAVE: guardado, dá pra reconsultar a rua nos Correios e recalcular a
+    // coordenada de uma criança antiga sem pedir nada ao motorista.
+    //
+    // Número e complemento não sobem: eles vivem dentro de `address`, e uma
+    // segunda cópia deles seria uma segunda verdade sobre onde a criança mora.
+    cep: data.cep?.trim() || '',
     // ATENÇÃO: Number('') é 0 — sem o coalesce abaixo, uma criança salva sem
     // geocoding ficava em lat/lng 0,0 (golfo da Guiné) e o mapa desenhava
     // aquilo como se fosse a casa dela. Ausente tem que ser null.

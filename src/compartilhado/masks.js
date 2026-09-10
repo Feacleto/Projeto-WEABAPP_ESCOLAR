@@ -74,3 +74,42 @@ export function isValidEmail(value) {
   return EMAIL_RE.test(String(value || '').trim());
 }
 
+/**
+ * Aplica máscara de CEP: XXXXX-XXX. Aceita string parcial — usado em onChange.
+ *
+ * ── POR QUE ISSO NUNCA VIRA NÚMERO
+ * CEP tem zero à esquerda em metade de São Paulo (`01310-100`) e em todo o
+ * Rio Grande do Sul. `Number('01310100')` dá `1310100`, e o ViaCEP responde
+ * HTTP 400 pra sete dígitos — o endereço "não existe" pra quem digitou um CEP
+ * perfeitamente válido. Então a máscara, o unmask e o campo do formulário
+ * trabalham em STRING de ponta a ponta, e nenhum chamador precisa lembrar de
+ * repor o zero.
+ */
+export function maskCep(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+/** Só os oito dígitos — a forma que o ViaCEP aceita na URL. */
+export function unmaskCep(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 8);
+}
+
+/**
+ * CEP válido se tiver 8 dígitos e não for a sequência de zeros.
+ *
+ * ── O QUE ESTA FUNÇÃO SE RECUSA A FAZER
+ * Ela NÃO confere a faixa por estado. Existe tabela de faixa de CEP por UF, e
+ * ela é tentadora: daria pra dizer "esse CEP não é de São Paulo" antes de
+ * qualquer requisição. Mas os Correios reorganizam faixa, e uma tabela dessas
+ * envelhece CALADA — ela passa a recusar CEP novo e legítimo, e o motorista
+ * não tem como saber que o app está errado, não ele.
+ *
+ * Quem sabe se um CEP existe é o ViaCEP. Aqui só mora o que é verdade sobre o
+ * FORMATO, que não muda.
+ */
+export function isValidCep(value) {
+  const digits = unmaskCep(value);
+  return digits.length === 8 && digits !== '00000000';
+}

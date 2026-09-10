@@ -1,27 +1,113 @@
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { playSound } from './soundService';
+// A consulta do geocodificador é REGRA PURA, e por isso não mora aqui: este
+// arquivo importa `firebase/firestore`, e o Node não consegue carregá-lo — era
+// exatamente assim que a máquina de estado da criança e o teto de vagas
+// ficaram anos sem teste. Ela está em `compartilhado/`, onde `testar:endereco`
+// alcança.
+import { consultaDoEndereco } from '../compartilhado/formatters';
 
 // ============================================================================
-// Geocoding (Nominatim / OSM) — usado no cadastro de criança
+// Endereço: CEP (ViaCEP) + coordenada (Nominatim / OSM)
 // ============================================================================
 
 /**
- * Geocoding via Nominatim, gratuito e sem chave.
+ * CEP → rua, bairro, cidade e UF, pelo ViaCEP. Grátis, sem chave, sem cota.
+ *
+ * ── POR QUE O CEP ENTROU NA FRENTE DO ENDEREÇO
+ * O campo era um texto livre só ("Rua, número, bairro, cidade"), e o defeito
+ * dele não é digitação: é o NÚMERO. Num campo livre, preenchido com uma mão no
+ * portão da escola, o número é justamente o que se esquece — e aí o Nominatim
+ * acha a RUA, centraliza no meio dela, e a tela escreve "Local confirmado!" em
+ * cima de uma coordenada na quadra errada. O app não falhava, ele AFIRMAVA, e
+ * é o pior dos dois.
+ *
+ * Com o CEP preenchendo a rua sozinho, o número sobra num campo próprio — e
+ * campo próprio pode ser exigido. O conserto é esse; o ViaCEP é só o meio.
+ *
+ * ── A ARMADILHA: CEP INEXISTENTE RESPONDE HTTP 200
+ * `viacep.com.br/ws/99999999/json/` devolve **200** com `{"erro": "true"}` no
+ * corpo. Quem confere só `res.ok` conclui que deu certo, espalha `undefined`
+ * pelos campos e grava endereço VAZIO em cima do que a pessoa tinha digitado.
+ * Então o corpo é obrigatório na checagem — e o `erro` vem como string
+ * `"true"` numa versão do ViaCEP e booleano `true` noutra, daí o teste de
+ * verdade simples, que cobre as duas sem depender de qual está no ar.
+ *
+ * CEP malformado é o outro caminho, e esse sim responde HTTP 400.
+ *
+ * ── FALHAR AQUI NÃO PODE TRAVAR CADASTRO
+ * O ViaCEP é serviço de terceiro sem contrato: um dia ele cai. Por isso o erro
+ * é de rede, tratado como AVISO pelas telas, e o campo livre continua sendo um
+ * caminho completo — o CEP acelera, não é requisito. É a mesma escolha que o
+ * `capabilities.js` faz com o Storage.
+ *
+ * Retorna { cep, logradouro, bairro, localidade, uf }.
+ */
+export async function buscarCep(cepBruto) {
+  const cep = String(cepBruto || '').replace(/\D/g, '');
+  if (cep.length !== 8) throw new Error('CEP precisa ter 8 dígitos.');
+
+  let res;
+  try {
+    res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+  } catch {
+    throw new Error('Não conseguimos consultar o CEP agora.');
+  }
+  if (!res.ok) throw new Error('CEP não encontrado.');
+
+  const data = await res.json();
+  if (!data || data.erro) throw new Error('CEP não encontrado.');
+
+  return {
+    cep: data.cep || '',
+    logradouro: data.logradouro || '',
+    bairro: data.bairro || '',
+    localidade: data.localidade || '',
+    uf: data.uf || '',
+  };
+}
+
+/**
+ * Endereço → coordenada, via Nominatim. Gratuito e sem chave.
  *
  * Limites: 1 req/segundo por IP. Como aqui é uma chamada pontual no
  * cadastro, está OK. Não chamar em loop / autocomplete.
  *
+ * Recebe o texto livre OU, quando o CEP foi consultado, as `partes` — e nesse
+ * caso a consulta é montada por `consultaDoEndereco`, com o número na frente e
+ * sem o complemento.
+ *
+ * ── `countrycodes=br` NÃO É DETALHE
+ * Sem ele, "Rua Augusta, 100" volta de LISBOA — sondado no Nominatim em
+ * 10/09/2026, e "Avenida da Liberdade, 100" também. As duas são ruas
+ * brasileiras banais (a Augusta é de São Paulo), então não é caso exótico: é o
+ * mesmo modo de falhar do número esquecido, resposta confiante em cima de
+ * coordenada errada, e a tela diz "Local confirmado!" apontando pra outro
+ * continente.
+ *
+ * O parâmetro troca uma CLASSIFICAÇÃO por uma GARANTIA. Sem ele o resultado é
+ * brasileiro quando o Nominatim decide que é — "Rua das Flores, 100" já vem do
+ * Brasil sozinha, e é por isso que a falta dele passou meses aqui sem aparecer.
+ *
  * Retorna { lat, lng, displayName }.
  */
-export async function searchAddress(address) {
-  const q = (address || '').trim();
+export async function searchAddress(address, partes = null) {
+  const q = partes ? consultaDoEndereco(partes) : String(address || '').trim();
   if (!q) throw new Error('Digite um endereço.');
 
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=0&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, {
-    headers: { 'Accept-Language': 'pt-BR' },
+  const params = new URLSearchParams({
+    format: 'json',
+    limit: '1',
+    addressdetails: '0',
+    countrycodes: 'br',
+    q,
   });
+
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+    { headers: { 'Accept-Language': 'pt-BR' } }
+  );
 
   if (!res.ok) {
     throw new Error('Falha na busca. Tente novamente em alguns segundos.');

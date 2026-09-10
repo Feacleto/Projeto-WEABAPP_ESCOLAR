@@ -61,6 +61,10 @@ export async function addEscola(data) {
   const ref = await addDoc(colEscolas(), {
     nome,
     endereco: data.endereco?.trim() || '',
+    // O CEP é a CHAVE do endereço, não um pedaço dele — `endereco` já traz rua
+    // e número prontos pra leitura. Guardado, permite reconsultar a rua e
+    // recalcular a coordenada de uma escola antiga sem pedir nada ao motorista.
+    cep: data.cep?.trim() || '',
     lat: toCoord(data.lat),
     lng: toCoord(data.lng),
     // true = endereço salvo sem coordenada; dá pra resolver depois sem travar
