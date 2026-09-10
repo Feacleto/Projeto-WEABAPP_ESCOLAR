@@ -187,16 +187,38 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
       {/* Escurecido + recorte de luz. pointer-events:none em tudo: o app
        * embaixo continua tocável, que é o ponto de um tour interativo. */}
       {rect ? (
-        <div
-          className="absolute rounded-2xl transition-all duration-300 ease-out"
-          style={{
-            top: rect.top - PAD,
-            left: rect.left - PAD,
-            width: rect.width + PAD * 2,
-            height: rect.height + PAD * 2,
-            boxShadow: `0 0 0 3px rgba(255,255,255,0.95), 0 0 0 9999px ${DIM}`,
-          }}
-        />
+        <>
+          <div
+            className="absolute rounded-2xl transition-all duration-300 ease-out motion-reduce:transition-none"
+            style={{
+              top: rect.top - PAD,
+              left: rect.left - PAD,
+              width: rect.width + PAD * 2,
+              height: rect.height + PAD * 2,
+              boxShadow: `0 0 0 3px rgba(255,255,255,0.95), 0 0 0 9999px ${DIM}`,
+            }}
+          />
+          {/* O ANEL QUE RESPIRA, só nos passos que pedem o dedo.
+            * O buraco de luz diz "olhe aqui" e não diz "toque aqui" — e a
+            * frase "toque no que está iluminado" ficava sozinha no balão, a
+            * 300 px do elemento. `animate-pulse` (opacidade) e não
+            * `animate-ping` (escala): numa caixa do tamanho de um botão, o
+            * ping cresce por cima do texto vizinho.
+            * Em `prefers-reduced-motion` fica o anel parado, que continua
+            * marcando o alvo. */}
+          {step.interact && (
+            <div
+              aria-hidden
+              className="absolute rounded-[22px] ring-2 ring-white/70 animate-pulse motion-reduce:animate-none transition-all duration-300 ease-out motion-reduce:transition-none"
+              style={{
+                top: rect.top - PAD - 4,
+                left: rect.left - PAD - 4,
+                width: rect.width + PAD * 2 + 8,
+                height: rect.height + PAD * 2 + 8,
+              }}
+            />
+          )}
+        </>
       ) : (
         <div className="absolute inset-0" style={{ background: DIM }} />
       )}
@@ -241,6 +263,23 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
             </div>
           </div>
 
+          {/* A FRASE DA LANDING, CITADA.
+            * Duas vozes na mesma superfície: aqui é o que o SITE prometeu,
+            * embaixo é o app entregando. A régua verde de 3px à esquerda é o
+            * que separa as duas sem precisar escrever "isto é uma citação".
+            * O passo sem `cita` (o tour do responsável, hoje) não mostra
+            * tira nenhuma. */}
+          {step.cita && (
+            <div className="bg-surface border-b border-border border-l-[3px] border-l-primaryBorder px-4 py-2.5">
+              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-textMuted">
+                no site, você leu
+              </p>
+              <p className="text-[12.5px] font-semibold text-text leading-snug mt-0.5">
+                {'“' + step.cita + '”'}
+              </p>
+            </div>
+          )}
+
           <div className="p-4 space-y-3">
             <p className="text-[15px] text-text leading-relaxed">{step.body}</p>
 
@@ -255,15 +294,20 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
             )}
 
             <div className="flex items-center gap-2 pt-1">
-              {!isFirst && (
-                <button
-                  onClick={onPrev}
-                  className="tap h-12 px-3 rounded-xl bg-neutro text-text text-sm font-semibold inline-flex items-center gap-1"
-                >
-                  <ChevronLeft size={16} />
-                  Voltar
-                </button>
-              )}
+              {/* O VOLTAR NÃO SOME MAIS NO PRIMEIRO PASSO — fica desabilitado.
+                * Sumindo, ele empurrava o botão principal pra esquerda entre
+                * o passo 1 e o 2: o alvo que o dedo acabou de encontrar
+                * mudava de lugar, e num tour de doze passos isso acontece
+                * cedo. Desabilitado, ele guarda a posição e ainda anuncia que
+                * dá pra voltar. */}
+              <button
+                onClick={onPrev}
+                disabled={isFirst}
+                className="tap h-12 px-3 rounded-xl bg-neutro text-text text-sm font-semibold inline-flex items-center gap-1 disabled:opacity-40"
+              >
+                <ChevronLeft size={16} />
+                Voltar
+              </button>
               <button
                 onClick={goNext}
                 className="tap h-12 flex-1 rounded-xl bg-primary text-white font-bold inline-flex items-center justify-center gap-2"

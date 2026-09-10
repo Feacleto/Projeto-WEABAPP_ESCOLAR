@@ -581,8 +581,13 @@ export default function OperacaoDaRota({
             </div>
 
             {/* 62 px: é o botão que ele aperta com o veículo em movimento */}
+            {/* `data-tour` ILUMINA, e nunca é tocado pelo tutorial: este
+              * botão muda o estado da criança e avisa a família. A regra
+              * está em components/tutorial/interactiveSteps.js e travada em
+              * `npm run testar:tutorial`. */}
             <button
               type="button"
+              data-tour="avancar-status"
               disabled={busy}
               onClick={() => avancarUma(foco)}
               className="tap w-full rounded-2xl bg-primary text-white font-extrabold text-base tracking-wide flex items-center justify-center gap-2 disabled:opacity-60"
@@ -598,6 +603,7 @@ export default function OperacaoDaRota({
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
+                data-tour="buzinar"
                 disabled={busy}
                 onClick={() => chamar(foco.child)}
                 className="tap h-10 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-60"

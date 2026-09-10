@@ -2,14 +2,18 @@ import {
   Clock,
   Hand,
   Bus,
-  Users,
   UserPlus,
   Play,
   DollarSign,
   Wallet,
   Bell,
+  BellRing,
   UserX,
   MapPin,
+  Menu,
+  ListOrdered,
+  AlertTriangle,
+  Link2,
   CheckCircle2,
 } from 'lucide-react';
 
@@ -54,78 +58,148 @@ import {
  * no ponto e uma mãe no intervalo do trabalho. Então: frase curta, verbo no
  * imperativo, zero jargão. Nada de "dashboard", "sincronizar", "status".
  * Diga "perua", "seu filho", "o dinheiro do mês".
+ *
+ * ── `cita`: A FRASE É A DO SITE, E ISSO É TESTE
+ * O motorista chega aqui tendo lido a landing. Ela promete em palavras
+ * próprias — *"a rota do dia pronta, na ordem dos horários"*, *"sem caderno,
+ * sem planilha e sem cobrar de boca"* — e o tour é o momento em que essas
+ * frases viram tela. Dizer a MESMA coisa com OUTRAS palavras aqui dentro faz
+ * o app parecer um segundo produto, e a promessa parecer propaganda.
+ *
+ * Então cada passo carrega a frase da landing que ele fecha, e o balão a
+ * mostra citada, acima do texto. `npm run testar:tutorial` confere que cada
+ * `cita` existe de verdade em `landing/index.html` — sem isso, a landing muda
+ * uma linha e o tour passa a citar algo que ninguém leu.
+ *
+ * ── ⚠️ `interact` SÓ ONDE O TOQUE NÃO CUSTA NADA A NINGUÉM
+ * Pedir o toque no elemento de verdade é o que ensina o gesto. Só que quatro
+ * dos botões deste app fazem coisas no mundo:
+ *
+ *   `start-route`       liga o GPS, publica a perua pra todas as famílias E
+ *                       ESCREVE `trialInicio` — o toque do tutorial gastaria
+ *                       o primeiro dia dos três meses de teste
+ *   `avancar-status`    muda o estado da criança e avisa a família
+ *   `buzinar`           faz o celular de um responsável tocar
+ *   `lista-pagamentos`  dá baixa em dinheiro que talvez não tenha entrado
+ *
+ * Nesses o passo ILUMINA e EXPLICA, e o texto diz pra não tocar agora quando
+ * o toque teria efeito. Só gesto inerte — abrir folha, trocar de tela, mudar
+ * de aba — pede o dedo. A lista está travada em `npm run testar:tutorial`:
+ * pôr `interact` num deles falha o teste em vez de aparecer como uma rota
+ * ligada sozinha no primeiro acesso de alguém.
  */
 
 export const ADMIN_TOUR = [
   {
     path: '/tio',
     icon: Hand,
+    cita: 'Este é o seu novo app.',
     title: 'Oi, Tio! Vamos junto?',
-    body: 'Em um minutinho eu te mostro onde fica cada coisa. É só ir tocando em "Próximo".',
+    body: 'Uns quatro minutos. Cada parada mostra onde está, na tela, uma coisa que o site te prometeu.',
   },
   {
     path: '/tio',
     anchor: 'hero',
     icon: Bus,
-    title: 'Aqui é o seu dia',
-    body: 'Este quadro mostra a que horas sai a próxima viagem e quem você pega primeiro. Ele muda sozinho conforme o relógio.',
+    cita: 'A rota do dia pronta, na ordem dos horários',
+    title: 'A rota do dia, pronta',
+    body: 'Ela é esta. Você preenche uma vez e o dia se monta sozinho na ordem das horas — sem você arrastar nada.',
   },
   {
     path: '/tio',
     anchor: 'start-route',
     icon: Play,
-    title: 'Começar a viagem',
-    body: 'Este botão fica sempre no alto da tela. Toque nele quando sair e deixe o celular ligado — a partir daí os pais veem a perua andando no mapa.',
+    cita: 'A rota roda e todo mundo vê',
+    title: 'Todo dia você dá partida',
+    // ⚠️ SEM `interact`: este toque liga o GPS de verdade e escreve
+    // `trialInicio`. Ver a regra no cabeçalho.
+    body: 'Este botão fica sempre no alto da tela. Toque nele quando SAIR de casa e deixe o celular ligado: daí em diante a família acompanha a perua no mapa. Agora não precisa — ele liga o GPS de verdade.',
   },
   {
     path: '/tio',
-    // A ÂNCORA MUDOU DE `horarios` PRA `turma`, e as duas apontam pra mesma
-    // linha: "Meu transporte". Os horários deixaram de morar no Início — eles
-    // estão dentro da folha, e passo que ilumina elemento escondido não
-    // quebra, vira um balão no rodapé e o tutorial segue ensinando sem
-    // mostrar. Já aconteceu duas vezes aqui.
-    anchor: 'turma',
-    icon: Clock,
-    title: 'A hora de cada criança',
-    body: 'Seu dia é montado com as horas que VOCÊ define pra cada criança. Toque em "Meu transporte" e depois em "Editar rota padrão" pra ajustar uma a uma. Se aparecer "presumido", é criança que o app chutou o horário — e esse chute não aparece pro responsável até você definir o seu.',
+    anchor: 'avancar-status',
+    icon: CheckCircle2,
+    cita:
+      'A hora que a criança subiu, chegou na escola e desceu em casa, registrada todo dia',
+    title: 'Uma criança de cada vez',
+    // A âncora só existe com a rota rodando. Sem ela o passo vira balão no
+    // rodapé — e por isso o texto começa dizendo QUANDO isso aparece.
+    body: 'Com a rota rodando, a tela vira um botão grande por criança: EMBARQUEI e, na escola, ENTREGUEI. Quem registra a hora é esse toque, e a família vê na hora.',
+  },
+  {
+    path: '/tio',
+    anchor: 'buzinar',
+    icon: BellRing,
+    cita: 'Aviso automático pra família quando você está chegando',
+    title: 'A buzina que não incomoda a rua',
+    body: 'O aviso de chegada vai sozinho. Se ninguém descer, "Buzinar" faz o celular do responsável tocar em tela cheia — e do lado ficam o Zap e a ligação. Use só na porta dele: toca de verdade.',
   },
   {
     path: '/tio',
     anchor: 'turma',
-    icon: Users,
-    title: 'Tudo que você cadastra mora aqui',
-    // O `interact: true` saiu junto com a mudança. Ele esperava o toque em
-    // "Minha turma", que agora está dentro da folha: o toque abriria a folha
-    // e o tour ficaria esperando uma navegação que não vem. O passo seguinte
-    // já leva pra /tio/children sozinho (o motor navega pelo `path`).
-    body: 'Turma, escolas, rota padrão e avisos ficam em "Meu transporte" — e continua alcançável com a rota ligada, parado no portão da escola.',
+    interact: true,
+    icon: Menu,
+    cita: 'A gente vem tirar o resto do seu ombro',
+    title: 'Tudo isso num lugar só',
+    body: 'Turma, escolas, horários e avisos ficam nesta linha. E ela continua aqui com a rota ligada — dá pra avisar a escola parado no portão, sem encerrar nada.',
+  },
+  {
+    path: '/tio',
+    anchor: 'rota-padrao',
+    interact: true,
+    icon: ListOrdered,
+    cita:
+      'O horário combinado de embarque e desembarque, acompanhado pela família todo dia',
+    title: 'O horário combinado com os pais',
+    body: 'Ele mora em "Editar rota padrão". O que você escreve ali é o que a família vê, todo dia.',
+  },
+  {
+    path: '/tio/horarios',
+    anchor: 'presumido',
+    icon: AlertTriangle,
+    cita: 'Você preenche uma vez',
+    title: '"Presumido" é chute do app',
+    body: 'Enquanto você não preencheu, o app chuta pra ninguém sumir da rota. E o responsável não vê o chute: a tela dele diz que você ainda não informou. Toque no horário e defina o seu.',
   },
   {
     path: '/tio/children',
     anchor: 'add-child',
     icon: UserPlus,
-    title: 'Cadastrar uma criança',
-    body: 'Toque em "Nova criança" e preencha — inclusive a hora que você vai pegar e entregar. No fim o app cria um código: mande pro pai, e com ele o pai entra e já vê o filho e o horário.',
+    cita:
+      'Cada criança com nome, foto, endereço, escola e o horário combinado com os pais',
+    title: 'O tio cadastra a turma',
+    body: 'É este botão. Preencha uma vez, inclusive a hora de pegar e a de entregar.',
+  },
+  {
+    path: '/tio/children',
+    icon: Link2,
+    cita: 'O tio cria a conta, e com um clique no link ela já entra',
+    title: 'A família entra pelo link',
+    body: 'No fim do cadastro o app cria um link. Mande no WhatsApp: se ela sabe mexer no WhatsApp, sabe mexer nisso — e já entra vendo o filho e o horário.',
   },
   {
     path: '/tio',
     anchor: 'nav-finance',
     interact: true,
     icon: DollarSign,
-    title: 'Toque em "Financeiro"',
-    body: 'Último lugar do passeio. Pode tocar aí embaixo.',
+    cita: 'Sem caderno, sem planilha e sem cobrar de boca',
+    title: 'Segunda aba: o dinheiro',
+    body: 'São duas abas só: no Início você trabalha, no Financeiro você recebe. Pode tocar aí embaixo.',
   },
   {
     path: '/tio/finance',
+    anchor: 'lista-pagamentos',
     icon: Wallet,
-    title: 'O dinheiro do mês',
-    body: 'O app monta sozinho a lista de quem tem que pagar. Quando alguém te paga, é só marcar como recebido.',
+    cita: 'Quem pagou, quem falta, e o PIX pronto pra mandar',
+    title: 'A mensalidade se organiza sozinha',
+    body: 'O app monta a lista do mês sozinho. Pagou em dinheiro? Você marca com um toque. A mensalidade não passa pela plataforma: o que a família te paga é seu, por inteiro.',
   },
   {
     path: '/tio',
     icon: CheckCircle2,
+    cita: 'Você dirige, e o seu dia fica mais leve',
     title: 'Pronto, é isso!',
-    body: 'São duas abas só: aqui no Início você trabalha, e no Financeiro você recebe. O resto abre por aqui mesmo. Esqueceu alguma coisa? Abra seu perfil e toque em "Ver tutorial de novo".',
+    body: 'Cadastre a turma inteira, rode o mês e decida depois — o teste começa na sua primeira rota, não no cadastro. Esqueceu alguma coisa? Abra "Meu transporte" e toque em "Como usar o app".',
   },
 ];
 

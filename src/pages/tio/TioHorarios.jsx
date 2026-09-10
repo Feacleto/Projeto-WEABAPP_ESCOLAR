@@ -202,7 +202,10 @@ export default function TioHorarios() {
 
         {/* Quem ainda opera com horário chutado */}
         {!loading && pendentes.length > 0 && (
-          <div className="flex items-start gap-2.5 bg-warningSoft border border-warningBorder rounded-2xl p-3">
+          <div
+            data-tour="presumido"
+            className="flex items-start gap-2.5 bg-warningSoft border border-warningBorder rounded-2xl p-3"
+          >
             <AlertTriangle size={18} className="text-warningText shrink-0 mt-0.5" />
             <div className="text-xs text-warningText leading-relaxed">
               <b className="block text-sm">

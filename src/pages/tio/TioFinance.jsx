@@ -534,7 +534,11 @@ export default function TioFinance() {
             description="Sem pagamentos com esse filtro."
           />
         ) : (
-          <div className="space-y-2">
+          /* A ÂNCORA É A LISTA, não o botão de confirmar: o botão só existe
+             na linha de quem avisou que pagou, e o tutorial não pode
+             depender de haver uma. E ela é iluminada, nunca tocada — o
+             toque daria baixa em dinheiro. */
+          <div data-tour="lista-pagamentos" className="space-y-2">
             {filtered.map((payment) => (
               <PaymentRow
                 key={payment.id}
