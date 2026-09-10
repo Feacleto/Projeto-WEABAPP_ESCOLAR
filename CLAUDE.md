@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 1248 casos em 27 scripts. O PRIMEIRO é
+npm run testar                   # 1267 casos em 27 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois: horarios, faltas,
@@ -767,6 +767,26 @@ cai no ramo de erro e imprimia "Link inválido" **depois de a senha ter sido
 trocada com sucesso**). A invariante está travada em `npm run testar:auth`:
 *nenhum `continueUrl` do projeto pode apontar para uma rota que exige
 `oobCode`*.
+
+**E A TELA FOI DESENHADA PARA A DESCONFIANÇA, não para a usabilidade**
+(09/09/2026). Quem chega nela perdeu a senha, clicou num link de e-mail e vai
+digitar uma senha nova numa página que nunca viu — a forma exata de um golpe.
+Layout bonito não responde a isso; o que responde é a tela dizer o que uma
+página falsa não consegue dizer: o **domínio** lido do `location` (nunca escrito
+à mão — constante mentiria numa cópia hospedada em outro domínio), o **e-mail
+mascarado** (`mascararEmail` em [formatters.js](src/compartilhado/formatters.js),
+com número FIXO de pontos: um ponto por caractere devolveria o comprimento do
+endereço), o **escopo** do link de uso único, a **saída** para quem não pediu, as
+**regras** marcadas antes do erro, e a **identidade do controlador** — razão
+social e CNPJ de `COMPANY_INFO`, nos quatro estados, porque a tela de "link
+inválido" é onde ela mais desconfia.
+
+⚠️ **Nada de "conexão segura", "criptografado" ou "protegido" genérico.** Toda
+frase da tela é conferível: o link é de uso único porque o `oobCode` é
+consumido, e a senha não muda sozinha porque nada acontece sem o formulário.
+Os blocos 7 e 8 de `testar:auth` travam as duas coisas — e o 8 tem um
+descomentador com **sonda positiva**, porque a primeira versão dele reprovou o
+COMENTÁRIO que explica a decisão.
 
 **Erro de autenticação tem QUATRO contextos**, não três
 ([authErrors.js](src/dominio/identidade/authErrors.js)): `entrar`, `criar`,
