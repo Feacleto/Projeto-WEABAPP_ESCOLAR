@@ -232,6 +232,28 @@ const C = [
 export const TRIOS = { entrar: A, criar: B, convite: C };
 
 /**
+ * A FRASE QUE APRESENTA A TIRA NO CELULAR.
+ *
+ * No monitor os cartões são CENÁRIO: eles ficam atrás do formulário, sem
+ * título, e quem olha entende sozinho que é o app aparecendo. No celular eles
+ * viram uma seção depois do formulário — e seção sem chapéu lê como conteúdo
+ * solto, não como demonstração.
+ *
+ * ⚠️ UMA FRASE POR ASSUNTO, E NÃO UMA SÓ. "É isto que te espera" está errado
+ * para quem já tem conta: essa pessoa não está esperando nada, ela está
+ * voltando pro próprio trabalho. Frase genérica economiza três linhas aqui e
+ * fala errado com dois dos três públicos.
+ *
+ * Nenhuma delas promete o que o app não faz — a régua é a mesma da lista ⛔
+ * do topo deste arquivo.
+ */
+export const INTRO = {
+  entrar: 'O seu dia, do jeito que o app organiza',
+  criar: 'No app, é isto que te espera',
+  convite: 'No app, é isto que você acompanha',
+};
+
+/**
  * OS TRÊS SLOTS — e eles se ancoram no CARD, não na borda da coluna.
  *
  * ⚠️ A PRIMEIRA VERSÃO USAVA `left` FIXO E O CARD ENCOSTADO À DIREITA, e o

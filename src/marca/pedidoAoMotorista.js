@@ -39,8 +39,18 @@
  * numa mensagem produziria a mãe cobrando um cadastro que ninguém aceitou.
  */
 
-/** O site institucional, escrito aqui para o módulo continuar puro. */
-const SITE = 'https://alobuzinou.com.br';
+/**
+ * ONDE ELA MANDA ELE — o CADASTRO, no domínio do app.
+ *
+ * ⚠️ ISTO ERA A LANDING (`alobuzinou.com.br`), e a mensagem diz "você cria a
+ * sua conta aqui". Ela mandava para a página onde não se cria conta nenhuma:
+ * ele lia um pedido pessoal, clicava, e caía numa apresentação institucional
+ * que responde a pergunta que a mensagem dela já tinha respondido.
+ *
+ * Escrito à mão, e não importado de `config/vitrine.js`, porque `marca/` é
+ * puro — o mesmo motivo pelo qual o endereço antigo também morava aqui.
+ */
+const SITE = 'https://alobuzinou.com/quero-fazer-parte';
 
 /**
  * A mensagem que ela manda. Uma linha por parágrafo do WhatsApp.
@@ -59,6 +69,26 @@ export function mensagemAoMotorista({ nome = '' } = {}) {
     assinatura
   );
 }
+
+/**
+ * A PEÇA QUE VAI JUNTO DA MENSAGEM — e por que ela existe.
+ *
+ * É a mesma imagem que a landing anexa no botão de indicar: 221 KB com o
+ * ENDEREÇO ESCRITO dentro, e o texto "pra quem dirige perua escolar" — que é
+ * exatamente quem ela está convidando aqui.
+ *
+ * ⚠️ ELA SÓ CHEGA PELA BANDEJA DO SISTEMA. `wa.me` transporta texto e nada
+ * mais: anexar arquivo por link não existe no protocolo. Quem consegue é
+ * `navigator.share` com `files`, no Chrome do Android e no Safari do iPhone.
+ * No computador a bandeja quase sempre recusa arquivo, e aí vai o texto
+ * sozinho — o endereço está escrito nele também, então nada se perde.
+ *
+ * ⚠️ O ARQUIVO ESTÁ DUPLICADO: `public/brand/convite.jpg` no app e
+ * `landing/brand/convite.jpg` na landing. São dois domínios e dois deploys —
+ * a landing é HTML estático e não alcança o `public/` do app. Trocar a peça
+ * é trocar os dois.
+ */
+export const PECA_DO_PEDIDO = '/brand/convite.jpg';
 
 /** O `wa.me` sem destinatário: quem escolhe o contato é o WhatsApp dela. */
 export function linkDoPedido(opcoes) {

@@ -29,7 +29,7 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { TRIOS, SLOTS, ASSUNTOS, BLOCOS, textosDoFundo } from '../src/marca/fundoDoLogin.js';
+import { TRIOS, SLOTS, ASSUNTOS, BLOCOS, INTRO, textosDoFundo } from '../src/marca/fundoDoLogin.js';
 
 let ok = 0;
 let bad = 0;
@@ -262,6 +262,49 @@ const formaQueQuebrou = 'min-[' + '${n}' + 'px]:block';
 checar('o detector reconhece a forma que quebrou (sonda positiva)', true,
   [...formaQueQuebrou.matchAll(/min-\[([^\]\n]*)\]/g)]
     .some((m) => !/^[0-9]+(px|rem|em)$/.test(m[1])));
+
+bloco('4c. A tira do celular conta a MESMA historia do monitor');
+
+// ⚠️ NO CELULAR NAO EXISTE FAIXA LATERAL: o painel verde e o topo e o
+// formulario ocupa a largura toda. Os cartoes viram uma SECAO depois do
+// formulario (`TiraDoLogin`), e a textura passa a valer em toda largura.
+//
+// Este bloco guarda tres coisas que, separadas, ninguem notaria:
+//   1. a tira usa os MESMOS cartoes do trio — senao celular e monitor contam
+//      historias diferentes do mesmo produto, e ninguem compara as duas telas
+//      lado a lado pra notar;
+//   2. as duas nunca convivem — a porteira de uma e o inverso da outra;
+//   3. a tira nao anima. E por ela que entra a maioria, em Android de
+//      entrada, e movimento num fundo e a primeira coisa a cortar.
+checar('a tira existe como peca propria', true,
+  fonteFundo.includes('export function TiraDoLogin'));
+checar('e a textura tambem', true,
+  fonteFundo.includes('export function TexturaDoFundo'));
+
+const trechoDaTira = fonteFundo.slice(fonteFundo.indexOf('export function TiraDoLogin'));
+const soATira = trechoDaTira.slice(0, trechoDaTira.indexOf('export default'));
+checar('a tira le os cartoes de TRIOS', true, soATira.includes('TRIOS[assunto]'));
+checar('e nao anima', false, /fundo-flutua|fundo-halo/.test(soATira));
+
+for (const largura of [1800, 1980]) {
+  checar(`o fundo lateral liga em ${largura}`, true,
+    fonteFundo.includes(`  ${largura}: 'hidden min-[${largura}px]:block'`));
+  checar(`e a tira desliga na mesma largura`, true,
+    fonteFundo.includes(`  ${largura}: 'min-[${largura}px]:hidden'`));
+}
+
+// A frase de apresentacao: uma por assunto. "E isto que te espera" esta
+// errado pra quem ja tem conta — essa pessoa nao espera nada, ela volta.
+checar('ha uma frase de intro por assunto', ASSUNTOS.length, Object.keys(INTRO).length);
+checar('e nenhuma esta vazia', [],
+  ASSUNTOS.filter((a) => !INTRO[a] || INTRO[a].length < 12));
+checar('as tres sao diferentes', ASSUNTOS.length,
+  new Set(ASSUNTOS.map((a) => INTRO[a])).size);
+
+for (const [nome, fonte] of [['login', fonteLogin], ['first-access', fonteFirst]]) {
+  checar(`${nome} monta a textura`, true, fonte.includes('<TexturaDoFundo />'));
+  checar(`${nome} monta a tira`, true, fonte.includes('<TiraDoLogin'));
+}
 
 bloco('5. A animacao e tempero, nao estrutura');
 

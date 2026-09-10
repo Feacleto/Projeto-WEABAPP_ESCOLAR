@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Copy, Link2, LogIn, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FundoNoturno from '../components/common/FundoNoturno';
 import Logo from '../components/common/Logo';
-import FundoDoLogin from '../components/auth/FundoDoLogin';
+import FundoDoLogin, {
+  TexturaDoFundo,
+  TiraDoLogin,
+} from '../components/auth/FundoDoLogin';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
 import { linkDoPedido, mensagemAoMotorista } from '../marca/pedidoAoMotorista';
+import { PECA_DO_PEDIDO } from '../marca/pedidoAoMotorista';
 
 /**
  * A PORTA DA RESPONSÁVEL QUE NÃO TEM O LINK.
@@ -67,6 +71,66 @@ export default function FirstAccess() {
   // arrependimento provável dela é trocar de porta, não sair do app. Quem
   // chegou de qualquer outro jeito continua voltando pra porta da família.
   const veioDaEscolha = location.state?.de === 'escolha';
+
+  /**
+   * A PEÇA VAI JUNTO, E SÓ O `navigator.share` CONSEGUE LEVÁ-LA.
+   *
+   * ⚠️ `wa.me` NÃO CARREGA IMAGEM. O link `https://wa.me/?text=…` transporta
+   * texto e nada mais — é limite do protocolo, não ajuste que falte. Quem
+   * anexa arquivo é a bandeja do sistema (`navigator.share` com `files`), e
+   * ela existe no Chrome do Android e no Safari do iPhone. No computador ela
+   * quase sempre recusa arquivo, e aí vai o texto sozinho pelo `wa.me`.
+   *
+   * ⚠️ O ARQUIVO É BUSCADO ANTES DO TOQUE, e isso não é otimização: a bandeja
+   * só abre dentro do gesto do usuário. Um `await fetch()` no meio do clique
+   * gasta a validade do gesto, e o navegador recusa abrir a bandeja sem erro
+   * nenhum. É a mesma armadilha que a landing documenta no botão dela.
+   *
+   * Por isso o `pointerdown` (o dedo descendo, antes do clique) e o `focus`
+   * (teclado não gera `pointerdown`, e sem ele quem usa Tab nunca chegaria ao
+   * caminho do arquivo).
+   */
+  const peca = useRef(null);
+  const pedida = useRef(false);
+
+  const prepararPeca = useCallback(() => {
+    if (peca.current || pedida.current || !navigator.canShare) return;
+    pedida.current = true;
+    fetch(PECA_DO_PEDIDO)
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((b) => {
+        if (!b) return;
+        const f = new File([b], 'alo-buzinou.jpg', { type: 'image/jpeg' });
+        if (navigator.canShare({ files: [f] })) peca.current = f;
+      })
+      .catch(() => {
+        // Sem a peça vai o texto, e ninguém percebe a diferença.
+      });
+  }, []);
+
+  const enviar = useCallback(() => {
+    const texto = mensagemAoMotorista();
+    const carga = { title: 'Alô Buzinou', text: texto };
+    if (peca.current) carga.files = [peca.current];
+
+    // Nada de `await` antes daqui — ver o comentário de `prepararPeca`.
+    let p;
+    try {
+      p = navigator.share ? navigator.share(carga) : Promise.reject();
+    } catch {
+      // Alguns aparelhos recusam a carga com arquivo de forma síncrona.
+      p = navigator.share
+        ? navigator.share({ title: 'Alô Buzinou', text: texto })
+        : Promise.reject();
+    }
+
+    Promise.resolve(p).catch((err) => {
+      // `AbortError` é a pessoa fechando a bandeja — não é falha, e abrir o
+      // WhatsApp depois disso seria insistir num gesto que ela desfez.
+      if (err && err.name === 'AbortError') return;
+      window.open(linkDoPedido(), '_blank', 'noopener');
+    });
+  }, []);
 
   const copiar = async () => {
     try {
@@ -182,6 +246,7 @@ export default function FirstAccess() {
           * `npm run testar:fundo` refaz as duas contas a partir dos arquivos,
           * então a divergência falha no teste em vez de aparecer na tela. */}
         <main className="relative flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16">
+          <TexturaDoFundo />
           <FundoDoLogin assunto="convite" desde={1980} largura={520} />
           <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8">
             <div className="mb-5">
@@ -237,15 +302,20 @@ export default function FirstAccess() {
                 </span>
               </p>
 
-              <a
-                href={linkDoPedido()}
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* BOTÃO, não link: o `href` do `wa.me` não consegue levar a
+                * peça. Quem leva é a bandeja do sistema, e ela precisa ser
+                * chamada por código dentro do gesto. O `wa.me` continua
+                * existindo como saída, em `linkDoPedido()`. */}
+              <button
+                type="button"
+                onPointerDown={prepararPeca}
+                onFocus={prepararPeca}
+                onClick={enviar}
                 className="tap inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-primary text-base font-bold text-white shadow-focus hover:bg-primaryDark focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <MessageCircle size={20} />
-                Pedir pelo WhatsApp
-              </a>
+                Enviar pelo WhatsApp
+              </button>
 
               {/* A SEGUNDA SAÍDA EXISTE PORQUE A PRIMEIRA DEPENDE DE APP
                 * INSTALADO. Dentro da webview do Instagram, ou num computador
@@ -304,6 +374,13 @@ export default function FirstAccess() {
                 Política de Privacidade
               </Link>
             </div>
+          </div>
+
+          {/* O APP NO FIM DA TELA — só no celular. Onde o fundo
+            * lateral entra (1980px aqui), a tira sai: seriam o mesmo
+            * app dito duas vezes na mesma tela. */}
+          <div className="relative z-10 mx-auto w-full max-w-[520px]">
+            <TiraDoLogin assunto="convite" ate={1980} />
           </div>
         </main>
       </div>

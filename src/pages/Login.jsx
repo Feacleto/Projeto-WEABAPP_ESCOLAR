@@ -21,7 +21,10 @@ import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
-import FundoDoLogin from '../components/auth/FundoDoLogin';
+import FundoDoLogin, {
+  TexturaDoFundo,
+  TiraDoLogin,
+} from '../components/auth/FundoDoLogin';
 import { CENA_ENTRADA, travessar } from '../marca/travessia';
 import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
@@ -703,13 +706,20 @@ export default function Login() {
           * esquerda dele é metade do que sobra, e o fundo só cabe a partir de
           * **1800px**. A conta está no cabeçalho do componente. */}
         <div className="relative flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10">
+          {/* A textura vale em TODA largura — inclusive no celular, onde ela
+            * é a única peça do fundo que cabe. Custa duas `div`. */}
+          <TexturaDoFundo />
           <FundoDoLogin
             assunto={aba}
             assuntos={['entrar', 'criar']}
             desde={1800}
             largura={380}
           />
-          <div className="relative z-10 w-full max-w-[380px] space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float sm:p-7">
+          {/* O ENVELOPE existe pela TIRA. A coluna é um flex que centra,
+            * então a tira solta ficaria AO LADO do formulário; dentro do
+            * envelope ela fica embaixo, na largura dele. */}
+          <div className="relative z-10 w-full max-w-[380px]">
+            <div className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float sm:p-7">
             {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
               * "Cadastrar" era um link no rodapé do cartão que levava pra
               * `/comecar` — e `/comecar` devolve pro login quem não tem
@@ -1069,6 +1079,12 @@ export default function Login() {
                 Política de Privacidade
               </Link>
             </div>
+            </div>
+
+            {/* O APP NO FIM DA TELA — só no celular. Onde o fundo
+              * lateral entra (1800px), a tira sai: seriam o mesmo app
+              * dito duas vezes na mesma tela. */}
+            <TiraDoLogin assunto={aba} ate={1800} />
           </div>
         </div>
       </div>

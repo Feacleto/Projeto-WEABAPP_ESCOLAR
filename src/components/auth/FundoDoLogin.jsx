@@ -3,7 +3,7 @@ import {
   BellRing, MessageCircle, Phone, UserX, Sunrise, Sunset, Copy,
 } from 'lucide-react';
 import WhatsAppIcon from '../common/WhatsAppIcon';
-import { TRIOS, SLOTS } from '../../marca/fundoDoLogin';
+import { TRIOS, SLOTS, INTRO } from '../../marca/fundoDoLogin';
 
 /**
  * O FUNDO DA COLUNA DIREITA DO LOGIN — o app se mostrando enquanto ela entra.
@@ -441,6 +441,19 @@ const PORTEIRA = {
   1980: 'hidden min-[1980px]:block',
 };
 
+/**
+ * A PORTEIRA INVERSA — a tira do celular desaparece exatamente onde o fundo
+ * lateral aparece. As duas nunca convivem: seriam o mesmo app dito duas vezes
+ * na mesma tela.
+ *
+ * Literais pelo mesmo motivo do `PORTEIRA`: classe montada em tempo de
+ * execução não existe no CSS.
+ */
+const ATE = {
+  1800: 'min-[1800px]:hidden',
+  1980: 'min-[1980px]:hidden',
+};
+
 function Cartao({ cartao, ativo, largura }) {
   const slot = SLOTS[cartao.slot];
   // `50% + metade do formulário + vão` — ver o comentário de SLOTS.
@@ -466,17 +479,21 @@ function Cartao({ cartao, ativo, largura }) {
   );
 }
 
-export default function FundoDoLogin({ assunto, assuntos, desde = 1800, largura = 380 }) {
-  const montados = assuntos && assuntos.length ? assuntos : [assunto];
-  const porteira = PORTEIRA[desde] || PORTEIRA[1800];
-
+/**
+ * A TEXTURA — a única peça do fundo que atravessa celular e monitor.
+ *
+ * Ela era uma camada dentro do `FundoDoLogin`, e por isso morria junto com a
+ * porteira de largura: no celular a coluna ficava um cinza liso. Agora ela é
+ * peça própria e aparece em toda largura, porque não custa nada (duas `div`,
+ * nenhuma imagem, nenhuma animação) e é o que impede a superfície de ler como
+ * "página não carregou".
+ *
+ * Os pontos são a marca DILUÍDA — `primary` com 9% de alfa, declarado como
+ * variável CSS no `:root` do index.css. Ver o comentário lá.
+ */
+export function TexturaDoFundo() {
   return (
-    <div
-      aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 select-none overflow-hidden ${porteira}`}
-    >
-      {/* A textura: a marca diluída em pontos de 24px. Ela é o que impede a
-        * coluna de ler como "página não carregou" quando o trio troca. */}
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
         className="absolute inset-0"
         style={{
@@ -484,8 +501,8 @@ export default function FundoDoLogin({ assunto, assuntos, desde = 1800, largura 
           backgroundSize: '24px 24px',
         }}
       />
-      {/* O brilho no canto de baixo, longe dos cartões e atrás do formulário:
-        * ele existe para a coluna ter um centro de gravidade. */}
+      {/* O brilho no canto de baixo, atrás do formulário: ele existe para a
+        * coluna ter um centro de gravidade. */}
       <div
         className="absolute h-[420px] w-[420px] rounded-full"
         style={{
@@ -495,7 +512,85 @@ export default function FundoDoLogin({ assunto, assuntos, desde = 1800, largura 
             'radial-gradient(circle, var(--fundo-brilho) 0%, var(--fundo-brilho-fim) 70%)',
         }}
       />
+    </div>
+  );
+}
 
+/**
+ * A TIRA DO CELULAR — o app no fim da tela, com um chapéu.
+ *
+ * ── POR QUE ELA NÃO É O MESMO COMPONENTE DO MONITOR
+ * No monitor os cartões são CENÁRIO: posição absoluta, atrás do formulário,
+ * sem título, e a pessoa entende sozinha que aquilo é o app aparecendo. No
+ * celular não existe faixa lateral — o painel verde é o topo e o formulário
+ * ocupa a largura toda —, então eles viram uma SEÇÃO, no fluxo normal, depois
+ * do formulário. São dois desenhos, e servir os dois com um componente
+ * produziria um arquivo cheio de `if`.
+ *
+ * ── ⚠️ POR QUE DEPOIS DO FORMULÁRIO, E NÃO ANTES
+ * O painel verde nasce colapsado no celular por uma decisão registrada em
+ * `Login.jsx`: é isso que mantém o cartão do formulário na PRIMEIRA TELA.
+ * Qualquer coisa posta acima dele come esse orçamento — um cartão entre o
+ * painel e o formulário custa ~90px, e 90px ali significa um campo do
+ * formulário saindo da primeira tela. A tira não custa nada da primeira tela
+ * porque começa onde ela termina.
+ *
+ * O preço: **a maioria não vai ver.** Quem abre o login abre pra entrar,
+ * digita e sai. Isso não é defeito do desenho — é o que separa uma tela de
+ * login de uma landing, e quem precisa ser convencido está em
+ * `alobuzinou.com.br`.
+ *
+ * ── SEM ANIMAÇÃO, DE PROPÓSITO
+ * Nem flutuação nem halo. É por aqui que entra a maioria, em Android de
+ * entrada, e movimento num fundo é a primeira coisa a cortar quando o
+ * aparelho é fraco. `fundo-flutua` e `fundo-halo` continuam existindo só no
+ * caminho do monitor.
+ *
+ * Os cartões são os MESMOS do trio do monitor — o mesmo dado, outro arranjo.
+ * Se divergirem, celular e monitor passam a contar histórias diferentes sobre
+ * o mesmo produto, e ninguém compara as duas telas lado a lado pra notar.
+ * `npm run testar:fundo` guarda isso.
+ */
+export function TiraDoLogin({ assunto, ate = 1800 }) {
+  const cartoes = TRIOS[assunto] || [];
+  const intro = INTRO[assunto];
+  if (!cartoes.length) return null;
+
+  return (
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none relative z-10 mt-8 select-none ${ATE[ate] || ATE[1800]}`}
+    >
+      <p className="text-center font-mono text-[10px] uppercase tracking-[0.16em] text-textMuted">
+        {intro}
+      </p>
+      <div className="mt-3 flex flex-col gap-3">
+        {cartoes.map((cartao) => (
+          <div
+            key={cartao.id}
+            className="rounded-[18px] bg-card p-4 shadow-fundo"
+          >
+            <div className="flex flex-col gap-2.5">
+              {cartao.blocos.map((bloco, i) => (
+                <Bloco key={`${cartao.id}-${i}`} dados={bloco} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function FundoDoLogin({ assunto, assuntos, desde = 1800, largura = 380 }) {
+  const montados = assuntos && assuntos.length ? assuntos : [assunto];
+  const porteira = PORTEIRA[desde] || PORTEIRA[1800];
+
+  return (
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none absolute inset-0 select-none overflow-hidden ${porteira}`}
+    >
       {montados.map((chave) =>
         (TRIOS[chave] || []).map((cartao) => (
           <Cartao
