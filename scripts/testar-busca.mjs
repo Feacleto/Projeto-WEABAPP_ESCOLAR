@@ -115,7 +115,12 @@ checar('o robots do app nao anuncia sitemap', false,
 // ─────────────────────────────────────────────────────────────────────────
 bloco('2. A landing e quem deve ser encontrada');
 
-checar('ela NAO tem noindex', false, /<meta name="robots"/.test(landing));
+// ⚠️ O CASO MEDIA A COISA ERRADA: ele proibia QUALQUER `meta robots` na
+// landing, e meta robots tambem serve pra LIBERAR (`max-image-preview`). O
+// que nao pode e o `noindex` — foi o que este caso passou a medir.
+checar('ela NAO tem noindex', false, /content="[^"]*noindex/.test(landing));
+checar('e ela LIBERA miniatura grande', true,
+  landing.includes('max-image-preview:large'));
 checar('o robots dela libera', true, diretivas(robotsLanding).includes('Allow: /'));
 checar('e anuncia o sitemap', true,
   diretivas(robotsLanding).some((l) => l.startsWith('Sitemap:')));
@@ -254,6 +259,26 @@ if (dados) {
   checar('o logo NAO e o cartao social', false, String(dados.logo).includes('og-image'));
   checar('e o cartao social esta no campo dele', true,
     String(dados.image || '').includes('og-image'));
+}
+
+// ── O NOME DO SITE NO RESULTADO ─────────────────────────────────────────
+//
+// Sem `WebSite`, o Google usa o DOMINIO como nome do site na linha de cima
+// do resultado: aparecia "alobuzinou.com.br" em vez de "Alô Buzinou".
+const todosLd = [...landing.matchAll(/application\/ld\+json">([\s\S]*?)<\/script>/g)]
+  .map((m) => {
+    try { return JSON.parse(m[1]); } catch { return null; }
+  });
+checar('todo JSON-LD da pagina e valido', false, todosLd.includes(null));
+
+const site = todosLd.find((d) => d && d['@type'] === 'WebSite');
+checar('a landing declara WebSite', true, Boolean(site));
+if (site) {
+  checar('com o nome da marca', 'Alô Buzinou', site.name);
+  // A busca observada foi "alo buzinou", sem acento. A variante declarada e o
+  // que liga as duas para uma marca que nao tem historico no buscador.
+  checar('e com a variante sem acento', 'Alo Buzinou', site.alternateName);
+  checar('apontando para o dominio da landing', 'https://alobuzinou.com.br', site.url);
 }
 
 console.log(`\n${'═'.repeat(64)}`);

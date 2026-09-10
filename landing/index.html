@@ -6,6 +6,18 @@
 <meta name="theme-color" content="#1F5F3F">
 <meta name="color-scheme" content="light">
 <meta name="description" content="A rota do dia, o aviso de chegada para as familias e a mensalidade organizada num app so. A mensalidade e do motorista, e a plataforma nao entra nela.">
+<!-- ⚠️ ESTA META NAO E `noindex` — ela LIBERA, e a diferenca importa.
+     `max-image-preview:large` e o que torna a pagina elegivel a
+     miniatura GRANDE no resultado da busca; sem ela o Google usa o
+     tamanho padrao, que e um quadradinho ou nada. `max-snippet:-1` e
+     `max-video-preview:-1` dizem "sem limite" no texto e no video.
+
+     ⚠️ Qualquer coisa que alguem acrescente aqui vira instrucao para o
+     buscador. Um `noindex` nesta linha tira a landing da busca em
+     silencio — e ela e a UNICA peca que deve aparecer, porque o app
+     tem noindex de proposito. `npm run testar:busca` mede exatamente
+     isso: a landing pode ter meta robots, mas nunca com `noindex`. -->
+<meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <link rel="canonical" href="https://alobuzinou.com.br/">
 
 <!-- DADOS ESTRUTURADOS — e a lista do que NÃO está aqui é a parte importante.
@@ -45,6 +57,27 @@
     "email": "contato@alobuzinou.com",
     "availableLanguage": "pt-BR"
   }
+}
+</script>
+
+<!-- O NOME DO SITE NO RESULTADO DA BUSCA.
+     O Google mostra uma linha de "nome do site" acima do titulo, e sem esta
+     marcacao ele usa o DOMINIO: o resultado aparecia como
+     "alobuzinou.com.br" em vez de "Alô Buzinou". Este `WebSite` e a fonte
+     que ele consulta primeiro para decidir esse nome.
+
+     ⚠️ `alternateName` sem o circunflexo e deliberado. A busca observada foi
+     "alo buzinou", digitada sem acento e em duas palavras — e a marca so
+     existe escrita "Alô Buzinou" no site inteiro. Declarar a variante e a
+     forma de dizer ao buscador que as duas sao a mesma coisa, em vez de
+     depender de ele adivinhar para uma marca sem histórico. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Alô Buzinou",
+  "alternateName": "Alo Buzinou",
+  "url": "https://alobuzinou.com.br"
 }
 </script>
 
