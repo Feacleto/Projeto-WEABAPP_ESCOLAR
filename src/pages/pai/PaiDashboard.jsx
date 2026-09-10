@@ -100,7 +100,10 @@ export default function PaiDashboard() {
     new Date(new Date().setDate(new Date().getDate() + 1))
   );
   const { absence: absenceAmanha } = useAbsenceForChild(amanhaKey, child?.id);
-  const { history: absenceHistory } = useChildAbsenceHistory(child?.id);
+  const { history: absenceHistory } = useChildAbsenceHistory(
+    child?.id,
+    child?.adminUid
+  );
   const { pickup: altPickup } = useDailyAltPickup(todayKey, child?.id);
   // Hora real de cada etapa e posição na fila — nenhuma das duas o
   // responsável consegue derivar do que ele pode ler.

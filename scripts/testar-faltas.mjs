@@ -11,6 +11,7 @@ import {
 } from '../src/dominio/rota/faltas.js';
 // A aritmética de mês é a de `formatters`, e não uma cópia: o teste passa por
 // ela de propósito, porque é a que as telas de falta usam.
+import { readFileSync } from 'node:fs';
 import { addMonths, formatMonthLabel } from '../src/compartilhado/formatters.js';
 
 let ok = 0, falhou = 0;
@@ -74,6 +75,49 @@ eq(
   limiteDoAviso(new Date('2026-09-25T12:00:00Z')).toISOString().slice(0, 10),
   '2026-10-09'
 );
+
+console.log('\n\x1b[1mO HISTÓRICO PRECISA DO ESCOPO, SENÃO ELE VOLTA VAZIO\x1b[0m');
+
+// ⚠️ O CALENDÁRIO DE FALTAS DO PAI FICOU VAZIO DESDE SEMPRE, e ninguém viu.
+//
+// `useChildAbsenceHistory(childId, adminUid)` e o service que ele chama
+// DESISTEM na primeira linha quando falta o `adminUid` — devolvem `[]` sem
+// nem consultar o banco. As duas telas do PAI chamavam com um argumento só,
+// então a tela dizia "Nenhuma falta neste mês" para todo mês, para sempre.
+//
+// Não dava erro em lugar nenhum: lista vazia e "nenhuma falta" são a mesma
+// tela. E a frase do estado vazio ("só aparece aqui o que foi avisado pelo
+// app") explicava o silêncio de um jeito plausível — que é o que fez isso
+// durar.
+//
+// O `adminUid` não é enfeite: ele é o campo que ESCOPA a consulta
+// (`where('adminUid','==',...)`), e consulta sem escopo é recusada inteira.
+
+const chamadas = [
+  ['PaiFaltas', '../src/pages/pai/PaiFaltas.jsx'],
+  ['PaiDashboard', '../src/pages/pai/PaiDashboard.jsx'],
+  ['ChildDetail', '../src/pages/ChildDetail.jsx'],
+];
+
+for (const [nome, rel] of chamadas) {
+  const fonte = readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const uso = fonte.match(/useChildAbsenceHistory\(([^)]*)\)/);
+  eq(`${nome} chama o histórico`, Boolean(uso), true);
+  if (!uso) continue;
+  // Dois argumentos: a criança E o motorista dela.
+  const args = uso[1].split(',').map((x) => x.trim()).filter(Boolean);
+  eq(`${nome} passa a criança e o escopo`, args.length, 2);
+  eq(`${nome} escopa pelo adminUid`, /adminUid/.test(args[1] || ''), true);
+}
+
+// Sonda positiva: o detector precisa reprovar a chamada de um argumento só —
+// que era exatamente a que estava no código.
+{
+  const velho = 'const { history } = useChildAbsenceHistory(child?.id);';
+  const uso = velho.match(/useChildAbsenceHistory\(([^)]*)\)/);
+  const args = uso[1].split(',').map((x) => x.trim()).filter(Boolean);
+  eq('o detector reprova a chamada antiga (sonda positiva)', args.length, 1);
+}
 
 console.log('\n' + '─'.repeat(66));
 console.log(`\x1b[1m${ok} passaram, ${falhou} falharam\x1b[0m`);

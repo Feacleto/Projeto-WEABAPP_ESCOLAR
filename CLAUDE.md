@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 2099 casos em 37 scripts. O PRIMEIRO é
+npm run testar                   # 2109 casos em 37 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -1094,6 +1094,29 @@ hora de pegar, e criança "na perua" muito depois da hora de chegar. Atraso
 comum NÃO gera tarja — ali o app está calado, não mentindo, e tarja semanal
 ensina a pular tarja. Quando o grave dispara, o anel pulsante e o "AO VIVO"
 PARAM: animação viva sobre dado morto é a pior parte.
+
+⚠️ **O CALENDÁRIO DE FALTAS DO PAI FICOU VAZIO DESDE SEMPRE** (achado em
+11/09/2026). `useChildAbsenceHistory(childId, adminUid)` e
+`watchAllAbsencesForChild` DESISTEM na primeira linha sem o `adminUid` —
+devolvem `[]` sem consultar o banco —, e as duas telas do PAI
+([PaiFaltas](src/pages/pai/PaiFaltas.jsx) e
+[PaiDashboard](src/pages/pai/PaiDashboard.jsx)) chamavam com **um argumento
+só**. A tela dizia *"Nenhuma falta em setembro"* para todo mês, para sempre.
+Só a do motorista ([ChildDetail](src/pages/ChildDetail.jsx)) passava os dois.
+
+Não deu erro em lugar nenhum: lista vazia e "nenhuma falta" são a mesma tela
+— e o próprio texto do estado vazio (*"só aparece aqui o que foi avisado pelo
+app"*) explicava o silêncio de um jeito plausível, que é o que fez isso durar.
+O `adminUid` é o campo que ESCOPA a consulta, e **consulta sem escopo é
+recusada inteira**. `npm run testar:faltas` confere os três chamadores, com
+sonda positiva.
+
+⚠️ **E O CALENDÁRIO MOSTRA O QUE FOI AVISADO, NÃO O QUE ACONTECEU.** Ele lê
+`absenceDeclarations` — nunca `rides`. Falta combinada por fora não entra, e
+a tela diz isso. Quem sabe se a criança REALMENTE rodou é o marco em
+`rides/{dia}`, e é a única coisa que sabe: se essas viagens forem apagadas, a
+diferença entre "avisou que ia faltar" e "não apareceu" deixa de ser
+recuperável para sempre.
 
 **Falta tem teto de 14 dias** — `DIAS_DE_AVISO_DE_FALTA` em
 [dominio/rota/faltas.js](src/dominio/rota/faltas.js), com `limiteDoAviso()` para

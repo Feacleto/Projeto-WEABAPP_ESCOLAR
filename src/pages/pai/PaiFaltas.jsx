@@ -44,7 +44,10 @@ import {
 export default function PaiFaltas() {
   const navigate = useNavigate();
   const { child, loading: carregandoCrianca } = useActiveChild();
-  const { history, loading } = useChildAbsenceHistory(child?.id);
+  const { history, loading } = useChildAbsenceHistory(
+    child?.id,
+    child?.adminUid
+  );
 
   const [mes, setMes] = useState(() => getCurrentMonthKey());
   const [avisando, setAvisando] = useState(false);
