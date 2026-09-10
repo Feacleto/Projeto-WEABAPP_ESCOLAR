@@ -200,6 +200,8 @@ console.log('\n─── todo scripts/testar-*.mjs está na bateria ───');
   const foraDePropósito = {
     'testar-regras.mjs': 'precisa do emulador do Firestore',
     'testar-storage.mjs': 'precisa dos emuladores auth+firestore+storage',
+    'testar-fechamento.mjs':
+      'precisa do emulador do Firestore, e importa o Admin SDK de propósito — é o único teste que ESCREVE',
     'testar-avatar.mjs': 'bate na API do DiceBear — precisa de rede',
     'testar-navegador.mjs': 'precisa de navegador',
     'testar-imports.mjs': 'é este arquivo',

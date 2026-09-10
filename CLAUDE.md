@@ -30,6 +30,10 @@ npm run testar                   # 1981 casos em 37 scripts. O PRIMEIRO é
                                  # selo, indicacao, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca,
                                  # tutorial
+npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
+                                 # `fecharMes` de verdade contra o Firestore
+                                 # do emulador, com o Admin SDK, e lê os
+                                 # documentos depois. 35 casos.
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — precisa de auth,firestore
                                  # E storage juntos (ele semeia usuário e
@@ -1720,6 +1724,29 @@ teste porque cada régua estava certa sozinha:
   de atraso. ⚠️ A divisão é julgamento e está num lugar só para poder mudar em
   uma linha; o que é regra — nenhum marco com dois canais, nenhum sem canal —
   é o que o teste prova.
+
+⚠️ **TODA A BATERIA PROVA RÉGUA, E RÉGUA NÃO ESCREVE.** Foi a aposta certa —
+regra pura é regra testável —, mas ela não alcança o que `fechamento.js` faz
+de verdade. `npm run testar:fechamento`
+([scripts/testar-fechamento.mjs](scripts/testar-fechamento.mjs)) é o único que
+roda contra o Firestore do emulador e depois LÊ o que ficou gravado.
+
+Ele existe porque `fecharMes` é a peça de maior raio de dano do projeto: emite
+a fatura de todo motorista, e desde 10/09/2026 **reconcilia
+`indicacoesAtivas` antes de cobrar** — um erro ali cobra a base inteira errado,
+em silêncio, uma vez por mês. Até este arquivo existir, a primeira execução
+dela seria em produção, no dia 1, às 5 da manhã.
+
+⚠️ **O caso que justifica o arquivo é o da ORDEM**: com o contador velho a
+fatura sairia R$ 100,30 e com o reconciliado sai R$ 112,10. Nenhuma régua pura
+enxerga isso — é ordem de escrita, e só um teste que escreve a vê. Ele também
+trava a idempotência (o dono pode fechar à mão no dia em que a agendada
+rodou), a fatura isenta do teste, o parceiro que falha sem derrubar a
+varredura, e o contador que **não** é reescrito quando não mudou.
+
+⚠️ Ele importa o Admin SDK de `functions/node_modules` por caminho explícito,
+e por isso fica **fora da bateria encadeada** — é exatamente o que
+`testar:imports` proíbe lá, e está na lista nomeada de exceções.
 
 **Há CI** — [.github/workflows/ci.yml](.github/workflows/ci.yml) roda lint,
 `npm run testar` e build. Rules e Storage ficam fora até o emulador entrar lá.
