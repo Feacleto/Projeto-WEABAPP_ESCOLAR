@@ -24,11 +24,18 @@ import EstradaCarregando from './EstradaCarregando';
  * worker novo estiver esperando.
  *
  * O TEATRO NÃO É ENFEITE
- * `updateServiceWorker(true)` troca o worker e recarrega — e entre o toque e a
- * tela voltar existe um vão de silêncio de um a três segundos, com a rede no
- * meio. Sem cobrir esse vão, o toque parece não ter funcionado e a pessoa toca
- * de novo. A tela cheia também impede que ela navegue pra outro lugar no
- * exato instante em que o chão vai ser trocado.
+ * Entre o toque e a tela voltar existe um vão de silêncio de um a três
+ * segundos, com a rede no meio. Sem cobrir esse vão, o toque parece não ter
+ * funcionado e a pessoa toca de novo. A tela cheia também impede que ela
+ * navegue pra outro lugar no exato instante em que o chão vai ser trocado.
+ *
+ * ⚠️ E ESSE PARÁGRAFO DESCREVIA O SINTOMA CERTO PELA CAUSA ERRADA.
+ * Ele dizia que `updateServiceWorker(true)` "troca o worker e recarrega", e
+ * concluía que tocar de novo era problema de PERCEPÇÃO — o vão sem cobertura.
+ * Não era: a função nunca recarregou (o argumento dela é ignorado, ver o
+ * comentário de `atualizar()` abaixo), e o toque de novo era necessário de
+ * verdade. O teatro continua valendo pelo motivo dele; o que estava errado
+ * era acreditar que ele resolvia sozinho.
  *
  * E ELE TEM PRAZO. Se em oito segundos o navegador não recarregou — worker que
  * não ativa, rede que caiu no meio do download —, a gente recarrega na mão. Um
@@ -73,18 +80,57 @@ export default function AtualizacaoDisponivel() {
     },
   });
 
+  /**
+   * ⚠️ `updateServiceWorker(true)` NÃO RECARREGA — E O COMENTÁRIO AQUI DIZIA
+   * QUE SIM. Era isso que fazia o botão precisar de mais de um toque.
+   *
+   * O que o plugin faz de verdade está em
+   * `node_modules/vite-plugin-pwa/dist/client/build/register.js`:
+   *
+   *     const updateServiceWorker = async (_reloadPage = true) => {
+   *       await registerPromise;
+   *       if (!auto) sendSkipWaitingMessage?.();
+   *     };
+   *
+   * O argumento chama `_reloadPage` e é **ignorado**: a função só posta
+   * `SKIP_WAITING` no worker em espera. E a promessa **resolve** no caminho
+   * feliz — ao contrário do que o comentário antigo afirmava —, então o
+   * `catch` nunca pegava nada.
+   *
+   * Quem recarregava era um listener que o plugin registra por dentro, e ele
+   * só dispara `if (event.isUpdate)`. Depender disso é depender de uma
+   * condição que o plugin calcula no registro, num arquivo que não é nosso e
+   * que muda de versão para versão.
+   *
+   * AGORA O SINAL É NOSSO E É O ÚNICO QUE IMPORTA: `controllerchange` do
+   * `navigator.serviceWorker`, que o navegador dispara quando o worker novo
+   * assume a página. Se ele assumiu, recarregar mostra a versão nova — não
+   * há terceiro estado. O prazo continua como rede de segurança para o caso
+   * de não haver worker em espera (aí a troca nunca acontece e nada avisaria).
+   *
+   * `umaVezSo` existe porque os dois caminhos podem chegar juntos, e dois
+   * `reload()` na mesma tela é uma piscada a mais na cara de quem já esperou.
+   */
   const atualizar = useCallback(() => {
     setAtualizando(true);
-    prazo.current = setTimeout(() => {
-      window.location.reload();
-    }, PRAZO_DO_TEATRO_MS);
-    // `true` = recarrega assim que o worker novo assumir. A promessa não
-    // resolve no caminho feliz (a página some antes), então o `catch` só
-    // pega falha de verdade — e aí o prazo acima ainda cobre.
-    Promise.resolve(updateServiceWorker(true)).catch(() => {
+
+    let jaFoi = false;
+    const recarregar = () => {
+      if (jaFoi) return;
+      jaFoi = true;
       clearTimeout(prazo.current);
       window.location.reload();
+    };
+
+    navigator.serviceWorker?.addEventListener('controllerchange', recarregar, {
+      once: true,
     });
+    prazo.current = setTimeout(recarregar, PRAZO_DO_TEATRO_MS);
+
+    // Sem argumento: ele é ignorado, e passá-lo sugeria um comportamento que
+    // não existe. O que esta chamada faz é UMA coisa — mandar o worker em
+    // espera assumir.
+    Promise.resolve(updateServiceWorker()).catch(recarregar);
   }, [updateServiceWorker]);
 
   if (atualizando) {
