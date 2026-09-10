@@ -31,6 +31,9 @@ const {
 } = require('./lib/fechamento');
 const { makeEnviarAvisosComerciais } = require('./lib/enviarAvisos');
 const { makeCasarNoCadastro } = require('./lib/casarNoCadastro');
+const {
+  makeLimparCoordenadaDoCheckpoint,
+} = require('./lib/limpezaDoCheckpoint');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./lib/limites');
@@ -558,6 +561,26 @@ exports.contratarPlano = makeContratarPlano(db);
  */
 exports.fecharMesDosParceiros = makeFecharMesDosParceiros(db);
 exports.fecharMesAgora = makeFecharMesAgora(db);
+
+/**
+ * A LIMPEZA DA COORDENADA — manutenção de UMA vez, e ela tem prazo.
+ *
+ * `checkpointFrom` gravava a posição do VEÍCULO do motorista em
+ * `children.lastStatusCheckpoint` e em `rides/{dia}.checkpoints`, sem nenhum
+ * leitor. O código parou em 10/09/2026; o que já está gravado sai por aqui.
+ *
+ * ⚠️ É function e não script porque a alternativa era uma CHAVE DE SERVIÇO
+ * baixada do console — que abre o projeto inteiro sem rules, e é um risco
+ * novo maior que o campo que ela vem apagar. As rules recusam esta escrita a
+ * todo mundo, dono incluído, então o privilégio precisa vir de um lugar que
+ * já o tem.
+ *
+ * ⚠️ **SEM `{ apagar: true }` ELA SÓ CONTA.**
+ *
+ * ⚠️ **ELA SAI DAQUI** quando o relatório vier zerado em produção, junto do
+ * script, da régua, do teste e do bloco do painel.
+ */
+exports.limparCoordenadaDoCheckpoint = makeLimparCoordenadaDoCheckpoint(db);
 
 /**
  * OS AVISOS COMERCIAIS — o único canal que alcança quem parou de abrir o app.

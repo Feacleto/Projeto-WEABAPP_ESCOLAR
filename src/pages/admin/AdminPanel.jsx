@@ -562,6 +562,12 @@ function Geral({ ov }) {
           * de manutenção faz quem aperta desconfiar do DADO, não do ambiente.
           * A janela de avaliação acima FICA: ela é Firestore direto. */}
         {CLOUD_FUNCTIONS_ENABLED && <PrivacidadeDosDepoimentos />}
+        {/* ⚠️ ESTE BLOCO TEM PRAZO DE VALIDADE. Quando a verificação vier
+          * zerada em produção, ele sai daqui junto da function
+          * `limparCoordenadaDoCheckpoint`, da régua, do script e do teste.
+          * Manutenção de uma vez que fica no painel vira botão que ninguém
+          * sabe mais o que faz — e este escreve na base inteira. */}
+        {CLOUD_FUNCTIONS_ENABLED && <CoordenadaDosCheckpoints />}
       </section>
     </div>
   );
@@ -820,6 +826,157 @@ function PrivacidadeDosDepoimentos() {
         title={`Recolher dados de ${aCorrigir} depoimento(s)?`}
         description="Apaga o nome completo e a foto sem autorização dos documentos públicos, preservando o primeiro nome. Não tem desfazer."
         confirmLabel="Aplicar"
+        loading={rodando}
+        onConfirm={() => chamar(true)}
+        onCancel={() => setConfirmando(false)}
+      />
+    </>
+  );
+}
+
+/**
+ * A COORDENADA DO MOTORISTA QUE FICOU NOS CHECKPOINTS.
+ *
+ * ── O QUE ELE APAGA
+ * `checkpointFrom` gravava `lat`/`lng` do VEÍCULO do motorista em
+ * `children.lastStatusCheckpoint` e em `rides/{dia}.checkpoints`, um registro
+ * por criança por dia, e nenhuma tela lia. A conferência usa a DISTÂNCIA, que
+ * diz se ele estava longe da casa sem dizer onde ele estava. O código parou
+ * de gravar em 10/09/2026 — isto tira o que já foi gravado.
+ *
+ * ── POR QUE É BOTÃO, E NÃO UM SCRIPT
+ * O script existe e funciona, mas pede uma CHAVE DE SERVIÇO baixada do
+ * console — que abre o projeto inteiro sem rules, um risco novo maior que o
+ * campo que ela vem apagar. Aqui o privilégio já existe e a autorização é o
+ * login do dono.
+ *
+ * ── O QUE SE CURA SOZINHO
+ * `children.lastStatusCheckpoint` é substituído inteiro na próxima entrega,
+ * então a turma que continua rodando se limpa sem ninguém fazer nada. O que
+ * NÃO se cura é `rides` (o id é o DIA — o de ontem nunca é reescrito) e as
+ * crianças que pararam de rodar. É por essas duas que o botão existe.
+ *
+ * ⚠️ ELE TEM PRAZO: relatório zerado em produção, e este componente sai.
+ */
+function CoordenadaDosCheckpoints() {
+  const [relatorio, setRelatorio] = useState(null);
+  const [rodando, setRodando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [feito, setFeito] = useState(null);
+
+  const chamar = async (apagar) => {
+    setRodando(true);
+    try {
+      const fn = httpsCallable(functions, 'limparCoordenadaDoCheckpoint');
+      const { data } = await fn({ apagar });
+      if (apagar) {
+        setFeito(data);
+        setRelatorio(null);
+        toast.success(
+          data.total > 0
+            ? `${data.total} registro(s) limpo(s).`
+            : 'Nada a apagar.'
+        );
+      } else {
+        setRelatorio(data);
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Não deu pra rodar a verificação.');
+    } finally {
+      setRodando(false);
+      setConfirmando(false);
+    }
+  };
+
+  const aLimpar = relatorio?.total || 0;
+
+  return (
+    <>
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-sm font-bold text-text">
+          Coordenada do motorista nos checkpoints
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-textMuted">
+          A marcação de entrega chegou a guardar <strong>a posição do
+          veículo</strong> do motorista, por criança e por dia, num documento
+          que a responsável dela lê. Nenhuma tela usava — o que a conferência
+          usa é a <strong>distância</strong> até a casa, e ela fica. O app
+          parou de gravar; isto tira o que sobrou.
+        </p>
+
+        {feito && (
+          <p className="mt-3 rounded-xl border border-primaryBorder bg-primarySoft px-3 py-2 text-xs font-semibold text-primary">
+            {feito.total > 0
+              ? `Limpos ${feito.total} registros — ${feito.coordenadasTiradas} coordenada(s) e ${feito.checkpointsInteiros} checkpoint(s) inteiro(s).`
+              : 'Nada a apagar. A base não tem coordenada gravada.'}
+          </p>
+        )}
+
+        {relatorio && !feito && (
+          <div className="mt-3 rounded-xl border border-border bg-surface p-3">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-textMuted">
+              <span>
+                crianças:{' '}
+                <strong className="tabular-nums text-text">
+                  {relatorio.criancas}
+                </strong>
+              </span>
+              <span>
+                viagens:{' '}
+                <strong className="tabular-nums text-text">
+                  {relatorio.viagens}
+                </strong>
+              </span>
+              <span>
+                a limpar:{' '}
+                <strong
+                  className={`tabular-nums ${aLimpar > 0 ? 'text-warning' : 'text-accentText'}`}
+                >
+                  {aLimpar}
+                </strong>
+              </span>
+            </div>
+            {aLimpar === 0 && (
+              <p className="mt-1.5 text-xs text-textMuted">
+                Nada gravado. Não precisa apagar nada.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => chamar(false)}
+            disabled={rodando}
+            className="tap inline-flex h-10 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold text-text disabled:opacity-60"
+          >
+            {rodando && !confirmando ? <Spinner size={14} /> : null}
+            Verificar
+          </button>
+          {aLimpar > 0 && (
+            <button
+              type="button"
+              onClick={() => setConfirmando(true)}
+              disabled={rodando}
+              className="tap inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white disabled:opacity-60"
+            >
+              Apagar
+            </button>
+          )}
+        </div>
+
+        <p className="mt-2 text-xs leading-relaxed text-textMuted">
+          A verificação não muda nada. Apagar não tem desfazer — e a distância,
+          que é o que serve pra conferir uma entrega, continua guardada.
+        </p>
+      </div>
+
+      <ConfirmDialog
+        open={confirmando}
+        title={`Apagar a coordenada de ${aLimpar} registro(s)?`}
+        description="Tira a posição do veículo do motorista dos checkpoints já gravados. A distância até a casa ou a escola continua, e é ela que serve pra conferir uma entrega. Não tem desfazer."
+        confirmLabel="Apagar"
         loading={rodando}
         onConfirm={() => chamar(true)}
         onCancel={() => setConfirmando(false)}

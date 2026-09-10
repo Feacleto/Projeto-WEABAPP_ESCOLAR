@@ -489,12 +489,27 @@ ficou para trás. Duas regras, e a segunda não é óbvia: checkpoint **com**
 distância perde só `lat`/`lng`; checkpoint **sem** distância some inteiro,
 porque ele nasceu sem destino esperado (`onboard`) e sobraria um `{ at }`
 que não responde pergunta nenhuma — a hora já está em `marcos[status]`.
-⚠️ **Sem `--apagar` ele não escreve nada**, e ele precisa de chave de serviço
-porque as rules recusam esta escrita a todo mundo: o dono LÊ `children`
-inteiro para contar a base ("ler não é operar"), não escreve, e `rides` ele
-nem lê. Rodar duas vezes é seguro. `npm run testar:limpeza` semeia as três
-formas no emulador e mede o resultado — é o único script de manutenção que
-escreve, então ele é o único que tem teste.
+⚠️ **Sem `--apagar` ele não escreve nada.** Rodar duas vezes é seguro.
+`npm run testar:limpeza` semeia as três formas no emulador e mede o resultado
+— é o único script de manutenção que escreve, então é o único que tem teste.
+
+⚠️ **E O CAMINHO NORMAL É O BOTÃO, NÃO O SCRIPT.** A aba **Números** do painel
+do dono tem "Coordenada do motorista nos checkpoints", com Verificar e Apagar
+separados, e ele chama a callable `limparCoordenadaDoCheckpoint` — **sem
+chave nenhuma**. O script continua para quem prefere o relatório no terminal,
+e ele exige uma chave de serviço porque as rules recusam esta escrita a todo
+mundo: o dono LÊ `children` inteiro para contar a base ("ler não é operar"),
+não escreve, e `rides` ele nem lê. **A REGRA É UMA SÓ**, em
+[reguaDaLimpeza.js](functions/lib/reguaDaLimpeza.js) — os dois a importam, e
+o teste falha se algum reescrever a decisão por conta própria. Não é espelho:
+entre eles não existe fronteira de deploy.
+
+⚠️ **O QUE SE CURA SOZINHO, E O QUE NÃO.** `advanceChild` SUBSTITUI
+`lastStatusCheckpoint` inteiro, então a turma que continua rodando se limpa
+na próxima entrega, sem ninguém fazer nada. `rides` **nunca** se cura: o id
+do documento é o DIA, e o de ontem não é escrito de novo. Somem só pela
+varredura esses e as crianças que pararam de rodar — que não têm próxima
+entrega.
 
 ⚠️ **O ENDEREÇO TEM UM MODO DE FALHAR QUE NÃO É QUEBRAR — É AFIRMAR.** O campo
 era um texto livre só, e o pedaço que se esquece nele é o **número**. Sem número
@@ -966,6 +981,15 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   ⚠️ **O caminho público NUNCA escreve**, e o recorte é uma LISTA FECHADA de
   campos, não um spread do doc da criança — o teste procura endereço,
   coordenada, telefone, mensalidade e dado de saúde dentro do JSON, um por um.
+- **Manutenção (tem prazo):** `limparCoordenadaDoCheckpoint` — só o dono,
+  e **sem `{ apagar: true }` ela só CONTA**. Apaga a coordenada do veículo do
+  motorista que ficou em `children.lastStatusCheckpoint` e em
+  `rides/{dia}.checkpoints`. ⚠️ É function e não só script porque a
+  alternativa era uma CHAVE DE SERVIÇO baixada do console — que abre o projeto
+  inteiro sem rules, e é risco novo maior que o campo que ela vem apagar. As
+  rules recusam esta escrita a todo mundo, dono incluído, então o privilégio
+  tem que vir de onde já existe. ⚠️ **Ela sai** quando o relatório vier zerado
+  em produção, junto do bloco no painel, do script, da régua e do teste.
 - **Outros:** `getShowcase`,
   `flagDuplicateReceipts`, `backfillTestimonialPrivacy`
 

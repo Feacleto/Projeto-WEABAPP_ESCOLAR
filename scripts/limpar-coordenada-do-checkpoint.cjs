@@ -35,15 +35,16 @@
  * a escrita é um segundo comando, deliberado. Script destrutivo que age no
  * primeiro `node` é o que transforma "vou dar uma olhada" em incidente.
  *
- * ── AS DUAS REGRAS DE REMOÇÃO, e a segunda não é óbvia
- *   1. Checkpoint COM `distanceKm`  → apaga só `lat` e `lng`. A distância é a
- *      conferência, e ela fica.
- *   2. Checkpoint SEM `distanceKm`  → apaga o checkpoint INTEIRO. Ele nasceu
- *      quando não havia destino esperado (`onboard`), então não carrega nada
- *      além da posição: tirar `lat`/`lng` deixaria `{ at }` sozinho, um objeto
- *      que não responde a pergunta nenhuma e que a próxima pessoa teria que
- *      decifrar. Em `rides`, a hora já está em `marcos[status]` — o `at` órfão
- *      seria a segunda cópia dela.
+ * ── AS DUAS REGRAS DE REMOÇÃO MORAM EM `functions/lib/reguaDaLimpeza.js`
+ * Com distância sai só a coordenada; sem distância sai o checkpoint inteiro.
+ * O porquê da segunda está lá, junto da regra — e a callable do dono usa
+ * exatamente a mesma função.
+ *
+ * ── ⚠️ E O BOTÃO DO PAINEL FAZ ISTO SEM CHAVE NENHUMA
+ * `limparCoordenadaDoCheckpoint` (aba Números) roda a mesma varredura com o
+ * privilégio que a function já tem. Este script continua existindo para quem
+ * prefere ver o relatório no terminal, ou para o dia em que o painel não
+ * estiver de pé.
  *
  * ── COMO USAR
  *   # conferir (não escreve nada)
@@ -68,6 +69,13 @@ const admin = require(path.join(
   RAIZ,
   'functions/node_modules/firebase-admin/lib/index.js'
 ));
+// ⚠️ A RÉGUA VEM DE `functions/lib`, NÃO É COPIADA AQUI. A callable do dono
+// (`limpezaDoCheckpoint.js`) usa a mesma — e entre os dois não há fronteira
+// de deploy nenhuma, é a mesma máquina lendo o mesmo disco. Copiar seria o
+// quarto espelho do projeto, e pelo pior motivo: nenhum.
+const { decidir, planoDaViagem, TIRAR_COORDENADA } = require(
+  path.join(RAIZ, 'functions/lib/reguaDaLimpeza.js')
+);
 
 const APAGAR = process.argv.includes('--apagar');
 /** O Firestore recusa lotes acima de 500. 400 deixa folga pro que cresce. */
@@ -81,22 +89,6 @@ function projeto() {
     if (m) return m[1].trim();
   }
   throw new Error('Não achei o projeto: defina GCLOUD_PROJECT ou VITE_FIREBASE_PROJECT_ID no .env');
-}
-
-/**
- * O que fazer com UM checkpoint. Pura de propósito — é a regra, e o teste
- * exercita ela direto, sem emulador.
- *
- * @returns 'nada' | 'tirar-coordenada' | 'apagar-inteiro'
- */
-function decidir(checkpoint) {
-  if (!checkpoint || typeof checkpoint !== 'object') return 'nada';
-  const temCoordenada =
-    checkpoint.lat !== undefined || checkpoint.lng !== undefined;
-  if (!temCoordenada) return 'nada';
-  return checkpoint.distanceKm === undefined
-    ? 'apagar-inteiro'
-    : 'tirar-coordenada';
 }
 
 async function main() {
@@ -154,7 +146,7 @@ async function main() {
       amostra.push(`children/${doc.id}.lastStatusCheckpoint → ${decisao}`);
     }
 
-    if (decisao === 'apagar-inteiro') {
+    if (decisao !== TIRAR_COORDENADA) {
       conta.checkpointsInteiros += 1;
       await gravar(doc.ref, { lastStatusCheckpoint: APAGA_CAMPO });
     } else {
@@ -177,37 +169,23 @@ async function main() {
     const mapa = doc.get('checkpoints');
     if (!mapa || typeof mapa !== 'object') continue;
 
-    const patch = {};
-    let sobrevive = 0;
-    let mexeu = false;
+    const plano = planoDaViagem(mapa);
+    if (!plano.mexeu) continue;
 
-    for (const [status, cp] of Object.entries(mapa)) {
-      const decisao = decidir(cp);
-      if (decisao === 'nada') {
-        sobrevive += 1;
-        continue;
-      }
-      mexeu = true;
-      if (decisao === 'apagar-inteiro') {
-        conta.checkpointsInteiros += 1;
-        patch[`checkpoints.${status}`] = APAGA_CAMPO;
-      } else {
-        conta.coordenadasTiradas += 1;
-        sobrevive += 1;
-        patch[`checkpoints.${status}.lat`] = APAGA_CAMPO;
-        patch[`checkpoints.${status}.lng`] = APAGA_CAMPO;
-      }
-    }
-
-    if (!mexeu) continue;
     conta.viagensComCoordenada += 1;
+    conta.coordenadasTiradas += plano.tiradas;
+    conta.checkpointsInteiros += plano.inteiros;
     if (amostra.length < 10) {
-      amostra.push(`${doc.ref.path}.checkpoints → ${Object.keys(patch).join(', ')}`);
+      amostra.push(`${doc.ref.path}.checkpoints → ${plano.caminhos.join(', ')}`);
     }
 
-    // Nenhum status sobrou: some com o mapa em vez de deixar `{}`. Mapa
-    // vazio é o mesmo enigma do `{ at }` solto, um nível acima.
-    await gravar(doc.ref, sobrevive === 0 ? { checkpoints: APAGA_CAMPO } : patch);
+    // Os caminhos da régua viram `delete()` só aqui — ela não conhece SDK.
+    await gravar(
+      doc.ref,
+      plano.apagarMapa
+        ? { checkpoints: APAGA_CAMPO }
+        : Object.fromEntries(plano.caminhos.map((c) => [c, APAGA_CAMPO]))
+    );
   }
 
   if (APAGAR && noLote > 0) await lote.commit();
@@ -234,8 +212,6 @@ async function main() {
     console.log(`\n${total} registros mexidos.\n`);
   }
 }
-
-module.exports = { decidir };
 
 if (require.main === module) {
   main().catch((e) => {

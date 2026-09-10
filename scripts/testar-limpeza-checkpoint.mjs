@@ -25,11 +25,19 @@
  *   6. Rodar duas vezes não quebra nem conta de novo — a limpeza pode ser
  *      interrompida pela rede no meio da varredura.
  *
+ * ⚠️ E SÃO DOIS CONSUMIDORES DA MESMA RÉGUA: o script (terminal, precisa de
+ * chave de serviço) e a callable `limparCoordenadaDoCheckpoint` (botão do
+ * painel, não precisa de chave nenhuma). O que este arquivo roda de ponta a
+ * ponta é o SCRIPT — a callable é a mesma varredura com o mesmo
+ * `planoDaViagem`, e o bloco final confere que ela não recriou a regra por
+ * conta própria.
+ *
  * COMO RODAR (precisa do emulador, e por isso fica fora da bateria)
  *   firebase emulators:exec --only firestore "node scripts/testar-limpeza-checkpoint.mjs"
  */
 
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,8 +54,11 @@ process.env.GCLOUD_PROJECT = PID;
 const admin = require(
   path.join(RAIZ, 'functions/node_modules/firebase-admin/lib/index.js')
 );
-const { decidir } = require(
-  path.join(RAIZ, 'scripts/limpar-coordenada-do-checkpoint.cjs')
+// ⚠️ A RÉGUA É UMA SÓ, e é ela que este teste mede. O script de manutenção
+// e a callable do dono consomem exatamente esta função — não há espelho a
+// comparar, que é o ponto: entre os dois não existe fronteira de deploy.
+const { decidir, planoDaViagem } = require(
+  path.join(RAIZ, 'functions/lib/reguaDaLimpeza.js')
 );
 
 admin.initializeApp({ projectId: PID });
@@ -165,6 +176,55 @@ checar('distância zero é distância', 'tirar-coordenada',
 // Só `lng` (gravação parcial): ainda é coordenada, ainda sai.
 checar('coordenada pela metade também sai', 'apagar-inteiro',
   decidir({ lng: 2, at: 'x' }));
+
+bloco('O plano de uma viagem inteira');
+
+// A viagem tem um checkpoint POR STATUS, e eles podem ter sortes diferentes
+// no mesmo documento — é o caso que uma regra "por documento" erraria.
+const misto = planoDaViagem({
+  onboard: { lat: 1, lng: 2, at: 'a' },
+  delivered: { lat: 3, lng: 4, at: 'b', distanceKm: 0.03 },
+});
+checar('o de onboard sai inteiro', true,
+  misto.caminhos.includes('checkpoints.onboard'));
+checar('o de delivered perde só a coordenada', true,
+  misto.caminhos.includes('checkpoints.delivered.lat')
+  && misto.caminhos.includes('checkpoints.delivered.lng'));
+checar('e o mapa NÃO some, porque um sobreviveu', false, misto.apagarMapa);
+checar('a conta separa os dois tipos', '1/1', `${misto.tiradas}/${misto.inteiros}`);
+
+const soPosicao = planoDaViagem({ onboard: { lat: 1, lng: 2, at: 'a' } });
+checar('nada sobrou: o mapa inteiro some', true, soPosicao.apagarMapa);
+
+const jaLimpoMapa = planoDaViagem({ delivered: { at: 'b', distanceKm: 0.1 } });
+checar('mapa já limpo não vira escrita', false, jaLimpoMapa.mexeu);
+checar('mapa ausente não vira escrita', false, planoDaViagem(undefined).mexeu);
+
+bloco('A regra tem uma cópia só');
+
+// ⚠️ ESTE É O CASO QUE IMPEDE O QUARTO ESPELHO DO PROJETO. Script e callable
+// varrem a mesma base com o mesmo privilégio; se um deles reescrever a regra
+// por conta própria, as duas metades divergem em silêncio e a limpeza do
+// painel passa a apagar coisa diferente da do terminal.
+const fonteDaCallable = readFileSync(
+  new URL('../functions/lib/limpezaDoCheckpoint.js', import.meta.url), 'utf8');
+const fonteDoScript = readFileSync(
+  new URL('../scripts/limpar-coordenada-do-checkpoint.cjs', import.meta.url), 'utf8');
+
+for (const [nome, fonte] of [
+  ['a callable', fonteDaCallable],
+  ['o script', fonteDoScript],
+]) {
+  checar(`${nome} importa a régua`, true, fonte.includes('reguaDaLimpeza'));
+  // `distanceKm === undefined` é a linha da decisão. Se ela reaparecer aqui,
+  // alguém copiou a regra em vez de chamá-la.
+  checar(`${nome} não reescreve a decisão`, false,
+    fonte.includes('distanceKm === undefined'));
+}
+// Sonda positiva: o detector precisa reconhecer a linha quando ela existe.
+checar('o detector reconhece a decisão copiada (sonda positiva)', true,
+  readFileSync(new URL('../functions/lib/reguaDaLimpeza.js', import.meta.url), 'utf8')
+    .includes('distanceKm === undefined'));
 
 // ── contra o emulador ───────────────────────────────────────────────────────
 bloco('O modo de conferência não escreve');
