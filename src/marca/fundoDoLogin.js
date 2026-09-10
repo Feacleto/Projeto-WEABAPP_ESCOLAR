@@ -66,24 +66,35 @@
 export const ASSUNTOS = ['entrar', 'criar', 'convite'];
 
 /**
- * Os blocos que um cartão pode ter. Onze primitivos que se recombinam — é o
- * que evita nove componentes quase iguais.
+ * Os blocos que um cartão pode ter — primitivos que se recombinam, e é o que
+ * evita nove componentes quase iguais. Cartão novo costuma ser rearranjo, não
+ * bloco novo.
  *
- *   cabecalho  ícone em quadrado + título + subtítulo
- *   progresso  a barra da viagem (fração de 0 a 1)
- *   linha      uma linha destacada: hora em mono + texto + check
- *   pessoa     iniciais + nome + detalhe + hora
- *   acao       o botão sólido (só aparência)
- *   atalhos    a fileira de três botões pequenos
- *   numero     rótulo mono + valor grande
- *   iniciais   rótulo + fileira de pastilhas + "+N"
- *   paradas    lista de bolinha + nome + hora
- *   pastilhas  duas escolhas lado a lado
- *   nota       a linha que o app escreve embaixo, em mono
+ *   cabecalho   ícone em quadrado + título + subtítulo
+ *   titulo      título + subtítulo SEM ícone (a folha de falta abre assim:
+ *               o nome da criança já é o assunto)
+ *   corpo       um parágrafo de texto do app
+ *   progresso   a barra da viagem (fração de 0 a 1)
+ *   linha       uma linha destacada: hora em mono + texto + check
+ *   pessoa      iniciais + nome + detalhe + hora
+ *   acao        o botão sólido (só aparência)
+ *   botao       o botão de contorno, para ação secundária
+ *   botaoZap    o botão do WhatsApp, na cor do WhatsApp
+ *   atalhos     a fileira de três botões pequenos
+ *   faixaHoras  as duas pontas do dia: ida em destaque, volta em repouso
+ *   numero      rótulo mono + valor grande
+ *   iniciais    rótulo + fileira de pastilhas + "+N"
+ *   paradas     lista de hora + rosto (iniciais) + nome
+ *   opcoes      escolhas com ícone, título e detalhe (a folha de falta)
+ *   pastilhas   duas escolhas lado a lado
+ *   codigo      o código do convite, em mono espaçado
+ *   pago        o mês, o selo, o meio e o valor da mensalidade
+ *   nota        a linha que o app escreve embaixo, em mono
  */
 export const BLOCOS = [
-  'cabecalho', 'progresso', 'linha', 'pessoa', 'acao',
+  'cabecalho', 'titulo', 'progresso', 'linha', 'pessoa', 'acao',
   'atalhos', 'numero', 'iniciais', 'paradas', 'pastilhas', 'nota',
+  'corpo', 'botao', 'botaoZap', 'faixaHoras', 'opcoes', 'codigo', 'pago',
 ];
 
 // ── TRIO A · "Já tenho conta" ─────────────────────────────────────────────
@@ -124,7 +135,7 @@ const A = [
     slot: 3,
     blocos: [
       { b: 'numero', rotulo: 'recebido · setembro', valor: 'R$ 3.780' },
-      { b: 'iniciais', rotulo: 'quem já pagou', itens: ['MC', 'PH', 'JS', 'AL'], mais: '+10' },
+      { b: 'iniciais', rotulo: 'quem já pagou', itens: ['MC', 'PH', 'JL', 'AS'], mais: '+10' },
     ],
   },
 ];
@@ -136,49 +147,53 @@ const A = [
 // numa frase que diz o que ele NÃO precisa fazer.
 const B = [
   {
-    id: 'turma',
+    id: 'horarios',
     slot: 1,
     blocos: [
-      { b: 'cabecalho', icone: 'turma', titulo: 'Minha turma', subtitulo: '18 crianças · 3 escolas' },
-      { b: 'iniciais', itens: ['MC', 'PH', 'JS', 'AL', 'BR'], mais: '+13' },
-      { b: 'nota', texto: 'Cadastrada uma vez. A rota nasce daqui.' },
+      { b: 'cabecalho', icone: 'relogio', titulo: 'Nenhuma viagem hoje' },
+      {
+        b: 'corpo',
+        texto:
+          'Defina a hora de pegar e entregar cada criança — a rota se monta a partir disso, e é o que o responsável vê.',
+      },
+      { b: 'botao', rotulo: 'Definir horários', contorno: true },
     ],
   },
   {
-    id: 'rota',
+    id: 'viagem',
     slot: 2,
     blocos: [
-      { b: 'cabecalho', icone: 'relogio', titulo: 'A rota de amanhã' },
+      { b: 'faixaHoras', ida: '06:40', volta: '16:50' },
+      { b: 'cabecalho', icone: 'casa', titulo: 'Levando pra escola', subtitulo: '3 crianças nesta viagem' },
       {
         b: 'paradas',
         itens: [
-          { hora: '06:40', nome: 'Maria Clara' },
-          { hora: '06:48', nome: 'Pedro Henrique' },
-          { hora: '06:55', nome: 'Júlia' },
+          { hora: '06:40', nome: 'Maria Clara', iniciais: 'MC' },
+          { hora: '06:48', nome: 'Pedro Henrique', iniciais: 'PH' },
+          { hora: '06:55', nome: 'Júlia Lima', iniciais: 'JL' },
         ],
       },
-      { b: 'nota', texto: 'Na ordem dos horários. Você não monta nada.' },
     ],
   },
   {
     id: 'convite',
     slot: 3,
     blocos: [
-      { b: 'cabecalho', icone: 'elo', titulo: 'Convite enviado', subtitulo: 'mãe da Maria Clara · WhatsApp' },
-      { b: 'nota', texto: 'A conta dela nasce do link. Sem senha pra inventar.' },
+      { b: 'botaoZap', rotulo: 'Mandar convite no WhatsApp' },
+      // ⚠️ O RÓTULO DESTE CÓDIGO MUDOU EM RELAÇÃO AO PROTÓTIPO, e de
+      // propósito. Ele dizia "se precisar ditar por telefone" — e ditar por
+      // telefone servia para ela DIGITAR o código, entrada que saiu do
+      // produto em 09/09/2026 (ver o cabeçalho de `pages/FirstAccess.jsx`).
+      // Um fundo que oferece um caminho que a próxima tela não tem é o mesmo
+      // defeito da bifurcação do login, que foi corrigido no mesmo dia.
+      //
+      // O código continua indo na mensagem, e continua tendo função: é por
+      // ele que ela confere que aquele link é daquele convite.
+      { b: 'codigo', rotulo: 'o código vai junto na mensagem', valor: 'TN4582' },
     ],
   },
 ];
 
-// ── TRIO C · o convite da família (`/first-access`) ───────────────────────
-//
-// Aqui quem olha é a RESPONSÁVEL, e ela não compra nada: ela foi convidada.
-// Os três cartões são o lado dela — onde a perua está, como avisar a falta, e
-// a mensalidade que ela paga direto ao motorista.
-//
-// ⚠️ O C1 é o único cartão com frase copiada palavra por palavra de um módulo
-// de domínio, e é de propósito: `routePresence` é justamente onde a promessa
-// de ETA foi arrancada. Reescrever a frase aqui reabriria a porta.
 const C = [
   {
     id: 'perua',
@@ -192,12 +207,13 @@ const C = [
     id: 'falta',
     slot: 2,
     blocos: [
-      { b: 'cabecalho', icone: 'falta', titulo: 'Avisar a falta de hoje' },
+      { b: 'titulo', titulo: 'Maria vai faltar?', subtitulo: 'Escolha o dia e o que se aplica' },
       {
-        b: 'pastilhas',
+        b: 'opcoes',
         itens: [
-          { rotulo: 'Não vai hoje', destaque: true },
-          { rotulo: 'Só na volta' },
+          { icone: 'semEscola', titulo: 'Não vai à escola', detalhe: 'Motorista não busca nem traz hoje' },
+          { icone: 'manha', titulo: 'Eu vou levar de manhã', detalhe: 'Motorista só busca à tarde' },
+          { icone: 'tarde', titulo: 'Eu vou buscar à tarde', detalhe: 'Motorista só leva de manhã' },
         ],
       },
       { b: 'nota', texto: 'Um toque, e a rota do Tio Nino já muda.' },
@@ -207,8 +223,7 @@ const C = [
     id: 'mensalidade',
     slot: 3,
     blocos: [
-      { b: 'cabecalho', icone: 'check', titulo: 'Mensalidade paga', subtitulo: 'no PIX · dia 5' },
-      { b: 'numero', valor: 'R$ 270' },
+      { b: 'pago', mes: 'setembro', chip: 'Pago', meio: 'no PIX · dia 5', valor: 'R$ 270' },
       { b: 'nota', texto: 'Com o comprovante guardado, e o contrato do lado.' },
     ],
   },

@@ -1,7 +1,8 @@
 import {
   Home, Users, Clock, Link2, Bus, CalendarX, Check,
-  BellRing, MessageCircle, Phone,
+  BellRing, MessageCircle, Phone, UserX, Sunrise, Sunset, Copy,
 } from 'lucide-react';
+import WhatsAppIcon from '../common/WhatsAppIcon';
 import { TRIOS, SLOTS } from '../../marca/fundoDoLogin';
 
 /**
@@ -57,6 +58,9 @@ const ICONES = {
   sino: BellRing,
   zap: MessageCircle,
   ligar: Phone,
+  semEscola: UserX,
+  manha: Sunrise,
+  tarde: Sunset,
 };
 
 /** O quadradinho de ícone do cabeçalho, com halo opcional. */
@@ -227,12 +231,18 @@ function Bloco({ dados }) {
         <div className="flex flex-col gap-1.5">
           {dados.itens.map((it) => (
             <span key={it.hora} className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 flex-none rounded-full bg-primary" />
-              <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-text">
-                {it.nome}
-              </span>
               <span className="flex-none font-mono text-[10.5px] tabular-nums text-textMuted">
                 {it.hora}
+              </span>
+              {/* Iniciais em vez de bolinha quando a parada tem rosto: é a
+                * mesma pastilha do resto do fundo, e nunca uma foto. */}
+              {it.iniciais ? (
+                <Iniciais>{it.iniciais}</Iniciais>
+              ) : (
+                <span className="h-1.5 w-1.5 flex-none rounded-full bg-primary" />
+              )}
+              <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-text">
+                {it.nome}
               </span>
             </span>
           ))}
@@ -254,6 +264,133 @@ function Bloco({ dados }) {
       return (
         <span className="block font-mono text-[9.5px] leading-snug text-textMuted">
           {dados.texto}
+        </span>
+      );
+
+    // Título sem ícone: a folha de falta abre com a pergunta, não com um
+    // símbolo — o nome da criança já é o assunto.
+    case 'titulo':
+      return (
+        <span className="block">
+          <span className="block text-[13px] font-bold leading-tight text-text">
+            {dados.titulo}
+          </span>
+          <span className="mt-0.5 block text-[10.5px] text-textMuted">{dados.subtitulo}</span>
+        </span>
+      );
+
+    case 'corpo':
+      return (
+        <span className="block text-[10.5px] leading-relaxed text-textMuted">{dados.texto}</span>
+      );
+
+    case 'botao':
+      return (
+        <span
+          className={`block rounded-xl py-2 text-center text-[11.5px] font-bold ${
+            dados.contorno
+              ? 'border-2 border-primary text-primary'
+              : 'bg-primary text-white'
+          }`}
+        >
+          {dados.rotulo}
+        </span>
+      );
+
+    // ⚠️ O VERDE AQUI É O DO WHATSAPP, NÃO O DA MARCA — e é hex cru de
+    // propósito, com precedente no projeto: `components/children/InviteShare.jsx`
+    // faz o mesmo, e `WhatsAppIcon` guarda a cor oficial com o porquê.
+    // Pintar este botão de `primary` faria ele deixar de ser reconhecido como
+    // "isso abre o WhatsApp", que é a única coisa que ele precisa comunicar.
+    //
+    // O ícone é o do projeto, e não um genérico de mensagem: o fundo copia o
+    // app, e no app este botão tem a marca do outro produto.
+    case 'botaoZap':
+      return (
+        <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#25D366] py-2 text-[11.5px] font-bold text-white">
+          <WhatsAppIcon size={13} colored={false} />
+          {dados.rotulo}
+        </span>
+      );
+
+    // As duas pontas do dia, do jeito que a operação lê: a ida em destaque
+    // (é a que está acontecendo) e a volta ao lado, em repouso.
+    case 'faixaHoras':
+      return (
+        <span className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primaryDark px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-white">
+            <Home size={9} strokeWidth={2.8} />
+            {dados.ida}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 font-mono text-[10px] tabular-nums text-textMuted">
+            <Home size={9} strokeWidth={2.4} />
+            {dados.volta}
+          </span>
+        </span>
+      );
+
+    case 'opcoes':
+      return (
+        <div className="flex flex-col gap-1.5">
+          {dados.itens.map((it) => {
+            const Icone = ICONES[it.icone] || UserX;
+            return (
+              <span
+                key={it.titulo}
+                className="flex items-center gap-2 rounded-[10px] border border-border bg-card px-2 py-1.5"
+              >
+                <span className="grid h-6 w-6 flex-none place-items-center rounded-lg bg-primaryChip text-primaryDark">
+                  <Icone size={12} strokeWidth={2.4} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[10.5px] font-bold leading-tight text-text">
+                    {it.titulo}
+                  </span>
+                  <span className="block truncate text-[9.5px] text-textMuted">{it.detalhe}</span>
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      );
+
+    // O código do convite, em mono e espaçado — é lido em voz alta e
+    // conferido letra por letra, do mesmo jeito que o campo real fazia.
+    case 'codigo':
+      return (
+        <span className="block">
+          <span className="mb-1 block font-mono text-[9px] uppercase tracking-[0.14em] text-textMuted">
+            {dados.rotulo}
+          </span>
+          <span className="flex items-center justify-between gap-2 rounded-[10px] border border-borderStrong bg-surface px-2.5 py-1.5">
+            <span className="font-mono text-[12px] font-bold tracking-[0.28em] text-text">
+              {dados.valor}
+            </span>
+            <Copy size={12} className="flex-none text-textMuted" />
+          </span>
+        </span>
+      );
+
+    case 'pago':
+      return (
+        <span className="block">
+          <span className="mb-1.5 block font-mono text-[9px] uppercase tracking-[0.14em] text-textMuted">
+            {dados.mes}
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-primaryChip text-primaryDark">
+              <Check size={13} strokeWidth={3} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="inline-block rounded-md bg-primaryChip px-1.5 py-px text-[9.5px] font-bold text-primaryDark">
+                {dados.chip}
+              </span>
+              <span className="mt-0.5 block truncate text-[10px] text-textMuted">{dados.meio}</span>
+            </span>
+            <span className="flex-none text-[15px] font-extrabold tabular-nums text-text">
+              {dados.valor}
+            </span>
+          </span>
         </span>
       );
 
