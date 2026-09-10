@@ -85,6 +85,7 @@ import TermsAcceptanceGate from './components/legal/TermsAcceptanceGate';
 import ContractAcceptanceGate from './components/contract/ContractAcceptanceGate';
 import CookieBanner from './components/legal/CookieBanner';
 import { useAuth } from './hooks/useAuth';
+import FalhaAoLerConta from './components/common/FalhaAoLerConta';
 import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
 import { dadosDaContratadaFaltando } from './services/contractService';
@@ -144,7 +145,7 @@ function NaoEncontrado() {
 }
 
 function PrivateRoute({ children, requireRole }) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, perfilIndisponivel } = useAuth();
   const location = useLocation();
 
   if (loading) return <FullScreenLoader />;
@@ -177,6 +178,14 @@ function PrivateRoute({ children, requireRole }) {
   // Enquanto a conta órfã do Google era apagada, este caso não existia e
   // o loader eterno passava despercebido; sem a limpeza, ele seria uma
   // tela travada para todo mundo que entra pela primeira vez.
+  //
+  // ⚠️ MAS SÓ É CONCLUSIVO QUANDO A LEITURA DEU CERTO, e este parágrafo
+  // afirmava mais do que sabia. `getUserDoc` que LEVANTA — rede caindo no
+  // meio-fio, Firestore fora do ar, regra recusando — produzia o mesmo
+  // `profile == null`, e mandava um motorista de meses pra tela que diz
+  // "Falta ligar sua conta / Nada foi criado ainda". `perfilIndisponivel`
+  // separa as duas coisas; ver `FalhaAoLerConta`.
+  if (perfilIndisponivel) return <FalhaAoLerConta />;
   if (!profile) return <Navigate to="/comecar" replace />;
   // O DONO NÃO ENTRA EM PAINEL DE OPERAÇÃO, nem que o papel dele deixasse.
   //
@@ -224,7 +233,7 @@ function PrivateRoute({ children, requireRole }) {
  * backlog.
  */
 function SuperAdminRoute({ children }) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, perfilIndisponivel } = useAuth();
   const location = useLocation();
 
   if (loading) return <FullScreenLoader />;
@@ -257,6 +266,14 @@ function SuperAdminRoute({ children }) {
   // Enquanto a conta órfã do Google era apagada, este caso não existia e
   // o loader eterno passava despercebido; sem a limpeza, ele seria uma
   // tela travada para todo mundo que entra pela primeira vez.
+  //
+  // ⚠️ MAS SÓ É CONCLUSIVO QUANDO A LEITURA DEU CERTO, e este parágrafo
+  // afirmava mais do que sabia. `getUserDoc` que LEVANTA — rede caindo no
+  // meio-fio, Firestore fora do ar, regra recusando — produzia o mesmo
+  // `profile == null`, e mandava um motorista de meses pra tela que diz
+  // "Falta ligar sua conta / Nada foi criado ainda". `perfilIndisponivel`
+  // separa as duas coisas; ver `FalhaAoLerConta`.
+  if (perfilIndisponivel) return <FalhaAoLerConta />;
   if (!profile) return <Navigate to="/comecar" replace />;
   if (!ehDono(profile)) {
     return <Navigate to={painelDe(profile)} replace />;

@@ -7,6 +7,10 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+// ⚠️ O VOCABULÁRIO MORA NO DOMÍNIO, e não aqui, desde que a trilha ganhou
+// tela. Duplicá-lo criaria duas listas de tipos: a que se escreve e a que se
+// lê — e a segunda calaria sobre um tipo novo em vez de dar erro.
+import { EVENTO, rotuloDoEvento } from '../dominio/cobranca/trilhaDoPagamento.js';
 
 /**
  * Trilha de eventos de um pagamento — append-only.
@@ -29,30 +33,19 @@ import { db } from '../firebase/config';
  * Cada evento fica em `payments/{paymentId}/events/{eventId}`. Subcoleção, e
  * não coleção separada, porque a vida do log é a vida do pagamento: apagar a
  * criança leva os dois juntos.
+ *
+ * ⚠️ E ELA PASSOU MESES SEM UM ÚNICO LEITOR. `listPaymentEvents` e
+ * `eventLabel` não eram chamados por ninguém, e três dos sete tipos nunca
+ * chegaram a ser escritos — entre eles `unclaimed`, que é exatamente o caso
+ * do parágrafo acima, o que motivou este arquivo. Quem mostra a trilha é
+ * `components/payments/TrilhaDoPagamento`; quem monta a lista é
+ * `dominio/cobranca/trilhaDoPagamento`.
  */
 
-export const PAYMENT_EVENTS = {
-  CREATED: 'created',
-  CLAIMED: 'claimed',
-  UNCLAIMED: 'unclaimed',
-  CONFIRMED: 'confirmed',
-  REVERTED: 'reverted',
-  RECEIPT_ATTACHED: 'receipt_attached',
-  RECEIPT_REPLACED: 'receipt_replaced',
-};
-
-const EVENT_LABELS = {
-  created: 'Mensalidade gerada',
-  claimed: 'Responsável informou o pagamento',
-  unclaimed: 'Responsável desfez o aviso de pagamento',
-  confirmed: 'Motorista confirmou o recebimento',
-  reverted: 'Motorista desfez a confirmação',
-  receipt_attached: 'Comprovante anexado',
-  receipt_replaced: 'Comprovante substituído',
-};
+export const PAYMENT_EVENTS = EVENTO;
 
 export function eventLabel(type) {
-  return EVENT_LABELS[type] || type;
+  return rotuloDoEvento(type);
 }
 
 /**

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, MessageCircle, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { formatBRL } from '../../compartilhado/formatters';
+import { diasDeCalendario, formatBRL } from '../../compartilhado/formatters';
 import { devWhatsAppLink } from '../../config/developer';
 
 /**
@@ -61,7 +61,11 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
   const venc = fatura?.vencimento
     ? new Date(fatura.vencimento?.toDate?.() || fatura.vencimento)
     : null;
-  const dias = venc ? Math.floor((new Date() - venc) / 86400000) : 0;
+  // ⚠️ DIAS DE CALENDÁRIO. Com períodos de 24h, uma fatura vencida dia 10 ao
+  // meio-dia e aberta dia 13 às 9h dava 2 — o cartão dizia "venceu há 2
+  // dias" —, e no dia seguinte ao vencimento, de manhã, dava 0: a frase de
+  // atraso não aparecia numa fatura já vencida.
+  const dias = venc ? diasDeCalendario(venc) ?? 0 : 0;
 
   // ⚠️ `fatura.base` NÃO EXISTE MAIS, e este é o MESMO bug pela terceira vez.
   //

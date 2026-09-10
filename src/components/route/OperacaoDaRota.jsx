@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { diasDeCalendario } from '../../compartilhado/formatters';
 import { useNavigate } from 'react-router-dom';
 import {
   Clock,
@@ -953,8 +954,11 @@ function idadeDoAviso(declaracao) {
   const ts = declaracao?.createdAt;
   const d = ts?.toDate?.() || (ts instanceof Date ? ts : null);
   if (!d) return null;
-  const dias = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (dias <= 0) return null;
+  // ⚠️ MESMO CONSERTO. Com períodos de 24h, uma ausência declarada ontem às
+  // 21h e a rota aberta hoje às 6h30 davam zero — o carimbo "ontem" não
+  // aparecia, e o motorista lia a falta como recém-declarada.
+  const dias = diasDeCalendario(d);
+  if (dias === null || dias <= 0) return null;
   if (dias === 1) return 'ontem';
   return `há ${dias} dias`;
 }

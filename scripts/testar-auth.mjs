@@ -475,6 +475,87 @@ checar('o detector reconhece a frase antiga (sonda positiva)', true,
 checar('a tela oferece o pedido ao motorista', true,
   fonteFirst.includes('linkDoPedido') && fonteFirst.includes('mensagemAoMotorista'));
 
+// ─────────── 10. LEITURA FALHA NAO E CONTA INEXISTENTE ──────────────────
+//
+// O bug: `AuthContext` fazia `catch → setProfile(null)`, e null e tambem o
+// valor de quem acabou de criar sessao. Os guardas do App leem esse nulo como
+// conclusivo e mandam pra /comecar, que diz "Falta ligar sua conta" e "Nada
+// foi criado ainda" — as duas falsas para um motorista de meses cuja rede
+// caiu. Nada no app relia, entao ele ficava ali.
+//
+// O que este bloco tranca: o terceiro estado existe, ele nasce SO de excecao,
+// ele e limpo quando a leitura da certo, e TODO caminho que manda pra sala de
+// espera passa por ele antes.
+console.log('');
+console.log('10. Leitura que falha nao vira "essa pessoa nao tem conta"');
+
+const fonteCtx = readFileSync(
+  new URL('../src/context/AuthContext.jsx', import.meta.url), 'utf8');
+const fonteApp = readFileSync(
+  new URL('../src/App.jsx', import.meta.url), 'utf8');
+const fonteFalha = readFileSync(
+  new URL('../src/components/common/FalhaAoLerConta.jsx', import.meta.url), 'utf8');
+
+// O catch da leitura do perfil, isolado — e o unico lugar onde o app aprende
+// que a leitura falhou.
+function catchDoPerfil(fonte) {
+  const m = fonte.match(/catch \(err\) \{([\s\S]*?)\n {8}\}/);
+  return m ? m[1] : '';
+}
+const oCatch = catchDoPerfil(fonteCtx);
+
+checar('o catch da leitura existe', true, oCatch.length > 0);
+checar('e ele marca o estado de falha', true,
+  oCatch.includes('setPerfilIndisponivel(true)'));
+
+// Sonda positiva: o detector precisa REPROVAR o codigo antigo, senao ele
+// aprova qualquer coisa e o bloco inteiro vira enfeite.
+const catchAntigo = `      onAuthStateChanged(auth, async (u) => {
+        try {
+          setProfile(await getUserDoc(u.uid));
+        } catch (err) {
+          console.error('Falha ao carregar perfil:', err);
+          setProfile(null);
+        }
+      });`;
+checar('o detector reprova o catch antigo (sonda positiva)', false,
+  catchDoPerfil(catchAntigo).includes('setPerfilIndisponivel(true)'));
+
+// A falha e transitoria: a leitura seguinte que der certo tem que apaga-la,
+// senao o app fica preso na tela de erro ate recarregar.
+checar('leitura que da certo limpa a falha', true,
+  fonteCtx.includes('setProfile(userProfile);\n          setPerfilIndisponivel(false);'));
+checar('e sair da conta tambem limpa', true,
+  fonteCtx.includes('setProfile(null);\n    setPerfilIndisponivel(false);'));
+checar('o contexto expoe o estado', true,
+  /\n {4}perfilIndisponivel,/.test(fonteCtx));
+
+// ⚠️ A INVARIANTE QUE IMPORTA: nenhum caminho manda pra sala de espera sem
+// antes perguntar se a leitura falhou. Se alguem criar um terceiro guarda no
+// App copiando o segundo, esta conta desempata.
+const mandamPraComecar = (fonteApp.match(/to="\/comecar"/g) || []).length;
+const desviosAntes = (fonteApp.match(/if \(perfilIndisponivel\) return <FalhaAoLerConta \/>;/g) || []).length;
+checar('todo guarda que manda pra /comecar checa a falha antes',
+  mandamPraComecar, desviosAntes);
+checar('e sao os dois guardas conhecidos', 2, mandamPraComecar);
+
+// A sala de espera e destino do Login tambem, entao ela precisa do desvio.
+checar('a sala de espera desvia quando a leitura falhou', true,
+  fonteComecar.includes('if (perfilIndisponivel) return <FalhaAoLerConta />;'));
+
+// A tela nova nao pode repetir as duas frases falsas.
+const falhaSemProsa = semComentarios(fonteFalha);
+for (const frase of ['Falta ligar sua conta', 'Nada foi criado ainda']) {
+  checar(`a tela de falha nao diz "${frase}"`, false, falhaSemProsa.includes(frase));
+}
+// Nem inventa de quem e a culpa: o app nao sabe.
+for (const chute of ['instabilidade', 'nossos servidores', 'fora do ar']) {
+  checar(`a tela de falha nao chuta "${chute}"`, false,
+    falhaSemProsa.toLowerCase().includes(chute));
+}
+checar('ela oferece tentar de novo', true, falhaSemProsa.includes('refreshProfile'));
+checar('e uma saida', true, falhaSemProsa.includes('logout'));
+
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) {

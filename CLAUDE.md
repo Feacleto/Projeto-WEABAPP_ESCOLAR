@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 1981 casos em 37 scripts. O PRIMEIRO é
+npm run testar                   # 2080 casos em 37 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -163,6 +163,21 @@ quando não há papel ela responde `/comecar` — a bifurcação de quem acabou 
 criar sessão. **Sessão sem documento em `users` deixou de ser lixo e virou estado do
 produto:** o login com Google parou de apagar a conta órfã, porque apagar era
 desfazer o que a pessoa acabou de fazer e devolver erro no lugar de caminho.
+
+⚠️ **MAS "NÃO CONSEGUI LER" NÃO É "NÃO EXISTE", E ERA O MESMO VALOR.**
+`AuthContext` fazia `catch → setProfile(null)`, e os guardas do
+[App.jsx](src/App.jsx) tratam esse nulo como conclusivo. Uma leitura que
+FALHOU — rede caindo no meio-fio, Firestore fora do ar, regra recusando —
+levava um motorista de meses para `/comecar`, que diz *"Falta ligar sua
+conta"* e *"Nada foi criado ainda"*, com duas saídas que o mandam começar uma
+conta que ele já tem. Nada relia, então ele ficava ali. Hoje há um terceiro
+estado, `perfilIndisponivel`, verdadeiro só quando a leitura levantou
+exceção, e a tela é
+[FalhaAoLerConta](src/components/common/FalhaAoLerConta.jsx) — com "tentar de
+novo", que é o mesmo `refreshProfile`. O bloco 10 de `npm run testar:auth`
+trava a invariante: **todo caminho que manda para a sala de espera pergunta
+antes se a leitura falhou** (a conta de guardas contra a conta de desvios), e
+a própria `/comecar` desvia, porque ela é destino do login também.
 
 A conta do GOOGLE **não nasce como motorista** (só o formulário de cadastro
 cria motorista), e é isso que evita o pior caso: a mãe que
@@ -318,9 +333,10 @@ src/
 │   ├── rota/          horarios, avisoDoMomento, routePresence, faltas,
 │   │                  intervaloDeDias
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
-│   │                  paymentVocabulary
+│   │                  paymentVocabulary, retencao, trilhaDoPagamento
 │   ├── associacao/    planos, multa, contratoAssociacao, trial, contaAtiva,
-│   │                  carteira, proposta, risco, fila, concessao, adesivo
+│   │                  carteira, proposta, risco, fila, concessao, adesivo,
+│   │                  isencaoDaFatura
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors, verificacao, indicacao, origem
 │   ├── escola/        nomeEscola
@@ -437,6 +453,19 @@ qual é.
 idempotente). Guarda os marcos com hora — `onboard`, `atSchool`, `delivered` —
 e é gravado **no mesmo batch da mudança de status**, nunca depois.
 [ridesService.js](src/services/ridesService.js)
+
+⚠️ **O CHECKPOINT GUARDA A DISTÂNCIA, NUNCA A COORDENADA DO MOTORISTA.**
+`checkpointFrom` ([routeStatusService.js](src/services/routeStatusService.js))
+gravava `lat` e `lng` do veículo dele em `children.lastStatusCheckpoint` e em
+`rides/{dia}.checkpoints` — um registro por criança por dia, e **nenhuma tela
+lia esses dois campos**. O que a conferência usa é a DISTÂNCIA até a casa ou a
+escola, que responde *"ele estava longe quando marcou entregue?"* sem dizer
+onde ele estava. E `children` é lido pela RESPONSÁVEL: a coordenada ali torna
+o trajeto do carro de um autônomo reconstruível por terceiros, que é
+exatamente o que a página `/acompanhar` recusa fazer. Sem destino esperado
+(`onboard`) não há distância, e aí **não se grava nada**. Travado em
+`npm run testar:horarios`, por leitura de arquivo — a função mora atrás de um
+import do Firestore.
 
 ⚠️ **O ENDEREÇO TEM UM MODO DE FALHAR QUE NÃO É QUEBRAR — É AFIRMAR.** O campo
 era um texto livre só, e o pedaço que se esquece nele é o **número**. Sem número
@@ -671,10 +700,25 @@ havia base real.
 - **Isenção não é desconto de 100%.** `users.isencaoAte` diz que aquele mês não
   tem fatura; desconto de 100% produz uma fatura de R$ 0. Os dois chegam a zero
   e contam histórias diferentes na hora de conferir o que foi concedido.
+  ⚠️ **E A TELA PRECISA CONTAR QUAL DAS DUAS FOI** —
+  [isencaoDaFatura.js](src/dominio/associacao/isencaoDaFatura.js). `TioTaxa`
+  decidia com `fatura.isento || total === 0` e imprimia sempre *"você está no
+  período de teste"*: a isenção CONCEDIDA, que é decisão de alguém com motivo e
+  prazo, aparecia ao motorista como régua da casa, e a exceção sumia de quem
+  ela foi feita para reter. A fatura já gravava `motivoIsencao`, `mesDeTeste` e
+  `testeAte` desde sempre — **nenhuma tela lia os três**, e o comentário do
+  gravador chegava a prometer que `testeAte` era usado para dizer até quando.
 - **O vencimento é da CASA**, não de cada parceiro: `taxaConfig.diaVencimento`
   (1–28, padrão 10). `fecharFatura` congela a data pronta em `vencimento`, como
   o [billing.js](functions/lib/billing.js) faz com o `dueDay` da criança — e lá
   a data é por criança porque quem negocia é o motorista com cada família.
+  ⚠️ **E QUEM DIZ O DIA AO CONTRATO É A CALLABLE, porque o motorista não lê
+  `taxaConfig`.** `TioPlanos` montava o contrato com `profile.diaVencimento`,
+  um campo de `users` que **nenhum caminho do projeto escreve** — então TODO
+  contrato assinado dizia "todo dia 10", inclusive depois de o dono trocar o
+  dia no painel: documento prometendo uma data e fatura vencendo noutra. Hoje
+  `contratarPlano` lê a config e devolve o número, pelo mesmo motivo que o
+  fechamento COPIA a chave PIX para dentro da fatura.
 - **O contrato é de 12 MESES e renova de 12 em 12**, com cobrança mensal.
   `VERSAO_CONTRATO = 5` — a 1 mandava suspender por atraso sem definir atraso,
   a 2 passou a dizer o dia, a 3 trocou percentual sobre base por faixa de
@@ -714,6 +758,28 @@ havia base real.
   obrigação fiscal: o app apagava em um ano o que o documento diz guardar por
   cinco, e das duas a que vale contra a plataforma é a escrita. **Se mudar aqui,
   muda lá na mesma alteração.**
+  ⚠️ **E AS TELAS FICARAM PARA TRÁS.** O servidor foi para 60 e o
+  `MonthSwitcher` continuou travando a navegação em doze meses, com a
+  justificativa escrita de que era "para casar com a retenção" — **48 meses de
+  mensalidade no banco que a tela não deixava alcançar**, justamente na
+  conversa sobre atraso e na conferência fiscal. O número agora é
+  [retencao.js](src/dominio/cobranca/retencao.js), e `testar:cobranca` compara
+  a cópia do servidor por LEITURA DE ARQUIVO (`RETENTION_MONTHS` em
+  `billing.js` requer o SDK, e nenhum script da bateria pode importá-lo).
+- **A TRILHA DO PAGAMENTO É APPEND-ONLY, E AGORA ALGUÉM A LÊ** —
+  [trilhaDoPagamento.js](src/dominio/cobranca/trilhaDoPagamento.js) monta,
+  [TrilhaDoPagamento.jsx](src/components/payments/TrilhaDoPagamento.jsx)
+  mostra, dentro do `PaymentRow` que os DOIS lados usam (as rules já deixavam
+  os dois lerem — faltava a tela). Ela era metade de um mecanismo: três dos
+  sete tipos nunca foram escritos — `unclaimed`, `reverted` e
+  `receipt_replaced` —, e `unclaimed` é justamente o caso que o cabeçalho de
+  [paymentAuditService.js](src/services/paymentAuditService.js) dá como o
+  motivo de o arquivo existir: desfazer o aviso apaga `claimedAt`,
+  `paymentMethod` e `receiptURL` no mesmo write. `created` **continua não
+  sendo gravado**, e é decisão: a linha zero é sintetizada de `createdAt` na
+  leitura, porque uma escrita por mensalidade por mês só repetiria o que o
+  documento já diz. O expansor só aparece quando existe história (avisou, deu
+  baixa, anexou ou desfez), e nunca escreve nada.
 - **Receita é fatura `quitada`**, e sai de `faturasParceiro` em
   [adminMetricsService.js](src/services/adminMetricsService.js) — mesmo
   critério do GMV, que só soma `payments` com `paid`. Fatura `aberta` viaja

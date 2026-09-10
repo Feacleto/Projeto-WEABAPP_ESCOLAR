@@ -8,7 +8,12 @@ import Spinner from '../../components/common/Spinner';
 import { useAuth } from '../../hooks/useAuth';
 import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { buildPixPayload } from '../../dominio/cobranca/pixPayload';
-import { formatCurrency, formatMonthLabel } from '../../compartilhado/formatters';
+import {
+  formatCurrency,
+  formatDate,
+  formatMonthLabel,
+} from '../../compartilhado/formatters';
+import { explicarIsencao } from '../../dominio/associacao/isencaoDaFatura.js';
 import { watchFaturasDoParceiro } from '../../services/taxaService';
 
 /**
@@ -224,7 +229,15 @@ function Conteudo() {
 }
 
 function FaturaAberta({ fatura }) {
-  const isento = fatura.isento || Number(fatura.total) === 0;
+  // ⚠️ A EXPLICAÇÃO VEM DA FATURA, NÃO DO ZERO.
+  //
+  // Era `fatura.isento || total === 0`, e o texto abaixo dizia "você está no
+  // período de teste" para qualquer fatura zerada — inclusive a que foi
+  // ISENTADA POR CONCESSÃO, que é decisão de alguém, com motivo e prazo
+  // registrados. Os campos que distinguem as duas (`motivoIsencao`,
+  // `mesDeTeste`, `testeAte`) já eram gravados e ninguém os lia.
+  const isencao = explicarIsencao(fatura);
+  const isento = isencao !== null;
 
   return (
     <div className="rounded-2xl bg-card p-5 shadow-sm">
@@ -325,11 +338,14 @@ function FaturaAberta({ fatura }) {
         </p>
       )}
 
-      {isento ? (
+      {isencao ? (
         <p className="mt-3 rounded-xl border border-escolaBorder bg-escolaSoft p-3 text-xs leading-relaxed text-escola">
-          <strong>Nada a pagar: você está no período de teste.</strong> O valor
-          acima é o que sua associação custaria hoje, para você já saber como a
-          conta é feita.
+          <strong>{isencao.titulo}</strong>
+          {isencao.corpo ? ` ${isencao.corpo}` : ''}
+          {/* A data só aparece quando a fatura a congelou. Contador de meses
+            * não serve: o teste tem 90 dias corridos e encosta em até quatro
+            * meses de calendário, então "mês 4 de 3" apareceria. */}
+          {isencao.ate ? ` A isenção do teste vai até ${formatDate(isencao.ate)}.` : ''}
         </p>
       ) : (
         <PagamentoPix fatura={fatura} />

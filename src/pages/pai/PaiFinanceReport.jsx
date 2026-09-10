@@ -16,7 +16,8 @@ import {
 
 /**
  * Histórico financeiro do Pai pra leitura / impressão.
- * Lista todos os pagamentos do responsável até 12 meses (retenção atual).
+ * Lista todos os pagamentos do responsável dentro da retenção — 60 meses,
+ * ver `dominio/cobranca/retencao.js`.
  */
 export default function PaiFinanceReport() {
   const { user, profile } = useAuth();

@@ -255,8 +255,23 @@ export default function TioFinance() {
     setActionLoading(true);
     try {
       const hash = await fileHash(attachFile);
+      // ⚠️ JÁ HAVIA UM COMPROVANTE? Então isto é SUBSTITUIÇÃO, e a diferença
+      // não é semântica: `attachReceipt` sobrescreve `receiptURL`, e o que
+      // estava lá costuma ser o print que a FAMÍLIA enviou. Trocar a prova de
+      // outra pessoa sem deixar rastro é o cenário que a trilha append-only
+      // existe para impedir — e este caminho não gravava evento nenhum, nem
+      // de anexo nem de troca.
+      const substituindo = Boolean(attachingTo.receiptURL);
       const url = await uploadPaymentReceipt(attachingTo.id, attachFile);
       await attachReceipt(attachingTo.id, url, hash);
+
+      logPaymentEvent(attachingTo.id, {
+        type: substituindo
+          ? PAYMENT_EVENTS.RECEIPT_REPLACED
+          : PAYMENT_EVENTS.RECEIPT_ATTACHED,
+        actorUid: user?.uid,
+        actorRole: 'admin',
+      });
 
       // Quando é o TIO que anexa, a decisão já está tomada: ele viu o
       // comprovante e escolheu registrá-lo. Deixar o pagamento em
@@ -332,6 +347,17 @@ export default function TioFinance() {
     try {
       // Passa o doc inteiro pra o service validar tempo + método.
       await undoReceipt(unconfirming.id, unconfirming);
+
+      // Desfazer a baixa é o gesto mais sensível dos dois lados: o mês volta
+      // a cobrar de quem já tinha sido dado como pago. `undoReceipt` já
+      // preserva `claimedAt` — o que faltava era registrar QUEM desfez e
+      // QUANDO, que é a metade da história que a família não vê acontecer.
+      logPaymentEvent(unconfirming.id, {
+        type: PAYMENT_EVENTS.REVERTED,
+        actorUid: user?.uid,
+        actorRole: 'admin',
+      });
+
       toast.success(`Confirmação desfeita.`);
       setUnconfirming(null);
     } catch (err) {

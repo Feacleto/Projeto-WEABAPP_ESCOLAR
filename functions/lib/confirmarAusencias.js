@@ -198,9 +198,36 @@ function makeConfirmarAusencias(db) {
   );
 }
 
-function haQuantoTempo(data) {
+/**
+ * ⚠️ DIAS DE CALENDÁRIO EM BRASÍLIA, não períodos de 24 horas.
+ *
+ * Era `Math.floor((Date.now() - data) / 86400000)`, e este arquivo é o que
+ * mais sofre com isso: o agendado roda às 19h. Um aviso feito ANTEONTEM às
+ * 20h chega a 47 horas — um período — e o push dizia **"você avisou
+ * ontem"**. A mãe confere a data errada e não desmarca.
+ *
+ * O arquivo já usa `Intl` com o fuso para o `dateKey`; era só o rótulo
+ * humano que tinha ficado para trás. `chaveDoDia` faz a mesma conta do lado
+ * do cliente em `formatters.diasDeCalendario` — as duas zeram o dia antes de
+ * subtrair, que é a régua certa.
+ */
+function diaEmBrasilia(data) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: FUSO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(data);
+}
+
+function haQuantoTempo(data, agora = new Date()) {
   if (!data) return 'antes';
-  const dias = Math.floor((Date.now() - data.getTime()) / 86400000);
+  // Meio-dia dos dois lados: a data a 00:00 volta um dia em qualquer
+  // conversão, e é justamente a virada do dia que se quer medir.
+  const aoMeioDia = (iso) => new Date(`${iso}T12:00:00Z`);
+  const dias = Math.round(
+    (aoMeioDia(diaEmBrasilia(agora)) - aoMeioDia(diaEmBrasilia(data))) / 86400000
+  );
   if (dias <= 1) return 'ontem';
   if (dias < 14) return `há ${dias} dias`;
   const semanas = Math.floor(dias / 7);

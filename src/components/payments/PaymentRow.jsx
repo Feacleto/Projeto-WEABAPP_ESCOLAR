@@ -12,6 +12,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import Card from '../common/Card';
+import TrilhaDoPagamento from './TrilhaDoPagamento';
 import {
   formatCurrency,
   formatDate,
@@ -203,6 +204,22 @@ export default function PaymentRow({
             {displayStatus === 'overdue' ? 'Cobrar no WhatsApp' : 'Lembrar no WhatsApp'}
           </button>
         )}
+
+      {/* O HISTÓRICO, SÓ QUANDO EXISTE HISTÓRIA.
+        *
+        * Mensalidade que ninguém tocou tem uma linha só ("gerada"), e um
+        * expansor em cada cartão de uma lista de doze meses vira ruído em
+        * todos eles para servir em nenhum. A partir do primeiro gesto — o
+        * pai avisou, o tio deu baixa, alguém anexou ou desfez — a linha
+        * passa a valer, e é justamente aí que a discordância aparece.
+        *
+        * ⚠️ `revertedAt` ENTRA NA CONTA de propósito: desfazer volta o
+        * pagamento pra 'pending', então sem ele o cartão que mais precisa
+        * de histórico seria o único a não oferecer nenhum. */}
+      {(payment.claimedAt ||
+        payment.paidAt ||
+        payment.revertedAt ||
+        payment.receiptURL) && <TrilhaDoPagamento payment={payment} />}
     </Card>
   );
 }

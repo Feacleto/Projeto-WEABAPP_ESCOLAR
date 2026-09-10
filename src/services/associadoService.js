@@ -117,10 +117,15 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
       email: emailLimpo,
       phone: String(telefone || '').trim(),
       city: String(cidade || '').trim(),
-      // Quantas crianças ele DIZ que transporta. É estimativa de cadastro, não
-      // limite: serve pra tela de planos já abrir na faixa provável dele, e
-      // nada mais depende disso. O limite de verdade nasce da escolha do
-      // plano, e só o servidor escreve.
+      // Quantas crianças ele DIZ que transporta. É estimativa de cadastro,
+      // nunca cláusula: nenhuma conta a usa, e não existe teto para ela
+      // comparar — `limiteCriancas` saiu do modelo em 10/09/2026.
+      //
+      // ⚠️ ESTE COMENTÁRIO DIZIA que ela servia "pra tela de planos abrir na
+      // faixa provável dele". As FAIXAS não existem mais, o preço é por
+      // criança, e o campo ficou meses gravado sem um único leitor. Quem o lê
+      // hoje é a FICHA do dono, e o que ele responde é de venda: declarou 30
+      // e cadastrou 4 significa que a turma não migrou.
       criancasEstimadas: Math.max(0, Number(criancas) || 0),
       createdAt: serverTimestamp(),
       // DE ONDE ELE VEIO — resolvido na tela a partir da URL

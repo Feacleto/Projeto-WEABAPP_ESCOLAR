@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { diasDeCalendario } from '../../compartilhado/formatters';
 import { CalendarDays, X, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ABSENCE_LABELS, removeAbsence } from '../../services/absencesService';
@@ -162,7 +163,11 @@ function longa(chave) {
 function haQuantoTempo(ts) {
   const d = ts?.toDate?.() || (ts instanceof Date ? ts : null);
   if (!d) return 'antes';
-  const dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+  // ⚠️ DIAS DE CALENDÁRIO, NÃO PERÍODOS DE 24H. Era
+  // `Math.floor((Date.now() - d) / 86400000)`: um aviso feito ontem às 20h,
+  // lido hoje às 8h, dá doze horas — zero — e a tela dizia "hoje". O
+  // comentário logo acima depende dessa distinção estar certa.
+  const dias = diasDeCalendario(d);
   if (dias <= 0) return 'hoje';
   if (dias === 1) return 'ontem';
   if (dias < 14) return `há ${dias} dias`;

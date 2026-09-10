@@ -289,6 +289,25 @@ export default function FichaDoMotorista({
               valor={`+ ${formatCurrency(custoDaProximaCrianca({ criancas: ativas, plano }))}`}
             />
           )}
+          {/* O QUE ELE DISSE QUE TRANSPORTA, no cadastro, contra o que
+            * cadastrou de verdade.
+            *
+            * ⚠️ ESTE CAMPO ESTAVA ÓRFÃO. `criancasEstimadas` é gravado desde
+            * o autoatendimento e nenhuma tela o lia — o comentário do
+            * gravador dizia que servia "pra tela de planos abrir na faixa
+            * provável dele", e as FAIXAS saíram do modelo em 10/09/2026.
+            *
+            * A diferença é o sinal de venda que o painel não tinha: declarou
+            * 30 e cadastrou 4 é uma conversa (ele não migrou a turma);
+            * declarou 5 e cadastrou 5 é outra. É estimativa dele, não
+            * cláusula — por isso aparece só aqui, na ficha, e nunca numa
+            * conta. */}
+          {Number(motorista.criancasEstimadas) > 0 && (
+            <Linha
+              rotulo="Declarou no cadastro"
+              valor={`${Number(motorista.criancasEstimadas)} crianças`}
+            />
+          )}
           <Linha
             rotulo="Mensalidade"
             valor={conta && conta.liquido !== null ? formatCurrency(conta.liquido) : '—'}

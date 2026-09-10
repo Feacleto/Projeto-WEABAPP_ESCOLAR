@@ -163,14 +163,23 @@ export default function PaiFinance() {
       // Trilha append-only: este registro não pode ser apagado por
       // ninguém depois, nem pelo motorista. É o que dá ao pai uma prova
       // de que ele avisou, na data em que avisou.
+      // ⚠️ SÃO DOIS FATOS, E O AVISO É O QUE IMPORTA. Aqui o comprovante
+      // SUBSTITUÍA o aviso na trilha: quem anexava print ficava sem a linha
+      // "Responsável informou o pagamento" — exatamente a prova que este
+      // registro existe para dar, e some justo de quem se deu mais trabalho.
       logPaymentEvent(payment.id, {
-        type: receiptURL
-          ? PAYMENT_EVENTS.RECEIPT_ATTACHED
-          : PAYMENT_EVENTS.CLAIMED,
+        type: PAYMENT_EVENTS.CLAIMED,
         actorUid: user?.uid,
         actorRole: 'parent',
         note: method === 'cash' ? 'Pagamento em dinheiro' : 'Pagamento via PIX',
       });
+      if (receiptURL) {
+        logPaymentEvent(payment.id, {
+          type: PAYMENT_EVENTS.RECEIPT_ATTACHED,
+          actorUid: user?.uid,
+          actorRole: 'parent',
+        });
+      }
 
       // Notifica o tio (fire-and-forget)
       if (admin?.uid) {
@@ -227,6 +236,22 @@ export default function PaiFinance() {
     setActionLoading(true);
     try {
       await unclaimPayment(unclaiming.id);
+
+      // ⚠️ ESTE É O EVENTO QUE O ARQUIVO DA TRILHA FOI ESCRITO PARA TER, e
+      // era o único dos sete que descrevia uma DESTRUIÇÃO — `unclaimPayment`
+      // zera `claimedAt`, `paymentMethod` e `receiptURL` no mesmo write.
+      // Sem esta linha, desfazer não deixava rastro nenhum: o mês voltava a
+      // "pendente" como se ninguém tivesse avisado nada, e a conversa
+      // seguinte não tinha onde se apoiar.
+      //
+      // Desfazer é direito dele (ele pode ter clicado no mês errado). O que
+      // não pode é o gesto sumir junto com o que ele apagou.
+      logPaymentEvent(unclaiming.id, {
+        type: PAYMENT_EVENTS.UNCLAIMED,
+        actorUid: user?.uid,
+        actorRole: 'parent',
+      });
+
       toast.success('Marcação removida.');
       setUnclaiming(null);
     } catch (err) {

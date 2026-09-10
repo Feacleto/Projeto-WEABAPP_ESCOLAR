@@ -198,6 +198,44 @@ function toDate(input) {
  *   8 dias atrás    → { label: 'Há 1 semana',  tone: 'older' }
  *   45 dias atrás   → { label: 'Há 1 mês',     tone: 'older' }
  */
+/**
+ * DIAS INTEIROS DE CALENDÁRIO entre dois instantes — não períodos de 24h.
+ *
+ * ── ⚠️ POR QUE ISTO PRECISOU VIRAR UMA FUNÇÃO
+ * Quatro lugares faziam `Math.floor((Date.now() - d) / 86400000)` e chamavam
+ * o resultado de "dias". Isso conta PERÍODOS DE 24 HORAS, e a diferença
+ * aparece justamente nos rótulos que as pessoas leem:
+ *
+ *   a mãe declara a ausência ontem às 20h e abre a tela hoje às 8h — doze
+ *   horas, zero períodos — e a tela diz **"hoje"**;
+ *   o motorista abre a rota às 6h30 com uma ausência declarada ontem às 21h
+ *   e o carimbo "ontem" **não aparece**, então ele lê a falta como recém
+ *   declarada e não confere;
+ *   a fatura vence dia 10 ao meio-dia, ele abre o app dia 13 às 9h — 2,875
+ *   períodos — e o cartão diz **"venceu há 2 dias"**.
+ *
+ * A régua certa já existia neste arquivo, dentro de `formatRelativeTime`:
+ * zerar a hora dos dois lados antes de subtrair. Ela estava presa lá dentro,
+ * e por isso foi reescrita errada em quatro lugares.
+ *
+ * `Math.round` e não `floor` depois de zerar: o horário de verão não existe
+ * mais no Brasil, mas um dia de 23 ou 25 horas em qualquer outro fuso daria
+ * 0,958 dia, e `floor` transformaria ontem em hoje de novo.
+ *
+ * Positivo quando `ate` é depois de `de`.
+ */
+export function diasDeCalendario(de, ate = new Date()) {
+  const a = toDate(de);
+  const b = toDate(ate);
+  if (!a || !b) return null;
+
+  const inicio = new Date(a);
+  inicio.setHours(0, 0, 0, 0);
+  const fim = new Date(b);
+  fim.setHours(0, 0, 0, 0);
+  return Math.round((fim - inicio) / 86400000);
+}
+
 export function formatRelativeTime(input, now = new Date()) {
   const d = toDate(input);
   if (!d) return { label: '—', tone: 'older' };

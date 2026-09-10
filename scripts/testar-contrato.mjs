@@ -23,6 +23,7 @@
  *   node scripts/testar-contrato.mjs      (ou: npm run testar:contrato)
  */
 
+import { readFileSync } from 'node:fs';
 import {
   VERSAO_CONTRATO,
   JANELA_DE_RENOVACAO,
@@ -519,6 +520,50 @@ checar('o controlador se identifica com razao social', true,
 checar('com CNPJ', true, CONTROLADOR_POR_EXTENSO.includes(DEV_CNPJ));
 checar('e com a sede', true, CONTROLADOR_POR_EXTENSO.includes(DEV_ENDERECO));
 
+
+
+// ── O DIA DO VENCIMENTO QUE O CONTRATO DECLARA ─────────────────────────────
+//
+// O bug: a tela montava o contrato com `profile?.diaVencimento`, um campo de
+// `users` que NENHUM caminho do projeto escreve. `limitarDiaVencimento`
+// devolve o padrão para `undefined`, então TODO contrato assinado dizia
+// "todo dia 10" — inclusive depois de o dono trocar o dia no painel. O
+// documento prometia uma data e a fatura vencia noutra.
+//
+// O dia é da CASA (`taxaConfig`), que o motorista não lê — por isso quem o
+// entrega é a callable, como o fechamento faz com a chave PIX.
+console.log('');
+console.log('O dia do vencimento vem de quem sabe qual ele é');
+
+const fonteTioPlanos = readFileSync(
+  new URL('../src/pages/tio/TioPlanos.jsx', import.meta.url), 'utf8');
+const fonteContratacao = readFileSync(
+  new URL('../functions/lib/contratacao.js', import.meta.url), 'utf8');
+
+checar('a tela nao le mais o campo que ninguem escreve', false,
+  fonteTioPlanos.includes('diaVencimento: profile?.diaVencimento'));
+checar('ela usa o que o servidor devolveu', true,
+  fonteTioPlanos.includes('diaVencimento: clausula.diaVencimento'));
+checar('e o servidor le a config da casa', true,
+  fonteContratacao.includes("db.doc('taxaConfig/app')"));
+checar('devolvendo o dia na resposta', true,
+  /\n {8}diaVencimento,/.test(fonteContratacao));
+
+// ⚠️ O CONTRATO SÓ IMPRIME A LINHA QUANDO O DIA É MAIOR QUE ZERO
+// (`ContratoDoc`), então um dia inválido não vira "dia 0": vira silêncio, que
+// é pior — a cláusula 3 some sem ninguém notar. `limitarDiaVencimento`
+// garante 1..28, e este caso trava isso pelo lado do conteúdo.
+for (const entrada of [undefined, null, 0, -3, 99, 'lixo']) {
+  const c = montarContrato({
+    motorista: { name: 'Tio Teste', cpfCnpj: '000', cidade: 'São Paulo/SP' },
+    plano: 'mensal',
+    criancas: 10,
+    diaVencimento: entrada,
+  });
+  const dia = c?.valores?.diaVencimento;
+  checar(`dia ${JSON.stringify(entrada)} vira um dia imprimivel`, true,
+    Number.isInteger(dia) && dia >= 1 && dia <= 28);
+}
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

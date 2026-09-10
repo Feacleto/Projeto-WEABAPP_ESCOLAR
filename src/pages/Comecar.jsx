@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bus, LogOut, Ticket } from 'lucide-react';
 import Logo from '../components/common/Logo';
+import FalhaAoLerConta from '../components/common/FalhaAoLerConta';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
 
@@ -37,14 +38,17 @@ import { painelDe } from '../dominio/identidade/papeis';
  * abandonar esta tela deixa um registro de autenticação vazio, e nada mais.
  */
 export default function Comecar() {
-  const { user, profile, loading, logout } = useAuth();
+  const { user, profile, loading, logout, perfilIndisponivel } = useAuth();
   const navigate = useNavigate();
 
-  // Se o perfil aparecer, esta tela não é mais o lugar dela.
+  // Se o perfil aparecer, esta tela não é mais o lugar dela — a pessoa
+  // escolheu uma saída e voltou.
   //
-  // Cobre dois casos: a pessoa que escolheu uma saída e voltou, e a falha
-  // transitória de rede em `getUserDoc` — que deixa `profile` nulo por um
-  // instante e mandaria pra cá alguém que já tem conta há meses.
+  // ⚠️ ESTE COMENTÁRIO PROMETIA COBRIR A FALHA DE REDE EM `getUserDoc`, E NÃO
+  // COBRIA. Ele só reage a um `profile` que APARECE, e nada aqui relia nada:
+  // quem chegava por leitura falha ficava lendo "Nada foi criado ainda" até
+  // desistir. Quem cobre esse caso agora é o `perfilIndisponivel` abaixo, com
+  // tela própria e botão de tentar de novo.
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -53,6 +57,12 @@ export default function Comecar() {
     }
     if (profile?.role) navigate(painelDe(profile), { replace: true });
   }, [loading, user, profile, navigate]);
+
+  // A LEITURA FALHOU: esta tela mentiria duas vezes ("falta ligar sua conta" e
+  // "nada foi criado ainda") para quem já tem conta. Ela é o destino do
+  // `Login` também, então o desvio precisa estar aqui e não só nos guardas do
+  // `App`.
+  if (perfilIndisponivel) return <FalhaAoLerConta />;
 
   return (
     <div className="flex min-h-screen flex-col justify-center bg-bg px-6 py-10">

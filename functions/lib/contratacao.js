@@ -77,6 +77,7 @@ const {
   dentroDoTrial,
   degrauDaDecisao,
   descontoDoDegrau,
+  limitarDiaVencimento,
 } = require('./reguaDoServidor');
 
 function makeContratarPlano(db) {
@@ -166,6 +167,31 @@ function makeContratarPlano(db) {
         { merge: true }
       );
 
+      // ── O DIA DO VENCIMENTO, QUE O CONTRATO PRECISA DIZER ──────────────
+      //
+      // ⚠️ ELE VEM DAQUI PORQUE O MOTORISTA NÃO PODE LER `taxaConfig`.
+      // A tela montava o contrato com `profile.diaVencimento` — um campo de
+      // `users` que NINGUÉM NUNCA ESCREVEU. `limitarDiaVencimento(undefined)`
+      // devolve o padrão, então **todo contrato assinado dizia "todo dia 10"**,
+      // inclusive depois de o dono trocar o dia no painel: o documento
+      // prometia uma data e a fatura vencia noutra.
+      //
+      // Não dá para a tela ler a config: `taxaConfig` é do DONO (a estrutura
+      // de preço da plataforma não vaza nem entre parceiros), e é por isso que
+      // o fechamento COPIA a chave PIX para dentro da fatura. Mesmo caminho
+      // aqui — quem tem Admin SDK lê e devolve só o número.
+      //
+      // Falha na leitura cai no padrão em vez de derrubar a contratação: o
+      // fechamento usa exatamente o mesmo `?? 10`, então o pior caso é o
+      // contrato repetir o padrão, que é o comportamento de hoje.
+      let diaVencimento = 10;
+      try {
+        const cfg = await db.doc('taxaConfig/app').get();
+        diaVencimento = limitarDiaVencimento(cfg.data()?.diaVencimento ?? 10);
+      } catch (err) {
+        logger.error('[contratacao] taxaConfig não leu', { uid, err: String(err) });
+      }
+
       logger.info('[contratacao] plano contratado', {
         uid,
         plano,
@@ -179,6 +205,9 @@ function makeContratarPlano(db) {
         // A tela precisa saber se o desconto foi concedido AGORA, e QUAL foi,
         // para dizer isso à pessoa. Descobrir depois, na primeira fatura,
         // transforma um presente em desconfiança.
+        // O DIA VEM DO SERVIDOR pelo mesmo motivo que a fração: o cliente
+        // não alcança a fonte. Ver o bloco acima.
+        diaVencimento,
         fechamento: ganhaAgora,
         degrau: ganhaAgora ? degrau : null,
         fracao: ganhaAgora ? fracao : 0,

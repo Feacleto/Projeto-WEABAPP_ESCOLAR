@@ -41,7 +41,9 @@ import {
  * assinatura existem no documento, e só aparecem na impressão.
  *
  * O QUE ESTE EXTRATO NÃO PODE PROMETER
- * A retenção de pagamentos é de 12 meses. Um extrato que dissesse "histórico
+ * A retenção de pagamentos é de 60 meses — o número vem da seção 8 da
+ * Política de Privacidade, e está em `dominio/cobranca/retencao.js`. Um
+ * extrato que dissesse "histórico
  * completo" mentiria no décimo terceiro mês, então o cabeçalho diz o período
  * que ele realmente cobre — o primeiro e o último mês que existem no banco.
  */

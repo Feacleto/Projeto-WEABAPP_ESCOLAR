@@ -780,6 +780,60 @@ t('chamada sem argumento nenhum não explode', () => {
   eq(avisoDeMudancaDeHorario({}), null);
 });
 
+/* ── O CHECKPOINT NÃO GUARDA ONDE O MOTORISTA ESTAVA ─────────────────────
+ *
+ * `checkpointFrom` gravava `lat` e `lng` — a posição do veículo dele — em
+ * `children.lastStatusCheckpoint` e em `rides/{dia}.checkpoints`, um registro
+ * por criança por dia. **Nada lia esses dois campos.** O que a conferência
+ * usa é a DISTÂNCIA, que responde "ele estava longe da casa quando marcou
+ * entregue?" sem dizer onde ele estava.
+ *
+ * E `children` é lido pela RESPONSÁVEL: guardar a coordenada dele ali torna o
+ * trajeto do carro de um autônomo reconstruível por terceiros — exatamente o
+ * que a página `/acompanhar` recusa fazer, com a frase "ele não decidiu
+ * compartilhá-la com terceiros".
+ *
+ * A função mora atrás de um import do Firestore, então a garantia é por
+ * LEITURA DE ARQUIVO — o mesmo recurso de `testar:selo` e `testar:busca`.
+ */
+const fonteDoStatus = await readFile(
+  new URL('../src/services/routeStatusService.js', import.meta.url),
+  'utf8'
+);
+const corpoDoCheckpoint = (fonteDoStatus.match(
+  /function checkpointFrom\(context, nextStatus\) \{[\s\S]*?\n\}/
+) || [''])[0];
+// Só o código: o comentário que explica a decisão cita os nomes dos campos.
+const codigoDoCheckpoint = corpoDoCheckpoint
+  .split('\n')
+  .filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
+  .join('\n');
+
+t('o checkpoint existe e foi encontrado pelo teste', () => {
+  assert(corpoDoCheckpoint.length > 0, 'não achei checkpointFrom');
+});
+t('ele não grava a coordenada do motorista', () => {
+  assert(!/\blat:/.test(codigoDoCheckpoint), 'lat foi gravado');
+  assert(!/\blng:/.test(codigoDoCheckpoint), 'lng foi gravado');
+});
+t('mas continua gravando a distância, que é a conferência', () => {
+  assert(/distanceKm:/.test(codigoDoCheckpoint), 'a distância sumiu junto');
+});
+t('sem destino esperado, não grava nada', () => {
+  // 'onboard' não tem destino, então o checkpoint seria só posição — que é
+  // o caso que este bloco existe para eliminar.
+  assert(
+    /if \(!target\?\.lat \|\| !target\?\.lng\) return null;/.test(codigoDoCheckpoint),
+    'checkpoint sem destino ainda é gravado'
+  );
+});
+// Sonda positiva: o detector precisa reprovar a versão antiga, senão ele
+// aprova qualquer coisa.
+t('o detector reprova a versão antiga (sonda positiva)', () => {
+  assert(/\blat:/.test('  const checkpoint = { lat: pos.lat, lng: pos.lng };'),
+    'o detector não reconhece lat');
+});
+
 console.log('\n' + '─'.repeat(66));
 console.log(`\x1b[1m${ok} passaram, ${fail} falharam\x1b[0m`);
 if (fail) {

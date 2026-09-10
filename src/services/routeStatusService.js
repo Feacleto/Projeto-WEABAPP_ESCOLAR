@@ -114,18 +114,30 @@ function checkpointFrom(context, nextStatus) {
       ? context?.school
       : null;
 
-  const checkpoint = {
-    lat: pos.lat,
-    lng: pos.lng,
-    at: new Date().toISOString(),
-  };
+  // ⚠️ A COORDENADA DO MOTORISTA NÃO É GRAVADA, E ISSO É CORREÇÃO.
+  //
+  // O checkpoint levava `lat` e `lng` crus — a posição do veículo dele — para
+  // `children.lastStatusCheckpoint` e para `rides/{dia}.checkpoints`, um
+  // registro por criança por dia. **Nenhuma tela lia esses dois campos**: o
+  // que a conferência usa é a DISTÂNCIA, e é ela que o comentário acima
+  // descreve como o sinal do lote apertado cedo demais.
+  //
+  // O custo era todo do outro lado. `children` é lido pela RESPONSÁVEL, então
+  // guardar ali a coordenada dele por dia deixa o trajeto do carro de um
+  // autônomo reconstruível por terceiros — a mesma coisa que a página
+  // `/acompanhar` recusa a fazer, com a frase "ele não decidiu compartilhá-la
+  // com terceiros". Dado sensível sem leitor é só passivo.
+  //
+  // A distância preserva a função inteira: ela responde "ele estava longe da
+  // casa quando marcou entregue?" sem dizer ONDE ele estava.
+  if (!target?.lat || !target?.lng) return null;
 
-  if (target?.lat && target?.lng) {
-    checkpoint.distanceKm = Number(
+  return {
+    at: new Date().toISOString(),
+    distanceKm: Number(
       haversineDistance(target.lat, target.lng, pos.lat, pos.lng).toFixed(3)
-    );
-  }
-  return checkpoint;
+    ),
+  };
 }
 
 /**

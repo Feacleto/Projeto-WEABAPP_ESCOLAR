@@ -131,7 +131,12 @@ export default function TioPlanos() {
         fundador: profile?.condicaoFundador || null,
         indicacoesAtivas: indicacoes,
         descontos: clausula.descontos,
-        diaVencimento: profile?.diaVencimento,
+        // ⚠️ DO SERVIDOR, NUNCA DO PERFIL. Aqui era `profile?.diaVencimento`,
+        // um campo de `users` que nenhum caminho do projeto escreve — o
+        // contrato saía sempre com o padrão, mesmo quando o dono tinha
+        // trocado o dia no painel. O dia é da CASA e mora em `taxaConfig`,
+        // que o motorista não lê; `contratarPlano` o devolve.
+        diaVencimento: clausula.diaVencimento,
         isencaoAte: profile?.isencaoAte || null,
       });
       await emitirContrato({ tioUid: user?.uid, conteudo, emitidoPor: user?.uid });

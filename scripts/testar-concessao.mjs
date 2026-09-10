@@ -18,6 +18,8 @@
  *   node scripts/testar-concessao.mjs      (ou: npm run testar:concessao)
  */
 
+import { readFileSync } from 'node:fs';
+import { explicarIsencao } from '../src/dominio/associacao/isencaoDaFatura.js';
 import {
   FRACAO_MINIMA,
   MOTIVO_MINIMO,
@@ -339,6 +341,66 @@ checar('motivo tem piso de dez', 10, MOTIVO_MINIMO);
 checar('prazo tem teto de doze', 12, PRAZO_MAXIMO);
 checar('fração tem piso de 5%', 0.05, FRACAO_MINIMA);
 checar('entrada vazia não passa', false, validarConcessao().ok);
+
+bloco('A concessão não pode aparecer como período de teste');
+
+// ⚠️ ESTE É O BLOCO QUE PAGA O ARQUIVO. `TioTaxa` decidia com
+// `fatura.isento || total === 0` e imprimia SEMPRE "você está no período de
+// teste" — então a isenção que uma pessoa concedeu, com motivo e prazo, era
+// apresentada ao motorista como régua da casa. A fatura já gravava
+// `motivoIsencao`, `mesDeTeste` e `testeAte`; nenhuma tela lia os três.
+const porTeste = explicarIsencao({
+  isento: true,
+  total: 0,
+  motivoIsencao: 'teste',
+  mesDeTeste: 2,
+  testeAte: new Date('2026-11-29T12:00:00'),
+});
+const porConcessao = explicarIsencao({
+  isento: true,
+  total: 0,
+  motivoIsencao: 'concessao',
+});
+
+checar('a de teste diz teste', true, /período de teste/.test(porTeste.titulo));
+checar('a de concessão NÃO diz teste', false,
+  /teste/i.test(porConcessao.titulo + ' ' + (porConcessao.corpo || '')));
+checar('e diz que a plataforma isentou', true, /isentou/.test(porConcessao.titulo));
+checar('a de teste devolve a data congelada', true, porTeste.ate instanceof Date);
+checar('a de concessão não inventa data', null, porConcessao.ate);
+checar('o motivo viaja junto', 'concessao', porConcessao.motivo);
+
+// ⚠️ O NÚMERO ACIMA SIGNIFICA COISAS DIFERENTES nos dois casos, e o texto
+// tem que acompanhar: no teste é PROJEÇÃO (ele não escolheu plano), na
+// concessão é a conta REAL, dispensada. Trocar as duas frases faz a
+// concessão parecer menor do que foi.
+checar('no teste o valor é projeção', true, /custaria/.test(porTeste.corpo));
+checar('na concessão o valor é a conta real', true, /custa hoje/.test(porConcessao.corpo));
+
+// FATURA ANTIGA, fechada antes do campo existir: não afirma nenhum dos dois.
+const semMotivo = explicarIsencao({ isento: true, total: 0 });
+checar('sem motivo, não chuta teste', false, /teste/i.test(semMotivo.titulo));
+checar('nem chuta concessão', false, /isentou/.test(semMotivo.titulo));
+checar('mas ainda diz que não há o que pagar', true, /Nada a pagar/.test(semMotivo.titulo));
+
+// O FUNDADOR VITALÍCIO chega a zero por DESCONTO, sem `isento` — o zero
+// continua abrindo a pergunta, só não escolhe mais a resposta.
+const zeroSemIsento = explicarIsencao({ isento: false, total: 0 });
+checar('total zero ainda conta como isenta', true, zeroSemIsento !== null);
+checar('e não vira "período de teste"', false, /teste/i.test(zeroSemIsento.titulo));
+
+// Fatura que COBRA não recebe explicação nenhuma — senão o cartão verde
+// apareceria por cima do PIX.
+checar('fatura com valor não é isenta', null, explicarIsencao({ total: 49 }));
+checar('fatura ausente também não', null, explicarIsencao(null));
+
+// A TELA LÊ ISTO, e não o zero. Sem esta linha o módulo existe e o bug
+// continua na tela — que foi exatamente o estado dos três campos gravados.
+const fonteTaxa = readFileSync(
+  new URL('../src/pages/tio/TioTaxa.jsx', import.meta.url), 'utf8');
+checar('a tela usa a explicação', true, fonteTaxa.includes('explicarIsencao(fatura)'));
+checar('e não escreve mais a frase do teste à mão', false,
+  fonteTaxa.includes('<strong>Nada a pagar: você está no período de teste.</strong>'));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 
