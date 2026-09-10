@@ -6,7 +6,10 @@ import {
   isTracking,
 } from '../services/locationService';
 import { ligarRelogioDoTrial } from '../services/trialService';
-import { avisarSaidaDaRota } from '../services/routeStatusService';
+import {
+  avisarSaidaDaRota,
+  avisarQuemFicou,
+} from '../services/routeStatusService';
 
 /**
  * Hook do lado do motorista (Tio): controla o tracking GPS.
@@ -84,12 +87,26 @@ export function useGeolocation() {
     }
   }, []);
 
-  const stop = useCallback(async () => {
+  const stop = useCallback(async (driverUid) => {
     setStopping(true);
     try {
       await stopTracking();
       setWatching(false);
       setPosition(null);
+
+      /* QUEM NÃO FOI MARCADO FICA SABENDO — e o fim da rota é o único momento
+       * em que isso é FATO e não inferência. Marcar fora de ordem é rotina, e
+       * dizer "seu filho ficou pra trás" a partir da ordem das marcações
+       * assustaria mães à toa; aqui a rota acabou.
+       *
+       * A direção sai da hora: antes do meio-dia a rota que terminou é a de
+       * ida. E sem `await` — encerrar a rota não pode esperar por avisos. */
+      if (driverUid) {
+        avisarQuemFicou({
+          adminUid: driverUid,
+          direcao: new Date().getHours() < 12 ? 'ida' : 'volta',
+        });
+      }
     } catch (err) {
       setError(err);
     } finally {

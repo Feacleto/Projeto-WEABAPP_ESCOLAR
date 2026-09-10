@@ -73,7 +73,9 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
       return;
     }
     setConfirmandoParada(false);
-    await stop();
+    // O uid vai adiante: quem encerra a rota é quem sabe de quem ela é, e
+    // `avisarQuemFicou` precisa dele pra achar a turma.
+    await stop(user?.uid);
     toast.success('Rota encerrada.');
   }
 

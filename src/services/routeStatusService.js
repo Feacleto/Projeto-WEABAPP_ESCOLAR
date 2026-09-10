@@ -9,7 +9,12 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { getDateKey } from '../dominio/rota/horarios';
+import {
+  getDateKey,
+  normalizaHora,
+  emMinutos,
+  CAMPO_DA_DIRECAO,
+} from '../dominio/rota/horarios';
 import { playSound } from './soundService';
 import { haversineDistance } from '../compartilhado/haversine';
 import { getEffectiveStatus } from './childrenService';
@@ -168,6 +173,16 @@ export async function advanceChild(childId, nextStatus, context = null) {
       status: nextStatus,
     },
   ]);
+
+  /* E QUEM VEM DEPOIS FICA SABENDO QUE É A VEZ DELA. Só nos dois marcos que
+     movem a fila: embarcar avança a ida, entregar avança a volta. `atSchool`
+     não move ninguém — é o meio do caminho da mesma criança. */
+  if (context?.adminUid && (nextStatus === 'onboard' || nextStatus === 'delivered')) {
+    avisarProximo({
+      adminUid: context.adminUid,
+      direcao: nextStatus === 'onboard' ? 'ida' : 'volta',
+    });
+  }
 
   playSound('status_change');
 }
@@ -364,6 +379,175 @@ export async function avisarSaidaDaRota(adminUid) {
     return paraQuem.size;
   } catch (err) {
     console.error('Falha ao avisar a saída da rota:', err);
+    return 0;
+  }
+}
+
+/**
+ * VOCÊ É O PRÓXIMO — a resposta para "falta muito?".
+ *
+ * É a pergunta que a família faz todo dia, e a única coisa que respondia era
+ * o mapa: ela ficava olhando o pontinho andar. A fila já existe (`horaPega` /
+ * `horaEntrega` ordenam o dia inteiro), e um aviso quando ela vira a próxima
+ * troca vinte minutos de vigília por dez segundos de leitura.
+ *
+ * ── ⚠️ UMA VEZ POR CRIANÇA, POR DIA, POR DIREÇÃO
+ * O motorista avança de parada em parada, e sem trava a mesma família
+ * receberia "você é a próxima" a cada toque dele até chegar nela. A marca é
+ * local, no celular dele — mesma escolha do aviso de saída, e pelo mesmo
+ * motivo: é conveniência, não cláusula.
+ *
+ * ── ⚠️ E O "PRÓXIMO" SAI DA HORA COMBINADA, NÃO DA ORDEM DE MARCAÇÃO
+ * Ele marca fora de ordem o tempo todo — uma criança desce correndo, outra
+ * atrasa, ele inverte duas ruas por causa do trânsito. A ordem das marcações
+ * não é a ordem da rua; a hora combinada é a única fila que a família também
+ * conhece, porque foi ela que combinou.
+ */
+const CHAVE_DO_PROXIMO = 'ab_aviso_de_proximo';
+
+export async function avisarProximo({ adminUid, direcao }) {
+  if (!adminUid || !direcao) return null;
+  const campo = CAMPO_DA_DIRECAO[direcao];
+  const esperado = direcao === 'ida' ? 'home' : 'atSchool';
+
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'children'), where('adminUid', '==', adminUid))
+    );
+
+    const fila = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((c) => c.active !== false && c.parentUid && normalizaHora(c[campo]))
+      .sort((a, b) => String(a[campo]).localeCompare(String(b[campo])));
+
+    const proximo = fila.find((c) => getEffectiveStatus(c) === esperado);
+    if (!proximo) return null;
+
+    const chave = `${proximo.id}_${getDateKey()}_${direcao}`;
+    try {
+      if (localStorage.getItem(CHAVE_DO_PROXIMO) === chave) return null;
+      localStorage.setItem(CHAVE_DO_PROXIMO, chave);
+    } catch {
+      /* sem storage a trava não existe; avisar é melhor que calar */
+    }
+
+    const nome = String(proximo.name || '').trim().split(/\s+/)[0] || 'Seu filho';
+    await addDoc(collection(db, 'notifications'), {
+      userId: proximo.parentUid,
+      type: 'proxima_parada',
+      title: 'Vocês são os próximos',
+      body:
+        direcao === 'ida'
+          ? `A perua está a caminho — ${nome} é a próxima parada.`
+          : `A perua está a caminho — ${nome} é a próxima entrega.`,
+      childId: proximo.id,
+      createdAt: serverTimestamp(),
+    });
+    return proximo.id;
+  } catch (err) {
+    console.error('Falha ao avisar a próxima parada:', err);
+    return null;
+  }
+}
+
+/**
+ * QUEM FICOU PRA TRÁS — e o gatilho é o FIM DA ROTA, não o pulo de parada.
+ *
+ * ── ⚠️ ESTE É O AVISO MAIS PERIGOSO DO APP, E O GATILHO É O QUE O TORNA
+ * SEGURO
+ * A tentação é disparar quando ele marca uma criança DEPOIS de outra que ficou
+ * pra trás. Não dá: ele marca fora de ordem o tempo todo — inverte duas ruas
+ * por causa do trânsito, deixa uma criança pro fim porque ela sempre atrasa.
+ * Ordem de marcação não é ordem da rua, e inferir dali é dizer a uma mãe que o
+ * filho ficou na calçada quando ele está sentado na perua. Nenhuma
+ * conveniência paga esse erro.
+ *
+ * No fim da rota não há inferência: a rota acabou e a criança não foi marcada.
+ * É fato.
+ *
+ * ── ⚠️ E A FRASE DIZ O QUE O APP SABE, NÃO O QUE ELA TEME
+ * O app sabe que ninguém MARCOU. Ele não sabe se a criança embarcou — marcar é
+ * manual, e esquecer é comum no meio de vinte paradas. Escrever "seu filho não
+ * foi pego" seria afirmar o que não se sabe, no assunto em que o erro é mais
+ * caro. A frase fala do registro e manda confirmar com ele.
+ *
+ * ── ⚠️ SÓ QUEM JÁ PASSOU DA HORA COM FOLGA
+ * Ele pode encerrar no meio (bateria, pausa, engano). Quem ainda nem tinha
+ * horário de ser pego não pode receber "ficou pra trás" — daí a folga.
+ */
+const FOLGA_DO_ESQUECIDO = 20; // minutos depois da hora combinada
+const CHAVE_DO_ESQUECIDO = 'ab_aviso_esquecido';
+
+export async function avisarQuemFicou({ adminUid, direcao, agora = new Date() }) {
+  if (!adminUid || !direcao) return 0;
+  const campo = CAMPO_DA_DIRECAO[direcao];
+  const marco = direcao === 'ida' ? 'onboard' : 'delivered';
+  const esperado = direcao === 'ida' ? 'home' : 'atSchool';
+  const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'children'), where('adminUid', '==', adminUid))
+    );
+
+    const esquecidos = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((c) => {
+        if (c.active === false || !c.parentUid) return false;
+        const hora = normalizaHora(c[campo]);
+        if (!hora) return false;
+        // Ainda não era a hora dele: encerrar cedo não faz dele um esquecido.
+        if (emMinutos(hora) + FOLGA_DO_ESQUECIDO > minutosAgora) return false;
+        return getEffectiveStatus(c) === esperado;
+      });
+
+    if (!esquecidos.length) return 0;
+
+    /* ⚠️ UMA VEZ POR CRIANÇA, POR DIA. Quem não foi pego de manhã continua
+       `home` à tarde — sem esta trava, o fim da rota da volta repetiria o
+       mesmo aviso, e repetir "seu filho não foi marcado" é assustar duas
+       vezes pelo mesmo fato. */
+    const hoje = getDateKey();
+    const marcados = new Set();
+    try {
+      const cru = localStorage.getItem(CHAVE_DO_ESQUECIDO);
+      const salvo = cru ? JSON.parse(cru) : null;
+      if (salvo && salvo.dia === hoje) (salvo.ids || []).forEach((i) => marcados.add(i));
+    } catch {
+      /* sem storage a trava não existe */
+    }
+    const novos = esquecidos.filter((c) => !marcados.has(c.id));
+    if (!novos.length) return 0;
+
+    await Promise.all(
+      novos.map((c) => {
+        const nome = String(c.name || '').trim().split(/\s+/)[0] || 'Seu filho';
+        return addDoc(collection(db, 'notifications'), {
+          userId: c.parentUid,
+          type: 'nao_embarcou',
+          title: `${nome} não foi marcado`,
+          body:
+            `A rota terminou e ${nome} não foi marcado como ` +
+            `${marco === 'onboard' ? 'pego' : 'entregue'}. ` +
+            'Pode ter faltado a marcação — vale confirmar com o motorista.',
+          childId: c.id,
+          createdAt: serverTimestamp(),
+        }).catch(() => {});
+      })
+    );
+
+    try {
+      novos.forEach((c) => marcados.add(c.id));
+      localStorage.setItem(
+        CHAVE_DO_ESQUECIDO,
+        JSON.stringify({ dia: hoje, ids: [...marcados] })
+      );
+    } catch {
+      /* idem */
+    }
+    return novos.length;
+  } catch (err) {
+    console.error('Falha ao avisar quem ficou:', err);
     return 0;
   }
 }
