@@ -1021,19 +1021,26 @@ export default function Login() {
                         {/* A porta da família chega DEPOIS da do motorista,
                           * e a ordem é a mesma dos pesos: ele paga e usa o dia
                           * inteiro, ela chega pelo link dele em 9 de 10 casos.
-                          * Quem é família reconhece "link ou código" antes de
-                          * ler o resto. */}
+                          *
+                          * ⚠️ ELA DIZIA "um link ou um código", e o código
+                          * saiu do destino em 09/09/2026 — o `/first-access`
+                          * não tem mais campo pra digitar. Prometer aqui uma
+                          * entrada que a próxima tela não oferece é o defeito
+                          * mais barato de criar e o mais caro de descobrir:
+                          * quem chega com o código na mão procura o campo,
+                          * não acha, e conclui que errou de tela. */}
                         <span
                           className="rise mt-1 block text-sm leading-snug text-textMuted"
                           style={{ '--d': '340ms' }}
                         >
-                          Você recebeu um link ou um código do motorista.
+                          Você recebeu um link do motorista — ou ainda vai
+                          pedir um pra ele.
                         </span>
                         <span
                           className="rise mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
                           style={{ '--d': '420ms' }}
                         >
-                          Usar meu convite <ArrowRight size={15} />
+                          Entrar pelo convite <ArrowRight size={15} />
                         </span>
                       </button>
                     </Reveal>

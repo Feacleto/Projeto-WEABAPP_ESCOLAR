@@ -1,112 +1,61 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Link2,
-  LogIn,
-  Lock,
-  Mail,
-  Ticket,
-  User,
-} from 'lucide-react';
+import { ArrowLeft, Copy, Link2, LogIn, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import Button from '../components/common/Button';
-import Input from '../components/common/Input';
 import FundoNoturno from '../components/common/FundoNoturno';
-import GoogleIcon from '../components/common/GoogleIcon';
 import Logo from '../components/common/Logo';
 import FundoDoLogin from '../components/auth/FundoDoLogin';
-import LegalAcceptCheckbox from '../components/legal/LegalAcceptCheckbox';
-import { authenticateAndRedeem, googleAndRedeem, resetPassword } from '../services/authService';
-import { acceptTerms } from '../services/consentService';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
-import { CENA_ABERTURA, CENA_ENTRADA, travessar } from '../marca/travessia';
-import { isValidEmail } from '../compartilhado/masks';
-import {
-  codigoDoTexto,
-  isValidInviteCodeFormat,
-} from '../dominio/identidade/generateInviteCode';
-import { mensagemDeAuth } from '../dominio/identidade/authErrors';
+import { linkDoPedido, mensagemAoMotorista } from '../marca/pedidoAoMotorista';
 
 /**
- * Primeiro acesso do responsável — /first-access
+ * A PORTA DA RESPONSÁVEL QUE NÃO TEM O LINK.
  *
- * ESTA TELA SÓ CRIA CONTA. NÃO É PORTA DE LOGIN.
- * Quem chega aqui é quem ainda não existe no app: o responsável que recebeu
- * um convite do motorista. Ela tinha duas abas ("já tenho conta" / "criar
- * conta") e a de login era um convite ao erro — porque login não resolve o
- * problema de quem chega aqui:
+ * ⚠️ ESTA TELA DEIXOU DE CRIAR CONTA EM 09/09/2026, e o motivo é que ela
+ * nunca conseguia.
  *
- *   "ENTRAR com Google" não dá acesso a ninguém. Sem doc em `users/{uid}` o
- *   app desloga na hora, e é isso que tem que acontecer: acesso de
- *   responsável nasce do VÍNCULO com uma criança, e o vínculo nasce do
- *   convite do motorista. Um botão que parece resolver e devolve erro é pior
- *   que um botão que não existe.
+ * A entrada do responsável é o LINK, e ela é inteira do
+ * [Invite.jsx](Invite.jsx): `/convite/:codigo` lê o código da URL, chama
+ * `redeemInvite` e leva pro `/pai`. **Esse caminho não passa por aqui.**
  *
- *   "CRIAR CONTA com Google" dá acesso, porque vai junto com o código
- *   (`googleAndRedeem`): resgata o convite e cria o vínculo no mesmo passo.
- *   Esse fica — e fica em destaque, porque é o caminho sem digitar nada, que
- *   é o que serve pra quem tem pouca familiaridade com teclado de celular.
+ * Então quem chega nesta tela é, por definição, quem NÃO tem o link. E até
+ * ontem a única coisa que ela oferecia a essa pessoa era digitar um código de
+ * 8 caracteres — que ela quase sempre também não tem, porque link e código
+ * viajam na MESMA mensagem do WhatsApp: se a conversa sumiu, sumiram os dois.
+ * A tela pedia a chave a quem tinha acabado de perder o chaveiro.
  *
- * Quem já tem conta encontra um link discreto pro /login no fim. É a minoria
- * aqui, e mandar essa pessoa pra tela certa custa um toque.
+ * O CAMPO SAIU, e com ele o aceite legal, o "Criar conta com Google" e o
+ * e-mail/senha — sem código não há convite pra resgatar, e conta de
+ * responsável sem criança vinculada é conta órfã. O que entrou no lugar está
+ * em [marca/pedidoAoMotorista.js](../marca/pedidoAoMotorista.js): a mensagem
+ * que ela manda pedindo o convite.
  *
- * O CÓDIGO É A EXCEÇÃO, NÃO A REGRA
- * O caminho natural do responsável é o LINK que o motorista mandou: ele já
- * carrega o convite e a conta se cria por lá, sem código. Então a tela abre
- * dizendo isso, e o campo de código só aparece pra quem toca em "tenho um
- * código". Colocar o código na frente ensinava a coisa errada.
+ * ── POR QUE O PEDIDO É MELHOR QUE O CAMPO
+ * Ele devolve um **link novo, que funciona**. O campo devolvia a chance de
+ * errar uma letra num código lido por telefone — e código errado é
+ * indistinguível, para ela, de convite que não existe.
  *
- * O FORMULÁRIO APARECE EM PASSOS
- * Nome → email → senha → botão, cada campo entrando quando o anterior recebe
- * o dedo. O formulário é o mesmo; o que muda é a sensação: em vez de um muro
- * de campos, uma pergunta por vez.
+ * E há um caso que só o pedido resolve: **o motorista que ainda não usa o
+ * app.** Ela não perdeu convite nenhum, nunca houve um. Para essa pessoa o
+ * campo de código nunca teve resposta.
+ *
+ * ⚠️ O QUE ISTO FECHA, e a decisão é do dono: quem tem SÓ o código anotado
+ * (ditado por telefone, escrito num papel) e não tem mais o link perde a
+ * entrada digitada. Ela agora pede um link novo — o que resolve o problema
+ * dela melhor, mas depende do motorista responder.
+ *
+ * Se um dia isso voltar: o mecanismo continua inteiro. `redeemInvite` aceita
+ * `inviteCode`, `codigoDoTexto` ainda lê código de qualquer texto, e
+ * `isValidInviteCodeFormat` ainda valida. O que saiu foi a TELA, não a porta.
  */
 export default function FirstAccess() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile, loading: authLoading, refreshProfile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
+  const [copiado, setCopiado] = useState(false);
 
-  // O CÓDIGO PODE CHEGAR PRONTO — mas HOJE NUNCA CHEGA, e isso é deliberado.
-  //
-  // A aba "Criar conta" do login pedia o código, e este comentário descrevia
-  // aquele fluxo. O campo saiu de lá em 06/09/2026 (código é coisa de
-  // responsável, e o motorista lia aquilo como "preciso de código pra me
-  // cadastrar"), então o `state` que chega aqui traz só `{ de: 'escolha' }`:
-  // `codigoRecebido` é sempre `''`.
-  //
-  // A leitura fica porque a porta é legítima — quem chegar aqui com o código
-  // na mão continua sendo atendido, e o link do convite pode passar a usá-la.
-  // O que saiu foi a PROMESSA na tela: a dica dizia "se você veio da tela
-  // anterior, ele já vem preenchido", e a pessoa olhava o campo vazio e
-  // desconfiava de ter aberto a tela errada.
-  const codigoRecebido = codigoDoTexto(location.state?.code || '');
-
-  // Quem veio da bifurcação do login está NO MEIO de uma escolha: o
-  // arrependimento provável dela é trocar de porta, não sair do app. Quem
-  // chegou de qualquer outro jeito continua voltando pra porta da família.
-  const veioDaEscolha = location.state?.de === 'escolha';
-  // O `abriuCodigo` SAIU em 08/09/2026: o campo de código não fica mais atrás
-  // de um toque, então não há o que abrir. O motivo dele existir continua
-  // resolvido — por hierarquia, não por esconderijo — e o comentário está no
-  // divisor "ou digite o código", lá embaixo.
-  const [abriuSenha, setAbriuSenha] = useState(false);
-  const [code, setCode] = useState(codigoRecebido);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [acceptedLegal, setAcceptedLegal] = useState(false);
-  const [tocou, setTocou] = useState({});
-  const [errors, setErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  // A conta já existe com outra senha — ver o `catch` de `onSubmit`.
-  const [contaExiste, setContaExiste] = useState(false);
-  const [enviandoReset, setEnviandoReset] = useState(false);
-  const [googleSubmitting, setGoogleSubmitting] = useState(false);
-
-  // Já autenticado? Vai pro painel — inclusive quem cair aqui por link antigo.
+  // Quem já tem sessão com papel não tem nada a fazer aqui.
   useEffect(() => {
     if (!authLoading && profile?.role) {
       const target = painelDe(profile);
@@ -114,165 +63,22 @@ export default function FirstAccess() {
     }
   }, [authLoading, profile, navigate, location.state]);
 
-  const marcar = (campo) => () =>
-    setTocou((p) => (p[campo] ? p : { ...p, [campo]: true }));
+  // Quem veio da bifurcação do login está NO MEIO de uma escolha: o
+  // arrependimento provável dela é trocar de porta, não sair do app. Quem
+  // chegou de qualquer outro jeito continua voltando pra porta da família.
+  const veioDaEscolha = location.state?.de === 'escolha';
 
-  const codigoOk = isValidInviteCodeFormat(code);
-  // Os passos: cada campo entra quando o anterior recebeu o dedo. Uso FOCO e
-  // não "está válido" de propósito — validar antes de a pessoa terminar de
-  // digitar é o jeito mais rápido de irritar.
-  const mostraEmail = tocou.nome || name.length > 0;
-  const mostraSenha = mostraEmail && (tocou.email || email.length > 0);
-  const mostraBotao = mostraSenha && (tocou.senha || password.length > 0);
-
-  const validate = () => {
-    const errs = {};
-    if (!codigoOk) {
-      errs.code = 'Confira o código com o motorista — ele começa com TN.';
-    }
-    if (!name.trim()) errs.name = 'Informe seu nome.';
-    if (!isValidEmail(email)) errs.email = 'Email inválido.';
-    if (password.length < 6) errs.password = 'Mínimo 6 caracteres.';
-    if (!acceptedLegal)
-      errs.legal = 'Você precisa aceitar os termos e a política de privacidade.';
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) {
-      toast.error('Confira os campos destacados.');
-      return;
-    }
-    setSubmitting(true);
+  const copiar = async () => {
     try {
-      // Mesma função do fluxo por link: tenta criar, e se o email já existir,
-      // entra com a mesma senha. O responsável não escolhe entre "criar
-      // conta" e "entrar" — o sistema descobre.
-      const { user, created } = await authenticateAndRedeem({
-        inviteCode: code,
-        email,
-        password,
-        name,
-      });
-      try {
-        await acceptTerms(user.uid);
-      } catch (err) {
-        console.error('Falha ao registrar aceite:', err);
-      }
-      await refreshProfile();
-      toast.success(
-        created ? 'Conta criada! Bem-vindo(a).' : 'Pronto! Criança vinculada.'
-      );
-      // `created` é o que separa as duas cenas: conta NOVA ganha a abertura
-      // (o balão vira a porta), conta que já existia e só vinculou mais uma
-      // criança ganha a entrada normal. A abertura é cara e existe pra um
-      // único momento na vida da pessoa — o instante em que ela descobre se
-      // aquele link do WhatsApp era um produto de verdade.
-      travessar(created ? CENA_ABERTURA : CENA_ENTRADA, 'parent');
-      navigate('/pai', { replace: true });
-    } catch (err) {
-      // A TRADUZIDA VEM PRIMEIRO.
-      //
-      // Era `err?.message || mensagemDeAuth(...)`, e o `||` fazia a mensagem
-      // CRUA do SDK — em ingles — ganhar sempre que existisse, que e sempre.
-      // Quem tentava criar conta com e-mail ja usado lia o texto do Firebase
-      // aqui e o texto em portugues na folha de login da home: mesma pessoa,
-      // mesmo erro, duas respostas. A traducao ja cai em err.message quando
-      // nao conhece o codigo.
-      toast.error(mensagemDeAuth(err, 'criar'));
-      // ⚠️ E QUANDO O E-MAIL JÁ TEM CONTA COM OUTRA SENHA, OFERECE A SAÍDA.
-      //
-      // Este é o beco da responsável que "perdeu o link e voltou pelo site":
-      // `authenticateAndRedeem` tenta criar, cai em `email-already-in-use`,
-      // tenta entrar com a mesma senha e falha com `invalid-credential`. O
-      // toast dizia "Email ou senha incorretos." e a tela não oferecia NADA —
-      // enquanto o comentário de `authenticateAndRedeem` promete, com essas
-      // palavras, que "a tela oferece redefinir senha".
-      //
-      // Agora ela oferece. O botão só aparece neste caso, porque é o único em
-      // que redefinir é a resposta: quem nunca teve conta não tem senha a
-      // redefinir.
-      const codigo = err?.code || '';
-      if (
-        codigo === 'auth/invalid-credential' ||
-        codigo === 'auth/wrong-password' ||
-        codigo === 'auth/email-already-in-use'
-      ) {
-        setContaExiste(true);
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /**
-   * Pede o link de redefinição para o e-mail que ela já digitou.
-   *
-   * Sem estado ocupado próprio ela toca duas vezes e leva
-   * `too-many-requests`, que a bloqueia por minutos — no último passo do
-   * cadastro, que é justo onde se desiste.
-   */
-  const onEsqueciSenha = async () => {
-    const alvo = String(email || '').trim();
-    if (!alvo) {
-      toast.error('Digite seu email primeiro.');
-      return;
-    }
-    setEnviandoReset(true);
-    try {
-      await resetPassword(alvo);
-      toast.success(
-        'Enviamos um link para redefinir sua senha. Confira sua caixa de entrada (e o spam!).',
-        { duration: 6000 }
-      );
-    } catch (err) {
-      toast.error(mensagemDeAuth(err, 'reset'));
-    } finally {
-      setEnviandoReset(false);
-    }
-  };
-
-  const onGoogleSignup = async () => {
-    if (!codigoOk) {
-      setErrors((p) => ({ ...p, code: 'Informe o código antes de continuar.' }));
-      toast.error('Digite o código de convite primeiro.');
-      return;
-    }
-    if (!acceptedLegal) {
-      setErrors((p) => ({
-        ...p,
-        legal: 'Você precisa aceitar os termos antes de continuar.',
-      }));
-      toast.error('Aceite os termos antes de continuar.');
-      return;
-    }
-    setGoogleSubmitting(true);
-    try {
-      const { user, created } = await googleAndRedeem({ inviteCode: code });
-      try {
-        await acceptTerms(user.uid);
-      } catch (err) {
-        console.error('Falha ao registrar aceite:', err);
-      }
-      await refreshProfile();
-      toast.success(
-        created ? 'Conta criada com Google!' : 'Pronto! Criança vinculada.'
-      );
-      // `created` é o que separa as duas cenas: conta NOVA ganha a abertura
-      // (o balão vira a porta), conta que já existia e só vinculou mais uma
-      // criança ganha a entrada normal. A abertura é cara e existe pra um
-      // único momento na vida da pessoa — o instante em que ela descobre se
-      // aquele link do WhatsApp era um produto de verdade.
-      travessar(created ? CENA_ABERTURA : CENA_ENTRADA, 'parent');
-      navigate('/pai', { replace: true });
-    } catch (err) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
-        toast.error(mensagemDeAuth(err, 'criar'));
-      }
-    } finally {
-      setGoogleSubmitting(false);
+      await navigator.clipboard.writeText(mensagemAoMotorista());
+      setCopiado(true);
+      toast.success('Mensagem copiada. Cole na conversa com o motorista.');
+      setTimeout(() => setCopiado(false), 4000);
+    } catch {
+      // Sem permissão de área de transferência (iOS antigo, webview) o botão
+      // não pode simplesmente não fazer nada — o WhatsApp continua aberto ao
+      // lado, e é pra lá que ela vai.
+      toast.error('Não deu pra copiar aqui. Use o botão do WhatsApp.');
     }
   };
 
@@ -294,348 +100,216 @@ export default function FirstAccess() {
       className="relative left-1/2 w-screen -translate-x-1/2 bg-bg"
     >
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)]">
-      {/* ── tampa escura: a marca, no mesmo material da home ── */}
-      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
-        <FundoNoturno />
+        {/* ── tampa escura: a marca, no mesmo material da home ── */}
+        <header className="relative overflow-hidden rounded-b-[28px] bg-night px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
+          <FundoNoturno />
 
-        <div className="relative">
-          {/* Voltar vai pra porta da FAMÍLIA, não pra "/". Esta tela existe
-            * só pra criar conta de responsável — quem está aqui está no
-            * caminho dele, e Voltar tem que devolver ele pra frente dele.
-            * Antes apontava pra home do motorista, que vende associação.
-            * A exceção é quem veio da bifurcação: essa pessoa volta pra ela. */}
-          <Link
-            to={veioDaEscolha ? '/login?criar=1' : '/familia'}
-            className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
-          >
-            <ArrowLeft size={16} />{' '}
-            {veioDaEscolha ? 'Voltar para a escolha' : 'Voltar'}
-          </Link>
-        </div>
-
-        {/* Mesmo arranjo da tela do motorista: voltar no alto, miolo no meio,
-          * domínio embaixo — senão o texto flutua num vazio de 300px quando a
-          * coluna tem a altura de um monitor. */}
-        <div className="relative">
-          <div className="text-center lg:text-left">
-            <Logo
-              variant="stacked"
-              tone="onDark"
-              height={80}
-              className="mx-auto lg:mx-0"
-            />
-          {/* ⚠️ A FAIXA DIZ O QUE ELA GANHA, e antes dizia o que ela tem que
-            *   fazer.
-            *
-            * "Primeiro acesso" / "Criar sua conta" descrevem o FORMULÁRIO, e o
-            * formulário já está do lado direito, com esse nome. Do lado da
-            * marca, a pergunta é outra: por que eu faria isso. A resposta é
-            * ver onde a perua está, saber quando ela chega e avisar quando o
-            * filho não vai.
-            *
-            * "Pra quem espera na porta" faz o par com "pra quem dirige" da
-            * tela do motorista. As duas portas passaram a se anunciar pelo
-            * mesmo gesto, e quem entrou na errada descobre no chapéu. */}
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
-              pra quem espera na porta
-            </p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
-              Acompanhe a perua do seu filho
-            </h1>
-            <p className="mx-auto mt-3 max-w-[22rem] text-sm leading-relaxed text-white/65 lg:mx-0">
-              Você vê onde ela está, recebe o aviso quando ela chega e avisa
-              quando ele não vai.{' '}
-              <strong className="font-semibold text-white">
-                Sua conta nasce do convite do motorista
-              </strong>{' '}
-              — é ele que liga o seu filho a você.
-            </p>
+          <div className="relative">
+            {/* Voltar vai pra porta da FAMÍLIA, não pra "/". Esta tela é do
+              * responsável — quem está aqui está no caminho dele, e Voltar
+              * tem que devolver ele pra frente dele. A exceção é quem veio da
+              * bifurcação: essa pessoa volta pra ela. */}
+            <Link
+              to={veioDaEscolha ? '/login?criar=1' : '/familia'}
+              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+            >
+              <ArrowLeft size={16} />{' '}
+              {veioDaEscolha ? 'Voltar para a escolha' : 'Voltar'}
+            </Link>
           </div>
-        </div>
 
-        <p className="relative hidden text-xs text-white/40 lg:block">
-          alobuzinou.com.br
-        </p>
-      </header>
-
-      {/* Costura entre a marca e o produto. */}
-      {/* A costura entre marca e produto só existe empilhado: lado a lado, a
-        * borda entre as duas colunas já faz esse trabalho. */}
-      <div
-        aria-hidden
-        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
-      />
-
-      {/* O cartão sobre cinza, igual ao do login e ao da tela do motorista:
-        * as três portas do produto passaram a ter a mesma superfície, porque
-        * são a mesma sessão para quem atravessa duas delas. */}
-      {/* ── O FUNDO AQUI LIGA MAIS TARDE QUE NO LOGIN, E A CONTA DIZ POR QUÊ
-        *
-        * Mesmo fundo, mesmo trio de regras
-        * ([FundoDoLogin](../components/auth/FundoDoLogin.jsx)) — o que muda é
-        * que o cartão desta tela tem **520px**, contra 380 do login. A faixa
-        * livre à esquerda encolhe na mesma medida:
-        *
-        *   esquerda do cartão = 0,58·L − 52 (padding) − 520 (cartão)
-        *   o cartão de fundo mais avançado alcança 284px
-        *   0,58·L − 572 ≥ 284  →  L ≥ 1497px
-        *
-        * Por isso `min-[1500px]` e não `min-[1340px]`. Numa tela de 1440 o
-        * slot do meio invadiria o formulário por ~21px, e a regra número um
-        * do fundo é nunca ficar atrás do cartão — valor em reais cortado pela
-        * borda de um formulário lê como bug, não como profundidade.
-        *
-        * ⚠️ Se um dia o cartão desta tela estreitar, ESTE número desce junto.
-        * `npm run testar:fundo` refaz as duas contas a partir dos arquivos,
-        * então a divergência falha no teste em vez de aparecer na tela. */}
-      <main className="relative flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16 min-[1500px]:pl-10 min-[1500px]:pr-[52px]">
-        <FundoDoLogin assunto="convite" desde={1500} />
-        <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8 min-[1500px]:mx-0 min-[1500px]:ml-auto">
-          <div className="mb-5">
-            <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
-              Usar meu convite
-            </h2>
-            {/* A FRASE PROMETE O CAMINHO CURTO ANTES DE MOSTRAR O LONGO.
-              * São duas formas, e a que serve 9 de 10 não pede nada digitado —
-              * dizer isso primeiro evita que ela comece a caçar o código que
-              * talvez ela não tenha. */}
-            <p className="mt-2 text-sm leading-relaxed text-textMuted">
-              Duas formas de entrar, e a primeira não pede nada digitado.
-            </p>
-          </div>
-        {/* O caminho fácil primeiro: quem tem o link não precisa de nada disso. */}
-        <div className="rounded-2xl border border-primaryBorder bg-primarySoft p-4">
-          <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
-            <Link2 size={15} className="text-primary" />
-            Recebeu um link no WhatsApp?
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-primary/80">
-            É só abrir o link — o convite já vem dentro dele e a sua conta se
-            cria por lá, <strong>sem digitar código nenhum.</strong>
-          </p>
-        </div>
-
-        {/* ⚠️ O CÓDIGO SAIU DE TRÁS DO TOQUE em 08/09/2026, por decisão do
-          * dono, e o argumento que o escondia fica registrado porque ele não
-          * era errado: 9 de 10 responsáveis chegam pelo link, e um campo de
-          * código do mesmo peso do aviso do link fazia as duas coisas
-          * parecerem opções equivalentes.
-          *
-          * O QUE SUBSTITUI AQUELE ARGUMENTO É A HIERARQUIA, não o
-          * esconderijo. O aviso do link continua em cima, em cartão verde, e
-          * o código vem depois de um "ou digite o código" — a ordem e o
-          * divisor dizem qual é o caminho principal sem exigir um toque de
-          * quem já está com o código na mão.
-          *
-          * E era esse toque o problema: quem veio da bifurcação com o código
-          * copiado do WhatsApp encontrava um campo fechado e tinha que
-          * descobrir que ele existia. */}
-        <div className="relative py-4">
-          <div className="absolute inset-0 flex items-center" aria-hidden>
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center">
-            <span className="bg-card px-3 text-xs text-textMuted">
-              ou digite o código
-            </span>
-          </div>
-        </div>
-        {(
-          <div className="space-y-4">
-            <Input
-              label="Código de convite"
-              placeholder="TN2K9F4B"
-              icon={Ticket}
-              value={code}
-              onChange={(e) => setCode(codigoDoTexto(e.target.value))}
-              autoCapitalize="characters"
-              maxLength={8}
-              hint="8 caracteres, começa com TN. Está no link que o motorista mandou."
-              error={errors.code}
-              required
-              // O código é lido em voz alta e conferido letra por letra: mono e
-              // espaçado. No INPUT, não no invólucro — senão o rótulo e a dica
-              // saem espaçados também.
-              inputClassName="font-mono tracking-[0.3em] uppercase"
-            />
-
-            {/* Só depois do código a criação de conta faz sentido: sem ele não
-              * há criança pra vincular, e conta de responsável sem criança é
-              * conta órfã. */}
-            {codigoOk ? (
-              <div className="animate-step-in space-y-4">
-                <LegalAcceptCheckbox
-                  checked={acceptedLegal}
-                  onChange={setAcceptedLegal}
-                  error={errors.legal}
-                />
-
-                {/* O Google aqui CRIA a conta (resgata o convite junto), e é o
-                  * caminho sem digitar nada. */}
-                <button
-                  type="button"
-                  onClick={onGoogleSignup}
-                  disabled={googleSubmitting}
-                  className="tap cta-shine relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl border-2 border-borderStrong bg-card text-base font-bold text-text shadow-md hover:bg-sunken focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
-                >
-                  <GoogleIcon size={22} />
-                  {googleSubmitting ? 'Um instante…' : 'Criar conta com Google'}
-                </button>
-                <p className="-mt-2 text-center text-[11px] text-textMuted">
-                  sem digitar nada
-                </p>
-
-                {!abriuSenha ? (
-                  <button
-                    type="button"
-                    onClick={() => setAbriuSenha(true)}
-                    className="tap flex w-full items-center justify-center gap-1.5 py-1 text-sm font-semibold text-textMuted hover:text-text"
-                  >
-                    Criar com email e senha
-                    <ArrowRight size={15} />
-                  </button>
-                ) : (
-                  <form onSubmit={onSubmit} className="animate-step-in space-y-4">
-                    <Input
-                      label="Seu nome"
-                      placeholder="Nome completo"
-                      icon={User}
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      onFocus={marcar('nome')}
-                      autoComplete="name"
-                      error={errors.name}
-                      required
-                    />
-
-                    {mostraEmail && (
-                      <div className="animate-step-in">
-                        <Input
-                          type="email"
-                          inputMode="email"
-                          label="Email"
-                          placeholder="seu@email.com"
-                          icon={Mail}
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          onFocus={marcar('email')}
-                          autoComplete="email"
-                          error={errors.email}
-                          required
-                        />
-                      </div>
-                    )}
-
-                    {/* Um campo só: o olho de revelar substitui o "confirme a
-                      * senha". Digitar a senha duas vezes num teclado de
-                      * celular gera mais erro do que evita. */}
-                    {mostraSenha && (
-                      <div className="animate-step-in">
-                        <Input
-                          type="password"
-                          revealable
-                          label="Crie uma senha"
-                          placeholder="Mínimo 6 caracteres"
-                          icon={Lock}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          onFocus={marcar('senha')}
-                          minLength={6}
-                          autoComplete="new-password"
-                          error={errors.password}
-                          hint="Toque no olho pra conferir o que digitou."
-                          required
-                        />
-                      </div>
-                    )}
-
-                    {mostraBotao && (
-                      <div className="animate-step-in">
-                        <Button type="submit" loading={submitting}>
-                          Criar minha conta
-                          <ArrowRight size={17} />
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* A SAÍDA DO BECO — só aparece quando ela é a resposta.
-                      *
-                      * Este e-mail já tem conta e a senha digitada não é a
-                      * dela. Sem este bloco, a tela dizia "Email ou senha
-                      * incorretos." e não oferecia nada — e é a tela de quem
-                      * perdeu o link do convite e voltou pelo site. */}
-                    {contaExiste && (
-                      <div className="animate-step-in rounded-2xl border border-warningBorder bg-warningSoft p-3">
-                        <p className="text-xs leading-relaxed text-warningText">
-                          Este email já tem conta no Alô Buzinou, e a senha não
-                          confere. Se você não lembra, a gente manda um link
-                          para você criar outra.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={onEsqueciSenha}
-                          disabled={enviandoReset}
-                          className="tap mt-2 w-full text-sm font-bold text-warningText underline disabled:opacity-50"
-                        >
-                          {enviandoReset
-                            ? 'Enviando...'
-                            : 'Enviar link para redefinir minha senha'}
-                        </button>
-                      </div>
-                    )}
-                  </form>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs leading-relaxed text-textMuted">
-                Digite o código pra continuar. Se não tiver, peça o{' '}
-                <strong>link</strong> pro motorista — é mais rápido pros dois.
+          {/* Mesmo arranjo da tela do motorista: voltar no alto, miolo no
+            * meio, domínio embaixo — senão o texto flutua num vazio de 300px
+            * quando a coluna tem a altura de um monitor. */}
+          <div className="relative">
+            <div className="text-center lg:text-left">
+              <Logo
+                variant="stacked"
+                tone="onDark"
+                height={80}
+                className="mx-auto lg:mx-0"
+              />
+              {/* ⚠️ A FAIXA DIZ O QUE ELA GANHA, e antes dizia o que ela tem
+                * que fazer. "Primeiro acesso" / "Criar sua conta" descrevem o
+                * formulário — e agora não há formulário nenhum. Do lado da
+                * marca a pergunta continua sendo: por que eu faria isso.
+                *
+                * "Pra quem espera na porta" faz o par com "pra quem dirige"
+                * da tela do motorista. */}
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
+                pra quem espera na porta
               </p>
-            )}
+              <h1 className="mt-1 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
+                Acompanhe a perua do seu filho
+              </h1>
+              <p className="mx-auto mt-3 max-w-[22rem] text-sm leading-relaxed text-white/65 lg:mx-0">
+                Você vê onde ela está, recebe o aviso quando ela chega e avisa
+                quando ele não vai.{' '}
+                <strong className="font-semibold text-white">
+                  Sua conta nasce do convite do motorista
+                </strong>{' '}
+                — é ele que liga o seu filho a você.
+              </p>
+            </div>
           </div>
-        )}
 
-        {/* AS DUAS SAÍDAS, EM UMA LINHA
-          * Quem errou a tela e quem é motorista precisam de porta — mas eram
-          * dois cartões grandes no pé, do tamanho do conteúdo principal, e
-          * empurravam o assunto da tela pra cima. Como par de links discretos
-          * eles continuam acháveis por quem procura, sem competir com quem
-          * está aqui pelo motivo certo. */}
-        <div className="mt-auto flex items-center justify-center gap-3 pt-8 text-sm font-semibold text-textMuted lg:mt-8">
-          <button
-            type="button"
-            onClick={() => navigate('/login')}
-            className="tap inline-flex items-center gap-1.5 py-2 hover:text-text"
-          >
-            <LogIn size={14} />
-            Já tenho conta
-          </button>
-          {/* O "Sou motorista" SAIU daqui.
-            *
-            * Esta tela existe só pra criar conta de responsável, e o link
-            * levava ele direto pro cadastro de parceiro — a porta do outro
-            * público oferecida dentro da tela dele. A regra é assimétrica:
-            * o motorista pode ver coisa de responsável, o responsável não
-            * pode ver coisa de motorista.
-            *
-            * Quem é motorista e caiu aqui por engano tem "Já tenho conta" ao
-            * lado, e a home em "/" — que é a frente dele e onde ele chega
-            * naturalmente. Ninguém fica sem porta. */}
-        </div>
+          <p className="relative hidden text-xs text-white/40 lg:block">
+            alobuzinou.com.br
+          </p>
+        </header>
 
-        <div className="flex items-center justify-center gap-3 pt-4 text-[11px] text-textMuted">
-          <Link to="/termos" className="hover:underline">
-            Termos de Uso
-          </Link>
-          <span aria-hidden>·</span>
-          <Link to="/privacidade" className="hover:underline">
-            Política de Privacidade
-          </Link>
-        </div>
-        </div>
-      </main>
+        {/* A costura entre marca e produto só existe empilhado: lado a lado, a
+          * borda entre as duas colunas já faz esse trabalho. */}
+        <div
+          aria-hidden
+          className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
+        />
+
+        {/* ── O FUNDO AQUI LIGA MAIS TARDE QUE NO LOGIN, E A CONTA DIZ POR QUÊ
+          *
+          * Mesmo fundo, mesmo trio de regras
+          * ([FundoDoLogin](../components/auth/FundoDoLogin.jsx)) — o que muda
+          * é que o cartão desta tela tem **520px**, contra 380 do login. A
+          * faixa livre à esquerda encolhe na mesma medida:
+          *
+          *   esquerda do cartão = 0,58·L − 52 (padding) − 520 (cartão)
+          *   o cartão de fundo mais avançado alcança 284px
+          *   0,58·L − 572 ≥ 284  →  L ≥ 1497px
+          *
+          * Por isso `min-[1500px]` e não `min-[1340px]`. Numa tela de 1440 o
+          * slot do meio invadiria o cartão por ~21px, e a regra número um do
+          * fundo é nunca ficar atrás dele.
+          *
+          * ⚠️ Se um dia o cartão desta tela estreitar, ESTE número desce
+          * junto. `npm run testar:fundo` refaz as duas contas a partir dos
+          * arquivos, então a divergência falha no teste em vez de aparecer na
+          * tela. */}
+        <main className="relative flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16 min-[1500px]:pl-10 min-[1500px]:pr-[52px]">
+          <FundoDoLogin assunto="convite" desde={1500} />
+          <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8 min-[1500px]:mx-0 min-[1500px]:ml-auto">
+            <div className="mb-5">
+              <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
+                Você entra pelo convite do motorista
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-textMuted">
+                É ele que liga o seu filho a você — então a conta não se cria
+                daqui, ela nasce do link que ele manda.
+              </p>
+            </div>
+
+            {/* O CAMINHO DE 9 EM 10 VEM PRIMEIRO, e ele não pede nada. */}
+            <div className="rounded-2xl border border-primaryBorder bg-primarySoft p-4">
+              <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
+                <Link2 size={15} className="text-primary" />
+                Já recebeu o link?
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-primaryDark">
+                É só abrir o link do WhatsApp — o convite vem dentro dele e a
+                sua conta se cria por lá, <strong>sem digitar nada.</strong>
+              </p>
+            </div>
+
+            {/* ⚠️ O QUE ANTES ERA UM CAMPO DE CÓDIGO.
+              *
+              * O divisor dizia "ou digite o código", e embaixo dele havia um
+              * campo de 8 caracteres. Ele saiu em 09/09/2026: quem chega aqui
+              * não tem o link, e link e código vêm na MESMA mensagem — então
+              * quase sempre ela não tem nenhum dos dois. Pedir o código era
+              * pedir a chave a quem perdeu o chaveiro.
+              *
+              * E o pedido serve um caso que o campo nunca serviu: o motorista
+              * que ainda não usa o app. Aí não há convite perdido — nunca
+              * houve convite. */}
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center" aria-hidden>
+                <div className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-card px-3 text-xs text-textMuted">
+                  não tem o convite?
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm leading-relaxed text-text">
+                Peça pro motorista da perua do seu filho.{' '}
+                <span className="text-textMuted">
+                  Ele se cadastra, cadastra a turma e te manda o convite — e aí
+                  você acompanha tudo por aqui.
+                </span>
+              </p>
+
+              <a
+                href={linkDoPedido()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tap inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-primary text-base font-bold text-white shadow-focus hover:bg-primaryDark focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <MessageCircle size={20} />
+                Pedir pelo WhatsApp
+              </a>
+
+              {/* A SEGUNDA SAÍDA EXISTE PORQUE A PRIMEIRA DEPENDE DE APP
+                * INSTALADO. Dentro da webview do Instagram, ou num computador
+                * sem WhatsApp Web logado, o `wa.me` abre uma página que não
+                * resolve nada — e a mensagem copiada serve em qualquer
+                * conversa, inclusive SMS. */}
+              <button
+                type="button"
+                onClick={copiar}
+                className="tap flex w-full items-center justify-center gap-1.5 py-1 text-sm font-semibold text-textMuted hover:text-text"
+              >
+                <Copy size={15} />
+                {copiado ? 'Mensagem copiada' : 'Copiar a mensagem'}
+              </button>
+
+              {/* A mensagem fica À VISTA, e não atrás do botão.
+                *
+                * Ela sai do nome dela para um contato de trabalho, e ninguém
+                * manda texto que não leu. Mostrar antes é o que evita que ela
+                * descubra o teor só depois de enviar — e é a mesma razão pela
+                * qual a proposta do dono abre o WhatsApp para ele LER antes
+                * de enviar. */}
+              <p className="whitespace-pre-line rounded-xl border border-border bg-surface p-3 text-xs leading-relaxed text-textMuted">
+                {mensagemAoMotorista()}
+              </p>
+            </div>
+
+            {/* AS DUAS SAÍDAS, EM UMA LINHA
+              * Quem errou a tela precisa de porta — mas eram cartões grandes
+              * no pé, do tamanho do conteúdo principal, e empurravam o
+              * assunto da tela pra cima. Como link discreto ele continua
+              * achável por quem procura, sem competir com quem está aqui pelo
+              * motivo certo.
+              *
+              * O "Sou motorista" SAIU daqui: a regra é assimétrica — o
+              * motorista pode ver coisa de responsável, o responsável não
+              * pode ver coisa de motorista. Quem é motorista e caiu aqui tem
+              * "Já tenho conta" ao lado. */}
+            <div className="mt-auto flex items-center justify-center gap-3 pt-8 text-sm font-semibold text-textMuted lg:mt-8">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="tap inline-flex items-center gap-1.5 py-2 hover:text-text"
+              >
+                <LogIn size={14} />
+                Já tenho conta
+              </button>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-4 text-[11px] text-textMuted">
+              <Link to="/termos" className="hover:underline">
+                Termos de Uso
+              </Link>
+              <span aria-hidden>·</span>
+              <Link to="/privacidade" className="hover:underline">
+                Política de Privacidade
+              </Link>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
 }
-

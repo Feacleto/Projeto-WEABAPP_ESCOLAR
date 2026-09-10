@@ -25,6 +25,27 @@ import {
   isValidInviteCodeFormat,
 } from '../src/dominio/identidade/generateInviteCode.js';
 
+/**
+ * O CODIGO SEM OS COMENTARIOS — e por que isto e uma funcao.
+ *
+ * ⚠️ A PROSA NAO PODE REPROVAR A DECISAO QUE ELA EXPLICA. Aconteceu tres
+ * vezes neste arquivo: o comentario que conta por que o campo de codigo saiu
+ * cita "digite o codigo" e `isValidInviteCodeFormat`, e o comentario da
+ * bifurcacao do login cita a frase antiga "um link ou um codigo". Medir o
+ * arquivo inteiro reprova a explicacao junto com o defeito — e a saida nunca
+ * e apagar a explicacao.
+ */
+const NL = String.fromCharCode(10);
+function semComentarios(fonte) {
+  return fonte
+    .split(NL)
+    .filter((linha) => {
+      const t = linha.trim();
+      return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
+    })
+    .join(NL);
+}
+
 let ok = 0;
 let bad = 0;
 const falhas = [];
@@ -381,19 +402,78 @@ checar('o dominio do selo e lido do navegador', true,
 // `SeloDoDominio`, que cita 'alobuzinou.com' justamente para dizer por que
 // escrever o dominio a mao seria errado. Medir o arquivo inteiro reprova a
 // explicacao junto com o defeito -- e a saida nao e apagar a explicacao.
-const NL = String.fromCharCode(10);
-const codigoDaTela = fonteAuthAction
-  .split(NL)
-  .filter((linha) => {
-    const t = linha.trim();
-    return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
-  })
-  .join(NL);
+const codigoDaTela = semComentarios(fonteAuthAction);
 
 checar('o descomentador descomenta', false, codigoDaTela.includes('some no celular'));
 checar('e nao ha dominio da marca escrito a mao no codigo', false,
   codigoDaTela.includes("'alobuzinou.com"));
 
+
+// -- 9. A ENTRADA DO RESPONSAVEL E O LINK, E SO ELE ----------------------
+//
+// Decidido em 09/09/2026. O `/first-access` nunca conseguiu criar conta para
+// quem chega nele: a entrada e o link, e ela e inteira do `Invite.jsx`
+// (`/convite/:codigo` -> redeemInvite -> /pai). Quem cai no first-access e,
+// por definicao, quem NAO tem o link — e a unica coisa que a tela oferecia a
+// essa pessoa era digitar um codigo de 8 caracteres que ela quase sempre
+// tambem nao tem, porque link e codigo viajam na mesma mensagem.
+//
+// O campo saiu e no lugar entrou o pedido ao motorista. Este bloco guarda as
+// tres metades da decisao: a tela nao cria mais conta, o LINK continua
+// criando, e o MECANISMO continua inteiro para o dia em que alguem quiser o
+// campo de volta.
+console.log('');
+console.log('9. A entrada do responsavel e o link');
+
+const fonteFirst = readFileSync(
+  new URL('../src/pages/FirstAccess.jsx', import.meta.url), 'utf8');
+const fonteInvite = readFileSync(
+  new URL('../src/pages/Invite.jsx', import.meta.url), 'utf8');
+const fonteAuthSvc = readFileSync(
+  new URL('../src/services/authService.js', import.meta.url), 'utf8');
+const fonteComecar = readFileSync(
+  new URL('../src/pages/Comecar.jsx', import.meta.url), 'utf8');
+const fonteLoginTela = readFileSync(
+  new URL('../src/pages/Login.jsx', import.meta.url), 'utf8');
+
+// (a) A tela nao cria mais conta.
+for (const proibido of ['authenticateAndRedeem', 'googleAndRedeem', 'LegalAcceptCheckbox']) {
+  checar(`o first-access nao usa ${proibido}`, false, fonteFirst.includes(proibido));
+}
+const firstSemProsa = semComentarios(fonteFirst);
+checar('o descomentador do first-access descomenta', false,
+  firstSemProsa.includes('perdeu o chaveiro'));
+checar('nem tem campo de codigo', false,
+  firstSemProsa.includes('isValidInviteCodeFormat'));
+checar('nem convida a digitar', false,
+  firstSemProsa.toLowerCase().includes('digite o código'));
+
+// (b) O LINK continua criando — se isto quebrar, ninguem mais entra.
+checar('o Invite.jsx resgata o convite', true, fonteInvite.includes('redeemInvite'));
+checar('e leva pro painel do responsavel', true, fonteInvite.includes("'/pai'"));
+
+// (c) O MECANISMO continua inteiro: o que saiu foi a tela, nao a porta.
+checar('redeemInvite ainda aceita inviteCode', true,
+  fonteAuthSvc.includes('inviteCode'));
+
+// (d) NENHUMA TELA PROMETE A ENTRADA QUE O DESTINO NAO OFERECE.
+//
+// Este e o caso que da o defeito mais barato de criar: a bifurcacao do login
+// dizia "um link ou um codigo", e quem chegasse com o codigo na mao
+// procuraria um campo que nao existe mais e concluiria que errou de tela.
+for (const [nome, fonte] of [['o login', fonteLoginTela], ['o comecar', fonteComecar]]) {
+  const limpa = semComentarios(fonte);
+  checar(`${nome} nao promete entrada por codigo`, false,
+    limpa.includes('ou um código') || limpa.includes('ou código'));
+}
+
+// A sonda positiva do (d): o detector tem que reconhecer a frase antiga.
+checar('o detector reconhece a frase antiga (sonda positiva)', true,
+  'Você recebeu um link ou um código do motorista.'.includes('ou um código'));
+
+// (e) E o pedido ao motorista esta LA, com a mensagem a vista.
+checar('a tela oferece o pedido ao motorista', true,
+  fonteFirst.includes('linkDoPedido') && fonteFirst.includes('mensagemAoMotorista'));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

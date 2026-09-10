@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 1324 casos em 28 scripts. O PRIMEIRO é
+npm run testar                   # 1350 casos em 28 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois: horarios, faltas,
@@ -906,7 +906,7 @@ me cadastrar". As duas portas têm **pesos diferentes de propósito**: a do
 motorista é cheia e vem primeiro, a da família é de contorno. Elas viajam com
 `state: { de: 'escolha' }`, e é isso que faz o "Voltar" das duas telas
 retornar pra bifurcação em vez de jogar pra fora do app quem estava
-escolhendo — e que abre o campo de código já expandido no `/first-access`.
+escolhendo.
 
 **As duas telas de cadastro são de MONITOR também**, com `data-painel="web"`:
 o motorista decide sentado, e a responsável que perdeu o link volta pelo site.
@@ -914,13 +914,48 @@ As formas são OPOSTAS, e isso vem da landing — ele está comprando (denso,
 escuro, campos em pares), ela está sendo tranquilizada (claro, arejado, uma
 coluna). O empilhado do celular continua sendo o desenho principal das duas.
 
+⚠️ **A ENTRADA DO RESPONSÁVEL É O LINK, E SÓ ELE, desde 09/09/2026.** Ela é
+inteira do [Invite.jsx](src/pages/Invite.jsx): `/convite/:codigo` lê o código
+da URL, chama `redeemInvite` e leva pro `/pai`. **Esse caminho não passa pelo
+`/first-access`** — então quem cai naquela tela é, por definição, quem NÃO tem
+o link.
+
+E a única coisa que ela oferecia a essa pessoa era **digitar um código de 8
+caracteres**, que ela quase sempre também não tem: link e código viajam na
+MESMA mensagem do WhatsApp, e se a conversa sumiu sumiram os dois. A tela
+pedia a chave a quem tinha acabado de perder o chaveiro.
+
+O campo saiu, e com ele o aceite legal, o Google e o e-mail/senha daquela tela
+— sem código não há convite pra resgatar. No lugar entrou **o pedido ao
+motorista** ([pedidoAoMotorista.js](src/marca/pedidoAoMotorista.js)): a
+mensagem que ela manda pelo WhatsApp, à vista na tela antes de enviar, porque
+ninguém manda texto que não leu.
+
+Duas razões, e a segunda é a que decide: o pedido devolve um **link novo que
+funciona**, contra a chance de errar uma letra num código lido por telefone; e
+ele serve o caso que o campo nunca serviu — **o motorista que ainda não usa o
+app**, onde não há convite perdido porque nunca houve convite.
+
+⚠️ **O que isso fecha:** quem tem só o código anotado e perdeu o link perde a
+entrada digitada. Decisão do dono. **O MECANISMO CONTINUA INTEIRO** —
+`redeemInvite` aceita `inviteCode`, `codigoDoTexto` ainda lê código de
+qualquer texto, `isValidInviteCodeFormat` ainda valida. Saiu a TELA, não a
+porta. O bloco 9 de `npm run testar:auth` guarda as três metades: a tela não
+cria conta, o link continua criando, e nenhuma outra tela promete a entrada
+por código que o destino não oferece — a bifurcação do login dizia "um link ou
+um código" e foi corrigida junto.
+
 **O código do convite se lê de qualquer texto** — `codigoDoTexto` em
 [generateInviteCode.js](src/dominio/identidade/generateInviteCode.js) aceita o
 link inteiro (`/convite/TNAB23CD`), a mensagem inteira do WhatsApp e o código
 digitado letra por letra. A máscara sozinha devolvia `HTTPSALOB` pra quem
-colava o link e o app dizia "código inválido" com o código certo na mão. A
-mensagem que o motorista manda passou a trazer **o código escrito** além do
-link, porque a conversa some e o link vai junto.
+colava o link e o app dizia "código inválido" com o código certo na mão.
+
+⚠️ Isso continua valendo para o LINK, que é onde `codigoDoTexto` roda hoje —
+**não há mais campo digitado no app** (ver a decisão acima). A mensagem que o
+motorista manda continua trazendo o código escrito além do link: ele não serve
+mais para ela digitar, serve para ela conferir que o link é daquele convite, e
+para o dia em que o campo voltar.
 
 **Preço não aparece na vitrine.** O que aparece é a FORMA do dinheiro: "a
 mensalidade das suas famílias é sua, a plataforma não entra no caminho dela".

@@ -20,6 +20,7 @@
 
 import { readFileSync } from 'node:fs';
 import { PROIBIDAS, podeDizer, promessaProibida } from '../src/marca/promessas.js';
+import { TEXTO_DO_PEDIDO, mensagemAoMotorista } from '../src/marca/pedidoAoMotorista.js';
 import {
   ESTADO as ADESIVO,
   TEXTO as TEXTO_ADESIVO,
@@ -256,6 +257,38 @@ checar('entregue encerra', true,
 // Sem data não inventa contagem.
 checar('sem data, sem contagem', null,
   situacaoDoPedido({ estado: ADESIVO.PEDIDO }, HOJE).dias);
+
+// ── A MENSAGEM QUE A RESPONSAVEL MANDA AO MOTORISTA ──────────────────────
+//
+// Ela substituiu o campo de codigo do `/first-access` em 09/09/2026, e sai da
+// NOSSA mao para a conversa dela com um contato de trabalho. Vale a mesma
+// regua de qualquer peca publica — inclusive a proibicao de prometer
+// seguranca, que e a unica mentira grande que este produto poderia contar.
+console.log('');
+console.log('A mensagem de pedido ao motorista');
+
+checar('nao promete seguranca', true, podeDizer(TEXTO_DO_PEDIDO));
+checar('e nenhuma raiz proibida aparece', null, promessaProibida(TEXTO_DO_PEDIDO));
+
+// Preco e conversa com o consultor: numero solto vira ancora antes de existir
+// proposta. E prazo ("em 2 minutos") e promessa que quem cumpre e ele.
+const minusculo = TEXTO_DO_PEDIDO.toLowerCase();
+for (const termo of ['r$', 'gratis', 'grátis', 'minutos', 'rapidinho', 'sem burocracia']) {
+  checar(`nao fala de "${termo}"`, false, minusculo.includes(termo));
+}
+
+// Ela nao promete que a crianca sera cadastrada: quem decide quem entra na
+// perua e ele, e o app nao cria vinculo por pedido de fora.
+checar('nao promete cadastro da crianca', false, minusculo.includes('cadastre meu filho'));
+
+// O que ela PRECISA dizer: o endereco onde ele se cadastra.
+checar('traz o site institucional', true, TEXTO_DO_PEDIDO.includes('https://alobuzinou.com.br'));
+checar('e diz que o convite vem DEPOIS, dele', true, minusculo.includes('me manda o convite'));
+
+// A assinatura entra quando ha nome — mensagem de numero desconhecido sem
+// assinatura tem a forma de um golpe, e ele vai abrir um link depois de ler.
+checar('sem nome, nao inventa assinatura', false, TEXTO_DO_PEDIDO.includes('É a '));
+checar('com nome, assina', true, mensagemAoMotorista({ nome: 'Ana' }).includes('É a Ana.'));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

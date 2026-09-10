@@ -84,7 +84,7 @@ export default function Comecar() {
                 Recebi um convite de um motorista
               </span>
               <span className="mt-0.5 block text-sm text-textMuted">
-                Ele te mandou um link ou um código para acompanhar seu filho.
+                Ele te mandou o link, ou você ainda vai pedir um pra ele.
               </span>
             </span>
           </Link>
