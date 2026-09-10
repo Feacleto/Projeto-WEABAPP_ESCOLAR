@@ -106,16 +106,31 @@ export async function notifyPaymentClaimed({
     return;
   }
   const methodLabel = method === 'cash' ? 'em dinheiro' : 'via PIX';
-  const followup =
+  // ⚠️ A AÇÃO MUDA COM A FORMA DE PAGAMENTO, e é a única parte do aviso que
+  // muda. Em dinheiro o risco é ele confirmar antes de ter a cédula na mão;
+  // em PIX o comprovante existe e o passo é olhar. Eram duas frases inteiras
+  // ("Confirme o recebimento quando estiver com o dinheiro em mãos"), e elas
+  // não cabiam num aviso de tela bloqueada junto do valor e do mês.
+  const acao =
     method === 'cash'
-      ? 'Confirme o recebimento quando estiver com o dinheiro em mãos.'
-      : 'Confirme o recebimento após verificar o comprovante.';
+      ? 'Toque para confirmar quando receber.'
+      : 'Toque para conferir o comprovante.';
   try {
     await addDoc(collection(db, 'notifications'), {
       userId: targetUid,
       type: 'payment_claimed',
-      title: 'Novo pagamento informado',
-      body: `${childName} informou pagamento de ${formatBRL(amount)} (${monthLabel}) ${methodLabel}. ${followup}`,
+      // ⚠️ O TÍTULO DIZ QUEM E O QUÊ; O CORPO, QUANTO E O QUE FAZER.
+      //
+      // Era "Novo pagamento informado" com cinco informações emendadas no
+      // corpo e um pedido no fim. O nome no título é o que faz ele saber de
+      // qual conversa se trata sem abrir.
+      //
+      // ⚠️ MAS O NOME QUE ESTA FUNÇÃO RECEBE É O DA CRIANÇA, NÃO O DE QUEM
+      // PAGOU. "Lucas informou um pagamento" põe uma criança de seis anos
+      // fazendo PIX. O sujeito vira a família, impessoal, e o nome volta a
+      // ser só o endereço da conversa — que é o papel que ele tem aqui.
+      title: `Informaram o pagamento de ${childName}`,
+      body: `${formatBRL(amount)} de ${monthLabel}, ${methodLabel}. ${acao}`,
       paymentId,
       paymentMethod: method,
       createdAt: serverTimestamp(),
@@ -161,12 +176,17 @@ export async function notifyPaymentConfirmed({
   try {
     // O nome da criança entra no corpo porque um responsável pode ter dois
     // filhos: "pagamento confirmado" sem dizer de quem não informa nada.
-    const who = childName ? ` da mensalidade de ${childName}` : '';
+    const who = childName ? ` de ${childName}` : '';
     await addDoc(collection(db, 'notifications'), {
       userId: parentUid,
       type: 'payment_confirmed',
-      title: 'Pagamento confirmado',
-      body: `O motorista confirmou o recebimento${who}: ${formatBRL(amount)} (${monthLabel}).`,
+      // ⚠️ O NOME DA CRIANÇA SOBE PARA O TÍTULO. Ele era "Pagamento
+      // confirmado", e o corpo emendava tudo num período com dois-pontos e
+      // parênteses: "O motorista confirmou o recebimento da mensalidade de
+      // Lucas: R$ 250,00 (maio de 2026)". Quem tem dois filhos precisava
+      // abrir o aviso para saber de qual mensalidade se trata.
+      title: `Mensalidade${who} confirmada`,
+      body: `${formatBRL(amount)} de ${monthLabel}. O motorista confirmou o recebimento.`,
       paymentId,
       childName: childName || null,
       createdAt: serverTimestamp(),
@@ -325,10 +345,12 @@ export async function notifyContratoPronto({ parentUid, childName }) {
     await addDoc(collection(db, 'notifications'), {
       userId: parentUid,
       type: 'contrato_pronto',
-      title: 'Contrato pronto',
+      title: 'Seu contrato está pronto',
+      // O corpo fecha com a AÇÃO. "Está esperando o seu aceite" descreve um
+      // estado e deixa ela adivinhar o que fazer com ele.
       body: nome
-        ? `O contrato de transporte de ${nome} está esperando o seu aceite.`
-        : 'O contrato de transporte está esperando o seu aceite.',
+        ? `O motorista emitiu o contrato de ${nome}. Toque para ler e aceitar.`
+        : 'O motorista emitiu o contrato. Toque para ler e aceitar.',
       createdAt: serverTimestamp(),
     });
   } catch (err) {
@@ -353,7 +375,13 @@ export async function notifyChamadoRespondido({ uid }) {
       userId: uid,
       type: 'chamado_respondido',
       title: 'Respondemos seu chamado',
-      body: 'Sua mensagem foi respondida. Toque para ver.',
+      // ⚠️ O CORPO NÃO TRAZ A RESPOSTA, E É UMA ESCOLHA.
+      //
+      // Os recados de agenda passaram a carregar o conteúdo no corpo, e a
+      // regra é boa. Aqui ela não vale: a resposta de um chamado pode conter
+      // dado de conta, valor ou decisão de suspensão, e push aparece na tela
+      // bloqueada de quem estiver por perto. O que cabe é dizer que existe.
+      body: 'Sua mensagem foi respondida. Toque para ler.',
       createdAt: serverTimestamp(),
     });
   } catch (err) {
@@ -371,7 +399,7 @@ export async function notifyChamadoRespondido({ uid }) {
  * produzem o mesmo silêncio. Dizer no minuto em que o desconto passa a valer é
  * o que tira a dúvida antes de ela virar conversa no portão.
  */
-export async function notifyIndicacaoAtivou({ indicadorUid, ativas }) {
+export async function notifyIndicacaoAtivou({ indicadorUid, ativas, descontoEmReais = null }) {
   if (!indicadorUid) return;
   try {
     const n = Number(ativas) || 0;
@@ -379,9 +407,21 @@ export async function notifyIndicacaoAtivou({ indicadorUid, ativas }) {
       userId: indicadorUid,
       type: 'indicacao_ativou',
       title: 'Sua indicação valeu',
-      body:
-        n > 1
-          ? `Mais uma indicação sua começou a pagar — são ${n} ativas na sua próxima fatura.`
+      // ⚠️ ESTA É A PEÇA QUE EVITA A QUEIXA MAIS CARA DO PROGRAMA.
+      //
+      // *"Indiquei e não recebi"* é a reclamação que, numa rede de indicação,
+      // viaja mais rápido que a indicação — e ela nasce de o desconto existir
+      // sem nunca ser dito em número. "Já entra na sua próxima fatura" não é
+      // um número: ele não sabe se são dez centavos ou dez reais.
+      //
+      // O desconto por indicação é 10% da fatura dele. Quanto isso vale em
+      // reais depende do tamanho da operação, e quem tem esse número é o
+      // service que chama — por isso `descontoEmReais` entra por parâmetro, e
+      // a frase cai para a versão sem valor quando ele não vem.
+      body: descontoEmReais
+        ? `${n > 1 ? `São ${n} indicações ativas` : 'Uma indicação sua começou a pagar'}. Sua próxima fatura cai ${descontoEmReais}.`
+        : n > 1
+          ? `São ${n} indicações ativas na sua próxima fatura.`
           : 'Uma indicação sua começou a pagar, e já entra na sua próxima fatura.',
       createdAt: serverTimestamp(),
     });

@@ -651,54 +651,19 @@ const fonteDoTour = await readFile(
 );
 const fonteDoApp = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
 
-const ancorasDoTour = [
-  ...new Set([...fonteDoTour.matchAll(/anchor:\s*'([^']+)'/g)].map((m) => m[1])),
-];
-const rotasDoTour = [
-  ...new Set([...fonteDoTour.matchAll(/path:\s*'([^']+)'/g)].map((m) => m[1])),
-];
+/* ⚠️ A ÂNCORA ÓRFÃ E A ROTA INEXISTENTE SAÍRAM DAQUI, e não por serem
+   dispensáveis: elas agora são conferidas em `npm run testar:tutorial`, que
+   varre `src/` INTEIRO em vez de uma lista de sete arquivos de tela escrita à
+   mão.
 
-// Onde as âncoras podem estar: `data-tour="x"` direto, ou `tour="x"` passado
-// como prop pra um componente que a repassa (é o caso das Linhas do Início).
-const fontesDeTela = await Promise.all(
-  [
-    'src/pages/tio/TioDashboard.jsx',
-    'src/pages/tio/TioChildren.jsx',
-    'src/pages/tio/TioLayout.jsx',
-    'src/pages/pai/PaiDashboard.jsx',
-    'src/pages/pai/PaiLayout.jsx',
-    'src/components/route/ControleDeRota.jsx',
-    'src/components/dashboard/HorarioDoDia.jsx',
-  ].map((p) => readFile(new URL(`../${p}`, import.meta.url), 'utf8'))
-);
-const telas = fontesDeTela.join('\n');
+   A lista era o problema. Quando o tour ganhou âncoras em
+   `OperacaoDaRota`, `MeuTransporteSheet`, `TioHorarios` e `TioFinance`, este
+   caso reprovou quatro âncoras que existiam de verdade — o teste apontando
+   pro lugar errado, com toda a autoridade de um teste. Invariante que depende
+   de alguém lembrar de acrescentar um arquivo não é invariante.
 
-t('toda âncora do tour existe em alguma tela', () => {
-  // Este é o teste que faltava. O tour já apontou pra abas apagadas e pra uma
-  // âncora que tinha sido removida — as duas vezes ninguém percebeu, porque
-  // passo sem âncora não quebra: ele vira um balão no rodapé e o tutorial
-  // segue, ensinando sem mostrar.
-  // Três formas, porque a âncora chega ao DOM por três caminhos: atributo
-  // direto, prop de um componente que a repassa, e item de uma lista de
-  // configuração (a barra de baixo monta os links a partir de um array).
-  const orfas = ancorasDoTour.filter(
-    (a) =>
-      !telas.includes(`data-tour="${a}"`) &&
-      !telas.includes(`tour="${a}"`) &&
-      !telas.includes(`tour: '${a}'`)
-  );
-  eq(orfas, [], 'âncora sem elemento na tela');
-});
-
-t('toda rota do tour existe no App', () => {
-  const inexistentes = rotasDoTour.filter((r) => {
-    if (r === '/tio' || r === '/pai') return !fonteDoApp.includes(`path="${r}"`);
-    // Rotas filhas são declaradas relativas: `/tio/children` → path="children".
-    const filha = r.replace(/^\/(tio|pai)\//, '');
-    return !fonteDoApp.includes(`path="${filha}"`);
-  });
-  eq(inexistentes, [], 'passo navegando pra rota que não existe');
-});
+   O que fica aqui é o que é sobre HORÁRIO: que os dois tours continuem
+   ensinando onde a hora se define. */
 
 t('o modelo de horários aparece nos dois tours', () => {
   // O conceito central do app passou a ser a hora combinada com cada família,
@@ -755,12 +720,12 @@ t('nenhum passo fala de turno, período ou kanban', () => {
 t('mudança de horário diz o de e o para', () => {
   const a = avisoDeMudancaDeHorario({ nome: 'João Silva', direcao: 'ida', de: '06:30', para: '06:10' });
   eq(a.title, 'Horário mudou');
-  eq(a.body, 'João passa a ser pego às 6h10 — era 6h30.');
+  eq(a.body, 'João passa a ser pego às 6h10 (era 6h30).');
 });
 
 t('a volta usa ENTREGUE, não pego', () => {
   const a = avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'volta', de: '12:35', para: '12:20' });
-  eq(a.body, 'Ana passa a ser entregue às 12h20 — era 12h35.');
+  eq(a.body, 'Ana passa a ser entregue às 12h20 (era 12h35).');
 });
 
 t('SEM hora anterior a frase não inventa um "era"', () => {
@@ -797,7 +762,7 @@ t('hora inválida não vira aviso com hora vazia dentro', () => {
 
 t('sem nome a frase continua fazendo sentido', () => {
   const a = avisoDeMudancaDeHorario({ nome: '', direcao: 'ida', de: '06:30', para: '06:10' });
-  eq(a.body, 'Seu filho passa a ser pego às 6h10 — era 6h30.');
+  eq(a.body, 'Seu filho passa a ser pego às 6h10 (era 6h30).');
 });
 
 t('só o primeiro nome entra — o push mostra poucas palavras', () => {
@@ -807,7 +772,7 @@ t('só o primeiro nome entra — o push mostra poucas palavras', () => {
 
 t('hora cheia sai sem os minutos', () => {
   const a = avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: '06:30', para: '07:00' });
-  eq(a.body, 'Ana passa a ser pego às 7h — era 6h30.');
+  eq(a.body, 'Ana passa a ser pego às 7h (era 6h30).');
 });
 
 t('chamada sem argumento nenhum não explode', () => {

@@ -158,8 +158,12 @@ export function avisoDeMudancaDeHorario({ nome, direcao, de, para } = {}) {
     // foi combinado agora. É o caso de toda criança cujo horário o motorista
     // ainda não tinha definido.
     title: antiga ? 'Horário mudou' : 'Horário combinado',
+    // A hora ANTIGA fica: é ela que faz a frase ser sobre uma mudança em vez
+    // de um comunicado. Mas sai do travessão e vai pro parêntese — travessão
+    // emenda os dois períodos num só, e o segundo é o que se perde na leitura
+    // de tela bloqueada.
     body: antiga
-      ? `${quem} passa a ser ${verbo} às ${horaCurta(nova)} — era ${horaCurta(antiga)}.`
+      ? `${quem} passa a ser ${verbo} às ${horaCurta(nova)} (era ${horaCurta(antiga)}).`
       : `${quem} passa a ser ${verbo} às ${horaCurta(nova)}.`,
   };
 }

@@ -157,13 +157,18 @@ export async function shareReceipt({ payment, admin }) {
     .toLowerCase();
   const filename = `recibo-${safeName}-${payment?.month || ''}.png`;
   const file = new File([blob], filename, { type: 'image/png' });
+  const metodo = (METHOD_LABELS[payment?.paymentMethod] || '').toLowerCase();
 
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({
         files: [file],
         title: 'Recibo de pagamento',
-        text: `Recibo de ${payment?.childName || ''} — ${formatMonthLabel(payment?.month)}`,
+        // O texto é o que chega ESCRITO na conversa, antes da imagem — e a
+        // imagem só abre com um toque. Ele carrega valor e forma de
+        // pagamento porque é o que a mãe vai procurar meses depois, rolando
+        // a conversa, sem abrir anexo nenhum.
+        text: `Recibo de ${payment?.childName || ''}, ${formatMonthLabel(payment?.month)}. ${formatCurrency(payment?.amount)}${metodo ? ` recebido em ${metodo}` : ''}.`,
       });
       return 'shared';
     } catch (err) {

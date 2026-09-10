@@ -3,9 +3,22 @@
  * (Gmail, Outlook, Apple Mail) ignoram <style> externo e <link>.
  *
  * 3 variantes pelo `milestone`:
- *   - 'reminder_3d' (3 dias antes do vencimento) — azul, lembrete amigável
- *   - 'due_today'   (vence hoje)                  — âmbar, urgência leve
- *   - 'overdue_3d'  (3 dias atrasado)             — vermelho, cobrança firme
+ *   - 'reminder_3d' (3 dias antes do vencimento) — azul
+ *   - 'due_today'   (vence hoje)                  — âmbar
+ *   - 'overdue_3d'  (3 dias atrasado)             — vermelho
+ *
+ * ⚠️ O QUE MUDA ENTRE AS TRÊS É O FATO, NÃO O TOM. Elas eram "lembrete
+ * amigável", "urgência leve" e "cobrança firme", e o texto seguia o rótulo:
+ * a última dizia `pra não interromper o serviço`, que é uma consequência que
+ * a plataforma não decide — quem interrompe o transporte é o motorista, não
+ * o email. Cada variante diz a mesma coisa com a data dela, e o `overdue_3d`
+ * é o único que ganha uma frase a mais, porque é o único caso em que a mãe
+ * pode já ter pago por fora.
+ *
+ * O `headline` SAIU. Ele existia só para abrir o pre-header, e ali repetia o
+ * assunto do email palavra por palavra — as duas linhas que a caixa de
+ * entrada mostra lado a lado diziam a mesma coisa. O pre-header agora carrega
+ * o que o assunto não tem: o VALOR e a AÇÃO.
  *
  * Imagem do header: ilustração da van escolar hospedada no Hosting do app
  * (https://{appUrl}/imagemvanescolar.png). Passa credibilidade visual de
@@ -20,28 +33,25 @@ const VARIANTS = {
     color: '#2563eb',
     bgColor: '#eff6ff',
     borderColor: '#bfdbfe',
-    headline: 'Mensalidade chegando',
     intro:
-      'Faltam 3 dias pro vencimento da mensalidade do transporte escolar. Pra não esquecer, dá uma olhada nos detalhes abaixo.',
-    badge: 'Lembrete amigável',
+      'A mensalidade do transporte escolar vence em 3 dias. Você pode pagar agora pelo app, no botão abaixo.',
+    badge: 'Vence em 3 dias',
   },
   due_today: {
     color: '#d97706',
     bgColor: '#fffbeb',
     borderColor: '#fde68a',
-    headline: 'Hoje é o dia do pagamento',
     intro:
-      'A mensalidade do transporte escolar vence hoje. Toque no botão pra pagar via PIX direto pelo app.',
+      'A mensalidade do transporte escolar vence hoje. Você pode pagar agora pelo app, no botão abaixo.',
     badge: 'Vence hoje',
   },
   overdue_3d: {
     color: '#dc2626',
     bgColor: '#fef2f2',
     borderColor: '#fecaca',
-    headline: 'Mensalidade em atraso',
     intro:
-      'A mensalidade do transporte escolar venceu há 3 dias. Pague agora pra não interromper o serviço.',
-    badge: 'Atrasado · 3 dias',
+      'A mensalidade do transporte escolar venceu há 3 dias e continua em aberto. Se você já pagou, avise pelo app para o motorista confirmar.',
+    badge: 'Em aberto há 3 dias',
   },
 };
 
@@ -134,7 +144,7 @@ function buildEmailHtml({
 <body style="margin:0; padding:0; background-color:#f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color:#111827;">
   <!-- Pre-header (texto invisível mas aparece na lista de emails) -->
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; visibility:hidden;">
-    ${v.headline} — ${valor} de ${safeChild} · ${vencimento}
+    ${valor} de ${safeChild}, vencimento ${vencimento}. Pague pelo app.
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f3f4f6; padding:32px 16px;">
@@ -331,8 +341,11 @@ function subjectFor(milestone, childName, monthLabel) {
       return `Mensalidade de ${child} vence em 3 dias · ${monthLabel}`;
     case 'due_today':
       return `Hoje vence a mensalidade de ${child} · ${monthLabel}`;
+    // "em aberto", não "em atraso": é a palavra que o aviso dentro do app
+    // usa para o mesmo estado, e duas palavras para a mesma coisa fazem a
+    // família achar que são duas cobranças.
     case 'overdue_3d':
-      return `Mensalidade de ${child} em atraso · ${monthLabel}`;
+      return `Mensalidade de ${child} em aberto · ${monthLabel}`;
     default:
       return `Mensalidade · ${monthLabel}`;
   }

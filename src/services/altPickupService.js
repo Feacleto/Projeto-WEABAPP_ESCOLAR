@@ -196,8 +196,12 @@ export async function notifyAltPickup({
     await addDoc(collection(db, 'notifications'), {
       userId: adminUid,
       type: 'alt_pickup',
-      title: `Outro responsável vai buscar`,
-      body: `${childName}: hoje quem pega é ${name}${phoneText}. Aviso para ${dateLabel}.`,
+      // ⚠️ O CORPO TINHA QUATRO INFORMAÇÕES E TERMINAVA NUMA DATA QUE
+      // CONFUNDIA: "hoje quem pega é Maria… Aviso para 12/09" — era hoje ou
+      // dia 12? A data subiu para o título, onde ela não disputa com o nome
+      // e o telefone de quem vai buscar.
+      title: `Quem busca ${childName} em ${dateLabel}`,
+      body: `${name}${phoneText}. A família avisou agora.`,
       createdAt: serverTimestamp(),
     });
   } catch (err) {

@@ -11,6 +11,7 @@ import {
   Notebook,
   Receipt,
   School,
+  TriangleAlert,
   Users,
 } from 'lucide-react';
 import AppSheet from '../common/AppSheet';
@@ -115,6 +116,7 @@ export default function MeuTransporteSheet({
             * "minha rota padrão". Mesmo nome que já está no Início hoje. */}
           <Linha
             icon={ListOrdered}
+            tour="rota-padrao"
             titulo="Editar rota padrão"
             subtitulo="Os horários que você definiu — é o que cada família vê"
             aviso={semHorario > 0 ? `${semHorario} a confirmar` : null}
@@ -137,6 +139,31 @@ export default function MeuTransporteSheet({
         {/* Do lado do motorista pareciam duas coisas diferentes; do lado do
           * pai chegam no mesmo lugar. O grupo diz isso. */}
         <Grupo titulo="avisos que vão pra agenda das famílias">
+          {/* ⚠️ O URGENTE VEM PRIMEIRO, E FOI PARA CÁ EM 10/09/2026.
+            *
+            * Ele só existia atrás do botão flutuante de `/tio/turma` e
+            * `/tio/agenda` — e o menu inferior tem duas abas, então chegar lá
+            * custava seis ações: rolar o Início, abrir esta folha, ir para a
+            * Turma, tocar no botão, escolher, revisar, enviar. Para o único
+            * aviso que ele dispara com a perua parada na rua.
+            *
+            * Esta folha existe em TODOS os estados do painel, inclusive
+            * dirigindo — foi feita assim justamente para o caso de avisar
+            * alguma coisa sem ter que encerrar a rota.
+            *
+            * ⚠️ E ELE NÃO TEM PAR. "Vou atrasar" morava ao lado e saiu: o
+            * atraso que está acontecendo o app descobre sozinho, dez minutos
+            * depois da hora de pegar. Quebra é a única ocorrência que o
+            * sistema não tem como saber. */}
+          <Linha
+            icon={TriangleAlert}
+            titulo="Perua quebrou"
+            subtitulo="Avisa todas as famílias de uma vez"
+            onClick={() => {
+              onClose?.();
+              navigate('/tio/agenda', { state: { atalho: 'quebrou' } });
+            }}
+          />
           <Linha
             icon={Megaphone}
             titulo="Avisar que não tem aula"
@@ -227,10 +254,11 @@ function Grupo({ titulo, children }) {
 }
 
 /** Mesma linha do Início de hoje — o motorista não aprende peça nova. */
-function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, onClick }) {
+function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, onClick, tour }) {
   return (
     <button
       type="button"
+      data-tour={tour}
       onClick={onClick}
       className="tap w-full text-left bg-card border border-border rounded-xl px-3 py-3 flex items-center gap-3"
     >

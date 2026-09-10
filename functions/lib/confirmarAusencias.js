@@ -37,11 +37,17 @@ const admin = require('firebase-admin');
 const REGION = 'southamerica-east1';
 const FUSO = 'America/Sao_Paulo';
 
+// ⚠️ CADA RÓTULO COMPLETA A FRASE "Amanhã {nome} ___", e é por isso que o
+// sujeito deles é a CRIANÇA, não o responsável. Eram 'você leva' e 'você
+// busca', que funcionavam depois de dois-pontos ("Amanhã: Lucas você leva")
+// porque ali o título era um rótulo, não uma frase. Sem os dois-pontos vira
+// "Amanhã Lucas você leva". O padrão de aviso do app é frase, então quem
+// mudou foi o rótulo.
 const ROTULO = {
   full: 'não vai',
-  'no-pickup': 'você leva',
-  'no-dropoff': 'você busca',
-  'picked-up': 'você pega na escola',
+  'no-pickup': 'vai com você',
+  'no-dropoff': 'volta com você',
+  'picked-up': 'sai da escola com você',
 };
 
 /**
@@ -138,14 +144,20 @@ function makeConfirmarAusencias(db) {
         }
 
         const nome = (a.childName || '').split(' ')[0] || 'a criança';
-        const rotulo = ROTULO[a.type] || 'ausência';
+        // O padrão também precisa fechar a frase: 'ausência' produziria
+        // "Amanhã Lucas ausência".
+        const rotulo = ROTULO[a.type] || 'não usa a perua';
 
         const ref = db.doc(`notifications/confirm_${amanha}_${a.childId}`);
         lote.set(ref, {
           userId: a.parentUid,
           type: 'absence_confirm',
-          title: `Amanhã: ${nome} ${rotulo}`,
-          body: `Você avisou ${haQuantoTempo(criado)}. Se mudou, toque aqui e desmarque — o motorista é avisado na hora.`,
+          // O título era um RÓTULO com dois-pontos ("Amanhã: Lucas não
+          // vai"). Vira frase. E o corpo perde a explicação de mecanismo
+          // ("o motorista é avisado na hora"): ela não precisa saber como
+          // funciona, precisa saber o que fazer se mudou de ideia.
+          title: `Amanhã ${nome} ${rotulo}`,
+          body: `Você avisou ${haQuantoTempo(criado)}. Se mudou de plano, toque para desmarcar.`,
           childId: a.childId,
           dateKey: amanha,
           url: '/pai',

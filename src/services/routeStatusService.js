@@ -365,7 +365,11 @@ export async function avisarSaidaDaRota(adminUid) {
           userId: uid,
           type: 'rota_iniciada',
           title: 'A perua saiu',
-          body: 'O transporte começou a rota agora.',
+          // ⚠️ O CORPO DIZIA O TÍTULO COM OUTRAS PALAVRAS — "O transporte
+          // começou a rota agora" não acrescenta nada a "A perua saiu". O
+          // corpo do formato carrega o que o título não cabe: aqui, o que ela
+          // pode fazer com a informação.
+          body: 'A rota começou. Acompanhe pelo mapa.',
           createdAt: serverTimestamp(),
         }).catch(() => {})
       )
@@ -436,10 +440,12 @@ export async function avisarProximo({ adminUid, direcao }) {
       userId: proximo.parentUid,
       type: 'proxima_parada',
       title: 'Vocês são os próximos',
+      // Dois períodos, não um com travessão: o segundo pedaço de uma frase
+      // emendada é o que se perde na tela bloqueada, e aqui ele é o nome.
       body:
         direcao === 'ida'
-          ? `A perua está a caminho — ${nome} é a próxima parada.`
-          : `A perua está a caminho — ${nome} é a próxima entrega.`,
+          ? `${nome} é a próxima parada. A perua está a caminho.`
+          : `${nome} é a próxima entrega. A perua está a caminho.`,
       childId: proximo.id,
       createdAt: serverTimestamp(),
     });
@@ -525,11 +531,22 @@ export async function avisarQuemFicou({ adminUid, direcao, agora = new Date() })
         return addDoc(collection(db, 'notifications'), {
           userId: c.parentUid,
           type: 'nao_embarcou',
-          title: `${nome} não foi marcado`,
+          // ⚠️ O TÍTULO NÃO PODE SOAR COMO ACUSAÇÃO NEM COMO ALARME.
+          //
+          // "Lucas não foi marcado" é jargão do sistema: a mãe não sabe o que
+          // é "ser marcado", e o que ela entende é que algo deu errado com o
+          // filho. Este aviso é sobre uma falha de REGISTRO, e a chance
+          // esmagadora é que a criança esteja em casa há uma hora.
+          //
+          // O título vira uma pergunta sobre o registro, e o corpo desarma
+          // antes de sugerir a ação — mesma escolha de `rota_atrasada`.
+          title: `Faltou registrar ${nome} hoje`,
+          // ⚠️ O NOME NÃO SE REPETE NO CORPO. Ele já está no título, e a
+          // frase inteira passava de 90 caracteres — o que sobra cortado na
+          // tela bloqueada é sempre o fim, que aqui é a ação.
           body:
-            `A rota terminou e ${nome} não foi marcado como ` +
-            `${marco === 'onboard' ? 'pego' : 'entregue'}. ` +
-            'Pode ter faltado a marcação — vale confirmar com o motorista.',
+            `Ninguém marcou ${marco === 'onboard' ? 'o embarque' : 'a entrega'}. ` +
+            'Provavelmente foi só o registro. Confirme com o motorista.',
           childId: c.id,
           createdAt: serverTimestamp(),
         }).catch(() => {});
@@ -552,14 +569,27 @@ export async function avisarQuemFicou({ adminUid, direcao, agora = new Date() })
   }
 }
 
+/**
+ * ⚠️ O NOME VAI NO TÍTULO, e o corpo diz DE ONDE VEM a informação.
+ *
+ * O título era "Chegou em casa" e o nome ficava só no corpo — numa família
+ * com dois filhos na mesma perua, a mãe tinha que abrir o aviso para saber
+ * qual dos dois chegou, que é justamente o que ela não faz com o celular na
+ * bolsa.
+ *
+ * E o corpo passou a dizer que quem marcou foi o motorista. O app não sabe
+ * que a criança chegou: ele sabe que o motorista marcou. A diferença importa
+ * no dia em que a marcação estiver errada — e é a mesma honestidade do aviso
+ * "Faltou registrar {nome} hoje", que existe exatamente para esse caso.
+ */
 const TEXTO_DA_CHEGADA = {
   atSchool: {
-    title: 'Chegou na escola',
-    corpo: (nome, hora) => `${nome} chegou na escola às ${hora}.`,
+    title: (nome) => `${nome} chegou na escola`,
+    corpo: (hora) => `Às ${hora}, marcado pelo motorista.`,
   },
   delivered: {
-    title: 'Chegou em casa',
-    corpo: (nome, hora) => `${nome} chegou em casa às ${hora}.`,
+    title: (nome) => `${nome} chegou em casa`,
+    corpo: (hora) => `Às ${hora}, marcado pelo motorista.`,
   },
 };
 
@@ -582,8 +612,8 @@ async function avisarChegadas(avisos) {
         userId: a.parentUid,
         type:
           a.status === 'delivered' ? 'child_arrived_home' : 'child_arrived_school',
-        title: texto.title,
-        body: texto.corpo(nome, hora),
+        title: texto.title(nome),
+        body: texto.corpo(hora),
         childId: a.childId,
         createdAt: serverTimestamp(),
       }).catch((err) => {

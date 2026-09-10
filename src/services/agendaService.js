@@ -11,6 +11,19 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { resumirParaAviso } from '../compartilhado/formatters';
+
+/**
+ * 'o ' ou 'a ' conforme o gênero da criança, e '' quando não há gênero.
+ *
+ * Sem gênero a frase perde o artigo e continua correta — "Recado sobre Maria"
+ * — em vez de errar para metade da turma.
+ */
+function artigoDoNome(child) {
+  if (child?.gender === 'male') return 'o ';
+  if (child?.gender === 'female') return 'a ';
+  return '';
+}
 
 /**
  * Cria uma notificação simples pro usuário-alvo. Usado pra avisar o pai
@@ -188,8 +201,24 @@ export async function createChildEntry({ adminUid, child, type, message, eventDa
     pushNotification({
       userId: child.parentUid,
       type: 'agenda_entry',
-      title: `Novo aviso sobre ${child.name?.split(' ')[0] || 'a criança'}`,
-      body: AGENDA_TYPES[type].label,
+      // ⚠️ O ARTIGO CONCORDA COM O GÊNERO, e o app sabe qual é.
+      //
+      // "Recado sobre o ${nome}" viraria "sobre o Maria" para metade da turma.
+      // `children.gender` é obrigatório no cadastro ('male' | 'female') porque
+      // o avatar precisa dele para escolher o cabelo — a mesma informação
+      // resolve a concordância aqui. Sem gênero gravado (documento antigo), o
+      // artigo some e a frase continua correta: "Recado sobre Maria".
+      title: `Recado sobre ${artigoDoNome(child)}${child.name?.split(' ')[0] || 'a criança'}`,
+      // ⚠️ O CORPO CARREGA O RECADO, NÃO O RÓTULO DO TIPO.
+      //
+      // Ele era `AGENDA_TYPES[type].label` — a mãe recebia "Recado" e tinha
+      // que abrir o app para saber se importava. São os avisos mais
+      // frequentes do produto: depois de três "Recado" ela para de abrir, e
+      // aí o quarto, que era o importante, também não é lido.
+      //
+      // O rótulo fica como reserva para o recado vazio, que existe (o tipo
+      // `other` nasce sem template). Melhor o rótulo que nada.
+      body: resumirParaAviso(message) || AGENDA_TYPES[type].label,
       meta: { agendaId: docRef.id, childId: child.id },
     });
   }
@@ -253,8 +282,9 @@ export async function createBroadcastEntry({
     pushNotification({
       userId: parentUid,
       type: 'agenda_broadcast',
-      title: 'Aviso do motorista',
-      body: AGENDA_TYPES[type].label,
+      title: 'Recado do motorista',
+      // Ver o comentário em `createChildEntry`: o corpo é o recado.
+      body: resumirParaAviso(message) || AGENDA_TYPES[type].label,
       meta: { agendaId: docRef.id },
     });
   }
@@ -317,8 +347,15 @@ export async function createSchoolEntry({
     pushNotification({
       userId: parentUid,
       type: 'agenda_school_entry',
-      title: 'Novo aviso da escola',
-      body: `${AGENDA_TYPES[type].label} · ${schoolName}`,
+      title: 'Recado da escola',
+      // ⚠️ O NOME DA ESCOLA SAIU DO CORPO PARA O COMEÇO DELE, e o rótulo do
+      // tipo saiu de vez. O corpo era "Recado · Estadual Vila Nova": dizia de
+      // onde veio e não o quê. Com duas escolas na mesma perua, o nome
+      // importa — mas depois do conteúdo, não no lugar dele.
+      body:
+        resumirParaAviso(
+          schoolName ? `${schoolName}: ${message || ''}`.trim() : message
+        ) || `${AGENDA_TYPES[type].label} · ${schoolName}`,
       meta: { agendaId: docRef.id, schoolName },
     });
   }

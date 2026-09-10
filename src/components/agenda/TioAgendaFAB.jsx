@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { chaveDoNome } from '../../dominio/escola/nomeEscola';
 import { primeiroNome } from '../../compartilhado/formatters';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Notebook,
   X,
@@ -39,6 +39,41 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  */
 export default function TioAgendaFAB() {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  /**
+   * ABERTURA POR FORA — o índice do Início manda direto para o urgente.
+   *
+   * ⚠️ SEIS AÇÕES ATÉ ENVIAR, E ERA ESSE O PROBLEMA.
+   *
+   * Chegar aqui era: rolar o Início até o fim → Meu transporte → Turma → o
+   * botão flutuante → Perua quebrou → revisar → enviar. Para o único aviso
+   * que ele dispara com a perua parada na rua. `MeuTransporteSheet` agora
+   * navega para cá com `state.atalho`, e aquela folha existe em TODOS os
+   * estados do painel, inclusive dirigindo.
+   *
+   * ⚠️ QUEM ABRE É O FAB, NÃO A FOLHA. A primeira versão pôs este efeito
+   * DENTRO de `AgendaSheet` e chamava `setOpen` — que mora aqui e nem estava
+   * no escopo de lá. Ela não abria nunca.
+   *
+   * ⚠️ E ISTO É DERIVADO, NÃO EFEITO. Ler o `state` durante a renderização
+   * evita a rodada extra em que a folha aparece no passo errado e só depois
+   * se corrige — que é o que `react-hooks/set-state-in-effect` recusa. O
+   * estado inicial certo entra por prop e nasce pronto lá dentro.
+   */
+  const atalho = AGENDA_TYPES[location.state?.atalho] ? location.state.atalho : null;
+  const aberto = open || Boolean(atalho);
+
+  /**
+   * Fechar LIMPA o `state` do histórico (`replace: true`). Sem isso a folha
+   * reabriria sozinha na renderização seguinte — e o botão físico de voltar
+   * do Android traria a pessoa para a mesma tela com o atalho armado de novo.
+   */
+  const fechar = () => {
+    setOpen(false);
+    if (atalho) navigate(location.pathname, { replace: true, state: null });
+  };
 
   return (
     <>
@@ -54,22 +89,26 @@ export default function TioAgendaFAB() {
         <span className="text-sm">Avisar pais</span>
       </button>
 
-      {open && <AgendaSheet onClose={() => setOpen(false)} />}
+      {aberto && <AgendaSheet atalho={atalho} onClose={fechar} />}
     </>
   );
 }
 
-function AgendaSheet({ onClose }) {
+function AgendaSheet({ atalho = null, onClose }) {
   const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { children } = useChildren();
-  const [step, setStep] = useState('target'); // target | type | confirm
-  const [scope, setScope] = useState(null); // 'child' | 'school' | 'todos'
+  // Com atalho, a folha JÁ NASCE na revisão de um aviso para todas as
+  // famílias — ver `TioAgendaFAB`. Sem ele, tudo começa vazio.
+  const [step, setStep] = useState(atalho ? 'confirm' : 'target'); // target | type | confirm
+  const [scope, setScope] = useState(atalho ? 'todos' : null); // 'child' | 'school' | 'todos'
   const [selectedChild, setSelectedChild] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState(null);
-  const [typeKey, setTypeKey] = useState(null);
-  const [message, setMessage] = useState('');
+  const [typeKey, setTypeKey] = useState(atalho);
+  const [message, setMessage] = useState(
+    atalho ? AGENDA_TYPES[atalho].template() : ''
+  );
   // Data DO EVENTO — separada da data de envio. "Festa junina dia 12/09"
   // vivia dentro do texto: o pai não via numa data e o app não sabia que
   // naquele dia a rota muda.
@@ -124,12 +163,32 @@ function AgendaSheet({ onClose }) {
   };
 
   /**
-   * ATALHO DOS URGENTES — pula o passo de escolher o tipo.
+   * ATALHO DO URGENTE — pula o passo de escolher o tipo.
    *
-   * "Vou atrasar" e "perua quebrou" custavam os mesmos quatro passos de um
-   * recado sobre briga no recreio: alvo, tipo, revisar, enviar. Só que estes
-   * dois são disparados de dentro do carro parado no acostamento, com o
-   * motorista fazendo mais três coisas ao mesmo tempo.
+   * "Perua quebrou" custava os mesmos quatro passos de um recado sobre briga
+   * no recreio: alvo, tipo, revisar, enviar. Só que este é disparado de dentro
+   * do carro parado no acostamento, com o motorista fazendo mais três coisas
+   * ao mesmo tempo.
+   *
+   * ── ⚠️ ERAM DOIS, E "VOU ATRASAR" SAIU EM 10/09/2026
+   * O atraso que já está acontecendo o app descobre sozinho:
+   * `reguaDosAvisos` dispara `rota_atrasada` 10 minutos depois da hora de
+   * pegar sem rota iniciada, e 20 depois da hora de entregar com a criança
+   * dentro. Um botão manual competia com isso e perdia em tudo — exigia ação
+   * de quem está dirigindo, ia para TODAS as famílias (inclusive as que já
+   * desceram), e prometia um número de minutos que o trânsito desmente.
+   *
+   * Pior: contradizia uma decisão já tomada em `avisoDoMomento` — atraso comum
+   * NÃO gera aviso, porque aviso semanal ensina a pular aviso.
+   *
+   * O TIPO `atraso` CONTINUA existindo na lista. O que saiu foi o atalho: quem
+   * sabe às 6h que vai sair mais tarde está em casa, parado, e o fluxo normal
+   * de quatro passos serve. Quem descobre no meio-fio não precisa fazer nada.
+   *
+   * ── QUEBRA É OUTRA ESPÉCIE, E POR ISSO FICA
+   * O app não tem como saber que a perua quebrou: GPS parado pode ser
+   * semáforo. E é a única ocorrência que legitimamente vai para TODO MUNDO,
+   * inclusive quem já desceu — se quebrou de manhã, a volta não acontece.
    *
    * O passo de revisão FICA. É uma mensagem que vai pra todas as famílias de
    * uma vez — mandar sem ver o texto seria trocar quatro toques por um
@@ -347,37 +406,35 @@ function TargetStep({
 
   return (
     <div className="space-y-5">
-      {/* OS DOIS URGENTES, PRONTOS.
-        * Vêm primeiro e já com texto escrito: são os únicos avisos disparados
-        * de dentro do carro parado, e ali cada passo custa. Um toque leva
-        * direto pra revisão. */}
+      {/* O URGENTE, PRONTO.
+        * Vem primeiro e já com texto escrito: é o único aviso disparado de
+        * dentro do carro parado, e ali cada passo custa. Um toque leva direto
+        * pra revisão.
+        *
+        * ⚠️ ERAM DOIS. "Vou atrasar" saiu — ver `atalhoUrgente`. Com um só, o
+        * botão também fica inconfundível: dois vermelhos lado a lado se
+        * diluem. */}
       <section>
         <p className="text-[11px] font-bold uppercase tracking-widest text-textMuted mb-2">
           Aconteceu agora · avisa todo mundo
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => onAtalho('atraso')}
-            className="tap rounded-2xl bg-gradient-to-br from-warning to-warning text-white px-3 py-3 flex flex-col items-center gap-1 shadow-sm"
-          >
-            <span className="text-2xl" aria-hidden>
-              ⏰
-            </span>
-            <span className="text-sm font-bold">Vou atrasar</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onAtalho('quebrou')}
-            className="tap rounded-2xl bg-gradient-to-br from-danger to-dangerText text-white px-3 py-3 flex flex-col items-center gap-1 shadow-sm"
-          >
-            <span className="text-2xl" aria-hidden>
-              🚨
-            </span>
-            <span className="text-sm font-bold">Perua quebrou</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onAtalho('quebrou')}
+          className="tap w-full rounded-2xl bg-gradient-to-br from-danger to-dangerText text-white px-3 py-3 flex items-center justify-center gap-2 shadow-sm"
+        >
+          <span className="text-2xl" aria-hidden>
+            🚨
+          </span>
+          <span className="text-sm font-bold">Perua quebrou</span>
+        </button>
 
+        {/* ⚠️ ESTE NÃO É ATALHO, É A PORTA DO GERAL — e ele quase saiu junto
+          * com o "Vou atrasar". Sem ele, a única mensagem que alcança todas as
+          * famílias de uma vez é "a perua quebrou": aviso de férias, de mudança
+          * de horário da volta ou de qualquer coisa que valha para a operação
+          * inteira teria que ser mandado escola por escola. Fica embaixo e sem
+          * cor: é o caminho normal, não a emergência. */}
         <button
           type="button"
           onClick={onPickTodos}

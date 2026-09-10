@@ -152,25 +152,42 @@ function avisoDaMensalidade({ pagamento, agora = new Date() } = {}) {
 
   const monta = (tipo, titulo, corpo) => ({ tipo, titulo, corpo, destino: '/pai/finance' });
 
+  // ⚠️ O TÍTULO DIZ DE QUEM É A CONTA; O CORPO, QUANTO E O QUE FAZER.
+  //
+  // Era "Vencimento em 5 dias" — o nome do evento, não o que muda para ela.
+  // Numa família com dois filhos em peruas diferentes, "vencimento" sozinho
+  // não diz qual conta é, e ela abre o app para descobrir.
+  //
+  // O nome da criança FICA no começo do corpo, e não sobe para o título: é
+  // ali que ele distingue as duas contas sem competir com o valor, e
+  // `testar:avisos-do-dia` trava essa posição de propósito.
+  //
+  // E toda peça fecha com a ação. Sem a última frase o aviso é notícia — e
+  // notícia sobre dinheiro que não pede nada soa como aviso de perda.
   if (faltam === 5) {
-    return monta(TIPO.VENCE_5, 'Vencimento em 5 dias',
-      `${quem}a mensalidade de ${valor}${mes} vence em 5 dias.`);
+    return monta(TIPO.VENCE_5, 'Mensalidade vence em 5 dias',
+      `${quem}${valor}${mes}. Toque para pagar.`);
   }
   if (faltam === 3) {
-    return monta(TIPO.VENCE_3, 'Vencimento em 3 dias',
-      `${quem}a mensalidade de ${valor}${mes} vence em 3 dias.`);
+    return monta(TIPO.VENCE_3, 'Mensalidade vence em 3 dias',
+      `${quem}${valor}${mes}. Toque para pagar.`);
   }
   if (faltam === 0) {
-    return monta(TIPO.VENCE_HOJE, 'Vence hoje',
-      `${quem}a mensalidade de ${valor}${mes} vence hoje.`);
+    return monta(TIPO.VENCE_HOJE, 'A mensalidade vence hoje',
+      `${quem}${valor}${mes}. Toque para pagar.`);
   }
+  // ⚠️ O TOM NÃO ENDURECE COM O ATRASO, E ISSO É DECISÃO.
+  //
+  // A plataforma não é a credora: quem cobra é o motorista, e a mensalidade
+  // nem passa por aqui (item 7 dos Termos). Cobrança dura em nome de terceiro
+  // estraga a relação dos dois e sobra para ele resolver no portão.
   if (faltam === -3) {
-    return monta(TIPO.ATRASO_3, 'Pagamento atrasado',
-      `${quem}a mensalidade de ${valor}${mes} está 3 dias atrasada.`);
+    return monta(TIPO.ATRASO_3, 'Mensalidade em aberto',
+      `${quem}${valor}${mes}, vencida há 3 dias. Toque para pagar.`);
   }
   if (faltam === -7) {
-    return monta(TIPO.ATRASO_7, 'Atrasada há uma semana',
-      `${quem}a mensalidade de ${valor}${mes} está 7 dias atrasada.`);
+    return monta(TIPO.ATRASO_7, 'Mensalidade em aberto há uma semana',
+      `${quem}${valor}${mes}, vencida há 7 dias. Toque para pagar.`);
   }
   return null;
 }
@@ -200,8 +217,8 @@ function avisoDoConvite({ crianca, agora = new Date() } = {}) {
   const nome = primeiroNome(c.name) || 'a criança';
   return {
     tipo: TIPO.CONVITE_PARADO,
-    titulo: 'Convite ainda não usado',
-    corpo: `A família de ${nome} recebeu o convite há ${DIAS_DO_CONVITE} dias e ainda não entrou. Reenvie o link.`,
+    titulo: `O convite de ${nome} não foi usado`,
+    corpo: `A família recebeu há ${DIAS_DO_CONVITE} dias e não entrou. Toque para reenviar.`,
     destino: '/tio/children',
   };
 }
@@ -223,7 +240,9 @@ function avisoDaFatura({ fatura, agora = new Date() } = {}) {
   return {
     tipo: TIPO.FATURA_VENCE,
     titulo: `Sua fatura vence em ${DIAS_DA_FATURA} dias`,
-    corpo: `${reais(f.total)} até ${dataCurta(venc)}.`,
+    // O mês entra porque "sua fatura" não diz qual, e quem tem uma em aberto
+    // do mês passado precisa saber de qual das duas se trata.
+    corpo: `${reais(f.total)}${f.mes ? ` de ${f.mes}` : ''}, até ${dataCurta(venc)}. Toque para pagar.`,
     destino: '/tio/taxa',
   };
 }
@@ -251,7 +270,7 @@ function avisoDoAlvara({ motorista, agora = new Date() } = {}) {
   return {
     tipo: TIPO.ALVARA_VENCE,
     titulo: 'Seu alvará vence em 30 dias',
-    corpo: `Vale até ${dataCurta(validade)}. Envie o novo pra não perder o selo.`,
+    corpo: `Vale até ${dataCurta(validade)}. Envie o novo para não perder o selo.`,
     destino: '/tio/selo',
   };
 }
@@ -320,9 +339,14 @@ function avisoDeAtraso({ crianca, rotaAtiva, temFalta, agora = new Date() } = {}
         nivel: 'grave',
         tipo: 'rota_atrasada',
         titulo: `Passou da hora de ${nome} chegar`,
+        // "Provavelmente foi só a marcação" é a MESMA frase do aviso
+        // `nao_embarcou`, e de propósito: os dois descrevem a mesma
+        // suspeita, e duas redações fariam a mãe achar que são dois
+        // problemas diferentes. O período com travessão saiu — na tela
+        // bloqueada ele emenda as duas metades e a segunda, que é a ação,
+        // é a que se perde.
         corpo:
-          'Isso não quer dizer que algo aconteceu — o motorista pode só não ' +
-          'ter marcado a entrega. Se quiser, ligue pra ele.',
+          'Provavelmente foi só a marcação. Se quiser, ligue para o motorista.',
         destino: '/pai',
       };
     }
@@ -335,10 +359,9 @@ function avisoDeAtraso({ crianca, rotaAtiva, temFalta, agora = new Date() } = {}
       return {
         nivel: 'atencao',
         tipo: 'rota_atrasada',
-        titulo: `A rota não começou, e já passou das ${pega}`,
+        titulo: `A rota não começou às ${pega}`,
         corpo:
-          'Pode ser só o app dele fechado — muitas vezes a perua está na rua ' +
-          'e o rastreamento não. Se ela não chegar, fale com o motorista.',
+          'Pode ser só o app dele fechado. Se ela não chegar, fale com o motorista.',
         destino: '/pai',
       };
     }

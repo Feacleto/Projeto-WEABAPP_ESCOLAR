@@ -305,8 +305,11 @@ export async function notifyAbsence({
     await addDoc(collection(db, 'notifications'), {
       userId: targetUid,
       type: 'absence_declared',
-      title: `Ausência: ${childName}`,
-      body: `${who} avisou: "${typeLabel}" em ${dateLabel}.`,
+      // ⚠️ O TÍTULO ERA UM RÓTULO COM DOIS-PONTOS, e o corpo tinha aspas
+      // dentro. "Ausência: Lucas" é um cabeçalho de planilha; o que ele
+      // precisa saber é que a rota dele muda, e em que dia.
+      title: `${childName} não vai em ${dateLabel}`,
+      body: `${who} avisou agora: ${typeLabel}.`,
       childName,
       absenceType: type,
       dateKey,

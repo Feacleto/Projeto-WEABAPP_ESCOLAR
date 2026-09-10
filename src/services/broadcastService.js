@@ -99,9 +99,14 @@ export async function createSchoolBroadcast({
     });
 
   const periodo = rotuloDoPeriodo(dias);
+  // ⚠️ O CORPO DIZ A CONSEQUÊNCIA, e é a única dúvida que ela tem ao ler.
+  //
+  // "Não haverá aula em X (12/09)" informa o fato e deixa a pergunta de pé:
+  // a perua passa ou não? Sem essa linha, ela abre o app — ou pior, coloca a
+  // criança na porta.
   const corpo = message?.trim()
-    ? `Não haverá aula em ${escolaNome} (${periodo}). ${message.trim()}`
-    : `Não haverá aula em ${escolaNome} (${periodo}).`;
+    ? `${escolaNome}, ${periodo}. A perua não passa. ${message.trim()}`
+    : `${escolaNome}, ${periodo}. A perua não passa nesses dias.`;
 
   // Uma notificação por responsável, não uma por dia: cinco avisos iguais
   // chegam como cinco sustos e o pai desliga a notificação do app.
