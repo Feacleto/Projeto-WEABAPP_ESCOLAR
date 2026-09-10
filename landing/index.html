@@ -5,8 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F5F3F">
 <meta name="color-scheme" content="light">
-<meta name="description" content="O app que organiza o transporte escolar: rota ao vivo, aviso de chegada e mensalidade num lugar so. A mensalidade das familias e do motorista - a plataforma nao entra no caminho dela.">
+<meta name="description" content="A rota do dia, o aviso de chegada para as familias e a mensalidade organizada num app so. A mensalidade e do motorista, e a plataforma nao entra nela.">
 <link rel="canonical" href="https://alobuzinou.com.br/">
+
+<!-- DADOS ESTRUTURADOS — e a lista do que NÃO está aqui é a parte importante.
+     Isto habilita o painel da marca no Google, e a razão social com o CNPJ é
+     o mesmo sinal do rodapé legal da tela de senha: o que uma página falsa
+     não copia.
+
+     ⚠️ FORA DE PROPÓSITO, e cada ausência é uma decisão do projeto:
+       - `aggregateRating` — não há avaliação real, e nota inventada em dado
+         estruturado é penalidade manual, não otimização;
+       - `offers` / `price` — preço é conversa com o consultor: número solto
+         vira âncora antes de existir proposta;
+       - contagem de clientes — a marca combinou não publicar número de
+         cliente, e o piso da vitrine foi desligado pelo mesmo motivo;
+       - qualquer palavra de segurança — a plataforma não inspeciona van, não
+         confere CNH e não treina ninguém.
+
+     ⚠️ Os dados legais estão DUPLICADOS aqui: esta é a landing, HTML estático
+     sem build, e ela não alcança o `developer.js` do app. Mudou lá, muda
+     aqui. `npm run testar:busca` compara os dois. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Alô Buzinou",
+  "legalName": "Desenvolva Algo",
+  "taxID": "65.000.217/0001-47",
+  "url": "https://alobuzinou.com.br",
+  "logo": "https://alobuzinou.com.br/brand/og-image.png",
+  "description": "App para transporte escolar: a rota do dia, o aviso de chegada para as famílias e a mensalidade organizada.",
+  "email": "contato@alobuzinou.com",
+  "areaServed": { "@type": "Country", "name": "BR" },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "atendimento",
+    "email": "contato@alobuzinou.com",
+    "availableLanguage": "pt-BR"
+  }
+}
+</script>
 
 <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
 <link rel="alternate icon" href="/brand/favicon.ico" sizes="16x16 32x32 48x48">
@@ -24,7 +63,13 @@
 <meta property="og:image:alt" content="Alô Buzinou — transporte escolar organizado">
 <meta name="twitter:card" content="summary_large_image">
 
-<title>Alô Buzinou</title>
+<!-- ⚠️ O TÍTULO CARREGA A CATEGORIA, e não só a marca. Ele era
+     "Alô Buzinou" — o mesmo do app, no outro domínio —, e os dois competiam
+     pela mesma busca: em 09/09/2026 o Google mostrava o APP (uma tela de
+     login) ACIMA deste site. Marca sozinha só é achável por quem já sabe o
+     nome; quem TEM o problema digita a categoria. Cabe nos ~60 caracteres
+     que o Google mostra. -->
+<title>Alô Buzinou — app para transporte escolar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1428,7 +1473,7 @@ footer a:hover{opacity:1;transform:translateX(3px)}
   <div class="wrap herogrid">
     <div>
       <span class="chapeu rv">o seu novo app</span>
-      <h1 class="rv" style="--d:90ms">O transporte escolar <span>com operação digitalizada.</span></h1>
+      <h1 class="rv" style="--d:90ms">A perua do seu filho <span>com a operação digitalizada.</span></h1>
       <p class="lead rv" style="--d:190ms;margin-top:24px">
         A gente digitaliza a sua rota, o aviso da criança que vai faltar chega mais rápido,
         a mensalidade atrasada fica anotada no app, e a cobrança do mês nasce sozinha para

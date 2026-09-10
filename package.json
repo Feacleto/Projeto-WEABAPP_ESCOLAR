@@ -15,7 +15,7 @@
     "testar:horarios": "node scripts/testar-horarios.mjs",
     "testar:faltas": "node scripts/testar-faltas.mjs",
     "testar:aviso": "node scripts/testar-aviso.mjs",
-    "testar": "npm run testar:imports && npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste && npm run testar:travessia && npm run testar:contrato && npm run testar:pix && npm run testar:brcode && npm run testar:status && npm run testar:auth && npm run testar:trial && npm run testar:planos && npm run testar:conta && npm run testar:cobranca && npm run testar:gateway && npm run testar:carteira && npm run testar:proposta && npm run testar:chamados && npm run testar:risco && npm run testar:fila && npm run testar:concessao && npm run testar:selo && npm run testar:indicacao && npm run testar:origem && npm run testar:abas && npm run testar:transacoes && npm run testar:fundo",
+    "testar": "npm run testar:imports && npm run testar:horarios && npm run testar:faltas && npm run testar:aviso && npm run testar:contraste && npm run testar:travessia && npm run testar:contrato && npm run testar:pix && npm run testar:brcode && npm run testar:status && npm run testar:auth && npm run testar:trial && npm run testar:planos && npm run testar:conta && npm run testar:cobranca && npm run testar:gateway && npm run testar:carteira && npm run testar:proposta && npm run testar:chamados && npm run testar:risco && npm run testar:fila && npm run testar:concessao && npm run testar:selo && npm run testar:indicacao && npm run testar:origem && npm run testar:abas && npm run testar:transacoes && npm run testar:fundo && npm run testar:busca",
     "testar:contraste": "node scripts/testar-contraste.mjs",
     "testar:travessia": "node scripts/testar-travessia.mjs",
     "testar:contrato": "node scripts/testar-contrato.mjs",
@@ -40,6 +40,7 @@
     "testar:origem": "node scripts/testar-origem.mjs",
     "testar:transacoes": "node scripts/testar-transacoes.mjs",
     "testar:fundo": "node scripts/testar-fundo.mjs",
+    "testar:busca": "node scripts/testar-busca.mjs",
     "testar:brcode": "node scripts/testar-brcode.mjs",
     "testar:imports": "node scripts/testar-imports.mjs"
   },

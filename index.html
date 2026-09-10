@@ -25,6 +25,33 @@
     />
     <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
 
+    <!-- ⚠️ O APP SAI DA BUSCA, E A LANDING FICA. Decidido em 09/09/2026.
+         Medido no Google: `alobuzinou.com` aparecia ACIMA de
+         `alobuzinou.com.br` para a busca "alobuzinou" — ou seja, quem procura
+         o produto caía numa TELA DE LOGIN em vez do site que explica o
+         produto. Os dois domínios tinham o mesmo `<title>`, e o buscador
+         escolheu o errado.
+
+         E o efeito pior não era o ranking: com o app inteiro rastreável, um
+         link `/convite/TN2K9F4B` postado num grupo de pais pode ser indexado
+         — e esse link é o token que cria conta vinculada a UMA criança.
+
+         ⚠️ A ARMADILHA É USAR robots.txt PARA ISSO. `Disallow: /` não tira da
+         busca: ele impede a LEITURA, e o resultado é a URL indexada sem
+         descrição — literalmente o que o `.com.br` estava mostrando ("o site
+         não nos permite exibir a descrição"). Para SAIR é o contrário: deixar
+         rastrear e declarar `noindex`. Por isso o `public/robots.txt` deste
+         app libera tudo.
+
+         `follow` de propósito: o buscador segue os links daqui pra fora e
+         chega na landing, que é quem deve ranquear.
+
+         ⚠️ Isto também tira `/familia` da busca. Ela já está órfã (a landing
+         não linka pra ela), então hoje não muda nada — mas se um dia a ideia
+         for a responsável achar `/familia` no Google, o caminho é linkar da
+         landing e abrir uma exceção AQUI, não remover esta linha. -->
+    <meta name="robots" content="noindex, follow" />
+
     <!-- Preview do link. O convite do motorista circula por WhatsApp: sem
          estas tags o pai recebe um retângulo cinza no lugar da marca. -->
     <!--

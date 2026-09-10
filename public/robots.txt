@@ -1,0 +1,24 @@
+# O APP LIBERA A LEITURA DE PROPÓSITO — e não é descuido.
+#
+# Quem tira uma página da busca é a meta `robots` do `index.html`
+# (`noindex, follow`), e para ela ser LIDA o rastreador precisa poder buscar a
+# página. `Disallow` aqui faria o oposto do pretendido: impediria a leitura e
+# deixaria a URL indexada SEM descrição — exatamente o estado ruim que o
+# `alobuzinou.com.br` estava mostrando no Google ("o site não nos permite
+# exibir a descrição").
+#
+# ⚠️ E ISSO VALE EM DOBRO PARA `/convite/{codigo}`. A primeira versão deste
+# arquivo trazia `Disallow: /convite/` como "segunda tranca", e era o
+# contrário de uma tranca: bloqueado, o Google não lê a página, não vê o
+# `noindex`, e pode listar a URL CRUA — com o código do convite dentro dela,
+# na página de resultados. Liberado, ele lê, vê o `noindex` e descarta a URL
+# inteira. Rastrear é o que faz o link do convite SAIR da busca.
+#
+# Este arquivo também existe por um motivo mais bobo: sem ele, o rewrite do
+# SPA devolvia o `index.html` inteiro em `/robots.txt`, e para o rastreador
+# isso é o mesmo que não haver arquivo nenhum.
+#
+# Não há Sitemap aqui: quem deve ser indexado é a landing
+# (alobuzinou.com.br), e o sitemap dela mora lá.
+User-agent: *
+Allow: /
