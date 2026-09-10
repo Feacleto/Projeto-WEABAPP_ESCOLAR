@@ -17,13 +17,14 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 1904 casos em 36 scripts. O PRIMEIRO é
+npm run testar                   # 1947 casos em 37 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
                                  # horarios, faltas, endereco, aviso,
                                  # contraste, travessia, contrato, pix, brcode,
-                                 # status, auth, trial, planos, avisos, multa,
+                                 # status, auth, trial, planos, avisos,
+                                 # preferencias, multa,
                                  # conta, cobranca, gateway, carteira,
                                  # proposta, chamados, risco, fila, concessao,
                                  # selo, indicacao, origem, abas,
@@ -202,14 +203,15 @@ escrita em lugar nenhum. Leia antes de mexer em cobrança da plataforma ou em
 qualquer peça de marketing. **A unidade de cobrança é a CRIANÇA ATIVA** e o app
 é completo em qualquer tamanho — não existe plano capado.
 
-**O DESCONTO TEM DOCUMENTO PRÓPRIO desde 07/09/2026:
-[docs/descontos.md](docs/descontos.md)** — escada de fechamento (50/30/15 por mês
-de decisão), piso de fatura, indicação e a condição de fundador. Leia antes de
-mexer em qualquer desconto. Ele supera partes das seções 5 e 7 do
-[negocio.md](docs/negocio.md), que estão marcadas no lugar, e a **Parte 2 dele é
-a lista do que foi mudado no código** (implementada em 07/09/2026 — a régua
-descrita lá é o que `planos.js` faz hoje) e some quando a última linha for
-conferida em produção.
+**O DESCONTO TEM DOCUMENTO PRÓPRIO: [docs/descontos.md](docs/descontos.md)** —
+reescrito em 10/09/2026 para a escada vitalícia (30/20/10), a indicação a 5%
+sem prazo, o piso de R$ 19 e a concessão. Leia antes de mexer em qualquer
+desconto. Ele supera partes das seções 5 e 7 do
+[negocio.md](docs/negocio.md), que estão marcadas no lugar.
+⚠️ A versão anterior descrevia faixas de R$ 69/149/229, escada de 50/30/15 e
+piso de R$ 34,50, e carregava uma PARTE 2 com a migração de 07/09/2026 — que
+foi executada e depois substituída. Ficou falsa por dois dias inteiros, e é o
+tipo de meia verdade que custa mais que a ausência num documento de dinheiro.
 
 O critério que ele estabelece vale para qualquer desconto novo: **o teste da fila
 do portão**. Motorista de perua faz fila no mesmo portão todo dia, e um desconto
@@ -1634,6 +1636,57 @@ dois. Campo novo no doc do responsável não entra ali por padrão.
 [functions/lib/papeis.js](functions/lib/papeis.js), com `exigirMotorista` e
 `exigirDono`. Callable manual recebe o escopo do **uid autenticado**, nunca de
 `request.data`. As agendadas continuam globais de propósito.
+
+⚠️ **A PESSOA ESCOLHE O QUE TOCA NO APARELHO, E A PREFERÊNCIA É POR ESPÉCIE**
+(10/09/2026) — [dominio/identidade/avisos.js](src/dominio/identidade/avisos.js),
+com espelho em [functions/lib/avisos.js](functions/lib/avisos.js) e
+`npm run testar:preferencias` comparando os dois.
+
+O app tinha 31 tipos de aviso e **nenhuma preferência**: quem se irritasse com
+uma peça comercial só podia desligar push no sistema operacional, e aí perdia
+*"Lucas chegou em casa"*. Era o maior risco do conjunto, e crescia a cada tipo
+novo.
+
+- **Duas chaves, nunca trinta e uma.** Preferência por TIPO é uma tela que
+  ninguém lê e que envelhece sozinha — o tipo novo nasceria ligado sem ninguém
+  ter escolhido. Por ESPÉCIE, `prazo` e `oferta` se desligam; **`fato` e
+  `estado` não**, porque um é o produto acontecendo e o outro é o app avisando
+  que parou de conseguir prometer o que promete.
+- ⚠️ **O GUARDA MORA NUM LUGAR SÓ:** `push.js`, que é o ponto por onde TODO
+  aviso passa antes de chegar num aparelho. Espalhar a checagem pelos dez
+  remetentes faria o próximo remetente nascer sem ela.
+- ⚠️ **SILENCIA O TOQUE, NÃO O REGISTRO.** O documento em `notifications`
+  continua sendo escrito e o sino continua mostrando. Quem pediu silêncio não
+  pediu amnésia — e ela precisa poder conferir depois o que foi dito sobre o
+  dinheiro dela.
+- **O padrão de tipo desconhecido é `fato`** — o seguro, não o conveniente. Um
+  aviso a mais é ruído; um aviso de chegada que não toca é a mãe na calçada. E
+  `testar:preferencias` varre o código atrás de `type:` e falha se algum tipo
+  não estiver classificado.
+- **A tela mora no fim do sino**, não numa tela de ajustes: é o único lugar em
+  que a pessoa já está pensando em avisos, e é onde ela está no minuto em que
+  se irrita com um. `avisosDesligados` não precisou de rule nova — o `update`
+  de `users` é lista de PROIBIDOS, e preferência não é cláusula.
+
+⚠️ **TRÊS AGENDADOS RODAVAM ÀS 9H FALANDO COM A MESMA PESSOA.** O comercial
+(`enviarAvisos`), o operacional (`enviarAvisosDoDia`) e o e-mail de
+mensalidade (`sendPaymentReminders`). Duas colisões, e nenhuma aparecia em
+teste porque cada régua estava certa sozinha:
+
+- **Para o MOTORISTA:** "sua fatura vence em 3 dias" e "traga um colega" na
+  mesma manhã. O guarda semanal do comercial lia `ultimoAvisoComercial`, que
+  os outros não escrevem. Agora o operacional carimba
+  `users.ultimoAvisoOperacional` e **a oferta cede** — obrigação ganha de
+  conversa. ⚠️ Isso exige ordem: o comercial passou para **as 10h**, senão o
+  carimbo poderia não existir ainda quando a régua o lesse, e o silêncio seria
+  sorteado a cada manhã.
+- **Para a FAMÍLIA:** push e e-mail sobre a mesma mensalidade, no mesmo
+  minuto, em três dos cinco marcos. Quem decide agora é
+  [canalDaCobranca.js](functions/lib/canalDaCobranca.js): **um marco, um
+  canal**. Push em 5 dias antes, no dia e 7 de atraso; e-mail em 3 antes e 3
+  de atraso. ⚠️ A divisão é julgamento e está num lugar só para poder mudar em
+  uma linha; o que é regra — nenhum marco com dois canais, nenhum sem canal —
+  é o que o teste prova.
 
 **Há CI** — [.github/workflows/ci.yml](.github/workflows/ci.yml) roda lint,
 `npm run testar` e build. Rules e Storage ficam fora até o emulador entrar lá.
