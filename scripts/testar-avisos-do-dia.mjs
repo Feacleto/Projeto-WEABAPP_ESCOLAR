@@ -16,9 +16,20 @@
  *   node scripts/testar-avisos-do-dia.mjs   (ou: npm run testar:avisos-do-dia)
  */
 
+/* ⚠️ O FUSO É FIXADO ANTES DE QUALQUER `Date`, e é isso que torna a
+   comparação do espelho honesta.
+
+   `avisoDoMomento` roda no NAVEGADOR — no celular da mãe, no Brasil — e usa a
+   hora LOCAL do aparelho, que é a certa lá. O espelho roda em function, que
+   roda em UTC, e por isso converte pra São Paulo. As duas estão certas no
+   ambiente de cada uma; comparar sem alinhar o fuso reprovaria as duas numa
+   máquina de CI em UTC. */
+process.env.TZ = 'America/Sao_Paulo';
+
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const R = require('../functions/lib/reguaDosAvisos.js');
+import { avisoDoMomento } from '../src/dominio/rota/avisoDoMomento.js';
 
 let ok = 0;
 let bad = 0;
@@ -171,6 +182,90 @@ eq('3 dias', 'payment_due_3d', R.TIPO.VENCE_3);
 eq('hoje', 'payment_due_0d', R.TIPO.VENCE_HOJE);
 eq('atraso 3', 'payment_overdue_3d', R.TIPO.ATRASO_3);
 eq('atraso 7', 'payment_overdue_7d', R.TIPO.ATRASO_7);
+
+// ══════════════════════════════════════════════════════════════════════════
+bloco('═══ A ROTA ATRASOU — e o ESPELHO tem que bater com o original ═══');
+/* `avisoDoMomento` (src, roda no celular da mãe) e `avisoDeAtraso` (functions,
+   roda no servidor) decidem a MESMA coisa. Espelho é dívida, e a regra da casa
+   é que ele só existe com teste comparando as duas caso a caso — como
+   `testar:gateway` faz com a régua de preço. Estes casos batem os limiares nos
+   DOIS lados de cada um, que é onde um espelho desanda primeiro. */
+
+const CRIANCA = { name: 'João Pedro', parentUid: 'p1', horaPega: '06:30', horaEntrega: '12:35' };
+
+/** Um `Date` de hoje, na hora local (que o TZ acima fixou em São Paulo). */
+function hojeAs(hh, mm) {
+  const d = new Date();
+  d.setHours(hh, mm, 0, 0);
+  return d;
+}
+
+function comparar(nome, { status, rotaAtiva, agora, falta = null }) {
+  const original = avisoDoMomento({
+    child: CRIANCA,
+    status,
+    presence: rotaAtiva ? { kind: 'live' } : { kind: 'no-route' },
+    ride: null,
+    absence: falta,
+    agora,
+  });
+  const espelho = R.avisoDeAtraso({
+    crianca: { ...CRIANCA, status },
+    rotaAtiva,
+    temFalta: !!falta,
+    agora,
+  });
+
+  const a = original ? original.nivel : null;
+  const b = espelho ? espelho.nivel : null;
+  checar(nome, a === b, `original=${a} espelho=${b}`);
+}
+
+comparar('sem atraso, rota rodando: nenhum dos dois avisa',
+  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 40) });
+
+comparar('20 min depois da entrega — no limiar, nenhum avisa',
+  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 55) });
+
+comparar('21 min depois da entrega — os dois dizem GRAVE',
+  { status: 'onboard', rotaAtiva: true, agora: hojeAs(12, 56) });
+
+comparar('10 min depois de pegar, sem rota — no limiar, nenhum avisa',
+  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 40) });
+
+comparar('11 min depois de pegar, sem rota — os dois dizem ATENÇÃO',
+  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 41) });
+
+comparar('rota rodando e ainda em casa: nenhum avisa',
+  { status: 'home', rotaAtiva: true, agora: hojeAs(6, 41) });
+
+comparar('falta declarada cala os dois',
+  { status: 'home', rotaAtiva: false, agora: hojeAs(6, 41), falta: { type: 'falta' } });
+
+comparar('os dois gatilhos valendo: o GRAVE ganha nos dois',
+  { status: 'onboard', rotaAtiva: false, agora: hojeAs(13, 30) });
+
+checar('horário presumido não vira atraso — é chute do app',
+  R.avisoDeAtraso({
+    crianca: { name: 'Ana', parentUid: 'p1' },
+    rotaAtiva: false,
+    agora: hojeAs(18, 0),
+  }) === null);
+
+checar('criança sem responsável não é avisada',
+  R.avisoDeAtraso({
+    crianca: { ...CRIANCA, parentUid: null, status: 'home' },
+    rotaAtiva: false,
+    agora: hojeAs(6, 41),
+  }) === null);
+
+eq('os dois casos usam o mesmo tipo', 'rota_atrasada',
+  R.avisoDeAtraso({ crianca: { ...CRIANCA, status: 'home' }, rotaAtiva: false, agora: hojeAs(6, 41) }).tipo);
+
+bloco('═══ A MARCA COM DATA — atraso repete, booleano não serve ═══');
+checar('marca de hoje cala', R.jaAvisadoHoje({ avisos: { rota_atrasada: '2026-09-10' } }, 'rota_atrasada', '2026-09-10'));
+checar('marca de ontem NÃO cala', !R.jaAvisadoHoje({ avisos: { rota_atrasada: '2026-09-09' } }, 'rota_atrasada', '2026-09-10'));
+checar('sem marca não cala', !R.jaAvisadoHoje({}, 'rota_atrasada', '2026-09-10'));
 
 // ══════════════════════════════════════════════════════════════════════════
 console.log('');

@@ -42,7 +42,10 @@ const {
   avisoDoConvite,
   avisoDaFatura,
   avisoDoAlvara,
+  avisoDeAtraso,
   jaAvisado,
+  jaAvisadoHoje,
+  chaveDoDia,
 } = require('./reguaDosAvisos');
 
 const REGION = 'southamerica-east1';
@@ -180,6 +183,127 @@ async function varrerAlvaras(db, agora) {
   return n;
 }
 
+/**
+ * A ROTA ATRASOU — a varredura que roda DENTRO das duas janelas.
+ *
+ * ── ⚠️ POR QUE ESTA NÃO PODE SER DIÁRIA NEM DO CLIENTE
+ * Ela é o único aviso do conjunto que precisa existir quando o motorista NÃO
+ * está usando o app. A primeira ideia foi calcular no celular dele, que está
+ * aberto durante a rota com tudo carregado — e ela falha exatamente no caso
+ * que importa: quem dorme demais tem o app fechado. O GPS nunca ligou, a tela
+ * nunca abriu, e ninguém avaliaria nada.
+ *
+ * ── AS TRÊS LEITURAS, E O QUE FICOU DE FORA
+ * Uma consulta das faltas do dia (a plataforma inteira, de uma vez), uma das
+ * crianças ativas, e um `liveLocation` por motorista distinto.
+ *
+ * ⚠️ AS VIAGENS (`rides`) NÃO SÃO LIDAS, de propósito. No original elas só
+ * mudam o TÍTULO do caso grave ("o app não recebe atualização" em vez de
+ * "passou da hora"), e custariam uma leitura por criança a cada vinte minutos.
+ * Uma variação de título não paga isso; a decisão de avisar não depende delas.
+ */
+async function varrerAtrasos(db, agora) {
+  let n = 0;
+  const hoje = chaveDoDia(agora);
+
+  // As faltas do dia, de uma vez: criança avisada não gera aviso de atraso, e
+  // uma consulta por criança seria a leitura mais cara desta varredura.
+  const faltas = new Set();
+  try {
+    const fs = await db
+      .collection('absenceDeclarations')
+      .where('dateKey', '==', hoje)
+      .limit(TETO * 2)
+      .get();
+    fs.docs.forEach((d) => {
+      const id = d.data().childId;
+      if (id) faltas.add(id);
+    });
+  } catch (err) {
+    logger.warn('não deu pra ler as faltas do dia', err);
+  }
+
+  const snap = await db.collection('children').limit(TETO).get();
+
+  // `liveLocation` é UM por motorista, e vinte crianças dele fariam vinte
+  // leituras do mesmo documento.
+  const rotaPorMotorista = new Map();
+  async function rotaAtivaDe(adminUid) {
+    if (!adminUid) return false;
+    if (rotaPorMotorista.has(adminUid)) return rotaPorMotorista.get(adminUid);
+    let ativa;
+    try {
+      const d = await db.doc(`liveLocation/${adminUid}`).get();
+      ativa = d.exists && d.data().routeActive === true;
+    } catch {
+      // ⚠️ NA DÚVIDA, "A ROTA ESTÁ ATIVA" — ou seja, o silêncio. Falhar a
+      // leitura e concluir "a rota não começou" mandaria um aviso de atraso
+      // pra base inteira por causa de um soluço de rede. É o pior erro que
+      // esta varredura pode cometer, e o `true` é o que o impede.
+      ativa = true;
+    }
+    rotaPorMotorista.set(adminUid, ativa);
+    return ativa;
+  }
+
+  for (const doc of snap.docs) {
+    try {
+      const c = doc.data();
+      if (c.active === false || !c.parentUid) continue;
+      if (jaAvisadoHoje(c, 'rota_atrasada', hoje)) continue;
+
+      const aviso = avisoDeAtraso({
+        crianca: c,
+        rotaAtiva: await rotaAtivaDe(c.adminUid),
+        temFalta: faltas.has(doc.id),
+        agora,
+      });
+      if (!aviso) continue;
+
+      await db.collection('notifications').add({
+        userId: c.parentUid,
+        type: aviso.tipo,
+        title: aviso.titulo,
+        body: aviso.corpo,
+        destino: aviso.destino || null,
+        childId: doc.id,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      // Marca com a DATA, não booleano: atraso volta a acontecer amanhã.
+      await doc.ref.update({ 'avisos.rota_atrasada': hoje });
+      n += 1;
+    } catch (err) {
+      logger.warn(`aviso de atraso falhou em ${doc.id}`, err);
+    }
+  }
+  return n;
+}
+
+/**
+ * De vinte em vinte minutos, nas duas janelas, de segunda a sexta.
+ *
+ * ⚠️ SÓ EM DIA ÚTIL, e o cron cuida disso: transporte escolar não roda no fim
+ * de semana, e uma varredura de sábado só encontraria rota "não iniciada" em
+ * toda a base.
+ */
+function makeVarrerAtrasos(db) {
+  return onSchedule(
+    {
+      schedule: '*/20 6-8,16-18 * * 1-5',
+      timeZone: 'America/Sao_Paulo',
+      region: REGION,
+      maxInstances: LIMITES.AGENDADO,
+      timeoutSeconds: LIMITES.TEMPO_AGENDADO,
+      memory: LIMITES.MEMORIA_AGENDADO,
+    },
+    async () => {
+      const n = await varrerAtrasos(db, new Date());
+      logger.info('varrerAtrasos concluído', { avisos: n });
+    }
+  );
+}
+
 async function enviarAvisosDoDia(db, { agora = new Date() } = {}) {
   const resultado = {
     mensalidades: await varrerMensalidades(db, agora),
@@ -214,4 +338,9 @@ function makeEnviarAvisosDoDia(db) {
   );
 }
 
-module.exports = { makeEnviarAvisosDoDia, enviarAvisosDoDia };
+module.exports = {
+  makeEnviarAvisosDoDia,
+  enviarAvisosDoDia,
+  makeVarrerAtrasos,
+  varrerAtrasos,
+};

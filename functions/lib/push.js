@@ -48,6 +48,9 @@ const URL_BY_TYPE = {
 
   // Os avisos de gesto.
   rota_iniciada: '/pai',
+  proxima_parada: '/pai',
+  nao_embarcou: '/pai',
+  rota_atrasada: '/pai',
   contrato_pronto: '/pai/contrato',
   indicacao_ativou: '/tio/indicar',
   // ⚠️ SEM DESTINO FIXO: quem abre chamado pode ser o motorista OU o

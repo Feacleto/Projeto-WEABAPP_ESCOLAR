@@ -256,7 +256,120 @@ function avisoDoAlvara({ motorista, agora = new Date() } = {}) {
   };
 }
 
+/**
+ * A ROTA ATRASOU — o espelho servidor do `avisoDoMomento`.
+ *
+ * ⚠️ ESTE É UM ESPELHO, E ESPELHO É DÍVIDA. `src/dominio/rota/avisoDoMomento.js`
+ * já decide isto, e decide bem — mas ele mora em `src/`, e o deploy das
+ * functions não alcança `src/`. É a terceira vez que o projeto paga esse
+ * preço (a régua de preço em `contratacao.js` e a escolha da indicação em
+ * `indicacao.js` são as outras duas), e a regra da casa é a mesma: espelho só
+ * existe com teste comparando as duas implementações CASO A CASO. O de
+ * `testar:avisos-do-dia` bate os dois nos limiares exatos, nos dois lados de
+ * cada um.
+ *
+ * ── ⚠️ POR QUE NÃO DAVA PRA FAZER NO CELULAR DELE
+ * Foi a primeira ideia: o app do motorista está aberto durante a rota, com os
+ * dados já carregados. E ela falha exatamente no caso que importa — quem dorme
+ * demais tem o app FECHADO. O GPS nunca ligou, a tela nunca abriu, e ninguém
+ * avalia nada. O único aviso que precisa existir quando o motorista não está
+ * usando o app não pode depender do app dele.
+ *
+ * ── OS DOIS CASOS, NA MESMA ORDEM DO ORIGINAL
+ * O grave vem primeiro porque os dois podem valer ao mesmo tempo, e dois
+ * avisos sobre a mesma rota viram ruído.
+ */
+
+/** Passou disto depois da hora de ENTREGAR, com a criança dentro: grave. */
+const ATRASO_NA_ENTREGA = 20;
+/** Passou disto depois da hora de PEGAR, sem rota iniciada: atenção. */
+const ATRASO_NA_PARTIDA = 10;
+
+/** Minutos entre `HH:MM` de hoje e agora, no fuso de Brasília. */
+function minutosDesde(hhmm, agora) {
+  if (!hhmm) return null;
+  const [h, m] = String(hhmm).split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  // A hora local de `agora` no fuso do produto — as functions rodam em UTC.
+  const relogio = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: FUSO, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(paraData(agora) || new Date());
+  const [ha, ma] = relogio.split(':').map(Number);
+  return (ha * 60 + ma) - (h * 60 + m);
+}
+
+function avisoDeAtraso({ crianca, rotaAtiva, temFalta, agora = new Date() } = {}) {
+  const c = crianca || {};
+  if (temFalta) return null;
+  if (c.active === false || !c.parentUid) return null;
+
+  // ⚠️ HORÁRIO PRESUMIDO NÃO CONTA, como no original: é chute do app, e a
+  // tela do pai o esconde de propósito. Cobrar atraso contra um chute é
+  // acusar o motorista de furar um combinado que ninguém fez.
+  const pega = normalizaHoraLocal(c.horaPega);
+  const entrega = normalizaHoraLocal(c.horaEntrega);
+  if (!pega || !entrega) return null;
+
+  const nome = primeiroNome(c.name) || 'Seu filho';
+
+  // ── 1. O PIOR CASO: consta dentro da perua e o tempo passou.
+  if (c.status === 'onboard') {
+    const atraso = minutosDesde(entrega, agora);
+    if (atraso != null && atraso > ATRASO_NA_ENTREGA) {
+      return {
+        nivel: 'grave',
+        tipo: 'rota_atrasada',
+        titulo: `Passou da hora de ${nome} chegar`,
+        corpo:
+          'Isso não quer dizer que algo aconteceu — o motorista pode só não ' +
+          'ter marcado a entrega. Se quiser, ligue pra ele.',
+        destino: '/pai',
+      };
+    }
+  }
+
+  // ── 2. A rota não foi iniciada, e já passou da hora de pegar.
+  if (!rotaAtiva) {
+    const atraso = minutosDesde(pega, agora);
+    if (atraso != null && atraso > ATRASO_NA_PARTIDA) {
+      return {
+        nivel: 'atencao',
+        tipo: 'rota_atrasada',
+        titulo: `A rota não começou, e já passou das ${pega}`,
+        corpo:
+          'Pode ser só o app dele fechado — muitas vezes a perua está na rua ' +
+          'e o rastreamento não. Se ela não chegar, fale com o motorista.',
+        destino: '/pai',
+      };
+    }
+  }
+
+  return null;
+}
+
+/** `HH:MM` ou null. Igual ao `normalizaHora` do domínio, no essencial. */
+function normalizaHoraLocal(valor) {
+  const t = String(valor || '').trim().replace('h', ':');
+  const m = t.match(/^(\d{1,2}):?(\d{2})$/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+
+/** Já avisamos ISTO HOJE? Marcador com data, não booleano: atraso repete. */
+function jaAvisadoHoje(doc, tipo, hoje) {
+  return !!(doc && doc.avisos && doc.avisos[tipo] === hoje);
+}
+
 module.exports = {
+  ATRASO_NA_ENTREGA,
+  ATRASO_NA_PARTIDA,
+  avisoDeAtraso,
+  normalizaHoraLocal,
+  jaAvisadoHoje,
+  minutosDesde,
   FUSO,
   TIPO,
   DIAS_DO_CONVITE,

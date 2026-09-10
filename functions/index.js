@@ -54,7 +54,10 @@ const {
   makeGerarAcessoDoDia,
   makeVerAcompanhamento,
 } = require('./lib/acompanhamento');
-const { makeEnviarAvisosDoDia } = require('./lib/enviarAvisosDoDia');
+const {
+  makeEnviarAvisosDoDia,
+  makeVarrerAtrasos,
+} = require('./lib/enviarAvisosDoDia');
 const { makeFlagDuplicateReceipts } = require('./lib/receiptGuard');
 const {
   makeBackfillTestimonialPrivacy,
@@ -554,3 +557,10 @@ exports.enviarAvisosComerciais = makeEnviarAvisosComerciais(db);
  * há gesto que os dispare. A régua é pura (`reguaDosAvisos.js`) e testada sem
  * Firebase; este é só o relógio. */
 exports.enviarAvisosDoDia = makeEnviarAvisosDoDia(db);
+
+/* ⚠️ ESTA É A ÚNICA COM CADÊNCIA CURTA — de 20 em 20 minutos, e só nas duas
+ * janelas de rota, em dia útil. "A rota atrasou" é o único aviso que precisa
+ * existir quando o motorista NÃO está usando o app: quem dorme demais tem o
+ * app fechado, então detectar pelo aparelho dele falha exatamente quando
+ * importa. Ver o cabeçalho de `varrerAtrasos`. */
+exports.varrerAtrasos = makeVarrerAtrasos(db);
