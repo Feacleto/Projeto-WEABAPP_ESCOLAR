@@ -6,6 +6,7 @@ import {
   isTracking,
 } from '../services/locationService';
 import { ligarRelogioDoTrial } from '../services/trialService';
+import { avisarSaidaDaRota } from '../services/routeStatusService';
 
 /**
  * Hook do lado do motorista (Tio): controla o tracking GPS.
@@ -66,6 +67,18 @@ export function useGeolocation() {
       // service engole o próprio erro e a próxima rota tenta de novo; o pior
       // caso é o motorista ganhar um dia a mais.
       ligarRelogioDoTrial(driverUid);
+
+      // AS FAMÍLIAS FICAM SABENDO QUE A PERUA SAIU.
+      //
+      // É o único instante do dia em que elas precisam DECIDIR algo — descer
+      // com a criança ou esperar — e até agora o app estava calado: a perua
+      // aparecia no mapa e cabia a elas ficar conferindo.
+      //
+      // Sem `await`, pelo mesmo motivo do relógio logo acima: a rota não pode
+      // esperar por um leque de escritas no meio-fio, às vezes sem sinal. O
+      // service engole o próprio erro e tem trava de uma vez por dia — ida e
+      // volta são duas rotas, e na volta ela já está em casa.
+      avisarSaidaDaRota(driverUid);
     } catch (err) {
       setError(err);
     }

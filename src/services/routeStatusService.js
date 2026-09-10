@@ -2,10 +2,14 @@ import {
   collection,
   addDoc,
   doc,
+  getDocs,
+  query,
+  where,
   writeBatch,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { getDateKey } from '../dominio/rota/horarios';
 import { playSound } from './soundService';
 import { haversineDistance } from '../compartilhado/haversine';
 import { getEffectiveStatus } from './childrenService';
@@ -293,6 +297,77 @@ export async function advanceMany(moves, context = null) {
  * sai depois de ele existir. O preço é que uma falha aqui custa a notificação
  * — e notificação perdida é muito mais barato que marcação perdida.
  */
+/**
+ * A PERUA SAIU — o único momento do dia em que a família precisa DECIDIR algo.
+ *
+ * Ela pergunta "já saiu?" porque a resposta muda o que ela faz nos próximos
+ * cinco minutos: descer com a criança ou esperar. Até agora ligar o GPS não
+ * avisava ninguém — a informação existia (a perua aparecia no mapa) e cabia a
+ * ela ficar conferindo.
+ *
+ * ── ⚠️ UMA VEZ POR DIA, E A TRAVA É LOCAL
+ * `startTracking` roda a cada rota: ida e volta são duas. Sem trava, a família
+ * receberia "a perua saiu" duas vezes por dia, todo dia — e a segunda não
+ * ajuda ninguém, porque na volta ela já está em casa.
+ *
+ * A marca fica no `localStorage` do celular DELE, e não no documento dele: é
+ * um sinal de conveniência, não uma cláusula, e não vale abrir mais um campo
+ * gravável em `users` por causa disso. O pior caso de trocar de aparelho é uma
+ * família receber o aviso duas vezes num dia.
+ *
+ * ── ENGOLE O ERRO, como o `avisarChegadas` logo abaixo
+ * Isto roda no meio-fio, no gesto que liga o GPS. Nada aqui pode atrasar nem
+ * derrubar o início da rota.
+ */
+const CHAVE_DA_SAIDA = 'ab_aviso_de_saida';
+
+export async function avisarSaidaDaRota(adminUid) {
+  if (!adminUid) return 0;
+  const hoje = getDateKey();
+  try {
+    if (localStorage.getItem(CHAVE_DA_SAIDA) === `${adminUid}_${hoje}`) return 0;
+  } catch {
+    /* sem storage a trava não existe; seguir é melhor que não avisar */
+  }
+
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'children'), where('adminUid', '==', adminUid))
+    );
+    // Um responsável com dois filhos na mesma perua recebe UM aviso: a perua
+    // é uma só, e dois pushes iguais em sequência leem como defeito.
+    const paraQuem = new Set();
+    snap.docs.forEach((d) => {
+      const c = d.data();
+      if (c.active === false) return;
+      if (c.parentUid) paraQuem.add(c.parentUid);
+    });
+    if (!paraQuem.size) return 0;
+
+    await Promise.all(
+      [...paraQuem].map((uid) =>
+        addDoc(collection(db, 'notifications'), {
+          userId: uid,
+          type: 'rota_iniciada',
+          title: 'A perua saiu',
+          body: 'O transporte começou a rota agora.',
+          createdAt: serverTimestamp(),
+        }).catch(() => {})
+      )
+    );
+
+    try {
+      localStorage.setItem(CHAVE_DA_SAIDA, `${adminUid}_${hoje}`);
+    } catch {
+      /* idem */
+    }
+    return paraQuem.size;
+  } catch (err) {
+    console.error('Falha ao avisar a saída da rota:', err);
+    return 0;
+  }
+}
+
 const TEXTO_DA_CHEGADA = {
   atSchool: {
     title: 'Chegou na escola',

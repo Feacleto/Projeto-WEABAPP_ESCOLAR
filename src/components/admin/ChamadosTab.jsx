@@ -87,10 +87,14 @@ export default function ChamadosTab() {
     [chamados]
   );
 
-  const agir = async (fn, id, msg) => {
+  /* `dono` é o uid de quem ABRIU o chamado, e vai adiante porque
+     `marcarRespondido` avisa essa pessoa. O objeto do chamado já está na tela
+     — ler o documento de novo só pra descobrir o dono seria uma ida ao banco
+     por um dado que a linha já mostra. */
+  const agir = async (fn, id, msg, dono) => {
     setOcupado(id);
     try {
-      await fn(id, user?.uid);
+      await fn(id, user?.uid, dono);
       toast.success(msg);
     } catch (err) {
       toast.error(err.message || 'Não deu pra atualizar.');
@@ -163,7 +167,7 @@ export default function ChamadosTab() {
               dias={diasEsperando(c, agora)}
               ocupado={ocupado === c.id}
               onResponder={() =>
-                agir(marcarRespondido, c.id, 'Marcado como respondido.')
+                agir(marcarRespondido, c.id, 'Marcado como respondido.', c.uid)
               }
               onFechar={() => agir(fecharChamado, c.id, 'Chamado fechado.')}
             />

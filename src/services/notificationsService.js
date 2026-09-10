@@ -310,6 +310,86 @@ export async function markAllNotificationsRead(userId) {
   return unread.length;
 }
 
+/**
+ * O CONTRATO ESTÁ PRONTO PRA ELA ACEITAR.
+ *
+ * Sai do mesmo gesto em que o motorista manda o contrato pelo WhatsApp — e o
+ * motivo de existir junto é que a conversa some. O link do WhatsApp abre um
+ * PDF; este aviso leva ela pra dentro do app, onde o aceite acontece de
+ * verdade (nome digitado, hash e data). Um mostra, o outro resolve.
+ */
+export async function notifyContratoPronto({ parentUid, childName }) {
+  if (!parentUid) return;
+  try {
+    const nome = String(childName || '').trim().split(/\s+/)[0];
+    await addDoc(collection(db, 'notifications'), {
+      userId: parentUid,
+      type: 'contrato_pronto',
+      title: 'Contrato pronto',
+      body: nome
+        ? `O contrato de transporte de ${nome} está esperando o seu aceite.`
+        : 'O contrato de transporte está esperando o seu aceite.',
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('Falha ao criar notificação contrato_pronto:', err);
+  }
+}
+
+/**
+ * O CHAMADO FOI RESPONDIDO.
+ *
+ * ⚠️ ESTE É O ÚNICO AVISO QUE FECHA UM CICLO QUE A PLATAFORMA ABRIU. O
+ * `ChamadosTab` existe porque `supportTickets` recebia desde sempre e nenhuma
+ * tela do dono lia — "quem pede ajuda e não recebe resposta cancela sem dizer
+ * por quê". Só que responder no painel não avisava ninguém: a pessoa
+ * continuava sem saber, e a metade do problema que a aba consertou era
+ * justamente essa.
+ */
+export async function notifyChamadoRespondido({ uid }) {
+  if (!uid) return;
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      userId: uid,
+      type: 'chamado_respondido',
+      title: 'Respondemos seu chamado',
+      body: 'Sua mensagem foi respondida. Toque para ver.',
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('Falha ao criar notificação chamado_respondido:', err);
+  }
+}
+
+/**
+ * A INDICAÇÃO VIROU DESCONTO.
+ *
+ * ⚠️ ESTE AVISO EXISTE CONTRA UMA FRASE ESPECÍFICA: *"indiquei e não
+ * recebi"* — que o CLAUDE.md registra como a queixa que viaja mais rápido que
+ * a própria indicação numa rede de indicação. Ela nasce das duas pontas (o
+ * telefone que não bateu, e a indicação que não devia valer), e as duas
+ * produzem o mesmo silêncio. Dizer no minuto em que o desconto passa a valer é
+ * o que tira a dúvida antes de ela virar conversa no portão.
+ */
+export async function notifyIndicacaoAtivou({ indicadorUid, ativas }) {
+  if (!indicadorUid) return;
+  try {
+    const n = Number(ativas) || 0;
+    await addDoc(collection(db, 'notifications'), {
+      userId: indicadorUid,
+      type: 'indicacao_ativou',
+      title: 'Sua indicação valeu',
+      body:
+        n > 1
+          ? `Mais uma indicação sua começou a pagar — são ${n} ativas na sua próxima fatura.`
+          : 'Uma indicação sua começou a pagar, e já entra na sua próxima fatura.',
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('Falha ao criar notificação indicacao_ativou:', err);
+  }
+}
+
 /* ⚠️ OS LEMBRETES DERIVADOS FORAM EMBORA DAQUI (10/09/2026), e não foram
  * substituídos: foram PROMOVIDOS.
  *

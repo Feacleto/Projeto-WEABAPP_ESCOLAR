@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import Button from '../../components/common/Button';
+import { notifyContratoPronto } from '../../services/notificationsService';
 import ContractView from '../../components/contract/ContractView';
 import { useAuth } from '../../hooks/useAuth';
 import { useChild } from '../../hooks/useChild';
@@ -97,6 +98,17 @@ export default function TioContract() {
   };
 
   const onShareWhatsApp = () => {
+    /* O AVISO VAI JUNTO DA MENSAGEM, e não no lugar dela.
+     *
+     * O WhatsApp mostra o contrato; o aviso leva ela pra DENTRO do app, que é
+     * onde o aceite acontece de verdade — nome digitado, hash e data. Um
+     * mostra, o outro resolve. E a conversa some: quem limpou o histórico
+     * ainda tem o aviso no sino.
+     *
+     * Sem `await` e sem bloquear: se ela não tem conta ainda, o service
+     * devolve na hora e a mensagem sai do mesmo jeito. */
+    notifyContratoPronto({ parentUid: child.parentUid, childName: child.name });
+
     if (!child.parentPhone) {
       toast.error('Telefone do responsável não cadastrado.');
       return;

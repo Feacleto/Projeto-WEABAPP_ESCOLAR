@@ -87,6 +87,32 @@ async function casarEAtivarIndicacao(db, tioUid) {
     );
     await lote.commit();
 
+    /* ⚠️ O AVISO TAMBÉM PRECISA EXISTIR NOS DOIS CAMINHOS DE BAIXA.
+     *
+     * É a mesma lição que fez este arquivo nascer: o casamento vivia só no
+     * cliente, e ligar o gateway teria apagado o gatilho da indicação para
+     * 100% dos indicadores, em silêncio. Se o aviso ficasse só do lado de lá,
+     * quem fosse casado pelo webhook ganharia o desconto e não saberia — que é
+     * exatamente o *"indiquei e não recebi"* que ele existe pra matar.
+     *
+     * Fora do lote e depois do commit: o aviso de um terceiro não pode fazer a
+     * baixa da fatura falhar. */
+    try {
+      const n = jaAtivas + 1;
+      await db.collection('notifications').add({
+        userId: escolhida.indicadorUid,
+        type: 'indicacao_ativou',
+        title: 'Sua indicação valeu',
+        body:
+          n > 1
+            ? `Mais uma indicação sua começou a pagar — são ${n} ativas na sua próxima fatura.`
+            : 'Uma indicação sua começou a pagar, e já entra na sua próxima fatura.',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (err) {
+      logger.warn('[indicacao] não deu pra avisar o indicador', err);
+    }
+
     logger.info('[indicacao] ativada pela baixa do gateway', {
       indicacao: escolhida.id,
       indicador: escolhida.indicadorUid,

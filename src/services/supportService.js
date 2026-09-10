@@ -9,6 +9,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { notifyChamadoRespondido } from './notificationsService';
 import { APP_VERSION } from '../version';
 
 /**
@@ -140,13 +141,29 @@ export function watchChamados(cb, onError, max = 300) {
  * histórico pela metade — sem o que a pessoa respondeu depois — e é pior que
  * não ter nenhum.
  */
-export async function marcarRespondido(id, ownerUid) {
+/**
+ * ⚠️ O `uid` DE QUEM ABRIU VEM POR PARÂMETRO, e não de uma leitura aqui.
+ *
+ * Quem chama é o `ChamadosTab`, que já tem o chamado inteiro na mão — ler o
+ * documento de novo só pra descobrir o dono seria uma ida ao banco para um
+ * dado que já está na tela.
+ *
+ * E o aviso é o que fecha o ciclo que esta aba abriu. Ela existe porque
+ * `supportTickets` recebia desde sempre e nenhuma tela do dono lia — "quem
+ * pede ajuda e não recebe resposta cancela sem dizer por quê". Só que
+ * responder no painel também não avisava ninguém: metade do problema
+ * continuava de pé.
+ */
+export async function marcarRespondido(id, ownerUid, uidDeQuemAbriu) {
   if (!id) throw new Error('Sem chamado.');
   await updateDoc(doc(db, COLLECTION, id), {
     status: 'respondido',
     respondidoEm: serverTimestamp(),
     respondidoPor: ownerUid || null,
   });
+  // Depois da marcação, nunca antes: avisar de uma resposta que não foi
+  // registrada é pior que não avisar.
+  await notifyChamadoRespondido({ uid: uidDeQuemAbriu });
 }
 
 /** Acabou. */

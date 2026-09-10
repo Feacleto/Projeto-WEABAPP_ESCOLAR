@@ -46,6 +46,16 @@ const URL_BY_TYPE = {
   payment_overdue_3d: '/pai/finance',
   payment_overdue_7d: '/pai/finance',
 
+  // Os avisos de gesto.
+  rota_iniciada: '/pai',
+  contrato_pronto: '/pai/contrato',
+  indicacao_ativou: '/tio/indicar',
+  // ⚠️ SEM DESTINO FIXO: quem abre chamado pode ser o motorista OU o
+  // responsável, e o mapa é por TIPO, não por pessoa. Mandar os dois pra
+  // `/tio` jogaria a mãe numa tela que ela não pode ver. Sem entrada aqui, o
+  // padrão é '/', que o `painelDe` resolve pro painel de cada um.
+  //   chamado_respondido — de propósito ausente
+
   // Os avisos de tempo do motorista.
   convite_parado: '/tio/children',
   fatura_vence: '/tio/taxa',

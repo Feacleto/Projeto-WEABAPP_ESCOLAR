@@ -10,6 +10,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { notifyIndicacaoAtivou } from './notificationsService';
 import {
   ESTADO,
   chaveDoTelefone,
@@ -152,6 +153,17 @@ export async function casarEAtivar(indicado) {
       { merge: true }
     );
     await lote.commit();
+
+    // ⚠️ ESTE AVISO EXISTE CONTRA UMA FRASE: *"indiquei e não recebi"*, que
+    // numa rede de indicação viaja mais rápido que a própria indicação. Ela
+    // nasce das duas pontas possíveis (o telefone que não bateu, e a
+    // indicação que não devia valer) e as duas produzem o mesmo silêncio.
+    // Dizer no minuto em que o desconto passa a valer tira a dúvida antes de
+    // ela virar conversa no portão da escola.
+    await notifyIndicacaoAtivou({
+      indicadorUid: escolhida.indicadorUid,
+      ativas: jaAtivas + 1,
+    });
     return 1;
   } catch (err) {
     // ENGOLE, e é decidido: isto roda DEPOIS de o dono dar baixa numa fatura.
