@@ -54,6 +54,7 @@ const {
   dataDeVencimento,
   limitarDiaVencimento,
   DIAS_DE_TRIAL,
+  condicoesLegadas,
 } = require('./reguaDoServidor');
 
 const REGION = 'southamerica-east1';
@@ -309,6 +310,32 @@ async function fecharMes(db, { mes, agora = new Date() }) {
   // indicação cujo indicado saiu precisa ter parado de descontar ANTES de o
   // mês ser cobrado, senão o erro entra num documento que já foi entregue.
   const ativasPorIndicador = await reconciliarAsIndicacoes(db, snap);
+
+  // ⚠️ O RELATÓRIO DE LEGADO SAI TODO MÊS, E NÃO CUSTA UMA LEITURA A MAIS.
+  //
+  // Quatro instrumentos de desconto descrevem casos que não existem mais, e a
+  // pendência de conferi-los na base estava escrita no CLAUDE.md desde
+  // 07/09/2026 sem nunca ter sido conferida — porque dependia de alguém
+  // lembrar de rodar um script. Pendência que depende de memória humana não é
+  // pendência, é aposta.
+  //
+  // Esta varredura já tem todo motorista em mãos. Ou o log está limpo, ou ele
+  // nomeia os uids — uma vez por mês, sem ninguém precisar decidir olhar.
+  //
+  // ⚠️ ELE RELATA, NÃO CONSERTA. As duas falhas de mexer sozinho são caras:
+  // quem tem `antecipacao` veria a fatura subir sem explicação, e quem tem
+  // `roleta` JÁ parou de receber o desconto sem ter sido avisado.
+  const legado = [];
+  for (const doc of snap.docs) {
+    const marcas = condicoesLegadas(doc.data());
+    if (marcas.length) legado.push({ uid: doc.id, marcas });
+  }
+  if (legado.length) {
+    logger.warn('[legado] condições que a régua não concede mais', {
+      quantos: legado.length,
+      casos: legado.slice(0, 50),
+    });
+  }
 
   const resultado = { mes: alvo, fechadas: 0, puladas: 0, erros: 0 };
 

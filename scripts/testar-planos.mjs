@@ -48,7 +48,6 @@ import {
   MESES_DE_CONTRATO,
   FUNDADORES_VITALICIO,
   FUNDADORES_METADE,
-  FUNDADOR_E_FECHAMENTO_SOMAM,
   ORIGEM,
 } from '../src/dominio/associacao/planos.js';
 
@@ -327,7 +326,24 @@ checar('e ele escapa do piso', 0, liq({ criancas: 20, fundador: FUNDADOR.VITALIC
 
 // Fundador e fechamento NÃO somam: vale o maior. Somando, o vitalício receberia
 // mais 30% e a fatura viraria crédito.
-checar('fundador e fechamento não somam', false, FUNDADOR_E_FECHAMENTO_SOMAM);
+// ⚠️ A BANDEIRA SAIU, E O COMPORTAMENTO FICOU TRAVADO AQUI.
+//
+// Havia `FUNDADOR_E_FECHAMENTO_SOMAM`, e este caso lia a constante — o que
+// provava a configuração, não o efeito. Uma constante afirmando o próprio
+// valor passa mesmo quando `precoDoMes` a ignora.
+//
+// Ela era demonstravelmente inerte (120 combinações de fundador × escada ×
+// indicações × concessão, zero divergências entre somar e pegar o maior) e
+// foi apagada. O que sobrou é o que importa: o vitalício continua dominando
+// a escada, e a fatura dele não vira crédito.
+const vitalicioComEscada = precoDoMes({
+  criancas: 20,
+  fundador: FUNDADOR.VITALICIO,
+  descontos: vitalicio,
+  mes: '2026-09',
+});
+checar('o vitalício com escada por cima continua em 100%', 1, vitalicioComEscada.desconto);
+checar('e a fatura dele é zero, nunca negativa', 0, vitalicioComEscada.liquido);
 checar(
   'e quem tem os dois leva o maior',
   0.5,

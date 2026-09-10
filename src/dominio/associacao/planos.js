@@ -298,15 +298,6 @@ export function descontoDoFechamento(mesDeDecisao) {
 }
 
 /**
- * ⚠️ FUNDADOR E FECHAMENTO NÃO SOMAM — VALE O MAIOR. É decisão de negócio, e
- * está aqui como uma constante para poder ser desfeita numa linha.
- *
- * Somando, o vitalício (100%) receberia mais 30% e a fatura viraria crédito. O
- * fundador já tem o melhor negócio da casa; a escada existe para quem não tem.
- */
-export const FUNDADOR_E_FECHAMENTO_SOMAM = false;
-
-/**
  * O DIA EM QUE A TAXA VENCE — da CASA, não de cada parceiro.
  *
  * O teto de 28 é o que impede uma fatura de fevereiro nascer sem data: dia 30
@@ -648,10 +639,23 @@ export function precoDoMes({
   // com 50%. O teto de 100% abaixo continua sendo o que impede fatura negativa.
   const dConcessao = comPrazo.concessao;
 
-  // Ver `FUNDADOR_E_FECHAMENTO_SOMAM`: por padrão vale o maior dos dois.
-  const base = FUNDADOR_E_FECHAMENTO_SOMAM
-    ? dFundador + dFechamento
-    : Math.max(dFundador, dFechamento);
+  // ⚠️ VALE O MAIOR DOS DOIS, E A BANDEIRA QUE ESCOLHIA ISSO SAIU (10/09/2026).
+  //
+  // Havia `FUNDADOR_E_FECHAMENTO_SOMAM`, alternando entre somar e pegar o
+  // maior. Ela decidia uma coisa real quando existiam doze fundadores pela
+  // METADE: 50% somados a 30% de escada davam 80%, contra 50% pelo maior.
+  //
+  // Com a condição de metade aposentada, `descontoDoFundador` só devolve 0 ou
+  // 1 — e nos dois casos as duas contas dão o MESMO resultado: com 0, somar e
+  // pegar o maior são idênticos; com 1, o teto de 100% achata qualquer soma.
+  // Verificado por varredura antes de apagar: 120 combinações de fundador ×
+  // escada × indicações × concessão, zero divergências.
+  //
+  // Bandeira que não decide nada é pior que código morto: ela convida a
+  // próxima pessoa a "experimentar o outro valor" e descobrir que não muda
+  // nada — ou pior, a mudá-la junto com uma volta da condição de metade, sem
+  // perceber que os dois efeitos se somam.
+  const base = Math.max(dFundador, dFechamento);
 
   const desconto = Math.min(1, fracaoDeDesconto(base + dIndicacao + dConcessao));
   const semPiso = centavos(bruto * (1 - desconto));

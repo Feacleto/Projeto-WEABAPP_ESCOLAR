@@ -255,7 +255,6 @@ const ORIGEM = {
 
 const DESCONTO_POR_INDICACAO = 0.05;
 const PISO_DA_FATURA = 19;
-const FUNDADOR_E_FECHAMENTO_SOMAM = false;
 
 /** Quatro casas — ver o motivo em `planos.js`. */
 function fracaoDeDesconto(v) {
@@ -370,9 +369,9 @@ function precoDoMes({
   const dIndicacao = descontoDeIndicacoes(indicacoesAtivas);
   const dConcessao = comPrazo.concessao;
 
-  const base = FUNDADOR_E_FECHAMENTO_SOMAM
-    ? dFundador + dFechamento
-    : Math.max(dFundador, dFechamento);
+  // Vale o maior. A bandeira que escolhia entre somar e pegar o maior saiu
+  // em 10/09/2026 por ser inerte — ver `planos.js`.
+  const base = Math.max(dFundador, dFechamento);
 
   const desconto = Math.min(1, fracaoDeDesconto(base + dIndicacao + dConcessao));
   const semPiso = centavos(bruto * (1 - desconto));
@@ -408,7 +407,62 @@ function dataDeVencimento(mes, dia = 10) {
   return new Date(ano, m - 1, limitarDiaVencimento(dia), 12, 0, 0, 0);
 }
 
+/**
+ * AS MARCAS DE LEGADO QUE UM MOTORISTA CARREGA — e por que isto virou régua.
+ *
+ * ── ⚠️ O PROBLEMA QUE ISTO SUBSTITUI
+ * Quatro instrumentos de desconto descrevem casos que não existem mais:
+ * `origem: 'antecipacao'` (o nome antigo do fechamento), `origem: 'roleta'`
+ * (apagada, e que a régua JÁ não reconhece), `condicaoFundador: 'metade'` (as
+ * doze vagas nunca concedidas) e `limiteCriancas` (a tranca que saiu).
+ *
+ * A pendência de conferir isso na base estava escrita no CLAUDE.md desde
+ * 07/09/2026 e nunca foi conferida, porque dependia de alguém lembrar de
+ * rodar um script. `scripts/varrer-descontos.cjs` continua existindo para a
+ * conferência sob demanda — mas **pendência que depende de memória humana não
+ * é pendência, é aposta.**
+ *
+ * ── POR QUE NO FECHAMENTO
+ * A varredura mensal já lê TODO motorista, uma vez por mês, com o documento
+ * inteiro em mãos. Detectar aqui não custa uma leitura a mais e não pode ser
+ * esquecido: no dia 1 de cada mês, ou o log está limpo ou ele nomeia os uids.
+ *
+ * ── ⚠️ E ISTO NÃO APAGA NADA
+ * Ele relata. As duas falhas de apagar cedo demais são silenciosas e caras:
+ * quem tem `antecipacao` veria a fatura subir sem nenhuma linha explicando, e
+ * quem tem `roleta` JÁ parou de receber o desconto sem ninguém ter avisado. A
+ * decisão de mexer em desconto de alguém é de quem lê o relatório.
+ */
+function condicoesLegadas(motorista) {
+  const m = motorista || {};
+  const achados = [];
+
+  if (m.condicaoFundador === FUNDADOR.METADE) achados.push('fundador:metade');
+  if (m.limiteCriancas !== undefined && m.limiteCriancas !== null) {
+    achados.push('limiteCriancas');
+  }
+
+  const descontos = Array.isArray(m.descontos) ? m.descontos : [];
+  for (const d of descontos) {
+    const origem = d && d.origem;
+    if (!origem) continue;
+    if (origem === ORIGEM.ANTECIPACAO) achados.push('desconto:antecipacao');
+    // ⚠️ `roleta` é o caso GRAVE: `descontosVigentes` não a reconhece, então
+    // ela já deixou de valer. Quem a tem está pagando mais do que foi
+    // combinado, hoje, e ninguém foi avisado.
+    else if (origem === 'roleta') achados.push('desconto:roleta (JÁ não vale)');
+    else if (origem !== ORIGEM.FECHAMENTO && origem !== ORIGEM.CONCESSAO) {
+      // Origem que a régua não conhece nunca valeu — o mesmo silêncio, por
+      // um erro de digitação em vez de uma remoção.
+      achados.push(`desconto:origem-desconhecida(${origem})`);
+    }
+  }
+
+  return achados;
+}
+
 module.exports = {
+  condicoesLegadas,
   PLANO,
   TAXA,
   TAXA_ACIMA_DE_40,
@@ -432,7 +486,6 @@ module.exports = {
   ORIGEM,
   DESCONTO_POR_INDICACAO,
   PISO_DA_FATURA,
-  FUNDADOR_E_FECHAMENTO_SOMAM,
   descontoDoFundador,
   descontoDeIndicacoes,
   descontosVigentes,

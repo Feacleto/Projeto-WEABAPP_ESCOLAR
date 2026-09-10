@@ -48,6 +48,7 @@ import {
   descontoDoDegrau,
   mesDaqui as mesDaquiContrato,
   cobertoAteOMesSeguinte,
+  condicoesLegadas,
 } from '../functions/lib/reguaDoServidor.js';
 import {
   PLANO,
@@ -526,6 +527,58 @@ checar('e nasce ao meio-dia, não à meia-noite', 12, emSetembro.getHours());
 const emDezembro = cobertoAteOMesSeguinte(new Date(2026, 11, 15, 12));
 checar('dezembro cobre até o fim de janeiro', 2027, emDezembro.getFullYear());
 checar('e o mês é janeiro', 1, emDezembro.getMonth() + 1);
+
+// ═══════════ O RELATÓRIO DE LEGADO — A PENDÊNCIA QUE PAROU DE DEPENDER ═══
+//
+// Quatro instrumentos descrevem casos que não existem mais. A pendência de
+// conferi-los na base estava escrita no CLAUDE.md desde 07/09/2026 e nunca
+// foi conferida, porque dependia de alguém lembrar de rodar um script.
+//
+// Agora o fechamento mensal relata sozinho. Estes casos travam O QUE ELE
+// ENXERGA — se alguém apagar uma origem da régua sem acrescentá-la aqui, o
+// relatório para de ver justamente quem foi afetado.
+
+bloco('O relatório de legado — o que o fechamento enxerga todo mês');
+
+const limpo = { descontos: [{ origem: 'fechamento', fracao: 0.3, ate: null }] };
+checar('quem só tem fechamento não aparece', [], condicoesLegadas(limpo));
+checar('nem quem tem concessão', [],
+  condicoesLegadas({ descontos: [{ origem: 'concessao', fracao: 0.2, ate: '2027-01' }] }));
+checar('nem documento vazio', [], condicoesLegadas({}));
+checar('nem indefinido', [], condicoesLegadas());
+
+// ⚠️ O CASO GRAVE: `roleta` JÁ não é reconhecida por `descontosVigentes`.
+// Quem a tem está pagando mais do que foi combinado, hoje, sem ter sido
+// avisado — é o único da lista em que o prejuízo já aconteceu.
+checar('a roleta aparece, e dizendo que já não vale',
+  true,
+  condicoesLegadas({ descontos: [{ origem: 'roleta', fracao: 0.5 }] })[0]
+    .includes('JÁ não vale'));
+
+checar('a antecipação aparece', ['desconto:antecipacao'],
+  condicoesLegadas({ descontos: [{ origem: 'antecipacao', fracao: 0.5, ate: '2027-01' }] }));
+checar('o fundador de metade aparece', ['fundador:metade'],
+  condicoesLegadas({ condicaoFundador: 'metade' }));
+checar('o vitalício NÃO aparece — é contrato assinado', [],
+  condicoesLegadas({ condicaoFundador: 'vitalicio' }));
+checar('o limite de crianças aparece', ['limiteCriancas'],
+  condicoesLegadas({ limiteCriancas: 40 }));
+
+// ⚠️ ORIGEM DESCONHECIDA TAMBÉM É ACHADO. `descontosVigentes` ignora em
+// silêncio o que não reconhece, então um erro de digitação produz um desconto
+// que nunca valeu e que ninguém nunca viu falhar.
+checar('origem escrita errada é achado',
+  ['desconto:origem-desconhecida(fechamneto)'],
+  condicoesLegadas({ descontos: [{ origem: 'fechamneto', fracao: 0.3 }] }));
+
+// Vários de uma vez, na ordem em que o relatório os lista.
+checar('e vários no mesmo documento',
+  ['fundador:metade', 'limiteCriancas', 'desconto:antecipacao'],
+  condicoesLegadas({
+    condicaoFundador: 'metade',
+    limiteCriancas: 20,
+    descontos: [{ origem: 'antecipacao', fracao: 0.5 }],
+  }));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 
