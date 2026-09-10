@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MAPA } from '../../config/mapa';
 import 'leaflet/dist/leaflet.css';
 import { createVanIcon, createHomeIcon, createSchoolIcon } from './VanIcon';
 
@@ -62,9 +63,14 @@ export default function LiveMap({ van, home, school, className = '' }) {
       scrollWheelZoom
       className={`w-full h-full ${className}`}
     >
+      {/* O provedor de tiles e a atribuição saem de
+        * [config/mapa.js](../../config/mapa.js), nunca escritos aqui: a URL
+        * do OSM estava duplicada nos dois mapas, e a política de uso que ela
+        * viola valia para os dois. Um lugar pra mudar, os dois mapas mudam. */}
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution={MAPA.attribution}
+        url={MAPA.url}
+        maxZoom={MAPA.maxZoom}
       />
       {home && <Marker position={[home.lat, home.lng]} icon={homeIcon} />}
       {school && (

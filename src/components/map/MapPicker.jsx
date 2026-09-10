@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MAPA } from '../../config/mapa';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, Crosshair, X } from 'lucide-react';
 import Button from '../common/Button';
@@ -108,9 +109,12 @@ export default function MapPicker({
 
       <div className="flex-1 relative">
         <MapContainer center={center} zoom={initial ? 17 : 12} scrollWheelZoom className="w-full h-full">
+          {/* Ver o comentário do `TileLayer` em LiveMap.jsx: provedor e
+            * atribuição vêm de config/mapa.js. */}
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution={MAPA.attribution}
+            url={MAPA.url}
+            maxZoom={MAPA.maxZoom}
           />
           {point && <Marker position={[point.lat, point.lng]} icon={icon} />}
           <TapCapture onPick={setPoint} />
