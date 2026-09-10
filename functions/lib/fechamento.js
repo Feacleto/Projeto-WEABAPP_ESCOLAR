@@ -152,7 +152,30 @@ async function fecharFaturaDe(db, { motorista, mes, config, ownerUid = null }) {
       : null;
 
   const id = `${tioUid}_${mes}`;
-  await db.doc(`faturasParceiro/${id}`).set(
+
+  // ⚠️ AS DUAS ESCRITAS VÃO NO MESMO LOTE, E ISSO NÃO É ZELO.
+  //
+  // Eram dois `await` separados: a fatura, e depois `users.assinaturaAte`
+  // quando a fatura zerada estende a assinatura. Entre um e outro cabe uma
+  // falha de rede — e o desfecho é o pior possível, exatamente o que o
+  // cabeçalho deste arquivo descreve como já tendo custado o paywall:
+  //
+  //   a fatura existe e está marcada `quitada`;
+  //   `assinaturaAte` não andou;
+  //   o mês seguinte bate em `jaTem.exists` e PULA o parceiro para sempre;
+  //   `estadoDaConta` vê a assinatura vencida e as rules bloqueiam.
+  //
+  // O motorista abre o app, lê que está em atraso, e vê na mesma tela a
+  // fatura do mês marcada como paga. E o log da varredura diz "parceiro não
+  // fechou" — quando ele fechou pela metade.
+  //
+  // `marcarFaturaPaga`, em `taxaService.js`, já fazia o par oposto num lote
+  // só, com a razão escrita: *"separados, uma falha de rede entre eles deixa
+  // a fatura paga e a conta bloqueada — o pior desfecho possível"*. É a
+  // mesma frase, e faltava aqui.
+  const lote = db.batch();
+  lote.set(
+    db.doc(`faturasParceiro/${id}`),
     {
       tioUid,
       mes,
@@ -188,6 +211,27 @@ async function fecharFaturaDe(db, { motorista, mes, config, ownerUid = null }) {
       vencimento: venc ? Timestamp.fromDate(venc) : null,
       diaVencimento: dia,
 
+      // ⚠️ PARA ONDE PAGAR — COPIADO, NÃO REFERENCIADO, E ESTAVA FALTANDO.
+      //
+      // `TioTaxa` monta o BR Code a partir DESTES campos da fatura, não de
+      // `taxaConfig`. A cópia do cliente (`taxaService.fecharFatura`) sempre
+      // os gravou; esta, que nasceu quando o fechamento virou agendada, não.
+      //
+      // O efeito era o pior possível e completamente silencioso: TODA fatura
+      // emitida pelo caminho normal — a agendada do dia 1 — chegava sem chave
+      // PIX. O motorista abria `/tio/taxa`, via o valor, e lia "a plataforma
+      // ainda não cadastrou a chave PIX". Ele não tinha como pagar, e nada em
+      // lugar nenhum registrava erro.
+      //
+      // ⚠️ E É POR ISSO QUE ELES SÃO COPIADOS PARA DENTRO DA FATURA: o dado
+      // de para onde pagar é do MOMENTO da cobrança. Referenciar `taxaConfig`
+      // faria a chave de hoje reescrever a de uma fatura de seis meses atrás,
+      // e o comprovante dela deixaria de bater com o documento.
+      pixKey: config?.pixKey || '',
+      pixKeyType: config?.pixKeyType || 'random',
+      nomePlataforma: config?.nomePlataforma || '',
+      cidadePlataforma: config?.cidadePlataforma || '',
+
       status: total === 0 ? 'quitada' : 'aberta',
       lancadaPor: ownerUid,
       lancadaEm: FieldValue.serverTimestamp(),
@@ -198,11 +242,15 @@ async function fecharFaturaDe(db, { motorista, mes, config, ownerUid = null }) {
   if (faturaZeradaEstendeAssinatura({ total, isencaoDeTeste: mesDeTeste !== null })) {
     const ate = assinaturaAteDoMes(mes);
     if (ate) {
-      await db
-        .doc(`users/${tioUid}`)
-        .set({ assinaturaAte: Timestamp.fromDate(ate) }, { merge: true });
+      lote.set(
+        db.doc(`users/${tioUid}`),
+        { assinaturaAte: Timestamp.fromDate(ate) },
+        { merge: true }
+      );
     }
   }
+
+  await lote.commit();
 
   return { id, total, isento };
 }

@@ -121,6 +121,29 @@ async function main() {
   // ⚠️ IDEMPOTÊNCIA. O dono pode disparar `fecharMesAgora` no mesmo dia em que
   // a agendada rodou. Refechar reescreveria `total` sobre uma fatura que
   // talvez já tenha sido paga, e `status` voltaria a 'aberta' num mês quitado.
+  // ⚠️ O CAMPO QUE FALTAVA, E O TESTE QUE NÃO O PEGOU.
+  //
+  // `TioTaxa` monta o BR Code a partir de `pixKey`/`pixKeyType`/
+  // `nomePlataforma`/`cidadePlataforma` DA FATURA. A cópia do cliente sempre
+  // os gravou; esta, que nasceu quando o fechamento virou agendada, não —
+  // então toda fatura do caminho normal chegava sem como pagar, e a tela
+  // dizia "a plataforma ainda não cadastrou a chave PIX".
+  //
+  // A primeira versão deste teste conferia seis campos escolhidos a dedo e
+  // passou verde por cima do buraco. **Conferir a LISTA de campos, e não
+  // valores escolhidos, é o que pega o próximo campo esquecido.**
+  const ESPERADOS = [
+    'tioUid', 'mes', 'plano', 'planoRotulo', 'criancas', 'taxaPorCrianca',
+    'precoTabela', 'planoContratado', 'descontoTotal', 'descontoFundador',
+    'descontoFechamento', 'descontoIndicacao', 'descontoConcessao',
+    'pisoAplicado', 'descontoAbsorvido', 'isento', 'motivoIsencao',
+    'mesDeTeste', 'testeAte', 'total', 'vencimento', 'diaVencimento',
+    'pixKey', 'pixKeyType', 'nomePlataforma', 'cidadePlataforma',
+    'status', 'lancadaPor', 'lancadaEm',
+  ].sort();
+  checar('a fatura tem exatamente os campos que as telas leem',
+    ESPERADOS, Object.keys(f).sort());
+
   bloco('2. Rodar duas vezes não refaz a fatura');
   await db.doc(`faturasParceiro/tio_pagante_${MES}`).update({ status: 'quitada' });
   const r2 = await fecharMes(db, { mes: MES, agora: AGORA });
