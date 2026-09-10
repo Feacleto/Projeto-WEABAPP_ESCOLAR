@@ -36,6 +36,9 @@ npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # documentos depois. 35 casos.
 npm run testar:envio             # os dois agendados escrevendo na MESMA base
                                  # — é onde a colisão entre eles vivia. 29 casos.
+npm run testar:limpeza           # o único script de MANUTENÇÃO que apaga dado,
+                                 # medido contra o emulador antes de encostar
+                                 # em produção. 24 casos.
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — precisa de auth,firestore
                                  # E storage juntos (ele semeia usuário e
@@ -375,7 +378,12 @@ scripts/               testes e utilitários de manutenção (Node puro).
                        régua vai deixar de reconhecer (`antecipacao`,
                        `roleta`, `condicaoFundador: 'metade'`) antes de
                        apagá-los. Apagar cedo demais falha em SILÊNCIO — a
-                       fatura de alguém sobe e nenhum erro aparece
+                       fatura de alguém sobe e nenhum erro aparece.
+                       ⚠️ `limpar-coordenada-do-checkpoint.cjs` é o ÚNICO que
+                       APAGA, e nasce em modo de conferência: sem `--apagar`
+                       ele só conta. Ele precisa de Admin SDK porque as rules
+                       proíbem esta escrita a TODO MUNDO, inclusive ao dono —
+                       e é medido no emulador por `npm run testar:limpeza`
 ```
 
 **Regra de camada:** tela → hook → service → Firestore. Componente que importa
@@ -473,6 +481,20 @@ exatamente o que a página `/acompanhar` recusa fazer. Sem destino esperado
 (`onboard`) não há distância, e aí **não se grava nada**. Travado em
 `npm run testar:horarios`, por leitura de arquivo — a função mora atrás de um
 import do Firestore.
+
+⚠️ **E O QUE JÁ FOI GRAVADO NÃO SOME SOZINHO.**
+[limpar-coordenada-do-checkpoint.cjs](scripts/limpar-coordenada-do-checkpoint.cjs)
+varre `children` e o `collectionGroup('rides')` e remove a coordenada que
+ficou para trás. Duas regras, e a segunda não é óbvia: checkpoint **com**
+distância perde só `lat`/`lng`; checkpoint **sem** distância some inteiro,
+porque ele nasceu sem destino esperado (`onboard`) e sobraria um `{ at }`
+que não responde pergunta nenhuma — a hora já está em `marcos[status]`.
+⚠️ **Sem `--apagar` ele não escreve nada**, e ele precisa de chave de serviço
+porque as rules recusam esta escrita a todo mundo: o dono LÊ `children`
+inteiro para contar a base ("ler não é operar"), não escreve, e `rides` ele
+nem lê. Rodar duas vezes é seguro. `npm run testar:limpeza` semeia as três
+formas no emulador e mede o resultado — é o único script de manutenção que
+escreve, então ele é o único que tem teste.
 
 ⚠️ **O ENDEREÇO TEM UM MODO DE FALHAR QUE NÃO É QUEBRAR — É AFIRMAR.** O campo
 era um texto livre só, e o pedaço que se esquece nele é o **número**. Sem número

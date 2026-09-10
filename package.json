@@ -12,6 +12,7 @@
     "testar:storage": "node scripts/testar-storage.mjs",
     "testar:fechamento": "firebase emulators:exec --only firestore \"node scripts/testar-fechamento.mjs\"",
     "testar:envio": "firebase emulators:exec --only firestore \"node scripts/testar-envio.mjs\"",
+    "testar:limpeza": "node scripts/testar-limpeza-checkpoint.mjs",
     "emu": "firebase emulators:start --only auth,firestore",
     "servir": "node scripts/servir-com-cabecalhos.mjs",
     "testar:horarios": "node scripts/testar-horarios.mjs",

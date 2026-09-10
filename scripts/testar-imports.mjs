@@ -204,6 +204,8 @@ console.log('\n─── todo scripts/testar-*.mjs está na bateria ───');
       'precisa do emulador do Firestore, e importa o Admin SDK de propósito — ele ESCREVE',
     'testar-envio.mjs':
       'idem — mede os dois agendados escrevendo na mesma base, que é onde a colisão vivia',
+    'testar-limpeza-checkpoint.mjs':
+      'idem — mede o único script de manutenção que APAGA dado, antes de ele encostar em produção',
     'testar-avatar.mjs': 'bate na API do DiceBear — precisa de rede',
     'testar-navegador.mjs': 'precisa de navegador',
     'testar-imports.mjs': 'é este arquivo',
