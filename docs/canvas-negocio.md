@@ -14,7 +14,7 @@ achados da seção 3 apareceram — nenhum deles estava escrito antes.
 
 A pendência 1 de [personas.md](personas.md) — *qual motorista é o alvo da
 rodada* — ainda não foi ratificada. **Este canvas assume a recomendação de lá: o
-motorista de caderno**, 8 a 12 crianças, faixa de R$ 69.
+motorista de caderno**, 8 a 12 crianças — hoje o mínimo de R$ 49 no mensal.
 
 Não é detalhe de redação. Cinco dos nove blocos mudam se o alvo virar o
 motorista com operação, e a coluna da tabela abaixo diz quais. Se a ratificação
@@ -30,7 +30,7 @@ vier diferente, **o que se reescreve são esses cinco**, não o documento inteir
 | 2 | **Proposta de valor** | "Sai do caderno sem perder o que é seu" — e a mensalidade continua sendo dele | **sim** |
 | 3 | **Canais** | Indicação de motorista para motorista, landing institucional, e o consultor | não |
 | 4 | **Relacionamento** | Consultoria pessoal na entrada; o app se opera sozinho depois | **sim** |
-| 5 | **Receita** | Taxa mensal por faixa de criança ativa. Recorrente, vencimento da casa | **sim** |
+| 5 | **Receita** | Taxa mensal POR criança ativa (linear desde 10/09/2026). Recorrente, vencimento da casa | **sim** |
 | 6 | **Recursos** | O produto construído, a separação estrutural dos dois dinheiros, e **o consultor** | não |
 | 7 | **Atividades** | Vender um a um, **migrar a turma do caderno**, fechar a fatura do mês | **sim** |
 | 8 | **Parcerias** | Quase nenhuma — ver o achado C | não |
@@ -114,7 +114,7 @@ neste formato:
   `receitaEmAberto` e nunca é somada.
 - **NÃO é receita:** o GMV — o dinheiro que passa de pai para motorista. A
   plataforma não toca nele. Somar os dois num canvas é o que transforma um SaaS
-  de R$ 149 num "marketplace de R$ 5.000 por motorista", e é falso.
+  da taxa de um motorista num "marketplace de R$ 5.000 por motorista", e é falso.
 
 ### 6 · Recursos-chave
 

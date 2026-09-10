@@ -148,29 +148,41 @@ ver seção 8.
 5. **Cresce sem venda nova.** De 12 para 20 crianças e a receita sobe sem
    ninguém negociar de novo.
 
-### Faixa ou linear — **pendência**
+### Faixa ou linear — **decidido em 10/09/2026: LINEAR**
 
-Duas formas de aplicar a mesma unidade:
+A pendência que esta seção registrava foi fechada, e **contra a recomendação
+que estava escrita aqui** (faixa, "porque a conversa do consultor fica mais
+curta").
 
-- **Linear** — `R$ X por criança ativa`. Mais justo e mais fácil de explicar.
-- **Faixa** — `até 10 · 11–25 · 26–40 · acima de 40`. Cria degrau visível, é
-  mais simples de comunicar numa tabela, e o motorista perto do topo de uma
-  faixa tem incentivo de crescer dentro dela.
+⚠️ **A FAIXA FOI IMPLEMENTADA, RODOU, E SAIU — PORQUE A CRIANÇA DA FRONTEIRA
+CUSTAVA SETE.** No limite de uma faixa para a outra, ganhar UMA criança subia a
+conta em R$ 40, 6,8 vezes a taxa por criança. O motorista não sentia que pagou
+por uma, sentia que pagou por sete, e comparava com um concorrente que cobra
+por aluno. Franquia de tolerância não resolvia: empurra o degrau uma criança
+adiante. A faixa também cobrava R$ 4,76 por criança de quem tinha 25 e R$ 7,44
+de quem tinha 16.
 
-**Recomendação:** faixa, porque a conversa do consultor fica mais curta e o
-motorista entende o preço sem fazer conta. Mas a decisão está aberta.
+### Valor — a régua vigente
 
-### Valor — régua recomendada
+Em produção desde 10/09/2026, em
+[`planos.js`](../src/dominio/associacao/planos.js).
 
-**Ainda não é preço publicado**, é a régua de partida da conversa do consultor.
-Definida em 04/09/2026 a partir de três âncoras.
-
-| Faixa | Taxa mensal | Efetivo por criança |
+| | Mensal | Anual |
 |---|---|---|
-| Até 10 crianças | **R$ 69** | R$ 6,90 a R$ 8,60 |
-| 11 a 25 | **R$ 149** | R$ 5,96 a R$ 13,50 |
-| 26 a 40 | **R$ 229** | R$ 5,72 a R$ 8,80 |
-| Acima de 40 | conversa | — |
+| Por criança ativa | **R$ 5,90** | **R$ 2,90** |
+| Da 41ª criança em diante | R$ 4,90 | R$ 2,40 |
+| Mínimo por fatura | R$ 49 | R$ 29 |
+
+⚠️ **A taxa acima de 40 é MARGINAL, como faixa de imposto** — sem isso
+`preco(41)` seria menor que `preco(40)` e crescer daria desconto, que é o
+degrau que acabou de sair voltando pelo outro lado.
+
+O plano capa **prazo e saída**, nunca funcionalidade: o mensal não tem prazo
+nem multa e trava o desconto da escada; o anual custa menos da metade e pede
+doze meses, com multa de 20% do saldo.
+
+**O que desconta isso mora em [descontos.md](descontos.md)** — escada
+vitalícia, indicação e concessão.
 
 **A âncora que faz o motorista entender em um segundo:** a taxa custa **menos
 que uma mensalidade**. Ele cobra na faixa de R$ 200 a R$ 400 por criança; a
@@ -180,7 +192,8 @@ a frase da conversa comercial — não o valor solto.
 **As três âncoras que produziram a régua:**
 
 1. **Percentual do faturamento dele.** Um motorista com 20 crianças a R$ 250
-   fatura cerca de R$ 5.000/mês. R$ 149 é ~3% disso. Software de gestão para
+   fatura cerca de R$ 5.000/mês, e a taxa de 25 crianças (R$ 147,50 no
+   mensal) é ~3% disso. Software de gestão para
    autônomo costuma ser tolerado entre 2% e 5% do faturamento; acima disso ele
    compara com o caderno e o caderno ganha.
 2. **O custo de uma falha evitada.** Se o app evita **uma** mensalidade perdida
@@ -400,7 +413,7 @@ zeram a conta para sempre, e o cliente mais valioso da base vira o único que n�
 paga. O teto de 50% mantém o incentivo forte e a receita de pé.
 
 **A conta que mostra que o teto é generoso, não mesquinho:** um motorista que
-traz 5 colegas gera 5 × R$ 149 = **R$ 745/mês de receita nova** e custa
+traz 5 colegas gera a receita nova de cinco contas e custa
 **R$ 74,50** de desconto. Retorno de 10 para 1.
 
 **A validação é pelo número de WhatsApp** — e é a escolha certa para este
@@ -488,7 +501,7 @@ ordem de dependência — não de vontade.
 
 | # | Mudança | Por quê | Tamanho |
 |---|---|---|---|
-| 1 | Tabela de preço por faixa em `taxaConfig` | Hoje o valor é digitado no orçamento, caso a caso. Com preço proporcional ele passa a ser derivado de `criancasAtivas`. | médio |
+| 1 | ~~Tabela de preço por faixa em `taxaConfig`~~ | **Feito de outro jeito**: não há tabela em `taxaConfig`. O preço é derivado de `criancasAtivas` pela régua pura em `planos.js`. | — |
 | 2 | Estado do período gratuito no `users` | Não existe campo de trial. Precisa de início, fim e do que acontece no vencimento. | médio |
 | 3 | Aviso de fim do trial a partir do 1º mês | Regra de comunicação da seção 5. Cabe em `AvisoDaPlataforma`, que já existe e já é omitido em `/tio/taxa`. | pequeno |
 | 4 | Recontagem da fatura por `criancasAtivas` | `fecharFatura` já conta crianças reais — falta ligar essa contagem ao preço. | pequeno |
@@ -559,7 +572,7 @@ Ordenadas por o que trava o quê. **Resolvidas em 04/09/2026** estão riscadas.
 
 | # | Pendência | Trava | Estado |
 |---|---|---|---|
-| 1 | Ratificar a régua de preço (R$ 69 / 149 / 229) | Contrato, FAQ, unit economics | recomendada na seção 4 — falta o dono ratificar |
+| 1 | ~~Ratificar a régua de preço~~ | — | **fechado em 10/09/2026**: R$ 5,90 / R$ 2,90 por criança, linear |
 | 2 | ~~O que acontece no fim dos 3 meses~~ | — | **Resolvida.** Régua mês a mês na seção 5 |
 | 3 | Carência do desconto de indicação | Seção 7 | recomendado: 1º mês **pago** do indicado |
 | 4 | Custo de infra por motorista | Confirmar a régua de preço | **mensurável hoje no console** — ninguém mediu |

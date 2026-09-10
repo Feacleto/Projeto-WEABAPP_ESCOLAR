@@ -150,7 +150,7 @@ ticket médio do funil saem de `resumirFunil`.
 
 ⚠️ **Nunca some GMV e receita no mesmo gráfico.** O dinheiro que passa entre pai
 e motorista **não é seu** — a plataforma não o toca. Somá-los transforma um SaaS
-de R$ 149 num "marketplace de R$ 5.000 por motorista", e é o erro clássico de
+da taxa de um motorista num "marketplace de R$ 5.000 por motorista", e é o erro clássico de
 valuation neste formato. Um investidor que perceba isso encerra a conversa, e com
 razão.
 
@@ -184,7 +184,7 @@ não compra infra, que custa centavos.
 
 ⚠️ **Captar antes de medir isso é comprar uma unidade desconhecida em escala.**
 Se um associado exige seis horas para fechar, o modelo não suporta consultor
-contratado a R$ 149 de ticket, e o aporte financia uma máquina que perde
+contratado a um ticket de dezenas de reais, e o aporte financia uma máquina que perde
 dinheiro mais rápido. Se exige quarenta minutos, o negócio escala sozinho e o
 aporte era desnecessário. **Os dois cenários acabam no mesmo conselho: meça
 primeiro.** É a pendência 2 de [canvas-negocio.md](canvas-negocio.md), e ela

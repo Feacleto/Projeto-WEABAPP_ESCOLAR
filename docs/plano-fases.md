@@ -25,7 +25,7 @@ João é motorista escolar. Um colega mandou o link no WhatsApp.
 6. Manda os convites. As mães entram e veem a perua no mapa
 7. **Aos 30 dias** o app pergunta se ele está gostando e pede avaliação
 8. **A 30, 7 e 1 dia do fim**, três avisos de formas diferentes
-9. Ele abre **Ver planos**: 14 crianças ativas, faixa de R$ 149, com os
+9. Ele abre **Ver planos**: 14 crianças ativas, R$ 82,60 no mensal, com os
    descontos dele já no número
 10. Escolhe, aceita o contrato ali mesmo e paga
 11. Se não escolher, a conta fica **inativa sobre o app desfocado**

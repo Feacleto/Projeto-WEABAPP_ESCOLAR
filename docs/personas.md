@@ -42,7 +42,7 @@ A escola fica **de fora de propósito**. Ela é compradora do estágio 3 de
 [evolucao.md](evolucao.md), e persona de futuro contamina persona de hoje —
 o pitch começa a responder a uma objeção que ninguém fez ainda.
 
-### 2.1 O motorista de caderno — faixa até 10, R$ 69
+### 2.1 O motorista de caderno — 8 a 12 crianças, hoje no mínimo de R$ 49
 
 **Recorte:** 8 a 12 crianças, 2 ou 3 escolas. Van própria, dirige sozinho ou com
 a esposa de monitora. Caderno brochura, um grupo de WhatsApp por escola, PIX na
@@ -63,7 +63,7 @@ PIX direto pai→motorista, e a separação entre `dominio/cobranca/` e
 `dominio/associacao/` existe para que misturá-las apareça como erro de lint.
 Ver a seção 3 de [negocio.md](negocio.md).
 
-### 2.2 O motorista com operação — faixa 26 a 40, R$ 229
+### 2.2 O motorista com operação — 26 a 40 crianças, R$ 153 a R$ 236
 
 **Recorte:** 25 a 40 crianças, duas vans ou van mais agregado, monitora
 contratada. Já tem planilha e já cobra por PIX com chave própria. Não está no

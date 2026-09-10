@@ -34,3 +34,11 @@ firebase-debug.log
 *.njsproj
 *.sln
 *.sw?
+
+# O vídeo de marca fica fora do repositório.
+#
+# Binário grande entra no histórico e não sai: `git` guarda cada versão para
+# sempre, e um MP4 de campanha muda mais do que código. O lugar dele é o
+# Storage ou o Hosting, de onde a landing o serve — não o clone de quem for
+# desenvolver.
+public/brand/*.mp4

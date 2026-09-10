@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 1959 casos em 37 scripts. O PRIMEIRO é
+npm run testar                   # 1981 casos em 37 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -340,7 +340,9 @@ functions/             Cloud Functions v2 (CommonJS, Node 22)
                        agendados que ESCREVEM), billing, invites, push, routes,
                        contratacao, relogioDoTeste, asaasCobranca, asaasWebhook,
                        confirmarAusencias, receiptGuard, papeis, limites,
-                       indicacao + casarIndicacao (espelho da indicação)…
+                       avisos (a espécie de cada aviso) + canalDaCobranca
+                       (push ou e-mail em cada marco), indicacao +
+                       casarIndicacao + casarNoCadastro…
 firestore.rules        108 KB — a segurança real do app mora aqui
 storage.rules          foto, comprovante, logo e contrato de papel. Caminho
                        DETERMINÍSTICO (`childPhotos/{childId}`): `isAdmin()`
@@ -633,18 +635,33 @@ havia base real.
   cheio pela escada. O **vitalício já concedido continua** (é contrato assinado, e é um
   só), e `descontoDoFundador` ainda lê `metade` — não conceder é diferente de
   desfazer o que foi concedido.
-- **Fundador e fechamento NÃO somam — vale o maior**
-  (`FUNDADOR_E_FECHAMENTO_SOMAM`). Somando, um fundador de metade chegaria a
-  100% e a partir dali a indicação valeria zero — para exatamente as pessoas que
-  mais indicam.
+- **Fundador e fechamento não somam — vale o maior**, e a bandeira que escolhia
+  isso SAIU em 10/09/2026 por ser inerte. Ela decidia algo real quando havia
+  doze fundadores pela metade; com a condição aposentada, `descontoDoFundador`
+  só devolve 0 ou 1, e nos dois casos somar e pegar o maior dão o mesmo
+  resultado (verificado em 120 combinações antes de apagar). Bandeira que não
+  decide nada convida a próxima pessoa a mexer nela achando que muda algo.
 - **A ROLETA FOI APAGADA em 07/09/2026** — `girarPremio`, a coleção `premios`,
   `premioService`, `PremioNudge`/`PremioSheet` e `premioDeConversao.js`. O
   critério dela era SORTE, e sorte não sobrevive ao portão: *"o Zé girou e tirou
   2 meses, eu tirei 10%"* não tem resposta. O papel de prêmio de conversão é da
   escada, que é pública, reproduzível e com data.
   ⚠️ `descontosVigentes` não reconhece mais `origem: 'roleta'` — documento órfão
-  em produção deixa de valer em silêncio. **Confira `users.descontos` antes de
-  considerar a remoção terminada.**
+  em produção deixa de valer em silêncio.
+  **O FECHAMENTO MENSAL PASSOU A RELATAR ISSO SOZINHO** (10/09/2026):
+  `condicoesLegadas` em [reguaDoServidor.js](functions/lib/reguaDoServidor.js)
+  procura `roleta`, `antecipacao`, `condicaoFundador: 'metade'`,
+  `limiteCriancas` e qualquer origem que a régua não conheça, e
+  `fechamento.js` loga os uids todo dia 1. A pendência estava escrita aqui
+  desde 07/09/2026 e nunca foi conferida, porque dependia de alguém lembrar de
+  rodar um script — **pendência que depende de memória humana não é pendência,
+  é aposta**. `scripts/varrer-descontos.cjs` continua para a conferência sob
+  demanda.
+  ⚠️ **E AS OUTRAS TRÊS PEÇAS NÃO FORAM APAGADAS, DE PROPÓSITO.**
+  `FUNDADOR.METADE` e `ORIGEM.ANTECIPACAO` custam três linhas cada e protegem
+  quem porventura as tenha; apagá-las sem dado é trocar simplificação por uma
+  fatura que sobe sem explicação. Só a bandeira inerte saiu, porque removê-la
+  é provadamente inócuo.
 - **Isenção não é desconto de 100%.** `users.isencaoAte` diz que aquele mês não
   tem fatura; desconto de 100% produz uma fatura de R$ 0. Os dois chegam a zero
   e contam histórias diferentes na hora de conferir o que foi concedido.
@@ -1636,6 +1653,22 @@ dois. Campo novo no doc do responsável não entra ali por padrão.
 [functions/lib/papeis.js](functions/lib/papeis.js), com `exigirMotorista` e
 `exigirDono`. Callable manual recebe o escopo do **uid autenticado**, nunca de
 `request.data`. As agendadas continuam globais de propósito.
+
+⚠️ **O COLEGA QUE SE CADASTRA APARECE NA HORA** —
+[casarNoCadastro.js](functions/lib/casarNoCadastro.js), um `onDocumentCreated`
+em `users/{uid}`. `ESTADO.CADASTRADO` existia no domínio, tinha frase pronta,
+era contado no resumo e renderizado nas duas telas — **e nada o gravava**: a
+indicação ia de `pendente` direto a `ativa`, na baixa da primeira fatura. O
+dinheiro estava certo; o buraco era de feedback e durava o teste do indicado
+mais um mês, com o indicador vendo "ainda não se cadastrou" o tempo todo.
+
+É gatilho e não chamada do cliente porque casar no cadastro exigiria consultar
+`indicacoes` por telefone, e essa consulta **não é escopada por dono** —
+abri-la entregaria a qualquer motorista os telefones que a base inteira
+indicou. ⚠️ E ele **não ativa desconto nenhum**: a carência continua sendo o
+primeiro mês pago. ⚠️ A escolha de qual indicação casar é RÉGUA e mora em
+`functions/lib/indicacao.js`, não no gatilho — ela nasceu dentro dele e
+`testar:imports` derrubou a bateria na hora, que é o trabalho dele.
 
 ⚠️ **A PESSOA ESCOLHE O QUE TOCA NO APARELHO, E A PREFERÊNCIA É POR ESPÉCIE**
 (10/09/2026) — [dominio/identidade/avisos.js](src/dominio/identidade/avisos.js),

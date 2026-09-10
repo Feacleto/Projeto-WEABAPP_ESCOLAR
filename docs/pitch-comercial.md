@@ -7,7 +7,7 @@ van atrás dele querendo passar. O que este documento entrega é um roteiro de
 quarenta segundos, o mapa das seis objeções e a peça que ele encaminha sozinho.
 
 **Premissa herdada:** o alvo é o **motorista de caderno** (8 a 12 crianças,
-faixa de R$ 69), conforme a recomendação de [personas.md](personas.md), ainda
+hoje no mínimo de R$ 49), conforme a recomendação de [personas.md](personas.md), ainda
 não ratificada. É ele que o roteiro da seção 2 tenta convencer.
 
 ---
@@ -78,14 +78,17 @@ alvo desta rodada ela é mais forte do que a régua geral supõe:
 
 | Ele leva | Cobra por criança | Fatura por mês | Taxa | A frase |
 |---|---|---|---|---|
-| 8 a 12 | R$ 200 a R$ 350 | R$ 2.000 a R$ 3.500 | **R$ 69** | *menos de um terço de uma mensalidade* |
-| 11 a 25 | idem | R$ 3.000 a R$ 6.000 | R$ 149 | *menos de uma mensalidade* |
-| 26 a 40 | idem | R$ 6.500 a R$ 9.000 | R$ 229 | *menos de uma mensalidade* |
+| 10 | R$ 200 a R$ 350 | R$ 2.000 a R$ 3.500 | **R$ 49** (mínimo) | *menos de um quarto de uma mensalidade* |
+| 20 | idem | R$ 4.000 a R$ 7.000 | R$ 118,00 | *menos de uma mensalidade* |
+| 40 | idem | R$ 8.000 a R$ 14.000 | R$ 236,00 | *cerca de uma mensalidade* |
 
 > *"Você cobra uns R$ 250, né? Então o aplicativo inteiro, o mês todo, custa
 > menos de um terço do que UMA família te paga."*
 
-⚠️ **A régua de R$ 69 / 149 / 229 é recomendação, não preço ratificado** —
+⚠️ **O preço é LINEAR: R$ 5,90 por criança no mensal, R$ 2,90 no anual** —
+com mínimo de R$ 49 / R$ 29 e taxa marginal de R$ 4,90 / R$ 2,40 da 41ª
+criança em diante. A régua de faixas que estava aqui saiu em 10/09/2026,
+porque a criança da fronteira custava o preço de sete. O resto desta nota —
 pendência 1 de [negocio.md](negocio.md). Enquanto não for ratificada, o
 consultor está negociando com um número que a casa ainda não fechou.
 
@@ -247,7 +250,7 @@ abaixo é uma frase que soa ótima e é falsa hoje.**
 
 | # | Pendência | Trava | Estado |
 |---|---|---|---|
-| 1 | ~~Ratificar a régua de preço~~ | — | **FECHADA em 06/09/2026** — R$ 69 / 149 / 229 por faixa de crianças ativas, em `dominio/associacao/planos.js`, com teste. `/tio/planos` já mostra os três, e `contratarPlano` já grava a faixa. Esta linha instruía o consultor a não citar preço por não estar fechado, e ele está. |
+| 1 | ~~Ratificar a régua de preço~~ | — | **FECHADA, e reaberta e fechada de novo em 10/09/2026** — as faixas de R$ 69/149/229 duraram quatro dias e saíram: no limite de uma para a outra, ganhar UMA criança subia a conta em R$ 40. Hoje é linear, R$ 5,90 / R$ 2,90 por criança, em `dominio/associacao/planos.js`, com teste varrendo 1 a 60 crianças. |
 | 2 | Ratificar o alvo da rodada | O roteiro da seção 2 inteiro | **aberta** — herdada de [personas.md](personas.md) |
 | 3 | Padronizar `motivoPerda` com os seis nomes da seção 3 | Transformar o mapa de objeções em dado | **nova** — custa zero, sem código |
 | 4 | Validar o roteiro em campo | Tudo aqui é dedução | **aberta** — as 5 a 8 conversas de [personas.md](personas.md) |
@@ -261,6 +264,6 @@ Este documento vale enquanto for verdade. Atualize-o **na mesma alteração** qu
 1. **Fechar um "pela metade" ou um "não resolve"** de [personas.md](personas.md)
    — e então a linha correspondente sai da seção 5, porque deixou de ser mentira.
    Esta é a manutenção mais provável, e a mais fácil de esquecer
-2. Ratificar ou mudar preço, faixa ou régua de trial
+2. Ratificar ou mudar preço ou régua de trial
 3. Descobrir em campo que uma objeção da seção 3 não é real, ou que falta uma —
    e é para isso que serve o `motivoPerda` padronizado
