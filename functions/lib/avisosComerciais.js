@@ -70,7 +70,25 @@ const TIPO = {
   TESTE_COMECOU: 'comercial_teste_comecou',
   DEGRAU_VIRA: 'comercial_degrau_vira',
   RETORNO: 'comercial_retorno',
+  /**
+   * ⚠️ O ÚNICO QUE VAI PARA QUEM **JÁ CONTRATOU**, e por isso ele precisa de
+   * uma exceção nomeada na régua — ver `avisoDoDia`. Sem ela, a linha "quem
+   * já decidiu não recebe oferta" o mataria antes de ele existir, e ninguém
+   * perceberia que não saiu: a peça simplesmente nunca apareceria em lugar
+   * nenhum, sem erro e sem log.
+   */
+  INDICACAO: 'comercial_indicacao',
 };
+
+/**
+ * O aviso de indicação sai UMA VEZ, neste dia depois de contratar.
+ *
+ * Trinta dias e não sete: ele acabou de decidir pagar, e a primeira fatura
+ * de verdade ainda não chegou. Pedir que ele traga um colega antes de ver o
+ * produto cobrando é pedir recomendação de uma coisa que ele ainda não
+ * experimentou como cliente.
+ */
+const DIA_DO_AVISO_DE_INDICACAO = 30;
 
 /**
  * A JANELA DE SILÊNCIO, em horas do fuso de Brasília.
@@ -148,9 +166,21 @@ function reais(v) {
 function avisoDoDia({ motorista, agora = new Date() } = {}) {
   if (!motorista) return null;
 
-  // Quem já decidiu não recebe oferta. Ver a regra 3 do cabeçalho.
-  if (planoValido(motorista.plano)) return null;
   if (motorista.suspenso === true) return null;
+
+  // ⚠️ A EXCEÇÃO NOMEADA À REGRA "quem já decidiu não recebe oferta".
+  //
+  // Ela existe porque a indicação é a única peça comercial dirigida a quem
+  // JÁ é cliente — e a régua, escrita para conversão, barrava exatamente o
+  // público dela. Fica antes do corte para o leitor ver as duas linhas
+  // juntas: a regra e a sua única exceção.
+  //
+  // O desconto de indicação só vale dinheiro para quem paga: durante o teste
+  // a fatura é isenta, e 5% de zero é zero. Então este é o inverso de todos
+  // os outros — os outros calam quando ele contrata, este só começa aí.
+  if (planoValido(motorista.plano)) {
+    return avisoDeIndicacao({ motorista, agora });
+  }
 
   // ⚠️ A JANELA DE SILÊNCIO É CHECADA AQUI, E NÃO SÓ NO AGENDADOR.
   // O agendador roda às 9h, então na prática ela nunca morde — e é exatamente
@@ -299,6 +329,72 @@ function avisoDoDia({ motorista, agora = new Date() } = {}) {
 }
 
 /**
+ * O AVISO DE INDICAÇÃO — a única peça para quem já é cliente.
+ *
+ * ── POR QUE ELA EXISTE
+ * O desconto de indicação estava inteiro no código e a oferta aparecia em
+ * quatro telas — todas dentro do app. Este é o único canal que alcança quem
+ * **parou de abrir o app**, que é justamente o motorista de quem a indicação
+ * mais precisa: o que já se acomodou pagando.
+ *
+ * ── UMA VEZ, E SÓ UMA
+ * Não há repetição nem lembrete. Indicar é um favor, e favor pedido duas
+ * vezes vira cobrança — e cobrança de favor é o que faz alguém desligar a
+ * categoria inteira (que agora ele PODE desligar; ver `dominio/identidade/avisos.js`).
+ *
+ * ── O NÚMERO É A DIFERENÇA REAL
+ * `precoDoMes` com uma indicação a mais, menos a conta de hoje. Perto do piso
+ * a porcentagem mente: para quem tem 8 crianças e 30% travado, a 7ª indicação
+ * vale sessenta centavos. Dizer "5%" ali é prometer quatro vezes o que ele
+ * vai receber — e a queixa que nasce disso é a que a coleção `indicacoes`
+ * inteira existe para evitar.
+ *
+ * ⚠️ E SE O PISO JÁ COMEU, A PEÇA NÃO SAI. Convidar alguém a trazer um colega
+ * por um desconto que não vai descer nada é o pedido mais caro que a
+ * plataforma pode fazer: ele gasta o favor dele e a conta não muda.
+ */
+function avisoDeIndicacao({ motorista, agora }) {
+  const desde = diasDesde(motorista.contratadoEm, agora);
+  if (desde !== DIA_DO_AVISO_DE_INDICACAO) return null;
+
+  const criancas = Number(motorista.criancasAtivas) || 0;
+  const ativas = Number(motorista.indicacoesAtivas) || 0;
+  const base = {
+    criancas,
+    plano: motorista.plano,
+    fundador: motorista.condicaoFundador || null,
+    descontos: motorista.descontos,
+    mes: `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`,
+  };
+  const hoje = precoDoMes({ ...base, indicacoesAtivas: ativas });
+  const comMaisUma = precoDoMes({ ...base, indicacoesAtivas: ativas + 1 });
+  if (hoje.liquido == null || comMaisUma.liquido == null) return null;
+
+  const vale = Math.round((hoje.liquido - comMaisUma.liquido) * 100) / 100;
+  if (vale <= 0) return null;
+
+  return {
+    tipo: TIPO.INDICACAO,
+    titulo: 'Traga um colega, pague menos',
+    corpo:
+      `Cada motorista que você trouxer tira ${reais(vale)} da sua conta, ` +
+      `todo mês. Toque para indicar.`,
+    texto:
+      `Você está no Alô Buzinou há um mês, e existe um jeito de a sua conta ` +
+      `ficar menor sem mudar de plano.
+
+` +
+      `Cada motorista que entrar por indicação sua e começar a pagar tira ` +
+      `${reais(vale)} por mês da sua fatura, e continua tirando enquanto ele ` +
+      `for cliente. Não tem prazo e não tem limite de quantos.
+
+` +
+      `Toque para indicar.`,
+    destino: '/tio/indicar',
+  };
+}
+
+/**
  * O AVISO QUE SAI HOJE, já passado pelo filtro de frequência.
  *
  * ⚠️ O GUARDA SEMANAL NÃO VALE PARA MUDANÇA DE ESTADO, e essa distinção
@@ -321,6 +417,26 @@ function avisoParaEnviar({ motorista, agora = new Date() } = {}) {
   if (!candidato) return null;
   if (candidato.urgente) return candidato;
 
+  // ⚠️ A OFERTA CEDE AO OPERACIONAL NO MESMO DIA, e isso é o conserto de uma
+  // colisão que existia e ninguém media.
+  //
+  // Três agendados rodavam às 9h: este, o `enviarAvisosDoDia` (fatura,
+  // convite parado, alvará vencendo) e o e-mail de mensalidade. O guarda
+  // semanal daqui lia `users.ultimoAvisoComercial`, que os outros não
+  // escrevem — então o mesmo motorista podia receber "sua fatura vence em 3
+  // dias" e "traga um colega" na mesma manhã, e nada acusava.
+  //
+  // Quem cede é a OFERTA: "sua fatura vence" é obrigação, "traga um colega" é
+  // conversa. Somar as duas no mesmo dia é a plataforma falando de venda por
+  // cima da própria cobrança.
+  //
+  // ⚠️ ISSO SÓ FUNCIONA PORQUE O CRON DESTE ARQUIVO FOI PARA AS 10H. Com os
+  // dois às 9h, a ordem entre eles é do Cloud Scheduler, e o carimbo do
+  // operacional poderia ainda não existir quando esta régua o lesse — o
+  // silêncio seria sorteado a cada manhã. Ver `enviarAvisos.js`.
+  const desdeOOperacional = diasDesde(motorista?.ultimoAvisoOperacional, agora);
+  if (desdeOOperacional === 0) return null;
+
   const desdeOUltimo = diasDesde(motorista?.ultimoAvisoComercial, agora);
   if (desdeOUltimo !== null && desdeOUltimo < DIAS_ENTRE_AVISOS) return null;
   return candidato;
@@ -330,6 +446,7 @@ module.exports = {
   TIPO,
   SILENCIO,
   DIAS_ENTRE_AVISOS,
+  DIA_DO_AVISO_DE_INDICACAO,
   ANTECEDENCIA,
   DIAS_DE_RETORNO,
   emSilencio,

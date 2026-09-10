@@ -36,6 +36,7 @@ const LIMITES = require('./lib/limites');
 const admin = require('firebase-admin');
 
 const { buildEmailHtml, buildEmailText, subjectFor } = require('./lib/emailTemplate');
+const { emailMandaEm } = require('./lib/canalDaCobranca');
 const { sendEmail } = require('./lib/resend');
 const {
   makeLookupInvite,
@@ -83,11 +84,26 @@ const APP_URL = 'https://alobuzinou.com';
 //   diffDays positivo = ainda falta vencer
 //   diffDays zero     = vence hoje
 //   diffDays negativo = já venceu
+// ⚠️ O DIA DO VENCIMENTO SAIU DAQUI, e não porque o e-mail dele fosse ruim.
+//
+// Este agendado e o `enviarAvisosDoDia` rodavam às 9h falando da MESMA dívida
+// para a MESMA família: e-mail em 3, 0 e −3 dias; push em 5, 3, 0, −3 e −7.
+// Nos três marcos do meio ela recebia as duas coisas no mesmo minuto — o
+// jeito mais rápido de ensinar alguém a ignorar os dois canais, e o primeiro
+// que ela desliga é o que também avisa que a criança chegou.
+//
+// A divisão mora em `canalDaCobranca.js`, um arquivo só, e é ela que decide.
+// O dia do vencimento ficou com o PUSH: é o marco em que só a hora importa, e
+// este público lê push muito mais do que e-mail. O e-mail ficou com os dois
+// marcos em que ela precisa RESOLVER com o dado na mão — 3 dias antes e 3 de
+// atraso —, porque é ele que carrega valor, mês, botão e a chave PIX.
+//
+// O template `due_today` continua existindo: o disparo manual do dono ainda
+// pode usá-lo, e apagá-lo tiraria a peça de quem quiser mandá-la à mão.
 const MILESTONES = [
   { key: 'reminder_3d', diffDays: 3 },
-  { key: 'due_today', diffDays: 0 },
   { key: 'overdue_3d', diffDays: -3 },
-];
+].filter((m) => emailMandaEm(m.diffDays));
 
 // ===== Helpers =====
 

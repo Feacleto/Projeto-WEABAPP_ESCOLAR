@@ -87,26 +87,39 @@ const HOJE = meioDia('2026-09-10');
 const mens = (venc, extra) => R.avisoDaMensalidade({ pagamento: pag(venc, extra), agora: HOJE });
 
 eq('5 dias antes', R.TIPO.VENCE_5, mens('2026-09-15').tipo);
-eq('3 dias antes', R.TIPO.VENCE_3, mens('2026-09-13').tipo);
 eq('no dia', R.TIPO.VENCE_HOJE, mens('2026-09-10').tipo);
-eq('3 dias de atraso', R.TIPO.ATRASO_3, mens('2026-09-07').tipo);
 eq('7 dias de atraso', R.TIPO.ATRASO_7, mens('2026-09-03').tipo);
+
+// ⚠️ 3 DIAS ANTES E 3 DE ATRASO SÃO DO E-MAIL, E O PUSH CALA NELES.
+//
+// Os dois canais mandavam nesses dois marcos ao mesmo tempo, sobre a mesma
+// mensalidade: este push e o `reminder_3d`/`overdue_3d` do
+// `sendPaymentReminders`. Cada régua estava certa sozinha, e ninguém tinha o
+// mapa das duas juntas — é o defeito clássico de dois módulos corretos.
+//
+// Quem decide agora é `canalDaCobranca.js`, e o teste dele prova a parte que
+// é regra (um marco, um canal). Estes dois casos travam a metade que este
+// arquivo pode ver: o push obedecendo.
+checar('3 dias antes é do e-mail, o push cala', mens('2026-09-13') === null);
+checar('3 dias de atraso também', mens('2026-09-07') === null);
 
 checar('4 dias antes não avisa', mens('2026-09-14') === null);
 checar('1 dia antes não avisa', mens('2026-09-11') === null);
 checar('2 dias de atraso não avisa', mens('2026-09-08') === null);
 checar('30 dias de atraso não avisa mais', mens('2026-08-11') === null);
-checar('pago não avisa nunca', mens('2026-09-13', { status: 'paid' }) === null);
+checar('pago não avisa nunca', mens('2026-09-10', { status: 'paid' }) === null);
 checar('sem vencimento não avisa', R.avisoDaMensalidade({ pagamento: { status: 'pending' }, agora: HOJE }) === null);
 checar('sem argumento não explode', R.avisoDaMensalidade() === null);
 
+// As três invariantes do corpo mudaram de DIA, não de conteúdo: o 13 passou
+// a ser do e-mail, e o dia do vencimento continua sendo do push.
 checar(
   'o nome da criança vai na frente — ela pode ter dois filhos',
-  mens('2026-09-13').corpo.startsWith('João: '),
-  mens('2026-09-13').corpo
+  mens('2026-09-10').corpo.startsWith('João: '),
+  mens('2026-09-10').corpo
 );
-checar('o valor sai em reais', mens('2026-09-13').corpo.includes('R$'), mens('2026-09-13').corpo);
-eq('o toque leva ao financeiro dela', '/pai/finance', mens('2026-09-13').destino);
+checar('o valor sai em reais', mens('2026-09-10').corpo.includes('R$'), mens('2026-09-10').corpo);
+eq('o toque leva ao financeiro dela', '/pai/finance', mens('2026-09-10').destino);
 
 // ══════════════════════════════════════════════════════════════════════════
 bloco('═══ CONVITE PARADO — e ele vai pro MOTORISTA ═══');

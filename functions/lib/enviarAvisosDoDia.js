@@ -65,7 +65,7 @@ const TETO = 500;
  * aviso — e ninguém saberia. Assim, o pior caso é o aviso repetir uma vez.
  * Repetir é chato; sumir em silêncio é o defeito que não se acha.
  */
-async function entregar(db, { paraUid, aviso, ref }) {
+async function entregar(db, { paraUid, aviso, ref, operacional = false }) {
   if (!paraUid || !aviso) return false;
 
   // `title` e `createdAt` são exigidos pelas rules, e `push.js` desiste sem
@@ -82,6 +82,30 @@ async function entregar(db, { paraUid, aviso, ref }) {
 
   if (ref) {
     await ref.update({ [`avisos.${aviso.tipo}`]: true });
+  }
+
+  // ⚠️ O CARIMBO QUE FAZ A OFERTA CALAR NO MESMO DIA.
+  //
+  // Três agendados rodavam às 9h — este, os avisos comerciais e o e-mail de
+  // mensalidade — e nenhum sabia dos outros. O mesmo motorista podia receber
+  // "sua fatura vence em 3 dias" e "traga um colega" na mesma manhã, e nada
+  // acusava, porque o guarda semanal do comercial lia um campo que só ele
+  // escrevia.
+  //
+  // Quem cede é a OFERTA, nunca a obrigação: `avisoParaEnviar` lê este campo
+  // e desiste quando ele é de hoje. O comercial passou a rodar às 10h para
+  // que o carimbo já exista quando ele olhar — com os dois às 9h, a ordem
+  // seria do Cloud Scheduler e o silêncio seria sorteado a cada manhã.
+  //
+  // ⚠️ SÓ PARA AVISO DO MOTORISTA. A mensalidade da família passa pela mesma
+  // função e NÃO carimba: ela não concorre com oferta nenhuma, e carimbar ali
+  // calaria o comercial do motorista por causa de um aviso que foi para outra
+  // pessoa.
+  if (operacional) {
+    await db.doc(`users/${paraUid}`).set(
+      { ultimoAvisoOperacional: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
   }
   return true;
 }
@@ -125,7 +149,7 @@ async function varrerConvites(db, agora) {
       const c = doc.data();
       const aviso = avisoDoConvite({ crianca: c, agora });
       if (!aviso || jaAvisado(c, aviso.tipo)) continue;
-      if (await entregar(db, { paraUid: c.adminUid, aviso, ref: doc.ref })) n += 1;
+      if (await entregar(db, { paraUid: c.adminUid, aviso, ref: doc.ref, operacional: true })) n += 1;
     } catch (err) {
       logger.warn(`aviso de convite falhou em ${doc.id}`, err);
     }
@@ -153,7 +177,7 @@ async function varrerFaturas(db, agora) {
       // por campo aqui devolveria `undefined` em toda fatura, e a varredura
       // sairia dizendo "0 avisos" sem nenhum erro.
       const alvo = String(doc.id).split('_')[0] || null;
-      if (await entregar(db, { paraUid: alvo, aviso, ref: doc.ref })) n += 1;
+      if (await entregar(db, { paraUid: alvo, aviso, ref: doc.ref, operacional: true })) n += 1;
     } catch (err) {
       logger.warn(`aviso de fatura falhou em ${doc.id}`, err);
     }
@@ -175,7 +199,7 @@ async function varrerAlvaras(db, agora) {
       const m = doc.data();
       const aviso = avisoDoAlvara({ motorista: m, agora });
       if (!aviso || jaAvisado(m, aviso.tipo)) continue;
-      if (await entregar(db, { paraUid: doc.id, aviso, ref: doc.ref })) n += 1;
+      if (await entregar(db, { paraUid: doc.id, aviso, ref: doc.ref, operacional: true })) n += 1;
     } catch (err) {
       logger.warn(`aviso de alvará falhou em ${doc.id}`, err);
     }

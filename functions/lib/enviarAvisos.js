@@ -18,10 +18,20 @@
  * não passa por nenhum desses ramos, e não deveria mesmo: abrir a rule para
  * isso seria abrir a caixa dele para qualquer signed-in.
  *
- * ── ÀS 9H, E O HORÁRIO É PARTE DA REGRA
+ * ── ÀS 10H, E O HORÁRIO É PARTE DA REGRA — DUAS VEZES
  * Entre 6h e 8h30 e entre 16h30 e 19h ele está dirigindo com criança dentro.
- * `avisoDoDia` recusa nessas faixas por conta própria — o cron às 9h é a
- * primeira defesa, e a régua é a segunda.
+ * `avisoDoDia` recusa nessas faixas por conta própria: o cron é a primeira
+ * defesa, e a régua é a segunda.
+ *
+ * ⚠️ E ELE SAIU DAS 9H PARA AS 10H DE PROPÓSITO. Três agendados rodavam às
+ * 9h — este, o `enviarAvisosDoDia` (fatura, convite parado, alvará vencendo)
+ * e o e-mail de mensalidade —, e o mesmo motorista podia receber "sua fatura
+ * vence em 3 dias" e "traga um colega" na mesma manhã.
+ *
+ * `avisoParaEnviar` agora cala a oferta quando o operacional já falou hoje,
+ * lendo `users.ultimoAvisoOperacional`. **Isso exige ordem**: com os dois às
+ * 9h, quem roda primeiro é decisão do Cloud Scheduler, e o carimbo poderia
+ * ainda não existir quando a régua o lesse. Uma hora depois, existe.
  */
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
@@ -98,7 +108,7 @@ async function enviarAvisos(db, { agora = new Date() } = {}) {
 function makeEnviarAvisosComerciais(db) {
   return onSchedule(
     {
-      schedule: '0 9 * * *',
+      schedule: '0 10 * * *',
       timeZone: 'America/Sao_Paulo',
       region: REGION,
       maxInstances: LIMITES.AGENDADO,

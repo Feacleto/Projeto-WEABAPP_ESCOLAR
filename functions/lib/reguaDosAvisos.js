@@ -33,6 +33,8 @@
 
 'use strict';
 
+const { pushMandaEm } = require('./canalDaCobranca');
+
 const FUSO = 'America/Sao_Paulo';
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
@@ -168,6 +170,12 @@ function avisoDaMensalidade({ pagamento, agora = new Date() } = {}) {
     return monta(TIPO.VENCE_5, 'Mensalidade vence em 5 dias',
       `${quem}${valor}${mes}. Toque para pagar.`);
   }
+  // ⚠️ 3 DIAS ANTES É DO E-MAIL, NÃO DO PUSH — ver `canalDaCobranca.js`.
+  //
+  // Os dois canais mandavam neste marco, no mesmo minuto, sobre a mesma
+  // mensalidade: o push daqui e o `reminder_3d` do `sendPaymentReminders`.
+  // A régua do canal decide, e ela recusa este dia para o push.
+  if (faltam === 3 && !pushMandaEm(3)) return null;
   if (faltam === 3) {
     return monta(TIPO.VENCE_3, 'Mensalidade vence em 3 dias',
       `${quem}${valor}${mes}. Toque para pagar.`);
@@ -181,6 +189,8 @@ function avisoDaMensalidade({ pagamento, agora = new Date() } = {}) {
   // A plataforma não é a credora: quem cobra é o motorista, e a mensalidade
   // nem passa por aqui (item 7 dos Termos). Cobrança dura em nome de terceiro
   // estraga a relação dos dois e sobra para ele resolver no portão.
+  // Mesma colisão, do outro lado do vencimento: o `overdue_3d` por e-mail.
+  if (faltam === -3 && !pushMandaEm(-3)) return null;
   if (faltam === -3) {
     return monta(TIPO.ATRASO_3, 'Mensalidade em aberto',
       `${quem}${valor}${mes}, vencida há 3 dias. Toque para pagar.`);
