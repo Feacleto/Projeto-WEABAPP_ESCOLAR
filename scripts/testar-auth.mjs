@@ -18,6 +18,8 @@
 import { readFileSync } from 'node:fs';
 import { mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 import { painelDe } from '../src/dominio/identidade/papeis.js';
+import { mascararEmail } from '../src/compartilhado/formatters.js';
+import { COMPANY_INFO } from '../src/pages/legal/legalContent.js';
 import {
   codigoDoTexto,
   isValidInviteCodeFormat,
@@ -305,6 +307,92 @@ checar(
   false,
   /handleCodeInApp\s*:/.test(fonteAuthService)
 );
+
+// -- 7. A MASCARA DO E-MAIL, E O QUE ELA NAO PODE VAZAR ------------------
+//
+// A tela de redefinir senha mostra o endereco que pediu o link, para a pessoa
+// RECONHECER a conta. Mascarar e o que separa "reconhecer" de "expor": o link
+// chega por e-mail (canal que ja vaza) e a tela e vista numa fila de escola.
+//
+// O CASO QUE SE ERRA POR DESCUIDO E O COMPRIMENTO. Um ponto por caractere
+// escondido devolve o tamanho do endereco de graca para quem adivinha. Os
+// tres ultimos casos deste bloco existem so para travar isso: enderecos de
+// tamanhos muito diferentes tem que produzir a MESMA quantidade de pontos.
+console.log('');
+console.log('7. A mascara do e-mail reconhece sem expor');
+
+checar('endereco comum mostra 4 e esconde o resto', 'mari••••@gmail.com',
+  mascararEmail('maria.silva@gmail.com'));
+checar('nunca mostra mais que a metade da parte local', 'a••••@escola.com',
+  mascararEmail('ana@escola.com'));
+checar('parte local de 2 mostra 1', 'a••••@x.com', mascararEmail('ab@x.com'));
+checar('parte local de 1 nao mostra nada', '••••@x.com', mascararEmail('a@x.com'));
+checar('o dominio nunca e mascarado', true,
+  mascararEmail('maria.silva@gmail.com').endsWith('@gmail.com'));
+
+// Entrada que nao e e-mail volta intacta: inventar mascara esconderia o
+// defeito de quem passou o valor errado.
+checar('texto sem arroba volta intacto', 'nao-e-email', mascararEmail('nao-e-email'));
+checar('arroba na primeira posicao volta intacta', '@x.com', mascararEmail('@x.com'));
+checar('vazio volta vazio', '', mascararEmail(''));
+checar('nulo nao explode', '', mascararEmail(null));
+
+const pontosDe = (e) => (mascararEmail(e).match(/•/g) || []).length;
+checar('o numero de pontos NAO revela o tamanho (curto)', 4, pontosDe('ana@x.com'));
+checar('nem no longo', 4, pontosDe('maria.aparecida.da.silva@x.com'));
+checar('e os dois produzem a mesma contagem', true,
+  pontosDe('ana@x.com') === pontosDe('maria.aparecida.da.silva@x.com'));
+
+// -- 8. A TELA DE REDEFINIR GUARDA AS DUAS DECISOES ----------------------
+//
+// Dois recuos possiveis, os dois plausiveis numa "simplificacao":
+//
+//   1. trocar `mascararEmail(email)` por `{email}`, porque e mais direto --
+//      e ai a tela volta a expor o endereco inteiro;
+//   2. escrever razao social e CNPJ como texto na tela, porque "nao vai
+//      mudar" -- e ai existem dois lugares dizendo quem e o controlador, que
+//      e como as tres versoes deste produto passaram a existir.
+//
+// O terceiro caso e o mais importante: o dominio do selo tem que ser LIDO do
+// navegador. Escrito a mao, ele continuaria dizendo "alobuzinou.com" numa
+// copia hospedada noutro dominio -- ajudando o golpe em vez de denuncia-lo.
+console.log('');
+console.log('8. A tela de redefinir senha guarda as decisoes de confianca');
+
+const fonteAuthAction = readFileSync(
+  new URL('../src/pages/AuthAction.jsx', import.meta.url),
+  'utf8'
+);
+
+checar('a tela mascara o e-mail', true,
+  fonteAuthAction.includes('mascararEmail(email)'));
+checar('a identidade do controlador sai de COMPANY_INFO', true,
+  fonteAuthAction.includes('COMPANY_INFO.razaoSocial')
+  && fonteAuthAction.includes('COMPANY_INFO.cnpj'));
+checar('e o CNPJ nao esta escrito na tela', false,
+  fonteAuthAction.includes(COMPANY_INFO.cnpj));
+checar('nem o e-mail do Encarregado', false,
+  fonteAuthAction.includes(COMPANY_INFO.email));
+checar('o dominio do selo e lido do navegador', true,
+  fonteAuthAction.includes('window.location.host'));
+// A PROSA NAO PODE REPROVAR A DECISAO QUE ELA EXPLICA.
+//
+// A primeira versao deste caso falhou contra o COMENTARIO do
+// `SeloDoDominio`, que cita 'alobuzinou.com' justamente para dizer por que
+// escrever o dominio a mao seria errado. Medir o arquivo inteiro reprova a
+// explicacao junto com o defeito -- e a saida nao e apagar a explicacao.
+const NL = String.fromCharCode(10);
+const codigoDaTela = fonteAuthAction
+  .split(NL)
+  .filter((linha) => {
+    const t = linha.trim();
+    return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
+  })
+  .join(NL);
+
+checar('o descomentador descomenta', false, codigoDaTela.includes('some no celular'));
+checar('e nao ha dominio da marca escrito a mao no codigo', false,
+  codigoDaTela.includes("'alobuzinou.com"));
 
 
 console.log(`\n${'═'.repeat(64)}`);

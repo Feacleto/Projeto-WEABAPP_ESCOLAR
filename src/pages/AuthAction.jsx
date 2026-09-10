@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Lock, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Lock, ArrowLeft, CheckCircle2, AlertCircle, Check, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Spinner from '../components/common/Spinner';
-import { LogoMark } from '../components/common/Logo';
+import Logo from '../components/common/Logo';
 import {
   verifyResetCode,
   confirmReset,
@@ -14,6 +14,8 @@ import {
   resetPassword,
 } from '../services/authService';
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
+import { mascararEmail } from '../compartilhado/formatters';
+import { COMPANY_INFO } from './legal/legalContent';
 
 /**
  * Handler in-app dos links de ação do Firebase Auth.
@@ -24,6 +26,84 @@ import { mensagemDeAuth } from '../dominio/identidade/authErrors';
  * Esta página lê os params, valida o código e mostra a UI apropriada em PT-BR
  * — assim o pai não sai do app pra concluir o fluxo (e não vê tela em inglês).
  */
+/**
+ * O ENDEREÇO EM QUE A PESSOA ESTÁ, ESCRITO DENTRO DA TELA.
+ *
+ * ⚠️ ELE É LIDO DO NAVEGADOR, NUNCA ESCRITO À MÃO — e essa é a única forma
+ * que presta. Uma constante `'alobuzinou.com'` continuaria dizendo
+ * "alobuzinou.com" numa cópia hospedada em outro domínio, ou seja: ajudaria
+ * o golpe em vez de denunciá-lo. Lido do `location`, o selo diz a verdade em
+ * qualquer lugar onde a página for servida.
+ *
+ * Ele existe porque no celular a barra de endereço some ao rolar, e esta é a
+ * tela em que a pessoa mais precisa conferir onde está: ela chegou por um
+ * link de e-mail e vai digitar uma senha.
+ */
+function SeloDoDominio() {
+  const host = typeof window === 'undefined' ? '' : window.location.host;
+  if (!host) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-primaryChip px-3 py-1 text-xs font-semibold text-primaryDark">
+      <Lock size={12} strokeWidth={2.6} />
+      {host}
+    </span>
+  );
+}
+
+/**
+ * A regra da senha, marcada ENQUANTO ela digita.
+ *
+ * Substitui o erro vermelho depois do envio: a pessoa descobre o que falta
+ * antes de tentar, e não depois de falhar. `validate()` continua existindo —
+ * é ele que impede o envio; isto aqui é o que evita chegar lá.
+ */
+function Regra({ ok, children }) {
+  return (
+    <span
+      className={`flex items-center gap-2 text-xs ${
+        ok ? 'text-primaryDark' : 'text-textMuted'
+      }`}
+    >
+      <span
+        className={`grid h-4 w-4 flex-none place-items-center rounded-full ${
+          ok ? 'bg-primaryChip text-primaryDark' : 'bg-border text-card'
+        }`}
+      >
+        <Check size={10} strokeWidth={3.5} />
+      </span>
+      {children}
+    </span>
+  );
+}
+
+/**
+ * QUEM É A EMPRESA — e este é o sinal mais forte de toda a tela.
+ *
+ * Layout, cor e logotipo uma página falsa copia numa tarde. Razão social e
+ * CNPJ ela não copia: publicar o CNPJ de outra empresa numa página que pede
+ * senha deixa de ser design e vira falsidade ideológica, com trilha de quem
+ * registrou o domínio.
+ *
+ * Vale nos QUATRO estados, não só no formulário: a tela de "link inválido" é
+ * onde a pessoa mais desconfia, porque alguma coisa acabou de dar errado.
+ *
+ * ⚠️ Os dados saem de `COMPANY_INFO`, nunca digitados aqui. É o mesmo objeto
+ * que os Termos e a Política usam — um lugar pra mudar, todas as telas mudam.
+ * O e-mail é o canal do Encarregado que a Política publica: se ele mudar lá e
+ * não aqui, esta tela passa a oferecer um canal que ninguém lê.
+ */
+function RodapeLegal() {
+  return (
+    <p className="mt-auto pt-6 text-center text-xs leading-relaxed text-textMuted">
+      {COMPANY_INFO.razaoSocial} · CNPJ {COMPANY_INFO.cnpj}
+      <br />
+      <a href={`mailto:${COMPANY_INFO.email}`} className="underline">
+        {COMPANY_INFO.email}
+      </a>
+    </p>
+  );
+}
+
 export default function AuthAction() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -211,6 +291,7 @@ export default function AuthAction() {
             </Link>
           )}
         </div>
+        <RodapeLegal />
       </div>
     );
   }
@@ -249,6 +330,7 @@ export default function AuthAction() {
             Entrar com a senha nova
           </Button>
         </div>
+        <RodapeLegal />
       </div>
     );
   }
@@ -271,11 +353,35 @@ export default function AuthAction() {
             Voltar para a entrada
           </Button>
         </div>
+        <RodapeLegal />
       </div>
     );
   }
 
-  // Form de nova senha (mode=resetPassword, código válido)
+  // ── O FORMULÁRIO (mode=resetPassword, código válido) ──────────────────
+  //
+  // ⚠️ ESTA TELA TEM UM PROBLEMA QUE NÃO É DE USABILIDADE, É DE CONFIANÇA.
+  //
+  // Quem chega aqui chegou pelo pior caminho possível: perdeu a senha, clicou
+  // num link que veio por e-mail, e vai digitar uma senha nova numa página
+  // que nunca viu. É exatamente a forma de um golpe — e a desconfiança dela
+  // está CERTA. Um formulário bonito não responde a isso; o que responde é a
+  // tela dizer coisas que uma página falsa não consegue dizer:
+  //
+  //   o domínio  → lido do navegador (`SeloDoDominio`), some no celular
+  //   o e-mail   → mascarado, para RECONHECER sem expor
+  //   o escopo   → o link vale uma vez, e isso é verdade verificável
+  //   a saída    → não foi você? fechar não muda nada
+  //   as regras  → marcadas antes do erro, não depois
+  //   a empresa  → razão social e CNPJ (`RodapeLegal`)
+  //
+  // As frases são todas conferíveis de propósito. Nada de "conexão segura",
+  // "criptografado" ou "protegido" genérico: promessa que a linha ao lado não
+  // prova é o defeito recorrente deste projeto, e numa tela sobre segurança
+  // ela custa mais que em qualquer outra.
+  const senhaLonga = password.length >= 6;
+  const senhasIguais = password.length > 0 && password === confirmPassword;
+
   return (
     <div className="min-h-screen flex flex-col px-6 py-6">
       <Link
@@ -285,12 +391,24 @@ export default function AuthAction() {
         <ArrowLeft size={16} /> Cancelar
       </Link>
 
-      <div className="text-center mb-6">
-        <LogoMark height={72} className="mx-auto mb-4" label="Alô Buzinou" />
-        <h1 className="text-2xl font-bold text-text">Redefinir senha</h1>
-        <p className="text-sm text-textMuted mt-1">
-          Crie uma nova senha para <span className="font-medium">{email}</span>
-        </p>
+      {/* O LOGOTIPO COMPLETO, não só o símbolo.
+        *
+        * Era `<LogoMark />` — a perua sem a palavra. Numa tela de entrada,
+        * quem só viu a marca no cabeçalho do app não reconhece o símbolo
+        * isolado, e reconhecimento é a aposta inteira desta tela. */}
+      <div className="text-center mb-6 flex flex-col items-center gap-3">
+        <Logo variant="stacked" height={92} />
+        <SeloDoDominio />
+        <div className="mt-1">
+          <h1 className="text-2xl font-bold text-text">Criar uma nova senha</h1>
+          {/* "Criar" e não "Redefinir": redefinir é palavra de sistema. */}
+          {email && (
+            <p className="text-sm text-textMuted mt-1">
+              Você pediu isso para{' '}
+              <span className="font-semibold text-text">{mascararEmail(email)}</span>
+            </p>
+          )}
+        </div>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
@@ -309,8 +427,8 @@ export default function AuthAction() {
         />
         <Input
           type="password"
-          label="Confirme a nova senha"
-          placeholder="Repita a senha"
+          label="Repetir a senha"
+          placeholder="Repita para conferir"
           icon={Lock}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
@@ -319,11 +437,29 @@ export default function AuthAction() {
           error={errors.confirmPassword}
           required
         />
+
+        <div className="flex flex-col gap-1.5">
+          <Regra ok={senhaLonga}>Pelo menos 6 caracteres</Regra>
+          <Regra ok={senhasIguais}>As duas precisam ser iguais</Regra>
+        </div>
+
+        {/* "Salvar e entrar" e não "Salvar nova senha": o botão diz o que
+          * acontece. Ela não fica sem saber se vai precisar logar de novo. */}
         <Button type="submit" loading={submitting}>
-          Salvar nova senha
+          Salvar e entrar
         </Button>
+
+        <div className="flex items-start gap-2 rounded-xl border border-primaryBorder bg-primarySoft p-3 text-xs leading-relaxed text-primaryDark">
+          <ShieldCheck size={14} className="mt-0.5 flex-none" />
+          <span>
+            <strong className="font-semibold">Este link funciona uma vez só.</strong>{' '}
+            Se não foi você que pediu, pode fechar esta página — sua senha
+            continua a mesma.
+          </span>
+        </div>
       </form>
+
+      <RodapeLegal />
     </div>
   );
 }
-

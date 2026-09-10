@@ -127,6 +127,40 @@ export function formatPhone(value) {
   return value;
 }
 
+/**
+ * O E-MAIL PARA CONFERIR, NÃO PARA LER.
+ *
+ * Usado na tela de redefinir senha: ela precisa RECONHECER o endereço que
+ * pediu o link ("é a minha conta mesmo?"), e reconhecer não exige ler o
+ * endereço inteiro. A tela pode ser vista por cima do ombro numa fila de
+ * escola, e o link chega por e-mail, que é o canal que já vaza.
+ *
+ * ⚠️ O NÚMERO DE PONTOS É FIXO, e isso é a parte que se erra por descuido.
+ * Mascarar com um ponto por caractere escondido devolve o COMPRIMENTO do
+ * endereço — que é informação de graça para quem estiver adivinhando. Quatro
+ * pontos sempre, independente do tamanho.
+ *
+ * A régua: no máximo 4 caracteres visíveis, e nunca mais que a metade da
+ * parte local. Endereço curto mostra menos, não proporcionalmente mais.
+ *
+ *   mascararEmail('maria.silva@gmail.com')  → 'mari••••@gmail.com'
+ *   mascararEmail('ana@escola.com')         → 'a••••@escola.com'
+ *
+ * Devolve a entrada intacta quando não há o que mascarar (texto sem arroba,
+ * ou arroba na primeira posição): inventar máscara para algo que não é
+ * e-mail esconderia o defeito de quem passou o valor errado.
+ */
+export function mascararEmail(email) {
+  const texto = String(email ?? '').trim();
+  const arroba = texto.lastIndexOf('@');
+  if (arroba < 1) return texto;
+
+  const local = texto.slice(0, arroba);
+  const metade = Math.floor(local.length / 2);
+  const visiveis = Math.max(local.length >= 2 ? 1 : 0, Math.min(4, metade));
+  return `${local.slice(0, visiveis)}••••${texto.slice(arroba)}`;
+}
+
 // "YYYY-MM" do mês corrente — usado como chave de payments
 export function getCurrentMonthKey() {
   const now = new Date();
