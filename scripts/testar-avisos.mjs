@@ -380,6 +380,87 @@ checar('nulo devolve vazio', '', resumirParaAviso(null));
 // O limite padrão é o do formato: 90 caracteres no corpo.
 checar('o limite padrão são 90 caracteres', true, resumirParaAviso('x '.repeat(200)).length <= 91);
 
+// ═══════════ A PEÇA DE INDICAÇÃO — A ÚNICA PARA QUEM JÁ É CLIENTE ════════
+//
+// Ela precisou de uma EXCEÇÃO NOMEADA à regra "quem já decidiu não recebe
+// oferta": é a única peça comercial dirigida a quem já contratou, e a régua
+// — escrita para conversão — barrava exatamente o público dela. Sem a
+// exceção ela nunca sairia, e ninguém perceberia: a peça simplesmente não
+// apareceria em lugar nenhum, sem erro e sem log.
+
+bloco('A indicação — a exceção nomeada, e os dois guardas que ela quase perdeu');
+
+const INICIO_IND = new Date(2026, 0, 1, 7, 0, 0);
+const noDiaInd = (n, hora = 9) => new Date(2026, 0, 1 + n, hora, 0, 0);
+const clienteInd = (extra = {}) => ({
+  trialInicio: INICIO_IND,
+  plano: 'mensal',
+  criancasAtivas: 20,
+  ...extra,
+});
+const pecaInd = (motorista, agora) => avisoDoDia({ motorista, agora });
+
+// Contratou no dia 91 (logo depois do teste); a peça sai 30 dias depois.
+const TARDE = { contratadoEm: noDiaInd(91) };
+
+checar('sai 30 dias depois de contratar', 'comercial_indicacao',
+  pecaInd(clienteInd(TARDE), noDiaInd(121))?.tipo);
+checar('e só nesse dia — não no 29', null,
+  pecaInd(clienteInd(TARDE), noDiaInd(120)));
+checar('nem no 31', null, pecaInd(clienteInd(TARDE), noDiaInd(122)));
+
+// ⚠️ O PRIMEIRO GUARDA QUE ELA QUASE PERDEU: A JANELA DE SILÊNCIO.
+//
+// Na primeira versão o ramo da exceção ficava colado na regra que ele
+// excetua, LOGO ACIMA da checagem de silêncio — bom de ler e errado de
+// executar. Era a única peça do arquivo que tocaria o celular dele às 7h da
+// manhã, com criança embarcando, num arquivo cujo próprio comentário diz que
+// a janela precisa estar na régua e não no cron.
+checar('cala às 7h — ele está dirigindo com criança dentro', null,
+  pecaInd(clienteInd(TARDE), noDiaInd(121, 7)));
+checar('cala às 17h também', null, pecaInd(clienteInd(TARDE), noDiaInd(121, 17)));
+
+// ⚠️ O SEGUNDO: NÃO PROMETER REAIS SOBRE FATURA ISENTA.
+//
+// Contratar cedo é o que a escada premia, então contratar no dia 10 do teste
+// é o caso COMUM. Trinta dias depois ele está no dia 40, ainda isento, e a
+// peça diria "tira R$ 5,90 da sua conta" de uma fatura que é R$ 0,00. É o
+// mesmo erro que `valorDaIndicacao` guarda no cliente devolvendo `null` sem
+// plano, voltando pela outra porta: aqui ele TEM plano, e `precoDoMes`
+// devolve o preço de vitrine, que ninguém está pagando ainda.
+checar('não sai enquanto a fatura do teste é isenta', null,
+  pecaInd(clienteInd({ contratadoEm: noDiaInd(10) }), noDiaInd(40)));
+
+// E a isenção que o dono concede à mão zera a fatura do mesmo jeito.
+checar('nem com isenção concedida pelo dono', null,
+  pecaInd(clienteInd({ ...TARDE, isencaoAte: '2026-12' }), noDiaInd(121)));
+
+// ⚠️ E NÃO SAI SE O PISO JÁ COMEU O DESCONTO. Convidar alguém a gastar um
+// favor por um desconto que não vai descer nada é o pedido mais caro que a
+// plataforma pode fazer: ele gasta o favor e a conta não muda.
+checar('não sai quando a próxima indicação não desce nada', null,
+  pecaInd(
+    clienteInd({
+      ...TARDE,
+      criancasAtivas: 8,
+      indicacoesAtivas: 9,
+      descontos: [{ origem: 'fechamento', fracao: 0.3, ate: null }],
+    }),
+    noDiaInd(121)
+  ));
+
+// Sonda positiva: com a operação maior, a MESMA data produz a peça — então
+// os casos acima não estão passando por a régua estar sempre calada.
+checar('mas sai para quem ainda tem margem até o piso', 'comercial_indicacao',
+  pecaInd(clienteInd({ ...TARDE, criancasAtivas: 40, indicacoesAtivas: 1 }), noDiaInd(121))?.tipo);
+
+// O corpo traz o valor em REAIS, não a porcentagem: perto do piso a
+// porcentagem mente, e é por isso que a peça calcula a diferença real.
+const pecaOk = pecaInd(clienteInd(TARDE), noDiaInd(121));
+checar('o corpo diz reais', true, pecaOk.corpo.includes('R$'));
+checar('e não diz porcentagem', false, pecaOk.corpo.includes('%'));
+checar('o toque leva à tela de indicar', '/tio/indicar', pecaOk.destino);
+
 // ──────────────────────────────── resumo ───────────────────────────────────
 
 console.log(`\n${'═'.repeat(64)}`);

@@ -58,6 +58,7 @@ const {
   DIAS_POR_DEGRAU,
   paraData,
   planoValido,
+  isentoEm,
   precoDoMes,
   degrauDaDecisao,
   descontoDoDegrau,
@@ -168,20 +169,6 @@ function avisoDoDia({ motorista, agora = new Date() } = {}) {
 
   if (motorista.suspenso === true) return null;
 
-  // ⚠️ A EXCEÇÃO NOMEADA À REGRA "quem já decidiu não recebe oferta".
-  //
-  // Ela existe porque a indicação é a única peça comercial dirigida a quem
-  // JÁ é cliente — e a régua, escrita para conversão, barrava exatamente o
-  // público dela. Fica antes do corte para o leitor ver as duas linhas
-  // juntas: a regra e a sua única exceção.
-  //
-  // O desconto de indicação só vale dinheiro para quem paga: durante o teste
-  // a fatura é isenta, e 5% de zero é zero. Então este é o inverso de todos
-  // os outros — os outros calam quando ele contrata, este só começa aí.
-  if (planoValido(motorista.plano)) {
-    return avisoDeIndicacao({ motorista, agora });
-  }
-
   // ⚠️ A JANELA DE SILÊNCIO É CHECADA AQUI, E NÃO SÓ NO AGENDADOR.
   // O agendador roda às 9h, então na prática ela nunca morde — e é exatamente
   // por isso que ela precisa estar na régua: no dia em que alguém mudar o cron
@@ -198,6 +185,21 @@ function avisoDoDia({ motorista, agora = new Date() } = {}) {
 
   const dia = diasDesde(inicio, agora);
   if (dia === null || dia < 0) return null;
+
+  // ⚠️ A EXCEÇÃO NOMEADA À REGRA "quem já decidiu não recebe oferta".
+  //
+  // A indicação é a única peça comercial dirigida a quem JÁ é cliente, e a
+  // régua — escrita para conversão — barrava exatamente o público dela.
+  //
+  // ⚠️ E ELA FICA AQUI EMBAIXO, DEPOIS DA JANELA DE SILÊNCIO E DO RELÓGIO.
+  // Na primeira versão este ramo estava logo abaixo de `suspenso`, colado na
+  // regra que ele excetua — o que era bom de LER e errado de EXECUTAR: a
+  // única peça do arquivo que ignorava a janela de silêncio, num arquivo cujo
+  // próprio comentário diz que a janela precisa estar na régua e não no cron.
+  // Proximidade de leitura não vale uma exceção de comportamento.
+  if (planoValido(motorista.plano)) {
+    return avisoDeIndicacao({ motorista, agora, dia });
+  }
 
   const criancas = Number(motorista.criancasAtivas) || 0;
   const conta = (plano, fracao) =>
@@ -352,10 +354,25 @@ function avisoDoDia({ motorista, agora = new Date() } = {}) {
  * ⚠️ E SE O PISO JÁ COMEU, A PEÇA NÃO SAI. Convidar alguém a trazer um colega
  * por um desconto que não vai descer nada é o pedido mais caro que a
  * plataforma pode fazer: ele gasta o favor dele e a conta não muda.
+ *
+ * ⚠️ NEM ENQUANTO A FATURA DELE FOR ISENTA — e este caso quase passou.
+ * Contratar cedo é o que a escada premia, então é comum contratar no dia 10
+ * do teste; trinta dias depois ele está no dia 40, ainda isento, e a peça
+ * diria "tira R$ 5,90 da sua conta" de uma fatura que é R$ 0,00. É o mesmo
+ * erro que `valorDaIndicacao` guarda no cliente devolvendo `null` sem plano,
+ * voltando pela outra porta: aqui ele TEM plano, e `precoDoMes` devolve o
+ * preço de vitrine, que ninguém está pagando ainda.
  */
-function avisoDeIndicacao({ motorista, agora }) {
+function avisoDeIndicacao({ motorista, agora, dia }) {
   const desde = diasDesde(motorista.contratadoEm, agora);
   if (desde !== DIA_DO_AVISO_DE_INDICACAO) return null;
+
+  // O teste precisa ter acabado — antes disso não há conta para descontar.
+  if (dia == null || dia <= DIAS_DE_TRIAL) return null;
+
+  const mes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+  // E a isenção concedida à mão pelo dono também zera a fatura.
+  if (isentoEm(motorista.isencaoAte, mes)) return null;
 
   const criancas = Number(motorista.criancasAtivas) || 0;
   const ativas = Number(motorista.indicacoesAtivas) || 0;
@@ -364,7 +381,7 @@ function avisoDeIndicacao({ motorista, agora }) {
     plano: motorista.plano,
     fundador: motorista.condicaoFundador || null,
     descontos: motorista.descontos,
-    mes: `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`,
+    mes,
   };
   const hoje = precoDoMes({ ...base, indicacoesAtivas: ativas });
   const comMaisUma = precoDoMes({ ...base, indicacoesAtivas: ativas + 1 });
