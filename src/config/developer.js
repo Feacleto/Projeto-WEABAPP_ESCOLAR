@@ -38,10 +38,24 @@ export const DEV_CEP = '04763-110';
 /**
  * A SEDE POR EXTENSO, para qualificar a parte nos documentos legais.
  *
- * ⚠️ SE A RUA TIVER NÚMERO, ele entra em `DEV_NUMERO` e a linha abaixo o
- * inclui. Ficou de fora porque o rodapé da landing não o publica, e inventar
- * número de endereço é pior que omitir: num documento com valor probatório, um
- * endereço que não existe é o mesmo que endereço nenhum.
+ * ⚠️ O NÚMERO FICA DE FORA POR DECISÃO, não por falta de informação
+ * (09/09/2026). A sede é um endereço RESIDENCIAL, e o documento é público:
+ * quem aceita os Termos lê a qualificação da parte, e quem abre a landing lê o
+ * rodapé. Publicar o número liga o nome de uma pessoa física à porta da casa
+ * dela, para qualquer visitante — inclusive um motorista com quem a relação
+ * comercial azedou. Logradouro, bairro, cidade/UF e CEP identificam a sede
+ * sem entregar isso.
+ *
+ * `DEV_NUMERO` continua existindo e a linha abaixo o inclui sozinha no dia em
+ * que houver valor — que é o dia em que a sede virar um endereço COMERCIAL.
+ * ⚠️ Endereço fiscal virtual é o conserto normal disso e custa pouco; enquanto
+ * não houver, o Decreto 7.962/2013 (art. 2º, I) pede endereço físico do
+ * fornecedor em contratação eletrônica com consumidor, e o que está aqui é
+ * defensável mas incompleto. É uma escolha entre dois riscos, e o de segurança
+ * pessoal foi julgado maior.
+ *
+ * E inventar número continua fora de questão: num documento com valor
+ * probatório, endereço que não existe é o mesmo que endereço nenhum.
  */
 export const DEV_NUMERO = '';
 export const DEV_ENDERECO = [

@@ -62,7 +62,7 @@ Usados no rodapé de toda peça pública, nos Termos e no contrato.
 | **Razão** | Alô Buzinou |
 | **CNPJ** | `65.000.217/0001-47` |
 | **Endereço** | Rua das Trovas — Socorro, São Paulo/SP |
-| **E-mail** | `contato@alobuzinou.com.br` |
+| **E-mail** | `contato@alobuzinou.com` — o `.com`, e não o `.com.br` da landing: este endereço precisa RECEBER (é o canal do Encarregado), e só o `.com` tem MX |
 | **WhatsApp** | +55 11 96917-0709 |
 | **Instagram** | `@alobuzinou` |
 

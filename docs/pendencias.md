@@ -55,7 +55,7 @@ Todas ficam mais caras a cada associado novo. **Fazer juntas, numa passada só.*
 | Pendência | Dono | **Recomendação** |
 |---|---|---|
 | **Tirar "Desenvolva Algo"** | [marca.md](marca.md) 1 | **Nos três lugares:** rodapé da home, rodapé de `/familia` e **o contrato de associação**. Não são duas empresas — o CNPJ é o mesmo —, então é decisão de marca, não de societário |
-| **E-mail legal** | [marca.md](marca.md) 2 | **`contato@alobuzinou.com.br`**, que já existe. Gmail no rodapé de uma marca cuja visão é *referência em confiança* é o conserto mais barato e o que custa mais desproporcionalmente |
+| ~~**E-mail legal**~~ | [marca.md](marca.md) 2 | **DECIDIDO em 09/09/2026: `contato@alobuzinou.com`** — o `.com`, porque o `.com.br` não tem MX e o canal do Encarregado precisa receber. Já trocado no código e na landing |
 | **`VERSAO_CONTRATO` → 3** | [marca.md](marca.md) 3 | **Junto com a troca de nome.** Mudou o texto, sobe a versão e todo associado reaceita — a regra é do projeto. Hoje é **uma** conversa |
 | **Declarações na landing** | [marca.md](marca.md) 4 | **1, 3, 6 e 8.** A 8 ("a gente diz em que pé está") é a que vão querer cortar e a que não pode sair |
 

@@ -221,8 +221,13 @@ conserto uma decisão de marca, não de societário. Duas consequências:
 
 1. **O e-mail legal é um Gmail.** `desenvolvaalgo@gmail.com` no rodapé de uma
    marca cuja visão é *referência em confiança*, enquanto
-   `contato@alobuzinou.com.br` já existe em [negocio.md](negocio.md). É o
-   detalhe que mais barato conserta e mais desproporcionalmente custa.
+   `contato@alobuzinou.com` está em [negocio.md](negocio.md). É o detalhe que
+   mais barato conserta e mais desproporcionalmente custa.
+   ⚠️ Esta linha dizia `.com.br` e afirmava que a caixa "já existe" — as duas
+   coisas erradas. O `.com.br` não tem registro MX nenhum, então o endereço
+   publicado na Política como canal do Encarregado devolvia bounce. Corrigido
+   em 09/09/2026 para o `.com`, que tem caixa. **Endereço em documento legal
+   se confere pelo MX, não pela memória.**
 2. **Trocar o nome no contrato mexe no texto das cláusulas**, e a regra do
    projeto é firme: mudou o texto, sobe a `VERSAO_CONTRATO` e todo associado
    aceita de novo. ⚠️ **Com um associado, essa reassinatura custa uma conversa.
@@ -236,7 +241,7 @@ conserto uma decisão de marca, não de societário. Duas consequências:
 | # | Pendência | Trava | Estado |
 |---|---|---|---|
 | 1 | Tirar `Desenvolva Algo` da vitrine e do contrato | Coerência da declaração 7 | **aberta** — pendência 12 de [negocio.md](negocio.md), agora com o inventário dos três lugares |
-| 2 | Trocar o e-mail legal para `contato@alobuzinou.com.br` | Credibilidade do rodapé | **nova, aberta** |
+| 2 | Trocar o e-mail legal para `contato@alobuzinou.com` | Credibilidade do rodapé | **fechada em 09/09/2026** — trocado em `legalContent.js` e na landing |
 | 3 | Subir a `VERSAO_CONTRATO` junto com a troca de nome | Novo aceite do associado | **nova, aberta** — barato agora, caro depois |
 | 4 | Escolher as quatro declarações que vão para a landing | Peça pública | **reaberta em 07/09/2026** — a 6 saiu da landing, ver seção 4 |
 

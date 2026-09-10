@@ -47,6 +47,21 @@ export const LEGAL_DATE = '9 de setembro de 2026';
  * `dpoEmail` aponta pro mesmo endereço do contato de propósito: uma caixa que
  * é lida todo dia responde melhor que um `dpo@` que ninguém abriu ainda.
  * Quando existir caixa dedicada, é trocar esta linha — e só esta.
+ *
+ * ⚠️ E O DOMÍNIO É O `.com`, NÃO O `.com.br` — o que parece contraintuitivo,
+ * porque a landing é o `.com.br`. O motivo é que este endereço tem que
+ * RECEBER: ele é o canal do Encarregado (art. 41 da LGPD) e a Política promete
+ * resposta em 15 dias por ele.
+ *
+ * Ele esteve em `contato@alobuzinou.com.br` por engano até 09/09/2026, e esse
+ * domínio NÃO TEM REGISTRO MX — nenhum servidor de e-mail. Toda mensagem de
+ * titular enviada para lá voltava com erro de entrega, em silêncio, e o
+ * documento continuava prometendo. O `.com` tem caixa na Hostinger (MX +
+ * SPF), que é a única razão da escolha.
+ *
+ * A regra que fica: antes de publicar um endereço em documento legal,
+ * confira o MX do domínio. Canal que não recebe é pior que canal ausente,
+ * porque a pessoa tem o print do documento.
  */
 /**
  * QUEM RESPONDE PELOS DADOS — e por que faltava.
@@ -90,8 +105,8 @@ export const COMPANY_INFO = {
   cnpj: DEV_CNPJ,
   cidade: DEV_CIDADE_UF,
   endereco: DEV_ENDERECO,
-  email: 'contato@alobuzinou.com.br',
-  dpoEmail: 'contato@alobuzinou.com.br',
+  email: 'contato@alobuzinou.com',
+  dpoEmail: 'contato@alobuzinou.com',
 };
 
 /** Como o controlador se identifica por extenso, num documento legal. */
