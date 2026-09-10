@@ -54,6 +54,7 @@ const URL_BY_TYPE = {
   rota_atrasada: '/pai',
   contrato_pronto: '/pai/contrato',
   indicacao_ativou: '/tio/indicar',
+  indicacao_cadastrou: '/tio/indicar',
   // ⚠️ SEM DESTINO FIXO: quem abre chamado pode ser o motorista OU o
   // responsável, e o mapa é por TIPO, não por pessoa. Mandar os dois pra
   // `/tio` jogaria a mãe numa tela que ela não pode ver. Sem entrada aqui, o

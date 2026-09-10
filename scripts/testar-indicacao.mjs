@@ -42,6 +42,7 @@ import {
   chaveDoTelefone as chaveServidor,
   contarAtivas as contarServidor,
   escolherParaAtivar as escolherServidor,
+  escolherParaCadastrar,
   reconciliarIndicacoes as reconciliarServidor,
 } from '../functions/lib/indicacao.js';
 
@@ -526,6 +527,76 @@ checar('o convite aparece exatamente nos quatro lugares decididos',
 // verde no dia em que alguem apagasse o componente inteiro.
 checar('e a varredura realmente leu os arquivos', true, arquivos.length > 50);
 
+
+// ═══════════ O CASAMENTO NO CADASTRO — O FIM DOS QUATRO MESES DE SILÊNCIO ══
+//
+// `ESTADO.CADASTRADO` existia no domínio, tinha frase pronta, era contado no
+// resumo e renderizado nas duas telas — e NADA o gravava. A indicação ia de
+// `pendente` direto a `ativa`, na baixa da primeira fatura do indicado.
+//
+// O dinheiro estava certo; o buraco era de feedback, e durava o teste inteiro
+// do indicado mais um mês. Quatro meses vendo "ainda não se cadastrou" depois
+// de o colega já ter entrado é onde ele para de acreditar.
+
+bloco('O casamento no cadastro — quem ganha a marca, e quem não ganha');
+
+const EM = (n) => new Date(2026, 0, n, 12, 0, 0);
+const pend = (id, indicador, chave, dia) => ({
+  id,
+  indicadorUid: indicador,
+  chave,
+  estado: ESTADO.PENDENTE,
+  em: EM(dia),
+});
+
+const CHAVE_NOVA = '11987654321';
+
+// ⚠️ VALE QUEM INDICOU PRIMEIRO — a mesma ordem de `escolherParaAtivar`.
+// Marcar o segundo aqui e o primeiro na baixa faria a tela de um deles contar
+// uma história que o dinheiro depois desmente.
+const DISPUTA = [
+  pend('tarde', 'ze', CHAVE_NOVA, 10),
+  pend('cedo', 'ana', CHAVE_NOVA, 2),
+];
+checar('vale quem indicou primeiro', 'cedo',
+  escolherParaCadastrar(DISPUTA, { indicadoUid: 'novo', chave: CHAVE_NOVA })?.id);
+
+// ⚠️ A AUTO-INDICAÇÃO É BARRADA AQUI TAMBÉM. `validarIndicacao` já barra na
+// criação, mas as rules não sabem comparar telefone — e este é o segundo
+// ponto em que o mesmo uid poderia aparecer dos dois lados.
+checar('ninguém casa com a própria indicação', null,
+  escolherParaCadastrar([pend('a', 'novo', CHAVE_NOVA, 1)],
+    { indicadoUid: 'novo', chave: CHAVE_NOVA }));
+
+checar('telefone que ninguém indicou não casa', null,
+  escolherParaCadastrar(DISPUTA, { indicadoUid: 'novo', chave: '11900000000' }));
+checar('sem chave não casa', null,
+  escolherParaCadastrar(DISPUTA, { indicadoUid: 'novo', chave: null }));
+checar('sem uid não casa', null,
+  escolherParaCadastrar(DISPUTA, { indicadoUid: null, chave: CHAVE_NOVA }));
+checar('lista vazia não quebra', null,
+  escolherParaCadastrar([], { indicadoUid: 'novo', chave: CHAVE_NOVA }));
+
+// Quem já passou de `pendente` não volta: uma indicação ATIVA não é remarcada
+// como cadastrada, e uma ENCERRADA não ressuscita por um cadastro novo.
+checar('indicação já ativa não é remarcada', null,
+  escolherParaCadastrar(
+    [{ ...pend('a', 'ze', CHAVE_NOVA, 1), estado: ESTADO.ATIVA }],
+    { indicadoUid: 'novo', chave: CHAVE_NOVA }
+  ));
+checar('nem uma encerrada', null,
+  escolherParaCadastrar(
+    [{ ...pend('a', 'ze', CHAVE_NOVA, 1), estado: ESTADO.ENCERRADA }],
+    { indicadoUid: 'novo', chave: CHAVE_NOVA }
+  ));
+
+// ⚠️ E O ESTADO NOVO NÃO ATIVA DESCONTO NENHUM — a carência continua sendo o
+// primeiro mês PAGO. Sem isto, cinco cadastros de teste dariam desconto real
+// sobre receita que nunca entrou.
+checar('cadastrado não conta como ativa', 0,
+  contarAtivas([{ ...pend('a', 'ze', CHAVE_NOVA, 1), estado: ESTADO.CADASTRADO }]));
+checar('e a transição pendente → cadastrado continua valendo', true,
+  podeTransitar(ESTADO.PENDENTE, ESTADO.CADASTRADO));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

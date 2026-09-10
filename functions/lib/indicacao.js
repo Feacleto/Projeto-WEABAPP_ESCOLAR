@@ -159,10 +159,54 @@ function reconciliarIndicacoes({ indicacoes = [], indicadosPagantes = [] } = {})
   return { encerrar, reabrir, ativasPorIndicador };
 }
 
+/**
+ * A indicação pendente que corresponde a este telefone, no CADASTRO.
+ *
+ * ── ⚠️ POR QUE ELA MORA AQUI, E NÃO EM `casarNoCadastro.js`
+ * Ela nasceu lá, junto do gatilho que a usa — e `npm run testar:imports`
+ * derrubou a bateria na hora, que é exatamente o trabalho dele. O gatilho
+ * requer `firebase-functions` e `firebase-admin`, pacotes que só existem em
+ * `functions/node_modules`; num checkout limpo, o teste de indicação morreria
+ * e o `&&` do encadeamento levaria os seguintes junto.
+ *
+ * É a regra da casa: **módulo de `functions/lib/` que é RÉGUA não requer o
+ * SDK.** Quem precisa do SDK é o gatilho, e ele mora noutro arquivo.
+ *
+ * ── AS DUAS REGRAS, E ELAS ESPELHAM `escolherParaAtivar`
+ * 1. ⚠️ VALE QUEM INDICOU PRIMEIRO. Se dois colegas indicaram a mesma
+ *    pessoa, marcar o segundo aqui e o primeiro na baixa faria a tela de um
+ *    deles contar uma história que o dinheiro depois desmente.
+ * 2. ⚠️ A AUTO-INDICAÇÃO É BARRADA AQUI TAMBÉM. `validarIndicacao` já barra
+ *    na criação, mas as rules não sabem comparar telefone — e este é o
+ *    segundo ponto em que o mesmo uid poderia aparecer dos dois lados.
+ *
+ * ⚠️ E ELA NÃO ATIVA NADA. `cadastrado` não vale desconto: a carência
+ * continua sendo o primeiro mês PAGO do indicado. Quem move o dinheiro é
+ * `escolherParaAtivar`, na baixa da fatura.
+ */
+function escolherParaCadastrar(indicacoes, { indicadoUid, chave } = {}) {
+  if (!indicadoUid || !chave) return null;
+
+  const ms = (i) => {
+    const v = i && i.em;
+    if (v && typeof v.toMillis === 'function') return v.toMillis();
+    if (v instanceof Date) return v.getTime();
+    return Number(v) || 0;
+  };
+
+  return (
+    (Array.isArray(indicacoes) ? indicacoes : [])
+      .filter((i) => i && i.estado === ESTADO.PENDENTE && i.chave === chave)
+      .filter((i) => i.indicadorUid !== indicadoUid)
+      .sort((a, b) => ms(a) - ms(b))[0] || null
+  );
+}
+
 module.exports = {
   ESTADO,
   chaveDoTelefone,
   escolherParaAtivar,
+  escolherParaCadastrar,
   contarAtivas,
   reconciliarIndicacoes,
 };

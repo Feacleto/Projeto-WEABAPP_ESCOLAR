@@ -46,6 +46,7 @@ const ESPECIE_DO_AVISO = {
   contract_accepted: ESPECIE.FATO,
   chamado_respondido: ESPECIE.FATO,
   indicacao_ativou: ESPECIE.FATO,
+  indicacao_cadastrou: ESPECIE.FATO,
 
   rota_atrasada: ESPECIE.ESTADO,
   comercial_retorno: ESPECIE.ESTADO,

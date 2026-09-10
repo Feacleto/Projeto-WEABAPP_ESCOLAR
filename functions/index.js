@@ -30,6 +30,7 @@ const {
   makeFecharMesAgora,
 } = require('./lib/fechamento');
 const { makeEnviarAvisosComerciais } = require('./lib/enviarAvisos');
+const { makeCasarNoCadastro } = require('./lib/casarNoCadastro');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./lib/limites');
@@ -566,6 +567,13 @@ exports.fecharMesAgora = makeFecharMesAgora(db);
  * semana, nada para quem já contratou, e nenhum número que não venha da tabela.
  */
 exports.enviarAvisosComerciais = makeEnviarAvisosComerciais(db);
+
+// O GATILHO QUE TIRA O INDICADOR DE QUATRO MESES DE SILÊNCIO.
+//
+// `ESTADO.CADASTRADO` existia no domínio, era renderizado nas duas telas, e
+// nada o gravava — ver o cabeçalho de `casarNoCadastro.js`. Ele NÃO ativa
+// desconto nenhum: a carência continua sendo o primeiro mês pago.
+exports.casarIndicacaoNoCadastro = makeCasarNoCadastro(db);
 
 /* ══ OS AVISOS DE TEMPO ═══════════════════════════════════════════════════
  * Mensalidade vencendo, convite parado, fatura da plataforma e alvará. Todos

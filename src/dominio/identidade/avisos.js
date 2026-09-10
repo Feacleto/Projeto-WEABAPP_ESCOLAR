@@ -91,6 +91,7 @@ export const ESPECIE_DO_AVISO = {
   contract_accepted: ESPECIE.FATO,
   chamado_respondido: ESPECIE.FATO,
   indicacao_ativou: ESPECIE.FATO,
+  indicacao_cadastrou: ESPECIE.FATO,
 
   // ── o app não está conseguindo prometer o que promete ───────────────────
   rota_atrasada: ESPECIE.ESTADO,
