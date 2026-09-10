@@ -65,7 +65,7 @@ const TETO = 500;
  * aviso — e ninguém saberia. Assim, o pior caso é o aviso repetir uma vez.
  * Repetir é chato; sumir em silêncio é o defeito que não se acha.
  */
-async function entregar(db, { paraUid, aviso, ref, operacional = false }) {
+async function entregar(db, { paraUid, aviso, ref, operacional = false, agora }) {
   if (!paraUid || !aviso) return false;
 
   // `title` e `createdAt` são exigidos pelas rules, e `push.js` desiste sem
@@ -101,9 +101,16 @@ async function entregar(db, { paraUid, aviso, ref, operacional = false }) {
   // função e NÃO carimba: ela não concorre com oferta nenhuma, e carimbar ali
   // calaria o comercial do motorista por causa de um aviso que foi para outra
   // pessoa.
+  // ⚠️ 'AAAA-MM-DD', NÃO UM TIMESTAMP. A régua compara com o DIA de hoje em
+  // Brasília; com timestamp ela comparava horas decorridas, e um carimbo de
+  // ontem ao meio-dia calava a oferta de hoje de manhã — 22 horas contam
+  // como "zero dias". É o mesmo formato que `jaAvisadoHoje` já usa neste
+  // arquivo, pelo mesmo motivo.
   if (operacional) {
     await db.doc(`users/${paraUid}`).set(
-      { ultimoAvisoOperacional: FieldValue.serverTimestamp() },
+      // `chaveDoDia` já existe neste projeto e já é do fuso certo — escrever
+      // uma segunda seria a divergência de sempre.
+      { ultimoAvisoOperacional: chaveDoDia(agora) },
       { merge: true }
     );
   }
@@ -149,7 +156,7 @@ async function varrerConvites(db, agora) {
       const c = doc.data();
       const aviso = avisoDoConvite({ crianca: c, agora });
       if (!aviso || jaAvisado(c, aviso.tipo)) continue;
-      if (await entregar(db, { paraUid: c.adminUid, aviso, ref: doc.ref, operacional: true })) n += 1;
+      if (await entregar(db, { paraUid: c.adminUid, aviso, ref: doc.ref, operacional: true, agora })) n += 1;
     } catch (err) {
       logger.warn(`aviso de convite falhou em ${doc.id}`, err);
     }
@@ -177,7 +184,7 @@ async function varrerFaturas(db, agora) {
       // por campo aqui devolveria `undefined` em toda fatura, e a varredura
       // sairia dizendo "0 avisos" sem nenhum erro.
       const alvo = String(doc.id).split('_')[0] || null;
-      if (await entregar(db, { paraUid: alvo, aviso, ref: doc.ref, operacional: true })) n += 1;
+      if (await entregar(db, { paraUid: alvo, aviso, ref: doc.ref, operacional: true, agora })) n += 1;
     } catch (err) {
       logger.warn(`aviso de fatura falhou em ${doc.id}`, err);
     }
@@ -199,7 +206,7 @@ async function varrerAlvaras(db, agora) {
       const m = doc.data();
       const aviso = avisoDoAlvara({ motorista: m, agora });
       if (!aviso || jaAvisado(m, aviso.tipo)) continue;
-      if (await entregar(db, { paraUid: doc.id, aviso, ref: doc.ref, operacional: true })) n += 1;
+      if (await entregar(db, { paraUid: doc.id, aviso, ref: doc.ref, operacional: true, agora })) n += 1;
     } catch (err) {
       logger.warn(`aviso de alvará falhou em ${doc.id}`, err);
     }

@@ -34,6 +34,8 @@ npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
                                  # documentos depois. 35 casos.
+npm run testar:envio             # os dois agendados escrevendo na MESMA base
+                                 # — é onde a colisão entre eles vivia. 29 casos.
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — precisa de auth,firestore
                                  # E storage juntos (ele semeia usuário e

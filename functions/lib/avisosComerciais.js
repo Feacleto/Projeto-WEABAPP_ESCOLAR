@@ -124,6 +124,46 @@ const ANTECEDENCIA = 3;
  */
 const DIAS_DE_RETORNO = [1, 7, 15, 28];
 
+/** O fuso em que a janela de silêncio e o "hoje" fazem sentido. */
+const FUSO = 'America/Sao_Paulo';
+
+/**
+ * A hora do dia EM BRASÍLIA, em minutos — não a hora do processo.
+ *
+ * ⚠️ ISTO ERA `agora.getHours()`, E ERA UM BUG DE FUSO QUE O CRON ESCONDIA.
+ *
+ * As Cloud Functions rodam em UTC: `getHours()` devolve 13 quando são 10h em
+ * Brasília. A janela da tarde (16h30–19h) vira 19h30–22h UTC, então o
+ * `emSilencio` estava medindo a faixa errada — e ninguém via, porque o cron
+ * das 10h cai fora das duas janelas nas duas leituras, por coincidência.
+ *
+ * O dia em que alguém mudasse o horário do agendado para as 17h, ou chamasse
+ * a régua de outro lugar, o motorista receberia oferta comercial dirigindo
+ * com criança dentro — e o comentário logo acima jura que isso não acontece.
+ */
+function minutosEmBrasilia(agora) {
+  const [h, m] = new Intl.DateTimeFormat('en-GB', {
+    timeZone: FUSO,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+    .format(agora)
+    .split(':')
+    .map(Number);
+  return h * 60 + m;
+}
+
+/** 'AAAA-MM-DD' em Brasília — o mesmo formato de `confirmarAusencias`. */
+function diaEmBrasilia(agora) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: FUSO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(agora);
+}
+
 /** Está dentro de uma faixa de silêncio? `minutos` é a hora do dia em minutos. */
 function emSilencio(minutos) {
   return SILENCIO.some((f) => minutos >= f.de && minutos < f.ate);
@@ -174,8 +214,7 @@ function avisoDoDia({ motorista, agora = new Date() } = {}) {
   // por isso que ela precisa estar na régua: no dia em que alguém mudar o cron
   // ou chamar isto de outro lugar, a garantia continua sendo do código e não
   // do horário.
-  const minutos = agora.getHours() * 60 + agora.getMinutes();
-  if (emSilencio(minutos)) return null;
+  if (emSilencio(minutosEmBrasilia(agora))) return null;
 
   const inicio = paraData(motorista.trialInicio);
   // Quem nunca rodou uma rota não tem relógio correndo, e não há o que dizer:
@@ -451,8 +490,18 @@ function avisoParaEnviar({ motorista, agora = new Date() } = {}) {
   // dois às 9h, a ordem entre eles é do Cloud Scheduler, e o carimbo do
   // operacional poderia ainda não existir quando esta régua o lesse — o
   // silêncio seria sorteado a cada manhã. Ver `enviarAvisos.js`.
-  const desdeOOperacional = diasDesde(motorista?.ultimoAvisoOperacional, agora);
-  if (desdeOOperacional === 0) return null;
+  //
+  // ⚠️ E A COMPARAÇÃO É DE DIA DE CALENDÁRIO, NÃO DE HORAS DECORRIDAS.
+  //
+  // A primeira versão usava `diasDesde(...) === 0`, que conta períodos de 24
+  // horas: um carimbo de ONTEM às 12h, lido hoje às 10h, dá 22 horas — zero
+  // dias — e calava a oferta num dia em que o operacional não falou nada. O
+  // teste de integração pegou exatamente esse caso.
+  //
+  // O carimbo é gravado como 'AAAA-MM-DD' em Brasília, o mesmo formato que
+  // `confirmarAusencias` já usa para "hoje". Comparar texto é exato e não
+  // depende do fuso do processo.
+  if (motorista?.ultimoAvisoOperacional === diaEmBrasilia(agora)) return null;
 
   const desdeOUltimo = diasDesde(motorista?.ultimoAvisoComercial, agora);
   if (desdeOUltimo !== null && desdeOUltimo < DIAS_ENTRE_AVISOS) return null;
@@ -467,6 +516,8 @@ module.exports = {
   ANTECEDENCIA,
   DIAS_DE_RETORNO,
   emSilencio,
+  minutosEmBrasilia,
+  diaEmBrasilia,
   diasDesde,
   avisoDoDia,
   avisoParaEnviar,

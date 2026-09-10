@@ -23,6 +23,8 @@ import {
   DIAS_ENTRE_AVISOS,
   ANTECEDENCIA,
   emSilencio,
+  minutosEmBrasilia,
+  diaEmBrasilia,
   avisoDoDia,
   avisoParaEnviar,
 } from '../functions/lib/avisosComerciais.js';
@@ -379,6 +381,50 @@ checar('nulo devolve vazio', '', resumirParaAviso(null));
 
 // O limite padrão é o do formato: 90 caracteres no corpo.
 checar('o limite padrão são 90 caracteres', true, resumirParaAviso('x '.repeat(200)).length <= 91);
+
+// ═══════════ A JANELA DE SILÊNCIO É DE BRASÍLIA, NÃO DO PROCESSO ═════════
+//
+// ⚠️ ISTO ERA UM BUG, E O CRON O ESCONDIA.
+//
+// A régua lia `agora.getHours()`. As Cloud Functions rodam em UTC, onde 10h
+// de Brasília é 13h — então a janela da tarde (16h30–19h) estava sendo
+// medida contra 19h30–22h UTC. Ninguém via porque o agendado das 10h cai
+// fora das duas faixas nas DUAS leituras, por coincidência.
+//
+// O dia em que alguém mudasse o horário para as 17h, ou chamasse a régua de
+// outro lugar, o motorista receberia oferta comercial dirigindo com criança
+// dentro — com o comentário logo acima jurando que isso não acontece.
+//
+// Estes casos medem em UTC de propósito: é o fuso em que o código roda de
+// verdade, e é onde o erro aparecia.
+
+bloco('A janela de silêncio, medida no fuso em que as functions rodam');
+
+// 17h em Brasília = 20h UTC. Está DENTRO da faixa da tarde.
+const dezessete = new Date('2026-09-15T20:00:00Z');
+checar('17h de Brasília cai no silêncio da tarde', true,
+  emSilencio(minutosEmBrasilia(dezessete)));
+// A leitura ingênua (getHours em UTC) daria 20h = 1200 minutos, que está
+// FORA da faixa [990, 1140] — e é exatamente assim que o bug passava.
+checar('e a leitura ingênua em UTC diria que não', false,
+  emSilencio(dezessete.getUTCHours() * 60 + dezessete.getUTCMinutes()));
+
+// 7h em Brasília = 10h UTC. Dentro da faixa da manhã.
+const sete = new Date('2026-09-15T10:00:00Z');
+checar('7h de Brasília cai no silêncio da manhã', true,
+  emSilencio(minutosEmBrasilia(sete)));
+
+// 10h em Brasília = 13h UTC. Fora das duas — é o horário do agendado.
+const dez = new Date('2026-09-15T13:00:00Z');
+checar('10h de Brasília fica fora', false, emSilencio(minutosEmBrasilia(dez)));
+
+// E o dia do carimbo também é de Brasília: 23h de Brasília é 02h UTC do dia
+// SEGUINTE. Lido como UTC, o carimbo mudaria de dia às 21h.
+checar('o dia vira à meia-noite de Brasília, não de UTC', '2026-09-15',
+  diaEmBrasilia(new Date('2026-09-16T02:00:00Z')));
+checar('e o dia seguinte é o seguinte', '2026-09-16',
+  diaEmBrasilia(new Date('2026-09-16T04:00:00Z')));
+
 
 // ═══════════ A PEÇA DE INDICAÇÃO — A ÚNICA PARA QUEM JÁ É CLIENTE ════════
 //
