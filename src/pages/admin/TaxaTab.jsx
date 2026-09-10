@@ -410,6 +410,23 @@ function LinhaDoParceiro({ linha, mes, config, ownerUid, onMudou }) {
         </label>
       </div>
 
+      {/* O QUE O GATEWAY DISSE POR ÚLTIMO SOBRE ESTA FATURA.
+        *
+        * ⚠️ `asaasUltimoEvento` E `asaasUltimoMotivo` ERAM GRAVADOS SEM
+        * LEITOR. O webhook os escreve justamente nos casos em que alguém
+        * precisa entender por que a fatura mudou sozinha — estorno,
+        * chargeback, cobrança apagada no painel do Asaas — e a tela do dono
+        * mostrava só o status final. A fatura reabria e o motivo ficava no
+        * banco.
+        *
+        * Some quando não há cobrança no gateway, que é o estado de hoje. */}
+      {fatura?.asaasUltimoEvento && (
+        <p className="mt-3 border-t border-border pt-3 font-mono text-[10px] uppercase tracking-wider text-textMuted">
+          gateway: {fatura.asaasUltimoEvento}
+          {fatura.asaasUltimoMotivo ? ` · ${fatura.asaasUltimoMotivo}` : ''}
+        </p>
+      )}
+
       <div className="mt-3 flex flex-wrap items-baseline gap-3 border-t border-border pt-3">
         <div className="flex-1">
           {conta.liquido === null ? (

@@ -14,6 +14,7 @@
  *   node scripts/testar-gateway.mjs      (ou: npm run testar:gateway)
  */
 
+import { readFileSync } from 'node:fs';
 import {
   documentoValido,
   podeCobrar,
@@ -626,6 +627,76 @@ checar('e vários no mesmo documento',
     limiteCriancas: 20,
     descontos: [{ origem: 'antecipacao', fracao: 0.5 }],
   }));
+
+bloco('Campo que o gateway grava é campo que alguém lê');
+
+// ⚠️ POR QUE ESTE BLOCO
+// Seis campos `asaas*` eram gravados e NENHUM era lido por tela nenhuma. Dois
+// deles custavam caro: `asaasUrl` é o link de pagamento da fatura — o dono
+// gerava a cobrança e o motorista continuava vendo só o PIX copia-e-cola, sem
+// nunca receber o link que acabou de nascer; e `asaasUltimoEvento` /
+// `asaasUltimoMotivo` são o POR QUÊ de a fatura ter mudado sozinha (estorno,
+// chargeback, cobrança apagada no painel), que ficava só no banco enquanto a
+// tela do dono mostrava o status final sem explicação.
+//
+// O escrito-sem-leitor é o padrão que este projeto nomeia como o mais caro
+// dele: ninguém recebe erro, a tela só cala.
+
+const fontesQueEscrevem = [
+  '../functions/lib/asaasCobranca.js',
+  '../functions/lib/asaasWebhook.js',
+].map((rel) => readFileSync(new URL(rel, import.meta.url), 'utf8')).join('\n');
+
+const fontesQueLeem = [
+  '../src/pages/tio/TioTaxa.jsx',
+  '../src/pages/admin/TaxaTab.jsx',
+  '../src/components/admin/FichaDoMotorista.jsx',
+  '../src/services/taxaService.js',
+].map((rel) => readFileSync(new URL(rel, import.meta.url), 'utf8')).join('\n');
+
+// ⚠️ AS EXCEÇÕES SÃO NOMEADAS, UMA A UMA, COM O MOTIVO. Lista de exceção sem
+// motivo é lista que cresce até virar a regra.
+const SO_DO_SERVIDOR = {
+  // Chaves de reconciliação: é por elas que o webhook ACHA a fatura e que a
+  // callable evita cobrar o mesmo mês duas vezes. Nenhuma tela endereça nada.
+  asaasPaymentId: 'chave de reconciliação do webhook',
+  asaasCustomerId: 'id do cliente no gateway, vive em taxaParceiros (só o dono lê)',
+  // Quando a cobrança nasceu. O que a tela precisa é o VENCIMENTO, que já é
+  // congelado em `vencimento` — um segundo instante seria uma segunda verdade.
+  asaasCriadaEm: 'o vencimento é o que a tela mostra, e ele já é congelado',
+};
+
+const campos = [
+  // A forma de CAMPO (`asaasXxx:`), nunca o identificador solto — sem isso o
+  // varredor colhe `asaasApi` e `asaasWebhook` dos próprios `require`.
+  ...new Set((fontesQueEscrevem.match(/\basaas[A-Z][A-Za-z]*(?=:)/g) || [])),
+];
+checar('o varredor achou os campos gravados', true, campos.length >= 5);
+
+for (const campo of campos) {
+  if (SO_DO_SERVIDOR[campo]) {
+    checar(`${campo} é do servidor por decisão (${SO_DO_SERVIDOR[campo]})`, false,
+      fontesQueLeem.includes(campo));
+  } else {
+    checar(`alguma tela lê ${campo}`, true, fontesQueLeem.includes(campo));
+  }
+}
+
+// Sonda positiva: o varredor tem que reconhecer um campo que ninguém lê.
+checar('o varredor reconhece campo inexistente (sonda positiva)', false,
+  fontesQueLeem.includes('asaasCampoQueNinguemLe'));
+
+// E os dois casos concretos, por nome — se o varredor mudar de forma, estes
+// não deixam a garantia sumir junto.
+const fonteTaxaTio = readFileSync(
+  new URL('../src/pages/tio/TioTaxa.jsx', import.meta.url), 'utf8');
+checar('o motorista alcança o link de pagamento', true,
+  fonteTaxaTio.includes('fatura.asaasUrl'));
+const fonteTaxaDono = readFileSync(
+  new URL('../src/pages/admin/TaxaTab.jsx', import.meta.url), 'utf8');
+checar('o dono vê o motivo do último evento', true,
+  fonteTaxaDono.includes('asaasUltimoEvento')
+  && fonteTaxaDono.includes('asaasUltimoMotivo'));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

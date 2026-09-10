@@ -348,7 +348,32 @@ function FaturaAberta({ fatura }) {
           {isencao.ate ? ` A isenção do teste vai até ${formatDate(isencao.ate)}.` : ''}
         </p>
       ) : (
-        <PagamentoPix fatura={fatura} />
+        <>
+          {/* A COBRANÇA DO GATEWAY, QUANDO ELA EXISTE.
+            *
+            * ⚠️ `asaasUrl` ERA GRAVADO E NINGUÉM LIA. `criarCobrancaDaFatura`
+            * guarda o `invoiceUrl` desde que o gateway entrou no projeto, e
+            * nenhuma tela o abria: o dono gerava a cobrança, o motorista
+            * continuava vendo só o PIX copia-e-cola, e o boleto/link que
+            * acabou de nascer não chegava a quem tem que pagar.
+            *
+            * Vem ANTES do PIX porque, quando a cobrança existe, é ela que a
+            * plataforma reconcilia sozinha — o PIX direto exige baixa à mão.
+            * E some quando não existe: hoje, com o gateway desligado, esta
+            * tela é exatamente a de antes. */}
+          {fatura.asaasUrl && (
+            <a
+              href={fatura.asaasUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="tap mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary font-bold text-white"
+            >
+              <Receipt size={16} />
+              Pagar esta fatura
+            </a>
+          )}
+          <PagamentoPix fatura={fatura} />
+        </>
       )}
     </div>
   );

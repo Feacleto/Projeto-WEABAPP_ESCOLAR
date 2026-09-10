@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 2089 casos em 37 scripts. O PRIMEIRO é
+npm run testar                   # 2099 casos em 37 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -795,6 +795,19 @@ havia base real.
   [AvisoDaPlataforma](src/components/tio/AvisoDaPlataforma.jsx) só explica.
   Ele mora no `TioLayout` e é omitido em `/tio/taxa` de propósito: cobrança
   que cobre a própria tela de pagamento não deixa ninguém pagar.
+
+⚠️ **CAMPO QUE O GATEWAY GRAVA É CAMPO QUE ALGUÉM LÊ**, e por um tempo
+nenhum dos seis era. Dois custavam caro: `asaasUrl` é o link de pagamento da
+fatura — o dono gerava a cobrança e o motorista continuava vendo só o PIX
+copia-e-cola, sem nunca receber o link que acabou de nascer; e
+`asaasUltimoEvento`/`asaasUltimoMotivo` são o POR QUÊ de a fatura ter mudado
+sozinha (estorno, chargeback, cobrança apagada no painel), que ficava no banco
+enquanto a tela do dono mostrava só o status final. Hoje o primeiro aparece em
+`/tio/taxa` e os outros na aba Mês. `npm run testar:gateway` varre os campos
+gravados e exige leitor para cada um, com as exceções **nomeadas uma a uma e
+com motivo** — `asaasPaymentId` e `asaasCustomerId` são chaves de
+reconciliação, e `asaasCriadaEm` perde para o `vencimento`, que já é
+congelado.
 
 **O gateway cobra a TAXA e só ela.** `criarCobrancaDaFatura` só sabe ler
 `faturasParceiro`; a mensalidade da família continua PIX direto pai→motorista.
