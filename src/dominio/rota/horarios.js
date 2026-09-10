@@ -123,6 +123,48 @@ export function horaCurta(hhmm) {
 export const CAMPO_DA_DIRECAO = { ida: 'horaPega', volta: 'horaEntrega' };
 
 /**
+ * O AVISO DE QUE O HORÁRIO COMBINADO MUDOU — { title, body }.
+ *
+ * ── POR QUE A FRASE MORA AQUI, E NÃO NO SERVICE QUE A ENVIA
+ * Porque ela tem uma invariante, e invariante quer teste: **nunca dizer "era
+ * X" quando não havia X**. O horário PRESUMIDO existe neste arquivo (o chute
+ * por período, que a tela do pai esconde de propósito), e é fácil comparar
+ * contra ele por engano — aí a primeira definição de horário vira "era 6h30"
+ * para uma mãe que nunca viu 6h30 escrito em lugar nenhum. Mensagem de
+ * cobrança já mora no domínio pelo mesmo motivo (`chargeMessage`).
+ *
+ * ── ⚠️ A FRASE NÃO DIZ A PARTIR DE QUANDO
+ * A mudança vale na hora: nada no app agenda horário pro futuro. "A partir de
+ * amanhã" seria inventar um comportamento que o código não tem — e seria
+ * exatamente a linha em cima da qual ela decide a que horas sair de casa.
+ *
+ * Devolve `null` quando não há o que avisar: sem hora nova, ou quando a nova
+ * é igual à anterior. Quem chama não precisa saber decidir isso.
+ */
+export function avisoDeMudancaDeHorario({ nome, direcao, de, para } = {}) {
+  const nova = normalizaHora(para);
+  if (!nova) return null;
+  const antiga = normalizaHora(de);
+  if (antiga && antiga === nova) return null;
+
+  // Só o primeiro nome: um responsável pode ter dois filhos, e "o horário
+  // mudou" sem dizer de quem não informa nada — mas o nome inteiro num push
+  // empurra a hora, que é a única coisa que ela precisa ler, para fora.
+  const quem = String(nome || '').trim().split(/\s+/)[0] || 'Seu filho';
+  const verbo = direcao === 'volta' ? 'entregue' : 'pego';
+
+  return {
+    // Sem hora anterior o título não pode dizer "mudou": para ela nada mudou,
+    // foi combinado agora. É o caso de toda criança cujo horário o motorista
+    // ainda não tinha definido.
+    title: antiga ? 'Horário mudou' : 'Horário combinado',
+    body: antiga
+      ? `${quem} passa a ser ${verbo} às ${horaCurta(nova)} — era ${horaCurta(antiga)}.`
+      : `${quem} passa a ser ${verbo} às ${horaCurta(nova)}.`,
+  };
+}
+
+/**
  * Horário presumido por período, pra ponte com o modelo antigo.
  *
  * Só serve pra ninguém parar de operar durante a migração. O que importa é o

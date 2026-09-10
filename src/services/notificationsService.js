@@ -13,6 +13,7 @@ import {
   getDocs,
   writeBatch,
 } from 'firebase/firestore';
+import { avisoDeMudancaDeHorario } from '../dominio/rota/horarios';
 import { auth, db } from './../firebase/config';
 import { computeDisplayStatus } from './paymentsService';
 // O COMENTARIO QUE JUSTIFICAVA AS COPIAS LOCAIS ERA FALSO.
@@ -173,6 +174,63 @@ export async function notifyPaymentConfirmed({
     });
   } catch (err) {
     console.error('Falha ao criar notificação payment_confirmed:', err);
+  }
+}
+
+/**
+ * Avisa o responsável quando o motorista muda o horário combinado.
+ *
+ * ── POR QUE ESTA NOTIFICAÇÃO É DIFERENTE DE TODAS AS OUTRAS
+ * As outras contam algo que ACONTECEU e que a pessoa ia ver de qualquer jeito:
+ * o pagamento entrou, o contrato foi aceito, a escola não tem aula. Esta conta
+ * a mudança de um número que ela acha que já sabe — e é justamente por achar
+ * que sabe que ela não vai abrir o app pra reler.
+ *
+ * O horário NUNCA esteve escondido dela: `HorarioDoDia` o mostra no cartão do
+ * Início, que o próprio arquivo chama de "o motivo de ela abrir o app". Não
+ * faltava informação, faltava alguém dizer que ela mudou. O motorista
+ * ajustava em `/tio/horarios`, a mãe descia na hora antiga, e a perua já tinha
+ * passado — com o app tendo sido a coisa que mudou o combinado.
+ *
+ * ── ⚠️ A FRASE NÃO DIZ A PARTIR DE QUANDO, E ISSO É DELIBERADO
+ * A mudança vale na hora: nada no app agenda horário pro futuro. Escrever "a
+ * partir de amanhã" seria inventar um comportamento que o código não tem — e
+ * seria exatamente a frase em cima da qual ela decidiria a que horas sair de
+ * casa.
+ *
+ * ── ⚠️ E O ERRO É ENGOLIDO, COMO NAS DEMAIS
+ * Falhar aqui não pode desfazer o horário que já foi gravado: o acordo vale
+ * mais que o aviso dele. O preço é conhecido — o motorista pode achar que
+ * avisou sem ter avisado —, e é menor que o de a gravação falhar pela metade.
+ */
+export async function notifyScheduleChanged({
+  parentUid,
+  childId,
+  childName,
+  direcao,
+  de,
+  para,
+}) {
+  // Sem responsável vinculado não há a quem avisar: a criança está cadastrada
+  // e o convite ainda não foi resgatado. Não é erro, é o caso comum do
+  // primeiro dia.
+  if (!parentUid) return;
+  // Quem decide SE há aviso e QUAL é a frase é o domínio — inclusive o caso
+  // "não mudou nada", que ele devolve como `null`.
+  const aviso = avisoDeMudancaDeHorario({ nome: childName, direcao, de, para });
+  if (!aviso) return;
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      userId: parentUid,
+      type: 'schedule_changed',
+      title: aviso.title,
+      body: aviso.body,
+      childId: childId || null,
+      childName: childName || null,
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('Falha ao criar notificação schedule_changed:', err);
   }
 }
 

@@ -19,6 +19,7 @@ import EmptyState from '../../components/common/EmptyState';
 import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
 import { updateChild } from '../../services/childrenService';
+import { notifyScheduleChanged } from '../../services/notificationsService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 import {
   normalizaHora,
@@ -103,17 +104,57 @@ export default function TioHorarios() {
     aplicar([{ child: editando.child, para: hora }]);
   }
 
+  /**
+   * ⚠️ O QUE NÃO MUDOU NÃO É GRAVADO NEM AVISADO.
+   *
+   * A cascata PROPÕE uma lista inteira, e boa parte dela costuma já estar na
+   * hora certa — o motorista confirma a proposta e sai daqui com cinco itens
+   * dos quais dois mudaram. Sem esta comparação, as outras três famílias
+   * receberiam "seu horário mudou" com o mesmo horário de sempre. Aviso que
+   * chega sem ter havido mudança é o começo de a pessoa parar de ler avisos,
+   * e é a mesma lição que `avisoDoMomento` já aprendeu nesta base.
+   *
+   * ⚠️ E O "ANTES" SAI DO CAMPO CRU, NÃO DE `horaNaDirecao`.
+   * Aquela devolve o horário PRESUMIDO quando não há um combinado — um chute
+   * do app que a tela do pai esconde de propósito. Comparado contra ele, a
+   * primeira definição de horário viraria "era 6h30" para uma mãe que nunca
+   * viu 6h30 escrito em lugar nenhum, e sumiria de vez quando o chute
+   * acertasse o valor novo. O campo cru vazio significa o que parece: nunca
+   * foi combinado.
+   */
   async function aplicar(lista) {
     setSalvando(true);
     try {
+      const campo = CAMPO_DA_DIRECAO[direcao];
+      const mudaram = [];
       for (const item of lista) {
+        const antes = normalizaHora(item.child[campo]) || null;
+        if (antes === item.para) continue;
         await gravar(item.child, item.para, direcao);
+        // Depois de gravar, nunca antes: avisar uma mudança que não foi
+        // gravada é pior que não avisar.
+        await notifyScheduleChanged({
+          parentUid: item.child.parentUid || null,
+          childId: item.child.id,
+          childName: item.child.name,
+          direcao,
+          de: antes,
+          para: item.para,
+        });
+        mudaram.push(item);
       }
-      toast.success(
-        lista.length === 1
-          ? `${lista[0].child.name.split(' ')[0]}: ${horaCurta(lista[0].para)}`
-          : `${lista.length} horários atualizados.`
-      );
+
+      if (mudaram.length === 0) {
+        // Dizer "atualizado" aqui ensinaria que o botão não faz nada — ele
+        // fez: conferiu e não havia o que mudar.
+        toast('Nada mudou — já estava nesse horário.');
+      } else {
+        toast.success(
+          mudaram.length === 1
+            ? `${mudaram[0].child.name.split(' ')[0]}: ${horaCurta(mudaram[0].para)}`
+            : `${mudaram.length} horários atualizados.`
+        );
+      }
       setEditando(null);
       setCascata(null);
     } catch (err) {

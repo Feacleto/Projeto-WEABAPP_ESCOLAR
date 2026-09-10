@@ -36,6 +36,11 @@ const URL_BY_TYPE = {
   payment_due: '/pai/finance',
   contract_accepted: '/tio',
 
+  // O toque cai no Início dela, que é onde `HorarioDoDia` mostra a hora.
+  // Sem esta linha o padrão é '/', que resolve pra `/pai` pelo `painelDe` —
+  // funciona, mas passa pelo roteador antes de chegar onde ela quer olhar.
+  schedule_changed: '/pai',
+
   absence_declared: '/tio',
   absence_confirm: '/pai',
   alt_pickup: '/tio',

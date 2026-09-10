@@ -19,7 +19,7 @@ import {
   horariosCombinados, semHorarioCombinado, horaNaDirecao,
   estadoNoDia, ESTADOS, precisaDaPerua,
   blocosDaDirecao, diaCompleto, blocoDoMomento, esperaAte,
-  avisosDeTempo, proporCascata,
+  avisosDeTempo, proporCascata, avisoDeMudancaDeHorario,
 } from '../src/dominio/rota/horarios.js';
 import { chaveDoNome, proporEscolasDasCriancas } from '../src/dominio/escola/nomeEscola.js';
 import {
@@ -741,6 +741,78 @@ t('nenhum passo fala de turno, período ou kanban', () => {
   const mortos = ['turno', 'kanban', 'arraste', 'período da manhã'];
   const achados = mortos.filter((p) => textoDosPassos.includes(p));
   eq(achados, [], 'vocabulário do modelo antigo no texto que o usuário lê');
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// O AVISO DE MUDANÇA DE HORÁRIO
+//
+// A invariante que justifica estes casos existirem: a frase NUNCA pode dizer
+// "era X" quando não havia X. O horário presumido (o chute por período) mora
+// neste mesmo arquivo, e comparar contra ele transforma a primeira definição
+// de horário num "era 6h30" que a mãe nunca viu escrito.
+// ══════════════════════════════════════════════════════════════════════════
+
+t('mudança de horário diz o de e o para', () => {
+  const a = avisoDeMudancaDeHorario({ nome: 'João Silva', direcao: 'ida', de: '06:30', para: '06:10' });
+  eq(a.title, 'Horário mudou');
+  eq(a.body, 'João passa a ser pego às 6h10 — era 6h30.');
+});
+
+t('a volta usa ENTREGUE, não pego', () => {
+  const a = avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'volta', de: '12:35', para: '12:20' });
+  eq(a.body, 'Ana passa a ser entregue às 12h20 — era 12h35.');
+});
+
+t('SEM hora anterior a frase não inventa um "era"', () => {
+  const a = avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: null, para: '06:10' });
+  eq(a.title, 'Horário combinado');
+  eq(a.body, 'Ana passa a ser pego às 6h10.');
+  eq(a.body.includes('era'), false, 'não pode citar um horário que ela nunca viu');
+});
+
+t('string vazia conta como sem hora anterior', () => {
+  // É o que o campo cru guarda quando o motorista nunca definiu:
+  // `childrenService` grava `horaPega: data.horaPega?.trim() || ''`.
+  const a = avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: '', para: '06:10' });
+  eq(a.title, 'Horário combinado');
+});
+
+t('hora igual não vira aviso', () => {
+  // A cascata propõe a lista inteira, e boa parte dela já está na hora certa.
+  eq(avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: '06:10', para: '06:10' }), null);
+});
+
+t('formato diferente da MESMA hora também não vira aviso', () => {
+  eq(avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: '6:10', para: '06:10' }), null);
+});
+
+t('sem hora nova não há aviso', () => {
+  eq(avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: '06:30', para: '' }), null);
+  eq(avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: '06:30', para: null }), null);
+});
+
+t('hora inválida não vira aviso com hora vazia dentro', () => {
+  eq(avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: '06:30', para: '99:99' }), null);
+});
+
+t('sem nome a frase continua fazendo sentido', () => {
+  const a = avisoDeMudancaDeHorario({ nome: '', direcao: 'ida', de: '06:30', para: '06:10' });
+  eq(a.body, 'Seu filho passa a ser pego às 6h10 — era 6h30.');
+});
+
+t('só o primeiro nome entra — o push mostra poucas palavras', () => {
+  const a = avisoDeMudancaDeHorario({ nome: 'Maria Eduarda Souza', direcao: 'ida', de: '07:00', para: '06:45' });
+  eq(a.body.startsWith('Maria passa'), true, a.body);
+});
+
+t('hora cheia sai sem os minutos', () => {
+  const a = avisoDeMudancaDeHorario({ nome: 'Ana', direcao: 'ida', de: '06:30', para: '07:00' });
+  eq(a.body, 'Ana passa a ser pego às 7h — era 6h30.');
+});
+
+t('chamada sem argumento nenhum não explode', () => {
+  eq(avisoDeMudancaDeHorario(), null);
+  eq(avisoDeMudancaDeHorario({}), null);
 });
 
 console.log('\n' + '─'.repeat(66));
