@@ -226,8 +226,16 @@ try {
 } catch (e) {
   checar('e ele e JSON valido', true, `erro: ${e.message}`);
 }
+// ⚠️ A ASSERCAO ERA `checar(..., true, true)` — o unico self-compare do
+// repositorio — e o `if` em volta desligava treze casos em silencio.
+//
+// `JSON.parse('null')` NAO lanca: devolve null, o catch nao roda, o bloco
+// nao entra, e some junto a lista de PROIBIDOS (`aggregateRating`, `offers`,
+// `price`), que e o que este bloco existe para guardar. Agora o tipo e
+// afirmado, entao um JSON-LD que virasse `null` reprova aqui em vez de
+// levar treze casos consigo.
+checar('e ele e um objeto JSON', 'object', dados === null ? 'null' : typeof dados);
 if (dados) {
-  checar('e ele e JSON valido', true, true);
   checar('descreve uma Organization', 'Organization', dados['@type']);
 
   // ⚠️ A LISTA DO QUE NAO PODE ESTAR AQUI. Nota inventada em dado estruturado

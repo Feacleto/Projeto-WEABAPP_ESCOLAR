@@ -188,8 +188,22 @@ CENARIOS.forEach(([tipo, prefs], i) => {
   checar(`espelho do guarda, caso ${i + 1}`,
     tocaNoAparelho(tipo, prefs), tocaServidor(tipo, prefs));
 });
-// Sonda positiva: duas funções quebradas do mesmo jeito passariam.
-checar('e a comparação tem conteúdo', false, tocaServidor('payment_due_5d', [ESPECIE.PRAZO]));
+// ⚠️ A SONDA ESTAVA COM A POLARIDADE INVERTIDA, e o comentário anunciava
+// justamente o que ela não impedia.
+//
+// Ela esperava `false` — o mesmo valor que uma função gutada a
+// `return false` devolveria. Os sete casos de espelho acima comparam as duas
+// cópias entre si; com as duas devolvendo `false` sempre, os sete passam E a
+// sonda passa junto. Ela só descartava "devolve `true` sempre", que é o
+// cenário oposto ao que preocupa aqui.
+//
+// A sonda certa exige um `true` do servidor: a chegada da criança tocando
+// mesmo com tudo desligado é a afirmação mais forte deste arquivo, e é ela
+// que uma função gutada a `false` quebraria.
+checar('a sonda exige um true do servidor', true,
+  tocaServidor('child_arrived_home', DESLIGAVEIS));
+checar('e um false, para não ser sempre-verdade', false,
+  tocaServidor('payment_due_5d', [ESPECIE.PRAZO]));
 
 bloco('7. A tela mostra só o que dá para desligar');
 

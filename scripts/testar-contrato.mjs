@@ -359,9 +359,21 @@ const conferirSoma = (nome, contrato) =>
 // menos o desconto total, MAIS o que o piso absorveu. Se alguém acrescentar
 // uma trava nova (um teto por faixa, um mínimo por criança) sem registrá-la no
 // documento, é aqui que aparece.
-const valorSeExplica = (nome, c) => {
+//
+// ⚠️ O RAMO NULO PRECISA SER PEDIDO, NÃO INFERIDO.
+//
+// Ele era `if (v.valorMensal == null) return checar(nome, null, ...)` — e
+// isso transformava a invariante numa tautologia sempre que o valor fosse
+// nulo. Existia para o caso 'plano desconhecido', e valia para os SEIS
+// chamadores: se `montarContrato` regredisse a nunca calcular `valorMensal`,
+// os seis ficariam verdes — num bloco que existe por causa de um contrato
+// assinado que se contradizia.
+const valorSeExplica = (nome, c, esperaNulo = false) => {
   const v = c.valores;
-  if (v.valorMensal == null) return checar(nome, null, v.valorMensal);
+  if (esperaNulo) return checar(nome, null, v.valorMensal);
+  if (v.valorMensal == null) {
+    return checar(`${nome} — valorMensal não podia ser nulo aqui`, 'um número', null);
+  }
   const esperado = centavos(
     centavos(c.plano.precoTabela * (1 - v.descontoTotal)) + (v.descontoAbsorvido || 0)
   );
@@ -372,7 +384,7 @@ valorSeExplica('sem desconto', base);
 valorSeExplica('com fechamento', comAntecipacao);
 valorSeExplica('com o piso mordendo', tudo);
 valorSeExplica('fundador com fechamento', fundadorAntecipado);
-valorSeExplica('plano desconhecido', montar({ plano: 'trimestral' }));
+valorSeExplica('plano desconhecido', montar({ plano: 'trimestral' }), true);
 valorSeExplica('vitalício, que escapa do piso', montar({ fundador: FUNDADOR.VITALICIO }));
 
 conferirSoma('sem desconto nenhum', base);
