@@ -13,32 +13,42 @@ import { TRIOS, SLOTS } from '../../marca/fundoDoLogin';
  * que é módulo puro e por isso TESTÁVEL (`npm run testar:fundo`). Este
  * arquivo só sabe desenhar os onze blocos.
  *
- * ── ⚠️ POR QUE ELE SÓ APARECE A PARTIR DE 1340px, E A CONTA
- * A regra número um do fundo é **nunca atrás do cartão**. Cartão de fundo
- * cortado pelo formulário lê como bug — e pior quando o que corta é um valor
- * em reais.
+ * ── ⚠️ O CARD FICA CENTRADO, E É ISSO QUE DEFINE A LARGURA MÍNIMA
+ * A regra número um do fundo é **nunca atrás do formulário**. Cartão de fundo
+ * cortado lê como bug — e pior quando o que corta é um valor em reais.
  *
- * Quem decide isso é o eixo X, e nenhum ajuste de altura resolve:
+ * A primeira versão resolvia isso encostando o formulário à direita, e ela
+ * funcionava em 1340px e ficava errada em tudo acima: numa tela de 1900 o
+ * card voava para a borda e sobravam ~320px de vazio no meio da coluna.
  *
- *   coluna direita  = 54% da largura da janela (o grid do Login é 46fr/54fr)
- *   borda direita   = 52px de padding
- *   formulário      = 380px (`max-w-[380px]`)
- *   → a esquerda do formulário começa em  0,54·L − 432
+ * Agora o card fica CENTRADO e os cartões penduram na esquerda dele. O vão
+ * entre fundo e formulário é constante em qualquer largura; o que cresce nas
+ * pontas é o vazio, e vazio na ponta lê como respiro.
  *
- *   o cartão mais avançado é o do slot 2: left 40 + 244 de largura = 284
+ * O preço é a largura mínima, e ele não é pequeno. Com o card no centro, o
+ * espaço à esquerda dele é METADE do que sobra:
  *
- *   0,54·L − 432 ≥ 284   →   L ≥ 1326px
+ *   coluna direita   = fração · L        (54% no login, 58% no convite)
+ *   centro do card   = (1 − fração/2) · L ... na prática: início + metade
+ *   borda esquerda do cartão de fundo = centro − cartão/2 − vão − 244
+ *   e ela precisa caber depois da borda da coluna, com 16px de margem
  *
- * 1340 dá ~8px de folga no limite e ~18px numa tela de 1360. Um notebook de
- * 1366 com barra de rolagem (≈1351 de viewport) ainda entra.
+ * Login (fração 0,54 · card 380 · vão 24):
+ *   0,73·L − 190 − 24 − 244 ≥ 0,46·L + 16   →   0,27·L ≥ 474   →   L ≥ 1756
  *
- * ⚠️ **O NÚMERO DEPENDE DE `max-w-[380px]` NO CARTÃO DO FORMULÁRIO.** Se
- * alguém alargar o cartão, esta conta muda e o fundo passa a ser cortado —
- * `npm run testar:fundo` refaz a conta a partir do próprio Login.jsx para
- * essa mudança falhar aqui em vez de aparecer na tela.
+ * Convite (fração 0,58 · card 520 · vão 24):
+ *   0,71·L − 260 − 24 − 244 ≥ 0,42·L + 16   →   0,29·L ≥ 544   →   L ≥ 1876
  *
- * Abaixo de 1340px o fundo simplesmente NÃO EXISTE (`hidden`), em vez de ser
- * apertado: fundo comprimido não é meio-fundo, é fundo quebrado.
+ * Daí `1800` e `1980`, com ~12px e ~30px de folga. **É bem mais alto que os
+ * 1340 de antes** — abaixo disso o fundo simplesmente não existe, e o
+ * formulário centrado fica como sempre foi. Fundo comprimido não é
+ * meio-fundo, é fundo quebrado.
+ *
+ * ⚠️ A CONTA DEPENDE DE TRÊS NÚMEROS QUE MORAM FORA DAQUI: a fração da coluna
+ * (no `grid-cols` da página), a largura do formulário (`max-w-[…]`) e a
+ * porteira. `npm run testar:fundo` refaz a conta a partir dos arquivos, então
+ * alargar o formulário falha no teste em vez de aparecer como cartão cortado
+ * do outro lado da tela.
  *
  * ── POR QUE OS NOVE FICAM MONTADOS
  * O trio inativo fica em `opacity-0` em vez de sair do DOM, e é o que permite
@@ -427,19 +437,21 @@ const DURACAO = { 1: '', 2: 'fundo-flutua-b', 3: 'fundo-flutua-c' };
  * qualquer `min-[` com interpolação em `src/`, em comentário ou não.
  */
 const PORTEIRA = {
-  1340: 'hidden min-[1340px]:block',
-  1500: 'hidden min-[1500px]:block',
+  1800: 'hidden min-[1800px]:block',
+  1980: 'hidden min-[1980px]:block',
 };
 
-function Cartao({ cartao, ativo }) {
+function Cartao({ cartao, ativo, largura }) {
   const slot = SLOTS[cartao.slot];
+  // `50% + metade do formulário + vão` — ver o comentário de SLOTS.
+  const direita = `calc(50% + ${largura / 2 + slot.vao}px)`;
   return (
     <div
       className={`fundo-flutua ${DURACAO[cartao.slot]} absolute w-[244px] rounded-[18px] bg-card p-4 shadow-fundo transition-[opacity,transform] duration-[420ms] ease-out ${
         ativo ? 'opacity-100' : 'translate-y-3.5 opacity-0'
       }`}
       style={{
-        left: slot.left,
+        right: direita,
         top: slot.top,
         bottom: slot.bottom,
         animationDelay: slot.atraso,
@@ -454,9 +466,9 @@ function Cartao({ cartao, ativo }) {
   );
 }
 
-export default function FundoDoLogin({ assunto, assuntos, desde = 1340 }) {
+export default function FundoDoLogin({ assunto, assuntos, desde = 1800, largura = 380 }) {
   const montados = assuntos && assuntos.length ? assuntos : [assunto];
-  const porteira = PORTEIRA[desde] || PORTEIRA[1340];
+  const porteira = PORTEIRA[desde] || PORTEIRA[1800];
 
   return (
     <div
@@ -486,7 +498,12 @@ export default function FundoDoLogin({ assunto, assuntos, desde = 1340 }) {
 
       {montados.map((chave) =>
         (TRIOS[chave] || []).map((cartao) => (
-          <Cartao key={`${chave}-${cartao.id}`} cartao={cartao} ativo={chave === assunto} />
+          <Cartao
+            key={`${chave}-${cartao.id}`}
+            cartao={cartao}
+            ativo={chave === assunto}
+            largura={largura}
+          />
         ))
       )}
     </div>

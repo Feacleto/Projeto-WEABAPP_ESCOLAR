@@ -161,51 +161,47 @@ const num = (fonte, re, nome) => {
 const larguraCartao = num(fonteFundo, /absolute w-\[(\d+)px\]/, 'a largura do cartao de fundo');
 checar('o cartao de fundo tem 244px', 244, larguraCartao);
 
-// O alcance horizontal e o slot que avanca mais — hoje o do meio, que e
-// desalinhado de propósito (alinhamento perfeito le como coluna de conteudo).
-const alcance = Math.max(...Object.values(SLOTS).map((s) => s.left)) + larguraCartao;
-checar('o slot do meio e o que avanca mais', 40 + 244, alcance);
+// O vao do slot mais colado no formulario. Ele e o menor dos tres, e por isso
+// e ele que decide se ha sobreposicao.
+const vaoMinimo = Math.min(...Object.values(SLOTS).map((x) => x.vao));
+checar('o slot do meio e o mais colado', 8, vaoMinimo);
 
 const TELAS = [
-  {
-    nome: 'login',
-    fonte: fonteLogin,
-    fracao: num(fonteLogin, /minmax\(0,(\d+)fr\)\]/, 'a fracao da coluna do login') / 100,
-    cartao: num(fonteLogin, /z-10 w-full max-w-\[(\d+)px\]/, 'o cartao do login'),
-    gate: num(fonteLogin, /min-\[(\d+)px\]:justify-end/, 'o breakpoint do login'),
-    padding: num(fonteLogin, /min-\[\d+px\]:pr-\[(\d+)px\]/, 'o padding do login'),
-  },
-  {
-    nome: 'first-access',
-    fonte: fonteFirst,
-    fracao: num(fonteFirst, /minmax\(0,(\d+)fr\)\]/, 'a fracao da coluna do first-access') / 100,
-    cartao: num(fonteFirst, /mx-auto flex w-full max-w-\[(\d+)px\]/, 'o cartao do first-access'),
-    gate: num(fonteFirst, /min-\[(\d+)px\]:ml-auto/, 'o breakpoint do first-access'),
-    padding: num(fonteFirst, /min-\[\d+px\]:pr-\[(\d+)px\]/, 'o padding do first-access'),
-  },
+  { nome: 'login', fonte: fonteLogin, cartaoRe: /z-10 w-full max-w-\[(\d+)px\]/ },
+  { nome: 'first-access', fonte: fonteFirst, cartaoRe: /mx-auto flex w-full max-w-\[(\d+)px\]/ },
 ];
 
 for (const t of TELAS) {
-  // A esquerda do formulario, na largura exata em que o fundo liga.
-  const bordaDoForm = t.fracao * t.gate - t.padding - t.cartao;
-  const folga = Math.round((bordaDoForm - alcance) * 10) / 10;
-  console.log(
-    `       ${t.nome}: coluna ${Math.round(t.fracao * 100)}% · cartao ${t.cartao}px · ` +
-    `liga em ${t.gate}px → folga de ${folga}px`
-  );
-  checar(`${t.nome}: o fundo NAO encosta no formulario no proprio breakpoint`,
-    true, folga >= 4);
+  const fracao =
+    num(
+      t.fonte,
+      /minmax\(0,\d+fr\)_minmax\(0,(\d+)fr\)\]/,
+      `a fracao da coluna do ${t.nome}`
+    ) / 100;
+  const cartao = num(t.fonte, t.cartaoRe, `o cartao do ${t.nome}`);
+  const gate = num(t.fonte, /desde=\{(\d+)\}/, `o desde= do ${t.nome}`);
+  const declarada = num(t.fonte, /largura=\{(\d+)\}/, `a largura= do ${t.nome}`);
 
-  // E o fundo tem que ligar no MESMO numero em que o formulario se move: se
-  // o cartao vai pra direita e o fundo nao aparece, sobra uma faixa vazia de
-  // 300px que nao le como respiro — le como coisa que nao carregou.
-  // E o fundo tem que ligar no MESMO numero em que o formulario se move.
-  // Entre um e outro existiria a faixa vazia de 300px que nao le como
-  // respiro, ou pior: o fundo visivel com o cartao ainda centrado.
-  const declarado = num(t.fonte, /desde=\{(\d+)\}/, `o desde= do ${t.nome}`);
-  checar(`${t.nome}: o desde= bate com o breakpoint do layout`, t.gate, declarado);
+  // ⚠️ A LARGURA PASSADA AO FUNDO TEM QUE SER A DO FORMULARIO. Se ela mentir,
+  // o offset sai errado e os cartoes entram por baixo do card — e nada mais
+  // no sistema acusa, porque as duas coisas ficam certas isoladamente.
+  checar(`${t.nome}: a largura passada bate com o max-w do cartao`, cartao, declarada);
+
+  // Com o card CENTRADO, o espaco a esquerda dele e metade do que sobra.
+  //   centro = inicio da coluna + metade da coluna
+  //   borda esquerda do cartao de fundo = centro - cartao/2 - vao - 244
+  const inicioColuna = (1 - fracao) * gate;
+  const centro = inicioColuna + (fracao * gate) / 2;
+  const bordaDoFundo = centro - cartao / 2 - vaoMinimo - larguraCartao;
+  const folga = Math.round((bordaDoFundo - inicioColuna) * 10) / 10;
+
+  console.log(
+    `       ${t.nome}: coluna ${Math.round(fracao * 100)}% · cartao ${cartao}px · ` +
+    `liga em ${gate}px → folga de ${folga}px na borda`
+  );
+  checar(`${t.nome}: o fundo cabe no proprio breakpoint`, true, folga >= 8);
   checar(`${t.nome}: e o componente conhece essa porteira`, true,
-    fonteFundo.includes(`  ${declarado}: 'hidden min-[${declarado}px]:block'`));
+    fonteFundo.includes(`  ${gate}: 'hidden min-[${gate}px]:block'`));
 }
 
 // O componente esconde, nunca aperta: `hidden` + `min-[…]:block`.

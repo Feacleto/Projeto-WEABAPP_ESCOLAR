@@ -232,19 +232,38 @@ const C = [
 export const TRIOS = { entrar: A, criar: B, convite: C };
 
 /**
- * OS TRÊS SLOTS, e por que o do meio é desalinhado.
+ * OS TRÊS SLOTS — e eles se ancoram no CARD, não na borda da coluna.
  *
- * Alinhamento perfeito de três cartões lê como COLUNA DE CONTEÚDO — a pessoa
- * tenta ler, e depois tenta tocar. O desalinho de 16px lê como fundo.
+ * ⚠️ A PRIMEIRA VERSÃO USAVA `left` FIXO E O CARD ENCOSTADO À DIREITA, e o
+ * resultado era um buraco: numa tela de 1900px o formulário voava para a
+ * borda e sobravam ~320px de vazio entre ele e os cartões. Funcionava em
+ * 1340 e ficava errado em tudo acima disso.
+ *
+ * Agora o card fica CENTRADO e os cartões penduram na esquerda dele com
+ * `right: calc(50% + …)`. A distância entre fundo e formulário passa a ser
+ * constante em qualquer largura — é o vazio que cresce nas pontas, e vazio
+ * na ponta lê como respiro, não como peça faltando.
+ *
+ * ⚠️ O QUE O SLOT GUARDA É O VÃO, NÃO O OFFSET PRONTO. O offset depende da
+ * largura do formulário, e ela não é a mesma nas duas telas — 380px no login,
+ * 520px no convite. Guardar `calc(50% + 214px)` aqui amarraria o fundo ao
+ * card de 380 e faria os cartões entrarem por baixo do outro.
+ *
+ * Quem soma é o componente: `50% + (largura do card / 2) + vão`.
+ * O slot do meio tem vão MENOR (8 contra 24), então ele fica 16px mais perto
+ * do formulário que os outros dois.
+ *
+ * O desalinho do meio continua sendo o ponto: três cartões alinhados leem
+ * como coluna de conteúdo, e a pessoa tenta ler; desalinhados leem como fundo.
  *
  * Os atrasos da flutuação também são diferentes de propósito: com o mesmo
  * atraso os três respiram juntos, e três coisas subindo em sincronia é
  * exatamente o que denuncia a animação.
  */
 export const SLOTS = {
-  1: { left: 24, top: 82, atraso: '0s' },
-  2: { left: 40, top: 330, atraso: '1.4s' },
-  3: { left: 24, bottom: 104, atraso: '2.6s' },
+  1: { vao: 24, top: 82, atraso: '0s' },
+  2: { vao: 8, top: 330, atraso: '1.4s' },
+  3: { vao: 24, bottom: 104, atraso: '2.6s' },
 };
 
 /**

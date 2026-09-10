@@ -683,7 +683,7 @@ export default function Login() {
           * O `FundoNoturno` saiu daqui junto. Ele continua nas duas telas de
           * cadastro, onde a faixa ocupa a tela inteira no celular e o
           * movimento tem espaço para existir. */}
-        {/* ── A COLUNA DIREITA, E POR QUE O CARTÃO SAI DO CENTRO ──────
+        {/* ── A COLUNA DIREITA, E O FUNDO QUE MOSTRA O APP ───────────
           *
           * Ela era uma superfície branca com um cartão no meio — e como o
           * login é a tela MAIS ACESSADA do produto (mais que a landing),
@@ -692,23 +692,23 @@ export default function Login() {
           * [FundoDoLogin](../components/auth/FundoDoLogin.jsx): três cartões
           * que mostram o app rodando e TROCAM DE ASSUNTO com a aba.
           *
-          * ⚠️ O CARTÃO ENCOSTA À DIREITA, E ISSO É GEOMETRIA, NÃO ESTÉTICA.
-          * Centrado, sobram ~159px de cada lado numa tela de 1440 — e nenhum
-          * cartão de fundo cabe em 159px sem ser cortado. Nenhum ajuste de
-          * altura resolve, porque o problema é o eixo X. Encostado, abre uma
-          * faixa livre de ~300px à esquerda, que é onde (e só onde) o fundo
-          * vive.
+          * ⚠️ O CARTÃO FICA CENTRADO. A primeira versão encostava ele à
+          * direita para abrir a faixa do fundo — e isso funcionava em 1340px
+          * e ficava errado acima: numa tela de 1900 o formulário ia para a
+          * borda e sobrava um buraco de ~320px no meio. Agora os cartões de
+          * fundo penduram na ESQUERDA do card (`right: calc(50% + …)`), então
+          * a distância entre os dois é a mesma em qualquer largura.
           *
-          * ⚠️ E OS DOIS ANDAM NO MESMO BREAKPOINT, de propósito. O
-          * `min-[1340px]` aqui é o mesmo que liga o fundo (a conta está no
-          * cabeçalho dele). Empurrar o cartão para a direita sem o fundo
-          * deixaria uma faixa vazia de 300px do lado, que não lê como
-          * respiro — lê como coisa que não carregou.
-          *
-          * O efeito colateral é bom: cartão mais perto do painel verde põe
-          * marca e ação no mesmo eixo de leitura. */}
-        <div className="relative flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10 min-[1340px]:justify-end min-[1340px]:py-10 min-[1340px]:pl-10 min-[1340px]:pr-[52px]">
-          <FundoDoLogin assunto={aba} assuntos={['entrar', 'criar']} desde={1340} />
+          * O preço é a largura mínima: com o card no centro, o espaço à
+          * esquerda dele é metade do que sobra, e o fundo só cabe a partir de
+          * **1800px**. A conta está no cabeçalho do componente. */}
+        <div className="relative flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10">
+          <FundoDoLogin
+            assunto={aba}
+            assuntos={['entrar', 'criar']}
+            desde={1800}
+            largura={380}
+          />
           <div className="relative z-10 w-full max-w-[380px] space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float sm:p-7">
             {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
               * "Cadastrar" era um link no rodapé do cartão que levava pra

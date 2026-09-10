@@ -167,26 +167,23 @@ export default function FirstAccess() {
 
         {/* ── O FUNDO AQUI LIGA MAIS TARDE QUE NO LOGIN, E A CONTA DIZ POR QUÊ
           *
-          * Mesmo fundo, mesmo trio de regras
+          * Mesmo fundo, mesmas regras
           * ([FundoDoLogin](../components/auth/FundoDoLogin.jsx)) — o que muda
-          * é que o cartão desta tela tem **520px**, contra 380 do login. A
-          * faixa livre à esquerda encolhe na mesma medida:
+          * é que o cartão desta tela tem **520px** contra 380 do login, e a
+          * coluna é 58% contra 54%. Com o card centrado, cada pixel de card
+          * come meio pixel de cada lado:
           *
-          *   esquerda do cartão = 0,58·L − 52 (padding) − 520 (cartão)
-          *   o cartão de fundo mais avançado alcança 284px
-          *   0,58·L − 572 ≥ 284  →  L ≥ 1497px
+          *   0,71·L − 260 − 24 − 244 ≥ 0,42·L + 16  →  L ≥ 1876
           *
-          * Por isso `min-[1500px]` e não `min-[1340px]`. Numa tela de 1440 o
-          * slot do meio invadiria o cartão por ~21px, e a regra número um do
-          * fundo é nunca ficar atrás dele.
+          * Daí `desde={1980}` e não 1800. A regra número um do fundo é nunca
+          * ficar atrás do formulário.
           *
-          * ⚠️ Se um dia o cartão desta tela estreitar, ESTE número desce
-          * junto. `npm run testar:fundo` refaz as duas contas a partir dos
-          * arquivos, então a divergência falha no teste em vez de aparecer na
-          * tela. */}
-        <main className="relative flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16 min-[1500px]:pl-10 min-[1500px]:pr-[52px]">
-          <FundoDoLogin assunto="convite" desde={1500} />
-          <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8 min-[1500px]:mx-0 min-[1500px]:ml-auto">
+          * ⚠️ Se um dia este cartão estreitar, ESTE número desce junto.
+          * `npm run testar:fundo` refaz as duas contas a partir dos arquivos,
+          * então a divergência falha no teste em vez de aparecer na tela. */}
+        <main className="relative flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16">
+          <FundoDoLogin assunto="convite" desde={1980} largura={520} />
+          <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8">
             <div className="mb-5">
               <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
                 Você entra pelo convite do motorista
