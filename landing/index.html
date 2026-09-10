@@ -1019,6 +1019,36 @@ nav.scrolled{box-shadow:0 6px 26px rgba(11,18,16,.18)}
 .copia-btn:focus-visible{outline:2.5px solid var(--preto);outline-offset:-4px}
 .copia.feito .copia-btn{background:var(--verde-claro)}
 .copia-dica{font-size:.86rem;color:var(--cinza-cl);margin:12px 0 0}
+
+/* ══ A PEÇA PARA BAIXAR ═══════════════════════════════════════════════
+   Ela existe porque compartilhar arquivo pela BANDEJA do sistema só funciona
+   no celular — no computador o navegador recusa o anexo e vai só o texto. O
+   download funciona em todo lugar, e é o único caminho para quem está no
+   computador levar a imagem para a conversa.
+
+   ⚠️ E ELA É A PRIMEIRA VEZ QUE A PEÇA APARECE. Até aqui a `convite.jpg`
+   existia só como carga de `navigator.share`: ninguém nunca a VIA antes de
+   enviar. Mandar imagem sem olhar é o mesmo problema da mensagem sem ler —
+   por isso a miniatura vem junto do botão, e não atrás dele.
+
+   9:16 porque a peça é 1080x1920: ela nasceu para Story, e é lá que o link
+   não é clicável — o endereço vai ESCRITO dentro dela. */
+.peca{
+  display:inline-flex;align-items:center;gap:12px;
+  margin:14px 0 0;padding:10px 14px 10px 10px;
+  border:1.5px solid rgba(11,18,16,.14);border-radius:12px;
+  background:var(--branco);text-decoration:none;max-width:420px;
+  transition:border-color .22s,transform .22s;
+}
+.peca:hover{border-color:var(--verde-esc);transform:translateY(-1px)}
+.peca:focus-visible{outline:2.5px solid var(--verde-esc);outline-offset:2px}
+.peca img{
+  width:45px;height:80px;flex:none;border-radius:6px;object-fit:cover;
+  background:var(--verde-esc);
+}
+.peca-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.peca-txt b{font-size:.92rem;font-weight:700;color:var(--preto);display:flex;align-items:center;gap:6px}
+.peca-txt em{font-style:normal;font-size:.8rem;line-height:1.4;color:var(--cinza-cl)}
 /* ══ ENVIAR — o botão que abre a bandeja do celular ══════════════
  * Ele só existe onde `navigator.share` existe, e o JS é quem o revela:
  * no desktop a API não está lá, e um botão que abre nada é pior que
@@ -2111,6 +2141,21 @@ footer a:hover{opacity:1;transform:translateX(3px)}
           <button class="copia-btn" type="button" data-rot="Copiar link">Copiar link</button>
         </div>
         <p class="copia-dica" data-dica>Cole na conversa do WhatsApp dele.</p>
+        <!-- ⚠️ O DOWNLOAD NÃO DEPENDE DE `navigator.share`, e é por isso que
+             ele não nasce escondido como o botão Enviar. No computador a
+             bandeja do sistema recusa anexo e vai só o texto; aqui ela baixa
+             a peça e arrasta pra conversa. É o caminho que sempre funciona. -->
+        <a class="peca" href="/brand/convite.jpg" download="alo-buzinou.jpg">
+          <img src="/brand/convite.jpg" width="45" height="80" loading="lazy" decoding="async"
+               alt="A peça do Alô Buzinou: um convite vertical com o endereço do site escrito dentro">
+          <span class="peca-txt">
+            <b>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+              Baixar a imagem
+            </b>
+            <em>Pra mandar no WhatsApp ou postar no Story — o endereço vai escrito nela.</em>
+          </span>
+        </a>
       </div>
     </div>
 

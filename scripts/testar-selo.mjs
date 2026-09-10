@@ -20,7 +20,11 @@
 
 import { readFileSync } from 'node:fs';
 import { PROIBIDAS, podeDizer, promessaProibida } from '../src/marca/promessas.js';
-import { TEXTO_DO_PEDIDO, mensagemAoMotorista } from '../src/marca/pedidoAoMotorista.js';
+import {
+  TEXTO_DO_PEDIDO,
+  mensagemAoMotorista,
+  PECA_DO_PEDIDO,
+} from '../src/marca/pedidoAoMotorista.js';
 import {
   ESTADO as ADESIVO,
   TEXTO as TEXTO_ADESIVO,
@@ -281,14 +285,92 @@ for (const termo of ['r$', 'gratis', 'grátis', 'minutos', 'rapidinho', 'sem bur
 // perua e ele, e o app nao cria vinculo por pedido de fora.
 checar('nao promete cadastro da crianca', false, minusculo.includes('cadastre meu filho'));
 
-// O que ela PRECISA dizer: o endereco onde ele se cadastra.
-checar('traz o site institucional', true, TEXTO_DO_PEDIDO.includes('https://alobuzinou.com.br'));
+// O que ela PRECISA dizer: o endereco onde ele se cadastra — e "onde ele se
+// cadastra" e o CADASTRO, no dominio do app. Ate 09/09/2026 esta linha media
+// a landing (`alobuzinou.com.br`), que e onde NAO se cria conta: a mensagem
+// dizia "voce cria a sua conta aqui" e entregava uma apresentacao.
+//
+// Os dois casos andam juntos de proposito. O primeiro sozinho passaria com a
+// landing colada em qualquer outro ponto do texto; o segundo e o que impede
+// o endereco de voltar.
+checar(
+  'traz o endereco do cadastro no app',
+  true,
+  TEXTO_DO_PEDIDO.includes('https://alobuzinou.com/quero-fazer-parte')
+);
+checar('e nao manda pra landing', false, TEXTO_DO_PEDIDO.includes('alobuzinou.com.br'));
 checar('e diz que o convite vem DEPOIS, dele', true, minusculo.includes('me manda o convite'));
 
 // A assinatura entra quando ha nome — mensagem de numero desconhecido sem
 // assinatura tem a forma de um golpe, e ele vai abrir um link depois de ler.
 checar('sem nome, nao inventa assinatura', false, TEXTO_DO_PEDIDO.includes('É a '));
 checar('com nome, assina', true, mensagemAoMotorista({ nome: 'Ana' }).includes('É a Ana.'));
+
+// ── A PECA QUE VAI JUNTO DO PEDIDO ───────────────────────────────────────
+//
+// ⚠️ ELA ESTA DUPLICADA POR NECESSIDADE, E DUPLICACAO SEM TESTE E DIVERGENCIA
+// COM PRAZO. A landing e HTML estatico noutro dominio: ela nao alcanca o
+// `public/` do app, entao o mesmo arquivo existe duas vezes. Trocar a peca e
+// trocar as duas — e quem esquecer uma faz metade do produto oferecer uma
+// imagem e a outra metade oferecer outra.
+//
+// E o formato importa mais do que parece: a peca e 9:16 porque nasceu pra
+// Story, que e onde o link NAO e clicavel — o endereco vai escrito dentro
+// dela. Trocar por uma quadrada estraga a miniatura das duas telas (45x80) e
+// tira o motivo de ela existir.
+console.log('');
+console.log('A peca do pedido: uma imagem, dois deploys');
+
+const caminhoRelativo = PECA_DO_PEDIDO.replace(/^[/]/, '');
+const noApp = new URL(`../public/${caminhoRelativo}`, import.meta.url);
+const naLanding = new URL(`../landing/${caminhoRelativo}`, import.meta.url);
+
+let bytesApp = null;
+let bytesLanding = null;
+try { bytesApp = readFileSync(noApp); } catch { /* ausente */ }
+try { bytesLanding = readFileSync(naLanding); } catch { /* ausente */ }
+
+checar('o caminho e o esperado', '/brand/convite.jpg', PECA_DO_PEDIDO);
+checar('a peca existe no app', true, Boolean(bytesApp));
+checar('e na landing', true, Boolean(bytesLanding));
+checar('e as duas sao o MESMO arquivo', true,
+  Boolean(bytesApp) && Boolean(bytesLanding) && bytesApp.equals(bytesLanding));
+
+// As dimensoes saem do proprio JPEG (marcador SOF), sem dependencia.
+function medidaJpeg(bytes) {
+  let i = 2;
+  while (i < bytes.length) {
+    if (bytes[i] !== 0xff) { i += 1; continue; }
+    const m = bytes[i + 1];
+    if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(m)) {
+      return { altura: bytes.readUInt16BE(i + 5), largura: bytes.readUInt16BE(i + 7) };
+    }
+    if (m === 0xd8 || m === 0xd9 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+    i += 2 + bytes.readUInt16BE(i + 2);
+  }
+  return null;
+}
+const medida = bytesApp && medidaJpeg(bytesApp);
+checar('e um JPEG legivel', true, Boolean(medida));
+if (medida) {
+  console.log(`       ${medida.largura}x${medida.altura}`);
+  checar('em pe, na proporcao de Story (9:16)', true,
+    Math.abs(medida.largura / medida.altura - 9 / 16) < 0.02);
+}
+
+// As duas telas oferecem o download, e o download NAO depende de bandeja do
+// sistema: e o unico caminho de quem esta no computador.
+const fonteFirstAccess = readFileSync(
+  new URL('../src/pages/FirstAccess.jsx', import.meta.url), 'utf8');
+const fonteLanding = readFileSync(
+  new URL('../landing/index.html', import.meta.url), 'utf8');
+
+checar('o app oferece o download', true,
+  fonteFirstAccess.includes('download="alo-buzinou.jpg"'));
+checar('e mostra a peca', true, fonteFirstAccess.includes('src={PECA_DO_PEDIDO}'));
+checar('a landing oferece o download', true,
+  fonteLanding.includes('download="alo-buzinou.jpg"'));
+checar('e mostra a peca', true, fonteLanding.includes('src="/brand/convite.jpg"'));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

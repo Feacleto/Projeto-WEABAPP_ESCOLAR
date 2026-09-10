@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Copy, Link2, LogIn, MessageCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Copy,
+  Download,
+  Link2,
+  LogIn,
+  MessageCircle,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import FundoNoturno from '../components/common/FundoNoturno';
 import Logo from '../components/common/Logo';
@@ -330,6 +337,48 @@ export default function FirstAccess() {
                 <Copy size={15} />
                 {copiado ? 'Mensagem copiada' : 'Copiar a mensagem'}
               </button>
+
+              {/* ⚠️ A PEÇA À VISTA, E O DOWNLOAD QUE SEMPRE FUNCIONA.
+                *
+                * Anexar arquivo só acontece pela bandeja do sistema, e ela
+                * aceita arquivo no celular — no computador o navegador recusa
+                * e vai só o texto. O download funciona em todo lugar, e é o
+                * único caminho de quem está no computador levar a imagem pra
+                * conversa.
+                *
+                * E é a primeira vez que a peça APARECE: até aqui ela existia
+                * só como carga de `navigator.share`, e ninguém a via antes de
+                * enviar. Mandar imagem sem olhar é o mesmo problema da
+                * mensagem sem ler — por isso a miniatura vem junto, e não
+                * atrás do botão.
+                *
+                * 9:16 porque a peça é 1080x1920: ela nasceu pra Story, e é lá
+                * que o link não é clicável — o endereço vai ESCRITO nela. */}
+              <a
+                href={PECA_DO_PEDIDO}
+                download="alo-buzinou.jpg"
+                className="tap flex items-center gap-3 rounded-xl border border-border bg-card p-2.5 pr-3.5 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <img
+                  src={PECA_DO_PEDIDO}
+                  width={45}
+                  height={80}
+                  loading="lazy"
+                  decoding="async"
+                  alt="A peça do Alô Buzinou: um convite vertical com o endereço do site escrito dentro"
+                  className="h-20 w-[45px] flex-none rounded-md bg-primaryDark object-cover"
+                />
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-text">
+                    <Download size={14} />
+                    Baixar a imagem
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-textMuted">
+                    Pra mandar no WhatsApp ou postar no Story — o endereço vai
+                    escrito nela.
+                  </span>
+                </span>
+              </a>
 
               {/* A mensagem fica À VISTA, e não atrás do botão.
                 *
