@@ -25,32 +25,31 @@
     />
     <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
 
-    <!-- ⚠️ O APP SAI DA BUSCA, E A LANDING FICA. Decidido em 09/09/2026.
-         Medido no Google: `alobuzinou.com` aparecia ACIMA de
-         `alobuzinou.com.br` para a busca "alobuzinou" — ou seja, quem procura
-         o produto caía numa TELA DE LOGIN em vez do site que explica o
-         produto. Os dois domínios tinham o mesmo `<title>`, e o buscador
-         escolheu o errado.
+    <!-- ⚠️ NÃO PONHA `noindex` AQUI AINDA — E A ORDEM É O PONTO.
+         O plano continua o mesmo: quem deve aparecer na busca é a landing
+         (`alobuzinou.com.br`), não este app, que é uma tela de login. Em
+         09/09/2026 o Google mostrava ESTE domínio acima dela.
 
-         E o efeito pior não era o ranking: com o app inteiro rastreável, um
-         link `/convite/TN2K9F4B` postado num grupo de pais pode ser indexado
-         — e esse link é o token que cria conta vinculada a UMA criança.
+         Mas o `noindex` geral entrou e saiu no mesmo dia, e o motivo é
+         SEQUÊNCIA: o Google nunca conseguiu ler a landing (ela herdou um
+         robots.txt bloqueado da hospedagem antiga), então hoje este app é o
+         ÚNICO resultado que existe da marca. Tirá-lo antes de a landing
+         entrar deixaria a marca com presença ZERO na busca — pior que o
+         estado que se queria consertar.
 
-         ⚠️ A ARMADILHA É USAR robots.txt PARA ISSO. `Disallow: /` não tira da
-         busca: ele impede a LEITURA, e o resultado é a URL indexada sem
-         descrição — literalmente o que o `.com.br` estava mostrando ("o site
-         não nos permite exibir a descrição"). Para SAIR é o contrário: deixar
-         rastrear e declarar `noindex`. Por isso o `public/robots.txt` deste
-         app libera tudo.
+         ⚠️ QUANDO VOLTAR A PÔR: depois de confirmar no Search Console que
+         `alobuzinou.com.br` está indexada e aparecendo. Aí esta linha volta:
 
-         `follow` de propósito: o buscador segue os links daqui pra fora e
-         chega na landing, que é quem deve ranquear.
+             <meta name="robots" content="noindex, follow" />
 
-         ⚠️ Isto também tira `/familia` da busca. Ela já está órfã (a landing
-         não linka pra ela), então hoje não muda nada — mas se um dia a ideia
-         for a responsável achar `/familia` no Google, o caminho é linkar da
-         landing e abrir uma exceção AQUI, não remover esta linha. -->
-    <meta name="robots" content="noindex, follow" />
+         e o caso correspondente de `npm run testar:busca` (bloco 1) volta a
+         exigi-la — ele está marcado lá com este mesmo aviso.
+
+         O que NÃO espera pela landing é o link do convite: `/convite/{codigo}`
+         e `/auth-action` já saem com `X-Robots-Tag: noindex` pelo
+         `firebase.json`, porque aquele link é o token que cria conta
+         vinculada a uma criança. Cabeçalho por caminho funciona no SPA, onde
+         uma meta no HTML não distingue rota. -->
 
     <!-- Preview do link. O convite do motorista circula por WhatsApp: sem
          estas tags o pai recebe um retângulo cinza no lugar da marca. -->

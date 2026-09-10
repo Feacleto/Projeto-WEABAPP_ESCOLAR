@@ -82,33 +82,83 @@ const diretivas = (txt) =>
     .map((l) => l.trim())
     .filter((l) => l && !l.startsWith('#'));
 
+/**
+ * O HTML sem os comentarios.
+ *
+ * ⚠️ A PROSA NAO PODE REPROVAR A DECISAO QUE ELA EXPLICA — e aqui ela quase
+ * reprovou: o comentario do `index.html` mostra a linha
+ * `<meta name="robots" content="noindex, follow">` para dizer QUANDO
+ * recoloca-la, e medir o arquivo cru achava aquele exemplo. Foi a terceira
+ * vez que isto aconteceu neste projeto (as outras duas estao em
+ * `testar-auth.mjs`), e por isso o descomentador virou peca fixa.
+ */
+function semComentariosHtml(html) {
+  return html.replace(/<!--[\s\S]*?-->/g, ' ');
+}
+
 const tag = (html, re) => {
   const m = html.match(re);
   return m ? m[1].trim() : null;
 };
 
 // ─────────────────────────────────────────────────────────────────────────
-bloco('1. O app sai da busca — pelo noindex, nao pelo robots');
+bloco('1. O app e a busca: a fase de hoje, e a tranca que nao espera');
 
-checar('o app declara noindex', true,
-  /<meta name="robots" content="noindex[^"]*"/.test(app));
-checar('e com follow, para o buscador chegar na landing', true,
-  /content="noindex,\s*follow"/.test(app));
+// ⚠️ O `noindex` GERAL DO APP ESTA DESLIGADO, E ISSO E UMA FASE.
+//
+// O plano nao mudou: quem deve aparecer e a landing, nao a tela de login. O
+// que mudou foi a ORDEM. O Google nunca conseguiu ler a landing (robots
+// bloqueado herdado da hospedagem antiga), entao hoje o app e o UNICO
+// resultado que existe da marca — e tira-lo antes deixaria presenca zero,
+// pior que o estado que se queria consertar.
+//
+// QUANDO A LANDING ESTIVER INDEXADA: volte a meta no `index.html` e troque os
+// dois casos abaixo pelos dois comentados logo em seguida.
+const appSemProsa = semComentariosHtml(app);
+checar('o descomentador de HTML descomenta', false,
+  appSemProsa.includes('NÃO PONHA'));
+checar('o app NAO tem noindex geral (ainda)', false,
+  /content="[^"]*noindex/.test(appSemProsa));
+checar('e o motivo esta escrito no arquivo', true,
+  app.includes('NÃO PONHA `noindex` AQUI AINDA'));
 
-// ⚠️ ESTE E O CASO QUE PARECE ERRADO E E CERTO. Ver o cabecalho.
+// Depois da landing entrar, estes dois substituem os dois de cima:
+//   checar('o app declara noindex', true, /content="noindex,\s*follow"/.test(app));
+//   checar('e o motivo esta escrito', true, app.includes('O APP SAI DA BUSCA'));
+
+// ── O QUE NAO ESPERA POR NADA: o link do convite ────────────────────────
+//
+// `/convite/{codigo}` e o token que cria conta vinculada a UMA crianca. Ele
+// sai com `X-Robots-Tag` pelo `firebase.json`, e nao por meta no HTML, porque
+// num SPA todas as rotas servem o MESMO index.html — uma meta ali nao
+// distingue caminho, um cabecalho distingue.
+const hosting = JSON.parse(
+  readFileSync(new URL('../firebase.json', import.meta.url), 'utf8')
+);
+const alvoApp = hosting.hosting.find((h) => h.target === 'app');
+checar('o firebase.json tem o alvo do app', true, Boolean(alvoApp));
+
+for (const caminho of ['/convite/**', '/auth-action']) {
+  const regra = (alvoApp?.headers || []).find((h) => h.source === caminho);
+  const valor = (regra?.headers || []).find((x) => x.key === 'X-Robots-Tag')?.value;
+  checar(`${caminho} sai com X-Robots-Tag noindex`, true,
+    Boolean(valor) && valor.includes('noindex'));
+}
+
+// ⚠️ ESTE E O CASO QUE PARECE ERRADO E E CERTO: `Disallow` impede a LEITURA,
+// e sem leitura o buscador nao ve nenhum `noindex` — nem a meta, nem o
+// cabecalho. Ele listaria a URL crua, com o codigo do convite dentro dela.
 checar('o robots.txt do app LIBERA a leitura', true,
   diretivas(robotsApp).includes('Allow: /'));
 checar('e nao bloqueia nada', [],
   diretivas(robotsApp).filter((l) => l.toLowerCase().startsWith('disallow')));
 
 // A sonda positiva do descomentador: o comentario do arquivo CITA
-// "Disallow: /convite/" para explicar por que ele saiu. Medir o texto cru
-// reprovaria a explicacao junto com o defeito.
+// "Disallow: /convite/" para explicar por que ele saiu.
 checar('o descomentador descomenta', true,
   robotsApp.includes('Disallow: /convite/') &&
   !diretivas(robotsApp).some((l) => l.includes('/convite/')));
 
-// Sem este arquivo, `/robots.txt` devolvia o index.html do SPA.
 checar('o robots do app nao anuncia sitemap', false,
   diretivas(robotsApp).some((l) => l.toLowerCase().startsWith('sitemap')));
 
