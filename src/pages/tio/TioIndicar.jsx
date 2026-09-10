@@ -12,10 +12,13 @@ import {
 import {
   DESCONTO_POR_INDICACAO,
   PISO_DA_FATURA,
+  descontoDoFechamento,
+  valorDaIndicacao,
 } from '../../dominio/associacao/planos.js';
+import { DIAS_DE_TRIAL } from '../../dominio/associacao/trial.js';
 import { maskPhone } from '../../compartilhado/masks';
-import { formatCurrency } from '../../compartilhado/formatters';
-import { SITE_INSTITUCIONAL } from '../../config/vitrine';
+import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
+import { conviteDeMotorista } from '../../config/vitrine';
 
 /**
  * INDICAR OUTRO MOTORISTA — /tio/indicar
@@ -69,6 +72,18 @@ export default function TioIndicar() {
   // tela inteira existe para evitar.
   const piso = PISO_DA_FATURA;
 
+  // Quanto a PRÓXIMA tira, de verdade. `null` enquanto ele não tem plano —
+  // no teste a fatura é isenta e qualquer desconto vale zero, e prometer um
+  // número ali seria a primeira mentira da tela.
+  const valorDaProxima = valorDaIndicacao({
+    criancas: Number(profile?.criancasAtivas) || 0,
+    plano: profile?.plano,
+    fundador: profile?.condicaoFundador || null,
+    descontos: profile?.descontos,
+    mes: getCurrentMonthKey(),
+    numero: (resumo?.ativas || 0) + 1,
+  });
+
   const enviar = async () => {
     setSalvando(true);
     try {
@@ -83,7 +98,31 @@ export default function TioIndicar() {
     }
   };
 
-  const convite = `Oi! Eu uso o Alô Buzinou pra organizar meu transporte escolar — rota ao vivo pras famílias, mensalidade e recados num lugar só. Dá uma olhada: ${SITE_INSTITUCIONAL}`;
+  // ⚠️ O LINK VAI DIRETO PRO CADASTRO, NÃO PRA LANDING.
+  //
+  // Ele mandava para o site institucional, e isso custava duas coisas: punha
+  // uma apresentação na frente de quem já foi apresentado por um colega, e
+  // perdia a origem — `DriverSignup` lê o `utm_source` da própria URL, então
+  // indicação que passa pela landing chega ao painel do dono como tráfego
+  // solto. Ver CADASTRO_DE_MOTORISTA em config/vitrine.js.
+  // ⚠️ A MENSAGEM DIZ O QUE O INDICADO GANHA, E ISSO NÃO É DESCONTO NOVO.
+  //
+  // O indicado NÃO recebe nada por ter sido indicado, e isso é decisão: dois
+  // motoristas que se cadastram no mesmo dia não podem pagar diferente por
+  // conhecerem ou não alguém que já usa o app. A escada qualquer um reproduz
+  // — é só decidir cedo; "ter sido indicado" é sorte de quem você conhece, e
+  // é a conversa que não tem resposta na fila do portão da escola.
+  //
+  // O que ele ganha é o degrau que JÁ existe para todo mundo. Dizer isso aqui
+  // custa zero, não cria regra nenhuma, e serve aos dois lados: quanto antes
+  // o colega contratar, antes o desconto de quem indicou entra.
+  const primeiroDegrau = Math.round(descontoDoFechamento(1) * 100);
+  const convite =
+    `Oi! Eu uso o Alô Buzinou pra organizar meu transporte escolar — rota ao ` +
+    `vivo pras famílias, mensalidade e recados num lugar só. ` +
+    `Tem ${DIAS_DE_TRIAL} dias de teste, e fechando no primeiro mês você trava ` +
+    `${primeiroDegrau}% de desconto enquanto for cliente. ` +
+    `Você cria a sua conta aqui: ${conviteDeMotorista('indicacao')}`;
 
   return (
     <div className="min-h-screen bg-bg pb-16">
@@ -100,6 +139,11 @@ export default function TioIndicar() {
         </h1>
         {/* A REGRA INTEIRA, ANTES DE ELE INDICAR. Contada só na hora em que o
           * desconto não veio, ela pareceria desculpa. */}
+        {/* ⚠️ A PORCENTAGEM SOZINHA MENTE PERTO DO PISO, e é aqui que ela
+          * mentiria. Para quem tem 8 crianças e 30% travado, a 7ª indicação
+          * vale sessenta centavos e a 8ª vale zero — dizer "5%" a essa pessoa
+          * é prometer quatro vezes o que ela vai receber. `valorDaIndicacao`
+          * devolve a diferença real da PRÓXIMA, com o piso já dentro. */}
         <p className="mt-1 text-xs leading-relaxed text-textMuted">
           Cada motorista que você trouxer vale <strong>{porIndicacao}%</strong> na
           sua conta, todo mês, enquanto ele estiver com a gente — sem limite de
@@ -108,6 +152,23 @@ export default function TioIndicar() {
           desconto entra quando <strong>ele pagar o primeiro mês</strong>, não
           quando se cadastra.
         </p>
+        {valorDaProxima !== null && (
+          <p className="mt-2 text-xs leading-relaxed text-text">
+            {valorDaProxima > 0 ? (
+              <>
+                Na sua conta de hoje, a próxima indicação tira{' '}
+                <strong>{formatCurrency(valorDaProxima)} por mês</strong>.
+              </>
+            ) : (
+              <>
+                <strong>Sua conta já está no piso de {formatCurrency(piso)}.</strong>{' '}
+                Novas indicações não descem mais o valor — até sua operação
+                crescer. Continue indicando se quiser; só não vai aparecer na
+                fatura agora.
+              </>
+            )}
+          </p>
+        )}
       </header>
 
       <main className="mx-auto w-full max-w-lg space-y-4 px-5 py-5">

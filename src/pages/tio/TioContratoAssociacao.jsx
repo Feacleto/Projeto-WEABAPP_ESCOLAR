@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Printer, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../../components/common/Card';
+import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
@@ -167,6 +168,24 @@ export default function TioContratoAssociacao() {
                   Aceitar contrato
                 </Button>
               </Card>
+            )}
+
+            {/* ⚠️ O INSTANTE DE MAIOR BOA-VONTADE DO FUNIL INTEIRO, e o produto
+              * não fazia nada com ele.
+              *
+              * Ele acabou de decidir pagar. É também a PRIMEIRA vez que a
+              * indicação vale dinheiro de verdade para ele: durante o teste a
+              * fatura é isenta, e 5% de uma fatura isenta é zero — por isso
+              * `ConviteParaIndicar` fala no futuro enquanto não há plano, e só
+              * aqui passa a falar em reais.
+              *
+              * Não é uma segunda oferta: o preço dele não muda por causa
+              * disto, e o convite não aparece porque ele recusou nada. */}
+            {contrato.aceitoEm && (
+              <ConviteParaIndicar
+                className="mt-4 print:hidden"
+                titulo="Pronto. E dá para pagar menos que isso"
+              />
             )}
           </>
         )}

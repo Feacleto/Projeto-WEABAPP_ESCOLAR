@@ -103,9 +103,19 @@ async function casarEAtivarIndicacao(db, tioUid) {
         userId: escolhida.indicadorUid,
         type: 'indicacao_ativou',
         title: 'Sua indicação valeu',
+        // ⚠️ ESTAS DUAS FRASES SÃO AS MESMAS DE `notifyIndicacaoAtivou`, no
+        // cliente, e é de propósito: o mesmo fato chega pelos dois caminhos
+        // de baixa (o webhook do gateway e a baixa manual do dono), e duas
+        // redações fariam o indicador achar que são dois eventos.
+        //
+        // O que o servidor NÃO tem é o valor em reais: ele depende da faixa e
+        // dos outros descontos do indicador, e buscá-los aqui poria uma
+        // leitura a mais dentro do caminho da baixa. Por isso ele fica na
+        // versão sem valor — a mesma que o cliente usa quando não recebe o
+        // número.
         body:
           n > 1
-            ? `Mais uma indicação sua começou a pagar — são ${n} ativas na sua próxima fatura.`
+            ? `São ${n} indicações ativas na sua próxima fatura.`
             : 'Uma indicação sua começou a pagar, e já entra na sua próxima fatura.',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });

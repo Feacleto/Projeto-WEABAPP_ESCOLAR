@@ -18,6 +18,9 @@
  *   node scripts/testar-indicacao.mjs      (ou: npm run testar:indicacao)
  */
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { sep } from 'node:path';
+import { PLANO as PLANOS_DO_PRECO, precoDoMes } from '../src/dominio/associacao/planos.js';
 import {
   ESTADO,
   acharIndicacao,
@@ -26,6 +29,7 @@ import {
   mesmaPessoa,
   montarIndicacao,
   podeTransitar,
+  reconciliarIndicacoes,
   resumoDoIndicador,
   situacaoDaIndicacao,
   escolherParaAtivar,
@@ -38,6 +42,7 @@ import {
   chaveDoTelefone as chaveServidor,
   contarAtivas as contarServidor,
   escolherParaAtivar as escolherServidor,
+  reconciliarIndicacoes as reconciliarServidor,
 } from '../functions/lib/indicacao.js';
 
 let ok = 0;
@@ -188,11 +193,11 @@ checar('duas valem desconto', 2, contarAtivas(carteira));
 // ⚠️ OS TRÊS NÚMEROS SÃO SEPARADOS DE PROPÓSITO. "Indiquei 5" e "2 valem
 // desconto" são frases diferentes — juntá-las é exatamente como nasce o
 // "indiquei e não recebi".
-checar('e a tela mostra os três estados',
-  { total: 5, pendentes: 2, cadastrados: 1, ativas: 2 },
+checar('e a tela mostra os quatro estados',
+  { total: 5, pendentes: 2, cadastrados: 1, ativas: 2, encerradas: 0 },
   resumoDoIndicador(carteira));
 checar('lista vazia não quebra',
-  { total: 0, pendentes: 0, cadastrados: 0, ativas: 0 }, resumoDoIndicador());
+  { total: 0, pendentes: 0, cadastrados: 0, ativas: 0, encerradas: 0 }, resumoDoIndicador());
 
 bloco('10. A frase diz o que FALTA');
 
@@ -344,6 +349,182 @@ const MISTURA = [
 ];
 checar('contarAtivas: as duas copias concordam', contarAtivas(MISTURA), contarServidor(MISTURA));
 checar('e o numero e dois', 2, contarAtivas(MISTURA));
+
+
+// ═══════════ A RECONCILIAÇÃO — O DESCONTO QUE PRECISA CAIR ════════════════
+//
+// ⚠️ POR QUE ESTE BLOCO EXISTE
+//
+// `users.indicacoesAtivas` só era escrito PARA CIMA. `casarEAtivar` reconta,
+// mas só quando OUTRA indicação do mesmo indicador ativa — e nenhum caminho do
+// projeto baixava o número quando o indicado cancelava. O desconto sobrevivia
+// ao cliente que o justificava.
+//
+// Enquanto se cogitou dar prazo de 12 meses à indicação, o calendário
+// resolveria isso de lado. A decisão foi NÃO ter prazo, e a partir dela esta
+// função é a régua inteira. Por isso ela nasce com espelho e com teste.
+
+const rec = (indicacoes, pagantes) =>
+  reconciliarIndicacoes({ indicacoes, indicadosPagantes: pagantes });
+
+const COM_INDICADO = (id, indicador, indicado, estado) => ({
+  id,
+  indicadorUid: indicador,
+  indicadoUid: indicado,
+  estado,
+});
+
+const CARTEIRA = [
+  COM_INDICADO('a', 'ze', 'u1', ESTADO.ATIVA),
+  COM_INDICADO('b', 'ze', 'u2', ESTADO.ATIVA),
+  COM_INDICADO('c', 'ana', 'u3', ESTADO.ENCERRADA),
+  COM_INDICADO('d', 'ana', null, ESTADO.PENDENTE),
+];
+
+const r1 = rec(CARTEIRA, ['u1', 'u3']);
+checar('quem parou de pagar e encerrado', ['b'], r1.encerrar);
+checar('e quem voltou e reaberto', ['c'], r1.reabrir);
+checar('o indicador com uma ativa conta 1', 1, r1.ativasPorIndicador.ze);
+checar('e a reaberta ja conta no mesmo passo', 1, r1.ativasPorIndicador.ana);
+
+// ⚠️ O CASO QUE FAZ TODO O RESTO FUNCIONAR: quem perdeu a ULTIMA indicacao
+// precisa aparecer com ZERO. Se a contagem so trouxesse as chaves que
+// sobraram, o gravador nunca aprenderia a zerar ninguem — e o contador ficaria
+// parado no valor antigo, que e exatamente o bug que esta funcao veio fechar.
+const r2 = rec([COM_INDICADO('a', 'ze', 'u1', ESTADO.ATIVA)], []);
+checar('quem perdeu a ultima indicacao aparece com zero', 0, r2.ativasPorIndicador.ze);
+checar('e o indicador NAO some da contagem', true, 'ze' in r2.ativasPorIndicador);
+
+// Rodar de novo chega no mesmo lugar: o dono pode fechar o mes a mao no mesmo
+// dia em que a agendada rodou. Mesma razao de `casarEAtivar` recontar.
+const jaAplicado = [
+  COM_INDICADO('a', 'ze', 'u1', ESTADO.ATIVA),
+  COM_INDICADO('b', 'ze', 'u2', ESTADO.ENCERRADA),
+];
+const r3 = rec(jaAplicado, ['u1']);
+checar('idempotente: nada a encerrar na segunda passada', [], r3.encerrar);
+checar('idempotente: nada a reabrir tambem', [], r3.reabrir);
+checar('e a contagem se mantem', 1, r3.ativasPorIndicador.ze);
+
+// Uma `ativa` sem `indicadoUid` e documento malformado. Ela CONTINUA contando:
+// mante-la e um vazamento pequeno; encerra-la tira um desconto prometido de
+// alguem por causa de um campo que o sistema deixou de gravar.
+const orfa = [{ id: 'x', indicadorUid: 'ze', estado: ESTADO.ATIVA }];
+checar('ativa sem indicado nao e encerrada', [], rec(orfa, []).encerrar);
+checar('e continua contando', 1, rec(orfa, []).ativasPorIndicador.ze);
+
+// A transicao existe nos dois sentidos, e so nos dois sentidos.
+checar('ativa pode encerrar', true, podeTransitar(ESTADO.ATIVA, ESTADO.ENCERRADA));
+checar('encerrada pode voltar a valer', true, podeTransitar(ESTADO.ENCERRADA, ESTADO.ATIVA));
+checar('pendente NAO pula para encerrada', false, podeTransitar(ESTADO.PENDENTE, ESTADO.ENCERRADA));
+checar('e encerrada nao volta para pendente', false, podeTransitar(ESTADO.ENCERRADA, ESTADO.PENDENTE));
+
+// ⚠️ O ESPELHO, caso a caso — a mesma exigencia de `escolherParaAtivar`.
+const CENARIOS_REC = [
+  [CARTEIRA, ['u1', 'u3']],
+  [CARTEIRA, []],
+  [CARTEIRA, ['u1', 'u2', 'u3']],
+  [jaAplicado, ['u1']],
+  [jaAplicado, ['u1', 'u2']],
+  [orfa, []],
+  [[], ['u1']],
+];
+CENARIOS_REC.forEach(([lista, pagantes], i) => {
+  const aqui = reconciliarIndicacoes({ indicacoes: lista, indicadosPagantes: pagantes });
+  const la = reconciliarServidor({ indicacoes: lista, indicadosPagantes: pagantes });
+  checar(`espelho da reconciliacao, caso ${i + 1}`, JSON.stringify(aqui), JSON.stringify(la));
+});
+// Sonda positiva: sem ela, duas funcoes quebradas do mesmo jeito passariam.
+checar('e a comparacao tem conteudo', 'b',
+  reconciliarServidor({ indicacoes: CARTEIRA, indicadosPagantes: ['u1', 'u3'] }).encerrar[0]);
+
+
+// ═══════════ O QUE A INDICAÇÃO NÃO FAZ ═══════════════════════════════════
+//
+// Os dois casos abaixo travam decisões que a próxima boa ideia vai querer
+// desfazer. Nenhum deles testa código novo: eles testam que uma porta
+// continua fechada.
+
+const PLANO_MENSAL = PLANOS_DO_PRECO.MENSAL;
+
+// ── 1. O INDICADO NÃO GANHA DESCONTO POR TER SIDO INDICADO ────────────────
+//
+// ⚠️ A REGRA VEM DA FILA DO PORTÃO, e é a mais antiga deste projeto: dois
+// motoristas que se cadastram no mesmo dia não podem pagar diferente por um
+// motivo que nenhum dos dois controla. A escada qualquer um reproduz — é só
+// decidir cedo. "Ter sido indicado" é sorte de quem você conhece, e é a
+// conversa que não tem resposta quando os dois comparam a fatura.
+//
+// O indicado já leva o MAIOR desconto da casa (o primeiro degrau, por fechar
+// no primeiro mês). O convite diz isso; a régua não acrescenta nada.
+//
+// O teste é comportamental: um desconto com origem inventada tem que ser
+// IGNORADO, não somado. `descontosVigentes` já descarta o que não reconhece —
+// e é justamente esse silêncio que faria alguém "só acrescentar uma origem"
+// sem perceber que mudou a política de preço.
+const comoIndicado = precoDoMes({
+  criancas: 20,
+  plano: PLANO_MENSAL,
+  descontos: [{ origem: 'indicado', fracao: 0.1, ate: null }],
+  mes: '2026-09',
+});
+const semNada = precoDoMes({ criancas: 20, plano: PLANO_MENSAL, mes: '2026-09' });
+checar('ser indicado nao muda o preco de quem foi indicado',
+  semNada.liquido, comoIndicado.liquido);
+checar('e a origem inventada nao entra em desconto nenhum', 0, comoIndicado.desconto);
+// Sonda positiva: uma origem RECONHECIDA desce o valor, entao a comparacao
+// acima nao esta passando por o preco ser sempre igual.
+checar('mas uma origem da regua desce mesmo',
+  true,
+  precoDoMes({
+    criancas: 20,
+    plano: PLANO_MENSAL,
+    descontos: [{ origem: 'fechamento', fracao: 0.3, ate: null }],
+    mes: '2026-09',
+  }).liquido < semNada.liquido);
+
+// ── 2. ONDE O CONVITE A INDICAR NUNCA APARECE ─────────────────────────────
+//
+// ⚠️ QUATRO LUGARES, E CADA UM POR UM MOTIVO DIFERENTE:
+//
+//   app da familia   ela nao indica motorista; o convite ali e ruido sobre
+//                    dado sensivel de crianca
+//   durante a rota   ele esta dirigindo com crianca dentro
+//   cancelamento     desconto que so aparece quando ele ameaca sair prova
+//                    que o preco era teatro (a regra ja esta na secao 07 do
+//                    plano, e a tela ainda vai nascer — na Fase 6)
+//   sino nos 90 dias colide com a escada, que tem data; a indicacao nao tem
+//
+// A lista de PERMITIDOS e fechada de proposito. Um lugar novo e uma decisao
+// de produto, e ela passa por aqui antes de passar pela tela.
+const PERMITIDOS = [
+  'src/pages/tio/TioPlanos.jsx',
+  'src/pages/tio/TioTaxa.jsx',
+  'src/pages/tio/TioSelo.jsx',
+  'src/pages/tio/TioContratoAssociacao.jsx',
+];
+
+const arquivos = readdirSync('src', { recursive: true })
+  // `sep` em vez de uma barra invertida literal: o teste roda no Windows de
+  // quem desenvolve e no Linux do CI, e a comparação com a lista de
+  // permitidos é por texto.
+  .map((f) => `src/${String(f).split(sep).join('/')}`)
+  .filter((f) => /\.(jsx?|mjs)$/.test(f));
+
+const usam = arquivos.filter((f) => {
+  if (f.endsWith('components/tio/ConviteParaIndicar.jsx')) return false;
+  try {
+    return readFileSync(f, 'utf8').includes('ConviteParaIndicar');
+  } catch {
+    return false;
+  }
+});
+
+checar('o convite aparece exatamente nos quatro lugares decididos',
+  PERMITIDOS.slice().sort(), usam.slice().sort());
+// Sonda positiva: se a varredura nao achasse nada, a comparacao acima ficaria
+// verde no dia em que alguem apagasse o componente inteiro.
+checar('e a varredura realmente leu os arquivos', true, arquivos.length > 50);
 
 
 // ──────────────────────────────── resumo ───────────────────────────────────

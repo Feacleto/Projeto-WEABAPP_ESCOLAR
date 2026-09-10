@@ -21,11 +21,12 @@
  * indicação, viaja mais rápido que a própria indicação.
  */
 
-/** Os três estados de uma indicação. */
+/** Os quatro estados de uma indicação. `encerrada` entrou em 10/09/2026. */
 const ESTADO = {
   PENDENTE: 'pendente',
   CADASTRADO: 'cadastrado',
   ATIVA: 'ativa',
+  ENCERRADA: 'encerrada',
 };
 
 /**
@@ -110,4 +111,58 @@ function contarAtivas(indicacoes = []) {
   ).length;
 }
 
-module.exports = { ESTADO, chaveDoTelefone, escolherParaAtivar, contarAtivas };
+/**
+ * A RECONCILIAÇÃO — espelho de `reconciliarIndicacoes` do cliente.
+ *
+ * ⚠️ ELA MORA NO SERVIDOR PORQUE QUEM A CHAMA É O FECHAMENTO MENSAL
+ * (`fechamento.js`), que já varre todo motorista no dia 1. O cliente tem a
+ * mesma função para poder testá-la e para a tela do dono conferir — e
+ * `npm run testar:indicacao` compara as duas caso a caso, como faz com
+ * `escolherParaAtivar`.
+ *
+ * O raciocínio inteiro (por que `encerrada` existe, por que atraso não
+ * derruba, e por que a contagem inclui os zeros) está no cliente. Aqui só o
+ * código, sem aritmética nova.
+ */
+function reconciliarIndicacoes({ indicacoes = [], indicadosPagantes = [] } = {}) {
+  const lista = Array.isArray(indicacoes) ? indicacoes : [];
+  const pagantes = new Set(
+    (Array.isArray(indicadosPagantes) ? indicadosPagantes : []).filter(Boolean)
+  );
+
+  const encerrar = [];
+  const reabrir = [];
+
+  for (const i of lista) {
+    if (!i || !i.id || !i.indicadoUid) continue;
+    const paga = pagantes.has(i.indicadoUid);
+    if (i.estado === ESTADO.ATIVA && !paga) encerrar.push(i.id);
+    if (i.estado === ESTADO.ENCERRADA && paga) reabrir.push(i.id);
+  }
+
+  const vaiEncerrar = new Set(encerrar);
+  const vaiReabrir = new Set(reabrir);
+
+  const ativasPorIndicador = {};
+  for (const i of lista) {
+    const uid = i && i.indicadorUid;
+    if (!uid) continue;
+    if (ativasPorIndicador[uid] === undefined) ativasPorIndicador[uid] = 0;
+
+    let estado = i.estado;
+    if (vaiEncerrar.has(i.id)) estado = ESTADO.ENCERRADA;
+    else if (vaiReabrir.has(i.id)) estado = ESTADO.ATIVA;
+
+    if (estado === ESTADO.ATIVA) ativasPorIndicador[uid] += 1;
+  }
+
+  return { encerrar, reabrir, ativasPorIndicador };
+}
+
+module.exports = {
+  ESTADO,
+  chaveDoTelefone,
+  escolherParaAtivar,
+  contarAtivas,
+  reconciliarIndicacoes,
+};

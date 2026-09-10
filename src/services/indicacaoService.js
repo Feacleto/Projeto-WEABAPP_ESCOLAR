@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -18,6 +19,58 @@ import {
   escolherParaAtivar,
   montarIndicacao,
 } from '../dominio/identidade/indicacao.js';
+import { planoValido, valorDaIndicacao } from '../dominio/associacao/planos.js';
+import { formatCurrency } from '../compartilhado/formatters';
+
+/**
+ * QUANTO A INDICAÇÃO NOVA VALE, EM REAIS, PARA QUEM INDICOU.
+ *
+ * ── ⚠️ POR QUE VALE UMA LEITURA A MAIS
+ * O aviso de indicação ativada existe contra uma frase — *"indiquei e não
+ * recebi"* — e a versão sem valor não a evitava: *"já entra na sua próxima
+ * fatura"* não diz se são dez centavos ou dez reais, então a dúvida
+ * sobrevive ao aviso que deveria matá-la.
+ *
+ * O desconto é 10% da fatura dele, e quanto isso vale depende do tamanho da
+ * operação dele. Só o documento dele tem esse número, então é preciso lê-lo.
+ * Uma leitura, num caminho que roda no máximo uma vez por indicado.
+ *
+ * ── E ELE É A DIFERENÇA ENTRE DUAS CONTAS, NÃO 10% DO BRUTO
+ * Com o piso mordendo, a indicação pode valer MENOS que 10% — quem já está
+ * perto do mínimo recebe só o que sobra até lá. Anunciar 10% cheios ali seria
+ * a mesma promessa vazia com outro número. A conta é: o que ele pagaria com
+ * as indicações de antes, menos o que paga com esta.
+ *
+ * Devolve `null` quando não dá para saber (sem plano, documento ausente), e
+ * aí a frase cai para a versão sem valor — melhor calar o número que errar.
+ */
+async function quantoAIndicacaoVale(indicadorUid, ativasDepois, mes) {
+  try {
+    const snap = await getDoc(doc(db, 'users', indicadorUid));
+    if (!snap.exists()) return null;
+    const u = snap.data() || {};
+    if (!planoValido(u.plano)) return null;
+
+    const base = {
+      criancas: Number(u.criancasAtivas) || 0,
+      plano: u.plano,
+      fundador: u.condicaoFundador || null,
+      descontos: u.descontos,
+      mes,
+    };
+    // ⚠️ A ARITMÉTICA SAIU DAQUI. Ela era a mesma diferença entre duas
+    // chamadas de `precoDoMes`, escrita à mão num service — e as telas que
+    // convidam a indicar precisam da MESMA resposta, para a próxima em vez
+    // da que acabou de valer. Duas cópias da mesma conta divergiriam no dia
+    // em que o piso mudasse de lugar, e o sintoma seria o aviso prometendo
+    // um valor que a fatura não desconta.
+    const diferenca = valorDaIndicacao({ ...base, numero: ativasDepois });
+    return diferenca && diferenca > 0 ? formatCurrency(diferenca) : null;
+  } catch {
+    // O aviso é melhor sem número que ausente. Nunca derruba a ativação.
+    return null;
+  }
+}
 
 /**
  * A INDICAÇÃO — o registro que faltava.
@@ -160,9 +213,16 @@ export async function casarEAtivar(indicado) {
     // indicação que não devia valer) e as duas produzem o mesmo silêncio.
     // Dizer no minuto em que o desconto passa a valer tira a dúvida antes de
     // ela virar conversa no portão da escola.
+    const agora = new Date();
+    const mes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
     await notifyIndicacaoAtivou({
       indicadorUid: escolhida.indicadorUid,
       ativas: jaAtivas + 1,
+      descontoEmReais: await quantoAIndicacaoVale(
+        escolhida.indicadorUid,
+        jaAtivas + 1,
+        mes
+      ),
     });
     return 1;
   } catch (err) {

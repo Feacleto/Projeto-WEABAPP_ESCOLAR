@@ -45,6 +45,20 @@ export const ESTADO = {
   PENDENTE: 'pendente',
   CADASTRADO: 'cadastrado',
   ATIVA: 'ativa',
+  /**
+   * ⚠️ O INDICADO SAIU, E O DESCONTO SAI COM ELE.
+   *
+   * Este estado nasceu em 10/09/2026 junto com a decisão de a indicação NÃO
+   * ter prazo. Enquanto o desconto durasse 12 meses, o calendário o encerrava
+   * sozinho; sem prazo, o único limite é o indicado continuar sendo cliente —
+   * e não havia caminho nenhum para isso. `users.indicacoesAtivas` só era
+   * escrito para cima, então um indicado que cancelasse continuava
+   * descontando para sempre.
+   *
+   * É reversível de propósito: se ele voltar a pagar, a indicação volta a
+   * valer. O desconto acompanha o valor que existe hoje, não a idade do ato.
+   */
+  ENCERRADA: 'encerrada',
 };
 
 /**
@@ -142,12 +156,17 @@ export function montarIndicacao({ indicador, telefone, nome, agora = new Date() 
  * cadastros de teste e zeraria a conta com receita que nunca entrou.
  *
  * `cadastrado` acontece quando alguém se cadastra com aquele telefone;
- * `ativa`, quando a primeira fatura desse alguém é quitada.
+ * `ativa`, quando a primeira fatura desse alguém é quitada; `encerrada`,
+ * quando ele deixa de ser cliente — e essa última é a única que anda nos dois
+ * sentidos, porque o indicado pode voltar.
  */
 export function podeTransitar(de, para) {
   const atual = de || ESTADO.PENDENTE;
   if (para === ESTADO.CADASTRADO) return atual === ESTADO.PENDENTE;
-  if (para === ESTADO.ATIVA) return atual === ESTADO.CADASTRADO;
+  if (para === ESTADO.ATIVA) {
+    return atual === ESTADO.CADASTRADO || atual === ESTADO.ENCERRADA;
+  }
+  if (para === ESTADO.ENCERRADA) return atual === ESTADO.ATIVA;
   return false;
 }
 
@@ -234,6 +253,12 @@ export function resumoDoIndicador(indicacoes = []) {
     pendentes: lista.filter((i) => i?.estado === ESTADO.PENDENTE).length,
     cadastrados: lista.filter((i) => i?.estado === ESTADO.CADASTRADO).length,
     ativas: contarAtivas(lista),
+    /**
+     * ⚠️ ENCERRADAS APARECEM, e não somem da lista. O indicador precisa poder
+     * ver que aquele colega saiu — senão ele conta cinco e a conta desconta
+     * três, que é a forma exata de nascer o *"indiquei e não recebi"*.
+     */
+    encerradas: lista.filter((i) => i?.estado === ESTADO.ENCERRADA).length,
   };
 }
 
@@ -247,6 +272,7 @@ export function situacaoDaIndicacao(indicacao) {
   const estado = indicacao?.estado || ESTADO.PENDENTE;
   if (estado === ESTADO.ATIVA) return 'já está valendo no seu desconto';
   if (estado === ESTADO.CADASTRADO) return 'se cadastrou — vale quando pagar o primeiro mês';
+  if (estado === ESTADO.ENCERRADA) return 'deixou de ser cliente — o desconto saiu da sua conta';
   return 'ainda não se cadastrou';
 }
 
@@ -264,4 +290,79 @@ export function acharIndicacao(indicacoes = [], telefone) {
       (i) => i?.chave === chave && i?.estado === ESTADO.PENDENTE
     ) || null
   );
+}
+
+/**
+ * A RECONCILIAÇÃO — quais indicações ainda valem, dado quem ainda paga.
+ *
+ * ── ⚠️ POR QUE ISTO PRECISOU EXISTIR
+ * `users.indicacoesAtivas` só era escrito PARA CIMA. `casarEAtivar` reconta,
+ * mas só roda quando OUTRA indicação do mesmo indicador ativa — e nenhum
+ * caminho, em lugar nenhum do projeto, baixava o número quando o indicado
+ * cancelava. O desconto sobrevivia ao cliente que o justificava, e numa base
+ * com rotatividade esse é o vazamento que cresce sozinho.
+ *
+ * Enquanto se cogitou dar prazo de 12 meses à indicação, o calendário
+ * resolveria isso de lado. Sem prazo, esta função É a régua.
+ *
+ * ── ATRASO NÃO DERRUBA; SAIR DERRUBA
+ * Quem decide `indicadosPagantes` é o chamador, e o critério é grosso de
+ * propósito: tem plano contratado e não está suspenso. Usar o estado fino da
+ * conta faria o desconto piscar de mês em mês por causa de uma fatura em
+ * atraso — e um desconto que oscila é tão ruim de explicar quanto um que não
+ * cai. Dez dias de atraso não deixam de ser cliente.
+ *
+ * ── RETORNA A CONTAGEM DE TODO INDICADOR, INCLUSIVE ZERO
+ * ⚠️ `ativasPorIndicador` traz uma entrada para CADA indicador visto, mesmo
+ * quando o número é 0. Sem isso, quem perdeu a última indicação nunca seria
+ * zerado: o gravador só veria as chaves que sobraram e o contador ficaria
+ * parado no valor antigo — exatamente o bug que esta função veio fechar,
+ * reaparecendo pela porta da escrita.
+ *
+ * ── RECONTA, NUNCA DECREMENTA
+ * Mesma razão de `casarEAtivar`: rodar duas vezes tem que chegar no mesmo
+ * número. O fechamento pode ser disparado à mão pelo dono no mesmo dia em que
+ * a agendada rodou.
+ *
+ * @param indicacoes         a coleção inteira
+ * @param indicadosPagantes  uids dos indicados que ainda são clientes
+ */
+export function reconciliarIndicacoes({ indicacoes = [], indicadosPagantes = [] } = {}) {
+  const lista = Array.isArray(indicacoes) ? indicacoes : [];
+  const pagantes = new Set(
+    (Array.isArray(indicadosPagantes) ? indicadosPagantes : []).filter(Boolean)
+  );
+
+  const encerrar = [];
+  const reabrir = [];
+
+  for (const i of lista) {
+    if (!i?.id || !i?.indicadoUid) continue;
+    const paga = pagantes.has(i.indicadoUid);
+    if (i.estado === ESTADO.ATIVA && !paga) encerrar.push(i.id);
+    if (i.estado === ESTADO.ENCERRADA && paga) reabrir.push(i.id);
+  }
+
+  const vaiEncerrar = new Set(encerrar);
+  const vaiReabrir = new Set(reabrir);
+
+  const ativasPorIndicador = {};
+  for (const i of lista) {
+    const uid = i?.indicadorUid;
+    if (!uid) continue;
+    if (ativasPorIndicador[uid] === undefined) ativasPorIndicador[uid] = 0;
+
+    // ⚠️ UMA `ativa` SEM `indicadoUid` CONTINUA CONTANDO. É documento
+    // malformado, e as duas saídas custam coisas diferentes: mantê-la é um
+    // vazamento pequeno de receita; encerrá-la tira um desconto prometido de
+    // alguém por causa de um campo que o sistema deixou de gravar. A segunda
+    // é a queixa que viaja pela rede de indicação.
+    let estado = i?.estado;
+    if (vaiEncerrar.has(i?.id)) estado = ESTADO.ENCERRADA;
+    else if (vaiReabrir.has(i?.id)) estado = ESTADO.ATIVA;
+
+    if (estado === ESTADO.ATIVA) ativasPorIndicador[uid] += 1;
+  }
+
+  return { encerrar, reabrir, ativasPorIndicador };
 }

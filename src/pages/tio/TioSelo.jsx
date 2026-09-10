@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BadgeCheck, FileUp, Sticker } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import {
   enviarAlvara,
@@ -143,10 +144,24 @@ function Adesivo({ uid, profile }) {
         você e ainda não sabe que a família pode acompanhar a rota.
       </p>
 
+      {/* ⚠️ O CONVITE A INDICAR MORA AQUI PORQUE É O MESMO GESTO, COM UM PASSO
+        * A MENOS. Quem pede o adesivo já aceitou pôr o nome do produto na
+        * traseira da própria perua, para ser lido por quem anda atrás dele —
+        * e quem anda atrás dele, no portão da escola, é outro motorista.
+        *
+        * Só aparece DEPOIS de pedido: antes disso a tela tem um formulário
+        * pela frente, e um segundo pedido no meio dele é o jeito de nenhum
+        * dos dois ser atendido. */}
       {pedido === undefined ? null : jaPediu ? (
-        <p className="mt-3 rounded-xl bg-primarySoft p-3 text-xs font-bold text-primary">
-          {situacao.texto}
-        </p>
+        <>
+          <p className="mt-3 rounded-xl bg-primarySoft p-3 text-xs font-bold text-primary">
+            {situacao.texto}
+          </p>
+          <ConviteParaIndicar
+            className="mt-3"
+            titulo="O adesivo fala com quem vem atrás. Você também pode"
+          />
+        </>
       ) : (
         <div className="mt-4 space-y-2">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
