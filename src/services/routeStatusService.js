@@ -359,7 +359,20 @@ export async function avisarSaidaDaRota(adminUid) {
     });
     if (!paraQuem.size) return 0;
 
-    await Promise.all(
+    // ⚠️ A TRAVA DO DIA SÓ É GRAVADA SE ALGUÉM FOI AVISADO DE VERDADE.
+    //
+    // Antes, cada escrita tinha `.catch(() => {})` — mudo, sem log — e a
+    // trava era gravada logo abaixo, incondicionalmente. O cenário: ele toca
+    // "iniciar rota" no meio-fio com 3G ruim, as vinte escritas falham, a
+    // função devolve 20 e grava a trava. Nenhuma mãe recebe "A perua saiu",
+    // nada aparece no console, e a trava de uma-vez-por-dia garante que
+    // NENHUMA tentativa posterior daquele dia vai acontecer — nem com o
+    // sinal voltando dois minutos depois.
+    //
+    // `allSettled` em vez de `all` pelo mesmo motivo de sempre: uma família
+    // que falha não pode impedir as outras dezenove. O que mudou é que agora
+    // contamos quantas passaram, e a trava depende disso.
+    const idas = await Promise.allSettled(
       [...paraQuem].map((uid) =>
         addDoc(collection(db, 'notifications'), {
           userId: uid,
@@ -371,16 +384,27 @@ export async function avisarSaidaDaRota(adminUid) {
           // pode fazer com a informação.
           body: 'A rota começou. Acompanhe pelo mapa.',
           createdAt: serverTimestamp(),
-        }).catch(() => {})
+        })
       )
     );
 
-    try {
-      localStorage.setItem(CHAVE_DA_SAIDA, `${adminUid}_${hoje}`);
-    } catch {
-      /* idem */
+    const avisadas = idas.filter((r) => r.status === 'fulfilled').length;
+    const falhas = idas.length - avisadas;
+    if (falhas) {
+      // Silêncio total era o defeito: sem isto, ninguém nunca saberia.
+      console.error(`Falha ao avisar a saída para ${falhas} de ${idas.length} famílias.`);
     }
-    return paraQuem.size;
+
+    // Zero avisadas = nada aconteceu. Não trava o dia, para a próxima
+    // tentativa (a rota é ligada mais de uma vez num dia ruim) valer.
+    if (avisadas > 0) {
+      try {
+        localStorage.setItem(CHAVE_DA_SAIDA, `${adminUid}_${hoje}`);
+      } catch {
+        /* idem */
+      }
+    }
+    return avisadas;
   } catch (err) {
     console.error('Falha ao avisar a saída da rota:', err);
     return 0;
@@ -525,7 +549,17 @@ export async function avisarQuemFicou({ adminUid, direcao, agora = new Date() })
     const novos = esquecidos.filter((c) => !marcados.has(c.id));
     if (!novos.length) return 0;
 
-    await Promise.all(
+    // ⚠️ MESMA TRAVA, MESMO DEFEITO — ver `avisarSaidaDaRota`. A marca de
+    // "uma vez por criança, por dia" era gravada mesmo quando a escrita
+    // falhava, e o `.catch(() => {})` de cada item absorvia a rejeição antes
+    // do `Promise.all`, então nem o `catch` da função inteira via.
+    //
+    // O caso concreto: o Lucas ficou `home` porque o motorista esqueceu de
+    // marcar o embarque. O aviso é recusado (rule, ou rede), ninguém é
+    // avisado, e o id do Lucas entra na trava — a mãe não recebe nada, a tela
+    // dela mostra o filho em casa, e na volta a trava impede a segunda
+    // chance. Só marcamos quem realmente foi avisado.
+    const idas = await Promise.allSettled(
       novos.map((c) => {
         const nome = String(c.name || '').trim().split(/\s+/)[0] || 'Seu filho';
         return addDoc(collection(db, 'notifications'), {
@@ -549,20 +583,30 @@ export async function avisarQuemFicou({ adminUid, direcao, agora = new Date() })
             'Provavelmente foi só o registro. Confirme com o motorista.',
           childId: c.id,
           createdAt: serverTimestamp(),
-        }).catch(() => {});
+        }).then(() => c.id);
       })
     );
 
-    try {
-      novos.forEach((c) => marcados.add(c.id));
-      localStorage.setItem(
-        CHAVE_DO_ESQUECIDO,
-        JSON.stringify({ dia: hoje, ids: [...marcados] })
-      );
-    } catch {
-      /* idem */
+    const avisados = idas
+      .filter((r) => r.status === 'fulfilled')
+      .map((r) => r.value);
+    const falhas = idas.length - avisados.length;
+    if (falhas) {
+      console.error(`Falha ao avisar registro faltando para ${falhas} criança(s).`);
     }
-    return novos.length;
+
+    if (avisados.length) {
+      try {
+        avisados.forEach((id) => marcados.add(id));
+        localStorage.setItem(
+          CHAVE_DO_ESQUECIDO,
+          JSON.stringify({ dia: hoje, ids: [...marcados] })
+        );
+      } catch {
+        /* idem */
+      }
+    }
+    return avisados.length;
   } catch (err) {
     console.error('Falha ao avisar quem ficou:', err);
     return 0;
