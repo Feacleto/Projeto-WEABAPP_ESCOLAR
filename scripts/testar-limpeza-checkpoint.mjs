@@ -13,17 +13,19 @@
  * semeadas à mão.
  *
  * O QUE ELE PROVA, e cada linha é um jeito de errar:
- *   1. Checkpoint COM distância perde só `lat`/`lng` — a conferência fica.
- *   2. Checkpoint SEM distância some inteiro — senão sobra `{ at }`, um objeto
- *      que não responde nada e que a próxima pessoa teria que decifrar.
- *   3. `rides` é subcoleção e tem um checkpoint POR STATUS: o de `delivered`
- *      pode ficar e o de `onboard` sumir, no mesmo documento.
- *   4. Mapa que fica vazio some — mapa vazio é o mesmo enigma, um nível acima.
- *   5. ⚠️ O MODO DE CONFERÊNCIA NÃO ESCREVE. Sem este caso, "vou dar uma
+ *   1. Qualquer marcação vai embora — coordenada, distância ou a hora órfã.
+ *      A regra tinha dois caminhos e encolheu para um em 11/09/2026, quando o
+ *      dono decidiu que o registro é "entregou, e a que horas", e nada sobre
+ *      onde.
+ *   2. `rides` é subcoleção e tem um checkpoint POR STATUS — o documento
+ *      inteiro precisa ficar limpo, não um status só.
+ *   3. Mapa que fica vazio some — mapa vazio é enigma, não registro.
+ *   4. ⚠️ O MODO DE CONFERÊNCIA NÃO ESCREVE. Sem este caso, "vou dar uma
  *      olhada" e "apagar a base" são o mesmo comando, e ninguém descobre a
  *      diferença antes da hora.
- *   6. Rodar duas vezes não quebra nem conta de novo — a limpeza pode ser
+ *   5. Rodar duas vezes não quebra nem conta de novo — a limpeza pode ser
  *      interrompida pela rede no meio da varredura.
+ *   6. Os MARCOS não são tocados: a hora da entrega é o registro que fica.
  *
  * ⚠️ E SÃO DOIS CONSUMIDORES DA MESMA RÉGUA: o script (terminal, precisa de
  * chave de serviço) e a callable `limparCoordenadaDoCheckpoint` (botão do
@@ -130,11 +132,8 @@ async function semear() {
     },
   });
 
-  // (c) já limpo: o script não pode inventar escrita onde não há coordenada.
-  await db.doc('children/ja-limpo').set({
-    name: 'Bia',
-    lastStatusCheckpoint: { at: '2026-09-09T12:00:00.000Z', distanceKm: 0.1 },
-  });
+  // (c) já limpo: o script não pode inventar escrita onde não há marcação.
+  await db.doc('children/ja-limpo').set({ name: 'Bia', lastStatusCheckpoint: {} });
 
   // (d) sem checkpoint nenhum.
   await db.doc('children/sem-nada').set({ name: 'Caio' });
@@ -160,22 +159,22 @@ async function semear() {
 // ── a regra, sem banco nenhum ───────────────────────────────────────────────
 bloco('A decisão sobre um checkpoint');
 
-checar('com distância, tira só a coordenada', 'tirar-coordenada',
-  decidir({ lat: 1, lng: 2, at: 'x', distanceKm: 0.5 }));
-checar('sem distância, apaga inteiro', 'apagar-inteiro',
-  decidir({ lat: 1, lng: 2, at: 'x' }));
-checar('já limpo não vira escrita', 'nada',
+// ⚠️ UM CAMINHO SÓ: existe marcação, ela vai embora. Antes a distância
+// sobrevivia (era a conferência de "ele estava longe quando marcou?"), e o
+// dono decidiu que ela sai junto — o registro é a hora, e nada de lugar.
+checar('coordenada sai', 'apagar-inteiro', decidir({ lat: 1, lng: 2, at: 'x' }));
+checar('distância sai junto', 'apagar-inteiro',
   decidir({ at: 'x', distanceKm: 0.5 }));
+checar('e a hora órfã também', 'apagar-inteiro', decidir({ at: 'x' }));
+// ⚠️ `distanceKm: 0` É VALOR VÁLIDO, e um `if (!cp.distanceKm)` o trataria
+// como ausente — o caso perfeito (marcou na porta) escaparia da limpeza.
+checar('distância zero também é registro', 'apagar-inteiro',
+  decidir({ lat: 1, lng: 2, distanceKm: 0 }));
+
+// Nada a apagar: sem objeto, ou objeto sem campo nenhum.
 checar('ausente não vira escrita', 'nada', decidir(undefined));
 checar('nulo não vira escrita', 'nada', decidir(null));
-// ⚠️ `distanceKm: 0` É DISTÂNCIA VÁLIDA — ele marcou entregue na porta. Um
-// `if (!checkpoint.distanceKm)` apagaria justamente o checkpoint do caso
-// perfeito, que é o mais comum de todos.
-checar('distância zero é distância', 'tirar-coordenada',
-  decidir({ lat: 1, lng: 2, distanceKm: 0 }));
-// Só `lng` (gravação parcial): ainda é coordenada, ainda sai.
-checar('coordenada pela metade também sai', 'apagar-inteiro',
-  decidir({ lng: 2, at: 'x' }));
+checar('vazio não vira escrita', 'nada', decidir({}));
 
 bloco('O plano de uma viagem inteira');
 
@@ -185,19 +184,17 @@ const misto = planoDaViagem({
   onboard: { lat: 1, lng: 2, at: 'a' },
   delivered: { lat: 3, lng: 4, at: 'b', distanceKm: 0.03 },
 });
-checar('o de onboard sai inteiro', true,
-  misto.caminhos.includes('checkpoints.onboard'));
-checar('o de delivered perde só a coordenada', true,
-  misto.caminhos.includes('checkpoints.delivered.lat')
-  && misto.caminhos.includes('checkpoints.delivered.lng'));
-checar('e o mapa NÃO some, porque um sobreviveu', false, misto.apagarMapa);
-checar('a conta separa os dois tipos', '1/1', `${misto.tiradas}/${misto.inteiros}`);
+checar('os dois status saem', 2, misto.caminhos.length);
+checar('e nenhum sobra pela metade', true,
+  misto.caminhos.every((c) => !c.endsWith('.lat') && !c.endsWith('.lng')));
+checar('o mapa inteiro some, porque nada sobreviveu', true, misto.apagarMapa);
+checar('e a conta é toda de inteiros', '0/2', `${misto.tiradas}/${misto.inteiros}`);
 
 const soPosicao = planoDaViagem({ onboard: { lat: 1, lng: 2, at: 'a' } });
-checar('nada sobrou: o mapa inteiro some', true, soPosicao.apagarMapa);
+checar('um status só também leva o mapa', true, soPosicao.apagarMapa);
 
-const jaLimpoMapa = planoDaViagem({ delivered: { at: 'b', distanceKm: 0.1 } });
-checar('mapa já limpo não vira escrita', false, jaLimpoMapa.mexeu);
+const jaLimpoMapa = planoDaViagem({ delivered: {} });
+checar('mapa sem registro não vira escrita', false, jaLimpoMapa.mexeu);
 checar('mapa ausente não vira escrita', false, planoDaViagem(undefined).mexeu);
 
 bloco('A regra tem uma cópia só');
@@ -216,15 +213,16 @@ for (const [nome, fonte] of [
   ['o script', fonteDoScript],
 ]) {
   checar(`${nome} importa a régua`, true, fonte.includes('reguaDaLimpeza'));
-  // `distanceKm === undefined` é a linha da decisão. Se ela reaparecer aqui,
-  // alguém copiou a regra em vez de chamá-la.
+  // `Object.keys(checkpoint).length` é a linha da decisão. Se ela reaparecer
+  // aqui, alguém copiou a regra em vez de chamá-la.
   checar(`${nome} não reescreve a decisão`, false,
-    fonte.includes('distanceKm === undefined'));
+    fonte.includes('Object.keys(checkpoint).length'));
 }
-// Sonda positiva: o detector precisa reconhecer a linha quando ela existe.
+// Sonda positiva: o detector precisa reconhecer a linha quando ela existe —
+// senão ele aprova qualquer coisa, inclusive uma régua vazia.
 checar('o detector reconhece a decisão copiada (sonda positiva)', true,
   readFileSync(new URL('../functions/lib/reguaDaLimpeza.js', import.meta.url), 'utf8')
-    .includes('distanceKm === undefined'));
+    .includes('Object.keys(checkpoint).length'));
 
 // ── contra o emulador ───────────────────────────────────────────────────────
 bloco('O modo de conferência não escreve');
@@ -246,25 +244,24 @@ const saida = rodar('--apagar');
 checar('ele diz quantos mexeu', true, /5 registros mexidos/.test(saida));
 
 const comDistancia = (await db.doc('children/com-distancia').get()).get('lastStatusCheckpoint');
-checar('a coordenada sai', undefined, comDistancia.lat);
-checar('e a longitude também', undefined, comDistancia.lng);
-checar('a distância FICA — é a conferência', 0.042, comDistancia.distanceKm);
-checar('e a hora fica junto dela', '2026-09-09T12:00:00.000Z', comDistancia.at);
+checar('a marcação com distância some inteira', undefined, comDistancia);
 
 const semDistancia = (await db.doc('children/sem-distancia').get()).get('lastStatusCheckpoint');
-checar('checkpoint que só tinha posição some inteiro', undefined, semDistancia);
+checar('a que só tinha posição também', undefined, semDistancia);
+
+// ⚠️ E O RESTO DO DOCUMENTO FICA. A limpeza mira um campo, não a criança.
+checar('a criança continua lá', 'Lucas',
+  (await db.doc('children/com-distancia').get()).get('name'));
 
 const jaLimpo = (await db.doc('children/ja-limpo').get()).get('lastStatusCheckpoint');
-checar('o que já estava limpo não é tocado', 0.1, jaLimpo.distanceKm);
+checar('o que não tinha registro não vira nada', undefined, jaLimpo?.distanceKm);
 
 bloco('A viagem, que tem um checkpoint por status');
 
 const viagem = (await db.doc('children/com-distancia/rides/2026-09-09').get()).data();
-checar('o status sem distância some', undefined, viagem.checkpoints.onboard);
-checar('o status com distância fica', 0.03, viagem.checkpoints.delivered.distanceKm);
-checar('sem a coordenada dele', undefined, viagem.checkpoints.delivered.lat);
-// ⚠️ Os MARCOS não são tocados: a hora da entrega é o registro que vale como
-// prova, e ela nunca foi o problema.
+checar('o mapa de checkpoints some inteiro', undefined, viagem.checkpoints);
+// ⚠️ Os MARCOS não são tocados: a hora da entrega é o registro que FICA — é
+// o que o pai lê ("entregue às 12h40") e o que responde numa discussão.
 checar('os marcos continuam inteiros', { onboard: 'x', delivered: 'y' }, viagem.marcos);
 
 const viagemVazia = (await db.doc('children/sem-distancia/rides/2026-09-09').get()).data();

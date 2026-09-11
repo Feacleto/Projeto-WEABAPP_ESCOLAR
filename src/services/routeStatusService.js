@@ -16,7 +16,6 @@ import {
   CAMPO_DA_DIRECAO,
 } from '../dominio/rota/horarios';
 import { playSound } from './soundService';
-import { haversineDistance } from '../compartilhado/haversine';
 import { getEffectiveStatus } from './childrenService';
 import { ABSENCE_TYPES } from './absencesService';
 import { anotarMarco } from './ridesService';
@@ -85,66 +84,41 @@ export function getActionForStatus(status, direction) {
  * Mantido separado do batch pra continuar tocando o som de feedback.
  */
 /**
- * Distância entre onde o tio estava e onde a criança deveria estar.
+ * ⚠️ A MARCAÇÃO NÃO GUARDA MAIS NADA SOBRE ONDE ELE ESTAVA — nem coordenada,
+ * nem distância. Aqui existia `checkpointFrom`, e ela morreu em duas etapas.
  *
- * POR QUE ISTO EXISTE
- * "Entregue" é a informação mais séria do app: é o pai lendo que o filho
- * chegou. Se ela pode ser marcada de qualquer lugar sem deixar rastro,
- * ela vale menos do que parece — inclusive contra ERRO honesto, que é o
- * caso comum: o tio toca no cartão errado da lista e marca a criança
- * que ainda está na perua.
+ * ── O QUE ELA FAZIA
+ * A cada mudança de status ela gravava, em `children.lastStatusCheckpoint` e
+ * em `rides/{dia}.checkpoints`, onde o veículo do motorista estava naquele
+ * segundo. A justificativa era conferir depois: "ele estava longe da casa
+ * quando marcou entregue?".
  *
- * Guardamos a distância no momento da marcação. Não bloqueia nada e não
- * acusa ninguém: cria o rastro que permite conferir depois.
+ * ── POR QUE SAIU
+ * Primeiro saíram `lat` e `lng` (10/09/2026): `children` é lido pela
+ * RESPONSÁVEL, e um registro por criança por dia deixa o trajeto do carro de
+ * um autônomo reconstruível por terceiros — a mesma coisa que `/acompanhar`
+ * recusa fazer. Sobrou a distância, que confere sem dizer onde.
  *
- * OPORTUNISTA de propósito: usa a posição que o rastreamento JÁ gravou.
- * Nunca pede GPS na hora — pedir permissão no meio da rota travaria a
- * ação, e uma verificação que atrasa o trabalho é uma verificação que o
- * tio vai querer desligar.
+ * Depois saiu a distância também, por decisão do dono (11/09/2026): **o app
+ * registra que entregou e a que horas, e nada sobre onde.** O registro do dia
+ * é o marco com a hora, e só.
+ *
+ * ── O QUE SE PERDEU, DITO POR INTEIRO
+ * O único sinal que denunciaria alguém usando o botão de "marcar todos" longe
+ * das casas. Ele **nunca foi lido por tela nenhuma** — existia no banco e
+ * ninguém olhava —, então na prática não se perdeu uma conferência que era
+ * feita, e sim uma que poderia um dia ser feita.
+ *
+ * ⚠️ E SE ELA VOLTAR, VOLTA COMO AVISO, NUNCA COMO REGISTRO: "você está a
+ * 5 km da casa do Lucas. Marcar mesmo?", na hora, sem gravar nada. Pega o
+ * erro antes de ele acontecer, que é melhor que guardar prova dele.
  */
-function checkpointFrom(context, nextStatus) {
-  const pos = context?.driverPosition;
-  if (!pos?.lat || !pos?.lng) return null;
-
-  // Só faz sentido conferir onde há um destino esperado.
-  const target =
-    nextStatus === 'delivered'
-      ? context?.home
-      : nextStatus === 'atSchool'
-      ? context?.school
-      : null;
-
-  // ⚠️ A COORDENADA DO MOTORISTA NÃO É GRAVADA, E ISSO É CORREÇÃO.
-  //
-  // O checkpoint levava `lat` e `lng` crus — a posição do veículo dele — para
-  // `children.lastStatusCheckpoint` e para `rides/{dia}.checkpoints`, um
-  // registro por criança por dia. **Nenhuma tela lia esses dois campos**: o
-  // que a conferência usa é a DISTÂNCIA, e é ela que o comentário acima
-  // descreve como o sinal do lote apertado cedo demais.
-  //
-  // O custo era todo do outro lado. `children` é lido pela RESPONSÁVEL, então
-  // guardar ali a coordenada dele por dia deixa o trajeto do carro de um
-  // autônomo reconstruível por terceiros — a mesma coisa que a página
-  // `/acompanhar` recusa a fazer, com a frase "ele não decidiu compartilhá-la
-  // com terceiros". Dado sensível sem leitor é só passivo.
-  //
-  // A distância preserva a função inteira: ela responde "ele estava longe da
-  // casa quando marcou entregue?" sem dizer ONDE ele estava.
-  if (!target?.lat || !target?.lng) return null;
-
-  return {
-    at: new Date().toISOString(),
-    distanceKm: Number(
-      haversineDistance(target.lat, target.lng, pos.lat, pos.lng).toFixed(3)
-    ),
-  };
-}
 
 /**
  * Avança UMA criança pro próximo status.
  *
- * `context` é opcional: { driverPosition, home, school }. Quando vem,
- * gravamos de onde a marcação foi feita — ver `checkpointFrom`.
+ * `context` é opcional: { dateKey, adminUid, parentUid, combinado }. Ele
+ * NÃO carrega mais posição — ver o bloco acima.
  */
 export async function advanceChild(childId, nextStatus, context = null) {
   if (!childId || !nextStatus) return;
@@ -153,9 +127,6 @@ export async function advanceChild(childId, nextStatus, context = null) {
     status: nextStatus,
     statusUpdatedAt: serverTimestamp(),
   };
-
-  const checkpoint = checkpointFrom(context, nextStatus);
-  if (checkpoint) updates.lastStatusCheckpoint = checkpoint;
 
   const batch = writeBatch(db);
   batch.update(doc(db, 'children', childId), updates);
@@ -170,7 +141,6 @@ export async function advanceChild(childId, nextStatus, context = null) {
       contexto: {
         adminUid: context.adminUid,
         parentUid: context.parentUid,
-        checkpoint,
       },
     });
   }
@@ -240,22 +210,15 @@ export async function advanceMany(moves, context = null) {
         statusUpdatedAt: serverTimestamp(),
       };
 
-      // O LOTE TAMBÉM DEIXA RASTRO. Antes não deixava, e o buraco era grande:
-      // `advanceChild` gravava `lastStatusCheckpoint` porque "entregue é a
-      // informação mais séria do app" — mas o botão de lote é justamente o
-      // caminho que marca VINTE crianças como entregues em casa de uma vez,
-      // e passava sem uma linha de rastro. O mecanismo anti-erro existia só
-      // no caminho que quase ninguém usa.
+      // ⚠️ ESTE É O CAMINHO QUE MAIS PEDIA UM ANTI-ERRO, e hoje ele não tem
+      // nenhum. O botão de lote marca VINTE crianças como entregues em casa
+      // de uma vez; se for apertado cedo demais, vinte famílias leem "chegou"
+      // com o filho ainda na perua. A distância por criança denunciava isso —
+      // e saiu com a marcação inteira, por decisão do dono (ver o bloco no
+      // topo do arquivo).
       //
-      // A distância é por criança e é isso que denuncia o lote apertado cedo
-      // demais: no lote legítimo (todos na escola) todas as distâncias são
-      // pequenas; no lote errado, as das casas seguintes são quilômetros.
-      const checkpoint = checkpointFrom(
-        { driverPosition: context?.driverPosition, home: m.home, school: m.school },
-        m.nextStatus
-      );
-      if (checkpoint) updates.lastStatusCheckpoint = checkpoint;
-
+      // Quando voltar, volta como AVISO na hora ("as três últimas estão a
+      // mais de 3 km — marcar mesmo?"), não como registro guardado.
       batch.update(doc(db, 'children', m.childId), updates);
 
       if (context?.dateKey) {
@@ -266,7 +229,6 @@ export async function advanceMany(moves, context = null) {
           contexto: {
             adminUid: context.adminUid,
             parentUid: m.parentUid,
-            checkpoint,
           },
         });
       }

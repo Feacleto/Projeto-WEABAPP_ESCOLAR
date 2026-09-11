@@ -452,10 +452,24 @@ async function main() {
       dateKey: S('2026-08-25'), childId: S('kid1'),
       adminUid: S(tio1.uid), parentUid: S(pai1.uid),
       marcos: { mapValue: { fields: { embarcou: { timestampValue: '2026-08-25T09:20:00Z' } } } },
-      checkpoints: { mapValue: { fields: { embarcou: { mapValue: { fields: { lat: N(-23.1) } } } } } },
       combinado: { mapValue: { fields: { ida: S('06:20') } } },
       atualizadoEm: { timestampValue: '2026-08-25T09:20:00Z' },
     }));
+
+  // ⚠️ `checkpoints` SAIU DA WHITELIST EM 11/09/2026, E A RECUSA É O TESTE.
+  //
+  // Ele guardava, por status, onde o veículo do motorista estava na hora da
+  // marcação — e o dono decidiu que o registro é "entregou, e a que horas",
+  // sem nada de lugar. O código parou de escrever; **campo sem gravador que
+  // segue permitido é campo livre**, e é o argumento que manteve
+  // `limiteCriancas` proibido depois de ele sair do modelo.
+  //
+  // Sem este caso, o conserto é uma linha de código que qualquer alteração
+  // futura desfaz sem nada reclamar.
+  checar('corr', 'checkpoints não entra mais em rides', 'NEGA',
+    await escrever('children/kid1/rides/2026-08-25', tio1, {
+      checkpoints: { mapValue: { fields: { embarcou: { mapValue: { fields: { lat: N(-23.1) } } } } } },
+    }, ['checkpoints']));
   checar('pos', 'publicarOrdemDoDia com o payload real', 'PASSA',
     await escrever('children/kid1/rides/2026-08-25', tio1, {
       dateKey: S('2026-08-25'), childId: S('kid1'),

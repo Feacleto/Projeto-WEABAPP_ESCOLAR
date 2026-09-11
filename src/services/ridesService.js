@@ -42,10 +42,14 @@ function refDaViagem(childId, dateKey) {
 /**
  * Acrescenta ao batch o marco desta transição.
  *
- * `contexto` traz o que dá sentido ao registro depois: de qual motorista é,
- * a que distância do destino foi marcado (o mesmo checkpoint que já vai pro
- * doc da criança) e o horário que estava combinado com a família — sem ele,
- * saber que a entrega foi 12h51 não diz se atrasou.
+ * `contexto` traz o que dá sentido ao registro depois: de qual motorista é
+ * e o horário que estava combinado com a família — sem ele, saber que a
+ * entrega foi 12h51 não diz se atrasou.
+ *
+ * ⚠️ ELE NÃO CARREGA MAIS `checkpoint`. O documento do dia guardava, por
+ * status, onde o veículo do motorista estava na hora da marcação. Saiu por
+ * decisão do dono em 11/09/2026: **o registro é que entregou e a que horas,
+ * e nada sobre onde.** Ver o bloco em `routeStatusService`.
  */
 export function anotarMarco(batch, { childId, dateKey, status, contexto = {} }) {
   if (!childId || !dateKey || !MARCOS.includes(status)) return;
@@ -59,7 +63,6 @@ export function anotarMarco(batch, { childId, dateKey, status, contexto = {} }) 
       parentUid: contexto.parentUid || null,
       marcos: { [status]: serverTimestamp() },
       ...(contexto.combinado ? { combinado: contexto.combinado } : {}),
-      ...(contexto.checkpoint ? { checkpoints: { [status]: contexto.checkpoint } } : {}),
       atualizadoEm: serverTimestamp(),
     },
     { merge: true }

@@ -1202,12 +1202,21 @@ service cloud.firestore {
       // WHITELIST DE CAMPOS: o proprio codigo chama este registro de prova, e
       // prova que aceita campo arbitrario e so um documento. Sao os campos que
       // `ridesService` grava — nada alem.
+      //
+      // ⚠️ `checkpoints` SAIU EM 11/09/2026, e a ausência é a mudança. Ele
+      // guardava, por status, onde o veículo do motorista estava na hora da
+      // marcação — primeiro a coordenada, depois só a distância, e por fim
+      // nada: o registro do dia é que entregou e a que horas. Nenhum caminho
+      // do projeto escreve mais o campo, e ele fica PROIBIDO aqui pelo mesmo
+      // motivo que `limiteCriancas`: **campo sem gravador não é campo
+      // livre** — sem esta linha, daqui a seis meses alguém volta a escrever
+      // ali sem ninguém decidir nada.
       allow write: if isAdmin()
         && crianca().get('adminUid', '') == request.auth.uid
         && (
           request.resource.data == null
           || request.resource.data.keys().hasOnly([
-            'marcos', 'checkpoints', 'posicao', 'ordemIda', 'totalIda',
+            'marcos', 'posicao', 'ordemIda', 'totalIda',
             'ordemVolta', 'totalVolta', 'combinado', 'childId', 'adminUid',
             'parentUid', 'dateKey', 'atualizadoEm', 'criadoEm'
           ])

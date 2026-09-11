@@ -8,10 +8,12 @@
  *   children/{id}.lastStatusCheckpoint      { lat, lng, at, distanceKm? }
  *   children/{id}/rides/{dia}.checkpoints   { delivered: {...}, atSchool: {...} }
  *
- * Nenhuma tela lia os dois campos. O que a conferência usa é a DISTÂNCIA até
- * a casa ou a escola, que responde *"ele estava longe quando marcou
- * entregue?"* sem dizer onde ele estava. O código parou de escrever em
- * 10/09/2026; o que já foi gravado é o que estas funções decidem.
+ * Nenhuma tela lia esses campos. Saíram em duas etapas: a coordenada em
+ * 10/09/2026 (a distância ainda servia de conferência), e a distância em
+ * 11/09/2026, por decisão do dono — **o app registra que entregou e a que
+ * horas, e nada sobre onde**. O código parou de escrever; o que já foi
+ * gravado é o que estas funções decidem, e hoje a resposta é sempre a mesma:
+ * apaga.
  *
  * ── POR QUE ISTO É ARQUIVO SEPARADO, E SEM `require` NENHUM
  * Duas peças precisam da mesma decisão: a callable do dono
@@ -32,29 +34,24 @@ const TIRAR_COORDENADA = 'tirar-coordenada';
 const APAGAR_INTEIRO = 'apagar-inteiro';
 
 /**
- * @returns 'nada' | 'tirar-coordenada' | 'apagar-inteiro'
+ * @returns 'nada' | 'apagar-inteiro'
  *
- * ⚠️ AS DUAS REGRAS, E A SEGUNDA NÃO É ÓBVIA:
+ * ⚠️ A REGRA ENCOLHEU, E ISSO É A DECISÃO DE 11/09/2026. Ela tinha dois
+ * caminhos: checkpoint COM distância perdia só a coordenada, porque a
+ * distância era a conferência. O dono decidiu que **o app registra que
+ * entregou e a que horas, e nada sobre onde** — então a distância saiu junto,
+ * e sobrou um caminho só: **existe checkpoint, ele vai embora**.
  *
- *   com `distanceKm`  → sai só a coordenada. A distância é a conferência.
- *   sem `distanceKm`  → sai o checkpoint inteiro. Ele nasceu quando não havia
- *                       destino esperado (`onboard`), então não carrega nada
- *                       além da posição: tirar `lat`/`lng` deixaria `{ at }`
- *                       sozinho, um objeto que não responde pergunta nenhuma
- *                       e que a próxima pessoa teria que decifrar. Em `rides`
- *                       a hora já está em `marcos[status]` — o `at` órfão
- *                       seria a segunda cópia dela.
- *
- * ⚠️ `distanceKm: 0` É DISTÂNCIA VÁLIDA — ele marcou entregue na porta, que é
- * o caso mais comum de todos. Um `if (!cp.distanceKm)` apagaria justamente o
- * checkpoint do caso perfeito.
+ * `TIRAR_COORDENADA` continua exportado e nunca mais é devolvido. Está no
+ * teste, e é de propósito: se alguém reintroduzir a marcação, o valor já tem
+ * nome e o caso que o proíbe já existe.
  */
 function decidir(checkpoint) {
   if (!checkpoint || typeof checkpoint !== 'object') return NADA;
-  const temCoordenada =
-    checkpoint.lat !== undefined || checkpoint.lng !== undefined;
-  if (!temCoordenada) return NADA;
-  return checkpoint.distanceKm === undefined ? APAGAR_INTEIRO : TIRAR_COORDENADA;
+  // Qualquer campo aqui é registro de onde ele estava: coordenada, distância
+  // ou a hora órfã que sobra sem elas. Documento vazio (`{}`) não é registro
+  // de nada e não vira escrita.
+  return Object.keys(checkpoint).length > 0 ? APAGAR_INTEIRO : NADA;
 }
 
 /**
@@ -86,6 +83,9 @@ function planoDaViagem(mapa) {
       inteiros += 1;
       caminhos.push(`checkpoints.${status}`);
     } else {
+      // ⚠️ INALCANÇÁVEL DESDE 11/09/2026, e mantido de propósito: se alguém
+      // devolver `TIRAR_COORDENADA` de `decidir`, o comportamento parcial
+      // ainda funciona em vez de virar um `else` esquecido que apaga tudo.
       tiradas += 1;
       sobrevive += 1;
       caminhos.push(`checkpoints.${status}.lat`);
