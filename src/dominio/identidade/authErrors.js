@@ -24,6 +24,27 @@
  */
 
 /** Códigos que significam a mesma coisa em qualquer tela. */
+/**
+ * O TAMANHO MÍNIMO DA SENHA — e ele tem uma cópia fora do código.
+ *
+ * ⚠️ QUEM MANDA É A POLÍTICA DE SENHA DO FIREBASE AUTH, no console
+ * (Authentication → Settings). Ela é a única que RECUSA de verdade: a
+ * validação das telas é conveniência, e o backend é a tranca. Este número
+ * existe para que as telas digam a mesma coisa que o backend vai fazer.
+ *
+ * ⚠️ MUDAR UM SEM O OUTRO PRODUZ UM LOOP, e ele é silencioso do lado de quem
+ * usa. Em 11/09/2026 o console foi para 8 e o código continuou em 6: o
+ * formulário aceitava 7 caracteres, o Firebase devolvia `weak-password`, e a
+ * mensagem dizia "use ao menos 6" — a pessoa digitava 6 e falhava de novo,
+ * seguindo a instrução da própria tela. A tela de redefinir senha era o pior
+ * caso: ela tem uma LISTA de regras marcadas, e a regra ficava VERDE numa
+ * senha que o backend ia recusar.
+ *
+ * Não dá para ler o console daqui, então isto não tem teste que prove o
+ * espelho — tem este aviso, e o número num lugar só.
+ */
+export const SENHA_MINIMA = 8;
+
 const COMUNS = {
   'auth/invalid-email': 'Email inválido.',
   'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
@@ -35,7 +56,7 @@ const COMUNS = {
     'Já existe conta com outro método de login pra este email.',
   'auth/user-disabled':
     'Esta conta foi desativada. Entre em contato com o motorista.',
-  'auth/weak-password': 'Senha muito curta. Use ao menos 6 caracteres.',
+  'auth/weak-password': `Senha muito curta. Use ao menos ${SENHA_MINIMA} caracteres.`,
   'auth/email-already-in-use':
     'Este email já tem conta. Use "Já tenho conta".',
 };

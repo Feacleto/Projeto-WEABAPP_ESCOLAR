@@ -12,6 +12,7 @@ import { inscreverAssociado } from '../services/associadoService';
 import { useAuth } from '../hooks/useAuth';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../compartilhado/masks';
 import { resolverOrigem } from '../dominio/identidade/origem.js';
+import { SENHA_MINIMA } from '../dominio/identidade/authErrors';
 
 /**
  * Inscrição de motorista — /quero-fazer-parte
@@ -86,7 +87,8 @@ export default function DriverSignup() {
     // Email e senha viraram OBRIGATÓRIOS porque a inscrição agora CRIA A
     // CONTA — não é mais só um lead. Sem eles não há como ele voltar.
     if (!isValidEmail(form.email)) errs.email = 'Precisamos do email pra criar sua conta.';
-    if (form.senha.length < 6) errs.senha = 'Mínimo 6 caracteres.';
+    if (form.senha.length < SENHA_MINIMA)
+      errs.senha = `Mínimo ${SENHA_MINIMA} caracteres.`;
     setErrors(errs);
     if (Object.keys(errs).length) {
       toast.error('Confira o que está destacado.');

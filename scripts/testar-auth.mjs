@@ -16,7 +16,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
+import { SENHA_MINIMA, mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 import { painelDe } from '../src/dominio/identidade/papeis.js';
 import { faltaCompletarCadastro } from '../src/dominio/identidade/cadastroDoMotorista.js';
 import { mascararEmail } from '../src/compartilhado/formatters.js';
@@ -82,7 +82,7 @@ bloco('2. Criar conta — os casos que só existiam numa das quatro cópias');
 // Este é o erro que respondia em português numa tela e em inglês na outra.
 checar('e-mail já em uso', 'Este email já tem conta. Use "Já tenho conta".',
   mensagemDeAuth(erro('auth/email-already-in-use', 'The email address is already in use'), 'criar'));
-checar('senha fraca', 'Senha muito curta. Use ao menos 6 caracteres.',
+checar('senha fraca', `Senha muito curta. Use ao menos ${SENHA_MINIMA} caracteres.`,
   mensagemDeAuth(erro('auth/weak-password', 'Password should be at least 6 characters'), 'criar'));
 // E o mesmo código pela folha de login da home responde igual agora.
 checar('e o mesmo código no contexto de entrar', 'Este email já tem conta. Use "Já tenho conta".',
@@ -621,6 +621,49 @@ const fonteDoCadastro = readFileSync(new URL('../src/pages/DriverSignup.jsx', im
 checar('a inscricao nao manda mais nome', false, /nome:\s*form\.name/.test(fonteDoCadastro));
 checar('a inscricao nao manda mais cidade', false, /cidade:\s*form\.city/.test(fonteDoCadastro));
 
+
+// ─────────── 11. A SENHA MÍNIMA DIZ A MESMA COISA EM TODA TELA ──────────
+//
+// ⚠️ A REGRA DE VERDADE MORA NO CONSOLE (Authentication → Settings), e é ela
+// que RECUSA. O número no código existe só para as telas dizerem o que o
+// backend vai fazer — e em 11/09/2026 os dois discordaram: o console foi para
+// 8 e o código ficou em 6.
+//
+// O efeito é um LOOP silencioso: o formulário aceita 7, o Firebase devolve
+// `weak-password`, e a mensagem manda "use ao menos 6". A pessoa obedece a
+// tela e falha de novo. Pior na tela de redefinir senha, que tem uma LISTA de
+// regras marcadas — a regra ficava VERDE numa senha que seria recusada.
+//
+// Não dá pra ler o console daqui. O que dá é garantir que o CÓDIGO tenha um
+// número só, e que nenhuma tela escreva o dela à mão.
+console.log('');
+console.log('11. A senha minima e a mesma em todas as telas');
+
+for (const [nome, rel] of [
+  ['DriverSignup', '../src/pages/DriverSignup.jsx'],
+  ['AuthSheet', '../src/components/auth/AuthSheet.jsx'],
+  ['AuthAction', '../src/pages/AuthAction.jsx'],
+]) {
+  const fonte = semComentarios(readFileSync(new URL(rel, import.meta.url), 'utf8'));
+  checar(`${nome} usa a constante`, true, fonte.includes('SENHA_MINIMA'));
+  // ⚠️ `length > 0` é "o campo não está vazio", NÃO uma regra de tamanho —
+  // e o detector reprovava isso na tela de redefinir senha. Só conta número
+  // que possa ser um mínimo de verdade: 0 e 1 ficam de fora.
+  checar(`${nome} nao escreve o numero a mao`, false,
+    /(password|senha)\.length\s*[<>]=?\s*([2-9]|\d{2,})/.test(fonte));
+}
+
+// A mensagem do backend tambem sai da constante, senao ela contradiz a tela
+// que acabou de recusar.
+const fonteErros = readFileSync(
+  new URL('../src/dominio/identidade/authErrors.js', import.meta.url), 'utf8');
+checar('a mensagem de senha fraca usa a constante', true,
+  /weak-password[^\n]*SENHA_MINIMA/.test(fonteErros));
+checar('e a constante esta em 8', 8, SENHA_MINIMA);
+
+// Sonda positiva: o detector precisa acusar o numero escrito a mao.
+checar('o detector acusa numero a mao (sonda positiva)', true,
+  /(password|senha)\.length\s*[<>]=?\s*([2-9]|\d{2,})/.test('if (password.length < 6) {'));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

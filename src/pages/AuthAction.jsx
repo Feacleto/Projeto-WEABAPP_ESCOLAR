@@ -16,6 +16,7 @@ import {
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
 import { mascararEmail } from '../compartilhado/formatters';
 import { COMPANY_INFO } from './legal/legalContent';
+import { SENHA_MINIMA } from '../dominio/identidade/authErrors';
 
 /**
  * Handler in-app dos links de ação do Firebase Auth.
@@ -174,7 +175,8 @@ export default function AuthAction() {
 
   const validate = () => {
     const errs = {};
-    if (password.length < 6) errs.password = 'Mínimo 6 caracteres.';
+    if (password.length < SENHA_MINIMA)
+      errs.password = `Mínimo ${SENHA_MINIMA} caracteres.`;
     if (password !== confirmPassword)
       errs.confirmPassword = 'As senhas não conferem.';
     setErrors(errs);
@@ -379,7 +381,7 @@ export default function AuthAction() {
   // "criptografado" ou "protegido" genérico: promessa que a linha ao lado não
   // prova é o defeito recorrente deste projeto, e numa tela sobre segurança
   // ela custa mais que em qualquer outra.
-  const senhaLonga = password.length >= 6;
+  const senhaLonga = password.length >= SENHA_MINIMA;
   const senhasIguais = password.length > 0 && password === confirmPassword;
 
   return (
@@ -415,7 +417,7 @@ export default function AuthAction() {
         <Input
           type="password"
           label="Nova senha"
-          placeholder="Mínimo 6 caracteres"
+          placeholder={`Mínimo ${SENHA_MINIMA} caracteres`}
           icon={Lock}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -439,7 +441,7 @@ export default function AuthAction() {
         />
 
         <div className="flex flex-col gap-1.5">
-          <Regra ok={senhaLonga}>Pelo menos 6 caracteres</Regra>
+          <Regra ok={senhaLonga}>Pelo menos {SENHA_MINIMA} caracteres</Regra>
           <Regra ok={senhasIguais}>As duas precisam ser iguais</Regra>
         </div>
 

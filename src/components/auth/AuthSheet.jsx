@@ -13,6 +13,7 @@ import {
 import OpenInBrowser from './OpenInBrowser';
 import { canUseGoogleSignIn, isInAppBrowser } from '../../compartilhado/browserEnv';
 import { mensagemDeAuth } from '../../dominio/identidade/authErrors';
+import { SENHA_MINIMA } from '../../dominio/identidade/authErrors';
 
 /**
  * Folha de autenticação que aparece na PRIMEIRA AÇÃO do responsável.
@@ -102,7 +103,8 @@ export default function AuthSheet({
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       errs.email = 'Confira o email.';
     }
-    if (password.length < 6) errs.password = 'Mínimo 6 caracteres.';
+    if (password.length < SENHA_MINIMA)
+      errs.password = `Mínimo ${SENHA_MINIMA} caracteres.`;
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -247,7 +249,7 @@ export default function AuthSheet({
               type="password"
               revealable
               label="Sua senha"
-              placeholder="Mínimo 6 caracteres"
+              placeholder={`Mínimo ${SENHA_MINIMA} caracteres`}
               icon={Lock}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
