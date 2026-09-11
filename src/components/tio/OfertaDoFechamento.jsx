@@ -1,9 +1,14 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import Sheet from '../common/Sheet';
 import Button from '../common/Button';
 import { formatCurrency } from '../../compartilhado/formatters';
 import { textoDaOferta } from '../../dominio/associacao/ofertaDaPrimeiraRota';
+import {
+  watchPlatformConfig,
+  escadaAberta,
+} from '../../services/platformConfigService';
 
 /**
  * A OFERTA, na folha — o toque T0 e o T2 da cadência.
@@ -40,7 +45,21 @@ export default function OfertaDoFechamento({
   onAceitar,
 }) {
   const navigate = useNavigate();
-  const oferta = textoDaOferta({ motorista, criancas });
+
+  /* ⚠️ A JANELA VEM DE `platformConfig`, que é `read: if true` — e é por isso
+   * que ela mora lá e não em `taxaConfig`, que só o dono lê. Sem esta
+   * leitura a folha anunciaria 30% e `contratarPlano` não gravaria nada.
+   *
+   * `null` enquanto carrega vale como ABERTA: piscar a oferta e sumir com ela
+   * seria pior que um quadro a mais, e o guarda de verdade está no servidor. */
+  const [config, setConfig] = useState(null);
+  useEffect(() => watchPlatformConfig(setConfig), []);
+
+  const oferta = textoDaOferta({
+    motorista,
+    criancas,
+    janelaAberta: escadaAberta(config),
+  });
   if (!oferta) return null;
 
   const data = oferta.ultimoDia

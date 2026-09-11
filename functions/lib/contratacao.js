@@ -111,6 +111,48 @@ function makeContratarPlano(db) {
       // ⚠️ O LEGADO `antecipacao` CONTA COMO JÁ TENDO. É o mesmo instrumento
       // com o nome antigo, e tratá-lo como ausente daria um SEGUNDO desconto
       // de fechamento a quem já tem um — com data nova, doze meses à frente.
+      /* A CONFIG DA CASA, LIDA UMA VEZ E USADA DUAS.
+       *
+       * ⚠️ ELA SUBIU PARA CÁ, e a ordem importa: a leitura ficava DEPOIS da
+       * escrita dos descontos, e a janela precisa ser consultada ANTES de
+       * decidir se concede. Lida no lugar antigo, ela chegaria tarde demais
+       * para impedir a concessão que já tinha acontecido.
+       *
+       * ⚠️ ELE NÃO PODE LER ISTO DA TELA. `taxaConfig` é `read: isOwner()` —
+       * a estrutura de preço da plataforma não vaza nem entre parceiros — e é
+       * por isso que o fechamento COPIA a chave PIX para dentro da fatura.
+       * Mesmo caminho aqui: quem tem Admin SDK lê e devolve só o que interessa.
+       *
+       * Falha na leitura cai no padrão em vez de derrubar a contratação, e o
+       * padrão da janela é ABERTA: desligar o desconto precisa ser um ato de
+       * alguém, nunca a consequência de um soluço de rede. */
+      let diaVencimento = 10;
+      try {
+        const cfg = await db.doc('taxaConfig/app').get();
+        diaVencimento = limitarDiaVencimento(cfg.data()?.diaVencimento ?? 10);
+      } catch (err) {
+        logger.error('[contratacao] taxaConfig não leu', { uid, err: String(err) });
+      }
+
+      /* ⚠️ A JANELA VEM DE `platformConfig`, NÃO DE `taxaConfig`, e a razão é
+       * quem mais precisa lê-la: as telas do motorista. `taxaConfig` é
+       * `read: isOwner()` — preço da casa não vaza nem entre parceiros —, mas
+       * a folha da oferta e o `AvisoDoTrial` ANUNCIAM a porcentagem no
+       * cliente. Se elas não souberem que a janela fechou, prometem um
+       * desconto que este arquivo não vai gravar: o mesmo defeito que fez todo
+       * contrato dizer "todo dia 10".
+       *
+       * Uma fonte, lida pelos dois lados. Falha na leitura mantém ABERTA:
+       * desligar o desconto é um ato de alguém, nunca consequência de um
+       * soluço de rede. */
+      let janelaEscada = true;
+      try {
+        const pc = await db.doc('platformConfig/app').get();
+        janelaEscada = pc.data()?.janelaEscada !== false;
+      } catch (err) {
+        logger.error('[contratacao] platformConfig não leu', { uid, err: String(err) });
+      }
+
       const anteriores = Array.isArray(dados.descontos) ? dados.descontos : [];
       const eDeFechamento = (d) =>
         d?.origem === 'fechamento' || d?.origem === 'antecipacao';
@@ -118,7 +160,18 @@ function makeContratarPlano(db) {
       const jaTinha = anteriores.find(eDeFechamento);
       const degrau = jaTinha ? null : degrauDaDecisao(dados.trialInicio, agora);
       const fracao = degrau === null ? 0 : descontoDoDegrau(degrau);
-      const ganhaAgora = !jaTinha && fracao > 0;
+      /* ⚠️ A JANELA SÓ TOCA EM QUEM GANHA AGORA — nunca em `jaTinha`.
+       *
+       * Essa linha é a janela inteira. Quem já tem o desconto é preservado
+       * três linhas abaixo, num ramo que sequer consulta a régua: fechar a
+       * janela não alcança ninguém para trás, nem por acidente. É a mesma
+       * distinção que aposentou a condição de fundador — não conceder é
+       * diferente de desfazer o que foi concedido —, e agora ela também está
+       * escrita no contrato: "sem prazo enquanto este contrato estiver
+       * vigente".
+       *
+       * Renovação e troca de plano passam por `jaTinha` e mantêm. */
+      const ganhaAgora = !jaTinha && fracao > 0 && janelaEscada;
 
       const descontos = anteriores.filter((d) => !eDeFechamento(d));
       if (jaTinha) descontos.push(jaTinha);
@@ -184,13 +237,7 @@ function makeContratarPlano(db) {
       // Falha na leitura cai no padrão em vez de derrubar a contratação: o
       // fechamento usa exatamente o mesmo `?? 10`, então o pior caso é o
       // contrato repetir o padrão, que é o comportamento de hoje.
-      let diaVencimento = 10;
-      try {
-        const cfg = await db.doc('taxaConfig/app').get();
-        diaVencimento = limitarDiaVencimento(cfg.data()?.diaVencimento ?? 10);
-      } catch (err) {
-        logger.error('[contratacao] taxaConfig não leu', { uid, err: String(err) });
-      }
+
 
       logger.info('[contratacao] plano contratado', {
         uid,

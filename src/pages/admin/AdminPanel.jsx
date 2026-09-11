@@ -29,6 +29,8 @@ import {
   watchPlatformConfig,
   setReviewWindow,
   janelaAberta,
+  escadaAberta,
+  setJanelaEscada,
 } from '../../services/platformConfigService';
 import {
   getPlatformOverview,
@@ -555,6 +557,7 @@ function Geral({ ov }) {
 
       <section>
         <Titulo icon={ShieldCheck}>Manutenção</Titulo>
+        <JanelaDoDesconto />
         <PeriodoDeAvaliacao />
         {/* A limpeza de privacidade é `httpsCallable`, e não existe function
           * no ar neste projeto (Cloud Functions API desativada). Com o botão
@@ -689,6 +692,93 @@ function PeriodoDeAvaliacao() {
           : aberta
             ? 'O prazo já passou: o convite não aparece mais.'
             : 'Fechado — o convite não aparece pra ninguém.'}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * A JANELA DO DESCONTO DE CONVERSÃO — abrir e fechar a concessão.
+ *
+ * ── ⚠️ O QUE ELA FAZ, E O QUE ELA NÃO FAZ
+ * Fechar a janela impede que contas NOVAS ganhem o desconto da escada. Não
+ * mexe em ninguém que já contratou: o desconto deles está gravado em
+ * `users.descontos` com `ate: null`, o contrato assinado declara "sem prazo
+ * enquanto este contrato estiver vigente", e `contratarPlano` preserva pelo
+ * ramo `jaTinha`. Renovar e trocar de plano mantêm.
+ *
+ * É a mesma distinção que aposentou a condição de fundador: NÃO CONCEDER é
+ * diferente de DESFAZER o que foi concedido. A segunda seria a fatura subindo
+ * sem explicação — e é por isso que a frase na tela diz as duas metades.
+ *
+ * ── ⚠️ E A TELA PRECISA DIZER ISSO, senão o dono não usa
+ * Um interruptor chamado "desconto de conversão" sem explicação é um botão
+ * que ninguém toca, porque ninguém sabe se ele vai quebrar a conta de alguém.
+ * A frase embaixo é o que torna o botão utilizável.
+ */
+function JanelaDoDesconto() {
+  const [config, setConfig] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => watchPlatformConfig(setConfig), []);
+
+  // `null` é "ainda carregando" — mostrar "aberta" antes de saber faria o
+  // estado piscar para o contrário do real.
+  const carregando = config === null;
+  const aberta = escadaAberta(config);
+
+  const alternar = async (proxima) => {
+    setSalvando(true);
+    try {
+      await setJanelaEscada(proxima);
+      toast.success(
+        proxima
+          ? 'Janela aberta: quem contratar agora ganha o desconto.'
+          : 'Janela fechada: contas novas não ganham mais.'
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Você é o dono desta conta?');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-text">Desconto de conversão</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-textMuted">
+            A escada do período de teste — 30% no 1º mês, 20% no 2º, 10% no 3º.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={salvando || carregando}
+          onClick={() => alternar(!aberta)}
+          className={`tap shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50 ${
+            aberta
+              ? 'bg-primaryChip text-primary'
+              : 'bg-sunken text-textMuted border border-border'
+          }`}
+        >
+          {carregando ? '...' : aberta ? 'Aberta' : 'Fechada'}
+        </button>
+      </div>
+
+      {/* ⚠️ AS DUAS METADES, SEMPRE JUNTAS. Sem a segunda, o dono não fecha a
+        * janela com medo de quebrar contrato; sem a primeira, ele fecha
+        * achando que cancelou o desconto de todo mundo. */}
+      <p className="text-xs leading-relaxed text-textMuted">
+        {aberta
+          ? 'Quem contratar durante o teste ganha o desconto do degrau em que estiver.'
+          : 'Contas novas não ganham mais.'}{' '}
+        <strong className="text-text">
+          Quem já tem, mantém — inclusive ao renovar ou trocar de plano.
+        </strong>{' '}
+        O desconto concedido é vitalício e está escrito no contrato assinado;
+        fechar aqui não desfaz nada.
       </p>
     </div>
   );

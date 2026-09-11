@@ -25,6 +25,11 @@
  */
 
 import {
+  textoDaOferta,
+  podeOferecer,
+  escadaAberta,
+} from '../src/dominio/associacao/ofertaDaPrimeiraRota.js';
+import {
   PLANO,
   PLANOS_DISPONIVEIS,
   TAXA,
@@ -391,6 +396,47 @@ checar('contra uma de R$ 250, até 42', 42, ancoraAte(250));
 checar('e a taxa marginal é o que estica esse limite', true, ancoraAte(250) > 40);
 
 // ──────────────────────────────── resumo ───────────────────────────────────
+
+/* ══ A JANELA DO DESCONTO DE CONVERSÃO ════════════════════════════════════
+ *
+ * O dono pode FECHAR a concessão da escada no painel. A invariante que estes
+ * casos travam é a que separa duas coisas que parecem a mesma: fechar impede
+ * que contas NOVAS ganhem, e não alcança ninguém que já tem.
+ *
+ * Desfazer o concedido seria quebrar o contrato assinado, que desde a versão
+ * 6 declara "sem prazo enquanto este contrato estiver vigente" — e seria a
+ * fatura subindo sem explicação, que é o defeito que este projeto persegue.
+ */
+{
+  const inicio = new Date(Date.now() - 5 * 24 * 3600 * 1000);
+  const base = { motorista: { trialInicio: inicio }, criancas: 20 };
+
+  checar('janela aberta (padrão): a oferta existe',
+    true, !!textoDaOferta(base));
+  checar('janela fechada: a oferta some',
+    null, textoDaOferta({ ...base, janelaAberta: false }));
+  checar('e o motivo é a janela, não outra porta',
+    'janela_fechada',
+    podeOferecer({ motorista: base.motorista, janelaAberta: false }).motivo);
+
+  // ⚠️ A AUSÊNCIA DO CAMPO É AUSÊNCIA DE DECISÃO. Base antiga não tem
+  // `janelaEscada` gravado; tratar isso como fechada apagaria a oferta de
+  // todo mundo sem ninguém ter desligado nada.
+  checar('sem valor gravado, a janela conta como aberta',
+    true, escadaAberta(undefined) && escadaAberta(null) && escadaAberta({}));
+  checar('só o `false` explícito fecha',
+    false, escadaAberta({ janelaEscada: false }));
+
+  // ⚠️ E O QUE JÁ FOI CONCEDIDO CONTINUA VALENDO — a janela não toca no
+  // preço. `precoDoMes` só lê `users.descontos`, que é o que `contratarPlano`
+  // gravou; a janela vive noutro lugar e decide outra coisa.
+  const jaTem = [{ origem: 'fechamento', fracao: 0.3, ate: null }];
+  const comDesconto = precoDoMes({
+    criancas: 20, plano: PLANO.MENSAL, mes: '2027-06', descontos: jaTem,
+  });
+  checar('quem já tem continua pagando com desconto, um ano depois',
+    82.6, comDesconto.liquido);
+}
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

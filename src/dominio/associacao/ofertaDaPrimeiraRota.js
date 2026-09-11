@@ -38,6 +38,22 @@ import { degrauDaDecisao, ultimoDiaDoDegrau } from './trial.js';
  * no destino do botão (`/tio/planos`), a um toque daqui.
  */
 
+/**
+ * A JANELA DO DESCONTO DE CONVERSÃO ESTÁ ABERTA?
+ *
+ * ⚠️ ELA MORA NO DOMÍNIO E NÃO NO SERVICE, e o motivo é o de sempre neste
+ * projeto: o service importa o Firebase, e o Node não o carrega — a regra
+ * ficaria sem teste. Aqui ela é uma linha pura e a bateria a alcança.
+ *
+ * ⚠️ AUSENTE É ABERTA. Base antiga não tem o campo gravado, e tratar a
+ * ausência como fechada apagaria a oferta de todo mundo sem ninguém ter
+ * desligado nada — e sem erro em lugar nenhum. Desligar é um ato; só o
+ * `false` explícito conta.
+ */
+export function escadaAberta(config) {
+  return config?.janelaEscada !== false;
+}
+
 /** Os três estados. `null` (campo ausente) é "ainda não ofereci". */
 export const OFERTA = {
   PENDENTE: 'pendente',
@@ -55,8 +71,17 @@ export const OFERTA = {
  *                uma coisa que não existe para ele
  *   fora da escada  passou dos 90 dias, e aí o assunto é `RETORNO`, não esta
  */
-export function podeOferecer({ motorista, agora = new Date() } = {}) {
+export function podeOferecer({ motorista, janelaAberta = true, agora = new Date() } = {}) {
   const m = motorista || {};
+  /* ⚠️ A JANELA FECHADA CALA A OFERTA, e isso não é zelo: `contratarPlano` lê
+   * a mesma janela e NÃO GRAVA o desconto quando ela está fechada. Anunciar
+   * aqui sem esse guarda seria a tela prometendo 30% e a fatura vindo cheia —
+   * exatamente o defeito que fez todo contrato assinado dizer "todo dia 10".
+   *
+   * O padrão é ABERTA porque a ausência do campo é ausência de decisão: quem
+   * não desligou nada não pode ter a oferta apagada por um valor que ninguém
+   * escreveu. */
+  if (janelaAberta === false) return { ok: false, motivo: 'janela_fechada' };
   if (m.plano) return { ok: false, motivo: 'contratado' };
   if (m.ofertaEstado === OFERTA.RECUSADA) return { ok: false, motivo: 'recusada' };
   if (!m.trialInicio) return { ok: false, motivo: 'sem_relogio' };
@@ -79,8 +104,8 @@ export function podeOferecer({ motorista, agora = new Date() } = {}) {
  * MÍNIMO de tabela — e é honesto: é o que ele pagaria hoje. O que não pode é
  * a frase prometer que esse valor congela.
  */
-export function textoDaOferta({ motorista, criancas, agora = new Date() } = {}) {
-  const pode = podeOferecer({ motorista, agora });
+export function textoDaOferta({ motorista, criancas, janelaAberta = true, agora = new Date() } = {}) {
+  const pode = podeOferecer({ motorista, janelaAberta, agora });
   if (!pode.ok) return null;
 
   const quantas = Number(criancas) > 0 ? Number(criancas) : 1;
