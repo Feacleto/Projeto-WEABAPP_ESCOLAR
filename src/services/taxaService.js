@@ -7,6 +7,7 @@ import {
   serverTimestamp,
   setDoc,
   where,
+  deleteField,
   writeBatch,
   Timestamp,
 } from 'firebase/firestore';
@@ -307,12 +308,30 @@ export async function setIsencao(uid, isencaoAte) {
  * CONCEDER — a exceção, com registro e efeito no MESMO lote.
  *
  * ── POR QUE SÃO DUAS ESCRITAS E NÃO UMA
- * `users.concessoes` é o REGISTRO: tipo, prazo, motivo, quem concedeu e
- * quando. É o que alguém lê seis meses depois para entender a decisão.
+ * `taxaParceiros.concessoes` é o REGISTRO: tipo, prazo, motivo, quem concedeu
+ * e quando. É o que alguém lê seis meses depois para entender a decisão.
  *
  * `users.descontos` (ou `users.isencaoAte`) é o EFEITO: é o que `precoDoMes` e
  * `fecharFatura` leem para a conta sair menor. Nenhuma das duas funções sabe o
  * que é uma concessão, e não deveria — elas cobram, não julgam.
+ *
+ * ── ⚠️ O REGISTRO MUDOU DE COLEÇÃO EM 11/09/2026, E ISSO ERA VAZAMENTO
+ * Ele morava em `users.concessoes`, e `users` é LIDO PELAS FAMÍLIAS do
+ * motorista — elas precisam da chave PIX e do telefone dele, e **regra do
+ * Firestore não esconde campo**: quem lê o documento lê o documento inteiro.
+ *
+ * O campo mais caro da concessão é o `motivo`, texto livre que o DONO escreve
+ * sobre o associado ("mês ruim, pediu pra não cancelar"). Era a nota privada
+ * da plataforma sobre ele, na mão dos clientes dele.
+ *
+ * `taxaParceiros` já existia exatamente para isso, e o CLAUDE.md já dizia o
+ * porquê no caso do endereço do adesivo: *"`users` as famílias leem;
+ * `taxaParceiros` guarda a nota interna do DONO sobre ele, e rules não
+ * escondem campo"*. A concessão simplesmente estava do lado errado.
+ *
+ * ⚠️ NENHUMA CONTA MUDOU: `precoDoMes` e `fecharFatura` nunca leram
+ * `concessoes` — só o EFEITO, que continua em `users`. Quem lia o registro
+ * era o painel do dono, e só ele.
  *
  * ⚠️ SEPARADAS, EXISTIRIAM OS DOIS ESTADOS ERRADOS: a concessão registrada que
  * nunca chega na fatura (e o associado paga cheio depois de ouvir que não
@@ -347,16 +366,28 @@ export async function conceder(uid, { tipo, fracao, meses, motivo }, ownerUid) {
   const efeito = descontoDaConcessao(concessao);
   if (efeito) descontos.push(efeito);
 
-  const patch = {
-    concessoes: [concessao],
-    descontos,
-    // Isenção escreve o mês; desconto NÃO limpa uma isenção que veio de
-    // outra origem (um mês de teste, por exemplo) — são coisas diferentes, e
-    // apagar aqui seria a concessão tomando de volta o que ele já tinha.
-    ...(tipo === TIPO_CONCESSAO.ISENCAO ? { isencaoAte: concessao.ate } : {}),
-  };
-
-  await setDoc(ref, patch, { merge: true });
+  // ⚠️ DOIS DOCUMENTOS, UM LOTE SÓ. A separação virou de COLEÇÃO, e a amarra
+  // continua sendo a mesma: registro e efeito entram juntos ou não entram.
+  // Escritas soltas produzem os dois estados errados — a concessão registrada
+  // que nunca chega na fatura, e o desconto na fatura que ninguém explica.
+  const lote = writeBatch(db);
+  lote.set(
+    ref,
+    {
+      descontos,
+      // Isenção escreve o mês; desconto NÃO limpa uma isenção que veio de
+      // outra origem (um mês de teste, por exemplo) — são coisas diferentes, e
+      // apagar aqui seria a concessão tomando de volta o que ele já tinha.
+      ...(tipo === TIPO_CONCESSAO.ISENCAO ? { isencaoAte: concessao.ate } : {}),
+      // ⚠️ O REGISTRO ANTIGO É APAGADO DE `users` NO MESMO GESTO. Sem isto, o
+      // motivo escrito antes de 11/09/2026 continuaria visível às famílias
+      // para sempre — conceder de novo é a hora em que a limpeza sai de graça.
+      concessoes: deleteField(),
+    },
+    { merge: true }
+  );
+  lote.set(PARCEIRO(uid), { concessoes: [concessao] }, { merge: true });
+  await lote.commit();
   return concessao;
 }
 
@@ -374,23 +405,33 @@ export async function revogarConcessao(uid) {
   const snap = await getDoc(ref);
   const dados = snap.exists() ? snap.data() : {};
 
-  const eraIsencao = (Array.isArray(dados.concessoes) ? dados.concessoes : []).some(
-    (c) => c?.tipo === TIPO_CONCESSAO.ISENCAO
-  );
+  // O registro mora em `taxaParceiros` desde 11/09/2026 — mas o legado pode
+  // estar em `users`, e a revogação precisa achar a isenção nos dois lugares
+  // para saber se limpa `isencaoAte`. Errar aqui deixa alguém ISENTO PARA
+  // SEMPRE depois de a concessão ter sido revogada.
+  const doParceiro = await getDoc(PARCEIRO(uid));
+  const registradas = [
+    ...(Array.isArray(doParceiro.data()?.concessoes) ? doParceiro.data().concessoes : []),
+    ...(Array.isArray(dados.concessoes) ? dados.concessoes : []),
+  ];
+  const eraIsencao = registradas.some((c) => c?.tipo === TIPO_CONCESSAO.ISENCAO);
 
-  await setDoc(
+  const lote = writeBatch(db);
+  lote.set(
     ref,
     {
-      concessoes: [],
       descontos: (Array.isArray(dados.descontos) ? dados.descontos : []).filter(
         (d) => d?.origem !== 'concessao'
       ),
       // Só limpa a isenção se ela veio DESTA concessão. A do mês de teste
       // continua — ela não é concedida por ninguém, é régua.
       ...(eraIsencao ? { isencaoAte: null } : {}),
+      concessoes: deleteField(),
     },
     { merge: true }
   );
+  lote.set(PARCEIRO(uid), { concessoes: [] }, { merge: true });
+  await lote.commit();
 }
 
 // ── a base ──────────────────────────────────────────────────────────────────

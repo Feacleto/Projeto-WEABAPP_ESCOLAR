@@ -432,6 +432,15 @@ export default function FichaDoMotorista({
  */
 function Condicoes({ motorista, mes, onMudou }) {
   const [revogando, setRevogando] = useState(false);
+  // ⚠️ `motorista.concessoes` NÃO VEM MAIS DE `users` — vem de
+  // `taxaParceiros`, juntado uma vez em `carregarConsole`. O registro saiu do
+  // doc do motorista em 11/09/2026 porque as FAMÍLIAS dele leem aquele
+  // documento (chave PIX, telefone) e regra do Firestore não esconde campo: o
+  // `motivo`, que é a nota do dono sobre ele, ia junto.
+  //
+  // A junção fica no carregamento, e não aqui, para que toda tela do painel
+  // continue lendo o mesmo campo do mesmo objeto — duas telas lendo de
+  // lugares diferentes é como elas passam a discordar.
   const linhas = condicoesVigentes(motorista, mes);
   const temExcecao = linhas.some((l) => l.especie === 'excecao');
 

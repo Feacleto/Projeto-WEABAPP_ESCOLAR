@@ -666,6 +666,19 @@ service cloud.firestore {
              .hasAny([
                'role', 'childId', 'childIds', 'superAdmin',
                'suspenso', 'suspensoEm', 'notaInterna',
+               // ⚠️ `concessoes` MUDOU DE COLEÇÃO EM 11/09/2026, e por isso
+               // entra aqui. O registro da exceção (tipo, prazo, MOTIVO, quem
+               // concedeu) vivia neste documento — que as FAMÍLIAS do
+               // motorista leem, porque precisam da chave PIX e do telefone.
+               // Regra não esconde campo: o `motivo`, texto livre que o dono
+               // escreve sobre o associado, ia junto.
+               //
+               // Ele foi para `taxaParceiros`, que já é só do dono e já
+               // guardava a nota interna pelo mesmo raciocínio. Proibir aqui
+               // é o que impede a volta: **campo sem gravador que segue
+               // permitido é campo livre** — mesmo argumento de
+               // `limiteCriancas` logo abaixo.
+               'concessoes',
                // OS TRÊS QUE FALTAVAM (decisão 12, docs/decisoes.md).
                //
                // `adminUid` é a CHAVE DE ESCOPO do responsável, não dado de

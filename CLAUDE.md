@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 2159 casos em 38 scripts. O PRIMEIRO é
+npm run testar                   # 2191 casos em 38 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -1807,8 +1807,24 @@ exceção: um associado bom, num mês ruim, pede desconto, e "não" é a respost
 que o faz cancelar. O que não pode é a exceção virar a regra sem ninguém ter
 decidido isso.
 
+⚠️ **O REGISTRO NÃO MORA EM `users`, E ISSO ERA VAZAMENTO** (11/09/2026).
+Ele fica em `taxaParceiros/{uid}`, junto da nota interna do dono. Estava no
+doc do motorista — que as FAMÍLIAS dele leem, porque precisam da chave PIX e
+do telefone — e **regra do Firestore não esconde campo**: quem lê o documento
+lê o documento inteiro. O campo mais caro é o `motivo`, texto livre que o
+DONO escreve sobre o associado (*"mês ruim, pediu pra não cancelar"*): era a
+nota privada da plataforma sobre ele, na mão dos clientes dele.
+
+`taxaParceiros` já existia exatamente para isso, e o argumento já estava
+escrito no caso do endereço do adesivo — *"`users` as famílias leem;
+`taxaParceiros` guarda a nota interna do DONO sobre ele, e rules não escondem
+campo"*. A concessão só estava do lado errado. **Nenhuma conta mudou**:
+`precoDoMes` e `fecharFatura` nunca leram o registro, só o EFEITO. O campo
+virou PROIBIDO em `users` — campo sem gravador que segue permitido é campo
+livre — e `conceder` apaga o legado de lá no mesmo lote.
+
 ⚠️ **O REGISTRO E O EFEITO SÃO CAMPOS DIFERENTES, E VÃO NO MESMO LOTE.**
-`users.concessoes` guarda tipo, prazo, motivo, quem concedeu e quando;
+`taxaParceiros.concessoes` guarda tipo, prazo, motivo, quem concedeu e quando;
 `users.descontos` (ou `users.isencaoAte`) é o que `precoDoMes` e `fecharFatura`
 leem — elas cobram, não julgam, e não sabem o que é uma concessão. Separados,
 existiria a concessão registrada que nunca chega na fatura, ou o desconto que

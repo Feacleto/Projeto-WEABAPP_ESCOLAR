@@ -345,7 +345,7 @@ export async function carregarConsole({ forcar = false, max = 500 } = {}) {
 async function buscarConsole(max) {
   const users = collection(db, 'users');
 
-  const [parceiros, responsaveis, avaliacoes, faturas] = await Promise.all([
+  const [parceiros, responsaveis, avaliacoes, faturas, condicoes] = await Promise.all([
     getDocs(query(users, where('role', '==', 'admin'))).then((s) =>
       s.docs.map((d) => ({ uid: d.id, ...d.data() }))
     ),
@@ -362,6 +362,18 @@ async function buscarConsole(max) {
       // Mesma degradação: sem fatura o termômetro perde dois sinais e mantém
       // os outros dois, em vez de a aba não abrir.
       .catch(() => []),
+    // ⚠️ AS CONCESSÕES VÊM DE `taxaParceiros`, E NÃO DE `users`.
+    //
+    // Elas moravam no doc do motorista, que as FAMÍLIAS dele leem — e o
+    // `motivo` é texto livre que o dono escreve sobre ele. Regra do Firestore
+    // não esconde campo, então o registro inteiro ia junto com a chave PIX.
+    // Saíram em 11/09/2026 para a coleção que já era só do dono.
+    //
+    // Uma consulta a mais para o DONO, na abertura da aba. Nenhuma para as
+    // outras duas pontas.
+    getDocs(collection(db, 'taxaParceiros'))
+      .then((s) => s.docs.map((d) => ({ uid: d.id, ...d.data() })))
+      .catch(() => []),
   ]);
 
   // Agrupadas por parceiro aqui, e não na tela: quem consome é o termômetro,
@@ -372,8 +384,22 @@ async function buscarConsole(max) {
     (faturasPorParceiro[f.tioUid] ||= []).push(f);
   });
 
+  // A concessão volta para o objeto do parceiro, que é como o painel inteiro
+  // já a consome (`resumirConcessoes`, `condicoesVigentes`). A junção acontece
+  // aqui, uma vez, e não em cada tela.
+  //
+  // `?? p.concessoes` é a ponte para o que foi concedido ANTES da mudança —
+  // some sozinho quando aquela concessão for revista.
+  const registroPorParceiro = {};
+  condicoes.forEach((c) => {
+    if (c?.uid) registroPorParceiro[c.uid] = c;
+  });
+
   return {
-    parceiros,
+    parceiros: parceiros.map((p) => ({
+      ...p,
+      concessoes: registroPorParceiro[p.uid]?.concessoes ?? p.concessoes,
+    })),
     notas: notasPorMotorista(avaliacoes, responsaveis),
     faturas: faturasPorParceiro,
   };

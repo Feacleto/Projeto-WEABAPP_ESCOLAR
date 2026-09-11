@@ -402,6 +402,76 @@ checar('a tela usa a explicação', true, fonteTaxa.includes('explicarIsencao(fa
 checar('e não escreve mais a frase do teste à mão', false,
   fonteTaxa.includes('<strong>Nada a pagar: você está no período de teste.</strong>'));
 
+bloco('O registro da concessão não fica onde a família lê');
+
+// ⚠️ O CAMPO MAIS CARO DE UMA CONCESSÃO É O `motivo` — texto livre que o DONO
+// escreve sobre o associado ("mês ruim, pediu pra não cancelar"). Ele morava
+// em `users`, que as FAMÍLIAS do motorista leem (precisam da chave PIX e do
+// telefone dele), e **regra do Firestore não esconde campo**: quem lê o
+// documento lê o documento inteiro.
+//
+// `taxaParceiros` já era só do dono, e já guardava a nota interna pelo mesmo
+// raciocínio. A concessão estava do lado errado.
+
+const fonteDoServicoDaTaxa = readFileSync(
+  new URL('../src/services/taxaService.js', import.meta.url), 'utf8');
+const fonteRules = readFileSync(
+  new URL('../firestore.rules', import.meta.url), 'utf8');
+const fonteConsole = readFileSync(
+  new URL('../src/services/adminMetricsService.js', import.meta.url), 'utf8');
+
+// O registro vai para a coleção do dono...
+checar('o registro é gravado em taxaParceiros', true,
+  fonteDoServicoDaTaxa.includes('lote.set(PARCEIRO(uid), { concessoes'));
+// ...e é apagado de onde estava, no mesmo gesto. Sem isto, o motivo escrito
+// antes da mudança ficaria visível para sempre.
+checar('e apagado de users no mesmo lote', true,
+  fonteDoServicoDaTaxa.includes('concessoes: deleteField()'));
+
+// ⚠️ REGISTRO E EFEITO CONTINUAM NO MESMO LOTE. A separação virou de COLEÇÃO,
+// e a amarra é a mesma: soltos, existiriam a concessão registrada que nunca
+// chega na fatura e o desconto que ninguém explica.
+checar('registro e efeito num lote só', true,
+  (() => {
+    // Sem expressão regular de propósito: o que importa é que as DUAS
+    // escritas caiam entre a abertura do lote e o commit. Quem quebrar isso
+    // vai separá-las em dois `await`, e aí uma pode falhar sozinha — que é
+    // exatamente o estado que a amarra existe para impedir.
+    // Ancorado em `conceder`: o arquivo tem outros lotes, e o primeiro deles
+    // é de outra função — medir o arquivo todo aprovaria o lote errado.
+    const inicioDaFuncao = fonteDoServicoDaTaxa.indexOf(
+      'export async function conceder('
+    );
+    if (inicioDaFuncao < 0) return false;
+    const i = fonteDoServicoDaTaxa.indexOf(
+      'const lote = writeBatch(db);',
+      inicioDaFuncao
+    );
+    const f = fonteDoServicoDaTaxa.indexOf('await lote.commit();', i);
+    if (i < 0 || f < 0) return false;
+    const dentro = fonteDoServicoDaTaxa.slice(i, f);
+    return dentro.includes('lote.set(') && dentro.includes('PARCEIRO(uid)');
+  })());
+
+// A rule fecha a volta: campo sem gravador que segue permitido é campo livre.
+checar('users proíbe o campo', true, fonteRules.includes("'concessoes',"));
+
+// E alguém precisa LER do lugar novo, senão a ficha do dono fica vazia.
+checar('o painel lê taxaParceiros', true,
+  fonteConsole.includes("getDocs(collection(db, 'taxaParceiros'))"));
+checar('e junta no objeto do parceiro', true,
+  fonteConsole.includes('concessoes: registroPorParceiro[p.uid]?.concessoes'));
+
+// ⚠️ NENHUMA CONTA MUDOU. `precoDoMes` e `fecharFatura` nunca leram o
+// registro — só o EFEITO, que continua em `users.descontos`. Este caso existe
+// para que uma "simplificação" futura não passe a cobrar pelo registro.
+const fontePlanos = readFileSync(
+  new URL('../src/dominio/associacao/planos.js', import.meta.url), 'utf8');
+const fonteRegua = readFileSync(
+  new URL('../functions/lib/reguaDoServidor.js', import.meta.url), 'utf8');
+checar('a régua do cliente não lê concessoes', false, fontePlanos.includes('concessoes'));
+checar('a régua do servidor também não', false, fonteRegua.includes('concessoes'));
+
 // ──────────────────────────────── resumo ───────────────────────────────────
 
 console.log(`\n${'═'.repeat(64)}`);
