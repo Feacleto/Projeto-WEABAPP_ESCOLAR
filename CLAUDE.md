@@ -872,9 +872,15 @@ havia base real.
     dele que ele cancelou seria se meter no negócio que ela hospeda. A tela diz
     a ele que avisar é responsabilidade dele. ⚠️ O que a FAMÍLIA vê depois
     continua sendo a **pendência 11** do [negocio.md](docs/negocio.md).
-  - ⚠️ **A exportação e a exclusão de dados que a cláusula 6 também promete
-    CONTINUAM SEM CAMINHO.** É a terceira promessa não cumprida do documento, e
-    ainda está aberta.
+  - **A exportação e a exclusão de dados agora DIZEM POR ONDE** (cláusula 6).
+    O texto prometia "na forma da LGPD" sem nomear canal, e não há tela para
+    isso no app — direito com caminho omitido é o mesmo defeito do botão de
+    encerrar. Hoje a cláusula aponta o e-mail de `config/developer.js`, que é o
+    canal que os Termos já nomeavam, e **avisa que encerrar não apaga nada
+    sozinho**: pagamento fica 5 anos por obrigação fiscal, como a Política diz
+    e [retencao.js](src/dominio/cobranca/retencao.js) implementa. ⚠️ Continua
+    sendo ATENDIMENTO HUMANO, não botão — quem prometer automação aqui precisa
+    construir a automação junto.
 - **NADA TRAVA QUANDO A OPERAÇÃO CRESCE** (10/09/2026). Não há teto de
   crianças: `users.criancasAtivas` é o número que a fatura multiplica pela taxa,
   e o `allow create` de `children` exige apenas que ele SUBA no mesmo batch —

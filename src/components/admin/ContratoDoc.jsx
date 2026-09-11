@@ -331,9 +331,32 @@ export default function ContratoDoc({ dados, aceite }) {
         <strong>optar por não renovar</strong>: cumpre o prazo, o contrato não
         se renova e nenhuma multa é devida.{' '}
         <strong>A CONTRATADA</strong>, para encerrar, comunica com{' '}
-        <strong>30 dias de antecedência</strong>. O ASSOCIADO pode solicitar a
-        exportação dos seus dados a qualquer tempo, e a exclusão após o
-        encerramento, na forma da LGPD.
+        <strong>30 dias de antecedência</strong>.{' '}
+        {/* ⚠️ O CANAL VAI ESCRITO, E É POR ISSO QUE ESTA FRASE MUDOU.
+          *
+          * Ela dizia que o associado "pode solicitar a exportação e a exclusão
+          * na forma da LGPD" e não dizia ONDE — e não existe tela para isso no
+          * app. Direito com caminho omitido é o mesmo defeito que esta versão
+          * veio consertar no botão de encerrar: a promessa existe, o caminho
+          * não aparece, e quem precisa dele desiste achando que não tem.
+          *
+          * O canal existe e é o e-mail — os Termos de Uso já o nomeiam, e a
+          * Política descreve o art. 18 inteiro. A cláusula passa a apontar
+          * para o mesmo endereço, que sai de `config/developer.js`, a fonte
+          * única da identidade desde 09/09/2026.
+          *
+          * ⚠️ E A SEGUNDA FRASE EVITA A EXPECTATIVA ERRADA. Encerrar não apaga
+          * nada sozinho, e o registro de pagamento fica cinco anos por
+          * obrigação fiscal — é o que a Política promete na seção 8, e é o
+          * número que `retencao.js` implementa. Calar aqui produziria o pedido
+          * de exclusão que a plataforma não pode atender por inteiro, e a
+          * sensação de promessa quebrada. */}
+        O ASSOCIADO pode solicitar a exportação dos seus dados a qualquer
+        tempo, e a exclusão após o encerramento, na forma do art. 18 da LGPD,
+        pelo e-mail <strong>{c.email}</strong>.{' '}
+        <strong>O encerramento, por si só, não apaga dados</strong> — os
+        registros de pagamento são mantidos por 5 anos por obrigação fiscal,
+        conforme a Política de Privacidade.
       </Clausula>
 
       {/* ── o rodapé do aceite ── */}

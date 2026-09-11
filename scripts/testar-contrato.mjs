@@ -367,6 +367,23 @@ checar('mesma entrada, mesmo documento', JSON.stringify(base), JSON.stringify(mo
     false,
     fonteDoc.includes('nas condições de tabela então vigentes, salvo')
   );
+  // ⚠️ DIREITO SEM CANAL É PROMESSA SEM CAMINHO — o mesmo defeito do botão de
+  // encerrar, que esta versão veio consertar. A cláusula 6 dizia que o
+  // associado pode pedir exportação e exclusão "na forma da LGPD" e não dizia
+  // onde; não há tela para isso no app, e o canal real é o e-mail.
+  checar(
+    'a cláusula 6 diz por onde se pede exportação e exclusão',
+    true,
+    fonteDoc.includes('pelo e-mail') && fonteDoc.includes('{c.email}')
+  );
+  // ⚠️ E ELA NÃO PODE PROMETER APAGAR TUDO: pagamento fica 5 anos por
+  // obrigação fiscal, que é o que a Política diz e `retencao.js` implementa.
+  checar(
+    'e avisa que encerrar não apaga os dados sozinho',
+    true,
+    fonteDoc.includes('não apaga dados')
+  );
+
   // Sonda positiva: se a leitura falhasse, os acima passariam vazios.
   checar('a fonte do documento foi lida', true, fonteDoc.length > 2000);
 }
