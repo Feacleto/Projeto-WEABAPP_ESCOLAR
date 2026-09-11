@@ -63,6 +63,7 @@ const {
 const {
   makeEnviarAvisosDoDia,
   makeVarrerAtrasos,
+  makeVarrerOfertas,
 } = require('./lib/enviarAvisosDoDia');
 const { makeFlagDuplicateReceipts } = require('./lib/receiptGuard');
 const {
@@ -625,3 +626,9 @@ exports.enviarAvisosDoDia = makeEnviarAvisosDoDia(db);
  * app fechado, então detectar pelo aparelho dele falha exatamente quando
  * importa. Ver o cabeçalho de `varrerAtrasos`. */
 exports.varrerAtrasos = makeVarrerAtrasos(db);
+
+/* ⚠️ O SEGUNDO TOQUE DA OFERTA DA PRIMEIRA ROTA. De 10 em 10 minutos, das 6h
+ * às 20h, todos os dias — a primeira rota pode ser num sábado, e ela acontece
+ * uma vez na vida de cada motorista. A consulta é por campo único e na maior
+ * parte dos dias volta vazia. */
+exports.varrerOfertas = makeVarrerOfertas(db);

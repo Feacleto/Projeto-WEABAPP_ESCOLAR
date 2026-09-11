@@ -60,6 +60,11 @@ const ESPECIE_DO_AVISO = {
   alvara_vence: ESPECIE.PRAZO,
 
   convite_parado: ESPECIE.OFERTA,
+  // ⚠️ OFERTA, e não `fato`. Ela é a melhor notícia que o app tem pra dar —
+  // e é oferta do mesmo jeito: quem desligou oferta desligou esta também, e
+  // classificá-la como fato para "garantir" a entrega seria usar a exceção
+  // de chegada da criança para vender.
+  oferta_primeira_rota: ESPECIE.OFERTA,
   comercial_teste_comecou: ESPECIE.OFERTA,
   comercial_degrau_vira: ESPECIE.OFERTA,
   comercial_indicacao: ESPECIE.OFERTA,

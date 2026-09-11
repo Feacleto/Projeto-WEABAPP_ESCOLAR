@@ -43,6 +43,7 @@ const {
   avisoDaFatura,
   avisoDoAlvara,
   avisoDeAtraso,
+  avisoDaOferta,
   jaAvisado,
   jaAvisadoHoje,
   chaveDoDia,
@@ -338,6 +339,84 @@ function makeVarrerAtrasos(db) {
   );
 }
 
+/**
+ * O PUSH DE 40 MINUTOS — o segundo toque da oferta da primeira rota.
+ *
+ * ── ⚠️ POR QUE UMA AGENDADA PRÓPRIA, E NÃO A `varrerAtrasos` QUE JÁ EXISTE
+ * Aquela roda 6–8h e 16–18h, só em dia útil — as janelas de rota. Uma rota que
+ * termina às 8h40, ou num sábado de excursão, nunca seria vista, e o toque
+ * mais importante do funil não pode depender de a rota acabar dentro da
+ * janela.
+ *
+ * ── ⚠️ E POR QUE NÃO CLOUD TASKS
+ * Ela daria o minuto exato. Não paga a dependência nova para ganhar ±10
+ * minutos numa mensagem que já é "quarenta minutos depois, mais ou menos".
+ *
+ * ── O CUSTO É DESPREZÍVEL
+ * A consulta é por campo único (`ofertaEstado == 'pendente'`), índice
+ * automático, e na maior parte dos dias volta vazia — um motorista encerra a
+ * PRIMEIRA rota uma vez na vida.
+ */
+async function varrerOfertas(db, agora) {
+  let n = 0;
+  const snap = await db
+    .collection('users')
+    .where('ofertaEstado', '==', 'pendente')
+    .limit(TETO)
+    .get();
+
+  for (const doc of snap.docs) {
+    try {
+      const m = doc.data();
+      const aviso = avisoDaOferta({ motorista: m, agora });
+      if (!aviso) continue;
+
+      await db.collection('notifications').add({
+        userId: doc.id,
+        type: aviso.tipo,
+        title: aviso.titulo,
+        body: aviso.corpo,
+        destino: aviso.destino || null,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      // ⚠️ MARCADOR SEPARADO, e o estado continua `pendente`. É ele que faz a
+      // folha reaparecer na próxima abertura — o terceiro toque. Sem este
+      // campo a varredura mandaria o mesmo push de dez em dez minutos.
+      await doc.ref.update({ ofertaPushEm: FieldValue.serverTimestamp() });
+      n += 1;
+    } catch (err) {
+      logger.warn(`push da oferta falhou em ${doc.id}`, err);
+    }
+  }
+  return n;
+}
+
+/**
+ * De dez em dez minutos, das 6h às 20h, TODOS os dias.
+ *
+ * ⚠️ Todos os dias porque a primeira rota pode ser num sábado de excursão, e
+ * ela acontece uma vez na vida de cada motorista. Até as 20h porque um push
+ * de oferta às 23h é a definição de aviso que ensina a desligar avisos.
+ */
+function makeVarrerOfertas(db) {
+  return onSchedule(
+    {
+      schedule: '*/10 6-19 * * *',
+      timeZone: 'America/Sao_Paulo',
+      region: REGION,
+      maxInstances: LIMITES.AGENDADO,
+      timeoutSeconds: LIMITES.TEMPO_AGENDADO,
+      memory: LIMITES.MEMORIA_AGENDADO,
+    },
+    async () => {
+      const n = await varrerOfertas(db, new Date());
+      if (n > 0) logger.info('varrerOfertas concluído', { avisos: n });
+    }
+  );
+}
+
 async function enviarAvisosDoDia(db, { agora = new Date() } = {}) {
   const resultado = {
     mensalidades: await varrerMensalidades(db, agora),
@@ -373,6 +452,8 @@ function makeEnviarAvisosDoDia(db) {
 }
 
 module.exports = {
+  makeVarrerOfertas,
+  varrerOfertas,
   makeEnviarAvisosDoDia,
   enviarAvisosDoDia,
   makeVarrerAtrasos,

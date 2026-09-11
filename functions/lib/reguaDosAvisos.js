@@ -33,6 +33,12 @@
 
 'use strict';
 
+/* ⚠️ RÉGUA REQUERENDO RÉGUA — e isso é permitido. `reguaDoServidor` também
+ * não faz `require` nenhum; o que `testar:imports` proíbe é alcançar
+ * `firebase-admin` ou `firebase-functions`, não módulo puro. Sem ele eu
+ * precisaria de uma TERCEIRA cópia de `precoDoMes` só para escrever um push. */
+const REGUA = require('./reguaDoServidor');
+
 const { pushMandaEm } = require('./canalDaCobranca');
 
 const FUSO = 'America/Sao_Paulo';
@@ -417,7 +423,86 @@ function jaAvisadoHoje(doc, tipo, hoje) {
   return !!(doc && doc.avisos && doc.avisos[tipo] === hoje);
 }
 
+/** Quanto tempo depois da folha o push sai. */
+const MINUTOS_ATE_O_PUSH = 40;
+
+/**
+ * O PUSH DE 40 MINUTOS — o segundo toque da cadência da primeira rota.
+ *
+ * ── POR QUE ELE EXISTE
+ * A folha aparece no instante em que ele encerra a primeira rota, e é o pior
+ * e o melhor momento ao mesmo tempo: ele viu o produto funcionar, e está no
+ * meio-fio, com o carro ligado. Muita gente fecha sem ler. Quarenta minutos
+ * depois ele está parado, e a mesma notícia cabe.
+ *
+ * ── ⚠️ SÓ QUEM NÃO RESPONDEU
+ * `pendente` é "mostrei e ele não disse nada". Quem tocou em "Agora não" está
+ * `recusada` e nunca chega aqui; quem foi ver o plano está `aceita`. Fechar a
+ * folha não é responder — e é por isso que este toque existe.
+ *
+ * ── ⚠️ UMA VEZ, E `ofertaPushEm` É QUEM GARANTE
+ * O estado continua `pendente` depois do push, de propósito: é ele que faz a
+ * folha reaparecer na próxima abertura (o terceiro toque). Sem um marcador
+ * separado, a varredura de 10 em 10 minutos mandaria o mesmo push seis vezes
+ * por hora até ele responder.
+ *
+ * ── ⚠️ E EXPIRA. Passadas 12 horas, o momento passou: o push chegaria no dia
+ * seguinte, sobre uma rota que ele não lembra, e o terceiro toque (a folha na
+ * abertura) faz esse trabalho melhor. Aviso fora de hora ensina a ignorar
+ * aviso.
+ */
+function avisoDaOferta({ motorista, agora = new Date() } = {}) {
+  const m = motorista || {};
+  if (m.ofertaEstado !== 'pendente') return null;
+  if (m.ofertaPushEm) return null;
+  if (m.plano) return null;
+
+  const desde = paraData(m.ofertaEm);
+  if (!desde) return null;
+  const minutos = (paraData(agora) - desde) / 60000;
+  if (minutos < MINUTOS_ATE_O_PUSH) return null;
+  if (minutos > 12 * 60) return null;
+
+  const inicio = paraData(m.trialInicio);
+  if (!inicio) return null;
+  /* ⚠️ POSICIONAL, NÃO OBJETO — e as duas cópias divergem AQUI.
+   * `src/dominio/associacao/trial.js` expõe `degrauDaDecisao({ inicio, agora })`
+   * e o espelho do servidor expõe `degrauDaDecisao(trialInicio, agora)`. Passar
+   * o objeto não dá erro: `paraData` devolve null, a função cai no `return 1`,
+   * e o push sai anunciando 30% para quem está no degrau de 20% — a plataforma
+   * contradizendo a própria fatura, sem nada acusar. Pego pelo caso do degrau
+   * 2, não por leitura. */
+  const degrau = REGUA.degrauDaDecisao(inicio, paraData(agora) || new Date());
+  const fracao = REGUA.descontoDoDegrau(degrau);
+  if (!fracao) return null;
+
+  // ⚠️ O NÚMERO SAI DA RÉGUA, NUNCA ESCRITO À MÃO — a mesma disciplina da
+  // folha. Um push dizendo 30% para quem está no degrau de 20% seria a
+  // plataforma contradizendo a própria fatura.
+  const criancas = Number(m.criancasAtivas) || 1;
+  const mes = chaveDoDia(agora).slice(0, 7);
+  const cheio = REGUA.precoDoMes({ criancas, plano: REGUA.PLANO.MENSAL, mes });
+  const comDesconto = REGUA.precoDoMes({
+    criancas,
+    plano: REGUA.PLANO.MENSAL,
+    mes,
+    descontos: [{ origem: 'fechamento', fracao, ate: null }],
+  });
+
+  const pct = Math.round(fracao * 100);
+  return {
+    tipo: 'oferta_primeira_rota',
+    titulo: `Você destravou ${pct}% de desconto`,
+    corpo:
+      `De ${reais(cheio.bruto)} por ${reais(comDesconto.liquido)} por mês — ` +
+      `e os ${pct}% ficam enquanto você for cliente.`,
+    destino: '/tio/planos',
+  };
+}
+
 module.exports = {
+  MINUTOS_ATE_O_PUSH,
+  avisoDaOferta,
   ATRASO_NA_ENTREGA,
   ATRASO_NA_PARTIDA,
   avisoDeAtraso,

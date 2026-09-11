@@ -311,6 +311,54 @@ checar('marca de ontem NÃO cala', !R.jaAvisadoHoje({ avisos: { rota_atrasada: '
 checar('sem marca não cala', !R.jaAvisadoHoje({}, 'rota_atrasada', '2026-09-10'));
 
 // ══════════════════════════════════════════════════════════════════════════
+bloco('═══ O PUSH DE 40 MINUTOS — o segundo toque da oferta ═══');
+/* A folha aparece no meio-fio, com o carro ligado, e muita gente fecha sem
+   ler. Quarenta minutos depois ele está parado. Estes casos travam as quatro
+   portas que impedem esse push de virar perseguição. */
+
+const AGORA = new Date('2026-09-10T18:00:00Z');
+const ha = (min) => new Date(AGORA.getTime() - min * 60000);
+const base = {
+  ofertaEstado: 'pendente',
+  ofertaEm: ha(45),
+  trialInicio: new Date(AGORA.getTime() - 5 * 24 * 3600 * 1000),
+  criancasAtivas: 20,
+};
+const oferta = (extra) => R.avisoDaOferta({ motorista: { ...base, ...extra }, agora: AGORA });
+
+checar('45 minutos depois, o push sai', !!oferta());
+checar('20 minutos ainda é cedo', oferta({ ofertaEm: ha(20) }) === null);
+eq('exatamente 40 já vale', 'oferta_primeira_rota', oferta({ ofertaEm: ha(40) }).tipo);
+checar('39 não', oferta({ ofertaEm: ha(39) }) === null);
+
+/* ⚠️ EXPIRA. Passadas 12 horas o momento passou: o push chegaria no dia
+   seguinte, sobre uma rota que ele não lembra — e a folha na próxima abertura
+   faz esse trabalho melhor. */
+checar('13 horas depois não sai mais', oferta({ ofertaEm: ha(13 * 60) }) === null);
+
+/* As três portas do estado. `pendente` é "mostrei e ele não disse nada" —
+   fechar a folha não é responder, e é por isso que este toque existe. */
+checar('quem recusou nunca recebe', oferta({ ofertaEstado: 'recusada' }) === null);
+checar('quem foi ver o plano também não', oferta({ ofertaEstado: 'aceita' }) === null);
+checar('quem já contratou não', oferta({ plano: 'mensal' }) === null);
+
+/* ⚠️ UMA VEZ SÓ, e o marcador é separado do estado: o `pendente` continua de
+   pé depois do push porque é ele que faz a folha reaparecer na abertura
+   seguinte. Sem `ofertaPushEm`, a varredura de 10 em 10 min mandaria o mesmo
+   push seis vezes por hora. */
+checar('já empurrado não repete', oferta({ ofertaPushEm: ha(5) }) === null);
+
+checar('sem relógio do teste não sai', oferta({ trialInicio: null }) === null);
+checar('sem argumento não explode', R.avisoDaOferta() === null);
+
+/* ⚠️ O NÚMERO SAI DA RÉGUA, e o degrau manda. Um push dizendo 30% para quem
+   está no degrau de 20% seria a plataforma contradizendo a própria fatura. */
+const noDegrau2 = oferta({ trialInicio: new Date(AGORA.getTime() - 40 * 24 * 3600 * 1000) });
+checar('no degrau 2 o push diz 20%', noDegrau2.titulo.includes('20%'), noDegrau2.titulo);
+checar('e o corpo traz os dois valores', /R\$.*R\$/.test(oferta().corpo), oferta().corpo);
+eq('o toque leva ao plano dele', '/tio/planos', oferta().destino);
+
+// ══════════════════════════════════════════════════════════════════════════
 console.log('');
 console.log('════════════════════════════════════════════════════════════════');
 console.log(`  ${ok} passaram, ${bad} falharam`);

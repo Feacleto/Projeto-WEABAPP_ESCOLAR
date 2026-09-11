@@ -47,6 +47,9 @@ const URL_BY_TYPE = {
   payment_overdue_3d: '/pai/finance',
   payment_overdue_7d: '/pai/finance',
 
+  // A oferta da primeira rota — o toque que leva ao plano dele.
+  oferta_primeira_rota: '/tio/planos',
+
   // Os avisos de gesto.
   rota_iniciada: '/pai',
   proxima_parada: '/pai',
