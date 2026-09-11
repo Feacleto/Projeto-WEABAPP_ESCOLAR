@@ -205,3 +205,55 @@ export async function completarCadastro(uid, dados) {
     { merge: true }
   );
 }
+
+/**
+ * O ESTADO DA OFERTA DA PRIMEIRA ROTA.
+ *
+ * Três escritas curtas no próprio documento — `update` de `users`, cuja
+ * política para o próprio dono é lista de PROIBIDOS, e nenhuma delas está
+ * nela. Mesmo critério de `ultimaRota`: mentir aqui não vira desconto nem
+ * prazo, só apaga uma oferta que era dele.
+ *
+ * ⚠️ `ofertaEstado` É PLANO, e não um objeto aninhado, porque a varredura do
+ * push consulta por ele: `where('ofertaEstado','==','pendente')` usa índice
+ * de campo único, que o Firestore cria sozinho. Aninhado exigiria índice
+ * composto declarado à mão — e índice que alguém precisa lembrar de criar é
+ * a consulta que falha em produção e em lugar nenhum antes.
+ */
+export async function ofertarPelaPrimeiraRota(uid) {
+  if (!uid) return false;
+  try {
+    await setDoc(
+      doc(db, 'users', uid),
+      { ofertaEstado: 'pendente', ofertaEm: serverTimestamp() },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    // Engole, como o relógio do teste ao lado: isto roda no meio-fio, no
+    // gesto de encerrar a rota, e uma oferta é a última coisa que pode
+    // impedir alguém de terminar o dia.
+    console.error('[oferta] não deu pra registrar:', err);
+    return false;
+  }
+}
+
+/** O "não" explícito — e ele mata os três toques de uma vez. */
+export async function recusarOferta(uid) {
+  if (!uid) return;
+  await setDoc(
+    doc(db, 'users', uid),
+    { ofertaEstado: 'recusada', ofertaRespondidaEm: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+/** Ele foi ver o plano. Não é contrato — é só parar de oferecer. */
+export async function aceitarOferta(uid) {
+  if (!uid) return;
+  await setDoc(
+    doc(db, 'users', uid),
+    { ofertaEstado: 'aceita', ofertaRespondidaEm: serverTimestamp() },
+    { merge: true }
+  );
+}

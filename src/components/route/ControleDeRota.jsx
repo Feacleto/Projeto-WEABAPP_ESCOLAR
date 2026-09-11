@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { setCompartilharLocalizacao } from '../../services/userService';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { ofertarPelaPrimeiraRota } from '../../services/associadoService';
+import { podeOferecer } from '../../dominio/associacao/ofertaDaPrimeiraRota';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { playSound } from '../../services/soundService';
 
@@ -24,7 +26,7 @@ import { playSound } from '../../services/soundService';
  * sem ler do que um botão que muda de cara.
  */
 export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }) {
-  const { user, profile, updateProfile } = useAuth();
+  const { user, profile, updateProfile, refreshProfile } = useAuth();
   // AUSENTE É LIGADO — ver `setCompartilharLocalizacao`.
   const compartilha = profile?.compartilhaLocalizacao !== false;
   const { watching, position, error, stopping, start, stop } = useGeolocation();
@@ -80,6 +82,22 @@ export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }
     // `avisarQuemFicou` precisa dele pra achar a turma.
     await stop(user?.uid);
     toast.success('Rota encerrada.');
+
+    /* ⚠️ A OFERTA NASCE AQUI — no fim da PRIMEIRA rota, não no começo.
+     *
+     * `trialInicio` grava quando o GPS liga; o momento da PROVA é este: ele
+     * acabou de ver o laço inteiro do produto fechar. E antes disso o app
+     * ficava mudo sobre preço por 60 dias, enquanto o desconto de 30% vencia
+     * sozinho.
+     *
+     * Só na primeira: `ofertaEstado` ausente é "nunca ofereci". Quem já
+     * recebeu, recusou ou contratou não passa por `podeOferecer`.
+     *
+     * Sem `await` e sem bloquear — encerrar a rota não espera por oferta
+     * nenhuma. Quem abre a folha é o `TioLayout`, ao ver o perfil mudar. */
+    if (user?.uid && !profile?.ofertaEstado && podeOferecer({ motorista: profile }).ok) {
+      ofertarPelaPrimeiraRota(user.uid).then(() => refreshProfile());
+    }
   }
 
   /**

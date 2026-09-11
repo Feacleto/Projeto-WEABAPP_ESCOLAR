@@ -512,14 +512,48 @@ const arquivos = readdirSync('src', { recursive: true })
   .map((f) => `src/${String(f).split(sep).join('/')}`)
   .filter((f) => /\.(jsx?|mjs)$/.test(f));
 
+/**
+ * ⚠️ A CERCA OLHA O CÓDIGO, NUNCA OS COMENTÁRIOS — e isso custou um teste
+ * vermelho antes de ser escrito assim.
+ *
+ * `OfertaDoFechamento` explica no cabeçalho POR QUE o convite não entra ali:
+ * a folha é a escada, e "sino nos 90 dias colide com a escada, que tem data;
+ * a indicação não tem" é justamente a linha desta lista. O comentário citava
+ * o nome do componente para poder explicar a ausência dele — e a varredura
+ * acusava o arquivo por isso.
+ *
+ * É a mesma lição que `testar-horarios` já tinha aprendido no tour: comentário
+ * que conta a história tem que poder nomear o que ficou de fora; código que
+ * fala com o motorista, não.
+ */
+const NL = String.fromCharCode(10);
+function semComentarios(fonte) {
+  return fonte
+    .split(NL)
+    .filter((linha) => {
+      const t = linha.trim();
+      return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
+    })
+    .join(NL);
+}
+
 const usam = arquivos.filter((f) => {
   if (f.endsWith('components/tio/ConviteParaIndicar.jsx')) return false;
   try {
-    return readFileSync(f, 'utf8').includes('ConviteParaIndicar');
+    return semComentarios(readFileSync(f, 'utf8')).includes('ConviteParaIndicar');
   } catch {
     return false;
   }
 });
+
+// ⚠️ SONDA DO DESCOMENTADOR: sem ela, um `semComentarios` que apagasse o
+// arquivo inteiro faria a cerca passar SEMPRE — e a lista de permitidos
+// viraria decoração. Esta linha é código de verdade num dos quatro.
+checar(
+  'o descomentador nao apaga o codigo (sonda positiva)',
+  true,
+  semComentarios(readFileSync(PERMITIDOS[0], 'utf8')).includes('ConviteParaIndicar')
+);
 
 checar('o convite aparece exatamente nos quatro lugares decididos',
   PERMITIDOS.slice().sort(), usam.slice().sort());

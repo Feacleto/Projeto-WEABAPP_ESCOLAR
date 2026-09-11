@@ -8,6 +8,11 @@ import ConvitePush from '../../components/tio/ConvitePush';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import AvisoDaPlataforma from '../../components/tio/AvisoDaPlataforma';
 import AvisoDoTrial from '../../components/tio/AvisoDoTrial';
+import OfertaDoFechamento from '../../components/tio/OfertaDoFechamento';
+import {
+  recusarOferta,
+  aceitarOferta,
+} from '../../services/associadoService';
 import { useAuth } from '../../hooks/useAuth';
 import { useAutoBilling } from '../../hooks/useAutoBilling';
 import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
@@ -56,7 +61,7 @@ const NAV_ITEMS = [
  * Notificações e perfil ficam no Header (sino + ícone à direita).
  */
 export default function TioLayout() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   // null | 'first' (primeiro acesso) | 'review' (pediu pra rever no perfil)
@@ -115,6 +120,42 @@ export default function TioLayout() {
   // Usado pelo "Como usar o app" do painel
   const openTutorial = () => setTour('review');
 
+  /* ⚠️ T0 E T2 SÃO A MESMA REGRA, e é isso que faz a cadência ser simples:
+   * a folha abre sempre que `ofertaEstado` está `pendente` e esta tela monta.
+   *
+   * No fim da primeira rota o service grava `pendente` e o perfil recarrega —
+   * a folha abre ali mesmo (T0). Na próxima vez que ele abrir o app, o campo
+   * ainda está `pendente` e ela abre de novo (T2). Dois momentos, um
+   * mecanismo, nenhuma data guardada em lugar nenhum.
+   *
+   * UMA VEZ POR SESSÃO, como o tutorial ao lado e pelo mesmo motivo: sem o
+   * `ref`, trocar de aba dentro do /tio reabriria a folha por cima de quem
+   * acabou de fechá-la.
+   *
+   * ⚠️ E FECHAR NÃO GRAVA NADA. É o que separa "vi e sigo trabalhando" de
+   * "não quero" — o segundo tem botão escrito, e é ele que encerra a
+   * cadência. */
+  const [ofertaAberta, setOfertaAberta] = useState(false);
+  const ofertaJaAbriu = useRef(false);
+
+  useEffect(() => {
+    if (ofertaJaAbriu.current) return;
+    if (profile?.ofertaEstado !== 'pendente') return;
+    ofertaJaAbriu.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOfertaAberta(true);
+  }, [profile?.ofertaEstado]);
+
+  const responderOferta = async (fn) => {
+    setOfertaAberta(false);
+    try {
+      await fn(user?.uid);
+      await refreshProfile();
+    } catch (err) {
+      console.error('[oferta] não deu pra responder:', err);
+    }
+  };
+
   // A COBRANÇA DA PLATAFORMA — e a única tela onde ela não aparece.
   //
   // O aviso mora no layout porque atraso não é assunto de uma tela: ele
@@ -164,6 +205,15 @@ export default function TioLayout() {
         * seria o app falando de dinheiro duas vezes antes de o motorista ver
         * a rota do dia. */}
       {!naTelaDaTaxa && <AvisoDoTrial temContrato={!!fatura} />}
+
+      <OfertaDoFechamento
+        aberta={ofertaAberta}
+        motorista={profile}
+        criancas={(children || []).filter((c) => c.active !== false).length}
+        onFechar={() => setOfertaAberta(false)}
+        onRecusar={() => responderOferta(recusarOferta)}
+        onAceitar={() => responderOferta(aceitarOferta)}
+      />
       {/* ⚠️ O CONVITE DE PUSH SÓ APARECE QUANDO NÃO HÁ COBRANÇA NA TELA.
         *
         * Ele vive aqui, e não no perfil, porque `enablePush` só era chamada de
