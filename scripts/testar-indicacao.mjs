@@ -492,8 +492,11 @@ checar('mas uma origem da regua desce mesmo',
 //                    dado sensivel de crianca
 //   durante a rota   ele esta dirigindo com crianca dentro
 //   cancelamento     desconto que so aparece quando ele ameaca sair prova
-//                    que o preco era teatro (a regra ja esta na secao 07 do
-//                    plano, e a tela ainda vai nascer — na Fase 6)
+//                    que o preco era teatro. ⚠️ A TELA NASCEU EM 11/09/2026
+//                    (`src/pages/tio/TioEncerrar.jsx`) e a cerca ja a cobre —
+//                    este comentario dizia "ainda vai nascer" e virou falso no
+//                    dia em que ela nasceu. O caso nomeado, logo abaixo, existe
+//                    para que a regra nao dependa de a varredura estar certa.
 //   sino nos 90 dias colide com a escada, que tem data; a indicacao nao tem
 //
 // A lista de PERMITIDOS e fechada de proposito. Um lugar novo e uma decisao
@@ -553,6 +556,21 @@ checar(
   'o descomentador nao apaga o codigo (sonda positiva)',
   true,
   semComentarios(readFileSync(PERMITIDOS[0], 'utf8')).includes('ConviteParaIndicar')
+);
+
+// ⚠️ O CASO NOMEADO DA TELA DE ENCERRAR.
+//
+// A varredura acima ja pegaria isto — mas ela passa por AUSENCIA, e ausencia
+// tambem e o que acontece quando o arquivo nao existe mais, muda de nome ou
+// nunca foi lido. Aqui a tela e apontada pelo nome: ou ela existe e esta
+// limpa, ou o teste fala. E o lugar em que a tentacao de vender e maior —
+// quem esta saindo e exatamente quem um desconto de ultima hora seguraria.
+const TELA_DE_SAIR = 'src/pages/tio/TioEncerrar.jsx';
+checar('a tela de encerrar existe', true, arquivos.includes(TELA_DE_SAIR));
+checar(
+  'e ela nao oferece desconto de indicacao para segurar quem esta saindo',
+  false,
+  semComentarios(readFileSync(TELA_DE_SAIR, 'utf8')).includes('ConviteParaIndicar')
 );
 
 checar('o convite aparece exatamente nos quatro lugares decididos',

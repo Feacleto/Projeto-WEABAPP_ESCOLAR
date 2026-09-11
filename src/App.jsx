@@ -64,6 +64,7 @@ const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
 const TioContratoAssociacao = lazy(() => import('./pages/tio/TioContratoAssociacao'));
 const TioTaxa = lazy(() => import('./pages/tio/TioTaxa'));
 const TioPlanos = lazy(() => import('./pages/tio/TioPlanos'));
+const TioEncerrar = lazy(() => import('./pages/tio/TioEncerrar'));
 const TioSelo = lazy(() => import('./pages/tio/TioSelo'));
 const TioIndicar = lazy(() => import('./pages/tio/TioIndicar'));
 const ChildForm = lazy(() => import('./components/children/ChildForm'));
@@ -585,6 +586,21 @@ export default function App() {
         element={
           <PrivateRoute requireRole="admin">
             <TioContratoAssociacao />
+          </PrivateRoute>
+        }
+      />
+      {/* ⚠️ ENCERRAR TAMBÉM FICA FORA DO GUARDA, e pelo motivo INVERSO das
+        * outras três: elas existem para quem quer voltar a pagar, esta para
+        * quem quer parar. Dentro do `GuardaDaConta`, o motorista bloqueado por
+        * atraso não alcançaria a tela de sair — e a cláusula 6 promete que ele
+        * encerra "a qualquer momento, pelo próprio aplicativo". Tranca que
+        * prende quem está tentando sair é o mesmo beco de 06/09/2026, do outro
+        * lado da porta. */}
+      <Route
+        path="/tio/encerrar"
+        element={
+          <PrivateRoute requireRole="admin">
+            <TioEncerrar />
           </PrivateRoute>
         }
       />

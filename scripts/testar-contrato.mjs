@@ -330,12 +330,52 @@ checar('mesma entrada, mesmo documento', JSON.stringify(base), JSON.stringify(mo
     true,
     fonteDoc.includes('enquanto ativas')
   );
-  // Sonda positiva: se a leitura falhasse, os quatro acima passariam vazios.
+  // ⚠️ A MULTA DO ANUAL PRECISA ESTAR NO PAPEL — versão 7.
+  //
+  // Ela existia inteira em `multa.js`, testada, e a cláusula 6 dizia "sem
+  // multa" sem ressalva. Cobrança que o documento assinado não declara não se
+  // sustenta (CDC art. 46): a régua era INCOBRÁVEL, e o anual virava meio
+  // preço com saída livre no mês 2. Se a cláusula voltar a calar, o teste fala.
+  checar(
+    'o contrato declara a multa do anual',
+    true,
+    fonteDoc.includes('FRACAO_DA_MULTA') && fonteDoc.includes('TETO_EM_MENSALIDADES')
+  );
+  // ⚠️ E OS NÚMEROS VÊM DA RÉGUA, nunca digitados: seriam a quarta cópia de um
+  // número que já é testado, no lugar onde divergir custa mais.
+  checar(
+    'e os números dela vêm do domínio, não do texto',
+    false,
+    /20% das mensalidades/.test(fonteDoc)
+  );
+  // A metade que não pode mudar: o mensal sai limpo, sem asterisco.
+  checar(
+    'o mensal continua declarado sem multa nenhuma',
+    true,
+    fonteDoc.includes('No plano mensal não há multa')
+  );
+  // ⚠️ A RENOVAÇÃO NÃO PODE COMER O DESCONTO. A cláusula 4 dizia "nas
+  // condições de tabela então vigentes", que se lê como o oposto da linha do
+  // desconto — duas cláusulas do mesmo papel brigando sobre o mesmo número.
+  checar(
+    'a renovação carrega os descontos sem prazo',
+    true,
+    fonteDoc.includes('Os descontos declarados sem prazo acompanham as renovações')
+  );
+  checar(
+    'e a frase ambígua da tabela saiu',
+    false,
+    fonteDoc.includes('nas condições de tabela então vigentes, salvo')
+  );
+  // Sonda positiva: se a leitura falhasse, os acima passariam vazios.
   checar('a fonte do documento foi lida', true, fonteDoc.length > 2000);
 }
 
-checar('a versão é a 6', 6, VERSAO_CONTRATO);
-checar('e ela viaja no documento', 6, base.versao);
+// ⚠️ A VERSÃO SOBE QUANDO O TEXTO MUDA, e subir obriga todo mundo a
+// reaceitar. A 7 trouxe a multa do anual para o papel e tirou a ambiguidade da
+// renovação; a 6 trouxe o desconto vitalício.
+checar('a versão é a 7', 7, VERSAO_CONTRATO);
+checar('e ela viaja no documento', 7, base.versao);
 
 // A contratada e o associado são identificados: contrato sem parte é papel.
 checar('o associado é identificado', 'tio1', base.associado.uid);

@@ -257,3 +257,43 @@ export async function aceitarOferta(uid) {
     { merge: true }
   );
 }
+
+/**
+ * O PEDIDO DE ENCERRAMENTO — e ele é UMA escrita, no documento dele.
+ *
+ * ⚠️ O CLIENTE ESCREVE A INTENÇÃO, NUNCA O EFEITO. `renovacaoAutomatica` não
+ * destrava nem tranca nada: quem decide se o app abre é `assinaturaAte`, e quem
+ * decide se nasce fatura é o fechamento, os dois do lado do servidor. Por isso
+ * este campo pode morar no `update` do próprio motorista — que é lista de
+ * PROIBIDOS — sem nenhuma rule nova. Mentir nele só encerra a conta dele.
+ *
+ * ⚠️ E É POR ISSO QUE NADA É APAGADO AQUI. `plano`, `descontos` e
+ * `assinaturaAte` ficam intactos: a tela promete que religar antes da data não
+ * custa nada, e essa promessa só é verdade porque o desfazer é este mesmo campo
+ * voltando a `true`. A régua está em `dominio/associacao/encerramento.js`.
+ */
+export async function pedirEncerramento(uid, modo) {
+  if (!uid) return;
+  await setDoc(
+    doc(db, 'users', uid),
+    {
+      renovacaoAutomatica: false,
+      // O modo só significa algo no anual (ver `modoDoPedido`). Gravado sempre
+      // porque o plano pode mudar depois, e um pedido sem modo seria um pedido
+      // cujo sentido depende de quando alguém o lê.
+      encerramentoModo: modo,
+      encerramentoPedidoEm: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+/** Voltar atrás. Um campo, e a conta continua como estava. */
+export async function religarRenovacao(uid) {
+  if (!uid) return;
+  await setDoc(
+    doc(db, 'users', uid),
+    { renovacaoAutomatica: true, encerramentoPedidoEm: null },
+    { merge: true }
+  );
+}

@@ -44,6 +44,7 @@ const { exigirDono } = require('./papeis');
 // nova erraria sozinha na virada de dezembro.
 const { assinaturaAteDoMes } = require('./eventoDeCobranca');
 const { ESTADO, reconciliarIndicacoes } = require('./indicacao');
+const { pararDeFaturar } = require('./reguaDoEncerramento');
 const {
   PLANO,
   TAXA,
@@ -395,6 +396,25 @@ async function fecharMes(db, { mes, agora = new Date() }) {
       motorista.indicacoesAtivas = ativasPorIndicador[doc.id];
     }
     if (motorista.suspenso === true) {
+      resultado.puladas += 1;
+      continue;
+    }
+
+    /* ⚠️ QUEM PEDIU PARA ENCERRAR NÃO RECEBE FATURA NOVA.
+     *
+     * É a cláusula 6 sendo cumprida, com as palavras dela: *"não há nova
+     * cobrança a partir do encerramento, e ele opera até o fim do período já
+     * pago"*. O acesso não é cortado aqui nem em lugar nenhum — `assinaturaAte`
+     * expira sozinho, e as rules já negam quem está sem assinatura válida.
+     *
+     * ⚠️ O ANUAL QUE ESCOLHEU CUMPRIR O PRAZO CONTINUA SENDO FATURADO, e a
+     * régua sabe disso: parar aqui daria meia dúzia de mensalidades de graça a
+     * quem só avisou que não vai renovar.
+     *
+     * ⚠️ E ATRASO NÃO ENTRA NESTE RAMO. Quem deve continua sendo faturado e
+     * continua devendo — encerrar é sobre o futuro. A régua é pura e espelha o
+     * app (`npm run testar:encerramento`). */
+    if (pararDeFaturar(motorista)) {
       resultado.puladas += 1;
       continue;
     }

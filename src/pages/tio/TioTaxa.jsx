@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { ArrowLeft, Check, Copy, FileText, QrCode, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -224,6 +224,26 @@ function Conteudo() {
           </div>
         </section>
       )}
+
+      {/* A SAÍDA, E ELA FICA NO FIM DA ROLAGEM DO DINHEIRO.
+        *
+        * ⚠️ ESTE LINK EXISTE PORQUE O CONTRATO O PROMETE. A cláusula 6 diz que
+        * o associado encerra "a qualquer momento, sem aviso prévio e sem
+        * multa, PELO PRÓPRIO APLICATIVO" — e não havia caminho nenhum. Quem
+        * procura cancelar procura na tela de cobrança, que é onde ele está
+        * quando decide; escondê-la numa tela de ajustes seria retenção por
+        * atrito, que é o que o roteiro comercial usa CONTRA o concorrente.
+        *
+        * Discreto, mas não escondido: quem não está procurando não tropeça
+        * nele, e quem está procurando acha de primeira. */}
+      <div className="pt-2 text-center">
+        <Link
+          to="/tio/encerrar"
+          className="tap inline-block p-2 text-xs text-textMuted underline underline-offset-2"
+        >
+          Encerrar minha associação
+        </Link>
+      </div>
     </div>
   );
 }

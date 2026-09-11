@@ -96,6 +96,16 @@ export const ESPECIE_DO_AVISO = {
   // ── o app não está conseguindo prometer o que promete ───────────────────
   rota_atrasada: ESPECIE.ESTADO,
   comercial_retorno: ESPECIE.ESTADO,
+  // ⚠️ O ENCERRAMENTO É `estado`, E ISSO NÃO É DETALHE DE CLASSIFICAÇÃO.
+  //
+  // A leitura fácil seria `prazo` — tem data chegando. Mas `prazo` é
+  // DESLIGÁVEL, e desligar estes três significaria a associação terminando em
+  // silêncio para quem só pediu menos ruído: a conta para numa manhã de terça,
+  // com criança na porta. `estado` é "a conta dela mudando de estado", que é
+  // exatamente o que está acontecendo.
+  encerramento_30d: ESPECIE.ESTADO,
+  encerramento_7d: ESPECIE.ESTADO,
+  encerramento_fim: ESPECIE.ESTADO,
 
   // ── uma data chegando ───────────────────────────────────────────────────
   payment_due_5d: ESPECIE.PRAZO,

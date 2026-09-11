@@ -38,6 +38,11 @@
  * `firebase-admin` ou `firebase-functions`, não módulo puro. Sem ele eu
  * precisaria de uma TERCEIRA cópia de `precoDoMes` só para escrever um push. */
 const REGUA = require('./reguaDoServidor');
+const {
+  pediuEncerramento,
+  diasAteOFim,
+  fimDaAssociacao,
+} = require('./reguaDoEncerramento');
 
 const { pushMandaEm } = require('./canalDaCobranca');
 
@@ -58,10 +63,22 @@ const TIPO = {
   CONVITE_PARADO: 'convite_parado',
   FATURA_VENCE: 'fatura_vence',
   ALVARA_VENCE: 'alvara_vence',
+  ENCERRAMENTO_30: 'encerramento_30d',
+  ENCERRAMENTO_7: 'encerramento_7d',
+  ENCERRAMENTO_FIM: 'encerramento_fim',
 };
 
 /** Quantos dias depois do convite mandado a gente lembra. Uma vez só. */
 const DIAS_DO_CONVITE = 4;
+/**
+ * As faixas do encerramento, e elas REPETEM as do app de propósito
+ * (`FAIXA_AVISO` e `FAIXA_URGENTE` em `dominio/associacao/encerramento.js`).
+ * Divergir faria o cartão da tela e o push contarem dias diferentes sobre a
+ * mesma data — e `testar:encerramento` compara os dois números.
+ */
+const DIAS_DO_ENCERRAMENTO = 30;
+const DIAS_DO_ENCERRAMENTO_URGENTE = 7;
+
 /** Antecedência do aviso da fatura da plataforma. */
 const DIAS_DA_FATURA = 3;
 /** Antecedência do alvará — a mesma que a fila do dono já usa. */
@@ -313,6 +330,69 @@ function avisoDoAlvara({ motorista, agora = new Date() } = {}) {
 }
 
 /**
+ * A ASSOCIAÇÃO ESTÁ TERMINANDO — três avisos, e nenhum deles é desligável.
+ *
+ * ── ⚠️ POR QUE O PUSH, SE O CARTÃO JÁ ESTÁ NA TELA
+ * `AvisoDoEncerramento` só fala com quem ABRE o app, e entre o pedido e a data
+ * passam semanas. Este é o mesmo argumento que justifica os avisos comerciais:
+ * o push é o único canal que alcança quem parou de abrir. E aqui o custo de
+ * não alcançar é o maior do conjunto — a conta dele para de funcionar numa
+ * manhã de terça, com criança na porta.
+ *
+ * ── ⚠️ ESPÉCIE `estado`, NUNCA `prazo`
+ * Prazo é desligável. Um aviso desligável sobre a conta parar significaria a
+ * associação terminando em silêncio para quem só pediu menos ruído — ver
+ * `dominio/identidade/avisos.js`, onde os três tipos estão classificados.
+ *
+ * ── TRÊS, E SÃO FAIXAS
+ * 30, 7 e o dia. `jaAvisado` garante um de cada, para sempre — e como cada
+ * faixa tem TIPO próprio, religar e pedir de novo não repete o que já foi
+ * dito no mesmo ciclo. A régua da data é a de `reguaDoEncerramento`, que
+ * espelha o app caso a caso.
+ */
+function avisoDoEncerramento({ motorista, agora = new Date() } = {}) {
+  const m = motorista || {};
+  if (!pediuEncerramento(m)) return null;
+
+  const faltam = diasAteOFim(m, agora);
+  if (faltam === null) return null;
+
+  const fim = fimDaAssociacao(m);
+  const quando = fim ? dataCurta(fim) : null;
+
+  if (faltam <= 0) {
+    return {
+      tipo: TIPO.ENCERRAMENTO_FIM,
+      titulo: 'Sua associação foi encerrada',
+      corpo:
+        'Seus dados continuam salvos. Para voltar a operar, escolha um plano.',
+      destino: '/tio/planos',
+    };
+  }
+  if (faltam === DIAS_DO_ENCERRAMENTO_URGENTE) {
+    return {
+      tipo: TIPO.ENCERRAMENTO_7,
+      titulo: 'Sua associação termina em 7 dias',
+      corpo: quando
+        ? `O app funciona até ${quando}. Dá para manter, se quiser.`
+        : 'Dá para manter a sua associação, se quiser.',
+      destino: '/tio/encerrar',
+    };
+  }
+  if (faltam === DIAS_DO_ENCERRAMENTO) {
+    return {
+      tipo: TIPO.ENCERRAMENTO_30,
+      titulo: 'Sua renovação está desligada',
+      corpo: quando
+        ? `Sua associação vai até ${quando}. Dá para manter, se quiser.`
+        : 'Dá para manter a sua associação, se quiser.',
+      destino: '/tio/encerrar',
+    };
+  }
+  return null;
+}
+
+/**
  * A ROTA ATRASOU — o espelho servidor do `avisoDoMomento`.
  *
  * ⚠️ ESTE É UM ESPELHO, E ESPELHO É DÍVIDA. `src/dominio/rota/avisoDoMomento.js`
@@ -502,6 +582,9 @@ function avisoDaOferta({ motorista, agora = new Date() } = {}) {
 
 module.exports = {
   MINUTOS_ATE_O_PUSH,
+  avisoDoEncerramento,
+  DIAS_DO_ENCERRAMENTO,
+  DIAS_DO_ENCERRAMENTO_URGENTE,
   avisoDaOferta,
   ATRASO_NA_ENTREGA,
   ATRASO_NA_PARTIDA,

@@ -42,6 +42,7 @@ const {
   avisoDoConvite,
   avisoDaFatura,
   avisoDoAlvara,
+  avisoDoEncerramento,
   avisoDeAtraso,
   avisoDaOferta,
   jaAvisado,
@@ -213,6 +214,42 @@ async function varrerAlvaras(db, agora) {
       if (await entregar(db, { paraUid: doc.id, aviso, ref: doc.ref, operacional: true, agora })) n += 1;
     } catch (err) {
       logger.warn(`aviso de alvará falhou em ${doc.id}`, err);
+    }
+  }
+  return n;
+}
+
+/**
+ * A ASSOCIAÇÃO TERMINANDO — 30 dias antes, 7 antes, e no dia.
+ *
+ * ⚠️ A CONSULTA É POR `renovacaoAutomatica == false`, que é campo único e
+ * ganha índice sozinho — o mesmo cuidado que fez `ofertaEstado` nascer plano
+ * em vez de aninhado. Índice composto que alguém precisa lembrar de criar é a
+ * consulta que falha em produção e em lugar nenhum antes.
+ *
+ * ⚠️ E ELA VARRE POUCA GENTE POR DESENHO: só quem pediu para sair está neste
+ * conjunto. Quem tem a renovação ligada — a base inteira — nem é lido.
+ */
+async function varrerEncerramentos(db, agora) {
+  let n = 0;
+  const snap = await db
+    .collection('users')
+    .where('renovacaoAutomatica', '==', false)
+    .limit(TETO)
+    .get();
+
+  for (const doc of snap.docs) {
+    try {
+      const m = doc.data();
+      const aviso = avisoDoEncerramento({ motorista: m, agora });
+      // ⚠️ `jaAvisado`, NÃO `jaAvisadoHoje`: cada faixa tem TIPO próprio e é
+      // dita uma vez só. Repetir o mesmo aviso todo dia até a data chegar é a
+      // lição que `avisoDoMomento` já pagou — tarja diária ensina a pular
+      // tarja, e esta é justamente a que ele não pode pular.
+      if (!aviso || jaAvisado(m, aviso.tipo)) continue;
+      if (await entregar(db, { paraUid: doc.id, aviso, ref: doc.ref, operacional: true, agora })) n += 1;
+    } catch (err) {
+      logger.warn(`aviso de encerramento falhou em ${doc.id}`, err);
     }
   }
   return n;
@@ -423,6 +460,7 @@ async function enviarAvisosDoDia(db, { agora = new Date() } = {}) {
     convites: await varrerConvites(db, agora),
     faturas: await varrerFaturas(db, agora),
     alvaras: await varrerAlvaras(db, agora),
+    encerramentos: await varrerEncerramentos(db, agora),
   };
   logger.info('enviarAvisosDoDia concluído', resultado);
   return resultado;
@@ -458,4 +496,5 @@ module.exports = {
   enviarAvisosDoDia,
   makeVarrerAtrasos,
   varrerAtrasos,
+  varrerEncerramentos,
 };

@@ -1,4 +1,15 @@
 import { formatBRL } from '../../compartilhado/formatters';
+/* ⚠️ OS NÚMEROS DA MULTA VÊM DA RÉGUA, NUNCA DIGITADOS NA CLÁUSULA.
+ *
+ * Escrever "20%" à mão aqui criaria a quarta cópia de um número que já mora em
+ * `multa.js` e é testado — e a cláusula é justamente o lugar onde a divergência
+ * é mais cara: o documento diria uma coisa e a cobrança faria outra, com
+ * assinatura no meio. Mudar a régua muda o contrato na mesma alteração. */
+import {
+  FRACAO_DA_MULTA,
+  TETO_EM_MENSALIDADES,
+  DIAS_SEM_MULTA,
+} from '../../dominio/associacao/multa.js';
 
 /**
  * O CONTRATO DE ASSOCIAÇÃO, RENDERIZADO.
@@ -239,10 +250,24 @@ export default function ContratoDoc({ dados, aceite }) {
         <strong>{data(dados.vigenciaFim)}</strong> ({dados.vigenciaMeses} meses).
         {/* RENOVA DE 12 EM 12, e é isso que dá prazo aos descontos da cláusula
           * 3 — eles duram exatamente um período. */}
-        Ao fim do prazo o contrato se <strong>renova por mais 12 meses</strong>{' '}
-        nas condições de tabela então vigentes, salvo manifestação de qualquer
-        das partes.{' '}
-        <strong>Os descontos com prazo não se renovam automaticamente.</strong>
+        Ao fim do prazo o contrato se <strong>renova por mais 12 meses</strong>,
+        salvo manifestação de qualquer das partes.{' '}
+        {/* ⚠️ ESTA FRASE FOI REESCRITA NA VERSÃO 7, E A ANTIGA ERA AMBÍGUA NO
+          * PIOR LUGAR. Ela dizia que a renovação valia "nas condições de tabela
+          * então vigentes" — o que se lê, sem esforço, como "o desconto acaba
+          * na renovação". E a linha do desconto, três cláusulas acima, promete
+          * "sem prazo enquanto este contrato estiver vigente".
+          *
+          * Duas cláusulas do mesmo documento dizendo coisas opostas sobre
+          * dinheiro. Num contrato de adesão a ambiguidade se resolve a favor de
+          * quem aderiu (CDC art. 47), então na prática ele manteria o desconto
+          * — mas descobrir isso numa discussão é o pior jeito de ter razão. */}
+        <strong>
+          Os descontos declarados sem prazo acompanham as renovações
+        </strong>{' '}
+        enquanto este contrato estiver vigente; os descontos com data de término
+        não se renovam. Encerrado o contrato, as condições da cláusula 3ª deixam
+        de valer, e uma nova associação segue a tabela vigente na data dela.
       </Clausula>
 
       <Clausula n="5" titulo="Suspensão por inadimplência">
@@ -283,8 +308,28 @@ export default function ContratoDoc({ dados, aceite }) {
           * que é rescisão unilateral sem direito equivalente (CDC art. 51, XI).
           * Quem tem mais poder é quem carrega a obrigação. */}
         <strong>O ASSOCIADO pode encerrar a qualquer momento</strong>, sem aviso
-        prévio e sem multa, pelo próprio aplicativo. Não há nova cobrança a
-        partir do encerramento, e ele opera até o fim do período já pago.{' '}
+        prévio, pelo próprio aplicativo. Não há nova cobrança a partir do
+        encerramento, e ele opera até o fim do período já pago.{' '}
+        {/* ⚠️ A MULTA DO ANUAL PASSOU A ESTAR ESCRITA NA VERSÃO 7.
+          *
+          * Ela existia inteira em `multa.js` — pura, testada, com teto e
+          * carência — e o contrato dizia "sem multa", sem qualquer ressalva.
+          * Cobrança que o documento assinado não declara não se sustenta (CDC
+          * art. 46: o consumidor não se obriga ao que não teve conhecimento
+          * prévio), então a multa era INCOBRÁVEL — e um anual pela metade do
+          * preço com saída livre no segundo mês não é um plano, é um vazamento.
+          *
+          * A metade que NÃO mudou é a do mensal, e ela é absoluta de propósito:
+          * "cancelou, cancelou" é o argumento central contra o concorrente que
+          * cobra 30% do saldo, e uma exceção com asterisco apaga a frase. */}
+        <strong>No plano mensal não há multa</strong> em hipótese alguma. No
+        plano anual, que tem compromisso de 12 meses, encerrar antes do prazo
+        implica multa de <strong>{pct(FRACAO_DA_MULTA)} das mensalidades
+        restantes</strong>, limitada a {TETO_EM_MENSALIDADES} mensalidades —
+        nada é devido nos primeiros {DIAS_SEM_MULTA} dias, nem depois de
+        cumpridos os 12 meses. O ASSOCIADO do plano anual pode, em vez disso,{' '}
+        <strong>optar por não renovar</strong>: cumpre o prazo, o contrato não
+        se renova e nenhuma multa é devida.{' '}
         <strong>A CONTRATADA</strong>, para encerrar, comunica com{' '}
         <strong>30 dias de antecedência</strong>. O ASSOCIADO pode solicitar a
         exportação dos seus dados a qualquer tempo, e a exclusão após o

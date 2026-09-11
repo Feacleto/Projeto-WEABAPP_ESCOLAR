@@ -8,6 +8,7 @@ import ConvitePush from '../../components/tio/ConvitePush';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import AvisoDaPlataforma from '../../components/tio/AvisoDaPlataforma';
 import AvisoDoTrial from '../../components/tio/AvisoDoTrial';
+import AvisoDoEncerramento from '../../components/tio/AvisoDoEncerramento';
 import OfertaDoFechamento from '../../components/tio/OfertaDoFechamento';
 import {
   recusarOferta,
@@ -205,6 +206,13 @@ export default function TioLayout() {
         * seria o app falando de dinheiro duas vezes antes de o motorista ver
         * a rota do dia. */}
       {!naTelaDaTaxa && <AvisoDoTrial temContrato={!!fatura} />}
+
+      {/* ⚠️ ELE APARECE INCLUSIVE NA TELA DA TAXA, ao contrário do aviso do
+        * teste e do da plataforma. Aqueles são cobrança, e cobrança que cobre
+        * a própria tela de pagar não deixa ninguém pagar. Este é o oposto: diz
+        * que a conta vai PARAR, e a tela do dinheiro é justamente onde ele
+        * está quando decide se continua. */}
+      <AvisoDoEncerramento />
 
       <OfertaDoFechamento
         aberta={ofertaAberta}

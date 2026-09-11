@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 2238 casos em 39 scripts. O PRIMEIRO é
+npm run testar                   # 2352 casos em 40 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -26,7 +26,7 @@ npm run testar                   # 2238 casos em 39 scripts. O PRIMEIRO é
                                  # contrato,
                                  # pix, brcode,
                                  # status, auth, trial, planos, avisos,
-                                 # preferencias, multa,
+                                 # preferencias, multa, encerramento,
                                  # conta, cobranca, gateway, carteira,
                                  # proposta, chamados, risco, fila, concessao,
                                  # selo, indicacao, origem, abas,
@@ -299,7 +299,10 @@ src/
 │   │                 hoje. Pública, sem conta, sem sessão do Firebase e sem
 │   │                 mapa ao vivo: a posição da perua é o veículo de um
 │   │                 autônomo e ele não decidiu compartilhá-la com terceiros
-│   ├── tio/           21 telas do motorista — entre elas `PrimeiroAcesso`,
+│   ├── tio/           22 telas do motorista — entre elas `TioEncerrar`
+│   │                 (`/tio/encerrar`, FORA do `GuardaDaConta`: quem está
+│   │                 bloqueado por atraso precisa conseguir sair) e
+│   │                 `PrimeiroAcesso`,
 │   │                 que NÃO é rota: é o desvio que cobre `/tio` inteiro
 │   │                 enquanto faltar nome, cidade ou região. Rota própria
 │   │                 seria endereço que se pula digitando outro na barra, e
@@ -793,22 +796,85 @@ havia base real.
   `contratarPlano` lê a config e devolve o número, pelo mesmo motivo que o
   fechamento COPIA a chave PIX para dentro da fatura.
 - **O contrato é de 12 MESES e renova de 12 em 12**, com cobrança mensal.
-  `VERSAO_CONTRATO = 5` — a 1 mandava suspender por atraso sem definir atraso,
+  `VERSAO_CONTRATO = 7` — a 1 mandava suspender por atraso sem definir atraso,
   a 2 passou a dizer o dia, a 3 trocou percentual sobre base por faixa de
-  tabela, a 4 trouxe a escada de fechamento e o **piso como cláusula**, e a 5
-  trocou a faixa pela TAXA POR CRIANÇA e tornou a cláusula 6 assimétrica.
-  Subir a versão exige novo aceite.
+  tabela, a 4 trouxe a escada de fechamento e o **piso como cláusula**, a 5
+  trocou a faixa pela TAXA POR CRIANÇA e tornou a cláusula 6 assimétrica, a 6
+  declarou o desconto VITALÍCIO ("sem prazo enquanto este contrato estiver
+  vigente") e a 7 trouxe a **multa do anual para o papel** e tirou a
+  ambiguidade da renovação. Subir a versão exige novo aceite.
   ⚠️ **A cláusula 3 declara a TAXA, não um valor** — é isso que elimina a
   reassinatura por crescimento. Na versão 4 ganhar uma criança que cruzasse a
   fronteira exigia documento novo, no exato momento em que ele fechou um cliente.
-  ⚠️ **A cláusula 6 tem duas metades e só uma mudou.** O ASSOCIADO encerra na
-  hora, sem aviso e sem multa; a CONTRATADA mantém os 30 dias. Tirar as duas
-  seria rescisão unilateral sem direito equivalente (CDC art. 51, XI).
+  ⚠️ **A cláusula 6 é assimétrica de propósito.** O ASSOCIADO encerra na hora,
+  sem aviso prévio, pelo próprio aplicativo; a CONTRATADA mantém os 30 dias.
+  Tirar os dois prazos seria rescisão unilateral sem direito equivalente (CDC
+  art. 51, XI).
+  ⚠️ **E A MULTA DO ANUAL ERA INCOBRÁVEL ATÉ A VERSÃO 7** (11/09/2026).
+  [multa.js](src/dominio/associacao/multa.js) calculava 20% do saldo, com teto
+  de duas mensalidades e carência de 30 dias — puro, testado — e a cláusula
+  dizia *"sem multa"*, sem ressalva. Cobrança que o documento assinado não
+  declara não se sustenta (**CDC art. 46**), então a régua inteira não valia
+  nada e o anual era meio preço com saída livre no mês 2. Os números vão para o
+  texto **importados da régua**, nunca digitados. ⚠️ A metade que NÃO mudou é a
+  do mensal: sem multa em hipótese alguma, sem asterisco — "cancelou, cancelou"
+  é o argumento contra o concorrente que cobra 30% do saldo.
+  ⚠️ **A cláusula 4 dizia que a renovação valia "nas condições de tabela então
+  vigentes"**, o que se lê como *o desconto acaba ao renovar* — o oposto da
+  linha da cláusula 3. Duas cláusulas do mesmo papel brigando sobre o mesmo
+  número. Hoje ela declara que **desconto sem prazo acompanha as renovações**, e
+  que encerrado o contrato as condições caem.
   ⚠️ **O piso vai escrito no contrato mesmo quando não morde.** Sem a cláusula,
   um associado com 100% de desconto nominal recebe fatura de R$ 34 e o documento
   não explica de onde ela veio — a mesma contradição da concessão, pelo outro
   lado da conta. `npm run testar:contrato` tem DUAS invariantes agora: as
   frações fecham com o total, **e** o valor mensal se explica pelas linhas.
+- ⚠️ **A SAÍDA EXISTE NO PRODUTO DESDE 11/09/2026, E ELA ERA UMA CLÁUSULA
+  ASSINADA SEM CAMINHO.** A cláusula 6 promete, desde a versão 1, que o
+  associado encerra *"a qualquer momento, sem aviso prévio, **pelo próprio
+  aplicativo**"* — e não havia botão nenhum. Mesmo defeito do consentimento de
+  geolocalização e do "esqueci a senha": promessa escrita sem caminho.
+  A régua é [encerramento.js](src/dominio/associacao/encerramento.js), pura,
+  com espelho em
+  [reguaDoEncerramento.js](functions/lib/reguaDoEncerramento.js) e
+  `npm run testar:encerramento` (100 casos) comparando os dois caso a caso.
+  - **UM CAMPO SÓ, e ele é do MOTORISTA:** `users.renovacaoAutomatica`.
+    ⚠️ **Ausente é LIGADA** — como a janela do desconto e a chave de
+    compartilhar a posição. Tratar o silêncio como "desligada" encerraria a
+    base inteira sem ninguém ter pedido. Só o `false` explícito encerra.
+  - ⚠️ **NENHUMA RULE NOVA.** O `update` do próprio motorista é lista de
+    PROIBIDOS, e este campo não destrava nada: quem decide se o app abre é
+    `assinaturaAte`, quem decide se nasce fatura é o fechamento. **O cliente
+    escreve a INTENÇÃO, o servidor decide o efeito** — mesmo desenho de
+    `contratarPlano`. Mentir nele só encerra a conta dele.
+  - ⚠️ **CANCELAR E "DESLIGAR A RENOVAÇÃO" SÃO A MESMA COISA NO MENSAL**, e é
+    a própria cláusula que diz isso: encerrar é *não gerar nova cobrança e
+    operar até o fim do período pago*. No ANUAL eles se separam —
+    `MODO.FIM_DO_PERIODO` cumpre os 12 meses sem multa, `MODO.AGORA` sai antes
+    e paga. ⚠️ **O padrão do anual é cumprir o prazo**, porque é o modo que NÃO
+    cobra: campo que não chegou não pode virar cobrança.
+  - ⚠️ **NINGUÉM É DESLIGADO POR CÓDIGO.** Sem fatura nova, `assinaturaAte`
+    expira sozinho e as rules já negam quem está sem assinatura. Uma segunda
+    régua de acesso seria a primeira contradita.
+  - ⚠️ **E NADA É APAGADO NO CAMINHO** — `plano`, `descontos` e `assinaturaAte`
+    ficam intactos. A tela promete que *religar antes da data não custa nada*, e
+    essa frase só é verdade porque desfazer é o campo voltando a `true`.
+  - **ATRASO NÃO DERRUBA, SAIR DERRUBA** — o mesmo critério da indicação. Quem
+    atrasa nunca passa por aqui; `contratarPlano` só descarta o desconto de
+    fechamento de quem ENCERROU e voltou (`descontoAtravessa`).
+  - **Três avisos, em FAIXAS (30 / 7 / o dia)**, de espécie `estado` e **nunca
+    `prazo`**: prazo é desligável, e a associação não pode terminar em silêncio
+    para quem só pediu menos ruído. Quem varre é `varrerEncerramentos`, dentro
+    de `enviarAvisosDoDia`, por `renovacaoAutomatica == false` (campo único,
+    índice automático).
+  - ⚠️ **A PLATAFORMA NÃO AVISA AS FAMÍLIAS DELE** (decisão do dono,
+    11/09/2026). O contrato com elas é dele; a plataforma anunciar aos clientes
+    dele que ele cancelou seria se meter no negócio que ela hospeda. A tela diz
+    a ele que avisar é responsabilidade dele. ⚠️ O que a FAMÍLIA vê depois
+    continua sendo a **pendência 11** do [negocio.md](docs/negocio.md).
+  - ⚠️ **A exportação e a exclusão de dados que a cláusula 6 também promete
+    CONTINUAM SEM CAMINHO.** É a terceira promessa não cumprida do documento, e
+    ainda está aberta.
 - **NADA TRAVA QUANDO A OPERAÇÃO CRESCE** (10/09/2026). Não há teto de
   crianças: `users.criancasAtivas` é o número que a fatura multiplica pela taxa,
   e o `allow create` de `children` exige apenas que ele SUBA no mesmo batch —

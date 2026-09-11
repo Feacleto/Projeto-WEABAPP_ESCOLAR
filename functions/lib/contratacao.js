@@ -2,6 +2,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
+const { descontoAtravessa } = require('./reguaDoEncerramento');
 
 const REGION = 'southamerica-east1';
 
@@ -157,7 +158,20 @@ function makeContratarPlano(db) {
       const eDeFechamento = (d) =>
         d?.origem === 'fechamento' || d?.origem === 'antecipacao';
 
-      const jaTinha = anteriores.find(eDeFechamento);
+      /* ⚠️ O DESCONTO SÓ ATRAVESSA ENQUANTO O CONTRATO ESTÁ VIGENTE.
+       *
+       * É o que a versão 6 do contrato passou a escrever na linha do desconto:
+       * *"sem prazo enquanto este contrato estiver vigente"*. Renovar e trocar
+       * de plano mantêm — nada reexecuta a concessão, e este ramo preserva.
+       * Quem ENCERROU e volta depois entra pela régua do dia, e para quem tem
+       * `trialInicio` velho a régua devolve zero.
+       *
+       * ⚠️ ATRASO NÃO DERRUBA, SAIR DERRUBA — o mesmo critério do desconto de
+       * indicação. Quem atrasou, pagou e voltou nunca passa por aqui: ele não
+       * desligou a renovação, e quitar a fatura não chama esta callable.
+       * Encerrar é um gesto, e só o gesto custa o desconto. */
+      const aindaVigente = descontoAtravessa(dados, agora);
+      const jaTinha = aindaVigente ? anteriores.find(eDeFechamento) : null;
       const degrau = jaTinha ? null : degrauDaDecisao(dados.trialInicio, agora);
       const fracao = degrau === null ? 0 : descontoDoDegrau(degrau);
       /* ⚠️ A JANELA SÓ TOCA EM QUEM GANHA AGORA — nunca em `jaTinha`.
@@ -206,6 +220,11 @@ function makeContratarPlano(db) {
       await ref.set(
         {
           plano,
+          /* ⚠️ CONTRATAR RELIGA A RENOVAÇÃO, e sem isto a conta nasceria
+           * encerrando: quem saiu e voltou ainda carrega o `false` do pedido
+           * anterior, e o fechamento pularia a primeira fatura dele. */
+          renovacaoAutomatica: true,
+          encerramentoModo: null,
           // ⚠️ `limiteCriancas` NÃO É MAIS ESCRITO AQUI, e a ausência é a
           // mudança. Ele era gravado no MESMO write que a faixa, porque
           // separá-los abria a janela em que o motorista pagava uma faixa e

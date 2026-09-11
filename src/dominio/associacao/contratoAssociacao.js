@@ -79,19 +79,34 @@ import {
  * Subir custa uma rodada de reassinatura.
  */
 /**
- * ⚠️ 6 DESDE 11/09/2026 — o desconto vitalício passou a estar ESCRITO.
+ * ⚠️ 7 DESDE 11/09/2026 — a SAÍDA passou a estar escrita, nas duas pontas.
  *
- * A versão 5 já cobrava a taxa por criança, mas a linha do desconto de
- * fechamento saía sem validade nenhuma: "−30%", e ponto. O código o tratava
- * como vitalício desde o dia anterior e o documento não dizia — a tela
- * prometia e o papel calava. Agora a linha declara "sem prazo enquanto este
- * contrato estiver vigente", que é a promessa E o limite dela.
+ * Duas contradições foram fechadas na mesma alteração, e as duas eram sobre
+ * dinheiro:
  *
- * Subir a versão obriga todo mundo a reaceitar. É de propósito: um contrato
- * que ganha uma garantia nova não é o mesmo contrato, e com base quase zero
- * isso custa uma conversa.
+ * 1. **A multa do anual não existia no papel.** `multa.js` calculava 20% do
+ *    saldo, com teto e carência, e era pura e testada — enquanto a cláusula 6
+ *    dizia "sem multa", sem ressalva nenhuma. Cobrança que o documento
+ *    assinado não declara não se sustenta (CDC art. 46), então a régua inteira
+ *    era incobrável, e o anual virava meio preço com saída livre no mês 2.
+ * 2. **A renovação parecia comer o desconto.** A cláusula 4 dizia que o
+ *    contrato renova "nas condições de tabela então vigentes", e a linha do
+ *    desconto dizia "sem prazo enquanto este contrato estiver vigente". As
+ *    duas no mesmo documento, sobre o mesmo número.
+ *
+ * ⚠️ E ELA VEIO JUNTO COM O BOTÃO QUE A CLÁUSULA 6 JÁ PROMETIA. O texto dizia
+ * "encerrar pelo próprio aplicativo" desde a versão 1; o caminho nasceu agora,
+ * em `/tio/encerrar`. Subir a versão obriga todo mundo a reaceitar — de
+ * propósito: um contrato que ganha uma multa não é o mesmo contrato.
  */
-export const VERSAO_CONTRATO = 6;
+
+/**
+ * A 6 (11/09/2026) foi a anterior: o desconto vitalício passou a estar
+ * ESCRITO. Até ela a linha do desconto de fechamento saía sem validade
+ * nenhuma — "−30%", e ponto —, enquanto o código já o tratava como sem prazo.
+ * A tela prometia e o papel calava.
+ */
+export const VERSAO_CONTRATO = 7;
 
 /** Janela padrão para avisar que a vigência está acabando. */
 export const JANELA_DE_RENOVACAO = 60;
