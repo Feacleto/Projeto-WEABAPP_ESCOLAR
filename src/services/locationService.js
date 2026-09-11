@@ -1,4 +1,13 @@
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { haversineDistance } from '../compartilhado/haversine';
+import {
+  PRECISAO_DO_MAPA_M,
+  arredondarParaReferencia,
+  zonaDaPerua,
+  zonasQueMudaram,
+} from '../dominio/rota/proximidade';
+import { publicarProximidade } from './ridesService';
+import { getDateKey } from '../dominio/rota/horarios';
 import { auth, db } from '../firebase/config';
 import { playSound } from './soundService';
 // A consulta do geocodificador é REGRA PURA, e por isso não mora aqui: este
@@ -153,6 +162,19 @@ function docDoMotorista(uid) {
 }
 const THROTTLE_MS = 30000;
 
+/**
+ * As crianças desta rota e onde elas moram — entregue no `startTracking`.
+ *
+ * Fica no módulo, e não na tela, porque a medição precisa acontecer enquanto
+ * a rota roda, independente de qual tela está montada. O motorista troca de
+ * tela o tempo todo; a perua não para.
+ */
+let alvosDaRota = [];
+/** A última faixa publicada por criança — só a MUDANÇA vira escrita. */
+let zonasPublicadas = {};
+/** Ele quer que as famílias vejam a perua no mapa hoje? */
+let compartilhaPosicao = true;
+
 // Estado em nível de módulo — sobrevive à troca de páginas no app.
 // Permite que o motorista navegue pra TioChildren / TioFinance durante a rota
 // sem perder o tracking. Não sobrevive a refresh / fechamento da aba.
@@ -196,12 +218,18 @@ export function subscribePosition(cb) {
  * Escrita no Firestore: throttle de 30s. O GPS pode entregar 1 fix/seg, mas
  * só persistimos no máximo a cada 30 segundos.
  */
-export function startTracking(driverUid) {
+export function startTracking(driverUid, opcoes = {}) {
   if (activeWatchId != null) return;
   if (!('geolocation' in navigator)) {
     throw new Error('Geolocalização não é suportada neste dispositivo.');
   }
   lastWrite = 0;
+  alvosDaRota = Array.isArray(opcoes.alvos) ? opcoes.alvos : [];
+  zonasPublicadas = {};
+  // ⚠️ AUSENTE SIGNIFICA LIGADO. Quem nunca viu a chave não pode ter o mapa
+  // apagado das famílias dele sem ter escolhido nada — e ele nem saberia que
+  // existe um botão para religar.
+  compartilhaPosicao = opcoes.compartilha !== false;
   // Som de motor ligando — Tio começou a rota
   playSound('start_engine');
 
@@ -214,19 +242,83 @@ export function startTracking(driverUid) {
       if (now - lastWrite < THROTTLE_MS) return;
       lastWrite = now;
 
+      const exata = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+
       try {
+        // ⚠️ A POSIÇÃO EXATA NUNCA SAI DAQUI, e é isso que faz a promessa
+        // valer. Arredondar no MAPA não arredonda nada: o documento continua
+        // com o número cru e qualquer pessoa com o console do navegador lê.
+        // "Segurança mora nas rules, não na interface" — aqui, na origem.
+        //
+        // `speed` e `heading` saíram junto (11/09/2026): ninguém lia, e
+        // velocidade instantânea de um trabalhador é vigilância do trabalho
+        // dele, não informação sobre a criança.
+        const referencia = compartilhaPosicao
+          ? arredondarParaReferencia(exata)
+          : null;
+
         await setDoc(docDoMotorista(uidDaSessao()), {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          speed: position.coords.speed ?? null,
-          heading: position.coords.heading ?? null,
+          ...(referencia
+            ? {
+                lat: referencia.lat,
+                lng: referencia.lng,
+                // A precisão publicada é a da GRADE, não a do GPS. Dizer "5 m"
+                // ao lado de um ponto encaixado em 150 m é a interface
+                // mentindo com número.
+                accuracy: PRECISAO_DO_MAPA_M,
+              }
+            : { lat: deleteField(), lng: deleteField(), accuracy: deleteField() }),
+          // ⚠️ ELE DESLIGOU O MAPA, NÃO A ROTA. Sem esta bandeira, a tela da
+          // família não distingue "ele escolheu não mostrar" de "o celular
+          // dele está sem sinal" — e a segunda faz ela ligar pra ele.
+          semMapa: !compartilhaPosicao,
           updatedAt: serverTimestamp(),
           routeActive: true,
           driverUid,
         });
       } catch (err) {
         console.error('liveLocation write error:', err);
+      }
+
+      // ── O AVISO DE CHEGADA, MEDIDO AQUI ───────────────────────────────
+      //
+      // ⚠️ RODA MESMO COM O MAPA DESLIGADO, de propósito: o que ele desligou
+      // foi o compartilhamento da posição, não o aviso às famílias. O GPS
+      // continua ligado no aparelho dele — e o rótulo da chave diz isso, para
+      // ele não descobrir depois e se sentir enganado.
+      //
+      // Falhar aqui não pode derrubar a rota: é aviso de terceiro, e a perua
+      // não espera por ele.
+      try {
+        const agora = {};
+        for (const alvo of alvosDaRota) {
+          if (!alvo?.childId || !Number.isFinite(alvo.lat) || !Number.isFinite(alvo.lng)) {
+            continue;
+          }
+          agora[alvo.childId] = zonaDaPerua(
+            haversineDistance(alvo.lat, alvo.lng, exata.lat, exata.lng)
+          );
+        }
+        const mudaram = zonasQueMudaram(zonasPublicadas, agora);
+        for (const { childId, zona } of mudaram) {
+          const alvo = alvosDaRota.find((a) => a.childId === childId);
+          await publicarProximidade({
+            childId,
+            // O dia é recalculado a cada tick, não congelado no início: a
+            // rota da tarde pode atravessar a meia-noite num atraso, e o
+            // marco tem que cair no documento do dia em que aconteceu.
+            dateKey: getDateKey(),
+            zona,
+            adminUid: driverUid,
+            parentUid: alvo?.parentUid || null,
+          });
+          zonasPublicadas[childId] = zona;
+        }
+      } catch (err) {
+        console.error('proximidade write error:', err);
       }
     },
     (error) => {
@@ -247,11 +339,30 @@ export async function stopTracking() {
     activeWatchId = null;
   }
   emitPosition({ position: null, error: null });
+  alvosDaRota = [];
+  zonasPublicadas = {};
   // Som de encerramento — Tio finalizou o turno
   playSound('end_route');
   await setDoc(
     docDoMotorista(uidDaSessao()),
-    { routeActive: false, updatedAt: serverTimestamp() },
+    {
+      routeActive: false,
+      // ⚠️ A ÚLTIMA POSIÇÃO É APAGADA, E ANTES ERA GUARDADA DE PROPÓSITO.
+      //
+      // O comentário aqui dizia: "usa merge pra preservar lat/lng, assim a
+      // última posição conhecida fica disponível pro Pai ver". Só que a rota
+      // termina ONDE ELE PARA — a última casa, ou a dele. Esse ponto ficava
+      // legível pelas famílias a noite inteira, até a rota seguinte.
+      //
+      // A Política de Privacidade abençoava isso ("mantém-se apenas o último
+      // ponto registrado para fins de auditoria limitada") e **essa auditoria
+      // não existe em tela nenhuma**. Dado de localização guardado sem leitor
+      // é só passivo. A cláusula 8 foi reescrita na mesma alteração.
+      lat: deleteField(),
+      lng: deleteField(),
+      accuracy: deleteField(),
+      updatedAt: serverTimestamp(),
+    },
     { merge: true }
   );
 }

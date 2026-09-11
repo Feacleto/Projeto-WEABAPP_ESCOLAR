@@ -255,6 +255,30 @@ export default function OperacaoDaRota({
    * O responsável não consegue calcular isso sozinho: ele lê apenas o doc do
    * próprio filho, e a fila é feita das outras crianças.
    */
+  /**
+   * AS CASAS QUE A PERUA VAI ALCANÇAR HOJE — entregues ao rastreamento.
+   *
+   * É com elas que o celular DELE mede o "está chegando", e é por isso que o
+   * aviso deixou de depender de a posição ser compartilhada: o que sai do
+   * aparelho é a faixa (`perto`, `chegou`), nunca a distância nem o ponto.
+   *
+   * Criança sem coordenada fica de fora — sem o destino não há o que medir, e
+   * chutar seria avisar a família errada na hora errada.
+   */
+  const alvosDaRota = useMemo(
+    () =>
+      blocos
+        .flatMap((b) => b.paradas)
+        .map((p) => ({
+          childId: p.child?.id,
+          lat: Number(p.child?.lat),
+          lng: Number(p.child?.lng),
+          parentUid: p.child?.parentUid || null,
+        }))
+        .filter((a) => a.childId && Number.isFinite(a.lat) && Number.isFinite(a.lng)),
+    [blocos]
+  );
+
   async function publicarOrdem() {
     try {
       const contexto = {};
@@ -436,6 +460,7 @@ export default function OperacaoDaRota({
         {mostrarControle && (
           <ControleDeRota
             onIniciar={publicarOrdem}
+            alvos={alvosDaRota}
             direcao={blocoAtual?.direcao}
           />
         )}

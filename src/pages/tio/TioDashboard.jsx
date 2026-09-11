@@ -238,6 +238,30 @@ export default function TioDashboard() {
    * O responsável não consegue calcular isso: lê só o doc do próprio filho, e
    * a fila é feita das outras crianças. Quem sabe publica — uma vez, aqui.
    */
+  /**
+   * AS CASAS QUE A PERUA VAI ALCANÇAR HOJE — entregues ao rastreamento.
+   *
+   * É com elas que o celular DELE mede o "está chegando", e é por isso que o
+   * aviso deixou de depender de a posição ser compartilhada: o que sai do
+   * aparelho é a faixa (`perto`, `chegou`), nunca a distância nem o ponto.
+   *
+   * Criança sem coordenada fica de fora — sem o destino não há o que medir, e
+   * chutar seria avisar a família errada na hora errada.
+   */
+  const alvosDaRota = useMemo(
+    () =>
+      blocos
+        .flatMap((b) => b.paradas)
+        .map((p) => ({
+          childId: p.child?.id,
+          lat: Number(p.child?.lat),
+          lng: Number(p.child?.lng),
+          parentUid: p.child?.parentUid || null,
+        }))
+        .filter((a) => a.childId && Number.isFinite(a.lat) && Number.isFinite(a.lng)),
+    [blocos]
+  );
+
   async function publicarOrdem() {
     try {
       const contexto = {};
@@ -287,7 +311,11 @@ export default function TioDashboard() {
         className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-neutro"
         style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
       >
-        <ControleDeRota onIniciar={publicarOrdem} direcao={bloco?.direcao} />
+        <ControleDeRota
+          onIniciar={publicarOrdem}
+          direcao={bloco?.direcao}
+          alvos={alvosDaRota}
+        />
       </div>
 
       <div className="pb-4">

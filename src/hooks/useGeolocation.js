@@ -52,10 +52,14 @@ export function useGeolocation() {
     return unsub;
   }, []);
 
-  const start = useCallback((driverUid) => {
+  const start = useCallback((driverUid, opcoes = {}) => {
     setError(null);
     try {
-      startTracking(driverUid);
+      // `opcoes` leva os ALVOS da rota (criança + onde ela mora) e a escolha
+      // de compartilhar a posição. Os dois vivem no módulo do service, e não
+      // numa tela, porque a medição tem que continuar enquanto a rota roda —
+      // o motorista troca de tela o tempo todo, a perua não para.
+      startTracking(driverUid, opcoes);
       setWatching(true);
       // O RELÓGIO DOS TRÊS MESES COMEÇA AQUI, e este é o único gatilho do CLIENTE — os outros dois (primeiro responsável, primeira mensalidade) são do servidor, em `functions/lib/relogioDoTeste.js`.
       //

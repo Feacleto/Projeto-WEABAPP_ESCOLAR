@@ -3,6 +3,7 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
+  setDoc,
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -63,6 +64,39 @@ export function anotarMarco(batch, { childId, dateKey, status, contexto = {} }) 
       parentUid: contexto.parentUid || null,
       marcos: { [status]: serverTimestamp() },
       ...(contexto.combinado ? { combinado: contexto.combinado } : {}),
+      atualizadoEm: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+/**
+ * A FAIXA EM QUE A PERUA ESTÁ, para UMA criança, no documento do DIA.
+ *
+ * ── POR QUE ISTO EXISTE
+ * O aviso de "está chegando" era calculado no celular da MÃE, a partir da
+ * coordenada publicada — então ele morria junto com o mapa no dia em que o
+ * motorista pudesse desligar o compartilhamento. Agora quem mede é o celular
+ * DELE, e o que viaja é uma palavra: `longe`, `perto` ou `chegou`.
+ *
+ * ⚠️ UMA PALAVRA, NUNCA A DISTÂNCIA EM KM. Três casas com distância conhecida
+ * dão o ponto exato por triangulação — publicar "1,2 km" seria republicar a
+ * posição por outro nome.
+ *
+ * ⚠️ E VAI NO DOCUMENTO DO DIA, que é o que a mãe já lê. Amanhã é outro
+ * documento, então não existe o bug óbvio desta mudança: o "chegou" de ontem
+ * aparecendo hoje de manhã. Nada precisa ser limpo ao encerrar a rota.
+ */
+export async function publicarProximidade({ childId, dateKey, zona, adminUid, parentUid }) {
+  if (!childId || !dateKey || !zona) return;
+  await setDoc(
+    refDaViagem(childId, dateKey),
+    {
+      dateKey,
+      childId,
+      adminUid: adminUid || null,
+      parentUid: parentUid || null,
+      proximidade: zona,
       atualizadoEm: serverTimestamp(),
     },
     { merge: true }

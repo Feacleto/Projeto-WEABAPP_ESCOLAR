@@ -52,9 +52,8 @@ import { playSound } from '../../services/soundService';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 import PaiNotebookFAB from '../../components/agenda/PaiNotebookFAB';
 import { GRADIENTE_STATUS } from '../../config/paletaCategorica';
+import { ZONA } from '../../dominio/rota/proximidade';
 
-const NEAR_KM = 2;
-const ARRIVED_KM = 0.4;
 const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
 
 /**
@@ -154,34 +153,45 @@ export default function PaiDashboard() {
     [liveLocation, distanceKm, presenceTick]
   );
 
-  // Alertas de proximidade — só dispara em transição de zona
+  /**
+   * O AVISO DE CHEGADA — e ele não é mais calculado aqui.
+   *
+   * ⚠️ ATÉ 11/09/2026 ESTA TELA MEDIA A DISTÂNCIA, e era isso que amarrava o
+   * aviso ao mapa: sem a coordenada publicada não havia distância, e sem
+   * distância não havia aviso. No dia em que o motorista pudesse desligar o
+   * compartilhamento, o aviso morreria junto — para uma coisa que não tem
+   * nada a ver com a outra.
+   *
+   * Agora quem mede é o celular DELE, que já tem a posição exata e os
+   * endereços da turma, e publica só a FAIXA (`longe`/`perto`/`chegou`) no
+   * documento do dia. O aviso funciona com o mapa ligado ou desligado, e a
+   * coordenada exata nunca sai do aparelho dele.
+   *
+   * O disparo continua na TRANSIÇÃO: sem isso, um "chegou" que persiste no
+   * documento tocaria a buzina a cada render.
+   */
+  const zona = ride?.proximidade ?? null;
   const lastZoneRef = useRef(null);
   useEffect(() => {
-    if (!routeActive || presence.isStale) {
-      // Posição velha não gera "chegou!". Avisar com dado que o app não
-      // confirmou é justamente o que queima a confiança do pai.
+    if (!routeActive) {
       lastZoneRef.current = null;
       return;
     }
-    if (distanceKm == null) return;
+    if (!zona) return;
 
-    const zone =
-      distanceKm > NEAR_KM
-        ? 'far'
-        : distanceKm > ARRIVED_KM
-        ? 'near'
-        : 'arrived';
     const prev = lastZoneRef.current;
-    if (zone === prev) return;
-    lastZoneRef.current = zone;
+    if (zona === prev) return;
+    lastZoneRef.current = zona;
+    // A primeira leitura só calibra: abrir o app com a perua já perto não
+    // pode tocar "chegou!" por uma transição que ela não presenciou.
     if (prev == null) return;
 
-    if (zone === 'far') toast('Tio Nino em rota', { icon: '🚐' });
-    else if (zone === 'near') {
+    if (zona === ZONA.LONGE) toast('Tio Nino em rota', { icon: '🚐' });
+    else if (zona === ZONA.PERTO) {
       toast('Tio Nino chega em uns 5 minutos', { icon: '🚐', duration: 6000 });
       // Buzina curta — sinaliza aproximação
       playSound('horn_short');
-    } else if (zone === 'arrived') {
+    } else if (zona === ZONA.CHEGOU) {
       toast.success('Tio Nino chegou!', { duration: 10000 });
       // Buzina longa — Tio chegou na porta
       playSound('horn_long');
@@ -193,7 +203,7 @@ export default function PaiDashboard() {
         }
       }
     }
-  }, [distanceKm, routeActive, presence.isStale]);
+  }, [zona, routeActive]);
 
   const nextPayment = useMemo(() => {
     if (!payments?.length) return null;

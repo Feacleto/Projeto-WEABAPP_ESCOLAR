@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Square, Satellite, CircleAlert } from 'lucide-react';
+import { Play, Square, Satellite, CircleAlert, MapPin, MapPinOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { setCompartilharLocalizacao } from '../../services/userService';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { playSound } from '../../services/soundService';
@@ -22,8 +23,10 @@ import { playSound } from '../../services/soundService';
  * mundo, e um diálogo modal no celular em movimento é mais fácil de confirmar
  * sem ler do que um botão que muda de cara.
  */
-export default function ControleDeRota({ onIniciar, direcao = null }) {
-  const { user } = useAuth();
+export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }) {
+  const { user, profile, updateProfile } = useAuth();
+  // AUSENTE É LIGADO — ver `setCompartilharLocalizacao`.
+  const compartilha = profile?.compartilhaLocalizacao !== false;
   const { watching, position, error, stopping, start, stop } = useGeolocation();
   const { location: liveLocation } = useLiveLocation();
 
@@ -57,7 +60,7 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
       toast.error('Sessão expirada. Entre de novo.');
       return;
     }
-    start(user.uid);
+    start(user.uid, { alvos, compartilha });
     toast.success('Rota começou! GPS ligado.');
     // Quem sabe a fila é a tela de rota, não este botão. Ela publica a posição
     // de cada criança no dia — o responsável não consegue calcular isso
@@ -79,8 +82,71 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
     toast.success('Rota encerrada.');
   }
 
+  /**
+   * A CHAVE DO MAPA — e ela mora AQUI porque este é o instante do ato.
+   *
+   * Ela esteve pra ir numa folha de ajustes. O dono decidiu que fica no
+   * início da rota, e está certo por três motivos: é o momento em que o
+   * compartilhamento começa; é a tela que ele abre todo dia; e é a única que
+   * continua na mão dele enquanto dirige — numa folha de ajustes, a chave
+   * sumiria exatamente no minuto em que ele quisesse desligá-la.
+   *
+   * GRUDADA, não por dia: ele liga uma vez e fica, até desligar. Perguntar
+   * toda manhã transformaria uma decisão em pedágio diário.
+   */
+  async function trocarCompartilhamento() {
+    const novo = !compartilha;
+    // Otimista: a chave responde ao toque e o banco acompanha. Errar aqui
+    // custa uma chave que volta sozinha, não uma rota parada.
+    updateProfile?.({ compartilhaLocalizacao: novo });
+    try {
+      await setCompartilharLocalizacao(user?.uid, novo);
+    } catch {
+      updateProfile?.({ compartilhaLocalizacao: compartilha });
+      toast.error('Não deu pra salvar. Tente de novo.');
+    }
+  }
+
+  const ChaveDoMapa = (
+    <button
+      type="button"
+      onClick={trocarCompartilhamento}
+      aria-pressed={compartilha}
+      className="tap mt-2 flex w-full items-start gap-2.5 rounded-xl border border-border bg-card p-3 text-left"
+    >
+      <span
+        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+          compartilha ? 'bg-primaryChip text-primary' : 'bg-neutro text-textMuted'
+        }`}
+      >
+        {compartilha ? <MapPin size={16} /> : <MapPinOff size={16} />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-bold text-text">
+          {compartilha
+            ? 'As famílias veem sua perua no mapa'
+            : 'Sua perua não aparece no mapa'}
+        </span>
+        {/* ⚠️ AS DUAS FRASES QUE A CHAVE PRECISA DIZER, E ELAS NÃO SÃO ENFEITE.
+          *
+          * 1. O GPS CONTINUA LIGADO. Ele desligou o compartilhamento, não o
+          *    aparelho — o celular segue medindo pra poder avisar as famílias
+          *    que ele está chegando. Sem esta frase ele descobre depois e
+          *    sente que foi enganado.
+          * 2. O MAPA É REFERÊNCIA. A posição publicada é encaixada numa
+          *    grade de 150 m: mostra a quadra, nunca a porta. */}
+        <span className="mt-0.5 block text-[11px] leading-relaxed text-textMuted">
+          {compartilha
+            ? 'Posição aproximada, por referência — não mostra o ponto exato. Toque para desligar.'
+            : 'O GPS continua ligado: elas seguem recebendo o aviso de que você está chegando. Toque para mostrar no mapa.'}
+        </span>
+      </span>
+    </button>
+  );
+
   if (!watching) {
     return (
+      <>
       /* A ÂNCORA DO TUTORIAL MORA AQUI, e o passo aponta pra cá de novo.
        *
        * Ela já tinha sido removida uma vez, corretamente: nenhum passo a
@@ -103,6 +169,8 @@ export default function ControleDeRota({ onIniciar, direcao = null }) {
         <Play size={20} />
         INICIAR ROTA
       </button>
+      {ChaveDoMapa}
+      </>
     );
   }
 

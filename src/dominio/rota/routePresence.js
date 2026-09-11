@@ -21,6 +21,16 @@ export const PRESENCE = {
   NO_ROUTE: 'no-route',
   STALE: 'stale',
   MOVING: 'moving',
+  /**
+   * Rota rodando, mapa desligado POR ESCOLHA DELE.
+   *
+   * ⚠️ Não confundir com `STALE`. Os dois deixam a tela sem perua, e é a
+   * única coisa que têm em comum: um é o app falhando ("pode ser só o celular
+   * dele sem sinal" — e a mãe liga pra ele), o outro é uma decisão de quem
+   * tem o direito de decidir. Tratá-los igual transforma privacidade em
+   * defeito aparente.
+   */
+  SEM_MAPA: 'sem-mapa',
 };
 
 /** Timestamp do Firestore, Date ou número → ms. */
@@ -101,6 +111,28 @@ export function describeRoutePresence({
       detail:
         'Quando o motorista iniciar, você acompanha aqui em tempo real.',
       freshness: null,
+      isStale: false,
+      distanceKm: null,
+      etaMinutes: null,
+    };
+  }
+
+  // ⚠️ ELE DESLIGOU O MAPA, E ISSO NÃO É FALHA — TEM ESTADO PRÓPRIO.
+  //
+  // Sem este ramo, a rota rodando sem posição cairia em "sem sinal", e a mãe
+  // leria "pode ser só o celular dele sem sinal" sobre uma escolha
+  // deliberada dele. Ela ligaria pra ele pra avisar que o app quebrou.
+  //
+  // A distinção existe pelo mesmo motivo de `avisoDoMomento`: o app só
+  // levanta a voz quando ESTÁ MENTINDO. Aqui ele não está — está calado por
+  // decisão de quem tem o direito de decidir.
+  if (liveLocation?.semMapa) {
+    return {
+      kind: PRESENCE.SEM_MAPA,
+      title: 'A rota de hoje já começou',
+      detail:
+        'Este motorista prefere não mostrar a perua no mapa. Você recebe o aviso quando ele estiver chegando.',
+      freshness: ageMs != null ? `atualizado ${formatFreshness(ageMs)}` : null,
       isStale: false,
       distanceKm: null,
       etaMinutes: null,

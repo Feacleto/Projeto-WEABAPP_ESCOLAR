@@ -1216,7 +1216,12 @@ service cloud.firestore {
         && (
           request.resource.data == null
           || request.resource.data.keys().hasOnly([
-            'marcos', 'posicao', 'ordemIda', 'totalIda',
+            // `proximidade` é a FAIXA em que a perua está para esta criança
+            // ('longe' | 'perto' | 'chegou'), publicada pelo celular do
+            // motorista. Ela entrou quando `checkpoints` saiu, e a troca é o
+            // desenho inteiro: o que viaja é uma palavra, não uma posição —
+            // distância em km seria a posição de volta, por triangulação.
+            'marcos', 'proximidade', 'posicao', 'ordemIda', 'totalIda',
             'ordemVolta', 'totalVolta', 'combinado', 'childId', 'adminUid',
             'parentUid', 'dateKey', 'atualizadoEm', 'criadoEm'
           ])

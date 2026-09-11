@@ -89,6 +89,33 @@ export async function listarUsuarios() {
  * Esse update é permitido pelas Firestore rules: o dono do doc users/{uid}
  * pode atualizar campos arbitrários desde que não mude o role.
  */
+/**
+ * ELE MOSTRA A PERUA NO MAPA DAS FAMÍLIAS, OU NÃO.
+ *
+ * ⚠️ ISTO NÃO É CONFORTO — É A METADE QUE FALTAVA DE UM CONSENTIMENTO.
+ * A Política de Privacidade declara a base legal da geolocalização como
+ * **consentimento do titular (art. 7º, I)**, e a LGPD manda que consentimento
+ * possa ser revogado "a qualquer momento, mediante manifestação expressa, por
+ * procedimento gratuito e facilitado" (art. 8º, §5º). Até 11/09/2026 não
+ * havia como revogar: ou ele compartilhava, ou não rodava a rota. O documento
+ * prometia uma escolha que o app não oferecia.
+ *
+ * ⚠️ AUSENTE SIGNIFICA LIGADO. Quem nunca viu a chave não pode ter o mapa
+ * apagado das famílias dele sem ter escolhido nada — e ele nem saberia que
+ * existe um botão para religar.
+ *
+ * Não precisou de rule nova: o `update` de `users` é lista de PROIBIDOS
+ * (`trialInicio`, `assinaturaAte`, `plano`), e preferência não é cláusula —
+ * mentir aqui não vira desconto nem prazo. Mesmo critério de
+ * `avisosDesligados` e de `ultimaRota`.
+ */
+export async function setCompartilharLocalizacao(uid, compartilha) {
+  if (!uid) return;
+  await updateDoc(doc(db, 'users', uid), {
+    compartilhaLocalizacao: compartilha !== false,
+  });
+}
+
 export async function markTutorialDone(uid) {
   return updateDoc(doc(db, 'users', uid), {
     tutorialDone: true,
