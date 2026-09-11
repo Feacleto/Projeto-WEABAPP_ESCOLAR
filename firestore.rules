@@ -2088,6 +2088,37 @@ service cloud.firestore {
     // sabem esconder campo — liberar a leitura para ele acompanhar o próprio
     // pedido entregaria junto o que o dono anotou a seu respeito.
     //
+    // -----------------------------------------------------------------
+    // alertasDeComprovante/{paymentId} — "este comprovante é igual ao de julho"
+    //
+    // ⚠️ ELE MORAVA DENTRO DO PAGAMENTO, E ERA VAZAMENTO (11/09/2026).
+    //
+    // `flagDuplicateReceipts` gravava `payments.receiptDuplicateOf`, e a tela
+    // mostrava só ao motorista: `role === 'admin' && payment.receiptDuplicateOf`.
+    // Só que a RESPONSÁVEL lê o pagamento inteiro — é a mensalidade dela, e a
+    // regra permite com razão. **Esconder na tela não esconde o dado**: quem
+    // abre o console do navegador lê o JSON e descobre que a plataforma marcou
+    // o comprovante dela como suspeito. Era exatamente o julgamento que o
+    // desenho decidiu não mostrar a ela ("aviso, não bloqueio, e só pro tio").
+    //
+    // ⚠️ E O `childName` É DO OUTRO PAGAMENTO: entre famílias diferentes do
+    // mesmo motorista, é o nome da criança de um terceiro dentro do documento
+    // dela.
+    //
+    // O escopo vem do `adminUid` NO CORPO, e não de um `get()` no pagamento:
+    // o orçamento de acessos por requisição já é apertado neste projeto (o
+    // lote de "embarquei todos" é dividido de 15 em 15 por causa dele).
+    //
+    // NINGUÉM ESCREVE PELO CLIENTE. Quem grava é a function, com Admin SDK —
+    // um motorista que pudesse escrever aqui apagaria o aviso sobre si mesmo,
+    // e um que pudesse criar marcaria o comprovante de um colega.
+    // -----------------------------------------------------------------
+    match /alertasDeComprovante/{paymentId} {
+      allow read: if isSignedIn()
+        && (resource.data.adminUid == request.auth.uid || isOwner());
+      allow write: if false;
+    }
+
     // Aqui: o dono lê tudo, o motorista lê SÓ o dele. O pedido é `create` (uma
     // vez, e já nasce em 'pedido'); mover para postado/entregue é do dono,
     // porque quem posta é ele — e um motorista que se marca "entregue" apaga a

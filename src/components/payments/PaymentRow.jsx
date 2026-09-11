@@ -57,6 +57,14 @@ export default function PaymentRow({
   role = 'parent',
   onAttachReceipt = null,
   onCharge = null,
+  // ⚠️ O AVISO DE DUPLICATA VEM POR FORA, e não de dentro do pagamento.
+  //
+  // Ele era `payment.receiptDuplicateOf` — um campo do documento que a
+  // RESPONSÁVEL lê. A tela o escondia dela por papel, e esconder na tela não
+  // esconde o dado: o console do navegador mostra o JSON inteiro. Hoje ele
+  // mora em `alertasDeComprovante`, que só o motorista e o dono leem, e
+  // chega aqui como prop porque quem carrega é a tela DELE.
+  alertaDeDuplicata = null,
 }) {
   const config = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.pending;
   const { Icon } = config;
@@ -127,13 +135,13 @@ export default function PaymentRow({
             * parte das vezes não é má-fé: a pessoa procura na galeria e
             * pega o print errado. Uma heurística que acusa sozinha erra e
             * estraga uma relação que precisa durar anos. */}
-          {role === 'admin' && payment.receiptDuplicateOf && (
+          {role === 'admin' && alertaDeDuplicata && (
             <p className="text-[11px] font-semibold text-warningText bg-warningSoft border border-warningBorder rounded-lg px-2 py-1.5 inline-flex items-start gap-1.5 mt-1">
               <TriangleAlert size={12} className="shrink-0 mt-0.5" />
               <span>
                 Comprovante igual ao de{' '}
-                {payment.receiptDuplicateOf.month
-                  ? formatMonthLabel(payment.receiptDuplicateOf.month)
+                {alertaDeDuplicata.month
+                  ? formatMonthLabel(alertaDeDuplicata.month)
                   : 'outro mês'}
                 . Vale conferir antes de confirmar.
               </span>

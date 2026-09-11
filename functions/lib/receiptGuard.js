@@ -17,6 +17,7 @@
 
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions/v2');
+const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
 
 const REGION = 'southamerica-east1';
@@ -76,8 +77,12 @@ function makeFlagDuplicateReceipts(db) {
 
       if (others.length === 0) {
         // Deixa de sinalizar se o comprovante foi trocado por um inédito.
-        if (after.receiptDuplicateOf) {
-          await event.data.after.ref.update({ receiptDuplicateOf: null });
+        await db.doc(`alertasDeComprovante/${event.params.paymentId}`).delete();
+        // ⚠️ E LIMPA O CAMPO LEGADO NO PAGAMENTO. Ele ficou lá até
+        // 11/09/2026 e é lido pela RESPONSÁVEL — ver o bloco abaixo. Todo
+        // pagamento que passar por aqui de novo sai limpo de graça.
+        if (after.receiptDuplicateOf !== undefined) {
+          await event.data.after.ref.update({ receiptDuplicateOf: FieldValue.delete() });
         }
         return;
       }
@@ -85,13 +90,37 @@ function makeFlagDuplicateReceipts(db) {
       // Guarda o MÊS do outro pagamento, não o id: é o que o tio precisa ler
       // ("idêntico ao de julho"), e evita uma leitura extra na tela dele.
       const first = others[0].data();
-      await event.data.after.ref.update({
-        receiptDuplicateOf: {
-          paymentId: others[0].id,
-          month: first.month || null,
-          childName: first.childName || null,
-        },
+
+      // ⚠️ O AVISO NÃO MORA NO PAGAMENTO, E ISSO É CORREÇÃO DE VAZAMENTO.
+      //
+      // Ele era um campo do próprio documento, e a tela o mostrava só ao
+      // motorista (`role === 'admin' && payment.receiptDuplicateOf`). Só que
+      // a RESPONSÁVEL lê o pagamento inteiro — é a mensalidade dela, e a
+      // regra permite com razão. Esconder na tela não esconde o dado: quem
+      // abre o console lê o campo e descobre que a plataforma marcou o
+      // comprovante dela como suspeito. Era o julgamento que o desenho
+      // decidiu explicitamente não mostrar a ela ("aviso, não bloqueio, e só
+      // pro tio — é ele quem decide").
+      //
+      // ⚠️ E O `childName` É DO OUTRO PAGAMENTO: entre famílias diferentes do
+      // mesmo motorista, isso é o nome da criança de um terceiro dentro do
+      // documento dela.
+      //
+      // `adminUid` vai no corpo porque é por ele que a regra escopa — sem
+      // isso ela precisaria de um `get()` no pagamento a cada leitura.
+      await db.doc(`alertasDeComprovante/${event.params.paymentId}`).set({
+        paymentId: event.params.paymentId,
+        adminUid,
+        outroPagamentoId: others[0].id,
+        month: first.month || null,
+        childName: first.childName || null,
+        em: FieldValue.serverTimestamp(),
       });
+
+      // O campo antigo sai do pagamento no mesmo gesto.
+      if (after.receiptDuplicateOf !== undefined) {
+        await event.data.after.ref.update({ receiptDuplicateOf: FieldValue.delete() });
+      }
 
       logger.warn(
         `Comprovante duplicado: payment=${event.params.paymentId} igual a ${others[0].id}`

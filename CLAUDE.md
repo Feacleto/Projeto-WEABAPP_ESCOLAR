@@ -17,12 +17,13 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 2191 casos em 38 scripts. O PRIMEIRO é
+npm run testar                   # 2238 casos em 39 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
                                  # horarios, faltas, endereco, aviso,
-                                 # proximidade, contraste, travessia, contrato,
+                                 # proximidade, vazamento, contraste, travessia,
+                                 # contrato,
                                  # pix, brcode,
                                  # status, auth, trial, planos, avisos,
                                  # preferencias, multa,
@@ -457,7 +458,8 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
-`indicacoes` · `interesses` · `platformConfig` · `appState`
+`indicacoes` · `interesses` · `alertasDeComprovante` · `platformConfig` ·
+`appState`
 
 ### Conceitos que não dá pra adivinhar do nome
 
@@ -1853,6 +1855,36 @@ metade do tamanho aparente. A largura já tinha sido corrigida lá, a escala
 não. Não há sistema tipográfico próprio — é só um piso, e o
 [ContratoDoc](src/components/admin/ContratoDoc.jsx) é a exceção porque é
 impresso.
+
+⚠️ **REGRA NÃO ESCONDE CAMPO, E TELA NÃO ESCONDE DADO** — a invariante mora
+em `npm run testar:vazamento` (26 casos). Quem pode ler um documento lê o
+documento INTEIRO: não existe "mostrar só três campos". E
+`{role === 'admin' && ...}` é decisão de layout, não de segurança — quem abre
+o console do navegador vê o JSON que chegou.
+
+Foi exatamente assim que o aviso de **comprovante duplicado** ficou legível
+pela responsável: `payments.receiptDuplicateOf` era campo do pagamento DELA,
+escondido na tela por papel. Ela via que a plataforma marcou o comprovante
+como suspeito — o julgamento que o desenho decidiu mostrar só ao motorista —
+e o campo ainda carrega o `childName` do OUTRO pagamento, que entre famílias
+diferentes é o nome da criança de um terceiro. Mora em
+`alertasDeComprovante/{paymentId}` desde 11/09/2026, escopado por `adminUid`
+no CORPO (um `get()` no pagamento custaria acesso no orçamento apertado) e
+com `allow write: if false` — motorista que escrevesse ali apagaria o aviso
+sobre si mesmo.
+
+**A pergunta que classifica um campo novo:** quando a tela esconde algo por
+papel, é *irrelevância* ou *segredo*? Irrelevância pode ficar (o total
+acumulado que o pai não vê é a soma do que ele já lê). Segredo tem que sair
+do documento.
+
+⚠️ **E O RESÍDUO ESTÁ DECLARADO, não esquecido:** `plano`, `trialInicio`,
+`assinaturaAte` e `criancasAtivas` continuam visíveis à família porque **as
+rules leem os quatro a cada avaliação** — movê-los pediria um `get()` por
+regra, e o teto de 20 acessos por lote já é o motivo de o "embarquei todos"
+ser dividido de 15 em 15. Fechar exige o caminho inverso (documento enxuto
+para a família, `users` fechado), que é espelho. O teste guarda a lista com o
+motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa

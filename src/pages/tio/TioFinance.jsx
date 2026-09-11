@@ -28,6 +28,7 @@ import PaymentRow from '../../components/payments/PaymentRow';
 import InteressePorCartao from '../../components/tio/InteressePorCartao';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
+import { watchAlertasDeComprovante } from '../../services/alertaDeComprovanteService';
 import { useChildren } from '../../hooks/useChildren';
 import { buildChargeMessage } from '../../dominio/cobranca/chargeMessage';
 import {
@@ -78,6 +79,19 @@ export default function TioFinance() {
 
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
   const { payments, loading } = usePaymentsByMonth(monthKey);
+
+  // O AVISO DE COMPROVANTE DUPLICADO, carregado à parte.
+  //
+  // ⚠️ Ele já foi um campo do próprio pagamento, e a RESPONSÁVEL lê aquele
+  // documento — a tela escondia por papel, e esconder na tela não esconde o
+  // dado. Hoje mora em `alertasDeComprovante`, que só o motorista e o dono
+  // leem, e por isso chega por uma assinatura separada, nesta tela e não no
+  // cartão compartilhado.
+  const [alertas, setAlertas] = useState({});
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    return watchAlertasDeComprovante(user.uid, setAlertas);
+  }, [user?.uid]);
 
   // A dívida que ficou pra trás. Fica FORA do usePaymentsByMonth de propósito:
   // ela não pertence ao mês na tela, ela existe APESAR do mês na tela.
@@ -571,6 +585,7 @@ export default function TioFinance() {
                 payment={payment}
                 displayStatus={payment._display}
                 role="admin"
+                alertaDeDuplicata={alertas[payment.id] || null}
                 onCharge={() => onCharge(payment)}
                 onAttachReceipt={() => {
                   setAttachingTo(payment);
