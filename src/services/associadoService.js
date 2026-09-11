@@ -113,10 +113,18 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
     doc(db, 'users', uid),
     {
       role: 'admin',
-      name: String(nome || '').trim(),
+      ...(String(nome || '').trim() ? { name: String(nome).trim() } : {}),
       email: emailLimpo,
       phone: String(telefone || '').trim(),
-      city: String(cidade || '').trim(),
+      // ⚠️ CIDADE E NOME SÓ ENTRAM SE VIEREM, e desde 11/09/2026 a inscrição
+      // não os manda: ela pede três campos (e-mail, WhatsApp, senha) e o
+      // resto é pedido no primeiro acesso, do lado de dentro.
+      //
+      // A distinção entre AUSENTE e VAZIO é o que faz o guarda funcionar:
+      // campo ausente significa "ainda não perguntei", string vazia
+      // significaria "perguntei e ele deixou em branco". Gravar `''` aqui
+      // faria o primeiro acesso parecer já respondido.
+      ...(String(cidade || '').trim() ? { city: String(cidade).trim() } : {}),
       // Quantas crianças ele DIZ que transporta. É estimativa de cadastro,
       // nunca cláusula: nenhuma conta a usa, e não existe teto para ela
       // comparar — `limiteCriancas` saiu do modelo em 10/09/2026.
@@ -126,7 +134,9 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
       // criança, e o campo ficou meses gravado sem um único leitor. Quem o lê
       // hoje é a FICHA do dono, e o que ele responde é de venda: declarou 30
       // e cadastrou 4 significa que a turma não migrou.
-      criancasEstimadas: Math.max(0, Number(criancas) || 0),
+      ...(Number(criancas) > 0
+        ? { criancasEstimadas: Math.max(0, Number(criancas)) }
+        : {}),
       createdAt: serverTimestamp(),
       // DE ONDE ELE VEIO — resolvido na tela a partir da URL
       // (`dominio/identidade/origem.js`), nunca perguntado num formulário.
@@ -148,4 +158,50 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
   );
 
   return { uid, jaExistia };
+}
+
+/**
+ * O RESTO DO CADASTRO, gravado no primeiro acesso.
+ *
+ * ⚠️ É `update` DO PRÓPRIO DOCUMENTO, e por isso não precisou de rule nova:
+ * a política de `users` para o próprio dono é lista de PROIBIDOS
+ * (`role`, `trialInicio`, `assinaturaAte`, `plano`, `suspenso`…), e nenhum
+ * campo daqui está nela. O critério é o mesmo que deixa `ultimaRota` de
+ * fora: mentir aqui não vira desconto, prazo nem permissão — suja a
+ * contagem do dono e nada mais.
+ *
+ * ⚠️ `name` E `city` SÃO CONTRATO. Eles viram a PARTE em
+ * `contratoAssociacao.js`; `regiao` não entra em documento nenhum, é
+ * operacional. Juntar os dois num campo só faria o contrato identificar o
+ * associado por bairro.
+ *
+ * Os dois opcionais só são gravados quando vieram: string vazia por cima de
+ * um valor que ele já tinha apagaria o que ele escreveu antes.
+ */
+export async function completarCadastro(uid, dados) {
+  if (!uid) throw new Error('Sem sessão.');
+  const nome = String(dados?.name || '').trim();
+  const cidade = String(dados?.city || '').trim();
+  const regiao = String(dados?.regiao || '').trim();
+  if (!nome || !cidade || !regiao) {
+    throw new Error('Nome, cidade e região são obrigatórios.');
+  }
+
+  const marca = String(dados?.marcaNome || '').trim();
+  const criancas = Number(dados?.criancas);
+
+  await setDoc(
+    doc(db, 'users', uid),
+    {
+      name: nome,
+      city: cidade,
+      regiao,
+      ...(marca ? { marcaNome: marca } : {}),
+      ...(Number.isFinite(criancas) && criancas > 0
+        ? { criancasEstimadas: Math.max(0, criancas) }
+        : {}),
+      cadastroCompletoEm: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }

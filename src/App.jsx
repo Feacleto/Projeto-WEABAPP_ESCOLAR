@@ -47,6 +47,7 @@ const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 
 const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
 const GuardaDaConta = lazy(() => import('./components/tio/GuardaDaConta'));
+const PrimeiroAcesso = lazy(() => import('./pages/tio/PrimeiroAcesso'));
 const TioDashboard = lazy(() => import('./pages/tio/TioDashboard'));
 const TioChildren = lazy(() => import('./pages/tio/TioChildren'));
 const TioEscolas = lazy(() => import('./pages/tio/TioEscolas'));
@@ -85,6 +86,7 @@ import TermsAcceptanceGate from './components/legal/TermsAcceptanceGate';
 import ContractAcceptanceGate from './components/contract/ContractAcceptanceGate';
 import CookieBanner from './components/legal/CookieBanner';
 import { useAuth } from './hooks/useAuth';
+import { faltaCompletarCadastro } from './dominio/identidade/cadastroDoMotorista.js';
 import FalhaAoLerConta from './components/common/FalhaAoLerConta';
 import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
@@ -311,6 +313,33 @@ function SuperAdminRoute({ children }) {
  * punir quem não tem como consertar — e quem é avisado do que falta é ele, na
  * tela de contrato dele.
  */
+/**
+ * O PRIMEIRO ACESSO DO MOTORISTA — o resto do cadastro, antes do app.
+ *
+ * ⚠️ ELE FICA POR FORA DO `GuardaDaConta`, E A ORDEM IMPORTA. O guarda da
+ * conta trata de dinheiro (teste vencido, suspensão) e a sua saída é
+ * `/tio/planos` — mandar para lá quem ainda não tem NOME cadastrado produz um
+ * contrato com a parte em branco. Completar o cadastro vem antes de qualquer
+ * conversa sobre pagar.
+ *
+ * ⚠️ E ELE NÃO É UMA ROTA, é um DESVIO. Rota própria seria endereço que a
+ * pessoa pode pular digitando outro na barra — e os três campos que ele cobra
+ * são partes de um contrato. Como desvio, ele cobre `/tio` inteiro enquanto
+ * faltar.
+ *
+ * Quem decide é `faltaCompletarCadastro`, pura e fora da tela
+ * (`dominio/identidade/cadastroDoMotorista.js`).
+ */
+function PrimeiroAcessoGate({ children }) {
+  const { profile, loading } = useAuth();
+
+  // Perfil ainda carregando não é perfil incompleto. Sem esta linha, todo
+  // motorista veria o formulário piscar no primeiro quadro de cada abertura.
+  if (loading) return <FullScreenLoader />;
+  if (!faltaCompletarCadastro(profile)) return children;
+  return <PrimeiroAcesso />;
+}
+
 function ParentContractGate({ children }) {
   const { child, loading } = useActiveChild();
   const { admin, loading: adminLoading } = useAdminProfile(child?.adminUid);
@@ -474,9 +503,11 @@ export default function App() {
               * não pode ser condicional. Um cartão de conta inativa lá
               * dentro chegaria DEPOIS de todo o dado ter sido carregado —
               * e desfoque sobre dado carregado é CSS, não proteção. */}
-            <GuardaDaConta>
-              <TioLayout />
-            </GuardaDaConta>
+            <PrimeiroAcessoGate>
+              <GuardaDaConta>
+                <TioLayout />
+              </GuardaDaConta>
+            </PrimeiroAcessoGate>
           </PrivateRoute>
         }
       >

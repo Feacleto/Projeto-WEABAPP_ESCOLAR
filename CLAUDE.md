@@ -298,7 +298,11 @@ src/
 │   │                 hoje. Pública, sem conta, sem sessão do Firebase e sem
 │   │                 mapa ao vivo: a posição da perua é o veículo de um
 │   │                 autônomo e ele não decidiu compartilhá-la com terceiros
-│   ├── tio/           20 telas do motorista
+│   ├── tio/           21 telas do motorista — entre elas `PrimeiroAcesso`,
+│   │                 que NÃO é rota: é o desvio que cobre `/tio` inteiro
+│   │                 enquanto faltar nome, cidade ou região. Rota própria
+│   │                 seria endereço que se pula digitando outro na barra, e
+│   │                 dois desses campos são a PARTE do contrato
 │   ├── pai/           8 telas do responsável
 │   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com OITO
 │   │                  abas: Hoje (a fila), Motoristas (lista + FICHA),
@@ -349,7 +353,8 @@ src/
 │   │                  carteira, proposta, risco, fila, concessao, adesivo,
 │   │                  isencaoDaFatura
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
-│   │                  authErrors, verificacao, indicacao, origem
+│   │                  authErrors, verificacao, indicacao, origem,
+│   │                  cadastroDoMotorista
 │   ├── escola/        nomeEscola
 │   ├── suporte/       chamados
 │   └── vitrine/       frentes
@@ -1406,6 +1411,30 @@ motorista é cheia e vem primeiro, a da família é de contorno. Elas viajam com
 `state: { de: 'escolha' }`, e é isso que faz o "Voltar" das duas telas
 retornar pra bifurcação em vez de jogar pra fora do app quem estava
 escolhendo.
+
+⚠️ **A INSCRIÇÃO DO MOTORISTA PEDE TRÊS CAMPOS, E O RESTO É DO LADO DE
+DENTRO** (11/09/2026). `/quero-fazer-parte` fica com e-mail, WhatsApp e senha —
+só o que a CONTA precisa para existir. Nome, cidade, região, marca e nº de
+crianças são pedidos em `PrimeiroAcesso`, um desvio que cobre `/tio` enquanto
+os três primeiros faltarem.
+
+A troca não foi de quantidade, foi de ORDEM DA CONFIANÇA: seis campos antes de
+a pessoa ter visto qualquer coisa do produto cobram uma confiança que a tela
+ainda não construiu, e nome e cidade são justamente os que ela hesita em dar a
+um site que acabou de conhecer.
+
+⚠️ **`city` E `regiao` SÃO PERGUNTAS DIFERENTES, e juntá-las quebra o
+contrato.** `city` é a cidade da PARTE em `contratoAssociacao.js` (e alimenta o
+BR Code do PIX); `regiao` é operacional — em São Paulo, "São Paulo" não diz
+nada sobre onde a perua está. Uma substituindo a outra faria o contrato dizer
+*"Associado: João, Vila Mariana"*.
+
+⚠️ **`inscreverAssociado` OMITE o que não foi perguntado**, em vez de gravar
+`''`. É essa distinção que faz `faltaCompletarCadastro` funcionar — campo
+ausente é "ainda não perguntei", string vazia seria "perguntei e ele deixou em
+branco". E o guarda envolve o `GuardaDaConta` **por fora**: a saída daquele é
+`/tio/planos`, que emite contrato, e mandar pra lá quem não tem nome produz um
+documento com a parte em branco. Bloco 11 de `npm run testar:auth`.
 
 **As duas telas de cadastro são de MONITOR também**, com `data-painel="web"`:
 o motorista decide sentado, e a responsável que perdeu o link volta pelo site.

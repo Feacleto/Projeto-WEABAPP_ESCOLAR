@@ -18,6 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 import { painelDe } from '../src/dominio/identidade/papeis.js';
+import { faltaCompletarCadastro } from '../src/dominio/identidade/cadastroDoMotorista.js';
 import { mascararEmail } from '../src/compartilhado/formatters.js';
 import { COMPANY_INFO } from '../src/pages/legal/legalContent.js';
 import {
@@ -555,6 +556,71 @@ for (const chute of ['instabilidade', 'nossos servidores', 'fora do ar']) {
 }
 checar('ela oferece tentar de novo', true, falhaSemProsa.includes('refreshProfile'));
 checar('e uma saida', true, falhaSemProsa.includes('logout'));
+
+bloco('11. O PRIMEIRO ACESSO DO MOTORISTA — o desvio antes do app');
+/* A conta nasce com tres campos e o resto e pedido do lado de dentro. Quem
+   decide se ele ja respondeu desvia a ROTA: errar aqui ou prende quem ja
+   preencheu, ou deixa passar quem nao preencheu — e dois dos tres campos sao
+   a PARTE do contrato de associacao. */
+
+const cadastroCompleto = {
+  role: 'admin',
+  name: 'Joao da Silva',
+  city: 'Sao Paulo',
+  regiao: 'Vila Mariana',
+};
+
+checar('cadastro completo passa', false, faltaCompletarCadastro(cadastroCompleto));
+checar('sem nome, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, name: '' }));
+checar('sem cidade, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, city: '' }));
+checar('sem regiao, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, regiao: '' }));
+checar(
+  'campo AUSENTE trava igual a campo vazio',
+  true,
+  faltaCompletarCadastro({ role: 'admin', name: 'Joao', city: 'SP' })
+);
+checar(
+  'so espaco em branco nao conta como respondido',
+  true,
+  faltaCompletarCadastro({ ...cadastroCompleto, regiao: '   ' })
+);
+
+/* Os dois opcionais nao podem travar: `marcaNome` muda o cabecalho e
+   `criancasEstimadas` e informacao de venda — nenhum entra em contrato, e
+   prender alguem por eles e cobrar pedagio por conveniencia. */
+checar('sem marcaNome, passa', false, faltaCompletarCadastro(cadastroCompleto));
+checar(
+  'sem numero de criancas, passa',
+  false,
+  faltaCompletarCadastro({ ...cadastroCompleto, criancasEstimadas: 0 })
+);
+
+/* O desvio e so do MOTORISTA. A mae nao tem cadastro a completar e o dono
+   nasce pelo console — desviar qualquer um dos dois os prenderia numa tela
+   que nao e deles. */
+checar('responsavel nunca e desviado', false, faltaCompletarCadastro({ role: 'parent' }));
+checar('dono nunca e desviado', false, faltaCompletarCadastro({ role: 'owner' }));
+checar('perfil ausente nao desvia', false, faltaCompletarCadastro(null));
+checar('perfil sem papel nao desvia', false, faltaCompletarCadastro({}));
+
+/* E O GUARDA VEM ANTES DO `GuardaDaConta`, nao depois. A saida daquele e
+   `/tio/planos`, que emite contrato — mandar pra la quem nao tem nome
+   cadastrado produz um documento com a parte em branco. */
+const fonteDoApp = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
+const ondeCadastro = fonteDoApp.indexOf('<PrimeiroAcessoGate>');
+const ondeConta = fonteDoApp.indexOf('<GuardaDaConta>');
+checar(
+  'o primeiro acesso envolve o guarda da conta',
+  true,
+  ondeCadastro > 0 && ondeConta > 0 && ondeCadastro < ondeConta
+);
+
+/* E a inscricao nao pode voltar a mandar os campos movidos: se ela gravar
+   `name` vazio, o guarda nunca dispara e o contrato nasce sem a parte. */
+const fonteDoCadastro = readFileSync(new URL('../src/pages/DriverSignup.jsx', import.meta.url), 'utf8');
+checar('a inscricao nao manda mais nome', false, /nome:\s*form\.name/.test(fonteDoCadastro));
+checar('a inscricao nao manda mais cidade', false, /cidade:\s*form\.city/.test(fonteDoCadastro));
+
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

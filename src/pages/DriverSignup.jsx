@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Bus, MapPin, Lock } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, Phone, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import Logo from '../components/common/Logo';
 import FundoNoturno from '../components/common/FundoNoturno';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { ArtRoad } from '../components/landing/BlockArt';
@@ -56,13 +57,20 @@ export default function DriverSignup() {
       referrer: q.get('r') || '',
     });
   });
+  /* TRÊS CAMPOS, e os outros três foram para o primeiro acesso.
+   *
+   * ⚠️ O QUE MUDOU NÃO FOI A QUANTIDADE, FOI A ORDEM DA CONFIANÇA. Seis
+   * campos antes de a pessoa ter visto qualquer coisa do produto cobram uma
+   * confiança que a tela ainda não construiu — e nome, cidade e tamanho da
+   * frota são exatamente os que ela hesita em dar a um site que acabou de
+   * conhecer. Do lado de dentro, com o app aberto, eles são triviais.
+   *
+   * O que fica aqui é só o que a CONTA precisa para existir: um endereço
+   * para voltar, um telefone para ser achado, e uma senha. */
   const [form, setForm] = useState({
-    name: '',
     phone: '',
     email: '',
     senha: '',
-    city: '',
-    criancas: '',
   });
   const { refreshProfile } = useAuth();
   const [errors, setErrors] = useState({});
@@ -74,13 +82,11 @@ export default function DriverSignup() {
   const onSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.name.trim()) errs.name = 'Diga seu nome.';
     if (!isValidPhone(form.phone)) errs.phone = 'WhatsApp com DDD.';
     // Email e senha viraram OBRIGATÓRIOS porque a inscrição agora CRIA A
     // CONTA — não é mais só um lead. Sem eles não há como ele voltar.
     if (!isValidEmail(form.email)) errs.email = 'Precisamos do email pra criar sua conta.';
     if (form.senha.length < 6) errs.senha = 'Mínimo 6 caracteres.';
-    if (!form.city.trim()) errs.city = 'Em qual cidade você roda?';
     setErrors(errs);
     if (Object.keys(errs).length) {
       toast.error('Confira o que está destacado.');
@@ -98,13 +104,13 @@ export default function DriverSignup() {
       // Ninguém decide mais: ele entra e roda. O que o segura é o teste de
       // três meses, que começa na primeira rota — e o registro de intenção
       // virou o próprio cadastro, que é um documento só.
+      // Nome, cidade e nº de crianças NÃO vão daqui: eles são pedidos no
+      // primeiro acesso, e o service omite o que não vem — campo ausente
+      // significa "ainda não perguntei", que é o que o guarda lê.
       await inscreverAssociado({
         email: form.email,
         senha: form.senha,
-        nome: form.name,
         telefone: unmaskPhone(form.phone),
-        cidade: form.city,
-        criancas: form.criancas,
         origem,
       });
 
@@ -207,10 +213,30 @@ export default function DriverSignup() {
             * dirige" faz o par com "pra quem espera na porta" da tela da
             * família: quem trocou de porta por engano descobre no chapéu, que
             * é a primeira coisa acima do título. */}
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80 lg:mt-0">
-            pra quem dirige
-          </p>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
+          {/* ⚠️ A MARCA ENTROU AQUI, e antes esta porta não tinha nenhuma.
+            *
+            * O `<Logo />` aparece em oito telas e todas são públicas — esta
+            * é pública e era a única sem ele. Quem vem da bifurcação do
+            * login atravessa as duas na mesma sessão, e a de lá abre com a
+            * marca: sem o logo, a troca de tela lia como troca de produto.
+            *
+            * O chapéu em mono ("pra quem dirige") saiu junto: ele existia
+            * para dizer de quem era a porta, e o logo com o título já faz
+            * isso sem gastar uma linha. */}
+          <a
+            href={SITE_INSTITUCIONAL}
+            aria-label="Conhecer o Alô Buzinou"
+            className="tap block w-fit max-w-full rounded-lg"
+          >
+            <Logo variant="lockup" tone="onDark" height={32} className="lg:hidden" />
+            <Logo
+              variant="lockup"
+              tone="onDark"
+              height={46}
+              className="hidden lg:block"
+            />
+          </a>
+          <h1 className="mt-5 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
             Comece a usar hoje
           </h1>
           {/* ⚠️ A FRASE RESPONDE "O QUE ACONTECE DEPOIS QUE EU MANDAR".
@@ -283,9 +309,13 @@ export default function DriverSignup() {
           <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
             Criar sua conta
           </h2>
+          {/* ⚠️ O NÚMERO NA FRASE É VERIFICÁVEL NA TELA, e já mentiu uma vez.
+            * Ela dizia "seis campos, em três linhas" — conferível enquanto
+            * eram seis. Prometer um número e entregar outro na mesma dobra é
+            * a primeira coisa que a pessoa aprende sobre o produto. */}
           <p className="mt-2 text-sm leading-relaxed text-textMuted">
-            Seis campos, em três linhas. No fim deles você entra direto no seu
-            painel.
+            Três campos. No fim deles você entra direto no seu painel — o
+            resto a gente pergunta lá dentro.
           </p>
         </div>
 
@@ -306,31 +336,10 @@ export default function DriverSignup() {
             * WhatsApp, e ela não é contato: é a operação. Agora ela desce para
             * o grupo dela, junto do número de crianças, que é o outro dado que
             * descreve o tamanho do que ele roda. */}
-          <Grupo rotulo="quem você é">
-            <Input
-              label="Seu nome"
-              placeholder="Nome completo"
-              icon={User}
-              value={form.name}
-              onChange={set('name')}
-              autoComplete="name"
-              error={errors.name}
-              required
-            />
-            <Input
-              label="WhatsApp"
-              placeholder="(11) 90000-0000"
-              inputMode="tel"
-              value={form.phone}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))
-              }
-              autoComplete="tel"
-              error={errors.phone}
-              required
-            />
-          </Grupo>
-
+          {/* UM GRUPO SÓ, porque agora é uma pergunta só: como a conta
+            * existe e como ele volta pra ela. "Quem você é" e "sobre a sua
+            * operação" foram para o primeiro acesso — lá eles têm contexto,
+            * aqui eram o pedágio de quem ainda não viu nada. */}
           <Grupo rotulo="como você entra na sua conta">
             <Input
               type="email"
@@ -342,6 +351,20 @@ export default function DriverSignup() {
               onChange={set('email')}
               autoComplete="email"
               error={errors.email}
+              required
+            />
+            <Input
+              label="WhatsApp"
+              placeholder="(11) 90000-0000"
+              inputMode="tel"
+              icon={Phone}
+              value={form.phone}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))
+              }
+              autoComplete="tel"
+              error={errors.phone}
+              required
             />
             {/* A senha aparece aqui porque a inscrição CRIA A CONTA. Google
               * fica de fora de propósito: dentro da webview do WhatsApp o
@@ -358,32 +381,7 @@ export default function DriverSignup() {
               onChange={set('senha')}
               autoComplete="new-password"
               error={errors.senha}
-            />
-          </Grupo>
-
-          <Grupo rotulo="sobre a sua operação">
-            <Input
-              label="Cidade onde você roda"
-              placeholder="Cidade Ademar, SP"
-              icon={MapPin}
-              value={form.city}
-              onChange={set('city')}
-              error={errors.city}
               required
-            />
-            {/* Criança, e não van — é sobre ela que o contrato é
-              * dimensionado. */}
-            <Input
-              id="signup-criancas"
-              label="Quantas crianças hoje"
-              type="number"
-              inputMode="numeric"
-              min="0"
-              placeholder="Ex.: 18"
-              value={form.criancas}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, criancas: e.target.value }))
-              }
             />
           </Grupo>
 
