@@ -198,6 +198,46 @@ checar('encerrar apaga a última posição', true,
 checar('o detector reconhece a escrita crua (sonda positiva)', true,
   /lat:\s*position\.coords\.latitude/.test('  lat: position.coords.latitude,'));
 
+bloco('6. O mapa diz que é referência');
+
+// ⚠️ ALFINETE SOZINHO SOBRE DADO APROXIMADO É A INTERFACE MENTINDO: quem olha
+// lê "ele está exatamente aqui", e é a leitura errada que faz a mãe descer
+// com a criança na hora errada. O círculo desenha o tamanho da imprecisão; a
+// frase diz o nome dela.
+const fonteDoMapa = readFileSync(
+  new URL('../src/components/map/LiveMap.jsx', import.meta.url), 'utf8');
+const fonteDaTela = readFileSync(
+  new URL('../src/pages/pai/PaiMap.jsx', import.meta.url), 'utf8');
+
+checar('o mapa desenha o círculo', true, fonteDoMapa.includes('<Circle'));
+// O raio vem da RÉGUA: número escrito à mão viraria um círculo que não
+// corresponde ao arredondamento de verdade.
+checar('e o raio vem da régua', true,
+  fonteDoMapa.includes('radius={PRECISAO_DO_MAPA_M}'));
+checar('sem raio escrito à mão', false, /radius=\{\d/.test(fonteDoMapa));
+checar('a tela avisa que é referência', true,
+  /aproximada, por referência/.test(fonteDaTela));
+checar('e nega o ponto exato', true, /não indica o ponto exato/i.test(fonteDaTela));
+
+bloco('7. E os termos dizem o mesmo que o código faz');
+
+// A Política declara a base legal da geolocalização como CONSENTIMENTO, e a
+// LGPD exige que consentimento seja revogável "por procedimento gratuito e
+// facilitado" (art. 8º, §5º). A chave é essa revogação — até 11/09/2026 o
+// documento prometia uma escolha que o app não oferecia.
+const fonteLegal = readFileSync(
+  new URL('../src/pages/legal/legalContent.js', import.meta.url), 'utf8');
+checar('os termos falam da revogação', true,
+  /revogável a qualquer momento/i.test(fonteLegal));
+checar('e dizem que a posição é aproximada', true, /APROXIMADA/.test(fonteLegal));
+checar('e que a última posição é apagada', true,
+  /última posição é APAGADA/.test(fonteLegal));
+checar('e que o app não pega a localização dos pais', true,
+  /não coleta a localização do dispositivo dos responsáveis/i.test(fonteLegal));
+// ⚠️ MUDAR A CLÁUSULA OBRIGA A SUBIR A VERSÃO — senão ninguém reaceita, e o
+// aceite guardado aponta para um texto que não existe mais.
+checar('a versão subiu junto', true, /LEGAL_VERSION = '1\.2'/.test(fonteLegal));
+
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) {

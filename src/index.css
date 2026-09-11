@@ -1307,3 +1307,20 @@
    * borda dupla, que é um defeito visual, não um estado de repouso. */
   .fundo-halo::after { display: none; }
 }
+
+/* O CÍRCULO DE REFERÊNCIA DA PERUA.
+ *
+ * A posição publicada é encaixada numa grade de 150 m no aparelho do
+ * motorista: ela diz a QUADRA, nunca a porta. O círculo desenha esse tamanho,
+ * porque alfinete sozinho sobre dado aproximado é a interface mentindo.
+ *
+ * ⚠️ A COR VEM DA VARIÁVEL, E O ESTILO MORA AQUI POR UM MOTIVO TÉCNICO: o
+ * Leaflet escreve `color` como ATRIBUTO `stroke` do SVG, e atributo não
+ * resolve `var()` — o círculo sairia preto. Com classe, quem pinta é o CSS.
+ */
+.perua-referencia {
+  stroke: var(--pino-perua);
+  fill: var(--pino-perua);
+  stroke-opacity: 0.45;
+  fill-opacity: 0.12;
+}

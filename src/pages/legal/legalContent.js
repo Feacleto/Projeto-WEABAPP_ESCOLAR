@@ -32,7 +32,7 @@ import {
  * único campo destes documentos que ninguém pode preencher por inferência.
  * Ver o aviso lá.
  */
-export const LEGAL_VERSION = '1.1';
+export const LEGAL_VERSION = '1.2';
 export const LEGAL_DATE = '9 de setembro de 2026';
 
 /**
@@ -188,9 +188,12 @@ export const TERMS_SECTIONS = [
     id: 'localizacao',
     title: '8. Geolocalização',
     paragraphs: [
-      'O Aplicativo coleta a localização em tempo real do veículo do motorista (somente quando ele inicia uma rota) e o exibe aos responsáveis das crianças associadas.',
-      'A coleta ocorre exclusivamente quando o motorista ativa o tracking — não há monitoramento em segundo plano nem fora dos horários de rota.',
+      'O Aplicativo coleta a localização do veículo do motorista somente enquanto ele mantém uma rota iniciada. Não há coleta em segundo plano, nem fora da rota.',
+      'O COMPARTILHAMENTO COM AS FAMÍLIAS É UMA ESCOLHA DO MOTORISTA, revogável a qualquer momento e sem custo, por uma chave na própria tela de início de rota. Desligada, o veículo deixa de aparecer no mapa dos responsáveis; o aviso de aproximação continua, porque ele é calculado no aparelho do motorista e não envia a posição.',
+      'A posição exibida aos responsáveis é APROXIMADA, por referência: ela é arredondada no aparelho do motorista antes de ser enviada, e não indica o ponto exato do veículo.',
+      'Ao encerrar a rota, a última posição é APAGADA. O Aplicativo não mantém histórico de localização do motorista.',
       'O endereço residencial cadastrado pelo motorista é usado para roteamento e exibição no mapa do responsável correspondente.',
+      'O Aplicativo não coleta a localização do dispositivo dos responsáveis em nenhuma hipótese.',
     ],
   },
   {
@@ -312,7 +315,7 @@ export const PRIVACY_SECTIONS = [
       'Os dados são tratados para as seguintes finalidades, sob as bases legais aplicáveis (art. 7º e 11 da LGPD):',
       '(a) Execução do contrato de prestação do serviço de transporte escolar — base: execução de contrato (art. 7º, V);',
       '(b) Cumprimento de obrigações legais e regulatórias — base: obrigação legal (art. 7º, II);',
-      '(c) Geolocalização durante rotas — base: consentimento do titular (art. 7º, I);',
+      '(c) Geolocalização do veículo durante rotas — base: consentimento do titular (art. 7º, I), revogável a qualquer momento pela chave na tela de início de rota, sem custo e sem perda de nenhuma outra função do Aplicativo (art. 8º, §5º);',
       '(d) Comunicação com responsáveis (notificações, status, alertas) — base: legítimo interesse (art. 7º, IX);',
       '(e) Tratamento de dados de crianças — base: melhor interesse da criança com consentimento dos responsáveis (art. 14).',
     ],
@@ -343,7 +346,8 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'Mantemos os dados enquanto a conta estiver ativa e enquanto necessário para as finalidades descritas.',
       'Após encerramento da conta, dados financeiros podem ser retidos pelo prazo de 5 (cinco) anos para cumprimento de obrigações fiscais e contábeis (art. 16, II da LGPD). O registro de mensalidades é apagado automaticamente após esse prazo.',
-      'Localização em tempo real é mantida apenas durante a rota ativa; ao encerrar, mantém-se apenas o último ponto registrado para fins de auditoria limitada.',
+      'Localização é mantida apenas durante a rota ativa. Ao encerrar, a última posição é apagada — não guardamos histórico de localização do motorista.',
+      'O registro diário de embarque e entrega (data e horário de cada etapa, sem qualquer dado de localização) é apagado automaticamente após 60 (sessenta) dias.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
   },

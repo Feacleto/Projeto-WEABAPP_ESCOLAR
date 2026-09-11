@@ -178,7 +178,23 @@ export default function PaiMap() {
       {/* Mapa — 70% da viewport */}
       <div className="relative" style={{ height: 'min(70vh, 600px)' }}>
         {home || school ? (
-          <LiveMap van={visibleVan} home={home} school={school} />
+          <>
+            <LiveMap van={visibleVan} home={home} school={school} />
+            {/* ⚠️ A RESSALVA É PARTE DO DADO, e ela só aparece quando há
+              * perua na tela — frase permanente sobre um mapa vazio é ruído
+              * que se aprende a pular, e aí não é lida no dia em que importa.
+              *
+              * Ela fica SOBRE o mapa, e não num rodapé de termos: quem
+              * precisa dela é quem está olhando o alfinete agora e decidindo
+              * se desce com a criança. O círculo desenha o tamanho da
+              * imprecisão; esta linha diz o nome dela. */}
+            {visibleVan && (
+              <p className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] rounded-lg bg-card/90 px-3 py-1.5 text-center text-[11px] leading-snug text-textMuted shadow-sm">
+                Posição aproximada, por referência — o círculo mostra a margem.
+                Não indica o ponto exato da perua.
+              </p>
+            )}
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-center p-5">
             <p className="text-sm text-textMuted">

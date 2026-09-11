@@ -34,6 +34,7 @@ const { makeCasarNoCadastro } = require('./lib/casarNoCadastro');
 const {
   makeLimparCoordenadaDoCheckpoint,
 } = require('./lib/limpezaDoCheckpoint');
+const { makeApagarViagensAntigas } = require('./lib/retencaoDasViagens');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./lib/limites');
@@ -581,6 +582,19 @@ exports.fecharMesAgora = makeFecharMesAgora(db);
  * script, da régua, do teste e do bloco do painel.
  */
 exports.limparCoordenadaDoCheckpoint = makeLimparCoordenadaDoCheckpoint(db);
+
+/**
+ * A RETENÇÃO DAS VIAGENS — 60 dias, todo dia às 4h30.
+ *
+ * Um documento por criança por dia letivo, para sempre, é arquivo que cresce
+ * sozinho e que **nada lê depois do dia**: a única tela que abre uma viagem
+ * pede a de HOJE. O prazo foi decidido pelo dono, e a Política de Privacidade
+ * promete exatamente ele — mudar um exige mudar o outro na mesma alteração.
+ *
+ * ⚠️ Não toca no calendário de faltas: ele lê `absenceDeclarations`, que é
+ * outra coleção e não tem prazo.
+ */
+exports.apagarViagensAntigas = makeApagarViagensAntigas(db);
 
 /**
  * OS AVISOS COMERCIAIS — o único canal que alcança quem parou de abrir o app.

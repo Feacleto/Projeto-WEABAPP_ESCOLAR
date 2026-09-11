@@ -17,12 +17,13 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 2109 casos em 37 scripts. O PRIMEIRO é
+npm run testar                   # 2159 casos em 38 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
                                  # horarios, faltas, endereco, aviso,
-                                 # contraste, travessia, contrato, pix, brcode,
+                                 # proximidade, contraste, travessia, contrato,
+                                 # pix, brcode,
                                  # status, auth, trial, planos, avisos,
                                  # preferencias, multa,
                                  # conta, cobranca, gateway, carteira,
@@ -304,11 +305,18 @@ src/
 │   │                  Chamados, Mês (régua e fechamento), Números, Selos,
 │   │                  Indicações, Pesquisa. As abas moram em
 │   │                  components/admin/.
-│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.1
-│                       (09/09/2026): o controlador passou a ser IDENTIFICADO
-│                       (razão social + CNPJ + cidade; os dois primeiros já
-│                       estavam no repo e concordavam) e a seção 2b passou a
-│                       declarar Resend e Asaas como operadores. Subir a versão
+│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.2
+│                       (11/09/2026): a cláusula 8 passou a dizer que o
+│                       compartilhamento da posição é ESCOLHA DO MOTORISTA e
+│                       revogável (art. 8º §5º — antes a base declarada era
+│                       consentimento e não havia como revogar), que a posição
+│                       mostrada é APROXIMADA, que a última é apagada ao
+│                       encerrar, e que o app não coleta localização dos
+│                       responsáveis. A retenção ganhou os 60 dias das
+│                       viagens.
+│                       A 1.1 (09/09/2026) identificou o controlador (razão
+│                       social + CNPJ + cidade) e declarou Resend e Asaas como
+│                       operadores na 2b. Subir a versão
 │                       obriga todo mundo a reaceitar — feito com base quase
 │                       zero, custa uma conversa.
 │                       ⚠️ SEDE e FORO são coisas DIFERENTES, mesmo quando
@@ -334,7 +342,7 @@ src/
 ├── dominio/           AS REGRAS. Puro, sem Firebase, sem React — um contexto
 │                      por pasta (ver "Os sete contextos" abaixo)
 │   ├── rota/          horarios, avisoDoMomento, routePresence, faltas,
-│   │                  intervaloDeDias
+│   │                  intervaloDeDias, proximidade
 │   ├── cobranca/      statusPagamento, pix, pixPayload, chargeMessage,
 │   │                  paymentVocabulary, retencao, trilhaDoPagamento
 │   ├── associacao/    planos, multa, contratoAssociacao, trial, contaAtiva,
@@ -468,6 +476,20 @@ qual é.
 idempotente). Guarda os marcos com hora — `onboard`, `atSchool`, `delivered` —
 e é gravado **no mesmo batch da mudança de status**, nunca depois.
 [ridesService.js](src/services/ridesService.js)
+
+⚠️ **ELE DURA 60 DIAS** (`apagarViagensAntigas`, todo dia às 4h30 —
+[retencaoDasViagens.js](functions/lib/retencaoDasViagens.js)). Nada lê uma
+viagem depois do dia: a única tela que abre uma pede a de HOJE
+(`useRide(child.id, todayKey)`), e a página pública de acompanhar também. Um
+documento por criança por dia letivo, para sempre, é arquivo que cresce
+sozinho e ninguém consulta. O prazo é decisão do dono, e a Política promete
+exatamente ele — **mudar um exige mudar o outro na mesma alteração**.
+⚠️ **Não toca no calendário de faltas**: ele lê `absenceDeclarations`, que é
+outra coleção e não tem prazo.
+⚠️ **O que se perde**: é o único registro que sabe se a criança REALMENTE
+rodou num dia. O calendário mostra o que foi AVISADO, e confessa isso na
+própria tela — fechar esse buraco ("não avisou e não desceu") só é possível
+dentro da janela de retenção.
 
 ⚠️ **O CHECKPOINT GUARDA A DISTÂNCIA, NUNCA A COORDENADA DO MOTORISTA.**
 `checkpointFrom` ([routeStatusService.js](src/services/routeStatusService.js))
@@ -931,6 +953,66 @@ buzinar na rua, dispara uma chamada que toca em tela cheia no celular do pai.
 **`liveLocation`** é sobrescrito com throttle (GPS suspende em aba oculta; a
 function `closeStaleRoutes` fecha rota que ficou aberta).
 
+⚠️ **O MOTORISTA DECIDE SE AS FAMÍLIAS VEEM A PERUA, E O AVISO NÃO DEPENDE
+DISSO** (11/09/2026) — a régua é
+[dominio/rota/proximidade.js](src/dominio/rota/proximidade.js), com
+`npm run testar:proximidade` (48 casos). Três peças que só funcionam juntas:
+
+- **A chave vive no INÍCIO DA ROTA** ([ControleDeRota](src/components/route/ControleDeRota.jsx)),
+  e não numa folha de ajustes: é o instante em que o compartilhamento começa,
+  e é a única superfície que continua na mão dele **dirigindo** — numa folha
+  de ajustes ela sumiria no minuto em que ele quisesse desligá-la. É grudada
+  (liga uma vez e fica) e **ausente significa LIGADO**: quem nunca viu a
+  chave não pode ter o mapa apagado das famílias sem ter escolhido nada.
+  `users.compartilhaLocalizacao`, sem rule nova — o `update` de `users` é
+  lista de PROIBIDOS, e preferência não é cláusula.
+- ⚠️ **O AVISO DE "ESTÁ CHEGANDO" MUDOU DE LADO.** Era calculado no celular
+  da MÃE a partir da coordenada publicada — então desligar o mapa mataria o
+  aviso junto, para duas coisas sem relação. Agora quem mede é o celular DELE
+  (já tem a posição e os endereços da turma) e o que viaja é **uma palavra**
+  em `rides/{dia}.proximidade`: `longe`, `perto` ou `chegou`. **Nunca a
+  distância em km** — três casas com distância conhecida dão o ponto exato
+  por triangulação. Só a MUDANÇA de faixa vira escrita, e ela mora no
+  documento do DIA, que **se limpa sozinho**: amanhã é outro documento, então
+  o "chegou" de ontem não aparece hoje de manhã.
+- ⚠️ **O MAPA É REFERÊNCIA, E O ARREDONDAMENTO ACONTECE ANTES DE GRAVAR.**
+  A posição é encaixada numa grade de **150 m** no aparelho dele; a exata
+  nunca sai. Arredondar no mapa não arredondaria nada — o documento ficaria
+  com o número cru e o console do navegador o leria. **Encaixar, nunca
+  sortear**: ruído aleatório é pior, porque a média de trinta envios
+  recupera o ponto verdadeiro *mais rápido* do que sem ruído.
+  ⚠️ **150 m não é gosto — é o teto que `ARRIVED_KM` (400 m) permite.** Os
+  2 km que chegaram a ser cogitados fariam o aviso de chegada virar sorteio.
+  O mapa desenha um **círculo** desse raio e a tela diz que é aproximado:
+  alfinete sozinho sobre dado aproximado é a interface mentindo.
+
+⚠️ **E A TELA DA FAMÍLIA TEM UM QUARTO ESTADO**, `PRESENCE.SEM_MAPA`. Sem
+ele, rota rodando sem posição cairia em "sem sinal" — *"pode ser só o celular
+dele sem sinal"* — e a mãe ligaria para o motorista avisando que o app
+quebrou, sobre uma escolha deliberada dele. Mesma doutrina de
+`avisoDoMomento`: o app só levanta a voz quando **está mentindo**.
+
+⚠️ **A ÚLTIMA POSIÇÃO É APAGADA AO ENCERRAR**, e antes era guardada de
+propósito ("pra o Pai ver a última posição conhecida"). A rota termina ONDE
+ELE PARA — a última casa, ou a dele —, e esse ponto ficava legível pelas
+famílias a noite inteira. A Política abençoava ("último ponto registrado para
+fins de auditoria limitada") e **essa auditoria não existia em tela nenhuma**.
+`speed` e `heading` saíram junto: ninguém lia, e velocidade instantânea de um
+trabalhador é vigilância do trabalho dele.
+
+⚠️ **A CHAVE É A METADE QUE FALTAVA DE UM CONSENTIMENTO.** A Política declara
+a base legal da geolocalização como **consentimento do titular (art. 7º, I)**,
+e a LGPD manda que ele seja revogável "a qualquer momento, por procedimento
+gratuito e facilitado" (art. 8º, §5º). Não havia como revogar: ou ele
+compartilhava, ou não rodava a rota — o documento prometia uma escolha que o
+app não oferecia. **`LEGAL_VERSION` foi a 1.2** na mesma alteração, e subir a
+versão obriga todo mundo a reaceitar.
+
+⚠️ **O APP NUNCA COLETOU A LOCALIZAÇÃO DOS PAIS**, e agora isso está escrito
+nos Termos. O GPS do aparelho é pedido em dois lugares, os dois do motorista:
+o rastreamento da rota, e o *"usar minha localização"* do seletor de mapa
+(cadastro da criança e "editar onde mora", este último atrás de `isAdmin`).
+
 ---
 
 ## Cloud Functions (`functions/index.js`, região `southamerica-east1`)
@@ -981,6 +1063,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   ⚠️ **O caminho público NUNCA escreve**, e o recorte é uma LISTA FECHADA de
   campos, não um spread do doc da criança — o teste procura endereço,
   coordenada, telefone, mensalidade e dado de saúde dentro do JSON, um por um.
+- **Retenção (agendada):** `apagarViagensAntigas` — todo dia às 4h30,
+  apaga `children/{id}/rides/{dia}` com mais de 60 dias. Ver "rides" acima.
 - **Manutenção (tem prazo):** `limparCoordenadaDoCheckpoint` — só o dono,
   e **sem `{ apagar: true }` ela só CONTA**. Apaga a coordenada do veículo do
   motorista que ficou em `children.lastStatusCheckpoint` e em

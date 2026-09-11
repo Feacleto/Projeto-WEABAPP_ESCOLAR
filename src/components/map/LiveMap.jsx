@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
 import { MAPA } from '../../config/mapa';
+import { PRECISAO_DO_MAPA_M } from '../../dominio/rota/proximidade';
 import 'leaflet/dist/leaflet.css';
 import { createVanIcon, createHomeIcon, createSchoolIcon } from './VanIcon';
 
@@ -75,6 +76,23 @@ export default function LiveMap({ van, home, school, className = '' }) {
       {home && <Marker position={[home.lat, home.lng]} icon={homeIcon} />}
       {school && (
         <Marker position={[school.lat, school.lng]} icon={schoolIcon} />
+      )}
+      {/* ⚠️ O CÍRCULO VEM ANTES DO ALFINETE, E ELE NÃO É ENFEITE.
+        *
+        * A posição publicada é encaixada numa grade de 150 m no aparelho do
+        * motorista — ela diz a QUADRA, nunca a porta. Desenhar só um alfinete
+        * sobre um dado aproximado é a interface MENTINDO: quem olha lê "ele
+        * está exatamente aqui", e é a leitura errada que faz a mãe descer com
+        * a criança na hora errada.
+        *
+        * O raio é o mesmo do arredondamento, lido da régua — número escrito à
+        * mão aqui viraria um círculo que não corresponde a nada. */}
+      {van && (
+        <Circle
+          center={[van.lat, van.lng]}
+          radius={PRECISAO_DO_MAPA_M}
+          pathOptions={{ className: 'perua-referencia', weight: 1 }}
+        />
       )}
       {van && <Marker position={[van.lat, van.lng]} icon={vanIcon} />}
       <AutoFit van={van} home={home} school={school} />
