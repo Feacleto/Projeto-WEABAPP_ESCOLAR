@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { User, MapPin, Bus, Sparkles } from 'lucide-react';
+import { User, MapPin, Bus, Sparkles, ImagePlus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Logo from '../../components/common/Logo';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import Spinner from '../../components/common/Spinner';
 import FundoNoturno from '../../components/common/FundoNoturno';
 import { useAuth } from '../../hooks/useAuth';
 import { completarCadastro } from '../../services/associadoService';
+import { uploadMarcaLogo, deleteMarcaLogo } from '../../services/photoService';
+import { setMarca } from '../../services/userService';
+import { STORAGE_ENABLED } from '../../config/capabilities';
 
 /**
  * PRIMEIRO ACESSO DO MOTORISTA — o resto do cadastro, depois de entrar.
@@ -56,6 +60,56 @@ export default function PrimeiroAcesso({ aoConcluir }) {
   });
   const [errors, setErrors] = useState({});
   const [salvando, setSalvando] = useState(false);
+
+  /* ⚠️ O LOGO É GRAVADO NA HORA, e não no envio do formulário.
+   *
+   * Ele não é um campo de texto: o arquivo vai pro Storage e volta uma URL,
+   * e segurar isso até o submit significaria fazer um upload dentro do
+   * gesto que já está salvando o resto — com a barra de progresso escondida
+   * atrás de um botão. Gravado na hora, ele também sobrevive se a pessoa
+   * fechar a tela antes de terminar, que é o comportamento certo: o que ela
+   * mandou, ela mandou.
+   *
+   * ⚠️ E ELE NUNCA BLOQUEIA. É o único campo desta tela que precisa de um
+   * ARQUIVO, e a maioria abre isso no celular, na rua, sem nenhuma imagem
+   * pronta. Exigir aqui trocaria a primeira tela do produto por uma busca na
+   * galeria. */
+  const [logoURL, setLogoURL] = useState(profile?.marcaLogoURL || null);
+  const [subindoLogo, setSubindoLogo] = useState(false);
+
+  const escolherLogo = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite reenviar o mesmo arquivo
+    if (!file || !user?.uid) return;
+    setSubindoLogo(true);
+    try {
+      const url = await uploadMarcaLogo(user.uid, file);
+      await setMarca(user.uid, { logoURL: url });
+      setLogoURL(url);
+    } catch (err) {
+      console.error('Upload do logo falhou:', err);
+      toast.error('Não deu pra enviar a imagem.');
+    } finally {
+      setSubindoLogo(false);
+    }
+  };
+
+  const removerLogo = async () => {
+    if (!user?.uid) return;
+    setSubindoLogo(true);
+    try {
+      await deleteMarcaLogo(user.uid);
+      // `null` explícito: `undefined` seria ignorado pelo Firestore e o
+      // cabeçalho continuaria mostrando um logo que já não existe.
+      await setMarca(user.uid, { logoURL: null });
+      setLogoURL(null);
+    } catch (err) {
+      console.error('Falha ao remover o logo:', err);
+      toast.error('Não deu pra remover agora.');
+    } finally {
+      setSubindoLogo(false);
+    }
+  };
 
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
@@ -116,9 +170,9 @@ export default function PrimeiroAcesso({ aoConcluir }) {
               * coisas que ele reconhece. Quem entende por que está digitando
               * digita. */}
             <p className="mt-3 text-sm leading-relaxed text-white/65">
-              São cinco linhas. Duas vão no seu contrato com a plataforma, e
-              uma delas é o nome que as famílias vão ver no lugar de
-              &ldquo;Início&rdquo;.
+              Duas linhas vão no seu contrato com a plataforma. As outras são
+              o nome e o logo que as famílias vão ver no topo do app, no lugar
+              de &ldquo;Início&rdquo; — e essas você pode deixar pra depois.
             </p>
           </div>
 
@@ -188,15 +242,15 @@ export default function PrimeiroAcesso({ aoConcluir }) {
 
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
-                sua operação{' '}
+                sua marca{' '}
                 <span className="font-normal normal-case tracking-normal">
                   — pode deixar em branco
                 </span>
               </p>
               <div className="mt-3 space-y-3">
-                {/* O ÚNICO CAMPO DESTA TELA QUE MUDA O APP NA HORA. Ele vira
-                  * o cabeçalho do /tio E do /pai, no lugar de "Início" — as
-                  * famílias dele leem isso todo dia. Estava enterrado no
+                {/* OS DOIS CAMPOS QUE MUDAM O APP NA HORA. Eles viram o
+                  * cabeçalho do /tio E do /pai, no lugar de "Início" — as
+                  * famílias dele leem isso todo dia. Estavam enterrados no
                   * perfil, onde quase ninguém chega. */}
                 <Input
                   label="Como as famílias te chamam"
@@ -206,6 +260,77 @@ export default function PrimeiroAcesso({ aoConcluir }) {
                   onChange={set('marcaNome')}
                   hint="Aparece no topo do app, pra você e pra elas."
                 />
+
+                {/* ⚠️ ESCONDIDO SEM CLOUD STORAGE, e não desabilitado. É a
+                  * regra de `capabilities.js`: sem Storage o app some com o
+                  * botão de anexo em vez de deixar o upload falhar como erro
+                  * de rede — quem usa troca de rede, quem depura procura CORS,
+                  * e o conserto é ligar o faturamento. */}
+                {STORAGE_ENABLED && (
+                  <div>
+                    <p className="mb-1.5 text-sm font-medium text-text">
+                      Seu logo
+                    </p>
+                    {/* A PRÉVIA É O CABEÇALHO REAL, no tamanho real — é ela
+                      * que faz alguém querer mandar a imagem. Descrever "vai
+                      * aparecer no topo" não mostra nada; mostrar, sim. */}
+                    <div className="flex items-center gap-3 rounded-xl border border-border bg-sunken px-3 py-2.5">
+                      {subindoLogo ? (
+                        <Spinner size={22} className="text-primary" />
+                      ) : logoURL ? (
+                        <img
+                          src={logoURL}
+                          alt=""
+                          className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
+                          <ImagePlus size={18} />
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-text">
+                        {form.marcaNome.trim() || 'Sua marca aqui'}
+                      </span>
+                      {logoURL ? (
+                        <button
+                          type="button"
+                          onClick={removerLogo}
+                          disabled={subindoLogo}
+                          aria-label="Remover o logo"
+                          className="tap shrink-0 rounded-lg p-1.5 text-textMuted hover:text-text disabled:opacity-50"
+                        >
+                          <X size={16} />
+                        </button>
+                      ) : (
+                        <label className="tap shrink-0 cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary">
+                          Escolher
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            disabled={subindoLogo}
+                            onChange={escolherLogo}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <p className="mt-1 px-1 text-[11px] leading-relaxed text-textMuted">
+                      Se você não tem um, deixe em branco — o nome sozinho já
+                      funciona.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+                sua operação{' '}
+                <span className="font-normal normal-case tracking-normal">
+                  — pode deixar em branco
+                </span>
+              </p>
+              <div className="mt-3">
                 <Input
                   type="number"
                   inputMode="numeric"
