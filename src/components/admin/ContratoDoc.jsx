@@ -23,11 +23,38 @@ export default function ContratoDoc({ dados, aceite }) {
   const data = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
   const pct = (f) => `${Math.round((Number(f) || 0) * 100)}%`;
 
-  // O mês em que cada desconto acaba, por origem. Um desconto sem data no
-  // documento é um desconto para sempre — e "para sempre" numa cláusula de
-  // preço é a diferença entre um acordo de doze meses e uma tabela nova.
+  // O mês em que cada desconto acaba, por origem.
   const ate = (origem) =>
     (v.descontos || []).find((d) => d.origem === origem)?.ate || null;
+
+  /**
+   * ⚠️ `ate: null` É VITALÍCIO, E O DOCUMENTO PRECISA DIZER ISSO COM PALAVRAS.
+   *
+   * Esta função nasceu porque o contrato estava calado justamente onde o app
+   * mais promete. Quando a escada virou vitalícia (10/09/2026), o código
+   * inteiro acompanhou — `contratarPlano` grava `ate: null`,
+   * `descontosVigentes` o lê como sem prazo, e a conta sai igual três anos
+   * depois. Só o DOCUMENTO ficou para trás: a linha imprimia "−30%" e nada
+   * mais, enquanto fundador saía "sem prazo" e indicação saía "enquanto
+   * ativas".
+   *
+   * Ou seja: a tela prometia um desconto para sempre e o papel assinado não
+   * registrava a promessa. Numa discussão vale o que está escrito — e o que
+   * estava escrito era uma régua de descontos com data.
+   *
+   * ⚠️ E A FRASE TEM DUAS METADES, PORQUE A PROMESSA TEM DUAS. "Sem prazo"
+   * sozinho seria promessa aberta: o desconto vale ENQUANTO O CONTRATO
+   * ESTIVER VIGENTE, e quem cancela e volta depois volta pela régua do dia,
+   * não com o degrau antigo. Omitir a segunda metade criaria a expectativa
+   * que gera a reclamação — a pessoa sai, volta, e cobra um desconto que
+   * ninguém nunca disse que sobrevivia à saída.
+   */
+  const validade = (origem) => {
+    const d = (v.descontos || []).find((x) => x.origem === origem);
+    if (!d) return '';
+    if (d.ate === null) return ', sem prazo enquanto este contrato estiver vigente';
+    return d.ate ? ` até ${d.ate}` : '';
+  };
 
   return (
     <article className="text-[13px] leading-relaxed text-text print:text-black">
@@ -131,7 +158,9 @@ export default function ContratoDoc({ dados, aceite }) {
             {v.descontoFechamento > 0 && (
               <Linha
                 rotulo="Contratação no período de teste"
-                valor={`−${pct(v.descontoFechamento)}${ate('fechamento') || ate('antecipacao') ? ` até ${ate('fechamento') || ate('antecipacao')}` : ''}`}
+                valor={`−${pct(v.descontoFechamento)}${
+                  validade('fechamento') || validade('antecipacao')
+                }`}
                 cor="text-warning"
               />
             )}

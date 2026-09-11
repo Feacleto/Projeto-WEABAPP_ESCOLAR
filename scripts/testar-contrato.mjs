@@ -281,10 +281,61 @@ bloco('9. O documento é estável — é ele que vira hash');
 // leu e o registro do que ela aceitou.
 checar('mesma entrada, mesmo documento', JSON.stringify(base), JSON.stringify(montar()));
 
-// A 5 trouxe a taxa por criança, o desconto vitalício e a saída assimétrica —
-// o associado encerra na hora, a plataforma mantém 30 dias de aviso.
-checar('a versão é a 5', 5, VERSAO_CONTRATO);
-checar('e ela viaja no documento', 5, base.versao);
+// A 5 trouxe a taxa por criança e a saída assimétrica — o associado encerra na
+// hora, a plataforma mantém 30 dias de aviso.
+//
+// ⚠️ A 6 CORRIGIU UMA PROMESSA QUE SÓ EXISTIA NA TELA. A escada virou vitalícia
+// em 10/09/2026 e o código inteiro acompanhou, mas a LINHA DO DOCUMENTO saía
+// "−30%" e nada mais — sem "até", sem "sem prazo" —, enquanto fundador e
+// indicação sempre declararam a validade deles. O app prometia um desconto
+// para sempre e o papel assinado não registrava; numa discussão vale o que
+// está escrito.
+/* ⚠️ NENHUM DESCONTO CHEGA AO DOCUMENTO SEM DIZER ATÉ QUANDO VALE.
+ *
+ * É a invariante que a versão 6 nasceu para travar, e ela é de TEXTO, não de
+ * número: a soma já fechava com o total mesmo quando a linha saía muda. O que
+ * faltava era a validade — e o silêncio é o pior dos três estados possíveis,
+ * porque "−30%" sem qualificador se lê como promessa aberta por quem recebe e
+ * como desconto temporário por quem cobra.
+ *
+ * O teste lê a FONTE do documento porque a frase é dele: `ContratoDoc` é quem
+ * imprime, e a régua só entrega os dados. Uma linha nova de desconto que
+ * esqueça o qualificador falha aqui em vez de aparecer num contrato assinado.
+ */
+{
+  const fonteDoc = readFileSync(
+    new URL('../src/components/admin/ContratoDoc.jsx', import.meta.url),
+    'utf8'
+  );
+  checar(
+    'o vitalício sai escrito como sem prazo',
+    true,
+    fonteDoc.includes('sem prazo enquanto este contrato estiver vigente')
+  );
+  // ⚠️ E A SEGUNDA METADE DA FRASE É O LIMITE. "Sem prazo" sozinho é promessa
+  // aberta: quem cancela e volta não traz o degrau antigo de volta. Omitir
+  // isso cria exatamente a expectativa que vira reclamação.
+  checar(
+    'e o vitalício está preso à vigência, não é eterno',
+    true,
+    fonteDoc.includes('enquanto este contrato estiver vigente')
+  );
+  checar(
+    'o fundador continua declarando a validade dele',
+    true,
+    fonteDoc.includes('sem prazo`')
+  );
+  checar(
+    'a indicação também',
+    true,
+    fonteDoc.includes('enquanto ativas')
+  );
+  // Sonda positiva: se a leitura falhasse, os quatro acima passariam vazios.
+  checar('a fonte do documento foi lida', true, fonteDoc.length > 2000);
+}
+
+checar('a versão é a 6', 6, VERSAO_CONTRATO);
+checar('e ela viaja no documento', 6, base.versao);
 
 // A contratada e o associado são identificados: contrato sem parte é papel.
 checar('o associado é identificado', 'tio1', base.associado.uid);

@@ -78,7 +78,20 @@ import {
  *
  * Subir custa uma rodada de reassinatura.
  */
-export const VERSAO_CONTRATO = 5;
+/**
+ * ⚠️ 6 DESDE 11/09/2026 — o desconto vitalício passou a estar ESCRITO.
+ *
+ * A versão 5 já cobrava a taxa por criança, mas a linha do desconto de
+ * fechamento saía sem validade nenhuma: "−30%", e ponto. O código o tratava
+ * como vitalício desde o dia anterior e o documento não dizia — a tela
+ * prometia e o papel calava. Agora a linha declara "sem prazo enquanto este
+ * contrato estiver vigente", que é a promessa E o limite dela.
+ *
+ * Subir a versão obriga todo mundo a reaceitar. É de propósito: um contrato
+ * que ganha uma garantia nova não é o mesmo contrato, e com base quase zero
+ * isso custa uma conversa.
+ */
+export const VERSAO_CONTRATO = 6;
 
 /** Janela padrão para avisar que a vigência está acabando. */
 export const JANELA_DE_RENOVACAO = 60;
@@ -124,10 +137,17 @@ function mesDe(data) {
  * plataforma escolher" não prometeria nada, e é justamente sobre isso que uma
  * conversa de cobrança acontece seis meses depois.
  *
- * ── DESCONTO SEM PRAZO SERIA PREÇO
- * Cada desconto entra com o mês em que acaba. Sem isso, o desconto de
- * conversão vira a tabela nova daquele associado — e a receita prevista deixa
- * de bater com a real para sempre, sem ninguém conseguir apontar quando mudou.
+ * ── ⚠️ CADA DESCONTO ENTRA COM A SUA VALIDADE — E VITALÍCIO É UMA VALIDADE
+ * Este trecho dizia "DESCONTO SEM PRAZO SERIA PREÇO", e foi escrito quando a
+ * escada de fechamento durava doze meses. Em 10/09/2026 ela virou VITALÍCIA
+ * (`ate: null`) e o texto ficou falso por dois dias — que é o pior estado
+ * possível para o cabeçalho de um arquivo de contrato, porque é ele que a
+ * próxima pessoa lê antes de mexer.
+ *
+ * A regra verdadeira: o que não pode é desconto CHEGAR AO DOCUMENTO SEM DIZER
+ * ATÉ QUANDO VALE. Prazo em mês, "sem prazo", "enquanto ativas" — qualquer um
+ * serve, desde que esteja escrito. O silêncio é que vira tabela nova sem
+ * ninguém conseguir apontar quando mudou.
  */
 export function montarContrato({
   motorista,
