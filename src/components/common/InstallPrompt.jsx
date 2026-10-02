@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Share, Plus, X, Smartphone } from 'lucide-react';
 import Button from './Button';
-import { isIOS, isStandalone, isInAppBrowser } from '../../compartilhado/browserEnv';
+import {
+  isIOS,
+  isStandalone,
+  isInAppBrowser,
+  isGoogleApp,
+} from '../../compartilhado/browserEnv';
 
 const DISMISS_KEY = 'ab_install_prompt_v1';
 
@@ -50,9 +55,9 @@ export default function InstallPrompt() {
   const [showIOSHelp, setShowIOSHelp] = useState(false);
 
   useEffect(() => {
-    // Já instalado, ou dentro da webview do WhatsApp (onde instalar não é nem
-    // possível): não há o que oferecer.
-    if (isStandalone() || isInAppBrowser()) return;
+    // Já instalado, ou dentro da webview do WhatsApp ou do app do Google (onde
+    // instalar não é nem possível): não há o que oferecer.
+    if (isStandalone() || isInAppBrowser() || isGoogleApp()) return;
     try {
       if (localStorage.getItem(DISMISS_KEY)) return;
     } catch {

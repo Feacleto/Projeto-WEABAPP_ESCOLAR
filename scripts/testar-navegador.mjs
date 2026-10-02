@@ -35,6 +35,7 @@
 
 import {
   isInAppBrowser,
+  isGoogleApp,
   canUseGoogleSignIn,
   isIOS,
   inAppBrowserName,
@@ -98,6 +99,32 @@ const UA = {
   chromeDesktop:
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
     'Chrome/119.0.0.0 Safari/537.36',
+  googleAppIOS:
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 ' +
+    '(KHTML, like Gecko) GSA/290.0.584353637 Mobile/15E148 Safari/604.1',
+  googleAppAndroid:
+    'Mozilla/5.0 (Linux; Android 13; SM-A125F; wv) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+    'Version/4.0 Chrome/119.0.0.0 Mobile Safari/537.36 GSA/14.40.30.29.arm64',
+  tiktokAndroid:
+    'Mozilla/5.0 (Linux; Android 12; M2101K6G Build/SKQ1; wv) AppleWebKit/537.36 ' +
+    '(KHTML, like Gecko) Version/4.0 Chrome/119.0.0.0 Mobile Safari/537.36 ' +
+    'trill_310903 JsSdk/1.0 NetType/WIFI Channel/googleplay AppName/musical_ly app_version/31.9.3',
+  kwaiAndroid:
+    'Mozilla/5.0 (Linux; Android 11; SM-A107M; wv) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+    'Version/4.0 Chrome/119.0.0.0 Mobile Safari/537.36 Kwai/11.9.20',
+  // App que NÃO está na lista por nome — só a forma o denuncia.
+  appDesconhecidoAndroid:
+    'Mozilla/5.0 (Linux; Android 13; SM-A125F; wv) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+    'Version/4.0 Chrome/119.0.0.0 Mobile Safari/537.36 AppQualquer/3.2',
+  appDesconhecidoIOS:
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 ' +
+    '(KHTML, like Gecko) Mobile/15E148',
+  chromeIOS:
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 ' +
+    '(KHTML, like Gecko) CriOS/119.0.6045.169 Mobile/15E148 Safari/604.1',
+  samsungInternet:
+    'Mozilla/5.0 (Linux; Android 13; SAMSUNG SM-A125F) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+    'SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36',
   iPadOS15:
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 ' +
     '(KHTML, like Gecko) Version/17.1 Safari/605.1.15',
@@ -138,6 +165,62 @@ checar('  …e o Google aparece', true, canUseGoogleSignIn());
 comNavegador(UA.chromeDesktop);
 checar('Chrome no monitor não é webview', false, isInAppBrowser());
 checar('  …e não é iOS', false, isIOS());
+
+// ═══════════════════════════════════════════════════════════════════════════
+bloco('═══ O APP DO GOOGLE É O NAVEGADOR DE QUEM O USA — SEM PONTE ═══');
+/* A ponte ("Abra no Chrome") apareceu para quem usa o app do Google como
+   navegador e foi lida como bloqueio: houve quem não entrasse. Ali a ponte
+   não se aplica — mas o OAuth do Google continua recusado, e o botão do
+   Google tem que sumir para o formulário de email aparecer sozinho. */
+
+comNavegador(UA.googleAppIOS);
+checar('app do Google no iPhone NÃO recebe a ponte', false, isInAppBrowser());
+checar('  …mas é reconhecido como app do Google', true, isGoogleApp());
+checar('  …e o login com Google não é oferecido', false, canUseGoogleSignIn());
+
+comNavegador(UA.googleAppAndroid);
+checar('app do Google no Android NÃO recebe a ponte', false, isInAppBrowser());
+checar('  …e o login com Google não é oferecido', false, canUseGoogleSignIn());
+
+comNavegador(UA.chromeAndroid);
+checar('Chrome comum não é confundido com o app do Google', false, isGoogleApp());
+
+// ═══════════════════════════════════════════════════════════════════════════
+bloco('═══ ONDE O GOOGLE NÃO FUNCIONA, O BOTÃO NÃO APARECE ═══');
+/* A lista por nome ficava para trás: TikTok e Kwai mostravam o botão do
+   Google e entregavam a página de erro. A regra pela FORMA pega também o app
+   que ninguém listou. */
+
+comNavegador(UA.tiktokAndroid);
+checar('TikTok esconde o Google', false, canUseGoogleSignIn());
+checar('  …e a instrução diz TikTok', 'TikTok', inAppBrowserName());
+
+comNavegador(UA.kwaiAndroid);
+checar('Kwai esconde o Google', false, canUseGoogleSignIn());
+
+comNavegador(UA.appDesconhecidoAndroid);
+checar('app NÃO listado no Android esconde o Google (pelo "wv")', false, canUseGoogleSignIn());
+checar('  …mas não recebe a ponte — essa é só para app conhecido', false, isInAppBrowser());
+
+comNavegador(UA.appDesconhecidoIOS);
+checar('app NÃO listado no iPhone esconde o Google (sem "Safari/")', false, canUseGoogleSignIn());
+
+// ═══════════════════════════════════════════════════════════════════════════
+bloco('═══ …E ONDE FUNCIONA, ELE CONTINUA LÁ ═══');
+/* A sonda positiva: uma regra geral larga demais esconderia o Google de
+   quem pode usá-lo, e ninguém veria erro — só um botão a menos. */
+
+comNavegador(UA.chromeIOS);
+checar('Chrome no iPhone mostra o Google', true, canUseGoogleSignIn());
+
+comNavegador(UA.samsungInternet);
+checar('Samsung Internet mostra o Google', true, canUseGoogleSignIn());
+
+comNavegador(UA.chromeAndroid);
+checar('Chrome no Android (e a aba do Chrome dentro de apps) mostra o Google', true, canUseGoogleSignIn());
+
+comNavegador(UA.safariIOS);
+checar('Safari no iPhone mostra o Google', true, canUseGoogleSignIn());
 
 // ═══════════════════════════════════════════════════════════════════════════
 bloco('═══ O IPAD SE DISFARÇA DE MAC, E O TOQUE O DENUNCIA ═══');

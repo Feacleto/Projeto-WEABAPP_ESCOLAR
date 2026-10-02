@@ -33,9 +33,16 @@ import {
  *
  * TRÊS SAÍDAS, NENHUM BECO
  *   1. Android: `intent://` abre o Chrome direto. Confiável.
- *   2. iOS: `googlechrome://` funciona se o Chrome estiver instalado. Se não
- *      acontecer nada em 1,2s, mostramos o passo a passo do menu do app.
+ *   2. iOS: `x-safari-https://` tenta o Safari. Se não acontecer nada em
+ *      1,2s, mostramos o passo a passo do menu do app.
  *   3. Sempre: copiar o link, que resolve em qualquer situação.
+ *
+ * ⚠️ É RECOMENDAÇÃO, NUNCA PORTÃO (02/10/2026). O título dizia "Abra no
+ * Chrome pra continuar", numa caixa de alerta, e a saída para entrar ali
+ * mesmo era um link cinza no pé — houve quem lesse como "não funciona aqui"
+ * e não entrasse nunca. Entrar aqui funciona (email e senha), e custa no
+ * máximo entrar de novo depois. Ninguém pode ficar de fora por isso, então
+ * as duas saídas são BOTÕES do mesmo tamanho.
  */
 /**
  * O RODAPÉ DO APP DE MENSAGEM, DESENHADO.
@@ -112,14 +119,14 @@ export default function OpenInBrowser({ onContinueHere }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-warningSoft border border-warningBorder rounded-xl p-3 space-y-1">
-        <p className="text-sm font-bold text-warningText">
-          Abra no {browser} pra continuar
+      <div className="bg-sunken border border-border rounded-xl p-3 space-y-1">
+        <p className="text-sm font-bold text-text">
+          Dica: no {browser} fica melhor
         </p>
-        <p className="text-xs text-warningText leading-relaxed">
+        <p className="text-xs text-textMuted leading-relaxed">
           {appName
-            ? `Você está no navegador do ${appName}. Aqui o acesso não fica salvo — você teria que entrar de novo a cada vez.`
-            : 'Neste navegador o acesso não fica salvo — você teria que entrar de novo a cada vez.'}
+            ? `Você abriu pelo ${appName}. Dá pra entrar aqui mesmo — só que da próxima vez talvez peça a senha de novo.`
+            : 'Dá pra entrar aqui mesmo — só que da próxima vez talvez peça a senha de novo.'}
         </p>
       </div>
 
@@ -153,15 +160,11 @@ export default function OpenInBrowser({ onContinueHere }) {
         </div>
       )}
 
-      {/* Nunca prender: quem não quer trocar de app segue por aqui. O aviso
-        * é honesto sobre o custo em vez de esconder a opção. */}
-      <button
-        type="button"
-        onClick={onContinueHere}
-        className="tap w-full text-xs text-textMuted underline py-2"
-      >
-        Continuar aqui mesmo (vou entrar de novo depois)
-      </button>
+      {/* Nunca prender: quem não quer (ou não consegue) trocar de app entra
+        * por aqui. Botão de verdade, não link no pé — ver o cabeçalho. */}
+      <Button variant="secondary" onClick={onContinueHere}>
+        Entrar por aqui mesmo
+      </Button>
     </div>
   );
 }
