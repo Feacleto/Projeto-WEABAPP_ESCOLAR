@@ -190,7 +190,9 @@ firebase deploy --only firestore:rules
 # 3. Regras do Storage (só depois do "Get Started" no console)
 firebase deploy --only storage
 
-# 4. Functions — todas menos as duas de e-mail (29 de 31 em 02/10/2026).
+# 4. Functions — as 38 de 03/10/2026 (o e-mail da mensalidade saiu do código;
+#    as duas que sobraram no ar, sendPaymentReminders e runPaymentRemindersNow,
+#    precisam ser APAGADAS uma vez com `firebase functions:delete`).
 #    ⚠️ USE `.\deploy.ps1`: a lista dele é conferida contra os `exports.` de
 #    functions/index.js antes de gastar o deploy — nome apagado aborta o
 #    deploy INTEIRO, e export esquecido não sobe. Esta linha já listou 14

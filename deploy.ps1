@@ -65,14 +65,27 @@ $FuncoesNucleoLista = @(
   'functions:responderPedidoDeAcesso',
   'functions:enviarAvisosDoDia',
   'functions:varrerAtrasos',
-  'functions:varrerOfertas'
+  'functions:varrerOfertas',
+  # 03/10/2026: o contrato da família, remover criança, telefone da escola, o
+  # contato do investidor, os avisos da rota e o acesso de 24 horas.
+  'functions:aceitarContrato',
+  'functions:desvincularResponsavel',
+  'functions:informarTelefoneDaEscola',
+  'functions:registrarInteresseInvestidor',
+  'functions:avisarAproximacao',
+  'functions:avisarBuzina',
+  'functions:gerarAcessoTemporario',
+  'functions:encerrarAcessoTemporario',
+  'functions:inscreverAvisosDoAcesso'
 )
 $FuncoesNucleo = $FuncoesNucleoLista -join ','
 
 # As duas de e-mail ficam FORA da lista de propósito (dependem do segredo do
 # Resend e sobem à parte), então a conferência abaixo não pode exigir que a
 # lista cubra todos os exports — só que todo nome DELA exista.
-$FuncoesDeEmail = @('sendPaymentReminders', 'runPaymentRemindersNow')
+# O e-mail da mensalidade (sendPaymentReminders, runPaymentRemindersNow) saiu
+# do código em 03/10/2026; o e-mail da fatura sai pelo gatilho do push.
+$FuncoesDeEmail = @()
 
 function Passo($titulo) {
   Write-Host ''
