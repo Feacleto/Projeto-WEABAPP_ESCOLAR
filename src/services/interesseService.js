@@ -7,6 +7,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { criarCacheComValidade } from '../compartilhado/cacheComValidade.js';
 
 /**
  * O INTERESSE — a pesquisa que mata ou justifica uma fase inteira.
@@ -52,8 +53,21 @@ export function watchInteresse(uid, cb, onError, assunto = 'cartao') {
   );
 }
 
-/** Quem levantou a mão — a leitura do dono. */
-export async function listarInteresses() {
-  const snap = await getDocs(collection(db, COL));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+/**
+ * Quem levantou a mão — a leitura do dono.
+ *
+ * Com cache de 90 segundos (03/10/2026), como as outras leituras de coleção
+ * inteira do painel: é um número que não muda enquanto o dono olha, e cada
+ * remontagem do painel o relia.
+ */
+const cacheDosInteresses = criarCacheComValidade({ validadeMs: 90 * 1000 });
+
+export function listarInteresses({ forcar = false } = {}) {
+  return cacheDosInteresses.obter(
+    () =>
+      getDocs(collection(db, COL)).then((snap) =>
+        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      ),
+    { forcar }
+  );
 }

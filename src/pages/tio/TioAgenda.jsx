@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Notebook, School, User as UserIcon } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
+import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
 import IconePorNome from '../../components/common/IconePorNome';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
-import { AGENDA_TYPES, watchAdminAgenda } from '../../services/agendaService';
+import {
+  AGENDA_TYPES,
+  maisAvisosDoMotorista,
+  watchAdminAgenda,
+} from '../../services/agendaService';
 import { formatDateTime } from '../../compartilhado/formatters';
 
 /**
@@ -23,27 +29,68 @@ import { formatDateTime } from '../../compartilhado/formatters';
  * lista dele. Mandar um aviso e ver o que foi mandado viraram um lugar só.
  *
  * Filtragem por escopo (todos / criança / escola) na barra superior.
+ *
+ * ── ⚠️ OS 100 MAIS RECENTES, E "VER AVISOS MAIS ANTIGOS" NO FIM (03/10/2026)
+ * A tela assinava a lista INTEIRA — mais de mil recados num ano de quem avisa
+ * a turma todo dia, relidos a cada abertura. Agora os 100 mais novos vêm ao
+ * vivo e o resto chega de 100 em 100, só quando ele pede. O botão é grande e
+ * diz o que faz: quem procura um aviso de meses atrás precisa saber que ele
+ * ainda existe.
  */
 export default function TioAgenda() {
   const { user } = useAuth();
-  const [entries, setEntries] = useState([]);
+  const [vivo, setVivo] = useState({ lista: [], cursor: null, temMais: false });
+  const [antigos, setAntigos] = useState({ lista: [], cursor: null, temMais: false });
   const [loading, setLoading] = useState(true);
+  const [carregandoMais, setCarregandoMais] = useState(false);
   const [filter, setFilter] = useState('all'); // all | child | school
 
   useEffect(() => {
     if (!user?.uid) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
+    setAntigos({ lista: [], cursor: null, temMais: false });
     const unsub = watchAdminAgenda(
       user.uid,
-      (list) => {
-        setEntries(list);
+      (lista, pagina) => {
+        setVivo({ lista, cursor: pagina?.cursor || null, temMais: !!pagina?.temMais });
         setLoading(false);
       },
       () => setLoading(false)
     );
     return unsub;
   }, [user?.uid]);
+
+  // As páginas antigas continuam depois da ÚLTIMA carregada; sem nenhuma,
+  // depois da página ao vivo. Um aviso novo empurra a página ao vivo e pode
+  // repetir um item na fronteira — por isso a junção é pelo id.
+  const entries = useMemo(() => {
+    const porId = new Map();
+    [...vivo.lista, ...antigos.lista].forEach((e) => {
+      if (!porId.has(e.id)) porId.set(e.id, e);
+    });
+    return [...porId.values()];
+  }, [vivo.lista, antigos.lista]);
+  const temMais = antigos.lista.length ? antigos.temMais : vivo.temMais;
+
+  const verMais = async () => {
+    const cursor = antigos.lista.length ? antigos.cursor : vivo.cursor;
+    if (!user?.uid || !cursor) return;
+    setCarregandoMais(true);
+    try {
+      const pagina = await maisAvisosDoMotorista(user.uid, cursor);
+      setAntigos((antes) => ({
+        lista: [...antes.lista, ...pagina.lista],
+        cursor: pagina.cursor || antes.cursor,
+        temMais: pagina.temMais,
+      }));
+    } catch (err) {
+      console.error('[agenda] avisos antigos não vieram:', err);
+      toast.error('Não deu pra carregar os avisos antigos. Tente de novo.');
+    } finally {
+      setCarregandoMais(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (filter === 'all') return entries;
@@ -94,6 +141,19 @@ export default function TioAgenda() {
               <EntryRow key={e.id} entry={e} />
             ))}
           </div>
+        )}
+
+        {/* Fora do ramo da lista: com o filtro em "Escolas", a página pode vir
+          * sem nenhum aviso de escola e ainda haver mais para trás. */}
+        {!loading && temMais && (
+          <Button
+            variant="secondary"
+            size="lg"
+            loading={carregandoMais}
+            onClick={verMais}
+          >
+            Ver avisos mais antigos
+          </Button>
         )}
       </div>
 

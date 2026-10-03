@@ -23,7 +23,9 @@ export default function PaiFinanceReport() {
   const { user, profile } = useAuth();
   const { child } = useActiveChild();
   const { admin } = useAdminProfile(child?.adminUid);
-  const { payments, loading } = usePaymentsByParent(user?.uid);
+  // A HISTÓRIA INTEIRA, só aqui: o extrato promete a retenção toda, e é aberto
+  // sob demanda. Início e Financeiro leem a janela de 12 meses.
+  const { payments, loading } = usePaymentsByParent(user?.uid, { historico: true });
 
   const enriched = useMemo(
     () => payments.map((p) => ({ ...p, _display: computeDisplayStatus(p) })),

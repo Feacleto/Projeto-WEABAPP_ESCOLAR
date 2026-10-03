@@ -12,6 +12,9 @@ import {
 import { db } from '../firebase/config';
 import { notasPorMotorista, resumirCarteira } from '../dominio/associacao/carteira.js';
 import { contarPorCanal } from '../dominio/identidade/origem.js';
+import { criarCacheComValidade } from '../compartilhado/cacheComValidade.js';
+import { addMonths } from '../compartilhado/formatters.js';
+import { parceirosDoDono } from './userService';
 
 /**
  * Métricas da plataforma pro painel do super-admin.
@@ -43,8 +46,8 @@ import { contarPorCanal } from '../dominio/identidade/origem.js';
  * As leituras de `users`, `children`, `payments` e `waitlistDrivers` já são
  * permitidas pelas rules a quem tem role `admin`. `faturasParceiro` NÃO é:
  * ela pede `isOwner()`, e um motorista que chegasse aqui teria a agregação
- * negada — `somaCampo` engole e devolve 0, então ele veria receita zerada em
- * vez de erro. Nenhuma porta se abre por causa disso; o módulo continua só
+ * negada — `somaCampo` engole e devolve `null`, então ele veria "—" em vez
+ * de erro. Nenhuma porta se abre por causa disso; o módulo continua só
  * organizando o que o chamador já podia ler.
  *
  * O gate de super-admin na tela é de PRODUTO (esconder o negócio de quem não
@@ -52,20 +55,27 @@ import { contarPorCanal } from '../dominio/identidade/origem.js';
  * dedicadas: está no brief de arquitetura.
  */
 
-/** Soma um campo numérico da coleção, com fallback se a agregação falhar. */
+/**
+ * Soma um campo numérico da coleção NO SERVIDOR — e, se não der, diz que não
+ * sabe.
+ *
+ * ⚠️ O PLANO B QUE MORAVA AQUI SAIU EM 03/10/2026. Quando a agregação falhava
+ * (índice faltando, emulador antigo, rede), ele lia os documentos da MESMA
+ * consulta e somava no navegador. Em `payments where status == 'paid'` isso é
+ * baixar todo pagamento já quitado da plataforma — 36 mil por ano no tamanho
+ * que o plano mira — para mostrar UM número, e justamente no dia em que algo
+ * já estava errado.
+ *
+ * Agora a falha devolve `null`, e a tela escreve "—": onde o número não existe,
+ * a tela não inventa (nem zero, que pareceria medição).
+ */
 async function somaCampo(q, campo) {
   try {
     const snap = await getAggregateFromServer(q, { total: sum(campo) });
     return Number(snap.data().total || 0);
-  } catch {
-    // Fallback: lê os documentos. Só acontece em ambiente sem suporte a
-    // agregação (emulador antigo) ou quando falta índice.
-    try {
-      const snap = await getDocs(q);
-      return snap.docs.reduce((acc, d) => acc + (Number(d.data()[campo]) || 0), 0);
-    } catch {
-      return 0;
-    }
+  } catch (err) {
+    console.error(`[admin] a soma de ${campo} não veio do servidor:`, err);
+    return null;
   }
 }
 
@@ -128,9 +138,10 @@ export async function getPlatformOverview() {
     // OS DOCUMENTOS, não a contagem: a carteira precisa da faixa e dos
     // descontos de cada um. O dono, que tem papel próprio (`role: 'owner'`),
     // não entra nesta lista nem precisa ser descontado.
-    getDocs(query(users, where('role', '==', 'admin'))).then((snap) =>
-      snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
-    ),
+    //
+    // A MESMA LEITURA da carteira e da aba Mês (`parceirosDoDono`, com cache):
+    // eram três consultas iguais na abertura do painel.
+    parceirosDoDono(),
     conta(query(users, where('role', '==', 'parent'))),
     conta(query(children, where('active', '==', true))),
     somaCampo(query(payments, where('status', '==', 'paid')), 'amount'),
@@ -166,7 +177,9 @@ export async function getPlatformOverview() {
     gmvMes,
     // Mensalidade média por criança ativa no mês — a base de qualquer conta
     // de take rate futura.
-    ticketMedio: criancas > 0 ? gmvMes / criancas : 0,
+    // `null` quando o GMV do mês não veio: média de um número desconhecido
+    // também é desconhecida.
+    ticketMedio: gmvMes === null ? null : criancas > 0 ? gmvMes / criancas : 0,
     receitaPropria,
     receitaEmAberto,
     // DE ONDE VÊM OS ASSOCIADOS — e não custa leitura nova: `parceiros` já
@@ -177,6 +190,28 @@ export async function getPlatformOverview() {
     // diz "—", nunca zero. Dez canais zerados parecem medição e não são.
     origens: contarPorCanal(parceiros),
   };
+}
+
+/**
+ * ⚠️ AS ÚLTIMAS AVALIAÇÕES SÃO UMA LEITURA SÓ PARA O PAINEL (03/10/2026).
+ *
+ * A pesquisa (`getSurveyResults`) e a nota por motorista (`carregarConsole`)
+ * liam, cada uma, as mesmas 500 avaliações mais recentes — duas consultas
+ * iguais na abertura, e a segunda de novo a cada troca de aba. Agora pedem ao
+ * mesmo cache, com a mesma validade da lista de motoristas.
+ */
+export const MAX_AVALIACOES = 500;
+const VALIDADE_DAS_AVALIACOES = 90 * 1000;
+const cacheDasAvaliacoes = criarCacheComValidade({ validadeMs: VALIDADE_DAS_AVALIACOES });
+
+function avaliacoesRecentes({ forcar = false } = {}) {
+  return cacheDasAvaliacoes.obter(
+    () =>
+      getDocs(
+        query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'), limit(MAX_AVALIACOES))
+      ).then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    { forcar }
+  );
 }
 
 /**
@@ -199,10 +234,8 @@ export async function getPlatformOverview() {
  * `isOwner()`. Se um dia ela for chamada de uma tela de motorista, vai receber
  * `permission-denied`, e o certo é essa tela não existir.
  */
-export async function getSurveyResults(max = 500) {
-  const snap = await getDocs(
-    query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'), limit(max))
-  );
+export async function getSurveyResults({ forcar = false } = {}) {
+  const avaliacoes = await avaliacoesRecentes({ forcar });
 
   const base = {
     total: 0,
@@ -214,8 +247,7 @@ export async function getSurveyResults(max = 500) {
     comentarios: [],
   };
 
-  for (const doc of snap.docs) {
-    const d = doc.data();
+  for (const d of avaliacoes) {
     const nota = Number(d?.answers?.rating || 0);
     const papel = d.role === 'admin' ? 'admin' : 'parent';
 
@@ -235,7 +267,7 @@ export async function getSurveyResults(max = 500) {
     const texto = (d.comment || '').trim();
     if (texto && base.comentarios.length < 40) {
       base.comentarios.push({
-        id: doc.id,
+        id: d.id,
         texto,
         nota,
         papel,
@@ -288,10 +320,10 @@ export async function getSurveyResults(max = 500) {
  * lista inteira aqui, o termômetro da LISTA sairia mais fraco que o da FICHA —
  * e o mesmo motorista apareceria em dois níveis diferentes na mesma tela.
  *
- * ⚠️ É a coleção INTEIRA, e é uma fatura por associado por mês. Em dezenas de
- * associados isso é barato; passando de alguns milhares de documentos, o
- * caminho é uma agregação por parceiro (o campo já existiria em
- * `taxaParceiros`), não paginar aqui.
+ * ⚠️ ERA a coleção INTEIRA — uma fatura por associado por mês, para sempre.
+ * Desde 03/10/2026 são os últimos 12 meses (`primeiroMesDaJanela`, abaixo). A
+ * ficha continua assinando TODAS as faturas de um motorista só, que é a
+ * leitura que cabe abrir uma por vez.
  *
  * ⚠️ Isto NÃO carrega crianças. O contador `users.criancasAtivas` já responde
  * o tamanho de cada operação, e foi por precisar da soma das mensalidades que
@@ -305,59 +337,63 @@ export async function getSurveyResults(max = 500) {
  * ficava mais lento quanto mais o dono trabalhasse nele, que é o oposto do que
  * uma ferramenta de mesa deve fazer.
  *
- * O cache é de 60 segundos e guarda a PROMESSA, não o resultado — duas abas
+ * O cache é de 90 segundos e guarda a PROMESSA, não o resultado — duas abas
  * montando ao mesmo tempo compartilham a mesma ida ao banco em vez de fazerem
- * duas.
+ * duas (`compartilhado/cacheComValidade.js`).
  *
  * ⚠️ QUEM ACABOU DE ESCREVER PASSA `forcar: true`. Ler cache depois de
  * suspender um parceiro ou conceder um desconto mostraria a tela contradizendo
  * a ação que a pessoa acabou de fazer — e ela repetiria a ação.
  */
-let cache = null;
-let cacheEm = 0;
-const VALIDADE_DO_CACHE = 60 * 1000;
+//
+// ── ⚠️ DESDE 03/10/2026 AS PEÇAS TÊM CACHE PRÓPRIO, E ESTE É SÓ A JUNÇÃO
+// A lista de motoristas (`parceirosDoDono`) e as avaliações
+// (`avaliacoesRecentes`) são as MESMAS que a visão geral e a pesquisa leem, e
+// vivem num cache só. `forcar` atravessa até elas: quem acabou de escrever
+// relê a lista de motoristas também, não só a junção. A validade subiu para
+// 90 segundos junto com as peças — mais curta que elas, a junção seria
+// remontada sobre as mesmas peças guardadas, sem ganho nenhum.
+const VALIDADE_DO_CACHE = 90 * 1000;
+const cacheDoConsole = criarCacheComValidade({ validadeMs: VALIDADE_DO_CACHE });
 
-// Joga o cache fora. NÃO é exportada de propósito: quem escreve já passa
-// `forcar: true` na leitura seguinte, e isso substitui o cache. Uma segunda
-// porta pública para a mesma coisa seria API sem consumidor.
-function invalidarConsole() {
-  cache = null;
-  cacheEm = 0;
+/**
+ * ⚠️ A JANELA DAS FATURAS É DE 12 MESES (03/10/2026). Era a coleção inteira —
+ * uma fatura por motorista por mês, para sempre. O termômetro olha a fatura
+ * vencida e a série de `criancasAtivas`; um ano de série responde as duas
+ * perguntas, e fatura vencida há mais de um ano já virou conta bloqueada,
+ * que é outro sinal.
+ *
+ * `mes` é 'AAAA-MM' e se compara como texto. Filtro de faixa num campo só usa
+ * o índice simples automático — nenhum índice composto.
+ */
+export const MESES_DE_FATURA_NO_CONSOLE = 12;
+
+export function primeiroMesDaJanela(mes, meses = MESES_DE_FATURA_NO_CONSOLE) {
+  return addMonths(mes, -(meses - 1));
 }
 
-export async function carregarConsole({ forcar = false, max = 500 } = {}) {
-  const agora = Date.now();
-  if (!forcar && cache && agora - cacheEm < VALIDADE_DO_CACHE) return cache;
-
-  const promessa = buscarConsole(max);
-  cache = promessa;
-  cacheEm = agora;
-  try {
-    return await promessa;
-  } catch (err) {
-    // Falhou: o cache não pode guardar a falha, senão a aba seguinte recebe o
-    // mesmo erro por um minuto sem ter tentado nada.
-    invalidarConsole();
-    throw err;
-  }
+export function carregarConsole({ forcar = false } = {}) {
+  return cacheDoConsole.obter(() => buscarConsole({ forcar }), { forcar });
 }
 
-async function buscarConsole(max) {
+async function buscarConsole({ forcar }) {
   const users = collection(db, 'users');
 
   const [parceiros, responsaveis, avaliacoes, faturas, condicoes] = await Promise.all([
-    getDocs(query(users, where('role', '==', 'admin'))).then((s) =>
-      s.docs.map((d) => ({ uid: d.id, ...d.data() }))
-    ),
+    parceirosDoDono({ forcar }),
     getDocs(query(users, where('role', '==', 'parent'))).then((s) =>
       s.docs.map((d) => ({ uid: d.id, ...d.data() }))
     ),
-    getDocs(query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'), limit(max)))
-      .then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })))
+    avaliacoesRecentes({ forcar })
       // A vitrine degrada calada e esta também: sem avaliação, a ficha mostra
       // "sem avaliações" em vez de a aba inteira cair.
       .catch(() => []),
-    getDocs(collection(db, 'faturasParceiro'))
+    getDocs(
+      query(
+        collection(db, 'faturasParceiro'),
+        where('mes', '>=', primeiroMesDaJanela(mesAtual()))
+      )
+    )
       .then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })))
       // Mesma degradação: sem fatura o termômetro perde dois sinais e mantém
       // os outros dois, em vez de a aba não abrir.

@@ -88,9 +88,14 @@ export function usePaymentsByChild(childId) {
 /**
  * Subscribe aos pagamentos do responsável autenticado (Pai).
  * Filtra por parentUid (compatível com firestore.rules).
+ *
+ * Por padrão, os últimos 12 meses MAIS tudo o que está em aberto de qualquer
+ * idade (ver `watchPaymentsByParent`). `{ historico: true }` traz a retenção
+ * inteira — só o extrato para imprimir precisa.
  */
-export function usePaymentsByParent(parentUid) {
-  return useAssinaturaDePagamentos(parentUid || null, (ok, erro) =>
-    watchPaymentsByParent(parentUid, ok, erro)
+export function usePaymentsByParent(parentUid, { historico = false } = {}) {
+  return useAssinaturaDePagamentos(
+    parentUid ? `${parentUid}|${historico ? 'historico' : 'janela'}` : null,
+    (ok, erro) => watchPaymentsByParent(parentUid, ok, erro, { historico })
   );
 }

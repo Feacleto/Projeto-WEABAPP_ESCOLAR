@@ -3,12 +3,14 @@ import { GRADIENTE_AGENDA } from '../config/paletaCategorica';
 import {
   collection,
   addDoc,
+  getDocs,
   query,
   where,
   orderBy,
   limit,
   onSnapshot,
   serverTimestamp,
+  startAfter,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { resumirParaAviso } from '../compartilhado/formatters';
@@ -373,28 +375,65 @@ export async function createSchoolEntry({
 }
 
 /**
- * Subscribe a TODAS as entradas da agenda (pro Tio ver o histórico).
- * Ordenado por data desc — Firestore exige índice composto se quiser
- * filtrar + ordenar. Como queremos só a lista geral, basta orderBy.
+ * Os avisos que o motorista mandou, do mais novo para o mais antigo.
+ *
+ * Índice composto `adminUid + createdAt desc` (já em firestore.indexes.json).
+ *
+ * ── ⚠️ OS 100 MAIS RECENTES AO VIVO, E O RESTO SÓ SE ELE PEDIR (03/10/2026)
+ * Era a lista INTEIRA, assinada: um motorista que avisa a turma todo dia
+ * passa de mil recados no ano, e cada abertura da tela relia todos — para
+ * mostrar os de hoje. A assinatura agora tem teto, e o histórico antigo vem
+ * por `maisAvisosDoMotorista`, uma leitura única a cada "Ver mais".
+ *
+ * O segundo argumento do callback diz de onde continuar: o último documento
+ * e se pode haver mais (a página veio cheia).
  */
+export const AVISOS_POR_PAGINA = 100;
+
 export function watchAdminAgenda(adminUid, onUpdate, onError) {
   if (!adminUid) return () => {};
   const q = query(
     collection(db, AGENDA_COLLECTION),
     where('adminUid', '==', adminUid),
-    orderBy('createdAt', 'desc')
+    orderBy('createdAt', 'desc'),
+    limit(AVISOS_POR_PAGINA)
   );
   return onSnapshot(
     q,
     (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      onUpdate(list);
+      onUpdate(list, {
+        cursor: snap.docs[snap.docs.length - 1] || null,
+        temMais: snap.docs.length === AVISOS_POR_PAGINA,
+      });
     },
     (err) => {
       console.error('watchAdminAgenda error:', err);
       if (onError) onError(err);
     }
   );
+}
+
+/**
+ * A página seguinte do histórico, depois de `cursor` — leitura única, sem
+ * assinatura: aviso antigo não muda.
+ */
+export async function maisAvisosDoMotorista(adminUid, cursor) {
+  if (!adminUid || !cursor) return { lista: [], cursor: null, temMais: false };
+  const snap = await getDocs(
+    query(
+      collection(db, AGENDA_COLLECTION),
+      where('adminUid', '==', adminUid),
+      orderBy('createdAt', 'desc'),
+      startAfter(cursor),
+      limit(AVISOS_POR_PAGINA)
+    )
+  );
+  return {
+    lista: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    cursor: snap.docs[snap.docs.length - 1] || null,
+    temMais: snap.docs.length === AVISOS_POR_PAGINA,
+  };
 }
 
 /**

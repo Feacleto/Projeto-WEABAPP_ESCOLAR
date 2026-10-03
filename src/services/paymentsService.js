@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebase/config';
+import { addMonths, getCurrentMonthKey } from '../compartilhado/formatters';
 // O ESTADO DO PAGAMENTO MORA EM `dominio/cobranca/statusPagamento.js`.
 //
 // `computeDisplayStatus` é a definição de "atrasado" no app inteiro — o
@@ -303,24 +304,89 @@ export function watchPaymentsByChild(childId, escopo, onUpdate, onError) {
  *
  * Filtra por parentUid pra alinhar com as Firestore Security Rules
  * (que liberam read se parentUid == request.auth.uid). Ordena por mês desc.
+ *
+ * ── ⚠️ OS ÚLTIMOS 12 MESES, E NÃO A HISTÓRIA INTEIRA (03/10/2026)
+ * A assinatura lia todo pagamento que a família já teve — até 60 meses por
+ * criança, que é a retenção —, e o Início e o Financeiro só usam o mês que
+ * vem e os recentes. Agora a janela é `month >= (mês atual - 11)`, o que pede
+ * o índice composto `parentUid + month` em firestore.indexes.json.
+ *
+ * ⚠️ MAS DÍVIDA NÃO TEM IDADE. Uma mensalidade de 14 meses atrás que ainda
+ * está `pending` sumiria da janela, e o "a pagar" da tela mentiria para menos.
+ * Por isso há uma segunda assinatura, só do que está em aberto (`pending` e
+ * `claimed`), de qualquer mês — é pouca coisa por definição. As duas são
+ * fundidas pelo id.
+ *
+ * `{ historico: true }` é a leitura inteira, sem janela: o extrato para
+ * imprimir (`PaiFinanceReport`) promete a retenção toda, e é aberto sob
+ * demanda.
  */
-export function watchPaymentsByParent(parentUid, onUpdate, onError) {
-  const q = query(
-    collection(db, 'payments'),
-    where('parentUid', '==', parentUid)
-  );
-  return onSnapshot(
-    q,
+export const MESES_NA_JANELA_DO_RESPONSAVEL = 12;
+
+export function primeiroMesDoResponsavel(mes = getCurrentMonthKey()) {
+  return addMonths(mes, -(MESES_NA_JANELA_DO_RESPONSAVEL - 1));
+}
+
+export function watchPaymentsByParent(parentUid, onUpdate, onError, { historico = false } = {}) {
+  if (!parentUid) {
+    onUpdate([]);
+    return () => {};
+  }
+  const col = collection(db, 'payments');
+  const falhou = (err) => {
+    console.error('watchPaymentsByParent error:', err);
+    if (onError) onError(err);
+  };
+  const ordenar = (list) =>
+    list.sort((a, b) => (b.month || '').localeCompare(a.month || ''));
+  const lista = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  if (historico) {
+    return onSnapshot(
+      query(col, where('parentUid', '==', parentUid)),
+      (snap) => onUpdate(ordenar(lista(snap))),
+      falhou
+    );
+  }
+
+  let recentes = null;
+  let emAberto = null;
+  const entregar = () => {
+    // Espera as duas: entregar só a janela faria o "a pagar" piscar menor.
+    if (recentes === null || emAberto === null) return;
+    const porId = new Map();
+    [...emAberto, ...recentes].forEach((p) => porId.set(p.id, p));
+    onUpdate(ordenar([...porId.values()]));
+  };
+
+  const pararRecentes = onSnapshot(
+    query(
+      col,
+      where('parentUid', '==', parentUid),
+      where('month', '>=', primeiroMesDoResponsavel())
+    ),
     (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      list.sort((a, b) => (b.month || '').localeCompare(a.month || ''));
-      onUpdate(list);
+      recentes = lista(snap);
+      entregar();
     },
-    (err) => {
-      console.error('watchPaymentsByParent error:', err);
-      if (onError) onError(err);
-    }
+    falhou
   );
+  const pararEmAberto = onSnapshot(
+    query(
+      col,
+      where('parentUid', '==', parentUid),
+      where('status', 'in', ['pending', 'claimed'])
+    ),
+    (snap) => {
+      emAberto = lista(snap);
+      entregar();
+    },
+    falhou
+  );
+  return () => {
+    pararRecentes();
+    pararEmAberto();
+  };
 }
 
 /**

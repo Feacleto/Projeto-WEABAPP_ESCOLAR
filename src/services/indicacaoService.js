@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   query,
   serverTimestamp,
@@ -11,6 +12,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { criarCacheComValidade } from '../compartilhado/cacheComValidade.js';
 import { notifyIndicacaoAtivou } from './notificationsService';
 import {
   ESTADO,
@@ -183,9 +185,9 @@ export async function casarEAtivar(indicado) {
     //
     // Agora ela é pura, testável, e tem uma cópia espelhada em
     // `functions/lib/indicacao.js` que `npm run testar:indicacao` compara.
-    const todas = await listarTodasIndicacoes();
+    const candidatas = await candidatasDoIndicado({ chave, indicadoUid: indicado.uid });
     const escolhida = escolherParaAtivar({
-      indicacoes: todas,
+      indicacoes: candidatas,
       indicadoUid: indicado.uid,
       chave,
     });
@@ -234,8 +236,50 @@ export async function casarEAtivar(indicado) {
   }
 }
 
-/** Todas as indicações — a visão do dono, para conferir uma reclamação. */
-export async function listarTodasIndicacoes() {
-  const snap = await getDocs(collection(db, COL));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+/**
+ * SÓ AS INDICAÇÕES QUE PODEM SER DESTE INDICADO — e não a coleção inteira.
+ *
+ * ⚠️ `casarEAtivar` LIA TODAS AS INDICAÇÕES DA PLATAFORMA A CADA BAIXA DE
+ * FATURA (até 03/10/2026), para depois filtrar em memória as duas que podiam
+ * casar. `escolherParaAtivar` só aceita dois formatos — pendente com a MESMA
+ * chave, ou já cadastrada com o MESMO `indicadoUid` —, então são duas
+ * consultas por igualdade, com índice simples automático, e a regra pura
+ * continua decidindo entre elas.
+ *
+ * O teto existe porque um número indicado por mais de dez colegas não é caso
+ * real; sem teto, um telefone digitado errado por muita gente viraria de novo
+ * uma leitura sem fim. As rules deixam o dono listar `indicacoes` (`allow
+ * list: if isOwner()`), e é o dono quem dá baixa.
+ */
+const TETO_POR_CONSULTA = 10;
+
+async function candidatasDoIndicado({ chave, indicadoUid }) {
+  const col = collection(db, COL);
+  const [porChave, porUid] = await Promise.all([
+    getDocs(query(col, where('chave', '==', chave), limit(TETO_POR_CONSULTA))),
+    getDocs(query(col, where('indicadoUid', '==', indicadoUid), limit(TETO_POR_CONSULTA))),
+  ]);
+  const porId = new Map();
+  [...porChave.docs, ...porUid.docs].forEach((d) => {
+    porId.set(d.id, { id: d.id, ...d.data() });
+  });
+  return [...porId.values()];
+}
+
+/**
+ * Todas as indicações — a visão do dono, para conferir uma reclamação.
+ *
+ * Com cache de 90 segundos (03/10/2026): a aba Indicações desmonta ao trocar
+ * de aba, e cada volta relia a coleção inteira.
+ */
+const cacheDasIndicacoes = criarCacheComValidade({ validadeMs: 90 * 1000 });
+
+export function listarTodasIndicacoes({ forcar = false } = {}) {
+  return cacheDasIndicacoes.obter(
+    () =>
+      getDocs(collection(db, COL)).then((snap) =>
+        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      ),
+    { forcar }
+  );
 }

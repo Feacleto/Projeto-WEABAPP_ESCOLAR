@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  documentId,
   getDocs,
   onSnapshot,
   query,
@@ -9,6 +10,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { criarCacheComValidade } from '../compartilhado/cacheComValidade.js';
 // A CHAVE PIX TEM UMA DEFINIÇÃO SÓ, e ela mora em `dominio/cobranca/pix.js`.
 //
 // Aqui existiam `validatePixKey` e `normalizePixKey`, e havia uma SEGUNDA
@@ -43,16 +45,36 @@ export { PIX_KEY_TYPES, validatePixKey, normalizePixKey, maskCpf };
  *
  * Leitura única, e não assinatura: a lista de parceiros não muda enquanto a
  * tela está aberta.
+ *
+ * ⚠️ A LISTA DE MOTORISTAS É UMA SÓ PARA O PAINEL INTEIRO (03/10/2026).
+ *
+ * A visão geral, a carteira (`carregarConsole`) e a aba Mês (`TaxaTab`) liam
+ * cada uma a sua cópia de `role == 'admin'` — três idas ao banco pela mesma
+ * lista na abertura do painel, e de novo a cada troca de aba. Agora as três
+ * pedem a `parceirosDoDono`, que guarda a leitura por 90 segundos e entrega a
+ * mesma promessa a quem pedir junto (ver `compartilhado/cacheComValidade.js`).
+ *
+ * Quem acabou de ESCREVER num motorista passa `forcar: true` — é o que
+ * `carregarConsole({ forcar })` já fazia, e ele repassa para cá.
  */
-export async function listarParceiros() {
+const VALIDADE_DOS_PARCEIROS = 90 * 1000;
+const cacheDosParceiros = criarCacheComValidade({ validadeMs: VALIDADE_DOS_PARCEIROS });
+
+async function buscarParceiros() {
+  const snap = await getDocs(
+    query(collection(db, 'users'), where('role', '==', 'admin'))
+  );
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+}
+
+/** A lista crua, com cache. LANÇA se a leitura falhar — quem chama decide. */
+export function parceirosDoDono({ forcar = false } = {}) {
+  return cacheDosParceiros.obter(buscarParceiros, { forcar });
+}
+
+export async function listarParceiros({ forcar = false } = {}) {
   try {
-    const snap = await getDocs(
-      query(collection(db, 'users'), where('role', '==', 'admin'))
-    );
-    return {
-      lista: snap.docs.map((d) => ({ uid: d.id, ...d.data() })),
-      falhou: false,
-    };
+    return { lista: await parceirosDoDono({ forcar }), falhou: false };
   } catch (err) {
     console.error('[users] não deu pra listar os parceiros:', err);
     return { lista: [], falhou: true };
@@ -60,26 +82,51 @@ export async function listarParceiros() {
 }
 
 /**
- * TODOS os usuários do app — motoristas e responsáveis.
+ * SÓ AS PESSOAS QUE A TELA VAI MOSTRAR — por `uid`, em lotes de 30.
  *
  * Existe porque a caixa de chamados precisa do NOME e do TELEFONE de quem
  * abriu, e `supportTickets` guarda só o `uid` e o papel. E o chamado vem dos
  * dois lados: `listarParceiros` acima traz só `role == 'admin'`, então usá-la
  * ali deixaria todo chamado de família sem nome e sem botão de responder.
  *
- * Só o dono lista `users` (`allow list: if isOwner()`), e são dezenas de
- * documentos pequenos — uma leitura na abertura da tela, não uma por chamado.
+ * ⚠️ ELA SUBSTITUIU `listarUsuarios`, QUE BAIXAVA `users` INTEIRA (03/10/2026).
+ * Para mostrar o nome de vinte pessoas, a aba lia a base toda — cem motoristas
+ * e trezentas famílias, com telefone e endereço de cada uma, a cada abertura.
+ * Agora ela lê só quem abriu um chamado que está na tela.
+ *
+ * 30 é o teto do operador `in` no Firestore; acima disso a consulta é recusada.
+ * Só o dono lista `users` (`allow list: if isOwner()`), e uma consulta por
+ * `documentId()` é uma listagem como outra qualquer para as rules.
+ *
+ * Devolve `{ porUid, falhou }`: mapa vazio por falha e mapa vazio porque
+ * ninguém foi pedido não podem ser o mesmo valor (mesmo motivo de
+ * `listarParceiros`).
  */
-export async function listarUsuarios() {
+export const LOTE_DE_UIDS = 30;
+
+export async function buscarUsuariosPorUid(uids = []) {
+  const unicos = [...new Set((Array.isArray(uids) ? uids : []).filter(Boolean))];
+  const porUid = {};
+  if (!unicos.length) return { porUid, falhou: false };
   try {
-    const snap = await getDocs(collection(db, 'users'));
-    return {
-      lista: snap.docs.map((d) => ({ uid: d.id, ...d.data() })),
-      falhou: false,
-    };
+    const lotes = [];
+    for (let i = 0; i < unicos.length; i += LOTE_DE_UIDS) {
+      lotes.push(unicos.slice(i, i + LOTE_DE_UIDS));
+    }
+    const snaps = await Promise.all(
+      lotes.map((lote) =>
+        getDocs(query(collection(db, 'users'), where(documentId(), 'in', lote)))
+      )
+    );
+    snaps.forEach((snap) =>
+      snap.docs.forEach((d) => {
+        porUid[d.id] = { uid: d.id, ...d.data() };
+      })
+    );
+    return { porUid, falhou: false };
   } catch (err) {
-    console.error('[users] não deu pra listar:', err);
-    return { lista: [], falhou: true };
+    console.error('[users] não deu pra buscar as pessoas:', err);
+    return { porUid, falhou: true };
   }
 }
 

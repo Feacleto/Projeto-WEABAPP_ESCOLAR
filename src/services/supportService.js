@@ -3,10 +3,12 @@ import {
   addDoc,
   doc,
   onSnapshot,
+  orderBy,
   query,
   limit,
   serverTimestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { notifyChamadoRespondido } from './notificationsService';
@@ -135,20 +137,66 @@ export async function openSupportTicket({ uid, role, category, description }) {
  * grava, as rules liberam a leitura ao dono — e NENHUMA tela lia. Quem pedia
  * ajuda não recebia resposta, e não dizia por quê: cancelava.
  *
- * `limit` alto e ordenação no cliente, de propósito: a ordem que a caixa
- * precisa não é a de data (ver `dominio/suporte/chamados.js` — quem espera há
- * mais tempo vem primeiro), e ordenar isso no Firestore exigiria um índice
- * composto por um critério que muda de sentido conforme o status.
+ * Ordenação no cliente, de propósito: a ordem que a caixa precisa não é a de
+ * data (ver `dominio/suporte/chamados.js` — quem espera há mais tempo vem
+ * primeiro), e ordenar isso no Firestore exigiria um índice composto por um
+ * critério que muda de sentido conforme o status.
+ *
+ * ── ⚠️ ERA `limit(300)` SEM ORDEM NENHUMA, E ISSO ESCONDIA CHAMADO NOVO
+ * Sem `orderBy`, o Firestore devolve os 300 primeiros por id de documento —
+ * que é aleatório. Passando de 300 chamados na história, o que chegou hoje
+ * podia simplesmente não estar entre eles: a caixa existe para que ninguém
+ * peça ajuda sem resposta, e ela mesma voltava a esconder o pedido.
+ *
+ * Agora são DUAS assinaturas, fundidas pelo id (03/10/2026):
+ *   - todo chamado ABERTO, de qualquer idade — é o que a caixa precisa ver
+ *     inteiro, e o mais antigo é justamente o mais urgente;
+ *   - os mais RECENTES de qualquer estado, para o histórico de "respondido em
+ *     2d" que diz se o suporte está de pé.
+ * As duas usam índice simples automático (igualdade num campo; ordem num
+ * campo), nenhum composto.
  */
-export function watchChamados(cb, onError, max = 300) {
-  return onSnapshot(
-    query(collection(db, COLLECTION), limit(max)),
-    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    (err) => {
-      console.error('[suporte] a caixa não assinou:', err);
-      onError?.(err);
-    }
+export const TETO_DE_ABERTOS = 300;
+export const TETO_DO_HISTORICO = 100;
+
+export function watchChamados(cb, onError) {
+  const col = collection(db, COLLECTION);
+  let abertos = null;
+  let recentes = null;
+
+  const entregar = () => {
+    // Espera as duas: entregar só uma faria a caixa piscar com metade.
+    if (abertos === null || recentes === null) return;
+    const porId = new Map();
+    [...recentes, ...abertos].forEach((c) => porId.set(c.id, c));
+    cb([...porId.values()]);
+  };
+  const falhou = (err) => {
+    console.error('[suporte] a caixa não assinou:', err);
+    onError?.(err);
+  };
+  const lista = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  const pararAbertos = onSnapshot(
+    query(col, where('status', '==', 'open'), limit(TETO_DE_ABERTOS)),
+    (snap) => {
+      abertos = lista(snap);
+      entregar();
+    },
+    falhou
   );
+  const pararRecentes = onSnapshot(
+    query(col, orderBy('createdAt', 'desc'), limit(TETO_DO_HISTORICO)),
+    (snap) => {
+      recentes = lista(snap);
+      entregar();
+    },
+    falhou
+  );
+  return () => {
+    pararAbertos();
+    pararRecentes();
+  };
 }
 
 /**

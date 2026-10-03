@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Share2 } from 'lucide-react';
 import Spinner from '../common/Spinner';
 import { listarTodasIndicacoes } from '../../services/indicacaoService';
-import { carregarConsole } from '../../services/adminMetricsService';
+import { parceirosDoDono } from '../../services/userService';
 import { ESTADO, situacaoDaIndicacao } from '../../dominio/identidade/indicacao.js';
 
 /**
@@ -34,8 +34,10 @@ export default function IndicacoesTab() {
     listarTodasIndicacoes()
       .then(setLista)
       .catch(() => setLista(false));
-    carregarConsole()
-      .then(({ parceiros }) => {
+    // Só os NOMES dos motoristas: a lista crua (com cache, a mesma da visão
+    // geral), e não o console inteiro, que lê também todas as famílias.
+    parceirosDoDono()
+      .then((parceiros) => {
         const m = {};
         parceiros.forEach((p) => {
           m[p.uid] = p;

@@ -66,8 +66,11 @@ export default function TaxaTab() {
   useEffect(() => watchTaxaConfig(setConfig), []);
   useEffect(() => watchFaturasDoMes(mes, setFaturas), [mes]);
 
-  const carregar = useCallback(() => {
-    listarParceiros().then(({ lista, falhou }) => {
+  // A lista de parceiros tem cache de 90 segundos, compartilhado com a visão
+  // geral e a carteira (`parceirosDoDono`). Depois de mexer num parceiro, a
+  // releitura passa `forcar` — senão a linha voltaria ao valor de antes.
+  const carregar = useCallback((forcar = false) => {
+    listarParceiros({ forcar: forcar === true }).then(({ lista, falhou }) => {
       if (falhou) toast.error('Não deu pra listar os parceiros.');
       setMotoristas(lista);
     });
@@ -185,7 +188,7 @@ export default function TaxaTab() {
                   mes={mes}
                   config={config}
                   ownerUid={user?.uid}
-                  onMudou={carregar}
+                  onMudou={() => carregar(true)}
                 />
               ))}
             </div>

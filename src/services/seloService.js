@@ -2,7 +2,9 @@ import {
   collection,
   doc,
   getDoc,
+  limit,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -88,10 +90,20 @@ export function watchPedidoAdesivo(uid, cb, onError) {
   );
 }
 
-/** Todos os pedidos — a fila de postagem do dono. */
+/**
+ * Todos os pedidos — a fila de postagem do dono.
+ *
+ * ⚠️ COM TETO DE SEGURANÇA (03/10/2026). É um pedido por motorista, então o
+ * teto não corta nada na base que o plano mira (100); ele existe para a
+ * assinatura não virar uma leitura sem fim se a coleção um dia crescer por
+ * outro motivo. Passando disso, o caminho é filtrar por estado, não subir o
+ * número.
+ */
+export const TETO_DE_PEDIDOS_DE_ADESIVO = 300;
+
 export function watchPedidosAdesivo(cb, onError) {
   return onSnapshot(
-    collection(db, 'pedidosAdesivo'),
+    query(collection(db, 'pedidosAdesivo'), limit(TETO_DE_PEDIDOS_DE_ADESIVO)),
     (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
     onError
   );

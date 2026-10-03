@@ -3,7 +3,7 @@ import { Bus, Check, MessageSquare, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Spinner from '../common/Spinner';
 import { useAuth } from '../../hooks/useAuth';
-import { listarUsuarios } from '../../services/userService';
+import { buscarUsuariosPorUid } from '../../services/userService';
 import {
   fecharChamado,
   marcarRespondido,
@@ -58,22 +58,41 @@ export default function ChamadosTab() {
   useEffect(() => watchChamados(setChamados, () => setChamados(false)), []);
 
   // Quem abriu o chamado — nome e telefone. `supportTickets` guarda só o `uid`
-  // e o papel, então o contato vem de `users`, que o dono já lista.
+  // e o papel, então o contato vem de `users`.
   //
-  // TODOS os usuários, não só os parceiros: o chamado vem dos dois lados, e
-  // `listarParceiros` traz apenas `role == 'admin'` — usá-la aqui deixaria
-  // todo chamado de família sem nome e sem botão de responder.
+  // ⚠️ SÓ QUEM ESTÁ NA TELA (03/10/2026). Aqui se lia `users` INTEIRA — cem
+  // motoristas e trezentas famílias — para mostrar o nome de quem abriu vinte
+  // chamados. Agora pede só os `uid` dos chamados, e só os que ainda não
+  // foram buscados: a caixa é uma assinatura, e um chamado novo não deve
+  // fazer reler quem já estava na tela.
+  const uidsPendentes = useMemo(() => {
+    if (!Array.isArray(chamados)) return '';
+    const faltam = [...new Set(chamados.map((c) => c.uid).filter(Boolean))]
+      .filter((uid) => !(uid in pessoas))
+      .sort();
+    return faltam.join(',');
+  }, [chamados, pessoas]);
+
   useEffect(() => {
-    listarUsuarios()
-      .then(({ lista }) => {
-        const m = {};
-        lista.forEach((u) => {
-          m[u.uid] = u;
+    if (!uidsPendentes) return;
+    let vivo = true;
+    const uids = uidsPendentes.split(',');
+    buscarUsuariosPorUid(uids).then(({ porUid, falhou }) => {
+      if (!vivo || falhou) return;
+      // Quem não veio (conta apagada) entra como `null`: sem isso, o uid
+      // continuaria "faltando" e seria pedido de novo a cada atualização.
+      setPessoas((antes) => {
+        const m = { ...antes };
+        uids.forEach((uid) => {
+          m[uid] = porUid[uid] || null;
         });
-        setPessoas(m);
-      })
-      .catch(() => {});
-  }, []);
+        return m;
+      });
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [uidsPendentes]);
 
   const agora = new Date();
   const lista = useMemo(

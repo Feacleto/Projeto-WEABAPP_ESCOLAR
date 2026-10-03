@@ -1430,7 +1430,10 @@ function ordenar(mapa) {
   return Object.entries(mapa || {}).sort((a, b) => b[1] - a[1]);
 }
 
+// `null` é "o servidor não respondeu a soma" (ver `somaCampo`): a tela diz "—",
+// nunca R$ 0,00 — zero pareceria medição.
 function moeda(v) {
+  if (v === null) return '—';
   return (Number(v) || 0).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
