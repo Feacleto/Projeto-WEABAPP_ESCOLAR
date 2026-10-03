@@ -472,6 +472,22 @@ export function startTracking(driverUid, opcoes = {}) {
 }
 
 /**
+ * LIGAR OU DESLIGAR O MAPA NO MEIO DA ROTA (03/10/2026, pedido do dono).
+ *
+ * A chave só existia antes de iniciar, e desligar no caminho exigia encerrar
+ * a rota — o que apaga a perua de todas as famílias e para os avisos. Agora a
+ * escolha vale na hora: a posição é regravada JÁ, com ou sem coordenada, em
+ * vez de esperar o próximo ponto do GPS (que, com a perua parada no portão,
+ * pode demorar o pulso inteiro). Sem rota rodando, só guarda para a próxima.
+ */
+export function definirCompartilhamentoDaRota(compartilha) {
+  compartilhaPosicao = compartilha !== false;
+  if (activeWatchId == null || !ultimaExata || !motoristaDaRota) return;
+  lastWrite = Date.now();
+  gravarPosicao(ultimaExata, motoristaDaRota);
+}
+
+/**
  * PROBLEMA NA ROTA (03/10/2026): `'perua_quebrou'` marca, `null` limpa. Mora no
  * documento da posição porque é ele que a família lê para saber como a rota
  * está — e com `merge` o pulso seguinte não o apaga.

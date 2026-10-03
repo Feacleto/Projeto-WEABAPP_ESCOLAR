@@ -1284,6 +1284,11 @@ DISSO** (11/09/2026) — a régua é
   chave não pode ter o mapa apagado das famílias sem ter escolhido nada.
   `users.compartilhaLocalizacao`, sem rule nova — o `update` de `users` é
   lista de PROIBIDOS, e preferência não é cláusula.
+  ⚠️ **Desde 03/10/2026 ela também está na barra da ROTA RODANDO** — a frase
+  do estado é a própria chave, e `definirCompartilhamentoDaRota`
+  ([locationService](src/services/locationService.js)) regrava a posição na
+  hora. Antes, desligar no caminho exigia encerrar a rota. E o aviso de
+  início diz quando o mapa está desligado, em vez do "GPS ligado" de sempre.
 - ⚠️ **O AVISO DE "ESTÁ CHEGANDO" MUDOU DE LADO.** Era calculado no celular
   da MÃE a partir da coordenada publicada — então desligar o mapa mataria o
   aviso junto, para duas coisas sem relação. Agora quem mede é o celular DELE

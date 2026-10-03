@@ -9,7 +9,7 @@ import { ofertarPelaPrimeiraRota } from '../../services/associadoService';
 import { podeOferecer } from '../../dominio/associacao/ofertaDaPrimeiraRota';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { playSound } from '../../services/soundService';
-import { marcarOcorrencia } from '../../services/locationService';
+import { marcarOcorrencia, definirCompartilhamentoDaRota } from '../../services/locationService';
 import { encerrarChamadas } from '../../services/pendingCallService';
 import SegurarParaEncerrar from './SegurarParaEncerrar';
 
@@ -106,7 +106,13 @@ export default function ControleDeRota({
       // fora hoje (ver `avisarSaidaDaRota`).
       saida: saida ? { ...saida, semMapa: !compartilha } : null,
     });
-    toast.success('Rota começou! GPS ligado.');
+    // Com o mapa desligado, o "GPS ligado" de sempre fazia parecer que as
+    // famílias estavam vendo a perua. O aviso diz o que elas veem.
+    toast.success(
+      compartilha
+        ? 'Rota começou! GPS ligado.'
+        : 'Rota começou. A perua não aparece no mapa das famílias.'
+    );
     // Quem sabe a fila é a tela de rota, não este botão. Ela publica a posição
     // de cada criança no dia — o responsável não consegue calcular isso
     // sozinho, porque a fila é feita das outras crianças, que ele não lê.
@@ -168,10 +174,13 @@ export default function ControleDeRota({
     // Otimista: a chave responde ao toque e o banco acompanha. Errar aqui
     // custa uma chave que volta sozinha, não uma rota parada.
     updateProfile?.({ compartilhaLocalizacao: novo });
+    // Com a rota rodando, vale na hora — ver `definirCompartilhamentoDaRota`.
+    definirCompartilhamentoDaRota(novo);
     try {
       await setCompartilharLocalizacao(user?.uid, novo);
     } catch {
       updateProfile?.({ compartilhaLocalizacao: compartilha });
+      definirCompartilhamentoDaRota(compartilha);
       toast.error('Não deu pra salvar. Tente de novo.');
     }
   }
@@ -411,17 +420,41 @@ export default function ControleDeRota({
               </button>
             </p>
           ) : (
-            <p className="mt-0.5 text-sm text-textBody">
-              {/* ⚠️ A FRASE DIZ O QUE A FAMÍLIA VÊ DE VERDADE (03/10/2026). Dizia
-                * "o responsável está te vendo" até com o mapa DESLIGADO — a tela
-                * dele mentindo sobre a escolha que ele mesmo fez. E a precisão do
-                * GPS não é a que a família vê: o mapa dela é aproximado (150 m). */}
-              {semSinal
-                ? 'Procurando sinal de GPS…'
-                : compartilha
+            /* A CHAVE DO MAPA TAMBÉM COM A ROTA RODANDO (03/10/2026, pedido do
+             * dono). Antes ela só existia antes de iniciar, e desligar no
+             * caminho exigia encerrar a rota. A frase é a própria chave: ela
+             * diz o que a família vê, e o toque troca.
+             *
+             * ⚠️ A FRASE DIZ O QUE A FAMÍLIA VÊ DE VERDADE. Dizia "o
+             * responsável está te vendo" até com o mapa DESLIGADO — a tela dele
+             * mentindo sobre a escolha que ele mesmo fez. E a precisão do GPS
+             * não é a que a família vê: o mapa dela é aproximado (150 m). */
+            <button
+              type="button"
+              onClick={trocarCompartilhamento}
+              role="switch"
+              aria-checked={compartilha}
+              className="tap mt-0.5 flex w-full items-center gap-3 text-left"
+            >
+              <span className="min-w-0 flex-1 text-sm text-textBody">
+                {semSinal && <span className="block font-semibold">Procurando sinal de GPS…</span>}
+                {compartilha
                   ? 'As famílias veem a perua no mapa, em posição aproximada.'
                   : 'A perua não aparece no mapa. O aviso de chegada continua.'}
-            </p>
+              </span>
+              <span
+                aria-hidden="true"
+                className={`relative h-7 w-[46px] shrink-0 rounded-full transition-colors duration-estado ${
+                  compartilha ? 'bg-primary' : 'bg-borderStrong'
+                }`}
+              >
+                <span
+                  className={`absolute left-[3px] top-[3px] h-[22px] w-[22px] rounded-full bg-white shadow transition-transform duration-estado ease-freio ${
+                    compartilha ? 'translate-x-[18px]' : ''
+                  }`}
+                />
+              </span>
+            </button>
           )}
         </div>
       </div>
