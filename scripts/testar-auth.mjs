@@ -18,7 +18,12 @@
 import { readFileSync } from 'node:fs';
 import { SENHA_MINIMA, mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 import { painelDe } from '../src/dominio/identidade/papeis.js';
-import { faltaCompletarCadastro } from '../src/dominio/identidade/cadastroDoMotorista.js';
+import {
+  faltaCompletarCadastro,
+  passosQueFaltam,
+  lugarDoEndereco,
+} from '../src/dominio/identidade/cadastroDoMotorista.js';
+import { passosDoResponsavel } from '../src/dominio/identidade/cadastroDoResponsavel.js';
 import { mascararEmail } from '../src/compartilhado/formatters.js';
 import { COMPANY_INFO } from '../src/pages/legal/legalContent.js';
 import {
@@ -557,43 +562,78 @@ for (const chute of ['instabilidade', 'nossos servidores', 'fora do ar']) {
 checar('ela oferece tentar de novo', true, falhaSemProsa.includes('refreshProfile'));
 checar('e uma saida', true, falhaSemProsa.includes('logout'));
 
-bloco('11. O PRIMEIRO ACESSO DO MOTORISTA — o desvio antes do app');
-/* A conta nasce com tres campos e o resto e pedido do lado de dentro. Quem
-   decide se ele ja respondeu desvia a ROTA: errar aqui ou prende quem ja
-   preencheu, ou deixa passar quem nao preencheu — e dois dos tres campos sao
-   a PARTE do contrato de associacao. */
+bloco('11. O PRIMEIRO ACESSO DO MOTORISTA — o card por cima do app');
+/* A conta nasce magra e o resto e pedido do lado de dentro, num card de tres
+   passos. Quem decide o que falta desvia a ROTA: errar aqui ou prende quem ja
+   preencheu, ou deixa passar quem nao preencheu — e nome e cidade sao a
+   PARTE do contrato de associacao. */
 
 const cadastroCompleto = {
   role: 'admin',
   name: 'Joao da Silva',
+  phone: '11987654321',
+  marcaNome: 'Tio Joao',
   city: 'Sao Paulo',
-  regiao: 'Vila Mariana',
 };
 
 checar('cadastro completo passa', false, faltaCompletarCadastro(cadastroCompleto));
 checar('sem nome, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, name: '' }));
+checar('sem WhatsApp, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, phone: '' }));
+checar('sem marca, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, marcaNome: '' }));
 checar('sem cidade, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, city: '' }));
-checar('sem regiao, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, regiao: '' }));
 checar(
   'campo AUSENTE trava igual a campo vazio',
   true,
-  faltaCompletarCadastro({ role: 'admin', name: 'Joao', city: 'SP' })
+  faltaCompletarCadastro({ role: 'admin', name: 'Joao', phone: '11987654321', marcaNome: 'Tio' })
 );
 checar(
   'so espaco em branco nao conta como respondido',
   true,
-  faltaCompletarCadastro({ ...cadastroCompleto, regiao: '   ' })
+  faltaCompletarCadastro({ ...cadastroCompleto, marcaNome: '   ' })
 );
 
-/* Os dois opcionais nao podem travar: `marcaNome` muda o cabecalho e
-   `criancasEstimadas` e informacao de venda — nenhum entra em contrato, e
-   prender alguem por eles e cobrar pedagio por conveniencia. */
-checar('sem marcaNome, passa', false, faltaCompletarCadastro(cadastroCompleto));
+/* `regiao` sai da localizacao junto da cidade, mas o endereco reverso nem
+   sempre traz bairro — travar por ela prenderia quem o geocodificador nao
+   conhece. E o numero de criancas saiu do card: o real aparece quando ele
+   cadastra a turma. */
+checar('sem regiao, passa', false, faltaCompletarCadastro(cadastroCompleto));
 checar(
   'sem numero de criancas, passa',
   false,
   faltaCompletarCadastro({ ...cadastroCompleto, criancasEstimadas: 0 })
 );
+
+/* O CARD PERGUNTA SO O QUE FALTA. Quem entrou com o Google tem so o e-mail e
+   ve os tres passos; quem criou com e-mail ja deu o WhatsApp e ve o passo 1
+   so pelo nome; quem ja tinha tudo menos a marca ve so a marca. */
+const doGoogle = { role: 'admin', email: 'joao@gmail.com' };
+checar('Google ve os tres passos', ['voce', 'marca', 'local'], passosQueFaltam(doGoogle));
+checar(
+  'e-mail com WhatsApp ainda ve o passo 1 pelo nome',
+  ['voce', 'marca', 'local'],
+  passosQueFaltam({ ...doGoogle, phone: '11987654321' })
+);
+checar(
+  'so a marca faltando, so o passo da marca',
+  ['marca'],
+  passosQueFaltam({ ...cadastroCompleto, marcaNome: '' })
+);
+checar('mae nao ve card nenhum', [], passosQueFaltam({ role: 'parent' }));
+
+/* A CIDADE VEM DO ENDERECO REVERSO, e o formato varia com o lugar: capital em
+   `city`, cidade pequena em `town`/`village`. Sem cidade, volta vazio — e a
+   tela oferece digitar, porque a cidade e contrato. */
+checar(
+  'capital: cidade e bairro',
+  { city: 'São Paulo', regiao: 'Vila Mariana', uf: 'SP' },
+  lugarDoEndereco({ city: 'São Paulo', suburb: 'Vila Mariana', road: 'Rua X', 'ISO3166-2-lvl4': 'BR-SP' })
+);
+checar(
+  'cidade pequena vem em town',
+  { city: 'Socorro', regiao: '', uf: '' },
+  lugarDoEndereco({ town: 'Socorro', state: 'São Paulo' })
+);
+checar('resposta vazia nao inventa cidade', { city: '', regiao: '', uf: '' }, lugarDoEndereco(undefined));
 
 /* O desvio e so do MOTORISTA. A mae nao tem cadastro a completar e o dono
    nasce pelo console — desviar qualquer um dos dois os prenderia numa tela
@@ -621,6 +661,35 @@ const fonteDoCadastro = readFileSync(new URL('../src/pages/DriverSignup.jsx', im
 checar('a inscricao nao manda mais nome', false, /nome:\s*form\.name/.test(fonteDoCadastro));
 checar('a inscricao nao manda mais cidade', false, /cidade:\s*form\.city/.test(fonteDoCadastro));
 
+
+bloco('11b. O PRIMEIRO ACESSO DO RESPONSÁVEL — o mesmo card, outras perguntas');
+/* Mesmo desenho do motorista: só o que falta. O aniversário é dela agora
+   (saiu do cadastro do motorista), e o passo dos avisos NUNCA prende — um
+   navegador que não pergunta duas vezes não pode virar tela sem saída. */
+const mae = { role: 'parent', name: 'Carla Andrade', phone: '11987654321' };
+const lucas = { id: 'k1', name: 'Lucas', birthDate: '' };
+checar('mãe vinda do convite: aniversário e avisos', ['filho', 'avisos'],
+  passosDoResponsavel({ profile: mae, child: lucas, permissao: 'default' }));
+checar('sem nome, pede os dados dela primeiro', ['voce', 'filho', 'avisos'],
+  passosDoResponsavel({ profile: { ...mae, name: '' }, child: lucas, permissao: 'default' }));
+checar('aniversário preenchido some', ['avisos'],
+  passosDoResponsavel({ profile: mae, child: { ...lucas, birthDate: '2018-05-14' }, permissao: 'default' }));
+checar('avisos negados não prendem', ['filho'],
+  passosDoResponsavel({ profile: mae, child: lucas, permissao: 'denied' }));
+checar('sem suporte a avisos (Safari fora da tela de início) não prende', ['filho'],
+  passosDoResponsavel({ profile: mae, child: lucas, permissao: 'unsupported' }));
+checar('passou pelo passo dos avisos, ele não volta', ['filho'],
+  passosDoResponsavel({ profile: { ...mae, avisosPerguntadosEm: 1 }, child: lucas, permissao: 'default' }));
+/* "NÃO SEI O NÚMERO AGORA": o motorista cadastrou pela rua, e quem sabe o
+   número da casa é ela. O passo vem antes do aniversário. */
+checar('casa sem número: ela confirma o número primeiro', ['casa', 'filho', 'avisos'],
+  passosDoResponsavel({ profile: mae, child: { ...lucas, numeroPendente: true }, permissao: 'default' }));
+checar('número confirmado, o passo some', ['filho', 'avisos'],
+  passosDoResponsavel({ profile: mae, child: { ...lucas, numeroPendente: false }, permissao: 'default' }));
+checar('motorista nunca vê o card da mãe', [],
+  passosDoResponsavel({ profile: { role: 'admin' }, child: lucas, permissao: 'default' }));
+checar('perfil carregando não desvia', [],
+  passosDoResponsavel({ profile: null, child: null, permissao: 'default' }));
 
 // ─────────── 11. A SENHA MÍNIMA DIZ A MESMA COISA EM TODA TELA ──────────
 //

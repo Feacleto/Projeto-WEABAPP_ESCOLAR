@@ -17,7 +17,7 @@
  *   node scripts/testar-pix.mjs      (ou: npm run testar:pix)
  */
 
-import { validatePixKey, normalizePixKey, PIX_KEY_TYPES } from '../src/dominio/cobranca/pix.js';
+import { validatePixKey, normalizePixKey, PIX_KEY_TYPES, maskCpf } from '../src/dominio/cobranca/pix.js';
 
 let ok = 0;
 let bad = 0;
@@ -38,7 +38,9 @@ function bloco(t) {
 }
 
 bloco('1. Os tipos que o app oferece');
-checar('três tipos no cadastro', ['phone', 'email', 'random'], Object.keys(PIX_KEY_TYPES));
+checar('quatro tipos no cadastro (o CPF entrou em 02/10/2026)', ['phone', 'cpf', 'email', 'random'], Object.keys(PIX_KEY_TYPES));
+checar('a máscara do CPF pontua', '123.456.789-01', maskCpf('12345678901'));
+checar('e o CPF mascarado é válido', true, valida('cpf', maskCpf('12345678901')));
 
 bloco('2. Celular — o formato do cadastro');
 checar('com máscara', true, valida('phone', '(11) 97318-5800'));

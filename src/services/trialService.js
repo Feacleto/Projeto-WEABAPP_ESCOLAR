@@ -6,6 +6,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { getPlatformConfig, cobrancaLigada } from './platformConfigService';
 
 /**
  * LIGAR O RELÓGIO DOS TRÊS MESES — uma escrita, uma vez na vida da conta.
@@ -64,6 +65,11 @@ export async function ligarRelogioDoTrial(uid) {
     // por um caminho que não é o de criar conta.
     if (!snap.exists()) return false;
     if (snap.data()?.trialInicio) return false;
+
+    // ⚠️ COM A COBRANÇA DESLIGADA O TESTE NÃO COMEÇA (02/10/2026) — senão os
+    // 90 dias correriam na fase grátis e todo mundo estaria vencido no dia em
+    // que a cobrança voltasse. Ver `dominio/associacao/cobrancaLigada.js`.
+    if (!cobrancaLigada(await getPlatformConfig())) return false;
 
     await updateDoc(ref, { trialInicio: serverTimestamp() });
     return true;

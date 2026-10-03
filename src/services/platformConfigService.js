@@ -3,6 +3,7 @@ import { db } from '../firebase/config';
 // A regra é pura e mora no domínio, que o Node carrega — aqui só se repassa,
 // para quem já importa este service não precisar conhecer os dois caminhos.
 export { escadaAberta } from '../dominio/associacao/ofertaDaPrimeiraRota.js';
+export { cobrancaLigada } from '../dominio/associacao/cobrancaLigada.js';
 
 /**
  * Os interruptores que o DONO da plataforma liga e desliga sem deploy.
@@ -118,6 +119,35 @@ export async function setJanelaEscada(aberta) {
   await setDoc(
     REF(),
     { janelaEscada: aberta !== false, atualizadoEm: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+/**
+ * A CHAVE ÚNICA DA COBRANÇA DA PLATAFORMA — o dono liga e desliga.
+ *
+ * Ver `dominio/associacao/cobrancaLigada.js` e docs/estrutura-de-cobranca.md.
+ * Ausente é DESLIGADA: só o `true` gravado aqui faz o app voltar a cobrar.
+ */
+export async function setCobrancaLigada(ligada) {
+  await setDoc(
+    REF(),
+    { cobrancaLigada: ligada === true, cobrancaAtualizadaEm: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+/**
+ * UM MÓDULO DE COBRANÇA — liga, desliga, ou liga só num período.
+ *
+ * `valor` é `true`, `false` ou `{ ativo, de, ate }` (datas 'AAAA-MM-DD'), o
+ * formato que `moduloAtivo` lê. Grava em `modulos.{id}`; a escada continua no
+ * campo antigo (`setJanelaEscada`). Ver `dominio/associacao/modulosDeCobranca.js`.
+ */
+export async function setModuloDeCobranca(id, valor) {
+  await setDoc(
+    REF(),
+    { modulos: { [id]: valor }, cobrancaAtualizadaEm: serverTimestamp() },
     { merge: true }
   );
 }

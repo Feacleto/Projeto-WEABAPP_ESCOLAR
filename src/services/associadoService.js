@@ -4,6 +4,8 @@ import {
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { auth, db } from '../firebase/config';
+import { getPlatformConfig } from './platformConfigService';
+import { moduloAtivo } from '../dominio/associacao/modulosDeCobranca';
 
 /**
  * O CADASTRO DO MOTORISTA — ele preenche, entra, e começa a operar.
@@ -178,29 +180,48 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
  * Os dois opcionais só são gravados quando vieram: string vazia por cima de
  * um valor que ele já tinha apagaria o que ele escreveu antes.
  */
-export async function completarCadastro(uid, dados) {
+export async function completarCadastro(uid, dados, { ultimo = false } = {}) {
   if (!uid) throw new Error('Sem sessão.');
-  const nome = String(dados?.name || '').trim();
-  const cidade = String(dados?.city || '').trim();
-  const regiao = String(dados?.regiao || '').trim();
-  if (!nome || !cidade || !regiao) {
-    throw new Error('Nome, cidade e região são obrigatórios.');
+
+  // UM PASSO POR VEZ (02/10/2026). O card grava cada passo ao continuar, e
+  // só escreve o que veio preenchido: quem fecha o app no meio volta no
+  // passo seguinte, e string vazia nunca apaga o que ele já tinha dado.
+  const CAMPOS = ['name', 'phone', 'marcaNome', 'city', 'regiao', 'uf'];
+  const gravar = {};
+  for (const campo of CAMPOS) {
+    const v = String(dados?.[campo] || '').trim();
+    if (v) gravar[campo] = v;
   }
+  if (ultimo) gravar.cadastroCompletoEm = serverTimestamp();
+  if (!Object.keys(gravar).length) return;
 
-  const marca = String(dados?.marcaNome || '').trim();
-  const criancas = Number(dados?.criancas);
+  await setDoc(doc(db, 'users', uid), gravar, { merge: true });
+}
 
+/**
+ * QUEM ENTROU COM O GOOGLE E DISSE "TENHO UMA VAN" — a conta nasce aqui.
+ *
+ * Antes, o `/comecar` mandava essa pessoa para `/quero-fazer-parte`, que
+ * pedia de novo o e-mail que o Google tinha confirmado e uma senha que
+ * `inscreverAssociado` descartava (ver o ramo `mesmaPessoa`). Agora o
+ * documento é escrito direto, com o e-mail da sessão, e o resto — inclusive
+ * o WhatsApp, que o Google não dá — é pedido no card do primeiro acesso.
+ *
+ * Nenhuma rule nova: o `allow create` de `users` exige só `role` e
+ * `createdAt`, e `phone` não é gravado (ausente é "ainda não perguntei").
+ */
+export async function ligarSessaoComoMotorista({ origem } = {}) {
+  const sessao = auth.currentUser;
+  if (!sessao) throw new Error('Sem sessão.');
   await setDoc(
-    doc(db, 'users', uid),
+    doc(db, 'users', sessao.uid),
     {
-      name: nome,
-      city: cidade,
-      regiao,
-      ...(marca ? { marcaNome: marca } : {}),
-      ...(Number.isFinite(criancas) && criancas > 0
-        ? { criancasEstimadas: Math.max(0, criancas) }
+      role: 'admin',
+      email: String(sessao.email || '').trim().toLowerCase(),
+      createdAt: serverTimestamp(),
+      ...(origem?.canal
+        ? { origem: { canal: origem.canal, detalhe: origem.detalhe || '' } }
         : {}),
-      cadastroCompletoEm: serverTimestamp(),
     },
     { merge: true }
   );
@@ -223,6 +244,10 @@ export async function completarCadastro(uid, dados) {
 export async function ofertarPelaPrimeiraRota(uid) {
   if (!uid) return false;
   try {
+    // A oferta é do MÓDULO da escada. Desligado (ou com a cobrança toda
+    // desligada) não há oferta: gravar `pendente` aqui gastaria a "primeira
+    // rota" antes de a oferta existir.
+    if (!moduloAtivo(await getPlatformConfig(), 'escada')) return false;
     await setDoc(
       doc(db, 'users', uid),
       { ofertaEstado: 'pendente', ofertaEm: serverTimestamp() },

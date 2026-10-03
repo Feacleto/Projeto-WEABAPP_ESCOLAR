@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getInteractiveTour } from './interactiveSteps';
 import { useAuth } from '../../hooks/useAuth';
+import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
 import { markTutorialDone } from '../../services/userService';
 
 /**
@@ -11,21 +11,34 @@ import { markTutorialDone } from '../../services/userService';
  *
  * COMO FUNCIONA
  * O tour navega até a tela do passo, procura o elemento marcado com
- * data-tour="<anchor>", rola até ele e abre um buraco de luz por cima do
- * escurecido. O balão de texto encosta no elemento (acima ou abaixo, o que
- * couber). Passo com interact:true avança quando o usuário toca no PRÓPRIO
- * elemento — é o que ensina o gesto em vez de descrever o gesto.
+ * data-tour="<anchor>" (ou `prefer`, se ele existir), rola até ele e põe um
+ * anel verde pulsando em volta. O balão encosta no elemento (abaixo ou acima,
+ * o que couber).
+ *
+ * ── ⚠️ A TELA NÃO ESCURECE (02/10/2026)
+ * Era uma sombra de 62% em volta do recorte: a pessoa via um buraco de luz
+ * num app apagado. O dono pediu a tela inteira à vista — o tour mostra ONDE
+ * as coisas ficam, e isso só se aprende vendo o resto em volta. Quem marca o
+ * alvo agora é só o anel que pulsa.
+ *
+ * ── E O APP POR BAIXO NÃO RECEBE TOQUE
+ * Sem o escurecido, nada avisa que aquilo é um tutorial e não o app — e um
+ * toque em "Cadastrar a primeira criança" levaria a pessoa embora no meio do passo 1.
+ * Uma camada transparente segura os toques. A exceção é o passo `interact`
+ * (só o tour do responsável usa), que espera o toque no próprio elemento.
+ *
+ * ── O BALÃO: UMA ESTRADINHA E A PERUA
+ * O progresso é uma estrada tracejada com uma parada por passo, e a perua
+ * anda uma parada a cada "Próximo". É a única animação, e é o que faz o tour
+ * ser lembrado. Dois botões: Pular e Próximo.
  *
  * POR QUE O ELEMENTO PODE SUMIR
- * Metade dos destaques é condicional na tela real: "Começar agora" não existe
- * com a rota já rodando, "avisar falta" vira outro card quando a falta já foi
- * declarada. Então a ausência do anchor é um caminho normal, não um erro: o
- * balão cai pro rodapé sem destaque e o texto continua fazendo sentido.
+ * Metade dos destaques é condicional na tela real. A ausência do anchor é um
+ * caminho normal, não um erro: o balão cai pro rodapé sem anel.
  *
  * CONCLUIR x PULAR
- * Só o último passo marca tutorialDone. Pular fecha e o tour volta no próximo
- * login — de propósito: quem pulou não aprendeu, e uma tela que a pessoa não
- * entende é o motivo nº 1 de ela voltar pro WhatsApp.
+ * Os dois marcam tutorialDone: pular é uma decisão, e o tour voltando a cada
+ * login ensinaria a pular. Quem quiser rever abre "Como usar o app".
  *
  * Props:
  *   - open:  bool
@@ -33,13 +46,23 @@ import { markTutorialDone } from '../../services/userService';
  *   - onClose: () => void
  */
 
-const DIM = 'rgba(0,0,0,0.62)';
-const PAD = 8; // folga entre o elemento e a borda do recorte de luz
+const PAD = 6; // folga entre o elemento e o anel
 const CARD_GAP = 14; // distância do balão até o elemento destacado
-const CARD_SPACE = 250; // altura estimada do balão, pra decidir acima/abaixo
+const CARD_SPACE = 170; // altura estimada do balão, pra decidir acima/abaixo
+
+/** O elemento do passo: `prefer` primeiro, depois `anchor`. */
+function alvoDo(step) {
+  for (const a of [step?.prefer, step?.anchor]) {
+    if (!a) continue;
+    const el = document.querySelector('[data-tour="' + a + '"]');
+    if (el) return el;
+  }
+  return null;
+}
 
 export default function InteractiveTour({ open, mode = 'review', onClose }) {
   const { user, profile, updateProfile } = useAuth();
+  const cobranca = useCobrancaLigada();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -50,7 +73,6 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
 
   const step = steps[stepIndex];
   const isLast = stepIndex === steps.length - 1;
-  const isFirst = stepIndex === 0;
 
   // Sempre que abrir, recomeça do zero
   useEffect(() => {
@@ -78,7 +100,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!open || !step) return undefined;
-    if (!step.anchor) {
+    if (!step.anchor && !step.prefer) {
       // rAF em vez de chamada direta: o passo sem âncora só precisa apagar o
       // destaque, e apagar já no corpo do efeito dispara render em cascata.
       const raf = requestAnimationFrame(() => setRect(null));
@@ -87,7 +109,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
 
     let misses = 0;
     const measure = () => {
-      const el = document.querySelector('[data-tour="' + step.anchor + '"]');
+      const el = alvoDo(step);
       if (!el) {
         // Só desiste depois de ~1,2 s: evita piscar o balão no rodapé
         // enquanto a tela nova ainda está montando.
@@ -120,7 +142,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
       clearInterval(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, stepIndex, step?.anchor]);
+  }, [open, stepIndex, step?.anchor, step?.prefer]);
 
   const uid = user?.uid;
   const finish = useCallback(
@@ -146,7 +168,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
   // Passo interativo: tocar no elemento de verdade avança o tour
   useEffect(() => {
     if (!open || !step?.interact || !step.anchor || !rect) return undefined;
-    const el = document.querySelector('[data-tour="' + step.anchor + '"]');
+    const el = alvoDo(step);
     if (!el) return undefined;
     // Captura: a navegação do NavLink acontece no mesmo clique, e queremos
     // avançar mesmo que o React desmonte a tela em seguida.
@@ -160,22 +182,16 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
 
   const onSkip = () => {
     if (mode === 'first') {
-      toast(
-        'Sem problema. O tutorial volta no próximo login até você terminar.',
-        { icon: 'ℹ️', duration: 5000 }
-      );
+      toast('Pra rever, abra "Como usar o app".', { duration: 4000 });
     }
-    finish(false);
+    finish(true);
   };
 
-  const onPrev = () => {
-    if (isFirst) return;
-    scrolledFor.current = -1;
-    setStepIndex((i) => i - 1);
-  };
-
-  const Icon = step.icon;
   const cardPos = getCardPosition(rect);
+  // A perua anda de parada em parada: a primeira na borda esquerda, a última
+  // na direita. Com um passo só, ela fica parada no meio.
+  const paradaEm = (i) =>
+    steps.length > 1 ? 4 + (i * 92) / (steps.length - 1) : 50;
 
   return (
     <div
@@ -184,147 +200,79 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
       aria-modal="false"
       aria-label={`Tutorial, passo ${stepIndex + 1} de ${steps.length}`}
     >
-      {/* Escurecido + recorte de luz. pointer-events:none em tudo: o app
-       * embaixo continua tocável, que é o ponto de um tour interativo. */}
-      {rect ? (
-        <>
-          <div
-            className="absolute rounded-2xl transition-all duration-300 ease-out motion-reduce:transition-none"
-            style={{
-              top: rect.top - PAD,
-              left: rect.left - PAD,
-              width: rect.width + PAD * 2,
-              height: rect.height + PAD * 2,
-              boxShadow: `0 0 0 3px rgba(255,255,255,0.95), 0 0 0 9999px ${DIM}`,
-            }}
-          />
-          {/* O ANEL QUE RESPIRA, só nos passos que pedem o dedo.
-            * O buraco de luz diz "olhe aqui" e não diz "toque aqui" — e a
-            * frase "toque no que está iluminado" ficava sozinha no balão, a
-            * 300 px do elemento. `animate-pulse` (opacidade) e não
-            * `animate-ping` (escala): numa caixa do tamanho de um botão, o
-            * ping cresce por cima do texto vizinho.
-            * Em `prefers-reduced-motion` fica o anel parado, que continua
-            * marcando o alvo. */}
-          {step.interact && (
-            <div
-              aria-hidden
-              className="absolute rounded-[22px] ring-2 ring-white/70 animate-pulse motion-reduce:animate-none transition-all duration-300 ease-out motion-reduce:transition-none"
-              style={{
-                top: rect.top - PAD - 4,
-                left: rect.left - PAD - 4,
-                width: rect.width + PAD * 2 + 8,
-                height: rect.height + PAD * 2 + 8,
-              }}
-            />
-          )}
-        </>
-      ) : (
-        <div className="absolute inset-0" style={{ background: DIM }} />
+      {/* Segura os toques no app enquanto o balão está aberto — transparente,
+        * a tela continua inteira à vista. No passo `interact` ela some: ali o
+        * toque no próprio elemento é o gesto que o passo ensina. */}
+      {!step.interact && <div className="absolute inset-0 pointer-events-auto" />}
+
+      {/* O ANEL. Fixo + uma cópia que cresce e some; em
+        * `prefers-reduced-motion` fica só o fixo, que continua marcando. */}
+      {rect && (
+        <div
+          aria-hidden
+          className="absolute rounded-2xl transition-all duration-300 ease-out motion-reduce:transition-none"
+          style={{
+            top: rect.top - PAD,
+            left: rect.left - PAD,
+            width: rect.width + PAD * 2,
+            height: rect.height + PAD * 2,
+          }}
+        >
+          <span className="absolute -inset-1 rounded-[inherit] border-[3px] border-accent" />
+          <span className="absolute -inset-1 rounded-[inherit] border-[3px] border-accent animate-tour-pulso motion-reduce:hidden" />
+        </div>
       )}
 
       {/* Balão */}
       <div
-        className="absolute inset-x-0 px-3 flex justify-center transition-all duration-300 ease-out"
+        className="absolute inset-x-0 px-3 flex justify-center transition-all duration-300 ease-out motion-reduce:transition-none"
         style={cardPos}
       >
-        <div className="pointer-events-auto w-full max-w-sm bg-card rounded-3xl shadow-float overflow-hidden">
-          <div className="bg-gradient-to-br from-primary to-primaryDark text-white p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                <Icon size={22} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/80">
-                  Passo {stepIndex + 1} de {steps.length}
-                </p>
-                <p className="text-lg font-bold leading-tight mt-1">
-                  {step.title}
-                </p>
-              </div>
-              <button
-                onClick={onSkip}
-                aria-label="Fechar tutorial"
-                className="tap w-9 h-9 rounded-full bg-white/15 flex items-center justify-center shrink-0"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="mt-3 flex items-center gap-1">
-              {steps.map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1 rounded-full flex-1 transition-colors ${
-                    i <= stepIndex ? 'bg-white' : 'bg-white/25'
-                  }`}
-                />
-              ))}
-            </div>
+        <div className="pointer-events-auto w-full max-w-sm rounded-3xl bg-night text-onNight p-4 shadow-float">
+          {/* A ESTRADINHA. Uma parada por passo; as já passadas acendem. */}
+          <div className="relative h-4 mb-2.5" aria-hidden>
+            <span className="absolute inset-x-1 top-[7px] border-t-2 border-dashed border-white/30" />
+            {steps.map((_, i) => (
+              <span
+                key={i}
+                className={`absolute top-1 h-2 w-2 -translate-x-1/2 rounded-full ${
+                  i <= stepIndex ? 'bg-accent' : 'bg-white/30'
+                }`}
+                style={{ left: `${paradaEm(i)}%` }}
+              />
+            ))}
+            <svg
+              viewBox="0 0 22 14"
+              className="absolute -top-0.5 h-3.5 w-[22px] -translate-x-1/2 transition-[left] duration-500 ease-out motion-reduce:transition-none"
+              style={{ left: `${paradaEm(stepIndex)}%` }}
+            >
+              <rect x="1" y="1" width="18" height="9" rx="3" className="fill-perua" />
+              <rect x="12" y="3" width="5" height="3" rx="1" className="fill-night" />
+              <circle cx="6" cy="11" r="2.2" className="fill-white" />
+              <circle cx="15" cy="11" r="2.2" className="fill-white" />
+            </svg>
           </div>
 
-          {/* A FRASE DA LANDING, CITADA.
-            * Duas vozes na mesma superfície: aqui é o que o SITE prometeu,
-            * embaixo é o app entregando. A régua verde de 3px à esquerda é o
-            * que separa as duas sem precisar escrever "isto é uma citação".
-            * O passo sem `cita` (o tour do responsável, hoje) não mostra
-            * tira nenhuma. */}
-          {step.cita && (
-            <div className="bg-surface border-b border-border border-l-[3px] border-l-primaryBorder px-4 py-2.5">
-              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-textMuted">
-                no site, você leu
-              </p>
-              <p className="text-[12.5px] font-semibold text-text leading-snug mt-0.5">
-                {'“' + step.cita + '”'}
-              </p>
-            </div>
-          )}
+          <p className="text-lg font-extrabold leading-tight">{step.title}</p>
+          <p className="mt-1 text-sm text-white/75 leading-snug">
+            {!cobranca && step.bodySemCobranca ? step.bodySemCobranca : step.body}
+          </p>
 
-          <div className="p-4 space-y-3">
-            <p className="text-[15px] text-text leading-relaxed">{step.body}</p>
-
-            {step.interact && rect && (
-              <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                </span>
-                Toque no que está iluminado
-              </p>
-            )}
-
-            <div className="flex items-center gap-2 pt-1">
-              {/* O VOLTAR NÃO SOME MAIS NO PRIMEIRO PASSO — fica desabilitado.
-                * Sumindo, ele empurrava o botão principal pra esquerda entre
-                * o passo 1 e o 2: o alvo que o dedo acabou de encontrar
-                * mudava de lugar, e num tour de doze passos isso acontece
-                * cedo. Desabilitado, ele guarda a posição e ainda anuncia que
-                * dá pra voltar. */}
-              <button
-                onClick={onPrev}
-                disabled={isFirst}
-                className="tap h-12 px-3 rounded-xl bg-neutro text-text text-sm font-semibold inline-flex items-center gap-1 disabled:opacity-40"
-              >
-                <ChevronLeft size={16} />
-                Voltar
-              </button>
-              <button
-                onClick={goNext}
-                className="tap h-12 flex-1 rounded-xl bg-primary text-white font-bold inline-flex items-center justify-center gap-2"
-              >
-                {isLast ? 'Terminei!' : 'Próximo'}
-                {isLast ? <Check size={18} /> : <ChevronRight size={16} />}
-              </button>
-            </div>
-
-            {!isLast && (
-              <button
-                onClick={onSkip}
-                className="tap w-full text-xs text-textMuted py-1.5 hover:text-text"
-              >
-                {mode === 'first' ? 'Agora não' : 'Fechar tutorial'}
-              </button>
-            )}
+          <div className="mt-3 flex items-center">
+            <button
+              type="button"
+              onClick={onSkip}
+              className="tap px-1 py-2 text-sm font-semibold text-white/60 hover:text-white"
+            >
+              Pular
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              className="tap ml-auto h-11 rounded-xl bg-accent px-5 font-extrabold text-night"
+            >
+              {isLast ? 'Começar' : 'Próximo'}
+            </button>
           </div>
         </div>
       </div>

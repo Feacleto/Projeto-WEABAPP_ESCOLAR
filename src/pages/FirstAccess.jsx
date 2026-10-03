@@ -16,6 +16,8 @@ import FundoDoLogin, {
   TiraDoLogin,
 } from '../components/auth/FundoDoLogin';
 import { useAuth } from '../hooks/useAuth';
+import PedirAcesso from '../components/acesso/PedirAcesso';
+import { useModuloDeCobranca } from '../hooks/useCobrancaLigada';
 import { painelDe } from '../dominio/identidade/papeis';
 import { linkDoPedido, mensagemAoMotorista } from '../marca/pedidoAoMotorista';
 import { PECA_DO_PEDIDO } from '../marca/pedidoAoMotorista';
@@ -63,7 +65,7 @@ import { PECA_DO_PEDIDO } from '../marca/pedidoAoMotorista';
 export default function FirstAccess() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, perfilIndisponivel } = useAuth();
   const [copiado, setCopiado] = useState(false);
 
   // Quem já tem sessão com papel não tem nada a fazer aqui.
@@ -99,8 +101,13 @@ export default function FirstAccess() {
    */
   const peca = useRef(null);
   const pedida = useRef(false);
+  // ⚠️ A ARTE DA PEÇA DIZ "ATÉ 3 MESES DE TESTE GRÁTIS" — é texto do MÓDULO do
+  // plano, desenhado dentro da imagem. Com ele desligado a peça não aparece
+  // nem vai junto no WhatsApp; a mensagem em texto continua. Ligou, volta.
+  const pecaValida = useModuloDeCobranca('plano');
 
   const prepararPeca = useCallback(() => {
+    if (!pecaValida) return;
     if (peca.current || pedida.current || !navigator.canShare) return;
     pedida.current = true;
     fetch(PECA_DO_PEDIDO)
@@ -113,12 +120,12 @@ export default function FirstAccess() {
       .catch(() => {
         // Sem a peça vai o texto, e ninguém percebe a diferença.
       });
-  }, []);
+  }, [pecaValida]);
 
   const enviar = useCallback(() => {
     const texto = mensagemAoMotorista();
     const carga = { title: 'Alô Buzinou', text: texto };
-    if (peca.current) carga.files = [peca.current];
+    if (pecaValida && peca.current) carga.files = [peca.current];
 
     // Nada de `await` antes daqui — ver o comentário de `prepararPeca`.
     let p;
@@ -137,7 +144,7 @@ export default function FirstAccess() {
       if (err && err.name === 'AbortError') return;
       window.open(linkDoPedido(), '_blank', 'noopener');
     });
-  }, []);
+  }, [pecaValida]);
 
   const copiar = async () => {
     try {
@@ -152,6 +159,23 @@ export default function FirstAccess() {
       toast.error('Não deu pra copiar aqui. Use o botão do WhatsApp.');
     }
   };
+
+  /* ⚠️ QUEM JÁ ENTROU E NÃO TEM CONTA NO APP PEDE ACESSO PELO WHATSAPP
+   * (02/10/2026). Ela tocou em "Entrar com Google" (ou criou e-mail e senha)
+   * sem ter o link. Antes, esta tela só oferecia a mensagem ao motorista e a
+   * sessão ficava pendurada. Agora ela informa o número: se ele está numa
+   * criança, o motorista recebe o pedido e aprova; se não está, a conta
+   * nasce e o app pede para ela chamar o motorista. Quem chega deslogado
+   * continua vendo a página de sempre. */
+  if (!authLoading && user && !perfilIndisponivel && !profile?.role) {
+    return (
+      <div className="flex min-h-screen items-end justify-center bg-bg p-3 sm:items-center">
+        <div className="w-full max-w-[420px] rounded-3xl bg-card p-5 shadow-float">
+          <PedirAcesso />
+        </div>
+      </div>
+    );
+  }
 
   return (
     /**
@@ -354,6 +378,7 @@ export default function FirstAccess() {
                 *
                 * 9:16 porque a peça é 1080x1920: ela nasceu pra Story, e é lá
                 * que o link não é clicável — o endereço vai ESCRITO nela. */}
+              {pecaValida && (
               <a
                 href={PECA_DO_PEDIDO}
                 download="alo-buzinou.jpg"
@@ -379,6 +404,7 @@ export default function FirstAccess() {
                   </span>
                 </span>
               </a>
+              )}
 
               {/* A mensagem fica À VISTA, e não atrás do botão.
                 *

@@ -7,6 +7,7 @@ import {
   degrauDaDecisao,
 } from '../../dominio/associacao/trial.js';
 import { descontoDoFechamento } from '../../dominio/associacao/planos.js';
+import { useModuloDeCobranca } from '../../hooks/useCobrancaLigada';
 import { Link } from 'react-router-dom';
 
 /**
@@ -57,9 +58,14 @@ export default function AvisoDoTrial({ temContrato = false }) {
 
   // O desconto do degrau em que ele está AGORA — ver o comentário da oferta,
   // mais abaixo. Zero quando a escada já passou, e aí a oferta não aparece.
-  const fracaoDoDegrau = descontoDoFechamento(
-    degrauDaDecisao({ inicio: profile?.trialInicio, agora: new Date() })
-  );
+  // ⚠️ E SÓ COM O MÓDULO DA ESCADA LIGADO (02/10/2026): o servidor só concede
+  // com ele, e prometer aqui o que não vai ser gravado é o defeito de sempre.
+  const escada = useModuloDeCobranca('escada');
+  const fracaoDoDegrau = escada
+    ? descontoDoFechamento(
+        degrauDaDecisao({ inicio: profile?.trialInicio, agora: new Date() })
+      )
+    : 0;
 
   if (!aviso || aviso.nivel === 'expirado') return null;
   if (aviso.nivel === 'discreto') {

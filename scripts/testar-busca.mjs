@@ -34,7 +34,7 @@
  *   node scripts/testar-busca.mjs      (ou: npm run testar:busca)
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { DEV_NAME, DEV_CNPJ } from '../src/config/developer.js';
 import { COMPANY_INFO } from '../src/pages/legal/legalContent.js';
 
@@ -104,27 +104,15 @@ const tag = (html, re) => {
 // ─────────────────────────────────────────────────────────────────────────
 bloco('1. O app e a busca: a fase de hoje, e a tranca que nao espera');
 
-// ⚠️ O `noindex` GERAL DO APP ESTA DESLIGADO, E ISSO E UMA FASE.
-//
-// O plano nao mudou: quem deve aparecer e a landing, nao a tela de login. O
-// que mudou foi a ORDEM. O Google nunca conseguiu ler a landing (robots
-// bloqueado herdado da hospedagem antiga), entao hoje o app e o UNICO
-// resultado que existe da marca — e tira-lo antes deixaria presenca zero,
-// pior que o estado que se queria consertar.
-//
-// QUANDO A LANDING ESTIVER INDEXADA: volte a meta no `index.html` e troque os
-// dois casos abaixo pelos dois comentados logo em seguida.
+// O `noindex` GERAL DO APP VOLTOU em 02/10/2026, quando a landing apareceu
+// em primeiro na busca pela marca. Ele ja tinha entrado e saido uma vez: tirar
+// o app antes da landing entrar deixaria a marca com presenca zero.
 const appSemProsa = semComentariosHtml(app);
-checar('o descomentador de HTML descomenta', false,
-  appSemProsa.includes('NÃO PONHA'));
-checar('o app NAO tem noindex geral (ainda)', false,
-  /content="[^"]*noindex/.test(appSemProsa));
-checar('e o motivo esta escrito no arquivo', true,
-  app.includes('NÃO PONHA `noindex` AQUI AINDA'));
-
-// Depois da landing entrar, estes dois substituem os dois de cima:
-//   checar('o app declara noindex', true, /content="noindex,\s*follow"/.test(app));
-//   checar('e o motivo esta escrito', true, app.includes('O APP SAI DA BUSCA'));
+checar('o app declara noindex', true,
+  /<meta name="robots" content="noindex,\s*follow"/.test(appSemProsa));
+checar('e o motivo esta escrito', true, app.includes('O APP SAI DA BUSCA'));
+// `nofollow` cortaria o caminho do robo do app para a landing.
+checar('sem nofollow no app inteiro', false, /content="[^"]*nofollow/.test(appSemProsa));
 
 // ── O QUE NAO ESPERA POR NADA: o link do convite ────────────────────────
 //
@@ -296,6 +284,15 @@ if (declaradoPng) {
     checar('e o lado e multiplo de 48', 0, ic.largura % 48);
   }
 }
+
+// ⚠️ `/favicon.ico` NA RAIZ e o primeiro caminho que todo robo tenta, com ou
+// sem `<link>`. Em 02/10/2026 a landing devolvia 404 nele e o app devolvia o
+// HTML do SPA (o rewrite pega tudo) — e o resultado da busca mostrava globo.
+checar('a landing tem favicon.ico na raiz', true, existsSync('landing/favicon.ico'));
+checar('e o app tambem (senao o rewrite devolve HTML)', true,
+  existsSync('public/favicon.ico'));
+checar('o app declara um icone PNG para a busca', true,
+  /<link rel="icon" type="image[/]png" sizes="192x192"/.test(app));
 
 // ⚠️ ESTE BLOCO GUARDA UM DEFEITO ESCRITO E CORRIGIDO NO MESMO DIA: o `logo`
 // do JSON-LD apontava para `og-image.png`, que e o CARTAO de compartilhamento

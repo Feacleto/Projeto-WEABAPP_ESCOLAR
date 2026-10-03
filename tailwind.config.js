@@ -266,11 +266,37 @@ export default {
         /* Sem direção: as telas que não são aba (children, rota, agenda) não
            têm lado, e inventar um ensinaria uma geografia que não existe. */
         'entra-plano': { from: { opacity: '0' }, to: { opacity: '1' } },
+        /* O anel do tutorial. Cresce pela BORDA (`inset` negativo), e não por
+           `scale`: numa caixa do tamanho do cartão do Início, escalar o dobro
+           cobriria a tela inteira — o `animate-ping` faz exatamente isso. */
+        'tour-pulso': {
+          from: { inset: '-4px', opacity: '0.9' },
+          to: { inset: '-16px', opacity: '0' },
+        },
+        /* A criança que acabou de entrar na turma: chega com um pulinho e
+           fica respirando. O joinha balança do lado. Tela de cadastro feito. */
+        'crianca-chega': {
+          '0%': { opacity: '0', transform: 'translateY(24px) scale(.7)' },
+          '60%': { opacity: '1', transform: 'translateY(-6px) scale(1.04)' },
+          '100%': { opacity: '1', transform: 'none' },
+        },
+        'crianca-respira': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-5px)' },
+        },
+        joinha: {
+          '0%, 100%': { transform: 'rotate(-10deg) scale(1)' },
+          '50%': { transform: 'rotate(12deg) scale(1.08)' },
+        },
       },
       animation: {
         'entra-esq': 'entra-esq 260ms cubic-bezier(.22,.9,.24,1) both',
         'entra-dir': 'entra-dir 260ms cubic-bezier(.22,.9,.24,1) both',
         'entra-plano': 'entra-plano 180ms linear both',
+        'tour-pulso': 'tour-pulso 1.4s ease-out infinite',
+        'crianca-chega': 'crianca-chega 600ms cubic-bezier(.22,.9,.24,1) both',
+        'crianca-respira': 'crianca-respira 2.6s ease-in-out 600ms infinite',
+        joinha: 'joinha 900ms ease-in-out 500ms infinite',
       },
 
       fontFamily: {

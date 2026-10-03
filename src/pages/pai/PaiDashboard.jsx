@@ -30,6 +30,7 @@ import { ChildDetailSheet } from '../ChildDetail';
 import HorarioDoDia from '../../components/dashboard/HorarioDoDia';
 import { useRide } from '../../hooks/useRide';
 import ChildSwitcher from '../../components/children/ChildSwitcher';
+import AvisoDeIrmao from '../../components/children/AvisoDeIrmao';
 import AbsenceCounts from '../../components/dashboard/AbsenceCounts';
 import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
 import { maskPhone } from '../../compartilhado/masks';
@@ -301,6 +302,9 @@ export default function PaiDashboard() {
         {/* O AVISO VEM ANTES DE TUDO, inclusive do seletor de filho: quando
           * ele existe, é a coisa mais importante da tela. */}
         <TarjaDeAviso aviso={aviso} />
+        {/* O irmão que entrou sozinho pelo WhatsApp dela, com a saída
+          * "Não é meu filho" — antes do seletor, porque é sobre ele. */}
+        <AvisoDeIrmao />
         {/* Só aparece a partir do segundo filho — quem tem um vê a tela
           * igual a antes. */}
         <ChildSwitcher />

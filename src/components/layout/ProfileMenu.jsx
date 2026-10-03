@@ -14,6 +14,7 @@ import SupportSheet from '../support/SupportSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { destinoAposSair } from '../../dominio/vitrine/frentes';
 import { CENA_SAIDA, travessar } from '../../marca/travessia';
+import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
 
 /**
  * O perfil como MENU SUSPENSO, não como viagem.
@@ -43,6 +44,7 @@ import { CENA_SAIDA, travessar } from '../../marca/travessia';
  */
 export default function ProfileMenu({ role, basePath, active = false }) {
   const navigate = useNavigate();
+  const cobranca = useCobrancaLigada();
   const { user, profile, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -174,7 +176,8 @@ export default function ProfileMenu({ role, basePath, active = false }) {
             * Cobrança que só é visível quando está atrasada ensina o associado
             * a associar a palavra "taxa" a susto — e some justamente no mês em
             * que ele quer conferir se o desconto combinado foi aplicado. */}
-          {role === 'admin' && (
+          {/* Some com a cobrança desligada: não há fatura nem conta a conferir. */}
+          {role === 'admin' && cobranca && (
             <MenuItem
               icon={Receipt}
               label="Minha associação"

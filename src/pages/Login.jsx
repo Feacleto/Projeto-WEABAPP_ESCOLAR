@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   Bell,
   Bus,
-  ChevronDown,
-  ChevronUp,
   CircleX,
   CreditCard,
-  FileText,
   Lock,
   Mail,
+  Plus,
   Route,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -34,6 +34,7 @@ import OpenInBrowser from '../components/auth/OpenInBrowser';
 import Reveal from '../components/common/Reveal';
 import { canUseGoogleSignIn, isInAppBrowser } from '../compartilhado/browserEnv';
 import { mensagemDeAuth } from '../dominio/identidade/authErrors';
+import useTeatroDoLogin, { PASSO } from '../components/auth/useTeatroDoLogin';
 
 /**
  * O QUE O APP TIRA DO OMBRO DELE — as quatro linhas do painel.
@@ -80,18 +81,11 @@ const BENEFICIOS = [
   },
 ];
 
-/**
- * A QUINTA LINHA SÓ EXISTE ABERTA, e é de propósito.
- *
- * O contrato é o que menos pesa na decisão de quem está espiando e o que mais
- * tranquiliza quem já se interessou. Então ele é a RECOMPENSA do toque, não
- * competidor da primeira tela — onde cada linha a mais empurra o formulário
- * para fora da dobra.
- */
-const BENEFICIO_ABERTO = {
-  icone: FileText,
-  titulo: 'O contrato guardado',
-  texto: 'Assinado no app e guardado pra consultar a qualquer momento.',
+/** "A rota do dia já montada" → "Rota do dia já montada": a grade 2×2 do
+ * celular não tem largura pro artigo. */
+const tituloCurto = (t) => {
+  const sem = t.replace(/^A /, '');
+  return sem.charAt(0).toUpperCase() + sem.slice(1);
 };
 
 /**
@@ -187,9 +181,6 @@ export default function Login() {
   // `?criar=1` é esse endereço. Sem ele, quem clica em "criar conta" no site
   // cai na aba de entrar e precisa descobrir a segunda aba sozinho — que é
   // exatamente o passo perdido que este trabalho veio consertar.
-  /* A expansão do painel no celular. Nasce FECHADA: é isso que mantém o
-     cartão do formulário na primeira tela — ver o comentário do painel. */
-  const [aberto, setAberto] = useState(false);
   const [aba, setAba] = useState(() =>
     new URLSearchParams(location.search || '').get('criar') ? 'criar' : 'entrar'
   );
@@ -213,14 +204,47 @@ export default function Login() {
    * lê. O Google não tem esse custo: quem cuida da lembrança é o Google.
    *
    * O `AuthSheet` do convite já fazia exatamente isto, com o rótulo "Não uso
-   * Google — entrar com email". Esta tela era a última que ainda mostrava as
-   * duas de frente. Mesma decisão, mesmo texto, agora nos dois lugares.
+   * Google — entrar com email". Aqui o rótulo encurtou para "Usar email"
+   * (02/10/2026, pedido do dono): o botão do Google ficou cheio e verde, e o
+   * link embaixo dele só precisa existir, não argumentar.
    *
    * ⚠️ QUANDO O GOOGLE NÃO FUNCIONA, O FORMULÁRIO APARECE SOZINHO. Dentro da
    * webview do WhatsApp o Google recusa OAuth, então ali email e senha não é
    * a exceção — é a única porta que existe. Esconder atrás de um link uma
    * porta que é a única seria trancar quem não conseguiu sair pro navegador. */
   const [mostrarEmail, setMostrarEmail] = useState(false);
+
+  // ── O TEATRO DO CELULAR ───────────────────────────────────────────
+  //
+  // O cartão do MOTORISTA no celular ganhou uma apresentação de primeira
+  // visita e um cartão próprio (sem abas, título de ação, "Criar conta
+  // grátis" no topo). A família continua com o cartão de abas: ela chega
+  // pelo link do motorista e não precisa ser convencida de nada.
+  //
+  // `celular` é lido uma vez: girar o aparelho no meio não troca o cartão.
+  const [celular] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      !!window.matchMedia?.('(max-width: 1023.98px)').matches
+  );
+  const cartaoDoMotorista = celular && ehEntrar && !daFamilia;
+  const cartaoRef = useRef(null);
+  const tiraRef = useRef(null);
+  const teatro = useTeatroDoLogin({
+    ativo: cartaoDoMotorista,
+    // Quem chega com contexto está VOLTANDO (sessão expirada, senha nova):
+    // essa pessoa quer entrar, não assistir.
+    apresentar: !location.state?.from && !location.state?.email && !inApp,
+    cartaoRef,
+    tiraRef,
+  });
+  /** Classe de entrada de um passo: invisível até o teatro chegar nele. */
+  const surge = (p) =>
+    `transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none ${
+      teatro.visto(p) ? '' : 'translate-y-3 opacity-0'
+    }`;
+  const criarContaDeMotorista = () =>
+    navigate('/quero-fazer-parte', { state: { de: 'login' } });
 
   useEffect(() => {
     adminExists()
@@ -383,7 +407,7 @@ export default function Login() {
       <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-[minmax(0,46fr)_minmax(0,54fr)]">
 
         {/* ── A faixa da marca ───────────────────────────────────────── */}
-        <div className="relative flex flex-col overflow-hidden rounded-b-[26px] bg-gradient-to-br from-primary to-primaryDark px-6 pb-7 pt-6 lg:justify-between lg:rounded-none lg:px-14 lg:py-12">
+        <div className="relative flex flex-col overflow-hidden rounded-b-[26px] bg-gradient-to-br from-primary to-primaryDark px-6 pb-24 pt-6 lg:justify-between lg:rounded-none lg:px-14 lg:py-12">
           {/* DUAS FORMAS, E NENHUMA DELAS DISPUTA COM O TEXTO.
             *
             * O disco embaixo à esquerda ancora a faixa — sem ele o verde é um
@@ -420,14 +444,31 @@ export default function Login() {
             />
           </svg>
 
+          {/* "VER O SITE" NO LUGAR DO "VOLTAR", para quem veio do site.
+            * "Voltar" numa porta de entrada soava como "você entrou no lugar
+            * errado". No celular ele vira uma pílula no canto, ao lado da
+            * marca, e libera a linha que ocupava. Quem veio da `/familia`
+            * continua com o "Voltar": pra ela é mesmo um passo atrás. */}
           <VoltarTag
             {...voltarProps}
-            className="tap relative z-10 -ml-1 inline-flex w-fit items-center gap-1 p-1 text-sm text-onNightMuted hover:text-onNight"
+            className={`tap z-10 inline-flex w-fit items-center gap-1 text-onNightMuted hover:text-onNight lg:relative lg:-ml-1 lg:p-1 lg:text-sm ${
+              daFamilia
+                ? 'relative -ml-1 p-1 text-sm'
+                : 'absolute right-5 top-6 whitespace-nowrap rounded-full border border-onNight/30 bg-onNight/[0.06] px-3 py-1.5 text-[12.5px] font-semibold lg:border-0 lg:bg-transparent lg:font-normal'
+            } ${surge(PASSO.site)}`}
           >
-            <ArrowLeft size={16} /> Voltar
+            {daFamilia ? (
+              <>
+                <ArrowLeft size={16} /> Voltar
+              </>
+            ) : (
+              <>
+                Ver o site <ArrowUpRight size={14} />
+              </>
+            )}
           </VoltarTag>
 
-          <div className="relative z-10 mt-5 lg:mt-0">
+          <div className={`relative z-10 lg:mt-0 ${daFamilia ? 'mt-5' : 'mt-0'}`}>
             {/* O LOGO É A PORTA DE SAÍDA PRA VITRINE, e é sempre a mesma.
               *
               * Clicar na marca pra voltar ao site é gesto de web que a pessoa
@@ -447,7 +488,7 @@ export default function Login() {
             <a
               href={SITE_INSTITUCIONAL}
               aria-label="Conhecer o Alô Buzinou"
-              className="tap block w-fit max-w-full rounded-lg"
+              className={`tap block w-fit max-w-full rounded-lg ${surge(PASSO.logo)}`}
             >
               <Logo
                 variant="lockup"
@@ -486,95 +527,41 @@ export default function Login() {
             {/* ══ CELULAR ══════════════════════════════════════════════ */}
             <div className="lg:hidden">
               <p className="mt-4 text-[21px] font-extrabold leading-[1.12] tracking-[-0.03em] text-onNight">
-                Você faz seu transporte.
-                <br />
-                <span className="text-primaryBorder">
+                <span className={`block ${surge(PASSO.frase1)}`}>
+                  Você faz seu transporte.
+                </span>
+                <span className={`block text-primaryBorder ${surge(PASSO.frase2)}`}>
                   O app avisa, cobra e organiza.
                 </span>
               </p>
 
-              {/* ⚠️ O ESTADO FECHADO É ÍCONE E TÍTULO, E NADA MAIS.
-                * É a única coisa que sustenta a inversão de ordem: com as
-                * descrições abertas por padrão o painel passa de ~330px para
-                * ~700px, o formulário nasce fora da tela, e quem só quer
-                * entrar passa a pagar pedágio por uma apresentação que não
-                * pediu. A promessa inteira cabe num título. */}
-              <ul className="mt-5 space-y-0">
-                {(aberto ? [...BENEFICIOS, BENEFICIO_ABERTO] : BENEFICIOS).map(
-                  (b, i) => (
-                    <li
-                      key={b.titulo}
-                      className={`flex gap-3 border-t border-onNight/[0.14] py-3 ${
-                        i === (aberto ? BENEFICIOS.length : BENEFICIOS.length - 1)
-                          ? 'border-b'
-                          : ''
-                      }`}
-                    >
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primaryBorder/15 text-primaryBorder">
-                        <b.icone size={15} />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[15px] font-bold leading-snug text-onNight">
-                          {b.titulo}
-                        </span>
-                        {/* A descrição cresce de 0fr para 1fr: é o único jeito
-                          * de animar até `auto` sem medir altura no JS. */}
-                        <span
-                          className={`grid transition-[grid-template-rows] duration-[240ms] ease-[cubic-bezier(.22,.9,.24,1)] motion-reduce:transition-none ${
-                            aberto ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                          }`}
-                        >
-                          <span className="overflow-hidden">
-                            <span className="block pt-1 text-[13px] leading-relaxed text-primaryChip">
-                              {b.texto}
-                            </span>
-                          </span>
-                        </span>
-                      </span>
-                    </li>
-                  )
-                )}
+              {/* ⚠️ GRADE 2×2, SÓ TÍTULOS — e o "Ver tudo o que tem dentro"
+                * saiu em 02/10/2026.
+                *
+                * A lista em linhas, mais o botão de expandir, empurrava o
+                * cartão de entrar pra baixo e fazia dele mais uma coisa na
+                * tela, quando ele é A coisa. Em grade os quatro cabem em metade
+                * da altura e o cartão sobe por cima do verde. As descrições
+                * continuam no monitor, onde há espaço.
+                *
+                * No teatro os quatro entram um por vez (passos 5 a 8). */}
+              <ul className="mt-4 grid grid-cols-2 gap-2">
+                {BENEFICIOS.map((b, i) => (
+                  <li
+                    key={b.titulo}
+                    className={`flex items-center gap-2 rounded-xl border border-onNight/[0.12] bg-onNight/[0.07] px-2.5 py-2 ${surge(
+                      PASSO.beneficio + i
+                    )}`}
+                  >
+                    <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-primaryBorder/15 text-primaryBorder">
+                      <b.icone size={15} />
+                    </span>
+                    <span className="min-w-0 text-[12.5px] font-semibold leading-tight text-onNight">
+                      {tituloCurto(b.titulo)}
+                    </span>
+                  </li>
+                ))}
               </ul>
-
-              <span
-                className={`grid transition-[grid-template-rows] duration-[240ms] ease-[cubic-bezier(.22,.9,.24,1)] motion-reduce:transition-none ${
-                  aberto ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                }`}
-              >
-                <span className="overflow-hidden">
-                  <span className="block pt-4 text-[13.5px] leading-relaxed text-primaryChip">
-                    E do outro lado, a família avisa quando a criança não vai e
-                    vê as mensalidades —{' '}
-                    <strong className="font-semibold text-onNight">
-                      no app que leva o seu logo e o seu nome
-                    </strong>
-                    .
-                  </span>
-                </span>
-              </span>
-
-              {/* ⚠️ O RÓTULO PROMETE CONTEÚDO, e a seta avisa que a página
-                * CRESCE — então ninguém teme que o formulário desapareça.
-                * "Saiba mais" e "Sobre o app" não dizem nem uma coisa nem
-                * outra.
-                *
-                * Fechado ele tem fundo, aberto é só contorno: o convite pesa
-                * mais que o recuo. E ele fica NO MESMO LUGAR nos dois estados,
-                * para o caminho de volta ser onde a mão já está.
-                *
-                * Sem `scrollIntoView`: a pessoa está lendo de cima para baixo,
-                * e mover a página sob o dedo dela é desorientador. */}
-              <button
-                type="button"
-                onClick={() => setAberto((v) => !v)}
-                aria-expanded={aberto}
-                className={`tap mt-4 flex h-[46px] w-full items-center justify-center gap-2 rounded-[13px] border border-primaryBorder/30 text-[14.5px] font-bold text-primaryBorder transition-colors ${
-                  aberto ? 'bg-transparent' : 'bg-primaryBorder/[0.14]'
-                }`}
-              >
-                {aberto ? 'Ver menos' : 'Ver tudo o que tem dentro'}
-                {aberto ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
-              </button>
             </div>
 
             {/* ══ MONITOR ══════════════════════════════════════════════ */}
@@ -705,7 +692,7 @@ export default function Login() {
           * O preço é a largura mínima: com o card no centro, o espaço à
           * esquerda dele é metade do que sobra, e o fundo só cabe a partir de
           * **1800px**. A conta está no cabeçalho do componente. */}
-        <div className="relative flex flex-1 items-center justify-center bg-bg px-4 py-8 sm:px-6 lg:px-10">
+        <div className="relative flex flex-1 items-start justify-center bg-bg px-4 pb-8 sm:px-6 lg:items-center lg:px-10 lg:py-8">
           {/* A textura vale em TODA largura — inclusive no celular, onde ela
             * é a única peça do fundo que cabe. Custa duas `div`. */}
           <TexturaDoFundo />
@@ -718,8 +705,33 @@ export default function Login() {
           {/* O ENVELOPE existe pela TIRA. A coluna é um flex que centra,
             * então a tira solta ficaria AO LADO do formulário; dentro do
             * envelope ela fica embaixo, na largura dele. */}
-          <div className="relative z-10 w-full max-w-[380px]">
-            <div className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float sm:p-7">
+          {/* No celular o envelope SOBE 80px por cima do verde: o cartão de
+            * entrar é a maior coisa da tela e começa ainda dentro da marca.
+            * No foco do teatro ele passa por cima do escuro (z 40). */}
+          <div
+            className="relative z-10 w-full max-w-[380px] -mt-20 lg:mt-0"
+            style={teatro.escuro ? { zIndex: 40 } : undefined}
+          >
+            <div
+              ref={cartaoRef}
+              className={`space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none sm:p-7 ${
+                teatro.visto(PASSO.cartao) ? '' : 'translate-y-14 scale-[.96] opacity-0'
+              }`}
+            >
+            {/* ⚠️ O CARTÃO DO MOTORISTA NO CELULAR NÃO TEM ABAS (02/10/2026).
+              * No lugar delas, um selo "Criar conta grátis" que leva direto ao
+              * cadastro do motorista. As abas continuam no monitor, para a
+              * família, e para quem chega por `?criar=1` — que precisa do
+              * caminho de volta para "Já tenho conta". */}
+            {cartaoDoMotorista && (
+              <button
+                type="button"
+                onClick={criarContaDeMotorista}
+                className="tap inline-flex items-center gap-1.5 rounded-full border border-primaryBorder bg-primarySoft px-2.5 py-1 text-[11.5px] font-semibold text-primary"
+              >
+                <Plus size={12} strokeWidth={2.6} /> Criar conta grátis
+              </button>
+            )}
             {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
               * "Cadastrar" era um link no rodapé do cartão que levava pra
               * `/comecar` — e `/comecar` devolve pro login quem não tem
@@ -749,6 +761,7 @@ export default function Login() {
               * O texto ativo é `text` (15,6:1) e o inativo `textMuted`
               * (6,4:1 sobre o trilho), então nenhuma das duas depende de cor
               * de marca para ser legível. */}
+            {!cartaoDoMotorista && (
             <div
               role="tablist"
               aria-label="Entrar ou criar conta"
@@ -801,6 +814,7 @@ export default function Login() {
                 </button>
               ))}
             </div>
+            )}
 
             {showBridge && (
               <OpenInBrowser onContinueHere={() => setBridgeDismissed(true)} />
@@ -809,17 +823,38 @@ export default function Login() {
             <div
               id="painel-conta"
               role="tabpanel"
-              aria-labelledby={`aba-${aba}`}
+              aria-labelledby={cartaoDoMotorista ? undefined : `aba-${aba}`}
+              aria-label={cartaoDoMotorista ? 'Entrar' : undefined}
               className="space-y-4"
             >
               {ehEntrar ? (
                 <>
-                  <div>
-                    <h2 className="text-xl font-bold text-text">Entrar</h2>
-                    <p className="mt-0.5 text-sm text-textMuted">
-                      Motorista ou família — a entrada é a mesma.
-                    </p>
-                  </div>
+                  {cartaoDoMotorista ? (
+                    /* ⚠️ O TÍTULO É UM CONVITE À AÇÃO, não o nome da tela.
+                     * "Entrar" é rótulo de sistema e ninguém lê. A parte que
+                     * importa leva o marca-texto, e a seta embaixo da van
+                     * aponta pro botão: o olho vai do título direto pra ele. */
+                    <h2 className="relative min-h-[84px] pr-24 text-[30px] font-extrabold leading-[1.04] tracking-[-0.035em] text-text">
+                      <span className="mb-0.5 block text-[17px] font-bold tracking-[-0.01em] text-textMuted">
+                        Comece a
+                      </span>
+                      <span
+                        className={`marca-texto ${
+                          teatro.visto(PASSO.cartao) ? '' : 'marca-texto-apagado'
+                        }`}
+                      >
+                        facilitar seu trampo
+                      </span>
+                      <VanDaPorta fora={!teatro.visto(PASSO.cartao)} />
+                    </h2>
+                  ) : (
+                    <div>
+                      <h2 className="text-xl font-bold text-text">Entrar</h2>
+                      <p className="mt-0.5 text-sm text-textMuted">
+                        Motorista ou família — a entrada é a mesma.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Google em destaque — opção principal pra reduzir fricção
                     * (não precisa digitar email/senha). Email/senha vem depois.
@@ -829,23 +864,38 @@ export default function Login() {
                     * como botão. */}
                   {!showBridge && googleWorks && (
                     <>
+                      {/* CHEIO E VERDE: é o único botão cheio do cartão, e é
+                        * ele que o teatro aponta, pulsa e deixa aceso. */}
                       <Button
                         loading={googleSubmitting}
-                        onClick={onGoogleLogin}
-                        variant="secondary"
-                        className="!whitespace-nowrap !border-borderStrong"
+                        onClick={() => {
+                          teatro.pararPulso();
+                          teatro.apagarEscuro();
+                          onGoogleLogin();
+                        }}
+                        className={`pulso-google !whitespace-nowrap !font-bold ${
+                          teatro.pulsando
+                            ? 'pulso-sempre'
+                            : teatro.visto(PASSO.pulso) && teatro.passo < PASSO.foco
+                              ? 'pulso-2x'
+                              : ''
+                        }`}
                       >
-                        {!googleSubmitting && <GoogleIcon size={20} />}
-                        Continuar com Google
+                        {!googleSubmitting && (
+                          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white">
+                            <GoogleIcon size={16} />
+                          </span>
+                        )}
+                        Entrar com Google
                       </Button>
 
                       {!mostrarEmail && (
                         <button
                           type="button"
                           onClick={() => setMostrarEmail(true)}
-                          className="tap w-full py-2 text-sm font-semibold text-primary"
+                          className="tap w-full py-2 text-center text-sm font-semibold text-textMuted hover:text-text"
                         >
-                          Não uso Google — entrar com email
+                          Usar email
                         </button>
                       )}
                     </>
@@ -1084,10 +1134,115 @@ export default function Login() {
             {/* O APP NO FIM DA TELA — só no celular. Onde o fundo
               * lateral entra (1800px), a tira sai: seriam o mesmo app
               * dito duas vezes na mesma tela. */}
-            <TiraDoLogin assunto={aba} ate={1800} />
+            <TiraDoLogin
+              ref={tiraRef}
+              assunto={aba}
+              ate={1800}
+              moldura={cartaoDoMotorista}
+              aparecidos={Math.max(0, teatro.passo - PASSO.tiraCartao + 1)}
+            />
           </div>
         </div>
       </div>
+
+      {/* ── O ESCURO DO FOCO ─────────────────────────────────────────
+        * `absolute` na página inteira, e não `fixed`: o contêiner usa
+        * `-translate-x-1/2`, e transform vira o referencial de `fixed`. Aqui
+        * dentro ele divide o mesmo empilhamento do cartão, que passa por cima
+        * com z 40. Tocar nele apaga; o Google continua pulsando. */}
+      {cartaoDoMotorista && (
+        <div
+          aria-hidden
+          onClick={teatro.apagarEscuro}
+          className={`absolute inset-0 z-30 bg-night/60 transition-opacity duration-500 motion-reduce:transition-none ${
+            teatro.escuro ? 'opacity-100' : 'pointer-events-none opacity-0'
+          }`}
+        />
+      )}
+
+      {/* Durante o teatro, a película engole o toque e o gesto de rolar.
+        * Portal pelo mesmo motivo do transform acima. */}
+      {teatro.rodando &&
+        createPortal(
+          <div aria-hidden className="fixed inset-0 z-[70] touch-none" />,
+          document.body
+        )}
+
+      {/* ── A BARRA DO RODAPÉ ─────────────────────────────────────────
+        * Aparece quando o cartão de entrar SAIU DA TELA por cima — a pessoa
+        * desceu até a prévia do app, que é o momento em que ela está mais
+        * convencida e mais longe do botão. */}
+      {cartaoDoMotorista &&
+        createPortal(
+          <div
+            role="region"
+            aria-label="Criar conta"
+            className={`fixed inset-x-3 bottom-3 z-40 flex items-center gap-3 rounded-[18px] bg-night py-2.5 pl-4 pr-2.5 text-onNight shadow-float transition-transform duration-500 ease-out motion-reduce:transition-none ${
+              teatro.cartaoFora ? 'translate-y-0' : 'pointer-events-none translate-y-[140%]'
+            }`}
+            style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          >
+            <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight">
+              Gostou do que viu?
+              <span className="block text-[11.5px] font-normal text-onNightMuted">
+                Monte a sua turma no app
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={criarContaDeMotorista}
+              tabIndex={teatro.cartaoFora ? 0 : -1}
+              className="tap shrink-0 rounded-xl bg-accent px-3.5 py-2.5 text-[13px] font-extrabold text-[#06210A]"
+            >
+              Criar conta agora
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
+  );
+}
+
+/**
+ * A VAN DO TÍTULO — ocupa o canto direito que sobrava ao lado de "facilitar
+ * seu trampo", e a seta embaixo dela aponta pro botão do Google.
+ *
+ * Desenho próprio, e não o `Bus` do lucide: ícone de traço a 90px vira
+ * diagrama. Faixa amarela de escolar, as cores da marca.
+ */
+function VanDaPorta({ fora }) {
+  return (
+    <span aria-hidden className="pointer-events-none absolute right-0 top-1 block w-[94px]">
+      <svg viewBox="0 0 96 58" className={`van-chega block w-full ${fora ? 'van-fora' : ''}`}>
+        <path
+          d="M6 14c0-5 4-9 9-9h46c4 0 7 2 9 5l14 16c3 3 5 6 5 10v8c0 3-2 5-5 5H11c-3 0-5-2-5-5z"
+          className="fill-primary"
+        />
+        <path d="M6 30h85v6H6z" fill="#F5A623" />
+        <rect x="13" y="11" width="15" height="13" rx="3" fill="#CFF3DA" />
+        <rect x="32" y="11" width="15" height="13" rx="3" fill="#CFF3DA" />
+        <path d="M51 11h11c2 0 3 1 4 2l9 11H51z" fill="#CFF3DA" />
+        <rect x="84" y="38" width="6" height="4" rx="1.5" fill="#FFE29A" />
+        {[25, 72].map((cx) => (
+          <g key={cx} className="roda">
+            <circle cx={cx} cy="48" r="8.5" fill="#0F1F17" />
+            <circle cx={cx} cy="48" r="3.5" fill="#D9E1DC" />
+            <path d={`M${cx} 41v3`} stroke="#D9E1DC" strokeWidth="2" />
+          </g>
+        ))}
+      </svg>
+      <svg
+        viewBox="0 0 38 44"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="seta-balanca ml-auto mr-7 mt-0.5 block h-[38px] w-[32px] text-accentText"
+      >
+        <path d="M8 4c14 2 22 12 20 32" />
+        <path d="M20 30l8 8 7-10" />
+      </svg>
+    </span>
   );
 }

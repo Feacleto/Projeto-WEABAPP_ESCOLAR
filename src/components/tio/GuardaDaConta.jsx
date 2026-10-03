@@ -1,5 +1,6 @@
 import { useAuth } from '../../hooks/useAuth';
 import { estadoDaConta } from '../../dominio/associacao/contaAtiva.js';
+import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
 import ContaInativa from '../../pages/tio/ContaInativa';
 
 /**
@@ -44,6 +45,7 @@ import ContaInativa from '../../pages/tio/ContaInativa';
  */
 export default function GuardaDaConta({ children }) {
   const { profile } = useAuth();
+  const cobranca = useCobrancaLigada();
 
   const { ativa, motivo } = estadoDaConta({
     suspenso: profile?.suspenso === true,
@@ -54,7 +56,12 @@ export default function GuardaDaConta({ children }) {
     agora: new Date(),
   });
 
-  if (!ativa) return <ContaInativa motivo={motivo} />;
+  // COM A COBRANÇA DESLIGADA, SÓ A SUSPENSÃO MANUAL TRANCA (02/10/2026).
+  // Teste vencido, atraso e renovação são motivos de cobrança — e a fase é de
+  // não cobrar nada. A suspensão é decisão de uma pessoa e continua valendo.
+  if (!ativa && (cobranca || motivo === 'suspenso')) {
+    return <ContaInativa motivo={motivo} />;
+  }
 
   return children;
 }

@@ -48,6 +48,8 @@ const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
 const GuardaDaConta = lazy(() => import('./components/tio/GuardaDaConta'));
 const PrimeiroAcesso = lazy(() => import('./pages/tio/PrimeiroAcesso'));
+const PrimeiroAcessoDoPai = lazy(() => import('./pages/pai/PrimeiroAcessoDoPai'));
+const AguardandoVinculo = lazy(() => import('./components/acesso/AguardandoVinculo'));
 const TioDashboard = lazy(() => import('./pages/tio/TioDashboard'));
 const TioChildren = lazy(() => import('./pages/tio/TioChildren'));
 const TioEscolas = lazy(() => import('./pages/tio/TioEscolas'));
@@ -87,7 +89,11 @@ import TermsAcceptanceGate from './components/legal/TermsAcceptanceGate';
 import ContractAcceptanceGate from './components/contract/ContractAcceptanceGate';
 import CookieBanner from './components/legal/CookieBanner';
 import { useAuth } from './hooks/useAuth';
+import { useCobrancaLigada, useModuloDeCobranca } from './hooks/useCobrancaLigada';
 import { faltaCompletarCadastro } from './dominio/identidade/cadastroDoMotorista.js';
+import { passosDoResponsavel } from './dominio/identidade/cadastroDoResponsavel.js';
+import { permissaoDeAvisos } from './compartilhado/browserEnv';
+import { getChildIds } from './dominio/identidade/childIds';
 import FalhaAoLerConta from './components/common/FalhaAoLerConta';
 import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
@@ -324,9 +330,14 @@ function SuperAdminRoute({ children }) {
  * conversa sobre pagar.
  *
  * ⚠️ E ELE NÃO É UMA ROTA, é um DESVIO. Rota própria seria endereço que a
- * pessoa pode pular digitando outro na barra — e os três campos que ele cobra
- * são partes de um contrato. Como desvio, ele cobre `/tio` inteiro enquanto
- * faltar.
+ * pessoa pode pular digitando outro na barra — e nome e cidade são partes de
+ * um contrato. Como desvio, ele cobre `/tio` inteiro enquanto faltar.
+ *
+ * ⚠️ DESDE 02/10/2026 O APP APARECE POR BAIXO. O desvio trocava a tela
+ * inteira por um formulário; agora ele renderiza o `/tio` de verdade, `inert`
+ * (sem toque, sem foco, fora do leitor de tela), e o card sobe por cima. A
+ * trava é a mesma — nada lá embaixo responde —, mas a pessoa vê o app que
+ * está liberando. O tour guiado espera o card fechar (`TioLayout`).
  *
  * Quem decide é `faltaCompletarCadastro`, pura e fora da tela
  * (`dominio/identidade/cadastroDoMotorista.js`).
@@ -335,10 +346,65 @@ function PrimeiroAcessoGate({ children }) {
   const { profile, loading } = useAuth();
 
   // Perfil ainda carregando não é perfil incompleto. Sem esta linha, todo
-  // motorista veria o formulário piscar no primeiro quadro de cada abertura.
+  // motorista veria o card piscar no primeiro quadro de cada abertura.
   if (loading) return <FullScreenLoader />;
   if (!faltaCompletarCadastro(profile)) return children;
-  return <PrimeiroAcesso />;
+  return (
+    <>
+      <div inert aria-hidden="true">
+        {children}
+      </div>
+      <PrimeiroAcesso />
+    </>
+  );
+}
+
+/**
+ * O PRIMEIRO ACESSO DO RESPONSÁVEL — o mesmo desvio do motorista (02/10/2026).
+ *
+ * Fica DENTRO do `PrivateRoute` do `/pai`, ou seja, depois dos termos e do
+ * contrato: o card só aparece para quem já pode ver o app. O `/pai` renderiza
+ * por baixo, `inert`, e o card pergunta o que falta. Quem decide é
+ * `passosDoResponsavel` (`dominio/identidade/cadastroDoResponsavel.js`).
+ */
+/**
+ * O RESPONSÁVEL SEM NENHUMA CRIANÇA (02/10/2026).
+ *
+ * Ela entrou sem o link, informou o WhatsApp, e a conta nasceu sem filho
+ * (`functions/lib/pedidosDeAcesso.js`). Antes disso essa pessoa nem tinha
+ * conta: a sessão ficava pendurada no `/first-access`. Agora o `/pai`
+ * aparece borrado por baixo e o card diz em que pé está — aguardando o
+ * motorista aprovar, ou "não encontramos seu motorista".
+ */
+function SemVinculoGate({ children }) {
+  const { profile, loading } = useAuth();
+  if (loading) return <FullScreenLoader />;
+  if (getChildIds(profile).length > 0) return children;
+  return (
+    <>
+      <div inert aria-hidden="true" className="blur-[3px]">
+        {children}
+      </div>
+      <AguardandoVinculo />
+    </>
+  );
+}
+
+function PrimeiroAcessoDoPaiGate({ children }) {
+  const { profile, loading } = useAuth();
+  const { child, loading: carregandoCrianca } = useActiveChild();
+
+  if (loading || carregandoCrianca) return <FullScreenLoader />;
+  const passos = passosDoResponsavel({ profile, child, permissao: permissaoDeAvisos() });
+  if (!passos.length) return children;
+  return (
+    <>
+      <div inert aria-hidden="true">
+        {children}
+      </div>
+      <PrimeiroAcessoDoPai />
+    </>
+  );
 }
 
 function ParentContractGate({ children }) {
@@ -391,6 +457,24 @@ function ParentContractGate({ children }) {
  * `replace` em vez de `href`: quem veio de um link velho não deve ganhar
  * uma parada a mais no histórico do "voltar".
  */
+/**
+ * AS TELAS DE COBRANÇA DA PLATAFORMA SÓ EXISTEM COM A COBRANÇA LIGADA
+ * (02/10/2026). Desligada, planos, taxa, contrato da plataforma e indicação
+ * voltam para o painel: não há o que contratar, pagar nem descontar. Espera a
+ * chave carregar antes de decidir — redirecionar no `null` tiraria o motorista
+ * da tela de pagar no dia em que a cobrança estiver ligada.
+ * Ver `dominio/associacao/cobrancaLigada.js`.
+ */
+function SoComCobranca({ children, modulo = null }) {
+  const mestra = useCobrancaLigada();
+  const doModulo = useModuloDeCobranca(modulo || 'plano');
+  // Com `modulo`, vale o módulo (indicação, escada…); sem ele, a chave mestra.
+  const cobranca = modulo ? doModulo : mestra;
+  if (cobranca === null) return <FullScreenLoader />;
+  if (!cobranca) return <Navigate to="/tio" replace />;
+  return children;
+}
+
 function ParaOSite() {
   useEffect(() => {
     window.location.replace(SITE_INSTITUCIONAL);
@@ -544,7 +628,7 @@ export default function App() {
           * adesivo, precisa de voltar a operar. As três telas de voltar a
           * pagar são as únicas de fora, e o motivo está logo abaixo. */}
         <Route path="selo" element={<TioSelo />} />
-        <Route path="indicar" element={<TioIndicar />} />
+        <Route path="indicar" element={<SoComCobranca modulo="indicacao"><TioIndicar /></SoComCobranca>} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>
@@ -569,7 +653,9 @@ export default function App() {
         path="/tio/planos"
         element={
           <PrivateRoute requireRole="admin">
-            <TioPlanos />
+            <SoComCobranca>
+              <TioPlanos />
+            </SoComCobranca>
           </PrivateRoute>
         }
       />
@@ -577,7 +663,9 @@ export default function App() {
         path="/tio/taxa"
         element={
           <PrivateRoute requireRole="admin">
-            <TioTaxa />
+            <SoComCobranca>
+              <TioTaxa />
+            </SoComCobranca>
           </PrivateRoute>
         }
       />
@@ -585,7 +673,9 @@ export default function App() {
         path="/tio/contrato-plataforma"
         element={
           <PrivateRoute requireRole="admin">
-            <TioContratoAssociacao />
+            <SoComCobranca>
+              <TioContratoAssociacao />
+            </SoComCobranca>
           </PrivateRoute>
         }
       />
@@ -600,7 +690,9 @@ export default function App() {
         path="/tio/encerrar"
         element={
           <PrivateRoute requireRole="admin">
-            <TioEncerrar />
+            <SoComCobranca>
+              <TioEncerrar />
+            </SoComCobranca>
           </PrivateRoute>
         }
       />
@@ -609,7 +701,11 @@ export default function App() {
         path="/pai"
         element={
           <PrivateRoute requireRole="parent">
-            <PaiLayout />
+            <SemVinculoGate>
+              <PrimeiroAcessoDoPaiGate>
+                <PaiLayout />
+              </PrimeiroAcessoDoPaiGate>
+            </SemVinculoGate>
           </PrivateRoute>
         }
       >

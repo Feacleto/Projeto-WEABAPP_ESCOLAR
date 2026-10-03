@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { watchUserNotifications } from '../services/notificationsService';
 import { playSound } from '../services/soundService';
+import { useConfigDaPlataforma } from './useCobrancaLigada';
+import { avisoVisivel } from '../dominio/associacao/modulosDeCobranca';
 
 /**
  * Combina notificações persistidas do Firestore + lembretes derivados dos
@@ -74,8 +76,16 @@ export function useNotifications({ userId }) {
    *
    * Foi embora com ela a leitura por `localStorage`, que existia só porque
    * lembrete derivado não tinha doc onde gravar `readAt`. Agora tem. */
+  // ⚠️ AVISO DE COBRANÇA SÓ APARECE COM O MÓDULO DELE LIGADO (02/10/2026).
+  // "Seu teste começou" e "sua fatura vence" recebidos antes da pausa não
+  // continuam no sino durante ela — nem no contador de não lidas. Nada é
+  // apagado: ligou o módulo, voltam. Ver `dominio/associacao/modulosDeCobranca.js`.
+  const config = useConfigDaPlataforma();
+
   const merged = useMemo(() => {
-    const all = stored.map((n) => ({ ...n, isRead: !!n.readAt }));
+    const all = stored
+      .filter((n) => avisoVisivel(config, n.type))
+      .map((n) => ({ ...n, isRead: !!n.readAt }));
     all.sort((a, b) => {
       const ta = a.createdAt?.toMillis?.() || 0;
       const tb = b.createdAt?.toMillis?.() || 0;
@@ -84,7 +94,7 @@ export function useNotifications({ userId }) {
     return all;
     // readBump força recomputo após marcar tudo como lido.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stored, readBump]);
+  }, [stored, readBump, config]);
 
   const unreadCount = useMemo(
     () => merged.filter((n) => !n.isRead).length,

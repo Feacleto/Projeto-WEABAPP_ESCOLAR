@@ -31,6 +31,11 @@ const {
 } = require('./lib/fechamento');
 const { makeEnviarAvisosComerciais } = require('./lib/enviarAvisos');
 const { makeCasarNoCadastro } = require('./lib/casarNoCadastro');
+const { makeVincularIrmao, makeRecusarIrmao } = require('./lib/vincularIrmao');
+const {
+  makePedirAcessoPeloTelefone,
+  makeResponderPedidoDeAcesso,
+} = require('./lib/pedidosDeAcesso');
 const {
   makeLimparCoordenadaDoCheckpoint,
 } = require('./lib/limpezaDoCheckpoint');
@@ -612,6 +617,19 @@ exports.enviarAvisosComerciais = makeEnviarAvisosComerciais(db);
 // nada o gravava — ver o cabeçalho de `casarNoCadastro.js`. Ele NÃO ativa
 // desconto nenhum: a carência continua sendo o primeiro mês pago.
 exports.casarIndicacaoNoCadastro = makeCasarNoCadastro(db);
+
+// O IRMÃO APARECE SOZINHO NO APP DO RESPONSÁVEL (02/10/2026). Criança nova
+// cadastrada com o WhatsApp de um responsável que já usa o app entra na conta
+// dele sem convite; ele recebe o aviso e pode desfazer ("Não é meu filho").
+// Ver o cabeçalho de `vincularIrmao.js` e a régua em `reguaDoIrmao.js`.
+exports.vincularIrmaoNoCadastro = makeVincularIrmao(db);
+exports.recusarIrmao = makeRecusarIrmao(db);
+
+// O RESPONSÁVEL SEM LINK PEDE ACESSO PELO WHATSAPP, E O MOTORISTA APROVA
+// (02/10/2026). O número sozinho não vincula nada — só cria o pedido. Ver o
+// cabeçalho de `pedidosDeAcesso.js`.
+exports.pedirAcessoPeloTelefone = makePedirAcessoPeloTelefone(db);
+exports.responderPedidoDeAcesso = makeResponderPedidoDeAcesso(db);
 
 /* ══ OS AVISOS DE TEMPO ═══════════════════════════════════════════════════
  * Mensalidade vencendo, convite parado, fatura da plataforma e alvará. Todos

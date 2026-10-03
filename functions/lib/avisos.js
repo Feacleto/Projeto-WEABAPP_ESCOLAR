@@ -47,6 +47,17 @@ const ESPECIE_DO_AVISO = {
   chamado_respondido: ESPECIE.FATO,
   indicacao_ativou: ESPECIE.FATO,
   indicacao_cadastrou: ESPECIE.FATO,
+  // O vínculo automático de irmão e a recusa dele: o que ACONTECEU com o
+  // filho dela (ou com o cadastro dele). Não se desliga.
+  irmao_vinculado: ESPECIE.FATO,
+  irmao_recusado: ESPECIE.FATO,
+  // O pedido de acesso sem link e a resposta do motorista: fatos sobre o
+  // vínculo com a criança. Não se desligam.
+  pedido_de_acesso: ESPECIE.FATO,
+  acesso_aprovado: ESPECIE.FATO,
+  acesso_recusado: ESPECIE.FATO,
+  // A família informou o número da casa que o motorista não sabia.
+  numero_da_casa: ESPECIE.FATO,
 
   rota_atrasada: ESPECIE.ESTADO,
   comercial_retorno: ESPECIE.ESTADO,

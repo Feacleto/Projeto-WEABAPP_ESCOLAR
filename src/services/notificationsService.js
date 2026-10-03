@@ -145,6 +145,28 @@ export async function notifyPaymentClaimed({
 /**
  * Cria notificação pro Tio quando o Pai aceita o contrato de transporte.
  */
+/**
+ * A família informou o número da casa que o motorista não sabia (02/10/2026).
+ * Ele cadastrou pela rua com "não sei o número agora"; este aviso é o "aí o
+ * tio vai saber" — o endereço novo já está na ficha da criança.
+ */
+export async function notifyNumeroDaCasa({ adminUid, childName, endereco }) {
+  if (!adminUid) return;
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      userId: adminUid,
+      type: 'numero_da_casa',
+      title: `A família de ${String(childName || '').split(/\s+/)[0] || 'uma criança'} informou o número da casa`,
+      body: endereco,
+      read: false,
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    // O endereço já foi gravado: o aviso é cortesia, não pode desfazer nada.
+    console.error('Falha ao avisar o número da casa:', err);
+  }
+}
+
 export async function notifyContractAccepted({ adminUid, parentName, childName }) {
   const targetUid = adminUid || (await resolveAdminUid());
   if (!targetUid) {

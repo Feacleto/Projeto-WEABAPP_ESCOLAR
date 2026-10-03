@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useModuloDeCobranca } from '../../hooks/useCobrancaLigada';
 import { valorDaIndicacao, PISO_DA_FATURA } from '../../dominio/associacao/planos.js';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
 
@@ -44,6 +45,10 @@ import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatte
 export default function ConviteParaIndicar({ titulo, className = '' }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  // É o MÓDULO de indicação (que exige a cobrança ligada): sem ele não há
+  // fatura para a indicação descontar.
+  const indicacao = useModuloDeCobranca('indicacao');
+  if (!indicacao) return null;
 
   const ativas = Number(profile?.indicacoesAtivas) || 0;
   const valor = valorDaIndicacao({

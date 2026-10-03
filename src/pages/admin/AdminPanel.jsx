@@ -29,9 +29,15 @@ import {
   watchPlatformConfig,
   setReviewWindow,
   janelaAberta,
-  escadaAberta,
-  setJanelaEscada,
+  cobrancaLigada,
+  setCobrancaLigada,
+  setModuloDeCobranca,
 } from '../../services/platformConfigService';
+import {
+  MODULOS_DE_COBRANCA,
+  moduloAtivo,
+  moduloLigadoNoPainel,
+} from '../../dominio/associacao/modulosDeCobranca';
 import {
   getPlatformOverview,
   getSurveyResults,
@@ -557,7 +563,7 @@ function Geral({ ov }) {
 
       <section>
         <Titulo icon={ShieldCheck}>Manutenção</Titulo>
-        <JanelaDoDesconto />
+        <ChaveDaCobranca />
         <PeriodoDeAvaliacao />
         {/* A limpeza de privacidade é `httpsCallable`, e não existe function
           * no ar neste projeto (Cloud Functions API desativada). Com o botão
@@ -698,43 +704,38 @@ function PeriodoDeAvaliacao() {
 }
 
 /**
- * A JANELA DO DESCONTO DE CONVERSÃO — abrir e fechar a concessão.
+ * A CHAVE ÚNICA DA COBRANÇA DA PLATAFORMA (02/10/2026).
  *
- * ── ⚠️ O QUE ELA FAZ, E O QUE ELA NÃO FAZ
- * Fechar a janela impede que contas NOVAS ganhem o desconto da escada. Não
- * mexe em ninguém que já contratou: o desconto deles está gravado em
- * `users.descontos` com `ate: null`, o contrato assinado declara "sem prazo
- * enquanto este contrato estiver vigente", e `contratarPlano` preserva pelo
- * ramo `jaTinha`. Renovar e trocar de plano mantêm.
+ * Nasce DESLIGADA: nesta fase o app não cobra nada do motorista, só precisa
+ * que ele se acostume a usar. Ligar aqui faz tudo voltar — teste de 90 dias,
+ * fatura do dia 1º, oferta, escada de desconto, indicação, avisos de venda e
+ * bloqueio de quem não pagou.
  *
- * É a mesma distinção que aposentou a condição de fundador: NÃO CONCEDER é
- * diferente de DESFAZER o que foi concedido. A segunda seria a fatura subindo
- * sem explicação — e é por isso que a frase na tela diz as duas metades.
+ * ⚠️ A FRASE PRECISA DIZER AS DUAS METADES, como a da escada ao lado: o dono
+ * só aperta um botão de dinheiro se souber exatamente o que ele liga — e o que
+ * ele NÃO desfaz (o relógio de quem já tinha começado o teste).
  *
- * ── ⚠️ E A TELA PRECISA DIZER ISSO, senão o dono não usa
- * Um interruptor chamado "desconto de conversão" sem explicação é um botão
- * que ninguém toca, porque ninguém sabe se ele vai quebrar a conta de alguém.
- * A frase embaixo é o que torna o botão utilizável.
+ * Ver `dominio/associacao/cobrancaLigada.js` e docs/estrutura-de-cobranca.md.
  */
-function JanelaDoDesconto() {
+function ChaveDaCobranca() {
   const [config, setConfig] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => watchPlatformConfig(setConfig), []);
 
-  // `null` é "ainda carregando" — mostrar "aberta" antes de saber faria o
-  // estado piscar para o contrário do real.
   const carregando = config === null;
-  const aberta = escadaAberta(config);
+  const ligada = cobrancaLigada(config);
 
   const alternar = async (proxima) => {
     setSalvando(true);
     try {
-      await setJanelaEscada(proxima);
+      await setCobrancaLigada(proxima);
+      setConfirmando(false);
       toast.success(
         proxima
-          ? 'Janela aberta: quem contratar agora ganha o desconto.'
-          : 'Janela fechada: contas novas não ganham mais.'
+          ? 'Cobrança ligada: o teste, as faturas e as ofertas voltaram.'
+          : 'Cobrança desligada: nada é cobrado nem descontado.'
       );
     } catch (err) {
       console.error(err);
@@ -745,41 +746,191 @@ function JanelaDoDesconto() {
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+    <div
+      className={`rounded-2xl border p-4 space-y-3 ${
+        ligada ? 'border-border bg-card' : 'border-primary/30 bg-primarySoft'
+      }`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-bold text-text">Desconto de conversão</p>
+          <p className="text-sm font-bold text-text">Cobrança da plataforma</p>
           <p className="mt-0.5 text-xs leading-relaxed text-textMuted">
-            A escada do período de teste — 30% no 1º mês, 20% no 2º, 10% no 3º.
+            O que o motorista paga pelo app. A mensalidade das famílias não
+            passa por aqui.
           </p>
         </div>
-        <button
-          type="button"
-          disabled={salvando || carregando}
-          onClick={() => alternar(!aberta)}
-          className={`tap shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50 ${
-            aberta
-              ? 'bg-primaryChip text-primary'
-              : 'bg-sunken text-textMuted border border-border'
+        <span
+          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${
+            ligada ? 'bg-primaryChip text-primary' : 'bg-card text-textMuted border border-border'
           }`}
         >
-          {carregando ? '...' : aberta ? 'Aberta' : 'Fechada'}
-        </button>
+          {carregando ? '...' : ligada ? 'Ligada' : 'Desligada'}
+        </span>
       </div>
 
-      {/* ⚠️ AS DUAS METADES, SEMPRE JUNTAS. Sem a segunda, o dono não fecha a
-        * janela com medo de quebrar contrato; sem a primeira, ele fecha
-        * achando que cancelou o desconto de todo mundo. */}
       <p className="text-xs leading-relaxed text-textMuted">
-        {aberta
-          ? 'Quem contratar durante o teste ganha o desconto do degrau em que estiver.'
-          : 'Contas novas não ganham mais.'}{' '}
-        <strong className="text-text">
-          Quem já tem, mantém — inclusive ao renovar ou trocar de plano.
-        </strong>{' '}
-        O desconto concedido é vitalício e está escrito no contrato assinado;
-        fechar aqui não desfaz nada.
+        {ligada ? (
+          <>
+            O app está cobrando: teste de 90 dias, fatura todo dia 1º, oferta e
+            escada de desconto, indicação e avisos de venda. Quem passa do teste
+            sem plano é bloqueado.
+          </>
+        ) : (
+          <>
+            <strong className="text-text">Nada é cobrado nem descontado.</strong>{' '}
+            O teste não começa a contar, não sai fatura, oferta nem aviso de
+            venda, e ninguém é bloqueado por não pagar. A suspensão manual
+            continua valendo.
+          </>
+        )}
       </p>
+
+      {/* LIGAR PEDE CONFIRMAÇÃO, desligar não. Ligar começa a cobrar gente de
+        * verdade; desligar só para de cobrar. O erro caro é um só. */}
+      {!carregando &&
+        (ligada ? (
+          <button
+            type="button"
+            disabled={salvando}
+            onClick={() => alternar(false)}
+            className="tap h-11 w-full rounded-xl border border-border bg-card text-sm font-bold text-text disabled:opacity-50"
+          >
+            Desligar a cobrança
+          </button>
+        ) : confirmando ? (
+          <div className="space-y-2 rounded-xl border border-warning/40 bg-card p-3">
+            <p className="text-xs leading-relaxed text-text">
+              <strong>Ligar a cobrança agora?</strong> O teste de 90 dias passa a
+              contar a partir do próximo uso de cada motorista. Quem já tinha o
+              teste correndo antes da pausa continua com a data antiga — veja
+              "Para religar depois" em docs/estrutura-de-cobranca.md.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={salvando}
+                onClick={() => setConfirmando(false)}
+                className="tap h-10 rounded-xl border border-border bg-card text-sm font-semibold text-text"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={salvando}
+                onClick={() => alternar(true)}
+                className="tap h-10 rounded-xl bg-primary text-sm font-bold text-white disabled:opacity-50"
+              >
+                Ligar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmando(true)}
+            className="tap h-11 w-full rounded-xl bg-primary text-sm font-bold text-white"
+          >
+            Habilitar a cobrança
+          </button>
+        ))}
+
+      {/* OS MÓDULOS — desenhados a partir do registro, então módulo novo em
+        * `modulosDeCobranca.js` aparece aqui sozinho. CADA UM LIGA SOZINHO:
+        * "Habilitar a cobrança" liga só a base, e nenhum desconto acorda junto. */}
+      {!carregando && (
+        <div className="space-y-2 border-t border-border pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-textMuted">
+            Módulos de cobrança
+          </p>
+          {MODULOS_DE_COBRANCA.map((m) => (
+            <ModuloDeCobranca key={m.id} modulo={m} config={config} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Um módulo do registro, com o interruptor dele.
+ *
+ * O interruptor mostra o que o dono GRAVOU; a linha embaixo diz se ele VALE.
+ * São coisas diferentes quando a base está desligada: um desconto ligado sem
+ * plano fica esperando — sem fatura não há o que descontar. A base não tem
+ * interruptor próprio: ela é o "Habilitar a cobrança" lá em cima.
+ */
+function ModuloDeCobranca({ modulo, config }) {
+  const [salvando, setSalvando] = useState(false);
+  const ativo = moduloLigadoNoPainel(config, modulo.id);
+  const valendo = moduloAtivo(config, modulo.id);
+  const esperandoBase = ativo && !valendo && !modulo.base && !cobrancaLigada(config);
+  const periodo = config?.modulos?.[modulo.id];
+  const comPeriodo = periodo && typeof periodo === 'object' && (periodo.de || periodo.ate);
+
+  const alternar = async () => {
+    setSalvando(true);
+    try {
+      await setModuloDeCobranca(modulo.id, !ativo);
+      toast.success(`${modulo.nome}: ${ativo ? 'desligado' : 'ligado'}.`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Você é o dono desta conta?');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-text">{modulo.nome}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-textMuted">{modulo.descricao}</p>
+          {comPeriodo && (
+            <p className="mt-1 text-xs font-semibold text-text">
+              Período: {periodo.de ? periodo.de.split('-').reverse().join('/') : '—'} a{' '}
+              {periodo.ate ? periodo.ate.split('-').reverse().join('/') : '—'}
+            </p>
+          )}
+          {modulo.base ? (
+            <p className="mt-1 text-xs font-semibold text-text">
+              {ativo ? 'Ligado' : 'Liga com "Habilitar a cobrança", acima.'}
+            </p>
+          ) : esperandoBase ? (
+            <p className="mt-1 text-xs font-semibold text-warningText">
+              Ligado, mas só vale com o Plano padrão ligado — sem fatura não há o
+              que descontar.
+            </p>
+          ) : null}
+        </div>
+        {modulo.base ? (
+          <span
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${
+              ativo ? 'bg-primaryChip text-primary' : 'bg-sunken text-textMuted border border-border'
+            }`}
+          >
+            Base
+          </span>
+        ) : (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={ativo}
+            aria-label={`Ligar ${modulo.nome}`}
+            disabled={salvando}
+            onClick={alternar}
+            className={`tap relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+              ativo ? 'bg-primary' : 'bg-borderStrong'
+            }`}
+          >
+            <span
+              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                ativo ? 'left-6' : 'left-1'
+              }`}
+            />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BellOff, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
 import {
   CHAVES_DE_AVISO,
   normalizarPreferencias,
@@ -43,6 +44,7 @@ import { salvarPreferenciasDeAviso } from '../../services/notificationsService';
  */
 export default function PreferenciasDeAviso() {
   const { user, profile } = useAuth();
+  const cobranca = useCobrancaLigada();
   const atuais = normalizarPreferencias(profile?.avisosDesligados);
   const [desligadas, setDesligadas] = useState(atuais);
   const [salvando, setSalvando] = useState(null);
@@ -79,7 +81,8 @@ export default function PreferenciasDeAviso() {
       </p>
 
       <div className="mt-3 space-y-2">
-        {CHAVES_DE_AVISO.map(({ especie, titulo, descricao }) => {
+        {CHAVES_DE_AVISO.map(({ especie, titulo, descricao: comCobranca, descricaoSemCobranca }) => {
+          const descricao = cobranca ? comCobranca : descricaoSemCobranca || comCobranca;
           const ligada = !desligadas.includes(especie);
           return (
             <button

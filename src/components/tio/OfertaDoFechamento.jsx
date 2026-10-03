@@ -7,8 +7,8 @@ import { formatCurrency } from '../../compartilhado/formatters';
 import { textoDaOferta } from '../../dominio/associacao/ofertaDaPrimeiraRota';
 import {
   watchPlatformConfig,
-  escadaAberta,
 } from '../../services/platformConfigService';
+import { moduloAtivo } from '../../dominio/associacao/modulosDeCobranca';
 
 /**
  * A OFERTA, na folha — o toque T0 e o T2 da cadência.
@@ -58,7 +58,7 @@ export default function OfertaDoFechamento({
   const oferta = textoDaOferta({
     motorista,
     criancas,
-    janelaAberta: escadaAberta(config),
+    janelaAberta: moduloAtivo(config, 'escada'),
   });
   if (!oferta) return null;
 

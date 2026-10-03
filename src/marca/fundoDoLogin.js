@@ -180,16 +180,11 @@ const B = [
     slot: 3,
     blocos: [
       { b: 'botaoZap', rotulo: 'Mandar convite no WhatsApp' },
-      // ⚠️ O RÓTULO DESTE CÓDIGO MUDOU EM RELAÇÃO AO PROTÓTIPO, e de
-      // propósito. Ele dizia "se precisar ditar por telefone" — e ditar por
-      // telefone servia para ela DIGITAR o código, entrada que saiu do
-      // produto em 09/09/2026 (ver o cabeçalho de `pages/FirstAccess.jsx`).
-      // Um fundo que oferece um caminho que a próxima tela não tem é o mesmo
-      // defeito da bifurcação do login, que foi corrigido no mesmo dia.
-      //
-      // O código continua indo na mensagem, e continua tendo função: é por
-      // ele que ela confere que aquele link é daquele convite.
-      { b: 'codigo', rotulo: 'o código vai junto na mensagem', valor: 'TN4582' },
+      // ⚠️ O CÓDIGO SAIU DESTE CARTÃO (02/10/2026). O acesso do responsável
+      // é SÓ pelo link, decisão do dono — e o código saiu também da mensagem
+      // e da tela de convite. Um fundo mostrando um código que o app não
+      // mostra mais seria o mesmo defeito da bifurcação do login.
+      { b: 'corpo', texto: 'Ela toca no link e já entra, sem digitar nada.' },
     ],
   },
 ];

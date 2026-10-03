@@ -38,6 +38,16 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
+const { cobrancaLigada, moduloAtivo } = require('./cobrancaLigada');
+
+/** O módulo dono de cada aviso de venda — espelho de `tiposDeAviso` em
+ * src/dominio/associacao/modulosDeCobranca.js. */
+const MODULO_DO_AVISO = {
+  comercial_teste_comecou: 'plano',
+  comercial_retorno: 'plano',
+  comercial_degrau_vira: 'escada',
+  comercial_indicacao: 'indicacao',
+};
 const { avisoParaEnviar } = require('./avisosComerciais');
 
 const REGION = 'southamerica-east1';
@@ -50,8 +60,19 @@ const REGION = 'southamerica-east1';
  * aviso — e o sintoma seria "a campanha não saiu", sem dizer para quem.
  */
 async function enviarAvisos(db, { agora = new Date() } = {}) {
+  // A CHAVE ÚNICA DA COBRANÇA (platformConfig/app.cobrancaLigada). Desligada,
+  // nada conta — ver lib/cobrancaLigada.js e docs/estrutura-de-cobranca.md.
+  if (!(await cobrancaLigada(db))) {
+    logger.info('[avisos comerciais] cobrança desligada: nenhum aviso de venda');
+    return { enviados: 0, calados: 0, erros: 0, cobrancaDesligada: true };
+  }
   const snap = await db.collection('users').where('role', '==', 'admin').get();
   const resultado = { enviados: 0, calados: 0, erros: 0 };
+  // Cada aviso só sai com o MÓDULO dele ligado. Lido uma vez por varredura.
+  const modulos = {};
+  for (const id of new Set(Object.values(MODULO_DO_AVISO))) {
+    modulos[id] = await moduloAtivo(db, id);
+  }
 
   for (const doc of snap.docs) {
     const motorista = { uid: doc.id, ...doc.data() };
@@ -64,7 +85,7 @@ async function enviarAvisos(db, { agora = new Date() } = {}) {
       continue;
     }
 
-    if (!aviso) {
+    if (!aviso || modulos[MODULO_DO_AVISO[aviso.tipo] || 'plano'] === false) {
       resultado.calados += 1;
       continue;
     }

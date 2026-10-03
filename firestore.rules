@@ -91,12 +91,29 @@ service cloud.firestore {
         && userDoc().assinaturaAte + duration.value(10, 'd') > request.time;
     }
 
+    /**
+     * A COBRANÇA DA PLATAFORMA ESTÁ DESLIGADA (02/10/2026).
+     *
+     * A chave única `platformConfig/app.cobrancaLigada`, que o dono liga no
+     * painel admin. AUSENTE É DESLIGADA — nesta fase o app não cobra nada, e
+     * o banco sem o campo precisa significar isso. Desligada, teste vencido
+     * não tranca ninguém. Ver functions/lib/cobrancaLigada.js (a mesma regra).
+     *
+     * Vai POR ÚLTIMO no `||` de `isAdmin()`: só custa leitura para quem já
+     * passou do teste sem assinatura, que é o caso raro.
+     */
+    function cobrancaDesligada() {
+      return !exists(/databases/$(database)/documents/platformConfig/app)
+        || get(/databases/$(database)/documents/platformConfig/app).data
+             .get('cobrancaLigada', false) != true;
+    }
+
     function isAdmin() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && userDoc().role == 'admin'
         && userDoc().get('suspenso', false) != true
-        && (assinaturaCobreHoje() || trialCorrendo());
+        && (assinaturaCobreHoje() || trialCorrendo() || cobrancaDesligada());
     }
 
     /**
@@ -666,6 +683,18 @@ service cloud.firestore {
              .hasAny([
                'role', 'childId', 'childIds', 'superAdmin',
                'suspenso', 'suspensoEm', 'notaInterna',
+               // ⚠️ `phoneChave` É A CHAVE DO VÍNCULO AUTOMÁTICO DE IRMÃOS
+               // (02/10/2026, `functions/lib/vincularIrmao.js`). Criança nova
+               // cadastrada com este WhatsApp entra SOZINHA na conta que o
+               // tem. Se o cliente pudesse escrevê-la, bastaria pôr o número
+               // de outra mãe aqui para receber os filhos dela. Só o
+               // `redeemInvite` grava, a partir do número que o MOTORISTA
+               // digitou — `phone`, que o próprio edita, não conta.
+               'phoneChave',
+               // O número que a pessoa DIGITOU ao pedir acesso sem link — não
+               // comprovado. Gera pedido para o motorista aprovar, nunca
+               // vínculo; mesmo assim é do servidor.
+               'telefoneAguardandoChave',
                // ⚠️ `concessoes` MUDOU DE COLEÇÃO EM 11/09/2026, e por isso
                // entra aqui. O registro da exceção (tipo, prazo, MOTIVO, quem
                // concedeu) vivia neste documento — que as FAMÍLIAS do
@@ -1173,17 +1202,31 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['photoURL'])
       ) || (
-        // Pai informa turma e sala. É o único que sabe — o motorista não
-        // acompanha a criança até a porta da sala, e perguntar a ele seria
-        // perguntar pra quem não tem a resposta.
+        // Pai informa turma, sala e aniversário. É o único que sabe — o
+        // motorista não acompanha a criança até a porta da sala, e quase
+        // nunca sabe a data de nascimento (o campo saiu do cadastro dele em
+        // 02/10/2026).
         //
-        // São dois campos de texto sem efeito em rota, cobrança ou permissão:
-        // o pior caso de um pai mal-intencionado aqui é escrever bobagem na
-        // ficha do próprio filho.
+        // São três campos sem efeito em rota, cobrança ou permissão: o pior
+        // caso de um pai mal-intencionado aqui é escrever bobagem na ficha do
+        // próprio filho.
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['turma', 'sala'])
+            .hasOnly(['turma', 'sala', 'birthDate'])
+      ) || (
+        // O NÚMERO DA CASA QUE O MOTORISTA NÃO SABIA (02/10/2026). Ele
+        // cadastrou pela rua com "não sei o número agora", e quem sabe o
+        // número é quem mora na casa: ela confirma no primeiro acesso. A porta
+        // abre UMA vez — só com `numeroPendente == true` antes e `false`
+        // depois —, e só para os campos do endereço. Depois disso, mudar a
+        // casa volta a ser com o motorista.
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && resource.data.get('numeroPendente', false) == true
+        && request.resource.data.numeroPendente == false
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['address', 'lat', 'lng', 'geoPending', 'numeroPendente', 'enderecoPartes'])
       );
     }
 
@@ -2116,6 +2159,20 @@ service cloud.firestore {
     match /alertasDeComprovante/{paymentId} {
       allow read: if isSignedIn()
         && (resource.data.adminUid == request.auth.uid || isOwner());
+      allow write: if false;
+    }
+
+    // O RESPONSÁVEL SEM LINK PEDE ACESSO, E O MOTORISTA APROVA (02/10/2026).
+    // Quem escreve é só o servidor (`functions/lib/pedidosDeAcesso.js`): o
+    // pedido nasce de um número digitado, que não é segredo, e o vínculo só
+    // acontece quando o motorista dono da criança aprova pela callable.
+    // A mãe lê os pedidos DELA (para saber em que pé está); o motorista lê os
+    // das crianças DELE — nunca os de outro motorista.
+    match /pedidosDeVinculo/{pedidoId} {
+      allow read: if isSignedIn()
+        && (resource.data.parentUid == request.auth.uid
+            || resource.data.adminUid == request.auth.uid
+            || isOwner());
       allow write: if false;
     }
 

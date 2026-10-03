@@ -16,9 +16,9 @@ import { db } from '../firebase/config';
 // invertida. Trocar um import pelo outro compilava, passava no lint e gerava
 // chave inválida em silêncio. O reexport mantém este módulo como a porta que
 // as telas já usam.
-import { PIX_KEY_TYPES, validatePixKey, normalizePixKey } from '../dominio/cobranca/pix';
+import { PIX_KEY_TYPES, validatePixKey, normalizePixKey, maskCpf } from '../dominio/cobranca/pix';
 
-export { PIX_KEY_TYPES, validatePixKey, normalizePixKey };
+export { PIX_KEY_TYPES, validatePixKey, normalizePixKey, maskCpf };
 
 /**
  * Os motoristas associados — a lista de parceiros do dono.
@@ -114,6 +114,25 @@ export async function setCompartilharLocalizacao(uid, compartilha) {
   await updateDoc(doc(db, 'users', uid), {
     compartilhaLocalizacao: compartilha !== false,
   });
+}
+
+/**
+ * O primeiro acesso do RESPONSÁVEL (02/10/2026) — nome e WhatsApp, só o que
+ * veio preenchido, e o carimbo de que o passo dos avisos já foi mostrado.
+ *
+ * `update` do próprio documento: a política de `users` para o próprio dono é
+ * lista de PROIBIDOS, e nenhum destes está nela. ⚠️ `phone` aqui é contato e
+ * não vincula nada — a chave dos irmãos é `phoneChave`, que só o servidor
+ * grava (ver `functions/lib/vincularIrmao.js`).
+ */
+export async function salvarPrimeiroAcessoDoResponsavel(uid, { name, phone, avisosPerguntados } = {}) {
+  if (!uid) throw new Error('Sem uid.');
+  const dados = {};
+  if (String(name || '').trim()) dados.name = String(name).trim();
+  if (String(phone || '').trim()) dados.phone = String(phone).trim();
+  if (avisosPerguntados) dados.avisosPerguntadosEm = serverTimestamp();
+  if (Object.keys(dados).length === 0) return;
+  await updateDoc(doc(db, 'users', uid), dados);
 }
 
 export async function markTutorialDone(uid) {

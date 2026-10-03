@@ -9,10 +9,10 @@ import { inviteUrl } from '../../dominio/identidade/inviteUrl';
 /**
  * Compartilhamento do convite pelo tio.
  *
- * O caminho principal é o LINK, não o código: o responsável abre e a conta
- * se cria na hora, sem digitar TN4582 num teclado de celular. O código
- * segue visível como plano B (ditar por telefone) e o QR serve pro
- * presencial — o tio mostra a tela e o pai aponta a câmera.
+ * O caminho é o LINK, e só ele: o responsável abre e a conta se cria na hora.
+ * O código saiu da tela em 02/10/2026 (decisão do dono: o acesso do
+ * responsável é por link) — ele vive dentro da URL e só ali. O QR serve pro
+ * presencial — o tio mostra a tela e o pai aponta a câmera, e é o mesmo link.
  *
  * Props:
  *   - code: string (ex: 'TN4582')
@@ -30,8 +30,26 @@ import { inviteUrl } from '../../dominio/identidade/inviteUrl';
  * O que não pode ser o mesmo é o TEXTO. Mandar "crie sua conta" para quem já
  * tem conta faz a pessoa achar que perdeu o acesso e ligar para perguntar.
  */
-export default function InviteShare({ code, childName, parentPhone, jaEntrou = false }) {
-  const [copied, setCopied] = useState(null); // 'link' | 'code' | null
+/**
+ * `recolhido`: só o botão do WhatsApp fica à vista, e o link, o QR e o
+ * que vier em `children` (o anexo do contrato antigo, no fim do cadastro)
+ * ficam atrás de "Mais opções". É a tela de criança cadastrada: o motorista
+ * quer mandar o convite e seguir para a próxima, e quatro caixas empilhadas
+ * escondiam o único botão que importa ali.
+ *
+ * `rotulo` troca o texto do botão principal.
+ */
+export default function InviteShare({
+  code,
+  childName,
+  parentPhone,
+  jaEntrou = false,
+  recolhido = false,
+  rotulo,
+  children,
+}) {
+  const [copied, setCopied] = useState(null); // 'link' | null
+  const [maisOpcoes, setMaisOpcoes] = useState(!recolhido);
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [showQr, setShowQr] = useState(false);
 
@@ -61,16 +79,13 @@ export default function InviteShare({ code, childName, parentPhone, jaEntrou = f
   };
 
   /**
-   * A MENSAGEM LEVA O LINK **E** O CÓDIGO ESCRITO.
-   *
-   * Ela só levava o link, e o código ficava escondido dentro dele. Funciona
-   * enquanto a mensagem existir — e ela some: a responsável limpa a conversa,
-   * troca de celular, ou o link vira texto morto num aparelho que abriu o
-   * WhatsApp Web. Aí ela chega no app pra digitar um código que nunca viu
-   * escrito, e o único jeito de recuperar é pedir de novo pro motorista.
-   *
-   * Duas linhas em vez de uma, com uma quebra no meio: a segunda só é lida
-   * por quem precisou dela, e quem tocou no link nem chega lá.
+   * ⚠️ A MENSAGEM LEVA SÓ O LINK (02/10/2026). O acesso do responsável é
+   * pelo link e por nada mais — decisão do dono. Ela levava também o código
+   * escrito, com a instrução "dá pra digitar ele no app, em Criar conta ›
+   * Sou família": esse campo saiu do app em 09/09/2026, então a frase
+   * mandava a pessoa procurar onde não há. Perdeu o link? Pede outro ao
+   * motorista, que reenvia daqui mesmo (a ficha da criança tem o botão).
+   * O código continua existindo DENTRO do link (`/convite/CÓDIGO`).
    */
   const waText = encodeURIComponent(
     jaEntrou
@@ -79,13 +94,7 @@ export default function InviteShare({ code, childName, parentPhone, jaEntrou = f
           `\n\nEle abre direto na página ${firstName ? `do/da ${firstName}` : 'da criança'}. ` +
           `Sua conta continua a mesma — é só entrar.`
       : `Oi! Aqui é do transporte escolar${firstName ? ` do/da ${firstName}` : ''}. ` +
-          `Abra este link pra acompanhar a rota e as mensalidades pelo app: ${url}` +
-          `\n\nSe o link não abrir, o código do convite é ${code} — ` +
-          // A aba "Criar conta" NAO tem campo de codigo: ela e uma
-          // bifurcacao. O campo esta dois toques adiante, atras de "Sou
-          // familia ou responsavel" — e a instrucao mandava a pessoa
-          // procurar onde nao ha.
-          `dá pra digitar ele no app, em "Criar conta" › "Sou família".`
+          `Abra este link pra acompanhar a rota e as mensalidades pelo app: ${url}`
   );
   const waHref = parentPhone
     ? `https://wa.me/${parentPhone.startsWith('55') ? parentPhone : `55${parentPhone}`}?text=${waText}`
@@ -101,8 +110,21 @@ export default function InviteShare({ code, childName, parentPhone, jaEntrou = f
         className="tap w-full h-14 rounded-xl bg-[#25D366] text-white font-semibold inline-flex items-center justify-center gap-2 shadow-focus"
       >
         <WhatsAppIcon size={20} colored={false} />
-        {jaEntrou ? 'Mandar o link no WhatsApp' : 'Mandar convite no WhatsApp'}
+        {rotulo || (jaEntrou ? 'Mandar o link no WhatsApp' : 'Mandar convite no WhatsApp')}
       </a>
+
+      {!maisOpcoes && (
+        <button
+          type="button"
+          onClick={() => setMaisOpcoes(true)}
+          className="tap w-full py-1.5 text-xs font-semibold text-textMuted hover:text-text"
+        >
+          Mais opções: copiar o link, QR{children ? ', contrato antigo' : ''}
+        </button>
+      )}
+
+      {maisOpcoes && (
+      <>
 
       <div className="bg-card border border-border rounded-xl p-3 space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted flex items-center gap-1.5">
@@ -120,26 +142,6 @@ export default function InviteShare({ code, childName, parentPhone, jaEntrou = f
         >
           {copied === 'link' ? 'Link copiado!' : 'Copiar link'}
         </Button>
-      </div>
-
-      {/* Plano B: ditar o código */}
-      <div className="bg-sunken border border-border rounded-xl p-3 space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
-          se precisar ditar por telefone
-        </p>
-        <div className="flex items-center gap-2">
-          <p className="text-2xl font-extrabold tracking-[0.2em] text-primary flex-1">
-            {code}
-          </p>
-          <button
-            type="button"
-            onClick={() => copy(code, 'code')}
-            aria-label="Copiar código"
-            className="tap w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-textMuted"
-          >
-            {copied === 'code' ? <Check size={18} /> : <Copy size={18} />}
-          </button>
-        </div>
       </div>
 
       {/* Presencial */}
@@ -162,6 +164,9 @@ export default function InviteShare({ code, childName, parentPhone, jaEntrou = f
             Peça pro responsável abrir a câmera do celular e apontar aqui.
           </p>
         </div>
+      )}
+      {children}
+      </>
       )}
     </div>
   );

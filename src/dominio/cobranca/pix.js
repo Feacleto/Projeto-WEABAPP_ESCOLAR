@@ -25,8 +25,12 @@
 import { unmaskPhone, isValidEmail } from '../../compartilhado/masks.js';
 
 /** Os tipos que o app oferece no cadastro. */
+// ⚠️ O CPF ENTROU NO CADASTRO EM 02/10/2026. Ele já era aceito por dentro
+// (validação e QR, por compatibilidade com cadastro feito no console), mas não
+// tinha botão — e CPF é a chave de muito motorista autônomo.
 export const PIX_KEY_TYPES = {
   phone: { label: 'Celular', placeholder: '(11) 99999-9999' },
+  cpf: { label: 'CPF', placeholder: '000.000.000-00' },
   email: { label: 'Email', placeholder: 'tio@email.com' },
   random: {
     label: 'Chave aleatória',
@@ -103,4 +107,13 @@ export function normalizePixKey(type, value) {
   }
   if (type === 'email') return raw.toLowerCase();
   return raw; // random — vai como está
+}
+
+/** CPF com a pontuação, enquanto ele digita: `12345678901` → `123.456.789-01`. */
+export function maskCpf(value) {
+  const d = String(value || '').replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }

@@ -1,142 +1,39 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Ticket, Check, Link2 } from 'lucide-react';
+import { ArrowLeft, Link2 } from 'lucide-react';
 import AppSheet from '../../components/common/AppSheet';
-import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
-import Input from '../../components/common/Input';
-import { useAuth } from '../../hooks/useAuth';
-import { redeemInvite } from '../../services/authService';
-import { lookupInvite, normalizeInviteCode } from '../../services/inviteCodeService';
-import { isValidInviteCodeFormat } from '../../dominio/identidade/generateInviteCode';
 
 /**
  * Adicionar outro filho a uma conta que já existe — /pai/adicionar-filho
  *
- * Esta operação simplesmente não existia: `signupWithInvite` sempre criava
- * conta nova, então a mãe de dois irmãos precisava de dois emails e trocava
- * de login pra ver o outro filho.
+ * ⚠️ O CAMPO DE CÓDIGO SAIU (02/10/2026). O acesso do responsável é SÓ pelo
+ * link — decisão do dono. Esta tela pedia o código de 8 letras do segundo
+ * filho, e quem tinha o código tinha o link: os dois viajam na mesma mensagem.
+ * O link já faz tudo sozinho — aberto com a conta dela, `Invite.jsx` oferece
+ * "vincular à conta" e o filho novo aparece aqui.
  *
- * Dois passos de propósito: primeiro confirmamos QUEM é a criança, depois
- * ele confirma. Vincular direto sem mostrar o nome deixaria o responsável
- * sem saber o que aconteceu se digitasse um código errado.
+ * Então a tela virou uma explicação de um parágrafo. Ela continua existindo
+ * porque o seletor de filhos e o perfil a abrem: tirar o botão "adicionar
+ * filho" deixaria sem resposta a pergunta "e o meu outro filho?".
  */
 function AddChildBody({ onDone }) {
-  const navigate = useNavigate();
-  const { refreshProfile, setActiveChildId } = useAuth();
-
-  const [code, setCode] = useState('');
-  const [preview, setPreview] = useState(null);
-  const [checking, setChecking] = useState(false);
-  const [linking, setLinking] = useState(false);
-  const [error, setError] = useState(null);
-
-  const onCheck = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setChecking(true);
-    try {
-      const data = await lookupInvite(code);
-      setPreview(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const onLink = async () => {
-    setLinking(true);
-    try {
-      const res = await redeemInvite({ inviteCode: normalizeInviteCode(code) });
-      // Já deixa o filho novo em foco — foi o que ele acabou de pedir.
-      if (res?.childId) setActiveChildId(res.childId);
-      await refreshProfile();
-      toast.success(`${res?.childFirstName || 'Criança'} adicionado à sua conta!`);
-      // A página volta pro painel; a folha só se fecha — o painel já está
-      // atrás dela, e ele acabou de ser atualizado pelo refreshProfile.
-      if (onDone) onDone();
-      else navigate('/pai', { replace: true });
-    } catch (err) {
-      toast.error(err.message);
-      setLinking(false);
-    }
-  };
-
   return (
-    <div className="flex flex-col">
-
-      <div className="bg-sunken border border-border rounded-xl p-4 mb-5 flex gap-3">
-        <Link2 size={18} className="text-textMuted shrink-0 mt-0.5" />
-        <p className="text-xs text-textMuted leading-relaxed">
-          Se você tem o <span className="text-text font-semibold">link</span>,
-          basta abri-lo — ele já reconhece sua conta e adiciona o filho. Este
-          campo é pra quando você só tem o código.
+    <div className="space-y-4">
+      <div className="bg-sunken border border-border rounded-xl p-4 flex gap-3">
+        <Link2 size={18} className="text-primary shrink-0 mt-0.5" />
+        <p className="text-sm text-text leading-relaxed">
+          Abra o <strong>link</strong> que o motorista mandou para o seu outro
+          filho, com esta mesma conta. Ele aparece aqui na hora, e você troca
+          entre os dois na tela de início.
         </p>
       </div>
-
-      {!preview ? (
-        <form onSubmit={onCheck} className="space-y-4">
-          <Input
-            label="Código do convite"
-            placeholder="TN2K9F4B"
-            icon={Ticket}
-            value={code}
-            onChange={(e) => {
-              setCode(normalizeInviteCode(e.target.value).slice(0, 8));
-              setError(null);
-            }}
-            autoCapitalize="characters"
-            maxLength={8}
-            hint="Começa com TN. Com o link do convite, não precisa digitar nada."
-            error={error}
-            required
-            autoFocus
-          />
-          <Button
-            type="submit"
-            loading={checking}
-            disabled={!isValidInviteCodeFormat(code)}
-          >
-            Procurar
-          </Button>
-        </form>
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-primarySoft border border-primaryBorder rounded-2xl p-4 space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-              encontramos
-            </p>
-            <p className="text-xl font-bold text-text">
-              {preview.childFirstName}
-            </p>
-            <p className="text-xs text-primary/75">
-              {preview.companyName ||
-                (preview.driverFirstName
-                  ? `Perua do Tio ${preview.driverFirstName}`
-                  : 'Perua parceira')}
-            </p>
-          </div>
-
-          <Button icon={Check} loading={linking} onClick={onLink}>
-            Sim, é meu filho — adicionar
-          </Button>
-          <button
-            type="button"
-            onClick={() => {
-              setPreview(null);
-              setCode('');
-            }}
-            className="w-full text-sm text-textMuted py-2"
-          >
-            Não é — tentar outro código
-          </button>
-
-          <p className="text-xs text-textMuted text-center">
-            Depois de adicionar, você troca entre as crianças na tela de início.
-          </p>
-        </div>
-      )}
+      <p className="text-xs text-textMuted leading-relaxed">
+        Não achou o link? Peça ao motorista para mandar de novo. Ele reenvia
+        pela ficha da criança.
+      </p>
+      <Button variant="secondary" onClick={onDone}>
+        Entendi
+      </Button>
     </div>
   );
 }
@@ -158,7 +55,7 @@ export default function AddChild() {
       <div className="mb-5 space-y-1">
         <h1 className="text-2xl font-bold text-text">Adicionar outro filho</h1>
         <p className="text-sm text-textMuted">
-          Use o convite que o motorista mandou pra segunda criança.
+          É pelo link que o motorista mandou.
         </p>
       </div>
 
@@ -171,9 +68,8 @@ export default function AddChild() {
  * CASCA 2 — a folha. É por onde o seletor de filhos e o perfil abrem.
  *
  * Nos dois casos o responsável está no meio de outra coisa: trocando de
- * filho, ou conferindo os dados dele. Digitar um código de convite não
- * justifica trocar de tela — ainda mais numa tela que, se ele desistir,
- * exige achar o caminho de volta.
+ * filho, ou conferindo os dados dele. Uma explicação de um parágrafo não
+ * justifica trocar de tela.
  */
 export function AddChildSheet({ open, onClose }) {
   return (
@@ -181,8 +77,8 @@ export function AddChildSheet({ open, onClose }) {
       open={open}
       onClose={onClose}
       title="Adicionar outro filho"
-      subtitle="Use o convite que o motorista mandou pra segunda criança."
-      icon={Ticket}
+      subtitle="É pelo link que o motorista mandou."
+      icon={Link2}
     >
       {open && <AddChildBody onDone={onClose} />}
     </AppSheet>

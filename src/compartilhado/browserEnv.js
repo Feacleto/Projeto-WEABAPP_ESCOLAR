@@ -236,3 +236,18 @@ export function openForAuth() {
   url.searchParams.set('auth', '1');
   return openInExternalBrowser(url.toString());
 }
+
+/**
+ * A permissão de notificação do navegador: 'granted' | 'denied' | 'default'
+ * | 'unsupported'.
+ *
+ * Mora aqui, e não só no `pushService`, porque quem a lê no portão do
+ * primeiro acesso do responsável (`App.jsx`) está no bundle de entrada — e
+ * importar o `pushService` ali levaria o Firebase Messaging junto.
+ */
+export function permissaoDeAvisos() {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return 'unsupported';
+  }
+  return window.Notification.permission;
+}

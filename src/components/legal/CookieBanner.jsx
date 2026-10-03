@@ -24,11 +24,22 @@ export default function CookieBanner() {
 
   useEffect(() => {
     // Pequeno delay pra não competir com toasts/loading na primeira visita
+    const mostrar = () => setVisible(!getCookieConsent());
+    // ⚠️ O TEATRO DO LOGIN É A PRIMEIRA VISITA TAMBÉM — e o banner cobria a
+    // metade de baixo da apresentação inteira. Enquanto ele roda, o banner
+    // espera o fim (ver `useTeatroDoLogin`).
+    const aoFimDoTeatro = () => mostrar();
     const t = setTimeout(() => {
-      const existing = getCookieConsent();
-      setVisible(!existing);
+      if (document.documentElement.dataset.teatro === 'rodando') {
+        window.addEventListener('alobuzinou:teatro-fim', aoFimDoTeatro, { once: true });
+      } else {
+        mostrar();
+      }
     }, 500);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('alobuzinou:teatro-fim', aoFimDoTeatro);
+    };
   }, []);
 
   const persist = (consent) => {

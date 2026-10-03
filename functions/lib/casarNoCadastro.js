@@ -48,6 +48,7 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions/v2');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
+const { moduloAtivo } = require('./cobrancaLigada');
 const {
   ESTADO,
   chaveDoTelefone,
@@ -101,7 +102,13 @@ function makeCasarNoCadastro(db) {
         });
 
         const nome = String(escolhida.nome || '').trim().split(/\s+/)[0];
-        lote.set(db.collection('notifications').doc(), {
+        // ⚠️ O VÍNCULO É GRAVADO SEMPRE; O AVISO, SÓ COM O MÓDULO DE INDICAÇÃO
+        // LIGADO (02/10/2026). O vínculo não desconta nada sozinho — o desconto
+        // só nasce quando o indicado paga, e com a cobrança desligada ninguém
+        // paga. Pular o vínculo perderia para sempre quem foi indicado durante a
+        // pausa (este gatilho só roda na criação da conta). Já o aviso fala de
+        // desconto, e desconto é assunto do módulo. Ver lib/cobrancaLigada.js.
+        if (await moduloAtivo(db, 'indicacao')) lote.set(db.collection('notifications').doc(), {
           userId: escolhida.indicadorUid,
           type: 'indicacao_cadastrou',
           // O título diz o que aconteceu; o corpo diz o que FALTA. "Cadastrou"

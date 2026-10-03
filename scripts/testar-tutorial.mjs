@@ -1,37 +1,33 @@
 /**
- * O TOUR GUIADO — as frases que ele cita e os toques que ele pede.
+ * O TOUR GUIADO — curto, com a tela à vista, e sem toque que custe algo.
  *
- * ── POR QUE ESTE ARQUIVO EXISTE
- * O tour do motorista foi reescrito pra falar com as MESMAS FRASES da landing.
- * O motorista chega tendo lido *"a rota do dia pronta, na ordem dos horários"*
- * e *"sem caderno, sem planilha e sem cobrar de boca"*; cada passo agora cita
- * a frase que ele fecha e mostra onde ela virou tela.
+ * ── O TOUR DO MOTORISTA SÃO QUATRO PARADAS (02/10/2026)
+ * Eram treze, citando frases da landing, e metade apontava para botões que
+ * quem acabou de criar a conta não tem. O dono pediu simples, curto e
+ * memorável: quatro balões, título curto e uma frase, a tela inteira à vista
+ * e o botão da vez pulsando. O bloco 1 trava o tamanho e o tom; o bloco 4
+ * trava que a tela não volta a escurecer.
  *
- * Isso cria uma dependência entre dois arquivos que ninguém edita junto: a
- * landing é HTML estático, sem build, e o tour é JSX. Trocar uma linha do
- * marketing faz o app citar algo que a pessoa nunca leu — e ela não tem como
- * perceber que a citação envelheceu. O bloco 1 é essa costura.
+ * A COSTURA COM A LANDING SAIU junto com a `cita`. O que ficou dela é a
+ * lição: quem confere frase confere a CONTAGEM antes — lista vazia aprova
+ * qualquer "toda frase da lista…".
  *
- * ── ⚠️ E A SEGUNDA INVARIANTE É A QUE PROTEGE GENTE, NÃO TEXTO
- * `interact: true` faz o tour esperar o toque no elemento DE VERDADE — é o
- * que ensina o gesto em vez de descrever o gesto. Só que quatro botões deste
- * app fazem coisas no mundo:
+ * ── ⚠️ A SEGUNDA INVARIANTE É A QUE PROTEGE GENTE, NÃO TEXTO
+ * `interact: true` faz o tour esperar o toque no elemento DE VERDADE. Quatro
+ * botões deste app fazem coisas no mundo:
  *
  *   `start-route`       liga o GPS, publica a perua pra todas as famílias e
- *                       ESCREVE `trialInicio`: o toque do tutorial gastaria
- *                       o primeiro dia dos três meses de teste
+ *                       ESCREVE `trialInicio`
  *   `avancar-status`    muda o estado da criança e avisa a família
  *   `buzinar`           faz o celular de um responsável tocar
  *   `lista-pagamentos`  dá baixa em dinheiro que talvez não tenha entrado
  *
- * Nenhum deles pode ser interativo. O erro é fácil de cometer e invisível na
- * revisão — `interact: true` é uma linha, e a consequência aparece no
- * primeiro acesso de um desconhecido, não no teste manual de quem escreveu.
+ * Nenhum deles pode ser interativo — e o tour do motorista não tem passo
+ * interativo nenhum: ele avança só por "Próximo".
  *
- * ── SONDA POSITIVA (bloco 5)
+ * ── SONDA POSITIVA (bloco 6)
  * Os conferidores rodam também contra um roteiro FALSO, feito pra violar as
- * duas regras. Sem isso, um conferidor que não confere nada passa: foi assim
- * que um teste deste projeto já aprovou o comentário em vez do código.
+ * regras. Sem isso, um conferidor que não confere nada passa.
  *
  * COMO RODAR
  *   node scripts/testar-tutorial.mjs      (ou: npm run testar:tutorial)
@@ -80,8 +76,6 @@ const ler = (rel) =>
 const FONTE_PASSOS = ler('src/components/tutorial/interactiveSteps.js');
 const FONTE_BALAO = ler('src/components/tutorial/InteractiveTour.jsx');
 const APP = ler('src/App.jsx');
-const LANDING = ler('landing/index.html');
-
 /** Um campo de string do objeto do passo, aceitando quebra de linha depois do `:`. */
 function campo(pedaco, nome) {
   const m = pedaco.match(new RegExp(`${nome}:\\s*\\n?\\s*'((?:[^'\\\\]|\\\\.)*)'`));
@@ -98,39 +92,13 @@ function paradasDe(fonte, nomeDoArray) {
     .map((pedaco) => ({
       path: campo(pedaco, 'path'),
       anchor: campo(pedaco, 'anchor'),
+      prefer: campo(pedaco, 'prefer'),
       cita: campo(pedaco, 'cita'),
       title: campo(pedaco, 'title'),
       body: campo(pedaco, 'body'),
       interact: /interact:\s*true/.test(pedaco),
     }));
 }
-
-/**
- * O texto VISÍVEL da landing, sem tags.
- *
- * Tag some virando ESPAÇO, não vazio: `<b>não aparece</b> pro responsável`
- * colado daria "aparecepro" e a citação certa falharia. Depois o espaço é
- * colapsado, o que também torna a comparação imune a onde a linha quebra no
- * HTML — e ela quebra no meio de frase em vários lugares.
- */
-function textoDaLanding(html) {
-  return html
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&mdash;/g, '—')
-    .replace(/&ndash;/g, '–')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&ldquo;/g, '“')
-    .replace(/&rdquo;/g, '”')
-    .replace(/&middot;/g, '·')
-    .replace(/&hellip;/g, '…')
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
-}
-const TEXTO_LANDING = textoDaLanding(LANDING);
-const naLanding = (frase) =>
-  TEXTO_LANDING.includes(frase.replace(/\s+/g, ' ').toLowerCase());
 
 /**
  * Toda âncora que o app oferece — e ela é escrita de TRÊS jeitos.
@@ -176,39 +144,43 @@ const TIO = paradasDe(FONTE_PASSOS, 'ADMIN_TOUR');
 const PAI = paradasDe(FONTE_PASSOS, 'PARENT_TOUR');
 
 // ═══════════════════════════════════════════════════════════════════════
-bloco('1 · AS FRASES SÃO AS DO SITE');
-// A landing é o primeiro contato. Se o tour reescreve a promessa com outras
-// palavras, o app parece um segundo produto — e a promessa, propaganda.
-
-/* O NÚMERO É CONFERIDO ANTES DE QUALQUER FRASE. Um leitor quebrado devolve
-   lista vazia, e "toda frase da lista existe na landing" é VERDADE numa lista
-   vazia — o teste passaria sem conferir nada. Já aconteceu aqui, na primeira
-   execução deste arquivo (CRLF). São 13: a saudação abre, e as outras doze
-   fecham uma promessa cada. */
-checar('o tour do motorista tem as treze paradas', 13, TIO.length);
-checar('todo passo do motorista cita a landing', 0, TIO.filter((p) => !p.cita).length);
-
+bloco('1 · O DO MOTORISTA É CURTO');
+/* A CONTAGEM VEM ANTES DE QUALQUER FRASE. Um leitor quebrado devolve lista
+   vazia, e "todo passo é curto" é VERDADE numa lista vazia. Já aconteceu
+   aqui, com CRLF. */
+checar('o tour do motorista tem quatro paradas', 4, TIO.length);
+checar(
+  'nenhum passo cita a landing (a tira saiu)',
+  [],
+  TIO.filter((p) => p.cita).map((p) => p.title)
+);
+/* Uma frase por balão. 60 caracteres cabem em duas linhas do balão num
+   celular estreito — mais que isso é parágrafo, e parágrafo ninguém lê de
+   pé no ponto. */
 TIO.forEach((p, i) => {
-  if (!p.cita) return;
+  checar(`passo ${i + 1} tem título`, true, Boolean(p.title));
   checar(
-    `passo ${i + 1} (${p.title}) cita frase que existe na landing`,
+    `passo ${i + 1} (${p.title}) diz uma frase só`,
     true,
-    naLanding(p.cita)
+    Boolean(p.body) && p.body.length <= 60
   );
 });
+checar('o balão não desenha mais citação', false, FONTE_BALAO.includes('step.cita'));
 
-// A tira só aparece se o balão souber desenhá-la, e o passo sem `cita` (o
-// tour do responsável, hoje) não pode ganhar uma tira vazia.
-checar('o balão desenha a citação', true, FONTE_BALAO.includes('step.cita'));
+/* O DO RESPONSÁVEL SEGUE O MESMO MOLDE (02/10/2026) — o dono pediu os dois
+   primeiros acessos parecidos: quatro paradas, uma frase, e só "Próximo". */
+checar('o tour do responsável tem quatro paradas', 4, PAI.length);
+PAI.forEach((p, i) => {
+  checar(
+    `responsável, passo ${i + 1} (${p.title}) diz uma frase só`,
+    true,
+    Boolean(p.body) && p.body.length <= 60
+  );
+});
 checar(
-  'e só quando ela existe',
-  true,
-  /\{step\.cita && \(/.test(FONTE_BALAO)
-);
-checar(
-  'a tira diz de onde a frase veio',
-  true,
-  FONTE_BALAO.includes('no site, você leu')
+  'o tour do responsável também avança só por Próximo',
+  [],
+  PAI.filter((p) => p.interact).map((p) => p.title)
 );
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -217,8 +189,10 @@ bloco('2 · TODA ÂNCORA APONTA PRA UM ELEMENTO QUE EXISTE');
 // o passo virou um balão no rodapé descrevendo um elemento que ninguém vê.
 
 [...TIO, ...PAI].forEach((p) => {
-  if (!p.anchor) return;
-  checar(`data-tour="${p.anchor}" existe em src/`, true, ANCORAS.has(p.anchor));
+  for (const a of [p.anchor, p.prefer]) {
+    if (!a) continue;
+    checar(`data-tour="${a}" existe em src/`, true, ANCORAS.has(a));
+  }
 });
 
 checar(
@@ -236,27 +210,33 @@ function toquesProibidos(paradas) {
     .map((p) => p.anchor);
 }
 
-checar('o tour do motorista não pede nenhum toque com efeito', [], toquesProibidos(TIO));
-checar('nem o tour do responsável', [], toquesProibidos(PAI));
-
-// O outro lado da mesma regra: os quatro continuam ILUMINADOS. Tirar o
-// destaque "pra não dar ideia" devolveria o tour ao passo que descreve um
-// botão sem mostrar qual é — o problema que o holofote resolve.
-PROIBIDAS_DE_TOCAR.forEach((a) => {
-  checar(`"${a}" continua sendo iluminado por algum passo`, true,
-    [...TIO, ...PAI].some((p) => p.anchor === a) || !ANCORAS.has(a));
-});
-
-// A pedagogia inteira depende de haver toque em algum lugar: o tour antigo
-// tinha UM passo interativo em nove, e oito de leia-e-toque-em-Próximo.
+checar('o tour do responsável não pede toque com efeito', [], toquesProibidos(PAI));
+/* O do motorista é mais estrito: ele não pede toque NENHUM. O app fica
+   travado por baixo e só "Próximo" anda — é o que deixa o tour mostrar
+   "Cadastrar a primeira criança" sem que um toque leve a pessoa embora no passo 1. */
 checar(
-  'o motorista toca em pelo menos três lugares',
+  'o tour do motorista avança só por Próximo',
+  [],
+  TIO.filter((p) => p.interact).map((p) => p.title)
+);
+checar(
+  'e o app por baixo não recebe toque fora do passo interativo',
   true,
-  TIO.filter((p) => p.interact).length >= 3
+  /!step\.interact && <div className="absolute inset-0 pointer-events-auto"/.test(FONTE_BALAO)
 );
 
 // ═══════════════════════════════════════════════════════════════════════
-bloco('4 · CADA PASSO TEM DESTINO');
+bloco('4 · A TELA FICA À VISTA');
+/* Era uma sombra de 62% em volta do recorte. O dono pediu a tela inteira
+   visível e só o botão pulsando. Quem tentar devolver o escurecido esbarra
+   aqui — o idioma dele é a sombra gigante. */
+checar('nenhuma sombra gigante escurece a tela', false, /9999px/.test(FONTE_BALAO));
+checar('nem fundo escuro cobrindo tudo', false, /background:\s*DIM/.test(FONTE_BALAO));
+checar('o anel pulsa', true, FONTE_BALAO.includes('animate-tour-pulso'));
+checar('a perua anda na estradinha', true, FONTE_BALAO.includes('paradaEm(stepIndex)'));
+
+// ═══════════════════════════════════════════════════════════════════════
+bloco('5 · CADA PASSO TEM DESTINO');
 
 [...TIO, ...PAI].forEach((p, i) => {
   checar(`passo ${i + 1} declara um path`, true, Boolean(p.path));
@@ -272,33 +252,35 @@ destinos.forEach((d) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-bloco('5 · SONDA POSITIVA — os conferidores reprovam o que deve reprovar');
-// Sem este bloco, um conferidor quebrado passa a bateria em silêncio.
+bloco('6 · SONDA POSITIVA — os conferidores reprovam o que deve reprovar');
 
 const ROTEIRO_FALSO = `export const ADMIN_TOUR = [
   {
     path: '/lugar-que-nao-existe',
     anchor: 'start-route',
+    prefer: 'ancora-que-nao-existe',
     interact: true,
-    cita: 'esta frase nunca foi escrita na landing',
     title: 'passo ruim',
-    body: 'y',
+    body: 'Um parágrafo inteiro que explica demais e que ninguém vai ler de pé no ponto.',
   },
 ];`;
 const FALSAS = paradasDe(ROTEIRO_FALSO, 'ADMIN_TOUR');
 
 checar('o leitor entende o roteiro falso', 1, FALSAS.length);
 checar('e enxerga o interact dele', true, FALSAS[0].interact);
-checar('a citação inventada é reprovada', false, naLanding(FALSAS[0].cita));
 checar('o toque proibido é pego', ['start-route'], toquesProibidos(FALSAS));
+checar('a âncora preferida órfã é pega', false, ANCORAS.has(FALSAS[0].prefer));
+checar('o texto longo é pego', true, FALSAS[0].body.length > 60);
 checar(
   'o destino inventado é pego',
   false,
   APP.includes(`"${FALSAS[0].path}"`)
 );
-// E o contrário: uma frase que ESTÁ na landing tem que passar, senão o
-// conferidor do bloco 1 estaria só reprovando tudo.
-checar('e uma frase real da landing passa', true, naLanding('A rota roda e todo mundo vê'));
+checar(
+  'o escurecido antigo seria pego',
+  true,
+  /9999px/.test('boxShadow: `0 0 0 3px #fff, 0 0 0 9999px ${DIM}`')
+);
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

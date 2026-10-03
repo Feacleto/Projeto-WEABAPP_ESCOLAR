@@ -1,6 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bus, LogOut, Ticket } from 'lucide-react';
+import toast from 'react-hot-toast';
+import Spinner from '../components/common/Spinner';
+import { ligarSessaoComoMotorista } from '../services/associadoService';
 import Logo from '../components/common/Logo';
 import FalhaAoLerConta from '../components/common/FalhaAoLerConta';
 import { useAuth } from '../hooks/useAuth';
@@ -38,8 +41,27 @@ import { painelDe } from '../dominio/identidade/papeis';
  * abandonar esta tela deixa um registro de autenticação vazio, e nada mais.
  */
 export default function Comecar() {
-  const { user, profile, loading, logout, perfilIndisponivel } = useAuth();
+  const { user, profile, loading, logout, perfilIndisponivel, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const [criando, setCriando] = useState(false);
+
+  // "SOU MOTORISTA" CRIA A CONTA AQUI (02/10/2026). Antes era um link para
+  // `/quero-fazer-parte`, que pedia de novo o e-mail que o Google acabou de
+  // confirmar e uma senha que o serviço descartava. Quem chega nesta tela já
+  // tem sessão — falta só o documento. O resto (nome, WhatsApp, marca,
+  // cidade) é o card do primeiro acesso, com o app por baixo.
+  const souMotorista = async () => {
+    setCriando(true);
+    try {
+      await ligarSessaoComoMotorista();
+      await refreshProfile();
+      navigate('/tio', { replace: true });
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra criar sua conta. Tente de novo.');
+      setCriando(false);
+    }
+  };
 
   // Se o perfil aparecer, esta tela não é mais o lugar dela — a pessoa
   // escolheu uma saída e voltou.
@@ -99,12 +121,18 @@ export default function Comecar() {
             </span>
           </Link>
 
-          <Link
-            to="/quero-fazer-parte"
-            className="tap flex items-start gap-3 rounded-xl border-2 border-border bg-card p-4 hover:border-primary"
+          <button
+            type="button"
+            onClick={souMotorista}
+            disabled={criando}
+            className="tap flex w-full items-start gap-3 rounded-xl border-2 border-border bg-card p-4 text-left hover:border-primary disabled:opacity-60"
           >
             <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primaryChip">
-              <Bus size={19} className="text-primary" />
+              {criando ? (
+                <Spinner size={19} className="text-primary" />
+              ) : (
+                <Bus size={19} className="text-primary" />
+              )}
             </span>
             <span className="min-w-0">
               <span className="block font-semibold text-text">
@@ -114,7 +142,7 @@ export default function Comecar() {
                 Cadastre suas crianças, rode a rota e cobre a mensalidade.
               </span>
             </span>
-          </Link>
+          </button>
         </div>
 
         <p className="text-center text-xs text-textMuted">

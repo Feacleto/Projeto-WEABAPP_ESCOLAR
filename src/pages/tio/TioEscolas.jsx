@@ -1,3 +1,4 @@
+import BuscaDeRua from '../../components/endereco/BuscaDeRua';
 import { useMemo, useState } from 'react';
 import {
   School,
@@ -141,6 +142,21 @@ export default function TioEscolas() {
     } finally {
       setBuscandoCep(false);
     }
+  };
+
+  // A rua escolhida pelo nome tem a mesma forma da resposta do CEP.
+  const aplicarRua = (r) => {
+    const partes = { cep: r.cep, logradouro: r.logradouro, bairro: r.bairro, localidade: r.localidade, uf: r.uf };
+    setCepConsultado(unmaskCep(r.cep));
+    setEditando((e) => ({
+      ...e,
+      cep: maskCep(r.cep),
+      cepPartes: partes,
+      endereco: montarEndereco({ ...partes, numero: e?.numero || '', complemento: e?.complemento || '' }),
+      lat: null,
+      lng: null,
+    }));
+    setCepState('ok');
   };
 
   // Consulta sozinha no oitavo dígito: CEP tem tamanho fixo, então dá pra saber
@@ -477,15 +493,18 @@ export default function TioEscolas() {
 
               {/* O CEP É ATALHO, NUNCA REQUISITO — quem sabe a escola de cabeça
                 * digita o endereço no campo de baixo, como antes. */}
+              {/* PELO NOME DA RUA (02/10/2026) — o motorista quase nunca sabe o
+                * CEP da escola; a lista traz o CEP junto. */}
+              <BuscaDeRua onEscolher={aplicarRua} />
               <Input
-                label="CEP"
+                label="Ou o CEP"
                 icon={MapPin}
                 placeholder="00000-000"
                 value={editando.cep || ''}
                 onChange={(ev) => onCepChange(ev.target.value)}
                 inputMode="numeric"
                 maxLength={9}
-                hint="Opcional — preenche a rua sozinho."
+                hint="Se souber."
               />
 
               {buscandoCep && (

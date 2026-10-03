@@ -99,6 +99,13 @@ export async function addChild(data) {
     lng: toCoord(data.lng),
     // true = endereço salvo sem coordenada; o tio resolve depois.
     geoPending: toCoord(data.lat) == null || toCoord(data.lng) == null,
+    // "NÃO SEI O NÚMERO AGORA" (02/10/2026): a casa foi cadastrada pela rua,
+    // e a FAMÍLIA confirma o número no primeiro acesso dela. As partes da
+    // rua vão junto porque é delas que o endereço é remontado com o número
+    // — o texto de `address` não se parte de volta com segurança.
+    ...(data.numeroPendente
+      ? { numeroPendente: true, enderecoPartes: data.enderecoPartes || null }
+      : {}),
     // O vínculo com a entidade escola. O nome e as coordenadas continuam
     // copiados aqui de propósito: é o que a rota usa e o que o pai vê, então
     // uma escola apagada por engano não apaga o endereço de entrega de

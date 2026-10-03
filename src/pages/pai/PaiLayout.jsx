@@ -1,3 +1,5 @@
+import { passosDoResponsavel } from '../../dominio/identidade/cadastroDoResponsavel.js';
+import { permissaoDeAvisos } from '../../compartilhado/browserEnv';
 import { useEffect, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, DollarSign } from 'lucide-react';
@@ -54,12 +56,15 @@ export default function PaiLayout() {
   // que desliga.
   useEffect(() => {
     if (autoOpened.current) return;
+    // Enquanto o card do primeiro acesso estiver por cima, o tour espera —
+    // mesma regra do motorista (`TioLayout`).
+    if (passosDoResponsavel({ profile, child, permissao: permissaoDeAvisos() }).length) return;
     if (profile && profile.tutorialDone !== true) {
       autoOpened.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTour('first');
     }
-  }, [profile?.tutorialDone, profile]);
+  }, [profile?.tutorialDone, profile, child]);
 
   // "Ver tutorial de novo" no perfil manda pra cá com esse state: o tour
   // precisa da tela inicial embaixo pra ter o que iluminar.

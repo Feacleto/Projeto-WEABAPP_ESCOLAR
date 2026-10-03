@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Phone, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ import { inscreverAssociado } from '../services/associadoService';
 import { useAuth } from '../hooks/useAuth';
 import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../compartilhado/masks';
 import { resolverOrigem } from '../dominio/identidade/origem.js';
+import { painelDe } from '../dominio/identidade/papeis';
 import { SENHA_MINIMA } from '../dominio/identidade/authErrors';
 
 /**
@@ -36,6 +37,9 @@ export default function DriverSignup() {
   // ela pediu — ela queria trocar de porta, não sair. Quem chega por link
   // direto ou pela landing continua saindo pro site, que é de onde veio.
   const veioDaEscolha = location.state?.de === 'escolha';
+  // Quem veio do selo "Criar conta grátis" do cartão do motorista volta pro
+  // login, onde estava — não pra bifurcação, que ele nunca viu.
+  const veioDoLogin = location.state?.de === 'login';
 
   // DE ONDE ELE VEIO — lido da URL, nunca perguntado.
   //
@@ -73,9 +77,23 @@ export default function DriverSignup() {
     email: '',
     senha: '',
   });
-  const { refreshProfile } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // QUEM JÁ TEM SESSÃO NÃO PRECISA DESTE FORMULÁRIO (02/10/2026). Ele pede
+  // e-mail e senha para CRIAR a sessão; quem entrou com o Google e chegou
+  // aqui por um link antigo já tem uma, e digitaria uma senha que ninguém
+  // usa. Sem documento, volta para a escolha do `/comecar`, que cria a conta
+  // num toque; com documento, vai para o painel dele.
+  //
+  // ⚠️ `submitting` segura o desvio durante o PRÓPRIO envio: a sessão nasce
+  // antes do documento, e sem isso o efeito mandaria para `/comecar` no meio
+  // do cadastro que esta tela está fazendo.
+  useEffect(() => {
+    if (loading || !user || submitting) return;
+    navigate(profile?.role ? painelDe(profile) : '/comecar', { replace: true });
+  }, [loading, user, profile, submitting, navigate]);
 
   const set = (key) => (e) =>
     setForm((p) => ({ ...p, [key]: e.target.value }));
@@ -189,6 +207,13 @@ export default function DriverSignup() {
               className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
             >
               <ArrowLeft size={16} /> Voltar para a escolha
+            </Link>
+          ) : veioDoLogin ? (
+            <Link
+              to="/login"
+              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+            >
+              <ArrowLeft size={16} /> Voltar
             </Link>
           ) : (
             <a

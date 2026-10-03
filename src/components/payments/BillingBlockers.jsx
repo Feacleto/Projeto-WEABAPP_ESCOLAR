@@ -4,6 +4,7 @@ import { TriangleAlert, Key, RefreshCw, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { runBillingNow } from '../../services/paymentsService';
 import { mensagemDeErro } from '../../services/callableError';
+import { usePerguntaDaChavePix } from './PerguntaDaChavePix';
 
 /**
  * O que está impedindo o dinheiro de entrar.
@@ -49,6 +50,7 @@ export default function BillingBlockers({
 }) {
   const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
+  const { perguntarPix, folhaDoPix } = usePerguntaDaChavePix();
 
   const { noFee, notBilled } = useMemo(() => {
     const active = (children || []).filter((c) => c.active !== false);
@@ -67,7 +69,17 @@ export default function BillingBlockers({
 
   const missingPix = !admin?.pixKey;
 
-  const onGenerate = async () => {
+  // Gerar a cobrança sem chave manda para as famílias uma conta que elas não
+  // têm como pagar pelo app — a pergunta vem antes. Ver `PerguntaDaChavePix`.
+  const onGenerate = () =>
+    perguntarPix({
+      motivo: 'gerar',
+      texto:
+        'As cobranças do mês vão chegar às famílias sem a sua chave PIX — elas não vão ter como pagar pelo app.',
+      depois: gerar,
+    });
+
+  const gerar = async () => {
     setGenerating(true);
     try {
       const result = await runBillingNow(monthKey);
@@ -95,6 +107,7 @@ export default function BillingBlockers({
 
   return (
     <div className="space-y-2">
+      {folhaDoPix}
       {missingPix && (
         <Blocker
           icon={Key}

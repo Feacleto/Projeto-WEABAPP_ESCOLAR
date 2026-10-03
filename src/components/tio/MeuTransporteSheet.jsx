@@ -18,6 +18,7 @@ import AppSheet from '../common/AppSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
 import { DESCONTO_POR_INDICACAO } from '../../dominio/associacao/planos.js';
+import { useCobrancaLigada, useModuloDeCobranca } from '../../hooks/useCobrancaLigada';
 
 /**
  * O ÍNDICE DO APP — "Meu transporte".
@@ -85,6 +86,8 @@ export default function MeuTransporteSheet({
 
   // Navegar FECHA a folha: sem isso ela continua montada por cima da tela
   // nova, e o "voltar" do Android fecharia a folha em vez de voltar de tela.
+  const cobranca = useCobrancaLigada();
+  const indicacao = useModuloDeCobranca('indicacao');
   const ir = (rota) => {
     onClose?.();
     navigate(rota);
@@ -193,17 +196,24 @@ export default function MeuTransporteSheet({
             * Quem contrata antes de o teste acabar leva metade pelos doze
             * meses, e essa oferta é dita no aviso de fim de teste — que é o
             * momento em que a decisão acontece. Ver `AvisoDoTrial`. */}
-          <Linha
-            icon={Receipt}
-            titulo="Planos e valores"
-            subtitulo="Quanto custa o app depois do teste"
-            onClick={() => ir('/tio/planos')}
-          />
-          <Linha
-            icon={FileText}
-            titulo="Contrato da plataforma"
-            onClick={() => ir('/tio/contrato-plataforma')}
-          />
+          {/* COM A COBRANÇA DESLIGADA (02/10/2026) preço, contrato da
+            * plataforma e indicação somem: não há o que contratar nem
+            * descontar. Ver `dominio/associacao/cobrancaLigada.js`. */}
+          {cobranca && (
+            <>
+              <Linha
+                icon={Receipt}
+                titulo="Planos e valores"
+                subtitulo="Quanto custa o app depois do teste"
+                onClick={() => ir('/tio/planos')}
+              />
+              <Linha
+                icon={FileText}
+                titulo="Contrato da plataforma"
+                onClick={() => ir('/tio/contrato-plataforma')}
+              />
+            </>
+          )}
           {faltaContratada.length > 0 && (
             <Linha
               icon={FileText}
@@ -223,6 +233,7 @@ export default function MeuTransporteSheet({
             subtitulo="Adesivo e certificado de alvará"
             onClick={() => ir('/tio/selo')}
           />
+          {indicacao && (
           <Linha
             icon={Share2}
             titulo="Indicar outro motorista"
@@ -235,6 +246,7 @@ export default function MeuTransporteSheet({
             subtitulo={`Cada indicação que paga vale ${Math.round(DESCONTO_POR_INDICACAO * 100)}% na sua conta`}
             onClick={() => ir('/tio/indicar')}
           />
+          )}
           <Linha
             icon={HelpCircle}
             titulo="Como usar o app"

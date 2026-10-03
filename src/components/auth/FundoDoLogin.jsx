@@ -540,35 +540,53 @@ export function TexturaDoFundo() {
  * login de uma landing, e quem precisa ser convencido está em
  * `alobuzinou.com.br`.
  *
- * ── SEM ANIMAÇÃO, DE PROPÓSITO
+ * ── SEM ANIMAÇÃO CONTÍNUA, DE PROPÓSITO
  * Nem flutuação nem halo. É por aqui que entra a maioria, em Android de
  * entrada, e movimento num fundo é a primeira coisa a cortar quando o
  * aparelho é fraco. `fundo-flutua` e `fundo-halo` continuam existindo só no
- * caminho do monitor.
+ * caminho do monitor. O que existe aqui é a ENTRADA de cada cartão, uma vez,
+ * quando o teatro do login chega nela (`aparecidos`).
+ *
+ * ── ⚠️ A MOLDURA "EXEMPLO" (`moldura`)
+ * Os cartões são tão fiéis ao app que quem chegava pelo link achava que JÁ
+ * ESTAVA DENTRO. A moldura tracejada e a etiqueta dizem que é uma prévia.
  *
  * Os cartões são os MESMOS do trio do monitor — o mesmo dado, outro arranjo.
  * Se divergirem, celular e monitor passam a contar histórias diferentes sobre
  * o mesmo produto, e ninguém compara as duas telas lado a lado pra notar.
  * `npm run testar:fundo` guarda isso.
  */
-export function TiraDoLogin({ assunto, ate = 1800 }) {
+export function TiraDoLogin({ assunto, ate = 1800, moldura = false, aparecidos = Infinity, ref }) {
   const cartoes = TRIOS[assunto] || [];
   const intro = INTRO[assunto];
   if (!cartoes.length) return null;
 
   return (
     <div
+      ref={ref}
       aria-hidden="true"
-      className={`pointer-events-none relative z-10 mt-8 select-none ${ATE[ate] || ATE[1800]}`}
+      className={`pointer-events-none relative z-10 mt-8 select-none ${ATE[ate] || ATE[1800]} ${
+        moldura ? 'rounded-[22px] border-[1.5px] border-dashed border-borderStrong px-3 pb-3 pt-5' : ''
+      }`}
     >
+      {moldura && (
+        <span className="absolute -top-2.5 left-4 flex items-center gap-1.5 bg-bg px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-textMuted">
+          <span className="rounded bg-primary px-1.5 py-px font-semibold tracking-[0.08em] text-white">
+            Exemplo
+          </span>
+          Prévia de dentro do app
+        </span>
+      )}
       <p className="text-center font-mono text-[10px] uppercase tracking-[0.16em] text-textMuted">
         {intro}
       </p>
       <div className="mt-3 flex flex-col gap-3">
-        {cartoes.map((cartao) => (
+        {cartoes.map((cartao, i) => (
           <div
             key={cartao.id}
-            className="rounded-[18px] bg-card p-4 shadow-fundo"
+            className={`rounded-[18px] bg-card p-4 shadow-fundo transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none ${
+              i < aparecidos ? 'opacity-100' : 'translate-y-3 opacity-0'
+            }`}
           >
             <div className="flex flex-col gap-2.5">
               {cartao.blocos.map((bloco, i) => (

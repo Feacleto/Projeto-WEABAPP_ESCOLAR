@@ -678,9 +678,18 @@ t('o modelo de horários aparece nos dois tours', () => {
   //
   // O que ele existe pra proteger é o ENSINO: se algum dia o tour do motorista
   // parar de dizer onde se define a hora, isto tem que quebrar. Nome de
-  // âncora é implementação; "rota padrão" é o que o motorista lê.
+  // âncora é implementação; o que o motorista lê é o que conta.
+  //
+  // Desde 02/10/2026 o tour do motorista tem quatro paradas, e a que ensina
+  // isso é "Meu transporte": *"Crianças, escolas, horários e avisos."* O
+  // teste procura DENTRO do tour do motorista (o do responsável também diz
+  // "horário"), um passo ancorado em `turma` que fale de horários.
+  const tourDoMotorista = fonteDoTour.split('export const PARENT_TOUR')[0];
+  const passoDaTurma = tourDoMotorista.split(/\n {2}\{\n/).find((p) =>
+    p.includes("anchor: 'turma'")
+  );
   assert(
-    /rota padrão/i.test(fonteDoTour),
+    Boolean(passoDaTurma) && /horários|rota padrão/i.test(passoDaTurma),
     'o motorista precisa saber onde define as horas'
   );
   assert(

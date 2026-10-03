@@ -4,5 +4,6 @@
      enquanto for VERDADE. Data que nao acompanha a pagina vira ruido e ele
      passa a ignorar o arquivo inteiro.
      ATUALIZE ESTA DATA quando mexer no landing/index.html. -->
-  <url><loc>https://alobuzinou.com.br/</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://alobuzinou.com.br/</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://alobuzinou.com.br/saiba-mais</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
 </urlset>

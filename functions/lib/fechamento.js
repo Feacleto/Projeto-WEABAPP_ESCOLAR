@@ -33,6 +33,7 @@ const { onCall } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
+const { cobrancaLigada } = require('./cobrancaLigada');
 const { exigirDono } = require('./papeis');
 // ⚠️ `assinaturaAteDoMes` VEM DAQUI, e não de uma cópia local.
 //
@@ -351,6 +352,12 @@ async function reconciliarAsIndicacoes(db, snapDeMotoristas) {
  */
 async function fecharMes(db, { mes, agora = new Date() }) {
   const alvo = mes || mesAnterior(agora);
+  // A CHAVE ÚNICA DA COBRANÇA (platformConfig/app.cobrancaLigada). Desligada,
+  // nada conta — ver lib/cobrancaLigada.js e docs/estrutura-de-cobranca.md.
+  if (!(await cobrancaLigada(db))) {
+    logger.info('[fechamento] cobrança desligada: nenhuma fatura fechada', { mes: alvo });
+    return { mes: alvo, fechadas: 0, puladas: 0, erros: 0, cobrancaDesligada: true };
+  }
   const config = (await db.doc('taxaConfig/geral').get()).data() || {};
 
   const snap = await db.collection('users').where('role', '==', 'admin').get();

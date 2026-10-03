@@ -220,6 +220,13 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
 
           <div className="space-y-3 border-t border-neutro pt-3">
             <InfoRow icon={Home} label="Casa" value={child.address} />
+            {/* Cadastrada pela rua com "não sei o número agora": a família
+              * confirma o número no primeiro acesso dela, e ele aparece aqui. */}
+            {child.numeroPendente && (
+              <p className="-mt-1 pl-7 text-xs font-semibold text-warningText">
+                Falta o número da casa — a família confirma quando entrar no app.
+              </p>
+            )}
             <InfoRow icon={School} label="Escola" value={child.school} />
             {child.schoolAddress && (
               <InfoRow icon={MapPin} label="Endereço da escola" value={child.schoolAddress} />
@@ -816,19 +823,24 @@ function PhoneRow({ phone, name, childName }) {
 }
 
 /**
- * Turma e sala — preenchidos pelo RESPONSÁVEL.
+ * Turma, sala e aniversário — preenchidos pelo RESPONSÁVEL.
  *
  * O motorista lê pra saber onde chamar a criança quando ela não aparece no
  * portão; o pai escreve porque é o único que sabe. As rules liberam só estes
- * dois campos pra ele: são texto sem efeito em rota, cobrança ou permissão.
+ * três campos pra ele: nenhum tem efeito em rota, cobrança ou permissão.
+ *
+ * O ANIVERSÁRIO MUDOU DE MÃO (02/10/2026). Era pedido ao motorista no passo 1
+ * do cadastro da criança, e ele quase nunca sabe a data — o campo ficava em
+ * branco, ou com um chute. Quem sabe é a família, então é ela que preenche.
  */
 function TurmaSala({ child, podeEditar }) {
   const [editando, setEditando] = useState(false);
   const [turma, setTurma] = useState(child.turma || '');
   const [sala, setSala] = useState(child.sala || '');
+  const [aniversario, setAniversario] = useState(child.birthDate || '');
   const [salvando, setSalvando] = useState(false);
 
-  const vazio = !child.turma && !child.sala;
+  const vazio = !child.turma && !child.sala && !child.birthDate;
 
   async function salvar() {
     setSalvando(true);
@@ -836,8 +848,9 @@ function TurmaSala({ child, podeEditar }) {
       await updateChild(child.id, {
         turma: turma.trim(),
         sala: sala.trim(),
+        birthDate: aniversario || '',
       });
-      toast.success('Turma e sala atualizadas.');
+      toast.success('Salvo.');
       setEditando(false);
     } catch (err) {
       console.error(err);
@@ -864,6 +877,17 @@ function TurmaSala({ child, podeEditar }) {
             className="h-11 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
           />
         </div>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-textMuted">
+            Aniversário
+          </span>
+          <input
+            type="date"
+            value={aniversario}
+            onChange={(e) => setAniversario(e.target.value)}
+            className="h-11 w-full rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+          />
+        </label>
         <div className="flex gap-2">
           <Button size="sm" loading={salvando} onClick={salvar}>
             Salvar
@@ -884,7 +908,7 @@ function TurmaSala({ child, podeEditar }) {
   if (vazio && !podeEditar) {
     return (
       <p className="text-xs text-textMuted">
-        O responsável ainda não informou a turma e a sala.
+        O responsável ainda não informou turma, sala e aniversário.
       </p>
     );
   }
@@ -894,12 +918,20 @@ function TurmaSala({ child, podeEditar }) {
       <div className="flex-1 min-w-0 space-y-3">
         <InfoRow label="Turma" value={child.turma || '—'} />
         <InfoRow label="Sala" value={child.sala || '—'} />
+        <InfoRow
+          label="Aniversário"
+          value={
+            child.birthDate
+              ? child.birthDate.split('-').reverse().slice(0, 2).join('/')
+              : '—'
+          }
+        />
       </div>
       {podeEditar && (
         <button
           type="button"
           onClick={() => setEditando(true)}
-          aria-label="Editar turma e sala"
+          aria-label="Editar turma, sala e aniversário"
           className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
         >
           <Pencil size={15} />

@@ -17,7 +17,7 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 2352 casos em 40 scripts. O PRIMEIRO é
+npm run testar                   # 42 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -29,7 +29,7 @@ npm run testar                   # 2352 casos em 40 scripts. O PRIMEIRO é
                                  # preferencias, multa, encerramento,
                                  # conta, cobranca, gateway, carteira,
                                  # proposta, chamados, risco, fila, concessao,
-                                 # selo, indicacao, origem, abas,
+                                 # selo, indicacao, irmaos, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca,
                                  # tutorial
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
@@ -185,7 +185,7 @@ antes se a leitura falhou** (a conta de guardas contra a conta de desvios), e
 a própria `/comecar` desvia, porque ela é destino do login também.
 
 A conta do GOOGLE **não nasce como motorista** (só o formulário de cadastro
-cria motorista), e é isso que evita o pior caso: a mãe que
+ou o "sou motorista" da `/comecar` criam motorista), e é isso que evita o pior caso: a mãe que
 ignora o link do convite e toca em "Entrar com Google" viraria motorista, e o
 `redeemInvite` recusaria o convite dela depois (ele já barra motorista virando
 responsável) — ela ficaria presa, sem saída no app. A sala de espera pergunta
@@ -303,11 +303,14 @@ src/
 │   │                 (`/tio/encerrar`, FORA do `GuardaDaConta`: quem está
 │   │                 bloqueado por atraso precisa conseguir sair) e
 │   │                 `PrimeiroAcesso`,
-│   │                 que NÃO é rota: é o desvio que cobre `/tio` inteiro
-│   │                 enquanto faltar nome, cidade ou região. Rota própria
-│   │                 seria endereço que se pula digitando outro na barra, e
-│   │                 dois desses campos são a PARTE do contrato
-│   ├── pai/           8 telas do responsável
+│   │                 que NÃO é rota: é um CARD por cima do `/tio` (o app
+│   │                 aparece inerte por baixo) enquanto faltar nome,
+│   │                 WhatsApp, marca ou cidade. Rota própria seria
+│   │                 endereço que se pula digitando outro na barra, e
+│   │                 nome e cidade são a PARTE do contrato
+│   ├── pai/           8 telas do responsável + `PrimeiroAcessoDoPai`, o card
+│   │                 por cima do `/pai` (dados, número da casa se faltar,
+│   │                 aniversário do filho, avisos) — mesmo desenho do motorista
 │   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com OITO
 │   │                  abas: Hoje (a fila), Motoristas (lista + FICHA),
 │   │                  Chamados, Mês (régua e fechamento), Números, Selos,
@@ -341,7 +344,9 @@ src/
 │                       fecha a dúvida, e por isso ele está no endereço.
 │                       Falta só o NÚMERO, em `DEV_NUMERO`
 ├── components/        por domínio: route, agenda, children, payments, map,
-│                      call, notifications, landing, tutorial, festive…
+│                      call, notifications, landing, tutorial, festive,
+│                      acesso (o responsável sem link pedindo entrada),
+│                      endereco (`BuscaDeRua`: digita a rua, o CEP vem junto)…
 ├── services/          39 módulos — TODO acesso ao Firestore passa aqui
 ├── hooks/             23 hooks, quase todos onSnapshot de um service
 ├── config/            capabilities, developer, vitrine,
@@ -365,7 +370,8 @@ src/
 ├── marca/             a personalidade: avatarUrl, greeting, festivities,
 │                      travessia, promessas. Tem regra, mas de apresentação
 ├── compartilhado/     SEM regra nenhuma: formatters, masks, haversine,
-│                      abaAtiva, browserEnv. Não conhece o domínio (o lint
+│                      abaAtiva, browserEnv, ruas (a busca de rua pelo nome).
+│                      Não conhece o domínio (o lint
 │                      recusa)
 └── firebase/config.js
 landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
@@ -374,6 +380,10 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        e JS inline, deploy por `--only hosting:landing`. As
                        duas home públicas antigas (`/` do motorista) morreram
                        aqui dentro; a `/familia` continua no app.
+                       Desde 02/10/2026 são DUAS páginas: `index.html`, a
+                       home simples (5 blocos, um caminho: criar conta), e
+                       `saiba-mais.html` (`/saiba-mais`), o site completo de
+                       antes. `testar:selo` lê as duas.
 functions/             Cloud Functions v2 (CommonJS, Node 22)
   └── lib/             reguaDoServidor (a régua PURA — sem require, e desde
                        10/09/2026 ela espelha `precoDoMes` INTEIRO, porque o
@@ -461,7 +471,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
-`indicacoes` · `interesses` · `alertasDeComprovante` · `platformConfig` ·
+`indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `platformConfig` ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -589,6 +599,24 @@ rota não pode passar a depender de consultar papel.
   endereço, é a **chave** dele: guardado, dá pra reconsultar a rua e recalcular
   a coordenada de um cadastro antigo sem pedir nada a ninguém. Nenhuma mudança
   de rules — `children` e `schools` não têm whitelist de campos no `create`.
+- ⚠️ **PELO NOME DA RUA, O CEP VEM JUNTO (02/10/2026).** O motorista quase
+  nunca sabe o CEP. [BuscaDeRua](src/components/endereco/BuscaDeRua.jsx) usa
+  a busca AO CONTRÁRIO do ViaCEP (UF + cidade + pedaço do nome da rua) e
+  mostra rua, bairro, cidade e CEP; um toque preenche tudo, e resultado único
+  é escolhido sozinho. A busca começa na cidade DELE (`users.city` + `users.uf`,
+  a UF vinda do reverso da localização no primeiro acesso), com "trocar".
+  Está no cadastro da criança, no popup de escola e na tela de Escolas.
+  ⚠️ **Não é o Nominatim**: a política dele proíbe autocompletar enquanto se
+  digita — ele segue chamado UMA vez, ao sair do passo, para o ponto no mapa.
+  Leitura pura em [ruas.js](src/compartilhado/ruas.js) (`testar:endereco`).
+- ⚠️ **"NÃO SEI O NÚMERO AGORA"** — a criança é salva pela rua com
+  `numeroPendente: true` e `enderecoPartes` (a rua partida), e o ponto fica no
+  meio da rua. Quem completa é a FAMÍLIA, no primeiro acesso dela (passo
+  `casa` de `passosDoResponsavel`): confirma a rua e digita o número, o ponto
+  é refeito e o motorista recebe `numero_da_casa`. A ficha mostra "Falta o
+  número da casa" até lá. As rules abrem esse endereço à responsável UMA vez —
+  só com `numeroPendente` ligado antes e desligado depois, e só os campos do
+  endereço (quatro casos em `testar:regras`).
 - **O número é cobrado na casa da criança e NÃO na escola.** A perua encosta
   numa PORTA: errar o número ali é parar na calçada errada com a mãe esperando
   na outra. Escola é prédio grande, muitas vezes de esquina ou num campus sem
@@ -1000,6 +1028,25 @@ A rota liga pelo CLIENTE (o GPS liga no meio-fio, às vezes sem sinal); os
 outros dois ligam no SERVIDOR, com Admin SDK — é o que permite ligar o relógio
 do motorista a partir de um gesto do responsável sem abrir permissão nova.
 
+**⚠️ ATUALIZAÇÃO 02/10/2026: na HOME a frase virou "O app está em fase de
+teste: por enquanto, é grátis"** — decisão do dono, junto com a home simples.
+A `/saiba-mais` ainda diz "Até 3 meses de teste grátis", e o app continua
+contando o teste de 3 meses (`trial.js`). Enquanto as duas coisas não forem
+reconciliadas, o site faz duas promessas diferentes.
+
+**⚠️ E A COBRANÇA DA PLATAFORMA ESTÁ DESLIGADA POR PADRÃO (02/10/2026).** A
+chave única `platformConfig/app.cobrancaLigada` (ausente = desligada) para o
+relógio do teste, a fatura, a oferta, a escada, a indicação, os avisos de venda
+e o bloqueio do dia 91 — inclusive nas rules (`cobrancaDesligada()` em
+`isAdmin()`). O dono liga no painel admin ("Habilitar a cobrança"), e isso liga SÓ a base: os
+descontos são MÓDULOS (`modulos.escada`, `modulos.indicacao`, ausente =
+desligado) que ligam um a um, com período opcional para os sazonais. Registro
+único em `src/dominio/associacao/modulosDeCobranca.js`, espelhado em
+`functions/lib/reguaDaCobranca.js` (`npm run testar:modulos` confere os dois).
+O campo antigo `janelaEscada` não é mais lido. Tudo o que
+ela toca, e o que fazer com o `trialInicio` antigo antes de religar, está em
+[docs/estrutura-de-cobranca.md](docs/estrutura-de-cobranca.md).
+
 **Na landing é "ATÉ 3 meses de teste grátis"** — decidido pelo dono em
 07/09/2026, e é uma reversão. A regra anterior era *diga TESTE, nunca "grátis"*,
 porque "grátis" na porta prepara a pessoa para achar que a cobrança depois é
@@ -1088,9 +1135,13 @@ app não oferecia. **`LEGAL_VERSION` foi a 1.2** na mesma alteração, e subir a
 versão obriga todo mundo a reaceitar.
 
 ⚠️ **O APP NUNCA COLETOU A LOCALIZAÇÃO DOS PAIS**, e agora isso está escrito
-nos Termos. O GPS do aparelho é pedido em dois lugares, os dois do motorista:
-o rastreamento da rota, e o *"usar minha localização"* do seletor de mapa
-(cadastro da criança e "editar onde mora", este último atrás de `isAdmin`).
+nos Termos. O GPS do aparelho é pedido em TRÊS lugares, os três do motorista:
+o rastreamento da rota, o *"usar minha localização"* do seletor de mapa
+(cadastro da criança e "editar onde mora", este último atrás de `isAdmin`), e
+desde 02/10/2026 o último passo do primeiro acesso, que lê a posição UMA vez
+para gravar o nome da cidade e do bairro. ⚠️ **A cláusula 8 ainda diz que a
+localização só é coletada durante a rota** — esse terceiro uso está pendente
+de decisão do dono sobre o texto e o `LEGAL_VERSION`.
 
 ---
 
@@ -1100,6 +1151,28 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 
 - **Convite:** `lookupInvite`, `redeemInvite`, `getInvitePreview` — único
   caminho para criar conta de pai
+- **Acesso sem link:** `pedirAcessoPeloTelefone` e `responderPedidoDeAcesso`
+  ([pedidosDeAcesso.js](functions/lib/pedidosDeAcesso.js)). Quem entra sem o
+  link informa o WhatsApp; crianças SEM responsável com esse número viram um
+  pedido em `pedidosDeVinculo` para o motorista de cada uma, que aprova com
+  um toque no topo do Início. ⚠️ **O número sozinho não vincula nada** —
+  telefone não é segredo, e o dono preferiu a aprovação do motorista ao SMS.
+  A conta dela nasce `role: 'parent'` sem filho, e o `/pai` aparece borrado
+  com o card de espera (`SemVinculoGate` no App). Sem criança com o número, o
+  card pede para ela mandar o app ao motorista; quando ele cadastrar o filho
+  com esse número, o gatilho do irmão abre o pedido. `telefoneAguardandoChave`
+  (o número digitado, não comprovado) só gera pedido; `phoneChave` só nasce
+  de link ou aprovação. A resposta ao pedido não diz o nome da criança.
+- **Irmão:** `vincularIrmaoNoCadastro` (gatilho em `children/{id}`) e
+  `recusarIrmao` (callable). Criança nova cadastrada com o WhatsApp de um
+  responsável que já usa o app entra SOZINHA na conta dele, sem convite, e ele
+  recebe o aviso com "Não é meu filho", que desfaz e avisa o motorista.
+  ⚠️ **Só o WhatsApp vincula, nunca o nome** (duas "Maria Silva"), e número
+  que casa com duas contas não vincula. ⚠️ **A chave é `users.phoneChave`,
+  gravada pelo `redeemInvite` a partir do número que o MOTORISTA digitou** e
+  proibida ao cliente nas rules — `phone` a própria pessoa edita, e pôr ali o
+  número de outra mãe daria os filhos dela a quem mudou. Régua pura em
+  [reguaDoIrmao.js](functions/lib/reguaDoIrmao.js), `npm run testar:irmaos`.
 - **Cobrança:** `generateMonthlyPayments` (agendada), `runBillingNow`,
   `sendPaymentReminders`, `runPaymentRemindersNow`
 - **Operação:** `closeStaleRoutes`, `confirmarAusencias`
@@ -1235,6 +1308,22 @@ tem prazo de validade: quando a redação for ratificada, ela vai para o código
 **Falta não gera desconto**, e a cláusula 7ª já dizia: o valor é pela VAGA,
 inclusive nas férias, `independentemente da quantidade de dias letivos`. A tela
 de faltas repete isso onde a dúvida nasce.
+
+**A TURMA COMEÇA PELA CRIANÇA, E A ESCOLA NASCE NO CAMINHO** (02/10/2026).
+O Início vazio mostra "Cadastrar a primeira criança", e no passo "Onde estuda"
+a escola é criada num popup por cima do cadastro
+([NovaEscolaSheet](src/components/children/NovaEscolaSheet.jsx)), que volta com
+ela já escolhida. ⚠️ Antes o botão navegava para `/tio/children/escolas`, e o
+formulário da criança é estado local: tudo o que ele tinha digitado sumia.
+A tela final mostra a criança (o avatar dela) fazendo joinha, um botão
+"Mandar convite para o responsável de X" e "Cadastrar outra criança", que já
+traz a escola da anterior marcada. Link, código, QR e contrato antigo ficam
+em "Mais opções" (`InviteShare recolhido`).
+
+⚠️ **O ANIVERSÁRIO É DA FAMÍLIA, NÃO DO MOTORISTA.** Saiu do cadastro dele
+(quase nunca sabe a data) e entrou na ficha do filho, junto de turma e sala.
+O ramo da responsável no `allow update` de `children` passou a ser
+`hasOnly(['turma', 'sala', 'birthDate'])` — três casos em `testar:regras`.
 
 **Responsável avulso: guarda UM.** `children.altResponsibles` é um array de no
 máximo 1 — o último. Era lista que só crescia; ninguém mantém lista, e são
@@ -1488,9 +1577,28 @@ escolhendo.
 
 ⚠️ **A INSCRIÇÃO DO MOTORISTA PEDE TRÊS CAMPOS, E O RESTO É DO LADO DE
 DENTRO** (11/09/2026). `/quero-fazer-parte` fica com e-mail, WhatsApp e senha —
-só o que a CONTA precisa para existir. Nome, cidade, região, marca e nº de
-crianças são pedidos em `PrimeiroAcesso`, um desvio que cobre `/tio` enquanto
-os três primeiros faltarem.
+só o que a CONTA precisa para existir. O resto é o `PrimeiroAcesso`.
+
+⚠️ **DESDE 02/10/2026 O PRIMEIRO ACESSO É UM CARD POR CIMA DO APP**, em três
+passos que só aparecem se faltar algo (`passosQueFaltam` em
+[cadastroDoMotorista.js](src/dominio/identidade/cadastroDoMotorista.js)):
+**seus dados** (nome; WhatsApp só para quem veio do Google), **sua marca**
+(nome obrigatório, logo opcional) e **localização**. O `/tio` renderiza por
+baixo com `inert`, e o tour guiado espera o card fechar. Pedido do dono: o
+card é CURTO — sem placeholder de exemplo, sem pré-preencher o nome do Google,
+sem "fazer depois", e a única linha de explicação é a da localização.
+- **Quem entra com Google não passa mais por `/quero-fazer-parte`**: o "sou
+  motorista" da `/comecar` grava o documento com o e-mail da sessão
+  (`ligarSessaoComoMotorista`). Aquela tela pedia de novo o e-mail e uma senha
+  que o serviço descartava. E `/quero-fazer-parte` com sessão aberta devolve
+  para `/comecar` (ou para o painel).
+- ⚠️ **CIDADE E BAIRRO NÃO SÃO PERGUNTADOS — saem da localização**
+  (`lugarDaPosicaoAtual` em [locationService.js](src/services/locationService.js),
+  Nominatim reverso). Só os NOMES são gravados; a coordenada não sai da
+  função. Quem nega a permissão (ou está sem sinal) **digita a cidade**: ela é
+  contrato e o navegador não pergunta de novo.
+- `regiao` saiu da trava (o reverso nem sempre traz bairro) e o nº de
+  crianças saiu do card (o real aparece quando ele cadastra a turma).
 
 A troca não foi de quantidade, foi de ORDEM DA CONFIANÇA: seis campos antes de
 a pessoa ter visto qualquer coisa do produto cobram uma confiança que a tela
@@ -1515,6 +1623,13 @@ o motorista decide sentado, e a responsável que perdeu o link volta pelo site.
 As formas são OPOSTAS, e isso vem da landing — ele está comprando (denso,
 escuro, campos em pares), ela está sendo tranquilizada (claro, arejado, uma
 coluna). O empilhado do celular continua sendo o desenho principal das duas.
+
+⚠️ **ATUALIZAÇÃO 02/10/2026: O LINK CONTINUA SENDO A PORTA PRINCIPAL, MAS
+NÃO A ÚNICA.** Quem já entrou (Google ou e-mail) e não tem conta no app vê,
+no `/first-access`, "Qual o seu WhatsApp?" — e daí sai o pedido de acesso que
+o motorista aprova (ver "Acesso sem link" nas Cloud Functions). Quem chega
+deslogado continua vendo a página de sempre. O texto abaixo descreve a
+decisão de 09/09/2026 e segue valendo para ela.
 
 ⚠️ **A ENTRADA DO RESPONSÁVEL É O LINK, E SÓ ELE, desde 09/09/2026.** Ela é
 inteira do [Invite.jsx](src/pages/Invite.jsx): `/convite/:codigo` lê o código
@@ -1554,10 +1669,16 @@ digitado letra por letra. A máscara sozinha devolvia `HTTPSALOB` pra quem
 colava o link e o app dizia "código inválido" com o código certo na mão.
 
 ⚠️ Isso continua valendo para o LINK, que é onde `codigoDoTexto` roda hoje —
-**não há mais campo digitado no app** (ver a decisão acima). A mensagem que o
-motorista manda continua trazendo o código escrito além do link: ele não serve
-mais para ela digitar, serve para ela conferir que o link é daquele convite, e
-para o dia em que o campo voltar.
+**não há mais campo digitado no app** (ver a decisão acima).
+
+⚠️ **E O CÓDIGO SAIU DE TODA TELA EM 02/10/2026 — o acesso do responsável é
+SÓ PELO LINK** (decisão do dono). Saíram: o código escrito na mensagem do
+WhatsApp (que ainda mandava digitá-lo em "Criar conta › Sou família", campo
+que não existia desde 09/09), o bloco "se precisar ditar por telefone" do
+`InviteShare`, o campo de código de `/pai/adicionar-filho` (virou uma
+explicação: abra o link com esta conta) e o cartão do fundo do login. O código
+continua existindo DENTRO da URL (`/convite/CÓDIGO`) e no contrato, como
+número do documento.
 
 **Preço não aparece na vitrine.** O que aparece é a FORMA do dinheiro: "a
 mensalidade das suas famílias é sua, a plataforma não entra no caminho dela".
@@ -1960,7 +2081,7 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (233 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (253 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes
@@ -2162,18 +2283,27 @@ novo. A folha existe em todos os estados, inclusive dirigindo. Contagens vão
 por **prop** — o `TioDashboard` já assina `children` e `escolas`, e reassinar
 dentro dela abriria leitura permanente duplicada do mesmo dado.
 
-**O TOUR GUIADO CITA A LANDING, e as duas metades disso são teste**
-([interactiveSteps.js](src/components/tutorial/interactiveSteps.js),
-`npm run testar:tutorial`). Cada passo do motorista carrega em `cita` a frase
-do site que ele fecha — *"a rota do dia pronta, na ordem dos horários"*, *"sem
-caderno, sem planilha e sem cobrar de boca"* — e o balão a mostra citada, acima
-do texto. Dizer a mesma coisa com outras palavras faz o app parecer um segundo
-produto, e a promessa parecer propaganda. A landing é HTML estático sem build,
-ninguém edita os dois juntos: o teste confere que cada `cita` existe de verdade
-em [landing/index.html](landing/index.html).
+**O TOUR DO MOTORISTA SÃO QUATRO PARADAS** (02/10/2026 —
+[interactiveSteps.js](src/components/tutorial/interactiveSteps.js),
+`npm run testar:tutorial`). Abre sozinho quando o card do primeiro acesso
+fecha: "Cadastrar a primeira criança", "Meu transporte", a aba Financeiro e o topo do
+Início (o botão de iniciar rota, quando há turma). Título curto e uma frase de
+até 60 caracteres. Eram treze passos citando a landing, e metade apontava para
+botões que quem acabou de entrar não tem.
 
-⚠️ **E `interact: true` SÓ ONDE O TOQUE NÃO CUSTA NADA A NINGUÉM.** Quatro
-âncoras são iluminadas e nunca tocadas: `start-route` (liga o GPS, publica a
+⚠️ **A TELA NÃO ESCURECE.** Era uma sombra de 62% em volta do recorte; agora
+a tela fica inteira à vista e o alvo leva um anel verde pulsando
+(`animate-tour-pulso`, em [tailwind.config.js](tailwind.config.js)). Uma camada
+transparente segura os toques no app enquanto o balão está aberto — sem ela,
+tocar em "Cadastrar a primeira criança" levaria a pessoa embora no passo 1. O balão é
+escuro, com uma estradinha de paradas e a perua andando nela, e dois botões:
+**Pular** e **Próximo**. Pular também marca `tutorialDone`; rever é em "Como
+usar o app". O tour do responsável usa o mesmo balão e também tem quatro
+paradas (onde o filho está, a hora da perua, avisar falta, a mensalidade), e
+os dois esperam o card do primeiro acesso fechar.
+
+⚠️ **E `interact: true` SÓ ONDE O TOQUE NÃO CUSTA NADA A NINGUÉM** — e o
+tour do motorista não tem nenhum. Quatro âncoras nunca são tocadas: `start-route` (liga o GPS, publica a
 perua e **escreve `trialInicio`** — o toque do tutorial gastaria o primeiro dia
 do teste), `avancar-status` (muda o estado da criança e avisa a família),
 `buzinar` (faz o celular de um responsável tocar) e `lista-pagamentos` (dá

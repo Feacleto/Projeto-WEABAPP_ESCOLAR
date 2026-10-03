@@ -1,5 +1,6 @@
 const admin = require('firebase-admin');
 const { logger } = require('firebase-functions/v2');
+const { cobrancaLigada } = require('./cobrancaLigada');
 
 /**
  * O RELÓGIO DOS TRÊS MESES — e os três gestos que o ligam.
@@ -61,6 +62,10 @@ const { logger } = require('firebase-functions/v2');
  */
 async function ligarRelogio(db, uid, motivo, tx = null) {
   if (!uid) return false;
+  // ⚠️ COM A COBRANÇA DESLIGADA O TESTE NÃO COMEÇA. Senão os 90 dias correriam
+  // durante a fase grátis e, no dia em que a cobrança voltasse, todo mundo
+  // estaria vencido de uma vez. Ver lib/cobrancaLigada.js.
+  if (!(await cobrancaLigada(db))) return false;
   try {
     const ref = db.doc(`users/${uid}`);
     const snap = tx ? await tx.get(ref) : await ref.get();

@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { cobrancaLigada } = require('./cobrancaLigada');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const { exigirDono, ehMotorista } = require('./papeis');
@@ -60,6 +61,12 @@ function makeCriarCobrancaDaFatura(db, apiKeySecret, ambienteParam) {
     },
     async (request) => {
       await exigirDono(db, request);
+      if (!(await cobrancaLigada(db))) {
+        throw new HttpsError(
+          'failed-precondition',
+          'A cobrança da plataforma está desligada no painel admin.'
+        );
+      }
 
       const tioUid = String(request.data?.tioUid || '').trim();
       const mes = String(request.data?.mes || '').trim();

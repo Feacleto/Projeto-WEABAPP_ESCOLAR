@@ -20,6 +20,8 @@ const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 const { ligarRelogioComSnap } = require('./relogioDoTeste');
+const { cobrancaLigada } = require('./cobrancaLigada');
+const { chaveDoTelefone } = require('./indicacao');
 
 const REGION = 'southamerica-east1';
 
@@ -174,6 +176,10 @@ function makeRedeemInvite(db) {
     const childRef = childDoc.ref;
     const userRef = db.doc(`users/${uid}`);
 
+    // Lida FORA da transação: é configuração da plataforma, não dado que
+    // dois resgates disputam. Desligada, o relógio do teste não liga.
+    const cobrancaOn = await cobrancaLigada(db);
+
     const result = await db.runTransaction(async (tx) => {
       const freshChild = await tx.get(childRef);
       if (!freshChild.exists) {
@@ -250,7 +256,7 @@ function makeRedeemInvite(db) {
       // A leitura já foi feita na fase de leitura, acima — esta chamada só
       // decide e escreve. Não a troque de volta por `ligarRelogio(…, tx)`:
       // aquela lê, e ler aqui (depois do `tx.update`) é o que a deixou morta.
-      if (relogioRef) {
+      if (relogioRef && cobrancaOn) {
         ligarRelogioComSnap(relogioRef, relogioSnap, 'primeiro responsável', tx);
       }
 
@@ -289,6 +295,16 @@ function makeRedeemInvite(db) {
         childId: existing?.childId || childRef.id,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
+
+      // A CHAVE DO IRMÃO (02/10/2026). Criança nova cadastrada com este
+      // WhatsApp entra sozinha nesta conta (`vincularIrmao.js`). Ela sai do
+      // número que o MOTORISTA digitou nesta criança — nunca do `phone` da
+      // conta, que a própria pessoa edita — e só é gravada uma vez: a
+      // primeira família define a chave, e as rules a proíbem ao cliente.
+      if (!existing?.phoneChave) {
+        const chave = chaveDoTelefone(child.parentPhone);
+        if (chave) userPayload.phoneChave = chave;
+      }
 
       // O vínculo é por POSSE DO LINK, não por email igual ao cadastro.
       // Exigir email igual recriaria a burocracia: o tio digita errado, ou

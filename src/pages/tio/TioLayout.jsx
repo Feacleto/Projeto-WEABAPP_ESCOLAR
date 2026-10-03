@@ -17,10 +17,12 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useAutoBilling } from '../../hooks/useAutoBilling';
 import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
+import { useCobrancaLigada, useModuloDeCobranca } from '../../hooks/useCobrancaLigada';
 import { useActiveCallsForAdmin } from '../../hooks/usePendingCall';
 import { useChildren } from '../../hooks/useChildren';
 import OutgoingCallPanel from '../../components/call/OutgoingCallPanel';
 import BirthdayModal from '../../components/festive/BirthdayModal';
+import { faltaCompletarCadastro } from '../../dominio/identidade/cadastroDoMotorista.js';
 import {
   getTodaysBirthdayChildren,
   shouldShowBirthdayModal,
@@ -89,6 +91,9 @@ export default function TioLayout() {
   // não chegar no último passo. Pular é permitido; concluir é o que desliga.
   useEffect(() => {
     if (autoOpened.current) return;
+    // Enquanto o card do primeiro acesso estiver por cima, o tour espera: os
+    // dois disputariam a mesma tela, e o tour iluminaria um app inerte.
+    if (faltaCompletarCadastro(profile)) return;
     if (profile && profile.tutorialDone !== true) {
       autoOpened.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -138,14 +143,22 @@ export default function TioLayout() {
    * cadência. */
   const [ofertaAberta, setOfertaAberta] = useState(false);
   const ofertaJaAbriu = useRef(false);
+  // A CHAVE ÚNICA DA COBRANÇA (02/10/2026). Desligada, este layout não fala de
+  // dinheiro da plataforma: sem oferta, sem contagem do teste, sem fatura, sem
+  // aviso de encerramento. Só a suspensão manual continua aparecendo.
+  // Ver `dominio/associacao/cobrancaLigada.js`.
+  const cobranca = useCobrancaLigada();
+  // A oferta é do MÓDULO da escada de desconto (que exige a mestra ligada).
+  const escada = useModuloDeCobranca('escada');
 
   useEffect(() => {
+    if (!escada) return;
     if (ofertaJaAbriu.current) return;
     if (profile?.ofertaEstado !== 'pendente') return;
     ofertaJaAbriu.current = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOfertaAberta(true);
-  }, [profile?.ofertaEstado]);
+  }, [profile?.ofertaEstado, escada]);
 
   const responderOferta = async (fn) => {
     setOfertaAberta(false);
@@ -181,7 +194,11 @@ export default function TioLayout() {
   // confiaria numa proteção que não roda. Ela continua por ser barata e por
   // ser a rede se a rota voltar para cá — mas a garantia é da rota.
   const naTelaDaTaxa = location.pathname.startsWith('/tio/taxa');
-  const { fatura } = useFaturaPlataforma(user?.uid);
+  const { fatura: faturaAberta } = useFaturaPlataforma(user?.uid);
+  // Desligada, a fatura antiga que ainda estiver `aberta` no banco não vira
+  // cartão de dívida. O `AvisoDaPlataforma` sem fatura só aparece para o
+  // suspenso — que é decisão manual e continua valendo.
+  const fatura = cobranca ? faturaAberta : null;
 
   const abaAtiva = indiceDaAba(location.pathname, NAV_ITEMS);
   /* `motion-reduce:animate-none` porque quem pediu menos movimento ao sistema
@@ -205,17 +222,17 @@ export default function TioLayout() {
         * devolve null pra quem tem contrato. Duas cobranças na mesma tela
         * seria o app falando de dinheiro duas vezes antes de o motorista ver
         * a rota do dia. */}
-      {!naTelaDaTaxa && <AvisoDoTrial temContrato={!!fatura} />}
+      {cobranca && !naTelaDaTaxa && <AvisoDoTrial temContrato={!!fatura} />}
 
       {/* ⚠️ ELE APARECE INCLUSIVE NA TELA DA TAXA, ao contrário do aviso do
         * teste e do da plataforma. Aqueles são cobrança, e cobrança que cobre
         * a própria tela de pagar não deixa ninguém pagar. Este é o oposto: diz
         * que a conta vai PARAR, e a tela do dinheiro é justamente onde ele
         * está quando decide se continua. */}
-      <AvisoDoEncerramento />
+      {cobranca && <AvisoDoEncerramento />}
 
       <OfertaDoFechamento
-        aberta={ofertaAberta}
+        aberta={!!escada && ofertaAberta}
         motorista={profile}
         criancas={(children || []).filter((c) => c.active !== false).length}
         onFechar={() => setOfertaAberta(false)}

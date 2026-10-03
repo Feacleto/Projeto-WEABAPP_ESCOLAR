@@ -49,6 +49,7 @@ import ReceiptPicker from '../../components/payments/ReceiptPicker';
 import MonthSwitcher from '../../components/payments/MonthSwitcher';
 import BillingBlockers from '../../components/payments/BillingBlockers';
 import PixSheet from '../../components/payments/PixSheet';
+import { usePerguntaDaChavePix } from '../../components/payments/PerguntaDaChavePix';
 import { shareReceipt } from '../../services/receiptImageService';
 import {
   formatMonthLabel,
@@ -76,6 +77,7 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 export default function TioFinance() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { perguntarPix, folhaDoPix } = usePerguntaDaChavePix();
 
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
   const { payments, loading } = usePaymentsByMonth(monthKey);
@@ -175,17 +177,28 @@ export default function TioFinance() {
    */
   const onCharge = (payment) => {
     const child = childById.get(payment.childId);
-    const phone = child?.parentPhone;
-    if (!phone) {
+    if (!child?.parentPhone) {
       toast.error('Telefone do responsável não cadastrado na ficha.');
       return;
     }
+    // SEM CHAVE, A COBRANÇA SAI SEM PRA ONDE PAGAR — então a pergunta vem
+    // aqui, no momento em que a falta custa. Ver `PerguntaDaChavePix`.
+    perguntarPix({
+      motivo: 'cobrar',
+      texto: `A mensagem de cobrança de ${payment.childName} vai sem chave PIX — a família não vai ter pra onde mandar o dinheiro.`,
+      depois: (chave) => enviarCobranca(payment, chave?.pixKey || profile?.pixKey),
+    });
+  };
+
+  const enviarCobranca = (payment, pixKey) => {
+    const child = childById.get(payment.childId);
+    const phone = child?.parentPhone;
     const digits = String(phone).replace(/\D/g, '');
     const e164 = digits.startsWith('55') ? digits : `55${digits}`;
     const text = buildChargeMessage({
       payment,
       displayStatus: payment._display,
-      pixKey: profile?.pixKey,
+      pixKey,
       driverName: profile?.companyName || profile?.name,
     });
     window.open(
@@ -684,6 +697,7 @@ export default function TioFinance() {
       </div>
 
       <PixSheet open={pixOpen} onClose={() => setPixOpen(false)} />
+      {folhaDoPix}
 
       {/* Sheet "Como você recebeu?" */}
       {methodSheetFor && (

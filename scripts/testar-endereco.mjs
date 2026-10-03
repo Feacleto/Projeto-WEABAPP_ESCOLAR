@@ -22,6 +22,7 @@ import {
   montarEndereco,
   consultaDoEndereco,
 } from '../src/compartilhado/formatters.js';
+import { sugestoesDeRua, podeBuscarRua, ufDoIso } from '../src/compartilhado/ruas.js';
 
 let ok = 0, falhou = 0;
 const eq = (nome, a, b) => {
@@ -188,6 +189,51 @@ for (const numero of ['1', '10', '1578', '1578-A', 's/n']) {
   const partes = { ...paulista, numero };
   eq(`"${numero}" está no texto da tela`, montarEndereco(partes).includes(numero), true);
   eq(`"${numero}" está na consulta`, consultaDoEndereco(partes).includes(numero), true);
+}
+
+// ── A BUSCA DE RUA PELO NOME (02/10/2026) ───────────────────────────────
+// O motorista sabe a rua, não o CEP. A resposta do ViaCEP vira a lista da
+// tela; avenida longa vem uma linha por faixa de número.
+console.log('\n\x1b[1m9. A busca de rua pelo nome (ViaCEP ao contrário)\x1b[0m');
+{
+  const viacep = [
+    { cep: '04763-110', logradouro: 'Rua das Trovas', bairro: 'Socorro', localidade: 'São Paulo', uf: 'SP', complemento: '' },
+    { cep: '04763-110', logradouro: 'Rua das Trovas', bairro: 'Socorro', localidade: 'São Paulo', uf: 'SP', complemento: '' },
+    { cep: '01310-100', logradouro: 'Avenida Paulista', bairro: 'Bela Vista', localidade: 'São Paulo', uf: 'SP', complemento: 'de 612 a 1510 - lado par' },
+  ];
+  const lista = sugestoesDeRua(viacep);
+  eq('o CEP repetido aparece uma vez só', lista.length, 2);
+  eq('a faixa da avenida vira texto da linha', lista[1].faixa, 'de 612 a 1510 - lado par');
+  eq('o erro do ViaCEP ({erro: true}) vira lista vazia', sugestoesDeRua({ erro: true }).length, 0);
+  eq('linha sem logradouro é ignorada', sugestoesDeRua([{ cep: '1', logradouro: '' }]).length, 0);
+  eq('com 2 letras não busca (o ViaCEP recusaria)', podeBuscarRua({ uf: 'SP', cidade: 'São Paulo', rua: 'Ru' }), false);
+  eq('sem UF não busca', podeBuscarRua({ uf: '', cidade: 'São Paulo', rua: 'Rua das' }), false);
+  eq('com tudo, busca', podeBuscarRua({ uf: 'sp', cidade: 'São Paulo', rua: 'Rua das' }), true);
+  eq('UF do código ISO do endereço reverso', ufDoIso('BR-SP'), 'SP');
+  eq('código que não é UF vira vazio', ufDoIso('US-CA'), '');
+}
+
+// ── 9. A BUSCA DE RUA PELO NOME (02/10/2026) ─────────────────────────────
+// O motorista sabe a rua, não o CEP. A resposta do ViaCEP vira a lista da
+// tela; avenida longa vem uma linha por faixa de número.
+console.log('\n\x1b[1m9. A busca de rua pelo nome (ViaCEP ao contrário)\x1b[0m');
+{
+  const { sugestoesDeRua, podeBuscarRua, ufDoIso } = await import('../src/compartilhado/ruas.js');
+  const viacep = [
+    { cep: '04763-110', logradouro: 'Rua das Trovas', bairro: 'Socorro', localidade: 'São Paulo', uf: 'SP', complemento: '' },
+    { cep: '04763-110', logradouro: 'Rua das Trovas', bairro: 'Socorro', localidade: 'São Paulo', uf: 'SP', complemento: '' },
+    { cep: '01310-100', logradouro: 'Avenida Paulista', bairro: 'Bela Vista', localidade: 'São Paulo', uf: 'SP', complemento: 'de 612 a 1510 - lado par' },
+  ];
+  const lista = sugestoesDeRua(viacep);
+  eq('o CEP repetido aparece uma vez só', lista.length, 2);
+  eq('a faixa da avenida vira texto da linha', lista[1].faixa, 'de 612 a 1510 - lado par');
+  eq('o erro do ViaCEP ({erro: true}) vira lista vazia', sugestoesDeRua({ erro: true }).length, 0);
+  eq('linha sem logradouro é ignorada', sugestoesDeRua([{ cep: '1', logradouro: '' }]).length, 0);
+  eq('com 2 letras não busca (o ViaCEP recusaria)', podeBuscarRua({ uf: 'SP', cidade: 'São Paulo', rua: 'Ru' }), false);
+  eq('sem UF não busca', podeBuscarRua({ uf: '', cidade: 'São Paulo', rua: 'Rua das' }), false);
+  eq('com tudo, busca', podeBuscarRua({ uf: 'sp', cidade: 'São Paulo', rua: 'Rua das' }), true);
+  eq('UF do código ISO do endereço reverso', ufDoIso('BR-SP'), 'SP');
+  eq('código que não é UF vira vazio', ufDoIso('US-CA'), '');
 }
 
 console.log('\n' + '─'.repeat(66));

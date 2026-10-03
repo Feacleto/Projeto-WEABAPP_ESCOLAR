@@ -134,6 +134,24 @@ export async function loginWithGoogle() {
  *
  * Toda a validação e o vínculo acontecem no servidor.
  */
+/**
+ * "NÃO É MEU FILHO" — desfaz o vínculo automático de irmão (02/10/2026).
+ *
+ * O servidor vincula sozinho a criança cadastrada com o WhatsApp de quem já
+ * usa o app (`functions/lib/vincularIrmao.js`). Número digitado errado pelo
+ * motorista põe a criança na conta de outra família — esta é a saída dela, e
+ * o motorista é avisado para conferir o número. Só desfaz vínculo de irmão.
+ */
+export async function recusarIrmao(childId) {
+  exigirCloud('desfazer');
+  const fn = httpsCallable(functions, 'recusarIrmao');
+  try {
+    await fn({ childId });
+  } catch (err) {
+    throw new Error(friendlyCallableError(err), { cause: err });
+  }
+}
+
 export async function redeemInvite({ inviteCode, name = '' }) {
   exigirCloud('criar sua conta');
   const fn = httpsCallable(functions, 'redeemInvite');

@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { cobrancaLigada, moduloEstaAtivo } = require('./cobrancaLigada');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
@@ -87,6 +88,15 @@ function makeContratarPlano(db) {
     async (request) => {
       const uid = await exigirMotorista(db, request);
 
+      // A CHAVE ÚNICA DA COBRANÇA (platformConfig/app.cobrancaLigada). Desligada,
+      // nada conta — ver lib/cobrancaLigada.js e docs/estrutura-de-cobranca.md.
+      if (!(await cobrancaLigada(db))) {
+        throw new HttpsError(
+          'failed-precondition',
+          'O app está em fase de teste e não cobra nada por enquanto.'
+        );
+      }
+
       const plano = String(request.data?.plano || '').trim();
       if (!planoValido(plano)) {
         throw new HttpsError('invalid-argument', 'Plano desconhecido — use mensal ou anual.');
@@ -146,10 +156,14 @@ function makeContratarPlano(db) {
        * Uma fonte, lida pelos dois lados. Falha na leitura mantém ABERTA:
        * desligar o desconto é um ato de alguém, nunca consequência de um
        * soluço de rede. */
-      let janelaEscada = true;
+      // ⚠️ DESDE 02/10/2026 É O MÓDULO DA ESCADA, e ele nasce DESLIGADO: o
+      // desconto só é concedido com `modulos.escada` ligado no painel. Falha
+      // de leitura não concede — conceder desconto vitalício por soluço de
+      // rede é o erro caro. Ver lib/cobrancaLigada.js.
+      let janelaEscada = false;
       try {
         const pc = await db.doc('platformConfig/app').get();
-        janelaEscada = pc.data()?.janelaEscada !== false;
+        janelaEscada = moduloEstaAtivo(pc.data(), 'escada');
       } catch (err) {
         logger.error('[contratacao] platformConfig não leu', { uid, err: String(err) });
       }

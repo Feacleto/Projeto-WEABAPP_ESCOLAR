@@ -37,6 +37,7 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
+const { cobrancaLigada, moduloAtivo } = require('./cobrancaLigada');
 const {
   avisoDaMensalidade,
   avisoDoConvite,
@@ -169,6 +170,9 @@ async function varrerConvites(db, agora) {
 
 /** A fatura da plataforma — dinheiro que ele deve, e que a tela só conta se ele abrir. */
 async function varrerFaturas(db, agora) {
+  // A CHAVE ÚNICA DA COBRANÇA (platformConfig/app.cobrancaLigada). Desligada,
+  // nada conta — ver lib/cobrancaLigada.js e docs/estrutura-de-cobranca.md.
+  if (!(await cobrancaLigada(db))) return 0;
   let n = 0;
   const snap = await db
     .collection('faturasParceiro')
@@ -231,6 +235,7 @@ async function varrerAlvaras(db, agora) {
  * conjunto. Quem tem a renovação ligada — a base inteira — nem é lido.
  */
 async function varrerEncerramentos(db, agora) {
+  if (!(await cobrancaLigada(db))) return 0; // ver varrerFaturas
   let n = 0;
   const snap = await db
     .collection('users')
@@ -395,6 +400,8 @@ function makeVarrerAtrasos(db) {
  * PRIMEIRA rota uma vez na vida.
  */
 async function varrerOfertas(db, agora) {
+  // A oferta é do MÓDULO da escada de desconto (que exige a mestra ligada).
+  if (!(await moduloAtivo(db, 'escada'))) return 0;
   let n = 0;
   const snap = await db
     .collection('users')

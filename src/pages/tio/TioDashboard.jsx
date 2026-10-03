@@ -11,7 +11,9 @@ import {
   LayoutGrid,
   CheckCircle2,
   MailWarning,
+  UserPlus,
 } from 'lucide-react';
+import PedidosDeAcesso from '../../components/tio/PedidosDeAcesso';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
 import Header from '../../components/layout/Header';
 import Avatar from '../../components/common/Avatar';
@@ -365,6 +367,11 @@ export default function TioDashboard() {
           </>
         )}
 
+        {/* Um responsável sem o link pediu acesso a uma criança dele. Fica
+          * acima de tudo — fora da rota — porque a mãe está esperando do
+          * outro lado, com o app travado até ele responder. */}
+        {estado !== 'dirigindo' && <PedidosDeAcesso className="px-5 pt-4" />}
+
         {estado === 'carregando' && (
           <div className="px-5 pt-4 space-y-3">
             <Skeleton className="h-40 rounded-2xl" />
@@ -508,16 +515,22 @@ export default function TioDashboard() {
                 Sua turma ainda está vazia
               </p>
               <p className="text-sm text-textMuted mt-1 max-w-xs mx-auto">
-                Cadastre a escola, depois as crianças e a hora que você definiu
-                com cada responsável. A rota se monta a partir disso.
+                Cadastre as crianças e a hora que você combinou com cada
+                família. A rota se monta a partir disso.
               </p>
+              {/* COMEÇA PELA CRIANÇA, NÃO PELA ESCOLA (02/10/2026). Era
+                * "Começar pela escola", porque a criança dependia de uma escola
+                * já cadastrada — e quem começava pela criança perdia o que
+                * tinha digitado ao sair para criar a escola. Agora a escola
+                * nasce num popup dentro do cadastro da criança. */}
               <button
                 type="button"
-                onClick={() => navigate('/tio/children/escolas')}
+                data-tour="primeira-crianca"
+                onClick={() => navigate('/tio/children/new')}
                 className="tap w-full rounded-2xl bg-primary text-white font-bold mt-4 h-12 inline-flex items-center justify-center gap-2"
               >
-                <School size={18} />
-                Começar pela escola
+                <UserPlus size={18} />
+                Cadastrar a primeira criança
               </button>
             </div>
 

@@ -1,85 +1,134 @@
 import { useState } from 'react';
-import { User, MapPin, Bus, Sparkles, ImagePlus, X } from 'lucide-react';
+import { ImagePlus, MapPin, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import Logo from '../../components/common/Logo';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Spinner from '../../components/common/Spinner';
-import FundoNoturno from '../../components/common/FundoNoturno';
 import { useAuth } from '../../hooks/useAuth';
 import { completarCadastro } from '../../services/associadoService';
+import { lugarDaPosicaoAtual } from '../../services/locationService';
 import { uploadMarcaLogo, deleteMarcaLogo } from '../../services/photoService';
 import { setMarca } from '../../services/userService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
+import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
+import {
+  camposQueFaltam,
+  passosQueFaltam,
+} from '../../dominio/identidade/cadastroDoMotorista.js';
 
 /**
- * PRIMEIRO ACESSO DO MOTORISTA — o resto do cadastro, depois de entrar.
+ * PRIMEIRO ACESSO DO MOTORISTA — um card por cima do app.
  *
- * ── POR QUE ELE EXISTE
- * A inscrição pedia seis campos antes de a pessoa ter visto qualquer coisa
- * do produto. Formulário longo é onde se perde quem estava decidido: ele
- * cobra confiança que a tela ainda não construiu. Agora a conta nasce com
- * três campos (e-mail, WhatsApp, senha) e o resto é pedido do lado de
- * DENTRO — quando ele já está no app, já viu que existe, e o pedido tem
- * contexto.
+ * ── POR QUE VIROU CARD (02/10/2026)
+ * Era uma tela cheia que substituía o `/tio`: a pessoa criava a conta e, em
+ * vez do app, via um formulário de seis campos. Agora o app abre de verdade
+ * por baixo (inerte, ver `PrimeiroAcessoGate` no App.jsx) e o card sobe por
+ * cima — ela vê o que está liberando.
  *
- * ── ⚠️ E ISSO NÃO É SÓ UX: TRÊS DESTES CAMPOS SÃO CONTRATO
- * `name` e `city` vão para o contrato de associação
- * (`contratoAssociacao.js`), onde identificam a PARTE. É por isso que os
- * três primeiros bloqueiam e os dois últimos não: sem eles o contrato nasce
- * com a parte em branco, e um documento assinado sem quem assinou não é
- * documento.
+ * ── ⚠️ O CARD É CURTO DE PROPÓSITO, e o dono pediu assim
+ * Título, campos vazios e um botão. Sem placeholder de exemplo (um "Tio
+ * Marcos" escrito dentro do campo confundia), sem pré-preencher o nome do
+ * Google (ele quase nunca é o do documento), sem "confira se está como no seu
+ * documento" (assusta), sem "já temos seu e-mail", sem "fazer depois". Quem
+ * chega aqui só quer terminar. A ÚNICA linha de explicação é a da
+ * localização, porque é a única pergunta que pede uma permissão do aparelho.
  *
- * ── ⚠️ "CIDADE" E "ONDE VOCÊ RODA" SÃO PERGUNTAS DIFERENTES, e juntá-las
- * quebraria o contrato. `city` é a cidade da parte contratante e também
- * alimenta o BR Code do PIX; `regiao` é a resposta operacional — em São
- * Paulo, saber "São Paulo" não diz nada sobre onde a perua está. Uma
- * substituindo a outra faria o contrato dizer "Associado: João, Vila
- * Mariana".
+ * ── SÓ O QUE FALTA
+ * Os passos vêm de `passosQueFaltam`, congelados na abertura — senão a lista
+ * encolheria a cada passo gravado e os pontinhos de progresso andariam para
+ * trás. Dentro de cada passo, só os campos vazios aparecem.
  *
- * ── ⚠️ REGIÃO É TEXTO LIVRE, DE PROPÓSITO
- * Lista fechada agruparia melhor no painel do dono e engessaria quem roda em
- * duas regiões — e ninguém sabe ainda como essas respostas se parecem. Texto
- * livre primeiro; a lista, se vier, vem das respostas reais.
+ * ── CIDADE PELA LOCALIZAÇÃO
+ * O último passo pede a permissão e grava só os NOMES de cidade e bairro
+ * (`lugarDaPosicaoAtual` nunca devolve a coordenada). A cidade é contrato,
+ * então quem nega — ou quem está sem sinal — digita a cidade. Travar ali sem
+ * campo seria prender alguém que o navegador não vai perguntar de novo.
  *
  * ── NENHUMA RULE MUDOU
- * Isto é `update` do próprio documento, e a política de `users` para o
- * próprio dono é lista de PROIBIDOS (`role`, `trialInicio`, `plano`…).
- * Nenhum campo daqui está nela — pelo mesmo critério de `ultimaRota`: mentir
- * aqui não vira desconto, prazo nem permissão.
+ * Tudo é `update` do próprio documento, e a política de `users` para o
+ * próprio dono é lista de PROIBIDOS. Nenhum campo daqui está nela.
  */
-
-export default function PrimeiroAcesso({ aoConcluir }) {
+export default function PrimeiroAcesso() {
   const { user, profile, refreshProfile } = useAuth();
-  const [form, setForm] = useState({
-    name: profile?.name || '',
-    city: profile?.city || '',
-    regiao: profile?.regiao || '',
-    marcaNome: profile?.marcaNome || '',
-    criancas: profile?.criancasEstimadas ? String(profile.criancasEstimadas) : '',
-  });
+  const [passos] = useState(() => passosQueFaltam(profile));
+  const [indice, setIndice] = useState(0);
+  const passo = passos[indice];
+  const ultimo = indice === passos.length - 1;
+
+  const [form, setForm] = useState({ name: '', phone: '', marcaNome: '', city: '' });
   const [errors, setErrors] = useState({});
   const [salvando, setSalvando] = useState(false);
+  // A localização falhou (negada, sem sinal, sem cidade): aparece o campo.
+  const [digitarCidade, setDigitarCidade] = useState(false);
 
-  /* ⚠️ O LOGO É GRAVADO NA HORA, e não no envio do formulário.
-   *
-   * Ele não é um campo de texto: o arquivo vai pro Storage e volta uma URL,
-   * e segurar isso até o submit significaria fazer um upload dentro do
-   * gesto que já está salvando o resto — com a barra de progresso escondida
-   * atrás de um botão. Gravado na hora, ele também sobrevive se a pessoa
-   * fechar a tela antes de terminar, que é o comportamento certo: o que ela
-   * mandou, ela mandou.
-   *
-   * ⚠️ E ELE NUNCA BLOQUEIA. É o único campo desta tela que precisa de um
-   * ARQUIVO, e a maioria abre isso no celular, na rua, sem nenhuma imagem
-   * pronta. Exigir aqui trocaria a primeira tela do produto por uma busca na
-   * galeria. */
   const [logoURL, setLogoURL] = useState(profile?.marcaLogoURL || null);
   const [subindoLogo, setSubindoLogo] = useState(false);
 
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const faltando = (campo) => camposQueFaltam(profile, passo).includes(campo);
+
+  const gravar = async (dados) => {
+    setSalvando(true);
+    try {
+      await completarCadastro(user.uid, dados, { ultimo });
+      if (ultimo) {
+        // O card some sozinho quando o perfil volta completo: quem decide é
+        // o gate, não esta tela.
+        await refreshProfile();
+      } else {
+        setErrors({});
+        setIndice((i) => i + 1);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Tente de novo.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const continuar = (e) => {
+    e.preventDefault();
+    const errs = {};
+    if (passo === 'voce') {
+      if (faltando('name') && !form.name.trim()) errs.name = 'Escreva seu nome.';
+      if (faltando('phone') && !isValidPhone(form.phone)) errs.phone = 'WhatsApp com DDD.';
+    }
+    if (passo === 'marca' && !form.marcaNome.trim()) {
+      errs.marcaNome = 'Escreva como as famílias te chamam.';
+    }
+    if (passo === 'local' && !form.city.trim()) errs.city = 'Escreva sua cidade.';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    gravar({
+      ...(passo === 'voce' ? { name: form.name, phone: unmaskPhone(form.phone) } : {}),
+      ...(passo === 'marca' ? { marcaNome: form.marcaNome } : {}),
+      ...(passo === 'local' ? { city: form.city } : {}),
+    });
+  };
+
+  const permitirLocalizacao = async () => {
+    setSalvando(true);
+    try {
+      const lugar = await lugarDaPosicaoAtual();
+      await gravar(lugar);
+    } catch (err) {
+      setSalvando(false);
+      setDigitarCidade(true);
+      if (err?.code !== 'negado') {
+        toast.error('Não deu pra achar sua cidade. Escreva aqui.');
+      }
+    }
+  };
+
+  /* O logo é gravado na hora, como antes: o arquivo vai pro Storage e volta
+   * uma URL, e segurar isso até o "Continuar" esconderia o upload atrás do
+   * botão. Ele não trava o passo — exigir um arquivo trava quem está na rua
+   * sem imagem pronta. */
   const escolherLogo = async (e) => {
     const file = e.target.files?.[0];
-    e.target.value = ''; // permite reenviar o mesmo arquivo
+    e.target.value = '';
     if (!file || !user?.uid) return;
     setSubindoLogo(true);
     try {
@@ -93,14 +142,11 @@ export default function PrimeiroAcesso({ aoConcluir }) {
       setSubindoLogo(false);
     }
   };
-
   const removerLogo = async () => {
     if (!user?.uid) return;
     setSubindoLogo(true);
     try {
       await deleteMarcaLogo(user.uid);
-      // `null` explícito: `undefined` seria ignorado pelo Firestore e o
-      // cabeçalho continuaria mostrando um logo que já não existe.
       await setMarca(user.uid, { logoURL: null });
       setLogoURL(null);
     } catch (err) {
@@ -111,250 +157,161 @@ export default function PrimeiroAcesso({ aoConcluir }) {
     }
   };
 
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    const errs = {};
-    if (!form.name.trim()) errs.name = 'Como está no seu documento.';
-    if (!form.city.trim()) errs.city = 'A cidade vai no seu contrato.';
-    if (!form.regiao.trim()) errs.regiao = 'Bairro ou região já serve.';
-    setErrors(errs);
-    if (Object.keys(errs).length) {
-      toast.error('Confira o que está destacado.');
-      return;
-    }
-
-    setSalvando(true);
-    try {
-      await completarCadastro(user.uid, form);
-      await refreshProfile();
-      // Sem toast de sucesso: o que vem a seguir é o app dele com o próprio
-      // nome no cabeçalho, e isso diz melhor que qualquer frase.
-      if (aoConcluir) aoConcluir();
-    } catch (err) {
-      console.error(err);
-      toast.error('Não deu pra salvar. Tente de novo.');
-    } finally {
-      setSalvando(false);
-    }
-  };
+  if (!passo) return null;
 
   return (
     <div
-      data-painel="web"
-      className="relative left-1/2 w-screen -translate-x-1/2 bg-bg"
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-3 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="primeiro-acesso-titulo"
     >
-      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)]">
-        {/* A MESMA TAMPA ESCURA DAS OUTRAS PORTAS. Ele acabou de atravessar o
-          * cadastro; trocar a cara aqui faria parecer outro aplicativo. */}
-        <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-6 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
-          <FundoNoturno />
-
-          <div className="relative">
-            <Logo variant="lockup" tone="onDark" height={32} className="lg:hidden" />
-            <Logo
-              variant="lockup"
-              tone="onDark"
-              height={46}
-              className="hidden lg:block"
-            />
+      <form
+        onSubmit={continuar}
+        className="w-full max-w-[420px] rounded-3xl bg-card p-5 shadow-float"
+      >
+        {passos.length > 1 && (
+          <div className="mb-4 flex gap-1.5" aria-hidden>
+            {passos.map((p, i) => (
+              <span
+                key={p}
+                className={`h-1 flex-1 rounded-full ${i <= indice ? 'bg-primary' : 'bg-border'}`}
+              />
+            ))}
           </div>
+        )}
 
-          <div className="relative mt-6 lg:mt-0">
-            <h1 className="text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
-              Falta pouco pra sua conta ficar sua
-            </h1>
-            {/* ⚠️ A FRASE DIZ PARA QUE SERVE, e não "complete seu perfil".
-              * Perfil é vocabulário de sistema; contrato e cabeçalho são
-              * coisas que ele reconhece. Quem entende por que está digitando
-              * digita. */}
-            <p className="mt-3 text-sm leading-relaxed text-white/65">
-              Duas linhas vão no seu contrato com a plataforma. As outras são
-              o nome e o logo que as famílias vão ver no topo do app, no lugar
-              de &ldquo;Início&rdquo; — e essas você pode deixar pra depois.
-            </p>
-          </div>
-
-          <p className="relative hidden text-xs text-white/40 lg:block">
-            alobuzinou.com.br
-          </p>
-        </header>
-
-        <div
-          aria-hidden
-          className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
-        />
-
-        <main className="flex items-start justify-center px-4 py-8 lg:items-center lg:px-10">
-          <form
-            onSubmit={onSubmit}
-            className="w-full max-w-[440px] space-y-5 rounded-3xl border border-border bg-card p-6 shadow-rest lg:p-8"
-          >
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
-                quem é você
-              </p>
-              <div className="mt-3 space-y-3">
+        {passo === 'voce' && (
+          <>
+            <h2 id="primeiro-acesso-titulo" className="text-xl font-extrabold text-text">
+              Seus dados
+            </h2>
+            <div className="mt-4 space-y-3">
+              {faltando('name') && (
                 <Input
                   label="Seu nome completo"
-                  placeholder="como está no documento"
-                  icon={User}
                   value={form.name}
                   onChange={set('name')}
                   error={errors.name}
                   autoComplete="name"
                   required
                 />
+              )}
+              {faltando('phone') && (
                 <Input
-                  label="Cidade"
-                  placeholder="São Paulo"
-                  icon={MapPin}
+                  label="WhatsApp"
+                  type="tel"
+                  inputMode="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))}
+                  error={errors.phone}
+                  autoComplete="tel"
+                  required
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {passo === 'marca' && (
+          <>
+            <h2 id="primeiro-acesso-titulo" className="text-xl font-extrabold text-text">
+              Sua marca
+            </h2>
+            <div className="mt-4 space-y-3">
+              <Input
+                label="Como as famílias te chamam"
+                value={form.marcaNome}
+                onChange={set('marcaNome')}
+                error={errors.marcaNome}
+                required
+              />
+              {/* Escondido sem Cloud Storage, e não desabilitado — a regra de
+                * `capabilities.js`. */}
+              {STORAGE_ENABLED && (
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-text">Logo (opcional)</p>
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-sunken px-3 py-2.5">
+                    {subindoLogo ? (
+                      <Spinner size={22} className="text-primary" />
+                    ) : logoURL ? (
+                      <img src={logoURL} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+                    ) : (
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
+                        <ImagePlus size={18} />
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-sm font-bold text-text">
+                      {form.marcaNome.trim()}
+                    </span>
+                    {logoURL ? (
+                      <button
+                        type="button"
+                        onClick={removerLogo}
+                        disabled={subindoLogo}
+                        aria-label="Remover o logo"
+                        className="tap shrink-0 rounded-lg p-1.5 text-textMuted hover:text-text disabled:opacity-50"
+                      >
+                        <X size={16} />
+                      </button>
+                    ) : (
+                      <label className="tap shrink-0 cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary">
+                        Escolher imagem
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          disabled={subindoLogo}
+                          onChange={escolherLogo}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {passo === 'local' && (
+          <>
+            <h2 id="primeiro-acesso-titulo" className="text-xl font-extrabold text-text">
+              Localização
+            </h2>
+            {/* A única linha de explicação do card, e ela tem duas metades: para
+              * que serve, e que ele desliga quando quiser — a chave existe no
+              * início de cada rota (ControleDeRota). */}
+            <p className="mt-1.5 text-sm text-textMuted">
+              Para as famílias verem a perua chegando. Você desliga no app
+              quando quiser.
+            </p>
+            {digitarCidade && (
+              <div className="mt-4">
+                <Input
+                  label="Sua cidade"
                   value={form.city}
                   onChange={set('city')}
                   error={errors.city}
-                  hint="Vai no seu contrato com a plataforma."
+                  autoComplete="address-level2"
                   required
                 />
               </div>
-            </div>
+            )}
+          </>
+        )}
 
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
-                onde você roda
-              </p>
-              <div className="mt-3">
-                {/* ⚠️ BAIRRO OU REGIÃO, NUNCA SÓ A CIDADE. "São Paulo" não
-                  * diz nada sobre onde a perua está — e é a informação que o
-                  * dono usa pra saber se dois motoristas se cruzam. */}
-                <Input
-                  label="Bairro ou região"
-                  placeholder="Vila Mariana, Zona Sul, Grande ABC…"
-                  icon={MapPin}
-                  value={form.regiao}
-                  onChange={set('regiao')}
-                  error={errors.regiao}
-                  hint="Pode ser amplo. Só precisamos saber a área."
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
-                sua marca{' '}
-                <span className="font-normal normal-case tracking-normal">
-                  — pode deixar em branco
-                </span>
-              </p>
-              <div className="mt-3 space-y-3">
-                {/* OS DOIS CAMPOS QUE MUDAM O APP NA HORA. Eles viram o
-                  * cabeçalho do /tio E do /pai, no lugar de "Início" — as
-                  * famílias dele leem isso todo dia. Estavam enterrados no
-                  * perfil, onde quase ninguém chega. */}
-                <Input
-                  label="Como as famílias te chamam"
-                  placeholder="Tio Nino"
-                  icon={Sparkles}
-                  value={form.marcaNome}
-                  onChange={set('marcaNome')}
-                  hint="Aparece no topo do app, pra você e pra elas."
-                />
-
-                {/* ⚠️ ESCONDIDO SEM CLOUD STORAGE, e não desabilitado. É a
-                  * regra de `capabilities.js`: sem Storage o app some com o
-                  * botão de anexo em vez de deixar o upload falhar como erro
-                  * de rede — quem usa troca de rede, quem depura procura CORS,
-                  * e o conserto é ligar o faturamento. */}
-                {STORAGE_ENABLED && (
-                  <div>
-                    <p className="mb-1.5 text-sm font-medium text-text">
-                      Seu logo
-                    </p>
-                    {/* A PRÉVIA É O CABEÇALHO REAL, no tamanho real — é ela
-                      * que faz alguém querer mandar a imagem. Descrever "vai
-                      * aparecer no topo" não mostra nada; mostrar, sim. */}
-                    <div className="flex items-center gap-3 rounded-xl border border-border bg-sunken px-3 py-2.5">
-                      {subindoLogo ? (
-                        <Spinner size={22} className="text-primary" />
-                      ) : logoURL ? (
-                        <img
-                          src={logoURL}
-                          alt=""
-                          className="h-9 w-9 shrink-0 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
-                          <ImagePlus size={18} />
-                        </span>
-                      )}
-                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-text">
-                        {form.marcaNome.trim() || 'Sua marca aqui'}
-                      </span>
-                      {logoURL ? (
-                        <button
-                          type="button"
-                          onClick={removerLogo}
-                          disabled={subindoLogo}
-                          aria-label="Remover o logo"
-                          className="tap shrink-0 rounded-lg p-1.5 text-textMuted hover:text-text disabled:opacity-50"
-                        >
-                          <X size={16} />
-                        </button>
-                      ) : (
-                        <label className="tap shrink-0 cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary">
-                          Escolher
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="sr-only"
-                            disabled={subindoLogo}
-                            onChange={escolherLogo}
-                          />
-                        </label>
-                      )}
-                    </div>
-                    <p className="mt-1 px-1 text-[11px] leading-relaxed text-textMuted">
-                      Se você não tem um, deixe em branco — o nome sozinho já
-                      funciona.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
-                sua operação{' '}
-                <span className="font-normal normal-case tracking-normal">
-                  — pode deixar em branco
-                </span>
-              </p>
-              <div className="mt-3">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  label="Quantas crianças você transporta hoje"
-                  placeholder="0"
-                  icon={Bus}
-                  value={form.criancas}
-                  onChange={set('criancas')}
-                  hint="Só pra gente entender seu tamanho. Não é cobrança."
-                />
-              </div>
-            </div>
-
-            <Button type="submit" loading={salvando}>
-              Entrar no app
+        <div className="mt-5">
+          {passo === 'local' && !digitarCidade ? (
+            <Button type="button" icon={MapPin} loading={salvando} onClick={permitirLocalizacao}>
+              Permitir localização
             </Button>
-
-            {/* Sem "pular": os três de cima são contrato, e pular aqui só
-              * empurra o bloqueio para o dia em que ele for emitir — com a
-              * família esperando do outro lado. */}
-          </form>
-        </main>
-      </div>
+          ) : (
+            <Button type="submit" loading={salvando || subindoLogo}>
+              {ultimo ? 'Entrar no app' : 'Continuar'}
+            </Button>
+          )}
+        </div>
+      </form>
     </div>
   );
 }

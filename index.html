@@ -11,6 +11,9 @@
          tem contraste contra as duas, então a media query saiu junto. -->
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
     <link rel="alternate icon" href="/brand/favicon.ico" sizes="16x16 32x32 48x48" />
+    <!-- O Google não aceita na busca o .ico de 16/32/48: quer PNG quadrado de
+         lado múltiplo de 48. Sem este, o resultado mostrava um globo. -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/brand/icon-192.png" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
@@ -25,31 +28,23 @@
     />
     <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
 
-    <!-- ⚠️ NÃO PONHA `noindex` AQUI AINDA — E A ORDEM É O PONTO.
-         O plano continua o mesmo: quem deve aparecer na busca é a landing
-         (`alobuzinou.com.br`), não este app, que é uma tela de login. Em
-         09/09/2026 o Google mostrava ESTE domínio acima dela.
+    <!-- O APP SAI DA BUSCA — quem deve aparecer é a landing
+         (`alobuzinou.com.br`), não esta tela de login. Em 09/09/2026 o Google
+         mostrava ESTE domínio acima dela.
 
-         Mas o `noindex` geral entrou e saiu no mesmo dia, e o motivo é
-         SEQUÊNCIA: o Google nunca conseguiu ler a landing (ela herdou um
-         robots.txt bloqueado da hospedagem antiga), então hoje este app é o
-         ÚNICO resultado que existe da marca. Tirá-lo antes de a landing
-         entrar deixaria a marca com presença ZERO na busca — pior que o
-         estado que se queria consertar.
+         O `noindex` já entrou e saiu uma vez, e o motivo foi SEQUÊNCIA: a
+         landing ainda não estava no índice (herdou um robots.txt bloqueado da
+         hospedagem antiga), e tirar o app antes deixaria a marca com presença
+         zero. Em 02/10/2026 a landing apareceu em primeiro na busca pela
+         marca, e a meta voltou.
 
-         ⚠️ QUANDO VOLTAR A PÔR: depois de confirmar no Search Console que
-         `alobuzinou.com.br` está indexada e aparecendo. Aí esta linha volta:
+         `follow` e não `nofollow`: o robô continua seguindo os links daqui
+         para a landing. E o `robots.txt` LIBERA a leitura de propósito —
+         bloqueado, o Google não leria esta meta.
 
-             <meta name="robots" content="noindex, follow" />
-
-         e o caso correspondente de `npm run testar:busca` (bloco 1) volta a
-         exigi-la — ele está marcado lá com este mesmo aviso.
-
-         O que NÃO espera pela landing é o link do convite: `/convite/{codigo}`
-         e `/auth-action` já saem com `X-Robots-Tag: noindex` pelo
-         `firebase.json`, porque aquele link é o token que cria conta
-         vinculada a uma criança. Cabeçalho por caminho funciona no SPA, onde
-         uma meta no HTML não distingue rota. -->
+         O link do convite tem tranca própria: `/convite/{codigo}` e
+         `/auth-action` saem com `X-Robots-Tag: noindex` pelo `firebase.json`. -->
+    <meta name="robots" content="noindex, follow" />
 
     <!-- Preview do link. O convite do motorista circula por WhatsApp: sem
          estas tags o pai recebe um retângulo cinza no lugar da marca. -->

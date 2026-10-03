@@ -1343,6 +1343,12 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     role: S('admin'), name: S('Carencia'), trialInicio: T(-200), assinaturaAte: T(-3),
   });
 
+  // ⚠️ A TRANCA SO EXISTE COM A COBRANCA LIGADA (02/10/2026). A chave unica
+  // `platformConfig/app.cobrancaLigada` nasce desligada — ausente e desligada
+  // —, e desligada ninguem e trancado por teste vencido. Este bloco liga a
+  // chave para medir a tranca; o caso desligado vem logo depois.
+  await semear('platformConfig/app', { cobrancaLigada: B(true) });
+
   checar('tranca', 'quem esta com o teste vencido cadastra crianca', 'NEGA',
     await criar('children', `kid-vencido-${Date.now()}`, vencido, {
       name: S('X'), adminUid: S(vencido.uid), active: B(true),
@@ -1353,6 +1359,17 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     await criar('schoolBroadcasts', `br-vencido-${Date.now()}`, vencido, {
       adminUid: S(vencido.uid), texto: S('oi'),
     }));
+
+  // COM A COBRANCA DESLIGADA, O MESMO VENCIDO OPERA. Sem isto, esconder as
+  // telas de cobranca nao bastava: no dia 91 o app quebrava calado.
+  await semear('platformConfig/app', { cobrancaLigada: B(false) });
+  checar('pos', 'cobranca desligada: o vencido escreve a posicao ao vivo', 'PASSA',
+    await escrever('liveLocation/' + vencido.uid, vencido, { lat: N(-23) }, ['lat']));
+  checar('pos', 'e cria recado de escola', 'PASSA',
+    await criar('schoolBroadcasts', `br-desligada-${Date.now()}`, vencido, {
+      adminUid: S(vencido.uid), texto: S('oi'),
+    }));
+  await semear('platformConfig/app', { cobrancaLigada: B(true) });
 
   // ⚠️ ESTES TRES CASOS MEDEM O ESTADO DA CONTA, NAO O CONTADOR — e por isso
   // usam o commit com incremento. Com um POST solto eles davam 403 pela regra
@@ -1841,6 +1858,78 @@ async function decisao12({ tio1, tio2, pai1, novato }) {
   // O motorista LE — e e o ponto do dado existir.
   checar('pos', 'o motorista DELA le a crianca (e a nota vem com ela)', 'PASSA',
     await ler('children/kid-saude', tio1));
+
+  // ── O ANIVERSARIO E DA FAMILIA (02/10/2026) ──────────────────────────────
+  // Saiu do cadastro do motorista, que quase nunca sabe a data, e entrou no
+  // ramo da responsavel junto de turma e sala. O ramo e lista de PERMITIDOS:
+  // a data nao pode servir de carona para um campo de dinheiro.
+  checar('pos', 'a responsavel grava turma, sala e aniversario', 'PASSA',
+    await escrever('children/kid-saude', pai1,
+      { turma: S('3o B'), sala: S('12'), birthDate: S('2018-05-14') },
+      ['turma', 'sala', 'birthDate']));
+  checar('aniversario', 'mas o aniversario nao leva a mensalidade de carona', 'NEGA',
+    await escrever('children/kid-saude', pai1,
+      { birthDate: S('2018-05-15'), monthlyFee: { integerValue: '1' } },
+      ['birthDate', 'monthlyFee']));
+  checar('aniversario', 'e quem nao e da crianca nao grava o aniversario dela', 'NEGA',
+    await escrever('children/kid-saude', novato,
+      { birthDate: S('2018-05-15') }, ['birthDate']));
+
+  // ── A CHAVE DO IRMAO E DO SERVIDOR (02/10/2026) ──────────────────────────
+  // Crianca nova com este WhatsApp entra SOZINHA na conta que tem a chave
+  // (`vincularIrmao.js`). Se a responsavel pudesse escreve-la, poria o numero
+  // de outra mae e receberia os filhos dela.
+  checar('irmao', 'a responsavel NAO grava a propria chave de telefone', 'NEGA',
+    await escrever('users/' + pai1.uid, pai1,
+      { phoneChave: S('11987654321') }, ['phoneChave']));
+  checar('pos', 'mas continua editando o proprio telefone de contato', 'PASSA',
+    await escrever('users/' + pai1.uid, pai1,
+      { phone: S('11987654321') }, ['phone']));
+  checar('irmao', 'nem o numero que digitou ao pedir acesso sem link', 'NEGA',
+    await escrever('users/' + pai1.uid, pai1,
+      { telefoneAguardandoChave: S('11987654321') }, ['telefoneAguardandoChave']));
+
+  // ── O NUMERO DA CASA QUE O MOTORISTA NAO SABIA (02/10/2026) ──────────────
+  // A familia completa o endereco UMA vez, so com `numeroPendente` ligado, e
+  // so os campos do endereco. Fora disso, a casa continua sendo do motorista.
+  checar('casa', 'sem pendencia, a responsavel nao muda o endereco', 'NEGA',
+    await escrever('children/kid-saude', pai1,
+      { address: S('Rua X, 1'), numeroPendente: B(false) }, ['address', 'numeroPendente']));
+  await semear('children/kid-casa', {
+    name: S('Bia'), adminUid: S(tio1.uid), parentUid: S(pai1.uid), active: B(true),
+    numeroPendente: B(true), address: S('Rua das Trovas — Socorro'),
+  });
+  checar('casa', 'nem leva a mensalidade de carona no numero', 'NEGA',
+    await escrever('children/kid-casa', pai1,
+      { address: S('Rua das Trovas, 120'), numeroPendente: B(false), monthlyFee: { integerValue: '1' } },
+      ['address', 'numeroPendente', 'monthlyFee']));
+  checar('pos', 'com o numero pendente, ela completa o endereco', 'PASSA',
+    await escrever('children/kid-casa', pai1,
+      { address: S('Rua das Trovas, 120 — Socorro'), numeroPendente: B(false) },
+      ['address', 'numeroPendente']));
+  checar('casa', 'e depois disso a porta fecha', 'NEGA',
+    await escrever('children/kid-casa', pai1,
+      { address: S('Outra rua, 9'), numeroPendente: B(false) }, ['address', 'numeroPendente']));
+
+  // ── O PEDIDO DE ACESSO SEM LINK (02/10/2026) ─────────────────────────────
+  // Nasce de um numero digitado, que nao e segredo. So o servidor escreve, e
+  // quem le e a pessoa que pediu e o motorista DONO da crianca.
+  await semear('pedidosDeVinculo/kid-saude_' + pai1.uid, {
+    childId: S('kid-saude'), adminUid: S(tio1.uid), parentUid: S(pai1.uid),
+    status: S('aguardando'),
+  });
+  checar('pos', 'quem pediu le o proprio pedido', 'PASSA',
+    await ler('pedidosDeVinculo/kid-saude_' + pai1.uid, pai1));
+  checar('pos', 'o motorista da crianca le o pedido', 'PASSA',
+    await ler('pedidosDeVinculo/kid-saude_' + pai1.uid, tio1));
+  checar('pedido', 'outro motorista nao le o pedido', 'NEGA',
+    await ler('pedidosDeVinculo/kid-saude_' + pai1.uid, tio2));
+  checar('pedido', 'quem pediu nao se aprova sozinho', 'NEGA',
+    await escrever('pedidosDeVinculo/kid-saude_' + pai1.uid, pai1,
+      { status: S('aprovado') }, ['status']));
+  checar('pedido', 'nem o motorista aprova por fora da callable', 'NEGA',
+    await escrever('pedidosDeVinculo/kid-saude_' + pai1.uid, tio1,
+      { status: S('aprovado') }, ['status']));
 
   // A PORTA QUE CONTINUA ABERTA, e tem consumidor: remover pai vinculado.
   //

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Key, Save, Trash2 } from 'lucide-react';
+import { Key, Save, Trash2, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
 import Input from '../common/Input';
@@ -10,6 +10,7 @@ import {
   setAdminPixKey,
   clearAdminPixKey,
   validatePixKey,
+  maskCpf,
 } from '../../services/userService';
 import { formatPhone } from '../../compartilhado/formatters';
 
@@ -46,6 +47,22 @@ export default function PixForm({ onDone }) {
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
 
+  // ── A PERGUNTA ANTES DO FORMULÁRIO (02/10/2026) ───────────────────────
+  //
+  // Quem ainda não tem chave e já deu o WhatsApp no cadastro ouve primeiro uma
+  // pergunta só: "usar este número?". A maioria dos motoristas usa o celular
+  // como chave, e fazer essa pessoa escolher "Celular" numa grade e digitar de
+  // novo um número que o app JÁ TEM é o formulário pedindo o que ele sabe.
+  //
+  // "Não" abre o formulário de sempre, com o campo vazio para ele escrever ou
+  // colar a chave dele. Quem já tem chave nunca vê a pergunta: ali o assunto é
+  // trocar, e trocar começa pelo formulário.
+  const telefoneDoCadastro = profile?.phone ? formatPhone(profile.phone) : '';
+  const podePerguntar =
+    !profile?.pixKey && !!telefoneDoCadastro && !validatePixKey('phone', telefoneDoCadastro);
+  const [respondeu, setRespondeu] = useState(false);
+  const perguntando = podePerguntar && !respondeu;
+
   const onTypeChange = (newType) => {
     setType(newType);
     setKey(''); // limpa pra evitar formato errado
@@ -55,8 +72,32 @@ export default function PixForm({ onDone }) {
   const onKeyChange = (e) => {
     let value = e.target.value;
     if (type === 'phone') value = formatPhone(value);
+    if (type === 'cpf') value = maskCpf(value);
     setKey(value);
     if (error) setError('');
+  };
+
+  const usarTelefone = async () => {
+    setSaving(true);
+    try {
+      await setAdminPixKey(user.uid, { pixKey: telefoneDoCadastro, pixKeyType: 'phone' });
+      await refreshProfile();
+      toast.success('Chave PIX salva: o seu celular.');
+      onDone?.({ pixKey: telefoneDoCadastro, pixKeyType: 'phone' });
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao salvar chave PIX.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const outraChave = () => {
+    setRespondeu(true);
+    // Abre no tipo que ele mais provavelmente tem, com o campo VAZIO: se
+    // fosse o celular, ele teria dito sim.
+    setTipoEditado('random');
+    setChaveEditada('');
   };
 
   const onSubmit = async (e) => {
@@ -73,7 +114,9 @@ export default function PixForm({ onDone }) {
       await setAdminPixKey(user.uid, { pixKey: key.trim(), pixKeyType: type });
       await refreshProfile();
       toast.success('Chave PIX salva!');
-      onDone?.();
+      // A chave salva vai junto: quem abriu o formulário no meio de uma ação
+      // (cobrar pelo WhatsApp) segue com ela, e não com o perfil de antes.
+      onDone?.({ pixKey: key.trim(), pixKeyType: type });
     } catch (err) {
       console.error(err);
       toast.error('Erro ao salvar chave PIX.');
@@ -100,6 +143,34 @@ export default function PixForm({ onDone }) {
 
   const hasExistingKey = !!profile?.pixKey;
 
+  if (perguntando) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <p className="flex items-center gap-2 text-sm font-bold text-text">
+            <Smartphone size={16} className="text-primary" />
+            Seu celular é sua chave PIX?
+          </p>
+          <p className="mt-2 text-2xl font-extrabold tracking-tight text-text">
+            {telefoneDoCadastro}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-textMuted">
+            É o número que você deu no cadastro. Só use se ele estiver
+            cadastrado como chave PIX no seu banco — é pra ela que as famílias
+            vão mandar o dinheiro.
+          </p>
+        </div>
+
+        <Button onClick={usarTelefone} loading={saving}>
+          Sim, usar este número
+        </Button>
+        <Button variant="secondary" onClick={outraChave} disabled={saving}>
+          Não, minha chave é outra
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="space-y-4">
@@ -108,7 +179,7 @@ export default function PixForm({ onDone }) {
             <label className="block text-sm font-medium text-text mb-2">
               Tipo de chave
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {Object.entries(PIX_KEY_TYPES).map(([value, { label }]) => (
                 <button
                   key={value}
@@ -130,6 +201,13 @@ export default function PixForm({ onDone }) {
             *   phone → 15 chars (formato mascarado (11) 99999-9999)
             *   email → type="email" pra validação HTML nativa + teclado
             *   random → uuid v4 (36 chars com hífens) */}
+          {respondeu && (
+            <p className="text-sm text-textMuted">
+              Escreva ou cole aqui a sua chave PIX, do jeito que está no app do
+              seu banco.
+            </p>
+          )}
+
           <Input
             label="Chave PIX"
             placeholder={PIX_KEY_TYPES[type].placeholder}
@@ -140,12 +218,14 @@ export default function PixForm({ onDone }) {
             inputMode={
               type === 'phone'
                 ? 'tel'
+                : type === 'cpf'
+                ? 'numeric'
                 : type === 'email'
                 ? 'email'
                 : 'text'
             }
             maxLength={
-              type === 'phone' ? 15 : type === 'random' ? 36 : 80
+              type === 'phone' ? 15 : type === 'cpf' ? 14 : type === 'random' ? 36 : 80
             }
             autoComplete="off"
             autoCapitalize={type === 'random' ? 'none' : 'off'}

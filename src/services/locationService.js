@@ -16,6 +16,8 @@ import { playSound } from './soundService';
 // ficaram anos sem teste. Ela está em `compartilhado/`, onde `testar:endereco`
 // alcança.
 import { consultaDoEndereco } from '../compartilhado/formatters';
+import { lugarDoEndereco } from '../dominio/identidade/cadastroDoMotorista.js';
+import { podeBuscarRua, sugestoesDeRua } from '../compartilhado/ruas';
 
 // ============================================================================
 // Endereço: CEP (ViaCEP) + coordenada (Nominatim / OSM)
@@ -131,6 +133,85 @@ export async function searchAddress(address, partes = null) {
     lng: parseFloat(result.lon),
     displayName: result.display_name,
   };
+}
+
+/**
+ * AS RUAS COM ESTE NOME, NESTA CIDADE — a busca ao contrário do ViaCEP
+ * (02/10/2026). O motorista digita o nome da rua e escolhe na lista, e o CEP
+ * vem junto. Quem lê a resposta é `compartilhado/ruas.js`, puro.
+ *
+ * Erro de rede é AVISO, como na consulta por CEP: o campo livre continua
+ * sendo um caminho completo.
+ */
+export async function buscarRuas({ uf, cidade, rua }) {
+  if (!podeBuscarRua({ uf, cidade, rua })) return [];
+  const url =
+    `https://viacep.com.br/ws/${encodeURIComponent(uf.toUpperCase())}/` +
+    `${encodeURIComponent(cidade.trim())}/${encodeURIComponent(rua.trim())}/json/`;
+  let res;
+  try {
+    res = await fetch(url);
+  } catch {
+    throw new Error('Não foi possível consultar as ruas agora.');
+  }
+  if (!res.ok) return [];
+  return sugestoesDeRua(await res.json());
+}
+
+/**
+ * CIDADE E BAIRRO DE ONDE ELE ESTÁ — o último passo do primeiro acesso.
+ *
+ * O card não pergunta cidade nem bairro (decisão do dono, 02/10/2026): ele
+ * pede a permissão de localização, e é ela que responde. Uma leitura só,
+ * sem `watchPosition`, e ⚠️ A COORDENADA NUNCA SAI DESTA FUNÇÃO — ela vai ao
+ * endereço reverso e morre aqui. O que volta são os dois NOMES, que é o que
+ * o contrato e o painel do dono leem.
+ *
+ * Erros saem com `code`:
+ *   - 'negado'      — ele recusou a permissão (o navegador não pergunta de
+ *                     novo; quem chama oferece digitar a cidade)
+ *   - 'sem-posicao' — sem sinal, tempo esgotado, ou navegador sem GPS
+ *   - 'sem-cidade'  — a posição veio e o endereço reverso não achou cidade
+ */
+export async function lugarDaPosicaoAtual() {
+  const erro = (code, message) => Object.assign(new Error(message), { code });
+  if (!('geolocation' in navigator)) {
+    throw erro('sem-posicao', 'Este navegador não informa a localização.');
+  }
+
+  const pos = await new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 600000,
+    });
+  }).catch((e) => {
+    throw e?.code === 1
+      ? erro('negado', 'Localização não permitida.')
+      : erro('sem-posicao', 'Não deu pra achar sua localização.');
+  });
+
+  // zoom 14 é o nível de bairro: mais perto devolve a rua (que não se grava),
+  // mais longe perde o bairro.
+  const params = new URLSearchParams({
+    format: 'json',
+    lat: String(pos.coords.latitude),
+    lon: String(pos.coords.longitude),
+    zoom: '14',
+    addressdetails: '1',
+  });
+  let lugar = { city: '', regiao: '' };
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
+      { headers: { 'Accept-Language': 'pt-BR' } }
+    );
+    if (res.ok) lugar = lugarDoEndereco((await res.json())?.address);
+  } catch {
+    // rede caiu: cai no mesmo caminho de "não achou cidade"
+  }
+  if (!lugar.city) throw erro('sem-cidade', 'Não deu pra descobrir sua cidade.');
+  return lugar;
 }
 
 // ============================================================================

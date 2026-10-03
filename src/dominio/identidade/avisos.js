@@ -92,6 +92,17 @@ export const ESPECIE_DO_AVISO = {
   chamado_respondido: ESPECIE.FATO,
   indicacao_ativou: ESPECIE.FATO,
   indicacao_cadastrou: ESPECIE.FATO,
+  // O vínculo automático de irmão e a recusa dele: o que ACONTECEU com o
+  // filho dela (ou com o cadastro dele). Não se desliga.
+  irmao_vinculado: ESPECIE.FATO,
+  irmao_recusado: ESPECIE.FATO,
+  // O pedido de acesso sem link e a resposta do motorista: fatos sobre o
+  // vínculo com a criança. Não se desligam.
+  pedido_de_acesso: ESPECIE.FATO,
+  acesso_aprovado: ESPECIE.FATO,
+  acesso_recusado: ESPECIE.FATO,
+  // A família informou o número da casa que o motorista não sabia.
+  numero_da_casa: ESPECIE.FATO,
 
   // ── o app não está conseguindo prometer o que promete ───────────────────
   rota_atrasada: ESPECIE.ESTADO,
@@ -177,6 +188,9 @@ export const CHAVES_DE_AVISO = [
     titulo: 'Novidades e condições',
     descricao:
       'Desconto por indicação, condição do período de teste e convites parados. Nada disso é urgente.',
+    // Com a cobrança desligada não existe teste nem desconto para avisar — e
+    // esta tela também é lida pela família. Ver `modulosDeCobranca.js`.
+    descricaoSemCobranca: 'Convites parados e novidades do app. Nada disso é urgente.',
   },
 ];
 
