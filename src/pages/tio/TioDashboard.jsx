@@ -100,17 +100,21 @@ import FestiveBadge from '../../components/festive/FestiveBadge';
  * superfícies pro mesmo assunto é como elas divergem.
  */
 
-const WEEK_DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const WEEK_DAYS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 const MONTHS = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
 
-// Só a PRIMEIRA letra maiúscula: o `capitalize` do CSS subia cada palavra e
-// escrevia "Sexta, 2 De Outubro".
-function formatLongDate(d = new Date()) {
-  const s = `${WEEK_DAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
-  return s.charAt(0).toUpperCase() + s.slice(1);
+// O DIA EM TRÊS LINHAS (03/10/2026, pedido do dono): "Hoje é sábado", embaixo
+// "3 de outubro", embaixo a hora. Numa linha só, em letra miúda ("SÁBADO, 3 DE
+// OUTUBRO · 20:51"), o dia da semana — que é o que decide se tem rota — se
+// perdia no meio da data.
+function diaDaSemana(d = new Date()) {
+  return `Hoje é ${WEEK_DAYS[d.getDay()]}`;
+}
+function diaEMes(d = new Date()) {
+  return `${d.getDate()} de ${MONTHS[d.getMonth()]}`;
 }
 
 /**
@@ -432,11 +436,13 @@ export default function TioDashboard() {
               * pergunta só. O relógio anda sozinho: `useRelogio` re-renderiza
               * a cada minuto, senão a hora congela na abertura do app e
               * mente com cara de informação. */}
-            <p className="rotulo text-primary">
-              <span>{formatLongDate()}</span>
-              <span className="mx-1.5 text-textMuted/50">·</span>
-              <span className="tabular-nums">{horaAgora}</span>
-            </p>
+            <div className="leading-snug">
+              <p className="text-[17px] font-bold text-primary">{diaDaSemana(agora)}</p>
+              <p className="text-[15px] text-textBody">{diaEMes(agora)}</p>
+              <p className="font-mono text-[15px] font-semibold tabular-nums text-textBody">
+                {horaAgora}
+              </p>
+            </div>
             <div className="flex items-center gap-3 mt-1">
               <h1 className="text-[28px] font-extrabold text-text leading-tight flex-1 min-w-0">
                 {greet(new Date())}, {primeiroNome}!
