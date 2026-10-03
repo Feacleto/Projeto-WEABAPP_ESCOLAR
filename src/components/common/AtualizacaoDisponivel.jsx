@@ -1,8 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ArrowUpCircle, X } from 'lucide-react';
-import Respiro from './Respiro';
-import EstradaCarregando from './EstradaCarregando';
+import TelaDeVersao from './TelaDeVersao';
 
 /**
  * "SAIU UMA VERSÃO NOVA" — o aviso, e o teatro de trocar.
@@ -134,30 +133,9 @@ export default function AtualizacaoDisponivel() {
   }, [updateServiceWorker]);
 
   if (atualizando) {
-    return (
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-label="Atualizando o app"
-        className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-4 bg-bg px-8 text-center"
-      >
-        {/* Sem atraso aqui: esta tela SÓ existe porque a espera já começou,
-          * então esconder a marca por 300 ms deixaria um vazio de propósito
-          * nenhum. É o oposto do fallback de rota. */}
-        <Respiro atraso={0} altura={54} className="" label="Atualizando" />
-        <div>
-          <p className="text-base font-bold text-text">Atualizando o app</p>
-          <p className="mt-1 text-sm leading-relaxed text-textMuted">
-            Só um instante — a tela volta sozinha.
-          </p>
-        </div>
-        {/* A estrada vem DEPOIS do texto, e é a única parte que se move
-          * junto do respiro da marca. Antes do texto ela roubaria a leitura:
-          * quem chega nesta tela precisa saber o que está acontecendo antes
-          * de ver algo andando. */}
-        <EstradaCarregando className="mt-1" />
-      </div>
-    );
+    // A MESMA TELA do "Saiu uma versão nova" (ErrorScreen), no estado de
+    // quem já tocou em atualizar — ver TelaDeVersao.
+    return <TelaDeVersao estado="atualizando" />;
   }
 
   if (!precisaAtualizar || dispensado) return null;

@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, House, RefreshCw } from 'lucide-react';
+import { ArrowLeft, House } from 'lucide-react';
 import Logo from './Logo';
 import Button from './Button';
 import { APP_VERSION } from '../../version';
+import TelaDeVersao from './TelaDeVersao';
 
 /**
  * A TELA QUE APARECE NO LUGAR DA TELA BRANCA.
@@ -33,6 +35,29 @@ import { APP_VERSION } from '../../version';
  */
 export default function ErrorScreen({ error, chunk = false }) {
   const navigate = useNavigate();
+  const [atualizando, setAtualizando] = useState(false);
+
+  // A VERSÃO NOVA TEM TELA PRÓPRIA (03/10/2026): é a mesma do aviso de
+  // atualização, e o toque em "Atualizar" passa para o estado "atualizando"
+  // antes de recarregar — a pessoa vê a troca, não uma piscada.
+  // Num chunk que sumiu, voltar não resolve: a navegação por dentro do app
+  // continua pedindo o arquivo que não existe mais. Só recarregar busca o
+  // index.html novo, com os hashes novos.
+  if (chunk) {
+    return (
+      <TelaDeVersao
+        estado={atualizando ? 'atualizando' : 'pronta'}
+        detalhe={error?.message}
+        onAtualizar={() => {
+          setAtualizando(true);
+          window.location.reload();
+        }}
+        onInicio={() => {
+          window.location.href = '/';
+        }}
+      />
+    );
+  }
 
   // VOLTAR SÓ APARECE SE HOUVER PARA ONDE VOLTAR.
   //
@@ -60,37 +85,15 @@ export default function ErrorScreen({ error, chunk = false }) {
       </div>
 
       <h1 className="mt-8 text-xl font-semibold text-text">
-        {chunk ? 'Saiu uma versão nova do app' : 'Alguma coisa não carregou'}
+        Alguma coisa não carregou
       </h1>
 
       <p className="mt-2 text-sm text-textMuted max-w-xs leading-relaxed">
-        {chunk
-          ? 'Esta tela ficou pra trás na versão anterior. Atualize pra continuar de onde parou — nada do que você fez se perdeu.'
-          : 'O erro é nosso, não é nada que você tenha feito. Você pode voltar pra tela anterior ou recomeçar do início.'}
+        O erro é nosso, não é nada que você tenha feito. Você pode voltar pra tela anterior ou recomeçar do início.
       </p>
 
       <div className="mt-8 w-full max-w-xs flex flex-col gap-3">
-        {chunk ? (
-          // Num chunk que sumiu, voltar não resolve: a navegação por dentro do
-          // app continua pedindo o mesmo arquivo que não existe mais no
-          // servidor. Só o recarregamento busca o index.html novo, com os
-          // hashes novos. Por isso aqui a ação principal é OUTRA.
-          <>
-            <Button icon={RefreshCw} onClick={() => window.location.reload()}>
-              Atualizar
-            </Button>
-            <Button
-              variant="secondary"
-              icon={House}
-              onClick={() => {
-                window.location.href = '/';
-              }}
-            >
-              Ir para o início
-            </Button>
-          </>
-        ) : (
-          <>
+        <>
             {temParaOndeVoltar && (
               <Button icon={ArrowLeft} onClick={() => navigate(-1)}>
                 Voltar
@@ -103,8 +106,7 @@ export default function ErrorScreen({ error, chunk = false }) {
             >
               Ir para o início
             </Button>
-          </>
-        )}
+        </>
       </div>
 
       {/* Pro suporte. O usuário não vai entender a mensagem, mas consegue

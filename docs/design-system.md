@@ -138,7 +138,10 @@ Quatro durações (`duration-toque` 120, `-estado` 200, `-entrada` 300, `-festa`
 - a ilustração das boas-vindas e do cadastro: a perua anda UMA vez e chega;
 - o selo da data festiva ao lado da saudação: pulsa DUAS vezes e para;
 - o confete do aniversário, que só existe enquanto o modal está aberto;
-- o pulso da buzina tocando, que é um chamado ao vivo de verdade.
+- o pulso da buzina tocando, que é um chamado ao vivo de verdade;
+- a barra fina da troca de versão ([TelaDeVersao](../src/components/common/TelaDeVersao.jsx)),
+  enquanto o app troca de versão — espera real, que acaba sozinha em segundos.
+  É um trecho que passa, nunca uma barra que enche: ninguém sabe quanto falta.
 
 O fundo do login DEIXOU de ser exceção em 03/10/2026: os cartões não
 flutuam e os ícones não pulsam mais (`testar:fundo` trava a ausência). Os
