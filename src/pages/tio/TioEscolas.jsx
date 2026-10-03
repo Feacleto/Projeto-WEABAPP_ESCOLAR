@@ -26,10 +26,11 @@ import {
   updateEscola,
   removeEscola,
   criarEscolaEVincular,
+  definirTelefoneDaEscola,
   proporEscolasDasCriancas,
 } from '../../services/escolasService';
 import { searchAddress, buscarCep } from '../../services/locationService';
-import { maskCep, unmaskCep, isValidCep } from '../../compartilhado/masks';
+import { maskCep, unmaskCep, isValidCep, maskPhone } from '../../compartilhado/masks';
 import { montarEndereco } from '../../compartilhado/formatters';
 
 /**
@@ -94,6 +95,7 @@ export default function TioEscolas() {
     setCepConsultado('');
     setEditando({
       nome: '',
+      telefone: '',
       cep: '',
       endereco: '',
       numero: '',
@@ -239,6 +241,12 @@ export default function TioEscolas() {
           lat: editando.lat,
           lng: editando.lng,
         });
+        // O telefone vai num lote próprio, que COPIA o número para as
+        // crianças desta escola — só quando ele mudou.
+        const novo = String(editando.telefone || '').replace(/\D/g, '');
+        if (novo !== (editando.telefoneAntes || '')) {
+          await definirTelefoneDaEscola(editando.id, novo);
+        }
         toast.success('Escola atualizada.');
       } else {
         await addEscola(editando);
@@ -413,6 +421,8 @@ export default function TioEscolas() {
                       setEditando({
                         id: e.id,
                         nome: e.nome || '',
+                        telefone: maskPhone(e.telefone || ''),
+                        telefoneAntes: e.telefone || '',
                         cep: maskCep(e.cep || ''),
                         endereco: e.endereco || '',
                         numero: '',
@@ -526,6 +536,16 @@ export default function TioEscolas() {
                   abaixo.
                 </p>
               )}
+
+              <Input
+                label="Telefone da escola (opcional)"
+                inputMode="tel"
+                maxLength={15}
+                value={editando.telefone || ''}
+                onChange={(ev) =>
+                  setEditando((s) => ({ ...s, telefone: maskPhone(ev.target.value) }))
+                }
+              />
 
               <Input
                 label="Endereço"

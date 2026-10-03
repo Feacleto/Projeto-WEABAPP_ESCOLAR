@@ -1,5 +1,7 @@
 const { logger } = require('firebase-functions/v2');
-const admin = require('firebase-admin');
+// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
+// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
+const { FieldValue } = require('firebase-admin/firestore');
 const {
   ESTADO,
   chaveDoTelefone,
@@ -72,7 +74,7 @@ async function casarEAtivarIndicacao(db, tioUid) {
     const dele = todas.filter((i) => i.indicadorUid === escolhida.indicadorUid);
     const jaAtivas = contarAtivas(dele);
 
-    const agora = admin.firestore.FieldValue.serverTimestamp();
+    const agora = FieldValue.serverTimestamp();
     const lote = db.batch();
     lote.update(db.doc(`indicacoes/${escolhida.id}`), {
       estado: ESTADO.ATIVA,
@@ -117,7 +119,7 @@ async function casarEAtivarIndicacao(db, tioUid) {
           n > 1
             ? `São ${n} indicações ativas na sua próxima fatura.`
             : 'Uma indicação sua começou a pagar, e já entra na sua próxima fatura.',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
     } catch (err) {
       logger.warn('[indicacao] não deu pra avisar o indicador', err);

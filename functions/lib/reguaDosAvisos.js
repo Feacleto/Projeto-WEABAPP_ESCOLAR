@@ -47,6 +47,7 @@ const {
 const { pushMandaEm } = require('./canalDaCobranca');
 
 const FUSO = 'America/Sao_Paulo';
+const { ehDiaDeAula } = require('./reguaDoCalendario');
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
 /**
@@ -420,6 +421,26 @@ function avisoDoEncerramento({ motorista, agora = new Date() } = {}) {
 const ATRASO_NA_ENTREGA = 20;
 /** Passou disto depois da hora de PEGAR, sem rota iniciada: atenção. */
 const ATRASO_NA_PARTIDA = 10;
+/**
+ * ⚠️ E SÓ ATÉ AQUI (03/10/2026). Sem teto, a varredura das 16h dizia "a rota
+ * não começou às 06:40" a toda família da manhã — inclusive a da criança já
+ * entregue, porque entre uma viagem e outra o GPS dele está desligado. Uma
+ * hora e meia depois da hora de pegar, o aviso deixou de ser útil: ou a
+ * criança foi, ou a mãe já resolveu.
+ */
+const JANELA_DA_PARTIDA = 90;
+
+/**
+ * O status de HOJE. Status gravado num dia anterior é "em casa" — a mesma
+ * regra de `getEffectiveStatus` no app. Sem isto, a criança que ficou
+ * "na perua" na sexta (o motorista não marcou a entrega) gerava "passou da
+ * hora" de novo na segunda. Sem data gravada, vale o status como está.
+ */
+function statusDeHoje(c, agora) {
+  const quando = paraData(c?.statusUpdatedAt);
+  if (quando && chaveDoDia(quando) !== chaveDoDia(agora)) return 'home';
+  return c?.status || 'home';
+}
 
 /** Minutos entre `HH:MM` de hoje e agora, no fuso de Brasília. */
 function minutosDesde(hhmm, agora) {
@@ -437,6 +458,10 @@ function minutosDesde(hhmm, agora) {
 function avisoDeAtraso({ crianca, rotaAtiva, temFalta, agora = new Date() } = {}) {
   const c = crianca || {};
   if (temFalta) return null;
+  // Fim de semana e feriado nacional: espelho de `calendario.js`, no dia de
+  // SÃO PAULO (as functions rodam em UTC). Igual à régua da tela da família.
+  const [ano, mes, dia] = chaveDoDia(agora).split('-').map(Number);
+  if (!ehDiaDeAula(new Date(ano, mes - 1, dia))) return null;
   if (c.active === false || !c.parentUid) return null;
 
   // ⚠️ HORÁRIO PRESUMIDO NÃO CONTA, como no original: é chute do app, e a
@@ -448,8 +473,10 @@ function avisoDeAtraso({ crianca, rotaAtiva, temFalta, agora = new Date() } = {}
 
   const nome = primeiroNome(c.name) || 'Seu filho';
 
+  const status = statusDeHoje(c, agora);
+
   // ── 1. O PIOR CASO: consta dentro da perua e o tempo passou.
-  if (c.status === 'onboard') {
+  if (status === 'onboard') {
     const atraso = minutosDesde(entrega, agora);
     if (atraso != null && atraso > ATRASO_NA_ENTREGA) {
       return {
@@ -469,10 +496,12 @@ function avisoDeAtraso({ crianca, rotaAtiva, temFalta, agora = new Date() } = {}
     }
   }
 
-  // ── 2. A rota não foi iniciada, e já passou da hora de pegar.
-  if (!rotaAtiva) {
+  // ── 2. A rota não foi iniciada, já passou da hora de pegar, e a criança
+  // AINDA ESTÁ EM CASA hoje — quem já embarcou ou foi entregue não espera
+  // perua nenhuma.
+  if (!rotaAtiva && status === 'home') {
     const atraso = minutosDesde(pega, agora);
-    if (atraso != null && atraso > ATRASO_NA_PARTIDA) {
+    if (atraso != null && atraso > ATRASO_NA_PARTIDA && atraso <= JANELA_DA_PARTIDA) {
       return {
         nivel: 'atencao',
         tipo: 'rota_atrasada',

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { School, MapPin } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Sheet from '../common/Sheet';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { addEscola } from '../../services/escolasService';
 import { buscarCep, searchAddress } from '../../services/locationService';
-import { maskCep, unmaskCep, isValidCep } from '../../compartilhado/masks';
+import { maskCep, unmaskCep, isValidCep, maskPhone, unmaskPhone } from '../../compartilhado/masks';
 import { montarEndereco } from '../../compartilhado/formatters';
 import BuscaDeRua from '../endereco/BuscaDeRua';
 
@@ -32,6 +33,7 @@ export default function NovaEscolaSheet({ open, onClose, onCriada }) {
   const [partes, setPartes] = useState(null);
   const [cepState, setCepState] = useState(null); // null | 'ok' | 'notFound' | 'offline'
   const [numero, setNumero] = useState('');
+  const [telefone, setTelefone] = useState('');
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
@@ -65,6 +67,7 @@ export default function NovaEscolaSheet({ open, onClose, onCriada }) {
     setPartes(null);
     setCepState(null);
     setNumero('');
+    setTelefone('');
     setErro('');
     onClose();
   };
@@ -89,7 +92,14 @@ export default function NovaEscolaSheet({ open, onClose, onCriada }) {
           // segue sem coordenada
         }
       }
-      const dados = { nome: nome.trim(), endereco, cep: partes ? cep : '', lat, lng };
+      const dados = {
+        nome: nome.trim(),
+        endereco,
+        cep: partes ? cep : '',
+        telefone: unmaskPhone(telefone),
+        lat,
+        lng,
+      };
       const id = await addEscola(dados);
       onCriada({ id, ...dados, geoPending: lat == null });
       fechar();
@@ -146,6 +156,17 @@ export default function NovaEscolaSheet({ open, onClose, onCriada }) {
             hint="Não sabe agora? Deixe em branco e complete depois em Escolas."
           />
         )}
+        {/* TELEFONE DA ESCOLA, OPCIONAL (03/10/2026, pedido do dono): para o
+          * motorista ligar na hora da entrega, e para as famílias verem na
+          * ficha do filho. A família também pode informar, se faltar. */}
+        <Input
+          label="Telefone da escola (opcional)"
+          icon={Phone}
+          inputMode="tel"
+          maxLength={15}
+          value={telefone}
+          onChange={(e) => setTelefone(maskPhone(e.target.value))}
+        />
         <Button loading={salvando} onClick={salvar}>
           Salvar e usar
         </Button>

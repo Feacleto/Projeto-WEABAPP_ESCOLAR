@@ -1,5 +1,5 @@
 import { Bus, Home, CircleAlert, UserCheck } from 'lucide-react';
-import { horariosCombinados, horaCurta } from '../../dominio/rota/horarios';
+import { horariosCombinados, horaCurta, emMinutos } from '../../dominio/rota/horarios';
 import { ABSENCE_TYPES } from '../../services/absencesService';
 import { primeiroNome } from '../../compartilhado/formatters';
 
@@ -94,6 +94,7 @@ export default function HorarioDoDia({
             icon={Bus}
             hora={pega}
             titulo="entra na perua"
+            previsao={ride?.marcos?.onboard ? null : ride?.previsaoIda}
             cancelado={semIda}
             motivo={
               tipo === ABSENCE_TYPES.NO_PICKUP
@@ -105,6 +106,7 @@ export default function HorarioDoDia({
             icon={Home}
             hora={entrega}
             titulo="chega em casa"
+            previsao={ride?.marcos?.delivered ? null : ride?.previsaoVolta}
             cancelado={semVolta}
             motivo={
               tipo === ABSENCE_TYPES.NO_DROPOFF
@@ -157,7 +159,7 @@ export default function HorarioDoDia({
   );
 }
 
-function Linha({ icon: Icon, hora, titulo, cancelado, motivo }) {
+function Linha({ icon: Icon, hora, titulo, cancelado, motivo, previsao = null }) {
   return (
     <div className="flex items-center gap-4 py-3">
       <div
@@ -189,6 +191,20 @@ function Linha({ icon: Icon, hora, titulo, cancelado, motivo }) {
         >
           {cancelado ? motivo : titulo}
         </p>
+        {/* A PREVISÃO (03/10/2026): o combinado corrigido pelo atraso real
+          * das paradas já feitas — nunca trânsito adivinhado. Some quando o
+          * passo acontece. Atraso é âmbar (pede atenção); adiantado, verde. */}
+        {!cancelado && previsao && emMinutos(previsao) !== emMinutos(hora) && (
+          <p
+            className={`mt-1 text-sm font-bold ${
+              emMinutos(previsao) > emMinutos(hora) ? 'text-warningText' : 'text-accentText'
+            }`}
+          >
+            {emMinutos(previsao) > emMinutos(hora)
+              ? `Hoje, por volta de ${horaCurta(previsao)}`
+              : `Hoje, mais cedo: por volta de ${horaCurta(previsao)}`}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { horariosCombinados, horaCurta } from './horarios.js';
+import { ehDiaDeAula } from './calendario.js';
 
 /**
  * A DECISÃO DE QUANDO AVISAR — separada da tarja que a desenha.
@@ -34,6 +35,8 @@ function minutosDesde(hhmm, agora) {
  */
 export function avisoDoMomento({ child, status, presence, ride, absence, agora }) {
   if (!child || absence) return null;
+  // Fim de semana e feriado nacional não têm rota combinada (ver `calendario.js`).
+  if (!ehDiaDeAula(agora)) return null;
 
   const { pega, entrega, presumido } = horariosCombinados(child);
   // Sem horário definido não há o que comparar — e horário presumido é chute
@@ -59,10 +62,16 @@ export function avisoDoMomento({ child, status, presence, ride, absence, agora }
     }
   }
 
-  // ── 1. A rota não foi iniciada, e já passou da hora de pegar.
-  if (presence?.kind === 'no-route') {
+  // ── 1. A rota não foi iniciada, já passou da hora de pegar, e a criança
+  // AINDA ESTÁ EM CASA.
+  //
+  // ⚠️ COM TETO E COM STATUS (03/10/2026). Sem os dois, a tarja aparecia logo
+  // depois de o motorista ENCERRAR a rota da manhã ("no-route") e ficava até a
+  // meia-noite, para a criança já entregue. Espelho em
+  // `functions/lib/reguaDosAvisos.js` (JANELA_DA_PARTIDA).
+  if (presence?.kind === 'no-route' && status === 'home') {
     const atraso = minutosDesde(pega, agora);
-    if (atraso != null && atraso > 10) {
+    if (atraso != null && atraso > 10 && atraso <= 90) {
       return {
         nivel: 'atencao',
         titulo: `A rota não foi iniciada, e já passou das ${horaCurta(pega)}`,

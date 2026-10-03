@@ -14,6 +14,9 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const admin = require('firebase-admin');
+// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
+// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
+const { FieldValue } = require('firebase-admin/firestore');
 const { tocaNoAparelho } = require('./avisos');
 
 const REGION = 'southamerica-east1';
@@ -173,7 +176,7 @@ function makeSendPushOnNotification(db) {
 
       if (dead.length) {
         await userSnap.ref.update({
-          fcmTokens: admin.firestore.FieldValue.arrayRemove(...dead),
+          fcmTokens: FieldValue.arrayRemove(...dead),
         });
       }
 

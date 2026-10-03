@@ -31,6 +31,12 @@ export const PRESENCE = {
    * defeito aparente.
    */
   SEM_MAPA: 'sem-mapa',
+  /**
+   * O MOTORISTA AVISOU UM PROBLEMA NA ROTA (perua quebrada) — 03/10/2026.
+   * Vem antes de tudo: com a perua parada no acostamento, mostrar "a perua
+   * está a 800 m" ou "sem sinal" seria a tela fingindo que a rota anda.
+   */
+  OCORRENCIA: 'ocorrencia',
 };
 
 /** Timestamp do Firestore, Date ou número → ms. */
@@ -110,6 +116,19 @@ export function describeRoutePresence({
       title: 'A rota de hoje ainda não começou',
       detail:
         'Quando o motorista iniciar, você acompanha aqui em tempo real.',
+      freshness: null,
+      isStale: false,
+      distanceKm: null,
+      etaMinutes: null,
+    };
+  }
+
+  if (liveLocation?.ocorrencia?.tipo === 'perua_quebrou') {
+    return {
+      kind: PRESENCE.OCORRENCIA,
+      title: 'O motorista avisou um problema com a perua',
+      detail:
+        'Ele está resolvendo. Veja o recado dele no caderno e, se precisar, fale com ele.',
       freshness: null,
       isStale: false,
       distanceKm: null,

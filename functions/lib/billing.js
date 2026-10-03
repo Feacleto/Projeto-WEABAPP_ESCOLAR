@@ -20,6 +20,9 @@ const { logger } = require('firebase-functions/v2');
 const { ligarRelogio } = require('./relogioDoTeste');
 const LIMITES = require('./limites');
 const admin = require('firebase-admin');
+// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
+// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
+const { FieldValue } = require('firebase-admin/firestore');
 
 const REGION = 'southamerica-east1';
 const FALLBACK_DUE_DAY = 10;
@@ -201,7 +204,7 @@ async function generateForMonth(db, monthKey, adminUid = null) {
           new Date(year, month - 1, safeDueDay, 12, 0, 0)
         ),
         status: 'pending',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       },
       childId: childDoc.id,
     });

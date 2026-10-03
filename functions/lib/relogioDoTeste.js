@@ -1,4 +1,6 @@
-const admin = require('firebase-admin');
+// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
+// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
+const { FieldValue } = require('firebase-admin/firestore');
 const { logger } = require('firebase-functions/v2');
 const { cobrancaLigada } = require('./cobrancaLigada');
 
@@ -141,7 +143,7 @@ function deveLigar(snap) {
 }
 
 function valorDoRelogio() {
-  return { trialInicio: admin.firestore.FieldValue.serverTimestamp() };
+  return { trialInicio: FieldValue.serverTimestamp() };
 }
 
 module.exports = { ligarRelogio, ligarRelogioComSnap };

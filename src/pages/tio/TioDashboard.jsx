@@ -1,3 +1,4 @@
+import { saidaDaViagem, quemFicouSemRegistro } from '../../dominio/rota/focoDaViagem.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useNavigate, useOutletContext } from 'react-router-dom';
@@ -12,6 +13,7 @@ import {
   CheckCircle2,
   MailWarning,
   UserPlus,
+  Bus,
 } from 'lucide-react';
 import PedidosDeAcesso from '../../components/tio/PedidosDeAcesso';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
@@ -20,7 +22,6 @@ import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
 import SchoolBroadcastSheet from '../../components/broadcasts/SchoolBroadcastSheet';
 import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
-import OperacaoDaRota from '../../components/route/OperacaoDaRota';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
@@ -101,8 +102,11 @@ const MONTHS = [
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
 
+// Só a PRIMEIRA letra maiúscula: o `capitalize` do CSS subia cada palavra e
+// escrevia "Sexta, 2 De Outubro".
 function formatLongDate(d = new Date()) {
-  return `${WEEK_DAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
+  const s = `${WEEK_DAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /**
@@ -198,6 +202,19 @@ export default function TioDashboard() {
     [blocos, tick, temPendencia]
   );
 
+  // Quem ainda tem um passo na viagem atual — a barra mostra ao encerrar, e o
+  // "faltou registrar" do fim da rota sai daqui (ver `quemFicouSemRegistro`).
+  const pendentesDaViagem = useMemo(() => {
+    const dir = bloco?.direcao === 'ida' ? 'pickup' : 'dropoff';
+    return quemFicouSemRegistro(
+      paradasPendentes(bloco).map((p) => {
+        const st = statusNaDirecao(p.child, declaracoes?.[p.child.id], dir);
+        return { child: p.child, status: st, hora: p.hora, action: getActionForStatus(st, dir) };
+      })
+    );
+  }, [bloco, paradasPendentes, declaracoes]);
+
+
   const pendentes = useMemo(() => paradasPendentes(bloco), [bloco, paradasPendentes]);
 
   const minutosAgora = new Date().getHours() * 60 + new Date().getMinutes();
@@ -254,6 +271,10 @@ export default function TioDashboard() {
     () =>
       blocos
         .flatMap((b) => b.paradas)
+        // ⚠️ QUEM ESTÁ FORA HOJE NÃO É ALVO (03/10/2026): faltou, ou o pai
+        // leva/busca. Sem o filtro, a perua passando na rua dela tocava a
+        // buzina de "chegou" no celular de uma família que não a espera.
+        .filter((p) => precisaDaPerua(p.estado))
         .map((p) => ({
           childId: p.child?.id,
           lat: Number(p.child?.lat),
@@ -308,17 +329,33 @@ export default function TioDashboard() {
         *
         * `top` acompanha o cabeçalho e o recorte do aparelho: no iPhone
         * instalado como app o `env()` vale a faixa do sistema, e sem somar
-        * isso a barra ficaria por baixo do relógio e da bateria. */}
-      <div
-        className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-neutro"
-        style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
-      >
-        <ControleDeRota
-          onIniciar={publicarOrdem}
-          direcao={bloco?.direcao}
-          alvos={alvosDaRota}
-        />
-      </div>
+        * isso a barra ficaria por baixo do relógio e da bateria.
+        *
+        * ⚠️ MAS NÃO COM A TURMA VAZIA (02/10/2026). Sem criança com horário
+        * não há rota para iniciar, e o maior botão da tela era "INICIAR ROTA"
+        * acima de "Cadastrar a primeira criança" — o próximo passo de verdade
+        * ficava em segundo plano, e a chave "as famílias veem sua perua"
+        * falava de famílias que ainda não existem. Achado do teste no
+        * navegador (M1). Enquanto carrega também não aparece: piscar o botão
+        * para depois tirá-lo é pior que chegar um instante depois. */}
+      {estado !== 'vazio' && estado !== 'carregando' && (
+        <div
+          className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-neutro"
+          style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
+        >
+          <ControleDeRota
+            onIniciar={() => {
+              publicarOrdem();
+              // A ROTA TEM TELA PRÓPRIA (03/10/2026): começou, vai para ela.
+              navigate('/tio/route/now');
+            }}
+            direcao={bloco?.direcao}
+            alvos={alvosDaRota}
+            saida={saidaDaViagem(bloco)}
+            pendentes={pendentesDaViagem}
+          />
+        </div>
+      )}
 
       <div className="pb-4">
         {/* Saudação — pequena, contexto. Durante a rota ela sai: o topo da
@@ -334,7 +371,7 @@ export default function TioDashboard() {
               * a cada minuto, senão a hora congela na abertura do app e
               * mente com cara de informação. */}
             <p className="text-xs text-textMuted">
-              <span className="capitalize">{formatLongDate()}</span>
+              <span>{formatLongDate()}</span>
               <span className="mx-1.5 text-textMuted/50">·</span>
               <span className="tabular-nums">{horaAgora}</span>
             </p>
@@ -350,7 +387,29 @@ export default function TioDashboard() {
         {/* ─────────── DIRIGINDO — a home é a operação ─────────── */}
         {estado === 'dirigindo' && (
           <>
-            <OperacaoDaRota mostrarRodape={false} mostrarControle={false} />
+            {/* A OPERAÇÃO MORA NA ABA ROTA (03/10/2026). Aqui fica só o que
+              * leva até ela — duas telas iguais faziam ele perguntar qual era
+              * a de verdade. */}
+            <div className="px-5 pt-5">
+              <button
+                type="button"
+                onClick={() => navigate('/tio/route/now')}
+                className="tap flex w-full items-center gap-3 rounded-2xl bg-primary p-4 text-left text-white shadow-focus"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                  <Bus size={22} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-base font-bold">Rota em andamento</span>
+                  <span className="block text-sm text-white/85">
+                    {pendentesDaViagem.length
+                      ? `${pendentesDaViagem.length} ${pendentesDaViagem.length === 1 ? 'criança ainda tem' : 'crianças ainda têm'} um passo nesta viagem`
+                      : 'Nada pendente nesta viagem'}
+                  </span>
+                </span>
+                <span className="shrink-0 text-sm font-bold">Abrir</span>
+              </button>
+            </div>
             {/* O CADASTRO DEIXA DE SUMIR DURANTE A ROTA.
               * Ele sumia inteiro neste estado — e a rota é justamente quando o
               * motorista fica parado no portão da escola com seis minutos
@@ -386,7 +445,7 @@ export default function TioDashboard() {
               data-tour="hero"
               className="bg-card border-2 border-primary rounded-3xl p-4 shadow-focus"
             >
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+              <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
                 próxima viagem
               </p>
               <div className="flex items-baseline gap-2.5 mt-1">
@@ -435,7 +494,7 @@ export default function TioDashboard() {
                     <p className="font-bold text-text text-sm leading-tight truncate">
                       {proximo.child.name}
                     </p>
-                    <p className="text-[11px] text-textMuted truncate">
+                    <p className="text-xs text-textMuted truncate">
                       {bloco.direcao === 'ida'
                         ? proximo.child.address || 'Sem endereço'
                         : bloco.escolas[0]?.nome || 'Escola'}
@@ -470,7 +529,7 @@ export default function TioDashboard() {
               <p className="font-bold text-text mt-2">
                 {blocos.length && bloco ? 'Nada agora' : 'Dia livre'}
               </p>
-              <p className="text-sm text-primary/75 mt-1">
+              <p className="text-sm text-primary mt-1">
                 {bloco && faltamMin != null && faltamMin > 0 ? (
                   <>
                     Próxima viagem às{' '}
@@ -587,7 +646,7 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
   if (!bloco?.paradas?.length) return null;
   return (
     <section className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+      <p className="text-xs font-semibold uppercase tracking-widest text-textMuted px-1">
         {bloco.direcao === 'ida' ? 'quem você pega' : 'quem você leva pra casa'}
       </p>
 
@@ -639,7 +698,7 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
                 {p.child.name}
               </span>
               {fora && (
-                <span className="block text-[11px] text-warningText font-medium">
+                <span className="block text-xs text-warningText font-medium">
                   {ROTULO_ESTADO[p.estado] || 'Fora hoje'}
                 </span>
               )}
@@ -659,7 +718,7 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
 function ParadaEscola({ escolas }) {
   return (
     <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-escolaSoft border border-escolaBorder">
-      <span className="w-11 shrink-0 text-[10px] uppercase tracking-wide text-escola font-semibold">
+      <span className="w-11 shrink-0 text-xs uppercase tracking-wide text-escola font-semibold">
         depois
       </span>
       <School size={15} className="text-escola shrink-0" />
@@ -722,7 +781,7 @@ function Pendencias({
 
   return (
     <section className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+      <p className="text-xs font-semibold uppercase tracking-widest text-textMuted px-1">
         enquanto isso
       </p>
       {itens.map((i) => (
@@ -781,7 +840,7 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
           * de rota ele é um sumário; dirigindo, responde a pergunta do
           * momento — e é a resposta que o motorista não tinha: sim, dá pra
           * avisar a escola sem encerrar a rota. */}
-        <span className="block text-[11px] text-textMuted truncate">
+        <span className="block text-xs text-textMuted truncate">
           {dirigindo
             ? 'Dá pra avisar a escola aqui mesmo'
             : 'Turma, escolas, rota padrão, avisos'}

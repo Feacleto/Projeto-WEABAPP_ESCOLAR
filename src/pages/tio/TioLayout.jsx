@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, DollarSign } from 'lucide-react';
+import { Home, DollarSign, Bus } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import { indiceDaAba } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
@@ -20,6 +20,7 @@ import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
 import { useCobrancaLigada, useModuloDeCobranca } from '../../hooks/useCobrancaLigada';
 import { useActiveCallsForAdmin } from '../../hooks/usePendingCall';
 import { useChildren } from '../../hooks/useChildren';
+import { useLiveLocation } from '../../hooks/useLiveLocation';
 import OutgoingCallPanel from '../../components/call/OutgoingCallPanel';
 import BirthdayModal from '../../components/festive/BirthdayModal';
 import { faltaCompletarCadastro } from '../../dominio/identidade/cadastroDoMotorista.js';
@@ -40,7 +41,8 @@ import {
  * parado. O rodapé é o espaço mais caro do aparelho (sempre visível, onde o
  * polegar descansa), e metade dele estava com o trabalho mais raro.
  *
- * "Rota" saiu porque virou o Início: a operação inteira mora lá agora.
+ * "Rota" saiu do rodapé fixo e VOLTOU como aba que só existe enquanto a
+ * rota roda (03/10/2026 — ver `ABA_DA_ROTA` abaixo).
  * "Crianças" saiu porque virou uma linha escrita na home.
  *
  * TIRAR DA ABA NÃO É ESCONDER. `/tio/children` e `/tio/route/now` continuam
@@ -58,6 +60,22 @@ const NAV_ITEMS = [
     tour: 'nav-finance',
   },
 ];
+
+/**
+ * ⚠️ A ABA ROTA SÓ EXISTE ENQUANTO A ROTA EXISTE (03/10/2026, pedido do dono).
+ *
+ * A rota é a razão de o motorista usar o app, e ganhou tela própria. Mas uma
+ * aba fixa para uma coisa que acontece duas vezes por dia seria o mesmo erro
+ * que tirou "Rota" do rodapé: ela aparece quando ele toca em "INICIAR ROTA",
+ * fica no MEIO (onde o polegar descansa), e some quando ele encerra.
+ *
+ * Quem diz se a rota está aberta é `liveLocation/{uid}.routeActive` — o mesmo
+ * documento que as famílias leem —, e não o GPS deste aparelho: se o app
+ * recarregar no meio da rota, a aba continua lá e o GPS religa sozinho
+ * (`ControleDeRota`).
+ */
+const ABA_DA_ROTA = { to: '/tio/route/now', label: 'Rota', icon: Bus, tour: 'nav-rota' };
+const ITENS_EM_ROTA = [NAV_ITEMS[0], ABA_DA_ROTA, NAV_ITEMS[1]];
 
 /**
  * Layout do painel do Tio: <Outlet /> + BottomNav fixo.
@@ -200,7 +218,18 @@ export default function TioLayout() {
   // suspenso — que é decisão manual e continua valendo.
   const fatura = cobranca ? faturaAberta : null;
 
-  const abaAtiva = indiceDaAba(location.pathname, NAV_ITEMS);
+  const { location: minhaRota, loading: carregandoRota } = useLiveLocation(user?.uid);
+  const emRota = !!minhaRota?.routeActive;
+  const itens = emRota ? ITENS_EM_ROTA : NAV_ITEMS;
+  const naTelaDaRota = location.pathname.startsWith('/tio/route/now');
+  // Encerrou com a tela da rota aberta: volta para o Início, que é onde a
+  // próxima viagem aparece. Só depois de ler o documento — durante a leitura
+  // "sem rota" é desconhecido, não falso.
+  useEffect(() => {
+    if (!carregandoRota && !emRota && naTelaDaRota) navigate('/tio', { replace: true });
+  }, [carregandoRota, emRota, naTelaDaRota, navigate]);
+
+  const abaAtiva = indiceDaAba(location.pathname, itens);
   /* `motion-reduce:animate-none` porque quem pediu menos movimento ao sistema
      não pediu telas deslizando. A informação continua toda lá — o desenho
      nunca dependeu da animação para ser entendido. */
@@ -265,7 +294,15 @@ export default function TioLayout() {
       <div key={abaAtiva} className={entradaDaTela} >
         <Outlet context={{ openTutorial }} />
       </div>
-      <BottomNav items={NAV_ITEMS} />
+      {/* ⚠️ O CADASTRO DA CRIANÇA NÃO TEM A BARRA DE BAIXO (02/10/2026).
+        * Ele é um passo a passo com "Cancelar" e "Avançar" próprios, num
+        * rodapé fixo. A tela mora dentro do `div` da animação de entrada, e
+        * animação (transform/opacidade) cria um contexto de empilhamento: o
+        * `z-40` do rodapé dele vale só lá dentro, e esta barra, que está fora,
+        * ficava POR CIMA do "Avançar" — o motorista não saía do passo 1.
+        * Achado do teste no navegador (M3). Num passo a passo a barra também
+        * é a saída que perde o que ele digitou. */}
+      {!location.pathname.startsWith('/tio/children/new') && <BottomNav items={itens} />}
       <InstallPrompt />
       <InteractiveTour
         open={!!tour}

@@ -13,13 +13,21 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
-const admin = require('firebase-admin');
+// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
+// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
+const { FieldValue } = require('firebase-admin/firestore');
 
 const REGION = 'southamerica-east1';
 
-// 20 minutos = ~40 gravações perdidas. Folgado o suficiente pra não encerrar
-// rota de quem passou por um túnel ou ficou sem sinal num vale.
-const ABANDON_MS = 20 * 60 * 1000;
+// ⚠️ 90 MINUTOS, E ERAM 20 (03/10/2026, o dono achou pouco — e era). Vinte
+// minutos parado no portão da escola com a tela apagada já bastavam para
+// encerrar a rota no meio do caminho: o celular não gravava nada com a perua
+// parada nem com a tela desligada. Hoje ele grava a cada minuto enquanto o app
+// está aberto (o PULSO e a TELA ACESA de `locationService`), e o que sobra é o
+// motorista que saiu do app por um tempo. Enquanto isso a família já vê "sem
+// sinal" (`routePresence`) — fechar cedo trocaria um aviso honesto por uma
+// rota encerrada que não encerrou.
+const ABANDON_MS = 90 * 60 * 1000;
 
 function makeCloseStaleRoutes(db) {
   return onSchedule(
@@ -54,13 +62,17 @@ function makeCloseStaleRoutes(db) {
         const age = agora - updatedMs;
         if (age < ABANDON_MS) continue;
 
-        // merge preserva lat/lng — a "última posição conhecida" continua
-        // disponível, só deixa de ser apresentada como posição atual.
         await docSnap.ref.set(
           {
             routeActive: false,
+            // A ÚLTIMA POSIÇÃO SAI JUNTO, como no "Encerrar" do motorista
+            // (`stopTracking`): o ponto onde ele parou não fica legível pelas
+            // famílias a noite inteira. Antes o merge a preservava.
+            lat: FieldValue.delete(),
+            lng: FieldValue.delete(),
+            accuracy: FieldValue.delete(),
             closedBy: 'auto-timeout',
-            closedAt: admin.firestore.FieldValue.serverTimestamp(),
+            closedAt: FieldValue.serverTimestamp(),
           },
           { merge: true }
         );

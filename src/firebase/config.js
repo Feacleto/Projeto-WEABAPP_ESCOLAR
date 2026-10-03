@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { initializeFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 // `firebase/analytics` NÃO é importado no topo — ver `ligarAnalytics()`.
 
@@ -18,7 +18,15 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// ⚠️ SEM CACHE PERSISTENTE, DE PROPÓSITO (03/10/2026). Ele foi ligado para a
+// marcação feita sem sinal sobreviver ao app fechado — e o SDK 12 derrubou a
+// tela da FAMÍLIA com "INTERNAL ASSERTION FAILED (ca9 / b815)" (teste M7,
+// escutas de vários documentos com o cache em IndexedDB). Uma tela quebrada
+// é pior que a marcação perdida num caso raro. Sem sinal, a rota continua
+// funcionando: `gravarSemTravar` (routeStatusService) não prende os botões e a
+// escrita sobe quando o sinal volta — enquanto o app estiver aberto. Religar
+// isto exige o teste M7 dos dois lados.
+export const db = initializeFirestore(app, {});
 /**
  * O CLOUD STORAGE ENTRA SOB DEMANDA, e não no topo do módulo.
  *
@@ -123,6 +131,9 @@ function userAllowsAnalytics() {
  * pede o arquivo.
  */
 async function ligarAnalytics() {
+  // No emulador não há projeto de verdade para medir: a chave é de mentira e
+  // o SDK enchia o console de 400, escondendo os erros que importam.
+  if (USE_EMULATORS) return;
   try {
     const { getAnalytics, isSupported } = await import('firebase/analytics');
     if (await isSupported()) getAnalytics(app);

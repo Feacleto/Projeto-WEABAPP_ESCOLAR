@@ -3,6 +3,7 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
+  deleteField,
   setDoc,
   writeBatch,
 } from 'firebase/firestore';
@@ -66,6 +67,51 @@ export function anotarMarco(batch, { childId, dateKey, status, contexto = {} }) 
       ...(contexto.combinado ? { combinado: contexto.combinado } : {}),
       atualizadoEm: serverTimestamp(),
     },
+    { merge: true }
+  );
+}
+
+/**
+ * A PREVISÃO DE CHEGADA no documento do dia de cada criança (03/10/2026) —
+ * régua em `previsoesDaViagem`. Só a HORA viaja ('HH:MM'), nunca a posição;
+ * `null` apaga (voltou ao horário). Um lote por marcação. Sem `await` de quem
+ * chama: previsão é conveniência, a rota não espera por ela.
+ */
+export async function publicarPrevisoes({ previsoes, dateKey, adminUid }) {
+  if (!previsoes?.length || !dateKey) return;
+  const batch = writeBatch(db);
+  previsoes.forEach((p) => {
+    batch.set(
+      refDaViagem(p.childId, dateKey),
+      {
+        dateKey,
+        childId: p.childId,
+        adminUid: adminUid || null,
+        parentUid: p.parentUid || null,
+        [p.campo]: p.previsao || deleteField(),
+        atualizadoEm: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+  try {
+    await batch.commit();
+  } catch (err) {
+    console.error('publicarPrevisoes', err);
+  }
+}
+
+/**
+ * APAGA UM MARCO do dia — o toque errado desfeito (03/10/2026). Mesmo lote da
+ * volta do status (`voltarPasso`), pelo mesmo motivo de `anotarMarco`: status
+ * e hora andam juntos, senão o dia diria "entregue às 7h12" de quem voltou
+ * para a perua.
+ */
+export function apagarMarco(batch, { childId, dateKey, status }) {
+  if (!childId || !dateKey || !MARCOS.includes(status)) return;
+  batch.set(
+    refDaViagem(childId, dateKey),
+    { marcos: { [status]: deleteField() }, atualizadoEm: serverTimestamp() },
     { merge: true }
   );
 }

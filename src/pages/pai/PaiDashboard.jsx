@@ -36,6 +36,8 @@ import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
 import { maskPhone } from '../../compartilhado/masks';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveChild } from '../../hooks/useActiveChild';
+import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
+import AvisoDeMudancaNoContrato from '../../components/contract/AvisoDeMudancaNoContrato';
 import { useRelogio } from '../../hooks/useRelogio';
 import TarjaDeAviso from '../../components/dashboard/TarjaDeAviso';
 import { avisoDoMomento } from '../../dominio/rota/avisoDoMomento';
@@ -173,6 +175,10 @@ export default function PaiDashboard() {
    */
   const zona = ride?.proximidade ?? null;
   const lastZoneRef = useRef(null);
+  // O NOME QUE ELA USA ("Tio Zé"), e não "Tio Nino": era o nome fictício de
+  // antes, escrito à mão nos três avisos (achado lendo a rota, 03/10/2026).
+  const { nome: nomeDaMarca } = useMarcaDoTio();
+  const quem = nomeDaMarca || 'O motorista';
   useEffect(() => {
     if (!routeActive) {
       lastZoneRef.current = null;
@@ -187,13 +193,16 @@ export default function PaiDashboard() {
     // pode tocar "chegou!" por uma transição que ela não presenciou.
     if (prev == null) return;
 
-    if (zona === ZONA.LONGE) toast('Tio Nino em rota', { icon: '🚐' });
+    // ⚠️ SEM MINUTOS: "em uns 5 minutos" era uma previsão inventada — a faixa
+    // "perto" vai de 2 km a 400 m, e isso pode ser 3 ou 15 minutos. E sem
+    // emoji (decisão do dono): o ícone é o padrão do aviso.
+    if (zona === ZONA.LONGE) toast(`${quem} está a caminho`);
     else if (zona === ZONA.PERTO) {
-      toast('Tio Nino chega em uns 5 minutos', { icon: '🚐', duration: 6000 });
+      toast(`${quem} está chegando`, { duration: 6000 });
       // Buzina curta — sinaliza aproximação
       playSound('horn_short');
     } else if (zona === ZONA.CHEGOU) {
-      toast.success('Tio Nino chegou!', { duration: 10000 });
+      toast.success(`${quem} chegou!`, { duration: 10000 });
       // Buzina longa — Tio chegou na porta
       playSound('horn_long');
       if ('vibrate' in navigator) {
@@ -204,7 +213,7 @@ export default function PaiDashboard() {
         }
       }
     }
-  }, [zona, routeActive]);
+  }, [zona, routeActive, quem]);
 
   const nextPayment = useMemo(() => {
     if (!payments?.length) return null;
@@ -305,6 +314,8 @@ export default function PaiDashboard() {
         {/* O irmão que entrou sozinho pelo WhatsApp dela, com a saída
           * "Não é meu filho" — antes do seletor, porque é sobre ele. */}
         <AvisoDeIrmao />
+        {/* Mudança no contrato esperando o aceite dela — não bloqueia nada. */}
+        <AvisoDeMudancaNoContrato child={child} />
         {/* Só aparece a partir do segundo filho — quem tem um vê a tela
           * igual a antes. */}
         <ChildSwitcher />
@@ -598,6 +609,7 @@ function CartaoDeHoje({
 
   return (
     <div className="rounded-3xl overflow-hidden shadow-focus bg-card">
+      <div className="relative">
       <button
         onClick={onTap}
         className={`tap w-full text-left bg-gradient-to-br ${gradient} text-white p-6 relative overflow-hidden block`}
@@ -615,7 +627,7 @@ function CartaoDeHoje({
               size="lg"
             />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-8">
             <div className="flex items-center gap-2">
               {/* A TARJA DIZ QUAL DOS TRÊS MOMENTOS É — ver o cabeçalho. */}
               <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest">
@@ -627,11 +639,14 @@ function CartaoDeHoje({
                 )}
                 {semAtualizacao ? 'sem atualização' : TARJA[estadoDoDia]}
               </span>
-              <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/80">
-                {child.name?.split(' ')[0]}
-              </p>
             </div>
-            <p className={`${destaqueFrase} font-bold leading-tight mt-1.5`}>
+            {/* O NOME NA PRÓPRIA LINHA (02/10/2026). Ao lado da tarja, com a
+              * foto, o enfeite e a seta na mesma fileira, sobravam 40px em
+              * 360px e "Pedro" virava "PED…" (teste R2). */}
+            <p className="mt-1.5 truncate text-base font-bold text-white">
+              {child.name?.split(' ')[0]}
+            </p>
+            <p className={`${destaqueFrase} font-bold leading-tight mt-0.5`}>
               {phrase.split(' · ')[0]}
             </p>
             {phrase.includes(' · ') && (
@@ -640,15 +655,18 @@ function CartaoDeHoje({
               </p>
             )}
           </div>
-          {/* O ANIVERSÁRIO É DA CRIANÇA, então o badge mora ao lado dela e
-            * não ao lado da saudação, que saiu. */}
-          <span className="shrink-0">
-            <FestiveBadge />
-          </span>
           <ChevronRight size={18} className="shrink-0 text-white/70" />
         </div>
 
       </button>
+      {/* O ANIVERSÁRIO É DA CRIANÇA, então o enfeite mora no cartão dela. Fica
+        * FORA do botão do cartão: ele é um botão também, e botão dentro de
+        * botão é HTML inválido (o React avisava no console, e o leitor de
+        * tela lia os dois como um só). */}
+      <span className="absolute right-3 top-3">
+        <FestiveBadge />
+      </span>
+      </div>
 
       {/* O CORPO: a hora, que é o motivo de ela abrir o app.
         * `semCasca` porque quem desenha a superfície agora é este cartão. */}
@@ -854,7 +872,25 @@ function PresencePanel({ presence, onOpenMap }) {
       iconBg: 'bg-primary/10 text-primary',
       icon: Bus,
     },
-  }[presence.kind];
+    // ⚠️ FALTAVA, E QUEBRARIA A TELA (03/10/2026): sem esta entrada, `cfg`
+    // era `undefined` com o mapa desligado. Só não quebrava porque a rota sem
+    // mapa nunca chegava a gravar (o `merge` que faltava em locationService).
+    [PRESENCE.SEM_MAPA]: {
+      ring: 'border-neutro',
+      iconBg: 'bg-primary/10 text-primary',
+      icon: Bus,
+    },
+    [PRESENCE.OCORRENCIA]: {
+      ring: 'border-dangerBorder',
+      iconBg: 'bg-dangerChip text-dangerText',
+      icon: CircleAlert,
+    },
+  }[presence.kind] || {
+    // Estado novo sem cor própria: neutro, nunca a tela quebrada.
+    ring: 'border-neutro',
+    iconBg: 'bg-neutro text-textMuted',
+    icon: MapIcon,
+  };
 
   const Icon = cfg.icon;
 

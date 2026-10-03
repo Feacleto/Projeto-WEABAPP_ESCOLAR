@@ -85,13 +85,30 @@ export function useGeolocation() {
       // esperar por um leque de escritas no meio-fio, às vezes sem sinal. O
       // service engole o próprio erro e tem trava de uma vez por dia — ida e
       // volta são duas rotas, e na volta ela já está em casa.
-      avisarSaidaDaRota(driverUid);
+      avisarSaidaDaRota(driverUid, opcoes.saida);
     } catch (err) {
       setError(err);
     }
   }, []);
 
-  const stop = useCallback(async (driverUid) => {
+  /**
+   * RELIGA O GPS DE UMA ROTA QUE JÁ ESTAVA ABERTA (03/10/2026) — o app
+   * recarregou no meio do caminho (atualização, falta de memória). Não é
+   * começar: não liga o relógio do teste nem avisa "a perua saiu" de novo.
+   * Sem isto, o Início seguia mostrando a rota enquanto nada era gravado, e o
+   * servidor a encerrava como abandonada.
+   */
+  const retomar = useCallback((driverUid, opcoes = {}) => {
+    setError(null);
+    try {
+      startTracking(driverUid, { ...opcoes, retomando: true });
+      setWatching(true);
+    } catch (err) {
+      setError(err);
+    }
+  }, []);
+
+  const stop = useCallback(async (driverUid, pendentes = []) => {
     setStopping(true);
     try {
       await stopTracking();
@@ -103,13 +120,10 @@ export function useGeolocation() {
        * dizer "seu filho ficou pra trás" a partir da ordem das marcações
        * assustaria mães à toa; aqui a rota acabou.
        *
-       * A direção sai da hora: antes do meio-dia a rota que terminou é a de
-       * ida. E sem `await` — encerrar a rota não pode esperar por avisos. */
+       * Quem ficou vem da FILA DA VIAGEM (`quemFicouSemRegistro`), não do
+       * relógio. E sem `await` — encerrar a rota não pode esperar por avisos. */
       if (driverUid) {
-        avisarQuemFicou({
-          adminUid: driverUid,
-          direcao: new Date().getHours() < 12 ? 'ida' : 'volta',
-        });
+        avisarQuemFicou({ adminUid: driverUid, pendentes });
       }
     } catch (err) {
       setError(err);
@@ -118,5 +132,5 @@ export function useGeolocation() {
     }
   }, []);
 
-  return { watching, position, error, stopping, start, stop };
+  return { watching, position, error, stopping, start, stop, retomar };
 }

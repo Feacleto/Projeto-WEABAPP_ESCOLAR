@@ -230,7 +230,9 @@ const CRIANCA = { name: 'João Pedro', parentUid: 'p1', horaPega: '06:30', horaE
 
 /** Um `Date` de hoje, na hora local (que o TZ acima fixou em São Paulo). */
 function hojeAs(hh, mm) {
-  const d = new Date();
+  // UMA QUINTA-FEIRA FIXA (03/10/2026): os avisos de rota não valem no fim de
+  // semana, e com `new Date()` esta bateria falharia rodada num sábado.
+  const d = new Date(2026, 8, 10);
   d.setHours(hh, mm, 0, 0);
   return d;
 }
@@ -287,6 +289,37 @@ comparar('falta declarada cala os dois',
 
 comparar('os dois gatilhos valendo: o GRAVE ganha nos dois',
   { status: 'onboard', rotaAtiva: false, agora: hojeAs(13, 30) , nivel: 'grave' });
+
+// ⚠️ OS FALSOS ALARMES DA TARDE (03/10/2026). Sem teto e sem olhar o status,
+// às 16h — entre uma viagem e outra, GPS desligado — os dois diziam "a rota
+// não começou às 06:30" para a criança já entregue de manhã.
+comparar('16h, criança da manhã JÁ ENTREGUE, sem rota: nenhum avisa',
+  { status: 'delivered', rotaAtiva: false, agora: hojeAs(16, 0) });
+comparar('7h, criança já EMBARCADA, rota encerrada: nenhum avisa a partida',
+  { status: 'atSchool', rotaAtiva: false, agora: hojeAs(7, 10) });
+comparar('90 min depois de pegar, ainda em casa: ainda é ATENÇÃO',
+  { status: 'home', rotaAtiva: false, agora: hojeAs(8, 0), nivel: 'atencao' });
+comparar('91 min depois de pegar: o aviso já não serve, nenhum avisa',
+  { status: 'home', rotaAtiva: false, agora: hojeAs(8, 1) });
+
+const ontem = new Date(hojeAs(12, 0).getTime() - 86400000);
+checar('servidor: "na perua" gravado ONTEM não vira "passou da hora" hoje',
+  R.avisoDeAtraso({
+    crianca: { ...CRIANCA, status: 'onboard', statusUpdatedAt: ontem },
+    rotaAtiva: false,
+    agora: hojeAs(13, 30),
+  }) === null);
+checar('servidor: "na perua" gravado HOJE continua GRAVE',
+  R.avisoDeAtraso({
+    crianca: { ...CRIANCA, status: 'onboard', statusUpdatedAt: hojeAs(6, 35) },
+    rotaAtiva: false,
+    agora: hojeAs(13, 30),
+  })?.nivel === 'grave');
+
+comparar('SÁBADO, sem rota: nenhum dos dois avisa', {
+  status: 'home', rotaAtiva: false,
+  agora: (() => { const d = new Date(2026, 8, 12); d.setHours(6, 50, 0, 0); return d; })(),
+});
 
 checar('horário presumido não vira atraso — é chute do app',
   R.avisoDeAtraso({

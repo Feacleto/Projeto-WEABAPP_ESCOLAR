@@ -32,7 +32,9 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
-const admin = require('firebase-admin');
+// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
+// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
+const { FieldValue } = require('firebase-admin/firestore');
 
 const REGION = 'southamerica-east1';
 const FUSO = 'America/Sao_Paulo';
@@ -161,7 +163,7 @@ function makeConfirmarAusencias(db) {
           childId: a.childId,
           dateKey: amanha,
           url: '/pai',
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
         });
         enviados += 1;
         noLote += 1;

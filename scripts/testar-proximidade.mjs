@@ -144,6 +144,19 @@ checar('e diz que o aviso continua', true, /chegando/i.test(semMapa.detail));
 checar('não é tratado como posição velha', false, semMapa.isStale);
 checar('e não inventa distância', null, semMapa.distanceKm);
 
+// PERUA QUEBRADA (03/10/2026): estado próprio, e vence a posição e o mapa.
+const quebrada = describeRoutePresence({
+  liveLocation: {
+    routeActive: true, semMapa: true, updatedAt: agora - 30 * 60 * 1000,
+    ocorrencia: { tipo: 'perua_quebrou' },
+  },
+  now: agora,
+});
+checar('perua quebrada tem estado próprio', PRESENCE.OCORRENCIA, quebrada.kind);
+checar('e não vira "sem sinal" nem distância', null, quebrada.distanceKm);
+checar('rota encerrada não mostra ocorrência velha', PRESENCE.NO_ROUTE,
+  describeRoutePresence({ liveLocation: { routeActive: false, ocorrencia: { tipo: 'perua_quebrou' } } }).kind);
+
 // O outro lado: rota ativa, sem bandeira, posição velha = sem sinal mesmo.
 const velho = describeRoutePresence({
   liveLocation: { routeActive: true, updatedAt: agora - 30 * 60 * 1000 },
@@ -178,9 +191,17 @@ checar('o service encaixa antes de gravar', true,
 // continua lendo `position.coords` — é dela que sai a medição do aviso, que
 // roda no aparelho dele e não vai para lugar nenhum.
 const payload = (semProsa.match(
-  /await setDoc\(docDoMotorista\(uidDaSessao\(\)\), \{[\s\S]*?\n {8}\}\);/
+  /await setDoc\(docDoMotorista\(uidDaSessao\(\)\), \{[\s\S]*?\n {4,8}\}(, \{ merge: true \})?\);/ // indentação varia: a gravação mora em `gravarPosicao` desde 03/10/2026
 ) || [''])[0];
 checar('o teste achou o que é gravado', true, payload.length > 0);
+// ⚠️ O MAPA DESLIGADO GRAVA `deleteField()`, e o SDK só aceita isso num `set`
+// COM `merge` — sem ele, toda gravação da rota sem mapa era recusada (achado
+// em 03/10/2026, sondado no emulador). O fim do `setDoc` precisa do merge.
+const fimDoSetDoc = (semProsa.match(
+  /await setDoc\(docDoMotorista\(uidDaSessao\(\)\), \{[\s\S]*?\n {4,8}\}(, \{ merge: true \})?\);/
+) || [''])[0];
+checar('a gravação da posição usa merge (o mapa desligado depende disso)',
+  true, /\}, \{ merge: true \}\);$/.test(fimDoSetDoc));
 checar('e o gravado não tem coordenada crua', false, /position\.coords/.test(payload));
 // A precisão publicada é a da GRADE: dizer "5 m" ao lado de um ponto
 // encaixado em 150 m é a interface mentindo com número.

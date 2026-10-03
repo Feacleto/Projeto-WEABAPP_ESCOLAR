@@ -148,6 +148,15 @@ export const AGENDA_TYPES = {
     template: () =>
       'Hoje vou atrasar um pouco na rota. Assim que eu estiver chegando, o app avisa vocês.',
   },
+  // CHEGO MAIS CEDO (03/10/2026): o par do atraso. Uma criança faltou e a
+  // perua adianta — a família que não sabe disso desce no horário de sempre.
+  cedo: {
+    label: 'Chego mais cedo',
+    emoji: '⏰',
+    color: GRADIENTE_AGENDA.atraso,
+    template: () =>
+      'Hoje a perua vai passar um pouco antes do horário combinado. Se puder, deixe a criança pronta.',
+  },
   quebrou: {
     label: 'Problema com a perua',
     emoji: '🚨',

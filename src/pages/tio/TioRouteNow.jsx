@@ -12,7 +12,7 @@ import OperacaoDaRota from '../../components/route/OperacaoDaRota';
 export default function TioRouteNow() {
   return (
     <div className="min-h-screen pb-28">
-      <Header title="Rota agora" />
+      <Header title="Rota" />
       <OperacaoDaRota />
     </div>
   );

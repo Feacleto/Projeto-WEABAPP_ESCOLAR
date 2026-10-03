@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Square, Satellite, CircleAlert, MapPin, MapPinOff } from 'lucide-react';
+import { Play, Square, Satellite, CircleAlert, MapPin, MapPinOff, CalendarOff } from 'lucide-react';
+import { diaSemRota, fraseDoDiaSemRota } from '../../dominio/rota/calendario.js';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { setCompartilharLocalizacao } from '../../services/userService';
@@ -8,6 +9,7 @@ import { ofertarPelaPrimeiraRota } from '../../services/associadoService';
 import { podeOferecer } from '../../dominio/associacao/ofertaDaPrimeiraRota';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { playSound } from '../../services/soundService';
+import { marcarOcorrencia } from '../../services/locationService';
 
 /**
  * Iniciar e encerrar a rota — o interruptor do GPS.
@@ -25,14 +27,33 @@ import { playSound } from '../../services/soundService';
  * mundo, e um diálogo modal no celular em movimento é mais fácil de confirmar
  * sem ler do que um botão que muda de cara.
  */
-export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }) {
+export default function ControleDeRota({
+  onIniciar,
+  direcao = null,
+  alvos = [],
+  saida = null,
+  pendentes = [],
+}) {
   const { user, profile, updateProfile, refreshProfile } = useAuth();
   // AUSENTE É LIGADO — ver `setCompartilharLocalizacao`.
   const compartilha = profile?.compartilhaLocalizacao !== false;
-  const { watching, position, error, stopping, start, stop } = useGeolocation();
+  const { watching, position, error, stopping, start, stop, retomar } = useGeolocation();
   const { location: liveLocation } = useLiveLocation();
 
+  // A ROTA ESTAVA ABERTA E O GPS NÃO: o app recarregou no meio do caminho.
+  // Religa sozinho — o Início já mostra a rota, e pedir "INICIAR ROTA" de
+  // novo faria ele achar que a rota tinha caído (ver `retomar`).
+  const retomouRef = useRef(false);
+  useEffect(() => {
+    if (!user?.uid || watching || stopping || retomouRef.current) return;
+    if (!liveLocation?.routeActive) return;
+    retomouRef.current = true;
+    retomar(user.uid, { alvos, compartilha });
+    toast('GPS religado. A rota continua.');
+  }, [user?.uid, watching, stopping, liveLocation?.routeActive, retomar, alvos, compartilha]);
+
   const [confirmandoParada, setConfirmandoParada] = useState(false);
+  const [rodarMesmoAssim, setRodarMesmoAssim] = useState(false);
   const ultimoErroRef = useRef(null);
 
   // Só avisa quando o erro MUDA, senão o GPS com sinal ruim enche a tela de
@@ -62,7 +83,13 @@ export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }
       toast.error('Sessão expirada. Entre de novo.');
       return;
     }
-    start(user.uid, { alvos, compartilha });
+    start(user.uid, {
+      alvos,
+      compartilha,
+      // Quem recebe "a perua saiu": as famílias DESTA viagem, sem quem está
+      // fora hoje (ver `avisarSaidaDaRota`).
+      saida: saida ? { ...saida, semMapa: !compartilha } : null,
+    });
     toast.success('Rota começou! GPS ligado.');
     // Quem sabe a fila é a tela de rota, não este botão. Ela publica a posição
     // de cada criança no dia — o responsável não consegue calcular isso
@@ -74,13 +101,14 @@ export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }
     if (!confirmandoParada) {
       playSound('click');
       setConfirmandoParada(true);
-      setTimeout(() => setConfirmandoParada(false), 4000);
+      // Com criança pendente ele precisa LER a lista: mais tempo para decidir.
+      setTimeout(() => setConfirmandoParada(false), pendentes.length ? 8000 : 4000);
       return;
     }
     setConfirmandoParada(false);
     // O uid vai adiante: quem encerra a rota é quem sabe de quem ela é, e
     // `avisarQuemFicou` precisa dele pra achar a turma.
-    await stop(user?.uid);
+    await stop(user?.uid, pendentes);
     toast.success('Rota encerrada.');
 
     /* ⚠️ A OFERTA NASCE AQUI — no fim da PRIMEIRA rota, não no começo.
@@ -153,7 +181,7 @@ export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }
           *    sente que foi enganado.
           * 2. O MAPA É REFERÊNCIA. A posição publicada é encaixada numa
           *    grade de 150 m: mostra a quadra, nunca a porta. */}
-        <span className="mt-0.5 block text-[11px] leading-relaxed text-textMuted">
+        <span className="mt-0.5 block text-xs leading-relaxed text-textMuted">
           {compartilha
             ? 'Posição aproximada, por referência — não mostra o ponto exato. Toque para desligar.'
             : 'O GPS continua ligado: elas seguem recebendo o aviso de que você está chegando. Toque para mostrar no mapa.'}
@@ -162,10 +190,38 @@ export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }
     </button>
   );
 
+  // ⚠️ DIA SEM ROTA (03/10/2026, pedido do dono): no fim de semana e no
+  // feriado nacional, o lugar do botão diz QUE DIA É. "Rodar mesmo assim"
+  // continua — escola com aula no sábado, reposição, passeio. Ver
+  // `dominio/rota/calendario.js`.
+  const motivoSemRota = diaSemRota(new Date());
+  if (!watching && motivoSemRota && !rodarMesmoAssim) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutro text-textMuted">
+          <CalendarOff size={20} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-bold text-text">
+            {fraseDoDiaSemRota(motivoSemRota)}
+          </span>
+          <span className="block text-sm text-textMuted">Sem viagem combinada hoje.</span>
+        </span>
+        <button
+          type="button"
+          onClick={() => setRodarMesmoAssim(true)}
+          className="tap min-h-11 shrink-0 rounded-xl border border-primaryBorder bg-card px-3 text-sm font-bold text-primary"
+        >
+          Rodar mesmo assim
+        </button>
+      </div>
+    );
+  }
+
   if (!watching) {
     return (
       <>
-      /* A ÂNCORA DO TUTORIAL MORA AQUI, e o passo aponta pra cá de novo.
+      {/* A ÂNCORA DO TUTORIAL MORA AQUI, e o passo aponta pra cá de novo.
        *
        * Ela já tinha sido removida uma vez, corretamente: nenhum passo a
        * referenciava, porque o passo "Começar a viagem" tinha sido repontado
@@ -176,7 +232,7 @@ export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }
        * foi verdade.
        *
        * Órfã ela era sintoma, não causa: o problema era o passo apontando pro
-       * elemento errado. */
+       * elemento errado. */}
       <button
         type="button"
         data-tour="start-route"
@@ -213,24 +269,59 @@ export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }
         * que ele espera ver na lista. Sem `direcao`, degrada pra "MODO ROTA"
         * seco — nunca fica pela metade. */}
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-extrabold uppercase tracking-widest text-primary leading-tight">
+        <p className="text-xs font-extrabold uppercase tracking-widest text-primary leading-tight">
           modo rota
           {direcao === 'ida' && ' · levando pra escola'}
           {direcao === 'volta' && ' · trazendo pra casa'}
         </p>
-        <p className="text-[11px] text-primary/75 mt-0.5">
+        {/* ⚠️ ENCERRAR COM CRIANÇA PENDENTE (03/10/2026): o primeiro toque em
+          * "Encerrar" diz QUEM ainda está na perua ou sem embarque, antes do
+          * "Confirmar". Não impede — ele pode ter deixado a criança e não
+          * marcado —, mas não deixa encerrar sem ver. */}
+        {liveLocation?.ocorrencia?.tipo === 'perua_quebrou' && !confirmandoParada ? (
+          <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm font-bold text-dangerText">
+            Problema na perua avisado
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await marcarOcorrencia(null);
+                  toast.success('Rota seguindo. As famílias voltam a ver a rota normal.');
+                } catch (err) {
+                  console.error(err);
+                  toast.error('Não deu pra marcar. Tente de novo.');
+                }
+              }}
+              className="tap min-h-11 rounded-xl border border-primaryBorder bg-card px-3 text-xs font-bold text-primary"
+            >
+              Resolvido
+            </button>
+          </p>
+        ) : confirmandoParada && pendentes.length > 0 ? (
+          <p className="mt-0.5 text-sm font-bold text-dangerText">
+            {resumoDosPendentes(pendentes)}
+          </p>
+        ) : (
+        <p className="text-xs text-primary mt-0.5">
+          {/* ⚠️ A FRASE DIZ O QUE A FAMÍLIA VÊ DE VERDADE (03/10/2026). Dizia
+            * "o responsável está te vendo" até com o mapa DESLIGADO — a tela
+            * dele mentindo sobre a escolha que ele mesmo fez. E a precisão do
+            * GPS não é a que a família vê: o mapa dela é aproximado (150 m). */}
           {semSinal
             ? 'procurando sinal de GPS…'
-            : `o responsável está te vendo · precisão ${Math.round(precisao)} m`}
+            : compartilha
+              ? 'as famílias veem a perua no mapa, em posição aproximada'
+              : 'a perua não aparece no mapa · o aviso de chegada continua'}
         </p>
+        )}
       </div>
       <button
         type="button"
         onClick={encerrar}
         disabled={stopping}
-        className={`tap shrink-0 h-10 px-3 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-60 ${
+        className={`tap shrink-0 min-h-11 px-3 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-60 ${
           confirmandoParada
-            ? 'bg-danger text-white'
+            ? 'bg-dangerText text-white' // branco sobre `danger` dava 3,76:1 (axe, M5)
             : 'bg-card border border-primaryBorder text-primary'
         }`}
       >
@@ -239,4 +330,17 @@ export default function ControleDeRota({ onIniciar, direcao = null, alvos = [] }
       </button>
     </div>
   );
+}
+
+/** "Ainda na perua: Ana, Bia · sem embarque: Caio" — os primeiros nomes. */
+function resumoDosPendentes(pendentes) {
+  const nomes = (lista) => lista.map((p) => String(p.name || '').split(' ')[0]).join(', ');
+  const naPerua = pendentes.filter((p) => p.falta === 'entrega');
+  const semEmbarque = pendentes.filter((p) => p.falta !== 'entrega');
+  return [
+    naPerua.length ? `Ainda na perua: ${nomes(naPerua)}` : null,
+    semEmbarque.length ? `Sem embarque: ${nomes(semEmbarque)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }

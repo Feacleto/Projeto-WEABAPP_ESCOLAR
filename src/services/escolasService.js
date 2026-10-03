@@ -11,8 +11,10 @@ import {
   writeBatch,
   serverTimestamp,
 } from 'firebase/firestore';
-import { auth, db } from '../firebase/config';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from '../firebase/config';
 import { playSound } from './soundService';
+import { exigirCloud } from './callableError';
 
 // A parte pura da migração mora em utils pra poder ser testada sem Firebase.
 export { chaveDoNome, proporEscolasDasCriancas } from '../dominio/escola/nomeEscola';
@@ -65,6 +67,9 @@ export async function addEscola(data) {
     // e número prontos pra leitura. Guardado, permite reconsultar a rua e
     // recalcular a coordenada de uma escola antiga sem pedir nada ao motorista.
     cep: data.cep?.trim() || '',
+    // O TELEFONE É OPCIONAL (03/10/2026) — só dígitos. A cópia vai para a
+    // criança quando ela escolhe a escola (`schoolPhone`, no cadastro).
+    ...(somenteDigitos(data.telefone) ? { telefone: somenteDigitos(data.telefone), telefoneInformadoPor: 'motorista' } : {}),
     lat: toCoord(data.lat),
     lng: toCoord(data.lng),
     // true = endereço salvo sem coordenada; dá pra resolver depois sem travar
@@ -188,4 +193,45 @@ function toCoord(value) {
   if (value === '' || value == null) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+
+function somenteDigitos(v) {
+  return String(v || '').replace(/\D/g, '');
+}
+
+/**
+ * O TELEFONE DA ESCOLA, pelo motorista (03/10/2026). Grava na escola e COPIA
+ * para cada criança dele naquela escola (`schoolPhone`) — a ficha e a rota
+ * leem da criança, e a família não lê `schools`. Um lote só: separados,
+ * existiria a escola com um número e as crianças com outro.
+ * Vazio apaga o número.
+ */
+export async function definirTelefoneDaEscola(escolaId, telefone) {
+  const adminUid = uidAtual();
+  if (!adminUid || !escolaId) return;
+  const numero = somenteDigitos(telefone);
+  const criancas = await getDocs(
+    query(
+      collection(db, 'children'),
+      where('adminUid', '==', adminUid),
+      where('schoolId', '==', escolaId)
+    )
+  );
+  const lote = writeBatch(db);
+  lote.update(doc(db, 'schools', escolaId), {
+    telefone: numero,
+    telefoneInformadoPor: 'motorista',
+    updatedAt: serverTimestamp(),
+  });
+  criancas.docs.forEach((d) => lote.update(d.ref, { schoolPhone: numero }));
+  await lote.commit();
+}
+
+/** O TELEFONE DA ESCOLA, pela família — pelo servidor (ver a function). */
+export async function informarTelefoneDaEscola({ childId, telefone }) {
+  exigirCloud('informar o telefone da escola');
+  const fn = httpsCallable(functions, 'informarTelefoneDaEscola');
+  const { data } = await fn({ childId, telefone: somenteDigitos(telefone) });
+  return data;
 }

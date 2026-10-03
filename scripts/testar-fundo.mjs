@@ -54,7 +54,8 @@ const fonteLogin = ler('src/pages/Login.jsx');
 const fonteFirst = ler('src/pages/FirstAccess.jsx');
 const fonteFundo = ler('src/components/auth/FundoDoLogin.jsx');
 const fonteRota = ler('src/components/route/OperacaoDaRota.jsx');
-const fonteStatus = ler('src/services/routeStatusService.js');
+// O rótulo dos botões da parada mora no domínio desde 03/10/2026.
+const fonteStatus = ler('src/dominio/rota/acaoDaParada.js');
 const fontePresenca = ler('src/dominio/rota/routePresence.js');
 
 const textos = textosDoFundo();
@@ -123,7 +124,7 @@ const CITACOES = [
   ['Trazendo pra casa', fonteRota, 'OperacaoDaRota'],
   ['já foram entregues', fonteRota, 'OperacaoDaRota (o verbo da volta)'],
   ['Buzinar faz o celular do responsável tocar', fonteRota, 'OperacaoDaRota'],
-  ['ENTREGUEI', fonteStatus, 'routeStatusService'],
+  ['ENTREGUEI', fonteStatus, 'acaoDaParada'],
   ['Avisamos quando estiver perto.', fontePresenca, 'routePresence'],
 ];
 for (const [frase, fonte, onde] of CITACOES) {

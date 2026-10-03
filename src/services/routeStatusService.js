@@ -2,9 +2,6 @@ import {
   collection,
   addDoc,
   doc,
-  getDocs,
-  query,
-  where,
   writeBatch,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -13,12 +10,11 @@ import {
   getDateKey,
   normalizaHora,
   emMinutos,
-  CAMPO_DA_DIRECAO,
 } from '../dominio/rota/horarios';
 import { playSound } from './soundService';
 import { getEffectiveStatus } from './childrenService';
 import { ABSENCE_TYPES } from './absencesService';
-import { anotarMarco } from './ridesService';
+import { anotarMarco, apagarMarco } from './ridesService';
 
 /**
  * Máquina de status da criança na rota.
@@ -34,50 +30,9 @@ import { anotarMarco } from './ridesService';
 
 export const STATUS_CYCLE = ['home', 'onboard', 'atSchool', 'delivered'];
 
-/**
- * Decide qual ação mostrar baseado no status efetivo + direção do turno.
- * Retorna { label, shortLabel, nextStatus, variant } ou null quando não há
- * ação possível naquele turno.
- */
-export function getActionForStatus(status, direction) {
-  if (direction === 'pickup') {
-    if (status === 'home') {
-      return {
-        label: 'Embarcar',
-        shortLabel: 'EMBARQUEI',
-        nextStatus: 'onboard',
-        variant: 'primary',
-      };
-    }
-    if (status === 'onboard') {
-      return {
-        label: 'Entregar na escola',
-        shortLabel: 'ENTREGUEI NA ESCOLA',
-        nextStatus: 'atSchool',
-        variant: 'success',
-      };
-    }
-    return null; // atSchool ou delivered: nada a fazer na ida
-  }
-  // dropoff
-  if (status === 'atSchool') {
-    return {
-      label: 'Embarcar pra casa',
-      shortLabel: 'EMBARQUEI',
-      nextStatus: 'onboard',
-      variant: 'primary',
-    };
-  }
-  if (status === 'onboard') {
-    return {
-      label: 'Entregar em casa',
-      shortLabel: 'ENTREGUEI',
-      nextStatus: 'delivered',
-      variant: 'success',
-    };
-  }
-  return null;
-}
+// A AÇÃO DE CADA PARADA mora no domínio desde 03/10/2026 — pura, para o Node
+// testá-la (`npm run testar:viagem`). Reexportada aqui para quem já a lia.
+export { getActionForStatus } from '../dominio/rota/acaoDaParada.js';
 
 /**
  * Avança UMA criança pro próximo status.
@@ -145,9 +100,10 @@ export async function advanceChild(childId, nextStatus, context = null) {
     });
   }
 
-  await batch.commit();
+  const gravacao = await gravarSemTravar(batch);
 
-  await avisarChegadas([
+  // Sem `await`: sem sinal, esperar o aviso prenderia a tela (ver `gravarSemTravar`).
+  avisarChegadas([
     {
       parentUid: context?.parentUid,
       childId,
@@ -159,13 +115,55 @@ export async function advanceChild(childId, nextStatus, context = null) {
   /* E QUEM VEM DEPOIS FICA SABENDO QUE É A VEZ DELA. Só nos dois marcos que
      movem a fila: embarcar avança a ida, entregar avança a volta. `atSchool`
      não move ninguém — é o meio do caminho da mesma criança. */
-  if (context?.adminUid && (nextStatus === 'onboard' || nextStatus === 'delivered')) {
-    avisarProximo({
-      adminUid: context.adminUid,
-      direcao: nextStatus === 'onboard' ? 'ida' : 'volta',
-    });
-  }
+  // Quem é o próximo decide a TELA, que tem a fila da viagem (com quem está
+  // fora hoje já de fora) — ver `proximoAAvisar`.
+  if (context?.proximo) avisarProximo({ proximo: context.proximo });
 
+  playSound('status_change');
+  // 'ok' (o servidor confirmou) ou 'fila' (sem sinal: sobe quando voltar).
+  return gravacao;
+}
+
+/**
+ * GRAVA SEM PRENDER A TELA (03/10/2026).
+ *
+ * `batch.commit()` só resolve quando o SERVIDOR confirma — sem sinal, ele
+ * esperava para sempre, e os botões da rota ficavam travados (`busy`) até o
+ * 4G voltar. A escrita já está na fila do SDK no instante em que é feita (em
+ * memória — o cache persistente foi testado e desligado, ver
+ * `firebase/config.js`): aqui esperamos a confirmação
+ * por um instante e, se ela não vem, seguimos. Devolve `'ok'` (o servidor
+ * confirmou) ou `'fila'` (vai subir quando o sinal voltar). Erro de verdade
+ * (regra recusando) ainda chega a quem chamou.
+ */
+const ESPERA_DO_SINAL_MS = 2500;
+async function gravarSemTravar(batch) {
+  const gravou = batch.commit();
+  // Se ninguém esperar por ela depois do prazo, o erro não pode sumir mudo.
+  gravou.catch((err) => console.error('Gravação da rota falhou:', err));
+  return Promise.race([
+    gravou.then(() => 'ok'),
+    new Promise((resolve) => setTimeout(() => resolve('fila'), ESPERA_DO_SINAL_MS)),
+  ]);
+}
+
+/**
+ * VOLTA UM PASSO — o toque errado desfeito (03/10/2026).
+ *
+ * Não existia: um EMBARQUEI na criança errada ficava, e o motorista seguia a
+ * viagem com a tela mentindo. Volta o status e apaga a hora do marco no mesmo
+ * lote. ⚠️ O aviso que a família JÁ recebeu ("chegou na escola") não volta —
+ * a tela de confirmação diz isso antes do toque.
+ */
+export async function voltarPasso({ childId, statusAtual, anterior, dateKey }) {
+  if (!childId || !statusAtual || !anterior) return;
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'children', childId), {
+    status: anterior,
+    statusUpdatedAt: serverTimestamp(),
+  });
+  apagarMarco(batch, { childId, dateKey, status: statusAtual });
+  await gravarSemTravar(batch);
   playSound('status_change');
 }
 
@@ -233,10 +231,10 @@ export async function advanceMany(moves, context = null) {
         });
       }
     }
-    await batch.commit();
+    await gravarSemTravar(batch);
   }
 
-  await avisarChegadas(
+  avisarChegadas(
     valid.map((m) => ({
       parentUid: m.parentUid,
       childId: m.childId,
@@ -252,6 +250,9 @@ export async function advanceMany(moves, context = null) {
   // "peguei todas" sem conferir a lista — e conferir lista dirigindo é o que
   // esta tela existe pra evitar.
   playSound('lote');
+  // O lote também move a fila ("embarquei todos" na escola, na volta).
+  if (context?.proximo) avisarProximo({ proximo: context.proximo });
+
   return valid.length;
 }
 
@@ -310,27 +311,26 @@ export async function advanceMany(moves, context = null) {
  */
 const CHAVE_DA_SAIDA = 'ab_aviso_de_saida';
 
-export async function avisarSaidaDaRota(adminUid) {
-  if (!adminUid) return 0;
+// ⚠️ POR VIAGEM, E SÓ PARA QUEM ESPERA ESTA VIAGEM (03/10/2026). Era uma vez
+// por DIA para a turma INTEIRA: a família cuja criança só anda à tarde
+// recebia "a perua saiu" às 6h — quando a perua não ia buscá-la — e nada às
+// 12h, quando ia; e quem tinha avisado falta também recebia. Quem diz a
+// viagem e as famílias é a tela da rota (`saida`), que tem a fila com quem
+// está fora hoje.
+export async function avisarSaidaDaRota(adminUid, saida = null) {
+  if (!adminUid || !saida?.viagem) return 0;
   const hoje = getDateKey();
+  const trava = `${adminUid}_${hoje}_${saida.viagem}`;
   try {
-    if (localStorage.getItem(CHAVE_DA_SAIDA) === `${adminUid}_${hoje}`) return 0;
+    if (localStorage.getItem(CHAVE_DA_SAIDA) === trava) return 0;
   } catch {
     /* sem storage a trava não existe; seguir é melhor que não avisar */
   }
 
   try {
-    const snap = await getDocs(
-      query(collection(db, 'children'), where('adminUid', '==', adminUid))
-    );
     // Um responsável com dois filhos na mesma perua recebe UM aviso: a perua
     // é uma só, e dois pushes iguais em sequência leem como defeito.
-    const paraQuem = new Set();
-    snap.docs.forEach((d) => {
-      const c = d.data();
-      if (c.active === false) return;
-      if (c.parentUid) paraQuem.add(c.parentUid);
-    });
+    const paraQuem = new Set((saida.familias || []).filter(Boolean));
     if (!paraQuem.size) return 0;
 
     // ⚠️ A TRAVA DO DIA SÓ É GRAVADA SE ALGUÉM FOI AVISADO DE VERDADE.
@@ -356,7 +356,10 @@ export async function avisarSaidaDaRota(adminUid) {
           // começou a rota agora" não acrescenta nada a "A perua saiu". O
           // corpo do formato carrega o que o título não cabe: aqui, o que ela
           // pode fazer com a informação.
-          body: 'A rota começou. Acompanhe pelo mapa.',
+          // "Acompanhe pelo mapa" era falso quando ele desligou o mapa.
+          body: saida.semMapa
+            ? 'A rota começou. Você recebe o aviso quando ela estiver chegando.'
+            : 'A rota começou. Acompanhe pelo mapa.',
           createdAt: serverTimestamp(),
         })
       )
@@ -373,7 +376,7 @@ export async function avisarSaidaDaRota(adminUid) {
     // tentativa (a rota é ligada mais de uma vez num dia ruim) valer.
     if (avisadas > 0) {
       try {
-        localStorage.setItem(CHAVE_DA_SAIDA, `${adminUid}_${hoje}`);
+        localStorage.setItem(CHAVE_DA_SAIDA, trava);
       } catch {
         /* idem */
       }
@@ -407,25 +410,18 @@ export async function avisarSaidaDaRota(adminUid) {
  */
 const CHAVE_DO_PROXIMO = 'ab_aviso_de_proximo';
 
-export async function avisarProximo({ adminUid, direcao }) {
-  if (!adminUid || !direcao) return null;
-  const campo = CAMPO_DA_DIRECAO[direcao];
-  const esperado = direcao === 'ida' ? 'home' : 'atSchool';
-
+// ⚠️ A ESCOLHA DO PRÓXIMO SAIU DAQUI (03/10/2026). Esta função consultava a
+// turma do DIA INTEIRO e errava a família: embarcar na escola (volta) era lido
+// como ida, a família da tarde ouvia "são os próximos" às 6h40, e quem faltou
+// também entrava. Quem escolhe agora é `proximoAAvisar`
+// (`dominio/rota/focoDaViagem.js`, testado), sobre a fila da VIAGEM; aqui só
+// se envia — com a mesma trava de uma vez por criança, dia e direção.
+export async function avisarProximo({ proximo }) {
+  if (!proximo?.childId || !proximo?.parentUid || !proximo?.direcao) return null;
+  const direcao = proximo.direcao;
   try {
-    const snap = await getDocs(
-      query(collection(db, 'children'), where('adminUid', '==', adminUid))
-    );
 
-    const fila = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((c) => c.active !== false && c.parentUid && normalizaHora(c[campo]))
-      .sort((a, b) => String(a[campo]).localeCompare(String(b[campo])));
-
-    const proximo = fila.find((c) => getEffectiveStatus(c) === esperado);
-    if (!proximo) return null;
-
-    const chave = `${proximo.id}_${getDateKey()}_${direcao}`;
+    const chave = `${proximo.childId}_${getDateKey()}_${direcao}`;
     try {
       if (localStorage.getItem(CHAVE_DO_PROXIMO) === chave) return null;
       localStorage.setItem(CHAVE_DO_PROXIMO, chave);
@@ -444,10 +440,10 @@ export async function avisarProximo({ adminUid, direcao }) {
         direcao === 'ida'
           ? `${nome} é a próxima parada. A perua está a caminho.`
           : `${nome} é a próxima entrega. A perua está a caminho.`,
-      childId: proximo.id,
+      childId: proximo.childId,
       createdAt: serverTimestamp(),
     });
-    return proximo.id;
+    return proximo.childId;
   } catch (err) {
     console.error('Falha ao avisar a próxima parada:', err);
     return null;
@@ -482,27 +478,27 @@ export async function avisarProximo({ adminUid, direcao }) {
 const FOLGA_DO_ESQUECIDO = 20; // minutos depois da hora combinada
 const CHAVE_DO_ESQUECIDO = 'ab_aviso_esquecido';
 
-export async function avisarQuemFicou({ adminUid, direcao, agora = new Date() }) {
-  if (!adminUid || !direcao) return 0;
-  const campo = CAMPO_DA_DIRECAO[direcao];
-  const marco = direcao === 'ida' ? 'onboard' : 'delivered';
-  const esperado = direcao === 'ida' ? 'home' : 'atSchool';
+// ⚠️ QUEM FICOU VEM DA TELA (03/10/2026): `quemFicouSemRegistro`, sobre a
+// fila da VIAGEM. Antes era a turma inteira com a direção adivinhada pelo
+// relógio — avisava quem faltou, errava a ida da tarde e nunca via quem ficou
+// "na perua". Aqui só se aplica a folga e se envia.
+export async function avisarQuemFicou({ adminUid, pendentes = [], agora = new Date() }) {
+  if (!adminUid || !pendentes.length) return 0;
   const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
 
   try {
-    const snap = await getDocs(
-      query(collection(db, 'children'), where('adminUid', '==', adminUid))
-    );
-
-    const esquecidos = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
+    const esquecidos = pendentes
+      .map((c) => ({ ...c, id: c.childId }))
       .filter((c) => {
-        if (c.active === false || !c.parentUid) return false;
-        const hora = normalizaHora(c[campo]);
-        if (!hora) return false;
+        if (!c.parentUid) return false;
+        const hora = normalizaHora(c.hora);
         // Ainda não era a hora dele: encerrar cedo não faz dele um esquecido.
-        if (emMinutos(hora) + FOLGA_DO_ESQUECIDO > minutosAgora) return false;
-        return getEffectiveStatus(c) === esperado;
+        // Quem consta DENTRO da perua é a exceção — ali não há "cedo".
+        if (c.falta !== 'entrega') {
+          if (!hora) return false;
+          if (emMinutos(hora) + FOLGA_DO_ESQUECIDO > minutosAgora) return false;
+        }
+        return true;
       });
 
     if (!esquecidos.length) return 0;
@@ -553,7 +549,7 @@ export async function avisarQuemFicou({ adminUid, direcao, agora = new Date() })
           // frase inteira passava de 90 caracteres — o que sobra cortado na
           // tela bloqueada é sempre o fim, que aqui é a ação.
           body:
-            `Ninguém marcou ${marco === 'onboard' ? 'o embarque' : 'a entrega'}. ` +
+            `Ninguém marcou ${c.falta === 'entrega' ? 'a entrega' : 'o embarque'}. ` +
             'Provavelmente foi só o registro. Confirme com o motorista.',
           childId: c.id,
           createdAt: serverTimestamp(),

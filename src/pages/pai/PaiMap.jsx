@@ -270,6 +270,22 @@ function StatusPanel({
   // sem sinal, ou fechou a aba sem encerrar. Antes esta tela mostrava a
   // perua parada no mapa como se fosse a posição atual — e é o caso em que
   // parecer errado custa mais caro que parecer incompleto.
+  // O MOTORISTA AVISOU UM PROBLEMA COM A PERUA (03/10/2026): a rota não anda,
+  // e o mapa não pode fingir que anda.
+  if (presence?.kind === PRESENCE.OCORRENCIA) {
+    return (
+      <div className="rounded-2xl bg-dangerSoft border border-dangerBorder p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-dangerChip text-dangerText flex items-center justify-center shrink-0">
+          <ParkingCircle size={22} />
+        </div>
+        <div className="flex-1">
+          <p className="font-bold text-text leading-tight">{presence.title}</p>
+          <p className="text-sm text-dangerText mt-0.5 leading-snug">{presence.detail}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (presence?.kind === PRESENCE.STALE) {
     return (
       <div className="rounded-2xl bg-warningSoft border border-warningBorder p-4 flex items-start gap-3">

@@ -11,7 +11,6 @@ import {
   StickyNote,
   Trash2,
   Camera,
-  FileText,
   ChevronRight,
   ChevronLeft,
   Paperclip,
@@ -26,11 +25,13 @@ import { faltasDoMes, resumoDeFaltas } from '../dominio/rota/faltas';
 import {
   addMonths,
   formatMonthLabel,
-  getCurrentMonthKey,
-} from '../compartilhado/formatters';
+  getCurrentMonthKey, doDa } from '../compartilhado/formatters';
 import { useChildAbsenceHistory } from '../hooks/useAbsences';
 import { updateChild } from '../services/childrenService';
 import EditarOndeSheet from '../components/children/EditarOndeSheet';
+import CartaoDoCombinado from '../components/contract/CartaoDoCombinado';
+import EditarResponsavelSheet from '../components/children/EditarResponsavelSheet';
+import TelefoneDaEscola from '../components/children/TelefoneDaEscola';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
@@ -96,6 +97,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
   const childId = childIdProp || (isAdmin ? id : activeChildId);
   const { child, loading } = useChild(childId);
   const [editandoOnde, setEditandoOnde] = useState(false);
+  const [editandoResponsavel, setEditandoResponsavel] = useState(false);
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -231,11 +233,11 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
             {child.schoolAddress && (
               <InfoRow icon={MapPin} label="Endereço da escola" value={child.schoolAddress} />
             )}
-            {/* Turma e sala: quem sabe é o RESPONSÁVEL. O motorista não
-              * acompanha a criança até a porta da sala, então perguntar a ele
-              * seria perguntar pra quem não tem a resposta. Ele lê aqui pra
-              * saber onde chamar quando precisa. */}
-            <TurmaSala child={child} podeEditar={!isAdmin} />
+            <TelefoneDaEscola child={child} isAdmin={isAdmin} />
+            {/* Turma, professora e aniversário: os DOIS lados corrigem. O
+              * motorista pode ter dito a turma no cadastro; a família sabe
+              * melhor, e o aniversário é só dela de saber. */}
+            <TurmaSala child={child} podeEditar />
           </div>
         </Card>
 
@@ -262,6 +264,20 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           * conta reabriria essa porta pra resolver um problema que era só de
           * achar uma URL. */}
         {isAdmin && <LinkDoResponsavel child={child} />}
+
+        {/* CONTRATO E MENSALIDADE (02/10/2026): o quanto, o até quando e se a
+          * família concordou — e as duas ações disso, mudar e ver o
+          * documento. Antes o valor não tinha como mudar e o contrato era uma
+          * linha que levava a outra tela. */}
+        {isAdmin && (
+          <CartaoDoCombinado
+            child={child}
+            onVerContrato={() => {
+              onLeave?.();
+              navigate(`/tio/children/${child.id}/contract`);
+            }}
+          />
+        )}
 
         {/* Histórico de mensalidades desta criança.
           * A pergunta que o tio mais faz ao financeiro é "essa família está
@@ -297,33 +313,6 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           </a>
         )}
 
-        {/* Acesso ao contrato (Tio) */}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => {
-              onLeave?.();
-              navigate(`/tio/children/${child.id}/contract`);
-            }}
-            className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3"
-          >
-            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <FileText size={20} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-text leading-tight">
-                Contrato de transporte
-              </p>
-              <p className="text-xs text-textMuted mt-0.5">
-                {child.contractAcceptedAt
-                  ? `Aceito por ${child.contractAcceptedName || 'responsável'}`
-                  : 'Aguardando aceite do responsável'}
-              </p>
-            </div>
-            <ChevronRight size={18} className="text-textMuted shrink-0" />
-          </button>
-        )}
-
         {/* QUANTAS VEZES ELA FALTOU — a pergunta que os dois lados fazem.
           *
           * O motorista precisa disso pra conversar com a família ("é a quinta
@@ -338,17 +327,29 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
 
         {/* Responsáveis */}
         <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-text">
-            Responsáveis
-          </h3>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-sm font-semibold text-text">
+              Responsáveis
+            </h3>
+            {/* Só antes de a família entrar: depois, nome e telefone são dela. */}
+            {isAdmin && !child.parentUid && (
+              <button
+                type="button"
+                onClick={() => setEditandoResponsavel(true)}
+                className="tap -mr-1 -mt-1 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-semibold text-primary"
+              >
+                <Pencil size={14} /> Corrigir
+              </button>
+            )}
+          </div>
 
           <div className="space-y-2 pb-2 border-b border-neutro last:border-0 last:pb-0">
             <p className="text-[11px] text-textMuted uppercase tracking-wide">
               Principal
             </p>
             <InfoRow label="Nome" value={child.parentName} />
-            {child.parentEmail && (
-              <InfoRow icon={Mail} label="Email" value={child.parentEmail} />
+            {(child.linkedEmail || child.parentEmail) && (
+              <InfoRow icon={Mail} label="Email" value={child.linkedEmail || child.parentEmail} />
             )}
             {child.parentPhone && (
               <PhoneRow
@@ -427,7 +428,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           <Button
             variant="ghost"
             icon={Trash2}
-            className="!text-danger"
+            className="!text-dangerText"
             onClick={() => setConfirmDeactivate(true)}
           >
             Remover criança
@@ -444,6 +445,15 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           open={editandoOnde}
           child={child}
           onClose={() => setEditandoOnde(false)}
+        />
+      )}
+
+      {isAdmin && !child.parentUid && (
+        <EditarResponsavelSheet
+          key={`${child.parentName}-${child.parentPhone}-${editandoResponsavel}`}
+          open={editandoResponsavel}
+          child={child}
+          onClose={() => setEditandoResponsavel(false)}
         />
       )}
 
@@ -636,6 +646,7 @@ function LinkDoResponsavel({ child }) {
         <InviteShare
           code={child.inviteCode}
           childName={child.name}
+          gender={child.gender}
           parentPhone={child.parentPhone}
         />
       </Card>
@@ -670,7 +681,7 @@ function LinkDoResponsavel({ child }) {
             {child.parentName || 'O responsável'} já tem conta. Se perdeu o
             caminho de volta, mande este link — ele abre direto na página
             {child.name
-              ? ` do/da ${String(child.name).split(' ')[0]}`
+              ? ` ${doDa(String(child.name).split(' ')[0], child.gender)}`
               : ' da criança'}
             .
           </p>
@@ -679,6 +690,7 @@ function LinkDoResponsavel({ child }) {
       <InviteShare
         code={child.inviteCode}
         childName={child.name}
+        gender={child.gender}
         parentPhone={child.parentPhone}
         jaEntrou
       />
@@ -747,9 +759,11 @@ function ChildPhotoEditor({ child }) {
       {STORAGE_ENABLED && (
         <label
           htmlFor={`child-photo-${child.id}`}
-          className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
-          aria-label="Trocar foto"
+          className="absolute -bottom-1 -right-1 w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
         >
+          {/* Texto escondido, não `aria-label`: em <label> o leitor de tela
+            * ignora o atributo (axe: aria-prohibited-attr). */}
+          <span className="sr-only">Trocar foto</span>
           <Camera size={18} />
           <input
             id={`child-photo-${child.id}`}
@@ -799,7 +813,7 @@ function PhoneRow({ phone, name, childName }) {
     ? phoneDigits
     : `55${phoneDigits}`;
   const text = encodeURIComponent(
-    `Olá, ${name}! Sou do Tio Nino Digital, sobre ${childName}.`
+    `Olá, ${name}! Sou do transporte escolar, sobre ${childName}.`
   );
   const waLink = `https://wa.me/${phoneE164}?text=${text}`;
 
@@ -823,7 +837,9 @@ function PhoneRow({ phone, name, childName }) {
 }
 
 /**
- * Turma, sala e aniversário — preenchidos pelo RESPONSÁVEL.
+ * Turma, professora e aniversário. A SALA saiu (02/10/2026, pedido do dono):
+ * muda no meio do ano, e ninguém chama criança no portão pelo número da sala.
+ * Quem já tinha sala gravada continua com ela no documento, sem tela.
  *
  * O motorista lê pra saber onde chamar a criança quando ela não aparece no
  * portão; o pai escreve porque é o único que sabe. As rules liberam só estes
@@ -836,18 +852,18 @@ function PhoneRow({ phone, name, childName }) {
 function TurmaSala({ child, podeEditar }) {
   const [editando, setEditando] = useState(false);
   const [turma, setTurma] = useState(child.turma || '');
-  const [sala, setSala] = useState(child.sala || '');
+  const [professora, setProfessora] = useState(child.professora || '');
   const [aniversario, setAniversario] = useState(child.birthDate || '');
   const [salvando, setSalvando] = useState(false);
 
-  const vazio = !child.turma && !child.sala && !child.birthDate;
+  const vazio = !child.turma && !child.professora && !child.birthDate;
 
   async function salvar() {
     setSalvando(true);
     try {
       await updateChild(child.id, {
         turma: turma.trim(),
-        sala: sala.trim(),
+        professora: professora.trim(),
         birthDate: aniversario || '',
       });
       toast.success('Salvo.');
@@ -863,20 +879,23 @@ function TurmaSala({ child, podeEditar }) {
   if (editando) {
     return (
       <div className="space-y-2 pt-1">
-        <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-textMuted">Turma</span>
           <input
             value={turma}
             onChange={(e) => setTurma(e.target.value)}
-            placeholder="Turma (3º B)"
-            className="h-11 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+            placeholder="Ex.: 3º ano B"
+            className="h-11 w-full rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
           />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-textMuted">Professora</span>
           <input
-            value={sala}
-            onChange={(e) => setSala(e.target.value)}
-            placeholder="Sala (12)"
-            className="h-11 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+            value={professora}
+            onChange={(e) => setProfessora(e.target.value)}
+            className="h-11 w-full rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
           />
-        </div>
+        </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold text-textMuted">
             Aniversário
@@ -908,7 +927,7 @@ function TurmaSala({ child, podeEditar }) {
   if (vazio && !podeEditar) {
     return (
       <p className="text-xs text-textMuted">
-        O responsável ainda não informou turma, sala e aniversário.
+        O responsável ainda não informou turma, professora e aniversário.
       </p>
     );
   }
@@ -917,7 +936,7 @@ function TurmaSala({ child, podeEditar }) {
     <div className="flex items-center gap-3">
       <div className="flex-1 min-w-0 space-y-3">
         <InfoRow label="Turma" value={child.turma || '—'} />
-        <InfoRow label="Sala" value={child.sala || '—'} />
+        <InfoRow label="Professora" value={child.professora || '—'} />
         <InfoRow
           label="Aniversário"
           value={
@@ -931,8 +950,8 @@ function TurmaSala({ child, podeEditar }) {
         <button
           type="button"
           onClick={() => setEditando(true)}
-          aria-label="Editar turma, sala e aniversário"
-          className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
+          aria-label="Editar turma, professora e aniversário"
+          className="tap w-11 h-11 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
         >
           <Pencil size={15} />
         </button>

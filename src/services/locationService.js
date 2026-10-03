@@ -263,6 +263,43 @@ let activeWatchId = null;
 let lastWrite = 0;
 const positionListeners = new Set();
 
+/**
+ * ⚠️ A ROTA QUE SE ENCERRAVA SOZINHA (03/10/2026). O servidor fecha a rota que
+ * passa tempo demais sem gravar posição (`closeStaleRoutes`), e o celular
+ * deixava de gravar em dois casos comuns no dia de um motorista:
+ *
+ *   - PERUA PARADA. `watchPosition` só entrega posição NOVA; parado no portão
+ *     da escola esperando a saída, ele quase não entrega nada, e nada era
+ *     gravado. O PULSO regrava a última posição a cada minuto.
+ *   - TELA APAGADA. Num app de navegador, o celular para o GPS quando a tela
+ *     apaga. A TELA ACESA (Wake Lock) é o que os apps de navegação fazem
+ *     durante o trajeto — e o motorista dirige com o celular no suporte.
+ *
+ * O terceiro caso é o app RECARREGAR no meio da rota (atualização, memória):
+ * quem religa é `ControleDeRota`, com `retomando: true`.
+ */
+const PULSO_MS = 60000;
+let pulso = null;
+let ultimaExata = null;
+let motoristaDaRota = null;
+let telaAcesa = null;
+
+async function manterTelaAcesa() {
+  try {
+    if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+    if (telaAcesa && !telaAcesa.released) return;
+    telaAcesa = await navigator.wakeLock.request('screen');
+  } catch {
+    // Bateria fraca, navegador sem suporte: a rota segue sem a tela acesa.
+  }
+}
+
+// O navegador SOLTA a trava quando a tela some (troca de app); ao voltar,
+// pede de novo — senão ela valeria só até o primeiro WhatsApp.
+function aoVoltarParaATela() {
+  if (activeWatchId != null && document.visibilityState === 'visible') manterTelaAcesa();
+}
+
 function emitPosition(payload) {
   positionListeners.forEach((cb) => {
     try {
@@ -293,6 +330,55 @@ export function subscribePosition(cb) {
 }
 
 /**
+ * Grava a posição de REFERÊNCIA (nunca a exata) — chamada pelo GPS e pelo
+ * pulso de um minuto.
+ */
+async function gravarPosicao(exata, driverUid) {
+  try {
+    // ⚠️ A POSIÇÃO EXATA NUNCA SAI DAQUI, e é isso que faz a promessa
+    // valer. Arredondar no MAPA não arredonda nada: o documento continua
+    // com o número cru e qualquer pessoa com o console do navegador lê.
+    // "Segurança mora nas rules, não na interface" — aqui, na origem.
+    //
+    // `speed` e `heading` saíram junto (11/09/2026): ninguém lia, e
+    // velocidade instantânea de um trabalhador é vigilância do trabalho
+    // dele, não informação sobre a criança.
+    const referencia = compartilhaPosicao
+      ? arredondarParaReferencia(exata)
+      : null;
+
+    await setDoc(docDoMotorista(uidDaSessao()), {
+      ...(referencia
+        ? {
+            lat: referencia.lat,
+            lng: referencia.lng,
+            // A precisão publicada é a da GRADE, não a do GPS. Dizer "5 m"
+            // ao lado de um ponto encaixado em 150 m é a interface
+            // mentindo com número.
+            accuracy: PRECISAO_DO_MAPA_M,
+          }
+        : { lat: deleteField(), lng: deleteField(), accuracy: deleteField() }),
+      // ⚠️ ELE DESLIGOU O MAPA, NÃO A ROTA. Sem esta bandeira, a tela da
+      // família não distingue "ele escolheu não mostrar" de "o celular
+      // dele está sem sinal" — e a segunda faz ela ligar pra ele.
+      semMapa: !compartilhaPosicao,
+      updatedAt: serverTimestamp(),
+      routeActive: true,
+      driverUid,
+      // ⚠️ `merge: true` NÃO É DETALHE (03/10/2026). Sem ele o SDK RECUSA o
+      // `deleteField()` do mapa desligado ("cannot be used with set() unless
+      // you pass {merge:true}") — com o mapa desligado NENHUMA posição era
+      // gravada: a família via "sem posição, pode ser o celular dele sem
+      // sinal" em vez de "ele prefere não mostrar a perua", e o servidor
+      // fechava a rota como abandonada. E com merge, a OCORRÊNCIA (perua
+      // quebrada) não some no pulso seguinte.
+    }, { merge: true });
+  } catch (err) {
+    console.error('liveLocation write error:', err);
+  }
+}
+
+/**
  * Inicia rastreamento GPS. Idempotente — chamadas extras com tracking ativo
  * são no-op. Lança erro se o navegador não suportar geolocation.
  *
@@ -305,14 +391,24 @@ export function startTracking(driverUid, opcoes = {}) {
     throw new Error('Geolocalização não é suportada neste dispositivo.');
   }
   lastWrite = 0;
+  ultimaExata = null;
+  motoristaDaRota = driverUid;
   alvosDaRota = Array.isArray(opcoes.alvos) ? opcoes.alvos : [];
   zonasPublicadas = {};
   // ⚠️ AUSENTE SIGNIFICA LIGADO. Quem nunca viu a chave não pode ter o mapa
   // apagado das famílias dele sem ter escolhido nada — e ele nem saberia que
   // existe um botão para religar.
   compartilhaPosicao = opcoes.compartilha !== false;
-  // Som de motor ligando — Tio começou a rota
-  playSound('start_engine');
+  // Som de motor ligando — Tio começou a rota. Retomar (o app recarregou no
+  // meio da rota) não é começar: sem som.
+  if (!opcoes.retomando) playSound('start_engine');
+  manterTelaAcesa();
+  document.addEventListener('visibilitychange', aoVoltarParaATela);
+  pulso = setInterval(() => {
+    if (!ultimaExata || Date.now() - lastWrite < PULSO_MS) return;
+    lastWrite = Date.now();
+    gravarPosicao(ultimaExata, motoristaDaRota);
+  }, PULSO_MS);
 
   activeWatchId = navigator.geolocation.watchPosition(
     async (position) => {
@@ -327,42 +423,8 @@ export function startTracking(driverUid, opcoes = {}) {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
       };
-
-      try {
-        // ⚠️ A POSIÇÃO EXATA NUNCA SAI DAQUI, e é isso que faz a promessa
-        // valer. Arredondar no MAPA não arredonda nada: o documento continua
-        // com o número cru e qualquer pessoa com o console do navegador lê.
-        // "Segurança mora nas rules, não na interface" — aqui, na origem.
-        //
-        // `speed` e `heading` saíram junto (11/09/2026): ninguém lia, e
-        // velocidade instantânea de um trabalhador é vigilância do trabalho
-        // dele, não informação sobre a criança.
-        const referencia = compartilhaPosicao
-          ? arredondarParaReferencia(exata)
-          : null;
-
-        await setDoc(docDoMotorista(uidDaSessao()), {
-          ...(referencia
-            ? {
-                lat: referencia.lat,
-                lng: referencia.lng,
-                // A precisão publicada é a da GRADE, não a do GPS. Dizer "5 m"
-                // ao lado de um ponto encaixado em 150 m é a interface
-                // mentindo com número.
-                accuracy: PRECISAO_DO_MAPA_M,
-              }
-            : { lat: deleteField(), lng: deleteField(), accuracy: deleteField() }),
-          // ⚠️ ELE DESLIGOU O MAPA, NÃO A ROTA. Sem esta bandeira, a tela da
-          // família não distingue "ele escolheu não mostrar" de "o celular
-          // dele está sem sinal" — e a segunda faz ela ligar pra ele.
-          semMapa: !compartilhaPosicao,
-          updatedAt: serverTimestamp(),
-          routeActive: true,
-          driverUid,
-        });
-      } catch (err) {
-        console.error('liveLocation write error:', err);
-      }
+      ultimaExata = exata;
+      await gravarPosicao(exata, driverUid);
 
       // ── O AVISO DE CHEGADA, MEDIDO AQUI ───────────────────────────────
       //
@@ -410,15 +472,36 @@ export function startTracking(driverUid, opcoes = {}) {
 }
 
 /**
- * Encerra rastreamento. Limpa o watch e marca routeActive: false.
- * Usa merge: true pra preservar lat/lng — assim a "última posição conhecida"
- * fica disponível pro Pai ver após o encerramento.
+ * PROBLEMA NA ROTA (03/10/2026): `'perua_quebrou'` marca, `null` limpa. Mora no
+ * documento da posição porque é ele que a família lê para saber como a rota
+ * está — e com `merge` o pulso seguinte não o apaga.
+ */
+export async function marcarOcorrencia(tipo) {
+  await setDoc(
+    docDoMotorista(uidDaSessao()),
+    {
+      ocorrencia: tipo ? { tipo, em: serverTimestamp() } : deleteField(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+/**
+ * Encerra rastreamento. Limpa o watch, o pulso e a tela acesa, marca
+ * `routeActive: false` e APAGA a última posição (ver o comentário abaixo).
  */
 export async function stopTracking() {
   if (activeWatchId != null) {
     navigator.geolocation.clearWatch(activeWatchId);
     activeWatchId = null;
   }
+  if (pulso) clearInterval(pulso);
+  pulso = null;
+  ultimaExata = null;
+  document.removeEventListener('visibilitychange', aoVoltarParaATela);
+  telaAcesa?.release?.().catch(() => {});
+  telaAcesa = null;
   emitPosition({ position: null, error: null });
   alvosDaRota = [];
   zonasPublicadas = {};
@@ -442,6 +525,8 @@ export async function stopTracking() {
       lat: deleteField(),
       lng: deleteField(),
       accuracy: deleteField(),
+      // A ocorrência é desta rota: encerrou, ela sai junto.
+      ocorrencia: deleteField(),
       updatedAt: serverTimestamp(),
     },
     { merge: true }

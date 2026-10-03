@@ -29,7 +29,9 @@
 const { onCall } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
-const admin = require('firebase-admin');
+// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
+// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
+const { FieldValue } = require('firebase-admin/firestore');
 const { exigirDono } = require('./papeis');
 
 const REGION = 'southamerica-east1';
@@ -104,10 +106,10 @@ function makeBackfillTestimonialPrivacy(db) {
           updates.authorFirstName = firstNameOf(original.authorName);
         }
         if (item.removeNomeCompleto) {
-          updates.authorName = admin.firestore.FieldValue.delete();
+          updates.authorName = FieldValue.delete();
         }
         if (item.removeFotoSemConsentimento) {
-          updates.authorPhotoURL = admin.firestore.FieldValue.delete();
+          updates.authorPhotoURL = FieldValue.delete();
         }
 
         batch.update(ref, updates);

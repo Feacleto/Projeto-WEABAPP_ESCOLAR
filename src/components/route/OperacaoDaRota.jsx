@@ -11,6 +11,9 @@ import {
   UserCheck,
   MessageCircle,
   BellRing,
+  NotebookPen,
+  Undo2,
+  DoorClosed,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
@@ -29,7 +32,11 @@ import {
   advanceChild,
   advanceMany,
   statusNaDirecao,
+  voltarPasso,
 } from '../../services/routeStatusService';
+import { passoAnterior } from '../../dominio/rota/acaoDaParada.js';
+import AvisosDaViagem from './AvisosDaViagem';
+import RecadoDaRota from './RecadoDaRota';
 import {
   diaCompleto,
   blocoDoMomento,
@@ -49,7 +56,16 @@ import {
 } from '../../services/absencesService';
 import { createCall } from '../../services/pendingCallService';
 import { playSound } from '../../services/soundService';
-import { publicarOrdemDoDia } from '../../services/ridesService';
+import { publicarOrdemDoDia, publicarPrevisoes } from '../../services/ridesService';
+import {
+  pendentesEmOrdem,
+  focoDaViagem,
+  loteDoFoco,
+  proximoAAvisar,
+  saidaDaViagem,
+  previsoesDaViagem,
+  quemFicouSemRegistro,
+} from '../../dominio/rota/focoDaViagem.js';
 
 /**
  * A OPERAÇÃO — o cartão em foco, o botão grande e a viagem inteira.
@@ -96,6 +112,14 @@ export default function OperacaoDaRota({
 
   const [indiceEscolhido, setIndiceEscolhido] = useState(null);
   const [busy, setBusy] = useState(false);
+  // A criança que o motorista TOCOU para pôr em foco — a ordem do relógio é
+  // sugestão, e a rua manda (ver `focoDaViagem`).
+  const [focoEscolhido, setFocoEscolhido] = useState(null);
+  // "Ninguém em casa": quem ficou para o fim desta viagem (ver `pendentesEmOrdem`).
+  const [adiados, setAdiados] = useState([]);
+  const [recadoDe, setRecadoDe] = useState(null); // { child, tipo }
+  const [voltandoPraCasa, setVoltandoPraCasa] = useState(null); // item da fila
+  const [voltando, setVoltando] = useState(null); // item da fila a voltar um passo
   const [confirmLote, setConfirmLote] = useState(null);
   const [marcando, setMarcando] = useState(null); // { child, tipo }
   const [desfazendo, setDesfazendo] = useState(null); // criança fora que ele quer devolver
@@ -172,21 +196,24 @@ export default function OperacaoDaRota({
   // memoizar o lote em cima dele fazia o React Compiler desistir de memoizar
   // a árvore inteira ("Compilation Skipped").
   const { feitos, restantes, totalEfetivo, resolvidas, foco, lote } = useMemo(() => {
-    const p = fila.filter((q) => q.action);
-    let l = null;
-    if (p.length >= 2) {
-      const proximo = p[0].action.nextStatus;
-      const iguais = p.filter((q) => q.action.nextStatus === proximo);
-      if (iguais.length >= 2) {
-        l = {
-          nextStatus: proximo,
-          label: p[0].action.shortLabel,
+    // QUEM ESTÁ EM FOCO E QUEM VAI JUNTO — régua pura em
+    // `dominio/rota/focoDaViagem.js` (03/10/2026). Era `p[0]` com o lote por
+    // "mesmo próximo passo", e a rota travava: depois do primeiro EMBARQUEI o
+    // foco virava "ENTREGUEI NA ESCOLA" da mesma criança, e o "TODOS" juntava
+    // casas diferentes e escolas diferentes.
+    const p = pendentesEmOrdem(fila, adiados);
+    const focoAtual = focoDaViagem(p, focoEscolhido);
+    const iguais = loteDoFoco(p, focoAtual);
+    const l = iguais.length
+      ? {
+          nextStatus: focoAtual.action.nextStatus,
+          label: focoAtual.action.shortLabel,
           count: iguais.length,
           // Casa e escola vão POR CRIANÇA pra o lote gravar um checkpoint de
           // distância pra cada uma, como o toque individual já faz.
           moves: iguais.map((q) => ({
             childId: q.child.id,
-            nextStatus: proximo,
+            nextStatus: q.action.nextStatus,
             parentUid: q.child.parentUid || null,
             childName: q.child.name,
             home: q.child.lat != null ? { lat: q.child.lat, lng: q.child.lng } : null,
@@ -195,16 +222,14 @@ export default function OperacaoDaRota({
                 ? { lat: q.child.schoolLat, lng: q.child.schoolLng }
                 : null,
           })),
-        };
-      }
-    }
+        }
+      : null;
     // A fila se divide em três em vez de ser uma lista só.
     //
     // Quem já foi marcado sobe pra cima do cartão em foco: é o que dá a
     // sensação de progresso e o que o motorista olha pra conferir se não
     // esqueceu ninguém. Quem falta fica embaixo, na ordem do relógio.
     const feitos = fila.filter((q) => precisaDaPerua(q.estado) && !q.action);
-    const focoAtual = p[0] || null;
 
     // Tudo que não foi feito e não está em foco — e NÃO "o que vem depois do
     // foco na ordem". Fatiar por índice fazia quem faltou e estava antes do
@@ -221,7 +246,7 @@ export default function OperacaoDaRota({
       foco: focoAtual,
       lote: l,
     };
-  }, [fila]);
+  }, [fila, focoEscolhido, adiados]);
 
   // Toca quando a viagem VIRA concluída — e só então.
   useEffect(() => {
@@ -269,6 +294,10 @@ export default function OperacaoDaRota({
     () =>
       blocos
         .flatMap((b) => b.paradas)
+        // ⚠️ QUEM ESTÁ FORA HOJE NÃO É ALVO (03/10/2026): faltou, ou o pai
+        // leva/busca. Sem o filtro, a perua passando na rua dela tocava a
+        // buzina de "chegou" no celular de uma família que não a espera.
+        .filter((p) => precisaDaPerua(p.estado))
         .map((p) => ({
           childId: p.child?.id,
           lat: Number(p.child?.lat),
@@ -300,8 +329,13 @@ export default function OperacaoDaRota({
 
   async function avancarUma(item) {
     setBusy(true);
+    // A ESCOLHA DO FOCO VALE UM TOQUE: marcou, o foco volta à ordem da
+    // viagem. Sem isto, a escolha antiga reacendia quando a criança voltava
+    // ao mesmo passo (desfazer e marcar de novo — achado no teste M6).
+    setFocoEscolhido(null);
     try {
-      await advanceChild(item.child.id, item.action.nextStatus, {
+      const resultado = await advanceChild(item.child.id, item.action.nextStatus, {
+        proximo: paraAvisar(proximoAAvisar(fila, item)),
         driverPosition: posicaoDoDriver,
         dateKey,
         adminUid: user?.uid,
@@ -313,7 +347,19 @@ export default function OperacaoDaRota({
             ? { lat: item.child.schoolLat, lng: item.child.schoolLng }
             : null,
       });
-      toast.success(`${item.child.name.split(' ')[0]}: pronto`);
+      // A PREVISÃO DE QUEM AINDA ESPERA: combinado + o atraso desta parada.
+      publicarPrevisoes({
+        previsoes: previsoesDaViagem(fila, item),
+        dateKey,
+        adminUid: user?.uid,
+      });
+      // SEM SINAL: a marcação fica no celular e sobe quando ele voltar
+      // (`gravarSemTravar`). Dizer isso evita o toque repetido.
+      if (resultado === 'fila') {
+        toast(`${item.child.name.split(' ')[0]}: marcado. Sem sinal agora, sobe quando voltar.`);
+      } else {
+        toast.success(`${item.child.name.split(' ')[0]}: pronto`);
+      }
     } catch (err) {
       console.error(err);
       toast.error('Não deu pra salvar. Tente de novo.');
@@ -322,11 +368,27 @@ export default function OperacaoDaRota({
     }
   }
 
+  /** O item da fila vira o que o aviso precisa — ou nada. */
+  function paraAvisar(q) {
+    if (!q?.child?.parentUid) return null;
+    return {
+      childId: q.child.id,
+      parentUid: q.child.parentUid,
+      name: q.child.name,
+      // Quem vai embarcar em casa espera a perua da IDA; quem está na perua
+      // espera a ENTREGA.
+      direcao: q.status === 'home' ? 'ida' : 'volta',
+    };
+  }
+
   async function avancarLote() {
     if (!lote) return;
     setBusy(true);
+    setFocoEscolhido(null);
     try {
+      const movidos = fila.filter((q) => lote.moves.some((mv) => mv.childId === q.child.id));
       const n = await advanceMany(lote.moves, {
+        proximo: paraAvisar(proximoAAvisar(fila, movidos)),
         driverPosition: posicaoDoDriver,
         dateKey,
         adminUid: user?.uid,
@@ -462,6 +524,8 @@ export default function OperacaoDaRota({
             onIniciar={publicarOrdem}
             alvos={alvosDaRota}
             direcao={blocoAtual?.direcao}
+            saida={saidaDaViagem(blocoAtual)}
+            pendentes={quemFicouSemRegistro(fila)}
           />
         )}
 
@@ -563,13 +627,13 @@ export default function OperacaoDaRota({
             <CheckCircle2 size={36} className="text-accentText mx-auto" />
             <p className="font-bold text-text">Viagem concluída</p>
             {espera ? (
-              <p className="text-sm text-primary/75">
+              <p className="text-sm text-primary">
                 Próxima parada só às{' '}
                 <b>{horaCurta(deMinutos(espera.bloco.inicio))}</b>
                 {espera.minutos > 0 && ` · daqui a ${formataEspera(espera.minutos)}`}
               </p>
             ) : (
-              <p className="text-sm text-primary/75">
+              <p className="text-sm text-primary">
                 Era a última viagem do dia.
               </p>
             )}
@@ -580,7 +644,13 @@ export default function OperacaoDaRota({
           * Colapsa a partir de quatro: com vinte crianças, a lista inteira
           * empurraria o botão grande pra baixo da dobra, e ele é apertado com
           * a perua andando. */}
-        {feitos.length > 0 && <JaFeitos itens={feitos} direcao={blocoAtual?.direcao} />}
+        {feitos.length > 0 && (
+          <JaFeitos
+            itens={feitos}
+            direcao={blocoAtual?.direcao}
+            onTocar={(q) => passoAnterior(q.status, direcaoAntiga) && setVoltando(q)}
+          />
+        )}
 
         {/* A criança em foco */}
         {foco && (
@@ -625,14 +695,20 @@ export default function OperacaoDaRota({
 
             {/* A PORTA: o motorista chegou e ninguém desceu.
               * Três degraus, do mais barato pro mais caro: tocar o celular
-              * dele sem sair do app, mandar mensagem, ligar. */}
+              * dele sem sair do app, mandar mensagem, ligar.
+              *
+              * ⚠️ SÓ NA PORTA (03/10/2026). No passo "ENTREGUEI NA ESCOLA" a
+              * criança está sentada na perua: buzinar ali fazia o celular da
+              * mãe tocar sem motivo (achado no teste M5). */}
+            {foco.action.nextStatus !== 'atSchool' && (
+            <>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 data-tour="buzinar"
                 disabled={busy}
                 onClick={() => chamar(foco.child)}
-                className="tap h-10 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                className="tap min-h-11 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
               >
                 <BellRing size={14} />
                 Buzinar
@@ -640,7 +716,7 @@ export default function OperacaoDaRota({
               <button
                 type="button"
                 onClick={() => zap(foco.child)}
-                className="tap h-10 rounded-xl bg-card border border-border text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
+                className="tap min-h-11 rounded-xl bg-card border border-border text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
               >
                 <MessageCircle size={14} />
                 Zap
@@ -648,13 +724,13 @@ export default function OperacaoDaRota({
               {foco.child.parentPhone ? (
                 <a
                   href={`tel:${foco.child.parentPhone}`}
-                  className="tap h-10 rounded-xl bg-card border border-border text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
+                  className="tap min-h-11 rounded-xl bg-card border border-border text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
                 >
                   <Phone size={14} />
                   Ligar
                 </a>
               ) : (
-                <span className="h-10 rounded-xl bg-neutro text-textMuted text-[11px] font-semibold inline-flex items-center justify-center">
+                <span className="min-h-11 rounded-xl bg-neutro text-textMuted text-xs font-semibold inline-flex items-center justify-center">
                   sem tel.
                 </span>
               )}
@@ -664,10 +740,16 @@ export default function OperacaoDaRota({
               * "Buzinar" não diz onde a buzina toca. Sem esta linha o
               * motorista testa uma vez pra descobrir — e testar significa
               * fazer o celular de uma família tocar à toa. */}
-            <p className="text-[11px] text-textMuted text-center -mt-1">
+            <p className="text-xs text-textMuted text-center -mt-1">
               Buzinar faz o celular do responsável tocar
             </p>
+            </>
+            )}
 
+            {/* ⚠️ "FALTOU" E "O PAI LEVOU" SÓ ANTES DE EMBARCAR (03/10/2026):
+              * oferecer "Faltou" para quem já está dentro da perua é convidar
+              * o toque errado. */}
+            {foco.action.nextStatus === 'onboard' && (
             <div className="grid grid-cols-2 gap-2">
               <Button
                 size="sm"
@@ -712,7 +794,82 @@ export default function OperacaoDaRota({
                 </Button>
               )}
             </div>
+            )}
+
+            {/* ⚠️ AS AÇÕES QUE A RUA PEDE E A TELA NÃO TINHA (03/10/2026):
+              * ligar para a escola na hora da entrega lá, deixar para depois
+              * quem não tem ninguém em casa, escrever no caderno (a briga, o
+              * mal-estar) e voltar um passo marcado por engano. */}
+            {(foco.action.nextStatus === 'atSchool' ||
+              (foco.action.nextStatus === 'onboard' && foco.status === 'atSchool')) &&
+              foco.child.schoolPhone && (
+                <a
+                  href={`tel:${foco.child.schoolPhone}`}
+                  className="tap flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-sm font-semibold text-text"
+                >
+                  <Phone size={15} />
+                  Ligar para a escola
+                </a>
+              )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setRecadoDe({ child: foco.child, tipo: 'conflict' })}
+                className="tap inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-text"
+              >
+                <NotebookPen size={15} />
+                Recado
+              </button>
+              {foco.action.nextStatus === 'delivered' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdiados((a) => [...new Set([...a, foco.child.id])]);
+                    setFocoEscolhido(null);
+                    toast(`${foco.child.name.split(' ')[0]} fica para o fim da viagem. Tente o Zap ou ligar.`);
+                  }}
+                  className="tap inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-text"
+                >
+                  <DoorClosed size={15} />
+                  Ninguém em casa
+                </button>
+              )}
+              {/* PASSOU MAL NO CAMINHO (03/10/2026): na ida, com a criança na
+                * perua, ele a leva de volta. Vira "entregue em casa" (a
+                * família recebe o "chegou em casa" que já existe) e abre o
+                * recado já no "Criança não tá bem". */}
+              {foco.action.nextStatus === 'atSchool' && foco.status === 'onboard' && (
+                <button
+                  type="button"
+                  onClick={() => setVoltandoPraCasa(foco)}
+                  className="tap inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-text"
+                >
+                  <Home size={15} />
+                  Levar de volta para casa
+                </button>
+              )}
+              {passoAnterior(foco.status, direcaoAntiga) && (
+                <button
+                  type="button"
+                  onClick={() => setVoltando(foco)}
+                  className="tap inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-textMuted"
+                >
+                  <Undo2 size={15} />
+                  Desfazer
+                </button>
+              )}
+            </div>
           </div>
+        )}
+
+        {/* AVISAR AS FAMÍLIAS DESTA VIAGEM — atraso, adiantado, problema na
+          * perua. Só quem ainda espera a perua recebe. */}
+        {foco && (
+          <AvisosDaViagem
+            adminUid={user?.uid}
+            criancas={fila.filter((q) => q.action).map((q) => q.child)}
+            focoHora={foco.hora}
+          />
         )}
 
         {/* Lote — uma parada é um evento, não vinte */}
@@ -721,13 +878,17 @@ export default function OperacaoDaRota({
             type="button"
             disabled={busy}
             onClick={() => setConfirmLote(lote)}
-            className="tap w-full rounded-2xl bg-warning text-warningText font-extrabold text-sm flex flex-col items-center justify-center gap-0.5 disabled:opacity-60 py-4"
+            // ⚠️ NÃO É ÂMBAR (03/10/2026): âmbar é aviso e nada mais, e marcar
+            // várias de uma vez é ação. E o texto de baixo diz QUEM vai junto
+            // — o "TODOS" agora é por lugar (ver `loteDoFoco`), e o motorista
+            // precisa conferir os nomes antes de tocar.
+            className="tap w-full min-h-14 rounded-2xl border-2 border-primary bg-card text-primary font-extrabold text-sm flex flex-col items-center justify-center gap-0.5 disabled:opacity-60 py-3"
           >
             <span>
               {lote.label} — TODOS OS {lote.count}
             </span>
-            <span className="text-[11px] font-semibold opacity-75">
-              depois marque só quem faltou
+            <span className="text-sm font-semibold text-text">
+              {lote.moves.map((mv) => String(mv.childName || '').split(' ')[0]).join(', ')}
             </span>
           </button>
         )}
@@ -742,26 +903,41 @@ export default function OperacaoDaRota({
             {restantes.map((q) => {
               const fora = !precisaDaPerua(q.estado);
               const feito = !fora && !q.action;
+              // ⚠️ QUEM AINDA TEM ALGO A FAZER É TOCÁVEL (03/10/2026): o toque
+              // põe a criança em FOCO, com os botões dela (embarcar, faltou,
+              // buzinar). Antes só o foco tinha botões — a ordem do relógio
+              // mandava, e marcar falta de outra criança era impossível.
+              const pendente = !fora && !!q.action;
+              const tocar = fora
+                ? () => setDesfazendo(q.child)
+                : pendente
+                  ? () => {
+                      setFocoEscolhido({ id: q.child.id, passo: q.action.nextStatus });
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  : undefined;
               return (
                 <div
                   key={q.child.id}
-                  role={fora ? 'button' : undefined}
-                  tabIndex={fora ? 0 : undefined}
-                  onClick={fora ? () => setDesfazendo(q.child) : undefined}
+                  role={tocar ? 'button' : undefined}
+                  tabIndex={tocar ? 0 : undefined}
+                  onClick={tocar}
                   onKeyDown={
-                    fora
+                    tocar
                       ? (ev) => {
                           if (ev.key === 'Enter' || ev.key === ' ') {
                             ev.preventDefault();
-                            setDesfazendo(q.child);
+                            tocar();
                           }
                         }
                       : undefined
                   }
-                  className={`fila-entra rounded-xl px-3 py-2.5 flex items-center gap-2.5 border ${
+                  className={`fila-entra min-h-11 rounded-xl px-3 py-2.5 flex items-center gap-2.5 border ${
                     fora
                       ? 'tap bg-sunken border-border opacity-70'
-                      : 'bg-card border-border'
+                      : pendente
+                        ? 'tap bg-card border-border'
+                        : 'bg-card border-border'
                   }`}
                 >
                   <span
@@ -807,6 +983,11 @@ export default function OperacaoDaRota({
                   {feito && (
                     <CheckCircle2 size={16} className="text-accentText shrink-0" />
                   )}
+                  {pendente && (
+                    <span className="shrink-0 text-xs font-semibold text-primary">
+                      {q.action.label}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -848,12 +1029,90 @@ export default function OperacaoDaRota({
             ? `${desfazendo.name.split(' ')[0]} veio hoje?`
             : ''
         }
-        description="Ela volta pra rota agora, e o responsável é avisado de que o aviso foi desfeito."
+        description="Ela volta pra rota agora, e a falta some do app do responsável."
         confirmLabel="Voltar pra rota"
         loading={busy}
         onConfirm={() => devolverPraRota(desfazendo)}
         onCancel={() => setDesfazendo(null)}
       />
+
+      <ConfirmDialog
+        open={!!voltando}
+        title={
+          voltando
+            ? `Voltar ${voltando.child.name.split(' ')[0]} um passo?`
+            : ''
+        }
+        description="Use quando marcou por engano. A hora desse passo é apagada. O aviso que a família já recebeu não volta."
+        confirmLabel="Voltar um passo"
+        loading={busy}
+        onConfirm={async () => {
+          const q = voltando;
+          setBusy(true);
+          setFocoEscolhido(null);
+          try {
+            await voltarPasso({
+              childId: q.child.id,
+              statusAtual: q.status,
+              anterior: passoAnterior(q.status, direcaoAntiga),
+              dateKey,
+            });
+            toast.success(`${q.child.name.split(' ')[0]} voltou um passo.`);
+          } catch (err) {
+            console.error(err);
+            toast.error('Não deu pra voltar. Tente de novo.');
+          } finally {
+            setBusy(false);
+            setVoltando(null);
+          }
+        }}
+        onCancel={() => setVoltando(null)}
+      />
+
+      <ConfirmDialog
+        open={!!voltandoPraCasa}
+        title={
+          voltandoPraCasa
+            ? `Levar ${voltandoPraCasa.child.name.split(' ')[0]} de volta para casa?`
+            : ''
+        }
+        description="Ela sai da viagem como entregue em casa, e a família recebe o aviso de que chegou. Em seguida você escreve o recado contando o que houve."
+        confirmLabel="Levar de volta"
+        loading={busy}
+        onConfirm={async () => {
+          const q = voltandoPraCasa;
+          setBusy(true);
+          setFocoEscolhido(null);
+          try {
+            await advanceChild(q.child.id, 'delivered', {
+              driverPosition: posicaoDoDriver,
+              dateKey,
+              adminUid: user?.uid,
+              parentUid: q.child.parentUid || null,
+              childName: q.child.name,
+            });
+            setRecadoDe({ child: q.child, tipo: 'sick' });
+          } catch (err) {
+            console.error(err);
+            toast.error('Não deu pra marcar. Tente de novo.');
+          } finally {
+            setBusy(false);
+            setVoltandoPraCasa(null);
+          }
+        }}
+        onCancel={() => setVoltandoPraCasa(null)}
+      />
+
+      {recadoDe && (
+        <RecadoDaRota
+          key={`${recadoDe.child.id}-${recadoDe.tipo}`}
+          open
+          child={recadoDe.child}
+          tipoInicial={recadoDe.tipo}
+          adminUid={user?.uid}
+          onClose={() => setRecadoDe(null)}
+        />
+      )}
 
       <ConfirmDialog
         open={!!marcando}
@@ -882,7 +1141,11 @@ function tituloMarcacao({ child, tipo }) {
 
 function descricaoMarcacao({ tipo }) {
   if (tipo === ABSENCE_TYPES.FULL) {
-    return 'Ela sai da rota de hoje nas duas direções, e o responsável é avisado. Continua aparecendo na lista, em cinza.';
+    // ⚠️ "E O RESPONSÁVEL É AVISADO" ERA PROMESSA SEM AVISO (03/10/2026):
+    // `declareAbsence` não escreve notificação nenhuma. A falta APARECE no app
+    // dela — e é isso que a frase diz agora. O aviso de verdade fica para a
+    // etapa das notificações (decisão do dono).
+    return 'Ela sai da rota de hoje nas duas direções, e a falta aparece no app do responsável. Continua na lista, em cinza.';
   }
   if (tipo === ABSENCE_TYPES.ALREADY_PICKED) {
     return 'Ela já saiu com o responsável. Você não precisa passar na escola por ela hoje.';
@@ -903,7 +1166,7 @@ function descricaoMarcacao({ tipo }) {
  * baixo da dobra. Esse botão é apertado com o veículo em movimento: nada pode
  * entrar acima dele além do que cabe num relance.
  */
-function JaFeitos({ itens, direcao }) {
+function JaFeitos({ itens, direcao, onTocar }) {
   const [aberto, setAberto] = useState(false);
   const compacto = itens.length > 3;
   const verbo = direcao === 'ida' ? 'já embarcaram' : 'já foram entregues';
@@ -943,9 +1206,12 @@ function JaFeitos({ itens, direcao }) {
         )}
       </div>
       {itens.map((q) => (
-        <div
+        // Tocar numa já marcada abre o "voltar um passo" — para o toque errado.
+        <button
+          type="button"
           key={q.child.id}
-          className="fila-entra rounded-xl px-3 py-2 flex items-center gap-2.5 bg-primarySoft border border-primaryBorder"
+          onClick={() => onTocar?.(q)}
+          className="tap fila-entra w-full min-h-11 rounded-xl px-3 py-2 flex items-center gap-2.5 bg-primarySoft border border-primaryBorder text-left"
         >
           <span className="font-mono text-xs tabular-nums shrink-0 w-11 text-primary">
             {horaCurta(q.hora)}
@@ -961,7 +1227,7 @@ function JaFeitos({ itens, direcao }) {
             {q.child.name}
           </span>
           <CheckCircle2 size={16} className="text-accentText shrink-0" />
-        </div>
+        </button>
       ))}
     </section>
   );
