@@ -1628,6 +1628,11 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['userId', 'type', 'title', 'createdAt'])
         && request.resource.data.userId is string
         && request.resource.data.type is string
+        // ⚠️ A COBRANÇA DA PLATAFORMA SÓ NASCE NO SERVIDOR (03/10/2026). É o
+        // único aviso que vira E-MAIL, pelo remetente oficial: aberto ao
+        // cliente, um motorista escreveria uma "fatura" com texto dele para a
+        // família — phishing com a cara da plataforma.
+        && !(request.resource.data.type in ['fatura_vence'])
         && (
           // O motorista avisa o responsável DELE. Os dois campos: o
           // destinatário pode ter este motorista na lista sem ele ser o

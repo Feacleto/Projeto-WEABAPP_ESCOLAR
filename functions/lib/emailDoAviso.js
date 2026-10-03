@@ -1,22 +1,26 @@
 /**
- * O AVISO TAMBÉM POR E-MAIL — a régua (03/10/2026).
+ * O E-MAIL DA PLATAFORMA — só para a COBRANÇA DA PLATAFORMA AO MOTORISTA
+ * (decisão do dono, 03/10/2026).
  *
- * ── POR QUE E QUAIS
- * O push não chega a todo mundo: iPhone só recebe com o app instalado na tela
- * de início, e quem negou a permissão uma vez não é perguntado de novo. Para
- * a maior parte dos avisos isso é aceitável — "a perua está chegando" por
- * e-mail chegaria depois da perua. Mas há uma lista curta de avisos que não
- * têm hora e não podem se perder: contrato para assinar, pagamento
- * confirmado, acesso aprovado, o fim da associação. Esses vão também por
- * e-mail. A lista é FECHADA aqui, e o teste exige que nenhum aviso de ROTA
- * entre nela.
+ * ── POR QUE SÓ ISSO
+ * E-mail custa (o Resend grátis manda 100 por dia) e é o canal que mais cai
+ * em spam. Tudo o que é do dia a dia vai pelo app: o cartão com o app aberto,
+ * o push com o app fechado, e o sino como registro. O e-mail fica para o que
+ * a plataforma COBRA de quem paga por ela — o motorista —, porque é dinheiro,
+ * tem data, e é o aviso que não pode depender de um celular com o app.
  *
- * ── O QUE FICA DE FORA, DE PROPÓSITO
- *   - tudo da rota (chegando, chegou, embarcou, buzina): e-mail é lento;
- *   - os lembretes de mensalidade: têm régua própria de canal
- *     (`canalDaCobranca.js`, um marco, um canal) e template próprio;
- *   - oferta comercial: e-mail de venda sem pedido é o que faz o domínio
- *     inteiro cair no spam — e com ele o contrato para assinar.
+ * ── O QUE SAIU, E POR QUÊ
+ *   - a mensalidade da família: é um combinado entre ela e o motorista, e é
+ *     lembrada por push (`canalDaCobranca.js`);
+ *   - contrato, pagamento confirmado, acesso, encerramento, indicação, contato
+ *     de investidor: ficam no push e no sino. O formulário de investidor é
+ *     público, e cada envio virava um e-mail — um robô gastaria a cota inteira
+ *     e calaria a cobrança junto.
+ *
+ * ⚠️ SÓ O SERVIDOR CRIA ESTES TIPOS: as rules recusam um cliente escrevendo
+ * `fatura_vence`, e o gatilho só manda para quem é MOTORISTA. Sem as duas
+ * travas, um motorista escreveria um "aviso" para a família dele e o texto
+ * dele sairia pelo remetente oficial.
  *
  * PURA: sem `require`. `npm run testar:notificacoes`.
  */
@@ -24,23 +28,12 @@
 'use strict';
 
 const TIPOS_POR_EMAIL = [
-  // família
-  'contrato_pronto',
-  'payment_confirmed',
-  'acesso_aprovado',
-  'irmao_vinculado',
-  'chamado_respondido',
-  // motorista
-  'pedido_de_acesso',
-  'contract_accepted',
+  // a fatura da plataforma vence em 3 dias (`reguaDosAvisos.avisoDaFatura`)
   'fatura_vence',
-  'encerramento_30d',
-  'encerramento_7d',
-  'encerramento_fim',
-  'indicacao_ativou',
-  // dono
-  'lead_investidor',
 ];
+
+/** Quem recebe e-mail: só o motorista, que é quem paga a plataforma. */
+const PAPEL_QUE_RECEBE_EMAIL = 'admin';
 
 function vaiPorEmail(tipo) {
   return TIPOS_POR_EMAIL.indexOf(String(tipo || '')) !== -1;
@@ -78,4 +71,4 @@ ${corpo ? `<p style="margin:0 0 24px;font-size:18px;line-height:1.5;white-space:
   return { assunto, html, text };
 }
 
-module.exports = { TIPOS_POR_EMAIL, vaiPorEmail, montarEmailDoAviso, escapar };
+module.exports = { TIPOS_POR_EMAIL, PAPEL_QUE_RECEBE_EMAIL, vaiPorEmail, montarEmailDoAviso, escapar };

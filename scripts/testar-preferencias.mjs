@@ -230,10 +230,13 @@ checar('nenhum marco tem os dois canais', [], dobrados);
 const orfaos = MARCOS.filter((d) => !pushMandaEm(d) && !emailMandaEm(d));
 checar('e nenhum marco ficou sem canal', [], orfaos);
 
-// Os cinco marcos da régua de push continuam existindo como marcos — o que
-// mudou foi quem manda em cada um.
-checar('os cinco marcos estão cobertos', [5, 3, 0, -3, -7].sort((a, b) => a - b),
+// ⚠️ DESDE 03/10/2026 A MENSALIDADE NÃO VAI MAIS POR E-MAIL (decisão do dono:
+// o e-mail ficou só para a cobrança da plataforma ao motorista). Sobraram os
+// três marcos do push: abre, vence, fecha.
+checar('os marcos são os três do push', [-7, 0, 5],
   MARCOS.slice().sort((a, b) => a - b));
+checar('nenhum marco da mensalidade é de e-mail', [],
+  MARCOS.filter((d) => emailMandaEm(d)));
 
 // Um dia que ninguém atribuiu não vira dois avisos por omissão.
 checar('dia sem marco não é de ninguém — push', false, pushMandaEm(-1));

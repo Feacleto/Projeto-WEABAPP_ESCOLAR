@@ -70,6 +70,15 @@ async function limpar() {
     const snap = await db.collection(col).get();
     await Promise.all(snap.docs.map((d) => d.ref.delete()));
   }
+  // ⚠️ A COBRANÇA DA PLATAFORMA NASCE DESLIGADA (02/10/2026) e, desligada, os
+  // avisos comerciais e o da fatura não saem. Este teste mede os agendados
+  // com ela LIGADA e com os descontos ligados — é o cenário em que os dois
+  // falam com a mesma pessoa. Sem esta linha o primeiro bloco quebrava, e o
+  // script inteiro parava ali desde aquele dia (achado em 03/10/2026).
+  await db.doc('platformConfig/app').set({
+    cobrancaLigada: true,
+    modulos: { escada: true, indicacao: true },
+  });
 }
 
 /**

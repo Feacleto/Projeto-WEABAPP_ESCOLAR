@@ -1,27 +1,13 @@
 /**
- * Cloud Functions — envio de lembrete de mensalidade por email.
+ * Cloud Functions do Alô Buzinou — o índice. Cada function mora num arquivo
+ * de `lib/`, e o mapa delas está no CLAUDE.md ("Cloud Functions").
  *
- * Fluxo:
- *   1. Função agendada roda diariamente (9h da manhã, horário BR).
- *   2. Busca payments com status != 'paid'.
- *   3. Pra cada um, calcula a distância em dias até dueDate e define
- *      qual "milestone" se aplica (reminder_3d, due_today, overdue_3d).
- *   4. Verifica se já enviou esse milestone (campo emailSentMilestones).
- *      Idempotente — não dispara duas vezes.
- *   5. Monta o email com template HTML e envia via Resend.
- *   6. Marca o milestone como enviado no doc do payment.
- *
- * Configuração necessária (1x):
+ * E-mail (Resend): só a cobrança da PLATAFORMA ao motorista, desde
+ * 03/10/2026 (`lib/emailDoAviso.js`). Configuração, uma vez:
  *   firebase functions:secrets:set RESEND_API_KEY
- *   firebase deploy --only functions
- *
- * Trigger manual pra testar:
- *   firebase functions:shell  (depois) sendPaymentReminders()
+ *   e o parâmetro EMAIL_REMETENTE, num domínio verificado no Resend.
  */
 
-const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { onCall } = require('firebase-functions/v2/https');
-const { exigirMotorista } = require('./lib/papeis');
 const { makeAsaasWebhook } = require('./lib/asaasWebhook');
 const { makeCriarCobrancaDaFatura } = require('./lib/asaasCobranca');
 const { makeContratarPlano } = require('./lib/contratacao');
@@ -45,16 +31,8 @@ const {
 } = require('./lib/limpezaDoCheckpoint');
 const { makeApagarViagensAntigas } = require('./lib/retencaoDasViagens');
 const { defineSecret, defineString } = require('firebase-functions/params');
-const { logger } = require('firebase-functions/v2');
-const LIMITES = require('./lib/limites');
 const admin = require('firebase-admin');
-// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
-// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
-const { FieldValue } = require('firebase-admin/firestore');
 
-const { buildEmailHtml, buildEmailText, subjectFor } = require('./lib/emailTemplate');
-const { emailMandaEm } = require('./lib/canalDaCobranca');
-const { sendEmail } = require('./lib/resend');
 const {
   makeLookupInvite,
   makeRedeemInvite,
@@ -63,7 +41,6 @@ const {
 const { makeCloseStaleRoutes } = require('./lib/routes');
 const { makeSendPushOnNotification } = require('./lib/push');
 const { makeAvisarAproximacao, makeAvisarBuzina } = require('./lib/avisosDaRota');
-const { makeEnviarEmailDoAviso } = require('./lib/enviarEmailDoAviso');
 const { makeConfirmarAusencias } = require('./lib/confirmarAusencias');
 const {
   makeGenerateMonthlyPayments,
@@ -96,355 +73,22 @@ const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 //
 // EMAIL_REMETENTE (03/10/2026): era uma constante com o sandbox
 //   `onboarding@resend.dev`, que SÓ ENTREGA ao e-mail do dono da conta do
-//   Resend — ou seja, nenhuma família recebia nada. Virou parâmetro: depois
+//   Resend — ou seja, nenhum e-mail chegava a ninguém. Virou parâmetro: depois
 //   de verificar o domínio no Resend, o deploy pergunta o valor (ou ele vem
 //   do `functions/.env`), sem mexer em código. Ver docs/deploy.md.
-//
-// APP_URL: URL de produção da hospedagem (Firebase Hosting).
-//   Trocar pelo domínio próprio quando configurar.
 const EMAIL_REMETENTE = defineString('EMAIL_REMETENTE', {
   default: 'Alô Buzinou <onboarding@resend.dev>',
   description: 'Remetente dos e-mails, num domínio verificado no Resend. Ex.: Alô Buzinou <avisos@alobuzinou.com.br>',
 });
-const APP_URL = 'https://alobuzinou.com';
 
-// Milestones de cobrança (dias em relação ao vencimento).
-//   diffDays positivo = ainda falta vencer
-//   diffDays zero     = vence hoje
-//   diffDays negativo = já venceu
-// ⚠️ O DIA DO VENCIMENTO SAIU DAQUI, e não porque o e-mail dele fosse ruim.
-//
-// Este agendado e o `enviarAvisosDoDia` rodavam às 9h falando da MESMA dívida
-// para a MESMA família: e-mail em 3, 0 e −3 dias; push em 5, 3, 0, −3 e −7.
-// Nos três marcos do meio ela recebia as duas coisas no mesmo minuto — o
-// jeito mais rápido de ensinar alguém a ignorar os dois canais, e o primeiro
-// que ela desliga é o que também avisa que a criança chegou.
-//
-// A divisão mora em `canalDaCobranca.js`, um arquivo só, e é ela que decide.
-// O dia do vencimento ficou com o PUSH: é o marco em que só a hora importa, e
-// este público lê push muito mais do que e-mail. O e-mail ficou com os dois
-// marcos em que ela precisa RESOLVER com o dado na mão — 3 dias antes e 3 de
-// atraso —, porque é ele que carrega valor, mês, botão e a chave PIX.
-//
-// O template `due_today` continua existindo: o disparo manual do dono ainda
-// pode usá-lo, e apagá-lo tiraria a peça de quem quiser mandá-la à mão.
-const MILESTONES = [
-  { key: 'reminder_3d', diffDays: 3 },
-  { key: 'overdue_3d', diffDays: -3 },
-].filter((m) => emailMandaEm(m.diffDays));
-
-// ===== Helpers =====
-
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function diffInDays(due, today) {
-  const a = startOfDay(due);
-  const b = startOfDay(today);
-  return Math.round((a - b) / (1000 * 60 * 60 * 24));
-}
-
-function formatMonthLabel(date) {
-  if (!date) return '';
-  const MONTHS = [
-    'Janeiro',
-    'Fevereiro',
-    'Março',
-    'Abril',
-    'Maio',
-    'Junho',
-    'Julho',
-    'Agosto',
-    'Setembro',
-    'Outubro',
-    'Novembro',
-    'Dezembro',
-  ];
-  return `${MONTHS[date.getMonth()]}/${date.getFullYear()}`;
-}
-
-// ATENÇÃO: as chaves aqui têm que casar com userService.PIX_KEY_TYPES no
-// cliente. Antes esta tabela usava 'aleatoria' enquanto o app grava
-// 'random', e o email de cobrança saía com o rótulo do tipo em branco.
-const PIX_TYPE_LABELS = {
-  phone: 'Celular',
-  email: 'Email',
-  random: 'Chave aleatória',
-  // Aceitos por compatibilidade caso o cadastro venha de outra origem.
-  cpf: 'CPF',
-  cnpj: 'CNPJ',
-};
-
-// ===== Lógica principal =====
-
-/**
- * Processa todos os pagamentos pendentes/claimed e envia emails dos
- * milestones aplicáveis. Retorna sumário com contagens.
- */
-/**
- * `adminUid` OPCIONAL — mesma divisão de `generateForMonth`:
- * ausente é o modo da AGENDADA (a plataforma inteira, que é o certo pra ela);
- * presente é o disparo MANUAL, limitado à base de quem disparou.
- *
- * Sem isso, o botão de um parceiro mandava e-mail de cobrança para as famílias
- * de todos os outros — e o gate da callable era `role === 'admin'`, que neste
- * projeto significa qualquer motorista.
- */
-async function processReminders(apiKey, now = new Date(), adminUid = null) {
-  const today = startOfDay(now);
-
-  // Só `pending`: quem já tocou em "Já paguei" não recebe cobrança enquanto
-  // a baixa espera o motorista (ver `enviarAvisosDoDia.js`).
-  let consulta = db
-    .collection('payments')
-    .where('status', '==', 'pending');
-  if (adminUid) consulta = consulta.where('adminUid', '==', adminUid);
-  const paymentsSnap = await consulta.get();
-
-  let evaluated = 0;
-  let sent = 0;
-  let skipped = 0;
-  const errors = [];
-
-  // Cache simples de parents/children/admin pra evitar N reads quando
-  // tem várias mensalidades do mesmo pai/criança/admin.
-  //
-  // `adminCache` É UM MAPA, E NÃO UM SÓ — o motivo vale dinheiro.
-  // Ele era `let adminCache = null`, preenchido UMA vez a partir de
-  // `appState/init.adminUid` e reusado no laço inteiro. Ou seja: a chave PIX
-  // de UM motorista ia no e-mail de cobrança de TODOS os pagamentos da
-  // plataforma. Com dois parceiros, o responsável do B recebia a chave do A e
-  // pagava nela — o dinheiro ia pra conta errada e nada no sistema saberia.
-  //
-  // É o mesmo bug que o cliente já tinha consertado e documentado em
-  // src/services/userService.js:76-86; a cópia do servidor ficou pra trás.
-  const parentCache = new Map();
-  const childCache = new Map();
-  const adminCache = new Map();
-
-  for (const paymentDoc of paymentsSnap.docs) {
-    evaluated += 1;
-    try {
-      const p = paymentDoc.data();
-      const dueDate =
-        p.dueDate?.toDate?.() ||
-        (p.dueDate ? new Date(p.dueDate) : null);
-      if (!dueDate) {
-        skipped += 1;
-        continue;
-      }
-      const diff = diffInDays(dueDate, today);
-      const milestone = MILESTONES.find((m) => m.diffDays === diff);
-      if (!milestone) {
-        skipped += 1;
-        continue;
-      }
-
-      const sentMap = p.emailSentMilestones || {};
-      if (sentMap[milestone.key]) {
-        skipped += 1;
-        continue;
-      }
-
-      // Carrega dados do pai (email) — cacheia
-      const parentUid = p.parentUid;
-      if (!parentUid) {
-        skipped += 1;
-        continue;
-      }
-      let parent = parentCache.get(parentUid);
-      if (!parent) {
-        const ps = await db.doc(`users/${parentUid}`).get();
-        if (!ps.exists) {
-          skipped += 1;
-          continue;
-        }
-        parent = ps.data();
-        parentCache.set(parentUid, parent);
-      }
-      if (!parent.email) {
-        skipped += 1;
-        continue;
-      }
-
-      // Carrega dados da criança — cacheia
-      const childId = p.childId;
-      let child = childId ? childCache.get(childId) : null;
-      if (!child && childId) {
-        const cs = await db.doc(`children/${childId}`).get();
-        if (cs.exists) {
-          child = cs.data();
-          childCache.set(childId, child);
-        }
-      }
-
-      // Carrega o motorista DESTE pagamento — cacheia por uid.
-      //
-      // `p.adminUid` é a verdade: billing.js:99 grava e se RECUSA a gerar
-      // mensalidade sem ele (:91). `child.adminUid` cobre pagamento antigo,
-      // e a criança já foi carregada logo acima. Os dois são por inquilino;
-      // `appState/init` saiu daqui e não volta.
-      const adminUid = p.adminUid || child?.adminUid || null;
-      // ⚠️ `motorista`, NUNCA `admin` — E O NOME ERA UM BUG, NÃO ESTILO.
-      //
-      // `const admin = require('firebase-admin')` está no topo do arquivo.
-      // Um `let admin` aqui sombreia o MÓDULO no bloco inteiro, e a linha que
-      // marca a idempotência mais abaixo chama
-      // `FieldValue.serverTimestamp()` — que passava a operar
-      // sobre o documento do motorista e era `undefined`.
-      //
-      // O estrago ficava escondido pela ORDEM: o `TypeError` estourava DEPOIS
-      // do `sendEmail`. O e-mail saía, `emailSentMilestones` nunca era
-      // gravado, `sent` nunca incrementava, e a função devolvia `sent: 0` com
-      // N erros tendo entregue N e-mails. Rodada duas vezes no mesmo dia, a
-      // mesma mãe recebia "vence hoje" duas vezes — exatamente a duplicação
-      // que o cabeçalho deste arquivo promete impedir.
-      //
-      // `no-shadow` não está no config do eslint, então o lint não pega.
-      let motorista = adminUid ? adminCache.get(adminUid) : null;
-      if (!motorista && adminUid) {
-        const as = await db.doc(`users/${adminUid}`).get();
-        motorista = as.exists ? as.data() : {};
-        adminCache.set(adminUid, motorista);
-      }
-      motorista = motorista || {};
-
-      // Monta payload do template
-      const monthLabel = p.monthLabel || formatMonthLabel(dueDate);
-      // SEM MOTORISTA RESOLVIDO, SEM CHAVE — e é a falha para o lado certo.
-      // O e-mail sai sem o PIX (o template já trata `pixKey: null`) e o
-      // responsável cobra o motorista pelo caminho de sempre. Mandar a chave
-      // de outra pessoa seria pior que não mandar chave nenhuma.
-      const pixKey = motorista.pixKey || null;
-      const pixKeyType = pixKey ? PIX_TYPE_LABELS[motorista.pixKeyType] || '' : '';
-      const adminName = motorista.name || '';
-      const companyName = motorista.companyName || 'Alô Buzinou!';
-
-      const html = buildEmailHtml({
-        milestone: milestone.key,
-        parentName: parent.name || '',
-        childName: child?.name || p.childName || 'sua criança',
-        amount: p.amount,
-        dueDate,
-        monthLabel,
-        appUrl: APP_URL,
-        pixKey,
-        pixKeyType,
-        adminName,
-        companyName,
-      });
-      const text = buildEmailText({
-        milestone: milestone.key,
-        parentName: parent.name || '',
-        childName: child?.name || p.childName || 'sua criança',
-        amount: p.amount,
-        dueDate,
-        monthLabel,
-        appUrl: APP_URL,
-        pixKey,
-        adminName,
-      });
-      const subject = subjectFor(
-        milestone.key,
-        child?.name || p.childName,
-        monthLabel
-      );
-
-      await sendEmail({
-        apiKey,
-        from: EMAIL_REMETENTE.value(),
-        to: parent.email,
-        subject,
-        html,
-        text,
-      });
-
-      // Marca como enviado pra não duplicar (idempotência).
-      // Usa merge pra preservar outros milestones já enviados.
-      await paymentDoc.ref.set(
-        {
-          emailSentMilestones: {
-            [milestone.key]: FieldValue.serverTimestamp(),
-          },
-        },
-        { merge: true }
-      );
-
-      sent += 1;
-      logger.info(
-        `Email enviado: payment=${paymentDoc.id} milestone=${milestone.key} to=${parent.email}`
-      );
-    } catch (err) {
-      errors.push({ paymentId: paymentDoc.id, error: err?.message || String(err) });
-      logger.error(`Falha ao processar payment ${paymentDoc.id}:`, err);
-    }
-  }
-
-  // ⚠️ FALHA TOTAL NÃO É FALHA PONTUAL, E CONCLUIR COM SUCESSO ESCONDIA A
-  // PIOR DAS DUAS.
-  //
-  // Cada erro por pagamento virava uma linha em `errors` e a função concluía
-  // bem. Com a chave do Resend errada — e o `docs/deploy.md` chega a
-  // recomendar subir `PLACEHOLDER-substitua-…` no primeiro deploy — TODO
-  // e-mail falha, o `logger.info` do fim grava um objeto de sucesso, e nada
-  // no mundo avisa que ninguém foi cobrado este mês.
-  //
-  // Erro pontual continua sendo tolerado (um e-mail recusado não pode
-  // impedir os outros 40). Erro em TUDO é problema de configuração, e tem
-  // que estourar: em function agendada, `throw` é o que produz retentativa e
-  // dispara alerta de log.
-  if (errors.length > 0 && errors.length === evaluated) {
-    const primeiro = errors[0]?.error || 'sem detalhe';
-    throw new Error(
-      `Nenhum lembrete saiu: ${errors.length} de ${evaluated} falharam. ` +
-      `Primeiro erro: ${primeiro}. Confira o segredo RESEND_API_KEY.`
-    );
-  }
-
-  return { evaluated, sent, skipped, errors };
-}
-
-// ===== Cloud Function agendada =====
-
-exports.sendPaymentReminders = onSchedule(
-  {
-    schedule: '0 9 * * *', // todo dia às 9h
-    timeZone: 'America/Sao_Paulo',
-    region: 'southamerica-east1',
-    secrets: [RESEND_API_KEY],
-    retryCount: 2,
-    maxInstances: LIMITES.AGENDADO,
-    // Envio em série contra o teto de 60 s — ver limites.js.
-    timeoutSeconds: LIMITES.TEMPO_AGENDADO,
-    memory: LIMITES.MEMORIA_AGENDADO,
-  },
-  async () => {
-    const apiKey = RESEND_API_KEY.value();
-    const result = await processReminders(apiKey);
-    logger.info('sendPaymentReminders concluído', result);
-  }
-);
-
-// ===== Trigger manual (admin-only) pra testar/forçar envio =====
-
-exports.runPaymentRemindersNow = onCall(
-  {
-    region: 'southamerica-east1',
-    secrets: [RESEND_API_KEY],
-    maxInstances: LIMITES.AUTENTICADO,
-  },
-  async (request) => {
-    // O ESCOPO SAI DO CHAMADOR. Ver o cabeçalho de `processReminders`: sem
-    // ele, o botão de um parceiro disparava e-mail de cobrança para as
-    // famílias de todos os outros.
-    const uid = await exigirMotorista(db, request);
-    const apiKey = RESEND_API_KEY.value();
-    return await processReminders(apiKey, new Date(), uid);
-  }
-);
+// ⚠️ O E-MAIL DE MENSALIDADE DA FAMÍLIA SAIU (decisão do dono, 03/10/2026).
+// Aqui moravam `sendPaymentReminders` (agendado, 9h) e `runPaymentRemindersNow`
+// (o disparo manual do motorista), que mandavam o lembrete por e-mail em 3
+// dias antes e 3 de atraso. O e-mail ficou só para a cobrança da PLATAFORMA ao
+// motorista (`lib/emailDoAviso.js`); a mensalidade é lembrada por push, em
+// 5 dias antes, no dia e 7 de atraso (`lib/canalDaCobranca.js`). Com o
+// vencimento padrão no dia 10, eram ~3.000 e-mails de uma vez no dia 7 —
+// acima do plano grátis do Resend e do tempo da função.
 
 // ===== Convites e lista de espera (ver functions/lib/invites.js) =====
 //
@@ -469,15 +113,14 @@ exports.closeStaleRoutes = makeCloseStaleRoutes(db);
 // Amarrado na criação de notifications/{id}: todo aviso do app ganha push
 // sem que cada caminho precise lembrar de enviar.
 
-exports.sendPushOnNotification = makeSendPushOnNotification(db);
-// "Está chegando" e a buzina com o app fechado (avisosDaRota.js).
-exports.avisarAproximacao = makeAvisarAproximacao(db);
-exports.avisarBuzina = makeAvisarBuzina(db);
-// Os avisos que não podem se perder vão também por e-mail (emailDoAviso.js).
-exports.enviarEmailDoAviso = makeEnviarEmailDoAviso(db, {
+// O e-mail da cobrança da plataforma sai no MESMO gatilho (enviarEmailDoAviso.js).
+exports.sendPushOnNotification = makeSendPushOnNotification(db, {
   chave: RESEND_API_KEY,
   remetente: EMAIL_REMETENTE,
 });
+// "Está chegando" e a buzina com o app fechado (avisosDaRota.js).
+exports.avisarAproximacao = makeAvisarAproximacao(db);
+exports.avisarBuzina = makeAvisarBuzina(db);
 
 // ===== Confirmação de véspera (ver functions/lib/confirmarAusencias.js) =====
 //

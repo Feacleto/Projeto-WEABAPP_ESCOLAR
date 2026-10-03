@@ -636,6 +636,13 @@ async function oTesteDeCodigo({ tio1, tio2, pai1, dono }) {
       createdAt: { timestampValue: new Date().toISOString() },
     }));
 
+  // A cobrança da plataforma é o único aviso que vira e-mail: só o servidor cria.
+  checar('email', 'o motorista forja uma "fatura" para a família dele', 'NEGA',
+    await criar('notifications', 'faturaFalsa', tio1, {
+      userId: S(pai1.uid), type: S('fatura_vence'), title: S('Sua fatura vence em 3 dias'),
+      createdAt: { timestampValue: new Date().toISOString() },
+    }));
+
   // O acesso de 24 horas: lê quem é da criança, ninguém escreve.
   await semear('acessosTemporarios/ac1', {
     childId: S('kid1'), parentUid: S(pai1.uid), adminUid: S(tio1.uid),

@@ -19,12 +19,14 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 48 scripts. O PRIMEIRO é
+npm run testar                   # 49 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
                                  # horarios, viagem, faltas, endereco, aviso,
                                  # proximidade, buzina, notificacoes,
+                                 # comentario-na-tela (nenhum `/* */` sem
+                                 # chaves vira texto na tela),
                                  # vazamento, contraste, design,
                                  # travessia,
                                  # contrato, combinado,
@@ -1233,11 +1235,15 @@ da escola da rota.
 - **app aberto** — o cabeçalho mostra todo aviso novo num cartão que leva ao
   mesmo lugar ([avisoNaTela](src/components/notifications/avisoNaTela.jsx)); a
   buzina não ganha cartão (já é tela cheia).
-- **e-mail** — uma lista FECHADA de avisos sem hora que não podem se perder
-  ([emailDoAviso.js](functions/lib/emailDoAviso.js): contrato, pagamento
-  confirmado, acesso aprovado, encerramento…), nunca rota nem oferta. O
-  remetente é o parâmetro `EMAIL_REMETENTE`: ⚠️ até o domínio ser verificado
-  no Resend, só o sandbox funciona, e ele SÓ ENTREGA ao dono da conta.
+- **e-mail** — ⚠️ **SÓ A COBRANÇA DA PLATAFORMA AO MOTORISTA** (decisão do
+  dono, 03/10/2026: `fatura_vence`, e só para quem é motorista —
+  [emailDoAviso.js](functions/lib/emailDoAviso.js)). Sai do MESMO gatilho do
+  push (uma função por aviso, não duas) e não obedece à preferência de
+  "prazos". As rules recusam um cliente criando esse tipo: senão um motorista
+  mandaria texto dele pelo remetente oficial. A mensalidade da família NÃO tem
+  e-mail: é push em 5 dias antes, no dia e 7 de atraso. O remetente é o
+  parâmetro `EMAIL_REMETENTE`: ⚠️ até o domínio ser verificado no Resend, só
+  o sandbox funciona, e ele SÓ ENTREGA ao dono da conta.
 - **Para onde leva**: [destinoDoAviso.js](src/dominio/identidade/destinoDoAviso.js),
   por tipo e por PAPEL, espelhado no servidor — o sino e o push respondem
   igual, e nenhum tipo leva a "/".
@@ -1393,12 +1399,14 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `testar:combinado`), marca a anterior `substituido` e, no ADITIVO, só então
   aplica na criança mensalidade, vencimento e vigência (lista fechada:
   `valoresDoAditivo`). Ver "O contrato com a família" abaixo.
-- **Cobrança:** `generateMonthlyPayments` (agendada), `runBillingNow`,
-  `sendPaymentReminders`, `runPaymentRemindersNow`
+- **Cobrança:** `generateMonthlyPayments` (agendada) e `runBillingNow`.
+  ⚠️ `sendPaymentReminders` e `runPaymentRemindersNow` (o e-mail de
+  mensalidade) SAÍRAM em 03/10/2026 — no deploy, o Firebase pergunta se apaga
+  as duas: sim.
 - **Operação:** `closeStaleRoutes`, `confirmarAusencias`
 - **Push:** `sendPushOnNotification` (dispara FCM a partir de `notifications`,
-  também para o acesso de 24h), `enviarEmailDoAviso` (o mesmo gatilho, por
-  e-mail, para a lista fechada), `avisarAproximacao` (faixa da perua em
+  também para o acesso de 24h, e o e-mail da fatura da plataforma no mesmo
+  gatilho), `avisarAproximacao` (faixa da perua em
   `rides` → "está chegando") e `avisarBuzina` (`pendingCalls` → aviso)
 - **Acesso de 24 horas:** `gerarAcessoTemporario`, `encerrarAcessoTemporario`
   e `inscreverAvisosDoAcesso` (pública; quem prova é o token), e o
@@ -2368,7 +2376,7 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (305 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (306 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes
@@ -2527,12 +2535,12 @@ teste porque cada régua estava certa sozinha:
   a hora e o dia saem de `Intl` no fuso certo, e `testar:avisos` mede em UTC
   de propósito, que é onde o erro aparecia.
 - **Para a FAMÍLIA:** push e e-mail sobre a mesma mensalidade, no mesmo
-  minuto, em três dos cinco marcos. Quem decide agora é
+  minuto, em três dos cinco marcos. Quem decide é
   [canalDaCobranca.js](functions/lib/canalDaCobranca.js): **um marco, um
-  canal**. Push em 5 dias antes, no dia e 7 de atraso; e-mail em 3 antes e 3
-  de atraso. ⚠️ A divisão é julgamento e está num lugar só para poder mudar em
-  uma linha; o que é regra — nenhum marco com dois canais, nenhum sem canal —
-  é o que o teste prova.
+  canal**. ⚠️ Desde 03/10/2026 o e-mail da mensalidade não existe mais (o
+  e-mail ficou só para a cobrança da plataforma): sobram os marcos do push,
+  5 dias antes, no dia e 7 de atraso. Se o e-mail voltar, volta por esse
+  mapa, e o teste reprova o marco com dois canais.
 
 ⚠️ **TODA A BATERIA PROVA RÉGUA, E RÉGUA NÃO ESCREVE.** Foi a aposta certa —
 regra pura é regra testável —, mas ela não alcança o que `fechamento.js` faz

@@ -36,6 +36,7 @@ const { FieldValue } = require('firebase-admin/firestore');
 const { tocaNoAparelho } = require('./avisos');
 const { urlDoAviso, ORIGEM_DO_APP } = require('./destinoDoAviso');
 const { TIPOS_DO_ACESSO_TEMPORARIO, acessoTemporarioValendo } = require('./reguaDoAcessoTemporario');
+const { enviarEmailSeFor } = require('./enviarEmailDoAviso');
 
 const REGION = 'southamerica-east1';
 
@@ -103,12 +104,17 @@ async function aparelhosDoAcessoTemporario(db, notif) {
   return saida;
 }
 
-function makeSendPushOnNotification(db) {
+/**
+ * `email` — { chave, remetente }: o segredo do Resend e o remetente. O e-mail
+ * da cobrança da plataforma sai daqui, no mesmo gatilho (`enviarEmailDoAviso`).
+ */
+function makeSendPushOnNotification(db, email) {
   return onDocumentCreated(
     {
       document: 'notifications/{notifId}',
       region: REGION,
       maxInstances: LIMITES.GATILHO,
+      secrets: email ? [email.chave] : [],
     },
     async (event) => {
       const notif = event.data && event.data.data();
@@ -118,6 +124,12 @@ function makeSendPushOnNotification(db) {
       const userSnap = await db.doc(`users/${notif.userId}`).get();
       if (!userSnap.exists) return;
       const usuario = userSnap.data();
+
+      // A cobrança da plataforma também por e-mail — antes da preferência,
+      // que só cala o PUSH (ver enviarEmailDoAviso.js).
+      if (email) {
+        await enviarEmailSeFor({ aviso: notif, usuario, notifId, ...email });
+      }
 
       if (!tocaNoAparelho(notif.type, usuario.avisosDesligados)) {
         logger.info('[push] calado por preferência', { tipo: notif.type, notifId });

@@ -161,6 +161,15 @@ checar('todo tipo de e-mail existe na tabela de espécies', [],
 const m = email.montarEmailDoAviso({ aviso: { title: 'Seu contrato <b>', body: 'Toque' }, nome: 'Mariana Souza', url: 'https://alobuzinou.com/pai/contrato' });
 checar('o texto do aviso é escapado no HTML', true, m.html.includes('Seu contrato &lt;b&gt;'));
 checar('o e-mail cumprimenta pelo primeiro nome', true, m.text.startsWith('Olá, Mariana!'));
+checar('⚠️ o e-mail é SÓ a cobrança da plataforma ao motorista', ['fatura_vence'], email.TIPOS_POR_EMAIL);
+checar('e só vai para motorista', 'admin', email.PAPEL_QUE_RECEBE_EMAIL);
+checar('nenhum cliente cria o aviso que vira e-mail', true,
+  ler('firestore.rules').includes("!(request.resource.data.type in ['fatura_vence'])"));
+const pushJs = ler('functions/lib/push.js');
+checar('o e-mail sai do MESMO gatilho do push (uma função por aviso, não duas)', true,
+  pushJs.includes('enviarEmailSeFor(') && !ler('functions/index.js').includes('makeEnviarEmailDoAviso'));
+checar('a mensalidade da família não tem mais e-mail agendado', false,
+  ler('functions/index.js').includes('exports.sendPaymentReminders'));
 const idx = ler('functions/index.js');
 checar('o remetente é parâmetro, não o sandbox fixo', true,
   idx.includes("defineString('EMAIL_REMETENTE'") && !idx.includes('const FROM_EMAIL'));
