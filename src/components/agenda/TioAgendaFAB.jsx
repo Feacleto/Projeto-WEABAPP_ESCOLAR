@@ -84,7 +84,8 @@ export default function TioAgendaFAB() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Avisar os pais"
-        className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-escola to-escola text-white shadow-float flex items-center gap-2 tap font-bold print:hidden"
+        style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-escola to-escola text-white shadow-float flex items-center gap-2 tap font-bold print:hidden"
       >
         <Notebook size={22} />
         <span className="text-sm">Avisar pais</span>

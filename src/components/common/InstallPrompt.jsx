@@ -107,7 +107,10 @@ export default function InstallPrompt() {
   };
 
   return (
-    <div className="fixed bottom-24 left-0 right-0 z-40 px-4 max-w-mobile mx-auto">
+    <div
+      className="fixed left-0 right-0 z-40 px-4 max-w-mobile mx-auto"
+      style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       <div className="bg-card border border-border rounded-2xl shadow-float p-4 space-y-3">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">

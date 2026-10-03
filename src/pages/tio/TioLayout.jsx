@@ -247,7 +247,10 @@ export default function TioLayout() {
     /* ⚠️ A ESCUTA DO SINO MORA AQUI, UMA VEZ (03/10/2026): o layout fica de pé
      * enquanto ele anda pelas telas; o `Header` de cada tela, não. */
     <NotificacoesProvider>
-    <div className="min-h-screen pb-28">
+    <div
+      className="min-h-screen"
+      style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       {!naTelaDaTaxa && (
         <AvisoDaPlataforma fatura={fatura} criancas={children?.length || 0} />
       )}

@@ -78,17 +78,28 @@ export default function BottomNav({ items }) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-30 px-3 pb-3 pointer-events-none print:hidden"
+      className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-30 bg-bg px-3 pt-2 pb-3 print:hidden"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 0.75rem)' }}
     >
-      {/* rounded-full em vez de rounded-3xl: pílula de verdade, e o formato
-        * já sugere que ela flutua acima do conteúdo.
+      {/* NADA FICA ATRÁS DO MENU (03/10/2026, pedido do dono). A pílula
+        * flutuava sobre o conteúdo, e em volta e embaixo dela o que rolava
+        * continuava aparecendo — ícone pela metade atrás do menu, e toque que
+        * caía no que estava escondido. Agora o rodapé é uma faixa SÓLIDA da
+        * cor do fundo, com uma transição curta em cima para o conteúdo
+        * sumir em vez de ser cortado em linha reta. O espaço no fim da
+        * rolagem (o paddingBottom dos layouts) garante que o último item sobe acima
+        * dela. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 -top-4 h-4 bg-gradient-to-t from-bg to-transparent"
+      />
+      {/* rounded-full em vez de rounded-3xl: pílula de verdade.
         *
-        * `relative` e `overflow-hidden` são novos, e existem por causa da
-        * pastilha: ela é absoluta aqui dentro e não pode escapar da borda
-        * arredondada enquanto desliza. */}
+        * `relative` e `overflow-hidden` existem por causa da pastilha: ela é
+        * absoluta aqui dentro e não pode escapar da borda arredondada
+        * enquanto desliza. */}
       <div
-        className="pointer-events-auto relative overflow-hidden bg-card/95 backdrop-blur-md rounded-full shadow-float border border-neutro grid"
+        className="relative overflow-hidden bg-card rounded-full shadow-float border border-neutro grid"
         style={{
           gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
         }}
