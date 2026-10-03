@@ -284,7 +284,7 @@ function SchoolBroadcastBody({ onClose }) {
                 {ate && ' · sábado e domingo não contam'}
               </p>
             ) : (
-              <p className="text-[11px] text-danger mt-2">
+              <p className="text-[11px] text-dangerText mt-2">
                 Esse intervalo não tem dia útil{' '}
                 {ate ? '(ou passa de ' + MAX_DIAS + ' dias).' : '.'}
               </p>

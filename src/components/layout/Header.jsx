@@ -95,7 +95,8 @@ export default function Header({
                 else navigate(-1);
               }}
               aria-label={backLabel ? `Voltar para ${backLabel}` : 'Voltar'}
-              className="-ml-1 py-1 pl-1 pr-1.5 tap text-textMuted inline-flex items-center gap-1 shrink-0"
+              // 44×44: é o botão mais usado de toda tela interna.
+              className="-ml-2 tap text-textMuted inline-flex min-h-11 min-w-11 items-center justify-center gap-1 shrink-0"
             >
               <ArrowLeft size={22} />
               {backLabel && (
@@ -215,7 +216,9 @@ function GlobalActions({ role, basePath, currentPath }) {
         }
         aria-label="Notificações"
         aria-haspopup="dialog"
-        className={`relative p-2 tap rounded-lg ${
+        // 44×44 de área de toque: era 36, abaixo do mínimo para quem toca
+        // com o dedo grosso e com pressa.
+        className={`relative flex h-11 w-11 items-center justify-center tap rounded-lg ${
           isOnNotifications ? 'text-primary bg-primary/10' : 'text-textMuted'
         }`}
       >

@@ -202,7 +202,7 @@ export default function TioFinanceReport() {
                   Relatório financeiro
                 </p>
                 <h1 className="text-2xl font-bold text-text leading-tight mt-1">
-                  {profile?.companyName || 'Tio Nino Transporte Escolar'}
+                  {profile?.companyName || profile?.name || 'Transporte escolar'}
                 </h1>
                 <p className="text-xs text-textMuted mt-1">
                   {profile?.companyDocument || ''}
@@ -346,7 +346,7 @@ export default function TioFinanceReport() {
           </section>
 
           <footer className="text-center text-[10px] text-textMuted pt-4 border-t border-border">
-            Tio Nino Digital · Relatório emitido em{' '}
+            Alô Buzinou · Relatório emitido em{' '}
             {new Date().toLocaleString('pt-BR')}
           </footer>
 

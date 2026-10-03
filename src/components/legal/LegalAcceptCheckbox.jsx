@@ -47,7 +47,7 @@ export default function LegalAcceptCheckbox({ checked, onChange, error }) {
           . Autorizo o tratamento de dados pessoais nos termos da LGPD.
         </span>
       </label>
-      {error && <p className="text-xs text-danger ml-7">{error}</p>}
+      {error && <p className="text-xs text-dangerText ml-7">{error}</p>}
     </div>
   );
 }

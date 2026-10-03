@@ -32,6 +32,7 @@ import {
   CAMPO_DA_DIRECAO,
   horaNaDirecao,
 } from '../../dominio/rota/horarios';
+import { mascaraHora } from '../../compartilhado/masks';
 
 /**
  * "Horários" — onde o motorista monta a rota padrão.
@@ -334,11 +335,16 @@ export default function TioHorarios() {
               : 'Que horas você entrega em casa?'}
           </p>
 
+          {/* DIGITADA, não no relógio do Android: "0640" vira "06:40". */}
           <input
-            type="time"
+            type="text"
+            inputMode="numeric"
+            placeholder="06:40"
+            maxLength={5}
+            aria-label={direcao === 'ida' ? 'Que horas você pega em casa?' : 'Que horas você entrega em casa?'}
             value={editando.valor}
             onChange={(e) =>
-              setEditando((s) => ({ ...s, valor: e.target.value }))
+              setEditando((s) => ({ ...s, valor: mascaraHora(e.target.value) }))
             }
             className="w-full h-14 rounded-2xl border-2 border-border bg-card px-4 text-text text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />

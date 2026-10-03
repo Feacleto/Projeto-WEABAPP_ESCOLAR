@@ -170,7 +170,7 @@ export default function Sheet({
               type="button"
               onClick={onClose}
               aria-label="Fechar"
-              className="tap -mr-1 shrink-0 rounded-lg p-1 text-white/60 hover:text-white"
+              className="tap -mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/60 hover:text-white"
             >
               <X size={20} />
             </button>

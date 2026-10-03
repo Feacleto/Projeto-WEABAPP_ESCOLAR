@@ -570,14 +570,14 @@ export function TiraDoLogin({ assunto, ate = 1800, moldura = false, aparecidos =
       }`}
     >
       {moldura && (
-        <span className="absolute -top-2.5 left-4 flex items-center gap-1.5 bg-bg px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-textMuted">
+        <span className="absolute -top-2.5 left-4 flex items-center gap-1.5 bg-bg px-2 font-mono text-xs uppercase tracking-[0.12em] text-textMuted">
           <span className="rounded bg-primary px-1.5 py-px font-semibold tracking-[0.08em] text-white">
             Exemplo
           </span>
           Prévia de dentro do app
         </span>
       )}
-      <p className="text-center font-mono text-[10px] uppercase tracking-[0.16em] text-textMuted">
+      <p className="text-center font-mono text-xs uppercase tracking-[0.16em] text-textMuted">
         {intro}
       </p>
       <div className="mt-3 flex flex-col gap-3">

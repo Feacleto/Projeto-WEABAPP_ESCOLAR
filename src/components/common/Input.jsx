@@ -74,7 +74,7 @@ const Input = forwardRef(function Input(
           </button>
         )}
       </div>
-      {error && <p className="text-xs text-danger mt-1.5">{error}</p>}
+      {error && <p className="text-xs text-dangerText mt-1.5">{error}</p>}
       {hint && !error && (
         <p className="text-xs text-textMuted mt-1.5">{hint}</p>
       )}

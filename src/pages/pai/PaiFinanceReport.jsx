@@ -136,7 +136,7 @@ export default function PaiFinanceReport() {
           </section>
 
           <footer className="text-center text-[10px] text-textMuted pt-4 border-t border-border">
-            Tio Nino Digital · Documento gerado em{' '}
+            Alô Buzinou · Documento gerado em{' '}
             {new Date().toLocaleString('pt-BR')}
           </footer>
         </article>

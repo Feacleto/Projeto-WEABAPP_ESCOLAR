@@ -206,7 +206,7 @@ export default function ChildCard({
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="tap w-full px-4 pb-3 -mt-1 flex items-center gap-1 text-xs font-semibold text-primary"
+        className="tap w-full px-4 pb-1 -mt-1 flex min-h-11 items-center gap-1 text-sm font-semibold text-primary"
       >
         {expanded ? 'Ver menos' : 'Ver mais'}
         <ChevronDown
@@ -256,7 +256,7 @@ export default function ChildCard({
           <button
             type="button"
             onClick={onClick}
-            className="tap mt-1 inline-flex items-center gap-1 text-xs font-bold text-primary"
+            className="tap mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-bold text-primary"
           >
             Ver ficha completa
             <ArrowUpRight size={13} strokeWidth={2.6} />

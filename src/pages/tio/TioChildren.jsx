@@ -97,13 +97,15 @@ export default function TioChildren() {
             onClick={() => navigate('/tio/children/new')}
             aria-label="Cadastrar nova criança"
             data-tour="add-child"
-            className="tap inline-flex items-center gap-1 bg-primary text-white text-sm font-semibold px-3 py-1.5 rounded-full"
+            className="tap inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full bg-primary px-3 text-sm font-semibold text-white"
           >
             <Plus size={16} />
-            {/* Em tela estreita (360px pra baixo) o rótulo some e sobra o
-              * "+": o título da página não precisa ser cortado pra caber um
-              * botão que o ícone sozinho já explica. */}
-            <span className="hidden min-[360px]:inline">Nova criança</span>
+            {/* Em tela estreita o rótulo some e sobra o "+": o título da
+              * página não precisa ser cortado pra caber um botão que o ícone
+              * sozinho já explica. ⚠️ O corte era em 360px — exatamente a
+              * largura do Android comum —, então o rótulo aparecia e o título
+              * virava "Min…" (teste no navegador, 02/10/2026). */}
+            <span className="hidden min-[400px]:inline">Nova criança</span>
           </button>
         }
       />
@@ -175,7 +177,7 @@ export default function TioChildren() {
               key={f.value}
               type="button"
               onClick={() => setFilter(f.value)}
-              className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold tap border ${
+              className={`shrink-0 h-11 px-4 rounded-full text-sm font-semibold tap border ${
                 filter === f.value
                   ? 'bg-text text-white border-text'
                   : 'bg-card text-textMuted border-border'

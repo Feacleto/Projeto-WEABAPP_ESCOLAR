@@ -443,3 +443,14 @@ export function resumirParaAviso(texto, limite = 90) {
   const base = ultimoEspaco > limite * 0.5 ? cortado.slice(0, ultimoEspaco) : cortado;
   return `${base.replace(/[.,;:!?\s]+$/, '')}…`;
 }
+
+/**
+ * "do Pedro", "da Maria" — o artigo pelo gênero que o motorista marcou no
+ * cadastro (`male` | `female`). Sem gênero, "do/da", que é o único caso em
+ * que a barra se justifica: a mensagem do convite saía "do/da Pedro" mesmo
+ * com o app sabendo que o Pedro é menino (teste no navegador, 02/10/2026).
+ */
+export function doDa(nome, gender) {
+  const artigo = gender === 'female' ? 'da' : gender === 'male' ? 'do' : 'do/da';
+  return `${artigo} ${nome}`;
+}

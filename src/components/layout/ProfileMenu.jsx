@@ -117,7 +117,8 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         aria-label="Meu perfil"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`tap rounded-full p-0.5 ${
+        // A área de toque tem 44×44 mesmo com o avatar pequeno dentro.
+        className={`tap flex h-11 w-11 items-center justify-center rounded-full ${
           open || active ? 'ring-2 ring-primary' : ''
         }`}
       >
@@ -265,7 +266,7 @@ function MenuItem({ icon: Icon, label, onClick, danger = false }) {
       role="menuitem"
       onClick={onClick}
       className={`tap flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-semibold ${
-        danger ? 'text-danger' : 'text-text'
+        danger ? 'text-dangerText' : 'text-text'
       }`}
     >
       <Icon size={17} className={danger ? 'text-danger' : 'text-textMuted'} />

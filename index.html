@@ -14,9 +14,13 @@
     <!-- O Google não aceita na busca o .ico de 16/32/48: quer PNG quadrado de
          lado múltiplo de 48. Sem este, o resultado mostrava um globo. -->
     <link rel="icon" type="image/png" sizes="192x192" href="/brand/icon-192.png" />
+    <!-- O ZOOM COM DOIS DEDOS FICA LIGADO (02/10/2026). Era `maximum-scale=1,
+         user-scalable=no`, e quem enxerga pouco — o público principal tem 40+
+         — não conseguia ampliar nada. O teste no navegador apontou em todas
+         as telas (axe, regra meta-viewport). -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <meta name="theme-color" content="#1F5F3F" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

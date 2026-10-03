@@ -113,3 +113,63 @@ export function isValidCep(value) {
   const digits = unmaskCep(value);
   return digits.length === 8 && digits !== '00000000';
 }
+
+/**
+ * Hora DIGITADA, não escolhida num relógio (02/10/2026, pedido do dono).
+ * O `<input type="time">` abre o relógio do Android, e o motorista quer
+ * digitar "0640". Enquanto ele digita: `0640` → `06:40`, `7` → `07` (uma
+ * hora de 3 a 9 só pode ter um dígito). Quem valida e grava é
+ * `normalizaHora` (dominio/rota/horarios.js), que aceita esta forma.
+ */
+export function mascaraHora(valor) {
+  let d = String(valor || '').replace(/\D/g, '').slice(0, 4);
+  if (d.length >= 1 && Number(d[0]) > 2) d = `0${d}`.slice(0, 4);
+  if (d.length <= 2) return d;
+  return `${d.slice(0, 2)}:${d.slice(2)}`;
+}
+
+/**
+ * CPF ou CNPJ enquanto ele digita: até 11 dígitos é CPF (`000.000.000-00`),
+ * de 12 em diante vira CNPJ (`00.000.000/0000-00`). O motorista autônomo
+ * trabalha com CPF; quem tem empresa, com CNPJ — o mesmo campo serve aos dois.
+ */
+export function maskCpfCnpj(valor) {
+  const d = String(valor || '').replace(/\D/g, '').slice(0, 14);
+  if (d.length <= 11) {
+    return d
+      .replace(/^(\d{3})(\d)/, '$1.$2')
+      .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2');
+  }
+  return d
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
+
+/**
+ * O CPF ou CNPJ é de verdade? Confere os dígitos verificadores — é o que
+ * impede um contrato de sair com "111.111.111-11" ou com um dígito trocado
+ * (decisão do dono, 02/10/2026: "senão vai sair contrato sem dado certo").
+ */
+export function documentoValido(valor) {
+  const d = String(valor || '').replace(/\D/g, '');
+  if (/^(\d)\1+$/.test(d)) return false;
+  const digito = (base, pesos) => {
+    const soma = base.split('').reduce((s, n, i) => s + Number(n) * pesos[i], 0);
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  if (d.length === 11) {
+    const p1 = [10, 9, 8, 7, 6, 5, 4, 3, 2];
+    const p2 = [11, 10, 9, 8, 7, 6, 5, 4, 3, 2];
+    return digito(d.slice(0, 9), p1) === Number(d[9]) && digito(d.slice(0, 10), p2) === Number(d[10]);
+  }
+  if (d.length === 14) {
+    const p1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const p2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    return digito(d.slice(0, 12), p1) === Number(d[12]) && digito(d.slice(0, 13), p2) === Number(d[13]);
+  }
+  return false;
+}

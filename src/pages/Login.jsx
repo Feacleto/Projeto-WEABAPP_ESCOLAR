@@ -454,7 +454,7 @@ export default function Login() {
             className={`tap z-10 inline-flex w-fit items-center gap-1 text-onNightMuted hover:text-onNight lg:relative lg:-ml-1 lg:p-1 lg:text-sm ${
               daFamilia
                 ? 'relative -ml-1 p-1 text-sm'
-                : 'absolute right-5 top-6 whitespace-nowrap rounded-full border border-onNight/30 bg-onNight/[0.06] px-3 py-1.5 text-[12.5px] font-semibold lg:border-0 lg:bg-transparent lg:font-normal'
+                : 'absolute right-4 top-[18px] min-h-11 whitespace-nowrap rounded-full border border-onNight/30 bg-onNight/[0.06] px-3.5 text-[13px] font-semibold lg:min-h-0 lg:border-0 lg:bg-transparent lg:font-normal'
             } ${surge(PASSO.site)}`}
           >
             {daFamilia ? (
@@ -727,7 +727,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={criarContaDeMotorista}
-                className="tap inline-flex items-center gap-1.5 rounded-full border border-primaryBorder bg-primarySoft px-2.5 py-1 text-[11.5px] font-semibold text-primary"
+                className="tap inline-flex items-center gap-1.5 rounded-full border border-primaryBorder bg-primarySoft px-3.5 py-2.5 text-[13px] font-semibold text-primary"
               >
                 <Plus size={12} strokeWidth={2.6} /> Criar conta grátis
               </button>
@@ -1025,7 +1025,7 @@ export default function Login() {
                           aria-hidden
                           className="pointer-events-none absolute -bottom-4 -right-3 text-white/[0.07]"
                         />
-                        <span className="relative block font-mono text-[10px] uppercase tracking-[0.18em] text-onNightAccent">
+                        <span className="relative block font-mono text-xs uppercase tracking-[0.18em] text-onNightAccent">
                           quem dirige a perua
                         </span>
                         {/* "EU DIRIJO A PERUA" e não "Sou motorista ou
@@ -1072,7 +1072,7 @@ export default function Login() {
                         }
                         className="tap relative block w-full overflow-hidden rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary"
                       >
-                        <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-primary">
+                        <span className="block font-mono text-xs uppercase tracking-[0.18em] text-primary">
                           quem recebe o convite
                         </span>
                         <span className="mt-2 block text-base font-extrabold tracking-tight text-text">
@@ -1120,12 +1120,13 @@ export default function Login() {
               </Link>
             )}
 
-            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-textMuted">
-              <Link to="/termos" className="hover:underline">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 text-xs text-textMuted">
+              {/* `py-3`: 44px de altura de toque num link de 12px. */}
+              <Link to="/termos" className="py-3 hover:underline">
                 Termos de Uso
               </Link>
               <span aria-hidden>·</span>
-              <Link to="/privacidade" className="hover:underline">
+              <Link to="/privacidade" className="py-3 hover:underline">
                 Política de Privacidade
               </Link>
             </div>
@@ -1184,7 +1185,7 @@ export default function Login() {
           >
             <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight">
               Gostou do que viu?
-              <span className="block text-[11.5px] font-normal text-onNightMuted">
+              <span className="block text-xs font-normal text-onNightMuted">
                 Monte a sua turma no app
               </span>
             </span>

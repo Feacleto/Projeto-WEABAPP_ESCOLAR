@@ -204,21 +204,21 @@ export default function DriverSignup() {
           {veioDaEscolha ? (
             <Link
               to="/login?criar=1"
-              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-white/60 hover:text-white"
             >
               <ArrowLeft size={16} /> Voltar para a escolha
             </Link>
           ) : veioDoLogin ? (
             <Link
               to="/login"
-              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-white/60 hover:text-white"
             >
               <ArrowLeft size={16} /> Voltar
             </Link>
           ) : (
             <a
               href={SITE_INSTITUCIONAL}
-              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-white/60 hover:text-white"
             >
               <ArrowLeft size={16} /> Voltar
             </a>
@@ -436,12 +436,12 @@ export default function DriverSignup() {
           </p>
         </form>
 
-        <div className="mt-auto pt-6 text-[11px] text-textMuted flex items-center justify-center gap-3">
-          <Link to="/termos" className="hover:underline">
+        <div className="mt-auto pt-6 text-xs text-textMuted flex items-center justify-center gap-3">
+          <Link to="/termos" className="py-3 hover:underline">
             Termos de Uso
           </Link>
           <span aria-hidden>·</span>
-          <Link to="/privacidade" className="hover:underline">
+          <Link to="/privacidade" className="py-3 hover:underline">
             Política de Privacidade
           </Link>
         </div>
@@ -461,7 +461,7 @@ export default function DriverSignup() {
 function Grupo({ rotulo, children }) {
   return (
     <div>
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+      <p className="mb-2 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
         {rotulo}
       </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>

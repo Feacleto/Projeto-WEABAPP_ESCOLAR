@@ -243,7 +243,7 @@ export default function PixForm({ onDone }) {
               variant="ghost"
               icon={Trash2}
               onClick={() => setConfirmClear(true)}
-              className="!text-danger"
+              className="!text-dangerText"
             >
               Remover chave PIX
             </Button>

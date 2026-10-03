@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   User,
   MapPin,
   Phone,
-  Mail,
   Clock,
   DollarSign,
   Search,
@@ -31,10 +30,8 @@ import Button from '../common/Button';
 import { addChild, updateChild } from '../../services/childrenService';
 import { uploadContratoAnterior } from '../../services/photoService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
-import { useAuth } from '../../hooks/useAuth';
 import { usePerguntaDaChavePix } from '../payments/PerguntaDaChavePix';
 import { formatCurrency } from '../../compartilhado/formatters';
-import { dadosDaContratadaFaltando } from '../../services/contractService';
 import { searchAddress, buscarCep } from '../../services/locationService';
 import { normalizaHora, periodoDaHora, horaCurta } from '../../dominio/rota/horarios';
 import { useEscolas } from '../../hooks/useEscolas';
@@ -44,12 +41,12 @@ import {
   maskPhone,
   unmaskPhone,
   isValidPhone,
-  isValidEmail,
   maskCep,
   unmaskCep,
-  isValidCep,
-} from '../../compartilhado/masks';
+  isValidCep, mascaraHora } from '../../compartilhado/masks';
 import { montarEndereco } from '../../compartilhado/formatters';
+import CampoVigencia from '../contract/CampoVigencia';
+import { vigenciaPadrao, erroDaVigencia } from '../../dominio/cobranca/contratoDaFamilia.js';
 
 const GENDERS = [
   { value: 'male', label: 'Menino' },
@@ -125,8 +122,15 @@ const EMPTY_FORM = {
   dropoffPeriod: 'afternoon',
   monthlyFee: '',
   dueDay: '10',
+  turma: '',
+  professora: '',
   notes: '',
 };
+
+function vigenciaDoForm() {
+  const v = vigenciaPadrao();
+  return { vigenciaInicio: v.inicio, vigenciaFim: v.fim };
+}
 
 /**
  * Cadastro de criança em wizard (4 passos curtos).
@@ -140,7 +144,8 @@ const EMPTY_FORM = {
  */
 export default function ChildForm() {
   const navigate = useNavigate();
-  const [form, setForm] = useState(EMPTY_FORM);
+  // A vigência nasce pronta (de hoje até o fim do ano) — ver `vigenciaPadrao`.
+  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, ...vigenciaDoForm() }));
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
@@ -207,8 +212,6 @@ export default function ChildForm() {
     if (s === 4) {
       if (!isValidPhone(form.parentPhone))
         errs.parentPhone = 'Telefone com DDD — é por aqui que o convite vai.';
-      if (form.parentEmail.trim() && !isValidEmail(form.parentEmail))
-        errs.parentEmail = 'Email não parece válido.';
       if (form.parent2Phone && !isValidPhone(form.parent2Phone))
         errs.parent2Phone = 'Telefone inválido.';
       const fee = parseFloat(form.monthlyFee);
@@ -217,6 +220,8 @@ export default function ChildForm() {
       const day = parseInt(form.dueDay, 10);
       if (form.dueDay && (!day || day < 1 || day > 28))
         errs.dueDay = 'Dia entre 1 e 28.';
+      const vig = erroDaVigencia(form.vigenciaInicio, form.vigenciaFim);
+      if (vig) errs.vigencia = vig;
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -266,9 +271,9 @@ export default function ChildForm() {
     try {
       const horaPega = normalizaHora(form.horaPega);
       const horaEntrega = normalizaHora(form.horaEntrega);
-      // (o aviso de cadastro incompleto aparece DEPOIS de salvar — ver
-      // `AvisoDeCadastro` no fim deste arquivo. Salvar primeiro é deliberado:
-      // barrar aqui perderia o que ele acabou de digitar.)
+      // (os dados do contrato são pedidos DEPOIS de salvar, no lugar do
+      // convite — ver `InviteShare`. Salvar primeiro é deliberado: barrar
+      // aqui perderia o que ele acabou de digitar.)
       const { id, inviteCode } = await addChild({
         ...form,
         horaPega: horaPega || '',
@@ -299,6 +304,8 @@ export default function ChildForm() {
         parent2Phone: form.parent2Phone ? unmaskPhone(form.parent2Phone) : '',
         monthlyFee: parseFloat(form.monthlyFee) || 0,
         dueDay: parseInt(form.dueDay, 10) || 10,
+        vigenciaInicio: form.vigenciaInicio,
+        vigenciaFim: form.vigenciaFim,
         // A DATA da declaração, não só o `true`. Um booleano sozinho não diz
         // QUANDO, e é o quando que a torna uma declaração em vez de uma
         // caixa marcada.
@@ -333,6 +340,10 @@ export default function ChildForm() {
   const cadastrarOutra = () => {
     setForm({
       ...EMPTY_FORM,
+      // A próxima criança herda a vigência da anterior: a turma costuma ter
+      // o mesmo combinado de prazo.
+      vigenciaInicio: form.vigenciaInicio,
+      vigenciaFim: form.vigenciaFim,
       schoolId: form.schoolId,
       school: form.school,
       schoolAddress: form.schoolAddress,
@@ -371,7 +382,7 @@ export default function ChildForm() {
         <button
           type="button"
           onClick={onBack}
-          className="tap inline-flex items-center gap-1 text-sm text-textMuted -ml-1 p-1"
+          className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-textMuted"
         >
           <ArrowLeft size={18} />
           {step === 1 ? 'Cancelar' : 'Voltar'}
@@ -379,10 +390,10 @@ export default function ChildForm() {
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+            <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
               Passo {step} de {TOTAL_STEPS}
             </p>
-            <p className="text-[11px] font-semibold text-textMuted">
+            <p className="text-xs font-semibold text-textMuted">
               {STEP_LABELS[step - 1]}
             </p>
           </div>
@@ -524,7 +535,7 @@ function Step1Child({ form, setForm, setField, errors }) {
           ))}
         </div>
         {errors.gender && (
-          <p className="mt-1.5 text-xs font-semibold text-danger">
+          <p className="mt-1.5 text-xs font-semibold text-dangerText">
             {errors.gender}
           </p>
         )}
@@ -532,7 +543,7 @@ function Step1Child({ form, setForm, setField, errors }) {
 
       {/* O ANIVERSÁRIO SAIU DAQUI (02/10/2026). O motorista quase nunca sabe
         * a data — o campo ficava vazio ou com um chute. Quem preenche agora é
-        * o responsável, na ficha do filho, junto de turma e sala. */}
+        * o responsável, na ficha do filho, junto de turma e professora. */}
 
       {/* O seletor de período saiu daqui. Ele era um botão a mais pedindo
         * ao motorista que traduzisse "entra 7h" pra "manhã" — tradução que o
@@ -572,7 +583,7 @@ function Step1Child({ form, setForm, setField, errors }) {
         </span>
       </label>
       {errors.autorizacaoDeclarada && (
-        <p className="-mt-1 text-xs font-semibold text-danger">
+        <p className="-mt-1 text-xs font-semibold text-dangerText">
           {errors.autorizacaoDeclarada}
         </p>
       )}
@@ -841,7 +852,7 @@ function Step2Home({ form, setForm, errors }) {
               required={!form.semNumero}
             />
             <Input
-              label="Complemento"
+              label="Complemento (opcional)"
               placeholder="apto 42"
               value={form.complemento}
               onChange={setParteDoEndereco('complemento')}
@@ -935,7 +946,7 @@ function Step2Home({ form, setForm, errors }) {
  * cinco digitações — e um "E.M." no lugar de "EM" partia a turma em duas no
  * aviso de "não vai ter aula".
  */
-function Step3School({ form, setForm, setField, errors }) {
+function Step3School({ form, setForm, errors }) {
   const { escolas, loading } = useEscolas();
   // A escola nova nasce num popup por cima do cadastro — ver NovaEscolaSheet.
   // Antes estes botões navegavam para a tela de escolas, e o formulário da
@@ -955,6 +966,9 @@ function Step3School({ form, setForm, setField, errors }) {
       schoolAddress: e.endereco || '',
       schoolLat: e.lat ?? '',
       schoolLng: e.lng ?? '',
+      // A cópia do telefone segue o desenho do endereço: a criança carrega o
+      // que a ficha e a rota leem (a família não lê `schools`).
+      schoolPhone: e.telefone || '',
     }));
 
   return (
@@ -1027,7 +1041,7 @@ function Step3School({ form, setForm, setField, errors }) {
             <button
               type="button"
               onClick={() => setNovaEscola(true)}
-              className="tap text-xs font-semibold text-primary px-1 py-1"
+              className="tap px-1 py-3 text-sm font-semibold text-primary"
             >
               + Cadastrar outra escola
             </button>
@@ -1041,6 +1055,24 @@ function Step3School({ form, setForm, setField, errors }) {
         onCriada={escolher}
       />
 
+      {/* TURMA E PROFESSORA, OS DOIS OPCIONAIS (02/10/2026, pedido do dono).
+        * É o que ele precisa para chamar a criança no portão ("a do 3º B, da
+        * tia Cláudia"). A SALA saiu do cadastro: muda no meio do ano e ele não
+        * entra na sala. A família corrige os dois na ficha do filho. */}
+      <div className="grid grid-cols-1 gap-3">
+        <Input
+          label="Turma (opcional)"
+          placeholder="Ex.: 3º ano B"
+          value={form.turma}
+          onChange={(e) => setForm((p) => ({ ...p, turma: e.target.value }))}
+        />
+        <Input
+          label="Nome da professora (opcional)"
+          value={form.professora}
+          onChange={(e) => setForm((p) => ({ ...p, professora: e.target.value }))}
+        />
+      </div>
+
       {/* Os dois horários que o pai vai ler na tela dele */}
       <div className="pt-2 space-y-4">
         <div className="bg-primarySoft border border-primaryBorder rounded-2xl p-3 text-xs text-primary leading-relaxed">
@@ -1052,28 +1084,35 @@ function Step3School({ form, setForm, setField, errors }) {
 
         <Input
           label="Que horas você pega em casa?"
-          type="time"
+          // DIGITADA, não no relógio do Android: "0640" vira "06:40".
+          type="text"
+          inputMode="numeric"
+          placeholder="06:40"
+          maxLength={5}
           icon={Clock}
           value={form.horaPega}
-          onChange={setField('horaPega')}
+          onChange={(e) => setForm((p) => ({ ...p, horaPega: mascaraHora(e.target.value) }))}
           error={errors.horaPega}
           hint={
-            form.horaPega
-              ? `O pai vê: “entra na perua às ${horaCurta(form.horaPega)}”.`
+            normalizaHora(form.horaPega)
+              ? `A família vê: “entra na perua às ${horaCurta(normalizaHora(form.horaPega))}”.`
               : 'Pode preencher depois, mas até lá a criança fica com horário presumido.'
           }
         />
 
         <Input
           label="Que horas você entrega em casa?"
-          type="time"
+          type="text"
+          inputMode="numeric"
+          placeholder="12:50"
+          maxLength={5}
           icon={Clock}
           value={form.horaEntrega}
-          onChange={setField('horaEntrega')}
+          onChange={(e) => setForm((p) => ({ ...p, horaEntrega: mascaraHora(e.target.value) }))}
           error={errors.horaEntrega}
           hint={
-            form.horaEntrega
-              ? `O pai vê: “chega em casa às ${horaCurta(form.horaEntrega)}”.`
+            normalizaHora(form.horaEntrega)
+              ? `A família vê: “chega em casa às ${horaCurta(normalizaHora(form.horaEntrega))}”.`
               : undefined
           }
         />
@@ -1091,7 +1130,7 @@ function Step3School({ form, setForm, setField, errors }) {
 
 /* ─────────────── Passo 4: Responsável + Financeiro ─────────────── */
 
-function Step4Parent({ form, setField, setPhone, errors }) {
+function Step4Parent({ form, setForm, setField, setPhone, errors }) {
   const [showSecondParent, setShowSecondParent] = useState(false);
 
   return (
@@ -1112,17 +1151,12 @@ function Step4Parent({ form, setField, setPhone, errors }) {
           error={errors.parentName}
           required
         />
-        <Input
-          type="email"
-          inputMode="email"
-          label="Email"
-          placeholder="email@exemplo.com"
-          icon={Mail}
-          value={form.parentEmail}
-          onChange={setField('parentEmail')}
-          error={errors.parentEmail}
-          required
-        />
+        {/* ⚠️ O E-MAIL DO RESPONSÁVEL SAIU DAQUI (02/10/2026, pedido do dono).
+          * O motorista quase nunca sabe, e o campo à vista (marcado como
+          * obrigatório) o fazia achar que precisava descobrir o e-mail de
+          * toda família. Quem informa é a própria família, ao entrar pelo
+          * convite: o `redeemInvite` grava `linkedEmail` com o e-mail da
+          * conta dela, e o contrato e a ficha leem esse. */}
         <Input
           label="Telefone"
           placeholder="(11) 99999-9999"
@@ -1204,7 +1238,10 @@ function Step4Parent({ form, setField, setPhone, errors }) {
           }
         />
         <Input
-          type="number"
+          // TEXTO SÓ COM NÚMEROS, não `type="number"`: esse muda o valor
+          // sozinho com a roda do mouse (ou a rolagem) e aceita "e" e negativo
+          // — no teste, o 10 digitado virou 12 no contrato.
+          type="text"
           inputMode="numeric"
           min="1"
           max="28"
@@ -1212,10 +1249,26 @@ function Step4Parent({ form, setField, setPhone, errors }) {
           placeholder="10"
           icon={Calendar}
           value={form.dueDay}
-          onChange={setField('dueDay')}
-          hint="Em que dia do mês o pai paga (1 a 28)."
+          maxLength={2}
+          onChange={(e) => setForm((p) => ({ ...p, dueDay: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
+          hint="Em que dia do mês a família paga (1 a 28)."
           error={errors.dueDay}
           required
+        />
+      </Card>
+
+      {/* A VIGÊNCIA É DELE (02/10/2026). O contrato dizia sempre 01/01 a
+        * 31/12 com 12 parcelas — a família que entrava em outubro assinava
+        * doze parcelas de um ano com três meses. */}
+      <Card className="space-y-3">
+        <h3 className="text-sm font-bold text-text">Prazo do contrato</h3>
+        <CampoVigencia
+          inicio={form.vigenciaInicio}
+          fim={form.vigenciaFim}
+          erro={errors.vigencia}
+          onChange={({ inicio, fim }) =>
+            setForm((p) => ({ ...p, vigenciaInicio: inicio, vigenciaFim: fim }))
+          }
         />
       </Card>
 
@@ -1298,37 +1351,6 @@ function SelectorButton({ label, icon: Icon, active, onClick }) {
  * um código pra ditar; agora ele sai com um LINK pronto pra mandar no
  * WhatsApp. O código continua visível pra quando precisar ditar por telefone.
  */
-/**
- * O que falta no cadastro DELE para o contrato poder existir.
- *
- * Some sozinho quando não falta nada — aviso permanente vira moldura, e
- * moldura não é lida. E o texto diz a consequência, não a tarefa: "a família
- * não tem o que assinar" move mais que "complete seu perfil".
- */
-function AvisoDeCadastro() {
-  const { profile } = useAuth();
-  const faltando = dadosDaContratadaFaltando(profile);
-  if (faltando.length === 0) return null;
-
-  return (
-    <div className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
-      <p className="text-sm font-bold text-warningText">
-        Falta o seu cadastro para o contrato existir
-      </p>
-      <p className="mt-1.5 text-xs leading-relaxed text-warningText/85">
-        O contrato precisa dizer quem é a parte contratada — você. Sem{' '}
-        <strong>{faltando.join(', ')}</strong>, ele não pode ser emitido, e a
-        família não tem o que assinar.
-      </p>
-      <Link
-        to="/tio/profile"
-        className="tap mt-3 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-bold text-white"
-      >
-        Completar agora
-      </Link>
-    </div>
-  );
-}
 
 /**
  * CRIANÇA CADASTRADA — a comemoração e o convite (02/10/2026).
@@ -1385,7 +1407,7 @@ function InviteCodeSuccess({
           </div>
         </div>
         <h3 className="mt-6 text-2xl font-extrabold text-text">
-          {primeiro} está na turma
+          {primeiro} entrou na sua turma
         </h3>
         <p className="mt-1.5 text-sm text-textMuted">
           {jaEntrou
@@ -1394,18 +1416,19 @@ function InviteCodeSuccess({
         </p>
       </div>
 
-      {/* ⚠️ O CONTRATO NÃO EXISTE SEM A PARTE CONTRATADA, e este é o instante
-        * de dizer isso — barrar antes de salvar perderia o que ele digitou. */}
-      <AvisoDeCadastro />
-
       <div className="space-y-2">
         {!jaEntrou && (
         <InviteShare
           code={code}
+          childId={childId}
           childName={childName}
+          gender={gender}
           parentPhone={parentPhone}
           recolhido
-          rotulo={`Mandar convite para o responsável de ${primeiro}`}
+          // O NOME DE QUEM RECEBE, e não "o responsável de Pedro": é mais curto
+          // (cabia em duas linhas e cortava o ícone) e é a pessoa que ele vai
+          // ver na conversa do WhatsApp.
+          rotulo={responsavel ? `Mandar convite para ${responsavel}` : `Mandar convite da família de ${primeiro}`}
         >
           {/* O contrato antigo: memória do que veio antes, nunca o contrato
             * que vale. Fica em "Mais opções" — com o mesmo peso do convite,
@@ -1414,6 +1437,11 @@ function InviteCodeSuccess({
         </InviteShare>
         )}
         {jaEntrou && <AnexarContratoAnterior childId={childId} />}
+
+        {/* O aviso amarelo do contrato SAIU daqui (02/10/2026): os dados do
+          * contrato viraram obrigatórios para mandar o convite, e quem os pede
+          * é o próprio `InviteShare` — no lugar do botão, no instante em que
+          * eles fazem falta. Ver `DadosDoContratoForm`. */}
 
         <Button variant="secondary" icon={UserPlus} onClick={onOutra}>
           Cadastrar outra criança

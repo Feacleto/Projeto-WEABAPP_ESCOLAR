@@ -78,7 +78,7 @@ export default function BuscaDeRua({ onEscolher }) {
             setEscolhida(null);
             setRua('');
           }}
-          className="tap shrink-0 text-xs font-semibold text-primary"
+          className="tap -my-2 shrink-0 px-2 py-3 text-sm font-semibold text-primary"
         >
           Trocar
         </button>
@@ -131,7 +131,7 @@ export default function BuscaDeRua({ onEscolher }) {
           <button
             type="button"
             onClick={() => setTrocando(true)}
-            className="tap font-semibold text-primary"
+            className="tap -my-3 px-2 py-3 font-semibold text-primary"
           >
             trocar
           </button>

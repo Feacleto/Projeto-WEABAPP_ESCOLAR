@@ -113,6 +113,8 @@ export async function addChild(data) {
     schoolId: data.schoolId || null,
     school: data.school?.trim() || '',
     schoolAddress: data.schoolAddress?.trim() || '',
+    // Cópia do telefone da escola (03/10/2026) — ver `definirTelefoneDaEscola`.
+    schoolPhone: String(data.schoolPhone || '').replace(/\D/g, ''),
     schoolLat: toCoord(data.schoolLat),
     schoolLng: toCoord(data.schoolLng),
     // O COMBINADO COM O RESPONSÁVEL — a hora em que a perua encosta na porta
@@ -122,11 +124,12 @@ export async function addChild(data) {
     // criança opera com horário PRESUMIDO pelo período — e a tela cobra.
     horaPega: data.horaPega?.trim() || '',
     horaEntrega: data.horaEntrega?.trim() || '',
-    // Preenchidos pelo RESPONSÁVEL na ficha da criança: o motorista não sabe
-    // a turma nem a sala, e perguntar a ele seria perguntar pra quem não tem
-    // a resposta.
-    turma: '',
-    sala: '',
+    // TURMA E PROFESSORA: o motorista PODE dizer no cadastro, os dois
+    // opcionais (02/10/2026, pedido do dono) — é como ele chama a criança no
+    // portão. A família corrige na ficha. A SALA saiu: muda no meio do ano e
+    // ele não entra na sala.
+    turma: data.turma?.trim() || '',
+    professora: data.professora?.trim() || '',
     period: data.period || 'morning',
     pickupPeriod: data.pickupPeriod || data.period || 'morning',
     // A VOLTA SEGUE A IDA, e o default 'afternoon' era uma viagem inventada.
@@ -144,6 +147,11 @@ export async function addChild(data) {
       data.dropoffPeriod || data.pickupPeriod || data.period || 'morning',
     monthlyFee: Number(data.monthlyFee) || 0,
     dueDay: clampDueDay(data.dueDay),
+    // O prazo do contrato com a família, escolhido pelo motorista no cadastro
+    // ('AAAA-MM-DD'). Ausente, o contrato usa a vigência padrão.
+    ...(data.vigenciaInicio && data.vigenciaFim
+      ? { vigenciaInicio: data.vigenciaInicio, vigenciaFim: data.vigenciaFim }
+      : {}),
     notes: data.notes?.trim() || '',
     inviteCode,
     inviteStatus: 'pending',
