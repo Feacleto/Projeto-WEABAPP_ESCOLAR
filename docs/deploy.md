@@ -172,6 +172,13 @@ nunca DOM.
 
 ## O deploy, na ordem
 
+⚠️ **O LOGIN DE PRODUÇÃO CAIU EM 03/10/2026 POR UM ARQUIVO LOCAL.** O
+`.env.local` (config do EMULADOR, `demo-chave-de-teste`) entra também no
+`vite build`, por cima do `.env` — o site foi ao ar apontando para um Firebase
+de mentira e ninguém conseguia entrar. A config do emulador mora agora em
+`.env.development.local`, que só o `npm run dev` lê. **Antes de publicar o
+hosting, confira:** `grep -c demo- dist/assets/index-*.js` tem que dar 0.
+
 ⚠️ **RODADA DE SEGURANÇA (03/10/2026): FUNCTIONS ANTES DAS RULES, E O APP
 LOGO DEPOIS.** As rules novas proíbem o cliente de gravar o contador de
 crianças e a data do teste — o app ANTIGO grava os dois no cadastro da

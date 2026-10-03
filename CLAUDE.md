@@ -84,6 +84,10 @@ morrer. Ele também exige que todo `scripts/testar-*.mjs` tenha porta no
 
 `.env` a partir de [.env.example](.env.example). `VITE_USE_EMULATORS=false`
 por padrão — **rodar local sem isso grava no Firebase de produção**.
+⚠️ **A config do EMULADOR mora em `.env.development.local`, NUNCA em
+`.env.local`**: o Vite lê o `.env.local` também no `vite build`, e foi assim
+que o site foi ao ar em 03/10/2026 com `demo-chave-de-teste` e o login de
+produção caiu inteiro. Antes de publicar: `grep -c demo- dist/assets/index-*.js` = 0.
 
 Deploy: [docs/deploy.md](docs/deploy.md) (a ordem importa, há dois pré-requisitos de
 console, e desde 05/09/2026 são **dois sites** — `hosting:app` e `hosting:landing`). Acessos de teste por papel: [docs/testes.md](docs/testes.md).
