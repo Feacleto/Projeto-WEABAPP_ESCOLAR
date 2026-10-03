@@ -116,7 +116,7 @@ sistema. ⚠️ **Dentro do app não existe tela escura** (decisão do dono,
 03/10/2026): as telas de entrada usam o cabeçalho VERDE da porta, a folha
 (`Sheet`) é branca com alça, e o escuro ficou só no site e no balão do tour.
 ⚠️ **Nada se mexe sozinho, só o "ao vivo"** — as exceções têm nome no
-docs/design-system.md (o fundo do login, o anel do tour).
+docs/design-system.md (o anel do tour, o pulso da buzina tocando).
 
 ⚠️ **OS TILES DO MAPA VÊM DO MAPTILER desde 10/09/2026, e o motivo não é
 custo** — [config/mapa.js](src/config/mapa.js). Eles vinham do servidor do

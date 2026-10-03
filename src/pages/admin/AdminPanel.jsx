@@ -328,7 +328,7 @@ function InteressePorCartaoResumo() {
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <h3 className="font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+      <h3 className="rotulo">
         Querem receber por cartão
       </h3>
       <p className="mt-1 text-sm font-extrabold text-text">
@@ -663,7 +663,7 @@ function PeriodoDeAvaliacao() {
       </div>
 
       <label className="mt-3 block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-textMuted">
+        <span className="rotulo">
           Fecha sozinho em
         </span>
         <input
@@ -824,7 +824,7 @@ function ChaveDaCobranca() {
         * "Habilitar a cobrança" liga só a base, e nenhum desconto acorda junto. */}
       {!carregando && (
         <div className="space-y-2 border-t border-border pt-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-textMuted">
+          <p className="rotulo">
             Módulos de cobrança
           </p>
           {MODULOS_DE_COBRANCA.map((m) => (
@@ -1292,7 +1292,7 @@ function Pesquisa({ s }) {
               <div className="mb-1.5 flex items-center gap-2">
                 <Stars value={c.nota} size={12} />
                 <span
-                  className={`rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${
+                  className={`rounded-md px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${
                     c.papel === 'admin'
                       ? 'bg-primarySoft text-primary'
                       : 'bg-infoSoft text-infoText'
@@ -1301,7 +1301,7 @@ function Pesquisa({ s }) {
                   {c.papel === 'admin' ? 'motorista' : 'responsável'}
                 </span>
                 {c.publico && (
-                  <span className="rounded bg-warningSoft px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest text-warningText">
+                  <span className="rounded-md bg-warningSoft px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest text-warningText">
                     na home
                   </span>
                 )}
@@ -1350,7 +1350,7 @@ function Ranking({ itens, vazio }) {
 
 function Titulo({ icon: Icon, children }) {
   return (
-    <h2 className="mb-2 inline-flex items-center gap-1.5 px-1 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+    <h2 className="rotulo mb-2 inline-flex items-center gap-1.5 px-1">
       <Icon size={12} />
       {children}
     </h2>

@@ -96,11 +96,11 @@ function Trilho({ nos }) {
         if (no.estado === 'agora') {
           forma = `${base} h-6 w-6 bg-perua text-white ring-4 ring-perua/30 ${escola ? 'rotate-45 rounded-md' : 'rounded-full'}`;
         } else if (no.estado === 'feito') {
-          forma = `${base} h-3.5 w-3.5 bg-accent ${escola ? 'rotate-45 rounded-[3px]' : 'rounded-full'}`;
+          forma = `${base} h-3.5 w-3.5 bg-accent ${escola ? 'rotate-45 rounded' : 'rounded-full'}`;
         } else if (no.estado === 'off') {
           forma = `${base} h-3.5 w-3.5 rounded-full border-2 border-dashed border-white/40`;
         } else {
-          forma = `${base} h-3.5 w-3.5 ${escola ? 'rotate-45 rounded-[3px] bg-escolaBorder' : 'rounded-full bg-white/25'}`;
+          forma = `${base} h-3.5 w-3.5 ${escola ? 'rotate-45 rounded bg-escolaBorder' : 'rounded-full bg-white/25'}`;
         }
         return (
           <span key={no.chave} className="contents">
@@ -113,7 +113,7 @@ function Trilho({ nos }) {
             )}
             <span className={forma}>
               {no.estado === 'agora' && (
-                <Bus size={13} strokeWidth={2.4} className={escola ? '-rotate-45' : ''} />
+                <Bus size={13} className={escola ? '-rotate-45' : ''} />
               )}
             </span>
           </span>

@@ -272,7 +272,7 @@ export default function Familia() {
 
         {/* ── 1. RECONHECIMENTO ────────────────────────────────────────── */}
         <section className="mt-11">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-textMuted">
+          <p className="rotulo">
             área da família
           </p>
           <h1 className="mt-3 text-[2rem] font-extrabold leading-[1.08] tracking-tight text-balance">
@@ -370,7 +370,7 @@ export default function Familia() {
 
         {/* ── 4. O QUE TEM DENTRO — tranquilidade, não recurso ──────────── */}
         <section className="mt-9">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">
+          <h2 className="rotulo">
             o que você encontra
           </h2>
           <ul className="mt-4 space-y-3">

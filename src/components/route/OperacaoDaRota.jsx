@@ -767,7 +767,7 @@ export default function OperacaoDaRota({
         onClick={() => avancarUma(foco)}
         className="tap flex h-[60px] w-full items-center justify-center gap-2 rounded-xl bg-primary text-[17px] font-extrabold tracking-[0.04em] text-white shadow-focus disabled:opacity-60"
       >
-        <Check size={22} strokeWidth={2.6} />
+        <Check size={22} />
         {foco.action.shortLabel}
       </button>
 
@@ -1092,7 +1092,7 @@ export default function OperacaoDaRota({
                     : 'bg-card text-escola'
               }`}
             >
-              {f && <Check size={14} strokeWidth={3} className="text-accentText" />}
+              {f && <Check size={14} className="text-accentText" />}
               {String(q.child.name || '').split(' ')[0]}
             </button>
           );
@@ -1245,7 +1245,7 @@ export default function OperacaoDaRota({
         {!loading && blocoAtual && !foco && (
           <div className="rota-entra space-y-2 rounded-2xl bg-card p-5 text-center shadow-rest">
             <span className="rota-estala mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent text-onAccent">
-              <Check size={30} strokeWidth={2.6} />
+              <Check size={30} />
             </span>
             <p className="font-display text-lg font-bold text-text">Viagem concluída</p>
             {espera ? (

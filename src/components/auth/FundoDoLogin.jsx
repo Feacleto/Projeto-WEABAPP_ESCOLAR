@@ -73,14 +73,12 @@ const ICONES = {
   tarde: Sunset,
 };
 
-/** O quadradinho de ícone do cabeçalho, com halo opcional. */
-function Selo({ icone, halo }) {
+/** O quadradinho de ícone do cabeçalho. (O halo pulsante saiu: era enfeite contínuo.) */
+function Selo({ icone }) {
   const Icone = ICONES[icone] || Home;
   return (
     <span
-      className={`relative grid h-[30px] w-[30px] flex-none place-items-center rounded-lg bg-primaryChip text-primaryDark ${
-        halo ? 'fundo-halo' : ''
-      }`}
+      className="relative grid h-[30px] w-[30px] flex-none place-items-center rounded-lg bg-primaryChip text-primaryDark"
     >
       <Icone size={15} />
     </span>
@@ -115,7 +113,7 @@ function Bloco({ dados }) {
     case 'cabecalho':
       return (
         <div className="flex items-start gap-2.5">
-          <Selo icone={dados.icone} halo={dados.halo} />
+          <Selo icone={dados.icone} />
           <span className="min-w-0">
             <span className="block text-[12.5px] font-bold leading-tight text-text">
               {dados.titulo}
@@ -190,7 +188,7 @@ function Bloco({ dados }) {
                 key={it.rotulo}
                 className={`relative inline-flex h-7 items-center justify-center gap-1 rounded-lg text-[10px] font-bold ${
                   it.halo
-                    ? 'fundo-halo border border-primaryBorder bg-primarySoft text-primaryDark'
+                    ? 'border border-primaryBorder bg-primarySoft text-primaryDark'
                     : 'border border-border bg-surface text-textMuted'
                 }`}
               >
@@ -409,7 +407,6 @@ function Bloco({ dados }) {
   }
 }
 
-const DURACAO = { 1: '', 2: 'fundo-flutua-b', 3: 'fundo-flutua-c' };
 
 /**
  * ⚠️ O BREAKPOINT É POR TELA, E AS DUAS CLASSES FICAM ESCRITAS AQUI.
@@ -460,14 +457,13 @@ function Cartao({ cartao, ativo, largura }) {
   const direita = `calc(50% + ${largura / 2 + slot.vao}px)`;
   return (
     <div
-      className={`fundo-flutua ${DURACAO[cartao.slot]} absolute w-[244px] rounded-2xl bg-card p-4 shadow-fundo transition-[opacity,transform] duration-festa ease-freio ${
+      className={`absolute w-[244px] rounded-2xl bg-card p-4 shadow-fundo transition-[opacity,transform] duration-festa ease-freio ${
         ativo ? 'opacity-100' : 'translate-y-3.5 opacity-0'
       }`}
       style={{
         right: direita,
         top: slot.top,
         bottom: slot.bottom,
-        animationDelay: slot.atraso,
       }}
     >
       <div className="flex flex-col gap-2.5">
@@ -543,8 +539,8 @@ export function TexturaDoFundo() {
  * ── SEM ANIMAÇÃO CONTÍNUA, DE PROPÓSITO
  * Nem flutuação nem halo. É por aqui que entra a maioria, em Android de
  * entrada, e movimento num fundo é a primeira coisa a cortar quando o
- * aparelho é fraco. `fundo-flutua` e `fundo-halo` continuam existindo só no
- * caminho do monitor. O que existe aqui é a ENTRADA de cada cartão, uma vez,
+ * aparelho é fraco. Desde 03/10/2026 o monitor também não tem: a flutuação e o
+ * halo saíram com o design system. O que existe aqui é a ENTRADA de cada cartão, uma vez,
  * quando o teatro do login chega nela (`aparecidos`).
  *
  * ── ⚠️ A MOLDURA "EXEMPLO" (`moldura`)

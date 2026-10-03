@@ -384,7 +384,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
                 <Wallet size={20} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+                <p className="rotulo">
                   mensalidade em aberto
                 </p>
                 <p className="text-2xl font-extrabold text-text leading-tight mt-0.5">
@@ -406,7 +406,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
         ) : (
           preview.monthlyFee > 0 && (
             <div className="bg-card rounded-2xl p-4 shadow-rest">
-              <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+              <p className="rotulo">
                 mensalidade combinada
               </p>
               <p className="text-2xl font-extrabold text-text leading-tight mt-0.5">
@@ -448,7 +448,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
 
         {/* O que mais tem lá dentro — expectativa honesta */}
         <div className="bg-sunken border border-border rounded-2xl p-4 space-y-2.5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+          <p className="rotulo">
             também no app
           </p>
           <Feature

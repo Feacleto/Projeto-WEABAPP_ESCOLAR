@@ -86,9 +86,9 @@ export function ItemDaLinha({
         <span className={trilho} />
         <b className={`relative z-[1] flex items-center justify-center ${no}`}>
           {feito && (
-            <Check size={12} strokeWidth={3} className={escola ? '-rotate-45' : ''} />
+            <Check size={12} className={escola ? '-rotate-45' : ''} />
           )}
-          {agora && <IconeAgora size={14} strokeWidth={2.4} className={escola ? '-rotate-45' : ''} />}
+          {agora && <IconeAgora size={14} className={escola ? '-rotate-45' : ''} />}
         </b>
       </span>
       <div className="min-w-0 pb-2.5 pt-1.5">{children}</div>

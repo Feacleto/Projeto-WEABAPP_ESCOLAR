@@ -265,7 +265,7 @@ export default function AuthAction() {
     return (
       <div className="min-h-screen flex flex-col px-6 py-10">
         <div className="flex-1 flex flex-col justify-center text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-danger/10 mb-4 mx-auto">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-dangerChip mb-4 mx-auto">
             <AlertCircle size={32} className="text-danger" />
           </div>
           <h1 className="text-2xl font-bold text-text">Link inválido</h1>

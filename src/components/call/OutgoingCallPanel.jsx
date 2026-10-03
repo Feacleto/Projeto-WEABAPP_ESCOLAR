@@ -65,7 +65,7 @@ function CallPanelCard({ call }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold uppercase tracking-widest text-white/90">
+        <p className="rotulo text-menta">
           {isAcknowledged ? 'A família respondeu' : 'Aguardando resposta'}
         </p>
         <p className="text-sm font-bold leading-tight truncate">

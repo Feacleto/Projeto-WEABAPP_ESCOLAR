@@ -273,14 +273,14 @@ export const INTRO = {
  * O desalinho do meio continua sendo o ponto: três cartões alinhados leem
  * como coluna de conteúdo, e a pessoa tenta ler; desalinhados leem como fundo.
  *
- * Os atrasos da flutuação também são diferentes de propósito: com o mesmo
- * atraso os três respiram juntos, e três coisas subindo em sincronia é
- * exatamente o que denuncia a animação.
+ * Não há mais atraso por cartão: ele existia para os três não FLUTUAREM em
+ * sincronia, e a flutuação saiu em 03/10/2026 (design system — nada se mexe
+ * sozinho além do "ao vivo").
  */
 export const SLOTS = {
-  1: { vao: 24, top: 82, atraso: '0s' },
-  2: { vao: 8, top: 330, atraso: '1.4s' },
-  3: { vao: 24, bottom: 104, atraso: '2.6s' },
+  1: { vao: 24, top: 82 },
+  2: { vao: 8, top: 330 },
+  3: { vao: 24, bottom: 104 },
 };
 
 /**

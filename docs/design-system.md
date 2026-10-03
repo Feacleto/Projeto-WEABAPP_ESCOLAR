@@ -135,11 +135,16 @@ Quatro durações (`duration-toque` 120, `-estado` 200, `-entrada` 300, `-festa`
 
 - o anel do "ao vivo" (mapa, rota ativa) — e ele PARA quando a posição envelhece;
 - o anel do tour guiado, enquanto o balão aponta para o alvo;
-- os cartões do fundo do login, que flutuam devagar (`testar:fundo` trava a
-  conta e o "reduzir movimento");
 - a ilustração das boas-vindas e do cadastro: a perua anda UMA vez e chega;
 - o selo da data festiva ao lado da saudação: pulsa DUAS vezes e para;
-- o confete do aniversário, que só existe enquanto o modal está aberto.
+- o confete do aniversário, que só existe enquanto o modal está aberto;
+- o pulso da buzina tocando, que é um chamado ao vivo de verdade.
+
+O fundo do login DEIXOU de ser exceção em 03/10/2026: os cartões não
+flutuam e os ícones não pulsam mais (`testar:fundo` trava a ausência). Os
+ícones usam sempre o traço 2 do lucide, inclusive os pequenos da linha do
+tempo da rota — a única exceção é a aba ativa do rodapé, que engrossa o traço
+ao ser escolhida (comentada no BottomNav).
 
 ## Rota e financeiro
 

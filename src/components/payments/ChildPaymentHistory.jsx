@@ -77,7 +77,7 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
   return (
     <Card className="space-y-3">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
           <Wallet size={19} />
         </div>
         <div className="flex-1 min-w-0">

@@ -63,7 +63,7 @@ export default function StackedBar({ segments = [] }) {
                 aria-hidden
                 className={`flex h-6 w-6 items-center justify-center rounded-md ${s.marca}`}
               >
-                {Icon && <Icon size={14} strokeWidth={2.6} />}
+                {Icon && <Icon size={14} />}
               </span>
               <span className="min-w-0 truncate text-text">
                 {s.rotulo}

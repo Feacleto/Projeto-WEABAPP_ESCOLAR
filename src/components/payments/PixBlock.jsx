@@ -86,7 +86,7 @@ export default function PixBlock({ admin, amount, txid }) {
       <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+            <p className="rotulo">
               chave pix
             </p>
             <p className="text-sm text-text break-all">

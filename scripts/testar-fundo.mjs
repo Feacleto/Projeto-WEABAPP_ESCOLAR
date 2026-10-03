@@ -307,26 +307,16 @@ for (const [nome, fonte] of [['login', fonteLogin], ['first-access', fonteFirst]
   checar(`${nome} monta a tira`, true, fonte.includes('<TiraDoLogin'));
 }
 
-bloco('5. A animacao e tempero, nao estrutura');
+bloco('5. O fundo nao se mexe sozinho (design system, 03/10/2026)');
 
+// A flutuacao e o halo sairam: a regra do sistema e que nada se mexe sozinho
+// alem do "ao vivo". Os cartoes ENTRAM uma vez e param.
 const fonteCss = ler('src/index.css');
-checar('a flutuacao existe', true, fonteCss.includes('@keyframes fundo-flutua'));
-checar('o halo existe', true, fonteCss.includes('@keyframes fundo-halo'));
-checar('e as duas param com prefers-reduced-motion', true,
-  /prefers-reduced-motion[\s\S]*fundo-flutua[\s\S]*fundo-halo/.test(fonteCss));
-
-// Os tres cartoes nao podem respirar juntos: mesmo atraso e o que denuncia
-// que aquilo e enfeite.
-const atrasos = Object.values(SLOTS).map((s) => s.atraso);
-checar('os tres atrasos sao diferentes', 3, new Set(atrasos).size);
-
-// O ciclo longo e deliberado: movimento rapido num fundo rouba o olho de quem
-// esta digitando uma senha, que e a unica coisa que a pessoa veio fazer aqui.
-const duracoes = [...fonteCss.matchAll(/animation-duration:\s*([\d.]+)s/g)].map((m) => Number(m[1]));
-const ciclo = Number((fonteCss.match(/fundo-flutua\s+([\d.]+)s/) || [])[1]);
-const todas = [ciclo, ...duracoes].filter(Boolean);
-checar('ha ciclos declarados', true, todas.length >= 3);
-checar('e todos entre 11 e 14 segundos', [], todas.filter((d) => d < 11 || d > 14));
+const fonteDoFundo = ler('src/components/auth/FundoDoLogin.jsx');
+const animaSozinho = (t) => /fundo-flutua|fundo-halo|animation[^;]*infinite/.test(t);
+checar('o CSS nao tem mais flutuacao nem halo', false, /@keyframes fundo-(flutua|halo)/.test(fonteCss));
+checar('o fundo nao usa animacao continua', false, animaSozinho(fonteDoFundo));
+checar('o detector pega a flutuacao (sonda positiva)', true, animaSozinho('className="fundo-flutua"'));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

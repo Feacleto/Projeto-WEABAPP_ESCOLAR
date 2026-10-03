@@ -36,7 +36,7 @@ export function avisoNaTela(aviso, { papel, abrir }) {
           t.visible ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <span className="mt-0.5 w-9 h-9 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+        <span className="mt-0.5 w-9 h-9 shrink-0 rounded-xl bg-primaryChip text-primary flex items-center justify-center">
           <Bell size={18} />
         </span>
         <span className="min-w-0">
