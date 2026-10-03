@@ -2,6 +2,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { cobrancaLigada } = require('./cobrancaLigada');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
+const { idValido, mesValido } = require('./reguaDosIds');
 const { exigirDono, ehMotorista } = require('./papeis');
 const {
   podeCobrar,
@@ -55,6 +56,7 @@ const REGION = 'southamerica-east1';
 function makeCriarCobrancaDaFatura(db, apiKeySecret, ambienteParam) {
   return onCall(
     {
+      ...LIMITES.APP_CHECK,
       region: REGION,
       secrets: [apiKeySecret],
       maxInstances: LIMITES.AUTENTICADO,
@@ -70,7 +72,9 @@ function makeCriarCobrancaDaFatura(db, apiKeySecret, ambienteParam) {
 
       const tioUid = String(request.data?.tioUid || '').trim();
       const mes = String(request.data?.mes || '').trim();
-      if (!tioUid || !/^[0-9]{4}-[0-9]{2}$/.test(mes)) {
+      // Os dois viram caminho (`faturasParceiro/{uid}_{mes}`, `users/{uid}`):
+      // formato conferido antes, porque `db.doc` aceita barra (reguaDosIds.js).
+      if (!idValido(tioUid) || !mesValido(mes)) {
         throw new HttpsError('invalid-argument', 'Informe o motorista e o mês (AAAA-MM).');
       }
 

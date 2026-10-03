@@ -22,19 +22,31 @@
  *
  * Quem desativa a criança (active:false, limpa vínculo e aceite) continua
  * sendo o cliente, depois desta chamada.
+ *
+ * ⚠️ ESTA FUNÇÃO JÁ APAGOU QUALQUER CONTA (corrigido em 03/10/2026). O
+ * `childId` vinha de `request.data` sem conferência, e `db.doc` aceita barra:
+ * `"<minhaCrianca>/rides/x"` endereçava uma viagem onde o próprio motorista
+ * tinha plantado `{ adminUid: ele, parentUid: vítima }` — e a conta da vítima
+ * (o dono incluído) era apagada. Hoje são duas travas, e cada uma sozinha já
+ * fecharia o caminho:
+ *   - o id passa por `idValido` antes de virar caminho;
+ *   - o alvo precisa ser RESPONSÁVEL e ter ESTA criança na lista dele
+ *     (`podeDesvincular`, em reguaDoDesvinculo.js).
  */
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
+const { idValido } = require('./reguaDosIds');
+const { podeDesvincular } = require('./reguaDoDesvinculo');
 
 const REGION = 'southamerica-east1';
 
 function makeDesvincularResponsavel(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
     const childId = String(request.data?.childId || '');
-    if (!childId) throw new HttpsError('invalid-argument', 'Qual criança?');
+    if (!idValido(childId)) throw new HttpsError('invalid-argument', 'Qual criança?');
 
     const childRef = db.doc(`children/${childId}`);
     return db.runTransaction(async (tx) => {
@@ -47,13 +59,21 @@ function makeDesvincularResponsavel(db) {
       }
       const parentUid = crianca.parentUid || null;
       if (!parentUid) return { ok: true, conta: 'sem-responsavel' };
+      if (!idValido(parentUid)) {
+        throw new HttpsError('failed-precondition', 'O responsável desta criança não confere.');
+      }
 
       const userRef = db.doc(`users/${parentUid}`);
       const u = await tx.get(userRef);
       if (!u.exists) return { ok: true, conta: 'ja-nao-existe' };
       const familia = u.data();
+      // Nunca uma conta de motorista ou de dono, e nunca uma família que não
+      // tenha ESTA criança na lista que o servidor mantém.
+      if (!podeDesvincular(familia, childId)) {
+        throw new HttpsError('failed-precondition', 'O responsável desta criança não confere.');
+      }
 
-      const outros = (familia.childIds || []).filter((id) => id !== childId);
+      const outros = (familia.childIds || []).filter((id) => id !== childId && idValido(id));
       // Toda leitura antes de qualquer escrita (o Admin SDK exige, e
       // `testar:transacoes` confere).
       const outrosSnaps = await Promise.all(outros.map((id) => tx.get(db.doc(`children/${id}`))));

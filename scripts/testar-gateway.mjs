@@ -698,6 +698,51 @@ checar('o dono vê o motivo do último evento', true,
   fonteTaxaDono.includes('asaasUltimoEvento')
   && fonteTaxaDono.includes('asaasUltimoMotivo'));
 
+bloco('⚠️ O WEBHOOK NÃO CONFIA SÓ NO TOKEN (03/10/2026)');
+{
+  const evMod = await import('../functions/lib/eventoDeCobranca.js');
+  const { conferirComOGateway, chaveDoEvento, QUITADA: Q, ABERTA: A } = evMod.default || evMod;
+  const paga = { status: 'RECEIVED', externalReference: 'tio_2026-10' };
+  checar('quita quando a API diz paga e é desta fatura', true,
+    conferirComOGateway(Q, paga, 'tio_2026-10').ok);
+  checar('NÃO quita quando a API diz pendente (corpo forjado)', false,
+    conferirComOGateway(Q, { ...paga, status: 'PENDING' }, 'tio_2026-10').ok);
+  checar('NÃO quita cobrança paga de OUTRA fatura', false,
+    conferirComOGateway(Q, paga, 'outro_2026-10').ok);
+  checar('NÃO quita cobrança removida', false,
+    conferirComOGateway(Q, { ...paga, deleted: true }, 'tio_2026-10').ok);
+  checar('NÃO quita sem resposta da API', false, conferirComOGateway(Q, null, 'tio_2026-10').ok);
+  checar('reabre quando a API diz estornada', true,
+    conferirComOGateway(A, { status: 'REFUNDED' }, 'tio_2026-10').ok);
+  checar('reabre cobrança removida', true,
+    conferirComOGateway(A, { status: 'RECEIVED', deleted: true }, 'tio_2026-10').ok);
+  checar('NÃO reabre quando a API ainda diz paga (estorno forjado)', false,
+    conferirComOGateway(A, paga, 'tio_2026-10').ok);
+  checar('a chave do evento é o id dele', 'evt_abc123', chaveDoEvento({ id: 'evt_abc123' }));
+  checar('id com barra cai para evento + cobrança, sem barra', 'PAYMENT_RECEIVED_pay_1',
+    chaveDoEvento({ id: 'evt/../x', event: 'PAYMENT_RECEIVED', payment: { id: 'pay_1' } }));
+  checar('sem id nem cobrança, sem chave', null, chaveDoEvento({}));
+
+  const hook = readFileSync(new URL('../functions/lib/asaasWebhook.js', import.meta.url), 'utf8');
+  checar('o token é comparado com timingSafeEqual', true, hook.includes('crypto.timingSafeEqual('));
+  checar('e não com `!==` cru', false, /recebido !== esperado/.test(hook));
+  const iBusca = hook.indexOf('asaas.buscarCobranca(');
+  const iConf = hook.indexOf('conferirComOGateway(novo, cobranca, doc.id)');
+  const iLote = hook.indexOf('const lote = db.batch()');
+  const iAte = hook.indexOf("tioSnap.get('assinaturaAte')");
+  checar('a cobrança é rebuscada na API e conferida ANTES do lote e de ler a assinatura', true,
+    iBusca > 0 && iConf > iBusca && iLote > iConf && iAte > iConf);
+  checar('o evento processado entra no MESMO lote, com create()', true,
+    /lote\.create\(eventoRef/.test(hook) && hook.indexOf('lote.create(eventoRef') < hook.indexOf('await lote.commit()'));
+  checar('a coleção de idempotência é asaasEventosProcessados', true,
+    hook.includes('asaasEventosProcessados/${chave}'));
+  checar('a baixa manual (`quitadaPor`) continua sendo lida', true,
+    hook.includes("Boolean(doc.get('quitadaPor'))"));
+  const api = readFileSync(new URL('../functions/lib/asaasApi.js', import.meta.url), 'utf8');
+  checar('buscarCobranca confere o formato do id antes de pôr na URL', true,
+    /function buscarCobranca[\s\S]{0,300}\^\[A-Za-z0-9_-\]/.test(api));
+}
+
 // ──────────────────────────────── resumo ───────────────────────────────────
 
 console.log(`\n${'═'.repeat(64)}`);

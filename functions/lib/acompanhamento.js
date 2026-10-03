@@ -49,6 +49,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const crypto = require('node:crypto');
 const LIMITES = require('./limites');
+const { idValido } = require('./reguaDosIds');
 const {
   chaveDoDia,
   acessoValido,
@@ -102,7 +103,9 @@ function lerToken(bruto) {
   const dateKey = endereco.slice(0, corte);
   const childId = endereco.slice(corte + 1);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
-  if (!childId || childId.length > 200 || segredo.length > 200) return null;
+  // `idValido`: o childId vira caminho (`children/${childId}/rides/...`), e
+  // uma barra nele endereçaria outro documento (reguaDosIds.js).
+  if (!idValido(childId) || !segredo || segredo.length > 200) return null;
   return { dateKey, childId, segredo, endereco };
 }
 
@@ -113,12 +116,12 @@ function lerToken(bruto) {
  * e sem ela não há o que compartilhar nem o que revogar depois.
  */
 function makeGerarAcessoDoDia(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth && request.auth.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
 
     const childId = String((request.data && request.data.childId) || '').trim();
-    if (!childId) throw new HttpsError('invalid-argument', 'Criança não informada.');
+    if (!idValido(childId)) throw new HttpsError('invalid-argument', 'Criança não informada.');
 
     const childSnap = await db.doc(`children/${childId}`).get();
     if (!childSnap.exists) throw new HttpsError('not-found', 'Criança não encontrada.');
@@ -158,7 +161,7 @@ function makeGerarAcessoDoDia(db) {
  * `lookupInvite` já pratica.
  */
 function makeVerAcompanhamento(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
     const recusa = () =>
       new HttpsError('not-found', 'Este link não vale mais. Peça um novo a quem te mandou.');
 
@@ -251,11 +254,11 @@ async function verAcessoTemporario(db, temporario, recusa) {
  * criança (`parent2Name`/`parent2Phone`). Gerar de novo encerra o anterior.
  */
 function makeGerarAcessoTemporario(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth && request.auth.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
     const childId = String((request.data && request.data.childId) || '').trim();
-    if (!childId) throw new HttpsError('invalid-argument', 'Criança não informada.');
+    if (!idValido(childId)) throw new HttpsError('invalid-argument', 'Criança não informada.');
 
     const childSnap = await db.doc(`children/${childId}`).get();
     if (!childSnap.exists) throw new HttpsError('not-found', 'Criança não encontrada.');
@@ -323,11 +326,11 @@ function makeGerarAcessoTemporario(db) {
 
 /** Encerra antes da hora — a titular ou o motorista. */
 function makeEncerrarAcessoTemporario(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth && request.auth.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
     const childId = String((request.data && request.data.childId) || '').trim();
-    const childSnap = childId ? await db.doc(`children/${childId}`).get() : null;
+    const childSnap = idValido(childId) ? await db.doc(`children/${childId}`).get() : null;
     if (!childSnap || !childSnap.exists || !podeGerar({ uid, crianca: childSnap.data() })) {
       throw new HttpsError('permission-denied', 'Esta criança não é sua.');
     }
@@ -350,7 +353,7 @@ function makeEncerrarAcessoTemporario(db) {
  * acesso. Pública como a página — quem prova o direito é o token.
  */
 function makeInscreverAvisosDoAcesso(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
     const temporario = lerTokenTemporario(request.data && request.data.token);
     const fcm = String((request.data && request.data.fcmToken) || '').trim();
     if (!temporario || !fcm || fcm.length > 400) {

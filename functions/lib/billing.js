@@ -20,6 +20,7 @@ const { logger } = require('firebase-functions/v2');
 const { ligarRelogio } = require('./relogioDoTeste');
 const { mesDentroDaVigencia } = require('./reguaDoContrato');
 const LIMITES = require('./limites');
+const { mesValido } = require('./reguaDosIds');
 const admin = require('firebase-admin');
 // `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
 // chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
@@ -383,7 +384,7 @@ function makeGenerateMonthlyPayments(db) {
 
 /** Disparo manual pelo admin — usado pra fechar mês fora de hora. */
 function makeRunBillingNow(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     // O ESCOPO SAI DO CHAMADOR, NUNCA DO PAYLOAD.
     // `exigirMotorista` devolve o uid autenticado — é ele que limita a
     // geração à base deste parceiro. Aceitar um `adminUid` vindo do
@@ -391,6 +392,9 @@ function makeRunBillingNow(db) {
     const uid = await exigirMotorista(db, request);
 
     const monthKey = request.data?.monthKey || monthKeyOf(new Date());
+    // O mês vira parte do id do pagamento (`payments/{criança}_{mês}`): fora
+    // do formato 'AAAA-MM', ele criaria mensalidade com id inventado.
+    if (!mesValido(monthKey)) throw new HttpsError('invalid-argument', 'Mês inválido (AAAA-MM).');
     return await generateForMonth(db, monthKey, uid);
   });
 }

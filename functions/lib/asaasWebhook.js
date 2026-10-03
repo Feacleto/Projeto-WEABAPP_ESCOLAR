@@ -1,8 +1,31 @@
+const crypto = require('node:crypto');
 const { onRequest } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
-const { QUITADA, efeitoDoEvento, assinaturaAteDoMes } = require('./eventoDeCobranca');
+const { defineSecret, defineString } = require('firebase-functions/params');
+const {
+  QUITADA,
+  efeitoDoEvento,
+  assinaturaAteDoMes,
+  conferirComOGateway,
+  chaveDoEvento,
+} = require('./eventoDeCobranca');
 const { casarEAtivarIndicacao } = require('./casarIndicacao');
+const asaas = require('./asaasApi');
 const LIMITES = require('./limites');
+
+/**
+ * Comparação do token em TEMPO CONSTANTE (03/10/2026). `!==` para no primeiro
+ * caractere diferente, e o tempo de resposta conta a quem tenta quantos
+ * caracteres acertou. Os dois lados passam por SHA-256 antes: o
+ * `timingSafeEqual` exige o mesmo comprimento, e comparar comprimentos
+ * crus também vazaria o tamanho do token.
+ */
+function tokenConfere(recebido, esperado) {
+  if (!esperado || typeof recebido !== 'string' || !recebido) return false;
+  const a = crypto.createHash('sha256').update(recebido).digest();
+  const b = crypto.createHash('sha256').update(String(esperado)).digest();
+  return crypto.timingSafeEqual(a, b);
+}
 
 const REGION = 'southamerica-east1';
 
@@ -45,8 +68,26 @@ const REGION = 'southamerica-east1';
  * `asaasPaymentId` — e este endpoint vai receber eventos que não casam com
  * nada. Isso é esperado nesta etapa: ele registra no log e devolve 200. O
  * vínculo aparece quando a criação de cobrança existir.
+ *
+ * ⚠️ O TOKEN DEIXOU DE BASTAR (03/10/2026). Três travas novas, porque ele
+ * sozinho decidia dinheiro — um token vazado dava baixa em qualquer fatura:
+ *   - o token é comparado em tempo constante (`tokenConfere`);
+ *   - antes de QUITAR ou REABRIR, a cobrança é buscada de novo na API do
+ *     gateway, e vale o que ELA diz (`conferirComOGateway`), não o corpo;
+ *   - cada evento grava `asaasEventosProcessados/{chave}` com `create()` no
+ *     mesmo lote da baixa: a entrega repetida não aplica duas vezes.
+ *     Coleção só do servidor — as rules não a abrem a ninguém.
+ *
+ * A chave da API e o ambiente vêm por parâmetro, como na `asaasCobranca`;
+ * se quem monta não os passar, são declarados aqui com os MESMOS nomes de
+ * `index.js` (o registro de params do Firebase deduplica por nome).
  */
-function makeAsaasWebhook(db, tokenSecret) {
+function makeAsaasWebhook(
+  db,
+  tokenSecret,
+  apiKeySecret = defineSecret('ASAAS_API_KEY'),
+  ambienteParam = defineString('ASAAS_AMBIENTE', { default: 'sandbox' })
+) {
   return onRequest(
     {
       region: REGION,
@@ -54,7 +95,7 @@ function makeAsaasWebhook(db, tokenSecret) {
       // do limites.js vale inteiro aqui — não é capacidade de pico, é quanto
       // de dano cabe numa madrugada.
       maxInstances: LIMITES.PUBLICO,
-      secrets: [tokenSecret],
+      secrets: [tokenSecret, apiKeySecret],
       cors: false,
     },
     async (req, res) => {
@@ -68,7 +109,7 @@ function makeAsaasWebhook(db, tokenSecret) {
       // provou ser o gateway.
       const esperado = tokenSecret.value();
       const recebido = req.get('asaas-access-token');
-      if (!esperado || recebido !== esperado) {
+      if (!tokenConfere(recebido, esperado)) {
         logger.warn('[asaas] chamada sem token válido', { ip: req.ip });
         res.status(401).send('unauthorized');
         return;
@@ -120,6 +161,56 @@ function makeAsaasWebhook(db, tokenSecret) {
         if (!novo) {
           logger.info('[asaas] evento sem efeito', { evento, fatura: doc.id, motivo });
           res.status(200).send('no-op');
+          return;
+        }
+
+        // ── A ENTREGA REPETIDA (idempotência) ─────────────────────────────
+        // Olhar antes poupa a chamada à API; a garantia de verdade é o
+        // `create()` dentro do lote, lá embaixo.
+        const chave = chaveDoEvento(req.body);
+        const eventoRef = chave ? db.doc(`asaasEventosProcessados/${chave}`) : null;
+        if (eventoRef && (await eventoRef.get()).exists) {
+          logger.info('[asaas] evento já processado', { evento, fatura: doc.id });
+          res.status(200).send('duplicado');
+          return;
+        }
+
+        // ── A SEGUNDA OPINIÃO: o que a API diz, não o que o corpo diz ─────
+        let cobranca = null;
+        let falhaDaApi = null;
+        try {
+          cobranca = await asaas.buscarCobranca(
+            { ambiente: ambienteParam.value(), apiKey: apiKeySecret.value() },
+            idPagamento
+          );
+        } catch (err) {
+          // Cobrança que a API não acha mais (404) é cobrança removida: vale
+          // para REABRIR, nunca para quitar — `conferirComOGateway` decide.
+          if (err?.status === 404) cobranca = { deleted: true, status: 'DELETED' };
+          else falhaDaApi = err;
+        }
+        if (falhaDaApi) {
+          // Sem a confirmação não se mexe em dinheiro. 5xx: o gateway
+          // reenvia, e na próxima a API provavelmente responde.
+          logger.error('[asaas] não deu para conferir a cobrança na API', {
+            evento,
+            fatura: doc.id,
+            status: falhaDaApi?.status,
+            descricao: falhaDaApi?.descricao,
+          });
+          res.status(503).send('gateway-indisponivel');
+          return;
+        }
+        const conferencia = conferirComOGateway(novo, cobranca, doc.id);
+        if (!conferencia.ok) {
+          // 200: repetir não muda o que a API diz. O log é o rastro de um
+          // corpo que não bate com o registro — ou seja, de um token vazado.
+          logger.warn('[asaas] evento não confere com a API; ignorado', {
+            evento,
+            fatura: doc.id,
+            motivo: conferencia.motivo,
+          });
+          res.status(200).send('nao-confere');
           return;
         }
 
@@ -205,7 +296,22 @@ function makeAsaasWebhook(db, tokenSecret) {
         if (ateFinal && tioUid) {
           lote.set(db.doc(`users/${tioUid}`), { assinaturaAte: ateFinal }, { merge: true });
         }
-        await lote.commit();
+        // `create()` NO MESMO LOTE: se duas entregas do mesmo evento correrem
+        // juntas, a segunda falha inteira aqui e não aplica nada.
+        if (eventoRef) {
+          lote.create(eventoRef, { evento, fatura: doc.id, efeito: novo, em: new Date() });
+        }
+        try {
+          await lote.commit();
+        } catch (err) {
+          // 6 = ALREADY_EXISTS: a outra entrega chegou primeiro e já aplicou.
+          if (err?.code === 6 || err?.code === 'already-exists') {
+            logger.info('[asaas] evento já processado (corrida)', { evento, fatura: doc.id });
+            res.status(200).send('duplicado');
+            return;
+          }
+          throw err;
+        }
 
         // ⚠️ A INDICAÇÃO É CASADA AQUI, DEPOIS DO COMMIT.
         //

@@ -14,7 +14,9 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
-const { responsavelDoIrmao, criancasQueEsperam, chaveDoTelefone } = require('../functions/lib/reguaDoIrmao.js');
+const { responsavelDoIrmao, criancasQueEsperam, chaveDoTelefone, ehFamiliaDe } = require('../functions/lib/reguaDoIrmao.js');
+const { podeDesvincular } = require('../functions/lib/reguaDoDesvinculo.js');
+const { idValido, mesValido } = require('../functions/lib/reguaDosIds.js');
 
 let ok = 0;
 let bad = 0;
@@ -43,14 +45,14 @@ checar('pela criança já vinculada do mesmo motorista (conta antiga, sem chave)
   responsavelDoIrmao({
     motorista: 'tio1',
     telefone: '11987654321',
-    criancas: [{ parentUid: 'carla', parentPhone: '11 98765-4321' }],
+    criancas: [{ parentUid: 'carla', parentPhone: '11 98765-4321', inviteStatus: 'used', inviteUsedAt: 1 }],
   }));
 checar('conta e criança apontando para a mesma pessoa não é ambíguo', 'carla',
   responsavelDoIrmao({
     motorista: 'tio1',
     telefone: '11987654321',
     contas: [CARLA],
-    criancas: [{ parentUid: 'carla', parentPhone: '11987654321' }],
+    criancas: [{ parentUid: 'carla', parentPhone: '11987654321', vinculadoPor: 'irmao' }],
   }));
 
 bloco('2 · NA DÚVIDA, NÃO VINCULA');
@@ -105,6 +107,27 @@ checar('o campo singular antigo também vale como vínculo', 'carla',
     contas: [{ uid: 'carla', role: 'parent', adminUid: 'tio9', phoneChave: CARLA.phoneChave }] }));
 checar('o gatilho passa o motorista da criança', true,
   readFileSync(new URL('../functions/lib/vincularIrmao.js', import.meta.url), 'utf8').includes('motorista: crianca.adminUid'));
+
+bloco('3c · ⚠️ SÓ CONTA CRIANÇA VINCULADA PELO SERVIDOR (03/10/2026)');
+/* O `parentUid` de uma criança do motorista pode ter sido escrito por ELE:
+   uid da vítima + telefone dela, e a criança seguinte com esse número
+   entraria sozinha na conta dela. */
+const plantada = { parentUid: 'vitima', parentPhone: '11987654321' };
+checar('criança com parentUid plantado (sem marca do resgate) NÃO vincula', null,
+  responsavelDoIrmao({ motorista: 'tio1', telefone: '11987654321', criancas: [plantada] }));
+checar('inviteStatus "used" sem inviteUsedAt também não', null,
+  responsavelDoIrmao({ motorista: 'tio1', telefone: '11987654321', criancas: [{ ...plantada, inviteStatus: 'used' }] }));
+checar('com a marca do resgate (used + inviteUsedAt), conta', 'vitima',
+  responsavelDoIrmao({ motorista: 'tio1', telefone: '11987654321',
+    criancas: [{ ...plantada, inviteStatus: 'used', inviteUsedAt: { seconds: 1 } }] }));
+checar('com `vinculadoPor` (aprovação/irmão), conta', 'vitima',
+  responsavelDoIrmao({ motorista: 'tio1', telefone: '11987654321',
+    criancas: [{ ...plantada, vinculadoPor: 'aprovacao' }] }));
+checar('ehFamiliaDe: a lista de motoristas da conta', true, ehFamiliaDe({ adminUids: ['tio1'] }, 'tio1'));
+checar('ehFamiliaDe: conta de outro motorista', false, ehFamiliaDe({ adminUids: ['tio2'] }, 'tio1'));
+const vincularTxt = readFileSync(new URL('../functions/lib/vincularIrmao.js', import.meta.url), 'utf8');
+checar('o gatilho reconfere ehFamiliaDe na conta escolhida ANTES de escrever', true,
+  /if \(!ehFamiliaDe\(u\.data\(\), crianca\.adminUid\)\) return false;[\s\S]*?tx\.update\(childRef/.test(vincularTxt));
 
 bloco('4 · SÓ O VÍNCULO AUTOMÁTICO PODE SER DESFEITO PELA MÃE');
 const vincular = readFileSync(new URL('../functions/lib/vincularIrmao.js', import.meta.url), 'utf8');
@@ -181,6 +204,98 @@ checar('chave forjada não abre pedido', [],
 bloco('6 · SONDA POSITIVA');
 checar('o detector da rule reprovaria uma lista sem a chave', false,
   /\.hasAny\(\[[\s\S]*?'phoneChave'[\s\S]*?\]\)/.test(".hasAny(['role', 'childIds'])"));
+
+bloco('7 · ⚠️ DESVINCULAR NUNCA APAGA QUEM NÃO É A FAMÍLIA DESTA CRIANÇA (03/10/2026)');
+/* `desvincularResponsavel` apagava qualquer conta: o `childId` com barra
+   endereçava uma viagem com `parentUid` plantado pelo próprio motorista. */
+checar('responsável com a criança na lista: pode', true,
+  podeDesvincular({ role: 'parent', childIds: ['k1', 'k2'] }, 'k1'));
+checar('responsável pelo campo legado `childId`: pode', true,
+  podeDesvincular({ role: 'parent', childId: 'k1' }, 'k1'));
+checar('responsável SEM esta criança na lista: não', false,
+  podeDesvincular({ role: 'parent', childIds: ['k2'] }, 'k1'));
+checar('conta do DONO, mesmo com a criança na lista: não', false,
+  podeDesvincular({ role: 'owner', childIds: ['k1'] }, 'k1'));
+checar('conta de MOTORISTA: não', false,
+  podeDesvincular({ role: 'admin', childIds: ['k1'] }, 'k1'));
+checar('conta sem papel: não', false, podeDesvincular({ childIds: ['k1'] }, 'k1'));
+const desvincularTxt = readFileSync(new URL('../functions/lib/desvincularResponsavel.js', import.meta.url), 'utf8');
+{
+  const guarda = desvincularTxt.indexOf('if (!podeDesvincular(familia, childId))');
+  const apaga = desvincularTxt.indexOf('tx.delete(userRef)');
+  const escreve = desvincularTxt.indexOf('tx.set(');
+  checar('a function confere a régua ANTES de apagar ou escrever na conta', true,
+    guarda > 0 && apaga > guarda && escreve > guarda);
+}
+
+bloco('8 · ⚠️ TODO ID QUE VEM DO CLIENTE PASSA POR `idValido` ANTES DE VIRAR CAMINHO');
+checar('id comum', true, idValido('AbC123_-x'));
+checar('id com barra é recusado', false, idValido('k1/rides/2026-10-03'));
+checar('id vazio é recusado', false, idValido(''));
+checar('não-string é recusado', false, idValido({ toString: () => 'k1' }));
+checar('".." é recusado', false, idValido('..'));
+checar('mês válido', true, mesValido('2026-10'));
+checar('mês 13 é recusado', false, mesValido('2026-13'));
+checar('mês com barra é recusado', false, mesValido('2026-10/x'));
+
+/* A varredura: em cada arquivo de functions/lib com `onCall`, toda variável
+   tirada de `request.data` que vira caminho (`${var}` num template, ou
+   `.doc(var`) precisa ter passado por `idValido(var)`/`mesValido(var)` ANTES,
+   no texto. Os arquivos de outros donos ficam numa lista nomeada. */
+const { readdirSync } = await import('node:fs');
+const FORA_DA_VARREDURA = new Set([
+  'invites.js', 'invitePreview.js', 'pedidosDeAcesso.js', 'interesseInvestidor.js',
+  'fechamento.js', 'relogioDoTeste.js', 'contadorDaTurma.js',
+]);
+function idsSemConferencia(texto) {
+  const faltas = [];
+  const decl = /const (\w+) = [^;\n]*request\.data/g;
+  let m;
+  while ((m = decl.exec(texto))) {
+    const v = m[1];
+    const usos = [texto.indexOf('${' + v + '}', m.index), texto.indexOf('.doc(' + v, m.index)]
+      .filter((i) => i >= 0);
+    if (!usos.length) continue;
+    const primeiroUso = Math.min(...usos);
+    const conf = [texto.indexOf('idValido(' + v + ')', m.index), texto.indexOf('mesValido(' + v + ')', m.index)]
+      .filter((i) => i >= 0);
+    if (!conf.length || Math.min(...conf) > primeiroUso) faltas.push(v);
+  }
+  return faltas;
+}
+const dirLib = new URL('../functions/lib/', import.meta.url);
+const comCallable = readdirSync(dirLib).filter((f) => f.endsWith('.js') && !FORA_DA_VARREDURA.has(f))
+  .map((f) => [f, readFileSync(new URL(f, dirLib), 'utf8')])
+  .filter(([, t]) => t.includes("require('firebase-functions/v2/https')") && /\bonCall\(/.test(t));
+checar('a varredura achou as callables (não está olhando para o vazio)', true, comCallable.length >= 9);
+for (const [f, t] of comCallable) {
+  checar(`${f}: nenhum id de request.data vira caminho sem conferência`, [], idsSemConferencia(t));
+  const chamadas = (t.match(/\bonCall\(/g) || []).length;
+  const comAppCheck = (t.match(/onCall\(\s*\{\s*\.\.\.LIMITES\.APP_CHECK/g) || []).length;
+  checar(`${f}: toda onCall espalha LIMITES.APP_CHECK`, chamadas, comAppCheck);
+}
+const acompTxt = readFileSync(new URL('../functions/lib/acompanhamento.js', import.meta.url), 'utf8');
+const lerTokenTxt = acompTxt.slice(acompTxt.indexOf('function lerToken'), acompTxt.indexOf('function makeGerarAcessoDoDia'));
+checar('o token público do acompanhamento confere o childId com idValido', true,
+  lerTokenTxt.includes('idValido(childId)'));
+checar('SONDA: a varredura reprova id sem conferência', ['childId'],
+  idsSemConferencia("const childId = String(request.data?.childId || '');\nawait db.doc(`children/${childId}`).get();"));
+checar('SONDA: e reprova conferência DEPOIS do uso', ['childId'],
+  idsSemConferencia("const childId = request.data.childId;\nawait db.doc(`children/${childId}`).get();\nidValido(childId);"));
+checar('SONDA: e aprova conferência antes do uso', [],
+  idsSemConferencia("const childId = request.data.childId;\nif (!idValido(childId)) throw x;\nawait db.doc(`children/${childId}`).get();"));
+
+bloco('9 · ⚠️ A FAMÍLIA SÓ PREENCHE O TELEFONE DA ESCOLA QUE ESTÁ VAZIO (03/10/2026)');
+/* Antes ela sobrescrevia, e o número é copiado para todas as famílias
+   daquela escola na turma — uma família trocava o telefone das outras. */
+const telTxt = readFileSync(new URL('../functions/lib/telefoneDaEscola.js', import.meta.url), 'utf8');
+checar('já tendo telefone, responde `jaTinha` antes de qualquer escrita', true,
+  /if \(telefoneValido\(escola\.telefone\)\) return \{ ok: true, jaTinha: true \};[\s\S]*?tx\.set\(\s*escolaRef/.test(telTxt));
+checar('a escola tem de ser do motorista DESTA criança', true,
+  telTxt.includes('escola.adminUid !== c.adminUid'));
+const telTela = readFileSync(new URL('../src/components/children/TelefoneDaEscola.jsx', import.meta.url), 'utf8');
+checar('a tela diz por que não gravou', true,
+  telTela.includes('r?.jaTinha') && telTela.includes('A escola já tem telefone cadastrado pelo motorista.'));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

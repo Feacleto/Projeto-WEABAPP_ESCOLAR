@@ -35,8 +35,20 @@ const { chaveDoTelefone } = require('./indicacao');
  *                responsável edita no perfil, e pôr ali o número de outra mãe
  *                daria a ele os filhos dela. `phoneChave` só o servidor grava,
  *                do número que o MOTORISTA digitou (proibida nas rules).
- *   criancas   — [{ parentUid, parentPhone }] crianças JÁ VINCULADAS (o
- *                caminho para contas antigas, sem `phoneChave` gravado)
+ *   criancas   — [{ parentUid, parentPhone, inviteStatus, inviteUsedAt,
+ *                vinculadoPor }] crianças JÁ VINCULADAS (o caminho para
+ *                contas antigas, sem `phoneChave` gravado).
+ *                ⚠️ SÓ CONTA VÍNCULO FEITO PELO SERVIDOR (03/10/2026). O
+ *                `parentUid` de uma criança do motorista pode ter sido
+ *                escrito por ELE: pôr ali o uid de uma mãe qualquer e o
+ *                telefone dela, e a criança seguinte com esse número
+ *                entraria sozinha na conta da vítima. Conta só a criança
+ *                com a marca do resgate (`inviteStatus: 'used'` com
+ *                `inviteUsedAt`, ou `vinculadoPor`), que `redeemInvite`,
+ *                `responderPedidoDeAcesso` e este gatilho gravam. E o
+ *                gatilho ainda confere, na conta escolhida, que ela é
+ *                família deste motorista (`ehFamiliaDe`, sobre `adminUids`,
+ *                que só o servidor escreve) — a marca sozinha não é prova.
  *
  *   motorista  — `adminUid` da criança nova.
  *                ⚠️ SÓ VINCULA QUEM JÁ É FAMÍLIA DESTE MOTORISTA (03/10/2026).
@@ -54,6 +66,13 @@ function ehFamiliaDe(conta, motorista) {
   return Array.isArray(conta.adminUids) && conta.adminUids.includes(motorista);
 }
 
+/** O vínculo desta criança foi gravado pelo servidor? (ver acima) */
+function vinculoDoServidor(k) {
+  if (!k) return false;
+  if (typeof k.vinculadoPor === 'string' && k.vinculadoPor) return true;
+  return k.inviteStatus === 'used' && Boolean(k.inviteUsedAt);
+}
+
 function responsavelDoIrmao({ telefone, motorista = null, contas = [], criancas = [] }) {
   const chave = chaveDoTelefone(telefone);
   if (!chave) return null;
@@ -65,7 +84,7 @@ function responsavelDoIrmao({ telefone, motorista = null, contas = [], criancas 
     }
   }
   for (const k of criancas) {
-    if (k && k.parentUid && chaveDoTelefone(k.parentPhone) === chave) {
+    if (k && k.parentUid && vinculoDoServidor(k) && chaveDoTelefone(k.parentPhone) === chave) {
       uids.add(k.parentUid);
     }
   }
@@ -92,4 +111,10 @@ function criancasQueEsperam({ telefone, criancas = [] }) {
   );
 }
 
-module.exports = { responsavelDoIrmao, criancasQueEsperam, chaveDoTelefone };
+module.exports = {
+  responsavelDoIrmao,
+  criancasQueEsperam,
+  chaveDoTelefone,
+  ehFamiliaDe,
+  vinculoDoServidor,
+};

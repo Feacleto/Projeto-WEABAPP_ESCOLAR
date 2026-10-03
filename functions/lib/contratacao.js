@@ -84,7 +84,7 @@ const {
 
 function makeContratarPlano(db) {
   return onCall(
-    { region: REGION, maxInstances: LIMITES.AUTENTICADO },
+    { ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO },
     async (request) => {
       const uid = await exigirMotorista(db, request);
 

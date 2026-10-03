@@ -43,7 +43,7 @@ function firstNameOf(full) {
 }
 
 function makeBackfillTestimonialPrivacy(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     // ESTA FUNÇÃO É DO DONO, E PEDIA PAPEL DE MOTORISTA.
     //
     // Ela é chamada de `/admin` (AdminPanel.jsx) e reescreve a privacidade dos

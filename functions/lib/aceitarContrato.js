@@ -21,17 +21,20 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
 const { jsonCanonico, valoresDoAditivo } = require('./reguaDoContrato');
+const { idValido } = require('./reguaDosIds');
 
 const REGION = 'southamerica-east1';
 
 function makeAceitarContrato(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
     const childId = String(request.data?.childId || '');
     const numero = Number(request.data?.numero);
     const nome = String(request.data?.nome || '').trim().slice(0, 120);
-    if (!childId || !Number.isInteger(numero) || numero < 1) {
+    // `idValido` antes de virar caminho: `db.doc` aceita barra, e um
+    // `childId` com "/" endereçaria outro documento (ver reguaDosIds.js).
+    if (!idValido(childId) || !Number.isInteger(numero) || numero < 1 || numero > 100000) {
       throw new HttpsError('invalid-argument', 'Qual contrato?');
     }
     if (nome.split(/\s+/).filter(Boolean).length < 2) {

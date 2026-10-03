@@ -170,6 +170,67 @@ function assinaturaAteDoMes(mes) {
   return new Date(ano, numero + 1, 0, 12, 0, 0);
 }
 
+/**
+ * O QUE O GATEWAY DIZ HOJE SOBRE A COBRANÇA — a segunda opinião (03/10/2026).
+ *
+ * O corpo do webhook é só uma ALEGAÇÃO: o token prova que veio do gateway
+ * enquanto o token não vazar, e um token vazado (log, print, painel) vira
+ * "baixa" em qualquer fatura. Antes de dar baixa ou de mexer em
+ * `assinaturaAte`, o webhook PERGUNTA de novo à API (`buscarCobranca`) e só
+ * aceita o que ela responde:
+ *
+ *   - para QUITAR, a cobrança lá tem que estar paga (`STATUS_PAGOS`), não
+ *     removida, e ser DESTA fatura (`externalReference` = id da fatura, que é
+ *     o que `dadosDaCobranca` grava ao criar);
+ *   - para REABRIR, ela não pode estar paga — ou tem que ter sido removida.
+ *     Um evento de estorno forjado não reabre fatura que o gateway diz paga.
+ *
+ * Pura: o webhook busca, esta função julga, e `testar:gateway` mede.
+ */
+const STATUS_PAGOS = ['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH', 'DUNNING_RECEIVED'];
+
+function conferirComOGateway(novo, cobranca, faturaId) {
+  if (!cobranca || typeof cobranca !== 'object') {
+    return { ok: false, motivo: 'o gateway não devolveu a cobrança' };
+  }
+  const status = String(cobranca.status || '').trim().toUpperCase();
+  const paga = STATUS_PAGOS.includes(status) && cobranca.deleted !== true;
+  if (novo === QUITADA) {
+    if (!paga) return { ok: false, motivo: `o gateway diz ${status || 'sem status'}` };
+    if (String(cobranca.externalReference || '') !== String(faturaId || '')) {
+      return { ok: false, motivo: 'a cobrança do gateway é de outra fatura' };
+    }
+    return { ok: true, motivo: null };
+  }
+  if (novo === ABERTA) {
+    if (paga) return { ok: false, motivo: 'o gateway ainda diz que está paga' };
+    return { ok: true, motivo: null };
+  }
+  return { ok: false, motivo: 'efeito desconhecido' };
+}
+
+/**
+ * A CHAVE DE IDEMPOTÊNCIA de uma entrega do webhook (03/10/2026).
+ *
+ * O gateway REPETE a entrega até receber 2xx, e uma resposta perdida no
+ * caminho faz o mesmo evento chegar duas vezes. O webhook grava
+ * `asaasEventosProcessados/{chave}` com `create()` no MESMO lote da baixa:
+ * a segunda entrega falha no `create` e não aplica nada de novo.
+ *
+ * A chave é o `id` do evento (`evt_…`), que vira id de documento — então só
+ * passa no formato seguro (sem barra). Sem ele, cai para evento + cobrança,
+ * que também é único para o que interessa: o mesmo evento sobre a mesma
+ * cobrança não tem dois efeitos diferentes.
+ */
+function chaveDoEvento(corpo) {
+  const id = corpo && corpo.id;
+  if (typeof id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(id)) return id;
+  const evento = String((corpo && corpo.event) || '').trim();
+  const pagamento = String((corpo && corpo.payment && corpo.payment.id) || '').trim();
+  if (!evento || !pagamento) return null;
+  return `${evento}_${pagamento}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 128);
+}
+
 /** Este evento vale a pena assinar no painel do gateway? */
 function eventoAssinado(evento) {
   return EVENTOS_ASSINADOS.includes(String(evento || '').trim().toUpperCase());
@@ -179,6 +240,9 @@ module.exports = {
   QUITADA,
   ABERTA,
   EVENTOS_ASSINADOS,
+  STATUS_PAGOS,
+  conferirComOGateway,
+  chaveDoEvento,
   efeitoDoEvento,
   eventoAssinado,
   assinaturaAteDoMes,

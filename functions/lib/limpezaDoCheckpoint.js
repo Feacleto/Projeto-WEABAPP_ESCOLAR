@@ -47,7 +47,7 @@ const LOTE = 400;
  */
 function makeLimparCoordenadaDoCheckpoint(db) {
   return onCall(
-    { region: REGION, maxInstances: LIMITES.AUTENTICADO },
+    { ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO },
     async (request) => {
       const uid = await exigirDono(db, request);
       const apagar = request.data?.apagar === true;

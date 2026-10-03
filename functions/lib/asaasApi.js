@@ -140,6 +140,17 @@ async function acharCobrancaPorReferencia(cfg, referencia) {
   return lista.find((c) => c?.deleted !== true) || null;
 }
 
+/**
+ * A cobrança como o gateway a vê AGORA (03/10/2026). É a segunda opinião do
+ * webhook: o corpo do evento é alegação, isto é o registro. O id vai na URL,
+ * então só passa no formato do Asaas — barra ou "?" nele mudaria a rota.
+ */
+async function buscarCobranca(cfg, idDaCobranca) {
+  const id = String(idDaCobranca || '');
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw new ErroDoGateway(0, 'Id de cobrança inválido.');
+  return await chamar(cfg, 'GET', `/payments/${encodeURIComponent(id)}`);
+}
+
 /** Cria a cobrança. `dados` sai de `dadosDaCobranca()`. */
 async function criarCobranca(cfg, dados) {
   return await chamar(cfg, 'POST', '/payments', dados);
@@ -153,5 +164,6 @@ module.exports = {
   acharClientePorDocumento,
   criarCliente,
   acharCobrancaPorReferencia,
+  buscarCobranca,
   criarCobranca,
 };

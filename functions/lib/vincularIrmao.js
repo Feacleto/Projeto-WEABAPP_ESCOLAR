@@ -33,7 +33,8 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
-const { responsavelDoIrmao, chaveDoTelefone } = require('./reguaDoIrmao');
+const { idValido } = require('./reguaDosIds');
+const { responsavelDoIrmao, chaveDoTelefone, ehFamiliaDe } = require('./reguaDoIrmao');
 const { abrirPedido } = require('./pedidosDeAcesso');
 
 const REGION = 'southamerica-east1';
@@ -111,6 +112,10 @@ function makeVincularIrmao(db) {
           // O link pode ter chegado antes: quem resgatou primeiro venceu.
           if (!c.exists || c.data().parentUid) return false;
           if (!u.exists || u.data().role !== 'parent') return false;
+          // Defesa em profundidade (03/10/2026): a conta tem que já ser
+          // família DESTE motorista pelo que o SERVIDOR gravou (`adminUids`),
+          // não só pelo `parentUid` que ele mesmo pode ter escrito numa criança.
+          if (!ehFamiliaDe(u.data(), crianca.adminUid)) return false;
           tx.update(childRef, {
             parentUid,
             inviteStatus: 'used',
@@ -158,11 +163,12 @@ function makeVincularIrmao(db) {
  * escopo vem do uid autenticado, nunca do payload.
  */
 function makeRecusarIrmao(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
     const childId = String(request.data?.childId || '');
-    if (!childId) throw new HttpsError('invalid-argument', 'Qual criança?');
+    // `idValido` antes de virar caminho: `db.doc` aceita barra (reguaDosIds.js).
+    if (!idValido(childId)) throw new HttpsError('invalid-argument', 'Qual criança?');
 
     const childRef = db.doc(`children/${childId}`);
     const userRef = db.doc(`users/${uid}`);
@@ -174,7 +180,7 @@ function makeRecusarIrmao(db) {
       }
       // O motorista só sai de `adminUids` se nenhum OUTRO filho dela roda com
       // ele — senão ela perderia a chave PIX e o mapa do irmão de verdade.
-      const outros = (u.data()?.childIds || []).filter((id) => id !== childId);
+      const outros = (u.data()?.childIds || []).filter((id) => id !== childId && idValido(id));
       const outrosSnaps = await Promise.all(outros.map((id) => tx.get(db.doc(`children/${id}`))));
       const aindaComEle = outrosSnaps.some((s) => s.exists && s.data().adminUid === dados.adminUid);
 

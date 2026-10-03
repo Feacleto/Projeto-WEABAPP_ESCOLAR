@@ -18,6 +18,10 @@ import {
  * confere que a criança é dela). Quem cadastra mostra para os outros — o
  * número lido aqui é a cópia em `children.schoolPhone`, a mesma para todas as
  * crianças daquela escola na turma dele.
+ *
+ * ⚠️ A família só preenche quando ainda NÃO há número (03/10/2026): uma
+ * família corrigindo trocava o telefone que todas as outras veem. Se já
+ * houver, o servidor não grava e responde `jaTinha`.
  */
 export default function TelefoneDaEscola({ child, isAdmin }) {
   const [editando, setEditando] = useState(false);
@@ -36,8 +40,16 @@ export default function TelefoneDaEscola({ child, isAdmin }) {
     }
     setSalvando(true);
     try {
-      if (isAdmin) await definirTelefoneDaEscola(child.schoolId, digitos);
-      else await informarTelefoneDaEscola({ childId: child.id, telefone: digitos });
+      if (isAdmin) {
+        await definirTelefoneDaEscola(child.schoolId, digitos);
+      } else {
+        const r = await informarTelefoneDaEscola({ childId: child.id, telefone: digitos });
+        if (r?.jaTinha) {
+          toast('A escola já tem telefone cadastrado pelo motorista.');
+          setEditando(false);
+          return;
+        }
+      }
       toast.success('Telefone da escola salvo.');
       setEditando(false);
     } catch (err) {
@@ -95,6 +107,10 @@ export default function TelefoneDaEscola({ child, isAdmin }) {
         Ligar para a escola
         <span className="ml-auto font-normal text-textMuted">{formatPhone(child.schoolPhone)}</span>
       </a>
+      {/* A família só PREENCHE o vazio; corrigir um número já gravado é do
+          motorista — senão uma família trocava o telefone que todas as outras
+          daquela escola veem (o servidor recusa do mesmo jeito). */}
+      {isAdmin && (
       <button
         type="button"
         onClick={() => setEditando(true)}
@@ -103,6 +119,7 @@ export default function TelefoneDaEscola({ child, isAdmin }) {
       >
         <Pencil size={15} />
       </button>
+      )}
     </div>
   );
 }

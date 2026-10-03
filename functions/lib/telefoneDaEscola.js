@@ -17,6 +17,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
+const { idValido } = require('./reguaDosIds');
 
 const REGION = 'southamerica-east1';
 
@@ -27,12 +28,12 @@ function telefoneValido(bruto) {
 }
 
 function makeInformarTelefoneDaEscola(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
     const childId = String(request.data?.childId || '');
     const telefone = telefoneValido(request.data?.telefone);
-    if (!childId) throw new HttpsError('invalid-argument', 'Qual criança?');
+    if (!idValido(childId)) throw new HttpsError('invalid-argument', 'Qual criança?');
     if (!telefone) throw new HttpsError('invalid-argument', 'Telefone com DDD, só números.');
 
     const crianca = await db.doc(`children/${childId}`).get();
@@ -40,30 +41,45 @@ function makeInformarTelefoneDaEscola(db) {
     if (!c || c.parentUid !== uid) {
       throw new HttpsError('permission-denied', 'Esta criança não é da sua conta.');
     }
-    if (!c.schoolId || !c.adminUid) {
+    // `schoolId` foi escrito pelo motorista: também passa por `idValido`
+    // antes de virar caminho.
+    if (!idValido(c.schoolId) || !c.adminUid) {
       throw new HttpsError('failed-precondition', 'A escola desta criança não está cadastrada.');
     }
 
     const escolaRef = db.doc(`schools/${c.schoolId}`);
-    const irmas = await db
+    const irmasQuery = db
       .collection('children')
       .where('adminUid', '==', c.adminUid)
-      .where('schoolId', '==', c.schoolId)
-      .get();
+      .where('schoolId', '==', c.schoolId);
 
-    const lote = db.batch();
-    lote.set(
-      escolaRef,
-      {
-        telefone,
-        telefoneInformadoPor: 'familia',
-        telefoneAtualizadoEm: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-    irmas.docs.forEach((d) => lote.update(d.ref, { schoolPhone: telefone }));
-    await lote.commit();
-    return { ok: true, criancas: irmas.size };
+    return db.runTransaction(async (tx) => {
+      const escolaSnap = await tx.get(escolaRef);
+      const escola = escolaSnap.exists ? escolaSnap.data() : null;
+      // A escola tem que existir e ser do motorista DESTA criança — senão o
+      // `set` com merge criaria um documento de escola sem dono.
+      if (!escola || escola.adminUid !== c.adminUid) {
+        throw new HttpsError('failed-precondition', 'A escola desta criança não está cadastrada.');
+      }
+      // ⚠️ SÓ PREENCHE O VAZIO (03/10/2026). Antes a família SOBRESCREVIA o
+      // número, e ele é copiado para todas as crianças daquela escola na
+      // turma — uma família trocava o telefone que as outras veem. Já tendo
+      // número, quem corrige é o motorista.
+      if (telefoneValido(escola.telefone)) return { ok: true, jaTinha: true };
+
+      const irmas = await tx.get(irmasQuery);
+      tx.set(
+        escolaRef,
+        {
+          telefone,
+          telefoneInformadoPor: 'familia',
+          telefoneAtualizadoEm: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      irmas.docs.forEach((d) => tx.update(d.ref, { schoolPhone: telefone }));
+      return { ok: true, criancas: irmas.size };
+    });
   });
 }
 
