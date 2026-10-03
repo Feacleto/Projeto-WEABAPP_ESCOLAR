@@ -3,18 +3,19 @@ import {
   collection,
   getDoc,
   getDocs,
-  increment,
   deleteDoc,
   updateDoc,
   writeBatch,
   query,
   where,
   serverTimestamp,
+  onSnapshot,
 } from 'firebase/firestore';
 import { deleteUser, signOut } from 'firebase/auth';
 import { auth, db, functions } from '../firebase/config';
 import { httpsCallable } from 'firebase/functions';
 import { exigirCloud } from './callableError';
+import { deleteChildPhoto } from './photoService';
 
 /**
  * Operações de exclusão de conta / vínculo — chamadas pela aba de Perfil
@@ -266,38 +267,27 @@ export async function deactivateChildAndParent({ childId }) {
     contractVersion: null,
   });
 
-  // 6. DEVOLVE A VAGA. Este é o caminho REAL de remoção — `deactivateChild`
-  // no `childrenService` decrementa igual, mas nenhuma tela o chama.
+  // 6. A FOTO DA CRIANÇA SAI DO STORAGE (03/10/2026).
   //
-  // Sem isto o contador só sobe: o motorista que removesse uma criança
-  // continuaria com a vaga ocupada por ela pra sempre e, no limite do
-  // contrato, bateria no teto tendo menos crianças do que contratou. O erro
-  // seria silencioso e ele culparia a cobrança.
-  //
-  // FORA do batch acima de propósito: uma falha aqui deixa a vaga presa
-  // (recuperável) em vez de impedir a remoção da criança — que é o que ele
-  // pediu, e o que envolve dado de menor.
-  //
-  // ATENÇÃO AO QUE ESTE COMENTÁRIO AFIRMAVA ANTES: que "a regra do contador em
-  // `users` só aceita descida livre e subida de um em um". A regra não existia
-  // — `criancasAtivas` estava fora da lista de campos proibidos, livre em
-  // valor e em direção —, e a metade que ele descrevia estava INVERTIDA:
-  // descida livre é justamente o ataque, porque zerar o contador libera
-  // cadastro sem teto.
-  //
-  // Desde 30/08/2026 a regra existe e é simétrica: o contador anda de UM em
-  // um, pra cima ou pra baixo. É o que `increment(±1)` faz aqui e nos outros
-  // dois call sites, então nenhum caminho legítimo mudou. Provado em
-  // `scripts/testar-regras.mjs`, bloco "DECISÃO 12".
-  if (child.adminUid && child.active !== false) {
+  // O documento fica (soft delete, pelo histórico financeiro), mas o rosto de
+  // uma criança que deixou a perua não tem motivo para continuar guardado —
+  // e `childPhotos/{childId}` é caminho determinístico: ninguém mais o
+  // apagaria. `deleteChildPhoto` engole o "não existia". FORA do caminho
+  // crítico: falhar aqui não pode desfazer a remoção que ele pediu.
+  if (child.photoURL) {
     try {
-      await updateDoc(doc(db, 'users', child.adminUid), {
-        criancasAtivas: increment(-1),
-      });
+      await deleteChildPhoto(childId);
+      await updateDoc(childRef, { photoURL: null });
     } catch (err) {
-      console.error('[conta] vaga não foi devolvida ao remover criança:', err);
+      console.error('[conta] a foto da criança não foi apagada:', err);
     }
   }
+
+  // ⚠️ A VAGA NÃO É MAIS DEVOLVIDA DAQUI (03/10/2026). Havia um
+  // `increment(-1)` em `users.criancasAtivas` — o cobrado escrevendo o número
+  // que multiplica a fatura dele. O contador é do servidor agora
+  // (`functions/lib/contadorDaTurma.js` reconta quando `active` muda), e as
+  // rules recusam o campo ao cliente.
 
   return {
     parentRemoved: !!parentUid,
@@ -482,6 +472,16 @@ export async function deleteAdminAccount(adminUid) {
   // rule agora só deixa o dono mexer nele, então a linha antiga também
   // lançaria aqui e derrubaria o encerramento inteiro.
 
+  // ⚠️ ANTES DO DOC DELE, A TURMA PRECISA APARECER ZERADA (03/10/2026).
+  //
+  // As rules só deixam o motorista apagar o próprio `users/{uid}` com
+  // `criancasAtivas == 0` — sem isso, apagar e recriar o documento seria um
+  // jeito de sumir com o número que a fatura multiplica. Quem zera é o
+  // gatilho do servidor, que reconta depois que as crianças acima saem; ele
+  // leva alguns segundos. Apagar antes seria a negação chegando no ÚLTIMO
+  // passo, com a operação inteira já destruída.
+  await esperarTurmaZerada(adminUid);
+
   // Por ÚLTIMO: doc do admin
   await deleteDoc(doc(db, 'users', adminUid));
 
@@ -493,6 +493,48 @@ export async function deleteAdminAccount(adminUid) {
     await signOut(auth).catch(() => {});
     throw err;
   }
+}
+
+/** Quanto se espera o servidor recontar a turma antes de desistir. */
+const ESPERA_DA_TURMA_MS = 20000;
+
+/**
+ * Espera `users/{uid}.criancasAtivas` chegar a 0, escutando o documento.
+ *
+ * Campo AUSENTE conta como zero: motorista que nunca cadastrou criança nunca
+ * acordou o gatilho, e o campo nunca foi escrito.
+ *
+ * Estourando o prazo, lança com uma frase para a tela — as crianças já
+ * saíram, e repetir o encerramento recomeça daqui sem estrago (todas as
+ * etapas anteriores apagam o que encontram).
+ */
+function esperarTurmaZerada(uid) {
+  return new Promise((resolve, reject) => {
+    let parar = () => {};
+    const prazo = setTimeout(() => {
+      parar();
+      const err = new Error(
+        'Ainda estamos terminando de remover as crianças da sua conta. Espere um minuto e toque em encerrar de novo.'
+      );
+      err.code = 'conta/turma-nao-zerada';
+      reject(err);
+    }, ESPERA_DA_TURMA_MS);
+    parar = onSnapshot(
+      doc(db, 'users', uid),
+      (snap) => {
+        const n = Number(snap.data()?.criancasAtivas) || 0;
+        if (!snap.exists() || n === 0) {
+          clearTimeout(prazo);
+          parar();
+          resolve();
+        }
+      },
+      (err) => {
+        clearTimeout(prazo);
+        reject(err);
+      }
+    );
+  });
 }
 
 // ============================================================================

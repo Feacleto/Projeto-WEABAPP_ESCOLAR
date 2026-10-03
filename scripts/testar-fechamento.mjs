@@ -41,6 +41,11 @@ const require = createRequire(import.meta.url);
 // arquivo não poder entrar na bateria encadeada.
 const admin = require('../functions/node_modules/firebase-admin/lib/index.js');
 const { fecharMes } = require('../functions/lib/fechamento.js');
+// ⚠️ OS DOIS ESCRITORES QUE SAÍRAM DO CLIENTE em 03/10/2026 — o contador da
+// turma e o relógio do teste. Medidos aqui porque escrevem, e este é o único
+// arquivo da casa que roda escrita contra o emulador.
+const { recontar } = require('../functions/lib/contadorDaTurma.js');
+const { ligarRelogio, restaurarRelogio } = require('../functions/lib/relogioDoTeste.js');
 
 const PID = 'alobuzinou-be81f';
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -71,7 +76,7 @@ function bloco(t) {
 
 /** Apaga tudo o que os cenários criam, para cada bloco começar limpo. */
 async function limpar() {
-  for (const col of ['users', 'faturasParceiro', 'indicacoes', 'taxaConfig']) {
+  for (const col of ['users', 'faturasParceiro', 'indicacoes', 'taxaConfig', 'children', 'taxaParceiros']) {
     const snap = await db.collection(col).get();
     await Promise.all(snap.docs.map((d) => d.ref.delete()));
   }
@@ -88,8 +93,21 @@ async function limpar() {
 // o bloco 3 começou a falhar sozinho em outubro de 2026.
 const DIAS = (n) => new Date(new Date(2026, 8, 1, 5, 0, 0).getTime() + n * 86400000);
 
+/**
+ * ⚠️ AS CRIANÇAS EXISTEM DE VERDADE desde 03/10/2026: a fatura passou a CONTAR
+ * `children` (`active == true`) em vez de ler `users.criancasAtivas`. Semear
+ * só o contador faria toda fatura sair com zero crianças. `criancasReais`
+ * existe para o caso em que o contador e a turma divergem de propósito.
+ */
 async function semear(uid, dados) {
-  await db.doc(`users/${uid}`).set({ role: 'admin', ...dados });
+  const { criancasReais, ...doUsuario } = dados;
+  await db.doc(`users/${uid}`).set({ role: 'admin', ...doUsuario });
+  const n = criancasReais ?? (Number(doUsuario.criancasAtivas) || 0);
+  const lote = db.batch();
+  for (let i = 0; i < n; i += 1) {
+    lote.set(db.doc(`children/${uid}_c${i}`), { adminUid: uid, active: true, name: `C${i}` });
+  }
+  await lote.commit();
 }
 
 async function fatura(uid, mes) {
@@ -312,6 +330,103 @@ async function main() {
   await fecharMes(db, { mes: MES, agora: AGORA });
   const depois = (await db.doc('users/parado').get()).updateTime.toMillis();
   checar('o documento de quem não mudou fica intacto', antes, depois);
+
+  bloco('11. A fatura conta as crianças no banco, não o contador do perfil');
+  await limpar();
+  // O contador diz 3 — o que um devtools descendo `criancasAtivas` deixaria —
+  // e a turma tem 20 ativas e 4 desativadas.
+  await semear('tio_contador_mente', {
+    plano: 'mensal', criancasAtivas: 3, criancasReais: 20, trialInicio: DIAS(-400),
+  });
+  for (let i = 0; i < 4; i += 1) {
+    await db.doc(`children/tio_contador_mente_off${i}`).set({
+      adminUid: 'tio_contador_mente', active: false,
+    });
+  }
+  // E uma criança sem o campo `active` não conta: `billing.js` não gera
+  // mensalidade para ela, e a plataforma não cobra pelo que o app não opera.
+  await db.doc('children/tio_contador_mente_sem').set({ adminUid: 'tio_contador_mente' });
+  // Criança de OUTRO motorista não entra na conta deste.
+  await db.doc('children/de_outro').set({ adminUid: 'outro', active: true });
+
+  await fecharMes(db, { mes: MES, agora: AGORA });
+  const fc = await fatura('tio_contador_mente', MES);
+  checar('a fatura sai com as 20 ativas, não com as 3 do contador', 20, fc.criancas);
+  checar('e o total é o de 20 crianças', 118, fc.total);
+  checar('o contador do perfil é corrigido no mesmo lote', 20,
+    (await db.doc('users/tio_contador_mente').get()).data().criancasAtivas);
+
+  // O contador AUSENTE também é corrigido (e com zero crianças, gravado 0:
+  // a rule de apagar a conta pede `criancasAtivas == 0`).
+  await semear('tio_sem_contador', { plano: 'mensal', trialInicio: DIAS(-400) });
+  await fecharMes(db, { mes: MES, agora: AGORA });
+  checar('sem crianças, a fatura é do mínimo de tabela', 49,
+    (await fatura('tio_sem_contador', MES))?.total);
+  checar('e o contador ausente vira 0', 0,
+    (await db.doc('users/tio_sem_contador').get()).data().criancasAtivas);
+
+  bloco('12. O contador da turma é RECONTADO pelo servidor');
+  await limpar();
+  await semear('tio_turma', { criancasAtivas: 0, criancasReais: 5 });
+  await db.doc('children/tio_turma_off').set({ adminUid: 'tio_turma', active: false });
+  checar('reconta e devolve as 5 ativas', 5, await recontar(db, 'tio_turma'));
+  checar('e grava no perfil', 5, (await db.doc('users/tio_turma').get()).data().criancasAtivas);
+  const t0 = (await db.doc('users/tio_turma').get()).updateTime.toMillis();
+  await recontar(db, 'tio_turma');
+  checar('recontar de novo não reescreve o documento',
+    t0, (await db.doc('users/tio_turma').get()).updateTime.toMillis());
+  await db.doc('children/tio_turma_c0').update({ active: false });
+  await db.doc('children/tio_turma_c1').delete();
+  checar('desativar uma e apagar outra: 3', 3, await recontar(db, 'tio_turma'));
+  // ⚠️ Sem documento, NÃO cria um `users` só com o contador: o motorista que
+  // encerrou a conta não pode voltar como uma conta pela metade.
+  await db.doc('users/tio_turma').delete();
+  checar('sem users, não grava nada', null, await recontar(db, 'tio_turma'));
+  checar('e o documento continua não existindo', false,
+    (await db.doc('users/tio_turma').get()).exists);
+
+  bloco('13. O relógio liga com cópia, e a cópia volta quando o users é recriado');
+  await limpar();
+  await semear('tio_rota', {});
+  checar('a primeira rota liga o relógio', true, await ligarRelogio(db, 'tio_rota', 'primeira rota'));
+  const noUsuario = (await db.doc('users/tio_rota').get()).data().trialInicio;
+  const naCopia = (await db.doc('taxaParceiros/tio_rota').get()).data()?.trialInicio;
+  checar('users recebeu a data', true, Boolean(noUsuario));
+  checar('e taxaParceiros recebeu a MESMA data', noUsuario?.toMillis(), naCopia?.toMillis());
+  checar('a segunda rota não liga de novo', false, await ligarRelogio(db, 'tio_rota', 'primeira rota'));
+
+  // O motorista apaga o próprio documento e o cria de novo (mesma sessão).
+  await db.doc('users/tio_rota').delete();
+  await semear('tio_rota', {});
+  checar('o documento recriado é restaurado', true, await restaurarRelogio(db, 'tio_rota'));
+  checar('com a data ORIGINAL, não uma nova', noUsuario?.toMillis(),
+    (await db.doc('users/tio_rota').get()).data().trialInicio?.toMillis());
+  checar('restaurar de novo não faz nada', false, await restaurarRelogio(db, 'tio_rota'));
+
+  // Se a rota religar ANTES de a restauração rodar, `ligarRelogio` já vê a
+  // cópia e restaura ele mesmo — não abre um teste novo.
+  await db.doc('users/tio_rota').delete();
+  await semear('tio_rota', {});
+  checar('a rota antes da restauração não conta como "ligou agora"', false,
+    await ligarRelogio(db, 'tio_rota', 'primeira rota'));
+  checar('e a data que fica é a original', noUsuario?.toMillis(),
+    (await db.doc('users/tio_rota').get()).data().trialInicio?.toMillis());
+
+  // O motorista anterior à cópia ganha a cópia na próxima rota.
+  await semear('tio_antigo', { trialInicio: DIAS(-10) });
+  await ligarRelogio(db, 'tio_antigo', 'primeira rota');
+  checar('quem já tinha a data ganha a cópia dela', DIAS(-10).getTime(),
+    (await db.doc('taxaParceiros/tio_antigo').get()).data()?.trialInicio?.toMillis());
+
+  // Com a cobrança desligada, nada liga — e a restauração continua valendo.
+  await db.doc('platformConfig/app').set({ cobrancaLigada: false });
+  await semear('tio_desligado', {});
+  checar('cobrança desligada: a rota não liga o relógio', false,
+    await ligarRelogio(db, 'tio_desligado', 'primeira rota'));
+  checar('nem cria a cópia', false, (await db.doc('taxaParceiros/tio_desligado').get()).exists);
+  await db.doc('users/tio_rota').delete();
+  await semear('tio_rota', {});
+  checar('mas a restauração não depende da chave', true, await restaurarRelogio(db, 'tio_rota'));
 
   // ─────────────────────────────── resumo ─────────────────────────────────
   console.log(`\n${'═'.repeat(64)}`);

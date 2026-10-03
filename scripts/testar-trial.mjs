@@ -29,6 +29,15 @@ import {
   ultimoDiaDoDegrau,
   mesDeTesteDe,
 } from '../src/dominio/associacao/trial.js';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { emMs, rotaComecou, decidirRelogio } from '../functions/lib/reguaDoRelogio.js';
+import {
+  contaComoAtiva,
+  motoristasParaRecontar,
+  precisaGravar,
+} from '../functions/lib/reguaDaTurma.js';
 
 const dia2 = (d, n) => new Date(d.getTime() + n * 86400000);
 
@@ -283,6 +292,158 @@ checar('sem início, qualquer mês é o 1º', 1, mesDeTesteDe(null, '2028-07'));
 checar('mês malformado não vira mês de teste', null, mesDeTesteDe(INICIO_20_09, '2026-9'));
 checar('nem texto solto', null, mesDeTesteDe(INICIO_20_09, 'setembro'));
 checar('nem ausência', null, mesDeTesteDe(INICIO_20_09, null));
+
+// ─────────────────── o relógio e o contador moram no servidor ───────────────
+//
+// ⚠️ 03/10/2026: `trialInicio` e `criancasAtivas` deixaram de ser escritos pelo
+// cliente. As duas metades puras ficam medidas aqui; quem escreve
+// (`relogioDoTeste.js`, `relogioNaRota.js`, `contadorDaTurma.js`) requer o
+// SDK e é conferido por LEITURA DE ARQUIVO no fim do bloco.
+
+bloco('S1. A rota que liga o relógio é a borda de subida');
+
+checar('rota nova (documento nasce rodando) começa', true, rotaComecou(null, { routeActive: true }));
+checar('rota religada depois de encerrada começa', true,
+  rotaComecou({ routeActive: false }, { routeActive: true }));
+checar('campo ausente antes conta como parada', true, rotaComecou({}, { routeActive: true }));
+// O celular regrava a posição a cada 30 s: cada uma dessas escritas não pode
+// ler três documentos.
+checar('posição regravada com a rota já rodando NÃO começa', false,
+  rotaComecou({ routeActive: true }, { routeActive: true }));
+checar('encerrar não começa', false, rotaComecou({ routeActive: true }, { routeActive: false }));
+checar('documento apagado não começa', false, rotaComecou({ routeActive: true }, null));
+checar('"true" em texto não é rota rodando', false, rotaComecou(null, { routeActive: 'true' }));
+
+bloco('S2. Qual data vale: a de users ou a cópia em taxaParceiros');
+
+const T = (iso) => ({ toMillis: () => new Date(iso).getTime() });
+checar('emMs lê Timestamp', new Date('2026-09-01T12:00:00Z').getTime(), emMs(T('2026-09-01T12:00:00Z')));
+checar('emMs lê {seconds}', 1000, emMs({ seconds: 1 }));
+checar('emMs lê Date', 5, emMs(new Date(5)));
+checar('emMs de nada é null', null, emMs(null));
+
+checar('nenhuma das duas, cobrança ligada: liga as duas agora',
+  { usuario: 'agora', copia: 'agora' }, decidirRelogio({ podeComecar: true }));
+checar('nenhuma das duas, cobrança desligada: não liga nada',
+  { usuario: null, copia: null }, decidirRelogio({ podeComecar: false }));
+// O caso que a cópia existe para pegar: o documento recriado.
+checar('documento recriado sem data: a cópia RESTAURA',
+  { usuario: 'copia', copia: null },
+  decidirRelogio({ naCopia: T('2026-06-01'), podeComecar: true }));
+checar('e restaura mesmo com a cobrança desligada (restaurar não é começar)',
+  { usuario: 'copia', copia: null },
+  decidirRelogio({ naCopia: T('2026-06-01'), podeComecar: false }));
+checar('motorista anterior à cópia: a cópia recebe a data dele',
+  { usuario: null, copia: 'usuario' },
+  decidirRelogio({ noUsuario: T('2026-06-01'), podeComecar: true }));
+checar('as duas iguais: nada a fazer', { usuario: null, copia: null },
+  decidirRelogio({ noUsuario: T('2026-06-01'), naCopia: T('2026-06-01'), podeComecar: true }));
+// ⚠️ A MAIS ANTIGA VENCE: ficar com a nova daria o prazo que a corrida inventou.
+checar('users mais nova que a cópia: volta para a da cópia', { usuario: 'copia', copia: null },
+  decidirRelogio({ noUsuario: T('2026-09-01'), naCopia: T('2026-06-01'), podeComecar: true }));
+checar('cópia mais nova que users: a cópia é corrigida', { usuario: null, copia: 'usuario' },
+  decidirRelogio({ noUsuario: T('2026-06-01'), naCopia: T('2026-09-01'), podeComecar: true }));
+
+bloco('S3. Quem o gatilho da turma reconta');
+
+checar('ativa é active === true (o filtro de billing.js)', true, contaComoAtiva({ active: true }));
+checar('sem o campo NÃO conta (billing também não cobra)', false, contaComoAtiva({}));
+checar('desativada não conta', false, contaComoAtiva({ active: false }));
+checar('nada não conta', false, contaComoAtiva(null));
+
+checar('criança nova ativa: reconta o motorista dela', ['A'],
+  motoristasParaRecontar(null, { adminUid: 'A', active: true }));
+checar('desativar: reconta', ['A'],
+  motoristasParaRecontar({ adminUid: 'A', active: true }, { adminUid: 'A', active: false }));
+checar('apagar: reconta', ['A'], motoristasParaRecontar({ adminUid: 'A', active: true }, null));
+// O caso que mais acontece: o status da criança anda dezenas de vezes por dia.
+checar('mudar o status na rota NÃO reconta', [],
+  motoristasParaRecontar({ adminUid: 'A', active: true, status: 'home' },
+    { adminUid: 'A', active: true, status: 'onboard' }));
+checar('trocar de motorista reconta OS DOIS', ['A', 'B'],
+  motoristasParaRecontar({ adminUid: 'A', active: true }, { adminUid: 'B', active: true }));
+checar('sem motorista nenhum, ninguém', [], motoristasParaRecontar(null, { active: true }));
+
+checar('contador igual: não grava', false, precisaGravar(3, 3));
+checar('contador diferente: grava', true, precisaGravar(4, 3));
+checar('contador ausente grava mesmo o zero (a rule de apagar conta pede == 0)', true,
+  precisaGravar(undefined, 0));
+
+bloco('S4. O cliente não escreve mais trialInicio nem criancasAtivas');
+
+const ler = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
+/** Tira comentários para o texto que EXPLICA a mudança não reprovar a si mesmo. */
+const semComentario = (txt) =>
+  txt.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+// A escrita é o campo dentro de uma chamada que grava. Leitores legítimos
+// montam OBJETOS com o campo para passar à régua (`GuardaDaConta`,
+// `FichaDoMotorista`), e isso não é escrita.
+const GRAVA = /(updateDoc|setDoc|addDoc|\.update|\.set)\s*\([^;]*?\b(trialInicio|criancasAtivas)\s*:/s;
+
+// Sondas positivas: o detector precisa reconhecer as escritas que existiam.
+checar('sonda: pega a escrita antiga do relógio', true,
+  GRAVA.test(semComentario('await updateDoc(ref, { trialInicio: serverTimestamp() });')));
+checar('sonda: pega a escrita antiga do contador (lote)', true,
+  GRAVA.test(semComentario("lote.update(doc(db, 'users', u), { criancasAtivas: increment(1) });")));
+checar('sonda: pega o decremento antigo', true,
+  GRAVA.test(semComentario("await updateDoc(doc(db, 'users', u), {\n  criancasAtivas: increment(-1),\n});")));
+checar('sonda: comentário citando o campo não reprova', false,
+  GRAVA.test(semComentario('// antes: updateDoc(ref, { trialInicio: serverTimestamp() })')));
+checar('sonda: objeto passado à régua não reprova', false,
+  GRAVA.test(semComentario('estadoDaConta({ trialInicio: profile?.trialInicio || null });')));
+
+function arquivosDe(dir) {
+  const fora = [];
+  for (const nome of readdirSync(dir)) {
+    const p = join(dir, nome);
+    if (statSync(p).isDirectory()) fora.push(...arquivosDe(p));
+    else if (/\.(js|jsx)$/.test(nome)) fora.push(p);
+  }
+  return fora;
+}
+const SRC = fileURLToPath(new URL('../src/', import.meta.url));
+const gravadores = arquivosDe(SRC)
+  .filter((f) => GRAVA.test(semComentario(readFileSync(f, 'utf8'))))
+  .map((f) => relative(SRC, f).replace(/\\/g, '/'));
+checar('nenhum arquivo de src/ grava trialInicio ou criancasAtivas', [], gravadores);
+
+const trialService = semComentario(ler('src/services/trialService.js'));
+checar('trialService não cita mais a data do teste no código', false, /trialInicio/.test(trialService));
+checar('mas continua registrando o uso (ultimaRota)', true, /ultimaRota\s*:/.test(trialService));
+
+bloco('S5. Quem escreve agora (conferido no texto: estes arquivos requerem o SDK)');
+
+const relogio = semComentario(ler('functions/lib/relogioDoTeste.js'));
+checar('ligarRelogio grava também a cópia em taxaParceiros', true,
+  /taxaParceiros\/\$\{uid\}/.test(relogio));
+checar('ligarRelogioComSnap grava a cópia junto', true,
+  /function ligarRelogioComSnap[\s\S]*taxaParceiros\/\$\{ref\.id\}/.test(relogio));
+checar('a restauração existe e lê a cópia', true,
+  /function restaurarRelogio[\s\S]*taxaParceiros[\s\S]*function makeRestaurarRelogio[\s\S]*restaurarRelogio\(db/.test(relogio));
+checar('a chave da cobrança continua guardando o início', true,
+  /cobrancaLigada\(db\)/.test(relogio));
+
+const naRota = semComentario(ler('functions/lib/relogioNaRota.js'));
+checar('o gatilho da rota escuta liveLocation', true, /liveLocation\/\{uid\}/.test(naRota));
+checar('e só liga na borda de subida', true, /rotaComecou\(/.test(naRota));
+checar("e chama ligarRelogio com 'primeira rota'", true, /ligarRelogio\([^)]*'primeira rota'/.test(naRota));
+
+const fechamento = semComentario(ler('functions/lib/fechamento.js'));
+checar('a fatura conta as crianças no banco', true, /contarCriancasAtivas\(db, tioUid\)/.test(fechamento));
+checar('e não multiplica mais o contador do perfil', false,
+  /Number\(motorista\.criancasAtivas\)/.test(fechamento));
+
+const contador = semComentario(ler('functions/lib/contadorDaTurma.js'));
+checar('o contador reconta com o filtro de billing (active == true)', true,
+  /where\('adminUid', '==', uid\)\s*\.where\('active', '==', true\)\s*\.count\(\)/.test(contador));
+checar('e nunca cria um users pela metade (update, não set)', true,
+  /tx\.update\(ref, \{ criancasAtivas/.test(contador) && !/tx\.set\(/.test(contador));
+
+const conta = semComentario(ler('src/services/accountService.js'));
+checar('encerrar a operação espera a turma zerada antes de apagar o users', true,
+  /await esperarTurmaZerada\(adminUid\);\s*await deleteDoc\(doc\(db, 'users', adminUid\)\)/.test(conta));
+checar('remover a criança apaga a foto dela', true, /deleteChildPhoto\(childId\)/.test(conta));
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

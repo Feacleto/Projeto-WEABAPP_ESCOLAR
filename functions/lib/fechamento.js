@@ -46,6 +46,8 @@ const { exigirDono } = require('./papeis');
 const { assinaturaAteDoMes } = require('./eventoDeCobranca');
 const { ESTADO, reconciliarIndicacoes } = require('./indicacao');
 const { pararDeFaturar } = require('./reguaDoEncerramento');
+const { contarCriancasAtivas } = require('./contadorDaTurma');
+const { precisaGravar } = require('./reguaDaTurma');
 const {
   PLANO,
   TAXA,
@@ -114,7 +116,16 @@ async function fecharFaturaDe(db, { motorista, mes, config, ownerUid = null }) {
   // aumento para quem escolhesse o mensal.
   const plano = planoValido(motorista.plano) ? motorista.plano : null;
   const planoDaConta = plano || PLANO.MENSAL;
-  const criancas = Number(motorista.criancasAtivas) || 0;
+  // ⚠️ A FATURA CONTA AS CRIANÇAS NO BANCO, NÃO LÊ O CONTADOR (03/10/2026).
+  //
+  // `users.criancasAtivas` é mantido pelo gatilho `contadorDaTurma.js`, e
+  // antes disso era escrito pelo próprio cliente — o cobrado decidindo o
+  // número que multiplica a cobrança dele. Mesmo com o gatilho, o contador é
+  // um RESUMO: um gatilho que falhou deixa o número velho até a próxima
+  // mudança da turma. A fatura é o único lugar onde esse resumo vira
+  // dinheiro, então aqui a pergunta vai à fonte: uma agregação `count()` por
+  // motorista por mês, o mesmo filtro de `billing.js` (`active == true`).
+  const criancas = await contarCriancasAtivas(db, tioUid);
 
   const mesDeTeste = plano ? null : mesDeTesteDe(motorista.trialInicio, mes);
   const isentoPorConcessao = isentoEm(motorista.isencaoAte, mes);
@@ -240,6 +251,12 @@ async function fecharFaturaDe(db, { motorista, mes, config, ownerUid = null }) {
     },
     { merge: true }
   );
+
+  // E o contador que divergiu é CORRIGIDO no mesmo lote, para a tela dele
+  // (planos, indicar, encerrar) não mostrar um número que a fatura desmente.
+  if (precisaGravar(motorista.criancasAtivas, criancas)) {
+    lote.set(db.doc(`users/${tioUid}`), { criancasAtivas: criancas }, { merge: true });
+  }
 
   if (faturaZeradaEstendeAssinatura({ total, isencaoDeTeste: mesDeTeste !== null })) {
     const ate = assinaturaAteDoMes(mes);

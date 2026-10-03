@@ -183,7 +183,14 @@ export default function Profile() {
         await logout();
         navigate('/', { replace: true });
       } else {
-        toast.error('Não foi possível excluir. Tente novamente.');
+        // A espera da turma zerada (`accountService.esperarTurmaZerada`) já
+        // traz a frase certa: as crianças saíram, falta o servidor recontar.
+        toast.error(
+          err?.code === 'conta/turma-nao-zerada'
+            ? err.message
+            : 'Não foi possível excluir. Tente novamente.',
+          { duration: 6000 }
+        );
         setDeleting(false);
       }
     }

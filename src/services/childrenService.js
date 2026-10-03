@@ -2,14 +2,12 @@ import {
   collection,
   doc,
   getDoc,
-  increment,
   query,
   where,
   onSnapshot,
   serverTimestamp,
   updateDoc,
-  writeBatch,
-  runTransaction,
+  setDoc,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { generateInviteCode } from '../dominio/identidade/generateInviteCode';
@@ -179,27 +177,18 @@ export async function addChild(data) {
     createdAt: serverTimestamp(),
   };
 
-  // CRIANÇA E CONTADOR NO MESMO BATCH — e não é opção.
+  // ⚠️ SÓ A CRIANÇA — O CONTADOR NÃO É MAIS DO CLIENTE (03/10/2026).
   //
-  // As rules exigem as duas escritas juntas: `allow create` em `children`
-  // valida, com `getAfter`, o contador do motorista JÁ incrementado, e a
-  // regra do contador recusa passar do `limiteCriancas` contratado. Um
-  // `addDoc` solto é recusado por permissão — não é otimização, é o caminho.
-  //
-  // Rules não sabem contar documentos: este contador é a contagem
-  // materializada, e é ele que torna o limite verificável no servidor.
-  //
-  // `increment(1)` e não um número calculado aqui: duas abas cadastrando ao
-  // mesmo tempo leriam o mesmo valor e gravariam o mesmo, e uma criança
-  // entraria sem ocupar vaga. O incremento é resolvido pelo servidor, e as
-  // rules enxergam o valor já resolvido.
+  // Até aqui ia um `increment(1)` em `users.criancasAtivas` no mesmo lote, e
+  // as rules exigiam o par. Era o cobrado escrevendo o número que multiplica
+  // a fatura dele: as rules vigiavam o passo de um em um, nunca se o passo
+  // correspondia a uma criança de verdade. Hoje as rules recusam o campo ao
+  // cliente, e o gatilho `functions/lib/contadorDaTurma.js` RECONTA a turma a
+  // cada criança criada, desativada, apagada ou trocada de motorista. O
+  // número no perfil chega alguns segundos depois; a fatura não depende dele
+  // (o fechamento conta no banco).
   const docRef = doc(collection(db, 'children'));
-  const lote = writeBatch(db);
-  lote.set(docRef, payload);
-  lote.update(doc(db, 'users', payload.adminUid), {
-    criancasAtivas: increment(1),
-  });
-  await lote.commit();
+  await setDoc(docRef, payload);
 
   // Aqui havia um `addChildToDefaultPlan`, que enfileirava a criança nos seis
   // turnos de `routePlans`. Saiu junto com os turnos: a fila não é mais uma
@@ -225,17 +214,17 @@ export async function updateChild(id, data) {
   // `active` NÃO PASSA POR AQUI, e a recusa é barata perto do estrago.
   //
   // Esta função repassava o payload inteiro. `updateChild(id, {active: true})`
-  // reativaria a criança SEM incrementar `criancasAtivas` — criando uma
-  // criança ativa que não ocupa vaga, e furando o `limiteCriancas` que as
-  // rules validam com `getAfter`.
+  // reativaria a criança por um caminho que ninguém revisou. O contador de
+  // `criancasAtivas` é do servidor desde 03/10/2026 e se acerta sozinho; a
+  // recusa fica porque ativar e desativar têm caminhos próprios.
   //
   // Hoje nenhum chamador faz isso (conferido nos quatro call sites), então é
   // armadilha e não bug — do tipo que alguém arma sem perceber, meses depois,
-  // passando um objeto de formulário inteiro. Ativação e desativação têm dois
-  // caminhos próprios, e são eles que mantêm o contador honesto.
+  // passando um objeto de formulário inteiro. Ativação e desativação têm
+  // caminhos próprios (`deactivateChild`, `deactivateChildAndParent`).
   if ('active' in updates) {
     throw new Error(
-      'Use ativarCrianca/deactivateChild: `active` mexe no contador de vagas.'
+      'Use deactivateChild: `active` decide a fatura e tem caminho próprio.'
     );
   }
   if ('lat' in updates) updates.lat = toCoord(updates.lat);
@@ -313,42 +302,14 @@ export async function setChildPhotoURL(id, photoURL) {
 }
 
 export async function deactivateChild(id) {
-  // DESATIVAR LIBERA A VAGA — o limite conta crianças ATIVAS.
+  // DESATIVAR LIBERA A VAGA — a fatura conta crianças ATIVAS.
   //
-  // É o mesmo recorte que `resumirBase` usa pra calcular a taxa (`active !==
-  // false`), e manter os dois iguais é o que faz contrato, fatura e limite
-  // falarem do mesmo número. Se aqui contasse tudo já cadastrado, um
-  // motorista que perdeu um cliente continuaria pagando a vaga dele.
-  //
-  // O decremento vai no mesmo batch pelo mesmo motivo do cadastro — só que
-  // aqui as rules não exigem: descer o contador é livre. Junto porque
-  // separado é como ele desanda no dia em que a segunda escrita falha.
-  // EM TRANSAÇÃO, E NÃO "LER E DEPOIS GRAVAR".
-  //
-  // Era `await getChild(id)` FORA do batch, e a decisão de descontar saía
-  // dessa leitura. Duas abas desativando a mesma criança leem `active: true`
-  // as duas e descontam DUAS vagas — e a rule não impede, porque descer o
-  // contador é livre (é subir que ela vigia). O motorista perderia uma vaga
-  // contratada em silêncio, e só a fatura do mês seguinte mostraria a
-  // diferença.
-  //
-  // `runTransaction` fecha a janela: a leitura e a escrita acontecem no mesmo
-  // instante lógico, e a segunda tentativa relê `active: false` e não desconta.
-  await runTransaction(db, async (tx) => {
-    const ref = doc(db, 'children', id);
-    const snap = await tx.get(ref);
-    if (!snap.exists()) return;
-    const atual = snap.data();
-
-    tx.update(ref, { active: false });
-    // Só desconta se ela ESTAVA ativa: desativar duas vezes não pode gerar
-    // duas vagas do nada.
-    if (atual.active !== false && atual.adminUid) {
-      tx.update(doc(db, 'users', atual.adminUid), {
-        criancasAtivas: increment(-1),
-      });
-    }
-  });
+  // ⚠️ Aqui havia uma transação que descontava `users.criancasAtivas` com
+  // `increment(-1)`. Saiu em 03/10/2026: o contador é do SERVIDOR
+  // (`functions/lib/contadorDaTurma.js` reconta a cada mudança de `active`),
+  // e as rules recusam o campo ao cliente. Recontar também acaba com o
+  // decremento duplo de duas abas, que a transação existia para evitar.
+  await updateDoc(doc(db, 'children', id), { active: false });
   // `active: false` basta: a fila do dia filtra por ele. Não há mais lista
   // salva de onde a criança precise ser retirada — e portanto não há mais
   // como ela sobrar numa rota depois de desativada.
