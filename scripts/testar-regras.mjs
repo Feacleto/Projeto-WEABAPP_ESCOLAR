@@ -505,7 +505,9 @@ async function main() {
       contractHash: S('hash-trocado'),
       contractAcceptedByUid: S(pai1.uid),
     }, ['contractHash', 'contractAcceptedByUid']));
-  checar('pos', 'pai aceita um contrato ainda não aceito', 'PASSA',
+  // Era PASSA até 02/10/2026: o aceite agora é da callable `aceitarContrato`,
+  // sobre a versão gravada — nenhum cliente escreve aceite. Ver "O ACEITE".
+  checar('aceite', 'pai NÃO grava o aceite pelo cliente (é do servidor)', 'NEGA',
     await escrever('children/kid1', pai1, {
       contractVersion: S('v1'),
       contractAcceptedAt: { timestampValue: '2026-08-25T09:00:00Z' },
@@ -534,7 +536,8 @@ async function main() {
   await tetoDeGets(tio1);
   await vagaContratada(tio1, tio2);
   await oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon });
-  await decisao12({ tio1, tio2, pai1, novato });
+  await decisao12({ tio1, tio2, pai1, novato, dono });
+  await oAceite({ tio1, tio2, pai1 });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -544,6 +547,134 @@ async function main() {
   }
   console.log(`${'═'.repeat(64)}\n`);
   process.exit(bad > 0 ? 1 : 0);
+}
+
+/**
+ * O ACEITE DO CONTRATO E A CONTA DA FAMÍLIA (02/10/2026).
+ *
+ * Dois buracos achados lendo as jornadas, e os dois eram do ramo do MOTORISTA:
+ *
+ * 1. O `update` dele em `children` aceitava qualquer campo fora da saúde —
+ *    inclusive `contractAcceptedAt`, `contractHash` e o nome de quem assinou.
+ *    Um aceite que a outra parte reescreve não prova nada. Ele pode APAGAR o
+ *    aceite (remover a criança zera tudo), nunca escrever um.
+ * 2. "Remover criança" apagava `users/{pai}` inteiro — a mãe de dois irmãos
+ *    perdia o outro filho. A conta de mais de um filho agora só sai pela
+ *    callable `desvincularResponsavel`, que tira UMA criança da lista.
+ *
+ * Elenco próprio (`kidAceite`, `paiAceite`) para não sujar o dos outros blocos.
+ */
+async function oAceite({ tio1, tio2, pai1 }) {
+  console.log('\n=== O ACEITE — o motorista não escreve a assinatura da família ===');
+  const crianca = (extra = {}) => ({
+    adminUid: S(tio1.uid), name: S('Kid Aceite'), active: B(true), ...extra,
+  });
+
+  await semear('children/kidAceite', crianca());
+  checar('aceite', 'motorista NÃO grava um aceite que não houve', 'NEGA',
+    await escrever('children/kidAceite', tio1,
+      { contractAcceptedAt: T(0), contractAcceptedName: S('Mãe Inventada'), contractHash: S('abc') },
+      ['contractAcceptedAt', 'contractAcceptedName', 'contractHash']));
+
+  await semear('children/kidAceite', crianca({
+    contractAcceptedAt: T(-5), contractAcceptedName: S('Mãe Real'), contractHash: S('h1'),
+  }));
+  checar('aceite', 'motorista NÃO troca o nome de quem assinou', 'NEGA',
+    await escrever('children/kidAceite', tio1,
+      { contractAcceptedName: S('Outra Pessoa') }, ['contractAcceptedName']));
+  checar('aceite', 'motorista NÃO troca o hash do aceite', 'NEGA',
+    await escrever('children/kidAceite', tio1, { contractHash: S('h2') }, ['contractHash']));
+  checar('aceite', 'outro motorista NÃO apaga o aceite', 'NEGA',
+    await escrever('children/kidAceite', tio2,
+      { contractAcceptedAt: { nullValue: null }, contractAcceptedName: { nullValue: null },
+        contractHash: { nullValue: null } },
+      ['contractAcceptedAt', 'contractAcceptedName', 'contractHash']));
+  // Positivas: as que a correção não pode quebrar.
+  checar('pos', 'motorista APAGA o aceite ao remover a criança', 'PASSA',
+    await escrever('children/kidAceite', tio1,
+      { active: B(false), contractAcceptedAt: { nullValue: null },
+        contractAcceptedName: { nullValue: null }, contractHash: { nullValue: null } },
+      ['active', 'contractAcceptedAt', 'contractAcceptedName', 'contractHash']));
+  await semear('children/kidAceite', crianca({ contractAcceptedAt: T(-5), contractHash: S('h1') }));
+  checar('pos', 'motorista edita a mensalidade sem tocar no aceite', 'PASSA',
+    await escrever('children/kidAceite', tio1, { monthlyFee: N(400) }, ['monthlyFee']));
+
+  checar('aceite', 'motorista NÃO aponta qual contrato "vale"', 'NEGA',
+    await escrever('children/kidAceite', tio1,
+      { contratoVigente: { mapValue: { fields: { numero: { integerValue: '1' } } } } },
+      ['contratoVigente']));
+
+  // ── as versões gravadas (children/{id}/contratos/{n}) ──
+  const I = (n) => ({ integerValue: String(n) });
+  const versao = (extra = {}) => ({
+    numero: I(1), tipo: S('contrato'), status: S('aguardando'), adminUid: S(tio1.uid),
+    dados: { mapValue: { fields: { finance: { mapValue: { fields: { monthlyFee: N(400) } } } } } },
+    ...extra,
+  });
+  await semear('children/kidAceite', crianca({ parentUid: S(pai1.uid) }));
+  checar('pos', 'motorista emite a versão 1 do contrato', 'PASSA',
+    await criar('children/kidAceite/contratos', '1', tio1, versao()));
+  checar('aceite', 'motorista NÃO emite versão já "aceita"', 'NEGA',
+    await criar('children/kidAceite/contratos', '2', tio1, versao({ numero: I(2), status: S('aceito') })));
+  checar('aceite', 'motorista NÃO emite com aceite dentro', 'NEGA',
+    await criar('children/kidAceite/contratos', '3', tio1,
+      versao({ numero: I(3), aceitoNome: S('Mãe Inventada') })));
+  checar('aceite', 'o número do documento e o de dentro batem', 'NEGA',
+    await criar('children/kidAceite/contratos', '4', tio1, versao({ numero: I(9) })));
+  checar('aceite', 'outro motorista NÃO emite contrato da criança', 'NEGA',
+    await criar('children/kidAceite/contratos', '5', tio2, versao({ numero: I(5), adminUid: S(tio2.uid) })));
+  checar('aceite', 'a família NÃO emite contrato', 'NEGA',
+    await criar('children/kidAceite/contratos', '6', pai1, versao({ numero: I(6), adminUid: S(pai1.uid) })));
+  checar('pos', 'a família lê a versão emitida', 'PASSA',
+    await ler('children/kidAceite/contratos/1', pai1));
+  checar('aceite', 'outro motorista NÃO lê a versão', 'NEGA',
+    await ler('children/kidAceite/contratos/1', tio2));
+  checar('aceite', 'a família NÃO marca a versão como aceita', 'NEGA',
+    await escrever('children/kidAceite/contratos/1', pai1,
+      { status: S('aceito'), aceitoNome: S('Pai Um') }, ['status', 'aceitoNome']));
+  checar('aceite', 'motorista NÃO edita o texto da versão emitida', 'NEGA',
+    await escrever('children/kidAceite/contratos/1', tio1,
+      { dados: { mapValue: { fields: {} } } }, ['dados']));
+  checar('pos', 'motorista retira a versão que ninguém aceitou', 'PASSA',
+    await escrever('children/kidAceite/contratos/1', tio1,
+      { status: S('retirado'), retiradoEm: T(0) }, ['status', 'retiradoEm']));
+  await semear('children/kidAceite/contratos/7', versao({ numero: I(7), status: S('aceito') }));
+  checar('aceite', 'motorista NÃO retira a versão aceita', 'NEGA',
+    await escrever('children/kidAceite/contratos/7', tio1,
+      { status: S('retirado'), retiradoEm: T(0) }, ['status', 'retiradoEm']));
+  checar('aceite', 'ninguém apaga uma versão', 'NEGA',
+    await apagar('children/kidAceite/contratos/7', tio1));
+
+  // ── o documento do dia que ainda não existe (teste R2, 02/10/2026) ──
+  // A tela escuta `{dia}_{criança}` antes de alguém criá-lo. Antes, a regra
+  // lia `resource.data` de um nulo e negava — e a escuta morria.
+  await semear('children/kidAceite', crianca({ parentUid: S(pai1.uid) }));
+  // 404 é a resposta CERTA aqui: a regra deixou ler e o documento não existe.
+  // Recusa seria 403.
+  const ausente = async (pr) => ((await pr) === 404 ? 200 : 403);
+  checar('pos', 'a mãe escuta a falta de hoje antes de existir', 'PASSA',
+    await ausente(ler('absenceDeclarations/2099-01-01_kidAceite', pai1)));
+  checar('pos', 'a mãe escuta o "quem busca hoje" antes de existir', 'PASSA',
+    await ausente(ler('altPickups/2099-01-01_kidAceite', pai1)));
+  checar('pos', 'o motorista dela escuta também', 'PASSA',
+    await ausente(ler('altPickups/2099-01-01_kidAceite', tio1)));
+  checar('dia', 'outro motorista NÃO escuta o documento da criança alheia', 'NEGA',
+    await ler('absenceDeclarations/2099-01-01_kidAceite', tio2));
+  checar('dia', 'id sem criança dela não abre nada', 'NEGA',
+    await ler('altPickups/2099-01-01_kidQueNaoExiste', pai1));
+
+  // ── a conta da família ──
+  const pai = (ids) => ({
+    role: S('parent'), name: S('Pai Aceite'), adminUid: S(tio1.uid), childId: S(ids[0]),
+    childIds: { arrayValue: { values: ids.map(S) } },
+    adminUids: { arrayValue: { values: [S(tio1.uid)] } },
+  });
+  await semear('users/paiAceite', pai(['kidAceite', 'kidIrmao']));
+  checar('aceite', 'motorista NÃO apaga a conta de quem tem 2 filhos', 'NEGA',
+    await apagar('users/paiAceite', tio1));
+  await semear('users/paiAceite', pai(['kidAceite']));
+  checar('pos', 'motorista apaga a conta de quem tem 1 filho só', 'PASSA',
+    await apagar('users/paiAceite', tio1));
 }
 
 /**
@@ -1608,7 +1739,7 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
  * Cada um destes falhou contra as rules antes do conserto — é por isso que
  * eles existem, e é o que a decisão exige.
  */
-async function decisao12({ tio1, tio2, pai1, novato }) {
+async function decisao12({ tio1, tio2, pai1, novato, dono }) {
   console.log('\n=== DECISÃO 12 — a lista de campos proibidos ===');
 
   // Restaura o elenco: `vagaContratada` e o bloco anterior reescrevem estes
@@ -1910,6 +2041,17 @@ async function decisao12({ tio1, tio2, pai1, novato }) {
   checar('casa', 'e depois disso a porta fecha', 'NEGA',
     await escrever('children/kid-casa', pai1,
       { address: S('Outra rua, 9'), numeroPendente: B(false) }, ['address', 'numeroPendente']));
+
+  // ── O CONTATO DO INVESTIDOR (02/10/2026) ─────────────────────────────────
+  // Nome, e-mail e WhatsApp de quem pediu o material pelo site. So o dono le;
+  // quem grava e a function, com Admin SDK.
+  await semear('leadsInvestidor/lead-1', { nome: S('Ana'), email: S('ana@exemplo.com') });
+  checar('pos', 'o dono le o contato do investidor', 'PASSA',
+    await ler('leadsInvestidor/lead-1', dono));
+  checar('investidor', 'motorista nao le o contato do investidor', 'NEGA',
+    await ler('leadsInvestidor/lead-1', tio1));
+  checar('investidor', 'e ninguem grava contato pelo app', 'NEGA',
+    await escrever('leadsInvestidor/lead-2', pai1, { nome: S('x'), email: S('x@y.z') }, ['nome', 'email']));
 
   // ── O PEDIDO DE ACESSO SEM LINK (02/10/2026) ─────────────────────────────
   // Nasce de um numero digitado, que nao e segredo. So o servidor escreve, e

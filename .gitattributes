@@ -1,0 +1,3 @@
+# Scripts de shell rodam dentro do contêiner Linux dos testes
+# (testes-navegador/docker): com CRLF do Windows, o `sh` não os executa.
+*.sh text eol=lf

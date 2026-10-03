@@ -32,6 +32,10 @@ const {
 const { makeEnviarAvisosComerciais } = require('./lib/enviarAvisos');
 const { makeCasarNoCadastro } = require('./lib/casarNoCadastro');
 const { makeVincularIrmao, makeRecusarIrmao } = require('./lib/vincularIrmao');
+const { makeDesvincularResponsavel } = require('./lib/desvincularResponsavel');
+const { makeAceitarContrato } = require('./lib/aceitarContrato');
+const { makeInformarTelefoneDaEscola } = require('./lib/telefoneDaEscola');
+const { makeRegistrarInteresseInvestidor } = require('./lib/interesseInvestidor');
 const {
   makePedirAcessoPeloTelefone,
   makeResponderPedidoDeAcesso,
@@ -44,6 +48,9 @@ const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./lib/limites');
 const admin = require('firebase-admin');
+// `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
+// chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
+const { FieldValue } = require('firebase-admin/firestore');
 
 const { buildEmailHtml, buildEmailText, subjectFor } = require('./lib/emailTemplate');
 const { emailMandaEm } = require('./lib/canalDaCobranca');
@@ -274,7 +281,7 @@ async function processReminders(apiKey, now = new Date(), adminUid = null) {
       // `const admin = require('firebase-admin')` está no topo do arquivo.
       // Um `let admin` aqui sombreia o MÓDULO no bloco inteiro, e a linha que
       // marca a idempotência mais abaixo chama
-      // `admin.firestore.FieldValue.serverTimestamp()` — que passava a operar
+      // `FieldValue.serverTimestamp()` — que passava a operar
       // sobre o documento do motorista e era `undefined`.
       //
       // O estrago ficava escondido pela ORDEM: o `TypeError` estourava DEPOIS
@@ -348,7 +355,7 @@ async function processReminders(apiKey, now = new Date(), adminUid = null) {
       await paymentDoc.ref.set(
         {
           emailSentMilestones: {
-            [milestone.key]: admin.firestore.FieldValue.serverTimestamp(),
+            [milestone.key]: FieldValue.serverTimestamp(),
           },
         },
         { merge: true }
@@ -624,12 +631,21 @@ exports.casarIndicacaoNoCadastro = makeCasarNoCadastro(db);
 // Ver o cabeçalho de `vincularIrmao.js` e a régua em `reguaDoIrmao.js`.
 exports.vincularIrmaoNoCadastro = makeVincularIrmao(db);
 exports.recusarIrmao = makeRecusarIrmao(db);
+// Tirar UMA criança da conta da família sem apagar a conta — ver o arquivo.
+exports.desvincularResponsavel = makeDesvincularResponsavel(db);
+exports.aceitarContrato = makeAceitarContrato(db);
+exports.informarTelefoneDaEscola = makeInformarTelefoneDaEscola(db);
 
 // O RESPONSÁVEL SEM LINK PEDE ACESSO PELO WHATSAPP, E O MOTORISTA APROVA
 // (02/10/2026). O número sozinho não vincula nada — só cria o pedido. Ver o
 // cabeçalho de `pedidosDeAcesso.js`.
 exports.pedirAcessoPeloTelefone = makePedirAcessoPeloTelefone(db);
 exports.responderPedidoDeAcesso = makeResponderPedidoDeAcesso(db);
+
+// O FORMULÁRIO DE INVESTIDOR DO SITE (02/10/2026). A landing chama
+// /api/interesse-investidor e o hosting repassa para cá (firebase.json). Grava
+// em `leadsInvestidor` e avisa o dono. Ver o cabeçalho de interesseInvestidor.js.
+exports.registrarInteresseInvestidor = makeRegistrarInteresseInvestidor(db);
 
 /* ══ OS AVISOS DE TEMPO ═══════════════════════════════════════════════════
  * Mensalidade vencendo, convite parado, fatura da plataforma e alvará. Todos

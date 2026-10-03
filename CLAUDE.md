@@ -17,20 +17,20 @@ commit e interface.
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
 npm run lint
-npm run testar                   # 42 scripts. O PRIMEIRO é
+npm run testar                   # 44 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
-                                 # horarios, faltas, endereco, aviso,
+                                 # horarios, viagem, faltas, endereco, aviso,
                                  # proximidade, vazamento, contraste, travessia,
-                                 # contrato,
+                                 # contrato, combinado,
                                  # pix, brcode,
                                  # status, auth, trial, planos, avisos,
                                  # preferencias, multa, encerramento,
                                  # conta, cobranca, gateway, carteira,
                                  # proposta, chamados, risco, fila, concessao,
                                  # selo, indicacao, irmaos, origem, abas,
-                                 # acompanhamento, transacoes, fundo, busca,
+                                 # acompanhamento, transacoes, fundo, busca, site,
                                  # tutorial
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
@@ -311,10 +311,11 @@ src/
 │   ├── pai/           8 telas do responsável + `PrimeiroAcessoDoPai`, o card
 │   │                 por cima do `/pai` (dados, número da casa se faltar,
 │   │                 aniversário do filho, avisos) — mesmo desenho do motorista
-│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com OITO
+│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com NOVE
 │   │                  abas: Hoje (a fila), Motoristas (lista + FICHA),
 │   │                  Chamados, Mês (régua e fechamento), Números, Selos,
-│   │                  Indicações, Pesquisa. As abas moram em
+│   │                  Indicações, Pesquisa, Investidores (os contatos que
+│   │                  chegam pelo site). As abas moram em
 │   │                  components/admin/.
 │   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.2
 │                       (11/09/2026): a cláusula 8 passou a dizer que o
@@ -380,10 +381,19 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        e JS inline, deploy por `--only hosting:landing`. As
                        duas home públicas antigas (`/` do motorista) morreram
                        aqui dentro; a `/familia` continua no app.
-                       Desde 02/10/2026 são DUAS páginas: `index.html`, a
-                       home simples (5 blocos, um caminho: criar conta), e
-                       `saiba-mais.html` (`/saiba-mais`), o site completo de
-                       antes. `testar:selo` lê as duas.
+                       A HOME (`index.html`, 5 blocos, um caminho: criar
+                       conta) NÃO MUDA. Desde 02/10/2026 o site antigo
+                       (`/saiba-mais`) virou SETE PÁGINAS PRÓPRIAS —
+                       /como-funciona, /motorista, /familia, /sobre,
+                       /duvidas, /contato, /investidores —, cada uma com
+                       Voltar e Entrar no app, e os links da home apontam
+                       para elas. A fonte é `scripts/gerar-paginas-do-site.py`
+                       (rode-o depois de mexer no texto); estilo e
+                       comportamento comuns em `landing/paginas.css` e
+                       `paginas.js`. ⚠️ Público de ~40 anos: letra de 18px,
+                       uma coluna, um botão por bloco. `/saiba-mais` é 301
+                       para a home (firebase.json) e o arquivo antigo está em
+                       `docs/arquivo/`. `npm run testar:site` trava tudo isso.
 functions/             Cloud Functions v2 (CommonJS, Node 22)
   └── lib/             reguaDoServidor (a régua PURA — sem require, e desde
                        10/09/2026 ela espelha `precoDoMes` INTEIRO, porque o
@@ -466,12 +476,12 @@ antes de ela virar código.
 
 Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 
-`users` · `children` (+ subcoleção `rides/{YYYY-MM-DD}`) · `payments`
+`users` · `children` (+ subcoleções `rides/{YYYY-MM-DD}` e `contratos/{numero}`) · `payments`
 (+ `events`) · `liveLocation` · `notifications` · `altPickups` · `schools` ·
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
-`indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `platformConfig` ·
+`indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `platformConfig` ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -1079,6 +1089,107 @@ buzinar na rua, dispara uma chamada que toca em tela cheia no celular do pai.
 **`liveLocation`** é sobrescrito com throttle (GPS suspende em aba oculta; a
 function `closeStaleRoutes` fecha rota que ficou aberta).
 
+⚠️ **A ROTA QUE SE ENCERRAVA SOZINHA** (03/10/2026). O servidor fechava a rota
+depois de 20 minutos sem posição, e o celular deixava de gravar em casos
+comuns: perua PARADA no portão (`watchPosition` só entrega posição nova) e
+TELA APAGADA (app de navegador perde o GPS). Hoje
+[locationService](src/services/locationService.js) tem um **pulso** que regrava
+a última posição a cada minuto e pede **tela acesa** (Wake Lock) durante a
+rota; o app que **recarrega** com a rota aberta religa o GPS sozinho
+(`retomar`, em `ControleDeRota`); e o `closeStaleRoutes` espera **90 minutos**
+(antes 20) e apaga a última posição ao fechar, como o "Encerrar" faz.
+
+**A ROTA TEM ABA PRÓPRIA, QUE SÓ EXISTE ENQUANTO ELA EXISTE** (03/10/2026,
+pedido do dono) — `ABA_DA_ROTA` em [TioLayout](src/pages/tio/TioLayout.jsx).
+"INICIAR ROTA" põe **Rota** no meio do rodapé e abre `/tio/route/now`;
+"Encerrar" a tira e volta ao Início. Quem decide é
+`liveLocation/{uid}.routeActive`, não o GPS deste aparelho. O Início, durante a
+rota, mostra só um cartão "Rota em andamento · Abrir".
+
+⚠️ **QUEM ESTÁ EM FOCO E QUEM VAI JUNTO É RÉGUA PURA** —
+[focoDaViagem.js](src/dominio/rota/focoDaViagem.js) (`npm run testar:viagem`).
+O foco era "a primeira criança com ação" e **travava**: depois do primeiro
+EMBARQUEI virava "ENTREGUEI NA ESCOLA" da mesma criança, e o "TODOS" juntava
+casas e escolas diferentes. Regra: **primeiro embarca, depois entrega**;
+**"TODOS" só junta o mesmo lugar** (a mesma escola, ou irmãos na mesma casa);
+o motorista **toca numa criança da lista para pô-la em foco** (é assim que se
+marca falta de quem não é a da vez). "Faltou"/"O pai levou" só antes de
+embarcar; Buzinar/Zap/Ligar somem no "ENTREGUEI NA ESCOLA". O botão da
+parada mora em [acaoDaParada.js](src/dominio/rota/acaoDaParada.js).
+
+⚠️ **OS AVISOS DA ROTA SAEM DA FILA DA VIAGEM, NÃO DA TURMA DO DIA** (mesma
+régua): "Vocês são os próximos" (`proximoAAvisar`), "A perua saiu"
+(`saidaDaViagem`, trava por VIAGEM — antes era por dia, e a família da tarde
+recebia às 6h) e o "faltou registrar" do fim da rota
+(`quemFicouSemRegistro`, que vê quem ficou NA PERUA; antes a direção era
+adivinhada pelo relógio). Quem faltou ou vai com o pai fica fora de todos — e
+dos alvos do "está chegando". Ao encerrar com pendência, a barra diz
+"Ainda na perua: …" antes do "Confirmar".
+
+⚠️ **"A ROTA NÃO COMEÇOU" TEM TETO E OLHA O STATUS** — só para criança ainda
+em casa, e só até 90 minutos depois da hora de pegar
+([avisoDoMomento.js](src/dominio/rota/avisoDoMomento.js) e o espelho em
+`reguaDosAvisos.js`). Sem isso, a varredura das 16h avisava "a rota não
+começou às 06:40" para a criança já entregue. O servidor lê o status de HOJE
+(`statusDeHoje`): "na perua" gravado ontem não vira "passou da hora".
+
+**AS FERRAMENTAS DA RUA, DENTRO DA ROTA** (03/10/2026), todas na tela da
+rota ([OperacaoDaRota](src/components/route/OperacaoDaRota.jsx)):
+- **Desfazer** um toque errado (`voltarPasso`; volta o status e apaga a hora do
+  marco no mesmo lote — o aviso já recebido pela família não volta, e a tela
+  diz isso). Tocar em quem já foi marcado também abre o desfazer.
+- **"Vou atrasar" / "Chego mais cedo" / "Problema na perua"**
+  ([AvisosDaViagem](src/components/route/AvisosDaViagem.jsx)): só para as
+  famílias desta viagem que ainda esperam; os minutos sugeridos saem da hora
+  COMBINADA da parada em foco (cala acima de 90 min de diferença).
+- **Recado no caderno** da criança em foco
+  ([RecadoDaRota](src/components/route/RecadoDaRota.jsx)), só para a família dela.
+- **"Ninguém em casa"** na entrega: a criança vai para o fim da viagem
+  (`pendentesEmOrdem(fila, adiados)`) e o foco segue. ⚠️ A escolha manual do
+  foco vale UM toque — reacendia ao voltar ao mesmo passo (teste M6).
+- **Sem sinal**: a marcação usa `gravarSemTravar` — espera 2,5 s pelo
+  servidor e segue; a escrita fica na fila do SDK e sobe quando o sinal volta.
+  ⚠️ **O cache PERSISTENTE (`persistentLocalCache`) foi ligado e DESLIGADO**: o
+  SDK 12 derrubou a tela da família com "INTERNAL ASSERTION FAILED (ca9)"
+  (teste M7). O custo: marcação feita sem sinal se perde se o app for fechado
+  antes de o sinal voltar. Religar exige o M7 dos dois lados.
+- **"Levar de volta para casa"** (passou mal, na ida): marca entregue em casa e
+  abre o recado em "Criança não tá bem".
+- **"Problema na perua" é ESTADO da rota**: grava `liveLocation.ocorrencia`
+  (`marcarOcorrencia`); a família vê `PRESENCE.OCORRENCIA` no lugar do mapa;
+  a barra do motorista tem "Resolvido"; encerrar a rota limpa.
+- **A PREVISÃO DE CHEGADA VOLTOU, honesta** (`previsoesDaViagem`): a cada
+  marcação, o atraso real em relação ao combinado daquela criança é somado à
+  hora combinada de quem ainda espera; a família lê "Hoje, por volta de 6h52"
+  em `rides/{dia}.previsaoIda|previsaoVolta` (só a hora, nunca a posição).
+  Abaixo de 5 min ou acima de 90, nada. Nunca trânsito adivinhado.
+- **DIA SEM ROTA** ([calendario.js](src/dominio/rota/calendario.js), espelho em
+  `functions/lib/reguaDoCalendario.js`): fim de semana e feriado NACIONAL
+  (Páscoa calculada). O lugar do "INICIAR ROTA" diz o dia ("Hoje é sábado",
+  "Feriado: Tiradentes") com "Rodar mesmo assim"; os avisos de rota atrasada
+  calam. Feriado municipal o app não sabe — é o "Avisar que não tem aula".
+
+⚠️ **O MAPA DESLIGADO NÃO GRAVAVA NADA** (achado em 03/10/2026, sondado no
+emulador): a gravação da posição era `setDoc` SEM `merge` com `deleteField()`,
+que o SDK recusa. A família via "sem posição, pode ser o celular dele sem
+sinal" em vez de `SEM_MAPA`, e o servidor fechava a rota. Hoje é com `merge`
+(e `testar:proximidade` trava isso, com sonda); e o painel da família ganhou
+`SEM_MAPA` e `OCORRENCIA`, que antes o derrubariam (`cfg` indefinido).
+
+**O TELEFONE DA ESCOLA** (03/10/2026, pedido do dono) é opcional e qualquer um
+dos dois lados cadastra: o motorista em Escolas / "Nova escola"
+(`definirTelefoneDaEscola`, que copia para as crianças dele) e a família na
+ficha do filho (callable `informarTelefoneDaEscola`, que confere que a criança
+é dela). Ele vive em `schools.telefone` e COPIADO em `children.schoolPhone` —
+a família não lê `schools`. "Ligar para a escola" aparece na ficha e no passo
+da escola da rota.
+
+⚠️ **AVISOS QUE A TELA PROMETIA E NÃO EXISTEM** ficaram para a etapa das
+notificações (decisão do dono, 03/10/2026): família avisada quando o
+motorista marca "Faltou", buzina com o app da mãe fechado, "está chegando"
+como notificação. Os textos que prometiam "o responsável é avisado" foram
+corrigidos para o que acontece (a falta aparece no app dela).
+
 ⚠️ **O MOTORISTA DECIDE SE AS FAMÍLIAS VEEM A PERUA, E O AVISO NÃO DEPENDE
 DISSO** (11/09/2026) — a régua é
 [dominio/rota/proximidade.js](src/dominio/rota/proximidade.js), com
@@ -1163,6 +1274,13 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   com esse número, o gatilho do irmão abre o pedido. `telefoneAguardandoChave`
   (o número digitado, não comprovado) só gera pedido; `phoneChave` só nasce
   de link ou aprovação. A resposta ao pedido não diz o nome da criança.
+- **Contato de investidor (site):** `registrarInteresseInvestidor` (HTTP
+  público). O formulário de `alobuzinou.com.br/investidores` posta em
+  `/api/interesse-investidor`, que o hosting da landing repassa para ela
+  (rewrite em firebase.json) — assim a CSP continua `connect-src 'self'`.
+  Grava em `leadsInvestidor` (só o dono lê) e avisa as contas de dono pelo
+  sino. Régua pura em [reguaDoLead.js](functions/lib/reguaDoLead.js), com
+  campo-isca contra robô: preenchido, responde ok e não grava.
 - **Irmão:** `vincularIrmaoNoCadastro` (gatilho em `children/{id}`) e
   `recusarIrmao` (callable). Criança nova cadastrada com o WhatsApp de um
   responsável que já usa o app entra SOZINHA na conta dele, sem convite, e ele
@@ -1173,6 +1291,32 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   proibida ao cliente nas rules — `phone` a própria pessoa edita, e pôr ali o
   número de outra mãe daria os filhos dela a quem mudou. Régua pura em
   [reguaDoIrmao.js](functions/lib/reguaDoIrmao.js), `npm run testar:irmaos`.
+- **Remover criança:** `desvincularResponsavel`
+  ([desvincularResponsavel.js](functions/lib/desvincularResponsavel.js)).
+  ⚠️ **Remover a criança APAGAVA a conta da mãe inteira** (até 02/10/2026) — e
+  com ela o acesso ao irmão, ou ao filho na perua de outro motorista. Agora a
+  callable tira só aquela criança de `childIds` (e o motorista de `adminUids`,
+  se não sobrar filho com ele) e só apaga a conta quando não sobra filho. As
+  rules recusam o motorista apagar `users` de quem tem mais de um `childId`.
+  ⚠️ **O link do convite da criança removida morre junto**: remover devolve
+  `inviteStatus` a `pending`, então `lookupInvite`, `redeemInvite` e
+  `getInvitePreview` recusam `active: false`.
+  ⚠️ `invites.js` usa `FieldValue` de `firebase-admin/firestore`: o
+  `admin.firestore.FieldValue` chegava `undefined` no emulador e o
+  `redeemInvite` caía com 500 depois de a conta da mãe já existir. A prévia
+  do convite mostra a MARCA do motorista (`marcaNome`), nunca `companyName`,
+  que virou o nome civil do contrato.
+- **Telefone da escola:** `informarTelefoneDaEscola`
+  ([telefoneDaEscola.js](functions/lib/telefoneDaEscola.js)) — a família
+  informa pela ficha do filho; grava em `schools/{id}` e copia para cada
+  criança daquela escola na turma do motorista.
+- **Contrato da família:** `aceitarContrato`
+  ([aceitarContrato.js](functions/lib/aceitarContrato.js)) — a família aceita
+  uma versão GRAVADA do contrato; o servidor tira o hash do JSON canônico
+  ([reguaDoContrato.js](functions/lib/reguaDoContrato.js), espelho testado em
+  `testar:combinado`), marca a anterior `substituido` e, no ADITIVO, só então
+  aplica na criança mensalidade, vencimento e vigência (lista fechada:
+  `valoresDoAditivo`). Ver "O contrato com a família" abaixo.
 - **Cobrança:** `generateMonthlyPayments` (agendada), `runBillingNow`,
   `sendPaymentReminders`, `runPaymentRemindersNow`
 - **Operação:** `closeStaleRoutes`, `confirmarAusencias`
@@ -1271,15 +1415,52 @@ responsável assinava isso com nome digitado, hash SHA-256 e data. Fidelidade
 visual num documento com valor probatório era a única coisa que ele não podia
 ter.
 
-**E a mãe PASSA quando não há contrato** ([App.jsx](src/App.jsx),
-`ParentContractGate`): bloqueá-la por um formulário que o MOTORISTA não
-preencheu é punir quem não tem como consertar. Quem é avisado do que falta é
-ele, em `/tio/children/:id/contract`.
+⚠️ **O CONTRATO COM A FAMÍLIA É UM DOCUMENTO GRAVADO POR VERSÃO** (02/10/2026)
+— `children/{id}/contratos/{numero}`, régua pura em
+[contratoDaFamilia.js](src/dominio/cobranca/contratoDaFamilia.js)
+(`npm run testar:combinado`), escrita em
+[contratosDaFamiliaService.js](src/services/contratosDaFamiliaService.js).
+Antes ele era REMONTADO dos campos a cada abertura, e isso tinha três defeitos:
+vigência sempre 01/01–31/12 com 12 parcelas (quem entrava em outubro assinava
+doze parcelas de um ano com três meses), mudar a mensalidade depois do aceite
+mudava em silêncio o texto aceito, e o hash incluía a hora da abertura — nunca
+podia ser conferido.
+- **A vigência é do MOTORISTA** (`children.vigenciaInicio`/`vigenciaFim`),
+  escolhida no cadastro com "Até 31/12" e "12 meses" de atalho e o "Contrato
+  de N meses" aparecendo sozinho. As parcelas são os MESES DE SERVIÇO (mês
+  começado conta inteiro) — não os meses do calendário: 10/03 a 09/03 são 12.
+- **Nenhuma versão é editada depois de emitida.** O motorista emite
+  (`aguardando`) e pode retirar o que ninguém aceitou; a família só LÊ — quem
+  grava aceite e hash é a callable `aceitarContrato`. As rules recusam
+  aceite vindo de qualquer cliente (bloco "O ACEITE" de `testar:regras`).
+- **Dois ponteiros na criança:** `contratoAguardando` (o motorista escreve) e
+  `contratoVigente` (só o servidor; o motorista só pode zerá-lo, junto dos
+  campos antigos `contract*`, ao remover a criança —
+  `contratoIntocadoOuApagado()`).
+- **O primeiro contrato se emite sozinho** do lado do motorista
+  (`useGarantirContrato`, nas telas que mostram a criança e no convite), e é
+  reemitido se o combinado mudar antes do aceite. ⚠️ Ele não emite enquanto a
+  criança e a lista de versões estiverem fora de compasso — logo depois de
+  salvar, uma escuta chega antes da outra, e emitir ali duplicava a versão.
+- **Depois do aceite, mudar é ADITIVO**: o "Mudar" da ficha
+  ([EditarCombinadoSheet](src/components/contract/EditarCombinadoSheet.jsx))
+  não mexe na criança — a mensalidade nova só vale quando a família aceita, e
+  a cobrança continua lendo a aceita. O aditivo NÃO bloqueia o app dela: vale
+  o de antes, e o aviso mora no Início e em `/pai/contrato`. Só o PRIMEIRO
+  contrato bloqueia (`ParentContractGate`).
+  ⚠️ **PARA A FAMÍLIA NÃO EXISTE "MUDANÇA"** (decisão do dono, 03/10/2026):
+  ela recebe um CONTRATO NOVO e ASSINA, igual ao primeiro — sem lista do que
+  muda, sem "aceito a mudança", sem número de versão. "Aditivo" e "o que
+  muda" só aparecem nas telas do motorista, que é quem decidiu mudar.
+- **E a mãe PASSA quando não há versão emitida**: bloqueá-la por um contrato
+  que o MOTORISTA não emitiu é punir quem não tem como consertar.
+- O aceite antigo (só `contractAcceptedAt`, anterior às versões) continua
+  valendo como aceito — `estadoDoContrato`.
+- Nome e telefone do responsável se corrigem na ficha só ANTES de a família
+  entrar ([EditarResponsavelSheet](src/components/children/EditarResponsavelSheet.jsx)).
 
-**Migrar quem já tinha contrato de papel** — o contrato do app **não é um
-arquivo**: é gerado dos campos (mensalidade, `dueDay`, vigência) por
-`buildContractData`. Então migrar = o motorista digitar os valores que já
-combinou, e o pai aceitar o do app. O papel antigo vira ANEXO
+**Migrar quem já tinha contrato de papel** — migrar = o motorista digitar os
+valores que já combinou, e o pai aceitar o do app. O papel antigo vira ANEXO
 (`children.contratoAnteriorURL`, Storage em `contratosAnteriores/{childId}`),
 oferecido no fim do cadastro da criança — o único instante em que ele está com
 aquela família na cabeça. **Anexo não é contrato**: não gera cobrança nem vale
@@ -1321,9 +1502,22 @@ traz a escola da anterior marcada. Link, código, QR e contrato antigo ficam
 em "Mais opções" (`InviteShare recolhido`).
 
 ⚠️ **O ANIVERSÁRIO É DA FAMÍLIA, NÃO DO MOTORISTA.** Saiu do cadastro dele
-(quase nunca sabe a data) e entrou na ficha do filho, junto de turma e sala.
-O ramo da responsável no `allow update` de `children` passou a ser
-`hasOnly(['turma', 'sala', 'birthDate'])` — três casos em `testar:regras`.
+(quase nunca sabe a data) e entrou na ficha do filho.
+**Turma e professora** o motorista PODE dizer no cadastro (passo da escola,
+os dois opcionais — é como ele chama a criança no portão), e os dois lados
+corrigem na ficha; o card do primeiro acesso da família já vem com o que ele
+disse. **A sala saiu** de toda tela (02/10/2026, pedido do dono). O ramo da
+responsável no `allow update` de `children` é
+`hasOnly(['turma', 'professora', 'sala', 'birthDate'])` — `sala` fica pelos
+documentos antigos.
+
+⚠️ **O CARD DO PRIMEIRO ACESSO DA FAMÍLIA RECEBE OS PASSOS DO PORTÃO**
+(`PrimeiroAcessoDoPaiGate` → `PrimeiroAcessoDoPai passos=…`). Ele calculava a
+própria lista no primeiro render, às vezes antes de a criança carregar, e a
+congelava vazia — não desenhava nada, enquanto o portão mantinha o `/pai`
+INERTE: a mãe aceitava o contrato e caía numa tela que não respondia a toque
+(teste R2). O portão e o tour (`PaiLayout`) também esperam a criança, não só
+o "carregando".
 
 **Responsável avulso: guarda UM.** `children.altResponsibles` é um array de no
 máximo 1 — o último. Era lista que só crescia; ninguém mantém lista, e são
@@ -1720,6 +1914,10 @@ longos e contam a decisão, a alternativa descartada e o bug que motivou. Ao
 mexer num arquivo desses, mantenha o cabeçalho verdadeiro — **comentário que
 promete garantia sem prová-la já foi um problema recorrente aqui**.
 
+**Sem emoji em lugar nenhum da interface** (decisão do dono, 02/10/2026) —
+no app, ícone do `lucide-react`; na landing, SVG inline. `testar:site` reprova
+emoji visível no site.
+
 **Mensagem de commit descreve o efeito para uma pessoa**, não o diff:
 "O pai é avisado quando a criança chega", "Aviso antigo deixa de virar criança
 na calçada". Prefixos `fix()/test()/chore()` aparecem, mas o corpo é sempre
@@ -2081,7 +2279,7 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (253 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (278 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes

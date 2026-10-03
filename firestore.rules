@@ -979,7 +979,15 @@ service cloud.firestore {
       // usuario do AUTH junto, senao o uid volta e o problema volta com ele.
       allow delete: if isSignedIn() && (
         isOwner()
-        || (isAdmin() && resource.data.get('adminUid', '') == request.auth.uid)
+        // ⚠️ SÓ A CONTA DE QUEM TEM UM FILHO (02/10/2026). Apagar a de quem tem
+        // dois apagava o acesso ao irmão — ou ao filho na perua de OUTRO
+        // motorista. Tirar uma criança da conta é da function
+        // `desvincularResponsavel`, que só apaga quando não sobra filho.
+        || (
+          isAdmin()
+          && resource.data.get('adminUid', '') == request.auth.uid
+          && resource.data.get('childIds', []).size() <= 1
+        )
         || (
           request.auth.uid == uid
           && !('trialInicio' in resource.data)
@@ -995,6 +1003,30 @@ service cloud.firestore {
     //   - Resgate de convite NÃO passa mais por aqui: quem resolve o código
     //     é a Cloud Function redeemInvite (Admin SDK, em transação)
     // -----------------------------------------------------------------
+    /**
+     * Os campos do aceite do contrato não mudam, ou mudam TODOS para nulo
+     * (apagar o aceite). Nunca recebem valor por este caminho — quem grava o
+     * aceite é o SERVIDOR, na callable `aceitarContrato` (02/10/2026).
+     * `contratoVigente` é o ponteiro para a versão aceita e entra na mesma
+     * tranca: o motorista que o escrevesse diria qual contrato "vale".
+     */
+    function contratoIntocadoOuApagado() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+               .hasAny(['contractVersion', 'contractAcceptedAt', 'contractAcceptedByUid',
+                     'contractAcceptedName', 'contractHash', 'contractUserAgent',
+                     'contratoVigente'])
+        || (
+          request.resource.data.get('contratoVigente', null) == null
+          &&
+          request.resource.data.get('contractAcceptedAt', null) == null
+          && request.resource.data.get('contractAcceptedByUid', null) == null
+          && request.resource.data.get('contractAcceptedName', null) == null
+          && request.resource.data.get('contractHash', null) == null
+          && request.resource.data.get('contractUserAgent', null) == null
+          && request.resource.data.get('contractVersion', null) == null
+        );
+    }
+
     match /children/{childId} {
       // A cláusula `inviteStatus == 'pending'` foi REMOVIDA daqui.
       // Ela existia pra o cliente achar a criança pelo invite code, mas
@@ -1088,8 +1120,8 @@ service cloud.firestore {
       //   a) Aceitar invite: pending → used, parentUid = auth.uid
       //   b) Desvincular (pai apagando própria conta): used → pending,
       //      parentUid = null. Só se parentUid atual é do próprio auth.uid.
-      //   c) Aceitar contrato (pai vinculado): grava campos de aceite.
-      //      Só permitido se ainda não foi aceito (contractAcceptedAt null).
+      //   c) (saiu em 02/10/2026) aceitar contrato — agora é a callable
+      //      `aceitarContrato`, sobre o documento gravado da versão.
       // O vínculo pending → used NÃO é mais feito pelo cliente: quem faz é
       // a Cloud Function redeemInvite, em transação (evita dois pais
       // resgatarem o mesmo código). O caminho inverso (desvincular ao
@@ -1115,37 +1147,33 @@ service cloud.firestore {
         // Campo de saúde novo entra NESTA lista na mesma alteração.
         && !request.resource.data.diff(resource.data).affectedKeys()
              .hasAny(['saudeNotas', 'saudeConsentidaEm'])
+        // ⚠️ O ACEITE DO CONTRATO É DA FAMÍLIA — O MOTORISTA SÓ PODE APAGÁ-LO
+        // (02/10/2026). Este ramo permitia qualquer campo, então o motorista
+        // reescrevia `contractAcceptedAt`, o hash e o NOME de quem aceitou: a
+        // prova de aceite podia ser fabricada pela outra parte do contrato.
+        // Apagar (tudo nulo) continua valendo, porque é o que ele faz ao
+        // remover a criança — senão quem viesse depois herdaria o aceite de
+        // outra pessoa. Casos em `testar-regras.mjs`, bloco "o aceite".
+        && contratoIntocadoOuApagado()
       ) || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.parentUid == null
         && request.resource.data.inviteStatus == 'pending'
+        // A família que apaga a própria conta leva o aceite junto (só nulo).
+        && contratoIntocadoOuApagado()
         && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['parentUid', 'inviteStatus'])
+            .hasOnly(['parentUid', 'inviteStatus', 'contractVersion', 'contractAcceptedAt',
+                      'contractAcceptedByUid', 'contractAcceptedName', 'contractHash',
+                      'contractUserAgent', 'contratoVigente'])
       ) || (
-        isSignedIn()
-        && resource.data.parentUid == request.auth.uid
-        && request.resource.data.contractAcceptedByUid == request.auth.uid
-        // ACEITAR VALE UMA VEZ. O comentário no topo deste bloco já prometia
-        // "só permitido se ainda não foi aceito", e a condição nunca existiu:
-        // o responsável reescrevia hash, versão, nome e data quantas vezes
-        // quisesse, inclusive apontando pra uma versão de contrato diferente
-        // da que assinou. Numa discordância sobre o combinado, o registro não
-        // sustentava nada — que é a única coisa que ele existe pra fazer.
+        // ⚠️ O RAMO "A FAMÍLIA GRAVA O PRÓPRIO ACEITE" SAIU (02/10/2026).
+        // O aceite era escrito pelo celular dela, com um hash calculado ali
+        // sobre um contrato remontado na hora — que nunca podia ser conferido.
+        // Agora o contrato é um documento gravado (`contratos/{numero}`) e
+        // quem registra o aceite e tira o hash é a callable `aceitarContrato`,
+        // com Admin SDK. Nenhum cliente escreve aceite.
         //
-        // `contratosAssociacao` já fazia certo (`aceitoEm == null`); é o mesmo
-        // desenho.
-        && resource.data.get('contractAcceptedAt', null) == null
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly([
-              'contractVersion',
-              'contractAcceptedAt',
-              'contractAcceptedByUid',
-              'contractAcceptedName',
-              'contractHash',
-              'contractUserAgent',
-            ])
-      ) || (
         // Pai gerencia lista de responsáveis alternativos do próprio filho
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
@@ -1213,7 +1241,9 @@ service cloud.firestore {
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['turma', 'sala', 'birthDate'])
+            // `professora` entrou e `sala` saiu da tela em 02/10/2026; `sala`
+            // fica aqui porque cadastro antigo ainda a tem no documento.
+            .hasOnly(['turma', 'professora', 'sala', 'birthDate'])
       ) || (
         // O NÚMERO DA CASA QUE O MOTORISTA NÃO SABIA (02/10/2026). Ele
         // cadastrou pela rua com "não sei o número agora", e quem sabe o
@@ -1278,10 +1308,56 @@ service cloud.firestore {
             // desenho inteiro: o que viaja é uma palavra, não uma posição —
             // distância em km seria a posição de volta, por triangulação.
             'marcos', 'proximidade', 'posicao', 'ordemIda', 'totalIda',
+            // `previsaoIda`/`previsaoVolta` (03/10/2026): a HORA prevista,
+            // 'HH:MM' — combinado + atraso real. Hora, nunca posição.
             'ordemVolta', 'totalVolta', 'combinado', 'childId', 'adminUid',
+            'previsaoIda', 'previsaoVolta',
             'parentUid', 'dateKey', 'atualizadoEm', 'criadoEm'
           ])
         );
+    }
+
+    // -----------------------------------------------------------------
+    // children/{childId}/contratos/{numero} — AS VERSÕES DO CONTRATO
+    // (02/10/2026). O contrato deixou de ser remontado a cada abertura: cada
+    // versão é gravada e NUNCA MAIS editada. Ver
+    // `src/dominio/cobranca/contratoDaFamilia.js`.
+    //
+    //   - O motorista DA criança emite (`aguardando`) e pode retirar uma
+    //     versão que ninguém aceitou. Nada mais: nem o texto, nem o aceite.
+    //   - A família lê. Quem grava o aceite e o hash é a callable
+    //     `aceitarContrato` (Admin SDK) — nenhum cliente escreve aceite.
+    //   - Ninguém apaga: a versão retirada ou substituída é o histórico do
+    //     combinado, e é o que se mostra numa discordância.
+    // -----------------------------------------------------------------
+    match /children/{childId}/contratos/{numero} {
+      function crianca() {
+        return get(/databases/$(database)/documents/children/$(childId)).data;
+      }
+      function doMotoristaDela() {
+        return isAdmin() && crianca().get('adminUid', '') == request.auth.uid;
+      }
+      allow read: if isSignedIn() && (
+        doMotoristaDela()
+        || crianca().get('parentUid', '') == request.auth.uid
+        || isOwner()
+      );
+      allow create: if doMotoristaDela()
+        && request.resource.data.status == 'aguardando'
+        && request.resource.data.adminUid == request.auth.uid
+        && request.resource.data.numero is int
+        && string(request.resource.data.numero) == numero
+        && request.resource.data.tipo in ['contrato', 'aditivo']
+        && request.resource.data.keys().hasOnly([
+          'numero', 'tipo', 'dados', 'status', 'emitidoEm', 'adminUid',
+          'mudancas', 'novosValores', 'substitui'
+        ]);
+      allow update: if doMotoristaDela()
+        && resource.data.status == 'aguardando'
+        && request.resource.data.status == 'retirado'
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'retiradoEm']);
+      allow delete: if false;
     }
 
     // -----------------------------------------------------------------
@@ -1546,13 +1622,28 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/children/$(childId))
           && get(/databases/$(database)/documents/children/$(childId)).data.parentUid == request.auth.uid;
       }
+      function criancaDaTurma(childId) {
+        return isAdmin()
+          && exists(/databases/$(database)/documents/children/$(childId))
+          && get(/databases/$(database)/documents/children/$(childId)).data.get('adminUid', '') == request.auth.uid;
+      }
       // AQUI NEM A LEITURA ESTAVA ESCOPADA.
       //
       // O bloco inteiro era `isAdmin()`, e o documento guarda NOME E TELEFONE
       // de quem vai buscar a criança — dado de um terceiro, que o responsável
       // entregou supondo que só o motorista dele veria. Reproduzido no
       // emulador: leitura e alteração cruzadas, 200 nas duas.
-      allow read: if ehDoMotorista() || (
+      // ⚠️ O DOCUMENTO DO DIA QUE AINDA NÃO EXISTE (02/10/2026). A tela escuta
+      // `{dia}_{criança}` ANTES de alguém criá-lo, e a regra abaixo lia
+      // `resource.data` de um documento nulo — erro, e erro nega. A escuta
+      // morria na primeira resposta e não via o documento quando ele nascia
+      // (teste R2: a falta e o "quem busca hoje" sumiam da tela da mãe).
+      // Documento ausente se autoriza pela criança do ID: a dela, ou a da
+      // turma do motorista. Não vaza nada — não há o que ler.
+      allow read: if (resource == null && isSignedIn() && (
+          ownsChild(id.split('_')[1]) || criancaDaTurma(id.split('_')[1])
+        ))
+        || ehDoMotorista() || (
         isSignedIn() && ownsChild(resource.data.childId)
       );
       allow create: if nasceDoDono() || (
@@ -1626,6 +1717,11 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/children/$(childId))
           && get(/databases/$(database)/documents/children/$(childId)).data.parentUid == request.auth.uid;
       }
+      function criancaDaTurma(childId) {
+        return isAdmin()
+          && exists(/databases/$(database)/documents/children/$(childId))
+          && get(/databases/$(database)/documents/children/$(childId)).data.get('adminUid', '') == request.auth.uid;
+      }
 
       // Era `isAdmin()` puro: um motorista lia as declarações de ausência das
       // famílias de todos os outros — nome da criança, dia e motivo.
@@ -1636,8 +1732,18 @@ service cloud.firestore {
       // motorista — e aqui isso é aceitável porque declaração é do dia: a de
       // hoje é recriada conforme o dia anda, diferente do backfill que
       // `children` exigiu.
+      // ⚠️ O DOCUMENTO DO DIA QUE AINDA NÃO EXISTE (02/10/2026). A tela escuta
+      // `{dia}_{criança}` ANTES de alguém criá-lo, e a regra abaixo lia
+      // `resource.data` de um documento nulo — erro, e erro nega. A escuta
+      // morria na primeira resposta e não via o documento quando ele nascia
+      // (teste R2: a falta e o "quem busca hoje" sumiam da tela da mãe).
+      // Documento ausente se autoriza pela criança do ID: a dela, ou a da
+      // turma do motorista. Não vaza nada — não há o que ler.
       allow read: if isSignedIn() && (
-        ehDoMotorista()
+        (resource == null && (
+          ownsChild(absId.split('_')[1]) || criancaDaTurma(absId.split('_')[1])
+        ))
+        || ehDoMotorista()
         || ownsChild(resource.data.childId)
       );
 
@@ -2159,6 +2265,14 @@ service cloud.firestore {
     match /alertasDeComprovante/{paymentId} {
       allow read: if isSignedIn()
         && (resource.data.adminUid == request.auth.uid || isOwner());
+      allow write: if false;
+    }
+
+    // O CONTATO DO INVESTIDOR QUE CHEGA PELO SITE (02/10/2026). Quem grava é
+    // a function `registrarInteresseInvestidor` (Admin SDK), a partir do
+    // formulário de /investidores. Só o dono lê; ninguém escreve pelo cliente.
+    match /leadsInvestidor/{leadId} {
+      allow read: if isOwner();
       allow write: if false;
     }
 
