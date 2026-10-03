@@ -1764,7 +1764,7 @@ prender o motorista no portão da escola seria pior que não ter teatro.
 
 **A espera mostra a marca, não um spinner** —
 [Respiro.jsx](src/components/common/Respiro.jsx), nos dois lugares onde a
-espera é real (tela de atualização e rota preguiçosa). **O atraso de 300 ms é o
+espera é real (rota preguiçosa e a ida para o site). **O atraso de 300 ms é o
 ponto inteiro**: se o chunk chegar antes, ninguém vê nada. Animação que aparece
 em toda navegação não é lembrada como capricho, é lembrada como lentidão.
 
@@ -1779,9 +1779,18 @@ em toda navegação não é lembrada como capricho, é lembrada como lentidão.
 - `registerType: 'prompt'` (não `autoUpdate`) em [vite.config.js](vite.config.js):
   versão nova AVISA em vez de assumir calada.
   [AtualizacaoDisponivel.jsx](src/components/common/AtualizacaoDisponivel.jsx)
-  mostra o aviso, cobre a troca com uma tela cheia e recarrega na marra depois
-  de 8s se o worker não assumir. Montado no `main.jsx`, fora do `AuthProvider`
-  — atualizar não depende de quem está logado.
+  mostra o aviso e cobre a troca com a [TelaDeVersao](src/components/common/TelaDeVersao.jsx),
+  a mesma do "Saiu uma versão nova" do `ErrorScreen`. Montado no `main.jsx`,
+  fora do `AuthProvider` — atualizar não depende de quem está logado.
+  ⚠️ **UM TOQUE SÓ, e as duas telas trocam pelo MESMO caminho:**
+  `trocarDeVersao` ([versaoService.js](src/services/versaoService.js)) pergunta
+  ao servidor, espera o worker novo baixar, manda ele assumir e SÓ ENTÃO
+  recarrega, com prazo em cada passo. Até 03/10/2026 o "Saiu uma versão nova"
+  só fazia `reload()` — que NÃO troca o worker: o antigo servia de novo o
+  `index.html` antigo, e a pessoa tocava várias vezes.
+  ⚠️ O `Permissions-Policy` do app libera `microphone=(self)`: o
+  [CampoDeValor](src/components/common/CampoDeValor.jsx) dita o valor por voz,
+  e com `microphone=()` o microfone falhava calado em produção.
 
 ⚠️ **E QUEM APARECE NA BUSCA É A LANDING, NUNCA O APP** (09/09/2026). Medido
 no Google: `alobuzinou.com` — a tela de LOGIN — aparecia **acima** de

@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ArrowUpCircle, X } from 'lucide-react';
 import TelaDeVersao from './TelaDeVersao';
+import { trocarDeVersao } from '../../services/versaoService';
 
 /**
  * "SAIU UMA VERSÃO NOVA" — o aviso, e o teatro de trocar.
@@ -36,14 +37,12 @@ import TelaDeVersao from './TelaDeVersao';
  * verdade. O teatro continua valendo pelo motivo dele; o que estava errado
  * era acreditar que ele resolvia sozinho.
  *
- * E ELE TEM PRAZO. Se em oito segundos o navegador não recarregou — worker que
- * não ativa, rede que caiu no meio do download —, a gente recarrega na mão. Um
+ * E ELE TEM PRAZO. Cada espera da troca tem o seu (ver versaoService) — worker
+ * que não ativa, rede que caiu no meio do download —, e no fim recarrega de
+ * qualquer jeito. Um
  * teatro sem fim é pior que atualização nenhuma: o app fica refém de uma tela
  * de carregamento da qual não há saída.
  */
-
-/** Quanto esperar pela troca antes de recarregar na marra. */
-const PRAZO_DO_TEATRO_MS = 8000;
 
 /**
  * De quanto em quanto tempo perguntar ao servidor se saiu versão nova.
@@ -57,11 +56,9 @@ const INTERVALO_DE_CHECAGEM_MS = 60 * 60 * 1000;
 export default function AtualizacaoDisponivel() {
   const [atualizando, setAtualizando] = useState(false);
   const [dispensado, setDispensado] = useState(false);
-  const prazo = useRef(null);
 
   const {
     needRefresh: [precisaAtualizar],
-    updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_url, registro) {
       if (!registro) return;
@@ -80,57 +77,19 @@ export default function AtualizacaoDisponivel() {
   });
 
   /**
-   * ⚠️ `updateServiceWorker(true)` NÃO RECARREGA — E O COMENTÁRIO AQUI DIZIA
-   * QUE SIM. Era isso que fazia o botão precisar de mais de um toque.
+   * O TOQUE TROCA A VERSÃO DE UMA VEZ — ver `trocarDeVersao` (versaoService).
    *
-   * O que o plugin faz de verdade está em
-   * `node_modules/vite-plugin-pwa/dist/client/build/register.js`:
-   *
-   *     const updateServiceWorker = async (_reloadPage = true) => {
-   *       await registerPromise;
-   *       if (!auto) sendSkipWaitingMessage?.();
-   *     };
-   *
-   * O argumento chama `_reloadPage` e é **ignorado**: a função só posta
-   * `SKIP_WAITING` no worker em espera. E a promessa **resolve** no caminho
-   * feliz — ao contrário do que o comentário antigo afirmava —, então o
-   * `catch` nunca pegava nada.
-   *
-   * Quem recarregava era um listener que o plugin registra por dentro, e ele
-   * só dispara `if (event.isUpdate)`. Depender disso é depender de uma
-   * condição que o plugin calcula no registro, num arquivo que não é nosso e
-   * que muda de versão para versão.
-   *
-   * AGORA O SINAL É NOSSO E É O ÚNICO QUE IMPORTA: `controllerchange` do
-   * `navigator.serviceWorker`, que o navegador dispara quando o worker novo
-   * assume a página. Se ele assumiu, recarregar mostra a versão nova — não
-   * há terceiro estado. O prazo continua como rede de segurança para o caso
-   * de não haver worker em espera (aí a troca nunca acontece e nada avisaria).
-   *
-   * `umaVezSo` existe porque os dois caminhos podem chegar juntos, e dois
-   * `reload()` na mesma tela é uma piscada a mais na cara de quem já esperou.
+   * Antes daqui saía só o `SKIP_WAITING` do plugin (`updateServiceWorker`, que
+   * nem recarrega — o argumento dele é ignorado). Quando ainda não havia
+   * worker em espera, o recado ia para ninguém, o prazo recarregava a versão
+   * VELHA e o aviso voltava: era o "preciso tocar várias vezes". A troca nova
+   * pergunta ao servidor, espera o worker novo baixar, manda ele assumir e só
+   * então recarrega, com prazo em cada passo.
    */
   const atualizar = useCallback(() => {
     setAtualizando(true);
-
-    let jaFoi = false;
-    const recarregar = () => {
-      if (jaFoi) return;
-      jaFoi = true;
-      clearTimeout(prazo.current);
-      window.location.reload();
-    };
-
-    navigator.serviceWorker?.addEventListener('controllerchange', recarregar, {
-      once: true,
-    });
-    prazo.current = setTimeout(recarregar, PRAZO_DO_TEATRO_MS);
-
-    // Sem argumento: ele é ignorado, e passá-lo sugeria um comportamento que
-    // não existe. O que esta chamada faz é UMA coisa — mandar o worker em
-    // espera assumir.
-    Promise.resolve(updateServiceWorker()).catch(recarregar);
-  }, [updateServiceWorker]);
+    trocarDeVersao();
+  }, []);
 
   if (atualizando) {
     // A MESMA TELA do "Saiu uma versão nova" (ErrorScreen), no estado de

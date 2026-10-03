@@ -5,6 +5,7 @@ import Logo from './Logo';
 import Button from './Button';
 import { APP_VERSION } from '../../version';
 import TelaDeVersao from './TelaDeVersao';
+import { trocarDeVersao } from '../../services/versaoService';
 
 /**
  * A TELA QUE APARECE NO LUGAR DA TELA BRANCA.
@@ -41,8 +42,10 @@ export default function ErrorScreen({ error, chunk = false }) {
   // atualização, e o toque em "Atualizar" passa para o estado "atualizando"
   // antes de recarregar — a pessoa vê a troca, não uma piscada.
   // Num chunk que sumiu, voltar não resolve: a navegação por dentro do app
-  // continua pedindo o arquivo que não existe mais. Só recarregar busca o
-  // index.html novo, com os hashes novos.
+  // continua pedindo o arquivo que não existe mais.
+  // ⚠️ E SÓ RECARREGAR TAMBÉM NÃO RESOLVIA, e era por isso que o botão pedia
+  // vários toques: o worker antigo continuava servindo o index.html antigo.
+  // `trocarDeVersao` faz o worker novo assumir ANTES de recarregar.
   if (chunk) {
     return (
       <TelaDeVersao
@@ -50,7 +53,7 @@ export default function ErrorScreen({ error, chunk = false }) {
         detalhe={error?.message}
         onAtualizar={() => {
           setAtualizando(true);
-          window.location.reload();
+          trocarDeVersao();
         }}
         onInicio={() => {
           window.location.href = '/';
