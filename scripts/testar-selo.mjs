@@ -362,11 +362,11 @@ if (medida) {
 // sistema: e o unico caminho de quem esta no computador.
 const fonteFirstAccess = readFileSync(
   new URL('../src/pages/FirstAccess.jsx', import.meta.url), 'utf8');
-// A peca mora na parte da familia, que saiu da home em 02/10/2026 e esta em
-// /saiba-mais. O site sao as duas paginas.
+// A peca mora na parte da familia. Saiu da home em 02/10/2026, foi para
+// /saiba-mais e, no mesmo dia, para a pagina propria /familia.
 const fonteLanding =
   readFileSync(new URL('../landing/index.html', import.meta.url), 'utf8') +
-  readFileSync(new URL('../landing/saiba-mais.html', import.meta.url), 'utf8');
+  readFileSync(new URL('../landing/familia.html', import.meta.url), 'utf8');
 
 checar('o app oferece o download', true,
   fonteFirstAccess.includes('download="alo-buzinou.jpg"'));

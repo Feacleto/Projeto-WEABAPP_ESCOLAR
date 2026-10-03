@@ -1,0 +1,193 @@
+/* ─────────────────────────────────────────────────────────────
+   AS PÁGINAS PRÓPRIAS DO SITE (02/10/2026)
+
+   O site antigo era uma página comprida (/saiba-mais), e os links do
+   rodapé da home pulavam para um trecho dela. Cada assunto virou um
+   endereço: /como-funciona, /motorista, /familia, /sobre, /duvidas,
+   /contato e /investidores. A HOME NÃO MUDOU — só o destino dos links.
+
+   ⚠️ O PÚBLICO TEM UNS 40 ANOS, e isso decide a forma: letra de corpo de
+   18px, uma coluna, um botão por bloco, e o formulário de contato virou
+   botão de WhatsApp. O conteúdo é o do site antigo.
+
+   ⚠️ SEM EMOJI. Ícone é SVG inline na própria página.
+
+   AS ANIMAÇÕES TÊM UMA REGRA: cada uma dura menos de meio segundo, roda
+   UMA vez e termina parada; nada bloqueia o toque, e com "reduzir
+   movimento" ligado tudo aparece pronto. A cena do topo de cada página
+   conta uma ideia só.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --preto:#0B1210; --verde:#1F5F3F; --verde-esc:#143F2A; --vivo:#52C41A; --menta:#A7F3D0;
+  --areia:#EEF1EF; --branco:#FFFFFF; --cinza:#55606E; --texto:#2C3631; --linha:#D9E0DB;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --corpo:"Instrument Sans",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{background:var(--areia); color:var(--preto); font-family:var(--corpo); font-size:18px; line-height:1.6; margin:0; -webkit-font-smoothing:antialiased}
+a{color:inherit}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--vivo); outline-offset:2px}
+.wrap{max-width:640px; margin:0 auto; padding-inline:20px}
+
+/* topo: Voltar, a marca e Entrar no app */
+.top{position:sticky; top:0; z-index:10; background:var(--verde); color:#fff; padding-top:env(safe-area-inset-top,0px)}
+.top .wrap{display:flex; align-items:center; gap:10px; height:62px}
+.voltar{display:inline-flex; align-items:center; gap:6px; font:700 17px var(--corpo); color:#fff; background:none; border:0; padding:8px 8px 8px 0; cursor:pointer; text-decoration:none}
+.voltar .seta{display:inline-block; transition:transform .2s}
+.voltar:hover .seta,.voltar:focus-visible .seta{transform:translateX(-4px)}
+.marca{display:flex; align-items:center; gap:8px; text-decoration:none; font:800 17px var(--display); letter-spacing:-.03em}
+.marca .mk{width:26px; height:26px; flex:none; display:block}
+.marca b{color:#6EE07A; font-weight:800}
+.entrar{margin-left:auto; font:700 16px var(--corpo); color:var(--preto); background:var(--vivo); border-radius:12px; padding:10px 16px; text-decoration:none; white-space:nowrap; transition:transform .12s}
+.entrar:active{transform:scale(.97)}
+@keyframes brilho{0%{box-shadow:0 0 0 0 rgba(124,227,78,.7)}100%{box-shadow:0 0 0 12px rgba(124,227,78,0)}}
+.entrar{animation:brilho 1.1s ease-out .5s 1}
+@media (max-width:420px){.marca span{display:none}}
+.leitura{position:sticky; top:calc(62px + env(safe-area-inset-top,0px)); z-index:9; height:3px}
+.leitura i{display:block; height:100%; width:0; background:var(--vivo); transition:width .1s linear}
+
+/* o miolo */
+main{padding-block:28px 44px}
+@keyframes entra{from{opacity:0; transform:translateX(24px)}to{opacity:1; transform:none}}
+@keyframes sobe{from{opacity:0; transform:translateY(12px)}to{opacity:1; transform:none}}
+main .wrap{animation:entra .32s cubic-bezier(.2,.8,.2,1) both}
+main .wrap > *{animation:sobe .4s cubic-bezier(.2,.8,.2,1) both}
+main .wrap > *:nth-child(2){animation-delay:.05s} main .wrap > *:nth-child(3){animation-delay:.1s}
+main .wrap > *:nth-child(4){animation-delay:.15s} main .wrap > *:nth-child(n+5){animation-delay:.2s}
+.chapeu{display:block; font:600 12px ui-monospace,Consolas,monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--verde)}
+h1{font:800 clamp(30px,6vw,40px)/1.1 var(--display); letter-spacing:-.02em; margin:8px 0 0; text-wrap:balance}
+h2{font:700 23px/1.25 var(--display); margin:34px 0 0; letter-spacing:-.01em}
+p{margin:12px 0 0; color:var(--texto)}
+.sub{font-size:19px}
+
+/* listas com ✓ que estalam ao aparecer */
+.lista{list-style:none; padding:0; margin:20px 0 0; display:grid; gap:12px}
+.lista li{background:#fff; border:1px solid var(--linha); border-radius:14px; padding:16px 18px; display:flex; gap:14px; align-items:flex-start; line-height:1.45}
+.lista li .ck{flex:none; width:28px; height:28px; border-radius:50%; background:#E3F6D9; display:flex; align-items:center; justify-content:center}
+.lista li .ck svg{width:15px; height:15px}
+@keyframes estala{0%{transform:scale(0)}70%{transform:scale(1.25)}100%{transform:scale(1)}}
+.anima .lista.viu li .ck{animation:estala .35s cubic-bezier(.3,1.5,.5,1) both}
+.lista.viu li:nth-child(2) .ck{animation-delay:.08s}.lista.viu li:nth-child(3) .ck{animation-delay:.16s}.lista.viu li:nth-child(4) .ck{animation-delay:.24s}.lista.viu li:nth-child(5) .ck{animation-delay:.32s}.lista.viu li:nth-child(6) .ck{animation-delay:.4s}.lista.viu li:nth-child(7) .ck{animation-delay:.48s}.lista.viu li:nth-child(8) .ck{animation-delay:.56s}
+
+.cards{display:grid; gap:12px; margin-top:18px}
+.cards div{background:#fff; border:1px solid var(--linha); border-radius:14px; padding:18px}
+.cards b{display:block; font:700 20px var(--display)}
+.cards p{margin-top:6px}
+
+/* botões grandes, com ondinha no toque */
+.btn{position:relative; overflow:hidden; display:flex; width:100%; justify-content:center; align-items:center; gap:10px; background:var(--vivo); color:var(--preto); font:800 18px var(--corpo); padding:18px 20px; border-radius:14px; margin-top:22px; text-align:center; text-decoration:none; border:0; cursor:pointer; transition:transform .12s, background-color .2s}
+.btn + .btn{margin-top:12px}
+.btn:active{transform:scale(.97)}
+.btn.esc{background:var(--verde); color:#fff}
+.btn svg{width:22px; height:22px; flex:none}
+.onda{position:absolute; border-radius:50%; background:rgba(255,255,255,.55); transform:scale(0); animation:onda .55s ease-out forwards; pointer-events:none}
+@keyframes onda{to{transform:scale(4); opacity:0}}
+.btn.feito{background:var(--verde); color:#fff}
+
+/* exemplo do motorista: o valor conta e a barra enche */
+.exemplo{margin-top:22px; background:#fff; border:1px solid var(--linha); border-radius:16px; padding:18px}
+.exemplo small{display:block; font-size:14px; color:var(--cinza); margin-top:8px}
+.barra{height:10px; border-radius:10px; background:#EDF0EE; margin-top:10px; overflow:hidden}
+.barra i{display:block; height:100%; width:66.6%; background:var(--vivo); border-radius:10px}
+.anima .exemplo .barra i{width:0; transition:width 1.1s cubic-bezier(.3,.7,.2,1)}
+.anima .exemplo.viu .barra i{width:66.6%}
+
+/* cena do topo */
+.cena{position:relative; height:150px; border-radius:20px; background:linear-gradient(160deg,#E3F6D9,#F4FBF1); overflow:hidden; margin:0 0 22px; border:1px solid #D4EDC6}
+.cena svg{position:absolute; inset:0; width:100%; height:100%}
+@keyframes chega{from{transform:translateX(-160px)}to{transform:translateX(0)}}
+@keyframes estrada{to{stroke-dashoffset:-48}}
+@keyframes roda{to{transform:rotate(360deg)}}
+@keyframes balanca{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.c-mot .van{animation:chega 1.2s cubic-bezier(.2,.8,.25,1) both}
+.c-mot .van-in{animation:balanca .3s ease-in-out 4}
+.c-mot .faixa{stroke-dasharray:24 24; animation:estrada .4s linear 3}
+.c-mot .rd{transform-box:fill-box; transform-origin:center; animation:roda .3s linear 4}
+@keyframes desce{0%{transform:translateY(-70px); opacity:0}60%{transform:translateY(6px); opacity:1}100%{transform:none; opacity:1}}
+@keyframes vibra{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}
+.c-fam .cel{transform-box:fill-box; transform-origin:center; animation:vibra .35s ease-in-out .9s 2}
+.c-fam .notif{animation:desce .7s cubic-bezier(.2,.8,.25,1) .4s both}
+@keyframes desenha{from{stroke-dashoffset:260}to{stroke-dashoffset:0}}
+@keyframes bate{0%,100%{transform:scale(1)}40%{transform:scale(1.35)}}
+.c-sob .liga{stroke-dasharray:260; animation:desenha 1.1s ease-out .3s both}
+.c-sob .cor{transform-box:fill-box; transform-origin:center; animation:bate .5s ease-in-out 1.3s 2}
+@keyframes some{to{opacity:0; transform:scale(.6)}}
+@keyframes vem{from{opacity:0; transform:scale(.6)}to{opacity:1; transform:none}}
+.c-duv .q{transform-box:fill-box; transform-origin:center; animation:some .3s ease-in 1.1s both}
+.c-duv .ok{transform-box:fill-box; transform-origin:center; opacity:0; animation:vem .35s cubic-bezier(.3,1.5,.5,1) 1.35s both}
+@keyframes digita{0%,100%{opacity:.25}50%{opacity:1}}
+.c-con .pt{animation:digita .9s ease-in-out 2}.c-con .pt:nth-of-type(2){animation-delay:.15s}.c-con .pt:nth-of-type(3){animation-delay:.3s}
+.c-con .dig{animation:some .2s ease-in 1.7s both}
+.c-con .msg{opacity:0; animation:vem .35s ease-out 1.85s both}
+.c-como .rota{stroke-dasharray:6 8}
+@keyframes cresce{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.c-inv .bar{transform-box:fill-box; transform-origin:bottom; animation:cresce .5s cubic-bezier(.2,.8,.2,1) both}
+.c-inv .b2{animation-delay:.12s}.c-inv .b3{animation-delay:.24s}.c-inv .b4{animation-delay:.36s}
+.c-inv .tend{stroke-dasharray:220; stroke-dashoffset:220; animation:desenha2 .8s ease-out .7s forwards}
+@keyframes desenha2{to{stroke-dashoffset:0}}
+
+/* como funciona: a linha entre os passos enche ao rolar */
+.passos{position:relative; padding-left:46px; margin-top:6px}
+.passos::before{content:""; position:absolute; left:15px; top:44px; bottom:24px; width:3px; background:var(--linha); border-radius:3px}
+.passos .enche{position:absolute; left:15px; top:44px; width:3px; height:0; background:var(--vivo); border-radius:3px; transition:height .15s linear}
+.passos h2{position:relative}
+.passos h2 .n{position:absolute; left:-46px; top:-2px; width:33px; height:33px; border-radius:50%; background:#fff; border:3px solid var(--linha); color:var(--cinza); font:800 15px var(--corpo); display:flex; align-items:center; justify-content:center; transition:background .3s, border-color .3s, color .3s}
+.passos h2.feito .n{background:var(--vivo); border-color:var(--vivo); color:var(--preto)}
+
+/* dúvidas: abas com pílula e respostas que deslizam */
+.tabs{position:relative; display:flex; background:#fff; border:1px solid var(--linha); border-radius:999px; padding:4px; margin-top:18px}
+.tabs .pilula{position:absolute; top:4px; bottom:4px; left:4px; width:calc(50% - 4px); background:var(--verde); border-radius:999px; transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.tabs.fam .pilula{transform:translateX(100%)}
+.tabs button{position:relative; z-index:1; flex:1; background:none; border:0; cursor:pointer; font:700 17px var(--corpo); padding:12px 10px; border-radius:999px; color:var(--cinza); transition:color .2s}
+.tabs button[aria-selected="true"]{color:#fff}
+.faq{margin-top:14px; display:grid; gap:10px}
+.faq details{background:#fff; border:1px solid var(--linha); border-radius:14px; padding:18px}
+.faq summary{cursor:pointer; font-weight:700; list-style:none; display:flex; justify-content:space-between; gap:12px; align-items:center}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:""; flex:none; width:10px; height:10px; border-right:3px solid var(--verde); border-bottom:3px solid var(--verde); transform:rotate(45deg); transition:transform .25s}
+.faq details[open] summary::after{transform:rotate(-135deg)}
+@keyframes abre{from{opacity:0; transform:translateY(-6px)}to{opacity:1; transform:none}}
+.faq details[open] .resp{animation:abre .25s ease-out}
+.faq [hidden]{display:none}
+
+/* investidores: o formulário */
+.lead{margin-top:28px; background:#fff; border:1px solid var(--linha); border-radius:18px; padding:22px}
+.lead h2{margin-top:0}
+.campo{display:grid; gap:6px; margin-top:14px; font:700 16px var(--corpo)}
+.campo small{font-weight:400; color:var(--cinza)}
+.campo input{font:400 18px var(--corpo); padding:14px; border:2px solid var(--linha); border-radius:12px; background:#fff; color:var(--preto); transition:border-color .2s, box-shadow .2s}
+.campo input:focus{outline:none; border-color:var(--verde); box-shadow:0 0 0 4px rgba(82,196,26,.2)}
+.isca{position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden}
+.erro{color:#B91C1C; font-weight:600; font-size:16px}
+@keyframes treme{0%,100%{transform:translateX(0)}25%,75%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
+.lead.errou{animation:treme .3s ease-in-out}
+.lead-ok{text-align:center; padding:10px 0}
+.lead-ok .bola{width:64px; height:64px; border-radius:50%; background:var(--vivo); display:flex; align-items:center; justify-content:center; margin:0 auto; animation:estala .45s cubic-bezier(.3,1.5,.5,1) both}
+.lead-ok .bola svg{width:30px; height:30px}
+
+/* blocos que aparecem ao rolar: só os que estavam FORA da tela somem antes */
+.anima .rv{transition:opacity .5s ease, transform .5s cubic-bezier(.2,.8,.2,1)}
+.anima .rv.fora{opacity:0; transform:translateY(16px)}
+
+/* fechamento e rodapé (iguais aos da home) */
+.fecho{background:var(--verde); color:#fff; text-align:center; padding:40px 0}
+.fecho h2{color:#fff; font-size:28px; margin:0}
+.fecho p{color:#BFE6CC}
+.fecho .btn{max-width:480px; margin-inline:auto}
+footer{background:var(--preto); color:#C9D2CD; padding:26px 0 calc(26px + env(safe-area-inset-bottom,0px)); font-size:15px}
+footer nav{display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:14px}
+footer nav a{color:#fff; font-weight:600; text-decoration:none}
+footer p{margin:4px 0; color:#C9D2CD}
+footer .leg{font-size:13px; opacity:.85}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important; transition:none!important}
+  .c-duv .q,.c-con .dig{opacity:0}.c-duv .ok,.c-con .msg{opacity:1}.c-inv .tend{stroke-dashoffset:0}
+}
+
+/* família: a peça pronta pra mandar ao motorista */
+.peca{display:flex; gap:14px; align-items:center; margin-top:14px; background:#fff; border:1px solid var(--linha); border-radius:14px; padding:12px; text-decoration:none; transition:transform .12s}
+.peca:active{transform:scale(.98)}
+.peca img{width:54px; height:96px; object-fit:cover; border-radius:8px; flex:none}
+.peca b{display:block; font:700 18px var(--display); color:var(--verde)}
+.peca small{display:block; font-size:15px; color:var(--cinza); line-height:1.45; margin-top:2px}

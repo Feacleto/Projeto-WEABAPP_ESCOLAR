@@ -155,6 +155,22 @@
             }
           ]
         }
+      ],
+      "redirects": [
+        {
+          "source": "/saiba-mais",
+          "destination": "/",
+          "type": 301
+        }
+      ],
+      "rewrites": [
+        {
+          "source": "/api/interesse-investidor",
+          "function": {
+            "functionId": "registrarInteresseInvestidor",
+            "region": "southamerica-east1"
+          }
+        }
       ]
     }
   ],

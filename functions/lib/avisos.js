@@ -58,6 +58,8 @@ const ESPECIE_DO_AVISO = {
   acesso_recusado: ESPECIE.FATO,
   // A família informou o número da casa que o motorista não sabia.
   numero_da_casa: ESPECIE.FATO,
+  // Um investidor deixou o contato no site — só o dono recebe.
+  lead_investidor: ESPECIE.FATO,
 
   rota_atrasada: ESPECIE.ESTADO,
   comercial_retorno: ESPECIE.ESTADO,

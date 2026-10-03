@@ -3,7 +3,15 @@
 <!-- lastmod: o unico sinal deste arquivo que o Google leva a serio, e so
      enquanto for VERDADE. Data que nao acompanha a pagina vira ruido e ele
      passa a ignorar o arquivo inteiro.
-     ATUALIZE ESTA DATA quando mexer no landing/index.html. -->
+     ATUALIZE ESTA DATA quando mexer na página dela.
+     /saiba-mais SAIU (02/10/2026): virou páginas próprias, e o endereço
+     antigo é um redirecionamento 301 para a home (firebase.json). -->
   <url><loc>https://alobuzinou.com.br/</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://alobuzinou.com.br/saiba-mais</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://alobuzinou.com.br/como-funciona</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://alobuzinou.com.br/motorista</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://alobuzinou.com.br/familia</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://alobuzinou.com.br/duvidas</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://alobuzinou.com.br/sobre</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://alobuzinou.com.br/contato</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://alobuzinou.com.br/investidores</loc><lastmod>2026-10-02</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>

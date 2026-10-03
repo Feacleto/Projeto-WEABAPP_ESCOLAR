@@ -20,6 +20,7 @@ import MotoristasTab from '../../components/admin/MotoristasTab';
 import ChamadosTab from '../../components/admin/ChamadosTab';
 import SelosTab from '../../components/admin/SelosTab';
 import IndicacoesTab from '../../components/admin/IndicacoesTab';
+import InvestidoresTab from '../../components/admin/InvestidoresTab';
 import { listarInteresses } from '../../services/interesseService';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
@@ -262,6 +263,7 @@ export default function AdminPanel() {
             ['selos', 'Selos'],
             ['indicacoes', 'Indicações'],
             ['pesquisa', 'Pesquisa'],
+            ['investidores', 'Investidores'],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -306,6 +308,7 @@ export default function AdminPanel() {
         {tab === 'selos' && <SelosTab />}
         {tab === 'indicacoes' && <IndicacoesTab />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
+        {tab === 'investidores' && <InvestidoresTab />}
       </main>
     </div>
   );

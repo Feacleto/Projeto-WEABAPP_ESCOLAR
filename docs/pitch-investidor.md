@@ -7,6 +7,14 @@ receita. Este documento existe mesmo assim, e a seção 1 diz por quê — mas q
 chegar aqui procurando o plano de captação da empresa está no arquivo errado:
 não há um.
 
+⚠️ **ATUALIZAÇÃO 02/10/2026: o site passou a CAPTAR CONTATO de investidor**
+(decisão do dono). A página `alobuzinou.com.br/investidores` mostra a tese em
+três linhas e um formulário curto (nome, e-mail, WhatsApp opcional); o contato
+vai para `leadsInvestidor` e o dono vê na aba Investidores do painel. Isto não
+desfaz o "não" acima por si só: é uma porta aberta para a conversa, não um plano
+de captação. Quem responder um contato desses parte das onze respostas deste
+documento.
+
 ---
 
 ## 1. Três usos legítimos deste deck
