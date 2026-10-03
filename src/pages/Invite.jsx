@@ -23,7 +23,7 @@ import AuthSheet from '../components/auth/AuthSheet';
 import { useAuth } from '../hooks/useAuth';
 import { getInvitePreview, normalizeInviteCode } from '../services/inviteCodeService';
 import { redeemInvite } from '../services/authService';
-import { formatCurrency } from '../compartilhado/formatters';
+import { formatCurrency, doDa } from '../compartilhado/formatters';
 import {
   isInAppBrowser,
   isIOS,
@@ -213,8 +213,10 @@ export default function Invite() {
     );
   }
 
+  // A marca primeiro: é o nome que a família usa. `companyName` é o nome civil
+  // do contrato, e "José Aparecido da Silva te convidou" soa a cobrança.
   const driverLabel =
-    preview.companyName ||
+    preview.marcaNome ||
     (preview.driverFirstName ? `Tio ${preview.driverFirstName}` : 'seu motorista');
 
   // O convite é dele: o efeito acima já está navegando. Só um respiro
@@ -269,6 +271,7 @@ export default function Invite() {
         onClose={() => setPendingAction(null)}
         inviteCode={code}
         childName={preview.childFirstName}
+        childGender={preview.childGender}
         reason={pendingAction?.reason}
         onSuccess={() => finish(pendingAction?.destination)}
       />
@@ -329,7 +332,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
           {driverLabel}
         </span>
         <h1 className="text-2xl font-extrabold leading-tight mt-4">
-          O transporte {preview.childFirstName ? `do ${preview.childFirstName}` : 'do seu filho'}, aqui no celular
+          O transporte {preview.childFirstName ? doDa(preview.childFirstName, preview.childGender) : 'do seu filho'}, aqui no celular
         </h1>
         <p className="text-white/85 mt-2 text-sm leading-relaxed">
           {driverLabel} te convidou pra acompanhar mensalidade e recados num
@@ -389,7 +392,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
                 </p>
                 <p
                   className={`text-xs mt-0.5 ${
-                    p.overdue ? 'text-danger font-semibold' : 'text-textMuted'
+                    p.overdue ? 'text-dangerText font-semibold' : 'text-textMuted'
                   }`}
                 >
                   {p.monthLabel} · {dueLabel}

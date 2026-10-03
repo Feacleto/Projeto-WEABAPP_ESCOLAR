@@ -100,6 +100,10 @@ async function loadDriver(db, adminUid) {
     const a = adminSnap.data();
     return {
       driverFirstName: firstName(a.name),
+      // A MARCA é como as famílias o chamam ("Tio Zé"). `companyName` virou o
+      // NOME CIVIL do contrato (02/10/2026) e não serve de rótulo: a mãe lia
+      // "José Aparecido da Silva te convidou" de alguém que ela chama de Tio Zé.
+      marcaNome: a.marcaNome || '',
       companyName: a.companyName || '',
       driverPhotoURL: a.photoURL || null,
       // O SELO — decisão 6, e é aqui que ela encosta na família.
@@ -257,6 +261,10 @@ function makeGetInvitePreview(db) {
 
     const childDoc = snap.docs[0];
     const child = { id: childDoc.id, ...childDoc.data() };
+    // Criança removida da turma: o link antigo não abre mais nada (02/10/2026).
+    if (child.active === false) {
+      throw new HttpsError('not-found', 'Convite não encontrado.');
+    }
     const driver = await loadDriver(db, child.adminUid);
 
     const callerUid = request.auth?.uid || null;
@@ -276,6 +284,7 @@ function makeGetInvitePreview(db) {
           status: 'yours',
           childId: child.id,
           childFirstName: firstName(child.name),
+      childGender: child.gender || null,
           ...driver,
           monthlyFee: Number(child.monthlyFee) || 0,
           nextPayment,
@@ -288,6 +297,7 @@ function makeGetInvitePreview(db) {
       return {
         status: 'taken',
         childFirstName: firstName(child.name),
+      childGender: child.gender || null,
         ...driver,
         nextPayment: null,
         notices: { count: 0, latestMs: null },
@@ -302,6 +312,7 @@ function makeGetInvitePreview(db) {
     return {
       status: 'pending',
       childFirstName: firstName(child.name),
+      childGender: child.gender || null,
       ...driver,
       // Mensalidade combinada, pra quando ainda não existe cobrança gerada.
       monthlyFee: Number(child.monthlyFee) || 0,

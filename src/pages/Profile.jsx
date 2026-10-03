@@ -44,6 +44,8 @@ import Input from '../components/common/Input';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { useAuth } from '../hooks/useAuth';
 import { updateProfile } from '../services/profileService';
+import DadosDoContratoForm from '../components/contract/DadosDoContratoForm';
+import { dadosDaContratadaFaltando } from '../services/contractService';
 import {
   deleteOwnParentAccount,
   deleteAdminAccount,
@@ -503,7 +505,7 @@ export default function Profile() {
             className="w-full flex items-center gap-3 tap py-2"
           >
             <LogOut size={20} className="text-danger shrink-0" />
-            <span className="flex-1 text-left text-sm font-semibold text-danger">
+            <span className="flex-1 text-left text-sm font-semibold text-dangerText">
               Sair da conta
             </span>
           </button>
@@ -539,7 +541,7 @@ export default function Profile() {
           </a>
         </div>
         <div className="text-center text-[10px] text-textMuted/70">
-          Tio Nino Digital · versão {APP_VERSION}
+          Alô Buzinou · versão {APP_VERSION}
         </div>
       </div>
 
@@ -828,126 +830,66 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
   );
 }
 
-/* ─────────────── Dados da empresa (Tio) ─────────────── */
+/* ──── Dados para o contrato com o responsável (Tio) ────
+ *
+ * ⚠️ ERA "DADOS DA EMPRESA" (02/10/2026). O motorista autônomo não tem
+ * empresa e não se reconhecia ali — o teste no navegador mostrou o aviso do
+ * contrato mandando para cá e a seção com um nome que não era dele. O texto
+ * também prometia "o app usa placeholders padrão até lá", o que não é
+ * verdade: sem esses dados o contrato simplesmente não é gerado.
+ * O formulário é o mesmo do convite — `DadosDoContratoForm`. */
 
 function CompanyDataCard({ profile, onSaved }) {
-  const { user } = useAuth();
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(profile.companyName || '');
-  const [doc, setDoc] = useState(profile.companyDocument || '');
-  const [address, setAddress] = useState(profile.companyAddress || '');
-  const [saving, setSaving] = useState(false);
-
-  const hasData =
-    !!profile.companyName ||
-    !!profile.companyDocument ||
-    !!profile.companyAddress;
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await updateProfile(user.uid, {
-        companyName: name.trim(),
-        companyDocument: doc.trim(),
-        companyAddress: address.trim(),
-      });
-      toast.success('Dados da empresa salvos!');
-      await onSaved();
-      setEditing(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao salvar.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const faltando = dadosDaContratadaFaltando(profile);
+  const titulo = 'Dados para o seu contrato com o responsável';
 
   if (editing) {
     return (
-      <Card>
-        <form onSubmit={onSubmit} className="space-y-3">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-text">
-              Dados da empresa
-            </h3>
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              disabled={saving}
-              className="text-textMuted tap p-1"
-              aria-label="Cancelar"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <Input
-            label="Nome / Razão social"
-            icon={Building2}
-            placeholder="Ex: Tio Nino Transporte Escolar"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Input
-            label="CNPJ ou CPF"
-            icon={FileText}
-            placeholder="00.000.000/0000-00"
-            value={doc}
-            onChange={(e) => setDoc(e.target.value)}
-          />
-          <Input
-            label="Endereço"
-            icon={MapPinIcon}
-            placeholder="Rua, número, bairro, cidade"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-          />
-          <p className="text-[11px] text-textMuted leading-relaxed">
-            Esses dados aparecem no contrato que o responsável assina. Você pode
-            preencher depois — o app usa placeholders padrão até lá.
-          </p>
-          <Button type="submit" icon={Save} loading={saving}>
-            Salvar
-          </Button>
-        </form>
+      <Card className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-text">{titulo}</h3>
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="tap flex h-11 w-11 shrink-0 items-center justify-center text-textMuted"
+            aria-label="Cancelar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <DadosDoContratoForm
+          onSalvo={async () => {
+            await onSaved?.();
+            setEditing(false);
+          }}
+        />
       </Card>
     );
   }
 
   return (
     <Card className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text">Dados da empresa</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-text">{titulo}</h3>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-primary tap p-1 inline-flex items-center gap-1 text-xs font-medium"
+          className="tap inline-flex min-h-11 shrink-0 items-center gap-1 px-2 text-sm font-semibold text-primary"
         >
-          <Pencil size={14} /> {hasData ? 'Editar' : 'Preencher'}
+          <Pencil size={14} /> {faltando.length ? 'Preencher' : 'Editar'}
         </button>
       </div>
-      {hasData ? (
+      {faltando.length === 0 ? (
         <>
-          <InfoRow
-            icon={Building2}
-            label="Nome / Razão social"
-            value={profile.companyName}
-          />
-          <InfoRow
-            icon={FileText}
-            label="Documento"
-            value={profile.companyDocument}
-          />
-          <InfoRow
-            icon={MapPinIcon}
-            label="Endereço"
-            value={profile.companyAddress}
-          />
+          <InfoRow icon={Building2} label="Nome" value={profile.companyName} />
+          <InfoRow icon={FileText} label="CPF ou CNPJ" value={profile.companyDocument} />
+          <InfoRow icon={MapPinIcon} label="Endereço" value={profile.companyAddress} />
         </>
       ) : (
-        <div className="bg-warningSoft border border-warningBorder rounded-xl p-3 text-xs text-warningText leading-relaxed">
-          Preencha pra aparecer no contrato dos pais. Enquanto não preenche,
-          o app usa placeholders.
+        <div className="rounded-xl border border-warningBorder bg-warningSoft p-3 text-sm leading-relaxed text-warningText">
+          Sem estes dados o contrato com as famílias não é gerado — e o convite
+          só sai depois que você preencher.
         </div>
       )}
     </Card>

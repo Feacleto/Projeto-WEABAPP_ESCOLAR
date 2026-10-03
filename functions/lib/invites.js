@@ -18,7 +18,11 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
-const admin = require('firebase-admin');
+// `FieldValue` pelo caminho MODULAR (02/10/2026). `admin.firestore.FieldValue`
+// chegava `undefined` no emulador e o `redeemInvite` caía com 500 depois de a
+// conta da mãe já existir — o primeiro cadastro de família pelo link (teste
+// R1). Os módulos novos já usam este caminho.
+const { FieldValue } = require('firebase-admin/firestore');
 const { ligarRelogioComSnap } = require('./relogioDoTeste');
 const { cobrancaLigada } = require('./cobrancaLigada');
 const { chaveDoTelefone } = require('./indicacao');
@@ -64,7 +68,13 @@ async function findPendingChild(db, code) {
     .where('inviteStatus', '==', 'pending')
     .limit(1)
     .get();
-  return snap.empty ? null : snap.docs[0];
+  if (snap.empty) return null;
+  // ⚠️ CRIANÇA REMOVIDA NÃO TEM CONVITE (02/10/2026). Remover a criança põe
+  // `inviteStatus` de volta em 'pending' (para um reenvio futuro), e o link
+  // antigo — guardado no WhatsApp de quem quer que o tenha recebido —
+  // voltava a funcionar e vinculava alguém a uma criança fora da turma.
+  if (snap.docs[0].data().active === false) return null;
+  return snap.docs[0];
 }
 
 /**
@@ -186,6 +196,10 @@ function makeRedeemInvite(db) {
         throw new HttpsError('not-found', 'Criança não encontrada.');
       }
       const child = freshChild.data();
+      // Removida entre a busca e a transação: o convite morreu junto.
+      if (child.active === false) {
+        throw new HttpsError('not-found', 'Convite não encontrado ou já usado.');
+      }
 
       // Revalida DENTRO da transação — evita dois pais resgatando o mesmo
       // código em paralelo (o último sobrescreveria o primeiro).
@@ -237,7 +251,7 @@ function makeRedeemInvite(db) {
       tx.update(childRef, {
         parentUid: uid,
         inviteStatus: 'used',
-        inviteUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+        inviteUsedAt: FieldValue.serverTimestamp(),
       });
 
       // ⚠️ O RELÓGIO DO TESTE DO MOTORISTA LIGA AQUI TAMBÉM (06/09/2026).
@@ -286,14 +300,14 @@ function makeRedeemInvite(db) {
         // `arrayUnion` não duplica quando é o mesmo motorista, que é o caso
         // comum (irmãos na mesma perua).
         ...(child.adminUid
-          ? { adminUids: admin.firestore.FieldValue.arrayUnion(child.adminUid) }
+          ? { adminUids: FieldValue.arrayUnion(child.adminUid) }
           : {}),
-        childIds: admin.firestore.FieldValue.arrayUnion(childRef.id),
+        childIds: FieldValue.arrayUnion(childRef.id),
         // Campo legado: as telas do pai ainda leem `childId`. Só definimos
         // quando não havia nenhum, pra não trocar o filho ativo de quem
         // está adicionando o segundo.
         childId: existing?.childId || childRef.id,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
 
       // A CHAVE DO IRMÃO (02/10/2026). Criança nova cadastrada com este
@@ -313,10 +327,15 @@ function makeRedeemInvite(db) {
       // decide se quer conferir.
       const authEmail = (request.auth.token?.email || '').toLowerCase();
       const cadastroEmail = String(child.parentEmail || '').toLowerCase();
-      if (authEmail && cadastroEmail) {
+      // ⚠️ O E-MAIL DA FAMÍLIA É GRAVADO SEMPRE (02/10/2026). O cadastro da
+      // criança deixou de pedir o e-mail ao motorista — ele quase nunca
+      // sabe —, então este passa a ser O e-mail dela, lido pelo contrato e
+      // pela ficha. A comparação com o digitado só existe quando há um
+      // (cadastros antigos).
+      if (authEmail) {
         tx.update(childRef, {
-          linkedEmailMatchesCadastro: authEmail === cadastroEmail,
           linkedEmail: authEmail,
+          ...(cadastroEmail ? { linkedEmailMatchesCadastro: authEmail === cadastroEmail } : {}),
         });
       }
 
@@ -324,12 +343,12 @@ function makeRedeemInvite(db) {
         userPayload.name = name || child.parentName || '';
         userPayload.email = request.auth.token?.email || child.parentEmail || '';
         userPayload.phone = child.parentPhone || '';
-        userPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        userPayload.createdAt = FieldValue.serverTimestamp();
         // Nomes destes campos vêm de consentService.hasAcceptedCurrentTerms —
         // se divergirem, o TermsAcceptanceGate barra o pai que acabou de
         // aceitar os termos na tela de convite.
         if (acceptedLegalVersion) {
-          const now = admin.firestore.FieldValue.serverTimestamp();
+          const now = FieldValue.serverTimestamp();
           userPayload.termsVersion = acceptedLegalVersion;
           userPayload.termsAcceptedAt = now;
           userPayload.privacyVersion = acceptedLegalVersion;
@@ -385,9 +404,9 @@ async function registerFailedAttempt(db, uid) {
         {
           failed: fresh ? 1 : (snap.data().failed || 0) + 1,
           windowStart: fresh
-            ? admin.firestore.FieldValue.serverTimestamp()
+            ? FieldValue.serverTimestamp()
             : snap.data().windowStart,
-          lastAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );

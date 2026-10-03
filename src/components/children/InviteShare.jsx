@@ -5,6 +5,26 @@ import toast from 'react-hot-toast';
 import Button from '../common/Button';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import { inviteUrl } from '../../dominio/identidade/inviteUrl';
+import { doDa } from '../../compartilhado/formatters';
+import { FileSignature } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { dadosDaContratadaFaltando } from '../../services/contractService';
+import DadosDoContratoForm from '../contract/DadosDoContratoForm';
+import { useChild } from '../../hooks/useChild';
+import { useContratos } from '../../hooks/useContratos';
+import { useGarantirContrato } from '../../hooks/useGarantirContrato';
+
+/**
+ * O CONTRATO NASCE ANTES DE O CONVITE SAIR (02/10/2026). Quem abre o convite
+ * cai no aceite do contrato — então ele precisa estar emitido e gravado.
+ * Componente à parte porque os hooks só rodam quando há criança e dados.
+ */
+function GarantirContrato({ childId }) {
+  const { child } = useChild(childId);
+  const { contratos } = useContratos(child);
+  useGarantirContrato(child, contratos);
+  return null;
+}
 
 /**
  * Compartilhamento do convite pelo tio.
@@ -41,7 +61,9 @@ import { inviteUrl } from '../../dominio/identidade/inviteUrl';
  */
 export default function InviteShare({
   code,
+  childId = null,
   childName,
+  gender = null,
   parentPhone,
   jaEntrou = false,
   recolhido = false,
@@ -53,6 +75,8 @@ export default function InviteShare({
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [showQr, setShowQr] = useState(false);
 
+  const { profile } = useAuth();
+  const faltaContrato = dadosDaContratadaFaltando(profile).length > 0;
   const url = inviteUrl(code);
   const firstName = String(childName || '').trim().split(/\s+/)[0] || '';
 
@@ -89,27 +113,53 @@ export default function InviteShare({
    */
   const waText = encodeURIComponent(
     jaEntrou
-      ? `Oi! Aqui é do transporte escolar${firstName ? ` do/da ${firstName}` : ''}. ` +
+      ? `Oi! Aqui é do transporte escolar${firstName ? ` ${doDa(firstName, gender)}` : ''}. ` +
           `Este é o link de volta pro app: ${url}` +
-          `\n\nEle abre direto na página ${firstName ? `do/da ${firstName}` : 'da criança'}. ` +
+          `\n\nEle abre direto na página ${firstName ? doDa(firstName, gender) : 'da criança'}. ` +
           `Sua conta continua a mesma — é só entrar.`
-      : `Oi! Aqui é do transporte escolar${firstName ? ` do/da ${firstName}` : ''}. ` +
+      : `Oi! Aqui é do transporte escolar${firstName ? ` ${doDa(firstName, gender)}` : ''}. ` +
           `Abra este link pra acompanhar a rota e as mensalidades pelo app: ${url}`
   );
   const waHref = parentPhone
     ? `https://wa.me/${parentPhone.startsWith('55') ? parentPhone : `55${parentPhone}`}?text=${waText}`
     : `https://wa.me/?text=${waText}`;
 
+  // ⚠️ O CONVITE SÓ SAI COM OS DADOS DO CONTRATO (02/10/2026, decisão do
+  // dono). Sem nome, CPF/CNPJ e endereço do motorista o contrato não é gerado,
+  // e a família entraria sem nada para assinar. A trava mora AQUI porque todo
+  // caminho de mandar convite passa por este componente (fim do cadastro e
+  // ficha da criança). Reenviar a quem já entrou (`jaEntrou`) não trava: ali o
+  // assunto é o link de volta, não o contrato.
+  if (!jaEntrou && faltaContrato) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-4 text-left">
+        <p className="flex items-center gap-2 text-base font-bold text-text">
+          <FileSignature size={18} className="shrink-0 text-primary" />
+          Antes do convite: seus dados para o contrato
+        </p>
+        <p className="text-sm leading-relaxed text-textMuted">
+          A família recebe o contrato para assinar junto com o convite. Ele
+          precisa do seu nome, CPF ou CNPJ e endereço — é uma vez só.
+        </p>
+        <DadosDoContratoForm textoDoBotao="Salvar e liberar o convite" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      {childId && !jaEntrou && <GarantirContrato childId={childId} />}
       {/* Caminho principal: mandar o link */}
       <a
         href={waHref}
         target="_blank"
         rel="noreferrer"
-        className="tap w-full h-14 rounded-xl bg-[#25D366] text-white font-semibold inline-flex items-center justify-center gap-2 shadow-focus"
+        // TEXTO ESCURO SOBRE O VERDE DO WHATSAPP: o branco dava 1,98:1
+        // (o mínimo é 4,5). `min-h` em vez de `h` e ícone que não encolhe —
+        // com rótulo longo o texto quebrava e cortava o balão na borda.
+        className="tap w-full min-h-14 rounded-xl bg-[#25D366] px-4 py-3 text-[#06210A] font-bold leading-tight text-center inline-flex items-center justify-center gap-2 shadow-focus"
       >
-        <WhatsAppIcon size={20} colored={false} />
+        <span className="inline-flex shrink-0"><WhatsAppIcon size={20} colored={false} /></span>
         {rotulo || (jaEntrou ? 'Mandar o link no WhatsApp' : 'Mandar convite no WhatsApp')}
       </a>
 
@@ -117,7 +167,7 @@ export default function InviteShare({
         <button
           type="button"
           onClick={() => setMaisOpcoes(true)}
-          className="tap w-full py-1.5 text-xs font-semibold text-textMuted hover:text-text"
+          className="tap w-full py-3 text-sm font-semibold text-textMuted hover:text-text"
         >
           Mais opções: copiar o link, QR{children ? ', contrato antigo' : ''}
         </button>

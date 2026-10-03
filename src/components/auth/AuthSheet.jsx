@@ -12,6 +12,7 @@ import {
 } from '../../services/authService';
 import OpenInBrowser from './OpenInBrowser';
 import { canUseGoogleSignIn, isInAppBrowser } from '../../compartilhado/browserEnv';
+import { doDa } from '../../compartilhado/formatters';
 import { mensagemDeAuth } from '../../dominio/identidade/authErrors';
 import { SENHA_MINIMA } from '../../dominio/identidade/authErrors';
 
@@ -45,6 +46,7 @@ export default function AuthSheet({
   onClose,
   inviteCode,
   childName,
+  childGender = null,
   reason,
   onSuccess,
 }) {
@@ -167,7 +169,7 @@ export default function AuthSheet({
     }
   };
 
-  const who = childName ? ` do ${childName}` : '';
+  const who = childName ? ` ${doDa(childName, childGender)}` : '';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">

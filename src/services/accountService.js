@@ -12,7 +12,9 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { deleteUser, signOut } from 'firebase/auth';
-import { auth, db } from '../firebase/config';
+import { auth, db, functions } from '../firebase/config';
+import { httpsCallable } from 'firebase/functions';
+import { exigirCloud } from './callableError';
 
 /**
  * Operações de exclusão de conta / vínculo — chamadas pela aba de Perfil
@@ -201,10 +203,17 @@ export async function deactivateChildAndParent({ childId }) {
   ]);
 
   // 3. Apaga doc users do pai (Auth fica órfã — sem doc users, não loga)
+  // ⚠️ A CONTA DA FAMÍLIA NÃO É MAIS APAGADA DAQUI (02/10/2026).
+  //
+  // Era um `deleteDoc(users/{parentUid})` — e a mãe de dois irmãos, ou com
+  // filho na perua de OUTRO motorista, perdia a conta inteira (e o acesso aos
+  // outros filhos) porque UMA criança saiu desta perua. A função
+  // `desvincularResponsavel` tira só esta criança da conta dela, e só apaga a
+  // conta quando não sobra filho nenhum. Ela precisa rodar ANTES do update
+  // abaixo: é o `parentUid` da criança que diz de quem tirar.
   if (parentUid) {
-    await deleteDoc(doc(db, 'users', parentUid)).catch((err) => {
-      console.error('Falha ao apagar doc do pai:', err);
-    });
+    exigirCloud('remover a criança da conta da família');
+    await httpsCallable(functions, 'desvincularResponsavel')({ childId });
   }
 
   // O passo "tirar da rota padrão" saiu daqui: não existe mais lista salva de
@@ -220,6 +229,17 @@ export async function deactivateChildAndParent({ childId }) {
     parentUid: null,
     inviteStatus: 'pending', // reseta pra o admin poder reentregar o invite
     altResponsibles: [],
+    // O ACEITE SAI JUNTO COM O VÍNCULO (02/10/2026): sem isto, quem viesse
+    // depois herdava "Aceito por <outra pessoa>". As rules só deixam o
+    // motorista APAGAR estes campos, nunca escrevê-los.
+    contractAcceptedAt: null,
+    contractAcceptedByUid: null,
+    contractAcceptedName: null,
+    contractHash: null,
+    contractUserAgent: null,
+    contratoVigente: null,
+    contratoAguardando: null,
+    contractVersion: null,
   });
 
   // 6. DEVOLVE A VAGA. Este é o caminho REAL de remoção — `deactivateChild`
@@ -316,6 +336,15 @@ export async function deleteOwnParentAccount({ uid, childIds = [] }) {
       await updateDoc(doc(db, 'children', childId), {
         parentUid: null,
         inviteStatus: 'pending',
+        // O aceite sai com a conta: a próxima família não herda o de outra
+        // pessoa (as rules aceitam só nulo aqui).
+        contractAcceptedAt: null,
+        contractAcceptedByUid: null,
+        contractAcceptedName: null,
+        contractHash: null,
+        contractUserAgent: null,
+        contratoVigente: null,
+        contractVersion: null,
       });
     } catch (err) {
       console.error('Falha ao desvincular criança ' + childId + ':', err);

@@ -1,25 +1,28 @@
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 // `formatBRL` mora em `compartilhado/formatters.js`. Ele nao precisa de Firestore,
 // e cinco componentes importavam ESTE service so pra formatar moeda.
 import { formatBRL } from '../compartilhado/formatters';
+import {
+  vigenciaDaCrianca,
+  parcelasDaVigencia,
+  dataBR,
+} from '../dominio/cobranca/contratoDaFamilia.js';
 
 export { formatBRL };
-import { db } from '../firebase/config';
 
 /**
  * Contrato de prestação de serviço de transporte escolar.
  *
  * - Conteúdo gerado a partir dos dados de admin (CONTRATADA) + child/parent
  *   (CONTRATANTE). Versionado via `CONTRACT_VERSION` pra evolução.
- * - Aceite eletrônico: pai entra no app, vê o contrato, digita o nome e marca
- *   o checkbox. App grava `contractAcceptedAt`, `contractAcceptedByUid`,
- *   `contractAcceptedName`, `contractHash` (SHA-256 dos dados) e `userAgent`
- *   no doc da criança.
- * - Placeholders fictícios usados se admin não preencheu dados da empresa,
- *   pra preservar a alta fidelidade visual do MVP.
+ * - `buildContractData` monta o TEXTO de uma versão. Quem grava a versão é
+ *   `contratosDaFamiliaService`, e quem registra o aceite é o servidor.
+ * - Sem os dados da parte contratada, não há contrato (ver abaixo).
  */
 
-export const CONTRACT_VERSION = 1;
+// 2 (02/10/2026): a vigência passou a ser a do motorista, e as parcelas, as
+// que cabem nela (antes: sempre 01/01–31/12 e 12 parcelas). Fica gravada em
+// cada versão (`dados.version`), para saber qual texto ela usou.
+export const CONTRACT_VERSION = 2;
 
 /**
  * ⚠️ O PLACEHOLDER FOI REMOVIDO EM 06/09/2026, e ele era um problema jurídico.
@@ -54,9 +57,14 @@ export function buildContractData({ child, admin }) {
   if (dadosDaContratadaFaltando(admin).length > 0) return null;
 
   const today = new Date();
-  const year = today.getFullYear();
   const monthlyFee = Number(child?.monthlyFee) || 0;
   const dueDay = Number(child?.dueDay) || 10;
+  // A VIGÊNCIA É DO MOTORISTA (02/10/2026). Era sempre 01/01–31/12 do ano
+  // corrente com 12 parcelas — quem entrava em outubro assinava doze parcelas
+  // de um ano com três meses. `vigenciaDaCrianca` devolve a padrão para a
+  // criança cadastrada antes do campo existir.
+  const vig = vigenciaDaCrianca(child, today);
+  const year = Number(vig.inicio.slice(0, 4));
 
   return {
     version: CONTRACT_VERSION,
@@ -68,6 +76,10 @@ export function buildContractData({ child, admin }) {
       name: admin.companyName.trim(),
       document: admin.companyDocument.trim(),
       address: admin.companyAddress.trim(),
+      // A CIDADE do local de assinatura. O contrato pegava o primeiro pedaço
+      // do endereço e escrevia "Rua das Palmeiras, 02 de outubro" (teste no
+      // navegador, 02/10/2026); a cidade ele já deu no primeiro acesso.
+      city: admin?.city?.trim() || '',
       representative: admin?.name?.trim() || 'Representante legal',
       phone: admin?.phone || '',
       email: admin?.email || '',
@@ -76,7 +88,8 @@ export function buildContractData({ child, admin }) {
     // CONTRATANTE — Responsável
     parent: {
       name: child?.parentName?.trim() || '',
-      email: child?.parentEmail?.trim() || '',
+      // O e-mail com que a família ENTROU vence o digitado no cadastro antigo.
+      email: child?.linkedEmail?.trim() || child?.parentEmail?.trim() || '',
       phone: child?.parentPhone || '',
       address: child?.address?.trim() || '',
     },
@@ -93,13 +106,17 @@ export function buildContractData({ child, admin }) {
     finance: {
       monthlyFee, // numérico — formatamos na renderização
       dueDay,     // dia do mês 1-28
-      installments: 12, // 12 parcelas, INCLUINDO férias (regra explícita)
+      // Uma parcela por mês que a vigência toca, INCLUINDO férias (regra
+      // explícita da cláusula 7ª).
+      installments: parcelasDaVigencia(vig.inicio, vig.fim),
     },
 
-    // VIGÊNCIA
+    // VIGÊNCIA — o texto lê as datas brasileiras; a régua, as ISO.
     period: {
-      startDate: `01/01/${year}`,
-      endDate: `31/12/${year}`,
+      startDate: dataBR(vig.inicio),
+      endDate: dataBR(vig.fim),
+      inicio: vig.inicio,
+      fim: vig.fim,
       year,
     },
 
@@ -109,60 +126,12 @@ export function buildContractData({ child, admin }) {
   };
 }
 
-/**
- * Calcula um hash SHA-256 do conteúdo do contrato.
- * Usado como evidência: prova que o contrato aceito é o mesmo conteúdo
- * preservado depois (qualquer mudança gera hash diferente).
- *
- * Roda no browser via Web Crypto (built-in, sem libs).
+/*
+ * O ACEITE SAIU DESTE ARQUIVO EM 02/10/2026. `acceptContract`,
+ * `computeContractHash` e `hasAcceptedContract` gravavam e conferiam o aceite
+ * pelo celular da família, com um hash de um contrato remontado na hora (com
+ * a hora da abertura dentro) — que nunca podia ser conferido. Agora cada
+ * versão é gravada (`contratosDaFamiliaService`) e o aceite e o hash são do
+ * servidor (`functions/lib/aceitarContrato.js`). O estado do contrato é
+ * `estadoDoContrato`, em `dominio/cobranca/contratoDaFamilia.js`.
  */
-export async function computeContractHash(data) {
-  const json = JSON.stringify(data);
-  const encoder = new TextEncoder();
-  const bytes = encoder.encode(json);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Registra o aceite do contrato. Chamado quando o Pai digita o nome
- * e confirma o checkbox no ContractAcceptanceGate.
- *
- * As Firestore rules garantem:
- *   - parentUid do child == request.auth.uid
- *   - só pode escrever os campos de aceite (não pode mexer no resto)
- *   - aceite único: depois de aceitar, não pode reescrever
- */
-export async function acceptContract({
-  childId,
-  parentUid,
-  parentName,
-  contractHash,
-}) {
-  if (!childId || !parentUid || !parentName) {
-    throw new Error('Dados insuficientes pra aceitar contrato.');
-  }
-  await updateDoc(doc(db, 'children', childId), {
-    contractVersion: CONTRACT_VERSION,
-    contractAcceptedAt: serverTimestamp(),
-    contractAcceptedByUid: parentUid,
-    contractAcceptedName: parentName.trim(),
-    contractHash: contractHash || null,
-    contractUserAgent:
-      typeof navigator !== 'undefined' ? navigator.userAgent : '',
-  });
-}
-
-/**
- * Checa se o contrato corrente da criança foi aceito pelo pai.
- * Considera a versão atual — se a versão for bumped, exige novo aceite.
- */
-export function hasAcceptedContract(child) {
-  if (!child) return false;
-  if (!child.contractAcceptedAt) return false;
-  // Se a versão do aceite é antiga, exige novo aceite
-  if ((child.contractVersion || 0) < CONTRACT_VERSION) return false;
-  return true;
-}
-

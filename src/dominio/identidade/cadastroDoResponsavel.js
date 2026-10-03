@@ -10,7 +10,7 @@
  *           e digita o número — quem sabe é quem mora lá
  *   voce    nome e WhatsApp — quase sempre já vêm do cadastro que o
  *           motorista fez, e aí o passo nem aparece
- *   filho   o aniversário da criança (obrigatório), turma e sala
+ *   filho   o aniversário da criança (obrigatório), turma e professora
  *           (opcionais). O aniversário saiu do cadastro do motorista no
  *           mesmo dia: quem sabe a data é a família
  *   avisos  a permissão de notificação, para ela saber que a perua está

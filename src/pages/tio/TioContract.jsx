@@ -1,38 +1,61 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Printer, MessageCircle, CheckCircle2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Printer, CheckCircle2, Clock3, History } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import Button from '../../components/common/Button';
-import { notifyContratoPronto } from '../../services/notificationsService';
+import WhatsAppIcon from '../../components/common/WhatsAppIcon';
 import ContractView from '../../components/contract/ContractView';
+import CartaoDoCombinado from '../../components/contract/CartaoDoCombinado';
 import { useAuth } from '../../hooks/useAuth';
 import { useChild } from '../../hooks/useChild';
+import { useContratos } from '../../hooks/useContratos';
+import { inviteUrl } from '../../dominio/identidade/inviteUrl';
+import { doDa } from '../../compartilhado/formatters';
 import {
   buildContractData,
   dadosDaContratadaFaltando,
-  hasAcceptedContract,
 } from '../../services/contractService';
+import { estadoDoContrato } from '../../dominio/cobranca/contratoDaFamilia.js';
+
+const ROTULO = {
+  aguardando: 'esperando assinatura',
+  aceito: 'assinado',
+  substituido: 'substituído',
+  retirado: 'trocada',
+};
+
+function quando(ts) {
+  const d = ts?.toDate?.();
+  return d ? d.toLocaleDateString('pt-BR') : '';
+}
 
 /**
- * Tela do Tio: visualizar contrato da criança + imprimir/salvar PDF +
- * enviar pro responsável via WhatsApp.
+ * Tela do motorista: o contrato da criança — a versão que vale, a que espera
+ * aceite, e todas as anteriores.
  *
  * Rota: /tio/children/:id/contract
+ *
+ * Desde 02/10/2026 o contrato é um DOCUMENTO GRAVADO por versão
+ * (`children/{id}/contratos/{n}`), não um texto remontado a cada abertura —
+ * ver `dominio/cobranca/contratoDaFamilia.js`. Esta tela mostra a versão
+ * gravada, e o histórico é o que se abre numa discordância sobre o combinado.
  */
 export default function TioContract() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { child, loading } = useChild(id);
+  const { contratos, vigente, aguardando } = useContratos(child);
+  const [aberta, setAberta] = useState(null);
 
-  const contractData = useMemo(() => {
-    if (!child || !profile) return null;
+  // Aceite antigo, anterior aos documentos: o texto é o que os campos dizem.
+  const legado = useMemo(() => {
+    if (!child || !profile || vigente || aguardando) return null;
     return buildContractData({ child, admin: profile });
-  }, [child, profile]);
+  }, [child, profile, vigente, aguardando]);
 
-  if (loading) {
+  if (loading || !contratos) {
     return (
       <>
         <Header title="Contrato" showBack />
@@ -44,17 +67,9 @@ export default function TioContract() {
     );
   }
 
-  // ⚠️ O QUE FALTA, DITO — E ESTA É A TELA DELE, NÃO A DA FAMÍLIA.
-  //
-  // Até 06/09/2026 o contrato saía com uma CONTRATADA fictícia ("Tio Nino
-  // Transporte Escolar", CNPJ 00.000.000/0000-00) sempre que este cadastro
-  // estivesse vazio — e o responsável assinava isso, com nome digitado, hash
-  // SHA-256 e data. O placeholder foi removido, e agora o documento não existe
-  // até a parte contratada ter nome.
-  //
-  // Quem é avisado é ELE, aqui, com o caminho de resolver a um toque. A mãe
-  // passa direto (ver `ParentContractGate`): ela não tem como consertar um
-  // formulário que não é dela.
+  // ⚠️ O QUE FALTA, DITO — E ESTA É A TELA DELE, NÃO A DA FAMÍLIA. Sem os
+  // dados da parte contratada o contrato não é emitido (o placeholder de
+  // empresa fictícia saiu em 06/09/2026).
   const faltando = dadosDaContratadaFaltando(profile);
   if (faltando.length > 0) {
     return (
@@ -65,7 +80,7 @@ export default function TioContract() {
             <p className="text-sm font-bold text-warningText">
               Falta o seu cadastro para emitir o contrato
             </p>
-            <p className="mt-1.5 text-xs leading-relaxed text-warningText/85">
+            <p className="mt-1.5 text-sm leading-relaxed text-warningText">
               O contrato precisa dizer quem é a parte contratada — você. Sem{' '}
               <strong>{faltando.join(', ')}</strong>, ele não pode ser emitido, e
               a família não tem o que assinar.
@@ -73,7 +88,7 @@ export default function TioContract() {
             <button
               type="button"
               onClick={() => navigate('/tio/profile')}
-              className="tap mt-3 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-bold text-white"
+              className="tap mt-3 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-white"
             >
               Completar meu cadastro
             </button>
@@ -83,122 +98,119 @@ export default function TioContract() {
     );
   }
 
-  const accepted = hasAcceptedContract(child);
-  const acceptanceInfo = accepted
-    ? {
-        name: child.contractAcceptedName,
-        acceptedAt: child.contractAcceptedAt?.toDate?.()?.toISOString() || null,
-        hash: child.contractHash,
-        version: child.contractVersion,
-      }
-    : null;
+  const estado = estadoDoContrato(child);
+  // O que a tela mostra: a versão escolhida no histórico; senão a que espera
+  // aceite (é o assunto em aberto); senão a que vale.
+  const mostrada =
+    contratos.find((c) => c.numero === aberta) || aguardando || vigente || null;
+  const dados = mostrada?.dados || legado;
+  const acceptanceInfo =
+    mostrada?.status === 'aceito' || mostrada?.status === 'substituido'
+      ? {
+          name: mostrada.aceitoNome,
+          acceptedAt: mostrada.aceitoEm?.toDate?.()?.toISOString() || null,
+          hash: mostrada.hash,
+        }
+      : !mostrada && child.contractAcceptedAt
+        ? {
+            name: child.contractAcceptedName,
+            acceptedAt: child.contractAcceptedAt?.toDate?.()?.toISOString() || null,
+            hash: child.contractHash,
+            version: child.contractVersion,
+          }
+        : null;
 
-  const onPrint = () => {
-    window.print();
-  };
-
-  const onShareWhatsApp = () => {
-    /* O AVISO VAI JUNTO DA MENSAGEM, e não no lugar dela.
-     *
-     * O WhatsApp mostra o contrato; o aviso leva ela pra DENTRO do app, que é
-     * onde o aceite acontece de verdade — nome digitado, hash e data. Um
-     * mostra, o outro resolve. E a conversa some: quem limpou o histórico
-     * ainda tem o aviso no sino.
-     *
-     * Sem `await` e sem bloquear: se ela não tem conta ainda, o service
-     * devolve na hora e a mensagem sai do mesmo jeito. */
-    notifyContratoPronto({ parentUid: child.parentUid, childName: child.name });
-
-    if (!child.parentPhone) {
-      toast.error('Telefone do responsável não cadastrado.');
-      return;
-    }
-    const phone = String(child.parentPhone).replace(/\D/g, '');
-    const fullPhone = phone.startsWith('55') ? phone : `55${phone}`;
-    const appUrl = window.location.origin;
-    const message = encodeURIComponent(
-      `Olá ${child.parentName || ''}! Sou ${profile.name || 'do Tio Nino'}.\n\n` +
-        `Aqui está o código de acesso ao app pra você cadastrar e visualizar o ` +
-        `contrato de transporte escolar do(a) ${child.name}:\n\n` +
-        `*Código:* ${child.inviteCode}\n\n` +
-        `Baixe o app: ${appUrl}\n\n` +
-        `Ao entrar, você verá o contrato pra ler e aceitar.`
-    );
-    window.open(`https://wa.me/${fullPhone}?text=${message}`, '_blank');
-  };
+  // A família ainda não entrou: manda o LINK do convite (o código saiu de
+  // toda tela em 02/10/2026). Já entrou: manda ela abrir o app, onde o
+  // contrato espera o aceite.
+  const primeiro = String(child.name || '').trim().split(/\s+/)[0];
+  const texto = child.parentUid
+    ? `Oi! Mandei um contrato novo do transporte ${doDa(primeiro, child.gender)}. ` +
+      `Abra o app para ler e assinar: ${window.location.origin}/pai/contrato`
+    : `Oi! Aqui é do transporte escolar ${doDa(primeiro, child.gender)}. ` +
+      `Abra este link para entrar no app e ler o contrato: ${inviteUrl(child.inviteCode)}`;
+  const fone = String(child.parentPhone || '').replace(/\D/g, '');
+  const waHref = `https://wa.me/${fone ? (fone.startsWith('55') ? fone : `55${fone}`) : ''}?text=${encodeURIComponent(texto)}`;
+  const pedeAceite = estado === 'aguardando' || estado === 'mudanca';
 
   return (
     <>
       <Header title="Contrato" showBack />
 
       <div className="p-5 space-y-4">
-        {/* Status do aceite */}
-        {accepted ? (
-          <div className="rounded-2xl bg-gradient-to-br from-primarySoft to-primaryChip border border-primaryBorder p-4 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
-              <CheckCircle2 size={22} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-primary leading-tight">
-                Aceito pelo responsável
-              </p>
-              <p className="text-xs text-primary mt-0.5">
-                {child.contractAcceptedName}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-2xl bg-gradient-to-br from-warningSoft to-warningChip border border-warningBorder p-4 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-warning text-white flex items-center justify-center shrink-0">
-              <MessageCircle size={22} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-warningText leading-tight">
-                Aguardando aceite
-              </p>
-              <p className="text-xs text-warningText mt-0.5">
-                O responsável aceita quando entrar no app com o código de
-                convite.
-              </p>
-            </div>
-          </div>
+        <div className="print:hidden">
+          <CartaoDoCombinado child={child} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 print:hidden">
+          {pedeAceite && (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noreferrer"
+              className="tap inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-center font-bold leading-tight text-[#06210A]"
+            >
+              <WhatsAppIcon size={20} colored={false} />
+              Avisar a família no WhatsApp
+            </a>
+          )}
+          <Button variant="secondary" icon={Printer} onClick={() => window.print()}>
+            Imprimir ou salvar em PDF
+          </Button>
+        </div>
+
+        {/* O HISTÓRICO: cada versão, com o que aconteceu com ela. */}
+        {contratos.length > 1 && (
+          <section className="space-y-2 print:hidden">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
+              <History size={16} className="text-primary" />
+              Versões do contrato
+            </h3>
+            <ul className="space-y-1.5">
+              {contratos.map((c) => {
+                const ativa = mostrada?.numero === c.numero;
+                return (
+                  <li key={c.numero}>
+                    <button
+                      type="button"
+                      onClick={() => setAberta(c.numero)}
+                      className={`tap flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border px-3 text-left text-sm ${
+                        ativa ? 'border-primary bg-primarySoft' : 'border-border bg-card'
+                      }`}
+                    >
+                      <span className="font-semibold text-text">
+                        Versão {c.numero}
+                        {c.tipo === 'aditivo' ? ' · aditivo' : ''}
+                      </span>
+                      <span className="flex items-center gap-1 text-textMuted">
+                        {c.status === 'aceito' ? (
+                          <CheckCircle2 size={14} className="text-accentText" />
+                        ) : (
+                          <Clock3 size={14} />
+                        )}
+                        {ROTULO[c.status] || c.status} · {quando(c.aceitoEm || c.emitidoEm)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
 
-        {/* Ações (print:hidden) */}
-        <div className="grid grid-cols-2 gap-2 print:hidden">
-          <Button
-            variant="secondary"
-            icon={Printer}
-            onClick={onPrint}
-            size="md"
-          >
-            Imprimir / PDF
-          </Button>
-          <Button
-            variant="success"
-            icon={MessageCircle}
-            onClick={onShareWhatsApp}
-            size="md"
-          >
-            Enviar pelo WhatsApp
-          </Button>
-        </div>
-
-        {/* Conteúdo do contrato */}
-        <div className="bg-card rounded-3xl shadow-sm p-6 print:p-0 print:shadow-none print:rounded-none">
-          <ContractView
-            data={contractData}
-            acceptanceInfo={acceptanceInfo}
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="tap w-full text-xs text-textMuted py-2 print:hidden"
-        >
-          Voltar
-        </button>
+        {dados ? (
+          <div className="bg-card rounded-3xl shadow-sm p-6 print:p-0 print:shadow-none print:rounded-none">
+            <ContractView
+              data={dados}
+              numero={mostrada?.numero || null}
+              tipo={mostrada?.tipo}
+              mudancas={mostrada?.status === 'aguardando' ? mostrada?.mudancas : null}
+              acceptanceInfo={acceptanceInfo}
+            />
+          </div>
+        ) : (
+          <Skeleton className="h-60" />
+        )}
       </div>
     </>
   );

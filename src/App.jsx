@@ -97,9 +97,7 @@ import { getChildIds } from './dominio/identidade/childIds';
 import FalhaAoLerConta from './components/common/FalhaAoLerConta';
 import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
-import { dadosDaContratadaFaltando } from './services/contractService';
-import { useAdminProfile } from './hooks/useAdminProfile';
-import { hasAcceptedContract } from './services/contractService';
+import { estadoDoContrato } from './dominio/cobranca/contratoDaFamilia.js';
 import Respiro from './components/common/Respiro';
 import { SITE_INSTITUCIONAL } from './config/vitrine';
 import Travessia from './components/common/Travessia';
@@ -391,10 +389,15 @@ function SemVinculoGate({ children }) {
 }
 
 function PrimeiroAcessoDoPaiGate({ children }) {
-  const { profile, loading } = useAuth();
+  const { profile, loading, childIds } = useAuth();
   const { child, loading: carregandoCrianca } = useActiveChild();
 
-  if (loading || carregandoCrianca) return <FullScreenLoader />;
+  // ⚠️ ESPERA A CRIANÇA, NÃO SÓ O "CARREGANDO". Sem filho ativo escolhido
+  // ainda, `useChild(null)` responde "não está carregando" com criança nula —
+  // e a conta sairia sem o passo do aniversário. Tem filho? Espera ele.
+  if (loading || carregandoCrianca || (childIds?.length > 0 && !child)) {
+    return <FullScreenLoader />;
+  }
   const passos = passosDoResponsavel({ profile, child, permissao: permissaoDeAvisos() });
   if (!passos.length) return children;
   return (
@@ -402,22 +405,27 @@ function PrimeiroAcessoDoPaiGate({ children }) {
       <div inert aria-hidden="true">
         {children}
       </div>
-      <PrimeiroAcessoDoPai />
+      {/* A lista vai PRONTA para o card — a mesma que decide o `inert`. Duas
+        * contas (uma aqui, outra lá dentro) já deixaram o app inerte sem
+        * card nenhum por cima. */}
+      <PrimeiroAcessoDoPai passos={passos} />
     </>
   );
 }
 
 function ParentContractGate({ children }) {
   const { child, loading } = useActiveChild();
-  const { admin, loading: adminLoading } = useAdminProfile(child?.adminUid);
 
   if (loading) return <FullScreenLoader />;
   // Se não tem child vinculado, deixa entrar — o próprio dashboard mostra erro
   if (!child) return children;
-  if (adminLoading) return <FullScreenLoader />;
-  // Sem os dados da contratada não há documento a assinar. Ver acima.
-  if (dadosDaContratadaFaltando(admin).length > 0) return children;
-  if (!hasAcceptedContract(child)) {
+  // ⚠️ SÓ O PRIMEIRO CONTRATO BLOQUEIA, E SÓ QUANDO ELE EXISTE (02/10/2026).
+  // O contrato agora é uma versão GRAVADA, emitida pelo lado do motorista
+  // quando os dados dele estão completos — sem versão emitida, não há o que
+  // assinar e ela passa (bloquear por um contrato que o motorista não emitiu
+  // é punir quem não pode consertar). A MUDANÇA depois do aceite (o aditivo)
+  // não bloqueia: vale o contrato de antes até ela aceitar.
+  if (estadoDoContrato(child) === 'aguardando') {
     return <ContractAcceptanceGate />;
   }
   return children;

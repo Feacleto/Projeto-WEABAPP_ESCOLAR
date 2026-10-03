@@ -47,7 +47,7 @@ export default function PaiLayout() {
 
   // Chamada ativa do Tio pro Pai (modal fullscreen com ringtone)
   const activeCall = useActiveCallForParent(user?.uid);
-  const { child } = useActiveChild();
+  const { child, loading: carregandoCrianca, childIds } = useActiveChild();
   const { admin } = useAdminProfile(child?.adminUid);
   const childBirthdayToday = child && isBirthdayToday(child.birthDate);
 
@@ -58,13 +58,16 @@ export default function PaiLayout() {
     if (autoOpened.current) return;
     // Enquanto o card do primeiro acesso estiver por cima, o tour espera —
     // mesma regra do motorista (`TioLayout`).
+    // ⚠️ E ESPERA A CRIANÇA CARREGAR: sem ela, a conta dos passos sai sem o
+    // aniversário, dá vazio, e o tour abria POR BAIXO do card (teste R2).
+    if (carregandoCrianca || (childIds?.length > 0 && !child)) return;
     if (passosDoResponsavel({ profile, child, permissao: permissaoDeAvisos() }).length) return;
     if (profile && profile.tutorialDone !== true) {
       autoOpened.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTour('first');
     }
-  }, [profile?.tutorialDone, profile, child]);
+  }, [profile?.tutorialDone, profile, child, carregandoCrianca, childIds]);
 
   // "Ver tutorial de novo" no perfil manda pra cá com esse state: o tour
   // precisa da tela inicial embaixo pra ter o que iluminar.

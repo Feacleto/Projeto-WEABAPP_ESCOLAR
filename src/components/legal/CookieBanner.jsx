@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Cookie } from 'lucide-react';
 import {
@@ -57,102 +57,117 @@ export default function CookieBanner() {
 
   if (!visible) return null;
 
+  return <CaixaDeCookies {...{ showCustom, setShowCustom, analytics, setAnalytics, onAcceptAll, onEssentialsOnly, onSaveCustom }} />;
+}
+
+/**
+ * O DESENHO DO AVISO, e por que ele é BAIXO E SEM BOTÃO CHEIO (02/10/2026).
+ *
+ * O teste no navegador (M1) pegou o aviso duas vezes no caminho do motorista
+ * novo: no fim da apresentação do login, o "Aceitar todos" verde cheio
+ * competia com o "Entrar com Google" que a apresentação acabou de destacar; e
+ * no cadastro ele cobria o botão "Criar minha conta e entrar". Quem não
+ * fechasse o aviso não achava o botão de criar a conta.
+ *
+ * Três decisões:
+ *  1. As três escolhas continuam (a LGPD pede a escolha), na MESMA linha e
+ *     com o mesmo peso de contorno — nenhuma delas é o botão principal da
+ *     tela, porque o principal da tela é o que a pessoa veio fazer.
+ *  2. Uma frase só, e o "Saiba mais" leva o resto.
+ *  3. Enquanto ele está aberto, a página ganha um espaço do tamanho dele no
+ *     fim (`padding-bottom` no body): o que estiver embaixo dá para rolar até
+ *     acima do aviso, em vez de ficar escondido atrás dele.
+ */
+function CaixaDeCookies({ showCustom, setShowCustom, analytics, setAnalytics, onAcceptAll, onEssentialsOnly, onSaveCustom }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const antes = document.body.style.paddingBottom;
+    const ajustar = () => {
+      document.body.style.paddingBottom = `${el.offsetHeight + 12}px`;
+    };
+    ajustar();
+    const obs = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(ajustar) : null;
+    obs?.observe(el);
+    return () => {
+      obs?.disconnect();
+      document.body.style.paddingBottom = antes;
+    };
+  }, []);
+
+  const botao =
+    'tap h-11 rounded-xl border border-borderStrong bg-card px-2 text-[13px] font-semibold text-text';
+
   return (
+    // ABAIXO DAS FOLHAS (z-40; as folhas são z-50). Por cima, ele cobria o
+    // "entrar com email" da folha do convite — a mãe não alcançava o caminho
+    // dela sem antes responder sobre cookies (teste R1, 02/10/2026). Folha que
+    // a pessoa abriu ganha de aviso que pode esperar.
     <div
+      ref={ref}
       role="dialog"
       aria-label="Preferências de cookies"
-      className="fixed bottom-0 left-0 right-0 z-[60] p-3 sm:p-4 print:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-0 print:hidden"
     >
-      <div className="max-w-mobile mx-auto bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
-        <div className="p-4 space-y-3">
-          <div className="flex items-start gap-2">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Cookie size={20} className="text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-text">
-                Privacidade e cookies
-              </p>
-              <p className="text-xs text-textMuted mt-1 leading-snug">
-                Usamos cookies essenciais pra manter você logado e cookies
-                analíticos (opcionais) pra entender como o app é usado. Você
-                pode escolher.{' '}
-                <Link
-                  to="/privacidade"
-                  className="text-primary underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Saiba mais
-                </Link>
-                .
-              </p>
-            </div>
-          </div>
+      <div className="max-w-mobile mx-auto rounded-2xl border border-border bg-card p-3 shadow-float">
+        <p className="flex items-start gap-2 text-[13px] leading-snug text-textMuted">
+          <Cookie size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden />
+          <span>
+            Usamos cookies pra manter você logado e, se você deixar, pra medir
+            o uso do app.{' '}
+            <Link
+              to="/privacidade"
+              className="font-semibold text-primary underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Saiba mais
+            </Link>
+          </span>
+        </p>
 
-          {showCustom && (
-            <div className="border-t border-neutro pt-3 space-y-2">
-              <CookieOption
-                label="Cookies essenciais"
-                description="Necessários pro funcionamento (login, sessão). Não desativáveis."
-                checked
-                disabled
-              />
-              <CookieOption
-                label="Cookies analíticos"
-                description="Métricas anônimas pra melhorar o app."
-                checked={analytics}
-                onChange={(v) => setAnalytics(v)}
-              />
-            </div>
+        {showCustom && (
+          <div className="mt-3 space-y-1 border-t border-neutro pt-2">
+            <CookieOption
+              label="Cookies essenciais"
+              description="Necessários pro funcionamento (login, sessão). Não desativáveis."
+              checked
+              disabled
+            />
+            <CookieOption
+              label="Cookies analíticos"
+              description="Métricas anônimas pra melhorar o app."
+              checked={analytics}
+              onChange={(v) => setAnalytics(v)}
+            />
+          </div>
+        )}
+
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {showCustom ? (
+            <>
+              <button type="button" onClick={() => setShowCustom(false)} className={botao}>
+                Voltar
+              </button>
+              <button type="button" onClick={onSaveCustom} className={`${botao} col-span-2`}>
+                Salvar preferências
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={onEssentialsOnly} className={botao}>
+                Apenas essenciais
+              </button>
+              <button type="button" onClick={onAcceptAll} className={botao}>
+                Aceitar todos
+              </button>
+              <button type="button" onClick={() => setShowCustom(true)} className={botao}>
+                Personalizar
+              </button>
+            </>
           )}
-
-          <div className="flex flex-col gap-2 pt-1">
-            {showCustom ? (
-              <>
-                <button
-                  type="button"
-                  onClick={onSaveCustom}
-                  className="w-full h-10 rounded-xl bg-primary text-white text-sm font-semibold tap"
-                >
-                  Salvar preferências
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCustom(false)}
-                  className="w-full h-9 rounded-xl text-textMuted text-xs tap"
-                >
-                  Voltar
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={onAcceptAll}
-                  className="w-full h-10 rounded-xl bg-primary text-white text-sm font-semibold tap"
-                >
-                  Aceitar todos
-                </button>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={onEssentialsOnly}
-                    className="h-10 rounded-xl border border-border text-text text-xs font-semibold tap"
-                  >
-                    Apenas essenciais
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCustom(true)}
-                    className="h-10 rounded-xl border border-border text-text text-xs font-semibold tap"
-                  >
-                    Personalizar
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </div>
@@ -162,7 +177,7 @@ export default function CookieBanner() {
 function CookieOption({ label, description, checked, disabled, onChange }) {
   return (
     <label
-      className={`flex items-start gap-3 p-2 rounded-lg ${
+      className={`flex min-h-11 items-start gap-3 p-2 rounded-lg ${
         disabled ? 'opacity-60' : 'cursor-pointer'
       }`}
     >
@@ -171,7 +186,7 @@ function CookieOption({ label, description, checked, disabled, onChange }) {
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange?.(e.target.checked)}
-        className="mt-1 w-4 h-4 accent-primary"
+        className="mt-0.5 h-5 w-5 accent-primary"
       />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-text">{label}</p>

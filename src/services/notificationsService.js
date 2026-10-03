@@ -362,10 +362,23 @@ export async function markAllNotificationsRead(userId) {
  * PDF; este aviso leva ela pra dentro do app, onde o aceite acontece de
  * verdade (nome digitado, hash e data). Um mostra, o outro resolve.
  */
-export async function notifyContratoPronto({ parentUid, childName }) {
+export async function notifyContratoPronto({ parentUid, childName, mudanca = false }) {
   if (!parentUid) return;
   try {
     const nome = String(childName || '').trim().split(/\s+/)[0];
+    // CONTRATO NOVO (o aditivo, do lado do motorista): mesmo tipo de aviso,
+    // outra frase. Para ela é um contrato novo para assinar, não uma "mudança"
+    // (decisão do dono, 03/10/2026) — e até assinar, vale o atual.
+    if (mudanca) {
+      await addDoc(collection(db, 'notifications'), {
+        userId: parentUid,
+        type: 'contrato_pronto',
+        title: 'Você tem um contrato novo para assinar',
+        body: `O motorista mandou um contrato novo${nome ? ` de ${nome}` : ''}. Toque para ler e assinar — até lá, vale o atual.`,
+        createdAt: serverTimestamp(),
+      });
+      return;
+    }
     await addDoc(collection(db, 'notifications'), {
       userId: parentUid,
       type: 'contrato_pronto',

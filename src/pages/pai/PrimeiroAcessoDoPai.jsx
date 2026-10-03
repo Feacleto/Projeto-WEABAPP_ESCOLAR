@@ -10,10 +10,9 @@ import { searchAddress } from '../../services/locationService';
 import { notifyNumeroDaCasa } from '../../services/notificationsService';
 import { montarEndereco } from '../../compartilhado/formatters';
 import { salvarPrimeiroAcessoDoResponsavel } from '../../services/userService';
-import { enablePush, permissionState } from '../../services/pushService';
+import { enablePush } from '../../services/pushService';
 import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
 import {
-  passosDoResponsavel,
   camposDoResponsavelQueFaltam,
 } from '../../dominio/identidade/cadastroDoResponsavel.js';
 
@@ -28,13 +27,18 @@ import {
  *
  * Quem decide os passos é `passosDoResponsavel`, pura. Eles são congelados
  * na abertura, como no motorista, para os pontinhos não andarem para trás.
+ *
+ * ⚠️ OS PASSOS VÊM DO PORTÃO, NÃO SÃO CALCULADOS AQUI (02/10/2026). O card
+ * calculava a própria lista no primeiro render — às vezes antes de a criança
+ * carregar — e a congelava SEM o passo do aniversário: ficava vazio e não
+ * desenhava nada, enquanto o portão (que via a criança) mantinha o app
+ * INERTE por baixo. A mãe acabava de aceitar o contrato e caía numa tela que
+ * não respondia a toque nenhum (teste R2). Agora uma conta só, a do portão.
  */
-export default function PrimeiroAcessoDoPai() {
+export default function PrimeiroAcessoDoPai({ passos: passosDoPortao = [] }) {
   const { user, profile, refreshProfile } = useAuth();
   const { child } = useActiveChild();
-  const [passos] = useState(() =>
-    passosDoResponsavel({ profile, child, permissao: permissionState() })
-  );
+  const [passos] = useState(() => passosDoPortao);
   const [indice, setIndice] = useState(0);
   const passo = passos[indice];
   const ultimo = indice === passos.length - 1;
@@ -45,8 +49,9 @@ export default function PrimeiroAcessoDoPai() {
     numero: '',
     complemento: '',
     birthDate: '',
-    turma: '',
-    sala: '',
+    // O que o motorista já disse no cadastro vem preenchido: ela só confere.
+    turma: child?.turma || '',
+    professora: child?.professora || '',
   });
   const [errors, setErrors] = useState({});
   const [salvando, setSalvando] = useState(false);
@@ -121,7 +126,7 @@ export default function PrimeiroAcessoDoPai() {
         updateChild(child.id, {
           birthDate: form.birthDate,
           ...(form.turma.trim() ? { turma: form.turma.trim() } : {}),
-          ...(form.sala.trim() ? { sala: form.sala.trim() } : {}),
+          ...(form.professora.trim() ? { professora: form.professora.trim() } : {}),
         })
       );
     }
@@ -234,10 +239,8 @@ export default function PrimeiroAcessoDoPai() {
                 error={errors.birthDate}
                 required
               />
-              <div className="grid grid-cols-2 gap-2">
-                <Input label="Turma (opcional)" value={form.turma} onChange={set('turma')} />
-                <Input label="Sala (opcional)" value={form.sala} onChange={set('sala')} />
-              </div>
+              <Input label="Turma (opcional)" value={form.turma} onChange={set('turma')} />
+              <Input label="Professora (opcional)" value={form.professora} onChange={set('professora')} />
             </div>
           </>
         )}

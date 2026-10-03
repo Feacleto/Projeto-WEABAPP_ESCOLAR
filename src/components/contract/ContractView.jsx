@@ -12,7 +12,18 @@ import { formatPhone } from '../../compartilhado/formatters';
  * CSS print já existe em index.css (.print:hidden) — botões de ação
  * ficam escondidos quando imprime.
  */
-export default function ContractView({ data, acceptanceInfo = null }) {
+/**
+ * `numero` e `tipo` vêm da versão GRAVADA (`children/{id}/contratos/{n}`);
+ * `mudancas`, quando é um aditivo, abre o documento com o que mudou — ninguém
+ * relê nove cláusulas para achar o número que mudou.
+ */
+export default function ContractView({
+  data,
+  acceptanceInfo = null,
+  numero = null,
+  tipo = 'contrato',
+  mudancas = null,
+}) {
   const {
     company,
     parent,
@@ -30,7 +41,35 @@ export default function ContractView({ data, acceptanceInfo = null }) {
           <br />
           de Transporte Escolar
         </h1>
+        {/* Só o ADITIVO leva número no topo. O primeiro contrato que a família
+          * lê pode ser a "versão 3" — as anteriores foram rascunhos do
+          * motorista antes de ela entrar — e o número só confundia. */}
+        {numero && tipo === 'aditivo' && (
+          <p className="mt-2 text-xs font-semibold uppercase tracking-widest text-textMuted">
+            Aditivo · versão {numero}
+          </p>
+        )}
       </header>
+
+      {mudancas?.length > 0 && (
+        <section className="mb-6 rounded-2xl border border-warningBorder bg-warningSoft p-4 print:border-linhaImpressa print:bg-transparent">
+          <p className="text-sm font-bold text-warningText">
+            O que muda em relação à versão anterior
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {mudancas.map((m) => (
+              <li key={m.rotulo} className="text-sm text-text">
+                <strong>{m.rotulo}:</strong>{' '}
+                <span className="line-through text-textMuted">{m.de}</span>{' '}
+                → <strong>{m.para}</strong>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-warningText">
+            O resto do contrato continua igual. Até o aceite, vale a versão anterior.
+          </p>
+        </section>
+      )}
 
       {/* Preâmbulo */}
       <section className="space-y-4">
@@ -83,7 +122,7 @@ export default function ContractView({ data, acceptanceInfo = null }) {
         <p className="text-justify">
           <strong>CLÁUSULA 3ª</strong> – A configuração formal do ato de
           inscrição no serviço de transporte escolar se procede pelo cadastro
-          do aluno realizado pela Contratada no aplicativo Tio Nino Digital,
+          do aluno realizado pela Contratada no aplicativo Alô Buzinou,
           com aceite eletrônico deste contrato pelo Contratante por meio do
           mesmo aplicativo.
         </p>
@@ -175,13 +214,15 @@ export default function ContractView({ data, acceptanceInfo = null }) {
         {/* Encerramento */}
         <p className="text-justify mt-6">
           E, por estarem justos e contratados, manifestam o aceite pelo
-          aplicativo Tio Nino Digital, com pleno valor e eficácia jurídica
+          aplicativo Alô Buzinou, com pleno valor e eficácia jurídica
           conforme legislação vigente sobre documentos eletrônicos.
         </p>
 
         <p className="text-right text-textMuted">
-          {company.address.split(',')[0] || 'São Paulo'},{' '}
-          {new Date().toLocaleDateString('pt-BR', {
+          {company.city || company.address.split(',').slice(-1)[0].trim() || 'São Paulo'},{' '}
+          {/* A data é a da EMISSÃO desta versão, não a de quem está lendo:
+            * o contrato gravado não pode ter a data mudando a cada abertura. */}
+          {new Date(data.issuedAt).toLocaleDateString('pt-BR', {
             day: '2-digit',
             month: 'long',
             year: 'numeric',
@@ -216,7 +257,7 @@ export default function ContractView({ data, acceptanceInfo = null }) {
               </p>
             )}
             <p className="text-[10px] text-textMuted pt-1">
-              Contrato versão {acceptanceInfo.version || 1}. Aceite registrado
+              {numero ? `Versão ${numero} do contrato.` : `Contrato versão ${acceptanceInfo.version || 1}.`} Aceite registrado
               eletronicamente conforme MP 2.200-2/2001 e Lei 14.063/2020.
             </p>
           </div>
@@ -225,7 +266,7 @@ export default function ContractView({ data, acceptanceInfo = null }) {
 
       {/* Rodapé com referência do contrato */}
       <footer className="mt-8 text-center text-[10px] text-textMuted">
-        Contrato gerado para o ano de {contractedYear} · referência:{' '}
+        {numero ? `Versão ${numero}` : `Contrato de ${contractedYear}`} · referência:{' '}
         {data.inviteCode || data.childId}
       </footer>
     </article>
