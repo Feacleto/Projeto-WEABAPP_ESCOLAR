@@ -40,17 +40,32 @@ $FuncoesNucleoLista = @(
   'functions:lookupInvite',
   'functions:redeemInvite',
   'functions:getShowcase',
-  'functions:getInvitePreview',
-  'functions:contratarPlano',
   'functions:closeStaleRoutes',
-  'functions:confirmarAusencias',
   'functions:sendPushOnNotification',
+  'functions:confirmarAusencias',
   'functions:generateMonthlyPayments',
   'functions:runBillingNow',
+  'functions:getInvitePreview',
+  'functions:gerarAcessoDoDia',
+  'functions:verAcompanhamento',
   'functions:flagDuplicateReceipts',
   'functions:backfillTestimonialPrivacy',
   'functions:asaasWebhook',
-  'functions:criarCobrancaDaFatura'
+  'functions:criarCobrancaDaFatura',
+  'functions:contratarPlano',
+  'functions:fecharMesDosParceiros',
+  'functions:fecharMesAgora',
+  'functions:limparCoordenadaDoCheckpoint',
+  'functions:apagarViagensAntigas',
+  'functions:enviarAvisosComerciais',
+  'functions:casarIndicacaoNoCadastro',
+  'functions:vincularIrmaoNoCadastro',
+  'functions:recusarIrmao',
+  'functions:pedirAcessoPeloTelefone',
+  'functions:responderPedidoDeAcesso',
+  'functions:enviarAvisosDoDia',
+  'functions:varrerAtrasos',
+  'functions:varrerOfertas'
 )
 $FuncoesNucleo = $FuncoesNucleoLista -join ','
 
@@ -115,8 +130,8 @@ function Parar($msg) {
 # por conta disso.
 $branch = (git branch --show-current)
 Write-Host "Branch: $branch" -ForegroundColor DarkGray
-if ($branch -ne 'WebApp-oficial-v1') {
-  Write-Host "Aviso: o deploy normalmente sai da WebApp-oficial-v1." -ForegroundColor Yellow
+if ($branch -ne 'webapp-alobuzinou') {
+  Write-Host "Aviso: o deploy normalmente sai da webapp-alobuzinou." -ForegroundColor Yellow
   $resp = Read-Host "Continuar de '$branch'? (s/N)"
   if ($resp -ne 's') { Parar 'cancelado por causa da branch' }
 }

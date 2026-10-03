@@ -190,13 +190,14 @@ firebase deploy --only firestore:rules
 # 3. Regras do Storage (só depois do "Get Started" no console)
 firebase deploy --only storage
 
-# 4. Functions — o núcleo, 14 de 16. Ver a nota do Resend abaixo.
-#    ⚠️ PREFIRA `.\deploy.ps1`: ele CONFERE esta lista contra os `exports.` de
-#    functions/index.js antes de gastar o deploy. Um nome apagado aqui aborta
-#    o deploy INTEIRO ("the following filters do not exist") e nada sobe —
-#    inclusive redeemInvite, que é o caminho todo do responsável. Esta lista
-#    já esteve errada duas vezes.
-firebase deploy --only functions:lookupInvite,functions:redeemInvite,functions:getShowcase,functions:getInvitePreview,functions:contratarPlano,functions:closeStaleRoutes,functions:confirmarAusencias,functions:sendPushOnNotification,functions:generateMonthlyPayments,functions:runBillingNow,functions:flagDuplicateReceipts,functions:backfillTestimonialPrivacy,functions:asaasWebhook,functions:criarCobrancaDaFatura
+# 4. Functions — todas menos as duas de e-mail (29 de 31 em 02/10/2026).
+#    ⚠️ USE `.\deploy.ps1`: a lista dele é conferida contra os `exports.` de
+#    functions/index.js antes de gastar o deploy — nome apagado aborta o
+#    deploy INTEIRO, e export esquecido não sobe. Esta linha já listou 14
+#    nomes enquanto o index exportava 31; quem copiasse daqui deixaria as
+#    agendadas, o irmão e o pedido de acesso de fora.
+#    Sem PowerShell, a lista sai do próprio index:
+#    grep -o "^exports\.[A-Za-z]*" functions/index.js
 
 # 5. Por último os sites (os DOIS — ver a seção acima para subir um só)
 firebase deploy --only hosting
