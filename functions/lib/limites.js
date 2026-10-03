@@ -135,7 +135,7 @@ const MEMORIA_AGENDADO = '512MiB';
  * `VITE_APPCHECK_SITE_KEY`, olhar as métricas por uns dias, e só então
  * `EXIGIR_APP_CHECK=true` no `functions/.env`. Ligar antes recusa o app real.
  *
- * Toda callable espalha isto nas opções: \`onCall({ ...LIMITES.APP_CHECK, ... })\`.
+ * Toda callable espalha isto nas opções: `onCall({ ...LIMITES.APP_CHECK, ... })`.
  */
 const APP_CHECK = Object.freeze({
   enforceAppCheck: process.env.EXIGIR_APP_CHECK === 'true',

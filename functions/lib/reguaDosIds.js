@@ -1,7 +1,7 @@
 /**
  * O QUE UM IDENTIFICADOR VINDO DO CLIENTE PODE SER (03/10/2026) — régua pura.
  *
- * ⚠️ O ATAQUE QUE ISTO FECHA: `db.doc(\`children/${childId}\`)` aceita BARRAS.
+ * ⚠️ O ATAQUE QUE ISTO FECHA: `db.doc('children/' + childId)` aceita BARRAS.
  * Um `childId = "<minhaCrianca>/rides/2026-10-03"` endereça outro documento —
  * e a função de remover criança, lendo ali um `parentUid` plantado, apagava a
  * conta de QUALQUER pessoa (o dono incluído). Todo id que vem de
