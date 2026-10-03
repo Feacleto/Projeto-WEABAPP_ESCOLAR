@@ -73,13 +73,49 @@ const semear = (caminho, fields) =>
     body: JSON.stringify({ fields }),
   });
 
+/**
+ * O CORPO DO UPLOAD EM `multipart`, COMO O SDK DO NAVEGADOR MANDA.
+ *
+ * ⚠️ ERA `uploadType=media`, E O EMULADOR PAROU DE ENTENDÊ-LO (firebase-tools
+ * 15, medido em 03/10/2026): a requisição chegava às regras com
+ * `request.resource` incompleto — "Null value error" em `request.resource.size`
+ * — e TODO upload dava 403, inclusive `profilePhotos/{uid}`, que não lê o
+ * Firestore. Dezessete positivos falhavam pelo motivo errado, e os negativos
+ * seguiam verdes pelo mesmo motivo errado. O `multipart` é o formato que o app
+ * de verdade usa (`uploadBytes`), então é ele que o teste precisa medir.
+ */
+function corpoMultipart(caminho, tipo) {
+  const fronteira = 'fronteiraDoTeste';
+  return {
+    fronteira,
+    corpo: Buffer.concat([
+      Buffer.from(
+        `--${fronteira}\r\nContent-Type: application/json; charset=utf-8\r\n\r\n` +
+          `${JSON.stringify({ name: caminho, contentType: tipo })}\r\n` +
+          `--${fronteira}\r\nContent-Type: ${tipo}\r\n\r\n`
+      ),
+      Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+      Buffer.from(`\r\n--${fronteira}--`),
+    ]),
+  };
+}
+
+const subir = (caminho, autorizacao, tipo) => {
+  const { fronteira, corpo } = corpoMultipart(caminho, tipo);
+  return fetch(`${ST}?name=${encodeURIComponent(caminho)}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': `multipart/related; boundary=${fronteira}`,
+      'X-Goog-Upload-Protocol': 'multipart',
+      Authorization: autorizacao,
+    },
+    body: corpo,
+  });
+};
+
 /** Sobe 1 pixel de JPEG. O conteúdo não importa; o content-type sim. */
 const enviar = (caminho, sessao, tipo = 'image/jpeg') =>
-  fetch(`${ST}?uploadType=media&name=${encodeURIComponent(caminho)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': tipo, Authorization: `Bearer ${sessao.t}` },
-    body: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
-  }).then((r) => r.status);
+  subir(caminho, `Firebase ${sessao.t}`, tipo).then((r) => r.status);
 
 const baixar = (caminho, sessao) =>
   fetch(`${ST}/${encodeURIComponent(caminho)}`, {
@@ -93,12 +129,7 @@ const apagar = (caminho, sessao) =>
   }).then((r) => r.status);
 
 /** Semeia direto, sem passar por regra — é o Admin do emulador. */
-const plantar = (caminho, tipo = 'image/jpeg') =>
-  fetch(`${ST}?uploadType=media&name=${encodeURIComponent(caminho)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': tipo, Authorization: 'Bearer owner' },
-    body: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
-  });
+const plantar = (caminho, tipo = 'image/jpeg') => subir(caminho, 'Bearer owner', tipo);
 
 async function main() {
   console.log('\n═══ elenco ═══');
@@ -238,6 +269,51 @@ async function main() {
   // abriria um caminho de escrita sem dono.
   checar('comprovante', 'comprovante de pagamento inexistente', 'NEGA',
     await enviar('paymentReceipts/naoexiste', tio1));
+
+  // ⚠️ DEPOIS DA BAIXA, O ARQUIVO É A PROVA (03/10/2026). A família trocava
+  // ou apagava o comprovante com a mensalidade já `paid`. Encadeado: o
+  // pagamento recebe baixa, e só então ela tenta mexer.
+  checar('pos', 'antes da baixa, a familia troca o arquivo errado', 'PASSA',
+    await enviar('paymentReceipts/spag1', pai1, 'image/png'));
+  await semear('payments/spag1', {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childId: S('skid1'),
+    month: S('2026-09'), status: S('paid'),
+  });
+  checar('comprovante', 'depois da baixa, a familia TROCA o comprovante', 'NEGA',
+    await enviar('paymentReceipts/spag1', pai1));
+  checar('comprovante', 'nem APAGA o comprovante', 'NEGA',
+    await apagar('paymentReceipts/spag1', pai1));
+  checar('pos', 'e ela continua LENDO o proprio comprovante', 'PASSA',
+    await baixar('paymentReceipts/spag1', pai1));
+  checar('pos', 'o motorista daquele pagamento ainda limpa depois de conferir', 'PASSA',
+    await apagar('paymentReceipts/spag1', tio1));
+  // E com o aviso feito (`claimed`), ainda é dela: o motorista não conferiu.
+  await semear('payments/spag2', {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childId: S('skid1'),
+    month: S('2026-10'), status: S('claimed'),
+  });
+  checar('pos', 'com o aviso feito (claimed), ela ainda anexa', 'PASSA',
+    await enviar('paymentReceipts/spag2', pai1));
+  checar('pos', 'e ainda apaga o arquivo errado', 'PASSA',
+    await apagar('paymentReceipts/spag2', pai1));
+
+  // ── O SVG — imagem com script ────────────────────────────────────────
+  //
+  // `image/.*` aceitava `image/svg+xml`, que é IMAGEM COM SCRIPT: aberta pela
+  // URL de download, roda o que o autor escreveu. O motorista abre o
+  // comprovante que a família anexou.
+  console.log();
+  console.log('═══ O TIPO DO ARQUIVO ═══');
+  checar('tipo', 'a familia anexa um SVG como comprovante', 'NEGA',
+    await enviar('paymentReceipts/spag2', pai1, 'image/svg+xml'));
+  checar('tipo', 'nem como foto da crianca', 'NEGA',
+    await enviar('childPhotos/skid1', pai1, 'image/svg+xml'));
+  checar('tipo', 'nem como foto de perfil', 'NEGA',
+    await enviar(`profilePhotos/${pai1.uid}`, pai1, 'image/svg+xml'));
+  checar('pos', 'PNG passa', 'PASSA',
+    await enviar(`profilePhotos/${pai1.uid}`, pai1, 'image/png'));
+  checar('pos', 'e WebP (camera de Android)', 'PASSA',
+    await enviar(`profilePhotos/${pai1.uid}`, pai1, 'image/webp'));
 
   // ── O CATCH-ALL — o que sobra depois de todos os `match`.
   console.log();

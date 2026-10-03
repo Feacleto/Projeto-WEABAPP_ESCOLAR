@@ -264,6 +264,25 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    /**
+     * URL DE ARQUIVO DO NOSSO BUCKET, e só dele (03/10/2026).
+     *
+     * A checagem antiga aceitava qualquer `firebasestorage.googleapis.com` —
+     * ou seja, o bucket de QUALQUER projeto Firebase do mundo, inclusive um
+     * criado ontem por quem quer pôr um "comprovante" ou uma "foto" com o
+     * conteúdo que escolher na tela do outro lado. O domínio é do Google; o
+     * que diz que o arquivo é nosso é o nome do bucket no caminho.
+     *
+     * Os dois nomes porque o projeto pode servir pelos dois (`.appspot.com` é
+     * o padrão antigo). URL do EMULADOR (`127.0.0.1:9199`) não passa — o teste
+     * no navegador contra emulador que anexar foto precisa saber disso.
+     */
+    function urlDoNossoStorage(u) {
+      return u is string
+        && u.size() <= 2048
+        && u.matches('https://firebasestorage[.]googleapis[.]com/v0/b/alobuzinou-be81f[.](firebasestorage[.]app|appspot[.]com)/o/.*');
+    }
+
     // -----------------------------------------------------------------
     // platformConfig/{docId} — os interruptores do DONO.
     //
@@ -634,10 +653,11 @@ service cloud.firestore {
         // em 30/08/2026, com o teste que prova
         // (`motorista_nao_escreve_o_proprio_limiteCriancas`).
         //
-        // `criancasAtivas` NÃO entra nesta lista, e a ausência é decidida:
-        // acrescentar campo a whitelist mantida à mão pra consertar o efeito
-        // de outro campo é exatamente o padrão que a decisão 12 nomeia. O
-        // contador se conserta pelo passo de ±1 que o ramo de baixo permite.
+        // `criancasAtivas` e `trialInicio` NÃO entram nesta lista, e a
+        // ausência é decidida: desde 03/10/2026 os dois são do SERVIDOR (o
+        // contador é recontado por gatilho; o relógio liga na primeira rota).
+        // Nem o dono os escreve pelo cliente — mudar data de teste é decisão
+        // que precisa deixar rastro, não conveniência de suporte.
         isOwner()
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['suspenso', 'suspensoEm', 'notaInterna', 'limiteCriancas',
@@ -724,6 +744,26 @@ service cloud.firestore {
                // lista. Sem ela aqui, o devedor editava o próprio limite — e
                // o comentário da linha 428 já afirmava que isso era proibido.
                'adminUid', 'limiteCriancas',
+               // ⚠️ `adminUids` É A MESMA CHAVE DE ESCOPO, NA FORMA DE LISTA
+               // (03/10/2026). O singular estava aqui e a lista não — e
+               // `ehMotoristaDaFamilia()` aceita QUALQUER UM DOS DOIS. Um
+               // motorista recém-inscrito, ou uma mãe, gravava
+               // `adminUids: [vítima]` no próprio documento e passava a ler o
+               // doc da vítima (chave PIX, telefone), a perua dela ao vivo, e a
+               // escrever avisos na caixa dela. Quem mantém a lista é o
+               // `redeemInvite`, por `arrayUnion`, com Admin SDK.
+               'adminUids',
+               // ⚠️ `trialInicio` E `criancasAtivas` SÃO DO SERVIDOR DESDE
+               // 03/10/2026. O relógio do teste era gravável uma vez pelo
+               // cliente e o contador andava de ±1 no mesmo lote da criança —
+               // e as duas formas tinham saída: o relógio podia nascer com uma
+               // data escolhida a dedo (o passado inteiro de uma vez), e N
+               // escritas de −1 chegavam no mesmo lugar que uma de −N. Agora a
+               // primeira rota liga o relógio por function (com cópia em
+               // `taxaParceiros`, restaurada se o doc for recriado) e um
+               // gatilho em `children` reconta o contador. O cliente não
+               // escreve nenhum dos dois, nem para cima.
+               'trialInicio', 'criancasAtivas',
                // `assinaturaAte` diz ATÉ QUANDO esta conta está paga, e é o
                // que decide se o app bloqueia por fim de teste. Livre, o
                // motorista escreve o ano 2099 em si mesmo e nunca mais paga
@@ -789,36 +829,19 @@ service cloud.firestore {
           || request.resource.data.verificacao == 'enviada'
         )
 
-        // `trialInicio` — GRAVÁVEL UMA VEZ, NUNCA ALTERÁVEL.
+        // ⚠️ O RAMO "`trialInicio` GRAVÁVEL UMA VEZ" SAIU (03/10/2026). Ele
+        // proibia a REESCRITA, não a escrita — e a primeira escrita aceitava
+        // qualquer data: o motorista gravava o relógio no passado e o teste
+        // vencia quando ele quisesse, ou no futuro e nunca vencia. O campo
+        // foi para a lista proibida acima; quem o grava é o servidor.
         //
-        // Ele não entra na lista proibida acima porque quem o grava é o
-        // PRÓPRIO motorista, no cliente, no instante em que inicia a primeira
-        // rota. Não há Cloud Function nesse caminho, e não deve haver: o GPS
-        // liga no meio-fio, às vezes sem sinal, e esperar cold start com o
-        // passageiro na porta é a regressão que a decisão 2 já recusou.
-        //
-        // O QUE A REGRA PRECISA IMPEDIR NÃO É A ESCRITA, É A REESCRITA.
-        // Livre, o motorista reinicia o próprio teste para sempre: roda uma
-        // rota e o campo grava; três meses depois grava de novo e ganha mais
-        // três. Seria `limiteCriancas` com outro nome — o devedor editando a
-        // própria cláusula.
-        //
-        // Então: ou a escrita não toca o campo, ou o campo ainda não existe.
-        // Uma vez presente, ele é imutável por este ramo. O ramo do dono,
-        // acima, também não o lista — mudar data de trial é decisão que
-        // precisa deixar rastro, não conveniência de suporte.
-        && (
-          !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['trialInicio'])
-          || !('trialInicio' in resource.data)
-        )
-        // `ultimaRota` e `rotasNoMes` TAMBÉM FICAM DE FORA DA LISTA, e essa é
+        // `ultimaRota` e `rotasNoMes` FICAM DE FORA DA LISTA, e essa é
         // uma troca consciente, não um esquecimento.
         //
         // Eles são o sinal de USO — quando ele rodou pela última vez, e quantas
         // rotas neste mês —, gravados pelo próprio motorista no mesmo gesto que
-        // liga o GPS (`trialService.registrarRota`). Pelo mesmo motivo do
-        // `trialInicio`: não há function nesse caminho, e não deve haver.
+        // liga o GPS (`trialService.registrarRota`). Não há function nesse
+        // caminho, e não precisa haver: mentir aqui não vale dinheiro.
         //
         // A DIFERENÇA PARA OS CAMPOS PROIBIDOS É O QUE ESTÁ EM JOGO. Mentir
         // aqui faz o motorista parecer ativo e sumir de uma lista de
@@ -830,38 +853,12 @@ service cloud.firestore {
         // cláusula e sobe para a lista. `scripts/testar-regras.mjs` tem o caso
         // 'uso' escrito exatamente para essa mudança de ideia aparecer.
 
-        // `criancasAtivas` NÃO ENTRA NA LISTA ACIMA, e o motivo é que proibi-lo
-        // por completo quebraria o cadastro de criança.
-        //
-        // Ele é a contagem materializada que sustenta o limite (`allow create`
-        // em `children` a confere com `getAfter`), então a escrita do contador
-        // precisa poder acompanhar a da criança — vem no mesmo batch, do
-        // cliente. Livre em valor e direção, porém, bastava gravar `0` para
-        // cadastrar sem teto, sem nem tocar em `limiteCriancas`.
-        //
-        // O QUE A REGRA CONSEGUE EXIGIR É A FORMA DO PASSO. Rule não enxerga as
-        // outras escritas do batch, então "só mexe se houver criança do outro
-        // lado" não é expressável aqui. Mas todo caminho legítimo usa
-        // `increment(±1)` — os três estão em `childrenService` e
-        // `accountService` —, então o passo de UM é a forma verdadeira, e é ela
-        // que barra o salto para zero.
-        //
-        // O QUE ISTO NÃO RESOLVE, e precisa continuar escrito: N escritas de
-        // −1 seguidas chegam no mesmo lugar que uma de −N. O conserto completo
-        // é o contador virar Cloud Function, como o CLAUDE.md já registra.
-        // Isto encarece o ataque e fecha a forma acidental; não fecha a
-        // deliberada.
-        //
-        // `get(...,0)` porque a primeira criança escreve num doc que ainda não
-        // tem o campo — e comparação sobre chave ausente é erro, e erro nega.
-        && (
-          !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['criancasAtivas'])
-          || request.resource.data.criancasAtivas
-               == resource.data.get('criancasAtivas', 0) + 1
-          || request.resource.data.criancasAtivas
-               == resource.data.get('criancasAtivas', 0) - 1
-        )
+        // ⚠️ O RAMO DO "PASSO DE UM" DE `criancasAtivas` SAIU (03/10/2026).
+        // Ele mesmo confessava o que não resolvia: N escritas de −1 seguidas
+        // chegam no mesmo lugar que uma de −N, e o contador é o número que a
+        // fatura multiplica pela taxa. O conserto que o comentário pedia
+        // aconteceu — o contador é recontado por um gatilho em `children`, e o
+        // campo está na lista proibida acima.
         && (
           // Quem edita: o motorista, NOS DOCS QUE SÃO DELE, ou a própria
           // pessoa. A checagem redundante de `role` fica como segunda tranca
@@ -988,9 +985,15 @@ service cloud.firestore {
           && resource.data.get('adminUid', '') == request.auth.uid
           && resource.data.get('childIds', []).size() <= 1
         )
+        // ⚠️ A CONDIÇÃO MUDOU DE "SEM `trialInicio`" PARA "SEM CRIANÇA ATIVA"
+        // (03/10/2026). O relógio do teste deixou de morar só aqui: o
+        // servidor guarda uma cópia em `taxaParceiros` e a RESTAURA quando o
+        // doc é recriado, então apagar e recriar não zera mais os 90 dias. O
+        // que ainda carrega história no próprio doc é a turma — e o contador
+        // agora é do servidor, então dá para confiar nele.
         || (
           request.auth.uid == uid
-          && !('trialInicio' in resource.data)
+          && resource.data.get('criancasAtivas', 0) == 0
           && resource.data.get('suspenso', false) != true
         )
       );
@@ -1064,40 +1067,8 @@ service cloud.firestore {
       // cadastraria criança JÁ na conta de outro, e o dado nasceria fora do
       // alcance de quem ele pertence.
       //
-      // E EXIGE O CONTADOR SUBINDO NO MESMO BATCH.
-      //
-      // `getAfter` lê o doc do motorista COMO ELE FICA depois desta escrita —
-      // é o que permite validar duas gravações juntas sem servidor. Criar
-      // criança sem incrementar não passa. O cliente que cadastra tem que
-      // mandar as duas coisas num `writeBatch` — ver
-      // `childrenService.criarCrianca`.
-      //
-      // ⚠️ O TETO SAIU DAQUI EM 10/09/2026, E O CONTADOR FICOU.
-      //
-      // A regra comparava `criancasAtivas` com `limiteCriancas` e RECUSAVA a
-      // criança que passasse do contratado. Com preço por faixa isso era a
-      // cláusula sendo cobrada; com preço por criança virou só uma porta na
-      // cara de quem acabou de ganhar um cliente — e no pior momento
-      // possível, porque a fatura já sabe acompanhar o tamanho sozinha.
-      //
-      // O que NÃO saiu é a exigência de o contador subir junto. Ela não é
-      // teto, é integridade: `criancasAtivas` é o número que a fatura
-      // multiplica pela taxa, e uma criança criada sem ele seria uma criança
-      // que o app serve e ninguém cobra. Confundir as duas coisas e remover as
-      // duas juntas seria trocar uma tranca por um vazamento.
-      //
-      // ⚠️ E ELA PASSOU A SER VERDADE AGORA, PELA PRIMEIRA VEZ.
-      //
-      // O comentário anterior afirmava "criar criança sem incrementar não
-      // passa", e era falso para a maioria: a conta era
-      // `criancasAtivas <= limiteCriancas`, com `limiteCriancas` ausente
-      // valendo 999999. Para todo motorista sem teto definido — que era todo
-      // mundo em teste — `0 <= 999999` passava sem incremento nenhum. A
-      // garantia estava no comentário e não no código.
-      //
-      // A forma abaixo compara o contador DEPOIS com o contador ANTES, e é
-      // isso que ela sempre deveria ter sido. Custa uma segunda leitura do
-      // mesmo documento, e é o preço de a frase acima ser conferível.
+      // O TETO (`limiteCriancas`) SAIU EM 10/09/2026: com preço por criança
+      // ele virou uma porta na cara de quem acabou de ganhar um cliente.
       //
       // `parentUid` NASCE VAZIO, SEMPRE. Quem o preenche e o `redeemInvite`
       // com Admin SDK, quando a familia resgata o convite — `childrenService`
@@ -1107,13 +1078,32 @@ service cloud.firestore {
       // familia alheia: o documento aparecia no app daquela familia (a regra
       // de leitura libera por `parentUid`), com nome, endereco e coordenada
       // escolhidos por ele.
+      //
+      // ⚠️ O CONTADOR NO MESMO LOTE SAIU (03/10/2026). `criancasAtivas` virou
+      // do servidor — um gatilho em `children` reconta a turma a cada
+      // criação, ativação e remoção —, e o cliente não escreve mais o campo
+      // (lista proibida de `users`). Exigir aqui que ele subisse no mesmo
+      // lote seria exigir uma escrita que a outra regra recusa: nenhuma
+      // criança nasceria. A integridade que esta linha buscava ("criança que
+      // o app serve e ninguém cobra") agora mora na recontagem.
+      //
+      // ⚠️ E A CRIANÇA NASCE SEM NADA QUE SÓ O SERVIDOR OU A FAMÍLIA ESCREVEM.
+      // O `update` do motorista recusa o aceite do contrato, a saúde e o
+      // vínculo — e o `create` aceitava os três, porque não tinha lista
+      // nenhuma: o motorista cadastrava a criança JÁ com "contrato aceito por
+      // Fulana", com nota de saúde que a mãe nunca consentiu, ou marcada como
+      // vinculada. "Sempre que o update for restritivo, pergunte 'e se ele
+      // criar do zero?'". `inviteStatus` nasce `pending`: `used` é do
+      // `redeemInvite`.
       allow create: if isAdmin()
         && request.resource.data.adminUid == request.auth.uid
         && request.resource.data.get('parentUid', null) == null
-        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
-             .data.get('criancasAtivas', 0)
-           > get(/databases/$(database)/documents/users/$(request.auth.uid))
-               .data.get('criancasAtivas', 0);
+        && request.resource.data.get('inviteStatus', 'pending') == 'pending'
+        && !request.resource.data.keys().hasAny([
+          'contratoVigente', 'contractAcceptedAt', 'contractAcceptedByUid',
+          'contractAcceptedName', 'contractHash', 'contractUserAgent',
+          'contractVersion', 'saudeNotas', 'saudeConsentidaEm', 'vinculadoPor'
+        ]);
       allow delete: if ehDoMotorista();
 
       // Updates permitidos (não-admin):
@@ -1155,6 +1145,30 @@ service cloud.firestore {
         // remover a criança — senão quem viesse depois herdaria o aceite de
         // outra pessoa. Casos em `testar-regras.mjs`, bloco "o aceite".
         && contratoIntocadoOuApagado()
+        // ⚠️ O MOTORISTA DESVINCULA, NUNCA VINCULA (03/10/2026). `parentUid`
+        // é quem LÊ a criança (o `allow read` libera por ele) e quem recebe a
+        // buzina, os avisos e o contrato dela. O ramo aceitava qualquer valor:
+        // um motorista apontava a criança dele para o uid de uma família
+        // alheia e ela aparecia no app daquela família, com nome, endereço e
+        // mensalidade escolhidos por ele. Agora ele só mantém o que está lá
+        // ou zera (remover o responsável). Quem vincula é o servidor.
+        && (
+          request.resource.data.get('parentUid', null) == resource.data.get('parentUid', null)
+          || request.resource.data.get('parentUid', null) == null
+        )
+        // `vinculadoPor` diz COMO a família entrou ('irmao' | 'aprovacao') e
+        // decide o "Não é meu filho" do `recusarIrmao`. É do servidor: o
+        // motorista só o mantém ou o apaga junto com o vínculo.
+        && (
+          request.resource.data.get('vinculadoPor', null) == resource.data.get('vinculadoPor', null)
+          || !('vinculadoPor' in request.resource.data)
+        )
+        // `used` é o `redeemInvite` dizendo "este convite já virou conta". O
+        // motorista só devolve o convite a `pending` (remover o responsável).
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['inviteStatus'])
+          || request.resource.data.inviteStatus == 'pending'
+        )
       ) || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
@@ -1225,10 +1239,19 @@ service cloud.firestore {
         )
       ) || (
         // Pai atualiza foto da própria criança (reflete pro Tio).
+        //
+        // ⚠️ SÓ ARQUIVO DO NOSSO BUCKET, OU NADA (03/10/2026). O campo era
+        // livre: a família gravava qualquer URL e a imagem aparecia na tela
+        // do motorista — um endereço de fora carrega o que o dono dele
+        // quiser, e registra quem abriu. `null` volta ao avatar gerado.
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['photoURL'])
+        && (
+          request.resource.data.get('photoURL', null) == null
+          || urlDoNossoStorage(request.resource.data.photoURL)
+        )
       ) || (
         // Pai informa turma, sala e aniversário. É o único que sabe — o
         // motorista não acompanha a criança até a porta da sala, e quase
@@ -1318,6 +1341,24 @@ service cloud.firestore {
             'previsaoIda', 'previsaoVolta',
             'parentUid', 'dateKey', 'atualizadoEm', 'criadoEm'
           ])
+          // ⚠️ OS DOIS UIDS DO CORPO SÃO ENDEREÇO, NÃO ANOTAÇÃO (03/10/2026).
+          // O servidor lê `parentUid` daqui para decidir A QUEM avisar ("está
+          // chegando", previsão) — livre, o motorista gravava o uid de uma
+          // família alheia na viagem da criança dele e o aviso, com o nome da
+          // criança, tocava no celular errado. `parentUid` só pode ser o da
+          // criança agora, ou o que o documento já tinha (a família pode ter
+          // saído no meio do dia, e a escrita seguinte do lote não o reescreve).
+          // `adminUid` só pode ser ele mesmo; nulo é o app sem contexto, e não
+          // aponta para ninguém.
+          && request.resource.data.get('adminUid', null) in [null, request.auth.uid]
+          && (
+            !('parentUid' in request.resource.data)
+            || request.resource.data.get('parentUid', null) == crianca().get('parentUid', null)
+            || (
+              resource != null
+              && request.resource.data.get('parentUid', null) == resource.data.get('parentUid', null)
+            )
+          )
         );
     }
 
@@ -1499,6 +1540,13 @@ service cloud.firestore {
               'receiptAttachedAt',
             ])
         && request.resource.data.status in ['pending', 'claimed', 'paid']
+        // O comprovante que o MOTORISTA anexa também é lido pela família
+        // (03/10/2026): a mesma tranca de bucket do ramo dela.
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['receiptURL'])
+          || request.resource.data.get('receiptURL', null) == null
+          || urlDoNossoStorage(request.resource.data.receiptURL)
+        )
       ) || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
@@ -1518,12 +1566,15 @@ service cloud.firestore {
         // O comprovante tem que ser arquivo do NOSSO Storage. Sem esta
         // checagem o pai gravava qualquer URL no campo, e o tio clicaria
         // nela achando que era o comprovante.
+        //
+        // ⚠️ "NOSSO" QUER DIZER O NOSSO BUCKET (03/10/2026). A checagem
+        // olhava só o domínio `firebasestorage.googleapis.com`, que serve o
+        // Storage de todo projeto Firebase — qualquer um cria um bucket e põe
+        // ali o "comprovante" que quiser. Ver `urlDoNossoStorage`.
         && (
-          !("receiptURL" in request.resource.data)
-          || request.resource.data.receiptURL == null
-          || request.resource.data.receiptURL.matches(
-               'https://firebasestorage[.]googleapis[.]com/.*'
-             )
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['receiptURL'])
+          || request.resource.data.get('receiptURL', null) == null
+          || urlDoNossoStorage(request.resource.data.receiptURL)
         )
       );
     }
@@ -1736,13 +1787,36 @@ service cloud.firestore {
         || ehDoMotorista() || (
         isSignedIn() && ownsChild(resource.data.childId)
       );
-      allow create: if nasceDoDono() || (
+      // ⚠️ O MOTORISTA SÓ ESCREVE NA CRIANÇA DELE, E NO ID DELA (03/10/2026).
+      // `nasceDoDono()` conferia só o `adminUid` do CORPO, que ele mesmo
+      // escreve: um motorista recém-inscrito criava "quem busca hoje" para a
+      // criança de outra perua — com nome e telefone de um estranho — e o
+      // documento aparecia na tela da mãe dela (que lê pelo `childId`). Agora
+      // a criança tem que ser da turma dele e o id é o `{dia}_{criança}` que
+      // o app usa, o mesmo que a mãe escuta.
+      //
+      // E a família não escolhe o motorista que vê o documento: o `adminUid`
+      // é o da CRIANÇA, como em `absenceDeclarations`. Livre, ela plantava
+      // nome e telefone de terceiro na operação de um motorista estranho.
+      allow create: if (
+        nasceDoDono()
+        && criancaDaTurma(request.resource.data.childId)
+        && id == request.resource.data.dateKey + '_' + request.resource.data.childId
+      ) || (
         isSignedIn() && ownsChild(request.resource.data.childId)
+        && request.resource.data.get('adminUid', '') ==
+           get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.get('adminUid', '')
       );
-      allow update: if ehDoMotorista() || (
+      allow update: if (
+        ehDoMotorista()
+        && request.resource.data.childId == resource.data.childId
+        && request.resource.data.adminUid == resource.data.adminUid
+      ) || (
         isSignedIn()
         && ownsChild(resource.data.childId)
         && request.resource.data.childId == resource.data.childId
+        && request.resource.data.get('adminUid', '') ==
+           get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.get('adminUid', '')
       );
       allow delete: if ehDoMotorista() || (
         isSignedIn() && ownsChild(resource.data.childId)
@@ -1849,7 +1923,17 @@ service cloud.firestore {
       // Reproduzido no emulador (scripts/testar-regras.mjs): três operações
       // cruzadas devolviam 200. Mesmo padrão de sempre: metade do bloco
       // recebeu o escopo e a outra metade não.
-      allow create: if nasceDoDono() || (
+      // ⚠️ O RAMO DO MOTORISTA TAMBÉM PROVA A CRIANÇA (03/10/2026).
+      // `nasceDoDono()` conferia só o `adminUid` do corpo: um motorista
+      // qualquer marcava falta na criança de outra perua, num id inventado,
+      // e a declaração aparecia para a família dela (que lê pelo `childId`).
+      // Agora a criança é da turma dele e o id é `{dia}_{criança}` — o que
+      // o app e o "sem aula" gravam, e o que a tela da mãe escuta.
+      allow create: if (
+        nasceDoDono()
+        && criancaDaTurma(request.resource.data.childId)
+        && absId == request.resource.data.dateKey + '_' + request.resource.data.childId
+      ) || (
         isSignedIn()
         && ownsChild(request.resource.data.childId)
         && request.resource.data.declaredBy == 'parent'
@@ -1866,7 +1950,14 @@ service cloud.firestore {
            get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.get('adminUid', '')
       );
 
-      allow update: if ehDoMotorista() || (
+      // O motorista reescreve a falta da criança dele, mas não a muda de
+      // criança nem de motorista — seria criar em duas etapas o que o
+      // `create` acima recusa.
+      allow update: if (
+        ehDoMotorista()
+        && request.resource.data.childId == resource.data.childId
+        && request.resource.data.adminUid == resource.data.adminUid
+      ) || (
         isSignedIn()
         && ownsChild(resource.data.childId)
         && request.resource.data.childId == resource.data.childId
@@ -1950,11 +2041,18 @@ service cloud.firestore {
       // dado de ninguém; a família só não desce.
       //
       // `ehDoMotorista()` é o mesmo predicado do `delete`, três linhas abaixo.
+      //
+      // ⚠️ A FAMÍLIA SÓ RESPONDE (03/10/2026). O ramo dela travava os dois
+      // uids e deixava o resto livre: ela reescrevia `childName`, `momento`
+      // ou voltava a buzina a `ringing` — e o servidor, que lê este documento
+      // para mandar o push, tocava de novo com o texto que ela escolheu. Ela
+      // diz "estou indo" (`acknowledged`) ou encerra (`resolved`), e só.
       allow update: if ehDoMotorista() || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
-        && request.resource.data.adminUid == resource.data.adminUid
-        && request.resource.data.parentUid == resource.data.parentUid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'acknowledgedAt', 'resolvedAt', 'resolvedBy'])
+        && request.resource.data.status in ['acknowledged', 'resolved']
       );
       allow delete: if ehDoMotorista();
     }
@@ -1992,8 +2090,16 @@ service cloud.firestore {
       allow read: if isAppUser() && (
         ehDoMotorista()
         || isOwner()
+        // ⚠️ O RECADO DE UMA CRIANÇA TAMBÉM PROVA DE QUEM VEIO (03/10/2026).
+        // O ramo olhava só `parentUid == eu`, um campo que o MOTORISTA
+        // escreve: qualquer conta de motorista punha um recado de 1500
+        // caracteres no caderno de uma família que não atende — o mesmo
+        // ataque que o ramo de escola, logo abaixo, já fechava. A CONSULTA do
+        // caderno precisa provar o filtro: `where('adminUid', '==', ...)`
+        // junto de `scope` e `parentUid`, um por motorista da família.
         || (resource.data.scope == 'child'
-            && resource.data.parentUid == request.auth.uid)
+            && resource.data.parentUid == request.auth.uid
+            && ehMotoristaDaFamilia(resource.data.get('adminUid', '')))
         || (resource.data.scope == 'school'
             && request.auth.uid in resource.data.get('parentUids', [])
             // O `parentUids` e uma lista que o MOTORISTA escolhe, e a regra
@@ -2010,12 +2116,34 @@ service cloud.firestore {
             && ehMotoristaDaFamilia(resource.data.get('adminUid', '')))
       );
 
+      // O recado de UMA criança nasce numa criança DELE, endereçado à família
+      // DELA (03/10/2026). Sem o `get()`, o `parentUid` era o que o motorista
+      // quisesse — e é ele que decide de quem é o caderno.
       allow create: if isAdmin()
-        && request.resource.data.adminUid == request.auth.uid;
+        && request.resource.data.adminUid == request.auth.uid
+        && (
+          request.resource.data.get('scope', '') != 'child'
+          || (
+            get(/databases/$(database)/documents/children/$(request.resource.data.childId))
+              .data.get('adminUid', '') == request.auth.uid
+            && request.resource.data.get('parentUid', null) ==
+               get(/databases/$(database)/documents/children/$(request.resource.data.childId))
+                 .data.get('parentUid', null)
+          )
+        );
 
       // Era `isAdmin()`: qualquer motorista editava e APAGAVA o recado de
       // qualquer outro. Escrever na agenda de família alheia é pior que ler.
-      allow update, delete: if ehDoMotorista();
+      //
+      // E o `update` não reendereça o recado (03/10/2026): nenhuma tela edita
+      // recado, e trocar `parentUid`/`childId`/`scope` depois de criar seria
+      // passar por fora da amarra do `create`.
+      allow update: if ehDoMotorista()
+        && request.resource.data.get('adminUid', '') == resource.data.get('adminUid', '')
+        && request.resource.data.get('parentUid', null) == resource.data.get('parentUid', null)
+        && request.resource.data.get('childId', null) == resource.data.get('childId', null)
+        && request.resource.data.get('scope', null) == resource.data.get('scope', null);
+      allow delete: if ehDoMotorista();
     }
 
     // -----------------------------------------------------------------
@@ -2077,9 +2205,11 @@ service cloud.firestore {
       // aparecendo pra todo visitante. A pessoa que pediu a remoção seguia
       // exposta, e ninguém no app tinha como perceber.
       //
-      // O campo passou a ser gravado explicitamente como `false` na criação
-      // (ver feedbackService): consulta que filtra `== false` não alcança
-      // documento sem a chave, então deixá-lo implícito sumiria com a vitrine.
+      // O campo é gravado EXPLICITAMENTE na criação — `true` desde
+      // 03/10/2026, porque o depoimento nasce escondido (ver o `create`) — e
+      // o dono o vira `false` ao publicar: consulta que filtra `== false` não
+      // alcança documento sem a chave, então deixá-lo implícito sumiria com a
+      // vitrine.
       // O AUTOR LISTA O PRÓPRIO. Faltava este ramo, e por isso a checagem de
       // "você já avaliou antes" era negada sempre (mascarada por um catch).
       // O `limit` baixo é o que impede transformar isto numa varredura.
@@ -2107,9 +2237,41 @@ service cloud.firestore {
         && resource.data.allowTestimonial == true
         && resource.data.hiddenByOwner == false
       );
+      // ⚠️ O DEPOIMENTO NASCE ESCONDIDO, E O DONO PUBLICA (03/10/2026 —
+      // decisão do dono). Este documento é legível POR QUALQUER UM, sem login,
+      // assim que `allowTestimonial` é true e `hiddenByOwner` é false — e o
+      // `create` aceitava os dois do cliente, sem lista de campos: qualquer
+      // conta publicava na home da plataforma o texto que quisesse, com o
+      // nome e a foto que quisesse, no papel que quisesse ("motorista",
+      // sendo mãe). Agora:
+      //   - a lista de campos é FECHADA (o que `feedbackService` grava);
+      //   - texto com teto, e o teto público de 200 é do serviço;
+      //   - o papel é o do documento da pessoa, não o que ela declara;
+      //   - `hiddenByOwner` nasce `true` — o dono lê e tira do escondido
+      //     pelo `allow update` abaixo, que já existia.
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasAll(['uid', 'role', 'answers', 'createdAt']);
+        && request.resource.data.keys().hasAll(['uid', 'role', 'answers', 'createdAt'])
+        && request.resource.data.keys().hasOnly([
+          'uid', 'role', 'version', 'answers', 'comment', 'allowTestimonial',
+          'hiddenByOwner', 'allowPhoto', 'authorFirstName', 'authorPhotoURL',
+          'createdAt'
+        ])
+        && request.resource.data.role == userDoc().role
+        && request.resource.data.hiddenByOwner == true
+        && request.resource.data.answers is map
+        && request.resource.data.answers.size() <= 30
+        && request.resource.data.get('comment', '') is string
+        && request.resource.data.get('comment', '').size() <= 1000
+        && request.resource.data.get('version', '') is string
+        && request.resource.data.get('version', '').size() <= 40
+        && (request.resource.data.get('authorFirstName', null) == null
+            || (request.resource.data.authorFirstName is string
+                && request.resource.data.authorFirstName.size() <= 60))
+        && (request.resource.data.get('authorPhotoURL', null) == null
+            || (request.resource.data.authorPhotoURL is string
+                && request.resource.data.authorPhotoURL.size() <= 2048))
+        && request.resource.data.createdAt == request.time;
 
       // ABRIR E FECHAR DEPOIMENTO É PODER DO DONO, e só isso.
       //
@@ -2147,9 +2309,28 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         isOwner() || resource.data.uid == request.auth.uid
       );
+      // LISTA FECHADA E TEXTO COM TETO (03/10/2026). O `create` exigia campos
+      // mas não limitava nenhum: o chamado podia nascer `closed` (some da
+      // caixa do dono, que lista os abertos) ou com um megabyte de texto. É o
+      // que `supportService.openSupportTicket` grava, e nada além.
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasAll(['uid', 'role', 'category', 'description', 'status', 'createdAt']);
+        && request.resource.data.keys().hasAll(['uid', 'role', 'category', 'description', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly([
+          'uid', 'role', 'version', 'category', 'description', 'deviceInfo',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.status == 'open'
+        && request.resource.data.role in ['parent', 'admin', 'owner']
+        && request.resource.data.category is string
+        && request.resource.data.category.size() <= 60
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 2000
+        && request.resource.data.get('version', '') is string
+        && request.resource.data.get('version', '').size() <= 40
+        && (request.resource.data.get('deviceInfo', null) == null
+            || (request.resource.data.deviceInfo is map
+                && request.resource.data.deviceInfo.size() <= 10));
       // Quem trata o chamado e o dono da plataforma.
       allow update: if isOwner();
       allow delete: if false;
@@ -2279,7 +2460,14 @@ service cloud.firestore {
       allow read: if isOwner()
         || (isSignedIn() && resource.data.tioUid == request.auth.uid);
       allow list: if isOwner();
-      allow create, update: if isSignedIn()
+      allow create: if isSignedIn()
+        && request.resource.data.tioUid == request.auth.uid;
+      // ⚠️ O `update` CONFERIA SÓ O DOCUMENTO NOVO (03/10/2026): um motorista
+      // reescrevia o interesse de OUTRO com o próprio `tioUid` e tomava o
+      // registro — a mão levantada sumia da pesquisa do dono. Quem atualiza
+      // é quem já é dono do documento.
+      allow update: if isSignedIn()
+        && resource.data.tioUid == request.auth.uid
         && request.resource.data.tioUid == request.auth.uid;
       allow delete: if isOwner();
     }
@@ -2304,11 +2492,25 @@ service cloud.firestore {
       allow read: if isOwner()
         || (isSignedIn() && resource.data.indicadorUid == request.auth.uid);
       allow list: if isOwner();
+      //
+      // ⚠️ E A PRIMEIRA DATA É A DO SERVIDOR (03/10/2026). "Dois indicaram a
+      // mesma pessoa? Vale quem indicou primeiro" — e `em` era do cliente:
+      // o segundo a indicar gravava `em` no ano passado e roubava o crédito
+      // de quem chegou antes. O id também era livre, e com ele a garantia de
+      // que indicar o mesmo número duas vezes sobrescreve em vez de contar em
+      // dobro. Lista fechada: o que `montarIndicacao` produz, e só.
       allow create: if isSignedIn()
         && request.resource.data.indicadorUid == request.auth.uid
         // Ela NASCE pendente. Nascer `ativa` seria a carência inteira pulada
         // numa única escrita.
-        && request.resource.data.estado == 'pendente';
+        && request.resource.data.estado == 'pendente'
+        && request.resource.data.em == request.time
+        && request.resource.data.chave is string
+        && id == request.auth.uid + '_' + request.resource.data.chave
+        && request.resource.data.keys().hasOnly([
+          'indicadorUid', 'indicadorNome', 'chave', 'telefoneDigitado',
+          'nome', 'estado', 'em'
+        ]);
       allow update, delete: if isOwner();
     }
 

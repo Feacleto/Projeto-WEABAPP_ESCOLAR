@@ -100,8 +100,15 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'owner';
     }
 
+    // ⚠️ TRÊS TIPOS, E NENHUM DELES É SVG (03/10/2026). Era `image/.*`, e
+    // `image/svg+xml` é IMAGEM COM SCRIPT: aberto direto pela URL de download
+    // — e o motorista abre o comprovante que a família anexou —, ele roda o
+    // que o autor escreveu. Os três que o app produz (o cliente redimensiona
+    // para JPEG; o recibo gerado é PNG) mais WebP, que câmera de Android
+    // entrega. HEIC do iPhone NÃO passa: quem envia direto da galeria sem
+    // redimensionar (o alvará, `seloService`) precisa converter antes.
     function isImage() {
-      return request.resource.contentType.matches('image/.*');
+      return request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
     }
 
     function isWithinSizeLimit() {
@@ -292,16 +299,25 @@ service firebase.storage {
           && existePagamento()
           && pagamento().get('adminUid', '') == request.auth.uid;
       }
+      // ⚠️ A FAMÍLIA MEXE NO COMPROVANTE SÓ ENQUANTO ELE AINDA É DELA
+      // (03/10/2026). Depois da baixa, o arquivo é a PROVA do pagamento — e
+      // ela conseguia trocá-lo por outro, ou apagá-lo, com a mensalidade já
+      // `paid`: o motorista abriria o histórico e acharia outra imagem, ou
+      // nenhuma. Enquanto `pending` (vai avisar) ou `claimed` (avisou e o
+      // motorista ainda não conferiu), ela troca o arquivo errado.
+      function pagadorAindaPodeMexer() {
+        return isPayer() && pagamento().get('status', '') in ['pending', 'claimed'];
+      }
       allow read: if isDono() || isPayer();
       // O TIO também anexa. Na prática o pai paga e manda o comprovante
       // pelo WhatsApp sem passar pelo app — sem isto, aquele comprovante
       // não entra no histórico e o registro do mês fica incompleto.
-      allow write: if (isDono() || isPayer())
+      allow create, update: if (isDono() || pagadorAindaPodeMexer())
         && (isImage() || request.resource.contentType == 'application/pdf')
         && isWithinSizeLimit();
-      // O pai pode trocar o comprovante errado; o motorista daquele pagamento
-      // limpa depois de conferir, se quiser.
-      allow delete: if isDono() || isPayer();
+      // O pai pode trocar o comprovante errado ANTES da baixa; o motorista
+      // daquele pagamento limpa depois de conferir, se quiser.
+      allow delete: if isDono() || pagadorAindaPodeMexer();
     }
 
     // Default deny

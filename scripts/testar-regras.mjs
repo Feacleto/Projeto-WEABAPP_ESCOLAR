@@ -539,6 +539,7 @@ async function main() {
   await decisao12({ tio1, tio2, pai1, novato, dono });
   await oAceite({ tio1, tio2, pai1 });
   await oTesteDeCodigo({ tio1, tio2, pai1, dono });
+  await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -820,55 +821,33 @@ async function oAceite({ tio1, tio2, pai1 }) {
 }
 
 /**
- * O CONTADOR DE CRIANÇAS — a única regra do projeto que usa `getAfter`.
+ * A CRIANÇA NASCE SEM O CONTADOR — e o contador é do servidor (03/10/2026).
  *
- * ── ⚠️ ISTO ERA "A VAGA CONTRATADA", E O TETO SAIU EM 10/09/2026
- * A regra recusava a criança que passasse de `limiteCriancas`. Com preço por
- * faixa isso era a cláusula sendo cobrada; com preço por criança virou só uma
- * porta na cara de quem acabou de ganhar um cliente. O teto saiu do modelo:
- * NADA trava quando a operação cresce, e a fatura acompanha o tamanho.
+ * ── O QUE ESTE BLOCO MEDIA ANTES
+ * Era "a vaga contratada" e depois "o contador no mesmo commit": `children` só
+ * aceitava `create` se `users.criancasAtivas` subisse no MESMO lote, conferido
+ * com `getAfter`. A regra do contador em `users` aceitava passos de ±1 — e o
+ * próprio comentário dela confessava o que não fechava: N escritas de −1
+ * chegam no mesmo lugar que uma de −N, e o contador é o número que a fatura
+ * multiplica pela taxa.
  *
- * O que ficou é a INTEGRIDADE: `children` só aceita `create` se
- * `criancasAtivas` subir no MESMO commit. Não é teto, é o número que a fatura
- * multiplica pela taxa — criança criada sem ele é criança que o app serve e
- * ninguém cobra.
+ * ── O QUE MUDOU
+ * `criancasAtivas` e `trialInicio` foram para a lista PROIBIDA de `users`: um
+ * gatilho em `children` reconta a turma, e a primeira rota liga o relógio pelo
+ * servidor. A criança nasce SOZINHA, e o lote antigo (criança + contador) passa
+ * a ser recusado INTEIRO — batch é atômico, e a metade do contador é proibida.
  *
- * POR ISSO O TESTE USA `:commit`, e não o PATCH de documento único usado no
- * resto do arquivo: com escritas separadas o `getAfter` vê o contador ANTIGO,
- * e o teste passaria por um motivo que não é o da regra.
- *
- * ── ⚠️ E O CASO 2 É NOVO, PORQUE A GARANTIA ERA FALSA
- * A conta antiga era `criancasAtivas <= limiteCriancas`, com o limite ausente
- * valendo 999999. Para todo motorista sem teto definido — que era todo mundo
- * em teste — `0 <= 999999` passava SEM incremento nenhum. O comentário da rule
- * afirmava "criar criança sem incrementar não passa" e isso só valia para quem
- * já estava no teto.
- *
- * A regra passou a comparar o contador DEPOIS com o de ANTES, e os casos
- * abaixo cercam a decisão nova:
- *   1. criando com incremento              → PASSA
- *   2. criando SEM incremento, sem teto    → NEGA  (o furo que existia)
- *   3. criando com o contador DESCENDO     → NEGA
- *   4. passando do antigo teto             → PASSA (o teto não existe mais)
- *   5. o motorista aumentando o próprio limiteCriancas → NEGA
- *
- * O quinto é o que mais importa e é o mais fácil de esquecer: foi assim que o
- * `suspenso` vazou uma vez — campo de gestão que a lista de proibidos não
- * acompanhou. `limiteCriancas` não tem mais gravador, e continua proibido:
- * campo sem dono não é campo livre.
+ * ── E O `create` GANHOU LISTA DE PROIBIDOS
+ * O `update` do motorista recusava aceite de contrato, saúde e vínculo; o
+ * `create` aceitava os três. "Sempre que o update for restritivo, pergunte 'e
+ * se ele criar do zero?'".
  */
 /**
- * CRIAR CRIANÇA COM O CONTADOR SUBINDO, no MESMO commit.
+ * O LOTE ANTIGO: criança + contador no mesmo `:commit`. Fica como sonda — é o
+ * que um app em cache, de antes de 03/10/2026, ainda manda.
  *
- * ⚠️ É O ÚNICO JEITO DE CRIAR CRIANÇA QUE AS RULES ACEITAM, e por isso este
- * helper é de módulo e não do bloco da vaga. Três casos deste arquivo criavam
- * criança com um POST solto para provar OUTRA coisa (que a conta em dia
- * opera), e passaram a dar 403 quando a regra passou a exigir o incremento de
- * verdade — falhando pelo motivo errado, que é o que este arquivo inteiro foi
- * escrito para não fazer.
- *
- * O PATCH de documento único não serve: `getAfter` só enxerga o que vem no
- * mesmo commit, então com escritas separadas ele vê o contador ANTIGO.
+ * ⚠️ Um write de `update` no REST SUBSTITUI o documento quando não vai máscara
+ * — por isso o `updateMask` no contador.
  */
 function criarCriancaComContador(sessao, uid, idCrianca, contador) {
   const doc = (c) => `projects/${PID}/databases/(default)/documents/${c}`;
@@ -896,9 +875,17 @@ function criarCriancaComContador(sessao, uid, idCrianca, contador) {
   }).then((r) => r.status);
 }
 
-async function vagaContratada(tio1, tio2) {
+/** A criança SOZINHA, como o app grava desde 03/10/2026. */
+function criarCrianca(sessao, uid, idCrianca, extra = {}) {
+  return criar('children', idCrianca, sessao, {
+    name: S('Nova'), adminUid: S(uid), active: B(true),
+    inviteStatus: S('pending'), parentUid: { nullValue: null }, ...extra,
+  });
+}
 
-  // Cenário: tio1 contratou 2 vagas e está usando 1.
+async function vagaContratada(tio1, tio2) {
+  console.log('\n═══ A CRIANÇA NASCE SOZINHA — o contador é do servidor ═══');
+
   await semear(`users/${tio1.uid}`, {
     role: S('admin'),
     name: S('Tio Um'),
@@ -906,59 +893,64 @@ async function vagaContratada(tio1, tio2) {
     criancasAtivas: { integerValue: '1' },
   });
 
-  // 1. Segunda criança, contador subindo de 1 para 2.
-  checar('vaga', 'cria a criança incrementando o contador', 'PASSA',
-    await criarCriancaComContador(tio1, tio1.uid, `vaga_ok_${Date.now()}`, 2));
+  // 1. O caminho novo: a criança sozinha. Era NEGA até 03/10/2026.
+  checar('vaga', 'cria a criança sem tocar no contador', 'PASSA',
+    await criarCrianca(tio1, tio1.uid, `vaga_ok_${Date.now()}`));
 
-  // 2. ⚠️ O FURO QUE EXISTIA. Contador parado em 2, e este motorista NÃO tem
-  // teto definido — que era o caso da base inteira em teste. Com a conta
-  // antiga (`0 <= 999999`) isto passava.
-  await semear(`users/${tio1.uid}`, {
-    role: S('admin'), name: S('Tio Um'),
-    criancasAtivas: { integerValue: '2' },
-  });
-  checar('vaga', 'criar sem incrementar, mesmo sem teto definido', 'NEGA',
-    await criarCriancaComContador(tio1, tio1.uid, `vaga_parado_${Date.now()}`, 2));
+  // 2. O lote antigo é recusado inteiro: a metade do contador é proibida.
+  checar('vaga', 'o lote antigo (criança + contador) é recusado', 'NEGA',
+    await criarCriancaComContador(tio1, tio1.uid, `vaga_lote_${Date.now()}`, 2));
 
-  // 3. Contador DESCENDO junto de uma criança nova. Absurdo, e por isso mesmo
-  // é o caso que um `>=` mal escrito deixaria passar.
-  checar('vaga', 'criar com o contador descendo', 'NEGA',
-    await criarCriancaComContador(tio1, tio1.uid, `vaga_desce_${Date.now()}`, 1));
-
-  // 4. ⚠️ PASSAR DO ANTIGO TETO AGORA PASSA, e este caso é a decisão de
-  // 10/09/2026 escrita em teste. Limite 2, contador indo a 3.
+  // 3. Passar do antigo teto continua passando — o teto saiu em 10/09/2026.
   await semear(`users/${tio1.uid}`, {
     role: S('admin'), name: S('Tio Um'),
     limiteCriancas: { integerValue: '2' },
     criancasAtivas: { integerValue: '2' },
   });
   checar('vaga', 'a 3ª criança passa do antigo teto de 2 e ENTRA', 'PASSA',
-    await criarCriancaComContador(tio1, tio1.uid, `vaga_cresce_${Date.now()}`, 3));
+    await criarCrianca(tio1, tio1.uid, `vaga_cresce_${Date.now()}`));
 
-  // Criar sem mexer no contador, pelo caminho de documento único.
-  const semContador = await fetch(`${FS}/children?documentId=vaga_solta_${Date.now()}`, {
-    method: 'POST',
-    headers: H(tio1),
-    body: JSON.stringify({
-      fields: { name: S('Solta'), adminUid: S(tio1.uid), active: B(true) },
-    }),
-  }).then((r) => r.status);
-  checar('vaga', 'criar criança sem incrementar o contador', 'NEGA', semContador);
+  // 4. O PAYLOAD REAL de `childrenService.addChild`, campo por campo — a
+  // lista de proibidos do `create` não pode pegar nenhum campo legítimo.
+  checar('vaga', 'o cadastro com o payload real do app', 'PASSA',
+    await criar('children', `vaga_real_${Date.now()}`, tio1, {
+      name: S('Lia'), gender: S('female'), birthDate: S(''),
+      parentName: S('Mãe da Lia'), parentEmail: S(''), parentPhone: S('11988887777'),
+      parentPhoneChave: S('11988887777'), parent2Name: S(''), parent2Phone: S(''),
+      address: S('Rua X, 10'), cep: S('04763110'), lat: N(-23.6), lng: N(-46.7),
+      geoPending: B(false), schoolId: S('esc1'), school: S('EMEF'), schoolAddress: S(''),
+      schoolPhone: S(''), schoolLat: { nullValue: null }, schoolLng: { nullValue: null },
+      horaPega: S('06:40'), horaEntrega: S('12:30'), turma: S(''), professora: S(''),
+      period: S('morning'), pickupPeriod: S('morning'), dropoffPeriod: S('morning'),
+      monthlyFee: N(300), dueDay: { integerValue: '10' },
+      vigenciaInicio: S('2026-10-01'), vigenciaFim: S('2026-12-31'),
+      notes: S(''), inviteCode: S('TNAB23CD'), inviteStatus: S('pending'),
+      parentUid: { nullValue: null }, adminUid: S(tio1.uid), status: S('home'),
+      statusUpdatedAt: T(0), active: B(true), createdAt: T(0),
+    }));
 
-  // 5. O motorista aumentando o próprio teto. O campo morreu, a trava não.
+  // 5. ⚠️ O QUE O `update` RECUSA, O `create` TAMBÉM. Cada um destes nascia.
+  checar('vaga', 'a criança nasce com o contrato "aceito"', 'NEGA',
+    await criarCrianca(tio1, tio1.uid, `vaga_aceite_${Date.now()}`, {
+      contractAcceptedAt: T(0), contractAcceptedName: S('Mãe Inventada'), contractHash: S('h'),
+    }));
+  checar('vaga', 'nem apontando qual contrato "vale"', 'NEGA',
+    await criarCrianca(tio1, tio1.uid, `vaga_vigente_${Date.now()}`, {
+      contratoVigente: { mapValue: { fields: { numero: { integerValue: '1' } } } },
+    }));
+  checar('vaga', 'nem com nota de saúde que a mãe não consentiu', 'NEGA',
+    await criarCrianca(tio1, tio1.uid, `vaga_saude_${Date.now()}`, {
+      saudeNotas: S('alergia'), saudeConsentidaEm: T(0),
+    }));
+  checar('vaga', 'nem com o convite já "usado"', 'NEGA',
+    await criarCrianca(tio1, tio1.uid, `vaga_usado_${Date.now()}`, { inviteStatus: S('used') }));
+  checar('vaga', 'nem marcada como vinculada pelo irmão', 'NEGA',
+    await criarCrianca(tio1, tio1.uid, `vaga_irmao_${Date.now()}`, { vinculadoPor: S('irmao') }));
+
+  // 6. O motorista aumentando o próprio teto. O campo morreu, a trava não.
   //
-  // ESTE CASO PASSAVA PELO MOTIVO ERRADO, e só apareceu quando um caso de
-  // forma IDÊNTICA, escrito no bloco da decisão 12, deu 200 contra as mesmas
-  // rules. A diferença não estava na regra: estava no ator.
-  //
-  // O `criarCriancaComContador` acima usa `:commit`, e um write de `update` no REST
-  // do Firestore SUBSTITUI o documento quando não vai máscara junto — então
-  // `users/{tio1}` saía de lá só com `criancasAtivas`, sem `role`. Sem papel,
-  // `isAdmin()` é falso e o outro ramo compara `role` sobre chave ausente,
-  // que é erro, e erro nega. Tudo virava 403 por falta de cadastro, não por
-  // escopo — o 403 que este arquivo inteiro foi escrito pra não confiar.
-  //
-  // Ressemear antes de medir é o que faz o caso provar o que ele diz provar.
+  // RESSEMEAR ANTES DE MEDIR: o `:commit` sem máscara substitui o documento,
+  // e sem `role` todo 403 seria falta de cadastro, não escopo.
   await semear(`users/${tio1.uid}`, {
     role: S('admin'), name: S('Tio Um'),
     limiteCriancas: { integerValue: '2' },
@@ -977,30 +969,18 @@ async function vagaContratada(tio1, tio2) {
     await escrever(`users/${tio2.uid}`, tio1,
       { limiteCriancas: { integerValue: '99' } }, ['limiteCriancas']));
 
-
-  // ── trialInicio — gravável UMA VEZ, nunca alterável ─────────────────
+  // ── trialInicio — DO SERVIDOR, desde 03/10/2026 ──────────────────────
   //
-  // O relógio dos três meses começa na primeira rota, e quem o liga é o
-  // PRÓPRIO motorista, no cliente: o GPS liga no meio-fio e esperar cold
-  // start de function com o passageiro na porta é a regressão que a decisão
-  // 2 já recusou. Então a rule não pode proibir a escrita — ela precisa
-  // proibir a REESCRITA.
-  //
-  // Sem isso o motorista reinicia o próprio teste para sempre: roda uma
-  // rota, o campo grava; três meses depois grava de novo e ganha mais três.
-  // Seria o devedor editando a própria cláusula, igual a limiteCriancas.
-  //
-  // OS DOIS CASOS SÃO SEQUENCIAIS DE PROPÓSITO: o primeiro grava de verdade,
-  // e é o que faz o campo existir para o segundo. Testar a imutabilidade
-  // contra um campo semeado à mão provaria menos — provaria a regra contra
-  // um estado que o app nunca produz.
-  checar('trial', 'o motorista liga o próprio relógio na primeira rota', 'PASSA',
+  // Era "gravável UMA vez, nunca alterável" pelo próprio motorista, na
+  // primeira rota. A regra proibia a REESCRITA e aceitava qualquer data na
+  // primeira escrita: o caso abaixo, com março, PASSAVA — um relógio ligado
+  // seis meses no passado, vencido na hora que ele quisesse, ou no futuro e
+  // nunca vencido. Agora a primeira rota liga o relógio por function.
+  checar('trial', 'o motorista liga o próprio relógio no passado', 'NEGA',
     await escrever(`users/${tio1.uid}`, tio1,
       { trialInicio: { timestampValue: '2026-03-01T12:00:00Z' } }, ['trialInicio']));
-
-  checar('trial', 'e não consegue ligá-lo de novo depois', 'NEGA',
-    await escrever(`users/${tio1.uid}`, tio1,
-      { trialInicio: { timestampValue: '2026-09-01T12:00:00Z' } }, ['trialInicio']));
+  checar('trial', 'nem com a hora de agora (é do servidor)', 'NEGA',
+    await escrever(`users/${tio1.uid}`, tio1, { trialInicio: T(0) }, ['trialInicio']));
 
   // O vizinho: nem o relógio do colega ele encosta.
   checar('trial', 'tio1 liga o relógio do tio2', 'NEGA',
@@ -1417,8 +1397,19 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     telefoneDigitado: S('(11) 91111-2222'),
     estado: S('pendente'),
   });
+  // ⚠️ `em` E A HORA DO SERVIDOR DESDE 03/10/2026 — "vale quem indicou
+  // primeiro", e com `em` do cliente o segundo gravava o ano passado e roubava
+  // o credito. Por isso os casos de criacao vao com `REQUEST_TIME`.
+  checar('indicacao', 'quem indica depois finge ter indicado antes', 'NEGA',
+    await criar('indicacoes', tio1.uid + '_11977778888', tio1,
+      { ...IND(tio1.uid), chave: S('11977778888'), em: { timestampValue: '2025-01-01T00:00:00Z' } }));
+  checar('indicacao', 'o id nao bate com a chave (contaria em dobro)', 'NEGA',
+    await criarComHoraDoServidor('indicacoes/' + tio1.uid + '_outro', tio1, IND(tio1.uid), 'em'));
+  checar('indicacao', 'nem leva campo de fora (estado de ativacao, desconto)', 'NEGA',
+    await criarComHoraDoServidor('indicacoes/' + tio1.uid + '_11966667777', tio1,
+      { ...IND(tio1.uid), chave: S('11966667777'), ativadaEm: T(0) }, 'em'));
   checar('indicacao', 'o motorista indica alguem', 'PASSA',
-    await escrever('indicacoes/' + tio1.uid + '_11911112222', tio1, IND(tio1.uid)));
+    await criarComHoraDoServidor('indicacoes/' + tio1.uid + '_11911112222', tio1, IND(tio1.uid), 'em'));
   checar('indicacao', 'e le a propria', 'PASSA',
     await ler('indicacoes/' + tio1.uid + '_11911112222', tio1));
   // ⚠️ A indicacao de um NAO e do outro: ela carrega o telefone de um terceiro
@@ -1434,11 +1425,11 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     await listar('indicacoes', dono));
   // Nascer ativa seria a carencia pulada numa unica escrita.
   checar('indicacao', 'ela nao nasce ativa', 'NEGA',
-    await escrever('indicacoes/' + tio1.uid + '_11933334444', tio1,
-      { ...IND(tio1.uid), chave: S('11933334444'), estado: S('ativa') }));
+    await criarComHoraDoServidor('indicacoes/' + tio1.uid + '_11933334444', tio1,
+      { ...IND(tio1.uid), chave: S('11933334444'), estado: S('ativa') }, 'em'));
   checar('indicacao', 'nem indica em nome do vizinho', 'NEGA',
-    await escrever('indicacoes/' + tio2.uid + '_11955556666', tio1,
-      { ...IND(tio2.uid), chave: S('11955556666') }));
+    await criarComHoraDoServidor('indicacoes/' + tio2.uid + '_11955556666', tio1,
+      { ...IND(tio2.uid), chave: S('11955556666') }, 'em'));
   // O DESCONTO E DO DONO. Este e o campo que a fatura le.
   checar('indicacao', 'o motorista se ativa a propria indicacao', 'NEGA',
     await escrever('indicacoes/' + tio1.uid + '_11911112222', tio1,
@@ -1460,6 +1451,16 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   checar('interesse', 'mas nao levanta a mao pelo vizinho', 'NEGA',
     await escrever('interesses/' + tio2.uid + '_cartao', tio1,
       { tioUid: S(tio2.uid), assunto: S('cartao') }));
+  // ⚠️ A TOMADA (03/10/2026): o `update` conferia so o documento NOVO, entao
+  // tio2 reescrevia o interesse do tio1 com o proprio uid e a mao levantada
+  // sumia da pesquisa. Primeiro o doc do tio1 existe (caso acima); depois o
+  // vizinho tenta tomar.
+  checar('interesse', 'o vizinho toma o interesse ja registrado', 'NEGA',
+    await escrever('interesses/' + tio1.uid + '_cartao', tio2,
+      { tioUid: S(tio2.uid), assunto: S('cartao') }));
+  checar('pos', 'o dono do interesse continua atualizando o dele', 'PASSA',
+    await escrever('interesses/' + tio1.uid + '_cartao', tio1,
+      { tioUid: S(tio1.uid), assunto: S('cartao') }));
   checar('interesse', 'e nao lista a pesquisa da casa', 'NEGA',
     await listar('interesses', tio1));
   checar('pos', 'o dono le a pesquisa', 'PASSA',
@@ -1519,6 +1520,23 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   await semear(`users/${semHistoria.uid}`, { role: S('admin'), name: S('Limpo') });
   checar('pos', 'conta sem historia ainda se apaga', 'PASSA',
     await apagar('users/' + semHistoria.uid, semHistoria));
+  // ⚠️ A HISTORIA QUE IMPEDE APAGAR MUDOU (03/10/2026): era `trialInicio`, e
+  // agora o servidor guarda o relogio em `taxaParceiros` e o restaura se o doc
+  // voltar. O que segue morando so aqui e a TURMA — o contador, que tambem e
+  // do servidor agora.
+  const comTurma = await criarLogin(`turma.${Date.now()}@teste.local`);
+  await semear(`users/${comTurma.uid}`, {
+    role: S('admin'), name: S('Com Turma'), criancasAtivas: { integerValue: '2' },
+  });
+  checar('porta', 'motorista com criancas ativas apaga o proprio doc', 'NEGA',
+    await apagar('users/' + comTurma.uid, comTurma));
+  const soRelogio = await criarLogin(`relogio.${Date.now()}@teste.local`);
+  await semear(`users/${soRelogio.uid}`, {
+    role: S('admin'), name: S('So Relogio'), trialInicio: T(-30),
+    criancasAtivas: { integerValue: '0' },
+  });
+  checar('pos', 'quem rodou rota mas nao tem crianca ativa se apaga', 'PASSA',
+    await apagar('users/' + soRelogio.uid, soRelogio));
 
   // 2. COBRANCA FORJADA na familia de outro motorista. O cliente nunca criou
   // `payments` — quem cria e a Cloud Function, com Admin SDK.
@@ -1644,17 +1662,18 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
     }));
   await semear('platformConfig/app', { cobrancaLigada: B(true) });
 
-  // ⚠️ ESTES TRES CASOS MEDEM O ESTADO DA CONTA, NAO O CONTADOR — e por isso
-  // usam o commit com incremento. Com um POST solto eles davam 403 pela regra
-  // do contador e "provavam" um bloqueio que nao existe.
+  // ⚠️ ESTES TRES CASOS MEDEM O ESTADO DA CONTA, NAO O CONTADOR. Desde
+  // 03/10/2026 a crianca nasce sozinha (o contador e do servidor), entao o
+  // POST solto e o caminho certo — o lote com contador seria recusado pela
+  // lista proibida de `users` e "provaria" um bloqueio que nao existe.
   checar('pos', 'quem esta com a assinatura em dia opera normalmente', 'PASSA',
-    await criarCriancaComContador(emDia, emDia.uid, `kid-emdia-${Date.now()}`, 1));
+    await criarCrianca(emDia, emDia.uid, `kid-emdia-${Date.now()}`));
   checar('pos', 'e quem venceu ha 3 dias ainda opera (a folga da rule)', 'PASSA',
-    await criarCriancaComContador(carencia, carencia.uid, `kid-carencia-${Date.now()}`, 1));
+    await criarCrianca(carencia, carencia.uid, `kid-carencia-${Date.now()}`));
   // Quem nunca rodou uma rota nao tem `trialInicio`: o relogio nao comecou.
   // Bloquear aqui seria bloquear todo mundo no primeiro dia.
   checar('pos', 'quem nunca rodou rota nao e bloqueado', 'PASSA',
-    await criarCriancaComContador(novato, novato.uid, `kid-novato-${Date.now()}`, 1));
+    await criarCrianca(novato, novato.uid, `kid-novato-${Date.now()}`));
 
   // ⚠️ O RESPIRO. Sem ele, o bloqueado nao consegue CONTRATAR — que e
   // exatamente o que o desbloqueia — e o beco nao tem saida dentro do produto.
@@ -1967,14 +1986,17 @@ async function decisao12({ tio1, tio2, pai1, novato, dono }) {
     await escrever('users/' + tio1.uid, tio1,
       { criancasAtivas: { integerValue: '99' } }, ['criancasAtivas']));
 
-  // E os dois caminhos REAIS continuam passando — sem isto, o conserto
-  // quebraria cadastro e remoção de criança, que é pior que o furo.
-  checar('pos', 'o contador desce de um em um (desativar criança)', 'PASSA',
+  // ⚠️ O PASSO DE UM ERA PASSA ATÉ 03/10/2026, E ERA O FURO DECLARADO.
+  // A regra aceitava ±1 porque o cliente acompanhava cada criança no mesmo
+  // lote — e cinco escritas de −1 zeravam o contador igual a uma de −5. O
+  // contador passou a ser recontado por um gatilho em `children`: o cliente
+  // não o escreve mais, nem de um em um.
+  checar('decisao12', 'nem desce de um em um (agora e do servidor)', 'NEGA',
     await escrever('users/' + tio1.uid, tio1,
       { criancasAtivas: { integerValue: '4' } }, ['criancasAtivas']));
-  checar('pos', 'e sobe de um em um (cadastrar criança)', 'PASSA',
+  checar('decisao12', 'nem sobe de um em um', 'NEGA',
     await escrever('users/' + tio1.uid, tio1,
-      { criancasAtivas: { integerValue: '5' } }, ['criancasAtivas']));
+      { criancasAtivas: { integerValue: '6' } }, ['criancasAtivas']));
 
   // O cadastro comum não pode ter sido pego junto: a lista proibida cresceu,
   // e ela vale pro ramo de "a própria pessoa edita o próprio doc".
@@ -2221,6 +2243,272 @@ async function decisao12({ tio1, tio2, pai1, novato, dono }) {
   // asserção depois dele mediria a ausência do doc em vez da regra.
   checar('pos', 'mas o motorista DELA ainda APAGA o doc dela (remover vinculado)', 'PASSA',
     await apagar('users/' + pai1.uid, tio1));
+}
+
+/**
+ * A AUDITORIA DE SEGURANÇA DE 03/10/2026 — cada caso ENCADEIA o ataque.
+ *
+ * Os furos daqui não eram "uma escrita proibida que passava": eram uma escrita
+ * permitida no PRÓPRIO documento que abria a porta de outro. Testar só a
+ * escrita provaria pouco — o que importa é o passo seguinte. Por isso cada
+ * caso escreve primeiro (no que é dele) e depois tenta usar o que escreveu.
+ *
+ * E cada ataque tem, ao lado, o caminho legítimo que a correção não pode
+ * quebrar.
+ */
+async function aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono }) {
+  console.log('\n=== A AUDITORIA DE SEGURANÇA (03/10/2026) — o ataque encadeado ===');
+
+  // Elenco limpo: `decisao12` APAGA o doc do pai1 no fim, e os blocos
+  // anteriores reescrevem os dos motoristas.
+  await semear('users/' + tio1.uid, { role: S('admin'), name: S('Tio Um'), pixKey: S('tio1@pix.com') });
+  await semear('users/' + tio2.uid, { role: S('admin'), name: S('Tio Dois') });
+  await semear('users/' + novato.uid, { role: S('admin'), name: S('Novato') });
+  await semear('users/' + pai1.uid, {
+    role: S('parent'), name: S('Pai Um'), adminUid: S(tio1.uid), childId: S('kid1'),
+    childIds: { arrayValue: { values: [S('kid1')] } },
+    adminUids: { arrayValue: { values: [S(tio1.uid)] } },
+  });
+  await semear('liveLocation/' + tio1.uid, { routeActive: B(true), lat: N(-23.1) });
+  await semear('children/kid1', {
+    name: S('Ana'), adminUid: S(tio1.uid), parentUid: S(pai1.uid), active: B(true),
+    monthlyFee: N(300), inviteStatus: S('used'),
+  });
+  await semear('children/kid2', {
+    name: S('Beto'), adminUid: S(tio2.uid), parentUid: { nullValue: null }, active: B(true),
+    inviteStatus: S('pending'),
+  });
+
+  // ── S1. `adminUids` NA LISTA PROIBIDA ──────────────────────────────────
+  // O singular já estava; a lista não — e `ehMotoristaDaFamilia()` aceita os
+  // dois. O novato se dava `adminUids: [tio1]` e lia o doc do tio1 (PIX), a
+  // perua dele ao vivo, e escrevia avisos na caixa dele.
+  checar('S1', 'novato grava adminUids=[tio1] no proprio doc', 'NEGA',
+    await escrever('users/' + novato.uid, novato,
+      { adminUids: { arrayValue: { values: [S(tio1.uid)] } } }, ['adminUids']));
+  checar('S1', '... e por isso NAO le o doc do tio1 (a chave PIX)', 'NEGA',
+    await ler('users/' + tio1.uid, novato));
+  checar('S1', '... nem a perua do tio1 ao vivo', 'NEGA',
+    await ler('liveLocation/' + tio1.uid, novato));
+  checar('S1', '... nem escreve aviso na caixa do tio1', 'NEGA',
+    await criar('notifications', 'S1-' + Date.now(), novato, {
+      userId: S(tio1.uid), type: S('payment_claimed'), title: S('Pague aqui'), createdAt: T(0),
+    }));
+  checar('S1', 'a mae poe OUTRO motorista na propria lista', 'NEGA',
+    await escrever('users/' + pai1.uid, pai1,
+      { adminUids: { arrayValue: { values: [S(tio1.uid), S(tio2.uid)] } } }, ['adminUids']));
+  checar('S1', '... e por isso nao le o doc do tio2', 'NEGA',
+    await ler('users/' + tio2.uid, pai1));
+  checar('pos', 'a mae continua lendo o doc do motorista DELA', 'PASSA',
+    await ler('users/' + tio1.uid, pai1));
+  checar('pos', 'e editando o proprio nome', 'PASSA',
+    await escrever('users/' + pai1.uid, pai1, { name: S('Pai Um Souza') }, ['name']));
+
+  // ── S2. O MOTORISTA DESVINCULA, NUNCA VINCULA ──────────────────────────
+  // `parentUid` é quem LÊ a criança. tio2 apontava a criança DELE para a mãe
+  // de outra perua, e ela aparecia no app daquela família.
+  checar('S2', 'tio2 aponta a crianca dele para a mae do tio1', 'NEGA',
+    await escrever('children/kid2', tio2, { parentUid: S(pai1.uid) }, ['parentUid']));
+  checar('S2', '... e a mae do tio1 continua sem enxergar a crianca dele', 'NEGA',
+    await ler('children/kid2', pai1));
+  checar('S2', 'tio2 marca o convite como "usado"', 'NEGA',
+    await escrever('children/kid2', tio2, { inviteStatus: S('used') }, ['inviteStatus']));
+  checar('S2', 'tio2 marca a crianca como "vinculada pelo irmao"', 'NEGA',
+    await escrever('children/kid2', tio2, { vinculadoPor: S('irmao') }, ['vinculadoPor']));
+  checar('pos', 'o motorista edita a crianca sem tocar no vinculo', 'PASSA',
+    await escrever('children/kid1', tio1, { monthlyFee: N(320) }, ['monthlyFee']));
+
+  // ── S6. OS UIDS DO CORPO DA VIAGEM SÃO ENDEREÇO ────────────────────────
+  // O servidor avisa o `parentUid` gravado em `rides/{dia}`.
+  checar('S6', 'tio1 grava na viagem o uid de uma familia alheia', 'NEGA',
+    await escrever('children/kid1/rides/2026-10-03', tio1, {
+      dateKey: S('2026-10-03'), childId: S('kid1'), adminUid: S(tio1.uid),
+      parentUid: S('familiaAlheia'), atualizadoEm: T(0),
+    }));
+  checar('S6', 'nem se assina como outro motorista', 'NEGA',
+    await escrever('children/kid1/rides/2026-10-03', tio1, {
+      dateKey: S('2026-10-03'), childId: S('kid1'), adminUid: S(tio2.uid),
+      parentUid: S(pai1.uid), atualizadoEm: T(0),
+    }));
+  checar('pos', 'a viagem com a familia da crianca passa', 'PASSA',
+    await escrever('children/kid1/rides/2026-10-03', tio1, {
+      dateKey: S('2026-10-03'), childId: S('kid1'), adminUid: S(tio1.uid),
+      parentUid: S(pai1.uid), atualizadoEm: T(0),
+    }));
+
+  // ── S5. FALTA E "QUEM BUSCA" SÓ NA CRIANÇA DA TURMA, NO ID DELA ────────
+  const dia = '2026-10-05';
+  checar('S5', 'novato marca falta na crianca do tio1 (adminUid dele)', 'NEGA',
+    await criar('absenceDeclarations', `${dia}_kid1`, novato, {
+      adminUid: S(novato.uid), childId: S('kid1'), dateKey: S(dia), declaredBy: S('admin'),
+    }));
+  checar('S5', '... e a mae do tio1 nao ve falta nenhuma la', 'PASSA',
+    (await ler(`absenceDeclarations/${dia}_kid1`, pai1)) === 404 ? 200 : 403);
+  checar('S5', 'o motorista marca falta num id inventado', 'NEGA',
+    await criar('absenceDeclarations', `qualquer_${Date.now()}`, tio1, {
+      adminUid: S(tio1.uid), childId: S('kid1'), dateKey: S(dia), declaredBy: S('admin'),
+    }));
+  checar('pos', 'o motorista marca falta na crianca dele, no id do dia', 'PASSA',
+    await criar('absenceDeclarations', `${dia}_kid1`, tio1, {
+      adminUid: S(tio1.uid), childId: S('kid1'), dateKey: S(dia), declaredBy: S('admin'),
+    }));
+  checar('S5', 'e nao muda a falta de crianca depois', 'NEGA',
+    await escrever(`absenceDeclarations/${dia}_kid1`, tio1, { childId: S('kid2') }, ['childId']));
+
+  checar('S5', 'novato indica "quem busca" na crianca do tio1', 'NEGA',
+    await criar('altPickups', `${dia}_kid1`, novato, {
+      adminUid: S(novato.uid), childId: S('kid1'), dateKey: S(dia),
+      name: S('Estranho'), phone: S('11900000000'),
+    }));
+  checar('S5', '... e a mae nao ve estranho nenhum la', 'PASSA',
+    (await ler(`altPickups/${dia}_kid1`, pai1)) === 404 ? 200 : 403);
+  checar('S5', 'a mae manda o "quem busca" para outro motorista', 'NEGA',
+    await criar('altPickups', `${dia}_kid1`, pai1, {
+      adminUid: S(tio2.uid), childId: S('kid1'), dateKey: S(dia),
+      name: S('Vovo'), phone: S('11911112222'),
+    }));
+  checar('pos', 'a mae indica a avo, para o motorista da crianca', 'PASSA',
+    await criar('altPickups', `${dia}_kid1`, pai1, {
+      adminUid: S(tio1.uid), childId: S('kid1'), dateKey: S(dia),
+      name: S('Vovo'), phone: S('11911112222'),
+    }));
+  checar('pos', 'o motorista indica na crianca dele, no id do dia', 'PASSA',
+    await criar('altPickups', `2026-10-06_kid1`, tio1, {
+      adminUid: S(tio1.uid), childId: S('kid1'), dateKey: S('2026-10-06'),
+      name: S('Tia'), phone: S('11922223333'),
+    }));
+
+  // ── O CADERNO: recado de UMA criança ───────────────────────────────────
+  checar('agenda', 'tio2 escreve recado no caderno da mae do tio1', 'NEGA',
+    await criar('agendaEntries', 'ag-S-' + Date.now(), tio2, {
+      scope: S('child'), adminUid: S(tio2.uid), childId: S('kid1'),
+      parentUid: S(pai1.uid), message: S('Pague no meu PIX'), createdAt: T(0),
+    }));
+  checar('agenda', 'nem pela crianca DELE, endereçado a ela', 'NEGA',
+    await criar('agendaEntries', 'ag-S2-' + Date.now(), tio2, {
+      scope: S('child'), adminUid: S(tio2.uid), childId: S('kid2'),
+      parentUid: S(pai1.uid), message: S('Pague no meu PIX'), createdAt: T(0),
+    }));
+  // O que já estava plantado antes da correção também não é lido.
+  await semear('agendaEntries/ag-plantado', {
+    scope: S('child'), adminUid: S(tio2.uid), childId: S('kid2'),
+    parentUid: S(pai1.uid), message: S('plantado'), createdAt: T(0),
+  });
+  checar('agenda', 'a mae nao le o recado plantado por outro motorista', 'NEGA',
+    await ler('agendaEntries/ag-plantado', pai1));
+  checar('pos', 'o motorista escreve recado na crianca dele', 'PASSA',
+    await criar('agendaEntries', 'ag-ok-' + Date.now(), tio1, {
+      scope: S('child'), adminUid: S(tio1.uid), childId: S('kid1'),
+      parentUid: S(pai1.uid), message: S('Levar agasalho'), createdAt: T(0),
+    }));
+  await semear('agendaEntries/ag-legit', {
+    scope: S('child'), adminUid: S(tio1.uid), childId: S('kid1'),
+    parentUid: S(pai1.uid), message: S('recado'), createdAt: T(0),
+  });
+  checar('pos', 'e a mae le o recado do motorista dela', 'PASSA',
+    await ler('agendaEntries/ag-legit', pai1));
+  // A CONSULTA do caderno precisa provar o motorista — sem `adminUid`, o
+  // Firestore recusa a consulta inteira (é o que o cliente precisa mudar).
+  const caderno = (comMotorista) => {
+    const filters = [
+      { fieldFilter: { field: { fieldPath: 'scope' }, op: 'EQUAL', value: S('child') } },
+      { fieldFilter: { field: { fieldPath: 'parentUid' }, op: 'EQUAL', value: S(pai1.uid) } },
+    ];
+    if (comMotorista) {
+      filters.push({ fieldFilter: { field: { fieldPath: 'adminUid' }, op: 'EQUAL', value: S(tio1.uid) } });
+    }
+    return fetch(`${FS}:runQuery`, {
+      method: 'POST', headers: H(pai1),
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'agendaEntries' }],
+          where: { compositeFilter: { op: 'AND', filters } },
+          limit: 50,
+        },
+      }),
+    }).then((r) => r.status);
+  };
+  checar('agenda', 'a consulta do caderno SEM o motorista e recusada', 'NEGA', await caderno(false));
+  checar('pos', 'a consulta do caderno provando o motorista carrega', 'PASSA', await caderno(true));
+
+  // ── A BUZINA: a família só responde ────────────────────────────────────
+  await semear('pendingCalls/pcS', {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childId: S('kid1'),
+    childName: S('Ana'), momento: S('buscar'), status: S('ringing'),
+  });
+  checar('buzina', 'a mae reescreve o texto da buzina', 'NEGA',
+    await escrever('pendingCalls/pcS', pai1, { childName: S('Outro nome') }, ['childName']));
+  checar('buzina', 'nem a faz tocar de novo', 'NEGA',
+    await escrever('pendingCalls/pcS', pai1, { status: S('ringing') }, ['status']));
+  checar('pos', 'a mae responde "estou indo"', 'PASSA',
+    await escrever('pendingCalls/pcS', pai1,
+      { status: S('acknowledged'), acknowledgedAt: T(0) }, ['status', 'acknowledgedAt']));
+  checar('pos', 'e encerra', 'PASSA',
+    await escrever('pendingCalls/pcS', pai1,
+      { status: S('resolved'), resolvedAt: T(0), resolvedBy: S('parent') },
+      ['status', 'resolvedAt', 'resolvedBy']));
+
+  // ── URL DO NOSSO BUCKET ────────────────────────────────────────────────
+  const NOSSO = 'https://firebasestorage.googleapis.com/v0/b/alobuzinou-be81f.firebasestorage.app/o/childPhotos%2Fkid1?alt=media';
+  const ALHEIO = 'https://firebasestorage.googleapis.com/v0/b/projeto-qualquer.appspot.com/o/x.jpg?alt=media';
+  checar('url', 'a mae poe na crianca a foto de outro bucket', 'NEGA',
+    await escrever('children/kid1', pai1, { photoURL: S(ALHEIO) }, ['photoURL']));
+  checar('url', 'nem de um site qualquer', 'NEGA',
+    await escrever('children/kid1', pai1, { photoURL: S('https://exemplo.com/a.jpg') }, ['photoURL']));
+  checar('pos', 'a foto do nosso bucket passa', 'PASSA',
+    await escrever('children/kid1', pai1, { photoURL: S(NOSSO) }, ['photoURL']));
+  checar('pos', 'e tirar a foto (avatar gerado) passa', 'PASSA',
+    await escrever('children/kid1', pai1, { photoURL: { nullValue: null } }, ['photoURL']));
+
+  await semear('payments/pagS', {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childId: S('kid1'),
+    month: S('2026-10'), amount: N(300), status: S('pending'),
+  });
+  checar('url', 'a mae avisa que pagou com comprovante de outro bucket', 'NEGA',
+    await escrever('payments/pagS', pai1,
+      { status: S('claimed'), receiptURL: S(ALHEIO) }, ['status', 'receiptURL']));
+  checar('url', 'o motorista anexa comprovante de outro bucket', 'NEGA',
+    await escrever('payments/pagS', tio1, { receiptURL: S(ALHEIO) }, ['receiptURL']));
+  checar('pos', 'a mae avisa com o comprovante do nosso bucket', 'PASSA',
+    await escrever('payments/pagS', pai1,
+      { status: S('claimed'), receiptURL: S(NOSSO) }, ['status', 'receiptURL']));
+
+  // ── O DEPOIMENTO NASCE ESCONDIDO (decisão do dono) ─────────────────────
+  const depo = (extra = {}) => ({
+    uid: S(pai1.uid), role: S('parent'), version: S('1.0.0'),
+    answers: { mapValue: { fields: { rating: N(5) } } },
+    comment: S('Muito bom'), allowTestimonial: B(true), hiddenByOwner: B(true),
+    allowPhoto: B(false), authorFirstName: S('Pai'), authorPhotoURL: { nullValue: null },
+    ...extra,
+  });
+  checar('depo', 'o depoimento nasce publicado na home', 'NEGA',
+    await criarComHoraDoServidor('feedbacks/depo-pub', pai1, depo({ hiddenByOwner: B(false) }), 'createdAt'));
+  checar('depo', 'a mae assina como "motorista"', 'NEGA',
+    await criarComHoraDoServidor('feedbacks/depo-papel', pai1, depo({ role: S('admin') }), 'createdAt'));
+  checar('depo', 'nem com campo de fora (nome completo, telefone)', 'NEGA',
+    await criarComHoraDoServidor('feedbacks/depo-extra', pai1, depo({ telefone: S('11999990000') }), 'createdAt'));
+  checar('depo', 'nem com um texto do tamanho de um livro', 'NEGA',
+    await criarComHoraDoServidor('feedbacks/depo-longo', pai1, depo({ comment: S('x'.repeat(1001)) }), 'createdAt'));
+  checar('pos', 'o depoimento escondido nasce', 'PASSA',
+    await criarComHoraDoServidor('feedbacks/depo-ok', pai1, depo(), 'createdAt'));
+  checar('pos', 'e o dono o publica', 'PASSA',
+    await escrever('feedbacks/depo-ok', dono, { hiddenByOwner: B(false) }, ['hiddenByOwner']));
+
+  // ── O CHAMADO: lista fechada, nasce aberto ─────────────────────────────
+  const chamado = (extra = {}) => ({
+    uid: S(pai1.uid), role: S('parent'), version: S('1.0.0'), category: S('bug'),
+    description: S('O mapa nao abre'),
+    deviceInfo: { mapValue: { fields: { userAgent: S('x'), platform: S('y') } } },
+    status: S('open'), createdAt: T(0), ...extra,
+  });
+  checar('chamado', 'o chamado nasce "fechado" (some da caixa do dono)', 'NEGA',
+    await criar('supportTickets', 'ch-fechado', pai1, chamado({ status: S('closed') })));
+  checar('chamado', 'nem com campo de fora', 'NEGA',
+    await criar('supportTickets', 'ch-extra', pai1, chamado({ prioridade: S('urgente') })));
+  checar('chamado', 'nem com um megabyte de texto', 'NEGA',
+    await criar('supportTickets', 'ch-longo', pai1, chamado({ description: S('x'.repeat(2001)) })));
+  checar('pos', 'o chamado com o payload real abre', 'PASSA',
+    await criar('supportTickets', 'ch-ok', pai1, chamado()));
 }
 
 /**
