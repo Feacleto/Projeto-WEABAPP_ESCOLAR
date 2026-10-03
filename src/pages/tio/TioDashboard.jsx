@@ -27,6 +27,7 @@ import ControleDeRota from '../../components/route/ControleDeRota';
 import ResumoDaTurma from '../../components/tio/ResumoDaTurma';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
+import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
 import { useEscolas } from '../../hooks/useEscolas';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useAbsences } from '../../hooks/useAbsences';
@@ -125,6 +126,11 @@ export default function TioDashboard() {
   const navigate = useNavigate();
   const { openTutorial } = useOutletContext() || {};
   const { children, loading: carregandoCriancas } = useChildren();
+  const { pedidos } = usePedidosDeAcesso('motorista');
+  const pedidosAbertos = useMemo(
+    () => pedidos.filter((p) => p.status === 'aguardando'),
+    [pedidos]
+  );
   const { mapa: escolasPorId, escolas } = useEscolas();
   const { payments } = usePaymentsByMonth(getCurrentMonthKey());
   const todayKey = getDateKey();
@@ -335,6 +341,34 @@ export default function TioDashboard() {
       ? `Próxima viagem · ${bloco.direcao === 'ida' ? 'ida' : 'volta'}`
       : 'Sua turma';
 
+  // A VIAGEM NO CARTÃO VERDE (design system, 03/10/2026): nome, intervalo das
+  // paradas combinadas, escolas e os rostos de quem vai — quem está fora hoje
+  // (falta, o pai leva ou busca) fica na mesma fila, apagado. Sem viagem
+  // pendente, o cartão volta a contar a turma.
+  const viagemDoCartao = useMemo(() => {
+    if (!bloco || !pendentes.length) return null;
+    const ini = horaCurta(deMinutos(bloco.inicio));
+    const fim = horaCurta(deMinutos(bloco.fim));
+    const rostos = bloco.paradas.map((p) => ({
+      child: p.child,
+      fora: !precisaDaPerua(p.estado),
+    }));
+    return {
+      titulo: bloco.direcao === 'ida' ? 'Levando pra escola' : 'Trazendo pra casa',
+      horario: bloco.fim > bloco.inicio ? `${ini} → ${fim}` : ini,
+      escolas: bloco.escolas?.length || 0,
+      rostos,
+      vao: rostos.filter((r) => !r.fora).length,
+      faltam: rostos.filter((r) => r.fora).length,
+    };
+  }, [bloco, pendentes.length]);
+  const linhaDaViagem =
+    faltamMin > 1
+      ? `Começa daqui a ${formataEspera(faltamMin)}.`
+      : faltamMin >= 0
+        ? 'Começa agora.'
+        : null;
+
   const primeiroNome =
     profile?.marcaNome?.trim() || profile?.name?.split(' ')[0] || 'Tio';
 
@@ -463,7 +497,8 @@ export default function TioDashboard() {
               rotulo={rotuloDaTurma}
               criancas={children.length}
               escolas={escolas.length}
-              linha={linhaDaTurma}
+              viagem={viagemDoCartao}
+              linha={viagemDoCartao ? linhaDaViagem : linhaDaTurma}
             >
               {estado === 'vazio' ? (
                 <button
@@ -502,10 +537,28 @@ export default function TioDashboard() {
           </div>
         )}
 
-        {/* Um responsável sem o link pediu acesso a uma criança dele. Fica
-          * acima de tudo — fora da rota — porque a mãe está esperando do
-          * outro lado, com o app travado até ele responder. */}
-        {estado !== 'dirigindo' && <PedidosDeAcesso className="px-5 pt-4" />}
+        {/* PARA RESOLVER — um bloco só, com o número (design system,
+          * 03/10/2026). Os pedidos de acesso ficavam soltos no topo e as
+          * outras pendências só apareciam ENTRE viagens; agora tudo o que
+          * pede um toque dele mora aqui, em qualquer momento fora da rota.
+          * O pedido de acesso vem primeiro: a mãe está esperando do outro
+          * lado, com o app travado até ele responder. */}
+        {estado !== 'dirigindo' && estado !== 'carregando' && (
+          <ParaResolver
+            className="px-5 pt-5"
+            pedidos={pedidosAbertos}
+            criancas={children}
+            semHorario={semHorario.length}
+            convitesAbertos={convitesAbertos}
+            atrasados={atrasados}
+            marcados={marcados}
+            ausentes={absences.length}
+            onHorarios={() => navigate('/tio/horarios')}
+            onCriancas={() => navigate('/tio/children')}
+            onFinanceiro={() => navigate('/tio/finance')}
+            onAusentes={() => setListaAusentesOpen(true)}
+          />
+        )}
 
         {estado === 'carregando' && (
           <div className="px-5 pt-4 space-y-3">
@@ -531,17 +584,6 @@ export default function TioDashboard() {
         {estado === 'entre' && (
           <div className="px-5 pt-4 space-y-4">
 
-            <Pendencias
-              semHorario={semHorario.length}
-              convitesAbertos={convitesAbertos}
-              atrasados={atrasados}
-              marcados={marcados}
-              ausentes={absences.length}
-              onHorarios={() => navigate('/tio/horarios')}
-              onCriancas={() => navigate('/tio/children')}
-              onFinanceiro={() => navigate('/tio/finance')}
-              onAusentes={() => setListaAusentesOpen(true)}
-            />
 
             <ReviewNudge />
 
@@ -725,70 +767,87 @@ function ParadaEscola({ escolas }) {
 /* ─────────────── pendências do intervalo ─────────────── */
 
 /**
- * O que dá pra resolver enquanto a perua está parada.
+ * PARA RESOLVER — o que pede um toque dele, com o número no título.
  *
  * Só aparece o que EXISTE. Uma lista de pendências que mostra zeros é uma
- * lista que ele aprende a não ler.
+ * lista que ele aprende a não ler. A ordem é de quem está esperando: o pedido
+ * de acesso (a mãe com o app travado), o dinheiro que alguém disse ter
+ * mandado, o atraso, e só depois o que é cadastro.
+ *
+ * Âmbar porque é aviso — algo para atender (design system, regra 1).
  */
-function Pendencias({
+function ParaResolver({
+  className = '',
+  pedidos, criancas,
   semHorario, convitesAbertos, atrasados, marcados, ausentes,
   onHorarios, onCriancas, onFinanceiro, onAusentes,
 }) {
   const itens = [];
+  if (marcados > 0) {
+    itens.push({
+      icon: AlertTriangle,
+      titulo: marcados === 1 ? '1 família avisou que pagou' : `${marcados} famílias avisaram que pagaram`,
+      sub: 'Confira se caiu e dê baixa',
+      onClick: onFinanceiro,
+    });
+  }
+  if (atrasados > 0) {
+    itens.push({
+      icon: CircleAlert,
+      titulo: `${atrasados} ${atrasados === 1 ? 'mensalidade atrasada' : 'mensalidades atrasadas'}`,
+      sub: 'Ver no financeiro',
+      onClick: onFinanceiro,
+    });
+  }
   if (semHorario > 0) {
     itens.push({
       icon: Clock,
-      texto: `${semHorario} ${semHorario === 1 ? 'criança sem horário confirmado' : 'crianças sem horário confirmado'}`,
+      titulo: `${semHorario} ${semHorario === 1 ? 'criança sem horário' : 'crianças sem horário'}`,
+      sub: 'Sem horário, a criança não entra na rota',
       onClick: onHorarios,
     });
   }
   if (convitesAbertos > 0) {
     itens.push({
       icon: MailWarning,
-      texto: `${convitesAbertos} ${convitesAbertos === 1 ? 'responsável ainda não entrou' : 'responsáveis ainda não entraram'} no app`,
+      titulo: `${convitesAbertos} ${convitesAbertos === 1 ? 'família ainda não entrou' : 'famílias ainda não entraram'}`,
+      sub: 'Mande o convite de novo',
       onClick: onCriancas,
-    });
-  }
-  if (atrasados > 0) {
-    itens.push({
-      icon: CircleAlert,
-      texto: `${atrasados} ${atrasados === 1 ? 'pagamento atrasado' : 'pagamentos atrasados'}`,
-      onClick: onFinanceiro,
-    });
-  }
-  if (marcados > 0) {
-    itens.push({
-      icon: AlertTriangle,
-      texto: `${marcados} ${marcados === 1 ? 'pai marcou pagamento' : 'pais marcaram pagamento'} — confirmar`,
-      onClick: onFinanceiro,
     });
   }
   if (ausentes > 0) {
     itens.push({
       icon: Users,
-      texto: `${ausentes} ${ausentes === 1 ? 'falta declarada hoje' : 'faltas declaradas hoje'}`,
+      titulo: `${ausentes} ${ausentes === 1 ? 'falta avisada hoje' : 'faltas avisadas hoje'}`,
+      sub: 'Ver quem não vai',
       onClick: onAusentes,
     });
   }
-  if (!itens.length) return null;
+  const total = pedidos.length + itens.length;
+  if (!total) return null;
 
   return (
-    <section className="space-y-2">
-      <p className="rotulo px-1">
-        enquanto isso
+    <section className={`space-y-2.5 ${className}`}>
+      <p className="rotulo flex items-center justify-between px-1">
+        <span>para resolver</span>
+        <span className="tabular-nums">{total}</span>
       </p>
+      <PedidosDeAcesso pedidos={pedidos} criancas={criancas} />
       {itens.map((i) => (
         <button
-          key={i.texto}
+          key={i.titulo}
           type="button"
           onClick={i.onClick}
-          className="tap w-full text-left bg-warningSoft border border-warningBorder rounded-xl px-3 py-2.5 flex items-center gap-2.5"
+          className="tap flex w-full items-center gap-3 rounded-2xl border border-warningBorder bg-warningSoft p-3.5 text-left"
         >
-          <i.icon size={16} className="text-warningText shrink-0" />
-          <span className="flex-1 min-w-0 text-[13px] font-semibold text-warningText">
-            {i.texto}
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warningChip text-warningText">
+            <i.icon size={19} />
           </span>
-          <ChevronRight size={16} className="text-warningText shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-text">{i.titulo}</span>
+            <span className="block text-xs text-textBody">{i.sub}</span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-warningText" />
         </button>
       ))}
     </section>

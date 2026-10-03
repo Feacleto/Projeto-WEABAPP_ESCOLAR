@@ -31,6 +31,7 @@ import { updateChild } from '../services/childrenService';
 import EditarOndeSheet from '../components/children/EditarOndeSheet';
 import CartaoDoCombinado from '../components/contract/CartaoDoCombinado';
 import EditarResponsavelSheet from '../components/children/EditarResponsavelSheet';
+import EditarNotasSheet from '../components/children/EditarNotasSheet';
 import TelefoneDaEscola from '../components/children/TelefoneDaEscola';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
@@ -99,6 +100,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
   const { child, loading } = useChild(childId);
   const [editandoOnde, setEditandoOnde] = useState(false);
   const [editandoResponsavel, setEditandoResponsavel] = useState(false);
+  const [editandoNotas, setEditandoNotas] = useState(false);
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -382,16 +384,37 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           <AcessoDeUmDia child={child} />
         </Card>
 
-        {/* Observações */}
-        {child.notes && (
+        {/* OBSERVAÇÕES DA PARADA — "portão de trás", "tocar o interfone".
+          * É o texto que a rota mostra na parada da criança, na hora em que a
+          * perua encosta. Até 03/10/2026 só dava para escrever no cadastro:
+          * o motorista que descobria o portão lateral na segunda semana não
+          * tinha onde anotar. Agora ele escreve e muda aqui. */}
+        {(child.notes || isAdmin) && (
           <Card className="space-y-2">
-            <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-              <StickyNote size={16} className="text-primary" />
-              Observações
-            </h3>
-            <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">
-              {child.notes}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-text flex items-center gap-2">
+                <StickyNote size={16} className="text-primary" />
+                Observações da parada
+              </h3>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setEditandoNotas(true)}
+                  className="tap inline-flex items-center gap-1 p-1 text-xs font-semibold text-primary"
+                >
+                  <Pencil size={14} /> {child.notes ? 'Mudar' : 'Escrever'}
+                </button>
+              )}
+            </div>
+            {child.notes ? (
+              <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">
+                {child.notes}
+              </p>
+            ) : (
+              <p className="text-sm text-textMuted">
+                Aparece na rota, na parada desta criança. Ex.: portão de trás.
+              </p>
+            )}
           </Card>
         )}
 
@@ -448,6 +471,15 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           open={editandoOnde}
           child={child}
           onClose={() => setEditandoOnde(false)}
+        />
+      )}
+
+      {isAdmin && (
+        <EditarNotasSheet
+          key={`${child.notes || ''}-${editandoNotas}`}
+          open={editandoNotas}
+          child={child}
+          onClose={() => setEditandoNotas(false)}
         />
       )}
 
