@@ -24,7 +24,7 @@
     "testar:buzina": "node scripts/testar-buzina.mjs",
     "testar:notificacoes": "node scripts/testar-notificacoes.mjs",
     "testar:comentario-na-tela": "node scripts/testar-comentario-na-tela.mjs",
-    "testar": "npm run testar:imports && npm run testar:horarios && npm run testar:viagem && npm run testar:faltas && npm run testar:endereco && npm run testar:aviso && npm run testar:proximidade && npm run testar:buzina && npm run testar:notificacoes && npm run testar:comentario-na-tela && npm run testar:vazamento && npm run testar:contraste && npm run testar:design && npm run testar:dinheiro && npm run testar:travessia && npm run testar:contrato && npm run testar:combinado && npm run testar:pix && npm run testar:brcode && npm run testar:status && npm run testar:auth && npm run testar:trial && npm run testar:planos && npm run testar:avisos && npm run testar:preferencias && npm run testar:multa && npm run testar:encerramento && npm run testar:conta && npm run testar:cobranca && npm run testar:gateway && npm run testar:carteira && npm run testar:proposta && npm run testar:chamados && npm run testar:risco && npm run testar:fila && npm run testar:concessao && npm run testar:selo && npm run testar:indicacao && npm run testar:irmaos && npm run testar:origem && npm run testar:abas && npm run testar:acompanhamento && npm run testar:avisos-do-dia && npm run testar:transacoes && npm run testar:fundo && npm run testar:busca && npm run testar:site && npm run testar:tutorial && npm run testar:mapa && npm run testar:modulos",
+    "testar": "npm run testar:imports && npm run testar:horarios && npm run testar:viagem && npm run testar:costume && npm run testar:faltas && npm run testar:endereco && npm run testar:aviso && npm run testar:proximidade && npm run testar:buzina && npm run testar:notificacoes && npm run testar:comentario-na-tela && npm run testar:vazamento && npm run testar:contraste && npm run testar:design && npm run testar:dinheiro && npm run testar:travessia && npm run testar:contrato && npm run testar:combinado && npm run testar:pix && npm run testar:brcode && npm run testar:status && npm run testar:auth && npm run testar:trial && npm run testar:planos && npm run testar:avisos && npm run testar:preferencias && npm run testar:multa && npm run testar:encerramento && npm run testar:conta && npm run testar:cobranca && npm run testar:gateway && npm run testar:carteira && npm run testar:proposta && npm run testar:chamados && npm run testar:risco && npm run testar:fila && npm run testar:concessao && npm run testar:selo && npm run testar:indicacao && npm run testar:irmaos && npm run testar:origem && npm run testar:abas && npm run testar:acompanhamento && npm run testar:avisos-do-dia && npm run testar:transacoes && npm run testar:fundo && npm run testar:busca && npm run testar:site && npm run testar:tutorial && npm run testar:mapa && npm run testar:modulos",
     "testar:contraste": "node scripts/testar-contraste.mjs",
     "testar:design": "node scripts/testar-design.mjs",
     "tokens": "node scripts/gerar-tokens.mjs",
@@ -67,7 +67,8 @@
     "testar:encerramento": "node scripts/testar-encerramento.mjs",
     "testar:tutorial": "node scripts/testar-tutorial.mjs",
     "testar:modulos": "node scripts/testar-modulos.mjs",
-    "testar:dinheiro": "node scripts/testar-dinheiro.mjs"
+    "testar:dinheiro": "node scripts/testar-dinheiro.mjs",
+    "testar:costume": "node scripts/testar-costume.mjs"
   },
   "dependencies": {
     "firebase": "^12.12.1",

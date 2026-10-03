@@ -6,6 +6,10 @@ import {
   deleteField,
   setDoc,
   writeBatch,
+  getDocs,
+  query,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { precisaDaPerua } from '../dominio/rota/horarios';
@@ -52,8 +56,16 @@ function refDaViagem(childId, dateKey) {
  * status, onde o veículo do motorista estava na hora da marcação. Saiu por
  * decisão do dono em 11/09/2026: **o registro é que entregou e a que horas,
  * e nada sobre onde.** Ver o bloco em `routeStatusService`.
+ *
+ * ⚠️ O EMBARQUE EM CASA TEM MARCO PRÓPRIO (03/10/2026). `onboard` é o
+ * MESMO campo na ida (embarca em casa) e na volta (embarca na escola), então
+ * o embarque da tarde apagava a hora do embarque da manhã — justamente a que
+ * varia e que o horário médio precisa. Quando a criança sai de `home`, a
+ * hora vai também para `embarqueEmCasa`. (A chegada em casa não precisa:
+ * `delivered` só acontece lá.) Fica dentro de `marcos`, que as rules já
+ * aceitam — nenhum campo novo no topo do documento.
  */
-export function anotarMarco(batch, { childId, dateKey, status, contexto = {} }) {
+export function anotarMarco(batch, { childId, dateKey, status, statusAnterior = null, contexto = {} }) {
   if (!childId || !dateKey || !MARCOS.includes(status)) return;
 
   batch.set(
@@ -63,7 +75,12 @@ export function anotarMarco(batch, { childId, dateKey, status, contexto = {} }) 
       childId,
       adminUid: contexto.adminUid || null,
       parentUid: contexto.parentUid || null,
-      marcos: { [status]: serverTimestamp() },
+      marcos: {
+        [status]: serverTimestamp(),
+        ...(status === 'onboard' && statusAnterior === 'home'
+          ? { embarqueEmCasa: serverTimestamp() }
+          : {}),
+      },
       ...(contexto.combinado ? { combinado: contexto.combinado } : {}),
       atualizadoEm: serverTimestamp(),
     },
@@ -107,11 +124,15 @@ export async function publicarPrevisoes({ previsoes, dateKey, adminUid }) {
  * e hora andam juntos, senão o dia diria "entregue às 7h12" de quem voltou
  * para a perua.
  */
-export function apagarMarco(batch, { childId, dateKey, status }) {
+export function apagarMarco(batch, { childId, dateKey, status, anterior = null }) {
   if (!childId || !dateKey || !MARCOS.includes(status)) return;
+  // Desfazer o embarque EM CASA apaga também o marco dele; desfazer o da
+  // escola não, senão a hora da manhã sumiria junto.
+  const embarqueEmCasa =
+    status === 'onboard' && anterior === 'home' ? { embarqueEmCasa: deleteField() } : {};
   batch.set(
     refDaViagem(childId, dateKey),
-    { marcos: { [status]: deleteField() }, atualizadoEm: serverTimestamp() },
+    { marcos: { [status]: deleteField(), ...embarqueEmCasa }, atualizadoEm: serverTimestamp() },
     { merge: true }
   );
 }
@@ -249,4 +270,23 @@ export function horaDoMarco(ride, status) {
   const d = v?.toDate?.() || (v instanceof Date ? v : null);
   if (!d) return null;
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * AS ÚLTIMAS VIAGENS DE UMA CRIANÇA — a matéria do horário de costume
+ * (`dominio/rota/horarioDeCostume.js`). Leitura ÚNICA, não escuta: hábito não
+ * muda no meio da tela aberta, e uma assinatura por ficha aberta seria leitura
+ * permanente para um número que se recalcula na próxima abertura. Quarenta
+ * dias letivos cabem folgados nos 60 de retenção.
+ */
+export async function lerViagensRecentes(childId, quantas = 40) {
+  if (!childId) return [];
+  const snap = await getDocs(
+    query(
+      collection(doc(db, 'children', childId), 'rides'),
+      orderBy('dateKey', 'desc'),
+      limit(quantas)
+    )
+  );
+  return snap.docs.map((d) => d.data());
 }

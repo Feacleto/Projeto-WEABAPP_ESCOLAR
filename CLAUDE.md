@@ -23,11 +23,11 @@ npm run testar                   # 49 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
-                                 # horarios, viagem, faltas, endereco, aviso,
+                                 # horarios, viagem, costume, faltas, endereco, aviso,
                                  # proximidade, buzina, notificacoes,
                                  # comentario-na-tela (nenhum `/* */` sem
                                  # chaves vira texto na tela),
-                                 # vazamento, contraste, design,
+                                 # vazamento, contraste, design, dinheiro,
                                  # travessia,
                                  # contrato, combinado,
                                  # pix, brcode,
@@ -493,6 +493,15 @@ tempo alguém esperou) estava medido, guardado e invisível. `diasAteResponder`
 ([chamados.js](src/dominio/suporte/chamados.js)) o lê, e ele **nunca responde
 junto** com `diasEsperando`: um é dívida, o outro é histórico.
 
+⚠️ **O CHAMADO VIROU WHATSAPP (03/10/2026, pedido do dono).**
+[SupportSheet](src/components/support/SupportSheet.jsx): a pessoa toca no
+problema, lê a mensagem pronta (`mensagemDoChamado` em
+[chamados.js](src/dominio/suporte/chamados.js) — nome, papel, e-mail da conta,
+aparelho, versão) e abre o WhatsApp de `config/developer.js`. Nada é
+obrigatório digitar. O `supportTickets` **continua sendo gravado** no mesmo
+toque, sem `await` antes do link (senão o navegador bloqueia a aba), e é o que
+mantém a aba Chamados do dono.
+
 Os dois dinheiros são contextos SEPARADOS de propósito — misturá-los quebra o
 item 7 dos Termos, e a separação em pastas é o que torna a mistura visível
 antes de ela virar código.
@@ -547,6 +556,15 @@ outra coleção e não tem prazo.
 rodou num dia. O calendário mostra o que foi AVISADO, e confessa isso na
 própria tela — fechar esse buraco ("não avisou e não desceu") só é possível
 dentro da janela de retenção.
+
+⚠️ **O EMBARQUE EM CASA TEM MARCO PRÓPRIO, `marcos.embarqueEmCasa`** (03/10/2026).
+`onboard` é o mesmo campo na ida (em casa) e na volta (na escola), e o da
+tarde apagava o da manhã. Com ele e com `delivered` (que só acontece em casa)
+sai o **horário de costume** que motorista e família veem na ficha da
+criança — [horarioDeCostume.js](src/dominio/rota/horarioDeCostume.js),
+`npm run testar:costume`: MEDIANA (o dia em que a criança passou mal e voltou
+às 7h não puxa o número) e piso de três viagens. Vive dentro de `marcos`,
+que as rules já aceitam.
 
 ⚠️ **O CHECKPOINT GUARDA A DISTÂNCIA, NUNCA A COORDENADA DO MOTORISTA.**
 `checkpointFrom` ([routeStatusService.js](src/services/routeStatusService.js))

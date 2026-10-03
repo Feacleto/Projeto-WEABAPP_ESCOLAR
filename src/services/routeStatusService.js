@@ -93,6 +93,7 @@ export async function advanceChild(childId, nextStatus, context = null) {
       childId,
       dateKey: context.dateKey,
       status: nextStatus,
+      statusAnterior: context.statusAnterior || null,
       contexto: {
         adminUid: context.adminUid,
         parentUid: context.parentUid,
@@ -163,7 +164,7 @@ export async function voltarPasso({ childId, statusAtual, anterior, dateKey }) {
     status: anterior,
     statusUpdatedAt: serverTimestamp(),
   });
-  apagarMarco(batch, { childId, dateKey, status: statusAtual });
+  apagarMarco(batch, { childId, dateKey, status: statusAtual, anterior });
   await gravarSemTravar(batch);
   playSound('status_change');
 }
@@ -225,6 +226,7 @@ export async function advanceMany(moves, context = null) {
           childId: m.childId,
           dateKey: context.dateKey,
           status: m.nextStatus,
+          statusAnterior: m.statusAnterior || null,
           contexto: {
             adminUid: context.adminUid,
             parentUid: m.parentUid,

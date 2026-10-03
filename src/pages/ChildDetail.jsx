@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { horariosCombinados, horaCurta } from '../dominio/rota/horarios';
+import { horaFalada } from '../dominio/rota/horarioDeCostume.js';
+import { useCostumeDaCrianca } from '../hooks/useCostumeDaCrianca';
 import { faltasDoMes, resumoDeFaltas } from '../dominio/rota/faltas';
 import {
   addMonths,
@@ -98,6 +100,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
   // seletor de filho, que não depende de nenhum dos dois.
   const childId = childIdProp || (isAdmin ? id : activeChildId);
   const { child, loading } = useChild(childId);
+  const costume = useCostumeDaCrianca(childId);
   const [editandoOnde, setEditandoOnde] = useState(false);
   const [editandoResponsavel, setEditandoResponsavel] = useState(false);
   const [editandoNotas, setEditandoNotas] = useState(false);
@@ -220,6 +223,22 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
                 label="Chega em casa"
                 value={horaCurta(horariosCombinados(child).entrega)}
               />
+              {/* O QUE ACONTECE DE VERDADE, ao lado do combinado (03/10/2026,
+                * pedido do dono). Os dois lados veem: a família se organiza
+                * pelo costume, e o motorista vê se o combinado ainda é real.
+                * Some enquanto não há viagens bastantes — ver a régua. */}
+              {costume && (costume.embarque != null || costume.chegada != null) && (
+                <p className="rounded-xl bg-surface px-3 py-2.5 text-[13px] leading-snug text-textBody">
+                  <span className="font-semibold text-text">De costume</span>
+                  {costume.embarque != null &&
+                    ` · entra na perua por volta de ${horaFalada(costume.embarque)}`}
+                  {costume.chegada != null &&
+                    ` · chega em casa por volta de ${horaFalada(costume.chegada)}`}
+                  <span className="block text-xs text-textMuted">
+                    Pelas últimas {costume.viagens} viagens
+                  </span>
+                </p>
+              )}
             </>
           )}
 
