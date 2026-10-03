@@ -22,6 +22,13 @@ import {
 } from '../src/dominio/rota/focoDaViagem.js';
 import { getActionForStatus, passoAnterior } from '../src/dominio/rota/acaoDaParada.js';
 import {
+  previsoesParaGravar,
+  emLotes,
+  LOTE_MAXIMO,
+  LIMIAR_DA_PREVISAO_MIN,
+} from '../src/dominio/rota/escritasDaRota.js';
+import { readFileSync } from 'node:fs';
+import {
   pascoa,
   feriadosNacionais,
   diaSemRota,
@@ -253,6 +260,64 @@ console.log('\n═══ DIA SEM ROTA: FIM DE SEMANA E FERIADO NACIONAL ══�
     if (JSON.stringify(feriadosNacionais(ano)) !== JSON.stringify(calServidor.feriadosNacionais(ano))) iguais = false;
   }
   checar('espelho do servidor igual ao do app, 2024 a 2040', true, iguais);
+}
+
+console.log('\n═══ A PREVISÃO SÓ GRAVA O QUE MUDOU (escritasDaRota) ═══');
+{
+  // ⚠️ Gravava TODA criança que espera a cada marcação, num lote só: O(n²)
+  // escritas por rota, e com 19+ crianças o lote estourava o teto de 20 get()
+  // da regra de `rides` e caía inteiro.
+  const D = '2026-10-05';
+  const pv = (childId, previsao, campo = 'previsaoIda') => ({ childId, parentUid: 'p_' + childId, campo, previsao });
+  checar('o limiar é 2 minutos (decisão do dono)', 2, LIMIAR_DA_PREVISAO_MIN);
+
+  const nunca = previsoesParaGravar([pv('a', null), pv('b', null)], {}, D);
+  checar('null de quem NUNCA teve previsão não vira escrita', 0, nunca.escrever.length);
+
+  const primeira = previsoesParaGravar([pv('a', '07:02'), pv('b', null)], {}, D);
+  checar('valor novo sem nada antes grava', ['a'], primeira.escrever.map((x) => x.childId));
+
+  const doisMin = previsoesParaGravar([pv('a', '07:04')], primeira.publicadas, D);
+  checar('mudou 2 min: NÃO grava', 0, doisMin.escrever.length);
+  checar('e a memória continua com o valor gravado', '07:02', doisMin.publicadas[`${D}|a|previsaoIda`]);
+  const umMin = previsoesParaGravar([pv('a', '07:01')], primeira.publicadas, D);
+  checar('mudou 1 min para trás: NÃO grava', 0, umMin.escrever.length);
+
+  const tres = previsoesParaGravar([pv('a', '07:05')], primeira.publicadas, D);
+  checar('mudou 3 min (mais de 2): grava', ['07:05'], tres.escrever.map((x) => x.previsao));
+  const cedo = previsoesParaGravar([pv('a', '06:59')], primeira.publicadas, D);
+  checar('3 min mais cedo também grava', 1, cedo.escrever.length);
+
+  const apagar = previsoesParaGravar([pv('a', null)], primeira.publicadas, D);
+  checar('voltou ao horário: grava o apagar de quem TINHA valor', [{ childId: 'a', previsao: null }],
+    apagar.escrever.map((x) => ({ childId: x.childId, previsao: x.previsao })));
+  checar('e esquece o valor apagado', false, `${D}|a|previsaoIda` in apagar.publicadas);
+  const deNovo = previsoesParaGravar([pv('a', null)], apagar.publicadas, D);
+  checar('apagar duas vezes é escrita uma vez só', 0, deNovo.escrever.length);
+
+  const outraDirecao = previsoesParaGravar([pv('a', '13:10', 'previsaoVolta')], primeira.publicadas, D);
+  checar('a volta tem memória própria (não compara com a ida)', 1, outraDirecao.escrever.length);
+  const outroDia = previsoesParaGravar([pv('a', '07:03')], primeira.publicadas, '2026-10-06');
+  checar('outro dia tem memória própria', 1, outroDia.escrever.length);
+  checar('a memória de entrada não é alterada', { [`${D}|a|previsaoIda`]: '07:02' }, primeira.publicadas);
+
+  // Perua de 20: a primeira entrega com atraso grava as 19 que esperam, em
+  // dois lotes; a seguinte, com o MESMO atraso, não grava nada.
+  const vinte = Array.from({ length: 19 }, (_, i) => pv('c' + i, '07:' + String(10 + i).padStart(2, '0')));
+  const r1 = previsoesParaGravar(vinte, {}, D);
+  checar('19 previsões novas viram 19 escritas', 19, r1.escrever.length);
+  checar('em lotes de no máximo 15', [15, 4], emLotes(r1.escrever).map((l) => l.length));
+  checar('o teto do lote é 15', 15, LOTE_MAXIMO);
+  checar('nenhum lote passa de 15', true, emLotes(Array.from({ length: 47 }), 15).every((l) => l.length <= 15));
+  checar('lista vazia não vira lote', [], emLotes([]));
+  const r2 = previsoesParaGravar(vinte.slice(1), r1.publicadas, D);
+  checar('a marcação seguinte, com o mesmo atraso, não grava nada', 0, r2.escrever.length);
+
+  const fonte = readFileSync(new URL('../src/services/ridesService.js', import.meta.url), 'utf8');
+  const inicio = fonte.indexOf('export async function publicarPrevisoes');
+  const corpo = fonte.slice(inicio, fonte.indexOf('/**', inicio));
+  checar('publicarPrevisoes passa pela régua', true, corpo.includes('previsoesParaGravar('));
+  checar('e escreve em lotes de LOTE_MAXIMO', true, corpo.includes('emLotes(escrever, LOTE_MAXIMO)'));
 }
 
 console.log(`\n${'═'.repeat(64)}\n  ${ok} passaram, ${bad} falharam`);

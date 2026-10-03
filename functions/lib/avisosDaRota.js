@@ -9,7 +9,12 @@ const { onDocumentWritten, onDocumentCreated } = require('firebase-functions/v2/
 const { logger } = require('firebase-functions/v2');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
-const { avisoDeAproximacao, textoDaAproximacao, textoDaBuzina } = require('./reguaDaRotaAoVivo');
+const {
+  avisoDeAproximacao,
+  zonaAnteriorDoDia,
+  textoDaAproximacao,
+  textoDaBuzina,
+} = require('./reguaDaRotaAoVivo');
 const { statusDeHoje } = require('./reguaDosAvisos');
 
 const REGION = 'southamerica-east1';
@@ -22,18 +27,25 @@ async function marcaDoMotorista(db, adminUid) {
   return String(u.marcaNome || '').trim();
 }
 
-/** A faixa da perua mudou em `rides/{dia}` → talvez "está chegando". */
+/**
+ * A faixa da perua mudou em `children/{id}/proximidade/atual` → talvez "está
+ * chegando". ⚠️ Escutava `rides/{dia}`, e acordava a cada marco e a cada
+ * previsão para sair na primeira linha (03/10/2026). O documento próprio só é
+ * escrito quando a faixa MUDA no celular do motorista.
+ */
 function makeAvisarAproximacao(db) {
   return onDocumentWritten(
-    { document: 'children/{childId}/rides/{dia}', region: REGION, maxInstances: LIMITES.GATILHO },
+    { document: 'children/{childId}/proximidade/{doc}', region: REGION, maxInstances: LIMITES.GATILHO },
     async (event) => {
       const antes = event.data && event.data.before && event.data.before.exists
         ? event.data.before.data()
-        : {};
+        : null;
       const depois = event.data && event.data.after && event.data.after.exists
         ? event.data.after.data()
         : null;
-      if (!depois || depois.proximidade === antes.proximidade) return;
+      if (!depois || !depois.zona) return;
+      const anterior = zonaAnteriorDoDia(antes, depois);
+      if (anterior === depois.zona) return;
 
       const childId = event.params.childId;
       const childSnap = await db.doc(`children/${childId}`).get();
@@ -43,8 +55,8 @@ function makeAvisarAproximacao(db) {
 
       const statusDaCrianca = statusDeHoje(crianca, new Date());
       const zona = avisoDeAproximacao({
-        anterior: antes.proximidade || null,
-        atual: depois.proximidade,
+        anterior,
+        atual: depois.zona,
         statusDaCrianca,
       });
       if (!zona) return;

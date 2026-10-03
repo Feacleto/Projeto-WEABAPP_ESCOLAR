@@ -141,6 +141,29 @@ checar('o Início da família não dispara mais o toast antigo', false,
 checar('o mapa da família não tem mais o segundo alerta', false,
   /Tio Nino tá chegando! Pode/.test(ler('src/pages/pai/PaiMap.jsx')));
 
+bloco('4b · A FAIXA EM DOCUMENTO PRÓPRIO — o "anterior" é só do mesmo dia');
+// O documento é um por criança, não por dia: sem esta régua, o "chegou" de
+// ontem seria o "anterior" de hoje, e a primeira faixa do dia poderia avisar.
+checar('mesmo dia: vale a faixa de antes', 'perto',
+  rotaAoVivo.zonaAnteriorDoDia({ zona: 'perto', dateKey: '2026-10-05' }, { zona: 'chegou', dateKey: '2026-10-05' }));
+checar('outro dia: não há anterior', null,
+  rotaAoVivo.zonaAnteriorDoDia({ zona: 'chegou', dateKey: '2026-10-04' }, { zona: 'perto', dateKey: '2026-10-05' }));
+checar('documento novo: não há anterior', null,
+  rotaAoVivo.zonaAnteriorDoDia(null, { zona: 'longe', dateKey: '2026-10-05' }));
+checar('sem dia gravado antes: não há anterior', null,
+  rotaAoVivo.zonaAnteriorDoDia({ zona: 'longe' }, { zona: 'perto', dateKey: '2026-10-05' }));
+checar('a primeira faixa do dia nunca avisa, nem "chegou"', null,
+  rotaAoVivo.avisoDeAproximacao({
+    anterior: rotaAoVivo.zonaAnteriorDoDia({ zona: 'longe', dateKey: '2026-10-04' }, { zona: 'chegou', dateKey: '2026-10-05' }),
+    atual: 'chegou',
+    statusDaCrianca: 'home',
+  }));
+const gatilhoDaRota = ler('functions/lib/avisosDaRota.js');
+checar('o gatilho do "está chegando" escuta a faixa, não a viagem do dia', true,
+  gatilhoDaRota.includes("document: 'children/{childId}/proximidade/{doc}'")
+  && !gatilhoDaRota.includes("document: 'children/{childId}/rides/{dia}'"));
+checar('e compara pela régua do mesmo dia', true, gatilhoDaRota.includes('zonaAnteriorDoDia(antes, depois)'));
+
 bloco('5 · A BUZINA COM O APP FECHADO');
 checar('a frase do servidor é a mesma do app', true,
   ['buscar', 'entregar', undefined].every((m) =>

@@ -37,6 +37,7 @@ import {
   zonasQueMudaram,
 } from '../src/dominio/rota/proximidade.js';
 import { haversineDistance } from '../src/compartilhado/haversine.js';
+import { deveGravarPosicao, PULSO_DE_VIDA_MS } from '../src/dominio/rota/escritasDaRota.js';
 import { PRESENCE, describeRoutePresence } from '../src/dominio/rota/routePresence.js';
 
 let ok = 0;
@@ -258,6 +259,79 @@ checar('e que o app não pega a localização dos pais', true,
 // ⚠️ MUDAR A CLÁUSULA OBRIGA A SUBIR A VERSÃO — senão ninguém reaceita, e o
 // aceite guardado aponta para um texto que não existe mais.
 checar('a versão subiu junto', true, /LEGAL_VERSION = '1\.2'/.test(fonteLegal));
+
+bloco('8. O mesmo ponto não é escrita de novo');
+
+// ⚠️ A referência é encaixada em 150 m, então a perua parada (ou devagar no
+// mesmo quadrado) gravava o MESMO ponto a cada 30 s do GPS e a cada minuto do
+// pulso. Agora só o ponto novo, o mapa ligando/desligando e o pulso de vida
+// de 2 minutos — que `closeStaleRoutes` precisa (90 min sem `updatedAt`).
+{
+  const T = 1_000_000;
+  const ultima = { lat: -23.5, lng: -46.6, semMapa: false, em: T };
+  const mesmo = { lat: -23.5, lng: -46.6, semMapa: false };
+  checar('nada gravado ainda: grava', true,
+    deveGravarPosicao({ ultima: null, atual: mesmo, agora: T }));
+  checar('mesmo ponto 30 s depois: NÃO grava', false,
+    deveGravarPosicao({ ultima, atual: mesmo, agora: T + 30000 }));
+  checar('mesmo ponto 60 s depois (o pulso de 1 min): NÃO grava', false,
+    deveGravarPosicao({ ultima, atual: mesmo, agora: T + 60000 }));
+  checar('mesmo ponto 119 s depois: NÃO grava', false,
+    deveGravarPosicao({ ultima, atual: mesmo, agora: T + 119999 }));
+  checar('mesmo ponto 120 s depois: grava (pulso de vida)', true,
+    deveGravarPosicao({ ultima, atual: mesmo, agora: T + PULSO_DE_VIDA_MS }));
+  checar('o pulso de vida é 2 minutos', 120000, PULSO_DE_VIDA_MS);
+  checar('e cabe com folga nos 90 minutos do closeStaleRoutes', true,
+    PULSO_DE_VIDA_MS * 10 < 90 * 60 * 1000);
+  checar('mudou de quadrado: grava na hora', true,
+    deveGravarPosicao({ ultima, atual: { ...mesmo, lat: -23.5013 }, agora: T + 1000 }));
+  checar('desligou o mapa: grava na hora', true,
+    deveGravarPosicao({ ultima, atual: { lat: null, lng: null, semMapa: true }, agora: T + 1000 }));
+  const semMapa = { lat: null, lng: null, semMapa: true, em: T };
+  checar('mapa desligado e continua desligado: NÃO grava antes do pulso', false,
+    deveGravarPosicao({ ultima: semMapa, atual: { lat: null, lng: null, semMapa: true }, agora: T + 60000 }));
+  // Duas leituras do GPS a 20 m uma da outra caem no mesmo quadrado — é esse o
+  // ganho real, e ele depende de a comparação ser feita DEPOIS do encaixe.
+  const a = arredondarParaReferencia({ lat: -23.55052, lng: -46.63331 });
+  const b = arredondarParaReferencia({ lat: -23.55060, lng: -46.63340 });
+  checar('dois pontos a ~12 m caem na mesma referência', true, a.lat === b.lat && a.lng === b.lng);
+
+  const prosa = (f) => f.split('\n')
+    .filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
+    .join('\n');
+  const loc = prosa(fonteDoService);
+  checar('o service pergunta antes de gravar a posição', true,
+    loc.includes('deveGravarPosicao({ ultima: ultimaGravada, atual, agora: Date.now() })'));
+  checar('a memória do gravado só anda depois do setDoc', true,
+    loc.indexOf('ultimaGravada = { ...atual, em: Date.now() }') > loc.indexOf('await setDoc(docDoMotorista(uidDaSessao()), {'));
+  checar('trocar o mapa no meio da rota grava na hora (forcar)', true,
+    loc.includes('gravarPosicao(ultimaExata, motoristaDaRota, { forcar: true })'));
+  checar('começar e encerrar a rota zeram a memória', 2,
+    (loc.match(/^\s+ultimaGravada = null;/gm) || []).length);
+}
+
+bloco('9. A faixa mora em documento próprio, fora do dia');
+
+// ⚠️ Em `rides/{dia}`, o gatilho do "está chegando" acordava a cada marco e a
+// cada previsão só para sair na primeira linha.
+{
+  const rides = readFileSync(new URL('../src/services/ridesService.js', import.meta.url), 'utf8');
+  const corpo = rides.slice(rides.indexOf('export async function publicarProximidade'));
+  const fn = corpo.slice(0, corpo.indexOf('\n}') + 2);
+  checar('a faixa vai para children/{id}/proximidade/atual', true,
+    fn.includes("doc(db, 'children', childId, 'proximidade', 'atual')"));
+  checar('e não toca mais no documento do dia', false, fn.includes('refDaViagem('));
+  checar('leva o dia junto (é ele que separa ontem de hoje)', true, /\bdateKey,/.test(fn));
+  checar('uma palavra, nunca distância', false, /km|distancia|distância/i.test(fn.replace(/\/\*[\s\S]*?\*\//g, '')));
+  const gatilho = readFileSync(new URL('../functions/lib/avisosDaRota.js', import.meta.url), 'utf8');
+  checar('o gatilho escuta o documento novo', true,
+    gatilho.includes("document: 'children/{childId}/proximidade/{doc}'"));
+  checar('e não escuta mais rides', false,
+    gatilho.includes("document: 'children/{childId}/rides/{dia}'"));
+  // Ninguém mais lê a faixa no documento do dia.
+  checar('nenhuma tela lê ride.proximidade', false,
+    /ride\??\.proximidade/.test(readFileSync(new URL('../src/pages/pai/PaiDashboard.jsx', import.meta.url), 'utf8')));
+}
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

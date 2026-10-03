@@ -13,6 +13,12 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { precisaDaPerua } from '../dominio/rota/horarios';
+import {
+  previsoesParaGravar,
+  chaveDaPrevisao,
+  emLotes,
+  LOTE_MAXIMO,
+} from '../dominio/rota/escritasDaRota';
 
 /**
  * A VIAGEM DE CADA CRIANÇA, DIA A DIA — `children/{id}/rides/{YYYY-MM-DD}`.
@@ -91,31 +97,56 @@ export function anotarMarco(batch, { childId, dateKey, status, statusAnterior = 
 /**
  * A PREVISÃO DE CHEGADA no documento do dia de cada criança (03/10/2026) —
  * régua em `previsoesDaViagem`. Só a HORA viaja ('HH:MM'), nunca a posição;
- * `null` apaga (voltou ao horário). Um lote por marcação. Sem `await` de quem
- * chama: previsão é conveniência, a rota não espera por ela.
+ * `null` apaga (voltou ao horário). Sem `await` de quem chama: previsão é
+ * conveniência, a rota não espera por ela.
+ *
+ * ⚠️ SÓ GRAVA O QUE MUDOU (03/10/2026). Ela gravava, a cada marcação, TODAS
+ * as crianças que ainda esperam — inclusive o apagar de quem nunca teve
+ * previsão —, num lote só: O(n²) escritas por rota, e com 19 crianças ou mais
+ * o lote estourava o teto de 20 `get()` da regra e caía INTEIRO. Quem decide
+ * agora é `previsoesParaGravar` (mais de 2 minutos de diferença, ou o apagar
+ * de quem tinha valor), e a escrita vai em lotes de 15, como
+ * `publicarOrdemDoDia`. A memória do que foi gravado é deste aparelho e desta
+ * sessão: a rota é de um motorista, num celular.
  */
+let previsoesPublicadas = {};
+
 export async function publicarPrevisoes({ previsoes, dateKey, adminUid }) {
-  if (!previsoes?.length || !dateKey) return;
-  const batch = writeBatch(db);
-  previsoes.forEach((p) => {
-    batch.set(
-      refDaViagem(p.childId, dateKey),
-      {
-        dateKey,
-        childId: p.childId,
-        adminUid: adminUid || null,
-        parentUid: p.parentUid || null,
-        [p.campo]: p.previsao || deleteField(),
-        atualizadoEm: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  });
-  try {
-    await batch.commit();
-  } catch (err) {
-    console.error('publicarPrevisoes', err);
+  if (!previsoes?.length || !dateKey) return 0;
+  const { escrever, publicadas } = previsoesParaGravar(previsoes, previsoesPublicadas, dateKey);
+  if (!escrever.length) return 0;
+  let gravadas = 0;
+  for (const lote of emLotes(escrever, LOTE_MAXIMO)) {
+    const batch = writeBatch(db);
+    lote.forEach((p) => {
+      batch.set(
+        refDaViagem(p.childId, dateKey),
+        {
+          dateKey,
+          childId: p.childId,
+          adminUid: adminUid || null,
+          parentUid: p.parentUid || null,
+          [p.campo]: p.previsao || deleteField(),
+          atualizadoEm: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+    try {
+      await batch.commit();
+      gravadas += lote.length;
+      // A memória só aprende o que SUBIU: lote recusado tenta de novo na
+      // próxima marcação, em vez de ficar dado como gravado.
+      for (const p of lote) {
+        const chave = chaveDaPrevisao(dateKey, p);
+        if (chave in publicadas) previsoesPublicadas[chave] = publicadas[chave];
+        else delete previsoesPublicadas[chave];
+      }
+    } catch (err) {
+      console.error('publicarPrevisoes', err);
+    }
   }
+  return gravadas;
 }
 
 /**
@@ -138,7 +169,8 @@ export function apagarMarco(batch, { childId, dateKey, status, anterior = null }
 }
 
 /**
- * A FAIXA EM QUE A PERUA ESTÁ, para UMA criança, no documento do DIA.
+ * A FAIXA EM QUE A PERUA ESTÁ, para UMA criança —
+ * `children/{id}/proximidade/atual`.
  *
  * ── POR QUE ISTO EXISTE
  * O aviso de "está chegando" era calculado no celular da MÃE, a partir da
@@ -150,24 +182,27 @@ export function apagarMarco(batch, { childId, dateKey, status, anterior = null }
  * dão o ponto exato por triangulação — publicar "1,2 km" seria republicar a
  * posição por outro nome.
  *
- * ⚠️ E VAI NO DOCUMENTO DO DIA, que é o que a mãe já lê. Amanhã é outro
- * documento, então não existe o bug óbvio desta mudança: o "chegou" de ontem
- * aparecendo hoje de manhã. Nada precisa ser limpo ao encerrar a rota.
+ * ⚠️ SAIU DO DOCUMENTO DO DIA (03/10/2026). Morava em `rides/{dia}`, e o
+ * gatilho do "está chegando" (`avisarAproximacao`) escutava `rides` — então
+ * ACORDAVA a cada marco, a cada previsão e a cada ordem do dia, para sair na
+ * primeira linha porque a faixa não mudou. Em documento próprio, o gatilho só
+ * roda quando a faixa é escrita. E nenhuma tela lia a faixa no `rides`: o
+ * aviso da família é a notificação, não o documento.
+ *
+ * ⚠️ UM DOCUMENTO POR CRIANÇA, NÃO POR DIA. Um por dia seria arquivo que
+ * cresce sozinho e ninguém consulta (a retenção de 60 dias só varre `rides`).
+ * O que impede o "chegou" de ontem de valer hoje é o `dateKey` dentro dele: o
+ * gatilho trata a faixa de outro dia como "nenhuma" (`zonaAnteriorDoDia`).
  */
 export async function publicarProximidade({ childId, dateKey, zona, adminUid, parentUid }) {
   if (!childId || !dateKey || !zona) return;
-  await setDoc(
-    refDaViagem(childId, dateKey),
-    {
-      dateKey,
-      childId,
-      adminUid: adminUid || null,
-      parentUid: parentUid || null,
-      proximidade: zona,
-      atualizadoEm: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await setDoc(doc(db, 'children', childId, 'proximidade', 'atual'), {
+    zona,
+    dateKey,
+    adminUid: adminUid || null,
+    parentUid: parentUid || null,
+    atualizadoEm: serverTimestamp(),
+  });
 }
 
 /**

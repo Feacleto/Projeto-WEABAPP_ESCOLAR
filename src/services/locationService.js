@@ -18,6 +18,27 @@ import { playSound } from './soundService';
 import { consultaDoEndereco } from '../compartilhado/formatters';
 import { lugarDoEndereco } from '../dominio/identidade/cadastroDoMotorista.js';
 import { podeBuscarRua, sugestoesDeRua } from '../compartilhado/ruas';
+import { criarFilaComIntervalo } from '../compartilhado/filaComIntervalo';
+import { deveGravarPosicao } from '../dominio/rota/escritasDaRota';
+
+/**
+ * ⚠️ TODA CHAMADA AO NOMINATIM PASSA POR ESTA FILA (03/10/2026). A política
+ * de uso dele é 1 requisição por segundo POR APLICAÇÃO, e o app chamava o
+ * `fetch` direto de quatro telas. A fila espaça as saídas em 1 s, junta o
+ * mesmo pedido em voo numa chamada só e guarda as últimas respostas boas.
+ * Ver `compartilhado/filaComIntervalo.js`.
+ */
+const filaDoNominatim = criarFilaComIntervalo({ intervaloMs: 1000 });
+
+/** GET no Nominatim pela fila: devolve o JSON, ou lança em resposta não-ok. */
+function pedirAoNominatim(caminho, params) {
+  const url = `https://nominatim.openstreetmap.org/${caminho}?${params.toString()}`;
+  return filaDoNominatim(url, async () => {
+    const res = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
+    if (!res.ok) throw new Error(`nominatim ${res.status}`);
+    return res.json();
+  });
+}
 
 // ============================================================================
 // Endereço: CEP (ViaCEP) + coordenada (Nominatim / OSM)
@@ -82,8 +103,8 @@ export async function buscarCep(cepBruto) {
 /**
  * Endereço → coordenada, via Nominatim. Gratuito e sem chave.
  *
- * Limites: 1 req/segundo por IP. Como aqui é uma chamada pontual no
- * cadastro, está OK. Não chamar em loop / autocomplete.
+ * Limites: 1 req/segundo por aplicação — garantido por `filaDoNominatim`.
+ * Mesmo assim, não chamar em loop / autocomplete: a política proíbe.
  *
  * Recebe o texto livre OU, quando o CEP foi consultado, as `partes` — e nesse
  * caso a consulta é montada por `consultaDoEndereco`, com o número na frente e
@@ -115,15 +136,12 @@ export async function searchAddress(address, partes = null) {
     q,
   });
 
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-    { headers: { 'Accept-Language': 'pt-BR' } }
-  );
-
-  if (!res.ok) {
+  let data;
+  try {
+    data = await pedirAoNominatim('search', params);
+  } catch {
     throw new Error('Falha na busca. Tente novamente em alguns segundos.');
   }
-  const data = await res.json();
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('Endereço não encontrado. Tente ser mais específico.');
   }
@@ -202,11 +220,7 @@ export async function lugarDaPosicaoAtual() {
   });
   let lugar = { city: '', regiao: '' };
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
-      { headers: { 'Accept-Language': 'pt-BR' } }
-    );
-    if (res.ok) lugar = lugarDoEndereco((await res.json())?.address);
+    lugar = lugarDoEndereco((await pedirAoNominatim('reverse', params))?.address);
   } catch {
     // rede caiu: cai no mesmo caminho de "não achou cidade"
   }
@@ -281,6 +295,15 @@ const positionListeners = new Set();
 const PULSO_MS = 60000;
 let pulso = null;
 let ultimaExata = null;
+/**
+ * O que foi GRAVADO da última vez: { lat, lng, semMapa, em }. ⚠️ A referência
+ * é encaixada em 150 m, então a perua parada (ou devagar no mesmo quadrado)
+ * produzia o MESMO ponto a cada 30 s — e cada um era uma escrita que nenhuma
+ * família via mudar. `deveGravarPosicao` decide: ponto novo, mapa ligado ou
+ * desligado, ou 2 minutos sem escrever (o pulso de vida que `closeStaleRoutes`
+ * lê — ele só fecha a rota depois de 90 minutos sem `updatedAt`).
+ */
+let ultimaGravada = null;
 let motoristaDaRota = null;
 let telaAcesa = null;
 
@@ -333,7 +356,7 @@ export function subscribePosition(cb) {
  * Grava a posição de REFERÊNCIA (nunca a exata) — chamada pelo GPS e pelo
  * pulso de um minuto.
  */
-async function gravarPosicao(exata, driverUid) {
+async function gravarPosicao(exata, driverUid, { forcar = false } = {}) {
   try {
     // ⚠️ A POSIÇÃO EXATA NUNCA SAI DAQUI, e é isso que faz a promessa
     // valer. Arredondar no MAPA não arredonda nada: o documento continua
@@ -346,6 +369,14 @@ async function gravarPosicao(exata, driverUid) {
     const referencia = compartilhaPosicao
       ? arredondarParaReferencia(exata)
       : null;
+    const atual = {
+      lat: referencia?.lat ?? null,
+      lng: referencia?.lng ?? null,
+      semMapa: !compartilhaPosicao,
+    };
+    if (!forcar && !deveGravarPosicao({ ultima: ultimaGravada, atual, agora: Date.now() })) {
+      return;
+    }
 
     await setDoc(docDoMotorista(uidDaSessao()), {
       ...(referencia
@@ -373,6 +404,7 @@ async function gravarPosicao(exata, driverUid) {
       // fechava a rota como abandonada. E com merge, a OCORRÊNCIA (perua
       // quebrada) não some no pulso seguinte.
     }, { merge: true });
+    ultimaGravada = { ...atual, em: Date.now() };
   } catch (err) {
     console.error('liveLocation write error:', err);
   }
@@ -383,7 +415,8 @@ async function gravarPosicao(exata, driverUid) {
  * são no-op. Lança erro se o navegador não suportar geolocation.
  *
  * Escrita no Firestore: throttle de 30s. O GPS pode entregar 1 fix/seg, mas
- * só persistimos no máximo a cada 30 segundos.
+ * só persistimos no máximo a cada 30 segundos — e só se o ponto de
+ * referência mudou ou o pulso de vida venceu (`deveGravarPosicao`).
  */
 export function startTracking(driverUid, opcoes = {}) {
   if (activeWatchId != null) return;
@@ -392,6 +425,7 @@ export function startTracking(driverUid, opcoes = {}) {
   }
   lastWrite = 0;
   ultimaExata = null;
+  ultimaGravada = null;
   motoristaDaRota = driverUid;
   alvosDaRota = Array.isArray(opcoes.alvos) ? opcoes.alvos : [];
   zonasPublicadas = {};
@@ -404,9 +438,11 @@ export function startTracking(driverUid, opcoes = {}) {
   if (!opcoes.retomando) playSound('start_engine');
   manterTelaAcesa();
   document.addEventListener('visibilitychange', aoVoltarParaATela);
+  // O pulso só PERGUNTA a cada minuto: quem decide se grava é
+  // `deveGravarPosicao` — parado no mesmo quadrado, o `updatedAt` é renovado
+  // a cada 2 minutos, e não a cada um.
   pulso = setInterval(() => {
-    if (!ultimaExata || Date.now() - lastWrite < PULSO_MS) return;
-    lastWrite = Date.now();
+    if (!ultimaExata) return;
     gravarPosicao(ultimaExata, motoristaDaRota);
   }, PULSO_MS);
 
@@ -484,7 +520,7 @@ export function definirCompartilhamentoDaRota(compartilha) {
   compartilhaPosicao = compartilha !== false;
   if (activeWatchId == null || !ultimaExata || !motoristaDaRota) return;
   lastWrite = Date.now();
-  gravarPosicao(ultimaExata, motoristaDaRota);
+  gravarPosicao(ultimaExata, motoristaDaRota, { forcar: true });
 }
 
 /**
@@ -515,6 +551,7 @@ export async function stopTracking() {
   if (pulso) clearInterval(pulso);
   pulso = null;
   ultimaExata = null;
+  ultimaGravada = null;
   document.removeEventListener('visibilitychange', aoVoltarParaATela);
   telaAcesa?.release?.().catch(() => {});
   telaAcesa = null;

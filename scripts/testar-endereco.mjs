@@ -23,6 +23,8 @@ import {
   consultaDoEndereco,
 } from '../src/compartilhado/formatters.js';
 import { sugestoesDeRua, podeBuscarRua, ufDoIso } from '../src/compartilhado/ruas.js';
+import { criarFilaComIntervalo } from '../src/compartilhado/filaComIntervalo.js';
+import { readFileSync } from 'node:fs';
 
 let ok = 0, falhou = 0;
 const eq = (nome, a, b) => {
@@ -234,6 +236,72 @@ console.log('\n\x1b[1m9. A busca de rua pelo nome (ViaCEP ao contrário)\x1b[0m'
   eq('com tudo, busca', podeBuscarRua({ uf: 'sp', cidade: 'São Paulo', rua: 'Rua das' }), true);
   eq('UF do código ISO do endereço reverso', ufDoIso('BR-SP'), 'SP');
   eq('código que não é UF vira vazio', ufDoIso('US-CA'), '');
+}
+
+console.log('\n\x1b[1m9. O NOMINATIM PELA FILA: 1 por segundo, sem repetir\x1b[0m');
+{
+  // A política do Nominatim é 1 requisição por segundo POR APLICAÇÃO. Relógio
+  // e espera são injetados: o teste mede o intervalo sem esperar nada.
+  let t = 10_000;
+  const esperas = [];
+  const pedir = criarFilaComIntervalo({
+    intervaloMs: 1000,
+    agora: () => t,
+    esperar: async (ms) => { esperas.push(ms); },
+    guardar: 2,
+  });
+  let chamadas = 0;
+  const executar = (valor) => async () => { chamadas += 1; return valor; };
+
+  const [a, b, c] = await Promise.all([
+    pedir('rua a', executar('A')),
+    pedir('rua b', executar('B')),
+    pedir('rua c', executar('C')),
+  ]);
+  eq('três pedidos distintos, três respostas', [a, b, c], ['A', 'B', 'C']);
+  eq('saem em 0 s, 1 s e 2 s (o primeiro não espera)', esperas, [1000, 2000]);
+
+  chamadas = 0;
+  const p1 = pedir('rua d', executar('D'));
+  const p2 = pedir('rua d', executar('D de novo'));
+  eq('mesma chave em voo devolve a MESMA promessa', p1 === p2, true);
+  eq('e vira uma chamada só', [await p1, await p2, chamadas], ['D', 'D', 1]);
+
+  chamadas = 0;
+  eq('resposta guardada não sai de casa', await pedir('rua d', executar('outra')), 'D');
+  eq('nenhuma chamada nova', chamadas, 0);
+
+  t += 60_000;
+  esperas.length = 0;
+  await pedir('rua e', executar('E'));
+  eq('depois de um minuto parado, sai sem esperar', esperas, []);
+  t += 300;
+  await pedir('rua f', executar('F'));
+  eq('300 ms depois do anterior, espera os 700 que faltam', esperas, [700]);
+
+  // Erro não fica guardado: uma queda de rede não pode virar "não encontrado"
+  // para sempre.
+  t += 5000;
+  chamadas = 0;
+  const falha = await pedir('rua g', async () => { chamadas += 1; throw new Error('rede'); })
+    .then(() => 'passou', (e) => e.message);
+  eq('o erro chega a quem pediu', falha, 'rede');
+  t += 5000;
+  eq('e o pedido seguinte tenta de novo', await pedir('rua g', executar('G')), 'G');
+  eq('com uma chamada nova', chamadas, 2);
+
+  // O cache é pequeno: o mais antigo sai.
+  t += 5000; await pedir('rua h', executar('H'));
+  t += 5000; await pedir('rua i', executar('I'));
+  chamadas = 0;
+  t += 5000; await pedir('rua g', executar('G2'));
+  eq('cache cheio esquece o mais antigo', chamadas, 1);
+
+  const loc = readFileSync(new URL('../src/services/locationService.js', import.meta.url), 'utf8');
+  eq('o locationService só chama o Nominatim pela fila',
+    (loc.match(/nominatim\.openstreetmap\.org/g) || []).length, 1);
+  eq('e esse único endereço está dentro de pedirAoNominatim', /function pedirAoNominatim[\s\S]{0,200}nominatim\.openstreetmap\.org/.test(loc), true);
+  eq('busca e endereço reverso passam por ela', (loc.match(/pedirAoNominatim\('(search|reverse)'/g) || []).length, 2);
 }
 
 console.log('\n' + '─'.repeat(66));
