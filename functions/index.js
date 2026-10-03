@@ -41,6 +41,7 @@ const {
 const { makeCloseStaleRoutes } = require('./lib/routes');
 const { makeSendPushOnNotification } = require('./lib/push');
 const { makeAvisarAproximacao, makeAvisarBuzina } = require('./lib/avisosDaRota');
+const { makeLimparAvisosAntigos } = require('./lib/limpezaDosAvisos');
 const { makeConfirmarAusencias } = require('./lib/confirmarAusencias');
 const {
   makeGenerateMonthlyPayments,
@@ -114,6 +115,8 @@ exports.closeStaleRoutes = makeCloseStaleRoutes(db);
 // sem que cada caminho precise lembrar de enviar.
 
 // O e-mail da cobrança da plataforma sai no MESMO gatilho (enviarEmailDoAviso.js).
+// Avisos com mais de 90 dias saem todo dia às 4h (limpezaDosAvisos.js).
+exports.limparAvisosAntigos = makeLimparAvisosAntigos(db);
 exports.sendPushOnNotification = makeSendPushOnNotification(db, {
   chave: RESEND_API_KEY,
   remetente: EMAIL_REMETENTE,

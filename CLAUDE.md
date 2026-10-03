@@ -19,14 +19,14 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 49 scripts. O PRIMEIRO é
+npm run testar                   # 52 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
                                  # horarios, viagem, costume, faltas, endereco, aviso,
                                  # proximidade, buzina, notificacoes,
                                  # comentario-na-tela (nenhum `/* */` sem
-                                 # chaves vira texto na tela),
+                                 # chaves vira texto na tela), leituras-do-dono,
                                  # vazamento, contraste, design, dinheiro,
                                  # travessia,
                                  # contrato, combinado,
@@ -41,7 +41,7 @@ npm run testar                   # 49 scripts. O PRIMEIRO é
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
-                                 # documentos depois. 35 casos.
+                                 # documentos depois. 36 casos.
 npm run testar:envio             # os dois agendados escrevendo na MESMA base
                                  # — é onde a colisão entre eles vivia. 29 casos.
 npm run testar:limpeza           # o único script de MANUTENÇÃO que apaga dado,
@@ -379,7 +379,8 @@ src/
 │                      tokens`), importado no topo do index.css. Não edite.
 ├── config/            capabilities, developer, vitrine,
 │                      paletaCategorica (o único lugar com cor crua)
-├── context/           AuthContext (perfil + papel)
+├── context/           AuthContext (perfil + papel) e NotificacoesContext
+│                      (a ÚNICA escuta do sino, uma vez por sessão)
 ├── dominio/           AS REGRAS. Puro, sem Firebase, sem React — um contexto
 │                      por pasta (ver "Os sete contextos" abaixo)
 │   ├── rota/          horarios, avisoDoMomento, routePresence, faltas,
@@ -1250,9 +1251,17 @@ da escola da rota.
   `invalid-argument` e isso APAGAVA o token; hoje só os dois códigos de token
   morto apagam. O token é regravado a cada abertura (`sincronizarPush`) e
   SAI ao sair da conta (`AuthContext.logout`).
-- **app aberto** — o cabeçalho mostra todo aviso novo num cartão que leva ao
-  mesmo lugar ([avisoNaTela](src/components/notifications/avisoNaTela.jsx)); a
-  buzina não ganha cartão (já é tela cheia).
+- **app aberto** — todo aviso novo vira um cartão que leva ao mesmo lugar
+  ([avisoNaTela](src/components/notifications/avisoNaTela.jsx)); a buzina não
+  ganha cartão (já é tela cheia). ⚠️ **A escuta é UMA por sessão**
+  ([NotificacoesContext](src/context/NotificacoesContext.jsx), montado em
+  TioLayout e PaiLayout): ela morava no cabeçalho de cada página e relia até
+  100 avisos a cada troca de tela — a maior fonte de leitura do app. Aviso
+  "novo" é o que nasceu depois da escuta começar (`caixaDeAvisos.js`), senão o
+  aviso velho que entra por baixo da janela ganharia cartão e som.
+  "Marcar todas" escreve só os não lidos já carregados, em lotes de 450.
+  ⚠️ **AVISO DURA 90 DIAS** (decisão do dono): `limparAvisosAntigos` apaga
+  todo dia às 4h, paginado ([limpezaDosAvisos.js](functions/lib/limpezaDosAvisos.js)).
 - **e-mail** — ⚠️ **SÓ A COBRANÇA DA PLATAFORMA AO MOTORISTA** (decisão do
   dono, 03/10/2026: `fatura_vence`, e só para quem é motorista —
   [emailDoAviso.js](functions/lib/emailDoAviso.js)). Sai do MESMO gatilho do
@@ -1266,7 +1275,7 @@ da escola da rota.
   por tipo e por PAPEL, espelhado no servidor — o sino e o push respondem
   igual, e nenhum tipo leva a "/".
 - **Os que faltavam**: "está chegando"/"chegou" (o servidor lê a faixa em
-  `rides/{dia}` e avisa SÓ quando a perua se APROXIMA e só a criança em
+  `children/{id}/proximidade/atual` e avisa SÓ quando a perua se APROXIMA e só a criança em
   casa ou na perua — antes era toast no Início, avisava a perua indo embora,
   e o mapa tinha um segundo alerta com "Tio Nino"), a buzina com o app
   fechado, "entrou na perua" na saída da escola, "Faltou" marcado pelo
@@ -1311,11 +1320,19 @@ DISSO** (11/09/2026) — a régua é
   da MÃE a partir da coordenada publicada — então desligar o mapa mataria o
   aviso junto, para duas coisas sem relação. Agora quem mede é o celular DELE
   (já tem a posição e os endereços da turma) e o que viaja é **uma palavra**
-  em `rides/{dia}.proximidade`: `longe`, `perto` ou `chegou`. **Nunca a
-  distância em km** — três casas com distância conhecida dão o ponto exato
-  por triangulação. Só a MUDANÇA de faixa vira escrita, e ela mora no
-  documento do DIA, que **se limpa sozinho**: amanhã é outro documento, então
-  o "chegou" de ontem não aparece hoje de manhã.
+  em `children/{id}/proximidade/atual`: `longe`, `perto` ou `chegou`, com o
+  `dateKey` do dia. **Nunca a distância em km** — três casas com distância
+  conhecida dão o ponto exato por triangulação. Só a MUDANÇA de faixa vira
+  escrita; faixa de outro dia conta como nenhuma, então o "chegou" de ontem
+  não toca hoje. ⚠️ **Saiu de `rides/{dia}` em 03/10/2026**: o gatilho escutava
+  a viagem e acordava a cada marco e previsão (~70% das execuções do
+  servidor). Só o motorista da criança lê e escreve (rules, `testar:regras`);
+  `proximidade` segue aceito em `rides` só enquanto houver app antigo em cache.
+  **E a viagem também grava menos**: a previsão de chegada só sobe quando
+  muda MAIS DE 2 MINUTOS, em lotes de 15 (`escritasDaRota.js`); a posição
+  da perua só é regravada quando o quadrado de 150 m muda ou a cada 120 s
+  parada; e o Nominatim passa por uma fila de 1 pedido por segundo
+  ([filaComIntervalo.js](src/compartilhado/filaComIntervalo.js)).
 - ⚠️ **O MAPA É REFERÊNCIA, E O ARREDONDAMENTO ACONTECE ANTES DE GRAVAR.**
   A posição é encaixada numa grade de **150 m** no aparelho dele; a exata
   nunca sai. Arredondar no mapa não arredondaria nada — o documento ficaria
@@ -1430,7 +1447,7 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 - **Push:** `sendPushOnNotification` (dispara FCM a partir de `notifications`,
   também para o acesso de 24h, e o e-mail da fatura da plataforma no mesmo
   gatilho), `avisarAproximacao` (faixa da perua em
-  `rides` → "está chegando") e `avisarBuzina` (`pendingCalls` → aviso)
+  `children/{id}/proximidade/atual` → "está chegando") e `avisarBuzina` (`pendingCalls` → aviso)
 - **Acesso de 24 horas:** `gerarAcessoTemporario`, `encerrarAcessoTemporario`
   e `inscreverAvisosDoAcesso` (pública; quem prova é o token), e o
   `verAcompanhamento` lê os dois tipos de link
@@ -1473,7 +1490,20 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   campos, não um spread do doc da criança — o teste procura endereço,
   coordenada, telefone, mensalidade e dado de saúde dentro do JSON, um por um.
 - **Retenção (agendada):** `apagarViagensAntigas` — todo dia às 4h30,
-  apaga `children/{id}/rides/{dia}` com mais de 60 dias. Ver "rides" acima.
+  apaga `children/{id}/rides/{dia}` com mais de 60 dias, em páginas de 400.
+  ⚠️ **Ela exige o `fieldOverride` de `rides.dateKey` (COLLECTION_GROUP)** em
+  firestore.indexes.json — sem ele a consulta falhava todo dia, calada.
+  Também: `limparAvisosAntigos` (notifications com mais de 90 dias, às 4h).
+- **As agendadas rodam UMA de cada vez** (03/10/2026): `maxInstances: 1`
+  sozinho não serializava nada (cada instância aceita 80 pedidos); hoje é o par
+  com `concurrency: 1` (`LIMITES.CONCORRENCIA_AGENDADO`). O
+  `fecharMesDosParceiros` ganhou `retryCount: 2` (é idempotente).
+  "A rota não começou" parte dos MOTORISTAS
+  ([reguaDasVarreduras.js](functions/lib/reguaDasVarreduras.js)) — era um
+  `limit(500)` sem ordem nas crianças, e ~2.500 famílias nunca eram avisadas.
+  O pedido de acesso pelo telefone consulta `children.parentPhoneChave`
+  (gravado pelo app; o gatilho do irmão e a varredura de convites completam
+  os antigos) em vez de varrer a plataforma.
 - **Manutenção (tem prazo):** `limparCoordenadaDoCheckpoint` — só o dono,
   e **sem `{ apagar: true }` ela só CONTA**. Apaga a coordenada do veículo do
   motorista que ficou em `children.lastStatusCheckpoint` e em
@@ -2408,7 +2438,7 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (306 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (314 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes

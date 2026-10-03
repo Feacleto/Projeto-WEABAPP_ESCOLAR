@@ -172,6 +172,18 @@ nunca DOM.
 
 ## O deploy, na ordem
 
+⚠️ **DESDE 03/10/2026, TRÊS PEÇAS PRECISAM SUBIR JUNTAS, NESTA ORDEM:**
+1. `firebase deploy --only firestore:indexes` — o índice `payments (parentUid,
+   month)` (sem ele o Início e o Financeiro da família ficam vazios) e o
+   `fieldOverride` de `rides.dateKey` (sem ele a limpeza das viagens falha).
+   Espere o console mostrar os índices como "Ativado".
+2. `firebase deploy --only firestore:rules` — a faixa da perua mudou para
+   `children/{id}/proximidade/atual`; sem a rule, o app novo não grava e o
+   "está chegando" para.
+3. functions, depois hosting (a ordem de sempre, abaixo). O gatilho
+   `avisarAproximacao` mudou de caminho, e `sendPaymentReminders` /
+   `runPaymentRemindersNow` saíram — o deploy pergunta se apaga: sim.
+
 A ordem importa em **um** ponto crítico: **functions antes de hosting**. Site
 novo contra funções velhas (ou ausentes) quebra na primeira tela — a home chama
 `getShowcase` e a entrada do responsável chama `redeemInvite`.

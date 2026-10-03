@@ -1,4 +1,4 @@
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 /**
@@ -10,7 +10,8 @@ import { db } from '../firebase/config';
  */
 export function watchLeadsInvestidor(onUpdate) {
   return onSnapshot(
-    query(collection(db, 'leadsInvestidor'), orderBy('criadoEm', 'desc')),
+    // Teto de segurança (03/10/2026): a coleção só cresce, e o formulário é público.
+    query(collection(db, 'leadsInvestidor'), orderBy('criadoEm', 'desc'), limit(300)),
     (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
     (err) => {
       console.error('leadsInvestidor:', err);

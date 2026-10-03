@@ -636,6 +636,28 @@ async function oTesteDeCodigo({ tio1, tio2, pai1, dono }) {
       createdAt: { timestampValue: new Date().toISOString() },
     }));
 
+  // A faixa da perua mora em children/{id}/proximidade/atual (03/10/2026).
+  const faixa = (extra = {}) => ({
+    zona: S('perto'), dateKey: S('2026-10-03'), adminUid: S(tio1.uid), parentUid: S(pai1.uid),
+    atualizadoEm: { timestampValue: new Date().toISOString() }, ...extra,
+  });
+  checar('faixa', 'o motorista da criança grava a faixa', 'PASSA',
+    await escrever('children/kid1/proximidade/atual', tio1, faixa()));
+  checar('faixa', 'o motorista lê a própria faixa', 'PASSA',
+    await ler('children/kid1/proximidade/atual', tio1));
+  checar('faixa', 'outro motorista grava na criança de terceiro', 'NEGA',
+    await escrever('children/kid1/proximidade/atual', tio2, faixa({ adminUid: S(tio2.uid) })));
+  checar('faixa', 'a família não grava', 'NEGA',
+    await escrever('children/kid1/proximidade/atual', pai1, faixa()));
+  checar('faixa', 'nem lê (o que chega a ela é a notificação)', 'NEGA',
+    await ler('children/kid1/proximidade/atual', pai1));
+  checar('faixa', 'distância no lugar da palavra é recusada', 'NEGA',
+    await escrever('children/kid1/proximidade/atual', tio1, faixa({ zona: S('1.2km') })));
+  checar('faixa', 'coordenada junto é recusada', 'NEGA',
+    await escrever('children/kid1/proximidade/atual', tio1, faixa({ lat: N(-23.5) })));
+  checar('faixa', 'outro documento que não "atual" é recusado', 'NEGA',
+    await escrever('children/kid1/proximidade/outro', tio1, faixa()));
+
   // A cobrança da plataforma é o único aviso que vira e-mail: só o servidor cria.
   checar('email', 'o motorista forja uma "fatura" para a família dele', 'NEGA',
     await criar('notifications', 'faturaFalsa', tio1, {

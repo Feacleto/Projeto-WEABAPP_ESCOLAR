@@ -1334,6 +1334,26 @@ service cloud.firestore {
     //   - Ninguém apaga: a versão retirada ou substituída é o histórico do
     //     combinado, e é o que se mostra numa discordância.
     // -----------------------------------------------------------------
+    // children/{id}/proximidade/atual — A FAIXA DA PERUA (03/10/2026). Saiu de
+    // `rides/{dia}`: o gatilho do "está chegando" escutava `rides` e acordava a
+    // cada marco e previsão. Uma PALAVRA ('longe'|'perto'|'chegou'), nunca
+    // distância. Só o motorista DA criança escreve e lê; a família não lê —
+    // o que chega a ela é a notificação que o servidor escreve.
+    // ⚠️ `proximidade` continua aceito em `rides/{dia}` durante a transição:
+    // um app antigo em cache ainda grava lá. Tirar quando todos atualizarem.
+    match /children/{childId}/proximidade/{docId} {
+      function criancaDaFaixa() {
+        return get(/databases/$(database)/documents/children/$(childId)).data;
+      }
+      allow read: if isAdmin() && criancaDaFaixa().get('adminUid', '') == request.auth.uid;
+      allow write: if docId == 'atual'
+        && isAdmin()
+        && criancaDaFaixa().get('adminUid', '') == request.auth.uid
+        && request.resource.data.keys().hasOnly(['zona', 'dateKey', 'adminUid', 'parentUid', 'atualizadoEm'])
+        && request.resource.data.zona in ['longe', 'perto', 'chegou']
+        && request.resource.data.dateKey is string;
+    }
+
     match /children/{childId}/contratos/{numero} {
       function crianca() {
         return get(/databases/$(database)/documents/children/$(childId)).data;
