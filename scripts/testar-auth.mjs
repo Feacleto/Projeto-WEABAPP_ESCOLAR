@@ -576,11 +576,18 @@ const cadastroCompleto = {
   phone: '11987654321',
   marcaNome: 'Tio Joao',
   city: 'Sao Paulo',
+  gender: 'male',
 };
 
 checar('cadastro completo passa', false, faltaCompletarCadastro(cadastroCompleto));
 checar('sem nome, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, name: '' }));
 checar('sem WhatsApp, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, phone: '' }));
+// O GÊNERO decide o avatar (cabelo curto ou comprido) e é OBRIGATÓRIO
+// (decisão do dono): sem ele o desenho era sorteado. Só homem ou mulher contam.
+checar('sem genero, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, gender: '' }));
+checar('genero fora dos dois, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, gender: 'nao_informado' }));
+checar('mulher passa', false, faltaCompletarCadastro({ ...cadastroCompleto, gender: 'female' }));
+checar('quem so falta o genero ve so o passo 1', ['voce'], passosQueFaltam({ ...cadastroCompleto, gender: '' }));
 checar('sem marca, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, marcaNome: '' }));
 checar('sem cidade, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, city: '' }));
 checar(

@@ -55,7 +55,7 @@ export default function PrimeiroAcesso() {
   const passo = passos[indice];
   const ultimo = indice === passos.length - 1;
 
-  const [form, setForm] = useState({ name: '', phone: '', marcaNome: '', city: '' });
+  const [form, setForm] = useState({ name: '', phone: '', gender: '', marcaNome: '', city: '' });
   const [errors, setErrors] = useState({});
   const [salvando, setSalvando] = useState(false);
   // A localização falhou (negada, sem sinal, sem cidade): aparece o campo.
@@ -93,6 +93,7 @@ export default function PrimeiroAcesso() {
     if (passo === 'voce') {
       if (faltando('name') && !form.name.trim()) errs.name = 'Escreva seu nome.';
       if (faltando('phone') && !isValidPhone(form.phone)) errs.phone = 'WhatsApp com DDD.';
+      if (faltando('gender') && !form.gender) errs.gender = 'Escolha uma opção.';
     }
     if (passo === 'marca' && !form.marcaNome.trim()) {
       errs.marcaNome = 'Escreva como as famílias te chamam.';
@@ -102,7 +103,9 @@ export default function PrimeiroAcesso() {
     if (Object.keys(errs).length) return;
 
     gravar({
-      ...(passo === 'voce' ? { name: form.name, phone: unmaskPhone(form.phone) } : {}),
+      ...(passo === 'voce'
+        ? { name: form.name, phone: unmaskPhone(form.phone), gender: form.gender }
+        : {}),
       ...(passo === 'marca' ? { marcaNome: form.marcaNome } : {}),
       ...(passo === 'local' ? { city: form.city } : {}),
     });
@@ -209,6 +212,35 @@ export default function PrimeiroAcesso() {
                   required
                 />
               )}
+              {faltando('gender') && (
+                <div>
+                  {/* O AVATAR SEGUE ESTA RESPOSTA: homem ganha cabelo curto,
+                    * mulher cabelo comprido. Sem ela o desenho era sorteado. */}
+                  <p className="mb-2 text-sm font-semibold text-text">Você é</p>
+                  <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Você é">
+                    {[
+                      { value: 'male', label: 'Homem' },
+                      { value: 'female', label: 'Mulher' },
+                    ].map((g) => (
+                      <button
+                        key={g.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={form.gender === g.value}
+                        onClick={() => setForm((p) => ({ ...p, gender: g.value }))}
+                        className={`tap min-h-12 rounded-xl border-2 px-2 text-sm font-semibold transition-colors duration-estado ${
+                          form.gender === g.value
+                            ? 'border-primary bg-primarySoft text-text'
+                            : 'border-border bg-card text-textMuted'
+                        }`}
+                      >
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                  {errors.gender && <p className="mt-1.5 text-xs text-dangerText">{errors.gender}</p>}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -235,7 +267,7 @@ export default function PrimeiroAcesso() {
                     {subindoLogo ? (
                       <Spinner size={22} className="text-primary" />
                     ) : logoURL ? (
-                      <img src={logoURL} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+                      <img src={logoURL} alt="" className="h-9 w-auto max-w-[96px] shrink-0 rounded-lg object-contain" />
                     ) : (
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
                         <ImagePlus size={18} />

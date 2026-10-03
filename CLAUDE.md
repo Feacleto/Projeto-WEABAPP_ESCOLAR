@@ -1858,7 +1858,7 @@ só o que a CONTA precisa para existir. O resto é o `PrimeiroAcesso`.
 ⚠️ **DESDE 02/10/2026 O PRIMEIRO ACESSO É UM CARD POR CIMA DO APP**, em três
 passos que só aparecem se faltar algo (`passosQueFaltam` em
 [cadastroDoMotorista.js](src/dominio/identidade/cadastroDoMotorista.js)):
-**seus dados** (nome; WhatsApp só para quem veio do Google), **sua marca**
+**seus dados** (nome; WhatsApp só para quem veio do Google; e **homem ou mulher, obrigatório**, que decide o cabelo do avatar — sem isso ele era sorteado), **sua marca**
 (nome obrigatório, logo opcional) e **localização**. O `/tio` renderiza por
 baixo com `inert`, e o tour guiado espera o card fechar. Pedido do dono: o
 card é CURTO — sem placeholder de exemplo, sem pré-preencher o nome do Google,

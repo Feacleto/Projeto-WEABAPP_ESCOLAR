@@ -169,7 +169,12 @@ function MarcaOuTitulo({ titulo }) {
            * de tela anunciando "logo da Tio Nino, Tio Nino" repete sem
            * acrescentar. Quando não há nome, o logo sozinho também não é
            * informação nova — o app inteiro é dele. */
-          className="h-8 w-8 shrink-0 rounded-lg object-cover"
+          /* ⚠️ INTEIRA, NUNCA RECORTADA (03/10/2026). Era um quadrado de 32px
+           * com `object-cover`: logo larga perdia as pontas ("racomr" no
+           * lugar do nome). Agora a altura é fixa e a largura acompanha a
+           * imagem até 96px — logo quadrada continua quadrada, logo comprida
+           * aparece inteira, menor. */
+          className="h-8 w-auto max-w-[96px] shrink-0 rounded-lg object-contain"
         />
       )}
       <h1 className="font-display text-lg font-bold text-text truncate">

@@ -812,11 +812,10 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
           <label className="mb-2 block text-sm font-semibold text-text">
             Seu avatar
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { value: 'female', label: 'Mulher' },
               { value: 'male', label: 'Homem' },
-              { value: '', label: 'Prefiro não dizer' },
             ].map((g) => (
               <button
                 key={g.value || 'none'}

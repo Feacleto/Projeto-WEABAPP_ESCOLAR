@@ -44,7 +44,11 @@ import { ufDoIso } from '../../compartilhado/ruas.js';
 
 /** Os três passos do card, na ordem em que aparecem. */
 export const PASSOS = [
-  { id: 'voce', campos: ['name', 'phone'] },
+  // ⚠️ `gender` ENTROU EM 03/10/2026 E É OBRIGATÓRIO (decisão do dono): sem
+  // ele o avatar é SORTEADO, e o "Tio Lipe" aparecia de cabelo comprido para
+  // as famílias. Não há "prefiro não dizer" — só `male` ou `female` contam
+  // como respondido (ver `GENEROS`), senão o avatar continuaria sorteado.
+  { id: 'voce', campos: ['name', 'phone', 'gender'] },
   { id: 'marca', campos: ['marcaNome'] },
   { id: 'local', campos: ['city'] },
 ];
@@ -56,11 +60,19 @@ function vazio(v) {
   return !String(v || '').trim();
 }
 
+/** Os dois valores que o avatar sabe desenhar. Qualquer outro é "não respondeu". */
+export const GENEROS = ['male', 'female'];
+
+function falta(profile, campo) {
+  if (campo === 'gender') return !GENEROS.includes(profile?.gender);
+  return vazio(profile?.[campo]);
+}
+
 /** Os campos de um passo que ainda estão vazios no perfil. */
 export function camposQueFaltam(profile, passoId) {
   const passo = PASSOS.find((p) => p.id === passoId);
   if (!passo) return [];
-  return passo.campos.filter((campo) => vazio(profile?.[campo]));
+  return passo.campos.filter((campo) => falta(profile, campo));
 }
 
 /**

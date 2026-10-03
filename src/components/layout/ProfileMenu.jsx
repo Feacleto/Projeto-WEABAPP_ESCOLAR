@@ -1,17 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import {
-  ChevronRight,
-  GraduationCap,
-  LifeBuoy,
-  LogOut,
-  Receipt,
-} from 'lucide-react';
+import { ChevronRight, LogOut, Receipt } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import Logo from '../common/Logo';
-import SupportSheet from '../support/SupportSheet';
 import { useAuth } from '../../hooks/useAuth';
+import { fimDoTrial } from '../../dominio/associacao/trial.js';
 import { destinoAposSair } from '../../dominio/vitrine/frentes';
 import { CENA_SAIDA, travessar } from '../../marca/travessia';
 import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
@@ -31,11 +24,11 @@ import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
  * abrem outra superfície (suporte, e a ficha completa) partem daqui de forma
  * explícita.
  *
- * O TUTORIAL NÃO ABRE DAQUI DIRETO
- * O tour ilumina elementos da tela INICIAL; aberto de dentro do financeiro
- * ele apontaria pra coisas que não estão na tela. Por isso reusamos o mesmo
- * contrato do perfil: navega pra raiz do papel com `state.openTour`, e o
- * layout (TioLayout/PaiLayout) abre o tour com a tela certa embaixo.
+ * ⚠️ O MENU FICOU CURTO (03/10/2026, pedido do dono). "Ver o tutorial de
+ * novo" e "Falar com o suporte" saíram daqui: os dois já moram na tela de
+ * perfil, e repetidos aqui eles disputavam o olho com o "Ver meu perfil",
+ * que é o caminho principal. Sobraram quem está logado, o perfil em
+ * destaque, o plano (só motorista, com a cobrança ligada) e sair.
  *
  * Props:
  *   - role:      'admin' | 'parent'
@@ -47,7 +40,6 @@ export default function ProfileMenu({ role, basePath, active = false }) {
   const cobranca = useCobrancaLigada();
   const { user, profile, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
   const wrapRef = useRef(null);
 
   /**
@@ -140,36 +132,45 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         >
           {/* Quem está logado. É a pergunta silenciosa de quem toca aqui —
            * principalmente em casa, onde pai e mãe usam o mesmo celular. */}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => go(() => navigate(`${basePath}/profile`))}
-            className="tap flex w-full items-center gap-3 border-b border-neutro p-3 text-left"
-          >
-            <Avatar
-              photoURL={profile?.photoURL}
-              kind={role === 'admin' ? 'admin' : 'adult'}
-              gender={profile?.gender}
-              seed={user?.uid}
-              name={profile?.name}
-              size="md"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-bold text-text">
-                {profile?.name || 'Minha conta'}
+          <div className="border-b border-neutro p-3">
+            <div className="flex items-center gap-3">
+              <Avatar
+                photoURL={profile?.photoURL}
+                kind={role === 'admin' ? 'admin' : 'adult'}
+                gender={profile?.gender}
+                seed={user?.uid}
+                name={profile?.name}
+                size="md"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-text">
+                  {profile?.name || 'Minha conta'}
+                </span>
+                <span className="block truncate text-xs text-textMuted">
+                  {user?.email || (role === 'admin' ? 'Motorista' : 'Responsável')}
+                </span>
               </span>
-              <span className="block truncate text-xs text-textMuted">
-                {user?.email ||
-                  (role === 'admin' ? 'Motorista' : 'Responsável')}
-              </span>
-              <span className="mt-1 inline-flex items-center gap-0.5 text-xs font-semibold text-primary">
-                Ver perfil completo
-                <ChevronRight size={12} />
-              </span>
-            </span>
-          </button>
+            </div>
+            {/* O PERFIL É O CAMINHO PRINCIPAL DO MENU, e por isso é botão cheio
+              * — era um link pequeno, com o mesmo peso do tutorial e do suporte
+              * logo abaixo. Tutorial, suporte, avisos e privacidade moram lá. */}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => go(() => navigate(`${basePath}/profile`))}
+              className="tap mt-3 flex h-11 w-full items-center justify-center gap-1 rounded-xl bg-primary text-sm font-bold text-white"
+            >
+              Ver meu perfil
+              <ChevronRight size={16} />
+            </button>
+          </div>
 
-          {/* MINHA ASSOCIAÇÃO — só pro motorista, e só aqui.
+          {/* MEU PLANO — só pro motorista, e só aqui.
+            *
+            * ⚠️ O NOME É "MEU PLANO" (03/10/2026, decisão do dono), e não
+            * "Minha associação", "Minha assinatura" nem "taxa": é como ele fala
+            * do plano do celular — neutro, sem cara de cobrança. Embaixo vai só
+            * o ESTADO, em cinza; valor em reais só dentro da tela.
             *
             * A tela da taxa tinha uma porta só: o aviso de cobrança em atraso.
             * Quem está em dia não tinha como abrir a própria fatura, ver o
@@ -181,22 +182,11 @@ export default function ProfileMenu({ role, basePath, active = false }) {
           {role === 'admin' && cobranca && (
             <MenuItem
               icon={Receipt}
-              label="Minha associação"
+              label="Meu plano"
+              detalhe={estadoDoPlano(profile)}
               onClick={() => go(() => navigate('/tio/taxa'))}
             />
           )}
-          <MenuItem
-            icon={GraduationCap}
-            label="Ver o tutorial de novo"
-            onClick={() =>
-              go(() => navigate(basePath, { state: { openTour: true } }))
-            }
-          />
-          <MenuItem
-            icon={LifeBuoy}
-            label="Falar com o suporte"
-            onClick={() => go(() => setSupportOpen(true))}
-          />
           <MenuItem
             icon={LogOut}
             label="Sair da conta"
@@ -236,30 +226,26 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         </div>
       )}
 
-      {/* PORTAL, E NÃO FILHO DO CABEÇALHO.
-       *
-       * O cabeçalho é `sticky z-20`, e isso abre um contexto de empilhamento
-       * próprio: um `fixed z-50` declarado aqui dentro continua preso ao teto
-       * de 20 do pai. A barra inferior é z-30 — a folha apareceria POR BAIXO
-       * dela, com o rodapé tapado pela pílula de navegação. O portal tira essa
-       * superfície do teto.
-       *
-       * Era o mesmo motivo do diálogo de sair, que morava aqui e saiu junto
-       * com a confirmação. */}
-      {createPortal(
-        <SupportSheet
-          open={supportOpen}
-          onClose={() => setSupportOpen(false)}
-          uid={user?.uid}
-          role={role}
-        />,
-        document.body,
-      )}
     </div>
   );
 }
 
-function MenuItem({ icon: Icon, label, onClick, danger = false }) {
+/**
+ * O estado do plano numa palavra, em cinza: nunca valor, nunca vermelho
+ * enquanto estiver em dia ou em teste — o menu não é lugar de cobrar.
+ */
+function estadoDoPlano(profile) {
+  if (profile?.suspenso) return 'Pausado';
+  if (profile?.plano === 'mensal') return 'Mensal';
+  if (profile?.plano === 'anual') return 'Anual';
+  const fim = fimDoTrial(profile?.trialInicio);
+  if (fim) {
+    return `Em teste até ${fim.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+  }
+  return 'Em teste';
+}
+
+function MenuItem({ icon: Icon, label, detalhe, onClick, danger = false }) {
   return (
     <button
       type="button"
@@ -270,7 +256,12 @@ function MenuItem({ icon: Icon, label, onClick, danger = false }) {
       }`}
     >
       <Icon size={17} className={danger ? 'text-danger' : 'text-textMuted'} />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{label}</span>
+        {detalhe && (
+          <span className="block truncate text-xs font-normal text-textMuted">{detalhe}</span>
+        )}
+      </span>
     </button>
   );
 }

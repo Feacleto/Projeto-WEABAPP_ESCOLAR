@@ -186,7 +186,7 @@ export async function completarCadastro(uid, dados, { ultimo = false } = {}) {
   // UM PASSO POR VEZ (02/10/2026). O card grava cada passo ao continuar, e
   // só escreve o que veio preenchido: quem fecha o app no meio volta no
   // passo seguinte, e string vazia nunca apaga o que ele já tinha dado.
-  const CAMPOS = ['name', 'phone', 'marcaNome', 'city', 'regiao', 'uf'];
+  const CAMPOS = ['name', 'phone', 'gender', 'marcaNome', 'city', 'regiao', 'uf'];
   const gravar = {};
   for (const campo of CAMPOS) {
     const v = String(dados?.[campo] || '').trim();
