@@ -1,0 +1,50 @@
+# O AMBIENTE DO TESTE NO NAVEGADOR — emuladores do Firebase e o site.
+#
+#   docker compose -f testes-navegador/docker/compose.yml up -d --build
+#   docker compose -f testes-navegador/docker/compose.yml stop   # guarda os dados
+#
+# Por que Docker: os serviços rodam independentes de quem os iniciou (a sessão
+# de teste tinha limite de tempo e derrubava os emuladores no meio de uma
+# jornada), e os dados de teste ficam guardados no volume `dados-emuladores`
+# (`testes-navegador/dados`, se existir, é a semente da primeira subida).
+#
+# O app (Vite) NÃO está aqui de propósito: o `node_modules` da raiz é do
+# Windows (o Vite 8 usa o binário nativo do rolldown) e não roda no Linux do
+# contêiner. Ele roda na máquina, com o `.env.local` apontando para cá.
+#
+# Projeto `demo-alobuzinou`: o prefixo `demo-` garante que nada fala com um
+# projeto real do Firebase.
+name: alobuzinou-teste
+
+services:
+  emuladores:
+    build: .
+    working_dir: /app
+    command: sh /app/testes-navegador/docker/iniciar-emuladores.sh
+    volumes:
+      - ../..:/app
+      - dependencias-functions:/app/functions/node_modules
+      - dados-emuladores:/dados # ver iniciar-emuladores.sh: a exportação precisa de disco Linux
+    ports:
+      - "4000:4000" # painel dos emuladores
+      - "4400:4400"
+      - "4500:4500"
+      - "5001:5001" # functions
+      - "8085:8085" # firestore
+      - "9150:9150"
+      - "9099:9099" # auth
+      - "9199:9199" # storage
+    stop_grace_period: 90s # tempo para exportar os dados ao parar
+    restart: unless-stopped
+
+  site:
+    image: nginx:1.27-alpine
+    volumes:
+      - ../../landing:/usr/share/nginx/html:ro
+    ports:
+      - "4321:80"
+    restart: unless-stopped
+
+volumes:
+  dependencias-functions:
+  dados-emuladores:
