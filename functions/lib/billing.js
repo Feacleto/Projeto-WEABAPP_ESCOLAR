@@ -355,6 +355,7 @@ function makeGenerateMonthlyPayments(db) {
       region: REGION,
       retryCount: 2,
       maxInstances: LIMITES.AGENDADO,
+      concurrency: LIMITES.CONCORRENCIA_AGENDADO,
       // Varredura da plataforma + purgeOld na mesma execução — ver limites.js.
       timeoutSeconds: LIMITES.TEMPO_AGENDADO,
       memory: LIMITES.MEMORIA_AGENDADO,

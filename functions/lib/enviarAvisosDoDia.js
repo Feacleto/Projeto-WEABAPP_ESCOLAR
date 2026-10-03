@@ -51,6 +51,14 @@ const {
   chaveDoDia,
   SELO_VALE_EM,
 } = require('./reguaDosAvisos');
+const {
+  paginar,
+  motoristasDaVarredura,
+  avaliarDaPerua,
+  TAMANHO_DA_PAGINA,
+} = require('./reguaDasVarreduras');
+const { chaveDoTelefone } = require('./indicacao');
+const { abrirPedido } = require('./pedidosDeAcesso');
 
 const REGION = 'southamerica-east1';
 
@@ -166,17 +174,69 @@ async function varrerMensalidades(db, agora) {
  * O convite parado. Vai pro MOTORISTA porque a família ainda não tem conta —
  * não existe caixa onde entregar, e quem tem o telefone dela é ele.
  */
+/*
+ * ⚠️ E ELA TAMBÉM ESCREVE `parentPhoneChave` NA CRIANÇA QUE ESPERA (03/10/2026).
+ *
+ * `pedirAcessoPeloTelefone` deixou de ler TODA criança sem responsável da
+ * plataforma a cada chamada e passou a consultar por `parentPhoneChave`. O
+ * app grava a chave ao cadastrar e ao editar o telefone, mas criança
+ * cadastrada antes disso não a tem — e para ela o pedido de acesso não acharia
+ * nada. Esta varredura já lê, todo dia, exatamente esse conjunto (convite
+ * pendente = ninguém vinculado), então a chave antiga se completa aqui, sem
+ * leitura nova. ⚠️ Só escreve quando a chave gravada DIFERE da calculada:
+ * rodar todo dia não reescreve nada depois da primeira vez.
+ *
+ * ⚠️ PAGINADA ATÉ O FIM. Era `limit(500)` sem ordem: além de calar o aviso do
+ * convite parado para quem ficasse de fora, deixaria essas crianças sem chave.
+ */
+async function completarChaveDoTelefone(db, doc, c, chave) {
+  await doc.ref.update({ parentPhoneChave: chave });
+  // Quem pediu acesso com este número ANTES de a chave existir não foi achado
+  // por `pedirAcessoPeloTelefone`. É o mesmo passo do gatilho do cadastro
+  // (`vincularIrmao.js`): o número dela não é comprovado, então nasce o
+  // PEDIDO, e o motorista aprova. `abrirPedido` é idempotente pelo id.
+  if (c.parentUid || !c.adminUid) return;
+  try {
+    const esperando = await db
+      .collection('users')
+      .where('telefoneAguardandoChave', '==', chave)
+      .limit(3)
+      .get();
+    for (const d of esperando.docs) {
+      const conta = d.data();
+      if (conta.role !== 'parent') continue;
+      await abrirPedido(db, {
+        crianca: { id: doc.id, ...c },
+        parentUid: d.id,
+        nome: conta.name,
+        email: conta.email,
+        telefone: c.parentPhone,
+      });
+    }
+  } catch (err) {
+    logger.warn(`pedido de quem esperava não aberto em ${doc.id}`, err);
+  }
+}
+
 async function varrerConvites(db, agora) {
   let n = 0;
-  const snap = await db
-    .collection('children')
-    .where('inviteStatus', '==', 'pending')
-    .limit(TETO)
-    .get();
+  const pendentes = paginar((ultimo) => {
+    let q = db
+      .collection('children')
+      .where('inviteStatus', '==', 'pending')
+      .orderBy(FieldPath.documentId())
+      .limit(TAMANHO_DA_PAGINA);
+    if (ultimo) q = q.startAfter(ultimo);
+    return q;
+  });
 
-  for (const doc of snap.docs) {
+  for await (const doc of pendentes) {
     try {
       const c = doc.data();
+      const chave = chaveDoTelefone(c.parentPhone);
+      if (chave && c.parentPhoneChave !== chave) {
+        await completarChaveDoTelefone(db, doc, c, chave);
+      }
       const aviso = avisoDoConvite({ crianca: c, agora });
       if (!aviso || jaAvisado(c, aviso.tipo)) continue;
       if (await entregar(db, { paraUid: c.adminUid, aviso, ref: doc.ref, operacional: true, agora })) n += 1;
@@ -289,10 +349,28 @@ async function varrerEncerramentos(db, agora) {
  * que importa: quem dorme demais tem o app fechado. O GPS nunca ligou, a tela
  * nunca abriu, e ninguém avaliaria nada.
  *
- * ── AS TRÊS LEITURAS, E O QUE FICOU DE FORA
- * Uma consulta das faltas do dia (a plataforma inteira, de uma vez), uma das
- * crianças ativas, e um `liveLocation` por motorista distinto.
+ * ── ⚠️ COMEÇA PELOS MOTORISTAS, NÃO PELAS CRIANÇAS (03/10/2026)
+ * Era `children.limit(500)`, sem filtro e sem ordem: com 3.000 crianças na
+ * plataforma, ~2.500 famílias NUNCA recebiam "a rota não começou" — sempre
+ * as mesmas, porque sem ordem o Firestore devolve pelo id —, e nada no log
+ * dizia que faltava alguém. Agora:
  *
+ *   1. os motoristas (`users` com `role == 'admin'`, ~100) e todo
+ *      `liveLocation` (um por motorista) — duas leituras pequenas;
+ *   2. motorista com a rota PARADA: a turma inteira dele, por `adminUid`;
+ *   3. motorista com a rota RODANDO: só as crianças "na perua" — uma consulta
+ *      da plataforma por `status == 'onboard'` (campo único, índice
+ *      automático), paginada. É o único caso que vale com a rota ativa.
+ *
+ * Quem decide quem cai em 2 ou 3 é `motoristasDaVarredura`, pura e testada
+ * em `npm run testar:varreduras`. A DECISÃO de avisar continua inteira em
+ * `avisoDeAtraso`, que não mudou.
+ *
+ * ⚠️ A TURMA É LIDA SÓ POR `adminUid`, SEM `active == true`. Criança antiga
+ * pode não ter o campo `active` (ausente vale ativa, como em todo o app), e o
+ * filtro na consulta a esconderia. Quem filtra é o código, como antes.
+ *
+ * ── O QUE FICOU DE FORA
  * ⚠️ AS VIAGENS (`rides`) NÃO SÃO LIDAS, de propósito. No original elas só
  * mudam o TÍTULO do caso grave ("o app não recebe atualização" em vez de
  * "passou da hora"), e custariam uma leitura por criança a cada vinte minutos.
@@ -304,57 +382,62 @@ async function varrerAtrasos(db, agora) {
 
   // As faltas do dia, de uma vez: criança avisada não gera aviso de atraso, e
   // uma consulta por criança seria a leitura mais cara desta varredura.
+  // ⚠️ PAGINADA ATÉ O FIM. Era `limit(1000)`: num dia de chuva a plataforma
+  // passa disso, e a falta que ficasse de fora virava aviso de atraso para
+  // uma família que AVISOU que a criança não ia.
   const faltas = new Set();
   try {
-    const fs = await db
-      .collection('absenceDeclarations')
-      .where('dateKey', '==', hoje)
-      .limit(TETO * 2)
-      .get();
-    fs.docs.forEach((d) => {
+    const paginas = paginar((ultimo) => {
+      let q = db
+        .collection('absenceDeclarations')
+        .where('dateKey', '==', hoje)
+        .orderBy(FieldPath.documentId())
+        .limit(TAMANHO_DA_PAGINA);
+      if (ultimo) q = q.startAfter(ultimo);
+      return q;
+    });
+    for await (const d of paginas) {
       const id = d.data().childId;
       if (id) faltas.add(id);
-    });
-  } catch (err) {
-    logger.warn('não deu pra ler as faltas do dia', err);
-  }
-
-  const snap = await db.collection('children').limit(TETO).get();
-
-  // `liveLocation` é UM por motorista, e vinte crianças dele fariam vinte
-  // leituras do mesmo documento.
-  const rotaPorMotorista = new Map();
-  async function rotaAtivaDe(adminUid) {
-    if (!adminUid) return false;
-    if (rotaPorMotorista.has(adminUid)) return rotaPorMotorista.get(adminUid);
-    let ativa;
-    try {
-      const d = await db.doc(`liveLocation/${adminUid}`).get();
-      ativa = d.exists && d.data().routeActive === true;
-    } catch {
-      // ⚠️ NA DÚVIDA, "A ROTA ESTÁ ATIVA" — ou seja, o silêncio. Falhar a
-      // leitura e concluir "a rota não começou" mandaria um aviso de atraso
-      // pra base inteira por causa de um soluço de rede. É o pior erro que
-      // esta varredura pode cometer, e o `true` é o que o impede.
-      ativa = true;
     }
-    rotaPorMotorista.set(adminUid, ativa);
-    return ativa;
+  } catch (err) {
+    // ⚠️ SEM AS FALTAS, NÃO SE AVISA NADA. Antes seguia com o conjunto
+    // vazio — e toda criança que faltou com aviso receberia "a rota não
+    // começou". Calar uma rodada é melhor: daqui a vinte minutos há outra.
+    logger.warn('não deu pra ler as faltas do dia — varredura de atrasos suspensa', err);
+    return 0;
   }
 
-  for (const doc of snap.docs) {
+  const motoristasSnap = await db.collection('users').where('role', '==', 'admin').get();
+  let rotas = [];
+  let rotasIlegiveis = false;
+  try {
+    const rotasSnap = await db.collection('liveLocation').get();
+    rotas = rotasSnap.docs.map((d) => ({ id: d.id, routeActive: d.data().routeActive }));
+  } catch (err) {
+    // NA DÚVIDA, "A ROTA ESTÁ ATIVA" — ver `motoristasDaVarredura`.
+    logger.warn('não deu pra ler liveLocation — tratando toda rota como ativa', err);
+    rotasIlegiveis = true;
+  }
+  const { semRota, comRota } = motoristasDaVarredura({
+    motoristas: motoristasSnap.docs.map((d) => d.id),
+    rotas,
+    rotasIlegiveis,
+  });
+
+  async function avaliar(doc, rotaAtiva) {
     try {
       const c = doc.data();
-      if (c.active === false || !c.parentUid) continue;
-      if (jaAvisadoHoje(c, 'rota_atrasada', hoje)) continue;
+      if (c.active === false || !c.parentUid) return;
+      if (jaAvisadoHoje(c, 'rota_atrasada', hoje)) return;
 
       const aviso = avisoDeAtraso({
         crianca: c,
-        rotaAtiva: await rotaAtivaDe(c.adminUid),
+        rotaAtiva,
         temFalta: faltas.has(doc.id),
         agora,
       });
-      if (!aviso) continue;
+      if (!aviso) return;
 
       await db.collection('notifications').add({
         userId: c.parentUid,
@@ -371,6 +454,34 @@ async function varrerAtrasos(db, agora) {
       n += 1;
     } catch (err) {
       logger.warn(`aviso de atraso falhou em ${doc.id}`, err);
+    }
+  }
+
+  // 2. Rota parada: a turma inteira. Um motorista que falha não derruba os
+  // outros — mesmo critério do resto deste arquivo.
+  for (const adminUid of semRota) {
+    try {
+      const turma = await db.collection('children').where('adminUid', '==', adminUid).get();
+      for (const doc of turma.docs) await avaliar(doc, false);
+    } catch (err) {
+      logger.warn(`turma de ${adminUid} não lida na varredura de atrasos`, err);
+    }
+  }
+
+  // 3. Rota rodando: só quem consta na perua.
+  if (comRota.size) {
+    const naPerua = paginar((ultimo) => {
+      let q = db
+        .collection('children')
+        .where('status', '==', 'onboard')
+        .orderBy(FieldPath.documentId())
+        .limit(TAMANHO_DA_PAGINA);
+      if (ultimo) q = q.startAfter(ultimo);
+      return q;
+    });
+    for await (const doc of naPerua) {
+      if (!avaliarDaPerua(doc.data(), comRota)) continue;
+      await avaliar(doc, true);
     }
   }
   return n;
@@ -390,6 +501,7 @@ function makeVarrerAtrasos(db) {
       timeZone: 'America/Sao_Paulo',
       region: REGION,
       maxInstances: LIMITES.AGENDADO,
+      concurrency: LIMITES.CONCORRENCIA_AGENDADO,
       timeoutSeconds: LIMITES.TEMPO_AGENDADO,
       memory: LIMITES.MEMORIA_AGENDADO,
     },
@@ -470,6 +582,7 @@ function makeVarrerOfertas(db) {
       timeZone: 'America/Sao_Paulo',
       region: REGION,
       maxInstances: LIMITES.AGENDADO,
+      concurrency: LIMITES.CONCORRENCIA_AGENDADO,
       timeoutSeconds: LIMITES.TEMPO_AGENDADO,
       memory: LIMITES.MEMORIA_AGENDADO,
     },
@@ -506,6 +619,7 @@ function makeEnviarAvisosDoDia(db) {
       timeZone: 'America/Sao_Paulo',
       region: REGION,
       maxInstances: LIMITES.AGENDADO,
+      concurrency: LIMITES.CONCORRENCIA_AGENDADO,
       timeoutSeconds: LIMITES.TEMPO_AGENDADO,
       memory: LIMITES.MEMORIA_AGENDADO,
     },

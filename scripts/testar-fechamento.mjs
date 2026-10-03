@@ -75,9 +75,18 @@ async function limpar() {
     const snap = await db.collection(col).get();
     await Promise.all(snap.docs.map((d) => d.ref.delete()));
   }
+  // ⚠️ A COBRANÇA NASCE DESLIGADA desde 02/10/2026 (`platformConfig/app`
+  // ausente = desligada), e `fecharMes` sai sem fechar nada. Sem esta linha
+  // todo cenário abaixo media o interruptor, não o fechamento — e o arquivo
+  // falhava desde então.
+  await db.doc('platformConfig/app').set({ cobrancaLigada: true });
 }
 
-const DIAS = (n) => new Date(Date.now() + n * 86400000);
+// ⚠️ RELATIVO AO `AGORA` DO TESTE, NÃO AO RELÓGIO DA MÁQUINA. Era
+// `Date.now()`, e o mês fechado é fixo (`MES`): o "teste começou há 30 dias"
+// deixou de cair em agosto assim que o calendário real passou de setembro, e
+// o bloco 3 começou a falhar sozinho em outubro de 2026.
+const DIAS = (n) => new Date(new Date(2026, 8, 1, 5, 0, 0).getTime() + n * 86400000);
 
 async function semear(uid, dados) {
   await db.doc(`users/${uid}`).set({ role: 'admin', ...dados });

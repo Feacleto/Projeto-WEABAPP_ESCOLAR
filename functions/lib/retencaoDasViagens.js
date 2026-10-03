@@ -1,5 +1,7 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
+const LIMITES = require('./limites');
+const { apagarEmPaginas } = require('./reguaDasVarreduras');
 
 const REGION = 'southamerica-east1';
 
@@ -51,6 +53,22 @@ const LOTE = 400;
  * ── POR QUE `collectionGroup`
  * `rides` é subcoleção de cada criança. Varrer criança por criança seria uma
  * consulta por documento, e a conta cresce com o CALENDÁRIO, não com a turma.
+ *
+ * ── ⚠️ EM PÁGINAS, E COM O TETO DAS AGENDADAS PESADAS (03/10/2026)
+ * Era um `.get()` só, sem `limit`, no padrão de 60 s e 256 MiB: o lote de 400
+ * protegia a ESCRITA, mas a leitura já tinha posto a cauda inteira na
+ * memória. Com 3.000 crianças são ~60 mil viagens a cada dois meses de dias
+ * letivos, e qualquer noite em que ela não rodasse somava à seguinte — até o
+ * dia em que morre por memória sem apagar nada, e daí em diante toda noite.
+ * Agora lê 400, apaga 400, e repete (`apagarEmPaginas`, testada em
+ * `npm run testar:varreduras`).
+ *
+ * ⚠️ E ELA PRECISA DE UM ÍNDICE QUE NÃO NASCE SOZINHO. Índice de campo único
+ * é automático só no escopo de COLEÇÃO; consulta em `collectionGroup` com
+ * desigualdade pede a isenção `rides.dateKey` em COLLECTION_GROUP no
+ * `firestore.indexes.json` (`fieldOverrides`). Sem ela, a consulta falha com
+ * FAILED_PRECONDITION — e o `throw` abaixo é o que faz isso aparecer no log
+ * de erro em vez de passar por "0 apagadas".
  */
 function makeApagarViagensAntigas(db) {
   return onSchedule(
@@ -60,47 +78,65 @@ function makeApagarViagensAntigas(db) {
       schedule: '30 4 * * *',
       timeZone: 'America/Sao_Paulo',
       region: REGION,
+      maxInstances: LIMITES.AGENDADO,
+      concurrency: LIMITES.CONCORRENCIA_AGENDADO,
+      timeoutSeconds: LIMITES.TEMPO_AGENDADO,
+      memory: LIMITES.MEMORIA_AGENDADO,
     },
     async () => {
-      const limite = new Date();
-      limite.setDate(limite.getDate() - DIAS_DE_RETENCAO);
-      // O id do documento é a data — comparar STRING 'AAAA-MM-DD' é comparar
-      // data, e não precisa de índice nem de campo paralelo. É a mesma
-      // propriedade que torna a viagem idempotente.
-      const corte = limite.toISOString().slice(0, 10);
-
-      let apagados = 0;
-      let lote = db.batch();
-      let noLote = 0;
-
-      // `dateKey` é gravado em todo documento por `anotarMarco`, então a
-      // consulta é por campo e não por id — `__name__` num collectionGroup
-      // compara o caminho inteiro, não o último segmento.
-      const antigas = await db
-        .collectionGroup('rides')
-        .where('dateKey', '<', corte)
-        .get();
-
-      for (const doc of antigas.docs) {
-        lote.delete(doc.ref);
-        noLote += 1;
-        apagados += 1;
-        if (noLote >= LOTE) {
-          await lote.commit();
-          lote = db.batch();
-          noLote = 0;
-        }
-      }
-      if (noLote > 0) await lote.commit();
-
-      logger.info('[retencao] viagens antigas apagadas', {
-        corte,
-        apagados,
-        diasDeRetencao: DIAS_DE_RETENCAO,
-      });
+      const resultado = await apagarViagensAntigas(db);
+      logger.info('[retencao] viagens antigas apagadas', resultado);
       return null;
     }
   );
 }
 
-module.exports = { makeApagarViagensAntigas, DIAS_DE_RETENCAO };
+/** O dia de corte: viagens com `dateKey` ANTES dele são apagadas. */
+function corteDaRetencao(agora = new Date()) {
+  const limite = new Date(agora);
+  limite.setDate(limite.getDate() - DIAS_DE_RETENCAO);
+  // O id do documento é a data — comparar STRING 'AAAA-MM-DD' é comparar
+  // data. É a mesma propriedade que torna a viagem idempotente.
+  return limite.toISOString().slice(0, 10);
+}
+
+async function apagarViagensAntigas(db, { agora = new Date() } = {}) {
+  const corte = corteDaRetencao(agora);
+
+  // `dateKey` é gravado em todo documento por `anotarMarco`, então a
+  // consulta é por campo e não por id — `__name__` num collectionGroup
+  // compara o caminho inteiro, não o último segmento.
+  const { apagados, paginas, interrompido } = await apagarEmPaginas({
+    tamanho: LOTE,
+    buscar: async (tamanho) => {
+      const snap = await db
+        .collectionGroup('rides')
+        .where('dateKey', '<', corte)
+        .limit(tamanho)
+        .get();
+      return snap.docs;
+    },
+    apagar: async (docs) => {
+      const lote = db.batch();
+      docs.forEach((d) => lote.delete(d.ref));
+      await lote.commit();
+    },
+  });
+
+  if (interrompido) {
+    // Não é erro: o que sobrou sai amanhã. Mas se aparecer duas noites
+    // seguidas, a consulta está devolvendo o que o lote não consegue apagar.
+    logger.warn('[retencao] parou no teto de páginas; o resto sai na próxima noite', {
+      corte,
+      apagados,
+    });
+  }
+  return { corte, apagados, paginas, interrompido, diasDeRetencao: DIAS_DE_RETENCAO };
+}
+
+module.exports = {
+  makeApagarViagensAntigas,
+  apagarViagensAntigas,
+  corteDaRetencao,
+  DIAS_DE_RETENCAO,
+};

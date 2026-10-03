@@ -78,10 +78,27 @@ const GATILHO = 10;
  * sobre um commit parcial, é exatamente o cenário de cobrança duplicada que o
  * id determinístico de `payments/{criança}_{mês}` foi criado pra impedir.
  *
- * Teto de 1 faz a segunda esperar em vez de correr junto. Cinto, além do
- * suspensório que já existe no id.
+ * ⚠️ TETO DE INSTÂNCIA SOZINHO NÃO SERIALIZA NADA (corrigido em 03/10/2026).
+ * Este comentário dizia que `maxInstances: 1` "faz a segunda esperar em vez
+ * de correr junto" — e era falso: em Functions v2 UMA instância atende várias
+ * requisições ao mesmo tempo (concorrência padrão de 80). Com o teto de 1 e a
+ * concorrência padrão, o retry do Scheduler e a execução seguinte entravam na
+ * MESMA instância e rodavam lado a lado, que é exatamente o cenário descrito
+ * acima.
+ *
+ * O par que serializa é `maxInstances: AGENDADO` + `concurrency:
+ * CONCORRENCIA_AGENDADO` (os dois em 1): uma instância, uma execução por vez.
+ * A segunda não corre junto — ela espera numa fila curta ou é recusada, e aí
+ * volta pela retentativa do Scheduler quando a agendada declara `retryCount`.
+ *
+ * ⚠️ E CONTINUA SENDO CINTO, NÃO GARANTIA. O Scheduler entrega "pelo menos
+ * uma vez", e `fecharMesAgora`/`runBillingNow` (callables) correm fora deste
+ * teto. Quem garante "uma cobrança por mês" é o id determinístico com
+ * `create()` — este par só tira a corrida do caminho comum.
+ * `npm run testar:varreduras` confere que toda `onSchedule` declara os dois.
  */
 const AGENDADO = 1;
+const CONCORRENCIA_AGENDADO = 1;
 
 /**
  * ⚠️ O TEMPO E A MEMÓRIA DAS AGENDADAS PESADAS.
@@ -91,14 +108,14 @@ const AGENDADO = 1;
  * agendadas que varrem a plataforma inteira estouram esse teto antes de
  * qualquer outra coisa:
  *
- *   sendPaymentReminders     manda e-mail EM SÉRIE, um `await` por
- *                            pagamento. ~150 mensalidades a ~300 ms cada já
- *                            passa de 60 s — e o que estourar depois do
- *                            último envio fica sem marcação de idempotência,
- *                            então a próxima execução manda de novo.
  *   generateMonthlyPayments  faz a varredura de `children` + `payments` da
  *                            plataforma MAIS o `purgeOld`, na mesma execução.
  *   confirmarAusencias       varre toda declaração de ausência da véspera.
+ *   apagarViagensAntigas     apaga `rides` da plataforma inteira (desde
+ *                            03/10/2026 com este teto; antes rodava no padrão).
+ *
+ * (`sendPaymentReminders`, o e-mail em série que abria esta lista, saiu em
+ * 03/10/2026.)
  *
  * 540 s é o teto de agendada v2 sem virar Cloud Run job, e é o valor certo
  * aqui: estas rodam de madrugada, sem ninguém esperando, e o custo de uma
@@ -115,6 +132,7 @@ module.exports = {
   AUTENTICADO,
   GATILHO,
   AGENDADO,
+  CONCORRENCIA_AGENDADO,
   TEMPO_AGENDADO,
   MEMORIA_AGENDADO,
 };

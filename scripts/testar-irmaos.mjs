@@ -144,6 +144,40 @@ checar('quem aprova é o motorista dono da criança', true,
 checar('e a resposta não diz o nome da criança a quem pediu', true,
   /return \{ encontrou: achadas\.length \}/.test(pedidos));
 
+bloco('5b · A CRIANÇA GUARDA A CHAVE DO TELEFONE (03/10/2026)');
+/* `pedirAcessoPeloTelefone` lia TODA criança sem responsável da plataforma a
+   cada chamada. Agora consulta por `parentPhoneChave`, que o app grava ao
+   cadastrar e ao editar o telefone — e a chave do app tem de ser a mesma do
+   servidor, senão a consulta não acha ninguém, em silêncio. */
+const { chaveDoTelefone: chaveDoApp } = await import('../src/dominio/identidade/indicacao.js');
+for (const fone of ['(11) 98765-4321', '11 8765-4321', '+55 11 98765-4321', '011987654321', '(11) 3456-7890', '123', '']) {
+  checar(`a chave do app é a do servidor: "${fone}"`, chaveDoTelefone(fone), chaveDoApp(fone));
+}
+const filhos = readFileSync(new URL('../src/services/childrenService.js', import.meta.url), 'utf8');
+const addChild = filhos.slice(filhos.indexOf('export async function addChild'), filhos.indexOf('export async function getChild'));
+checar('o cadastro grava a chave junto do telefone', true,
+  /parentPhone: data\.parentPhone[\s\S]{0,400}chaveDoTelefoneDaCrianca\(data\.parentPhone\)/.test(addChild));
+const updateChild = filhos.slice(filhos.indexOf('export async function updateChild'), filhos.indexOf('function toCoord'));
+checar('editar o telefone regrava a chave no mesmo write', true,
+  /'parentPhone' in updates[\s\S]{0,200}chaveDoTelefoneDaCrianca\(updates\.parentPhone\)/.test(updateChild));
+checar('telefone inválido grava null (não deixa a chave do número antigo)', true,
+  /parentPhoneChave: chaveDoTelefone\(telefone\) \|\| null/.test(filhos));
+checar('o pedido de acesso consulta pela chave', true,
+  /where\('parentPhoneChave', '==', chave\)\s*\.limit\(/.test(pedirAcesso));
+checar('e não lê mais toda criança sem responsável', false,
+  /where\('parentUid', '==', null\)/.test(pedirAcesso));
+checar('a chave achada é reconferida pela régua (não confia no campo)', true,
+  /criancasQueEsperam\(/.test(pedirAcesso));
+checar('o gatilho do cadastro completa a chave do app antigo', true,
+  /crianca\.parentPhoneChave !== chave[\s\S]{0,300}parentPhoneChave: chave/.test(vincular));
+/* A régua continua recusando a criança cuja chave gravada mente: o pedido só
+   nasce se o `parentPhone` dela casar de verdade. */
+checar('chave forjada não abre pedido', [],
+  criancasQueEsperam({
+    telefone: '11987654321',
+    criancas: [{ id: 'x', adminUid: 'tio1', parentUid: null, parentPhone: '11911112222', parentPhoneChave: '11987654321' }],
+  }).map((c) => c.id));
+
 bloco('6 · SONDA POSITIVA');
 checar('o detector da rule reprovaria uma lista sem a chave', false,
   /\.hasAny\(\[[\s\S]*?'phoneChave'[\s\S]*?\]\)/.test(".hasAny(['role', 'childIds'])"));

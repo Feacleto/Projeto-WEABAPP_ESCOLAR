@@ -36,6 +36,7 @@ function makeCloseStaleRoutes(db) {
       timeZone: 'America/Sao_Paulo',
       region: REGION,
       maxInstances: LIMITES.AGENDADO,
+      concurrency: LIMITES.CONCORRENCIA_AGENDADO,
     },
     async () => {
       // UM DOCUMENTO POR MOTORISTA, não mais `liveLocation/current`.

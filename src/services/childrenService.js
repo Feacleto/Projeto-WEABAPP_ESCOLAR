@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { generateInviteCode } from '../dominio/identidade/generateInviteCode';
+import { chaveDoTelefone } from '../dominio/identidade/indicacao.js';
 import { inviteCodeExists } from './inviteCodeService';
 import { playSound } from './soundService';
 
@@ -81,6 +82,11 @@ export async function addChild(data) {
     parentName: data.parentName?.trim() || '',
     parentEmail: data.parentEmail?.trim().toLowerCase() || '',
     parentPhone: data.parentPhone?.trim() || '',
+    // A CHAVE DO TELEFONE (03/10/2026): é por ela que o servidor acha esta
+    // criança quando o responsável entra sem o link e informa o WhatsApp
+    // (`pedirAcessoPeloTelefone`) — antes ele lia toda criança sem
+    // responsável da plataforma. Ver `chaveDoTelefoneDaCrianca`.
+    ...chaveDoTelefoneDaCrianca(data.parentPhone),
     parent2Name: data.parent2Name?.trim() || '',
     parent2Phone: data.parent2Phone?.trim() || '',
     address: data.address?.trim() || '',
@@ -240,10 +246,34 @@ export async function updateChild(id, data) {
   if ('lat' in updates || 'lng' in updates) {
     updates.geoPending = updates.lat == null || updates.lng == null;
   }
+  // O telefone mudou, a chave muda junto — no MESMO write. Separadas, a
+  // criança ficaria com a chave do número antigo e o pedido de acesso do
+  // número novo não a acharia.
+  if ('parentPhone' in updates) {
+    Object.assign(updates, chaveDoTelefoneDaCrianca(updates.parentPhone));
+  }
   if (updates.monthlyFee != null) updates.monthlyFee = Number(updates.monthlyFee);
   if (updates.dueDay != null) updates.dueDay = clampDueDay(updates.dueDay);
   await updateDoc(doc(db, 'children', id), updates);
   playSound('salvo');
+}
+
+/**
+ * `{ parentPhoneChave }` do telefone do responsável — a mesma normalização da
+ * indicação e do irmão (`chaveDoTelefone`, com o nono dígito), espelhada no
+ * servidor em `functions/lib/indicacao.js`.
+ *
+ * ⚠️ TELEFONE SEM CHAVE GRAVA `null`, NÃO OMITE. Trocar um número válido por
+ * um inválido deixaria a chave do antigo na criança — e o pedido de acesso de
+ * quem tem o número antigo continuaria achando-a.
+ *
+ * O servidor NÃO confia neste campo para decidir nada: ele só ENCONTRA a
+ * criança, e a régua do pedido recalcula a chave do `parentPhone` antes de
+ * abrir qualquer coisa (`criancasQueEsperam`). Por isso as rules não precisam
+ * protegê-lo.
+ */
+export function chaveDoTelefoneDaCrianca(telefone) {
+  return { parentPhoneChave: chaveDoTelefone(telefone) || null };
 }
 
 /**

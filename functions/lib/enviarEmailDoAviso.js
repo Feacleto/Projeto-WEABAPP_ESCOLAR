@@ -39,6 +39,11 @@ async function enviarEmailSeFor({ aviso, usuario, notifId, chave, remetente }) {
       subject: assunto,
       html,
       text,
+      // ⚠️ O ID DA NOTIFICAÇÃO É A CHAVE. O gatilho que chama isto pode
+      // rodar duas vezes para o mesmo documento (entrega "pelo menos uma
+      // vez"), e a fatura cobrada em dois e-mails iguais parece erro de
+      // cobrança. Sem `notifId` não há chave — e manda assim mesmo.
+      idempotencyKey: notifId ? `aviso-${notifId}` : undefined,
     });
     logger.info(`[email] ${aviso.type} enviado`, { notifId });
   } catch (err) {

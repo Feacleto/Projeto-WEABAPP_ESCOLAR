@@ -137,14 +137,34 @@ async function loadDriver(db, adminUid) {
  * pra criar a conta. Devolve valor, mês e dias até vencer — nada de
  * histórico, nada de outros meses.
  */
+/*
+ * ⚠️ SÓ AS EM ABERTO, E POUCAS (03/10/2026). Era `where('childId')` sem
+ * limite: TODAS as mensalidades da criança, pagas inclusive — com a retenção
+ * de 60 meses, até 60 leituras por chamada, numa callable PÚBLICA. Agora são
+ * duas igualdades (`pending` e `claimed`, os dois estados que não são
+ * `paid`), servidas por índices de campo único, com teto.
+ *
+ * O teto não esconde a mais antiga: sem `orderBy`, o Firestore devolve pelo
+ * id, e o id é `{criança}_{AAAA-MM}` (billing.js) — os meses mais antigos vêm
+ * primeiro, que é justamente a que a prévia mostra.
+ */
+const TETO_DE_ABERTAS = 6;
+
 async function loadNextPayment(db, childId) {
   try {
-    const snap = await db
-      .collection('payments')
-      .where('childId', '==', childId)
-      .get();
+    const snaps = await Promise.all(
+      ['pending', 'claimed'].map((status) =>
+        db
+          .collection('payments')
+          .where('childId', '==', childId)
+          .where('status', '==', status)
+          .limit(TETO_DE_ABERTAS)
+          .get()
+      )
+    );
 
-    const open = snap.docs
+    const open = snaps
+      .flatMap((s) => s.docs)
       .map((d) => d.data())
       .filter((p) => p.status !== 'paid')
       .map((p) => ({
@@ -179,35 +199,51 @@ async function loadNextPayment(db, childId) {
  * ou de outra família. O número cria o motivo pra entrar; o texto fica atrás
  * da conta.
  */
+/*
+ * ⚠️ CONTADO NO SERVIDOR, E SÓ DO MOTORISTA DESTA CRIANÇA (03/10/2026).
+ *
+ * Eram duas leituras SEM LIMITE, e a segunda era de toda a plataforma: os
+ * recados de escola de TODOS os motoristas cujo `schoolName` batesse com o
+ * desta criança. Numa escola grande, dez peruas somavam os avisos umas das
+ * outras — a mãe lia "12 recados esperando você" sobre recados que o
+ * motorista dela nunca mandou e que ela nunca vai ver lá dentro (as rules e
+ * `watchParentAgenda` escopam por `adminUid`). E cada chamada desta callable
+ * PÚBLICA pagava a leitura de todos eles.
+ *
+ * Agora as duas consultas levam `adminUid` (igualdades, índices de campo
+ * único) e usam `count()`: uma leitura por mil documentos, nenhum documento
+ * trafega. As duas são disjuntas — recado de criança é `scope: 'child'` —,
+ * então a soma não conta nada duas vezes.
+ *
+ * `latestMs` volta sempre `null`: saber o mais recente exigiria ler os
+ * documentos (ou um índice composto com `createdAt`), e nenhuma tela o lê —
+ * `Invite.jsx` usa só `count`.
+ */
 async function loadNoticeSummary(db, child) {
   try {
+    if (!child.adminUid) return { count: 0, latestMs: null };
     const queries = [
-      db.collection('agendaEntries').where('childId', '==', child.id).get(),
+      db
+        .collection('agendaEntries')
+        .where('adminUid', '==', child.adminUid)
+        .where('childId', '==', child.id)
+        .count()
+        .get(),
     ];
     if (child.school) {
       queries.push(
         db
           .collection('agendaEntries')
+          .where('adminUid', '==', child.adminUid)
           .where('scope', '==', 'school')
           .where('schoolName', '==', child.school)
+          .count()
           .get()
       );
     }
     const snaps = await Promise.all(queries);
-
-    const seen = new Set();
-    let count = 0;
-    let latestMs = null;
-    for (const snap of snaps) {
-      for (const doc of snap.docs) {
-        if (seen.has(doc.id)) continue;
-        seen.add(doc.id);
-        count += 1;
-        const ms = doc.data().createdAt?.toMillis?.() || null;
-        if (ms && (!latestMs || ms > latestMs)) latestMs = ms;
-      }
-    }
-    return { count, latestMs };
+    const count = snaps.reduce((soma, s) => soma + (Number(s.data().count) || 0), 0);
+    return { count, latestMs: null };
   } catch (err) {
     // A PRÉVIA NÃO CAI POR CAUSA DO CONTADOR — mas o log tem que dizer POR QUE
     // ele zerou, e antes não dizia.

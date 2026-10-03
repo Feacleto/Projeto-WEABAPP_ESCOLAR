@@ -133,6 +133,7 @@ function makeEnviarAvisosComerciais(db) {
       timeZone: 'America/Sao_Paulo',
       region: REGION,
       maxInstances: LIMITES.AGENDADO,
+      concurrency: LIMITES.CONCORRENCIA_AGENDADO,
       timeoutSeconds: LIMITES.TEMPO_AGENDADO,
       memory: LIMITES.MEMORIA_AGENDADO,
     },

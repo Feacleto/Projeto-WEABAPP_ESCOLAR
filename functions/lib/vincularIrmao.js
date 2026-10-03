@@ -52,6 +52,20 @@ function makeVincularIrmao(db) {
       if (!chave) return;
       const childId = event.params.childId;
 
+      // ⚠️ A CHAVE DO TELEFONE NA CRIANÇA (03/10/2026) — é por ela que
+      // `pedirAcessoPeloTelefone` acha quem espera. O app novo já a grava no
+      // cadastro; o app ANTIGO (PWA ainda sem atualizar) não, e sem ela a
+      // criança só seria achada depois da varredura das 9h. Só escreve quando
+      // falta ou difere — e é `onDocumentCreated`, então esta escrita não
+      // dispara o gatilho de novo.
+      if (crianca.parentPhoneChave !== chave) {
+        try {
+          await db.doc(`children/${childId}`).update({ parentPhoneChave: chave });
+        } catch (err) {
+          logger.warn('[irmao] chave do telefone não gravada', { childId, err: err?.message });
+        }
+      }
+
       try {
         const [porChave, vinculadas] = await Promise.all([
           db.collection('users').where('phoneChave', '==', chave).limit(3).get(),

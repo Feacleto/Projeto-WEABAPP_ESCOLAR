@@ -27,6 +27,7 @@
 process.env.TZ = 'America/Sao_Paulo';
 
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 const require = createRequire(import.meta.url);
 const R = require('../functions/lib/reguaDosAvisos.js');
 import { avisoDoMomento } from '../src/dominio/rota/avisoDoMomento.js';
@@ -390,6 +391,188 @@ const noDegrau2 = oferta({ trialInicio: new Date(AGORA.getTime() - 40 * 24 * 360
 checar('no degrau 2 o push diz 20%', noDegrau2.titulo.includes('20%'), noDegrau2.titulo);
 checar('e o corpo traz os dois valores', /R\$.*R\$/.test(oferta().corpo), oferta().corpo);
 eq('o toque leva ao plano dele', '/tio/planos', oferta().destino);
+
+// ══════════════════════════════════════════════════════════════════════════
+bloco('═══ A VARREDURA DE ATRASOS COMEÇA PELOS MOTORISTAS (03/10/2026) ═══');
+
+/* Era `children.limit(500)` sem ordem: com 3.000 crianças, ~2.500 famílias
+   nunca eram olhadas. A escolha de quem ler agora é pura e está aqui. */
+const V = require('../functions/lib/reguaDasVarreduras.js');
+
+{
+  const r = V.motoristasDaVarredura({
+    motoristas: ['a', 'b', 'c', 'a', null],
+    rotas: [
+      { id: 'b', routeActive: true },
+      { id: 'c', routeActive: false },
+      { id: 'z', routeActive: true }, // liveLocation de quem não é motorista
+    ],
+  });
+  eq('rota parada: a turma inteira (a e c, sem repetir a)', JSON.stringify(['a', 'c']), JSON.stringify(r.semRota));
+  checar('rota rodando: b vai para a consulta "na perua"', r.comRota.has('b') && r.comRota.size === 1);
+  checar('liveLocation sem motorista não vira motorista', !r.comRota.has('z') && !r.semRota.includes('z'));
+
+  /* ⚠️ NA DÚVIDA, A ROTA ESTÁ ATIVA. Sem isso, um soluço ao ler liveLocation
+     mandaria "a rota não começou" para a base inteira. */
+  const duvida = V.motoristasDaVarredura({ motoristas: ['a', 'b'], rotas: [], rotasIlegiveis: true });
+  eq('liveLocation ilegível: ninguém em "rota parada"', 0, duvida.semRota.length);
+  eq('liveLocation ilegível: todos só pela perua', 2, duvida.comRota.size);
+
+  /* Motorista sem documento em liveLocation nunca ligou a rota: rota parada. */
+  eq('sem liveLocation = rota parada', 'x', V.motoristasDaVarredura({ motoristas: ['x'] }).semRota[0]);
+  eq('sem argumento não explode', 0, V.motoristasDaVarredura().semRota.length);
+
+  /* A criança "na perua" vem da plataforma inteira: só entra a de quem está
+     com rota rodando — a dos outros já veio pela turma, e avaliar duas vezes
+     avisaria duas vezes. */
+  checar('na perua de quem roda: avalia', V.avaliarDaPerua({ adminUid: 'b' }, r.comRota));
+  checar('na perua de quem está parado: já veio pela turma', !V.avaliarDaPerua({ adminUid: 'a' }, r.comRota));
+  checar('sem motorista: não avalia', !V.avaliarDaPerua({}, r.comRota));
+}
+
+/* ⚠️ O CASO GRAVE NÃO DEPENDE DA ROTA — e é por isso que motorista com rota
+   rodando não é DESCARTADO, só muda de consulta. Se alguém "simplificar" para
+   ler só quem está parado, esta é a frase que deixa de sair. */
+{
+  const naPerua = {
+    name: 'Lucas', parentUid: 'mae', horaPega: '06:40', horaEntrega: '07:20',
+    status: 'onboard', statusUpdatedAt: new Date('2026-09-10T10:30:00Z'),
+  };
+  const grave = R.avisoDeAtraso({
+    crianca: naPerua, rotaAtiva: true, temFalta: false, agora: new Date('2026-09-10T10:50:00Z'),
+  });
+  checar('com a rota ATIVA, "passou da hora de chegar" ainda sai', grave && grave.nivel === 'grave',
+    JSON.stringify(grave));
+}
+
+/* A ordem das consultas mora no arquivo que escreve — conferida pelo texto. */
+{
+  const fonte = readFileSync(new URL('../functions/lib/enviarAvisosDoDia.js', import.meta.url), 'utf8');
+  const atrasos = fonte.slice(fonte.indexOf('async function varrerAtrasos'), fonte.indexOf('function makeVarrerAtrasos'));
+  checar('não lê mais children.limit(TETO) solto', !/collection\('children'\)\.limit\(/.test(atrasos));
+  checar('a turma é lida por adminUid', /where\('adminUid', '==', adminUid\)/.test(atrasos));
+  checar('a turma NÃO filtra active na consulta (ausente vale ativa)', !/where\('active'/.test(atrasos));
+  checar('quem roda: consulta "na perua"', /where\('status', '==', 'onboard'\)/.test(atrasos));
+  checar('as faltas do dia são paginadas, sem limit(1000)', !/TETO \* 2/.test(atrasos) && /absenceDeclarations[\s\S]*?startAfter/.test(atrasos));
+  const convites = fonte.slice(fonte.indexOf('async function varrerConvites'), fonte.indexOf('async function varrerFaturas'));
+  checar('os convites pendentes são paginados', /startAfter/.test(convites) && !/limit\(TETO\)/.test(convites));
+  checar('e completam parentPhoneChave só quando difere', /c\.parentPhoneChave !== chave/.test(convites));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+bloco('═══ PAGINAR E APAGAR EM PÁGINAS (a régua das varreduras) ═══');
+
+/** Uma "coleção" de mentira com a forma mínima que a régua usa. */
+function colecao(n) {
+  const docs = Array.from({ length: n }, (_, i) => ({ id: `d${String(i).padStart(4, '0')}` }));
+  let consultas = 0;
+  return {
+    get consultas() { return consultas; },
+    docs,
+    montar: (tamanho) => (ultimo) => ({
+      get: async () => {
+        consultas += 1;
+        const desde = ultimo ? docs.findIndex((d) => d.id === ultimo.id) + 1 : 0;
+        return { docs: docs.slice(desde, desde + tamanho) };
+      },
+    }),
+  };
+}
+
+{
+  const c = colecao(10);
+  const vistos = [];
+  for await (const d of V.paginar(c.montar(4), 4)) vistos.push(d.id);
+  eq('paginar devolve todos, sem repetir', 10, new Set(vistos).size);
+  eq('10 em páginas de 4: três consultas (a última incompleta encerra)', 3, c.consultas);
+
+  const exata = colecao(8);
+  const n = [];
+  for await (const d of V.paginar(exata.montar(4), 4)) n.push(d);
+  eq('8 em páginas de 4: a terceira consulta volta vazia e encerra', 3, exata.consultas);
+  eq('e devolve os 8', 8, n.length);
+
+  const vazia = colecao(0);
+  const nada = [];
+  for await (const d of V.paginar(vazia.montar(4), 4)) nada.push(d);
+  eq('coleção vazia: uma consulta, nada devolvido', 0, nada.length);
+}
+
+{
+  /* A retenção apaga SEM cursor: quem foi apagado sai da consulta. */
+  let restantes = Array.from({ length: 1001 }, (_, i) => i);
+  const lotes = [];
+  const r = await V.apagarEmPaginas({
+    tamanho: 400,
+    buscar: async (t) => restantes.slice(0, t),
+    apagar: async (docs) => { lotes.push(docs.length); restantes = restantes.slice(docs.length); },
+  });
+  eq('1001 viagens: apaga todas', 1001, r.apagados);
+  eq('em três lotes (400, 400, 201)', JSON.stringify([400, 400, 201]), JSON.stringify(lotes));
+  checar('nenhum lote passa de 400 (o Firestore recusa acima de 500)', lotes.every((x) => x <= 400));
+  checar('terminou sem bater no teto', r.interrompido === false);
+
+  /* ⚠️ O TETO DE PÁGINAS: se o lote "apaga" e a consulta devolve o mesmo, o
+     laço sem teto rodaria até o timeout gastando leitura. */
+  const teimosa = await V.apagarEmPaginas({
+    tamanho: 400, maxPaginas: 5,
+    buscar: async (t) => Array.from({ length: t }, (_, i) => i),
+    apagar: async () => {},
+  });
+  checar('consulta que nunca esvazia para no teto e diz que parou', teimosa.interrompido === true && teimosa.paginas === 5);
+
+  const nadaAApagar = await V.apagarEmPaginas({ buscar: async () => [], apagar: async () => { throw new Error('não devia'); } });
+  eq('nada a apagar: nenhum lote', 0, nadaAApagar.apagados);
+}
+
+{
+  const fonte = readFileSync(new URL('../functions/lib/retencaoDasViagens.js', import.meta.url), 'utf8');
+  checar('a retenção usa apagarEmPaginas', /apagarEmPaginas\(/.test(fonte));
+  checar('e a consulta da retenção tem limit', /where\('dateKey', '<', corte\)\s*\.limit\(/.test(fonte));
+  checar('e declara o tempo e a memória das agendadas pesadas',
+    /timeoutSeconds: LIMITES\.TEMPO_AGENDADO/.test(fonte) && /memory: LIMITES\.MEMORIA_AGENDADO/.test(fonte));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+bloco('═══ TODA AGENDADA RODA UMA DE CADA VEZ ═══');
+
+/* ⚠️ `maxInstances: 1` sozinho NÃO serializa: uma instância de Functions v2
+   atende 80 requisições ao mesmo tempo. Quem serializa é o par com
+   `concurrency: 1`. Varre todo `onSchedule(` de functions/. */
+{
+  const { readdirSync } = await import('node:fs');
+  const LIMITES = require('../functions/lib/limites.js');
+  eq('CONCORRENCIA_AGENDADO é 1', 1, LIMITES.CONCORRENCIA_AGENDADO);
+  eq('AGENDADO é 1', 1, LIMITES.AGENDADO);
+
+  const pasta = new URL('../functions/lib/', import.meta.url);
+  const arquivos = readdirSync(pasta).filter((f) => f.endsWith('.js')).map((f) => new URL(f, pasta));
+  arquivos.push(new URL('../functions/index.js', import.meta.url));
+
+  let agendadas = 0;
+  for (const arq of arquivos) {
+    const fonte = readFileSync(arq, 'utf8');
+    const re = /onSchedule\(\s*\{([\s\S]*?)\n\s*\},/g;
+    let m;
+    while ((m = re.exec(fonte))) {
+      agendadas += 1;
+      const opcoes = m[1];
+      const nome = `${arq.pathname.split('/').pop()} (${(opcoes.match(/schedule: '([^']+)'/) || [])[1] || '?'})`;
+      checar(`${nome}: concurrency 1`, /concurrency: (1|LIMITES\.CONCORRENCIA_AGENDADO)\b/.test(opcoes));
+      checar(`${nome}: maxInstances 1`, /maxInstances: (1|LIMITES\.AGENDADO)\b/.test(opcoes));
+    }
+  }
+  checar('achou as agendadas (sonda: a varredura não está cega)', agendadas >= 9, `achou ${agendadas}`);
+
+  /* Sonda positiva: o detector reprovaria uma agendada sem concurrency. */
+  const sonda = "onSchedule(\n    {\n      schedule: 'x',\n      maxInstances: LIMITES.AGENDADO,\n    },";
+  const ms = /onSchedule\(\s*\{([\s\S]*?)\n\s*\},/.exec(sonda);
+  checar('sonda: sem concurrency o detector reprova', ms && !/concurrency:/.test(ms[1]));
+
+  const fech = readFileSync(new URL('../functions/lib/fechamento.js', import.meta.url), 'utf8');
+  checar('fecharMesDosParceiros retenta (é idempotente por jaTem.exists)',
+    /schedule: '0 5 1 \* \*'[\s\S]*?retryCount: 2/.test(fech) && /jaTem\.exists/.test(fech));
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 console.log('');

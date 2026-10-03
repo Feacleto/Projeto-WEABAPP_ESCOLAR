@@ -466,7 +466,17 @@ function makeFecharMesDosParceiros(db) {
       schedule: '0 5 1 * *',
       timeZone: 'America/Sao_Paulo',
       region: REGION,
+      // ⚠️ RETENTATIVA É SEGURA AQUI, E FOI CONFERIDA (03/10/2026). Ela só
+      // acontece quando `fecharMes` LANÇA — o erro de um parceiro é engolido
+      // lá dentro, então o que lança é leitura da base (config, `users`,
+      // `indicacoes`). Rodar de novo: a reconciliação RECONTA (chega no mesmo
+      // número), `jaTem.exists` pula quem já tem fatura do mês, e o mês-alvo
+      // sai de `mesAnterior(agora)` — a retentativa vem minutos depois, ainda
+      // no dia 1. Sem retentativa, um soluço às 5h deixava a base inteira sem
+      // fatura até alguém notar e apertar o botão.
+      retryCount: 2,
       maxInstances: LIMITES.AGENDADO,
+      concurrency: LIMITES.CONCORRENCIA_AGENDADO,
       timeoutSeconds: LIMITES.TEMPO_AGENDADO,
       memory: LIMITES.MEMORIA_AGENDADO,
     },

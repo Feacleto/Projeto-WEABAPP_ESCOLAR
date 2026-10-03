@@ -122,9 +122,33 @@ function makePedirAcessoPeloTelefone(db) {
       { merge: true }
     );
 
-    // Crianças sem responsável: são poucas (as que esperam convite), e a
-    // consulta não exige índice composto.
-    const snap = await db.collection('children').where('parentUid', '==', null).get();
+    // ⚠️ PELA CHAVE DO TELEFONE, NÃO PELA PLATAFORMA (03/10/2026). Era a
+    // consulta por `parentUid` nulo, sem limite: TODA criança sem
+    // responsável da plataforma, a cada chamada — numa base de 3.000
+    // crianças, centenas de leituras para achar uma ou duas, e numa callable
+    // que qualquer conta recém-criada dispara.
+    //
+    // `parentPhoneChave` é `chaveDoTelefone(parentPhone)`, gravado pelo app
+    // ao cadastrar e ao editar o telefone (childrenService), e completado nas
+    // crianças antigas pela varredura diária dos convites
+    // (`enviarAvisosDoDia.varrerConvites`). Campo único, índice automático.
+    //
+    // ⚠️ A CHAVE GRAVADA NÃO É CONFIADA: quem escreve é o cliente do
+    // motorista. `criancasQueEsperam` recalcula a chave do `parentPhone` de
+    // cada criança achada e descarta a que já tem responsável — uma chave
+    // forjada só faz a criança não ser achada, e o pedido continua passando
+    // pela aprovação do motorista.
+    //
+    // ⚠️ CRIANÇA ANTIGA AINDA SEM CHAVE não é achada até a varredura das 9h
+    // passar por ela — uma janela de um dia, uma vez. O pedido não se perde:
+    // `telefoneAguardandoChave` fica gravado aqui, e a varredura, ao gravar a
+    // chave que faltava, procura quem está esperando por ela e abre o pedido
+    // (o mesmo que o gatilho do cadastro faz para criança nova).
+    const snap = await db
+      .collection('children')
+      .where('parentPhoneChave', '==', chave)
+      .limit(20)
+      .get();
     const achadas = criancasQueEsperam({
       telefone,
       criancas: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
