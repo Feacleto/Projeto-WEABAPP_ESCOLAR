@@ -184,3 +184,54 @@ export function mensagemDeResposta(chamado, rotuloDaCategoria) {
     `:\n"${trecho}${trecho.length >= 180 ? '…' : ''}"\n\n`
   );
 }
+
+/**
+ * A MENSAGEM QUE A PESSOA MANDA AO SUPORTE PELO WHATSAPP (03/10/2026).
+ *
+ * O chamado era um formulário: escolher um chip, escrever um texto livre,
+ * enviar — e esperar uma resposta "por aqui ou pelo email" que nunca dizia
+ * onde. Para quem tem ~40 anos e usa o app em pé, isso é duas decisões e um
+ * texto para escrever antes de qualquer ajuda. Agora ela toca no problema e
+ * o WhatsApp abre com a mensagem pronta; a conversa continua onde ela já
+ * conversa com todo mundo.
+ *
+ * ⚠️ A MENSAGEM LEVA QUEM É A PESSOA — nome, papel, e-mail da conta, aparelho
+ * e versão. Sem isso a primeira resposta do suporte seria "qual é o seu
+ * e-mail?", que é a pergunta que o formulário antigo resolvia com
+ * `deviceInfo`. O e-mail é o da CONTA (não o que ela digitaria), porque é por
+ * ele que o dono acha o documento.
+ *
+ * Campo vazio some da mensagem, em vez de virar "E-mail: ".
+ */
+export function mensagemDoChamado({
+  frase,
+  nome,
+  papel,
+  marca,
+  email,
+  aparelho,
+  versao,
+  detalhe,
+} = {}) {
+  const primeiro = String(nome || '').trim();
+  const quem = papel === 'admin'
+    ? `motorista${marca ? ` (${String(marca).trim()})` : ''}`
+    : papel === 'parent' ? 'responsável' : '';
+
+  const apresentacao = primeiro
+    ? `Olá! Sou ${primeiro}${quem ? `, ${quem}` : ''}.`
+    : 'Olá!';
+
+  const linhas = [apresentacao, String(frase || 'Preciso de ajuda com o app.').trim()];
+
+  const extra = String(detalhe || '').trim();
+  if (extra) linhas.push(extra);
+
+  const ficha = [
+    email && `E-mail da conta: ${String(email).trim()}`,
+    (aparelho || versao) &&
+      `Aparelho: ${[aparelho, versao && `app ${versao}`].filter(Boolean).join(' · ')}`,
+  ].filter(Boolean);
+
+  return [linhas.join('\n'), ficha.join('\n')].filter(Boolean).join('\n\n');
+}

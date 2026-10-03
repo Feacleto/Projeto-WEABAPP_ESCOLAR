@@ -24,6 +24,7 @@ import {
   diasAteResponder,
   diasEsperando,
   mensagemDeResposta,
+  mensagemDoChamado,
   ordenarChamados,
   resumirChamados,
 } from '../src/dominio/suporte/chamados.js';
@@ -206,6 +207,28 @@ const fonteAba = readFileSync(
   new URL('../src/components/admin/ChamadosTab.jsx', import.meta.url), 'utf8');
 checar('a aba mostra o tempo de resposta', true,
   fonteAba.includes('diasAteResponder(chamado)'));
+
+// ─────────────────── a mensagem pronta que vai pelo WhatsApp ──────────────────
+
+{
+  const m = mensagemDoChamado({
+    frase: 'O mapa não está mostrando a perua.',
+    nome: 'Carlos', papel: 'admin', marca: 'Tio Carlos',
+    email: 'carlos@x.com', aparelho: 'Android', versao: '1.0',
+  });
+  checar('motorista se apresenta com a marca', true, m.startsWith('Olá! Sou Carlos, motorista (Tio Carlos).'));
+  checar('a frase do problema vai junto', true, m.includes('O mapa não está mostrando a perua.'));
+  checar('o e-mail da conta vai junto', true, m.includes('E-mail da conta: carlos@x.com'));
+  checar('aparelho e versão numa linha', true, m.includes('Aparelho: Android · app 1.0'));
+
+  const r = mensagemDoChamado({ frase: 'X.', nome: 'Ana', papel: 'parent' });
+  checar('responsável se apresenta como responsável', true, r.startsWith('Olá! Sou Ana, responsável.'));
+  checar('campo vazio não vira linha vazia', false, r.includes('E-mail') || r.includes('Aparelho'));
+
+  const d = mensagemDoChamado({ frase: 'Preciso de ajuda com:', detalhe: '  troquei de celular  ' });
+  checar('o que ela escreveu entra depois da frase', true, d.includes('Preciso de ajuda com:\ntroquei de celular'));
+  checar('sem nome, só "Olá!"', true, d.startsWith('Olá!\n'));
+}
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

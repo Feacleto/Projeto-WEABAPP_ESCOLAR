@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Mail,
   Phone,
@@ -68,6 +68,8 @@ import { PIX_KEY_TYPES, setMarca } from '../services/userService';
 import { APP_VERSION } from '../version';
 import ReviewSheet from '../components/feedback/ReviewSheet';
 import SupportSheet from '../components/support/SupportSheet';
+import PreferenciasDeAviso from '../components/notifications/PreferenciasDeAviso';
+import { DEV_EMAIL, devMailLink } from '../config/developer';
 import PixSheet from '../components/payments/PixSheet';
 import { AddChildSheet } from './pai/AddChild';
 
@@ -213,7 +215,7 @@ export default function Profile() {
     <>
       <Header title="Meu perfil" showBack />
 
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-7">
         {/* Cabeçalho com avatar + nome — botão "Trocar foto" embutido */}
         <Card className="text-center">
           <div className="flex flex-col items-center gap-3">
@@ -236,329 +238,258 @@ export default function Profile() {
           </div>
         </Card>
 
-        {editing ? (
-          <EditProfileForm
-            profile={profile}
-            onCancel={() => setEditing(false)}
-            onSaved={async () => {
-              await refreshProfile();
-              setEditing(false);
-            }}
-          />
-        ) : (
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-text">Dados pessoais</h3>
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                aria-label="Editar perfil"
-                className="text-primary tap p-1 inline-flex items-center gap-1 text-xs font-medium"
-              >
-                <Pencil size={14} /> Editar
-              </button>
-            </div>
-
-            <InfoRow icon={UserIcon} label="Nome" value={profile.name} />
-            <InfoRow
-              icon={Mail}
-              label="Email da conta"
-              value={user?.email || profile.email}
-              hint={comoEntra}
+        {/* O PERFIL EM BLOCOS (03/10/2026, pedido do dono).
+          *
+          * Era uma pilha de cartões sem nome — dados, empresa, PIX, marca,
+          * avisos, sons, tutorial, suporte, sair e excluir na mesma rolagem,
+          * e quem tem quarenta anos procura pela PALAVRA do assunto, não pela
+          * posição do cartão. Agora são cinco blocos com título grande, na
+          * ordem de quem usa: quem eu sou, o meu trabalho (ou os meus
+          * filhos), o que toca no celular, onde pedir ajuda, e por último o
+          * que mexe na conta — sair, os meus dados e a saída. */}
+        <Bloco titulo="Você">
+          {editing ? (
+            <EditProfileForm
+              profile={profile}
+              onCancel={() => setEditing(false)}
+              onSaved={async () => {
+                await refreshProfile();
+                setEditing(false);
+              }}
             />
-            <InfoRow
-              icon={Phone}
-              label="Telefone"
-              value={profile.phone ? formatPhone(profile.phone) : null}
-            />
-          </Card>
-        )}
-
-        {/* Dados da empresa (só Tio) */}
-        {isAdmin && (
-          <CompanyDataCard profile={profile} onSaved={refreshProfile} />
-        )}
-
-        {/* Atalhos do tio */}
-        {isAdmin && (
-          <Card>
-            <button
-              type="button"
-              onClick={() => setPixOpen(true)}
-              className="w-full flex items-center gap-3 tap"
-            >
-              <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
-                <Key size={20} className="text-primary" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-semibold text-text">Chave PIX</p>
-                <p className="text-xs text-textMuted truncate">
-                  {profile.pixKey
-                    ? `${PIX_KEY_TYPES[profile.pixKeyType]?.label || ''}: ${profile.pixKey}`
-                    : 'Não cadastrada'}
-                </p>
-              </div>
-              <ChevronRight size={20} className="text-textMuted shrink-0" />
-            </button>
-
-            {/* O atalho da fila de parceiros saiu daqui: ela é do dono, e
-              * este bloco é do motorista. Agora vive no /admin. */}
-          </Card>
-        )}
-
-        {/* Atalho do pai pra vincular outra criança. Fica aqui porque o
-          * seletor de filho só aparece a partir do segundo — sem este
-          * caminho, quem tem um filho não conseguiria adicionar o próximo. */}
-        {!isAdmin && (
-          <Card>
-            <button
-              type="button"
-              onClick={() => setAddChildOpen(true)}
-              className="w-full flex items-center gap-3 tap"
-            >
-              <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
-                <UserPlus size={20} className="text-primary" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-semibold text-text">
-                  Adicionar outro filho
-                </p>
-                <p className="text-xs text-textMuted truncate">
-                  {childCount === 1
-                    ? '1 criança na sua conta'
-                    : `${childCount} crianças na sua conta`}
-                </p>
-              </div>
-              <ChevronRight size={20} className="text-textMuted shrink-0" />
-            </button>
-
-            <div className="h-px bg-neutro my-3" />
-
-            {/* O pai era obrigado a aceitar o contrato pra entrar e depois
-              * não tinha como relê-lo: a única rota era a do tio. Pedir
-              * aceite e esconder o documento é o oposto de transparência. */}
-            <button
-              type="button"
-              onClick={() => navigate('/pai/contrato')}
-              className="w-full flex items-center gap-3 tap"
-            >
-              <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
-                <FileText size={20} className="text-primary" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-semibold text-text">
-                  Contrato de transporte
-                </p>
-                <p className="text-xs text-textMuted truncate">
-                  Ler de novo ou salvar em PDF
-                </p>
-              </div>
-              <ChevronRight size={20} className="text-textMuted shrink-0" />
-            </button>
-          </Card>
-        )}
-
-        {/* A MARCA — só do motorista, porque só ele tem público.
-          * Fica ANTES dos avisos e depois do contrato: é configuração de
-          * vitrine, e vitrine vem antes de preferência de aparelho. */}
-        {isAdmin && (
-          <MarcaCard
-            uid={user?.uid}
-            nome={profile?.marcaNome || ''}
-            logoURL={profile?.marcaLogoURL || null}
-            onChanged={refreshProfile}
-          />
-        )}
-
-        {/* Avisos no celular — vale pros dois papéis */}
-        <PushCard uid={user?.uid} />
-
-        {/* Ações secundárias */}
-        <Card className="space-y-2">
-          <button
-            type="button"
-            onClick={() => {
-              const next = !soundsEnabled;
-              setSoundsEnabledState(next);
-              if (next) playSound('click');
-            }}
-            className="w-full flex items-center gap-3 tap py-2"
-          >
-            {soundsEnabled ? (
-              <Volume2 size={20} className="text-primary shrink-0" />
-            ) : (
-              <VolumeX size={20} className="text-textMuted shrink-0" />
-            )}
-            <div className="flex-1 text-left">
-              <p className="text-sm text-text font-medium">
-                Sons do app
-              </p>
-              <p className="text-xs text-textMuted">
-                {soundsEnabled
-                  ? 'Toques nos botões, buzina, notificações'
-                  : 'Silencioso — só vibração'}
-              </p>
-            </div>
-            <div
-              className={`w-11 h-6 rounded-full p-0.5 transition-colors ${
-                soundsEnabled ? 'bg-primary' : 'bg-borderStrong'
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-                  soundsEnabled ? 'translate-x-5' : 'translate-x-0'
-                }`}
+          ) : (
+            <Card className="space-y-3">
+              <InfoRow icon={UserIcon} label="Nome" value={profile.name} />
+              <InfoRow
+                icon={Mail}
+                label="Email da conta"
+                value={user?.email || profile.email}
+                hint={comoEntra}
               />
-            </div>
-          </button>
-
-          <div className="border-t border-neutro -mx-4" />
-
-          <button
-            type="button"
-            onClick={onReplayTutorial}
-            className="w-full flex items-center gap-3 tap py-2"
-          >
-            <HelpCircle size={20} className="text-textMuted shrink-0" />
-            <span className="flex-1 text-left text-sm text-text">
-              Ver tutorial de novo
-            </span>
-            <ChevronRight size={20} className="text-textMuted shrink-0" />
-          </button>
-
-          <div className="border-t border-neutro -mx-4" />
-
-          <button
-            type="button"
-            onClick={() => setSupportOpen(true)}
-            className="w-full flex items-center gap-3 tap py-2"
-          >
-            <LifeBuoy size={20} className="text-primary shrink-0" />
-            <div className="flex-1 text-left">
-              <p className="text-sm text-text font-medium">
-                Abrir chamado de suporte
-              </p>
-              <p className="text-xs text-textMuted">
-                Reportar problema ou pedir ajuda
-              </p>
-            </div>
-            <ChevronRight size={20} className="text-textMuted shrink-0" />
-          </button>
-
-          <div className="border-t border-neutro -mx-4" />
-
-          <button
-            type="button"
-            onClick={() => setFeedbackOpen(true)}
-            className="w-full flex items-center gap-3 tap py-2"
-          >
-            <MessageSquare size={20} className="text-primary shrink-0" />
-            <div className="flex-1 text-left">
-              <p className="text-sm text-text font-medium">
-                Avaliar o app
-              </p>
-              <p className="text-xs text-textMuted">
-                Conta o que tá funcionando e o que pode melhorar
-              </p>
-            </div>
-            <ChevronRight size={20} className="text-textMuted shrink-0" />
-          </button>
-
-          {/* Painel do dono — aparece só pra quem carrega o negócio nas
-            * costas. Um parceiro nunca vê esta linha.
-            *
-            * ⚠️ `ehDono(profile)`, NÃO `profile.superAdmin`. O campo legado
-            * saiu em 06/09/2026: nada o escreve, e as rules o mantêm fora de
-            * toda whitelist de `users`. A condição nunca disparava, então esta
-            * linha simplesmente não existia para ninguém — e o acesso ao
-            * `/admin` sobrevivia só por `painelDe()`.
-            *
-            * Não era tranca (quem entra pelo endereço continua entrando pelo
-            * papel), mas era a linha que a próxima tela ia copiar. */}
-          {ehDono(profile) && (
-            <>
-              <div className="border-t border-neutro -mx-4" />
-              <button
-                type="button"
-                onClick={() => navigate('/admin')}
-                className="w-full flex items-center gap-3 tap py-2"
+              <InfoRow
+                icon={Phone}
+                label="Telefone"
+                value={profile.phone ? formatPhone(profile.phone) : null}
+              />
+              <Button
+                variant="secondary"
+                icon={Pencil}
+                onClick={() => setEditing(true)}
               >
-                <BarChart3 size={20} className="text-primary shrink-0" />
-                <div className="flex-1 text-left">
-                  <p className="text-sm text-text font-medium">
-                    Painel do dono
-                  </p>
-                  <p className="text-xs text-textMuted">
-                    Números da plataforma, pesquisa e fila de parceiros
-                  </p>
-                </div>
-                <ChevronRight size={20} className="text-textMuted shrink-0" />
-              </button>
-            </>
+                Editar meus dados
+              </Button>
+            </Card>
           )}
+        </Bloco>
 
-          <div className="border-t border-neutro -mx-4" />
+        {isAdmin ? (
+          <Bloco titulo="Seu transporte">
+            {/* A marca vem primeiro: é como as famílias o veem. */}
+            <MarcaCard
+              uid={user?.uid}
+              nome={profile?.marcaNome || ''}
+              logoURL={profile?.marcaLogoURL || null}
+              onChanged={refreshProfile}
+            />
+            <Card>
+              <Linha
+                icon={Key}
+                titulo="Chave PIX"
+                sub={
+                  profile.pixKey
+                    ? `${PIX_KEY_TYPES[profile.pixKeyType]?.label || ''}: ${profile.pixKey}`
+                    : 'Não cadastrada'
+                }
+                onClick={() => setPixOpen(true)}
+              />
+            </Card>
+            <CompanyDataCard profile={profile} onSaved={refreshProfile} />
+          </Bloco>
+        ) : (
+          <Bloco titulo={childCount > 1 ? 'Seus filhos' : 'Seu filho'}>
+            {/* "Adicionar outro filho" mora aqui porque o seletor de filho só
+              * aparece a partir do segundo — sem este caminho, quem tem um
+              * filho não conseguiria adicionar o próximo. E o contrato: o pai
+              * era obrigado a aceitá-lo e depois não tinha como relê-lo. */}
+            <Card className="space-y-1">
+              <Linha
+                icon={UserPlus}
+                titulo="Adicionar outro filho"
+                sub={
+                  childCount === 1
+                    ? '1 criança na sua conta'
+                    : `${childCount} crianças na sua conta`
+                }
+                onClick={() => setAddChildOpen(true)}
+              />
+              <Divisor />
+              <Linha
+                icon={FileText}
+                titulo="Contrato de transporte"
+                sub="Ler de novo ou salvar em PDF"
+                onClick={() => navigate('/pai/contrato')}
+              />
+            </Card>
+          </Bloco>
+        )}
 
-          <button
-            type="button"
-            onClick={sair}
-            className="w-full flex items-center gap-3 tap py-2"
-          >
-            <LogOut size={20} className="text-danger shrink-0" />
-            <span className="flex-1 text-left text-sm font-semibold text-dangerText">
-              Sair da conta
-            </span>
-          </button>
-        </Card>
+        {/* Avisos: o celular aceitar avisos, QUAIS tocam (a mesma escolha que
+          * mora no fim do sino) e os sons. Três perguntas sobre o mesmo
+          * assunto, que antes ficavam em lugares diferentes. */}
+        <Bloco titulo="Avisos">
+          <PushCard uid={user?.uid} />
+          <PreferenciasDeAviso />
+          <Card>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !soundsEnabled;
+                setSoundsEnabledState(next);
+                if (next) playSound('click');
+              }}
+              aria-pressed={soundsEnabled}
+              className="w-full flex items-center gap-3 tap"
+            >
+              <span className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
+                {soundsEnabled ? (
+                  <Volume2 size={20} className="text-primary" />
+                ) : (
+                  <VolumeX size={20} className="text-textMuted" />
+                )}
+              </span>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-text">Sons do app</p>
+                <p className="text-xs text-textMuted">
+                  {soundsEnabled
+                    ? 'Toques nos botões, buzina, notificações'
+                    : 'Silencioso — só vibração'}
+                </p>
+              </div>
+              <div
+                className={`w-11 h-6 rounded-full p-0.5 transition-colors ${
+                  soundsEnabled ? 'bg-primary' : 'bg-borderStrong'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                    soundsEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </div>
+            </button>
+          </Card>
+        </Bloco>
 
-        {/* Exclusão de conta — discreto, só link textual no fim da página.
-          * Confirmação continua avisando do impacto.
+        <Bloco titulo="Ajuda">
+          <Card className="space-y-1">
+            <Linha
+              icon={LifeBuoy}
+              titulo="Falar com o suporte"
+              sub="Pelo WhatsApp do Alô Buzinou"
+              onClick={() => setSupportOpen(true)}
+            />
+            <Divisor />
+            <Linha
+              icon={HelpCircle}
+              titulo="Ver o tutorial de novo"
+              sub="Um passeio rápido pelas telas"
+              onClick={onReplayTutorial}
+            />
+            <Divisor />
+            <Linha
+              icon={MessageSquare}
+              titulo="Avaliar o app"
+              sub="Conta o que tá funcionando e o que pode melhorar"
+              onClick={() => setFeedbackOpen(true)}
+            />
+            {/* Painel do dono — só para quem tem o papel. ⚠️ `ehDono(profile)`,
+              * NÃO `profile.superAdmin`: o campo legado saiu em 06/09/2026 e
+              * a condição antiga nunca disparava. Não é tranca (quem entra
+              * pelo endereço entra pelo papel), é só o atalho. */}
+            {ehDono(profile) && (
+              <>
+                <Divisor />
+                <Linha
+                  icon={BarChart3}
+                  titulo="Painel do dono"
+                  sub="Números da plataforma, pesquisa e fila de parceiros"
+                  onClick={() => navigate('/admin')}
+                />
+              </>
+            )}
+          </Card>
+        </Bloco>
+
+        {/* CONTA E PRIVACIDADE — por último, e com as saídas separadas pelo
+          * que fazem.
           *
           * ⚠️ PARA O MOTORISTA HÁ DUAS SAÍDAS, E O NOME DIZ QUAL É QUAL
           * (03/10/2026). O link dizia "Encerrar operação" e APAGAVA TUDO —
           * turma, pagamentos, conta —, enquanto a saída segura (encerrar a
           * associação, que só para a cobrança) mora em /tio/encerrar e nem
-          * aparecia aqui. Quem queria parar de pagar achava a que apaga. */}
-        {isAdmin && profile?.plano && (
-          <div className="pt-3 text-center">
-            <Link
-              to="/tio/encerrar"
-              className="tap inline-flex items-center gap-1.5 text-sm font-semibold text-primary py-2 px-3"
-            >
-              Encerrar a associação (parar de pagar, sem apagar nada)
-            </Link>
-          </div>
-        )}
-        <div className="pt-3 text-center">
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-            className="tap inline-flex items-center gap-1.5 text-xs text-textMuted hover:text-danger transition-colors py-2 px-3"
-          >
-            <Trash2 size={12} />
-            <span className="underline underline-offset-2 decoration-textMuted/30">
-              {isAdmin ? 'Excluir minha conta e apagar todos os dados' : 'Excluir minha conta'}
-            </span>
-          </button>
-        </div>
+          * aparecia aqui. Quem queria parar de pagar achava a que apaga.
+          *
+          * "Pedir uma cópia dos meus dados" é o canal da LGPD que os Termos
+          * e o contrato nomeiam (o e-mail de config/developer.js). Continua
+          * sendo atendimento humano, não botão que exporta — a linha diz que
+          * é por e-mail. */}
+        <Bloco titulo="Conta e privacidade">
+          <Card className="space-y-1">
+            <Linha
+              icon={LogOut}
+              titulo="Sair da conta"
+              sub="Seus dados continuam guardados"
+              onClick={sair}
+            />
+            <Divisor />
+            <Linha
+              icon={Mail}
+              titulo="Pedir uma cópia dos meus dados"
+              sub={`Por e-mail, para ${DEV_EMAIL}`}
+              href={devMailLink(
+                'Pedido de cópia dos meus dados (LGPD)',
+                `Olá! Quero uma cópia dos meus dados no Alô Buzinou.\n\nConta: ${user?.email || ''}`
+              )}
+            />
+            {isAdmin && profile?.plano && (
+              <>
+                <Divisor />
+                <Linha
+                  icon={Bus}
+                  titulo="Encerrar a associação"
+                  sub="Para de pagar a plataforma, sem apagar nada"
+                  onClick={() => navigate('/tio/encerrar')}
+                />
+              </>
+            )}
+            <Divisor />
+            <Linha
+              icon={Trash2}
+              tom="perigo"
+              titulo={isAdmin ? 'Excluir a conta e apagar tudo' : 'Excluir minha conta'}
+              sub={isAdmin ? 'Turma, pagamentos e conta. Não tem volta' : 'Não tem volta'}
+              onClick={() => setConfirmDelete(true)}
+            />
+          </Card>
 
-        <div className="text-center text-xs text-textMuted flex items-center justify-center gap-3 pt-2">
-          <a href="/termos" target="_blank" rel="noopener noreferrer" className="hover:underline">
-            Termos de Uso
-          </a>
-          <span aria-hidden>·</span>
-          <a
-            href="/privacidade"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            Política de Privacidade
-          </a>
-        </div>
-        <div className="text-center text-xs text-textMuted/70">
-          Alô Buzinou · versão {APP_VERSION}
-        </div>
+          <div className="text-center text-xs text-textMuted flex items-center justify-center gap-3 pt-2">
+            <a href="/termos" target="_blank" rel="noopener noreferrer" className="hover:underline">
+              Termos de Uso
+            </a>
+            <span aria-hidden>·</span>
+            <a
+              href="/privacidade"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              Política de Privacidade
+            </a>
+          </div>
+          <div className="text-center text-xs text-textMuted">
+            Alô Buzinou · versão {APP_VERSION}
+          </div>
+        </Bloco>
       </div>
 
 
@@ -582,6 +513,8 @@ export default function Profile() {
         onClose={() => setSupportOpen(false)}
         uid={user?.uid}
         role={role}
+        profile={profile}
+        email={user?.email}
       />
 
       <ConfirmDialog
@@ -1159,5 +1092,55 @@ function MarcaCard({ uid, nome, logoURL, onChanged }) {
         </div>
       )}
     </Card>
+  );
+}
+
+/** Um bloco do perfil: título grande e o que é daquele assunto. */
+function Bloco({ titulo, children }) {
+  return (
+    <section className="space-y-2.5">
+      <h2 className="px-1 text-lg font-extrabold text-text">{titulo}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Divisor() {
+  return <div className="h-px bg-neutro -mx-4" />;
+}
+
+/** Uma linha tocável dentro de um bloco — botão, ou link quando há `href`. */
+function Linha({ icon: Icon, titulo, sub, onClick, href, tom = 'normal' }) {
+  const perigo = tom === 'perigo';
+  const conteudo = (
+    <>
+      <span
+        className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+          perigo ? 'bg-dangerChip' : 'bg-primaryChip'
+        }`}
+      >
+        <Icon size={20} className={perigo ? 'text-dangerText' : 'text-primary'} />
+      </span>
+      <span className="flex-1 min-w-0 text-left">
+        <span className={`block text-sm font-semibold ${perigo ? 'text-dangerText' : 'text-text'}`}>
+          {titulo}
+        </span>
+        {sub && <span className="block text-xs text-textMuted truncate">{sub}</span>}
+      </span>
+      <ChevronRight size={20} className="text-textMuted shrink-0" />
+    </>
+  );
+  const classe = 'w-full flex items-center gap-3 tap py-2';
+  if (href) {
+    return (
+      <a href={href} className={classe}>
+        {conteudo}
+      </a>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={classe}>
+      {conteudo}
+    </button>
   );
 }

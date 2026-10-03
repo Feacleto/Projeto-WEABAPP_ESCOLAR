@@ -1,179 +1,208 @@
 import { useState } from 'react';
-import { X, Send, CheckCircle2, LifeBuoy } from 'lucide-react';
-import toast from 'react-hot-toast';
-import Button from '../common/Button';
-import { SUPPORT_CATEGORIES, openSupportTicket } from '../../services/supportService';
+import {
+  X,
+  LifeBuoy,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  MapPin,
+  BellOff,
+  Wallet,
+  PencilLine,
+  MessageCircle,
+} from 'lucide-react';
+import WhatsAppIcon from '../common/WhatsAppIcon';
+import {
+  SUPPORT_CATEGORIES,
+  openSupportTicket,
+  aparelhoEmPalavras,
+} from '../../services/supportService';
+import { mensagemDoChamado } from '../../dominio/suporte/chamados.js';
+import { devWhatsAppLink } from '../../config/developer';
+import { APP_VERSION } from '../../version';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
- * Sheet "Abrir chamado" — usuário escolhe uma categoria (chips) e
- * escreve uma descrição. Envia pro admin que recebe em supportTickets.
+ * "Falar com o Alô Buzinou" — dois passos, e a pessoa não precisa digitar.
  *
- * Layout segue mesmo padrão do FeedbackSheet pra evitar bater na barra
- * do navegador: safe-area top + header sticky + conteúdo scrollável.
+ * Era um formulário (chips de assunto + texto obrigatório + "Enviar chamado")
+ * que respondia "por aqui ou pelo seu email" sem dizer onde. Para o público
+ * de ~40 anos isso era duas decisões e uma redação antes de qualquer ajuda.
+ * Agora: toca no problema → lê a mensagem pronta → abre o WhatsApp.
+ *
+ * ⚠️ A MENSAGEM APARECE INTEIRA ANTES DE ENVIAR — ninguém manda texto que não
+ * leu (mesma regra do pedido ao motorista).
+ *
+ * ⚠️ O CHAMADO CONTINUA SENDO GRAVADO em `supportTickets`, no mesmo toque,
+ * para a aba Chamados do dono. Mas o WhatsApp abre PRIMEIRO e a gravação não
+ * é esperada: o navegador só deixa abrir outra aba dentro do gesto, e um
+ * `await` antes disso faria o link ser bloqueado — a pessoa tocaria e nada
+ * aconteceria.
  */
-export default function SupportSheet({ open, onClose, uid, role }) {
+const ICONES = {
+  cant_login: Lock,
+  map_issue: MapPin,
+  notification_issue: BellOff,
+  payment_issue: Wallet,
+  wrong_data: PencilLine,
+  other: MessageCircle,
+};
+
+export default function SupportSheet({ open, onClose, uid, role, profile, email }) {
   const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const [category, setCategory] = useState(null);
-  const [description, setDescription] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [detalhe, setDetalhe] = useState('');
 
   if (!open) return null;
 
-  const current = SUPPORT_CATEGORIES.find((c) => c.value === category);
+  const assunto = SUPPORT_CATEGORIES.find((c) => c.value === category);
+  const assuntos = SUPPORT_CATEGORIES.filter((c) => c.naTela !== false);
 
-  const resetAndClose = () => {
+  const mensagem = assunto
+    ? mensagemDoChamado({
+        frase: assunto.frase,
+        nome: profile?.name,
+        papel: role,
+        marca: profile?.marcaNome,
+        email: email || profile?.email,
+        aparelho: aparelhoEmPalavras(),
+        versao: APP_VERSION,
+        detalhe,
+      })
+    : '';
+
+  const fechar = () => {
     setCategory(null);
-    setDescription('');
-    setSubmitted(false);
+    setDetalhe('');
     onClose();
   };
 
-  const onSubmit = async () => {
-    if (!category) {
-      toast.error('Escolhe um assunto primeiro.');
-      return;
+  const aoMandar = () => {
+    // Não espera: o link já está abrindo pelo `href`. Falhar aqui só tira o
+    // chamado da aba do dono — a conversa no WhatsApp acontece igual.
+    if (uid) {
+      openSupportTicket({ uid, role, category, description: mensagem }).catch((err) =>
+        console.error('[suporte] chamado não gravou:', err)
+      );
     }
-    if (!description.trim()) {
-      toast.error('Conta um pouco do que tá acontecendo.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await openSupportTicket({ uid, role, category, description });
-      setSubmitted(true);
-    } catch (err) {
-      console.error(err);
-      toast.error('Não deu pra abrir o chamado. Tenta de novo.');
-    } finally {
-      setSubmitting(false);
-    }
+    fechar();
   };
 
   return (
     <div
       className="fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm"
-      onClick={resetAndClose}
+      onClick={fechar}
       style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
     >
       <div
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col"
+        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header sticky */}
         <div className="shrink-0 bg-card rounded-t-3xl border-b border-neutro">
-          <div
-          {...alcaProps}
-          className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
-        >
+          <div {...alcaProps} className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}>
             <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
           </div>
           <div className="px-5 pt-2 pb-3 flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-text leading-tight inline-flex items-center gap-2">
-                <LifeBuoy size={18} className="text-primary" />
-                {submitted ? 'Chamado aberto!' : 'Abrir chamado'}
-              </h2>
-              {!submitted && (
-                <p className="text-xs text-textMuted mt-0.5">
-                  A gente lê e te responde por aqui ou pelo seu email.
-                </p>
+              {assunto ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategory(null);
+                    setDetalhe('');
+                  }}
+                  className="tap -ml-1 inline-flex items-center gap-1 text-base font-semibold text-primary"
+                >
+                  <ChevronLeft size={20} />
+                  Voltar
+                </button>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold text-text leading-tight inline-flex items-center gap-2">
+                    <LifeBuoy size={20} className="text-primary" />
+                    Falar com o Alô Buzinou
+                  </h2>
+                  <p className="text-base text-textMuted mt-1">
+                    Toque no que está acontecendo.
+                  </p>
+                </>
               )}
             </div>
             <button
-              onClick={resetAndClose}
-              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
+              onClick={fechar}
+              className="tap w-10 h-10 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
               aria-label="Fechar"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
         </div>
 
-        {/* Conteúdo scrollável */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {submitted ? (
-            <Success onClose={resetAndClose} />
+          {!assunto ? (
+            <ul className="space-y-2.5">
+              {assuntos.map((c) => {
+                const Icone = ICONES[c.value] || MessageCircle;
+                return (
+                  <li key={c.value}>
+                    <button
+                      type="button"
+                      onClick={() => setCategory(c.value)}
+                      className="tap w-full min-h-[60px] px-4 rounded-2xl border border-border bg-card flex items-center gap-3 text-left"
+                    >
+                      <span className="w-10 h-10 rounded-full bg-primaryChip flex items-center justify-center shrink-0">
+                        <Icone size={20} className="text-primary" />
+                      </span>
+                      <span className="flex-1 text-base font-semibold text-text">{c.label}</span>
+                      <ChevronRight size={20} className="text-textMuted shrink-0" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
             <div className="space-y-5">
-              {/* Categorias — chips clicáveis (single select) */}
               <div>
-                <label className="rotulo block mb-2">
-                  Qual o assunto?
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {SUPPORT_CATEGORIES.map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => {
-                        setCategory(c.value);
-                        setDescription('');
-                      }}
-                      className={`tap h-10 px-3.5 rounded-full text-sm font-semibold border transition-colors ${
-                        category === c.value
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-card text-text border-border'
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+                <p className="text-base text-text mb-2">
+                  Esta mensagem vai para o WhatsApp do Alô Buzinou:
+                </p>
+                <div className="rounded-2xl bg-neutro p-4 text-base text-text whitespace-pre-line leading-relaxed">
+                  {mensagem}
                 </div>
               </div>
 
-              {/* Descrição — só aparece após escolher categoria */}
-              {category && (
-                <div>
-                  <label className="block text-sm font-semibold text-text mb-2">
-                    Me conta o que tá acontecendo
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={6}
-                    maxLength={2000}
-                    placeholder={current?.placeholder || ''}
-                    className="w-full rounded-2xl border-2 border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
-                  />
-                  <p className="text-xs text-textMuted mt-1.5">
-                    Quanto mais detalhe, mais rápido a gente resolve.
-                  </p>
-                </div>
-              )}
+              <div>
+                <label htmlFor="suporte-detalhe" className="block text-base font-semibold text-text mb-2">
+                  {assunto.value === 'other' ? 'Conte o que aconteceu' : 'Quer contar mais? (opcional)'}
+                </label>
+                <textarea
+                  id="suporte-detalhe"
+                  value={detalhe}
+                  onChange={(e) => setDetalhe(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  className="w-full rounded-2xl border-2 border-border bg-card text-text text-base p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary leading-relaxed"
+                />
+              </div>
 
-              <Button
-                onClick={onSubmit}
-                icon={Send}
-                loading={submitting}
-                disabled={!category || !description.trim()}
+              <a
+                href={devWhatsAppLink(mensagem)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={aoMandar}
+                className="tap w-full h-14 rounded-2xl bg-primary text-white text-lg font-bold flex items-center justify-center gap-2"
               >
-                Enviar chamado
-              </Button>
+                <WhatsAppIcon size={22} />
+                Mandar no WhatsApp
+              </a>
+              <p className="text-sm text-textMuted text-center">
+                A conversa continua no WhatsApp.
+              </p>
             </div>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Success({ onClose }) {
-  return (
-    <div className="text-center space-y-4 py-4">
-      <div className="w-16 h-16 mx-auto rounded-full bg-primaryChip flex items-center justify-center">
-        <CheckCircle2 size={36} className="text-accentText" />
-      </div>
-      <div>
-        <p className="text-sm text-textMuted leading-relaxed">
-          Recebemos seu chamado! Vamos olhar com cuidado e te responder em
-          breve. Se precisar adicionar mais alguma coisa, é só abrir um novo
-          chamado.
-        </p>
-      </div>
-      <Button onClick={onClose}>Fechar</Button>
     </div>
   );
 }

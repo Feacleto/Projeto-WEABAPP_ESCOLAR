@@ -28,45 +28,63 @@ import { APP_VERSION } from '../version';
 
 const COLLECTION = 'supportTickets';
 
-// Categorias mais comuns — chips na UI. Cada um traz um placeholder
-// pra ajudar o usuário a descrever o problema.
+// Os assuntos da folha de suporte. `frase` é o que vai na mensagem do
+// WhatsApp, escrita como a pessoa diria — ela não digita nada se não quiser.
+// `naTela: false` mantém o rótulo para os chamados antigos (a aba do dono lê
+// por aqui) sem oferecer o assunto de novo: "sugerir algo" virou "Outra coisa".
 export const SUPPORT_CATEGORIES = [
   {
     value: 'cant_login',
     label: 'Não consigo entrar',
-    placeholder: 'Diz qual mensagem aparece quando você tenta entrar.',
+    frase: 'Não estou conseguindo entrar no app.',
   },
   {
-    value: 'wrong_data',
-    label: 'Dado errado no app',
-    placeholder: 'Foto, nome, valor, endereço — me conta o que tá fora.',
+    value: 'map_issue',
+    label: 'O mapa não mostra a perua',
+    frase: 'O mapa não está mostrando a perua.',
+  },
+  {
+    value: 'notification_issue',
+    label: 'O aviso não está chegando',
+    frase: 'Os avisos do app não estão chegando no meu celular.',
   },
   {
     value: 'payment_issue',
     label: 'Problema com pagamento',
-    placeholder: 'PIX não aparece, valor errado, marquei e sumiu...',
+    frase: 'Estou com um problema no pagamento.',
   },
   {
-    value: 'map_issue',
-    label: 'Mapa não mostra a perua',
-    placeholder: 'Quando você abre o mapa, o que aparece?',
-  },
-  {
-    value: 'notification_issue',
-    label: 'Aviso não está chegando',
-    placeholder: 'Qual tipo de aviso? Quando deveria ter chegado?',
-  },
-  {
-    value: 'feature_request',
-    label: 'Quero sugerir algo novo',
-    placeholder: 'Conta a ideia com suas palavras.',
+    value: 'wrong_data',
+    label: 'Tem um dado errado',
+    frase: 'Tem uma informação errada no app.',
   },
   {
     value: 'other',
-    label: 'Outro problema',
-    placeholder: 'Me explica o que tá acontecendo, com detalhes.',
+    label: 'Outra coisa',
+    frase: 'Preciso de ajuda com:',
+  },
+  {
+    value: 'feature_request',
+    label: 'Sugestão',
+    frase: 'Tenho uma sugestão para o app:',
+    naTela: false,
   },
 ];
+
+/**
+ * O aparelho em uma palavra, para a mensagem do WhatsApp — o suporte lê
+ * "Android" ou "iPhone", não um userAgent.
+ */
+export function aparelhoEmPalavras() {
+  try {
+    const ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'iPhone';
+    if (/Android/i.test(ua)) return 'Android';
+    return 'Computador';
+  } catch {
+    return '';
+  }
+}
 
 /**
  * Pega informações do dispositivo automaticamente — útil pro admin
@@ -88,17 +106,22 @@ function getDeviceInfo() {
   }
 }
 
+/**
+ * ⚠️ O CHAMADO CONTINUA SENDO GRAVADO, mesmo com a conversa indo pro WhatsApp
+ * (03/10/2026). É ele que alimenta a aba Chamados do dono — a fila de quem
+ * espera e o tempo até responder. `description` é a mensagem inteira que foi
+ * para o WhatsApp, para o dono achar a conversa certa.
+ */
 export async function openSupportTicket({ uid, role, category, description }) {
   if (!uid) throw new Error('Sem uid.');
   if (!category) throw new Error('Escolha uma categoria.');
-  if (!description?.trim()) throw new Error('Descreva o problema.');
 
   await addDoc(collection(db, COLLECTION), {
     uid,
     role: role || 'parent',
     version: APP_VERSION,
     category,
-    description: description.trim().slice(0, 2000),
+    description: String(description || '').trim().slice(0, 2000),
     deviceInfo: getDeviceInfo(),
     status: 'open',
     createdAt: serverTimestamp(),
@@ -178,5 +201,5 @@ export async function fecharChamado(id, ownerUid) {
 
 /** O rótulo da categoria, para a tela e para o texto da resposta. */
 export function rotuloDaCategoria(valor) {
-  return SUPPORT_CATEGORIES.find((c) => c.value === valor)?.label || 'Outro problema';
+  return SUPPORT_CATEGORIES.find((c) => c.value === valor)?.label || 'Outra coisa';
 }
