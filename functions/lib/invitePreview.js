@@ -26,27 +26,24 @@
  *      um passo de cadastro. Se o chamador JÁ é o responsável daquela
  *      criança, devolvemos status "yours" e o app entra direto — sem
  *      tela de erro, sem toque extra.
+ *      (Desde 03/10/2026 o convite AINDA NÃO USADO vale 15 dias; o link de
+ *      quem já entrou continua permanente.)
  */
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
+// Formato (só o novo), prazo de 15 dias e a recusa única: `reguaDoConvite.js`.
+const {
+  normalizarCodigo: normalizeCode,
+  codigoValido: isValidCode,
+  conviteVencido,
+  MENSAGEM_DO_CONVITE_RECUSADO,
+} = require('./reguaDoConvite');
+const { REGRAS, MENSAGEM_DE_LIMITE } = require('./reguaDasTentativas');
+const limite = require('./limiteDeTentativas');
 
 const REGION = 'southamerica-east1';
-
-const NEW_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
-const LEGACY_RE = /^[A-Z]{2}\d{4}$/;
-const NEW_RE = new RegExp('^[A-Z]{2}[' + NEW_ALPHABET + ']{6}$');
-
-function normalizeCode(raw) {
-  return String(raw || '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
-}
-
-function isValidCode(code) {
-  return LEGACY_RE.test(code) || NEW_RE.test(code);
-}
 
 function firstName(full) {
   return String(full || '').trim().split(/\s+/)[0] || '';
@@ -272,36 +269,50 @@ async function loadNoticeSummary(db, child) {
  * getInvitePreview — chamável sem autenticação.
  *
  * Retorna { status, childFirstName, driver..., nextPayment, notices }.
- *   'pending' → ninguém pegou ainda: mostra a prévia completa
+ *   'pending' → ninguém pegou ainda e está no prazo: a prévia completa
  *   'yours'   → o chamador JÁ é o responsável: o app entra direto
- *   'taken'   → vinculado a outra conta: manda pro login, sem alarme
+ *
+ * ⚠️ O 'taken' SAIU (03/10/2026). Ele respondia "vinculado a outra conta" com
+ * o primeiro nome da criança e o motorista — para qualquer um, sem login.
+ * Quem varria códigos ganhava, a cada acerto, a confirmação e um nome. Agora
+ * inexistente, removido, vinculado a outra conta e vencido recebem a MESMA
+ * recusa (`not-found` com a mensagem de `reguaDoConvite.js`), e a tela
+ * oferece "entrar com sua conta" a quem já entrou antes.
+ *
+ * ⚠️ O 'yours' NÃO VENCE: para a família já vinculada, este link é a porta de
+ * volta ao app, pra sempre. O prazo de 15 dias é do convite AINDA NÃO USADO.
+ *
+ * ⚠️ PÚBLICA, ENTÃO CONTADA POR IP: 30 códigos que não abriram por hora
+ * (`REGRAS.CONVITE_PUBLICO`). Só a recusa conta — a mãe que reabre o link toda
+ * semana nunca encosta no limite, mesmo atrás do IP da operadora.
  */
 function makeGetInvitePreview(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
-    const code = normalizeCode(request.data?.code);
-    if (!isValidCode(code)) {
-      throw new HttpsError('invalid-argument', 'Código em formato inválido.');
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
+    const quem = limite.quemPeloIp(request.rawRequest);
+    if (!(await limite.aindaCabe(db, REGRAS.CONVITE_PUBLICO, quem))) {
+      throw new HttpsError('resource-exhausted', MENSAGEM_DE_LIMITE);
     }
+    const recusar = async () => {
+      await limite.contar(db, REGRAS.CONVITE_PUBLICO, quem);
+      return new HttpsError('not-found', MENSAGEM_DO_CONVITE_RECUSADO);
+    };
 
-    // Busca SEM filtrar por inviteStatus: precisamos distinguir "não existe"
-    // de "já foi usado" pra saber qual tela mostrar ao pai que volta no link.
+    const code = normalizeCode(request.data?.code);
+    if (!isValidCode(code)) throw await recusar();
+
+    // Busca SEM filtrar por inviteStatus: o convite já usado ainda é a porta
+    // de volta de quem o usou ('yours').
     const snap = await db
       .collection('children')
       .where('inviteCode', '==', code)
       .limit(1)
       .get();
-
-    if (snap.empty) {
-      throw new HttpsError('not-found', 'Convite não encontrado.');
-    }
+    if (snap.empty) throw await recusar();
 
     const childDoc = snap.docs[0];
     const child = { id: childDoc.id, ...childDoc.data() };
     // Criança removida da turma: o link antigo não abre mais nada (02/10/2026).
-    if (child.active === false) {
-      throw new HttpsError('not-found', 'Convite não encontrado.');
-    }
-    const driver = await loadDriver(db, child.adminUid);
+    if (child.active === false) throw await recusar();
 
     const callerUid = request.auth?.uid || null;
     const claimed = child.inviteStatus !== 'pending' || !!child.parentUid;
@@ -311,36 +322,29 @@ function makeGetInvitePreview(db) {
       // request.auth, então dá pra saber. Este é o caminho da SEGUNDA
       // sessão em diante — e é o mais percorrido de todos, porque o link
       // do WhatsApp é o que o pai guarda pra sempre.
-      if (callerUid && child.parentUid === callerUid) {
-        const [nextPayment, notices] = await Promise.all([
-          loadNextPayment(db, child.id),
-          loadNoticeSummary(db, child),
-        ]);
-        return {
-          status: 'yours',
-          childId: child.id,
-          childFirstName: firstName(child.name),
-      childGender: child.gender || null,
-          ...driver,
-          monthlyFee: Number(child.monthlyFee) || 0,
-          nextPayment,
-          notices,
-        };
-      }
-
-      // Vinculado a outra conta (ou chamador sem login). Sem dado
-      // financeiro: não temos como saber se é o responsável.
+      if (!callerUid || child.parentUid !== callerUid) throw await recusar();
+      const [driver, nextPayment, notices] = await Promise.all([
+        loadDriver(db, child.adminUid),
+        loadNextPayment(db, child.id),
+        loadNoticeSummary(db, child),
+      ]);
       return {
-        status: 'taken',
+        status: 'yours',
+        childId: child.id,
         childFirstName: firstName(child.name),
-      childGender: child.gender || null,
+        childGender: child.gender || null,
         ...driver,
-        nextPayment: null,
-        notices: { count: 0, latestMs: null },
+        monthlyFee: Number(child.monthlyFee) || 0,
+        nextPayment,
+        notices,
       };
     }
 
-    const [nextPayment, notices] = await Promise.all([
+    // Ainda não usado, mas fora do prazo de 15 dias.
+    if (conviteVencido(child, Date.now())) throw await recusar();
+
+    const [driver, nextPayment, notices] = await Promise.all([
+      loadDriver(db, child.adminUid),
       loadNextPayment(db, child.id),
       loadNoticeSummary(db, child),
     ]);

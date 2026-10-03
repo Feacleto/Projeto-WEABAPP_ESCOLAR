@@ -21,9 +21,20 @@ const { logger } = require('firebase-functions/v2');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
 const { lerLead } = require('./reguaDoLead');
+const { REGRAS, contatoRepetido } = require('./reguaDasTentativas');
+const limite = require('./limiteDeTentativas');
 
 const REGION = 'southamerica-east1';
 
+/*
+ * ⚠️ DUAS TRAVAS NOVAS (03/10/2026), as duas antes de gravar:
+ *  - 5 contatos por hora por IP (`REGRAS.INVESTIDOR`): o formulário é
+ *    público, e cada envio virava um documento E um aviso no sino de cada
+ *    dono — um laço enchia as duas coisas.
+ *  - o MESMO e-mail em 30 dias responde "ok" e não grava nada: o dono já tem
+ *    o contato. Responder "ok" (e não "já recebido") é o mesmo cuidado da
+ *    isca — dizer outra coisa ensinaria quais e-mails já estão na lista.
+ */
 function makeRegistrarInteresseInvestidor(db) {
   return onRequest(
     { region: REGION, maxInstances: LIMITES.PUBLICO, invoker: 'public' },
@@ -41,7 +52,22 @@ function makeRegistrarInteresseInvestidor(db) {
         res.json({ ok: true });
         return;
       }
+      if (!(await limite.consumir(db, REGRAS.INVESTIDOR, limite.quemPeloIp(req)))) {
+        res.status(429).json({ ok: false, erro: 'limite' });
+        return;
+      }
       try {
+        // Igualdade só (índice automático); a data é conferida aqui.
+        const anteriores = await db
+          .collection('leadsInvestidor')
+          .where('email', '==', lido.lead.email)
+          .limit(10)
+          .get();
+        const criadosEmMs = anteriores.docs.map((d) => d.data().criadoEm?.toMillis?.() ?? NaN);
+        if (contatoRepetido({ criadosEmMs, agoraMs: Date.now() })) {
+          res.json({ ok: true });
+          return;
+        }
         await db.collection('leadsInvestidor').add({
           ...lido.lead,
           origem: 'site/investidores',

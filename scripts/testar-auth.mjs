@@ -16,6 +16,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { SENHA_MINIMA, mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 import { painelDe } from '../src/dominio/identidade/papeis.js';
 import {
@@ -742,6 +743,151 @@ checar('e a constante esta em 8', 8, SENHA_MINIMA);
 // Sonda positiva: o detector precisa acusar o numero escrito a mao.
 checar('o detector acusa numero a mao (sonda positiva)', true,
   /(password|senha)\.length\s*[<>]=?\s*([2-9]|\d{2,})/.test('if (password.length < 6) {'));
+
+// ─────────── 12. O CONVITE CONTRA A TENTATIVA E ERRO (03/10/2026) ──────────
+//
+// Quatro decisões do pacote de segurança dos convites, e cada uma tem o seu
+// jeito de voltar atrás sem ninguém ver:
+//   a) o convite ainda não usado vale 15 DIAS (decisão do dono);
+//   b) "não existe", "já usado" e "venceu" são UMA resposta só;
+//   c) o formato legado (2 letras + 4 dígitos, 9.000 combinações) saiu;
+//   d) "o e-mail casa com o cadastro" só com e-mail VERIFICADO.
+// E as portas públicas ganharam um contador de tentativas (régua pura).
+bloco('12. O CONVITE CONTRA A TENTATIVA E ERRO');
+
+const requireCjs = createRequire(import.meta.url);
+const reguaDoConvite = requireCjs('../functions/lib/reguaDoConvite.js');
+const tentativas = requireCjs('../functions/lib/reguaDasTentativas.js');
+const DIA = 24 * 60 * 60 * 1000;
+const ts = (ms) => ({ toMillis: () => ms }); // o Timestamp do Admin SDK
+
+// a) O PRAZO — relógio injetado, nunca o de agora.
+const T0 = Date.UTC(2026, 9, 1, 12);
+checar('convite criado agora vale', false,
+  reguaDoConvite.conviteVencido({ inviteCriadoEm: ts(T0) }, T0));
+checar('no 15º dia, até o último milissegundo, ainda vale', false,
+  reguaDoConvite.conviteVencido({ inviteCriadoEm: ts(T0) }, T0 + 15 * DIA));
+checar('um milissegundo depois dos 15 dias, venceu', true,
+  reguaDoConvite.conviteVencido({ inviteCriadoEm: ts(T0) }, T0 + 15 * DIA + 1));
+checar('sem `inviteCriadoEm`, conta do `createdAt`', true,
+  reguaDoConvite.conviteVencido({ createdAt: ts(T0) }, T0 + 16 * DIA));
+checar('"Gerar link novo" vence o `createdAt` antigo', false,
+  reguaDoConvite.conviteVencido({ createdAt: ts(T0 - 90 * DIA), inviteCriadoEm: ts(T0) }, T0 + DIA));
+// ⚠️ O caso que protege as crianças antigas: sem carimbo nenhum, vale.
+checar('⚠️ criança antiga sem data nenhuma: o convite CONTINUA valendo', false,
+  reguaDoConvite.conviteVencido({}, T0 + 400 * DIA));
+checar('a data que a ficha mostra é a do servidor', T0 + 15 * DIA,
+  reguaDoConvite.conviteValidoAteMs({ inviteCriadoEm: ts(T0) }));
+checar('o prazo é 15 dias', 15, reguaDoConvite.VALIDADE_DO_CONVITE_DIAS);
+
+// O espelho do app (a frase "Este link vale até DD/MM") tem de bater com o
+// servidor que recusa — senão a tela promete um prazo que ninguém cumpre.
+const appConvite = await import('../src/dominio/identidade/validadeDoConvite.js');
+checar('o app e o servidor têm o mesmo prazo',
+  reguaDoConvite.VALIDADE_DO_CONVITE_DIAS, appConvite.VALIDADE_DO_CONVITE_DIAS);
+for (const [nome, crianca] of [
+  ['só inviteCriadoEm', { inviteCriadoEm: ts(T0) }],
+  ['só createdAt', { createdAt: ts(T0) }],
+  ['os dois', { createdAt: ts(T0 - 30 * DIA), inviteCriadoEm: ts(T0) }],
+  ['nenhum', {}],
+  ['Date em vez de Timestamp', { inviteCriadoEm: new Date(T0) }],
+]) {
+  for (const dias of [0, 14, 15, 16, 400]) {
+    const agora = T0 + dias * DIA + (dias === 15 ? 1 : 0);
+    checar(`espelho: ${nome}, dia ${dias}`,
+      reguaDoConvite.conviteVencido(crianca, agora), appConvite.conviteVencido(crianca, agora));
+  }
+}
+
+// c) SÓ O FORMATO NOVO.
+checar('o formato novo passa', true, reguaDoConvite.codigoValido('TNAB23CD'));
+checar('o legado (TN + 4 dígitos) é recusado', false, reguaDoConvite.codigoValido('TN1234'));
+checar('letra ambígua (O, 0, I, 1) é recusada', false, reguaDoConvite.codigoValido('TNAB23C0'));
+checar('a normalização limpa espaço e traço', 'TNAB23CD', reguaDoConvite.normalizarCodigo(' tn-ab23cd '));
+const fonteInvites = readFileSync(new URL('../functions/lib/invites.js', import.meta.url), 'utf8');
+const fontePrevia = readFileSync(new URL('../functions/lib/invitePreview.js', import.meta.url), 'utf8');
+const fonteSvcConvite = readFileSync(new URL('../src/services/inviteCodeService.js', import.meta.url), 'utf8');
+const regexLegado = /\\d\{4\}|\\d\)\{4\}/;
+for (const [nome, fonte] of [['invites.js', fonteInvites], ['invitePreview.js', fontePrevia], ['inviteCodeService.js', fonteSvcConvite]]) {
+  checar(`${nome} não aceita mais o formato legado`, false, regexLegado.test(semComentarios(fonte)));
+}
+checar('o detector de legado acusa a regex antiga (sonda positiva)', true,
+  regexLegado.test('const LEGACY_RE = /^[A-Z]{2}\\d{4}$/;'));
+
+// b) UMA RESPOSTA SÓ.
+const MSG = reguaDoConvite.MENSAGEM_DO_CONVITE_RECUSADO;
+checar('a mensagem genérica', 'Este convite não vale mais. Peça um link novo ao motorista.', MSG);
+checar('o app mostra a mesma frase do servidor', true, fonteSvcConvite.includes(MSG));
+const codigoPrevia = semComentarios(fontePrevia);
+const codigoInvites = semComentarios(fonteInvites);
+checar("a prévia não devolve mais `status: 'taken'`", false, /status:\s*'taken'/.test(codigoPrevia));
+for (const frase of ['já usado', 'já foi usado', 'não encontrado', 'Convite não encontrado', 'formato inválido']) {
+  checar(`nenhuma recusa de convite diz "${frase}"`, false,
+    codigoPrevia.includes(frase) || codigoInvites.includes(frase));
+}
+checar('o vencido passa pela mesma recusa (prévia)', true, codigoPrevia.includes('conviteVencido(child, Date.now())'));
+checar('o vencido passa pela mesma recusa (resgate e consulta)', true,
+  codigoInvites.includes('conviteVencido(snap.docs[0].data(), Date.now())'));
+checar("a tela do convite não trata mais o 'taken'", false,
+  semComentarios(fonteInvite).includes("'taken'"));
+checar('e a recusa oferece "entrar com sua conta"', true,
+  fonteInvite.includes('Se você já entrou antes, é só entrar com sua conta.'));
+
+// d) O E-MAIL SÓ CASA VERIFICADO.
+checar('o casamento de e-mail exige `email_verified === true`', true,
+  /email_verified === true/.test(codigoInvites)
+  && /linkedEmailMatchesCadastro:\s*emailVerificado\s*&&/.test(codigoInvites));
+
+// O código do convite não vai para o log.
+checar('o log do resgate não leva o código', false,
+  /logger\.[a-z]+\([^)]*\bcode\b/.test(codigoInvites));
+
+// O App Check espalhado em toda callable destes arquivos.
+for (const [nome, rel] of [
+  ['invites.js', '../functions/lib/invites.js'],
+  ['invitePreview.js', '../functions/lib/invitePreview.js'],
+  ['pedidosDeAcesso.js', '../functions/lib/pedidosDeAcesso.js'],
+]) {
+  const f = readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const chamadas = (f.match(/onCall\(/g) || []).length;
+  const comAppCheck = (f.match(/onCall\(\{ \.\.\.LIMITES\.APP_CHECK/g) || []).length;
+  checar(`${nome}: toda callable leva o App Check`, chamadas, comAppCheck);
+}
+
+// O CONTADOR DE TENTATIVAS — régua pura.
+const R = tentativas.REGRAS;
+checar('prévia e consulta: 30 erros por hora', [30, 3600000], [R.CONVITE_PUBLICO.max, R.CONVITE_PUBLICO.janelaMs]);
+checar('pedido de acesso: 5 por dia', [5, 86400000], [R.PEDIDO_DE_ACESSO.max, R.PEDIDO_DE_ACESSO.janelaMs]);
+checar('investidor: 5 por hora', [5, 3600000], [R.INVESTIDOR.max, R.INVESTIDOR.janelaMs]);
+checar('a 30ª tentativa ainda cabe', true, tentativas.cabeMaisUma({ regra: R.CONVITE_PUBLICO, contagem: 29 }));
+checar('a 31ª não', false, tentativas.cabeMaisUma({ regra: R.CONVITE_PUBLICO, contagem: 30 }));
+const H = Date.UTC(2026, 9, 3, 10, 0, 0);
+const k1 = tentativas.chaveDaTentativa({ regra: R.CONVITE_PUBLICO, quem: 'abc', agoraMs: H });
+const k2 = tentativas.chaveDaTentativa({ regra: R.CONVITE_PUBLICO, quem: 'abc', agoraMs: H + 59 * 60000 });
+const k3 = tentativas.chaveDaTentativa({ regra: R.CONVITE_PUBLICO, quem: 'abc', agoraMs: H + 60 * 60000 });
+checar('dentro da mesma hora, a mesma chave', k1, k2);
+checar('na hora seguinte, chave nova (o contador recomeça)', true, k1 !== k3);
+checar('a chave é um id de documento (sem barra)', true, /^[A-Za-z0-9_-]+$/.test(
+  tentativas.chaveDaTentativa({ regra: R.PEDIDO_DE_ACESSO, quem: 'a/b/../c', agoraMs: H })));
+checar('o fim da janela é a virada da hora', H + 3600000,
+  tentativas.fimDaJanelaMs({ regra: R.CONVITE_PUBLICO, agoraMs: H + 1234 }));
+checar('o IP vem do `req.ip`', '200.1.2.3',
+  tentativas.ipDaRequisicao({ ip: '200.1.2.3', headers: { 'x-forwarded-for': '9.9.9.9' } }));
+checar('sem ele, do primeiro salto do x-forwarded-for', '200.1.2.3',
+  tentativas.ipDaRequisicao({ headers: { 'x-forwarded-for': '200.1.2.3, 10.0.0.1' } }));
+checar('sem nada, uma chave fixa (não quebra)', 'desconhecido', tentativas.ipDaRequisicao({}));
+checar('o mesmo contato em 30 dias é repetido', true,
+  tentativas.contatoRepetido({ criadosEmMs: [H - 29 * DIA], agoraMs: H }));
+checar('depois de 30 dias, é contato novo', false,
+  tentativas.contatoRepetido({ criadosEmMs: [H - 31 * DIA], agoraMs: H }));
+checar('data ilegível não conta como repetido', false,
+  tentativas.contatoRepetido({ criadosEmMs: [NaN], agoraMs: H }));
+
+// ⚠️ Na prévia, SÓ O ERRO conta: a família que reabre o link toda semana,
+// atrás do IP da operadora, não pode encostar no limite.
+checar('a prévia conta só a recusa', true,
+  /const recusar = async \(\) => \{\s*await limite\.contar/.test(codigoPrevia)
+  && !/limite\.consumir/.test(codigoPrevia));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

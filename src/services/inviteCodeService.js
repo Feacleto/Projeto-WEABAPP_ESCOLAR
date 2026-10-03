@@ -6,20 +6,43 @@ import {
   where,
   getDocs,
   limit,
+  serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase/config';
 import { exigirCloud } from './callableError';
+import { generateInviteCode } from '../dominio/identidade/generateInviteCode';
 
-// Aceita os dois formatos de convite: legado (2 letras + 4 dígitos) e
-// novo (2 letras + 6 caracteres sem ambiguidade visual).
-const CODE_RE = /^[A-Z]{2}(\d{4}|[ABCDEFGHJKMNPQRSTVWXYZ23456789]{6})$/;
+// SÓ O FORMATO NOVO (03/10/2026): 2 letras + 6 caracteres sem ambiguidade.
+// O legado (2 letras + 4 dígitos) saiu do servidor — 9.000 combinações eram
+// varríveis —, e aceitá-lo aqui só gastaria uma chamada para ouvir "não".
+const CODE_RE = /^[A-Z]{2}[ABCDEFGHJKMNPQRSTVWXYZ23456789]{6}$/;
+
+/**
+ * A RECUSA ÚNICA (03/10/2026). O servidor responde igual para convite
+ * inexistente, já usado e vencido — distinguir ensinava a quem varre códigos
+ * que acertou um. A tela oferece "entrar com sua conta" a quem já entrou.
+ * O mesmo texto de `functions/lib/reguaDoConvite.js`.
+ */
+export const MENSAGEM_DO_CONVITE_RECUSADO =
+  'Este convite não vale mais. Peça um link novo ao motorista.';
+
+const MENSAGEM_DE_LIMITE = 'Muitas tentativas seguidas. Espere um pouco e tente de novo.';
 
 /** Normaliza o que veio do teclado do celular: maiúsculas, sem espaço/traço. */
 export function normalizeInviteCode(raw) {
   return String(raw || '')
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '');
+}
+
+/** O erro da callable de convite, na frase que a tela mostra. */
+function erroDoConvite(err, padrao) {
+  const c = String(err?.code || '');
+  if (c.includes('not-found')) return new Error(MENSAGEM_DO_CONVITE_RECUSADO, { cause: err });
+  if (c.includes('resource-exhausted')) return new Error(MENSAGEM_DE_LIMITE, { cause: err });
+  return new Error(padrao, { cause: err });
 }
 
 /**
@@ -33,32 +56,20 @@ export function normalizeInviteCode(raw) {
  * do responsável.
  *
  * A função devolve de propósito o mínimo: primeiro nome da criança e do
- * motorista. Assim, mesmo varrendo os 9.000 códigos possíveis, ninguém
- * colhe dado pessoal útil.
+ * motorista.
  *
  * Retorna { childFirstName, driverFirstName, companyName }.
  */
 export async function lookupInvite(rawCode) {
   const code = normalizeInviteCode(rawCode);
-  if (!CODE_RE.test(code)) {
-    throw new Error('Código inválido. São 2 letras e 4 números (ex: TN4582).');
-  }
+  if (!CODE_RE.test(code)) throw new Error(MENSAGEM_DO_CONVITE_RECUSADO);
   exigirCloud('conferir o convite');
   const fn = httpsCallable(functions, 'lookupInvite');
   try {
     const res = await fn({ code });
     return res.data;
   } catch (err) {
-    const c = String(err?.code || '');
-    if (c.includes('not-found')) {
-      throw new Error('Convite não encontrado ou já usado.', { cause: err });
-    }
-    if (c.includes('invalid-argument')) {
-      throw new Error('Código inválido. São 2 letras e 4 números.', { cause: err });
-    }
-    throw new Error('Não conseguimos verificar o convite. Tente de novo.', {
-      cause: err,
-    });
+    throw erroDoConvite(err, 'Não conseguimos verificar o convite. Tente de novo.');
   }
 }
 
@@ -77,39 +88,28 @@ export async function lookupInvite(rawCode) {
  * Retorna { status, childFirstName, driverFirstName, companyName,
  *           monthlyFee, nextPayment, notices, childId? }.
  *
- *   'pending' → ninguém pegou ainda: mostra a prévia completa
+ *   'pending' → ninguém pegou ainda e está no prazo: a prévia completa
  *   'yours'   → quem está chamando JÁ é o responsável: entra direto no app
- *   'taken'   → vinculado a outra conta
+ *
+ * Qualquer outro caso (não existe, vinculado a outra conta, vencido) é a
+ * recusa única, que chega aqui como erro com `MENSAGEM_DO_CONVITE_RECUSADO`.
  *
  * O caso 'yours' é o mais importante e o mais percorrido. Na prática o pai
  * não guarda o endereço do site nem pede link novo ao tio: ele volta na
  * conversa do WhatsApp e toca no MESMO link, pra sempre. Esse link é a porta
- * de entrada permanente do app, não um passo de cadastro — então ele nunca
- * pode terminar numa tela de erro.
+ * de entrada permanente do app, não um passo de cadastro — e o prazo de 15
+ * dias não vale para ele.
  */
 export async function getInvitePreview(rawCode) {
   const code = normalizeInviteCode(rawCode);
-  if (!CODE_RE.test(code)) {
-    throw new Error('Link de convite inválido. Peça outro ao motorista.');
-  }
+  if (!CODE_RE.test(code)) throw new Error(MENSAGEM_DO_CONVITE_RECUSADO);
   exigirCloud('abrir o convite');
   const fn = httpsCallable(functions, 'getInvitePreview');
   try {
     const res = await fn({ code });
     return res.data;
   } catch (err) {
-    const c = String(err?.code || '');
-    if (c.includes('not-found')) {
-      throw new Error('Este convite não existe. Peça um link novo ao motorista.', {
-        cause: err,
-      });
-    }
-    if (c.includes('invalid-argument')) {
-      throw new Error('Link de convite inválido.', { cause: err });
-    }
-    throw new Error('Não conseguimos abrir o convite. Tente de novo.', {
-      cause: err,
-    });
+    throw erroDoConvite(err, 'Não conseguimos abrir o convite. Tente de novo.');
   }
 }
 /**
@@ -148,4 +148,30 @@ export async function inviteCodeExists(code) {
   );
   const snap = await getDocs(q);
   return !snap.empty;
+}
+
+/**
+ * "GERAR LINK NOVO" (03/10/2026). O convite vale 15 dias (decisão do dono), e
+ * o link velho pode estar no WhatsApp de quem não devia — então o motorista
+ * troca o CÓDIGO, não só a data: o link antigo para de abrir na hora.
+ *
+ * Só para convite ainda não usado: para quem já entrou, o link é a porta de
+ * volta ao app e trocá-lo a deixaria do lado de fora. A tela só oferece o
+ * botão nesse caso; o servidor recusa o antigo de qualquer forma, porque ele
+ * busca pelo código.
+ *
+ * Devolve o código novo.
+ */
+export async function gerarLinkNovo(childId) {
+  for (let i = 0; i < 10; i++) {
+    const code = generateInviteCode();
+    if (!(await inviteCodeExists(code))) {
+      await updateDoc(doc(db, 'children', childId), {
+        inviteCode: code,
+        inviteCriadoEm: serverTimestamp(),
+      });
+      return code;
+    }
+  }
+  throw new Error('Não foi possível gerar um link novo. Tente de novo.');
 }

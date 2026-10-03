@@ -164,8 +164,33 @@ checar('nem a chave do irmão — o número dela não é comprovado', false,
   pedirAcesso.includes('phoneChave'));
 checar('quem aprova é o motorista dono da criança', true,
   pedidos.includes('dados.adminUid !== adminUid') && pedidos.includes('exigirMotorista'));
-checar('e a resposta não diz o nome da criança a quem pediu', true,
-  /return \{ encontrou: achadas\.length \}/.test(pedidos));
+/* ⚠️ A RESPOSTA ERA `{ encontrou: N }` E PASSOU A SER `{ ok: true }`
+   (03/10/2026). Ela não dizia o nome da criança, mas dizia SE havia criança
+   com aquele número — e quem digita números um atrás do outro lia, na
+   resposta, quais telefones estão cadastrados na plataforma. Agora a mesma
+   resposta sai com ou sem criança achada, e a tela diz "se o número estiver
+   cadastrado, o motorista recebe o pedido". */
+checar('a resposta é a mesma, ache ou não criança com o número', true,
+  /return \{ ok: true \};/.test(pedirAcesso));
+checar('e não devolve mais quantas achou', false,
+  /return \{[^}]*encontrou/.test(pedirAcesso));
+checar('cada conta faz no máximo 5 pedidos por dia', true,
+  pedirAcesso.includes('limite.consumir(db, REGRAS.PEDIDO_DE_ACESSO, uid)'));
+const abrir = pedidos.slice(pedidos.indexOf('async function abrirPedido'), pedidos.indexOf('function makePedirAcessoPeloTelefone'));
+checar('o pedido não leva o e-mail de quem pediu (e apaga o de pedido antigo)', true,
+  !/email:\s*email/.test(abrir) && abrir.includes('email: FieldValue.delete()'));
+// Sem os comentários: o cabeçalho do card CITA as frases antigas para
+// explicar por que saíram, e a explicação não pode reprovar o teste.
+const cardDeEspera = readFileSync(new URL('../src/components/acesso/AguardandoVinculo.jsx', import.meta.url), 'utf8')
+  .split('\n')
+  .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+  .join('\n');
+checar('o card de espera não diz se achou', false,
+  /Encontramos um cadastro|Não encontramos seu motorista/.test(cardDeEspera));
+checar('e diz a frase única', true,
+  cardDeEspera.includes('Se o número estiver cadastrado, o motorista recebe o'));
+checar('o motorista não vê e-mail no pedido', false,
+  readFileSync(new URL('../src/components/tio/PedidosDeAcesso.jsx', import.meta.url), 'utf8').includes('p.email'));
 
 bloco('5b · A CRIANÇA GUARDA A CHAVE DO TELEFONE (03/10/2026)');
 /* `pedirAcessoPeloTelefone` lia TODA criança sem responsável da plataforma a

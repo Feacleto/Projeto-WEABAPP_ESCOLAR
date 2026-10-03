@@ -12,12 +12,15 @@ import PedirAcesso from './PedirAcesso';
  * Ela entrou sem o link e informou o WhatsApp. O `/pai` aparece borrado por
  * baixo (ver `SemVinculoGate` no App.jsx) e este card diz em que pé está:
  *
- *   aguardando  — "Encontramos um cadastro com este número": o motorista
- *                 recebeu o pedido e aprova com um toque
- *   recusado    — o motorista disse "não conheço"
- *   nada        — nenhuma criança com este número: ela manda o app para o
- *                 motorista, e quando ele cadastrar o filho com o número,
- *                 o pedido nasce sozinho
+ *   esperando — "Se o número estiver cadastrado, o motorista recebe o
+ *               pedido", com o botão de mandar o app ao motorista
+ *   recusado  — o motorista disse "não conheço"
+ *
+ * ⚠️ "ACHOU" E "NÃO ACHOU" SÃO A MESMA TELA (03/10/2026). Eram duas —
+ * "Encontramos um cadastro com este número" e "Não encontramos seu
+ * motorista" —, e isso fazia do card um oráculo: digitar números e ler qual
+ * frase aparece dizia quais telefones têm criança na plataforma. A resposta
+ * do servidor também ficou igual (`pedidosDeAcesso.js`).
  *
  * ⚠️ O CARD NÃO DIZ O NOME DA CRIANÇA NEM DO MOTORISTA enquanto espera.
  * Quem digita um número alheio não pode sair sabendo que ali existe "Lucas".
@@ -31,6 +34,8 @@ export default function AguardandoVinculo() {
 
   const aguardando = pedidos.some((p) => p.status === 'aguardando');
   const aprovado = pedidos.some((p) => p.status === 'aprovado');
+  // Só a recusa muda a tela — e ela vem de um gesto do motorista, não da
+  // busca pelo número. "Aguardando" e "nenhum pedido" são a mesma tela.
   const recusado = !aguardando && pedidos.some((p) => p.status === 'recusado');
 
   // O vínculo é escrito em `users` pelo servidor; o perfil daqui não é ao
@@ -44,53 +49,42 @@ export default function AguardandoVinculo() {
   let corpo;
   if (corrigindo) {
     corpo = <PedirAcesso aoConcluir={() => setCorrigindo(false)} />;
-  } else if (aguardando) {
-    corpo = (
-      <>
-        <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-warningSoft text-warningText">
-          <Hourglass size={20} />
-        </span>
-        <h2 className="text-xl font-extrabold text-text">Encontramos um cadastro com este número</h2>
-        <p className="mt-1.5 text-sm text-textMuted">
-          Pedimos ao motorista para confirmar. Assim que ele aprovar, seu filho
-          aparece aqui.
-        </p>
-        <div className="mt-4 flex justify-center gap-1.5" aria-hidden>
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse motion-reduce:animate-none"
-              style={{ animationDelay: `${i * 200}ms` }}
-            />
-          ))}
-        </div>
-      </>
-    );
-  } else {
+  } else if (recusado) {
     corpo = (
       <>
         <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-primaryChip text-primary">
           <Bus size={20} />
         </span>
-        <h2 className="text-xl font-extrabold text-text">
-          {recusado ? 'O motorista não confirmou' : 'Não encontramos seu motorista'}
-        </h2>
-        <p className="mt-1.5 text-sm text-textMuted">
-          {recusado
-            ? 'Fale com ele para conferir o número que ele cadastrou.'
-            : 'Mande o app para ele cadastrar o seu filho com este número. Depois é só ele aprovar.'}
+        <h2 className="text-xl font-extrabold text-text">O motorista não confirmou</h2>
+        <p className="mt-1.5 text-base text-textMuted">
+          Fale com ele para conferir o número que ele cadastrou.
         </p>
-        {!recusado && (
-          <a
-            href={linkDoPedido({ nome: profile?.name || '' })}
-            target="_blank"
-            rel="noreferrer"
-            className="tap mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-whatsapp font-bold text-onAccent"
-          >
-            <WhatsAppIcon size={18} colored={false} />
-            Mandar para o motorista
-          </a>
-        )}
+      </>
+    );
+  } else {
+    corpo = (
+      <>
+        <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-warningSoft text-warningText">
+          <Hourglass size={20} />
+        </span>
+        <h2 className="text-xl font-extrabold text-text">Pedido enviado</h2>
+        <p className="mt-1.5 text-base text-textMuted">
+          Se o número estiver cadastrado, o motorista recebe o pedido. Assim
+          que ele aprovar, seu filho aparece aqui.
+        </p>
+        <p className="mt-3 text-base text-textMuted">
+          Ele ainda não usa o app? Mande para ele. Quando ele cadastrar seu
+          filho com este número, o pedido chega sozinho.
+        </p>
+        <a
+          href={linkDoPedido({ nome: profile?.name || '' })}
+          target="_blank"
+          rel="noreferrer"
+          className="tap mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-whatsapp font-bold text-onAccent"
+        >
+          <WhatsAppIcon size={18} colored={false} />
+          Mandar para o motorista
+        </a>
       </>
     );
   }

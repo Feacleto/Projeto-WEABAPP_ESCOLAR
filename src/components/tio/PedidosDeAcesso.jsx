@@ -58,9 +58,14 @@ export default function PedidosDeAcesso({ pedidos = [], criancas = [] }) {
                 <p className="mt-0.5 text-[13px] leading-snug text-textBody">
                   {p.nome || 'Um responsável'} quer acompanhar {filho}
                 </p>
-                <p className="mt-0.5 text-xs text-textMuted break-all">
-                  {[p.email, p.telefone && formatPhone(p.telefone)].filter(Boolean).join(' · ')}
-                </p>
+                {/* Só o WhatsApp (03/10/2026): o pedido não leva mais o
+                  * e-mail de quem pediu — o motorista conhece a família pelo
+                  * nome e pelo número. */}
+                {p.telefone && (
+                  <p className="mt-0.5 text-sm text-textMuted">
+                    {formatPhone(p.telefone)}
+                  </p>
+                )}
               </div>
             </div>
             <div className="mt-3 flex gap-2">

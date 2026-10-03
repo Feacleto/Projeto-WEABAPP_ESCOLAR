@@ -13,12 +13,16 @@ import { exigirCloud, mensagemDeErro } from './callableError';
  * (`functions/lib/pedidosDeAcesso.js`); daqui só se lê.
  */
 
-/** A pessoa informa o WhatsApp. Devolve `{ encontrou }` — quantos pedidos. */
+/**
+ * A pessoa informa o WhatsApp. Devolve `{ ok: true }` — SEMPRE o mesmo, ache
+ * ou não criança com o número (03/10/2026): a resposta não pode servir de
+ * consulta de quais telefones estão cadastrados. Ver `pedidosDeAcesso.js`.
+ */
 export async function pedirAcessoPeloTelefone({ telefone, nome = '' }) {
   exigirCloud('pedir o acesso');
   try {
     const res = await httpsCallable(functions, 'pedirAcessoPeloTelefone')({ telefone, nome });
-    return res.data || { encontrou: 0 };
+    return res.data || { ok: true };
   } catch (err) {
     throw new Error(mensagemDeErro(err, 'pedir o acesso'), { cause: err });
   }

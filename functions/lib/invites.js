@@ -29,36 +29,39 @@ const { chaveDoTelefone } = require('./indicacao');
 
 const REGION = 'southamerica-east1';
 
-// Dois formatos aceitos (ver src/utils/generateInviteCode.js):
-//   legado — 2 letras + 4 dígitos (9.000 combinações)
-//   novo   — 2 letras + 6 chars de alfabeto sem ambiguidade (~730 mi)
-// O legado segue valendo pra quem já recebeu convite; códigos novos
-// nascem no formato grande porque o espaço pequeno era varrível.
-const NEW_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
-const LEGACY_RE = /^[A-Z]{2}\d{4}$/;
-const NEW_RE = new RegExp('^[A-Z]{2}[' + NEW_ALPHABET + ']{6}$');
-
-function isValidCode(code) {
-  return LEGACY_RE.test(code) || NEW_RE.test(code);
-}
+// O FORMATO, O PRAZO DE 15 DIAS E A RESPOSTA ÚNICA moram em `reguaDoConvite.js`
+// (03/10/2026). O formato LEGADO (2 letras + 4 dígitos, 9.000 combinações)
+// saiu: nenhum código nasce assim desde a troca de formato, e ele só servia
+// de alvo para varredura.
+const {
+  normalizarCodigo: normalizeCode,
+  codigoValido: isValidCode,
+  conviteVencido,
+  MENSAGEM_DO_CONVITE_RECUSADO,
+} = require('./reguaDoConvite');
+const { REGRAS, MENSAGEM_DE_LIMITE } = require('./reguaDasTentativas');
+const limite = require('./limiteDeTentativas');
 
 // Tentativas erradas toleradas por conta antes de bloquear por um tempo.
 // Existe pra tornar a varredura inviável mesmo com conta de verdade.
 const MAX_FAILED_ATTEMPTS = 12;
 const ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
 
-function normalizeCode(raw) {
-  return String(raw || '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
-}
-
 function firstName(full) {
   return String(full || '').trim().split(/\s+/)[0] || '';
 }
 
 /**
- * Busca a criança de um invite code válido e ainda não usado.
+ * A RECUSA ÚNICA (03/10/2026): código malformado, inexistente, já usado ou
+ * vencido recebem a MESMA resposta. Diferenciar ensinava a quem varre que
+ * acertou um código real.
+ */
+function conviteRecusado() {
+  return new HttpsError('not-found', MENSAGEM_DO_CONVITE_RECUSADO);
+}
+
+/**
+ * Busca a criança de um invite code válido, ainda não usado e no prazo.
  * Retorna o doc snapshot ou null.
  */
 async function findPendingChild(db, code) {
@@ -74,6 +77,9 @@ async function findPendingChild(db, code) {
   // antigo — guardado no WhatsApp de quem quer que o tenha recebido —
   // voltava a funcionar e vinculava alguém a uma criança fora da turma.
   if (snap.docs[0].data().active === false) return null;
+  // ⚠️ O CONVITE VALE 15 DIAS (03/10/2026, decisão do dono). Vencido, a
+  // resposta é a de "não existe" — ver `reguaDoConvite.js`.
+  if (conviteVencido(snap.docs[0].data(), Date.now())) return null;
   return snap.docs[0];
 }
 
@@ -82,21 +88,24 @@ async function findPendingChild(db, code) {
  *
  * Deliberadamente devolve o mínimo: primeiro nome da criança e nome do
  * motorista. Nada de endereço, coordenada, escola, telefone ou email.
- * Assim, mesmo que alguém varra os 9.000 códigos possíveis, não colhe
- * dado pessoal útil — só descobre que um código existe.
+ *
+ * ⚠️ PÚBLICA, ENTÃO CONTADA POR IP (03/10/2026): 30 códigos que não abriram
+ * por hora (`REGRAS.CONVITE_PUBLICO`). Só o erro conta — ver
+ * `reguaDasTentativas.js`.
  */
 function makeLookupInvite(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
-    const code = normalizeCode(request.data?.code);
-    if (!isValidCode(code)) {
-      throw new HttpsError('invalid-argument', 'Código em formato inválido.');
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
+    const quem = limite.quemPeloIp(request.rawRequest);
+    if (!(await limite.aindaCabe(db, REGRAS.CONVITE_PUBLICO, quem))) {
+      throw new HttpsError('resource-exhausted', MENSAGEM_DE_LIMITE);
     }
 
-    const childDoc = await findPendingChild(db, code);
+    const code = normalizeCode(request.data?.code);
+    const childDoc = isValidCode(code) ? await findPendingChild(db, code) : null;
     if (!childDoc) {
-      // Mensagem única pra código inexistente E já usado: não confirma
-      // pra quem está tentando adivinhar se acertou um código real.
-      throw new HttpsError('not-found', 'Convite não encontrado ou já usado.');
+      // Uma resposta só para malformado, inexistente, usado e vencido.
+      await limite.contar(db, REGRAS.CONVITE_PUBLICO, quem);
+      throw conviteRecusado();
     }
 
     const child = childDoc.data();
@@ -143,35 +152,25 @@ function makeLookupInvite(db) {
  * ainda o leem. Quem já tinha conta ganha a criança no array.
  */
 function makeRedeemInvite(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
       throw new HttpsError('unauthenticated', 'Faça login antes de usar o convite.');
     }
 
+    // A trava vem ANTES do formato: o código malformado também conta como
+    // erro, e conferir depois deixaria 12 erros "de formato" de graça.
+    //
+    // (A exceção para conta ANÔNIMA com código legado saiu em 03/10/2026
+    // junto com o próprio formato legado: só o espaço de ~730 milhões é
+    // aceito, para qualquer conta.)
+    await assertNotThrottled(db, uid);
+
     const code = normalizeCode(request.data?.code);
     if (!isValidCode(code)) {
       await registerFailedAttempt(db, uid);
-      throw new HttpsError('invalid-argument', 'Código em formato inválido.');
+      throw conviteRecusado();
     }
-
-    // Conta ANÔNIMA só resgata código do formato NOVO.
-    //
-    // O motivo é aritmético. Identidade anônima é grátis e ilimitada, então
-    // o limite de tentativas por conta não segura nada contra ela: o
-    // atacante cria uma conta nova a cada 12 erros. O que segura é o
-    // tamanho do espaço. Código legado tem 9.000 combinações — varredura de
-    // minutos. Código novo tem ~730 milhões — semanas pra 1% de chance.
-    const provider = request.auth.token?.firebase?.sign_in_provider;
-    const isAnonymous = !provider || provider === 'anonymous';
-    if (isAnonymous && LEGACY_RE.test(code)) {
-      throw new HttpsError(
-        'permission-denied',
-        'Este convite é antigo. Peça um link novo ao motorista, ou entre com email/Google.'
-      );
-    }
-
-    await assertNotThrottled(db, uid);
 
     const name = String(request.data?.name || '').trim().slice(0, 120);
     const acceptedLegalVersion = String(request.data?.legalVersion || '').slice(0, 20);
@@ -180,7 +179,7 @@ function makeRedeemInvite(db) {
     if (!childDoc) {
       // Cada erro conta: é assim que a varredura fica inviável.
       await registerFailedAttempt(db, uid);
-      throw new HttpsError('not-found', 'Convite não encontrado ou já usado.');
+      throw conviteRecusado();
     }
 
     const childRef = childDoc.ref;
@@ -192,22 +191,16 @@ function makeRedeemInvite(db) {
 
     const result = await db.runTransaction(async (tx) => {
       const freshChild = await tx.get(childRef);
-      if (!freshChild.exists) {
-        throw new HttpsError('not-found', 'Criança não encontrada.');
-      }
+      if (!freshChild.exists) throw conviteRecusado();
       const child = freshChild.data();
       // Removida entre a busca e a transação: o convite morreu junto.
-      if (child.active === false) {
-        throw new HttpsError('not-found', 'Convite não encontrado ou já usado.');
-      }
+      if (child.active === false) throw conviteRecusado();
 
       // Revalida DENTRO da transação — evita dois pais resgatando o mesmo
-      // código em paralelo (o último sobrescreveria o primeiro).
-      if (child.inviteStatus !== 'pending' || child.parentUid) {
-        throw new HttpsError(
-          'failed-precondition',
-          'Este convite já foi usado. Peça um novo ao motorista.'
-        );
+      // código em paralelo (o último sobrescreveria o primeiro). A resposta
+      // é a recusa única: "já foi usado" confirmaria que o código existe.
+      if (child.inviteStatus !== 'pending' || child.parentUid || child.inviteCode !== code) {
+        throw conviteRecusado();
       }
 
       const userSnap = await tx.get(userRef);
@@ -327,6 +320,13 @@ function makeRedeemInvite(db) {
       // decide se quer conferir.
       const authEmail = (request.auth.token?.email || '').toLowerCase();
       const cadastroEmail = String(child.parentEmail || '').toLowerCase();
+      // ⚠️ "CASOU" SÓ COM E-MAIL VERIFICADO (03/10/2026). Uma conta de e-mail
+      // e senha nasce com qualquer endereço digitado, sem prova de posse — e
+      // o selo de "e-mail confere com o cadastro" na ficha do motorista
+      // virava atestado de identidade para quem só digitou o e-mail da mãe.
+      // Sem verificação o resultado é `false`: a ficha mostra a divergência
+      // e o motorista confere.
+      const emailVerificado = request.auth.token?.email_verified === true;
       // ⚠️ O E-MAIL DA FAMÍLIA É GRAVADO SEMPRE (02/10/2026). O cadastro da
       // criança deixou de pedir o e-mail ao motorista — ele quase nunca
       // sabe —, então este passa a ser O e-mail dela, lido pelo contrato e
@@ -335,7 +335,9 @@ function makeRedeemInvite(db) {
       if (authEmail) {
         tx.update(childRef, {
           linkedEmail: authEmail,
-          ...(cadastroEmail ? { linkedEmailMatchesCadastro: authEmail === cadastroEmail } : {}),
+          ...(cadastroEmail
+            ? { linkedEmailMatchesCadastro: emailVerificado && authEmail === cadastroEmail }
+            : {}),
         });
       }
 
@@ -365,7 +367,9 @@ function makeRedeemInvite(db) {
       };
     });
 
-    logger.info(`Convite resgatado: code=${code} child=${result.childId} uid=${uid}`);
+    // Sem o CÓDIGO no log (03/10/2026): log é lido por mais gente que o
+    // banco, e o código é a chave da conta da família.
+    logger.info('Convite resgatado', { child: result.childId, uid });
     return result;
   });
 }
@@ -446,7 +450,7 @@ module.exports = {
  * na camada de parceiro), é ELA que entra aqui. Avatar de perfil, nunca.
  */
 function makeGetShowcase(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async () => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.PUBLICO }, async () => {
     try {
       const initSnap = await db.doc('appState/init').get();
       if (!initSnap.exists) return { drivers: [], hasAdmin: false };

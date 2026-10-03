@@ -699,6 +699,7 @@ function LinkDoResponsavel({ child }) {
         </div>
         <InviteShare
           code={child.inviteCode}
+          crianca={child}
           childName={child.name}
           gender={child.gender}
           parentPhone={child.parentPhone}

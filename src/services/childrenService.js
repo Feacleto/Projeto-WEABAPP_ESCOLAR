@@ -159,6 +159,9 @@ export async function addChild(data) {
     notes: data.notes?.trim() || '',
     inviteCode,
     inviteStatus: 'pending',
+    // O convite vale 15 dias a partir daqui (03/10/2026, decisão do dono) —
+    // `functions/lib/reguaDoConvite.js`. "Gerar link novo" regrava.
+    inviteCriadoEm: serverTimestamp(),
     parentUid: null,
     // DE QUEM É ESTA CRIANÇA — o vínculo que faltava.
     //

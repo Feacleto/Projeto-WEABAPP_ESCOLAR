@@ -12,7 +12,9 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks'
  * O número que ela digita gera um PEDIDO para o motorista de cada criança
  * cadastrada com ele, e nada mais: quem libera é o motorista, que conhece a
  * família (`functions/lib/pedidosDeAcesso.js`). Sem criança com o número, a
- * conta nasce mesmo assim, e o app pede para ela chamar o motorista.
+ * conta nasce mesmo assim — e a tela seguinte é a MESMA nos dois casos
+ * (03/10/2026): "se o número estiver cadastrado, o motorista recebe o
+ * pedido". Dizer se achou faria deste campo uma consulta de telefones.
  *
  * Usado no `/first-access` (sessão sem conta) e no "Corrigir meu número" do
  * card de espera.

@@ -21,7 +21,11 @@ import Button from '../components/common/Button';
 import Spinner from '../components/common/Spinner';
 import AuthSheet from '../components/auth/AuthSheet';
 import { useAuth } from '../hooks/useAuth';
-import { getInvitePreview, normalizeInviteCode } from '../services/inviteCodeService';
+import {
+  getInvitePreview,
+  normalizeInviteCode,
+  MENSAGEM_DO_CONVITE_RECUSADO,
+} from '../services/inviteCodeService';
 import { redeemInvite } from '../services/authService';
 import { formatCurrency, doDa } from '../compartilhado/formatters';
 import {
@@ -230,17 +234,12 @@ export default function Invite() {
     );
   }
 
-  // Vinculado a OUTRA conta, e quem abriu não está logado. Isso é
-  // esmagadoramente o pai que limpou o navegador ou trocou de aparelho —
-  // não um invasor. Então a tela é uma porta ('entre'), não um alarme.
-  if (preview.status === 'taken' && !user) {
-    return (
-      <SignInToContinue
-        childFirstName={preview.childFirstName}
-        driverLabel={driverLabel}
-      />
-    );
-  }
+  // ⚠️ O 'taken' SAIU (03/10/2026). O servidor respondia "vinculado a outra
+  // conta" com o primeiro nome da criança a qualquer um — quem varria códigos
+  // ganhava a confirmação e um nome. Agora "já usado", "não existe" e
+  // "venceu" chegam como a MESMA recusa, e quem é a família voltando sem
+  // sessão (limpou o navegador, trocou de celular) acha na tela de recusa o
+  // "entre com sua conta" — `InviteBroken`, logo abaixo.
 
   // Pai JÁ logado abrindo o link: nada de prévia, só confirmar o vínculo.
   if (user && profile?.role === 'parent') {
@@ -252,11 +251,6 @@ export default function Invite() {
         onDone={() => finish('/pai')}
       />
     );
-  }
-
-  // Vinculado a outra conta com alguém logado: explica sem assustar.
-  if (preview.status === 'taken') {
-    return <AlreadyUsed childFirstName={preview.childFirstName} />;
   }
 
   return (
@@ -511,21 +505,6 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
     }
   };
 
-  if (preview.status === 'taken') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
-        <p className="text-lg font-bold text-text">Este convite já foi usado</p>
-        <p className="text-sm text-textMuted max-w-xs">
-          Se {preview.childFirstName} já está na sua conta, ele aparece na tela
-          de início.
-        </p>
-        <Link to="/pai" className="text-sm font-semibold text-primary underline">
-          Ir pro início
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col px-6 py-8 justify-center gap-6">
       <div className="text-center space-y-3">
@@ -553,101 +532,54 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
   );
 }
 
-/* ─────────────── Estados de erro ─────────────── */
+/* ─────────────── Estado de recusa ─────────────── */
 
 /**
- * O link é de uma conta que já existe, e quem abriu não está logado.
+ * O convite não abriu — e a tela não diz POR QUÊ, de propósito (03/10/2026).
  *
- * Na prática este é o pai voltando: limpou o navegador, trocou de celular,
- * ou abriu o link no Chrome depois de ter entrado dentro do WhatsApp (as
- * duas sessões têm armazenamento separado). Tratar isso como erro de
- * segurança seria errar o diagnóstico na maioria dos casos.
+ * O servidor dá a mesma resposta para link que não existe, que já foi usado
+ * e que venceu (15 dias): dizer qual dos três era confirmava a quem varre
+ * códigos que ele acertou um. Então a tela serve aos dois casos reais ao
+ * mesmo tempo:
+ *
+ *  - a família que ainda não entrou: pede um link novo ao motorista, que
+ *    gera na hora, na ficha da criança;
+ *  - a família que JÁ entrou e voltou sem sessão (limpou o navegador, trocou
+ *    de celular, abriu fora do WhatsApp): é só entrar com a conta dela. Esse
+ *    era o caso mais comum do antigo "já foi usado", e ele continua tendo
+ *    porta — o botão maior da tela.
  */
-function SignInToContinue({ childFirstName, driverLabel }) {
-  return (
-    <div className="min-h-screen flex flex-col px-6 py-8 justify-center gap-6">
-      <div className="text-center space-y-3">
-        <div className="w-20 h-20 mx-auto rounded-full bg-primary text-white text-3xl font-bold flex items-center justify-center shadow-rest">
-          {(childFirstName || '?')[0].toUpperCase()}
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-text leading-tight">
-            Entre pra ver {childFirstName || 'seu filho'}
-          </h1>
-          <p className="text-sm text-textMuted mt-1.5">
-            Sua conta já existe. É só entrar pra continuar acompanhando.
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Link
-          to="/login"
-          className="tap w-full h-14 rounded-2xl bg-primary text-white font-semibold inline-flex items-center justify-center shadow-focus"
-        >
-          Entrar na minha conta
-        </Link>
-        <p className="text-xs text-textMuted text-center">
-          Use o mesmo Google ou email da primeira vez.
-        </p>
-      </div>
-
-      <p className="text-xs text-textMuted text-center">
-        Não consegue entrar? Fale com {driverLabel} — ele gera um link novo.
-      </p>
-    </div>
-  );
-}
-
-function AlreadyUsed({ childFirstName }) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
-      <div className="w-16 h-16 rounded-2xl bg-primaryChip flex items-center justify-center">
-        <HeartHandshake size={30} className="text-primary" />
-      </div>
-      <div className="space-y-1.5">
-        <h1 className="text-xl font-bold text-text">Este convite já foi usado</h1>
-        <p className="text-sm text-textMuted max-w-xs">
-          Alguém já criou a conta {childFirstName ? `do ${childFirstName}` : ''}{' '}
-          com este link. Se foi você, entre com a sua conta.
-        </p>
-      </div>
-      <Link
-        to="/login"
-        className="text-sm font-semibold text-primary underline"
-      >
-        Entrar na minha conta
-      </Link>
-      <p className="text-xs text-textMuted max-w-xs">
-        Se não foi você, avise o motorista — ele gera um link novo.
-      </p>
-    </div>
-  );
-}
-
 function InviteBroken({ message }) {
+  const recusado = message === MENSAGEM_DO_CONVITE_RECUSADO;
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-5">
       <div className="w-16 h-16 rounded-2xl bg-warningChip flex items-center justify-center">
         <HeartHandshake size={30} className="text-warningText" />
       </div>
-      <div className="space-y-1.5">
-        <h1 className="text-xl font-bold text-text">Não conseguimos abrir</h1>
-        <p className="text-sm text-textMuted max-w-xs">{message}</p>
-        <p className="text-sm text-textMuted max-w-xs">
-          Peça um link novo pro motorista — ele gera na hora, na ficha da
-          criança.
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold text-text">
+          {recusado ? 'Este convite não vale mais' : 'Não conseguimos abrir'}
+        </h1>
+        <p className="text-base text-textMuted max-w-xs">
+          {recusado
+            ? 'Peça um link novo ao motorista — ele gera na hora, na ficha da criança.'
+            : message}
         </p>
       </div>
       {/* Com a frente: este é o caminho do responsável, e a tela de erro é
         * onde ele já está frustrado — não é hora de oferecer associação. */}
-      <Link
-        to="/login"
-        state={{ frente: FRENTE_FAMILIA }}
-        className="text-sm font-semibold text-primary underline"
-      >
-        Já tenho conta, quero entrar
-      </Link>
+      <div className="w-full max-w-xs space-y-2">
+        <Link
+          to="/login"
+          state={{ frente: FRENTE_FAMILIA }}
+          className="tap w-full h-14 rounded-2xl bg-primary text-white font-semibold inline-flex items-center justify-center shadow-focus"
+        >
+          Entrar com minha conta
+        </Link>
+        <p className="text-sm text-textMuted">
+          Se você já entrou antes, é só entrar com sua conta.
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Copy, Check, QrCode, Link2 } from 'lucide-react';
+import { Copy, Check, QrCode, Link2, RefreshCw, CalendarClock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
 import WhatsAppIcon from '../common/WhatsAppIcon';
@@ -13,6 +13,70 @@ import DadosDoContratoForm from '../contract/DadosDoContratoForm';
 import { useChild } from '../../hooks/useChild';
 import { useContratos } from '../../hooks/useContratos';
 import { useGarantirContrato } from '../../hooks/useGarantirContrato';
+import { gerarLinkNovo } from '../../services/inviteCodeService';
+import { conviteValidoAteMs, conviteVencido } from '../../dominio/identidade/validadeDoConvite';
+
+function diaMes(ms) {
+  const d = new Date(ms);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * O PRAZO DO LINK E O "GERAR LINK NOVO" (03/10/2026, decisão do dono).
+ *
+ * O convite ainda não usado vale 15 dias (`validadeDoConvite.js`). Sem dizer
+ * isso na tela, o motorista descobriria pela mãe ligando — "o link não abre".
+ * Gerar link novo troca o CÓDIGO: o link antigo para de abrir na hora, e é
+ * isso que se quer quando ele foi parar no WhatsApp de quem não devia.
+ */
+function ValidadeDoLink({ crianca, onNovo }) {
+  const [gerando, setGerando] = useState(false);
+  // A hora de quando a tela abriu basta: o prazo é em dias.
+  const [agora] = useState(() => Date.now());
+  const ate = conviteValidoAteMs(crianca);
+  const vencido = conviteVencido(crianca, agora);
+
+  const gerar = async () => {
+    setGerando(true);
+    try {
+      const codigo = await gerarLinkNovo(crianca.id);
+      onNovo(codigo);
+      toast.success('Link novo pronto. O anterior não abre mais.');
+    } catch (err) {
+      toast.error(err.message || 'Não deu pra gerar o link novo.');
+    } finally {
+      setGerando(false);
+    }
+  };
+
+  return (
+    <div
+      className={`space-y-3 rounded-xl border p-3 ${
+        vencido ? 'border-warningBorder bg-warningSoft' : 'border-border bg-card'
+      }`}
+    >
+      {ate != null && (
+        <p className="flex items-center gap-2 text-base font-semibold text-text">
+          <CalendarClock size={18} className="shrink-0 text-textMuted" />
+          {vencido ? `Este link venceu em ${diaMes(ate)}` : `Este link vale até ${diaMes(ate)}`}
+        </p>
+      )}
+      {vencido && (
+        <p className="text-sm text-textBody">
+          Gere um link novo antes de mandar. O antigo não abre mais.
+        </p>
+      )}
+      <Button
+        variant={vencido ? 'primary' : 'secondary'}
+        icon={RefreshCw}
+        loading={gerando}
+        onClick={gerar}
+      >
+        Gerar link novo
+      </Button>
+    </div>
+  );
+}
 
 /**
  * O CONTRATO NASCE ANTES DE O CONVITE SAIR (02/10/2026). Quem abre o convite
@@ -58,6 +122,9 @@ function GarantirContrato({ childId }) {
  * escondiam o único botão que importa ali.
  *
  * `rotulo` troca o texto do botão principal.
+ *
+ * `crianca` (a ficha passa o documento ao vivo) liga o prazo do link e o
+ * "Gerar link novo"; sem ela, o componente lê a criança por `childId`.
  */
 export default function InviteShare({
   code,
@@ -68,17 +135,34 @@ export default function InviteShare({
   jaEntrou = false,
   recolhido = false,
   rotulo,
+  crianca = null,
   children,
 }) {
   const [copied, setCopied] = useState(null); // 'link' | null
   const [maisOpcoes, setMaisOpcoes] = useState(!recolhido);
-  const [qrDataUrl, setQrDataUrl] = useState(null);
+  // O QR guarda o link de que foi feito: depois de "Gerar link novo", o
+  // desenho antigo apontaria para o link que morreu.
+  const [qr, setQr] = useState({ url: null, data: null });
   const [showQr, setShowQr] = useState(false);
+  // O código que acabou de ser gerado aqui. A ficha (`crianca`, ao vivo)
+  // recebe o novo sozinha; o fim do cadastro guarda o código em estado local,
+  // e sem isto continuaria mostrando o link que acabou de morrer.
+  const [codigoNovo, setCodigoNovo] = useState(null);
+
+  // O prazo precisa da criança: a ficha a passa pronta (`crianca`); o fim do
+  // cadastro só tem o id, e aí ela é lida aqui.
+  const { child: lida } = useChild(crianca || jaEntrou ? null : childId);
+  const criancaDoConvite = crianca || lida;
 
   const { profile } = useAuth();
   const faltaContrato = dadosDaContratadaFaltando(profile).length > 0;
-  const url = inviteUrl(code);
+  // A criança ao vivo é a verdade; o código gerado aqui cobre o instante
+  // antes de a escuta trazê-lo.
+  const codigoAtual = criancaDoConvite?.inviteCode || codigoNovo || code;
+  const url = inviteUrl(codigoAtual);
   const firstName = String(childName || '').trim().split(/\s+/)[0] || '';
+
+  const qrDataUrl = qr.url === url ? qr.data : null;
 
   useEffect(() => {
     if (!showQr || qrDataUrl) return;
@@ -89,7 +173,7 @@ export default function InviteShare({
       // token `text` (#0B1210) — se ele mudar no tailwind.config.js, muda aqui.
       color: { dark: '#0B1210', light: '#FFFFFF' },
     })
-      .then(setQrDataUrl)
+      .then((data) => setQr({ url, data }))
       .catch(() => toast.error('Não foi possível gerar o QR.'));
   }, [showQr, qrDataUrl, url]);
 
@@ -165,6 +249,12 @@ export default function InviteShare({
         {rotulo || (jaEntrou ? 'Mandar o link no WhatsApp' : 'Mandar convite no WhatsApp')}
       </a>
 
+      {/* Só no convite ainda não usado: para quem já entrou, o link é a
+        * porta de volta ao app e trocá-lo a deixaria do lado de fora. */}
+      {!jaEntrou && maisOpcoes && criancaDoConvite?.id && (
+        <ValidadeDoLink crianca={criancaDoConvite} onNovo={setCodigoNovo} />
+      )}
+
       {!maisOpcoes && (
         <button
           type="button"
@@ -206,7 +296,7 @@ export default function InviteShare({
           {qrDataUrl ? (
             <img
               src={qrDataUrl}
-              alt={`QR do convite ${code}`}
+              alt="QR do convite"
               className="w-44 h-44 rounded-lg"
             />
           ) : (

@@ -18,9 +18,19 @@
  * Por isso aqui nada é vinculado — só se cria o pedido. Quem vincula é
  * `responderPedidoDeAcesso`, chamado pelo motorista dono da criança.
  *
- * ── ⚠️ E A RESPOSTA NÃO DIZ O NOME DA CRIANÇA
- * Quem digita um número alheio não pode sair sabendo que ali existe "Lucas".
- * A tela diz só "encontramos um cadastro com este número".
+ * ── ⚠️ E A RESPOSTA NÃO DIZ NEM SE ACHOU (03/10/2026)
+ * Quem digita um número alheio não pode sair sabendo que ali existe "Lucas" —
+ * nem que ali existe ALGUÉM. A resposta era `{ encontrou: N }`, e a tela
+ * dizia "encontramos um cadastro com este número": um oráculo de quais
+ * telefones têm criança cadastrada na plataforma. Agora a resposta é sempre
+ * `{ ok: true }` e a tela diz "se o número estiver cadastrado, o motorista
+ * recebe o pedido". E cada conta faz no máximo 5 pedidos por dia
+ * (`REGRAS.PEDIDO_DE_ACESSO`).
+ *
+ * ── ⚠️ O PEDIDO NÃO LEVA O E-MAIL DE QUEM PEDIU (03/10/2026)
+ * O motorista decide pelo nome e pelo WhatsApp — é por eles que ele conhece a
+ * família. O e-mail de uma conta ainda não aprovada ia para o documento de
+ * um terceiro sem servir a decisão nenhuma.
  *
  * ── A CONTA NASCE SEM FILHO
  * `role: 'parent'`, `childIds: []`. O cliente não pode criar responsável
@@ -42,6 +52,9 @@ const { exigirMotorista } = require('./papeis');
 const { criancasQueEsperam, chaveDoTelefone } = require('./reguaDoIrmao');
 const { ligarRelogioComSnap } = require('./relogioDoTeste');
 const { cobrancaLigada } = require('./cobrancaLigada');
+const { idValido } = require('./reguaDosIds');
+const { REGRAS, MENSAGEM_DE_LIMITE } = require('./reguaDasTentativas');
+const limite = require('./limiteDeTentativas');
 
 const REGION = 'southamerica-east1';
 
@@ -52,7 +65,7 @@ const primeiroNome = (n) => String(n || '').trim().split(/\s+/)[0] || '';
  * Idempotente: o id é `{childId}_{parentUid}`, e pedido já respondido não
  * volta a "aguardando" sozinho.
  */
-async function abrirPedido(db, { crianca, parentUid, nome, email, telefone }) {
+async function abrirPedido(db, { crianca, parentUid, nome, telefone }) {
   const ref = db.doc(`pedidosDeVinculo/${crianca.id}_${parentUid}`);
   const atual = await ref.get();
   if (atual.exists && atual.data().status !== 'aguardando') return false;
@@ -66,7 +79,8 @@ async function abrirPedido(db, { crianca, parentUid, nome, email, telefone }) {
       adminUid: crianca.adminUid,
       parentUid,
       nome: nome || '',
-      email: email || '',
+      // Sem e-mail (ver o cabeçalho) — e o de um pedido antigo sai aqui.
+      email: FieldValue.delete(),
       telefone: String(telefone || '').replace(/\D/g, ''),
       status: 'aguardando',
       criadoEm: FieldValue.serverTimestamp(),
@@ -90,7 +104,7 @@ async function abrirPedido(db, { crianca, parentUid, nome, email, telefone }) {
 }
 
 function makePedirAcessoPeloTelefone(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
     if (request.auth.token?.firebase?.sign_in_provider === 'anonymous') {
@@ -99,6 +113,11 @@ function makePedirAcessoPeloTelefone(db) {
     const telefone = String(request.data?.telefone || '');
     const chave = chaveDoTelefone(telefone);
     if (!chave) throw new HttpsError('invalid-argument', 'WhatsApp com DDD.');
+    // Cinco por conta por dia: quem corrige o número uma ou duas vezes passa
+    // folgado; quem testa a lista telefônica, não.
+    if (!(await limite.consumir(db, REGRAS.PEDIDO_DE_ACESSO, uid))) {
+      throw new HttpsError('resource-exhausted', MENSAGEM_DE_LIMITE);
+    }
     const nome = String(request.data?.nome || request.auth.token?.name || '').trim().slice(0, 80);
     const email = String(request.auth.token?.email || '').toLowerCase();
 
@@ -154,10 +173,11 @@ function makePedirAcessoPeloTelefone(db) {
       criancas: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
     });
     for (const crianca of achadas) {
-      await abrirPedido(db, { crianca, parentUid: uid, nome: nome || existente?.name, email, telefone });
+      await abrirPedido(db, { crianca, parentUid: uid, nome: nome || existente?.name, telefone });
     }
     logger.info('[pedido] pedido de acesso', { uid, encontrou: achadas.length });
-    return { encontrou: achadas.length };
+    // A MESMA resposta com ou sem criança achada — ver o cabeçalho.
+    return { ok: true };
   });
 }
 
@@ -166,11 +186,13 @@ function makePedirAcessoPeloTelefone(db) {
  * O escopo vem do uid dele — só responde pedido de criança dele.
  */
 function makeResponderPedidoDeAcesso(db) {
-  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const adminUid = await exigirMotorista(db, request);
-    const pedidoId = String(request.data?.pedidoId || '');
+    const pedidoId = request.data?.pedidoId;
     const aprovar = request.data?.aprovar === true;
-    if (!pedidoId) throw new HttpsError('invalid-argument', 'Qual pedido?');
+    // O id vira caminho: sem a conferência, uma barra endereçaria outro
+    // documento (ver `reguaDosIds.js`).
+    if (!idValido(pedidoId)) throw new HttpsError('invalid-argument', 'Qual pedido?');
 
     const pedidoRef = db.doc(`pedidosDeVinculo/${pedidoId}`);
     const cobrancaOn = await cobrancaLigada(db);
