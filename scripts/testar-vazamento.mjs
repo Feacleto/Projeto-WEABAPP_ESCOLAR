@@ -201,7 +201,7 @@ bloco('3. O resíduo conhecido — declarado, não esquecido');
  * tentar consertar sem saber por que não foi consertado.
  *
  * As rules leem os quatro a cada avaliação: `isAdmin()` chama `trialInicio` e
- * `assinaturaAte`, o create de `children` compara `criancasAtivas`, e o
+ * `assinaturaAte`, o delete de `users` confere `criancasAtivas`, e o
  * contrato confere `plano`. Movê-los exigiria um `get()` extra POR REGRA, e o
  * Firestore corta em 20 acessos por lote — teto que este app já encosta: o
  * "embarquei todos" é dividido de 15 em 15 exatamente por isso.
@@ -214,7 +214,7 @@ const RESIDUO_EM_USERS = {
   plano: 'a rule de contratosAssociacao confere o plano dentro do contrato',
   trialInicio: 'isAdmin() decide se o teste de 90 dias ainda corre',
   assinaturaAte: 'isAdmin() decide se a assinatura cobre hoje',
-  criancasAtivas: 'o create de children exige o contador subindo no mesmo batch',
+  criancasAtivas: 'o delete do próprio users exige a turma zerada (contada pelo servidor)',
 };
 
 for (const [campo, porque] of Object.entries(RESIDUO_EM_USERS)) {

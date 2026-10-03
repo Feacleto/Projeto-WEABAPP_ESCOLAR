@@ -128,26 +128,13 @@ export default function Profile() {
   };
 
   const onDeleteAccount = async () => {
-    // ⚠️ QUEM JÁ RODOU UMA ROTA NÃO PASSA DAQUI, E O MOTIVO É UM WIPE PARCIAL.
-    //
-    // O `allow delete` de `users` exige `!('trialInicio' in resource.data)` —
-    // ou seja, motorista que já ligou o relógio do teste NÃO pode apagar o
-    // próprio documento. E `deleteAdminAccount` apaga o doc dele por ÚLTIMO:
-    // rides, crianças, pagamentos, escolas, agenda e despesas já foram
-    // apagados quando a negação chega.
-    //
-    // Resultado: a operação inteira destruída, a conta ainda de pé, e nenhuma
-    // forma de terminar — exatamente o wipe parcial que o cabeçalho de
-    // `accountService` foi reescrito para evitar. A rule assume essa dívida
-    // por escrito; a interface continuava oferecendo o botão.
-    //
-    // Enquanto não existir a function de encerramento, é melhor não começar.
-    if (isAdmin && profile?.trialInicio) {
-      toast.error(
-        'Operação com histórico não é encerrada por aqui — fale com a gente para apagar tudo de uma vez, sem deixar pedaços.'
-      );
-      return;
-    }
+    // ⚠️ O MOTORISTA COM HISTÓRICO VOLTOU A PODER SAIR (03/10/2026). O
+    // `allow delete` de `users` exigia "sem trialInicio", e esta tela barrava
+    // quem já tinha rodado — a LGPD garante a exclusão, e o app a negava. Hoje
+    // a rule pede `criancasAtivas == 0` (contado pelo SERVIDOR), e
+    // `deleteAdminAccount` apaga a turma e ESPERA o contador zerar antes de
+    // apagar o documento. O teste não recomeça: o servidor guarda uma cópia do
+    // início do teste e a restaura se a conta for recriada.
 
     // Lido AGORA, antes de qualquer coisa: `deleteUser` derruba a sessão e
     // `profile` vira null no meio do caminho.

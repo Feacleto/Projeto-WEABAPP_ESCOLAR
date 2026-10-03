@@ -469,6 +469,11 @@ export function watchParentAgenda({ parentUid, adminUid }, onUpdate, onError) {
       collection(db, AGENDA_COLLECTION),
       where('scope', '==', 'child'),
       where('parentUid', '==', parentUid),
+      // ⚠️ O MOTORISTA TAMBÉM, desde 03/10/2026: a rule passou a exigir que o
+      // recado de criança seja de um motorista DA família (antes qualquer
+      // motorista escrevia no caderno de qualquer família), e consulta que
+      // não prova o filtro é recusada inteira — o caderno abriria vazio.
+      where('adminUid', '==', adminUid),
       orderBy('createdAt', 'desc'),
       limit(TETO_DO_CADERNO)
     ),

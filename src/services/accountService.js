@@ -253,6 +253,9 @@ export async function deactivateChildAndParent({ childId }) {
     deactivatedAt: serverTimestamp(),
     parentUid: null,
     inviteStatus: 'pending', // reseta pra o admin poder reentregar o invite
+    // O convite vale 15 dias a partir daqui (03/10/2026): sem isto, o link
+    // reaberto de uma criança antiga já nasceria vencido.
+    inviteCriadoEm: serverTimestamp(),
     altResponsibles: [],
     // O ACEITE SAI JUNTO COM O VÍNCULO (02/10/2026): sem isto, quem viesse
     // depois herdava "Aceito por <outra pessoa>". As rules só deixam o

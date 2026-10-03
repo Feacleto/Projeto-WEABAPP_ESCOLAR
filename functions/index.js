@@ -42,6 +42,9 @@ const { makeCloseStaleRoutes } = require('./lib/routes');
 const { makeSendPushOnNotification } = require('./lib/push');
 const { makeAvisarAproximacao, makeAvisarBuzina } = require('./lib/avisosDaRota');
 const { makeLimparAvisosAntigos } = require('./lib/limpezaDosAvisos');
+const { makeContarCriancasAtivas } = require('./lib/contadorDaTurma');
+const { makeLigarRelogioNaRota } = require('./lib/relogioNaRota');
+const { makeRestaurarRelogio } = require('./lib/relogioDoTeste');
 const { makeConfirmarAusencias } = require('./lib/confirmarAusencias');
 const {
   makeGenerateMonthlyPayments,
@@ -117,6 +120,11 @@ exports.closeStaleRoutes = makeCloseStaleRoutes(db);
 // O e-mail da cobrança da plataforma sai no MESMO gatilho (enviarEmailDoAviso.js).
 // Avisos com mais de 90 dias saem todo dia às 4h (limpezaDosAvisos.js).
 exports.limparAvisosAntigos = makeLimparAvisosAntigos(db);
+// O contador de crianças e o relógio do teste são do SERVIDOR (03/10/2026):
+// o cliente não grava mais nenhum dos dois (rules).
+exports.contarCriancasAtivas = makeContarCriancasAtivas(db);
+exports.ligarRelogioNaRota = makeLigarRelogioNaRota(db);
+exports.restaurarRelogio = makeRestaurarRelogio(db);
 exports.sendPushOnNotification = makeSendPushOnNotification(db, {
   chave: RESEND_API_KEY,
   remetente: EMAIL_REMETENTE,

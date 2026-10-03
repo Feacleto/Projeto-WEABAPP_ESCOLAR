@@ -2575,8 +2575,13 @@ service cloud.firestore {
     // A mãe lê os pedidos DELA (para saber em que pé está); o motorista lê os
     // das crianças DELE — nunca os de outro motorista.
     match /pedidosDeVinculo/{pedidoId} {
+      // ⚠️ QUEM PEDIU SÓ VÊ O PEDIDO DEPOIS DA RESPOSTA (03/10/2026). O pedido
+      // por telefone passou a responder sempre o mesmo, ache ou não criança —
+      // e ler o próprio pedido "aguardando" pelo console desfazia isso: dizia
+      // que aquele número é de uma família da plataforma.
       allow read: if isSignedIn()
-        && (resource.data.parentUid == request.auth.uid
+        && ((resource.data.parentUid == request.auth.uid
+             && resource.data.status in ['aprovado', 'recusado'])
             || resource.data.adminUid == request.auth.uid
             || isOwner());
       allow write: if false;

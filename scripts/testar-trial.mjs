@@ -32,7 +32,7 @@ import {
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { emMs, rotaComecou, decidirRelogio } from '../functions/lib/reguaDoRelogio.js';
+import { emMs, rotaComecou, rotaRegistrada, decidirRelogio } from '../functions/lib/reguaDoRelogio.js';
 import {
   contaComoAtiva,
   motoristasParaRecontar,
@@ -302,6 +302,19 @@ checar('nem ausência', null, mesDeTesteDe(INICIO_20_09, null));
 
 bloco('S1. A rota que liga o relógio é a borda de subida');
 
+// O gatilho de verdade escuta `users.ultimaRota` (relogioNaRota.js): escutar a
+// posição acordava uma função a cada minuto de rota, para agir em uma por dia.
+checar('ultimaRota nova liga', true,
+  rotaRegistrada({ role: 'admin' }, { role: 'admin', ultimaRota: 1000 }));
+checar('ultimaRota que mudou liga (ligarRelogio decide se já estava ligado)', true,
+  rotaRegistrada({ role: 'admin', ultimaRota: 1000 }, { role: 'admin', ultimaRota: 2000 }));
+checar('outra escrita em users não liga', false,
+  rotaRegistrada({ role: 'admin', ultimaRota: 1000 }, { role: 'admin', ultimaRota: 1000, avisosDesligados: [] }));
+checar('responsável não liga relógio de motorista', false,
+  rotaRegistrada({ role: 'parent' }, { role: 'parent', ultimaRota: 1000 }));
+checar('o gatilho escuta users, não a posição', true,
+  readFileSync(new URL('../functions/lib/relogioNaRota.js', import.meta.url), 'utf8').includes("document: 'users/{uid}'")
+  && !readFileSync(new URL('../functions/lib/relogioNaRota.js', import.meta.url), 'utf8').includes("document: 'liveLocation/{uid}'"));
 checar('rota nova (documento nasce rodando) começa', true, rotaComecou(null, { routeActive: true }));
 checar('rota religada depois de encerrada começa', true,
   rotaComecou({ routeActive: false }, { routeActive: true }));
@@ -425,8 +438,8 @@ checar('a chave da cobrança continua guardando o início', true,
   /cobrancaLigada\(db\)/.test(relogio));
 
 const naRota = semComentario(ler('functions/lib/relogioNaRota.js'));
-checar('o gatilho da rota escuta liveLocation', true, /liveLocation\/\{uid\}/.test(naRota));
-checar('e só liga na borda de subida', true, /rotaComecou\(/.test(naRota));
+checar('o gatilho da rota escuta a ultimaRota em users (uma escrita por rota)', true, /users\/\{uid\}/.test(naRota));
+checar('e só liga quando a ultimaRota muda', true, /rotaRegistrada\(/.test(naRota));
 checar("e chama ligarRelogio com 'primeira rota'", true, /ligarRelogio\([^)]*'primeira rota'/.test(naRota));
 
 const fechamento = semComentario(ler('functions/lib/fechamento.js'));

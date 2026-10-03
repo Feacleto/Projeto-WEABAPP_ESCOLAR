@@ -68,4 +68,17 @@ function decidirRelogio({ noUsuario = null, naCopia = null, podeComecar = false 
   return { usuario: null, copia: null };
 }
 
-module.exports = { emMs, rotaComecou, decidirRelogio };
+/**
+ * O motorista registrou uma rota nesta escrita de `users/{uid}`? É o sinal que
+ * liga o relógio desde 03/10/2026 (ver `relogioNaRota.js`): `ultimaRota` só é
+ * gravada no início de uma rota, e mudar nela é a rota começando. Qualquer
+ * outra escrita em `users` (preferência, contador do servidor) sai aqui.
+ */
+function rotaRegistrada(antes, depois) {
+  if (!depois || depois.role !== 'admin' || !depois.ultimaRota) return false;
+  const a = emMs(antes && antes.ultimaRota);
+  const d = emMs(depois.ultimaRota);
+  return d != null && d !== a;
+}
+
+module.exports = { emMs, rotaComecou, rotaRegistrada, decidirRelogio };

@@ -172,6 +172,16 @@ nunca DOM.
 
 ## O deploy, na ordem
 
+⚠️ **RODADA DE SEGURANÇA (03/10/2026): FUNCTIONS ANTES DAS RULES, E O APP
+LOGO DEPOIS.** As rules novas proíbem o cliente de gravar o contador de
+crianças e a data do teste — o app ANTIGO grava os dois no cadastro da
+criança, e o lote inteiro passa a ser recusado. Por isso: (1) índices; (2)
+`firebase deploy --only functions` (sobem `contarCriancasAtivas`,
+`ligarRelogioNaRota`, `restaurarRelogio`, o resto); (3) rules + Storage e
+hosting em seguida, no mesmo minuto. Quem ficar com o app velho em cache não
+cadastra criança até atualizar — o aviso de versão nova aparece sozinho.
+No console, depois: ligar a TTL de `limitesDeTentativa.expiraEm`.
+
 ⚠️ **DESDE 03/10/2026, TRÊS PEÇAS PRECISAM SUBIR JUNTAS, NESTA ORDEM:**
 1. `firebase deploy --only firestore:indexes` — o índice `payments (parentUid,
    month)` (sem ele o Início e o Financeiro da família ficam vazios) e o

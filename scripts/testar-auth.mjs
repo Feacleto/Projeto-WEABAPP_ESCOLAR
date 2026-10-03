@@ -893,7 +893,7 @@ checar('a prévia conta só a recusa', true,
 // 13. A PORTA DO PRIMEIRO ADMINISTRADOR SAIU, E O E-MAIL E PEDIDO, NUNCA
 // EXIGIDO (03/10/2026).
 console.log('');
-console.log('12. Sem /first-admin, e a confirmacao do e-mail nao trava ninguem');
+console.log('13. Sem /first-admin, e a confirmacao do e-mail nao trava ninguem');
 
 // `/first-admin` criava uma conta `role: 'admin'` e gravava `appState/init`
 // pelo CLIENTE — a porta de bootstrap de um projeto que ja tem dono. Codigo

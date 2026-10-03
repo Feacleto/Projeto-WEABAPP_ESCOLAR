@@ -41,7 +41,7 @@ npm run testar                   # 52 scripts. O PRIMEIRO é
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
-                                 # documentos depois. 36 casos.
+                                 # documentos depois. 60 casos.
 npm run testar:envio             # os dois agendados escrevendo na MESMA base
                                  # — é onde a colisão entre eles vivia. 29 casos.
 npm run testar:limpeza           # o único script de MANUTENÇÃO que apaga dado,
@@ -519,6 +519,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `platformConfig` ·
+`limitesDeTentativa` e `asaasEventosProcessados` (só o servidor) ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -966,11 +967,13 @@ havia base real.
     sendo ATENDIMENTO HUMANO, não botão — quem prometer automação aqui precisa
     construir a automação junto.
 - **NADA TRAVA QUANDO A OPERAÇÃO CRESCE** (10/09/2026). Não há teto de
-  crianças: `users.criancasAtivas` é o número que a fatura multiplica pela taxa,
-  e o `allow create` de `children` exige apenas que ele SUBA no mesmo batch —
-  `getAfter` contra `get`. Um `addDoc` solto é recusado.
-  **Não é à prova de devtools** — nenhuma rule exige que o contador ande junto
-  de uma criança de verdade; quem pega é a fatura, que conta as crianças reais.
+  crianças. ⚠️ **DESDE 03/10/2026 O CONTADOR É DO SERVIDOR**: o cliente subia
+  e descia `users.criancasAtivas` (±1, um passo por escrita) e podia levá-lo a
+  zero de propósito — e a fatura multiplicava por ele. Hoje as rules proíbem
+  o campo ao cliente, o gatilho `contarCriancasAtivas`
+  ([contadorDaTurma.js](functions/lib/contadorDaTurma.js)) reconta a cada
+  escrita em `children`, e o FECHAMENTO conta as crianças ativas no banco
+  (`count()`), sem confiar em campo nenhum.
   ⚠️ A conta desce sozinha também: perdeu três crianças, a fatura do mês
   seguinte vem menor. Antes ela continuava vindo no valor da faixa contratada
   até alguém mexer à mão, o que é pior que burocracia — é cobrar a mais em
@@ -1080,9 +1083,15 @@ ilimitada: o app tem DUAS metades, e dava para cadastrar a turma, convidar as
 famílias, emitir contrato e cobrar mensalidade **para sempre** sem tocar em
 "iniciar rota". O erro não foi escolher a rota — foi confundir ROTA com USO.
 
-A rota liga pelo CLIENTE (o GPS liga no meio-fio, às vezes sem sinal); os
-outros dois ligam no SERVIDOR, com Admin SDK — é o que permite ligar o relógio
-do motorista a partir de um gesto do responsável sem abrir permissão nova.
+⚠️ **OS TRÊS LIGAM NO SERVIDOR desde 03/10/2026.** A rota ligava pelo
+cliente, que gravava a data que quisesse (uma data no futuro = nunca pagar).
+Hoje o cliente grava só `ultimaRota` (sinal de uso) e o gatilho
+`ligarRelogioNaRota` ([relogioNaRota.js](functions/lib/relogioNaRota.js))
+escuta essa mudança em `users` — NÃO `liveLocation`, que é regravada a cada
+minuto de rota. O servidor guarda uma CÓPIA em `taxaParceiros/{uid}` e
+`restaurarRelogio` a devolve se a conta for apagada e recriada: apagar e
+recriar não zera o teste. ⚠️ Zerar o teste da base antes de religar a cobrança
+exige apagar as DUAS cópias.
 
 **⚠️ ATUALIZAÇÃO 02/10/2026: na HOME a frase virou "O app está em fase de
 teste: por enquanto, é grátis"** — decisão do dono, junto com a home simples.
@@ -1118,9 +1127,8 @@ no mesmo gesto que liga o GPS. Motorista escolar tem calendário: contando do
 cadastro, quem conhece o app em dezembro chega em fevereiro com três semanas de
 teste, e a primeira experiência real dele é a tela de cobrança.
 
-O campo é **gravável uma vez e nunca alterável**, e a trava mora nas
-[rules](firestore.rules) — livre, ele reinicia o próprio teste pra sempre, que
-é `limiteCriancas` com outro nome. Quanto falta e qual aviso mostrar é conta
+O campo é **proibido ao cliente** nas [rules](firestore.rules) desde
+03/10/2026 — quem grava é o servidor (ver acima). Quanto falta e qual aviso mostrar é conta
 pura em [dominio/associacao/trial.js](src/dominio/associacao/trial.js)
 (`npm run testar:trial`). **São três avisos e eles são FAIXAS, não datas** —
 30 dias (linha), 7 (cartão âmbar), o último dia (não fecha). A urgência é
@@ -1382,7 +1390,23 @@ de decisão do dono sobre o texto e o `LEGAL_VERSION`.
 Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 
 - **Convite:** `lookupInvite`, `redeemInvite`, `getInvitePreview` — único
-  caminho para criar conta de pai
+  caminho para criar conta de pai. ⚠️ **Desde 03/10/2026 (segurança):** o
+  convite ainda não usado vale **15 DIAS** (decisão do dono; conta de
+  `children.inviteCriadoEm`, senão `createdAt`; sem nenhum, vale) e a ficha
+  tem "Gerar link novo"; inexistente, usado, removido e vencido recebem UMA
+  resposta só ("Este convite não vale mais…") — o `'taken'` com o nome da
+  criança saiu; só o formato novo; a prévia e a consulta têm limite de
+  tentativas por IP (`limitesDeTentativa`, régua em
+  [reguaDasTentativas.js](functions/lib/reguaDasTentativas.js) — ligar a TTL
+  em `expiraEm` no console). Régua do convite em
+  [reguaDoConvite.js](functions/lib/reguaDoConvite.js), espelho em
+  `src/dominio/identidade/validadeDoConvite.js`.
+- **Ids que viram caminho:** todo id vindo do cliente passa por
+  [reguaDosIds.js](functions/lib/reguaDosIds.js) antes de `db.doc` —
+  `childId` com BARRA endereçava outro documento, e a função de remover
+  criança chegou a poder apagar a conta de QUALQUER pessoa, o dono incluído
+  (`testar:irmaos` varre as callables). Toda callable espalha
+  `LIMITES.APP_CHECK`, desligado até a chave existir.
 - **Acesso sem link:** `pedirAcessoPeloTelefone` e `responderPedidoDeAcesso`
   ([pedidosDeAcesso.js](functions/lib/pedidosDeAcesso.js)). Quem entra sem o
   link informa o WhatsApp; crianças SEM responsável com esse número viram um
@@ -2438,14 +2462,16 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (314 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (380 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes
 de publicar rule:
 `firebase emulators:exec --only auth,firestore "node scripts/testar-regras.mjs"`.
 
-`testar:storage` são **37 casos** e precisa dos TRÊS emuladores:
+`testar:storage` são **49 casos** e precisa dos TRÊS emuladores (o upload do
+teste é `multipart`: o emulador do firebase-tools 15 recusa o `media`, e por
+isso 17 casos falhavam sem ninguém mexer nas rules):
 `firebase emulators:exec --only auth,firestore,storage "node scripts/testar-storage.mjs"`.
 Ele cobria 3 dos 6 caminhos até 09/09/2026 — `alvaras/` (o único não legível por
 qualquer logado, que é a afirmação mais forte do arquivo), `paymentReceipts/` e o

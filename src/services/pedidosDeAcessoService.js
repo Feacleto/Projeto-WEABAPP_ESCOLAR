@@ -38,10 +38,10 @@ export async function responderPedidoDeAcesso(pedidoId, aprovar) {
   }
 }
 
-function assistir(campo, uid, onUpdate) {
+function assistir(campo, uid, onUpdate, ...filtros) {
   if (!uid) return () => {};
   return onSnapshot(
-    query(collection(db, 'pedidosDeVinculo'), where(campo, '==', uid)),
+    query(collection(db, 'pedidosDeVinculo'), where(campo, '==', uid), ...filtros),
     (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
     (err) => {
       console.error('pedidosDeVinculo:', err);
@@ -51,8 +51,10 @@ function assistir(campo, uid, onUpdate) {
 }
 
 /** Os pedidos DELA — para o card de "aguardando" saber em que pé está. */
+// Só os RESPONDIDOS: as rules não mostram o "aguardando" a quem pediu (ver o
+// bloco de pedidosDeVinculo) — e consulta que não prova o filtro é recusada.
 export const watchPedidosDoResponsavel = (uid, onUpdate) =>
-  assistir('parentUid', uid, onUpdate);
+  assistir('parentUid', uid, onUpdate, where('status', 'in', ['aprovado', 'recusado']));
 
 /** Os pedidos das crianças DELE. As rules recusam a consulta sem o escopo. */
 export const watchPedidosDoMotorista = (uid, onUpdate) =>

@@ -2224,8 +2224,17 @@ async function decisao12({ tio1, tio2, pai1, novato, dono }) {
     childId: S('kid-saude'), adminUid: S(tio1.uid), parentUid: S(pai1.uid),
     status: S('aguardando'),
   });
-  checar('pos', 'quem pediu le o proprio pedido', 'PASSA',
+  // ⚠️ AGUARDANDO, QUEM PEDIU NÃO LÊ (03/10/2026): o pedido por telefone
+  // responde sempre o mesmo, e o "aguardando" no console diria que o número é
+  // de uma família da plataforma. Respondido, ela lê.
+  checar('acesso', 'quem pediu NAO le o pedido ainda aguardando', 'NEGA',
     await ler('pedidosDeVinculo/kid-saude_' + pai1.uid, pai1));
+  await semear('pedidosDeVinculo/kid-resp_' + pai1.uid, {
+    childId: S('kid-resp'), adminUid: S(tio1.uid), parentUid: S(pai1.uid),
+    status: S('aprovado'),
+  });
+  checar('pos', 'quem pediu le o proprio pedido ja respondido', 'PASSA',
+    await ler('pedidosDeVinculo/kid-resp_' + pai1.uid, pai1));
   checar('pos', 'o motorista da crianca le o pedido', 'PASSA',
     await ler('pedidosDeVinculo/kid-saude_' + pai1.uid, tio1));
   checar('pedido', 'outro motorista nao le o pedido', 'NEGA',
