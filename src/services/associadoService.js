@@ -6,6 +6,7 @@ import {
 import { auth, db } from '../firebase/config';
 import { getPlatformConfig } from './platformConfigService';
 import { moduloAtivo } from '../dominio/associacao/modulosDeCobranca';
+import { enviarVerificacaoDoEmail } from './authService';
 
 /**
  * O CADASTRO DO MOTORISTA — ele preenche, entra, e começa a operar.
@@ -92,6 +93,9 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
     try {
       const cred = await createUserWithEmailAndPassword(auth, emailLimpo, senha);
       uid = cred.user.uid;
+      // A confirmação do e-mail é pedida, nunca exigida: dispara e esquece,
+      // e o cadastro segue mesmo se o envio falhar (ver authService).
+      enviarVerificacaoDoEmail(cred.user);
     } catch (err) {
       // Já se cadastrou antes e voltou. Entrar com a mesma senha é o caminho
       // certo — mandar ele "recuperar a senha" de uma conta que ele acabou de

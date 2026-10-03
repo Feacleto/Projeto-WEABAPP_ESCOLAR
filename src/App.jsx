@@ -42,7 +42,6 @@ const Acompanhar = lazy(() => import('./pages/Acompanhar'));
 const Welcome = lazy(() => import('./pages/Welcome'));
 const Comecar = lazy(() => import('./pages/Comecar'));
 const DriverSignup = lazy(() => import('./pages/DriverSignup'));
-const FirstAdmin = lazy(() => import('./pages/FirstAdmin'));
 const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 
 const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
@@ -103,6 +102,7 @@ import { SITE_INSTITUCIONAL } from './config/vitrine';
 import Travessia from './components/common/Travessia';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
+import { useRegistroDeVisita } from './hooks/useRegistroDeVisita';
 import { painelDe, ehDono } from './dominio/identidade/papeis';
 import {
   frenteDoCaminho,
@@ -493,6 +493,8 @@ function ParaOSite() {
 export default function App() {
   // Som global de clique em qualquer elemento .tap — desabilitável no Profile
   useGlobalClickSound();
+  // O Analytics conta a tela pelo caminho SEM segredo (convite, acompanhar).
+  useRegistroDeVisita();
 
   return (
     <>
@@ -556,7 +558,6 @@ export default function App() {
         <Route path="/comecar" element={<Comecar />} />
         <Route path="/login" element={<Login />} />
         <Route path="/first-access" element={<FirstAccess />} />
-        <Route path="/first-admin" element={<FirstAdmin />} />
         <Route path="/auth-action" element={<AuthAction />} />
         <Route path="/termos" element={<Terms />} />
         <Route path="/privacidade" element={<Privacy />} />

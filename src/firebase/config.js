@@ -2,6 +2,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { initializeFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
+import { caminhoSemSegredo } from '../compartilhado/caminhoSemSegredo.js';
 // `firebase/analytics` NÃO é importado no topo — ver `ligarAnalytics()`.
 
 // Todas as chaves vêm do .env (prefixo VITE_) — chaves do client são
@@ -17,6 +19,44 @@ const firebaseConfig = {
 };
 
 export const app = initializeApp(firebaseConfig);
+
+// ============================================================================
+// App Check — DESLIGADO enquanto não existir a chave (03/10/2026)
+// ============================================================================
+//
+// App Check prova ao Firebase que a chamada saiu DESTE app, e não de um
+// script com a mesma chave pública do `firebaseConfig`. As rules continuam
+// sendo a segurança de verdade; isto fecha a porta para quem chama as
+// functions e o banco direto, fora do navegador, em volume.
+//
+// ⚠️ SÓ LIGA COM `VITE_APPCHECK_SITE_KEY`. Sem a chave, inicializar com uma
+// chave vazia faria cada requisição tentar um token que não vem — e, no dia
+// em que a imposição fosse ligada no console, o app inteiro pararia. A ordem
+// certa está em docs/deploy.md: chave no .env, deploy, conferir as métricas
+// de App Check no console, e SÓ ENTÃO impor.
+//
+// ⚠️ É IMPORT ESTÁTICO, e não `import()` como o analytics abaixo. Com a
+// imposição ligada, toda leitura precisa do token; carregado depois, as
+// primeiras consultas da tela de entrar sairiam sem ele e seriam recusadas.
+//
+// No emulador, o token de DEPURAÇÃO: o SDK imprime um token no console, que
+// se cadastra em App Check → Apps → Gerenciar tokens de depuração.
+const APPCHECK_SITE_KEY = import.meta.env.VITE_APPCHECK_SITE_KEY;
+if (APPCHECK_SITE_KEY && typeof window !== 'undefined') {
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true') {
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(APPCHECK_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    // Sem imposição, falhar aqui não pode derrubar o boot: o app segue como
+    // seguia antes da chave existir.
+    console.warn('[app-check] não inicializou:', err);
+  }
+}
 export const auth = getAuth(app);
 // ⚠️ SEM CACHE PERSISTENTE, DE PROPÓSITO (03/10/2026). Ele foi ligado para a
 // marcação feita sem sinal sobreviver ao app fechado — e o SDK 12 derrubou a
@@ -130,17 +170,44 @@ function userAllowsAnalytics() {
  * `import()` dinâmico dentro do gate: sem consentimento, o navegador nunca
  * pede o arquivo.
  */
-async function ligarAnalytics() {
+/**
+ * ⚠️ O REGISTRO DE TELA É MANUAL, E O ENDEREÇO VAI SEM SEGREDO (03/10/2026).
+ *
+ * Com o padrão do SDK, cada tela virava um `page_view` com a URL INTEIRA —
+ * e três rotas têm a chave na URL: `/convite/CÓDIGO`, `/acompanhar/TOKEN` e
+ * `/auth-action?oobCode=…`. O código de convite e o link de acompanhar iam
+ * parar no relatório do Analytics. Agora `send_page_view` é falso, o
+ * `page_location` padrão de todo evento é o endereço limpo
+ * (`caminhoSemSegredo`), e quem conta a tela é `analyticsService`, a cada
+ * troca de rota.
+ */
+let analyticsPromise = null;
+
+function ligarAnalytics() {
   // No emulador não há projeto de verdade para medir: a chave é de mentira e
   // o SDK enchia o console de 400, escondendo os erros que importam.
-  if (USE_EMULATORS) return;
-  try {
-    const { getAnalytics, isSupported } = await import('firebase/analytics');
-    if (await isSupported()) getAnalytics(app);
-  } catch {
-    // Bloqueador de rastreio, navegador sem suporte, rede caindo: analytics é
-    // acessório e não pode derrubar o boot do app.
-  }
+  if (USE_EMULATORS) return Promise.resolve(null);
+  if (analyticsPromise) return analyticsPromise;
+  analyticsPromise = (async () => {
+    try {
+      const { initializeAnalytics, isSupported } = await import('firebase/analytics');
+      if (!(await isSupported())) return null;
+      const limpo = `${window.location.origin}${caminhoSemSegredo(window.location.pathname)}`;
+      return initializeAnalytics(app, {
+        config: { send_page_view: false, page_location: limpo },
+      });
+    } catch {
+      // Bloqueador de rastreio, navegador sem suporte, rede caindo: analytics é
+      // acessório e não pode derrubar o boot do app.
+      return null;
+    }
+  })();
+  return analyticsPromise;
+}
+
+/** A instância do Analytics, ou `null` sem consentimento — nunca liga sozinha. */
+export function analyticsLigado() {
+  return analyticsPromise || Promise.resolve(null);
 }
 
 if (userAllowsAnalytics()) ligarAnalytics();

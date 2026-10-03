@@ -60,6 +60,19 @@
             {
               "key": "Permissions-Policy",
               "value": "geolocation=(self), camera=(self), microphone=(self)"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            }
+          ]
+        },
+        {
+          "source": "/acompanhar/**",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
             }
           ]
         },

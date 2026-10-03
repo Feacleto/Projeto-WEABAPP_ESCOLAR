@@ -29,7 +29,6 @@ import { CENA_ENTRADA, travessar } from '../marca/travessia';
 import { veioDaFamilia, frenteDoCaminho, FRENTE_FAMILIA } from '../dominio/vitrine/frentes';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { resetPassword, loginComGoogle } from '../services/authService';
-import { adminExists } from '../services/inviteCodeService';
 import OpenInBrowser from '../components/auth/OpenInBrowser';
 import Reveal from '../components/common/Reveal';
 import { canUseGoogleSignIn, isInAppBrowser } from '../compartilhado/browserEnv';
@@ -172,7 +171,6 @@ export default function Login() {
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
   // Assumimos que admin existe até confirmar — evita "flicker" do link de bootstrap
-  const [hasAdmin, setHasAdmin] = useState(true);
 
   // ── A ABA, E POR QUE ELA PODE VIR DA URL ──────────────────────────
   //
@@ -245,12 +243,6 @@ export default function Login() {
     }`;
   const criarContaDeMotorista = () =>
     navigate('/quero-fazer-parte', { state: { de: 'login' } });
-
-  useEffect(() => {
-    adminExists()
-      .then(setHasAdmin)
-      .catch(() => setHasAdmin(true));
-  }, []);
 
   // Já logado? Redireciona pelo role.
   //
@@ -1115,17 +1107,6 @@ export default function Login() {
                 </>
               )}
             </div>
-
-            {/* O bootstrap do dono só aparece enquanto NÃO existe admin — e a
-              * rule fecha a janela junto. Some sozinho depois do primeiro. */}
-            {!hasAdmin && !daFamilia && ehEntrar && (
-              <Link
-                to="/first-admin"
-                className="block text-center text-xs text-textMuted underline"
-              >
-                Configurar primeiro administrador
-              </Link>
-            )}
 
             <div className="flex flex-wrap items-center justify-center gap-x-3 text-xs text-textMuted">
               {/* `py-3`: 44px de altura de toque num link de 12px. */}

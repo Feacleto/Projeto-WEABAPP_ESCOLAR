@@ -37,6 +37,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { DEV_NAME, DEV_CNPJ } from '../src/config/developer.js';
 import { COMPANY_INFO } from '../src/pages/legal/legalContent.js';
+import { caminhoSemSegredo } from '../src/compartilhado/caminhoSemSegredo.js';
 
 let ok = 0;
 let bad = 0;
@@ -126,7 +127,7 @@ const hosting = JSON.parse(
 const alvoApp = hosting.hosting.find((h) => h.target === 'app');
 checar('o firebase.json tem o alvo do app', true, Boolean(alvoApp));
 
-for (const caminho of ['/convite/**', '/auth-action']) {
+for (const caminho of ['/convite/**', '/acompanhar/**', '/auth-action']) {
   const regra = (alvoApp?.headers || []).find((h) => h.source === caminho);
   const valor = (regra?.headers || []).find((x) => x.key === 'X-Robots-Tag')?.value;
   checar(`${caminho} sai com X-Robots-Tag noindex`, true,
@@ -335,6 +336,66 @@ if (site) {
   checar('e com a variante sem acento', 'Alo Buzinou', site.alternateName);
   checar('apontando para o dominio da landing', 'https://alobuzinou.com.br', site.url);
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+bloco('6. O segredo da URL nao sai do aparelho (03/10/2026)');
+
+// ⚠️ CLICKJACKING. O app tem botao que avisa familia, da baixa em dinheiro e
+// encerra rota; dentro de um <iframe> de outro site, um toque "no botao de
+// la" vira um toque no daqui. A CSP do app ainda e so report-only (sem
+// endpoint de relatorio), entao o `frame-ancestors` dela nao barra nada —
+// quem barra e o X-Frame-Options, em TODA rota.
+const geralDoApp = (alvoApp?.headers || []).find((h) => h.source === '**');
+const cabecalho = (k) => (geralDoApp?.headers || []).find((x) => x.key === k)?.value;
+checar('o app inteiro sai com X-Frame-Options DENY', 'DENY', cabecalho('X-Frame-Options'));
+checar('e com Referrer-Policy que nao vaza o caminho', 'strict-origin-when-cross-origin',
+  cabecalho('Referrer-Policy'));
+checar('a CSP do app continua report-only (sem endpoint, nao impor ainda)', true,
+  Boolean(cabecalho('Content-Security-Policy-Report-Only')) &&
+  !cabecalho('Content-Security-Policy'));
+
+// O Analytics recebia a URL inteira — convite, token de acompanhar e o
+// `oobCode` do link de senha. `caminhoSemSegredo` e o que sai.
+checar('o convite vira molde', '/convite/:codigo', caminhoSemSegredo('/convite/TNAB23CD'));
+checar('o acompanhar vira molde', '/acompanhar/:token',
+  caminhoSemSegredo('/acompanhar/2026-10-03_abcDEF123.segredoXYZ'));
+checar('o acompanhar de 24h tambem', '/acompanhar/:token',
+  caminhoSemSegredo('/acompanhar/t_k9a8s7d6f5g4h3j2'));
+checar('a query do link de senha sai', '/auth-action',
+  caminhoSemSegredo('/auth-action?mode=resetPassword&oobCode=SEGREDO'));
+checar('a ancora sai', '/login', caminhoSemSegredo('/login#x=1'));
+checar('a URL inteira vira so o caminho', '/convite/:codigo',
+  caminhoSemSegredo('https://alobuzinou.com/convite/TNAB23CD?utm=x'));
+checar('o id da crianca vira :id', '/tio/children/:id/contract',
+  caminhoSemSegredo('/tio/children/Ab12Cd34Ef56Gh78Ij90/contract'));
+checar('tela comum passa intacta', '/tio/route/now', caminhoSemSegredo('/tio/route/now'));
+checar('nome longo sem digito nao e id', '/tio/contrato-plataforma',
+  caminhoSemSegredo('/tio/contrato-plataforma'));
+checar('vazio vira a raiz', '/', caminhoSemSegredo(''));
+
+// E o envio automatico de tela saiu: com ele ligado, o SDK manda a URL crua
+// antes de qualquer funcao nossa ser chamada.
+const fonteConfig = readFileSync(new URL('../src/firebase/config.js', import.meta.url), 'utf8');
+checar('o Analytics nasce com send_page_view falso', true,
+  /send_page_view:\s*false/.test(fonteConfig));
+checar('e com o page_location ja limpo', true,
+  /page_location:\s*limpo/.test(fonteConfig) && fonteConfig.includes('caminhoSemSegredo('));
+checar('ninguem mais chama getAnalytics (que manda a tela sozinho)', false,
+  /getAnalytics\(/.test(fonteConfig));
+const fonteVisita = readFileSync(new URL('../src/services/analyticsService.js', import.meta.url), 'utf8');
+checar('o page_view manual passa pelo caminho sem segredo', true,
+  fonteVisita.includes('caminhoSemSegredo(caminho)') && fonteVisita.includes("'page_view'"));
+const fonteDoApp = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
+checar('e o App conta a tela a cada rota', true, fonteDoApp.includes('useRegistroDeVisita()'));
+
+// App Check: so com a chave. Sem ela, o app tem que seguir como antes.
+checar('o App Check so liga com VITE_APPCHECK_SITE_KEY', true,
+  /if \(APPCHECK_SITE_KEY[^)]*\)\s*\{[\s\S]*?initializeAppCheck\(/.test(fonteConfig));
+checar('e initializeAppCheck aparece uma vez so, dentro do guarda', 1,
+  (fonteConfig.match(/initializeAppCheck\(/g) || []).length);
+const envExemplo = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
+checar('a chave do App Check esta documentada no .env.example', true,
+  /^VITE_APPCHECK_SITE_KEY=\r?$/m.test(envExemplo));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

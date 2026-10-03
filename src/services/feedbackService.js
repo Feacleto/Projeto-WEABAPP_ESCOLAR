@@ -6,6 +6,8 @@ import {
   limit,
   getDocs,
   addDoc,
+  doc as docRef,
+  updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -69,16 +71,19 @@ export async function submitFeedback({
       .slice(0, allowTestimonial ? PUBLIC_COMMENT_MAX : 1000),
     // Permissões pra exibição pública na landing
     allowTestimonial: !!allowTestimonial,
-    // `false` EXPLÍCITO, não ausente.
+    // ⚠️ NASCE ESCONDIDO — `true` EXPLÍCITO (decisão do dono, 03/10/2026).
     //
-    // A vitrine da home passou a filtrar `hiddenByOwner == false` — porque
-    // sem isso o botão "tirar do ar" do dono não tirava nada: a regra de
-    // `get` filtrava e a de `list`, que é quem alimenta a home, não.
+    // Era `false`: o depoimento ia direto para a home pública, sem ninguém
+    // ler. Texto livre na vitrine da plataforma, escrito por qualquer conta
+    // de motorista — que desde 06/09/2026 qualquer pessoa cria em trinta
+    // segundos —, é propaganda de terceiro com a marca do app em volta.
+    // Agora o DONO lê e publica (aba Pesquisa do painel), e só então a
+    // chave vira `false`.
     //
-    // Consulta de igualdade não alcança documento sem a chave. Deixar o campo
-    // nascer ausente sumiria com a vitrine inteira. É a mesma lição do
-    // `aceitoEm: null` do contrato de associação.
-    hiddenByOwner: false,
+    // E o campo continua EXPLÍCITO, nunca ausente: a vitrine filtra
+    // `hiddenByOwner == false`, e consulta de igualdade não alcança documento
+    // sem a chave — a mesma lição do `aceitoEm: null` do contrato.
+    hiddenByOwner: true,
     allowPhoto: !!allowPhoto,
 
     // SÓ O PRIMEIRO NOME, e a foto SÓ se ele autorizou.
@@ -215,4 +220,17 @@ export async function getLastFeedbackAt(uid) {
     console.error('getLastFeedbackAt:', err);
     return null;
   }
+}
+
+/**
+ * PUBLICAR OU ESCONDER UM DEPOIMENTO NA HOME — só o dono (03/10/2026).
+ *
+ * O depoimento nasce escondido (`hiddenByOwner: true`) e é aqui que ele vai
+ * para a vitrine. As rules deixam o dono tocar SÓ esta chave: o texto é de
+ * quem escreveu, e depoimento que a plataforma pudesse reescrever não seria
+ * depoimento.
+ */
+export async function definirDepoimentoNaHome(feedbackId, publicar) {
+  if (!feedbackId) throw new Error('Sem depoimento.');
+  await updateDoc(docRef(db, COLLECTION, feedbackId), { hiddenByOwner: !publicar });
 }

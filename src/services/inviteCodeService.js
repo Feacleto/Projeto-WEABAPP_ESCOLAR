@@ -1,7 +1,5 @@
 import {
   collection,
-  doc,
-  getDoc,
   query,
   where,
   getDocs,
@@ -112,17 +110,6 @@ export async function getInvitePreview(rawCode) {
     throw erroDoConvite(err, 'Não conseguimos abrir o convite. Tente de novo.');
   }
 }
-/**
- * Verifica se já existe ao menos um administrador no app.
- *
- * Lê o doc público appState/init (criado por createFirstAdmin).
- * Não consulta a coleção users — assim podemos manter as rules estritas.
- */
-export async function adminExists() {
-  const snap = await getDoc(doc(db, 'appState', 'init'));
-  return snap.exists() && snap.data().hasAdmin === true;
-}
-
 /**
  * Verifica se um inviteCode específico já existe em qualquer children doc.
  * Usado pelo ADMIN ao gerar novos códigos pra evitar colisão — o admin lê

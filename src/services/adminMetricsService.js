@@ -262,7 +262,9 @@ export async function getSurveyResults({ forcar = false } = {}) {
     }
     const w = d?.answers?.wish;
     if (w) base.desejos[w] = (base.desejos[w] || 0) + 1;
-    if (d.allowTestimonial) base.publicados += 1;
+    // "Publicado" é AUTORIZADO e LIBERADO pelo dono: desde 03/10/2026 o
+    // depoimento nasce escondido, e autorizado sozinho não aparece na home.
+    if (d.allowTestimonial && d.hiddenByOwner === false) base.publicados += 1;
 
     const texto = (d.comment || '').trim();
     if (texto && base.comentarios.length < 40) {
@@ -273,6 +275,9 @@ export async function getSurveyResults({ forcar = false } = {}) {
         papel,
         nome: (d.authorName || '').split(' ')[0] || null,
         publico: !!d.allowTestimonial,
+        // Ausente conta como escondido: o documento antigo nasceu com
+        // `false` explícito, e só o que a vitrine alcança está na home.
+        naHome: !!d.allowTestimonial && d.hiddenByOwner === false,
         em: d.createdAt?.toDate?.() || null,
       });
     }

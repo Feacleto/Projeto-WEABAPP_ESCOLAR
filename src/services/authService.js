@@ -9,11 +9,11 @@ import {
   confirmPasswordReset,
   applyActionCode,
   checkActionCode,
+  sendEmailVerification,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase/config';
-import { adminExists } from './inviteCodeService';
 import { LEGAL_VERSION } from '../pages/legal/legalContent';
 import { exigirCloud } from './callableError';
 
@@ -97,6 +97,65 @@ export async function inspectActionCode(oobCode) {
 
 export async function applyAuthActionCode(oobCode) {
   return applyActionCode(auth, oobCode);
+}
+
+/**
+ * A CONFIRMAÇÃO DO E-MAIL — PEDIDA, NUNCA EXIGIDA (decisão do dono, 03/10/2026).
+ *
+ * Conta de e-mail e senha nasce sem prova de que o endereço é de quem a
+ * criou. Sem a prova, um e-mail digitado errado só aparece no dia em que a
+ * pessoa esquece a senha — e o link de redefinir vai para outra pessoa.
+ *
+ * ⚠️ NÃO BLOQUEIA NADA, e é o ponto inteiro. O motorista se cadastra no
+ * meio-fio e a mãe abre o convite no WhatsApp: travar o app até alguém abrir
+ * o e-mail seria trocar uma conta mal digitada por uma conta abandonada. Por
+ * isso o envio é "dispara e esquece": nenhum `await` de quem cadastra espera
+ * por ele, e uma falha (cota, rede) nunca vira erro de cadastro. O lembrete
+ * fica num cartão no Início, com "Reenviar".
+ *
+ * O `url` é o `continueUrl` (ver `resetPassword` abaixo): depois de confirmar,
+ * a pessoa volta para a tela de entrar.
+ *
+ * Conta do Google já chega verificada pelo próprio Google — nunca recebe.
+ */
+export function enviarVerificacaoDoEmail(user) {
+  if (!user || user.emailVerified) return;
+  try {
+    sendEmailVerification(user, { url: `${window.location.origin}/login` }).catch(
+      (err) => console.warn('[verificacao] e-mail de confirmação não saiu:', err?.code || err)
+    );
+  } catch (err) {
+    console.warn('[verificacao] e-mail de confirmação não saiu:', err?.code || err);
+  }
+}
+
+/** O "Reenviar" do cartão — aqui sim espera, para a tela dizer se foi. */
+export async function reenviarVerificacaoDoEmail() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Sem sessão.');
+  await sendEmailVerification(user, { url: `${window.location.origin}/login` });
+}
+
+/**
+ * Falta confirmar o e-mail desta sessão? Só vale para conta de SENHA: quem
+ * entrou pelo Google tem o endereço confirmado por ele. Relê a sessão antes
+ * de responder, porque `emailVerified` só muda no aparelho depois de um
+ * `reload()` — sem isso, quem acabou de confirmar continuaria vendo o cartão.
+ *
+ * Devolve `{ pendente, email }`.
+ */
+export async function estadoDaConfirmacaoDoEmail() {
+  const user = auth.currentUser;
+  if (!user) return { pendente: false, email: null };
+  const temSenha = (user.providerData || []).some((p) => p?.providerId === 'password');
+  if (!temSenha) return { pendente: false, email: user.email };
+  try {
+    await user.reload();
+  } catch {
+    // Sem rede, responde com o que a sessão já sabe.
+  }
+  const atual = auth.currentUser || user;
+  return { pendente: !atual.emailVerified, email: atual.email };
 }
 
 // Lê o documento users/{uid}. Retorna null se ainda não existe (caso normal
@@ -239,6 +298,8 @@ export async function authenticateAndRedeem({ inviteCode, email, password, name 
       const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       user = cred.user;
       created = true;
+      // Dispara e esquece — ver `enviarVerificacaoDoEmail`.
+      enviarVerificacaoDoEmail(user);
     } catch (err) {
       if (err?.code === 'auth/email-already-in-use') {
         // Já tem conta: a mesma senha resolve. Se estiver errada, o erro que
@@ -299,97 +360,6 @@ export async function googleAndRedeem({ inviteCode }) {
   }
 
   return { user, created: !existing };
-}
-
-/**
- * Bootstrap do primeiro administrador.
- *
- * Só funciona enquanto appState/init não existir. Após criar a conta admin,
- * grava appState/init com hasAdmin: true (público) — isso gata o link
- * "Configurar primeiro administrador" no Login pra futuras visitas.
- */
-export async function createFirstAdmin({ email, password, name, phone }) {
-  if (await adminExists()) {
-    throw new Error(
-      'Já existe um administrador. Use o login normal ou cadastre via Firebase Console.'
-    );
-  }
-
-  const credential = await createUserWithEmailAndPassword(
-    auth,
-    email.trim(),
-    password
-  );
-  const user = credential.user;
-
-  try {
-    await setDoc(doc(db, 'users', user.uid), {
-      role: 'admin',
-      name: name?.trim() || '',
-      email: email.trim(),
-      phone: phone?.trim() || '',
-      createdAt: serverTimestamp(),
-    });
-
-    // Marca o app como inicializado — gates futuras chamadas a /first-admin
-    await setDoc(doc(db, 'appState', 'init'), {
-      hasAdmin: true,
-      adminUid: user.uid,
-      createdAt: serverTimestamp(),
-    });
-
-    return user;
-  } catch (err) {
-    try {
-      await user.delete();
-    } catch (cleanupErr) {
-      console.error('Falha ao limpar conta órfã:', cleanupErr);
-    }
-    throw err;
-  }
-}
-
-/**
- * Bootstrap do primeiro admin via Google. Mesmas regras do createFirstAdmin
- * (só funciona se appState/init não existir). Salva phone informado pelo usuário.
- */
-export async function createFirstAdminWithGoogle({ phone }) {
-  if (await adminExists()) {
-    throw new Error(
-      'Já existe um administrador. Use o login normal ou cadastre via Firebase Console.'
-    );
-  }
-
-  const credential = await signInWithPopup(auth, googleProvider);
-  const user = credential.user;
-
-  try {
-    await setDoc(doc(db, 'users', user.uid), {
-      role: 'admin',
-      name: user.displayName || '',
-      email: user.email || '',
-      phone: phone?.trim() || '',
-      provider: 'google',
-      photoURL: user.photoURL || null,
-      createdAt: serverTimestamp(),
-    });
-
-    await setDoc(doc(db, 'appState', 'init'), {
-      hasAdmin: true,
-      adminUid: user.uid,
-      createdAt: serverTimestamp(),
-    });
-
-    return user;
-  } catch (err) {
-    try {
-      const profile = await getUserDoc(user.uid);
-      if (!profile) await user.delete();
-    } catch (cleanupErr) {
-      console.error('Falha ao limpar conta órfã:', cleanupErr);
-    }
-    throw err;
-  }
 }
 
 /**

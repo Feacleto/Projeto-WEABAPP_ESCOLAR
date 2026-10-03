@@ -25,6 +25,7 @@ import SchoolBroadcastSheet from '../../components/broadcasts/SchoolBroadcastShe
 import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import ResumoDaTurma from '../../components/tio/ResumoDaTurma';
+import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
@@ -442,6 +443,8 @@ export default function TioDashboard() {
               </h1>
               <FestiveBadge />
             </div>
+            {/* Lembrete, nunca portão: some sozinho depois de confirmar. */}
+            <ConfirmeSeuEmail className="mt-4" />
           </div>
         )}
 

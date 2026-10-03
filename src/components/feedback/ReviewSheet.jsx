@@ -5,7 +5,6 @@ import {
   Camera,
   Check,
   CheckCircle2,
-  Home as HomeIcon,
   Lock,
   Send,
   Star,
@@ -160,10 +159,13 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
         onClose={fechar}
         icon={CheckCircle2}
         eyebrow="obrigado"
-        title={publicou ? 'Publicado na home' : 'Avaliação enviada'}
+        // ⚠️ O DEPOIMENTO NASCE ESCONDIDO (decisão do dono, 03/10/2026): ele
+        // só vai para a home depois que o dono lê e publica. Dizer "já
+        // aparece" aqui seria prometer o que a vitrine não mostra.
+        title={publicou ? 'Depoimento enviado' : 'Avaliação enviada'}
         subtitle={
           publicou
-            ? 'Seu depoimento já aparece pra quem visita o app.'
+            ? 'Ele aparece na home depois que a gente conferir.'
             : 'Sua opinião chegou aqui — é ela que decide o que a gente melhora.'
         }
       >
@@ -173,14 +175,9 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
           </span>
           <p className="text-sm leading-relaxed text-textMuted">
             {publicou
-              ? 'Se mudar de ideia, fale com a gente e a gente tira do ar.'
+              ? 'Se mudar de ideia, fale com a gente e a gente não publica, ou tira do ar.'
               : 'Nada do que você escreveu aqui aparece pra ninguém além de nós.'}
           </p>
-          {publicou && (
-            <SheetGhost icon={HomeIcon} onClick={() => { fechar(); navigate('/'); }}>
-              Ver na home
-            </SheetGhost>
-          )}
           <SheetCTA onClick={fechar}>Fechar</SheetCTA>
         </div>
       </Sheet>
@@ -498,7 +495,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                 disabled={!podePublicar}
                 onClick={() => enviar({ publicar: true })}
               >
-                Publicar na home
+                Enviar para a home
               </SheetCTA>
               {!podePublicar && (
                 <p className="text-center text-xs text-textMuted">

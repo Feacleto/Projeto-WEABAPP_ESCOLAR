@@ -36,6 +36,7 @@ import { maskPhone } from '../../compartilhado/masks';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import AvisoDeMudancaNoContrato from '../../components/contract/AvisoDeMudancaNoContrato';
+import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
 import { useRelogio } from '../../hooks/useRelogio';
 import TarjaDeAviso from '../../components/dashboard/TarjaDeAviso';
 import { avisoDoMomento } from '../../dominio/rota/avisoDoMomento';
@@ -266,6 +267,8 @@ export default function PaiDashboard() {
         <AvisoDeIrmao />
         {/* Mudança no contrato esperando o aceite dela — não bloqueia nada. */}
         <AvisoDeMudancaNoContrato child={child} />
+        {/* Confirmar o e-mail é lembrete, nunca portão (ConfirmeSeuEmail). */}
+        <ConfirmeSeuEmail />
         {/* Só aparece a partir do segundo filho — quem tem um vê a tela
           * igual a antes. */}
         <ChildSwitcher />

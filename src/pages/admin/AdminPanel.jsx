@@ -22,6 +22,7 @@ import SelosTab from '../../components/admin/SelosTab';
 import IndicacoesTab from '../../components/admin/IndicacoesTab';
 import InvestidoresTab from '../../components/admin/InvestidoresTab';
 import { listarInteresses } from '../../services/interesseService';
+import { definirDepoimentoNaHome } from '../../services/feedbackService';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
@@ -1244,7 +1245,7 @@ function Pesquisa({ s }) {
             label="Deram 4 ou 5"
             value={`${Math.round(s.satisfeitos * 100)}%`}
           />
-          <Tile label="Publicados na home" value={s.publicados} />
+          <Tile label="Na home agora" value={s.publicados} />
         </div>
       </section>
 
@@ -1285,37 +1286,89 @@ function Pesquisa({ s }) {
         <Titulo icon={MessageSquare}>Comentários</Titulo>
         <div className="space-y-2">
           {s.comentarios.map((c) => (
-            <article
-              key={c.id}
-              className="rounded-2xl border border-border bg-card p-4"
-            >
-              <div className="mb-1.5 flex items-center gap-2">
-                <Stars value={c.nota} size={12} />
-                <span
-                  className={`rounded-md px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${
-                    c.papel === 'admin'
-                      ? 'bg-primarySoft text-primary'
-                      : 'bg-infoSoft text-infoText'
-                  }`}
-                >
-                  {c.papel === 'admin' ? 'motorista' : 'responsável'}
-                </span>
-                {c.publico && (
-                  <span className="rounded-md bg-warningSoft px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest text-warningText">
-                    na home
-                  </span>
-                )}
-              </div>
-              <p className="text-sm leading-relaxed text-text">“{c.texto}”</p>
-              <p className="mt-1.5 text-xs text-textMuted">
-                {c.nome || 'anônimo'}
-                {c.em ? ` · ${c.em.toLocaleDateString('pt-BR')}` : ''}
-              </p>
-            </article>
+            <ComentarioDaPesquisa key={c.id} c={c} />
           ))}
         </div>
       </section>
     </div>
+  );
+}
+
+/**
+ * UM COMENTÁRIO DA PESQUISA — e, se for depoimento autorizado, o botão que o
+ * leva para a home (03/10/2026).
+ *
+ * ⚠️ O DEPOIMENTO NASCE ESCONDIDO. Antes ia direto para a vitrine pública,
+ * escrito por qualquer conta de motorista; agora o dono lê aqui e publica.
+ * O botão só existe para quem AUTORIZOU — publicar a avaliação de quem não
+ * autorizou seria expor quem confiou que era privada, e as rules nem a
+ * deixariam aparecer (a vitrine exige `allowTestimonial`).
+ *
+ * O estado é local depois do toque: a lista vem de um cache de 90 s, e
+ * esperar ele vencer faria o botão parecer que não funcionou.
+ */
+function ComentarioDaPesquisa({ c }) {
+  const [naHome, setNaHome] = useState(!!c.naHome);
+  const [salvando, setSalvando] = useState(false);
+
+  const alternar = async () => {
+    setSalvando(true);
+    try {
+      await definirDepoimentoNaHome(c.id, !naHome);
+      setNaHome(!naHome);
+      toast.success(naHome ? 'Saiu da home.' : 'Publicado na home.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra mudar. Tente de novo.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <article className="rounded-2xl border border-border bg-card p-4">
+      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+        <Stars value={c.nota} size={12} />
+        <span
+          className={`rounded-md px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${
+            c.papel === 'admin'
+              ? 'bg-primarySoft text-primary'
+              : 'bg-infoSoft text-infoText'
+          }`}
+        >
+          {c.papel === 'admin' ? 'motorista' : 'responsável'}
+        </span>
+        {c.publico && (
+          <span
+            className={`rounded-md px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest ${
+              naHome ? 'bg-warningSoft text-warningText' : 'bg-neutro text-textMuted'
+            }`}
+          >
+            {naHome ? 'na home' : 'autorizou publicar'}
+          </span>
+        )}
+      </div>
+      <p className="text-sm leading-relaxed text-text">“{c.texto}”</p>
+      <p className="mt-1.5 text-xs text-textMuted">
+        {c.nome || 'anônimo'}
+        {c.em ? ` · ${c.em.toLocaleDateString('pt-BR')}` : ''}
+      </p>
+      {c.publico && (
+        <button
+          type="button"
+          onClick={alternar}
+          disabled={salvando}
+          className={`tap mt-3 inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-bold disabled:opacity-60 ${
+            naHome
+              ? 'border border-border text-text'
+              : 'bg-primary text-white'
+          }`}
+        >
+          {salvando ? <Spinner size={14} /> : null}
+          {naHome ? 'Esconder da home' : 'Publicar na home'}
+        </button>
+      )}
+    </article>
   );
 }
 

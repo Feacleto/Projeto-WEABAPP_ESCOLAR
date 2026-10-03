@@ -15,7 +15,7 @@
  *   node scripts/testar-auth.mjs      (ou: npm run testar:auth)
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { SENHA_MINIMA, mensagemDeAuth } from '../src/dominio/identidade/authErrors.js';
 import { painelDe } from '../src/dominio/identidade/papeis.js';
@@ -888,6 +888,47 @@ checar('data ilegível não conta como repetido', false,
 checar('a prévia conta só a recusa', true,
   /const recusar = async \(\) => \{\s*await limite\.contar/.test(codigoPrevia)
   && !/limite\.consumir/.test(codigoPrevia));
+
+// ─────────────────────────────────────────────────────────────────────────
+// 13. A PORTA DO PRIMEIRO ADMINISTRADOR SAIU, E O E-MAIL E PEDIDO, NUNCA
+// EXIGIDO (03/10/2026).
+console.log('');
+console.log('12. Sem /first-admin, e a confirmacao do e-mail nao trava ninguem');
+
+// `/first-admin` criava uma conta `role: 'admin'` e gravava `appState/init`
+// pelo CLIENTE — a porta de bootstrap de um projeto que ja tem dono. Codigo
+// morto com caneta de papel e porta esperando a rule escorregar.
+const appSemProsa12 = semComentarios(readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8'));
+checar('o App nao tem mais a rota /first-admin', false, appSemProsa12.includes('first-admin'));
+checar('nem importa a tela', false, appSemProsa12.includes('FirstAdmin'));
+checar('a tela FirstAdmin.jsx foi apagada', false,
+  existsSync(new URL('../src/pages/FirstAdmin.jsx', import.meta.url)));
+const authSvc12 = readFileSync(new URL('../src/services/authService.js', import.meta.url), 'utf8');
+checar('o authService nao cria o primeiro admin', false,
+  /createFirstAdmin|appState/.test(semComentarios(authSvc12)));
+const login12 = semComentarios(readFileSync(new URL('../src/pages/Login.jsx', import.meta.url), 'utf8'));
+checar('e o login nao linka mais para la', false, login12.includes('first-admin'));
+
+// A verificacao e "dispara e esquece": o cadastro NUNCA espera por ela.
+const authCodigo12 = semComentarios(authSvc12);
+checar('o authService envia a verificacao', true, authCodigo12.includes('sendEmailVerification('));
+checar('a funcao de envio nao e async (ninguem a espera)', false,
+  /async function enviarVerificacaoDoEmail/.test(authCodigo12));
+checar('e engole a falha do envio', true,
+  /export function enviarVerificacaoDoEmail[\s\S]*?\.catch\(/.test(authCodigo12));
+checar('o link de volta e o /login, nunca uma rota que exige oobCode', true,
+  /sendEmailVerification\(user, \{ url: `\$\{window\.location\.origin\}\/login` \}\)/.test(authCodigo12));
+const assocSvc12 = semComentarios(readFileSync(
+  new URL('../src/services/associadoService.js', import.meta.url), 'utf8'));
+for (const [nome, fonte] of [['o cadastro do motorista', assocSvc12], ['o cadastro do responsavel', authCodigo12]]) {
+  checar(`${nome} pede a verificacao`, true, fonte.includes('enviarVerificacaoDoEmail('));
+  checar(`${nome} nao espera por ela`, false, /await\s+enviarVerificacaoDoEmail/.test(fonte));
+}
+// Sonda positiva: o detector precisa acusar o await.
+checar('o detector acusa o await (sonda positiva)', true,
+  /await\s+enviarVerificacaoDoEmail/.test('await enviarVerificacaoDoEmail(user);'));
+checar('a conta do Google nao recebe o cartao', true,
+  /providerId === 'password'/.test(authCodigo12));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
