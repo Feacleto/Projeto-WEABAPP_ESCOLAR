@@ -30,6 +30,10 @@ const {
   makeLimparCoordenadaDoCheckpoint,
 } = require('./lib/limpezaDoCheckpoint');
 const { makeApagarViagensAntigas } = require('./lib/retencaoDasViagens');
+const {
+  makeCriarSenhaDoFinanceiro,
+  makeConferirSenhaDoFinanceiro,
+} = require('./lib/senhaDoFinanceiro');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
@@ -313,6 +317,14 @@ exports.recusarIrmao = makeRecusarIrmao(db);
 exports.desvincularResponsavel = makeDesvincularResponsavel(db);
 exports.aceitarContrato = makeAceitarContrato(db);
 exports.informarTelefoneDaEscola = makeInformarTelefoneDaEscola(db);
+
+// A SENHA DO FINANCEIRO (03/10/2026). A auxiliar usa o celular do motorista e
+// não deve ver valores: o Financeiro abre com 4 números num teclado de banco.
+// O hash mora em `senhasDoFinanceiro/{uid}`, que nenhum cliente alcança; a
+// conferência recebe os PARES tocados, nunca a senha. Ver o cabeçalho de
+// `senhaDoFinanceiro.js` e a régua em `reguaDaSenhaDoFinanceiro.js`.
+exports.criarSenhaDoFinanceiro = makeCriarSenhaDoFinanceiro(db);
+exports.conferirSenhaDoFinanceiro = makeConferirSenhaDoFinanceiro(db);
 
 // O RESPONSÁVEL SEM LINK PEDE ACESSO PELO WHATSAPP, E O MOTORISTA APROVA
 // (02/10/2026). O número sozinho não vincula nada — só cria o pedido. Ver o

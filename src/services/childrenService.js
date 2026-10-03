@@ -312,7 +312,11 @@ export async function deactivateChild(id) {
   // (`functions/lib/contadorDaTurma.js` reconta a cada mudança de `active`),
   // e as rules recusam o campo ao cliente. Recontar também acaba com o
   // decremento duplo de duas abas, que a transação existia para evitar.
-  await updateDoc(doc(db, 'children', id), { active: false });
+  // `inativadoEm` (03/10/2026): a DATA da saída. Sem ela o Financeiro não
+  // sabe até quando a criança contava na turma de um mês passado. Não existe
+  // caminho de reativar (`updateChild` recusa `active`); se um nascer, ele
+  // apaga este campo no mesmo write.
+  await updateDoc(doc(db, 'children', id), { active: false, inativadoEm: serverTimestamp() });
   // `active: false` basta: a fila do dia filtra por ele. Não há mais lista
   // salva de onde a criança precise ser retirada — e portanto não há mais
   // como ela sobrar numa rota depois de desativada.
@@ -349,6 +353,34 @@ export function watchActiveChildren(adminUid, onUpdate, onError) {
     },
     (err) => {
       console.error('watchActiveChildren error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
+ * A turma INTEIRA deste motorista — ativas e as que saíram (03/10/2026).
+ *
+ * Existe para "Turma e contratos" no Financeiro: quem saiu só aparece na
+ * conta de entradas e saídas se a consulta trouxer `active: false` também.
+ * O escopo é o mesmo de `watchActiveChildren` (adminUid da sessão), e por
+ * isso a consulta passa nas rules sem índice composto.
+ */
+export function watchTurmaInteira(adminUid, onUpdate, onError) {
+  if (!adminUid) {
+    onUpdate([]);
+    return () => {};
+  }
+  const q = query(collection(db, 'children'), where('adminUid', '==', adminUid));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+      onUpdate(list);
+    },
+    (err) => {
+      console.error('watchTurmaInteira error:', err);
       if (onError) onError(err);
     }
   );

@@ -250,6 +250,10 @@ export async function deactivateChildAndParent({ childId }) {
   // zerados explicitamente — senão sobrevivem indefinidamente no children/.
   await updateDoc(childRef, {
     active: false,
+    // `inativadoEm` é o nome que o Financeiro lê (03/10/2026, o mesmo de
+    // `deactivateChild`). `deactivatedAt` fica pelos documentos antigos —
+    // nenhuma tela o lê.
+    inativadoEm: serverTimestamp(),
     deactivatedAt: serverTimestamp(),
     parentUid: null,
     inviteStatus: 'pending', // reseta pra o admin poder reentregar o invite

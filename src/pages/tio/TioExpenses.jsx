@@ -1,65 +1,116 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, TrendingDown, X, Wallet } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Plus, Trash2, TrendingDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
-import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import Input from '../../components/common/Input';
-import CampoDeValor from '../../components/common/CampoDeValor';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import BarChart from '../../components/charts/BarChart';
+import IconePorNome from '../../components/common/IconePorNome';
 import MonthSwitcher from '../../components/payments/MonthSwitcher';
+import FolhaDeDespesa from '../../components/financeiro/FolhaDeDespesa';
+import { nomeDoMes } from '../../components/payments/estadoDaMensalidade';
+import {
+  useConfigDoFinanceiro,
+  useDespesasDoMes,
+  useDespesasRecentes,
+} from '../../hooks/useDespesas';
+import { useValoresVisiveis, VALOR_ESCONDIDO } from '../../hooks/useValoresVisiveis';
 import {
   EXPENSE_CATEGORIES,
-  CATEGORY_ORDER,
-  addExpense,
   deleteExpense,
-  watchExpensesByMonth,
   sumByCategory,
   sumExpenses,
   monthKeyOf,
 } from '../../services/expensesService';
-import { formatCurrency, formatMonthLabel, formatDate } from '../../compartilhado/formatters';
-import IconePorNome from '../../components/common/IconePorNome';
+import {
+  kmDesdeOUltimo,
+  leituraDeKm,
+  paraData,
+} from '../../dominio/cobranca/historicoDeDespesas.js';
+import { formatCurrency, formatDate } from '../../compartilhado/formatters';
 
 /**
  * Despesas do mês — /tio/finance/expenses
  *
- * ONDE ISTO FICA NO PRODUTO
- * A tela de Financeiro continua sendo sobre ENTRADA: quem pagou, quem não
- * pagou, quem atrasou. É a pergunta que o tio responde todo dia. Despesa é
- * a conta que ele fecha uma vez por mês, então vive aqui, atrás da visão
- * completa — não competindo por espaço com a cobrança.
+ * ONDE ISTO FICA NO PRODUTO (03/10/2026, protótipo aprovado pelo dono)
+ * É a porta "Despesas do mês" do caixa. O caixa já mostra o saldo e o
+ * extrato do dia; aqui ele vem para entender PARA ONDE o dinheiro foi: o
+ * total do mês, em vermelho porque é saída, e cada categoria com o valor, uma
+ * barrinha do tamanho dela no mês e uma linha que diz algo útil — quantos
+ * abastecimentos e quanto a perua rodou desde o último, quando foi a última
+ * manutenção e o que foi feito.
  *
- * O lançamento é curto de propósito: valor, categoria, data. A descrição é
- * opcional porque exigir texto a cada tanque de combustível garante que ele
- * pare de lançar na segunda semana.
+ * O gráfico de barras ("Onde o dinheiro foi") saiu: a lista por categoria diz
+ * o mesmo com o número escrito ao lado, que é como ele confere.
+ *
+ * O lançamento é a MESMA folha do caixa e da tela trancada
+ * ([FolhaDeDespesa](../../components/financeiro/FolhaDeDespesa.jsx)), com o
+ * histórico da categoria antes do valor.
  */
+
+/** As quatro de todo mês aparecem sempre; as outras, só quando têm valor. */
+const SEMPRE = ['monitor', 'fuel', 'maintenance', 'other'];
+const ROTULO = { monitor: 'Auxiliar' };
+
 export default function TioExpenses() {
   const [monthKey, setMonthKey] = useState(monthKeyOf());
   const [formOpen, setFormOpen] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
+  const { visiveis } = useValoresVisiveis();
+  const reais = (v) => (visiveis ? formatCurrency(v) : VALOR_ESCONDIDO);
 
-  // O mês vem GRUDADO nos dados. Assim trocar de mês não precisa de um
-  // setState síncrono no effect pra limpar a lista: o que chegou do mês
-  // anterior simplesmente deixa de casar e a tela volta pro skeleton.
-  const [snapshot, setSnapshot] = useState({ monthKey: null, list: null });
+  const expenses = useDespesasDoMes(monthKey);
+  const config = useConfigDoFinanceiro();
+  const ultimosAbastecimentos = useDespesasRecentes('fuel', 1);
+  const ultimasManutencoes = useDespesasRecentes('maintenance', 1);
 
-  useEffect(() => {
-    return watchExpensesByMonth(
-      monthKey,
-      (list) => setSnapshot({ monthKey, list }),
-      () => setSnapshot({ monthKey, list: [] })
-    );
-  }, [monthKey]);
-
-  const expenses = snapshot.monthKey === monthKey ? snapshot.list : null;
-
+  const mes = nomeDoMes(monthKey);
   const total = useMemo(() => sumExpenses(expenses || []), [expenses]);
-  const byCategory = useMemo(() => sumByCategory(expenses || []), [expenses]);
+
+  const categorias = useMemo(() => {
+    const somas = new Map(sumByCategory(expenses || []).map((c) => [c.category, c.value]));
+    const chaves = [...SEMPRE, ...[...somas.keys()].filter((k) => !SEMPRE.includes(k))];
+    const lista = (expenses || []);
+    return chaves
+      .map((chave) => {
+        const valor = somas.get(chave) || 0;
+        const doMes = lista.filter((e) => (EXPENSE_CATEGORIES[e.category] ? e.category : 'other') === chave);
+        return { chave, valor, quantas: doMes.length };
+      })
+      .sort((a, b) => b.valor - a.valor);
+  }, [expenses]);
+
+  const detalhe = ({ chave, valor, quantas }) => {
+    if (chave === 'fuel') {
+      const ultima = ultimosAbastecimentos?.[0] || null;
+      const km = kmDesdeOUltimo({
+        ultima,
+        uso: config?.usoDaPerua,
+        kmDasRotas: leituraDeKm(config?.kmDasRotas),
+      });
+      const partes = [
+        quantas === 0
+          ? `Nenhum abastecimento em ${mes}`
+          : `${quantas} ${quantas === 1 ? 'abastecimento' : 'abastecimentos'}`,
+      ];
+      if (km) partes.push(`${new Intl.NumberFormat('pt-BR').format(km.km)} km desde então`);
+      return partes.join(' · ');
+    }
+    if (chave === 'maintenance') {
+      const ultima = ultimasManutencoes?.[0] || null;
+      if (!ultima) return 'Nenhuma manutenção lançada';
+      const d = paraData(ultima.date);
+      const dia = d
+        ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+        : '—';
+      return `Última em ${dia}${ultima.description ? ` · ${ultima.description}` : ''}`;
+    }
+    if (valor === 0) return `Nada lançado em ${mes}`;
+    if (chave === 'monitor') return `Salário de ${mes}`;
+    return `${quantas} ${quantas === 1 ? 'lançamento' : 'lançamentos'}`;
+  };
 
   const onDelete = async () => {
     if (!deleting) return;
@@ -80,28 +131,64 @@ export default function TioExpenses() {
     <div className="pb-28">
       <Header title="Despesas" showBack backLabel="Financeiro" backTo="/tio/finance" />
 
-      <div className="px-5 pt-4 space-y-4">
+      <div className="space-y-4 p-4">
         <MonthSwitcher monthKey={monthKey} onChange={setMonthKey} />
 
-        {/* O número que ele veio ver */}
-        <div className="rounded-2xl bg-gradient-to-br from-text via-text to-night text-white p-5">
-          <p className="rotulo text-white/70">
-            gasto em {formatMonthLabel(monthKey)}
-          </p>
-          <p className="text-3xl font-extrabold mt-1">{formatCurrency(total)}</p>
-          {expenses?.length > 0 && (
-            <p className="text-xs text-white/70 mt-1">
-              {expenses.length}{' '}
-              {expenses.length === 1 ? 'lançamento' : 'lançamentos'}
+        {/* O número que ele veio ver — vermelho porque é saída. */}
+        <section className="space-y-1 rounded-3xl bg-card p-5 shadow-rest">
+          <p className="text-base text-textMuted">Saiu em {mes}</p>
+          {expenses === null ? (
+            <Skeleton className="h-9 w-40" />
+          ) : (
+            <p className="font-display text-3xl font-extrabold tabular-nums text-dangerText">
+              {reais(total)}
             </p>
           )}
-        </div>
+          {expenses?.length > 0 && (
+            <p className="text-sm text-textMuted">
+              {expenses.length} {expenses.length === 1 ? 'lançamento' : 'lançamentos'}
+            </p>
+          )}
+        </section>
 
         <Button icon={Plus} onClick={() => setFormOpen(true)}>
           Lançar despesa
         </Button>
 
         {expenses === null && <Skeleton className="h-40 rounded-2xl" />}
+
+        {expenses !== null && (
+          <>
+            <h2 className="pt-1 font-display text-xl font-bold text-text">Por categoria</h2>
+            <section className="rounded-3xl bg-card px-4 py-1 shadow-rest">
+              {categorias.map((c, i) => {
+                const pct = total > 0 ? Math.round((c.valor / total) * 100) : 0;
+                return (
+                  <div
+                    key={c.chave}
+                    className={`flex flex-col gap-1.5 py-3 ${i > 0 ? 'border-t border-neutro' : ''}`}
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-base font-bold text-text">
+                        {ROTULO[c.chave] || EXPENSE_CATEGORIES[c.chave]?.label}
+                      </span>
+                      <span className="text-base font-bold tabular-nums text-text">
+                        {reais(c.valor)}
+                      </span>
+                    </div>
+                    <span className="block h-2 overflow-hidden rounded-full bg-neutro" aria-hidden>
+                      <span
+                        className="block h-full rounded-full bg-primary"
+                        style={{ width: `${visiveis ? pct : 0}%` }}
+                      />
+                    </span>
+                    <span className="text-sm text-textMuted">{detalhe(c)}</span>
+                  </div>
+                );
+              })}
+            </section>
+          </>
+        )}
 
         {expenses?.length === 0 && (
           <EmptyState
@@ -111,65 +198,49 @@ export default function TioExpenses() {
           />
         )}
 
-        {byCategory.length > 0 && (
-          <Card className="space-y-3">
-            <p className="text-sm font-bold text-text">Onde o dinheiro foi</p>
-            <BarChart
-              color="red"
-              data={byCategory.map((c) => ({
-                label: c.label,
-                value: c.value,
-              }))}
-            />
-          </Card>
-        )}
-
         {expenses?.length > 0 && (
-          <section className="space-y-2">
-            <p className="rotulo">
-              lançamentos
-            </p>
-            {expenses.map((e) => {
-              const cat = EXPENSE_CATEGORIES[e.category] || EXPENSE_CATEGORIES.other;
-              return (
-                <Card key={e.id} className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
-                    <IconePorNome nome={cat.icone} size={20} />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-text truncate">
-                      {cat.label}
-                    </p>
-                    <p className="text-xs text-textMuted truncate">
-                      {formatDate(e.date)}
-                      {e.description ? ` · ${e.description}` : ''}
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold text-text shrink-0 tabular-nums">
-                    {formatCurrency(e.amount)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setDeleting(e)}
-                    aria-label="Apagar despesa"
-                    className="tap w-9 h-9 rounded-lg text-textMuted flex items-center justify-center shrink-0"
+          <>
+            <h2 className="pt-1 font-display text-xl font-bold text-text">Lançamentos</h2>
+            <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
+              {expenses.map((e, i) => {
+                const cat = EXPENSE_CATEGORIES[e.category] || EXPENSE_CATEGORIES.other;
+                return (
+                  <div
+                    key={e.id}
+                    className={`flex min-h-16 items-center gap-3 px-4 py-3 ${i > 0 ? 'border-t border-neutro' : ''}`}
                   >
-                    <Trash2 size={16} />
-                  </button>
-                </Card>
-              );
-            })}
-          </section>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
+                      <IconePorNome nome={cat.icone} size={20} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-base font-semibold text-text">
+                        {e.description || cat.label}
+                      </p>
+                      <p className="truncate text-sm text-textMuted">
+                        {formatDate(e.date)}
+                        {e.description ? ` · ${cat.label}` : ''}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-base font-bold tabular-nums text-text">
+                      {reais(e.amount)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDeleting(e)}
+                      aria-label="Apagar despesa"
+                      className="tap flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-textMuted"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                );
+              })}
+            </section>
+          </>
         )}
       </div>
 
-      {formOpen && (
-        <ExpenseForm
-          defaultMonthKey={monthKey}
-          onClose={() => setFormOpen(false)}
-          onSaved={() => setFormOpen(false)}
-        />
-      )}
+      <FolhaDeDespesa open={formOpen} onClose={() => setFormOpen(false)} comValores />
 
       <ConfirmDialog
         open={!!deleting}
@@ -187,140 +258,6 @@ export default function TioExpenses() {
         onConfirm={onDelete}
         onCancel={() => setDeleting(null)}
       />
-    </div>
-  );
-}
-
-/**
- * Lançamento de despesa.
- *
- * Três campos, e só dois obrigatórios. A categoria vira botão grande em vez
- * de select: escolher numa lista de sete com o dedo é mais rápido e menos
- * errado que abrir um menu.
- */
-function ExpenseForm({ defaultMonthKey, onClose, onSaved }) {
-  const today = new Date();
-  // Se ele está olhando um mês passado, a data padrão cai naquele mês — senão
-  // o lançamento iria pro mês errado sem ele notar.
-  const isCurrentMonth = defaultMonthKey === monthKeyOf(today);
-  const defaultDate = isCurrentMonth
-    ? today.toISOString().slice(0, 10)
-    : `${defaultMonthKey}-01`;
-
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('fuel');
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(defaultDate);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    const value = Number(String(amount).replace(',', '.'));
-    if (!Number.isFinite(value) || value <= 0) {
-      setError('Informe um valor maior que zero.');
-      return;
-    }
-    setSaving(true);
-    try {
-      await addExpense({ amount: value, category, description, date });
-      toast.success('Despesa lançada.');
-      onSaved();
-    } catch (err) {
-      toast.error(err.message || 'Não deu pra lançar.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
-      <button
-        type="button"
-        aria-label="Fechar"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/45"
-      />
-      <div className="relative w-full max-w-mobile bg-card rounded-t-3xl p-6 pb-8 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar"
-          className="tap absolute right-4 top-4 w-9 h-9 rounded-full text-textMuted flex items-center justify-center"
-        >
-          <X size={20} />
-        </button>
-
-        <div className="pr-10">
-          <div className="w-11 h-11 rounded-2xl bg-neutro text-text flex items-center justify-center mb-2">
-            <Wallet size={22} />
-          </div>
-          <h2 className="text-xl font-bold text-text leading-tight">
-            Lançar despesa
-          </h2>
-        </div>
-
-        <form onSubmit={onSubmit} className="space-y-4">
-          <CampoDeValor
-            label="Quanto foi"
-            value={amount}
-            onChange={(v) => {
-              setAmount(v);
-              setError(null);
-            }}
-            error={error}
-            autoFocus
-          />
-
-          <div>
-            <p className="block text-sm font-semibold text-text mb-2">
-              Do que foi
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORY_ORDER.map((key) => {
-                const cat = EXPENSE_CATEGORIES[key];
-                const active = category === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setCategory(key)}
-                    aria-pressed={active}
-                    className={`tap h-12 rounded-xl border-2 text-xs font-semibold flex items-center gap-1.5 px-3 text-left ${
-                      active
-                        ? 'border-primary bg-primarySoft text-text'
-                        : 'border-border bg-card text-textMuted'
-                    }`}
-                  >
-                    <IconePorNome nome={cat.icone} size={18} />
-                    <span className="truncate">{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <Input
-            type="date"
-            label="Quando"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-
-          <Input
-            label="Observação (opcional)"
-            placeholder="Ex: troca de óleo"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            hint="Deixe em branco se não precisar."
-          />
-
-          <Button type="submit" loading={saving}>
-            Lançar
-          </Button>
-        </form>
-      </div>
     </div>
   );
 }

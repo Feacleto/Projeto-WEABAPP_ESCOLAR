@@ -2348,9 +2348,74 @@ service cloud.firestore {
     // parcela do veículo e o salário do monitor de todos os outros. Sondado
     // com duas contas reais: leitura e alteração cruzadas, HTTP 200 nas duas.
     match /expenses/{id} {
+      // O KM DO ABASTECIMENTO (03/10/2026). Dois campos opcionais: `kmPainel`
+      // é a leitura do hodômetro que ele digitou, `kmContador` é a cópia de
+      // `configFinanceiro.kmDasRotas` no instante do lançamento. O consumo sai
+      // da diferença entre dois abastecimentos. Ausentes, nada muda; presentes,
+      // são número e não negativo — um texto ali quebraria a conta da tela.
+      function kmDaDespesaValido() {
+        let d = request.resource.data;
+        return (!('kmPainel' in d) || (d.kmPainel is number && d.kmPainel >= 0))
+          && (!('kmContador' in d) || (d.kmContador is number && d.kmContador >= 0));
+      }
       allow read, delete: if doDono();
-      allow create: if nasceDoDono();
-      allow update: if doDono() && nasceDoDono();
+      allow create: if nasceDoDono() && kmDaDespesaValido();
+      allow update: if doDono() && nasceDoDono() && kmDaDespesaValido();
+    }
+
+    // -----------------------------------------------------------------
+    // A SENHA DO FINANCEIRO (03/10/2026) — a auxiliar usa o celular do
+    // motorista e não deve ver valores.
+    //
+    // `senhasDoFinanceiro/{uid}` guarda o HASH da senha e o contador de
+    // tentativas. NINGUÉM do lado de fora alcança, nem o próprio motorista:
+    // quem cria e confere são as callables (`functions/lib/senhaDoFinanceiro.js`)
+    // com Admin SDK. Se o cliente lesse o próprio documento, 4 números se
+    // descobririam testando as 10 mil combinações contra o hash; se escrevesse,
+    // zeraria o próprio contador de tentativas.
+    match /senhasDoFinanceiro/{uid} {
+      allow read, write: if false;
+    }
+
+    // `configFinanceiro/{uid}` — o que o Financeiro sabe do motorista, FORA de
+    // `users` (que as famílias leem inteiro, e regra não esconde campo).
+    //
+    // ⚠️ ESCOPADO PELO UID, nunca `isAdmin()` solto: isso é "qualquer
+    // motorista", e qualquer pessoa com e-mail vira motorista em 30 segundos.
+    //
+    //   temSenha    só o SERVIDOR grava (ao criar a senha). Ao cliente é
+    //               proibido criar, mudar ou apagar — senão o "tem senha?"
+    //               que decide a tela de criar mentiria.
+    //   usoDaPerua  'so_rota' | 'tambem_fora'
+    //   kmDasRotas  contador que SÓ SOBE, e no máximo 1000 km por escrita (o
+    //               celular grava a cada 5 km e no fim da rota). Descer
+    //               reescreveria o consumo de abastecimentos já lançados.
+    //
+    // A leitura vale com a conta inativa (`temPapelDeMotorista`): é o dado
+    // dele, e ler não opera nada. A escrita pede a conta operando.
+    match /configFinanceiro/{uid} {
+      function kmAntes() {
+        return resource == null ? 0 : resource.data.get('kmDasRotas', 0);
+      }
+      function configFinanceiroValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['usoDaPerua', 'kmDasRotas', 'temSenha'])
+          && (!('usoDaPerua' in d) || d.usoDaPerua in ['so_rota', 'tambem_fora'])
+          && (!('kmDasRotas' in d)
+              || (d.kmDasRotas is number
+                  && d.kmDasRotas >= kmAntes()
+                  && d.kmDasRotas <= kmAntes() + 1000))
+          // o cliente não pode TIRAR o contador (apagar = voltar a zero)
+          && (resource == null || !('kmDasRotas' in resource.data) || 'kmDasRotas' in d);
+      }
+      allow read: if temPapelDeMotorista() && request.auth.uid == uid;
+      allow create: if isAdmin() && request.auth.uid == uid
+        && configFinanceiroValida()
+        && !('temSenha' in request.resource.data);
+      allow update: if isAdmin() && request.auth.uid == uid
+        && configFinanceiroValida()
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['temSenha']);
+      allow delete: if false;
     }
 
     // -----------------------------------------------------------------

@@ -1,0 +1,207 @@
+import { useMemo, useState } from 'react';
+import { ChevronRight, LockKeyhole, QrCode, ReceiptText, Users } from 'lucide-react';
+import MolduraDoFinanceiro from './MolduraDoFinanceiro';
+import DigiteASenhaDoFinanceiro from './DigiteASenhaDoFinanceiro';
+import FolhaDeDespesa from './FolhaDeDespesa';
+import PixSheet from '../payments/PixSheet';
+import { useAuth } from '../../hooks/useAuth';
+import { useChildren } from '../../hooks/useChildren';
+import { useCriancasInativas } from '../../hooks/useCriancasInativas';
+import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
+import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
+import { useTrancaDoFinanceiro } from '../../hooks/useTrancaDoFinanceiro';
+import { biometriaLigada, conferirBiometria } from '../../services/biometriaService';
+import { CAIXA, TAXA, TURMA } from '../../dominio/identidade/trancaDoFinanceiro.js';
+// A MESMA régua da porta "Turma e contratos" do caixa e da tela da turma —
+// eram duas na integração (03/10/2026), e duas contas da mesma turma acabam
+// discordando no dia em que uma muda.
+import { frasesDoMovimento, resumoDaTurma } from '../../dominio/identidade/movimentoDaTurma.js';
+
+const MESES = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+import { seloDoPlano } from '../../dominio/associacao/seloDoPlano.js';
+
+/**
+ * A TELA TRANCADA DO FINANCEIRO (03/10/2026) — o protótipo aprovado pelo
+ * dono, com o desenho de um app de banco: a saudação, a porta grande, e o que
+ * se pode ver SEM a senha.
+ *
+ * O QUE APARECE SEM SENHA É O QUE NÃO É DINHEIRO:
+ *   - Minha turma: quantas crianças, quantas entraram e saíram no mês
+ *   - Mostrar meu PIX: só mostrar, nunca trocar (ver PixSheet)
+ *   - Lançar despesa: lança, e o histórico aparece sem os valores
+ *   - Meu plano: o nome e o selo — o valor da fatura só com senha
+ * Os dois quadrados do meio funcionam sem senha de propósito: são as duas
+ * coisas que ele faz no portão, com alguém do lado.
+ *
+ * Tocar num destino pede a digital primeiro (se ligada neste aparelho);
+ * cancelar a digital cai no teclado. Entrar por "Minha turma" ou "Meu plano"
+ * abre SÓ aquela tela — o voltar de lá traz de novo a tela trancada (regra
+ * em `dominio/identidade/trancaDoFinanceiro.js`).
+ */
+export default function FinanceiroTrancado() {
+  const { user, profile } = useAuth();
+  const tranca = useTrancaDoFinanceiro();
+  const comDigital = biometriaLigada(user?.uid);
+  const [pedindo, setPedindo] = useState(null);
+  const [folha, setFolha] = useState(null);
+
+  // A turma: as ativas vêm do mesmo hook do layout (o SDK compartilha a
+  // escuta da mesma consulta); as que saíram, de uma consulta própria.
+  const { children: ativas } = useChildren();
+  const inativas = useCriancasInativas();
+  const agora = useMemo(() => new Date(), []);
+  const mes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+  const resumo = resumoDaTurma({
+    criancas: [...(ativas || []).map((c) => ({ ...c, active: true })), ...(inativas || [])],
+    mes,
+  });
+  const frases = {
+    ...frasesDoMovimento(resumo),
+    total: resumo.ativas === 1 ? '1 criança' : `${resumo.ativas} crianças`,
+  };
+
+  // O plano só existe com a cobrança da plataforma ligada.
+  const cobranca = useCobrancaLigada();
+  const { fatura } = useFaturaPlataforma(cobranca ? user?.uid : null);
+  const plano = seloDoPlano({
+    plano: profile?.plano || null,
+    fatura,
+    trialInicio: profile?.trialInicio || null,
+    assinaturaAte: profile?.assinaturaAte || null,
+    agora,
+  });
+
+  const acessar = async (destino) => {
+    if (comDigital && (await conferirBiometria(user?.uid))) {
+      tranca.abrirCom(destino);
+      return;
+    }
+    setPedindo(destino);
+  };
+
+  if (pedindo) {
+    return <DigiteASenhaDoFinanceiro destino={pedindo} onVoltar={() => setPedindo(null)} />;
+  }
+
+  const primeiroNome = (profile?.name || '').trim().split(/\s+/)[0] || '';
+  const iniciais = iniciaisDe(profile?.marcaNome || profile?.name || '');
+
+  return (
+    <MolduraDoFinanceiro>
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="w-[52px] h-[52px] shrink-0 rounded-full bg-primary text-white flex items-center justify-center text-lg font-bold"
+        >
+          {iniciais}
+        </span>
+        <div className="min-w-0">
+          <p className="text-xl font-bold text-text truncate">
+            {primeiroNome ? `Olá, ${primeiroNome}` : 'Olá'}
+          </p>
+          {profile?.marcaNome && (
+            <p className="text-[15px] text-textMuted truncate">{profile.marcaNome}</p>
+          )}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => acessar(CAIXA)}
+        className="tap h-[150px] rounded-3xl bg-card shadow-rest p-6 flex flex-col justify-between items-start text-left"
+      >
+        <LockKeyhole size={36} className="text-primary" aria-hidden="true" />
+        <span className="text-[22px] font-bold text-text">Acessar dados financeiros</span>
+      </button>
+      <p className="text-[15px] text-textMuted text-center">
+        {comDigital ? 'Com digital ou rosto' : 'Com a sua senha de 4 números'}
+      </p>
+
+      <button
+        type="button"
+        onClick={() => acessar(TURMA)}
+        className="tap rounded-3xl bg-card shadow-rest px-5 py-[18px] flex items-center gap-3.5 text-left"
+      >
+        <span className="w-12 h-12 shrink-0 rounded-xl bg-primaryChip flex items-center justify-center">
+          <Users size={26} className="text-primary" aria-hidden="true" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] text-textMuted">Minha turma</p>
+          <p className="font-display text-[22px] font-extrabold text-text">{frases.total}</p>
+          <p className="text-[15px] text-textBody">
+            Em {MESES[agora.getMonth()]}: <strong className="text-accentText">{frases.entraram}</strong>
+            {frases.sairam && (
+              <>
+                {' · '}
+                <strong className="text-dangerText">{frases.sairam}</strong>
+              </>
+            )}
+          </p>
+          <p className="mt-1.5 text-[15px] font-bold text-primary">Ver tudo</p>
+        </div>
+        <ChevronRight size={20} className="text-textBody shrink-0" aria-hidden="true" />
+      </button>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => setFolha('pix')}
+          className="tap h-[120px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start text-left"
+        >
+          <QrCode size={30} className="text-primary" aria-hidden="true" />
+          <span className="text-lg font-bold text-text">Mostrar meu PIX</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setFolha('despesa')}
+          className="tap h-[120px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start text-left"
+        >
+          <ReceiptText size={30} className="text-primary" aria-hidden="true" />
+          <span className="text-lg font-bold text-text">Lançar despesa</span>
+        </button>
+      </div>
+      <p className="text-[15px] text-textMuted text-center">Estes dois funcionam sem senha.</p>
+
+      {cobranca === true && (
+        <button
+          type="button"
+          onClick={() => acessar(TAXA)}
+          className="tap rounded-3xl bg-card shadow-rest px-5 py-4 flex items-center gap-3 text-left"
+        >
+          <div className="flex-1 min-w-0">
+            <p className="text-[15px] text-textMuted">Meu plano Alô Buzinou</p>
+            <p className="text-lg font-bold text-text">
+              {plano.nome}
+              <span className={`ml-1.5 px-2.5 py-1 rounded-full text-sm font-bold ${TOM[plano.tom]}`}>
+                {plano.selo}
+              </span>
+            </p>
+            <p className="mt-1 text-sm text-textMuted">Valor da fatura só com senha</p>
+          </div>
+          <ChevronRight size={20} className="text-textBody shrink-0" aria-hidden="true" />
+        </button>
+      )}
+
+      <PixSheet mostrar open={folha === 'pix'} onClose={() => setFolha(null)} />
+      <FolhaDeDespesa open={folha === 'despesa'} onClose={() => setFolha(null)} comValores={false} />
+    </MolduraDoFinanceiro>
+  );
+}
+
+const TOM = {
+  ok: 'bg-primaryChip text-accentText',
+  perigo: 'bg-dangerChip text-dangerText',
+  aviso: 'bg-warningChip text-warningText',
+  neutro: 'bg-neutro text-textBody',
+};
+
+function iniciaisDe(nome) {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return '';
+  const primeira = partes[0][0] || '';
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : '';
+  return (primeira + ultima).toUpperCase();
+}

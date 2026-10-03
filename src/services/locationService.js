@@ -20,6 +20,8 @@ import { lugarDoEndereco } from '../dominio/identidade/cadastroDoMotorista.js';
 import { podeBuscarRua, sugestoesDeRua } from '../compartilhado/ruas';
 import { criarFilaComIntervalo } from '../compartilhado/filaComIntervalo';
 import { deveGravarPosicao } from '../dominio/rota/escritasDaRota';
+import { novoAcumulador, somarPosicao, horaDeGravar, zerarKm } from '../dominio/rota/kmDaRota';
+import { somarKmDasRotas } from './configFinanceiroService';
 
 /**
  * ⚠️ TODA CHAMADA AO NOMINATIM PASSA POR ESTA FILA (03/10/2026). A política
@@ -307,6 +309,37 @@ let ultimaGravada = null;
 let motoristaDaRota = null;
 let telaAcesa = null;
 
+/**
+ * O KM DA ROTA (03/10/2026), para o consumo da perua no Financeiro. Cada
+ * posição CRUA do GPS alimenta o acumulador em memória — antes do throttle e
+ * antes do encaixe na grade de 150 m, porque a grade somaria saltos de
+ * quadrado, não a rua. ⚠️ Só o TOTAL é gravado (`configFinanceiro.kmDasRotas`),
+ * a cada 5 km e ao encerrar; nenhuma coordenada sai daqui por este caminho.
+ * O que o app recarregar no meio perde só o trecho desde a última gravação.
+ * A régua (o que é ruído, o que é salto) é `dominio/rota/kmDaRota.js`.
+ */
+let kmDaRota = novoAcumulador();
+
+function gravarKmParcial() {
+  const km = kmDaRota.km;
+  if (!(km > 0) || !motoristaDaRota) return;
+  kmDaRota = zerarKm(kmDaRota);
+  // Sem `await`: o km é do Financeiro, e a rota não espera por ele.
+  somarKmDasRotas(motoristaDaRota, km).catch((err) => {
+    console.error('kmDasRotas write error:', err);
+  });
+}
+
+function acumularKm(position) {
+  kmDaRota = somarPosicao(kmDaRota, {
+    lat: position.coords.latitude,
+    lng: position.coords.longitude,
+    accuracy: position.coords.accuracy,
+    timestamp: position.timestamp,
+  });
+  if (horaDeGravar(kmDaRota)) gravarKmParcial();
+}
+
 async function manterTelaAcesa() {
   try {
     if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
@@ -427,6 +460,7 @@ export function startTracking(driverUid, opcoes = {}) {
   ultimaExata = null;
   ultimaGravada = null;
   motoristaDaRota = driverUid;
+  kmDaRota = novoAcumulador();
   alvosDaRota = Array.isArray(opcoes.alvos) ? opcoes.alvos : [];
   zonasPublicadas = {};
   // ⚠️ AUSENTE SIGNIFICA LIGADO. Quem nunca viu a chave não pode ter o mapa
@@ -450,6 +484,8 @@ export function startTracking(driverUid, opcoes = {}) {
     async (position) => {
       // Notifica UI a cada tick (sem throttle)
       emitPosition({ position, error: null });
+      // O km soma TODO ponto, não só os que passam pelo throttle de escrita.
+      acumularKm(position);
 
       const now = Date.now();
       if (now - lastWrite < THROTTLE_MS) return;
@@ -550,6 +586,9 @@ export async function stopTracking() {
   }
   if (pulso) clearInterval(pulso);
   pulso = null;
+  // O que sobrou do km desta rota vai antes de o acumulador zerar.
+  gravarKmParcial();
+  kmDaRota = novoAcumulador();
   ultimaExata = null;
   ultimaGravada = null;
   document.removeEventListener('visibilitychange', aoVoltarParaATela);

@@ -10,6 +10,9 @@ import {
   applyActionCode,
   checkActionCode,
   sendEmailVerification,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  EmailAuthProvider,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -391,4 +394,47 @@ export async function loginComGoogle() {
   const user = credential.user;
   const profile = await getUserDoc(user.uid);
   return { user, profile };
+}
+
+/**
+ * COMO ESTA CONTA PROVA QUE É ELA DE NOVO — para o "Esqueci a senha" e o
+ * "Trocar a senha" do Financeiro (03/10/2026).
+ *
+ * A senha de 4 números do Financeiro não tem e-mail de recuperação: quem a
+ * esqueceu prova que é o dono da CONTA, e o servidor só aceita trocar a senha
+ * do Financeiro com login recente (até 5 minutos). Por isso a troca passa por
+ * uma reautenticação de verdade, e não por um "tem certeza?".
+ *
+ * 'senha'   conta de e-mail e senha — pede a senha da conta
+ * 'google'  conta do Google — abre a janela do Google de novo
+ * Conta com os dois provedores usa a senha: é a que a tela consegue pedir sem
+ * abrir janela nenhuma.
+ */
+export function metodoDeReautenticacao() {
+  const provedores = (auth.currentUser?.providerData || []).map((p) => p.providerId);
+  if (provedores.includes('password')) return 'senha';
+  if (provedores.includes('google.com')) return 'google';
+  return 'senha';
+}
+
+/**
+ * Reautentica a sessão atual. `senhaDaConta` só é usada no método 'senha'.
+ * Lança o erro do Firebase (quem chama traduz com `mensagemDeAuth`).
+ */
+export async function reautenticarConta(senhaDaConta = '') {
+  const user = auth.currentUser;
+  if (!user) {
+    throw Object.assign(new Error('Sem sessão.'), { code: 'auth/no-current-user' });
+  }
+  if (metodoDeReautenticacao() === 'google') {
+    await reauthenticateWithPopup(user, googleProvider);
+  } else {
+    const credencial = EmailAuthProvider.credential(user.email || '', senhaDaConta);
+    await reauthenticateWithCredential(user, credencial);
+  }
+  // ⚠️ O TOKEN TEM QUE SER RENOVADO AQUI. O servidor lê `auth_time` do token
+  // que a callable leva, e o token em cache ainda carrega o login antigo:
+  // sem forçar a renovação, a troca seria recusada logo depois de a pessoa
+  // ter provado quem é.
+  await user.getIdToken(true);
 }

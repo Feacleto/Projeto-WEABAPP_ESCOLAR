@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Key,
@@ -11,8 +11,18 @@ import {
   Wallet,
   DollarSign,
   FileText,
-  TrendingDown,
   History,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  EyeOff,
+  Plus,
+  Minus,
+  Send,
+  Diamond,
+  Receipt,
+  Users,
+  Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
@@ -22,12 +32,23 @@ import Skeleton from '../../components/common/Skeleton';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import PaymentRow from '../../components/payments/PaymentRow';
 import AguardandoVoce from '../../components/payments/AguardandoVoce';
-import ResumoDoMes, { ComoEstaOMes } from '../../components/payments/ResumoDoMes';
+import { ComoEstaOMes } from '../../components/payments/ResumoDoMes';
+import { nomeDoMes } from '../../components/payments/estadoDaMensalidade';
+import BotoesDoTopoDoFinanceiro from '../../components/financeiro/BotoesDoTopoDoFinanceiro';
+import FolhaDeDespesa from '../../components/financeiro/FolhaDeDespesa';
 import InteressePorCartao from '../../components/tio/InteressePorCartao';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { watchAlertasDeComprovante } from '../../services/alertaDeComprovanteService';
-import { useChildren } from '../../hooks/useChildren';
+import { useTurmaInteira } from '../../hooks/useTurmaInteira';
+import { useDespesasDoMes } from '../../hooks/useDespesas';
+import { useValoresVisiveis, VALOR_ESCONDIDO } from '../../hooks/useValoresVisiveis';
+import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
+import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
+import { EXPENSE_CATEGORIES, sumExpenses } from '../../services/expensesService';
+import { montarExtrato } from '../../dominio/cobranca/extratoDoMes.js';
+import { resumoDaTurma, frasesDoMovimento } from '../../dominio/identidade/movimentoDaTurma.js';
+import { diasDeAtraso } from '../../dominio/associacao/contaAtiva.js';
 import { buildChargeMessage } from '../../dominio/cobranca/chargeMessage';
 import {
   confirmReceipt,
@@ -59,14 +80,28 @@ import { PIX_KEY_TYPES } from '../../services/userService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 
 /**
- * Financeiro do Tio — dashboard mês-a-mês.
+ * Financeiro do Tio — O CAIXA, mês a mês (03/10/2026, protótipo aprovado
+ * pelo dono: o Financeiro protegido por senha, lido como o app de um banco).
  *
- * A ORDEM DA TELA é a ordem das perguntas dele (design system, 03/10/2026):
+ * A ORDEM DA TELA é a ordem das perguntas dele:
  *   1. de que mês estou falando          → o seletor, no topo
- *   2. quanto entrou                     → o cartão verde
- *   3. e o resto, onde está              → a barra dos quatro estados
- *   4. o que é comigo agora              → "Aguardando você"
- *   5. de quem é cada mensalidade        → a lista, atrasadas primeiro
+ *   2. o que eu faço daqui               → os quatro atalhos (receber,
+ *                                          lançar despesa, cobrar, chave PIX)
+ *   3. quanto sobrou                     → o SALDO: o que entrou menos o que
+ *                                          saiu, e quanto falta receber
+ *   4. e o resto do negócio              → três portas: despesas, turma e
+ *                                          contratos, e o plano da plataforma
+ *   5. o que é comigo agora              → "Aguardando você", os atrasados
+ *   6. o dia a dia do dinheiro           → Extrato (entrou e saiu, por dia)
+ *                                          ou Mensalidades (a lista de sempre)
+ *
+ * ⚠️ O SALDO É SÓ DO CAIXA DAS FAMÍLIAS: mensalidade paga menos despesa
+ * lançada. A taxa da plataforma (`faturasParceiro`) não entra nele nem no
+ * extrato — os dois dinheiros não se somam, e o plano tem porta própria.
+ *
+ * O cartão verde do Recebido (`ResumoDoMes`) saiu: o saldo responde a mesma
+ * pergunta com a saída do lado. A barra dos quatro estados (`ComoEstaOMes`)
+ * continua, no alto da aba Mensalidades, que é onde ela diz o que cobrar.
  *
  * Mudanças vs versões anteriores:
  *   - Seletor de mês (até a retenção de 60 meses — ver MonthSwitcher)
@@ -135,7 +170,35 @@ export default function TioFinance() {
 
   // Telefone do responsável não vive em `payments`; vem da criança. É o que
   // permite cobrar sem sair do app.
-  const { children } = useChildren();
+  //
+  // A turma INTEIRA (com quem saiu) alimenta a porta "Turma e contratos"; as
+  // ativas são as mesmas de `useChildren`, sem uma segunda escuta.
+  const { criancas: turmaInteira } = useTurmaInteira();
+  const children = useMemo(
+    () => turmaInteira.filter((c) => c.active === true),
+    [turmaInteira]
+  );
+
+  // O CAIXA: o que saiu no mês, e o olho que esconde os valores.
+  const despesasDoMes = useDespesasDoMes(monthKey);
+  const { visiveis, alternar: alternarValores } = useValoresVisiveis();
+  const reais = (v) => (visiveis ? formatCurrency(v) : VALOR_ESCONDIDO);
+  const [despesaAberta, setDespesaAberta] = useState(false);
+
+  // Extrato ou Mensalidades. Abre no extrato: é o caixa.
+  const [aba, setAba] = useState('extrato');
+  const abasRef = useRef(null);
+  const irParaAba = (qual, filtro) => {
+    setAba(qual);
+    if (filtro) setFilter(filtro);
+    abasRef.current?.scrollIntoView({ block: 'start' });
+  };
+
+  // O PLANO DA PLATAFORMA só aparece com a cobrança ligada — desligada, não
+  // há plano a mostrar, e a porta seria uma promessa de cobrança que não
+  // existe. A fatura só é escutada nesse caso.
+  const cobranca = useCobrancaLigada();
+  const { fatura: faturaEmAberto } = useFaturaPlataforma(cobranca === true ? user?.uid : null);
 
   // Confirmar / desfazer recebimento
   const [methodSheetFor, setMethodSheetFor] = useState(null); // payment ou null
@@ -282,6 +345,36 @@ export default function TioFinance() {
 
   const hasPix = !!profile?.pixKey;
 
+  /**
+   * O SALDO DO CAIXA: o que entrou (mensalidade PAGA do mês) menos o que saiu
+   * (despesa lançada no mês). Em centavos, pelo mesmo motivo do `totals`.
+   * Enquanto as despesas carregam, saiu é `null` e o saldo não aparece — um
+   * saldo sem a saída seria o recebido fingindo ser lucro.
+   */
+  const saiu = despesasDoMes === null ? null : sumExpenses(despesasDoMes);
+  const saldo = saiu === null ? null : emCentavos(totals.paid - saiu);
+  const faltaReceber = emCentavos(totals.esperado - totals.paid);
+
+  const extrato = useMemo(
+    () =>
+      montarExtrato({
+        pagamentos: enriched,
+        despesas: despesasDoMes || [],
+        rotulos: ROTULOS_DO_EXTRATO,
+        hoje: new Date(),
+      }),
+    [enriched, despesasDoMes]
+  );
+
+  const turma = useMemo(
+    () => resumoDaTurma({ criancas: turmaInteira, mes: monthKey }),
+    [turmaInteira, monthKey]
+  );
+  const frasesDaTurma = frasesDoMovimento(turma);
+
+  const plano = descreverPlano(profile, faturaEmAberto);
+  const mes = nomeDoMes(monthKey);
+
   const onShareReceipt = async () => {
     if (!receiptFor) return;
     setSharingReceipt(true);
@@ -422,19 +515,10 @@ export default function TioFinance() {
 
   return (
     <>
-      <Header
-        title="Financeiro"
-        action={
-          <button
-            onClick={() => navigate('/tio/finance/report')}
-            aria-label="Ver relatório"
-            className="tap inline-flex h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-primary"
-          >
-            <FileText size={18} />
-            Relatório
-          </button>
-        }
-      />
+      {/* O cadeado e os ajustes da senha moram no canto do cabeçalho. O
+        * "Relatório" saiu daqui: virou "Baixar extrato do mês", no fim do
+        * extrato, que é onde a pergunta "quero isso no papel" aparece. */}
+      <Header title="Financeiro" action={<BotoesDoTopoDoFinanceiro />} />
 
       <div className="space-y-4 p-4">
         {/* 1. De que mês a tela fala — antes de qualquer número. */}
@@ -461,23 +545,105 @@ export default function TioFinance() {
           </div>
         )}
 
-        {/* 2. O ÚNICO NÚMERO GRANDE: o que entrou. */}
-        <ResumoDoMes
-          monthKey={monthKey}
-          recebido={totals.paid}
-          esperado={totals.esperado}
-          quantidade={enriched.length}
-          pagas={totals.contagem.paid}
-        />
+        {/* "Meu caixa" e o olho. Esconder é do aparelho (ver
+          * useValoresVisiveis): quem abre o caixa com gente do lado. */}
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-extrabold text-text">Meu caixa</h2>
+          <button
+            type="button"
+            onClick={alternarValores}
+            aria-label={visiveis ? 'Esconder valores' : 'Mostrar valores'}
+            aria-pressed={!visiveis}
+            className="tap flex h-12 w-12 items-center justify-center rounded-xl text-text"
+          >
+            {visiveis ? <Eye size={24} /> : <EyeOff size={24} />}
+          </button>
+        </div>
 
-        {/* 3. E o resto, onde está. */}
-        <ComoEstaOMes
-          monthKey={monthKey}
-          contagem={totals.contagem}
-          soma={totals.soma}
-        />
+        {/* 2. Os quatro atalhos. Receber e Cobrar levam à mesma lista (quem
+          * falta pagar): receber é dar baixa, cobrar é o WhatsApp de cada
+          * linha — a cobrança continua sendo por família, nunca em massa. */}
+        <div className="grid grid-cols-4 gap-2">
+          <Atalho icon={Plus} rotulo="Receber" onClick={() => irParaAba('mensalidades', 'open')} />
+          <Atalho icon={Minus} rotulo="Lançar despesa" onClick={() => setDespesaAberta(true)} />
+          <Atalho icon={Send} rotulo="Cobrar" onClick={() => irParaAba('mensalidades', 'open')} />
+          <Atalho icon={Diamond} rotulo="Chave PIX" onClick={() => setPixOpen(true)} />
+        </div>
 
-        {/* 4. O que espera uma decisão dele. */}
+        {/* 3. O SALDO. Um número grande só, e ele é o que sobrou. */}
+        <section className="flex flex-col gap-1.5 rounded-3xl bg-card p-5 shadow-rest">
+          <button
+            type="button"
+            onClick={() => irParaAba('extrato')}
+            className="tap -mx-1 flex min-h-12 items-center gap-2.5 rounded-xl px-1 text-left"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primaryChip text-primary">
+              <Wallet size={18} />
+            </span>
+            <span className="flex-1 text-base text-textBody">Caixa de {mes}</span>
+            <ChevronRight size={20} className="text-textBody" />
+          </button>
+          <span className="mt-2 text-base text-textBody">Saldo</span>
+          {saldo === null ? (
+            <Skeleton className="h-10 w-44" />
+          ) : (
+            <span
+              className={`font-display text-4xl font-extrabold leading-none tabular-nums ${
+                saldo < 0 ? 'text-dangerText' : 'text-text'
+              }`}
+            >
+              {reais(saldo)}
+            </span>
+          )}
+          <span className="text-base tabular-nums text-textBody">
+            Entrou {reais(totals.paid)} · Saiu {saiu === null ? '…' : reais(saiu)}
+          </span>
+          <span aria-hidden className="my-2 h-px bg-border" />
+          <button
+            type="button"
+            onClick={() => irParaAba('mensalidades', 'open')}
+            className="tap -mx-1 flex min-h-12 items-center gap-2.5 rounded-xl px-1 text-left"
+          >
+            <span className="flex-1 text-base text-text">Falta receber</span>
+            <span className="text-base font-bold tabular-nums text-text">{reais(faltaReceber)}</span>
+            <ChevronRight size={20} className="text-textBody" />
+          </button>
+        </section>
+
+        {/* 4. As três portas: para onde o dinheiro foi, quem é a turma que
+          * paga, e o que ele deve à plataforma (só com a cobrança ligada). */}
+        <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
+          <Porta
+            icon={Receipt}
+            titulo="Despesas do mês"
+            detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
+            onClick={() => navigate('/tio/finance/expenses')}
+          />
+          <Porta
+            divisor
+            icon={Users}
+            titulo="Turma e contratos"
+            detalhe={[
+              `${turma.ativas} ${turma.ativas === 1 ? 'criança' : 'crianças'}`,
+              frasesDaTurma.entraram,
+              frasesDaTurma.sairam,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            onClick={() => navigate('/tio/finance/turma')}
+          />
+          {cobranca === true && (
+            <Porta
+              divisor
+              icon={FileText}
+              titulo="Meu plano Alô Buzinou"
+              detalhe={`${plano.nome} · ${plano.estado}`}
+              onClick={() => navigate('/tio/taxa')}
+            />
+          )}
+        </section>
+
+        {/* 5. O que espera uma decisão dele. */}
         <AguardandoVoce
           pagamentos={totals.avisaram}
           alertas={alertas}
@@ -544,136 +710,214 @@ export default function TioFinance() {
           onOpenPix={() => setPixOpen(true)}
         />
 
-        {/* 5. A lista. Filtro em pílula: três opções de largura igual, e a
-          * pílula verde desliza para a escolhida. */}
-        {enriched.length > 0 && (
-          <div
-            role="tablist"
-            aria-label="Filtrar mensalidades"
-            className="relative grid grid-cols-3 rounded-full border border-border bg-card p-1"
-          >
-            <span
-              aria-hidden
-              className="absolute bottom-1 left-1 top-1 w-[calc((100%-8px)/3)] rounded-full bg-primary transition-transform duration-entrada ease-freio"
-              style={{
-                transform: `translateX(${FILTROS.findIndex((f) => f.value === filter) * 100}%)`,
-              }}
-            />
-            {FILTROS.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                role="tab"
-                aria-selected={filter === f.value}
-                onClick={() => setFilter(f.value)}
-                className={`relative z-[1] h-10 rounded-full text-sm font-semibold transition-colors duration-estado ${
-                  filter === f.value ? 'text-white' : 'text-textMuted'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Busca por criança — responde "essa família está em dia?". A
-          * pergunta que o tio mais faz ao financeiro não é "quanto entrou",
-          * é "a família do Miguel pagou?". */}
-        {enriched.length > 0 && (
-          <div className="relative">
-            <Search
-              size={18}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted"
-            />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Procurar criança"
-              className="h-12 w-full rounded-xl border-2 border-border bg-card pl-11 pr-10 text-base text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                aria-label="Limpar busca"
-                className="tap absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-textMuted"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Lista */}
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-24" />
-            ))}
-          </div>
-        ) : enriched.length === 0 ? (
-          <EmptyState
-            icon={Wallet}
-            title="Nenhum pagamento"
-            description={
-              isCurrentMonthView
-                ? 'Os pagamentos do mês são gerados quando você cadastra crianças.'
-                : `Sem registros pra ${formatMonthLabel(monthKey)}.`
-            }
+        {/* 6. Extrato | Mensalidades. A pílula verde desliza para a escolhida,
+          * o mesmo desenho do filtro da lista. */}
+        <div
+          ref={abasRef}
+          role="tablist"
+          aria-label="Extrato ou mensalidades"
+          className="relative grid scroll-mt-20 grid-cols-2 rounded-full border border-border bg-card p-1"
+        >
+          <span
+            aria-hidden
+            className="absolute bottom-1 left-1 top-1 w-[calc((100%-8px)/2)] rounded-full bg-primary transition-transform duration-entrada ease-freio"
+            style={{ transform: `translateX(${aba === 'extrato' ? 0 : 100}%)` }}
           />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={DollarSign}
-            title="Nada por aqui"
-            description={
-              filter === 'open' && !search
-                ? 'Ninguém faltando neste mês.'
-                : 'Sem pagamentos com esse filtro.'
-            }
-          />
-        ) : (
-          /* A ÂNCORA É A LISTA, não o botão de confirmar: o botão só existe
-             na linha de quem avisou que pagou, e o tutorial não pode
-             depender de haver uma. E ela é iluminada, nunca tocada — o
-             toque daria baixa em dinheiro. */
-          <div
-            data-tour="lista-pagamentos"
-            className="overflow-hidden rounded-2xl bg-card shadow-rest"
-          >
-            {filtered.map((payment, i) => (
-              <PaymentRow
-                key={payment.id}
-                variant="linha"
-                comDivisor={i > 0}
-                payment={payment}
-                displayStatus={payment._display}
-                role="admin"
-                alertaDeDuplicata={alertas[payment.id] || null}
-                onCharge={() => onCharge(payment)}
-                onAttachReceipt={() => {
-                  setAttachingTo(payment);
-                  setAttachFile(null);
-                }}
-                action={renderAction(payment, {
-                  onConfirm: () => setMethodSheetFor(payment),
-                  onUndo: () => setUnconfirming(payment),
-                })}
+          {[
+            { valor: 'extrato', rotulo: 'Extrato' },
+            { valor: 'mensalidades', rotulo: 'Mensalidades' },
+          ].map((a) => (
+            <button
+              key={a.valor}
+              type="button"
+              role="tab"
+              aria-selected={aba === a.valor}
+              onClick={() => setAba(a.valor)}
+              className={`relative z-[1] h-12 rounded-full text-base font-bold transition-colors duration-estado ${
+                aba === a.valor ? 'text-white' : 'text-textMuted'
+              }`}
+            >
+              {a.rotulo}
+            </button>
+          ))}
+        </div>
+
+        {aba === 'extrato' && (
+          <>
+            {loading || despesasDoMes === null ? (
+              <Skeleton className="h-40 rounded-2xl" />
+            ) : extrato.grupos.length === 0 ? (
+              <EmptyState
+                icon={Wallet}
+                title="Nada no extrato"
+                description={`O que entrar e sair em ${mes} aparece aqui, dia por dia.`}
               />
-            ))}
-            {/* O total do que está na lista, no fim dela — o número que
-              * fecha a conta de quem acabou de descer linha por linha. */}
-            <div className="flex items-center justify-between gap-3 bg-surface px-4 py-3 text-sm font-semibold text-textMuted">
-              <span>
-                {filtered.length} mensalidade{filtered.length > 1 ? 's' : ''}
-              </span>
-              <span className="font-bold tabular-nums text-text">
-                {formatCurrency(
-                  emCentavos(filtered.reduce((acc, p) => acc + (Number(p.amount) || 0), 0))
+            ) : (
+              <section className="overflow-hidden rounded-2xl bg-card shadow-rest">
+                {extrato.grupos.map((g) => (
+                  <div key={g.dia}>
+                    <p className="bg-surface px-4 pb-1.5 pt-3 text-sm font-bold text-textMuted">
+                      {g.rotulo}
+                    </p>
+                    {g.movimentos.map((m) => (
+                      <LinhaDoExtrato key={m.id} movimento={m} reais={reais} />
+                    ))}
+                  </div>
+                ))}
+              </section>
+            )}
+            <Button
+              variant="secondary"
+              icon={Download}
+              onClick={() => navigate('/tio/finance/report')}
+            >
+              Baixar extrato do mês (PDF)
+            </Button>
+          </>
+        )}
+
+        {aba === 'mensalidades' && (
+          <>
+            {/* E o resto, onde está: os quatro estados com quantidade e valor
+              * — conferência, calendário e cobrança são trabalhos diferentes. */}
+            <ComoEstaOMes
+              monthKey={monthKey}
+              contagem={totals.contagem}
+              soma={totals.soma}
+            />
+
+            {/* A lista. Filtro em pílula: três opções de largura igual, e a
+              * pílula verde desliza para a escolhida. */}
+            {enriched.length > 0 && (
+              <div
+                role="tablist"
+                aria-label="Filtrar mensalidades"
+                className="relative grid grid-cols-3 rounded-full border border-border bg-card p-1"
+              >
+                <span
+                  aria-hidden
+                  className="absolute bottom-1 left-1 top-1 w-[calc((100%-8px)/3)] rounded-full bg-primary transition-transform duration-entrada ease-freio"
+                  style={{
+                    transform: `translateX(${FILTROS.findIndex((f) => f.value === filter) * 100}%)`,
+                  }}
+                />
+                {FILTROS.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={filter === f.value}
+                    onClick={() => setFilter(f.value)}
+                    className={`relative z-[1] h-10 rounded-full text-sm font-semibold transition-colors duration-estado ${
+                      filter === f.value ? 'text-white' : 'text-textMuted'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Busca por criança — responde "essa família está em dia?". A
+              * pergunta que o tio mais faz ao financeiro não é "quanto entrou",
+              * é "a família do Miguel pagou?". */}
+            {enriched.length > 0 && (
+              <div className="relative">
+                <Search
+                  size={18}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-textMuted"
+                />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Procurar criança"
+                  className="h-12 w-full rounded-xl border-2 border-border bg-card pl-11 pr-10 text-base text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    aria-label="Limpar busca"
+                    className="tap absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-textMuted"
+                  >
+                    <X size={18} />
+                  </button>
                 )}
-              </span>
-            </div>
-          </div>
+              </div>
+            )}
+
+            {/* Lista */}
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-24" />
+                ))}
+              </div>
+            ) : enriched.length === 0 ? (
+              <EmptyState
+                icon={Wallet}
+                title="Nenhum pagamento"
+                description={
+                  isCurrentMonthView
+                    ? 'Os pagamentos do mês são gerados quando você cadastra crianças.'
+                    : `Sem registros pra ${formatMonthLabel(monthKey)}.`
+                }
+              />
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                icon={DollarSign}
+                title="Nada por aqui"
+                description={
+                  filter === 'open' && !search
+                    ? 'Ninguém faltando neste mês.'
+                    : 'Sem pagamentos com esse filtro.'
+                }
+              />
+            ) : (
+              /* A ÂNCORA É A LISTA, não o botão de confirmar: o botão só existe
+                 na linha de quem avisou que pagou, e o tutorial não pode
+                 depender de haver uma. E ela é iluminada, nunca tocada — o
+                 toque daria baixa em dinheiro. */
+              <div
+                data-tour="lista-pagamentos"
+                className="overflow-hidden rounded-2xl bg-card shadow-rest"
+              >
+                {filtered.map((payment, i) => (
+                  <PaymentRow
+                    key={payment.id}
+                    variant="linha"
+                    comDivisor={i > 0}
+                    payment={payment}
+                    displayStatus={payment._display}
+                    role="admin"
+                    alertaDeDuplicata={alertas[payment.id] || null}
+                    onCharge={() => onCharge(payment)}
+                    onAttachReceipt={() => {
+                      setAttachingTo(payment);
+                      setAttachFile(null);
+                    }}
+                    action={renderAction(payment, {
+                      onConfirm: () => setMethodSheetFor(payment),
+                      onUndo: () => setUnconfirming(payment),
+                    })}
+                  />
+                ))}
+                {/* O total do que está na lista, no fim dela — o número que
+                  * fecha a conta de quem acabou de descer linha por linha. */}
+                <div className="flex items-center justify-between gap-3 bg-surface px-4 py-3 text-sm font-semibold text-textMuted">
+                  <span>
+                    {filtered.length} mensalidade{filtered.length > 1 ? 's' : ''}
+                  </span>
+                  <span className="font-bold tabular-nums text-text">
+                    {formatCurrency(
+                      emCentavos(filtered.reduce((acc, p) => acc + (Number(p.amount) || 0), 0))
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* ── o fim da tela: o que ele consulta, não o que ele opera ── */}
@@ -681,33 +925,6 @@ export default function TioFinance() {
         {isCurrentMonthView && hasPix && (
           <PixLinha hasPix profile={profile} onOpen={() => setPixOpen(true)} />
         )}
-
-        {/* Complemento, deliberadamente no fim e discreto.
-          *
-          * O foco desta tela é ENTRADA: quem pagou, quem não pagou, quem
-          * atrasou — a pergunta que o tio responde todo dia. Despesa é a
-          * conta que ele fecha uma vez por mês, então fica atrás de um
-          * toque em vez de competir por espaço com a cobrança.
-          *
-          * Estava aninhado DENTRO do bloco de carregamento: aparecia no meio
-          * do esqueleto e sumia quando a lista chegava. Na prática, não havia
-          * caminho pras despesas a partir daqui. */}
-        <button
-          type="button"
-          onClick={() => navigate('/tio/finance/expenses')}
-          className="tap flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-rest"
-        >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutro text-text">
-            <TrendingDown size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-bold leading-tight text-text">Visão completa</p>
-            <p className="mt-0.5 text-sm text-textMuted">
-              Lance despesas e veja quanto sobrou no mês
-            </p>
-          </div>
-          <ChevronRight size={18} className="shrink-0 text-textMuted" />
-        </button>
 
         {/* A PESQUISA DO CARTÃO, no fim e sem prometer nada.
           *
@@ -723,6 +940,8 @@ export default function TioFinance() {
           <InteressePorCartao />
         </div>
       </div>
+
+      <FolhaDeDespesa open={despesaAberta} onClose={() => setDespesaAberta(false)} comValores />
 
       <PixSheet open={pixOpen} onClose={() => setPixOpen(false)} />
       {folhaDoPix}
@@ -813,6 +1032,98 @@ const FILTROS = [
   { value: 'open', label: 'Faltam' },
   { value: 'paid', label: 'Pagas' },
 ];
+
+/**
+ * O nome de cada despesa no extrato. A auxiliar aparece como "Salário da
+ * auxiliar" — é como ele fala; "Monitor / auxiliar" é o rótulo do formulário.
+ */
+const ROTULOS_DO_EXTRATO = {
+  ...Object.fromEntries(Object.entries(EXPENSE_CATEGORIES).map(([k, c]) => [k, c.label])),
+  monitor: 'Salário da auxiliar',
+};
+
+/**
+ * O plano da plataforma numa linha: "Mensal · Em dia". Só a FORMA — o valor
+ * da fatura mora em `/tio/taxa`, com a conta que o gerou.
+ */
+function descreverPlano(profile, fatura) {
+  const nome =
+    profile?.plano === 'anual' ? 'Anual' : profile?.plano === 'mensal' ? 'Mensal' : 'Período de teste';
+  if (profile?.suspenso === true) return { nome, estado: 'Suspenso' };
+  if (!fatura) return { nome, estado: 'Em dia' };
+  const atraso = diasDeAtraso(fatura, new Date());
+  return { nome, estado: atraso !== null && atraso > 0 ? 'Fatura atrasada' : 'Fatura em aberto' };
+}
+
+/** Atalho do caixa: ícone num quadrado branco, o nome embaixo. */
+function Atalho({ icon: Icon, rotulo, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="tap flex flex-col items-center gap-2 rounded-2xl py-1 text-center"
+    >
+      <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card text-primary shadow-rest">
+        <Icon size={24} />
+      </span>
+      <span className="text-sm font-semibold leading-tight text-text">{rotulo}</span>
+    </button>
+  );
+}
+
+/** Uma porta do caixa: ícone, título, uma linha de detalhe e a seta. */
+function Porta({ icon: Icon, titulo, detalhe, onClick, divisor = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tap flex min-h-16 w-full items-center gap-3.5 px-4 py-4 text-left ${
+        divisor ? 'border-t border-neutro' : ''
+      }`}
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
+        <Icon size={22} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-bold text-text">{titulo}</span>
+        <span className="block truncate text-sm tabular-nums text-textMuted">{detalhe}</span>
+      </span>
+      <ChevronRight size={20} className="shrink-0 text-textBody" />
+    </button>
+  );
+}
+
+/**
+ * Uma linha do extrato: entrada com seta para cima, verde; saída com seta
+ * para baixo, vermelha. A cor acompanha a seta e o sinal — nunca é o único
+ * jeito de saber se o dinheiro entrou ou saiu.
+ */
+function LinhaDoExtrato({ movimento, reais }) {
+  const entrada = movimento.tipo === 'entrada';
+  return (
+    <div className="flex min-h-16 items-center gap-3 border-t border-neutro px-4 py-3">
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+          entrada ? 'bg-primaryChip text-accentText' : 'bg-dangerSoft text-dangerText'
+        }`}
+      >
+        {entrada ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-base font-semibold text-text">{movimento.titulo}</p>
+        <p className="truncate text-sm text-textMuted">{movimento.detalhe}</p>
+      </div>
+      <span
+        className={`shrink-0 whitespace-nowrap text-base font-bold tabular-nums ${
+          entrada ? 'text-accentText' : 'text-dangerText'
+        }`}
+      >
+        {entrada ? '+ ' : '− '}
+        {reais(movimento.valor)}
+      </span>
+    </div>
+  );
+}
 
 /**
  * A chave PIX numa linha. Sem chave ela é AVISO (âmbar, no alto da tela);

@@ -23,6 +23,7 @@ import { useActiveCallsForAdmin } from '../../hooks/usePendingCall';
 import { useChildren } from '../../hooks/useChildren';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import OutgoingCallPanel from '../../components/call/OutgoingCallPanel';
+import GuardaDoFinanceiro from '../../components/financeiro/GuardaDoFinanceiro';
 import BirthdayModal from '../../components/festive/BirthdayModal';
 import { faltaCompletarCadastro } from '../../dominio/identidade/cadastroDoMotorista.js';
 import {
@@ -296,7 +297,13 @@ export default function TioLayout() {
         * Financeiro (à direita). Quem não é aba entra sem direção — inventar
         * um lado ensinaria uma geografia que não existe. */}
       <div key={abaAtiva} className={entradaDaTela} >
-        <Outlet context={{ openTutorial }} />
+        {/* ⚠️ O GUARDA DO FINANCEIRO ENVOLVE O OUTLET INTEIRO (03/10/2026) e
+          * decide pelo CAMINHO: só age em `/tio/finance…`. Assim toda tela
+          * nova pendurada ali nasce atrás da senha, sem ninguém lembrar de
+          * embrulhá-la no App.jsx. Ver GuardaDoFinanceiro.jsx. */}
+        <GuardaDoFinanceiro>
+          <Outlet context={{ openTutorial }} />
+        </GuardaDoFinanceiro>
       </div>
       {/* ⚠️ O CADASTRO DA CRIANÇA NÃO TEM A BARRA DE BAIXO (02/10/2026).
         * Ele é um passo a passo com "Cancelar" e "Avançar" próprios, num

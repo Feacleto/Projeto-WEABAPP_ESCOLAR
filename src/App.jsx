@@ -46,6 +46,7 @@ const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 
 const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
 const GuardaDaConta = lazy(() => import('./components/tio/GuardaDaConta'));
+const GuardaDoFinanceiro = lazy(() => import('./components/financeiro/GuardaDoFinanceiro'));
 const PrimeiroAcesso = lazy(() => import('./pages/tio/PrimeiroAcesso'));
 const PrimeiroAcessoDoPai = lazy(() => import('./pages/pai/PrimeiroAcessoDoPai'));
 const AguardandoVinculo = lazy(() => import('./components/acesso/AguardandoVinculo'));
@@ -59,6 +60,7 @@ const TioFinance = lazy(() => import('./pages/tio/TioFinance'));
 const TioFinanceReport = lazy(() => import('./pages/tio/TioFinanceReport'));
 const TioChildStatement = lazy(() => import('./pages/tio/TioChildStatement'));
 const TioExpenses = lazy(() => import('./pages/tio/TioExpenses'));
+const TioTurma = lazy(() => import('./pages/tio/TioTurma'));
 const TioContract = lazy(() => import('./pages/tio/TioContract'));
 const TioPixConfig = lazy(() => import('./pages/tio/TioPixConfig'));
 const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
@@ -100,6 +102,7 @@ import { estadoDoContrato } from './dominio/cobranca/contratoDaFamilia.js';
 import Respiro from './components/common/Respiro';
 import { SITE_INSTITUCIONAL } from './config/vitrine';
 import Travessia from './components/common/Travessia';
+import { TrancaDoFinanceiroProvider } from './context/TrancaDoFinanceiroContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useGlobalClickSound } from './hooks/useGlobalClickSound';
 import { useRegistroDeVisita } from './hooks/useRegistroDeVisita';
@@ -509,6 +512,11 @@ export default function App() {
           * do erro que o boundary do main.jsx, e por isso é o que atende
           * quase sempre. Ver ErrorBoundary.jsx. */}
         <ErrorBoundary>
+        {/* A TRANCA DO FINANCEIRO fica POR FORA das rotas (03/10/2026): ela
+          * precisa ver o `/tio/finance` (dentro do TioLayout) e o `/tio/taxa`
+          * (fora dele) com o mesmo estado, e vigiar a saída das duas. Ver
+          * TrancaDoFinanceiroContext.jsx. */}
+        <TrancaDoFinanceiroProvider>
         <Routes>
         {/* Rotas públicas */}
         {/* A APRESENTAÇÃO DA PLATAFORMA SAIU DO APP.
@@ -633,6 +641,7 @@ export default function App() {
         <Route path="finance" element={<TioFinance />} />
         <Route path="finance/report" element={<TioFinanceReport />} />
         <Route path="finance/expenses" element={<TioExpenses />} />
+        <Route path="finance/turma" element={<TioTurma />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
         {/* O selo fica DENTRO do guarda: quem está bloqueado não precisa de
@@ -675,7 +684,13 @@ export default function App() {
         element={
           <PrivateRoute requireRole="admin">
             <SoComCobranca>
-              <TioTaxa />
+              {/* A fatura é protegida pela senha do Financeiro (03/10/2026).
+                * Continua FORA do GuardaDaConta — quem está bloqueado precisa
+                * chegar aqui para pagar —, e o guarda do Financeiro não
+                * depende de conta ativa. */}
+              <GuardaDoFinanceiro voltarPara="/tio">
+                <TioTaxa />
+              </GuardaDoFinanceiro>
             </SoComCobranca>
           </PrivateRoute>
         }
@@ -739,6 +754,7 @@ export default function App() {
           * do doc users. /welcome segue existindo pra links antigos. */}
         <Route path="*" element={<NaoEncontrado />} />
         </Routes>
+        </TrancaDoFinanceiroProvider>
         </ErrorBoundary>
       </Suspense>
 

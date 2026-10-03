@@ -540,6 +540,7 @@ async function main() {
   await oAceite({ tio1, tio2, pai1 });
   await oTesteDeCodigo({ tio1, tio2, pai1, dono });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
+  await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -570,6 +571,126 @@ async function criarComHoraDoServidor(caminho, s, fields, campoHora) {
       }],
     }),
   }).then((r) => r.status);
+}
+
+/**
+ * O FINANCEIRO COM SENHA (03/10/2026). A auxiliar usa o celular do motorista
+ * e não deve ver valores — o Financeiro abre com uma senha conferida por
+ * callable. O que este bloco trava:
+ *   - `senhasDoFinanceiro/{uid}` (o hash): ninguém do lado de fora, nem ele;
+ *   - `configFinanceiro/{uid}`: só ele lê; `temSenha` é do servidor;
+ *     `kmDasRotas` só sobe, e no máximo 1000 por escrita;
+ *   - `expenses.kmPainel`/`kmContador`: número não negativo;
+ *   - `children.inativadoEm`: a data da saída, gravada junto do `active: false`.
+ *
+ * Atores PRÓPRIOS: o `tio1` a esta altura já foi reescrito por blocos
+ * anteriores (plano, teste vencido...), e um 403 aqui não pode ser herança.
+ */
+async function oFinanceiroTrancado({ tio2, pai1, novato, dono, anon }) {
+  console.log('\n═══ O FINANCEIRO COM SENHA — senha, km e saída da criança ═══');
+  const fin = await criarLogin(`fin.${Date.now()}@teste.local`);
+  const fin2 = await criarLogin(`fin2.${Date.now()}@teste.local`);
+  await semear(`users/${fin.uid}`, { role: S('admin'), name: S('Tio Financeiro') });
+  await semear(`users/${fin2.uid}`, { role: S('admin'), name: S('Tio Sem Config') });
+  await semear(`users/${pai1.uid}`, {
+    role: S('parent'), name: S('Pai Um'), adminUid: S(fin.uid), childId: S('kidFin'),
+  });
+  await semear('children/kidFin', {
+    name: S('Caio'), adminUid: S(fin.uid), parentUid: S(pai1.uid), active: B(true), monthlyFee: N(300),
+  });
+  await semear(`senhasDoFinanceiro/${fin.uid}`, { hash: S('abc'), sal: S('def') });
+  await semear(`configFinanceiro/${fin.uid}`, { temSenha: B(true), kmDasRotas: N(100) });
+
+  const BL = 'financeiro';
+  const cfg = `configFinanceiro/${fin.uid}`;
+  // O que `somarKmDasRotas` manda: setDoc com merge e só o increment.
+  const somarKm = (sessao, uid, valor) => {
+    const base = FS.slice(0, -'/documents'.length);
+    return fetch(`${base}/documents:commit`, {
+      method: 'POST',
+      headers: H(sessao),
+      body: JSON.stringify({
+        writes: [{
+          update: { name: `projects/${PID}/databases/(default)/documents/configFinanceiro/${uid}`, fields: {} },
+          updateMask: { fieldPaths: [] },
+          updateTransforms: [{ fieldPath: 'kmDasRotas', increment: { doubleValue: valor } }],
+        }],
+      }),
+    }).then((r) => r.status);
+  };
+
+  // A SENHA — nem ele, nem ninguém.
+  checar(BL, 'o próprio motorista NÃO lê o hash da senha', 'NEGA', await ler(`senhasDoFinanceiro/${fin.uid}`, fin));
+  checar(BL, 'o próprio NÃO zera o contador de tentativas', 'NEGA',
+    await escrever(`senhasDoFinanceiro/${fin.uid}`, fin, { erros: N(0) }, ['erros']));
+  checar(BL, 'o próprio NÃO cria o documento da senha', 'NEGA',
+    await criar('senhasDoFinanceiro', novato.uid, novato, { hash: S('x') }));
+  checar(BL, 'outro motorista não lê a senha', 'NEGA', await ler(`senhasDoFinanceiro/${fin.uid}`, tio2));
+  checar(BL, 'a família não lê a senha', 'NEGA', await ler(`senhasDoFinanceiro/${fin.uid}`, pai1));
+  checar(BL, 'o dono não lê a senha', 'NEGA', await ler(`senhasDoFinanceiro/${fin.uid}`, dono));
+  checar(BL, 'anônimo não lê a senha', 'NEGA', await ler(`senhasDoFinanceiro/${fin.uid}`, anon));
+
+  // A CONFIGURAÇÃO — só ele.
+  checar(BL, 'o próprio lê a configuração', 'PASSA', await ler(cfg, fin));
+  checar(BL, 'a família dele NÃO lê a configuração', 'NEGA', await ler(cfg, pai1));
+  checar(BL, 'outro motorista NÃO lê a configuração', 'NEGA', await ler(cfg, tio2));
+  checar(BL, 'novato NÃO lê a configuração alheia', 'NEGA', await ler(cfg, novato));
+  checar(BL, 'o dono NÃO lê a configuração', 'NEGA', await ler(cfg, dono));
+  checar(BL, 'anônimo NÃO lê a configuração', 'NEGA', await ler(cfg, anon));
+  checar(BL, 'outro motorista NÃO escreve na configuração', 'NEGA',
+    await escrever(cfg, tio2, { usoDaPerua: S('so_rota') }, ['usoDaPerua']));
+
+  // temSenha é do servidor.
+  checar(BL, 'ele NÃO apaga o próprio temSenha', 'NEGA', await escrever(cfg, fin, {}, ['temSenha']));
+  checar(BL, 'ele NÃO grava temSenha: false', 'NEGA',
+    await escrever(cfg, fin, { temSenha: B(false) }, ['temSenha']));
+  checar(BL, 'novato NÃO cria a configuração com temSenha', 'NEGA',
+    await criar('configFinanceiro', novato.uid, novato, { temSenha: B(true) }));
+  checar(BL, 'novato cria a própria só com usoDaPerua', 'PASSA',
+    await criar('configFinanceiro', novato.uid, novato, { usoDaPerua: S('tambem_fora') }));
+  checar(BL, 'novato NÃO cria a configuração de outro', 'NEGA',
+    await criar('configFinanceiro', fin2.uid, novato, { usoDaPerua: S('so_rota') }));
+
+  // usoDaPerua.
+  checar(BL, 'ele responde "só nas rotas"', 'PASSA',
+    await escrever(cfg, fin, { usoDaPerua: S('so_rota') }, ['usoDaPerua']));
+  checar(BL, 'resposta fora da lista é recusada', 'NEGA',
+    await escrever(cfg, fin, { usoDaPerua: S('as_vezes') }, ['usoDaPerua']));
+  checar(BL, 'campo estranho é recusado', 'NEGA',
+    await escrever(cfg, fin, { saldo: N(1) }, ['saldo']));
+
+  // kmDasRotas só sobe.
+  checar(BL, 'somar 5 km (increment, como o SDK manda)', 'PASSA', await somarKm(fin, fin.uid, 5));
+  checar(BL, 'km NÃO desce (increment negativo)', 'NEGA', await somarKm(fin, fin.uid, -3));
+  checar(BL, 'km NÃO desce (valor menor)', 'NEGA', await escrever(cfg, fin, { kmDasRotas: N(10) }, ['kmDasRotas']));
+  checar(BL, 'km NÃO pula mais de 1000 numa escrita', 'NEGA', await somarKm(fin, fin.uid, 1500));
+  checar(BL, 'km NÃO vira texto', 'NEGA', await escrever(cfg, fin, { kmDasRotas: S('999') }, ['kmDasRotas']));
+  checar(BL, 'km NÃO é apagado (voltaria a zero)', 'NEGA', await escrever(cfg, fin, {}, ['kmDasRotas']));
+  checar(BL, 'a primeira soma de quem não tinha documento', 'PASSA', await somarKm(fin2, fin2.uid, 7.5));
+  checar(BL, 'outro motorista NÃO soma km no contador alheio', 'NEGA', await somarKm(tio2, fin.uid, 5));
+  checar(BL, 'ninguém apaga a configuração, nem ele', 'NEGA', await apagar(cfg, fin));
+
+  // A despesa com km.
+  const despesa = (extra = {}) => ({
+    adminUid: S(fin.uid), monthKey: S('2026-10'), amount: N(250), category: S('combustivel'), ...extra,
+  });
+  checar(BL, 'despesa com kmPainel e kmContador passa', 'PASSA',
+    await criar('expenses', 'despKm1', fin, despesa({ kmPainel: N(123456), kmContador: N(105) })));
+  checar(BL, 'despesa sem km continua passando', 'PASSA', await criar('expenses', 'despKm2', fin, despesa()));
+  checar(BL, 'kmPainel negativo é recusado', 'NEGA',
+    await criar('expenses', 'despKm3', fin, despesa({ kmPainel: N(-1) })));
+  checar(BL, 'kmContador em texto é recusado', 'NEGA',
+    await criar('expenses', 'despKm4', fin, despesa({ kmContador: S('105') })));
+  checar(BL, 'corrigir o kmPainel depois passa', 'PASSA',
+    await escrever('expenses/despKm1', fin, { kmPainel: N(123460) }, ['kmPainel']));
+  checar(BL, 'outro motorista não cria despesa com km em nome dele', 'NEGA',
+    await criar('expenses', 'despKm5', tio2, despesa({ kmPainel: N(1) })));
+
+  // A data de saída da criança.
+  checar(BL, 'o motorista inativa a criança com inativadoEm', 'PASSA',
+    await escrever('children/kidFin', fin, { active: B(false), inativadoEm: T(0) }, ['active', 'inativadoEm']));
+  checar(BL, 'a família não grava inativadoEm', 'NEGA',
+    await escrever('children/kidFin', pai1, { inativadoEm: T(0) }, ['inativadoEm']));
 }
 
 async function oTesteDeCodigo({ tio1, tio2, pai1, dono }) {

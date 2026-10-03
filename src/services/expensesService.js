@@ -8,6 +8,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   serverTimestamp,
   Timestamp,
@@ -18,11 +19,11 @@ import { auth, db } from '../firebase/config';
  * Despesas do motorista.
  *
  * O LUGAR DISTO NO PRODUTO
- * A tela de Financeiro continua sendo sobre ENTRADA: quem pagou, quem não
- * pagou, quem atrasou. Despesa é COMPLEMENTO — vive atrás da "visão
- * completa", pra quem quer fechar a conta do mês. Misturar as duas na tela
- * principal transformaria a pergunta "quem me deve?" numa planilha de
- * contabilidade, e é a primeira que ele precisa responder todo dia.
+ * Desde 03/10/2026 o Financeiro é um CAIXA: o saldo do mês é o que entrou
+ * menos o que saiu, e a despesa aparece no extrato do dia ao lado da
+ * mensalidade paga. A cobrança continua sendo o trabalho de todo dia (aba
+ * Mensalidades); a despesa ganhou um atalho ("Lançar despesa") e uma porta
+ * ("Despesas do mês"), sem virar planilha na tela principal.
  *
  * PRIVACIDADE
  * Despesa é dado de negócio do tio. Nenhum responsável enxerga: as rules
@@ -36,8 +37,27 @@ import { auth, db } from '../firebase/config';
  *     description: string (opcional)
  *     date: Timestamp — quando o gasto aconteceu
  *     monthKey: 'YYYY-MM' desnormalizado, pra consultar por mês sem range
+ *     kmPainel: number (opcional) — o hodômetro que ele digitou ao lançar
+ *     kmContador: number (opcional) — `configFinanceiro.kmDasRotas` no
+ *                 instante do lançamento (o contador das rotas)
  *     createdAt
+ *
+ * OS DOIS KM (03/10/2026). O km entre dois abastecimentos é a diferença
+ * entre duas leituras do MESMO contador — ver
+ * `dominio/cobranca/historicoDeDespesas.js`. Gravar os dois quando houver é o
+ * que deixa ele trocar a resposta de "a perua roda só nas rotas?" depois sem
+ * perder o histórico.
  */
+
+/** Km opcional: ausente/vazio vira `undefined` (não grava); inválido lança. */
+function kmOpcional(valor, nome) {
+  if (valor === null || valor === undefined || valor === '') return undefined;
+  const n = Number(String(valor).replace(',', '.'));
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(`${nome} precisa ser um número igual ou maior que zero.`);
+  }
+  return Math.round(n * 10) / 10;
+}
 
 /**
  * Categorias reais de uma perua escolar no Brasil.
@@ -70,7 +90,7 @@ function toDate(value) {
   return new Date();
 }
 
-export async function addExpense({ amount, category, description, date }) {
+export async function addExpense({ amount, category, description, date, kmPainel, kmContador }) {
   const value = Number(amount);
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error('Informe um valor maior que zero.');
@@ -79,6 +99,8 @@ export async function addExpense({ amount, category, description, date }) {
     throw new Error('Escolha uma categoria.');
   }
   const when = toDate(date);
+  const painel = kmOpcional(kmPainel, 'O km do painel');
+  const contador = kmOpcional(kmContador, 'O km das rotas');
 
   const dono = auth.currentUser?.uid;
   if (!dono) throw new Error('Entre de novo para lançar a despesa.');
@@ -99,6 +121,8 @@ export async function addExpense({ amount, category, description, date }) {
     // Desnormalizado de propósito: a consulta do mês fica em campo único e
     // não exige índice composto nem range de datas.
     monthKey: monthKeyOf(when),
+    ...(painel !== undefined ? { kmPainel: painel } : {}),
+    ...(contador !== undefined ? { kmContador: contador } : {}),
     createdAt: serverTimestamp(),
   });
 }
@@ -167,6 +191,34 @@ export function watchExpensesByMonths(monthKeys, onUpdate, onError) {
     (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
     (err) => {
       console.error('watchExpensesByMonths:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
+ * As últimas despesas de UMA categoria, mais recente primeiro — o histórico
+ * da folha de lançar e a linha de detalhe de cada categoria (03/10/2026).
+ *
+ * Fora do mês de propósito: a última manutenção costuma ter sido há meses.
+ * O limite é pequeno porque a pergunta é "qual foi a última", não "todas".
+ * Pede o índice (adminUid, category, date desc) em firestore.indexes.json.
+ */
+export function watchDespesasRecentes(categoria, quantas, onUpdate, onError) {
+  const dono = auth.currentUser?.uid;
+  if (!dono || !EXPENSE_CATEGORIES[categoria]) return () => {};
+  const q = query(
+    collection(db, 'expenses'),
+    where('adminUid', '==', dono),
+    where('category', '==', categoria),
+    orderBy('date', 'desc'),
+    limit(Math.max(1, Math.min(Number(quantas) || 10, 50)))
+  );
+  return onSnapshot(
+    q,
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('watchDespesasRecentes:', err);
       if (onError) onError(err);
     }
   );

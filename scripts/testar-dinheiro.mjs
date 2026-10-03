@@ -106,7 +106,8 @@ console.log('6. nenhum campo de dinheiro volta a ser type="number"');
 for (const arq of [
   'src/components/children/ChildForm.jsx',
   'src/components/contract/EditarCombinadoSheet.jsx',
-  'src/pages/tio/TioExpenses.jsx',
+  // A despesa é lançada na folha desde 03/10/2026 — a tela de despesas a abre.
+  'src/components/financeiro/FolhaDeDespesa.jsx',
 ]) {
   const fonte = readFileSync(join(raiz, arq), 'utf8');
   igual(`${arq} usa CampoDeValor`, fonte.includes('<CampoDeValor'), true);

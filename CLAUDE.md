@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 52 scripts. O PRIMEIRO é
+npm run testar                   # 58 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -37,7 +37,9 @@ npm run testar                   # 52 scripts. O PRIMEIRO é
                                  # proposta, chamados, risco, fila, concessao,
                                  # selo, indicacao, irmaos, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca, site,
-                                 # tutorial
+                                 # tutorial, mapa, modulos, e os do Financeiro
+                                 # trancado: extrato, despesas, turma (depois de
+                                 # dinheiro), tranca, senha-financeiro, km-da-rota
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -328,7 +330,8 @@ src/
 │   │                 hoje. Pública, sem conta, sem sessão do Firebase e sem
 │   │                 mapa ao vivo: a posição da perua é o veículo de um
 │   │                 autônomo e ele não decidiu compartilhá-la com terceiros
-│   ├── tio/           22 telas do motorista — entre elas `TioEncerrar`
+│   ├── tio/           23 telas do motorista — entre elas `TioTurma`
+│   │                 (`/tio/finance/turma`, atrás da senha), `TioEncerrar`
 │   │                 (`/tio/encerrar`, FORA do `GuardaDaConta`: quem está
 │   │                 bloqueado por atraso precisa conseguir sair) e
 │   │                 `PrimeiroAcesso`,
@@ -383,7 +386,9 @@ src/
 │                      tokens`), importado no topo do index.css. Não edite.
 ├── config/            capabilities, developer, vitrine,
 │                      paletaCategorica (o único lugar com cor crua)
-├── context/           AuthContext (perfil + papel) e NotificacoesContext
+├── context/           AuthContext (perfil + papel), NotificacoesContext e
+│                      TrancaDoFinanceiroContext (montado no App, não no
+│                      TioLayout: `/tio/taxa` mora fora do layout)
 │                      (a ÚNICA escuta do sino, uma vez por sessão)
 ├── dominio/           AS REGRAS. Puro, sem Firebase, sem React — um contexto
 │                      por pasta (ver "Os sete contextos" abaixo)
@@ -523,7 +528,8 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `platformConfig` ·
-`limitesDeTentativa` e `asaasEventosProcessados` (só o servidor) ·
+`limitesDeTentativa`, `asaasEventosProcessados` e `senhasDoFinanceiro` (só o servidor) ·
+`configFinanceiro` (só o próprio motorista lê) ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -1479,6 +1485,11 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 - **Acesso de 24 horas:** `gerarAcessoTemporario`, `encerrarAcessoTemporario`
   e `inscreverAvisosDoAcesso` (pública; quem prova é o token), e o
   `verAcompanhamento` lê os dois tipos de link
+- **Senha do Financeiro:** `criarSenhaDoFinanceiro` e `conferirSenhaDoFinanceiro`
+  ([senhaDoFinanceiro.js](functions/lib/senhaDoFinanceiro.js), régua pura em
+  [reguaDaSenhaDoFinanceiro.js](functions/lib/reguaDaSenhaDoFinanceiro.js),
+  espelho de `src/dominio/identidade/tecladoDeBanco.js`). Ver "A SENHA DO
+  FINANCEIRO" abaixo.
 - **Contratação:** `contratarPlano` — o MOTORISTA escolhe mensal ou anual e o
   servidor escreve a cláusula (`users.plano` mais o desconto do degrau, com
   `ate: null`). É function porque esses campos estão na lista que o cliente
@@ -1689,6 +1700,61 @@ congelava vazia — não desenhava nada, enquanto o portão mantinha o `/pai`
 INERTE: a mãe aceitava o contrato e caía numa tela que não respondia a toque
 (teste R2). O portão e o tour (`PaiLayout`) também esperam a criança, não só
 o "carregando".
+
+⚠️ **A SENHA DO FINANCEIRO (03/10/2026, pedido do dono): a AUXILIAR usa o
+celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
+"Senha do Financeiro — teclado de banco".
+- **Rotas protegidas:** `/tio/finance` e tudo abaixo, e `/tio/taxa`. Quem decide é
+  [GuardaDoFinanceiro](src/components/financeiro/GuardaDoFinanceiro.jsx), pelo
+  CAMINHO (no Outlet do TioLayout e na rota da taxa no App) — tela nova embaixo
+  de `/tio/finance` já nasce protegida. Régua em
+  [trancaDoFinanceiro.js](src/dominio/identidade/trancaDoFinanceiro.js)
+  (`testar:tranca`).
+- **4 números**, criados no teclado comum e confirmados JÁ no **teclado de banco**
+  (5 botões "a ou b", embaralhados ao abrir e a cada erro). O celular manda os
+  PARES, nunca a senha; o servidor guarda só o hash (scrypt) em
+  `senhasDoFinanceiro/{uid}`, que as rules fecham para TODO cliente, e testa
+  as 16 combinações que os pares permitem. 5 erros → 60 s de espera (o 5º
+  devolve `restam: 0`, não lança). Trocar exige login de até 5 min
+  (`getIdToken(true)` depois de reautenticar). ⚠️ **Não mora em `users`**: as
+  famílias leem aquele documento inteiro.
+- **Digital/rosto** (WebAuthn de plataforma) é conferida NO APARELHO — funciona
+  sem internet; a senha precisa de internet.
+- ⚠️ **É CORTINA, NÃO COFRE.** A auxiliar usa a mesma sessão; para o Firestore
+  os dois são a mesma conta. Impede que ela VEJA, não que alguém com o console
+  leia. A separação de verdade é a conta própria da auxiliar (pendente).
+- **Sair tranca** (preferência POR APARELHO: sempre / 5 min / 30 min, em
+  localStorage), com 30 s de tolerância em segundo plano (escolher foto não
+  tranca). Estado só em memória: recarregar tranca. Quem entra por um cartão da
+  tela trancada direto num destino e volta cai de novo na tela trancada; quem
+  veio do caixa volta ao caixa.
+- **Sem senha:** "Mostrar meu PIX" (só mostra — não edita a chave) e "Lançar
+  despesa" com o histórico em "R$ ••••".
+- **O caixa** ([TioFinance](src/pages/tio/TioFinance.jsx)) virou conta de banco:
+  olho que esconde valores (por aparelho), atalhos, saldo = recebido − despesas
+  do mês, portas para Despesas, Turma e contratos e Meu plano, abas **Extrato**
+  ([extratoDoMes.js](src/dominio/cobranca/extratoDoMes.js)) e Mensalidades.
+  "Relatório" virou "Baixar extrato do mês (PDF)".
+- **A folha de despesa** ([FolhaDeDespesa](src/components/financeiro/FolhaDeDespesa.jsx),
+  régua em [historicoDeDespesas.js](src/dominio/cobranca/historicoDeDespesas.js)):
+  histórico por categoria e o KM. ⚠️ **O km tem DUAS fontes e as duas são
+  gravadas**: `expenses.kmPainel` (hodômetro digitado) e `expenses.kmContador`
+  (cópia de `configFinanceiro.kmDasRotas`, somado no celular durante as rotas
+  por [kmDaRota.js](src/dominio/rota/kmDaRota.js) — só o TOTAL sai do aparelho,
+  nenhuma coordenada). A pergunta "a perua roda só nas rotas?"
+  (`configFinanceiro.usoDaPerua`) escolhe qual mostrar. Sem duas leituras do
+  mesmo contador, nenhum número.
+- **Saída da criança tem data desde 03/10/2026** (`children.inativadoEm`); antes
+  disso as saídas não são recuperáveis, e a turma
+  ([movimentoDaTurma.js](src/dominio/identidade/movimentoDaTurma.js)) diz isso.
+- ⚠️ **No `npm run dev` o Financeiro solta "INTERNAL ASSERTION FAILED (ca9)"**
+  do SDK 12 — e o app de ANTES já soltava. É o StrictMode montando cada tela
+  duas vezes e religando as escutas em milissegundos; sem StrictMode, zero
+  erros (medido em 03/10/2026). A jornada `testes-navegador/f1-financeiro.mjs`
+  (com `semear-financeiro.mjs`) precisa do StrictMode desligado só durante o
+  teste. Em produção não há a dupla montagem, mas navegação muito rápida é o
+  mesmo tipo de corrida — se aparecer em produção, a saída é compartilhar as
+  escutas, não desligar o StrictMode.
 
 **Responsável avulso: guarda UM.** `children.altResponsibles` é um array de no
 máximo 1 — o último. Era lista que só crescia; ninguém mantém lista, e são
@@ -2466,7 +2532,7 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (380 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (419 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes
