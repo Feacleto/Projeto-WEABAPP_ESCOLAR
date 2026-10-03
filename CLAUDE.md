@@ -210,6 +210,10 @@ ignora o link do convite e toca em "Entrar com Google" viraria motorista, e o
 responsável) — ela ficaria presa, sem saída no app. A sala de espera pergunta
 o que ela FEZ (recebi convite / tenho uma van), não o que ela É: papel é uma
 classificação que ela nunca viu, e obriga a mentir quem é as duas coisas.
+⚠️ **REVERTIDO EM 03/10/2026 (decisão do dono):** a tela ficou simples —
+"**Sou** motorista · Tenho van escolar" (primeiro, cheio) e "**Sou**
+responsável · Meu filho anda na van" (contorno). O texto curto é o que separa
+as duas portas agora.
 
 **Quem chega pelo link nunca vê essa tela** — o código está na URL e a frente
 já é conhecida. E a conta pendurada é INERTE: toda leitura passa por

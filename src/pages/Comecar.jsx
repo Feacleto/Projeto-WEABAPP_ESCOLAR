@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bus, LogOut, Ticket } from 'lucide-react';
+import { Bus, LogOut, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Spinner from '../components/common/Spinner';
 import { ligarSessaoComoMotorista } from '../services/associadoService';
@@ -31,6 +31,15 @@ import { painelDe } from '../dominio/identidade/papeis';
  * a mentir quem é as duas coisas (o motorista que também é pai de aluno — ver
  * dominio/vitrine/frentes.js). A pergunta daqui é sobre o que ela TEM NA MÃO:
  * um convite, ou uma van.
+ *
+ * ⚠️ ATUALIZAÇÃO 03/10/2026 (decisão do dono): A PERGUNTA VOLTOU A SER "QUEM
+ * VOCÊ É", e o motorista vem PRIMEIRO. A versão "o que você tem na mão" pedia
+ * leitura demais para uma escolha de um toque — o dono quer a tela simples:
+ * **Sou** motorista / **Sou** responsável, com o "Sou" em negrito e uma linha
+ * curta embaixo que não deixa dúvida de qual é qual. O risco que a pergunta
+ * antiga cobria (a mãe virando motorista) segue coberto pelo TEXTO: a porta
+ * do motorista fala em van, a da família fala do filho. E o motorista vem
+ * primeiro porque é o usuário principal do produto.
  *
  * QUEM CHEGA PELO LINK NUNCA VÊ ESTA TELA. O código vem na URL
  * (`/convite/:codigo`) e o app já sabe de que lado ela está. Isto aqui é o
@@ -91,63 +100,54 @@ export default function Comecar() {
       <div className="mx-auto w-full max-w-mobile space-y-6">
         <div className="text-center">
           <Logo variant="stacked" height={80} className="mx-auto" />
-          <h1 className="mt-5 text-2xl font-bold text-text">
-            Falta ligar sua conta
+          <h1 className="mt-5 text-2xl font-extrabold text-text">
+            Como você vai usar o app?
           </h1>
-          <p className="mt-2 text-sm text-textMuted">
-            Sua entrada funcionou{user?.email ? ` como ${user.email}` : ''}. Só
-            precisamos saber por onde você chegou.
-          </p>
+          {user?.email && (
+            <p className="mt-2 text-sm text-textMuted">Você entrou como {user.email}.</p>
+          )}
         </div>
 
+        {/* AS DUAS PORTAS DO DESIGN SYSTEM: a do motorista é CHEIA (verde) e
+          * vem primeiro; a da família é de CONTORNO. Uma linha de explicação
+          * cada, curta, para ninguém tocar na errada. */}
         <div className="space-y-3">
-          {/* A ordem não é neutra: o convite vem primeiro porque quem cai aqui
-            * por engano é quase sempre a responsável — o motorista costuma vir
-            * do "Cadastrar", que já diz o que ele é. */}
-          <Link
-            to="/first-access"
-            className="tap flex items-start gap-3 rounded-xl border-2 border-border bg-card p-4 hover:border-primary"
-          >
-            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primaryChip">
-              <Ticket size={19} className="text-primary" />
-            </span>
-            <span className="min-w-0">
-              <span className="block font-semibold text-text">
-                Recebi um convite de um motorista
-              </span>
-              <span className="mt-0.5 block text-sm text-textMuted">
-                Ele te mandou o link, ou você ainda vai pedir um pra ele.
-              </span>
-            </span>
-          </Link>
-
           <button
             type="button"
             onClick={souMotorista}
             disabled={criando}
-            className="tap flex w-full items-start gap-3 rounded-xl border-2 border-border bg-card p-4 text-left hover:border-primary disabled:opacity-60"
+            className="tap flex w-full items-center gap-4 rounded-2xl bg-primary p-5 text-left text-white shadow-focus disabled:opacity-60"
           >
-            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primaryChip">
-              {criando ? (
-                <Spinner size={19} className="text-primary" />
-              ) : (
-                <Bus size={19} className="text-primary" />
-              )}
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-onNightAccent">
+              {criando ? <Spinner size={22} /> : <Bus size={24} />}
             </span>
             <span className="min-w-0">
-              <span className="block font-semibold text-text">
-                Sou motorista e quero criar minha operação
+              <span className="block text-lg text-white">
+                <b className="font-extrabold">Sou</b> motorista
               </span>
-              <span className="mt-0.5 block text-sm text-textMuted">
-                Cadastre suas crianças, rode a rota e cobre a mensalidade.
+              <span className="mt-0.5 block text-[15px] text-primaryChip">
+                Tenho van escolar.
               </span>
             </span>
           </button>
-        </div>
 
-        <p className="text-center text-xs text-textMuted">
-          Nada foi criado ainda. Você escolhe agora, e dá para sair e voltar.
-        </p>
+          <Link
+            to="/first-access"
+            className="tap flex items-center gap-4 rounded-2xl border-2 border-border bg-card p-5"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
+              <Users size={24} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-lg text-text">
+                <b className="font-extrabold">Sou</b> responsável
+              </span>
+              <span className="mt-0.5 block text-[15px] text-textMuted">
+                Meu filho anda na van.
+              </span>
+            </span>
+          </Link>
+        </div>
 
         <button
           type="button"
