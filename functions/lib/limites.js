@@ -127,7 +127,22 @@ const CONCORRENCIA_AGENDADO = 1;
 const TEMPO_AGENDADO = 540;
 const MEMORIA_AGENDADO = '512MiB';
 
+/**
+ * O APP CHECK NAS CALLABLES (03/10/2026) — pronto no código, DESLIGADO até a
+ * chave existir. Sem App Check, qualquer script fora do app chama as funções
+ * (e os ataques de tentativa e erro viram um laço de curl). Ligar exige, na
+ * ordem: registrar o app no console (reCAPTCHA Enterprise), publicar o app com
+ * `VITE_APPCHECK_SITE_KEY`, olhar as métricas por uns dias, e só então
+ * `EXIGIR_APP_CHECK=true` no `functions/.env`. Ligar antes recusa o app real.
+ *
+ * Toda callable espalha isto nas opções: \`onCall({ ...LIMITES.APP_CHECK, ... })\`.
+ */
+const APP_CHECK = Object.freeze({
+  enforceAppCheck: process.env.EXIGIR_APP_CHECK === 'true',
+});
+
 module.exports = {
+  APP_CHECK,
   PUBLICO,
   AUTENTICADO,
   GATILHO,
