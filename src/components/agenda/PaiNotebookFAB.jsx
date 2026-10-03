@@ -113,7 +113,7 @@ export default function PaiNotebookFAB() {
           <span className="block text-sm font-semibold text-text">
             Caderno de recados
           </span>
-          <span className="block text-[11px] text-textMuted">
+          <span className="block text-xs text-textMuted">
             O que o motorista mandou este mês
           </span>
         </span>
@@ -214,7 +214,7 @@ function NotebookView({ open, onClose }) {
               <CalendarDays size={18} />
             </button>
             <div className="flex-1 text-center">
-              <p className="text-[10px] uppercase tracking-widest text-warningText font-bold">
+              <p className="text-xs uppercase tracking-widest text-warningText font-bold">
                 {isCurrentMonth ? 'Este mês' : 'Mês passado'}
               </p>
               <p className="text-sm font-bold text-warningText">
@@ -233,7 +233,7 @@ function NotebookView({ open, onClose }) {
               <ArrowLeft size={18} />
             </button>
             <div className="flex-1 text-center">
-              <p className="text-[10px] uppercase tracking-widest text-warningText font-bold">
+              <p className="text-xs uppercase tracking-widest text-warningText font-bold">
                 Índice
               </p>
               <p className="text-sm font-bold text-warningText">
@@ -390,7 +390,7 @@ function Entry({ entry }) {
           {t.emoji}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-widest text-warningText font-bold">
+          <p className="text-xs uppercase tracking-widest text-warningText font-bold">
             {date
               ? new Intl.DateTimeFormat('pt-BR', {
                   day: '2-digit',

@@ -160,12 +160,12 @@ export default function PaiMap() {
           <p className="text-sm font-bold text-text truncate leading-tight">
             Mapa ao vivo
           </p>
-          <p className="text-[11px] text-textMuted truncate">
+          <p className="text-xs text-textMuted truncate">
             {child?.name || 'Sua criança'}
           </p>
         </div>
         {routeActive && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primaryChip text-primary text-[11px] font-bold">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primaryChip text-primary text-xs font-bold">
             <span className="relative inline-flex">
               <span className="absolute inline-flex h-1.5 w-1.5 rounded-full bg-primary opacity-75 animate-ping" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
@@ -189,7 +189,7 @@ export default function PaiMap() {
               * se desce com a criança. O círculo desenha o tamanho da
               * imprecisão; esta linha diz o nome dela. */}
             {visibleVan && (
-              <p className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] rounded-lg bg-card/90 px-3 py-1.5 text-center text-[11px] leading-snug text-textMuted shadow-sm">
+              <p className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] rounded-lg bg-card/90 px-3 py-1.5 text-center text-xs leading-snug text-textMuted shadow-sm">
                 Posição aproximada, por referência — o círculo mostra a margem.
                 Não indica o ponto exato da perua.
               </p>
@@ -385,7 +385,7 @@ function ReferenceRow({ icon: Icon, color, label, value }) {
         <Icon size={16} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] uppercase tracking-widest font-semibold text-textMuted">
+        <p className="text-xs uppercase tracking-widest font-semibold text-textMuted">
           {label}
         </p>
         <p className="text-sm text-text leading-tight truncate">{value}</p>

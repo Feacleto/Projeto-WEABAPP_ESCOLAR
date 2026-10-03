@@ -194,7 +194,7 @@ export default function MotoristasTab({ inicial = null }) {
                     </span>
                     <Pastilha degrau={l.degrau} faltam={l.faltam} />
                   </div>
-                  <p className="mt-0.5 truncate text-[11px] text-textMuted">
+                  <p className="mt-0.5 truncate text-xs text-textMuted">
                     {Number(l.mot.criancasAtivas) || 0}
                     {' '}crianças
                     {l.plano
@@ -266,7 +266,7 @@ function Fundadores({ parceiros, mes }) {
 
   return (
     <div
-      className={`mb-2 rounded-xl border p-2.5 text-[11px] leading-relaxed ${
+      className={`mb-2 rounded-xl border p-2.5 text-xs leading-relaxed ${
         estourou || muitas
           ? 'border-warningBorder bg-warningSoft text-warningText'
           : 'border-border bg-card text-textMuted'
@@ -300,7 +300,7 @@ function Pastilha({ degrau, faltam }) {
   };
   const [skin, rotulo] = mapa[degrau] || mapa.nao_comecou;
   return (
-    <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase ${skin}`}>
+    <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase ${skin}`}>
       {rotulo}
     </span>
   );

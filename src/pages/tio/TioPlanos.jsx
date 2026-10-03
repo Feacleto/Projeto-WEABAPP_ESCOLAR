@@ -307,11 +307,11 @@ export default function TioPlanos() {
                     <p className="text-xl font-bold text-text">
                       {formatCurrency(travando ? travando.liquido : preco.liquido)}
                     </p>
-                    <p className="text-[11px] text-textMuted">por mês</p>
+                    <p className="text-xs text-textMuted">por mês</p>
                     {/* O de tabela fica visível ao lado do travado — sem ele o
                       * desconto é uma afirmação sem referência. */}
                     {travando && (
-                      <p className="text-[11px] text-textMuted line-through">
+                      <p className="text-xs text-textMuted line-through">
                         {formatCurrency(preco.liquido)}
                       </p>
                     )}

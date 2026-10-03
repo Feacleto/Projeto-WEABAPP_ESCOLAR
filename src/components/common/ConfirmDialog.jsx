@@ -40,8 +40,8 @@ export default function ConfirmDialog({
 
   if (!open) return null;
 
-  const iconColor = variant === 'danger' ? 'text-danger' : 'text-primary';
-  const iconBg = variant === 'danger' ? 'bg-danger/10' : 'bg-primary/10';
+  const iconColor = variant === 'danger' ? 'text-dangerText' : 'text-primary';
+  const iconBg = variant === 'danger' ? 'bg-dangerChip' : 'bg-primaryChip';
 
   return (
     <div
@@ -51,26 +51,26 @@ export default function ConfirmDialog({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative w-full max-w-mobile bg-card rounded-2xl shadow-xl p-5"
+        className="relative w-full max-w-mobile bg-card rounded-2xl shadow-float p-5 animate-sheet-up"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={() => !loading && onCancel?.()}
           aria-label="Fechar"
-          className="absolute right-3 top-3 p-1 text-textMuted tap"
+          className="absolute right-3 top-3 w-9 h-9 rounded-lg bg-neutro flex items-center justify-center text-textMuted tap"
           disabled={loading}
         >
           <X size={20} />
         </button>
 
-        <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center mb-3`}>
+        <div className={`w-11 h-11 rounded-xl ${iconBg} flex items-center justify-center mb-3`}>
           <AlertTriangle size={24} className={iconColor} />
         </div>
 
-        <h3 className="text-lg font-bold text-text">{title}</h3>
+        <h3 className="font-display text-xl font-bold text-text leading-tight pr-8">{title}</h3>
         {description && (
-          <div className="text-sm text-textMuted mt-2 mb-5 leading-relaxed">
+          <div className="text-[15px] text-textBody mt-2 mb-5 leading-relaxed">
             {description}
           </div>
         )}

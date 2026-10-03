@@ -179,7 +179,7 @@ export default function TioIndicar() {
           </h2>
           <div className="mt-3 space-y-2">
             <label className="block">
-              <span className="mb-1 block text-[11px] text-textMuted">Nome (opcional)</span>
+              <span className="mb-1 block text-xs text-textMuted">Nome (opcional)</span>
               <input
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
@@ -188,7 +188,7 @@ export default function TioIndicar() {
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] text-textMuted">WhatsApp dele</span>
+              <span className="mb-1 block text-xs text-textMuted">WhatsApp dele</span>
               <input
                 value={telefone}
                 onChange={(e) => setTelefone(maskPhone(e.target.value))}
@@ -242,7 +242,7 @@ export default function TioIndicar() {
                   <p className="text-xs font-bold text-text">
                     {i.nome || i.telefoneDigitado}
                   </p>
-                  <p className="text-[11px] text-textMuted">
+                  <p className="text-xs text-textMuted">
                     {/* O TELEFONE COMO ELE DIGITOU. Mostrar a chave
                       * normalizada faria ele achar que indicou outra pessoa. */}
                     {i.telefoneDigitado} · {situacaoDaIndicacao(i)}

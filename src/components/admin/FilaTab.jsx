@@ -97,7 +97,7 @@ export default function FilaTab({ onIr }) {
   return (
     <div className="space-y-3">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+        <h2 className="font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
           Precisa de você hoje
         </h2>
         {/* O NÚMERO CONTA CONVERSAS, não sinais: um motorista com quatro
@@ -134,7 +134,7 @@ export default function FilaTab({ onIr }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-bold text-text">{i.titulo}</span>
                 {i.detalhe && (
-                  <span className="mt-0.5 block truncate text-[11px] text-textMuted">
+                  <span className="mt-0.5 block truncate text-xs text-textMuted">
                     {i.detalhe}
                   </span>
                 )}

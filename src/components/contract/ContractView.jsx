@@ -251,12 +251,12 @@ export default function ContractView({
             {acceptanceInfo.hash && (
               <p className="break-all">
                 <strong>Hash de integridade:</strong>{' '}
-                <span className="font-mono text-[10px]">
+                <span className="font-mono text-xs">
                   {acceptanceInfo.hash}
                 </span>
               </p>
             )}
-            <p className="text-[10px] text-textMuted pt-1">
+            <p className="text-xs text-textMuted pt-1">
               {numero ? `Versão ${numero} do contrato.` : `Contrato versão ${acceptanceInfo.version || 1}.`} Aceite registrado
               eletronicamente conforme MP 2.200-2/2001 e Lei 14.063/2020.
             </p>
@@ -265,7 +265,7 @@ export default function ContractView({
       )}
 
       {/* Rodapé com referência do contrato */}
-      <footer className="mt-8 text-center text-[10px] text-textMuted">
+      <footer className="mt-8 text-center text-xs text-textMuted">
         {numero ? `Versão ${numero}` : `Contrato de ${contractedYear}`} · referência:{' '}
         {data.inviteCode || data.childId}
       </footer>

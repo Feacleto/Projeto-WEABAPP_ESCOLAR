@@ -177,7 +177,7 @@ export default function InviteShare({
       <>
 
       <div className="bg-card border border-border rounded-xl p-3 space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted flex items-center gap-1.5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-textMuted flex items-center gap-1.5">
           <Link2 size={12} />
           {jaEntrou ? 'link de acesso' : 'link do convite'}
         </p>

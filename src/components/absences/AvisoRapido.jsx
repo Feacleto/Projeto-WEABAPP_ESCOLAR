@@ -122,7 +122,7 @@ export default function AvisoRapido({
         <button
           type="button"
           onClick={onDetalhes}
-          className="tap text-[11px] font-semibold text-primary inline-flex items-center gap-1 shrink-0"
+          className="tap text-xs font-semibold text-primary inline-flex items-center gap-1 shrink-0"
         >
           <Pencil size={12} />
           mais opções
@@ -177,7 +177,7 @@ export default function AvisoRapido({
                 {o.titulo}
               </span>
               {ativo && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary">
+                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-primary">
                   <Check size={10} /> avisado
                 </span>
               )}
@@ -211,7 +211,7 @@ export default function AvisoRapido({
               Outra pessoa
             </span>
             {outraAtiva && (
-              <span className="max-w-full truncate text-[10px] font-semibold text-primary">
+              <span className="max-w-full truncate text-xs font-semibold text-primary">
                 {String(altPickup.name || '').split(' ')[0]}
               </span>
             )}
@@ -219,7 +219,7 @@ export default function AvisoRapido({
         )}
       </div>
 
-      <p className="text-[11px] text-textMuted leading-relaxed">
+      <p className="text-xs text-textMuted leading-relaxed">
         {declarado
           ? 'Toque de novo no mesmo botão pra desfazer.'
           : 'Um toque avisa o motorista na hora.'}

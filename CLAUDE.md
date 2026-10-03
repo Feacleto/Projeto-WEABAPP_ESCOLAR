@@ -16,13 +16,16 @@ commit e interface.
 ```bash
 npm install --legacy-peer-deps   # vite-plugin-pwa ainda pede Vite <= 7
 npm run dev                      # localhost:5173
+npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
+                                 # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 44 scripts. O PRIMEIRO é
+npm run testar                   # 46 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
                                  # horarios, viagem, faltas, endereco, aviso,
-                                 # proximidade, vazamento, contraste, travessia,
+                                 # proximidade, vazamento, contraste, design,
+                                 # travessia,
                                  # contrato, combinado,
                                  # pix, brcode,
                                  # status, auth, trial, planos, avisos,
@@ -98,6 +101,16 @@ React 19 · Vite 8 · Tailwind 3 · Firebase 12 (Auth, Firestore, Storage,
 Functions v2 em `southamerica-east1`, FCM) · react-router 7 · Leaflet 1.9 +
 react-leaflet 5 · vite-plugin-pwa · lucide-react ·
 react-hot-toast. JavaScript puro — **não há TypeScript**.
+
+**O DESIGN SYSTEM É UM SÓ PARA O APP E O SITE (03/10/2026)** — regras em
+[docs/design-system.md](docs/design-system.md), valores SÓ no
+[tailwind.config.js](tailwind.config.js). Fontes: **Bricolage Grotesque** nos
+títulos (`font-display`; todo `h1`/`h2` já sai nela) e **Instrument Sans** no
+resto — a Inter saiu. O site não lê Tailwind, então `npm run tokens` gera
+`landing/tokens.css` (e `src/design/tokens.css`), e `npm run testar:design`
+falha se uma cópia ficar para trás, se o site declarar cor própria ou se
+aparecer letra abaixo de **12px** no app. Os nomes velhos do Tailwind
+(`rounded-xl`, `shadow-sm`…) foram remapeados para os valores do sistema.
 
 ⚠️ **OS TILES DO MAPA VÊM DO MAPTILER desde 10/09/2026, e o motivo não é
 custo** — [config/mapa.js](src/config/mapa.js). Eles vinham do servidor do
@@ -350,6 +363,8 @@ src/
 │                      endereco (`BuscaDeRua`: digita a rua, o CEP vem junto)…
 ├── services/          39 módulos — TODO acesso ao Firestore passa aqui
 ├── hooks/             23 hooks, quase todos onSnapshot de um service
+├── design/            tokens.css — GERADO do tailwind.config.js (`npm run
+│                      tokens`), importado no topo do index.css. Não edite.
 ├── config/            capabilities, developer, vitrine,
 │                      paletaCategorica (o único lugar com cor crua)
 ├── context/           AuthContext (perfil + papel)
@@ -1925,7 +1940,9 @@ humano.
 
 **Cor tem nome, e o nome é o papel.** Todos os tokens estão em
 [tailwind.config.js](tailwind.config.js), com o porquê de cada um no próprio
-arquivo, e `npm run testar:contraste` mede 50 pares contra os fundos reais.
+arquivo, e `npm run testar:contraste` mede 54 pares contra os fundos reais.
+O uso de cada peça (botão, chip, lista, diálogo, movimento) está em
+[docs/design-system.md](docs/design-system.md).
 Cinco regras, e todas nasceram de um bug:
 
 1. **Âmbar é aviso e nada mais** — algo que a pessoa precisa atender. Havia um

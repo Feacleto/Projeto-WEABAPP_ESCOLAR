@@ -153,7 +153,7 @@ export default function Sheet({
             )}
             <div className="min-w-0 flex-1">
               {eyebrow && (
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary/70">
+                <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary/70">
                   {eyebrow}
                 </p>
               )}
@@ -261,7 +261,7 @@ export function SheetDivider({ children }) {
   return (
     <div className="my-5 flex items-center gap-3">
       <span aria-hidden className="h-px flex-1 bg-border" />
-      <span className="text-[11px] uppercase tracking-wider text-textMuted">
+      <span className="text-xs uppercase tracking-wider text-textMuted">
         {children}
       </span>
       <span aria-hidden className="h-px flex-1 bg-border" />

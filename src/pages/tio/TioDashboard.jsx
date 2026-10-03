@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   ChevronRight,
   LayoutGrid,
-  CheckCircle2,
+  ArrowRight,
   MailWarning,
   UserPlus,
   Bus,
@@ -23,6 +23,7 @@ import Skeleton from '../../components/common/Skeleton';
 import SchoolBroadcastSheet from '../../components/broadcasts/SchoolBroadcastSheet';
 import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
+import ResumoDaTurma from '../../components/tio/ResumoDaTurma';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
@@ -307,9 +308,32 @@ export default function TioDashboard() {
   //
   // Cai no primeiro nome quando a marca não foi configurada, e em "Tio" quando
   // nem o nome existe: a saudação nunca fica pela metade.
+  // A FRASE DO CARTÃO VERDE — o que vem a seguir, em palavras. Nunca uma
+  // previsão: é a hora COMBINADA da primeira parada, e "daqui a" só conta
+  // para a frente (ver o comentário de `faltamMin` mais abaixo, na história).
+  const linhaDaTurma = (() => {
+    if (!blocos.length) {
+      const n = semHorario.length;
+      return n
+        ? `Falta o horário de ${n} ${n === 1 ? 'criança' : 'crianças'} para a rota se montar.`
+        : 'Combine o horário de cada criança para a rota se montar.';
+    }
+    if (!bloco || !pendentes.length) return 'Nenhuma viagem pendente hoje.';
+    const hora = horaCurta(deMinutos(bloco.inicio));
+    const quando =
+      faltamMin > 1 ? ` · daqui a ${formataEspera(faltamMin)}` : faltamMin >= 0 ? ' · agora' : '';
+    if (estado === 'entre') return `Próxima viagem às ${hora}${quando}.`;
+    return bloco.direcao === 'ida'
+      ? `A primeira parada é às ${hora}${quando}.`
+      : `A saída da escola é às ${hora}${quando}.`;
+  })();
+  const rotuloDaTurma =
+    bloco && pendentes.length
+      ? `Próxima viagem · ${bloco.direcao === 'ida' ? 'ida' : 'volta'}`
+      : 'Sua turma';
+
   const primeiroNome =
     profile?.marcaNome?.trim() || profile?.name?.split(' ')[0] || 'Tio';
-  const proximo = pendentes[0] || null;
 
   return (
     <>
@@ -338,17 +362,17 @@ export default function TioDashboard() {
         * falava de famílias que ainda não existem. Achado do teste no
         * navegador (M1). Enquanto carrega também não aparece: piscar o botão
         * para depois tirá-lo é pior que chegar um instante depois. */}
-      {estado !== 'vazio' && estado !== 'carregando' && (
+      {/* ⚠️ PARADO, O BOTÃO MORA NO CARTÃO VERDE (03/10/2026, design system).
+        * A barra fixa continua só com a rota LIGADA: é ali que o "Encerrar"
+        * não pode rolar para fora da vista. Parado, o botão é o primeiro
+        * bloco da tela, logo abaixo da saudação — sempre à vista ao abrir o
+        * app, que era o que a barra fixa garantia. */}
+      {estado === 'dirigindo' && (
         <div
           className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-neutro"
           style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
         >
           <ControleDeRota
-            onIniciar={() => {
-              publicarOrdem();
-              // A ROTA TEM TELA PRÓPRIA (03/10/2026): começou, vai para ela.
-              navigate('/tio/route/now');
-            }}
             direcao={bloco?.direcao}
             alvos={alvosDaRota}
             saida={saidaDaViagem(bloco)}
@@ -370,13 +394,13 @@ export default function TioDashboard() {
               * pergunta só. O relógio anda sozinho: `useRelogio` re-renderiza
               * a cada minuto, senão a hora congela na abertura do app e
               * mente com cara de informação. */}
-            <p className="text-xs text-textMuted">
+            <p className="rotulo text-primary">
               <span>{formatLongDate()}</span>
               <span className="mx-1.5 text-textMuted/50">·</span>
               <span className="tabular-nums">{horaAgora}</span>
             </p>
             <div className="flex items-center gap-3 mt-1">
-              <h1 className="text-2xl font-bold text-text leading-tight flex-1 min-w-0">
+              <h1 className="text-[28px] font-extrabold text-text leading-tight flex-1 min-w-0">
                 {greet(new Date())}, {primeiroNome}!
               </h1>
               <FestiveBadge />
@@ -426,6 +450,55 @@ export default function TioDashboard() {
           </>
         )}
 
+        {/* ─────────── O CARTÃO VERDE — a turma e o próximo passo ───────────
+          * Aparece assim que existe a primeira criança, e os números crescem
+          * conforme ele cadastra (pedido do dono). Com a turma vazia, quem
+          * fala é o cartão de "Cadastrar a primeira criança", mais abaixo. */}
+        {(estado === 'antes' || estado === 'entre' || (estado === 'vazio' && children.length > 0)) && (
+          <div className="px-5 pt-4">
+            <ResumoDaTurma
+              rotulo={rotuloDaTurma}
+              criancas={children.length}
+              escolas={escolas.length}
+              linha={linhaDaTurma}
+            >
+              {estado === 'vazio' ? (
+                <button
+                  type="button"
+                  onClick={() => navigate('/tio/horarios')}
+                  className="tap flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-onAccent"
+                >
+                  Definir os horários
+                  <ArrowRight size={20} />
+                </button>
+              ) : (
+                <ControleDeRota
+                  destaque
+                  onIniciar={() => {
+                    publicarOrdem();
+                    // A ROTA TEM TELA PRÓPRIA (03/10/2026): começou, vai para ela.
+                    navigate('/tio/route/now');
+                  }}
+                  direcao={bloco?.direcao}
+                  alvos={alvosDaRota}
+                  saida={saidaDaViagem(bloco)}
+                  pendentes={pendentesDaViagem}
+                />
+              )}
+            </ResumoDaTurma>
+            {estado === 'vazio' && (
+              <button
+                type="button"
+                onClick={() => navigate('/tio/children/new')}
+                className="tap mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border bg-card text-sm font-bold text-text"
+              >
+                <UserPlus size={18} />
+                Cadastrar outra criança
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Um responsável sem o link pediu acesso a uma criança dele. Fica
           * acima de tudo — fora da rota — porque a mãe está esperando do
           * outro lado, com o app travado até ele responder. */}
@@ -441,77 +514,10 @@ export default function TioDashboard() {
         {/* ─────────── ANTES — um botão domina ─────────── */}
         {estado === 'antes' && bloco && (
           <div className="px-5 pt-4 space-y-4">
-            <div
-              data-tour="hero"
-              className="bg-card border-2 border-primary rounded-3xl p-4 shadow-focus"
-            >
-              <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
-                próxima viagem
-              </p>
-              <div className="flex items-baseline gap-2.5 mt-1">
-                <span className="text-4xl font-extrabold text-primary tabular-nums leading-none">
-                  {horaCurta(deMinutos(bloco.inicio))}
-                </span>
-                {/* NÃO EXISTE "ATRASADO" AQUI, e a conta que existia mentia.
-                  *
-                  * `faltamMin` é a distância até o horário do bloco, e quando
-                  * ele já passou o número vira negativo — a tela dizia
-                  * "atrasado 3h09". Só que a viagem das 17h30 não está
-                  * atrasada às 20h39 de um sábado: ela é a PRÓXIMA, e o
-                  * horário que aparece é o de amanhã.
-                  *
-                  * Mesmo dentro do dia útil o rótulo acusa quem não fez nada
-                  * de errado: quem entregou todo mundo e não tocou em "iniciar
-                  * rota" lia que estava atrasado. Cobrança sobre um fato que o
-                  * app não sabe é o tipo de aviso que se aprende a ignorar —
-                  * e aí o aviso que importa some junto.
-                  *
-                  * Só a contagem PRA FRENTE sobrou, que é informação de
-                  * verdade: quanto falta pra sair. */}
-                {faltamMin > 1 ? (
-                  <span className="text-sm text-textMuted">
-                    daqui a {formataEspera(faltamMin)}
-                  </span>
-                ) : faltamMin >= 0 ? (
-                  <span className="text-sm text-textMuted">agora</span>
-                ) : null}
-              </div>
-
-              {proximo && (
-                <button
-                  type="button"
-                  onClick={() => setFichaDe(proximo.child.id)}
-                  className="tap flex w-full items-center gap-3 text-left mt-3"
-                >
-                  <Avatar
-                    photoURL={proximo.child.photoURL}
-                    gender={proximo.child.gender}
-                    seed={proximo.child.id}
-                    kind="child"
-                    size="sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-text text-sm leading-tight truncate">
-                      {proximo.child.name}
-                    </p>
-                    <p className="text-xs text-textMuted truncate">
-                      {bloco.direcao === 'ida'
-                        ? proximo.child.address || 'Sem endereço'
-                        : bloco.escolas[0]?.nome || 'Escola'}
-                      {' · '}
-                      {pendentes.length}{' '}
-                      {pendentes.length === 1 ? 'criança' : 'crianças'}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="shrink-0 text-textMuted" />
-                </button>
-              )}
-
-              {/* O botão de iniciar subiu pra barra fixa no topo da tela.
-                * Aqui ele rolava junto com a lista da viagem — e some da vista
-                * assim que ele confere quem vai pegar, que é justamente o
-                * gesto que antecede a partida. */}
-            </div>
+            {/* O CARTÃO BRANCO DA "PRÓXIMA VIAGEM" SAIU (03/10/2026). A hora
+              * e o "daqui a" foram para o cartão verde, e o PRÓXIMO da fila é
+              * a primeira linha da lista abaixo — duas telas dizendo a mesma
+              * coisa faziam ele procurar qual era a certa. */}
 
             <ListaDaViagem bloco={bloco} onAbrirFicha={setFichaDe} />
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
@@ -521,26 +527,6 @@ export default function TioDashboard() {
         {/* ─────────── ENTRE — a janela das pendências ─────────── */}
         {estado === 'entre' && (
           <div className="px-5 pt-4 space-y-4">
-            <div
-              data-tour="hero"
-              className="bg-primarySoft border border-primaryBorder rounded-3xl p-5 text-center"
-            >
-              <CheckCircle2 size={34} className="text-accentText mx-auto" />
-              <p className="font-bold text-text mt-2">
-                {blocos.length && bloco ? 'Nada agora' : 'Dia livre'}
-              </p>
-              <p className="text-sm text-primary mt-1">
-                {bloco && faltamMin != null && faltamMin > 0 ? (
-                  <>
-                    Próxima viagem às{' '}
-                    <b>{horaCurta(deMinutos(bloco.inicio))}</b> · daqui a{' '}
-                    {formataEspera(faltamMin)}
-                  </>
-                ) : (
-                  'Nenhuma viagem pendente hoje.'
-                )}
-              </p>
-            </div>
 
             <Pendencias
               semHorario={semHorario.length}
@@ -561,13 +547,13 @@ export default function TioDashboard() {
         )}
 
         {/* ─────────── VAZIO — ainda não há de onde tirar rota ─────────── */}
-        {estado === 'vazio' && (
+        {estado === 'vazio' && children.length === 0 && (
           <div className="px-5 pt-4 space-y-4">
             <div
               data-tour="hero"
-              className="bg-card border border-border rounded-3xl p-6 text-center"
+              className="bg-card shadow-rest rounded-2xl p-6 text-center"
             >
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+              <div className="w-14 h-14 rounded-xl bg-primaryChip text-primary flex items-center justify-center mx-auto">
                 <Users size={26} />
               </div>
               <p className="font-bold text-text mt-3">
@@ -586,13 +572,18 @@ export default function TioDashboard() {
                 type="button"
                 data-tour="primeira-crianca"
                 onClick={() => navigate('/tio/children/new')}
-                className="tap w-full rounded-2xl bg-primary text-white font-bold mt-4 h-12 inline-flex items-center justify-center gap-2"
+                className="tap w-full rounded-xl bg-primary text-white font-bold mt-4 h-14 inline-flex items-center justify-center gap-2"
               >
                 <UserPlus size={18} />
                 Cadastrar a primeira criança
               </button>
             </div>
 
+            <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+          </div>
+        )}
+        {estado === 'vazio' && children.length > 0 && (
+          <div className="px-5 pt-4">
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
           </div>
         )}

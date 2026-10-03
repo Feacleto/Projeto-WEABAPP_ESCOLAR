@@ -70,11 +70,11 @@ function RodapeDoApp() {
           * precisa sobreviver a um print mandado no WhatsApp. */}
         <span className="inline-flex items-center gap-1.5 rounded-lg bg-primaryChip px-2 py-1 ring-2 ring-primary">
           <Share size={15} className="text-primary" />
-          <span className="text-[11px] font-bold text-primary">ou</span>
+          <span className="text-xs font-bold text-primary">ou</span>
           <MoreHorizontal size={15} className="text-primary" />
         </span>
       </div>
-      <p className="mt-1.5 text-center text-[11px] text-textMuted">
+      <p className="mt-1.5 text-center text-xs text-textMuted">
         um destes dois, no rodapé desta tela
       </p>
     </div>

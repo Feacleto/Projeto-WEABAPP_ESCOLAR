@@ -7,6 +7,7 @@
 | Arquivo | Para quem | Quando ler |
 |---|---|---|
 | [`decisoes.md`](decisoes.md) | agente e pessoa | **Sempre.** Cada decisão em ~30 linhas, com o que a prova. É o que impede uma "melhoria" plausível de quebrar uma regra de negócio. |
+| [`design-system.md`](design-system.md) | agente e pessoa | Antes de criar tela, peça, cor ou animação, no app ou no site. Os valores moram no `tailwind.config.js`; aqui ficam as regras de uso, e `npm run testar:design` trava as principais. |
 
 ### Referência — o alicerce, o rumo e o dinheiro
 

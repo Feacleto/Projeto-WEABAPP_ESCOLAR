@@ -268,7 +268,7 @@ export default function TioHorarios() {
               {i > 0 && (
                 <div className="flex items-center gap-2 pt-2">
                   <span className="h-px flex-1 bg-border" />
-                  <span className="text-[10px] uppercase tracking-widest text-textMuted">
+                  <span className="text-xs uppercase tracking-widest text-textMuted">
                     outra viagem
                   </span>
                   <span className="h-px flex-1 bg-border" />
@@ -305,7 +305,7 @@ export default function TioHorarios() {
                     <span className="block text-sm font-semibold text-text truncate">
                       {p.child.name}
                     </span>
-                    <span className="block text-[11px] text-textMuted truncate">
+                    <span className="block text-xs text-textMuted truncate">
                       {p.presumido
                         ? 'horário presumido — defina o seu'
                         : p.child.address?.split(',')[0] || 'Sem endereço'}
@@ -423,7 +423,7 @@ export default function TioHorarios() {
 function ParadaEscola({ escolas }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-escolaSoft border border-escolaBorder">
-      <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-escola font-semibold">
+      <span className="w-14 shrink-0 text-xs uppercase tracking-wide text-escola font-semibold">
         depois
       </span>
       <div className="w-8 h-8 rounded-lg bg-escola text-white flex items-center justify-center shrink-0">

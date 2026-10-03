@@ -269,7 +269,7 @@ export default function Familia() {
 
         {/* ── 1. RECONHECIMENTO ────────────────────────────────────────── */}
         <section className="mt-11">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-textMuted">
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-textMuted">
             área da família
           </p>
           <h1 className="mt-3 text-[2rem] font-extrabold leading-[1.08] tracking-tight text-balance">
@@ -367,7 +367,7 @@ export default function Familia() {
 
         {/* ── 4. O QUE TEM DENTRO — tranquilidade, não recurso ──────────── */}
         <section className="mt-9">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-textMuted">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">
             o que você encontra
           </h2>
           <ul className="mt-4 space-y-3">
@@ -417,7 +417,7 @@ export default function Familia() {
             </p>
           </div>
 
-          <div className="space-y-1.5 text-[11px] text-textMuted">
+          <div className="space-y-1.5 text-xs text-textMuted">
             <p className="flex items-center gap-2">
               <MapPin size={13} className="shrink-0 text-primary" />
               {DEV_CITY}
@@ -429,7 +429,7 @@ export default function Familia() {
           </div>
 
           <div className="space-y-2 text-center">
-            <div className="flex items-center justify-center gap-3 text-[11px] text-textMuted">
+            <div className="flex items-center justify-center gap-3 text-xs text-textMuted">
               <Link to="/termos" className="hover:underline">
                 Termos de Uso
               </Link>

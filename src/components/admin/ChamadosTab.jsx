@@ -203,11 +203,11 @@ function Chamado({ chamado, pessoa, dias, ocupado, onResponder, onFechar }) {
           </p>
         </div>
         {espera ? (
-          <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-warningText">
+          <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-wider text-warningText">
             {dias === 0 ? 'hoje' : `${dias}d esperando`}
           </span>
         ) : (
-          <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-textMuted">
+          <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-wider text-textMuted">
             {/* ⚠️ O TEMPO ATÉ RESPONDER ESTAVA MEDIDO E GUARDADO, e nenhuma
               * tela o abria: `respondidoEm` era campo sem leitor. "Respondido"
               * sozinho não distingue quem esperou duas horas de quem esperou

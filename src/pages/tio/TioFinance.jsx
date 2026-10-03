@@ -420,7 +420,7 @@ export default function TioFinance() {
               <History size={17} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-warningText/80">
+              <p className="text-xs font-bold uppercase tracking-widest text-warningText/80">
                 Histórico
               </p>
               <p className="truncate text-sm font-bold capitalize text-warningText">
@@ -878,7 +878,7 @@ function QuemPagou({ pagos, childById }) {
                   <Check size={10} strokeWidth={3.5} />
                 </span>
               </div>
-              <span className="w-full truncate text-center text-[10px] font-semibold text-textMuted">
+              <span className="w-full truncate text-center text-xs font-semibold text-textMuted">
                 {primeiro}
               </span>
             </div>
@@ -923,7 +923,7 @@ function Atrasados({
           <AlertTriangle size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-dangerText/80">
+          <p className="text-xs font-semibold uppercase tracking-widest text-dangerText/80">
             Atrasado
           </p>
           <p className="text-2xl font-bold leading-none tabular-nums text-dangerText">
@@ -960,7 +960,7 @@ function Atrasados({
                 <p className="truncate text-sm font-bold leading-tight text-text">
                   {p.childName || 'Criança'}
                 </p>
-                <p className="text-[11px] tabular-nums text-textMuted">
+                <p className="text-xs tabular-nums text-textMuted">
                   {formatCurrency(p.amount)}
                   {deOutroMes && (
                     <span className="capitalize">

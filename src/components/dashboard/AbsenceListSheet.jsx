@@ -65,7 +65,7 @@ export default function AbsenceListSheet({ open, onClose, absences = [] }) {
                     <p className="text-sm font-bold text-text truncate leading-tight">
                       {a.childName || 'Aluno'}
                     </p>
-                    <p className="text-[11px] text-textMuted mt-0.5">
+                    <p className="text-xs text-textMuted mt-0.5">
                       {ABSENCE_LABELS[a.type] || 'Ausente'} ·{' '}
                       {a.declaredBy === 'parent'
                         ? 'avisado pelo responsável'

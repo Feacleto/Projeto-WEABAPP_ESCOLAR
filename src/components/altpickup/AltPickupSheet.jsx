@@ -78,7 +78,7 @@ function BotaoDoLink({ child, pickup }) {
       <Button variant="secondary" icon={Send} loading={gerando} onClick={mandar}>
         Mandar o link pra {(pickup.name || '').split(' ')[0]}
       </Button>
-      <p className="px-1 text-[11px] leading-relaxed text-textMuted">
+      <p className="px-1 text-xs leading-relaxed text-textMuted">
         Ela vê só se a criança embarcou e a que horas chegou — sem endereço,
         sem telefone e sem o mapa. O link vale até meia-noite.
       </p>
@@ -270,7 +270,7 @@ export default function AltPickupSheet({
                 * conseguir tirá-lo sem procurar. */}
               {avulso && (
                 <>
-                  <p className="px-1 pt-2 text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+                  <p className="px-1 pt-2 text-xs font-semibold uppercase tracking-widest text-textMuted">
                     Da última vez
                   </p>
                   <button
@@ -286,7 +286,7 @@ export default function AltPickupSheet({
                       <p className="truncate text-sm font-bold text-text">
                         {avulso.name}
                       </p>
-                      <p className="truncate text-[11px] text-textMuted">
+                      <p className="truncate text-xs text-textMuted">
                         {avulso.relationship && (
                           <span>{avulso.relationship} · </span>
                         )}

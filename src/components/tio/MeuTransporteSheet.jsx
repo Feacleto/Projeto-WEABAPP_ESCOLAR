@@ -264,7 +264,7 @@ export default function MeuTransporteSheet({
 function Grupo({ titulo, children }) {
   return (
     <section className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+      <p className="text-xs font-semibold uppercase tracking-widest text-textMuted px-1">
         {titulo}
       </p>
       {children}
@@ -289,13 +289,13 @@ function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, onClick, tour }
           {titulo}
         </span>
         {subtitulo && (
-          <span className="block text-[11px] text-textMuted truncate">
+          <span className="block text-xs text-textMuted truncate">
             {subtitulo}
           </span>
         )}
       </span>
       {aviso ? (
-        <span className="text-[11px] font-semibold text-warningText shrink-0">
+        <span className="text-xs font-semibold text-warningText shrink-0">
           {aviso}
         </span>
       ) : contagem != null ? (

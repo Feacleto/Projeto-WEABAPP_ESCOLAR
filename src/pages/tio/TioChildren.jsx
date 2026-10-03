@@ -138,7 +138,7 @@ export default function TioChildren() {
             <p className="text-sm font-semibold text-text leading-tight">
               Escolas
             </p>
-            <p className="text-[11px] text-textMuted">
+            <p className="text-xs text-textMuted">
               Cadastre uma vez e reaproveite em cada criança
             </p>
           </div>

@@ -105,7 +105,7 @@ export default function PreferenciasDeAviso() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold text-text">{titulo}</span>
-                <span className="mt-0.5 block text-[11px] leading-relaxed text-textMuted">
+                <span className="mt-0.5 block text-xs leading-relaxed text-textMuted">
                   {descricao}
                 </span>
               </span>

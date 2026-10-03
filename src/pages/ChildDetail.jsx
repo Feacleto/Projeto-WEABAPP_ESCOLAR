@@ -305,7 +305,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
               <span className="block text-sm font-semibold text-text">
                 Contrato anterior
               </span>
-              <span className="block text-[11px] text-textMuted">
+              <span className="block text-xs text-textMuted">
                 O papel de antes do app — registro, não é o que vale
               </span>
             </span>
@@ -344,7 +344,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           </div>
 
           <div className="space-y-2 pb-2 border-b border-neutro last:border-0 last:pb-0">
-            <p className="text-[11px] text-textMuted uppercase tracking-wide">
+            <p className="text-xs text-textMuted uppercase tracking-wide">
               Principal
             </p>
             <InfoRow label="Nome" value={child.parentName} />
@@ -362,7 +362,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
 
           {(child.parent2Name || child.parent2Phone) && (
             <div className="space-y-2 pt-1">
-              <p className="text-[11px] text-textMuted uppercase tracking-wide">
+              <p className="text-xs text-textMuted uppercase tracking-wide">
                 Segundo responsável
               </p>
               {child.parent2Name && (
@@ -585,7 +585,7 @@ function FaltasDaCrianca({ childId, adminUid }) {
               <p className="text-xl font-extrabold leading-none tabular-nums text-text">
                 {doMes.length}
               </p>
-              <p className="mt-1 text-[11px] capitalize leading-tight text-textMuted">
+              <p className="mt-1 text-xs capitalize leading-tight text-textMuted">
                 {formatMonthLabel(mes)}
               </p>
             </>
@@ -604,7 +604,7 @@ function FaltasDaCrianca({ childId, adminUid }) {
       </div>
 
       {futuras > 0 && (
-        <p className="rounded-xl bg-warningSoft px-3 py-2 text-[11px] leading-relaxed text-warningText">
+        <p className="rounded-xl bg-warningSoft px-3 py-2 text-xs leading-relaxed text-warningText">
           <strong>
             {futuras} {futuras === 1 ? 'aviso marcado' : 'avisos marcados'}
           </strong>{' '}
@@ -800,7 +800,7 @@ function InfoRow({ icon: Icon, label, value }) {
     <div className="flex items-start gap-2">
       {Icon && <Icon size={14} className="text-textMuted shrink-0 mt-0.5" />}
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] text-textMuted">{label}</p>
+        <p className="text-xs text-textMuted">{label}</p>
         <p className="text-sm text-text break-words">{value || '—'}</p>
       </div>
     </div>
@@ -821,7 +821,7 @@ function PhoneRow({ phone, name, childName }) {
     <div className="flex items-center gap-2">
       <Phone size={14} className="text-textMuted shrink-0" />
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] text-textMuted">Telefone</p>
+        <p className="text-xs text-textMuted">Telefone</p>
         <p className="text-sm text-text">{formatPhone(phone)}</p>
       </div>
       <a

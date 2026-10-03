@@ -40,7 +40,7 @@ export default function ReviewsBlock({ items = [], stats = null, loaded }) {
           <p className="text-lg font-extrabold leading-tight tabular-nums text-white">
             {media.toFixed(1).replace('.', ',')}
           </p>
-          <p className="text-[10px] leading-tight text-white/50">
+          <p className="text-xs leading-tight text-white/50">
             {quantos > 0
               ? `${quantos} ${quantos === 1 ? 'avaliação' : 'avaliações'}`
               : 'em breve'}
@@ -87,12 +87,12 @@ export function ReviewCard({ review, exemplo }) {
           <p className="flex items-center gap-1.5 text-sm font-bold leading-tight text-white">
             {firstName}
             {exemplo && (
-              <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-white/50">
+              <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest text-white/50">
                 exemplo
               </span>
             )}
           </p>
-          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-white/45">
+          <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-white/45">
             <Bus size={11} /> Motorista associado
           </p>
         </div>

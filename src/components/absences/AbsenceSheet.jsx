@@ -198,7 +198,7 @@ export default function AbsenceSheet({
               onChange={(e) => setDataEscolhida(e.target.value || getDateKey())}
               className="w-full h-12 rounded-2xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
             />
-            <span className="block text-[11px] text-textMuted mt-1">
+            <span className="block text-xs text-textMuted mt-1">
               {rotuloDoDia(dataEscolhida)} · dá pra avisar até{' '}
               {DIAS_DE_AVISO_DE_FALTA} dias à frente
             </span>
@@ -303,7 +303,7 @@ function OptionCard({
         <p className="text-xs text-textMuted mt-0.5">{subtitle}</p>
       </div>
       {active && (
-        <span className="text-[10px] uppercase tracking-wider font-bold text-text bg-white/70 px-2 py-0.5 rounded-full">
+        <span className="text-xs uppercase tracking-wider font-bold text-text bg-white/70 px-2 py-0.5 rounded-full">
           Ativo
         </span>
       )}

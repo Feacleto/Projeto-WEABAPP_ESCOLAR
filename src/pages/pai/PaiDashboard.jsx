@@ -472,7 +472,7 @@ export default function PaiDashboard() {
                 <span className="block text-sm font-semibold text-text">
                   Faltas
                 </span>
-                <span className="block text-[11px] text-textMuted">
+                <span className="block text-xs text-textMuted">
                   Meses anteriores e avisar uma nova
                 </span>
               </span>
@@ -630,7 +630,7 @@ function CartaoDeHoje({
           <div className="flex-1 min-w-0 pr-8">
             <div className="flex items-center gap-2">
               {/* A TARJA DIZ QUAL DOS TRÊS MOMENTOS É — ver o cabeçalho. */}
-              <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest">
+              <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs font-extrabold uppercase tracking-widest">
                 {isLive && (
                   <span className="relative mr-1 inline-flex align-middle">
                     <span className="absolute inline-flex h-1.5 w-1.5 rounded-full bg-white opacity-75 animate-ping" />
@@ -690,7 +690,7 @@ function CartaoDeHoje({
               {presence.title}
             </span>
             {presence.detail && (
-              <span className="block truncate text-[11px] text-textMuted">
+              <span className="block truncate text-xs text-textMuted">
                 {presence.detail}
               </span>
             )}
@@ -914,7 +914,7 @@ function PresencePanel({ presence, onOpenMap }) {
         {/* Selo de frescor: sempre visível quando vem do GPS. É o que separa
           * "está aqui agora" de "estava aqui em algum momento". */}
         {presence.freshness && (
-          <p className="text-[11px] text-textMuted mt-1">
+          <p className="text-xs text-textMuted mt-1">
             {presence.freshness}
             {presence.distanceKm != null &&
               ` · ${formatDistance(presence.distanceKm) || '—'} daqui`}

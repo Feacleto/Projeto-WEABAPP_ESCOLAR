@@ -76,7 +76,7 @@ export default function PaiFinanceReport() {
           <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-textMuted">
+                <p className="text-xs font-bold uppercase tracking-widest text-textMuted">
                   Histórico de pagamentos
                 </p>
                 <h1 className="text-2xl font-bold text-text leading-tight mt-1">
@@ -89,7 +89,7 @@ export default function PaiFinanceReport() {
               <FileText size={28} className="text-textMuted shrink-0 mt-1" />
             </div>
             {admin?.companyName && (
-              <p className="text-[11px] text-textMuted pt-2">
+              <p className="text-xs text-textMuted pt-2">
                 Prestador: {admin.companyName}
               </p>
             )}
@@ -102,7 +102,7 @@ export default function PaiFinanceReport() {
             * lista — sem número grande dizendo zero. */}
           {debtTotal > 0 ? (
             <section className="bg-warningSoft rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-warningText">
+              <p className="text-xs font-bold uppercase tracking-widest text-warningText">
                 A pagar
               </p>
               <p className="text-2xl font-bold text-warningText tabular-nums mt-1">
@@ -135,7 +135,7 @@ export default function PaiFinanceReport() {
             )}
           </section>
 
-          <footer className="text-center text-[10px] text-textMuted pt-4 border-t border-border">
+          <footer className="text-center text-xs text-textMuted pt-4 border-t border-border">
             Alô Buzinou · Documento gerado em{' '}
             {new Date().toLocaleString('pt-BR')}
           </footer>
@@ -160,7 +160,7 @@ function PaymentLine({ payment }) {
         <p className="text-sm font-bold text-text capitalize leading-tight">
           {formatMonthLabel(payment.month)}
         </p>
-        <p className="text-[11px] text-textMuted mt-0.5">
+        <p className="text-xs text-textMuted mt-0.5">
           Vencimento: {formatDate(payment.dueDate)}
           {payment.paidAt && ` · Pago em ${formatDate(payment.paidAt)}`}
           {payment.paymentMethod && (
@@ -175,7 +175,7 @@ function PaymentLine({ payment }) {
         <p className="text-base font-bold text-text tabular-nums">
           {formatCurrency(payment.amount)}
         </p>
-        <p className={`text-[10px] font-bold uppercase tracking-wide ${cfg.text}`}>
+        <p className={`text-xs font-bold uppercase tracking-wide ${cfg.text}`}>
           {cfg.label}
         </p>
       </div>

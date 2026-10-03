@@ -83,7 +83,7 @@ export default function TioExpenses() {
 
         {/* O número que ele veio ver */}
         <div className="rounded-2xl bg-gradient-to-br from-text via-text to-night text-white p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-white/70">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
             gasto em {formatMonthLabel(monthKey)}
           </p>
           <p className="text-3xl font-extrabold mt-1">{formatCurrency(total)}</p>
@@ -124,7 +124,7 @@ export default function TioExpenses() {
 
         {expenses?.length > 0 && (
           <section className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+            <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
               lançamentos
             </p>
             {expenses.map((e) => {

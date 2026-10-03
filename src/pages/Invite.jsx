@@ -384,7 +384,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
                 <Wallet size={20} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+                <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
                   mensalidade em aberto
                 </p>
                 <p className="text-2xl font-extrabold text-text leading-tight mt-0.5">
@@ -406,7 +406,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
         ) : (
           preview.monthlyFee > 0 && (
             <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+              <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
                 mensalidade combinada
               </p>
               <p className="text-2xl font-extrabold text-text leading-tight mt-0.5">
@@ -448,7 +448,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
 
         {/* O que mais tem lá dentro — expectativa honesta */}
         <div className="bg-sunken border border-border rounded-2xl p-4 space-y-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+          <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
             também no app
           </p>
           <Feature
@@ -468,7 +468,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
         >
           Entrar e acompanhar
         </Button>
-        <p className="text-[11px] text-textMuted text-center">
+        <p className="text-xs text-textMuted text-center">
           Um toque com o Google. Não precisa digitar código nenhum.
         </p>
       </main>
@@ -587,7 +587,7 @@ function SignInToContinue({ childFirstName, driverLabel }) {
         >
           Entrar na minha conta
         </Link>
-        <p className="text-[11px] text-textMuted text-center">
+        <p className="text-xs text-textMuted text-center">
           Use o mesmo Google ou email da primeira vez.
         </p>
       </div>

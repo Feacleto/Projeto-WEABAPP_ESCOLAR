@@ -371,7 +371,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
             </label>
             {isTio && (
               <span
-                className={`font-mono text-[11px] tabular-nums ${
+                className={`font-mono text-xs tabular-nums ${
                   restam < 0
                     ? 'text-danger'
                     : restam < 30
@@ -468,7 +468,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
 
             {rating > 0 && texto.length >= 8 && (
               <div>
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+                <p className="mb-2 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
                   como vai aparecer
                 </p>
                 {/* Fundo escuro de propósito: é o fundo real da home. */}
@@ -501,7 +501,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                 Publicar na home
               </SheetCTA>
               {!podePublicar && (
-                <p className="text-center text-[11px] text-textMuted">
+                <p className="text-center text-xs text-textMuted">
                   {rating < 1
                     ? 'Dê a nota em estrelas.'
                     : texto.length < 8

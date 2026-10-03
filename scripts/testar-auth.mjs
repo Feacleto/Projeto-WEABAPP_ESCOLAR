@@ -495,8 +495,10 @@ checar('a tela oferece o pedido ao motorista', true,
 console.log('');
 console.log('10. Leitura que falha nao vira "essa pessoa nao tem conta"');
 
+// O checkout no Windows pode trazer CRLF: a comparação abaixo procura um
+// trecho com quebra de linha, e sem normalizar ela reprovava código certo.
 const fonteCtx = readFileSync(
-  new URL('../src/context/AuthContext.jsx', import.meta.url), 'utf8');
+  new URL('../src/context/AuthContext.jsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const fonteApp = readFileSync(
   new URL('../src/App.jsx', import.meta.url), 'utf8');
 const fonteFalha = readFileSync(

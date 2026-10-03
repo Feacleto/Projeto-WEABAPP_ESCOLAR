@@ -1,3 +1,9 @@
+/* O DESIGN SYSTEM EM CSS — cores, fontes, raios, sombras e tempos como
+ * variáveis, GERADAS do tailwind.config.js (`npm run tokens`). É o que o CSS
+ * cru deste arquivo usa: keyframes, pinos, fundos. Precisa ser a primeira
+ * linha — `@import` depois de qualquer regra é ignorado pelo navegador. */
+@import './design/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -40,7 +46,7 @@
   --fundo-brilho-fim: rgb(238 241 239 / 0);
 }
 
-/* Reset básico mobile-first com fonte Inter via fallback do sistema */
+/* Reset básico mobile-first. As fontes vêm do index.html (Google Fonts). */
 @layer base {
   html,
   body,
@@ -51,6 +57,18 @@
   body {
     @apply bg-bg text-text font-sans antialiased;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* A VOZ DA MARCA NO TÍTULO DE TELA (03/10/2026, D1 do design system).
+   * Só h1 e h2: são o título da tela e o da seção. Título de cartão, nome de
+   * criança e botão continuam na Instrument Sans — a Bricolage aparece pouco
+   * de propósito, senão deixa de ser voz e vira ruído. Onde mais ela entra
+   * (o número que importa, a marca), é a classe `font-display`, à mão. */
+  h1,
+  h2 {
+    @apply font-display;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
   }
 
   /* Inputs herdam fonte e evitam zoom no iOS */
@@ -114,7 +132,15 @@
   /* Tap highlight customizado para botões em mobile.
    * Animação suave + ease-out pra dar sensação tátil de "afundar" no toque. */
   .tap {
-    @apply active:scale-[0.97] transition-transform duration-150 ease-out;
+    @apply active:scale-[0.97] transition-transform duration-toque ease-freio;
+  }
+
+  /* O RÓTULO EM CIMA DO TÍTULO (D9 do design system) — a letra de máquina
+   * espaçada que o site já usava. 12px é o piso do app inteiro: abaixo disso
+   * o público de 40+ não lê sem óculos. */
+  .rotulo {
+    @apply font-mono text-xs font-medium uppercase text-textMuted;
+    letter-spacing: 0.14em;
   }
 }
 
@@ -845,7 +871,7 @@
   }
 }
 .animate-sheet-fade {
-  animation: sheet-fade 200ms ease-out;
+  animation: sheet-fade var(--dur-estado) ease-out;
 }
 
 @keyframes sheet-up {
@@ -859,7 +885,7 @@
   }
 }
 .animate-sheet-up {
-  animation: sheet-up 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: sheet-up var(--dur-entrada) var(--curva-freio);
 }
 
 /* ─────────── Formulário que se revela em passos ───────────
@@ -876,7 +902,7 @@
   }
 }
 .animate-step-in {
-  animation: step-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: step-in var(--dur-entrada) var(--curva-freio);
 }
 
 /* ─────────── Botão "falar com um consultor" ───────────

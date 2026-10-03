@@ -17,12 +17,11 @@
    movimento" ligado tudo aparece pronto. A cena do topo de cada página
    conta uma ideia só.
    ───────────────────────────────────────────────────────────── */
-:root{
-  --preto:#0B1210; --verde:#1F5F3F; --verde-esc:#143F2A; --vivo:#52C41A; --menta:#A7F3D0;
-  --areia:#EEF1EF; --branco:#FFFFFF; --cinza:#55606E; --texto:#2C3631; --linha:#D9E0DB;
-  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
-  --corpo:"Instrument Sans",system-ui,sans-serif;
-}
+/* AS CORES, FONTES E RAIOS vêm de /tokens.css, GERADO do tailwind.config.js do
+   app (`npm run tokens`). Era aqui que o site declarava os próprios valores, e
+   foi assim que ele e o app viraram dois produtos. Não declare cor nova aqui:
+   ponha no tailwind.config.js e rode o comando. */
+:root{ --cinza-cl:#8A948E; }
 *{box-sizing:border-box}
 body{background:var(--areia); color:var(--preto); font-family:var(--corpo); font-size:18px; line-height:1.6; margin:0; -webkit-font-smoothing:antialiased}
 a{color:inherit}
@@ -37,7 +36,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(-
 .voltar:hover .seta,.voltar:focus-visible .seta{transform:translateX(-4px)}
 .marca{display:flex; align-items:center; gap:8px; text-decoration:none; font:800 17px var(--display); letter-spacing:-.03em}
 .marca .mk{width:26px; height:26px; flex:none; display:block}
-.marca b{color:#6EE07A; font-weight:800}
+.marca b{color:var(--noite-verde); font-weight:800}
 .entrar{margin-left:auto; font:700 16px var(--corpo); color:var(--preto); background:var(--vivo); border-radius:12px; padding:10px 16px; text-decoration:none; white-space:nowrap; transition:transform .12s}
 .entrar:active{transform:scale(.97)}
 @keyframes brilho{0%{box-shadow:0 0 0 0 rgba(124,227,78,.7)}100%{box-shadow:0 0 0 12px rgba(124,227,78,0)}}
@@ -54,7 +53,7 @@ main .wrap{animation:entra .32s cubic-bezier(.2,.8,.2,1) both}
 main .wrap > *{animation:sobe .4s cubic-bezier(.2,.8,.2,1) both}
 main .wrap > *:nth-child(2){animation-delay:.05s} main .wrap > *:nth-child(3){animation-delay:.1s}
 main .wrap > *:nth-child(4){animation-delay:.15s} main .wrap > *:nth-child(n+5){animation-delay:.2s}
-.chapeu{display:block; font:600 12px ui-monospace,Consolas,monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--verde)}
+.chapeu{display:block; font:500 12px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--verde)}
 h1{font:800 clamp(30px,6vw,40px)/1.1 var(--display); letter-spacing:-.02em; margin:8px 0 0; text-wrap:balance}
 h2{font:700 23px/1.25 var(--display); margin:34px 0 0; letter-spacing:-.01em}
 p{margin:12px 0 0; color:var(--texto)}
@@ -63,7 +62,7 @@ p{margin:12px 0 0; color:var(--texto)}
 /* listas com ✓ que estalam ao aparecer */
 .lista{list-style:none; padding:0; margin:20px 0 0; display:grid; gap:12px}
 .lista li{background:#fff; border:1px solid var(--linha); border-radius:14px; padding:16px 18px; display:flex; gap:14px; align-items:flex-start; line-height:1.45}
-.lista li .ck{flex:none; width:28px; height:28px; border-radius:50%; background:#E3F6D9; display:flex; align-items:center; justify-content:center}
+.lista li .ck{flex:none; width:28px; height:28px; border-radius:50%; background:var(--ok-chip); display:flex; align-items:center; justify-content:center}
 .lista li .ck svg{width:15px; height:15px}
 @keyframes estala{0%{transform:scale(0)}70%{transform:scale(1.25)}100%{transform:scale(1)}}
 .anima .lista.viu li .ck{animation:estala .35s cubic-bezier(.3,1.5,.5,1) both}
@@ -74,11 +73,14 @@ p{margin:12px 0 0; color:var(--texto)}
 .cards b{display:block; font:700 20px var(--display)}
 .cards p{margin-top:6px}
 
-/* botões grandes, com ondinha no toque */
-.btn{position:relative; overflow:hidden; display:flex; width:100%; justify-content:center; align-items:center; gap:10px; background:var(--vivo); color:var(--preto); font:800 18px var(--corpo); padding:18px 20px; border-radius:14px; margin-top:22px; text-align:center; text-decoration:none; border:0; cursor:pointer; transition:transform .12s, background-color .2s}
+/* botões grandes, com ondinha no toque.
+   ⚠️ VERDE SOBRE FUNDO CLARO (design system, D3). Era o limão com letra preta,
+   e a home usava o verde para a MESMA ação: duas cores para "criar conta" no
+   mesmo site. O limão continua, só onde o verde some: no fechamento verde. */
+.btn{position:relative; overflow:hidden; display:flex; width:100%; justify-content:center; align-items:center; gap:10px; background:var(--verde); color:#fff; font:800 18px var(--corpo); padding:18px 20px; border-radius:14px; margin-top:22px; text-align:center; text-decoration:none; border:0; cursor:pointer; transition:transform .12s, background-color .2s}
 .btn + .btn{margin-top:12px}
 .btn:active{transform:scale(.97)}
-.btn.esc{background:var(--verde); color:#fff}
+.btn.esc{background:#fff; color:var(--preto); border:2px solid var(--linha)}
 .btn svg{width:22px; height:22px; flex:none}
 .onda{position:absolute; border-radius:50%; background:rgba(255,255,255,.55); transform:scale(0); animation:onda .55s ease-out forwards; pointer-events:none}
 @keyframes onda{to{transform:scale(4); opacity:0}}
@@ -151,7 +153,7 @@ p{margin:12px 0 0; color:var(--texto)}
 .faq [hidden]{display:none}
 
 /* investidores: o formulário */
-.lead{margin-top:28px; background:#fff; border:1px solid var(--linha); border-radius:18px; padding:22px}
+.lead{margin-top:28px; background:#fff; border:1px solid var(--linha); border-radius:var(--r-lg); padding:22px}
 .lead h2{margin-top:0}
 .campo{display:grid; gap:6px; margin-top:14px; font:700 16px var(--corpo)}
 .campo small{font-weight:400; color:var(--cinza)}
@@ -173,7 +175,7 @@ p{margin:12px 0 0; color:var(--texto)}
 .fecho{background:var(--verde); color:#fff; text-align:center; padding:40px 0}
 .fecho h2{color:#fff; font-size:28px; margin:0}
 .fecho p{color:#BFE6CC}
-.fecho .btn{max-width:480px; margin-inline:auto}
+.fecho .btn{max-width:480px; margin-inline:auto; background:var(--vivo); color:var(--vivo-tinta)}
 footer{background:var(--preto); color:#C9D2CD; padding:26px 0 calc(26px + env(safe-area-inset-bottom,0px)); font-size:15px}
 footer nav{display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:14px}
 footer nav a{color:#fff; font-weight:600; text-decoration:none}

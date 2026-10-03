@@ -336,7 +336,7 @@ export default function TioEscolas() {
                     <p className="font-bold text-text text-sm leading-tight">
                       {g.nome}
                     </p>
-                    <p className="text-[11px] text-textMuted">
+                    <p className="text-xs text-textMuted">
                       {g.criancas.length}{' '}
                       {g.criancas.length === 1 ? 'criança' : 'crianças'}
                       {g.lat == null && ' · sem localização'}
@@ -347,7 +347,7 @@ export default function TioEscolas() {
                 {/* As grafias diferentes são o motivo da tela existir —
                   * mostrar quais eram deixa claro o que está sendo unificado. */}
                 {g.variacoes.length > 1 && (
-                  <p className="text-[11px] text-textMuted bg-sunken rounded-lg px-2.5 py-1.5 leading-relaxed">
+                  <p className="text-xs text-textMuted bg-sunken rounded-lg px-2.5 py-1.5 leading-relaxed">
                     Escrita de {g.variacoes.length} jeitos:{' '}
                     {g.variacoes.map((v) => `“${v}”`).join(', ')}
                   </p>
@@ -396,17 +396,17 @@ export default function TioEscolas() {
                     {e.nome}
                   </p>
                   {e.endereco && (
-                    <p className="text-[11px] text-textMuted truncate mt-0.5">
+                    <p className="text-xs text-textMuted truncate mt-0.5">
                       {e.endereco}
                     </p>
                   )}
                   <div className="flex items-center gap-3 mt-1.5">
-                    <span className="inline-flex items-center gap-1 text-[11px] text-textMuted">
+                    <span className="inline-flex items-center gap-1 text-xs text-textMuted">
                       <Users size={12} />
                       {contagem[e.id] || 0}
                     </span>
                     {e.geoPending && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-warningText">
+                      <span className="inline-flex items-center gap-1 text-xs text-warningText">
                         <MapPin size={12} />
                         sem localização
                       </span>

@@ -11,8 +11,8 @@ export default function Card({
       onClick={onClick}
       type={Tag === 'button' ? 'button' : undefined}
       className={`
-        bg-card rounded-2xl shadow-sm p-5
-        ${onClick ? 'tap text-left w-full hover:shadow-md transition-shadow' : ''}
+        bg-card rounded-2xl shadow-rest p-5
+        ${onClick ? 'tap text-left w-full' : ''}
         ${className}
       `}
       {...rest}

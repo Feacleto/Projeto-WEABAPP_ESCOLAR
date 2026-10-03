@@ -139,7 +139,7 @@ export default function BottomNav({ items }) {
                     }`}
                   />
                   {item.badge > 0 && (
-                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center border-2 border-card">
+                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-xs font-bold flex items-center justify-center border-2 border-card">
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}

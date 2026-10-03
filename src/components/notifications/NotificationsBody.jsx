@@ -225,7 +225,7 @@ export default function NotificationsBody({ onNavigate }) {
                 className="tap mt-4 mx-auto block text-xs font-semibold text-textMuted hover:text-text inline-flex items-center gap-1 py-2 px-3 rounded-full"
               >
                 Ver mais{' '}
-                <span className="text-[10px] text-textMuted">
+                <span className="text-xs text-textMuted">
                   ({notifications.length - visibleCount} restantes)
                 </span>
                 <ChevronDown size={14} />
@@ -289,7 +289,7 @@ function NotificationItem({ notif, onClick }) {
           )}
           <div className="mt-1.5">
             <span
-              className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${TONE_STYLES[tone]}`}
+              className={`inline-flex items-center text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${TONE_STYLES[tone]}`}
             >
               {label}
             </span>

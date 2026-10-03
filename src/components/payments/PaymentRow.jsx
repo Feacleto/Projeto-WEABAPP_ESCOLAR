@@ -124,7 +124,7 @@ export default function PaymentRow({
           <p className="text-lg font-bold text-text">
             {formatCurrency(payment.amount)}
           </p>
-          <p className="text-[11px] text-textMuted flex items-center gap-1">
+          <p className="text-xs text-textMuted flex items-center gap-1">
             <Calendar size={10} />
             Vence: {formatDate(payment.dueDate)}
             {payment.paidAt && ` · Pago: ${formatDate(payment.paidAt)}`}
@@ -136,7 +136,7 @@ export default function PaymentRow({
             * pega o print errado. Uma heurística que acusa sozinha erra e
             * estraga uma relação que precisa durar anos. */}
           {role === 'admin' && alertaDeDuplicata && (
-            <p className="text-[11px] font-semibold text-warningText bg-warningSoft border border-warningBorder rounded-lg px-2 py-1.5 inline-flex items-start gap-1.5 mt-1">
+            <p className="text-xs font-semibold text-warningText bg-warningSoft border border-warningBorder rounded-lg px-2 py-1.5 inline-flex items-start gap-1.5 mt-1">
               <TriangleAlert size={12} className="shrink-0 mt-0.5" />
               <span>
                 Comprovante igual ao de{' '}
@@ -179,7 +179,7 @@ export default function PaymentRow({
             )
           )}
           {payment.paymentMethod && displayStatus !== 'pending' && displayStatus !== 'overdue' && (
-            <p className="text-[11px] text-textMuted flex items-center gap-1 mt-0.5">
+            <p className="text-xs text-textMuted flex items-center gap-1 mt-0.5">
               {payment.paymentMethod === 'cash' ? (
                 <>
                   <Banknote size={10} /> Dinheiro

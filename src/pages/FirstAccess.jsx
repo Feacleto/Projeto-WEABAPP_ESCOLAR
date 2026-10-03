@@ -231,7 +231,7 @@ export default function FirstAccess() {
                 *
                 * "Pra quem espera na porta" faz o par com "pra quem dirige"
                 * da tela do motorista. */}
-              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
+              <p className="mt-4 font-mono text-xs uppercase tracking-[0.2em] text-onNightAccent/80">
                 pra quem espera na porta
               </p>
               <h1 className="mt-1 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
@@ -440,7 +440,7 @@ export default function FirstAccess() {
               </button>
             </div>
 
-            <div className="flex items-center justify-center gap-3 pt-4 text-[11px] text-textMuted">
+            <div className="flex items-center justify-center gap-3 pt-4 text-xs text-textMuted">
               <Link to="/termos" className="hover:underline">
                 Termos de Uso
               </Link>

@@ -72,7 +72,7 @@ export default function TarjaDeAviso({ aviso }) {
           {aviso.titulo}
         </p>
         <p
-          className={`mt-0.5 text-[11.5px] leading-relaxed ${
+          className={`mt-0.5 text-xs leading-relaxed ${
             grave ? 'text-dangerText/90' : 'text-warningText'
           }`}
         >

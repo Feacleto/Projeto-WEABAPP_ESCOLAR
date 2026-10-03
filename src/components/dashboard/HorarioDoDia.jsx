@@ -70,7 +70,7 @@ export default function HorarioDoDia({
           </h2>
         )}
         {tipo === ABSENCE_TYPES.FULL && (
-          <span className="text-[11px] font-semibold text-warningText">
+          <span className="text-xs font-semibold text-warningText">
             você avisou que não vai
           </span>
         )}

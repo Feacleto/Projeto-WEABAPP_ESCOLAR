@@ -170,7 +170,7 @@ function StatusChip({ payment, role }) {
 
   return (
     <span
-      className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${classes}`}
+      className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${classes}`}
     >
       {label}
     </span>

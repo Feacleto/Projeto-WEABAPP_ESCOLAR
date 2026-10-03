@@ -148,20 +148,20 @@ export default function ChildCard({
             {/* A ausência vem PRIMEIRO: é a informação mais perecível e a
               * única que muda a rota de hoje. */}
             {absenceLabel && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-dangerText bg-dangerChip px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-dangerText bg-dangerChip px-2 py-0.5 rounded-full">
                 <UserX size={10} />
                 {absenceLabel}
               </span>
             )}
             <StatusBadge status={status} />
             {pendingInvite && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-warningText bg-warningChip px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-warningText bg-warningChip px-2 py-0.5 rounded-full">
                 <AlertTriangle size={10} />
                 Convite pendente
               </span>
             )}
             {geoPending && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-infoText bg-infoChip px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-infoText bg-infoChip px-2 py-0.5 rounded-full">
                 <MapPinOff size={10} />
                 Sem local
               </span>
@@ -272,7 +272,7 @@ function Detail({ icon: Icon, label, children }) {
     <div className="flex items-start gap-2">
       <Icon size={13} className="text-textMuted shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-textMuted">
+        <p className="text-xs font-semibold uppercase tracking-wider text-textMuted">
           {label}
         </p>
         <p className="text-xs text-text leading-snug break-words">{children}</p>

@@ -85,7 +85,7 @@ export default function SelosTab() {
   return (
     <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
       <section className="space-y-2">
-        <h2 className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+        <h2 className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
           <BadgeCheck size={11} />
           Alvarás para conferir
         </h2>
@@ -100,7 +100,7 @@ export default function SelosTab() {
         )}
 
         {verificados.length > 0 && (
-          <p className="pt-1 text-[11px] text-textMuted">
+          <p className="pt-1 text-xs text-textMuted">
             {verificados.length}{' '}
             {verificados.length === 1 ? 'motorista já tem o selo' : 'motoristas já têm o selo'}.
             A validade de cada um aparece na ficha dele.
@@ -109,7 +109,7 @@ export default function SelosTab() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+        <h2 className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
           <Sticker size={11} />
           Adesivos para postar
         </h2>
@@ -179,7 +179,7 @@ function Conferir({ motorista, ownerUid, onPronto }) {
 
       <div className="mt-3 space-y-2 border-t border-border pt-3">
         <label className="block">
-          <span className="mb-1 block text-[11px] text-textMuted">
+          <span className="mb-1 block text-xs text-textMuted">
             Validade que está no alvará
           </span>
           <input
@@ -201,7 +201,7 @@ function Conferir({ motorista, ownerUid, onPronto }) {
         </button>
 
         <label className="block pt-1">
-          <span className="mb-1 block text-[11px] text-textMuted">
+          <span className="mb-1 block text-xs text-textMuted">
             Ou recuse, dizendo o que está errado
           </span>
           <textarea
@@ -254,7 +254,7 @@ function Pedido({ pedido }) {
     <div className="rounded-2xl border border-border bg-card p-4 text-xs">
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-bold text-text">{pedido.nome || pedido.id}</p>
-        <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-textMuted">
+        <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-wider text-textMuted">
           {pedido.estado}
         </span>
       </div>

@@ -415,7 +415,7 @@ function TargetStep({
         * botão também fica inconfundível: dois vermelhos lado a lado se
         * diluem. */}
       <section>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-textMuted mb-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-textMuted mb-2">
           Aconteceu agora · avisa todo mundo
         </p>
         <button
@@ -450,7 +450,7 @@ function TargetStep({
       {/* Bloco "Toda uma escola" */}
       {schools.length > 0 && (
         <section>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-textMuted mb-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-textMuted mb-2">
             Aviso geral · escola
           </p>
           <div className="grid grid-cols-1 gap-2">
@@ -480,7 +480,7 @@ function TargetStep({
 
       {/* Bloco "Uma criança" */}
       <section>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-textMuted mb-2 flex items-center gap-1.5">
+        <p className="text-xs font-bold uppercase tracking-widest text-textMuted mb-2 flex items-center gap-1.5">
           <Users size={12} /> Aviso pessoal · criança
         </p>
         <input
@@ -509,7 +509,7 @@ function TargetStep({
                 <p className="font-semibold text-text text-sm leading-tight truncate">
                   {c.name}
                 </p>
-                <p className="text-[11px] text-textMuted truncate">
+                <p className="text-xs text-textMuted truncate">
                   {c.school || 'Sem escola'}
                 </p>
               </div>
@@ -546,7 +546,7 @@ function TypeStep({ scope, target, onPick }) {
             <span className="text-2xl" aria-hidden>
               {t.emoji}
             </span>
-            <span className="text-[11px] font-bold leading-tight text-center">
+            <span className="text-xs font-bold leading-tight text-center">
               {t.label}
             </span>
           </button>
@@ -584,7 +584,7 @@ function ConfirmStep({
           {typeData.emoji}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-widest text-white/85 font-bold">
+          <p className="text-xs uppercase tracking-widest text-white/85 font-bold">
             {recipient}
           </p>
           <p className="font-bold leading-tight">{typeData.label}</p>
@@ -603,7 +603,7 @@ function ConfirmStep({
           placeholder="Escreve aqui o que aconteceu…"
           className="w-full rounded-2xl border-2 border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
         />
-        <p className="text-[11px] text-textMuted mt-1.5">
+        <p className="text-xs text-textMuted mt-1.5">
           Pode editar o texto antes de enviar. O pai recebe na agenda dele.
         </p>
       </div>
@@ -625,7 +625,7 @@ function ConfirmStep({
           onChange={(e) => onEventDateChange(e.target.value)}
           className="w-full h-12 rounded-2xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
         />
-        <p className="text-[11px] text-textMuted mt-1.5">
+        <p className="text-xs text-textMuted mt-1.5">
           Passeio, festa, reunião. O pai vê o aviso na data, em vez de ter que
           achar o dia no meio do texto.
         </p>

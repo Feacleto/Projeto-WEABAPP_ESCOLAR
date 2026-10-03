@@ -133,8 +133,8 @@ function Adesivo({ uid, profile }) {
         * dele — e não dá para voltar atrás depois de impresso. */}
       <div className="mt-3 rounded-xl border border-dashed border-border bg-surface p-3 text-center">
         <p className="text-xs font-bold text-text">{TEXTO_ADESIVO.linha1}</p>
-        <p className="mt-0.5 text-[11px] text-textMuted">{TEXTO_ADESIVO.linha2}</p>
-        <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-primary">
+        <p className="mt-0.5 text-xs text-textMuted">{TEXTO_ADESIVO.linha2}</p>
+        <p className="mt-1 font-mono text-xs uppercase tracking-wider text-primary">
           {TEXTO_ADESIVO.site}
         </p>
       </div>
@@ -164,7 +164,7 @@ function Adesivo({ uid, profile }) {
         </>
       ) : (
         <div className="mt-4 space-y-2">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
             Para onde enviamos
           </p>
           {/* O ENDEREÇO FICA NUMA COLEÇÃO SÓ DO DONO. Ele não entra em `users`,
@@ -183,7 +183,7 @@ function Adesivo({ uid, profile }) {
                 key={campo}
                 className={campo === 'logradouro' ? 'col-span-2 block' : 'block'}
               >
-                <span className="mb-1 block text-[11px] text-textMuted">
+                <span className="mb-1 block text-xs text-textMuted">
                   {rotulo}
                   {CAMPOS.includes(campo) ? '' : ' (opcional)'}
                 </span>
@@ -195,7 +195,7 @@ function Adesivo({ uid, profile }) {
               </label>
             ))}
           </div>
-          <p className="text-[11px] text-textMuted">
+          <p className="text-xs text-textMuted">
             Só nós vemos este endereço. Ele não aparece para as famílias.
           </p>
           <button
@@ -253,7 +253,7 @@ function Certificado({ uid, profile }) {
       {estado === VERIF.VERIFICADA ? (
         <div className="mt-3 rounded-xl border border-primary bg-primarySoft p-3">
           <p className="text-xs font-bold text-primary">{TEXTO_SELO.familia}</p>
-          <p className="mt-0.5 text-[11px] text-primary/80">
+          <p className="mt-0.5 text-xs text-primary/80">
             Conferido em {mesAno(profile?.verificadoEm) || '—'}. As famílias que
             recebem seu convite veem isto.
           </p>
@@ -290,7 +290,7 @@ function Certificado({ uid, profile }) {
           </p>
           {/* ⚠️ POR QUE ALVARÁ E NÃO CNH, dito para ele. Ele vai perguntar, e a
             * resposta o favorece: é menos documento pessoal na mão de terceiro. */}
-          <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+          <p className="mt-2 text-xs leading-relaxed text-textMuted">
             Só o alvará — não pedimos CNH nem documento pessoal. Para emitir o
             alvará a prefeitura já conferiu tudo isso, e quanto menos documento
             seu ficar guardado por aí, melhor para você.

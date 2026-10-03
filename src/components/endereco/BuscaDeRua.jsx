@@ -163,7 +163,7 @@ export default function BuscaDeRua({ onEscolher }) {
                 <span className="block text-xs text-textMuted">
                   {[s.bairro, `${s.localidade}/${s.uf}`, s.cep].filter(Boolean).join(' · ')}
                 </span>
-                {s.faixa && <span className="block text-[11px] text-textMuted">{s.faixa}</span>}
+                {s.faixa && <span className="block text-xs text-textMuted">{s.faixa}</span>}
               </button>
             </li>
           ))}

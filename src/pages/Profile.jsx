@@ -393,7 +393,7 @@ export default function Profile() {
               <p className="text-sm text-text font-medium">
                 Sons do app
               </p>
-              <p className="text-[11px] text-textMuted">
+              <p className="text-xs text-textMuted">
                 {soundsEnabled
                   ? 'Toques nos botões, buzina, notificações'
                   : 'Silencioso — só vibração'}
@@ -438,7 +438,7 @@ export default function Profile() {
               <p className="text-sm text-text font-medium">
                 Abrir chamado de suporte
               </p>
-              <p className="text-[11px] text-textMuted">
+              <p className="text-xs text-textMuted">
                 Reportar problema ou pedir ajuda
               </p>
             </div>
@@ -457,7 +457,7 @@ export default function Profile() {
               <p className="text-sm text-text font-medium">
                 Avaliar o app
               </p>
-              <p className="text-[11px] text-textMuted">
+              <p className="text-xs text-textMuted">
                 Conta o que tá funcionando e o que pode melhorar
               </p>
             </div>
@@ -488,7 +488,7 @@ export default function Profile() {
                   <p className="text-sm text-text font-medium">
                     Painel do dono
                   </p>
-                  <p className="text-[11px] text-textMuted">
+                  <p className="text-xs text-textMuted">
                     Números da plataforma, pesquisa e fila de parceiros
                   </p>
                 </div>
@@ -526,7 +526,7 @@ export default function Profile() {
           </button>
         </div>
 
-        <div className="text-center text-[11px] text-textMuted flex items-center justify-center gap-3 pt-2">
+        <div className="text-center text-xs text-textMuted flex items-center justify-center gap-3 pt-2">
           <a href="/termos" target="_blank" rel="noopener noreferrer" className="hover:underline">
             Termos de Uso
           </a>
@@ -540,7 +540,7 @@ export default function Profile() {
             Política de Privacidade
           </a>
         </div>
-        <div className="text-center text-[10px] text-textMuted/70">
+        <div className="text-center text-xs text-textMuted/70">
           Alô Buzinou · versão {APP_VERSION}
         </div>
       </div>
@@ -691,13 +691,13 @@ function InfoRow({ icon: Icon, label, value, hint }) {
     <div className="flex items-start gap-3 py-1">
       <Icon size={16} className="text-textMuted shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] text-textMuted uppercase tracking-wide">
+        <p className="text-xs text-textMuted uppercase tracking-wide">
           {label}
         </p>
         <p className="text-sm text-text break-words">{value || '—'}</p>
         {/* A dica fica ABAIXO do valor e menor: ela explica o valor, não
             compete com ele. */}
-        {hint && <p className="text-[11px] text-textMuted mt-0.5">{hint}</p>}
+        {hint && <p className="text-xs text-textMuted mt-0.5">{hint}</p>}
       </div>
     </div>
   );
@@ -816,7 +816,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-[11px] leading-snug text-textMuted">
+          <p className="mt-1.5 text-xs leading-snug text-textMuted">
             Serve só pra desenhar seu rosto automático. Se você enviou uma
             foto, ela continua valendo.
           </p>

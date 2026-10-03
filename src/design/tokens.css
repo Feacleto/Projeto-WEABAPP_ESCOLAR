@@ -1,0 +1,111 @@
+/* GERADO por `npm run tokens` a partir de tailwind.config.js. NÃO EDITE À MÃO:
+   mude o valor lá e rode o comando. `npm run testar:design` falha se esta
+   cópia ficar diferente da fonte. Regras de uso: docs/design-system.md */
+:root {
+  /* ── cores, pelo nome do app ── */
+  --cor-bg: #EEF1EF;
+  --cor-card: #FFFFFF;
+  --cor-surface: #F6F8F7;
+  --cor-sunken: #F4F6F5;
+  --cor-neutro: #EDF0EE;
+  --cor-border: #D9E0DB;
+  --cor-borderStrong: #BFC9C2;
+  --cor-linhaImpressa: #9CA3AF;
+  --cor-night: #0B1210;
+  --cor-glass: rgba(255,255,255,0.055);
+  --cor-glassBorder: rgba(255,255,255,0.1);
+  --cor-onNight: #FFFFFF;
+  --cor-onNightMuted: #C9D3CD;
+  --cor-onNightAccent: #8EF0AE;
+  --cor-onNightAccentFill: #34D399;
+  --cor-menta: #A7F3D0;
+  --cor-text: #0B1210;
+  --cor-textBody: #2C3631;
+  --cor-textMuted: #55606E;
+  --cor-primary: #1F5F3F;
+  --cor-primaryDark: #143F2A;
+  --cor-primarySoft: #EEF8F1;
+  --cor-primaryChip: #DDF5E5;
+  --cor-primaryBorder: #B9E4C6;
+  --cor-accent: #52C41A;
+  --cor-accentText: #1C6B3F;
+  --cor-onAccent: #06210A;
+  --cor-warning: #F5A623;
+  --cor-warningText: #92400E;
+  --cor-warningSoft: #FFFBEB;
+  --cor-warningChip: #FEF3C7;
+  --cor-warningBorder: #FDE68A;
+  --cor-danger: #EF4444;
+  --cor-dangerText: #B91C1C;
+  --cor-dangerSoft: #FEF2F2;
+  --cor-dangerChip: #FEE2E2;
+  --cor-dangerBorder: #FECACA;
+  --cor-info: #1D4ED8;
+  --cor-infoSoft: #EFF6FF;
+  --cor-infoChip: #DBEAFE;
+  --cor-infoBorder: #BFDBFE;
+  --cor-infoText: #1D4ED8;
+  --cor-escola: #6D28D9;
+  --cor-escolaSoft: #F5F3FF;
+  --cor-escolaChip: #EDE9FE;
+  --cor-escolaBorder: #DDD6FE;
+  --cor-perua: #F5A623;
+  --cor-ouro: #FBBF24;
+  /* ── os mesmos valores, pelo nome do site ── */
+  --preto: var(--cor-text);
+  --texto: var(--cor-textBody);
+  --cinza: var(--cor-textMuted);
+  --areia: var(--cor-bg);
+  --branco: var(--cor-card);
+  --recuo: var(--cor-surface);
+  --neutro: var(--cor-neutro);
+  --linha: var(--cor-border);
+  --linha-forte: var(--cor-borderStrong);
+  --verde: var(--cor-primary);
+  --verde-esc: var(--cor-primaryDark);
+  --vivo: var(--cor-accent);
+  --menta: var(--cor-menta);
+  --noite-verde: var(--cor-onNightAccent);
+  --noite-texto: var(--cor-onNightMuted);
+  --ok-suave: var(--cor-primarySoft);
+  --ok-chip: var(--cor-primaryChip);
+  --ok-borda: var(--cor-primaryBorder);
+  --ok-texto: var(--cor-accentText);
+  --vivo-tinta: var(--cor-onAccent);
+  --aviso: var(--cor-warning);
+  --aviso-texto: var(--cor-warningText);
+  --aviso-suave: var(--cor-warningSoft);
+  --aviso-chip: var(--cor-warningChip);
+  --aviso-borda: var(--cor-warningBorder);
+  --perigo: var(--cor-danger);
+  --perigo-texto: var(--cor-dangerText);
+  --perigo-suave: var(--cor-dangerSoft);
+  --perigo-chip: var(--cor-dangerChip);
+  --perigo-borda: var(--cor-dangerBorder);
+  --info: var(--cor-info);
+  --info-chip: var(--cor-infoChip);
+  --escola: var(--cor-escola);
+  --escola-chip: var(--cor-escolaChip);
+  --perua: var(--cor-perua);
+  --ouro: var(--cor-ouro);
+  /* ── fontes ── */
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --corpo: "Instrument Sans", system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  /* ── forma ── */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+  --sombra-rest: 0 1px 3px 0 rgb(11 18 16 / 0.07), 0 1px 2px -1px rgb(11 18 16 / 0.05);
+  --sombra-foco: 0 14px 30px -14px rgb(20 63 42 / 0.6);
+  --sombra-float: 0 12px 32px -8px rgb(0 0 0 / 0.38);
+  /* ── movimento ── */
+  --dur-toque: 120ms;
+  --dur-estado: 200ms;
+  --dur-entrada: 300ms;
+  --dur-festa: 450ms;
+  --curva-freio: cubic-bezier(.2,.8,.2,1);
+  --curva-mola: cubic-bezier(.3,1.5,.5,1);
+}

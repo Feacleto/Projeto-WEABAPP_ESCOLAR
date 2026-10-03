@@ -201,7 +201,7 @@ export default function Acompanhar() {
 
         {/* Ela precisa saber que isto acaba, senão volta amanhã e acha que
           * quebrou. E precisa saber a quem pedir — não a nós. */}
-        <p className="text-[11px] text-textMuted text-center leading-relaxed max-w-xs mx-auto pt-2">
+        <p className="text-xs text-textMuted text-center leading-relaxed max-w-xs mx-auto pt-2">
           Este link vale só hoje. Amanhã, peça um novo a quem te mandou.
         </p>
       </main>

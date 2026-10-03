@@ -88,7 +88,7 @@ export default function Welcome() {
             >
               <Logo variant="stacked" tone="onDark" height={92} className="mx-auto" />
             </a>
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-onNightAccent/80">
+            <p className="mt-4 font-mono text-xs uppercase tracking-[0.2em] text-onNightAccent/80">
               primeira vez aqui
             </p>
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
@@ -163,7 +163,7 @@ export default function Welcome() {
       </main>
 
       <footer className="px-6 pb-6 text-center">
-        <div className="flex items-center justify-center gap-3 text-[11px] text-textMuted">
+        <div className="flex items-center justify-center gap-3 text-xs text-textMuted">
           <Link to="/termos" className="hover:underline">
             Termos de Uso
           </Link>

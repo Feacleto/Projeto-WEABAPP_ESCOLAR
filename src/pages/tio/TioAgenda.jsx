@@ -122,7 +122,7 @@ function EntryRow({ entry }) {
         <span className="text-xs font-bold uppercase tracking-wide flex-1 truncate">
           {t.label}
         </span>
-        <span className="text-[10px] text-white/80">{dateLabel}</span>
+        <span className="text-xs text-white/80">{dateLabel}</span>
       </div>
       <div className="p-3 space-y-1.5">
         <p className="text-xs text-textMuted inline-flex items-center gap-1">

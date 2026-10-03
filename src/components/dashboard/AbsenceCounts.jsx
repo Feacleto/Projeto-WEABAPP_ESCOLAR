@@ -39,7 +39,7 @@ export default function AbsenceCounts({ history = [] }) {
 
   return (
     <section className="space-y-2">
-      <h2 className="text-[11px] font-semibold uppercase tracking-widest text-textMuted px-1">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-textMuted px-1">
         Faltas
       </h2>
       <div className="grid grid-cols-2 gap-2">
@@ -74,7 +74,7 @@ export default function AbsenceCounts({ history = [] }) {
                     <p className="text-sm font-semibold text-text">
                       {formatDateBR(a.dateKey)}
                     </p>
-                    <p className="text-[11px] text-textMuted">
+                    <p className="text-xs text-textMuted">
                       {ABSENCE_LABELS[a.type] || 'Ausência'}
                     </p>
                   </div>

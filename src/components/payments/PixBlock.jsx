@@ -86,7 +86,7 @@ export default function PixBlock({ admin, amount, txid }) {
       <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+            <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
               chave pix
             </p>
             <p className="text-sm text-text break-all">
@@ -97,7 +97,7 @@ export default function PixBlock({ admin, amount, txid }) {
 
         {/* O copia-e-cola é o caminho principal — o valor já vai embutido */}
         <div className="bg-sunken border border-dashed border-primary/40 rounded-xl p-3">
-          <p className="font-mono text-[10px] leading-relaxed text-primary break-all">
+          <p className="font-mono text-xs leading-relaxed text-primary break-all">
             {payload}
           </p>
         </div>
@@ -105,7 +105,7 @@ export default function PixBlock({ admin, amount, txid }) {
         <Button icon={copied ? Check : Copy} onClick={copy}>
           {copied ? 'Código copiado!' : 'Copiar código PIX'}
         </Button>
-        <p className="text-[11px] text-textMuted text-center">
+        <p className="text-xs text-textMuted text-center">
           O valor de {formatBRLShort(amount)} já vai no código — não precisa
           digitar.
         </p>

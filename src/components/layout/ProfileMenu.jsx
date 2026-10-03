@@ -158,11 +158,11 @@ export default function ProfileMenu({ role, basePath, active = false }) {
               <span className="block truncate text-sm font-bold text-text">
                 {profile?.name || 'Minha conta'}
               </span>
-              <span className="block truncate text-[11px] text-textMuted">
+              <span className="block truncate text-xs text-textMuted">
                 {user?.email ||
                   (role === 'admin' ? 'Motorista' : 'Responsável')}
               </span>
-              <span className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary">
+              <span className="mt-1 inline-flex items-center gap-0.5 text-xs font-semibold text-primary">
                 Ver perfil completo
                 <ChevronRight size={12} />
               </span>

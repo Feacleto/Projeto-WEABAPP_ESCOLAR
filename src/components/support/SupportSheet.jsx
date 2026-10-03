@@ -138,7 +138,7 @@ export default function SupportSheet({ open, onClose, uid, role }) {
                     placeholder={current?.placeholder || ''}
                     className="w-full rounded-2xl border-2 border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
                   />
-                  <p className="text-[11px] text-textMuted mt-1.5">
+                  <p className="text-xs text-textMuted mt-1.5">
                     Quanto mais detalhe, mais rápido a gente resolve.
                   </p>
                 </div>

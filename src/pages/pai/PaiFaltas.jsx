@@ -95,7 +95,7 @@ export default function PaiFaltas() {
             <p className="text-sm font-bold capitalize leading-tight text-text">
               {formatMonthLabel(mes)}
             </p>
-            <p className="text-[11px] text-textMuted">
+            <p className="text-xs text-textMuted">
               {doMes.length === 0
                 ? 'nenhuma falta'
                 : `${doMes.length} ${doMes.length === 1 ? 'falta' : 'faltas'}`}
@@ -148,7 +148,7 @@ export default function PaiFaltas() {
           Avisar uma falta
         </button>
 
-        <p className="px-1 text-center text-[11px] leading-relaxed text-textMuted">
+        <p className="px-1 text-center text-xs leading-relaxed text-textMuted">
           Dá pra avisar até 14 dias à frente. Mais que isso o plano costuma
           mudar, e um aviso que ninguém lembra de desmarcar faz o motorista
           não passar na porta.
@@ -170,7 +170,7 @@ export default function PaiFaltas() {
             <p className="text-xs font-semibold text-text">
               Falta não muda a mensalidade
             </p>
-            <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+            <p className="mt-1 text-xs leading-relaxed text-textMuted">
               O valor é pela <strong>vaga na perua</strong> — ela fica
               reservada para o seu filho todos os dias, inclusive nas férias,
               independente de quantos dias ele usou. É a cláusula 7ª do
@@ -179,7 +179,7 @@ export default function PaiFaltas() {
             <button
               type="button"
               onClick={() => navigate('/pai/contrato')}
-              className="tap mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary"
+              className="tap mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary"
             >
               Ver o contrato <ChevronRight size={12} />
             </button>

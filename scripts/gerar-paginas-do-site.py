@@ -15,10 +15,11 @@ _home = open(os.path.join(RAIZ, 'landing', 'index.html'), encoding='utf-8').read
 MARCA = re.search(r'<a href="#topo" class="marca"[\s\S]*?</a>', _home).group(0)
 MARCA = MARCA.replace('href="#topo"', 'href="/"').replace('aria-label="Alô Buzinou — início"', 'aria-label="Alô Buzinou — página inicial"')
 
-CK = '<span class="ck" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#1F5F3F" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>'
-ZAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.2-4.5A9 9 0 1 1 21 12z"/></svg>'
-MAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>'
-SETA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+# Os ícones são os do lucide, o mesmo desenho do app (design system, D8).
+CK = '<span class="ck" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#1F5F3F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>'
+ZAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>'
+MAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>'
+SETA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>'
 
 VAN = '<g class="van-in"><rect x="0" y="0" width="92" height="40" rx="12" fill="#1F5F3F"/><rect x="0" y="22" width="92" height="6" fill="#F5A623"/><rect x="8" y="7" width="16" height="12" rx="3" fill="#CFF3DA"/><rect x="28" y="7" width="16" height="12" rx="3" fill="#CFF3DA"/><path d="M50 7h16l12 12H50z" fill="#CFF3DA"/><circle class="rd" cx="22" cy="42" r="8" fill="#0B1210"/><circle class="rd" cx="70" cy="42" r="8" fill="#0B1210"/><circle cx="22" cy="42" r="3" fill="#D9E1DC"/><circle cx="70" cy="42" r="3" fill="#D9E1DC"/></g>'
 CENAS = {
@@ -155,6 +156,7 @@ def pagina(slug, d):
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/paginas.css">
 <script>
 /* A página nasce completa. Só ganha permissão de esconder coisa pra revelar

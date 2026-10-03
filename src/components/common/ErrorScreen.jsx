@@ -110,7 +110,7 @@ export default function ErrorScreen({ error, chunk = false }) {
       {/* Pro suporte. O usuário não vai entender a mensagem, mas consegue
         * LER ela no WhatsApp pra gente — e sem a versão do build a gente
         * fica adivinhando qual código estava no celular dele. */}
-      <p className="mt-10 text-[11px] leading-relaxed text-textMuted/70 max-w-xs break-words">
+      <p className="mt-10 text-xs leading-relaxed text-textMuted/70 max-w-xs break-words">
         {error?.message ? `${error.message} · ` : ''}v{APP_VERSION}
       </p>
     </div>

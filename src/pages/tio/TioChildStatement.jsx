@@ -118,7 +118,7 @@ export default function TioChildStatement() {
           >
             Imprimir / Salvar PDF
           </Button>
-          <p className="mt-2 text-center text-[11px] text-textMuted">
+          <p className="mt-2 text-center text-xs text-textMuted">
             no celular, escolha &ldquo;Salvar como PDF&rdquo; pra mandar no
             WhatsApp
           </p>
@@ -128,7 +128,7 @@ export default function TioChildStatement() {
           <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-textMuted">
+                <p className="text-xs font-bold uppercase tracking-widest text-textMuted">
                   Extrato de mensalidades
                 </p>
                 <h1 className="text-2xl font-bold text-text leading-tight mt-1">
@@ -173,7 +173,7 @@ export default function TioChildStatement() {
 
           <section className="grid grid-cols-2 gap-3">
             <div className="bg-primarySoft rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">
                 Pago
               </p>
               <p className="text-2xl font-bold text-primary tabular-nums mt-1">
@@ -181,7 +181,7 @@ export default function TioChildStatement() {
               </p>
             </div>
             <div className="bg-warningSoft rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-warningText">
+              <p className="text-xs font-bold uppercase tracking-widest text-warningText">
                 Em aberto
               </p>
               <p className="text-2xl font-bold text-warningText tabular-nums mt-1">
@@ -235,7 +235,7 @@ export default function TioChildStatement() {
                             <>
                               {formatDate(p.paidAt)}
                               {p.paymentMethod && (
-                                <span className="block text-[10px]">
+                                <span className="block text-xs">
                                   {METODO[p.paymentMethod] || p.paymentMethod}
                                 </span>
                               )}
@@ -264,7 +264,7 @@ export default function TioChildStatement() {
               * no PAPEL. O `borderStrong` da tela (#D1D5DB) some numa
               * impressora a jato quase sem tinta, que é a que o motorista
               * tem — e linha de assinatura invisível é folha inutilizada. */}
-            <div className="mt-10 flex gap-8 text-[11px] text-textMuted">
+            <div className="mt-10 flex gap-8 text-xs text-textMuted">
               <div className="flex-1 border-t border-linhaImpressa pt-1">
                 Assinatura do responsável
               </div>

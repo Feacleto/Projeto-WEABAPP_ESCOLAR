@@ -1029,7 +1029,7 @@ function Step3School({ form, setForm, errors }) {
                       {e.nome}
                     </p>
                     {e.endereco && (
-                      <p className="text-[11px] text-textMuted truncate">
+                      <p className="text-xs text-textMuted truncate">
                         {e.endereco}
                       </p>
                     )}
@@ -1304,7 +1304,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           placeholder="Ex.: portão de trás, quem busca na segunda..."
           className="w-full rounded-xl border border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-textMuted"
         />
-        <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+        <p className="mt-2 text-xs leading-relaxed text-textMuted">
           Só o que ajuda na rota. Informação de saúde, remédio ou alergia é
           assunto para você combinar direto com a família — este campo não é o
           lugar de guardar isso.
@@ -1515,7 +1515,7 @@ function AnexarContratoAnterior({ childId }) {
       <p className="text-xs font-semibold text-text">
         Já tem contrato com essa família?
       </p>
-      <p className="mt-0.5 text-[11px] leading-relaxed text-textMuted">
+      <p className="mt-0.5 text-xs leading-relaxed text-textMuted">
         Anexe o papel ou o PDF que vocês já assinaram. Ele fica guardado na
         ficha como registro do que foi combinado antes —{' '}
         <strong>o contrato que vale continua sendo o do app</strong>, com os

@@ -291,7 +291,7 @@ export default function LoginSheet({
                 <GoogleIcon size={22} />
                 {googleSubmitting ? 'Entrando…' : 'Entrar com Google'}
               </button>
-              <p className="mt-2 text-center text-[11px] text-textMuted">
+              <p className="mt-2 text-center text-xs text-textMuted">
                 sem digitar nada
               </p>
             </>

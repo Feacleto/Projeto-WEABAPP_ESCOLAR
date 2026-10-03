@@ -346,18 +346,18 @@ function InteressePorCartaoResumo() {
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+      <h3 className="font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
         Querem receber por cartão
       </h3>
       <p className="mt-1 text-sm font-extrabold text-text">
         {lista.length} {lista.length === 1 ? 'motorista' : 'motoristas'}
       </p>
-      <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+      <p className="mt-1 text-xs leading-relaxed text-textMuted">
         Pesquisa, não recurso. Antes de qualquer promessa, é preciso achar um
         PSP que abra subconta com split para <strong>pessoa física sem
         CNPJ</strong> — o modelo decidiu que o motorista não precisa de MEI.
       </p>
-      <ul className="mt-2 space-y-0.5 text-[11px] text-textMuted">
+      <ul className="mt-2 space-y-0.5 text-xs text-textMuted">
         {lista.slice(0, 12).map((i) => (
           <li key={i.id} className="font-mono">
             {i.tioUid}
@@ -420,7 +420,7 @@ function Geral({ ov }) {
             ))}
           </div>
           {/* ⚠️ A RESSALVA É PARTE DO DADO, não rodapé de cortesia. */}
-          <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+          <p className="mt-2 text-xs leading-relaxed text-textMuted">
             <strong>Sem origem</strong> reúne quem digitou o endereço, quem
             salvou nos favoritos — e quem viu o adesivo na van ou ouviu de um
             colega, porque esses dois não têm link pra trazer. Número alto aí

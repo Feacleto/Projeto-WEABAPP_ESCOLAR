@@ -93,7 +93,7 @@ export default function OfertaDoFechamento({
             </strong>
             <span className="text-textMuted"> /mês</span>
           </p>
-          <p className="mt-1 text-[11px] text-textMuted">
+          <p className="mt-1 text-xs text-textMuted">
             com as {oferta.criancas}{' '}
             {oferta.criancas === 1 ? 'criança' : 'crianças'} que você tem hoje
           </p>

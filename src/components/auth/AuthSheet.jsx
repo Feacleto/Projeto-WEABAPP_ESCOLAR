@@ -219,7 +219,7 @@ export default function AuthSheet({
               {!googleBusy && <GoogleIcon size={22} />}
               Continuar com Google
             </Button>
-            <p className="text-[11px] text-textMuted text-center">
+            <p className="text-xs text-textMuted text-center">
               Sem digitar nada. Se você usa Gmail no celular, é um toque.
             </p>
           </div>
@@ -290,7 +290,7 @@ export default function AuthSheet({
           </form>
         )}
 
-        <p className="text-[11px] text-textMuted text-center leading-relaxed">
+        <p className="text-xs text-textMuted text-center leading-relaxed">
           Ao continuar você aceita os{' '}
           <Link to="/termos" target="_blank" className="underline text-primary">
             Termos

@@ -222,20 +222,20 @@ export default function EditarOndeSheet({ open, child, onClose }) {
           />
 
           {buscandoCep && (
-            <p className="text-[11px] text-textMuted">Consultando o CEP…</p>
+            <p className="text-xs text-textMuted">Consultando o CEP…</p>
           )}
 
           {/* "Não achamos" e "está fora do ar" dizem coisas diferentes: a
             * primeira pede pra reconferir, a segunda avisa que não é ela. */}
           {cepState === 'notFound' && (
-            <p className="rounded-xl bg-warningSoft px-3 py-2 text-[11px] leading-relaxed text-warningText">
+            <p className="rounded-xl bg-warningSoft px-3 py-2 text-xs leading-relaxed text-warningText">
               Não achamos esse CEP. Confira os números — ou escreva o endereço
               completo abaixo.
             </p>
           )}
 
           {cepState === 'offline' && (
-            <p className="rounded-xl bg-warningSoft px-3 py-2 text-[11px] leading-relaxed text-warningText">
+            <p className="rounded-xl bg-warningSoft px-3 py-2 text-xs leading-relaxed text-warningText">
               A consulta de CEP está fora do ar. Escreva o endereço completo
               abaixo.
             </p>
@@ -290,13 +290,13 @@ export default function EditarOndeSheet({ open, child, onClose }) {
           {ponto ? (
             <>
               <MapPicker point={ponto} onChange={setPonto} />
-              <p className="text-[11px] leading-relaxed text-textMuted">
+              <p className="text-xs leading-relaxed text-textMuted">
                 Arraste o pino se a porta ficar do outro lado da rua — é este
                 ponto que a rota usa.
               </p>
             </>
           ) : (
-            <p className="rounded-xl bg-warningSoft px-3 py-2 text-[11px] leading-relaxed text-warningText">
+            <p className="rounded-xl bg-warningSoft px-3 py-2 text-xs leading-relaxed text-warningText">
               Sem ponto no mapa esta criança não entra no traçado da rota.
               Busque o endereço pra marcar.
             </p>
@@ -332,7 +332,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
                       {e.nome}
                     </span>
                     {e.endereco && (
-                      <span className="mt-0.5 block truncate text-[11px] text-textMuted">
+                      <span className="mt-0.5 block truncate text-xs text-textMuted">
                         {e.endereco}
                       </span>
                     )}

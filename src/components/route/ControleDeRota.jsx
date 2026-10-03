@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Square, Satellite, CircleAlert, MapPin, MapPinOff, CalendarOff } from 'lucide-react';
+import { Play, Square, Satellite, CircleAlert, MapPin, MapPinOff, CalendarOff, ArrowRight } from 'lucide-react';
 import { diaSemRota, fraseDoDiaSemRota } from '../../dominio/rota/calendario.js';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -33,6 +33,10 @@ export default function ControleDeRota({
   alvos = [],
   saida = null,
   pendentes = [],
+  // DENTRO DO CARTÃO VERDE DO INÍCIO (`ResumoDaTurma`). Parado, o botão vira o
+  // limão do design system — o único lugar em que ele é botão: sobre verde, o
+  // verde-escuro some. A rota ligada continua com a barra de sempre.
+  destaque = false,
 }) {
   const { user, profile, updateProfile, refreshProfile } = useAuth();
   // AUSENTE É LIGADO — ver `setCompartilharLocalizacao`.
@@ -153,7 +157,41 @@ export default function ControleDeRota({
     }
   }
 
-  const ChaveDoMapa = (
+  const ChaveDoMapa = destaque ? (
+    <button
+      type="button"
+      onClick={trocarCompartilhamento}
+      role="switch"
+      aria-checked={compartilha}
+      className="tap mt-4 flex w-full items-center gap-3 border-t border-white/15 pt-4 text-left"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-white">
+          {compartilha
+            ? 'As famílias veem a perua no mapa'
+            : 'A perua não aparece no mapa'}
+        </span>
+        <span className="mt-0.5 block text-[13px] leading-snug text-primaryChip">
+          {compartilha
+            ? 'Posição aproximada, num raio de 150 m.'
+            : 'O GPS continua ligado: elas recebem o aviso de chegada.'}
+        </span>
+      </span>
+      {/* O INTERRUPTOR do design system: a bolinha desliza, o trilho acende. */}
+      <span
+        aria-hidden="true"
+        className={`relative h-8 w-[52px] shrink-0 rounded-full transition-colors duration-estado ${
+          compartilha ? 'bg-accent' : 'bg-white/25'
+        }`}
+      >
+        <span
+          className={`absolute left-[3px] top-[3px] h-[26px] w-[26px] rounded-full bg-white shadow transition-transform duration-estado ease-freio ${
+            compartilha ? 'translate-x-5' : ''
+          }`}
+        />
+      </span>
+    </button>
+  ) : (
     <button
       type="button"
       onClick={trocarCompartilhamento}
@@ -196,6 +234,26 @@ export default function ControleDeRota({
   // `dominio/rota/calendario.js`.
   const motivoSemRota = diaSemRota(new Date());
   if (!watching && motivoSemRota && !rodarMesmoAssim) {
+    if (destaque) {
+      return (
+        <div className="flex items-center gap-3 rounded-xl bg-white/10 p-3">
+          <CalendarOff size={20} className="shrink-0 text-menta" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-bold text-white">
+              {fraseDoDiaSemRota(motivoSemRota)}
+            </span>
+            <span className="block text-[13px] text-primaryChip">Sem viagem combinada hoje.</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setRodarMesmoAssim(true)}
+            className="tap min-h-11 shrink-0 rounded-xl border-2 border-white/40 px-3 text-sm font-bold text-white"
+          >
+            Rodar mesmo assim
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutro text-textMuted">
@@ -233,16 +291,28 @@ export default function ControleDeRota({
        *
        * Órfã ela era sintoma, não causa: o problema era o passo apontando pro
        * elemento errado. */}
+      {destaque ? (
+        <button
+          type="button"
+          data-tour="start-route"
+          onClick={iniciar}
+          className="tap flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-onAccent"
+        >
+          Iniciar a rota
+          <ArrowRight size={20} />
+        </button>
+      ) : (
       <button
         type="button"
         data-tour="start-route"
         onClick={iniciar}
-        className="tap w-full rounded-2xl bg-primary text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-focus"
+        className="tap w-full rounded-xl bg-primary text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-focus"
         style={{ height: 56 }}
       >
         <Play size={20} />
         INICIAR ROTA
       </button>
+      )}
       {ChaveDoMapa}
       </>
     );

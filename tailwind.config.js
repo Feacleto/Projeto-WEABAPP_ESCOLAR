@@ -1,4 +1,20 @@
 /** @type {import('tailwindcss').Config} */
+/*
+ * ═══ O DESIGN SYSTEM MORA AQUI (03/10/2026) ═══
+ *
+ * Este arquivo é a FONTE ÚNICA das cores, fontes, raios, sombras e tempos
+ * de animação do app E do site. O site (landing/) é HTML estático sem build
+ * e não lê Tailwind: `npm run tokens` gera `src/design/tokens.css` e
+ * `landing/tokens.css` a partir daqui, e `npm run testar:design` falha se as
+ * cópias ficarem para trás. Mudou um valor aqui → rode `npm run tokens`.
+ *
+ * As regras de uso (qual peça, qual cor, quando animar) estão em
+ * docs/design-system.md. Os VALORES moram só aqui.
+ *
+ * O sistema nasceu de nove diferenças entre o site e o app (D1–D9 no
+ * documento): o site tinha a cara da marca, o app tinha as cores medidas.
+ * Ficou a cara de um com a régua do outro.
+ */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
@@ -28,7 +44,7 @@ export default {
         // A LINHA DESATIVADA: criança fora da rota de hoje, campo disabled.
         // Não é o mesmo que `surface` — aquilo é um bloco que RECUA, este é
         // um item que APAGOU. Substitui os usos de gray-50.
-        sunken: '#F9FAFB',
+        sunken: '#F4F6F5',
 
         // AS TRÊS BORDAS, do mais fraco pro mais forte. Existiam como
         // gray-100/200/300 espalhados (~340 usos), e a escolha entre eles
@@ -40,9 +56,14 @@ export default {
         // são linha. Não há uso dominante, e `bg-divider` num botão seria uma
         // classe válida e mentirosa. A regra dele é por PESO: é o cinza mais
         // fraco do sistema, seja como risco ou como fundo em repouso.
-        neutro: '#F3F4F6',
-        border: '#E5E7EB', // a borda de tudo — 94% dos usos são borda mesmo
-        borderStrong: '#D1D5DB', // borda de campo, tracejado, e a ALÇA de
+        //
+        // ⚠️ OS TRÊS VIERAM DO SITE (03/10/2026, D4 do design system). Eram
+        // os cinzas do Tailwind (#F3F4F6, #E5E7EB, #D1D5DB), puxados para o
+        // AZUL, e ao lado do site o app parecia frio — outro produto. Agora
+        // puxam para o verde, como o fundo da página sempre puxou.
+        neutro: '#EDF0EE',
+        border: '#D9E0DB', // a borda de tudo — 94% dos usos são borda mesmo
+        borderStrong: '#BFC9C2', // borda de campo, tracejado, e a ALÇA de
         // arrastar das folhas (que é affordance física: precisa ser vista)
 
         // ── O PAPEL É OUTRO SUPORTE, E PEDE OUTRA BORDA ──────────────────
@@ -68,7 +89,7 @@ export default {
         glass: 'rgba(255,255,255,0.055)',
         glassBorder: 'rgba(255,255,255,0.1)',
         onNight: '#FFFFFF', // 18,7:1 sobre night
-        onNightMuted: '#B3B6B5', // 9,3:1. Substitui SEIS opacidades de branco
+        onNightMuted: '#C9D3CD', // 12,3:1 — o do site. Substitui SEIS opacidades de branco
         // (white/70 a white/40) usadas pro mesmo papel, duas das quais
         // reprovavam contraste — inclusive o CNPJ e os links legais do rodapé.
         //
@@ -77,11 +98,21 @@ export default {
         // sempre usou um verde claro, e ele merece nome em vez de continuar
         // como `emerald-300` solto em onze arquivos. São dois porque têm dois
         // papéis, igual ao âmbar: um é palavra e ícone, o outro é massa.
-        onNightAccent: '#6EE7B7', // texto, ícone e borda sobre night
+        // ⚠️ ERAM QUATRO VERDES CLAROS (o site tinha #6EE07A e #8EF0AE, o app
+        // #6EE7B7, e ainda a menta). Ficaram dois: este, que é palavra e
+        // ícone (13,7:1 sobre night), e o `menta` abaixo, do rótulo em mono.
+        onNightAccent: '#8EF0AE', // texto, ícone e borda sobre night
         onNightAccentFill: '#34D399', // preenchimento e tinta sobre night
+        menta: '#A7F3D0', // o rótulo em mono sobre night ou sobre primary
 
         // ── TEXTO ───────────────────────────────────────────────────────
-        text: '#111827', // 15,6:1 sobre bg. Não mexer: é a folga do sol.
+        // 16,7:1 sobre bg. Não mexer: é a folga do sol. Era #111827, o
+        // quase-preto AZULADO do Tailwind; virou o `preto` do site, que puxa
+        // para o verde (D4). A folga até subiu.
+        text: '#0B1210',
+        // O parágrafo LONGO — termos, explicações, o corpo do site. 11,0:1.
+        // Título, valor e nome continuam em `text`.
+        textBody: '#2C3631',
         // CORRIGIDO. Era #6B7280, que dava 4,8:1 sobre o branco do cartão e
         // só 4,3:1 sobre o fundo da PÁGINA — passava onde foi testado e
         // reprovava onde mais aparece. É o segundo texto mais usado do app.
@@ -97,9 +128,14 @@ export default {
         // verde-floresta da marca é imperceptível nessas saturações, e trocar
         // por um tom derivado do `primary` mudaria a aparência de ~60 lugares
         // sem ninguém ter pedido. Fica registrado que são famílias diferentes.
-        primarySoft: '#ECFDF5',
-        primaryChip: '#D1FAE5',
-        primaryBorder: '#A7F3D0',
+        //
+        // ⚠️ ATUALIZADO (03/10/2026, D5): eram os do emerald (#ECFDF5,
+        // #D1FAE5, #A7F3D0), e o site usava outros (#DDF5E5). Ficaram os do
+        // site — a caixinha de ícone, o chip "em dia" e o avatar são a mesma
+        // tinta nos dois lados agora. 6,6:1 do primary sobre o chip.
+        primarySoft: '#EEF8F1',
+        primaryChip: '#DDF5E5',
+        primaryBorder: '#B9E4C6',
         // O verde-limão das ondas da marca. Em interface significa CONCLUÍDO.
         // Só preenchimento e ícone — como TEXTO dá 2,3:1 e é ilegível.
         accent: '#52C41A',
@@ -108,7 +144,16 @@ export default {
         // dá 4,4:1 sobre o fundo da página, a mesma armadilha do textMuted.
         // Este é o lime-800: 6,2:1 sobre bg, 7,1:1 sobre card, 6,5:1 sobre o
         // chip de success/10 onde ele de fato vive.
-        accentText: '#3F6212',
+        //
+        // ⚠️ ATUALIZADO (03/10/2026, D5): era o lime-800 (#3F6212), e o chip
+        // verde do app misturava o fundo esmeralda com a letra limão. Virou o
+        // verde do chip do site: 5,7:1 sobre bg, 6,5:1 sobre card, 5,7:1
+        // sobre o primaryChip, e branco sobre ele dá 6,5:1.
+        accentText: '#1C6B3F',
+        // A TINTA SOBRE O LIMÃO — o rótulo do botão `accent`. Só existe junto
+        // dele: o limão é botão apenas sobre verde ou escuro, onde o
+        // verde-escuro some (design system, D3). 7,5:1.
+        onAccent: '#06210A',
 
         // ── SINAIS ──────────────────────────────────────────────────────
         //
@@ -209,11 +254,22 @@ export default {
       //
       // Três níveis, e o do meio tem cota:
       boxShadow: {
+        // ⚠️ AS SOMBRAS DO TAILWIND APONTAM PARA AS DO SISTEMA (03/10/2026, D7).
+        // `shadow-sm` aparecia 52 vezes e `shadow-2xl` 16, fora dos três
+        // níveis abaixo. Em vez de caçar cada uso, o nome velho passou a
+        // significar o nível certo: o que é cartão vira `rest`, o que flutua
+        // vira `float`. Classe nova usa o nome do nível.
+        sm: '0 1px 3px 0 rgb(11 18 16 / 0.07), 0 1px 2px -1px rgb(11 18 16 / 0.05)',
+        DEFAULT: '0 1px 3px 0 rgb(11 18 16 / 0.07), 0 1px 2px -1px rgb(11 18 16 / 0.05)',
+        md: '0 1px 3px 0 rgb(11 18 16 / 0.07), 0 1px 2px -1px rgb(11 18 16 / 0.05)',
+        lg: '0 12px 32px -8px rgb(0 0 0 / 0.38)',
+        xl: '0 12px 32px -8px rgb(0 0 0 / 0.38)',
+        '2xl': '0 12px 32px -8px rgb(0 0 0 / 0.38)',
         // Em repouso. Cinza, discreta, e a maioria absoluta dos cartões.
-        rest: '0 1px 3px 0 rgb(17 24 39 / 0.07), 0 1px 2px -1px rgb(17 24 39 / 0.05)',
+        rest: '0 1px 3px 0 rgb(11 18 16 / 0.07), 0 1px 2px -1px rgb(11 18 16 / 0.05)',
         // O foco da tela — colorida com o verde da marca. UMA POR TELA.
         // Duas sombras coloridas na mesma tela e nenhuma das duas chama.
-        focus: '0 8px 24px -6px rgb(31 95 63 / 0.28)',
+        focus: '0 14px 30px -14px rgb(20 63 42 / 0.6)',
         // O que de fato FLUTUA: folha, barra de abas, modal, chamada em
         // tela cheia. Preta e forte, porque tem conteúdo por baixo.
         float: '0 12px 32px -8px rgb(0 0 0 / 0.38)',
@@ -299,8 +355,39 @@ export default {
         joinha: 'joinha 900ms ease-in-out 500ms infinite',
       },
 
+      // ⚠️ AS FONTES DO SITE (03/10/2026, D1). O app usava Inter em tudo, e
+      // quem vinha da landing achava que tinha aberto outro produto. A
+      // Bricolage é a voz da marca e aparece POUCO: título de tela, a marca,
+      // o número que importa (`font-display`). Todo o resto é Instrument Sans.
+      // A letra de máquina é só do rótulo em maiúsculas e do código PIX.
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Instrument Sans"', 'system-ui', 'sans-serif'],
+        display: ['"Bricolage Grotesque"', '"Segoe UI"', 'system-ui', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace'],
+      },
+      // ⚠️ QUATRO DEGRAUS DE CANTO (03/10/2026, D6). Os nomes do Tailwind
+      // ficaram, os valores mudaram — o app tinha botão a 12px e campo a
+      // 16px lado a lado no mesmo formulário, e o site usava cinco raios
+      // sem regra. Quanto maior a peça, maior o canto:
+      //   lg 10 (chip quadrado, botão pequeno) · xl 14 (botão, campo)
+      //   2xl 20 (cartão) · 3xl 28 (folha, cartão de destaque) · full (pílula)
+      borderRadius: {
+        lg: '10px',
+        xl: '14px',
+        '2xl': '20px',
+        '3xl': '28px',
+      },
+      // O MOVIMENTO: quatro durações e duas curvas (ver docs/design-system.md).
+      // Toda animação dura menos de meio segundo, roda uma vez e para.
+      transitionDuration: {
+        toque: '120ms', // o botão afundando no dedo
+        estado: '200ms', // cor, chip, interruptor, e o que sai de cena
+        entrada: '300ms', // tela, folha, aviso e item que entra
+        festa: '450ms', // conquista: o check, o contador. O teto.
+      },
+      transitionTimingFunction: {
+        freio: 'cubic-bezier(.2,.8,.2,1)', // sai rápido e freia: quase tudo
+        mola: 'cubic-bezier(.3,1.5,.5,1)', // passa do ponto e volta: só conquista
       },
       maxWidth: {
         mobile: '480px',

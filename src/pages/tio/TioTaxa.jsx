@@ -159,7 +159,7 @@ function Conteudo() {
       {/* O total em aberto vem primeiro: é a única pergunta que ele abre a
         * tela pra responder. */}
       <div className="rounded-2xl bg-card p-5 shadow-sm">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+        <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
           {abertas.length === 0 ? 'tudo em dia' : 'em aberto'}
         </p>
         <p
@@ -210,7 +210,7 @@ function Conteudo() {
                     <p className="text-sm font-semibold capitalize text-text">
                       {formatMonthLabel(f.mes)}
                     </p>
-                    <p className="text-[11px] text-textMuted">
+                    <p className="text-xs text-textMuted">
                       {f.criancasAtivas ?? 0} criança(s) ·{' '}
                       {f.planoRotulo || 'sem faixa'}
                     </p>
@@ -343,7 +343,7 @@ function FaturaAberta({ fatura }) {
         * expira enquanto ele ficar — dizer isso onde ele confere a conta é o
         * que transforma um número numa razão para não sair. */}
       {fatura.descontoFechamento > 0 && (
-        <p className="mt-2 text-[11px] leading-relaxed text-textMuted">
+        <p className="mt-2 text-xs leading-relaxed text-textMuted">
           Seu desconto é <strong>permanente</strong>. Ele não tem prazo de
           validade.
         </p>
@@ -352,7 +352,7 @@ function FaturaAberta({ fatura }) {
       {/* O plano da fatura de teste é VITRINE, e apresentar projeção como
         * cláusula é o começo de uma discussão sobre quanto foi combinado. */}
       {fatura.planoContratado === false && (
-        <p className="mt-1 text-[11px] leading-relaxed text-textMuted">
+        <p className="mt-1 text-xs leading-relaxed text-textMuted">
           O cálculo acima usa o plano mensal, porque você ainda não escolheu
           um. No anual, o valor é menor.
         </p>
@@ -439,7 +439,7 @@ function PagamentoPix({ fatura }) {
         <p className="text-xs font-semibold text-text">
           A plataforma ainda não cadastrou a chave PIX
         </p>
-        <p className="mt-0.5 text-[11px] text-textMuted">
+        <p className="mt-0.5 text-xs text-textMuted">
           Combine o pagamento direto com ela.
         </p>
       </div>
@@ -460,7 +460,7 @@ function PagamentoPix({ fatura }) {
   return (
     <div className="mt-3 space-y-2">
       <div className="rounded-xl border border-dashed border-primary/40 bg-sunken p-3">
-        <p className="break-all font-mono text-[10px] leading-relaxed text-primary">
+        <p className="break-all font-mono text-xs leading-relaxed text-primary">
           {payload}
         </p>
       </div>
@@ -469,7 +469,7 @@ function PagamentoPix({ fatura }) {
         {copiado ? 'Código copiado!' : 'Copiar código PIX'}
       </Button>
 
-      <p className="text-center text-[11px] text-textMuted">
+      <p className="text-center text-xs text-textMuted">
         O valor de {formatCurrency(fatura.total)} já vai no código — não precisa
         digitar.
       </p>
@@ -496,7 +496,7 @@ function PagamentoPix({ fatura }) {
         </div>
       )}
 
-      <p className="text-center text-[11px] leading-relaxed text-textMuted">
+      <p className="text-center text-xs leading-relaxed text-textMuted">
         A baixa é dada pela plataforma quando o PIX cai. Você não precisa avisar.
       </p>
     </div>

@@ -128,6 +128,10 @@ par('accentText sobre card', C.accentText, C.card);
 // no SUBLINHADO, onde e massa e nao letra.
 par('abas do login: accentText sobre card', C.accentText, C.card);
 par('accentText sobre bg', C.accentText, C.bg);
+// O CARTÃO VERDE DO INÍCIO (ResumoDaTurma) — design system, 03/10/2026.
+par('onAccent sobre accent (botão limão)', C.onAccent, C.accent);
+par('primaryChip sobre primary (linha do cartão verde)', C.primaryChip, C.primary);
+par('menta sobre primary (rótulo do cartão verde)', C.menta, C.primary);
 // O chip real onde o accentText vive: accent a 10% sobre branco.
 par('accentText sobre chip de accent/10', C.accentText, sobre(C.accent, 0.1, C.card));
 // A quarta família: o FATO neutro. Valor previsto, notificação recente,

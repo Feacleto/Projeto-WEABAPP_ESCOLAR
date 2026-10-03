@@ -154,7 +154,7 @@ export default function TioSemana() {
             <p className="text-sm font-bold capitalize text-text leading-tight">
               {rotuloSemana(dias)}
             </p>
-            <p className="text-[11px] text-textMuted">
+            <p className="text-xs text-textMuted">
               {totalNaSemana === 0
                 ? 'ninguém avisou falta'
                 : `${totalNaSemana} ${totalNaSemana === 1 ? 'aviso' : 'avisos'}`}
@@ -194,7 +194,7 @@ export default function TioSemana() {
                   * app → semana → dias. */}
                 <thead className="sticky top-[6.5rem] z-10 bg-bg">
                   <tr>
-                    <th className="text-left text-[10px] uppercase tracking-widest text-textMuted font-normal pb-2 pr-2">
+                    <th className="text-left text-xs uppercase tracking-widest text-textMuted font-normal pb-2 pr-2">
                       criança
                     </th>
                     {dias.map((d, i) => {
@@ -202,13 +202,13 @@ export default function TioSemana() {
                       return (
                         <th
                           key={chaves[i]}
-                          className={`pb-2 px-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          className={`pb-2 px-0.5 text-xs font-bold uppercase tracking-wide ${
                             ehHoje ? 'text-primary' : 'text-textMuted'
                           }`}
                           style={{ width: 42 }}
                         >
                           <span className="block">{DIAS[i]}</span>
-                          <span className="block font-mono text-[9px] font-normal">
+                          <span className="block font-mono text-xs font-normal">
                             {String(d.getDate()).padStart(2, '0')}
                           </span>
                         </th>
@@ -233,7 +233,7 @@ export default function TioSemana() {
                               {child.name?.split(' ')[0]}
                             </p>
                             {hora && (
-                              <p className="font-mono text-[10px] text-textMuted">
+                              <p className="font-mono text-xs text-textMuted">
                                 {horaCurta(hora)}
                               </p>
                             )}
@@ -253,7 +253,7 @@ export default function TioSemana() {
 
             {/* A legenda não é enfeite: são quatro estados que só se
               * distinguem por cor e letra, e ninguém adivinha "L" de "levo". */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-textMuted pt-1">
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-textMuted pt-1">
               <Legenda tipo={ABSENCE_TYPES.FULL} texto="não vai" />
               <Legenda tipo={ABSENCE_TYPES.NO_PICKUP} texto="o pai leva" />
               <Legenda tipo={ABSENCE_TYPES.NO_DROPOFF} texto="o pai busca" />
@@ -282,7 +282,7 @@ function Marca({ tipo }) {
   }
   return (
     <span
-      className={`inline-flex w-7 h-7 rounded-lg border items-center justify-center text-[11px] font-bold ${e.classe}`}
+      className={`inline-flex w-7 h-7 rounded-lg border items-center justify-center text-xs font-bold ${e.classe}`}
     >
       {e.letra}
     </span>
@@ -294,7 +294,7 @@ function Legenda({ tipo, texto }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
-        className={`inline-flex w-5 h-5 rounded-md border items-center justify-center text-[10px] font-bold ${e.classe}`}
+        className={`inline-flex w-5 h-5 rounded-md border items-center justify-center text-xs font-bold ${e.classe}`}
       >
         {e.letra}
       </span>

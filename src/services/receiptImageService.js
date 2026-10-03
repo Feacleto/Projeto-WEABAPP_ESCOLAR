@@ -69,9 +69,9 @@ export async function buildReceiptImage({ payment, admin }) {
   ctx.fillStyle = COLORS.primary;
   ctx.fillRect(0, 0, W, 220);
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = '600 34px Inter, system-ui, sans-serif';
+  ctx.font = '600 34px "Instrument Sans", system-ui, sans-serif';
   ctx.fillText('RECIBO DE PAGAMENTO', pad, 100);
-  ctx.font = '700 48px Inter, system-ui, sans-serif';
+  ctx.font = '700 48px "Instrument Sans", system-ui, sans-serif';
   const emitter = admin?.companyName || admin?.name || 'Transporte Escolar';
   ctx.fillText(truncate(ctx, emitter, W - pad * 2), pad, 160);
 
@@ -79,11 +79,11 @@ export async function buildReceiptImage({ payment, admin }) {
 
   // O valor, grande — é o que a pessoa confere de relance
   ctx.fillStyle = COLORS.muted;
-  ctx.font = '500 30px Inter, system-ui, sans-serif';
+  ctx.font = '500 30px "Instrument Sans", system-ui, sans-serif';
   ctx.fillText('VALOR RECEBIDO', pad, y);
   y += 80;
   ctx.fillStyle = COLORS.ink;
-  ctx.font = '800 96px Inter, system-ui, sans-serif';
+  ctx.font = '800 96px "Bricolage Grotesque", system-ui, sans-serif';
   ctx.fillText(formatCurrency(payment?.amount), pad, y);
 
   y += 70;
@@ -101,10 +101,10 @@ export async function buildReceiptImage({ payment, admin }) {
 
   for (const [label, value] of rows) {
     ctx.fillStyle = COLORS.muted;
-    ctx.font = '500 30px Inter, system-ui, sans-serif';
+    ctx.font = '500 30px "Instrument Sans", system-ui, sans-serif';
     ctx.fillText(label, pad, y);
     ctx.fillStyle = COLORS.ink;
-    ctx.font = '600 40px Inter, system-ui, sans-serif';
+    ctx.font = '600 40px "Instrument Sans", system-ui, sans-serif';
     ctx.fillText(truncate(ctx, String(value), W - pad * 2), pad, y + 52);
     y += 130;
   }
@@ -115,12 +115,12 @@ export async function buildReceiptImage({ payment, admin }) {
   roundRect(ctx, pad, y, W - pad * 2, 130, 24);
   ctx.fill();
   ctx.fillStyle = COLORS.primary;
-  ctx.font = '700 42px Inter, system-ui, sans-serif';
+  ctx.font = '700 42px "Instrument Sans", system-ui, sans-serif';
   ctx.fillText('✓  Pagamento confirmado', pad + 40, y + 82);
 
   // Rodapé: quem gerou e quando. Um recibo sem origem não serve de nada.
   ctx.fillStyle = COLORS.muted;
-  ctx.font = '400 26px Inter, system-ui, sans-serif';
+  ctx.font = '400 26px "Instrument Sans", system-ui, sans-serif';
   const footer = admin?.phone
     ? `Emitido por ${emitter} · ${admin.phone}`
     : `Emitido por ${emitter}`;

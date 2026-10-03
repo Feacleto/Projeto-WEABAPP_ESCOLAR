@@ -594,14 +594,14 @@ export default function OperacaoDaRota({
                   ? 'Levando pra escola'
                   : 'Trazendo pra casa'}
               </p>
-              <p className="text-[11px] text-textMuted">
+              <p className="text-xs text-textMuted">
                 {totalEfetivo > 0
                   ? `${resolvidas} de ${totalEfetivo} ${resolvidas === 1 ? 'resolvida' : 'resolvidas'}`
                   : `${fila.length} ${fila.length === 1 ? 'criança' : 'crianças'} nesta viagem`}
               </p>
             </div>
             {blocoAtual.escolas.length > 0 && (
-              <span className="text-[10px] text-escola bg-escolaSoft border border-escolaBorder px-2 py-1 rounded-full shrink-0 max-w-[40%] truncate">
+              <span className="text-xs text-escola bg-escolaSoft border border-escolaBorder px-2 py-1 rounded-full shrink-0 max-w-[40%] truncate">
                 {blocoAtual.escolas.map((e) => e.nome).join(' · ')}
               </span>
             )}
@@ -897,7 +897,7 @@ export default function OperacaoDaRota({
           * onde estaria, pra ele não perder a referência da ordem. */}
         {restantes.length > 0 && (
           <section className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-textMuted">
+            <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
               o resto da viagem
             </p>
             {restantes.map((q) => {
@@ -963,7 +963,7 @@ export default function OperacaoDaRota({
                       {q.child.name}
                     </span>
                     {fora && (
-                      <span className="block text-[11px] text-warningText font-medium">
+                      <span className="block text-xs text-warningText font-medium">
                         {ROTULO_ESTADO[q.estado] || 'Fora hoje'}
                         {/* A IDADE DO AVISO É O QUE DIZ SE ELE AINDA VALE.
                           * Um aviso de ontem quase certamente vale; um de duas
@@ -1182,7 +1182,7 @@ function JaFeitos({ itens, direcao, onTocar }) {
         <span className="flex-1 text-left text-sm font-semibold text-primary">
           {itens.length} {verbo}
         </span>
-        <span className="text-[11px] font-semibold text-primary shrink-0">
+        <span className="text-xs font-semibold text-primary shrink-0">
           ver
         </span>
       </button>
@@ -1192,14 +1192,14 @@ function JaFeitos({ itens, direcao, onTocar }) {
   return (
     <section className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">
           {verbo}
         </p>
         {compacto && (
           <button
             type="button"
             onClick={() => setAberto(false)}
-            className="tap text-[11px] font-semibold text-textMuted ml-auto"
+            className="tap text-xs font-semibold text-textMuted ml-auto"
           >
             esconder
           </button>

@@ -227,7 +227,7 @@ function SchoolBroadcastBody({ onClose }) {
                         <span className="block text-sm font-semibold text-text truncate">
                           {o.nome}
                         </span>
-                        <span className="block text-[11px] text-textMuted">
+                        <span className="block text-xs text-textMuted">
                           {o.criancas.length}{' '}
                           {o.criancas.length === 1 ? 'criança' : 'crianças'}
                         </span>
@@ -247,7 +247,7 @@ function SchoolBroadcastBody({ onClose }) {
             </label>
             <div className="grid grid-cols-2 gap-2">
               <label className="block">
-                <span className="block text-[11px] text-textMuted mb-1">De</span>
+                <span className="block text-xs text-textMuted mb-1">De</span>
                 <input
                   type="date"
                   value={de}
@@ -257,7 +257,7 @@ function SchoolBroadcastBody({ onClose }) {
                 />
               </label>
               <label className="block">
-                <span className="block text-[11px] text-textMuted mb-1">
+                <span className="block text-xs text-textMuted mb-1">
                   Até <span className="opacity-60">(opcional)</span>
                 </span>
                 <input
@@ -271,20 +271,20 @@ function SchoolBroadcastBody({ onClose }) {
             </div>
 
             {truncado && (
-              <p className="text-[11px] text-warning mt-2">
+              <p className="text-xs text-warning mt-2">
                 O intervalo passa de {MAX_DIAS} dias. Vamos gravar só até{' '}
                 {rotuloDoDia(dias[dias.length - 1])} — o resto fica de fora.
               </p>
             )}
             {dias.length > 0 ? (
-              <p className="text-[11px] text-textMuted mt-2">
+              <p className="text-xs text-textMuted mt-2">
                 {dias.length === 1
                   ? `1 dia · ${rotuloDoPeriodo(dias)}`
                   : `${dias.length} dias úteis · ${rotuloDoPeriodo(dias)}`}
                 {ate && ' · sábado e domingo não contam'}
               </p>
             ) : (
-              <p className="text-[11px] text-dangerText mt-2">
+              <p className="text-xs text-dangerText mt-2">
                 Esse intervalo não tem dia útil{' '}
                 {ate ? '(ou passa de ' + MAX_DIAS + ' dias).' : '.'}
               </p>
@@ -298,7 +298,7 @@ function SchoolBroadcastBody({ onClose }) {
                 <label className="text-sm font-semibold text-text">
                   Quem avisar
                 </label>
-                <span className="text-[11px] text-textMuted inline-flex items-center gap-1">
+                <span className="text-xs text-textMuted inline-flex items-center gap-1">
                   <Users size={12} />
                   {alcancadas.length} de {escolhida.criancas.length}
                 </span>
@@ -335,7 +335,7 @@ function SchoolBroadcastBody({ onClose }) {
                         {c.name}
                       </span>
                       {!c.parentUid && (
-                        <span className="text-[10px] text-warningText shrink-0">
+                        <span className="text-xs text-warningText shrink-0">
                           sem app
                         </span>
                       )}
@@ -343,7 +343,7 @@ function SchoolBroadcastBody({ onClose }) {
                   );
                 })}
               </div>
-              <p className="text-[11px] text-textMuted mt-2">
+              <p className="text-xs text-textMuted mt-2">
                 Quem está sem o app não recebe notificação, mas a falta é
                 registrada do mesmo jeito.
               </p>

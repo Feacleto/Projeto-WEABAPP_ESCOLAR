@@ -198,7 +198,7 @@ export default function TioFinanceReport() {
           <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-textMuted">
+                <p className="text-xs font-bold uppercase tracking-widest text-textMuted">
                   Relatório financeiro
                 </p>
                 <h1 className="text-2xl font-bold text-text leading-tight mt-1">
@@ -220,22 +220,22 @@ export default function TioFinanceReport() {
           {/* Resumo geral */}
           <section className="grid grid-cols-2 gap-3">
             <div className="bg-primarySoft rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">
                 Total recebido
               </p>
               <p className="text-2xl font-bold text-primary tabular-nums mt-1">
                 {formatCurrency(totalReceived)}
               </p>
-              <p className="text-[11px] text-primary mt-1">12 meses</p>
+              <p className="text-xs text-primary mt-1">12 meses</p>
             </div>
             <div className="bg-warningSoft rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-warningText">
+              <p className="text-xs font-bold uppercase tracking-widest text-warningText">
                 Em aberto
               </p>
               <p className="text-2xl font-bold text-warningText tabular-nums mt-1">
                 {formatCurrency(totalOpen)}
               </p>
-              <p className="text-[11px] text-warningText mt-1">12 meses</p>
+              <p className="text-xs text-warningText mt-1">12 meses</p>
             </div>
           </section>
 
@@ -345,7 +345,7 @@ export default function TioFinanceReport() {
             </div>
           </section>
 
-          <footer className="text-center text-[10px] text-textMuted pt-4 border-t border-border">
+          <footer className="text-center text-xs text-textMuted pt-4 border-t border-border">
             Alô Buzinou · Relatório emitido em{' '}
             {new Date().toLocaleString('pt-BR')}
           </footer>
@@ -354,7 +354,7 @@ export default function TioFinanceReport() {
           {quemMaisAtrasa.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-bold text-text">Quem mais atrasa</h2>
-              <p className="text-[11px] leading-snug text-textMuted">
+              <p className="text-xs leading-snug text-textMuted">
                 Contando meses vencidos em aberto e meses pagos depois do
                 vencimento, nos últimos 12 meses.
               </p>
@@ -364,18 +364,18 @@ export default function TioFinanceReport() {
                     key={c.nome + i}
                     className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2"
                   >
-                    <span className="w-4 shrink-0 text-center text-[11px] font-bold tabular-nums text-textMuted">
+                    <span className="w-4 shrink-0 text-center text-xs font-bold tabular-nums text-textMuted">
                       {i + 1}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">
                       {c.nome}
                     </span>
                     {c.emAberto > 0 && (
-                      <span className="shrink-0 text-[11px] font-semibold tabular-nums text-dangerText">
+                      <span className="shrink-0 text-xs font-semibold tabular-nums text-dangerText">
                         {formatCurrency(c.emAberto)} em aberto
                       </span>
                     )}
-                    <span className="shrink-0 rounded-full bg-warningChip px-2 py-0.5 text-[11px] font-bold tabular-nums text-warningText">
+                    <span className="shrink-0 rounded-full bg-warningChip px-2 py-0.5 text-xs font-bold tabular-nums text-warningText">
                       {c.vezes}x
                     </span>
                   </div>

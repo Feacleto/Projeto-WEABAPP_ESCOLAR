@@ -89,7 +89,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
 
         {/* O AVISO VEM ANTES DOS CAMPOS, e não depois: depois do botão ele é
           * uma justificativa; antes, ele é a pergunta que a pessoa responde. */}
-        <p className="mt-3 rounded-xl border border-warningBorder bg-warningSoft p-3 text-[11px] leading-relaxed text-warningText">
+        <p className="mt-3 rounded-xl border border-warningBorder bg-warningSoft p-3 text-xs leading-relaxed text-warningText">
           Isto não é a tabela — é dinheiro que você abre mão para{' '}
           <strong>uma</strong> pessoa. Se daqui a três meses metade da carteira
           tiver concessão ativa, quem está errada é a tabela.
@@ -97,7 +97,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
 
         <div className="mt-4 space-y-4">
           <div>
-            <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+            <p className="mb-1.5 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
               O que você concede
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -114,7 +114,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
                   }`}
                 >
                   <span className="block text-xs font-bold text-text">{rotulo}</span>
-                  <span className="mt-0.5 block text-[11px] text-textMuted">{ajuda}</span>
+                  <span className="mt-0.5 block text-xs text-textMuted">{ajuda}</span>
                 </button>
               ))}
             </div>
@@ -122,7 +122,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
 
           {tipo === TIPO.DESCONTO && (
             <label className="block">
-              <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+              <span className="mb-1.5 block font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
                 Quanto
               </span>
               <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
           )}
 
           <label className="block">
-            <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+            <span className="mb-1.5 block font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
               Por quanto tempo
             </span>
             <div className="flex flex-wrap items-center gap-2">
@@ -162,7 +162,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.18em] text-textMuted">
+            <span className="mb-1.5 block font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
               Por quê
             </span>
             <textarea
@@ -172,7 +172,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
               placeholder="Perdeu duas escolas em agosto e volta em fevereiro."
               className="w-full rounded-xl border border-border bg-surface p-3 text-xs text-text"
             />
-            <span className="mt-1 block text-[11px] leading-relaxed text-textMuted">
+            <span className="mt-1 block text-xs leading-relaxed text-textMuted">
               Daqui a seis meses, esta frase é a única coisa que explica a
               exceção — inclusive para você.
             </span>

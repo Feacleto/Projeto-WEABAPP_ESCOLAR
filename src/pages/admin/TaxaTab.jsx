@@ -421,7 +421,7 @@ function LinhaDoParceiro({ linha, mes, config, ownerUid, onMudou }) {
         *
         * Some quando não há cobrança no gateway, que é o estado de hoje. */}
       {fatura?.asaasUltimoEvento && (
-        <p className="mt-3 border-t border-border pt-3 font-mono text-[10px] uppercase tracking-wider text-textMuted">
+        <p className="mt-3 border-t border-border pt-3 font-mono text-xs uppercase tracking-wider text-textMuted">
           gateway: {fatura.asaasUltimoEvento}
           {fatura.asaasUltimoMotivo ? ` · ${fatura.asaasUltimoMotivo}` : ''}
         </p>

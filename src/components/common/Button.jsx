@@ -5,8 +5,10 @@ const variants = {
     'bg-primary text-white hover:bg-primaryDark active:bg-primaryDark disabled:bg-primary/50',
   secondary:
     'bg-card border border-border text-text hover:bg-sunken disabled:opacity-60',
+  // ⚠️ O FUNDO É O `dangerText`, não o `danger`: branco sobre #EF4444 dá
+  // 3,8:1 e reprovava justamente no botão de apagar. 6,5:1 assim.
   danger:
-    'bg-danger text-white hover:bg-danger disabled:bg-danger/50',
+    'bg-dangerText text-white hover:bg-dangerText disabled:bg-dangerText/50',
   success:
     'bg-accentText text-white hover:bg-primaryDark disabled:bg-accentText/50',
   ghost: 'bg-transparent text-text hover:bg-neutro disabled:opacity-60',
@@ -40,7 +42,7 @@ export default function Button({
       className={`
         ${variants[variant]} ${sizes[size]}
         ${fullWidth ? 'w-full' : ''}
-        rounded-xl font-semibold tap inline-flex items-center justify-center gap-2
+        rounded-xl font-bold tap inline-flex items-center justify-center gap-2
         disabled:cursor-not-allowed
         focus:outline-none focus:ring-2 focus:ring-primary/40
         ${className}

@@ -43,7 +43,7 @@ export default function AssociadosCard({ associados = 1, className = '' }) {
           <p className="text-sm font-extrabold leading-tight text-text">
             {n === 1 ? 'associado atendido' : 'associados atendidos'} hoje
           </p>
-          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+          <p className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-primary">
             <Users size={12} />
             vaga limitada por estrutura
           </p>

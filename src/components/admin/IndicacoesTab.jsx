@@ -103,7 +103,7 @@ export default function IndicacoesTab() {
                 {pessoas[i.indicadorUid]?.name || i.indicadorNome || i.indicadorUid}
               </span>
               <span
-                className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
+                className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-wider ${
                   i.estado === ESTADO.ATIVA
                     ? 'bg-primarySoft text-primary'
                     : i.estado === ESTADO.CADASTRADO
@@ -117,7 +117,7 @@ export default function IndicacoesTab() {
             <p className="mt-0.5 text-textMuted">
               indicou {i.nome || 'alguém'} · {i.telefoneDigitado}
             </p>
-            <p className="mt-0.5 text-[11px] text-textMuted">{situacaoDaIndicacao(i)}</p>
+            <p className="mt-0.5 text-xs text-textMuted">{situacaoDaIndicacao(i)}</p>
           </li>
         ))}
       </ul>

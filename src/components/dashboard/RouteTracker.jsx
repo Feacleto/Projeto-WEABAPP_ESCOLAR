@@ -79,7 +79,7 @@ export default function RouteTracker({ status = 'home', compact = false, ride = 
 
               {/* Label */}
               <p
-                className={`text-[10px] mt-1.5 font-semibold text-center leading-tight max-w-[60px] ${
+                className={`text-xs mt-1.5 font-semibold text-center leading-tight max-w-[60px] ${
                   done || active ? 'text-text' : 'text-textMuted'
                 }`}
               >
@@ -90,7 +90,7 @@ export default function RouteTracker({ status = 'home', compact = false, ride = 
                 * cumprida: hora em etapa futura seria previsão disfarçada
                 * de registro. */}
               {(done || active) && horaDoMarco(ride, step.key) && (
-                <p className="text-[9px] mt-0.5 font-mono text-textMuted tabular-nums">
+                <p className="text-xs mt-0.5 font-mono text-textMuted tabular-nums">
                   {horaDoMarco(ride, step.key)}
                 </p>
               )}

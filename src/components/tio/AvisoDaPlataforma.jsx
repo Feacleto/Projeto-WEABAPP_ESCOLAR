@@ -133,7 +133,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
         )}
 
         <p
-          className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] ${
+          className={`flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.12em] ${
             suspenso ? 'text-[#E8867C]' : 'text-warningText'
           }`}
         >
@@ -162,7 +162,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
               <p className="text-[13px] font-bold">
                 {formatBRL(valor)} destrava tudo agora.
               </p>
-              <p className="mt-0.5 text-[11.5px] text-white/60">
+              <p className="mt-0.5 text-xs text-white/60">
                 {venc ? `Vencido em ${venc.toLocaleDateString('pt-BR')}. ` : ''}
                 Nada do seu foi apagado, e seus pais não foram avisados.
               </p>

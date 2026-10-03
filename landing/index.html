@@ -113,7 +113,8 @@
 <title>Alô Buzinou — app para transporte escolar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/tokens.css">
 
 <script>
 /* A página nasce COMPLETA e legível. Só depois de confirmar que há
@@ -146,13 +147,11 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
    são os de lá, encurtados — o tour do app cita frases do site, e dizer
    a mesma coisa com outras palavras faz o app parecer outro produto.
    ───────────────────────────────────────────────────────────── */
-:root{
-  --preto:#0B1210; --verde:#1F5F3F; --verde-esc:#143F2A; --vivo:#52C41A; --menta:#A7F3D0;
-  --areia:#EEF1EF; --branco:#FFFFFF; --cinza:#55606E; --cinza-cl:#8A948E; --linha:#D9E0DB;
-  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
-  --corpo:"Instrument Sans",system-ui,sans-serif;
-  --mono:ui-monospace,"SFMono-Regular",Consolas,monospace;
-}
+/* AS CORES, FONTES E RAIOS vêm de /tokens.css, GERADO do tailwind.config.js do
+   app (`npm run tokens`). Era aqui que o site declarava os próprios valores, e
+   foi assim que ele e o app viraram dois produtos. Não declare cor nova aqui:
+   ponha no tailwind.config.js e rode o comando. */
+:root{ --cinza-cl:#8A948E; }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{background:var(--areia); color:var(--preto); font-family:var(--corpo); font-size:16px; line-height:1.55; margin:0; -webkit-font-smoothing:antialiased}
@@ -164,19 +163,20 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--vivo); outline-offs
 .top .wrap{display:flex; align-items:center; justify-content:space-between; height:58px}
 .marca{display:flex; align-items:center; gap:8px; text-decoration:none; font:800 18px var(--display); letter-spacing:-.03em}
 .marca .mk{width:28px; height:28px; flex:none; display:block}
-.marca b{color:#6EE07A; font-weight:800}
+.marca b{color:var(--noite-verde); font-weight:800}
 .entrar{font-weight:600; font-size:14px; border:1.5px solid rgba(255,255,255,.4); border-radius:999px; padding:0 16px; min-height:44px; display:inline-flex; align-items:center; text-decoration:none; white-space:nowrap}
 .entrar:hover{background:rgba(255,255,255,.1)}
 
-/* #0A6E3E: o #0E8A4F dava 3,9:1 sobre a areia (mínimo 4,5) — teste no navegador, 02/10/2026 */
-.eyebrow{font:500 12px var(--mono); letter-spacing:.16em; text-transform:uppercase; color:#0A6E3E}
+/* O rótulo é o verde da marca (6,7:1 sobre a areia). Era #0A6E3E, um terceiro
+   verde que só existia aqui — o design system juntou os três. */
+.eyebrow{font:500 12px var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--verde)}
 
 /* 1 · a frase e o botão */
 .hero{padding-block:46px 40px; background:radial-gradient(90% 60% at 100% 0%, #DDEFE3 0%, transparent 70%)}
 h1{font:800 clamp(38px,10.5vw,54px)/1.02 var(--display); letter-spacing:-.035em; margin:14px 0 16px; text-wrap:balance}
 h1 em{font-style:normal; color:var(--verde)}
 .lead{font-size:17.5px; color:var(--cinza); margin:0 0 26px; max-width:34ch}
-.cta{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; height:58px; border-radius:16px; background:var(--verde); color:#fff; font:700 17px var(--corpo); text-decoration:none; box-shadow:0 14px 30px -14px rgba(20,63,42,.6)}
+.cta{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; height:58px; border-radius:var(--r-md); background:var(--verde); color:#fff; font:700 17px var(--corpo); text-decoration:none; box-shadow:0 14px 30px -14px rgba(20,63,42,.6)}
 .cta:hover{background:var(--verde-esc)}
 .cta svg{width:18px; height:18px}
 .teste{margin:12px 0 0; text-align:center; font-size:14px; color:var(--cinza)}
@@ -188,17 +188,17 @@ h1 em{font-style:normal; color:var(--verde)}
 .dor{background:var(--preto); color:#fff; padding-block:50px}
 .dor .eyebrow{color:var(--menta)}
 .dor h2{font:800 clamp(30px,8vw,40px)/1.06 var(--display); letter-spacing:-.03em; margin:12px 0 18px; text-wrap:balance}
-.dor p{margin:0; color:#C9D3CD; font-size:17px; max-width:36ch}
+.dor p{margin:0; color:var(--noite-texto); font-size:17px; max-width:36ch}
 .dor p + p{margin-top:14px}
 .dor .virada{color:#fff; font-weight:600}
-.dor .virada span{color:#8EF0AE}
+.dor .virada span{color:var(--noite-verde)}
 
 /* 3 · três coisas */
 .faz{padding-block:54px 24px}
 h2.sec{font:800 clamp(28px,7.5vw,36px)/1.08 var(--display); letter-spacing:-.03em; margin:12px 0 26px; text-wrap:balance}
 .tres{list-style:none; margin:0; padding:0; display:grid; gap:14px}
-.tres li{background:var(--branco); border-radius:20px; padding:18px; display:grid; grid-template-columns:44px minmax(0,1fr); gap:14px; align-items:start}
-.tres .ic{width:44px; height:44px; border-radius:13px; background:#DDF5E5; color:var(--verde); display:grid; place-items:center}
+.tres li{background:var(--branco); border-radius:var(--r-lg); box-shadow:var(--sombra-rest); padding:18px; display:grid; grid-template-columns:44px minmax(0,1fr); gap:14px; align-items:start}
+.tres .ic{width:44px; height:44px; border-radius:12px; background:var(--ok-chip); color:var(--verde); display:grid; place-items:center}
 .tres .ic svg{width:22px; height:22px}
 .tres h3{margin:0 0 3px; font:700 18px/1.25 var(--display); letter-spacing:-.01em}
 .tres p{margin:0; font-size:15px; color:var(--cinza)}
@@ -209,10 +209,10 @@ h2.sec{font:800 clamp(28px,7.5vw,36px)/1.08 var(--display); letter-spacing:-.03e
 .tela-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px}
 .tela-head b{font:700 15px var(--display)} .tela-head span{font:500 12px var(--mono); color:var(--cinza)}
 .pg{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #EEF1EF; font-size:14px}
-.pg .av{width:30px; height:30px; border-radius:50%; background:#DDF5E5; color:var(--verde); font-weight:700; font-size:11px; display:grid; place-items:center; flex:none}
+.pg .av{width:30px; height:30px; border-radius:50%; background:var(--ok-chip); color:var(--verde); font-weight:700; font-size:11px; display:grid; place-items:center; flex:none}
 .pg .nm{flex:1; min-width:0} .pg .nm small{display:block; color:var(--cinza); font-size:12px; font-variant-numeric:tabular-nums}
-.st{font-weight:600; font-size:11.5px; padding:3px 9px; border-radius:999px; white-space:nowrap}
-.st.ok{background:#DDF5E5; color:#1C6B3F} .st.ab{background:#FFF1D6; color:#8A5A00} .st.at{background:#FDE2E2; color:#9B1C1C}
+.st{font-weight:600; font-size:12.5px; padding:3px 9px; border-radius:999px; white-space:nowrap}
+.st.ok{background:var(--ok-chip); color:var(--ok-texto)} .st.ab{background:var(--aviso-chip); color:var(--aviso-texto)} .st.at{background:var(--perigo-chip); color:var(--perigo-texto)}
 .pix{margin-top:10px; height:42px; border-radius:12px; background:var(--verde); color:#fff; display:grid; place-items:center; font-weight:700; font-size:14px}
 
 /* 4 · as três dúvidas */
@@ -226,10 +226,10 @@ h2.sec{font:800 clamp(28px,7.5vw,36px)/1.08 var(--display); letter-spacing:-.03e
 .fim{background:var(--verde); color:#fff; padding-block:54px; text-align:center; position:relative; overflow:hidden}
 .fim::before{content:""; position:absolute; right:-90px; top:-90px; width:260px; height:260px; border-radius:50%; border:2px solid rgba(167,243,208,.22); box-shadow:0 0 0 36px rgba(167,243,208,.06)}
 .fim h2{position:relative; font:800 clamp(32px,8.5vw,44px)/1.04 var(--display); letter-spacing:-.035em; margin:0 0 12px; text-wrap:balance}
-.fim p{position:relative; margin:0 auto 26px; color:#D1FAE5; max-width:32ch; font-size:16.5px}
-.fim .cta{position:relative; background:var(--vivo); color:#06210A; box-shadow:0 14px 30px -12px rgba(0,0,0,.45)}
+.fim p{position:relative; margin:0 auto 26px; color:var(--ok-chip); max-width:32ch; font-size:16.5px}
+.fim .cta{position:relative; background:var(--vivo); color:var(--vivo-tinta); box-shadow:0 14px 30px -12px rgba(0,0,0,.45)}
 .fim .cta:hover{background:#63D42A}
-.fim .teste{position:relative; color:#D1FAE5} .fim .teste b{color:#fff}
+.fim .teste{position:relative; color:var(--ok-chip)} .fim .teste b{color:#fff}
 
 footer{background:var(--preto); color:#C9D3CD; padding-block:34px calc(34px + env(safe-area-inset-bottom,0px)); font-size:14px}
 footer nav{display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:18px}
@@ -274,7 +274,7 @@ footer p a{display:inline-block; padding:10px 0}
       <h1>Você dirige. <em>A gente tira o resto do seu ombro.</em></h1>
       <p class="lead">A rota, o aviso da falta e a mensalidade, num lugar só.</p>
       <a class="cta" href="https://alobuzinou.com/quero-fazer-parte">Criar minha conta
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </a>
       <!-- ⚠️ A OFERTA MORA EM DOIS LUGARES DESTA PÁGINA (aqui e no fechamento),
            e as duas mudam juntas. Ver "Na landing" no CLAUDE.md. -->
@@ -301,15 +301,15 @@ footer p a{display:inline-block; padding:10px 0}
       <h2 class="sec">Três coisas saem do seu ombro no primeiro dia.</h2>
       <ul class="tres">
         <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg></span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg></span>
           <div><h3>A rota do dia pronta, na ordem dos horários</h3><p>Você cadastra a turma uma vez, e a rota se monta sozinha, sem você arrastar nada.</p></div>
         </li>
         <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg></span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg></span>
           <div><h3>A falta avisada antes</h3><p>A família avisa antes de você sair de casa, e você não gasta combustível pra buscar quem não vai.</p></div>
         </li>
         <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
           <div><h3>Quem pagou, quem falta, e o PIX pronto</h3><p>Sem caderno, sem planilha e sem cobrar de boca.</p></div>
         </li>
       </ul>
@@ -345,7 +345,7 @@ footer p a{display:inline-block; padding:10px 0}
       <h2>Daqui em diante, você decide.</h2>
       <p>Digitalizar a sua rota começa com uma conta.</p>
       <a class="cta" href="https://alobuzinou.com/quero-fazer-parte">Criar minha conta
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </a>
       <p class="teste"><b>Em fase de teste: por enquanto, é grátis.</b></p>
     </div>
