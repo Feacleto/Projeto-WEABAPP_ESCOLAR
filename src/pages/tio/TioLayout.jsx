@@ -15,6 +15,7 @@ import {
   aceitarOferta,
 } from '../../services/associadoService';
 import { useAuth } from '../../hooks/useAuth';
+import { NotificacoesProvider } from '../../context/NotificacoesContext';
 import { useAutoBilling } from '../../hooks/useAutoBilling';
 import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
 import { useCobrancaLigada, useModuloDeCobranca } from '../../hooks/useCobrancaLigada';
@@ -242,6 +243,9 @@ export default function TioLayout() {
   }`;
 
   return (
+    /* ⚠️ A ESCUTA DO SINO MORA AQUI, UMA VEZ (03/10/2026): o layout fica de pé
+     * enquanto ele anda pelas telas; o `Header` de cada tela, não. */
+    <NotificacoesProvider>
     <div className="min-h-screen pb-28">
       {!naTelaDaTaxa && (
         <AvisoDaPlataforma fatura={fatura} criancas={children?.length || 0} />
@@ -318,5 +322,6 @@ export default function TioLayout() {
         />
       )}
     </div>
+    </NotificacoesProvider>
   );
 }

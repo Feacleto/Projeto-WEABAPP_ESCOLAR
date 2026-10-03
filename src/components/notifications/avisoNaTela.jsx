@@ -21,7 +21,9 @@ const mostrados = new Set();
 
 export function avisoNaTela(aviso, { papel, abrir }) {
   if (!aviso?.id || SEM_CARTAO.has(aviso.type) || mostrados.has(aviso.id)) return;
-  // Vários cabeçalhos podem estar ouvindo (troca de tela): um cartão por aviso.
+  // Um cartão por aviso. Era a defesa contra os vários cabeçalhos ouvindo ao
+  // mesmo tempo; desde 03/10/2026 a escuta é uma só (`NotificacoesProvider`),
+  // e a trava fica contra o mesmo aviso chegando em dois snapshots.
   mostrados.add(aviso.id);
   const caminho = destinoDoAviso(aviso, papel);
   toast.custom(

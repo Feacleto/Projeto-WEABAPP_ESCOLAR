@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, Bell, MessageCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { useNotifications } from '../../hooks/useNotifications';
-import { avisoNaTela } from '../notifications/avisoNaTela';
-import { usePushDoAparelho } from '../../hooks/usePushDoAparelho';
+import { useNotificacoesDaSessao } from '../../hooks/useNotifications';
 import ProfileMenu from './ProfileMenu';
 import NotificationsSheet from '../notifications/NotificationsSheet';
 import AppSheet from '../common/AppSheet';
@@ -190,16 +188,13 @@ function MarcaOuTitulo({ titulo }) {
  */
 function GlobalActions({ role, basePath, currentPath }) {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
-  usePushDoAparelho(user?.uid, profile?.fcmTokens);
   const [notifOpen, setNotifOpen] = useState(false);
   const isParent = role === 'parent';
-  // O aviso que chega com o app aberto vira um cartão no topo, que leva ao
-  // mesmo lugar do push (`avisoNaTela`).
-  const { unreadCount } = useNotifications({
-    userId: user?.uid,
-    aoChegar: (aviso) => avisoNaTela(aviso, { papel: role, abrir: navigate }),
-  });
+  // ⚠️ O CABEÇALHO SÓ LÊ (03/10/2026). A escuta, o cartão do aviso novo
+  // (`avisoNaTela`), o som e o push do aparelho moram no
+  // `NotificacoesProvider`, montado no layout: aqui, cada troca de tela
+  // derrubava a escuta e relia as 100 mais recentes do zero.
+  const { unreadCount } = useNotificacoesDaSessao();
 
   const isOnNotifications = currentPath === `${basePath}/notifications`;
   const isOnProfile = currentPath === `${basePath}/profile`;

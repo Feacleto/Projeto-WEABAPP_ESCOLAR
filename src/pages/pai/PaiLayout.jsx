@@ -8,6 +8,7 @@ import { indiceDaAba } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import { useAuth } from '../../hooks/useAuth';
+import { NotificacoesProvider } from '../../context/NotificacoesContext';
 import { useActiveCallForParent } from '../../hooks/usePendingCall';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { useActiveChild } from '../../hooks/useActiveChild';
@@ -107,6 +108,9 @@ export default function PaiLayout() {
   }`;
 
   return (
+    /* ⚠️ A ESCUTA DO SINO MORA AQUI, UMA VEZ (03/10/2026): o layout fica de pé
+     * enquanto ela anda pelas telas; o `Header` de cada tela, não. */
+    <NotificacoesProvider>
     <div className="min-h-screen pb-28">
       {/* ⚠️ A TELA ENTRA PELO LADO DA PRÓPRIA ABA, e a `key` é o ÍNDICE, não
         * o caminho.
@@ -147,5 +151,6 @@ export default function PaiLayout() {
         />
       )}
     </div>
+    </NotificacoesProvider>
   );
 }

@@ -13,11 +13,9 @@ import toast from 'react-hot-toast';
 import EmptyState from '../common/EmptyState';
 import Skeleton from '../common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
-import { useNotifications } from '../../hooks/useNotifications';
-import {
-  markNotificationRead,
-  markAllNotificationsRead,
-} from '../../services/notificationsService';
+import { useNotificacoesDaSessao } from '../../hooks/useNotifications';
+import { markAllNotificationsRead } from '../../services/notificationsService';
+import { idsNaoLidos } from '../../dominio/identidade/caixaDeAvisos.js';
 import { formatRelativeTime } from '../../compartilhado/formatters';
 import PreferenciasDeAviso from './PreferenciasDeAviso';
 import { destinoDoAviso } from '../../dominio/identidade/destinoDoAviso.js';
@@ -45,10 +43,6 @@ const TONE_STYLES = {
 };
 
 /**
- * Página de Notificações compartilhada por tio e pai. O hook detecta o tipo
- * pelo `deriveFor` — só pais geram lembretes derivados de pagamento.
- */
-/**
  * UM CONTEÚDO, DUAS CASCAS.
  *
  * O sino vive no cabeçalho de TODAS as telas do app. Tocar nele navegava
@@ -68,29 +62,28 @@ const TONE_STYLES = {
  * listas pra manter em sincronia; há uma, montada em dois lugares.
  */
 export default function NotificationsBody({ onNavigate }) {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const isParent = profile?.role === 'parent';
   const [visibleCount, setVisibleCount] = useState(INITIAL_PAGE_SIZE);
 
-  const { notifications, loading, refreshReads } = useNotifications({
-    userId: user?.uid,
-  });
+  // ⚠️ LÊ A ESCUTA DA SESSÃO, NÃO ABRE OUTRA (03/10/2026). A folha e a página
+  // chamavam `useNotifications` por conta própria — uma segunda escuta das
+  // mesmas 100, por cima da do cabeçalho.
+  const { notifications, loading, refreshReads } = useNotificacoesDaSessao();
 
-  // Auto-marca como lidas as que ele acabou de ver (com debounce de 1.5s)
+  // Auto-marca como lidas as que ele acabou de ver (com debounce de 1.5s).
+  // Um lote só (até 450 por lote), em vez de uma escrita por aviso.
   useEffect(() => {
     if (loading || notifications.length === 0) return;
     const t = setTimeout(async () => {
-      // Não há mais notificação "derivada": toda ela é documento, e a
-      // leitura se grava em `readAt` como a de qualquer outra.
-      const unreadStored = notifications.filter((n) => !n.isRead);
-
-      if (unreadStored.length > 0) {
-        await Promise.all(
-          unreadStored.map((n) => markNotificationRead(n.id).catch(() => {}))
-        );
-      }
-      if (unreadStored.length > 0) {
+      const naoLidos = idsNaoLidos(notifications);
+      if (naoLidos.length === 0) return;
+      try {
+        await markAllNotificationsRead(naoLidos);
         refreshReads();
+      } catch (err) {
+        // Marcar como lido é cortesia: falhar não pode atrapalhar a leitura.
+        console.error('[sino] falha ao marcar como lidas:', err);
       }
     }, 1500);
     return () => clearTimeout(t);
@@ -98,7 +91,9 @@ export default function NotificationsBody({ onNavigate }) {
 
   const onMarkAll = async () => {
     try {
-      await markAllNotificationsRead(user.uid);
+      // ⚠️ SÓ AS NÃO LIDAS DO QUE O SINO JÁ CARREGOU — nunca o histórico
+      // inteiro da pessoa relido do banco (ver `markAllNotificationsRead`).
+      await markAllNotificationsRead(idsNaoLidos(notifications));
       refreshReads();
       toast.success('Tudo marcado como lido.');
     } catch (err) {

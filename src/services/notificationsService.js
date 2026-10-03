@@ -10,12 +10,12 @@ import {
   updateDoc,
   serverTimestamp,
   getDoc,
-  getDocs,
   writeBatch,
   setDoc,
 } from 'firebase/firestore';
 import { avisoDeMudancaDeHorario } from '../dominio/rota/horarios';
 import { normalizarPreferencias } from '../dominio/identidade/avisos.js';
+import { emLotes, LOTE_DE_LEITURA } from '../dominio/identidade/caixaDeAvisos.js';
 import { auth, db } from './../firebase/config';
 // O COMENTARIO QUE JUSTIFICAVA AS COPIAS LOCAIS ERA FALSO.
 // Dizia 'evita dependencia circular com utils/formatters' -- e o formatters
@@ -287,13 +287,18 @@ export async function notifyScheduleChanged({
  * POR QUE EXISTE UM TETO, E POR QUE ELE É ALTO
  * A consulta era `where('userId','==',uid)` e mais nada: sem `limit`, sem
  * janela, com a ordenação feita em JS DEPOIS de baixar tudo. E ela é assinada
- * no `Header`, que está montado em TODAS as telas dos dois papéis — então o
- * custo é pago em toda sessão, o dia inteiro.
+ * em TODAS as telas dos dois papéis — então o custo é pago em toda sessão, o
+ * dia inteiro.
  *
- * Nada apaga notificação: o único `delete` da coleção está no encerramento de
- * conta. Um motorista com 20 crianças recebe algo como 40 a 60 por mês; em
- * dois anos são mais de mil documentos baixados a cada abertura do app, no
- * mesmo aparelho que está segurando mapa e GPS.
+ * ⚠️ E ERA PAGO A CADA TROCA DE TELA (até 03/10/2026). A escuta morava no
+ * `Header`, e cada tela monta o seu: navegar desmontava a escuta e a próxima
+ * tela relia as 100 do zero — a maior fonte de leitura do app. Hoje ela é
+ * aberta UMA vez por sessão, no `NotificacoesProvider`
+ * (context/NotificacoesContext.jsx), montado no `TioLayout` e no `PaiLayout`.
+ *
+ * Desde 03/10/2026 o aviso dura 90 dias (`apagarAvisosAntigos`, em
+ * functions/lib/limpezaDosAvisos.js). Antes nada apagava — eram mais de mil
+ * documentos por motorista em dois anos, e milhões na plataforma.
  *
  * O TETO MUDA O SIGNIFICADO DO CONTADOR, e isso é assumido: o "não lidas" do
  * sino passa a ser "não lidas ENTRE AS 100 MAIS RECENTES". 100 cobre uns dois
@@ -336,22 +341,32 @@ export async function markNotificationRead(notifId) {
 }
 
 /**
- * Marca todas as notificações não-lidas do usuário como lidas (batch).
+ * Marca como lidos os avisos de `ids` — em lotes de `LOTE_DE_LEITURA`.
+ *
+ * ⚠️ RECEBE OS IDS, NÃO O USUÁRIO (03/10/2026). Antes recebia o `userId` e
+ * fazia `getDocs` de TODAS as notificações dele, sem `limit`, para filtrar as
+ * não lidas no aparelho e mandar UM lote. Dois defeitos: cada toque em
+ * "Marcar todas como lidas" relia o histórico inteiro (que só cresce), e com
+ * mais de 500 não lidas o lote estourava o teto do Firestore e nada era
+ * marcado. Quem chama já tem a lista que o sino carregou — são exatamente os
+ * avisos que a pessoa está vendo —, então passa os ids não lidos dela
+ * (`idsNaoLidos`), e a escrita sai em lotes de até 450.
+ *
+ * `readAt` é `Date`, não `serverTimestamp()`: o carimbo do servidor chega
+ * NULO no snapshot local até confirmar, e o aviso piscaria como "não lido".
  */
-export async function markAllNotificationsRead(userId) {
-  const snap = await getDocs(
-    query(collection(db, 'notifications'), where('userId', '==', userId))
-  );
-  const unread = snap.docs.filter((d) => !d.data().readAt);
-  if (unread.length === 0) return 0;
-
-  const batch = writeBatch(db);
-  const now = new Date();
-  unread.forEach((d) => {
-    batch.update(d.ref, { readAt: now });
-  });
-  await batch.commit();
-  return unread.length;
+export async function markAllNotificationsRead(ids) {
+  const unicos = [...new Set((ids || []).filter(Boolean))];
+  if (unicos.length === 0) return 0;
+  const agora = new Date();
+  for (const lote of emLotes(unicos, LOTE_DE_LEITURA)) {
+    const batch = writeBatch(db);
+    lote.forEach((id) => {
+      batch.update(doc(db, 'notifications', id), { readAt: agora });
+    });
+    await batch.commit();
+  }
+  return unicos.length;
 }
 
 /**

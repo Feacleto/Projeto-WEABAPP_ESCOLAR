@@ -1,22 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { watchUserNotifications } from '../services/notificationsService';
 import { playSound } from '../services/soundService';
 import { useConfigDaPlataforma } from './useCobrancaLigada';
 import { avisoVisivel } from '../dominio/associacao/modulosDeCobranca';
+import { avisosQueChegaram } from '../dominio/identidade/caixaDeAvisos.js';
+import { NotificacoesContext } from '../context/notificacoesContextObject';
 
 /**
- * Combina notificações persistidas do Firestore + lembretes derivados dos
- * pagamentos (pré/pós-vencimento). Resolve "lidas" usando:
- *   - readAt do doc, pra eventos
- *   - localStorage, pra lembretes derivados (não tem doc no Firestore)
+ * A ESCUTA DO SINO — chamada UMA vez por sessão, pelo `NotificacoesProvider`
+ * (context/NotificacoesContext.jsx). Quem precisa da lista lê
+ * `useNotificacoesDaSessao()`, nunca isto.
  *
- * Re-renderiza quando o conjunto de pagamentos muda — assim os lembretes
- * derivados acompanham (ex: pagamento confirmado deixa de gerar lembrete).
- */
-/**
+ * ⚠️ ELA MORAVA NO `Header` (até 03/10/2026), e cada tela monta o seu: toda
+ * navegação derrubava a escuta e a próxima tela relia as 100 mais recentes do
+ * zero — a maior fonte de leitura do app. A folha e a página do sino ainda
+ * abriam uma SEGUNDA escuta por cima da do cabeçalho.
+ *
  * `aoChegar(aviso)` — chamado para cada aviso NOVO que chega com o app
  * aberto (nunca para os que já estavam lá quando a escuta começou). É por
- * ele que o cabeçalho mostra o cartão do aviso (`avisoNaTela`).
+ * ele que o app mostra o cartão do aviso (`avisoNaTela`).
  */
 export function useNotifications({ userId, aoChegar = null }) {
   // O retorno mais recente, sem reabrir a escuta a cada render.
@@ -26,11 +28,11 @@ export function useNotifications({ userId, aoChegar = null }) {
   }, [aoChegar]);
   const [stored, setStored] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Bump pra forçar re-cálculo de derivados após "marcar tudo como lido".
+  // Bump pra forçar re-cálculo após "marcar tudo como lido".
   const [readBump, setReadBump] = useState(0);
 
-  // Trackeia ids já vistos pra detectar notif nova → dispara som apropriado.
-  // Inicializa com o snapshot atual (não dispara som na 1ª carga).
+  // Ids da lista anterior, pra detectar aviso novo → cartão e som.
+  // Nulo até a 1ª carga: nada da primeira lista é novo, tudo é histórico.
   const seenIdsRef = useRef(null);
 
   useEffect(() => {
@@ -42,33 +44,36 @@ export function useNotifications({ userId, aoChegar = null }) {
       return;
     }
     setLoading(true);
+    seenIdsRef.current = null;
+    // Quando a escuta começou — o piso de "aviso novo" (ver `avisosQueChegaram`).
+    const inicio = Date.now();
     const unsub = watchUserNotifications(
       userId,
       (list) => {
-        // Detecta notifs novas comparando com o snapshot anterior
-        if (seenIdsRef.current != null) {
-          const previous = seenIdsRef.current;
-          const newOnes = list.filter((n) => !previous.has(n.id));
-          if (newOnes.length > 0) {
-            // Toca som apropriado por tipo. payment_confirmed → pay,
-            // payment_claimed → cash_in. Outros → notify genérico.
-            const first = newOnes[0];
-            newOnes.forEach((n) => aoChegarRef.current?.(n));
-            // A perua chegando soa como perua; a buzina já toca a dela, em
-            // tela cheia — um segundo som por cima só atrapalha.
-            if (first.type === 'buzina') {
-              /* o toque é do IncomingCallModal */
-            } else if (first.type === 'perua_chegando') {
-              playSound('horn_short');
-            } else if (first.type === 'perua_chegou') {
-              playSound('horn_long');
-            } else if (first.type === 'payment_confirmed') {
-              playSound('pay');
-            } else if (first.type === 'payment_claimed') {
-              playSound('cash_in');
-            } else {
-              playSound('notify');
-            }
+        // Novo = não estava na lista anterior E nasceu depois de a escuta
+        // começar. Só o id não basta: a lista é uma janela das 100 mais
+        // recentes, e quando uma sai (a limpeza dos 90 dias, ou a pessoa
+        // apagando), uma mais VELHA entra por baixo — e ganharia cartão e som.
+        const newOnes = avisosQueChegaram(list, seenIdsRef.current, inicio);
+        if (newOnes.length > 0) {
+          // Toca som apropriado por tipo. payment_confirmed → pay,
+          // payment_claimed → cash_in. Outros → notify genérico.
+          const first = newOnes[0];
+          newOnes.forEach((n) => aoChegarRef.current?.(n));
+          // A perua chegando soa como perua; a buzina já toca a dela, em
+          // tela cheia — um segundo som por cima só atrapalha.
+          if (first.type === 'buzina') {
+            /* o toque é do IncomingCallModal */
+          } else if (first.type === 'perua_chegando') {
+            playSound('horn_short');
+          } else if (first.type === 'perua_chegou') {
+            playSound('horn_long');
+          } else if (first.type === 'payment_confirmed') {
+            playSound('pay');
+          } else if (first.type === 'payment_claimed') {
+            playSound('cash_in');
+          } else {
+            playSound('notify');
           }
         }
         seenIdsRef.current = new Set(list.map((n) => n.id));
@@ -120,7 +125,32 @@ export function useNotifications({ userId, aoChegar = null }) {
     [merged]
   );
 
-  const refreshReads = () => setReadBump((v) => v + 1);
+  const refreshReads = useCallback(() => setReadBump((v) => v + 1), []);
 
-  return { notifications: merged, loading, unreadCount, refreshReads };
+  // Memorizado: este objeto é o valor do contexto, e um objeto novo a cada
+  // render faria todo consumidor (cabeçalho, folha, página) renderizar junto.
+  return useMemo(
+    () => ({ notifications: merged, loading, unreadCount, refreshReads }),
+    [merged, loading, unreadCount, refreshReads]
+  );
+}
+
+const SEM_SESSAO = Object.freeze({
+  notifications: [],
+  loading: false,
+  unreadCount: 0,
+  refreshReads: () => {},
+});
+
+/**
+ * A LISTA DO SINO, lida da escuta única da sessão.
+ *
+ * Fora de um `NotificacoesProvider` devolve a caixa vazia em vez de abrir uma
+ * escuta própria: abrir aqui seria o vazamento de volta, uma escuta por
+ * cabeçalho. Todo `Header` com sino mora dentro do `TioLayout` ou do
+ * `PaiLayout`, e `npm run testar:notificacoes` confere que os dois montam o
+ * provider.
+ */
+export function useNotificacoesDaSessao() {
+  return useContext(NotificacoesContext) || SEM_SESSAO;
 }

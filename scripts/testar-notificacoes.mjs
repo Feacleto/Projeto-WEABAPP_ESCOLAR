@@ -17,12 +17,13 @@
  *
  * Rode: npm run testar:notificacoes
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { ESPECIE_DO_AVISO } from '../src/dominio/identidade/avisos.js';
 import { DESTINO_DO_AVISO, destinoDoAviso } from '../src/dominio/identidade/destinoDoAviso.js';
 import { avisoDeAproximacao } from '../src/dominio/rota/proximidade.js';
 import { fraseDaBuzina } from '../src/dominio/rota/buzina.js';
+import * as caixaDeAvisos from '../src/dominio/identidade/caixaDeAvisos.js';
 
 const require = createRequire(import.meta.url);
 const servidorDestino = require('../functions/lib/destinoDoAviso.js');
@@ -99,8 +100,10 @@ checar('sair da conta tira o aparelho da lista', true,
   ler('src/context/AuthContext.jsx').includes('m.disablePush(user.uid)'));
 
 bloco('3 · O APP ABERTO');
+// A chamada mudou de casa em 03/10/2026: do `Header` (uma escuta por tela)
+// para o `NotificacoesProvider` (uma escuta por sessão). O bloco 10 trava o resto.
 checar('todo aviso novo vira cartão na tela', true,
-  ler('src/components/layout/Header.jsx').includes('avisoNaTela(aviso'));
+  ler('src/context/NotificacoesContext.jsx').includes('avisoNaTela(aviso'));
 const naTela = ler('src/components/notifications/avisoNaTela.jsx');
 checar('a buzina não ganha cartão (ela já é a tela cheia)', true, naTela.includes("new Set(['buzina'])"));
 checar('o sino usa a mesma tabela do push', true,
@@ -237,6 +240,107 @@ checar('o detector de "invalid-argument" reprovaria a lista antiga', true,
   /TOKEN_MORTO\s*=\s*\[[^\]]*invalid-argument/.test("const TOKEN_MORTO = ['x', 'invalid-argument'];"));
 checar('o detector de bloco `notification` reprovaria o push antigo', true,
   /\n\s+notification:\s*\{/.test("x({\n        notification: {\n title"));
+
+bloco('10 · O SINO OUVE UMA VEZ POR SESSÃO, E MARCA EM LOTES');
+/* Até 03/10/2026 a escuta morava no `Header`, que cada tela monta: toda
+   navegação derrubava a escuta e relia as 100 mais recentes. E "marcar todas"
+   relia o histórico inteiro e mandava um lote só, que estoura acima de 500. */
+const arquivosDoSrc = (() => {
+  const lista = [];
+  const andar = (dir) => {
+    for (const e of readdirSync(new URL(`../${dir}`, import.meta.url), { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) andar(p);
+      else if (/\.(js|jsx)$/.test(e.name)) lista.push(p);
+    }
+  };
+  andar('src');
+  return lista;
+})();
+const semComentario = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+const quemChama = (re) => arquivosDoSrc.filter((p) => re.test(semComentario(ler(p))));
+// Chamada, não definição: `function useNotifications(` é o próprio hook.
+const CHAMA_ESCUTA = /(?<!function\s+)\buseNotifications\s*\(/;
+checar('a escuta do sino é aberta num lugar só (o provider)',
+  ['src/context/NotificacoesContext.jsx'], quemChama(CHAMA_ESCUTA));
+checar('e o service é assinado só pelo hook dela',
+  ['src/hooks/useNotifications.js'], quemChama(/(?<!function\s+)\bwatchUserNotifications\s*\(/));
+checar('o Header só lê a escuta da sessão', true,
+  ler('src/components/layout/Header.jsx').includes('useNotificacoesDaSessao()'));
+checar('o corpo do sino (folha e página) também só lê', true,
+  ler('src/components/notifications/NotificationsBody.jsx').includes('useNotificacoesDaSessao()'));
+checar('o provider também cuida do push do aparelho', true,
+  ler('src/context/NotificacoesContext.jsx').includes('usePushDoAparelho('));
+for (const layout of ['src/pages/tio/TioLayout.jsx', 'src/pages/pai/PaiLayout.jsx']) {
+  checar(`${layout.split('/').pop()} monta o provider`, true, ler(layout).includes('<NotificacoesProvider>'));
+}
+checar('sonda: o detector de chamada acharia o Header antigo', true,
+  CHAMA_ESCUTA.test(semComentario("const { unreadCount } = useNotifications({ userId });")));
+
+const caixa = caixaDeAvisos;
+checar('o lote de leitura cabe no teto do Firestore (≤ 450)', true, caixa.LOTE_DE_LEITURA <= 450);
+const mil = Array.from({ length: 1000 }, (_, i) => `n${i}`);
+checar('1000 ids viram lotes de no máximo 450', [450, 450, 100],
+  caixa.emLotes(mil, caixa.LOTE_DE_LEITURA).map((l) => l.length));
+checar('lista vazia não gera lote', [], caixa.emLotes([]));
+checar('só os não lidos são marcados, sem repetição', ['a', 'c'],
+  caixa.idsNaoLidos([
+    { id: 'a', isRead: false },
+    { id: 'b', isRead: true },
+    { id: 'c' },
+    { id: 'a', isRead: false },
+    { id: 'd', readAt: new Date() },
+  ]));
+const servico = ler('src/services/notificationsService.js');
+const corpoMarcar = servico.slice(servico.indexOf('export async function markAllNotificationsRead'));
+const fimMarcar = corpoMarcar.indexOf('\n}\n');
+const marcar = corpoMarcar.slice(0, fimMarcar);
+checar('"marcar todas" não relê o histórico do banco', false, /getDocs|query\(/.test(marcar));
+checar('"marcar todas" escreve em lotes', true, marcar.includes('emLotes(unicos, LOTE_DE_LEITURA)'));
+checar('o sino passa só os ids não lidos do que já carregou', true,
+  ler('src/components/notifications/NotificationsBody.jsx')
+    .includes('markAllNotificationsRead(idsNaoLidos(notifications))'));
+
+const T0 = Date.parse('2026-10-03T12:00:00Z');
+const ts = (ms) => ({ toMillis: () => ms });
+checar('primeira carga: nada é novo', [],
+  caixa.avisosQueChegaram([{ id: 'x', createdAt: ts(T0) }], null, T0));
+checar('aviso que chegou depois de a escuta abrir é novo', ['y'],
+  caixa.avisosQueChegaram([{ id: 'x' }, { id: 'y', createdAt: ts(T0 + 5000) }].map((n) =>
+    ({ createdAt: ts(T0 - 1000), ...n })), new Set(['x']), T0).map((n) => n.id));
+checar('aviso VELHO que entra na janela (outro saiu) não é novo', [],
+  caixa.avisosQueChegaram([{ id: 'velho', createdAt: ts(T0 - 40 * 86400000) }], new Set(), T0));
+checar('escrita local ainda sem hora do servidor conta como nova', ['z'],
+  caixa.avisosQueChegaram([{ id: 'z', createdAt: null }], new Set(), T0).map((n) => n.id));
+checar('o relógio atrasado do aparelho tem folga', ['w'],
+  caixa.avisosQueChegaram([{ id: 'w', createdAt: ts(T0 - 5 * 60000) }], new Set(), T0).map((n) => n.id));
+checar('o hook usa a régua de aviso novo', true,
+  ler('src/hooks/useNotifications.js').includes('avisosQueChegaram(list, seenIdsRef.current, inicio)'));
+
+bloco('11 · O AVISO DURA 90 DIAS');
+const reguaLimpeza = require('../functions/lib/reguaDosAvisosAntigos.js');
+checar('o prazo é 90 dias', 90, reguaLimpeza.DIAS_DE_RETENCAO_DOS_AVISOS);
+const agora = new Date('2026-10-03T07:00:00Z');
+checar('o corte é exatamente 90 dias antes', '2026-07-05T07:00:00.000Z',
+  reguaLimpeza.corteDosAvisos(agora).toISOString());
+checar('89 dias: fica', false, reguaLimpeza.avisoVencido(new Date(agora.getTime() - 89 * 86400000), agora));
+checar('91 dias: sai', true, reguaLimpeza.avisoVencido(new Date(agora.getTime() - 91 * 86400000), agora));
+checar('sem data: fica (o lado seguro)', false, reguaLimpeza.avisoVencido(null, agora));
+checar('o lote da limpeza cabe no teto do Firestore', true, reguaLimpeza.LOTE_DA_LIMPEZA <= 450);
+checar('a régua não requer nada', false, /\brequire\s*\(/.test(semComentario(ler('functions/lib/reguaDosAvisosAntigos.js'))));
+const limpeza = ler('functions/lib/limpezaDosAvisos.js');
+checar('a limpeza usa o corte da régua (não reescreve o 90)', true,
+  limpeza.includes('corteDosAvisos(agora)') && !/\b90\b/.test(semComentario(limpeza)));
+checar('a limpeza é paginada', true,
+  limpeza.includes(".where('createdAt', '<', corte)") && limpeza.includes(".orderBy('createdAt')")
+  && limpeza.includes('.limit(LOTE_DA_LIMPEZA)'));
+checar('agendada no fuso de Brasília, na região do projeto', true,
+  limpeza.includes("timeZone: 'America/Sao_Paulo'") && limpeza.includes("'southamerica-east1'"));
+checar('uma execução por vez, com nova tentativa', true,
+  limpeza.includes('concurrency: 1') && limpeza.includes('retryCount: 2')
+  && limpeza.includes('maxInstances: LIMITES.AGENDADO') && limpeza.includes('timeoutSeconds: LIMITES.TEMPO_AGENDADO'));
+checar('o orçamento de tempo fica abaixo do timeout do agendado', true,
+  reguaLimpeza.ORCAMENTO_DA_LIMPEZA_MS < require('../functions/lib/limites.js').TEMPO_AGENDADO * 1000);
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
