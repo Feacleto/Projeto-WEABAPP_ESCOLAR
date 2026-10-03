@@ -13,7 +13,17 @@ import { avisoVisivel } from '../dominio/associacao/modulosDeCobranca';
  * Re-renderiza quando o conjunto de pagamentos muda — assim os lembretes
  * derivados acompanham (ex: pagamento confirmado deixa de gerar lembrete).
  */
-export function useNotifications({ userId }) {
+/**
+ * `aoChegar(aviso)` — chamado para cada aviso NOVO que chega com o app
+ * aberto (nunca para os que já estavam lá quando a escuta começou). É por
+ * ele que o cabeçalho mostra o cartão do aviso (`avisoNaTela`).
+ */
+export function useNotifications({ userId, aoChegar = null }) {
+  // O retorno mais recente, sem reabrir a escuta a cada render.
+  const aoChegarRef = useRef(aoChegar);
+  useEffect(() => {
+    aoChegarRef.current = aoChegar;
+  }, [aoChegar]);
   const [stored, setStored] = useState([]);
   const [loading, setLoading] = useState(true);
   // Bump pra forçar re-cálculo de derivados após "marcar tudo como lido".
@@ -43,7 +53,16 @@ export function useNotifications({ userId }) {
             // Toca som apropriado por tipo. payment_confirmed → pay,
             // payment_claimed → cash_in. Outros → notify genérico.
             const first = newOnes[0];
-            if (first.type === 'payment_confirmed') {
+            newOnes.forEach((n) => aoChegarRef.current?.(n));
+            // A perua chegando soa como perua; a buzina já toca a dela, em
+            // tela cheia — um segundo som por cima só atrapalha.
+            if (first.type === 'buzina') {
+              /* o toque é do IncomingCallModal */
+            } else if (first.type === 'perua_chegando') {
+              playSound('horn_short');
+            } else if (first.type === 'perua_chegou') {
+              playSound('horn_long');
+            } else if (first.type === 'payment_confirmed') {
               playSound('pay');
             } else if (first.type === 'payment_claimed') {
               playSound('cash_in');

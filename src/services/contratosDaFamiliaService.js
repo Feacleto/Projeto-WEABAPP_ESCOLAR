@@ -50,6 +50,42 @@ export function watchContratos(childId, onData, onError) {
 }
 
 /**
+ * AS VERSÕES QUE A FAMÍLIA LÊ: a que vale e a que espera aceite, por número.
+ *
+ * ⚠️ A família não lista a subcoleção: as rules só lhe mostram as versões
+ * DELA (`familia`), e uma consulta que alcança um documento proibido é
+ * recusada INTEIRA. A criança que trocou de responsável tem versões da
+ * família anterior ali dentro — com nome, e-mail e o aceite de outra pessoa.
+ * Uma versão recusada é tratada como ausente.
+ */
+export function watchVersoesDaFamilia(childId, numeros, onData) {
+  const lista = [...new Set(numeros.filter((n) => n != null).map(String))];
+  if (!childId || lista.length === 0) {
+    onData([]);
+    return () => {};
+  }
+  const achados = new Map();
+  const publicar = () => {
+    if (achados.size < lista.length) return;
+    onData([...achados.values()].filter(Boolean));
+  };
+  const parar = lista.map((numero) =>
+    onSnapshot(
+      doc(db, 'children', childId, 'contratos', numero),
+      (snap) => {
+        achados.set(numero, snap.exists() ? { id: snap.id, ...snap.data() } : null);
+        publicar();
+      },
+      () => {
+        achados.set(numero, null);
+        publicar();
+      }
+    )
+  );
+  return () => parar.forEach((p) => p());
+}
+
+/**
  * A versão esperando aceite, lida da LISTA e não do ponteiro da criança. Os
  * dois chegam por escutas diferentes: logo depois de emitir, a lista pode já
  * ter a versão nova enquanto a criança ainda aponta para nada — e confiar no
@@ -82,6 +118,9 @@ async function emitir({
     status: 'aguardando',
     emitidoEm: serverTimestamp(),
     adminUid: child.adminUid,
+    // DE QUEM É ESTA VERSÃO. A família seguinte da mesma criança não lê o
+    // contrato da anterior — que tem nome, e-mail e telefone dela (rules).
+    familia: child.parentUid || null,
     mudancas,
     novosValores,
     substitui: child.contratoVigente?.numero ?? null,

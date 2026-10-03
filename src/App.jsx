@@ -538,6 +538,8 @@ export default function App() {
           * campo (`functions/lib/reguaDoAcompanhamento.js`), e o link morre
           * à meia-noite. */}
         <Route path="/acompanhar/:token" element={<Acompanhar />} />
+        {/* O aviso do acesso de 24h abre sem token: o aparelho lembra (Acompanhar.jsx). */}
+        <Route path="/acompanhar" element={<Acompanhar />} />
         <Route path="/quero-fazer-parte" element={<DriverSignup />} />
         {/* /conheca — o folheto verde antigo. Link velho, QR impresso e
           * favorito continuam funcionando; hoje eles chegam na landing.

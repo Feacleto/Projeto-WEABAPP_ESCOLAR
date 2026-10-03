@@ -1,4 +1,4 @@
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { app, db } from '../firebase/config';
 
@@ -54,6 +54,22 @@ export function permissionState() {
 }
 
 /**
+ * O TOKEN DESTE APARELHO, sempre pelo MESMO worker.
+ *
+ * ⚠️ `disablePush` chamava `getToken` SEM o registro do worker — o SDK então
+ * registra o padrão `/firebase-messaging-sw.js` sem a config na URL, que não
+ * inicializa, e o token nunca era achado para ser removido. Um caminho só
+ * para os três usos (ligar, sincronizar, desligar).
+ */
+async function tokenDoAparelho() {
+  const registration = await navigator.serviceWorker.register(swUrl(), {
+    scope: '/firebase-cloud-messaging-push-scope',
+  });
+  const messaging = getMessaging(app);
+  return getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+}
+
+/**
  * Pede permissão, registra o token e guarda em users/{uid}.fcmTokens.
  *
  * Guardamos um ARRAY porque a mesma pessoa usa o app no celular e no
@@ -69,34 +85,9 @@ export async function enablePush(uid) {
   if (permission !== 'granted') return { ok: false, reason: 'negado' };
 
   try {
-    // ESCOPO PRÓPRIO — sem ele, este registro DERRUBA o service worker do PWA.
-    //
-    // `navigator.serviceWorker.register(url)` sem `scope` assume o diretório
-    // do script. Como os dois arquivos moram na raiz, o do FCM e o do PWA
-    // disputavam o escopo `/`, e registrar um substitui o outro: quem ligasse
-    // as notificações perdia o cache offline E o aviso de versão nova, sem
-    // nenhum erro na tela.
-    //
-    // `/firebase-cloud-messaging-push-scope` é o caminho que o próprio SDK do
-    // Firebase usa quando registra sozinho — não é invenção nossa, é voltar
-    // ao padrão que a passagem manual do registro tinha atropelado.
-    //
-    // A pasta não precisa existir: escopo de service worker é um prefixo de
-    // URL, não um diretório. Mas o ARQUIVO tem que estar na raiz pra poder
-    // reivindicar esse prefixo — e está.
-    const registration = await navigator.serviceWorker.register(swUrl(), {
-      scope: '/firebase-cloud-messaging-push-scope',
-    });
-    const messaging = getMessaging(app);
-    const token = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: registration,
-    });
+    const token = await tokenDoAparelho();
     if (!token) return { ok: false, reason: 'sem-token' };
-
-    await updateDoc(doc(db, 'users', uid), {
-      fcmTokens: arrayUnion(token),
-    });
+    await updateDoc(doc(db, 'users', uid), { fcmTokens: arrayUnion(token) });
     return { ok: true, token };
   } catch (err) {
     console.error('enablePush:', err);
@@ -105,38 +96,67 @@ export async function enablePush(uid) {
 }
 
 /**
- * Remove o token deste aparelho. Não revoga a permissão do navegador —
- * isso só o usuário faz nas configurações do browser.
+ * A CADA ABERTURA DO APP, com a permissão já dada (03/10/2026).
+ *
+ * O token do FCM troca sozinho (o navegador renova, a pessoa limpa dados), e
+ * ele só era gravado no gesto de "ativar avisos" — uma vez na vida. O token
+ * novo nunca chegava ao servidor e o celular parava de receber sem ninguém
+ * saber. Não pede permissão: só confere e grava se mudou.
+ */
+export async function sincronizarPush(uid, tokensGravados = []) {
+  if (!uid || permissionState() !== 'granted' || !(await isPushAvailable())) return;
+  try {
+    const token = await tokenDoAparelho();
+    if (!token || (tokensGravados || []).includes(token)) return;
+    await updateDoc(doc(db, 'users', uid), { fcmTokens: arrayUnion(token) });
+  } catch (err) {
+    console.error('sincronizarPush:', err);
+  }
+}
+
+/**
+ * Tira este aparelho da lista. Chamado ao SAIR DA CONTA — antes, o celular
+ * continuava recebendo os avisos da conta anterior (com nome de criança) no
+ * aparelho compartilhado de quem entrou depois.
  */
 export async function disablePush(uid) {
-  if (!uid || !(await isPushAvailable())) return;
+  if (!uid || permissionState() !== 'granted' || !(await isPushAvailable())) return;
   try {
-    const messaging = getMessaging(app);
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-    if (token) {
-      await updateDoc(doc(db, 'users', uid), {
-        fcmTokens: arrayRemove(token),
-      });
-    }
+    const token = await tokenDoAparelho();
+    if (token) await updateDoc(doc(db, 'users', uid), { fcmTokens: arrayRemove(token) });
   } catch (err) {
     console.error('disablePush:', err);
   }
 }
 
 /**
- * Mensagem recebida com o app ABERTO. O SW não dispara notificação nesse
- * caso, então quem decide o que mostrar é a UI.
- * Retorna unsubscribe (ou no-op quando push não está disponível).
+ * O token, para quem NÃO tem conta: o acesso de 24h do segundo responsável
+ * (`/acompanhar`) entrega o token ao servidor por callable. Pede permissão.
  */
-export function onForegroundPush(handler) {
-  let unsub = () => {};
-  isPushAvailable().then((ok) => {
-    if (!ok) return;
-    try {
-      unsub = onMessage(getMessaging(app), handler);
-    } catch (err) {
-      console.error('onForegroundPush:', err);
+export async function tokenParaAcessoTemporario() {
+  if (!(await isPushAvailable())) return null;
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return null;
+  try {
+    return await tokenDoAparelho();
+  } catch (err) {
+    console.error('tokenParaAcessoTemporario:', err);
+    return null;
+  }
+}
+
+/**
+ * O TOQUE NO AVISO, com o app já aberto em segundo plano: o worker manda o
+ * caminho, e quem navega é o app (o worker do FCM não controla as janelas).
+ */
+export function ouvirToqueNoAviso(navegar) {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return () => {};
+  const ouvir = (event) => {
+    const m = event.data;
+    if (m && m.tipo === 'abrir-aviso' && typeof m.caminho === 'string' && m.caminho.startsWith('/')) {
+      navegar(m.caminho);
     }
-  });
-  return () => unsub();
+  };
+  navigator.serviceWorker.addEventListener('message', ouvir);
+  return () => navigator.serviceWorker.removeEventListener('message', ouvir);
 }

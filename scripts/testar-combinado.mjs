@@ -12,6 +12,7 @@
  *   node scripts/testar-combinado.mjs      (ou: npm run testar:combinado)
  */
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import {
   vigenciaPadrao,
   parcelasDaVigencia,
@@ -133,6 +134,26 @@ checar('dia fora de 1–28 não passa', {}, servidor.valoresDoAditivo({ dueDay: 
 checar('data que não é data não passa', {}, servidor.valoresDoAditivo({ vigenciaFim: '31/12/2027' }));
 checar('valor negativo não passa', {}, servidor.valoresDoAditivo({ monthlyFee: -1 }));
 checar('nada vira nada', {}, servidor.valoresDoAditivo(null));
+
+console.log('\nA COBRANÇA RESPEITA A VIGÊNCIA (o servidor gera a mensalidade)');
+const VIG = ['2026-10-02', '2026-12-31'];
+checar('setembro, antes do início: sem mensalidade', false, servidor.mesDentroDaVigencia('2026-09', ...VIG));
+checar('outubro, o mês do início: cobra', true, servidor.mesDentroDaVigencia('2026-10', ...VIG));
+checar('dezembro, o último: cobra', true, servidor.mesDentroDaVigencia('2026-12', ...VIG));
+checar('janeiro, depois do fim: sem mensalidade', false, servidor.mesDentroDaVigencia('2027-01', ...VIG));
+checar('março a março: fev/27 é a 12ª parcela', true, servidor.mesDentroDaVigencia('2027-02', '2026-03-10', '2027-03-09'));
+checar('e mar/27 seria a 13ª, que o contrato não prevê', false, servidor.mesDentroDaVigencia('2027-03', '2026-03-10', '2027-03-09'));
+checar('criança sem vigência gravada continua sendo cobrada', true, servidor.mesDentroDaVigencia('2027-05', undefined, undefined));
+const casosParcela = [
+  ['2026-10-02', '2026-12-31'], ['2026-01-01', '2026-12-31'], ['2026-03-10', '2027-03-09'],
+  ['2026-10-01', '2027-12-31'], ['2026-01-15', '2026-02-20'], ['2026-03-05', '2026-04-04'],
+  ['2026-02-30', '2026-12-31'], ['2026-12-31', '2026-01-01'],
+];
+checar('o servidor conta as parcelas igual à tela, caso a caso', true,
+  casosParcela.every(([i, f]) => servidor.parcelasDaVigencia(i, f) === parcelasDaVigencia(i, f)));
+checar('e o gerador de mensalidade usa a régua', true,
+  readFileSync(new URL('../functions/lib/billing.js', import.meta.url), 'utf8')
+    .includes('mesDentroDaVigencia(monthKey, child.vigenciaInicio, child.vigenciaFim)'));
 
 console.log(`\n${'═'.repeat(64)}\n  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) falhas.forEach((f) => console.log('  ✗ ' + f));

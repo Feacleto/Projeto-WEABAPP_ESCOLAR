@@ -618,6 +618,7 @@ module.exports = {
   ATRASO_NA_ENTREGA,
   ATRASO_NA_PARTIDA,
   avisoDeAtraso,
+  statusDeHoje,
   normalizaHoraLocal,
   jaAvisadoHoje,
   minutosDesde,

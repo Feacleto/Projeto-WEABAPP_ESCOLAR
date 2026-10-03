@@ -72,6 +72,14 @@ export const ESPECIE_DO_AVISO = {
   // ── o dia da criança ────────────────────────────────────────────────────
   rota_iniciada: ESPECIE.FATO,
   proxima_parada: ESPECIE.FATO,
+  // 03/10/2026 — os avisos que estavam faltando, os quatro FATO: a perua
+  // chegando (antes só um toast com o app aberto), a buzina com o app
+  // fechado, o embarque na escola e o acesso de 24h do segundo responsável.
+  perua_chegando: ESPECIE.FATO,
+  perua_chegou: ESPECIE.FATO,
+  buzina: ESPECIE.FATO,
+  child_onboard: ESPECIE.FATO,
+  acesso_temporario: ESPECIE.FATO,
   child_arrived_school: ESPECIE.FATO,
   child_arrived_home: ESPECIE.FATO,
   nao_embarcou: ESPECIE.FATO,

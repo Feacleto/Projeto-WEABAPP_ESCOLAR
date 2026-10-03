@@ -37,7 +37,7 @@ export default function ContractAcceptanceGate() {
   const { profile, logout } = useAuth();
   const { child, loading: childLoading } = useActiveChild();
   const { admin, loading: adminLoading } = useAdminProfile(child?.adminUid);
-  const { aguardando, loading: contratosLoading } = useContratos(child);
+  const { aguardando, loading: contratosLoading } = useContratos(child, { daFamilia: true });
 
   const [rejecting, setRejecting] = useState(false);
   const [showReject, setShowReject] = useState(false);
@@ -140,11 +140,11 @@ export default function ContractAcceptanceGate() {
       {/* Header sticky */}
       <header className="sticky top-0 z-20 bg-card border-b border-neutro p-4">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
             <FileText size={22} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+            <p className="rotulo">
               1º acesso
             </p>
             <h1 className="text-base font-bold text-text leading-tight">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Square, Satellite, CircleAlert, MapPin, MapPinOff, CalendarOff, ArrowRight } from 'lucide-react';
+import { Play, Satellite, CircleAlert, MapPin, MapPinOff, CalendarOff, ArrowRight, TriangleAlert } from 'lucide-react';
 import { diaSemRota, fraseDoDiaSemRota } from '../../dominio/rota/calendario.js';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,6 +10,8 @@ import { podeOferecer } from '../../dominio/associacao/ofertaDaPrimeiraRota';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { playSound } from '../../services/soundService';
 import { marcarOcorrencia } from '../../services/locationService';
+import { encerrarChamadas } from '../../services/pendingCallService';
+import SegurarParaEncerrar from './SegurarParaEncerrar';
 
 /**
  * Iniciar e encerrar a rota — o interruptor do GPS.
@@ -21,11 +23,12 @@ import { marcarOcorrencia } from '../../services/locationService';
  * coisa dele que a operação não pode perder: sem rastreamento, o painel do
  * responsável fica com "a rota de hoje ainda não começou" o dia inteiro.
  *
- * ENCERRAR PEDE DOIS TOQUES
- * Não é diálogo de confirmação: é o mesmo botão mudando de rótulo por quatro
- * segundos. Encerrar por engano no meio da rota apaga a perua do mapa de todo
- * mundo, e um diálogo modal no celular em movimento é mais fácil de confirmar
- * sem ler do que um botão que muda de cara.
+ * ENCERRAR PEDE PARA SEGURAR (03/10/2026, design system)
+ * Encerrar por engano no meio da rota apaga a perua do mapa de todo mundo.
+ * Já foi um botão de dois toques (o rótulo virava "Confirmar" por quatro
+ * segundos) — melhor que um diálogo modal, que no celular em movimento se
+ * confirma sem ler, mas o segundo toque caía no mesmo lugar do primeiro.
+ * Agora é `SegurarParaEncerrar`: 800 ms de dedo, e soltar antes desfaz.
  */
 export default function ControleDeRota({
   onIniciar,
@@ -37,6 +40,10 @@ export default function ControleDeRota({
   // limão do design system — o único lugar em que ele é botão: sobre verde, o
   // verde-escuro some. A rota ligada continua com a barra de sempre.
   destaque = false,
+  // NO RODAPÉ DA TELA DA ROTA a faixa verde de cima já diz "ROTA ATIVA" e a
+  // direção — repetir "modo rota · levando pra escola" logo embaixo seria a
+  // tela falando a mesma coisa duas vezes. Ausente, fica como no Início.
+  rodape = false,
 }) {
   const { user, profile, updateProfile, refreshProfile } = useAuth();
   // AUSENTE É LIGADO — ver `setCompartilharLocalizacao`.
@@ -56,7 +63,12 @@ export default function ControleDeRota({
     toast('GPS religado. A rota continua.');
   }, [user?.uid, watching, stopping, liveLocation?.routeActive, retomar, alvos, compartilha]);
 
-  const [confirmandoParada, setConfirmandoParada] = useState(false);
+  // Quem ainda está pendente aparece ao COMEÇAR a segurar, e fica à vista um
+  // tempo depois de soltar: quem aperta, lê o nome e solta não encerrou nada,
+  // e precisa de tempo para ler antes de segurar de novo.
+  const [mostrandoPendentes, setMostrandoPendentes] = useState(false);
+  const esconderPendentesRef = useRef(null);
+  useEffect(() => () => clearTimeout(esconderPendentesRef.current), []);
   const [rodarMesmoAssim, setRodarMesmoAssim] = useState(false);
   const ultimoErroRef = useRef(null);
 
@@ -101,18 +113,25 @@ export default function ControleDeRota({
     onIniciar?.();
   }
 
+  function comecouASegurar() {
+    playSound('click');
+    if (!pendentes.length) return;
+    setMostrandoPendentes(true);
+    clearTimeout(esconderPendentesRef.current);
+    // Com criança pendente ele precisa LER a lista: oito segundos, o mesmo
+    // prazo que o segundo toque do botão antigo dava.
+    esconderPendentesRef.current = setTimeout(() => setMostrandoPendentes(false), 8000);
+  }
+
   async function encerrar() {
-    if (!confirmandoParada) {
-      playSound('click');
-      setConfirmandoParada(true);
-      // Com criança pendente ele precisa LER a lista: mais tempo para decidir.
-      setTimeout(() => setConfirmandoParada(false), pendentes.length ? 8000 : 4000);
-      return;
-    }
-    setConfirmandoParada(false);
+    clearTimeout(esconderPendentesRef.current);
+    setMostrandoPendentes(false);
     // O uid vai adiante: quem encerra a rota é quem sabe de quem ela é, e
     // `avisarQuemFicou` precisa dele pra achar a turma.
     await stop(user?.uid, pendentes);
+    // Rota encerrada, nenhuma porta espera mais: a buzina aberta não pode
+    // tocar no celular da mãe à noite.
+    encerrarChamadas({ adminUid: user?.uid, motivo: 'fim_da_rota' });
     toast.success('Rota encerrada.');
 
     /* ⚠️ A OFERTA NASCE AQUI — no fim da PRIMEIRA rota, não no começo.
@@ -321,83 +340,96 @@ export default function ControleDeRota({
   const precisao = position?.coords?.accuracy ?? liveLocation?.accuracy;
   const semSinal = precisao == null;
 
+  const quebrou = liveLocation?.ocorrencia?.tipo === 'perua_quebrou';
+
   return (
-    <div className="rounded-2xl border border-primaryBorder bg-primarySoft p-3 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
-        {semSinal ? <CircleAlert size={17} /> : <Satellite size={17} />}
+    <div className="space-y-2">
+      <div className="flex items-start gap-3">
+        <span
+          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+            quebrou
+              ? 'bg-dangerChip text-dangerText'
+              : semSinal
+                ? 'bg-warningChip text-warningText'
+                : 'bg-primaryChip text-primary'
+          }`}
+        >
+          {quebrou ? (
+            <TriangleAlert size={17} />
+          ) : semSinal ? (
+            <CircleAlert size={17} />
+          ) : (
+            <Satellite size={17} />
+          )}
+        </span>
+        {/* O NOME DO MODO, ESCRITO.
+          *
+          * "Rota ativa" descreve o GPS, não a tela. E a tela inteira acabou de
+          * trocar de papel: some a saudação, some o índice do cadastro, aparece
+          * a operação da rota. Quem abre o app no meio da tarde não acompanhou
+          * essa transição — precisa ler onde está antes de tocar em qualquer
+          * coisa.
+          *
+          * A DIREÇÃO importa mais que o modo: às 12h o motorista faz as duas
+          * viagens com uma hora de diferença, e "levando" ou "trazendo" muda o
+          * que ele espera ver na lista. Sem `direcao`, degrada pra "MODO ROTA"
+          * seco — nunca fica pela metade. No rodapé da tela da rota ele sai:
+          * a faixa verde de cima já diz as duas coisas. */}
+        <div className="min-w-0 flex-1">
+          {!rodape && (
+            <p className="rotulo leading-tight text-primary">
+              modo rota
+              {direcao === 'ida' && ' · levando pra escola'}
+              {direcao === 'volta' && ' · trazendo pra casa'}
+            </p>
+          )}
+          {/* ⚠️ ENCERRAR COM CRIANÇA PENDENTE (03/10/2026): começar a segurar
+            * diz QUEM ainda está na perua ou sem embarque, antes de a rota
+            * fechar. Não impede — ele pode ter deixado a criança e não
+            * marcado —, mas não deixa encerrar sem ver. */}
+          {mostrandoPendentes && pendentes.length > 0 ? (
+            <p className="mt-0.5 text-sm font-bold text-dangerText" role="status">
+              {resumoDosPendentes(pendentes)}
+            </p>
+          ) : quebrou ? (
+            <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm font-bold text-dangerText">
+              Problema na perua avisado
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await marcarOcorrencia(null);
+                    toast.success('Rota seguindo. As famílias voltam a ver a rota normal.');
+                  } catch (err) {
+                    console.error(err);
+                    toast.error('Não deu pra marcar. Tente de novo.');
+                  }
+                }}
+                className="tap min-h-11 rounded-xl border border-primaryBorder bg-card px-3 text-sm font-bold text-primary"
+              >
+                Resolvido
+              </button>
+            </p>
+          ) : (
+            <p className="mt-0.5 text-sm text-textBody">
+              {/* ⚠️ A FRASE DIZ O QUE A FAMÍLIA VÊ DE VERDADE (03/10/2026). Dizia
+                * "o responsável está te vendo" até com o mapa DESLIGADO — a tela
+                * dele mentindo sobre a escolha que ele mesmo fez. E a precisão do
+                * GPS não é a que a família vê: o mapa dela é aproximado (150 m). */}
+              {semSinal
+                ? 'Procurando sinal de GPS…'
+                : compartilha
+                  ? 'As famílias veem a perua no mapa, em posição aproximada.'
+                  : 'A perua não aparece no mapa. O aviso de chegada continua.'}
+            </p>
+          )}
+        </div>
       </div>
-      {/* O NOME DO MODO, ESCRITO.
-        *
-        * "Rota ativa" descreve o GPS, não a tela. E a tela inteira acabou de
-        * trocar de papel: some a saudação, some o índice do cadastro, aparece
-        * a operação da rota. Quem abre o app no meio da tarde não acompanhou
-        * essa transição — precisa ler onde está antes de tocar em qualquer
-        * coisa.
-        *
-        * A DIREÇÃO importa mais que o modo: às 12h o motorista faz as duas
-        * viagens com uma hora de diferença, e "levando" ou "trazendo" muda o
-        * que ele espera ver na lista. Sem `direcao`, degrada pra "MODO ROTA"
-        * seco — nunca fica pela metade. */}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-extrabold uppercase tracking-widest text-primary leading-tight">
-          modo rota
-          {direcao === 'ida' && ' · levando pra escola'}
-          {direcao === 'volta' && ' · trazendo pra casa'}
-        </p>
-        {/* ⚠️ ENCERRAR COM CRIANÇA PENDENTE (03/10/2026): o primeiro toque em
-          * "Encerrar" diz QUEM ainda está na perua ou sem embarque, antes do
-          * "Confirmar". Não impede — ele pode ter deixado a criança e não
-          * marcado —, mas não deixa encerrar sem ver. */}
-        {liveLocation?.ocorrencia?.tipo === 'perua_quebrou' && !confirmandoParada ? (
-          <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm font-bold text-dangerText">
-            Problema na perua avisado
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await marcarOcorrencia(null);
-                  toast.success('Rota seguindo. As famílias voltam a ver a rota normal.');
-                } catch (err) {
-                  console.error(err);
-                  toast.error('Não deu pra marcar. Tente de novo.');
-                }
-              }}
-              className="tap min-h-11 rounded-xl border border-primaryBorder bg-card px-3 text-xs font-bold text-primary"
-            >
-              Resolvido
-            </button>
-          </p>
-        ) : confirmandoParada && pendentes.length > 0 ? (
-          <p className="mt-0.5 text-sm font-bold text-dangerText">
-            {resumoDosPendentes(pendentes)}
-          </p>
-        ) : (
-        <p className="text-xs text-primary mt-0.5">
-          {/* ⚠️ A FRASE DIZ O QUE A FAMÍLIA VÊ DE VERDADE (03/10/2026). Dizia
-            * "o responsável está te vendo" até com o mapa DESLIGADO — a tela
-            * dele mentindo sobre a escolha que ele mesmo fez. E a precisão do
-            * GPS não é a que a família vê: o mapa dela é aproximado (150 m). */}
-          {semSinal
-            ? 'procurando sinal de GPS…'
-            : compartilha
-              ? 'as famílias veem a perua no mapa, em posição aproximada'
-              : 'a perua não aparece no mapa · o aviso de chegada continua'}
-        </p>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={encerrar}
+      <SegurarParaEncerrar
         disabled={stopping}
-        className={`tap shrink-0 min-h-11 px-3 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-60 ${
-          confirmandoParada
-            ? 'bg-dangerText text-white' // branco sobre `danger` dava 3,76:1 (axe, M5)
-            : 'bg-card border border-primaryBorder text-primary'
-        }`}
-      >
-        <Square size={13} />
-        {confirmandoParada ? 'Confirmar' : 'Encerrar'}
-      </button>
+        onComecar={comecouASegurar}
+        onEncerrar={encerrar}
+      />
     </div>
   );
 }

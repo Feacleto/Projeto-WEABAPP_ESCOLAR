@@ -1,5 +1,5 @@
 /**
- * Service worker do Firebase Cloud Messaging.
+ * Service worker do Firebase Cloud Messaging — o aviso com o APP FECHADO.
  *
  * Precisa viver na raiz (public/) e ser um arquivo separado do sw.js que o
  * vite-plugin-pwa gera: o FCM registra o SEU próprio worker, com escopo
@@ -8,6 +8,16 @@
  * A config vem por query string no registro (pushService.js) porque um
  * service worker não tem acesso a import.meta.env. São chaves públicas de
  * cliente — a segurança real está nas Security Rules.
+ *
+ * ── O QUE MUDOU EM 03/10/2026
+ * O servidor passou a mandar SÓ DADOS (sem o bloco `notification`), e é este
+ * arquivo que desenha o aviso — sempre, e uma vez só. Antes o navegador
+ * mostrava um e este worker mostrava outro igual.
+ *   - `tag`: o "está chegando" é SUBSTITUÍDO pelo "chegou", não empilhado;
+ *   - `insistente`: a buzina fica na tela até alguém tocar;
+ *   - o toque leva ao endereço do aviso, numa janela do app que já esteja
+ *     aberta quando houver — e só navega se a janela for do mesmo endereço
+ *     do app (o `navigate` de outra origem falha calado).
  */
 
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
@@ -26,40 +36,41 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Mensagem recebida com o app fechado ou em segundo plano.
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || payload.data?.title || 'Alô Buzinou';
-  const body = payload.notification?.body || payload.data?.body || '';
-  const url = payload.data?.url || '/';
-
-  self.registration.showNotification(title, {
+  const d = payload.data || {};
+  const title = d.title || (payload.notification && payload.notification.title) || 'Alô Buzinou';
+  const body = d.body || (payload.notification && payload.notification.body) || '';
+  return self.registration.showNotification(title, {
     body,
-    // badge ≠ icon: o Android tinge o badge usando só o alfa, então ele
-    // precisa ser silhueta monocromática. Com o ícone colorido ali, a
-    // barra de status mostrava um quadrado chapado.
     icon: '/brand/icon-192.png',
     badge: '/brand/notification-badge-96.png',
-    tag: payload.data?.tag || undefined,
-    data: { url },
-    vibrate: [220, 100, 220],
+    tag: d.tag || undefined,
+    // Mesmo com a etiqueta repetida, o aviso novo toca de novo.
+    renotify: Boolean(d.tag),
+    requireInteraction: d.insistente === '1',
+    data: { url: d.url || '/' },
+    vibrate: d.insistente === '1' ? [400, 200, 400, 200, 400] : [220, 100, 220],
   });
 });
 
-// Toque na notificação: foca uma aba já aberta em vez de abrir outra.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = event.notification.data?.url || '/';
+  const destino = new URL(event.notification.data?.url || '/', self.location.origin);
   event.waitUntil(
     self.clients
       .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((list) => {
-        for (const client of list) {
-          if ('focus' in client) {
-            client.navigate(target);
-            return client.focus();
-          }
+      .then((janelas) => {
+        const doApp = janelas.find((j) => new URL(j.url).origin === destino.origin);
+        // ⚠️ `navigate()` só funciona em janela CONTROLADA por este worker, e
+        // nenhuma do app é (o escopo dele é o do FCM): a chamada falhava
+        // calada e o toque só trazia o app para a frente, na tela em que
+        // estava. Quem navega é o próprio app, ao receber a mensagem
+        // (`ouvirToqueNoAviso` em pushService.js).
+        if (doApp) {
+          doApp.postMessage({ tipo: 'abrir-aviso', caminho: destino.pathname + destino.search });
+          return doApp.focus();
         }
-        return self.clients.openWindow(target);
+        return self.clients.openWindow(destino.href);
       })
   );
 });

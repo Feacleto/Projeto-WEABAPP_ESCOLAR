@@ -52,6 +52,30 @@ import { exigirCloud } from './callableError';
 const FIRESTORE_BATCH_LIMIT = 450;
 
 /**
+ * ⚠️ O LOGIN RECENTE É CONFERIDO ANTES DE APAGAR QUALQUER COISA (03/10/2026).
+ *
+ * `deleteUser` exige login de poucos minutos atrás, e ele era o ÚLTIMO passo:
+ * na sessão de dias (o normal num app instalado) os dados iam embora, o
+ * `deleteUser` falhava com `requires-recent-login`, e a tela mandava "sair e
+ * entrar de novo" — com o login vivo e nada mais para excluir. Para a
+ * família, era a conta sem os filhos; para o motorista, o login de pé sem
+ * operação nenhuma.
+ *
+ * O Firebase não publica a janela exata; cinco minutos é o que ele aceita na
+ * prática, e errar para o lado curto custa só um login a mais.
+ */
+const JANELA_DO_LOGIN_RECENTE_MS = 5 * 60 * 1000;
+
+function exigirLoginRecente() {
+  const ultimo = Date.parse(auth.currentUser?.metadata?.lastSignInTime || '');
+  if (!auth.currentUser || !Number.isFinite(ultimo) || Date.now() - ultimo > JANELA_DO_LOGIN_RECENTE_MS) {
+    const err = new Error('Login recente necessário.');
+    err.code = 'auth/requires-recent-login';
+    throw err;
+  }
+}
+
+/**
  * APAGA SÓ O QUE É DESTE MOTORISTA. Antes varria a coleção inteira.
  *
  * `getDocs(collection(db, name))` sem filtro nenhum, em onze coleções. Com um
@@ -300,6 +324,7 @@ export async function deactivateChildAndParent({ childId }) {
  */
 export async function deleteOwnParentAccount({ uid, childIds = [] }) {
   if (!uid) throw new Error('Sem uid.');
+  exigirLoginRecente();
 
   // Desvincula TODAS as crianças da conta (um responsável pode ter dois
   // filhos). Antes só desvinculava uma, e o segundo filho ficava preso a um
@@ -395,6 +420,7 @@ export async function deleteOwnParentAccount({ uid, childIds = [] }) {
  */
 export async function deleteAdminAccount(adminUid) {
   if (!adminUid) throw new Error('Sem adminUid.');
+  exigirLoginRecente();
 
   // As coleções que já carregam `adminUid` saem escopadas.
   //

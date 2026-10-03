@@ -538,6 +538,7 @@ async function main() {
   await oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon });
   await decisao12({ tio1, tio2, pai1, novato, dono });
   await oAceite({ tio1, tio2, pai1 });
+  await oTesteDeCodigo({ tio1, tio2, pai1, dono });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -547,6 +548,114 @@ async function main() {
   }
   console.log(`${'═'.repeat(64)}\n`);
   process.exit(bad > 0 ? 1 : 0);
+}
+
+/**
+ * O QUE O TESTE DE CÓDIGO DE 03/10/2026 ACHOU NAS REGRAS (testes-navegador/
+ * TESTE-DE-CODIGO.md): C1, A4, A6, A8, e as duas portas novas do segundo
+ * responsável.
+ */
+async function criarComHoraDoServidor(caminho, s, fields, campoHora) {
+  const base = FS.slice(0, -'/documents'.length);
+  const nome = `projects/${PID}/databases/(default)/documents/${caminho}`;
+  return fetch(`${base}/documents:commit`, {
+    method: 'POST',
+    headers: H(s),
+    body: JSON.stringify({
+      writes: [{
+        update: { name: nome, fields },
+        updateTransforms: [{ fieldPath: campoHora, setToServerValue: 'REQUEST_TIME' }],
+        currentDocument: { exists: false },
+      }],
+    }),
+  }).then((r) => r.status);
+}
+
+async function oTesteDeCodigo({ tio1, tio2, pai1, dono }) {
+  console.log('\n=== O TESTE DE CÓDIGO (03/10/2026) ===');
+
+  // C1 — o motorista mexe no estado da cobrança, nunca em de quem ela é.
+  await semear('payments/pagC1', {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childId: S('kid1'),
+    childName: S('Ana'), month: S('2026-09'), amount: N(300), status: S('pending'),
+  });
+  checar('C1', 'tio1 reescreve a família de uma cobrança dele', 'NEGA',
+    await escrever('payments/pagC1', tio1, { parentUid: S('outraFamilia') }, ['parentUid']));
+  checar('C1', 'tio1 reescreve o valor', 'NEGA',
+    await escrever('payments/pagC1', tio1, { amount: N(9999) }, ['amount']));
+  checar('C1', 'tio1 troca a criança da cobrança', 'NEGA',
+    await escrever('payments/pagC1', tio1, { childId: S('kid2') }, ['childId']));
+  checar('C1', 'tio1 dá baixa (o caminho normal) continua passando', 'PASSA',
+    await escrever('payments/pagC1', tio1, { status: S('paid'), paymentMethod: S('pix') }, ['status', 'paymentMethod']));
+
+  // A4 — cada lado escreve só os fatos dele, com a hora do servidor.
+  checar('A4', 'a família grava "o motorista confirmou"', 'NEGA',
+    await criarComHoraDoServidor('payments/pagC1/events/f1', pai1,
+      { type: S('confirmed'), actorUid: S(pai1.uid), actorRole: S('admin') }, 'at'));
+  checar('A4', 'a família inventa a data do aviso', 'NEGA',
+    await criar('payments/pagC1/events', 'f2', pai1, {
+      type: S('claimed'), actorUid: S(pai1.uid), actorRole: S('parent'),
+      at: { timestampValue: '2026-01-01T00:00:00Z' },
+    }));
+  checar('A4', 'a família registra o próprio aviso com a hora do servidor', 'PASSA',
+    await criarComHoraDoServidor('payments/pagC1/events/f3', pai1,
+      { type: S('claimed'), actorUid: S(pai1.uid), actorRole: S('parent') }, 'at'));
+  checar('A4', 'o motorista finge que a família avisou', 'NEGA',
+    await criarComHoraDoServidor('payments/pagC1/events/f4', tio1,
+      { type: S('claimed'), actorUid: S(tio1.uid), actorRole: S('parent') }, 'at'));
+  checar('A4', 'o motorista registra a confirmação dele', 'PASSA',
+    await criarComHoraDoServidor('payments/pagC1/events/f5', tio1,
+      { type: S('confirmed'), actorUid: S(tio1.uid), actorRole: S('admin') }, 'at'));
+
+  // A6 — a família seguinte não lê o contrato da anterior.
+  await semear('children/kidA6', {
+    name: S('Caio'), adminUid: S(tio1.uid), parentUid: S(pai1.uid), active: B(true),
+  });
+  await semear('children/kidA6/contratos/1', {
+    numero: N(1), status: S('substituido'), adminUid: S(tio1.uid), familia: S('familiaAnterior'),
+  });
+  await semear('children/kidA6/contratos/2', {
+    numero: N(2), status: S('aguardando'), adminUid: S(tio1.uid), familia: S(pai1.uid),
+  });
+  checar('A6', 'a família nova lê a versão da família anterior', 'NEGA',
+    await ler('children/kidA6/contratos/1', pai1));
+  checar('A6', 'a família lê a versão dela', 'PASSA',
+    await ler('children/kidA6/contratos/2', pai1));
+  checar('A6', 'o motorista continua lendo o histórico inteiro', 'PASSA',
+    await ler('children/kidA6/contratos/1', tio1));
+
+  // A8 — os dois avisos do dono.
+  checar('A8', 'o dono avisa "respondemos seu chamado"', 'PASSA',
+    await criar('notifications', 'donoA8a', dono, {
+      userId: S(tio1.uid), type: S('chamado_respondido'), title: S('Respondemos seu chamado'),
+      createdAt: { timestampValue: new Date().toISOString() },
+    }));
+  checar('A8', 'mas não escreve qualquer tipo de aviso', 'NEGA',
+    await criar('notifications', 'donoA8b', dono, {
+      userId: S(pai1.uid), type: S('payment_confirmed'), title: S('Pago'),
+      createdAt: { timestampValue: new Date().toISOString() },
+    }));
+
+  // O acesso de 24 horas: lê quem é da criança, ninguém escreve.
+  await semear('acessosTemporarios/ac1', {
+    childId: S('kid1'), parentUid: S(pai1.uid), adminUid: S(tio1.uid),
+    expiraEm: { timestampValue: new Date(Date.now() + 3600000).toISOString() },
+  });
+  checar('24h', 'a titular lê o acesso do filho', 'PASSA', await ler('acessosTemporarios/ac1', pai1));
+  checar('24h', 'o motorista da criança lê', 'PASSA', await ler('acessosTemporarios/ac1', tio1));
+  checar('24h', 'outro motorista não lê', 'NEGA', await ler('acessosTemporarios/ac1', tio2));
+  checar('24h', 'ninguém cria acesso pelo cliente', 'NEGA',
+    await criar('acessosTemporarios', 'ac2', pai1, { childId: S('kid1'), parentUid: S(pai1.uid) }));
+  checar('24h', 'nem estica o prazo', 'NEGA',
+    await escrever('acessosTemporarios/ac1', pai1,
+      { expiraEm: { timestampValue: '2099-01-01T00:00:00Z' } }, ['expiraEm']));
+
+  // A família cadastra o segundo responsável — e só ele.
+  checar('24h', 'a família cadastra o segundo responsável', 'PASSA',
+    await escrever('children/kid1', pai1, { parent2Name: S('Vó Lúcia'), parent2Phone: S('11988887777') },
+      ['parent2Name', 'parent2Phone']));
+  checar('24h', 'mas não troca o WhatsApp principal (é a chave do irmão)', 'NEGA',
+    await escrever('children/kid1', pai1, { parentPhone: S('11900000000') }, ['parentPhone']));
 }
 
 /**
@@ -609,11 +718,15 @@ async function oAceite({ tio1, tio2, pai1 }) {
   const versao = (extra = {}) => ({
     numero: I(1), tipo: S('contrato'), status: S('aguardando'), adminUid: S(tio1.uid),
     dados: { mapValue: { fields: { finance: { mapValue: { fields: { monthlyFee: N(400) } } } } } },
+    // De quem é a versão (03/10/2026): a família da criança na emissão.
+    familia: S(pai1.uid),
     ...extra,
   });
   await semear('children/kidAceite', crianca({ parentUid: S(pai1.uid) }));
   checar('pos', 'motorista emite a versão 1 do contrato', 'PASSA',
     await criar('children/kidAceite/contratos', '1', tio1, versao()));
+  checar('aceite', 'motorista NÃO emite versão em nome de outra família', 'NEGA',
+    await criar('children/kidAceite/contratos', '8', tio1, versao({ numero: I(8), familia: S('outraFamilia') })));
   checar('aceite', 'motorista NÃO emite versão já "aceita"', 'NEGA',
     await criar('children/kidAceite/contratos', '2', tio1, versao({ numero: I(2), status: S('aceito') })));
   checar('aceite', 'motorista NÃO emite com aceite dentro', 'NEGA',

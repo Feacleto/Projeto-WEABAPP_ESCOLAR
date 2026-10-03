@@ -53,6 +53,7 @@ import {
 } from '../services/photoService';
 import { setChildPhotoURL } from '../services/childrenService';
 import { PERIOD_LABELS, formatPhone } from '../compartilhado/formatters';
+import AcessoDeUmDia from '../components/children/AcessoDeUmDia';
 
 /**
  * Mini-perfil da criança. Funciona pra Tio (com edit/delete) e pra Pai (read-only).
@@ -344,7 +345,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           </div>
 
           <div className="space-y-2 pb-2 border-b border-neutro last:border-0 last:pb-0">
-            <p className="text-xs text-textMuted uppercase tracking-wide">
+            <p className="rotulo">
               Principal
             </p>
             <InfoRow label="Nome" value={child.parentName} />
@@ -362,7 +363,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
 
           {(child.parent2Name || child.parent2Phone) && (
             <div className="space-y-2 pt-1">
-              <p className="text-xs text-textMuted uppercase tracking-wide">
+              <p className="rotulo">
                 Segundo responsável
               </p>
               {child.parent2Name && (
@@ -377,6 +378,8 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
               )}
             </div>
           )}
+          {/* O acesso de 24 horas do segundo responsável (03/10/2026). */}
+          <AcessoDeUmDia child={child} />
         </Card>
 
         {/* Observações */}
@@ -408,7 +411,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
             }}
             className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3"
           >
-            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
               <Printer size={20} />
             </div>
             <div className="flex-1 min-w-0">
@@ -634,7 +637,7 @@ function LinkDoResponsavel({ child }) {
 
   if (pendente) {
     return (
-      <Card className="space-y-3 border border-warning/30 bg-warning/10">
+      <Card className="space-y-3 border border-warningBorder bg-warningSoft">
         <div>
           <p className="text-sm font-semibold text-text">
             O responsável ainda não entrou
@@ -670,7 +673,7 @@ function LinkDoResponsavel({ child }) {
   return (
     <Card className="space-y-3">
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
           <Link2 size={19} />
         </span>
         <div className="min-w-0 flex-1">
@@ -828,7 +831,7 @@ function PhoneRow({ phone, name, childName }) {
         href={waLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-xs font-semibold text-accentText tap px-2 py-1 bg-accent/10 rounded-lg"
+        className="text-xs font-semibold text-accentText tap px-2 py-1 bg-primaryChip rounded-lg"
       >
         WhatsApp
       </a>

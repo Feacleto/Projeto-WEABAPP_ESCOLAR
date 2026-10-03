@@ -109,6 +109,7 @@ export async function advanceChild(childId, nextStatus, context = null) {
       childId,
       childName: context?.childName,
       status: nextStatus,
+      statusAnterior: context?.statusAnterior,
     },
   ]);
 
@@ -240,6 +241,7 @@ export async function advanceMany(moves, context = null) {
       childId: m.childId,
       childName: m.childName,
       status: m.nextStatus,
+      statusAnterior: m.statusAnterior,
     }))
   );
 
@@ -597,6 +599,15 @@ export async function avisarQuemFicou({ adminUid, pendentes = [], agora = new Da
  * "Faltou registrar {nome} hoje", que existe exatamente para esse caso.
  */
 const TEXTO_DA_CHEGADA = {
+  // ⚠️ SÓ O EMBARQUE NA ESCOLA (03/10/2026). De manhã quem põe a criança na
+  // perua é a própria família — avisar seria contar a ela o que ela fez. À
+  // tarde é o contrário: "entrou na perua" é a primeira notícia do dia de que
+  // a criança saiu da escola, e era a única etapa da volta sem aviso.
+  onboard: {
+    type: 'child_onboard',
+    title: (nome) => `${nome} entrou na perua`,
+    corpo: (hora) => `Às ${hora}, na saída da escola. Marcado pelo motorista.`,
+  },
   atSchool: {
     title: (nome) => `${nome} chegou na escola`,
     corpo: (hora) => `Às ${hora}, marcado pelo motorista.`,
@@ -609,7 +620,10 @@ const TEXTO_DA_CHEGADA = {
 
 async function avisarChegadas(avisos) {
   const validos = (avisos || []).filter(
-    (a) => a?.parentUid && TEXTO_DA_CHEGADA[a.status]
+    (a) =>
+      a?.parentUid &&
+      TEXTO_DA_CHEGADA[a.status] &&
+      (a.status !== 'onboard' || a.statusAnterior === 'atSchool')
   );
   if (!validos.length) return;
 
@@ -625,7 +639,8 @@ async function avisarChegadas(avisos) {
       return addDoc(collection(db, 'notifications'), {
         userId: a.parentUid,
         type:
-          a.status === 'delivered' ? 'child_arrived_home' : 'child_arrived_school',
+          texto.type ||
+          (a.status === 'delivered' ? 'child_arrived_home' : 'child_arrived_school'),
         title: texto.title(nome),
         body: texto.corpo(hora),
         childId: a.childId,

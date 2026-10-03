@@ -19,12 +19,13 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 46 scripts. O PRIMEIRO é
+npm run testar                   # 48 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
                                  # horarios, viagem, faltas, endereco, aviso,
-                                 # proximidade, vazamento, contraste, design,
+                                 # proximidade, buzina, notificacoes,
+                                 # vazamento, contraste, design,
                                  # travessia,
                                  # contrato, combinado,
                                  # pix, brcode,
@@ -501,7 +502,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
-`indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `platformConfig` ·
+`indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `platformConfig` ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -1216,11 +1217,49 @@ ficha do filho (callable `informarTelefoneDaEscola`, que confere que a criança
 a família não lê `schools`. "Ligar para a escola" aparece na ficha e no passo
 da escola da rota.
 
-⚠️ **AVISOS QUE A TELA PROMETIA E NÃO EXISTEM** ficaram para a etapa das
-notificações (decisão do dono, 03/10/2026): família avisada quando o
-motorista marca "Faltou", buzina com o app da mãe fechado, "está chegando"
-como notificação. Os textos que prometiam "o responsável é avisado" foram
-corrigidos para o que acontece (a falta aparece no app dela).
+**AS NOTIFICAÇÕES TÊM TRÊS CANAIS, E UMA TABELA SÓ DE DESTINO** (03/10/2026,
+`npm run testar:notificacoes`). Todo aviso é um documento em `notifications`:
+- **app fechado** — `push.js` manda SÓ DADOS com o endereço INTEIRO
+  (`urlDoAviso`); o worker ([firebase-messaging-sw.js](public/firebase-messaging-sw.js))
+  desenha o aviso, com `tag` (o "chegou" substitui o "chegando") e manda o app
+  navegar ao toque. ⚠️ O link era relativo, o FCM recusava com
+  `invalid-argument` e isso APAGAVA o token; hoje só os dois códigos de token
+  morto apagam. O token é regravado a cada abertura (`sincronizarPush`) e
+  SAI ao sair da conta (`AuthContext.logout`).
+- **app aberto** — o cabeçalho mostra todo aviso novo num cartão que leva ao
+  mesmo lugar ([avisoNaTela](src/components/notifications/avisoNaTela.jsx)); a
+  buzina não ganha cartão (já é tela cheia).
+- **e-mail** — uma lista FECHADA de avisos sem hora que não podem se perder
+  ([emailDoAviso.js](functions/lib/emailDoAviso.js): contrato, pagamento
+  confirmado, acesso aprovado, encerramento…), nunca rota nem oferta. O
+  remetente é o parâmetro `EMAIL_REMETENTE`: ⚠️ até o domínio ser verificado
+  no Resend, só o sandbox funciona, e ele SÓ ENTREGA ao dono da conta.
+- **Para onde leva**: [destinoDoAviso.js](src/dominio/identidade/destinoDoAviso.js),
+  por tipo e por PAPEL, espelhado no servidor — o sino e o push respondem
+  igual, e nenhum tipo leva a "/".
+- **Os que faltavam**: "está chegando"/"chegou" (o servidor lê a faixa em
+  `rides/{dia}` e avisa SÓ quando a perua se APROXIMA e só a criança em
+  casa ou na perua — antes era toast no Início, avisava a perua indo embora,
+  e o mapa tinha um segundo alerta com "Tio Nino"), a buzina com o app
+  fechado, "entrou na perua" na saída da escola, "Faltou" marcado pelo
+  motorista, e "Trocar" quem busca. O motorista vê na entrega quem recebe hoje.
+
+**A BUZINA EXPIRA** em 15 minutos e fecha sozinha quando a criança embarca ou
+a rota acaba ([buzina.js](src/dominio/rota/buzina.js), `testar:buzina`); antes
+voltava a tocar no dia seguinte, e o "Fechar" depois do "Estou indo!" girava
+para sempre. A frase diz "buscar" de manhã e "entregar" à tarde.
+
+**O SEGUNDO RESPONSÁVEL GANHA UM ACESSO DE 24 HORAS** (decisão do dono,
+03/10/2026 — [reguaDoAcessoTemporario.js](functions/lib/reguaDoAcessoTemporario.js)).
+Não é conta: é um link `/acompanhar/t_…` que a titular ou o motorista manda
+pelo WhatsApp ao `parent2Phone`, na ficha da criança
+([AcessoDeUmDia](src/components/children/AcessoDeUmDia.jsx)). Ele vê o dia da
+criança (o recorte fechado do `/acompanhar`) e pode ligar os avisos da ROTA
+no celular dele; dinheiro, contrato, endereço, nunca. Passadas 24 h o link
+para e os avisos param; gerar de novo encerra o anterior. A família agora
+pode cadastrar o segundo responsável (rules: `parent2Name`/`parent2Phone`
+no ramo dela — ele não vincula nada). Coleção `acessosTemporarios`, só
+leitura para a titular e o motorista; o servidor guarda o HASH do segredo.
 
 ⚠️ **O MOTORISTA DECIDE SE AS FAMÍLIAS VEEM A PERUA, E O AVISO NÃO DEPENDE
 DISSO** (11/09/2026) — a régua é
@@ -1315,7 +1354,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   campo-isca contra robô: preenchido, responde ok e não grava.
 - **Irmão:** `vincularIrmaoNoCadastro` (gatilho em `children/{id}`) e
   `recusarIrmao` (callable). Criança nova cadastrada com o WhatsApp de um
-  responsável que já usa o app entra SOZINHA na conta dele, sem convite, e ele
+  responsável que JÁ É FAMÍLIA DESTE MOTORISTA entra SOZINHA na conta dele,
+  sem convite, e ele
   recebe o aviso com "Não é meu filho", que desfaz e avisa o motorista.
   ⚠️ **Só o WhatsApp vincula, nunca o nome** (duas "Maria Silva"), e número
   que casa com duas contas não vincula. ⚠️ **A chave é `users.phoneChave`,
@@ -1352,7 +1392,13 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 - **Cobrança:** `generateMonthlyPayments` (agendada), `runBillingNow`,
   `sendPaymentReminders`, `runPaymentRemindersNow`
 - **Operação:** `closeStaleRoutes`, `confirmarAusencias`
-- **Push:** `sendPushOnNotification` (dispara FCM a partir de `notifications`)
+- **Push:** `sendPushOnNotification` (dispara FCM a partir de `notifications`,
+  também para o acesso de 24h), `enviarEmailDoAviso` (o mesmo gatilho, por
+  e-mail, para a lista fechada), `avisarAproximacao` (faixa da perua em
+  `rides` → "está chegando") e `avisarBuzina` (`pendingCalls` → aviso)
+- **Acesso de 24 horas:** `gerarAcessoTemporario`, `encerrarAcessoTemporario`
+  e `inscreverAvisosDoAcesso` (pública; quem prova é o token), e o
+  `verAcompanhamento` lê os dois tipos de link
 - **Contratação:** `contratarPlano` — o MOTORISTA escolhe mensal ou anual e o
   servidor escreve a cláusula (`users.plano` mais o desconto do degrau, com
   `ate: null`). É function porque esses campos estão na lista que o cliente
@@ -2318,7 +2364,7 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (278 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (305 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes

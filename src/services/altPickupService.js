@@ -7,6 +7,8 @@ import {
   onSnapshot,
   serverTimestamp,
   addDoc,
+  query,
+  where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { resolveAdminUid } from './notificationsService';
@@ -186,6 +188,8 @@ export async function notifyAltPickup({
   phone,
   dateKey,
   adminUid: adminUidDaCrianca,
+  childId = null,
+  desfeito = false,
 }) {
   try {
     const adminUid = adminUidDaCrianca || (await resolveAdminUid());
@@ -201,7 +205,13 @@ export async function notifyAltPickup({
       // dia 12? A data subiu para o título, onde ela não disputa com o nome
       // e o telefone de quem vai buscar.
       title: `Quem busca ${childName} em ${dateLabel}`,
-      body: `${name}${phoneText}. A família avisou agora.`,
+      // ⚠️ DESFAZER TAMBÉM AVISA (03/10/2026). O "Trocar" apagava a pessoa
+      // indicada e o motorista continuava achando que a avó buscava — e ia
+      // entregar a criança a quem a família já tinha tirado da lista.
+      body: desfeito
+        ? 'A família desfez o aviso: quem busca é o responsável de sempre.'
+        : `${name}${phoneText}. A família avisou agora.`,
+      childId,
       createdAt: serverTimestamp(),
     });
   } catch (err) {
@@ -217,4 +227,39 @@ function formatDateLabel(dateKey) {
     day: '2-digit',
     month: '2-digit',
   }).format(new Date(y, m - 1, d));
+}
+
+/**
+ * QUEM BUSCA HOJE, PARA A TURMA INTEIRA DO MOTORISTA (03/10/2026).
+ *
+ * A família indicava "hoje quem busca é a avó" e o aviso ia para o sino do
+ * motorista — mas a ROTA não mostrava: na porta, com a criança no colo, ele
+ * tinha que lembrar do aviso da manhã. A consulta começa por `adminUid`
+ * (a rule `ehDoMotorista()` exige; ver a nota acima sobre a função apagada).
+ */
+export function watchQuemBuscaHoje(adminUid, dateKey, onUpdate) {
+  if (!adminUid || !dateKey) {
+    onUpdate({});
+    return () => {};
+  }
+  const q = query(
+    collection(db, 'altPickups'),
+    where('adminUid', '==', adminUid),
+    where('dateKey', '==', dateKey)
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const porCrianca = {};
+      snap.docs.forEach((d) => {
+        const a = d.data();
+        if (a.childId) porCrianca[a.childId] = a;
+      });
+      onUpdate(porCrianca);
+    },
+    (err) => {
+      console.error('watchQuemBuscaHoje:', err);
+      onUpdate({});
+    }
+  );
 }

@@ -8,6 +8,7 @@ import {
   CALL_STATUS,
 } from '../../services/pendingCallService';
 import { areSoundsEnabled } from '../../services/soundService';
+import { fraseDaBuzina } from '../../dominio/rota/buzina.js';
 
 const RING_PATH = '/sounds/ringtone.mp3';
 const RING_MAX_MS = 60_000; // 60s — depois disso o ringtone para sozinho
@@ -23,6 +24,10 @@ const RING_MAX_MS = 60_000; // 60s — depois disso o ringtone para sozinho
  */
 export default function IncomingCallModal({ call, adminName }) {
   const [submitting, setSubmitting] = useState(false);
+  // "Fechar" depois do "Estou indo!" esconde a tela SÓ AQUI. Resolver a
+  // chamada apagaria do celular do motorista o "está a caminho" que ela
+  // acabou de mandar — e é por esse aviso que ele espera na porta.
+  const [fechadaId, setFechadaId] = useState(null);
   const audioRef = useRef(null);
   const vibrateIntervalRef = useRef(null);
 
@@ -112,6 +117,10 @@ export default function IncomingCallModal({ call, adminName }) {
     } catch (err) {
       console.error(err);
       toast.error('Não foi possível confirmar.');
+    } finally {
+      // ⚠️ Só o ERRO devolvia o botão. No sucesso a tela trocava para
+      // "Fechar" com `submitting` ainda ligado, e o Fechar ficava girando
+      // para sempre — a tela cheia não saía mais.
       setSubmitting(false);
     }
   };
@@ -128,7 +137,7 @@ export default function IncomingCallModal({ call, adminName }) {
     }
   };
 
-  if (!call) return null;
+  if (!call || call.id === fechadaId) return null;
 
   const isAcknowledged = call.status === CALL_STATUS.ACKNOWLEDGED;
 
@@ -156,8 +165,8 @@ export default function IncomingCallModal({ call, adminName }) {
           </h1>
           <p className="text-white/90 text-lg mt-3 max-w-xs">
             {isAcknowledged
-              ? 'O motorista sabe que você tá indo. Pode fechar.'
-              : `O motorista chegou pra entregar ${call.childName || 'a criança'}. Pode descer?`}
+              ? 'O motorista sabe que você está indo. Pode fechar.'
+              : fraseDaBuzina({ momento: call.momento, nomeDaCrianca: call.childName })}
           </p>
         </div>
       </div>
@@ -168,8 +177,7 @@ export default function IncomingCallModal({ call, adminName }) {
           <Button
             variant="success"
             icon={CheckCircle2}
-            onClick={onDismiss}
-            loading={submitting}
+            onClick={() => setFechadaId(call.id)}
             className="!h-16 !text-lg !bg-white !text-primary hover:!bg-white"
           >
             Fechar

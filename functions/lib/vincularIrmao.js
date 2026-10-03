@@ -61,6 +61,7 @@ function makeVincularIrmao(db) {
         ]);
         const parentUid = responsavelDoIrmao({
           telefone: crianca.parentPhone,
+          motorista: crianca.adminUid || null,
           contas: porChave.docs.map((d) => ({ uid: d.id, ...d.data() })),
           criancas: vinculadas.docs
             .filter((d) => d.id !== childId)

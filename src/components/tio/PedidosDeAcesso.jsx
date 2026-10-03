@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
+import { useChildren } from '../../hooks/useChildren';
 import { responderPedidoDeAcesso } from '../../services/pedidosDeAcessoService';
 import { formatPhone } from '../../compartilhado/formatters';
 
@@ -18,6 +19,11 @@ import { formatPhone } from '../../compartilhado/formatters';
  */
 export default function PedidosDeAcesso({ className = '' }) {
   const { pedidos } = usePedidosDeAcesso('motorista');
+  // O nome vem da TURMA DELE, não do pedido — o pedido não o carrega mais,
+  // porque quem pediu também lê aquele documento.
+  const { children } = useChildren();
+  const nomeDe = (p) =>
+    String(children.find((c) => c.id === p.childId)?.name || p.childName || '').split(/\s+/)[0];
   const [respondendo, setRespondendo] = useState(null);
   const abertos = pedidos.filter((p) => p.status === 'aguardando');
   if (!abertos.length) return null;
@@ -26,7 +32,7 @@ export default function PedidosDeAcesso({ className = '' }) {
     setRespondendo(pedido.id);
     try {
       await responderPedidoDeAcesso(pedido.id, aprovar);
-      const filho = String(pedido.childName || '').split(/\s+/)[0] || 'A criança';
+      const filho = nomeDe(pedido) || 'A criança';
       toast.success(aprovar ? `${filho} já aparece para ${pedido.nome || 'o responsável'}.` : 'Pedido recusado.');
     } catch (err) {
       toast.error(err.message || 'Não deu pra responder agora.');
@@ -38,7 +44,7 @@ export default function PedidosDeAcesso({ className = '' }) {
   return (
     <div className={`space-y-2 ${className}`}>
       {abertos.map((p) => {
-        const filho = String(p.childName || '').split(/\s+/)[0] || 'uma criança';
+        const filho = nomeDe(p) || 'uma criança';
         return (
           <div
             key={p.id}

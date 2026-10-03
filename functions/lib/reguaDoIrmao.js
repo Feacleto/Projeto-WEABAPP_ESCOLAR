@@ -38,15 +38,29 @@ const { chaveDoTelefone } = require('./indicacao');
  *   criancas   — [{ parentUid, parentPhone }] crianças JÁ VINCULADAS (o
  *                caminho para contas antigas, sem `phoneChave` gravado)
  *
+ *   motorista  — `adminUid` da criança nova.
+ *                ⚠️ SÓ VINCULA QUEM JÁ É FAMÍLIA DESTE MOTORISTA (03/10/2026).
+ *                A conta era procurada na plataforma inteira: um motorista
+ *                recém-cadastrado, sabendo só o WhatsApp de uma mãe de OUTRA
+ *                perua, cadastrava uma "criança" com ele e passava a ler o
+ *                documento dela, mandar recado e gerar cobrança. Filho em
+ *                perua nova entra pelo link do convite, como qualquer um.
+ *
  * Devolve o uid só quando exatamente UMA conta de responsável casa.
  */
-function responsavelDoIrmao({ telefone, contas = [], criancas = [] }) {
+function ehFamiliaDe(conta, motorista) {
+  if (!motorista) return false;
+  if (conta.adminUid === motorista) return true;
+  return Array.isArray(conta.adminUids) && conta.adminUids.includes(motorista);
+}
+
+function responsavelDoIrmao({ telefone, motorista = null, contas = [], criancas = [] }) {
   const chave = chaveDoTelefone(telefone);
   if (!chave) return null;
 
   const uids = new Set();
   for (const c of contas) {
-    if (c && c.uid && c.role === 'parent' && c.phoneChave === chave) {
+    if (c && c.uid && c.role === 'parent' && c.phoneChave === chave && ehFamiliaDe(c, motorista)) {
       uids.add(c.uid);
     }
   }

@@ -14,6 +14,7 @@ import {
 import { db } from '../firebase/config';
 import { playSound } from './soundService';
 import { resolveAdminUid } from './notificationsService';
+import { getDateKey } from '../dominio/rota/horarios.js';
 
 /**
  * Ausências declaradas — coleção separada de `dailyRoutes` pra deixar as rules
@@ -296,10 +297,10 @@ export async function notifyAbsence({
     return;
   }
 
-  const typeLabel = ABSENCE_LABELS[type] || 'Ausência registrada';
-  const who = declaredBy === 'parent' ? 'O responsável' : 'O motorista';
+  const who = declaredBy === 'parent' ? 'A família' : 'O motorista';
   const dateLabel = formatDateLabel(dateKey);
   const childName = child?.name || 'Aluno';
+  const texto = textoDaFalta({ type, who, quando: dateLabel, nome: childName });
 
   try {
     await addDoc(collection(db, 'notifications'), {
@@ -308,8 +309,9 @@ export async function notifyAbsence({
       // ⚠️ O TÍTULO ERA UM RÓTULO COM DOIS-PONTOS, e o corpo tinha aspas
       // dentro. "Ausência: Lucas" é um cabeçalho de planilha; o que ele
       // precisa saber é que a rota dele muda, e em que dia.
-      title: `${childName} não vai em ${dateLabel}`,
-      body: `${who} avisou agora: ${typeLabel}.`,
+      title: texto.title,
+      body: texto.body,
+      childId: child?.id || null,
       childName,
       absenceType: type,
       dateKey,
@@ -320,8 +322,31 @@ export async function notifyAbsence({
   }
 }
 
+/**
+ * ⚠️ O TEXTO SEGUE O TIPO E O DIA (03/10/2026). Era sempre "X não vai em
+ * 05/10 — avisou agora: Não vai hoje", para os quatro tipos e qualquer data:
+ * quem só não ia de manhã aparecia faltando o dia inteiro, e a falta da
+ * semana que vem dizia "hoje".
+ */
+function textoDaFalta({ type, who, quando, nome }) {
+  const primeiro = String(nome || '').trim().split(/\s+/)[0] || 'A criança';
+  const dia = /^\d/.test(quando) ? `em ${quando}` : quando;
+  if (type === 'no-pickup') {
+    return { title: `${primeiro} não vai na perua de manhã ${dia}`, body: `${who} avisou agora: a família leva.` };
+  }
+  if (type === 'no-dropoff') {
+    return { title: `${primeiro} não volta na perua ${dia}`, body: `${who} avisou agora: a família busca.` };
+  }
+  if (type === 'picked-up') {
+    return { title: `${primeiro} já saiu da escola`, body: `${who} avisou agora: a família pegou.` };
+  }
+  return { title: `${primeiro} não vai ${dia}`, body: `${who} avisou agora. A perua não passa nas duas viagens.` };
+}
+
 function formatDateLabel(dateKey) {
   if (!dateKey) return '';
+  if (dateKey === getDateKey()) return 'hoje';
+  if (dateKey === getDateKey(new Date(Date.now() + 86400000))) return 'amanhã';
   const [y, m, d] = dateKey.split('-').map(Number);
   if (!y || !m || !d) return dateKey;
   return new Intl.DateTimeFormat('pt-BR', {

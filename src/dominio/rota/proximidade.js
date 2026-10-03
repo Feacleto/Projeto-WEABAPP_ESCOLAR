@@ -114,3 +114,28 @@ export function zonasQueMudaram(anteriores = {}, atuais = {}) {
   }
   return saida;
 }
+
+/**
+ * A FAIXA MUDOU — A FAMÍLIA DEVE SER AVISADA? (03/10/2026)
+ *
+ * Devolve `'perto'`, `'chegou'` ou `null`. Duas regras que o aviso não tinha:
+ *
+ *   - ⚠️ SÓ QUANDO A PERUA SE APROXIMA. A tela avisava toda mudança, então
+ *     a perua SAINDO da porta (chegou → perto → longe) tocava "está a
+ *     caminho" e "está chegando" depois de a criança já ter descido.
+ *   - ⚠️ SÓ PARA QUEM ESPERA A PERUA AGORA: em casa esperando a ida
+ *     (`home`) ou dentro dela voltando (`onboard`). Na escola ou já
+ *     entregue, a perua passando na rua não é para ela.
+ *
+ * A primeira leitura (`anterior` nulo) só calibra: abrir o app com a perua
+ * já perto não pode tocar por uma transição que ninguém presenciou. O
+ * servidor (push) usa a mesma régua — `functions/lib/reguaDaProximidade.js`.
+ */
+const ORDEM_DA_ZONA = { longe: 0, perto: 1, chegou: 2 };
+
+export function avisoDeAproximacao({ anterior, atual, statusDaCrianca }) {
+  if (statusDaCrianca !== 'home' && statusDaCrianca !== 'onboard') return null;
+  if (!(anterior in ORDEM_DA_ZONA) || !(atual in ORDEM_DA_ZONA)) return null;
+  if (ORDEM_DA_ZONA[atual] <= ORDEM_DA_ZONA[anterior]) return null;
+  return atual === ZONA.LONGE ? null : atual;
+}

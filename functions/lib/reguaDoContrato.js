@@ -40,4 +40,44 @@ function valoresDoAditivo(novos) {
   return out;
 }
 
-module.exports = { jsonCanonico, valoresDoAditivo };
+/**
+ * ⚠️ A COBRANÇA RESPEITA A VIGÊNCIA (03/10/2026).
+ *
+ * `generateMonthlyPayments` cobrava todo mês de toda criança ativa — antes do
+ * início do contrato e depois do fim. Em janeiro, toda família com contrato
+ * até 31/12 recebia uma mensalidade que o documento assinado não prevê.
+ *
+ * O mês é cobrável quando cai entre a 1ª e a última PARCELA: a contagem é a
+ * de `parcelasDaVigencia` (meses de serviço, mês começado conta inteiro),
+ * espelhada aqui porque o deploy das functions não alcança `src/`.
+ * `testar:combinado` compara as duas. Sem vigência gravada (criança anterior
+ * ao campo), o mês é cobrável — como sempre foi.
+ */
+function partes(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return null;
+  const [a, me, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const dt = new Date(a, me - 1, d);
+  if (dt.getFullYear() !== a || dt.getMonth() !== me - 1 || dt.getDate() !== d) return null;
+  return { a, me, d };
+}
+
+function parcelasDaVigencia(inicio, fim) {
+  const i = partes(inicio);
+  const f = partes(fim);
+  if (!i || !f || fim < inicio) return 0;
+  const depois = new Date(f.a, f.me - 1, f.d + 1);
+  let n = (depois.getFullYear() - i.a) * 12 + (depois.getMonth() + 1 - i.me);
+  if (depois.getDate() > i.d) n += 1;
+  return n > 0 ? n : 0;
+}
+
+function mesDentroDaVigencia(mesAAAAMM, inicio, fim) {
+  const i = partes(inicio);
+  if (!i || !partes(fim)) return true;
+  const [a, me] = String(mesAAAAMM).split('-').map(Number);
+  const indice = (a - i.a) * 12 + (me - i.me);
+  return indice >= 0 && indice < parcelasDaVigencia(inicio, fim);
+}
+
+module.exports = { jsonCanonico, valoresDoAditivo, parcelasDaVigencia, mesDentroDaVigencia };

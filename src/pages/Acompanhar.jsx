@@ -1,9 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Home, Bus, School, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Home, Bus, School, CheckCircle2, RefreshCw, BellRing } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Logo from '../components/common/Logo';
 import Spinner from '../components/common/Spinner';
-import { verAcompanhamento } from '../services/acompanhamentoService';
+import { verAcompanhamento, inscreverAvisosDoAcesso } from '../services/acompanhamentoService';
+
+/**
+ * O LINK DE 24 HORAS FICA GUARDADO NO APARELHO (03/10/2026). O aviso que
+ * chega no celular de quem tem o acesso abre `/acompanhar`, SEM token: o
+ * servidor não guarda o segredo, só o hash dele, então não tem como pôr o
+ * link inteiro no aviso. Quem lembra o token é o próprio aparelho.
+ */
+const CHAVE_DO_LINK = 'alobuzinou:acompanhar';
+
+function tokenDaPagina(daUrl) {
+  try {
+    if (daUrl) {
+      if (daUrl.startsWith('t_')) localStorage.setItem(CHAVE_DO_LINK, daUrl);
+      return daUrl;
+    }
+    return localStorage.getItem(CHAVE_DO_LINK) || '';
+  } catch {
+    return daUrl || '';
+  }
+}
+
+function horaDoFim(ms) {
+  const fim = new Date(ms);
+  const hoje = new Date();
+  const hora = fim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return fim.toDateString() === hoje.toDateString() ? `hoje às ${hora}` : `amanhã às ${hora}`;
+}
 
 /**
  * "Acompanhar" — /acompanhar/:token
@@ -34,7 +62,31 @@ import { verAcompanhamento } from '../services/acompanhamentoService';
  * criança é entregue o relógio para sozinho — não há mais o que mudar.
  */
 export default function Acompanhar() {
-  const { token } = useParams();
+  const { token: daUrl } = useParams();
+  const token = tokenDaPagina(daUrl);
+  const [avisosLigados, setAvisosLigados] = useState(false);
+  const [ligando, setLigando] = useState(false);
+
+  // Só o acesso de 24 horas recebe avisos: o "quem busca hoje" vive um dia.
+  const ligarAvisos = async () => {
+    setLigando(true);
+    try {
+      const { tokenParaAcessoTemporario } = await import('../services/pushService');
+      const fcm = await tokenParaAcessoTemporario();
+      if (!fcm) {
+        toast.error('O celular não deixou ligar os avisos. No iPhone, ponha a página na tela de início antes.');
+        return;
+      }
+      await inscreverAvisosDoAcesso(token, fcm);
+      setAvisosLigados(true);
+      toast.success('Pronto. Os avisos da perua chegam neste celular até o link acabar.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Não deu para ligar os avisos agora.');
+    } finally {
+      setLigando(false);
+    }
+  };
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -199,10 +251,25 @@ export default function Acompanhar() {
           </button>
         </div>
 
+        {/* O ACESSO DE 24 HORAS pode receber os avisos da rota no celular. */}
+        {dados.temporario && !avisosLigados && (
+          <button
+            type="button"
+            onClick={ligarAvisos}
+            disabled={ligando}
+            className="tap w-full flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-base font-bold text-white disabled:opacity-60"
+          >
+            <BellRing size={18} />
+            {ligando ? 'Ligando...' : 'Receber os avisos neste celular'}
+          </button>
+        )}
+
         {/* Ela precisa saber que isto acaba, senão volta amanhã e acha que
           * quebrou. E precisa saber a quem pedir — não a nós. */}
-        <p className="text-xs text-textMuted text-center leading-relaxed max-w-xs mx-auto pt-2">
-          Este link vale só hoje. Amanhã, peça um novo a quem te mandou.
+        <p className="text-sm text-textMuted text-center leading-relaxed max-w-xs mx-auto pt-2">
+          {dados.temporario
+            ? `Este link vale até ${horaDoFim(dados.temporario.expiraEm)}. Depois, peça um novo a quem te mandou.`
+            : 'Este link vale só hoje. Amanhã, peça um novo a quem te mandou.'}
         </p>
       </main>
     </div>

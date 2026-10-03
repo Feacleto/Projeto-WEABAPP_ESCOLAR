@@ -70,3 +70,13 @@ export async function verAcompanhamento(token) {
     );
   }
 }
+
+/**
+ * O ACESSO DE 24 HORAS quer os avisos no celular (03/10/2026): o aparelho de
+ * quem NÃO tem conta entra no acesso, por callable pública — quem prova o
+ * direito é o token do link. Para quando o acesso acaba.
+ */
+export async function inscreverAvisosDoAcesso(token, fcmToken) {
+  exigirCloud('ligar os avisos');
+  await httpsCallable(functions, 'inscreverAvisosDoAcesso')({ token, fcmToken });
+}

@@ -70,6 +70,8 @@ function makeAceitarContrato(db) {
         aceitoNome: nome,
         aceitoUserAgent: userAgent,
         hash,
+        // A versão aceita passa a ser DESTA família — a próxima não a lê.
+        familia: uid,
       });
       if (antSnap?.exists && antSnap.data().status === 'aceito') {
         tx.update(antRef, { status: 'substituido', substituidoPor: numero });

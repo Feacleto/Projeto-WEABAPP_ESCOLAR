@@ -35,7 +35,7 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
-const { FieldValue } = require('firebase-admin/firestore');
+const { FieldValue, FieldPath } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
 const { cobrancaLigada, moduloAtivo } = require('./cobrancaLigada');
 const {
@@ -122,15 +122,34 @@ async function entregar(db, { paraUid, aviso, ref, operacional = false, agora })
 }
 
 /** A mensalidade da família — o único destes que fala com o responsável. */
+/**
+ * ⚠️ SÓ `pending`, E A VARREDURA ANDA ATÉ O FIM (03/10/2026).
+ *
+ * Ia também para `claimed`: a mãe que tocou em "Já paguei" ontem recebia hoje
+ * "mensalidade atrasada" — o app cobrando de quem já disse que pagou, enquanto
+ * a baixa espera o motorista. E era um `limit(500)` sem ordem: passando de
+ * 500 em aberto na plataforma, as mesmas crianças ficavam sem aviso todo dia.
+ * Agora a consulta pagina pelo id, de 500 em 500.
+ */
+async function* mensalidadesEmAberto(db) {
+  let ultimo = null;
+  for (;;) {
+    let q = db
+      .collection('payments')
+      .where('status', '==', 'pending')
+      .orderBy(FieldPath.documentId())
+      .limit(TETO);
+    if (ultimo) q = q.startAfter(ultimo);
+    const snap = await q.get();
+    for (const doc of snap.docs) yield doc;
+    if (snap.size < TETO) return;
+    ultimo = snap.docs[snap.docs.length - 1];
+  }
+}
+
 async function varrerMensalidades(db, agora) {
   let n = 0;
-  const snap = await db
-    .collection('payments')
-    .where('status', 'in', ['pending', 'claimed'])
-    .limit(TETO)
-    .get();
-
-  for (const doc of snap.docs) {
+  for await (const doc of mensalidadesEmAberto(db)) {
     try {
       const p = doc.data();
       const aviso = avisoDaMensalidade({ pagamento: p, agora });

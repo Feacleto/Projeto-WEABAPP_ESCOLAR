@@ -62,6 +62,8 @@ const {
 } = require('./lib/invites');
 const { makeCloseStaleRoutes } = require('./lib/routes');
 const { makeSendPushOnNotification } = require('./lib/push');
+const { makeAvisarAproximacao, makeAvisarBuzina } = require('./lib/avisosDaRota');
+const { makeEnviarEmailDoAviso } = require('./lib/enviarEmailDoAviso');
 const { makeConfirmarAusencias } = require('./lib/confirmarAusencias');
 const {
   makeGenerateMonthlyPayments,
@@ -71,6 +73,9 @@ const { makeGetInvitePreview } = require('./lib/invitePreview');
 const {
   makeGerarAcessoDoDia,
   makeVerAcompanhamento,
+  makeGerarAcessoTemporario,
+  makeEncerrarAcessoTemporario,
+  makeInscreverAvisosDoAcesso,
 } = require('./lib/acompanhamento');
 const {
   makeEnviarAvisosDoDia,
@@ -89,13 +94,18 @@ const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 
 // Configuração — ajustar se trocar de domínio.
 //
-// FROM_EMAIL: enquanto não há domínio próprio configurado no Resend,
-//   usa o sandbox `onboarding@resend.dev`. Quando configurar domínio
-//   (ex: alobuzinou.com.br), trocar pra `cobranca@alobuzinou.com.br`.
+// EMAIL_REMETENTE (03/10/2026): era uma constante com o sandbox
+//   `onboarding@resend.dev`, que SÓ ENTREGA ao e-mail do dono da conta do
+//   Resend — ou seja, nenhuma família recebia nada. Virou parâmetro: depois
+//   de verificar o domínio no Resend, o deploy pergunta o valor (ou ele vem
+//   do `functions/.env`), sem mexer em código. Ver docs/deploy.md.
 //
 // APP_URL: URL de produção da hospedagem (Firebase Hosting).
 //   Trocar pelo domínio próprio quando configurar.
-const FROM_EMAIL = 'Alô Buzinou! <onboarding@resend.dev>';
+const EMAIL_REMETENTE = defineString('EMAIL_REMETENTE', {
+  default: 'Alô Buzinou <onboarding@resend.dev>',
+  description: 'Remetente dos e-mails, num domínio verificado no Resend. Ex.: Alô Buzinou <avisos@alobuzinou.com.br>',
+});
 const APP_URL = 'https://alobuzinou.com';
 
 // Milestones de cobrança (dias em relação ao vencimento).
@@ -186,9 +196,11 @@ const PIX_TYPE_LABELS = {
 async function processReminders(apiKey, now = new Date(), adminUid = null) {
   const today = startOfDay(now);
 
+  // Só `pending`: quem já tocou em "Já paguei" não recebe cobrança enquanto
+  // a baixa espera o motorista (ver `enviarAvisosDoDia.js`).
   let consulta = db
     .collection('payments')
-    .where('status', 'in', ['pending', 'claimed']);
+    .where('status', '==', 'pending');
   if (adminUid) consulta = consulta.where('adminUid', '==', adminUid);
   const paymentsSnap = await consulta.get();
 
@@ -343,7 +355,7 @@ async function processReminders(apiKey, now = new Date(), adminUid = null) {
 
       await sendEmail({
         apiKey,
-        from: FROM_EMAIL,
+        from: EMAIL_REMETENTE.value(),
         to: parent.email,
         subject,
         html,
@@ -458,6 +470,14 @@ exports.closeStaleRoutes = makeCloseStaleRoutes(db);
 // sem que cada caminho precise lembrar de enviar.
 
 exports.sendPushOnNotification = makeSendPushOnNotification(db);
+// "Está chegando" e a buzina com o app fechado (avisosDaRota.js).
+exports.avisarAproximacao = makeAvisarAproximacao(db);
+exports.avisarBuzina = makeAvisarBuzina(db);
+// Os avisos que não podem se perder vão também por e-mail (emailDoAviso.js).
+exports.enviarEmailDoAviso = makeEnviarEmailDoAviso(db, {
+  chave: RESEND_API_KEY,
+  remetente: EMAIL_REMETENTE,
+});
 
 // ===== Confirmação de véspera (ver functions/lib/confirmarAusencias.js) =====
 //
@@ -492,6 +512,10 @@ exports.getInvitePreview = makeGetInvitePreview(db);
  * `lib/reguaDoAcompanhamento.js`, que não requer nada de propósito. */
 exports.gerarAcessoDoDia = makeGerarAcessoDoDia(db);
 exports.verAcompanhamento = makeVerAcompanhamento(db);
+// O acesso de 24 horas do segundo responsável (reguaDoAcessoTemporario.js).
+exports.gerarAcessoTemporario = makeGerarAcessoTemporario(db);
+exports.encerrarAcessoTemporario = makeEncerrarAcessoTemporario(db);
+exports.inscreverAvisosDoAcesso = makeInscreverAvisosDoAcesso(db);
 
 // ===== Comprovante reusado (ver functions/lib/receiptGuard.js) =====
 //

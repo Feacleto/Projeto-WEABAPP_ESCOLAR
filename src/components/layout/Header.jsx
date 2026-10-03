@@ -3,6 +3,8 @@ import { ArrowLeft, Bell, MessageCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
+import { avisoNaTela } from '../notifications/avisoNaTela';
+import { usePushDoAparelho } from '../../hooks/usePushDoAparelho';
 import ProfileMenu from './ProfileMenu';
 import NotificationsSheet from '../notifications/NotificationsSheet';
 import AppSheet from '../common/AppSheet';
@@ -81,6 +83,10 @@ export default function Header({
       className="sticky top-0 z-20 bg-card border-b border-neutro print:hidden"
       style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
     >
+      {/* O TÍTULO É BRICOLAGE (`font-display`), como todo título de tela do
+        * design system — e escrito na classe, não só herdado do `h1` do
+        * index.css: a marca do motorista também mora aqui e precisa da mesma
+        * voz quando vier num `h1` que alguém troque por `span`. */}
       <div className="h-14 px-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           {showBack && (
@@ -112,7 +118,7 @@ export default function Header({
           {marca ? (
             <MarcaOuTitulo titulo={title} />
           ) : (
-            <h1 className="text-base font-semibold text-text truncate">
+            <h1 className="font-display text-lg font-bold text-text truncate">
               {title}
             </h1>
           )}
@@ -149,7 +155,7 @@ function MarcaOuTitulo({ titulo }) {
 
   if (!nome && !logoURL) {
     return (
-      <h1 className="text-base font-semibold text-text truncate">{titulo}</h1>
+      <h1 className="font-display text-lg font-bold text-text truncate">{titulo}</h1>
     );
   }
 
@@ -166,7 +172,7 @@ function MarcaOuTitulo({ titulo }) {
           className="h-8 w-8 shrink-0 rounded-lg object-cover"
         />
       )}
-      <h1 className="text-base font-semibold text-text truncate">
+      <h1 className="font-display text-lg font-bold text-text truncate">
         {nome || titulo}
       </h1>
     </div>
@@ -179,10 +185,16 @@ function MarcaOuTitulo({ titulo }) {
  */
 function GlobalActions({ role, basePath, currentPath }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  usePushDoAparelho(user?.uid, profile?.fcmTokens);
   const [notifOpen, setNotifOpen] = useState(false);
   const isParent = role === 'parent';
-  const { unreadCount } = useNotifications({ userId: user?.uid });
+  // O aviso que chega com o app aberto vira um cartão no topo, que leva ao
+  // mesmo lugar do push (`avisoNaTela`).
+  const { unreadCount } = useNotifications({
+    userId: user?.uid,
+    aoChegar: (aviso) => avisoNaTela(aviso, { papel: role, abrir: navigate }),
+  });
 
   const isOnNotifications = currentPath === `${basePath}/notifications`;
   const isOnProfile = currentPath === `${basePath}/profile`;
@@ -219,7 +231,7 @@ function GlobalActions({ role, basePath, currentPath }) {
         // 44×44 de área de toque: era 36, abaixo do mínimo para quem toca
         // com o dedo grosso e com pressa.
         className={`relative flex h-11 w-11 items-center justify-center tap rounded-lg ${
-          isOnNotifications ? 'text-primary bg-primary/10' : 'text-textMuted'
+          isOnNotifications ? 'text-primary bg-primaryChip' : 'text-textMuted'
         }`}
       >
         <Bell size={20} />
@@ -277,7 +289,7 @@ function FalarComOMotorista() {
         type="button"
         onClick={tocar}
         aria-label={`Falar com ${nome}`}
-        className="tap flex h-9 w-9 items-center justify-center rounded-lg bg-primarySoft text-primary"
+        className="tap flex h-9 w-9 items-center justify-center rounded-lg bg-primaryChip text-primary"
       >
         <MessageCircle size={18} />
       </button>
@@ -288,11 +300,11 @@ function FalarComOMotorista() {
         title="Sem telefone cadastrado"
         icon={MessageCircle}
       >
-        <div className="space-y-3 px-5 pb-6">
+        <div className="space-y-3 pb-1">
           <p className="text-sm leading-relaxed text-text">
             {nome} ainda não cadastrou o telefone dele aqui no app.
           </p>
-          <p className="text-[13px] leading-relaxed text-textMuted">
+          <p className="text-sm leading-relaxed text-textMuted">
             Por enquanto, fale com ele no WhatsApp — é o mesmo número que te
             mandou o link do convite.
           </p>

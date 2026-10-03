@@ -1243,7 +1243,11 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
             // `professora` entrou e `sala` saiu da tela em 02/10/2026; `sala`
             // fica aqui porque cadastro antigo ainda a tem no documento.
-            .hasOnly(['turma', 'professora', 'sala', 'birthDate'])
+            // `parent2Name`/`parent2Phone` (03/10/2026): o SEGUNDO
+            // responsável é dela para cadastrar — ele não vincula nada (o
+            // irmão e o pedido de acesso só leem `parentPhone`) e só serve ao
+            // link de 24 horas, que o servidor gera.
+            .hasOnly(['turma', 'professora', 'sala', 'birthDate', 'parent2Name', 'parent2Phone'])
       ) || (
         // O NÚMERO DA CASA QUE O MOTORISTA NÃO SABIA (02/10/2026). Ele
         // cadastrou pela rua com "não sei o número agora", e quem sabe o
@@ -1337,12 +1341,20 @@ service cloud.firestore {
       function doMotoristaDela() {
         return isAdmin() && crianca().get('adminUid', '') == request.auth.uid;
       }
+      // ⚠️ A FAMÍLIA LÊ SÓ AS VERSÕES DELA (03/10/2026). A criança muda de
+      // responsável (a mãe sai, o pai assume) e as versões ficam — com nome,
+      // e-mail, telefone e o aceite de quem saiu. `familia` é gravado na
+      // emissão e no aceite; nulo é a versão emitida antes de haver família.
       allow read: if isSignedIn() && (
         doMotoristaDela()
-        || crianca().get('parentUid', '') == request.auth.uid
+        || (
+          crianca().get('parentUid', '') == request.auth.uid
+          && resource.data.get('familia', null) in [null, request.auth.uid]
+        )
         || isOwner()
       );
       allow create: if doMotoristaDela()
+        && request.resource.data.get('familia', null) == crianca().get('parentUid', null)
         && request.resource.data.status == 'aguardando'
         && request.resource.data.adminUid == request.auth.uid
         && request.resource.data.numero is int
@@ -1350,7 +1362,7 @@ service cloud.firestore {
         && request.resource.data.tipo in ['contrato', 'aditivo']
         && request.resource.data.keys().hasOnly([
           'numero', 'tipo', 'dados', 'status', 'emitidoEm', 'adminUid',
-          'mudancas', 'novosValores', 'substitui'
+          'mudancas', 'novosValores', 'substitui', 'familia'
         ]);
       allow update: if doMotoristaDela()
         && resource.data.status == 'aguardando'
@@ -1447,9 +1459,26 @@ service cloud.firestore {
       // permissao sem chamador e so superficie.
       allow create: if false;
       allow delete: if ehDoMotorista();
+      // O MOTORISTA MEXE NO ESTADO DA COBRANÇA, NUNCA EM DE QUEM ELA É.
+      //
+      // O ramo travava só `adminUid`, e `parentUid`, `childId` e `amount`
+      // ficavam livres: um motorista reescrevia a mensalidade dele com o uid
+      // da família de outro e a cobrança aparecia no financeiro dela, com o
+      // PIX dele e os lembretes do servidor. Lista de PERMITIDOS — é o que
+      // `paymentsService` escreve (baixa, desfazer, anexo).
       allow update: if (
         ehDoMotorista()
-        && request.resource.data.adminUid == resource.data.adminUid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'status',
+              'paidAt',
+              'paymentMethod',
+              'revertedAt',
+              'receiptURL',
+              'receiptHash',
+              'receiptAttachedAt',
+            ])
+        && request.resource.data.status in ['pending', 'claimed', 'paid']
       ) || (
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
@@ -1512,13 +1541,27 @@ service cloud.firestore {
         || paymentDoc().parentUid == request.auth.uid
       );
 
+      // CADA LADO ESCREVE SÓ OS FATOS DELE, COM A HORA DO SERVIDOR.
+      //
+      // `type`, `actorRole` e `at` eram livres: a família gravava "Motorista
+      // confirmou o recebimento" com a data que quisesse — e como a trilha é
+      // imutável, a mentira ficava para sempre como prova.
       allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['type', 'actorUid', 'actorRole', 'note', 'meta', 'at'])
+        && request.resource.data.at == request.time
+        && request.resource.data.actorUid == request.auth.uid
         && (
-          paymentDoc().get('adminUid', '') == request.auth.uid
-          || paymentDoc().parentUid == request.auth.uid
-        )
-        && request.resource.data.keys().hasAll(['type', 'at'])
-        && request.resource.data.actorUid == request.auth.uid;
+          (
+            paymentDoc().get('adminUid', '') == request.auth.uid
+            && request.resource.data.actorRole == 'admin'
+            && request.resource.data.type in ['confirmed', 'reverted', 'receipt_attached', 'receipt_replaced']
+          )
+          || (
+            paymentDoc().parentUid == request.auth.uid
+            && request.resource.data.actorRole == 'parent'
+            && request.resource.data.type in ['claimed', 'unclaimed', 'receipt_attached']
+          )
+        );
 
       // Definitivo por design. Nem update nem delete, PRA NINGUÉM — nem
       // pro dono da plataforma.
@@ -1597,6 +1640,11 @@ service cloud.firestore {
           // Com o singular, nada passava entre ela e o segundo motorista:
           // nem "paguei", nem contrato aceito, nem falta.
           || ehMotoristaDaFamilia(request.resource.data.userId)
+          // ⚠️ O DONO RESPONDE (03/10/2026). "Respondemos seu chamado" e
+          // "Sua indicação valeu" são escritos pelo painel do dono, e nenhum
+          // ramo os aceitava: a escrita era recusada e o aviso nunca saía.
+          // Só esses dois tipos — o dono não vira remetente de qualquer coisa.
+          || (isOwner() && request.resource.data.type in ['chamado_respondido', 'indicacao_ativou'])
         );
 
       allow update: if isSignedIn()
@@ -1609,6 +1657,23 @@ service cloud.firestore {
       allow delete: if (
         isSignedIn() && resource.data.userId == request.auth.uid
       );
+    }
+
+    // -----------------------------------------------------------------
+    // acessosTemporarios/{id} — O ACESSO DE 24 HORAS DO SEGUNDO RESPONSÁVEL
+    // (03/10/2026). Ver functions/lib/reguaDoAcessoTemporario.js.
+    //
+    // A titular e o motorista da criança LEEM (para ver se há um acesso
+    // aberto, de quem e até quando). NINGUÉM escreve pelo cliente: gerar,
+    // encerrar e inscrever aparelho são callables. O documento guarda o hash
+    // do segredo e os tokens de push de quem não tem conta.
+    // -----------------------------------------------------------------
+    match /acessosTemporarios/{id} {
+      allow read: if isSignedIn() && (
+        resource.data.parentUid == request.auth.uid
+        || resource.data.adminUid == request.auth.uid
+      );
+      allow write: if false;
     }
 
     // -----------------------------------------------------------------

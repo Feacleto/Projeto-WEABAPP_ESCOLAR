@@ -30,7 +30,7 @@ import { formatPhone } from '../../compartilhado/formatters';
 export default function PaiContract() {
   const { child, loading } = useActiveChild();
   const { admin, loading: adminLoading } = useAdminProfile(child?.adminUid);
-  const { vigente, aguardando, loading: contratosLoading } = useContratos(child);
+  const { vigente, aguardando, loading: contratosLoading } = useContratos(child, { daFamilia: true });
   const [naoConcordo, setNaoConcordo] = useState(false);
 
   // Aceite antigo, anterior às versões gravadas: o texto é o que os campos dizem.

@@ -10,6 +10,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { MOMENTO_DA_BUZINA } from '../dominio/rota/buzina.js';
 
 /**
  * Sistema de "ligação" Tio → Pai pra avisar urgência.
@@ -44,6 +45,7 @@ export async function createCall({
   parentUid,
   childId,
   childName,
+  momento = MOMENTO_DA_BUZINA.BUSCAR,
 }) {
   if (!adminUid || !parentUid || !childId) {
     throw new Error('Dados insuficientes pra criar chamada.');
@@ -89,6 +91,8 @@ export async function createCall({
     parentUid,
     childId,
     childName: childName || '',
+    // Buscar ou entregar: decide a frase do celular dela (`buzina.js`).
+    momento,
     status: CALL_STATUS.RINGING,
     createdAt: serverTimestamp(),
     acknowledgedAt: null,
@@ -113,6 +117,38 @@ export async function resolveCall(callId, resolvedBy = 'admin') {
     resolvedAt: serverTimestamp(),
     resolvedBy,
   });
+}
+
+/**
+ * FECHA AS CHAMADAS QUE A PRÓPRIA ROTA JÁ RESPONDEU.
+ *
+ * A criança embarcou ou foi entregue: a buzina daquela porta cumpriu o papel.
+ * Encerrou a rota: nenhuma porta espera mais. Sem isto a chamada ficava
+ * aberta até alguém tocar nela — e voltava a tocar no celular da mãe na
+ * próxima abertura do app. Nunca lança: é limpeza, e falhar aqui não pode
+ * impedir o embarque.
+ */
+export async function encerrarChamadas({ adminUid, childId = null, motivo = 'rota' }) {
+  if (!adminUid) return;
+  try {
+    const filtros = [
+      where('adminUid', '==', adminUid),
+      where('status', 'in', [CALL_STATUS.RINGING, CALL_STATUS.ACKNOWLEDGED]),
+    ];
+    if (childId) filtros.push(where('childId', '==', childId));
+    const abertas = await getDocs(query(collection(db, 'pendingCalls'), ...filtros));
+    await Promise.all(
+      abertas.docs.map((d) =>
+        updateDoc(d.ref, {
+          status: CALL_STATUS.RESOLVED,
+          resolvedAt: serverTimestamp(),
+          resolvedBy: motivo,
+        })
+      )
+    );
+  } catch (err) {
+    console.error('encerrarChamadas:', err);
+  }
 }
 
 /**

@@ -18,6 +18,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./papeis');
 const { logger } = require('firebase-functions/v2');
 const { ligarRelogio } = require('./relogioDoTeste');
+const { mesDentroDaVigencia } = require('./reguaDoContrato');
 const LIMITES = require('./limites');
 const admin = require('firebase-admin');
 // `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
@@ -97,6 +98,7 @@ async function generateForMonth(db, monthKey, adminUid = null) {
   const relogiosLigados = new Set();
   let withoutParent = 0;
   let withoutFee = 0;
+  let foraDaVigencia = 0;
   // ⚠️ AS ESCRITAS VÃO PARA UMA FILA, NÃO DIRETO PARA O BATCH.
   //
   // `batch.create()` sobre um id que já existe REJEITA, e o commit é atômico:
@@ -132,6 +134,12 @@ async function generateForMonth(db, monthKey, adminUid = null) {
     const fee = Number(child.monthlyFee) || 0;
     if (fee <= 0) {
       withoutFee += 1;
+      continue;
+    }
+
+    // Fora da vigência do contrato não há parcela (`reguaDoContrato`).
+    if (!mesDentroDaVigencia(monthKey, child.vigenciaInicio, child.vigenciaFim)) {
+      foraDaVigencia += 1;
       continue;
     }
 
@@ -248,6 +256,7 @@ async function generateForMonth(db, monthKey, adminUid = null) {
     skipped: existing.size,
     withoutParent,
     withoutFee,
+    foraDaVigencia,
     recusadas: recusadas.length,
   };
 }

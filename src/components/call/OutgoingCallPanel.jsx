@@ -66,12 +66,12 @@ function CallPanelCard({ call }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold uppercase tracking-widest text-white/90">
-          {isAcknowledged ? 'Pai confirmou' : 'Aguardando resposta'}
+          {isAcknowledged ? 'A família respondeu' : 'Aguardando resposta'}
         </p>
         <p className="text-sm font-bold leading-tight truncate">
           {isAcknowledged
-            ? `${call.childName || 'Criança'} — pai está a caminho`
-            : `Avisando o pai do(a) ${call.childName || 'aluno'}…`}
+            ? `${call.childName || 'Criança'}: estão descendo`
+            : `Tocando no celular da família de ${call.childName || 'aluno'}…`}
         </p>
       </div>
       <button

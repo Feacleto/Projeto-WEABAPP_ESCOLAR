@@ -20,15 +20,16 @@ import {
 } from '../../services/notificationsService';
 import { formatRelativeTime } from '../../compartilhado/formatters';
 import PreferenciasDeAviso from './PreferenciasDeAviso';
+import { destinoDoAviso } from '../../dominio/identidade/destinoDoAviso.js';
 
 const TYPE_VISUAL = {
-  payment_claimed: { Icon: Hourglass, color: 'text-primary bg-primary/10' },
-  payment_confirmed: { Icon: CheckCircle2, color: 'text-accentText bg-accent/10' },
-  payment_due_5d: { Icon: CalendarClock, color: 'text-primary bg-primary/10' },
-  payment_due_3d: { Icon: CalendarClock, color: 'text-warning bg-warning/10' },
-  payment_due_0d: { Icon: Clock, color: 'text-warning bg-warning/10' },
-  payment_overdue_3d: { Icon: AlertTriangle, color: 'text-danger bg-danger/10' },
-  payment_overdue_7d: { Icon: AlertTriangle, color: 'text-danger bg-danger/10' },
+  payment_claimed: { Icon: Hourglass, color: 'text-primary bg-primaryChip' },
+  payment_confirmed: { Icon: CheckCircle2, color: 'text-accentText bg-primaryChip' },
+  payment_due_5d: { Icon: CalendarClock, color: 'text-primary bg-primaryChip' },
+  payment_due_3d: { Icon: CalendarClock, color: 'text-warning bg-warningChip' },
+  payment_due_0d: { Icon: Clock, color: 'text-warning bg-warningChip' },
+  payment_overdue_3d: { Icon: AlertTriangle, color: 'text-danger bg-dangerChip' },
+  payment_overdue_7d: { Icon: AlertTriangle, color: 'text-danger bg-dangerChip' },
 };
 
 // Quantas notificações mostrar de cara. "Ver mais" carrega de 6 em 6.
@@ -114,63 +115,20 @@ export default function NotificationsBody({ onNavigate }) {
    * caderno pelo caminho longo — quando não desistia. Aviso que não leva a
    * lugar nenhum ensina a não tocar em aviso.
    */
+  /**
+   * ⚠️ O DESTINO SAI DA MESMA TABELA DO PUSH (03/10/2026) — `destinoDoAviso`.
+   * Eram oito ramos aqui e outra lista no servidor, que diziam se espelhar e
+   * não se espelhavam: mais de vinte tipos não levavam a lugar nenhum quando
+   * tocados no sino. Sobra uma exceção, que não é destino e sim pedido: o
+   * recado da agenda abre o CADERNO, uma folha da home da família.
+   */
   const onClickNotif = (n) => {
-    if (n.paymentId) {
-      onNavigate(isParent ? '/pai/finance' : '/tio/finance');
-      return;
-    }
-
-    // Recados da agenda: o caderno do responsável é uma folha na home dele,
-    // não uma rota — então o destino é a home com um pedido de abertura, que
-    // o `PaiNotebookFAB` lê.
-    if (
+    const caminho = destinoDoAviso(n, profile?.role);
+    const recado =
       n.type === 'agenda_entry' ||
       n.type === 'agenda_school_entry' ||
-      n.type === 'agenda_broadcast'
-    ) {
-      onNavigate(isParent ? '/pai' : '/tio/agenda', { abrirCaderno: true });
-      return;
-    }
-
-    // Chegou na escola / chegou em casa → a home, que é onde o tracker mostra
-    // o percurso com as horas.
-    if (n.type === 'child_arrived_home' || n.type === 'child_arrived_school') {
-      onNavigate('/pai');
-      return;
-    }
-
-    // A confirmação de véspera leva pra home do responsável, que é onde o
-    // cartão âmbar "amanhã: não vai — continua?" está esperando com os dois
-    // botões. Levar pra qualquer outro lugar obrigaria ele a procurar.
-    if (n.type === 'absence_confirm') {
-      onNavigate('/pai');
-      return;
-    }
-
-    // Falta declarada e responsável alternativo são coisas que mudam a ROTA
-    // do motorista — e é na rota que ele precisa ver o efeito.
-    if (n.type === 'absence_declared' || n.type === 'alt_pickup') {
-      onNavigate(isParent ? '/pai' : '/tio');
-      return;
-    }
-
-    if (n.type === 'school_no_class') {
-      onNavigate(isParent ? '/pai' : '/tio/semana');
-      return;
-    }
-
-    // ⚠️ OS AVISOS COMERCIAIS LEVAM À TELA ONDE A DECISÃO ACONTECE, e este ramo
-    // espelha o `URL_BY_TYPE` de `functions/lib/push.js` — os dois respondem a
-    // mesma pergunta, um para quem toca no push e outro para quem toca na
-    // lista. Divergir aqui é o motorista tocar no aviso de desconto pelo sino e
-    // cair na tela inicial.
-    if (
-      n.type === 'comercial_teste_comecou' ||
-      n.type === 'comercial_degrau_vira' ||
-      n.type === 'comercial_retorno'
-    ) {
-      onNavigate('/tio/planos');
-    }
+      n.type === 'agenda_broadcast';
+    onNavigate(caminho, recado && isParent ? { abrirCaderno: true } : undefined);
   };
 
   const hasUnread = notifications.some((n) => !n.isRead);
@@ -265,7 +223,7 @@ function NotificationItem({ notif, onClick }) {
         className={`w-full text-left flex gap-3 p-3 rounded-xl border tap ${
           notif.isRead
             ? 'bg-card border-neutro'
-            : 'bg-primary/5 border-primary/20'
+            : 'bg-primarySoft border-primaryBorder'
         }`}
       >
         <div
@@ -289,7 +247,7 @@ function NotificationItem({ notif, onClick }) {
           )}
           <div className="mt-1.5">
             <span
-              className={`inline-flex items-center text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${TONE_STYLES[tone]}`}
+              className={`rotulo inline-flex items-center px-2 py-0.5 rounded-full ${TONE_STYLES[tone]}`}
             >
               {label}
             </span>

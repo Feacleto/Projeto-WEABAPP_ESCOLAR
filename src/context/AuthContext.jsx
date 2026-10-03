@@ -86,6 +86,18 @@ export function AuthProvider({ children }) {
   );
 
   const logout = useCallback(async () => {
+    // ⚠️ O APARELHO SAI DA LISTA DE AVISOS ANTES DA SESSÃO (03/10/2026).
+    // Sem isto, o celular compartilhado continuava recebendo os avisos da
+    // conta que saiu — "Lucas chegou em casa" no aparelho de outra pessoa.
+    // Precisa vir antes: sem sessão, a escrita em `users` é recusada.
+    // Import dinâmico porque o Messaging não pode entrar no bundle de
+    // entrada (ver browserEnv.js), e com teto de 2 s: sair não espera rede.
+    if (user?.uid) {
+      await Promise.race([
+        import('../services/pushService').then((m) => m.disablePush(user.uid)),
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ]).catch(() => {});
+    }
     await logoutService();
     setProfile(null);
     setPerfilIndisponivel(false);
@@ -97,7 +109,7 @@ export function AuthProvider({ children }) {
     } catch {
       // ignorado
     }
-  }, []);
+  }, [user]);
 
   // Re-busca o doc users/{uid}. Necessário após signup, porque o documento
   // é criado DEPOIS do onAuthStateChanged disparar pela primeira vez.

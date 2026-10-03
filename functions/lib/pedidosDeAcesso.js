@@ -59,7 +59,10 @@ async function abrirPedido(db, { crianca, parentUid, nome, email, telefone }) {
   await ref.set(
     {
       childId: crianca.id,
-      childName: crianca.name || '',
+      // ⚠️ SEM O NOME DA CRIANÇA (03/10/2026). Quem pediu lê este documento,
+      // e quem pediu só provou saber um WhatsApp: a tela dela escondia o
+      // nome, mas o documento o entregava inteiro ao console do navegador.
+      // O motorista acha o nome pelo `childId`, na turma dele.
       adminUid: crianca.adminUid,
       parentUid,
       nome: nome || '',
@@ -173,6 +176,7 @@ function makeResponderPedidoDeAcesso(db) {
         tx.update(pedidoRef, { status: 'recusado', respondidoEm: FieldValue.serverTimestamp() });
         return dados;
       }
+      const nomeDaCrianca = c.exists ? c.data().name : '';
       const crianca = c.exists ? c.data() : null;
       if (!crianca || crianca.adminUid !== adminUid) {
         throw new HttpsError('not-found', 'Criança não encontrada.');
@@ -211,10 +215,10 @@ function makeResponderPedidoDeAcesso(db) {
       tx.update(pedidoRef, { status: 'aprovado', respondidoEm: FieldValue.serverTimestamp() });
       // Uma família entrando é o mesmo gatilho do relógio que o link liga.
       if (cobrancaOn) ligarRelogioComSnap(relogioRef, relogio, 'primeiro responsável', tx);
-      return dados;
+      return { ...dados, nomeDaCrianca };
     });
 
-    const filho = primeiroNome(pedido.childName) || 'Seu filho';
+    const filho = primeiroNome(pedido.nomeDaCrianca) || 'Seu filho';
     await db.collection('notifications').add({
       userId: pedido.parentUid,
       type: aprovar ? 'acesso_aprovado' : 'acesso_recusado',

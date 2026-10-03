@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ReviewNudge from '../../components/feedback/ReviewNudge';
 import {
   MapPin,
@@ -17,7 +17,6 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
@@ -36,7 +35,6 @@ import AltPickupSheet from '../../components/altpickup/AltPickupSheet';
 import { maskPhone } from '../../compartilhado/masks';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveChild } from '../../hooks/useActiveChild';
-import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
 import AvisoDeMudancaNoContrato from '../../components/contract/AvisoDeMudancaNoContrato';
 import { useRelogio } from '../../hooks/useRelogio';
 import TarjaDeAviso from '../../components/dashboard/TarjaDeAviso';
@@ -51,13 +49,10 @@ import { formatCurrency } from '../../compartilhado/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS, ABSENCE_TYPES } from '../../services/absencesService';
 import { getDateKey } from '../../dominio/rota/horarios';
-import { playSound } from '../../services/soundService';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 import PaiNotebookFAB from '../../components/agenda/PaiNotebookFAB';
 import { GRADIENTE_STATUS } from '../../config/paletaCategorica';
-import { ZONA } from '../../dominio/rota/proximidade';
 
-const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
 
 /**
  * Frase humana que descreve o estado do filho em UMA linha — adapta pra
@@ -155,65 +150,20 @@ export default function PaiDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [liveLocation, distanceKm, presenceTick]
   );
-
   /**
-   * O AVISO DE CHEGADA — e ele não é mais calculado aqui.
+   * O AVISO DE CHEGADA NÃO MORA MAIS NESTA TELA (03/10/2026).
    *
-   * ⚠️ ATÉ 11/09/2026 ESTA TELA MEDIA A DISTÂNCIA, e era isso que amarrava o
-   * aviso ao mapa: sem a coordenada publicada não havia distância, e sem
-   * distância não havia aviso. No dia em que o motorista pudesse desligar o
-   * compartilhamento, o aviso morreria junto — para uma coisa que não tem
-   * nada a ver com a outra.
+   * Ele era um toast disparado aqui, na mudança de `rides/{dia}.proximidade`,
+   * e tinha três defeitos: só existia com o app aberto NO INÍCIO (no bolso,
+   * nada tocava), avisava também a perua INDO EMBORA (chegou → longe dizia
+   * "está a caminho"), e o mapa da família tinha um SEGUNDO alerta, com
+   * "Tio Nino" escrito à mão e emoji.
    *
-   * Agora quem mede é o celular DELE, que já tem a posição exata e os
-   * endereços da turma, e publica só a FAIXA (`longe`/`perto`/`chegou`) no
-   * documento do dia. O aviso funciona com o mapa ligado ou desligado, e a
-   * coordenada exata nunca sai do aparelho dele.
-   *
-   * O disparo continua na TRANSIÇÃO: sem isso, um "chegou" que persiste no
-   * documento tocaria a buzina a cada render.
+   * Agora o servidor lê a mesma faixa e escreve a notificação
+   * (`functions/lib/avisosDaRota.js`), só quando a perua se APROXIMA e só para
+   * a criança que a espera agora. Ela vira push com o app fechado e cartão com
+   * o app aberto (`avisoNaTela`), em qualquer tela.
    */
-  const zona = ride?.proximidade ?? null;
-  const lastZoneRef = useRef(null);
-  // O NOME QUE ELA USA ("Tio Zé"), e não "Tio Nino": era o nome fictício de
-  // antes, escrito à mão nos três avisos (achado lendo a rota, 03/10/2026).
-  const { nome: nomeDaMarca } = useMarcaDoTio();
-  const quem = nomeDaMarca || 'O motorista';
-  useEffect(() => {
-    if (!routeActive) {
-      lastZoneRef.current = null;
-      return;
-    }
-    if (!zona) return;
-
-    const prev = lastZoneRef.current;
-    if (zona === prev) return;
-    lastZoneRef.current = zona;
-    // A primeira leitura só calibra: abrir o app com a perua já perto não
-    // pode tocar "chegou!" por uma transição que ela não presenciou.
-    if (prev == null) return;
-
-    // ⚠️ SEM MINUTOS: "em uns 5 minutos" era uma previsão inventada — a faixa
-    // "perto" vai de 2 km a 400 m, e isso pode ser 3 ou 15 minutos. E sem
-    // emoji (decisão do dono): o ícone é o padrão do aviso.
-    if (zona === ZONA.LONGE) toast(`${quem} está a caminho`);
-    else if (zona === ZONA.PERTO) {
-      toast(`${quem} está chegando`, { duration: 6000 });
-      // Buzina curta — sinaliza aproximação
-      playSound('horn_short');
-    } else if (zona === ZONA.CHEGOU) {
-      toast.success(`${quem} chegou!`, { duration: 10000 });
-      // Buzina longa — Tio chegou na porta
-      playSound('horn_long');
-      if ('vibrate' in navigator) {
-        try {
-          navigator.vibrate(VIBRATE_PATTERN);
-        } catch {
-          /* alguns browsers exigem gesto */
-        }
-      }
-    }
-  }, [zona, routeActive, quem]);
 
   const nextPayment = useMemo(() => {
     if (!payments?.length) return null;
@@ -465,7 +415,7 @@ export default function PaiDashboard() {
               onClick={() => navigate('/pai/faltas')}
               className="tap flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-sm"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
                 <CalendarX2 size={17} />
               </span>
               <span className="min-w-0 flex-1">
@@ -614,7 +564,7 @@ function CartaoDeHoje({
         onClick={onTap}
         className={`tap w-full text-left bg-gradient-to-br ${gradient} text-white p-6 relative overflow-hidden block`}
       >
-        {/* Ilustração animada de fundo — muda com o estado da criança */}
+        {/* Ilustração de fundo — muda com o estado da criança */}
         <StateIllustration status={status} />
 
         <div className="relative flex items-center gap-4">
@@ -630,7 +580,7 @@ function CartaoDeHoje({
           <div className="flex-1 min-w-0 pr-8">
             <div className="flex items-center gap-2">
               {/* A TARJA DIZ QUAL DOS TRÊS MOMENTOS É — ver o cabeçalho. */}
-              <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs font-extrabold uppercase tracking-widest">
+              <span className="rotulo rounded-full bg-white/25 px-2 py-0.5 text-white">
                 {isLive && (
                   <span className="relative mr-1 inline-flex align-middle">
                     <span className="absolute inline-flex h-1.5 w-1.5 rounded-full bg-white opacity-75 animate-ping" />
@@ -703,27 +653,28 @@ function CartaoDeHoje({
 }
 
 /**
- * Ilustração decorativa que dá "vida" ao card baseado no status atual:
- *   - home      → casa pulsando suave (à direita)
- *   - onboard   → perua atravessando o card em loop
- *   - atSchool  → escola balançando como sino
- *   - delivered → estrela girando + brilho
+ * Ilustração decorativa que diz o estado atual pelo desenho:
+ *   - home      → casa (à direita)
+ *   - onboard   → perua
+ *   - atSchool  → escola
+ *   - delivered → estrela
  *
- * Tudo em opacity baixa pra não competir com o texto, mas suficiente
- * pra o pai sentir o estado emocional do momento.
+ * Tudo em opacity baixa pra não competir com o texto.
+ *
+ * ⚠️ PARADA DE PROPÓSITO (03/10/2026). Eram quatro animações em loop — a
+ * perua atravessando, a escola balançando, a estrela girando, a casa
+ * pulsando. O design system diz que nada se mexe sozinho, só o "ao vivo": a
+ * perua que andava sem parar continuava andando quando a posição envelhecia,
+ * e competia com o anel da tarja, que é quem diz se o dado é vivo.
  */
 function StateIllustration({ status }) {
   if (status === 'onboard') {
     return (
       <div
         aria-hidden
-        className="absolute inset-x-0 bottom-3 pointer-events-none animate-van-drive"
+        className="absolute inset-x-0 bottom-3 pointer-events-none"
       >
-        <Bus
-          size={56}
-          strokeWidth={1.5}
-          className="text-white/25 mx-auto"
-        />
+        <Bus size={56} className="text-white/25 mx-auto" />
       </div>
     );
   }
@@ -731,9 +682,9 @@ function StateIllustration({ status }) {
     return (
       <div
         aria-hidden
-        className="absolute -bottom-2 -right-2 pointer-events-none animate-school-sway"
+        className="absolute -bottom-2 -right-2 pointer-events-none"
       >
-        <School size={88} strokeWidth={1.3} className="text-white/15" />
+        <School size={88} className="text-white/15" />
       </div>
     );
   }
@@ -741,11 +692,10 @@ function StateIllustration({ status }) {
     return (
       <div
         aria-hidden
-        className="absolute -top-2 -right-2 pointer-events-none animate-celebrate"
+        className="absolute -top-2 -right-2 pointer-events-none"
       >
         <Star
           size={72}
-          strokeWidth={1.4}
           fill="currentColor"
           className="text-white/20"
         />
@@ -756,9 +706,9 @@ function StateIllustration({ status }) {
   return (
     <div
       aria-hidden
-      className="absolute -bottom-2 -right-2 pointer-events-none animate-house-rest"
+      className="absolute -bottom-2 -right-2 pointer-events-none"
     >
-      <Home size={88} strokeWidth={1.3} className="text-white/15" />
+      <Home size={88} className="text-white/15" />
     </div>
   );
 }
@@ -869,7 +819,7 @@ function PresencePanel({ presence, onOpenMap }) {
     },
     [PRESENCE.MOVING]: {
       ring: 'border-neutro',
-      iconBg: 'bg-primary/10 text-primary',
+      iconBg: 'bg-primaryChip text-primary',
       icon: Bus,
     },
     // ⚠️ FALTAVA, E QUEBRARIA A TELA (03/10/2026): sem esta entrada, `cfg`
@@ -877,7 +827,7 @@ function PresencePanel({ presence, onOpenMap }) {
     // mapa nunca chegava a gravar (o `merge` que faltava em locationService).
     [PRESENCE.SEM_MAPA]: {
       ring: 'border-neutro',
-      iconBg: 'bg-primary/10 text-primary',
+      iconBg: 'bg-primaryChip text-primary',
       icon: Bus,
     },
     [PRESENCE.OCORRENCIA]: {
@@ -978,7 +928,7 @@ function OptionRow({ icon: Icon, title, subtitle, onClick, disabled }) {
         disabled ? 'opacity-50' : ''
       }`}
     >
-      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+      <div className="w-10 h-10 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
         <Icon size={20} />
       </div>
       <div className="flex-1 min-w-0">

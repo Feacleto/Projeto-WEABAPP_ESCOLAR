@@ -30,22 +30,24 @@ function checar(nome, esperado, obtido) {
 }
 const bloco = (t) => console.log(`\n\x1b[1m${t}\x1b[0m`);
 
-const CARLA = { uid: 'carla', role: 'parent', phoneChave: chaveDoTelefone('11987654321') };
+const CARLA = { uid: 'carla', role: 'parent', adminUids: ['tio1'], phoneChave: chaveDoTelefone('11987654321') };
 
 bloco('1 · O NÚMERO CASA');
 checar('mesmo número, mesma conta', 'carla',
-  responsavelDoIrmao({ telefone: '(11) 98765-4321', contas: [CARLA] }));
+  responsavelDoIrmao({ motorista: 'tio1', telefone: '(11) 98765-4321', contas: [CARLA] }));
 checar('o número antigo, sem o nono dígito, é a mesma pessoa', 'carla',
-  responsavelDoIrmao({ telefone: '(11) 8765-4321', contas: [CARLA] }));
+  responsavelDoIrmao({ motorista: 'tio1', telefone: '(11) 8765-4321', contas: [CARLA] }));
 checar('com +55 na frente também', 'carla',
-  responsavelDoIrmao({ telefone: '+55 11 98765-4321', contas: [CARLA] }));
+  responsavelDoIrmao({ motorista: 'tio1', telefone: '+55 11 98765-4321', contas: [CARLA] }));
 checar('pela criança já vinculada do mesmo motorista (conta antiga, sem chave)', 'carla',
   responsavelDoIrmao({
+    motorista: 'tio1',
     telefone: '11987654321',
     criancas: [{ parentUid: 'carla', parentPhone: '11 98765-4321' }],
   }));
 checar('conta e criança apontando para a mesma pessoa não é ambíguo', 'carla',
   responsavelDoIrmao({
+    motorista: 'tio1',
     telefone: '11987654321',
     contas: [CARLA],
     criancas: [{ parentUid: 'carla', parentPhone: '11987654321' }],
@@ -53,20 +55,23 @@ checar('conta e criança apontando para a mesma pessoa não é ambíguo', 'carla
 
 bloco('2 · NA DÚVIDA, NÃO VINCULA');
 checar('número diferente não casa', null,
-  responsavelDoIrmao({ telefone: '11912345678', contas: [CARLA] }));
-checar('sem número, nada', null, responsavelDoIrmao({ telefone: '', contas: [CARLA] }));
+  responsavelDoIrmao({ motorista: 'tio1', telefone: '11912345678', contas: [CARLA] }));
+checar('sem número, nada', null, responsavelDoIrmao({ motorista: 'tio1', telefone: '', contas: [CARLA] }));
 checar('número casando com DUAS contas é ambíguo', null,
   responsavelDoIrmao({
+    motorista: 'tio1',
     telefone: '11987654321',
-    contas: [CARLA, { uid: 'outra', role: 'parent', phoneChave: CARLA.phoneChave }],
+    contas: [CARLA, { uid: 'outra', role: 'parent', adminUids: ['tio1'], phoneChave: CARLA.phoneChave }],
   }));
 checar('motorista com o mesmo número não é responsável', null,
   responsavelDoIrmao({
+    motorista: 'tio1',
     telefone: '11987654321',
-    contas: [{ uid: 'tio', role: 'admin', phoneChave: CARLA.phoneChave }],
+    contas: [{ uid: 'tio', role: 'admin', adminUids: ['tio1'], phoneChave: CARLA.phoneChave }],
   }));
 checar('criança ainda sem responsável não conta', null,
   responsavelDoIrmao({
+    motorista: 'tio1',
     telefone: '11987654321',
     criancas: [{ parentUid: null, parentPhone: '11987654321' }],
   }));
@@ -77,8 +82,9 @@ bloco('3 · ⚠️ O TELEFONE QUE A PESSOA EDITA NÃO CONTA');
    ela só é gravada pelo servidor, do número que o MOTORISTA digitou. */
 checar('conta com o número só no `phone` NÃO casa', null,
   responsavelDoIrmao({
+    motorista: 'tio1',
     telefone: '11987654321',
-    contas: [{ uid: 'intrusa', role: 'parent', phone: '11987654321' }],
+    contas: [{ uid: 'intrusa', role: 'parent', adminUids: ['tio1'], phone: '11987654321' }],
   }));
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 checar('e as rules proíbem o cliente de escrever `phoneChave`', true,
@@ -86,6 +92,19 @@ checar('e as rules proíbem o cliente de escrever `phoneChave`', true,
 const invites = readFileSync(new URL('../functions/lib/invites.js', import.meta.url), 'utf8');
 checar('o resgate grava a chave do número do cadastro, não do perfil', true,
   invites.includes('chaveDoTelefone(child.parentPhone)'));
+
+bloco('3b · ⚠️ SÓ VINCULA QUEM JÁ É FAMÍLIA DESTE MOTORISTA');
+/* A conta era procurada na plataforma inteira: um motorista novo, sabendo só
+   o WhatsApp de uma mãe de outra perua, ganhava acesso a ela. */
+checar('mãe de OUTRO motorista não é vinculada', null,
+  responsavelDoIrmao({ motorista: 'intruso', telefone: '11987654321', contas: [CARLA] }));
+checar('sem motorista na criança, nenhuma conta casa', null,
+  responsavelDoIrmao({ telefone: '11987654321', contas: [CARLA] }));
+checar('o campo singular antigo também vale como vínculo', 'carla',
+  responsavelDoIrmao({ motorista: 'tio9', telefone: '11987654321',
+    contas: [{ uid: 'carla', role: 'parent', adminUid: 'tio9', phoneChave: CARLA.phoneChave }] }));
+checar('o gatilho passa o motorista da criança', true,
+  readFileSync(new URL('../functions/lib/vincularIrmao.js', import.meta.url), 'utf8').includes('motorista: crianca.adminUid'));
 
 bloco('4 · SÓ O VÍNCULO AUTOMÁTICO PODE SER DESFEITO PELA MÃE');
 const vincular = readFileSync(new URL('../functions/lib/vincularIrmao.js', import.meta.url), 'utf8');

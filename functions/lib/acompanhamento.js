@@ -54,6 +54,15 @@ const {
   acessoValido,
   montarAcompanhamento,
 } = require('./reguaDoAcompanhamento');
+const { FieldValue, Timestamp } = require('firebase-admin/firestore');
+const {
+  DURACAO_DO_ACESSO_MS,
+  MAXIMO_DE_APARELHOS,
+  PREFIXO,
+  acessoTemporarioValendo,
+  lerTokenTemporario,
+  podeGerar,
+} = require('./reguaDoAcessoTemporario');
 
 const REGION = 'southamerica-east1';
 
@@ -153,6 +162,10 @@ function makeVerAcompanhamento(db) {
     const recusa = () =>
       new HttpsError('not-found', 'Este link não vale mais. Peça um novo a quem te mandou.');
 
+    // O ACESSO DE 24 HORAS do segundo responsável tem token próprio (`t_`).
+    const temporario = lerTokenTemporario(request.data && request.data.token);
+    if (temporario) return verAcessoTemporario(db, temporario, recusa);
+
     const partes = lerToken(request.data && request.data.token);
     if (!partes) throw recusa();
 
@@ -193,4 +206,171 @@ function makeVerAcompanhamento(db) {
   });
 }
 
-module.exports = { makeGerarAcessoDoDia, makeVerAcompanhamento, lerToken, sha256 };
+// ════════════════════════════════════════════════════════════════════════
+// O ACESSO DE 24 HORAS DO SEGUNDO RESPONSÁVEL (03/10/2026)
+// A régua e o porquê estão em `reguaDoAcessoTemporario.js`.
+// ════════════════════════════════════════════════════════════════════════
+
+async function lerAcessoValido(db, temporario) {
+  const ref = db.doc(`acessosTemporarios/${temporario.id}`);
+  const snap = await ref.get();
+  if (!snap.exists) return null;
+  const acesso = snap.data();
+  if (!mesmoHash(acesso.acessoHash, sha256(temporario.segredo))) return null;
+  if (!acessoTemporarioValendo(acesso)) return null;
+  return { ref, acesso };
+}
+
+async function verAcessoTemporario(db, temporario, recusa) {
+  const achado = await lerAcessoValido(db, temporario);
+  if (!achado) throw recusa();
+  const { acesso } = achado;
+  const childSnap = await db.doc(`children/${acesso.childId}`).get();
+  if (!childSnap.exists) throw recusa();
+  const child = childSnap.data();
+  // A criança mudou de família ou saiu da perua: o acesso morre junto.
+  if (child.active === false || child.parentUid !== acesso.parentUid) throw recusa();
+  const hoje = chaveDoDia();
+  const [rideSnap, motoristaSnap] = await Promise.all([
+    db.doc(`children/${acesso.childId}/rides/${hoje}`).get(),
+    child.adminUid ? db.doc(`users/${child.adminUid}`).get() : Promise.resolve(null),
+  ]);
+  return {
+    ...montarAcompanhamento({
+      child,
+      ride: rideSnap.exists ? rideSnap.data() : null,
+      motorista: motoristaSnap && motoristaSnap.exists ? motoristaSnap.data() : null,
+    }),
+    // Só o que a página precisa para dizer "este link vale até tal hora".
+    temporario: { expiraEm: acesso.expiraEm.toMillis() },
+  };
+}
+
+/**
+ * A titular ou o motorista gera o link de 24h para o SEGUNDO RESPONSÁVEL da
+ * criança (`parent2Name`/`parent2Phone`). Gerar de novo encerra o anterior.
+ */
+function makeGerarAcessoTemporario(db) {
+  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+    const uid = request.auth && request.auth.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
+    const childId = String((request.data && request.data.childId) || '').trim();
+    if (!childId) throw new HttpsError('invalid-argument', 'Criança não informada.');
+
+    const childSnap = await db.doc(`children/${childId}`).get();
+    if (!childSnap.exists) throw new HttpsError('not-found', 'Criança não encontrada.');
+    const crianca = childSnap.data();
+    // Escopo pelo uid AUTENTICADO, nunca por `request.data` (papeis.js).
+    if (!podeGerar({ uid, crianca })) {
+      throw new HttpsError('permission-denied', 'Esta criança não é sua.');
+    }
+    if (!crianca.parentUid) {
+      throw new HttpsError('failed-precondition', 'A família ainda não entrou no app.');
+    }
+    if (!String(crianca.parent2Phone || '').replace(/\D/g, '')) {
+      throw new HttpsError('failed-precondition', 'Cadastre o WhatsApp do segundo responsável antes.');
+    }
+
+    const anteriores = await db
+      .collection('acessosTemporarios')
+      .where('childId', '==', childId)
+      .where('revogadoEm', '==', null)
+      .get();
+    const lote = db.batch();
+    for (const d of anteriores.docs) {
+      lote.update(d.ref, { revogadoEm: FieldValue.serverTimestamp(), fcmTokens: [] });
+    }
+
+    const ref = db.collection('acessosTemporarios').doc();
+    const segredo = crypto.randomBytes(BYTES_DO_SEGREDO).toString('base64url');
+    const expiraEm = Timestamp.fromMillis(Date.now() + DURACAO_DO_ACESSO_MS);
+    const peloMotorista = crianca.adminUid === uid;
+    lote.set(ref, {
+      childId,
+      parentUid: crianca.parentUid,
+      adminUid: crianca.adminUid || null,
+      nome: String(crianca.parent2Name || '').slice(0, 80),
+      telefone: String(crianca.parent2Phone || '').replace(/\D/g, ''),
+      criadoPor: peloMotorista ? 'motorista' : 'familia',
+      criadoEm: FieldValue.serverTimestamp(),
+      expiraEm,
+      revogadoEm: null,
+      acessoHash: sha256(segredo),
+      fcmTokens: [],
+    });
+    // Quem não gerou fica sabendo: alguém novo acompanha a criança.
+    const nome = String(crianca.parent2Name || '').trim().split(/\s+/)[0] || 'O segundo responsável';
+    const filho = String(crianca.name || '').trim().split(/\s+/)[0] || 'a criança';
+    const destinatario = peloMotorista ? crianca.parentUid : crianca.adminUid;
+    if (destinatario) {
+      lote.set(db.collection('notifications').doc(), {
+        userId: destinatario,
+        type: 'acesso_temporario',
+        childId,
+        title: `${nome} acompanha ${filho} por 24 horas`,
+        body: peloMotorista
+          ? 'O motorista mandou o link. Ele vê o dia na perua, sem endereço nem mensalidade.'
+          : 'A família mandou o link. Ele vê o dia na perua, sem endereço nem mensalidade.',
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+    await lote.commit();
+    logger.info(`acesso de 24h gerado: child=${childId}`);
+    return { token: `${PREFIXO}${ref.id}.${segredo}`, expiraEm: expiraEm.toMillis() };
+  });
+}
+
+/** Encerra antes da hora — a titular ou o motorista. */
+function makeEncerrarAcessoTemporario(db) {
+  return onCall({ region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+    const uid = request.auth && request.auth.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
+    const childId = String((request.data && request.data.childId) || '').trim();
+    const childSnap = childId ? await db.doc(`children/${childId}`).get() : null;
+    if (!childSnap || !childSnap.exists || !podeGerar({ uid, crianca: childSnap.data() })) {
+      throw new HttpsError('permission-denied', 'Esta criança não é sua.');
+    }
+    const abertos = await db
+      .collection('acessosTemporarios')
+      .where('childId', '==', childId)
+      .where('revogadoEm', '==', null)
+      .get();
+    const lote = db.batch();
+    for (const d of abertos.docs) {
+      lote.update(d.ref, { revogadoEm: FieldValue.serverTimestamp(), fcmTokens: [] });
+    }
+    await lote.commit();
+    return { encerrados: abertos.size };
+  });
+}
+
+/**
+ * Quem abriu o link aceita receber os avisos: o aparelho dele entra no
+ * acesso. Pública como a página — quem prova o direito é o token.
+ */
+function makeInscreverAvisosDoAcesso(db) {
+  return onCall({ region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
+    const temporario = lerTokenTemporario(request.data && request.data.token);
+    const fcm = String((request.data && request.data.fcmToken) || '').trim();
+    if (!temporario || !fcm || fcm.length > 400) {
+      throw new HttpsError('invalid-argument', 'Link ou aparelho inválido.');
+    }
+    const achado = await lerAcessoValido(db, temporario);
+    if (!achado) throw new HttpsError('not-found', 'Este link não vale mais.');
+    const atuais = (achado.acesso.fcmTokens || []).filter((t) => t !== fcm);
+    const novos = [...atuais, fcm].slice(-MAXIMO_DE_APARELHOS);
+    await achado.ref.update({ fcmTokens: novos });
+    return { ok: true };
+  });
+}
+
+module.exports = {
+  makeGerarAcessoDoDia,
+  makeVerAcompanhamento,
+  makeGerarAcessoTemporario,
+  makeEncerrarAcessoTemporario,
+  makeInscreverAvisosDoAcesso,
+  lerToken,
+  sha256,
+};

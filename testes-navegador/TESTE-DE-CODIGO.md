@@ -62,3 +62,21 @@ vêm da leitura e serão conferidos na hora da correção.
 2. Um push de verdade (A1) e o clique no aviso (A7).
 3. Excluir conta com sessão antiga (A5).
 4. Mãe com dois filhos em peruas diferentes (A12, contrato do irmão).
+
+## Situação em 03/10/2026, depois das correções
+
+**Corrigido, com teste:**
+- C1 (rules, `testar:regras` bloco C1) · C2 (`testar:irmaos` 3b) · C3 e C4 (`testar:buzina`)
+- A1, A7 (`testar:notificacoes` 1 e 2) · A3 (`testar:combinado`) · A4, A6, A8 (`testar:regras`)
+- A5 (login recente conferido ANTES de apagar) · A9 (rota mostra "Hoje quem recebe"; "Trocar" avisa)
+- A10 (o aviso de chegada saiu do celular da mãe e foi para o servidor; só aproximando, só a viagem de agora)
+- A12 (o "paguei" vai ao motorista daquela mensalidade) · A13 (o pedido não carrega o nome da criança)
+- A14 (as duas saídas com nomes que dizem o que fazem) · A15 e A16 (só `pending`, varredura paginada)
+- "Faltou" do motorista avisa a família; logout tira o aparelho da lista de push.
+
+**Decidido pelo dono e feito:** o segundo responsável ganha um acesso de 24 horas (link + avisos da rota).
+
+**Ainda aberto:**
+- A2: o e-mail só entrega depois de verificar o domínio no Resend e configurar `EMAIL_REMETENTE`.
+- A11 ("AO VIVO" para criança fora da viagem) e os itens MÉDIO.
+- Navegador: push de verdade + toque, rota com os dois lados, exclusão com sessão antiga, mãe de duas peruas, o acesso de 24h aberto num celular sem conta.
