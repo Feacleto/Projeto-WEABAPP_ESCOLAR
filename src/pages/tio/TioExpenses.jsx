@@ -5,6 +5,7 @@ import Header from '../../components/layout/Header';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import CampoDeValor from '../../components/common/CampoDeValor';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -260,18 +261,15 @@ function ExpenseForm({ defaultMonthKey, onClose, onSaved }) {
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          <Input
+          <CampoDeValor
             label="Quanto foi"
-            inputMode="decimal"
-            placeholder="0,00"
             value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value);
+            onChange={(v) => {
+              setAmount(v);
               setError(null);
             }}
             error={error}
             autoFocus
-            required
           />
 
           <div>

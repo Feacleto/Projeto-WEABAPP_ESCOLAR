@@ -5,7 +5,6 @@ import {
   MapPin,
   Phone,
   Clock,
-  DollarSign,
   Search,
   Check,
   Home,
@@ -26,6 +25,7 @@ import InviteShare from './InviteShare';
 import NovaEscolaSheet from './NovaEscolaSheet';
 import BuscaDeRua from '../endereco/BuscaDeRua';
 import Input from '../common/Input';
+import CampoDeValor from '../common/CampoDeValor';
 import Button from '../common/Button';
 import { addChild, updateChild } from '../../services/childrenService';
 import { uploadContratoAnterior } from '../../services/photoService';
@@ -215,7 +215,7 @@ export default function ChildForm() {
       if (form.parent2Phone && !isValidPhone(form.parent2Phone))
         errs.parent2Phone = 'Telefone inválido.';
       const fee = parseFloat(form.monthlyFee);
-      if (form.monthlyFee.trim() && (!fee || fee <= 0))
+      if (String(form.monthlyFee).trim() && (!fee || fee <= 0))
         errs.monthlyFee = 'Valor precisa ser maior que zero.';
       const day = parseInt(form.dueDay, 10);
       if (form.dueDay && (!day || day < 1 || day > 28))
@@ -1205,16 +1205,10 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
 
       <Card className="space-y-4">
         <h3 className="text-sm font-bold text-text">Mensalidade</h3>
-        <Input
-          type="number"
-          inputMode="decimal"
-          step="0.01"
-          min="0"
-          label="Valor (R$)"
-          placeholder="450,00"
-          icon={DollarSign}
+        <CampoDeValor
+          label="Valor da mensalidade"
           value={form.monthlyFee}
-          onChange={setField('monthlyFee')}
+          onChange={(v) => setForm((p) => ({ ...p, monthlyFee: v }))}
           error={errors.monthlyFee}
           /* O `required` daqui foi REMOVIDO porque era inerte e mentia.
            *
@@ -1232,7 +1226,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
            * descobre no dia do fechamento, contando dez cobranças que não
            * nasceram. */
           hint={
-            form.monthlyFee.trim()
+            String(form.monthlyFee).trim()
               ? undefined
               : 'Sem valor, esta criança não entra na cobrança do mês. Dá pra preencher depois na ficha dela.'
           }

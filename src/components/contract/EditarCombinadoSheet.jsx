@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { DollarSign, Calendar, FileSignature, Save } from 'lucide-react';
+import { Calendar, FileSignature, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AppSheet from '../common/AppSheet';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import CampoDeValor from '../common/CampoDeValor';
 import CampoVigencia from './CampoVigencia';
 import { useAuth } from '../../hooks/useAuth';
 import { salvarCombinado } from '../../services/contratosDaFamiliaService';
@@ -84,12 +85,10 @@ export default function EditarCombinadoSheet({ open, onClose, child, contratos }
     >
       <div className="space-y-5 px-5 pb-6">
         <section className="space-y-3">
-          <Input
-            label="Mensalidade (R$)"
-            icon={DollarSign}
-            inputMode="decimal"
+          <CampoDeValor
+            label="Mensalidade"
             value={fee}
-            onChange={(ev) => setFee(ev.target.value.replace(/[^\d.,]/g, ''))}
+            onChange={setFee}
             error={erros.fee}
           />
           <Input
