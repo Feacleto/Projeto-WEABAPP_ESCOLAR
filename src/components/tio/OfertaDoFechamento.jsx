@@ -78,7 +78,7 @@ export default function OfertaDoFechamento({
     <Sheet open={aberta} onClose={onFechar} title="Você destravou um desconto">
       <div className="space-y-5">
         <div className="rounded-2xl bg-primaryChip p-4 text-center">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary">
+          <span className="rotulo inline-flex items-center gap-1.5 text-primary">
             <Sparkles size={14} />
             {oferta.porcento}% de desconto
           </span>

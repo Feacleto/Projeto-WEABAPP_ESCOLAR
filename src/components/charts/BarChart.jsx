@@ -5,7 +5,10 @@ import { formatCurrency } from '../../compartilhado/formatters';
  *
  * Props:
  *  - data: [{ label, value, sublabel? }]
- *  - color: 'emerald' | 'blue' | 'amber' | 'red' (default emerald)
+ *  - color: 'primary' | 'emerald' | 'blue' | 'amber' | 'red' (default emerald)
+ *      'primary' é o verde do token, para quando a barra SIGNIFICA dinheiro
+ *      que entrou (o relatório). As outras são categóricas — só precisam
+ *      diferir da vizinha — e moram na paletaCategorica.
  *  - showValues: bool (default true) — formata como BRL
  *
  * Pensado pra idosos: barras GROSSAS, labels claros, ordem fácil de seguir.
@@ -18,7 +21,8 @@ export default function BarChart({
 }) {
   const max = Math.max(...data.map((d) => Number(d.value) || 0), 1);
 
-  const fillClass = SERIE_GRAFICO[color] || SERIE_GRAFICO.emerald;
+  const fillClass =
+    color === 'primary' ? 'bg-primary' : SERIE_GRAFICO[color] || SERIE_GRAFICO.emerald;
 
   return (
     <div className="space-y-2">
@@ -27,7 +31,7 @@ export default function BarChart({
         const widthPct = max > 0 ? (value / max) * 100 : 0;
         return (
           <div key={i} className="space-y-1">
-            <div className="flex items-baseline justify-between gap-2 text-xs">
+            <div className="flex items-baseline justify-between gap-2 text-sm">
               <span className="font-semibold text-text capitalize">
                 {row.label}
               </span>
@@ -39,7 +43,7 @@ export default function BarChart({
             </div>
             <div className="h-3 bg-neutro rounded-full overflow-hidden">
               <div
-                className={`h-full ${fillClass} rounded-full transition-all`}
+                className={`h-full ${fillClass} rounded-full transition-[width] duration-festa ease-freio`}
                 style={{ width: `${Math.max(widthPct, value > 0 ? 3 : 0)}%` }}
               />
             </div>

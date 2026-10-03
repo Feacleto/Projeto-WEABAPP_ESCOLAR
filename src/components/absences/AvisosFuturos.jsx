@@ -98,7 +98,7 @@ export default function AvisosFuturos({ child, historico }) {
       {/* Os outros, como lista curta */}
       {resto.length > 0 && (
         <div className="bg-card rounded-2xl border border-border divide-y divide-neutro">
-          <p className="text-xs font-semibold uppercase tracking-widest text-textMuted px-3 pt-2.5 pb-1.5">
+          <p className="rotulo px-3 pt-2.5 pb-1.5">
             você já avisou
           </p>
           {resto.map((a) => (

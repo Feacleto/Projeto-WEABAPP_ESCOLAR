@@ -3,14 +3,25 @@ import { AlertTriangle, X } from 'lucide-react';
 import Button from './Button';
 
 /**
- * Modal de confirmação genérico — bloqueia interação até o usuário confirmar
- * ou cancelar. Usado pra ações irreversíveis ou de impacto.
+ * Modal de confirmação — bloqueia interação até o usuário decidir. É o
+ * diálogo MAIS FORTE abaixo da buzina, então só serve ao que não tem volta
+ * (docs/design-system.md, "Diálogos"). Durante a rota, nada de confirmação.
+ *
+ * O TÍTULO é a pergunta ("Tirar o Pedro da turma?"), a DESCRIÇÃO é a
+ * consequência, e o BOTÃO REPETE O VERBO ("Tirar da turma"). Nunca "Tem
+ * certeza?" com "Confirmar": quem lê só o botão — e no portão é o que se
+ * lê — precisa saber o que vai acontecer ao tocar.
+ *
+ * Por isso `confirmLabel` é OBRIGATÓRIO na prática. O 'Confirmar' de
+ * reserva continua só como rede, para uma tela esquecida não renderizar um
+ * botão vazio; em desenvolvimento ele avisa no console, para ser trocado
+ * pelo verbo antes de chegar em alguém.
  *
  * Props:
  *   - open:           bool — controla exibição
- *   - title:          string
- *   - description:    string | ReactNode
- *   - confirmLabel:   string (default 'Confirmar')
+ *   - title:          string — a pergunta
+ *   - description:    string | ReactNode — a consequência
+ *   - confirmLabel:   string — o VERBO da ação (obrigatório; ver acima)
  *   - cancelLabel:    string (default 'Cancelar')
  *   - variant:        'primary' | 'danger' (controla cor do botão de confirmar)
  *   - loading:        bool — desabilita ações durante operação async
@@ -21,7 +32,7 @@ export default function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = 'Confirmar',
+  confirmLabel,
   cancelLabel = 'Cancelar',
   variant = 'primary',
   loading = false,
@@ -40,12 +51,19 @@ export default function ConfirmDialog({
 
   if (!open) return null;
 
+  if (!confirmLabel && import.meta.env.DEV) {
+    console.warn(
+      `ConfirmDialog "${title}" sem confirmLabel: o botão precisa dizer o verbo da ação.`
+    );
+  }
+  const rotuloDeConfirmar = confirmLabel || 'Confirmar';
+
   const iconColor = variant === 'danger' ? 'text-dangerText' : 'text-primary';
   const iconBg = variant === 'danger' ? 'bg-dangerChip' : 'bg-primaryChip';
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 pt-20"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-night/45 px-4 pb-4 pt-20"
       onClick={() => !loading && onCancel?.()}
     >
       <div
@@ -90,7 +108,7 @@ export default function ConfirmDialog({
             loading={loading}
             fullWidth
           >
-            {confirmLabel}
+            {rotuloDeConfirmar}
           </Button>
         </div>
       </div>

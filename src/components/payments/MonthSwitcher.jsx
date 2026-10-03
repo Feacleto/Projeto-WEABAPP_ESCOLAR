@@ -26,18 +26,21 @@ export default function MonthSwitcher({ monthKey, onChange }) {
   const minMonth = addMonths(current, -MESES_NAVEGAVEIS_ATRAS);
   const canGoPrev = monthKey > minMonth;
 
+  // O mês no meio, em palavra; as setas são quadrados recuados de 40px com o
+  // verde da ação. Setas apagadas em vez de sumidas: sumir mudaria a largura
+  // do nome do mês a cada toque, e o dedo perderia o lugar da seta.
   return (
-    <div className="flex items-center justify-between bg-card rounded-2xl shadow-sm p-2">
+    <div className="flex items-center justify-between gap-2 rounded-xl bg-card p-1.5 shadow-rest">
       <button
         type="button"
         onClick={() => onChange(addMonths(monthKey, -1))}
         disabled={!canGoPrev}
         aria-label="Mês anterior"
-        className="tap w-10 h-10 rounded-xl flex items-center justify-center text-text disabled:opacity-30"
+        className="tap flex h-10 w-10 items-center justify-center rounded-lg bg-surface text-primary disabled:text-borderStrong"
       >
         <ChevronLeft size={20} />
       </button>
-      <p className="text-base font-bold text-text capitalize">
+      <p className="text-base font-bold capitalize text-text">
         {formatMonthLabel(monthKey)}
       </p>
       <button
@@ -45,7 +48,7 @@ export default function MonthSwitcher({ monthKey, onChange }) {
         onClick={() => onChange(addMonths(monthKey, 1))}
         disabled={!canGoNext}
         aria-label="Próximo mês"
-        className="tap w-10 h-10 rounded-xl flex items-center justify-center text-text disabled:opacity-30"
+        className="tap flex h-10 w-10 items-center justify-center rounded-lg bg-surface text-primary disabled:text-borderStrong"
       >
         <ChevronRight size={20} />
       </button>

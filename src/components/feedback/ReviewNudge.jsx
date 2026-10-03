@@ -97,10 +97,10 @@ export default function ReviewNudge() {
   return (
     <>
       <div
-        className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-lg ${
+        className={`relative overflow-hidden rounded-2xl p-4 text-white ${
           isTio
-            ? 'bg-gradient-to-br from-primary via-primary to-primary shadow-focus'
-            : 'bg-gradient-to-br from-info via-info to-escola shadow-focus'
+            ? 'bg-gradient-to-br from-primary via-primary to-primary shadow-rest'
+            : 'bg-gradient-to-br from-info via-info to-escola shadow-rest'
         }`}
       >
         <button
@@ -133,7 +133,7 @@ export default function ReviewNudge() {
         <button
           type="button"
           onClick={() => setAberto(true)}
-          className="tap mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-[#0B1210]"
+          className="tap mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-night"
         >
           {isTio ? 'Avaliar e publicar' : 'Avaliar o app'}
           <ArrowRight size={16} />

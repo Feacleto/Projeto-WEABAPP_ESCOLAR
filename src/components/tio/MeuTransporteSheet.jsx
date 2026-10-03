@@ -264,7 +264,7 @@ export default function MeuTransporteSheet({
 function Grupo({ titulo, children }) {
   return (
     <section className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-widest text-textMuted px-1">
+      <p className="rotulo px-1">
         {titulo}
       </p>
       {children}

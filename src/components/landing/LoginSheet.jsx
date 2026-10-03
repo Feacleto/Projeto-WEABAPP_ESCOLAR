@@ -286,7 +286,7 @@ export default function LoginSheet({
                 type="button"
                 onClick={onGoogleLogin}
                 disabled={googleSubmitting}
-                className="tap relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl border-2 border-borderStrong bg-card text-base font-bold text-text shadow-md hover:bg-sunken focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                className="tap relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl border-2 border-borderStrong bg-card text-base font-bold text-text shadow-rest hover:bg-sunken focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
               >
                 <GoogleIcon size={22} />
                 {googleSubmitting ? 'Entrando…' : 'Entrar com Google'}
@@ -323,7 +323,7 @@ export default function LoginSheet({
               Entrar com email e senha
               <ChevronDown
                 size={15}
-                className={`transition-transform duration-300 ${
+                className={`transition-transform duration-entrada ease-freio ${
                   mostrarForm ? 'rotate-180' : ''
                 }`}
               />
@@ -391,7 +391,7 @@ export default function LoginSheet({
             }}
             className="tap mt-6 flex w-full items-center gap-3 rounded-2xl border border-dashed border-borderStrong p-4 text-left hover:bg-card"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
               <Users size={17} />
             </span>
             <span className="min-w-0 flex-1">

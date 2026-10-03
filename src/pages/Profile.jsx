@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Mail,
   Phone,
@@ -287,7 +287,7 @@ export default function Profile() {
               onClick={() => setPixOpen(true)}
               className="w-full flex items-center gap-3 tap"
             >
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
                 <Key size={20} className="text-primary" />
               </div>
               <div className="flex-1 min-w-0 text-left">
@@ -316,7 +316,7 @@ export default function Profile() {
               onClick={() => setAddChildOpen(true)}
               className="w-full flex items-center gap-3 tap"
             >
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
                 <UserPlus size={20} className="text-primary" />
               </div>
               <div className="flex-1 min-w-0 text-left">
@@ -342,7 +342,7 @@ export default function Profile() {
               onClick={() => navigate('/pai/contrato')}
               className="w-full flex items-center gap-3 tap"
             >
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
                 <FileText size={20} className="text-primary" />
               </div>
               <div className="flex-1 min-w-0 text-left">
@@ -512,7 +512,23 @@ export default function Profile() {
         </Card>
 
         {/* Exclusão de conta — discreto, só link textual no fim da página.
-          * Confirmação continua avisando do impacto. */}
+          * Confirmação continua avisando do impacto.
+          *
+          * ⚠️ PARA O MOTORISTA HÁ DUAS SAÍDAS, E O NOME DIZ QUAL É QUAL
+          * (03/10/2026). O link dizia "Encerrar operação" e APAGAVA TUDO —
+          * turma, pagamentos, conta —, enquanto a saída segura (encerrar a
+          * associação, que só para a cobrança) mora em /tio/encerrar e nem
+          * aparecia aqui. Quem queria parar de pagar achava a que apaga. */}
+        {isAdmin && profile?.plano && (
+          <div className="pt-3 text-center">
+            <Link
+              to="/tio/encerrar"
+              className="tap inline-flex items-center gap-1.5 text-sm font-semibold text-primary py-2 px-3"
+            >
+              Encerrar a associação (parar de pagar, sem apagar nada)
+            </Link>
+          </div>
+        )}
         <div className="pt-3 text-center">
           <button
             type="button"
@@ -521,7 +537,7 @@ export default function Profile() {
           >
             <Trash2 size={12} />
             <span className="underline underline-offset-2 decoration-textMuted/30">
-              {isAdmin ? 'Encerrar operação' : 'Excluir minha conta'}
+              {isAdmin ? 'Excluir minha conta e apagar todos os dados' : 'Excluir minha conta'}
             </span>
           </button>
         </div>
@@ -570,10 +586,10 @@ export default function Profile() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title={isAdmin ? 'Encerrar operação?' : 'Excluir sua conta?'}
+        title={isAdmin ? 'Apagar sua conta e todos os dados?' : 'Excluir sua conta?'}
         description={
           isAdmin
-            ? 'Vai apagar TUDO: crianças, responsáveis, pagamentos, ausências, rota padrão e sua conta. Esta ação NÃO pode ser desfeita.'
+            ? 'Vai apagar TUDO: crianças, contratos, pagamentos, recados e a sua conta. As famílias perdem o acesso. Não dá para desfazer. Para só parar de pagar a plataforma, use "Encerrar a associação".'
             : 'Seus dados pessoais (perfil, login, notificações) serão apagados. O histórico de pagamentos fica com o motorista para fins fiscais. Você sairá do app.'
         }
         confirmLabel={isAdmin ? 'Sim, apagar tudo' : 'Sim, excluir minha conta'}
@@ -691,7 +707,7 @@ function InfoRow({ icon: Icon, label, value, hint }) {
     <div className="flex items-start gap-3 py-1">
       <Icon size={16} className="text-textMuted shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-textMuted uppercase tracking-wide">
+        <p className="rotulo">
           {label}
         </p>
         <p className="text-sm text-text break-words">{value || '—'}</p>
@@ -808,7 +824,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
                 onClick={() => setGender(g.value)}
                 className={`tap rounded-xl border-2 px-2 py-2.5 text-xs font-semibold ${
                   gender === g.value
-                    ? 'border-primary bg-primary/10 text-primary'
+                    ? 'border-primary bg-primarySoft text-primary'
                     : 'border-border bg-card text-textMuted'
                 }`}
               >
@@ -962,7 +978,7 @@ function PushCard({ uid }) {
         disabled={busy}
         className="w-full flex items-center gap-3 tap disabled:opacity-60"
       >
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
           {on ? (
             <Bell size={20} className="text-primary" />
           ) : (
@@ -1090,7 +1106,7 @@ function MarcaCard({ uid, nome, logoURL, onChanged }) {
             className="h-8 w-8 shrink-0 rounded-lg object-cover"
           />
         ) : (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
             <Bus size={16} />
           </span>
         )}

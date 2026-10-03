@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Logo from '../components/common/Logo';
-import FundoNoturno from '../components/common/FundoNoturno';
 import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { ArtRoad } from '../components/landing/BlockArt';
 import { inscreverAssociado } from '../services/associadoService';
@@ -184,14 +183,17 @@ export default function DriverSignup() {
       className="relative left-1/2 w-screen -translate-x-1/2 bg-bg"
     >
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)]">
-      {/* Tampa escura, corpo claro — a mesma regra da folha modal e das
-        * outras portas: marca em cima, produto embaixo. Assim o motorista
-        * que vem do cartão "sou motorista escolar" não sente que trocou de
-        * aplicativo no meio do caminho. */}
-      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
-        <FundoNoturno />
+      {/* CABEÇALHO VERDE, CORPO CLARO (03/10/2026). A faixa era quase-preta,
+        * com o `FundoNoturno` andando por trás, porque "o motorista está
+        * comprando" — e o dono revogou essa justificativa: dentro do app não
+        * existe tela escura, a superfície escura ficou só no site
+        * (docs/design-system.md). A porta é o verde com a marca, o mesmo do
+        * login, então quem vem da bifurcação continua sem sentir que trocou
+        * de aplicativo. O movimento contínuo saiu junto: o sistema só o
+        * permite no "ao vivo". */}
+      <header className="relative overflow-hidden rounded-b-3xl bg-primary px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
 
-        {/* TRÊS FILHOS NO FLEX DA COLUNA ESCURA: o voltar no alto, o miolo no
+        {/* TRÊS FILHOS NO FLEX DA COLUNA VERDE: o voltar no alto, o miolo no
           * meio, o domínio embaixo. É o mesmo arranjo da tela de login, e é o
           * que impede o texto de flutuar no meio de um vazio de 300px quando
           * a coluna tem a altura de um monitor. */}
@@ -204,21 +206,21 @@ export default function DriverSignup() {
           {veioDaEscolha ? (
             <Link
               to="/login?criar=1"
-              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-white/60 hover:text-white"
+              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-primaryChip hover:text-white"
             >
               <ArrowLeft size={16} /> Voltar para a escolha
             </Link>
           ) : veioDoLogin ? (
             <Link
               to="/login"
-              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-white/60 hover:text-white"
+              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-primaryChip hover:text-white"
             >
               <ArrowLeft size={16} /> Voltar
             </Link>
           ) : (
             <a
               href={SITE_INSTITUCIONAL}
-              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-white/60 hover:text-white"
+              className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-primaryChip hover:text-white"
             >
               <ArrowLeft size={16} /> Voltar
             </a>
@@ -263,7 +265,7 @@ export default function DriverSignup() {
               className="hidden lg:block"
             />
           </a>
-          <h1 className="mt-5 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
+          <h1 className="mt-5 font-display text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
             Comece a usar hoje
           </h1>
           {/* ⚠️ A FRASE RESPONDE "O QUE ACONTECE DEPOIS QUE EU MANDAR".
@@ -275,7 +277,7 @@ export default function DriverSignup() {
             * uma ligação que não acontece mais (decisão 16). Dizer que não há
             * fila é desfazer essa promessa no único lugar onde ela ainda
             * podia ser lida. */}
-          <p className="mt-3 text-sm leading-relaxed text-white/65">
+          <p className="mt-3 text-sm leading-relaxed text-primaryChip">
             Você preenche, entra e já cadastra a sua turma.{' '}
             <strong className="font-semibold text-white">
               Não tem fila e não tem ninguém pra aprovar
@@ -288,31 +290,24 @@ export default function DriverSignup() {
           </div>
         </div>
 
-        <p className="relative hidden text-xs text-white/40 lg:block">
+        <p className="relative hidden text-xs text-primaryChip lg:block">
           alobuzinou.com.br
         </p>
       </header>
 
-      {/* A costura entre marca e produto só existe empilhado: lado a lado, a
-        * borda entre as duas colunas já faz esse trabalho. */}
-      <div
-        aria-hidden
-        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
-      />
-
       {/* ⚠️ O FORMULÁRIO VIROU UM CARTÃO SOBRE CINZA, e antes era uma coluna
-        * branca colada na faixa escura.
+        * branca colada na faixa da marca.
         *
         * Sem o cartão, os campos flutuavam no branco da página e a fronteira
         * entre a marca e o trabalho era só a troca de cor de fundo — o que
         * lia como duas metades do mesmo pôster. O cartão é a folha que se
-        * preenche: ele tem borda, sombra e fim, e é isso que diz "o que você
-        * tem que fazer é aqui dentro".
+        * preenche: ele tem sombra e fim (sem borda, D7 do design system), e
+        * é isso que diz "o que você tem que fazer é aqui dentro".
         *
         * É a mesma superfície do login, e de propósito: quem vem da
         * bifurcação atravessa as duas telas na mesma sessão. */}
       <div className="flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16">
-        <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:p-8">
+        <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col rounded-2xl bg-card p-5 shadow-float sm:p-7 lg:p-8">
         {/* ⚠️ O CARTÃO DE ESCASSEZ SAIU DAQUI EM 06/09/2026.
           *
           * Ele mostrava "1 associado atendido hoje" — número FIXO no código,
@@ -333,7 +328,7 @@ export default function DriverSignup() {
             * antiga era promessa de marca — bonita, e no lugar de quem tem
             * seis campos para preencher ela vira ruído entre o dedo e o
             * primeiro campo. A promessa já está na faixa ao lado. */}
-          <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
+          <h2 className="font-display text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
             Criar sua conta
           </h2>
           {/* ⚠️ O NÚMERO NA FRASE É VERIFICÁVEL NA TELA, e já mentiu uma vez.
@@ -461,7 +456,7 @@ export default function DriverSignup() {
 function Grupo({ rotulo, children }) {
   return (
     <div>
-      <p className="mb-2 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+      <p className="rotulo mb-2">
         {rotulo}
       </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>

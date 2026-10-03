@@ -122,6 +122,7 @@ export default function AltPickupSheet({
         dateKey,
         // Sem isto o aviso cai no ponteiro global e a rule nega a escrita.
         adminUid: child.adminUid,
+        childId: child.id,
       });
       toast.success(`Avisamos o motorista que ${resp.name} vai buscar hoje.`);
       onClose?.();
@@ -137,7 +138,14 @@ export default function AltPickupSheet({
     setSubmitting(true);
     try {
       await clearDailyAltPickup({ dateKey, childId: child.id });
-      toast.success('Você mesmo vai buscar hoje.');
+      notifyAltPickup({
+        childName: child.name,
+        dateKey,
+        adminUid: child.adminUid,
+        childId: child.id,
+        desfeito: true,
+      });
+      toast.success('Você mesmo vai buscar hoje. O motorista foi avisado.');
       onClose?.();
     } catch (err) {
       console.error(err);
@@ -244,7 +252,7 @@ export default function AltPickupSheet({
                   onClick={onClose}
                   className="tap w-full text-left rounded-2xl bg-card border-2 border-primary p-4 flex items-center gap-3"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
                     <UserCheck size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -270,7 +278,7 @@ export default function AltPickupSheet({
                 * conseguir tirá-lo sem procurar. */}
               {avulso && (
                 <>
-                  <p className="px-1 pt-2 text-xs font-semibold uppercase tracking-widest text-textMuted">
+                  <p className="rotulo px-1 pt-2">
                     Da última vez
                   </p>
                   <button
@@ -403,6 +411,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
         phone: cleanPhone,
         dateKey,
         adminUid: child.adminUid,
+        childId: child.id,
       });
       toast.success(`${name} cadastrado e avisado pro motorista.`);
       onSaved?.();

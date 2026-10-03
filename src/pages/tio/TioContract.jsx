@@ -148,7 +148,7 @@ export default function TioContract() {
               href={waHref}
               target="_blank"
               rel="noreferrer"
-              className="tap inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-center font-bold leading-tight text-[#06210A]"
+              className="tap inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-whatsapp px-4 py-3 text-center font-bold leading-tight text-onAccent"
             >
               <WhatsAppIcon size={20} colored={false} />
               Avisar a família no WhatsApp

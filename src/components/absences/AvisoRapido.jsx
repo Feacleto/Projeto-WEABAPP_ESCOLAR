@@ -161,7 +161,7 @@ export default function AvisoRapido({
               aria-pressed={ativo}
               className={`tap rounded-2xl border-2 py-3 px-1 flex flex-col items-center gap-1.5 transition-colors disabled:opacity-60 ${
                 ativo
-                  ? 'border-primary bg-primary/10'
+                  ? 'border-primary bg-primarySoft'
                   : 'border-border bg-card'
               }`}
             >
@@ -196,7 +196,7 @@ export default function AvisoRapido({
             onClick={onOutraPessoa}
             aria-pressed={outraAtiva}
             className={`tap flex flex-col items-center gap-1.5 rounded-2xl border-2 px-1 py-3 transition-colors disabled:opacity-60 ${
-              outraAtiva ? 'border-primary bg-primary/10' : 'border-border bg-card'
+              outraAtiva ? 'border-primary bg-primarySoft' : 'border-border bg-card'
             }`}
           >
             <UserCheck

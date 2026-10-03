@@ -128,7 +128,7 @@ export default function TioChildStatement() {
           <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold uppercase tracking-widest text-textMuted">
+                <p className="rotulo">
                   Extrato de mensalidades
                 </p>
                 <h1 className="text-2xl font-bold text-text leading-tight mt-1">
@@ -173,7 +173,7 @@ export default function TioChildStatement() {
 
           <section className="grid grid-cols-2 gap-3">
             <div className="bg-primarySoft rounded-2xl p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">
+              <p className="rotulo text-primary">
                 Pago
               </p>
               <p className="text-2xl font-bold text-primary tabular-nums mt-1">
@@ -181,7 +181,7 @@ export default function TioChildStatement() {
               </p>
             </div>
             <div className="bg-warningSoft rounded-2xl p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-warningText">
+              <p className="rotulo text-warningText">
                 Em aberto
               </p>
               <p className="text-2xl font-bold text-warningText tabular-nums mt-1">

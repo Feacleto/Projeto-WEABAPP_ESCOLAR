@@ -25,11 +25,14 @@ import { ArtRoad } from '../components/landing/BlockArt';
  *   - Motorista entra pela LISTA DE PARCEIROS — não há autocadastro; cada
  *     parceiro é liberado por nós.
  *
- * DESIGN: TAMPA ESCURA, CORPO CLARO
- * A mesma regra da folha modal (Sheet.jsx). A tampa é o material da home —
- * quase-preto, brilho esmeralda, malha, a estradinha com a van andando — e o
- * corpo é o claro do app, onde ficam as escolhas. Marca em cima, produto
- * embaixo, costura de esmeralda no meio.
+ * DESIGN: CABEÇALHO VERDE, CORPO CLARO (03/10/2026)
+ * A tampa era quase-preta, com brilho esmeralda e malha andando, porque
+ * "quem chega está comprando". O dono revogou essa justificativa: dentro do
+ * app não existe tela escura, e a superfície escura ficou só no site
+ * (docs/design-system.md). A porta agora é o cabeçalho VERDE com a marca —
+ * o mesmo do login e do site —, e o corpo é a areia do app, onde ficam as
+ * escolhas. O fundo animado saiu junto: o sistema só permite movimento
+ * contínuo no "ao vivo", e nada aqui está ao vivo.
  */
 export default function Welcome() {
   const navigate = useNavigate();
@@ -44,38 +47,13 @@ export default function Welcome() {
   return (
     <div className="min-h-screen flex flex-col bg-bg">
       {/* ── tampa: a marca ── */}
-      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-6 pb-7 pt-5 text-white">
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div
-            className="absolute inset-0 opacity-80 animate-glow-drift"
-            style={{
-              background:
-                'radial-gradient(110% 80% at 10% 0%, rgba(31,95,63,.6) 0%, rgba(11,18,16,0) 62%)',
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-60 animate-glow-drift-slow"
-            style={{
-              background:
-                'radial-gradient(90% 70% at 100% 10%, rgba(82,196,26,.2) 0%, rgba(11,18,16,0) 58%)',
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.06] animate-grid-drift"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
-              backgroundSize: '44px 44px',
-            }}
-          />
-        </div>
-
+      <header className="relative overflow-hidden rounded-b-3xl bg-primary px-6 pb-7 pt-5 text-white">
         <div className="relative">
           {/* Volta pro site institucional, que é OUTRO domínio — por isso <a> e
             * não <Link>. Ver SITE_INSTITUCIONAL em config/vitrine.js. */}
           <a
             href={SITE_INSTITUCIONAL}
-            className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+            className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-primaryChip hover:text-white"
           >
             <ArrowLeft size={16} /> Voltar
           </a>
@@ -88,13 +66,13 @@ export default function Welcome() {
             >
               <Logo variant="stacked" tone="onDark" height={92} className="mx-auto" />
             </a>
-            <p className="mt-4 font-mono text-xs uppercase tracking-[0.2em] text-onNightAccent/80">
+            <p className="rotulo mt-4 text-menta">
               primeira vez aqui
             </p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+            <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight">
               Quem é você?
             </h1>
-            <p className="mx-auto mt-2 max-w-[19rem] text-sm leading-relaxed text-white/65">
+            <p className="mx-auto mt-2 max-w-[19rem] text-sm leading-relaxed text-primaryChip">
               É a única vez que perguntamos. Depois que sua conta existe, o app
               te reconhece pelo login.
             </p>
@@ -105,12 +83,6 @@ export default function Welcome() {
           </div>
         </div>
       </header>
-
-      {/* Costura entre a marca e o produto. */}
-      <div
-        aria-hidden
-        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary"
-      />
 
       {/* ── corpo: as escolhas ── */}
       <main className="flex flex-1 flex-col gap-3 px-6 py-6">
@@ -133,18 +105,21 @@ export default function Welcome() {
           onClick={() => navigate('/quero-fazer-parte')}
         />
 
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="rounded-2xl bg-card p-4 shadow-rest">
           <p className="text-sm font-bold text-text">Como o app te reconhece</p>
-          <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-textMuted">
+          <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-textBody">
             <li>
               <span className="font-semibold text-text">Responsável:</span> a
               conta se cria pelo link que o motorista manda — o filho já vem
               vinculado.
             </li>
             <li>
-              <span className="font-semibold text-text">Motorista:</span> a vaga
-              de associado é limitada — cada associado gera administração
-              financeira e técnica. Você entra na fila e a gente chama.
+              {/* Dizia "a vaga é limitada, você entra na fila": deixou de ser
+                * verdade em 06/09/2026, quando a entrada virou autoatendimento, e
+                * escassez que não existe é propaganda enganosa (CDC art. 37). */}
+              <span className="font-semibold text-text">Motorista:</span> você
+              mesmo cria a conta, com e-mail, WhatsApp e senha, e já começa a
+              usar.
             </li>
           </ul>
         </div>

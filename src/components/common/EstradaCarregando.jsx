@@ -18,6 +18,10 @@
  * `Respiro`: é onde o `prefers-reduced-motion` desliga tudo de uma vez, sem
  * este componente precisar saber que essa preferência existe.
  *
+ * AS CORES SÃO CLASSES (`fill-primary`, `stroke-accent`), não hex escrito no
+ * SVG: a van é interface, não logotipo, e tem que acompanhar o token se o
+ * verde do app mudar. (O logotipo é o caso oposto — ver o `Logo.jsx`.)
+ *
  * `aria-hidden` porque é enfeite: quem lê a tela por leitor já recebeu
  * "Atualizando o app" do texto ao lado, e uma van não acrescenta informação.
  */
@@ -36,21 +40,21 @@ export default function EstradaCarregando({ className = '' }) {
         viewBox="0 0 64 40"
         className="ab-estrada-van absolute bottom-[5px] left-1/2 block h-[26px] w-auto -translate-x-1/2"
       >
-        <rect x="2" y="6" width="46" height="24" rx="7" fill="#1F5F3F" />
-        <rect x="7" y="11" width="30" height="12" rx="3.5" fill="#EEF1EF" />
-        <rect x="9" y="28" width="9" height="6" rx="3" fill="#1F5F3F" />
-        <rect x="32" y="28" width="9" height="6" rx="3" fill="#1F5F3F" />
+        <rect x="2" y="6" width="46" height="24" rx="7" className="fill-primary" />
+        <rect x="7" y="11" width="30" height="12" rx="3.5" className="fill-bg" />
+        <rect x="9" y="28" width="9" height="6" rx="3" className="fill-primary" />
+        <rect x="32" y="28" width="9" height="6" rx="3" className="fill-primary" />
         {/* As ondas em `accent`, as mesmas duas do logotipo. */}
         <path
           d="M53 14a8 8 0 0 1 0 9"
-          stroke="#52C41A"
+          className="stroke-accent"
           strokeWidth="3"
           fill="none"
           strokeLinecap="round"
         />
         <path
           d="M58 9a14 14 0 0 1 0 19"
-          stroke="#52C41A"
+          className="stroke-accent"
           strokeWidth="3"
           fill="none"
           strokeLinecap="round"

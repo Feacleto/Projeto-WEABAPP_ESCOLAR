@@ -21,15 +21,16 @@
  *                   quem dá trabalho, e some se a gente chamar tudo de
  *                   "Recebido"
  *   Atrasado        venceu e não entrou
- *   (nada)          ainda não venceu. Sem palavra: uma lista inteira
- *                   dizendo "a receber" no dia 2 do mês é ruído com
- *                   aparência de informação
+ *   Pendente        ainda não venceu
+ *   Conferir        o pai diz que pagou
  *
- * `claimed` sai do vocabulário DELE — mas não some do mundo. É o único
- * estado que exige uma decisão humana ("o pai diz que pagou; confirmo?"), e
- * decisão não é rótulo, é botão. Vira a ação "Dar baixa", que é o termo que
- * ele já usa. Rótulo cinza descrevendo tarefa pendente é a forma mais
- * comum de uma tarefa nunca ser feita.
+ * ⚠️ ATUALIZADO (03/10/2026, design system D5). `pending` e `claimed` eram
+ * SEM PALAVRA do lado dele — "a receber" no dia 2 parecia ruído, e o
+ * `claimed` era só o botão "Dar baixa". A lista nova pinta cada linha com a
+ * folhinha do estado, e cor sem palavra do lado é cor pedindo para ser
+ * decifrada. As duas palavras são CURTAS de propósito: "Pendente" é cinza e
+ * não chama; "Conferir" é o verbo do que ELE tem que fazer, não um rótulo
+ * descrevendo tarefa — e o botão "Dar baixa" continua do lado.
  *
  * O PAI NÃO MUDA. Do lado dele os quatro estados continuam, porque pra ele
  * eles significam coisas diferentes: "a pagar" é uma agenda, e "aguardando
@@ -46,9 +47,8 @@ export const PAYMENT_LABELS = {
   },
   claimed: {
     parent: 'Aguardando confirmação do motorista',
-    // Vazio de propósito: do lado do tio isto é tarefa, e a tarefa está no
-    // botão "Dar baixa" ao lado. Ver o cabeçalho deste arquivo.
-    admin: '',
+    // O verbo do que ele tem que fazer; o botão "Dar baixa" fica ao lado.
+    admin: 'Conferir',
     chip: 'Aguardando confirmação',
     tone: 'wait',
   },
@@ -60,8 +60,8 @@ export const PAYMENT_LABELS = {
   },
   pending: {
     parent: 'A pagar',
-    // Também vazio: ainda não venceu, não há nada pra ele fazer nem saber.
-    admin: '',
+    // Ainda não venceu. Cinza: não chama, só nomeia a cor da folhinha.
+    admin: 'Pendente',
     chip: 'A pagar',
     tone: 'neutral',
   },
@@ -79,7 +79,9 @@ export const PAGO_ATRASADO = { label: 'Pago atrasado', tone: 'late-ok' };
 
 /** Classes Tailwind do chip por tom — mesma cor nas duas pontas. */
 export const TONE_CLASSES = {
-  ok: 'bg-primaryChip text-primary',
+  // O verde do chip "em dia" do design system (D5): fundo primaryChip, letra
+  // accentText — a mesma tinta do StatusBadge "entregue" e da lista do mês.
+  ok: 'bg-primaryChip text-accentText',
   wait: 'bg-warningChip text-warningText',
   late: 'bg-dangerChip text-dangerText',
   // Entrou, mas atrasado. Verde-acinzentado com texto âmbar: lê como

@@ -1,0 +1,68 @@
+/* O MOVIMENTO DA TELA DA ROTA — e só o que confirma o gesto do motorista.
+ *
+ * Mora aqui, e não no index.css, porque são três animações que só existem
+ * nesta tela, e o index.css é arquivo compartilhado por várias sessões. Os
+ * valores são todos `var(--dur-*)`, `var(--curva-*)` e `var(--cor-*)`, gerados
+ * do tailwind.config.js (ver docs/design-system.md) — nenhuma cor crua.
+ *
+ * Regra do sistema: na rota, nada de festa. O check que estala é a resposta
+ * ao toque dele; o pulso é a exceção nomeada do "ao vivo", e PARA quando a
+ * posição envelhece (quem decide é `FaixaDaViagem`). */
+
+/* O check que estala: passa do ponto e volta (a mola), uma vez, e para.
+ * ⚠️ É a propriedade `scale`, não `transform`: o nó da escola é um losango
+ * (`rotate-45`), e um `transform` na animação apagaria a rotação — o losango
+ * viraria quadrado. `scale` compõe com o `transform` do Tailwind. */
+@keyframes rota-estala {
+  0% { scale: 0.4; }
+  100% { scale: 1; }
+}
+.rota-estala {
+  animation: rota-estala var(--dur-festa) var(--curva-mola) both;
+}
+
+/* O cartão da parada atual entra freando — dez pixels, não uma tela: quem lê
+ * está dentro de um veículo em movimento. */
+@keyframes rota-entra {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.rota-entra {
+  animation: rota-entra var(--dur-entrada) var(--curva-freio) both;
+}
+
+/* O ponto do "ROTA ATIVA". É a única coisa que repete na tela, e é a exceção
+ * que o sistema nomeia: o pulso do ao vivo. */
+@keyframes rota-pulso {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cor-accent) 70%, transparent); }
+  70% { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.rota-pulso {
+  animation: rota-pulso 1.6s var(--curva-freio) infinite;
+}
+
+/* SEGURAR PARA ENCERRAR: o fundo enche da esquerda em 800 ms, o tempo do
+ * dedo. Soltar antes volta na hora (sem transição) — um enchimento que
+ * esvazia devagar pareceria que ainda vai encerrar. */
+.rota-enche {
+  transform-origin: left;
+  transform: scaleX(0);
+}
+.rota-enche[data-segurando='true'] {
+  transform: scaleX(1);
+  transition: transform 800ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rota-estala,
+  .rota-entra,
+  .rota-pulso {
+    animation: none;
+  }
+  /* Com menos movimento o tempo de segurar continua o mesmo — ele é a trava,
+   * não enfeite. Só o enchimento deixa de andar: aparece cheio de uma vez. */
+  .rota-enche[data-segurando='true'] {
+    transition: none;
+  }
+}

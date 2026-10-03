@@ -49,7 +49,7 @@ export default function TermsAcceptanceGate() {
   return (
     <div className="min-h-screen flex flex-col px-6 py-8 bg-bg">
       <div className="flex-1 flex flex-col justify-center max-w-mobile mx-auto w-full">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mx-auto mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primaryChip mx-auto mb-4">
           <ShieldCheck size={32} className="text-primary" />
         </div>
         <h1 className="text-2xl font-bold text-text text-center">

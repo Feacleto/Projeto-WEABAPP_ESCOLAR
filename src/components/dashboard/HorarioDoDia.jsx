@@ -65,7 +65,7 @@ export default function HorarioDoDia({
         {/* O título "Hoje" some dentro do cartão: a tarja do topo já diz o
           * momento, e repetir a palavra a 20px de distância é ruído. */}
         {!semCasca && (
-          <h2 className="text-sm font-bold uppercase tracking-widest text-textMuted">
+          <h2 className="rotulo">
             Hoje
           </h2>
         )}
@@ -164,7 +164,7 @@ function Linha({ icon: Icon, hora, titulo, cancelado, motivo, previsao = null })
     <div className="flex items-center gap-4 py-3">
       <div
         className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-          cancelado ? 'bg-neutro text-textMuted' : 'bg-primary/10 text-primary'
+          cancelado ? 'bg-neutro text-textMuted' : 'bg-primaryChip text-primary'
         }`}
       >
         {cancelado ? <UserCheck size={20} /> : <Icon size={20} />}

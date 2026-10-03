@@ -217,7 +217,7 @@ function Linha({ falta }) {
 
   return (
     <div className="flex items-start gap-3 rounded-2xl bg-card px-4 py-3 shadow-sm">
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
         <CalendarX2 size={15} />
       </span>
       <div className="min-w-0 flex-1">

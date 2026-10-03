@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Notebook, School, User as UserIcon } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import EmptyState from '../../components/common/EmptyState';
+import IconePorNome from '../../components/common/IconePorNome';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
@@ -116,10 +117,8 @@ function EntryRow({ entry }) {
       <div
         className={`bg-gradient-to-r ${t.color} text-white px-4 py-2 flex items-center gap-2`}
       >
-        <span className="text-base" aria-hidden>
-          {t.emoji}
-        </span>
-        <span className="text-xs font-bold uppercase tracking-wide flex-1 truncate">
+        <IconePorNome nome={t.icone} size={16} />
+        <span className="rotulo flex-1 truncate text-white">
           {t.label}
         </span>
         <span className="text-xs text-white/80">{dateLabel}</span>

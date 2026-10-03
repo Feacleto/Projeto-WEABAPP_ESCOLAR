@@ -194,7 +194,7 @@ export default function TioSemana() {
                   * app → semana → dias. */}
                 <thead className="sticky top-[6.5rem] z-10 bg-bg">
                   <tr>
-                    <th className="text-left text-xs uppercase tracking-widest text-textMuted font-normal pb-2 pr-2">
+                    <th className="rotulo text-left pb-2 pr-2">
                       criança
                     </th>
                     {dias.map((d, i) => {
@@ -202,7 +202,7 @@ export default function TioSemana() {
                       return (
                         <th
                           key={chaves[i]}
-                          className={`pb-2 px-0.5 text-xs font-bold uppercase tracking-wide ${
+                          className={`rotulo pb-2 px-0.5 ${
                             ehHoje ? 'text-primary' : 'text-textMuted'
                           }`}
                           style={{ width: 42 }}

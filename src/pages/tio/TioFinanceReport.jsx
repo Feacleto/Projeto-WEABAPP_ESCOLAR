@@ -5,6 +5,7 @@ import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
 import BarChart from '../../components/charts/BarChart';
 import StackedBar from '../../components/charts/StackedBar';
+import { ESTADOS_DO_MES } from '../../components/payments/estadoDaMensalidade';
 import {
   getPaymentsSince,
   computeDisplayStatus,
@@ -24,7 +25,9 @@ import { useAuth } from '../../hooks/useAuth';
  * Estrutura:
  *   1. Cabeçalho com dados da empresa + período
  *   2. Resumo do mês corrente em destaque
- *   3. Stacked bar do status do mês (Pago / Aguardando / Pendente / Atrasado)
+ *   3. Barra dos quatro estados do mês — a MESMA do Financeiro, com as
+ *      mesmas cores e ícones (ela era azul para "aguardando" aqui e âmbar
+ *      na lista: dois sinais para o mesmo estado)
  *   4. Barras horizontais: Recebido nos últimos 12 meses
  *   5. Tabela mês a mês (recebido, em aberto, % cobrança)
  *
@@ -193,14 +196,12 @@ export default function TioFinanceReport() {
         </div>
 
         {/* Documento — visível no print */}
-        <article className="bg-card rounded-3xl shadow-sm p-6 print:p-0 print:shadow-none print:rounded-none space-y-6">
+        <article className="bg-card rounded-2xl shadow-rest p-5 print:p-0 print:shadow-none print:rounded-none space-y-6">
           {/* Cabeçalho do relatório */}
           <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold uppercase tracking-widest text-textMuted">
-                  Relatório financeiro
-                </p>
+                <p className="rotulo">Relatório financeiro</p>
                 <h1 className="text-2xl font-bold text-text leading-tight mt-1">
                   {profile?.companyName || profile?.name || 'Transporte escolar'}
                 </h1>
@@ -219,23 +220,27 @@ export default function TioFinanceReport() {
 
           {/* Resumo geral */}
           <section className="grid grid-cols-2 gap-3">
-            <div className="bg-primarySoft rounded-2xl p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">
+            {/* A cor fica na marca do rótulo, nunca no número: valor colorido
+              * se lê como alarme mesmo quando é só o total do ano. */}
+            <div className="bg-surface rounded-xl p-4">
+              <p className="rotulo flex items-center gap-1.5">
+                <span aria-hidden className="h-2.5 w-2.5 rounded-sm bg-primary" />
                 Total recebido
               </p>
-              <p className="text-2xl font-bold text-primary tabular-nums mt-1">
+              <p className="font-display text-2xl font-extrabold text-text tabular-nums mt-1">
                 {formatCurrency(totalReceived)}
               </p>
-              <p className="text-xs text-primary mt-1">12 meses</p>
+              <p className="text-xs text-textMuted mt-1">12 meses</p>
             </div>
-            <div className="bg-warningSoft rounded-2xl p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-warningText">
+            <div className="bg-surface rounded-xl p-4">
+              <p className="rotulo flex items-center gap-1.5">
+                <span aria-hidden className="h-2.5 w-2.5 rounded-sm bg-warning" />
                 Em aberto
               </p>
-              <p className="text-2xl font-bold text-warningText tabular-nums mt-1">
+              <p className="font-display text-2xl font-extrabold text-text tabular-nums mt-1">
                 {formatCurrency(totalOpen)}
               </p>
-              <p className="text-xs text-warningText mt-1">12 meses</p>
+              <p className="text-xs text-textMuted mt-1">12 meses</p>
             </div>
           </section>
 
@@ -244,33 +249,19 @@ export default function TioFinanceReport() {
             <h2 className="text-sm font-bold text-text">
               Mês atual · {formatMonthLabel(currentMonthKey)}
             </h2>
+            {/* `currentMonth` guarda o "não venceu" em `open`; o resto tem o
+              * nome do estado. */}
             <StackedBar
-              segments={[
-                {
-                  label: 'Pago',
-                  value: currentMonth.received,
-                  count: currentMonthCounts.paid || 0,
-                  color: 'emerald',
-                },
-                {
-                  label: 'Aguardando',
-                  value: currentMonth.claimed,
-                  count: currentMonthCounts.claimed || 0,
-                  color: 'blue',
-                },
-                {
-                  label: 'Pendente',
-                  value: currentMonth.open,
-                  count: currentMonthCounts.pending || 0,
-                  color: 'amber',
-                },
-                {
-                  label: 'Atrasado',
-                  value: currentMonth.overdue,
-                  count: currentMonthCounts.overdue || 0,
-                  color: 'red',
-                },
-              ]}
+              segments={ESTADOS_DO_MES.map((e) => ({
+                ...e,
+                quantidade: currentMonthCounts[e.chave] || 0,
+                valor:
+                  e.chave === 'paid'
+                    ? currentMonth.received
+                    : e.chave === 'pending'
+                      ? currentMonth.open
+                      : currentMonth[e.chave],
+              }))}
             />
           </section>
 
@@ -282,7 +273,7 @@ export default function TioFinanceReport() {
                 label: formatMonthLabel(mk),
                 value: (byMonth.get(mk) || {}).received || 0,
               }))}
-              color="emerald"
+              color="primary"
             />
           </section>
 
@@ -328,10 +319,10 @@ export default function TioFinanceReport() {
                           <td className="py-2 px-2 capitalize">
                             {formatMonthLabel(mk)}
                           </td>
-                          <td className="py-2 px-2 text-right tabular-nums text-primary font-semibold">
+                          <td className="py-2 px-2 text-right tabular-nums text-text font-semibold">
                             {formatCurrency(slot.received)}
                           </td>
-                          <td className="py-2 px-2 text-right tabular-nums text-warningText">
+                          <td className="py-2 px-2 text-right tabular-nums text-textMuted">
                             {formatCurrency(open)}
                           </td>
                           <td className="py-2 px-2 text-right tabular-nums font-bold text-text">
@@ -371,7 +362,7 @@ export default function TioFinanceReport() {
                       {c.nome}
                     </span>
                     {c.emAberto > 0 && (
-                      <span className="shrink-0 text-xs font-semibold tabular-nums text-dangerText">
+                      <span className="shrink-0 text-xs font-semibold tabular-nums text-text">
                         {formatCurrency(c.emAberto)} em aberto
                       </span>
                     )}

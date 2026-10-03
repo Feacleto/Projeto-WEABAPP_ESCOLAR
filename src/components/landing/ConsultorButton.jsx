@@ -32,7 +32,7 @@ export default function ConsultorButton({
 }) {
   const skin =
     tone === 'light'
-      ? 'border-primary/25 bg-primary/5 text-primary'
+      ? 'border-primaryBorder bg-primaryChip text-primary'
       : 'border-onNightAccent/30 bg-onNightAccentFill/10 text-onNightAccent';
 
   return (

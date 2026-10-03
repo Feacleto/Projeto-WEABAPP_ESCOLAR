@@ -72,7 +72,7 @@ import { FRENTE_FAMILIA, lembrarFrente } from '../dominio/vitrine/frentes';
  *      não vence nem se gasta, então pedir de novo resolve.
  *   4. O que tem dentro, como tranquilidade e não como lista de recursos.
  *
- * ESTA PORTA É CLARA. A DO MOTORISTA É ESCURA. NÃO É DESCUIDO.
+ * ESTA PORTA É CLARA — E DESDE 03/10/2026 A DO MOTORISTA TAMBÉM.
  *
  * Ela já foi escura, com o mesmo quase-preto e o mesmo cartão de vidro da
  * home do motorista, e o comentário aqui defendia isso como coerência: mesmo
@@ -91,10 +91,12 @@ import { FRENTE_FAMILIA, lembrarFrente } from '../dominio/vitrine/frentes';
  * login é a forma exata de um golpe. Ela não precisa saber nomear isso pra
  * hesitar.
  *
- * As duas portas continuam com temperaturas diferentes, agora de propósito e
- * pelo motivo certo: a temperatura serve quem lê a porta, não o sistema. O
- * motorista está COMPRANDO — escuro, negócio, decisão. Ela está ENTRANDO EM
- * CASA.
+ * Por um tempo as duas portas tiveram temperaturas diferentes: o motorista
+ * estaria COMPRANDO (escuro, negócio, decisão) e ela ENTRANDO EM CASA. Em
+ * 03/10/2026 o dono revogou a primeira metade: dentro do app não existe tela
+ * escura, a superfície escura ficou só no site, e a porta do motorista virou
+ * o cabeçalho verde com a marca sobre a areia do app. O argumento acima — a
+ * porta tem que prometer o produto que abre em seguida — vale pros dois.
  *
  * O ÂMBAR SAIU E NÃO VOLTA: `secondary` e `warning` eram o MESMO hex
  * (#F5A623). Âmbar é aviso no app inteiro — fatura vencida, criança sem
@@ -103,8 +105,9 @@ import { FRENTE_FAMILIA, lembrarFrente } from '../dominio/vitrine/frentes';
  */
 
 /* O cartão desta porta é o mesmo cartão do app dela: branco sobre o cinza da
- * página. O vidro ficou só na home do motorista, junto com o escuro. */
-const CARTAO = 'bg-card border border-border rounded-3xl shadow-sm';
+ * página, com a sombra `rest` e sem borda (D7 do design system). O vidro e o
+ * escuro ficaram só no site: desde 03/10/2026 nenhuma tela do app é escura. */
+const CARTAO = 'bg-card rounded-3xl shadow-rest';
 
 /**
  * O que ele encontra dentro. Quatro, não seis: é o que ele realmente abre o

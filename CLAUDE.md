@@ -108,9 +108,14 @@ react-hot-toast. JavaScript puro — **não há TypeScript**.
 títulos (`font-display`; todo `h1`/`h2` já sai nela) e **Instrument Sans** no
 resto — a Inter saiu. O site não lê Tailwind, então `npm run tokens` gera
 `landing/tokens.css` (e `src/design/tokens.css`), e `npm run testar:design`
-falha se uma cópia ficar para trás, se o site declarar cor própria ou se
-aparecer letra abaixo de **12px** no app. Os nomes velhos do Tailwind
-(`rounded-xl`, `shadow-sm`…) foram remapeados para os valores do sistema.
+falha se uma cópia ficar para trás, se o site declarar cor própria, se
+aparecer letra abaixo de **12px** ou emoji visível no app. Os nomes velhos do
+Tailwind (`rounded-xl`, `shadow-sm`…) foram remapeados para os valores do
+sistema. ⚠️ **Dentro do app não existe tela escura** (decisão do dono,
+03/10/2026): as telas de entrada usam o cabeçalho VERDE da porta, a folha
+(`Sheet`) é branca com alça, e o escuro ficou só no site e no balão do tour.
+⚠️ **Nada se mexe sozinho, só o "ao vivo"** — as exceções têm nome no
+docs/design-system.md (o fundo do login, o anel do tour).
 
 ⚠️ **OS TILES DO MAPA VÊM DO MAPTILER desde 10/09/2026, e o motivo não é
 custo** — [config/mapa.js](src/config/mapa.js). Eles vinham do servidor do
@@ -1139,7 +1144,19 @@ recebia às 6h) e o "faltou registrar" do fim da rota
 (`quemFicouSemRegistro`, que vê quem ficou NA PERUA; antes a direção era
 adivinhada pelo relógio). Quem faltou ou vai com o pai fica fora de todos — e
 dos alvos do "está chegando". Ao encerrar com pendência, a barra diz
-"Ainda na perua: …" antes do "Confirmar".
+"Ainda na perua: …" enquanto ele SEGURA o botão de encerrar
+([SegurarParaEncerrar](src/components/route/SegurarParaEncerrar.jsx), 800 ms;
+soltar antes cancela) — os dois toques com "Confirmar" saíram com o design
+system.
+
+**A TELA DA ROTA É UMA LINHA DO TEMPO** (03/10/2026, modelo aprovado pelo
+dono): [FaixaDaViagem](src/components/route/FaixaDaViagem.jsx) no topo e
+[LinhaDoTempo](src/components/route/LinhaDoTempo.jsx) com a hora combinada à
+esquerda e a real embaixo, a parada atual aberta no próprio lugar, a falta
+riscada e as escolas como marcos violeta. ⚠️ A hora real sai de
+`statusUpdatedAt`, que guarda só o ÚLTIMO passo: depois da escola, a linha da
+casa perde a hora do embarque (ela existe em `rides/{dia}`, mas ler custaria
+uma assinatura por criança).
 
 ⚠️ **"A ROTA NÃO COMEÇOU" TEM TETO E OLHA O STATUS** — só para criança ainda
 em casa, e só até 90 minutos depois da hora de pegar
@@ -1829,9 +1846,11 @@ documento com a parte em branco. Bloco 11 de `npm run testar:auth`.
 
 **As duas telas de cadastro são de MONITOR também**, com `data-painel="web"`:
 o motorista decide sentado, e a responsável que perdeu o link volta pelo site.
-As formas são OPOSTAS, e isso vem da landing — ele está comprando (denso,
-escuro, campos em pares), ela está sendo tranquilizada (claro, arejado, uma
-coluna). O empilhado do celular continua sendo o desenho principal das duas.
+As formas eram OPOSTAS — ele "comprando" (denso, escuro, campos em pares),
+ela sendo tranquilizada (claro, arejado). ⚠️ **Desde 03/10/2026 as duas são
+CLARAS**, com o cabeçalho verde da porta (decisão do dono, design system): o
+cadastro dele continua denso e em pares, mas não escuro. O empilhado do
+celular continua sendo o desenho principal das duas.
 
 ⚠️ **ATUALIZAÇÃO 02/10/2026: O LINK CONTINUA SENDO A PORTA PRINCIPAL, MAS
 NÃO A ÚNICA.** Quem já entrou (Google ou e-mail) e não tem conta no app vê,
@@ -1931,7 +1950,10 @@ promete garantia sem prová-la já foi um problema recorrente aqui**.
 
 **Sem emoji em lugar nenhum da interface** (decisão do dono, 02/10/2026) —
 no app, ícone do `lucide-react`; na landing, SVG inline. `testar:site` reprova
-emoji visível no site.
+emoji visível no site e `testar:design` no app. Quando o ícone vem de um DADO
+(tipo de recado da agenda, categoria de despesa, tema de data festiva), o dado
+guarda o NOME do ícone e [IconePorNome](src/components/common/IconePorNome.jsx)
+desenha — service e `marca/` não podem importar React.
 
 **Mensagem de commit descreve o efeito para uma pessoa**, não o diff:
 "O pai é avisado quando a criança chega", "Aviso antigo deixa de virar criança
@@ -1940,7 +1962,7 @@ humano.
 
 **Cor tem nome, e o nome é o papel.** Todos os tokens estão em
 [tailwind.config.js](tailwind.config.js), com o porquê de cada um no próprio
-arquivo, e `npm run testar:contraste` mede 54 pares contra os fundos reais.
+arquivo, e `npm run testar:contraste` mede 55 pares contra os fundos reais.
 O uso de cada peça (botão, chip, lista, diálogo, movimento) está em
 [docs/design-system.md](docs/design-system.md).
 Cinco regras, e todas nasceram de um bug:

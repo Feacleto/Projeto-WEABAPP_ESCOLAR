@@ -118,7 +118,7 @@ function ParentMessage({ child }) {
         </div>
       </div>
       <h2 className="text-2xl font-bold text-text leading-tight">
-        Feliz aniversário, {first}! 🎂
+        Feliz aniversário, {first}!
       </h2>
       <p className="text-textMuted text-sm">
         Todo o time do Tio Nino deseja um dia incrível pra você.
@@ -145,7 +145,7 @@ function AdminMessage({ childrenList }) {
           </div>
         </div>
         <h2 className="text-2xl font-bold text-text leading-tight">
-          Hoje é aniversário do(a) {first}! 🎂
+          Hoje é aniversário do(a) {first}!
         </h2>
         <p className="text-textMuted text-sm">
           Que tal dar um parabéns extra na rota hoje?
@@ -156,7 +156,7 @@ function AdminMessage({ childrenList }) {
   return (
     <div className="space-y-3">
       <h2 className="text-2xl font-bold text-text leading-tight">
-        Hoje tem {childrenList.length} aniversariantes! 🎂
+        Hoje tem {childrenList.length} aniversariantes!
       </h2>
       <div className="flex justify-center gap-2 flex-wrap pt-1">
         {childrenList.slice(0, 6).map((c) => (

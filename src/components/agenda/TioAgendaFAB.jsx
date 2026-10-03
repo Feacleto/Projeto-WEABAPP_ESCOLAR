@@ -24,6 +24,7 @@ import {
   createBroadcastEntry,
 } from '../../services/agendaService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
+import IconePorNome from '../common/IconePorNome';
 
 /**
  * Botão flutuante de agenda na tela do Tio. Tap abre um sheet em 3 passos:
@@ -83,7 +84,7 @@ export default function TioAgendaFAB() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Avisar os pais"
-        className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-escola to-escola text-white shadow-focus flex items-center gap-2 tap font-bold print:hidden"
+        className="fixed bottom-24 right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-escola to-escola text-white shadow-float flex items-center gap-2 tap font-bold print:hidden"
       >
         <Notebook size={22} />
         <span className="text-sm">Avisar pais</span>
@@ -415,7 +416,7 @@ function TargetStep({
         * botão também fica inconfundível: dois vermelhos lado a lado se
         * diluem. */}
       <section>
-        <p className="text-xs font-bold uppercase tracking-widest text-textMuted mb-2">
+        <p className="rotulo mb-2">
           Aconteceu agora · avisa todo mundo
         </p>
         <button
@@ -423,9 +424,7 @@ function TargetStep({
           onClick={() => onAtalho('quebrou')}
           className="tap w-full rounded-2xl bg-gradient-to-br from-danger to-dangerText text-white px-3 py-3 flex items-center justify-center gap-2 shadow-sm"
         >
-          <span className="text-2xl" aria-hidden>
-            🚨
-          </span>
+          <IconePorNome nome="TriangleAlert" size={24} />
           <span className="text-sm font-bold">Perua quebrou</span>
         </button>
 
@@ -450,7 +449,7 @@ function TargetStep({
       {/* Bloco "Toda uma escola" */}
       {schools.length > 0 && (
         <section>
-          <p className="text-xs font-bold uppercase tracking-widest text-textMuted mb-2">
+          <p className="rotulo mb-2">
             Aviso geral · escola
           </p>
           <div className="grid grid-cols-1 gap-2">
@@ -480,7 +479,7 @@ function TargetStep({
 
       {/* Bloco "Uma criança" */}
       <section>
-        <p className="text-xs font-bold uppercase tracking-widest text-textMuted mb-2 flex items-center gap-1.5">
+        <p className="rotulo mb-2 flex items-center gap-1.5">
           <Users size={12} /> Aviso pessoal · criança
         </p>
         <input
@@ -543,9 +542,7 @@ function TypeStep({ scope, target, onPick }) {
             onClick={() => onPick(key)}
             className={`tap min-h-20 rounded-2xl bg-gradient-to-br ${t.color} text-white px-3 py-3 flex flex-col items-center justify-center gap-1 shadow-sm`}
           >
-            <span className="text-2xl" aria-hidden>
-              {t.emoji}
-            </span>
+            <IconePorNome nome={t.icone} size={24} />
             <span className="text-xs font-bold leading-tight text-center">
               {t.label}
             </span>
@@ -580,11 +577,9 @@ function ConfirmStep({
       <div
         className={`rounded-2xl bg-gradient-to-r ${typeData.color} text-white p-4 flex items-center gap-3`}
       >
-        <span className="text-3xl" aria-hidden>
-          {typeData.emoji}
-        </span>
+        <IconePorNome nome={typeData.icone} size={28} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs uppercase tracking-widest text-white/85 font-bold">
+          <p className="rotulo text-white/85">
             {recipient}
           </p>
           <p className="font-bold leading-tight">{typeData.label}</p>
@@ -592,7 +587,7 @@ function ConfirmStep({
       </div>
 
       <div>
-        <label className="block text-xs font-bold uppercase tracking-widest text-textMuted mb-2">
+        <label className="rotulo block mb-2">
           Mensagem que o pai vai receber
         </label>
         <textarea
@@ -611,7 +606,7 @@ function ConfirmStep({
       <div>
         <label
           htmlFor="agenda-event-date"
-          className="block text-xs font-bold uppercase tracking-widest text-textMuted mb-2"
+          className="rotulo block mb-2"
         >
           Dia do evento{' '}
           <span className="font-medium normal-case tracking-normal">

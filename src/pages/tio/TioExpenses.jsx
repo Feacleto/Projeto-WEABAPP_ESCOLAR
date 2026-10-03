@@ -21,6 +21,7 @@ import {
   monthKeyOf,
 } from '../../services/expensesService';
 import { formatCurrency, formatMonthLabel, formatDate } from '../../compartilhado/formatters';
+import IconePorNome from '../../components/common/IconePorNome';
 
 /**
  * Despesas do mês — /tio/finance/expenses
@@ -83,7 +84,7 @@ export default function TioExpenses() {
 
         {/* O número que ele veio ver */}
         <div className="rounded-2xl bg-gradient-to-br from-text via-text to-night text-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
+          <p className="rotulo text-white/70">
             gasto em {formatMonthLabel(monthKey)}
           </p>
           <p className="text-3xl font-extrabold mt-1">{formatCurrency(total)}</p>
@@ -115,7 +116,7 @@ export default function TioExpenses() {
             <BarChart
               color="red"
               data={byCategory.map((c) => ({
-                label: `${c.icon} ${c.label}`,
+                label: c.label,
                 value: c.value,
               }))}
             />
@@ -124,15 +125,15 @@ export default function TioExpenses() {
 
         {expenses?.length > 0 && (
           <section className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+            <p className="rotulo">
               lançamentos
             </p>
             {expenses.map((e) => {
               const cat = EXPENSE_CATEGORIES[e.category] || EXPENSE_CATEGORIES.other;
               return (
                 <Card key={e.id} className="flex items-center gap-3">
-                  <span className="text-xl shrink-0" aria-hidden>
-                    {cat.icon}
+                  <span className="w-10 h-10 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
+                    <IconePorNome nome={cat.icone} size={20} />
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-text truncate">
@@ -289,11 +290,11 @@ function ExpenseForm({ defaultMonthKey, onClose, onSaved }) {
                     aria-pressed={active}
                     className={`tap h-12 rounded-xl border-2 text-xs font-semibold flex items-center gap-1.5 px-3 text-left ${
                       active
-                        ? 'border-primary bg-primary/5 text-text'
+                        ? 'border-primary bg-primarySoft text-text'
                         : 'border-border bg-card text-textMuted'
                     }`}
                   >
-                    <span aria-hidden>{cat.icon}</span>
+                    <IconePorNome nome={cat.icone} size={18} />
                     <span className="truncate">{cat.label}</span>
                   </button>
                 );

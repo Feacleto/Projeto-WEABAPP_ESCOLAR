@@ -130,6 +130,7 @@ par('abas do login: accentText sobre card', C.accentText, C.card);
 par('accentText sobre bg', C.accentText, C.bg);
 // O CARTÃO VERDE DO INÍCIO (ResumoDaTurma) — design system, 03/10/2026.
 par('onAccent sobre accent (botão limão)', C.onAccent, C.accent);
+par('onAccent sobre whatsapp (botão do WhatsApp)', C.onAccent, C.whatsapp);
 par('primaryChip sobre primary (linha do cartão verde)', C.primaryChip, C.primary);
 par('menta sobre primary (rótulo do cartão verde)', C.menta, C.primary);
 // O chip real onde o accentText vive: accent a 10% sobre branco.

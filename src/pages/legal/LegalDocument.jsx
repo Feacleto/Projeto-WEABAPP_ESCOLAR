@@ -47,7 +47,7 @@ export default function LegalDocument({
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary tap px-3 py-1.5 rounded-lg bg-primary/10"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary tap px-3 py-1.5 rounded-lg bg-primaryChip"
           >
             <Printer size={16} /> Salvar como PDF
           </button>

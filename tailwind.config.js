@@ -81,10 +81,13 @@ export default {
         // Só em superfície IMPRESSA: extrato, contrato, recibo.
         linhaImpressa: '#9CA3AF',
 
-        // ── SUPERFÍCIE ESCURA — só a home pública do motorista ───────────
+        // ── SUPERFÍCIE ESCURA — só no SITE, nunca dentro do app ──────────
         //
-        // Ela está COMPRANDO: escuro, negócio, decisão. A porta da família é
-        // clara, igual ao app dela — ver o cabeçalho de Familia.jsx.
+        // ⚠️ ATUALIZADO (03/10/2026, decisão do dono): as telas de entrada do
+        // app (boas-vindas, cadastro, login, primeiro acesso, topo do painel)
+        // eram escuras porque "quem chega está comprando". Passaram para o
+        // claro, com o cabeçalho verde da porta. O escuro ficou no bloco "a
+        // dor" e no rodapé do site, e no balão do tutorial, que usa esta tinta.
         night: '#0B1210',
         glass: 'rgba(255,255,255,0.055)',
         glassBorder: 'rgba(255,255,255,0.1)',
@@ -154,6 +157,11 @@ export default {
         // dele: o limão é botão apenas sobre verde ou escuro, onde o
         // verde-escuro some (design system, D3). 7,5:1.
         onAccent: '#06210A',
+        // O VERDE DO WHATSAPP — cor de OUTRA marca, e só no botão que abre o
+        // WhatsApp: é o sinal que a pessoa reconhece antes de ler. Ele estava
+        // como hex cru em três telas, e numa delas com letra BRANCA (2,0:1,
+        // ilegível sob sol). A letra é sempre a `onAccent`: 8,6:1.
+        whatsapp: '#25D366',
 
         // ── SINAIS ──────────────────────────────────────────────────────
         //
@@ -329,30 +337,26 @@ export default {
           from: { inset: '-4px', opacity: '0.9' },
           to: { inset: '-16px', opacity: '0' },
         },
-        /* A criança que acabou de entrar na turma: chega com um pulinho e
-           fica respirando. O joinha balança do lado. Tela de cadastro feito. */
+        /* A criança que acabou de entrar na turma: chega com um pulinho UMA
+           vez e para. A respiração e o joinha em laço saíram (03/10/2026):
+           o design system não deixa nada se mexer sozinho. */
         'crianca-chega': {
           '0%': { opacity: '0', transform: 'translateY(24px) scale(.7)' },
           '60%': { opacity: '1', transform: 'translateY(-6px) scale(1.04)' },
           '100%': { opacity: '1', transform: 'none' },
         },
-        'crianca-respira': {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-5px)' },
-        },
-        joinha: {
-          '0%, 100%': { transform: 'rotate(-10deg) scale(1)' },
-          '50%': { transform: 'rotate(12deg) scale(1.08)' },
-        },
       },
       animation: {
-        'entra-esq': 'entra-esq 260ms cubic-bezier(.22,.9,.24,1) both',
-        'entra-dir': 'entra-dir 260ms cubic-bezier(.22,.9,.24,1) both',
-        'entra-plano': 'entra-plano 180ms linear both',
+        // Os tempos são os do design system: entrada 300ms, estado 200ms,
+        // festa 450ms, com a curva de freio (ou a mola, na conquista).
+        'entra-esq': 'entra-esq 300ms cubic-bezier(.2,.8,.2,1) both',
+        'entra-dir': 'entra-dir 300ms cubic-bezier(.2,.8,.2,1) both',
+        'entra-plano': 'entra-plano 200ms linear both',
+        // EXCEÇÃO NOMEADA: o anel do tutorial pulsa enquanto o balão aponta
+        // para ele — é o único jeito de achar o alvo numa tela que não
+        // escurece. Some quando o tour fecha.
         'tour-pulso': 'tour-pulso 1.4s ease-out infinite',
-        'crianca-chega': 'crianca-chega 600ms cubic-bezier(.22,.9,.24,1) both',
-        'crianca-respira': 'crianca-respira 2.6s ease-in-out 600ms infinite',
-        joinha: 'joinha 900ms ease-in-out 500ms infinite',
+        'crianca-chega': 'crianca-chega 450ms cubic-bezier(.3,1.5,.5,1) both',
       },
 
       // ⚠️ AS FONTES DO SITE (03/10/2026, D1). O app usava Inter em tudo, e

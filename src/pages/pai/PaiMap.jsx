@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Bus,
@@ -11,35 +10,39 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import LiveMap from '../../components/map/LiveMap';
 import Skeleton from '../../components/common/Skeleton';
+import Button from '../../components/common/Button';
 import RouteTracker from '../../components/dashboard/RouteTracker';
 import { describeRoutePresence, PRESENCE, formatDistance } from '../../dominio/rota/routePresence';
-import { playSound } from '../../services/soundService';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
+import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
 import { haversineDistance } from '../../compartilhado/haversine';
 import { formatDateTime } from '../../compartilhado/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 
 const NEAR_KM = 2; // ≤ 2 km da casa do pai = "zona próxima"
 const ARRIVED_KM = 0.4;
-const VIBRATE_PATTERN = [220, 100, 220, 100, 220];
 
 /**
  * Mapa do Pai — desenhado pra preservar a privacidade do Tio:
  *
- * 1. Sempre mostra: casa do pai 🏠 (verde) + escola da criança 🏫 (violeta)
+ * 1. Sempre mostra: a casa (verde) e a escola da criança (violeta)
  * 2. Quando rota INATIVA: só casa + escola. Mensagem "Tio não está em rota".
  * 3. Quando rota ATIVA mas Tio LONGE (> 2 km da casa): NÃO mostra perua.
- *    Mensagem "Tio Nino em rota — chegará em breve". Privacidade preservada
+ *    Mensagem "em rota, chega em breve". Privacidade preservada
  *    (outros pais não veem por onde ele tá indo).
  * 4. Quando rota ATIVA e Tio PRÓXIMO (≤ 2 km): perua aparece na posição real
  *    + mensagem "Pode preparar a criança". Permite o pai se organizar sem
  *    atrasar a rota.
- * 5. Quando CHEGOU (≤ 400 m): "Tio Nino chegou!" + vibração.
+ * 5. O aviso de chegada vem do servidor (ver o comentário abaixo).
  */
 export default function PaiMap() {
   const navigate = useNavigate();
+  // O nome que ELA usa ("Tio Zé"). Esta tela escrevia "Tio Nino" — o nome
+  // fictício de antes — à mão, em três frases.
+  const { nome: nomeDaMarca } = useMarcaDoTio();
+  const quem = nomeDaMarca || 'O motorista';
   const { child, loading } = useActiveChild();
   const { location: liveLocation } = useLiveLocation(child?.adminUid);
   const { admin } = useAdminProfile(child?.adminUid);
@@ -80,45 +83,10 @@ export default function PaiMap() {
   // Só desenha a perua quando ela está perto E a posição é fresca.
   const visibleVan = isNearby && !positionIsStale ? realVan : null;
 
-  // Alertas — dispara cada um uma vez por rota (transição de zona)
-  const alertedNearRef = useRef(false);
-  const alertedArrivedRef = useRef(false);
-  useEffect(() => {
-    if (!routeActive || positionIsStale) {
-      alertedNearRef.current = false;
-      alertedArrivedRef.current = false;
-      return;
-    }
-    if (hasArrived && !alertedArrivedRef.current) {
-      alertedArrivedRef.current = true;
-      toast.success('🚐 Tio Nino chegou! Pode levar a criança.', {
-        duration: 10000,
-      });
-      playSound('horn_long');
-      if ('vibrate' in navigator) {
-        try {
-          navigator.vibrate(VIBRATE_PATTERN);
-        } catch {
-          /* */
-        }
-      }
-      return;
-    }
-    if (isNearby && !alertedNearRef.current) {
-      alertedNearRef.current = true;
-      toast.success('🚐 Tio Nino tá chegando! Pode preparar a criança.', {
-        duration: 8000,
-      });
-      playSound('horn_short');
-      if ('vibrate' in navigator) {
-        try {
-          navigator.vibrate(VIBRATE_PATTERN);
-        } catch {
-          /* */
-        }
-      }
-    }
-  }, [routeActive, isNearby, hasArrived, positionIsStale]);
+  // O ALERTA DE CHEGADA SAIU DAQUI (03/10/2026): esta tela tinha um segundo
+  // caminho, com "Tio Nino" escrito à mão e emoji, que tocava junto com o do
+  // Início. Hoje quem avisa é o servidor (`functions/lib/avisosDaRota.js`),
+  // em qualquer tela e com o app fechado.
 
   const whatsappUrl = admin?.phone
     ? `https://wa.me/55${String(admin.phone).replace(/\D/g, '')}`
@@ -217,6 +185,7 @@ export default function PaiMap() {
           realDistanceKm={realDistanceKm}
           updatedAt={liveLocation?.updatedAt}
           presence={presence}
+          quem={quem}
         />
 
         {/* Tracker do trajeto da criança — mesmo do dashboard */}
@@ -240,17 +209,16 @@ export default function PaiMap() {
           />
         </div>
 
-        <button
+        <Button
           onClick={() => {
             if (whatsappUrl) window.open(whatsappUrl, '_blank');
             else toast('Telefone do motorista não cadastrado.');
           }}
           disabled={!whatsappUrl}
-          className="tap w-full rounded-2xl py-3.5 bg-primary text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          icon={MessageCircle}
         >
-          <MessageCircle size={18} />
           Falar com o Tio
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -265,6 +233,7 @@ function StatusPanel({
   realDistanceKm,
   updatedAt,
   presence,
+  quem,
 }) {
   // Rota marcada como ativa mas sem posição nova: o motorista pode estar
   // sem sinal, ou fechou a aba sem encerrar. Antes esta tela mostrava a
@@ -310,7 +279,7 @@ function StatusPanel({
         </div>
         <div className="flex-1">
           <p className="font-bold text-text leading-tight">
-            Tio Nino não está em rota
+            {quem} não está em rota
           </p>
           {updatedAt && (
             <p className="text-xs text-textMuted mt-0.5">
@@ -330,10 +299,10 @@ function StatusPanel({
         </div>
         <div className="flex-1">
           <p className="font-bold text-primary leading-tight text-lg">
-            Tio Nino chegou!
+            {quem} chegou
           </p>
           <p className="text-xs text-primary mt-0.5">
-            Tá na sua porta — pode levar a criança.
+            A perua está na sua porta.
           </p>
         </div>
       </div>
@@ -366,7 +335,7 @@ function StatusPanel({
       </div>
       <div className="flex-1">
         <p className="font-bold text-infoText leading-tight">
-          Tio Nino em rota
+          {quem} está em rota
         </p>
         <p className="text-xs text-infoText mt-0.5">
           Vamos te avisar quando estiver perto.
@@ -385,7 +354,7 @@ function ReferenceRow({ icon: Icon, color, label, value }) {
         <Icon size={16} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs uppercase tracking-widest font-semibold text-textMuted">
+        <p className="rotulo">
           {label}
         </p>
         <p className="text-sm text-text leading-tight truncate">{value}</p>

@@ -125,7 +125,7 @@ export default function AvisosDaViagem({ adminUid, criancas = [], focoHora = nul
   return (
     <>
       <section className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+        <p className="rotulo">
           avisar as famílias desta viagem
         </p>
         <div className="grid grid-cols-3 gap-2">

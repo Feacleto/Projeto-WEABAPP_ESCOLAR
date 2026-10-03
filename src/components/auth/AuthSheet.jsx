@@ -181,7 +181,7 @@ export default function AuthSheet({
         className="absolute inset-0 bg-black/45"
       />
 
-      <div className="relative w-full max-w-mobile bg-card rounded-t-3xl p-6 pb-8 space-y-5 shadow-2xl">
+      <div className="relative w-full max-w-mobile bg-card rounded-t-3xl p-6 pb-8 space-y-5 shadow-float">
         <button
           type="button"
           onClick={onClose}
@@ -192,7 +192,7 @@ export default function AuthSheet({
         </button>
 
         <div className="space-y-1.5 pr-10">
-          <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-1">
+          <div className="w-11 h-11 rounded-2xl bg-primaryChip text-primary flex items-center justify-center mb-1">
             <ShieldCheck size={22} />
           </div>
           <h2 className="text-xl font-bold text-text leading-tight">
@@ -214,7 +214,7 @@ export default function AuthSheet({
             <Button
               loading={googleBusy}
               onClick={onGoogle}
-              className="!bg-white !text-text !border-2 !border-borderStrong hover:!bg-sunken shadow-md"
+              className="!bg-card !text-text !border-2 !border-borderStrong hover:!bg-sunken shadow-rest"
             >
               {!googleBusy && <GoogleIcon size={22} />}
               Continuar com Google

@@ -78,11 +78,11 @@ function Selo({ icone, halo }) {
   const Icone = ICONES[icone] || Home;
   return (
     <span
-      className={`relative grid h-[30px] w-[30px] flex-none place-items-center rounded-[9px] bg-primaryChip text-primaryDark ${
+      className={`relative grid h-[30px] w-[30px] flex-none place-items-center rounded-lg bg-primaryChip text-primaryDark ${
         halo ? 'fundo-halo' : ''
       }`}
     >
-      <Icone size={15} strokeWidth={2.4} />
+      <Icone size={15} />
     </span>
   );
 }
@@ -141,14 +141,14 @@ function Bloco({ dados }) {
 
     case 'linha':
       return (
-        <div className="flex items-center gap-2 rounded-[10px] border border-primaryBorder bg-primarySoft px-2.5 py-1.5">
+        <div className="flex items-center gap-2 rounded-lg border border-primaryBorder bg-primarySoft px-2.5 py-1.5">
           <span className="font-mono text-[10.5px] font-semibold tabular-nums text-primaryDark">
             {dados.hora}
           </span>
           <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-text">
             {dados.texto}
           </span>
-          {dados.check && <Check size={13} strokeWidth={3} className="flex-none text-primary" />}
+          {dados.check && <Check size={13} className="flex-none text-primary" />}
         </div>
       );
 
@@ -188,13 +188,13 @@ function Bloco({ dados }) {
             return (
               <span
                 key={it.rotulo}
-                className={`relative inline-flex h-7 items-center justify-center gap-1 rounded-[9px] text-[10px] font-bold ${
+                className={`relative inline-flex h-7 items-center justify-center gap-1 rounded-lg text-[10px] font-bold ${
                   it.halo
                     ? 'fundo-halo border border-primaryBorder bg-primarySoft text-primaryDark'
                     : 'border border-border bg-surface text-textMuted'
                 }`}
               >
-                <Icone size={11} strokeWidth={2.6} />
+                <Icone size={11} />
                 {it.rotulo}
               </span>
             );
@@ -317,7 +317,7 @@ function Bloco({ dados }) {
     // app, e no app este botão tem a marca do outro produto.
     case 'botaoZap':
       return (
-        <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#25D366] py-2 text-[11.5px] font-bold text-white">
+        <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-whatsapp py-2 text-[11.5px] font-bold text-onAccent">
           <WhatsAppIcon size={13} colored={false} />
           {dados.rotulo}
         </span>
@@ -329,11 +329,11 @@ function Bloco({ dados }) {
       return (
         <span className="flex items-center gap-1.5">
           <span className="inline-flex items-center gap-1 rounded-full bg-primaryDark px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-white">
-            <Home size={9} strokeWidth={2.8} />
+            <Home size={9} />
             {dados.ida}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 font-mono text-[10px] tabular-nums text-textMuted">
-            <Home size={9} strokeWidth={2.4} />
+            <Home size={9} />
             {dados.volta}
           </span>
         </span>
@@ -347,10 +347,10 @@ function Bloco({ dados }) {
             return (
               <span
                 key={it.titulo}
-                className="flex items-center gap-2 rounded-[10px] border border-border bg-card px-2 py-1.5"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1.5"
               >
                 <span className="grid h-6 w-6 flex-none place-items-center rounded-lg bg-primaryChip text-primaryDark">
-                  <Icone size={12} strokeWidth={2.4} />
+                  <Icone size={12} />
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-[10.5px] font-bold leading-tight text-text">
@@ -372,7 +372,7 @@ function Bloco({ dados }) {
           <span className="mb-1 block font-mono text-[9px] uppercase tracking-[0.14em] text-textMuted">
             {dados.rotulo}
           </span>
-          <span className="flex items-center justify-between gap-2 rounded-[10px] border border-borderStrong bg-surface px-2.5 py-1.5">
+          <span className="flex items-center justify-between gap-2 rounded-lg border border-borderStrong bg-surface px-2.5 py-1.5">
             <span className="font-mono text-[12px] font-bold tracking-[0.28em] text-text">
               {dados.valor}
             </span>
@@ -389,7 +389,7 @@ function Bloco({ dados }) {
           </span>
           <span className="flex items-center gap-2">
             <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-primaryChip text-primaryDark">
-              <Check size={13} strokeWidth={3} />
+              <Check size={13} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="inline-block rounded-md bg-primaryChip px-1.5 py-px text-[9.5px] font-bold text-primaryDark">
@@ -460,7 +460,7 @@ function Cartao({ cartao, ativo, largura }) {
   const direita = `calc(50% + ${largura / 2 + slot.vao}px)`;
   return (
     <div
-      className={`fundo-flutua ${DURACAO[cartao.slot]} absolute w-[244px] rounded-[18px] bg-card p-4 shadow-fundo transition-[opacity,transform] duration-[420ms] ease-out ${
+      className={`fundo-flutua ${DURACAO[cartao.slot]} absolute w-[244px] rounded-2xl bg-card p-4 shadow-fundo transition-[opacity,transform] duration-festa ease-freio ${
         ativo ? 'opacity-100' : 'translate-y-3.5 opacity-0'
       }`}
       style={{
@@ -566,7 +566,7 @@ export function TiraDoLogin({ assunto, ate = 1800, moldura = false, aparecidos =
       ref={ref}
       aria-hidden="true"
       className={`pointer-events-none relative z-10 mt-8 select-none ${ATE[ate] || ATE[1800]} ${
-        moldura ? 'rounded-[22px] border-[1.5px] border-dashed border-borderStrong px-3 pb-3 pt-5' : ''
+        moldura ? 'rounded-2xl border-[1.5px] border-dashed border-borderStrong px-3 pb-3 pt-5' : ''
       }`}
     >
       {moldura && (
@@ -584,7 +584,7 @@ export function TiraDoLogin({ assunto, ate = 1800, moldura = false, aparecidos =
         {cartoes.map((cartao, i) => (
           <div
             key={cartao.id}
-            className={`rounded-[18px] bg-card p-4 shadow-fundo transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none ${
+            className={`rounded-2xl bg-card p-4 shadow-fundo transition-[opacity,transform] duration-entrada ease-freio motion-reduce:transition-none ${
               i < aparecidos ? 'opacity-100' : 'translate-y-3 opacity-0'
             }`}
           >

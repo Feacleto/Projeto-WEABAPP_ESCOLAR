@@ -240,7 +240,7 @@ export default function Login() {
   });
   /** Classe de entrada de um passo: invisível até o teatro chegar nele. */
   const surge = (p) =>
-    `transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none ${
+    `transition-[opacity,transform] duration-entrada ease-freio motion-reduce:transition-none ${
       teatro.visto(p) ? '' : 'translate-y-3 opacity-0'
     }`;
   const criarContaDeMotorista = () =>
@@ -407,7 +407,7 @@ export default function Login() {
       <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-[minmax(0,46fr)_minmax(0,54fr)]">
 
         {/* ── A faixa da marca ───────────────────────────────────────── */}
-        <div className="relative flex flex-col overflow-hidden rounded-b-[26px] bg-gradient-to-br from-primary to-primaryDark px-6 pb-24 pt-6 lg:justify-between lg:rounded-none lg:px-14 lg:py-12">
+        <div className="relative flex flex-col overflow-hidden rounded-b-3xl bg-gradient-to-br from-primary to-primaryDark px-6 pb-24 pt-6 lg:justify-between lg:rounded-none lg:px-14 lg:py-12">
           {/* DUAS FORMAS, E NENHUMA DELAS DISPUTA COM O TEXTO.
             *
             * O disco embaixo à esquerda ancora a faixa — sem ele o verde é um
@@ -451,10 +451,10 @@ export default function Login() {
             * continua com o "Voltar": pra ela é mesmo um passo atrás. */}
           <VoltarTag
             {...voltarProps}
-            className={`tap z-10 inline-flex w-fit items-center gap-1 text-onNightMuted hover:text-onNight lg:relative lg:-ml-1 lg:p-1 lg:text-sm ${
+            className={`tap z-10 inline-flex w-fit items-center gap-1 text-primaryChip hover:text-white lg:relative lg:-ml-1 lg:p-1 lg:text-sm ${
               daFamilia
                 ? 'relative -ml-1 p-1 text-sm'
-                : 'absolute right-4 top-[18px] min-h-11 whitespace-nowrap rounded-full border border-onNight/30 bg-onNight/[0.06] px-3.5 text-[13px] font-semibold lg:min-h-0 lg:border-0 lg:bg-transparent lg:font-normal'
+                : 'absolute right-4 top-[18px] min-h-11 whitespace-nowrap rounded-full border border-white/30 bg-white/[0.06] px-3.5 text-[13px] font-semibold lg:min-h-0 lg:border-0 lg:bg-transparent lg:font-normal'
             } ${surge(PASSO.site)}`}
           >
             {daFamilia ? (
@@ -526,7 +526,7 @@ export default function Login() {
 
             {/* ══ CELULAR ══════════════════════════════════════════════ */}
             <div className="lg:hidden">
-              <p className="mt-4 text-[21px] font-extrabold leading-[1.12] tracking-[-0.03em] text-onNight">
+              <p className="mt-4 font-display text-[21px] font-extrabold leading-[1.12] tracking-[-0.03em] text-white">
                 <span className={`block ${surge(PASSO.frase1)}`}>
                   Você faz seu transporte.
                 </span>
@@ -549,14 +549,14 @@ export default function Login() {
                 {BENEFICIOS.map((b, i) => (
                   <li
                     key={b.titulo}
-                    className={`flex items-center gap-2 rounded-xl border border-onNight/[0.12] bg-onNight/[0.07] px-2.5 py-2 ${surge(
+                    className={`flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.07] px-2.5 py-2 ${surge(
                       PASSO.beneficio + i
                     )}`}
                   >
                     <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-primaryBorder/15 text-primaryBorder">
                       <b.icone size={15} />
                     </span>
-                    <span className="min-w-0 text-[12.5px] font-semibold leading-tight text-onNight">
+                    <span className="min-w-0 text-[12.5px] font-semibold leading-tight text-white">
                       {tituloCurto(b.titulo)}
                     </span>
                   </li>
@@ -572,7 +572,7 @@ export default function Login() {
                     * corpo de 42px quebrava "Você faz seu transporte." em duas
                     * linhas num monitor de 1280 — quatro linhas de título onde
                     * cabem três. */}
-                  <p className="mt-8 text-[42px] font-extrabold leading-[1.06] tracking-[-0.03em] text-onNight">
+                  <p className="mt-8 font-display text-[42px] font-extrabold leading-[1.06] tracking-[-0.03em] text-white">
                     Você faz seu transporte.
                     <br />
                     <span className="text-primaryBorder">
@@ -584,7 +584,7 @@ export default function Login() {
                     {BENEFICIOS.map((b, i) => (
                       <li
                         key={b.titulo}
-                        className={`flex gap-4 border-t border-onNight/[0.14] py-4 ${
+                        className={`flex gap-4 border-t border-white/[0.14] py-4 ${
                           i === BENEFICIOS.length - 1 ? 'border-b' : ''
                         }`}
                       >
@@ -592,7 +592,7 @@ export default function Login() {
                           <b.icone size={18} />
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-[16.5px] font-bold leading-snug text-onNight">
+                          <span className="block text-[16.5px] font-bold leading-snug text-white">
                             {b.titulo}
                           </span>
                           <span className="mt-1 block text-sm leading-relaxed text-primaryChip">
@@ -606,7 +606,7 @@ export default function Login() {
                   <p className="mt-6 max-w-[52ch] text-[14.5px] leading-relaxed text-primaryChip">
                     E do outro lado, a família avisa quando a criança não vai e
                     vê as mensalidades —{' '}
-                    <strong className="font-semibold text-onNight">
+                    <strong className="font-semibold text-white">
                       no app que leva o seu logo e o seu nome
                     </strong>
                     .
@@ -614,7 +614,7 @@ export default function Login() {
                 </>
               ) : (
                 <>
-                  <p className="mt-8 max-w-[18ch] text-balance text-[42px] font-extrabold leading-[1.06] tracking-[-0.03em] text-onNight">
+                  <p className="mt-8 max-w-[18ch] text-balance font-display text-[42px] font-extrabold leading-[1.06] tracking-[-0.03em] text-white">
                     O caderninho, a planilha e as cobranças no WhatsApp.
                     <br />
                     <span className="text-primaryBorder">
@@ -626,9 +626,9 @@ export default function Login() {
                     {CAIXAS.map((c) => (
                       <div
                         key={c.titulo}
-                        className="rounded-2xl border border-onNight/[0.13] bg-onNight/[0.08] p-4"
+                        className="rounded-2xl border border-white/[0.13] bg-white/[0.08] p-4"
                       >
-                        <p className="text-[15.5px] font-bold leading-snug text-onNight">
+                        <p className="text-[15.5px] font-bold leading-snug text-white">
                           {c.titulo}
                         </p>
                         <p className="mt-1 text-[13.5px] leading-relaxed text-primaryChip">
@@ -642,7 +642,7 @@ export default function Login() {
                     * existe porque o medo dele não é tecnologia — é parecer
                     * que entregou o controle do próprio negócio a um
                     * aplicativo. */}
-                  <p className="mt-6 max-w-[50ch] text-[15.5px] leading-relaxed text-onNight">
+                  <p className="mt-6 max-w-[50ch] text-[15.5px] leading-relaxed text-white">
                     A gente não vem te ensinar a dirigir nem a cuidar de
                     criança.{' '}
                     <strong className="font-bold text-primaryBorder">
@@ -655,7 +655,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="relative z-10 hidden text-xs text-onNightMuted lg:block">
+          <div className="relative z-10 hidden text-xs text-primaryChip lg:block">
             alobuzinou.com.br
           </div>
         </div>
@@ -670,9 +670,10 @@ export default function Login() {
           * de ser um retângulo flutuando e passa a ser a folha onde se
           * preenche.
           *
-          * O `FundoNoturno` saiu daqui junto. Ele continua nas duas telas de
-          * cadastro, onde a faixa ocupa a tela inteira no celular e o
-          * movimento tem espaço para existir. */}
+          * O `FundoNoturno` saiu daqui junto — e em 03/10/2026 saiu também das
+          * duas telas de cadastro: o dono decidiu que dentro do app não existe
+          * tela escura (ela ficou só no site), e o sistema só permite
+          * movimento contínuo no "ao vivo". */}
         {/* ── A COLUNA DIREITA, E O FUNDO QUE MOSTRA O APP ───────────
           *
           * Ela era uma superfície branca com um cartão no meio — e como o
@@ -714,7 +715,7 @@ export default function Login() {
           >
             <div
               ref={cartaoRef}
-              className={`space-y-4 rounded-2xl border border-border bg-card p-6 shadow-float transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none sm:p-7 ${
+              className={`space-y-4 rounded-2xl bg-card p-6 shadow-float transition-[opacity,transform] duration-entrada ease-freio motion-reduce:transition-none sm:p-7 ${
                 teatro.visto(PASSO.cartao) ? '' : 'translate-y-14 scale-[.96] opacity-0'
               }`}
             >
@@ -729,7 +730,7 @@ export default function Login() {
                 onClick={criarContaDeMotorista}
                 className="tap inline-flex items-center gap-1.5 rounded-full border border-primaryBorder bg-primarySoft px-3.5 py-2.5 text-[13px] font-semibold text-primary"
               >
-                <Plus size={12} strokeWidth={2.6} /> Criar conta grátis
+                <Plus size={14} /> Criar conta grátis
               </button>
             )}
             {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
@@ -882,7 +883,7 @@ export default function Login() {
                         }`}
                       >
                         {!googleSubmitting && (
-                          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white">
+                          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-card">
                             <GoogleIcon size={16} />
                           </span>
                         )}
@@ -1008,6 +1009,13 @@ export default function Login() {
                     * `prefers-reduced-motion` mostra tudo de uma vez — o
                     * `Reveal` cuida disso, e a informação nunca depende da
                     * animação para existir. */}
+                  {/* ⚠️ A PORTA DO MOTORISTA ERA UM CARTÃO QUASE-PRETO, e virou
+                    * VERDE em 03/10/2026. O escuro dizia "ele está comprando";
+                    * o dono revogou isso — dentro do app não existe superfície
+                    * escura, ela ficou só no site. O verde da marca mantém o
+                    * peso de porta principal, e o limão continua sendo o botão
+                    * porque ali ele está sobre verde (com a letra `onAccent`).
+                    * A barra do rodapé seguiu a mesma troca. */}
                   {!showBridge && (
                     <Reveal className="space-y-3">
                       <button
@@ -1017,15 +1025,14 @@ export default function Login() {
                             state: { de: 'escolha' },
                           })
                         }
-                        className="tap relative block w-full overflow-hidden rounded-2xl border border-night bg-night p-4 text-left shadow-float transition-colors hover:border-onNightAccent"
+                        className="tap relative block w-full overflow-hidden rounded-2xl bg-primary p-4 text-left transition-colors duration-estado hover:bg-primaryDark"
                       >
                         <Bus
                           size={92}
-                          strokeWidth={1.4}
                           aria-hidden
                           className="pointer-events-none absolute -bottom-4 -right-3 text-white/[0.07]"
                         />
-                        <span className="relative block font-mono text-xs uppercase tracking-[0.18em] text-onNightAccent">
+                        <span className="rotulo relative block text-menta">
                           quem dirige a perua
                         </span>
                         {/* "EU DIRIJO A PERUA" e não "Sou motorista ou
@@ -1042,7 +1049,7 @@ export default function Login() {
                           * como prosa, eram catorze palavras que ninguém
                           * termina. */}
                         <span
-                          className="rise relative mt-1 block text-sm leading-snug text-onNightMuted"
+                          className="rise relative mt-1 block text-sm leading-snug text-primaryChip"
                           style={{ '--d': '160ms' }}
                         >
                           Você organiza rota, avisos, contrato e
@@ -1056,7 +1063,7 @@ export default function Login() {
                           * ao lado de outro `<span>` com seta não dizia qual
                           * era a porta principal. */}
                         <span
-                          className="rise relative mt-4 flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent text-sm font-bold text-[#06210A]"
+                          className="rise relative mt-4 flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent text-sm font-bold text-onAccent"
                           style={{ '--d': '260ms' }}
                         >
                           Criar minha conta <ArrowRight size={15} />
@@ -1072,7 +1079,7 @@ export default function Login() {
                         }
                         className="tap relative block w-full overflow-hidden rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary"
                       >
-                        <span className="block font-mono text-xs uppercase tracking-[0.18em] text-primary">
+                        <span className="rotulo block text-primary">
                           quem recebe o convite
                         </span>
                         <span className="mt-2 block text-base font-extrabold tracking-tight text-text">
@@ -1146,7 +1153,10 @@ export default function Login() {
         </div>
       </div>
 
-      {/* ── O ESCURO DO FOCO ─────────────────────────────────────────
+      {/* ── O VÉU DO FOCO ─────────────────────────────────────────────
+        * ⚠️ CLARO desde 03/10/2026 (design system): era a noite a 60%, e
+        * dentro do app não existe tela escura. A areia a 80% apaga o resto
+        * do mesmo jeito, sem trocar de clima no meio da primeira visita.
         * `absolute` na página inteira, e não `fixed`: o contêiner usa
         * `-translate-x-1/2`, e transform vira o referencial de `fixed`. Aqui
         * dentro ele divide o mesmo empilhamento do cartão, que passa por cima
@@ -1155,7 +1165,7 @@ export default function Login() {
         <div
           aria-hidden
           onClick={teatro.apagarEscuro}
-          className={`absolute inset-0 z-30 bg-night/60 transition-opacity duration-500 motion-reduce:transition-none ${
+          className={`absolute inset-0 z-30 bg-bg/80 transition-opacity duration-entrada ease-freio motion-reduce:transition-none ${
             teatro.escuro ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
         />
@@ -1178,14 +1188,14 @@ export default function Login() {
           <div
             role="region"
             aria-label="Criar conta"
-            className={`fixed inset-x-3 bottom-3 z-40 flex items-center gap-3 rounded-[18px] bg-night py-2.5 pl-4 pr-2.5 text-onNight shadow-float transition-transform duration-500 ease-out motion-reduce:transition-none ${
+            className={`fixed inset-x-3 bottom-3 z-40 flex items-center gap-3 rounded-2xl bg-primary py-2.5 pl-4 pr-2.5 text-white shadow-float transition-transform duration-entrada ease-freio motion-reduce:transition-none ${
               teatro.cartaoFora ? 'translate-y-0' : 'pointer-events-none translate-y-[140%]'
             }`}
             style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight">
               Gostou do que viu?
-              <span className="block text-xs font-normal text-onNightMuted">
+              <span className="block text-xs font-normal text-primaryChip">
                 Monte a sua turma no app
               </span>
             </span>
@@ -1193,7 +1203,7 @@ export default function Login() {
               type="button"
               onClick={criarContaDeMotorista}
               tabIndex={teatro.cartaoFora ? 0 : -1}
-              className="tap shrink-0 rounded-xl bg-accent px-3.5 py-2.5 text-[13px] font-extrabold text-[#06210A]"
+              className="tap shrink-0 rounded-xl bg-accent px-3.5 py-2.5 text-[13px] font-extrabold text-onAccent"
             >
               Criar conta agora
             </button>

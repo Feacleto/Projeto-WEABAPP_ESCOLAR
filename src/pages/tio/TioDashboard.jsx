@@ -20,6 +20,7 @@ import ReviewNudge from '../../components/feedback/ReviewNudge';
 import Header from '../../components/layout/Header';
 import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
+import Button from '../../components/common/Button';
 import SchoolBroadcastSheet from '../../components/broadcasts/SchoolBroadcastSheet';
 import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
@@ -270,8 +271,10 @@ export default function TioDashboard() {
    */
   const alvosDaRota = useMemo(
     () =>
-      blocos
-        .flatMap((b) => b.paradas)
+        // ⚠️ SÓ A VIAGEM DE AGORA (03/10/2026). Eram as paradas do DIA
+        // inteiro: na rota da manhã, a perua passando perto da casa de quem só
+        // vai à tarde tocava "chegou" no celular dessa família.
+      (bloco?.paradas || [])
         // ⚠️ QUEM ESTÁ FORA HOJE NÃO É ALVO (03/10/2026): faltou, ou o pai
         // leva/busca. Sem o filtro, a perua passando na rua dela tocava a
         // buzina de "chegou" no celular de uma família que não a espera.
@@ -283,7 +286,7 @@ export default function TioDashboard() {
           parentUid: p.child?.parentUid || null,
         }))
         .filter((a) => a.childId && Number.isFinite(a.lat) && Number.isFinite(a.lng)),
-    [blocos]
+    [bloco]
   );
 
   async function publicarOrdem() {
@@ -568,15 +571,14 @@ export default function TioDashboard() {
                 * já cadastrada — e quem começava pela criança perdia o que
                 * tinha digitado ao sair para criar a escola. Agora a escola
                 * nasce num popup dentro do cadastro da criança. */}
-              <button
-                type="button"
+              <Button
                 data-tour="primeira-crianca"
                 onClick={() => navigate('/tio/children/new')}
-                className="tap w-full rounded-xl bg-primary text-white font-bold mt-4 h-14 inline-flex items-center justify-center gap-2"
+                icon={UserPlus}
+                className="mt-4"
               >
-                <UserPlus size={18} />
                 Cadastrar a primeira criança
-              </button>
+              </Button>
             </div>
 
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
@@ -637,7 +639,7 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
   if (!bloco?.paradas?.length) return null;
   return (
     <section className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-widest text-textMuted px-1">
+      <p className="rotulo px-1">
         {bloco.direcao === 'ida' ? 'quem você pega' : 'quem você leva pra casa'}
       </p>
 
@@ -709,7 +711,7 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
 function ParadaEscola({ escolas }) {
   return (
     <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-escolaSoft border border-escolaBorder">
-      <span className="w-11 shrink-0 text-xs uppercase tracking-wide text-escola font-semibold">
+      <span className="rotulo w-11 shrink-0 text-escola">
         depois
       </span>
       <School size={15} className="text-escola shrink-0" />
@@ -772,7 +774,7 @@ function Pendencias({
 
   return (
     <section className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-widest text-textMuted px-1">
+      <p className="rotulo px-1">
         enquanto isso
       </p>
       {itens.map((i) => (
@@ -820,7 +822,7 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
       onClick={onClick}
       className="tap w-full text-left bg-card border border-border rounded-xl px-3 py-3 flex items-center gap-3"
     >
-      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-primaryChip text-primary flex items-center justify-center shrink-0">
         <LayoutGrid size={16} />
       </div>
       <span className="flex-1 min-w-0">

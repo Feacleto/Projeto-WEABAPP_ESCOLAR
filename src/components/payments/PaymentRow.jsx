@@ -1,9 +1,4 @@
 import {
-  Calendar,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Hourglass,
   Banknote,
   QrCode,
   CreditCard,
@@ -13,41 +8,146 @@ import {
 } from 'lucide-react';
 import Card from '../common/Card';
 import TrilhaDoPagamento from './TrilhaDoPagamento';
+import { TOM } from './estadoDaMensalidade';
 import {
   formatCurrency,
-  formatDate,
   formatMonthLabel,
+  diasDeCalendario,
 } from '../../compartilhado/formatters';
 import {
   paymentLabel,
-  paymentChipClasses,
+  paymentTone,
   parentClaimedLabel,
   parentClaimedTone,
-  TONE_CLASSES,
 } from '../../dominio/cobranca/paymentVocabulary';
 import { foiPagoAtrasado } from '../../services/paymentsService';
 
-// A COR fica aqui; o TEXTO vem de dominio/cobranca/paymentVocabulary, que sabe falar
-// pro papel de quem está lendo. O estado 'claimed' era o pior caso: o tio
-// lia "aguardando confirmação" sem saber que a bola estava com ele.
-const STATUS_CONFIG = {
-  paid: { color: 'text-accentText bg-accent/10', Icon: CheckCircle2 },
-  // 'paid' que entrou depois do vencimento. Não é estado novo — é o mesmo
-  // 'paid' com outra cara. Ver foiPagoAtrasado em services/paymentsService.
-  paidLate: { color: '', Icon: CheckCircle2 },
-  claimed: { color: 'text-warningText bg-warning/10', Icon: Hourglass },
-  pending: { color: 'text-textMuted bg-neutro', Icon: Clock },
-  overdue: { color: 'text-dangerText bg-danger/10', Icon: AlertCircle },
+// A COR fica aqui (em estadoDaMensalidade); o TEXTO vem de
+// dominio/cobranca/paymentVocabulary, que sabe falar pro papel de quem está
+// lendo. O estado 'claimed' era o pior caso: o tio lia "aguardando
+// confirmação" sem saber que a bola estava com ele.
+
+
+const MES_CURTO = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+
+function paraData(valor) {
+  if (!valor) return null;
+  if (typeof valor.toDate === 'function') return valor.toDate();
+  if (valor instanceof Date) return valor;
+  const d = new Date(valor);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** "01/10" — o ano está na folhinha ou no seletor; repetir é ruído. */
+function diaEMes(valor) {
+  const d = paraData(valor);
+  if (!d) return null;
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(d);
+}
+
+function horaDe(valor) {
+  const d = paraData(valor);
+  if (!d) return null;
+  return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(d);
+}
+
+const METODO = {
+  cash: { Icon: Banknote, texto: 'em dinheiro' },
+  card: { Icon: CreditCard, texto: 'no cartão' },
+  pix: { Icon: QrCode, texto: 'por PIX' },
 };
 
 /**
- * Card de uma linha de pagamento — usado por TioFinance e PaiFinance.
+ * A LINHA DE BAIXO: o que aconteceu, ou o que vai acontecer, em palavras.
+ *
+ * "Vence: 10/10/2026 · Pago: 03/10/2026" pedia uma conta de cabeça para cada
+ * linha. "Venceu há 4 dias" é a conta feita — e é exatamente a informação que
+ * decide se ele pega o telefone hoje.
+ */
+function detalheDaLinha(payment, displayStatus, role) {
+  const metodo = METODO[payment.paymentMethod] || (payment.paymentMethod ? METODO.pix : null);
+
+  if (displayStatus === 'paid') {
+    const quando = diaEMes(payment.paidAt);
+    return {
+      Icon: metodo?.Icon || null,
+      texto: [quando ? `Pago em ${quando}` : 'Pago', metodo?.texto].filter(Boolean).join(', '),
+    };
+  }
+  if (displayStatus === 'claimed') {
+    const quando = diaEMes(payment.claimedAt);
+    const hora = horaDe(payment.claimedAt);
+    return {
+      Icon: metodo?.Icon || null,
+      texto: [
+        quando
+          ? `${role === 'parent' ? 'Você avisou' : 'Avisou'} em ${quando}${hora ? `, ${hora}` : ''}`
+          : 'Avisou que pagou',
+        metodo?.texto,
+      ].filter(Boolean).join(', '),
+    };
+  }
+  const dias = diasDeCalendario(new Date(), payment.dueDate);
+  if (dias == null) return { Icon: null, texto: '' };
+  if (displayStatus === 'overdue') {
+    const atraso = -dias;
+    return {
+      Icon: null,
+      texto:
+        atraso <= 0 ? 'Venceu hoje' : atraso === 1 ? 'Venceu ontem' : `Venceu há ${atraso} dias`,
+    };
+  }
+  return {
+    Icon: null,
+    texto: dias <= 0 ? 'Vence hoje' : dias === 1 ? 'Vence amanhã' : `Vence em ${dias} dias`,
+  };
+}
+
+/**
+ * A FOLHINHA DE VENCIMENTO — o dia grande, o mês embaixo, colorido pelo estado.
+ *
+ * É o "rosto" da linha (docs/design-system.md, Lista): numa mensalidade o que
+ * se reconhece de relance não é a criança, é o dia em que ela vence. E a
+ * faixa colorida faz a lista inteira ser lida de cima a baixo sem ler palavra.
+ */
+function Folhinha({ dueDate, tom }) {
+  const d = paraData(dueDate);
+  const estilo = TOM[tom] || TOM.neutral;
+  return (
+    <span
+      aria-hidden
+      className={`w-12 shrink-0 overflow-hidden rounded-lg border bg-card text-center ${estilo.borda}`}
+    >
+      <span className="block font-display text-lg font-extrabold leading-snug text-text">
+        {d ? String(d.getDate()).padStart(2, '0') : '—'}
+      </span>
+      <span className={`block font-mono text-xs font-semibold leading-relaxed tracking-wider ${estilo.folha}`}>
+        {d ? MES_CURTO[d.getMonth()] : ''}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Uma mensalidade — usada por TioFinance e PaiFinance.
  *
  * Props:
  *   - payment:        doc do Firestore
- *   - displayStatus:  'paid' | 'pending' | 'overdue' (calculado fora)
- *   - action:         botão à direita (ex: "Dar baixa") — opcional
+ *   - displayStatus:  'paid' | 'claimed' | 'pending' | 'overdue' (calculado fora)
+ *   - action:         botão (ex: "Dar baixa") — opcional
  *   - showChild:      mostra nome da criança (default true; Pai esconde)
+ *   - variant:        'cartao' (padrão — cartão solto, o do pai) ou 'linha'
+ *                     (dentro de uma lista única, o do motorista)
+ *   - comDivisor:     na variante 'linha', o traço em cima — que começa
+ *                     DEPOIS da folhinha, como em toda lista do app
+ *   - mostrarMes:     escreve o mês por extenso. Padrão: só no cartão. Na
+ *                     lista do mês o seletor já diz qual é; nos atrasados de
+ *                     meses anteriores, quem chama liga
+ *
+ * ⚠️ AS DUAS VARIANTES SÃO O MESMO COMPONENTE de propósito: o pai e o
+ * motorista precisam ler a MESMA história do mesmo pagamento (a trilha, o
+ * comprovante, o estado). Duas linhas diferentes divergiriam na primeira
+ * mudança — a mesma razão de o vocabulário ser um só.
  */
 export default function PaymentRow({
   payment,
@@ -57,6 +157,9 @@ export default function PaymentRow({
   role = 'parent',
   onAttachReceipt = null,
   onCharge = null,
+  variant = 'cartao',
+  comDivisor = false,
+  mostrarMes,
   // ⚠️ O AVISO DE DUPLICATA VEM POR FORA, e não de dentro do pagamento.
   //
   // Ele era `payment.receiptDuplicateOf` — um campo do documento que a
@@ -66,69 +169,96 @@ export default function PaymentRow({
   // chega aqui como prop porque quem carrega é a tela DELE.
   alertaDeDuplicata = null,
 }) {
-  const config = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.pending;
-  const { Icon } = config;
-
   // Mês pago E comprovado, na tela do PAI, não é pendência dele — é
   // pendência do motorista. Mostrar âmbar ali, no meio de meses verdes,
   // faz parecer que o pagamento não valeu. Ele lê "Pago"; o tio continua
-  // lendo "aguardando SUA confirmação".
+  // lendo "conferir".
   const parentResolved =
     role === 'parent' && displayStatus === 'claimed' && !!payment.receiptURL;
 
   // Entrou depois do vencimento? Só o tio vê isso — ver paymentVocabulary.
   const pagoAtrasado = foiPagoAtrasado(payment);
 
-  const label = parentResolved
+  const tom = parentResolved
+    ? parentClaimedTone(true)
+    : paymentTone(displayStatus, role, { pagoAtrasado });
+  const vocabulario = parentResolved
     ? parentClaimedLabel(true)
     : paymentLabel(displayStatus, role, { pagoAtrasado });
-  const color = parentResolved
-    ? TONE_CLASSES[parentClaimedTone(true)]
-    : pagoAtrasado && role === 'admin'
-      ? paymentChipClasses(displayStatus, role, { pagoAtrasado })
-      : config.color;
+  // As palavras dos quatro estados moram no vocabulário (paymentVocabulary),
+  // inclusive "Conferir" e "Pendente" do lado do motorista.
+  const label = vocabulario || '';
+  const estilo = TOM[tom] || TOM.neutral;
+  const ChipIcon = estilo.Icon;
 
-  // SEM PALAVRA, SEM CHIP.
-  //
-  // Do lado do tio, 'claimed' e 'pending' não têm rótulo: um é tarefa (vira
-  // o botão "Dar baixa") e o outro é silêncio (ainda não venceu). Sem esta
-  // guarda o chip renderizaria como uma pílula vazia com um ícone solto
-  // dentro — pior que a palavra que a gente acabou de tirar.
-  const mostrarChip = !!label;
+  const detalhe = detalheDaLinha(payment, displayStatus, role);
+  const DetalheIcon = detalhe.Icon;
+  const escreverMes = mostrarMes ?? variant === 'cartao';
 
-  return (
-    <Card className="space-y-2">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
+  const temHistoria =
+    payment.claimedAt || payment.paidAt || payment.revertedAt || payment.receiptURL;
+  const podeAnexar =
+    onAttachReceipt && displayStatus !== 'pending' && displayStatus !== 'overdue';
+  const podeCobrar =
+    onCharge && (displayStatus === 'overdue' || displayStatus === 'pending');
+
+  const conteudo = (
+    <>
+      <div className="flex items-start gap-3">
+        <Folhinha dueDate={payment.dueDate} tom={tom} />
+
+        <div className="min-w-0 flex-1">
           {showChild && payment.childName && (
-            <p className="font-semibold text-text truncate">
+            <p className="truncate font-semibold leading-snug text-text">
               {payment.childName}
             </p>
           )}
-          <p className="text-xs text-textMuted capitalize">
-            {formatMonthLabel(payment.month)}
-          </p>
+          {(escreverMes || !(showChild && payment.childName)) && (
+            <p
+              className={`capitalize ${
+                showChild && payment.childName
+                  ? 'text-sm text-textMuted'
+                  : 'font-semibold leading-snug text-text'
+              }`}
+            >
+              {formatMonthLabel(payment.month)}
+            </p>
+          )}
+          {detalhe.texto && (
+            <p className="mt-0.5 flex items-center gap-1 text-sm leading-snug text-textMuted">
+              {DetalheIcon && <DetalheIcon size={14} className="shrink-0" />}
+              <span className="min-w-0">{detalhe.texto}</span>
+            </p>
+          )}
         </div>
-        {mostrarChip && (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium shrink-0 ${color}`}
-          >
-            <Icon size={12} />
-            {label}
-          </span>
-        )}
-      </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-lg font-bold text-text">
+        {/* UMA coisa à direita: o valor, com o estado embaixo dele.
+          * ⚠️ A cor fica na TAG, nunca no número — número vermelho se lê
+          * como dívida mesmo quando é só o valor da mensalidade. */}
+        <div className="shrink-0 text-right">
+          <p className="whitespace-nowrap font-bold tabular-nums text-text">
             {formatCurrency(payment.amount)}
           </p>
-          <p className="text-xs text-textMuted flex items-center gap-1">
-            <Calendar size={10} />
-            Vence: {formatDate(payment.dueDate)}
-            {payment.paidAt && ` · Pago: ${formatDate(payment.paidAt)}`}
-          </p>
+          {label && (
+            <span
+              className={`mt-1 inline-flex max-w-[11rem] items-center gap-1 rounded-full px-2 py-0.5 text-left text-xs font-semibold leading-tight ${estilo.chip}`}
+            >
+              {ChipIcon && <ChipIcon size={12} />}
+              {label}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* O que se FAZ com a linha, abaixo dela e alinhado depois da folhinha. */}
+      {(
+        (role === 'admin' && alertaDeDuplicata) ||
+        payment.receiptURL ||
+        podeAnexar ||
+        podeCobrar ||
+        action
+      ) && (
+        <div className="mt-2 space-y-2 pl-[60px]">
           {/* Comprovante IDÊNTICO ao de outro mês.
             *
             * Aviso, não bloqueio, e só pro tio — é ele quem decide. Boa
@@ -136,8 +266,8 @@ export default function PaymentRow({
             * pega o print errado. Uma heurística que acusa sozinha erra e
             * estraga uma relação que precisa durar anos. */}
           {role === 'admin' && alertaDeDuplicata && (
-            <p className="text-xs font-semibold text-warningText bg-warningSoft border border-warningBorder rounded-lg px-2 py-1.5 inline-flex items-start gap-1.5 mt-1">
-              <TriangleAlert size={12} className="shrink-0 mt-0.5" />
+            <p className="inline-flex items-start gap-1.5 rounded-lg border border-warningBorder bg-warningSoft px-2 py-1.5 text-xs font-semibold text-warningText">
+              <TriangleAlert size={12} className="mt-0.5 shrink-0" />
               <span>
                 Comprovante igual ao de{' '}
                 {alertaDeDuplicata.month
@@ -148,70 +278,53 @@ export default function PaymentRow({
             </p>
           )}
 
-          {/* Comprovante anexado pelo pai. Fica a um toque pro tio
-            * conferir antes de confirmar — era isto que antes virava
-            * print de tela no WhatsApp. */}
-          {payment.receiptURL ? (
-            <a
-              href={payment.receiptURL}
-              target="_blank"
-              rel="noreferrer"
-              className="tap inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline mt-1"
-            >
-              <Paperclip size={13} />
-              Ver comprovante
-            </a>
-          ) : (
-            /* Sem comprovante e já avisado/pago: o tio anexa o print que
-             * recebeu no WhatsApp. Sem isso o histórico do mês mostra
-             * "pago" sem lastro nenhum. */
-            onAttachReceipt &&
-            displayStatus !== 'pending' &&
-            displayStatus !== 'overdue' && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Comprovante anexado pelo pai. Fica a um toque pro tio
+              * conferir antes de confirmar — era isto que antes virava
+              * print de tela no WhatsApp. */}
+            {payment.receiptURL ? (
+              <a
+                href={payment.receiptURL}
+                target="_blank"
+                rel="noreferrer"
+                className="tap inline-flex h-10 items-center gap-1.5 rounded-full px-1 text-sm font-semibold text-primary underline"
+              >
+                <Paperclip size={14} />
+                Ver comprovante
+              </a>
+            ) : (
+              /* Sem comprovante e já avisado/pago: o tio anexa o print que
+               * recebeu no WhatsApp. Sem isso o histórico do mês mostra
+               * "pago" sem lastro nenhum. */
+              podeAnexar && (
+                <button
+                  type="button"
+                  onClick={onAttachReceipt}
+                  className="tap inline-flex h-10 items-center gap-1.5 rounded-full px-1 text-sm font-semibold text-textMuted underline"
+                >
+                  <Paperclip size={14} />
+                  Anexar comprovante
+                </button>
+              )
+            )}
+
+            {/* Cobrar sem sair do app. Só pra quem está devendo — em 'pago' ou
+              * "aguardando confirmação" cobrar seria constrangedor e errado. */}
+            {podeCobrar && (
               <button
                 type="button"
-                onClick={onAttachReceipt}
-                className="tap inline-flex items-center gap-1.5 text-xs font-semibold text-textMuted underline mt-1"
+                onClick={onCharge}
+                className="tap inline-flex h-10 items-center gap-1.5 rounded-full bg-primaryChip px-3.5 text-sm font-semibold text-accentText"
               >
-                <Paperclip size={13} />
-                Anexar comprovante
+                <Send size={14} />
+                {displayStatus === 'overdue' ? 'Cobrar no WhatsApp' : 'Lembrar no WhatsApp'}
               </button>
-            )
-          )}
-          {payment.paymentMethod && displayStatus !== 'pending' && displayStatus !== 'overdue' && (
-            <p className="text-xs text-textMuted flex items-center gap-1 mt-0.5">
-              {payment.paymentMethod === 'cash' ? (
-                <>
-                  <Banknote size={10} /> Dinheiro
-                </>
-              ) : payment.paymentMethod === 'card' ? (
-                <>
-                  <CreditCard size={10} /> Cartão
-                </>
-              ) : (
-                <>
-                  <QrCode size={10} /> PIX
-                </>
-              )}
-            </p>
-          )}
-        </div>
-        {action}
-      </div>
+            )}
 
-      {/* Cobrar sem sair do app. Só pra quem está devendo — em 'pago' ou
-        * "aguardando confirmação" cobrar seria constrangedor e errado. */}
-      {onCharge &&
-        (displayStatus === 'overdue' || displayStatus === 'pending') && (
-          <button
-            type="button"
-            onClick={onCharge}
-            className="tap w-full h-10 rounded-xl bg-card border border-border text-text text-xs font-semibold inline-flex items-center justify-center gap-1.5"
-          >
-            <Send size={13} />
-            {displayStatus === 'overdue' ? 'Cobrar no WhatsApp' : 'Lembrar no WhatsApp'}
-          </button>
-        )}
+            {action && <div className="ml-auto">{action}</div>}
+          </div>
+        </div>
+      )}
 
       {/* O HISTÓRICO, SÓ QUANDO EXISTE HISTÓRIA.
         *
@@ -224,10 +337,24 @@ export default function PaymentRow({
         * ⚠️ `revertedAt` ENTRA NA CONTA de propósito: desfazer volta o
         * pagamento pra 'pending', então sem ele o cartão que mais precisa
         * de histórico seria o único a não oferecer nenhum. */}
-      {(payment.claimedAt ||
-        payment.paidAt ||
-        payment.revertedAt ||
-        payment.receiptURL) && <TrilhaDoPagamento payment={payment} />}
-    </Card>
+      {temHistoria && (
+        <div className="mt-2 pl-[60px]">
+          <TrilhaDoPagamento payment={payment} />
+        </div>
+      )}
+    </>
   );
+
+  if (variant === 'linha') {
+    return (
+      <div className="relative px-4 py-3">
+        {comDivisor && (
+          <span aria-hidden className="absolute left-[76px] right-0 top-0 h-px bg-neutro" />
+        )}
+        {conteudo}
+      </div>
+    );
+  }
+
+  return <Card className="p-4">{conteudo}</Card>;
 }

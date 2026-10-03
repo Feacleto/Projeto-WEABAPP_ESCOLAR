@@ -125,6 +125,22 @@ checar('os quatro cantos: 10, 14, 20, 28', ['10px', '14px', '20px', '28px'], [r.
 const d = cfg.theme.extend.transitionDuration;
 checar('nenhuma duração passa de meio segundo', [], Object.entries(d).filter(([, v]) => parseInt(v, 10) > 500).map(([k]) => k));
 
+/* ─────────────────────────────────────────────────────────────── */
+bloco('6 · SEM EMOJI NA TELA DO APP');
+// Decisão do dono (02/10/2026): no lugar do emoji vai um ícone desenhado — o
+// lucide no app. Emoji muda de cara em cada aparelho e não segue a cor da
+// marca. Comentário fica de fora (o projeto marca decisões com o sinal de
+// atenção, e isso não chega à tela), e o console do emulador também.
+const EMOJI = /(?![©®™])\p{Extended_Pictographic}/u;
+const semComentario = (t) =>
+  t.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+const comEmoji = arquivos('src', ['.jsx', '.js'])
+  .filter((f) => f !== 'src/firebase/config.js')
+  .filter((f) => EMOJI.test(semComentario(ler(f))));
+checar('nenhum emoji visível no app', [], comEmoji);
+checar('o detector pega emoji (sonda positiva)', true, EMOJI.test(semComentario("toast('Chegou \u{1F690}')")));
+checar('e ignora o de comentário (sonda negativa)', false, EMOJI.test(semComentario('// ⚠️ decisão')));
+
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) {

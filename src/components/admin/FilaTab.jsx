@@ -97,7 +97,7 @@ export default function FilaTab({ onIr }) {
   return (
     <div className="space-y-3">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+        <h2 className="rotulo">
           Precisa de você hoje
         </h2>
         {/* O NÚMERO CONTA CONVERSAS, não sinais: um motorista com quatro

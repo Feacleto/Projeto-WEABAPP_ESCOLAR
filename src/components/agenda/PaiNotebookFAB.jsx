@@ -20,6 +20,7 @@ import {
 } from '../../services/agendaService';
 import { playSound } from '../../services/soundService';
 import AppSheet from '../common/AppSheet';
+import IconePorNome from '../common/IconePorNome';
 
 const MONTH_NAMES = [
   'Janeiro',
@@ -214,7 +215,7 @@ function NotebookView({ open, onClose }) {
               <CalendarDays size={18} />
             </button>
             <div className="flex-1 text-center">
-              <p className="text-xs uppercase tracking-widest text-warningText font-bold">
+              <p className="rotulo text-warningText">
                 {isCurrentMonth ? 'Este mês' : 'Mês passado'}
               </p>
               <p className="text-sm font-bold text-warningText">
@@ -233,7 +234,7 @@ function NotebookView({ open, onClose }) {
               <ArrowLeft size={18} />
             </button>
             <div className="flex-1 text-center">
-              <p className="text-xs uppercase tracking-widest text-warningText font-bold">
+              <p className="rotulo text-warningText">
                 Índice
               </p>
               <p className="text-sm font-bold text-warningText">
@@ -344,7 +345,7 @@ function NotebookPage({ children, flipping }) {
   return (
     <div className="max-w-md mx-auto">
       <div
-        className={`relative bg-[#fffbe9] rounded-xl shadow-rest overflow-hidden border border-warningBorder transition-transform duration-300 ease-in-out origin-left ${
+        className={`relative bg-warningSoft rounded-xl shadow-rest overflow-hidden border border-warningBorder transition-transform duration-entrada ease-freio origin-left ${
           flipping ? 'scale-x-90 skew-y-2' : ''
         }`}
         style={{
@@ -386,11 +387,9 @@ function Entry({ entry }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="text-2xl" aria-hidden>
-          {t.emoji}
-        </span>
+        <IconePorNome nome={t.icone} size={24} className="text-text" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs uppercase tracking-widest text-warningText font-bold">
+          <p className="rotulo text-warningText">
             {date
               ? new Intl.DateTimeFormat('pt-BR', {
                   day: '2-digit',

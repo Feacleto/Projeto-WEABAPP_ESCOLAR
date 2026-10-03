@@ -47,13 +47,13 @@ import { auth, db } from '../firebase/config';
  * como qualquer salário.
  */
 export const EXPENSE_CATEGORIES = {
-  fuel: { label: 'Combustível', icon: '⛽', recurring: false },
-  maintenance: { label: 'Manutenção', icon: '🔧', recurring: false },
-  monitor: { label: 'Monitor / auxiliar', icon: '🧑‍🏫', recurring: true },
-  installment: { label: 'Parcela do veículo', icon: '🚐', recurring: true },
-  insurance: { label: 'Seguro', icon: '🛡️', recurring: true },
-  tax: { label: 'IPVA e licenciamento', icon: '📄', recurring: false },
-  other: { label: 'Outros', icon: '📦', recurring: false },
+  fuel: { label: 'Combustível', icone: 'Fuel', recurring: false },
+  maintenance: { label: 'Manutenção', icone: 'Wrench', recurring: false },
+  monitor: { label: 'Monitor / auxiliar', icone: 'UserRound', recurring: true },
+  installment: { label: 'Parcela do veículo', icone: 'Bus', recurring: true },
+  insurance: { label: 'Seguro', icone: 'Shield', recurring: true },
+  tax: { label: 'IPVA e licenciamento', icone: 'FileText', recurring: false },
+  other: { label: 'Outros', icone: 'Package', recurring: false },
 };
 
 export const CATEGORY_ORDER = Object.keys(EXPENSE_CATEGORIES);

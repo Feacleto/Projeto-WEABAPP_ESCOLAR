@@ -12,6 +12,7 @@ import {
   UserX,
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
+import Button from '../common/Button';
 import StatusBadge from './StatusBadge';
 import { PERIOD_LABELS, formatAge, formatPhone } from '../../compartilhado/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
@@ -107,7 +108,7 @@ export default function ChildCard({
             aria-hidden
             className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-primary text-white"
           >
-            <ArrowUpRight size={10} strokeWidth={3} />
+            <ArrowUpRight size={10} />
           </span>
         </button>
 
@@ -188,15 +189,14 @@ export default function ChildCard({
         * Não aparece pra quem faltou: não há o que avançar. */}
       {action && onAdvance && !absence && (
         <div className="px-4 pb-3">
-          <button
-            type="button"
+          <Button
+            size="md"
             disabled={advancing}
             onClick={() => onAdvance(action.nextStatus)}
-            className="tap w-full h-12 rounded-xl bg-primary text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-60"
+            icon={CheckCircle2}
           >
-            <CheckCircle2 size={17} />
             {action.label}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -259,7 +259,7 @@ export default function ChildCard({
             className="tap mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-bold text-primary"
           >
             Ver ficha completa
-            <ArrowUpRight size={13} strokeWidth={2.6} />
+            <ArrowUpRight size={13} />
           </button>
         </div>
       )}
@@ -272,7 +272,7 @@ function Detail({ icon: Icon, label, children }) {
     <div className="flex items-start gap-2">
       <Icon size={13} className="text-textMuted shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wider text-textMuted">
+        <p className="rotulo">
           {label}
         </p>
         <p className="text-xs text-text leading-snug break-words">{children}</p>

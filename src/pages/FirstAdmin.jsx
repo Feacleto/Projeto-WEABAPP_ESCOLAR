@@ -154,7 +154,7 @@ export default function FirstAdmin() {
         <ArrowLeft size={16} /> Voltar
       </Link>
 
-      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-3">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primaryChip mb-3">
         <ShieldCheck size={28} className="text-primary" />
       </div>
       <h1 className="text-2xl font-bold text-text">Primeiro administrador</h1>

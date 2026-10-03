@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, Megaphone, School, Send, Check, Users } from 'lucide-react';
+import Button from '../common/Button';
 import toast from 'react-hot-toast';
 import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
@@ -213,7 +214,7 @@ function SchoolBroadcastBody({ onClose }) {
                       onClick={() => setEscolaId(o.id)}
                       aria-pressed={ativa}
                       className={`tap w-full text-left rounded-2xl border-2 px-3 py-2.5 flex items-center gap-3 ${
-                        ativa ? 'border-primary bg-primary/5' : 'border-border bg-card'
+                        ativa ? 'border-primary bg-primarySoft' : 'border-border bg-card'
                       }`}
                     >
                       <div
@@ -367,17 +368,15 @@ function SchoolBroadcastBody({ onClose }) {
         </div>
 
         <div className="px-5 pt-2 pb-3 border-t border-neutro bg-card">
-          <button
-            type="button"
+          <Button
             onClick={enviar}
             disabled={enviando || !escolhida || !dias.length || !alcancadas.length}
-            className="tap w-full rounded-2xl py-3.5 bg-primary text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            icon={Send}
           >
-            <Send size={18} />
             {enviando
               ? 'Enviando…'
               : `Avisar ${alcancadas.length} ${alcancadas.length === 1 ? 'família' : 'famílias'}`}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

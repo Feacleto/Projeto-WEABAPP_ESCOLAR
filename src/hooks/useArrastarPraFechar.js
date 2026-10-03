@@ -10,8 +10,8 @@ import { useRef, useState } from 'react';
  * contrário do que é verdade.
  *
  * UM HOOK, E NÃO A LÓGICA COPIADA NOS DOIS. `Sheet` e `AppSheet` são folhas
- * diferentes por motivos legítimos (uma tem a tampa escura da marca, a outra é
- * clara e interna), mas o GESTO é o mesmo — e gesto que se comporta diferente
+ * diferentes por motivos legítimos (as duas têm o mesmo rosto claro desde o
+ * design system de 03/10/2026, mas cascas diferentes), e o GESTO é o mesmo — e gesto que se comporta diferente
  * conforme a folha é o tipo de inconsistência que ninguém reporta e todo mundo
  * sente. Duas cópias divergem no primeiro ajuste de limiar.
  *

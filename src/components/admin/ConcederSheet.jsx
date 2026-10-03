@@ -97,7 +97,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
 
         <div className="mt-4 space-y-4">
           <div>
-            <p className="mb-1.5 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+            <p className="rotulo mb-1.5">
               O que você concede
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -122,7 +122,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
 
           {tipo === TIPO.DESCONTO && (
             <label className="block">
-              <span className="mb-1.5 block font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+              <span className="rotulo mb-1.5 block">
                 Quanto
               </span>
               <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
           )}
 
           <label className="block">
-            <span className="mb-1.5 block font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+            <span className="rotulo mb-1.5 block">
               Por quanto tempo
             </span>
             <div className="flex flex-wrap items-center gap-2">
@@ -162,7 +162,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+            <span className="rotulo mb-1.5 block">
               Por quê
             </span>
             <textarea

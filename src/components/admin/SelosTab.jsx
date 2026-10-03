@@ -85,7 +85,7 @@ export default function SelosTab() {
   return (
     <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
       <section className="space-y-2">
-        <h2 className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+        <h2 className="rotulo inline-flex items-center gap-1.5">
           <BadgeCheck size={11} />
           Alvarás para conferir
         </h2>
@@ -109,7 +109,7 @@ export default function SelosTab() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+        <h2 className="rotulo inline-flex items-center gap-1.5">
           <Sticker size={11} />
           Adesivos para postar
         </h2>
@@ -254,7 +254,7 @@ function Pedido({ pedido }) {
     <div className="rounded-2xl border border-border bg-card p-4 text-xs">
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-bold text-text">{pedido.nome || pedido.id}</p>
-        <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-wider text-textMuted">
+        <span className="rotulo shrink-0 rounded-lg px-1.5 py-0.5">
           {pedido.estado}
         </span>
       </div>

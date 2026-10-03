@@ -159,7 +159,7 @@ function Conteudo() {
       {/* O total em aberto vem primeiro: é a única pergunta que ele abre a
         * tela pra responder. */}
       <div className="rounded-2xl bg-card p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+        <p className="rotulo">
           {abertas.length === 0 ? 'tudo em dia' : 'em aberto'}
         </p>
         <p

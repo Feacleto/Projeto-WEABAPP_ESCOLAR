@@ -300,7 +300,7 @@ function Pastilha({ degrau, faltam }) {
   };
   const [skin, rotulo] = mapa[degrau] || mapa.nao_comecou;
   return (
-    <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase ${skin}`}>
+    <span className={`rotulo shrink-0 rounded-lg px-1.5 py-0.5 ${skin}`}>
       {rotulo}
     </span>
   );

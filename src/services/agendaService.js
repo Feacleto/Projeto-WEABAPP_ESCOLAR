@@ -86,54 +86,54 @@ export const AGENDA_COLLECTION = 'agendaEntries';
  */
 const TETO_DO_CADERNO = 100;
 
-// Tipos pré-definidos com label + emoji + template. Tio escolhe um e o
+// Tipos pré-definidos com label + ícone + template. Tio escolhe um e o
 // template aparece já preenchido — ele pode editar antes de enviar.
 export const AGENDA_TYPES = {
   sick: {
     label: 'Criança não tá bem',
-    emoji: '🤒',
+    icone: 'Thermometer',
     color: GRADIENTE_AGENDA.sick,
     template: (name) =>
       `${name} não tá se sentindo bem hoje. Vale ficar atento(a) quando chegar em casa.`,
   },
   conflict: {
     label: 'Conflito / briga',
-    emoji: '😡',
+    icone: 'Angry',
     color: GRADIENTE_AGENDA.conflict,
     template: (name) =>
       `${name} se desentendeu com um colega hoje. Conversei com a turma — fica bom acompanhar em casa também.`,
   },
   read_agenda: {
     label: 'Professora pediu ler a agenda',
-    emoji: '📓',
+    icone: 'BookOpen',
     color: GRADIENTE_AGENDA.read_agenda,
     template: () =>
       'A professora pediu que vocês leiam a agenda da escola hoje. Tem aviso novo lá.',
   },
   teacher_request: {
     label: 'Professora pediu algo',
-    emoji: '📋',
+    icone: 'ClipboardList',
     color: GRADIENTE_AGENDA.teacher_request,
     template: () =>
       'A professora pediu um recado pra vocês. Verificar a agenda da escola pra ver o que é.',
   },
   meeting: {
     label: 'Reunião de pais',
-    emoji: '👨‍👩‍👧',
+    icone: 'Users',
     color: GRADIENTE_AGENDA.meeting,
     template: () =>
       'Vai ter reunião de pais. Confira o dia e horário na agenda da escola.',
   },
   event: {
     label: 'Evento da escola',
-    emoji: '🎉',
+    icone: 'PartyPopper',
     color: GRADIENTE_AGENDA.event,
     template: () =>
       'A escola vai ter um evento. Detalhes na agenda — confirma se a criança vai participar.',
   },
   no_class: {
     label: 'Não vai ter aula',
-    emoji: '🏫',
+    icone: 'School',
     color: GRADIENTE_AGENDA.no_class,
     template: () =>
       'A escola avisou que não vai ter aula. Confirma direitinho na agenda escolar.',
@@ -143,7 +143,7 @@ export const AGENDA_TYPES = {
   // "outro aviso" e escrevia do zero, no pior momento possível pra escrever.
   atraso: {
     label: 'Vou atrasar',
-    emoji: '⏰',
+    icone: 'ClockAlert',
     color: GRADIENTE_AGENDA.atraso,
     template: () =>
       'Hoje vou atrasar um pouco na rota. Assim que eu estiver chegando, o app avisa vocês.',
@@ -152,21 +152,21 @@ export const AGENDA_TYPES = {
   // perua adianta — a família que não sabe disso desce no horário de sempre.
   cedo: {
     label: 'Chego mais cedo',
-    emoji: '⏰',
+    icone: 'Clock',
     color: GRADIENTE_AGENDA.atraso,
     template: () =>
       'Hoje a perua vai passar um pouco antes do horário combinado. Se puder, deixe a criança pronta.',
   },
   quebrou: {
     label: 'Problema com a perua',
-    emoji: '🚨',
+    icone: 'TriangleAlert',
     color: GRADIENTE_AGENDA.quebrou,
     template: () =>
       'Tive um problema com a perua hoje. Estou resolvendo e aviso vocês assim que tiver notícia. Se puderem, se organizem para levar a criança hoje.',
   },
   other: {
     label: 'Outro aviso',
-    emoji: '✏️',
+    icone: 'Pencil',
     color: GRADIENTE_AGENDA.other,
     template: () => '',
   },

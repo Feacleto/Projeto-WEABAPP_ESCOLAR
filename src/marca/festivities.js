@@ -20,7 +20,7 @@
 const THEMES = {
   newYear: {
     key: 'newYear',
-    emoji: '🎉',
+    icone: 'PartyPopper',
     label: 'Ano Novo',
     greeting: 'Feliz Ano Novo!',
     subtitle: 'Que o ano que começou seja lindo pra você e pra criançada.',
@@ -30,7 +30,7 @@ const THEMES = {
   },
   carnival: {
     key: 'carnival',
-    emoji: '🎭',
+    icone: 'Drama',
     label: 'Carnaval',
     greeting: 'Bom Carnaval!',
     subtitle: 'Cuidado com os foliões na rua e bom feriado!',
@@ -40,7 +40,7 @@ const THEMES = {
   },
   easter: {
     key: 'easter',
-    emoji: '🐰',
+    icone: 'Rabbit',
     label: 'Páscoa',
     greeting: 'Feliz Páscoa!',
     subtitle: 'Tempo de chocolate, família e gratidão.',
@@ -50,7 +50,7 @@ const THEMES = {
   },
   mothersDay: {
     key: 'mothersDay',
-    emoji: '💐',
+    icone: 'Flower2',
     label: 'Dia das Mães',
     greeting: 'Feliz Dia das Mães!',
     subtitle: 'Pra todas as mães que confiam o filho na perua todo dia.',
@@ -60,7 +60,7 @@ const THEMES = {
   },
   june: {
     key: 'june',
-    emoji: '🎈',
+    icone: 'Flame',
     label: 'Festa Junina',
     greeting: 'Boa festa junina!',
     subtitle: 'Quentão, pé de moleque e fogueira — bom mês de junho!',
@@ -70,7 +70,7 @@ const THEMES = {
   },
   vacation: {
     key: 'vacation',
-    emoji: '☀️',
+    icone: 'Sun',
     label: 'Férias de julho',
     greeting: 'Boas férias!',
     subtitle: 'Aproveite o descanso da criançada — você merece também.',
@@ -80,7 +80,7 @@ const THEMES = {
   },
   fathersDay: {
     key: 'fathersDay',
-    emoji: '🎩',
+    icone: 'Heart',
     label: 'Dia dos Pais',
     greeting: 'Feliz Dia dos Pais!',
     subtitle: 'Pra todos os pais que confiam o filho na perua todo dia.',
@@ -90,7 +90,7 @@ const THEMES = {
   },
   independence: {
     key: 'independence',
-    emoji: '🇧🇷',
+    icone: 'Flag',
     label: 'Independência',
     greeting: 'Viva a Independência!',
     subtitle: 'Mês da pátria — Brasil que leva nossas crianças à escola.',
@@ -100,7 +100,7 @@ const THEMES = {
   },
   halloween: {
     key: 'halloween',
-    emoji: '🎃',
+    icone: 'Ghost',
     label: 'Halloween',
     greeting: 'Feliz Halloween!',
     subtitle: 'Cuidado com as criancinhas fantasiadas pela rua hoje.',
@@ -110,7 +110,7 @@ const THEMES = {
   },
   christmas: {
     key: 'christmas',
-    emoji: '🎄',
+    icone: 'TreePine',
     label: 'Natal',
     greeting: 'Feliz Natal!',
     subtitle: 'Que essa época seja cheia de paz pra você e pra criançada.',

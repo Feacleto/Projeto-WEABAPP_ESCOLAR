@@ -208,7 +208,7 @@ h2.sec{font:800 clamp(28px,7.5vw,36px)/1.08 var(--display); letter-spacing:-.03e
 .tela-tag{position:absolute; top:-10px; left:16px; background:var(--areia); padding:0 8px; font:500 12px var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--cinza)}
 .tela-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px}
 .tela-head b{font:700 15px var(--display)} .tela-head span{font:500 12px var(--mono); color:var(--cinza)}
-.pg{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #EEF1EF; font-size:14px}
+.pg{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--neutro); font-size:14px}
 .pg .av{width:30px; height:30px; border-radius:50%; background:var(--ok-chip); color:var(--verde); font-weight:700; font-size:11px; display:grid; place-items:center; flex:none}
 .pg .nm{flex:1; min-width:0} .pg .nm small{display:block; color:var(--cinza); font-size:12px; font-variant-numeric:tabular-nums}
 .st{font-weight:600; font-size:12.5px; padding:3px 9px; border-radius:999px; white-space:nowrap}
@@ -228,10 +228,11 @@ h2.sec{font:800 clamp(28px,7.5vw,36px)/1.08 var(--display); letter-spacing:-.03e
 .fim h2{position:relative; font:800 clamp(32px,8.5vw,44px)/1.04 var(--display); letter-spacing:-.035em; margin:0 0 12px; text-wrap:balance}
 .fim p{position:relative; margin:0 auto 26px; color:var(--ok-chip); max-width:32ch; font-size:16.5px}
 .fim .cta{position:relative; background:var(--vivo); color:var(--vivo-tinta); box-shadow:0 14px 30px -12px rgba(0,0,0,.45)}
+/* O limão um degrau mais claro, só no hover: não é papel novo, é o toque do `--vivo`. */
 .fim .cta:hover{background:#63D42A}
 .fim .teste{position:relative; color:var(--ok-chip)} .fim .teste b{color:#fff}
 
-footer{background:var(--preto); color:#C9D3CD; padding-block:34px calc(34px + env(safe-area-inset-bottom,0px)); font-size:14px}
+footer{background:var(--preto); color:var(--noite-texto); padding-block:34px calc(34px + env(safe-area-inset-bottom,0px)); font-size:14px}
 footer nav{display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:18px}
 /* 44px de altura de toque nos links do rodapé — eram 22px. */
 footer nav a{color:#fff; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; min-height:44px}

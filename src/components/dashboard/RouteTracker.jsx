@@ -12,7 +12,9 @@ import { horaDoMarco } from '../../services/ridesService';
  *   atSchool  → etapa 3 (na escola)
  *   delivered → etapa 4 (voltou)
  *
- * Etapa atual: ponto colorido com anel pulsante.
+ * Etapa atual: ponto colorido com anel parado. Ele PULSAVA, inclusive em
+ * "em casa" a noite inteira — e o pulso é o sinal do ao vivo, que só a
+ * tarja do cartão tem o direito de dar (ela para quando o dado envelhece).
  * Etapas anteriores: ponto verde com check.
  * Etapas futuras: ponto cinza.
  */
@@ -65,15 +67,12 @@ export default function RouteTracker({ status = 'home', compact = false, ride = 
               <div
                 className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                   done
-                    ? 'bg-primary text-white shadow-focus'
+                    ? 'bg-primary text-white shadow-rest'
                     : active
                     ? 'bg-primary text-white ring-4 ring-primary/20'
                     : 'bg-neutro text-textMuted border-2 border-border'
                 }`}
               >
-                {active && (
-                  <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
-                )}
                 <Icon size={16} className="relative" />
               </div>
 

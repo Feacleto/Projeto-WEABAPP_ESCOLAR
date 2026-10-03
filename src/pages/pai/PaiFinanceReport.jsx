@@ -76,7 +76,7 @@ export default function PaiFinanceReport() {
           <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold uppercase tracking-widest text-textMuted">
+                <p className="rotulo">
                   Histórico de pagamentos
                 </p>
                 <h1 className="text-2xl font-bold text-text leading-tight mt-1">
@@ -102,7 +102,7 @@ export default function PaiFinanceReport() {
             * lista — sem número grande dizendo zero. */}
           {debtTotal > 0 ? (
             <section className="bg-warningSoft rounded-2xl p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-warningText">
+              <p className="rotulo text-warningText">
                 A pagar
               </p>
               <p className="text-2xl font-bold text-warningText tabular-nums mt-1">
@@ -175,7 +175,7 @@ function PaymentLine({ payment }) {
         <p className="text-base font-bold text-text tabular-nums">
           {formatCurrency(payment.amount)}
         </p>
-        <p className={`text-xs font-bold uppercase tracking-wide ${cfg.text}`}>
+        <p className={`rotulo ${cfg.text}`}>
           {cfg.label}
         </p>
       </div>

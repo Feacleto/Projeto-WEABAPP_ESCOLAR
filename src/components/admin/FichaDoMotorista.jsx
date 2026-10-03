@@ -219,7 +219,7 @@ export default function FichaDoMotorista({
           }`}
         >
           <h3
-            className={`inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.18em] ${
+            className={`rotulo inline-flex items-center gap-1.5 ${
               risco.nivel === 'alto' ? 'text-dangerText' : 'text-warningText'
             }`}
           >
@@ -386,7 +386,7 @@ export default function FichaDoMotorista({
                   <span className="text-textMuted">{formatMonthLabel(f.mes)}</span>
                   <span className="tabular-nums">{formatCurrency(f.total)}</span>
                   <span
-                    className={`rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-wider ${
+                    className={`rotulo rounded-lg px-1.5 py-0.5 ${
                       f.status === 'quitada'
                         ? 'bg-primarySoft text-primary'
                         : 'bg-warningSoft text-warningText'
@@ -471,7 +471,7 @@ function Condicoes({ motorista, mes, onMudou }) {
               <p className="flex items-baseline justify-between gap-3">
                 <span className="flex min-w-0 items-baseline gap-1.5">
                   <span
-                    className={`shrink-0 rounded px-1 py-0.5 font-mono text-xs uppercase tracking-wider ${
+                    className={`rotulo shrink-0 rounded-lg px-1 py-0.5 ${
                       l.especie === 'excecao'
                         ? 'bg-warningSoft text-warningText'
                         : 'bg-neutro text-textMuted'
@@ -604,7 +604,7 @@ function Estado({ degrau, motivo, faltam }) {
 function Bloco({ icon: Icon, titulo, children }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-4 text-xs">
-      <h3 className="mb-2 inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+      <h3 className="rotulo mb-2 inline-flex items-center gap-1.5">
         <Icon size={11} />
         {titulo}
       </h3>

@@ -24,8 +24,11 @@ import { indiceDaAba } from '../../compartilhado/abaAtiva';
  * da aba ativa: o olho segue o movimento de graça, e procurar de novo onde
  * ficou o verde custa atenção que está no trânsito.
  *
- * A curva `cubic-bezier(.22,.9,.24,1)` sai rápido e freia macio. A saída
- * rápida é o que faz parecer instantâneo; a freada é o que diz "chegou".
+ * A curva é a `freio` do design system (sai rápido e freia macio), em
+ * `duration-entrada` (300 ms). Era uma curva e uma duração escritas à mão
+ * aqui (260 ms, `.22,.9,.24,1`) — quase iguais aos tokens, e por isso mesmo
+ * a cópia que divergiria em silêncio. A saída rápida é o que faz parecer
+ * instantâneo; a freada é o que diz "chegou".
  * ⚠️ SEM OVERSHOOT — repique seria simpático numa rede social e é ruído para
  * quem está de olho no trânsito.
  *
@@ -37,7 +40,9 @@ import { indiceDaAba } from '../../compartilhado/abaAtiva';
  * vibração no mesmo evento.
  *
  * ── OS TRÊS SINAIS REDUNDANTES CONTINUAM
- * Forma (a pastilha), cor (do ícone e do rótulo) e peso do traço. A leitura
+ * Forma (a pastilha), cor (do ícone e do rótulo) e peso do traço. O traço
+ * 2,4 / 1,8 é a única exceção do app ao traço 2 do lucide (D8), e é por isso:
+ * o peso é o sinal que não depende de luz nem de cor. A leitura
  * nunca depende só de cor. E a caixa de 32×56 existe SEMPRE, inclusive na aba
  * inativa: sem ela o ícone pula de posição ao trocar de aba.
  *
@@ -97,7 +102,7 @@ export default function BottomNav({ items }) {
           * não está. */}
         <span
           aria-hidden
-          className="absolute top-2 h-8 w-14 rounded-full bg-primary transition-[left,opacity] duration-[260ms] ease-[cubic-bezier(.22,.9,.24,1)] motion-reduce:transition-none"
+          className="absolute top-2 h-8 w-14 rounded-full bg-primary transition-[left,opacity] duration-entrada ease-freio motion-reduce:transition-none"
           style={{ left: esquerda, opacity: ativo >= 0 ? 1 : 0 }}
         />
 
@@ -119,7 +124,7 @@ export default function BottomNav({ items }) {
              * celular precisa ter. */
             onPointerLeave={soltar}
             onPointerCancel={soltar}
-            className={`tap relative z-10 flex flex-col items-center justify-center gap-1 pt-2 pb-2.5 text-[12px] transition-transform duration-[90ms] ease-out ${
+            className={`tap relative z-10 flex flex-col items-center justify-center gap-1 pt-2 pb-2.5 text-xs transition-transform duration-toque ease-freio ${
               apertada === i ? 'scale-[0.96]' : 'scale-100'
             }`}
           >
@@ -134,7 +139,7 @@ export default function BottomNav({ items }) {
                     strokeWidth={isActive ? 2.4 : 1.8}
                     /* A transição no traço é nova: o engrossar já existia e
                      * acontecia num quadro só, então ninguém via. */
-                    className={`transition-[stroke-width,color] duration-200 ${
+                    className={`transition-[stroke-width,color] duration-estado ${
                       isActive ? 'text-primaryBorder' : 'text-textMuted'
                     }`}
                   />
@@ -149,7 +154,7 @@ export default function BottomNav({ items }) {
                   * único sinal que não depende de luz. Antes os dois eram
                   * `semibold`, e por isso as duas abas pareciam meio ligadas. */}
                 <span
-                  className={`transition-colors duration-200 ${
+                  className={`transition-colors duration-estado ${
                     isActive
                       ? 'font-bold text-primary'
                       : 'font-medium text-textMuted'

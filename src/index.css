@@ -156,71 +156,11 @@
   }
 }
 
-/* ============================================================
- * Animações dos heros — feedback visual por estado da criança.
- * Usadas no PaiDashboard pra dar "vida" ao card de status.
- * ============================================================ */
-
-/* Perua atravessando da esquerda pra direita em loop suave.
- * 6s pra dar sensação de "tá rodando" sem ser distrativo. */
-@keyframes van-drive {
-  0% {
-    transform: translateX(-30%) translateY(0);
-  }
-  50% {
-    transform: translateX(20%) translateY(-2px);
-  }
-  100% {
-    transform: translateX(-30%) translateY(0);
-  }
-}
-.animate-van-drive {
-  animation: van-drive 6s ease-in-out infinite;
-}
-
-/* Casa "respirando" — pulse de escala sutil pra indicar repouso */
-@keyframes house-rest {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.85;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 1;
-  }
-}
-.animate-house-rest {
-  animation: house-rest 4s ease-in-out infinite;
-}
-
-/* Escola com balançado — leve sway lateral, como sino tocando */
-@keyframes school-sway {
-  0%, 100% {
-    transform: rotate(-3deg);
-  }
-  50% {
-    transform: rotate(3deg);
-  }
-}
-.animate-school-sway {
-  animation: school-sway 3s ease-in-out infinite;
-  transform-origin: bottom center;
-}
-
-/* Estrela girando lento + brilho — pra estado "voltou em segurança" */
-@keyframes celebrate {
-  0%, 100% {
-    transform: scale(1) rotate(0deg);
-    opacity: 0.85;
-  }
-  50% {
-    transform: scale(1.15) rotate(180deg);
-    opacity: 1;
-  }
-}
-.animate-celebrate {
-  animation: celebrate 5s ease-in-out infinite;
-}
+/* AS ANIMAÇÕES DOS HERÓIS SAÍRAM (03/10/2026, design system). A perua
+ * atravessando, a casa respirando, a escola balançando e a estrela girando
+ * rodavam em laço infinito no cartão do PaiDashboard. A regra do sistema é
+ * que nada se mexe sozinho, exceto o "ao vivo" — e animação viva sobre um
+ * dado parado é justamente o que o avisoDoMomento proíbe. */
 
 /* ============================================================
  * Animações festivas — bolinha clicável ao lado da saudação.
@@ -237,7 +177,7 @@
   }
 }
 .animate-fest-bounce {
-  animation: fest-bounce 1.6s ease-in-out infinite;
+  animation: fest-bounce 1.6s ease-in-out 2;
 }
 
 @keyframes fest-wiggle {
@@ -249,7 +189,7 @@
   }
 }
 .animate-fest-wiggle {
-  animation: fest-wiggle 1.4s ease-in-out infinite;
+  animation: fest-wiggle 1.4s ease-in-out 2;
 }
 
 @keyframes fest-float {
@@ -261,7 +201,7 @@
   }
 }
 .animate-fest-float {
-  animation: fest-float 2.4s ease-in-out infinite;
+  animation: fest-float 2.4s ease-in-out 2;
 }
 
 @keyframes fest-glow {
@@ -275,7 +215,7 @@
   }
 }
 .animate-fest-glow {
-  animation: fest-glow 2s ease-out infinite;
+  animation: fest-glow 2s ease-out 2;
 }
 
 @keyframes fest-sway {
@@ -287,7 +227,7 @@
   }
 }
 .animate-fest-sway {
-  animation: fest-sway 2.2s ease-in-out infinite;
+  animation: fest-sway 2.2s ease-in-out 2;
 }
 
 @keyframes fest-sparkle {
@@ -305,7 +245,7 @@
   }
 }
 .animate-fest-sparkle {
-  animation: fest-sparkle 2s ease-in-out infinite;
+  animation: fest-sparkle 2s ease-in-out 2;
 }
 
 /* Scroll reveal — entrada leve das seções da landing à medida que o
@@ -341,7 +281,7 @@
   }
 }
 .animate-fest-balloon-in {
-  animation: fest-balloon-in 220ms ease-out;
+  animation: fest-balloon-in var(--dur-estado) var(--curva-freio);
 }
 
 /* Confetti animado pro modal de aniversário — pontinhos coloridos caindo.
@@ -492,52 +432,6 @@
   transform: none;
 }
 
-/* Brilho que atravessa o botão principal — chama o toque sem piscar.
- * Roda a cada 4,2s: presente o bastante pra ser notado, espaçado o
- * bastante pra não virar strobe na leitura do texto ao lado. */
-@keyframes cta-shine {
-  0% {
-    transform: translateX(-140%) skewX(-18deg);
-  }
-  55%,
-  100% {
-    transform: translateX(260%) skewX(-18deg);
-  }
-}
-/* Variante clara do brilho: pra botão COLORIDO ou escuro, onde o sweep
- * esverdeado do .cta-shine desaparece. Mesma curva, tinta branca. */
-.cta-shine-white::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 45%;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.28) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  animation: cta-shine 4.2s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.cta-shine::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 45%;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(31, 95, 63, 0.13) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  animation: cta-shine 4.2s ease-in-out infinite;
-  pointer-events: none;
-}
-
 /* Halo do CTA — dois anéis defasados saindo da borda do botão. */
 @keyframes cta-ring {
   0% {
@@ -554,52 +448,6 @@
 }
 .cta-ring-2 {
   animation-delay: 1.3s;
-}
-
-/* Dica de rolagem no hero — desce e volta, como um dedo insistindo. */
-@keyframes hint-bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.55;
-  }
-  50% {
-    transform: translateY(7px);
-    opacity: 1;
-  }
-}
-.animate-hint-bounce {
-  animation: hint-bounce 1.9s ease-in-out infinite;
-}
-
-/* Brilhos do fundo escuro à deriva — dá profundidade sem gradiente chapado. */
-@keyframes glow-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(6%, 4%, 0) scale(1.12);
-  }
-}
-.animate-glow-drift {
-  animation: glow-drift 14s ease-in-out infinite;
-}
-.animate-glow-drift-slow {
-  animation: glow-drift 22s ease-in-out infinite reverse;
-}
-
-/* Malha do hero deslizando devagar — sensação de "interface rodando". */
-@keyframes grid-drift {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 44px 44px;
-  }
-}
-.animate-grid-drift {
-  animation: grid-drift 9s linear infinite;
 }
 
 /* ─────────── Demo de telas (mock em CSS, sem screenshot) ─────────── */
@@ -630,8 +478,22 @@
 /* O `transform` do keyframe SUBSTITUI o `-translate-y-1/2` da classe utilitária
    — as duas escrevem a mesma propriedade, e a animação ganha. Por isso o
    translateY entra em todo passo: sem ele a van desce meio corpo ao animar. */
+/* ⚠️ A PERUA ANDA UMA VEZ E CHEGA (03/10/2026, design system). Ela ia e
+   voltava a cada 9s, sem parar, no cabeçalho das boas-vindas e do cadastro —
+   e a regra é que nada se mexe sozinho, só o "ao vivo". Agora ela sai da
+   casa, chega à escola e fica lá: a cena conta a ideia uma vez. */
+@keyframes demo-van-vai {
+  from {
+    left: 52px;
+    transform: translateY(-50%);
+  }
+  to {
+    left: calc(100% - 108px);
+    transform: translateY(-50%);
+  }
+}
 .demo-van {
-  animation: demo-van-run 9s cubic-bezier(0.42, 0, 0.5, 1) infinite;
+  animation: demo-van-vai 1.6s var(--curva-freio) 0.3s both;
 }
 
 /* Ponto "ao vivo" — o mesmo halo do pin do mapa, em escala de mock. */
@@ -646,68 +508,8 @@
   }
 }
 .demo-ping {
-  animation: demo-ping 2s ease-out infinite;
-}
-
-/* Traçado da rota se desenhando no mapa falso. */
-@keyframes demo-dash {
-  to {
-    stroke-dashoffset: -40;
-  }
-}
-.demo-dash {
-  animation: demo-dash 2.4s linear infinite;
-}
-
-/* Van andando pelo traçado do mapa falso. São translates em px (e não
- * offset-path, que ainda falha no WebView do Android antigo) calculados
- * sobre o tamanho REAL do mapa do mock — 178x104, que vem da moldura de
- * largura fixa do celular. Se a moldura mudar de largura, estes quatro
- * pontos precisam ser recalculados junto com o path do SVG. */
-@keyframes demo-van-map {
-  0% {
-    transform: translate(4px, 80px);
-  }
-  35% {
-    transform: translate(58px, 57px);
-  }
-  70% {
-    transform: translate(102px, 25px);
-  }
-  100% {
-    transform: translate(151px, 9px);
-  }
-}
-.demo-van-map {
-  animation: demo-van-map 6s ease-in-out infinite alternate;
-}
-
-/* Troca de tela do demo: a nova entra subindo com um leve pop. */
-@keyframes demo-screen-in {
-  0% {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-  }
-}
-.animate-demo-screen-in {
-  animation: demo-screen-in 380ms cubic-bezier(0.2, 0.75, 0.2, 1);
-}
-
-/* Barra de progresso do "copiar PIX" e afins. */
-@keyframes demo-sweep {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(320%);
-  }
-}
-.demo-sweep {
-  animation: demo-sweep 2.8s ease-in-out infinite;
+  /* Dois pulsos e para — é ilustração, não um "ao vivo" de verdade. */
+  animation: demo-ping 2s ease-out 2;
 }
 
 /* ─────────── Artes animadas do topo de cada bloco (BlockArt.jsx) ───────────
@@ -844,21 +646,6 @@
   animation: art-blink 2.2s ease-in-out infinite;
 }
 
-/* Barra flutuante do convite pro motorista — sobe uma vez, ao aparecer. */
-@keyframes cta-dock-in {
-  0% {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-  }
-}
-.animate-cta-dock-in {
-  animation: cta-dock-in 420ms cubic-bezier(0.2, 0.75, 0.2, 1);
-}
-
 /* ─────────── Folha modal (Sheet.jsx) ───────────
  * O fundo escurece e a folha sobe. Curva rápida no começo e freio no fim:
  * dá a sensação de a folha ter sido puxada, não de ter "aparecido". */
@@ -871,7 +658,7 @@
   }
 }
 .animate-sheet-fade {
-  animation: sheet-fade var(--dur-estado) ease-out;
+  animation: sheet-fade var(--dur-estado) var(--curva-freio);
 }
 
 @keyframes sheet-up {
@@ -925,13 +712,7 @@
 
 /* Quem pediu menos movimento recebe a home parada — o conteúdo é o mesmo. */
 @media (prefers-reduced-motion: reduce) {
-  .cta-shine::after,
-  .cta-shine-white::after,
   .cta-ring,
-  .animate-hint-bounce,
-  .animate-glow-drift,
-  .animate-glow-drift-slow,
-  .animate-grid-drift,
   .demo-van,
   .demo-ping,
   .art-coin,
@@ -941,62 +722,15 @@
   .art-travel,
   .art-orbit,
   .art-blink,
-  .animate-cta-dock-in,
   .animate-sheet-fade,
   .animate-sheet-up,
   .animate-step-in,
-  .animate-talk-pulse,
-  .demo-dash,
-  .demo-van-map,
-  .animate-demo-screen-in,
-  .demo-sweep {
+  .animate-talk-pulse {
     animation: none !important;
   }
   .rise {
     opacity: 1;
     transform: none;
-    transition: none;
-  }
-}
-
-/* ============================================================
- * A FILA DA ROTA QUE SE REORGANIZA
- *
- * Quando o motorista marca uma criança, ela sai da lista de baixo e aparece
- * na de cima. São duas listas diferentes no DOM, então o navegador não tem
- * como animar a transição sozinho — o que ele vê é uma linha sumindo e outra
- * aparecendo, seca, e com o veículo em movimento isso se parece com erro.
- *
- * A animação de entrada dá a leitura de "subiu": a linha entra deslizando de
- * baixo. É barata (transform + opacity, sem layout) e cabe no orçamento de
- * um celular modesto segurando GPS e mapa ao mesmo tempo.
- * ============================================================ */
-
-@keyframes fila-entra {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.fila-entra {
-  animation: fila-entra 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* A barra de progresso da viagem cresce, não pula. */
-.progresso-barra {
-  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fila-entra {
-    animation: none;
-  }
-  .progresso-barra {
     transition: none;
   }
 }

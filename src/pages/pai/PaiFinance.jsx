@@ -105,6 +105,15 @@ export default function PaiFinance() {
   const adminDaCobranca = nextToPay?.adminUid || payments[0]?.adminUid || null;
   const { admin } = useAdminProfile(adminDaCobranca);
 
+  // ⚠️ E O GESTO DE "JÁ PAGUEI" É DO MOTORISTA DAQUELA MENSALIDADE (03/10/2026).
+  // O aviso, o WhatsApp e a pergunta "tem PIX?" usavam o motorista da
+  // PRÓXIMA cobrança: a mãe de filhos em duas peruas marcava o mês do
+  // segundo filho e o aviso chegava ao motorista do primeiro.
+  const pagamentoEmFoco = claiming?.payment || methodPicker || null;
+  const { admin: adminDoGesto } = useAdminProfile(
+    pagamentoEmFoco?.adminUid || adminDaCobranca
+  );
+
   const enriched = useMemo(
     () => payments.map((p) => ({ ...p, _display: computeDisplayStatus(p) })),
     [payments]
@@ -120,8 +129,8 @@ export default function PaiFinance() {
 
   // Prepara mensagem pronta pro WhatsApp do tio com detalhes do pagamento
   const buildWhatsAppLink = (payment) => {
-    if (!admin?.phone) return null;
-    const phoneDigits = String(admin.phone).replace(/\D/g, '');
+    if (!adminDoGesto?.phone) return null;
+    const phoneDigits = String(adminDoGesto.phone).replace(/\D/g, '');
     const phoneE164 = phoneDigits.startsWith('55') ? phoneDigits : `55${phoneDigits}`;
     const text = encodeURIComponent(
       `Olá! Acabei de pagar a mensalidade de ${payment.childName} (${formatMonthLabel(payment.month)}) no valor de ${formatCurrency(payment.amount)}. Segue o comprovante.`
@@ -182,9 +191,9 @@ export default function PaiFinance() {
       }
 
       // Notifica o tio (fire-and-forget)
-      if (admin?.uid) {
+      if (payment.adminUid) {
         notifyPaymentClaimed({
-          adminUid: admin.uid,
+          adminUid: payment.adminUid,
           paymentId: payment.id,
           childName: payment.childName,
           monthLabel: formatMonthLabel(payment.month),
@@ -366,7 +375,7 @@ export default function PaiFinance() {
       {methodPicker && (
         <MethodPickerModal
           payment={methodPicker}
-          hasPix={!!admin?.pixKey}
+          hasPix={!!adminDoGesto?.pixKey}
           onPick={onPickMethod}
           onClose={() => setMethodPicker(null)}
         />
@@ -488,7 +497,7 @@ function MethodPickerModal({ payment, hasPix, onPick, onClose }) {
                 : 'bg-sunken border-neutro opacity-50 cursor-not-allowed'
             }`}
           >
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
               <MessageCircle size={20} className="text-primary" />
             </div>
             <div className="flex-1 min-w-0">
@@ -506,7 +515,7 @@ function MethodPickerModal({ payment, hasPix, onPick, onClose }) {
             onClick={() => onPick('cash')}
             className="w-full flex items-center gap-3 p-4 rounded-xl border bg-card border-border hover:bg-sunken tap text-left"
           >
-            <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-warningChip flex items-center justify-center shrink-0">
               <Banknote size={20} className="text-warning" />
             </div>
             <div className="flex-1 min-w-0">

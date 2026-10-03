@@ -34,14 +34,14 @@ export default function PageHeader({
   return (
     <div className="flex items-start gap-3">
       {Icon && (
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Icon size={17} />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
+          <Icon size={18} />
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <h2 className="text-base font-bold leading-tight text-text">{title}</h2>
+        <h2 className="font-display text-lg font-bold leading-tight text-text">{title}</h2>
         {subtitle && (
-          <p className="mt-0.5 text-xs leading-snug text-textMuted">
+          <p className="mt-0.5 text-sm leading-snug text-textMuted">
             {subtitle}
           </p>
         )}

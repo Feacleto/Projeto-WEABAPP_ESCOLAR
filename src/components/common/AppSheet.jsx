@@ -40,12 +40,14 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  * rolagem do fundo, a maioria não; algumas fechavam com ESC, a maioria
  * não; nenhuma ia pro portal, o que quebra em cima de cabeçalho grudado.
  *
- * ISTO NÃO É O Sheet.jsx
- * Aquele é a folha da VITRINE — tampa escura, brilho, malha. É a marca
- * falando com quem ainda não entrou. Aqui dentro, quem já entrou não
- * precisa da marca se apresentando de novo a cada consulta de endereço:
- * precisa de superfície clara, curta, que devolva ele pro lugar de onde
- * veio. Duas folhas, dois públicos, de propósito.
+ * ISTO NÃO É O Sheet.jsx — MAS DESDE 03/10/2026 TEM A MESMA CARA
+ * Aquele é a folha da VITRINE e tinha uma tampa escura com brilho e malha,
+ * a marca se apresentando a quem ainda não entrou. O design system tirou a
+ * superfície escura do app (ela ficou só no site), e as duas folhas passaram
+ * a ter o mesmo rosto: branca, alça cinza, título em Bricolage, X num
+ * quadradinho neutro, véu `night` a 45% e sombra `float`. O que as separa
+ * continua sendo a mecânica — esta vai para o portal, trava o fundo e tem
+ * tamanhos e rodapé fixo; aquela centraliza no desktop e tem o "Voltar".
  *
  * PORTAL, SEMPRE
  * Uma folha declarada dentro do cabeçalho (`sticky z-20`) ou de um cartão
@@ -108,7 +110,7 @@ export default function AppSheet({
 
   return createPortal(
     <div
-      className="animate-sheet-fade fixed inset-0 z-50 mx-auto max-w-mobile bg-black/40 backdrop-blur-sm"
+      className="animate-sheet-fade fixed inset-0 z-50 mx-auto max-w-mobile bg-night/45"
       onClick={onClose}
     >
       <div
@@ -116,12 +118,12 @@ export default function AppSheet({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className={`absolute bottom-0 left-0 right-0 flex flex-col overflow-hidden rounded-t-3xl bg-card shadow-2xl ${
+        className={`absolute bottom-0 left-0 right-0 flex flex-col overflow-hidden rounded-t-3xl bg-card shadow-float ${
           SIZES[size] || SIZES.auto
         } ${
           // A animação de entrada sai de cena durante o arrasto: as duas mexem
           // no mesmo `transform`, e juntas a folha treme.
-          arrastando ? '' : 'animate-sheet-up transition-transform duration-200'
+          arrastando ? '' : 'animate-sheet-up transition-transform duration-estado ease-freio'
         }`}
         style={{
           paddingBottom: 'env(safe-area-inset-bottom, 0)',
@@ -135,7 +137,7 @@ export default function AppSheet({
           {...alcaProps}
           className={`flex shrink-0 justify-center pb-1 pt-3 ${alcaProps.className}`}
         >
-          <span className="block h-1.5 w-10 rounded-full bg-borderStrong" />
+          <span className="block h-[5px] w-10 rounded-full bg-borderStrong" />
         </div>
 
         <div
@@ -143,16 +145,16 @@ export default function AppSheet({
           className={`flex shrink-0 items-start gap-3 px-5 pb-3 pt-2 ${alcaProps.className}`}
         >
           {Icon && (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Icon size={19} />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
+              <Icon size={20} />
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-bold leading-tight text-text">
+            <h2 className="font-display text-xl font-bold leading-tight text-text">
               {title}
             </h2>
             {subtitle && (
-              <p className="mt-1 text-xs leading-snug text-textMuted">
+              <p className="mt-1 text-sm leading-snug text-textMuted">
                 {subtitle}
               </p>
             )}
@@ -161,7 +163,7 @@ export default function AppSheet({
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutro text-textMuted"
+            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutro text-textMuted hover:text-text"
           >
             <X size={18} />
           </button>

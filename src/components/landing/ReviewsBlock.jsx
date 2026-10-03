@@ -31,16 +31,17 @@ export default function ReviewsBlock({ items = [], stats = null, loaded }) {
 
   return (
     <div>
-      {/* Média — pastilha âmbar, a única cor quente da página escura.
-        * Estrela é a linguagem universal de avaliação; o âmbar existe pra
-        * ela ser encontrada sem leitura. */}
-      <div className="inline-flex items-center gap-3 rounded-2xl border border-warningBorder/25 bg-warning/10 px-4 py-2.5">
+      {/* Média — pastilha clara com as estrelas em ouro. Estrela é a
+        * linguagem universal de avaliação; o ouro existe pra ela ser
+        * encontrada sem leitura. Era sobre a home escura, que não existe
+        * mais: desde 03/10/2026 não há tela escura dentro do app. */}
+      <div className="inline-flex items-center gap-3 rounded-2xl border border-warningBorder bg-warningSoft px-4 py-2.5">
         <Stars value={media} />
         <div>
-          <p className="text-lg font-extrabold leading-tight tabular-nums text-white">
+          <p className="font-display text-lg font-extrabold leading-tight tabular-nums text-text">
             {media.toFixed(1).replace('.', ',')}
           </p>
-          <p className="text-xs leading-tight text-white/50">
+          <p className="text-xs leading-tight text-textMuted">
             {quantos > 0
               ? `${quantos} ${quantos === 1 ? 'avaliação' : 'avaliações'}`
               : 'em breve'}
@@ -64,18 +65,20 @@ export default function ReviewsBlock({ items = [], stats = null, loaded }) {
  * Card de depoimento. Exportado porque a folha de avaliação mostra
  * exatamente ESTE componente como preview pro motorista antes de publicar —
  * dois desenhos parecidos viram promessa quebrada na primeira mudança.
+ * Claro desde 03/10/2026, como o cartão do design system: branco, sombra de
+ * repouso, sem borda.
  */
 export function ReviewCard({ review, exemplo }) {
   const { firstName, photoURL, rating, comment, id } = review;
 
   return (
-    <article className="flex w-[17.5rem] shrink-0 snap-center flex-col rounded-3xl border border-white/10 bg-white/[0.055] p-5">
-      <Quote size={20} className="mb-2 text-onNightAccent/60" />
-      <p className="flex-1 text-sm leading-relaxed text-white/85">
+    <article className="flex w-[17.5rem] shrink-0 snap-center flex-col rounded-2xl bg-card p-5 shadow-rest">
+      <Quote size={20} className="mb-2 text-primaryBorder" />
+      <p className="flex-1 text-[15px] leading-relaxed text-textBody">
         “{comment}”
       </p>
 
-      <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
+      <div className="mt-4 flex items-center gap-3 border-t border-neutro pt-4">
         <Avatar
           photoURL={photoURL}
           kind="admin"
@@ -84,16 +87,16 @@ export function ReviewCard({ review, exemplo }) {
           size="sm"
         />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-sm font-bold leading-tight text-white">
+          <p className="flex items-center gap-1.5 text-sm font-bold leading-tight text-text">
             {firstName}
             {exemplo && (
-              <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs uppercase tracking-widest text-white/50">
+              <span className="rotulo rounded-md bg-neutro px-1.5 py-0.5">
                 exemplo
               </span>
             )}
           </p>
-          <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-white/45">
-            <Bus size={11} /> Motorista associado
+          <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-textMuted">
+            <Bus size={12} /> Motorista associado
           </p>
         </div>
         <Stars value={rating} size={13} />
@@ -123,7 +126,7 @@ export function Stars({ value, size = 16 }) {
         if (n === cheias + 1 && resto > 0) {
           return (
             <span key={n} className="relative inline-flex">
-              <Star size={size} className="fill-white/15 text-white/20" />
+              <Star size={size} className="fill-neutro text-borderStrong" />
               <span
                 className="absolute inset-0 overflow-hidden"
                 style={{ width: `${resto * 100}%` }}
@@ -137,7 +140,7 @@ export function Stars({ value, size = 16 }) {
           );
         }
         return (
-          <Star key={n} size={size} className="fill-white/15 text-white/20" />
+          <Star key={n} size={size} className="fill-neutro text-borderStrong" />
         );
       })}
     </div>

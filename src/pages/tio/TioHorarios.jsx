@@ -228,8 +228,7 @@ export default function TioHorarios() {
             {avisos.map((a, i) => (
               <div
                 key={`${a.de.id}-${a.para.id}-${i}`}
-                className="bg-rust-50 border border-dangerBorder rounded-2xl p-3 flex items-start gap-2.5"
-                style={{ background: 'rgb(254 242 242)' }}
+                className="bg-dangerSoft border border-dangerBorder rounded-2xl p-3 flex items-start gap-2.5"
               >
                 <AlertTriangle size={17} className="text-danger shrink-0 mt-0.5" />
                 <p className="text-xs text-dangerText leading-relaxed">
@@ -268,7 +267,7 @@ export default function TioHorarios() {
               {i > 0 && (
                 <div className="flex items-center gap-2 pt-2">
                   <span className="h-px flex-1 bg-border" />
-                  <span className="text-xs uppercase tracking-widest text-textMuted">
+                  <span className="rotulo">
                     outra viagem
                   </span>
                   <span className="h-px flex-1 bg-border" />
@@ -423,7 +422,7 @@ export default function TioHorarios() {
 function ParadaEscola({ escolas }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-escolaSoft border border-escolaBorder">
-      <span className="w-14 shrink-0 text-xs uppercase tracking-wide text-escola font-semibold">
+      <span className="rotulo w-14 shrink-0 text-escola">
         depois
       </span>
       <div className="w-8 h-8 rounded-lg bg-escola text-white flex items-center justify-center shrink-0">

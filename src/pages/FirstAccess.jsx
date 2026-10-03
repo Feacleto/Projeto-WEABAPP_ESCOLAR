@@ -9,7 +9,6 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import FundoNoturno from '../components/common/FundoNoturno';
 import Logo from '../components/common/Logo';
 import FundoDoLogin, {
   TexturaDoFundo,
@@ -195,9 +194,13 @@ export default function FirstAccess() {
       className="relative left-1/2 w-screen -translate-x-1/2 bg-bg"
     >
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)]">
-        {/* ── tampa escura: a marca, no mesmo material da home ── */}
-        <header className="relative overflow-hidden rounded-b-[28px] bg-night px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
-          <FundoNoturno />
+        {/* ── cabeçalho verde: a marca ──
+          * Era a tampa escura "no mesmo material da home", com o fundo
+          * noturno andando. Desde 03/10/2026 (decisão do dono) dentro do app
+          * não existe tela escura — ela ficou só no site — e a porta é o
+          * verde com a marca, como no login. O movimento contínuo saiu junto:
+          * o sistema só o permite no "ao vivo". */}
+        <header className="relative overflow-hidden rounded-b-3xl bg-primary px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
 
           <div className="relative">
             {/* Voltar vai pra porta da FAMÍLIA, não pra "/". Esta tela é do
@@ -206,7 +209,7 @@ export default function FirstAccess() {
               * bifurcação: essa pessoa volta pra ela. */}
             <Link
               to={veioDaEscolha ? '/login?criar=1' : '/familia'}
-              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-primaryChip hover:text-white"
             >
               <ArrowLeft size={16} />{' '}
               {veioDaEscolha ? 'Voltar para a escolha' : 'Voltar'}
@@ -231,13 +234,13 @@ export default function FirstAccess() {
                 *
                 * "Pra quem espera na porta" faz o par com "pra quem dirige"
                 * da tela do motorista. */}
-              <p className="mt-4 font-mono text-xs uppercase tracking-[0.2em] text-onNightAccent/80">
+              <p className="rotulo mt-4 text-menta">
                 pra quem espera na porta
               </p>
-              <h1 className="mt-1 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
+              <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
                 Acompanhe a perua do seu filho
               </h1>
-              <p className="mx-auto mt-3 max-w-[22rem] text-sm leading-relaxed text-white/65 lg:mx-0">
+              <p className="mx-auto mt-3 max-w-[22rem] text-sm leading-relaxed text-primaryChip lg:mx-0">
                 Você vê onde ela está, recebe o aviso quando ela chega e avisa
                 quando ele não vai.{' '}
                 <strong className="font-semibold text-white">
@@ -248,17 +251,10 @@ export default function FirstAccess() {
             </div>
           </div>
 
-          <p className="relative hidden text-xs text-white/40 lg:block">
+          <p className="relative hidden text-xs text-primaryChip lg:block">
             alobuzinou.com.br
           </p>
         </header>
-
-        {/* A costura entre marca e produto só existe empilhado: lado a lado, a
-          * borda entre as duas colunas já faz esse trabalho. */}
-        <div
-          aria-hidden
-          className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary lg:hidden"
-        />
 
         {/* ── O FUNDO AQUI LIGA MAIS TARDE QUE NO LOGIN, E A CONTA DIZ POR QUÊ
           *
@@ -279,9 +275,9 @@ export default function FirstAccess() {
         <main className="relative flex flex-1 flex-col bg-bg px-4 py-6 sm:px-6 lg:px-12 lg:py-16">
           <TexturaDoFundo />
           <FundoDoLogin assunto="convite" desde={1980} largura={520} />
-          <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl border border-border bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8">
+          <div className="relative z-10 mx-auto flex w-full max-w-[520px] flex-1 flex-col rounded-2xl bg-card p-5 shadow-float sm:p-7 lg:justify-center lg:p-8">
             <div className="mb-5">
-              <h2 className="text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
+              <h2 className="font-display text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
                 Você entra pelo convite do motorista
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-textMuted">

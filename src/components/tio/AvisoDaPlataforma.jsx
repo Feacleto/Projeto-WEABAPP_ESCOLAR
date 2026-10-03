@@ -133,8 +133,10 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
         )}
 
         <p
-          className={`flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.12em] ${
-            suspenso ? 'text-[#E8867C]' : 'text-warningText'
+          className={`rotulo flex items-center gap-1.5 ${
+            // Sobre o verde-escuro da cortina, o vermelho que se lê é o claro
+            // (`dangerBorder`); o `dangerText` some ali.
+            suspenso ? 'text-dangerBorder' : 'text-warningText'
           }`}
         >
           <AlertTriangle size={12} />
@@ -158,7 +160,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
               Sem o app você não emite nem dá baixa em mensalidade nenhuma —
               volta a cobrar no caderno e de porta em porta.
             </p>
-            <div className="mt-3 rounded-xl border border-[#E8867C]/30 bg-[#A32017]/25 p-3">
+            <div className="mt-3 rounded-xl border border-dangerBorder/30 bg-dangerText/25 p-3">
               <p className="text-[13px] font-bold">
                 {formatBRL(valor)} destrava tudo agora.
               </p>

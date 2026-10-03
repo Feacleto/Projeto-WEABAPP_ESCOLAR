@@ -171,26 +171,13 @@ export default function AdminPanel() {
      * `data-painel="web"` é o que solta o teto de 480px do #root — a regra
      * mora em index.css, junto do teto que ela abre. Ver lá o porquê. */
     <div data-painel="web" className="min-h-screen flex flex-col bg-bg">
-      {/* Tampa escura — mesma regra das outras portas do produto. */}
-      <header className="relative overflow-hidden rounded-b-[28px] bg-[#0B1210] px-5 pb-6 pt-5 text-white">
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div
-            className="absolute inset-0 opacity-80 animate-glow-drift"
-            style={{
-              background:
-                'radial-gradient(110% 80% at 10% 0%, rgba(31,95,63,.6) 0%, rgba(11,18,16,0) 62%)',
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.06] animate-grid-drift"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
-              backgroundSize: '44px 44px',
-            }}
-          />
-        </div>
-
+      {/* CABEÇALHO BRANCO, como dentro de /tio e /pai (03/10/2026).
+        * Era a "tampa escura" das portas, com brilho e malha andando. O dono
+        * decidiu que dentro do app não existe tela escura — ela ficou só no
+        * site — e este painel não é porta: quem chega aqui já entrou. Então
+        * ele segue o cabeçalho de dentro do app (branco), e o movimento
+        * contínuo saiu, porque o sistema só o permite no "ao vivo". */}
+      <header className="bg-card px-5 pb-6 pt-5 shadow-rest">
         <div className="relative mx-auto w-full max-w-6xl">
           {/* SAIR, E NÃO "PAINEL DO MOTORISTA".
             * Aqui havia um link pro /tio, e ele virou porta fechada quando o
@@ -211,27 +198,22 @@ export default function AdminPanel() {
                 toast.error('Não deu pra sair. Tente de novo.');
               }
             }}
-            className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-white/60 hover:text-white"
+            className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-textMuted hover:text-text"
           >
             <LogOut size={15} /> Sair
           </button>
-          <p className="mt-4 font-mono text-xs uppercase tracking-[0.2em] text-primary/80">
+          <p className="rotulo mt-4">
             só pra você
           </p>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+          <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-text">
             Painel do dono
           </h1>
-          <p className="mt-1 text-sm text-white/60">
+          <p className="mt-1 text-sm text-textMuted">
             {profile?.name ? `Oi, ${profile.name.split(' ')[0]}. ` : ''}
             Parceiros, motoristas, uso da plataforma e pesquisa.
           </p>
         </div>
       </header>
-
-      <div
-        aria-hidden
-        className="h-[2px] shrink-0 bg-gradient-to-r from-primary via-accent to-primary"
-      />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-5 sm:px-6">
         {/* Abas — UMA FILEIRA NA WEB, DUAS NO CELULAR.
@@ -280,7 +262,7 @@ export default function AdminPanel() {
                 setTab(id);
               }}
               className={`tap min-w-[5.5rem] flex-1 rounded-xl py-2.5 text-xs font-bold transition-colors ${
-                tab === id ? 'bg-card text-primary shadow-sm' : 'text-textMuted'
+                tab === id ? 'bg-card text-primary shadow-rest' : 'text-textMuted'
               }`}
             >
               {label}
@@ -673,7 +655,7 @@ function PeriodoDeAvaliacao() {
           }`}
         >
           <span
-            className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-rest transition-all ${
               aberta ? 'left-6' : 'left-1'
             }`}
           />
@@ -751,7 +733,7 @@ function ChaveDaCobranca() {
   return (
     <div
       className={`rounded-2xl border p-4 space-y-3 ${
-        ligada ? 'border-border bg-card' : 'border-primary/30 bg-primarySoft'
+        ligada ? 'border-border bg-card' : 'border-primaryBorder bg-primarySoft'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -927,7 +909,7 @@ function ModuloDeCobranca({ modulo, config }) {
             }`}
           >
             <span
-              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+              className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-rest transition-all ${
                 ativo ? 'left-6' : 'left-1'
               }`}
             />

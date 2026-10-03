@@ -85,7 +85,9 @@ export default function InviteShare({
     QRCode.toDataURL(url, {
       width: 320,
       margin: 1,
-      color: { dark: '#111827', light: '#FFFFFF' },
+      // O QR não lê classe do Tailwind: a lib pede hex literal. É o valor do
+      // token `text` (#0B1210) — se ele mudar no tailwind.config.js, muda aqui.
+      color: { dark: '#0B1210', light: '#FFFFFF' },
     })
       .then(setQrDataUrl)
       .catch(() => toast.error('Não foi possível gerar o QR.'));
@@ -157,7 +159,7 @@ export default function InviteShare({
         // TEXTO ESCURO SOBRE O VERDE DO WHATSAPP: o branco dava 1,98:1
         // (o mínimo é 4,5). `min-h` em vez de `h` e ícone que não encolhe —
         // com rótulo longo o texto quebrava e cortava o balão na borda.
-        className="tap w-full min-h-14 rounded-xl bg-[#25D366] px-4 py-3 text-[#06210A] font-bold leading-tight text-center inline-flex items-center justify-center gap-2 shadow-focus"
+        className="tap w-full min-h-14 rounded-xl bg-whatsapp px-4 py-3 text-onAccent font-bold leading-tight text-center inline-flex items-center justify-center gap-2 shadow-focus"
       >
         <span className="inline-flex shrink-0"><WhatsAppIcon size={20} colored={false} /></span>
         {rotulo || (jaEntrou ? 'Mandar o link no WhatsApp' : 'Mandar convite no WhatsApp')}
@@ -177,7 +179,7 @@ export default function InviteShare({
       <>
 
       <div className="bg-card border border-border rounded-xl p-3 space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-textMuted flex items-center gap-1.5">
+        <p className="rotulo flex items-center gap-1.5">
           <Link2 size={12} />
           {jaEntrou ? 'link de acesso' : 'link do convite'}
         </p>

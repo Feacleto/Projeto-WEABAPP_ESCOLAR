@@ -45,7 +45,7 @@ function SeloDoDominio() {
   if (!host) return null;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-primaryChip px-3 py-1 text-xs font-semibold text-primaryDark">
-      <Lock size={12} strokeWidth={2.6} />
+      <Lock size={12} />
       {host}
     </span>
   );
@@ -70,7 +70,7 @@ function Regra({ ok, children }) {
           ok ? 'bg-primaryChip text-primaryDark' : 'bg-border text-card'
         }`}
       >
-        <Check size={10} strokeWidth={3.5} />
+        <Check size={10} />
       </span>
       {children}
     </span>
@@ -303,7 +303,7 @@ export default function AuthAction() {
     return (
       <div className="min-h-screen flex flex-col px-6 py-10">
         <div className="flex-1 flex flex-col justify-center text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-4 mx-auto">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primaryChip mb-4 mx-auto">
             <CheckCircle2 size={32} className="text-accentText" />
           </div>
           <h1 className="text-2xl font-bold text-text">Senha redefinida!</h1>
@@ -342,7 +342,7 @@ export default function AuthAction() {
     return (
       <div className="min-h-screen flex flex-col px-6 py-10">
         <div className="flex-1 flex flex-col justify-center text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-4 mx-auto">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primaryChip mb-4 mx-auto">
             <CheckCircle2 size={32} className="text-accentText" />
           </div>
           <h1 className="text-2xl font-bold text-text">Email confirmado!</h1>

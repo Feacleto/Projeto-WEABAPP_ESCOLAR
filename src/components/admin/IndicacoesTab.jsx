@@ -103,7 +103,7 @@ export default function IndicacoesTab() {
                 {pessoas[i.indicadorUid]?.name || i.indicadorNome || i.indicadorUid}
               </span>
               <span
-                className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-xs uppercase tracking-wider ${
+                className={`rotulo shrink-0 rounded-lg px-1.5 py-0.5 ${
                   i.estado === ESTADO.ATIVA
                     ? 'bg-primarySoft text-primary'
                     : i.estado === ESTADO.CADASTRADO

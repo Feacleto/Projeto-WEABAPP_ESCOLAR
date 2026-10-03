@@ -34,7 +34,7 @@ export default function AssociadosCard({ associados = 1, className = '' }) {
       className={`rounded-2xl border border-primaryBorder bg-primarySoft p-4 ${className}`}
     >
       <div className="flex items-center gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-focus">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-rest">
           <span className="text-2xl font-extrabold leading-none tabular-nums">
             {n}
           </span>
@@ -50,7 +50,7 @@ export default function AssociadosCard({ associados = 1, className = '' }) {
         </div>
       </div>
 
-      <p className="mt-3 text-xs leading-relaxed text-primary/75">
+      <p className="mt-3 text-xs leading-relaxed text-primaryDark">
         Cada associado exige administração financeira e técnica própria pra
         manter a qualidade do espaço de trabalho digital que serve ele. A gente
         abre vaga na velocidade que consegue sustentar — e acompanha cada um de

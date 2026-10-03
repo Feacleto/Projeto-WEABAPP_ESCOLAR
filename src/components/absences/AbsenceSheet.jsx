@@ -136,11 +136,11 @@ export default function AbsenceSheet({
 
   return (
     <div
-      className={`fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm transition-opacity duration-200 ${overlay}`}
+      className={`fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm transition-opacity duration-estado ${overlay}`}
       onClick={handleClose}
     >
       <div
-        className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl transition-transform duration-200 ${sheet}`}
+        className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl transition-transform duration-estado ${sheet}`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)', ...estilo }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -177,7 +177,7 @@ export default function AbsenceSheet({
             * escolher "não vai" sem saber pra qual dia é o tipo de erro que a
             * pessoa só descobre quando a perua não passa. */}
           <label className="block">
-            <span className="block text-xs font-bold uppercase tracking-widest text-textMuted mb-1.5">
+            <span className="rotulo block mb-1.5">
               Para qual dia
             </span>
             {/* O TETO DE 14 DIAS É DELIBERADO.
@@ -303,7 +303,7 @@ function OptionCard({
         <p className="text-xs text-textMuted mt-0.5">{subtitle}</p>
       </div>
       {active && (
-        <span className="text-xs uppercase tracking-wider font-bold text-text bg-white/70 px-2 py-0.5 rounded-full">
+        <span className="rotulo text-text bg-white/70 px-2 py-0.5 rounded-full">
           Ativo
         </span>
       )}

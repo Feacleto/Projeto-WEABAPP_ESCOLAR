@@ -390,7 +390,7 @@ export default function ChildForm() {
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
+            <p className="rotulo">
               Passo {step} de {TOTAL_STEPS}
             </p>
             <p className="text-xs font-semibold text-textMuted">
@@ -1013,7 +1013,7 @@ function Step3School({ form, setForm, errors }) {
                   aria-pressed={ativa}
                   className={`tap w-full text-left rounded-2xl border-2 px-3.5 py-3 flex items-center gap-3 ${
                     ativa
-                      ? 'border-primary bg-primary/5'
+                      ? 'border-primary bg-primarySoft'
                       : 'border-border bg-card'
                   }`}
                 >
@@ -1388,11 +1388,12 @@ function InviteCodeSuccess({
   return (
     <div className="min-h-screen flex flex-col px-6 pt-10 pb-6 gap-5">
       <div className="flex-1 flex flex-col items-center justify-center text-center">
-        {/* A criança feliz. Dois invólucros porque são duas animações: a
-          * chegada (uma vez) e a respiração (sempre). Com movimento reduzido,
+        {/* A criança feliz. Ela CHEGA uma vez e para: a respiração e o joinha
+          * balançando eram laços infinitos, e no app nada se mexe sozinho além
+          * do "ao vivo" (design system, Movimento). Com movimento reduzido,
           * ela só aparece. */}
         <div className="animate-crianca-chega motion-reduce:animate-none">
-          <div className="relative animate-crianca-respira motion-reduce:animate-none">
+          <div className="relative">
             <img
               src={childAvatarUrl({ id: childId, gender })}
               alt=""
@@ -1400,9 +1401,9 @@ function InviteCodeSuccess({
             />
             <span
               aria-hidden
-              className="absolute -right-2 bottom-3 flex h-14 w-14 items-center justify-center rounded-full bg-perua text-night shadow-float animate-joinha motion-reduce:animate-none"
+              className="absolute -right-2 bottom-3 flex h-14 w-14 items-center justify-center rounded-full bg-perua text-night shadow-float"
             >
-              <ThumbsUp size={28} strokeWidth={2.4} />
+              <ThumbsUp size={28} />
             </span>
           </div>
         </div>

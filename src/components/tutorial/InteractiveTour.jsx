@@ -32,6 +32,17 @@ import { markTutorialDone } from '../../services/userService';
  * anda uma parada a cada "Próximo". É a única animação, e é o que faz o tour
  * ser lembrado. Dois botões: Pular e Próximo.
  *
+ * O balão é ESCURO (`night`) e é a única peça escura dentro do app que o
+ * design system permite: ele é o diálogo mais leve ("ensina, a tela não
+ * escurece"), e precisa se destacar sobre uma tela inteira à vista sem véu
+ * nenhum por trás. Por isso a tinta é a do sistema para escuro — `onNight`,
+ * `onNightMuted` — e o "Próximo" é o limão com rótulo `onAccent`, o único
+ * lugar em que o limão vira botão: sobre verde ou sobre escuro. Canto 14
+ * (`xl`), o do balão na referência; a folha é que tem 28.
+ *
+ * A perua anda em `duration-festa` (450 ms, o teto): é a conquista do passo,
+ * e é a única animação do balão além do anel.
+ *
  * POR QUE O ELEMENTO PODE SUMIR
  * Metade dos destaques é condicional na tela real. A ausência do anchor é um
  * caminho normal, não um erro: o balão cai pro rodapé sem anel.
@@ -210,7 +221,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
       {rect && (
         <div
           aria-hidden
-          className="absolute rounded-2xl transition-all duration-300 ease-out motion-reduce:transition-none"
+          className="absolute rounded-2xl transition-all duration-entrada ease-freio motion-reduce:transition-none"
           style={{
             top: rect.top - PAD,
             left: rect.left - PAD,
@@ -225,10 +236,10 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
 
       {/* Balão */}
       <div
-        className="absolute inset-x-0 px-3 flex justify-center transition-all duration-300 ease-out motion-reduce:transition-none"
+        className="absolute inset-x-0 px-3 flex justify-center transition-all duration-entrada ease-freio motion-reduce:transition-none"
         style={cardPos}
       >
-        <div className="pointer-events-auto w-full max-w-sm rounded-3xl bg-night text-onNight p-4 shadow-float">
+        <div className="pointer-events-auto w-full max-w-sm rounded-xl bg-night text-onNight p-4 shadow-float">
           {/* A ESTRADINHA. Uma parada por passo; as já passadas acendem. */}
           <div className="relative h-4 mb-2.5" aria-hidden>
             <span className="absolute inset-x-1 top-[7px] border-t-2 border-dashed border-white/30" />
@@ -243,18 +254,18 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
             ))}
             <svg
               viewBox="0 0 22 14"
-              className="absolute -top-0.5 h-3.5 w-[22px] -translate-x-1/2 transition-[left] duration-500 ease-out motion-reduce:transition-none"
+              className="absolute -top-0.5 h-3.5 w-[22px] -translate-x-1/2 transition-[left] duration-festa ease-freio motion-reduce:transition-none"
               style={{ left: `${paradaEm(stepIndex)}%` }}
             >
               <rect x="1" y="1" width="18" height="9" rx="3" className="fill-perua" />
               <rect x="12" y="3" width="5" height="3" rx="1" className="fill-night" />
-              <circle cx="6" cy="11" r="2.2" className="fill-white" />
-              <circle cx="15" cy="11" r="2.2" className="fill-white" />
+              <circle cx="6" cy="11" r="2.2" className="fill-onNight" />
+              <circle cx="15" cy="11" r="2.2" className="fill-onNight" />
             </svg>
           </div>
 
-          <p className="text-lg font-extrabold leading-tight">{step.title}</p>
-          <p className="mt-1 text-sm text-white/75 leading-snug">
+          <p className="font-display text-lg font-bold leading-tight">{step.title}</p>
+          <p className="mt-1 text-sm text-onNightMuted leading-snug">
             {!cobranca && step.bodySemCobranca ? step.bodySemCobranca : step.body}
           </p>
 
@@ -262,14 +273,14 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
             <button
               type="button"
               onClick={onSkip}
-              className="tap px-1 py-2 text-sm font-semibold text-white/60 hover:text-white"
+              className="tap px-1 py-2 text-sm font-semibold text-onNightMuted hover:text-onNight"
             >
               Pular
             </button>
             <button
               type="button"
               onClick={goNext}
-              className="tap ml-auto h-11 rounded-xl bg-accent px-5 font-extrabold text-night"
+              className="tap ml-auto h-11 rounded-xl bg-accent px-5 font-bold text-onAccent"
             >
               {isLast ? 'Começar' : 'Próximo'}
             </button>

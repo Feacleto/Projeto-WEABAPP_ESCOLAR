@@ -85,7 +85,7 @@ export default function AguardandoVinculo() {
             href={linkDoPedido({ nome: profile?.name || '' })}
             target="_blank"
             rel="noreferrer"
-            className="tap mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] font-bold text-white"
+            className="tap mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-whatsapp font-bold text-onAccent"
           >
             <WhatsAppIcon size={18} colored={false} />
             Mandar para o motorista

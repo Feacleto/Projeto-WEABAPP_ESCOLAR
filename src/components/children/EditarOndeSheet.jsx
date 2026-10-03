@@ -324,7 +324,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
                     onClick={() => setSchoolId(e.id)}
                     className={`tap w-full rounded-xl border px-3 py-2.5 text-left ${
                       ativa
-                        ? 'border-primary bg-primary/5'
+                        ? 'border-primary bg-primarySoft'
                         : 'border-border bg-card'
                     }`}
                   >

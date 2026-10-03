@@ -112,7 +112,7 @@ export default function Avatar({
     <div
       className={`${box} ${style} rounded-full flex items-center justify-center shrink-0 ${className}`}
     >
-      <FallbackIcon size={icon} strokeWidth={2.2} />
+      <FallbackIcon size={icon} />
     </div>
   );
 }

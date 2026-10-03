@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getFestivityForDate } from '../../marca/festivities';
+import IconePorNome from '../common/IconePorNome';
 import { getSound, stopSound, areSoundsEnabled } from '../../services/soundService';
 
 /**
@@ -8,7 +9,7 @@ import { getSound, stopSound, areSoundsEnabled } from '../../services/soundServi
  *
  * Comportamento ao clicar:
  *   - Abre um balão explicativo posicionado abaixo da bolinha com
- *     emoji + saudação ("Feliz Dia das Mães!") + frase de contexto.
+ *     ícone + saudação ("Feliz Dia das Mães!") + frase de contexto.
  *     Isso responde à pergunta "por que essa bolinha está aqui?".
  *   - Se o tema tem som (Páscoa/Halloween/Natal), o som começa quando
  *     o balão abre e para quando o balão fecha. Clicar de novo na
@@ -99,7 +100,7 @@ export default function FestiveBadge({ date = new Date() }) {
           pop ? 'scale-125' : ''
         } transition-transform`}
       >
-        <span aria-hidden>{theme.emoji}</span>
+        <IconePorNome nome={theme.icone} size={20} />
       </button>
 
       {open && (
@@ -131,7 +132,7 @@ function Balloon({ theme, onClose }) {
           <div
             className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${theme.gradient} text-white text-2xl flex items-center justify-center shrink-0 shadow-md`}
           >
-            <span aria-hidden>{theme.emoji}</span>
+            <IconePorNome nome={theme.icone} size={24} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-text leading-tight">

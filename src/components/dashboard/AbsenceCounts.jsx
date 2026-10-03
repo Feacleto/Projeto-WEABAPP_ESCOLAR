@@ -39,7 +39,7 @@ export default function AbsenceCounts({ history = [] }) {
 
   return (
     <section className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-textMuted px-1">
+      <h2 className="rotulo px-1">
         Faltas
       </h2>
       <div className="grid grid-cols-2 gap-2">

@@ -377,10 +377,10 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
             onClick={() =>
               onAction({ reason: 'ver e pagar a mensalidade', destination: '/pai/finance' })
             }
-            className="tap w-full text-left bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3"
+            className="tap w-full text-left bg-card rounded-2xl p-4 shadow-rest space-y-3"
           >
             <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
                 <Wallet size={20} />
               </div>
               <div className="flex-1 min-w-0">
@@ -405,7 +405,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
           </button>
         ) : (
           preview.monthlyFee > 0 && (
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+            <div className="bg-card rounded-2xl p-4 shadow-rest">
               <p className="text-xs font-semibold uppercase tracking-widest text-textMuted">
                 mensalidade combinada
               </p>
@@ -425,7 +425,7 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
           onClick={() =>
             onAction({ reason: 'ler os recados', destination: '/pai' })
           }
-          className="tap w-full text-left bg-card border border-border rounded-2xl p-4 shadow-sm flex items-center gap-3"
+          className="tap w-full text-left bg-card rounded-2xl p-4 shadow-rest flex items-center gap-3"
         >
           <div className="w-11 h-11 rounded-xl bg-warningChip text-warningText flex items-center justify-center shrink-0">
             <MessageSquare size={20} />
@@ -529,7 +529,7 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
   return (
     <div className="min-h-screen flex flex-col px-6 py-8 justify-center gap-6">
       <div className="text-center space-y-3">
-        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-primary text-white text-3xl font-bold flex items-center justify-center shadow-focus">
+        <div className="w-20 h-20 mx-auto rounded-full bg-primary text-white text-3xl font-bold flex items-center justify-center shadow-rest">
           {(preview.childFirstName || '?')[0].toUpperCase()}
         </div>
         <h1 className="text-2xl font-bold text-text leading-tight">
@@ -537,7 +537,7 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
         </h1>
         <p className="text-sm text-textMuted">Convite de {driverLabel}</p>
       </div>
-      <div className="bg-card border border-border rounded-2xl p-4 text-sm text-text">
+      <div className="bg-card rounded-2xl p-4 text-sm text-text shadow-rest">
         Você já está logado. Depois de adicionar, você troca entre as crianças
         na tela de início.
       </div>
@@ -567,7 +567,7 @@ function SignInToContinue({ childFirstName, driverLabel }) {
   return (
     <div className="min-h-screen flex flex-col px-6 py-8 justify-center gap-6">
       <div className="text-center space-y-3">
-        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-primary text-white text-3xl font-bold flex items-center justify-center shadow-focus">
+        <div className="w-20 h-20 mx-auto rounded-full bg-primary text-white text-3xl font-bold flex items-center justify-center shadow-rest">
           {(childFirstName || '?')[0].toUpperCase()}
         </div>
         <div>
@@ -583,7 +583,7 @@ function SignInToContinue({ childFirstName, driverLabel }) {
       <div className="space-y-2">
         <Link
           to="/login"
-          className="tap w-full h-14 rounded-xl bg-primary text-white font-semibold inline-flex items-center justify-center"
+          className="tap w-full h-14 rounded-2xl bg-primary text-white font-semibold inline-flex items-center justify-center shadow-focus"
         >
           Entrar na minha conta
         </Link>

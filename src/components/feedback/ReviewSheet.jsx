@@ -169,7 +169,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
       >
         <div className="flex flex-col items-center gap-4 text-center">
           <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-accent to-primary text-white shadow-focus">
-            <Check size={32} strokeWidth={3} />
+            <Check size={32} />
           </span>
           <p className="text-sm leading-relaxed text-textMuted">
             {publicou
@@ -223,7 +223,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                     }
                     className={`tap flex items-center gap-2 rounded-2xl border-2 p-3 text-left text-xs font-semibold transition-colors ${
                       on
-                        ? 'border-primary bg-primary/5 text-text'
+                        ? 'border-primary bg-primarySoft text-text'
                         : 'border-border bg-card text-textMuted'
                     }`}
                   >
@@ -252,7 +252,7 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
                     onClick={() => setWish(value)}
                     className={`tap flex w-full items-center gap-3 rounded-2xl border-2 p-3 text-left text-sm font-semibold transition-colors ${
                       on
-                        ? 'border-primary bg-primary/5 text-text'
+                        ? 'border-primary bg-primarySoft text-text'
                         : 'border-border bg-card text-textMuted'
                     }`}
                   >
@@ -468,11 +468,11 @@ export default function ReviewSheet({ open, onClose, uid, role, profile }) {
 
             {rating > 0 && texto.length >= 8 && (
               <div>
-                <p className="mb-2 font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+                <p className="rotulo mb-2">
                   como vai aparecer
                 </p>
-                {/* Fundo escuro de propósito: é o fundo real da home. */}
-                <div className="overflow-hidden rounded-2xl bg-[#0B1210] p-4">
+                {/* O fundo da página, onde o cartão aparece de verdade. */}
+                <div className="overflow-hidden rounded-2xl bg-bg p-4">
                   <ReviewCard
                     review={{
                       id: 'preview',

@@ -47,6 +47,13 @@ e login —, branco dentro de `/tio` e `/pai`, com a marca do motorista), o
 painel do dono (mais denso, mesmo piso de 12px) e a superfície escura (só no
 site).
 
+**Dentro do app não existe tela escura (decisão do dono, 03/10/2026).** As
+telas de entrada — boas-vindas, cadastro do motorista, login, primeiro acesso
+e o topo do painel do dono — eram escuras porque "quem chega está comprando".
+Passaram para o claro: a porta é o cabeçalho VERDE com a marca, e o resto é a
+areia do app. A folha (`Sheet`) também perdeu a tampa escura. O que fica
+escuro é só o balão do tutorial, que usa a tinta do texto.
+
 ## Cor: cada nome é um papel
 
 As cinco regras do CLAUDE.md continuam valendo (âmbar é aviso, verde e âmbar
@@ -85,7 +92,12 @@ só nos três endereços de paleta). O sistema acrescentou:
   violeta, entregue verde.
 - **Estado da mensalidade:** pendente cinza, avisou que pagou âmbar (é o
   motorista que precisa conferir), paga verde, atrasada vermelha. Âmbar e
-  vermelho sempre com ícone.
+  vermelho sempre com ícone. As palavras moram num lugar só,
+  [paymentVocabulary](../src/dominio/cobranca/paymentVocabulary.js) — do lado
+  do motorista: Recebido, Conferir, Pendente, Atrasado.
+- **Ícone em vez de emoji:** sempre do lucide. Quando o ícone vem de um dado
+  (recado, despesa, data festiva), o dado guarda o nome e
+  [IconePorNome](../src/components/common/IconePorNome.jsx) desenha.
 - **O cartão verde do Início** ([ResumoDaTurma](../src/components/tio/ResumoDaTurma.jsx)):
   "12 crianças, 3 escolas", a hora da primeira parada e o botão limão. Os
   números crescem conforme o motorista cadastra. É o único bloco verde da tela.
@@ -118,6 +130,16 @@ Quatro durações (`duration-toque` 120, `-estado` 200, `-entrada` 300, `-festa`
 - **Na rota, só o que confirma o gesto do motorista.** Nada de festa.
 - **Pulso vivo sobre dado velho é proibido**: a posição envelheceu, o anel para.
 - A mola só em conquista (check, contador), nunca em erro ou aviso.
+
+**As exceções nomeadas** (o resto não se mexe sozinho):
+
+- o anel do "ao vivo" (mapa, rota ativa) — e ele PARA quando a posição envelhece;
+- o anel do tour guiado, enquanto o balão aponta para o alvo;
+- os cartões do fundo do login, que flutuam devagar (`testar:fundo` trava a
+  conta e o "reduzir movimento");
+- a ilustração das boas-vindas e do cadastro: a perua anda UMA vez e chega;
+- o selo da data festiva ao lado da saudação: pulsa DUAS vezes e para;
+- o confete do aniversário, que só existe enquanto o modal está aberto.
 
 ## Rota e financeiro
 

@@ -85,11 +85,11 @@ export default function ContaInativa({ motivo = 'trial' }) {
         * nada por trás. Ver o cabeçalho deste arquivo. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 -top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl"
+        className="pointer-events-none absolute -left-24 -top-16 h-72 w-72 rounded-full bg-primaryChip blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-24 -right-20 h-80 w-80 rounded-full bg-accent/10 blur-3xl"
+        className="pointer-events-none absolute -bottom-24 -right-20 h-80 w-80 rounded-full bg-primaryChip blur-3xl"
       />
 
       <div className="relative z-10 w-full max-w-[380px] space-y-5 rounded-2xl border border-border bg-card p-7 text-center shadow-float">

@@ -100,7 +100,7 @@ export default function SupportSheet({ open, onClose, uid, role }) {
             <div className="space-y-5">
               {/* Categorias — chips clicáveis (single select) */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-textMuted mb-2">
+                <label className="rotulo block mb-2">
                   Qual o assunto?
                 </label>
                 <div className="flex flex-wrap gap-1.5">

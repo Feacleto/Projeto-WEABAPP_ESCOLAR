@@ -134,7 +134,7 @@ function Adesivo({ uid, profile }) {
       <div className="mt-3 rounded-xl border border-dashed border-border bg-surface p-3 text-center">
         <p className="text-xs font-bold text-text">{TEXTO_ADESIVO.linha1}</p>
         <p className="mt-0.5 text-xs text-textMuted">{TEXTO_ADESIVO.linha2}</p>
-        <p className="mt-1 font-mono text-xs uppercase tracking-wider text-primary">
+        <p className="rotulo mt-1 text-primary">
           {TEXTO_ADESIVO.site}
         </p>
       </div>
@@ -164,7 +164,7 @@ function Adesivo({ uid, profile }) {
         </>
       ) : (
         <div className="mt-4 space-y-2">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-textMuted">
+          <p className="rotulo">
             Para onde enviamos
           </p>
           {/* O ENDEREÇO FICA NUMA COLEÇÃO SÓ DO DONO. Ele não entra em `users`,
