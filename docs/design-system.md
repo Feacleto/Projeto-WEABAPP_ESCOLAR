@@ -185,6 +185,12 @@ Quatro durações (`duration-toque` 120, `-estado` 200, `-entrada` 300, `-festa`
 - o selo da data festiva ao lado da saudação: pulsa DUAS vezes e para;
 - o confete do aniversário, que só existe enquanto o modal está aberto;
 - o pulso da buzina tocando, que é um chamado ao vivo de verdade;
+- o reflexo do selo de metal do nível ([SeloDoNivel](../src/components/nivel/SeloDoNivel.jsx),
+  04/10/2026, decisão do dono): uma faixa clara atravessa o selo em 1,4 s e
+  ele fica parado o resto dos 4 s. Com "reduzir movimento" no aparelho, não
+  passa. Os metais (bronze, prata, ouro, platina = prata com diamante,
+  diamante) moram em `config/paletaCategorica.js`; a estrada continua verde,
+  e o metal aparece só no brilho em volta da bolinha;
 - a barra fina da troca de versão ([TelaDeVersao](../src/components/common/TelaDeVersao.jsx)),
   enquanto o app troca de versão — espera real, que acaba sozinha em segundos.
   É um trecho que passa, nunca uma barra que enche: ninguém sabe quanto falta.

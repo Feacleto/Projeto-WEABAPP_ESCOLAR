@@ -99,3 +99,35 @@ export const COR_GENERO = {
   female: 'bg-pink-100 text-pink-700',
   default: 'bg-primary/10 text-primary',
 };
+
+/**
+ * OS METAIS DO NÍVEL (04/10/2026, modelo D2 aprovado pelo dono).
+ *
+ * São categóricos no sentido deste arquivo: o metal não responde pergunta
+ * nenhuma da tela — "Prata" está ESCRITO no selo —, ele só faz o Bronze não
+ * parecer a Prata. Por isso moram aqui e não no tailwind.config.js.
+ *
+ * `faixa` são as quatro paradas do gradiente do selo cromado (escuro, claro,
+ * meio, reflexo); `brilho` é a cor do halo em volta da bolinha da estrada e
+ * da parte vazia do anel de progresso. O texto do selo é sempre o `text`
+ * escuro do app: os quatro tons foram clareados até ele ler sobre o metal.
+ *
+ * ⚠️ A PLATINA É PRATA COM DIAMANTE, de propósito (decisão do dono): é o
+ * nível que vai e volta (depende de estar em dia), e o metal mostra que ela
+ * fica entre os dois.
+ */
+export const METAL_DO_NIVEL = {
+  bronze: { faixa: ['#9A6232', '#E8B07A', '#B97A45', '#F6CFA2'], brilho: '#C77B3A' },
+  prata: { faixa: ['#7D838A', '#F4F6F8', '#A7ADB4', '#FFFFFF'], brilho: '#A3AEBB' },
+  ouro: { faixa: ['#8A6212', '#F6D36B', '#B8862A', '#FFF1B0'], brilho: '#E0B03A' },
+  platina: { faixa: ['#858D96', '#F4F6F8', '#9ED6EE', '#FFFFFF'], brilho: '#9DBFD2' },
+  diamante: { faixa: ['#3E8DB5', '#E6FBFF', '#8FD3F0', '#FFFFFF'], brilho: '#4FB3E0' },
+};
+
+/** O gradiente cromado de um metal, pronto para `style.background`. */
+export function gradienteDoMetal(chave) {
+  const m = METAL_DO_NIVEL[chave];
+  if (!m) return undefined;
+  const [escuro, claro, meio, reflexo] = m.faixa;
+  return `linear-gradient(135deg, ${escuro} 0%, ${claro} 28%, ${meio} 52%, ${reflexo} 72%, ${escuro} 100%)`;
+}

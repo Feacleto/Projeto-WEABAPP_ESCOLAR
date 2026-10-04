@@ -58,6 +58,7 @@ import PaiNotebookFAB from '../../components/agenda/PaiNotebookFAB';
 import { GRADIENTE_STATUS } from '../../config/paletaCategorica';
 import { diaSemRota, ehDiaDeAula } from '../../dominio/rota/calendario.js';
 import FaixaSemInternet from '../../components/dashboard/FaixaSemInternet';
+import { AvisoDoOuroDaFamilia } from '../../components/nivel/SeloDaFamilia';
 
 
 /**
@@ -360,6 +361,9 @@ export default function PaiDashboard() {
   return (
     <>
       <Header title="Início" marca />
+      {/* O "chegou ao Ouro" era do selo do cabeçalho; o selo foi para o
+        * menu do perfil (04/10/2026) e o aviso ficou aqui, no Início. */}
+      <AvisoDoOuroDaFamilia />
 
       <div className="p-5 space-y-5">
         {/* O AVISO VEM ANTES DE TUDO, inclusive do seletor de filho: quando

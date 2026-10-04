@@ -16,20 +16,23 @@ import { watchNivel } from '../services/nivelService';
  * a do outro motorista não mostra, nem por um quadro, o selo do primeiro.
  */
 export function useNivel(uid) {
-  const [snap, setSnap] = useState({ uid: null, nivel: 'sem_nivel' });
+  const [snap, setSnap] = useState({ uid: null, nivel: 'sem_nivel', dados: null });
 
   useEffect(() => {
     if (!uid) return undefined;
     return watchNivel(
       uid,
-      (doc) => setSnap({ uid, nivel: doc?.nivel || 'sem_nivel' }),
-      () => setSnap({ uid, nivel: 'sem_nivel' })
+      (doc) => setSnap({ uid, nivel: doc?.nivel || 'sem_nivel', dados: doc || null }),
+      () => setSnap({ uid, nivel: 'sem_nivel', dados: null })
     );
   }, [uid]);
 
   const naChave = snap.uid === uid;
   return {
     nivel: uid && naChave ? snap.nivel : 'sem_nivel',
+    // O documento inteiro: desde 04/10/2026 ele traz o resumo que o menu do
+    // perfil mostra (`feitasEm`, `proxima`, `progresso`) — ver functions/lib/niveis.js.
+    dados: uid && naChave ? snap.dados : null,
     // Sem uid não há o que carregar — `true` para sempre seria um esqueleto eterno.
     carregando: uid ? !naChave : false,
   };

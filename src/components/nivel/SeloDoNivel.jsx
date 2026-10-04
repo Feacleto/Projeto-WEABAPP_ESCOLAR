@@ -1,50 +1,63 @@
 import { Gem, Medal } from 'lucide-react';
 import { NOME_DO_NIVEL, chaveDoNivel } from './rotuloDoNivel';
+import { gradienteDoMetal } from '../../config/paletaCategorica';
 
 /**
- * O SELO DO NÍVEL — uma pílula com o ícone e o nome (docs/niveis.md, seção 7).
+ * O SELO DO NÍVEL — uma pílula de METAL com o ícone e o nome (docs/niveis.md,
+ * seção 7; modelo D2, 04/10/2026).
  *
- * ── AS CORES SÃO DE TOKEN, E NENHUMA É NOVA
- * Bronze e Prata são NEUTROS (o nome é que diz qual é): inventar um cobre e um
- * cinza-prata seria a quarta paleta de licença do projeto, para enfeite. O
- * Ouro usa a exceção nomeada `ouro` (estrela, moeda, enfeite) só no ÍCONE —
- * como texto ela não se lê. Platina e Diamante usam a cor do motorista
- * (`primary*`), que é a cor do app dele e das famílias dele.
+ * ── CROMADO, E O PORQUÊ DE PODER SER
+ * Até 04/10/2026 o selo era de token (Bronze e Prata neutros, Platina e
+ * Diamante na cor do motorista), justamente para não inventar paleta. O dono
+ * pediu o metal de verdade — o selo é o prêmio, e prêmio que parece etiqueta
+ * não faz ninguém querer o próximo. Os metais moram em
+ * `config/paletaCategorica.js` (`METAL_DO_NIVEL`), o endereço com licença
+ * para cor que só precisa diferir da vizinha: o nome continua ESCRITO, o
+ * metal só ajuda a reconhecer.
  *
- * ⚠️ Âmbar NÃO entra aqui: âmbar é aviso, e um selo não pede nada.
+ * ⚠️ Âmbar NÃO entra aqui: âmbar é aviso, e um selo não pede nada. O Ouro é
+ * metal, não o token de aviso.
  *
- * ── PARADO
- * Sem brilho, sem pulso: o design system só deixa mexer o que responde a um
- * toque ou a um dado ao vivo, e o nível não é nenhum dos dois.
+ * ── O REFLEXO É A TERCEIRA EXCEÇÃO DE MOVIMENTO
+ * O design system só deixa mexer o que é "ao vivo"; o reflexo que atravessa o
+ * selo a cada 4 s é exceção NOMEADA (docs/design-system.md e
+ * `animation.selo-brilho` no tailwind.config.js). Quem pede "reduzir
+ * movimento" no aparelho vê o selo parado.
  *
  * Props: { nivel, tamanho: 'pequeno' | 'grande', onClick }
  * `nivel` pode ser a chave ou o documento de `niveis/{uid}`.
  */
-const ESTILO = {
-  bronze: { icone: Medal, pilula: 'bg-neutro text-text', tinta: 'text-textMuted' },
-  prata: { icone: Medal, pilula: 'bg-surface border border-borderStrong text-text', tinta: 'text-textMuted' },
-  ouro: { icone: Medal, pilula: 'bg-card border border-border text-text', tinta: 'text-ouro' },
-  platina: { icone: Gem, pilula: 'bg-primaryChip text-primary', tinta: 'text-primary' },
-  diamante: { icone: Gem, pilula: 'bg-primary text-white', tinta: 'text-white' },
-};
-
 export default function SeloDoNivel({ nivel, tamanho = 'pequeno', onClick }) {
   const chave = chaveDoNivel(nivel);
-  const estilo = ESTILO[chave];
-  if (!estilo) return null; // sem_nivel: nada
+  const fundo = gradienteDoMetal(chave);
+  if (!fundo) return null; // sem_nivel: nada
 
-  const Icone = estilo.icone;
+  const Icone = chave === 'platina' || chave === 'diamante' ? Gem : Medal;
   const grande = tamanho === 'grande';
   const nome = NOME_DO_NIVEL[chave];
 
   const pilula = (
     <span
-      className={`inline-flex items-center rounded-full font-bold ${estilo.pilula} ${
+      className={`relative inline-flex items-center overflow-hidden rounded-full font-bold text-text ${
         grande ? 'h-14 gap-2.5 px-6 font-display text-2xl' : 'h-8 gap-1.5 px-3 text-sm'
       }`}
+      style={{
+        background: fundo,
+        textShadow: '0 1px 0 rgb(255 255 255 / 0.55)',
+        boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 0.7), inset 0 -1px 0 rgb(0 0 0 / 0.25), 0 1px 3px rgb(0 0 0 / 0.25)',
+      }}
     >
-      <Icone size={grande ? 28 : 16} className={`shrink-0 ${estilo.tinta}`} aria-hidden />
-      {nome}
+      <Icone size={grande ? 28 : 16} className="relative shrink-0" aria-hidden />
+      <span className="relative">{nome}</span>
+      {/* O reflexo: uma faixa clara inclinada que atravessa e some. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -bottom-2 -top-2 w-2/5 -skew-x-[20deg] animate-selo-brilho motion-reduce:hidden"
+        style={{
+          left: '-60%',
+          background: 'linear-gradient(100deg, transparent, rgb(255 255 255 / 0.85), transparent)',
+        }}
+      />
     </span>
   );
 

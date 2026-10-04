@@ -132,15 +132,27 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
    ⚠️ POR QUE ELA ENCOLHEU: os motoristas disseram que o site tinha
    informação demais e que eles se perdiam nela. Eram 13 blocos e 8
    botões pedindo coisas diferentes. Esta home tem um caminho principal —
-   criar a conta — e, desde 04/10/2026 (aprovado pelo dono), sete blocos:
+   criar a conta. Desde 04/10/2026 (aprovado pelo dono) ela tem POUCO TEXTO:
+   o motorista lê a primeira frase de cada bloco e pula o resto, então cada
+   bloco é UM título que se basta, no máximo UMA linha e UM desenho do app
+   que se mexe uma vez. Eram 601 palavras; são cerca de 170. Nove blocos, em
+   duas metades:
 
-     1. a frase e o botão
-     2. a dor ("onde tem confiança, o dinheiro atrapalha")
-     3. "Use grátis. Decida depois.", com as três garantias e o botão
-     4. QUATRO coisas pro motorista (mais que isso ele não lê)
-     5. TRÊS pra família (o pai também chega aqui)
-     6. as três dúvidas que travam a decisão
-     7. passe adiante, pelo WhatsApp
+     CONVENCER
+     1. a frase, os três avisos do app e o botão
+     2. "Dia 10, tudo pago." — a lista que vira paga
+     3. "A falta chega antes de você sair."
+     4. "Menos ligação no caminho." — a perua chegando
+     5. "Use grátis. Decida depois.", as três garantias e o botão
+     FICAR CONTENTE E INDICAR
+     6. "O dinheiro é todo seu." — 100% no PIX, 0 de percentual
+     7. "Feito no portão da escola." (de onde veio): a perua chega e as
+        crianças descem no portão (modelo A da animação)
+     8. as três dúvidas, dobradas
+     9. passe adiante, com a mensagem pronta à vista, e a família no fim
+
+   A família saiu do meio da home do motorista: ela tem /familia, e o link
+   mora no fim e no rodapé. A rota pronta mora em /como-funciona.
 
    ⚠️ SEM PREÇO NA HOME: o pai também lê, e o preço mora na tela de planos
    do app. Toda frase sobre teste e valor é "Use grátis. Decida depois."
@@ -197,6 +209,12 @@ h1 em{font-style:normal; color:var(--verde)}
 .dor p + p{margin-top:14px}
 .dor .virada{color:#fff; font-weight:600}
 .dor .virada span{color:var(--noite-verde)}
+
+/* 2b · de onde veio — fundo areia, entre a dor (escura) e o use grátis (verde) */
+.origem{padding-block:50px}
+.origem .frase{font:800 clamp(28px,7.5vw,36px)/1.1 var(--display); letter-spacing:-.03em; color:var(--preto); margin:12px 0 18px; text-wrap:balance}
+.origem .frase span{color:var(--verde)}
+.origem p:not(.frase){margin:0; color:var(--cinza); font-size:17px; max-width:36ch}
 
 /* 3 · três coisas */
 .faz{padding-block:54px 24px}
@@ -288,6 +306,104 @@ footer .rodape-contato{margin-top:22px; padding-top:16px; border-top:1px solid r
   .hero .wrap > :nth-child(6){animation-delay:.44s}
   @keyframes sobe{from{opacity:.001; transform:translateY(14px)}}
 }
+
+/* ══ A HOME COM POUCO TEXTO (04/10/2026, aprovada pelo dono) ══════════
+   Um título que se basta, uma linha e um desenho por bloco. O desenho se
+   mexe UMA VEZ, quando aparece (classe `surge` + `.visto`), e só para quem
+   não pediu menos movimento: sem a classe `anima` no <html>, tudo nasce no
+   estado final. */
+h2 em{font-style:normal; color:var(--verde)}
+.bloco{padding-block:50px 46px}
+.bloco.claro{background:var(--branco)}
+.bloco.menta{background:var(--ok-suave)}
+.uma{margin:-14px 0 0; font-size:18px; color:var(--cinza); max-width:34ch}
+.miudo{margin:12px 0 0; text-align:center; font-size:15px; color:var(--cinza)}
+
+/* os avisos do app — no topo e no bloco da falta */
+.avisos{display:grid; gap:10px; margin:0 0 24px}
+.aviso{display:flex; align-items:center; gap:12px; background:var(--branco); border-radius:16px; padding:12px 14px; box-shadow:var(--sombra-rest); text-align:left}
+.aviso b{display:block; font-size:16.5px; line-height:1.25}
+.aviso small{display:block; font-size:14px; color:var(--cinza)}
+.aviso .ic{width:40px; height:40px; border-radius:12px; display:grid; place-items:center; flex:none}
+.aviso .ic svg{width:20px; height:20px}
+.aviso .ic.ok{background:var(--ok-chip); color:var(--ok-texto)}
+.aviso .ic.ab{background:var(--aviso-chip); color:var(--aviso-texto)}
+.aviso .ic.in{background:var(--info-chip); color:var(--info)}
+.aviso.grande{margin-top:22px; padding:16px; border:1px solid var(--linha)}
+.bloco .tela{margin-top:24px}
+.bloco .pg .nm{font-weight:600; font-size:16px}
+.st{transition:background .4s, color .4s}
+
+/* a perua chegando */
+.mapa{position:relative; display:block; height:150px; margin-top:24px; border-radius:20px; background:var(--ok-suave); border:1px solid var(--linha); overflow:hidden}
+.mapa .rua{position:absolute; left:10%; right:10%; top:50%; height:10px; border-radius:5px; background:var(--branco); transform:translateY(-50%); box-shadow:0 0 0 1px var(--linha)}
+.mapa .casa{position:absolute; right:8%; top:50%; transform:translateY(-50%); width:46px; height:46px; border-radius:14px; background:var(--verde); color:#fff; display:grid; place-items:center}
+.mapa .perua{position:absolute; left:calc(92% - 104px); top:50%; transform:translateY(-50%); width:54px; height:36px; border-radius:10px; background:var(--perua); color:var(--preto); display:grid; place-items:center}
+.mapa svg{width:22px; height:22px}
+.mapa .balao{position:absolute; right:6%; top:12px; background:var(--branco); border-radius:12px; padding:6px 10px; font-size:14px; font-weight:700; color:var(--verde); box-shadow:var(--sombra-rest)}
+
+/* os dois números */
+.numeros{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0 0 20px}
+.numero{background:var(--branco); border-radius:18px; padding:16px; box-shadow:var(--sombra-rest)}
+.numero b{display:block; font:800 38px/1 var(--display); color:var(--verde); font-variant-numeric:tabular-nums}
+.numero span{display:block; margin-top:6px; font-size:15px; color:var(--cinza)}
+.menta .uma{margin:0}
+
+/* a perua chega no portão e as crianças descem (modelo A, 04/10/2026,
+   escolhido pelo dono). O padrão é o ÚLTIMO quadro — perua parada, balão
+   à vista —; a animação só existe com a classe `anima` no <html>. */
+.cena{position:relative; display:block; height:170px; margin-top:22px; border-radius:18px; background:linear-gradient(180deg, var(--info-chip), var(--ok-suave)); border:1px solid var(--linha); overflow:hidden}
+.cena .chao{position:absolute; left:0; right:0; bottom:0; height:30px; background:var(--ok-chip)}
+.cena .calcada{position:absolute; left:0; right:0; bottom:30px; height:6px; background:var(--neutro)}
+.cena .escola{position:absolute; right:14px; bottom:30px; width:118px; height:96px}
+.cena .predio{position:absolute; inset:18px 0 0 0; background:var(--escola); border-radius:6px 6px 0 0}
+.cena .teto{position:absolute; left:-6px; right:-6px; top:6px; height:16px; background:var(--escola); filter:brightness(.82); border-radius:6px}
+.cena .placa{position:absolute; left:50%; top:26px; transform:translateX(-50%); background:var(--branco); color:var(--escola); font-size:10px; font-weight:700; letter-spacing:.1em; padding:2px 6px; border-radius:4px}
+.cena .portao{position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:34px; height:36px; border-radius:17px 17px 0 0; background:repeating-linear-gradient(90deg, var(--escola-chip) 0 2px, transparent 2px 7px), var(--escola); filter:brightness(.8)}
+.cena .van{position:absolute; bottom:26px; left:calc(100% - 238px); width:86px; height:44px}
+.cena .van .corpo{position:absolute; inset:0 0 8px 0; background:var(--verde); border-radius:12px 18px 6px 6px}
+.cena .van .faixa{position:absolute; left:0; right:0; top:22px; height:6px; background:var(--perua)}
+.cena .van .vidro{position:absolute; top:6px; height:12px; border-radius:3px; background:var(--ok-chip)}
+.cena .van .roda{position:absolute; bottom:0; width:16px; height:16px; border-radius:50%; background:var(--preto); box-shadow:inset 0 0 0 4px var(--preto), inset 0 0 0 7px var(--neutro)}
+.cena .crianca{position:absolute; bottom:30px; left:calc(100% - 172px); width:14px; height:22px; opacity:0}
+.cena .crianca::before{content:""; position:absolute; left:2px; top:0; width:10px; height:10px; border-radius:50%; background:#F2C6A0}
+.cena .crianca::after{content:""; position:absolute; left:0; top:9px; width:14px; height:13px; border-radius:6px 6px 2px 2px; background:var(--cor)}
+.cena .c1{--cor:var(--info)} .cena .c2{--cor:var(--perua)} .cena .c3{--cor:var(--escola)}
+.cena .balao{position:absolute; left:14px; top:14px; background:var(--branco); border-radius:12px; padding:6px 10px; font-weight:700; font-size:14px; color:var(--verde); box-shadow:var(--sombra-rest)}
+.anima .cena .van{left:-100px}
+.anima .cena .balao{opacity:0; transform:translateY(6px)}
+.anima .cena.visto .van{animation:portao-chega 2s cubic-bezier(.3,.1,.2,1) forwards}
+.anima .cena.visto .crianca{animation:portao-desce 1.6s ease-out forwards}
+.anima .cena.visto .c1{animation-delay:2.1s} .anima .cena.visto .c2{animation-delay:2.5s} .anima .cena.visto .c3{animation-delay:2.9s}
+.anima .cena.visto .balao{animation:portao-balao .4s 4.2s forwards}
+@keyframes portao-chega{to{left:calc(100% - 238px)}}
+@keyframes portao-desce{0%{opacity:0; transform:translateX(0)} 15%{opacity:1} 85%{opacity:1; transform:translateX(70px)} 100%{opacity:0; transform:translateX(78px)}}
+@keyframes portao-balao{to{opacity:1; transform:none}}
+
+/* as dúvidas dobradas */
+.dobras{border-top:1px solid var(--linha)}
+.dobras details{border-bottom:1px solid var(--linha)}
+.dobras summary{list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:60px; padding:12px 0; font:700 18px/1.3 var(--display); letter-spacing:-.01em}
+.dobras summary::-webkit-details-marker{display:none}
+.dobras summary svg{width:22px; height:22px; flex:none; color:var(--cinza); transition:transform .2s}
+.dobras details[open] summary svg{transform:rotate(180deg)}
+.dobras p{margin:0 0 16px; font-size:17px; color:var(--cinza)}
+.duvidas h2.sec{margin-bottom:18px}
+
+/* a mensagem pronta do WhatsApp */
+.zapmsg{margin:22px auto 20px; max-width:30ch; text-align:left; background:var(--ok-chip); border-radius:18px 18px 18px 4px; padding:12px 14px; font-size:16px; color:var(--preto); box-shadow:var(--sombra-rest)}
+.passe .uma{margin:-14px auto 0}
+.passe .familia{margin-top:14px}
+
+/* ── a animação: uma vez, quando o bloco aparece ── */
+.anima .surge{opacity:0; transform:translateY(16px); transition:opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1)}
+.anima .surge.d1{transition-delay:.15s}
+.anima .surge.d2{transition-delay:.3s}
+.anima .surge.visto{opacity:1; transform:none}
+.anima .mapa .perua{left:8%; transition:left 2.2s cubic-bezier(.4,.1,.2,1) .3s}
+.anima .mapa .balao{opacity:0; transform:translateY(6px); transition:opacity .4s 2.3s, transform .4s 2.3s}
+.anima .mapa.visto .perua{left:calc(92% - 104px)}
+.anima .mapa.visto .balao{opacity:1; transform:none}
 </style>
 </head>
 <body>
@@ -303,144 +419,162 @@ footer .rodape-contato{margin-top:22px; padding-top:16px; border-top:1px solid r
 </header>
 
 <main id="topo">
-  <!-- 1 · A FRASE E O BOTÃO. A frase é a do próprio site ("com o app você
-       dirige, e a gente vem tirar o resto do seu ombro"), encurtada. -->
+  <!-- ══ PRIMEIRA METADE: CONVENCER ══════════════════════════════════════
+       Cada bloco é UM título que se basta, no máximo UMA linha curta e UM
+       desenho do app. O motorista lê a primeira frase e pula o resto
+       (04/10/2026, pedido do dono): se ele ler só os títulos, já entendeu. -->
+
+  <!-- 1 · A FRASE, OS TRÊS AVISOS E O BOTÃO. Os avisos são o app inteiro em
+       três linhas, e são verdade hoje: a família AVISA que pagou (quem dá a
+       baixa é o motorista — o app não enxerga o banco), avisa a falta, e
+       recebe o "está chegando". -->
   <section class="hero">
     <div class="wrap">
       <div class="eyebrow">O app do transporte escolar</div>
-      <h1>Você dirige. <em>A gente tira o resto do seu ombro.</em></h1>
-      <p class="lead">A rota, o aviso da falta e a mensalidade, num lugar só.</p>
+      <h1>Você dirige. <em>O app lembra, avisa e organiza.</em></h1>
+      <div class="avisos" role="img" aria-label="Três avisos do app: a família avisou que pagou, a mãe avisou a falta, e a família foi avisada de que a perua está chegando">
+        <div class="aviso surge"><span class="ic ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span><b>Theo avisou que pagou</b><small>R$ 230 · direto no seu PIX</small></span></div>
+        <div class="aviso surge d1"><span class="ic ab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span><b>Ana não vai amanhã</b><small>a mãe avisou pelo app</small></span></div>
+        <div class="aviso surge d2"><span class="ic in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span><span><b>“A perua está chegando”</b><small>a família foi avisada</small></span></div>
+      </div>
       <a class="cta" href="https://alobuzinou.com/quero-fazer-parte">Criar minha conta
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </a>
-      <!-- ⚠️ A OFERTA MORA EM DOIS LUGARES DESTA PÁGINA (aqui e no fechamento),
+      <!-- ⚠️ A OFERTA MORA EM DOIS LUGARES DESTA PÁGINA (aqui e no bloco 5),
            e as duas mudam juntas. Ver "Na landing" no CLAUDE.md. -->
-      <p class="teste"><b>Use grátis. Decida depois.</b> Cadastra a turma, roda o mês e decide se o app fica.</p>
-      <p class="familia">Tem filho na perua? <a href="/familia">Veja a parte da família</a></p>
+      <p class="teste"><b>Use grátis. Decida depois.</b> Sem cartão.</p>
     </div>
   </section>
 
-  <!-- 2 · A DOR. O texto mais forte do site, de cinco parágrafos para três. -->
-  <section class="dor">
+  <!-- 2 · DIA 10, TUDO PAGO. A tela de exemplo que já existia — a peça que
+       mais convence, porque ele VÊ o app —, agora no começo da página. As
+       pílulas viram de "em aberto" para "pago" quando a lista aparece; sem
+       animação, ela já nasce paga. Tracejada e etiquetada: é exemplo. -->
+  <section class="bloco">
     <div class="wrap">
-      <div class="eyebrow">O que ninguém fala</div>
-      <h2>Onde tem confiança, o dinheiro atrapalha.</h2>
-      <p>Chega o dia 10 e a mensalidade não caiu. Cobrar amigo é ruim, então você deixa passar. No mês seguinte, são dois.</p>
-      <p>Do outro lado, o pai também não queria dever. Só esqueceu, e não tinha nada que o avisasse antes.</p>
-      <p class="virada">No app, a mensalidade fica à vista dos dois lados. <span>E a conversa volta a ser sobre a criança.</span></p>
-    </div>
-  </section>
-
-  <!-- 3 · USE GRÁTIS, DECIDA DEPOIS (04/10/2026, aprovado pelo dono). O risco
-       zero vem ANTES da lista: o que trava o motorista não é o preço, é o medo
-       de se arrepender. As três garantias são conferíveis — o cadastro não pede
-       cartão, a cobrança da plataforma começa com aviso, e encerrar não apaga
-       a turma. ⚠️ SEM PREÇO AQUI: o pai também lê esta página, e o preço mora
-       na tela de planos do app. -->
-  <section class="fim usar">
-    <div class="wrap">
-      <div class="eyebrow">Sem compromisso</div>
-      <h2>Use grátis. Decida depois.</h2>
-      <p>Cadastre a sua turma, rode o mês com o app e só então decida se ele fica.</p>
-      <ul class="garantias">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Sem cartão de crédito para começar</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>A gente avisa antes de qualquer cobrança</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Nada da sua turma é apagado</li>
-      </ul>
-      <a class="cta" href="https://alobuzinou.com/quero-fazer-parte">Criar minha conta
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-      </a>
-    </div>
-  </section>
-
-  <!-- 4 · QUATRO PRO MOTORISTA, NÃO OITO. Mais de quatro ele não lê (dono,
-       04/10/2026). O dinheiro vem primeiro: é o que ele sente no bolso na
-       primeira semana. -->
-  <section class="faz" id="como">
-    <div class="wrap">
-      <div class="eyebrow">Pra você, motorista</div>
-      <h2 class="sec">Quatro coisas saem do seu ombro.</h2>
-      <ul class="tres">
-        <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
-          <div><h3>Quem pagou, quem falta, e o PIX pronto</h3><p>Sem caderno e sem cobrar de boca. A mensalidade cai no seu PIX, inteira.</p></div>
-        </li>
-        <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg></span>
-          <div><h3>A rota do dia pronta</h3><p>Você cadastra a turma uma vez, e a rota se monta na ordem dos horários.</p></div>
-        </li>
-        <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg></span>
-          <div><h3>A falta avisada antes</h3><p>A família avisa pelo app antes de você sair de casa. Você não roda à toa.</p></div>
-        </li>
-        <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/></svg></span>
-          <div><h3>Menos ligação no caminho</h3><p>A família recebe o aviso de que a perua está chegando. Você só dirige.</p></div>
-        </li>
-      </ul>
-
-      <div class="tela" role="img" aria-label="Tela de exemplo: a lista de mensalidades do mês">
+      <div class="eyebrow">Mensalidade</div>
+      <h2 class="sec">Dia 10, <em>tudo pago.</em></h2>
+      <p class="uma">Quem pagou e quem falta, sem cobrar de boca.</p>
+      <div class="tela surge" role="img" aria-label="Tela de exemplo: a lista de mensalidades, todas pagas">
         <span class="tela-tag">Tela de exemplo</span>
-        <div class="tela-head"><b>Mensalidades de setembro</b><span>TIO NINO</span></div>
-        <div class="pg"><span class="av">MA</span><span class="nm">Miguel Antunes<small>R$ 230,00 · pago em 05/09</small></span><span class="st ok">pago</span></div>
-        <div class="pg"><span class="av">DR</span><span class="nm">Davi Rocha<small>R$ 230,00 · vence 10/09</small></span><span class="st ab">em aberto</span></div>
-        <div class="pg"><span class="av">TN</span><span class="nm">Theo Nakamura<small>R$ 230,00 · venceu 10/08</small></span><span class="st at">atrasado</span></div>
-        <div class="pix">Mandar o PIX pro Theo</div>
+        <div class="pg"><span class="av">MA</span><span class="nm">Miguel</span><span class="st ok" data-vira>pago</span></div>
+        <div class="pg"><span class="av">DR</span><span class="nm">Davi</span><span class="st ok" data-vira>pago</span></div>
+        <div class="pg"><span class="av">TN</span><span class="nm">Theo</span><span class="st ok" data-vira>pago</span></div>
+      </div>
+      <p class="miudo">A mensalidade cai inteira no seu PIX.</p>
+    </div>
+  </section>
+
+  <!-- 3 · A FALTA ANTES. Um aviso só, com a hora: a hora é o argumento. -->
+  <section class="bloco claro">
+    <div class="wrap">
+      <div class="eyebrow">Falta</div>
+      <h2 class="sec">A falta chega <em>antes de você sair.</em></h2>
+      <p class="uma">Você não roda à toa.</p>
+      <div class="aviso grande surge"><span class="ic ab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span><span><b>Miguel não vai hoje</b><small>6h02 · antes da rota</small></span></div>
+    </div>
+  </section>
+
+  <!-- 4 · MENOS LIGAÇÃO NO CAMINHO. A perua anda até a casa e aparece "Está
+       chegando". ⚠️ Não é "a mãe para de ligar": isso seria promessa. -->
+  <section class="bloco">
+    <div class="wrap">
+      <div class="eyebrow">Rota</div>
+      <h2 class="sec">Menos ligação <em>no caminho.</em></h2>
+      <p class="uma">A família recebe o aviso. Você só dirige.</p>
+      <div class="mapa surge" id="mapa" role="img" aria-label="A perua chegando na casa, e o aviso de que ela está chegando">
+        <span class="rua"></span>
+        <span class="perua"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6v6M15 6v6M2 12h19.6M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg></span>
+        <span class="casa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+        <span class="balao">Está chegando</span>
       </div>
     </div>
   </section>
 
-  <!-- 5 · TRÊS PRA FAMÍLIA. O pai também chega nesta página (o motorista
-       manda o link). ⚠️ "Se o motorista ligar": o mapa é escolha dele, e a
-       frase não pode prometer o que ele desligou. Nada de segurança. -->
-  <section class="faz fam" id="familia">
+  <!-- 5 · USE GRÁTIS, DECIDA DEPOIS (04/10/2026, aprovado pelo dono). As três
+       garantias são conferíveis — o cadastro não pede cartão, a cobrança da
+       plataforma começa com aviso, e encerrar não apaga a turma. ⚠️ SEM PREÇO
+       AQUI: o pai também lê esta página, e o preço mora na tela de planos. -->
+  <section class="fim usar">
     <div class="wrap">
-      <div class="eyebrow">Pra família</div>
-      <h2 class="sec">E o pai sai da calçada.</h2>
-      <ul class="tres">
-        <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></span>
-          <div><h3>Sabe quando a perua está chegando</h3><p>Aviso no celular e, se o motorista ligar, a perua no mapa.</p></div>
-        </li>
-        <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M14 14l-4 4M10 14l4 4"/></svg></span>
-          <div><h3>Avisa a falta com um toque</h3><p>Sem mandar mensagem com o motorista dirigindo.</p></div>
-        </li>
-        <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg></span>
-          <div><h3>Mensalidade e contrato à vista</h3><p>Copia o PIX, avisa que pagou e guarda o contrato assinado.</p></div>
-        </li>
+      <div class="eyebrow">Sem compromisso</div>
+      <h2>Use grátis. Decida depois.</h2>
+      <ul class="garantias">
+        <li class="surge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Sem cartão para começar</li>
+        <li class="surge d1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Aviso antes de qualquer cobrança</li>
+        <li class="surge d2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Nada da sua turma é apagado</li>
       </ul>
-      <p class="familia">Para a família o app é sempre grátis. <a href="/familia">Veja a parte da família</a></p>
+      <a class="cta" href="https://alobuzinou.com/quero-fazer-parte">Criar minha conta
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
     </div>
   </section>
 
-  <!-- 6 · AS TRÊS DÚVIDAS que travam a decisão. O resto do FAQ está em
-       /duvidas. -->
+  <!-- ══ SEGUNDA METADE: FICAR CONTENTE E INDICAR ════════════════════════ -->
+
+  <!-- 6 · O DINHEIRO É TODO SEU. Substitui o bloco longo da dor ("cobrar
+       amigo é ruim"): dois números grandes, os dois verdade — a mensalidade
+       é PIX direto pai→motorista e a plataforma não fica com percentual. -->
+  <section class="bloco menta">
+    <div class="wrap">
+      <div class="eyebrow">O seu mês</div>
+      <h2 class="sec">O dinheiro é <em>todo seu.</em></h2>
+      <div class="numeros">
+        <div class="numero surge"><b data-conta="100">100%</b><span>da mensalidade no seu PIX</span></div>
+        <div class="numero surge d1"><b>0</b><span>percentual que o app fica</span></div>
+      </div>
+      <p class="uma">E a conversa com a família volta a ser sobre a criança.</p>
+    </div>
+  </section>
+
+  <!-- 7 · DE ONDE VEIO (04/10/2026, modelo C escolhido pelo dono), encurtado
+       para o título e uma linha. Sem "líder" nem comparação: superlativo pede
+       prova (CDC art. 37, CONAR). A perua chega na escola, uma vez. -->
+  <section class="bloco">
+    <div class="wrap">
+      <div class="eyebrow">De onde veio</div>
+      <h2 class="sec">Feito no <em>portão da escola.</em></h2>
+      <p class="uma">Motorista pediu, a gente muda.</p>
+      <div class="cena surge" id="cena" aria-hidden="true">
+        <span class="calcada"></span><span class="chao"></span>
+        <span class="escola"><span class="teto"></span><span class="predio"></span><span class="placa">ESCOLA</span><span class="portao"></span></span>
+        <span class="van"><span class="corpo"></span><span class="faixa"></span><span class="vidro" style="left:10px;width:16px"></span><span class="vidro" style="left:30px;width:16px"></span><span class="vidro" style="left:52px;width:20px"></span><span class="roda" style="left:12px"></span><span class="roda" style="right:12px"></span></span>
+        <span class="crianca c1"></span><span class="crianca c2"></span><span class="crianca c3"></span>
+        <span class="balao">Chegou na escola</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · AS TRÊS DÚVIDAS que travam a decisão. A pergunta fica à vista, e a
+       resposta de uma frase abre só para quem tocar. O resto em /duvidas. -->
   <section class="duvidas">
     <div class="wrap">
       <div class="eyebrow">Antes que você pergunte</div>
-      <h2 class="sec">As três dúvidas de todo motorista.</h2>
-      <dl>
-        <div class="d"><dt>E se a mãe não souber usar?</dt><dd>Se você sabe mexer no WhatsApp, sabe mexer nesse app. Você manda um link e ela entra com um clique.</dd></div>
-        <div class="d"><dt>O app fica com parte do meu dinheiro?</dt><dd>Não. A mensalidade vai direto pro seu PIX, por inteiro. A gente não fica com percentual nenhum.</dd></div>
-        <div class="d"><dt>E depois que eu decidir?</dt><dd>A gente avisa antes de qualquer cobrança, com tempo. Começar não pede cartão, e nada da sua turma é apagado.</dd></div>
-      </dl>
+      <h2 class="sec">Três dúvidas, <em>três respostas.</em></h2>
+      <div class="dobras">
+        <details><summary>E se a mãe não souber usar?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>Se ela usa WhatsApp, ela usa o app: entra por um link.</p></details>
+        <details><summary>O app fica com parte do meu dinheiro?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>Não. A mensalidade vai inteira para o seu PIX.</p></details>
+        <details><summary>E depois que eu decidir?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>A gente avisa antes de cobrar. Nada da sua turma é apagado.</p></details>
+      </div>
     </div>
   </section>
 
-  <!-- 7 · PASSE ADIANTE. Tio confia em tio, e a mãe cobra o motorista dela:
-       a mesma frase serve aos dois. ⚠️ ESTE BOTÃO NÃO DÁ DESCONTO — o desconto
-       por indicação é o convite de dentro do app, que sabe quem indicou. O link
-       leva `utm_source=indicacao`, que o app já reconhece (origem.js). -->
+  <!-- 9 · PASSE ADIANTE. A mensagem aparece pronta num balão: ele vê o que
+       vai mandar antes de tocar. ⚠️ ESTE BOTÃO NÃO DÁ DESCONTO — o desconto
+       por indicação é o convite de dentro do app, que sabe quem indicou. O
+       link leva `utm_source=indicacao`, que o app já reconhece (origem.js).
+       ⚠️ O texto do balão e o do link são o MESMO: mudou um, muda o outro.
+       A família mora no fim: "Tem filho na perua?". -->
   <section class="passe">
     <div class="wrap">
       <div class="eyebrow">Passe adiante</div>
-      <h2 class="sec">Conhece alguém que precisa disto?</h2>
-      <p>Mande para um motorista de van escolar. Ou, se você é pai ou mãe, para o motorista do seu filho.</p>
-      <a class="cta zap" href="https://wa.me/?text=Olha%20esse%20app%20para%20transporte%20escolar%3A%20a%20rota%2C%20o%20aviso%20da%20falta%20e%20a%20mensalidade%20num%20lugar%20s%C3%B3.%20D%C3%A1%20para%20usar%20gr%C3%A1tis%20e%20decidir%20depois.%20https%3A%2F%2Falobuzinou.com.br%2F%3Futm_source%3Dindicacao" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>Mandar pelo WhatsApp
+      <h2 class="sec">Conhece um <em>motorista?</em></h2>
+      <p class="uma">Um toque e a mensagem vai pronta.</p>
+      <div class="zapmsg surge">Olha esse app para transporte escolar: ele lembra a família da mensalidade e avisa que a perua está chegando. Dá para usar grátis e decidir depois.</div>
+      <a class="cta zap" href="https://wa.me/?text=Olha%20esse%20app%20para%20transporte%20escolar%3A%20ele%20lembra%20a%20fam%C3%ADlia%20da%20mensalidade%20e%20avisa%20que%20a%20perua%20est%C3%A1%20chegando.%20D%C3%A1%20para%20usar%20gr%C3%A1tis%20e%20decidir%20depois.%20https%3A%2F%2Falobuzinou.com.br%2F%3Futm_source%3Dindicacao" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>Indicar o app no WhatsApp
       </a>
+      <p class="familia">Tem filho na perua? <a href="/familia">Veja a parte da família</a></p>
     </div>
   </section>
 </main>
@@ -513,6 +647,41 @@ footer .rodape-contato{margin-top:22px; padding-top:16px; border-top:1px solid r
       var href = a.getAttribute('href');
       a.setAttribute('href', href + (href.indexOf('?') === -1 ? '?' : '&') + cauda);
     });
+  })();
+</script>
+<script>
+  /* ══ O DESENHO SE MEXE UMA VEZ, QUANDO APARECE (04/10/2026) ═══════════
+   * Só roda com a classe `anima` no <html> — que só existe quando há
+   * IntersectionObserver e a pessoa não pediu menos movimento. Sem ela a
+   * página nasce no estado final: a lista já paga, a perua já na casa, o
+   * número já em 100%. Cada elemento é observado UMA vez e solto. */
+  (function(){
+    if (document.documentElement.className.indexOf('anima') === -1) return;
+    var pills = document.querySelectorAll('[data-vira]');
+    pills.forEach(function(p){ p.className = 'st ab'; p.textContent = 'em aberto'; });
+    function contar(el){
+      var alvo = Number(el.getAttribute('data-conta')), t0 = performance.now();
+      function passo(t){
+        var k = Math.min(1, (t - t0) / 1200);
+        el.textContent = Math.round(alvo * (1 - Math.pow(1 - k, 3))) + '%';
+        if (k < 1) requestAnimationFrame(passo);
+      }
+      el.textContent = '0%';
+      requestAnimationFrame(passo);
+    }
+    var obs = new IntersectionObserver(function(entradas){
+      entradas.forEach(function(e){
+        if (!e.isIntersecting) return;
+        var el = e.target;
+        el.classList.add('visto');
+        el.querySelectorAll('[data-vira]').forEach(function(p, i){
+          setTimeout(function(){ p.className = 'st ok'; p.textContent = 'pago'; }, 700 + i * 550);
+        });
+        el.querySelectorAll('[data-conta]').forEach(contar);
+        obs.unobserve(el);
+      });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('.surge, #mapa, #cena').forEach(function(el){ obs.observe(el); });
   })();
 </script>
 </body>

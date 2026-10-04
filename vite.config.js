@@ -136,7 +136,9 @@ export default defineConfig(({ mode }) => {
         short_name: 'Alô Buzinou',
         description: 'Onde a perua está agora, o que o motorista avisou e a mensalidade em dia.',
         theme_color: '#1F5F3F',
-        background_color: '#EEF1EF',
+        // A tela de abertura do app instalado é VERDE, com o ícone de borda
+        // verde-clara (modelo E, 04/10/2026).
+        background_color: '#1F5F3F',
         display: 'standalone',
         orientation: 'portrait',
         // `?atalho=1` É O QUE DISTINGUE O ATALHO DA URL DIGITADA.

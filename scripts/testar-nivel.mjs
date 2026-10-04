@@ -315,8 +315,8 @@ bloco('7 · A FAMÍLIA NÃO VÊ O NÍVEL DO MOTORISTA');
 // ⚠️ Decisão do dono, 04/10/2026: o selo e as frases para a família saíram.
 // Se alguém religar, que seja às claras — esta linha falha primeiro.
 checar('a régua não tem mais frase para a família', false, 'FRASE_PARA_FAMILIA' in nivel);
-checar('o selo do cabeçalho não recebe mais o motorista da família', false,
-  /adminUid/.test(readFileSync(new URL('../src/components/nivel/SeloNoCabecalho.jsx', import.meta.url), 'utf8')
+checar('o nível no menu do perfil não recebe o motorista da família', false,
+  /adminUid/.test(readFileSync(new URL('../src/components/layout/ProfileMenu.jsx', import.meta.url), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')));
 
 bloco('8 · CATÁLOGOS');
@@ -385,6 +385,38 @@ for (const lancada of ['2026-06-20T09:00:00-03:00', '2026-12-10', '2026-10-03T23
       checar(`dias restantes iguais (${lancada} em ${agora.toISOString()})`, diasRestantes(lancada, agora), espelho.diasRestantes(lancada, agora));
     }
   }
+}
+
+bloco('10 · O FEITO E O PRÓXIMO (o menu do perfil e o topo de "Meu nível")');
+{
+  const M = (id, nv, feita, pre = false) => ({ id, nivel: nv, titulo: id, pre, feita });
+  const missoes = [
+    M('p1', 'prata', true, true), M('p2', 'prata', true), M('p3', 'prata', true),
+    M('p4', 'prata', false), M('p5', 'prata', false), M('o1', 'ouro', false),
+  ];
+  for (const lado of [nivel, espelho]) {
+    const qual = lado === nivel ? 'app' : 'servidor';
+    checar(`${qual}: a próxima é a primeira que falta do nível`, { id: 'p4', titulo: 'p4' }, lado.proximaMissao(missoes, 'prata'));
+    checar(`${qual}: na Platina, as missões ainda são as do Ouro`, { id: 'o1', titulo: 'o1' }, lado.proximaMissao(missoes, 'platina'));
+    checar(`${qual}: progresso conta a de "pré"`, { nivel: 'prata', feitas: 3, total: 5 }, lado.progressoDoNivel(missoes, 'prata'));
+
+    const primeira = lado.anotarFeitas(missoes, undefined, 1000);
+    checar(`${qual}: na primeira vez a data é null (nada de "feito hoje" do que é antigo)`, { p2: null, p3: null }, primeira.mapa);
+    checar(`${qual}: a primeira vez grava`, true, primeira.mudou);
+    const depois = lado.anotarFeitas([...missoes.slice(0, 3), M('p4', 'prata', true), ...missoes.slice(4)], primeira.mapa, 5000);
+    checar(`${qual}: a missão nova ganha a data de agora`, { p2: null, p3: null, p4: 5000 }, depois.mapa);
+    checar(`${qual}: igual não grava de novo`, false, lado.anotarFeitas(missoes, primeira.mapa, 9000).mudou);
+    checar(`${qual}: a de "pré" nunca entra no mapa`, false, 'p1' in primeira.mapa);
+
+    checar(`${qual}: a última feita é a de data mais recente`, { id: 'p4', titulo: 'p4', em: 5000 },
+      lado.ultimaFeita([...missoes.slice(0, 3), M('p4', 'prata', true)], depois.mapa, 'prata'));
+    checar(`${qual}: sem data, a última do nível na ordem, sem data`, { id: 'p3', titulo: 'p3', em: null },
+      lado.ultimaFeita(missoes, primeira.mapa, 'prata'));
+    checar(`${qual}: nada feito, nada a mostrar`, null, lado.ultimaFeita([M('x', 'bronze', false)], {}, 'bronze'));
+  }
+  const gravador = readFileSync(new URL('../functions/lib/niveis.js', import.meta.url), 'utf8');
+  checar('o servidor grava o resumo junto do nível', true,
+    /anotarFeitas\(/.test(gravador) && /proximaMissao\(/.test(gravador) && /progressoDoNivel\(/.test(gravador));
 }
 
 console.log(`\n${ok} ok, ${bad} falha(s)`);

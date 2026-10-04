@@ -3,6 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ArrowUpCircle, X } from 'lucide-react';
 import TelaDeVersao from './TelaDeVersao';
 import { useTrocaDeVersao } from '../../hooks/useTrocaDeVersao';
+import { APP_VERSION } from '../../version';
 
 /**
  * "SAIU UMA VERSÃO NOVA" — o aviso, e o teatro de trocar.
@@ -105,18 +106,30 @@ export default function AtualizacaoDisponivel() {
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold leading-tight text-text">
-            {versaoNova ? `Saiu a versão ${versaoNova.versao}` : 'Tem uma versão nova'}
+          <p className="text-base font-bold leading-tight text-text">Tem uma versão nova</p>
+          {/* AS DUAS VERSÕES, A DE AGORA E A QUE CHEGA (pedido do dono,
+            * 04/10/2026): sem o número de agora, "saiu a 1.12" não diz se é
+            * um passo ou dez. */}
+          <p className="mt-1 text-sm leading-snug text-textBody">
+            Versão atual: <b className="text-text">{APP_VERSION}</b>
+            {versaoNova && (
+              <>
+                {' · '}Atualizar para: <b className="text-text">{versaoNova.versao}</b>
+              </>
+            )}
           </p>
-          <p className="mt-0.5 text-xs leading-snug text-textMuted">
-            Toque pra atualizar. Leva um segundo e nada do seu se perde.
+          {/* ⚠️ A PRIMEIRA TENTATIVA PODE NÃO ENTRAR: o celular às vezes
+            * ainda serve a versão antiga no primeiro recarregamento. Dito
+            * antes, abrir de novo é o passo esperado, não "o app quebrou". */}
+          <p className="mt-1 text-sm leading-snug text-textMuted">
+            Nada do seu se perde. Se o app não abrir na primeira vez, feche e abra de novo.
           </p>
           <button
             type="button"
             onClick={atualizar}
-            className="tap mt-2.5 flex h-10 w-full items-center justify-center rounded-xl bg-primary text-sm font-bold text-white"
+            className="tap mt-2.5 flex h-12 w-full items-center justify-center rounded-xl bg-primary text-base font-bold text-white"
           >
-            Atualizar agora
+            {versaoNova ? `Atualizar para a ${versaoNova.versao}` : 'Atualizar agora'}
           </button>
         </div>
 

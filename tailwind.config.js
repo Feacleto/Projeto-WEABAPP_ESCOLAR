@@ -354,6 +354,12 @@ const base = {
           '0%, 70%, 100%': { opacity: '0.3', transform: 'translateY(0)' },
           '35%': { opacity: '1', transform: 'translateY(-4px)' },
         },
+        /* O reflexo que atravessa o selo de metal: passa em 1,4 s e fica
+           parado o resto dos 4 s. */
+        'selo-brilho': {
+          '0%': { left: '-60%' },
+          '35%, 100%': { left: '130%' },
+        },
       },
       animation: {
         // Os tempos são os do design system: entrada 300ms, estado 200ms,
@@ -369,6 +375,10 @@ const base = {
         // EXCEÇÃO NOMEADA: espera real (senha no servidor, Financeiro
         // abrindo). Some quando a resposta chega.
         ponto: 'ponto 1.1s ease-in-out infinite',
+        // EXCEÇÃO NOMEADA (04/10/2026, decisão do dono): o reflexo do selo
+        // de metal do nível. Lento e espaçado, e quem pede "reduzir
+        // movimento" no celular vê o selo parado (`motion-reduce:hidden`).
+        'selo-brilho': 'selo-brilho 4s ease-in-out infinite',
       },
 
       // ⚠️ AS FONTES DO SITE (03/10/2026, D1). O app usava Inter em tudo, e

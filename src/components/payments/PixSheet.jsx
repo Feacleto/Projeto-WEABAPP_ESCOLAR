@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import AvisoDoQrPix from './AvisoDoQrPix';
 import toast from 'react-hot-toast';
 import { Copy, Key } from 'lucide-react';
 import AppSheet from '../common/AppSheet';
@@ -64,6 +65,7 @@ function MeuPix({ onClose }) {
       ) : (
         <div className="w-56 h-56 rounded-lg bg-neutro" />
       )}
+      <AvisoDoQrPix className="max-w-xs" />
       <p className="text-[17px] text-textBody break-all">
         {PIX_KEY_TYPES[profile.pixKeyType]?.label || 'Chave'}: {profile.pixKey}
       </p>

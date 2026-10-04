@@ -209,3 +209,66 @@ footer .rodape-contato{margin-top:22px; padding-top:16px; border-top:1px solid r
 .peca img{width:54px; height:96px; object-fit:cover; border-radius:8px; flex:none}
 .peca b{display:block; font:700 18px var(--display); color:var(--verde)}
 .peca small{display:block; font-size:15px; color:var(--cinza); line-height:1.45; margin-top:2px}
+
+/* ══ POUCO TEXTO (04/10/2026, aprovado pelo dono) ══════════════════════
+   O motorista lê a primeira frase de cada bloco e pula o resto. As peças
+   abaixo trocam parágrafo por desenho: ícone grande, uma frase, uma linha. */
+.icg{width:52px; height:52px; border-radius:16px; background:var(--ok-chip); color:var(--verde); display:grid; place-items:center; flex:none}
+.icg svg{width:26px; height:26px}
+
+/* como-funciona: os passos como telas que passam com o dedo */
+.telas{display:grid; grid-auto-flow:column; grid-auto-columns:82%; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; margin:20px -20px 0; padding:4px 20px 14px; scrollbar-width:none}
+.telas::-webkit-scrollbar{display:none}
+.tela-passo{scroll-snap-align:start; background:#fff; border-radius:var(--r-xl); box-shadow:var(--sombra-rest); padding:22px 20px; display:flex; flex-direction:column; gap:14px; min-height:230px; position:relative}
+.tela-passo .n{position:absolute; top:18px; right:20px; font:800 40px/1 var(--display); color:var(--ok-chip)}
+.tela-passo b{font:800 24px/1.15 var(--display); letter-spacing:-.02em}
+.tela-passo p{margin:0; color:var(--cinza)}
+.dica{margin:0 0 8px; font-size:15px; color:var(--cinza)}
+
+/* motorista: o dia numa linha do tempo */
+.dia{list-style:none; margin:22px 0 8px; padding:0; position:relative}
+.dia::before{content:""; position:absolute; left:58px; top:10px; bottom:10px; width:3px; border-radius:2px; background:var(--ok-chip)}
+.dia li{display:grid; grid-template-columns:72px minmax(0,1fr); gap:18px; align-items:start; padding:10px 0; position:relative}
+.dia li::after{content:""; position:absolute; left:53px; top:19px; width:13px; height:13px; border-radius:50%; background:var(--verde); box-shadow:0 0 0 4px var(--areia)}
+.dia .hora{font:800 18px/1.4 var(--display); color:var(--verde); text-align:left}
+.dia li span:last-child{font-size:18px; font-weight:600; line-height:1.4}
+
+/* família e sobre: três ícones grandes, uma frase cada */
+.icones{display:grid; gap:12px; margin-top:20px}
+.icones > div{background:#fff; border-radius:var(--r-lg); box-shadow:var(--sombra-rest); padding:18px; display:grid; grid-template-columns:52px minmax(0,1fr); column-gap:14px; align-items:center}
+.icones .icg{grid-row:span 2}
+.icones b{font:700 19px/1.25 var(--display)}
+.icones p{margin:2px 0 0; color:var(--cinza); font-size:16px}
+
+/* família: a conta criada pelo motorista, em dois passos */
+.dois{list-style:none; margin:16px 0 4px; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.dois li{background:#fff; border-radius:var(--r-lg); box-shadow:var(--sombra-rest); padding:16px; display:flex; flex-direction:column; gap:10px; font-weight:600}
+.dois li b{display:block; font:800 14px var(--display); color:var(--verde)}
+
+/* dúvidas: a primeira frase responde sozinha */
+.faq .resp b{color:var(--preto)}
+/* O `hidden` da aba que não está escolhida perdia para o `display` do .faq,
+   e as duas listas apareciam juntas (achado em 04/10/2026). */
+.faq[hidden]{display:none}
+.telas{scroll-padding-inline:20px}
+
+/* SOBRE: o caderno vira o app (modelo B, 04/10/2026, escolhido pelo dono).
+   O padrão é o ÚLTIMO quadro (celular com a lista paga); as animações saem
+   do primeiro com `both`, e o "reduzir movimento" lá em cima as desliga. */
+.c-cad .caderno{position:absolute; left:34px; top:16px; width:92px; height:116px; border-radius:6px; background:#FFF9E6; border:2px solid #E8DDB5; box-shadow:0 8px 14px -8px rgba(0,0,0,.3); opacity:0; animation:cad-some 1s .9s both}
+.c-cad .caderno .espiral{position:absolute; left:-7px; top:10px; bottom:10px; width:10px; background:repeating-linear-gradient(180deg,#9AA8A1 0 4px,transparent 4px 10px)}
+.c-cad .caderno i{position:absolute; left:14px; height:4px; border-radius:2px; background:#B7AE8C}
+.c-cad .caderno i:nth-of-type(1){top:22px; width:58px} .c-cad .caderno i:nth-of-type(2){top:38px; width:46px} .c-cad .caderno i:nth-of-type(3){top:54px; width:62px} .c-cad .caderno i:nth-of-type(4){top:70px; width:38px} .c-cad .caderno i:nth-of-type(5){top:86px; width:54px}
+@keyframes cad-some{from{opacity:1; transform:none} to{opacity:0; transform:translateX(30px) rotate(-8deg) scale(.6)}}
+.c-cad .seta{position:absolute; left:142px; top:68px; width:40px; height:4px; border-radius:2px; background:var(--verde); animation:cad-surge .4s .5s both}
+.c-cad .seta::after{content:""; position:absolute; right:-2px; top:-5px; border:7px solid transparent; border-left-color:var(--verde)}
+@keyframes cad-surge{from{opacity:0}}
+.c-cad .fone{position:absolute; right:40px; top:8px; width:78px; height:134px; border-radius:16px; background:var(--preto); padding:6px; animation:cad-fone .6s 1.4s cubic-bezier(.3,1.4,.5,1) both}
+@keyframes cad-fone{from{opacity:0; transform:scale(.85)}}
+.c-cad .tela{display:flex; flex-direction:column; gap:6px; width:100%; height:100%; border-radius:11px; background:#fff; padding:8px 6px}
+.c-cad .lin{display:flex; align-items:center; gap:4px}
+.c-cad .lin span{width:12px; height:12px; border-radius:50%; background:var(--ok-chip)}
+.c-cad .lin b{flex:1; height:5px; border-radius:3px; background:#9AA8A1}
+.c-cad .lin i{width:16px; height:8px; border-radius:4px; background:var(--ok-chip); animation:cad-paga .3s both}
+@keyframes cad-paga{from{background:var(--aviso-chip)}}
+.c-cad .rotulo{position:absolute; left:14px; bottom:10px; font-weight:700; font-size:13px; color:var(--escola); animation:cad-surge .4s 2.8s both}

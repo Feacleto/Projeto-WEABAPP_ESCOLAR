@@ -255,7 +255,7 @@ TIER_C_PAD = 0.19                                  # folga do balão dentro dele
 # e a roda, que preocupava, sobra com 2 px a 16.
 #
 # Ladrilho BRANCO, perua esmeralda, janela branca — o mesmo desenho do site e
-# do ícone do app na tela do celular (icon-192, fundo branco). Branco porque
+# do ícone do app até 04/10/2026 (hoje ele é verde, ver app_icon_image). Branco porque
 # o ladrilho é o que separa a marca da aba escura; em aba clara quem separa é
 # a própria perua, que tem 7,6:1 sobre branco. As ondas ficam de fora pela
 # regra de sempre: a 16 px viram um borrão verde no canto.
@@ -409,6 +409,84 @@ def favicon_image(size):
 
 def render_icon(path, size, pad, bg, body, window, arcs, tier='A'):
     im = icon_image(size, pad, bg, body, window, arcs, tier)
+    im.save(path)
+    print('   {} {}x{}'.format(os.path.relpath(path, ROOT), size, size))
+    return im
+
+
+# ─────────── o ícone do app na tela do celular ───────────
+# MODELO E (04/10/2026, escolhido pelo dono entre quatro): o fundo é o verde
+# da marca num degradê (um tom acima no canto de cima, um abaixo no de baixo),
+# a perua é BRANCA com a janela esmeralda, as ondas e uma BORDA no verde-claro
+# que a marca já usa (GREEN, o dos botões e do site). Nada de amarelo.
+#
+# Até aqui o ícone era a perua verde num quadrado BRANCO — e branco é a cor
+# de metade dos ícones de qualquer celular (galeria, agenda, mapas): ele sumia
+# na tela de início. O verde cheio se separa do papel de parede claro, e a
+# borda clara o separa do escuro.
+#
+# ⚠️ A BORDA SEGUE A FORMA DE CADA ARQUIVO, porque quem recorta é o aparelho:
+#   - 'any' (computador e Android sem máscara): quadrado arredondado com os
+#     cantos transparentes, borda colada na borda.
+#   - apple-touch-icon: o iOS exige quadrado OPACO e aplica o próprio canto
+#     (~22%); a borda segue esse mesmo raio, então aparece inteira.
+#   - maskable: o Android escolhe a máscara (círculo, gota, quadrado). Borda
+#     colada na borda seria cortada; ela vira um CÍRCULO dentro da zona que
+#     toda máscara mostra. No celular de máscara redonda fica igual ao modelo.
+ICONE_FUNDO_CLARO = '#2E8B57'   # o canto de cima do degradê
+ICONE_FUNDO_ESCURO = '#123D27'  # o canto de baixo
+ICONE_SOMBRA = (11, 42, 26, 115)  # a sombra embaixo da perua
+ICONE_RAIO = 0.2237             # o canto do iOS, que o Android também usa
+ICONE_BORDA = 30 / 512          # espessura da borda
+
+
+def _degrade(S):
+    """Degradê diagonal, do canto de cima à esquerda ao de baixo à direita."""
+    g = Image.linear_gradient('L').rotate(45, expand=True, resample=Image.BICUBIC)
+    w, h = g.size
+    lado = int(256 / math.sqrt(2))
+    g = g.crop(((w - lado) // 2, (h - lado) // 2, (w + lado) // 2, (h + lado) // 2))
+    g = g.resize((S, S), Image.BICUBIC)
+    claro = Image.new('RGBA', (S, S), rgba(ICONE_FUNDO_CLARO))
+    escuro = Image.new('RGBA', (S, S), rgba(ICONE_FUNDO_ESCURO))
+    return Image.composite(escuro, claro, g)
+
+
+def app_icon_image(size, pad, forma):
+    """forma: 'any' (cantos transparentes), 'ios' (quadrado opaco) ou 'maskable'."""
+    S = size * SS
+    im = _degrade(S)
+    t = fit(mark_bbox(), size, size, pad).scaled(SS)
+    bbox = mark_bbox()
+    # A sombra no chão, embaixo das rodas.
+    cx = t.pt(((bbox[0] + bbox[2]) / 2 - 20, 0))[0]
+    cy = t.pt((0, bbox[3]))[1]
+    rx, ry = t.n(bbox[2] - bbox[0]) * 0.36, S * 0.03
+    sombra = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(sombra).ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=ICONE_SOMBRA)
+    im = Image.alpha_composite(im, sombra)
+    d = ImageDraw.Draw(im)
+    draw_mark(d, t, rgba(WHITE), rgba(EMERALD), rgba(GREEN))
+    b = ICONE_BORDA * S
+    if forma == 'maskable':
+        # O círculo de raio 0,40 é a zona segura do maskable (W3C): toda
+        # máscara do Android mostra pelo menos isso, então a borda aparece inteira.
+        r = S * 0.40
+        d.ellipse([S / 2 - r, S / 2 - r, S / 2 + r, S / 2 + r],
+                  outline=rgba(GREEN), width=int(round(b)))
+    else:
+        # O Pillow desenha o contorno PARA DENTRO da caixa: a caixa é a borda.
+        d.rounded_rectangle([0, 0, S - 1, S - 1],
+                            radius=ICONE_RAIO * S, outline=rgba(GREEN), width=int(round(b)))
+    if forma == 'any':
+        mascara = Image.new('L', (S, S), 0)
+        ImageDraw.Draw(mascara).rounded_rectangle([0, 0, S - 1, S - 1], radius=ICONE_RAIO * S, fill=255)
+        im.putalpha(mascara)
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def render_app_icon(path, size, pad, forma):
+    im = app_icon_image(size, pad, forma)
     im.save(path)
     print('   {} {}x{}'.format(os.path.relpath(path, ROOT), size, size))
     return im
@@ -870,12 +948,12 @@ def main():
 
     print('PNG')
     C = (rgba(EMERALD), rgba(WHITE), rgba(GREEN_ON_LIGHT))   # mark colorido, fundo claro
-    # Ícones do PWA: fundo branco cheio — o launcher aplica a máscara dele.
-    render_icon(os.path.join(OUT, 'icon-192.png'), 192, 0.10, rgba(WHITE), *C)
-    render_icon(os.path.join(OUT, 'icon-512.png'), 512, 0.10, rgba(WHITE), *C)
-    # Maskable: conteúdo dentro da zona segura (60% central).
-    render_icon(os.path.join(OUT, 'icon-maskable-512.png'), 512, 0.21, rgba(WHITE), *C)
-    render_icon(os.path.join(OUT, 'apple-touch-icon.png'), 180, 0.11, rgba(WHITE), *C)
+    # Ícones do app na tela do celular: o modelo E (ver app_icon_image).
+    render_app_icon(os.path.join(OUT, 'icon-192.png'), 192, 0.16, 'any')
+    render_app_icon(os.path.join(OUT, 'icon-512.png'), 512, 0.16, 'any')
+    # Maskable: a perua dentro da borda redonda, na zona segura do Android.
+    render_app_icon(os.path.join(OUT, 'icon-maskable-512.png'), 512, 0.29, 'maskable')
+    render_app_icon(os.path.join(OUT, 'apple-touch-icon.png'), 180, 0.16, 'ios')
     # Badge de notificação: o Android usa só o alfa, então é silhueta branca
     # com a janela VAZADA (senão o balão desaparece dentro da carroceria).
     render_icon(os.path.join(OUT, 'notification-badge-96.png'), 96, 0.06,

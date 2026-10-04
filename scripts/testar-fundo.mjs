@@ -167,8 +167,9 @@ checar('o cartao de fundo tem 244px', 244, larguraCartao);
 const vaoMinimo = Math.min(...Object.values(SLOTS).map((x) => x.vao));
 checar('o slot do meio e o mais colado', 8, vaoMinimo);
 
+// O login saiu da lista em 04/10/2026: virou a tela limpa no verde (modelo
+// C), sem cartões de fundo nem tira. Só o /first-access ainda os usa.
 const TELAS = [
-  { nome: 'login', fonte: fonteLogin, cartaoRe: /z-10 w-full max-w-\[(\d+)px\]/ },
   { nome: 'first-access', fonte: fonteFirst, cartaoRe: /mx-auto flex w-full max-w-\[(\d+)px\]/ },
 ];
 
@@ -302,7 +303,9 @@ checar('e nenhuma esta vazia', [],
 checar('as tres sao diferentes', ASSUNTOS.length,
   new Set(ASSUNTOS.map((a) => INTRO[a])).size);
 
-for (const [nome, fonte] of [['login', fonteLogin], ['first-access', fonteFirst]]) {
+checar('o login nao monta mais o fundo (tela limpa, 04/10/2026)', false,
+  /<(FundoDoLogin|TiraDoLogin|TexturaDoFundo)\b/.test(fonteLogin));
+for (const [nome, fonte] of [['first-access', fonteFirst]]) {
   checar(`${nome} monta a textura`, true, fonte.includes('<TexturaDoFundo />'));
   checar(`${nome} monta a tira`, true, fonte.includes('<TiraDoLogin'));
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
+import AvisoDoQrPix from '../../components/payments/AvisoDoQrPix';
 import { Check, Copy, FileText, QrCode, Receipt, Repeat } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
@@ -499,9 +500,7 @@ function PagamentoPix({ fatura }) {
           ) : (
             <div className="h-48 w-48 animate-pulse rounded-lg bg-neutro" />
           )}
-          <p className="text-center text-sm text-textMuted">
-            Abra o app do banco, escolha PIX e aponte a câmera.
-          </p>
+          <AvisoDoQrPix />
         </div>
       )}
 

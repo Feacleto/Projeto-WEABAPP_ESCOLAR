@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { ArrowLeft, Bell, MessageCircle } from 'lucide-react';
-import SeloNoCabecalho from '../nivel/SeloNoCabecalho';
-import SeloDaFamilia from '../nivel/SeloDaFamilia';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotificacoesDaSessao } from '../../hooks/useNotifications';
@@ -17,13 +15,26 @@ import { useAvisosDoCabecalho } from '../../context/AvisosDoCabecalhoContext';
  * Header sticky comum às páginas autenticadas.
  *
  * Renderiza automaticamente bell (notificações) + menu de perfil no canto
- * direito quando há usuário logado. Pages podem passar `action` extra que
- * aparece ANTES dos ícones globais.
+ * direito quando há usuário logado.
+ *
+ * ⚠️ A BARRA SÓ TEM A NAVEGAÇÃO, E O TÍTULO MORA NA PÁGINA (04/10/2026,
+ * aprovado pelo dono). A barra tinha uma linha só e chegava a seis peças —
+ * Voltar, título, selo, a ação da tela, Falar, sino e perfil —, e como o lado
+ * direito nunca encolhe, quem perdia era sempre o título: "Fin…" no
+ * Financeiro, "Histó…" no histórico, dez letras de "Indicar outro motorista"
+ * no celular de 320 px. Agora:
+ *   - na barra, à esquerda, "← Voltar" (telas internas) ou a marca do
+ *     motorista (abas); à direita, só o que existe em toda tela;
+ *   - logo abaixo, o TÍTULO GRANDE da tela, que quebra a linha em vez de
+ *     cortar, com a `action` da tela ao lado dele — ela é da tela, não do app.
+ * O Início (`marca`) continua com a marca na barra e sem título grande.
+ * `tituloNaBarra` é a exceção da ROTA, onde cada pixel de altura é da lista
+ * de paradas e a barra tem folga para a palavra "Rota".
  *
  * Props:
  *   - title:        string
  *   - showBack:     bool — mostra seta de voltar (usa navigate(-1))
- *   - action:       ReactNode — botão/ícone custom à direita (opcional)
+ *   - action:       ReactNode — a ação da tela, ao lado do título grande
  *   - showGlobal:   bool (default true) — exibe bell + perfil
  */
 export default function Header({
@@ -59,6 +70,7 @@ export default function Header({
   // escolheu. Nas telas internas o título continua sendo o nome da tela,
   // porque ali a pergunta volta a ser "onde eu estou".
   marca = false,
+  tituloNaBarra = false,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,6 +82,8 @@ export default function Header({
   // Os avisos do motorista (cobrança, teste, push) moram LOGO ABAIXO do
   // cabeçalho, não acima — ver `AvisosDoCabecalhoContext`. Fora do /tio é null.
   const avisos = useAvisosDoCabecalho();
+  // Onde o título mora: na barra (Início e rota) ou na página (o resto).
+  const tituloEmCima = marca || tituloNaBarra;
 
   // Hooks só rodam quando autenticado pra não disparar subscribes em /login
   return (
@@ -120,15 +134,17 @@ export default function Header({
           )}
           {marca ? (
             <MarcaOuTitulo titulo={title} />
-          ) : (
+          ) : tituloNaBarra ? (
             <h1 className="font-display text-lg font-bold text-text truncate">
               {title}
             </h1>
+          ) : (
+            !showBack && isAuthed && <MarcaNaBarra />
           )}
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {action}
+          {tituloEmCima && action}
           {showGlobal && isAuthed && (
             <GlobalActions
               role={role}
@@ -140,6 +156,14 @@ export default function Header({
       </div>
     </header>
     {avisos}
+    {!tituloEmCima && title && (
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 print:hidden">
+        <h1 className="min-w-0 font-display text-2xl font-extrabold leading-tight text-text">
+          {title}
+        </h1>
+        {action && <div className="-mt-1 flex shrink-0 items-center gap-1">{action}</div>}
+      </div>
+    )}
     </>
   );
 }
@@ -154,48 +178,66 @@ export default function Header({
  *
  * SEM MARCA CADASTRADA, VOLTA O TÍTULO. O motorista que ainda não configurou
  * não pode ficar com um cabeçalho vazio, e as famílias dele muito menos.
+ *
+ * ⚠️ O SELO DO NÍVEL SAIU DAQUI (04/10/2026, decisão do dono): ele comia o
+ * nome da marca e agora mora no menu do perfil (`ProfileMenu`).
  */
 function MarcaOuTitulo({ titulo }) {
   const { nome, logoURL } = useMarcaDoTio();
-  // O SELO DO NÍVEL ao lado da marca: cada um vê SÓ o próprio (04/10/2026).
-  // O motorista, o dele (docs/niveis.md); a família, o dela, calculado no
-  // aparelho dela (dominio/identidade/nivelDaFamilia.js).
   const { role } = useAuth();
-  const selo =
-    role === 'admin' ? <SeloNoCabecalho /> : role === 'parent' ? <SeloDaFamilia /> : null;
 
   if (!nome && !logoURL) {
-    return (
-      <div className="flex items-center gap-2 min-w-0">
-        <h1 className="font-display text-lg font-bold text-text truncate">{titulo}</h1>
-        {selo}
-      </div>
-    );
+    return <h1 className="font-display text-lg font-bold text-text truncate">{titulo}</h1>;
   }
+
+  // ⚠️ NO LADO DO RESPONSÁVEL, COM LOGO, SÓ A LOGO. "Falar com tia" ocupa o
+  // espaço que o nome teria: com os dois, sobrava "T…" — medido em 390 px.
+  // A logo é a marca; o nome vai para o leitor de tela.
+  const soLogo = role === 'parent' && !!logoURL;
 
   return (
     <div className="flex items-center gap-2 min-w-0">
-      {logoURL && (
-        <img
-          src={logoURL}
-          alt=""
-          /* `alt` VAZIO de propósito: o nome vem escrito ao lado, e um leitor
-           * de tela anunciando "logo da Tio Nino, Tio Nino" repete sem
-           * acrescentar. Quando não há nome, o logo sozinho também não é
-           * informação nova — o app inteiro é dele. */
-          /* ⚠️ INTEIRA, NUNCA RECORTADA (03/10/2026). Era um quadrado de 32px
-           * com `object-cover`: logo larga perdia as pontas ("racomr" no
-           * lugar do nome). Agora a altura é fixa e a largura acompanha a
-           * imagem até 96px — logo quadrada continua quadrada, logo comprida
-           * aparece inteira, menor. */
-          className="h-8 w-auto max-w-[96px] shrink-0 rounded-lg object-contain"
-        />
-      )}
-      <h1 className="font-display text-lg font-bold text-text truncate">
+      {logoURL && <LogoDaMarca src={logoURL} />}
+      <h1
+        className={soLogo ? 'sr-only' : 'font-display text-lg font-bold text-text truncate'}
+      >
         {nome || titulo}
       </h1>
-      {selo}
     </div>
+  );
+}
+
+/**
+ * A marca nas ABAS sem Voltar (Financeiro, Mapa): a logo, ou o nome quando
+ * não há logo. Não é título — o título da tela está logo abaixo, grande —,
+ * então vai em `<span>`. Sem marca nenhuma, a barra fica só com os botões.
+ */
+function MarcaNaBarra() {
+  const { nome, logoURL } = useMarcaDoTio();
+  if (logoURL) return <LogoDaMarca src={logoURL} alt={nome || ''} />;
+  if (nome) {
+    return <span className="font-display text-lg font-bold text-text truncate">{nome}</span>;
+  }
+  return null;
+}
+
+/**
+ * ⚠️ INTEIRA, NUNCA RECORTADA (03/10/2026). Era um quadrado de 32px com
+ * `object-cover`: logo larga perdia as pontas ("racomr" no lugar do nome).
+ * A altura é fixa e a largura acompanha a imagem até 72px (era 96 até
+ * 04/10/2026; com o Falar ao lado não sobrava nome) — logo quadrada continua
+ * quadrada, logo comprida aparece inteira, menor.
+ *
+ * `alt` VAZIO quando o nome vem escrito ao lado: um leitor de tela dizendo
+ * "Tio Nino, Tio Nino" repete sem acrescentar.
+ */
+function LogoDaMarca({ src, alt = '' }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-8 w-auto max-w-[72px] shrink-0 rounded-lg object-contain"
+    />
   );
 }
 
@@ -294,6 +336,10 @@ export function FalarComOMotorista({
 
   const digitos = String(admin?.phone || '').replace(/\D/g, '');
   const nome = admin?.marcaNome?.trim() || admin?.name?.split(' ')[0] || 'o motorista';
+  // "FALAR COM TIO" OU "FALAR COM TIA" (04/10/2026, pedido do dono): é como
+  // a família chama o motorista no portão. O gênero vem do primeiro acesso
+  // dele; sem ele, fica só "Falar".
+  const tratamento = tratamentoDoMotorista(admin?.gender);
 
   const tocar = () => {
     if (!digitos) {
@@ -321,16 +367,16 @@ export function FalarComOMotorista({
         onClick={tocar}
         aria-label={`Falar com ${nome}`}
         // ⚠️ ÍCONE SOZINHO NÃO SE LÊ COMO "FALAR COM O MOTORISTA" (03/10/2026):
-        // o balão é o mesmo desenho de "comentários" em mil apps. Com a
-        // palavra ao lado, a saída de emergência se explica sem ninguém
-        // precisar tocar para descobrir. Abaixo de 360px a palavra cede e
-        // fica o ícone; acima, quem cede é o TÍTULO (ele trunca), nunca este
-        // botão — 48px de altura sempre, e nunca desabilitado.
+        // o balão é o mesmo desenho de "comentários" em mil apps. A palavra
+        // fica SEMPRE; abaixo de 360px só o "com tio" cede, senão o botão
+        // não cabe ao lado do "← Voltar". 48px de altura sempre, e nunca
+        // desabilitado.
         className="tap flex h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primaryChip px-2.5 text-primary"
       >
         <MessageCircle size={20} />
-        <span aria-hidden className="hidden text-base font-semibold min-[360px]:inline">
+        <span aria-hidden className="whitespace-nowrap text-base font-semibold">
           Falar
+          {tratamento && <span className="hidden min-[360px]:inline"> com {tratamento}</span>}
         </span>
       </button>
       )}
@@ -353,4 +399,11 @@ export function FalarComOMotorista({
       </AppSheet>
     </>
   );
+}
+
+/** 'tio' ou 'tia' pelo gênero do perfil do motorista; null sem ele. */
+function tratamentoDoMotorista(gender) {
+  if (gender === 'male') return 'tio';
+  if (gender === 'female') return 'tia';
+  return null;
 }

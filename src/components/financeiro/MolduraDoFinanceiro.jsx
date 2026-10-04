@@ -25,14 +25,14 @@ export default function MolduraDoFinanceiro({ children, voltarPara = null }) {
         // aviso. Mesma escolha das outras telas de fora do layout.
         showGlobal={!voltarPara}
         action={
-          // Abaixo de 360px a palavra sai e fica o cadeado: com ela, o título
-          // "Financeiro" saía cortado ("Financ…") — medido em 04/10/2026.
+          // Mora ao lado do título grande, fora da barra (04/10/2026): ali
+          // a palavra cabe inteira até no celular de 320 px.
           <span
-            className="flex items-center gap-1.5 pr-1 text-sm font-semibold text-textMuted"
+            className="flex min-h-12 items-center gap-1.5 pr-1 text-sm font-semibold text-textMuted"
             aria-label="Protegido"
           >
             <Lock size={18} className="text-primary" aria-hidden="true" />
-            <span className="hidden min-[360px]:inline">Protegido</span>
+            <span>Protegido</span>
           </span>
         }
       />

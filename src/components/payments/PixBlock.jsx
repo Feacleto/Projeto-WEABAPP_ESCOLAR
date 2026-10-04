@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import AvisoDoQrPix from './AvisoDoQrPix';
 import { Copy, Check, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
@@ -135,9 +136,7 @@ export default function PixBlock({ admin, amount, txid, children = null }) {
           ) : (
             <div className="w-48 h-48 rounded-lg bg-neutro animate-pulse" />
           )}
-          <p className="text-sm text-textMuted text-center">
-            Abra o app do banco, escolha PIX e aponte a câmera.
-          </p>
+          <AvisoDoQrPix />
         </div>
       )}
     </div>

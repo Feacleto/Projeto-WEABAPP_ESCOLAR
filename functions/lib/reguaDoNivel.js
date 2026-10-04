@@ -481,6 +481,75 @@ function calcularNivel(fatos, { atividades = [], agora = new Date(), conquistado
   return resultado('platina', { nivel: 'diamante', faltam: faltamTrilha });
 }
 
+// ─── O RESUMO DAS MISSÕES: o "Feito" e o "Próxima" (04/10/2026) ──────────────
+//
+// O menu do perfil e a tela "Meu nível" mostram a missão feita por último e a
+// próxima. O menu lê só o que o SERVIDOR gravou em `niveis/{uid}` — abrir o
+// menu não pode custar a leitura da turma inteira —, e a tela usa a régua
+// rodando no aparelho. As duas contas são estas, nos dois lados.
+
+/** Platina e Diamante continuam cuidando das missões do Ouro. */
+function nivelDasMissoes(nivel) {
+  return NIVEIS.indexOf(nivel) >= NIVEIS.indexOf('ouro') ? 'ouro' : nivel;
+}
+
+/** A primeira missão do nível que ainda falta, na ordem do catálogo. */
+function proximaMissao(missoes, nivel) {
+  const alvo = nivelDasMissoes(nivel);
+  const m = (missoes || []).find((x) => x.nivel === alvo && !x.pre && !x.feita);
+  return m ? { id: m.id, titulo: m.titulo } : null;
+}
+
+/** Quantas missões do nível estão feitas (as de "pré" contam: já vêm marcadas). */
+function progressoDoNivel(missoes, nivel) {
+  const alvo = nivelDasMissoes(nivel);
+  const doNivel = (missoes || []).filter((x) => x.nivel === alvo);
+  return { nivel: alvo, feitas: doNivel.filter((x) => x.feita).length, total: doNivel.length };
+}
+
+/**
+ * Anota QUANDO cada missão foi vista feita pela primeira vez (milissegundos).
+ *
+ * ⚠️ NA PRIMEIRA VEZ, A DATA É `null`. O mapa não existia antes de 04/10/2026;
+ * gravar "agora" nas missões que já estavam feitas faria a tela dizer "Feito
+ * hoje" de algo feito há um mês. `null` diz "feito antes de o app anotar", e a
+ * tela escreve só "Feito". Missão desfeita sai do mapa; a de "pré" nunca entra.
+ * Devolve `{ mapa, mudou }`.
+ */
+function anotarFeitas(missoes, feitasEm, agoraMs) {
+  const primeiraVez = !feitasEm || typeof feitasEm !== 'object';
+  const antes = primeiraVez ? {} : feitasEm;
+  const mapa = {};
+  for (const m of missoes || []) {
+    if (m.pre || !m.feita) continue;
+    mapa[m.id] = Object.prototype.hasOwnProperty.call(antes, m.id)
+      ? antes[m.id]
+      : (primeiraVez ? null : agoraMs);
+  }
+  const chaves = (o) => Object.keys(o).sort().join('|');
+  const mudou = primeiraVez || chaves(mapa) !== chaves(antes);
+  return { mapa, mudou };
+}
+
+/**
+ * A missão feita por último: a de data mais recente; sem nenhuma data, a
+ * última feita do nível, na ordem do catálogo, com `em: null`.
+ */
+function ultimaFeita(missoes, feitasEm, nivel) {
+  const feitas = (missoes || []).filter((m) => m.feita && !m.pre);
+  const mapa = feitasEm || {};
+  let melhor = null;
+  for (const m of feitas) {
+    const em = typeof mapa[m.id] === 'number' ? mapa[m.id] : null;
+    if (em != null && (!melhor || em > melhor.em)) melhor = { id: m.id, titulo: m.titulo, em };
+  }
+  if (melhor) return melhor;
+  const alvo = nivelDasMissoes(nivel);
+  const doNivel = feitas.filter((m) => m.nivel === alvo);
+  const m = doNivel[doNivel.length - 1] || feitas[feitas.length - 1];
+  return m ? { id: m.id, titulo: m.titulo, em: null } : null;
+}
+
 module.exports = {
   paraData,
   diaPausado,
@@ -492,4 +561,9 @@ module.exports = {
   CATALOGO_PLATINA,
   TRILHA,
   calcularNivel,
+  nivelDasMissoes,
+  proximaMissao,
+  progressoDoNivel,
+  anotarFeitas,
+  ultimaFeita,
 };

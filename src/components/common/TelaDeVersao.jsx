@@ -68,7 +68,11 @@ export default function TelaDeVersao({
 
         <p className="rotulo mt-5 text-primary">Atualização do app</p>
         <h1 className="mt-1 text-[22px] font-extrabold leading-tight text-text">
-          {atualizando ? 'Você está recebendo uma atualização' : 'Saiu uma versão nova do app'}
+          {atualizando
+            ? versaoNova
+              ? `Atualizando para a versão ${versaoNova}`
+              : 'Atualizando para a versão nova'
+            : 'Saiu uma versão nova do app'}
         </h1>
 
         {/* O número que está chegando, em destaque, e o de agora embaixo. */}
@@ -156,9 +160,16 @@ export default function TelaDeVersao({
           </>
         )}
 
-        <p className="mt-5 border-t border-neutro pt-4 text-[13px] text-textMuted">
-          Nada do que você fez se perde. A tela volta sozinha.
-        </p>
+        {/* ⚠️ A PRIMEIRA TENTATIVA PODE NÃO ENTRAR (pedido do dono,
+          * 04/10/2026): às vezes o celular ainda serve a versão antiga no
+          * primeiro recarregamento. Prometer "a tela volta sozinha" fazia
+          * esse caso parecer defeito; dito antes, abrir de novo é o passo. */}
+        <div className="mt-5 space-y-1 border-t border-neutro pt-4 text-sm leading-snug">
+          <p className="text-textBody">Nada do que você fez se perde.</p>
+          <p className="text-textMuted">
+            Se o app não abrir na primeira tentativa, feche e abra de novo.
+          </p>
+        </div>
       </div>
 
       {/* Pro suporte, e RECOLHIDO: a mensagem técnica ("Failed to fetch

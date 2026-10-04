@@ -32,7 +32,9 @@ const { logger } = require('firebase-functions/v2');
 const { FieldPath, FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
-const { calcularNivel, paraData } = require('./reguaDoNivel');
+const {
+  calcularNivel, paraData, anotarFeitas, proximaMissao, progressoDoNivel,
+} = require('./reguaDoNivel');
 
 const REGION = 'southamerica-east1';
 
@@ -168,12 +170,26 @@ async function calcularEGravar(db, uid, agora = new Date(), atividades = null) {
     // O nível gravado é o PISO do que já foi aprendido: a criança nova sem
     // telefone da escola não derruba da Prata quem já tinha subido.
     const conquistado = gravado?.nivel || null;
-    const { nivel } = calcularNivel(fatos, { atividades: lista, agora, conquistado });
+    const { nivel, missoes } = calcularNivel(fatos, { atividades: lista, agora, conquistado });
+
+    // O RESUMO QUE O MENU DO PERFIL LÊ (04/10/2026): quando cada missão foi
+    // vista feita, a próxima e o progresso. Mora aqui para o menu abrir com
+    // UMA leitura — a régua inteira no aparelho pede a turma e um ano de
+    // despesas. Ver `anotarFeitas` sobre o `null` da primeira vez.
+    const agoraMs = (paraData(agora) || new Date()).getTime();
+    const { mapa: feitasEm, mudou: mudouFeitas } = anotarFeitas(missoes, gravado?.feitasEm, agoraMs);
+    const proxima = proximaMissao(missoes, nivel);
+    const progresso = progressoDoNivel(missoes, nivel);
+    const resumo = { feitasEm, proxima, progresso };
+    const mudouResumo = mudouFeitas
+      || JSON.stringify(gravado?.proxima ?? null) !== JSON.stringify(proxima)
+      || JSON.stringify(gravado?.progresso ?? null) !== JSON.stringify(progresso);
 
     if (!gravado) {
       if (nivel === 'sem_nivel') return { nivel, gravou: false };
       tx.set(ref, {
         nivel,
+        ...resumo,
         desde: FieldValue.serverTimestamp(),
         atualizadoEm: FieldValue.serverTimestamp(),
       });
@@ -183,14 +199,15 @@ async function calcularEGravar(db, uid, agora = new Date(), atividades = null) {
     if (gravado.nivel !== nivel) {
       tx.set(ref, {
         nivel,
+        ...resumo,
         desde: FieldValue.serverTimestamp(),
         atualizadoEm: FieldValue.serverTimestamp(),
       });
       return { nivel, gravou: true };
     }
 
-    if (diaDeBrasilia(gravado.atualizadoEm) !== diaDeBrasilia(agora)) {
-      tx.update(ref, { atualizadoEm: FieldValue.serverTimestamp() });
+    if (mudouResumo || diaDeBrasilia(gravado.atualizadoEm) !== diaDeBrasilia(agora)) {
+      tx.update(ref, { ...resumo, atualizadoEm: FieldValue.serverTimestamp() });
       return { nivel, gravou: true };
     }
     return { nivel, gravou: false };

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, LogOut, Receipt } from 'lucide-react';
+import { ChevronRight, Gem, LogOut, Medal, Receipt } from 'lucide-react';
+import { useNivel } from '../../hooks/useNivel';
+import { chaveDoNivel } from '../nivel/rotuloDoNivel';
+import NivelNoMenu from '../nivel/NivelNoMenu';
+import { gradienteDoMetal } from '../../config/paletaCategorica';
+import { FolhaDoNivelDaFamilia, NivelDaFamiliaNoMenu } from '../nivel/SeloDaFamilia';
 import Avatar from '../common/Avatar';
 import Logo from '../common/Logo';
 import { useAuth } from '../../hooks/useAuth';
@@ -28,7 +33,8 @@ import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
  * novo" e "Falar com o suporte" saíram daqui: os dois já moram na tela de
  * perfil, e repetidos aqui eles disputavam o olho com o "Ver meu perfil",
  * que é o caminho principal. Sobraram quem está logado, o perfil em
- * destaque, o plano (só motorista, com a cobrança ligada) e sair.
+ * destaque, o nível (desde 04/10/2026, quando saiu do cabeçalho), o plano
+ * (só motorista, com a cobrança ligada) e sair.
  *
  * Props:
  *   - role:      'admin' | 'parent'
@@ -41,6 +47,15 @@ export default function ProfileMenu({ role, basePath, active = false }) {
   const { user, profile, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
+  // ⚠️ O NÍVEL MORA NO MENU DESDE 04/10/2026 (decisão do dono): o selo ao
+  // lado da marca comia o nome dela no cabeçalho. O do motorista é o
+  // documento do servidor (uma escuta leve); o da família é conta feita no
+  // aparelho dela, e só roda com o menu aberto.
+  const ehMotorista = role === 'admin';
+  const { nivel, dados: dadosDoNivel } = useNivel(ehMotorista ? user?.uid || null : null);
+  const chaveDoMotorista = chaveDoNivel(nivel);
+  const [folhaDaFamilia, setFolhaDaFamilia] = useState(false);
+  const [folhaJaAbriu, setFolhaJaAbriu] = useState(false);
 
   /**
    * SAIR É DIRETO — sem confirmação.
@@ -111,7 +126,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         aria-expanded={open}
         // A área de toque tem 48×48 mesmo com o avatar pequeno dentro — o
         // piso de toque do app (era 44).
-        className={`tap flex h-12 w-12 items-center justify-center rounded-full ${
+        className={`tap relative flex h-12 w-12 items-center justify-center rounded-full ${
           open || active ? 'ring-2 ring-primary' : ''
         }`}
       >
@@ -123,6 +138,12 @@ export default function ProfileMenu({ role, basePath, active = false }) {
           name={profile?.name}
           size="sm"
         />
+        {/* A MEDALHA NO ROSTO: o lembrete de que o nível existe, sem ocupar
+          * a barra. Só o motorista — o da família custaria leitura em toda
+          * tela. */}
+        {ehMotorista && chaveDoMotorista !== 'sem_nivel' && (
+          <MedalhaNoRosto chave={chaveDoMotorista} />
+        )}
       </button>
 
       {open && (
@@ -182,6 +203,26 @@ export default function ProfileMenu({ role, basePath, active = false }) {
             * a associar a palavra "taxa" a susto — e some justamente no mês em
             * que ele quer conferir se o desconto combinado foi aplicado. */}
           {/* Some com a cobrança desligada: não há fatura nem conta a conferir. */}
+          {/* MEU NÍVEL — o motorista vai à tela inteira; a família abre a
+            * folha dela. Nada aparece antes do primeiro nível. */}
+          {ehMotorista && chaveDoMotorista !== 'sem_nivel' && (
+            <NivelNoMenu
+              nivel={chaveDoMotorista}
+              dados={dadosDoNivel}
+              onIr={(caminho) => go(() => navigate(caminho))}
+            />
+          )}
+          {role === 'parent' && (
+            <NivelDaFamiliaNoMenu
+              onIr={(caminho) => go(() => navigate(caminho))}
+              onAbrir={() =>
+                go(() => {
+                  setFolhaJaAbriu(true);
+                  setFolhaDaFamilia(true);
+                })
+              }
+            />
+          )}
           {role === 'admin' && cobranca && (
             <MenuItem
               icon={Receipt}
@@ -229,7 +270,24 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         </div>
       )}
 
+      {folhaJaAbriu && (
+        <FolhaDoNivelDaFamilia open={folhaDaFamilia} onClose={() => setFolhaDaFamilia(false)} />
+      )}
     </div>
+  );
+}
+
+/** A medalha no canto do rosto: o mesmo metal do selo, em 20px, parada. */
+function MedalhaNoRosto({ chave }) {
+  const Icone = chave === 'platina' || chave === 'diamante' ? Gem : Medal;
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card text-text"
+      style={{ background: gradienteDoMetal(chave) }}
+    >
+      <Icone size={11} />
+    </span>
   );
 }
 
