@@ -454,6 +454,25 @@ export default function TioDashboard() {
           </div>
         )}
 
+        {/* CADASTRAR SEMPRE À MÃO, NO TOPO (03/10/2026, pedido do dono). A
+          * turma cresce o ano inteiro — a família nova chega no meio da
+          * semana, no portão —, e o caminho para cadastrar morava dentro de
+          * "Meu transporte" ou só aparecia com a turma vazia. Com a turma
+          * vazia ele não aparece aqui: o cartão "Cadastrar a primeira
+          * criança" já é o centro da tela. */}
+        {children.length > 0 && (
+          <div className="px-5 pt-4">
+            <button
+              type="button"
+              onClick={() => navigate('/tio/children/new')}
+              className="tap flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-card text-base font-bold text-primary"
+            >
+              <UserPlus size={19} />
+              Cadastrar nova criança
+            </button>
+          </div>
+        )}
+
         {/* ─────────── DIRIGINDO — a home é a operação ─────────── */}
         {estado === 'dirigindo' && (
           <>
@@ -533,16 +552,6 @@ export default function TioDashboard() {
                 />
               )}
             </ResumoDaTurma>
-            {estado === 'vazio' && (
-              <button
-                type="button"
-                onClick={() => navigate('/tio/children/new')}
-                className="tap mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border bg-card text-sm font-bold text-text"
-              >
-                <UserPlus size={18} />
-                Cadastrar outra criança
-              </button>
-            )}
           </div>
         )}
 
