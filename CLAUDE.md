@@ -1577,7 +1577,22 @@ selo público só sobe com o que o app confere sozinho. Nada aparece antes da
 primeira rota encerrada — o começo é cadastrar a turma. Tela `/tio/nivel`;
 aba "Platina" no painel do dono; selo no cabeçalho. ⚠️ **A família NÃO vê
 o nível do motorista** desde 04/10/2026 (decisão do dono; rules e
-`testar:nivel` travam). ⚠️ A trilha "Meu negócio"
+`testar:nivel` travam).
+
+**A FAMÍLIA TEM O PRÓPRIO NÍVEL, e ele mede o COMBINADO, não o uso**
+(04/10/2026) — [nivelDaFamilia.js](src/dominio/identidade/nivelDaFamilia.js),
+`npm run testar:nivel-da-familia`. Bronze = avisos ligados; Prata = + segundo
+responsável + a última mensalidade avisada pelo "Já paguei"; Ouro = + as 2
+últimas mensalidades até o vencimento + no máximo 1 ponto de falta em 30 dias
+(falta avisada com menos de 1 h = 1; "Faltou" marcado pelo tio na hora = 2).
+O Ouro OSCILA de propósito. ⚠️ **SÓ ELA VÊ E NADA É GRAVADO**: a conta roda no
+celular dela ([useNivelDaFamilia](src/hooks/useNivelDaFamilia.js)) com o que
+ela já lê — nota de pagamento guardada e vista por terceiros seria cadastro de
+consumidor (CDC 43). O motorista não tem tela com ele, e o teste reprova
+qualquer tela do tio ou do dono que o importe. Vale o "Já paguei" dela, não a
+baixa dele. Selo no cabeçalho do /pai
+([SeloDaFamilia](src/components/nivel/SeloDaFamilia.jsx)); nenhuma frase diz
+"pagador". ⚠️ A trilha "Meu negócio"
 (`/tio/finance/negocio`) espera as telas do "Sua perua" serem comitadas.
 
 ---
