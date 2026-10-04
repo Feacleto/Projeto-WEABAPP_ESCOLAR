@@ -1505,7 +1505,7 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 - **Níveis do motorista:** `calcularNiveis` (todo dia 5h30) e `recalcularMeuNivel`
   (callable; o motorista chama ao abrir "Meu nível") —
   [niveis.js](functions/lib/niveis.js). Gravam SÓ o rótulo em `niveis/{uid}`,
-  que as famílias dele leem a partir da Prata. Ver "Os níveis" abaixo.
+  que só ele lê. Ver "Os níveis" abaixo.
 - **Avisos comerciais (agendado):** `enviarAvisosComerciais`, todo dia às 9h.
   É o único canal que alcança quem PAROU de abrir o app — e ele já existia:
   um doc em `notifications` escrito pelo Admin SDK dispara
@@ -1575,7 +1575,9 @@ negocia é a **decisão 23**: nível é USO DO APP (nunca plano, pagamento ou
 número de crianças), atividade de Platina nunca exige pagar ou contratar, e o
 selo público só sobe com o que o app confere sozinho. Nada aparece antes da
 primeira rota encerrada — o começo é cadastrar a turma. Tela `/tio/nivel`;
-aba "Platina" no painel do dono; selo no cabeçalho. ⚠️ A trilha "Meu negócio"
+aba "Platina" no painel do dono; selo no cabeçalho. ⚠️ **A família NÃO vê
+o nível do motorista** desde 04/10/2026 (decisão do dono; rules e
+`testar:nivel` travam). ⚠️ A trilha "Meu negócio"
 (`/tio/finance/negocio`) espera as telas do "Sua perua" serem comitadas.
 
 ---

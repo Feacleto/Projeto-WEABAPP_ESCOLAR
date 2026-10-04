@@ -149,12 +149,10 @@ export default function Header({
  */
 function MarcaOuTitulo({ titulo }) {
   const { nome, logoURL } = useMarcaDoTio();
-  // O SELO DO NÍVEL ao lado da marca (docs/niveis.md): o motorista vê o dele;
-  // a família vê o do motorista do filho ativo, e só a partir da Prata.
+  // O SELO DO NÍVEL ao lado da marca (docs/niveis.md): SÓ o motorista, o
+  // dele. A família deixou de ver o nível do motorista em 04/10/2026.
   const { role } = useAuth();
-  const { child } = useActiveChild();
-  const selo =
-    role === 'admin' ? <SeloNoCabecalho /> : <SeloNoCabecalho adminUid={child?.adminUid || null} />;
+  const selo = role === 'admin' ? <SeloNoCabecalho /> : null;
 
   if (!nome && !logoURL) {
     return (

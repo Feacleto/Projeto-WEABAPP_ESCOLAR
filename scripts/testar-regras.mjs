@@ -2649,20 +2649,21 @@ async function aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono }) {
  * como se o isolamento estivesse perfeito. Já aconteceu.
  */
 /**
- * OS NÍVEIS (docs/niveis.md, decisão 23). O selo é lido pelo motorista e
- * pelas famílias DELE, e escrito por ninguém do lado do cliente. As
+ * OS NÍVEIS (docs/niveis.md, decisão 23). O selo é lido SÓ pelo próprio
+ * motorista (a família deixou de ver em 04/10/2026), e escrito por ninguém do
+ * lado do cliente. As
  * atividades de Platina todo usuário do app lê, e só o dono lança.
  */
 async function osNiveis({ tio1, tio2, pai1, dono, anon }) {
   console.log('\n═══ os níveis ═══');
   // O bloco do Financeiro, logo antes, religa o pai1 a OUTRO motorista: aqui ele
-  // volta a ser família do tio1, senão "a família lê o nível dela" não testaria nada.
+  // volta a ser família do tio1, senão "a família NÃO lê" passaria pelo motivo errado.
   await semear(`users/${pai1.uid}`, { role: S('parent'), name: S('Pai Um'), adminUid: S(tio1.uid) });
   await semear(`niveis/${tio1.uid}`, { nivel: S('prata'), desde: T(-3), atualizadoEm: T(0) });
   await semear(`niveis/${tio2.uid}`, { nivel: S('ouro'), desde: T(-3), atualizadoEm: T(0) });
 
   checar('nivel', 'motorista lê o próprio nível', 'PASSA', await ler(`niveis/${tio1.uid}`, tio1));
-  checar('nivel', 'família lê o nível do motorista dela', 'PASSA', await ler(`niveis/${tio1.uid}`, pai1));
+  checar('nivel', 'família NÃO lê o nível do motorista dela', 'NEGA', await ler(`niveis/${tio1.uid}`, pai1));
   checar('nivel', 'outro motorista NÃO lê o nível', 'NEGA', await ler(`niveis/${tio1.uid}`, tio2));
   checar('nivel', 'família NÃO lê o nível de outro motorista', 'NEGA', await ler(`niveis/${tio2.uid}`, pai1));
   checar('nivel', 'anônimo NÃO lê nível', 'NEGA', await ler(`niveis/${tio1.uid}`, anon));

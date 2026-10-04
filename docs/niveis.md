@@ -46,8 +46,7 @@
 - **Platina** = Ouro + missões do Ouro completas + ao menos UMA atividade de
   Platina concluída + nenhuma atividade de Platina VENCIDA.
 - **Diamante** = Platina + trilha fases 1–3 completas.
-- Caiu da Platina/Diamante → Ouro (piso). A família NÃO é avisada; o selo muda
-  calado.
+- Caiu da Platina/Diamante → Ouro (piso). O selo muda calado.
 
 ## 4. As missões (todas conferidas pelo app)
 
@@ -110,12 +109,11 @@ Marcos particulares: `configFinanceiro.marcosDeclarados.{chave}` (só ele lê).
   feito, atividade de Platina com prazo). Missões só aparecem nessa tela.
   Cartão no Início SÓ quando uma atividade de Platina está a 7 dias do prazo.
 - **Trilha**: cartão "Meu negócio" no Financeiro → **/tio/finance/negocio**.
-- **Família**: selo a partir da **Prata**, ao lado da marca do motorista no
-  cabeçalho do /pai; toque abre folha com UMA frase:
-  - Prata: "Seu tio usa o Alô Buzinou no dia a dia."
-  - Ouro: "Seu tio é engajado no Alô Buzinou."
-  - Platina: "Seu tio é muito engajado e está em dia com as novidades."
-  - Diamante: "Seu tio é dos mais engajados do Alô Buzinou."
+- **Família: NÃO VÊ** (decisão do dono, 04/10/2026). Ela via o selo a partir
+  da Prata, com uma frase ("Seu tio é engajado no Alô Buzinou"). Saiu: o nível
+  mede o uso que ELE faz do app, e mostrado ao cliente dele vira nota do
+  motorista diante da família. As rules fecharam `niveis/{uid}` para ela, e
+  `npm run testar:nivel` falha se a frase ou o selo da família voltarem.
 - Sem animação, sem emoji, ícone do lucide (`Medal`/`Gem`).
 
 ## 8. Quem calcula e onde mora

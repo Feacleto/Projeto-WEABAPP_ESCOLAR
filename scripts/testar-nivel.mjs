@@ -10,14 +10,14 @@
  * Rode: npm run testar:nivel
  */
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import * as nivel from '../src/dominio/identidade/nivel.js';
-import { PROIBIDAS } from '../src/marca/promessas.js';
 
 const require = createRequire(import.meta.url);
 const espelho = require('../functions/lib/reguaDoNivel.js');
 
 const {
-  calcularNivel, prazoDaAtividade, diasRestantes, FRASE_PARA_FAMILIA,
+  calcularNivel, prazoDaAtividade, diasRestantes,
   NIVEIS, MISSOES, CATALOGO_PLATINA, TRILHA,
 } = nivel;
 
@@ -311,21 +311,13 @@ bloco('6 · DIAMANTE: PLATINA + TRILHA 1–3');
 
 // ─── 7 · Família ────────────────────────────────────────────────────────────
 
-bloco('7 · O QUE A FAMÍLIA LÊ');
-checar('sem_nivel e bronze: família não vê nada', [null, null], [FRASE_PARA_FAMILIA.sem_nivel, FRASE_PARA_FAMILIA.bronze]);
-checar('prata', 'Seu tio usa o Alô Buzinou no dia a dia.', FRASE_PARA_FAMILIA.prata);
-checar('ouro', 'Seu tio é engajado no Alô Buzinou.', FRASE_PARA_FAMILIA.ouro);
-checar('platina', 'Seu tio é muito engajado e está em dia com as novidades.', FRASE_PARA_FAMILIA.platina);
-checar('diamante', 'Seu tio é dos mais engajados do Alô Buzinou.', FRASE_PARA_FAMILIA.diamante);
-const norm = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-for (const [k, frase] of Object.entries(FRASE_PARA_FAMILIA)) {
-  if (!frase) continue;
-  const achou = PROIBIDAS.filter((r) => norm(frase).includes(r));
-  checar(`frase de ${k} não afirma segurança`, [], achou);
-}
-checar('sonda: a checagem pega uma frase proibida', ['segur'],
-  PROIBIDAS.filter((r) => norm('Seu tio é Seguro').includes(r)));
-checar('toda frase tem um nível que existe', true, Object.keys(FRASE_PARA_FAMILIA).every((k) => NIVEIS.includes(k)));
+bloco('7 · A FAMÍLIA NÃO VÊ O NÍVEL DO MOTORISTA');
+// ⚠️ Decisão do dono, 04/10/2026: o selo e as frases para a família saíram.
+// Se alguém religar, que seja às claras — esta linha falha primeiro.
+checar('a régua não tem mais frase para a família', false, 'FRASE_PARA_FAMILIA' in nivel);
+checar('o selo do cabeçalho não recebe mais o motorista da família', false,
+  /adminUid/.test(readFileSync(new URL('../src/components/nivel/SeloNoCabecalho.jsx', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')));
 
 bloco('8 · CATÁLOGOS');
 checar('toda missão sai de bronze, prata ou ouro', true, MISSOES.every((m) => ['bronze', 'prata', 'ouro'].includes(m.nivel)));
@@ -340,7 +332,6 @@ checar('trilha tem 4 fases, só 1–3 contam', [true, true, true, false], TRILHA
 bloco('9 · O ESPELHO DO SERVIDOR DÁ O MESMO RESULTADO, CASO A CASO');
 checar('mesmos exports', Object.keys(nivel).sort(), Object.keys(espelho).sort());
 checar('mesmos NIVEIS', NIVEIS, espelho.NIVEIS);
-checar('mesmas frases', FRASE_PARA_FAMILIA, espelho.FRASE_PARA_FAMILIA);
 checar('mesmas missões (id, nível, pré, destino, título)',
   MISSOES.map(({ cumprida, ...m }) => m), espelho.MISSOES.map(({ cumprida, ...m }) => m));
 

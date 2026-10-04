@@ -379,7 +379,7 @@ Sobre ela incidem:
 2. **Atividade de Platina nunca exige pagar ou contratar** (plano anual, seguro, adesivo pago, subconta), nem indicar colega, nem meta de adesão das famílias, nem ação dirigindo, nem dado de saúde. Ela só existe como CHAVE do catálogo da régua — não há campo livre de condição.
 3. **O selo público só sobe com o que o app confere sozinho.** O que o motorista declara ("Já fiz", CNPJ digitado) mora na trilha do negócio como marco particular e não conta. CNPJ, se um dia contar, é consultado na Receita, nunca digitado.
 
-**Consequência.** O dinheiro empurra por outro caminho: o que ele ganha pagando aparece SÓ na tela dele. A família vê o selo a partir da Prata, com uma frase genérica ("seu tio é engajado"), nunca o motivo — e a queda da Platina para o Ouro é calada.
+**Consequência.** O dinheiro empurra por outro caminho: o que ele ganha pagando aparece SÓ na tela dele. ⚠️ **Desde 04/10/2026 a família NÃO vê o nível** (decisão do dono): o selo é só do motorista, e as rules fecham `niveis/{uid}` para todo mundo menos ele. A queda da Platina para o Ouro continua calada.
 
 **Como verificar.** `npm run testar:nivel` — a régua e o espelho do servidor caso a caso, as frases sem as raízes de `marca/promessas.js`, os declarados que não contam para o Diamante. A aba do dono só oferece chaves do catálogo.
 

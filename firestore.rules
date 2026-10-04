@@ -2744,14 +2744,13 @@ service cloud.firestore {
     // -----------------------------------------------------------------
     // OS NÍVEIS DO MOTORISTA (docs/niveis.md, seção 8; decisão 23).
     //
-    // `niveis/{uid}` guarda SÓ o rótulo ({ nivel, desde, atualizadoEm }),
-    // porque as famílias dele leem — regra não esconde campo, e o MOTIVO do
-    // nível é dele. Só o servidor escreve (Admin SDK): selo que o próprio se dá
-    // é propaganda. `get` e não `read`: ninguém precisa listar a base.
+    // `niveis/{uid}` guarda SÓ o rótulo ({ nivel, desde, atualizadoEm }) e
+    // SÓ o próprio motorista lê — a família deixou de ver o nível dele em
+    // 04/10/2026 (decisão do dono). Só o servidor escreve (Admin SDK): selo
+    // que o próprio se dá é propaganda. `get` e não `read`: ninguém lista.
     // -----------------------------------------------------------------
     match /niveis/{uid} {
-      allow get: if isAppUser()
-        && (request.auth.uid == uid || ehMotoristaDaFamilia(uid));
+      allow get: if isAppUser() && request.auth.uid == uid;
       allow list, write: if false;
     }
 

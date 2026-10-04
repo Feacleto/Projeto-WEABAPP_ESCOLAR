@@ -23,8 +23,8 @@ import {
  * "MEU NÍVEL" — /tio/nivel (docs/niveis.md, seção 7).
  *
  * ── DUAS FONTES, CADA UMA COM UM PAPEL
- * O SELO é o do servidor (`niveis/{uid}`, por `useNivel`): é o que as famílias
- * veem, e a tela não pode mostrar a ele um nível diferente do que elas veem.
+ * O SELO é o do servidor (`niveis/{uid}`, por `useNivel`): é o do cabeçalho, e
+ * a tela não pode mostrar a ele um nível diferente do que o cabeçalho mostra.
  * O CHECKLIST é a mesma régua rodando no aparelho, com os dados que ele já
  * lê — é o que responde "o que falta" na hora, sem esperar o servidor. O
  * nível gravado entra como `conquistado`, para o checklist respeitar o piso

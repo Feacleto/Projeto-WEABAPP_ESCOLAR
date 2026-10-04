@@ -405,20 +405,6 @@ export const TRILHA = [
   },
 ];
 
-/**
- * O que a FAMÍLIA lê ao tocar no selo (seção 7). Bronze e sem nível: nada —
- * a família só vê a partir da Prata. Nenhuma frase afirma segurança
- * (`marca/promessas.js`, conferido no teste).
- */
-export const FRASE_PARA_FAMILIA = {
-  sem_nivel: null,
-  bronze: null,
-  prata: 'Seu tio usa o Alô Buzinou no dia a dia.',
-  ouro: 'Seu tio é engajado no Alô Buzinou.',
-  platina: 'Seu tio é muito engajado e está em dia com as novidades.',
-  diamante: 'Seu tio é dos mais engajados do Alô Buzinou.',
-};
-
 // ─── A conta ────────────────────────────────────────────────────────────────
 
 const indice = (n) => NIVEIS.indexOf(n);
