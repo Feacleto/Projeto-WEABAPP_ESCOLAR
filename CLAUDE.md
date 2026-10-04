@@ -1919,6 +1919,15 @@ criaria dependência de dado que pode não ter chegado. As frases e as quatro
 regras que as filtraram estão em [marca/travessia.js](src/marca/travessia.js),
 testadas com `npm run testar:travessia`. Um toque na cortina pula o teatro:
 prender o motorista no portão da escola seria pior que não ter teatro.
+⚠️ **DESDE 04/10/2026 A CORTINA É CLARA E É O CARTÃO DA MARCA DO MOTORISTA**
+(decisão do dono, revisada pela coordenação): um cartão branco com o logo e
+o nome da marca dele — para a família, a do motorista da criança ativa —,
+UMA palavra grande ("Entrando" / **"Até logo"**, que substituiu o "continua
+aqui" às claras no teste) e o Alô Buzinou assinando no rodapé em 16px,
+discreto pela cor. O cartão "abre como porta" (mola) em 2 s para entrar e
+para sair. A marca é congelada quando a cena começa (`marcaDaCortina`): sem
+logo, ou se o perfil não chegou a tempo, o cartão é do Alô Buzinou do começo
+ao fim. A escura, com a plaqueta de 9px, saiu.
 
 **A espera mostra a marca, não um spinner** —
 [Respiro.jsx](src/components/common/Respiro.jsx), nos dois lugares onde a

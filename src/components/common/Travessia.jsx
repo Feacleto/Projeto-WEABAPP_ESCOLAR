@@ -6,7 +6,9 @@ import {
   assinarTravessia,
   duracaoDaTravessia,
   falaDaTravessia,
+  marcaDaCortina,
 } from '../../marca/travessia';
+import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
 
 /**
  * A CORTINA — o teatro de entrar e de sair.
@@ -24,9 +26,12 @@ import {
  * AS TRÊS CENAS
  *   abertura — só no PRIMEIRO acesso. O balão de fala cresce até virar a tela
  *              e o app é revelado por dentro dele. Sem fala: o gesto já diz.
- *   entrada  — login → painel. A marca se monta, nomeia a sala e sai.
- *   saida    — sair → porta pública. Mesma peça, e a frase muda pra dizer que
- *              a sala não se desfez.
+ *   entrada  — login → painel. O CARTÃO DA MARCA abre como uma porta (o
+ *              logo e o nome da marca do motorista; sem logo, o Alô
+ *              Buzinou), e "Entrando" chega embaixo.
+ *   saida    — sair → porta pública. O mesmo cartão, "Até logo", e ele
+ *              fecha no fim.
+ *   (Desde 04/10/2026, clara — decisão do dono. Ver marca/travessia.js.)
  *
  * UM TOQUE PULA O TEATRO
  * A cortina não trava ninguém: qualquer toque nela a encerra na hora. Prender
@@ -39,6 +44,14 @@ export default function Travessia() {
   const maskId = `abtv${idBase.replace(/:/g, '')}`;
   const [cenaAtiva, setCenaAtiva] = useState(null);
   const prazo = useRef(null);
+  // A marca do motorista (a da criança ativa, para a família), lida sempre —
+  // mas CONGELADA no instante em que a cena começa (`marcaDaCortina`): o que
+  // não chegou a tempo não entra depois, para o cartão não trocar no meio.
+  const marcaAgora = useMarcaDoTio();
+  const marcaRef = useRef(marcaAgora);
+  useEffect(() => {
+    marcaRef.current = marcaAgora;
+  });
 
   const encerrar = useCallback(() => {
     clearTimeout(prazo.current);
@@ -48,7 +61,7 @@ export default function Travessia() {
   useEffect(() => {
     const desligar = assinarTravessia((pedido) => {
       clearTimeout(prazo.current);
-      setCenaAtiva(pedido);
+      setCenaAtiva({ ...pedido, marca: marcaDaCortina(marcaRef.current) });
 
       const reduzido =
         typeof window !== 'undefined' &&
@@ -67,15 +80,14 @@ export default function Travessia() {
 
   if (!cenaAtiva) return null;
 
-  const { cena, role, selo } = cenaAtiva;
+  const { cena, role, selo, marca } = cenaAtiva;
   const fala = falaDaTravessia(cena, role);
-  const classePapel = role === 'parent' ? ' travessia--familia' : '';
 
   if (cena === CENA_ABERTURA) {
     return (
       <div
         key={selo}
-        className={`travessia travessia--abertura${classePapel}`}
+        className="travessia travessia--abertura"
         onPointerDown={encerrar}
         aria-hidden="true"
       >
@@ -117,7 +129,7 @@ export default function Travessia() {
             mask={`url(#${maskId})`}
           />
         </svg>
-        <LogoMark className="travessia-marca" tone="onDark" height={84} />
+        <LogoMark className="travessia-marca" height={84} />
       </div>
     );
   }
@@ -128,28 +140,29 @@ export default function Travessia() {
     // já no último quadro da primeira.
     <div
       key={selo}
-      className={`travessia${classePapel}`}
+      className={`travessia travessia--${cena}`}
       onPointerDown={encerrar}
       aria-hidden="true"
     >
       <div className="travessia-corpo">
-        <LogoMark className="travessia-marca" tone="onDark" height={78} />
-        {fala && (
-          <>
-            <p className="travessia-plaqueta">{fala.plaqueta}</p>
-            <p className="travessia-linha">{fala.linha}</p>
-          </>
-        )}
-        {/*
-          O fio SEMPRE completa antes de a cortina sair. Barra que para no meio
-          esperando é a mesma família de mentira que a tarja de aviso existe
-          pra evitar; barra que fecha e some não promete progresso nenhum — ela
-          só marca que tem coisa sustentando isto do outro lado.
-        */}
-        <span className="travessia-fio">
-          <i />
-        </span>
+        <div className="travessia-cartao">
+          {marca.tipo === 'motorista' ? (
+            <img src={marca.logoURL} alt="" className="travessia-logo" />
+          ) : (
+            <LogoMark className="ab-logo-alo" height={104} />
+          )}
+          {marca.nome && <p className="travessia-nome">{marca.nome}</p>}
+        </div>
+        {fala && <p className="travessia-palavra">{fala.linha}</p>}
       </div>
+      {/* O Alô Buzinou ASSINA, discreto pela cor e não pelo tamanho (16px).
+        * Quando o cartão já é dele, a assinatura não se repete. */}
+      {marca.tipo === 'motorista' && (
+        <p className="travessia-assina">
+          <LogoMark height={24} />
+          Alô Buzinou
+        </p>
+      )}
     </div>
   );
 }

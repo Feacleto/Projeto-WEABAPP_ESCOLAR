@@ -736,22 +736,18 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════
- * A TRAVESSIA — a marca entrando e saindo, e o respiro da espera
+ * A TRAVESSIA — o cartão da marca entrando e saindo, e o respiro da espera
  *
  * A marca do app aparece em 8 telas, todas públicas. Dentro de /tio e /pai
  * ela não aparece nenhuma vez: ali o cabeçalho é da marca do MOTORISTA. A
- * travessia é o único momento que não é de ninguém, e é por isso que o
- * movimento da marca mora só aqui. Ver src/marca/travessia.js.
+ * travessia é a PORTA dessas telas: a marca do motorista na frente, a do Alô
+ * Buzinou assinando embaixo. Ver src/marca/travessia.js.
  *
- * O RITMO foi afrouxado ~1,4x depois de ver no aparelho: a 1,2 s a peça
- * passava antes de o olho chegar na frase, e o que sobrava era a sensação de
- * ter perdido alguma coisa. Os totais moram em duracaoDaTravessia() —
- * mexeu aqui, mexa lá, senão a cortina some antes ou depois da animação.
- *
- * As origens de transformação estão em espaço de PROJETO (o viewBox do mark),
- * não em pixel de tela: 180 223 é o centro da carroceria, 180 211 o centro do
- * balão, e 314 126 é o ARC_C — o ponto de onde a buzina sai no gerador. Se a
- * geometria mudar no build_brand.py, estes três números mudam junto.
+ * DESDE 04/10/2026 ELA É CLARA E MOSTRA A MARCA DO MOTORISTA (decisão do
+ * dono): um cartão com o logo e o nome da marca dele, a palavra grande
+ * ("Entrando" / "Até logo") e o Alô Buzinou assinando no rodapé. A escura,
+ * com plaqueta de 9px e o logo do Alô montando peça por peça, saiu. Os
+ * tempos totais moram em duracaoDaTravessia() — mexeu aqui, mexa lá.
  * ══════════════════════════════════════════════════════════════════════ */
 
 .travessia {
@@ -762,12 +758,17 @@
   z-index: 65;
   display: grid;
   place-items: center;
-  background: #0b1210;
-}
-.travessia--familia {
-  background: #12271c;
+  /* CLARA (04/10/2026, decisão do dono): dentro do app não existe tela
+   * escura. O fundo é o cinza-claro das telas de dentro, então a passagem
+   * para o painel não dá salto de cor. */
+  background: var(--cor-bg);
 }
 
+/* O CARTÃO DA MARCA — "a porta que abre" (modelo 4 + movimento 2, aprovados
+ * pelo dono em 04/10/2026). Dentro dele, o logo e o nome da marca do
+ * MOTORISTA (o da criança ativa, para a família); sem logo, o do Alô
+ * Buzinou. A palavra grande fica FORA do cartão, e o Alô Buzinou assina no
+ * rodapé, discreto pela cor. */
 .travessia-corpo {
   display: flex;
   flex-direction: column;
@@ -775,109 +776,102 @@
   width: 78%;
   max-width: 320px;
 }
+.travessia-cartao {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 32px 20px;
+  border-radius: 28px;
+  background: var(--cor-card);
+  box-shadow: 0 10px 28px -18px rgb(11 18 16 / 0.35);
+}
+.travessia-logo {
+  width: 112px;
+  height: 112px;
+  border-radius: 28px;
+  object-fit: contain;
+}
+.travessia-nome {
+  font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--cor-text);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.travessia-palavra {
+  margin-top: 24px;
+  font-family: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--cor-text);
+}
+.travessia-assina {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cor-textMuted);
+}
 
-/* As peças do mark. A janela vazada vira a cor da cortina sozinha, porque o
- * tone onDark usa máscara — animar opacidade lá dentro anima o recorte. */
-.travessia .ab-mk-body,
-.travessia .ab-mk-win,
-.travessia .ab-mk-a1,
-.travessia .ab-mk-a2 {
-  transform-box: view-box;
-}
-.travessia .ab-mk-body {
-  transform-origin: 180px 223px;
-}
-.travessia .ab-mk-win {
-  transform-origin: 180px 211px;
-}
-.travessia .ab-mk-a1,
-.travessia .ab-mk-a2 {
-  transform-origin: 314px 126px;
-}
-
-@keyframes trav-corpo {
-  from { opacity: 0; transform: scale(0.86); }
+@keyframes trav-abre {
+  from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: none; }
 }
-@keyframes trav-balao {
-  from { opacity: 0; transform: scale(0.68); }
+@keyframes trav-acende {
+  from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: none; }
 }
-@keyframes trav-onda {
-  from { opacity: 0; transform: scale(0.5); }
+@keyframes trav-chega {
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes trav-plaqueta {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes trav-linha {
-  from { opacity: 0; transform: translateY(7px); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes trav-fio {
-  from { width: 0; }
-  to { width: 100%; }
+@keyframes trav-fecha {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: scale(0.94); }
 }
 @keyframes trav-sai {
   to { opacity: 0; visibility: hidden; }
 }
 
-.travessia .ab-mk-body {
-  animation: trav-corpo 320ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+/* ENTRANDO: o cartão abre de 92% com a mola (o único lugar onde ela cabe:
+ * é chegada, não aviso), o logo acende dentro dele, a palavra chega, o Alô
+ * Buzinou assina por último. Cada peça abaixo de meio segundo; a cena inteira
+ * dura 2 s (`duracaoDaTravessia`) — mexeu aqui, mexa lá. */
+.travessia--entrada .travessia-cartao {
+  animation: trav-abre var(--dur-festa) var(--curva-mola) both;
 }
-.travessia .ab-mk-win {
-  animation: trav-balao 300ms cubic-bezier(0.2, 0.9, 0.3, 1.3) 170ms both;
+.travessia--entrada .travessia-logo,
+.travessia--entrada .travessia-cartao > .ab-logo-alo {
+  animation: trav-acende var(--dur-entrada) var(--curva-freio) 200ms both;
 }
-.travessia .ab-mk-a1 {
-  animation: trav-onda 290ms ease-out 340ms both;
+.travessia--entrada .travessia-palavra {
+  animation: trav-chega var(--dur-entrada) var(--curva-freio) 300ms both;
 }
-.travessia .ab-mk-a2 {
-  animation: trav-onda 290ms ease-out 420ms both;
+.travessia--entrada .travessia-assina {
+  animation: trav-chega var(--dur-entrada) var(--curva-freio) 420ms both;
 }
-
-/* A plaqueta APARECE, sem subir: placa de porta não se move. A frase sobe
- * 7 px e é a única coisa que se desloca, então é pra onde o olho vai. */
-.travessia-plaqueta {
-  margin-top: 22px;
-  font-size: 9px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgb(255 255 255 / 0.42);
-  text-align: center;
-  animation: trav-plaqueta 300ms ease-out 540ms both;
+/* SAINDO: "Até logo" chega primeiro; perto do fim o cartão FECHA. */
+.travessia--saida .travessia-palavra {
+  animation: trav-chega var(--dur-entrada) var(--curva-freio) both;
 }
-.travessia-linha {
-  margin-top: 7px;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.008em;
-  line-height: 1.25;
-  color: #fff;
-  text-align: center;
-  animation: trav-linha 340ms ease-out 620ms both;
+.travessia--saida .travessia-cartao {
+  animation: trav-fecha var(--dur-entrada) var(--curva-freio) 1450ms both;
 }
-.travessia-fio {
-  display: block;
-  width: 100%;
-  height: 2px;
-  margin-top: 24px;
-  overflow: hidden;
-  background: rgb(255 255 255 / 0.12);
-}
-.travessia-fio i {
-  display: block;
-  height: 2px;
-  width: 0;
-  background: #52c41a;
-  animation: trav-fio 600ms ease-in-out 760ms both;
-}
-
 .travessia:not(.travessia--abertura) {
-  animation: trav-sai 300ms ease-in 1440ms both;
+  animation: trav-sai 250ms ease-in 1750ms both;
 }
 
-/* ─── A abertura: o balão vira a porta ─── */
+/* ─── A abertura: o balão vira a porta (primeiro acesso, sem fala) ─── */
 @keyframes trav-buraco {
   from { transform: scale(1); }
   to { transform: scale(13); }
@@ -897,10 +891,7 @@
   height: 100%;
 }
 .travessia-fundo {
-  fill: #0b1210;
-}
-.travessia--familia .travessia-fundo {
-  fill: #12271c;
+  fill: var(--cor-bg);
 }
 .travessia-buraco {
   transform-box: view-box;
@@ -933,16 +924,12 @@
  * cobrir. O respiro para de vez: laço infinito é o que mais incomoda quem
  * pede menos movimento. */
 @media (prefers-reduced-motion: reduce) {
-  .travessia .ab-mk-body,
-  .travessia .ab-mk-win,
-  .travessia .ab-mk-a1,
-  .travessia .ab-mk-a2,
-  .travessia-plaqueta,
-  .travessia-linha {
-    animation: none;
-  }
-  .travessia-fio i {
-    animation: trav-fio 240ms linear both;
+  .travessia-cartao,
+  .travessia-logo,
+  .travessia-cartao > .ab-logo-alo,
+  .travessia-palavra,
+  .travessia-assina {
+    animation: none !important;
   }
   .travessia:not(.travessia--abertura) {
     animation: trav-sai 140ms linear 340ms both;

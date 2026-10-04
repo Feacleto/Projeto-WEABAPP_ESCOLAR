@@ -14,6 +14,7 @@ import {
   assinarTravessia,
   duracaoDaTravessia,
   falaDaTravessia,
+  marcaDaCortina,
   travessar,
 } from '../src/marca/travessia.js';
 
@@ -25,30 +26,41 @@ const eq = (nome, a, b) => {
     (bateu ? '' : `\n      esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`));
 };
 
-console.log('\n\x1b[1m1. Cada papel tem a sua sala\x1b[0m');
-eq('motorista entra no transporte',
-   falaDaTravessia(CENA_ENTRADA, 'admin').linha, 'Entrando no seu transporte.');
-eq('responsável entra no acompanhamento',
-   falaDaTravessia(CENA_ENTRADA, 'parent').linha, 'Entrando no acompanhamento.');
-eq('dono entra na plataforma',
-   falaDaTravessia(CENA_ENTRADA, 'owner').linha, 'Entrando na plataforma.');
-eq('plaqueta do motorista',
-   falaDaTravessia(CENA_ENTRADA, 'admin').plaqueta, 'Ambiente de trabalho');
-eq('plaqueta da família',
-   falaDaTravessia(CENA_SAIDA, 'parent').plaqueta, 'Ambiente da família');
+console.log('\n\x1b[1m1. Uma palavra, a mesma para os três painéis\x1b[0m');
+// ⚠️ MUDOU ÀS CLARAS (04/10/2026, decisão do dono): a tela virou o cartão da
+// marca do motorista, e a fala encolheu para UMA palavra. "Entrando no seu
+// transporte." e a plaqueta "Ambiente de trabalho" saíram; o que muda de um
+// papel para o outro agora é a MARCA no cartão, não a palavra.
+for (const papel of ['admin', 'parent', 'owner']) {
+  eq(`${papel} entra com "Entrando"`, falaDaTravessia(CENA_ENTRADA, papel), { linha: 'Entrando' });
+}
+eq('não há mais plaqueta', 'plaqueta' in (falaDaTravessia(CENA_ENTRADA, 'admin') || {}), false);
 
-console.log('\n\x1b[1m2. A saída fala de permanência, e só ela\x1b[0m');
-eq('motorista sai e o transporte fica',
-   falaDaTravessia(CENA_SAIDA, 'admin').linha, 'Seu transporte continua aqui.');
-eq('responsável sai e o acompanhamento fica',
-   falaDaTravessia(CENA_SAIDA, 'parent').linha, 'O acompanhamento continua aqui.');
-// "continua aqui" é caro demais pra gastar na entrada: só faz efeito no
-// momento em que a pessoa poderia achar que fechou e perdeu.
-eq('nenhuma entrada diz "continua aqui"',
-   [CENA_ENTRADA].flatMap((c) => ['admin', 'parent', 'owner']
-     .map((r) => falaDaTravessia(c, r).linha)
-     .filter((l) => l.includes('continua'))),
+console.log('\n\x1b[1m2. A saída diz "Até logo"\x1b[0m');
+// ⚠️ ERA "continua aqui" (a permanência). O dono pediu menos texto em
+// 04/10/2026, e "Até logo" é curto e não promete nada. Esta linha existe para
+// a troca ter sido decidida, não esquecida.
+for (const papel of ['admin', 'parent', 'owner']) {
+  eq(`${papel} sai com "Até logo"`, falaDaTravessia(CENA_SAIDA, papel), { linha: 'Até logo' });
+}
+eq('nenhuma entrada se despede',
+   ['admin', 'parent', 'owner'].map((r) => falaDaTravessia(CENA_ENTRADA, r).linha)
+     .filter((l) => /logo|continua/i.test(l)),
    []);
+
+console.log('\n\x1b[1m2b. A marca do cartão é decidida uma vez, com o que já chegou\x1b[0m');
+eq('com logo: a marca do motorista',
+   marcaDaCortina({ nome: 'Tio Lipe', logoURL: 'https://x/logo.png' }),
+   { tipo: 'motorista', nome: 'Tio Lipe', logoURL: 'https://x/logo.png' });
+eq('com logo e sem nome: só o logo dele',
+   marcaDaCortina({ nome: '  ', logoURL: 'https://x/logo.png' }),
+   { tipo: 'motorista', nome: null, logoURL: 'https://x/logo.png' });
+eq('nome sem logo: Alô Buzinou (cartão só de texto parece faltar algo)',
+   marcaDaCortina({ nome: 'Tio Lipe', logoURL: null }),
+   { tipo: 'alo', nome: 'Alô Buzinou', logoURL: null });
+eq('perfil que não chegou a tempo: Alô Buzinou',
+   marcaDaCortina(undefined), { tipo: 'alo', nome: 'Alô Buzinou', logoURL: null });
+eq('logo vazio não vale', marcaDaCortina({ logoURL: '   ' }).tipo, 'alo');
 
 console.log('\n\x1b[1m3. Quem NÃO fala, e por quê\x1b[0m');
 // O gesto do balão virando porta já diz tudo; palavra ali seria uma segunda
@@ -64,7 +76,7 @@ console.log('\n\x1b[1m4. Nenhuma fala carrega dado, nome ou hora\x1b[0m');
 const TODAS = [CENA_ABERTURA, CENA_ENTRADA, CENA_SAIDA]
   .flatMap((c) => ['admin', 'parent', 'owner', 'aguardando'].map((r) => falaDaTravessia(c, r)))
   .filter(Boolean)
-  .flatMap((f) => [f.plaqueta, f.linha]);
+  .map((f) => f.linha);
 eq('nenhum dígito em lugar nenhum', TODAS.filter((t) => /\d/.test(t)), []);
 eq('nenhum cumprimento de turno',
    TODAS.filter((t) => /bom dia|boa tarde|boa noite|olá|ola\b/i.test(t)), []);

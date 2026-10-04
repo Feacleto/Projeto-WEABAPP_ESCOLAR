@@ -1,34 +1,34 @@
 /**
- * A TRAVESSIA — o que a marca do app diz quando alguém entra e quando sai.
+ * A TRAVESSIA — o que a porta do app mostra quando alguém entra e quando sai.
  *
- * POR QUE SÓ AQUI, E EM LUGAR NENHUM MAIS
- * O `<Logo />` aparece em 8 telas do app, e todas são públicas ou de exceção.
- * Dentro de `/tio` e `/pai` ele não aparece NENHUMA vez, e isso é decisão: o
- * `<Header />` põe ali a marca do MOTORISTA, o nome que ele escolheu pras
- * famílias dele. Marca do app se mexendo lá dentro estaria disputando espaço
- * que não é dela.
+ * ⚠️ DESDE 04/10/2026 ELA É O CARTÃO DA MARCA DO MOTORISTA (decisão do dono,
+ * revisada pela coordenação): tela clara, um cartão com o logo e o nome da
+ * marca dele (para a família, a do motorista da criança ativa), UMA palavra
+ * grande e o Alô Buzinou assinando discreto no rodapé. A versão escura, com
+ * plaqueta "Ambiente de trabalho" em 9px e frase de uma linha, saiu: o dono a
+ * achou pesada e sem a marca dele.
  *
- * A travessia não é de ninguém. É o único instante em que a marca do app tem
- * o que dizer sem atropelar o motorista — e por isso o teatro mora só aqui.
+ * A MARCA É DADO, ENTÃO ELA SEGUE A REGRA DO DADO: aparece só se já estiver
+ * em mãos no instante em que a cena começa (`marcaDaCortina`), e não muda
+ * depois. Sem logo — motorista que não enviou, família ainda sem vínculo,
+ * perfil que não chegou a tempo — o cartão é do Alô Buzinou do começo ao fim.
+ * Trocar um pelo outro no meio da cena seria o piscão que a cortina existe
+ * para cobrir.
  *
- * POR QUE A FALA NÃO TEM NOME, NEM HORA, NEM CONTAGEM
- * Quatro regras filtraram oito frases candidatas até sobrarem estas:
+ * POR QUE A PALAVRA NÃO TEM NOME, NEM HORA, NEM CONTAGEM
  *
- *   1. Sem nome. Ele vê o próprio nome no perfil e a marca dele no cabeçalho
- *      dois segundos depois. Repetir é o app se apresentando a quem já entrou.
- *   2. Sem dado. "18 crianças", "12h20" — está tudo no primeiro cartão do
- *      painel. Aqui só criaria dependência: se o snapshot ainda não voltou, ou
- *      a tela espera, ou a tela mente.
+ *   1. Sem nome de pessoa. A marca já está no cartão; repetir é ruído.
+ *   2. Sem dado. "18 crianças", "12h20" — se o snapshot ainda não voltou, ou a
+ *      tela espera, ou a tela mente.
  *   3. Sem cumprimento. "Bom dia" envelhece em seis horas e obriga o app a
- *      acertar fuso e turno pra não errar uma saudação. Risco sem prêmio.
- *   4. Verdadeira em TODO estado. As frases abaixo valem com rota rodando,
- *      rota parada, férias e domingo. Nenhuma precisa ser conferida antes de
- *      aparecer, e é isso que as torna baratas.
+ *      acertar fuso e turno pra não errar uma saudação.
+ *   4. Verdadeira em TODO estado: com rota rodando, parada, férias e domingo.
  *
  * "Entrando" descreve o ATO, e ato não pode ser desmentido — diferente de
  * "preparando" (promete que falta algo) e de "pronto" (promete que terminou).
- * "Continua aqui" fala de permanência e cai na SAÍDA de propósito: é o único
- * momento em que a pessoa poderia achar que fechou e perdeu.
+ * ⚠️ A SAÍDA DIZ "Até logo" (decisão do dono, 04/10/2026). Antes era "…
+ * continua aqui", a frase da permanência; o dono pediu menos texto, e "Até
+ * logo" é curto e não promete nada. A troca foi feita às claras, no teste.
  *
  * Este arquivo não importa nada — nem React, nem Firebase. É o que o mantém
  * testável (`npm run testar:travessia`). Não adicione import aqui.
@@ -39,40 +39,24 @@ export const CENA_ENTRADA = 'entrada';
 export const CENA_SAIDA = 'saida';
 
 /**
- * A fala, por papel.
+ * A palavra, por papel. É a mesma para os três papéis que têm painel — o que
+ * muda de um para o outro é a MARCA no cartão, não o que se diz embaixo dele.
  *
- * `owner` tem par próprio: quem administra a plataforma não tem transporte
- * nem acompanha filho, e "Entrando no seu transporte" seria falso pra ele.
- *
- * `aguardando` fica de fora DE PROPÓSITO, e não por esquecimento: o motorista
- * que ainda não foi aprovado não está entrando em ambiente de trabalho nenhum
- * — ele está numa sala de espera. Prometer ambiente ali seria a mesma família
- * de mentira que as quatro regras acima existem pra evitar. A cortina roda sem
- * fala: só a marca.
+ * `aguardando` (e qualquer papel desconhecido) fica de fora DE PROPÓSITO: quem
+ * está numa sala de espera não está entrando em ambiente nenhum. A cortina
+ * roda só com a marca.
  */
-const FALAS = {
-  admin: {
-    plaqueta: 'Ambiente de trabalho',
-    [CENA_ENTRADA]: 'Entrando no seu transporte.',
-    [CENA_SAIDA]: 'Seu transporte continua aqui.',
-  },
-  parent: {
-    plaqueta: 'Ambiente da família',
-    [CENA_ENTRADA]: 'Entrando no acompanhamento.',
-    [CENA_SAIDA]: 'O acompanhamento continua aqui.',
-  },
-  owner: {
-    plaqueta: 'Ambiente da plataforma',
-    [CENA_ENTRADA]: 'Entrando na plataforma.',
-    [CENA_SAIDA]: 'A plataforma continua aqui.',
-  },
+const PALAVRAS = {
+  [CENA_ENTRADA]: 'Entrando',
+  [CENA_SAIDA]: 'Até logo',
 };
+const PAPEIS_COM_PAINEL = ['admin', 'parent', 'owner'];
 
 /** As três cenas que a cortina sabe tocar. */
 const CENAS = [CENA_ABERTURA, CENA_ENTRADA, CENA_SAIDA];
 
 /**
- * `{ plaqueta, linha }` ou `null` quando a cena não fala.
+ * `{ linha }` ou `null` quando a cena não fala.
  *
  * A ABERTURA nunca fala: ali o balão de fala vira a porta e cresce até virar
  * a tela. Palavra em cima disso seria uma segunda coisa pra ler no único
@@ -80,10 +64,24 @@ const CENAS = [CENA_ABERTURA, CENA_ENTRADA, CENA_SAIDA];
  */
 export function falaDaTravessia(cena, role) {
   if (cena === CENA_ABERTURA) return null;
-  const conjunto = FALAS[role];
-  const linha = conjunto?.[cena];
-  if (!linha) return null;
-  return { plaqueta: conjunto.plaqueta, linha };
+  if (!PAPEIS_COM_PAINEL.includes(role)) return null;
+  const linha = PALAVRAS[cena];
+  return linha ? { linha } : null;
+}
+
+/**
+ * QUE MARCA VAI NO CARTÃO — decidida UMA vez, quando a cena começa.
+ *
+ * Recebe o que `useMarcaDoTio` sabe naquele instante (`{ nome, logoURL }`).
+ * Com logo: a marca do motorista, com o nome dele se houver. Sem logo: o Alô
+ * Buzinou — inclusive quando o nome existe sem logo, porque um cartão só com
+ * texto parece faltar alguma coisa, e o logo do Alô preenche com verdade.
+ */
+export function marcaDaCortina(marca) {
+  const logoURL = typeof marca?.logoURL === 'string' && marca.logoURL.trim() ? marca.logoURL : null;
+  if (!logoURL) return { tipo: 'alo', nome: 'Alô Buzinou', logoURL: null };
+  const nome = typeof marca?.nome === 'string' && marca.nome.trim() ? marca.nome.trim() : null;
+  return { tipo: 'motorista', nome, logoURL };
 }
 
 /**
@@ -95,7 +93,9 @@ export function falaDaTravessia(cena, role) {
  */
 export function duracaoDaTravessia(cena, movimentoReduzido = false) {
   if (movimentoReduzido) return 480;
-  return cena === CENA_ABERTURA ? 1700 : 1760;
+  // 2 s para entrar e para sair (decisão do dono, 04/10/2026): o cartão abre,
+  // a palavra chega e ainda sobra tempo de ler antes de a tela trocar.
+  return cena === CENA_ABERTURA ? 1700 : 2000;
 }
 
 /**
