@@ -25,10 +25,26 @@
  *
  * Só fala com o worker do APP. O do push mora em outro escopo
  * (`/firebase-cloud-messaging-push-scope`) e não tem nada a ver com a versão.
+ *
+ * ⚠️ 04/10/2026: O TOQUE AINDA PODIA VOLTAR PARA A VERSÃO VELHA, e o teste no
+ * navegador provou. Com o aviso aberto, sai OUTRA publicação: o `update()`
+ * acha a mais nova baixando, o prazo de 10 s acabava antes (no celular,
+ * baixar 2,6 MB passa disso fácil), o recado ia para o worker do meio e a
+ * página recarregava na versão ANTIGA. Agora:
+ *   - espera o download do mais novo até 90 s, mostrando "Baixando";
+ *   - repete se, no meio, aparecer um worker ainda mais novo (até 3 vezes);
+ *   - só recarrega depois de o worker novo assumir;
+ *   - e depois do recarregamento, se o app ainda não está na versão do
+ *     servidor, CONTINUA a troca sozinho, na mesma tela de "Atualizando" —
+ *     o aviso não volta a aparecer como se nada tivesse acontecido.
  */
 
-const PRAZO_BAIXAR_MS = 10000;
-const PRAZO_ASSUMIR_MS = 6000;
+import { APP_VERSION } from '../version';
+
+const PRAZO_BAIXAR_MS = 90000;
+const PRAZO_ASSUMIR_MS = 8000;
+const TENTATIVAS = 3;
+const CHAVE_DA_TROCA = 'alobuzinou:trocandoDeVersao';
 
 function esperar(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,13 +66,51 @@ function esperarInstalar(worker, prazo) {
   ]);
 }
 
+/** Espera o worker novo assumir a página. `true` se assumiu dentro do prazo. */
 function esperarAssumir(prazo) {
   return Promise.race([
     new Promise((resolve) =>
-      navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true })
+      navigator.serviceWorker.addEventListener('controllerchange', () => resolve(true), { once: true })
     ),
-    esperar(prazo),
+    esperar(prazo).then(() => false),
   ]);
+}
+
+/**
+ * Faz o worker MAIS NOVO assumir. Se, enquanto um assume, outro mais novo
+ * começar a baixar (outra publicação), volta e espera esse — até 3 vezes.
+ */
+async function fazerOMaisNovoAssumir(reg) {
+  for (let i = 0; i < TENTATIVAS; i += 1) {
+    if (reg.installing) {
+      mudarEtapa('baixando');
+      await esperarInstalar(reg.installing, PRAZO_BAIXAR_MS);
+    }
+    const esperando = reg.waiting;
+    if (!esperando) return;
+    mudarEtapa('instalando');
+    const assumiu = esperarAssumir(PRAZO_ASSUMIR_MS);
+    esperando.postMessage({ type: 'SKIP_WAITING' });
+    const ok = await assumiu;
+    if (ok && !reg.waiting && !reg.installing) return;
+  }
+}
+
+/** O que a troca em curso quer alcançar, guardado para depois do recarregamento. */
+function lerTroca() {
+  try {
+    return JSON.parse(sessionStorage.getItem(CHAVE_DA_TROCA) || 'null');
+  } catch {
+    return null;
+  }
+}
+function gravarTroca(valor) {
+  try {
+    if (valor) sessionStorage.setItem(CHAVE_DA_TROCA, JSON.stringify(valor));
+    else sessionStorage.removeItem(CHAVE_DA_TROCA);
+  } catch {
+    /* sem armazenamento: só não continua sozinho depois de recarregar */
+  }
 }
 
 /**
@@ -129,6 +183,12 @@ export function trocarDeVersao() {
   trocando = (async () => {
     try {
       mudarEtapa('procurando');
+      const nova = await buscarVersaoNova();
+      const antes = lerTroca();
+      gravarTroca({
+        alvo: nova?.versao || antes?.alvo || null,
+        tentativa: (antes?.tentativa || 0) + 1,
+      });
       const sw = typeof navigator !== 'undefined' ? navigator.serviceWorker : null;
       const reg = sw ? await sw.getRegistration('/') : null;
       if (reg) {
@@ -137,14 +197,7 @@ export function trocarDeVersao() {
         } catch {
           // Sem rede para perguntar: segue com o que já foi baixado.
         }
-        mudarEtapa('baixando');
-        await esperarInstalar(reg.installing, PRAZO_BAIXAR_MS);
-        mudarEtapa('instalando');
-        if (reg.waiting) {
-          const assumiu = esperarAssumir(PRAZO_ASSUMIR_MS);
-          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          await assumiu;
-        }
+        await fazerOMaisNovoAssumir(reg);
       }
     } catch (err) {
       console.error('trocarDeVersao', err);
@@ -155,4 +208,21 @@ export function trocarDeVersao() {
     window.location.reload();
   })();
   return trocando;
+}
+
+/**
+ * DEPOIS DE RECARREGAR: a troca chegou? Se o app ainda não está na versão que
+ * a troca buscava, continua sozinho (até 3 tentativas no total), na mesma tela
+ * de "Atualizando". Chegou, ou desistiu: limpa e segue. Devolve se continuou.
+ */
+export function continuarTrocaSePreciso() {
+  const troca = lerTroca();
+  if (!troca) return false;
+  const chegou = !troca.alvo || troca.alvo === APP_VERSION;
+  if (chegou || troca.tentativa >= TENTATIVAS) {
+    gravarTroca(null);
+    return false;
+  }
+  trocarDeVersao();
+  return true;
 }

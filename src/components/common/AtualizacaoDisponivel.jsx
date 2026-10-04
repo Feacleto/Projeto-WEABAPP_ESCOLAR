@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ArrowUpCircle, X } from 'lucide-react';
 import TelaDeVersao from './TelaDeVersao';
 import { useTrocaDeVersao } from '../../hooks/useTrocaDeVersao';
 import { APP_VERSION } from '../../version';
+import { continuarTrocaSePreciso } from '../../services/versaoService';
 
 /**
  * "SAIU UMA VERSÃO NOVA" — o aviso, e o teatro de trocar.
@@ -73,8 +74,24 @@ export default function AtualizacaoDisponivel() {
           // precisa saber que o app tentou perguntar por uma versão nova.
         });
       }, INTERVALO_DE_CHECAGEM_MS);
+      // ⚠️ E AO VOLTAR PARA O APP (04/10/2026): a versão nova só aparecia
+      // depois de sair do app ou esperar a checagem de hora em hora. Quem
+      // volta do WhatsApp para o app pergunta na hora (no máximo a cada 5 min).
+      let ultima = 0;
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible' || navigator.onLine === false) return;
+        if (Date.now() - ultima < 5 * 60 * 1000) return;
+        ultima = Date.now();
+        registro.update().catch(() => {});
+      });
     },
   });
+
+  // DEPOIS DE RECARREGAR NUMA TROCA: se ainda não chegou à versão nova, a troca
+  // continua sozinha, na tela de "Atualizando" (ver `continuarTrocaSePreciso`).
+  useEffect(() => {
+    continuarTrocaSePreciso();
+  }, []);
 
   /**
    * O TOQUE TROCA A VERSÃO DE UMA VEZ — ver `trocarDeVersao` (versaoService).
