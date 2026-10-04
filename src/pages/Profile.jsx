@@ -26,6 +26,7 @@ import {
   BarChart3,
   Bus,
   Image as ImageIcon,
+  PauseCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../components/layout/Header';
@@ -42,6 +43,7 @@ import Avatar from '../components/common/Avatar';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import AppSheet from '../components/common/AppSheet';
 import { useAuth } from '../hooks/useAuth';
 import { updateProfile } from '../services/profileService';
 import DadosDoContratoForm from '../components/contract/DadosDoContratoForm';
@@ -69,7 +71,6 @@ import { APP_VERSION } from '../version';
 import ReviewSheet from '../components/feedback/ReviewSheet';
 import SupportSheet from '../components/support/SupportSheet';
 import PreferenciasDeAviso from '../components/notifications/PreferenciasDeAviso';
-import { DEV_EMAIL, devMailLink } from '../config/developer';
 import PixSheet from '../components/payments/PixSheet';
 import { AddChildSheet } from './pai/AddChild';
 
@@ -108,6 +109,7 @@ export default function Profile() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [pixOpen, setPixOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
+  const [saidasAbertas, setSaidasAbertas] = useState(false);
   const [soundsEnabled, setSoundsEnabledState] = useSoundsEnabled();
 
   if (!profile) {
@@ -414,55 +416,24 @@ export default function Profile() {
           </Card>
         </Bloco>
 
-        {/* CONTA E PRIVACIDADE — por último, e com as saídas separadas pelo
-          * que fazem.
+        {/* CONTA E PRIVACIDADE — por último.
           *
-          * ⚠️ PARA O MOTORISTA HÁ DUAS SAÍDAS, E O NOME DIZ QUAL É QUAL
-          * (03/10/2026). O link dizia "Encerrar operação" e APAGAVA TUDO —
-          * turma, pagamentos, conta —, enquanto a saída segura (encerrar a
-          * associação, que só para a cobrança) mora em /tio/encerrar e nem
-          * aparecia aqui. Quem queria parar de pagar achava a que apaga.
+          * A CÓPIA DOS DADOS SAIU DA TELA (03/10/2026, decisão do dono): ela
+          * só é enviada a quem pede, e o pedido vai pelo suporte. O direito
+          * continua com caminho — os Termos e o contrato nomeiam o e-mail de
+          * config/developer.js —, só não é mais um botão no perfil.
           *
-          * "Pedir uma cópia dos meus dados" é o canal da LGPD que os Termos
-          * e o contrato nomeiam (o e-mail de config/developer.js). Continua
-          * sendo atendimento humano, não botão que exporta — a linha diz que
-          * é por e-mail. */}
+          * AS SAÍDAS FICAM NO FIM, DISCRETAS, ATRÁS DE UM LINK (mesmo dia).
+          * Eram uma linha vermelha no meio do cartão, a um toque errado de
+          * distância. Agora o link abre uma folha que separa as duas pelo
+          * que fazem — ver `SaidasDaConta`. */}
         <Bloco titulo="Conta e privacidade">
-          <Card className="space-y-1">
+          <Card>
             <Linha
               icon={LogOut}
               titulo="Sair da conta"
               sub="Seus dados continuam guardados"
               onClick={sair}
-            />
-            <Divisor />
-            <Linha
-              icon={Mail}
-              titulo="Pedir uma cópia dos meus dados"
-              sub={`Por e-mail, para ${DEV_EMAIL}`}
-              href={devMailLink(
-                'Pedido de cópia dos meus dados (LGPD)',
-                `Olá! Quero uma cópia dos meus dados no Alô Buzinou.\n\nConta: ${user?.email || ''}`
-              )}
-            />
-            {isAdmin && profile?.plano && (
-              <>
-                <Divisor />
-                <Linha
-                  icon={Bus}
-                  titulo="Encerrar a associação"
-                  sub="Para de pagar a plataforma, sem apagar nada"
-                  onClick={() => navigate('/tio/encerrar')}
-                />
-              </>
-            )}
-            <Divisor />
-            <Linha
-              icon={Trash2}
-              tom="perigo"
-              titulo={isAdmin ? 'Excluir a conta e apagar tudo' : 'Excluir minha conta'}
-              sub={isAdmin ? 'Turma, pagamentos e conta. Não tem volta' : 'Não tem volta'}
-              onClick={() => setConfirmDelete(true)}
             />
           </Card>
 
@@ -482,6 +453,15 @@ export default function Profile() {
           </div>
           <div className="text-center text-xs text-textMuted">
             Alô Buzinou · versão {APP_VERSION}
+          </div>
+          <div className="pt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setSaidasAbertas(true)}
+              className="tap px-3 py-2 text-xs text-textMuted underline underline-offset-2 decoration-textMuted/40"
+            >
+              {isAdmin ? 'Pausar ou excluir a conta' : 'Excluir a conta'}
+            </button>
           </div>
         </Bloco>
       </div>
@@ -509,6 +489,20 @@ export default function Profile() {
         role={role}
         profile={profile}
         email={user?.email}
+      />
+
+      <SaidasDaConta
+        open={saidasAbertas}
+        isAdmin={isAdmin}
+        onClose={() => setSaidasAbertas(false)}
+        onPausar={() => {
+          setSaidasAbertas(false);
+          navigate('/tio/encerrar');
+        }}
+        onExcluir={() => {
+          setSaidasAbertas(false);
+          setConfirmDelete(true);
+        }}
       />
 
       <ConfirmDialog
@@ -1136,5 +1130,62 @@ function Linha({ icon: Icon, titulo, sub, onClick, href, tom = 'normal' }) {
     <button type="button" onClick={onClick} className={classe}>
       {conteudo}
     </button>
+  );
+}
+
+/**
+ * PAUSAR OU EXCLUIR — as duas saídas, separadas pelo que fazem (03/10/2026).
+ *
+ * PAUSAR é só do motorista, e é o "Encerrar a associação" (/tio/encerrar):
+ * para de pagar a plataforma, NADA é apagado, e religar não custa nada. A
+ * família não paga a plataforma, então para ela não existe pausa — só a
+ * exclusão.
+ *
+ * EXCLUIR continua passando pelo diálogo de confirmação, que diz o que se
+ * perde. A pausa vem primeiro e em verde porque é a saída que não destrói
+ * nada: quem quer parar de pagar acha ela antes da que apaga.
+ */
+function SaidasDaConta({ open, isAdmin, onClose, onPausar, onExcluir }) {
+  return (
+    <AppSheet open={open} onClose={onClose} title="Sua conta" icon={UserIcon}>
+      <div className="space-y-3 pb-1">
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={onPausar}
+            className="tap flex w-full items-start gap-3 rounded-2xl border-2 border-primaryBorder bg-primarySoft p-4 text-left"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
+              <PauseCircle size={20} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-bold text-text">Pausar a conta</span>
+              <span className="mt-0.5 block text-sm text-textBody">
+                Para de pagar a plataforma. Nada é apagado, e dá para voltar quando quiser.
+              </span>
+            </span>
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onExcluir}
+          className="tap flex w-full items-start gap-3 rounded-2xl border-2 border-dangerBorder bg-card p-4 text-left"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-dangerChip text-dangerText">
+            <Trash2 size={20} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-bold text-dangerText">
+              Excluir a conta e apagar os dados
+            </span>
+            <span className="mt-0.5 block text-sm text-textBody">
+              {isAdmin
+                ? 'Apaga turma, pagamentos e a conta. Não tem volta.'
+                : 'Apaga a sua conta. Não tem volta.'}
+            </span>
+          </span>
+        </button>
+      </div>
+    </AppSheet>
   );
 }
