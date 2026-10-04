@@ -126,6 +126,9 @@ popup por cima. Durante a rota, nada de confirmação.
 - **"Salvar" ao lado de cada campo** (e o Enter do teclado): leva ao próximo
   campo e, no último, aciona o avanço da tela — o botão `data-avancar` de um
   passo a passo, ou o envio do `<form>`. Campo de busca passa `avancar={false}`.
+- **Toda tela nova abre no TOPO** (`TelaNovaNoTopo`, em App.jsx), inclusive
+  ao voltar, e cada passo de um cadastro em passos também. Abrir uma tela no
+  meio, sem o título e sem o voltar à vista, faz a pessoa se perder.
 - **Num cadastro em passos, o topo diz de quem é** a partir do passo 2 (o rosto
   e o nome da criança no cadastro dela).
 

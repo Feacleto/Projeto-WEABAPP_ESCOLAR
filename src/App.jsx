@@ -101,6 +101,7 @@ import { hasAcceptedCurrentTerms } from './services/consentService';
 import { estadoDoContrato } from './dominio/cobranca/contratoDaFamilia.js';
 import Respiro from './components/common/Respiro';
 import TemaDaMarca, { ZonaDaPlataforma } from './components/common/TemaDaMarca';
+import TelaNovaNoTopo from './components/common/TelaNovaNoTopo';
 import { SITE_INSTITUCIONAL } from './config/vitrine';
 import Travessia from './components/common/Travessia';
 import { TrancaDoFinanceiroProvider } from './context/TrancaDoFinanceiroContext';
@@ -518,6 +519,8 @@ export default function App() {
           * (fora dele) com o mesmo estado, e vigiar a saída das duas. Ver
           * TrancaDoFinanceiroContext.jsx. */}
         <TrancaDoFinanceiroProvider>
+        {/* Toda tela nova abre no topo — ver TelaNovaNoTopo. */}
+        <TelaNovaNoTopo />
         <Routes>
         {/* Rotas públicas */}
         {/* A APRESENTAÇÃO DA PLATAFORMA SAIU DO APP.

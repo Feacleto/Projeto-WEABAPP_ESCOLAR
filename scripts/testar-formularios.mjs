@@ -63,5 +63,14 @@ caso('ou envia o formulário', avancar.includes('requestSubmit'));
 caso('o "Avançar" do cadastro da criança é o avanço da tela',
   /onClick=\{onAdvance\}\s*\n[^\n]*\n\s*data-avancar/.test(ler('src/components/children/ChildForm.jsx')));
 
+console.log('4. tela nova abre no topo');
+const app = ler('src/App.jsx');
+caso('o App monta TelaNovaNoTopo antes das rotas', /<TelaNovaNoTopo \/>\s*\n\s*<Routes>/.test(app));
+const topo = ler('src/components/common/TelaNovaNoTopo.jsx');
+caso('ela rola ao topo a cada caminho', topo.includes('window.scrollTo(0, 0)') && topo.includes('[pathname]'));
+caso('e desliga a restauração do navegador', topo.includes("scrollRestoration = 'manual'"));
+caso('o cadastro da criança sobe a cada passo',
+  /useEffect\(\(\) => \{\s*window\.scrollTo\(0, 0\);\s*\}, \[step\]\)/.test(ler('src/components/children/ChildForm.jsx')));
+
 console.log(`\n  ${ok} passaram, ${bad} falharam\n`);
 process.exit(bad ? 1 : 0);

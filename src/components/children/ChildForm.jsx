@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
@@ -150,6 +150,12 @@ export default function ChildForm() {
   // O id da criança, reservado já no começo: é ele que sorteia o avatar, e o
   // topo mostra a criança desde o passo 2 com o MESMO rosto da ficha.
   const [idReservado, setIdReservado] = useState(() => reservarIdDeCrianca());
+  // CADA PASSO ABRE NO TOPO, como uma tela nova (03/10/2026): o passo muda
+  // sem mudar o endereço, e ele tocava em Avançar no fim da página e caía
+  // no meio do passo seguinte, sem ver o título.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
   const [submitting, setSubmitting] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
   const [createdId, setCreatedId] = useState(null);
