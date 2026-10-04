@@ -98,7 +98,8 @@ function CaixaDeCookies({ showCustom, setShowCustom, analytics, setAnalytics, on
   }, []);
 
   const botao =
-    'tap h-11 rounded-xl border border-borderStrong bg-card px-2 text-[13px] font-semibold text-text';
+    // 48px de altura (o piso do app) e o rótulo pode quebrar em duas linhas.
+    'tap min-h-12 rounded-xl border border-borderStrong bg-card px-2 py-1 text-[13px] font-semibold leading-tight text-text';
 
   return (
     // ABAIXO DAS FOLHAS (z-40; as folhas são z-50). Por cima, ele cobria o
@@ -111,7 +112,10 @@ function CaixaDeCookies({ showCustom, setShowCustom, analytics, setAnalytics, on
       aria-label="Preferências de cookies"
       className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-0 print:hidden"
     >
-      <div className="max-w-mobile mx-auto rounded-2xl border border-border bg-card p-3 shadow-float">
+      {/* NO MONITOR, NO CANTO (04/10/2026, medido a 1366px): centralizado, o
+        * aviso caía no meio da tela, por cima do formulário de entrar. No
+        * celular ele continua na largura toda, embaixo. */}
+      <div className="max-w-mobile mx-auto lg:ml-3 lg:mr-auto lg:max-w-md rounded-2xl border border-border bg-card p-3 shadow-float">
         <p className="flex items-start gap-2 text-[13px] leading-snug text-textMuted">
           <Cookie size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden />
           <span>
@@ -119,7 +123,9 @@ function CaixaDeCookies({ showCustom, setShowCustom, analytics, setAnalytics, on
             o uso do app.{' '}
             <Link
               to="/privacidade"
-              className="font-semibold text-primary underline"
+              /* A área de toque passa de 16 para 44px de altura sem mudar a
+               * linha: o preenchimento vertical é desfeito pela margem. */
+              className="-my-3 inline-block py-3 font-semibold text-primary underline"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -145,13 +151,15 @@ function CaixaDeCookies({ showCustom, setShowCustom, analytics, setAnalytics, on
           </div>
         )}
 
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        {/* Abaixo de 360px "Personalizar" não cabe num terço: desce para uma
+          * linha própria (04/10/2026, medido a 320px). */}
+        <div className="mt-3 grid grid-cols-2 gap-2 min-[360px]:grid-cols-3">
           {showCustom ? (
             <>
               <button type="button" onClick={() => setShowCustom(false)} className={botao}>
                 Voltar
               </button>
-              <button type="button" onClick={onSaveCustom} className={`${botao} col-span-2`}>
+              <button type="button" onClick={onSaveCustom} className={`${botao} col-span-1 min-[360px]:col-span-2`}>
                 Salvar preferências
               </button>
             </>
@@ -163,7 +171,7 @@ function CaixaDeCookies({ showCustom, setShowCustom, analytics, setAnalytics, on
               <button type="button" onClick={onAcceptAll} className={botao}>
                 Aceitar todos
               </button>
-              <button type="button" onClick={() => setShowCustom(true)} className={botao}>
+              <button type="button" onClick={() => setShowCustom(true)} className={`${botao} col-span-2 min-[360px]:col-span-1`}>
                 Personalizar
               </button>
             </>

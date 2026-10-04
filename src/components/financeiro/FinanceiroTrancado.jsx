@@ -123,10 +123,10 @@ export default function FinanceiroTrancado() {
         onClick={() => acessar(BUZI)}
         className="tap min-h-[150px] rounded-3xl bg-primary shadow-focus p-6 flex flex-col justify-between items-start gap-3 text-left text-white"
       >
-        <span className="flex w-full items-start justify-between gap-3">
+        <span className="flex w-full flex-wrap items-start justify-between gap-3">
           <Bot size={36} aria-hidden="true" />
           {anunciar && (
-            <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-primary">
+            <span className="whitespace-nowrap rounded-full bg-white px-3 py-1 text-sm font-bold text-primary">
               Boletim de {nomeDoMes(anunciar)} pronto
             </span>
           )}

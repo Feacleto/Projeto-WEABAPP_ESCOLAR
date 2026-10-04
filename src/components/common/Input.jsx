@@ -62,8 +62,13 @@ const Input = forwardRef(function Input(
           {label}
         </label>
       )}
-      <div className="flex items-start gap-2">
-      <div className="relative min-w-0 flex-1">
+      {/* O "SALVAR" DESCE QUANDO NÃO CABE (04/10/2026, medido a 320px). Lado
+        * a lado com o microfone, o campo de endereço ficava com "Digite…"
+        * cortado. O campo pede pelo menos 11rem e cresce primeiro (grow-[999]);
+        * sem esse espaço, o Salvar quebra para a linha de baixo e ali, sozinho,
+        * ocupa a largura toda. */}
+      <div className="flex flex-wrap items-start gap-2">
+      <div className="relative min-w-[11rem] flex-1 grow-[999]">
         {Icon && (
           <Icon
             size={18}
@@ -107,7 +112,7 @@ const Input = forwardRef(function Input(
           // referência para achar o próximo.
           onMouseDown={(e) => e.preventDefault()}
           onClick={(e) => avancarDoCampo(document.getElementById(id) || e.currentTarget)}
-          className="tap h-14 shrink-0 rounded-xl bg-primary px-4 text-base font-bold text-white"
+          className="tap h-14 grow basis-[104px] rounded-xl bg-primary px-4 text-base font-bold text-white"
         >
           Salvar
         </button>

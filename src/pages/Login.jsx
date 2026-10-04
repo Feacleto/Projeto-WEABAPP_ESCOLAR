@@ -443,10 +443,10 @@ export default function Login() {
             * continua com o "Voltar": pra ela é mesmo um passo atrás. */}
           <VoltarTag
             {...voltarProps}
-            className={`tap z-10 inline-flex w-fit items-center gap-1 text-primaryChip hover:text-white lg:relative lg:-ml-1 lg:p-1 lg:text-sm ${
+            className={`tap z-10 inline-flex w-fit items-center gap-1 text-primaryChip hover:text-white lg:relative lg:-ml-1 lg:min-h-12 lg:px-1 lg:text-sm ${
               daFamilia
-                ? 'relative -ml-1 p-1 text-sm'
-                : 'absolute right-4 top-[18px] min-h-11 whitespace-nowrap rounded-full border border-white/30 bg-white/[0.06] px-3.5 text-[13px] font-semibold lg:min-h-0 lg:border-0 lg:bg-transparent lg:font-normal'
+                ? 'relative -ml-1 min-h-12 px-1 text-sm'
+                : 'absolute right-4 top-[18px] min-h-11 whitespace-nowrap rounded-full border border-white/30 bg-white/[0.06] px-3.5 text-[13px] font-semibold lg:border-0 lg:bg-transparent lg:font-normal'
             } ${surge(PASSO.site)}`}
           >
             {daFamilia ? (
@@ -480,7 +480,9 @@ export default function Login() {
             <a
               href={SITE_INSTITUCIONAL}
               aria-label="Conhecer o Alô Buzinou"
-              className={`tap block w-fit max-w-full rounded-lg ${surge(PASSO.logo)}`}
+              // -my-2 py-2: a área de toque do logo passa de 34 para 50px sem
+              // mexer no desenho (04/10/2026, medido).
+              className={`tap -my-2 block w-fit max-w-full rounded-lg py-2 ${surge(PASSO.logo)}`}
             >
               <Logo
                 variant="lockup"

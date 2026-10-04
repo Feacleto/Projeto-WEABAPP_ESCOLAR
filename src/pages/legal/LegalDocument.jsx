@@ -40,14 +40,14 @@ export default function LegalDocument({
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link
             to="/login"
-            className="inline-flex items-center gap-1 text-sm text-textMuted tap"
+            className="-ml-1 inline-flex min-h-12 items-center gap-1 px-1 text-sm text-textMuted tap"
           >
             <ArrowLeft size={18} /> Voltar
           </Link>
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary tap px-3 py-1.5 rounded-lg bg-primaryChip"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary tap px-3 rounded-lg bg-primaryChip"
           >
             <Printer size={16} /> Salvar como PDF
           </button>

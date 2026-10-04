@@ -200,7 +200,11 @@ export default function FirstAccess() {
           * não existe tela escura — ela ficou só no site — e a porta é o
           * verde com a marca, como no login. O movimento contínuo saiu junto:
           * o sistema só o permite no "ao vivo". */}
-        <header className="relative overflow-hidden rounded-b-3xl bg-primary px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
+        {/* NO MONITOR, A COLUNA VERDE TEM A ALTURA DA TELA (04/10/2026, medido a
+          * 1366px): esticada até a altura do formulário, o título ficava abaixo
+          * da dobra e a coluna parecia vazia. Grudada no topo, ela acompanha a
+          * rolagem do formulário. */}
+        <header className="relative overflow-hidden rounded-b-3xl bg-primary px-6 pb-7 pt-5 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:justify-between lg:self-start lg:rounded-none lg:px-14 lg:py-14">
 
           <div className="relative">
             {/* Voltar vai pra porta da FAMÍLIA, não pra "/". Esta tela é do

@@ -19,9 +19,14 @@ export default function MolduraDoFinanceiro({ children, voltarPara = null }) {
         backTo={voltarPara}
         backLabel={voltarPara ? 'Início' : null}
         action={
-          <span className="flex items-center gap-1.5 pr-1 text-sm font-semibold text-textMuted">
+          // Abaixo de 360px a palavra sai e fica o cadeado: com ela, o título
+          // "Financeiro" saía cortado ("Financ…") — medido em 04/10/2026.
+          <span
+            className="flex items-center gap-1.5 pr-1 text-sm font-semibold text-textMuted"
+            aria-label="Protegido"
+          >
             <Lock size={18} className="text-primary" aria-hidden="true" />
-            Protegido
+            <span className="hidden min-[360px]:inline">Protegido</span>
           </span>
         }
       />

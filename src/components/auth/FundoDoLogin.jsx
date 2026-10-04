@@ -88,7 +88,7 @@ function Selo({ icone }) {
 function Pastilha({ children, destaque }) {
   return (
     <span
-      className={`rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${
+      className={`rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${
         destaque
           ? 'border border-primaryBorder bg-primarySoft text-primaryDark'
           : 'border border-border bg-surface text-textMuted'
@@ -101,7 +101,7 @@ function Pastilha({ children, destaque }) {
 
 function Iniciais({ children }) {
   return (
-    <span className="grid h-6 w-6 place-items-center rounded-full bg-primaryChip text-[9px] font-bold text-primaryDark">
+    <span className="grid h-6 w-6 place-items-center rounded-full bg-primaryChip text-[12px] font-bold text-primaryDark">
       {children}
     </span>
   );
@@ -119,7 +119,7 @@ function Bloco({ dados }) {
               {dados.titulo}
             </span>
             {dados.subtitulo && (
-              <span className="mt-0.5 block text-[10.5px] leading-snug text-textMuted">
+              <span className="mt-0.5 block text-[12px] leading-snug text-textMuted">
                 {dados.subtitulo}
               </span>
             )}
@@ -140,10 +140,10 @@ function Bloco({ dados }) {
     case 'linha':
       return (
         <div className="flex items-center gap-2 rounded-lg border border-primaryBorder bg-primarySoft px-2.5 py-1.5">
-          <span className="font-mono text-[10.5px] font-semibold tabular-nums text-primaryDark">
+          <span className="font-mono text-[12px] font-semibold tabular-nums text-primaryDark">
             {dados.hora}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-text">
+          <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-text">
             {dados.texto}
           </span>
           {dados.check && <Check size={13} className="flex-none text-primary" />}
@@ -156,16 +156,16 @@ function Bloco({ dados }) {
           {/* INICIAIS, NUNCA FOTO. Rosto de criança numa página pública é
             * dado sensível — e é o que torna estes cartões possíveis: eles
             * são recriados, não são print de tela. */}
-          <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-primaryChip text-[11px] font-bold text-primaryDark">
+          <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-primaryChip text-[12px] font-bold text-primaryDark">
             {dados.iniciais}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[12.5px] font-bold leading-tight text-text">
               {dados.nome}
             </span>
-            <span className="block truncate text-[10.5px] text-textMuted">{dados.detalhe}</span>
+            <span className="block truncate text-[12px] text-textMuted">{dados.detalhe}</span>
           </span>
-          <span className="flex-none font-mono text-[11px] font-semibold tabular-nums text-primary">
+          <span className="flex-none font-mono text-[12px] font-semibold tabular-nums text-primary">
             {dados.hora}
           </span>
         </div>
@@ -173,7 +173,7 @@ function Bloco({ dados }) {
 
     case 'acao':
       return (
-        <span className="block rounded-xl bg-primary py-2 text-center text-[11.5px] font-extrabold tracking-wide text-white">
+        <span className="block rounded-xl bg-primary py-2 text-center text-[12px] font-extrabold tracking-wide text-white">
           {dados.rotulo}
         </span>
       );
@@ -186,7 +186,7 @@ function Bloco({ dados }) {
             return (
               <span
                 key={it.rotulo}
-                className={`relative inline-flex h-7 items-center justify-center gap-1 rounded-lg text-[10px] font-bold ${
+                className={`relative inline-flex h-7 items-center justify-center gap-1 rounded-lg text-[12px] font-bold ${
                   it.halo
                     ? 'border border-primaryBorder bg-primarySoft text-primaryDark'
                     : 'border border-border bg-surface text-textMuted'
@@ -204,7 +204,7 @@ function Bloco({ dados }) {
       return (
         <span className="block">
           {dados.rotulo && (
-            <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em] text-textMuted">
+            <span className="block font-mono text-[12px] uppercase tracking-[0.14em] text-textMuted">
               {dados.rotulo}
             </span>
           )}
@@ -221,7 +221,7 @@ function Bloco({ dados }) {
       return (
         <span className="block">
           {dados.rotulo && (
-            <span className="mb-1.5 block font-mono text-[9.5px] uppercase tracking-[0.14em] text-textMuted">
+            <span className="mb-1.5 block font-mono text-[12px] uppercase tracking-[0.14em] text-textMuted">
               {dados.rotulo}
             </span>
           )}
@@ -229,7 +229,7 @@ function Bloco({ dados }) {
             {dados.itens.map((i) => (
               <Iniciais key={i}>{i}</Iniciais>
             ))}
-            <span className="ml-0.5 text-[10px] font-semibold text-textMuted">{dados.mais}</span>
+            <span className="ml-0.5 text-[12px] font-semibold text-textMuted">{dados.mais}</span>
           </span>
         </span>
       );
@@ -239,7 +239,7 @@ function Bloco({ dados }) {
         <div className="flex flex-col gap-1.5">
           {dados.itens.map((it) => (
             <span key={it.hora} className="flex items-center gap-2">
-              <span className="flex-none font-mono text-[10.5px] tabular-nums text-textMuted">
+              <span className="flex-none font-mono text-[12px] tabular-nums text-textMuted">
                 {it.hora}
               </span>
               {/* Iniciais em vez de bolinha quando a parada tem rosto: é a
@@ -249,7 +249,7 @@ function Bloco({ dados }) {
               ) : (
                 <span className="h-1.5 w-1.5 flex-none rounded-full bg-primary" />
               )}
-              <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-text">
+              <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-text">
                 {it.nome}
               </span>
             </span>
@@ -270,7 +270,7 @@ function Bloco({ dados }) {
 
     case 'nota':
       return (
-        <span className="block font-mono text-[9.5px] leading-snug text-textMuted">
+        <span className="block font-mono text-[12px] leading-snug text-textMuted">
           {dados.texto}
         </span>
       );
@@ -283,19 +283,19 @@ function Bloco({ dados }) {
           <span className="block text-[13px] font-bold leading-tight text-text">
             {dados.titulo}
           </span>
-          <span className="mt-0.5 block text-[10.5px] text-textMuted">{dados.subtitulo}</span>
+          <span className="mt-0.5 block text-[12px] text-textMuted">{dados.subtitulo}</span>
         </span>
       );
 
     case 'corpo':
       return (
-        <span className="block text-[10.5px] leading-relaxed text-textMuted">{dados.texto}</span>
+        <span className="block text-[12px] leading-relaxed text-textMuted">{dados.texto}</span>
       );
 
     case 'botao':
       return (
         <span
-          className={`block rounded-xl py-2 text-center text-[11.5px] font-bold ${
+          className={`block rounded-xl py-2 text-center text-[12px] font-bold ${
             dados.contorno
               ? 'border-2 border-primary text-primary'
               : 'bg-primary text-white'
@@ -315,7 +315,7 @@ function Bloco({ dados }) {
     // app, e no app este botão tem a marca do outro produto.
     case 'botaoZap':
       return (
-        <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-whatsapp py-2 text-[11.5px] font-bold text-onAccent">
+        <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-whatsapp py-2 text-[12px] font-bold text-onAccent">
           <WhatsAppIcon size={13} colored={false} />
           {dados.rotulo}
         </span>
@@ -326,11 +326,11 @@ function Bloco({ dados }) {
     case 'faixaHoras':
       return (
         <span className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-primaryDark px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-white">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primaryDark px-2 py-0.5 font-mono text-[12px] font-semibold tabular-nums text-white">
             <Home size={9} />
             {dados.ida}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 font-mono text-[10px] tabular-nums text-textMuted">
+          <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 font-mono text-[12px] tabular-nums text-textMuted">
             <Home size={9} />
             {dados.volta}
           </span>
@@ -351,10 +351,10 @@ function Bloco({ dados }) {
                   <Icone size={12} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-[10.5px] font-bold leading-tight text-text">
+                  <span className="block truncate text-[12px] font-bold leading-tight text-text">
                     {it.titulo}
                   </span>
-                  <span className="block truncate text-[9.5px] text-textMuted">{it.detalhe}</span>
+                  <span className="block truncate text-[12px] text-textMuted">{it.detalhe}</span>
                 </span>
               </span>
             );
@@ -367,7 +367,7 @@ function Bloco({ dados }) {
     case 'codigo':
       return (
         <span className="block">
-          <span className="mb-1 block font-mono text-[9px] uppercase tracking-[0.14em] text-textMuted">
+          <span className="mb-1 block font-mono text-[12px] uppercase tracking-[0.14em] text-textMuted">
             {dados.rotulo}
           </span>
           <span className="flex items-center justify-between gap-2 rounded-lg border border-borderStrong bg-surface px-2.5 py-1.5">
@@ -382,7 +382,7 @@ function Bloco({ dados }) {
     case 'pago':
       return (
         <span className="block">
-          <span className="mb-1.5 block font-mono text-[9px] uppercase tracking-[0.14em] text-textMuted">
+          <span className="mb-1.5 block font-mono text-[12px] uppercase tracking-[0.14em] text-textMuted">
             {dados.mes}
           </span>
           <span className="flex items-center gap-2">
@@ -390,10 +390,10 @@ function Bloco({ dados }) {
               <Check size={13} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="inline-block rounded-md bg-primaryChip px-1.5 py-px text-[9.5px] font-bold text-primaryDark">
+              <span className="inline-block rounded-md bg-primaryChip px-1.5 py-px text-[12px] font-bold text-primaryDark">
                 {dados.chip}
               </span>
-              <span className="mt-0.5 block truncate text-[10px] text-textMuted">{dados.meio}</span>
+              <span className="mt-0.5 block truncate text-[12px] text-textMuted">{dados.meio}</span>
             </span>
             <span className="flex-none text-[15px] font-extrabold tabular-nums text-text">
               {dados.valor}
