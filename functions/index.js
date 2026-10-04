@@ -15,6 +15,10 @@ const {
   makeFecharMesDosParceiros,
   makeFecharMesAgora,
 } = require('./lib/fechamento');
+const {
+  makeCalcularNiveis,
+  makeRecalcularMeuNivel,
+} = require('./lib/niveis');
 const { makeEnviarAvisosComerciais } = require('./lib/enviarAvisos');
 const { makeCasarNoCadastro } = require('./lib/casarNoCadastro');
 const { makeVincularIrmao, makeRecusarIrmao } = require('./lib/vincularIrmao');
@@ -257,6 +261,13 @@ exports.contratarPlano = makeContratarPlano(db);
  */
 exports.fecharMesDosParceiros = makeFecharMesDosParceiros(db);
 exports.fecharMesAgora = makeFecharMesAgora(db);
+
+// OS NÍVEIS DO MOTORISTA (docs/niveis.md). A agendada (5h30) faz a Platina
+// cair quando um prazo vence; a callable faz o selo subir na hora — o
+// motorista a chama ao abrir "Meu nível". Grava só o rótulo em `niveis/{uid}`,
+// que as famílias dele também leem.
+exports.calcularNiveis = makeCalcularNiveis(db);
+exports.recalcularMeuNivel = makeRecalcularMeuNivel(db);
 
 /**
  * A LIMPEZA DA COORDENADA — manutenção de UMA vez, e ela tem prazo.

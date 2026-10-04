@@ -26,6 +26,8 @@ import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import ResumoDaTurma from '../../components/tio/ResumoDaTurma';
 import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
+import AvisoDoBronze from '../../components/nivel/AvisoDoBronze';
+import CartaoPrazoPlatina from '../../components/nivel/CartaoPrazoPlatina';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
@@ -451,6 +453,11 @@ export default function TioDashboard() {
             </div>
             {/* Lembrete, nunca portão: some sozinho depois de confirmar. */}
             <ConfirmeSeuEmail className="mt-4" />
+            {/* OS NÍVEIS (docs/niveis.md): o aviso único do Bronze e o
+              * prazo da Platina — nunca dirigindo, porque este bloco some
+              * com a rota rodando. */}
+            <AvisoDoBronze className="mt-4" />
+            <CartaoPrazoPlatina className="mt-4" />
           </div>
         )}
 

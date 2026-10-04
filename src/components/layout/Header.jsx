@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, Bell, MessageCircle } from 'lucide-react';
+import SeloNoCabecalho from '../nivel/SeloNoCabecalho';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotificacoesDaSessao } from '../../hooks/useNotifications';
@@ -148,10 +149,19 @@ export default function Header({
  */
 function MarcaOuTitulo({ titulo }) {
   const { nome, logoURL } = useMarcaDoTio();
+  // O SELO DO NÍVEL ao lado da marca (docs/niveis.md): o motorista vê o dele;
+  // a família vê o do motorista do filho ativo, e só a partir da Prata.
+  const { role } = useAuth();
+  const { child } = useActiveChild();
+  const selo =
+    role === 'admin' ? <SeloNoCabecalho /> : <SeloNoCabecalho adminUid={child?.adminUid || null} />;
 
   if (!nome && !logoURL) {
     return (
-      <h1 className="font-display text-lg font-bold text-text truncate">{titulo}</h1>
+      <div className="flex items-center gap-2 min-w-0">
+        <h1 className="font-display text-lg font-bold text-text truncate">{titulo}</h1>
+        {selo}
+      </div>
     );
   }
 
@@ -176,6 +186,7 @@ function MarcaOuTitulo({ titulo }) {
       <h1 className="font-display text-lg font-bold text-text truncate">
         {nome || titulo}
       </h1>
+      {selo}
     </div>
   );
 }

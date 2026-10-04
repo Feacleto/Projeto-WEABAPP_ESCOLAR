@@ -19,10 +19,11 @@ import {
   Link2,
   CalendarX2,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { horariosCombinados, horaCurta } from '../dominio/rota/horarios';
 import { horaFalada } from '../dominio/rota/horarioDeCostume.js';
 import { useCostumeDaCrianca } from '../hooks/useCostumeDaCrianca';
+import { marcarHorarioDeCostumeVisto } from '../services/fatosDoNivelService';
 import { faltasDoMes, resumoDeFaltas } from '../dominio/rota/faltas';
 import {
   addMonths,
@@ -90,7 +91,7 @@ import AcessoDeUmDia from '../components/children/AcessoDeUmDia';
 function ChildDetailBody({ childId: childIdProp, onLeave }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role, activeChildId } = useAuth();
+  const { role, activeChildId, user, profile, updateProfile } = useAuth();
   const isAdmin = role === 'admin';
 
   // Pai: usa o childId do próprio profile, ignora :id na URL
@@ -101,6 +102,18 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
   const childId = childIdProp || (isAdmin ? id : activeChildId);
   const { child, loading } = useChild(childId);
   const costume = useCostumeDaCrianca(childId);
+  // O motorista VIU o horário de costume: marca, uma vez, para a atividade
+  // de Platina que pede isso (docs/niveis.md, seção 5).
+  const mostraCostume = role === 'admin' && !!costume && (costume.embarque != null || costume.chegada != null);
+  const viuCostume = useRef(false);
+  useEffect(() => {
+    if (!mostraCostume || viuCostume.current || !user?.uid) return;
+    if (profile?.marcos?.horarioDeCostumeVisto) return;
+    viuCostume.current = true;
+    marcarHorarioDeCostumeVisto(user.uid)
+      .then(() => updateProfile?.({ marcos: { ...(profile?.marcos || {}), horarioDeCostumeVisto: true } }))
+      .catch(() => {});
+  }, [mostraCostume, user?.uid, profile, updateProfile]);
   const [editandoOnde, setEditandoOnde] = useState(false);
   const [editandoResponsavel, setEditandoResponsavel] = useState(false);
   const [editandoNotas, setEditandoNotas] = useState(false);

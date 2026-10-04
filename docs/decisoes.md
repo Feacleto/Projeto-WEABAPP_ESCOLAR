@@ -368,6 +368,23 @@ Sobre ela incidem:
 
 ---
 
+## 23. O nível do motorista mede o uso do app, e só o que o app confere
+
+**Estado:** aceita (03/10/2026, aprovada pelo dono depois de validada com as sessões de negócio, jornada, financeiro e "Sua perua") · especificação em [niveis.md](niveis.md)
+
+**Contexto.** O dono quer gamificar com níveis (Bronze → Prata → Ouro → Platina → Diamante) que aparecem para as famílias ao lado do logo do motorista. Um selo público lido pela mãe como "motorista melhor" pode virar promessa de segurança ([marca.md](marca.md) §2), selo comprado (CDC art. 37 — o mesmo argumento que aposentou o contador de vagas) e contar aos clientes dele a relação comercial dele com a plataforma (decisão de 11/09: a plataforma não avisa as famílias quando ele cancela).
+
+**Decisão.** Três regras:
+1. **Nível é USO DO APP.** Nunca depende de plano, pagamento, nem do número de crianças.
+2. **Atividade de Platina nunca exige pagar ou contratar** (plano anual, seguro, adesivo pago, subconta), nem indicar colega, nem meta de adesão das famílias, nem ação dirigindo, nem dado de saúde. Ela só existe como CHAVE do catálogo da régua — não há campo livre de condição.
+3. **O selo público só sobe com o que o app confere sozinho.** O que o motorista declara ("Já fiz", CNPJ digitado) mora na trilha do negócio como marco particular e não conta. CNPJ, se um dia contar, é consultado na Receita, nunca digitado.
+
+**Consequência.** O dinheiro empurra por outro caminho: o que ele ganha pagando aparece SÓ na tela dele. A família vê o selo a partir da Prata, com uma frase genérica ("seu tio é engajado"), nunca o motivo — e a queda da Platina para o Ouro é calada.
+
+**Como verificar.** `npm run testar:nivel` — a régua e o espelho do servidor caso a caso, as frases sem as raízes de `marca/promessas.js`, os declarados que não contam para o Diamante. A aba do dono só oferece chaves do catálogo.
+
+---
+
 ## Como adicionar uma decisão
 
 Copie o formato. Contexto em duas linhas, decisão em uma, consequência no que ela custa, e **sempre** a linha de como verificar. Decisão sem teste é comentário — e comentário que promete garantia sem prová-la já foi problema recorrente neste repositório.

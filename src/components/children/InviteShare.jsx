@@ -10,6 +10,7 @@ import { FileSignature } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
 import DadosDoContratoForm from '../contract/DadosDoContratoForm';
+import { marcarConviteEnviado } from '../../services/fatosDoNivelService';
 import { useChild } from '../../hooks/useChild';
 import { useContratos } from '../../hooks/useContratos';
 import { useGarantirContrato } from '../../hooks/useGarantirContrato';
@@ -240,6 +241,12 @@ export default function InviteShare({
         href={waHref}
         target="_blank"
         rel="noreferrer"
+        // O GESTO DELE conta para o nível (docs/niveis.md): mandou o convite.
+        // Sem `await` — o link abre na hora, e a marca não pode segurá-lo.
+        onClick={() => {
+          const id = childId || crianca?.id;
+          if (id && !jaEntrou) marcarConviteEnviado(id).catch(() => {});
+        }}
         // TEXTO ESCURO SOBRE O VERDE DO WHATSAPP: o branco dava 1,98:1
         // (o mínimo é 4,5). `min-h` em vez de `h` e ícone que não encolhe —
         // com rótulo longo o texto quebrava e cortava o balão na borda.

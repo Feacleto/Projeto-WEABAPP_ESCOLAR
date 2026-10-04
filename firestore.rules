@@ -2741,6 +2741,35 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // -----------------------------------------------------------------
+    // OS NÍVEIS DO MOTORISTA (docs/niveis.md, seção 8; decisão 23).
+    //
+    // `niveis/{uid}` guarda SÓ o rótulo ({ nivel, desde, atualizadoEm }),
+    // porque as famílias dele leem — regra não esconde campo, e o MOTIVO do
+    // nível é dele. Só o servidor escreve (Admin SDK): selo que o próprio se dá
+    // é propaganda. `get` e não `read`: ninguém precisa listar a base.
+    // -----------------------------------------------------------------
+    match /niveis/{uid} {
+      allow get: if isAppUser()
+        && (request.auth.uid == uid || ehMotoristaDaFamilia(uid));
+      allow list, write: if false;
+    }
+
+    // As atividades de Platina: só o dono lança; todo usuário do app lê.
+    // Sem delete — desligar é `ativa: false`, e apagar faria uma atividade
+    // vencida sumir do histórico de quem caiu por ela. A verificação é uma
+    // CHAVE do catálogo da régua: não existe condição livre (decisão 23).
+    match /atividadesDaPlatina/{id} {
+      allow read: if isAppUser();
+      allow create, update: if isOwner()
+        && request.resource.data.keys()
+             .hasOnly(['titulo', 'descricao', 'verificacao', 'lancadaEm', 'ativa'])
+        && request.resource.data.verificacao is string
+        && request.resource.data.lancadaEm is timestamp
+        && request.resource.data.ativa is bool;
+      allow delete: if false;
+    }
+
     // Default deny — qualquer outra coleção é proibida.
     // -----------------------------------------------------------------
     match /{document=**} {

@@ -20,6 +20,7 @@ import MotoristasTab from '../../components/admin/MotoristasTab';
 import ChamadosTab from '../../components/admin/ChamadosTab';
 import SelosTab from '../../components/admin/SelosTab';
 import IndicacoesTab from '../../components/admin/IndicacoesTab';
+import AtividadesDaPlatinaTab from '../../components/admin/AtividadesDaPlatinaTab';
 import InvestidoresTab from '../../components/admin/InvestidoresTab';
 import { listarInteresses } from '../../services/interesseService';
 import { definirDepoimentoNaHome } from '../../services/feedbackService';
@@ -245,6 +246,7 @@ export default function AdminPanel() {
             ['numeros', 'Números'],
             ['selos', 'Selos'],
             ['indicacoes', 'Indicações'],
+            ['platina', 'Platina'],
             ['pesquisa', 'Pesquisa'],
             ['investidores', 'Investidores'],
           ].map(([id, label]) => (
@@ -290,6 +292,7 @@ export default function AdminPanel() {
         {tab === 'numeros' && <Geral ov={ov} />}
         {tab === 'selos' && <SelosTab />}
         {tab === 'indicacoes' && <IndicacoesTab />}
+        {tab === 'platina' && <AtividadesDaPlatinaTab />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
         {tab === 'investidores' && <InvestidoresTab />}
       </main>

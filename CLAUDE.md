@@ -527,7 +527,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `absenceDeclarations` · `agendaEntries` · `pendingCalls` · `schoolBroadcasts` ·
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
-`indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `platformConfig` ·
+`indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
 `limitesDeTentativa`, `asaasEventosProcessados` e `senhasDoFinanceiro` (só o servidor) ·
 `configFinanceiro` (só o próprio motorista lê) ·
 `appState`
@@ -1502,6 +1502,10 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   recebido um preço. A régua é pura
   ([reguaDoServidor.js](functions/lib/reguaDoServidor.js)); quem escreve é
   [fechamento.js](functions/lib/fechamento.js).
+- **Níveis do motorista:** `calcularNiveis` (todo dia 5h30) e `recalcularMeuNivel`
+  (callable; o motorista chama ao abrir "Meu nível") —
+  [niveis.js](functions/lib/niveis.js). Gravam SÓ o rótulo em `niveis/{uid}`,
+  que as famílias dele leem a partir da Prata. Ver "Os níveis" abaixo.
 - **Avisos comerciais (agendado):** `enviarAvisosComerciais`, todo dia às 9h.
   É o único canal que alcança quem PAROU de abrir o app — e ele já existia:
   um doc em `notifications` escrito pelo Admin SDK dispara
@@ -1557,6 +1561,22 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 
 Cobrança e limpeza **saíram do cliente** de propósito: no cliente, o mês em que
 o motorista não abrisse o app ficava sem cobrança.
+
+---
+
+## Os níveis do motorista
+
+**Bronze → Prata → Ouro ensinam o app; Platina é estar em dia com as
+novidades; Diamante é Platina + a trilha do negócio** — especificação em
+[docs/niveis.md](docs/niveis.md), régua em
+[nivel.js](src/dominio/identidade/nivel.js) com espelho em
+`functions/lib/reguaDoNivel.js` (`npm run testar:nivel`), e a regra que não se
+negocia é a **decisão 23**: nível é USO DO APP (nunca plano, pagamento ou
+número de crianças), atividade de Platina nunca exige pagar ou contratar, e o
+selo público só sobe com o que o app confere sozinho. Nada aparece antes da
+primeira rota encerrada — o começo é cadastrar a turma. Tela `/tio/nivel`;
+aba "Platina" no painel do dono; selo no cabeçalho. ⚠️ A trilha "Meu negócio"
+(`/tio/finance/negocio`) espera as telas do "Sua perua" serem comitadas.
 
 ---
 

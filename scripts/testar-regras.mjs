@@ -541,6 +541,7 @@ async function main() {
   await oTesteDeCodigo({ tio1, tio2, pai1, dono });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
+  await osNiveis({ tio1, tio2, pai1, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -2647,6 +2648,53 @@ async function aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono }) {
  * Sem isto, um ator sem papel devolve 403 em tudo e o relatório sai verde
  * como se o isolamento estivesse perfeito. Já aconteceu.
  */
+/**
+ * OS NÍVEIS (docs/niveis.md, decisão 23). O selo é lido pelo motorista e
+ * pelas famílias DELE, e escrito por ninguém do lado do cliente. As
+ * atividades de Platina todo usuário do app lê, e só o dono lança.
+ */
+async function osNiveis({ tio1, tio2, pai1, dono, anon }) {
+  console.log('\n═══ os níveis ═══');
+  await semear(`niveis/${tio1.uid}`, { nivel: S('prata'), desde: T(-3), atualizadoEm: T(0) });
+  await semear(`niveis/${tio2.uid}`, { nivel: S('ouro'), desde: T(-3), atualizadoEm: T(0) });
+
+  checar('nivel', 'motorista lê o próprio nível', 'PASSA', await ler(`niveis/${tio1.uid}`, tio1));
+  checar('nivel', 'família lê o nível do motorista dela', 'PASSA', await ler(`niveis/${tio1.uid}`, pai1));
+  checar('nivel', 'outro motorista NÃO lê o nível', 'NEGA', await ler(`niveis/${tio1.uid}`, tio2));
+  checar('nivel', 'família NÃO lê o nível de outro motorista', 'NEGA', await ler(`niveis/${tio2.uid}`, pai1));
+  checar('nivel', 'anônimo NÃO lê nível', 'NEGA', await ler(`niveis/${tio1.uid}`, anon));
+  checar('nivel', 'ninguém lista os níveis da base', 'NEGA', await listar('niveis', dono));
+  checar('nivel', 'motorista NÃO escreve o próprio nível', 'NEGA',
+    await escrever(`niveis/${tio1.uid}`, tio1, { nivel: S('diamante') }, ['nivel']));
+  checar('nivel', 'motorista NÃO cria o nível de outro', 'NEGA',
+    await criar('niveis', `x${Date.now()}`, tio1, { nivel: S('diamante') }));
+  checar('nivel', 'família NÃO escreve o nível do motorista', 'NEGA',
+    await escrever(`niveis/${tio1.uid}`, pai1, { nivel: S('bronze') }, ['nivel']));
+  checar('nivel', 'nem o dono escreve nível (só o servidor)', 'NEGA',
+    await escrever(`niveis/${tio1.uid}`, dono, { nivel: S('diamante') }, ['nivel']));
+
+  const atividade = {
+    titulo: S('Lance as despesas do mês'),
+    descricao: S('Uma despesa neste mês'),
+    verificacao: S('despesasDoMes'),
+    lancadaEm: T(0),
+    ativa: B(true),
+  };
+  await semear('atividadesDaPlatina/a1', atividade);
+  checar('platina', 'motorista lê a atividade', 'PASSA', await ler('atividadesDaPlatina/a1', tio2));
+  checar('platina', 'família lê a atividade', 'PASSA', await ler('atividadesDaPlatina/a1', pai1));
+  checar('platina', 'anônimo NÃO lê a atividade', 'NEGA', await ler('atividadesDaPlatina/a1', anon));
+  checar('platina', 'dono lança atividade', 'PASSA',
+    await criar('atividadesDaPlatina', `a${Date.now()}`, dono, atividade));
+  checar('platina', 'motorista NÃO lança atividade', 'NEGA',
+    await criar('atividadesDaPlatina', `b${Date.now()}`, tio1, atividade));
+  checar('platina', 'motorista NÃO altera atividade', 'NEGA',
+    await escrever('atividadesDaPlatina/a1', tio1, { ativa: B(false) }, ['ativa']));
+  checar('platina', 'dono desliga atividade', 'PASSA',
+    await escrever('atividadesDaPlatina/a1', dono, { ativa: B(false) }, ['ativa']));
+  checar('platina', 'nem o dono apaga atividade', 'NEGA', await apagar('atividadesDaPlatina/a1', dono));
+}
+
 async function conferirElenco(tio1, tio2, pai1, dono) {
   const papel = async (s) => {
     const r = await fetch(`${FS}/users/${s.uid}`, { headers: ADM });

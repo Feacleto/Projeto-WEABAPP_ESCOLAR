@@ -26,6 +26,7 @@ import {
   BarChart3,
   Bus,
   Image as ImageIcon,
+  Medal,
   PauseCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -301,6 +302,15 @@ export default function Profile() {
                     : 'Não cadastrada'
                 }
                 onClick={() => setPixOpen(true)}
+              />
+            </Card>
+            {/* O NÍVEL (docs/niveis.md): selo e o que fazer para subir. */}
+            <Card>
+              <Linha
+                icon={Medal}
+                titulo="Meu nível"
+                sub="Seu selo e o que fazer para subir"
+                onClick={() => navigate('/tio/nivel')}
               />
             </Card>
             <CompanyDataCard profile={profile} onSaved={refreshProfile} />

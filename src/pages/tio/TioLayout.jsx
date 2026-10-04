@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useMarcosDoApp } from '../../hooks/useMarcosDoApp';
 import { Home, DollarSign, Bus } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import { indiceDaAba } from '../../compartilhado/abaAtiva';
@@ -97,6 +98,8 @@ export default function TioLayout() {
   const [birthdayOpen, setBirthdayOpen] = useState(false);
 
   useAutoBilling(profile?.role);
+  // Grava, uma vez, que o app foi instalado na tela de início (docs/niveis.md).
+  useMarcosDoApp();
 
   // Chamadas que o Tio disparou — pop-up flutuante mostra status em tempo real
   const activeCalls = useActiveCallsForAdmin(user?.uid);
