@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Bot, ChevronRight, LockKeyhole, QrCode, ReceiptText, Users } from 'lucide-react';
+import { Bot, ChevronRight, LockKeyhole, ReceiptText, Users } from 'lucide-react';
+import IconePix from '../common/IconePix';
 import MolduraDoFinanceiro from './MolduraDoFinanceiro';
 import DigiteASenhaDoFinanceiro from './DigiteASenhaDoFinanceiro';
 import FolhaDeDespesa from './FolhaDeDespesa';
@@ -186,7 +187,7 @@ export default function FinanceiroTrancado() {
           onClick={() => setFolha('pix')}
           className="tap min-h-[132px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start gap-2 text-left"
         >
-          <QrCode size={30} className="text-primary" aria-hidden="true" />
+          <IconePix size={30} className="text-primary" />
           <span className="text-lg font-bold text-text">Mostrar meu PIX</span>
         </button>
         <button

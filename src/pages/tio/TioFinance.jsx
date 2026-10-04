@@ -23,6 +23,7 @@ import {
   Users,
   Download,
 } from 'lucide-react';
+import IconePix from '../../components/common/IconePix';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
@@ -566,9 +567,9 @@ export default function TioFinance() {
           <Atalho icon={Plus} rotulo="Receber" onClick={() => irParaAba('mensalidades', 'open')} />
           <Atalho icon={Minus} rotulo="Lançar despesa" onClick={() => setDespesaAberta(true)} />
           <Atalho icon={Send} rotulo="Cobrar" onClick={() => irParaAba('mensalidades', 'open')} />
-          {/* O MESMO ÍCONE do "Mostrar meu PIX" da tela trancada (04/10/2026): o
-            * losango não lembrava PIX, e o mesmo assunto tem o mesmo desenho. */}
-          <Atalho icon={QrCode} rotulo="Chave PIX" onClick={() => setPixOpen(true)} />
+          {/* O ÍCONE DO PIX (04/10/2026, pedido do dono): o losango com as duas
+            * ondas, o mesmo do "Mostrar meu PIX" da tela trancada. */}
+          <Atalho icon={IconePix} rotulo="Chave PIX" onClick={() => setPixOpen(true)} />
         </div>
 
         {/* 3. O SALDO. Um número grande só, e ele é o que sobrou. */}
