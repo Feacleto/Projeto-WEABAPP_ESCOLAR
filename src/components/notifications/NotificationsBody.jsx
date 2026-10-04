@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   Bell,
-  CheckCheck,
   Clock,
   AlertTriangle,
   CheckCircle2,
@@ -12,12 +11,17 @@ import {
 import toast from 'react-hot-toast';
 import EmptyState from '../common/EmptyState';
 import Skeleton from '../common/Skeleton';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotificacoesDaSessao } from '../../hooks/useNotifications';
-import { markAllNotificationsRead } from '../../services/notificationsService';
-import { idsNaoLidos } from '../../dominio/identidade/caixaDeAvisos.js';
-import { formatRelativeTime } from '../../compartilhado/formatters';
-import PreferenciasDeAviso from './PreferenciasDeAviso';
+import { markAllNotificationsRead, apagarAvisos } from '../../services/notificationsService';
+import {
+  idsNaoLidos,
+  partirOSino,
+  quandoDoAviso,
+  GRUPOS_DO_SINO,
+  ASSUNTO,
+} from '../../dominio/identidade/caixaDeAvisos.js';
 import Avatar from '../common/Avatar';
 import { destinoDoAviso } from '../../dominio/identidade/destinoDoAviso.js';
 import { rostoDoAviso } from '../../dominio/identidade/rostoDoAviso.js';
@@ -35,69 +39,59 @@ const TYPE_VISUAL = {
   payment_overdue_7d: { Icon: AlertTriangle, color: 'text-danger bg-dangerChip' },
 };
 
-// Quantas notificações mostrar de cara. "Ver mais" carrega de 6 em 6.
-const INITIAL_PAGE_SIZE = 6;
-const PAGE_INCREMENT = 6;
-
-// Cor do "Hoje / Ontem / Há X dias". Era uma pílula de 12px em monoespaçada
-// e caixa alta — a letra mais difícil de ler do app, no dado que responde
-// "isso é de agora?". Virou texto de 14px no canto superior direito do aviso,
-// onde o olho termina a primeira linha (padrão em F: o QUÊ à esquerda, o
-// QUANDO à direita). A cor segue dizendo a recência, só em tons de TEXTO.
-const TONE_STYLES = {
-  today: 'text-accentText',
-  yesterday: 'text-warningText',
-  recent: 'text-infoText',
-  older: 'text-textMuted',
-};
+const FILTROS = [
+  { rotulo: 'Tudo', assunto: null },
+  { rotulo: 'Rota', assunto: ASSUNTO.ROTA },
+  { rotulo: 'Dinheiro', assunto: ASSUNTO.DINHEIRO },
+];
 
 /**
  * UM CONTEÚDO, DUAS CASCAS.
  *
- * O sino vive no cabeçalho de TODAS as telas do app. Tocar nele navegava
- * pra cá — e aí o motorista, que estava no meio da lista de crianças com um
- * filtro aplicado e a rolagem no meio, perdia tudo isso pra ler três linhas.
- * Voltar devolvia a tela, mas não o lugar.
+ * O sino vive no cabeçalho de TODAS as telas do app. Tocar nele abre a FOLHA
+ * (NotificationsSheet): o conteúdo por trás continua exatamente onde estava,
+ * e fechar é um toque. A página (`pages/Notifications`) segue existindo para
+ * quem chega de fora, pelo push. As duas renderizam ESTE corpo.
  *
- * Agora o sino abre a FOLHA (ver NotificationsSheet no fim deste arquivo): o
- * conteúdo por trás continua exatamente onde estava, e fechar é um toque.
+ * ── O MODELO D (04/10/2026, escolhido pelo dono entre quatro)
+ * Em cima, o filtro (Tudo · Rota · Dinheiro) e os NOVOS em cartões verdes;
+ * embaixo, os JÁ VISTOS numa linha cada, em Hoje · Ontem · Esta semana · Este
+ * mês; o que passou de um mês fica fechado em "Outros", o único grupo que se
+ * limpa. A régua dos grupos é `partirOSino` (caixaDeAvisos.js).
  *
- * A ROTA NÃO MORREU, e não podia morrer: notificação pushada abre
- * `/tio/notifications` direto, sem tela por baixo pra servir de fundo — uma
- * folha flutuando sobre nada seria um erro de desenho. Então a página segue
- * existindo, com cabeçalho e seta, pra quem chega de fora.
- *
- * As duas cascas renderizam o MESMO `NotificationsBody`. Não há duas
- * listas pra manter em sincronia; há uma, montada em dois lugares.
+ * ⚠️ AS CHAVES DE "O QUE TOCA NO CELULAR" SAÍRAM DAQUI (mesma data) e moram
+ * só no Perfil, no bloco Avisos. O sino ficou sendo só a caixa.
  */
 export default function NotificationsBody({ onNavigate }) {
   const { profile } = useAuth();
   const isParent = profile?.role === 'parent';
-  const [visibleCount, setVisibleCount] = useState(INITIAL_PAGE_SIZE);
 
-  // ⚠️ LÊ A ESCUTA DA SESSÃO, NÃO ABRE OUTRA (03/10/2026). A folha e a página
-  // chamavam `useNotifications` por conta própria — uma segunda escuta das
-  // mesmas 100, por cima da do cabeçalho.
+  // ⚠️ LÊ A ESCUTA DA SESSÃO, NÃO ABRE OUTRA (03/10/2026).
   const { notifications, loading, refreshReads } = useNotificacoesDaSessao();
 
   // O ROSTO DE CADA AVISO (03/10/2026, pedido do dono): a criança quando o
-  // aviso é sobre ela, o motorista quando chega à família vindo dele. Quem
-  // decide é `rostoDoAviso`; aqui só se busca o que ele precisa ver.
+  // aviso é sobre ela, o motorista quando chega à família vindo dele.
   const criancas = useCriancasDoSino();
   const { child: filhoAtivo } = useActiveChild();
   const { admin: motorista } = useAdminProfile(
     isParent ? filhoAtivo?.adminUid : null
   );
 
+  // O instante em que a folha abriu: o que ela lê DEPOIS disso continua
+  // "novo" até fechar (ver `ehNovo`), senão os cartões fugiriam do dedo.
+  const [abertoEm] = useState(() => Date.now());
+  const [assunto, setAssunto] = useState(null);
+  const [outrosAbertos, setOutrosAbertos] = useState(false);
+  const [confirmarLimpar, setConfirmarLimpar] = useState(false);
+  const [limpando, setLimpando] = useState(false);
+
   // Auto-marca como lidas as que ele acabou de ver (com debounce de 1.5s).
-  // Um lote só (até 450 por lote), em vez de uma escrita por aviso.
+  // ⚠️ SÓ AS NÃO LIDAS DO QUE O SINO JÁ CARREGOU, em lotes de até 450.
   useEffect(() => {
-    if (loading || notifications.length === 0) return;
+    if (loading || idsNaoLidos(notifications).length === 0) return;
     const t = setTimeout(async () => {
-      const naoLidos = idsNaoLidos(notifications);
-      if (naoLidos.length === 0) return;
       try {
-        await markAllNotificationsRead(naoLidos);
+        await markAllNotificationsRead(idsNaoLidos(notifications));
         refreshReads();
       } catch (err) {
         // Marcar como lido é cortesia: falhar não pode atrapalhar a leitura.
@@ -107,33 +101,10 @@ export default function NotificationsBody({ onNavigate }) {
     return () => clearTimeout(t);
   }, [loading, notifications, refreshReads]);
 
-  const onMarkAll = async () => {
-    try {
-      // ⚠️ SÓ AS NÃO LIDAS DO QUE O SINO JÁ CARREGOU — nunca o histórico
-      // inteiro da pessoa relido do banco (ver `markAllNotificationsRead`).
-      await markAllNotificationsRead(idsNaoLidos(notifications));
-      refreshReads();
-      toast.success('Tudo marcado como lido.');
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao marcar como lidas.');
-    }
-  };
-
-  /**
-   * CLICAR NA NOTIFICAÇÃO LEVA PRO ASSUNTO DELA.
-   *
-   * Só pagamento tinha destino; o resto era texto morto. Quem recebia "Novo
-   * aviso sobre a Ana" tocava, não acontecia nada, e ia procurar o recado no
-   * caderno pelo caminho longo — quando não desistia. Aviso que não leva a
-   * lugar nenhum ensina a não tocar em aviso.
-   */
   /**
    * ⚠️ O DESTINO SAI DA MESMA TABELA DO PUSH (03/10/2026) — `destinoDoAviso`.
-   * Eram oito ramos aqui e outra lista no servidor, que diziam se espelhar e
-   * não se espelhavam: mais de vinte tipos não levavam a lugar nenhum quando
-   * tocados no sino. Sobra uma exceção, que não é destino e sim pedido: o
-   * recado da agenda abre o CADERNO, uma folha da home da família.
+   * Sobra uma exceção, que não é destino e sim pedido: o recado da agenda
+   * abre o CADERNO, uma folha da home da família.
    */
   const onClickNotif = (n) => {
     const caminho = destinoDoAviso(n, profile?.role);
@@ -144,104 +115,215 @@ export default function NotificationsBody({ onNavigate }) {
     onNavigate(caminho, recado && isParent ? { abrirCaderno: true } : undefined);
   };
 
-  const hasUnread = notifications.some((n) => !n.isRead);
+  const caixa = partirOSino(notifications, { abertoEmMs: abertoEm, agoraMs: abertoEm, assunto });
+  // "Limpar outros" apaga TODOS os de mais de um mês, de qualquer assunto: a
+  // frase do botão diz "outros", e apagar só os da Rota deixaria os do
+  // Dinheiro escondidos atrás do filtro.
+  const todosOsOutros = partirOSino(notifications, { abertoEmMs: abertoEm, agoraMs: abertoEm }).outros;
+  const gruposComAviso = GRUPOS_DO_SINO.filter((g) => caixa[g.chave].length > 0);
+  const vazioNoFiltro = caixa.novos.length === 0 && gruposComAviso.length === 0 && caixa.outros.length === 0;
+
+  const limparOutros = async () => {
+    setLimpando(true);
+    try {
+      await apagarAvisos(todosOsOutros.map((n) => n.id));
+      toast.success('Pronto: avisos antigos apagados.');
+      setOutrosAbertos(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra apagar. Tente de novo.');
+    } finally {
+      setLimpando(false);
+      setConfirmarLimpar(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-20" />
+        ))}
+      </div>
+    );
+  }
+
+  if (notifications.length === 0) {
+    return (
+      <EmptyState
+        icon={Bell}
+        title="Nenhuma notificação"
+        description={
+          isParent
+            ? 'Você verá aqui lembretes de vencimento e confirmações do motorista.'
+            : 'Você verá aqui avisos de pagamentos informados pelos pais.'
+        }
+      />
+    );
+  }
 
   return (
     <>
-      {hasUnread && (
-        <button
-          type="button"
-          onClick={onMarkAll}
-          className="tap mb-2 inline-flex min-h-12 items-center gap-2 text-sm font-bold text-primary"
-        >
-          <CheckCheck size={18} />
-          Marcar todas como lidas
-        </button>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar avisos">
+        {FILTROS.map((f) => {
+          const ativo = assunto === f.assunto;
+          return (
+            <button
+              key={f.rotulo}
+              type="button"
+              aria-pressed={ativo}
+              onClick={() => setAssunto(f.assunto)}
+              className={`tap min-h-12 rounded-full border-2 px-4 text-base font-semibold ${
+                ativo ? 'border-primary bg-primary text-white' : 'border-border bg-card text-textBody'
+              }`}
+            >
+              {f.rotulo}
+            </button>
+          );
+        })}
+      </div>
+
+      {caixa.novos.length > 0 && (
+        <>
+          <TituloDoGrupo>Novos · {caixa.novos.length}</TituloDoGrupo>
+          <ul className="space-y-2">
+            {caixa.novos.map((n) => (
+              <NotificationItem
+                key={n.id}
+                notif={n}
+                quando={quandoDoAviso(n.createdAt, abertoEm)}
+                rosto={rostoDoAviso(n, criancas, profile?.role)}
+                motorista={motorista}
+                motoristaUid={filhoAtivo?.adminUid}
+                onClick={() => onClickNotif(n)}
+              />
+            ))}
+          </ul>
+        </>
       )}
 
-      <div>
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20" />
+      {/* JÁ VISTOS, uma linha cada. Grupo vazio não aparece, e o primeiro
+        * que aparece leva o "Já vistos" no título. */}
+      {gruposComAviso.map((g, i) => (
+        <div key={g.chave}>
+          <TituloDoGrupo>{i === 0 ? `Já vistos · ${g.titulo}` : g.titulo}</TituloDoGrupo>
+          <ul>
+            {caixa[g.chave].map((n) => (
+              <LinhaVista
+                key={n.id}
+                notif={n}
+                quando={quandoDoAviso(n.createdAt, abertoEm)}
+                onClick={() => onClickNotif(n)}
+              />
             ))}
+          </ul>
+        </div>
+      ))}
+
+      {vazioNoFiltro && (
+        <p className="py-6 text-center text-base text-textMuted">Nada aqui.</p>
+      )}
+
+      {/* OUTROS — mais de um mês, fechado. O ÚNICO grupo que se limpa: do mês
+        * para cá é a conversa recente, e apagar sem querer ali custa a prova
+        * de um aviso sobre dinheiro. */}
+      {caixa.outros.length > 0 && (
+        <div className="mt-4 rounded-2xl border-2 border-dashed border-border">
+          <div className="flex min-h-14 items-center gap-2 px-3">
+            <button
+              type="button"
+              onClick={() => setOutrosAbertos((v) => !v)}
+              aria-expanded={outrosAbertos}
+              className="tap flex min-h-12 min-w-0 flex-1 items-center gap-2 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-bold text-text">Outros · {caixa.outros.length}</span>
+                <span className="block text-sm text-textMuted">Mais de um mês</span>
+              </span>
+              <ChevronDown
+                size={20}
+                className={`shrink-0 text-textMuted ${outrosAbertos ? 'rotate-180' : ''}`}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmarLimpar(true)}
+              className="tap min-h-12 shrink-0 rounded-xl border-2 border-border bg-card px-3 text-base font-bold text-textBody"
+            >
+              Limpar outros
+            </button>
           </div>
-        ) : notifications.length === 0 ? (
-          <EmptyState
-            icon={Bell}
-            title="Nenhuma notificação"
-            description={
-              isParent
-                ? 'Você verá aqui lembretes de vencimento e confirmações do motorista.'
-                : 'Você verá aqui avisos de pagamentos informados pelos pais.'
-            }
-          />
-        ) : (
-          <>
-            <ul className="space-y-2">
-              {notifications.slice(0, visibleCount).map((n) => (
-                <NotificationItem
+          {outrosAbertos && (
+            <ul className="px-3 pb-2">
+              {caixa.outros.map((n) => (
+                <LinhaVista
                   key={n.id}
                   notif={n}
-                  rosto={rostoDoAviso(n, criancas, profile?.role)}
-                  motorista={motorista}
-                  motoristaUid={filhoAtivo?.adminUid}
+                  quando={quandoDoAviso(n.createdAt, abertoEm)}
                   onClick={() => onClickNotif(n)}
                 />
               ))}
             </ul>
-            {visibleCount < notifications.length && (
-              <button
-                type="button"
-                onClick={() =>
-                  setVisibleCount((c) => c + PAGE_INCREMENT)
-                }
-                className="tap mt-3 mx-auto flex min-h-12 items-center gap-1.5 rounded-full px-4 text-base font-semibold text-text hover:bg-neutro"
-              >
-                Ver mais{' '}
-                <span className="text-sm text-textMuted">
-                  ({notifications.length - visibleCount} restantes)
-                </span>
-                <ChevronDown size={18} />
-              </button>
-            )}
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
-      {/* ⚠️ AS PREFERÊNCIAS MORAM AQUI, no fim do sino, e não numa tela de
-        * ajustes que não existe.
-        *
-        * É o único lugar do app em que a pessoa já está pensando em avisos —
-        * e é onde ela está no minuto em que se irrita com um. Uma tela de
-        * configurações separada seria mais arrumada e ninguém acharia: quem
-        * quer parar de receber algo não vai procurar um menu, vai desligar o
-        * push no sistema operacional. Que é exatamente o que isto veio
-        * evitar. */}
-      <PreferenciasDeAviso />
+      <ConfirmDialog
+        open={confirmarLimpar}
+        title={`Apagar ${todosOsOutros.length} ${todosOsOutros.length === 1 ? 'aviso antigo' : 'avisos antigos'}?`}
+        description="Só os de mais de um mês."
+        confirmLabel="Apagar"
+        variant="danger"
+        loading={limpando}
+        onConfirm={limparOutros}
+        onCancel={() => setConfirmarLimpar(false)}
+      />
     </>
   );
 }
 
+function TituloDoGrupo({ children }) {
+  return (
+    <p className="mb-1.5 mt-4 px-1 text-sm font-bold uppercase tracking-wide text-textMuted">
+      {children}
+    </p>
+  );
+}
+
+/** Um aviso já visto: uma linha, o quê à esquerda e o quando à direita. */
+function LinhaVista({ notif, quando, onClick }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className="tap flex min-h-12 w-full items-center gap-3 border-b border-border px-1 text-left"
+      >
+        <span className="min-w-0 flex-1 truncate text-base text-textBody">{notif.title}</span>
+        <span className="shrink-0 text-sm tabular-nums text-textMuted">{quando}</span>
+      </button>
+    </li>
+  );
+}
+
 /**
- * UM AVISO, lido como uma conversa do WhatsApp (03/10/2026).
+ * UM AVISO NOVO, lido como uma conversa do WhatsApp (03/10/2026).
  *
  * Padrão em F: o ROSTO no canto esquerdo diz DE QUEM é o assunto antes de
  * qualquer letra; na primeira linha, o QUÊ à esquerda e o QUANDO à direita;
  * embaixo, o detalhe. O tipo do aviso (pagamento, atraso…) não some com o
  * rosto: vira um selo pequeno no canto dele.
  *
- * Letra: título 16px, detalhe 15px, hora 14px — o piso de 40+ do app. Era
- * 14/12/12. O título não é mais cortado em reticências: "Felipe não vai na
- * perua de manhã hoje" cortado no meio é outro aviso.
+ * Letra: título 16px, detalhe 15px, hora 14px — o piso de 40+ do app. O
+ * título não é cortado em reticências: "Felipe não vai na perua de manhã
+ * hoje" cortado no meio é outro aviso.
  */
-function NotificationItem({ notif, rosto, motorista, motoristaUid, onClick }) {
+function NotificationItem({ notif, quando, rosto, motorista, motoristaUid, onClick }) {
   const visual = TYPE_VISUAL[notif.type] || {
     Icon: Bell,
     color: 'text-textMuted bg-neutro',
   };
   const { Icon, color } = visual;
-  const { label, tone } = formatRelativeTime(notif.createdAt);
   const temSelo = rosto.tipo !== 'icone' && Boolean(TYPE_VISUAL[notif.type]);
 
   return (
@@ -249,11 +331,7 @@ function NotificationItem({ notif, rosto, motorista, motoristaUid, onClick }) {
       <button
         type="button"
         onClick={onClick}
-        className={`w-full text-left flex gap-3 p-3 min-h-[72px] rounded-2xl border tap ${
-          notif.isRead
-            ? 'bg-card border-border'
-            : 'bg-primarySoft border-primaryBorder'
-        }`}
+        className="w-full text-left flex gap-3 p-3 min-h-[72px] rounded-2xl border tap bg-primarySoft border-primaryBorder"
       >
         <div className="relative shrink-0">
           {rosto.tipo === 'crianca' ? (
@@ -294,16 +372,8 @@ function NotificationItem({ notif, rosto, motorista, motoristaUid, onClick }) {
             <p className="text-base font-bold leading-snug text-text">
               {notif.title}
             </p>
-            <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
-              <span className={`text-sm font-semibold ${TONE_STYLES[tone]}`}>
-                {label}
-              </span>
-              {!notif.isRead && (
-                <span
-                  className="w-2.5 h-2.5 rounded-full bg-primary"
-                  aria-label="Não lido"
-                />
-              )}
+            <span className="shrink-0 pt-0.5 text-sm font-bold tabular-nums text-accentText">
+              {quando}
             </span>
           </div>
           {notif.body && (

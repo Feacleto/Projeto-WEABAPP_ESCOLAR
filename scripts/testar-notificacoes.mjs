@@ -369,6 +369,50 @@ bloco('12 · O ROSTO DE CADA AVISO (rostoDoAviso)');
   checar('aviso nulo não quebra', 'icone', tipo(null));
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// O modelo D (04/10/2026): novos em cima, já vistos por dia, e "Outros"
+// passado de um mês, o único grupo que se limpa.
+bloco('13 · O SINO EM GRUPOS (partirOSino)');
+{
+  const c = caixaDeAvisos;
+  const AGORA = new Date(2026, 9, 14, 10, 0).getTime(); // 14/10, 10h, hora local
+  const dia = (d, h = 9) => ({ toMillis: () => new Date(2026, 9, 14 - d, h, 0).getTime() });
+  const lista = [
+    { id: 'novo', type: 'absence_declared', createdAt: dia(0) },
+    { id: 'lidoAgora', type: 'payment_claimed', createdAt: dia(0, 8), readAt: { toMillis: () => AGORA + 1000 } },
+    { id: 'hoje', type: 'child_onboard', createdAt: dia(0, 7), readAt: dia(0, 7) },
+    { id: 'ontem', type: 'contract_accepted', createdAt: dia(1), readAt: dia(1) },
+    { id: 'semana', type: 'comercial_indicacao', createdAt: dia(5), readAt: dia(5) },
+    { id: 'mes', type: 'payment_confirmed', createdAt: dia(30), readAt: dia(30) },
+    { id: 'velho', type: 'buzina', createdAt: dia(31), readAt: dia(31) },
+  ];
+  const ids = (assunto) =>
+    Object.values(c.partirOSino(lista, { abertoEmMs: AGORA, agoraMs: AGORA, assunto }))
+      .flat().map((n) => n.id).sort();
+  const g = c.partirOSino(lista, { abertoEmMs: AGORA, agoraMs: AGORA });
+  checar('não lido é novo', true, g.novos.some((n) => n.id === 'novo'));
+  checar('lido DEPOIS de abrir continua novo (o cartão não foge do dedo)', true,
+    g.novos.some((n) => n.id === 'lidoAgora'));
+  checar('hoje, ontem e esta semana', ['hoje', 'ontem', 'semana'],
+    [g.hoje[0]?.id, g.ontem[0]?.id, g.semana[0]?.id]);
+  checar('30 dias ainda é "Este mês"', ['mes'], g.mes.map((n) => n.id));
+  checar('31 dias vai para "Outros"', ['velho'], g.outros.map((n) => n.id));
+  checar('filtro Rota', ['hoje', 'novo', 'velho'], ids(c.ASSUNTO.ROTA));
+  checar('filtro Dinheiro tem pagamento e contrato', ['lidoAgora', 'mes', 'ontem'], ids(c.ASSUNTO.DINHEIRO));
+  checar('oferta só aparece em "Tudo"', c.ASSUNTO.OUTRO, c.assuntoDoAviso('comercial_indicacao'));
+  checar('hora de hoje', '09:00', c.quandoDoAviso(dia(0), AGORA));
+  checar('dia da semana', true,
+    ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].includes(c.quandoDoAviso(dia(4), AGORA)));
+  checar('data depois da semana', '04/10', c.quandoDoAviso(dia(10), AGORA));
+  checar('sem hora do servidor ainda é "Agora"', 'Agora', c.quandoDoAviso(null, AGORA));
+
+  const corpo = ler('src/components/notifications/NotificationsBody.jsx');
+  checar('o sino não tem mais as chaves de aviso (moram no Perfil)', false,
+    corpo.includes('PreferenciasDeAviso'));
+  checar('"Limpar outros" apaga só os "Outros"', true, corpo.includes('apagarAvisos(todosOsOutros.map'));
+  checar('as chaves continuam no Perfil', true, ler('src/pages/Profile.jsx').includes('<PreferenciasDeAviso />'));
+}
+
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) {

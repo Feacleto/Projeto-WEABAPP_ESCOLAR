@@ -370,6 +370,21 @@ export async function markAllNotificationsRead(ids) {
 }
 
 /**
+ * "LIMPAR OUTROS" — apaga os avisos de mais de um mês que a pessoa já viu
+ * (04/10/2026). Recebe os ids que o sino mostrou em "Outros"; as rules só
+ * deixam apagar a caixa da própria pessoa. Em lotes, pelo mesmo teto de 500.
+ */
+export async function apagarAvisos(ids) {
+  const unicos = [...new Set((ids || []).filter(Boolean))];
+  for (const lote of emLotes(unicos, LOTE_DE_LEITURA)) {
+    const batch = writeBatch(db);
+    lote.forEach((id) => batch.delete(doc(db, 'notifications', id)));
+    await batch.commit();
+  }
+  return unicos.length;
+}
+
+/**
  * O CONTRATO ESTÁ PRONTO PRA ELA ACEITAR.
  *
  * Sai do mesmo gesto em que o motorista manda o contrato pelo WhatsApp — e o

@@ -350,7 +350,10 @@ src/
 │   │                  Indicações, Pesquisa, Investidores (os contatos que
 │   │                  chegam pelo site). As abas moram em
 │   │                  components/admin/.
-│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.3
+│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.4
+│                       (04/10/2026: a leitura única da posição no
+│                       posto de combustível entrou na cláusula 8, na
+│                       base legal 5.c e na retenção). Na 1.3
 │                       (03/10/2026): a saúde da criança ganhou base legal
 │                       própria (consentimento específico da responsável,
 │                       art. 11 I) e saiu das "observações" do motorista.
@@ -1527,13 +1530,13 @@ app não oferecia. **`LEGAL_VERSION` foi a 1.2** na mesma alteração, e subir a
 versão obriga todo mundo a reaceitar.
 
 ⚠️ **O APP NUNCA COLETOU A LOCALIZAÇÃO DOS PAIS**, e agora isso está escrito
-nos Termos. O GPS do aparelho é pedido em TRÊS lugares, os três do motorista:
+nos Termos. O GPS do aparelho é pedido em QUATRO lugares, todos do motorista:
 o rastreamento da rota, o *"usar minha localização"* do seletor de mapa
 (cadastro da criança e "editar onde mora", este último atrás de `isAdmin`), e
 desde 02/10/2026 o último passo do primeiro acesso, que lê a posição UMA vez
-para gravar o nome da cidade e do bairro. ⚠️ **A cláusula 8 ainda diz que a
-localização só é coletada durante a rota** — esse terceiro uso está pendente
-de decisão do dono sobre o texto e o `LEGAL_VERSION`.
+para gravar o nome da cidade e do bairro, e desde 04/10/2026 o "Sim, estou" do
+abastecer (o lugar do POSTO). A 1.4 da Política declara o do posto; ⚠️ **o do
+primeiro acesso continua sem frase na cláusula 8** — pendente do dono.
 
 ---
 
@@ -1799,6 +1802,18 @@ taxa, contrato da associação, pausar, indicar, selo, suporte) — só para o
 motorista. ⚠️ Leitura não se negocia: [corDaMarca.js](src/marca/corDaMarca.js)
 escurece até 5,5:1 e cor sem cor fica verde (`testar:cor-da-marca`). ⚠️ As
 cores com SIGNIFICADO não entram no tema (accent = pago, âmbar, vermelho).
+⚠️ **DESDE 04/10/2026 SÃO DUAS VERSÕES DA COR** (aprovado pelo dono): o
+`primary` escurecido virava o laranja do logo em marrom, e a cor "sumia". Hoje
+há também `marca`/`marcaEscuro` (a cor VIVA do logo) e `naMarca` (a letra
+branca ou quase-preta que lê nela) — nos botões principais (`Button`), na
+pílula do rodapé, no cartão do dia do Início, no saldo do caixa (negativo volta
+ao branco) e na faixa "Pagar a …" do Financeiro da família. Letra e ícone sobre
+o branco seguem no `primary`. Com cor, o cabeçalho do Início VIRA a faixa da
+marca (logo numa pastilha branca) e os outros ganham um filete da cor
+(`data-marca` no `<html>`, CSS em index.css); o logo do cabeçalho passou a
+44 px de altura e até 120 de largura. ⚠️ **Trocar o logo PERGUNTA** a cor
+(`PerguntaDaCor`, com prévia) em vez de aplicar calada, e são sempre três
+opções: as duas cores mais fortes do logo (`opcoesDoLogo`) e o verde.
 
 **Avatar respeita gênero pelo CABELO**, em
 [avatarUrl.js](src/marca/avatarUrl.js). O estilo é `adventurer` — 26 cortes
@@ -2028,9 +2043,17 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
     o preço da bomba vira "dá N litros" ou "vai dar R$ X"; "Abasteci" lança a
     despesa `fuel` com `litros`, `tipoCombustivel`, `posto`, `tanqueCheio`
     (rules: só em `fuel`). O preço do litro NÃO é gravado (amount ÷ litros).
-    Os postos são só NOME, com o último preço visto, em
-    `configFinanceiro.postos` (≤ 20); o tipo é da perua
-    (`configFinanceiro.combustivelDaPerua`), escolhido uma vez.
+    Os postos ficam em `configFinanceiro.postos` (≤ 20): nome, último preço
+    visto e, desde 04/10/2026, `endereco` + o ponto (`lat`/`lng`, 4 casas).
+    ⚠️ **"VOCÊ ESTÁ NO POSTO AGORA?"** (pedido do dono): com "Sim" a
+    posição é lida UMA vez (`posicaoNoPosto`); posto dele a menos de 200 m é
+    PERGUNTADO ("Você está no Posto Shell?"), posto novo ganha o endereço.
+    ⚠️ **O PREÇO NUNCA VEM PREENCHIDO** (muda todo dia): depois que ele
+    digita o de hoje aparece "A última vez aqui" (histórico). O tipo é da
+    perua (`combustivelDaPerua`), e "Colocar outro combustível dessa vez"
+    troca só aquele abastecimento. Régua: `postosPerto`/`pontoDoPosto`.
+    ⚠️ No `npm run dev` a folha "Abasteci" fecha sozinha (StrictMode +
+    `useVoltarFechaFolha`); em produção, não.
   - **Reserva da perua** (`/tio/finance/reserva`): ⚠️ **o app NÃO guarda
     dinheiro** — ele ANOTA o que o motorista diz ter no banco
     (`configFinanceiro.guardado.{troca,manutencao}`), e o teste reprova
@@ -3042,10 +3065,22 @@ novo.
   aviso a mais é ruído; um aviso de chegada que não toca é a mãe na calçada. E
   `testar:preferencias` varre o código atrás de `type:` e falha se algum tipo
   não estiver classificado.
-- **A tela mora no fim do sino**, não numa tela de ajustes: é o único lugar em
-  que a pessoa já está pensando em avisos, e é onde ela está no minuto em que
-  se irrita com um. `avisosDesligados` não precisou de rule nova — o `update`
+- **A escolha mora SÓ no Perfil** (bloco Avisos, "Avisos no celular"), desde
+  04/10/2026 (decisão do dono): interruptores, com "Rota e criança" travado em
+  "Sempre ligado" à vista. Antes ficava também no fim do sino. Depois de
+  salvar o perfil é relido — sem isso, a tela montada de novo mostrava a
+  escolha antiga. `avisosDesligados` não precisou de rule nova — o `update`
   de `users` é lista de PROIBIDOS, e preferência não é cláusula.
+
+⚠️ **O SINO É O MODELO D (04/10/2026, escolhido pelo dono entre quatro)** —
+[NotificationsBody](src/components/notifications/NotificationsBody.jsx), régua
+`partirOSino` em [caixaDeAvisos.js](src/dominio/identidade/caixaDeAvisos.js)
+(`testar:notificacoes`, bloco 13). Filtro Tudo · Rota · Dinheiro; os NOVOS em
+cartões verdes (novo = não lido quando a folha ABRIU, senão o auto-marcar de
+1,5 s os faria fugir do dedo); os já vistos numa linha cada, em Hoje · Ontem ·
+Esta semana · Este mês; e o que passou de 30 dias fica fechado em "Outros", o
+ÚNICO grupo com "Limpar outros" (apaga todos os Outros, de qualquer assunto,
+com confirmação). Depois de 90 dias o servidor apaga sozinho.
 
 ⚠️ **TRÊS AGENDADOS RODAVAM ÀS 9H FALANDO COM A MESMA PESSOA.** O comercial
 (`enviarAvisos`), o operacional (`enviarAvisosDoDia`) e o e-mail de
