@@ -100,6 +100,7 @@ import { useActiveChild } from './hooks/useActiveChild';
 import { hasAcceptedCurrentTerms } from './services/consentService';
 import { estadoDoContrato } from './dominio/cobranca/contratoDaFamilia.js';
 import Respiro from './components/common/Respiro';
+import TemaDaMarca, { ZonaDaPlataforma } from './components/common/TemaDaMarca';
 import { SITE_INSTITUCIONAL } from './config/vitrine';
 import Travessia from './components/common/Travessia';
 import { TrancaDoFinanceiroProvider } from './context/TrancaDoFinanceiroContext';
@@ -607,6 +608,8 @@ export default function App() {
               * não pode ser condicional. Um cartão de conta inativa lá
               * dentro chegaria DEPOIS de todo o dado ter sido carregado —
               * e desfoque sobre dado carregado é CSS, não proteção. */}
+            {/* A cor do motorista, tirada do logo dele (03/10/2026). */}
+            <TemaDaMarca />
             <PrimeiroAcessoGate>
               <GuardaDaConta>
                 <TioLayout />
@@ -647,8 +650,8 @@ export default function App() {
         {/* O selo fica DENTRO do guarda: quem está bloqueado não precisa de
           * adesivo, precisa de voltar a operar. As três telas de voltar a
           * pagar são as únicas de fora, e o motivo está logo abaixo. */}
-        <Route path="selo" element={<TioSelo />} />
-        <Route path="indicar" element={<SoComCobranca modulo="indicacao"><TioIndicar /></SoComCobranca>} />
+        <Route path="selo" element={<ZonaDaPlataforma><TioSelo /></ZonaDaPlataforma>} />
+        <Route path="indicar" element={<SoComCobranca modulo="indicacao"><ZonaDaPlataforma><TioIndicar /></ZonaDaPlataforma></SoComCobranca>} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
       </Route>
@@ -674,7 +677,7 @@ export default function App() {
         element={
           <PrivateRoute requireRole="admin">
             <SoComCobranca>
-              <TioPlanos />
+              <ZonaDaPlataforma><TioPlanos /></ZonaDaPlataforma>
             </SoComCobranca>
           </PrivateRoute>
         }
@@ -689,7 +692,7 @@ export default function App() {
                 * chegar aqui para pagar —, e o guarda do Financeiro não
                 * depende de conta ativa. */}
               <GuardaDoFinanceiro voltarPara="/tio">
-                <TioTaxa />
+                <ZonaDaPlataforma><TioTaxa /></ZonaDaPlataforma>
               </GuardaDoFinanceiro>
             </SoComCobranca>
           </PrivateRoute>
@@ -700,7 +703,7 @@ export default function App() {
         element={
           <PrivateRoute requireRole="admin">
             <SoComCobranca>
-              <TioContratoAssociacao />
+              <ZonaDaPlataforma><TioContratoAssociacao /></ZonaDaPlataforma>
             </SoComCobranca>
           </PrivateRoute>
         }
@@ -717,7 +720,7 @@ export default function App() {
         element={
           <PrivateRoute requireRole="admin">
             <SoComCobranca>
-              <TioEncerrar />
+              <ZonaDaPlataforma><TioEncerrar /></ZonaDaPlataforma>
             </SoComCobranca>
           </PrivateRoute>
         }
@@ -727,6 +730,8 @@ export default function App() {
         path="/pai"
         element={
           <PrivateRoute requireRole="parent">
+            {/* A família vê tudo na cor do motorista do filho ativo. */}
+            <TemaDaMarca />
             <SemVinculoGate>
               <PrimeiroAcessoDoPaiGate>
                 <PaiLayout />

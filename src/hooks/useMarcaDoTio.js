@@ -39,5 +39,7 @@ export function useMarcaDoTio() {
   return {
     nome: fonte?.marcaNome?.trim() || null,
     logoURL: fonte?.marcaLogoURL || null,
+    // A cor tirada do logo (03/10/2026) — ver marca/corDaMarca.js.
+    cor: fonte?.marcaCor || null,
   };
 }

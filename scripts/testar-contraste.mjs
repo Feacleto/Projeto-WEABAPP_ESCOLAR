@@ -26,7 +26,10 @@
  */
 import cfg from '../tailwind.config.js';
 
-const C = cfg.theme.extend.colors;
+// `coresHex`: os valores de verdade — no tema, o Tailwind lê variáveis (a cor
+// do motorista). O contraste é medido no verde da casa; a paleta de cada
+// motorista é medida em testar-cor-da-marca.
+const C = cfg.coresHex || cfg.theme.extend.colors;
 
 let ok = 0, falhou = 0;
 

@@ -57,7 +57,7 @@ for (const copia of ['src/design/tokens.css', 'landing/tokens.css']) {
   checar(`${copia} está igual ao tailwind.config.js (rode \`npm run tokens\`)`, true, normal(ler(copia)) === gerado);
 }
 checar('todo apelido do site aponta para um token que existe', [],
-  Object.entries(APELIDOS).filter(([, t]) => typeof cfg.theme.extend.colors[t] !== 'string').map(([a]) => a));
+  Object.entries(APELIDOS).filter(([, t]) => typeof (cfg.coresHex || cfg.theme.extend.colors)[t] !== 'string').map(([a]) => a));
 checar('o index.css importa os tokens antes de tudo', true,
   /^(\/\*[\s\S]*?\*\/\s*)*@import '\.\/design\/tokens\.css';/.test(ler('src/index.css')));
 

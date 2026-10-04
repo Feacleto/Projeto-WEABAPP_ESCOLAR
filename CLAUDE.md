@@ -1574,6 +1574,20 @@ Nino"). Não é `name`, que é o nome civil do contrato. Resolve em
 [useMarcaDoTio.js](src/hooks/useMarcaDoTio.js) — o pai vê a marca do motorista
 DELE, pelo `adminUid` da criança ativa. Sem marca, volta o título.
 
+⚠️ **E A COR DO APP É A DO LOGO DELE** (03/10/2026, pedido do dono). Trocar o
+logo lê a cor mais forte da imagem no aparelho e grava `users.marcaCor` (e
+`marcaCoresSugeridas`); o cartão "Sua marca" troca entre elas ou volta ao
+verde. As seis tintas `primary*`/`menta` leem variáveis `--tema-*`
+([tailwind.config.js](tailwind.config.js) — os hex de verdade ficam em
+`coresHex`, que o gerador de tokens e os testes leem), e
+[TemaDaMarca](src/components/common/TemaDaMarca.jsx) as troca ao lado dos dois
+painéis. A família vê a cor do motorista da criança ativa. **A relação com a
+plataforma fica no verde da casa** (`ZonaDaPlataforma`/`.tema-alo`: planos,
+taxa, contrato da associação, pausar, indicar, selo, suporte) — só para o
+motorista. ⚠️ Leitura não se negocia: [corDaMarca.js](src/marca/corDaMarca.js)
+escurece até 5,5:1 e cor sem cor fica verde (`testar:cor-da-marca`). ⚠️ As
+cores com SIGNIFICADO não entram no tema (accent = pago, âmbar, vermelho).
+
 **Avatar respeita gênero pelo CABELO**, em
 [avatarUrl.js](src/marca/avatarUrl.js). O estilo é `adventurer` — 26 cortes
 `long*` e 19 `short*`, nenhum ambíguo. Já foi `notionists`, que não expunha

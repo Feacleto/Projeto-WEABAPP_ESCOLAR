@@ -70,6 +70,8 @@ import { PIX_KEY_TYPES, setMarca } from '../services/userService';
 import { APP_VERSION } from '../version';
 import ReviewSheet from '../components/feedback/ReviewSheet';
 import SupportSheet from '../components/support/SupportSheet';
+import CorDaMarca from '../components/tio/CorDaMarca';
+import { lerCoresDoLogo } from '../services/coresDoLogoService';
 import PreferenciasDeAviso from '../components/notifications/PreferenciasDeAviso';
 import PixSheet from '../components/payments/PixSheet';
 import { AddChildSheet } from './pai/AddChild';
@@ -285,6 +287,8 @@ export default function Profile() {
               uid={user?.uid}
               nome={profile?.marcaNome || ''}
               logoURL={profile?.marcaLogoURL || null}
+              cor={profile?.marcaCor || null}
+              cores={profile?.marcaCoresSugeridas || []}
               onChanged={refreshProfile}
             />
             <Card>
@@ -952,7 +956,7 @@ function PushCard({ uid }) {
  * vai aparecer, e o tamanho real é a única informação útil aqui. Logo que
  * funciona em 200px e some em 32px é o erro que essa prévia evita.
  */
-function MarcaCard({ uid, nome, logoURL, onChanged }) {
+function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
   const [valor, setValor] = useState(nome);
   const [salvando, setSalvando] = useState(false);
   const [subindo, setSubindo] = useState(false);
@@ -980,7 +984,11 @@ function MarcaCard({ uid, nome, logoURL, onChanged }) {
     setSubindo(true);
     try {
       const url = await uploadMarcaLogo(uid, file);
-      await setMarca(uid, { logoURL: url });
+      // A COR ACOMPANHA O LOGO (03/10/2026): trocou o logo, a cor mais
+      // forte dele vira a cor do app — lida do ARQUIVO, no aparelho, antes
+      // de qualquer rede. Logo sem cor viva volta ao verde da casa.
+      const achadas = await lerCoresDoLogo(file);
+      await setMarca(uid, { logoURL: url, cor: achadas[0] || null, cores: achadas });
       await onChanged?.();
       toast.success('Logo atualizado!');
     } catch (err) {
@@ -997,7 +1005,7 @@ function MarcaCard({ uid, nome, logoURL, onChanged }) {
       await deleteMarcaLogo(uid);
       // `null` explícito: `undefined` seria ignorado pelo Firestore e o
       // cabeçalho continuaria mostrando um logo que já não existe no Storage.
-      await setMarca(uid, { logoURL: null });
+      await setMarca(uid, { logoURL: null, cor: null, cores: [] });
       await onChanged?.();
     } catch (err) {
       console.error('Falha ao remover o logo:', err);
@@ -1079,6 +1087,8 @@ function MarcaCard({ uid, nome, logoURL, onChanged }) {
           )}
         </div>
       )}
+
+      <CorDaMarca uid={uid} logoURL={logoURL} cor={cor} cores={cores} onChanged={onChanged} />
     </Card>
   );
 }

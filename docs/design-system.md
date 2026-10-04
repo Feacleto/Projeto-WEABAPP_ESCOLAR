@@ -117,6 +117,29 @@ tem volta: título é a pergunta, texto é a consequência, botão repete o verb
 **tela cheia** (só a buzina). Um por vez. Erro aparece onde aconteceu, nunca num
 popup por cima. Durante a rota, nada de confirmação.
 
+## A cor do motorista (03/10/2026)
+
+O app do motorista, e o das famílias dele, usa a cor tirada do **logo dele**
+no lugar do verde. São seis tintas: `primary`, `primaryDark`, `primarySoft`,
+`primaryChip`, `primaryBorder` e `menta`. No Tailwind elas leem variáveis
+`--tema-*`, e o padrão de cada uma é o verde da casa.
+
+- **De onde vem:** ao trocar o logo, o celular lê a cor mais forte da imagem
+  ([corDaMarca.js](../src/marca/corDaMarca.js)) e grava em `users.marcaCor`.
+  Ele troca entre as sugestões do logo ou volta ao verde no cartão "Sua marca".
+- **Leitura não se negocia:** o tom principal é escurecido até o branco em
+  cima dele e ele como texto passarem de 5,5:1. Cor sem cor (cinza, preto,
+  branco) fica no verde. `testar:cor-da-marca` gira o círculo inteiro.
+- **O que NÃO muda com a marca:** o que tem significado. `accent` (concluído,
+  pago), âmbar (aviso), vermelho (perigo) e os pinos do mapa. Um logo vermelho
+  não pode fazer "pago" parecer "atrasado".
+- **A relação com a plataforma fica no verde do Alô Buzinou** (`.tema-alo`,
+  ou `ZonaDaPlataforma`): planos, taxa, contrato da associação, pausar a conta,
+  indicar, selo, suporte. Só para o motorista. Na família, tudo é na cor dele.
+- **Quem aplica:** `TemaDaMarca`, ao lado dos dois painéis em `App.jsx`, pela
+  marca de `useMarcaDoTio` (a da criança ativa, para a família). Ao sair do
+  painel, o verde volta.
+
 ## Movimento
 
 Quatro durações (`duration-toque` 120, `-estado` 200, `-entrada` 300, `-festa`

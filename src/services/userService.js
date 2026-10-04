@@ -213,11 +213,19 @@ export async function markTutorialDone(uid) {
  * `undefined` seria ignorado pelo Firestore — o logo antigo continuaria lá,
  * com o app fingindo que a remoção deu certo.
  */
-export async function setMarca(uid, { nome, logoURL } = {}) {
+export async function setMarca(uid, { nome, logoURL, cor, cores } = {}) {
   if (!uid) throw new Error('Sem uid.');
   const dados = {};
   if (nome !== undefined) dados.marcaNome = String(nome || '').trim().slice(0, 40);
   if (logoURL !== undefined) dados.marcaLogoURL = logoURL || null;
+  // A COR DO APP, tirada do logo (03/10/2026) — `marcaCor` é a escolhida e
+  // `marcaCoresSugeridas` as até três que o logo ofereceu, para ele poder
+  // trocar sem reenviar a imagem. Sem rule nova: o `update` do próprio doc é
+  // lista de PROIBIDOS, e cor é preferência, não cláusula. `null` volta ao
+  // verde da casa.
+  const hex = (v) => (/^#[0-9A-F]{6}$/i.test(String(v || '')) ? String(v).toUpperCase() : null);
+  if (cor !== undefined) dados.marcaCor = hex(cor);
+  if (cores !== undefined) dados.marcaCoresSugeridas = (cores || []).map(hex).filter(Boolean).slice(0, 3);
   if (Object.keys(dados).length === 0) return;
   await updateDoc(doc(db, 'users', uid), dados);
 }

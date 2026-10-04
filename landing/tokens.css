@@ -109,4 +109,20 @@
   --dur-festa: 450ms;
   --curva-freio: cubic-bezier(.2,.8,.2,1);
   --curva-mola: cubic-bezier(.3,1.5,.5,1);
+  /* ── o tema do motorista (padrão: o verde da casa) ── */
+  --tema-primary: 31 95 63;
+  --tema-primaryDark: 20 63 42;
+  --tema-primarySoft: 238 248 241;
+  --tema-primaryChip: 221 245 229;
+  --tema-primaryBorder: 185 228 198;
+  --tema-menta: 167 243 208;
+}
+
+.tema-alo {
+  --tema-primary: 31 95 63;
+  --tema-primaryDark: 20 63 42;
+  --tema-primarySoft: 238 248 241;
+  --tema-primaryChip: 221 245 229;
+  --tema-primaryBorder: 185 228 198;
+  --tema-menta: 167 243 208;
 }

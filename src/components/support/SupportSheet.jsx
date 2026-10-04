@@ -88,9 +88,14 @@ export default function SupportSheet({ open, onClose, uid, role, profile, email 
     fechar();
   };
 
+  // O SUPORTE É A VOZ DA PLATAFORMA (03/10/2026): para o motorista ele fica
+  // no verde do Alô Buzinou, por cima da cor da marca dele (`tema-alo`). Para
+  // a família, tudo é na cor do motorista — pedido do dono.
   return (
     <div
-      className="fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm"
+      className={`fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm ${
+        role === 'admin' ? 'tema-alo' : ''
+      }`}
       onClick={fechar}
       style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
     >

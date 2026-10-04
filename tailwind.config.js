@@ -15,7 +15,7 @@
  * documento): o site tinha a cara da marca, o app tinha as cores medidas.
  * Ficou a cara de um com a régua do outro.
  */
-export default {
+const base = {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
@@ -400,3 +400,30 @@ export default {
   },
   plugins: [],
 };
+
+/*
+ * ═══ A COR DO MOTORISTA (03/10/2026, pedido do dono) ═══
+ *
+ * O app do motorista e o das famílias dele usam a cor tirada do LOGO dele
+ * (src/marca/corDaMarca.js). As seis tintas abaixo deixam de ser hex fixo no
+ * Tailwind e passam a ler uma variável CSS (`--tema-*`), que o layout troca
+ * na hora. Os PADRÕES são o verde da casa, gerados em tokens.css a partir de
+ * `coresHex` — então sem marca nada muda.
+ *
+ * `.tema-alo` devolve o verde do Alô Buzinou a um pedaço da tela: é como as
+ * telas de RELAÇÃO COM A PLATAFORMA (plano, taxa, suporte, sair da conta)
+ * continuam na cor da casa dentro do app do motorista.
+ *
+ * ⚠️ `coresHex` é a fonte de VERDADE dos valores: o gerador de tokens, o
+ * teste de contraste e o de design leem dali. As cores com SIGNIFICADO
+ * (accent = concluído/pago, âmbar, vermelho) não entram no tema: um logo
+ * vermelho não pode fazer "pago" parecer "atrasado".
+ */
+export const CORES_DO_TEMA = ['primary', 'primaryDark', 'primarySoft', 'primaryChip', 'primaryBorder', 'menta'];
+
+const coresHex = { ...base.theme.extend.colors };
+for (const nome of CORES_DO_TEMA) {
+  base.theme.extend.colors[nome] = `rgb(var(--tema-${nome}) / <alpha-value>)`;
+}
+
+export default { ...base, coresHex, coresDoTema: CORES_DO_TEMA };

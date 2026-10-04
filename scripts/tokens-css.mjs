@@ -65,7 +65,8 @@ function familia(lista) {
 
 export function montarTokensCss(cfg) {
   const t = cfg.theme.extend;
-  const cores = t.colors;
+  // `coresHex`: os valores de verdade (o Tailwind lê variáveis no tema).
+  const cores = cfg.coresHex || t.colors;
   const linhas = [];
   const v = (nome, valor) => linhas.push(`  --${nome}: ${valor};`);
 
@@ -99,13 +100,23 @@ export function montarTokensCss(cfg) {
   for (const [nome, valor] of Object.entries(t.transitionDuration)) v(`dur-${nome}`, valor);
   for (const [nome, valor] of Object.entries(t.transitionTimingFunction)) v(`curva-${nome}`, valor);
 
+  // O TEMA DO MOTORISTA: os padrões são o verde da casa, em canais "R G B"
+  // (o formato que o `<alpha-value>` do Tailwind pede). `.tema-alo` os
+  // devolve a um pedaço da tela, por cima da cor do motorista.
+  const tema = (cfg.coresDoTema || []).map((nome) => {
+    const n = parseInt(String(cores[nome]).slice(1), 16);
+    return `  --tema-${nome}: ${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255};`;
+  });
+
   return [
     '/* GERADO por `npm run tokens` a partir de tailwind.config.js. NÃO EDITE À MÃO:',
     '   mude o valor lá e rode o comando. `npm run testar:design` falha se esta',
     '   cópia ficar diferente da fonte. Regras de uso: docs/design-system.md */',
     ':root {',
     ...linhas,
+    ...(tema.length ? ['  /* ── o tema do motorista (padrão: o verde da casa) ── */', ...tema] : []),
     '}',
+    ...(tema.length ? ['', '.tema-alo {', ...tema, '}'] : []),
     '',
   ].join('\n');
 }
