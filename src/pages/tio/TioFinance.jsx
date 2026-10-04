@@ -19,7 +19,6 @@ import {
   Plus,
   Minus,
   Send,
-  Diamond,
   Receipt,
   Users,
   Download,
@@ -567,7 +566,9 @@ export default function TioFinance() {
           <Atalho icon={Plus} rotulo="Receber" onClick={() => irParaAba('mensalidades', 'open')} />
           <Atalho icon={Minus} rotulo="Lançar despesa" onClick={() => setDespesaAberta(true)} />
           <Atalho icon={Send} rotulo="Cobrar" onClick={() => irParaAba('mensalidades', 'open')} />
-          <Atalho icon={Diamond} rotulo="Chave PIX" onClick={() => setPixOpen(true)} />
+          {/* O MESMO ÍCONE do "Mostrar meu PIX" da tela trancada (04/10/2026): o
+            * losango não lembrava PIX, e o mesmo assunto tem o mesmo desenho. */}
+          <Atalho icon={QrCode} rotulo="Chave PIX" onClick={() => setPixOpen(true)} />
         </div>
 
         {/* 3. O SALDO. Um número grande só, e ele é o que sobrou. */}
