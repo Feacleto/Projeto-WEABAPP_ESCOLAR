@@ -27,14 +27,19 @@ export function marcarBoletimVisto(uid, mes) {
   }
 }
 
-/** Quantos meses o Boletim alcança: os 12 do seletor, contando o corrente. */
-export const MESES_DO_BOLETIM = 12;
+/**
+ * Quantos meses o Boletim alcança: 24, contando o corrente (decisão do dono,
+ * 04/10/2026) — para ele poder abrir o mesmo mês do ano passado ao lado do
+ * deste. Custa uma leitura por mensalidade da janela ao abrir; as mensalidades
+ * ficam guardadas 60 meses, então nada some do banco depois dos 24.
+ */
+export const MESES_DO_BOLETIM = 24;
 
 /**
  * AS MENSALIDADES QUE O BUZI E O BOLETIM LEEM, ao vivo.
  *
  * Duas escutas, as duas do próprio motorista:
- *   - os últimos 12 meses (o "quanto entrou" e o Boletim fechado de cada mês);
+ *   - os últimos 24 meses (o "quanto entrou" e o Boletim fechado de cada mês);
  *   - o que está ABERTO de antes disso (o atrasado velho não some da lista
  *     só porque passou da janela).
  * Juntas por id. Devolve `null` enquanto qualquer uma não chegou — resposta

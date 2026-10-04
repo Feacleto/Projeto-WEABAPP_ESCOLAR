@@ -77,6 +77,7 @@ export default function TioBoletim() {
                 }`}
               >
                 {nomeDoMes(m)}
+                {m.slice(0, 4) !== atual.slice(0, 4) ? ` de ${m.slice(0, 4)}` : ''}
                 {m === atual ? ' (parcial)' : ''}
               </button>
             ))}
@@ -128,7 +129,7 @@ function Documento({ b, profile, atualizadoEm, mostrar }) {
       <header className="space-y-1 border-b border-border pb-4">
         <p className="rotulo">{b.fechado ? 'Boletim fechado' : `Boletim parcial · até o dia ${b.ate}`}</p>
         <h1 className="font-display text-2xl font-bold text-text">
-          Boletim de {b.nomeDoMes}
+          Boletim de {b.nomeDoMes} de {b.mes.slice(0, 4)}
         </h1>
         <p className="text-base text-textMuted">
           {profile?.marcaNome || profile?.companyName || profile?.name || ''}

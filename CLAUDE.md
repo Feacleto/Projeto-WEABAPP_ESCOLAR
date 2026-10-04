@@ -1795,8 +1795,8 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   a foto do último instante dele, pelas datas gravadas). Régua em
   [boletim.js](src/dominio/cobranca/boletim.js), `npm run testar:boletim`.
   ⚠️ **NÃO É IA, e não se chama assim**: as respostas são montadas no
-  aparelho com as mensalidades que ele já lê (`useBoletim`: 12 meses + o
-  aberto de antes, ao vivo) — tocar não custa leitura. ⚠️ **Três regras do
+  aparelho com as mensalidades que ele já lê (`useBoletim`: 24 meses + o
+  aberto de antes, ao vivo — 24 para abrir o mesmo mês do ano passado) — tocar não custa leitura. ⚠️ **Três regras do
   dono, no teste:** um assunto por pergunta; NENHUMA comparação com outro
   mês (atrasado pago agora pareceria aumento — o "entrou" separa por dentro o
   que é do mês, atrasado antigo e adiantado); e nada de conversa de amigo.
