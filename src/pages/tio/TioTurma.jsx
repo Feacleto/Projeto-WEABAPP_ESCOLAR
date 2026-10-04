@@ -5,12 +5,15 @@ import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
 import EditarCombinadoSheet from '../../components/contract/EditarCombinadoSheet';
+import Avatar from '../../components/common/Avatar';
+import { ChildDetailSheet } from '../ChildDetail';
 import { nomeDoMes } from '../../components/payments/estadoDaMensalidade';
 import { useTurmaInteira } from '../../hooks/useTurmaInteira';
 import { useContratos } from '../../hooks/useContratos';
 import { useValoresVisiveis, VALOR_ESCONDIDO } from '../../hooks/useValoresVisiveis';
 import {
   INICIO_DAS_SAIDAS,
+  criancasDoMovimento,
   frasesDoMovimento,
   movimentoDaTurma,
 } from '../../dominio/identidade/movimentoDaTurma.js';
@@ -48,6 +51,9 @@ export default function TioTurma() {
   const { criancas, loading } = useTurmaInteira();
   const { visiveis } = useValoresVisiveis();
   const [mudando, setMudando] = useState(null);
+  // A FICHA abre por cima, no toque na foto ou no nome — e o contrato está
+  // nela ("Ver contrato" no cartão do combinado).
+  const [fichaDe, setFichaDe] = useState(null);
 
   const mesAtual = getCurrentMonthKey();
   const movimento = useMemo(
@@ -96,11 +102,20 @@ export default function TioTurma() {
                       )}
                     </span>
                   </div>
-                  {m.entraram.length > 0 && (
-                    <span className="text-base text-textBody">Entrou: {m.entraram.join(', ')}</span>
-                  )}
-                  {m.saidasContadas && m.sairam.length > 0 && (
-                    <span className="text-base text-textBody">Saiu: {m.sairam.join(', ')}</span>
+                  {/* QUEM ENTROU E SAIU, COM FOTO (03/10/2026, pedido do dono):
+                    * o nome sozinho não diz quem é; o rosto diz, e o toque abre
+                    * a ficha. */}
+                  <QuemMudou
+                    rotulo="Entrou"
+                    criancas={criancasDoMovimento({ criancas, mes: m.mes }).entraram}
+                    onAbrir={setFichaDe}
+                  />
+                  {m.saidasContadas && (
+                    <QuemMudou
+                      rotulo="Saiu"
+                      criancas={criancasDoMovimento({ criancas, mes: m.mes }).sairam}
+                      onAbrir={setFichaDe}
+                    />
                   )}
                 </div>
               );
@@ -130,8 +145,22 @@ export default function TioTurma() {
                   key={c.id}
                   className={`flex min-h-16 items-center gap-3 px-4 py-3.5 ${i > 0 ? 'border-t border-neutro' : ''}`}
                 >
+                  <button
+                    type="button"
+                    onClick={() => setFichaDe(c.id)}
+                    aria-label={`Abrir a ficha de ${c.name}`}
+                    className="tap shrink-0 rounded-full"
+                  >
+                    <Avatar photoURL={c.photoURL} gender={c.gender} seed={c.id} kind="child" size="md" />
+                  </button>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-bold text-text">{c.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => setFichaDe(c.id)}
+                      className="tap block max-w-full truncate text-left text-base font-bold text-text"
+                    >
+                      {c.name}
+                    </button>
                     <p className="mt-0.5 text-sm text-textBody">
                       {c.monthlyFee
                         ? `${visiveis ? formatCurrency(c.monthlyFee) : VALOR_ESCONDIDO}/mês`
@@ -158,6 +187,12 @@ export default function TioTurma() {
         )}
       </div>
 
+      <ChildDetailSheet
+        open={!!fichaDe}
+        childId={fichaDe}
+        onClose={() => setFichaDe(null)}
+      />
+
       {mudando && (
         <MudarCombinado
           key={mudando.id}
@@ -176,4 +211,28 @@ export default function TioTurma() {
 function MudarCombinado({ child, onClose }) {
   const { contratos } = useContratos(child);
   return <EditarCombinadoSheet open onClose={onClose} child={child} contratos={contratos} />;
+}
+
+/** "Entrou:" e as crianças daquele mês, cada uma com foto e nome tocáveis. */
+function QuemMudou({ rotulo, criancas, onAbrir }) {
+  if (!criancas.length) return null;
+  return (
+    <div className="mt-1 space-y-1.5">
+      <p className="text-sm font-semibold text-textMuted">{rotulo}:</p>
+      {criancas.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onAbrir(c.id)}
+          className="tap flex w-full items-center gap-3 rounded-xl py-1 text-left"
+        >
+          <Avatar photoURL={c.photoURL} gender={c.gender} seed={c.id} kind="child" size="md" />
+          <span className="min-w-0 flex-1 truncate text-base font-semibold text-text">
+            {c.name || 'Sem nome'}
+          </span>
+          <span className="shrink-0 text-sm font-bold text-primary">Ver ficha</span>
+        </button>
+      ))}
+    </div>
+  );
 }

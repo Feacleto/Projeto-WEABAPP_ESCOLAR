@@ -26,6 +26,7 @@ import OutgoingCallPanel from '../../components/call/OutgoingCallPanel';
 import GuardaDoFinanceiro from '../../components/financeiro/GuardaDoFinanceiro';
 import BirthdayModal from '../../components/festive/BirthdayModal';
 import { faltaCompletarCadastro } from '../../dominio/identidade/cadastroDoMotorista.js';
+import { isTracking } from '../../services/locationService';
 import {
   getTodaysBirthdayChildren,
   shouldShowBirthdayModal,
@@ -221,7 +222,13 @@ export default function TioLayout() {
   const fatura = cobranca ? faturaAberta : null;
 
   const { location: minhaRota, loading: carregandoRota } = useLiveLocation(user?.uid);
-  const emRota = !!minhaRota?.routeActive;
+  // ⚠️ O GPS DESTE APARELHO TAMBÉM CONTA (03/10/2026). Ao tocar em INICIAR
+  // ROTA o app abre a tela da rota na hora, mas `routeActive` só chega ao
+  // banco com o PRIMEIRO ponto do GPS — segundos depois, ou mais sem sinal.
+  // Nesse meio-tempo o efeito abaixo lia "sem rota" e devolvia o motorista ao
+  // Início: ele tocava em iniciar e não ia para a rota. O rastreamento já
+  // ligado aqui é a prova de que a rota começou.
+  const emRota = !!minhaRota?.routeActive || isTracking();
   const itens = emRota ? ITENS_EM_ROTA : NAV_ITEMS;
   const naTelaDaRota = location.pathname.startsWith('/tio/route/now');
   // Encerrou com a tela da rota aberta: volta para o Início, que é onde a

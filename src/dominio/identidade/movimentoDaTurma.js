@@ -76,6 +76,20 @@ export function movimentoDaTurma({ criancas = [], mesAtual, meses = 6, inicioDas
 }
 
 /**
+ * AS CRIANÇAS de um mês, não só os nomes (03/10/2026, pedido do dono): a tela
+ * mostra a foto ao lado do nome e abre a ficha no toque — e nome não é chave
+ * (duas "Maria Silva" na mesma turma). Mesmo critério de `movimentoDaTurma`.
+ */
+export function criancasDoMovimento({ criancas = [], mes }) {
+  const porNomeDaCrianca = (a, b) => porNome(String(a?.name || ''), String(b?.name || ''));
+  const lista = criancas || [];
+  return {
+    entraram: lista.filter((c) => mesDe(c?.createdAt) === mes).sort(porNomeDaCrianca),
+    sairam: lista.filter((c) => mesDe(c?.inativadoEm) === mes).sort(porNomeDaCrianca),
+  };
+}
+
+/**
  * O resumo da porta "Turma e contratos" no caixa: quantas crianças ativas
  * agora, e quantas entraram e saíram no mês olhado.
  */
