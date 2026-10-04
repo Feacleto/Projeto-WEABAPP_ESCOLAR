@@ -580,14 +580,14 @@ export default function TioFinance() {
               <History size={18} />
             </span>
             <p className="min-w-0 flex-1 text-base font-semibold text-warningText">
-              Você está vendo um mês que já passou.
+              Mês passado
             </p>
             <button
               type="button"
               onClick={() => setMonthKey(getCurrentMonthKey())}
               className="tap h-12 shrink-0 rounded-full border border-warningBorder bg-card px-4 text-base font-bold text-warningText"
             >
-              Voltar pra hoje
+              Ir para hoje
             </button>
           </div>
         )}

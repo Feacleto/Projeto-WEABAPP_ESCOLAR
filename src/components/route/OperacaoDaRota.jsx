@@ -905,7 +905,7 @@ export default function OperacaoDaRota({
             * motorista testa uma vez pra descobrir — e testar significa
             * fazer o celular de uma família tocar à toa. */}
           <p className="text-center text-sm text-textMuted">
-            Buzinar faz o celular do responsável tocar
+            Toca no celular da família
           </p>
         </GrupoDeAcoes>
       )}
@@ -1266,14 +1266,13 @@ export default function OperacaoDaRota({
           <EmptyState
             icon={Clock}
             title="Nenhuma viagem hoje"
-            description="Defina a hora de pegar e entregar cada criança — a rota se monta a partir disso, e é o que o responsável vê."
             action={
               <Button
                 variant="secondary"
                 fullWidth={false}
                 onClick={() => navigate('/tio/horarios', { state: { de: 'rota' } })}
               >
-                Definir os horários da rota
+                Definir horários
               </Button>
             }
           />
@@ -1456,7 +1455,7 @@ export default function OperacaoDaRota({
             ? `Voltar ${voltando.child.name.split(' ')[0]} um passo?`
             : ''
         }
-        description="Use quando marcou por engano. A hora desse passo é apagada. O aviso que a família já recebeu não volta."
+        description="O aviso já enviado não volta."
         confirmLabel="Voltar um passo"
         loading={busy}
         onConfirm={() => voltarUmPasso(voltando)}
@@ -1470,7 +1469,7 @@ export default function OperacaoDaRota({
             ? `Levar ${voltandoPraCasa.child.name.split(' ')[0]} de volta para casa?`
             : ''
         }
-        description="Ela sai da viagem como entregue em casa, e a família recebe o aviso de que chegou. Em seguida você escreve o recado contando o que houve."
+        description="A família é avisada. Depois, escreva o recado."
         confirmLabel="Levar de volta"
         loading={busy}
         onConfirm={async () => {
@@ -1508,7 +1507,7 @@ export default function OperacaoDaRota({
             ? `Ninguém em casa para receber ${ninguemEmCasa.child.name.split(' ')[0]}?`
             : ''
         }
-        description="Ela vai para o fim da viagem e continua na perua. Tente o Zap ou ligar enquanto segue para a próxima casa."
+        description="Vai para o fim da viagem."
         confirmLabel="Deixar para o fim"
         onConfirm={() => {
           const q = ninguemEmCasa;
@@ -1559,12 +1558,12 @@ function tituloMarcacao({ child, tipo }) {
 function descricaoMarcacao({ tipo }) {
   if (tipo === ABSENCE_TYPES.FULL) {
     // O responsável É avisado desde 03/10/2026 (`notifyAbsence` em `marcar`).
-    return 'Ela sai da rota de hoje nas duas direções, e o responsável é avisado. Continua na lista, em cinza.';
+    return 'Sai da rota hoje. Família avisada.';
   }
   if (tipo === ABSENCE_TYPES.ALREADY_PICKED) {
-    return 'Ela já saiu com o responsável. Você não precisa passar na escola por ela hoje.';
+    return 'Já saiu com o responsável.';
   }
-  return 'Você não precisa buscá-la em casa hoje — mas continua trazendo ela de volta à tarde.';
+  return 'Não precisa buscar em casa hoje.';
 }
 
 /**

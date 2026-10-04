@@ -337,8 +337,8 @@ function kit(pagina, estado) {
       await pagina.goto(APP + '/tio/finance/aumentar');
       await esperar(3500);
       // Recarregar tranca: ou aparece a porta, ou direto o teclado de banco.
-      if (await visivel(pagina.getByText('Acessar dados financeiros'))) {
-        await tocar(pagina, pagina.getByText('Acessar dados financeiros'), 'Acessar');
+      if (await visivel(pagina.getByText('Abrir caixa'))) {
+        await tocar(pagina, pagina.getByText('Abrir caixa'), 'Acessar');
         await esperar(1200);
       }
       if (await visivel(pagina.getByRole('button', { name: /^\d ou \d$/ }).first())) {
@@ -377,7 +377,7 @@ function kit(pagina, estado) {
   const { contexto, pagina, estado } = await abrirCelular('motorista', { jornada: 'P1-perua', limpar: true });
   const k = kit(pagina, estado);
   const { m, visivel, texto, caminho, foto, resultado, campoPreco, campoQtd, botao } = k;
-  const trancado = () => visivel(pagina.getByText('Acessar dados financeiros'));
+  const trancado = () => visivel(pagina.getByText('Abrir caixa'));
 
   try {
     await k.entrar('perua.beto@teste.local');
@@ -505,7 +505,7 @@ function kit(pagina, estado) {
     try {
       await m('9 · Preciso aumentar? com 12 meses');
       if (await trancado()) {
-        await tocar(pagina, pagina.getByText('Acessar dados financeiros'), 'Acessar');
+        await tocar(pagina, pagina.getByText('Abrir caixa'), 'Acessar');
         await k.digitarNoBanco(SENHA_FIN);
         await esperar(3500);
       }
@@ -642,7 +642,7 @@ function kit(pagina, estado) {
       const estavaTrancado = await trancado();
       await foto('20-financeiro-depois-de-abastecer');
       if (estavaTrancado) {
-        await tocar(pagina, pagina.getByText('Acessar dados financeiros'), 'Acessar');
+        await tocar(pagina, pagina.getByText('Abrir caixa'), 'Acessar');
         await k.digitarNoBanco(SENHA_FIN);
         await esperar(3500);
       }

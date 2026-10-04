@@ -123,7 +123,7 @@ bloco('3. As frases copiadas do app continuam existindo na fonte');
 const CITACOES = [
   ['Trazendo pra casa', fonteRota, 'OperacaoDaRota'],
   ['já foram entregues', fonteRota, 'OperacaoDaRota (o verbo da volta)'],
-  ['Buzinar faz o celular do responsável tocar', fonteRota, 'OperacaoDaRota'],
+  ['Toca no celular da família', fonteRota, 'OperacaoDaRota'],
   ['ENTREGUEI', fonteStatus, 'acaoDaParada'],
   ['Avisamos quando estiver perto.', fontePresenca, 'routePresence'],
 ];

@@ -65,17 +65,16 @@ export function noNivel(chave) {
  * `faltam` é quantas missões faltam até lá, quando se sabe (pode ser null).
  */
 export function fraseDoSonho({ vendo, atual, estrada, faltam = null }) {
+  // ⚠️ POUCO TEXTO (04/10/2026, pedido do dono): o tio lê pouco. No nível de
+  // hoje não há frase nenhuma — a estrada já diz onde ele está.
   const iv = estrada.indexOf(vendo);
   const ia = estrada.indexOf(atual);
-  if (iv === ia || iv < 0) return 'Toque num nível para ver o selo dele.';
-  if (iv < ia) return `Você já conquistou o selo ${NOME_DO_NIVEL[vendo]}.`;
-  const inicio = `${noNivel(vendo)} seu selo fica assim.`;
-  if (vendo === 'platina') {
-    return `${inicio} A Platina vai e volta: ela vale enquanto você estiver em dia com as novidades do mês.`;
-  }
-  if (vendo === 'diamante') return `${inicio} O Diamante é a Platina com a trilha do seu negócio completa.`;
-  if (faltam == null || faltam <= 0) return inicio;
-  return `${inicio} ${faltam === 1 ? 'Falta 1 missão' : `Faltam ${faltam} missões`}.`;
+  if (iv === ia || iv < 0) return null;
+  if (iv < ia) return `Selo ${NOME_DO_NIVEL[vendo]} conquistado.`;
+  if (vendo === 'platina') return 'Vale enquanto você está em dia.';
+  if (vendo === 'diamante') return 'Platina e a trilha do negócio.';
+  if (faltam == null || faltam <= 0) return 'Assim fica o seu selo.';
+  return faltam === 1 ? 'Mais 1 missão.' : `Mais ${faltam} missões.`;
 }
 
 /**

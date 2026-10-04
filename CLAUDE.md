@@ -1127,7 +1127,7 @@ crianças nos dois planos e exige que o preço nunca desça.
 [autoatendimento.js](src/dominio/associacao/autoatendimento.js)
 (`npm run testar:autoatendimento`). Os MESMOS blocos em toda fase, na mesma
 ordem: fala (tom verde, âmbar no atraso, cinza com a rota parada), Sua conta
-(o PREÇO POR CRIANÇA é o número grande; "Ver conta completa" abre as respostas
+(o PREÇO POR CRIANÇA é o número grande; "Abrir conta" abre as respostas
 às perguntas dele), Seus descontos (cartão próprio), "Sua turma está
 completa?" (só no teste), o plano e UM botão verde, os serviços em quadrados,
 as dúvidas (3 + "Ver todas") e "Consultar o time de vendas". Cada ponto
@@ -1767,7 +1767,7 @@ nível", e o Diamante de lá leva a ela. Desenho (modelo D): placar, o cartão
 de agora com borda, brilho do Diamante e "Você está aqui"; tocar abre a
 folha) e A fazer / Já feitos / Seus marcos dobráveis, com a contagem e a
 fase de cada passo. Na parada Diamante do nível, a partir da Platina, o
-`CartaoDaTrilha` mostra "N de M", a fase e "Ver a trilha"; antes, só o link.
+`CartaoDaTrilha` mostra "N de M", a fase e "Abrir trilha"; antes, só o link.
 A rota foi registrada no App.jsx em 04/10/2026 (a tela existia sem rota).
 
 ---
@@ -1906,7 +1906,7 @@ inclusive nas férias, `independentemente da quantidade de dias letivos`. A tela
 de faltas repete isso onde a dúvida nasce.
 
 **A TURMA COMEÇA PELA CRIANÇA, E A ESCOLA NASCE NO CAMINHO** (02/10/2026).
-O Início vazio mostra "Cadastrar a primeira criança", e no passo "Onde estuda"
+O Início vazio mostra "Cadastrar criança", e no passo "Onde estuda"
 a escola é criada num popup por cima do cadastro
 ([NovaEscolaSheet](src/components/children/NovaEscolaSheet.jsx)), que volta com
 ela já escolhida. ⚠️ Antes o botão navegava para `/tio/children/escolas`, e o
@@ -3109,7 +3109,7 @@ e por isso fica **fora da bateria encadeada** — é exatamente o que
 ⚠️ **O INÍCIO TEM QUATRO BLOCOS E A ROTA TEM TELA PRÓPRIA (04/10/2026,
 decisão do dono).** O Início: saudação com a data numa linha, o cartão verde
 com UMA frase do momento ("Ida às 06h40 · 17 crianças", "Hoje é domingo · Sem
-viagem hoje.", "Tudo entregue hoje.") e "Ver a rota", o "Para resolver" quando
+viagem hoje.", "Tudo entregue hoje.") e "Abrir rota", o "Para resolver" quando
 houver, "Meu transporte". A barra "Iniciar a rota" só aparece em dia de rota.
 A lista de quem vai, a escola, a chave do mapa e o "Rodar mesmo assim" moram
 em **"Minha rota"** (`/tio/rota`, [MinhaRota](src/pages/tio/MinhaRota.jsx),
@@ -3148,7 +3148,7 @@ dentro dela abriria leitura permanente duplicada do mesmo dado.
 [interactiveSteps.js](src/components/tutorial/interactiveSteps.js),
 `npm run testar:tutorial`). Abre sozinho quando o card do primeiro acesso
 fecha: "Meu transporte", a aba Financeiro, o topo do Início e, por ÚLTIMO
-(04/10/2026), "Cadastrar a primeira criança" — o botão final do balão diz
+(04/10/2026), "Cadastrar criança" — o botão final do balão diz
 "Cadastrar criança" e abre o cadastro (`ctaLabel`/`ctaPath` no passo). Antes o
 tour terminava apontando um cartão vazio e o "Começar" só fechava: beco. Título curto e uma frase de
 até 60 caracteres. Eram treze passos citando a landing, e metade apontava para
@@ -3187,10 +3187,15 @@ login ("Começar com Google"), Início (só "Iniciar a rota"; dirigindo, só
 "Abrir a rota"), rota (o EMBARQUEI trava 1,2 s com "Ana ✓ · Desfazer" —
 `barraTravada`), caixa (abre em Mensalidades com atraso; "Cobrar" cheio só na
 atrasada, "Dar baixa" cheio só em quem avisou — `botoesDaMensalidade`),
-Financeiro trancado ("Acessar dados financeiros"), PIX ("Copiar"). Encerrar
+Financeiro trancado ("Abrir caixa"), PIX ("Copiar"). Encerrar
 com criança na perua abre confirmação com os nomes. O "Salvar" dos campos é
 CONTORNO. Iniciar a rota tem "Cancelar" por 10 s (o "a perua saiu" já
 enviado fica no sino das famílias).
+
+**TEXTO CURTO (04/10/2026, pedido do dono).** Botão diz o verbo e a coisa
+("Abrir rota", "Abrir caixa", "Abrir trilha", "Cadastrar criança", "Definir
+horários"); linha de lista sem subtítulo quando o título já basta; confirmação
+em uma frase ("Vai para o fim da viagem."). O tio tem 40+ e lê com pressa.
 
 **Navegação: uma tela só.** Cada troca de tela cobra pedágio — resolva em folha
 onde couber, e rotule o "voltar" onde não couber.

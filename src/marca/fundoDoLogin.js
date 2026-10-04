@@ -53,7 +53,7 @@
  *   "Trazendo pra casa", "2 de 5 resolvidas"  → components/route/OperacaoDaRota.jsx
  *   "já foram entregues"                      → idem (o verbo da volta)
  *   "ENTREGUEI"                               → services/routeStatusService.js
- *   "Buzinar faz o celular..."                → OperacaoDaRota.jsx
+ *   "Toca no celular da família"              → OperacaoDaRota.jsx
  *   "A perua está a 1,2 km daqui"             → dominio/rota/routePresence.js
  *   "Avisamos quando estiver perto."          → idem
  *   "atualizado há 40 segundos"               → idem (formatFreshness)
@@ -127,7 +127,7 @@ const A = [
           { rotulo: 'Ligar', icone: 'ligar' },
         ],
       },
-      { b: 'nota', texto: 'Buzinar faz o celular do responsável tocar' },
+      { b: 'nota', texto: 'Toca no celular da família' },
     ],
   },
   {

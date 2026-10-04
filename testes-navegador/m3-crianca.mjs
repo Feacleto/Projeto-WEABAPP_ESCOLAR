@@ -31,9 +31,9 @@ async function buscarRua(escopo, rua, rotulo) {
 try {
   await pagina.goto(APP + '/tio');
   await esperar(3000);
-  await m('Início: "Cadastrar a primeira criança"');
+  await m('Início: "Cadastrar criança"');
   await registrar(pagina, estado, 'inicio-antes');
-  await tocar(pagina, pagina.getByRole('button', { name: /Cadastrar a primeira criança/ }).first(), 'Cadastrar a primeira criança');
+  await tocar(pagina, pagina.getByRole('button', { name: /Cadastrar criança/ }).first(), 'Cadastrar criança');
 
   // ── Passo 1: quem é a criança ──────────────────────────────────────────
   await pagina.waitForURL(/children\/new/, { timeout: 15000 });

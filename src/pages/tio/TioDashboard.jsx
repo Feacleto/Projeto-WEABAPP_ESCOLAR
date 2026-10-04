@@ -438,10 +438,6 @@ export default function TioDashboard() {
                 <p className="font-bold text-text">
                   Sua turma ainda está vazia
                 </p>
-                <p className="text-sm text-textMuted mt-1 max-w-xs mx-auto">
-                  Cadastre as crianças e a hora que você combinou com cada
-                  família. A rota se monta a partir disso.
-                </p>
                 {/* COMEÇA PELA CRIANÇA, NÃO PELA ESCOLA (02/10/2026). Era
                   * "Começar pela escola", porque a criança dependia de uma
                   * escola já cadastrada — e quem começava pela criança perdia
@@ -453,7 +449,7 @@ export default function TioDashboard() {
                   icon={UserPlus}
                   className="mt-4 shadow-focus"
                 >
-                  Cadastrar a primeira criança
+                  Cadastrar criança
                 </Button>
               </div>
             )}
@@ -480,7 +476,7 @@ export default function TioDashboard() {
               className="tap flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-card text-base font-bold text-primary"
             >
               <UserPlus size={19} />
-              Cadastrar nova criança
+              Cadastrar criança
             </button>
           </div>
         )}
@@ -508,7 +504,7 @@ export default function TioDashboard() {
                   <span className="block text-lg font-bold text-text">Rota em andamento</span>
                   <span className="block text-base text-textBody">
                     {pendentesDaViagem.length
-                      ? `${pendentesDaViagem.length} ${pendentesDaViagem.length === 1 ? 'criança ainda tem' : 'crianças ainda têm'} um passo nesta viagem`
+                      ? `Faltam ${pendentesDaViagem.length} nesta viagem`
                       : 'Nada pendente nesta viagem'}
                   </span>
                 </span>
@@ -549,7 +545,7 @@ export default function TioDashboard() {
                   onClick={() => navigate('/tio/horarios')}
                   className="tap mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-onAccent"
                 >
-                  Definir os horários da rota
+                  Definir horários
                   <ArrowRight size={20} />
                 </button>
               ) : (
@@ -559,7 +555,7 @@ export default function TioDashboard() {
                   className="tap mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-base font-bold text-white"
                 >
                   <Route size={19} aria-hidden="true" />
-                  Ver a rota
+                  Abrir rota
                 </button>
               )}
             </section>
@@ -710,7 +706,7 @@ function ParaResolver({
     itens.push({
       icon: AlertTriangle,
       titulo: marcados === 1 ? '1 família avisou que pagou' : `${marcados} famílias avisaram que pagaram`,
-      sub: 'Confira se caiu e dê baixa',
+      sub: 'Conferir e dar baixa',
       onClick: onFinanceiro,
     });
   }
@@ -727,7 +723,7 @@ function ParaResolver({
       icon: Clock,
       titulo: `${semHorario} ${semHorario === 1 ? 'criança sem horário' : 'crianças sem horário'}`,
       // O nome da tela é o mesmo em todo lugar: "Horários da rota".
-      sub: 'Abra Horários da rota: sem horário, ela não entra na rota',
+      sub: 'Definir horário',
       onClick: onHorarios,
     });
   }
@@ -812,15 +808,11 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
         <span className="block text-base font-semibold text-text truncate">
           Meu transporte
         </span>
-        {/* O subtítulo MUDA durante a rota, e é a única coisa que muda. Fora
-          * de rota ele é um sumário; dirigindo, responde a pergunta do
-          * momento — e é a resposta que o motorista não tinha: sim, dá pra
-          * avisar a escola sem encerrar a rota. */}
-        <span className="block text-sm text-textMuted truncate">
-          {dirigindo
-            ? 'Dá pra avisar a escola aqui mesmo'
-            : 'Turma, escolas, horários da rota, avisos'}
-        </span>
+        {/* Só dirigindo há subtítulo (04/10/2026, textos curtos): responde a
+          * pergunta do momento — dá pra avisar a escola sem encerrar a rota. */}
+        {dirigindo && (
+          <span className="block text-sm text-textMuted truncate">Avisar a escola</span>
+        )}
       </span>
       <ChevronRight size={16} className="text-textMuted shrink-0" />
     </button>

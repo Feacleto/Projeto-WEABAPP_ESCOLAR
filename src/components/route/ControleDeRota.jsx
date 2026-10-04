@@ -263,8 +263,8 @@ export default function ControleDeRota({
         </span>
         <span className="mt-0.5 block text-sm leading-snug text-primaryChip">
           {compartilha
-            ? 'Posição aproximada, num raio de 150 m.'
-            : 'O GPS continua ligado: elas recebem o aviso de chegada.'}
+            ? 'Posição aproximada'
+            : 'Aviso de chegada continua'}
         </span>
       </span>
       {/* O INTERRUPTOR do design system: a bolinha desliza, o trilho acende. */}
@@ -311,8 +311,8 @@ export default function ControleDeRota({
           *    grade de 150 m: mostra a quadra, nunca a porta. */}
         <span className="mt-0.5 block text-sm leading-relaxed text-textMuted">
           {compartilha
-            ? 'Posição aproximada, por referência — não mostra o ponto exato. Toque para desligar.'
-            : 'O GPS continua ligado: elas seguem recebendo o aviso de que você está chegando. Toque para mostrar no mapa.'}
+            ? 'Posição aproximada'
+            : 'Aviso de chegada continua'}
         </span>
       </span>
     </button>
@@ -525,8 +525,8 @@ export default function ControleDeRota({
         ) : (
           <p className="text-sm text-primaryChip">
             {compartilha
-              ? 'Posição aproximada, num raio de 150 m. O aviso de chegada sai sempre.'
-              : 'O GPS continua ligado: as famílias recebem o aviso de chegada.'}
+              ? 'Posição aproximada'
+              : 'Aviso de chegada continua'}
           </p>
         )}
         {dialogoDoFim}
@@ -604,8 +604,8 @@ export default function ControleDeRota({
               <span className="min-w-0 flex-1 text-base text-textBody">
                 {semSinal && <span className="block font-semibold">Procurando sinal de GPS…</span>}
                 {compartilha
-                  ? 'As famílias veem a perua no mapa, em posição aproximada.'
-                  : 'A perua não aparece no mapa. O aviso de chegada continua.'}
+                  ? 'Perua no mapa das famílias'
+                  : 'Perua fora do mapa. Aviso de chegada continua.'}
               </span>
               <span
                 aria-hidden="true"

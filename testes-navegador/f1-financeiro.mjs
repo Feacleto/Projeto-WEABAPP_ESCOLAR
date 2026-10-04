@@ -115,7 +115,7 @@ try {
   await irPeloRodape('Financeiro');
   await esperar(2000);
   await registrar(pagina, estado, '09-trancado', { paginaInteira: true });
-  if (!(await visivel(pagina.getByText('Acessar dados financeiros')))) {
+  if (!(await visivel(pagina.getByText('Abrir caixa')))) {
     achado(estado, { gravidade: 'critica', lente: 'seguranca', texto: 'Voltar ao Financeiro depois de sair NÃO mostrou a tela trancada.' });
   }
 
@@ -152,7 +152,7 @@ try {
   await tocar(pagina, pagina.getByRole('button', { name: /Voltar/ }).first(), 'Voltar');
   await esperar(2000);
   await registrar(pagina, estado, '15-depois-de-voltar');
-  if (!(await visivel(pagina.getByText('Acessar dados financeiros')))) {
+  if (!(await visivel(pagina.getByText('Abrir caixa')))) {
     achado(estado, { gravidade: 'alta', lente: 'fluxo', texto: 'Voltar da turma (entrando pela tela trancada) não voltou à tela trancada.' });
   }
 } catch (err) {

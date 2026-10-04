@@ -474,7 +474,7 @@ export default function TioPlanos() {
           <div className="min-w-0 space-y-1.5">{falas[fase]}</div>
         </section>
 
-        {/* 2 · SUA CONTA — o essencial; "Ver conta completa" abre o resto,
+        {/* 2 · SUA CONTA — o essencial; "Abrir conta" abre o resto,
           * cada parte respondendo a uma pergunta que ele faz. */}
         <section className="rounded-2xl border border-border bg-card p-4">
           <h2 className="font-display text-lg font-bold text-text">Sua conta</h2>
@@ -599,7 +599,7 @@ export default function TioPlanos() {
               onClick={() => setContaCompleta((v) => !v)}
               className="tap mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-primary"
             >
-              {contaCompleta ? 'Ver menos' : 'Ver conta completa'}
+              {contaCompleta ? 'Ver menos' : 'Abrir conta'}
             </button>
           )}
         </section>
@@ -811,7 +811,7 @@ export default function TioPlanos() {
             onClick={() => setTodasDuvidas((v) => !v)}
             className="tap mt-2 flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-primary"
           >
-            {todasDuvidas ? 'Ver só as principais' : 'Ver todas as dúvidas'}
+            {todasDuvidas ? 'Menos dúvidas' : 'Mais dúvidas'}
           </button>
         </section>
 

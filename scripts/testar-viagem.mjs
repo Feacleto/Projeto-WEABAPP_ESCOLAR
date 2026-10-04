@@ -359,12 +359,12 @@ console.log('\n═══ A PREVISÃO SÓ GRAVA O QUE MUDOU (escritasDaRota) ═�
   const dirigindo = ini.slice(ini.indexOf('DIRIGINDO — a home é a operação'), ini.indexOf('O CARTÃO VERDE — a turma'));
   checar('dirigindo, o cartão da rota não é botão verde', false, /bg-primary[\s"]/.test(dirigindo));
   checar('dirigindo, um só caminho para a rota (o da barra)', false, dirigindo.includes('route/now'));
-  const topo = ini.slice(ini.indexOf('CADASTRAR NO TOPO'), ini.indexOf('Cadastrar nova criança'));
-  checar('"Cadastrar nova criança" só antes de a rota se montar', true, topo.includes("estado === 'vazio' && children.length > 0"));
-  const vazio = ini.indexOf('Cadastrar a primeira criança');
+  const topo = ini.slice(ini.indexOf('CADASTRAR NO TOPO'), ini.indexOf('Cadastrar criança', ini.indexOf('CADASTRAR NO TOPO')));
+  checar('"Cadastrar criança" só antes de a rota se montar', true, topo.includes("estado === 'vazio' && children.length > 0"));
+  const vazio = ini.indexOf('data-tour="primeira-crianca"');
   checar('"Cadastrar a primeira criança" vem antes do "Confirme seu e-mail"', true,
     vazio > 0 && vazio < ini.indexOf('<ConfirmeSeuEmail'));
-  checar('e é o protagonista (shadow-focus)', true, /className="mt-4 shadow-focus"\s*>\s*Cadastrar a primeira criança/.test(ini));
+  checar('e é o protagonista (shadow-focus)', true, /className="mt-4 shadow-focus"\s*>\s*Cadastrar criança/.test(ini));
 
   const mt = ler('src/components/tio/MeuTransporteSheet.jsx');
   checar('um nome só: "Problema na perua"', true, mt.includes('titulo="Problema na perua"') && !mt.includes('titulo="Perua quebrou"'));

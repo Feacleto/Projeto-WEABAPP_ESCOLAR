@@ -9,8 +9,7 @@ import { ESTRADA_DO_MOTORISTA, fraseDoSonho, rotuloDoFeito } from './rotuloDoNiv
  * O NÍVEL NO MENU DO PERFIL (modelo D2, 04/10/2026, aprovado pelo dono).
  *
  * O selo de metal, a estrada (tocar num nível mostra o selo dele: "sonhar"),
- * o que ele fez por último e a próxima missão — e UM botão forte, "Ver todas
- * as missões".
+ * o que ele fez por último e a próxima missão — e "Abrir missões".
  *
  * ⚠️ TUDO SAI DE `niveis/{uid}`, o documento que o servidor grava. A régua
  * inteira no aparelho pede a turma e um ano de despesas; abrir o menu não
@@ -39,6 +38,8 @@ export default function NivelNoMenu({ nivel, dados, onIr }) {
     ? progresso.total - progresso.feitas
     : null;
 
+  const frase = fraseDoSonho({ vendo, atual: nivel, estrada: ESTRADA_DO_MOTORISTA, faltam });
+
   return (
     <div className="space-y-2.5 border-t border-neutro p-3">
       <div className="flex items-center justify-between gap-2">
@@ -51,9 +52,7 @@ export default function NivelNoMenu({ nivel, dados, onIr }) {
         vendo={vendo}
         onVer={(c) => setVendo(c)}
       />
-      <p className="text-sm leading-snug text-textMuted">
-        {fraseDoSonho({ vendo, atual: nivel, estrada: ESTRADA_DO_MOTORISTA, faltam })}
-      </p>
+      {frase && <p className="text-sm leading-snug text-textMuted">{frase}</p>}
 
       {ultima && (
         <div className="flex items-center gap-2.5 rounded-xl bg-accent/15 px-3 py-2.5">
@@ -85,9 +84,10 @@ export default function NivelNoMenu({ nivel, dados, onIr }) {
         type="button"
         role="menuitem"
         onClick={() => onIr('/tio/nivel')}
-        className="tap flex h-12 w-full items-center justify-center gap-1 rounded-xl bg-primary text-base font-bold text-white shadow-focus"
+        className="tap flex h-12 w-full items-center justify-center gap-1 rounded-xl border-2 border-primary bg-card text-base font-bold text-primary"
       >
-        Ver todas as missões
+        {/* CURTO E DE CONTORNO (04/10/2026): o verde cheio do menu é o do perfil. */}
+        Abrir missões
         <ChevronRight size={18} aria-hidden />
       </button>
     </div>

@@ -134,10 +134,7 @@ export default function TioNivel() {
         ) : nivel === 'sem_nivel' ? (
           <Card className="space-y-2 text-center">
             <p className="font-display text-xl font-bold text-text">Seu nível começa na primeira rota</p>
-            <p className="text-base leading-relaxed text-textBody">
-              Quando você encerrar a primeira rota, ganha o Bronze e aparece
-              aqui o que fazer para subir.
-            </p>
+            <p className="text-base leading-relaxed text-textBody">Encerre a 1ª rota.</p>
           </Card>
         ) : (
           <>
@@ -422,7 +419,7 @@ function CartaoDaTrilha({ trilha, completo, onAbrir }) {
         onClick={onAbrir}
         className="tap mt-1 inline-flex min-h-12 items-center gap-1 text-base font-bold text-accentText"
       >
-        Ver a trilha do Diamante
+        Abrir trilha
         <ChevronRight size={18} aria-hidden />
       </button>
     );
@@ -448,7 +445,7 @@ function CartaoDaTrilha({ trilha, completo, onAbrir }) {
         onClick={onAbrir}
         className="tap flex h-12 w-full items-center justify-center gap-1 rounded-xl border-2 border-border bg-card text-base font-bold text-text"
       >
-        Ver a trilha
+        Abrir trilha
         <ChevronRight size={18} aria-hidden />
       </button>
     </div>

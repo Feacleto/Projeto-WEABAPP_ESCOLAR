@@ -37,7 +37,7 @@ import { seloDoPlano } from '../../dominio/associacao/seloDoPlano.js';
  * cujo nome é "Financeiro" mandava para o posto. O resto é branco.
  * ⚠️ DESDE 04/10/2026 (mais tarde, decisão do dono) O VERDE É O BUZI —
  * "Boletim do seu negócio", o assistente que responde em linguagem simples.
- * "Acessar dados financeiros" continua logo abaixo, branco: é a mesma senha,
+ * "Abrir caixa" continua logo abaixo, branco: é a mesma senha,
  * para quem quer o caixa inteiro. Do dia 1 ao 7 o cartão anuncia o Boletim
  * do mês que fechou, até ele abrir (`boletimParaAnunciar`).
  *
@@ -145,7 +145,7 @@ export default function FinanceiroTrancado() {
           <span>
             <span className="block text-[22px] font-bold">Boletim do seu negócio</span>
             <span className="block text-[16px] text-white/90">
-              O Buzi, seu assistente digital, resume o seu mês
+              Resumo do mês
             </span>
           </span>
         </button>
@@ -155,13 +155,10 @@ export default function FinanceiroTrancado() {
           className="tap mt-1 flex min-h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left"
         >
           <LockKeyhole size={24} className="shrink-0 text-primary" aria-hidden="true" />
-          <span className="flex-1 text-lg font-bold text-text">Acessar dados financeiros</span>
+          <span className="flex-1 text-lg font-bold text-text">Abrir caixa</span>
           <ChevronRight size={20} className="text-textBody shrink-0" aria-hidden="true" />
         </button>
       </div>
-      <p className="text-[15px] text-textMuted text-center">
-        {comDigital ? 'Os dois com digital ou rosto' : 'Os dois com a sua senha de 4 números'}
-      </p>
 
       <div className="grid grid-cols-2 gap-3">
         <button
@@ -215,9 +212,6 @@ export default function FinanceiroTrancado() {
           <span className="text-lg font-bold text-text">Lançar despesa</span>
         </button>
       </div>
-      <p className="text-[15px] text-textMuted text-center">
-        Abastecer, PIX e despesa funcionam sem senha.
-      </p>
 
       {cobranca === true && (
         <button
@@ -233,7 +227,6 @@ export default function FinanceiroTrancado() {
                 {plano.selo}
               </span>
             </p>
-            <p className="mt-1 text-sm text-textMuted">Valor da fatura só com senha</p>
           </div>
           <ChevronRight size={20} className="text-textBody shrink-0" aria-hidden="true" />
         </button>

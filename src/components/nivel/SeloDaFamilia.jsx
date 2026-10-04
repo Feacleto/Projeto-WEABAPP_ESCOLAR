@@ -124,9 +124,11 @@ export function NivelDaFamiliaNoMenu({ onAbrir, onIr }) {
         <SeloDoNivel nivel={olhando} />
       </div>
       <EstradaDosNiveis estrada={ESTRADA_DA_FAMILIA} atual={chave} vendo={olhando} onVer={setVendo} />
-      <p className="text-sm leading-snug text-textMuted">
-        {fraseDoSonho({ vendo: olhando, atual: chave, estrada: ESTRADA_DA_FAMILIA, faltam })}
-      </p>
+      {fraseDoSonho({ vendo: olhando, atual: chave, estrada: ESTRADA_DA_FAMILIA, faltam }) && (
+        <p className="text-sm leading-snug text-textMuted">
+          {fraseDoSonho({ vendo: olhando, atual: chave, estrada: ESTRADA_DA_FAMILIA, faltam })}
+        </p>
+      )}
       {proxima && (
         <button
           type="button"
@@ -146,9 +148,9 @@ export function NivelDaFamiliaNoMenu({ onAbrir, onIr }) {
         type="button"
         role="menuitem"
         onClick={onAbrir}
-        className="tap flex h-12 w-full items-center justify-center gap-1 rounded-xl bg-primary text-base font-bold text-white shadow-focus"
+        className="tap flex h-12 w-full items-center justify-center gap-1 rounded-xl border-2 border-primary bg-card text-base font-bold text-primary"
       >
-        Ver todas as missões
+        Abrir missões
         <ChevronRight size={18} aria-hidden />
       </button>
     </div>

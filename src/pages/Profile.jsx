@@ -311,8 +311,8 @@ export default function Profile() {
                 titulo="Chave PIX"
                 sub={
                   profile.pixKey
-                    ? `${PIX_KEY_TYPES[profile.pixKeyType]?.label || ''}: ${profile.pixKey} · trocar pede a senha do Financeiro`
-                    : 'Não cadastrada · cadastrar pede a senha do Financeiro'
+                    ? `${PIX_KEY_TYPES[profile.pixKeyType]?.label || ''}: ${profile.pixKey}`
+                    : 'Não cadastrada'
                 }
                 onClick={() => navigate('/tio/pix')}
               />
@@ -322,7 +322,6 @@ export default function Profile() {
               <Linha
                 icon={Medal}
                 titulo="Meu nível"
-                sub="Seu selo e o que fazer para subir"
                 onClick={() => navigate('/tio/nivel')}
               />
             </Card>
@@ -415,7 +414,6 @@ export default function Profile() {
             <Linha
               icon={HelpCircle}
               titulo="Ver o tutorial de novo"
-              sub="Um passeio rápido pelas telas"
               onClick={onReplayTutorial}
             />
             <Divisor />

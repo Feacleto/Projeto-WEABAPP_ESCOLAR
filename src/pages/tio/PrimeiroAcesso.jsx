@@ -579,12 +579,10 @@ export default function PrimeiroAcesso() {
             <h2 id="primeiro-acesso-titulo" className="text-xl font-extrabold text-text">
               Localização
             </h2>
-            {/* A única linha de explicação do card, e ela tem duas metades: para
-              * que serve, e que ele desliga quando quiser — a chave existe no
-              * início de cada rota (ControleDeRota). */}
+            {/* A única linha de explicação do card: para que serve. Desligar
+              * mora na chave do início de cada rota (ControleDeRota). */}
             <p className="mt-1.5 text-sm text-textMuted">
-              Para as famílias verem a perua chegando. Você desliga no app
-              quando quiser.
+              Para as famílias verem a perua chegando.
             </p>
             {digitarCidade && (
               <div className="mt-4">

@@ -59,14 +59,9 @@ export default function MinhaRota() {
       <div className="space-y-4 px-5 pb-6 pt-4">
         {!carregando && blocos.length === 0 && (
           <div className="space-y-3 rounded-2xl bg-card p-5 text-center shadow-rest">
-            <p className="text-base font-bold text-text">A sua rota ainda não se montou</p>
-            <p className="text-base text-textMuted">
-              {children.length
-                ? 'Combine o horário de cada criança e a rota aparece aqui.'
-                : 'Cadastre as crianças e a hora combinada com cada família.'}
-            </p>
+            <p className="text-base font-bold text-text">Rota ainda vazia</p>
             <Button onClick={() => navigate(children.length ? '/tio/horarios' : '/tio/children/new')}>
-              {children.length ? 'Definir os horários da rota' : 'Cadastrar a primeira criança'}
+              {children.length ? 'Definir horários' : 'Cadastrar criança'}
             </Button>
           </div>
         )}

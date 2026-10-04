@@ -101,7 +101,6 @@ export default function MeuTransporteSheet({
       onClose={onClose}
       icon={LayoutGrid}
       title="Meu transporte"
-      subtitle="Avisos, turma e rota, num lugar só."
       size="tall"
     >
       {/* ⚠️ O MODELO F (04/10/2026, escolhido pelo dono entre seis). O
@@ -201,7 +200,6 @@ export default function MeuTransporteSheet({
           <Linha
             icon={Notebook}
             titulo="Avisos enviados"
-            subtitulo="O que já foi pro caderno de cada família"
             onClick={() => ir('/tio/agenda')}
           />
           {/* O PREÇO MORA AQUI, E É DE PROPÓSITO QUE ELE SEJA DISCRETO.
@@ -218,7 +216,6 @@ export default function MeuTransporteSheet({
               <Linha
                 icon={Receipt}
                 titulo="Meus planos"
-                subtitulo="Seu autoatendimento: plano, conta e descontos"
                 onClick={() => ir('/tio/planos')}
               />
               <Linha
