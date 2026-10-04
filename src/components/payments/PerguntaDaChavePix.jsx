@@ -119,8 +119,8 @@ export function usePerguntaDaChavePix() {
         <PixForm onDone={(chave) => setSalva(chave || { pixKey: profile?.pixKey })} />
       ) : (
         <div className="space-y-4">
-          <p className="text-sm leading-relaxed text-text">{pedido?.texto}</p>
-          <p className="text-xs leading-relaxed text-textMuted">
+          <p className="text-base leading-relaxed text-text">{pedido?.texto}</p>
+          <p className="text-sm leading-relaxed text-textMuted">
             Leva um minuto, e depois a chave vai sozinha em toda cobrança.
           </p>
           <Button onClick={() => setPreenchendo(true)}>Sim, cadastrar agora</Button>

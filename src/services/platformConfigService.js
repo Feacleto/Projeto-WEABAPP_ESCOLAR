@@ -88,6 +88,21 @@ export async function setReviewWindow({ aberta, ate }) {
 }
 
 /**
+ * A AVALIAÇÃO RÁPIDA DO INÍCIO — liga e desliga (03/10/2026).
+ *
+ * ⚠️ AUSENTE É LIGADA (`avaliacaoLigada` em dominio/suporte/avaliacaoRapida.js).
+ * O campo antigo `reviewOpen` nascia fechado e por isso o pedido quase nunca
+ * aparecia; ele não é mais lido por nenhuma tela de quem usa o app.
+ */
+export async function setAvaliacaoRapida(ligada) {
+  await setDoc(
+    REF(),
+    { avaliacaoRapida: ligada !== false, atualizadoEm: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+/**
  * A JANELA DO DESCONTO DE FECHAMENTO — o dono abre e fecha a concessão.
  *
  * ── ⚠️ ELA MORA AQUI E NÃO EM `taxaConfig`, E O MOTIVO É QUEM PRECISA LER

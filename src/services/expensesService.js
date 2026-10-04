@@ -5,6 +5,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   query,
   where,
   orderBy,
@@ -14,6 +15,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import { TIPOS_DE_COMBUSTIVEL, nomeDoPosto } from '../dominio/cobranca/combustivel.js';
 
 /**
  * Despesas do motorista.
@@ -40,6 +42,10 @@ import { auth, db } from '../firebase/config';
  *     kmPainel: number (opcional) — o hodômetro que ele digitou ao lançar
  *     kmContador: number (opcional) — `configFinanceiro.kmDasRotas` no
  *                 instante do lançamento (o contador das rotas)
+ *     litros: number (opcional, SÓ em `fuel`) — 0 < l ≤ 500; no GNV é m³
+ *     tipoCombustivel: chave de TIPOS_DE_COMBUSTIVEL (opcional, SÓ em `fuel`)
+ *     posto: string ≤ 60 (opcional, SÓ em `fuel`) — o nome que ELE deu
+ *     tanqueCheio: boolean (opcional, SÓ em `fuel`)
  *     createdAt
  *
  * OS DOIS KM (03/10/2026). O km entre dois abastecimentos é a diferença
@@ -48,6 +54,53 @@ import { auth, db } from '../firebase/config';
  * que deixa ele trocar a resposta de "a perua roda só nas rotas?" depois sem
  * perder o histórico.
  */
+
+/**
+ * O ABASTECIMENTO (03/10/2026 — "Sua perua" no Financeiro). A despesa de
+ * combustível ganha quatro campos opcionais, e só ela: litros numa despesa de
+ * seguro é texto sem pergunta, e quem lê (`abastecimentosDe`) filtra por
+ * `fuel` — o campo noutra categoria seria dado que ninguém confere.
+ *
+ * ⚠️ O PREÇO DO LITRO NÃO É GRAVADO. Ele é `amount / litros`; uma terceira
+ * coluna seria uma segunda verdade sobre o mesmo abastecimento, e corrigir o
+ * valor depois deixaria o preço gravado mentindo.
+ *
+ * A mesma validação está na rule de `expenses` — aqui é para a mensagem
+ * sair em português na hora, lá é a tranca.
+ */
+export const CAMPOS_DO_ABASTECIMENTO = ['litros', 'tipoCombustivel', 'posto', 'tanqueCheio'];
+
+const CHAVES_DE_COMBUSTIVEL = TIPOS_DE_COMBUSTIVEL.map((t) => t.chave);
+
+/**
+ * Normaliza os campos do abastecimento que vieram. Ausente/vazio não grava;
+ * inválido lança. Devolve só as chaves presentes.
+ */
+function camposDoAbastecimento({ litros, tipoCombustivel, posto, tanqueCheio }) {
+  const saida = {};
+  if (litros !== null && litros !== undefined && litros !== '') {
+    const n = Number(String(litros).replace(',', '.'));
+    if (!Number.isFinite(n) || n <= 0 || n > 500) {
+      throw new Error('Os litros precisam ser um número maior que zero (até 500).');
+    }
+    saida.litros = Math.round(n * 100) / 100;
+  }
+  if (tipoCombustivel !== null && tipoCombustivel !== undefined && tipoCombustivel !== '') {
+    if (!CHAVES_DE_COMBUSTIVEL.includes(tipoCombustivel)) {
+      throw new Error('Tipo de combustível desconhecido.');
+    }
+    saida.tipoCombustivel = tipoCombustivel;
+  }
+  if (posto !== null && posto !== undefined) {
+    const nome = nomeDoPosto(String(posto));
+    if (nome) saida.posto = nome;
+  }
+  if (tanqueCheio !== null && tanqueCheio !== undefined) {
+    if (typeof tanqueCheio !== 'boolean') throw new Error('Tanque cheio é sim ou não.');
+    saida.tanqueCheio = tanqueCheio;
+  }
+  return saida;
+}
 
 /** Km opcional: ausente/vazio vira `undefined` (não grava); inválido lança. */
 function kmOpcional(valor, nome) {
@@ -90,7 +143,18 @@ function toDate(value) {
   return new Date();
 }
 
-export async function addExpense({ amount, category, description, date, kmPainel, kmContador }) {
+export async function addExpense({
+  amount,
+  category,
+  description,
+  date,
+  kmPainel,
+  kmContador,
+  litros,
+  tipoCombustivel,
+  posto,
+  tanqueCheio,
+}) {
   const value = Number(amount);
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error('Informe um valor maior que zero.');
@@ -101,6 +165,10 @@ export async function addExpense({ amount, category, description, date, kmPainel
   const when = toDate(date);
   const painel = kmOpcional(kmPainel, 'O km do painel');
   const contador = kmOpcional(kmContador, 'O km das rotas');
+  // Só o combustível leva os campos do abastecimento; noutra categoria eles
+  // são ignorados (a tela pode ter ficado com o estado de uma troca de aba).
+  const abastecimento =
+    category === 'fuel' ? camposDoAbastecimento({ litros, tipoCombustivel, posto, tanqueCheio }) : {};
 
   const dono = auth.currentUser?.uid;
   if (!dono) throw new Error('Entre de novo para lançar a despesa.');
@@ -123,13 +191,31 @@ export async function addExpense({ amount, category, description, date, kmPainel
     monthKey: monthKeyOf(when),
     ...(painel !== undefined ? { kmPainel: painel } : {}),
     ...(contador !== undefined ? { kmContador: contador } : {}),
+    ...abastecimento,
     createdAt: serverTimestamp(),
   });
 }
 
+/**
+ * Atualiza uma despesa. Os campos do abastecimento passam pela mesma
+ * validação do lançamento; e se a categoria deixa de ser `fuel`, eles SAEM no
+ * mesmo write — a rule recusa litros fora do combustível, e sem a limpeza
+ * trocar "Combustível" por "Manutenção" falharia sem explicação.
+ */
 export async function updateExpense(id, data) {
   const updates = { ...data };
   if ('amount' in updates) updates.amount = Number(updates.amount) || 0;
+  const vieram = CAMPOS_DO_ABASTECIMENTO.filter((c) => c in updates);
+  if (vieram.length > 0) {
+    const limpos = camposDoAbastecimento(updates);
+    for (const c of vieram) {
+      if (c in limpos) updates[c] = limpos[c];
+      else updates[c] = deleteField(); // veio vazio: ele apagou o campo
+    }
+  }
+  if ('category' in updates && updates.category !== 'fuel') {
+    for (const c of CAMPOS_DO_ABASTECIMENTO) updates[c] = deleteField();
+  }
   if ('date' in updates) {
     const when = toDate(updates.date);
     updates.date = Timestamp.fromDate(when);

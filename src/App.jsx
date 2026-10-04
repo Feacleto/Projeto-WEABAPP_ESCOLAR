@@ -44,13 +44,24 @@ const Comecar = lazy(() => import('./pages/Comecar'));
 const DriverSignup = lazy(() => import('./pages/DriverSignup'));
 const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 
-const TioLayout = lazy(() => import('./pages/tio/TioLayout'));
-const GuardaDaConta = lazy(() => import('./components/tio/GuardaDaConta'));
+// ⚠️ OS PEDAÇOS DO PAINEL SÃO PEDIDOS JUNTOS, ASSIM QUE O PERFIL CHEGA
+// (04/10/2026). O `import()` de um lazy só começa quando o React tenta
+// desenhá-lo — e cada guarda devolve um carregador antes de desenhar o filho,
+// então guarda → layout → tela baixavam EM FILA, uma ida à rede por degrau.
+// `PreCarregarPainel` (abaixo) dispara os três de uma vez pelo papel; o lazy
+// depois acha o pedaço já baixado. Os importadores têm nome para isso.
+const carregarTioLayout = () => import('./pages/tio/TioLayout');
+const carregarGuardaDaConta = () => import('./components/tio/GuardaDaConta');
+const carregarTioDashboard = () => import('./pages/tio/TioDashboard');
+const carregarPaiLayout = () => import('./pages/pai/PaiLayout');
+const carregarPaiDashboard = () => import('./pages/pai/PaiDashboard');
+const TioLayout = lazy(carregarTioLayout);
+const GuardaDaConta = lazy(carregarGuardaDaConta);
 const GuardaDoFinanceiro = lazy(() => import('./components/financeiro/GuardaDoFinanceiro'));
 const PrimeiroAcesso = lazy(() => import('./pages/tio/PrimeiroAcesso'));
 const PrimeiroAcessoDoPai = lazy(() => import('./pages/pai/PrimeiroAcessoDoPai'));
 const AguardandoVinculo = lazy(() => import('./components/acesso/AguardandoVinculo'));
-const TioDashboard = lazy(() => import('./pages/tio/TioDashboard'));
+const TioDashboard = lazy(carregarTioDashboard);
 const TioChildren = lazy(() => import('./pages/tio/TioChildren'));
 const TioEscolas = lazy(() => import('./pages/tio/TioEscolas'));
 const TioRouteNow = lazy(() => import('./pages/tio/TioRouteNow'));
@@ -63,6 +74,12 @@ const TioBoletim = lazy(() => import('./pages/tio/TioBoletim'));
 const TioChildStatement = lazy(() => import('./pages/tio/TioChildStatement'));
 const TioExpenses = lazy(() => import('./pages/tio/TioExpenses'));
 const TioTurma = lazy(() => import('./pages/tio/TioTurma'));
+// "Sua perua" (03/10/2026): abastecer fica FORA da senha (/tio/abastecer — a
+// auxiliar e o motorista no posto); reserva e "Preciso aumentar?" ficam
+// embaixo de /tio/finance, e por isso atrás da senha sem código novo.
+const TioAbastecer = lazy(() => import('./pages/tio/TioAbastecer'));
+const TioReserva = lazy(() => import('./pages/tio/TioReserva'));
+const TioPrecisoAumentar = lazy(() => import('./pages/tio/TioPrecisoAumentar'));
 const TioContract = lazy(() => import('./pages/tio/TioContract'));
 const TioPixConfig = lazy(() => import('./pages/tio/TioPixConfig'));
 const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
@@ -75,8 +92,8 @@ const TioNivel = lazy(() => import('./pages/tio/TioNivel'));
 const TioIndicar = lazy(() => import('./pages/tio/TioIndicar'));
 const ChildForm = lazy(() => import('./components/children/ChildForm'));
 
-const PaiLayout = lazy(() => import('./pages/pai/PaiLayout'));
-const PaiDashboard = lazy(() => import('./pages/pai/PaiDashboard'));
+const PaiLayout = lazy(carregarPaiLayout);
+const PaiDashboard = lazy(carregarPaiDashboard);
 const PaiFinance = lazy(() => import('./pages/pai/PaiFinance'));
 const PaiFinanceReport = lazy(() => import('./pages/pai/PaiFinanceReport'));
 const PaiMap = lazy(() => import('./pages/pai/PaiMap'));
@@ -398,12 +415,19 @@ function SemVinculoGate({ children }) {
 
 function PrimeiroAcessoDoPaiGate({ children }) {
   const { profile, loading, childIds } = useAuth();
-  const { child, loading: carregandoCrianca } = useActiveChild();
+  const { child, loading: carregandoCrianca, activeChildId } = useActiveChild();
 
   // ⚠️ ESPERA A CRIANÇA, NÃO SÓ O "CARREGANDO". Sem filho ativo escolhido
   // ainda, `useChild(null)` responde "não está carregando" com criança nula —
   // e a conta sairia sem o passo do aniversário. Tem filho? Espera ele.
-  if (loading || carregandoCrianca || (childIds?.length > 0 && !child)) {
+  // ⚠️ MAS ESPERA SÓ ENQUANTO A LEITURA ESTÁ NO AR (04/10/2026). A condição
+  // era "tem filho e a criança ainda é nula" — e quando o doc da criança não
+  // existe mais ou a leitura é negada (o motorista removeu e o perfil ainda
+  // lista o id), a criança fica nula PARA SEMPRE e o /pai girava sem saída.
+  // Lida e vazia, a conta passa: o ParentContractGate e o Início já sabem
+  // lidar com "sem criança".
+  const esperandoCrianca = childIds?.length > 0 && (!activeChildId || carregandoCrianca);
+  if (loading || carregandoCrianca || esperandoCrianca) {
     return <FullScreenLoader />;
   }
   const passos = passosDoResponsavel({ profile, child, permissao: permissaoDeAvisos() });
@@ -498,6 +522,26 @@ function ParaOSite() {
   return <Respiro />;
 }
 
+/**
+ * Pede os pedaços do painel do papel assim que o perfil chega — ver o
+ * comentário dos importadores no topo. Não desenha nada; falha de rede aqui é
+ * ignorada, porque o lazy tenta de novo na hora de desenhar.
+ */
+function PreCarregarPainel() {
+  const { profile } = useAuth();
+  const papel = profile?.role;
+  useEffect(() => {
+    const pedidos =
+      papel === 'admin'
+        ? [carregarGuardaDaConta, carregarTioLayout, carregarTioDashboard]
+        : papel === 'parent'
+          ? [carregarPaiLayout, carregarPaiDashboard]
+          : [];
+    pedidos.forEach((carregar) => carregar().catch(() => {}));
+  }, [papel]);
+  return null;
+}
+
 export default function App() {
   // Som global de clique em qualquer elemento .tap — desabilitável no Profile
   useGlobalClickSound();
@@ -510,6 +554,7 @@ export default function App() {
         * rotas: ela chega na mesma renderização que a tela de destino, então
         * o destino nunca pisca antes de ser coberto. Ver Travessia.jsx. */}
       <Travessia />
+      <PreCarregarPainel />
 
       <Suspense fallback={<FullScreenLoader />}>
         {/* Boundary DENTRO do Suspense: é aqui que a rejeição do lazy()
@@ -655,6 +700,9 @@ export default function App() {
         <Route path="finance/boletim" element={<TioBoletim />} />
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="finance/turma" element={<TioTurma />} />
+        <Route path="finance/reserva" element={<TioReserva />} />
+        <Route path="finance/aumentar" element={<TioPrecisoAumentar />} />
+        <Route path="abastecer" element={<TioAbastecer />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
         {/* O selo fica DENTRO do guarda: quem está bloqueado não precisa de

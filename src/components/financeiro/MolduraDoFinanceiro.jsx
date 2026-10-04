@@ -8,7 +8,9 @@ import Header from '../layout/Header';
  * pessoa, ela continua no mesmo lugar, só a porta mudou.
  *
  * `voltarPara` só existe fora do layout do /tio (a fatura, `/tio/taxa`,
- * que não tem a barra de baixo): sem ele não haveria saída na tela.
+ * que não tem a barra de baixo): sem ele não haveria saída na tela. É também
+ * ele que esconde sino e perfil ali — fora do layout a escuta do sino não
+ * existe.
  */
 export default function MolduraDoFinanceiro({ children, voltarPara = null }) {
   return (
@@ -18,6 +20,10 @@ export default function MolduraDoFinanceiro({ children, voltarPara = null }) {
         showBack={!!voltarPara}
         backTo={voltarPara}
         backLabel={voltarPara ? 'Início' : null}
+        // Fora do layout do /tio (só a fatura, `/tio/taxa`) não existe a
+        // escuta do sino: ele mostraria zero e "nenhum aviso" a quem tem
+        // aviso. Mesma escolha das outras telas de fora do layout.
+        showGlobal={!voltarPara}
         action={
           // Abaixo de 360px a palavra sai e fica o cadeado: com ela, o título
           // "Financeiro" saía cortado ("Financ…") — medido em 04/10/2026.

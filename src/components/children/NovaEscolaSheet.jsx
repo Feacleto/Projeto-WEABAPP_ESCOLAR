@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { School, MapPin } from 'lucide-react';
-import { Phone } from 'lucide-react';
+import { School, MapPin, Phone, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Sheet from '../common/Sheet';
 import Input from '../common/Input';
@@ -14,7 +13,7 @@ import BuscaDeRua from '../endereco/BuscaDeRua';
 /**
  * NOVA ESCOLA, SEM SAIR DO CADASTRO DA CRIANÇA (02/10/2026).
  *
- * O passo "Onde estuda" mandava para `/tio/children/escolas` quando não havia
+ * O passo "Escola e horários" mandava para `/tio/children/escolas` quando não havia
  * escola — e o formulário da criança é `useState` local: tudo o que ele tinha
  * digitado (nome, endereço, autorização) sumia, e nada o trazia de volta.
  * Agora a escola nasce num popup por cima do cadastro e volta já escolhida.
@@ -114,7 +113,7 @@ export default function NovaEscolaSheet({ open, onClose, onCriada }) {
   return (
     <Sheet open={open} onClose={fechar} title="Nova escola" icon={School}>
       <div className="space-y-4 pb-2">
-        <Input
+        <Input falar="texto"
           label="Nome da escola"
           icon={School}
           value={nome}
@@ -146,7 +145,7 @@ export default function NovaEscolaSheet({ open, onClose, onCriada }) {
         />
         {/* O NÚMERO DA ESCOLA É OPCIONAL, e sempre foi: prédio grande, de
           * esquina, ou num campus sem número útil. Não sabe agora? Fica em
-          * branco e ele completa depois, em Crianças › Escolas. */}
+          * branco e ele completa depois, em Minha turma › Escolas. */}
         {partes && (
           <Input
             label="Número (opcional)"
@@ -159,7 +158,7 @@ export default function NovaEscolaSheet({ open, onClose, onCriada }) {
         {/* TELEFONE DA ESCOLA, OPCIONAL (03/10/2026, pedido do dono): para o
           * motorista ligar na hora da entrega, e para as famílias verem na
           * ficha do filho. A família também pode informar, se faltar. */}
-        <Input
+        <Input falar="telefone"
           label="Telefone da escola (opcional)"
           icon={Phone}
           inputMode="tel"
@@ -167,8 +166,20 @@ export default function NovaEscolaSheet({ open, onClose, onCriada }) {
           value={telefone}
           onChange={(e) => setTelefone(maskPhone(e.target.value))}
         />
-        <Button loading={salvando} onClick={salvar}>
-          Salvar e usar
+        {/* "Cadastrar escola", o mesmo nome da tela de Escolas: criar tem um
+          * nome, salvar uma edição tem outro. A escola volta já escolhida
+          * no cadastro da criança, sem precisar dizer isso no botão. */}
+        {/* `data-avancar` DENTRO DA FOLHA: o Salvar do último campo aperta
+          * ESTE botão, nunca o "Avançar" do cadastro por trás
+          * (avancarCampo.js procura primeiro dentro do [role=dialog]). */}
+        <Button
+          data-avancar
+          loading={salvando}
+          onClick={salvar}
+          icon={Plus}
+          className="shadow-focus"
+        >
+          Cadastrar escola
         </Button>
       </div>
     </Sheet>

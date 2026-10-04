@@ -98,20 +98,20 @@ export default function AguardandoVinculo() {
       <div className="w-full max-w-[420px] rounded-3xl bg-card p-5 shadow-float">
         {corpo}
         {!corrigindo && (
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setCorrigindo(true)}
-              className="tap py-2 text-sm font-semibold text-primary"
+              className="tap inline-flex min-h-12 items-center px-1 text-base font-semibold text-primary"
             >
               Corrigir meu número
             </button>
             <button
               type="button"
               onClick={logout}
-              className="tap inline-flex items-center gap-1 py-2 text-sm text-textMuted"
+              className="tap inline-flex min-h-12 items-center gap-1.5 px-2 text-base text-textMuted"
             >
-              <LogOut size={14} /> Sair
+              <LogOut size={18} /> Sair
             </button>
           </div>
         )}

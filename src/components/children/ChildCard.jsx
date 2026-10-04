@@ -1,20 +1,15 @@
-import { useState } from 'react';
 import {
   GraduationCap,
-  ArrowUpRight,
-  ChevronDown,
+  ChevronRight,
   CheckCircle2,
   AlertTriangle,
   MapPinOff,
-  MapPin,
-  Phone,
-  UserRound,
   UserX,
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import Button from '../common/Button';
 import StatusBadge from './StatusBadge';
-import { PERIOD_LABELS, formatAge, formatPhone } from '../../compartilhado/formatters';
+import { PERIOD_LABELS, formatAge } from '../../compartilhado/formatters';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { ABSENCE_LABELS } from '../../services/absencesService';
 
@@ -22,28 +17,24 @@ import { ABSENCE_LABELS } from '../../services/absencesService';
  * Card de criança na lista "Minha turma".
  *
  * A REGRA DA LISTA: título curto, tudo que o tio precisa pra AGIR, e o resto
- * atrás de "ver mais".
+ * na ficha.
  *
  * O título é nome + idade + escola, porque é isso que ele usa pra saber com
- * quem está falando na porta e pra distinguir dois irmãos. O endereço, os
- * nomes do pai e da mãe e o telefone ficam recolhidos — são consulta, não
- * varredura.
+ * quem está falando na porta e pra distinguir dois irmãos.
  *
  * A AUSÊNCIA DO DIA aparece em destaque no título. Antes ela só existia na
  * tela de rota, então o tio olhava a lista e não sabia quem ia faltar hoje —
  * a informação mais perecível de todas ficava no lugar mais escondido.
  *
- * DOIS ALVOS DE TOQUE, DUAS INTENÇÕES
- * O cartão inteiro abria a ficha completa. Só que abrir a ficha é sair da
- * lista — perder a rolagem, o filtro e a busca — e na maior parte das vezes
- * o tio só queria conferir um endereço ou um telefone. O toque mais provável
- * levava ao resultado mais caro.
- *
- * Agora o cartão tem alvos separados: a FOTO abre a ficha completa (é o
- * retrato da criança, o alvo mais "pessoal" do cartão, e ganha um distintivo
- * de seta pra dizer que sai daqui); o RESTO DA LINHA abre e fecha o detalhe
- * ali mesmo. Quem descobriu o detalhe primeiro ainda acha a ficha: o painel
- * aberto termina com "Ver ficha completa".
+ * UM TOQUE, UMA INTENÇÃO (03/10/2026)
+ * O cartão tinha TRÊS alvos para DUAS intenções: a foto abria a ficha, o
+ * resto da linha abria um detalhe ali mesmo, e um "Ver mais" abria o MESMO
+ * detalhe — que terminava num "Ver ficha completa". Quem tocava no lugar
+ * errado não sabia por que a tela fez outra coisa. O motivo do detalhe
+ * embutido era não perder a lista ao abrir a ficha, e isso deixou de valer:
+ * a ficha agora abre POR CIMA da lista (`ChildDetailSheet`), com filtro,
+ * busca e rolagem intactos atrás. Então a linha inteira abre a ficha, e
+ * endereço, responsáveis e telefone moram lá.
  *
  * O NOME NÃO PODE COMER A IDADE
  * Nome e idade viviam no mesmo `truncate`. Num celular estreito o nome longo
@@ -54,7 +45,7 @@ import { ABSENCE_LABELS } from '../../services/absencesService';
  * Props:
  *   - child
  *   - absence:  declaração de hoje (ou null) — { type, ... }
- *   - onClick:  abre a ficha completa
+ *   - onClick:  abre a ficha
  *   - action:   { label, nextStatus } | null — próximo passo da rota
  *   - onAdvance: (nextStatus) => void
  *   - advancing: bool
@@ -67,8 +58,6 @@ export default function ChildCard({
   onAdvance = null,
   advancing = false,
 }) {
-  const [expanded, setExpanded] = useState(false);
-
   const status = getEffectiveStatus(child);
   const pendingInvite = child.inviteStatus === 'pending';
   // Salva sem coordenada (endereço que o mapa não conhece). Cobre também as
@@ -79,62 +68,39 @@ export default function ChildCard({
   const age = formatAge(child.birthDate);
   const absenceLabel = absence ? ABSENCE_LABELS[absence.type] : null;
 
-  // Os dois responsáveis, quando existem — é o que ele liga quando a criança
-  // não está na porta.
-  const parents = [
-    child.parentName && { name: child.parentName, phone: child.parentPhone },
-    child.parent2Name && { name: child.parent2Name, phone: child.parent2Phone },
-  ].filter(Boolean);
-
   return (
     <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
-      <div className="p-4 flex items-center gap-3">
-        {/* A FOTO é a porta pra ficha completa — e o único alvo que sai da
-          * lista. O distintivo de seta é o aviso de que sai. */}
-        <button
-          type="button"
-          onClick={onClick}
-          aria-label={`Abrir a ficha completa de ${child.name}`}
-          className="tap relative shrink-0 rounded-full ring-2 ring-primary/15"
-        >
-          <Avatar
-            photoURL={child.photoURL}
-            gender={child.gender}
-            seed={child.id}
-            kind="child"
-            size="md"
-          />
-          <span
-            aria-hidden
-            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-primary text-white"
-          >
-            <ArrowUpRight size={10} />
-          </span>
-        </button>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`Abrir a ficha de ${child.name}`}
+        className="tap w-full p-4 flex items-center gap-3 text-left"
+      >
+        <Avatar
+          photoURL={child.photoURL}
+          gender={child.gender}
+          seed={child.id}
+          kind="child"
+          size="md"
+        />
 
-        {/* O RESTO abre o detalhe aqui mesmo, sem trocar de tela. */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-          className="tap flex-1 min-w-0 text-left"
-        >
+        <div className="flex-1 min-w-0">
           {/* Linha 1: nome + idade — o que identifica a criança.
             * Caixas separadas: só o nome corta (ver comentário do topo). */}
           <h3 className="flex items-baseline gap-1 leading-tight">
-            <span className="min-w-0 truncate font-bold text-text">
+            <span className="min-w-0 truncate text-lg font-bold text-text">
               {child.name}
             </span>
             {age && (
-              <span className="shrink-0 text-xs font-normal text-textMuted">
+              <span className="shrink-0 text-sm font-normal text-textMuted">
                 · {age}
               </span>
             )}
           </h3>
 
           {/* Linha 2: escola e período */}
-          <p className="text-xs text-textMuted flex items-center gap-1 mt-0.5 truncate">
-            <GraduationCap size={12} className="shrink-0" />
+          <p className="text-base text-textMuted flex items-center gap-1 mt-0.5 truncate">
+            <GraduationCap size={16} className="shrink-0" />
             <span className="truncate">{child.school || 'Escola não informada'}</span>
             {child.period && (
               <>
@@ -149,34 +115,29 @@ export default function ChildCard({
             {/* A ausência vem PRIMEIRO: é a informação mais perecível e a
               * única que muda a rota de hoje. */}
             {absenceLabel && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-dangerText bg-dangerChip px-2 py-0.5 rounded-full">
-                <UserX size={10} />
+              <span className="inline-flex items-center gap-1 text-sm font-bold text-dangerText bg-dangerChip px-2.5 py-0.5 rounded-full">
+                <UserX size={14} />
                 {absenceLabel}
               </span>
             )}
             <StatusBadge status={status} />
             {pendingInvite && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-warningText bg-warningChip px-2 py-0.5 rounded-full">
-                <AlertTriangle size={10} />
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-warningText bg-warningChip px-2.5 py-0.5 rounded-full">
+                <AlertTriangle size={14} />
                 Convite pendente
               </span>
             )}
             {geoPending && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-infoText bg-infoChip px-2 py-0.5 rounded-full">
-                <MapPinOff size={10} />
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-infoText bg-infoChip px-2.5 py-0.5 rounded-full">
+                <MapPinOff size={14} />
                 Sem local
               </span>
             )}
           </div>
-        </button>
-        <ChevronDown
-          size={18}
-          aria-hidden
-          className={`text-textMuted shrink-0 transition-transform ${
-            expanded ? 'rotate-180' : ''
-          }`}
-        />
-      </div>
+        </div>
+
+        <ChevronRight size={20} aria-hidden className="text-textMuted shrink-0" />
+      </button>
 
       {/* AVANÇAR O STATUS DAQUI, num toque.
         *
@@ -186,9 +147,10 @@ export default function ChildCard({
         * que faz o status nunca ser atualizado, e é o status que o pai
         * está esperando ver mudar.
         *
-        * Não aparece pra quem faltou: não há o que avançar. */}
+        * Fica FORA do botão da linha (botão dentro de botão não existe) e
+        * não aparece pra quem faltou: não há o que avançar. */}
       {action && onAdvance && !absence && (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-4">
           <Button
             size="md"
             disabled={advancing}
@@ -199,84 +161,6 @@ export default function ChildCard({
           </Button>
         </div>
       )}
-
-      {/* "Ver mais" abre AQUI, sem sair da lista: o tio consulta um endereço
-        * e continua de onde parou, em vez de navegar e voltar. */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className="tap w-full px-4 pb-1 -mt-1 flex min-h-11 items-center gap-1 text-sm font-semibold text-primary"
-      >
-        {expanded ? 'Ver menos' : 'Ver mais'}
-        <ChevronDown
-          size={14}
-          className={`transition-transform ${expanded ? 'rotate-180' : ''}`}
-        />
-      </button>
-
-      {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-neutro space-y-2.5">
-          <Detail icon={MapPin} label="Onde mora">
-            {child.address || 'Endereço não informado'}
-          </Detail>
-
-          {parents.length > 0 ? (
-            parents.map((p, i) => (
-              <Detail key={i} icon={UserRound} label={i === 0 ? 'Responsável' : '2º responsável'}>
-                <span className="block">{p.name}</span>
-                {p.phone && (
-                  <a
-                    href={`tel:${p.phone}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="tap inline-flex items-center gap-1 text-primary font-semibold mt-0.5"
-                  >
-                    <Phone size={12} />
-                    {formatPhone(p.phone)}
-                  </a>
-                )}
-              </Detail>
-            ))
-          ) : (
-            <Detail icon={UserRound} label="Responsável">
-              Não informado
-            </Detail>
-          )}
-
-          {child.schoolAddress && (
-            <Detail icon={GraduationCap} label="Endereço da escola">
-              {child.schoolAddress}
-            </Detail>
-          )}
-
-          {/* A SEGUNDA PORTA PRA FICHA COMPLETA.
-            * O distintivo na foto é discreto de propósito; quem não reparou
-            * nele chega aqui pelo caminho que já conhece — abriu o detalhe,
-            * quer mais, e o "mais" está no fim do que ele acabou de ler. */}
-          <button
-            type="button"
-            onClick={onClick}
-            className="tap mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-bold text-primary"
-          >
-            Ver ficha completa
-            <ArrowUpRight size={13} />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Detail({ icon: Icon, label, children }) {
-  return (
-    <div className="flex items-start gap-2">
-      <Icon size={13} className="text-textMuted shrink-0 mt-0.5" />
-      <div className="min-w-0 flex-1">
-        <p className="rotulo">
-          {label}
-        </p>
-        <p className="text-xs text-text leading-snug break-words">{children}</p>
-      </div>
     </div>
   );
 }

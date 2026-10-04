@@ -248,6 +248,19 @@ function tamanhosCoerentes(payload) {
 checar('todo campo declara o tamanho que tem', true,
   COMBINACOES.every((e) => tamanhosCoerentes(buildPixPayload(e))));
 
+// O corte em 25 caía logo depois de um espaço e o nome saía com espaço no
+// fim — o QR do "Mostrar meu PIX" (03/10/2026) não pagava em todo banco.
+const nomeCortado = buildPixPayload({
+  key: '(11) 97318-5800',
+  keyType: 'phone',
+  merchantName: 'Felipe Anderson Anacleto Silva',
+  city: 'São  Paulo ',
+});
+checar('nome cortado em 25 não termina em espaço', true,
+  nomeCortado.includes('5924FELIPE ANDERSON ANACLETO6009'));
+checar('cidade com espaço duplo vira espaço simples', true,
+  nomeCortado.includes('6009SAO PAULO62'));
+
 // ─────────────────────────── resumo ───────────────────────────────────────
 
 console.log(`\n${'═'.repeat(64)}`);

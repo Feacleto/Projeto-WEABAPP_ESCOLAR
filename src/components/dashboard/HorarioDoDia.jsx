@@ -2,6 +2,7 @@ import { Bus, Home, CircleAlert, UserCheck } from 'lucide-react';
 import { horariosCombinados, horaCurta, emMinutos } from '../../dominio/rota/horarios';
 import { ABSENCE_TYPES } from '../../services/absencesService';
 import { primeiroNome } from '../../compartilhado/formatters';
+import { fraseDoDiaSemRota } from '../../dominio/rota/calendario.js';
 
 /**
  * "Hoje" — os dois horários que o responsável abre o app pra ver.
@@ -32,6 +33,13 @@ export default function HorarioDoDia({
   // superfície é o cartão. Duas bordas arredondadas coladas leem como dois
   // cartões empilhados, e o ponto do cartão único é justamente parecer um.
   semCasca = false,
+  // DIA SEM ROTA (`diaSemRota` de `dominio/rota/calendario.js`): sábado,
+  // domingo, feriado nacional. Sem isto, no sábado o cartão dizia "entra na
+  // perua 06:20" — a hora de um dia que não tem perua. Quem decide é o
+  // Início, que também sabe se o motorista rodou mesmo assim.
+  semRota = null,
+  // "na segunda, 5/10" — o dia em que os horários abaixo voltam a valer.
+  proximoDia = null,
 }) {
   if (!child) return null;
 
@@ -69,12 +77,24 @@ export default function HorarioDoDia({
             Hoje
           </h2>
         )}
-        {tipo === ABSENCE_TYPES.FULL && (
+        {!semRota && tipo === ABSENCE_TYPES.FULL && (
           <span className="text-xs font-semibold text-warningText">
             você avisou que não vai
           </span>
         )}
       </div>
+
+      {semRota && (
+        <div className="px-5 pt-1 pb-1">
+          <p className="text-xl font-bold leading-tight text-text">
+            Hoje não tem rota
+          </p>
+          <p className="mt-1 text-base text-textMuted">
+            {fraseDoDiaSemRota(semRota)}.
+            {!presumido && proximoDia && ` Os horários voltam ${proximoDia}:`}
+          </p>
+        </div>
+      )}
 
       {presumido ? (
         <div className="px-5 pb-5 pt-2 flex items-start gap-3">

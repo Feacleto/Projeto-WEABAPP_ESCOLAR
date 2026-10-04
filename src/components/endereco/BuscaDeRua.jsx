@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Check, MapPin } from 'lucide-react';
+import { Search, Check, MapPin, Mic } from 'lucide-react';
+import { useDitado } from '../../hooks/useDitado';
+import { textoDitado } from '../../compartilhado/ditado.js';
 import { useAuth } from '../../hooks/useAuth';
 import { buscarRuas } from '../../services/locationService';
 import { UFS, podeBuscarRua } from '../../compartilhado/ruas';
@@ -26,6 +28,9 @@ export default function BuscaDeRua({ onEscolher }) {
   const [uf, setUf] = useState(profile?.uf || '');
   const [trocando, setTrocando] = useState(!profile?.uf || !profile?.city);
   const [rua, setRua] = useState('');
+  // O nome da rua também se fala (04/10/2026): "Rua das Flores" sai com as
+  // iniciais certas (`textoDitado(…, 'nome')`), e a busca roda igual.
+  const ditado = useDitado();
   const [sugestoes, setSugestoes] = useState([]);
   const [buscando, setBuscando] = useState(false);
   const [escolhida, setEscolhida] = useState(null);
@@ -65,8 +70,8 @@ export default function BuscaDeRua({ onEscolher }) {
       <div className="flex items-center gap-3 rounded-xl border border-primaryBorder bg-primarySoft px-3.5 py-3">
         <Check size={18} className="shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-text">{escolhida.logradouro}</p>
-          <p className="truncate text-xs text-textMuted">
+          <p className="truncate text-base font-semibold text-text">{escolhida.logradouro}</p>
+          <p className="truncate text-sm text-textMuted">
             {[escolhida.bairro, `${escolhida.localidade}/${escolhida.uf}`, escolhida.cep]
               .filter(Boolean)
               .join(' · ')}
@@ -78,7 +83,7 @@ export default function BuscaDeRua({ onEscolher }) {
             setEscolhida(null);
             setRua('');
           }}
-          className="tap -my-2 shrink-0 px-2 py-3 text-sm font-semibold text-primary"
+          className="tap -my-2 flex h-12 shrink-0 items-center px-3 text-base font-semibold text-primary"
         >
           Trocar
         </button>
@@ -98,8 +103,30 @@ export default function BuscaDeRua({ onEscolher }) {
             className="h-12 min-w-0 flex-1 bg-transparent text-base text-text focus:outline-none"
             autoComplete="off"
           />
+          {ditado.suportado && (
+            <button
+              type="button"
+              onClick={() =>
+                ditado.ouvindo
+                  ? ditado.parar()
+                  : ditado.comecar((bruto) => setRua(textoDitado(bruto, 'nome')))
+              }
+              aria-label={ditado.ouvindo ? 'Parar de ouvir' : 'Falar o nome da rua'}
+              aria-pressed={ditado.ouvindo}
+              className={`tap -mr-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                ditado.ouvindo ? 'bg-primary text-white' : 'bg-primaryChip text-primary'
+              }`}
+            >
+              <Mic size={22} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </label>
+      {(ditado.ouvindo || ditado.naoEntendi) && (
+        <p aria-live="polite" className={`text-sm font-semibold ${ditado.ouvindo ? 'text-primary' : 'text-textMuted'}`}>
+          {ditado.ouvindo ? 'Ouvindo… pode falar o nome da rua' : 'Não entendi. Toque no microfone e fale de novo.'}
+        </p>
+      )}
 
       {trocando ? (
         <div className="grid grid-cols-[1fr_88px] gap-2">
@@ -108,13 +135,13 @@ export default function BuscaDeRua({ onEscolher }) {
             onChange={(e) => setCidade(e.target.value)}
             placeholder="Digite aqui"
             aria-label="Cidade"
-            className="h-11 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:border-primary focus:outline-none"
+            className="h-12 rounded-xl border-2 border-border bg-card px-3 text-base text-text focus:border-primary focus:outline-none"
           />
           <select
             value={uf}
             onChange={(e) => setUf(e.target.value)}
             aria-label="Estado"
-            className="h-11 rounded-xl border-2 border-border bg-card px-2 text-sm text-text focus:border-primary focus:outline-none"
+            className="h-12 rounded-xl border-2 border-border bg-card px-2 text-base text-text focus:border-primary focus:outline-none"
           >
             <option value="">UF</option>
             {UFS.map((u) => (
@@ -125,27 +152,28 @@ export default function BuscaDeRua({ onEscolher }) {
           </select>
         </div>
       ) : (
-        <p className="flex items-center gap-1.5 px-1 text-xs text-textMuted">
-          <MapPin size={12} />
-          Buscando em {cidade}/{uf}
+        <div className="flex min-h-12 items-center gap-1.5 px-1 text-sm text-textMuted">
+          <MapPin size={16} className="shrink-0" />
+          <span className="min-w-0">Buscando em {cidade}/{uf}</span>
+          {/* 48px de alvo: a linha é discreta, o toque não pode ser. */}
           <button
             type="button"
             onClick={() => setTrocando(true)}
-            className="tap -my-3 px-2 py-3 font-semibold text-primary"
+            className="tap flex h-12 shrink-0 items-center px-3 text-base font-semibold text-primary"
           >
-            trocar
+            Trocar cidade
           </button>
-        </p>
+        </div>
       )}
 
-      {buscando && <p className="px-1 text-xs text-textMuted">Procurando…</p>}
+      {buscando && <p className="px-1 text-sm text-textMuted">Procurando…</p>}
       {falhou && (
-        <p className="px-1 text-xs text-warningText">
+        <p className="px-1 text-sm text-warningText">
           A busca de ruas está fora do ar. Use o CEP ou digite o endereço abaixo.
         </p>
       )}
       {!buscando && !falhou && rua.trim().length >= 3 && podeBuscarRua({ uf, cidade, rua }) && sugestoes.length === 0 && (
-        <p className="px-1 text-xs text-textMuted">
+        <p className="px-1 text-sm text-textMuted">
           Nenhuma rua com esse nome aqui. Confira a cidade ou digite o endereço abaixo.
         </p>
       )}
@@ -157,13 +185,13 @@ export default function BuscaDeRua({ onEscolher }) {
               <button
                 type="button"
                 onClick={() => escolher(s)}
-                className="tap w-full px-3.5 py-2.5 text-left hover:bg-sunken"
+                className="tap w-full min-h-12 px-3.5 py-2.5 text-left hover:bg-sunken"
               >
-                <span className="block text-sm font-semibold text-text">{s.logradouro}</span>
-                <span className="block text-xs text-textMuted">
+                <span className="block text-base font-semibold text-text">{s.logradouro}</span>
+                <span className="block text-sm text-textMuted">
                   {[s.bairro, `${s.localidade}/${s.uf}`, s.cep].filter(Boolean).join(' · ')}
                 </span>
-                {s.faixa && <span className="block text-xs text-textMuted">{s.faixa}</span>}
+                {s.faixa && <span className="block text-sm text-textMuted">{s.faixa}</span>}
               </button>
             </li>
           ))}

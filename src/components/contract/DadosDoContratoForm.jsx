@@ -65,7 +65,7 @@ export default function DadosDoContratoForm({ onSalvo, textoDoBotao = 'Salvar' }
 
   return (
     <form onSubmit={salvar} className="space-y-3" noValidate>
-      <Input
+      <Input falar="nome"
         label="Seu nome completo (ou o da empresa)"
         icon={User}
         value={nome}
@@ -82,7 +82,7 @@ export default function DadosDoContratoForm({ onSalvo, textoDoBotao = 'Salvar' }
         onChange={(e) => setDoc(maskCpfCnpj(e.target.value))}
         error={erros.doc}
       />
-      <Input
+      <Input falar="texto"
         label="Seu endereço"
         icon={MapPin}
         placeholder="Digite aqui"

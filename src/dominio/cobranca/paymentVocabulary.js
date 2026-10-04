@@ -46,7 +46,10 @@ export const PAYMENT_LABELS = {
     tone: 'ok',
   },
   claimed: {
-    parent: 'Aguardando confirmação do motorista',
+    // O nome do ESTADO depois do "Já paguei", igual em toda tela da família
+    // (Financeiro, extrato, ficha) — com ou sem comprovante. Ver o fim do
+    // arquivo: o "Pago" verde antes da baixa saiu em 03/10/2026.
+    parent: 'Aguardando o motorista confirmar',
     // O verbo do que ele tem que fazer; o botão "Dar baixa" fica ao lado.
     admin: 'Conferir',
     chip: 'Aguardando confirmação',
@@ -121,24 +124,22 @@ export function paymentChipClasses(status, role = 'parent', opts = {}) {
 }
 
 /**
- * O rótulo do estado `claimed` COM comprovante anexado, do lado do pai.
+ * ⚠️ NÃO EXISTE MAIS "PAGO" ANTES DA BAIXA (03/10/2026).
  *
- * POR QUE ISTO É SEPARADO
- * Pra ele, um mês pago e comprovado está resolvido — ele fez tudo que
- * cabia. Mostrar "aguardando confirmação" em âmbar, do lado de meses
- * verdes, faz parecer que o pagamento não valeu e que ele precisa fazer
- * algo. Precisa não: quem tem pendência é o motorista.
+ * Havia `parentClaimedLabel`/`parentClaimedTone`: com comprovante anexado, a
+ * família lia "Pago" em verde antes de o motorista confirmar — o argumento era
+ * que, do lado dela, estava resolvido. Três problemas, e o último decide:
  *
- * Então o pai lê "Pago" em verde, com a informação de que a baixa do
- * motorista ainda vem. É a mesma verdade, contada do lado certo.
+ *   1. O Financeiro dizia "Pago" e o extrato dizia "Aguardando" para o MESMO
+ *      pagamento: dois nomes para um estado, na mesma conta.
+ *   2. O comprovante é uma imagem que ela escolheu, não um fato conferido —
+ *      o motorista pode não reconhecer o PIX (print errado, valor errado,
+ *      duplicata). Verde ali é a tela afirmando o que ninguém conferiu.
+ *   3. Quando o motorista desfaz ou não confirma, a família que leu "Pago"
+ *      descobre pela cobrança seguinte — a pior hora.
  *
- * O tio continua vendo "aguardando SUA confirmação" — pra ele a bola
- * ainda está no pé.
+ * O medo do comentário antigo ("âmbar faz parecer que ela tem pendência")
+ * é respondido pela FRASE, não pela cor: "Aguardando o motorista confirmar"
+ * diz de quem é a vez. E a trilha logo abaixo mostra "Você avisou em …", que
+ * é a prova de que ela fez a parte dela. Verde é só `paid`.
  */
-export function parentClaimedLabel(hasReceipt) {
-  return hasReceipt ? 'Pago' : 'Aguardando confirmação do motorista';
-}
-
-export function parentClaimedTone(hasReceipt) {
-  return hasReceipt ? 'ok' : 'wait';
-}

@@ -27,11 +27,11 @@ import { definirDepoimentoNaHome } from '../../services/feedbackService';
 import { functions } from '../../firebase/config';
 import { Stars } from '../../components/landing/ReviewsBlock';
 import { labelDaOpcao } from '../../components/feedback/surveyOptions';
+import { avaliacaoLigada, rotuloDoPapel } from '../../dominio/suporte/avaliacaoRapida.js';
 import { useAuth } from '../../hooks/useAuth';
 import {
   watchPlatformConfig,
-  setReviewWindow,
-  janelaAberta,
+  setAvaliacaoRapida,
   cobrancaLigada,
   setCobrancaLigada,
   setModuloDeCobranca,
@@ -593,19 +593,13 @@ function Geral({ ov }) {
  *    criaria um terceiro lugar com o vazamento, com retenção própria.
  */
 /**
- * O PERÍODO DE AVALIAÇÃO — o interruptor que o dono liga e desliga.
+ * A AVALIAÇÃO RÁPIDA — o interruptor do dono (03/10/2026).
  *
- * POR QUE ISTO É UMA JANELA, E NÃO UM PEDIDO PERMANENTE
- * O convite pra avaliar ficava no topo do painel do motorista o ano inteiro.
- * Pedido que nunca sai vira paisagem: ele aprende a não ler aquele pedaço da
- * tela, e junto com o pedido some tudo que a gente colocar ali depois. Com
- * janela, o cartão volta a ser evento — aparece quando há campanha e some
- * quando ela acaba.
- *
- * O PRAZO NÃO É ENFEITE
- * Sem data-limite, um período aberto e esquecido é exatamente o estado
- * anterior, só que com mais passos. O campo aceita vazio ("deixa aberto até
- * eu fechar"), mas o caminho fácil é pôr uma data.
+ * Era um "período de avaliação" que nascia FECHADO, com data para fechar
+ * sozinho — e por isso o pedido quase nunca aparecia. Agora o cartão tem a
+ * própria cadência (só depois de algo dar certo, a partir do 5º dia, 60 dias
+ * de silêncio depois de responder — dominio/suporte/avaliacaoRapida.js), e
+ * isto é só o desligar de emergência. ⚠️ Ausente é LIGADO.
  *
  * Escrever aqui exige `isOwner()` nas rules. Motorista não alcança.
  */
@@ -615,20 +609,13 @@ function PeriodoDeAvaliacao() {
 
   useEffect(() => watchPlatformConfig(setConfig), []);
 
-  const aberta = !!config?.reviewOpen;
-  const ativa = janelaAberta(config);
-  const ateISO = (() => {
-    const d = config?.reviewUntil?.toDate?.() || config?.reviewUntil;
-    if (!d) return '';
-    const dt = new Date(d);
-    return isNaN(dt) ? '' : dt.toISOString().slice(0, 10);
-  })();
+  const ligada = avaliacaoLigada(config);
 
-  const salvar = async (patch) => {
+  const alternar = async () => {
     setSalvando(true);
     try {
-      await setReviewWindow({ aberta, ate: ateISO || null, ...patch });
-      toast.success('Período atualizado.');
+      await setAvaliacaoRapida(!ligada);
+      toast.success(ligada ? 'Avaliação desligada.' : 'Avaliação ligada.');
     } catch (err) {
       console.error(err);
       toast.error('Não deu pra salvar. Você é o dono desta conta?');
@@ -641,52 +628,33 @@ function PeriodoDeAvaliacao() {
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-text">Período de avaliação</p>
+          <p className="text-sm font-bold text-text">Avaliação rápida no app</p>
           <p className="mt-1 text-xs leading-relaxed text-textMuted">
-            Enquanto estiver fechado, ninguém vê o convite pra avaliar — nem
-            motorista, nem responsável.
+            Cinco carinhas no Início, depois da rota encerrada (motorista) e do
+            filho entregue (família), e no link de quem acompanha. Ligada, ela
+            mesma cuida de não insistir.
           </p>
         </div>
         <button
           type="button"
           role="switch"
-          aria-checked={aberta}
-          aria-label="Abrir período de avaliação"
+          aria-checked={ligada}
+          aria-label="Ligar a avaliação rápida"
           disabled={salvando || config === null}
-          onClick={() => salvar({ aberta: !aberta })}
+          onClick={alternar}
           className={`tap relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-            aberta ? 'bg-primary' : 'bg-borderStrong'
+            ligada ? 'bg-primary' : 'bg-borderStrong'
           }`}
         >
           <span
             className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-rest transition-all ${
-              aberta ? 'left-6' : 'left-1'
+              ligada ? 'left-6' : 'left-1'
             }`}
           />
         </button>
       </div>
-
-      <label className="mt-3 block">
-        <span className="rotulo">
-          Fecha sozinho em
-        </span>
-        <input
-          type="date"
-          value={ateISO}
-          disabled={salvando}
-          onChange={(e) => salvar({ ate: e.target.value || null })}
-          className="mt-1 h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-      </label>
-
       <p className="mt-2 text-xs text-textMuted">
-        {ativa
-          ? ateISO
-            ? `Aberto — fecha sozinho em ${ateISO.split('-').reverse().join('/')}.`
-            : 'Aberto por tempo indeterminado.'
-          : aberta
-            ? 'O prazo já passou: o convite não aparece mais.'
-            : 'Fechado — o convite não aparece pra ninguém.'}
+        {ligada ? 'Ligada — o cartão aparece no momento certo.' : 'Desligada — ninguém vê o cartão.'}
       </p>
     </div>
   );
@@ -1238,10 +1206,11 @@ function Pesquisa({ s }) {
     <div className="space-y-5">
       <section>
         <Titulo icon={Star}>Notas</Titulo>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Tile label="Geral" value={nota(s.mediaGeral)} tone="emerald" />
           <Tile label="Motorista" value={nota(s.mediaMotorista)} />
           <Tile label="Responsável" value={nota(s.mediaResponsavel)} />
+          <Tile label="Pelo link" value={nota(s.mediaPeloLink)} />
         </div>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <Tile
@@ -1339,7 +1308,7 @@ function ComentarioDaPesquisa({ c }) {
               : 'bg-infoSoft text-infoText'
           }`}
         >
-          {c.papel === 'admin' ? 'motorista' : 'responsável'}
+          {rotuloDoPapel(c.papel)}
         </span>
         {c.publico && (
           <span

@@ -15,6 +15,12 @@ const FS = `http://127.0.0.1:8085/v1/projects/${P}/databases/(default)/documents
 const AUTH = 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1';
 const ADM = { 'Content-Type': 'application/json', Authorization: 'Bearer owner' };
 const EMAIL = 'ze.financeiro@teste.local';
+// A versão dos termos vem do app: escrita à mão, o Seu Zé caía na tela de
+// reaceite a cada vez que ela subisse.
+import { readFileSync } from 'node:fs';
+const LEGAL = /export const LEGAL_VERSION = '([^']+)'/.exec(
+  readFileSync(new URL('../src/pages/legal/legalContent.js', import.meta.url), 'utf8')
+)[1];
 const SENHA = 'senha-de-teste-123';
 
 const S = (v) => ({ stringValue: v });
@@ -55,7 +61,9 @@ const mes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '
 await gravar(`users/${uid}`, {
   role: S('admin'), email: S(EMAIL), name: S('José Aparecido Lima'), phone: S('(11) 98765-4321'),
   gender: S('male'), marcaNome: S('Transporte Tio Zé'), city: S('São Paulo'), uf: S('SP'),
-  termsVersion: S('1.2'), privacyVersion: S('1.2'), termsAcceptedAt: T(new Date(2026, 8, 1)),
+  companyName: S('José Aparecido Lima'), companyDocument: S('123.456.789-09'),
+  companyAddress: S('Rua das Flores, 100, São Paulo'),
+  termsVersion: S(LEGAL), privacyVersion: S(LEGAL), termsAcceptedAt: T(new Date(2026, 8, 1)),
   tutorialDone: B(true), pixKey: S('11987654321'), pixKeyType: S('phone'),
   criancasAtivas: I(5), createdAt: T(new Date(2026, 6, 1)),
 });

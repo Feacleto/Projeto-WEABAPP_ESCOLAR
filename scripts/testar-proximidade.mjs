@@ -258,7 +258,8 @@ checar('e que o app não pega a localização dos pais', true,
   /não coleta a localização do dispositivo dos responsáveis/i.test(fonteLegal));
 // ⚠️ MUDAR A CLÁUSULA OBRIGA A SUBIR A VERSÃO — senão ninguém reaceita, e o
 // aceite guardado aponta para um texto que não existe mais.
-checar('a versão subiu junto', true, /LEGAL_VERSION = '1\.2'/.test(fonteLegal));
+// 1.2 foi a versão desta cláusula; uma versão posterior a carrega junto.
+checar('a versão subiu junto', true, /LEGAL_VERSION = '1\.([2-9]|\d{2,})'/.test(fonteLegal));
 
 bloco('8. O mesmo ponto não é escrita de novo');
 

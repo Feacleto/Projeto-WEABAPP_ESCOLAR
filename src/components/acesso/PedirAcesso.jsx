@@ -49,9 +49,9 @@ export default function PedirAcesso({ aoConcluir }) {
   return (
     <form onSubmit={enviar}>
       <h2 className="text-xl font-extrabold text-text">Qual o seu WhatsApp?</h2>
-      <p className="mt-1 text-sm text-textMuted">O número que o motorista tem.</p>
+      <p className="mt-1 text-base text-textMuted">O número que o motorista tem.</p>
       <div className="mt-4">
-        <Input
+        <Input semSalvar
           label="WhatsApp"
           type="tel"
           inputMode="tel"

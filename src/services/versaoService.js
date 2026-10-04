@@ -59,6 +59,68 @@ function esperarAssumir(prazo) {
   ]);
 }
 
+/**
+ * AS ETAPAS DA TROCA, PARA A TELA MOSTRAR (03/10/2026, pedido do dono).
+ *
+ * A tela dizia só "Atualizando o app" com uma barra correndo, e quem olha não
+ * sabia se aquilo andava. Agora cada passo de verdade da troca vira uma
+ * etapa — a tela marca a que terminou e a que está em curso. São as mesmas
+ * quatro coisas da lista acima, na mesma ordem: nada aqui é encenado.
+ */
+export const ETAPAS_DA_TROCA = [
+  { id: 'procurando', rotulo: 'Procurando a versão nova' },
+  { id: 'baixando', rotulo: 'Baixando' },
+  { id: 'instalando', rotulo: 'Instalando' },
+  { id: 'abrindo', rotulo: 'Abrindo o app de novo' },
+];
+
+const ouvintes = new Set();
+let etapaAtual = null;
+
+function mudarEtapa(id) {
+  etapaAtual = id;
+  ouvintes.forEach((fn) => fn(id));
+}
+
+/** Escuta a etapa da troca. Devolve a função de parar. */
+export function ouvirEtapaDaTroca(fn) {
+  ouvintes.add(fn);
+  if (etapaAtual) fn(etapaAtual);
+  return () => ouvintes.delete(fn);
+}
+
+/**
+ * O número da versão que está no servidor — o app antigo não o conhece, e o
+ * build publica `/versao.json` para isto (ver vite.config.js). `cache:
+ * 'no-store'` e o worker não guarda .json, então a resposta é a de agora.
+ * Sem rede ou sem arquivo (o `npm run dev` não gera), devolve null e a tela
+ * diz "versão nova" sem número.
+ *
+ * Devolve `{ versao, data, commit, hash }` — a data é a do build publicado.
+ */
+export async function buscarVersaoNova() {
+  try {
+    const controle = new AbortController();
+    const prazo = setTimeout(() => controle.abort(), 4000);
+    const res = await fetch(`/versao.json?t=${Date.now()}`, {
+      cache: 'no-store',
+      signal: controle.signal,
+    });
+    clearTimeout(prazo);
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (typeof json?.versao !== 'string') return null;
+    return {
+      versao: json.versao,
+      data: typeof json.data === 'string' ? json.data : null,
+      commit: json.commit || null,
+      hash: json.hash || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 let trocando = null;
 
 /** Troca para a versão nova e recarrega. Chamar duas vezes não troca duas vezes. */
@@ -66,6 +128,7 @@ export function trocarDeVersao() {
   if (trocando) return trocando;
   trocando = (async () => {
     try {
+      mudarEtapa('procurando');
       const sw = typeof navigator !== 'undefined' ? navigator.serviceWorker : null;
       const reg = sw ? await sw.getRegistration('/') : null;
       if (reg) {
@@ -74,7 +137,9 @@ export function trocarDeVersao() {
         } catch {
           // Sem rede para perguntar: segue com o que já foi baixado.
         }
+        mudarEtapa('baixando');
         await esperarInstalar(reg.installing, PRAZO_BAIXAR_MS);
+        mudarEtapa('instalando');
         if (reg.waiting) {
           const assumiu = esperarAssumir(PRAZO_ASSUMIR_MS);
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -84,6 +149,9 @@ export function trocarDeVersao() {
     } catch (err) {
       console.error('trocarDeVersao', err);
     }
+    mudarEtapa('abrindo');
+    // Um respiro para a última etapa aparecer marcada antes de a tela sumir.
+    await esperar(400);
     window.location.reload();
   })();
   return trocando;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { diasDeCalendario } from '../../compartilhado/formatters';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Clock,
   UserX,
@@ -21,6 +21,7 @@ import Button from '../common/Button';
 import Avatar from '../common/Avatar';
 import Skeleton from '../common/Skeleton';
 import EmptyState from '../common/EmptyState';
+import Spinner from '../common/Spinner';
 import ConfirmDialog from '../common/ConfirmDialog';
 import ControleDeRota from './ControleDeRota';
 import FaixaDaViagem from './FaixaDaViagem';
@@ -39,7 +40,7 @@ import {
   statusNaDirecao,
   voltarPasso,
 } from '../../services/routeStatusService';
-import { passoAnterior } from '../../dominio/rota/acaoDaParada.js';
+import { passoAnterior, barraTravada, TRAVA_DA_PARADA_MS } from '../../dominio/rota/acaoDaParada.js';
 import AvisosDaViagem from './AvisosDaViagem';
 import RecadoDaRota from './RecadoDaRota';
 import {
@@ -111,9 +112,9 @@ import {
  */
 export default function OperacaoDaRota({
   mostrarRodape = true,
-  // Dentro do Início o controle de rota é FIXO no topo da tela, acima de
-  // tudo. Renderizar o daqui também deixaria dois botões de encerrar rota na
-  // mesma tela, um deles rolando pra fora da vista.
+  // O controle de rota (encerrar e a chave do mapa) mora na FAIXA VERDE.
+  // Quem montar esta operação numa tela que já tem o próprio encerrar passa
+  // `false`, senão seriam dois botões de encerrar rota na mesma tela.
   mostrarControle = true,
 }) {
   const navigate = useNavigate();
@@ -132,6 +133,9 @@ export default function OperacaoDaRota({
 
   const [indiceEscolhido, setIndiceEscolhido] = useState(null);
   const [busy, setBusy] = useState(false);
+  // O botão do rodapé diz "Gravando…" só quando é ELE que está gravando —
+  // `busy` também acende na buzina, e "Gravando" ali seria mentira.
+  const [gravando, setGravando] = useState(false);
   // A criança que o motorista TOCOU para pôr em foco — a ordem do relógio é
   // sugestão, e a rua manda (ver `focoDaViagem`).
   const [focoEscolhido, setFocoEscolhido] = useState(null);
@@ -143,6 +147,27 @@ export default function OperacaoDaRota({
   const [confirmLote, setConfirmLote] = useState(null);
   const [marcando, setMarcando] = useState(null); // { child, tipo }
   const [desfazendo, setDesfazendo] = useState(null); // criança fora que ele quer devolver
+  const [ninguemEmCasa, setNinguemEmCasa] = useState(null); // item da fila a deixar pro fim
+  // A ÚLTIMA MARCAÇÃO, para a trava do botão da parada (`barraTravada`):
+  // { child, status, em }. Enquanto vale, o rodapé diz "Ana ✓ · Desfazer"
+  // em vez de já oferecer a próxima criança ao mesmo polegar.
+  const [recemMarcado, setRecemMarcado] = useState(null);
+  useEffect(() => {
+    if (!recemMarcado) return undefined;
+    const resta = Math.max(0, TRAVA_DA_PARADA_MS - (Date.now() - recemMarcado.em));
+    const t = setTimeout(() => setRecemMarcado(null), resta);
+    return () => clearTimeout(t);
+  }, [recemMarcado]);
+
+  // "PROBLEMA NA PERUA" VINDO DO MEU TRANSPORTE (04/10/2026): com a rota
+  // rodando, a linha de lá traz para cá, e a folha do aviso abre sozinha —
+  // um nome e um caminho só (`marcarOcorrencia`).
+  const location = useLocation();
+  const pediuProblema = location.state?.atalho === 'problema';
+  const consumirAtalho = useCallback(
+    () => navigate(location.pathname, { replace: true, state: null }),
+    [navigate, location.pathname]
+  );
 
   /**
    * O som de fim de viagem toca UMA VEZ, na transição.
@@ -215,7 +240,7 @@ export default function OperacaoDaRota({
   // Tudo que deriva da fila sai do MESMO memo: derivar `pendentes` fora e
   // memoizar o lote em cima dele fazia o React Compiler desistir de memoizar
   // a árvore inteira ("Compilation Skipped").
-  const { totalEfetivo, resolvidas, foco, lote } = useMemo(() => {
+  const { totalEfetivo, resolvidas, foco, lote, proxima } = useMemo(() => {
     // QUEM ESTÁ EM FOCO E QUEM VAI JUNTO — régua pura em
     // `dominio/rota/focoDaViagem.js` (03/10/2026). Era `p[0]` com o lote por
     // "mesmo próximo passo", e a rota travava: depois do primeiro EMBARQUEI o
@@ -254,13 +279,26 @@ export default function OperacaoDaRota({
     // contagem.
     const feitos = fila.filter((q) => precisaDaPerua(q.estado) && !q.action);
 
+    // QUEM VEM DEPOIS — a linha de baixo do botão do rodapé. É quem o foco
+    // vira depois do toque: a mesma ordem, sem quem está em foco agora.
+    const depois = focoAtual ? p.find((q) => q !== focoAtual) || null : null;
+
     return {
       totalEfetivo: fila.filter((q) => precisaDaPerua(q.estado)).length,
       resolvidas: feitos.length,
       foco: focoAtual,
       lote: l,
+      proxima: depois,
     };
   }, [fila, focoEscolhido, adiados]);
+
+  // Sem ninguém esperando a perua nesta viagem não há a quem avisar daqui:
+  // o "Problema na perua" do Meu transporte segue pelo caderno, como sem rota.
+  useEffect(() => {
+    if (pediuProblema && !loading && !foco) {
+      navigate('/tio/agenda', { replace: true, state: { atalho: 'quebrou' } });
+    }
+  }, [pediuProblema, loading, foco, navigate]);
 
   // Toca quando a viagem VIRA concluída — e só então.
   useEffect(() => {
@@ -448,7 +486,9 @@ export default function OperacaoDaRota({
       if (!el) return;
       const r = el.getBoundingClientRect();
       // Cabeçalho em cima; rodapé de encerrar e barra de abas embaixo.
-      if (r.top >= 72 && r.bottom <= window.innerHeight - 220) return;
+      // O rodapé agora é a barra da parada (botão de 64 px e a linha do
+      // "Depois"), um pouco mais alta que o "segure" de antes.
+      if (r.top >= 72 && r.bottom <= window.innerHeight - 240) return;
       const calmo = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       window.scrollTo({
         top: Math.max(0, window.scrollY + r.top - 88),
@@ -523,6 +563,7 @@ export default function OperacaoDaRota({
 
   async function avancarUma(item) {
     setBusy(true);
+    setGravando(true);
     // A ESCOLHA DO FOCO VALE UM TOQUE: marcou, o foco volta à ordem da
     // viagem. Sem isto, a escolha antiga reacendia quando a criança voltava
     // ao mesmo passo (desfazer e marcar de novo — achado no teste M6).
@@ -552,6 +593,8 @@ export default function OperacaoDaRota({
       });
       // SEM SINAL: a marcação fica no celular e sobe quando ele voltar
       // (`gravarSemTravar`). Dizer isso evita o toque repetido.
+      vibrar();
+      setRecemMarcado({ child: item.child, status: item.action.nextStatus, em: Date.now() });
       if (resultado === 'fila') {
         toast(`${item.child.name.split(' ')[0]}: marcado. Sem sinal agora, sobe quando voltar.`);
       } else {
@@ -562,6 +605,34 @@ export default function OperacaoDaRota({
       toast.error('Não deu pra salvar. Tente de novo.');
     } finally {
       setBusy(false);
+      setGravando(false);
+    }
+  }
+
+  /**
+   * VOLTAR UM PASSO — o mesmo desfazer para o diálogo da lista e para o
+   * "Desfazer" do rodapé logo depois de marcar. `q` é { child, status }.
+   */
+  async function voltarUmPasso(q) {
+    if (!q) return;
+    setBusy(true);
+    setFocoEscolhido(null);
+    setRecemMarcado(null);
+    try {
+      await voltarPasso({
+        childId: q.child.id,
+        statusAtual: q.status,
+        anterior: passoAnterior(q.status, direcaoAntiga),
+        dateKey,
+      });
+      vibrar();
+      toast.success(`${q.child.name.split(' ')[0]} voltou um passo.`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra voltar. Tente de novo.');
+    } finally {
+      setBusy(false);
+      setVoltando(null);
     }
   }
 
@@ -590,6 +661,7 @@ export default function OperacaoDaRota({
         dateKey,
         adminUid: user?.uid,
       });
+      vibrar();
       toast.success(`${n} crianças atualizadas.`);
     } catch (err) {
       console.error(err);
@@ -628,6 +700,7 @@ export default function OperacaoDaRota({
         dateKey,
         declaredBy: 'admin',
       });
+      vibrar();
       toast.success(`${marcando.child.name.split(' ')[0]}: registrado.`);
     } catch (err) {
       console.error(err);
@@ -720,21 +793,27 @@ export default function OperacaoDaRota({
   };
 
   /**
-   * O QUE A PARADA ATUAL OFERECE — o botão grande e tudo o que a rua pede.
+   * O QUE A PARADA ATUAL OFERECE — tudo o que a rua pede, menos o botão grande.
    *
-   * É o mesmo conjunto de antes (buzina, Zap, ligar, faltou, o pai levou,
-   * ligar para a escola, recado, ninguém em casa, levar de volta, desfazer),
-   * com as mesmas condições. Mudou só onde ele mora: dentro do cartão aberto
-   * na própria linha da parada, em vez de um cartão solto no topo.
+   * ⚠️ O BOTÃO GRANDE DESCEU PARA O RODAPÉ (03/10/2026, auditoria de UX). Ele
+   * morava aqui, no meio do cartão, e o rodapé preso era o "segure para
+   * encerrar" — a ação mais frequente da rota no meio da tela e a mais rara
+   * onde o polegar descansa. Inverteu: a marcação mora no rodapé fixo
+   * (`BarraDaParada`) e o encerrar subiu para a faixa verde.
+   *
+   * O que sobra aqui são as ações da porta, em TRÊS GRUPOS com nome escrito —
+   * dez botões soltos são dez decisões; três grupos são uma pergunta ("o que
+   * aconteceu?") e a resposta perto. As condições de cada botão são as de
+   * antes; mudou a arrumação.
    */
   const acoesDoFoco = foco && (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {foco.child.notes && (
         // A OBSERVAÇÃO DO CADASTRO ("portão de trás") é escrita pelo
         // motorista, e é exatamente na porta que ela serve. Nunca dado de
         // saúde: aquele campo é da família e não aparece aqui.
-        <p className="flex items-start gap-2 rounded-lg bg-surface px-2.5 py-2 text-[13px] leading-snug text-textBody">
-          <Info size={15} className="mt-0.5 shrink-0 text-textMuted" />
+        <p className="flex items-start gap-2 rounded-lg bg-surface px-3 py-2.5 text-base leading-snug text-textBody">
+          <Info size={18} className="mt-0.5 shrink-0 text-textMuted" />
           <span className="min-w-0 whitespace-pre-wrap">{foco.child.notes}</span>
         </p>
       )}
@@ -744,8 +823,8 @@ export default function OperacaoDaRota({
         * entregava a criança a quem estava acostumado. Aparece na ENTREGA em
         * casa, que é onde a pessoa diferente está esperando. */}
       {foco.action.nextStatus === 'delivered' && quemBusca[foco.child.id] && (
-        <p className="flex items-start gap-2 rounded-lg border border-warningBorder bg-warningSoft px-2.5 py-2 text-sm leading-snug text-warningText">
-          <UserCheck size={16} className="mt-0.5 shrink-0" />
+        <p className="flex items-start gap-2 rounded-lg border border-warningBorder bg-warningSoft px-3 py-2.5 text-base leading-snug text-warningText">
+          <UserCheck size={18} className="mt-0.5 shrink-0" />
           <span className="min-w-0">
             <strong>Hoje quem recebe: {quemBusca[foco.child.id].name}</strong>
             {quemBusca[foco.child.id].relationship ? ` (${quemBusca[foco.child.id].relationship})` : ''}
@@ -754,45 +833,31 @@ export default function OperacaoDaRota({
         </p>
       )}
 
-      {/* 60 px: é o botão que ele aperta com o veículo em movimento. O texto é
-        * o VERBO do passo (`shortLabel`), nunca "Confirmar". */}
-      {/* `data-tour` ILUMINA, e nunca é tocado pelo tutorial: este
-        * botão muda o estado da criança e avisa a família. A regra
-        * está em components/tutorial/interactiveSteps.js e travada em
-        * `npm run testar:tutorial`. */}
-      <button
-        type="button"
-        data-tour="avancar-status"
-        disabled={busy}
-        onClick={() => avancarUma(foco)}
-        className="tap flex h-[60px] w-full items-center justify-center gap-2 rounded-xl bg-primary text-[17px] font-extrabold tracking-[0.04em] text-white shadow-focus disabled:opacity-60"
-      >
-        <Check size={22} />
-        {foco.action.shortLabel}
-      </button>
-
       {/* Lote — uma parada é um evento, não vinte.
         * ⚠️ NÃO É ÂMBAR (03/10/2026): âmbar é aviso e nada mais, e marcar
         * várias de uma vez é ação. E o texto de baixo diz QUEM vai junto
         * — o "TODOS" agora é por lugar (ver `loteDoFoco`), e o motorista
-        * precisa conferir os nomes antes de tocar. */}
+        * precisa conferir os nomes antes de tocar.
+        * Ele NÃO desceu para o rodapé junto com o botão de uma criança: o
+        * lote pede confirmação (são várias famílias avisadas de uma vez), e
+        * o rodapé é o toque que não pergunta. */}
       {lote && (
         <button
           type="button"
           disabled={busy}
           onClick={() => setConfirmLote(lote)}
-          className="tap flex min-h-14 w-full flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-primary bg-card py-2.5 text-sm font-extrabold text-primary disabled:opacity-60"
+          className="tap flex min-h-14 w-full flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-primary bg-card py-2.5 text-base font-extrabold text-primary disabled:opacity-60"
         >
           <span>
             {lote.label} — TODOS OS {lote.count}
           </span>
-          <span className="text-sm font-semibold text-text">
+          <span className="text-base font-semibold text-text">
             {lote.moves.map((mv) => String(mv.childName || '').split(' ')[0]).join(', ')}
           </span>
         </button>
       )}
 
-      {/* A PORTA: o motorista chegou e ninguém desceu.
+      {/* FALAR COM A FAMÍLIA — a porta: o motorista chegou e ninguém desceu.
         * Três degraus, do mais barato pro mais caro: tocar o celular
         * dele sem sair do app, mandar mensagem, ligar.
         *
@@ -800,37 +865,37 @@ export default function OperacaoDaRota({
         * criança está sentada na perua: buzinar ali fazia o celular da
         * mãe tocar sem motivo (achado no teste M5). */}
       {foco.action.nextStatus !== 'atSchool' && (
-        <>
-          <div className="grid grid-cols-3 gap-1.5">
+        <GrupoDeAcoes titulo="Falar com a família">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               data-tour="buzinar"
               disabled={busy}
               onClick={() => chamar(foco.child, foco.status)}
-              className="tap flex h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl border border-primaryBorder bg-primarySoft text-[13px] font-bold text-primary disabled:opacity-60"
+              className="tap flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-primaryBorder bg-primarySoft text-base font-bold text-primary disabled:opacity-60"
             >
-              <BellRing size={16} />
+              <BellRing size={18} />
               Buzinar
             </button>
             <button
               type="button"
               onClick={() => zap(foco.child)}
-              className="tap flex h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl border border-neutro bg-surface text-[13px] font-semibold text-text"
+              className="tap flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-neutro bg-surface text-base font-semibold text-text"
             >
-              <MessageCircle size={16} className="text-primary" />
+              <MessageCircle size={18} className="text-primary" />
               Zap
             </button>
             {foco.child.parentPhone ? (
               <a
                 href={`tel:${foco.child.parentPhone}`}
-                className="tap flex h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl border border-neutro bg-surface text-[13px] font-semibold text-text"
+                className="tap flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-neutro bg-surface text-base font-semibold text-text"
               >
-                <Phone size={16} className="text-primary" />
+                <Phone size={18} className="text-primary" />
                 Ligar
               </a>
             ) : (
-              <span className="flex h-[52px] items-center justify-center rounded-xl bg-neutro text-[13px] font-semibold text-textMuted">
-                sem tel.
+              <span className="flex h-14 items-center justify-center rounded-xl bg-neutro text-sm font-semibold text-textMuted">
+                sem telefone
               </span>
             )}
           </div>
@@ -839,50 +904,49 @@ export default function OperacaoDaRota({
             * "Buzinar" não diz onde a buzina toca. Sem esta linha o
             * motorista testa uma vez pra descobrir — e testar significa
             * fazer o celular de uma família tocar à toa. */}
-          <p className="text-center text-xs text-textMuted">
+          <p className="text-center text-sm text-textMuted">
             Buzinar faz o celular do responsável tocar
           </p>
-        </>
+        </GrupoDeAcoes>
       )}
 
-      {/* ⚠️ "FALTOU" E "O PAI LEVOU" SÓ ANTES DE EMBARCAR (03/10/2026):
+      {/* NÃO VAI HOJE.
+        * ⚠️ "FALTOU" E "O PAI LEVOU" SÓ ANTES DE EMBARCAR (03/10/2026):
         * oferecer "Faltou" para quem já está dentro da perua é convidar
-        * o toque errado. */}
+        * o toque errado. "Faltou" já tem cara de alerta NO BOTÃO — o
+        * diálogo de confirmação é vermelho, e o botão que leva até ele não
+        * pode parecer irmão do "O pai levou". */}
       {foco.action.nextStatus === 'onboard' && (
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            icon={UserX}
-            disabled={busy}
-            onClick={() => setMarcando({ child: foco.child, tipo: ABSENCE_TYPES.FULL })}
-          >
-            Faltou
-          </Button>
-          {blocoAtual?.direcao === 'volta' ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={UserCheck}
+        <GrupoDeAcoes titulo="Não vai hoje">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setMarcando({ child: foco.child, tipo: ABSENCE_TYPES.FULL })}
+              className="tap inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-dangerBorder bg-dangerSoft px-3 text-base font-bold text-dangerText disabled:opacity-60"
+            >
+              <UserX size={18} />
+              Faltou
+            </button>
+            <button
+              type="button"
               disabled={busy}
               onClick={() =>
-                setMarcando({ child: foco.child, tipo: ABSENCE_TYPES.ALREADY_PICKED })
+                setMarcando({
+                  child: foco.child,
+                  tipo:
+                    blocoAtual?.direcao === 'volta'
+                      ? ABSENCE_TYPES.ALREADY_PICKED
+                      : ABSENCE_TYPES.NO_PICKUP,
+                })
               }
+              className="tap inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-base font-semibold text-text disabled:opacity-60"
             >
-              O pai pegou
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={UserCheck}
-              disabled={busy}
-              onClick={() => setMarcando({ child: foco.child, tipo: ABSENCE_TYPES.NO_PICKUP })}
-            >
-              O pai levou
-            </Button>
-          )}
-        </div>
+              <UserCheck size={18} />
+              {blocoAtual?.direcao === 'volta' ? 'O pai pegou' : 'O pai levou'}
+            </button>
+          </div>
+        </GrupoDeAcoes>
       )}
 
       {/* ⚠️ AS AÇÕES QUE A RUA PEDE E A TELA NÃO TINHA (03/10/2026):
@@ -894,60 +958,45 @@ export default function OperacaoDaRota({
         foco.child.schoolPhone && (
           <a
             href={`tel:${foco.child.schoolPhone}`}
-            className="tap flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-sm font-semibold text-text"
+            className="tap flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card text-base font-semibold text-text"
           >
-            <Phone size={15} />
+            <Phone size={18} />
             Ligar para a escola
           </a>
         )}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setRecadoDe({ child: foco.child, tipo: 'conflict' })}
-          className="tap inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-text"
-        >
-          <NotebookPen size={15} />
-          Recado
-        </button>
-        {foco.action.nextStatus === 'delivered' && (
-          <button
-            type="button"
-            onClick={() => {
-              setAdiados((a) => [...new Set([...a, foco.child.id])]);
-              setFocoEscolhido(null);
-              toast(`${foco.child.name.split(' ')[0]} fica para o fim da viagem. Tente o Zap ou ligar.`);
-            }}
-            className="tap inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-text"
+
+      {/* CORRIGIR — o que ele usa quando algo saiu do combinado. Fica por
+        * último e em contorno: é o grupo raro, e o raro mora longe do
+        * polegar (o polegar está no rodapé, com a marcação). */}
+      <GrupoDeAcoes titulo="Corrigir">
+        <div className="grid grid-cols-2 gap-2">
+          {passoAnterior(foco.status, direcaoAntiga) && (
+            <BotaoDeCorrigir icon={Undo2} onClick={() => setVoltando(foco)}>
+              Desfazer
+            </BotaoDeCorrigir>
+          )}
+          {foco.action.nextStatus === 'delivered' && (
+            <BotaoDeCorrigir icon={DoorClosed} onClick={() => setNinguemEmCasa(foco)}>
+              Ninguém em casa
+            </BotaoDeCorrigir>
+          )}
+          {/* PASSOU MAL NO CAMINHO (03/10/2026): na ida, com a criança na
+            * perua, ele a leva de volta. Vira "entregue em casa" (a
+            * família recebe o "chegou em casa" que já existe) e abre o
+            * recado já no "Criança não tá bem". */}
+          {foco.action.nextStatus === 'atSchool' && foco.status === 'onboard' && (
+            <BotaoDeCorrigir icon={Home} onClick={() => setVoltandoPraCasa(foco)}>
+              Levar de volta para casa
+            </BotaoDeCorrigir>
+          )}
+          <BotaoDeCorrigir
+            icon={NotebookPen}
+            onClick={() => setRecadoDe({ child: foco.child, tipo: 'conflict' })}
           >
-            <DoorClosed size={15} />
-            Ninguém em casa
-          </button>
-        )}
-        {/* PASSOU MAL NO CAMINHO (03/10/2026): na ida, com a criança na
-          * perua, ele a leva de volta. Vira "entregue em casa" (a
-          * família recebe o "chegou em casa" que já existe) e abre o
-          * recado já no "Criança não tá bem". */}
-        {foco.action.nextStatus === 'atSchool' && foco.status === 'onboard' && (
-          <button
-            type="button"
-            onClick={() => setVoltandoPraCasa(foco)}
-            className="tap inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-text"
-          >
-            <Home size={15} />
-            Levar de volta para casa
-          </button>
-        )}
-        {passoAnterior(foco.status, direcaoAntiga) && (
-          <button
-            type="button"
-            onClick={() => setVoltando(foco)}
-            className="tap inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-textMuted"
-          >
-            <Undo2 size={15} />
-            Desfazer
-          </button>
-        )}
-      </div>
+            Recado
+          </BotaoDeCorrigir>
+        </div>
+      </GrupoDeAcoes>
     </div>
   );
 
@@ -971,13 +1020,20 @@ export default function OperacaoDaRota({
               kind="child"
               size="md"
             />
+            {/* 24 px no nome: é o que ele confere de relance, com o celular
+              * no suporte, antes de tocar no rodapé. Endereço e hora em 16. */}
             <div className="min-w-0 flex-1">
-              <p className="font-display text-[17px] font-bold leading-tight text-text">
+              <p className="font-display text-2xl font-bold leading-tight text-text">
                 {q.child.name}
               </p>
-              <p className="truncate text-sm text-textMuted">
+              <p className="text-base leading-snug text-textBody">
                 {q.child.address || 'Sem endereço'}
               </p>
+              {q.hora && (
+                <p className="font-mono text-base font-semibold tabular-nums text-textMuted">
+                  Combinado {horaCurta(q.hora)}
+                </p>
+              )}
             </div>
           </div>
           {acoesDoFoco}
@@ -1019,7 +1075,7 @@ export default function OperacaoDaRota({
         />
         <span className="min-w-0 flex-1">
           <span
-            className={`block truncate text-[15px] ${
+            className={`block truncate text-[17px] ${
               fora
                 ? 'font-medium text-textMuted line-through'
                 : feito
@@ -1030,7 +1086,7 @@ export default function OperacaoDaRota({
             {q.child.name}
           </span>
           {fora ? (
-            <span className="block text-[13px] font-medium text-warningText">
+            <span className="block text-sm font-medium text-warningText">
               {ROTULO_ESTADO[q.estado] || 'Fora hoje'}
               {/* A IDADE DO AVISO É O QUE DIZ SE ELE AINDA VALE.
                 * Um aviso de ontem quase certamente vale; um de duas
@@ -1046,11 +1102,11 @@ export default function OperacaoDaRota({
               )}
             </span>
           ) : (
-            <span className="block truncate text-[13px] text-textMuted">{sub}</span>
+            <span className="block truncate text-sm text-textMuted">{sub}</span>
           )}
         </span>
         {!fora && !feito && q.action && (
-          <span className="shrink-0 text-sm font-semibold text-primary">{q.action.label}</span>
+          <span className="shrink-0 text-base font-semibold text-primary">{q.action.label}</span>
         )}
       </LinhaTocavel>
     );
@@ -1084,7 +1140,7 @@ export default function OperacaoDaRota({
               disabled={!tocar}
               onClick={tocar}
               aria-pressed={ehFoco || undefined}
-              className={`tap inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold disabled:cursor-default ${
+              className={`tap inline-flex min-h-12 items-center gap-1.5 rounded-full px-4 text-base font-semibold disabled:cursor-default ${
                 ehFoco
                   ? 'bg-perua/15 text-warningText ring-2 ring-perua'
                   : f
@@ -1112,10 +1168,10 @@ export default function OperacaoDaRota({
               <School size={20} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-[17px] font-bold leading-tight text-text">
+              <p className="font-display text-2xl font-bold leading-tight text-text">
                 {it.nome}
               </p>
-              <p className="text-sm text-textMuted">
+              <p className="text-base text-textBody">
                 {it.quem.length} {verbo}
               </p>
             </div>
@@ -1123,7 +1179,7 @@ export default function OperacaoDaRota({
           <div className="rounded-xl bg-escolaSoft p-2.5">
             {/* O BOTÃO É DE UMA CRIANÇA, e o nome dela fica escrito: o lote
               * (quando há mais de uma no mesmo lugar) é o botão de baixo. */}
-            <p className="text-sm text-textBody">
+            <p className="text-base text-textBody">
               Agora: <b className="text-text">{foco.child.name}</b>
             </p>
             {pessoas}
@@ -1139,13 +1195,13 @@ export default function OperacaoDaRota({
           <School size={18} className={`shrink-0 ${feito ? 'text-textMuted' : 'text-escola'}`} />
           <span className="min-w-0 flex-1">
             <span
-              className={`block truncate text-[15px] font-semibold ${
+              className={`block truncate text-[17px] font-semibold ${
                 feito ? 'text-textMuted' : 'text-escola'
               }`}
             >
               {it.nome}
             </span>
-            <span className="block text-[13px] text-textBody">
+            <span className="block text-sm text-textBody">
               {feito
                 ? ida
                   ? `Entregues${it.real ? ` às ${it.real}` : ''}`
@@ -1161,29 +1217,47 @@ export default function OperacaoDaRota({
 
   return (
     <>
-      {/* A FAIXA VERDE: rota ativa, a viagem, a contagem e o trilho.
+      {/* A FAIXA VERDE: rota ativa, a viagem, a contagem, o trilho — e,
+        * desde 03/10/2026, o ENCERRAR e a chave do mapa (`controle`).
         * ⚠️ ELA ROLA COM A TELA, ao contrário do modelo (onde fica presa no
         * topo). No app há o cabeçalho em cima e a barra de abas mais o
-        * rodapé de encerrar embaixo; presa, a faixa deixaria menos de meia
-        * tela para a lista num celular pequeno. */}
-      {!loading && blocoAtual && (
-        <FaixaDaViagem
-          titulo={
-            !foco && totalEfetivo > 0
+        * rodapé da parada embaixo; presa, a faixa deixaria menos de meia
+        * tela para a lista num celular pequeno. Encerrar rolando para fora
+        * da vista é aceitável: é o gesto do fim, feito com a perua parada,
+        * e o topo está a um arrasto.
+        *
+        * ⚠️ ELA EXISTE MESMO SEM VIAGEM — é onde mora o encerrar. Sem a
+        * faixa, a rota aberta num dia sem horário não teria como fechar. */}
+      <FaixaDaViagem
+        titulo={
+          !blocoAtual
+            ? 'Rota'
+            : !foco && totalEfetivo > 0
               ? 'Viagem concluída'
               : ida
                 ? 'Levando pra escola'
                 : 'Trazendo pra casa'
-          }
-          direcao={blocoAtual.direcao}
-          inicio={blocoAtual.inicio}
-          fim={blocoAtual.fim}
-          contagem={contagem}
-          nos={itensDaLinha.map((it) => ({ chave: it.chave, tipo: it.tipo, estado: it.estado }))}
-          ativa={rotaAtiva}
-          vivo={posicaoViva}
-        />
-      )}
+        }
+        direcao={blocoAtual?.direcao}
+        inicio={blocoAtual?.inicio}
+        fim={blocoAtual?.fim}
+        contagem={blocoAtual ? contagem : null}
+        nos={itensDaLinha.map((it) => ({ chave: it.chave, tipo: it.tipo, estado: it.estado }))}
+        ativa={rotaAtiva}
+        vivo={posicaoViva}
+        controle={
+          mostrarControle ? (
+            <ControleDeRota
+              faixa
+              onIniciar={publicarOrdem}
+              alvos={alvosDaRota}
+              direcao={blocoAtual?.direcao}
+              saida={saidaDaViagem(blocoAtual)}
+              pendentes={quemFicouSemRegistro(fila)}
+            />
+          ) : null
+        }
+      />
 
       <div className="space-y-4 px-4 pt-4">
         {loading && <Skeleton className="h-56 rounded-2xl" />}
@@ -1197,9 +1271,9 @@ export default function OperacaoDaRota({
               <Button
                 variant="secondary"
                 fullWidth={false}
-                onClick={() => navigate('/tio/horarios')}
+                onClick={() => navigate('/tio/horarios', { state: { de: 'rota' } })}
               >
-                Definir horários
+                Definir os horários da rota
               </Button>
             }
           />
@@ -1226,13 +1300,13 @@ export default function OperacaoDaRota({
                     setIndiceEscolhido((atual) => (atual === i ? null : i))
                   }
                   aria-pressed={ativa}
-                  className={`tap inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold ${
+                  className={`tap inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border px-4 text-base font-semibold ${
                     ativa
                       ? 'border-text bg-text text-white'
                       : 'border-border bg-card text-textMuted'
                   }`}
                 >
-                  <Icone size={15} />
+                  <Icone size={18} />
                   {horaCurta(deMinutos(b.inicio))}
                 </button>
               );
@@ -1244,7 +1318,9 @@ export default function OperacaoDaRota({
           * comemora; o check estala uma vez e o texto diz o que vem. */}
         {!loading && blocoAtual && !foco && (
           <div className="rota-entra space-y-2 rounded-2xl bg-card p-5 text-center shadow-rest">
-            <span className="rota-estala mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent text-onAccent">
+            {/* `accentText`, não o limão: o limão só é fundo sobre verde ou
+              * escuro (docs/design-system.md), e aqui o cartão é branco. */}
+            <span className="rota-estala mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accentText text-white">
               <Check size={30} />
             </span>
             <p className="font-display text-lg font-bold text-text">Viagem concluída</p>
@@ -1295,6 +1371,8 @@ export default function OperacaoDaRota({
             adminUid={user?.uid}
             criancas={fila.filter((q) => q.action).map((q) => q.child)}
             focoHora={foco.hora}
+            abrirProblema={pediuProblema}
+            onAbriuProblema={consumirAtalho}
           />
         )}
 
@@ -1305,29 +1383,38 @@ export default function OperacaoDaRota({
             variant="ghost"
             size="md"
             icon={Clock}
-            onClick={() => navigate('/tio/horarios')}
+            onClick={() => navigate('/tio/horarios', { state: { de: 'rota' } })}
           >
-            Ajustar horários
+            Horários da rota
           </Button>
         )}
       </div>
 
-      {/* O RODAPÉ DE ENCERRAR. O interruptor do GPS saiu do topo da tela e
-        * desceu: a faixa verde já diz que a rota está ativa, e o "segure
-        * para encerrar" mora onde o polegar alcança. Ele fica PRESO acima
-        * da barra de abas — rolar a lista não pode esconder a saída. */}
-      {mostrarControle && (
+      {/* O RODAPÉ É A PARADA (03/10/2026, auditoria de UX).
+        * Era o "segure para encerrar" — a ação mais rara da rota onde o
+        * polegar descansa, e a mais frequente (EMBARQUEI/ENTREGUEI) no meio
+        * da lista, rolando com ela. Inverteu: aqui fica o botão da parada em
+        * foco, preso acima da barra de abas, e o encerrar subiu para a faixa.
+        *
+        * É `sticky` no fim do conteúdo, não `fixed`: rolando até o fim, ele
+        * pousa no lugar dele e a última linha da viagem nunca fica por baixo
+        * — o espaço que ele ocupa já é o respiro da lista. */}
+      {foco && (
         <div
-          className="sticky z-20 mx-3 mt-4 rounded-2xl bg-card p-3 shadow-float"
+          className="sticky z-20 mx-3 mt-4 rounded-2xl bg-card p-2 shadow-float"
           style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
         >
-          <ControleDeRota
-            rodape
-            onIniciar={publicarOrdem}
-            alvos={alvosDaRota}
-            direcao={blocoAtual?.direcao}
-            saida={saidaDaViagem(blocoAtual)}
-            pendentes={quemFicouSemRegistro(fila)}
+          <BarraDaParada
+            foco={foco}
+            proxima={proxima}
+            busy={busy}
+            gravando={gravando}
+            escolasPorId={escolasPorId}
+            onMarcar={() => avancarUma(foco)}
+            recemMarcado={
+              recemMarcado && barraTravada(recemMarcado.em, Date.now()) ? recemMarcado : null
+            }
+            onDesfazer={() => voltarUmPasso(recemMarcado)}
           />
         </div>
       )}
@@ -1372,26 +1459,7 @@ export default function OperacaoDaRota({
         description="Use quando marcou por engano. A hora desse passo é apagada. O aviso que a família já recebeu não volta."
         confirmLabel="Voltar um passo"
         loading={busy}
-        onConfirm={async () => {
-          const q = voltando;
-          setBusy(true);
-          setFocoEscolhido(null);
-          try {
-            await voltarPasso({
-              childId: q.child.id,
-              statusAtual: q.status,
-              anterior: passoAnterior(q.status, direcaoAntiga),
-              dateKey,
-            });
-            toast.success(`${q.child.name.split(' ')[0]} voltou um passo.`);
-          } catch (err) {
-            console.error(err);
-            toast.error('Não deu pra voltar. Tente de novo.');
-          } finally {
-            setBusy(false);
-            setVoltando(null);
-          }
-        }}
+        onConfirm={() => voltarUmPasso(voltando)}
         onCancel={() => setVoltando(null)}
       />
 
@@ -1417,6 +1485,7 @@ export default function OperacaoDaRota({
               parentUid: q.child.parentUid || null,
               childName: q.child.name,
             });
+            vibrar();
             setRecadoDe({ child: q.child, tipo: 'sick' });
           } catch (err) {
             console.error(err);
@@ -1427,6 +1496,28 @@ export default function OperacaoDaRota({
           }
         }}
         onCancel={() => setVoltandoPraCasa(null)}
+      />
+
+      {/* ⚠️ "NINGUÉM EM CASA" PERGUNTA ANTES (03/10/2026). Ele agia no toque,
+        * e o botão mora ao lado do "Desfazer": um polegar errado mandava a
+        * criança para o fim da viagem sem ninguém ter decidido isso. */}
+      <ConfirmDialog
+        open={!!ninguemEmCasa}
+        title={
+          ninguemEmCasa
+            ? `Ninguém em casa para receber ${ninguemEmCasa.child.name.split(' ')[0]}?`
+            : ''
+        }
+        description="Ela vai para o fim da viagem e continua na perua. Tente o Zap ou ligar enquanto segue para a próxima casa."
+        confirmLabel="Deixar para o fim"
+        onConfirm={() => {
+          const q = ninguemEmCasa;
+          setAdiados((a) => [...new Set([...a, q.child.id])]);
+          setFocoEscolhido(null);
+          setNinguemEmCasa(null);
+          toast(`${q.child.name.split(' ')[0]} fica para o fim da viagem.`);
+        }}
+        onCancel={() => setNinguemEmCasa(null)}
       />
 
       {recadoDe && (
@@ -1533,4 +1624,134 @@ function LinhaTocavel({ onTocar, children }) {
       {children}
     </button>
   );
+}
+
+/**
+ * O TOQUE QUE PEGOU, SENTIDO NA MÃO. Uma vibração curta a cada marcação
+ * gravada: com o celular no suporte e o olho na rua, o dedo sabe que o toque
+ * valeu sem ele voltar os olhos para a tela. 30 ms é um "tic", não um alarme.
+ * Sem `navigator.vibrate` (iPhone, desktop) não faz nada.
+ */
+function vibrar() {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(30);
+  } catch {
+    // Vibrar é conforto; nunca derruba a marcação.
+  }
+}
+
+/** Um grupo de ações do cartão em foco, com o nome escrito em cima. */
+function GrupoDeAcoes({ titulo, children }) {
+  return (
+    <section className="space-y-2">
+      <p className="text-sm font-semibold text-textMuted">{titulo}</p>
+      {children}
+    </section>
+  );
+}
+
+/** Os botões do grupo "Corrigir" — a mesma cara para a mesma família de ação. */
+function BotaoDeCorrigir({ icon: Icone, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="tap inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-base font-semibold leading-tight text-text"
+    >
+      <Icone size={18} className="shrink-0 text-textMuted" />
+      {children}
+    </button>
+  );
+}
+
+/**
+ * O BOTÃO DA PARADA, NO RODAPÉ — 64 px, largura inteira, com o nome dentro.
+ *
+ * O nome no botão não é enfeite: com o foco podendo ser escolhido à mão
+ * (tocando numa linha), "EMBARQUEI" sozinho não diz QUEM embarca. O verbo
+ * continua sendo o do passo (`shortLabel`), nunca "Confirmar".
+ *
+ * Gravando, o botão DIZ que está gravando (spinner e texto) — opacidade
+ * sozinha some no sol do meio-dia, e ele tocaria de novo.
+ *
+ * `data-tour` ILUMINA, e nunca é tocado pelo tutorial: este botão muda o
+ * estado da criança e avisa a família (components/tutorial/interactiveSteps.js,
+ * travado em `npm run testar:tutorial`).
+ */
+function BarraDaParada({
+  foco, proxima, busy, gravando, escolasPorId, onMarcar, recemMarcado = null, onDesfazer,
+}) {
+  const nome = String(foco.child.name || '').split(' ')[0];
+  // ⚠️ A TRAVA DEPOIS DE MARCAR (`barraTravada`, 1,2 s): no lugar do botão
+  // da próxima criança, quem acabou de ser marcado e o "Desfazer". O botão
+  // cheio só volta depois — o segundo toque apressado cai num rótulo, não
+  // no EMBARQUEI de quem ainda está na calçada. Sem diálogo e sem animação.
+  if (recemMarcado) {
+    const marcado = String(recemMarcado.child?.name || '').split(' ')[0];
+    return (
+      <>
+        <div
+          role="status"
+          className="flex h-16 w-full items-center gap-2 rounded-xl border-2 border-primaryBorder bg-card px-3"
+        >
+          <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-[17px] font-extrabold text-text">
+            <span className="truncate">{marcado}</span>
+            <Check size={22} className="shrink-0 text-accentText" aria-label="marcado" />
+            <span aria-hidden="true" className="text-textMuted">·</span>
+          </span>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onDesfazer}
+            className="tap min-h-12 shrink-0 rounded-xl border border-primaryBorder bg-card px-4 text-base font-bold text-primary"
+          >
+            Desfazer
+          </button>
+        </div>
+        {proxima && <p className="mt-1.5 h-5 px-1" aria-hidden="true" />}
+      </>
+    );
+  }
+  return (
+    <>
+      <button
+        type="button"
+        data-tour="avancar-status"
+        disabled={busy}
+        aria-busy={gravando || undefined}
+        onClick={onMarcar}
+        className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-[17px] font-extrabold tracking-[0.03em] text-white shadow-focus disabled:cursor-wait"
+      >
+        {gravando ? (
+          <>
+            <Spinner size={22} />
+            Gravando…
+          </>
+        ) : (
+          <>
+            <Check size={24} className="shrink-0" />
+            <span className="min-w-0 truncate">
+              {foco.action.shortLabel} — {nome}
+            </span>
+          </>
+        )}
+      </button>
+      {proxima && (
+        <p className="mt-1.5 truncate px-1 text-center text-sm text-textMuted">
+          {textoDaProxima(proxima, escolasPorId)}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** "Depois: Sofia · 7h01", ou "Depois: Ana · Escola Sol" no passo da escola. */
+function textoDaProxima(q, escolasPorId) {
+  const nome = String(q.child?.name || '').split(' ')[0];
+  if (lugarDoPasso(q).startsWith('escola:')) {
+    const escola = escolasPorId?.[q.child?.schoolId]?.nome || q.child?.school;
+    return `Depois: ${nome} · ${escola || 'na escola'}`;
+  }
+  const hora = horaCurta(q.hora);
+  return `Depois: ${nome}${hora ? ` · ${hora}` : ''}`;
 }

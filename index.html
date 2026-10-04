@@ -2,13 +2,13 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <!-- OS DOIS FAVICONS SÃO O MESMO TILE ESMERALDA, e agora isso é verdade.
-         Em 16 px o desenho vazado desaparece: a onda de buzina tem 0,68 px de
-         traço e some. A conclusão já estava escrita aqui, mas aplicada só no
-         .ico — o formato de RESERVA. O .svg, que é o que o Chrome usa, ficou
-         vazado por anos. Agora os dois saem da mesma projeção do gerador.
-         Tile não precisa trocar de cor em aba escura: quadrado de cor sólida
-         tem contraste contra as duas, então a media query saiu junto. -->
+    <!-- O FAVICON É A PERUA DO LOGO, num ladrilho branco (04/10/2026). Era só
+         o balão branco num ladrilho esmeralda, pensado para a aba de 16 px —
+         mas o .svg é uma arte só, e o navegador a desenha também nos 32 px de
+         qualquer tela nítida: a aba mostrava um balão genérico que não
+         lembrava o logo do site. A perua sem as ondas é legível de 16 a 64 px,
+         em aba clara e escura. Os dois arquivos (e o /favicon.ico da raiz)
+         saem de scripts/brand/build_brand.py. -->
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
     <link rel="alternate icon" href="/brand/favicon.ico" sizes="16x16 32x32 48x48" />
     <!-- O Google não aceita na busca o .ico de 16/32/48: quer PNG quadrado de

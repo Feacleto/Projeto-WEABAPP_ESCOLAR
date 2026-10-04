@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMarcosDoApp } from '../../hooks/useMarcosDoApp';
 import { Home, DollarSign, Bus } from 'lucide-react';
@@ -17,6 +17,7 @@ import {
 } from '../../services/associadoService';
 import { useAuth } from '../../hooks/useAuth';
 import { NotificacoesProvider } from '../../context/NotificacoesContext';
+import { AvisosDoCabecalhoProvider } from '../../context/AvisosDoCabecalhoContext';
 import { useAutoBilling } from '../../hooks/useAutoBilling';
 import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
 import { useCobrancaLigada, useModuloDeCobranca } from '../../hooks/useCobrancaLigada';
@@ -70,7 +71,7 @@ const NAV_ITEMS = [
  *
  * A rota é a razão de o motorista usar o app, e ganhou tela própria. Mas uma
  * aba fixa para uma coisa que acontece duas vezes por dia seria o mesmo erro
- * que tirou "Rota" do rodapé: ela aparece quando ele toca em "INICIAR ROTA",
+ * que tirou "Rota" do rodapé: ela aparece quando ele toca em "Iniciar a rota",
  * fica no MEIO (onde o polegar descansa), e some quando ele encerra.
  *
  * Quem diz se a rota está aberta é `liveLocation/{uid}.routeActive` — o mesmo
@@ -241,6 +242,71 @@ export default function TioLayout() {
     if (!carregandoRota && !emRota && naTelaDaRota) navigate('/tio', { replace: true });
   }, [carregandoRota, emRota, naTelaDaRota, navigate]);
 
+  /* ⚠️ OS AVISOS MORAM ABAIXO DO CABEÇALHO DA TELA (03/10/2026, auditoria de
+   * UX) — ver `AvisosDoCabecalhoContext`. Eles eram desenhados aqui, acima do
+   * <Outlet />, e por isso ficavam EM CIMA do cabeçalho de cada tela: o canto
+   * superior esquerdo, onde o olho procura "onde estou", virava um cartão de
+   * cobrança.
+   *
+   * O layout continua dono deles (sabe de fatura, de cobrança ligada e de em
+   * que tela está) e entrega ao `Header`, que desenha logo abaixo de si. Tela
+   * sem `Header` não se registra, e aí eles voltam a sair aqui no topo.
+   *
+   * ⚠️ NA TELA DA ROTA NENHUM DELES APARECE: o motorista está dirigindo, e a
+   * faixa verde da viagem é a primeira coisa que ele precisa ler. A cortina
+   * da suspensão continua (ela não passa por aqui). */
+  const suspenso = profile?.suspenso === true;
+  const avisosDoTopo = naTelaDaRota ? null : (
+    <>
+      {!naTelaDaTaxa && !suspenso && (
+        <AvisoDaPlataforma
+          fatura={fatura}
+          criancas={children?.length || 0}
+          // No caixa, uma linha âmbar sem botão verde: lá o verde é receber
+          // a mensalidade (item 19, ver AvisoDaPlataforma).
+          compacto={location.pathname.startsWith('/tio/finance')}
+        />
+      )}
+      {/* O aviso do teste fica ABAIXO do da plataforma, e some sozinho quando
+        * o outro importa: quem já tem fatura passou do trial, e avisoDoTrial
+        * devolve null pra quem tem contrato. Duas cobranças na mesma tela
+        * seria o app falando de dinheiro duas vezes antes de o motorista ver
+        * a rota do dia. */}
+      {cobranca && !naTelaDaTaxa && <AvisoDoTrial temContrato={!!fatura} />}
+
+      {/* ⚠️ ELE APARECE INCLUSIVE NA TELA DA TAXA, ao contrário do aviso do
+        * teste e do da plataforma. Aqueles são cobrança, e cobrança que cobre
+        * a própria tela de pagar não deixa ninguém pagar. Este é o oposto: diz
+        * que a conta vai PARAR, e a tela do dinheiro é justamente onde ele
+        * está quando decide se continua. */}
+      {cobranca && <AvisoDoEncerramento />}
+
+      {/* ⚠️ O CONVITE DE PUSH SÓ APARECE QUANDO NÃO HÁ COBRANÇA NA TELA.
+        *
+        * Ele vive aqui, e não no perfil, porque `enablePush` só era chamada de
+        * `/tio/perfil` — quem nunca abriu aquela tela nunca ligou o push, e
+        * push desligado desliga o canal inteiro: os avisos de degrau, de
+        * fatura e de conta pausada viram documentos que ninguém vê.
+        *
+        * Mas ele cede a vez para dinheiro. Pedir permissão de notificação em
+        * cima de um aviso de fatura em aberto é competir com a coisa que o
+        * motorista precisa resolver — e a permissão negada por pressa é
+        * definitiva no navegador. */}
+      {!naTelaDaTaxa && !fatura && <ConvitePush />}
+    </>
+  );
+  // Quais cabeçalhos estão montados. O primeiro desenha os avisos.
+  const [cabecalhos, setCabecalhos] = useState([]);
+  const registrarCabecalho = useCallback((id) => {
+    setCabecalhos((l) => [...l, id]);
+    return () => setCabecalhos((l) => l.filter((x) => x !== id));
+  }, []);
+  const avisosNoCabecalho = {
+    avisos: avisosDoTopo,
+    registrar: registrarCabecalho,
+    dono: cabecalhos[0] ?? null,
+  };
+
   const abaAtiva = indiceDaAba(location.pathname, itens);
   /* `motion-reduce:animate-none` porque quem pediu menos movimento ao sistema
      não pediu telas deslizando. A informação continua toda lá — o desenho
@@ -261,22 +327,14 @@ export default function TioLayout() {
       className="min-h-screen"
       style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}
     >
-      {!naTelaDaTaxa && (
+      {/* A SUSPENSÃO é cortina fixa por cima de tudo, e mora AQUI: dentro da
+        * tela (que anima com `transform`) o `fixed` deixaria de ser relativo
+        * à janela. Os outros avisos vão para baixo do cabeçalho; sem nenhum
+        * cabeçalho registrado, saem aqui, como antes. */}
+      {!naTelaDaTaxa && suspenso && (
         <AvisoDaPlataforma fatura={fatura} criancas={children?.length || 0} />
       )}
-      {/* O aviso do teste fica ABAIXO do da plataforma, e some sozinho quando
-        * o outro importa: quem já tem fatura passou do trial, e avisoDoTrial
-        * devolve null pra quem tem contrato. Duas cobranças na mesma tela
-        * seria o app falando de dinheiro duas vezes antes de o motorista ver
-        * a rota do dia. */}
-      {cobranca && !naTelaDaTaxa && <AvisoDoTrial temContrato={!!fatura} />}
-
-      {/* ⚠️ ELE APARECE INCLUSIVE NA TELA DA TAXA, ao contrário do aviso do
-        * teste e do da plataforma. Aqueles são cobrança, e cobrança que cobre
-        * a própria tela de pagar não deixa ninguém pagar. Este é o oposto: diz
-        * que a conta vai PARAR, e a tela do dinheiro é justamente onde ele
-        * está quando decide se continua. */}
-      {cobranca && <AvisoDoEncerramento />}
+      {cabecalhos.length === 0 && avisosDoTopo}
 
       <OfertaDoFechamento
         aberta={!!escada && ofertaAberta}
@@ -286,18 +344,6 @@ export default function TioLayout() {
         onRecusar={() => responderOferta(recusarOferta)}
         onAceitar={() => responderOferta(aceitarOferta)}
       />
-      {/* ⚠️ O CONVITE DE PUSH SÓ APARECE QUANDO NÃO HÁ COBRANÇA NA TELA.
-        *
-        * Ele vive aqui, e não no perfil, porque `enablePush` só era chamada de
-        * `/tio/perfil` — quem nunca abriu aquela tela nunca ligou o push, e
-        * push desligado desliga o canal inteiro: os avisos de degrau, de
-        * fatura e de conta pausada viram documentos que ninguém vê.
-        *
-        * Mas ele cede a vez para dinheiro. Pedir permissão de notificação em
-        * cima de um aviso de fatura em aberto é competir com a coisa que o
-        * motorista precisa resolver — e a permissão negada por pressa é
-        * definitiva no navegador. */}
-      {!naTelaDaTaxa && !fatura && <ConvitePush />}
       {/* ⚠️ A TELA ENTRA PELO LADO DA PRÓPRIA ABA, e a `key` é o ÍNDICE, não
         * o caminho.
         *
@@ -314,9 +360,11 @@ export default function TioLayout() {
           * decide pelo CAMINHO: só age em `/tio/finance…`. Assim toda tela
           * nova pendurada ali nasce atrás da senha, sem ninguém lembrar de
           * embrulhá-la no App.jsx. Ver GuardaDoFinanceiro.jsx. */}
-        <GuardaDoFinanceiro>
-          <Outlet context={{ openTutorial }} />
-        </GuardaDoFinanceiro>
+        <AvisosDoCabecalhoProvider value={avisosNoCabecalho}>
+          <GuardaDoFinanceiro>
+            <Outlet context={{ openTutorial }} />
+          </GuardaDoFinanceiro>
+        </AvisosDoCabecalhoProvider>
       </div>
       {/* ⚠️ O CADASTRO DA CRIANÇA NÃO TEM A BARRA DE BAIXO (02/10/2026).
         * Ele é um passo a passo com "Cancelar" e "Avançar" próprios, num

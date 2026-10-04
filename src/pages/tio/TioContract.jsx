@@ -58,7 +58,7 @@ export default function TioContract() {
   if (loading || !contratos) {
     return (
       <>
-        <Header title="Contrato" showBack />
+        <Header title="Contrato" showBack backLabel="Ficha" backTo={`/tio/children/${id}`} />
         <div className="p-5 space-y-3">
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />
@@ -74,7 +74,7 @@ export default function TioContract() {
   if (faltando.length > 0) {
     return (
       <>
-        <Header title="Contrato" showBack />
+        <Header title="Contrato" showBack backLabel="Ficha" backTo={`/tio/children/${id}`} />
         <div className="p-5">
           <div className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
             <p className="text-sm font-bold text-warningText">
@@ -88,7 +88,7 @@ export default function TioContract() {
             <button
               type="button"
               onClick={() => navigate('/tio/profile')}
-              className="tap mt-3 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-white"
+              className="tap mt-3 inline-flex h-12 items-center rounded-xl bg-primary px-4 text-base font-bold text-white"
             >
               Completar meu cadastro
             </button>
@@ -135,7 +135,7 @@ export default function TioContract() {
 
   return (
     <>
-      <Header title="Contrato" showBack />
+      <Header title="Contrato" showBack backLabel="Ficha" backTo={`/tio/children/${id}`} />
 
       <div className="p-5 space-y-4">
         <div className="print:hidden">
@@ -174,7 +174,7 @@ export default function TioContract() {
                     <button
                       type="button"
                       onClick={() => setAberta(c.numero)}
-                      className={`tap flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border px-3 text-left text-sm ${
+                      className={`tap flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border px-3 text-left text-base ${
                         ativa ? 'border-primary bg-primarySoft' : 'border-border bg-card'
                       }`}
                     >

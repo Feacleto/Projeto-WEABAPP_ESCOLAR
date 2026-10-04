@@ -18,6 +18,10 @@ import {
   UserRound,
   Link2,
   CalendarX2,
+  MessageCircle,
+  Users,
+  Wallet,
+  AlertTriangle,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { horariosCombinados, horaCurta } from '../dominio/rota/horarios';
@@ -28,7 +32,10 @@ import { faltasDoMes, resumoDeFaltas } from '../dominio/rota/faltas';
 import {
   addMonths,
   formatMonthLabel,
-  getCurrentMonthKey, doDa } from '../compartilhado/formatters';
+  getCurrentMonthKey,
+  doDa,
+  primeiroNome,
+} from '../compartilhado/formatters';
 import { useChildAbsenceHistory } from '../hooks/useAbsences';
 import { updateChild } from '../services/childrenService';
 import EditarOndeSheet from '../components/children/EditarOndeSheet';
@@ -58,6 +65,7 @@ import {
 import { setChildPhotoURL } from '../services/childrenService';
 import { PERIOD_LABELS, formatPhone } from '../compartilhado/formatters';
 import AcessoDeUmDia from '../components/children/AcessoDeUmDia';
+import SaudeDaCrianca from '../components/children/SaudeDaCrianca';
 
 /**
  * Mini-perfil da criança. Funciona pra Tio (com edit/delete) e pra Pai (read-only).
@@ -67,25 +75,24 @@ import AcessoDeUmDia from '../components/children/AcessoDeUmDia';
  *   - /pai/child        (pai — pega o childId do próprio profile)
  *
  * ─────────────────────────────────────────────────────────────────
- * A ORDEM DA PÁGINA É A ORDEM DAS PERGUNTAS DO TIO.
+ * TRÊS BLOCOS FIXOS, NA ORDEM DAS PERGUNTAS (03/10/2026).
  *
- * Antes ela era a ordem do cadastro: escola, endereço, responsáveis,
- * observações — e só depois, lá no fim, convite, mensalidade e contrato.
- * Ou seja: o que ele CONSULTA vinha antes do que ele RESOLVE, e as três
- * coisas que geram trabalho ficavam abaixo da dobra.
+ * A ficha cresceu cartão a cartão, cada um com o próprio jeito de editar
+ * ("Editar", um lápis sem texto, "Mudar", "Corrigir", "Escrever") — cinco
+ * nomes para a mesma ação, e quem procurava onde mudar alguma coisa tinha que
+ * ler a página inteira. Agora são três blocos, cada um com título e UM
+ * "Editar" no canto superior direito:
  *
- * A ordem agora:
+ *   Topo        foto, nome, status — e, para o motorista, Ligar e WhatsApp
+ *   Dia a dia   horários, costume, casa, escola, turma, observações, faltas
+ *   Família     o link do responsável, os responsáveis, o acesso de 24 h
+ *   Dinheiro    contrato e mensalidade, mensalidades, extrato, papel antigo
  *
- *   1. Link do responsável   o que ele veio buscar quando o pai ligou
- *   2. Mensalidade           "essa família está em dia?"
- *   3. Contrato              o documento da relação
- *   4. Escola                consulta
- *   5. Endereço de casa      consulta
- *   6. Responsável           consulta — e por último de propósito: é o dado
- *                            mais longo e o menos perecível dos três
+ * Partes de um bloco que outra pessoa pode mexer (turma e aniversário, que a
+ * família também corrige; observações da parada) têm o próprio "Editar",
+ * com a mesma cara. Quando cada edição aparece não mudou — só o nome.
  *
- * Observações e extrato fecham a página; remover a criança fica no fim,
- * longe do dedo.
+ * Remover a criança fica isolado no fim, longe do dedo.
  * ─────────────────────────────────────────────────────────────────
  */
 function ChildDetailBody({ childId: childIdProp, onLeave }) {
@@ -117,6 +124,9 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
   const [editandoOnde, setEditandoOnde] = useState(false);
   const [editandoResponsavel, setEditandoResponsavel] = useState(false);
   const [editandoNotas, setEditandoNotas] = useState(false);
+  // O "Editar" do bloco Dinheiro abre a folha que mora dentro do cartão do
+  // combinado — o estado sobe pra cá para o botão ficar no título do bloco.
+  const [editandoCombinado, setEditandoCombinado] = useState(false);
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -167,9 +177,15 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
     );
   }
 
+  // O telefone de quem o motorista liga quando a criança não está na porta.
+  // Os dois botões do topo só existem para ele: o responsável tem o "falar
+  // com o motorista" no cabeçalho, e ligar para si mesmo não é ação.
+  const telefoneDaFamilia = isAdmin ? child.parentPhone : null;
+  const nomeDoResponsavel = primeiroNome(child.parentName, 'o responsável');
+
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Cabeçalho com avatar grande, nome e status. Tanto Tio quanto Pai
           * podem trocar a foto da criança — backend valida permissão por
           * parentUid (ver firestore.rules + storage.rules). */}
@@ -177,320 +193,303 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           <div className="flex flex-col items-center gap-3">
             <ChildPhotoEditor child={child} />
             <div>
-              <h2 className="text-xl font-bold text-text">{child.name}</h2>
-              <p className="text-xs text-textMuted mt-1 flex items-center justify-center gap-1">
-                <GraduationCap size={12} />
-                {PERIOD_LABELS[child.period]}
-              </p>
+              <h2 className="text-2xl font-bold text-text">{child.name}</h2>
+              {child.period && (
+                <p className="text-base text-textMuted mt-1 flex items-center justify-center gap-1.5">
+                  <GraduationCap size={16} />
+                  {PERIOD_LABELS[child.period]}
+                </p>
+              )}
             </div>
             <StatusBadge status={child.status} size="lg" />
           </div>
+
+          {/* LIGAR E WHATSAPP LOGO ABAIXO DO NOME. É a primeira coisa que o
+            * motorista faz com a ficha aberta na porta da casa: a criança não
+            * desceu, e ele quer a mãe no telefone. O número morava no fim da
+            * página, dentro do bloco de responsáveis. */}
+          {telefoneDaFamilia && (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <a
+                href={`tel:${telefoneDaFamilia}`}
+                className="tap flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-base font-bold text-white"
+              >
+                <Phone size={20} className="shrink-0" />
+                <span className="truncate">Ligar para {nomeDoResponsavel}</span>
+              </a>
+              <a
+                href={linkDoWhatsApp(telefoneDaFamilia, child.parentName || 'responsável', child.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tap flex h-14 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-base font-bold text-text"
+              >
+                <MessageCircle size={20} className="shrink-0 text-accentText" />
+                WhatsApp
+              </a>
+            </div>
+          )}
         </Card>
 
-        {/* ─────────── ONDE E QUANDO — a operação primeiro ───────────
+        {/* ═══════════ 1. DIA A DIA — onde, quando e como ═══════════
           *
-          * A ficha estava ordenada por ordem de implementação: link do
-          * responsável, mensalidade, contrato, e só então escola, horário e
-          * endereço. Mas ninguém abre a ficha de uma criança pra ver contrato.
+          * O motorista abre a ficha no meio da rota, com a perua andando, pra
+          * três perguntas: onde eu pego, que horas, e pra qual escola. O pai
+          * abre pra uma: que horas. As respostas vêm antes de tudo, e o
+          * dinheiro desce pro fim, que é quando alguém senta pra conferir.
           *
-          * O motorista abre no meio da rota, com a perua andando, pra três
-          * perguntas: onde eu pego, que horas, e pra qual escola. O pai abre
-          * pra uma: que horas. As duas respostas são as mesmas três linhas —
-          * então elas vêm antes de tudo, e o dinheiro desce pro fim, que é
-          * quando alguém senta pra conferir.
-          *
-          * O EDITAR É SÓ DO MOTORISTA, e existe porque não existia: o
+          * O EDITAR DO BLOCO É SÓ DO MOTORISTA e abre casa e escola: o
           * endereço só era escrito no cadastro, e família que muda de casa
           * obrigava a apagar a criança e refazer — perdendo o vínculo com o
-          * responsável e o histórico de pagamento junto. */}
-        <Card className="space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
-              <Clock size={16} className="text-primary" />
-              Onde e quando
-            </h3>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setEditandoOnde(true)}
-                className="tap -mr-1 -mt-1 inline-flex items-center gap-1 p-1 text-xs font-semibold text-primary"
-              >
-                <Pencil size={13} /> Editar
-              </button>
+          * responsável e o histórico de pagamento junto. Turma e observações
+          * têm o próprio "Editar", porque quem pode mexer nelas é outra gente. */}
+        <Bloco
+          titulo="Dia a dia"
+          icon={Clock}
+          onEditar={isAdmin ? () => setEditandoOnde(true) : null}
+          rotuloEditar="Editar casa e escola"
+        >
+          <Card className="space-y-4">
+            {horariosCombinados(child).presumido ? (
+              <p className="text-base text-textMuted">
+                {isAdmin
+                  ? 'Você ainda não definiu os horários — e até lá o responsável não vê hora nenhuma. Defina em Rota → Ajustar horários.'
+                  : 'O motorista ainda não informou os horários. Assim que ele definir, aparecem aqui.'}
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <InfoRow
+                    label="Entra na perua"
+                    value={horaCurta(horariosCombinados(child).pega)}
+                    grande
+                  />
+                  <InfoRow
+                    label="Chega em casa"
+                    value={horaCurta(horariosCombinados(child).entrega)}
+                    grande
+                  />
+                </div>
+                {/* O QUE ACONTECE DE VERDADE, ao lado do combinado (03/10/2026,
+                  * pedido do dono). Os dois lados veem: a família se organiza
+                  * pelo costume, e o motorista vê se o combinado ainda é real.
+                  * Some enquanto não há viagens bastantes — ver a régua. */}
+                {costume && (costume.embarque != null || costume.chegada != null) && (
+                  <p className="rounded-xl bg-surface px-3 py-2.5 text-base leading-snug text-textBody">
+                    <span className="font-semibold text-text">De costume</span>
+                    {costume.embarque != null &&
+                      ` · entra na perua por volta de ${horaFalada(costume.embarque)}`}
+                    {costume.chegada != null &&
+                      ` · chega em casa por volta de ${horaFalada(costume.chegada)}`}
+                    <span className="block text-sm text-textMuted">
+                      Pelas últimas {costume.viagens} viagens
+                    </span>
+                  </p>
+                )}
+              </>
             )}
-          </div>
 
-          {horariosCombinados(child).presumido ? (
-            <p className="text-sm text-textMuted">
-              {isAdmin
-                ? 'Você ainda não definiu os horários — e até lá o responsável não vê hora nenhuma. Defina em Rota → Ajustar horários.'
-                : 'O motorista ainda não informou os horários. Assim que ele definir, aparecem aqui.'}
-            </p>
-          ) : (
-            <>
-              <InfoRow
-                label="Entra na perua"
-                value={horaCurta(horariosCombinados(child).pega)}
-              />
-              <InfoRow
-                label="Chega em casa"
-                value={horaCurta(horariosCombinados(child).entrega)}
-              />
-              {/* O QUE ACONTECE DE VERDADE, ao lado do combinado (03/10/2026,
-                * pedido do dono). Os dois lados veem: a família se organiza
-                * pelo costume, e o motorista vê se o combinado ainda é real.
-                * Some enquanto não há viagens bastantes — ver a régua. */}
-              {costume && (costume.embarque != null || costume.chegada != null) && (
-                <p className="rounded-xl bg-surface px-3 py-2.5 text-[13px] leading-snug text-textBody">
-                  <span className="font-semibold text-text">De costume</span>
-                  {costume.embarque != null &&
-                    ` · entra na perua por volta de ${horaFalada(costume.embarque)}`}
-                  {costume.chegada != null &&
-                    ` · chega em casa por volta de ${horaFalada(costume.chegada)}`}
-                  <span className="block text-xs text-textMuted">
-                    Pelas últimas {costume.viagens} viagens
-                  </span>
+            <div className="space-y-4 border-t border-neutro pt-4">
+              <InfoRow icon={Home} label="Casa" value={child.address} />
+              {/* Cadastrada pela rua com "não sei o número agora": a família
+                * confirma o número no primeiro acesso dela, e ele aparece aqui. */}
+              {child.numeroPendente && (
+                <p className="-mt-2 pl-7 text-sm font-semibold text-warningText">
+                  Falta o número da casa — a família confirma quando entrar no app.
                 </p>
               )}
-            </>
-          )}
+              <InfoRow icon={School} label="Escola" value={child.school} />
+              {child.schoolAddress && (
+                <InfoRow icon={MapPin} label="Endereço da escola" value={child.schoolAddress} />
+              )}
+              <TelefoneDaEscola child={child} isAdmin={isAdmin} />
+            </div>
 
-          <div className="space-y-3 border-t border-neutro pt-3">
-            <InfoRow icon={Home} label="Casa" value={child.address} />
-            {/* Cadastrada pela rua com "não sei o número agora": a família
-              * confirma o número no primeiro acesso dela, e ele aparece aqui. */}
-            {child.numeroPendente && (
-              <p className="-mt-1 pl-7 text-xs font-semibold text-warningText">
-                Falta o número da casa — a família confirma quando entrar no app.
-              </p>
-            )}
-            <InfoRow icon={School} label="Escola" value={child.school} />
-            {child.schoolAddress && (
-              <InfoRow icon={MapPin} label="Endereço da escola" value={child.schoolAddress} />
-            )}
-            <TelefoneDaEscola child={child} isAdmin={isAdmin} />
             {/* Turma, professora e aniversário: os DOIS lados corrigem. O
               * motorista pode ter dito a turma no cadastro; a família sabe
               * melhor, e o aniversário é só dela de saber. */}
-            <TurmaSala child={child} podeEditar />
-          </div>
-        </Card>
+            <div className="border-t border-neutro pt-4">
+              <TurmaSala child={child} podeEditar />
+            </div>
 
-        {/* ─────────── 1. O LINK DO RESPONSÁVEL ───────────
+            {/* OBSERVAÇÕES DA PARADA — "portão de trás", "tocar o interfone".
+              * É o texto que a rota mostra na parada da criança, na hora em que
+              * a perua encosta. Até 03/10/2026 só dava para escrever no
+              * cadastro: o motorista que descobria o portão lateral na segunda
+              * semana não tinha onde anotar. Agora ele escreve e muda aqui. */}
+            {(child.notes || isAdmin) && (
+              <div className="space-y-2 border-t border-neutro pt-4">
+                <SubTitulo
+                  icon={StickyNote}
+                  titulo="Observações da parada"
+                  onEditar={isAdmin ? () => setEditandoNotas(true) : null}
+                  rotuloEditar="Editar observações da parada"
+                />
+                {child.notes ? (
+                  <p className="text-base text-text leading-relaxed whitespace-pre-wrap">
+                    {child.notes}
+                  </p>
+                ) : (
+                  <p className="text-base text-textMuted">
+                    Aparece na rota, na parada desta criança. Ex.: portão de trás.
+                  </p>
+                )}
+              </div>
+            )}
+          </Card>
+
+          {/* QUANTAS VEZES ELA FALTOU — a pergunta que os dois lados fazem.
+            *
+            * Fica no dia a dia, e não num bloco próprio, porque é presença:
+            * o motorista precisa disso pra conversar com a família ("é a
+            * quinta este mês") e o responsável pra saber onde está. Não tem
+            * "Editar" — falta se avisa pelo app, não se corrige na ficha.
+            *
+            * O aviso marcado pra frente aparece separado e nunca somado: é
+            * combinado, não falta. Somar faria a ficha dizer que a criança
+            * faltou num dia que ainda não chegou. */}
+          {/* SAÚDE — escrita só pela responsável, lida pelo motorista.
+            * Fica no dia a dia porque é para a emergência NO TRAJETO; o
+            * porquê inteiro mora no componente. */}
+          <SaudeDaCrianca child={child} isAdmin={isAdmin} />
+
+          <FaltasDaCrianca childId={child.id} adminUid={child.adminUid} />
+        </Bloco>
+
+        {/* ═══════════ 2. FAMÍLIA — quem é, e como entra ═══════════
           *
-          * PRIMEIRO DE TUDO, E SEMPRE PRESENTE.
-          *
-          * Antes este bloco era o sexto da página e só existia enquanto o
-          * convite estivesse pendente. O caminho real é outro: o pai perde o
-          * link — apaga a conversa, troca de celular, nunca abriu — e pede
-          * pro tio. Aí o tio abria a ficha, não achava link nenhum, e o
-          * assunto virava chamado de suporte por uma URL.
-          *
-          * Agora tem um alvo só, sempre no topo, e é O APP que decide qual
-          * link mandar. O tio nunca precisa saber a diferença:
+          * O LINK DO RESPONSÁVEL VEM PRIMEIRO NO BLOCO, E SEMPRE PRESENTE.
+          * O caminho real é o pai perder o link — apaga a conversa, troca de
+          * celular, nunca abriu — e pedir pro tio. Antes o bloco só existia
+          * enquanto o convite estivesse pendente, e o tio abria a ficha sem
+          * achar link nenhum. É O APP que decide qual link mandar:
           *
           *   convite pendente → /convite/CÓDIGO, que cria a conta na hora
-          *   já aceito        → a porta da família, que é onde ele entra
+          *   já aceito        → o mesmo convite, que abre direto na criança
           *
-          * POR QUE NÃO UM "GERAR NOVO CONVITE"
-          * Porque o convite é de uso único no servidor (functions/lib/
-          * invites.js recusa código já usado, e é isso que impede um estranho
-          * de se vincular a uma criança). Emitir convite novo pra quem já tem
-          * conta reabriria essa porta pra resolver um problema que era só de
-          * achar uma URL. */}
-        {isAdmin && <LinkDoResponsavel child={child} />}
-
-        {/* CONTRATO E MENSALIDADE (02/10/2026): o quanto, o até quando e se a
-          * família concordou — e as duas ações disso, mudar e ver o
-          * documento. Antes o valor não tinha como mudar e o contrato era uma
-          * linha que levava a outra tela. */}
-        {isAdmin && (
-          <CartaoDoCombinado
-            child={child}
-            onVerContrato={() => {
-              onLeave?.();
-              navigate(`/tio/children/${child.id}/contract`);
-            }}
-          />
-        )}
-
-        {/* Histórico de mensalidades desta criança.
-          * A pergunta que o tio mais faz ao financeiro é "essa família está
-          * em dia?" — e ela nasce AQUI, na ficha, não na tela de meses. */}
-        <ChildPaymentHistory
-          childId={child.id}
-          role={isAdmin ? 'admin' : 'parent'}
-        />
-
-        {/* O CONTRATO DE ANTES, quando existe.
-          * Fica ao lado do contrato do app de propósito: quem abre a ficha
-          * procurando "o contrato" precisa ver os dois e entender qual é
-          * qual — o do app é o que vale, este é o que veio antes. */}
-        {child.contratoAnteriorURL && (
-          <a
-            href={child.contratoAnteriorURL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tap flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutro text-textMuted">
-              <Paperclip size={16} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-text">
-                Contrato anterior
-              </span>
-              <span className="block text-xs text-textMuted">
-                O papel de antes do app — registro, não é o que vale
-              </span>
-            </span>
-            <ChevronRight size={18} className="shrink-0 text-textMuted" />
-          </a>
-        )}
-
-        {/* QUANTAS VEZES ELA FALTOU — a pergunta que os dois lados fazem.
+          * POR QUE NÃO UM "GERAR NOVO CONVITE" AQUI
+          * O convite é de uso único no servidor (functions/lib/invites.js
+          * recusa código já usado, e é isso que impede um estranho de se
+          * vincular a uma criança). Emitir convite novo pra quem já tem conta
+          * reabriria essa porta pra resolver um problema que era só de achar
+          * uma URL.
           *
-          * O motorista precisa disso pra conversar com a família ("é a quinta
-          * este mês") e o responsável pra saber onde está. Estava só no painel
-          * do pai, e o motorista não tinha nenhum lugar onde ler o número:
-          * ele via a falta do DIA na rota e nunca o acumulado.
-          *
-          * O aviso marcado pra frente aparece separado e nunca somado: é
-          * combinado, não falta. Somar faria a ficha dizer que a criança
-          * faltou num dia que ainda não chegou. */}
-        <FaltasDaCrianca childId={child.id} adminUid={child.adminUid} />
+          * O "EDITAR" SÓ EXISTE ANTES DE A FAMÍLIA ENTRAR: depois, nome e
+          * telefone são dela (ver `EditarResponsavelSheet`). */}
+        <Bloco
+          titulo="Família"
+          icon={Users}
+          onEditar={isAdmin && !child.parentUid ? () => setEditandoResponsavel(true) : null}
+          rotuloEditar="Editar o responsável"
+        >
+          {isAdmin && <LinkDoResponsavel child={child} />}
 
-        {/* Responsáveis */}
-        <Card className="space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="text-sm font-semibold text-text">
-              Responsáveis
-            </h3>
-            {/* Só antes de a família entrar: depois, nome e telefone são dela. */}
-            {isAdmin && !child.parentUid && (
-              <button
-                type="button"
-                onClick={() => setEditandoResponsavel(true)}
-                className="tap -mr-1 -mt-1 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-semibold text-primary"
-              >
-                <Pencil size={14} /> Corrigir
-              </button>
-            )}
-          </div>
-
-          <div className="space-y-2 pb-2 border-b border-neutro last:border-0 last:pb-0">
-            <p className="rotulo">
-              Principal
-            </p>
-            <InfoRow label="Nome" value={child.parentName} />
-            {(child.linkedEmail || child.parentEmail) && (
-              <InfoRow icon={Mail} label="Email" value={child.linkedEmail || child.parentEmail} />
-            )}
-            {child.parentPhone && (
-              <PhoneRow
-                phone={child.parentPhone}
-                name={child.parentName || 'responsável'}
-                childName={child.name}
-              />
-            )}
-          </div>
-
-          {(child.parent2Name || child.parent2Phone) && (
-            <div className="space-y-2 pt-1">
-              <p className="rotulo">
-                Segundo responsável
-              </p>
-              {child.parent2Name && (
-                <InfoRow label="Nome" value={child.parent2Name} />
+          <Card className="space-y-4">
+            <div className="space-y-3 pb-4 border-b border-neutro last:border-0 last:pb-0">
+              <p className="text-base font-bold text-text">Responsável principal</p>
+              <InfoRow label="Nome" value={child.parentName} />
+              {(child.linkedEmail || child.parentEmail) && (
+                <InfoRow icon={Mail} label="E-mail" value={child.linkedEmail || child.parentEmail} />
               )}
-              {child.parent2Phone && (
+              {child.parentPhone && (
                 <PhoneRow
-                  phone={child.parent2Phone}
-                  name={child.parent2Name || 'responsável'}
+                  phone={child.parentPhone}
+                  name={child.parentName || 'responsável'}
                   childName={child.name}
                 />
               )}
             </div>
-          )}
-          {/* O acesso de 24 horas do segundo responsável (03/10/2026). */}
-          <AcessoDeUmDia child={child} />
-        </Card>
 
-        {/* OBSERVAÇÕES DA PARADA — "portão de trás", "tocar o interfone".
-          * É o texto que a rota mostra na parada da criança, na hora em que a
-          * perua encosta. Até 03/10/2026 só dava para escrever no cadastro:
-          * o motorista que descobria o portão lateral na segunda semana não
-          * tinha onde anotar. Agora ele escreve e muda aqui. */}
-        {(child.notes || isAdmin) && (
-          <Card className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-                <StickyNote size={16} className="text-primary" />
-                Observações da parada
-              </h3>
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setEditandoNotas(true)}
-                  className="tap inline-flex items-center gap-1 p-1 text-xs font-semibold text-primary"
-                >
-                  <Pencil size={14} /> {child.notes ? 'Mudar' : 'Escrever'}
-                </button>
-              )}
-            </div>
-            {child.notes ? (
-              <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">
-                {child.notes}
-              </p>
-            ) : (
-              <p className="text-sm text-textMuted">
-                Aparece na rota, na parada desta criança. Ex.: portão de trás.
-              </p>
+            {(child.parent2Name || child.parent2Phone) && (
+              <div className="space-y-3">
+                <p className="text-base font-bold text-text">Segundo responsável</p>
+                {child.parent2Name && (
+                  <InfoRow label="Nome" value={child.parent2Name} />
+                )}
+                {child.parent2Phone && (
+                  <PhoneRow
+                    phone={child.parent2Phone}
+                    name={child.parent2Name || 'responsável'}
+                    childName={child.name}
+                  />
+                )}
+              </div>
             )}
+            {/* O acesso de 24 horas do segundo responsável (03/10/2026). */}
+            <AcessoDeUmDia child={child} />
           </Card>
-        )}
+        </Bloco>
 
-        {/* O MESMO HISTÓRICO, EM PAPEL
-          * O bloco acima responde "essa família está em dia?" na tela, com o
-          * dedo. Mas o motorista também precisa LEVAR essa conta pra uma
-          * conversa: sentar com o responsável, mandar quando alguém contesta
-          * um mês, imprimir e anotar o combinado em cima. Tela não faz isso —
-          * então existe uma versão documento, com nome, período e assinatura.
-          * Só pro tio: o pai já tem o extrato dele em /pai/finance/report. */}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => {
-              onLeave?.();
-              navigate(`/tio/children/${child.id}/extrato`);
-            }}
-            className="tap w-full text-left bg-card rounded-2xl shadow-sm p-4 flex items-center gap-3"
-          >
-            <div className="w-11 h-11 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
-              <Printer size={20} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-text leading-tight">
-                Extrato de mensalidades
-              </p>
-              <p className="text-xs text-textMuted mt-0.5">
-                Pra imprimir, mandar ou anotar em cima
-              </p>
-            </div>
-            <ChevronRight size={18} className="text-textMuted shrink-0" />
-          </button>
-        )}
+        {/* ═══════════ 3. DINHEIRO — o combinado e o que foi pago ═══════════
+          *
+          * Contrato e mensalidade (o quanto, o até quando e se a família
+          * concordou), o histórico mês a mês ("essa família está em dia?"), o
+          * extrato pra imprimir e o papel de antes do app. O "Editar" do bloco
+          * é o que o cartão do combinado chamava de "Mudar" — depois do aceite
+          * ele vira contrato novo, e a folha diz isso antes do botão. */}
+        <Bloco
+          titulo="Dinheiro"
+          icon={Wallet}
+          onEditar={isAdmin ? () => setEditandoCombinado(true) : null}
+          rotuloEditar="Editar mensalidade e contrato"
+        >
+          {isAdmin && (
+            <CartaoDoCombinado
+              child={child}
+              editando={editandoCombinado}
+              onEditando={setEditandoCombinado}
+              onVerContrato={() => {
+                onLeave?.();
+                navigate(`/tio/children/${child.id}/contract`);
+              }}
+            />
+          )}
 
-        {/* Ações do tio */}
+          <ChildPaymentHistory
+            childId={child.id}
+            role={isAdmin ? 'admin' : 'parent'}
+          />
+
+          {/* O MESMO HISTÓRICO, EM PAPEL. Tela não leva a conta pra uma
+            * conversa: sentar com o responsável, mandar quando alguém contesta
+            * um mês, imprimir e anotar o combinado em cima. Só pro tio: o pai
+            * já tem o extrato dele em /pai/finance/report. */}
+          {isAdmin && (
+            <LinhaDePorta
+              icon={Printer}
+              titulo="Extrato de mensalidades"
+              detalhe="Pra imprimir, mandar ou anotar em cima"
+              onClick={() => {
+                onLeave?.();
+                navigate(`/tio/children/${child.id}/extrato`);
+              }}
+            />
+          )}
+
+          {/* O CONTRATO DE ANTES, quando existe. Fica ao lado do contrato do
+            * app de propósito: quem procura "o contrato" precisa ver os dois e
+            * entender qual é qual — o do app é o que vale, este é o de antes. */}
+          {child.contratoAnteriorURL && (
+            <LinhaDePorta
+              icon={Paperclip}
+              titulo="Contrato anterior"
+              detalhe="O papel de antes do app — registro, não é o que vale"
+              href={child.contratoAnteriorURL}
+            />
+          )}
+        </Bloco>
+
+        {/* Remover fica isolado no fim, longe do dedo. */}
         {isAdmin && (
-          <Button
-            variant="ghost"
-            icon={Trash2}
-            className="!text-dangerText"
-            onClick={() => setConfirmDeactivate(true)}
-          >
-            Remover criança
-          </Button>
+          <div className="border-t border-neutro pt-4">
+            <Button
+              variant="ghost"
+              icon={Trash2}
+              className="!text-dangerText"
+              onClick={() => setConfirmDeactivate(true)}
+            >
+              Remover criança
+            </Button>
+          </div>
         )}
       </div>
 
@@ -562,9 +561,9 @@ export default function ChildDetail() {
         * WhatsApp ou recarregando a página — casos em que não existe história
         * e a seta sozinha ou não faz nada, ou joga a pessoa pra fora do app. */}
       <Header
-        title="Perfil da criança"
+        title="Ficha da criança"
         showBack
-        backLabel={isAdmin ? 'Crianças' : 'Início'}
+        backLabel={isAdmin ? 'Minha turma' : 'Início'}
         backTo={isAdmin ? '/tio/children' : '/pai'}
       />
       <div className="p-4">
@@ -621,10 +620,7 @@ function FaltasDaCrianca({ childId, adminUid }) {
 
   return (
     <Card className="space-y-3">
-      <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
-        <CalendarX2 size={16} className="text-primary" />
-        Faltas
-      </h3>
+      <SubTitulo icon={CalendarX2} titulo="Faltas" />
 
       {/* MÊS A MÊS, E SEM TOTAL ACUMULADO.
         *
@@ -639,9 +635,9 @@ function FaltasDaCrianca({ childId, adminUid }) {
           type="button"
           onClick={() => setMes((m) => addMonths(m, -1))}
           aria-label="Mês anterior"
-          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-textMuted"
+          className="tap flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted"
         >
-          <ChevronLeft size={15} />
+          <ChevronLeft size={20} />
         </button>
 
         <div className="min-w-0 flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-center">
@@ -652,7 +648,7 @@ function FaltasDaCrianca({ childId, adminUid }) {
               <p className="text-xl font-extrabold leading-none tabular-nums text-text">
                 {doMes.length}
               </p>
-              <p className="mt-1 text-xs capitalize leading-tight text-textMuted">
+              <p className="mt-1 text-sm capitalize leading-tight text-textMuted">
                 {formatMonthLabel(mes)}
               </p>
             </>
@@ -664,14 +660,14 @@ function FaltasDaCrianca({ childId, adminUid }) {
           disabled={!podeAvancar}
           onClick={() => podeAvancar && setMes((m) => addMonths(m, 1))}
           aria-label="Próximo mês"
-          className="tap flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-textMuted disabled:opacity-30"
+          className="tap flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted disabled:opacity-30"
         >
-          <ChevronRight size={15} />
+          <ChevronRight size={20} />
         </button>
       </div>
 
       {futuras > 0 && (
-        <p className="rounded-xl bg-warningSoft px-3 py-2 text-xs leading-relaxed text-warningText">
+        <p className="rounded-xl bg-warningSoft px-3 py-2 text-sm leading-relaxed text-warningText">
           <strong>
             {futuras} {futuras === 1 ? 'aviso marcado' : 'avisos marcados'}
           </strong>{' '}
@@ -680,7 +676,7 @@ function FaltasDaCrianca({ childId, adminUid }) {
       )}
 
       {!loading && doMes.length === 0 && futuras === 0 && (
-        <p className="text-xs leading-relaxed text-textMuted">
+        <p className="text-sm leading-relaxed text-textMuted">
           Só conta o que foi avisado pelo app.
         </p>
       )}
@@ -703,10 +699,11 @@ function LinkDoResponsavel({ child }) {
     return (
       <Card className="space-y-3 border border-warningBorder bg-warningSoft">
         <div>
-          <p className="text-sm font-semibold text-text">
+          <p className="flex items-center gap-2 text-base font-bold text-warningText">
+            <AlertTriangle size={18} className="shrink-0" />
             O responsável ainda não entrou
           </p>
-          <p className="mt-1 text-xs text-textMuted">
+          <p className="mt-1 text-base text-text">
             Mande o link — a conta dele se cria por lá, sem digitar código.
           </p>
         </div>
@@ -742,10 +739,10 @@ function LinkDoResponsavel({ child }) {
           <Link2 size={19} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-text">
+          <p className="text-base font-bold text-text">
             Link de acesso do responsável
           </p>
-          <p className="mt-1 text-xs text-textMuted">
+          <p className="mt-1 text-sm text-textMuted">
             {child.parentName || 'O responsável'} já tem conta. Se perdeu o
             caminho de volta, mande este link — ele abre direto na página
             {child.name
@@ -827,7 +824,7 @@ function ChildPhotoEditor({ child }) {
       {STORAGE_ENABLED && (
         <label
           htmlFor={`child-photo-${child.id}`}
-          className="absolute -bottom-1 -right-1 w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
+          className="absolute -bottom-1 -right-1 w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
         >
           {/* Texto escondido, não `aria-label`: em <label> o leitor de tela
             * ignora o atributo (axe: aria-prohibited-attr). */}
@@ -848,10 +845,10 @@ function ChildPhotoEditor({ child }) {
         <button
           type="button"
           onClick={onRemove}
-          className="absolute -bottom-1 -left-1 w-9 h-9 rounded-full bg-card text-danger border border-border shadow flex items-center justify-center tap"
+          className="absolute -bottom-1 -left-1 w-12 h-12 rounded-full bg-card text-dangerText border border-border shadow flex items-center justify-center tap"
           aria-label="Remover foto"
         >
-          <Trash2 size={16} />
+          <Trash2 size={18} />
         </button>
       )}
       {uploading && (
@@ -863,19 +860,30 @@ function ChildPhotoEditor({ child }) {
   );
 }
 
-function InfoRow({ icon: Icon, label, value }) {
+/**
+ * Rótulo em 14px e valor em 16px (18px no `grande`, que é a hora). O rótulo
+ * era 12px: legível de perto, não com a perua andando.
+ */
+function InfoRow({ icon: Icon, label, value, grande = false }) {
   return (
     <div className="flex items-start gap-2">
-      {Icon && <Icon size={14} className="text-textMuted shrink-0 mt-0.5" />}
+      {Icon && <Icon size={18} className="text-textMuted shrink-0 mt-0.5" />}
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-textMuted">{label}</p>
-        <p className="text-sm text-text break-words">{value || '—'}</p>
+        <p className="text-sm text-textMuted">{label}</p>
+        <p
+          className={`break-words text-text ${
+            grande ? 'text-lg font-bold tabular-nums' : 'text-base'
+          }`}
+        >
+          {value || '—'}
+        </p>
       </div>
     </div>
   );
 }
 
-function PhoneRow({ phone, name, childName }) {
+/** O link do WhatsApp com a mensagem pronta — o topo e os responsáveis usam o mesmo. */
+function linkDoWhatsApp(phone, name, childName) {
   const phoneDigits = String(phone).replace(/\D/g, '');
   const phoneE164 = phoneDigits.startsWith('55')
     ? phoneDigits
@@ -883,24 +891,109 @@ function PhoneRow({ phone, name, childName }) {
   const text = encodeURIComponent(
     `Olá, ${name}! Sou do transporte escolar, sobre ${childName}.`
   );
-  const waLink = `https://wa.me/${phoneE164}?text=${text}`;
+  return `https://wa.me/${phoneE164}?text=${text}`;
+}
 
+function PhoneRow({ phone, name, childName }) {
   return (
     <div className="flex items-center gap-2">
-      <Phone size={14} className="text-textMuted shrink-0" />
+      <Phone size={18} className="text-textMuted shrink-0" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-textMuted">Telefone</p>
-        <p className="text-sm text-text">{formatPhone(phone)}</p>
+        <p className="text-sm text-textMuted">Telefone</p>
+        <p className="text-base text-text">{formatPhone(phone)}</p>
       </div>
       <a
-        href={waLink}
+        href={linkDoWhatsApp(phone, name, childName)}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-xs font-semibold text-accentText tap px-2 py-1 bg-primaryChip rounded-lg"
+        className="tap inline-flex h-12 shrink-0 items-center gap-1.5 rounded-xl bg-primaryChip px-3 text-sm font-semibold text-accentText"
       >
+        <MessageCircle size={16} />
         WhatsApp
       </a>
     </div>
+  );
+}
+
+/**
+ * O título de um dos três blocos da ficha, com o "Editar" no canto superior
+ * direito — o mesmo lugar, a mesma cara e o mesmo nome nos três. Sem
+ * `onEditar` (o pai, ou a família que já entrou) o botão não aparece.
+ */
+function Bloco({ titulo, icon: Icon, onEditar, rotuloEditar, children }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex min-h-12 items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-xl font-bold text-text">
+          <Icon size={20} className="text-primary shrink-0" />
+          {titulo}
+        </h3>
+        {onEditar && <BotaoEditar onClick={onEditar} rotulo={rotuloEditar} />}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Subtítulo dentro de um bloco, com o próprio "Editar" quando houver. */
+function SubTitulo({ titulo, icon: Icon, onEditar, rotuloEditar }) {
+  return (
+    <div className="flex min-h-12 items-center justify-between gap-2">
+      <p className="flex items-center gap-2 text-base font-bold text-text">
+        {Icon && <Icon size={18} className="text-primary shrink-0" />}
+        {titulo}
+      </p>
+      {onEditar && <BotaoEditar onClick={onEditar} rotulo={rotuloEditar} />}
+    </div>
+  );
+}
+
+/**
+ * UM NOME PARA A MESMA AÇÃO. A ficha dizia "Editar", "Mudar", "Corrigir",
+ * "Escrever" e tinha um lápis sem texto — e cada nome fazia a pessoa
+ * perguntar se era outra coisa. O `rotulo` vai para o leitor de tela, que
+ * precisa saber O QUE vai ser editado.
+ */
+function BotaoEditar({ onClick, rotulo }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={rotulo}
+      className="tap -mr-2 inline-flex h-12 shrink-0 items-center gap-1.5 rounded-xl px-3 text-base font-semibold text-primary"
+    >
+      <Pencil size={18} />
+      Editar
+    </button>
+  );
+}
+
+/** Linha que leva a outra tela ou a um arquivo — extrato, contrato antigo. */
+function LinhaDePorta({ icon: Icon, titulo, detalhe, onClick, href }) {
+  const conteudo = (
+    <>
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
+        <Icon size={20} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-bold text-text leading-tight">
+          {titulo}
+        </span>
+        <span className="mt-0.5 block text-sm text-textMuted">{detalhe}</span>
+      </span>
+      <ChevronRight size={20} className="shrink-0 text-textMuted" />
+    </>
+  );
+  const classe =
+    'tap flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left';
+  return href ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={classe}>
+      {conteudo}
+    </a>
+  ) : (
+    <button type="button" onClick={onClick} className={classe}>
+      {conteudo}
+    </button>
   );
 }
 
@@ -948,31 +1041,31 @@ function TurmaSala({ child, podeEditar }) {
     return (
       <div className="space-y-2 pt-1">
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-textMuted">Turma</span>
+          <span className="mb-1 block text-sm font-semibold text-text">Turma</span>
           <input
             value={turma}
             onChange={(e) => setTurma(e.target.value)}
             placeholder="Digite aqui"
-            className="h-11 w-full rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+            className="h-12 w-full rounded-xl border-2 border-border bg-card px-3 text-base text-text focus:outline-none focus:border-primary"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-textMuted">Professora</span>
+          <span className="mb-1 block text-sm font-semibold text-text">Professora</span>
           <input
             value={professora}
             onChange={(e) => setProfessora(e.target.value)}
-            className="h-11 w-full rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+            className="h-12 w-full rounded-xl border-2 border-border bg-card px-3 text-base text-text focus:outline-none focus:border-primary"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-textMuted">
+          <span className="mb-1 block text-sm font-semibold text-text">
             Aniversário
           </span>
           <input
             type="date"
             value={aniversario}
             onChange={(e) => setAniversario(e.target.value)}
-            className="h-11 w-full rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+            className="h-12 w-full rounded-xl border-2 border-border bg-card px-3 text-base text-text focus:outline-none focus:border-primary"
           />
         </label>
         <div className="flex gap-2">
@@ -994,15 +1087,21 @@ function TurmaSala({ child, podeEditar }) {
 
   if (vazio && !podeEditar) {
     return (
-      <p className="text-xs text-textMuted">
+      <p className="text-base text-textMuted">
         O responsável ainda não informou turma, professora e aniversário.
       </p>
     );
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 min-w-0 space-y-3">
+    <div className="space-y-3">
+      <SubTitulo
+        icon={GraduationCap}
+        titulo="Turma e aniversário"
+        onEditar={podeEditar ? () => setEditando(true) : null}
+        rotuloEditar="Editar turma, professora e aniversário"
+      />
+      <div className="space-y-3">
         <InfoRow label="Turma" value={child.turma || '—'} />
         <InfoRow label="Professora" value={child.professora || '—'} />
         <InfoRow
@@ -1014,16 +1113,6 @@ function TurmaSala({ child, podeEditar }) {
           }
         />
       </div>
-      {podeEditar && (
-        <button
-          type="button"
-          onClick={() => setEditando(true)}
-          aria-label="Editar turma, professora e aniversário"
-          className="tap w-11 h-11 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
-        >
-          <Pencil size={15} />
-        </button>
-      )}
     </div>
   );
 }

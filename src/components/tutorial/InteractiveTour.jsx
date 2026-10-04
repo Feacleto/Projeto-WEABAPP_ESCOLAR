@@ -171,10 +171,15 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
     [uid, updateProfile, onClose]
   );
 
+  // A última parada pode levar a um lugar (`ctaPath`): o tour do motorista
+  // termina abrindo o cadastro da primeira criança, em vez de só fechar.
+  const ctaPath = isLast ? step?.ctaPath : null;
   const goNext = useCallback(() => {
-    if (isLast) finish(true);
-    else setStepIndex((i) => i + 1);
-  }, [isLast, finish]);
+    if (isLast) {
+      finish(true);
+      if (ctaPath) navigate(ctaPath);
+    } else setStepIndex((i) => i + 1);
+  }, [isLast, finish, ctaPath, navigate]);
 
   // Passo interativo: tocar no elemento de verdade avança o tour
   useEffect(() => {
@@ -265,7 +270,7 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
           </div>
 
           <p className="font-display text-lg font-bold leading-tight">{step.title}</p>
-          <p className="mt-1 text-sm text-onNightMuted leading-snug">
+          <p className="mt-1 text-base text-onNightMuted leading-snug">
             {!cobranca && step.bodySemCobranca ? step.bodySemCobranca : step.body}
           </p>
 
@@ -273,16 +278,16 @@ export default function InteractiveTour({ open, mode = 'review', onClose }) {
             <button
               type="button"
               onClick={onSkip}
-              className="tap px-1 py-2 text-sm font-semibold text-onNightMuted hover:text-onNight"
+              className="tap -ml-2 min-h-12 px-2 text-base font-semibold text-onNightMuted hover:text-onNight"
             >
               Pular
             </button>
             <button
               type="button"
               onClick={goNext}
-              className="tap ml-auto h-11 rounded-xl bg-accent px-5 font-bold text-onAccent"
+              className="tap ml-auto h-12 rounded-xl bg-accent px-5 text-base font-bold text-onAccent"
             >
-              {isLast ? 'Começar' : 'Próximo'}
+              {isLast ? step.ctaLabel || 'Começar' : 'Próximo'}
             </button>
           </div>
         </div>

@@ -53,7 +53,15 @@ const depoisDoRest = input.slice(input.indexOf('{...rest}'));
 caso('o "Digite aqui" vem DEPOIS do {...rest} (o chamador não sobrescreve)',
   /\{\.\.\.rest\}[\s\S]*placeholder=\{textoGuia\}/.test(depoisDoRest.slice(0, 200)));
 caso('o texto-guia é "Digite aqui"', input.includes("'Digite aqui'"));
-caso('tem o botão Salvar', />\s*Salvar\s*</.test(input));
+caso('tem o botão Salvar', /'Salvar'/.test(input) || />\s*Salvar\s*</.test(input));
+// O CAMPO DIZ QUE VALEU (04/10/2026): quem tem 40+ precisa ver o sinal.
+caso('depois do Salvar o botão diz "Pronto" com o visto', /<Check\b[^>]*\/>\s*Pronto/.test(input));
+caso('o campo confirmado ganha borda verde e o visto dentro',
+  /mostraPronto(?: \|\| ditado\.ouvindo)? \? 'border-primary'/.test(input) && /<CheckCircle2/.test(input));
+caso('o Salvar, o Enter e o sair do campo confirmam', (input.match(/confirmar\(\)/g) || []).length >= 3);
+caso('mudar o texto desfaz a confirmação', /aoMudar = \(e\) => \{\s*setConfirmado\(false\)/.test(input));
+caso('nunca diz "Salvo" (no passo a passo nada foi ao banco ainda)', !/['>]\s*Salvo\s*['<]/.test(input));
+caso('o leitor de tela também ouve "pronto"', /role="status"/.test(input));
 caso('o Salvar e o Enter usam o mesmo avanço', (input.match(/avancarDoCampo\(/g) || []).length >= 2);
 
 console.log('3. o avanço da tela');
@@ -82,6 +90,48 @@ for (const arq of ['src/components/common/AppSheet.jsx', 'src/components/common/
 const appSheet = ler('src/components/common/AppSheet.jsx');
 caso('folha de tela cheia tem "← Voltar" e não o X',
   /size === 'full' && \([\s\S]{0,400}Voltar/.test(appSheet) && appSheet.includes("size !== 'full' && ("));
+
+console.log('6. onde o "Salvar" do campo NÃO aparece (04/10/2026, decisão do dono)');
+// O botão avança, não grava. Onde a tela já tem o botão de verdade, ou um
+// campo só, quem tem 40+ toca nele achando que guardou e sai.
+caso('data e senha nunca levam o botão',
+  /type !== 'date'/.test(input) && /type !== 'password'/.test(input));
+caso('existe o jeito de esconder só o botão (o Enter continua)', /semSalvar = false/.test(input));
+const SEM_SALVAR = {
+  'src/pages/Login.jsx': 1, 'src/pages/DriverSignup.jsx': 3, 'src/components/landing/LoginSheet.jsx': 1, 'src/components/auth/AuthSheet.jsx': 1,
+  'src/components/acesso/PedirAcesso.jsx': 1, 'src/components/children/TelefoneDaEscola.jsx': 1,
+  'src/components/payments/PixForm.jsx': 1, 'src/components/contract/EditarCombinadoSheet.jsx': 1,
+  'src/pages/Profile.jsx': 3, 'src/pages/tio/TioAbastecer.jsx': 1, 'src/components/financeiro/FolhaDeDespesa.jsx': 3,
+};
+for (const [arq, n] of Object.entries(SEM_SALVAR)) {
+  // A ordem dos atributos não importa (`<Input falar="nome" semSalvar`).
+  const achou = (ler(arq).match(/<Input\b[^>\n]*\bsemSalvar\b/g) || []).length;
+  caso(`${arq}: sem o botão nos campos de texto (${n})`, achou >= n, `achou ${achou}`);
+}
+// Sonda: o padrão reconhece o atributo.
+caso('sonda: o padrão acha "<Input semSalvar"', /<Input semSalvar\b/.test('<Input semSalvar label="x" />'));
+
+console.log('7. a jornada do primeiro acesso: um protagonista por tela (04/10/2026, aprovado pelo dono)');
+// As escolhas são PARADA do Salvar: sem isto o Salvar do nome enviava o
+// formulário e a pessoa recebia "Escolha uma opção." sem ter errado nada.
+for (const arq of ['src/pages/tio/PrimeiroAcesso.jsx', 'src/components/children/ChildForm.jsx']) {
+  caso(`${arq}: o grupo de escolha é parada do Salvar`,
+    /data-campo-escolha\s+tabIndex=\{-1\}/.test(ler(arq)));
+}
+const loginTela = ler('src/pages/Login.jsx');
+caso('login no celular: "Começar com Google"', loginTela.includes('Começar com Google'));
+caso('login no celular: "Primeira vez? Criar conta" com 48 px',
+  /min-h-12[^"]*"\s*>\s*<Plus[^>]*\/> Primeira vez\? Criar conta/.test(loginTela));
+caso('as abas do login têm 48 px e letra de 16', /tap min-h-12 rounded-lg px-2 py-2 text-base font-bold/.test(loginTela));
+const convite = ler('src/components/children/InviteShare.jsx');
+caso('o convite mandado vira "Enviado ✓"', convite.includes("'Enviado ✓'"));
+const fimDoCadastro = ler('src/components/children/ChildForm.jsx');
+caso('e o destaque passa para "Cadastrar outra criança"',
+  /variant=\{enviado \|\| jaEntrou \? 'primary' : 'secondary'\}/.test(fimDoCadastro));
+caso('o joinha é verde, não âmbar', !/bg-perua/.test(fimDoCadastro));
+caso('a pergunta do PIX vem depois do convite', fimDoCadastro.includes('onEnviado={() => perguntarPixDepois()}'));
+caso('a folha Nova escola tem o próprio data-avancar',
+  /<Button\s+data-avancar/.test(ler('src/components/children/NovaEscolaSheet.jsx')));
 
 console.log(`\n  ${ok} passaram, ${bad} falharam\n`);
 process.exit(bad ? 1 : 0);

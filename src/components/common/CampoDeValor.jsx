@@ -165,7 +165,7 @@ export default function CampoDeValor({
                 type="button"
                 onClick={() => falar(extenso)}
                 aria-label="Ouvir o valor"
-                className="tap -my-1 flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-primary"
+                className="tap -my-2 flex h-12 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-primary"
               >
                 <Volume2 size={16} />
                 Ouvir
@@ -176,8 +176,8 @@ export default function CampoDeValor({
         ) : null}
       </div>
 
-      {error && <p className="mt-1 text-xs text-dangerText">{error}</p>}
-      {hint && !error && <p className="mt-1 text-xs text-textMuted">{hint}</p>}
+      {error && <p className="mt-1 text-sm text-dangerText">{error}</p>}
+      {hint && !error && <p className="mt-1 text-sm text-textMuted">{hint}</p>}
     </div>
   );
 }

@@ -2255,9 +2255,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'uid', 'role', 'version', 'answers', 'comment', 'allowTestimonial',
           'hiddenByOwner', 'allowPhoto', 'authorFirstName', 'authorPhotoURL',
-          'createdAt'
+          'createdAt', 'momento'
         ])
         && request.resource.data.role == userDoc().role
+        // A AVALIAÇÃO RÁPIDA (03/10/2026) diz ONDE foi feita. Só os momentos
+        // do cliente: `acompanhamento` é do link sem conta, e quem grava esse
+        // é a callable `avaliarAcompanhamento`, com Admin SDK.
+        && (!('momento' in request.resource.data)
+            || request.resource.data.momento in ['fim_da_rota', 'dia_entregue', 'perfil'])
         && request.resource.data.hiddenByOwner == true
         && request.resource.data.answers is map
         && request.resource.data.answers.size() <= 30
@@ -2358,9 +2363,25 @@ service cloud.firestore {
         return (!('kmPainel' in d) || (d.kmPainel is number && d.kmPainel >= 0))
           && (!('kmContador' in d) || (d.kmContador is number && d.kmContador >= 0));
       }
+      // O ABASTECIMENTO ("Sua perua", 03/10/2026). Quatro campos opcionais,
+      // e SÓ numa despesa `fuel`: litros numa despesa de seguro é dado que
+      // ninguém confere, e `abastecimentosDe` filtra pela categoria. O preço
+      // do litro NÃO é campo — é amount ÷ litros, senão seria uma segunda
+      // verdade sobre o mesmo abastecimento. Trocar a categoria exige tirar
+      // os quatro no mesmo write (o `updateExpense` faz isso).
+      function abastecimentoValido() {
+        let d = request.resource.data;
+        return (!d.keys().hasAny(['litros', 'tipoCombustivel', 'posto', 'tanqueCheio'])
+                || d.get('category', '') == 'fuel')
+          && (!('litros' in d) || (d.litros is number && d.litros > 0 && d.litros <= 500))
+          && (!('tipoCombustivel' in d)
+              || d.tipoCombustivel in ['diesel_s10', 'diesel_s500', 'gasolina', 'etanol', 'gnv'])
+          && (!('posto' in d) || (d.posto is string && d.posto.size() <= 60))
+          && (!('tanqueCheio' in d) || d.tanqueCheio is bool);
+      }
       allow read, delete: if doDono();
-      allow create: if nasceDoDono() && kmDaDespesaValido();
-      allow update: if doDono() && nasceDoDono() && kmDaDespesaValido();
+      allow create: if nasceDoDono() && kmDaDespesaValido() && abastecimentoValido();
+      allow update: if doDono() && nasceDoDono() && kmDaDespesaValido() && abastecimentoValido();
     }
 
     // -----------------------------------------------------------------
@@ -2391,16 +2412,67 @@ service cloud.firestore {
     //               celular grava a cada 5 km e no fim da rota). Descer
     //               reescreveria o consumo de abastecimentos já lançados.
     //
+    // "SUA PERUA" (03/10/2026) — quatro chaves, todas do próprio motorista:
+    //   combustivelDaPerua  uma das cinco chaves de combustível
+    //   postos       lista de no máximo 20 { nome, preco, tipo, vistoEm }.
+    //                ⚠️ A rule NÃO valida item por item: a linguagem das rules
+    //                não tem laço, e checar `postos[0]`…`postos[19]` à mão
+    //                estouraria o custo de avaliação. Ela garante lista e
+    //                tamanho; a forma de cada item é do service
+    //                (`postoComPreco`). Item torto aqui só estraga a lista
+    //                DELE, que só ele lê.
+    //   planoDaTroca mapa com as quatro chaves exatas; o valor no fim é menor
+    //                que o de hoje (senão a meta seria zero ou negativa)
+    //   guardado     mapa só com `troca` e/ou `manutencao`, cada um
+    //                { valor >= 0, em }. É ANOTAÇÃO — o app não guarda dinheiro.
+    //
     // A leitura vale com a conta inativa (`temPapelDeMotorista`): é o dado
     // dele, e ler não opera nada. A escrita pede a conta operando.
+    // indicesEconomicos/{id} — o IPCA de 12 meses que a agendada
+    // `atualizarIndicesEconomicos` busca no IBGE (functions/lib/indicesEconomicos.js).
+    // Dado público, mas só o motorista o usa ("Preciso aumentar?"); ninguém
+    // escreve pelo cliente — o servidor grava com Admin SDK.
+    match /indicesEconomicos/{id} {
+      allow read: if temPapelDeMotorista();
+      allow write: if false;
+    }
+
     match /configFinanceiro/{uid} {
       function kmAntes() {
         return resource == null ? 0 : resource.data.get('kmDasRotas', 0);
       }
+      function planoDaTrocaValido(p) {
+        return p is map
+          && p.keys().hasOnly(['valorHoje', 'anos', 'valorFinal', 'criadoEm'])
+          && p.keys().hasAll(['valorHoje', 'anos', 'valorFinal', 'criadoEm'])
+          && p.valorHoje is number && p.valorHoje > 0
+          && p.anos is int && p.anos >= 1 && p.anos <= 20
+          && p.valorFinal is number && p.valorFinal >= 0 && p.valorFinal < p.valorHoje
+          && p.criadoEm is timestamp;
+      }
+      function caixaDoGuardadoValida(c) {
+        return c is map
+          && c.keys().hasOnly(['valor', 'em'])
+          && c.keys().hasAll(['valor', 'em'])
+          && c.valor is number && c.valor >= 0
+          && c.em is timestamp;
+      }
+      function guardadoValido(g) {
+        return g is map
+          && g.keys().hasOnly(['troca', 'manutencao'])
+          && (!('troca' in g) || caixaDoGuardadoValida(g.troca))
+          && (!('manutencao' in g) || caixaDoGuardadoValida(g.manutencao));
+      }
       function configFinanceiroValida() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['usoDaPerua', 'kmDasRotas', 'temSenha'])
+        return d.keys().hasOnly(['usoDaPerua', 'kmDasRotas', 'temSenha',
+                                 'combustivelDaPerua', 'postos', 'planoDaTroca', 'guardado'])
           && (!('usoDaPerua' in d) || d.usoDaPerua in ['so_rota', 'tambem_fora'])
+          && (!('combustivelDaPerua' in d)
+              || d.combustivelDaPerua in ['diesel_s10', 'diesel_s500', 'gasolina', 'etanol', 'gnv'])
+          && (!('postos' in d) || (d.postos is list && d.postos.size() <= 20))
+          && (!('planoDaTroca' in d) || planoDaTrocaValido(d.planoDaTroca))
+          && (!('guardado' in d) || guardadoValido(d.guardado))
           && (!('kmDasRotas' in d)
               || (d.kmDasRotas is number
                   && d.kmDasRotas >= kmAntes()

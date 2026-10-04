@@ -10,7 +10,12 @@ import { horaDoMarco } from '../../services/ridesService';
  *   home      → etapa 1 (em casa)
  *   onboard   → etapa 2 (na perua)
  *   atSchool  → etapa 3 (na escola)
- *   delivered → etapa 4 (voltou)
+ *   delivered → etapa 4 (entregue em casa)
+ *
+ * ⚠️ OS NOMES SÃO OS DO APP INTEIRO (03/10/2026): "Em casa · Na perua · Na
+ * escola · Entregue em casa" — os mesmos da tela do motorista e do link de
+ * acompanhar. A última era "Voltou", e a mãe lia uma palavra aqui e outra no
+ * aviso que chegou. As frases do cartão podem ser naturais; os NOMES, não.
  *
  * Etapa atual: ponto colorido com anel parado. Ele PULSAVA, inclusive em
  * "em casa" a noite inteira — e o pulso é o sinal do ao vivo, que só a
@@ -23,7 +28,7 @@ const STEPS = [
   { key: 'home', label: 'Em casa', icon: Home },
   { key: 'onboard', label: 'Na perua', icon: Bus },
   { key: 'atSchool', label: 'Na escola', icon: School },
-  { key: 'delivered', label: 'Voltou', icon: CheckCircle2 },
+  { key: 'delivered', label: 'Entregue em casa', icon: CheckCircle2 },
 ];
 
 /**
@@ -78,7 +83,7 @@ export default function RouteTracker({ status = 'home', compact = false, ride = 
 
               {/* Label */}
               <p
-                className={`text-xs mt-1.5 font-semibold text-center leading-tight max-w-[60px] ${
+                className={`text-sm mt-1.5 font-semibold text-center leading-tight max-w-[84px] ${
                   done || active ? 'text-text' : 'text-textMuted'
                 }`}
               >
@@ -89,7 +94,7 @@ export default function RouteTracker({ status = 'home', compact = false, ride = 
                 * cumprida: hora em etapa futura seria previsão disfarçada
                 * de registro. */}
               {(done || active) && horaDoMarco(ride, step.key) && (
-                <p className="text-xs mt-0.5 font-mono text-textMuted tabular-nums">
+                <p className="text-sm mt-0.5 font-mono text-textMuted tabular-nums">
                   {horaDoMarco(ride, step.key)}
                 </p>
               )}

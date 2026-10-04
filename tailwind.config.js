@@ -345,6 +345,15 @@ const base = {
           '60%': { opacity: '1', transform: 'translateY(-6px) scale(1.04)' },
           '100%': { opacity: '1', transform: 'none' },
         },
+        /* Os pontinhos de espera (04/10/2026, escolha do dono): cada ponto
+           sobe e acende, um depois do outro — o atraso entre eles vem de
+           quem usa (`[animation-delay:…]`). Serve aos três pontos do
+           "Abrindo" e às quatro bolinhas da senha enquanto o servidor
+           confere. */
+        ponto: {
+          '0%, 70%, 100%': { opacity: '0.3', transform: 'translateY(0)' },
+          '35%': { opacity: '1', transform: 'translateY(-4px)' },
+        },
       },
       animation: {
         // Os tempos são os do design system: entrada 300ms, estado 200ms,
@@ -357,6 +366,9 @@ const base = {
         // escurece. Some quando o tour fecha.
         'tour-pulso': 'tour-pulso 1.4s ease-out infinite',
         'crianca-chega': 'crianca-chega 450ms cubic-bezier(.3,1.5,.5,1) both',
+        // EXCEÇÃO NOMEADA: espera real (senha no servidor, Financeiro
+        // abrindo). Some quando a resposta chega.
+        ponto: 'ponto 1.1s ease-in-out infinite',
       },
 
       // ⚠️ AS FONTES DO SITE (03/10/2026, D1). O app usava Inter em tudo, e

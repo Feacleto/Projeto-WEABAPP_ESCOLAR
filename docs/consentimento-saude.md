@@ -6,6 +6,13 @@
 > implementado e testado; a **redação** precisa de alguém qualificado antes de
 > ir ao ar, porque é declaração sobre dado sensível de menor de idade.
 >
+> **03/10/2026 — A TELA FOI CONSTRUÍDA COM O RASCUNHO, E NÃO PUBLICADA.**
+> Decisão do dono: a camada 2 (seção 5) está em
+> `src/components/children/SaudeDaCrianca.jsx` e o parágrafo da seção 6 está
+> na Política (`LEGAL_VERSION` 1.3, que também corrigiu a frase do aceite no
+> primeiro acesso). **O deploy espera a revisão jurídica destes textos.** Se a
+> revisão mudar alguma frase, muda nos dois lugares e no rascunho abaixo.
+>
 > Este arquivo tem prazo de validade: quando a redação for ratificada, ela vai
 > para `src/pages/legal/legalContent.js` e `src/components/children/`, e o que
 > sobra aqui é a seção 2 (o desenho) — que vira parágrafo em

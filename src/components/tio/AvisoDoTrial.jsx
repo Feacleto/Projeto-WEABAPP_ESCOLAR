@@ -46,9 +46,34 @@ import { Link } from 'react-router-dom';
  * atravessa até a regra pura: o motorista que assina no dia 60 não pode
  * continuar vendo contagem regressiva por mais um mês.
  */
+/**
+ * ⚠️ FECHAR VALE PELA SESSÃO, e mora no `sessionStorage` (03/10/2026). O
+ * aviso passou a ser desenhado logo abaixo do cabeçalho de cada tela (ver
+ * `AvisosDoCabecalhoContext`), e por isso remonta a cada troca de tela — um
+ * `useState(false)` faria o aviso fechado voltar na tela seguinte. Mesma
+ * regra do `AvisoDaPlataforma`: volta na próxima vez que ele abrir o app.
+ */
+const CHAVE_FECHADO = 'alobuzinou:avisoTrialFechado';
+
+function lerFechado() {
+  try {
+    return sessionStorage.getItem(CHAVE_FECHADO) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function AvisoDoTrial({ temContrato = false }) {
   const { profile } = useAuth();
-  const [fechado, setFechado] = useState(false);
+  const [fechado, setFechadoNaTela] = useState(lerFechado);
+  const setFechado = (v) => {
+    setFechadoNaTela(v);
+    try {
+      sessionStorage.setItem(CHAVE_FECHADO, v ? '1' : '0');
+    } catch {
+      // Modo privado: o aviso volta na próxima tela. Custa vê-lo de novo.
+    }
+  };
 
   const aviso = avisoDoTrial({
     inicio: profile?.trialInicio,
@@ -71,7 +96,7 @@ export default function AvisoDoTrial({ temContrato = false }) {
   if (aviso.nivel === 'discreto') {
     const fim = fimDoTrial(profile?.trialInicio);
     return (
-      <div className="border-b border-border bg-sunken px-4 py-2 text-center text-xs text-textMuted">
+      <div className="border-b border-border bg-sunken px-4 py-2.5 text-center text-sm text-textMuted">
         Você está no período de teste, até{' '}
         <strong className="font-semibold text-text">
           {fim?.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
@@ -98,8 +123,8 @@ export default function AvisoDoTrial({ temContrato = false }) {
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-warningText">{quantos}</p>
-          <p className="mt-0.5 text-xs text-textMuted">
+          <p className="text-base font-semibold text-warningText">{quantos}</p>
+          <p className="mt-0.5 text-sm text-textBody">
             Depois dessa data o app pausa até você escolher um plano. Suas
             crianças, horários e histórico continuam salvos.
           </p>
@@ -125,7 +150,7 @@ export default function AvisoDoTrial({ temContrato = false }) {
             * para sempre é o raro caso de erro a favor do cliente, e mesmo
             * assim é erro: ele decide contra um número que não é o dele. */}
           {fracaoDoDegrau > 0 && (
-            <p className="mt-1.5 text-xs leading-relaxed text-warningText">
+            <p className="mt-1.5 text-sm leading-relaxed text-warningText">
               Quanto antes contratar, menor fica sua mensalidade. Contratando
               agora você garante{' '}
               <strong>{Math.round(fracaoDoDegrau * 100)}% de desconto</strong>, sem
@@ -138,9 +163,9 @@ export default function AvisoDoTrial({ temContrato = false }) {
             * era honesto enquanto não havia para onde ir. */}
           <Link
             to="/tio/planos"
-            className="tap mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-warningText underline"
+            className="tap mt-1 inline-flex min-h-12 items-center gap-1.5 text-base font-semibold text-warningText underline"
           >
-            <ArrowRight size={15} /> Ver planos
+            <ArrowRight size={18} /> Ver planos
           </Link>
         </div>
 
@@ -149,9 +174,9 @@ export default function AvisoDoTrial({ temContrato = false }) {
             type="button"
             onClick={() => setFechado(true)}
             aria-label="Fechar aviso"
-            className="tap -mr-1 -mt-1 shrink-0 p-1 text-textMuted hover:text-text"
+            className="tap -mr-3 -mt-2 flex h-12 w-12 shrink-0 items-center justify-center text-textMuted hover:text-text"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         )}
       </div>

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Undo2, DoorOpen } from 'lucide-react';
+import { Undo2, DoorOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
+import Header from '../../components/layout/Header';
 import { useAuth } from '../../hooks/useAuth';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
 import { PLANO, precoDoMes } from '../../dominio/associacao/planos.js';
@@ -52,9 +52,20 @@ import {
  * aparecer, e esta tela está entre as proibidas com o motivo escrito:
  * *"desconto que só aparece quando ele ameaça sair prova que o preço era
  * teatro"*. A cerca foi escrita antes desta tela nascer.
+ *
+ * ── O CABEÇALHO É O `Header` DE TODA TELA INTERNA, mesmo fora do layout
+ * O "Voltar" próprio, cinza e pequeno, era um dos quatro estilos de voltar do
+ * app. O `Header` consome a história quando ela existe e cai em "Meu plano"
+ * quando não existe (aviso, link ou recarga não jogam ninguém para fora). Sem
+ * sino e sem rosto: a escuta do sino mora no `TioLayout`, e fora dele o sino
+ * diria "nenhum aviso" a quem tem.
+ *
+ * ⚠️ O NOME É "ENCERRAR ASSOCIAÇÃO" nos três lugares que levam aqui (esta
+ * tela, o link no fim de "Meu plano" e a linha do perfil). O perfil dizia
+ * "Encerrar a associação" e a fatura "Encerrar minha associação": quem
+ * procura a saída procura por um nome só.
  */
 export default function TioEncerrar() {
-  const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
 
   const [salvando, setSalvando] = useState(false);
@@ -94,11 +105,6 @@ export default function TioEncerrar() {
   const data = (d) =>
     d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : null;
 
-  const voltar = () => {
-    if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/tio/taxa', { replace: true });
-  };
-
   const confirmar = async (modo) => {
     setSalvando(true);
     try {
@@ -129,33 +135,25 @@ export default function TioEncerrar() {
   };
 
   return (
-    <div className="min-h-screen bg-bg px-4 py-5">
-      <div className="mx-auto max-w-mobile space-y-5">
-        {/* Destino nomeado na falta de história — esta tela fica fora do
-          * `TioLayout`, então não passa pelo `Header`, que é quem sabe checar
-          * histórico. Ver o comentário das três rotas no `App.jsx`. */}
-        <button
-          type="button"
-          onClick={voltar}
-          className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
-        >
-          <ArrowLeft size={16} /> Voltar
-        </button>
+    <div className="min-h-screen bg-bg">
+      <Header
+        title={jaPediu ? 'Associação encerrando' : 'Encerrar associação'}
+        showBack
+        backLabel="Meu plano"
+        backTo="/tio/taxa"
+        showGlobal={false}
+      />
 
-        <header>
-          <h1 className="text-2xl font-bold text-text">
-            {jaPediu ? 'Sua associação está encerrando' : 'Encerrar minha associação'}
-          </h1>
-          <p className="mt-1 text-sm text-textMuted">
-            {jaPediu
-              ? 'Você já pediu para encerrar. Dá para voltar atrás até a data abaixo.'
-              : 'Sem burocracia e sem ligar para ninguém. Leia o que muda antes de confirmar.'}
-          </p>
-        </header>
+      <div className="mx-auto max-w-mobile space-y-5 px-4 py-5">
+        <p className="text-base leading-relaxed text-textMuted">
+          {jaPediu
+            ? 'Você já pediu para encerrar. Dá para voltar atrás até a data abaixo.'
+            : 'Sem burocracia e sem ligar para ninguém. Leia o que muda antes de confirmar.'}
+        </p>
 
         {/* ── quem nunca contratou não tem o que encerrar ──────────────── */}
         {!plano && !jaPediu && (
-          <div className="rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed text-text">
+          <div className="rounded-2xl border border-border bg-card p-4 text-base leading-relaxed text-text">
             <p>
               <strong>Você ainda não contratou um plano.</strong> Está no período
               de teste, e não existe cobrança nem compromisso para encerrar.
@@ -171,13 +169,13 @@ export default function TioEncerrar() {
         {jaPediu && (
           <>
             <div className="rounded-2xl border border-warning bg-warningChip p-4">
-              <p className="text-sm leading-relaxed text-text">
+              <p className="text-base leading-relaxed text-text">
                 Sua conta funciona até{' '}
                 <strong>{data(fimDaAssociacao(profile)) || 'o fim do período já pago'}</strong>.
                 Não haverá nova cobrança depois disso.
               </p>
               {anual && modoDoPedido(profile) === MODO.FIM_DO_PERIODO && (
-                <p className="mt-2 text-xs text-textMuted">
+                <p className="mt-2 text-sm leading-relaxed text-textMuted">
                   Você escolheu cumprir o compromisso de 12 meses — as
                   mensalidades até lá continuam, e não há multa nenhuma.
                 </p>
@@ -188,7 +186,7 @@ export default function TioEncerrar() {
               <div className="space-y-2">
                 {/* ⚠️ A FRASE QUE A RÉGUA TORNA VERDADEIRA. Nada é apagado no
                   * caminho justamente para que isto não seja propaganda. */}
-                <p className="text-sm text-text">
+                <p className="text-base leading-relaxed text-text">
                   Mudou de ideia? <strong>Nada foi perdido.</strong> Religando
                   antes da data, seu plano
                   {porcentoTravado > 0 && ` e os seus ${porcentoTravado}% de desconto`}{' '}
@@ -205,47 +203,55 @@ export default function TioEncerrar() {
         {/* ── o pedido ─────────────────────────────────────────────────── */}
         {plano && !jaPediu && (
           <>
-            <div className="space-y-3 rounded-2xl border border-border bg-card p-4 text-sm leading-relaxed text-text">
-              <p className="font-bold">O que acontece quando você encerra</p>
+            {/* ⚠️ QUATRO ITENS CURTOS, E NENHUMA INFORMAÇÃO A MENOS.
+              * Eram quatro parágrafos de 14px, e quem está decidindo sair lê o
+              * começo de cada um e pula o resto — justamente onde estavam a
+              * data e o valor. Agora cada item começa pelo que muda (em
+              * negrito) e o detalhe vem logo atrás, em 16px. */}
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <h2 className="text-lg font-bold text-text">
+                O que acontece quando você encerra
+              </h2>
+              <ul className="mt-3 space-y-3 text-base leading-relaxed text-text">
+                <li>
+                  <strong>Você usa o app até o fim do período já pago</strong>
+                  {fimDoPeriodoPago(profile) && (
+                    <> — até {data(fimDoPeriodoPago(profile))}</>
+                  )}
+                  . Nada é desligado antes disso, e não nasce cobrança nova.
+                </li>
 
-              <p>
-                <strong>Você opera até o fim do período já pago</strong>
-                {fimDoPeriodoPago(profile) && (
-                  <> — até {data(fimDoPeriodoPago(profile))}</>
+                {/* ⚠️ O NÚMERO, NÃO A PALAVRA "DESCONTO". Ele é a informação que
+                  * só a plataforma tem, e é a mais cara da decisão. */}
+                {porcentoTravado > 0 && (
+                  <li>
+                    <strong>
+                      Você perde os {porcentoTravado}% de desconto vitalício
+                    </strong>{' '}
+                    — hoje ele vale{' '}
+                    {formatCurrency(Math.max(0, (preco.bruto || 0) - valorMensal))} por
+                    mês. Ele vale enquanto o contrato estiver vigente; voltando
+                    depois, você entra pela tabela do dia.
+                  </li>
                 )}
-                . Nada é desligado antes disso, e não nasce cobrança nova.
-              </p>
 
-              {/* ⚠️ O NÚMERO, NÃO A PALAVRA "DESCONTO". Ele é a informação que
-                * só a plataforma tem, e é a mais cara da decisão. */}
-              {porcentoTravado > 0 && (
-                <p>
-                  <strong>
-                    Você perde os {porcentoTravado}% de desconto vitalício.
-                  </strong>{' '}
-                  Ele vale enquanto o contrato estiver vigente. Voltando depois,
-                  você entra pela tabela do dia — e hoje ele vale{' '}
-                  {formatCurrency(Math.max(0, (preco.bruto || 0) - valorMensal))} por
-                  mês.
-                </p>
-              )}
+                <li>
+                  <strong>Avise as suas famílias.</strong> Quem faz isso é você —
+                  a plataforma não manda recado para os seus clientes. Depois da
+                  data, o app delas deixa de acompanhar as rotas.
+                </li>
 
-              <p>
-                <strong>Avise as suas famílias.</strong> Quem faz isso é você — a
-                plataforma não manda recado para os seus clientes. Depois da
-                data, o app delas deixa de acompanhar as rotas.
-              </p>
-
-              <p className="text-textMuted">
-                <strong className="text-text">Seus dados continuam aqui.</strong>{' '}
-                Encerrar não apaga turma, histórico nem pagamento. Se voltar, está
-                tudo onde estava.
-              </p>
+                <li>
+                  <strong>Seus dados continuam aqui.</strong> Encerrar não apaga
+                  turma, histórico nem pagamento. Se voltar, está tudo onde estava.
+                </li>
+              </ul>
             </div>
 
             {/* ── o anual tem dois horizontes; o mensal tem um ──────────── */}
             {anual ? (
               <div className="space-y-3">
+                <h2 className="text-lg font-bold text-text">Como você quer sair?</h2>
                 <SaidaDoAnual
                   titulo="Não renovar"
                   descricao={
@@ -301,7 +307,7 @@ export default function TioEncerrar() {
               <div className="space-y-2">
                 {/* O mensal: "cancelou, cancelou" — a promessa do plano, e ela
                   * não tem asterisco em lugar nenhum. */}
-                <p className="text-sm text-textMuted">
+                <p className="text-base text-textMuted">
                   No plano mensal não há multa nem aviso prévio.
                 </p>
                 {confirmando === MODO.AGORA ? (
@@ -317,7 +323,7 @@ export default function TioEncerrar() {
                     icon={DoorOpen}
                     onClick={() => setConfirmando(MODO.AGORA)}
                   >
-                    Encerrar minha associação
+                    Encerrar associação
                   </Button>
                 )}
               </div>
@@ -329,7 +335,14 @@ export default function TioEncerrar() {
   );
 }
 
-/** Uma das duas saídas do anual, com a confirmação embutida. */
+/**
+ * Uma das duas saídas do anual, com a confirmação embutida.
+ *
+ * ⚠️ O TÍTULO É O BOTÃO. O cartão tinha um título em negrito e, embaixo, um
+ * botão com as MESMAS palavras — duas coisas iguais para ler, e a dúvida de
+ * qual das duas se toca. Agora o cartão diz o que acontece e o botão diz o que
+ * fazer, uma vez só.
+ */
 function SaidaDoAnual({
   titulo,
   descricao,
@@ -341,8 +354,7 @@ function SaidaDoAnual({
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <p className="text-sm font-bold text-text">{titulo}</p>
-      <p className="mt-1 text-sm leading-relaxed text-textMuted">{descricao}</p>
+      <p className="text-base leading-relaxed text-text">{descricao}</p>
       <div className="mt-3">
         {confirmando ? (
           <Confirmacao
@@ -351,7 +363,7 @@ function SaidaDoAnual({
             salvando={salvando}
           />
         ) : (
-          <Button variant="secondary" size="md" onClick={onEscolher}>
+          <Button variant="secondary" onClick={onEscolher}>
             {titulo}
           </Button>
         )}
@@ -367,19 +379,22 @@ function SaidaDoAnual({
  * querer numa decisão que muda a conta de alguém; três passos, uma pesquisa de
  * motivo e uma contraoferta seriam retenção por atrito — que é exatamente o
  * que o roteiro comercial deste projeto usa CONTRA o concorrente.
+ *
+ * A AÇÃO FICA À DIREITA, como no resto do app: "Não" à esquerda, "Sim,
+ * encerrar" no canto onde a leitura termina.
  */
 function Confirmacao({ quando, onConfirmar, onCancelar, salvando }) {
   return (
     <div className="space-y-2">
-      <p className="text-sm font-bold text-text">
+      <p className="text-base font-bold text-text">
         Confirma o encerramento{quando ? ` a partir de ${quando}` : ''}?
       </p>
       <div className="flex gap-2">
+        <Button variant="secondary" size="md" onClick={onCancelar} disabled={salvando}>
+          Não
+        </Button>
         <Button variant="danger" size="md" onClick={onConfirmar} loading={salvando}>
           Sim, encerrar
-        </Button>
-        <Button variant="ghost" size="md" onClick={onCancelar} disabled={salvando}>
-          Não
         </Button>
       </div>
     </div>

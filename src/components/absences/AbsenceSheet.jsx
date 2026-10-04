@@ -14,9 +14,11 @@ import {
   limiteDoAviso,
 } from '../../dominio/rota/faltas.js';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
+import { useAbsenceForChild } from '../../hooks/useAbsences';
 
 /**
- * Sheet (bottom sheet) reusável pra declarar ausência.
+ * Folha de avisar FALTA. Na tela da família a palavra é "falta" em todo
+ * lugar — "ausência" sobrevive só no nome do arquivo e da coleção.
  *
  * Props:
  *  - open: bool
@@ -24,7 +26,8 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  *  - child: { id, name, parentUid }
  *  - declaredBy: 'parent' | 'admin'
  *  (destinatário da notificação é determinado internamente pelo notifyAbsence)
- *  - currentAbsence: doc da declaração existente (pra mostrar "remover")
+ *  - currentAbsence: a falta de HOJE que o painel já assina. Só vale enquanto
+ *    a data escolhida for hoje — ver `faltaDoDia` abaixo.
  *  - dateKey: opcional, default = hoje
  */
 export default function AbsenceSheet({
@@ -59,17 +62,49 @@ export default function AbsenceSheet({
    * Declarado ANTES do `if (!open)`: hook depois de return condicional muda a
    * ordem dos hooks entre renders, e o React quebra.
    */
-  const [dataEscolhida, setDataEscolhida] = useState(dateKey || getDateKey());
+  const dataInicial = dateKey || getDateKey();
+  const [dataEscolhida, setDataEscolhida] = useState(dataInicial);
+
+  /**
+   * ⚠️ O ESTADO DA FOLHA É O DA DATA ESCOLHIDA, NÃO O DE HOJE.
+   *
+   * O painel passa `currentAbsence` — a falta de HOJE. Com a data trocável,
+   * ela escolhia quinta e a folha continuava mostrando "avisado" e o botão
+   * de desfazer com o estado de hoje, enquanto `handleRemove` apagava pela
+   * data ESCOLHIDA: o botão prometia desfazer uma coisa e apagava outra (ou
+   * nada). Agora a folha escuta a falta do dia escolhido — um documento só,
+   * id `{dia}_{criança}`, sem consulta e portanto sem escopo de `adminUid`
+   * para esquecer — e `currentAbsence` só cobre o instante em que essa
+   * escuta ainda não respondeu E o dia é hoje.
+   *
+   * Fechada, a folha não escuta nada: `null` desliga a assinatura.
+   */
+  const { absence: faltaEscutada, loading: carregandoFalta } = useAbsenceForChild(
+    open ? dataEscolhida : null,
+    child?.id
+  );
+  const ehHoje = dataEscolhida === getDateKey();
+  const faltaDoDia = carregandoFalta
+    ? (ehHoje ? currentAbsence || null : null)
+    : faltaEscutada;
 
   if (!open) {
     // Garante que próxima abertura comece sem animação de fechamento.
     // Acontece dentro do render porque o componente só monta quando open=true.
     if (closing) setClosing(false);
+    // E a próxima abertura começa no dia que o chamador pediu: o componente
+    // continua montado enquanto fechado, e sem isto quem escolheu quinta,
+    // fechou e reabriu para avisar HOJE encontrava a folha ainda em quinta.
+    if (dataEscolhida !== dataInicial) setDataEscolhida(dataInicial);
     return null;
   }
 
   const targetDate = dataEscolhida;
   const firstName = child?.name?.split(' ')[0] || 'Aluno';
+  // "hoje", "amanhã", "na quinta, dia 16" — entra no meio das frases;
+  // `oDia` é a forma sem artigo, para "para …" e "aviso de …".
+  const noDia = diaNaFrase(dataEscolhida);
+  const oDia = diaCurto(dataEscolhida);
 
   async function handleSelect(type) {
     if (!child?.id) return;
@@ -99,10 +134,12 @@ export default function AbsenceSheet({
         dateKey: targetDate,
         declaredBy,
       });
-      toast.success('Ausência registrada!');
+      // A confirmação diz o DIA: é o que ela precisa conferir depois de
+      // tocar, sobretudo quando a data não é hoje.
+      toast.success(`Falta avisada para ${oDia}: ${resumoDoTipo(type, firstName)}.`);
       handleClose();
     } catch (err) {
-      console.error('Erro ao declarar ausência:', err);
+      console.error('Erro ao avisar a falta:', err);
       toast.error('Não foi possível registrar. Tente novamente.');
       setSubmitting(false);
     }
@@ -113,10 +150,10 @@ export default function AbsenceSheet({
     setSubmitting(true);
     try {
       await removeAbsence({ dateKey: targetDate, childId: child.id });
-      toast.success('Ausência removida.');
+      toast.success(`Aviso de ${oDia} desfeito.`);
       handleClose();
     } catch (err) {
-      console.error('Erro ao remover ausência:', err);
+      console.error('Erro ao desfazer a falta:', err);
       toast.error('Não foi possível remover.');
       setSubmitting(false);
     }
@@ -162,16 +199,16 @@ export default function AbsenceSheet({
               <h2 className="text-xl font-bold text-text leading-tight">
                 {firstName} vai faltar?
               </h2>
-              <p className="text-xs text-textMuted mt-1">
+              <p className="text-sm text-textMuted mt-1">
                 Escolha o dia e o que se aplica
               </p>
             </div>
             <button
               onClick={handleClose}
-              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted"
+              className="tap w-12 h-12 shrink-0 rounded-full bg-neutro flex items-center justify-center text-textMuted"
               aria-label="Fechar"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
 
@@ -199,11 +236,15 @@ export default function AbsenceSheet({
               min={getDateKey()}
               max={getDateKey(limiteDoAviso())}
               onChange={(e) => setDataEscolhida(e.target.value || getDateKey())}
-              className="w-full h-12 rounded-2xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
+              className="w-full h-12 rounded-2xl border-2 border-border bg-card px-3 text-base text-text focus:outline-none focus:border-primary"
             />
-            <span className="block text-xs text-textMuted mt-1">
-              {rotuloDoDia(dataEscolhida)} · dá pra avisar até{' '}
-              {DIAS_DE_AVISO_DE_FALTA} dias à frente
+            {/* O dia por extenso é a CONFERÊNCIA do que foi escolhido — é
+              * texto de leitura (16px). O teto é detalhe (14px). */}
+            <span className="block text-base font-semibold capitalize text-text mt-2">
+              {rotuloDoDia(dataEscolhida)}
+            </span>
+            <span className="block text-sm text-textMuted">
+              Dá pra avisar até {DIAS_DE_AVISO_DE_FALTA} dias à frente
             </span>
           </label>
 
@@ -211,31 +252,31 @@ export default function AbsenceSheet({
           <div className="space-y-2">
             <OptionCard
               icon={UserX}
-              title="Não vai à escola"
-              subtitle="Motorista não busca nem traz hoje"
+              title="Não vai"
+              subtitle={`O motorista não busca nem traz ${noDia}`}
               gradient="from-dangerSoft to-dangerChip"
               iconBg="bg-danger"
-              active={currentAbsence?.type === ABSENCE_TYPES.FULL}
+              active={faltaDoDia?.type === ABSENCE_TYPES.FULL}
               disabled={submitting}
               onClick={() => handleSelect(ABSENCE_TYPES.FULL)}
             />
             <OptionCard
               icon={Sunrise}
-              title="Eu vou levar de manhã"
-              subtitle="Motorista só busca à tarde"
+              title="Eu levo"
+              subtitle={`Você leva de manhã ${noDia}; o motorista só traz de volta`}
               gradient="from-warningSoft to-warningChip"
               iconBg="bg-warning"
-              active={currentAbsence?.type === ABSENCE_TYPES.NO_PICKUP}
+              active={faltaDoDia?.type === ABSENCE_TYPES.NO_PICKUP}
               disabled={submitting}
               onClick={() => handleSelect(ABSENCE_TYPES.NO_PICKUP)}
             />
             <OptionCard
               icon={Sunset}
-              title="Eu vou buscar à tarde"
-              subtitle="Motorista só leva de manhã"
+              title="Eu busco"
+              subtitle={`Você busca à tarde ${noDia}; o motorista só leva`}
               gradient="from-escolaSoft to-escolaChip"
               iconBg="bg-escola"
-              active={currentAbsence?.type === ABSENCE_TYPES.NO_DROPOFF}
+              active={faltaDoDia?.type === ABSENCE_TYPES.NO_DROPOFF}
               disabled={submitting}
               onClick={() => handleSelect(ABSENCE_TYPES.NO_DROPOFF)}
             />
@@ -245,31 +286,36 @@ export default function AbsenceSheet({
               * resolveu buscar no meio do dia e está ali com ela na mão. Sem
               * esta frase o responsável escolhia "vou buscar à tarde" — que é
               * outra coisa — ou avisava por WhatsApp, fora do app, onde a rota
-              * não enxerga e o motorista passa na escola à toa. */}
-            {(status === 'atSchool' || status === 'onboard'
-              || currentAbsence?.type === ABSENCE_TYPES.ALREADY_PICKED) && (
+              * não enxerga e o motorista passa na escola à toa.
+              *
+              * `status` é o de AGORA, então a opção só vale para hoje: "já
+              * peguei" na quinta que vem não existe. Noutro dia ela só aparece
+              * se já estiver marcada, para poder ser vista e desfeita. */}
+            {((ehHoje && (status === 'atSchool' || status === 'onboard'))
+              || faltaDoDia?.type === ABSENCE_TYPES.ALREADY_PICKED) && (
               <OptionCard
                 icon={UserCheck}
                 title="Já peguei na escola"
-                subtitle="O motorista não precisa passar lá hoje"
+                subtitle={`O motorista não precisa passar lá ${noDia}`}
                 gradient="from-primarySoft to-primaryChip"
                 iconBg="bg-primary"
-                active={currentAbsence?.type === ABSENCE_TYPES.ALREADY_PICKED}
+                active={faltaDoDia?.type === ABSENCE_TYPES.ALREADY_PICKED}
                 disabled={submitting}
                 onClick={() => handleSelect(ABSENCE_TYPES.ALREADY_PICKED)}
               />
             )}
           </div>
 
-          {/* Remover declaração existente */}
-          {currentAbsence && (
+          {/* Desfazer o aviso DESTE dia — o rótulo diz o dia, porque é ele
+            * que `handleRemove` apaga. */}
+          {faltaDoDia && (
             <button
               onClick={handleRemove}
               disabled={submitting}
-              className="tap w-full rounded-xl py-3 px-4 bg-neutro text-text font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              className="tap w-full min-h-12 rounded-xl py-3 px-4 bg-neutro text-base text-text font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Trash2 size={16} />
-              Remover ausência
+              <Trash2 size={18} />
+              Desfazer o aviso de {oDia}
             </button>
           )}
         </div>
@@ -302,12 +348,12 @@ function OptionCard({
         <Icon size={22} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-text leading-tight">{title}</p>
-        <p className="text-xs text-textMuted mt-0.5">{subtitle}</p>
+        <p className="text-base font-semibold text-text leading-tight">{title}</p>
+        <p className="text-sm text-textMuted mt-0.5">{subtitle}</p>
       </div>
       {active && (
-        <span className="rotulo text-text bg-white/70 px-2 py-0.5 rounded-full">
-          Ativo
+        <span className="rotulo shrink-0 text-text bg-white/70 px-2 py-0.5 rounded-full">
+          Avisado
         </span>
       )}
     </button>
@@ -334,4 +380,43 @@ function rotuloDoDia(chave) {
     day: '2-digit',
     month: 'long',
   }).format(data);
+}
+
+/**
+ * O dia DENTRO da frase: "hoje", "amanhã", "na quinta, dia 16".
+ *
+ * As legendas das opções diziam "hoje" fixo — com a quinta escolhida no
+ * campo, "o motorista não busca nem traz hoje" era a frase errada no minuto
+ * exato em que ela confere o que vai fazer. O número do dia vai junto porque
+ * o teto é de 14 dias: "na quinta" sozinho pode ser duas quintas.
+ */
+const DIAS_DA_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+// "hoje", "amanhã", "quinta, dia 16" — para "para …" e "aviso de …".
+function diaCurto(chave) {
+  const [y, m, d] = String(chave || '').split('-').map(Number);
+  if (!y || !m || !d) return 'hoje';
+  const data = new Date(y, m - 1, d);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((data - hoje) / 86400000);
+  if (dias === 0) return 'hoje';
+  if (dias === 1) return 'amanhã';
+  return `${DIAS_DA_SEMANA[data.getDay()]}, dia ${d}`;
+}
+
+// O mesmo dia com o artigo da frase corrida: "na quinta", "no sábado".
+function diaNaFrase(chave) {
+  const curto = diaCurto(chave);
+  if (curto === 'hoje' || curto === 'amanhã') return curto;
+  const fimDeSemana = curto.startsWith('sábado') || curto.startsWith('domingo');
+  return `${fimDeSemana ? 'no' : 'na'} ${curto}`;
+}
+
+/** O que muda, em poucas palavras — fecha a frase da confirmação. */
+function resumoDoTipo(tipo, nome) {
+  if (tipo === ABSENCE_TYPES.NO_PICKUP) return 'você leva de manhã';
+  if (tipo === ABSENCE_TYPES.NO_DROPOFF) return 'você busca à tarde';
+  if (tipo === ABSENCE_TYPES.ALREADY_PICKED) return 'você já pegou na escola';
+  return `${nome} não vai`;
 }

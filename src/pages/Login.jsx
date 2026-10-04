@@ -17,8 +17,9 @@ import {
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
-import GoogleIcon from '../components/common/GoogleIcon';
+import BotaoDoGoogle, { LinkDoEmail } from '../components/auth/BotaoDoGoogle';
 import Logo from '../components/common/Logo';
+import GoogleIcon from '../components/common/GoogleIcon';
 import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
 import FundoDoLogin, {
@@ -204,7 +205,9 @@ export default function Login() {
    * O `AuthSheet` do convite já fazia exatamente isto, com o rótulo "Não uso
    * Google — entrar com email". Aqui o rótulo encurtou para "Usar email"
    * (02/10/2026, pedido do dono): o botão do Google ficou cheio e verde, e o
-   * link embaixo dele só precisa existir, não argumentar.
+   * link embaixo dele só precisa existir, não argumentar. Desde 03/10/2026
+   * os dois são peças comuns (`BotaoDoGoogle` e `LinkDoEmail`), com UM nome
+   * em toda tela: "Entrar com Google" e "Entrar com e-mail".
    *
    * ⚠️ QUANDO O GOOGLE NÃO FUNCIONA, O FORMULÁRIO APARECE SOZINHO. Dentro da
    * webview do WhatsApp o Google recusa OAuth, então ali email e senha não é
@@ -241,6 +244,7 @@ export default function Login() {
     `transition-[opacity,transform] duration-entrada ease-freio motion-reduce:transition-none ${
       teatro.visto(p) ? '' : 'translate-y-3 opacity-0'
     }`;
+  const BotaoGoogleDaTela = cartaoDoMotorista ? BotaoComecarComGoogle : BotaoDoGoogle;
   const criarContaDeMotorista = () =>
     navigate('/quero-fazer-parte', { state: { de: 'login' } });
 
@@ -275,7 +279,7 @@ export default function Login() {
     }
 
     // Autenticado e sem papel: a sala de espera pergunta o que ele FEZ
-    // (recebi convite / tenho uma van) em vez de tentar adivinhar.
+    // (recebi convite / tenho uma perua) em vez de tentar adivinhar.
     navigate('/comecar', { replace: true });
   }, [authLoading, user, profile, navigate, location.state]);
 
@@ -718,13 +722,19 @@ export default function Login() {
               * cadastro do motorista. As abas continuam no monitor, para a
               * família, e para quem chega por `?criar=1` — que precisa do
               * caminho de volta para "Já tenho conta". */}
+            {/* ⚠️ O SELO VIROU BOTÃO DE CONTORNO DE 48 px (04/10/2026). Era
+              * uma pílula de 13px que a pessoa cansada não via; agora tem o
+              * piso de toque do app e diz o que ela é: primeira vez aqui.
+              * Contorno, e não cheio — o único cheio do cartão é o Google. */}
             {cartaoDoMotorista && (
               <button
                 type="button"
                 onClick={criarContaDeMotorista}
-                className="tap inline-flex items-center gap-1.5 rounded-full border border-primaryBorder bg-primarySoft px-3.5 py-2.5 text-[13px] font-semibold text-primary"
+                // Uma linha só até 320px (04/10/2026, medido): o "+" some abaixo
+                // de 360px, e é ele que fazia a frase quebrar.
+                className="tap inline-flex min-h-12 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-primaryBorder bg-card px-3 text-base font-semibold text-primary"
               >
-                <Plus size={14} /> Criar conta grátis
+                <Plus size={18} className="hidden min-[360px]:block" /> Primeira vez? Criar conta
               </button>
             )}
             {/* ── DUAS ABAS, UMA TELA ─────────────────────────────────
@@ -799,7 +809,7 @@ export default function Login() {
                    * no tailwind.config.js). O sublinhado carrega o estado
                    * sozinho — e ele não é a única pista: o painel de baixo
                    * troca junto. */
-                  className={`tap rounded-lg px-2 py-2 text-[13px] font-bold transition-colors ${
+                  className={`tap min-h-12 rounded-lg px-2 py-2 text-base font-bold transition-colors ${
                     aba === a.id
                       ? 'bg-card text-text shadow-rest'
                       : 'text-textMuted hover:text-text'
@@ -827,7 +837,7 @@ export default function Login() {
                   {cartaoDoMotorista ? (
                     /* ⚠️ O TÍTULO É UM CONVITE À AÇÃO, não o nome da tela.
                      * "Entrar" é rótulo de sistema e ninguém lê. A parte que
-                     * importa leva o marca-texto, e a seta embaixo da van
+                     * importa leva o marca-texto, e a seta embaixo da perua
                      * aponta pro botão: o olho vai do título direto pra ele. */
                     <h2 className="relative min-h-[84px] pr-24 text-[30px] font-extrabold leading-[1.04] tracking-[-0.035em] text-text">
                       <span className="mb-0.5 block text-[17px] font-bold tracking-[-0.01em] text-textMuted">
@@ -861,37 +871,33 @@ export default function Login() {
                     <>
                       {/* CHEIO E VERDE: é o único botão cheio do cartão, e é
                         * ele que o teatro aponta, pulsa e deixa aceso. */}
-                      <Button
+                      {/* ⚠️ NO CARTÃO DO MOTORISTA NO CELULAR O BOTÃO DIZ
+                        * "COMEÇAR COM GOOGLE" (04/10/2026, aprovado pelo dono).
+                        * Ali quem chega é, na maioria, gente nova — e "Entrar"
+                        * diz "isto é para quem já tem conta". O Google serve
+                        * aos dois (a conta nasce no primeiro toque), então o
+                        * verbo que não exclui ninguém é "começar". Nas outras
+                        * telas continua o nome único do `BotaoDoGoogle`, que
+                        * não aceita outro rótulo por prop (de propósito): a
+                        * exceção mora aqui, com nome, em `BotaoComecarComGoogle`. */}
+                      <BotaoGoogleDaTela
                         loading={googleSubmitting}
                         onClick={() => {
                           teatro.pararPulso();
                           teatro.apagarEscuro();
                           onGoogleLogin();
                         }}
-                        className={`pulso-google !whitespace-nowrap !font-bold ${
+                        className={`pulso-google shadow-focus ${
                           teatro.pulsando
                             ? 'pulso-sempre'
                             : teatro.visto(PASSO.pulso) && teatro.passo < PASSO.foco
                               ? 'pulso-2x'
                               : ''
                         }`}
-                      >
-                        {!googleSubmitting && (
-                          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-card">
-                            <GoogleIcon size={16} />
-                          </span>
-                        )}
-                        Entrar com Google
-                      </Button>
+                      />
 
                       {!mostrarEmail && (
-                        <button
-                          type="button"
-                          onClick={() => setMostrarEmail(true)}
-                          className="tap w-full py-2 text-center text-sm font-semibold text-textMuted hover:text-text"
-                        >
-                          Usar email
-                        </button>
+                        <LinkDoEmail onClick={() => setMostrarEmail(true)} aberto={false} />
                       )}
                     </>
                   )}
@@ -902,7 +908,7 @@ export default function Login() {
                       showBridge || (googleWorks && !mostrarEmail) ? 'hidden' : ''
                     }`}
                   >
-                    <Input
+                    <Input semSalvar
                       type="email"
                       inputMode="email"
                       label="Email"
@@ -955,7 +961,7 @@ export default function Login() {
                  * manda cada um pra tela que é dele. Cada porta diz o que
                  * acontece depois, porque "motorista" e "responsável" são
                  * rótulos do sistema, e o que a pessoa reconhece é o que ela
-                 * tem na mão: uma van, ou um convite.
+                 * tem na mão: uma perua, ou um convite.
                  *
                  * PESOS DIFERENTES, DE PROPÓSITO. A porta do motorista é
                  * cheia e vem primeiro; a da família é de contorno. Ele paga
@@ -985,7 +991,7 @@ export default function Login() {
                     * As duas portas traziam, cada uma, uma frase de catorze
                     * palavras — e as quatro linhas juntas viravam um bloco que
                     * o olho pula inteiro para achar o botão. A informação é
-                    * necessária (ela é o que separa "tenho uma van" de "recebi
+                    * necessária (ela é o que separa "tenho uma perua" de "recebi
                     * um link"), então o conserto não é apagar: é fazer com que
                     * ela CHEGUE.
                     *
@@ -1198,7 +1204,29 @@ export default function Login() {
 }
 
 /**
- * A VAN DO TÍTULO — ocupa o canto direito que sobrava ao lado de "facilitar
+ * O GOOGLE DO CARTÃO DO MOTORISTA NO CELULAR: o mesmo botão cheio do
+ * `BotaoDoGoogle`, com o verbo de quem está chegando ("Começar").
+ */
+function BotaoComecarComGoogle({ loading = false, onClick, className = '', ...rest }) {
+  return (
+    <Button
+      loading={loading}
+      onClick={onClick}
+      className={`!whitespace-nowrap ${className}`}
+      {...rest}
+    >
+      {!loading && (
+        <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-card">
+          <GoogleIcon size={16} />
+        </span>
+      )}
+      Começar com Google
+    </Button>
+  );
+}
+
+/**
+ * A PERUA DO TÍTULO — ocupa o canto direito que sobrava ao lado de "facilitar
  * seu trampo", e a seta embaixo dela aponta pro botão do Google.
  *
  * Desenho próprio, e não o `Bus` do lucide: ícone de traço a 90px vira

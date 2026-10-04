@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Share2, UserPlus } from 'lucide-react';
+import { Share2, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import Header from '../../components/layout/Header';
+import Button from '../../components/common/Button';
 import { indicar, watchIndicacoesDe } from '../../services/indicacaoService';
 import {
   resumoDoIndicador,
@@ -40,10 +41,16 @@ import { conviteDeMotorista } from '../../config/vitrine';
  * "Vale quando ele pagar o primeiro mês" aparece no cabeçalho, antes de ele
  * indicar alguém — e não como explicação quando o desconto não veio. Regra de
  * dinheiro contada só na hora da frustração é regra que parece desculpa.
+ *
+ * ── O VOLTAR É O DO `Header` (03/10/2026)
+ * Era um "Voltar" de 12px com `navigate(-1)` puro: quem chegava pelo aviso
+ * "seu colega se cadastrou" (sem história na aba) tocava e saía do app. O
+ * `Header` cai no Início quando não há para onde voltar. E a regra, que
+ * morava no cabeçalho em 12px, desceu para o corpo em 16px — é regra de
+ * dinheiro, e é ela que evita o "indiquei e não recebi".
  */
 export default function TioIndicar() {
   const { user, profile } = useAuth();
-  const navigate = useNavigate();
   const [lista, setLista] = useState(null);
   const [telefone, setTelefone] = useState('');
   const [nome, setNome] = useState('');
@@ -126,123 +133,115 @@ export default function TioIndicar() {
 
   return (
     <div className="min-h-screen bg-bg pb-16">
-      <header className="border-b border-border bg-card px-5 py-4">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="tap -ml-1 inline-flex items-center gap-1 p-1 text-xs text-textMuted"
-        >
-          <ArrowLeft size={14} /> Voltar
-        </button>
-        <h1 className="mt-2 text-lg font-extrabold tracking-tight text-text">
-          Indicar outro motorista
-        </h1>
-        {/* A REGRA INTEIRA, ANTES DE ELE INDICAR. Contada só na hora em que o
-          * desconto não veio, ela pareceria desculpa. */}
-        {/* ⚠️ A PORCENTAGEM SOZINHA MENTE PERTO DO PISO, e é aqui que ela
-          * mentiria. Para quem tem 8 crianças e 30% travado, a 7ª indicação
-          * vale sessenta centavos e a 8ª vale zero — dizer "5%" a essa pessoa
-          * é prometer quatro vezes o que ela vai receber. `valorDaIndicacao`
-          * devolve a diferença real da PRÓXIMA, com o piso já dentro. */}
-        <p className="mt-1 text-xs leading-relaxed text-textMuted">
-          Cada motorista que você trouxer vale <strong>{porIndicacao}%</strong> na
-          sua conta, todo mês, enquanto ele estiver com a gente — sem limite de
-          quantidade. Os descontos descem até o piso de {formatCurrency(piso)},
-          que é a manutenção do ambiente. O
-          desconto entra quando <strong>ele pagar o primeiro mês</strong>, não
-          quando se cadastra.
-        </p>
-        {valorDaProxima !== null && (
-          <p className="mt-2 text-xs leading-relaxed text-text">
-            {valorDaProxima > 0 ? (
-              <>
-                Na sua conta de hoje, a próxima indicação tira{' '}
-                <strong>{formatCurrency(valorDaProxima)} por mês</strong>.
-              </>
-            ) : (
-              <>
-                <strong>Sua conta já está no piso de {formatCurrency(piso)}.</strong>{' '}
-                Novas indicações não descem mais o valor — até sua operação
-                crescer. Continue indicando se quiser; só não vai aparecer na
-                fatura agora.
-              </>
-            )}
-          </p>
-        )}
-      </header>
+      <Header
+        title="Indicar outro motorista"
+        showBack
+        backLabel="Início"
+        backTo="/tio"
+      />
 
       <main className="mx-auto w-full max-w-lg space-y-4 px-5 py-5">
+        <div>
+          {/* A REGRA INTEIRA, ANTES DE ELE INDICAR. Contada só na hora em que o
+            * desconto não veio, ela pareceria desculpa. */}
+          {/* ⚠️ A PORCENTAGEM SOZINHA MENTE PERTO DO PISO, e é aqui que ela
+            * mentiria. Para quem tem 8 crianças e 30% travado, a 7ª indicação
+            * vale sessenta centavos e a 8ª vale zero — dizer "5%" a essa pessoa
+            * é prometer quatro vezes o que ela vai receber. `valorDaIndicacao`
+            * devolve a diferença real da PRÓXIMA, com o piso já dentro. */}
+          <p className="text-base leading-relaxed text-textMuted">
+            Cada motorista que você trouxer vale <strong>{porIndicacao}%</strong> na
+            sua conta, todo mês, enquanto ele estiver com a gente — sem limite de
+            quantidade. Os descontos descem até o piso de {formatCurrency(piso)},
+            que é a manutenção do ambiente. O
+            desconto entra quando <strong>ele pagar o primeiro mês</strong>, não
+            quando se cadastra.
+          </p>
+          {valorDaProxima !== null && (
+            <p className="mt-2 text-base leading-relaxed text-text">
+              {valorDaProxima > 0 ? (
+                <>
+                  Na sua conta de hoje, a próxima indicação tira{' '}
+                  <strong>{formatCurrency(valorDaProxima)} por mês</strong>.
+                </>
+              ) : (
+                <>
+                  <strong>Sua conta já está no piso de {formatCurrency(piso)}.</strong>{' '}
+                  Novas indicações não descem mais o valor — até sua operação
+                  crescer. Continue indicando se quiser; só não vai aparecer na
+                  fatura agora.
+                </>
+              )}
+            </p>
+          )}
+        </div>
+
         <section className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="inline-flex items-center gap-1.5 text-sm font-extrabold text-text">
-            <UserPlus size={15} />
+          <h2 className="inline-flex items-center gap-2 text-lg font-bold text-text">
+            <UserPlus size={20} aria-hidden="true" />
             Quem você quer indicar
           </h2>
           <div className="mt-3 space-y-2">
             <label className="block">
-              <span className="mb-1 block text-xs text-textMuted">Nome (opcional)</span>
+              <span className="mb-1 block text-sm text-textMuted">Nome (opcional)</span>
               <input
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Digite aqui"
-                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-text"
+                className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-base text-text"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs text-textMuted">WhatsApp dele</span>
+              <span className="mb-1 block text-sm text-textMuted">WhatsApp dele</span>
               <input
                 value={telefone}
                 onChange={(e) => setTelefone(maskPhone(e.target.value))}
                 inputMode="tel"
                 placeholder="Digite aqui"
-                className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-text"
+                className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-base text-text"
               />
             </label>
             {/* O erro só depois de ele digitar: repreender um campo em branco
               * que a pessoa nem tocou é a tela brigando antes da conversa. */}
-            {erro && telefone.length > 3 && <p className="text-xs text-dangerText">{erro}</p>}
+            {erro && telefone.length > 3 && <p className="text-sm text-dangerText">{erro}</p>}
           </div>
 
-          <button
-            type="button"
-            onClick={enviar}
-            disabled={!ok || salvando}
-            className="tap mt-3 h-11 w-full rounded-xl bg-primary text-xs font-bold text-white disabled:opacity-40"
-          >
+          <Button onClick={enviar} disabled={!ok || salvando} className="mt-3">
             {salvando ? 'Registrando…' : 'Registrar indicação'}
-          </button>
+          </Button>
 
           <a
             href={`https://wa.me/?text=${encodeURIComponent(convite)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="tap mt-2 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-border text-xs font-bold text-text"
+            className="tap mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-base font-bold text-text"
           >
-            <Share2 size={13} />
+            <Share2 size={18} aria-hidden="true" />
             Mandar o convite no WhatsApp
           </a>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="text-sm font-extrabold text-text">Suas indicações</h2>
+          <h2 className="text-lg font-bold text-text">Suas indicações</h2>
           {/* ⚠️ OS TRÊS NÚMEROS, SEPARADOS. Um número só é como nasce o
             * "indiquei e não recebi". */}
-          <p className="mt-1 text-xs text-textMuted">
+          <p className="mt-1 text-base text-textMuted">
             {resumo.total} no total · <strong className="text-primary">{resumo.ativas}</strong>{' '}
             valendo desconto agora
           </p>
 
           {lista === null ? null : !lista.length ? (
-            <p className="mt-3 text-xs text-textMuted">
+            <p className="mt-3 text-base text-textMuted">
               Você ainda não indicou ninguém.
             </p>
           ) : (
             <ul className="mt-3 space-y-2">
               {lista.map((i) => (
                 <li key={i.id} className="border-b border-border pb-2 last:border-0 last:pb-0">
-                  <p className="text-xs font-bold text-text">
+                  <p className="text-base font-bold text-text">
                     {i.nome || i.telefoneDigitado}
                   </p>
-                  <p className="text-xs text-textMuted">
+                  <p className="text-sm text-textMuted">
                     {/* O TELEFONE COMO ELE DIGITOU. Mostrar a chave
                       * normalizada faria ele achar que indicou outra pessoa. */}
                     {i.telefoneDigitado} · {situacaoDaIndicacao(i)}

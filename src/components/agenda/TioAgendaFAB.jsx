@@ -26,6 +26,7 @@ import {
 } from '../../services/agendaService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 import IconePorNome from '../common/IconePorNome';
+import BotaoDeFalar from '../common/BotaoDeFalar';
 
 /**
  * Botão flutuante de agenda na tela do Tio. Tap abre um sheet em 3 passos:
@@ -91,7 +92,7 @@ export default function TioAgendaFAB() {
         className="fixed right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-escola to-escola text-white shadow-float flex items-center gap-2 tap font-bold print:hidden"
       >
         <Notebook size={22} />
-        <span className="text-sm">Avisar pais</span>
+        <span className="text-base">Avisar pais</span>
       </button>
 
       {aberto && <AgendaSheet atalho={atalho} onClose={fechar} />}
@@ -359,7 +360,7 @@ function SheetHeader({ step, onBack, onClose, onHistory }) {
         <button
           type="button"
           onClick={onBack}
-          className="tap text-textMuted -ml-1 p-1 inline-flex items-center gap-1 text-sm"
+          className="tap text-textMuted -ml-1 min-h-12 px-1 inline-flex items-center gap-1 text-sm font-semibold"
         >
           <ArrowLeft size={16} /> Voltar
         </button>
@@ -367,9 +368,9 @@ function SheetHeader({ step, onBack, onClose, onHistory }) {
         <button
           type="button"
           onClick={onHistory}
-          className="tap text-textMuted -ml-1 p-1 inline-flex items-center gap-1 text-xs"
+          className="tap text-textMuted -ml-1 min-h-12 px-1 inline-flex items-center gap-1 text-sm font-semibold"
         >
-          <History size={14} /> Ver enviados
+          <History size={16} /> Ver enviados
         </button>
       )}
       <h2 className="text-base font-bold text-text leading-tight flex-1 text-center">
@@ -377,7 +378,7 @@ function SheetHeader({ step, onBack, onClose, onHistory }) {
       </h2>
       <button
         onClick={onClose}
-        className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
+        className="tap w-12 h-12 rounded-lg bg-neutro flex items-center justify-center text-textMuted shrink-0"
         aria-label="Fechar"
       >
         <X size={18} />
@@ -469,7 +470,7 @@ function TargetStep({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold leading-tight truncate">{s.name}</p>
-                  <p className="text-xs text-white/85 mt-0.5">
+                  <p className="text-sm text-white mt-0.5">
                     {s.children.length}{' '}
                     {s.children.length === 1 ? 'criança' : 'crianças'} · enviar
                     pra todos
@@ -512,14 +513,14 @@ function TargetStep({
                 <p className="font-semibold text-text text-sm leading-tight truncate">
                   {c.name}
                 </p>
-                <p className="text-xs text-textMuted truncate">
+                <p className="text-sm text-textMuted truncate">
                   {c.school || 'Sem escola'}
                 </p>
               </div>
             </button>
           ))}
           {filteredChildren.length === 0 && (
-            <p className="text-xs text-textMuted text-center py-3">
+            <p className="text-sm text-textMuted text-center py-3">
               Ninguém encontrado.
             </p>
           )}
@@ -547,7 +548,7 @@ function TypeStep({ scope, target, onPick }) {
             className={`tap min-h-20 rounded-2xl bg-gradient-to-br ${t.color} text-white px-3 py-3 flex flex-col items-center justify-center gap-1 shadow-sm`}
           >
             <IconePorNome nome={t.icone} size={24} />
-            <span className="text-xs font-bold leading-tight text-center">
+            <span className="text-sm font-bold leading-tight text-center">
               {t.label}
             </span>
           </button>
@@ -594,6 +595,8 @@ function ConfirmStep({
         <label className="rotulo block mb-2">
           Mensagem que o pai vai receber
         </label>
+        {/* Falar em vez de escrever (04/10/2026): o ditado se soma ao texto. */}
+        <BotaoDeFalar valor={message} onChange={onChange} />
         <textarea
           value={message}
           onChange={(e) => onChange(e.target.value)}
@@ -602,7 +605,7 @@ function ConfirmStep({
           placeholder="Digite aqui"
           className="w-full rounded-2xl border-2 border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
         />
-        <p className="text-xs text-textMuted mt-1.5">
+        <p className="text-sm text-textMuted mt-1.5">
           Pode editar o texto antes de enviar. O pai recebe na agenda dele.
         </p>
       </div>
@@ -624,7 +627,7 @@ function ConfirmStep({
           onChange={(e) => onEventDateChange(e.target.value)}
           className="w-full h-12 rounded-2xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
         />
-        <p className="text-xs text-textMuted mt-1.5">
+        <p className="text-sm text-textMuted mt-1.5">
           Passeio, festa, reunião. O pai vê o aviso na data, em vez de ter que
           achar o dia no meio do texto.
         </p>

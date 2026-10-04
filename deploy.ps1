@@ -156,8 +156,9 @@ $sujo = (git status --porcelain)
 if ($sujo) {
   Write-Host 'Há alteração sem commit:' -ForegroundColor Yellow
   git status --short
-  $resp = Read-Host 'Deployar assim mesmo? (s/N)'
-  if ($resp -ne 's') { Parar 'árvore suja' }
+  # Desde 04/10/2026 a versão só marca commit limpo, então árvore suja para
+  # aqui de vez: o número do app apontaria para um código que não existe.
+  Parar 'árvore suja: faça o commit antes de publicar'
 }
 
 # ── 0) Validação ─────────────────────────────────────────────────────────
@@ -168,8 +169,30 @@ if ($LASTEXITCODE -ne 0) {
   Write-Host 'Lint com problemas (a base tem 10 erros conhecidos).' -ForegroundColor Yellow
 }
 
+# ── A versão: um número por publicação, amarrado ao commit (04/10/2026) ──
+# Marca o commit atual com a próxima versão (v1.12) ANTES do build, porque é
+# a marca que o build lê para escrever o número no app e no /versao.json.
+# Recusa árvore suja: o número apontaria para um código que não foi o
+# publicado. Publicar de novo o mesmo commit reaproveita a marca.
+# A marca vai ao GitHub só no fim, depois de o hosting subir.
+Passo 'Versão'
+npm run versao:publicar
+if ($LASTEXITCODE -ne 0) { Parar 'a versão não foi marcada (há arquivo sem commit?)' }
+$marcaDaVersao = (git tag --points-at HEAD) | Where-Object { $_ -match '^v\d+\.\d+$' } | Select-Object -First 1
+
+function Enviar-Versao {
+  if (-not $marcaDaVersao) { return }
+  git push origin $marcaDaVersao
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "A marca $marcaDaVersao nao subiu ao GitHub: rode 'git push origin $marcaDaVersao'." -ForegroundColor Yellow
+  }
+  Write-Host ''
+  Write-Host "Versao no ar: $marcaDaVersao. Rode 'npm run versao:lista' e faca commit de docs/versoes.md." -ForegroundColor Green
+}
+
 Passo 'Build'
 npm run build
+
 if ($LASTEXITCODE -ne 0) { Parar 'o build falhou — não faz sentido subir' }
 
 if ($SoSite) {
@@ -178,6 +201,7 @@ if ($SoSite) {
   if ($LASTEXITCODE -ne 0) { Parar 'hosting falhou' }
   Write-Host ''
   Write-Host 'Site atualizado.' -ForegroundColor Green
+  Enviar-Versao
   exit 0
 }
 
@@ -216,6 +240,7 @@ if ($LASTEXITCODE -ne 0) {
 Passo 'Hosting'
 npx firebase deploy --only hosting
 if ($LASTEXITCODE -ne 0) { Parar 'hosting falhou (o backend já subiu)' }
+Enviar-Versao
 
 Write-Host ''
 Write-Host 'No ar: https://alobuzinou-be81f.web.app' -ForegroundColor Green

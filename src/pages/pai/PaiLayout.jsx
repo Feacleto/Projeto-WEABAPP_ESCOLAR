@@ -143,7 +143,12 @@ export default function PaiLayout() {
 
       {/* Modal de chamada — bloqueia tudo quando o Tio liga */}
       {activeCall && (
-        <IncomingCallModal call={activeCall} adminName={admin?.name} />
+        <IncomingCallModal
+          call={activeCall}
+          // A MARCA, como no cabeçalho ("Tio Zé") — não o nome civil do
+          // contrato, que ela não usa para chamá-lo.
+          adminName={admin?.marcaNome?.trim() || admin?.name?.split(' ')[0]}
+        />
       )}
 
       {birthdayOpen && child && (

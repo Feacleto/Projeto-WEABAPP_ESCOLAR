@@ -92,10 +92,15 @@ export default function TioChildStatement() {
     return { de: linhas[linhas.length - 1].month, ate: linhas[0].month };
   }, [linhas]);
 
+  // A ÚNICA PORTA para cá é o "Extrato" da ficha da criança (ChildDetail), e
+  // o voltar dizia "Crianças" e pulava a ficha — ele saía de onde estava
+  // conversando sobre aquela família e caía na lista da turma inteira.
+  const voltarRotulo = child?.name ? child.name.split(' ')[0] : 'Ficha';
+
   if (loading || loadingChild) {
     return (
       <>
-        <Header title="Extrato do aluno" showBack backLabel="Crianças" backTo="/tio/children" />
+        <Header title="Extrato do aluno" showBack backLabel={voltarRotulo} backTo={`/tio/children/${id}`} />
         <div className="p-5 space-y-3">
           <Skeleton className="h-12" />
           <Skeleton className="h-32" />
@@ -107,7 +112,7 @@ export default function TioChildStatement() {
 
   return (
     <>
-      <Header title="Extrato do aluno" showBack backLabel="Crianças" backTo="/tio/children" />
+      <Header title="Extrato do aluno" showBack backLabel={voltarRotulo} backTo={`/tio/children/${id}`} />
 
       <div className="p-5 space-y-5">
         <div className="print:hidden">
@@ -118,7 +123,7 @@ export default function TioChildStatement() {
           >
             Imprimir / Salvar PDF
           </Button>
-          <p className="mt-2 text-center text-xs text-textMuted">
+          <p className="mt-2 text-center text-sm text-textMuted">
             no celular, escolha &ldquo;Salvar como PDF&rdquo; pra mandar no
             WhatsApp
           </p>
@@ -135,7 +140,7 @@ export default function TioChildStatement() {
                   {profile?.companyName || profile?.name || 'Transporte escolar'}
                 </h1>
                 {profile?.companyDocument && (
-                  <p className="text-xs text-textMuted mt-1">
+                  <p className="text-sm text-textMuted mt-1">
                     {profile.companyDocument}
                   </p>
                 )}
@@ -143,7 +148,7 @@ export default function TioChildStatement() {
               <FileText size={28} className="text-textMuted shrink-0 mt-1" />
             </div>
 
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-3 text-xs">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-3 text-sm">
               <p className="text-textMuted">
                 Aluno:{' '}
                 <span className="font-bold text-text">{child?.name || '—'}</span>
@@ -201,7 +206,7 @@ export default function TioChildStatement() {
               <h2 className="text-sm font-bold text-text">Mês a mês</h2>
               {/* Rola no celular e cabe inteira no papel. */}
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-textMuted">
                       <th className="py-2 pr-2 font-semibold">Mês</th>
@@ -235,7 +240,7 @@ export default function TioChildStatement() {
                             <>
                               {formatDate(p.paidAt)}
                               {p.paymentMethod && (
-                                <span className="block text-xs">
+                                <span className="block text-sm">
                                   {METODO[p.paymentMethod] || p.paymentMethod}
                                 </span>
                               )}
@@ -264,7 +269,7 @@ export default function TioChildStatement() {
               * no PAPEL. O `borderStrong` da tela (#D1D5DB) some numa
               * impressora a jato quase sem tinta, que é a que o motorista
               * tem — e linha de assinatura invisível é folha inutilizada. */}
-            <div className="mt-10 flex gap-8 text-xs text-textMuted">
+            <div className="mt-10 flex gap-8 text-sm text-textMuted">
               <div className="flex-1 border-t border-linhaImpressa pt-1">
                 Assinatura do responsável
               </div>

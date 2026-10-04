@@ -55,7 +55,7 @@ export default function PedidosDeAcesso({ pedidos = [], criancas = [] }) {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-text">Pedido de acesso</p>
-                <p className="mt-0.5 text-[13px] leading-snug text-textBody">
+                <p className="mt-0.5 text-base leading-snug text-textBody">
                   {p.nome || 'Um responsável'} quer acompanhar {filho}
                 </p>
                 {/* Só o WhatsApp (03/10/2026): o pedido não leva mais o
@@ -73,7 +73,7 @@ export default function PedidosDeAcesso({ pedidos = [], criancas = [] }) {
                 type="button"
                 disabled={respondendo === p.id}
                 onClick={() => responder(p, false)}
-                className="tap h-11 flex-1 rounded-xl border-2 border-border bg-card text-sm font-bold text-text disabled:opacity-60"
+                className="tap h-12 flex-1 rounded-xl border-2 border-border bg-card text-base font-bold text-text disabled:opacity-60"
               >
                 Não conheço
               </button>
@@ -81,7 +81,7 @@ export default function PedidosDeAcesso({ pedidos = [], criancas = [] }) {
                 type="button"
                 disabled={respondendo === p.id}
                 onClick={() => responder(p, true)}
-                className="tap h-11 flex-1 rounded-xl bg-primary text-sm font-bold text-white disabled:opacity-60"
+                className="tap h-12 flex-1 rounded-xl bg-primary text-base font-bold text-white disabled:opacity-60"
               >
                 Aprovar
               </button>

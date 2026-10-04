@@ -69,12 +69,11 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../compartilhado/masks';
 import { formatPhone } from '../compartilhado/formatters';
 import { PIX_KEY_TYPES, setMarca } from '../services/userService';
 import { APP_VERSION } from '../version';
-import ReviewSheet from '../components/feedback/ReviewSheet';
+import AvaliarOAppSheet from '../components/feedback/AvaliarOAppSheet';
 import SupportSheet from '../components/support/SupportSheet';
 import CorDaMarca from '../components/tio/CorDaMarca';
 import { lerCoresDoLogo } from '../services/coresDoLogoService';
 import PreferenciasDeAviso from '../components/notifications/PreferenciasDeAviso';
-import PixSheet from '../components/payments/PixSheet';
 import { AddChildSheet } from './pai/AddChild';
 
 export default function Profile() {
@@ -110,7 +109,6 @@ export default function Profile() {
   const [deleting, setDeleting] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
-  const [pixOpen, setPixOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
   const [saidasAbertas, setSaidasAbertas] = useState(false);
   const [soundsEnabled, setSoundsEnabledState] = useSoundsEnabled();
@@ -118,7 +116,12 @@ export default function Profile() {
   if (!profile) {
     return (
       <>
-        <Header title="Meu perfil" showBack />
+        <Header
+        title="Meu perfil"
+        showBack
+        backLabel="Início"
+        backTo={isAdmin ? '/tio' : '/pai'}
+      />
         <div className="p-4">
           <Card>Carregando...</Card>
         </div>
@@ -212,7 +215,12 @@ export default function Profile() {
 
   return (
     <>
-      <Header title="Meu perfil" showBack />
+      <Header
+        title="Meu perfil"
+        showBack
+        backLabel="Início"
+        backTo={isAdmin ? '/tio' : '/pai'}
+      />
 
       <div className="p-4 space-y-7">
         {/* Cabeçalho com avatar + nome — botão "Trocar foto" embutido */}
@@ -230,7 +238,7 @@ export default function Profile() {
               <h2 className="text-xl font-bold text-text">
                 {profile.name || 'Sem nome'}
               </h2>
-              <p className="text-xs text-textMuted mt-1">
+              <p className="text-base text-textMuted mt-1">
                 {isAdmin ? 'Motorista' : 'Responsável'}
               </p>
             </div>
@@ -292,16 +300,21 @@ export default function Profile() {
               cores={profile?.marcaCoresSugeridas || []}
               onChanged={refreshProfile}
             />
+            {/* ⚠️ A CHAVE PIX NÃO SE TROCA AQUI (D2, 04/10/2026). O Perfil
+              * não pede senha, e a auxiliar com o celular na mão trocava a
+              * chave pela dela: as mensalidades da turma passavam a cair
+              * noutra conta. Daqui só se VÊ a chave e se vai a `/tio/pix`,
+              * que está atrás da senha do Financeiro (trancaDoFinanceiro). */}
             <Card>
               <Linha
                 icon={Key}
                 titulo="Chave PIX"
                 sub={
                   profile.pixKey
-                    ? `${PIX_KEY_TYPES[profile.pixKeyType]?.label || ''}: ${profile.pixKey}`
-                    : 'Não cadastrada'
+                    ? `${PIX_KEY_TYPES[profile.pixKeyType]?.label || ''}: ${profile.pixKey} · trocar pede a senha do Financeiro`
+                    : 'Não cadastrada · cadastrar pede a senha do Financeiro'
                 }
-                onClick={() => setPixOpen(true)}
+                onClick={() => navigate('/tio/pix')}
               />
             </Card>
             {/* O NÍVEL (docs/niveis.md): selo e o que fazer para subir. */}
@@ -368,8 +381,8 @@ export default function Profile() {
                 )}
               </span>
               <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-text">Sons do app</p>
-                <p className="text-xs text-textMuted">
+                <p className="text-base font-semibold text-text">Sons do app</p>
+                <p className="text-sm text-textMuted">
                   {soundsEnabled
                     ? 'Toques nos botões, buzina, notificações'
                     : 'Silencioso — só vibração'}
@@ -451,8 +464,8 @@ export default function Profile() {
             />
           </Card>
 
-          <div className="text-center text-xs text-textMuted flex items-center justify-center gap-3 pt-2">
-            <a href="/termos" target="_blank" rel="noopener noreferrer" className="hover:underline">
+          <div className="text-center text-sm text-textMuted flex items-center justify-center gap-3 pt-2">
+            <a href="/termos" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center hover:underline">
               Termos de Uso
             </a>
             <span aria-hidden>·</span>
@@ -460,19 +473,19 @@ export default function Profile() {
               href="/privacidade"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline"
+              className="inline-flex min-h-12 items-center hover:underline"
             >
               Política de Privacidade
             </a>
           </div>
-          <div className="text-center text-xs text-textMuted">
+          <div className="text-center text-sm text-textMuted">
             Alô Buzinou · versão {APP_VERSION}
           </div>
           <div className="pt-4 text-center">
             <button
               type="button"
               onClick={() => setSaidasAbertas(true)}
-              className="tap px-3 py-2 text-xs text-textMuted underline underline-offset-2 decoration-textMuted/40"
+              className="tap inline-flex min-h-12 items-center px-3 text-sm text-textMuted underline underline-offset-2 decoration-textMuted/40"
             >
               {isAdmin ? 'Pausar ou excluir a conta' : 'Excluir a conta'}
             </button>
@@ -481,19 +494,17 @@ export default function Profile() {
       </div>
 
 
-      <PixSheet open={pixOpen} onClose={() => setPixOpen(false)} />
 
       <AddChildSheet
         open={addChildOpen}
         onClose={() => setAddChildOpen(false)}
       />
 
-      <ReviewSheet
+      <AvaliarOAppSheet
         open={feedbackOpen}
         onClose={() => setFeedbackOpen(false)}
         uid={user?.uid}
         role={role}
-        profile={profile}
       />
 
       <SupportSheet
@@ -524,7 +535,7 @@ export default function Profile() {
         title={isAdmin ? 'Apagar sua conta e todos os dados?' : 'Excluir sua conta?'}
         description={
           isAdmin
-            ? 'Vai apagar TUDO: crianças, contratos, pagamentos, recados e a sua conta. As famílias perdem o acesso. Não dá para desfazer. Para só parar de pagar a plataforma, use "Encerrar a associação".'
+            ? 'Vai apagar TUDO: crianças, contratos, pagamentos, recados e a sua conta. As famílias perdem o acesso. Não dá para desfazer. Para só parar de pagar a plataforma, use "Pausar a conta".'
             : 'Seus dados pessoais (perfil, login, notificações) serão apagados. O histórico de pagamentos fica com o motorista para fins fiscais. Você sairá do app.'
         }
         confirmLabel={isAdmin ? 'Sim, apagar tudo' : 'Sim, excluir minha conta'}
@@ -648,7 +659,7 @@ function InfoRow({ icon: Icon, label, value, hint }) {
         <p className="text-sm text-text break-words">{value || '—'}</p>
         {/* A dica fica ABAIXO do valor e menor: ela explica o valor, não
             compete com ele. */}
-        {hint && <p className="text-xs text-textMuted mt-0.5">{hint}</p>}
+        {hint && <p className="text-sm text-textMuted mt-0.5">{hint}</p>}
       </div>
     </div>
   );
@@ -712,7 +723,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
             <X size={18} />
           </button>
         </div>
-        <Input
+        <Input semSalvar
           label="Nome"
           icon={UserIcon}
           value={name}
@@ -721,7 +732,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
           autoComplete="name"
           required
         />
-        <Input
+        <Input semSalvar
           label="Telefone"
           icon={Phone}
           inputMode="tel"
@@ -756,7 +767,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
                 key={g.value || 'none'}
                 type="button"
                 onClick={() => setGender(g.value)}
-                className={`tap rounded-xl border-2 px-2 py-2.5 text-xs font-semibold ${
+                className={`tap rounded-xl border-2 min-h-12 px-2 py-2.5 text-sm font-semibold ${
                   gender === g.value
                     ? 'border-primary bg-primarySoft text-primary'
                     : 'border-border bg-card text-textMuted'
@@ -766,7 +777,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-xs leading-snug text-textMuted">
+          <p className="mt-1.5 text-sm leading-snug text-textMuted">
             Serve só pra desenhar seu rosto automático. Se você enviou uma
             foto, ela continua valendo.
           </p>
@@ -923,7 +934,7 @@ function PushCard({ uid }) {
           <p className="text-sm font-semibold text-text">
             Avisos no celular
           </p>
-          <p className="text-xs text-textMuted">
+          <p className="text-sm text-textMuted">
             {state === 'denied'
               ? 'Bloqueado pelo navegador'
               : on
@@ -1029,7 +1040,7 @@ function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
     <Card className="space-y-3">
       <div>
         <p className="text-sm font-semibold text-text">Sua marca</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-textMuted">
+        <p className="mt-0.5 text-sm leading-relaxed text-textMuted">
           É o que aparece no topo do app — no seu e no das famílias que você
           atende. Muda quando você quiser.
         </p>
@@ -1053,7 +1064,7 @@ function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
         </span>
       </div>
 
-      <Input
+      <Input semSalvar
         id="marca-nome"
         label="Como suas famílias te chamam"
         placeholder="Digite aqui"
@@ -1074,7 +1085,7 @@ function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
         * e ele sozinho já resolve o cabeçalho. */}
       {STORAGE_ENABLED && (
         <div className="flex gap-2">
-          <label className="tap flex h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-borderStrong text-sm font-semibold text-text">
+          <label className="tap flex min-h-[48px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-borderStrong text-sm font-semibold text-text">
             <ImageIcon size={15} />
             {subindo ? 'Enviando…' : logoURL ? 'Trocar logo' : 'Enviar logo'}
             <input
@@ -1090,7 +1101,7 @@ function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
               type="button"
               onClick={removerLogo}
               disabled={subindo}
-              className="tap h-10 rounded-xl border border-borderStrong px-3 text-sm font-semibold text-textMuted"
+              className="tap min-h-[48px] rounded-xl border border-borderStrong px-4 text-sm font-semibold text-textMuted"
             >
               Remover
             </button>
@@ -1133,7 +1144,7 @@ function Linha({ icon: Icon, titulo, sub, onClick, href, tom = 'normal' }) {
         <span className={`block text-sm font-semibold ${perigo ? 'text-dangerText' : 'text-text'}`}>
           {titulo}
         </span>
-        {sub && <span className="block text-xs text-textMuted truncate">{sub}</span>}
+        {sub && <span className="block text-sm text-textMuted truncate">{sub}</span>}
       </span>
       <ChevronRight size={20} className="text-textMuted shrink-0" />
     </>
@@ -1181,7 +1192,7 @@ function SaidasDaConta({ open, isAdmin, onClose, onPausar, onExcluir }) {
             <span className="min-w-0 flex-1">
               <span className="block text-base font-bold text-text">Pausar a conta</span>
               <span className="mt-0.5 block text-sm text-textBody">
-                Para de pagar a plataforma. Nada é apagado, e dá para voltar quando quiser.
+                Encerra a associação: para de pagar a plataforma. Nada é apagado, e dá para voltar quando quiser.
               </span>
             </span>
           </button>

@@ -32,8 +32,26 @@ import {
  * único campo destes documentos que ninguém pode preencher por inferência.
  * Ver o aviso lá.
  */
-export const LEGAL_VERSION = '1.2';
-export const LEGAL_DATE = '9 de setembro de 2026';
+export const LEGAL_VERSION = '1.3';
+export const LEGAL_DATE = '3 de outubro de 2026';
+
+/*
+ * ── 1.3 também declara o DITADO POR VOZ (04/10/2026) na seção 2b: o áudio
+ * vai ao serviço de voz do aparelho (Google/Apple). Fora do campo de saúde.
+ *
+ * ── 1.3 (03/10/2026): A INFORMAÇÃO DE SAÚDE GANHOU BASE LEGAL PRÓPRIA
+ * A 1.2 listava "alergias, instruções especiais" entre as observações que o
+ * MOTORISTA cadastra, e dizia que o consentimento do responsável era
+ * "manifestado durante o aceite destes termos no primeiro acesso". As duas
+ * frases ficaram falsas: saúde agora só a RESPONSÁVEL escreve, na tela dela,
+ * com uma caixa de consentimento separada (art. 11, I — consentimento
+ * específico e destacado não pode vir embutido no aceite geral). Ver
+ * `docs/consentimento-saude.md`.
+ *
+ * ⚠️ O TEXTO NOVO SAIU DO RASCUNHO DAQUELE DOCUMENTO, que pede revisão
+ * jurídica antes de ir ao ar. Decisão do dono (03/10/2026): construir agora e
+ * publicar só depois da revisão.
+ */
 
 /**
  * A MARCA E OS ENDEREÇOS DE VERDADE.
@@ -282,6 +300,13 @@ export const PRIVACY_SECTIONS = [
       'Google Firebase (Google LLC): hospedagem, autenticação, banco de dados, armazenamento de arquivos e notificações. Servidores no Brasil (São Paulo) para o banco de dados e as funções.',
       'Resend (Estados Unidos): envio dos e-mails transacionais de cobrança. Recebe o nome e o e-mail do responsável e o primeiro nome da criança, apenas para compor a mensagem.',
       'Asaas (Brasil): emissão das cobranças da taxa de associação devida pelo motorista à plataforma. Recebe nome, CPF/CNPJ, e-mail e telefone do MOTORISTA. Nenhum dado de responsável ou de criança é enviado ao Asaas — a mensalidade da família não passa pela plataforma.',
+      // O DITADO POR VOZ (04/10/2026). O microfone dos campos usa o
+      // reconhecimento de voz do NAVEGADOR do aparelho, que manda o áudio ao
+      // serviço do fabricante. Não é operador contratado pela plataforma, mas
+      // é dado pessoal (nome, endereço, telefone) saindo do aparelho por um
+      // botão nosso — por isso está declarado. Entrou na 1.3, ainda não
+      // publicada, para ninguém aceitar duas vezes.
+      'Ditado por voz (opcional): ao tocar no microfone de um campo, o áudio é enviado ao serviço de reconhecimento de voz do próprio aparelho — Google, no Android; Apple, no iPhone — que devolve o texto escrito. O Alô Buzinou não grava nem guarda o áudio. O microfone não aparece no campo de informações de saúde da criança.',
       'A transferência internacional para o Resend se apoia no art. 33, II da LGPD (cláusulas contratuais padrão do fornecedor) e se limita ao necessário para o envio do aviso de vencimento.',
       'Não vendemos, alugamos nem cedemos dados pessoais a terceiros para fins publicitários.',
     ],
@@ -293,7 +318,8 @@ export const PRIVACY_SECTIONS = [
       'Coletamos os seguintes dados pessoais:',
       '(a) De motoristas: nome, email, telefone, senha (criptografada), chave PIX, dados de geolocalização durante rotas ativas;',
       '(b) De responsáveis: nome, email, telefone, senha (criptografada), informações sobre a relação com a criança;',
-      '(c) De crianças (cadastradas pelo motorista com consentimento do responsável): nome, gênero, escola, endereço residencial, endereço da escola, observações relevantes ao transporte (alergias, instruções especiais), turnos de transporte, status de mensalidades;',
+      '(c) De crianças (cadastradas pelo motorista com consentimento do responsável): nome, gênero, escola, endereço residencial, endereço da escola, observações relevantes ao transporte (por exemplo, portão de entrada e quem busca), turnos de transporte, status de mensalidades;',
+      '(c.1) Informações de saúde da criança (opcional): quando o responsável opta por informá-las, com consentimento específico e destacado, guardamos o texto que ele escreveu e a data do consentimento. Essa informação é exibida apenas ao motorista responsável pelo transporte daquela criança, com a finalidade de permitir atendimento adequado em caso de emergência durante o trajeto. Ela pode ser apagada pelo responsável a qualquer momento, e é excluída junto com o cadastro da criança;',
       '(d) Dados técnicos: endereço IP, identificadores de dispositivo, versão do navegador, registros de acesso (logs);',
       '(e) Dados de uso: interações com o Aplicativo (não usamos rastreadores de terceiros para fins de marketing).',
     ],
@@ -303,8 +329,9 @@ export const PRIVACY_SECTIONS = [
     title: '4. Tratamento de Dados de Crianças',
     paragraphs: [
       'O tratamento de dados pessoais de crianças e adolescentes ocorre sempre no melhor interesse da criança, conforme o art. 14 da LGPD.',
-      'Os dados são fornecidos exclusivamente pelo motorista, mediante consentimento expresso do responsável legal — manifestado durante o aceite destes termos no primeiro acesso.',
-      'Não coletamos dados das crianças diretamente. Apenas pelo motorista para fins operacionais (transporte seguro).',
+      'Os dados operacionais da criança (nome, endereço de embarque, escola, contato) são cadastrados pelo motorista, que declara no cadastro ter autorização do responsável legal.',
+      'As informações de saúde, quando existirem, são escritas pelo próprio responsável, com consentimento específico e destacado, separado do aceite destes termos (art. 11, I, e art. 14, §1º). O motorista apenas as lê, e não pode escrevê-las.',
+      'Não coletamos dados diretamente das crianças: quem os informa é o motorista ou o responsável, para fins de operação do transporte.',
       'Não usamos os dados das crianças para perfilamento, marketing, publicidade ou compartilhamento com terceiros para fins comerciais.',
     ],
   },
@@ -317,7 +344,8 @@ export const PRIVACY_SECTIONS = [
       '(b) Cumprimento de obrigações legais e regulatórias — base: obrigação legal (art. 7º, II);',
       '(c) Geolocalização do veículo durante rotas — base: consentimento do titular (art. 7º, I), revogável a qualquer momento pela chave na tela de início de rota, sem custo e sem perda de nenhuma outra função do Aplicativo (art. 8º, §5º);',
       '(d) Comunicação com responsáveis (notificações, status, alertas) — base: legítimo interesse (art. 7º, IX);',
-      '(e) Tratamento de dados de crianças — base: melhor interesse da criança com consentimento dos responsáveis (art. 14).',
+      '(e) Tratamento de dados de crianças — base: melhor interesse da criança com consentimento dos responsáveis (art. 14);',
+      '(f) Informações de saúde da criança — base: consentimento específico e destacado do responsável (art. 11, I, e art. 14, §1º), revogável a qualquer momento, sem custo, apagando a informação no Aplicativo (art. 8º, §5º).',
     ],
   },
   {

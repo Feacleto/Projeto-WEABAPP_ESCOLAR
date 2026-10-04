@@ -3,7 +3,7 @@ import { destinoAposSair } from '../../dominio/vitrine/frentes';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, LogOut, FileText } from 'lucide-react';
 import Button from '../common/Button';
-import ContractView from './ContractView';
+import ContractView, { ResumoDoCombinado } from './ContractView';
 import PainelDeAceite from './PainelDeAceite';
 import Skeleton from '../common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,7 +15,7 @@ import { useContratos } from '../../hooks/useContratos';
  * Gate de aceite do PRIMEIRO contrato — só pro Pai/Mãe.
  *
  * Bloqueia o app até o responsável ler, digitar o nome completo, marcar o
- * aceite e tocar em "Aceitar contrato".
+ * aceite e tocar em "Assinar contrato".
  *
  * ⚠️ DESDE 02/10/2026 O QUE ELA LÊ É A VERSÃO GRAVADA
  * (`children/{id}/contratos/{n}`), não um texto montado na hora, e quem
@@ -102,7 +102,7 @@ export default function ContractAcceptanceGate() {
             <h2 className="text-xl font-bold text-text">
               Fale com o motorista
             </h2>
-            <p className="text-sm text-textMuted mt-2 leading-relaxed">
+            <p className="text-base text-textMuted mt-2 leading-relaxed">
               Pra usar o app, é preciso assinar o contrato de prestação de
               serviço. Se você tem dúvidas, fale com {admin?.name || 'o motorista'}{' '}
               {admin?.phone && (
@@ -115,11 +115,13 @@ export default function ContractAcceptanceGate() {
             </p>
           </div>
           <div className="space-y-2">
+            {/* O MESMO NOME DO /pai/contrato: era "Voltar e ler de novo" aqui
+              * e "Voltar ao contrato" lá, para o mesmo gesto. */}
             <Button
               variant="primary"
               onClick={() => setShowReject(false)}
             >
-              Voltar e ler de novo
+              Voltar ao contrato
             </Button>
             <Button
               variant="ghost"
@@ -136,7 +138,7 @@ export default function ContractAcceptanceGate() {
   }
 
   return (
-    <div className="min-h-screen bg-bg pb-80">
+    <div className="min-h-screen bg-bg pb-40">
       {/* Header sticky */}
       <header className="sticky top-0 z-20 bg-card border-b border-neutro p-4">
         <div className="flex items-center gap-3">
@@ -147,14 +149,17 @@ export default function ContractAcceptanceGate() {
             <p className="rotulo">
               1º acesso
             </p>
-            <h1 className="text-base font-bold text-text leading-tight">
+            <h1 className="text-xl font-bold text-text leading-tight">
               Leia e assine o contrato
             </h1>
           </div>
         </div>
       </header>
 
-      {/* MIGRAÇÃO: ELE PROVAVELMENTE JÁ COMBINOU ISSO NO PAPEL.
+      {/* O RESUMO VEM ANTES DO TEXTO LONGO (03/10/2026) — valor, vencimento,
+        * vigência, falta e multa, lidos dos mesmos dados do contrato abaixo.
+        *
+        * MIGRAÇÃO: ELE PROVAVELMENTE JÁ COMBINOU ISSO NO PAPEL.
         *
         * O motorista que chega ao app já tem acordo com as famílias dele. O
         * responsável abre a primeira tela e lê "leia e aceite o contrato" —
@@ -170,22 +175,21 @@ export default function ContractAcceptanceGate() {
         * número estiver errado, é AQUI que a pessoa tem que reclamar, antes
         * de assinar, e não depois da primeira cobrança. */}
       <div className="px-5 pt-5">
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="text-sm font-semibold text-text">
-            Já combinou tudo com o motorista?
+        <ResumoDoCombinado data={aguardando.dados}>
+          <p className="mt-3 text-base leading-relaxed text-textMuted">
+            Já combinou tudo com o motorista? Este é o mesmo acordo, escrito
+            aqui pra vocês dois poderem consultar. Se algo estiver diferente,
+            fale com ele antes de assinar.
           </p>
-          <p className="mt-1 text-sm leading-relaxed text-textMuted">
-            Então este é o mesmo acordo, escrito aqui pra vocês dois poderem
-            consultar. <strong>Confira o valor e o dia do vencimento</strong> —
-            se estiver diferente do que vocês combinaram, fale com ele antes de
-            assinar.
-          </p>
-        </div>
+        </ResumoDoCombinado>
+        <p className="mt-4 text-base font-semibold text-text">
+          O contrato completo:
+        </p>
       </div>
 
       {/* Conteúdo do contrato — a versão GRAVADA */}
-      <div className="p-5">
-        <div className="bg-card rounded-3xl shadow-sm p-6">
+      <div className="px-5 pb-5 pt-2">
+        <div className="bg-card rounded-3xl shadow-sm p-5">
           <ContractView data={aguardando.dados} numero={aguardando.numero} tipo={aguardando.tipo} />
         </div>
       </div>

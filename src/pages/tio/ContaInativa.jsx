@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, LogOut, MessageCircle } from 'lucide-react';
 import Logo from '../../components/common/Logo';
 import Button from '../../components/common/Button';
@@ -41,7 +41,9 @@ const TEXTO = {
     titulo: 'Seu teste terminou',
     corpo:
       'Seus três meses de teste chegaram ao fim, e por isso a conta está pausada. Escolha um plano para voltar a operar — suas crianças, horários e histórico continuam salvos.',
-    acao: { para: '/tio/planos', rotulo: 'Ver planos' },
+    // "Escolher plano" é o nome da tela de destino (03/10/2026) — o botão
+    // dizia "Ver planos", e a tela que abria se chamava outra coisa.
+    acao: { para: '/tio/planos', rotulo: 'Escolher plano' },
   },
   atraso: {
     titulo: 'Sua conta está pausada',
@@ -75,6 +77,7 @@ const TEXTO = {
 
 export default function ContaInativa({ motivo = 'trial' }) {
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const t = TEXTO[motivo] || TEXTO.trial;
 
   return (
@@ -97,16 +100,17 @@ export default function ContaInativa({ motivo = 'trial' }) {
 
         <div>
           <h1 className="text-xl font-bold text-text">{t.titulo}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-textMuted">{t.corpo}</p>
+          <p className="mt-2 text-base leading-relaxed text-textMuted">{t.corpo}</p>
         </div>
 
         {t.acao ? (
-          <Link to={t.acao.para} className="block">
-            <Button>
-              {t.acao.rotulo}
-              <ArrowRight size={18} />
-            </Button>
-          </Link>
+          // Botão que navega, e não <button> dentro de <a>: o aninhado é HTML
+          // inválido, o leitor de tela anuncia dois alvos e o Tab para duas
+          // vezes no mesmo lugar.
+          <Button onClick={() => navigate(t.acao.para)}>
+            {t.acao.rotulo}
+            <ArrowRight size={18} />
+          </Button>
         ) : (
           <a
             href={salesWhatsAppLink(
@@ -114,12 +118,10 @@ export default function ContaInativa({ motivo = 'trial' }) {
             )}
             target="_blank"
             rel="noopener"
-            className="block"
+            className="tap inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-bold text-white hover:bg-primaryDark"
           >
-            <Button>
-              <MessageCircle size={18} />
-              Falar com a gente
-            </Button>
+            <MessageCircle size={18} />
+            Falar com a gente
           </a>
         )}
 
@@ -128,16 +130,16 @@ export default function ContaInativa({ motivo = 'trial' }) {
         <button
           type="button"
           onClick={logout}
-          className="tap mx-auto flex items-center gap-1.5 text-sm text-textMuted hover:text-text"
+          className="tap mx-auto flex min-h-12 items-center gap-2 px-2 text-base text-textMuted hover:text-text"
         >
-          <LogOut size={15} /> Sair da conta
+          <LogOut size={18} aria-hidden="true" /> Sair da conta
         </button>
       </div>
 
       {/* As famílias continuam com o app delas funcionando. Dizer isso aqui não
         * é gentileza: é o que impede o motorista de achar que os clientes dele
         * foram bloqueados junto, e ligar para vinte pessoas por engano. */}
-      <p className="relative z-10 mt-6 max-w-[340px] text-center text-xs leading-relaxed text-textMuted">
+      <p className="relative z-10 mt-6 max-w-[340px] text-center text-sm leading-relaxed text-textMuted">
         As famílias continuam com o app delas. Elas não perdem o acesso.
       </p>
     </div>

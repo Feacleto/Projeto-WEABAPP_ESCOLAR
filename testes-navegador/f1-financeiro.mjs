@@ -43,7 +43,12 @@ try {
   if (new URL(pagina.url()).pathname === '/login') {
     // A conta vem de semear-financeiro.mjs.
     await m('entra com a conta do Seu Zé');
-    const usarEmail = pagina.getByText(/^Usar email$/).first();
+    // A abertura do login no celular dura ~8 s e não aceita toque; o aviso de
+    // cookies cobre o formulário.
+    await esperar(9000);
+    const cookies = pagina.getByRole('button', { name: 'Aceitar todos' });
+    if (await visivel(cookies)) await tocar(pagina, cookies, 'Aceitar todos');
+    const usarEmail = pagina.getByText(/^(Usar email|Entrar com e-mail)$/).first();
     if (await visivel(usarEmail)) await tocar(pagina, usarEmail, 'Usar email');
     await pagina.getByLabel('Email', { exact: true }).fill('ze.financeiro@teste.local');
     await pagina.getByLabel('Senha', { exact: true }).fill('senha-de-teste-123');
@@ -99,7 +104,7 @@ try {
   await registrar(pagina, estado, '08-turma', { paginaInteira: true });
   await pagina.goBack();
   await esperar(1500);
-  if (!(await visivel(pagina.getByText('Meu caixa')))) {
+  if (!(await visivel(pagina.getByText(/^Saldo de /)))) {
     achado(estado, { gravidade: 'alta', lente: 'fluxo', texto: 'Voltar da turma (entrando pelo caixa) não voltou ao caixa aberto.' });
   }
 

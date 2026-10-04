@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
-import Card from '../../components/common/Card';
 import PixForm from '../../components/payments/PixForm';
 
 /**
@@ -19,12 +18,12 @@ export default function TioPixConfig() {
     <>
       <Header title="Chave PIX" showBack backLabel="Financeiro" backTo="/tio/finance" />
       <div className="p-4 space-y-4">
-        <Card>
-          <p className="text-sm leading-relaxed text-textMuted">
-            Cadastre a chave PIX que os pais vão usar pra pagar a mensalidade.
-            Eles vão ver essa chave no app e copiar com um toque.
-          </p>
-        </Card>
+        {/* A MESMA frase do subtítulo da folha (PixSheet): as duas portas
+          * são o mesmo formulário (PixForm), e uma explicação diferente em
+          * cada uma faria parecer que são duas chaves. */}
+        <p className="text-base leading-relaxed text-textBody">
+          É a chave que os pais copiam com um toque pra pagar a mensalidade.
+        </p>
         <PixForm onDone={() => navigate(-1)} />
       </div>
     </>

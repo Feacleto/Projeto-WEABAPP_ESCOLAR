@@ -1,6 +1,7 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Link2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Link2 } from 'lucide-react';
 import AppSheet from '../../components/common/AppSheet';
+import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 
 /**
@@ -21,13 +22,13 @@ function AddChildBody({ onDone }) {
     <div className="space-y-4">
       <div className="bg-sunken border border-border rounded-xl p-4 flex gap-3">
         <Link2 size={18} className="text-primary shrink-0 mt-0.5" />
-        <p className="text-sm text-text leading-relaxed">
+        <p className="text-base text-text leading-relaxed">
           Abra o <strong>link</strong> que o motorista mandou para o seu outro
           filho, com esta mesma conta. Ele aparece aqui na hora, e você troca
           entre os dois na tela de início.
         </p>
       </div>
-      <p className="text-xs text-textMuted leading-relaxed">
+      <p className="text-base text-textMuted leading-relaxed">
         Não achou o link? Peça ao motorista para mandar de novo. Ele reenvia
         pela ficha da criança.
       </p>
@@ -40,27 +41,23 @@ function AddChildBody({ onDone }) {
 
 /**
  * CASCA 1 — a página. Link direto e o gesto de voltar do sistema.
+ *
+ * O voltar é o do `Header` (03/10/2026): era um link de ~28 px escrito à mão,
+ * cinza, sem dizer para onde. O do cabeçalho tem 48 px, diz "Início" e não
+ * empilha história quando ela chegou direto pelo endereço.
  */
 export default function AddChild() {
   const navigate = useNavigate();
   return (
-    <div className="flex min-h-screen flex-col px-6 py-6">
-      <Link
-        to="/pai"
-        className="tap -ml-1 mb-4 inline-flex items-center gap-1 self-start p-1 text-sm text-textMuted"
-      >
-        <ArrowLeft size={16} /> Voltar
-      </Link>
-
-      <div className="mb-5 space-y-1">
-        <h1 className="text-2xl font-bold text-text">Adicionar outro filho</h1>
-        <p className="text-sm text-textMuted">
+    <>
+      <Header title="Adicionar outro filho" showBack backLabel="Início" backTo="/pai" />
+      <div className="px-5 py-5">
+        <p className="mb-4 text-base text-textMuted">
           É pelo link que o motorista mandou.
         </p>
+        <AddChildBody onDone={() => navigate('/pai', { replace: true })} />
       </div>
-
-      <AddChildBody onDone={() => navigate('/pai', { replace: true })} />
-    </div>
+    </>
   );
 }
 

@@ -18,7 +18,12 @@ import { markAllNotificationsRead } from '../../services/notificationsService';
 import { idsNaoLidos } from '../../dominio/identidade/caixaDeAvisos.js';
 import { formatRelativeTime } from '../../compartilhado/formatters';
 import PreferenciasDeAviso from './PreferenciasDeAviso';
+import Avatar from '../common/Avatar';
 import { destinoDoAviso } from '../../dominio/identidade/destinoDoAviso.js';
+import { rostoDoAviso } from '../../dominio/identidade/rostoDoAviso.js';
+import { useCriancasDoSino } from '../../hooks/useCriancasDoSino';
+import { useActiveChild } from '../../hooks/useActiveChild';
+import { useAdminProfile } from '../../hooks/useAdminProfile';
 
 const TYPE_VISUAL = {
   payment_claimed: { Icon: Hourglass, color: 'text-primary bg-primaryChip' },
@@ -34,12 +39,16 @@ const TYPE_VISUAL = {
 const INITIAL_PAGE_SIZE = 6;
 const PAGE_INCREMENT = 6;
 
-// Cores do pill "Hoje / Ontem / Há X dias" — sinaliza recência em uma piscadela.
+// Cor do "Hoje / Ontem / Há X dias". Era uma pílula de 12px em monoespaçada
+// e caixa alta — a letra mais difícil de ler do app, no dado que responde
+// "isso é de agora?". Virou texto de 14px no canto superior direito do aviso,
+// onde o olho termina a primeira linha (padrão em F: o QUÊ à esquerda, o
+// QUANDO à direita). A cor segue dizendo a recência, só em tons de TEXTO.
 const TONE_STYLES = {
-  today: 'bg-primaryChip text-primary border border-primaryBorder',
-  yesterday: 'bg-warningChip text-warningText border border-warningBorder',
-  recent: 'bg-infoSoft text-infoText border border-infoBorder',
-  older: 'bg-neutro text-textMuted border border-border',
+  today: 'text-accentText',
+  yesterday: 'text-warningText',
+  recent: 'text-infoText',
+  older: 'text-textMuted',
 };
 
 /**
@@ -70,6 +79,15 @@ export default function NotificationsBody({ onNavigate }) {
   // chamavam `useNotifications` por conta própria — uma segunda escuta das
   // mesmas 100, por cima da do cabeçalho.
   const { notifications, loading, refreshReads } = useNotificacoesDaSessao();
+
+  // O ROSTO DE CADA AVISO (03/10/2026, pedido do dono): a criança quando o
+  // aviso é sobre ela, o motorista quando chega à família vindo dele. Quem
+  // decide é `rostoDoAviso`; aqui só se busca o que ele precisa ver.
+  const criancas = useCriancasDoSino();
+  const { child: filhoAtivo } = useActiveChild();
+  const { admin: motorista } = useAdminProfile(
+    isParent ? filhoAtivo?.adminUid : null
+  );
 
   // Auto-marca como lidas as que ele acabou de ver (com debounce de 1.5s).
   // Um lote só (até 450 por lote), em vez de uma escrita por aviso.
@@ -134,9 +152,9 @@ export default function NotificationsBody({ onNavigate }) {
         <button
           type="button"
           onClick={onMarkAll}
-          className="tap mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary"
+          className="tap mb-2 inline-flex min-h-12 items-center gap-2 text-sm font-bold text-primary"
         >
-          <CheckCheck size={15} />
+          <CheckCheck size={18} />
           Marcar todas como lidas
         </button>
       )}
@@ -165,6 +183,9 @@ export default function NotificationsBody({ onNavigate }) {
                 <NotificationItem
                   key={n.id}
                   notif={n}
+                  rosto={rostoDoAviso(n, criancas, profile?.role)}
+                  motorista={motorista}
+                  motoristaUid={filhoAtivo?.adminUid}
                   onClick={() => onClickNotif(n)}
                 />
               ))}
@@ -175,13 +196,13 @@ export default function NotificationsBody({ onNavigate }) {
                 onClick={() =>
                   setVisibleCount((c) => c + PAGE_INCREMENT)
                 }
-                className="tap mt-4 mx-auto block text-xs font-semibold text-textMuted hover:text-text inline-flex items-center gap-1 py-2 px-3 rounded-full"
+                className="tap mt-3 mx-auto flex min-h-12 items-center gap-1.5 rounded-full px-4 text-base font-semibold text-text hover:bg-neutro"
               >
                 Ver mais{' '}
-                <span className="text-xs text-textMuted">
+                <span className="text-sm text-textMuted">
                   ({notifications.length - visibleCount} restantes)
                 </span>
-                <ChevronDown size={14} />
+                <ChevronDown size={18} />
               </button>
             )}
           </>
@@ -202,51 +223,94 @@ export default function NotificationsBody({ onNavigate }) {
   );
 }
 
-function NotificationItem({ notif, onClick }) {
+/**
+ * UM AVISO, lido como uma conversa do WhatsApp (03/10/2026).
+ *
+ * Padrão em F: o ROSTO no canto esquerdo diz DE QUEM é o assunto antes de
+ * qualquer letra; na primeira linha, o QUÊ à esquerda e o QUANDO à direita;
+ * embaixo, o detalhe. O tipo do aviso (pagamento, atraso…) não some com o
+ * rosto: vira um selo pequeno no canto dele.
+ *
+ * Letra: título 16px, detalhe 15px, hora 14px — o piso de 40+ do app. Era
+ * 14/12/12. O título não é mais cortado em reticências: "Felipe não vai na
+ * perua de manhã hoje" cortado no meio é outro aviso.
+ */
+function NotificationItem({ notif, rosto, motorista, motoristaUid, onClick }) {
   const visual = TYPE_VISUAL[notif.type] || {
     Icon: Bell,
     color: 'text-textMuted bg-neutro',
   };
   const { Icon, color } = visual;
   const { label, tone } = formatRelativeTime(notif.createdAt);
+  const temSelo = rosto.tipo !== 'icone' && Boolean(TYPE_VISUAL[notif.type]);
 
   return (
     <li>
       <button
         type="button"
         onClick={onClick}
-        className={`w-full text-left flex gap-3 p-3 rounded-xl border tap ${
+        className={`w-full text-left flex gap-3 p-3 min-h-[72px] rounded-2xl border tap ${
           notif.isRead
-            ? 'bg-card border-neutro'
+            ? 'bg-card border-border'
             : 'bg-primarySoft border-primaryBorder'
         }`}
       >
-        <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}
-        >
-          <Icon size={18} />
+        <div className="relative shrink-0">
+          {rosto.tipo === 'crianca' ? (
+            <Avatar
+              photoURL={rosto.crianca.photoURL}
+              gender={rosto.crianca.gender}
+              seed={rosto.crianca.id}
+              kind="child"
+              size="md"
+            />
+          ) : rosto.tipo === 'motorista' ? (
+            <Avatar
+              photoURL={motorista?.photoURL}
+              gender={motorista?.gender}
+              seed={motoristaUid || ''}
+              name={motorista?.name}
+              kind="admin"
+              size="md"
+            />
+          ) : (
+            <div
+              className={`w-12 h-12 rounded-full flex items-center justify-center ${color}`}
+            >
+              <Icon size={22} />
+            </div>
+          )}
+          {temSelo && (
+            <span
+              aria-hidden
+              className={`absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-card ${color}`}
+            >
+              <Icon size={13} />
+            </span>
+          )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-text truncate">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-base font-bold leading-snug text-text">
               {notif.title}
             </p>
-            {!notif.isRead && (
-              <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-            )}
+            <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
+              <span className={`text-sm font-semibold ${TONE_STYLES[tone]}`}>
+                {label}
+              </span>
+              {!notif.isRead && (
+                <span
+                  className="w-2.5 h-2.5 rounded-full bg-primary"
+                  aria-label="Não lido"
+                />
+              )}
+            </span>
           </div>
           {notif.body && (
-            <p className="text-xs text-textMuted mt-0.5 leading-snug">
+            <p className="mt-0.5 text-[15px] leading-snug text-textBody">
               {notif.body}
             </p>
           )}
-          <div className="mt-1.5">
-            <span
-              className={`rotulo inline-flex items-center px-2 py-0.5 rounded-full ${TONE_STYLES[tone]}`}
-            >
-              {label}
-            </span>
-          </div>
         </div>
       </button>
     </li>

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './useAuth';
-import { watchDespesasRecentes, watchExpensesByMonth } from '../services/expensesService';
+import {
+  monthKeyOf,
+  watchDespesasRecentes,
+  watchExpensesByMonth,
+  watchExpensesByMonths,
+} from '../services/expensesService';
 import { watchConfigFinanceiro } from '../services/configFinanceiroService';
 
 /**
@@ -29,6 +34,39 @@ export function useDespesasDoMes(monthKey) {
   return snap.chave === chave ? snap.lista : null;
 }
 
+/**
+ * As despesas dos últimos `n` meses, contando o atual — a janela de 12 meses
+ * de onde saem a média da manutenção, o custo por criança e a alta do diesel
+ * ("Sua perua", 03/10/2026). Sem ordem garantida: quem lê ordena.
+ *
+ * Os meses entram na CHAVE, então a virada do mês troca a escuta no próximo
+ * render. `n` vai até 30 (o limite do `in` do Firestore).
+ */
+export function useDespesasDosUltimosMeses(n = 12) {
+  const { user } = useAuth();
+  const quantos = Math.max(1, Math.min(Number(n) || 12, 30));
+  const hoje = new Date();
+  const meses = [];
+  for (let i = 0; i < quantos; i += 1) {
+    meses.push(monthKeyOf(new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)));
+  }
+  const chave = user?.uid ? `${user.uid}:${meses.join(',')}` : null;
+  const [snap, setSnap] = useState({ chave: null, lista: null });
+
+  useEffect(() => {
+    if (!chave) return undefined;
+    const keys = chave.split(':')[1].split(',');
+    return watchExpensesByMonths(
+      keys,
+      (lista) => setSnap({ chave, lista }),
+      () => setSnap({ chave, lista: [] })
+    );
+  }, [chave]);
+
+  const pronto = snap.chave === chave;
+  return { despesas: (pronto && snap.lista) || [], carregando: !pronto };
+}
+
 /** As últimas `quantas` despesas de uma categoria. `null` enquanto carrega. */
 export function useDespesasRecentes(categoria, quantas = 10) {
   const { user } = useAuth();
@@ -49,8 +87,10 @@ export function useDespesasRecentes(categoria, quantas = 10) {
 }
 
 /**
- * `configFinanceiro/{uid}` — uso da perua e contador de km das rotas.
- * `null` enquanto carrega; sem documento, `{}`.
+ * `configFinanceiro/{uid}` — o documento inteiro como veio: `usoDaPerua`,
+ * `kmDasRotas`, `temSenha`, `combustivelDaPerua`, `postos`, `planoDaTroca` e
+ * `guardado` (os quatro últimos podem faltar). `null` enquanto carrega; sem
+ * documento, `{}`.
  */
 export function useConfigDoFinanceiro() {
   const { user } = useAuth();

@@ -67,6 +67,8 @@ export default function MeuTransporteSheet({
   criancas = 0,
   escolas = 0,
   semHorario = 0,
+  // A rota está rodando? Decide para onde vai o "Problema na perua".
+  rotaRodando = false,
 }) {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -99,111 +101,123 @@ export default function MeuTransporteSheet({
       onClose={onClose}
       icon={LayoutGrid}
       title="Meu transporte"
-      subtitle="Tudo que você ajusta parado. Fecha no X, no toque fora ou arrastando pra baixo."
+      subtitle="Avisos, turma e rota, num lugar só."
       size="tall"
     >
-      <div className="space-y-4 pb-2">
-        <Grupo titulo="quem anda na perua">
-          <Linha
-            icon={Users}
-            titulo="Minha turma"
-            contagem={criancas}
-            onClick={() => ir('/tio/children')}
-          />
-          <Linha
-            icon={School}
-            titulo="Escolas"
-            contagem={escolas}
-            onClick={() => ir('/tio/children/escolas')}
-          />
-          {/* "Horários" não dizia que ali se edita a rota — o motorista pensa
-            * "minha rota padrão". Mesmo nome que já está no Início hoje. */}
-          <Linha
-            icon={ListOrdered}
-            tour="rota-padrao"
-            titulo="Editar rota padrão"
-            subtitulo="Os horários que você definiu — é o que cada família vê"
-            aviso={semHorario > 0 ? `${semHorario} a confirmar` : null}
-            onClick={() => ir('/tio/horarios')}
-          />
+      {/* ⚠️ O MODELO F (04/10/2026, escolhido pelo dono entre seis). O
+        * motorista de 40+ abre a folha com pressa e quer ver o que mais chama
+        * atenção — então ela tem TRÊS ANDARES de peso diferente:
+        *   1. AVISAR AS FAMÍLIAS AGORA, em dois botões grandes: é o que ele
+        *      procura com a perua parada na rua (ver o comentário longo do
+        *      "Problema na perua" abaixo, que continua valendo);
+        *   2. SUA OPERAÇÃO em quatro quadrados com o número grande — o estado
+        *      da turma se lê sem abrir nada;
+        *   3. o resto (avisos enviados e a conta dele) em linhas simples no pé.
+        * Os três blocos da auditoria de UX de 03/10 continuam: só mudou o peso
+        * de cada um na tela. */}
+      <div className="space-y-6 pb-2">
+        <Grupo titulo="Avisar as famílias agora">
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* ⚠️ O URGENTE VEM PRIMEIRO, E FOI PARA CÁ EM 10/09/2026.
+              *
+              * Ele só existia atrás do botão flutuante de `/tio/turma` e
+              * `/tio/agenda` — e chegar lá custava seis ações, para o único
+              * aviso que ele dispara com a perua parada na rua. Esta folha
+              * existe em TODOS os estados do painel, inclusive dirigindo.
+              *
+              * ⚠️ UM NOME SÓ (04/10/2026): era "Perua quebrou" aqui e
+              * "Problema na perua" na rota, para a mesma coisa. Com a rota
+              * rodando, leva ao aviso DA ROTA — que também troca o mapa da
+              * família pelo aviso (`marcarOcorrencia`). Sem rota, o caderno.
+              *
+              * Cara de ALERTA (tokens `danger*`): é o botão que ele procura
+              * com pressa, e não pode ter o peso de "Avisos enviados". */}
+            <BotaoDeAviso
+              icon={TriangleAlert}
+              tom="alerta"
+              titulo="Problema na perua"
+              onClick={() => {
+                onClose?.();
+                if (rotaRodando) {
+                  navigate('/tio/route/now', { state: { atalho: 'problema' } });
+                } else {
+                  navigate('/tio/agenda', { state: { atalho: 'quebrou' } });
+                }
+              }}
+            />
+            <BotaoDeAviso
+              icon={Megaphone}
+              titulo="Não tem aula"
+              onClick={() => {
+                onClose?.();
+                onBroadcast?.();
+              }}
+            />
+          </div>
         </Grupo>
 
-        {/* A semana fica separada do cadastro porque ele consulta isso pra
-          * PLANEJAR — domingo à noite, sábado de manhã — e não quando há
-          * aviso novo. */}
-        <Grupo titulo="a semana">
-          <Linha
-            icon={CalendarDays}
-            titulo="Faltas da semana"
-            subtitulo="Quem falta em qual dia, de segunda a sexta"
-            onClick={() => ir('/tio/semana')}
-          />
+        <Grupo titulo="Sua operação">
+          <div className="grid grid-cols-2 gap-2.5">
+            <Quadro
+              icon={Users}
+              titulo="Minha turma"
+              numero={criancas}
+              detalhe={criancas === 1 ? 'criança' : 'crianças'}
+              onClick={() => ir('/tio/children')}
+            />
+            {/* A semana ele consulta pra PLANEJAR — domingo à noite, sábado
+              * de manhã —, e é parte da operação, não um aviso. */}
+            <Quadro
+              icon={CalendarDays}
+              titulo="Faltas da semana"
+              detalhe="Quem falta em cada dia"
+              onClick={() => ir('/tio/semana')}
+            />
+            {/* "HORÁRIOS DA ROTA" EM TODO LUGAR (03/10/2026). A mesma tela se
+              * chamava "Definir os horários" no Início, "Editar rota padrão"
+              * aqui e "N crianças sem horário" na lista de pendências — três
+              * nomes para uma porta faziam parecer três telas. */}
+            <Quadro
+              icon={ListOrdered}
+              tour="rota-padrao"
+              titulo="Horários da rota"
+              detalhe={semHorario > 0 ? `${semHorario} sem horário` : 'O que cada família vê'}
+              alerta={semHorario > 0}
+              onClick={() => ir('/tio/horarios')}
+            />
+            <Quadro
+              icon={School}
+              titulo="Escolas"
+              numero={escolas}
+              detalhe={escolas === 1 ? 'escola' : 'escolas'}
+              onClick={() => ir('/tio/children/escolas')}
+            />
+          </div>
         </Grupo>
 
-        {/* Do lado do motorista pareciam duas coisas diferentes; do lado do
-          * pai chegam no mesmo lugar. O grupo diz isso. */}
-        <Grupo titulo="avisos que vão pra agenda das famílias">
-          {/* ⚠️ O URGENTE VEM PRIMEIRO, E FOI PARA CÁ EM 10/09/2026.
-            *
-            * Ele só existia atrás do botão flutuante de `/tio/turma` e
-            * `/tio/agenda` — e o menu inferior tem duas abas, então chegar lá
-            * custava seis ações: rolar o Início, abrir esta folha, ir para a
-            * Turma, tocar no botão, escolher, revisar, enviar. Para o único
-            * aviso que ele dispara com a perua parada na rua.
-            *
-            * Esta folha existe em TODOS os estados do painel, inclusive
-            * dirigindo — foi feita assim justamente para o caso de avisar
-            * alguma coisa sem ter que encerrar a rota.
-            *
-            * ⚠️ E ELE NÃO TEM PAR. "Vou atrasar" morava ao lado e saiu: o
-            * atraso que está acontecendo o app descobre sozinho, dez minutos
-            * depois da hora de pegar. Quebra é a única ocorrência que o
-            * sistema não tem como saber. */}
-          <Linha
-            icon={TriangleAlert}
-            titulo="Perua quebrou"
-            subtitulo="Avisa todas as famílias de uma vez"
-            onClick={() => {
-              onClose?.();
-              navigate('/tio/agenda', { state: { atalho: 'quebrou' } });
-            }}
-          />
-          <Linha
-            icon={Megaphone}
-            titulo="Avisar que não tem aula"
-            subtitulo="Marca a falta e avisa quem você escolher"
-            onClick={() => {
-              onClose?.();
-              onBroadcast?.();
-            }}
-          />
+        {/* Do lado do motorista pareciam coisas diferentes; do lado do pai
+          * chegam no mesmo lugar — o caderno da família. */}
+        <Grupo titulo="Mais">
           <Linha
             icon={Notebook}
             titulo="Avisos enviados"
             subtitulo="O que já foi pro caderno de cada família"
             onClick={() => ir('/tio/agenda')}
           />
-        </Grupo>
-
-        <Grupo titulo="minha conta">
           {/* O PREÇO MORA AQUI, E É DE PROPÓSITO QUE ELE SEJA DISCRETO.
             *
             * Durante os três meses de teste o app fica calado sobre dinheiro —
             * quem está provando não deveria estar decidindo compra. Mas calado
-            * não é escondido: quem for procurar precisa achar, e o fim da
-            * rolagem de "meu transporte" é onde ele procura.
+            * não é escondido: quem for procurar precisa achar.
             *
-            * Quem contrata antes de o teste acabar leva metade pelos doze
-            * meses, e essa oferta é dita no aviso de fim de teste — que é o
-            * momento em que a decisão acontece. Ver `AvisoDoTrial`. */}
-          {/* COM A COBRANÇA DESLIGADA (02/10/2026) preço, contrato da
+            * COM A COBRANÇA DESLIGADA (02/10/2026) preço, contrato da
             * plataforma e indicação somem: não há o que contratar nem
             * descontar. Ver `dominio/associacao/cobrancaLigada.js`. */}
           {cobranca && (
             <>
               <Linha
                 icon={Receipt}
-                titulo="Planos e valores"
+                titulo="Meu plano"
                 subtitulo="Quanto custa o app depois do teste"
                 onClick={() => ir('/tio/planos')}
               />
@@ -223,10 +237,8 @@ export default function MeuTransporteSheet({
               aviso="falta"
             />
           )}
-          {/* O SELO fica neste grupo e não no de cima: ele é assunto da
-            * PLATAFORMA com o motorista, não da operação dele com as
-            * famílias. E é uma linha só para os dois selos — separá-los aqui
-            * repetiria a confusão que a tela lá dentro existe para desfazer. */}
+          {/* O SELO é assunto da PLATAFORMA com o motorista, não da operação
+            * dele com as famílias — e é uma linha só para os dois selos. */}
           <Linha
             icon={Sticker}
             titulo="Seu selo na van"
@@ -234,18 +246,15 @@ export default function MeuTransporteSheet({
             onClick={() => ir('/tio/selo')}
           />
           {indicacao && (
-          <Linha
-            icon={Share2}
-            titulo="Indicar outro motorista"
-            /* ⚠️ NÃO ESCREVA A PORCENTAGEM À MÃO AQUI. Esta linha dizia
-              * "10%" depois de a régua ter ido para 5% — o motorista lia o
-              * DOBRO do que a fatura ia descontar, e nenhum teste pega texto
-              * de JSX. O número sai da régua; e ele é sobre a conta dele,
-              * então o valor exato em reais fica em `/tio/indicar`, que é
-              * onde `valorDaIndicacao` sabe o tamanho da operação. */
-            subtitulo={`Cada indicação que paga vale ${Math.round(DESCONTO_POR_INDICACAO * 100)}% na sua conta`}
-            onClick={() => ir('/tio/indicar')}
-          />
+            <Linha
+              icon={Share2}
+              titulo="Indicar outro motorista"
+              /* ⚠️ NÃO ESCREVA A PORCENTAGEM À MÃO AQUI. Esta linha dizia
+                * "10%" depois de a régua ter ido para 5% — o motorista lia o
+                * DOBRO do que a fatura ia descontar. O número sai da régua. */
+              subtitulo={`Cada indicação que paga vale ${Math.round(DESCONTO_POR_INDICACAO * 100)}% na sua conta`}
+              onClick={() => ir('/tio/indicar')}
+            />
           )}
           <Linha
             icon={HelpCircle}
@@ -261,49 +270,113 @@ export default function MeuTransporteSheet({
   );
 }
 
-function Grupo({ titulo, children }) {
+/**
+ * Os avisos às famílias, em botão grande (modelo F): 80 px, ícone em cima e
+ * nome embaixo. `tom="alerta"` é o "Problema na perua": cheio, nos tokens de
+ * alerta, para ser achado com pressa. O outro é de contorno verde.
+ */
+function BotaoDeAviso({ icon: Icon, titulo, onClick, tom }) {
+  const alerta = tom === 'alerta';
   return (
-    <section className="space-y-2">
-      <p className="rotulo px-1">
-        {titulo}
-      </p>
-      {children}
-    </section>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tap flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-base font-bold ${
+        alerta ? 'bg-dangerText text-white' : 'border-2 border-primary bg-card text-primary'
+      }`}
+    >
+      <Icon size={24} aria-hidden="true" />
+      {titulo}
+    </button>
   );
 }
 
-/** Mesma linha do Início de hoje — o motorista não aprende peça nova. */
-function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, onClick, tour }) {
+/**
+ * Um quadrado da operação (modelo F): o número grande no canto diz o estado
+ * sem abrir nada; o detalhe embaixo do nome diz o que o número é. `alerta`
+ * pinta o detalhe de âmbar — algo pede atenção ali.
+ */
+function Quadro({ icon: Icon, titulo, numero, detalhe, alerta = false, onClick, tour }) {
   return (
     <button
       type="button"
       data-tour={tour}
       onClick={onClick}
-      className="tap w-full text-left bg-card border border-border rounded-xl px-3 py-3 flex items-center gap-3"
+      className="tap flex min-h-[104px] flex-col justify-between rounded-2xl border border-border bg-card p-3.5 text-left"
     >
-      <div className="w-8 h-8 rounded-lg bg-neutro text-textMuted flex items-center justify-center shrink-0">
-        <Icon size={16} />
-      </div>
-      <span className="flex-1 min-w-0">
-        <span className="block text-sm font-semibold text-text truncate">
-          {titulo}
-        </span>
-        {subtitulo && (
-          <span className="block text-xs text-textMuted truncate">
-            {subtitulo}
+      <span className="flex w-full items-center justify-between">
+        <Icon size={26} className="text-primary" aria-hidden="true" />
+        {numero != null && (
+          <span className="font-display text-2xl font-extrabold tabular-nums text-text">{numero}</span>
+        )}
+      </span>
+      <span className="mt-2 block">
+        <span className="block text-base font-bold leading-snug text-text">{titulo}</span>
+        {detalhe && (
+          <span
+            className={`block text-sm leading-snug ${alerta ? 'font-semibold text-warningText' : 'text-textMuted'}`}
+          >
+            {detalhe}
           </span>
         )}
       </span>
+    </button>
+  );
+}
+
+/** Um bloco da folha: título de 16 px, que é como ele acha o bloco. */
+function Grupo({ titulo, children }) {
+  return (
+    <section className="space-y-2">
+      <h3 className="px-1 font-display text-base font-bold text-text">{titulo}</h3>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * Mesma linha do Início — o motorista não aprende peça nova. 56 px, título
+ * de 16 e subtítulo de 14 (eram 14 e 12: a folha é lida em pé, no portão).
+ *
+ * `tom="alerta"`: a linha que se procura com pressa (perua quebrou). Só cor
+ * por token — o mesmo vermelho do "Faltou" na rota.
+ */
+function Linha({ icon: Icon, titulo, subtitulo, contagem, aviso, onClick, tour, tom }) {
+  const alerta = tom === 'alerta';
+  return (
+    <button
+      type="button"
+      data-tour={tour}
+      onClick={onClick}
+      className={`tap flex min-h-14 w-full items-center gap-3 rounded-xl border px-3 py-3 text-left ${
+        alerta ? 'border-dangerBorder bg-dangerSoft' : 'border-border bg-card'
+      }`}
+    >
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+          alerta ? 'bg-dangerChip text-dangerText' : 'bg-neutro text-textMuted'
+        }`}
+      >
+        <Icon size={20} />
+      </div>
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block text-base font-semibold leading-snug ${
+            alerta ? 'text-dangerText' : 'text-text'
+          }`}
+        >
+          {titulo}
+        </span>
+        {subtitulo && (
+          <span className="block text-sm leading-snug text-textMuted">{subtitulo}</span>
+        )}
+      </span>
       {aviso ? (
-        <span className="text-xs font-semibold text-warningText shrink-0">
-          {aviso}
-        </span>
+        <span className="shrink-0 text-sm font-semibold text-warningText">{aviso}</span>
       ) : contagem != null ? (
-        <span className="font-mono text-xs text-textMuted shrink-0">
-          {contagem}
-        </span>
+        <span className="shrink-0 font-mono text-base text-textMuted">{contagem}</span>
       ) : null}
-      <ChevronRight size={16} className="text-textMuted shrink-0" />
+      <ChevronRight size={18} className="shrink-0 text-textMuted" />
     </button>
   );
 }

@@ -15,9 +15,6 @@ import {
 import {
   paymentLabel,
   paymentChipClasses,
-  parentClaimedLabel,
-  parentClaimedTone,
-  TONE_CLASSES,
 } from '../../dominio/cobranca/paymentVocabulary';
 
 const INITIAL_ROWS = 4;
@@ -65,7 +62,7 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
     return (
       <Card>
         <p className="text-sm font-semibold text-text">Mensalidades</p>
-        <p className="text-xs text-textMuted mt-1">
+        <p className="text-sm text-textMuted mt-1">
           Nenhuma cobrança gerada ainda para esta criança.
         </p>
       </Card>
@@ -83,7 +80,7 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-text">Mensalidades</p>
           {/* A resposta em uma linha, antes da lista: é o que ele quer saber. */}
-          <p className="text-xs text-textMuted mt-0.5">
+          <p className="text-sm text-textMuted mt-0.5">
             {openCount === 0
               ? 'Tudo em dia'
               : openCount === 1
@@ -105,7 +102,7 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
             key={p.id}
             className="flex items-center gap-2 py-1.5 border-b border-neutro last:border-0"
           >
-            <span className="text-xs text-text capitalize flex-1 min-w-0 truncate">
+            <span className="text-base text-text capitalize flex-1 min-w-0 truncate">
               {formatMonthLabel(p.month)}
             </span>
             {p.receiptURL && (
@@ -119,7 +116,7 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
                 <Paperclip size={13} />
               </a>
             )}
-            <span className="text-xs font-semibold text-text shrink-0 tabular-nums">
+            <span className="text-base font-semibold text-text shrink-0 tabular-nums">
               {formatCurrency(p.amount)}
             </span>
             <StatusChip payment={p} role={role} />
@@ -131,7 +128,7 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
         <button
           type="button"
           onClick={() => setShowAll((v) => !v)}
-          className="tap w-full flex items-center justify-center gap-1 text-xs font-semibold text-primary py-1"
+          className="tap w-full flex items-center justify-center gap-1 min-h-12 text-sm font-semibold text-primary"
         >
           {showAll ? 'Ver menos' : `Ver todos os ${rows.length} meses`}
           <ChevronDown
@@ -145,24 +142,14 @@ export default function ChildPaymentHistory({ childId, role = 'admin' }) {
 }
 
 /**
- * O chip de status. Separado porque a regra do `claimed` do pai depende do
- * comprovante: com anexo ele leu "Pago" em verde, porque do lado dele está
- * resolvido — a baixa que falta é do motorista.
+ * O chip de status. O `claimed` da família é âmbar com ou sem comprovante —
+ * o "Pago" verde antes da baixa saiu (ver paymentVocabulary).
  */
 function StatusChip({ payment, role }) {
-  const resolved =
-    role === 'parent' &&
-    payment._display === 'claimed' &&
-    !!payment.receiptURL;
-
   const pagoAtrasado = foiPagoAtrasado(payment);
 
-  const label = resolved
-    ? parentClaimedLabel(true)
-    : paymentLabel(payment._display, role, { pagoAtrasado });
-  const classes = resolved
-    ? TONE_CLASSES[parentClaimedTone(true)]
-    : paymentChipClasses(payment._display, role, { pagoAtrasado });
+  const label = paymentLabel(payment._display, role, { pagoAtrasado });
+  const classes = paymentChipClasses(payment._display, role, { pagoAtrasado });
 
   // Do lado do tio há estados sem palavra (ver paymentVocabulary): sem esta
   // guarda sobraria uma pílula vazia no lugar do rótulo.
@@ -170,7 +157,7 @@ function StatusChip({ payment, role }) {
 
   return (
     <span
-      className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${classes}`}
+      className={`text-sm font-bold px-2 py-0.5 rounded-full shrink-0 ${classes}`}
     >
       {label}
     </span>

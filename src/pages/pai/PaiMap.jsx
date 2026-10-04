@@ -1,21 +1,12 @@
-import {
-  ArrowLeft,
-  Bus,
-  ParkingCircle,
-  MessageCircle,
-  Home,
-  School,
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { Bus, ParkingCircle, Home, School, EyeOff } from 'lucide-react';
 import LiveMap from '../../components/map/LiveMap';
 import Skeleton from '../../components/common/Skeleton';
-import Button from '../../components/common/Button';
+import Header, { FalarComOMotorista } from '../../components/layout/Header';
+import FaixaSemInternet from '../../components/dashboard/FaixaSemInternet';
 import RouteTracker from '../../components/dashboard/RouteTracker';
 import { describeRoutePresence, PRESENCE, formatDistance } from '../../dominio/rota/routePresence';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
-import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
 import { haversineDistance } from '../../compartilhado/haversine';
 import { formatDateTime } from '../../compartilhado/formatters';
@@ -38,14 +29,12 @@ const ARRIVED_KM = 0.4;
  * 5. O aviso de chegada vem do servidor (ver o comentário abaixo).
  */
 export default function PaiMap() {
-  const navigate = useNavigate();
   // O nome que ELA usa ("Tio Zé"). Esta tela escrevia "Tio Nino" — o nome
   // fictício de antes — à mão, em três frases.
   const { nome: nomeDaMarca } = useMarcaDoTio();
   const quem = nomeDaMarca || 'O motorista';
   const { child, loading } = useActiveChild();
   const { location: liveLocation } = useLiveLocation(child?.adminUid);
-  const { admin } = useAdminProfile(child?.adminUid);
 
   const home =
     child?.lat && child?.lng ? { lat: child.lat, lng: child.lng } : null;
@@ -88,63 +77,35 @@ export default function PaiMap() {
   // Início. Hoje quem avisa é o servidor (`functions/lib/avisosDaRota.js`),
   // em qualquer tela e com o app fechado.
 
-  const whatsappUrl = admin?.phone
-    ? `https://wa.me/55${String(admin.phone).replace(/\D/g, '')}`
-    : null;
+  // ⚠️ O CABEÇALHO É O PADRÃO DO APP (03/10/2026). Esta tela tinha um
+  // próprio, com voltar de 40px e um "AO VIVO" pulsando sempre que a rota
+  // estava ligada — inclusive com a posição velha, que é animação viva
+  // sobre dado morto. Agora o voltar é o do `Header` (48px, rotulado, com a
+  // mesma regra de consumir a história ou cair em `/pai` quando se chegou
+  // por notificação), e o "ao vivo" mora no painel, só quando é verdade.
+  const cabecalho = (
+    <Header title="Mapa da perua" showBack backLabel="Início" backTo="/pai" />
+  );
 
   if (loading) {
     return (
-      <div className="min-h-screen p-5">
-        <Skeleton className="h-[60vh]" />
-      </div>
+      <>
+        {cabecalho}
+        <div className="p-5">
+          <Skeleton className="h-[60vh]" />
+        </div>
+      </>
     );
   }
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
-      <header className="sticky top-0 z-30 bg-card border-b border-neutro h-14 px-3 flex items-center gap-2">
-        {/* Destino declarado em vez de `navigate(-1)`: o mapa é a tela que
-          * mais se chega por notificação ("Tio Nino tá chegando!"), e nesse
-          * caminho não existe história pra voltar — a seta sozinha jogaria o
-          * responsável pra fora do app no momento em que ele mais precisa
-          * dele. */}
-        <button
-          onClick={() => {
-            // Mesma regra do Header: consumir história quando existe, e só
-            // cair no destino quando ela não existe (chegada por push).
-            // Navegar sempre empilhava, e o botão físico do Android trazia a
-            // pessoa de volta pro mapa que ela tinha acabado de fechar.
-            const temHistoria = (window.history.state?.idx ?? 0) > 0;
-            if (temHistoria) navigate(-1);
-            else navigate('/pai', { replace: true });
-          }}
-          aria-label="Voltar para o início"
-          className="tap h-10 pl-2 pr-3 rounded-full bg-neutro flex items-center gap-1 text-textMuted shrink-0"
-        >
-          <ArrowLeft size={20} />
-          <span className="text-sm font-medium">Início</span>
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-text truncate leading-tight">
-            Mapa ao vivo
-          </p>
-          <p className="text-xs text-textMuted truncate">
-            {child?.name || 'Sua criança'}
-          </p>
-        </div>
-        {routeActive && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primaryChip text-primary text-xs font-bold">
-            <span className="relative inline-flex">
-              <span className="absolute inline-flex h-1.5 w-1.5 rounded-full bg-primary opacity-75 animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-            </span>
-            AO VIVO
-          </span>
-        )}
-      </header>
+      {cabecalho}
 
       {/* Mapa — 70% da viewport */}
-      <div className="relative" style={{ height: 'min(70vh, 600px)' }}>
+      {/* `isolate`: os painéis do Leaflet têm z-index 400 e passariam por
+        * cima do cabeçalho grudado ao rolar. */}
+      <div className="relative isolate" style={{ height: 'min(70vh, 600px)' }}>
         {home || school ? (
           <>
             <LiveMap van={visibleVan} home={home} school={school} />
@@ -157,7 +118,7 @@ export default function PaiMap() {
               * se desce com a criança. O círculo desenha o tamanho da
               * imprecisão; esta linha diz o nome dela. */}
             {visibleVan && (
-              <p className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] rounded-lg bg-card/90 px-3 py-1.5 text-center text-xs leading-snug text-textMuted shadow-sm">
+              <p className="pointer-events-none absolute inset-x-3 bottom-6 z-[500] rounded-lg bg-card/90 px-3 py-1.5 text-center text-sm leading-snug text-textMuted shadow-sm">
                 Posição aproximada, por referência — o círculo mostra a margem.
                 Não indica o ponto exato da perua.
               </p>
@@ -165,7 +126,7 @@ export default function PaiMap() {
           </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-center p-5">
-            <p className="text-sm text-textMuted">
+            <p className="text-base text-textMuted">
               Endereços ainda não cadastrados.
             </p>
           </div>
@@ -177,6 +138,21 @@ export default function PaiMap() {
         <div className="flex justify-center -mt-1 pb-1">
           <span className="block w-10 h-1 rounded-full bg-border" />
         </div>
+
+        <FaixaSemInternet />
+
+        {/* O "AO VIVO" SÓ QUANDO É VERDADE: rota ligada E posição fresca.
+          * Com a posição velha, quem fala é o painel abaixo ("Sem posição
+          * há 7 minutos"), parado. */}
+        {presence.kind === PRESENCE.MOVING && (
+          <p className="inline-flex items-center gap-2 rounded-full bg-primaryChip px-3 py-1 text-sm font-bold text-primary">
+            <span className="relative inline-flex">
+              <span className="absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            </span>
+            Ao vivo · {presence.freshness}
+          </p>
+        )}
 
         <StatusPanel
           routeActive={routeActive}
@@ -209,16 +185,11 @@ export default function PaiMap() {
           />
         </div>
 
-        <Button
-          onClick={() => {
-            if (whatsappUrl) window.open(whatsappUrl, '_blank');
-            else toast('Telefone do motorista não cadastrado.');
-          }}
-          disabled={!whatsappUrl}
-          icon={MessageCircle}
-        >
-          Falar com o Tio
-        </Button>
+        {/* O MESMO "FALAR" DO CABEÇALHO, em tamanho de pé de tela. Era um
+          * botão próprio que ficava APAGADO sem telefone — ela tocava e nada
+          * acontecia. Agora é o mesmo componente: abre o WhatsApp, ou explica
+          * por que não dá. Nunca desabilitado. */}
+        <FalarComOMotorista grande />
       </div>
     </div>
   );
@@ -248,8 +219,8 @@ function StatusPanel({
           <ParkingCircle size={22} />
         </div>
         <div className="flex-1">
-          <p className="font-bold text-text leading-tight">{presence.title}</p>
-          <p className="text-sm text-dangerText mt-0.5 leading-snug">{presence.detail}</p>
+          <p className="text-lg font-bold text-text leading-tight">{presence.title}</p>
+          <p className="text-base text-dangerText mt-0.5 leading-snug">{presence.detail}</p>
         </div>
       </div>
     );
@@ -262,8 +233,28 @@ function StatusPanel({
           <ParkingCircle size={22} />
         </div>
         <div className="flex-1">
-          <p className="font-bold text-text leading-tight">{presence.title}</p>
-          <p className="text-xs text-warningText mt-0.5 leading-snug">
+          <p className="text-lg font-bold text-text leading-tight">{presence.title}</p>
+          <p className="text-base text-warningText mt-0.5 leading-snug">
+            {presence.detail}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ELE DESLIGOU O MAPA (`SEM_MAPA`): não é falha, é escolha dele — a
+  // frase é a da régua, que diz isso e promete o aviso de chegada.
+  if (presence?.kind === PRESENCE.SEM_MAPA) {
+    return (
+      <div className="rounded-2xl bg-sunken p-4 flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
+          <EyeOff size={22} />
+        </div>
+        <div className="flex-1">
+          <p className="text-lg font-bold text-text leading-tight">
+            {quem} está em rota
+          </p>
+          <p className="text-base text-textMuted mt-0.5 leading-snug">
             {presence.detail}
           </p>
         </div>
@@ -278,11 +269,11 @@ function StatusPanel({
           <ParkingCircle size={22} />
         </div>
         <div className="flex-1">
-          <p className="font-bold text-text leading-tight">
+          <p className="text-lg font-bold text-text leading-tight">
             {quem} não está em rota
           </p>
           {updatedAt && (
-            <p className="text-xs text-textMuted mt-0.5">
+            <p className="text-sm text-textMuted mt-0.5">
               Última rota: {formatDateTime(updatedAt)}
             </p>
           )}
@@ -301,7 +292,7 @@ function StatusPanel({
           <p className="font-bold text-primary leading-tight text-lg">
             {quem} chegou
           </p>
-          <p className="text-xs text-primary mt-0.5">
+          <p className="text-base text-primary mt-0.5">
             A perua está na sua porta.
           </p>
         </div>
@@ -319,7 +310,7 @@ function StatusPanel({
           <p className="font-bold text-warningText leading-tight text-lg">
             Tá chegando!
           </p>
-          <p className="text-xs text-warningText mt-0.5">
+          <p className="text-base text-warningText mt-0.5">
             {formatDistance(realDistanceKm) || '—'} daqui · prepare a criança
           </p>
         </div>
@@ -334,10 +325,10 @@ function StatusPanel({
         <Bus size={22} />
       </div>
       <div className="flex-1">
-        <p className="font-bold text-infoText leading-tight">
+        <p className="text-lg font-bold text-infoText leading-tight">
           {quem} está em rota
         </p>
-        <p className="text-xs text-infoText mt-0.5">
+        <p className="text-base text-infoText mt-0.5">
           Vamos te avisar quando estiver perto.
         </p>
       </div>
@@ -357,7 +348,7 @@ function ReferenceRow({ icon: Icon, color, label, value }) {
         <p className="rotulo">
           {label}
         </p>
-        <p className="text-sm text-text leading-tight truncate">{value}</p>
+        <p className="text-base text-text leading-tight truncate">{value}</p>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Clock, FastForward, TriangleAlert, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AppSheet from '../common/AppSheet';
@@ -6,6 +6,7 @@ import Button from '../common/Button';
 import { createBroadcastEntry } from '../../services/agendaService';
 import { marcarOcorrencia } from '../../services/locationService';
 import { emMinutos, normalizaHora, horaCurta } from '../../dominio/rota/horarios';
+import BotaoDeFalar from '../common/BotaoDeFalar';
 
 /**
  * AVISAR AS FAMÍLIAS DESTA VIAGEM — com um toque, de dentro da rota
@@ -55,16 +56,30 @@ const TITULO = {
   quebrou: 'Problema com a perua',
 };
 
-export default function AvisosDaViagem({ adminUid, criancas = [], focoHora = null }) {
-  const [tipo, setTipo] = useState(null);
+export default function AvisosDaViagem({
+  adminUid,
+  criancas = [],
+  focoHora = null,
+  // Veio do "Problema na perua" do Meu transporte com a rota rodando: abre a
+  // folha do aviso sozinha, uma vez (`onAbriuProblema` consome o pedido).
+  abrirProblema = false,
+  onAbriuProblema,
+}) {
+  const [tipo, setTipo] = useState(() => (abrirProblema && criancas.length ? 'quebrou' : null));
   const [minutos, setMinutos] = useState(10);
-  const [texto, setTexto] = useState('');
+  const [texto, setTexto] = useState(() => (abrirProblema && criancas.length ? TEXTO.quebrou(10) : ''));
   const [enviando, setEnviando] = useState(false);
 
   const familias = useMemo(
     () => new Set(criancas.map((c) => c?.parentUid).filter(Boolean)).size,
     [criancas]
   );
+  // O pedido é consumido assim que a folha nasce aberta (estado inicial
+  // acima), senão voltar a esta tela a reabriria.
+  useEffect(() => {
+    if (abrirProblema) onAbriuProblema?.();
+  }, [abrirProblema, onAbriuProblema]);
+
   if (!criancas.length) return null;
 
   const abrir = (t) => {
@@ -125,32 +140,34 @@ export default function AvisosDaViagem({ adminUid, criancas = [], focoHora = nul
   return (
     <>
       <section className="space-y-2">
-        <p className="rotulo">
-          avisar as famílias desta viagem
+        {/* 16 px nos três botões (eram 12): é aviso dado com a perua parada
+          * no meio-fio, lido a um braço de distância. */}
+        <p className="text-sm font-semibold text-textMuted">
+          Avisar as famílias desta viagem
         </p>
         <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => abrir('atraso')}
-            className="tap flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1 text-xs font-semibold text-text"
+            className="tap flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1 py-2 text-center text-base font-semibold leading-tight text-text"
           >
-            <Clock size={18} className="text-primary" />
+            <Clock size={20} className="text-primary" />
             Vou atrasar
           </button>
           <button
             type="button"
             onClick={() => abrir('cedo')}
-            className="tap flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1 text-xs font-semibold text-text"
+            className="tap flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1 py-2 text-center text-base font-semibold leading-tight text-text"
           >
-            <FastForward size={18} className="text-primary" />
+            <FastForward size={20} className="text-primary" />
             Chego mais cedo
           </button>
           <button
             type="button"
             onClick={() => abrir('quebrou')}
-            className="tap flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1 text-xs font-semibold text-text"
+            className="tap flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card px-1 py-2 text-center text-base font-semibold leading-tight text-text"
           >
-            <TriangleAlert size={18} className="text-dangerText" />
+            <TriangleAlert size={20} className="text-dangerText" />
             Problema na perua
           </button>
         </div>
@@ -166,9 +183,9 @@ export default function AvisosDaViagem({ adminUid, criancas = [], focoHora = nul
           <div className="space-y-4 px-5 pb-6">
             {tipo !== 'quebrou' && (
               <>
-                {leitura && <p className="text-sm text-textMuted">{leitura}</p>}
+                {leitura && <p className="text-base text-textMuted">{leitura}</p>}
                 <div>
-                  <p className="mb-2 text-sm font-semibold text-text">Quantos minutos, mais ou menos?</p>
+                  <p className="mb-2 text-base font-semibold text-text">Quantos minutos, mais ou menos?</p>
                   <div className="flex flex-wrap gap-2">
                     {OPCOES.map((m) => (
                       <button
@@ -176,7 +193,7 @@ export default function AvisosDaViagem({ adminUid, criancas = [], focoHora = nul
                         type="button"
                         onClick={() => trocaMinutos(m)}
                         aria-pressed={minutos === m}
-                        className={`tap min-h-11 min-w-14 rounded-full border px-4 text-sm font-bold ${
+                        className={`tap min-h-12 min-w-16 rounded-full border px-4 text-base font-bold ${
                           minutos === m
                             ? 'border-primary bg-primary text-white'
                             : 'border-border bg-card text-text'
@@ -189,8 +206,10 @@ export default function AvisosDaViagem({ adminUid, criancas = [], focoHora = nul
                 </div>
               </>
             )}
+            {/* Falar em vez de escrever (04/10/2026): o ditado se soma ao texto. */}
+            <BotaoDeFalar valor={texto} onChange={setTexto} />
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-text">A mensagem</span>
+              <span className="mb-1 block text-base font-semibold text-text">A mensagem</span>
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}

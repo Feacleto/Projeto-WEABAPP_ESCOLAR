@@ -170,6 +170,25 @@ nunca DOM.
 
 ---
 
+## A versão de cada publicação (desde 04/10/2026)
+
+Cada ida para produção ganha UM número, de um em um: 1.1, 1.2, 1.3… O da
+frente (2.0, 3.0) só muda por decisão do dono, num marco do produto. O número
+é uma MARCA do git (`v1.12`) no commit publicado — é ela que amarra o que o
+motorista tem no celular ao código exato ("1.12 · commit 391 (abc1234)").
+
+- O `deploy.ps1` faz sozinho: marca antes do build (`npm run versao:publicar`)
+  e manda a marca ao GitHub depois de o app subir.
+- ⚠️ **Deploy à mão do app também precisa marcar**, senão o build sai como
+  "1.13-prévia": `npm run versao:publicar` → `npm run build` →
+  `firebase deploy --only hosting:app` → `git push origin v1.13`.
+- ⚠️ **Só marca commit limpo**: com arquivo modificado sem commit o número
+  apontaria para um código que não foi o publicado. Faça o commit antes.
+- O mesmo commit publicado de novo mantém o número.
+- `npm run versao:ver` diz a versão no ar e a próxima; `npm run versao:lista`
+  reescreve [versoes.md](versoes.md) (faça commit dele depois).
+- Virar o número da frente: `npm run versao:publicar -- --maior`.
+
 ## O deploy, na ordem
 
 ⚠️ **O LOGIN DE PRODUÇÃO CAIU EM 03/10/2026 POR UM ARQUIVO LOCAL.** O

@@ -220,7 +220,7 @@ function Folha({ onClose, comValores }) {
         )}
 
         {categoria === 'other' && (
-          <Input
+          <Input falar="texto" semSalvar
             label="Nome da despesa"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
@@ -229,7 +229,7 @@ function Folha({ onClose, comValores }) {
         )}
 
         {categoria === 'maintenance' && (
-          <Input
+          <Input falar="texto" semSalvar
             label="O que foi feito"
             placeholder="Digite aqui"
             value={descricao}
@@ -239,7 +239,7 @@ function Folha({ onClose, comValores }) {
         )}
 
         {temKm && uso && !perguntarUso && (
-          <Input
+          <Input semSalvar
             label={uso === USO_DA_PERUA.TAMBEM_FORA ? 'Km do painel' : 'Km do painel (se quiser)'}
             inputMode="numeric"
             value={kmPainel}

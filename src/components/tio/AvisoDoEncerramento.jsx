@@ -47,16 +47,16 @@ export default function AvisoDoEncerramento() {
             <DoorOpen size={17} className="text-textMuted" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-text">
+            <p className="text-base font-semibold text-text">
               Sua associação foi encerrada.
             </p>
-            <p className="mt-0.5 text-xs text-textMuted">
+            <p className="mt-0.5 text-sm text-textBody">
               Seus dados continuam salvos. Para voltar a operar, é só escolher um
               plano.
             </p>
             <Link
               to="/tio/planos"
-              className="tap mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary"
+              className="tap mt-1 inline-flex min-h-12 items-center gap-1 text-base font-bold text-primary"
             >
               Ver planos
             </Link>
@@ -76,21 +76,21 @@ export default function AvisoDoEncerramento() {
             <DoorOpen size={17} className="text-warningText" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-warningText">
+            <p className="text-base font-semibold text-warningText">
               {aviso.dias <= 1
                 ? 'Sua associação termina amanhã.'
                 : `Sua associação termina em ${aviso.dias} dias.`}
             </p>
-            <p className="mt-0.5 text-xs text-textMuted">
+            <p className="mt-0.5 text-sm text-textBody">
               A renovação automática está <strong>desligada</strong>
               {fim && <> desde o seu pedido — o app funciona até {fim}</>}.{' '}
               {urgente && 'Depois dessa data as famílias deixam de acompanhar as rotas.'}
             </p>
             <Link
               to="/tio/encerrar"
-              className="tap mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary"
+              className="tap mt-1 inline-flex min-h-12 items-center gap-1.5 text-base font-bold text-primary"
             >
-              <Undo2 size={13} /> Manter minha associação
+              <Undo2 size={18} /> Manter minha associação
             </Link>
           </div>
         </div>
@@ -100,7 +100,7 @@ export default function AvisoDoEncerramento() {
 
   // ── longe da data: uma linha, que informa e sai do caminho ─────────────
   return (
-    <div className="border-b border-border bg-sunken px-4 py-2 text-center text-xs text-textMuted">
+    <div className="border-b border-border bg-sunken px-4 py-1 text-center text-sm text-textMuted">
       A renovação automática está desligada
       {fim && (
         <>
@@ -110,7 +110,10 @@ export default function AvisoDoEncerramento() {
         </>
       )}
       .{' '}
-      <Link to="/tio/encerrar" className="tap font-semibold text-primary underline">
+      <Link
+        to="/tio/encerrar"
+        className="tap inline-flex min-h-12 items-center font-semibold text-primary underline"
+      >
         Manter
       </Link>
     </div>

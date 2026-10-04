@@ -11,6 +11,7 @@ import AppSheet from '../common/AppSheet';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
+import { useAvisosDoCabecalho } from '../../context/AvisosDoCabecalhoContext';
 
 /**
  * Header sticky comum às páginas autenticadas.
@@ -66,10 +67,14 @@ export default function Header({
   const isAuthed = !!user;
   const role = profile?.role;
   const basePath = role === 'admin' ? '/tio' : '/pai';
+  // Os avisos do motorista (cobrança, teste, push) moram LOGO ABAIXO do
+  // cabeçalho, não acima — ver `AvisosDoCabecalhoContext`. Fora do /tio é null.
+  const avisos = useAvisosDoCabecalho();
 
   // Hooks só rodam quando autenticado pra não disparar subscribes em /login
   return (
-    /* O RECORTE DA TELA FAZ PARTE DO CABEÇALHO.
+    <>
+    {/* O RECORTE DA TELA FAZ PARTE DO CABEÇALHO.
      *
      * O index.html declara `viewport-fit=cover`: o app pinta até a borda
      * física do aparelho. Sem devolver a faixa do sistema, no iPhone
@@ -78,7 +83,7 @@ export default function Header({
      * está. Em Android e desktop o env() vale 0 e nada muda.
      *
      * A faixa é padding do <header>, não do conteúdo: a barra continua
-     * grudada no topo e a tarja do sistema fica com a cor do cabeçalho. */
+     * grudada no topo e a tarja do sistema fica com a cor do cabeçalho. */}
     <header
       className="sticky top-0 z-20 bg-card border-b border-neutro print:hidden"
       style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
@@ -101,8 +106,8 @@ export default function Header({
                 else navigate(-1);
               }}
               aria-label={backLabel ? `Voltar para ${backLabel}` : 'Voltar'}
-              // 44×44: é o botão mais usado de toda tela interna.
-              className="-ml-2 tap text-textMuted inline-flex min-h-11 min-w-11 items-center justify-center gap-1 shrink-0"
+              // 48×48: é o botão mais usado de toda tela interna.
+              className="-ml-2 tap text-primary inline-flex min-h-12 min-w-12 items-center justify-center gap-1 shrink-0"
             >
               <ArrowLeft size={22} />
               {/* SEMPRE "VOLTAR", NUNCA O NOME DA TELA (03/10/2026, decisão do
@@ -134,6 +139,8 @@ export default function Header({
         </div>
       </div>
     </header>
+    {avisos}
+    </>
   );
 }
 
@@ -240,7 +247,7 @@ function GlobalActions({ role, basePath, currentPath }) {
         aria-haspopup="dialog"
         // 44×44 de área de toque: era 36, abaixo do mínimo para quem toca
         // com o dedo grosso e com pressa.
-        className={`relative flex h-11 w-11 items-center justify-center tap rounded-lg ${
+        className={`relative flex h-12 w-12 items-center justify-center tap rounded-lg ${
           isOnNotifications ? 'text-primary bg-primaryChip' : 'text-textMuted'
         }`}
       >
@@ -276,7 +283,11 @@ function GlobalActions({ role, basePath, currentPath }) {
  * NENHUM caminho até o motorista dentro do app, e é exatamente no dia ruim
  * que ela precisa dele.
  */
-function FalarComOMotorista() {
+export function FalarComOMotorista({
+  // GRANDE: o mesmo botão em largura cheia, para o pé de uma tela (o mapa).
+  // Mesma regra do pequeno — nunca desabilitado; sem telefone, explica.
+  grande = false,
+}) {
   const { child } = useActiveChild();
   const { admin } = useAdminProfile(child?.adminUid);
   const [semTelefone, setSemTelefone] = useState(false);
@@ -295,14 +306,34 @@ function FalarComOMotorista() {
 
   return (
     <>
+      {grande ? (
+        <button
+          type="button"
+          onClick={tocar}
+          className="tap flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-lg font-bold text-white"
+        >
+          <MessageCircle size={22} />
+          <span className="truncate">Falar com {nome}</span>
+        </button>
+      ) : (
       <button
         type="button"
         onClick={tocar}
         aria-label={`Falar com ${nome}`}
-        className="tap flex h-9 w-9 items-center justify-center rounded-lg bg-primaryChip text-primary"
+        // ⚠️ ÍCONE SOZINHO NÃO SE LÊ COMO "FALAR COM O MOTORISTA" (03/10/2026):
+        // o balão é o mesmo desenho de "comentários" em mil apps. Com a
+        // palavra ao lado, a saída de emergência se explica sem ninguém
+        // precisar tocar para descobrir. Abaixo de 360px a palavra cede e
+        // fica o ícone; acima, quem cede é o TÍTULO (ele trunca), nunca este
+        // botão — 48px de altura sempre, e nunca desabilitado.
+        className="tap flex h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primaryChip px-2.5 text-primary"
       >
-        <MessageCircle size={18} />
+        <MessageCircle size={20} />
+        <span aria-hidden className="hidden text-base font-semibold min-[360px]:inline">
+          Falar
+        </span>
       </button>
+      )}
 
       <AppSheet
         open={semTelefone}

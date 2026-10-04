@@ -137,8 +137,15 @@ export default function InviteShare({
   recolhido = false,
   rotulo,
   crianca = null,
+  onEnviado,
   children,
 }) {
+  // "ENVIADO ✓" (04/10/2026, aprovado pelo dono) — só no fim do cadastro
+  // (`recolhido`). Depois do toque o botão vira contorno e diz que foi: o
+  // destaque passa para o próximo gesto da tela. É ESTADO, sem animação, e
+  // continua sendo o mesmo link — tocar de novo reenvia.
+  const [enviado, setEnviado] = useState(false);
+  const mostrarEnviado = recolhido && enviado;
   const [copied, setCopied] = useState(null); // 'link' | null
   const [maisOpcoes, setMaisOpcoes] = useState(!recolhido);
   // O QR guarda o link de que foi feito: depois de "Gerar link novo", o
@@ -241,19 +248,33 @@ export default function InviteShare({
         href={waHref}
         target="_blank"
         rel="noreferrer"
+        // O "Mandar" da lista do fim do cadastro toca neste mesmo link.
+        data-convite-whatsapp
         // O GESTO DELE conta para o nível (docs/niveis.md): mandou o convite.
         // Sem `await` — o link abre na hora, e a marca não pode segurá-lo.
         onClick={() => {
           const id = childId || crianca?.id;
           if (id && !jaEntrou) marcarConviteEnviado(id).catch(() => {});
+          setEnviado(true);
+          onEnviado?.();
         }}
         // TEXTO ESCURO SOBRE O VERDE DO WHATSAPP: o branco dava 1,98:1
         // (o mínimo é 4,5). `min-h` em vez de `h` e ícone que não encolhe —
         // com rótulo longo o texto quebrava e cortava o balão na borda.
-        className="tap w-full min-h-14 rounded-xl bg-whatsapp px-4 py-3 text-onAccent font-bold leading-tight text-center inline-flex items-center justify-center gap-2 shadow-focus"
+        className={`tap w-full min-h-14 rounded-xl px-4 py-3 font-bold leading-tight text-center inline-flex items-center justify-center gap-2 ${
+          mostrarEnviado
+            ? 'border-2 border-border bg-card text-text'
+            : 'bg-whatsapp text-onAccent shadow-focus'
+        }`}
       >
-        <span className="inline-flex shrink-0"><WhatsAppIcon size={20} colored={false} /></span>
-        {rotulo || (jaEntrou ? 'Mandar o link no WhatsApp' : 'Mandar convite no WhatsApp')}
+        {mostrarEnviado ? (
+          'Enviado ✓'
+        ) : (
+          <>
+            <span className="inline-flex shrink-0"><WhatsAppIcon size={20} colored={false} /></span>
+            {rotulo || (jaEntrou ? 'Mandar o link no WhatsApp' : 'Mandar convite no WhatsApp')}
+          </>
+        )}
       </a>
 
       {/* Só no convite ainda não usado: para quem já entrou, o link é a
@@ -266,7 +287,7 @@ export default function InviteShare({
         <button
           type="button"
           onClick={() => setMaisOpcoes(true)}
-          className="tap w-full py-3 text-sm font-semibold text-textMuted hover:text-text"
+          className="tap w-full min-h-12 py-2 text-base font-semibold text-primary"
         >
           Mais opções: copiar o link, QR{children ? ', contrato antigo' : ''}
         </button>
@@ -280,7 +301,7 @@ export default function InviteShare({
           <Link2 size={12} />
           {jaEntrou ? 'link de acesso' : 'link do convite'}
         </p>
-        <p className="text-xs text-text break-all font-mono leading-relaxed">
+        <p className="text-sm text-text break-all font-mono leading-relaxed">
           {url}
         </p>
         <Button
@@ -309,7 +330,7 @@ export default function InviteShare({
           ) : (
             <div className="w-44 h-44 rounded-lg bg-neutro animate-pulse" />
           )}
-          <p className="text-xs text-textMuted text-center">
+          <p className="text-sm text-textMuted text-center">
             Peça pro responsável abrir a câmera do celular e apontar aqui.
           </p>
         </div>

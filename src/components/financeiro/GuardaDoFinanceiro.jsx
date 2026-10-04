@@ -1,10 +1,12 @@
+import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import Respiro from '../common/Respiro';
+import PontosDeEspera from '../common/PontosDeEspera';
 import FinanceiroTrancado from './FinanceiroTrancado';
 import PrimeiraSenhaDoFinanceiro from './PrimeiraSenhaDoFinanceiro';
 import EsqueciASenhaDoFinanceiro from './EsqueciASenhaDoFinanceiro';
 import DigiteASenhaDoFinanceiro from './DigiteASenhaDoFinanceiro';
 import { useTrancaDoFinanceiro } from '../../hooks/useTrancaDoFinanceiro';
+import { aquecerSenhaDoFinanceiro } from '../../services/senhaDoFinanceiroService';
 import {
   CAIXA,
   normalizarCaminho,
@@ -39,6 +41,16 @@ export default function GuardaDoFinanceiro({ children, voltarPara = null }) {
   const { pathname } = useLocation();
   const tranca = useTrancaDoFinanceiro();
   const aqui = normalizarCaminho(pathname);
+  const vaiPedirSenha = rotaProtegida(aqui) && tranca.temSenha === true && !tranca.destravado;
+
+  // ⚠️ ACORDA O SERVIDOR DA SENHA ENQUANTO ELE OLHA A TELA (04/10/2026). A
+  // conferência é uma callable, e a primeira chamada depois de um tempo parado
+  // espera a function "ligar" — 3 a 10 s com o teclado na mão. Um pedido vazio
+  // assim que a tela trancada aparece faz essa espera acontecer enquanto ele
+  // ainda está lendo, não depois de digitar.
+  useEffect(() => {
+    if (vaiPedirSenha) aquecerSenhaDoFinanceiro();
+  }, [vaiPedirSenha]);
 
   if (!rotaProtegida(aqui)) return children;
 
@@ -47,7 +59,7 @@ export default function GuardaDoFinanceiro({ children, voltarPara = null }) {
     return <PrimeiraSenhaDoFinanceiro troca={tranca.temSenha} destino={aqui} voltarPara={voltarPara} />;
   }
   if (tranca.destravado) return children;
-  if (tranca.temSenha === undefined) return <Respiro />;
+  if (tranca.temSenha === undefined) return <PontosDeEspera titulo="Financeiro" rotulo="Abrindo" />;
   if (!tranca.temSenha) return <PrimeiraSenhaDoFinanceiro destino={aqui} voltarPara={voltarPara} />;
   if (aqui === CAIXA) return <FinanceiroTrancado />;
   return <DigiteASenhaDoFinanceiro destino={aqui} voltarPara={voltarPara} />;

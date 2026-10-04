@@ -17,6 +17,7 @@ import {
 import { getDateKey } from '../../dominio/rota/horarios';
 import { chaveDoNome } from '../../dominio/escola/nomeEscola';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
+import BotaoDeFalar from '../common/BotaoDeFalar';
 
 /**
  * "Sem aula" — o aviso que já sai virando ausência na rota.
@@ -359,6 +360,8 @@ function SchoolBroadcastBody({ onClose }) {
             <label className="block text-sm font-semibold text-text mb-2">
               Recado <span className="text-textMuted font-normal">(opcional)</span>
             </label>
+            {/* Falar em vez de escrever (04/10/2026): o ditado se soma ao texto. */}
+            <BotaoDeFalar valor={message} onChange={setMessage} />
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}

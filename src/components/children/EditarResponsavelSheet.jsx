@@ -8,7 +8,7 @@ import { updateChild } from '../../services/childrenService';
 import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
 
 /**
- * CORRIGIR O NOME E O TELEFONE DO RESPONSÁVEL — só ANTES de a família entrar
+ * EDITAR O NOME E O TELEFONE DO RESPONSÁVEL — só ANTES de a família entrar
  * (02/10/2026).
  *
  * Não havia como: um telefone digitado errado no cadastro mandava o convite
@@ -44,10 +44,10 @@ export default function EditarResponsavelSheet({ open, onClose, child }) {
   };
 
   return (
-    <AppSheet open={open} onClose={salvando ? () => {} : onClose} title="Corrigir o responsável" icon={User}>
-      <div className="space-y-4 px-5 pb-6">
-        <Input label="Nome" icon={User} value={nome} onChange={(ev) => setNome(ev.target.value)} error={erros.nome} />
-        <Input
+    <AppSheet open={open} onClose={salvando ? () => {} : onClose} title="Editar o responsável" icon={User}>
+      <div className="space-y-4 pb-1">
+        <Input falar="nome" label="Nome" icon={User} value={nome} onChange={(ev) => setNome(ev.target.value)} error={erros.nome} />
+        <Input falar="telefone"
           label="Telefone (WhatsApp)"
           icon={Phone}
           inputMode="tel"

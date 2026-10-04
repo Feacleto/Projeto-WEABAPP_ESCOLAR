@@ -53,6 +53,7 @@ const { idValido } = require('./reguaDosIds');
 const {
   chaveDoDia,
   acessoValido,
+  estadoDoDia,
   montarAcompanhamento,
 } = require('./reguaDoAcompanhamento');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
@@ -64,6 +65,12 @@ const {
   lerTokenTemporario,
   podeGerar,
 } = require('./reguaDoAcessoTemporario');
+const {
+  PAPEL: PAPEL_DA_AVALIACAO,
+  notaValida,
+  pedirAvaliacaoNoLink,
+  documentoDaAvaliacao,
+} = require('./reguaDaAvaliacao');
 
 const REGION = 'southamerica-east1';
 
@@ -201,11 +208,30 @@ function makeVerAcompanhamento(db) {
       child.adminUid ? db.doc(`users/${child.adminUid}`).get() : Promise.resolve(null),
     ]);
 
-    return montarAcompanhamento({
+    const payload = montarAcompanhamento({
       child,
       ride: rideSnap.exists ? rideSnap.data() : null,
       motorista: motoristaSnap && motoristaSnap.exists ? motoristaSnap.data() : null,
     });
+    return {
+      ...payload,
+      avaliacao: { pedir: await pedirAvaliacao(db, payload.estado, indicacao.avaliadoEm) },
+    };
+  });
+}
+
+/**
+ * A página pede a avaliação rápida? Só depois da entrega (`reguaDaAvaliacao`).
+ * O interruptor do dono só é lido nesse caso — antes da entrega a resposta é
+ * "não" sem custar leitura, e a página consulta de minuto em minuto.
+ */
+async function pedirAvaliacao(db, estado, avaliadoEm) {
+  if (estado !== 'entregue' || avaliadoEm) return false;
+  const config = await db.doc('platformConfig/app').get();
+  return pedirAvaliacaoNoLink({
+    estado,
+    avaliadoEm,
+    config: config.exists ? config.data() : null,
   });
 }
 
@@ -238,14 +264,16 @@ async function verAcessoTemporario(db, temporario, recusa) {
     db.doc(`children/${acesso.childId}/rides/${hoje}`).get(),
     child.adminUid ? db.doc(`users/${child.adminUid}`).get() : Promise.resolve(null),
   ]);
+  const payload = montarAcompanhamento({
+    child,
+    ride: rideSnap.exists ? rideSnap.data() : null,
+    motorista: motoristaSnap && motoristaSnap.exists ? motoristaSnap.data() : null,
+  });
   return {
-    ...montarAcompanhamento({
-      child,
-      ride: rideSnap.exists ? rideSnap.data() : null,
-      motorista: motoristaSnap && motoristaSnap.exists ? motoristaSnap.data() : null,
-    }),
+    ...payload,
     // Só o que a página precisa para dizer "este link vale até tal hora".
     temporario: { expiraEm: acesso.expiraEm.toMillis() },
+    avaliacao: { pedir: await pedirAvaliacao(db, payload.estado, acesso.avaliadoEm) },
   };
 }
 
@@ -368,7 +396,85 @@ function makeInscreverAvisosDoAcesso(db) {
   });
 }
 
+/**
+ * avaliarAcompanhamento — quem abriu o link avalia o app (03/10/2026).
+ *
+ * Pública como a página: quem prova o direito é o token. ⚠️ É UMA ESCRITA
+ * POR LINK, e é por isso que um endpoint público pode gravar aqui: a marca
+ * `avaliadoEm` vai no documento do próprio acesso, na mesma transação, e a
+ * segunda tentativa é recusada. Sem o segredo não se chega ao documento.
+ *
+ * O que fica em `feedbacks`: o papel (acompanhante ou segundo responsável),
+ * a nota, o comentário, a criança e o motorista — nunca o nome nem o
+ * telefone de quem avaliou.
+ */
+function makeAvaliarAcompanhamento(db) {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.PUBLICO }, async (request) => {
+    const dados = request.data || {};
+    const nota = Number(dados.nota);
+    if (!notaValida(nota)) throw new HttpsError('invalid-argument', 'Escolha uma das carinhas.');
+    const recusa = () => new HttpsError('not-found', 'Este link não vale mais.');
+
+    // Qual documento guarda o acesso, e quem é a pessoa.
+    let ref;
+    let papel;
+    let childId;
+    const temporario = lerTokenTemporario(dados.token);
+    if (temporario) {
+      const achado = await lerAcessoValido(db, temporario);
+      if (!achado) throw recusa();
+      ref = achado.ref;
+      papel = PAPEL_DA_AVALIACAO.SEGUNDO_RESPONSAVEL;
+      childId = achado.acesso.childId;
+    } else {
+      const partes = lerToken(dados.token);
+      if (!partes) throw recusa();
+      ref = db.doc(`altPickups/${partes.endereco}`);
+      const snap = await ref.get();
+      if (!snap.exists || !mesmoHash(snap.data().acessoHash, sha256(partes.segredo))) throw recusa();
+      const veredito = acessoValido({
+        acesso: { dateKey: partes.dateKey, childId: partes.childId },
+        altPickup: snap.data(),
+      });
+      if (!veredito.ok) throw recusa();
+      papel = PAPEL_DA_AVALIACAO.ACOMPANHANTE;
+      childId = partes.childId;
+    }
+
+    const childSnap = await db.doc(`children/${childId}`).get();
+    if (!childSnap.exists) throw recusa();
+    const child = childSnap.data();
+    const rideSnap = await db.doc(`children/${childId}/rides/${chaveDoDia()}`).get();
+    if (estadoDoDia(rideSnap.exists ? rideSnap.data() : null) !== 'entregue') {
+      throw new HttpsError('failed-precondition', 'Dá para avaliar depois da entrega.');
+    }
+
+    const feedbackRef = db.collection('feedbacks').doc();
+    await db.runTransaction(async (tx) => {
+      const acesso = await tx.get(ref);
+      if (!acesso.exists) throw recusa();
+      if (acesso.data().avaliadoEm) {
+        throw new HttpsError('already-exists', 'Este link já avaliou. Obrigado!');
+      }
+      tx.update(ref, { avaliadoEm: FieldValue.serverTimestamp() });
+      tx.set(feedbackRef, {
+        ...documentoDaAvaliacao({
+          papel,
+          nota,
+          comentario: dados.comentario,
+          childId,
+          adminUid: child.adminUid,
+        }),
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    });
+    logger.info(`avaliação pelo link: papel=${papel} nota=${nota}`);
+    return { ok: true };
+  });
+}
+
 module.exports = {
+  makeAvaliarAcompanhamento,
   makeGerarAcessoDoDia,
   makeVerAcompanhamento,
   makeGerarAcessoTemporario,

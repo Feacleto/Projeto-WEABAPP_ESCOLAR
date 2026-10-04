@@ -18,10 +18,22 @@ const TEMPO_DE_SEGURAR = 800;
  * O fundo enche da esquerda enquanto ele segura, para o dedo saber que está
  * funcionando. No teclado, Espaço ou Enter segurado fazem o mesmo.
  *
- * `onComecar` avisa quem está em volta que ele começou a segurar — é a deixa
- * para mostrar quem ainda está pendente ANTES de a rota fechar.
+ * `onComecar` avisa quem está em volta que ele começou a segurar (o clique
+ * do som). `onEncerrar` é o fim do gesto, não necessariamente o fim da rota:
+ * com criança ainda na viagem, quem está em volta abre a confirmação com os
+ * nomes em vez de encerrar (ControleDeRota, 04/10/2026).
+ *
+ * `compacto` (03/10/2026): a forma da FAIXA VERDE do topo da rota — duas
+ * linhas, "Encerrar" e "segure", num botão de 56 px no canto. O mecanismo é o
+ * mesmo; mudou o lugar (o rodapé virou o botão da parada) e por isso o texto
+ * encolheu sem perder o verbo nem a instrução.
  */
-export default function SegurarParaEncerrar({ onEncerrar, onComecar, disabled = false }) {
+export default function SegurarParaEncerrar({
+  onEncerrar,
+  onComecar,
+  disabled = false,
+  compacto = false,
+}) {
   const [segurando, setSegurando] = useState(false);
   const timer = useRef(null);
 
@@ -64,17 +76,31 @@ export default function SegurarParaEncerrar({ onEncerrar, onComecar, disabled = 
       // rótulo dizendo o que fazer, e a rota continua.
       onClick={(e) => e.preventDefault()}
       aria-label="Segure para encerrar a rota"
-      className="relative flex h-[52px] w-full touch-none select-none items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dangerChip bg-card text-[15px] font-bold text-dangerText disabled:opacity-60"
+      className={`relative flex touch-none select-none items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dangerChip bg-card font-bold text-dangerText disabled:opacity-60 ${
+        compacto ? 'h-14 w-[7.5rem] shrink-0 px-2' : 'h-[52px] w-full text-base'
+      }`}
     >
       <span
         aria-hidden="true"
         data-segurando={segurando ? 'true' : 'false'}
         className="rota-enche absolute inset-0 bg-dangerChip"
       />
-      <span className="relative inline-flex items-center gap-2" aria-live="polite">
-        <Square size={14} aria-hidden="true" />
-        {segurando ? 'Continue segurando…' : 'Segure para encerrar a rota'}
-      </span>
+      {compacto ? (
+        <span className="relative flex flex-col items-center leading-tight" aria-live="polite">
+          <span className="inline-flex items-center gap-1.5 text-base">
+            <Square size={14} aria-hidden="true" />
+            Encerrar
+          </span>
+          <span className="text-sm font-semibold">
+            {segurando ? 'continue…' : 'segure'}
+          </span>
+        </span>
+      ) : (
+        <span className="relative inline-flex items-center gap-2" aria-live="polite">
+          <Square size={14} aria-hidden="true" />
+          {segurando ? 'Continue segurando…' : 'Segure para encerrar a rota'}
+        </span>
+      )}
     </button>
   );
 }

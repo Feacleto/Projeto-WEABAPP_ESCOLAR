@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import ReviewNudge from '../../components/feedback/ReviewNudge';
+import AvaliacaoNoInicio from '../../components/feedback/AvaliacaoNoInicio';
+import { MOMENTO, PAPEL_DA_AVALIACAO } from '../../dominio/suporte/avaliacaoRapida.js';
 import {
   MapPin,
   Calendar,
@@ -15,6 +16,7 @@ import {
   School,
   Star,
   UserCheck,
+  FileText,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import Header from '../../components/layout/Header';
@@ -25,7 +27,8 @@ import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import AvisoRapido from '../../components/absences/AvisoRapido';
 import AvisosFuturos from '../../components/absences/AvisosFuturos';
 import RouteTracker from '../../components/dashboard/RouteTracker';
-import { ChildDetailSheet } from '../ChildDetail';
+// Sob demanda: a ficha traz o mapa e o QR code (ver FichaDaCriancaSobDemanda).
+import ChildDetailSheet from '../../components/children/FichaDaCriancaSobDemanda';
 import HorarioDoDia from '../../components/dashboard/HorarioDoDia';
 import { useRide } from '../../hooks/useRide';
 import ChildSwitcher from '../../components/children/ChildSwitcher';
@@ -53,20 +56,53 @@ import { getDateKey } from '../../dominio/rota/horarios';
 import FestiveBadge from '../../components/festive/FestiveBadge';
 import PaiNotebookFAB from '../../components/agenda/PaiNotebookFAB';
 import { GRADIENTE_STATUS } from '../../config/paletaCategorica';
+import { diaSemRota, ehDiaDeAula } from '../../dominio/rota/calendario.js';
+import FaixaSemInternet from '../../components/dashboard/FaixaSemInternet';
 
 
 /**
  * Frase humana que descreve o estado do filho em UMA linha — adapta pra
  * status + horário. Substitui badges/timelines complexos.
+ *
+ * ⚠️ A PRIMEIRA PARTE É O NOME DA ETAPA, E ELE É O MESMO DO APP INTEIRO
+ * (03/10/2026): "Em casa · Na perua · Na escola · Entregue em casa" — os da
+ * tela do motorista, do `RouteTracker` e do link de acompanhar. Eram três
+ * vocabulários ("Tá na perua", "Já chegou na escola", "Voltou"), e a mãe lia
+ * uma palavra no cartão e outra no aviso. Depois do " · " a frase é natural.
+ *
+ * "Chegou em segurança" SAIU: o app sabe que o motorista marcou a entrega,
+ * não sabe nada sobre segurança — e a marca não promete isso (docs/marca.md).
  */
-function statusPhrase(status, routeActive, hour) {
+function statusPhrase(status, routeActive, hour, semRotaHoje = false) {
   if (status === 'onboard' && routeActive) {
-    return hour < 12 ? 'Tá na perua · indo pra escola' : 'Tá na perua · voltando pra casa';
+    return hour < 12 ? 'Na perua · a caminho da escola' : 'Na perua · a caminho de casa';
   }
-  if (status === 'onboard') return 'Tá na perua';
-  if (status === 'atSchool') return 'Já chegou na escola';
-  if (status === 'delivered') return 'Tá em casa · chegou em segurança';
-  return hour < 11 ? 'Tá em casa · ainda não saiu' : 'Tá em casa';
+  if (status === 'onboard') return 'Na perua';
+  if (status === 'atSchool') return 'Na escola';
+  if (status === 'delivered') return 'Entregue em casa';
+  if (semRotaHoje) return 'Em casa';
+  return hour < 11 ? 'Em casa · ainda não embarcou' : 'Em casa';
+}
+
+/**
+ * O próximo dia COM rota depois de `data` — amanhã num dia comum, a segunda
+ * numa sexta, o dia seguinte ao feriado. Teto de 14 dias, o mesmo do aviso
+ * de falta: o calendário nacional nunca passa disso sem aula, e as férias o
+ * app não conhece.
+ */
+function proximoDiaDeAula(data = new Date()) {
+  for (let i = 1; i <= 14; i += 1) {
+    const d = new Date(data.getFullYear(), data.getMonth(), data.getDate() + i);
+    if (ehDiaDeAula(d)) return d;
+  }
+  return new Date(data.getFullYear(), data.getMonth(), data.getDate() + 1);
+}
+
+const DIAS_DA_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+/** "na segunda, 5/10" / "no sábado, 4/10". */
+function diaPorExtenso(d) {
+  const prep = d.getDay() === 0 || d.getDay() === 6 ? 'no' : 'na';
+  return `${prep} ${DIAS_DA_SEMANA[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}`;
 }
 
 function daysUntil(date) {
@@ -91,13 +127,13 @@ export default function PaiDashboard() {
   // seguir o filho selecionado, senão o pai de dois filhos vê a falta de um
   // na tela do outro.
   const { absence } = useAbsenceForChild(todayKey, child?.id);
-  // Amanhã. O pai que descobre na terça à noite que na quarta tem consulta
-  // não tinha o que fazer além de lembrar de avisar na quarta de manhã — que
-  // é o minuto em que ele está mais ocupado.
-  const amanhaKey = getDateKey(
-    new Date(new Date().setDate(new Date().getDate() + 1))
-  );
-  const { absence: absenceAmanha } = useAbsenceForChild(amanhaKey, child?.id);
+  // O PRÓXIMO DIA DE AULA. Era sempre "amanhã" — e numa sexta "amanhã" é
+  // sábado, um dia sem perua. O pai que descobre na terça à noite que na
+  // quarta tem consulta não tinha o que fazer além de lembrar de avisar na
+  // quarta de manhã — que é o minuto em que ele está mais ocupado.
+  const proximaAula = proximoDiaDeAula(new Date());
+  const proximoKey = getDateKey(proximaAula);
+  const { absence: absenceProximo } = useAbsenceForChild(proximoKey, child?.id);
   const { history: absenceHistory } = useChildAbsenceHistory(
     child?.id,
     child?.adminUid
@@ -237,13 +273,31 @@ export default function PaiDashboard() {
   //
   // Lint, build e os 92 testes passavam: nada disso executa o componente.
   const status = getEffectiveStatus(child);
-  const phrase = statusPhrase(status, routeActive, new Date().getHours());
   const estadoDoDia =
     status === 'delivered' || absence?.type === ABSENCE_TYPES.FULL
       ? 'encerrado'
       : routeActive || status === 'onboard'
       ? 'acompanhando'
       : 'esperando';
+  // DIA SEM ROTA (sábado, domingo, feriado nacional — `calendario.js`). Só
+  // vale enquanto nada está acontecendo: se o motorista rodou mesmo assim
+  // ("Rodar mesmo assim", no Início dele), a tela acompanha como num dia
+  // comum — o calendário é presunção, a rota ligada é fato.
+  const motivoSemRota = diaSemRota(agora);
+  const semRotaHoje = !!motivoSemRota && estadoDoDia === 'esperando';
+  const phrase = statusPhrase(status, routeActive, new Date().getHours(), semRotaHoje);
+
+  // O RÓTULO DO CARTÃO E O ANEL — e o anel só pulsa sobre dado VIVO.
+  //
+  // Com a posição velha (STALE: o celular dele sem sinal, a aba fechada), o
+  // cartão seguia dizendo "AO VIVO" com o anel batendo. Animação viva sobre
+  // dado morto é a regra que o design system proíbe pelo nome: o rótulo
+  // passa a dizer de quando é o que se sabe ("Última posição há 7 minutos").
+  const posicaoVelha = routeActive && presence.kind === PRESENCE.STALE;
+  const dadoVivo =
+    estadoDoDia === 'acompanhando' &&
+    routeActive &&
+    (presence.kind === PRESENCE.MOVING || presence.kind === PRESENCE.SEM_MAPA);
 
   const aviso = avisoDoMomento({
     child,
@@ -254,6 +308,55 @@ export default function PaiDashboard() {
     agora,
   });
 
+  const semAtualizacao = aviso?.nivel === 'grave';
+  const rotuloDoCartao = semAtualizacao
+    ? 'Sem atualização'
+    : estadoDoDia === 'acompanhando' && posicaoVelha
+    ? presence.freshness
+      ? presence.freshness.replace(/^atualizado/, 'Última posição')
+      : 'Sem posição da perua'
+    : estadoDoDia === 'acompanhando'
+    ? routeActive
+      ? 'Ao vivo'
+      : 'Hoje'
+    : semRotaHoje
+    ? 'Sem rota hoje'
+    : TARJA[estadoDoDia];
+  const ocorrencia = routeActive && presence.kind === PRESENCE.OCORRENCIA;
+  const primeiro = child.name?.split(' ')[0] || 'seu filho';
+
+  // O CADERNO ABRE PELA MESMA PORTA DA NOTIFICAÇÃO DE RECADO: o estado
+  // `abrirCaderno` da navegação (ver `PaiNotebookFAB`). O painel da perua
+  // manda "veja o recado dele no caderno" — o botão leva até lá.
+  const verRecado = () =>
+    navigate('/pai', { replace: true, state: { abrirCaderno: true } });
+
+  // A AÇÃO DO MOMENTO, na barra de baixo (onde o polegar está). Ela muda com
+  // o dia e SOME quando não há o que fazer — barra que oferece o que não
+  // existe ensina a ignorar a barra.
+  //   esperando     → avisar falta ou quem busca (leva ao bloco de avisar)
+  //   acompanhando  → ver a perua no mapa, SÓ se há perua para ver (MOVING);
+  //                   com o mapa desligado por ele (SEM_MAPA) ou a posição
+  //                   velha, o mapa não mostraria nada — sem barra;
+  //                   com problema na perua, o recado dele
+  //   encerrado / sem rota → nada
+  const acaoDaBarra =
+    estadoDoDia === 'esperando' && !semRotaHoje
+      ? {
+          rotulo: 'Avisar falta ou quem busca',
+          Icone: CalendarX2,
+          onClick: () => {
+            const bloco = document.getElementById('aviso-rapido');
+            bloco?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            bloco?.focus({ preventScroll: true });
+          },
+        }
+      : estadoDoDia === 'acompanhando' && ocorrencia
+      ? { rotulo: 'Ver o recado do motorista', Icone: FileText, onClick: verRecado }
+      : estadoDoDia === 'acompanhando' && routeActive && presence.kind === PRESENCE.MOVING
+      ? { rotulo: 'Ver a perua no mapa', Icone: MapIcon, onClick: () => navigate('/pai/map') }
+      : null;
+
   return (
     <>
       <Header title="Início" marca />
@@ -262,6 +365,9 @@ export default function PaiDashboard() {
         {/* O AVISO VEM ANTES DE TUDO, inclusive do seletor de filho: quando
           * ele existe, é a coisa mais importante da tela. */}
         <TarjaDeAviso aviso={aviso} />
+        {/* Sem rede, o cartão continua mostrando o último estado que chegou
+          * — e nada na tela diria que pode ser velho. */}
+        <FaixaSemInternet />
         {/* O irmão que entrou sozinho pelo WhatsApp dela, com a saída
           * "Não é meu filho" — antes do seletor, porque é sobre ele. */}
         <AvisoDeIrmao />
@@ -288,14 +394,32 @@ export default function PaiDashboard() {
             status={status}
             phrase={phrase}
             estadoDoDia={estadoDoDia}
-            semAtualizacao={aviso?.nivel === 'grave'}
+            rotulo={rotuloDoCartao}
+            aoVivo={dadoVivo && !semAtualizacao}
             absence={absence}
             ride={ride}
-            presence={estadoDoDia === 'esperando' ? presence : null}
+            // No dia sem rota o pé ("a rota de hoje ainda não começou")
+            // mentiria: ela não vai começar.
+            presence={estadoDoDia === 'esperando' && !semRotaHoje ? presence : null}
+            semRota={semRotaHoje ? motivoSemRota : null}
+            proximoDia={diaPorExtenso(proximaAula)}
             onTap={() => setFichaAberta(true)}
             onMapa={() => navigate('/pai/map')}
           />
         </div>
+
+        {/* A FICHA, ESCRITA (03/10/2026). Tocar no cartão sempre abriu a
+          * ficha — e ninguém sabia: cartão não parece botão. É lá que moram
+          * o acesso de 24 horas do segundo responsável, a escola e a saúde. */}
+        <button
+          type="button"
+          onClick={() => setFichaAberta(true)}
+          className="tap flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-base font-semibold text-primary"
+        >
+          <FileText size={20} className="shrink-0" />
+          <span className="truncate">Ficha {artigo(child)} {primeiro}</span>
+          <ChevronRight size={18} className="shrink-0" />
+        </button>
 
         {/* ───────── ESPERANDO — "que horas eu preciso estar na porta?" ───────── */}
         {estadoDoDia === 'esperando' && (
@@ -308,7 +432,9 @@ export default function PaiDashboard() {
               <AvisoRapido
                 child={child}
                 absenceHoje={absence}
-                absenceAmanha={absenceAmanha}
+                absenceProximo={absenceProximo}
+                proximoKey={proximoKey}
+                hojeTemRota={!motivoSemRota}
                 onDetalhes={() => setAbsenceOpen(true)}
                 onOutraPessoa={() => setAltPickupOpen(true)}
                 altPickup={altPickup}
@@ -330,7 +456,7 @@ export default function PaiDashboard() {
           </>
         )}
 
-        {/* O CARTÃO SEPARADO DE "QUEM PEGA HOJE" SAIU.
+        {/* O CARTÃO SEPARADO DE "QUEM BUSCA HOJE" SAIU.
           *
           * Ele virou a quarta pastilha do bloco de avisar, porque "não vai",
           * "eu levo", "eu busco" e "a avó busca" são quatro respostas da MESMA
@@ -361,6 +487,7 @@ export default function PaiDashboard() {
             <PresencePanel
               presence={presence}
               onOpenMap={() => navigate('/pai/map')}
+              onVerRecado={verRecado}
             />
           </div>
         )}
@@ -425,18 +552,23 @@ export default function PaiDashboard() {
                 <span className="block text-sm font-semibold text-text">
                   Faltas
                 </span>
-                <span className="block text-xs text-textMuted">
+                <span className="block text-sm text-textMuted">
                   Meses anteriores e avisar uma nova
                 </span>
               </span>
               <ChevronRight size={18} className="shrink-0 text-textMuted" />
             </button>
 
-            {/* Convite pra avaliar — a resposta não vai pra home, vira
-              * métrica: é o único jeito de saber se o app serve a ponta que
-              * não paga pela ferramenta. Fica no estado calmo, que é quando
-              * ele tem paciência pra responder. */}
-            <ReviewNudge />
+            {/* A AVALIAÇÃO RÁPIDA — depois que o filho chegou em casa, a
+              * partir do 5º dia (dominio/suporte/avaliacaoRapida.js). Só o dono
+              * lê: é o único jeito de saber se o app serve a ponta que não
+              * paga pela ferramenta. */}
+            <AvaliacaoNoInicio
+              papel={PAPEL_DA_AVALIACAO.RESPONSAVEL}
+              momento={MOMENTO.DIA_ENTREGUE}
+              momentoHoje={status === 'delivered'}
+              crianca={child?.name}
+            />
 
             {/* A gaveta "Mais opções" saiu. Ela escondia quatro linhas atrás
               * de um toque, e gaveta esconde justamente de quem tem medo de
@@ -446,7 +578,9 @@ export default function PaiDashboard() {
                 icon={Calendar}
                 title="Histórico de pagamentos"
                 subtitle="Mês a mês"
-                onClick={() => navigate('/pai/finance')}
+                // O EXTRATO, não o Financeiro: a linha promete o histórico, e
+                // o `/pai/finance` abre na mensalidade do mês.
+                onClick={() => navigate('/pai/finance/report')}
               />
               <OptionRow
                 icon={Bell}
@@ -463,14 +597,37 @@ export default function PaiDashboard() {
           </>
         )}
 
-        {/* O CADERNO, como linha e dentro da rolagem.
+        {/* O CADERNO, como linha e dentro da rolagem — EM TODOS OS ESTADOS.
           *
-          * Não aparece no `acompanhando`: ali ela está esperando na porta, e
-          * recado de semana passada não compete com "onde ele está agora".
-          * Nos outros dois estados fica no fim, que é onde vai quem terminou
-          * de ler o que a tela tinha a dizer. */}
-        {estadoDoDia !== 'acompanhando' && <PaiNotebookFAB />}
+          * Ele sumia no `acompanhando` ("recado de semana passada não compete
+          * com onde ele está agora"), e isso quebrava duas coisas justamente
+          * durante a rota: o painel da perua quebrada manda "veja o recado
+          * dele no caderno" e o caderno não existia na tela; e a notificação
+          * de recado (que abre o caderno pelo `state` da navegação) caía num
+          * Início sem caderno para abrir. Fica no fim, que é onde vai quem
+          * terminou de ler — e sobe o tom quando há problema na perua. */}
+        <PaiNotebookFAB destaque={ocorrencia} />
       </div>
+
+      {/* A BARRA DE BAIXO — a ação do momento, onde o polegar descansa.
+        * Mesma forma e lugar da `BarraDoInicio` do motorista: `sticky` no fim
+        * do conteúdo (o `PaiLayout` já reserva o espaço das abas), então o
+        * último cartão nunca fica escondido por baixo dela. */}
+      {acaoDaBarra && (
+        <div
+          className="sticky z-20 mx-3 mt-2 rounded-2xl bg-card p-2 shadow-float"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
+        >
+          <button
+            type="button"
+            onClick={acaoDaBarra.onClick}
+            className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-lg font-extrabold text-white shadow-focus"
+          >
+            <acaoDaBarra.Icone size={24} className="shrink-0" />
+            <span className="truncate">{acaoDaBarra.rotulo}</span>
+          </button>
+        </div>
+      )}
 
       <ChildDetailSheet
         open={fichaAberta}
@@ -532,45 +689,61 @@ export default function PaiDashboard() {
  * porque a pergunta virou "onde ele está agora".
  */
 const TARJA = {
-  esperando: 'hoje',
-  acompanhando: 'ao vivo',
-  encerrado: 'dia encerrado',
+  esperando: 'Hoje',
+  acompanhando: 'Ao vivo',
+  encerrado: 'Dia encerrado',
 };
+
+/** "do Pedro" / "da Lia" — pelo gênero da ficha; sem ele, "de". */
+function artigo(child) {
+  const g = String(child?.gender || '').toLowerCase();
+  if (g.startsWith('f') || g === 'menina') return 'da';
+  if (g.startsWith('m') || g === 'menino') return 'do';
+  return 'de';
+}
 
 function CartaoDeHoje({
   child,
   status,
   phrase,
   estadoDoDia,
+  // O que a tarja diz ("Hoje", "Ao vivo", "Última posição há 7 minutos"…) —
+  // quem decide é o Início, que sabe se o dado é vivo.
+  rotulo,
   // NADA DE ANIMAÇÃO VIVA SOBRE DADO MORTO.
   //
-  // Quando o app não recebe atualização há tempo demais, o anel pulsante e a
-  // palavra "AO VIVO" viram a pior parte da tela: elas afirmam que o app está
-  // sabendo, com movimento, justamente quando ele não sabe. A tarja de aviso
-  // logo acima diz o que aconteceu; aqui o mínimo é PARAR de dizer o
-  // contrário.
-  semAtualizacao = false,
+  // O anel só pulsa quando a posição é fresca. Com o app sem receber nada
+  // (a tarja de aviso grave) ou com a posição velha, o anel e a palavra
+  // "Ao vivo" viravam a pior parte da tela: afirmavam, com movimento, que o
+  // app estava sabendo justamente quando ele não sabia.
+  aoVivo = false,
   absence,
   ride,
   presence,
+  semRota = null,
+  proximoDia = null,
   onTap,
   onMapa,
 }) {
   const gradient = GRADIENTE_STATUS[status] || GRADIENTE_STATUS.home;
-  const isLive = estadoDoDia === 'acompanhando' && !semAtualizacao;
-  const destaqueFrase = isLive ? 'text-[19px]' : 'text-2xl';
+  const destaqueFrase = estadoDoDia === 'acompanhando' ? 'text-[26px]' : 'text-2xl';
+  const [principal, apoio] = phrase.split(' · ');
 
   return (
     <div className="rounded-3xl overflow-hidden shadow-focus bg-card">
       <div className="relative">
       <button
         onClick={onTap}
-        className={`tap w-full text-left bg-gradient-to-br ${gradient} text-white p-6 relative overflow-hidden block`}
+        className={`tap w-full text-left bg-gradient-to-br ${gradient} text-white p-5 relative overflow-hidden block`}
       >
         {/* Ilustração de fundo — muda com o estado da criança */}
         <StateIllustration status={status} />
 
-        <div className="relative flex items-center gap-4">
+        {/* LEITURA EM Z (03/10/2026). No canto de cima, à esquerda, DE QUEM
+          * é o dia: o rosto e o nome em 22px (era 16px, abaixo da hora). Na
+          * diagonal, o estado numa frase grande; a hora vem logo abaixo, no
+          * corpo do cartão. A tarja do momento fica colada ao nome. */}
+        <div className="relative flex items-center gap-3 pr-10">
           <div className="rounded-full overflow-hidden border-2 border-white/30 bg-white/20 backdrop-blur-sm shrink-0">
             <Avatar
               photoURL={child.photoURL}
@@ -580,37 +753,30 @@ function CartaoDeHoje({
               size="lg"
             />
           </div>
-          <div className="flex-1 min-w-0 pr-8">
-            <div className="flex items-center gap-2">
-              {/* A TARJA DIZ QUAL DOS TRÊS MOMENTOS É — ver o cabeçalho. */}
-              <span className="rotulo rounded-full bg-white/25 px-2 py-0.5 text-white">
-                {isLive && (
-                  <span className="relative mr-1 inline-flex align-middle">
-                    <span className="absolute inline-flex h-1.5 w-1.5 rounded-full bg-white opacity-75 animate-ping" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-                  </span>
-                )}
-                {semAtualizacao ? 'sem atualização' : TARJA[estadoDoDia]}
-              </span>
-            </div>
-            {/* O NOME NA PRÓPRIA LINHA (02/10/2026). Ao lado da tarja, com a
-              * foto, o enfeite e a seta na mesma fileira, sobravam 40px em
-              * 360px e "Pedro" virava "PED…" (teste R2). */}
-            <p className="mt-1.5 truncate text-base font-bold text-white">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-[22px] font-bold leading-tight text-white">
               {child.name?.split(' ')[0]}
             </p>
-            <p className={`${destaqueFrase} font-bold leading-tight mt-0.5`}>
-              {phrase.split(' · ')[0]}
-            </p>
-            {phrase.includes(' · ') && (
-              <p className="text-white/85 text-sm mt-1">
-                {phrase.split(' · ')[1]}
-              </p>
-            )}
+            {/* A TARJA DIZ QUAL DOS MOMENTOS É — ver o cabeçalho. 14px, em
+              * caixa normal: era o `.rotulo` de 12px em caixa alta. */}
+            <span className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/25 px-2.5 py-0.5 text-sm font-bold text-white">
+              {aoVivo && (
+                <span className="relative inline-flex shrink-0">
+                  <span className="absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                </span>
+              )}
+              <span className="truncate">{rotulo}</span>
+            </span>
           </div>
-          <ChevronRight size={18} className="shrink-0 text-white/70" />
         </div>
 
+        <p className={`relative mt-4 ${destaqueFrase} font-bold leading-tight`}>
+          {principal}
+        </p>
+        {apoio && (
+          <p className="relative mt-1 text-base text-white/90">{apoio}</p>
+        )}
       </button>
       {/* O ANIVERSÁRIO É DA CRIANÇA, então o enfeite mora no cartão dela. Fica
         * FORA do botão do cartão: ele é um botão também, e botão dentro de
@@ -623,32 +789,39 @@ function CartaoDeHoje({
 
       {/* O CORPO: a hora, que é o motivo de ela abrir o app.
         * `semCasca` porque quem desenha a superfície agora é este cartão. */}
-      <HorarioDoDia child={child} absence={absence} ride={ride} semCasca />
+      <HorarioDoDia
+        child={child}
+        absence={absence}
+        ride={ride}
+        semCasca
+        semRota={semRota}
+        proximoDia={proximoDia}
+      />
 
       {/* O PÉ: onde a perua está, em UMA linha.
         *
         * No `esperando` o painel da perua dizia sempre a mesma coisa — "a
         * rota ainda não começou" — num bloco inteiro. Bloco cujo conteúdo é
         * "nada aconteceu" ensina a pular blocos. A frase cabe numa linha, e
-        * tocar leva pro mapa. */}
+        * tocar leva pro mapa. 16px no título: era 12px. */}
       {presence && (
         <button
           type="button"
           onClick={onMapa}
-          className="tap flex w-full items-center gap-2.5 border-t border-neutro bg-surface px-5 py-3 text-left"
+          className="tap flex min-h-14 w-full items-center gap-2.5 border-t border-neutro bg-surface px-5 py-3 text-left"
         >
-          <MapPin size={15} className="shrink-0 text-textMuted" />
+          <MapPin size={18} className="shrink-0 text-textMuted" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-semibold text-text">
+            <span className="block text-base font-semibold leading-snug text-text">
               {presence.title}
             </span>
             {presence.detail && (
-              <span className="block truncate text-xs text-textMuted">
+              <span className="block text-sm leading-snug text-textMuted">
                 {presence.detail}
               </span>
             )}
           </span>
-          <ChevronRight size={15} className="shrink-0 text-textMuted" />
+          <ChevronRight size={18} className="shrink-0 text-textMuted" />
         </button>
       )}
     </div>
@@ -736,7 +909,7 @@ function AbsenceStatus({ absence, onClick }) {
         <p className="font-bold text-text leading-tight">
           Ausência registrada para hoje
         </p>
-        <p className="text-xs text-textMuted mt-0.5">
+        <p className="text-sm text-textMuted mt-0.5">
           {ABSENCE_LABELS[absence.type]}
         </p>
       </div>
@@ -760,9 +933,9 @@ function AltPickupCTA({ pickup, onClick }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-text leading-tight">
-            Hoje quem pega: {pickup.name}
+            Hoje quem busca: {pickup.name}
           </p>
-          <p className="text-xs text-textMuted mt-0.5 truncate">
+          <p className="text-sm text-textMuted mt-0.5 truncate">
             {pickup.relationship && <span>{pickup.relationship} · </span>}
             {maskPhone(pickup.phone)}
           </p>
@@ -781,10 +954,10 @@ function AltPickupCTA({ pickup, onClick }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-text leading-tight">
-          Outro responsável vai buscar?
+          Quem busca hoje?
         </p>
-        <p className="text-xs text-textMuted mt-0.5">
-          Indique no app pra o motorista saber
+        <p className="text-sm text-textMuted mt-0.5">
+          Outra pessoa vai buscar? Avise o motorista aqui
         </p>
       </div>
       <ChevronRight size={18} className="text-textMuted shrink-0" />
@@ -808,7 +981,7 @@ function AltPickupCTA({ pickup, onClick }) {
  * true, a perua aparecia parada no mapa e o pai lia aquilo como verdade.
  * Agora esse caso tem nome, cor e um telefone à mão.
  */
-function PresencePanel({ presence, onOpenMap }) {
+function PresencePanel({ presence, onOpenMap, onVerRecado }) {
   const cfg = {
     [PRESENCE.NO_ROUTE]: {
       ring: 'border-dashed border-border',
@@ -846,11 +1019,13 @@ function PresencePanel({ presence, onOpenMap }) {
   };
 
   const Icon = cfg.icon;
+  const ocorrencia = presence.kind === PRESENCE.OCORRENCIA;
 
   return (
+    <div className={`rounded-2xl bg-card shadow-sm border ${cfg.ring} overflow-hidden`}>
     <button
       onClick={onOpenMap}
-      className={`tap w-full text-left rounded-2xl bg-card shadow-sm p-4 flex items-center gap-3 border ${cfg.ring}`}
+      className="tap w-full text-left p-4 flex items-center gap-3"
     >
       <div
         className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${cfg.iconBg}`}
@@ -858,16 +1033,16 @@ function PresencePanel({ presence, onOpenMap }) {
         <Icon size={20} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-text leading-tight">{presence.title}</p>
+        <p className="text-base font-bold text-text leading-tight">{presence.title}</p>
         {presence.detail && (
-          <p className="text-xs text-textMuted mt-0.5 leading-snug">
+          <p className="text-sm text-textMuted mt-0.5 leading-snug">
             {presence.detail}
           </p>
         )}
         {/* Selo de frescor: sempre visível quando vem do GPS. É o que separa
-          * "está aqui agora" de "estava aqui em algum momento". */}
+          * "está aqui agora" de "estava aqui em algum momento". 14px. */}
         {presence.freshness && (
-          <p className="text-xs text-textMuted mt-1">
+          <p className="text-sm text-textMuted mt-1">
             {presence.freshness}
             {presence.distanceKm != null &&
               ` · ${formatDistance(presence.distanceKm) || '—'} daqui`}
@@ -876,6 +1051,22 @@ function PresencePanel({ presence, onOpenMap }) {
       </div>
       <ChevronRight size={18} className="text-textMuted shrink-0" />
     </button>
+    {/* "VEJA O RECADO DELE NO CADERNO" — e o caderno a um toque, aqui
+      * mesmo. A frase mandava procurar uma coisa que, durante a rota, nem
+      * estava na tela. */}
+    {ocorrencia && onVerRecado && (
+      <div className="px-4 pb-4">
+        <button
+          type="button"
+          onClick={onVerRecado}
+          className="tap flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dangerBorder bg-dangerSoft px-4 text-base font-bold text-dangerText"
+        >
+          <FileText size={20} />
+          Ver o recado
+        </button>
+      </div>
+    )}
+    </div>
   );
 }
 
@@ -913,7 +1104,7 @@ function PaymentBanner({ payment, onClick }) {
         <p className="font-bold text-text leading-tight">
           Mensalidade · {formatCurrency(payment.amount)}
         </p>
-        <p className="text-xs text-textMuted mt-0.5">{headline}</p>
+        <p className="text-sm text-textMuted mt-0.5">{headline}</p>
       </div>
       <ChevronRight size={18} className="text-textMuted shrink-0" />
     </button>
@@ -936,7 +1127,7 @@ function OptionRow({ icon: Icon, title, subtitle, onClick, disabled }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-text leading-tight">{title}</p>
-        {subtitle && <p className="text-xs text-textMuted mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-textMuted mt-0.5">{subtitle}</p>}
       </div>
       <ChevronRight size={18} className="text-textMuted shrink-0" />
     </button>

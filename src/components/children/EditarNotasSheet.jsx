@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AppSheet from '../common/AppSheet';
 import Button from '../common/Button';
 import { updateChild } from '../../services/childrenService';
+import BotaoDeFalar from '../common/BotaoDeFalar';
 
 /**
  * ESCREVER OU MUDAR AS OBSERVAÇÕES DA PARADA, DEPOIS DO CADASTRO
@@ -43,10 +44,12 @@ export default function EditarNotasSheet({ open, onClose, child }) {
       title="Observações da parada"
       icon={StickyNote}
     >
-      <div className="space-y-3 px-5 pb-6">
+      <div className="space-y-3 pb-1">
         <p className="text-sm text-textBody">
           Aparece na rota, na parada de {String(child?.name || 'esta criança').split(' ')[0]}.
         </p>
+        {/* Falar em vez de escrever (04/10/2026): o ditado se soma ao texto. */}
+        <BotaoDeFalar valor={texto} onChange={setTexto} />
         <textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
@@ -55,7 +58,7 @@ export default function EditarNotasSheet({ open, onClose, child }) {
           placeholder="Digite aqui"
           className="w-full rounded-xl border-2 border-border bg-card p-3 text-base text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-4 focus:ring-accent/25"
         />
-        <p className="text-xs leading-relaxed text-textMuted">
+        <p className="text-sm leading-relaxed text-textMuted">
           Só o que ajuda na rota. Saúde, remédio ou alergia você combina direto
           com a família — este campo não é o lugar de guardar isso.
         </p>

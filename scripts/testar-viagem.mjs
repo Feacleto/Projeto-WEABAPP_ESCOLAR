@@ -20,7 +20,7 @@ import {
   quemFicouSemRegistro,
   previsoesDaViagem,
 } from '../src/dominio/rota/focoDaViagem.js';
-import { getActionForStatus, passoAnterior } from '../src/dominio/rota/acaoDaParada.js';
+import { getActionForStatus, passoAnterior, barraTravada, TRAVA_DA_PARADA_MS } from '../src/dominio/rota/acaoDaParada.js';
 import {
   previsoesParaGravar,
   emLotes,
@@ -318,6 +318,57 @@ console.log('\n═══ A PREVISÃO SÓ GRAVA O QUE MUDOU (escritasDaRota) ═�
   const corpo = fonte.slice(inicio, fonte.indexOf('/**', inicio));
   checar('publicarPrevisoes passa pela régua', true, corpo.includes('previsoesParaGravar('));
   checar('e escreve em lotes de LOTE_MAXIMO', true, corpo.includes('emLotes(escrever, LOTE_MAXIMO)'));
+}
+
+// ─── A TELA DO MOTORISTA: um protagonista por tela (04/10/2026) ───
+{
+  console.log('\n── A trava do botão da parada, o encerrar com pendência e o Início ──');
+  const T0 = 1_000_000;
+  checar('a trava dura 1,2 s', 1200, TRAVA_DA_PARADA_MS);
+  checar('logo depois de marcar, o botão está travado', true, barraTravada(T0, T0));
+  checar('aos 1,1 s ainda travado', true, barraTravada(T0, T0 + 1100));
+  checar('aos 1,2 s solta', false, barraTravada(T0, T0 + 1200));
+  checar('muito depois, solto', false, barraTravada(T0, T0 + 60_000));
+  checar('sem marcação não trava', false, barraTravada(null, T0));
+  checar('relógio para trás não trava', false, barraTravada(T0 + 5000, T0));
+
+  const ler = (c) => readFileSync(new URL('../' + c, import.meta.url), 'utf8');
+  const op = ler('src/components/route/OperacaoDaRota.jsx');
+  checar('a barra da parada passa pela régua da trava', true, op.includes('barraTravada(recemMarcado.em, Date.now())'));
+  checar('o "Desfazer" da barra é o mesmo voltar um passo', true, op.includes('onDesfazer={() => voltarUmPasso(recemMarcado)}'));
+  checar('voltarUmPasso chama voltarPasso', true, /async function voltarUmPasso[\s\S]{0,400}await voltarPasso\(/.test(op));
+  checar('o check da viagem concluída não é limão sobre branco', false, /rota-estala[^"]*bg-accent /.test(op));
+
+  const ctl = ler('src/components/route/ControleDeRota.jsx');
+  checar('segurar até o fim nunca chama encerrar direto', false, ctl.includes('onEncerrar={encerrar}'));
+  checar('os dois "segure" passam pela pergunta da pendência', 2, (ctl.match(/onEncerrar=\{segurouAteOFim\}/g) || []).length);
+  const corpo = ctl.slice(ctl.indexOf('function segurouAteOFim'), ctl.indexOf('async function encerrar'));
+  checar('com pendência, segurar abre a confirmação', true, /if \(pendentes\.length\) \{\s*setConfirmandoFim\(true\);\s*return;/.test(corpo));
+  checar('a confirmação diz "Encerrar mesmo assim" em perigo', true,
+    /variant="danger"[\s\S]{0,300}confirmLabel="Encerrar mesmo assim"[\s\S]{0,80}cancelLabel="Voltar pra rota"/.test(ctl));
+  checar('e lista quem ficou', true, ctl.includes('description={resumoDosPendentes(pendentes)}'));
+  checar('iniciar oferece "Cancelar" por 10 s', true, /duration: 10_000/.test(ctl) && ctl.includes('Cancelar'));
+  checar('cancelar encerra sem lista de pendentes', true, ctl.includes('await stop(uid, [])'));
+  checar('o "Iniciar a rota" da barra tem a sombra colorida', true,
+    /onClick=\{iniciar\}\s*\/\/[\s\S]{0,300}bg-primary text-lg font-extrabold text-white shadow-focus/.test(ctl));
+
+  const resumo = ler('src/components/tio/ResumoDaTurma.jsx');
+  checar('o cartão da turma não disputa a sombra colorida', false, /className="[^"]*shadow-focus/.test(resumo));
+
+  const ini = ler('src/pages/tio/TioDashboard.jsx');
+  const dirigindo = ini.slice(ini.indexOf('DIRIGINDO — a home é a operação'), ini.indexOf('O CARTÃO VERDE — a turma'));
+  checar('dirigindo, o cartão da rota não é botão verde', false, /bg-primary[\s"]/.test(dirigindo));
+  checar('dirigindo, um só caminho para a rota (o da barra)', false, dirigindo.includes('route/now'));
+  const topo = ini.slice(ini.indexOf('CADASTRAR NO TOPO'), ini.indexOf('Cadastrar nova criança'));
+  checar('"Cadastrar nova criança" só antes de a rota se montar', true, topo.includes("estado === 'vazio' && children.length > 0"));
+  const vazio = ini.indexOf('Cadastrar a primeira criança');
+  checar('"Cadastrar a primeira criança" vem antes do "Confirme seu e-mail"', true,
+    vazio > 0 && vazio < ini.indexOf('<ConfirmeSeuEmail'));
+  checar('e é o protagonista (shadow-focus)', true, /className="mt-4 shadow-focus"\s*>\s*Cadastrar a primeira criança/.test(ini));
+
+  const mt = ler('src/components/tio/MeuTransporteSheet.jsx');
+  checar('um nome só: "Problema na perua"', true, mt.includes('titulo="Problema na perua"') && !mt.includes('titulo="Perua quebrou"'));
+  checar('com a rota rodando, leva ao aviso da rota', true, mt.includes("navigate('/tio/route/now', { state: { atalho: 'problema' } })"));
 }
 
 console.log(`\n${'═'.repeat(64)}\n  ${ok} passaram, ${bad} falharam`);

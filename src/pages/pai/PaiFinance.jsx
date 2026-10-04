@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import {
-  MessageCircle,
+  QrCode,
   DollarSign,
   Banknote,
   X,
   FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -37,6 +38,7 @@ import {
   formatCurrency,
   formatMonthLabel,
   emCentavos,
+  diasDeCalendario,
 } from '../../compartilhado/formatters';
 
 export default function PaiFinance() {
@@ -92,6 +94,18 @@ export default function PaiFinance() {
       .sort((a, b) => a._due - b._due);
     return open[0] || null;
   }, [payments]);
+
+  // Quantas mensalidades estão em aberto (a pagar ou atrasadas). Com mais de
+  // uma, o topo continua mostrando SÓ a mais antiga — é ela que o PIX paga — e
+  // diz quantas outras há e o total, que estão na lista logo abaixo.
+  const abertas = useMemo(
+    () =>
+      payments.filter((p) => {
+        const s = computeDisplayStatus(p);
+        return s === 'pending' || s === 'overdue';
+      }).length,
+    [payments]
+  );
 
   // A CHAVE PIX É A DO MOTORISTA DAQUELA COBRANÇA.
   //
@@ -207,7 +221,7 @@ export default function PaiFinance() {
         // WhatsApp. Era exatamente essa conversa paralela que queriamos
         // tirar do caminho.
         toast.success(
-          'Pagamento informado com comprovante! O motorista vai confirmar.',
+          'Pronto: aguardando o motorista confirmar. O comprovante foi junto.',
           { duration: 5000 }
         );
       } else if (method === 'pix') {
@@ -216,18 +230,18 @@ export default function PaiFinance() {
         if (wa) {
           window.open(wa, '_blank', 'noopener,noreferrer');
           toast.success(
-            'Pagamento informado! Envie o comprovante pelo WhatsApp.',
+            'Pronto: aguardando o motorista confirmar. Mande o comprovante no WhatsApp.',
             { duration: 5000 }
           );
         } else {
           toast.success(
-            'Pagamento informado! Envie o comprovante pro motorista.',
+            'Pronto: aguardando o motorista confirmar. Mande o comprovante para ele.',
             { duration: 5000 }
           );
         }
       } else {
         toast.success(
-          'Pagamento em dinheiro informado! O motorista vai confirmar quando estiver com o valor.',
+          'Pronto: aguardando o motorista confirmar que recebeu o dinheiro.',
           { duration: 6000 }
         );
       }
@@ -261,7 +275,7 @@ export default function PaiFinance() {
         actorRole: 'parent',
       });
 
-      toast.success('Marcação removida.');
+      toast.success('Aviso desfeito. A mensalidade voltou para A pagar.');
       setUnclaiming(null);
     } catch (err) {
       console.error(err);
@@ -273,35 +287,51 @@ export default function PaiFinance() {
 
   return (
     <>
+      {/* "Financeiro", o nome da ABA: a tela não pode se chamar outra coisa
+        * que o botão que leva a ela. */}
       <Header
-        title="Pagamentos"
+        title="Financeiro"
         action={
           <button
             onClick={() => navigate('/pai/finance/report')}
-            aria-label="Ver histórico"
-            className="tap inline-flex items-center gap-1 text-primary text-xs font-semibold px-2 py-1"
+            aria-label="Ver histórico de pagamentos"
+            className="tap inline-flex h-12 items-center gap-1.5 rounded-xl px-3 text-base font-semibold text-primary"
           >
-            <FileText size={16} />
+            <FileText size={18} />
             Histórico
           </button>
         }
       />
       <div className="p-4 space-y-4">
-        {/* Pagamento por PIX — copia-e-cola com o valor ja embutido.
-          * Antes era so a chave em texto: o pai selecionava, copiava e
-          * digitava o valor no app do banco, o que gerava o classico
-          * "paguei 32 no lugar de 320". */}
+        {/* O TOPO É A PERGUNTA DELA: QUANTO, DE QUAL MÊS, ATÉ QUANDO.
+          *
+          * Padrão Z: em cima à esquerda o número que importa; embaixo o que
+          * se faz. O primeiro cartão era o bloco do PIX com o valor em letra
+          * miúda e sem vencimento, e "Você tem a pagar" vinha em segundo.
+          *
+          * Pagamento por PIX — copia-e-cola com o valor já embutido. Antes era
+          * só a chave em texto: o pai selecionava, copiava e digitava o valor
+          * no app do banco, o que gerava o clássico "paguei 32 no lugar de
+          * 320".
+          *
+          * "JÁ PAGUEI" MORA NO MESMO CARTÃO, logo abaixo do "Copiar": ela
+          * copia, vai ao banco, volta — e o botão está onde o polegar ficou.
+          * Dispara o mesmo fluxo do "Já paguei" da linha (método → confirmação).
+          *
+          * COM MAIS DE UMA EM ABERTO, o cartão continua sendo de UMA: a mais
+          * antiga, porque o código PIX carrega um valor só e a dívida mais
+          * velha é a que o motorista espera primeiro. Uma linha diz quantas
+          * outras há e o total; elas estão na lista, cada uma com o próprio
+          * "Já paguei". Somar tudo num PIX só seria um valor que não casa com
+          * nenhuma mensalidade na hora de ele dar baixa. */}
         {nextToPay ? (
           <Card className="space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-text">
-                Pagar {formatMonthLabel(nextToPay.month)}
-              </p>
-              <p className="text-xs text-textMuted">
-                {formatCurrency(nextToPay.amount)}
-                {nextToPay.childName ? ` · ${nextToPay.childName}` : ''}
-              </p>
-            </div>
+            <TopoDaMensalidade
+              payment={nextToPay}
+              mostrarFilho={hasMultipleChildren}
+              outras={abertas - 1}
+              total={debtTotal}
+            />
             {/* txid = id do pagamento, e não o mês.
               *
               * O BR Code aceita 25 caracteres alfanuméricos e o id do
@@ -314,31 +344,29 @@ export default function PaiFinance() {
               admin={admin}
               amount={nextToPay.amount}
               txid={nextToPay.id}
-            />
+            >
+              <Button
+                variant="secondary"
+                size="lg"
+                icon={CheckCircle2}
+                onClick={() => setMethodPicker(nextToPay)}
+                className="border-2 border-primary text-primary font-bold"
+              >
+                Já paguei
+              </Button>
+            </PixBlock>
           </Card>
         ) : (
           !loading && (
             <Card>
-              <p className="text-sm font-semibold text-text">
+              <p className="text-base font-semibold text-text">
                 Nada a pagar agora
               </p>
-              <p className="text-xs text-textMuted mt-1">
-                Quando abrir uma mensalidade, o codigo PIX aparece aqui.
+              <p className="text-sm text-textMuted mt-1">
+                Quando abrir uma mensalidade, o código PIX aparece aqui.
               </p>
             </Card>
           )
-        )}
-
-        {/* Total no topo SÓ quando ele deve algo. Estando em dia, um card
-          * escrito "R$ 0,00 em aberto" não informa nada e ainda ocupa o
-          * lugar da lista, que é o que ele veio ver. */}
-        {!loading && debtTotal > 0 && (
-          <Card>
-            <p className="text-xs text-textMuted">Você tem a pagar</p>
-            <p className="text-2xl font-bold leading-none mt-2 text-warning">
-              {formatCurrency(debtTotal)}
-            </p>
-          </Card>
         )}
 
         {loading ? (
@@ -386,8 +414,8 @@ export default function PaiFinance() {
         open={!!claiming}
         title={
           claiming?.method === 'cash'
-            ? 'Confirmar pagamento em dinheiro?'
-            : 'Confirmar pagamento via PIX?'
+            ? 'Você já pagou em dinheiro?'
+            : 'Você já fez o PIX?'
         }
         description={
           claiming ? (
@@ -399,10 +427,15 @@ export default function PaiFinance() {
               referente a {claiming.payment.childName} (
               {formatMonthLabel(claiming.payment.month)}).
               <br />
-              <span className="text-xs block mb-3">
+              <span className="text-sm block mt-1 mb-3">
                 {claiming.method === 'cash'
-                  ? 'O motorista vai confirmar quando estiver com o dinheiro em mãos.'
-                  : 'Confirme só se já fez o PIX. O motorista precisa confirmar depois.'}
+                  ? 'Depois, o mês fica "Aguardando o motorista confirmar" até ele dizer que recebeu.'
+                  : 'Depois, o mês fica "Aguardando o motorista confirmar" até ele ver o PIX.'}
+                {/* A promessa do WhatsApp só quando ela vale: PIX, sem
+                  * comprovante anexado e com telefone do motorista. */}
+                {claiming.method === 'pix' && !receiptFile && adminDoGesto?.phone
+                  ? ' Sem comprovante aqui, abrimos o WhatsApp do motorista para você mandar.'
+                  : ''}
               </span>
               {/* Anexar aqui, e nao numa tela separada: e o momento em que
                 * o pai acabou de pagar e tem o comprovante na mao. */}
@@ -410,7 +443,7 @@ export default function PaiFinance() {
             </>
           ) : null
         }
-        confirmLabel={claiming?.method === 'cash' ? 'Sim, paguei' : 'Sim, paguei'}
+        confirmLabel="Sim, já paguei"
         loading={actionLoading}
         onConfirm={onConfirmClaim}
         onCancel={() => {
@@ -422,9 +455,9 @@ export default function PaiFinance() {
       {/* Desfazer marcação */}
       <ConfirmDialog
         open={!!unclaiming}
-        title="Cancelar marcação?"
-        description="Use se você marcou como pago por engano. O pagamento volta pra Pendente."
-        confirmLabel="Sim, cancelar"
+        title="Desfazer o aviso de pagamento?"
+        description="Use se você tocou em Já paguei por engano. A mensalidade volta para A pagar."
+        confirmLabel="Sim, desfazer"
         variant="danger"
         loading={actionLoading}
         onConfirm={onConfirmUnclaim}
@@ -438,23 +471,23 @@ function renderAction(payment, { onClaim, onUnclaim }) {
   if (payment._display === 'paid') return null;
 
   if (payment._display === 'claimed') {
+    // Desfazer pede confirmação (o diálogo "Desfazer o aviso de
+    // pagamento?"): é um toque que tira do motorista o aviso dela.
     return (
-      <div className="flex flex-col items-end gap-1">
-        <button
-          type="button"
-          onClick={onUnclaim}
-          className="text-xs text-textMuted underline tap"
-        >
-          Cancelar
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onUnclaim}
+        className="tap inline-flex h-12 items-center rounded-xl px-3 text-base font-semibold text-textMuted underline"
+      >
+        Desfazer aviso
+      </button>
     );
   }
 
-  // pending / overdue
+  // pending / overdue — o mesmo nome do botão do topo.
   return (
     <Button size="sm" fullWidth={false} onClick={onClaim}>
-      Paguei
+      Já paguei
     </Button>
   );
 }
@@ -475,13 +508,13 @@ function MethodPickerModal({ payment, hasPix, onPick, onClose }) {
           type="button"
           onClick={onClose}
           aria-label="Fechar"
-          className="absolute right-3 top-3 p-1 text-textMuted tap"
+          className="absolute right-2 top-2 w-12 h-12 rounded-lg bg-neutro flex items-center justify-center text-textMuted tap"
         >
           <X size={20} />
         </button>
 
-        <h3 className="text-lg font-bold text-text">Como você pagou?</h3>
-        <p className="text-sm text-textMuted mt-1 mb-4">
+        <h3 className="text-lg font-bold text-text pr-14">Como você pagou?</h3>
+        <p className="text-base text-textMuted mt-1 mb-4 pr-14">
           {payment.childName} · {formatMonthLabel(payment.month)} ·{' '}
           <strong>{formatCurrency(payment.amount)}</strong>
         </p>
@@ -498,14 +531,16 @@ function MethodPickerModal({ payment, hasPix, onPick, onClose }) {
             }`}
           >
             <div className="w-10 h-10 rounded-lg bg-primaryChip flex items-center justify-center shrink-0">
-              <MessageCircle size={20} className="text-primary" />
+              <QrCode size={20} className="text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text">PIX</p>
-              <p className="text-xs text-textMuted">
+              <p className="text-base font-semibold text-text">PIX</p>
+              {/* Era "Vamos abrir o WhatsApp…", e não valia para quem anexava
+                * o comprovante no passo seguinte. Esta frase vale nos dois. */}
+              <p className="text-sm text-textMuted">
                 {hasPix
-                  ? 'Vamos abrir o WhatsApp pra enviar o comprovante.'
-                  : 'O motorista ainda não cadastrou chave PIX.'}
+                  ? 'No próximo passo você pode anexar o comprovante.'
+                  : 'O motorista ainda não cadastrou a Chave PIX.'}
               </p>
             </div>
           </button>
@@ -519,14 +554,72 @@ function MethodPickerModal({ payment, hasPix, onPick, onClose }) {
               <Banknote size={20} className="text-warning" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text">Dinheiro</p>
-              <p className="text-xs text-textMuted">
+              <p className="text-base font-semibold text-text">Dinheiro</p>
+              <p className="text-sm text-textMuted">
                 Você vai entregar o valor em mãos pro motorista.
               </p>
             </div>
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * O TOPO DO CARTÃO: mês e valor em 24px, o vencimento logo embaixo.
+ *
+ * Atrasada, a linha do vencimento vira âmbar ("venceu há 4 dias") — âmbar é
+ * aviso, algo para atender. A cor fica na frase, nunca no número: valor
+ * colorido se lê como dívida mesmo quando é só a mensalidade (a mesma regra
+ * do PaymentRow).
+ */
+function TopoDaMensalidade({ payment, mostrarFilho, outras, total }) {
+  const atrasada = computeDisplayStatus(payment) === 'overdue';
+  const dias = diasDeCalendario(new Date(), payment.dueDate);
+  const vence =
+    payment.dueDate?.toDate?.() || (payment.dueDate ? new Date(payment.dueDate) : null);
+
+  let quando = '';
+  if (dias != null) {
+    if (dias < 0 || atrasada) {
+      const atraso = Math.max(0, -dias);
+      quando =
+        atraso === 0 ? 'venceu hoje' : atraso === 1 ? 'venceu ontem' : `venceu há ${atraso} dias`;
+    } else if (dias === 0) quando = 'vence hoje';
+    else if (dias === 1) quando = 'vence amanhã';
+    else if (vence) quando = `vence dia ${vence.getDate()}`;
+  }
+
+  return (
+    <div>
+      {mostrarFilho && payment.childName && (
+        <p className="text-base text-textMuted">{payment.childName}</p>
+      )}
+      <p className="text-2xl font-bold leading-tight text-text">
+        <span className="capitalize">{formatMonthLabel(payment.month)}</span>
+        {' · '}
+        <span className="whitespace-nowrap tabular-nums">
+          {formatCurrency(payment.amount)}
+        </span>
+      </p>
+      {quando && (
+        <p
+          className={`mt-1 text-lg font-semibold ${
+            atrasada ? 'text-warningText' : 'text-textMuted'
+          }`}
+        >
+          {quando}
+        </p>
+      )}
+      {outras > 0 && (
+        <p className="mt-2 text-base text-text">
+          {outras === 1
+            ? 'Mais 1 mensalidade em aberto'
+            : `Mais ${outras} mensalidades em aberto`}{' '}
+          na lista abaixo · total {formatCurrency(total)}
+        </p>
+      )}
     </div>
   );
 }

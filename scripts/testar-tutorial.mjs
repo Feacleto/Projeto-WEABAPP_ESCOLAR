@@ -96,6 +96,8 @@ function paradasDe(fonte, nomeDoArray) {
       cita: campo(pedaco, 'cita'),
       title: campo(pedaco, 'title'),
       body: campo(pedaco, 'body'),
+      ctaLabel: campo(pedaco, 'ctaLabel'),
+      ctaPath: campo(pedaco, 'ctaPath'),
       interact: /interact:\s*true/.test(pedaco),
     }));
 }
@@ -250,6 +252,22 @@ destinos.forEach((d) => {
   const declarada = APP.includes(`"${d}"`) || (cauda && APP.includes(`"${cauda}"`));
   checar(`${d} é rota declarada no App.jsx`, true, declarada);
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+bloco('5b · O TOUR DO MOTORISTA TERMINA NO PRIMEIRO GESTO (04/10/2026)');
+/* A última parada é o "Cadastrar a primeira criança" do Início vazio, e o
+   botão final do balão faz o gesto: diz "Cadastrar criança" e abre o
+   cadastro. Antes era "Começar", que só fechava. */
+const ultimaDoTio = TIO[TIO.length - 1] || {};
+checar('a última parada é a primeira criança', 'primeira-crianca', ultimaDoTio.anchor);
+checar('o botão final diz "Cadastrar criança"', 'Cadastrar criança', ultimaDoTio.ctaLabel);
+checar('e abre o cadastro', '/tio/children/new', ultimaDoTio.ctaPath);
+checar('o cadastro é rota declarada no App.jsx', true, APP.includes('"children/new"'));
+checar('o balão desenha o rótulo final do passo', true,
+  /isLast \? step\.ctaLabel \|\| 'Começar'/.test(FONTE_BALAO));
+checar('e navega para o destino final', true, /if \(ctaPath\) navigate\(ctaPath\)/.test(FONTE_BALAO));
+checar('só a última parada tem ctaLabel', [],
+  [...TIO.slice(0, -1), ...PAI].filter((p) => p.ctaLabel).map((p) => p.title));
 
 // ═══════════════════════════════════════════════════════════════════════
 bloco('6 · SONDA POSITIVA — os conferidores reprovam o que deve reprovar');

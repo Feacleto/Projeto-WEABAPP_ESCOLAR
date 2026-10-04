@@ -133,7 +133,7 @@ export default function BottomNav({ items }) {
              * celular precisa ter. */
             onPointerLeave={soltar}
             onPointerCancel={soltar}
-            className={`tap relative z-10 flex flex-col items-center justify-center gap-1 pt-2 pb-2.5 text-xs transition-transform duration-toque ease-freio ${
+            className={`tap relative z-10 flex flex-col items-center justify-center gap-1 pt-2 pb-2.5 text-sm transition-transform duration-toque ease-freio ${
               apertada === i ? 'scale-[0.96]' : 'scale-100'
             }`}
           >

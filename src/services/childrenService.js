@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   query,
@@ -314,6 +315,37 @@ export async function updateChildStatus(id, status) {
  */
 export async function setChildPhotoURL(id, photoURL) {
   await updateDoc(doc(db, 'children', id), { photoURL: photoURL || null });
+}
+
+/**
+ * A INFORMAÇÃO DE SAÚDE — só a RESPONSÁVEL escreve, e o consentimento vai no
+ * MESMO write (`docs/consentimento-saude.md`).
+ *
+ * As rules recusam um campo sem o outro: nota sem data é o dado sem o
+ * registro do consentimento. Por isso não existe "salvar a nota" e "marcar o
+ * consentimento" separados — é uma função só, e ela grava os dois.
+ * `saudeConsentidaEm` é a hora do SERVIDOR: a data do consentimento não pode
+ * ser a do relógio do aparelho.
+ */
+export async function salvarSaudeDaCrianca(id, notas) {
+  const texto = String(notas || '').trim();
+  if (!texto) throw new Error('Escreva a informação antes de salvar.');
+  await updateDoc(doc(db, 'children', id), {
+    saudeNotas: texto,
+    saudeConsentidaEm: serverTimestamp(),
+  });
+}
+
+/**
+ * Apagar é revogar (art. 18, VI, e art. 8º, §5º): os dois campos saem
+ * juntos. Guardar a data de um consentimento sem o dado que ele autorizava
+ * não serve a ninguém — e as rules também recusam.
+ */
+export async function apagarSaudeDaCrianca(id) {
+  await updateDoc(doc(db, 'children', id), {
+    saudeNotas: deleteField(),
+    saudeConsentidaEm: deleteField(),
+  });
 }
 
 export async function deactivateChild(id) {

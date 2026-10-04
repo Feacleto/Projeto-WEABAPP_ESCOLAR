@@ -10,7 +10,8 @@
  *
  * Agora ele mostra os lugares-chave da operação que JÁ ESTÃO lá — cadastrar
  * a primeira criança, "Meu transporte", a aba Financeiro, e o topo do Início, onde a
- * partida vai aparecer. Título curto e uma frase. Pedido do dono: simples,
+ * partida vai aparecer. Desde 04/10/2026 o cadastro da primeira criança é a
+ * ÚLTIMA parada, e o botão final ("Cadastrar criança") abre o cadastro. Título curto e uma frase. Pedido do dono: simples,
  * curto e memorável. O que torna memorável é o balão (ver `InteractiveTour`):
  * uma estradinha com uma parada por passo, e a perua andando nela.
  *
@@ -28,6 +29,8 @@
  *   - interact: true → tocar no próprio elemento avança o passo. Só o tour do
  *               responsável usa; o do motorista avança só por "Próximo".
  *   - title / body
+ *   - ctaLabel / ctaPath: só na ÚLTIMA parada. O botão final do balão diz
+ *               `ctaLabel` e, além de fechar o tour, leva a `ctaPath`.
  *
  * REGRA DE ESCRITA (vale pros dois papéis)
  * Quem lê isso aqui não é usuário de app — é um motorista de 55 anos parado
@@ -52,12 +55,6 @@
 export const ADMIN_TOUR = [
   {
     path: '/tio',
-    anchor: 'primeira-crianca',
-    title: 'Comece pelas crianças',
-    body: 'A escola você cadastra no caminho.',
-  },
-  {
-    path: '/tio',
     anchor: 'turma',
     title: 'Todo o seu ambiente de operação está aqui',
     body: 'Crianças, escolas, horários e avisos.',
@@ -74,6 +71,18 @@ export const ADMIN_TOUR = [
     anchor: 'hero',
     title: 'Aqui você dá a partida',
     body: 'Com a turma pronta, o botão Iniciar rota aparece aqui.',
+  },
+  // ⚠️ A ÚLTIMA PARADA É O PRIMEIRO GESTO (04/10/2026, aprovado pelo dono).
+  // Era a primeira, e o tour terminava longe dela, no "Começar" que só
+  // fechava o balão. Agora ele termina apontando para o botão do Início
+  // vazio, e o botão final do balão FAZ o gesto: abre o cadastro.
+  {
+    path: '/tio',
+    anchor: 'primeira-crianca',
+    title: 'Comece pelas crianças',
+    body: 'A escola você cadastra no caminho.',
+    ctaLabel: 'Cadastrar criança',
+    ctaPath: '/tio/children/new',
   },
 ];
 

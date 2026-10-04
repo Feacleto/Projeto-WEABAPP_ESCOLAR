@@ -59,6 +59,7 @@ export default function FilaTab({ onIr }) {
       faturas: dados.faturas,
       notas: dados.notas,
       chamados: Array.isArray(chamados) ? chamados : [],
+      avaliacoes: dados.avaliacoes || [],
       mes: mesAtual(),
       agora: new Date(),
     });

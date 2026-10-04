@@ -36,15 +36,22 @@ export function crc16(payload) {
  * Remove acentos e caracteres que o padrão não aceita nos campos de texto.
  * Nome e cidade vão em ASCII maiúsculo — banco que recebe acento costuma
  * exibir lixo ou recusar.
+ *
+ * ⚠️ APARA DEPOIS DE CORTAR, não antes. "Felipe Anderson Anacleto Silva"
+ * cortado em 25 vira "FELIPE ANDERSON ANACLETO " — com o espaço do corte no
+ * fim —, e há app de banco que recusa o código inteiro por isso (03/10/2026,
+ * o QR do "Mostrar meu PIX" não pagava). Espaço duplo também vira um só.
  */
 function sanitizeText(value, maxLength) {
   return String(value || '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^A-Za-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
     .trim()
     .toUpperCase()
-    .slice(0, maxLength);
+    .slice(0, maxLength)
+    .trim();
 }
 
 

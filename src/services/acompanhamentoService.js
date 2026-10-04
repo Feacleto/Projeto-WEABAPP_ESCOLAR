@@ -80,3 +80,18 @@ export async function inscreverAvisosDoAcesso(token, fcmToken) {
   exigirCloud('ligar os avisos');
   await httpsCallable(functions, 'inscreverAvisosDoAcesso')({ token, fcmToken });
 }
+
+/**
+ * A AVALIAÇÃO RÁPIDA DE QUEM ABRIU O LINK (03/10/2026). Uma por link, e só
+ * depois da entrega — quem decide é o servidor (`reguaDaAvaliacao.js`).
+ */
+export async function avaliarAcompanhamento(token, { nota, comentario }) {
+  exigirCloud('enviar a avaliação');
+  try {
+    await httpsCallable(functions, 'avaliarAcompanhamento')({ token, nota, comentario });
+  } catch (err) {
+    // Já avaliou por este link: para quem está na tela, deu certo.
+    if (String(err?.code || '').includes('already-exists')) return;
+    throw new Error('Não deu para enviar agora. Tente de novo.', { cause: err });
+  }
+}

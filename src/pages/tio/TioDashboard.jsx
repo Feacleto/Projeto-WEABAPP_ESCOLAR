@@ -16,7 +16,8 @@ import {
   Bus,
 } from 'lucide-react';
 import PedidosDeAcesso from '../../components/tio/PedidosDeAcesso';
-import ReviewNudge from '../../components/feedback/ReviewNudge';
+import AvaliacaoNoInicio from '../../components/feedback/AvaliacaoNoInicio';
+import { MOMENTO, PAPEL_DA_AVALIACAO, aconteceuHoje } from '../../dominio/suporte/avaliacaoRapida.js';
 import Header from '../../components/layout/Header';
 import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
@@ -52,7 +53,8 @@ import {
 } from '../../services/routeStatusService';
 import { publicarOrdemDoDia } from '../../services/ridesService';
 import { greet } from '../../marca/greeting';
-import { ChildDetailSheet } from '../ChildDetail';
+// Sob demanda: a ficha traz o mapa e o QR code (ver FichaDaCriancaSobDemanda).
+import ChildDetailSheet from '../../components/children/FichaDaCriancaSobDemanda';
 import MeuTransporteSheet from '../../components/tio/MeuTransporteSheet';
 import { useRelogio } from '../../hooks/useRelogio';
 import FestiveBadge from '../../components/festive/FestiveBadge';
@@ -73,9 +75,10 @@ import FestiveBadge from '../../components/festive/FestiveBadge';
  * TRÊS CARAS, E O RELÓGIO ESCOLHE
  *
  *   ANTES     — falta menos de uma hora pra próxima viagem. Um botão domina a
- *               tela: "iniciar rota". Embaixo, quem ele vai pegar.
- *   DIRIGINDO — a home VIRA a operação. O cadastro some inteiro: ele está com
- *               o veículo em movimento e não vai cadastrar escola.
+ *               tela: "Iniciar a rota", na barra de baixo (03/10/2026). No
+ *               meio, quem ele vai pegar.
+ *   DIRIGINDO — a operação mora na aba Rota; aqui fica o cartão do que falta
+ *               e o "Abrir a rota" na barra de baixo.
  *   ENTRE     — o intervalo entre as viagens é a única janela em que ele
  *               resolve pendência. Então é a pendência que aparece.
  *
@@ -343,6 +346,18 @@ export default function TioDashboard() {
       ? `A primeira parada é às ${hora}${quando}.`
       : `A saída da escola é às ${hora}${quando}.`;
   })();
+  // HÁ VIAGEM PELA FRENTE HOJE? É o que decide se "Iniciar a rota" é a ação
+  // principal (barra de baixo, cheia) ou a secundária (contorno no cartão).
+  const temViagem = !!bloco && pendentes.length > 0;
+  // O DIA ACABOU: havia viagem hoje e ninguém espera mais a perua.
+  const diaConcluido = estado === 'entre' && !temViagem && blocos.length > 0;
+
+  function iniciarEAbrir() {
+    publicarOrdem();
+    // A ROTA TEM TELA PRÓPRIA (03/10/2026): começou, vai para ela.
+    navigate('/tio/route/now');
+  }
+
   const rotuloDaTurma =
     bloco && pendentes.length
       ? `Próxima viagem · ${bloco.direcao === 'ida' ? 'ida' : 'volta'}`
@@ -383,46 +398,30 @@ export default function TioDashboard() {
     <>
       <Header title="Início" marca />
 
-      {/* INICIAR / ENCERRAR ROTA — FIXO NO TOPO, SEMPRE.
+      {/* ⚠️ A AÇÃO DA ROTA MORA EMBAIXO (03/10/2026, auditoria de UX).
         *
-        * Ele estava só no estado "antes de sair", que aparece na última hora
-        * antes da viagem. Fora dessa janela — e é a maior parte do dia — não
-        * havia botão nenhum: o motorista que quisesse ligar o rastreamento
-        * mais cedo, ou religar depois de fechar a aba sem querer, não tinha
-        * por onde.
+        * Ela já foi uma barra FIXA NO TOPO — com a rota ligada, ali morava o
+        * "segure para encerrar". O topo é onde o olho lê "onde estou", não
+        * onde o polegar alcança. Agora a ação principal fica numa barra presa
+        * acima das abas (`BarraDoInicio`, no fim desta tela): "Iniciar a
+        * rota" antes de sair, "Abrir a rota" com ela rodando.
         *
-        * Fixo porque a lista da viagem rola, e o botão de encerrar não pode
-        * rolar junto: encerrar é o que ele faz com a perua parada, olhando
-        * rápido, e procurar botão que fugiu pra fora da tela é o oposto disso.
+        * ⚠️ E O ENCERRAR SAIU DO INÍCIO. A rota tem aba própria, e a tela
+        * dela tem o encerrar na faixa verde. Dois "encerrar" em duas telas
+        * faziam ele perguntar qual era o de verdade.
         *
-        * `top` acompanha o cabeçalho e o recorte do aparelho: no iPhone
-        * instalado como app o `env()` vale a faixa do sistema, e sem somar
-        * isso a barra ficaria por baixo do relógio e da bateria.
-        *
-        * ⚠️ MAS NÃO COM A TURMA VAZIA (02/10/2026). Sem criança com horário
-        * não há rota para iniciar, e o maior botão da tela era "INICIAR ROTA"
-        * acima de "Cadastrar a primeira criança" — o próximo passo de verdade
-        * ficava em segundo plano, e a chave "as famílias veem sua perua"
-        * falava de famílias que ainda não existem. Achado do teste no
-        * navegador (M1). Enquanto carrega também não aparece: piscar o botão
-        * para depois tirá-lo é pior que chegar um instante depois. */}
-      {/* ⚠️ PARADO, O BOTÃO MORA NO CARTÃO VERDE (03/10/2026, design system).
-        * A barra fixa continua só com a rota LIGADA: é ali que o "Encerrar"
-        * não pode rolar para fora da vista. Parado, o botão é o primeiro
-        * bloco da tela, logo abaixo da saudação — sempre à vista ao abrir o
-        * app, que era o que a barra fixa garantia. */}
+        * O que fica aqui, com a rota rodando, é o controle OCULTO: ele não
+        * desenha nada e só religa o GPS se o app recarregou no meio da rota
+        * e abriu direto no Início — sem ele, o GPS só voltaria quando ele
+        * tocasse na aba Rota. */}
       {estado === 'dirigindo' && (
-        <div
-          className="sticky z-10 bg-bg px-5 pt-3 pb-3 border-b border-neutro"
-          style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
-        >
-          <ControleDeRota
-            direcao={bloco?.direcao}
-            alvos={alvosDaRota}
-            saida={saidaDaViagem(bloco)}
-            pendentes={pendentesDaViagem}
-          />
-        </div>
+        <ControleDeRota
+          oculto
+          direcao={bloco?.direcao}
+          alvos={alvosDaRota}
+          saida={saidaDaViagem(bloco)}
+          pendentes={pendentesDaViagem}
+        />
       )}
 
       <div className="pb-4">
@@ -451,6 +450,38 @@ export default function TioDashboard() {
               </h1>
               <FestiveBadge />
             </div>
+            {/* ⚠️ TURMA VAZIA: O CADASTRO VEM LOGO DEPOIS DA SAUDAÇÃO
+              * (04/10/2026). Ele morava embaixo do "Confirme seu e-mail" e dos
+              * avisos do nível, e no celular pequeno caía abaixo da dobra —
+              * a única ação da tela, escondida. É o protagonista: verde cheio
+              * e a sombra colorida da tela. */}
+            {estado === 'vazio' && children.length === 0 && (
+              <div
+                data-tour="hero"
+                className="mt-4 bg-card shadow-rest rounded-2xl p-5 text-center"
+              >
+                <p className="font-bold text-text">
+                  Sua turma ainda está vazia
+                </p>
+                <p className="text-sm text-textMuted mt-1 max-w-xs mx-auto">
+                  Cadastre as crianças e a hora que você combinou com cada
+                  família. A rota se monta a partir disso.
+                </p>
+                {/* COMEÇA PELA CRIANÇA, NÃO PELA ESCOLA (02/10/2026). Era
+                  * "Começar pela escola", porque a criança dependia de uma
+                  * escola já cadastrada — e quem começava pela criança perdia
+                  * o que tinha digitado ao sair para criar a escola. Agora a
+                  * escola nasce num popup dentro do cadastro da criança. */}
+                <Button
+                  data-tour="primeira-crianca"
+                  onClick={() => navigate('/tio/children/new')}
+                  icon={UserPlus}
+                  className="mt-4 shadow-focus"
+                >
+                  Cadastrar a primeira criança
+                </Button>
+              </div>
+            )}
             {/* Lembrete, nunca portão: some sozinho depois de confirmar. */}
             <ConfirmeSeuEmail className="mt-4" />
             {/* OS NÍVEIS (docs/niveis.md): o aviso único do Bronze e o
@@ -461,13 +492,14 @@ export default function TioDashboard() {
           </div>
         )}
 
-        {/* CADASTRAR SEMPRE À MÃO, NO TOPO (03/10/2026, pedido do dono). A
-          * turma cresce o ano inteiro — a família nova chega no meio da
-          * semana, no portão —, e o caminho para cadastrar morava dentro de
-          * "Meu transporte" ou só aparecia com a turma vazia. Com a turma
-          * vazia ele não aparece aqui: o cartão "Cadastrar a primeira
-          * criança" já é o centro da tela. */}
-        {children.length > 0 && (
+        {/* CADASTRAR NO TOPO SÓ ENQUANTO A ROTA NÃO SE MONTOU (04/10/2026).
+          * Ele era fixo aqui em todo estado (03/10/2026), e antes e entre as
+          * viagens competia com o "Iniciar a rota" — dois botões grandes
+          * pedindo o mesmo polegar. Com a turma de pé, cadastrar continua a
+          * um toque pela Minha turma (Meu transporte); aqui ele fica só
+          * quando há criança e ainda não há rota (falta o horário). Nunca
+          * dirigindo. */}
+        {estado === 'vazio' && children.length > 0 && (
           <div className="px-5 pt-4">
             <button
               type="button"
@@ -485,26 +517,29 @@ export default function TioDashboard() {
           <>
             {/* A OPERAÇÃO MORA NA ABA ROTA (03/10/2026). Aqui fica só o que
               * leva até ela — duas telas iguais faziam ele perguntar qual era
-              * a de verdade. */}
+              * a de verdade. O cartão é INFORMAÇÃO (o que falta nesta
+              * viagem); o toque é o "Abrir a rota" da barra de baixo. */}
+            {/* ⚠️ UM SÓ VERDE CHEIO (04/10/2026): o cartão também era verde e
+              * também abria a rota — dois botões iguais para o mesmo lugar.
+              * Virou só leitura (branco, sem toque); quem leva é o "Abrir a
+              * rota" da barra de baixo. */}
             <div className="px-5 pt-5">
-              <button
-                type="button"
-                onClick={() => navigate('/tio/route/now')}
-                className="tap flex w-full items-center gap-3 rounded-2xl bg-primary p-4 text-left text-white shadow-focus"
+              <div
+                data-cartao="rota-em-andamento"
+                className="flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-rest"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                  <Bus size={22} />
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primary">
+                  <Bus size={24} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-base font-bold">Rota em andamento</span>
-                  <span className="block text-sm text-white/85">
+                  <span className="block text-lg font-bold text-text">Rota em andamento</span>
+                  <span className="block text-base text-textBody">
                     {pendentesDaViagem.length
                       ? `${pendentesDaViagem.length} ${pendentesDaViagem.length === 1 ? 'criança ainda tem' : 'crianças ainda têm'} um passo nesta viagem`
                       : 'Nada pendente nesta viagem'}
                   </span>
                 </span>
-                <span className="shrink-0 text-sm font-bold">Abrir</span>
-              </button>
+              </div>
             </div>
             {/* O CADASTRO DEIXA DE SUMIR DURANTE A ROTA.
               * Ele sumia inteiro neste estado — e a rota é justamente quando o
@@ -533,7 +568,8 @@ export default function TioDashboard() {
               criancas={children.length}
               escolas={escolas.length}
               viagem={viagemDoCartao}
-              linha={viagemDoCartao ? linhaDaViagem : linhaDaTurma}
+              concluido={diaConcluido}
+              linha={viagemDoCartao ? linhaDaViagem : diaConcluido ? null : linhaDaTurma}
             >
               {estado === 'vazio' ? (
                 <button
@@ -541,17 +577,31 @@ export default function TioDashboard() {
                   onClick={() => navigate('/tio/horarios')}
                   className="tap flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-onAccent"
                 >
-                  Definir os horários
+                  Definir os horários da rota
                   <ArrowRight size={20} />
                 </button>
-              ) : (
+              ) : temViagem ? (
+                /* Com viagem pela frente, o cartão é INFORMAÇÃO (quem vai, que
+                 * horas) e guarda só a chave do mapa — a decisão que se toma
+                 * antes de sair. O botão de iniciar desceu para a barra. */
                 <ControleDeRota
                   destaque
-                  onIniciar={() => {
-                    publicarOrdem();
-                    // A ROTA TEM TELA PRÓPRIA (03/10/2026): começou, vai para ela.
-                    navigate('/tio/route/now');
-                  }}
+                  parte="chave"
+                  direcao={bloco?.direcao}
+                  alvos={alvosDaRota}
+                  saida={saidaDaViagem(bloco)}
+                  pendentes={pendentesDaViagem}
+                />
+              ) : (
+                /* ⚠️ DEPOIS DA ÚLTIMA VIAGEM, "INICIAR" NÃO É A AÇÃO DO
+                 * MOMENTO. O botão cheio e grande dizia "vá rodar" a quem
+                 * acabou de entregar todo mundo. Ele continua — passeio,
+                 * reposição, a viagem que não estava no horário —, mas em
+                 * contorno, dentro do cartão. */
+                <ControleDeRota
+                  destaque
+                  secundario
+                  onIniciar={iniciarEAbrir}
                   direcao={bloco?.direcao}
                   alvos={alvosDaRota}
                   saida={saidaDaViagem(bloco)}
@@ -610,7 +660,14 @@ export default function TioDashboard() {
           <div className="px-5 pt-4 space-y-4">
 
 
-            <ReviewNudge />
+            {/* A AVALIAÇÃO RÁPIDA — depois de encerrar a rota de hoje, e nunca
+              * com ela rodando (dominio/suporte/avaliacaoRapida.js). */}
+            <AvaliacaoNoInicio
+              papel={PAPEL_DA_AVALIACAO.MOTORISTA}
+              momento={MOMENTO.FIM_DA_ROTA}
+              momentoHoje={aconteceuHoje(profile?.ultimaRota)}
+              rotaRodando={rotaAtiva}
+            />
 
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
           </div>
@@ -618,36 +675,7 @@ export default function TioDashboard() {
 
         {/* ─────────── VAZIO — ainda não há de onde tirar rota ─────────── */}
         {estado === 'vazio' && children.length === 0 && (
-          <div className="px-5 pt-4 space-y-4">
-            <div
-              data-tour="hero"
-              className="bg-card shadow-rest rounded-2xl p-6 text-center"
-            >
-              <div className="w-14 h-14 rounded-xl bg-primaryChip text-primary flex items-center justify-center mx-auto">
-                <Users size={26} />
-              </div>
-              <p className="font-bold text-text mt-3">
-                Sua turma ainda está vazia
-              </p>
-              <p className="text-sm text-textMuted mt-1 max-w-xs mx-auto">
-                Cadastre as crianças e a hora que você combinou com cada
-                família. A rota se monta a partir disso.
-              </p>
-              {/* COMEÇA PELA CRIANÇA, NÃO PELA ESCOLA (02/10/2026). Era
-                * "Começar pela escola", porque a criança dependia de uma escola
-                * já cadastrada — e quem começava pela criança perdia o que
-                * tinha digitado ao sair para criar a escola. Agora a escola
-                * nasce num popup dentro do cadastro da criança. */}
-              <Button
-                data-tour="primeira-crianca"
-                onClick={() => navigate('/tio/children/new')}
-                icon={UserPlus}
-                className="mt-4"
-              >
-                Cadastrar a primeira criança
-              </Button>
-            </div>
-
+          <div className="px-5 pt-4">
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
           </div>
         )}
@@ -657,6 +685,33 @@ export default function TioDashboard() {
           </div>
         )}
       </div>
+
+      {/* A BARRA DE BAIXO — a ação principal, onde o polegar descansa. */}
+      {estado === 'dirigindo' && (
+        <BarraDoInicio>
+          <button
+            type="button"
+            onClick={() => navigate('/tio/route/now')}
+            className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-lg font-extrabold text-white shadow-focus"
+          >
+            <Bus size={24} />
+            Abrir a rota
+            <ArrowRight size={22} />
+          </button>
+        </BarraDoInicio>
+      )}
+      {(estado === 'antes' || estado === 'entre') && temViagem && (
+        <BarraDoInicio>
+          <ControleDeRota
+            parte="botao"
+            onIniciar={iniciarEAbrir}
+            direcao={bloco?.direcao}
+            alvos={alvosDaRota}
+            saida={saidaDaViagem(bloco)}
+            pendentes={pendentesDaViagem}
+          />
+        </BarraDoInicio>
+      )}
 
       {/* A ficha da criança, por cima do painel — mesma folha que o pai usa.
         * `childId` só existe quando alguém tocou numa criança, e é o que
@@ -679,6 +734,7 @@ export default function TioDashboard() {
         criancas={children.length}
         escolas={escolas.length}
         semHorario={semHorario.length}
+        rotaRodando={rotaAtiva}
       />
 
       <SchoolBroadcastSheet
@@ -706,8 +762,8 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
   if (!bloco?.paradas?.length) return null;
   return (
     <section className="space-y-2">
-      <p className="rotulo px-1">
-        {bloco.direcao === 'ida' ? 'quem você pega' : 'quem você leva pra casa'}
+      <p className="px-1 text-sm font-semibold text-textMuted">
+        {bloco.direcao === 'ida' ? 'Quem você pega' : 'Quem você leva pra casa'}
       </p>
 
       {bloco.direcao === 'volta' && bloco.escolas.length > 0 && (
@@ -731,12 +787,12 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
             type="button"
             key={p.child.id}
             onClick={() => onAbrirFicha?.(p.child.id)}
-            className={`tap w-full text-left rounded-xl px-3 py-2 flex items-center gap-2.5 border ${
+            className={`tap w-full min-h-14 text-left rounded-xl px-3 py-2 flex items-center gap-2.5 border ${
               fora ? 'bg-sunken border-border opacity-70' : 'bg-card border-border'
             }`}
           >
             <span
-              className={`font-mono text-xs tabular-nums w-11 shrink-0 ${
+              className={`font-mono text-base tabular-nums w-14 shrink-0 ${
                 fora ? 'text-textMuted' : 'text-text font-semibold'
               }`}
             >
@@ -751,14 +807,14 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
             />
             <span className="flex-1 min-w-0">
               <span
-                className={`block text-sm font-semibold truncate ${
+                className={`block text-base font-semibold truncate ${
                   fora ? 'text-textMuted line-through' : 'text-text'
                 }`}
               >
                 {p.child.name}
               </span>
               {fora && (
-                <span className="block text-xs text-warningText font-medium">
+                <span className="block text-sm text-warningText font-medium">
                   {ROTULO_ESTADO[p.estado] || 'Fora hoje'}
                 </span>
               )}
@@ -777,12 +833,12 @@ function ListaDaViagem({ bloco, onAbrirFicha }) {
 
 function ParadaEscola({ escolas }) {
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-escolaSoft border border-escolaBorder">
-      <span className="rotulo w-11 shrink-0 text-escola">
+    <div className="flex min-h-12 items-center gap-2.5 px-3 py-2 rounded-xl bg-escolaSoft border border-escolaBorder">
+      <span className="w-14 shrink-0 text-sm font-semibold text-escola">
         depois
       </span>
-      <School size={15} className="text-escola shrink-0" />
-      <span className="flex-1 min-w-0 text-sm font-semibold text-escola truncate">
+      <School size={18} className="text-escola shrink-0" />
+      <span className="flex-1 min-w-0 text-base font-semibold text-escola truncate">
         {escolas.map((e) => e.nome).join(' · ')}
       </span>
     </div>
@@ -828,7 +884,8 @@ function ParaResolver({
     itens.push({
       icon: Clock,
       titulo: `${semHorario} ${semHorario === 1 ? 'criança sem horário' : 'crianças sem horário'}`,
-      sub: 'Sem horário, a criança não entra na rota',
+      // O nome da tela é o mesmo em todo lugar: "Horários da rota".
+      sub: 'Abra Horários da rota: sem horário, ela não entra na rota',
       onClick: onHorarios,
     });
   }
@@ -853,8 +910,8 @@ function ParaResolver({
 
   return (
     <section className={`space-y-2.5 ${className}`}>
-      <p className="rotulo flex items-center justify-between px-1">
-        <span>para resolver</span>
+      <p className="flex items-center justify-between px-1 text-sm font-semibold text-textMuted">
+        <span>Para resolver</span>
         <span className="tabular-nums">{total}</span>
       </p>
       <PedidosDeAcesso pedidos={pedidos} criancas={criancas} />
@@ -863,14 +920,14 @@ function ParaResolver({
           key={i.titulo}
           type="button"
           onClick={i.onClick}
-          className="tap flex w-full items-center gap-3 rounded-2xl border border-warningBorder bg-warningSoft p-3.5 text-left"
+          className="tap flex min-h-16 w-full items-center gap-3 rounded-2xl border border-warningBorder bg-warningSoft p-3.5 text-left"
         >
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warningChip text-warningText">
             <i.icon size={19} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-text">{i.titulo}</span>
-            <span className="block text-xs text-textBody">{i.sub}</span>
+            <span className="block text-base font-bold leading-snug text-text">{i.titulo}</span>
+            <span className="block text-sm text-textBody">{i.sub}</span>
           </span>
           <ChevronRight size={18} className="shrink-0 text-warningText" />
         </button>
@@ -904,23 +961,23 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
       type="button"
       data-tour="turma"
       onClick={onClick}
-      className="tap w-full text-left bg-card border border-border rounded-xl px-3 py-3 flex items-center gap-3"
+      className="tap w-full min-h-14 text-left bg-card border border-border rounded-xl px-3 py-3 flex items-center gap-3"
     >
-      <div className="w-8 h-8 rounded-lg bg-primaryChip text-primary flex items-center justify-center shrink-0">
-        <LayoutGrid size={16} />
+      <div className="w-10 h-10 rounded-lg bg-primaryChip text-primary flex items-center justify-center shrink-0">
+        <LayoutGrid size={20} />
       </div>
       <span className="flex-1 min-w-0">
-        <span className="block text-sm font-semibold text-text truncate">
+        <span className="block text-base font-semibold text-text truncate">
           Meu transporte
         </span>
         {/* O subtítulo MUDA durante a rota, e é a única coisa que muda. Fora
           * de rota ele é um sumário; dirigindo, responde a pergunta do
           * momento — e é a resposta que o motorista não tinha: sim, dá pra
           * avisar a escola sem encerrar a rota. */}
-        <span className="block text-xs text-textMuted truncate">
+        <span className="block text-sm text-textMuted truncate">
           {dirigindo
             ? 'Dá pra avisar a escola aqui mesmo'
-            : 'Turma, escolas, rota padrão, avisos'}
+            : 'Turma, escolas, horários da rota, avisos'}
         </span>
       </span>
       <ChevronRight size={16} className="text-textMuted shrink-0" />
@@ -928,4 +985,24 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
   );
 }
 
+/**
+ * A BARRA DE BAIXO DO INÍCIO — a ação principal presa acima das abas.
+ *
+ * Mesma forma e mesmo lugar do rodapé da tela da rota (o botão da parada):
+ * a ação do momento mora onde o polegar descansa, e a tela de cima fica para
+ * LER — onde estou, quem vai, que horas.
+ *
+ * `sticky` no fim do conteúdo, não `fixed`: rolando até o fim ela pousa no
+ * lugar dela, e o último cartão nunca fica escondido por baixo.
+ */
+function BarraDoInicio({ children }) {
+  return (
+    <div
+      className="sticky z-20 mx-3 mt-2 rounded-2xl bg-card p-2 shadow-float"
+      style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
+    >
+      {children}
+    </div>
+  );
+}
 

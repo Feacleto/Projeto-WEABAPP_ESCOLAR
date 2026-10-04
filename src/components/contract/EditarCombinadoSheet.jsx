@@ -15,7 +15,7 @@ import {
 } from '../../dominio/cobranca/contratoDaFamilia.js';
 
 /**
- * MUDAR O COMBINADO — mensalidade, vencimento e prazo do contrato
+ * EDITAR O COMBINADO — mensalidade, vencimento e prazo do contrato
  * (02/10/2026). Não existia: o valor só era escrito no cadastro, e a família
  * que renegociava obrigava o motorista a apagar a criança e refazer.
  *
@@ -79,11 +79,11 @@ export default function EditarCombinadoSheet({ open, onClose, child, contratos }
     <AppSheet
       open={open}
       onClose={salvando ? () => {} : onClose}
-      title="Mudar o combinado"
+      title="Editar mensalidade e contrato"
       icon={FileSignature}
       size="full"
     >
-      <div className="space-y-5 px-5 pb-6">
+      <div className="space-y-5 pb-1">
         <section className="space-y-3">
           <CampoDeValor
             label="Mensalidade"
@@ -91,7 +91,7 @@ export default function EditarCombinadoSheet({ open, onClose, child, contratos }
             onChange={setFee}
             error={erros.fee}
           />
-          <Input
+          <Input semSalvar
             label="Dia do vencimento"
             icon={Calendar}
             inputMode="numeric"
@@ -104,7 +104,7 @@ export default function EditarCombinadoSheet({ open, onClose, child, contratos }
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-bold text-text">Prazo do contrato</h3>
+          <h3 className="text-base font-bold text-text">Prazo do contrato</h3>
           <CampoVigencia
             inicio={inicio}
             fim={fim}

@@ -24,9 +24,10 @@ import { formatDateTime } from '../../compartilhado/formatters';
  * encontrava um vazio dizendo "use o botão na tela de crianças", ou seja: a
  * tela do assunto mandava a pessoa embora pra fazer o assunto.
  *
- * O botão agora mora nas duas. Não é duplicação de estado — `TioAgendaFAB` é
- * o mesmo componente, gravando na mesma coleção, e o histórico embaixo é a
- * lista dele. Mandar um aviso e ver o que foi mandado viraram um lugar só.
+ * O botão passou a morar aqui, e desde 03/10/2026 SÓ aqui: na "Minha turma"
+ * o canto de baixo à direita é de "Cadastrar criança", a ação principal
+ * daquela tela. Mandar um aviso e ver o que foi mandado são um lugar só, e é
+ * para cá que o atalho de Meu transporte ("perua quebrou") traz.
  *
  * Filtragem por escopo (todos / criança / escola) na barra superior.
  *
@@ -102,7 +103,7 @@ export default function TioAgenda() {
       <Header title="Avisos enviados" showBack backLabel="Início" backTo="/tio" />
 
       <div className="p-5 space-y-3">
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto -mx-5 px-5 pb-1">
           {[
             { value: 'all', label: 'Todos' },
             { value: 'child', label: 'Crianças' },
@@ -112,7 +113,7 @@ export default function TioAgenda() {
               key={f.value}
               type="button"
               onClick={() => setFilter(f.value)}
-              className={`shrink-0 h-9 px-4 rounded-full text-sm font-semibold tap border ${
+              className={`shrink-0 h-12 px-5 rounded-full text-base font-semibold tap border ${
                 filter === f.value
                   ? 'bg-text text-white border-text'
                   : 'bg-card text-textMuted border-border'
@@ -157,8 +158,7 @@ export default function TioAgenda() {
         )}
       </div>
 
-      {/* O MESMO botão da tela de crianças, e não uma cópia: escrever e ler a
-        * agenda passam a caber num lugar só. */}
+      {/* Escrever e ler a agenda cabem num lugar só — ver o topo do arquivo. */}
       <TioAgendaFAB />
     </>
   );
@@ -178,17 +178,17 @@ function EntryRow({ entry }) {
         className={`bg-gradient-to-r ${t.color} text-white px-4 py-2 flex items-center gap-2`}
       >
         <IconePorNome nome={t.icone} size={16} />
-        <span className="rotulo flex-1 truncate text-white">
+        <span className="flex-1 truncate text-sm font-bold text-white">
           {t.label}
         </span>
-        <span className="text-xs text-white/80">{dateLabel}</span>
+        <span className="text-sm text-white">{dateLabel}</span>
       </div>
       <div className="p-3 space-y-1.5">
-        <p className="text-xs text-textMuted inline-flex items-center gap-1">
-          <ScopeIcon size={11} />
+        <p className="text-sm text-textMuted inline-flex items-center gap-1">
+          <ScopeIcon size={16} />
           {recipient || '—'}
         </p>
-        <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">
+        <p className="text-base text-text leading-relaxed whitespace-pre-wrap">
           {entry.message || <em className="text-textMuted">(sem mensagem)</em>}
         </p>
       </div>

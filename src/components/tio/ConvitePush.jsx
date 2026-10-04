@@ -44,12 +44,26 @@ function lerInt(chave) {
  * naquele dispositivo; insistir na interface é pedir de novo uma coisa que o
  * sistema operacional não vai nem perguntar.
  */
+/**
+ * A RESPOSTA DA PRIMEIRA CONSULTA, guardada para a sessão (03/10/2026). O
+ * convite passou a ser desenhado logo abaixo do cabeçalho de cada tela (ver
+ * `AvisosDoCabecalhoContext`) e remonta a cada troca de tela; sem isto, a
+ * consulta assíncrona rodaria de novo e o cartão surgiria atrasado em toda
+ * navegação, empurrando a tela para baixo meio segundo depois de ela abrir.
+ */
+let visivelNaSessao = null;
+
 export default function ConvitePush() {
   const { user } = useAuth();
-  const [visivel, setVisivel] = useState(false);
+  const [visivel, setVisivelNaTela] = useState(() => visivelNaSessao === true);
+  const setVisivel = (v) => {
+    visivelNaSessao = v;
+    setVisivelNaTela(v);
+  };
   const [ligando, setLigando] = useState(false);
 
   useEffect(() => {
+    if (visivelNaSessao !== null) return undefined;
     let ativo = true;
     (async () => {
       try {
@@ -67,7 +81,10 @@ export default function ConvitePush() {
       if (permissionState() !== 'default') return;
       if (!(await isPushAvailable())) return;
 
-      if (ativo) setVisivel(true);
+      if (ativo) {
+        visivelNaSessao = true;
+        setVisivelNaTela(true);
+      }
     })();
     return () => {
       ativo = false;
@@ -109,9 +126,9 @@ export default function ConvitePush() {
           type="button"
           onClick={dispensar}
           aria-label="Agora não"
-          className="tap absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-textMuted"
+          className="tap absolute right-1 top-1 flex h-12 w-12 items-center justify-center rounded-lg text-textMuted"
         >
-          <X size={16} />
+          <X size={20} />
         </button>
 
         <div className="flex items-start gap-3">
@@ -119,13 +136,13 @@ export default function ConvitePush() {
             <Bell size={18} className="text-primary" />
           </span>
 
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-text">
+          <div className="min-w-0 flex-1 pr-8">
+            <p className="text-base font-bold text-text">
               Receber os avisos no celular
             </p>
             {/* As três coisas que o app manda de verdade. Prometer vago é como
               * se ensina alguém a negar por reflexo. */}
-            <p className="mt-0.5 text-xs leading-relaxed text-textMuted">
+            <p className="mt-0.5 text-sm leading-relaxed text-textBody">
               Hoje eles só aparecem quando você abre o app. Ligando, chegam no
               celular: chegada da criança, recado de escola e cobrança.
             </p>
@@ -134,7 +151,7 @@ export default function ConvitePush() {
               type="button"
               onClick={ligar}
               disabled={ligando}
-              className="tap mt-3 h-9 rounded-xl bg-primary px-4 text-xs font-bold text-white disabled:opacity-50"
+              className="tap mt-3 h-12 rounded-xl bg-primary px-5 text-base font-bold text-white disabled:opacity-50"
             >
               {ligando ? 'Ligando…' : 'Ligar avisos'}
             </button>

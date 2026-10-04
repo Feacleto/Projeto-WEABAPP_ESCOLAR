@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { initializeFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  connectFirestoreEmulator,
+  memoryLocalCache,
+  memoryLruGarbageCollector,
+} from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { caminhoSemSegredo } from '../compartilhado/caminhoSemSegredo.js';
@@ -66,7 +71,18 @@ export const auth = getAuth(app);
 // funcionando: `gravarSemTravar` (routeStatusService) não prende os botões e a
 // escrita sobe quando o sinal volta — enquanto o app estiver aberto. Religar
 // isto exige o teste M7 dos dois lados.
-export const db = initializeFirestore(app, {});
+//
+// ⚠️ MAS O CACHE EM MEMÓRIA AGORA GUARDA (04/10/2026). O padrão do SDK é a
+// coleta EAGER: quando a última escuta de uma consulta sai, o que ela trouxe
+// é jogado fora na hora. Trocar de aba desmonta a tela, então voltar ao Início
+// buscava tudo de novo no servidor, com esqueleto de novo — era a maior causa
+// de "o app demora" medida naquele dia. Com a coleta LRU os documentos ficam
+// na memória (até ~40 MB, o padrão) e a tela pinta com o que já sabe enquanto
+// a escuta confirma. Continua sendo MEMÓRIA, não IndexedDB: fechar o app
+// esvazia, e o caminho que derrubou a tela da família não é ligado.
+export const db = initializeFirestore(app, {
+  localCache: memoryLocalCache({ garbageCollector: memoryLruGarbageCollector() }),
+});
 /**
  * O CLOUD STORAGE ENTRA SOB DEMANDA, e não no topo do módulo.
  *

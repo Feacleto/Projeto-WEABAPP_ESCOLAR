@@ -9,6 +9,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Button from '../components/common/Button';
 import Logo from '../components/common/Logo';
 import FundoDoLogin, {
   TexturaDoFundo,
@@ -213,9 +214,11 @@ export default function FirstAccess() {
               * bifurcação: essa pessoa volta pra ela. */}
             <Link
               to={veioDaEscolha ? '/login?criar=1' : '/familia'}
-              className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-primaryChip hover:text-white"
+              // 48 px e com texto (03/10/2026): era um alvo de ~28 px no canto
+              // de cima, o mais longe do polegar.
+              className="tap -ml-2 inline-flex min-h-12 items-center gap-1.5 px-2 text-base font-semibold text-primaryChip hover:text-white"
             >
-              <ArrowLeft size={16} />{' '}
+              <ArrowLeft size={20} />{' '}
               {veioDaEscolha ? 'Voltar para a escolha' : 'Voltar'}
             </Link>
           </div>
@@ -244,7 +247,7 @@ export default function FirstAccess() {
               <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
                 Acompanhe a perua do seu filho
               </h1>
-              <p className="mx-auto mt-3 max-w-[22rem] text-sm leading-relaxed text-primaryChip lg:mx-0">
+              <p className="mx-auto mt-3 max-w-[22rem] text-base leading-relaxed text-primaryChip lg:mx-0">
                 Você vê onde ela está, recebe o aviso quando ela chega e avisa
                 quando ele não vai.{' '}
                 <strong className="font-semibold text-white">
@@ -284,7 +287,7 @@ export default function FirstAccess() {
               <h2 className="font-display text-xl font-extrabold leading-tight tracking-tight text-text lg:text-[1.55rem]">
                 Você entra pelo convite do motorista
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-textMuted">
+              <p className="mt-2 text-base leading-relaxed text-textMuted">
                 É ele que liga o seu filho a você — então a conta não se cria
                 daqui, ela nasce do link que ele manda.
               </p>
@@ -292,11 +295,11 @@ export default function FirstAccess() {
 
             {/* O CAMINHO DE 9 EM 10 VEM PRIMEIRO, e ele não pede nada. */}
             <div className="rounded-2xl border border-primaryBorder bg-primarySoft p-4">
-              <p className="inline-flex items-center gap-1.5 text-sm font-bold text-text">
-                <Link2 size={15} className="text-primary" />
+              <p className="inline-flex items-center gap-1.5 text-base font-bold text-text">
+                <Link2 size={18} className="text-primary" />
                 Já recebeu o link?
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-primaryDark">
+              <p className="mt-1 text-sm leading-relaxed text-primaryDark">
                 É só abrir o link do WhatsApp — o convite vem dentro dele e a
                 sua conta se cria por lá, <strong>sem digitar nada.</strong>
               </p>
@@ -318,14 +321,14 @@ export default function FirstAccess() {
                 <div className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-card px-3 text-xs text-textMuted">
+                <span className="bg-card px-3 text-sm text-textMuted">
                   não tem o convite?
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-text">
+              <p className="text-base leading-relaxed text-text">
                 Peça pro motorista da perua do seu filho.{' '}
                 <span className="text-textMuted">
                   Ele se cadastra, cadastra a turma e te manda o convite — e aí
@@ -337,16 +340,15 @@ export default function FirstAccess() {
                 * peça. Quem leva é a bandeja do sistema, e ela precisa ser
                 * chamada por código dentro do gesto. O `wa.me` continua
                 * existindo como saída, em `linkDoPedido()`. */}
-              <button
-                type="button"
+              <Button
+                icon={MessageCircle}
                 onPointerDown={prepararPeca}
                 onFocus={prepararPeca}
                 onClick={enviar}
-                className="tap inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-primary text-base font-bold text-white shadow-focus hover:bg-primaryDark focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="shadow-focus"
               >
-                <MessageCircle size={20} />
                 Enviar pelo WhatsApp
-              </button>
+              </Button>
 
               {/* A SEGUNDA SAÍDA EXISTE PORQUE A PRIMEIRA DEPENDE DE APP
                 * INSTALADO. Dentro da webview do Instagram, ou num computador
@@ -356,9 +358,9 @@ export default function FirstAccess() {
               <button
                 type="button"
                 onClick={copiar}
-                className="tap flex w-full items-center justify-center gap-1.5 py-1 text-sm font-semibold text-textMuted hover:text-text"
+                className="tap flex min-h-12 w-full items-center justify-center gap-1.5 text-base font-semibold text-textMuted hover:text-text"
               >
-                <Copy size={15} />
+                <Copy size={18} />
                 {copiado ? 'Mensagem copiada' : 'Copiar a mensagem'}
               </button>
 
@@ -394,11 +396,11 @@ export default function FirstAccess() {
                   className="h-20 w-[45px] flex-none rounded-md bg-primaryDark object-cover"
                 />
                 <span className="min-w-0">
-                  <span className="flex items-center gap-1.5 text-sm font-bold text-text">
-                    <Download size={14} />
+                  <span className="flex items-center gap-1.5 text-base font-bold text-text">
+                    <Download size={16} />
                     Baixar a imagem
                   </span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-textMuted">
+                  <span className="mt-0.5 block text-sm leading-relaxed text-textMuted">
                     Pra mandar no WhatsApp ou postar no Story — o endereço vai
                     escrito nela.
                   </span>
@@ -413,7 +415,7 @@ export default function FirstAccess() {
                 * descubra o teor só depois de enviar — e é a mesma razão pela
                 * qual a proposta do dono abre o WhatsApp para ele LER antes
                 * de enviar. */}
-              <p className="whitespace-pre-line rounded-xl border border-border bg-surface p-3 text-xs leading-relaxed text-textMuted">
+              <p className="whitespace-pre-line rounded-xl border border-border bg-surface p-3 text-sm leading-relaxed text-textMuted">
                 {mensagemAoMotorista()}
               </p>
             </div>
@@ -429,23 +431,23 @@ export default function FirstAccess() {
               * motorista pode ver coisa de responsável, o responsável não
               * pode ver coisa de motorista. Quem é motorista e caiu aqui tem
               * "Já tenho conta" ao lado. */}
-            <div className="mt-auto flex items-center justify-center gap-3 pt-8 text-sm font-semibold text-textMuted lg:mt-8">
+            <div className="mt-auto flex items-center justify-center gap-3 pt-8 text-base font-semibold text-textMuted lg:mt-8">
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="tap inline-flex items-center gap-1.5 py-2 hover:text-text"
+                className="tap inline-flex min-h-12 items-center gap-1.5 px-3 hover:text-text"
               >
-                <LogIn size={14} />
+                <LogIn size={18} />
                 Já tenho conta
               </button>
             </div>
 
-            <div className="flex items-center justify-center gap-3 pt-4 text-xs text-textMuted">
-              <Link to="/termos" className="hover:underline">
+            <div className="flex items-center justify-center gap-3 pt-2 text-sm text-textMuted">
+              <Link to="/termos" className="inline-flex min-h-12 items-center px-1 hover:underline">
                 Termos de Uso
               </Link>
               <span aria-hidden>·</span>
-              <Link to="/privacidade" className="hover:underline">
+              <Link to="/privacidade" className="inline-flex min-h-12 items-center px-1 hover:underline">
                 Política de Privacidade
               </Link>
             </div>

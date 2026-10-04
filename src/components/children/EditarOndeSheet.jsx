@@ -202,7 +202,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
       icon={MapPin}
       size="full"
     >
-      <div className="space-y-5 px-5 pb-6">
+      <div className="space-y-5 pb-1">
         <section className="space-y-2">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
             <Home size={16} className="text-primary" />
@@ -222,26 +222,26 @@ export default function EditarOndeSheet({ open, child, onClose }) {
           />
 
           {buscandoCep && (
-            <p className="text-xs text-textMuted">Consultando o CEP…</p>
+            <p className="text-sm text-textMuted">Consultando o CEP…</p>
           )}
 
           {/* "Não achamos" e "está fora do ar" dizem coisas diferentes: a
             * primeira pede pra reconferir, a segunda avisa que não é ela. */}
           {cepState === 'notFound' && (
-            <p className="rounded-xl bg-warningSoft px-3 py-2 text-xs leading-relaxed text-warningText">
+            <p className="rounded-xl bg-warningSoft px-3 py-2 text-sm leading-relaxed text-warningText">
               Não achamos esse CEP. Confira os números — ou escreva o endereço
               completo abaixo.
             </p>
           )}
 
           {cepState === 'offline' && (
-            <p className="rounded-xl bg-warningSoft px-3 py-2 text-xs leading-relaxed text-warningText">
+            <p className="rounded-xl bg-warningSoft px-3 py-2 text-sm leading-relaxed text-warningText">
               A consulta de CEP está fora do ar. Escreva o endereço completo
               abaixo.
             </p>
           )}
 
-          <Input
+          <Input falar="texto"
             id="editar-endereco"
             label="Endereço completo"
             placeholder="Digite aqui"
@@ -267,7 +267,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
                 inputMode="numeric"
                 required
               />
-              <Input
+              <Input falar="texto"
                 id="editar-complemento"
                 label="Complemento (opcional)"
                 placeholder="Digite aqui"
@@ -290,13 +290,13 @@ export default function EditarOndeSheet({ open, child, onClose }) {
           {ponto ? (
             <>
               <MapPicker point={ponto} onChange={setPonto} />
-              <p className="text-xs leading-relaxed text-textMuted">
+              <p className="text-sm leading-relaxed text-textMuted">
                 Arraste o pino se a porta ficar do outro lado da rua — é este
                 ponto que a rota usa.
               </p>
             </>
           ) : (
-            <p className="rounded-xl bg-warningSoft px-3 py-2 text-xs leading-relaxed text-warningText">
+            <p className="rounded-xl bg-warningSoft px-3 py-2 text-sm leading-relaxed text-warningText">
               Sem ponto no mapa esta criança não entra no traçado da rota.
               Busque o endereço pra marcar.
             </p>
@@ -309,7 +309,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
             Escola
           </h3>
           {escolas.length === 0 ? (
-            <p className="text-xs leading-relaxed text-textMuted">
+            <p className="text-sm leading-relaxed text-textMuted">
               Você ainda não cadastrou escolas. Cadastre em Início → Escolas e
               volte aqui.
             </p>
@@ -332,7 +332,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
                       {e.nome}
                     </span>
                     {e.endereco && (
-                      <span className="mt-0.5 block truncate text-xs text-textMuted">
+                      <span className="mt-0.5 block truncate text-sm text-textMuted">
                         {e.endereco}
                       </span>
                     )}

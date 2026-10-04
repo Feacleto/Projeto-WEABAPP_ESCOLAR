@@ -14,12 +14,16 @@ const variants = {
   ghost: 'bg-transparent text-text hover:bg-neutro disabled:opacity-60',
 };
 
-// Tamanhos ampliados pra público com baixa familiaridade com toque preciso.
-// Mínimo 40 px (sm), 48 px (md), 56 px (lg). Os ícones acompanham.
+// Tamanhos ampliados pra público de 40+, em pé, na rua, com uma mão.
+// ⚠️ O MENOR É 48 px (03/10/2026): o `sm` tinha 40 px e letra de 12 px, e era
+// justamente o tamanho de "Dar baixa" e de "Faltou" — os botões que mexem em
+// dinheiro e na família. O piso de toque do app é 48, e nenhum tamanho fica
+// abaixo dele. O `sm` continua existindo para quem precisa de menos LARGURA
+// (padding menor), não de menos altura.
 const sizes = {
   lg: 'h-14 px-6 text-base',
-  md: 'h-12 px-4 text-sm',
-  sm: 'h-10 px-3 text-xs',
+  md: 'h-12 px-4 text-base',
+  sm: 'h-12 px-3 text-sm',
 };
 
 export default function Button({

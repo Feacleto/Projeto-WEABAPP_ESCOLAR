@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, BadgeCheck, FileUp, Sticker } from 'lucide-react';
+import { BadgeCheck, FileUp, Sticker } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import Header from '../../components/layout/Header';
+import Button from '../../components/common/Button';
 import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import {
@@ -62,31 +63,25 @@ import {
  * ── SEM STORAGE, O CERTIFICADO SOME EM VEZ DE FALHAR
  * Mesma regra do comprovante e da foto da criança (`config/capabilities.js`):
  * botão que aparece e devolve erro de rede é pior que botão que não aparece.
+ *
+ * ── O VOLTAR É O DO `Header` (03/10/2026)
+ * Era um "Voltar" de 12px com `navigate(-1)` puro: quem chegava pelo aviso de
+ * alvará vencendo (sem história na aba) tocava e saía do app. O `Header` cai
+ * no Início quando não há para onde voltar — é de lá, pelo "Meu transporte",
+ * que se chega aqui. O corpo, que era quase todo 12px, foi para 16px.
  */
 export default function TioSelo() {
   const { user, profile } = useAuth();
-  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-bg pb-16">
-      <header className="border-b border-border bg-card px-5 py-4">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="tap -ml-1 inline-flex items-center gap-1 p-1 text-xs text-textMuted"
-        >
-          <ArrowLeft size={14} /> Voltar
-        </button>
-        <h1 className="mt-2 text-lg font-extrabold tracking-tight text-text">
-          Seu selo na van
-        </h1>
-        <p className="mt-1 text-xs leading-relaxed text-textMuted">
+      <Header title="Seu selo na van" showBack backLabel="Início" backTo="/tio" />
+
+      <main className="mx-auto w-full max-w-lg space-y-4 px-5 py-5">
+        <p className="text-base leading-relaxed text-textMuted">
           Duas coisas diferentes: um adesivo que você pede, e um certificado que
           você conquista.
         </p>
-      </header>
-
-      <main className="mx-auto w-full max-w-lg space-y-4 px-5 py-5">
         <Adesivo uid={user?.uid} profile={profile} />
         {STORAGE_ENABLED && <Certificado uid={user?.uid} profile={profile} />}
       </main>
@@ -124,22 +119,22 @@ function Adesivo({ uid, profile }) {
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <h2 className="inline-flex items-center gap-1.5 text-sm font-extrabold text-text">
-        <Sticker size={15} />
+      <h2 className="inline-flex items-center gap-2 text-lg font-bold text-text">
+        <Sticker size={20} aria-hidden="true" />
         Adesivo para a traseira
       </h2>
 
       {/* O QUE VAI ESCRITO, ANTES DE ELE PEDIR. Ele vai colar isso no veículo
         * dele — e não dá para voltar atrás depois de impresso. */}
       <div className="mt-3 rounded-xl border border-dashed border-border bg-surface p-3 text-center">
-        <p className="text-xs font-bold text-text">{TEXTO_ADESIVO.linha1}</p>
-        <p className="mt-0.5 text-xs text-textMuted">{TEXTO_ADESIVO.linha2}</p>
+        <p className="text-base font-bold text-text">{TEXTO_ADESIVO.linha1}</p>
+        <p className="mt-0.5 text-sm text-textMuted">{TEXTO_ADESIVO.linha2}</p>
         <p className="rotulo mt-1 text-primary">
           {TEXTO_ADESIVO.site}
         </p>
       </div>
 
-      <p className="mt-3 text-xs leading-relaxed text-textMuted">
+      <p className="mt-3 text-base leading-relaxed text-textMuted">
         É por nossa conta — inclusive o frete. Ele fala com quem anda atrás de
         você e ainda não sabe que a família pode acompanhar a rota.
       </p>
@@ -154,7 +149,7 @@ function Adesivo({ uid, profile }) {
         * dos dois ser atendido. */}
       {pedido === undefined ? null : jaPediu ? (
         <>
-          <p className="mt-3 rounded-xl bg-primarySoft p-3 text-xs font-bold text-primary">
+          <p className="mt-3 rounded-xl bg-primarySoft p-3 text-base font-bold text-primary">
             {situacao.texto}
           </p>
           <ConviteParaIndicar
@@ -164,7 +159,7 @@ function Adesivo({ uid, profile }) {
         </>
       ) : (
         <div className="mt-4 space-y-2">
-          <p className="rotulo">
+          <p className="text-base font-semibold text-text">
             Para onde enviamos
           </p>
           {/* O ENDEREÇO FICA NUMA COLEÇÃO SÓ DO DONO. Ele não entra em `users`,
@@ -183,29 +178,24 @@ function Adesivo({ uid, profile }) {
                 key={campo}
                 className={campo === 'logradouro' ? 'col-span-2 block' : 'block'}
               >
-                <span className="mb-1 block text-xs text-textMuted">
+                <span className="mb-1 block text-sm text-textMuted">
                   {rotulo}
                   {CAMPOS.includes(campo) ? '' : ' (opcional)'}
                 </span>
                 <input
                   value={form[campo] || ''}
                   onChange={(e) => setForm((f) => ({ ...f, [campo]: e.target.value }))}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-xs text-text"
+                  className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-base text-text"
                 />
               </label>
             ))}
           </div>
-          <p className="text-xs text-textMuted">
+          <p className="text-sm text-textMuted">
             Só nós vemos este endereço. Ele não aparece para as famílias.
           </p>
-          <button
-            type="button"
-            onClick={enviar}
-            disabled={!ok || salvando}
-            className="tap h-11 w-full rounded-xl bg-primary text-xs font-bold text-white disabled:opacity-40"
-          >
+          <Button onClick={enviar} disabled={!ok || salvando}>
             {salvando ? 'Pedindo…' : 'Pedir meu adesivo'}
-          </button>
+          </Button>
         </div>
       )}
     </section>
@@ -245,21 +235,21 @@ function Certificado({ uid, profile }) {
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <h2 className="inline-flex items-center gap-1.5 text-sm font-extrabold text-text">
-        <BadgeCheck size={15} />
+      <h2 className="inline-flex items-center gap-2 text-lg font-bold text-text">
+        <BadgeCheck size={20} aria-hidden="true" />
         Certificado de alvará
       </h2>
 
       {estado === VERIF.VERIFICADA ? (
         <div className="mt-3 rounded-xl border border-primary bg-primarySoft p-3">
-          <p className="text-xs font-bold text-primary">{TEXTO_SELO.familia}</p>
-          <p className="mt-0.5 text-xs text-primary/80">
+          <p className="text-base font-bold text-primary">{TEXTO_SELO.familia}</p>
+          <p className="mt-0.5 text-sm text-primary">
             Conferido em {mesAno(profile?.verificadoEm) || '—'}. As famílias que
             recebem seu convite veem isto.
           </p>
         </div>
       ) : estado === VERIF.ENVIADA ? (
-        <p className="mt-3 rounded-xl bg-warningSoft p-3 text-xs font-bold text-warningText">
+        <p className="mt-3 rounded-xl bg-warningSoft p-3 text-base font-bold text-warningText">
           Recebemos seu alvará. Vamos conferir e te avisar.
         </p>
       ) : (
@@ -268,7 +258,7 @@ function Certificado({ uid, profile }) {
             * envio depois de dois anos com o selo, sem uma palavra sobre por
             * que ele sumiu — e concluiria que o app perdeu o documento dele. */}
           {venceu && (
-            <p className="mt-3 rounded-xl border border-warningBorder bg-warningSoft p-3 text-xs leading-relaxed text-warningText">
+            <p className="mt-3 rounded-xl border border-warningBorder bg-warningSoft p-3 text-base leading-relaxed text-warningText">
               <strong>Seu alvará venceu</strong>
               {diasVencido > 0 ? ` há ${diasVencido} ${diasVencido === 1 ? 'dia' : 'dias'}` : ''}, e
               o selo saiu do ar. Envie o renovado para ele voltar.
@@ -278,26 +268,26 @@ function Certificado({ uid, profile }) {
           {/* A RECUSA VOLTA COM O MOTIVO. Sem ele, ele reenvia o mesmo
             * documento e os dois perdem a viagem. */}
           {profile?.verificacao === VERIF.RECUSADA && profile?.alvaraMotivoRecusa && (
-            <p className="mt-3 rounded-xl border border-dangerBorder bg-dangerSoft p-3 text-xs leading-relaxed text-dangerText">
+            <p className="mt-3 rounded-xl border border-dangerBorder bg-dangerSoft p-3 text-base leading-relaxed text-dangerText">
               <strong>Precisamos de outro envio:</strong> {profile.alvaraMotivoRecusa}
             </p>
           )}
 
-          <p className="mt-3 text-xs leading-relaxed text-textMuted">
+          <p className="mt-3 text-base leading-relaxed text-textMuted">
             Envie o seu <strong>alvará municipal de transporte escolar</strong>.
             A gente confere e as famílias que recebem seu convite passam a ver
             que ele está em dia, com o mês da conferência.
           </p>
           {/* ⚠️ POR QUE ALVARÁ E NÃO CNH, dito para ele. Ele vai perguntar, e a
             * resposta o favorece: é menos documento pessoal na mão de terceiro. */}
-          <p className="mt-2 text-xs leading-relaxed text-textMuted">
+          <p className="mt-2 text-base leading-relaxed text-textMuted">
             Só o alvará — não pedimos CNH nem documento pessoal. Para emitir o
             alvará a prefeitura já conferiu tudo isso, e quanto menos documento
             seu ficar guardado por aí, melhor para você.
           </p>
 
-          <label className="tap mt-4 flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary text-xs font-bold text-white">
-            <FileUp size={14} />
+          <label className="tap mt-4 flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary text-base font-bold text-white">
+            <FileUp size={18} aria-hidden="true" />
             {enviando ? 'Enviando…' : 'Enviar meu alvará'}
             <input
               type="file"

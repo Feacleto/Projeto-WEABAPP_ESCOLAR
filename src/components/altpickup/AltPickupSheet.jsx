@@ -185,7 +185,7 @@ export default function AltPickupSheet({
                   ? 'Meus responsáveis'
                   : 'Quem vai buscar hoje?'}
               </h2>
-              <p className="text-xs text-textMuted mt-1">
+              <p className="text-sm text-textMuted mt-1">
                 {mode === 'new'
                   ? 'Quem mais pode pegar a criança'
                   : mode === 'manage'
@@ -196,10 +196,11 @@ export default function AltPickupSheet({
             <button
               onClick={onClose}
               disabled={submitting}
-              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
+              // 48px: o mesmo alvo do X das outras folhas (AppSheet, Sheet).
+              className="tap -mr-1 -mt-1 h-12 w-12 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
               aria-label="Fechar"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
 
@@ -212,10 +213,10 @@ export default function AltPickupSheet({
                     <UserCheck size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-warningText leading-tight">
-                      Hoje quem pega: {currentPickup.name}
+                    <p className="text-base font-bold text-warningText leading-tight">
+                      Hoje quem busca: {currentPickup.name}
                     </p>
-                    <p className="text-xs text-warningText mt-0.5">
+                    <p className="text-sm text-warningText mt-0.5">
                       {currentPickup.relationship && (
                         <span>{currentPickup.relationship} · </span>
                       )}
@@ -225,7 +226,9 @@ export default function AltPickupSheet({
                   <button
                     onClick={handleClear}
                     disabled={submitting}
-                    className="tap text-xs font-semibold text-warningText underline"
+                    // 48px: era um sublinhado de 12px — o único jeito de
+                    // desfazer a indicação, e o mais difícil de acertar.
+                    className="tap inline-flex h-12 shrink-0 items-center rounded-xl border border-warningBorder bg-card px-4 text-base font-semibold text-warningText"
                   >
                     Trocar
                   </button>
@@ -314,7 +317,7 @@ export default function AltPickupSheet({
                   icon={Plus}
                   onClick={() => setMode('new')}
                 >
-                  {avulso ? 'Outra pessoa' : 'Indicar quem vai pegar'}
+                  {avulso ? 'Outra pessoa' : 'Indicar quem busca'}
                 </Button>
                 {avulso && (
                   <button
@@ -323,7 +326,7 @@ export default function AltPickupSheet({
                       await esquecerAvulso(child.id);
                       toast.success('Esquecido.');
                     }}
-                    className="tap w-full py-2 text-xs text-textMuted hover:text-text"
+                    className="tap w-full min-h-12 text-sm text-textMuted hover:text-text"
                   >
                     Esquecer {avulso.name.split(' ')[0]}
                   </button>
@@ -428,7 +431,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <Input
+      <Input falar="nome"
         label="Nome completo"
         icon={UserIcon}
         value={name}
@@ -437,7 +440,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
         required
         autoFocus
       />
-      <Input
+      <Input falar="telefone"
         label="Telefone"
         icon={Phone}
         inputMode="tel"

@@ -55,17 +55,17 @@ export default function TrilhaDoPagamento({ payment }) {
         type="button"
         onClick={alternar}
         aria-expanded={aberto}
-        className="tap flex w-full items-center gap-1.5 text-xs font-semibold text-textMuted hover:text-text"
+        className="tap flex min-h-12 w-full items-center gap-1.5 text-sm font-semibold text-textMuted hover:text-text"
       >
-        <History size={13} />
+        <History size={16} />
         Histórico deste pagamento
-        {aberto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        {aberto ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </button>
 
       {aberto && (
         <div className="mt-2 space-y-1.5">
           {carregando && (
-            <p className="text-xs text-textMuted">Carregando…</p>
+            <p className="text-sm text-textMuted">Carregando…</p>
           )}
 
           {/* ⚠️ LISTA VAZIA TEM TEXTO PRÓPRIO, e ele não acusa ninguém.
@@ -73,7 +73,7 @@ export default function TrilhaDoPagamento({ payment }) {
             * ausência de fato — dizer "nada aconteceu" transformaria um
             * buraco do nosso lado em argumento contra alguém. */}
           {!carregando && linhas && linhas.length === 0 && (
-            <p className="text-xs leading-relaxed text-textMuted">
+            <p className="text-sm leading-relaxed text-textMuted">
               Sem registros para este pagamento. O histórico começou a ser
               guardado depois que ele foi gerado.
             </p>
@@ -83,7 +83,7 @@ export default function TrilhaDoPagamento({ payment }) {
             linhas?.map((linha, i) => (
               <div
                 key={`${linha.tipo}-${i}`}
-                className="flex items-baseline justify-between gap-3 text-xs"
+                className="flex items-baseline justify-between gap-3 text-sm"
               >
                 <span className="text-text">
                   {linha.rotulo}

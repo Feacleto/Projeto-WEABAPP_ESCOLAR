@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Bus,
-  ChevronDown,
   LogIn,
   Lock,
   Mail,
@@ -12,7 +11,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Input from '../common/Input';
-import GoogleIcon from '../common/GoogleIcon';
+import BotaoDoGoogle, { LinkDoEmail } from '../auth/BotaoDoGoogle';
 import Sheet, {
   RoleCard,
   SheetCard,
@@ -282,17 +281,9 @@ export default function LoginSheet({
         <>
           {googleWorks && (
             <>
-              <button
-                type="button"
-                onClick={onGoogleLogin}
-                disabled={googleSubmitting}
-                className="tap relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl border-2 border-borderStrong bg-card text-base font-bold text-text shadow-rest hover:bg-sunken focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
-              >
-                <GoogleIcon size={22} />
-                {googleSubmitting ? 'Entrando…' : 'Entrar com Google'}
-              </button>
-              <p className="mt-2 text-center text-xs text-textMuted">
-                sem digitar nada
+              <BotaoDoGoogle loading={googleSubmitting} onClick={onGoogleLogin} />
+              <p className="mt-2 text-center text-sm text-textMuted">
+                Sem digitar nada.
               </p>
             </>
           )}
@@ -302,7 +293,8 @@ export default function LoginSheet({
             * dois campos e quatro decisões pra uma tarefa que, pra quase todo
             * mundo, é UM toque. Agora ela abre com uma porta só.
             *
-            * O mesmo botão abre e fecha (`aria-expanded` + seta que gira):
+            * O mesmo botão abre e fecha (`aria-expanded`; desde 03/10/2026 é o
+            * `LinkDoEmail`, com o mesmo nome em toda tela de entrada):
             * quem tocou por curiosidade não fica preso com dois campos na
             * cara, e quem tocou de propósito acha os campos onde esperava.
             * O "esqueci minha senha" vive DENTRO da gaveta porque ele precisa
@@ -313,27 +305,15 @@ export default function LoginSheet({
             * alternativa, é a única entrada — e esconder a única porta é
             * trancar a casa. */}
           {googleWorks && (
-            <button
-              type="button"
-              onClick={() => setMostrarForm((v) => !v)}
-              aria-expanded={mostrarForm}
-              className="tap mt-4 inline-flex w-full items-center justify-center gap-1.5 py-2 text-sm font-semibold text-textMuted hover:text-text"
-            >
-              <Lock size={14} />
-              Entrar com email e senha
-              <ChevronDown
-                size={15}
-                className={`transition-transform duration-entrada ease-freio ${
-                  mostrarForm ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
+            <div className="mt-2">
+              <LinkDoEmail onClick={() => setMostrarForm((v) => !v)} aberto={mostrarForm} />
+            </div>
           )}
 
           {mostrarForm && (
             <div className="animate-step-in">
               <form onSubmit={onSubmit} className="space-y-4">
-                <Input
+                <Input semSalvar
                   type="email"
                   inputMode="email"
                   label="Email"

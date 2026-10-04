@@ -103,7 +103,7 @@ export default function AcessoDeUmDia({ child }) {
           <input
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2.5 text-base"
+            className="mt-1 h-12 w-full rounded-lg border border-border bg-card px-3 text-base"
             autoComplete="off"
           />
         </label>
@@ -113,7 +113,7 @@ export default function AcessoDeUmDia({ child }) {
             value={telefone}
             onChange={(e) => setTelefone(maskPhone(e.target.value))}
             inputMode="tel"
-            className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2.5 text-base"
+            className="mt-1 h-12 w-full rounded-lg border border-border bg-card px-3 text-base"
           />
         </label>
         <div className="flex gap-2">

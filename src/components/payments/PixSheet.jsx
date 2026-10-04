@@ -67,10 +67,12 @@ function MeuPix({ onClose }) {
       <p className="text-[17px] text-textBody break-all">
         {PIX_KEY_TYPES[profile.pixKeyType]?.label || 'Chave'}: {profile.pixKey}
       </p>
-      <Button variant="secondary" icon={Copy} onClick={copiar}>
+      {/* Copiar é o protagonista: é o que a mãe no portão precisa. Fechar
+        * fica em ghost — a folha já tem o X, e dois verdes empatavam. */}
+      <Button icon={Copy} onClick={copiar} className="shadow-focus">
         Copiar código PIX
       </Button>
-      <Button onClick={onClose}>Fechar</Button>
+      <Button variant="ghost" onClick={onClose}>Fechar</Button>
     </div>
   );
 }
@@ -78,8 +80,11 @@ function MeuPix({ onClose }) {
 /**
  * A chave PIX, como folha.
  *
- * Os três caminhos que levam aqui — o perfil, o banner do financeiro e o
- * bloco de pendências — são todos interrupções de outra tarefa. O motorista
+ * Os caminhos que levam aqui — o banner do financeiro e o bloco de
+ * pendências, os dois já atrás da senha — são interrupções de outra tarefa.
+ * ⚠️ O Perfil NÃO abre mais esta folha (D2, 04/10/2026): ele não pede senha,
+ * e trocar a chave sem senha punha o dinheiro da turma noutra conta. De lá o
+ * caminho é `/tio/pix`, que é rota protegida. O motorista
  * está conferindo o mês, vê "cadastre sua chave", resolve, e quer voltar
  * pro mês. Como página, voltar era um gesto a mais e a tela recarregava
  * do zero.

@@ -5,7 +5,7 @@ import Skeleton from '../../components/common/Skeleton';
 import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
 import AppSheet from '../../components/common/AppSheet';
-import ContractView from '../../components/contract/ContractView';
+import ContractView, { ResumoDoCombinado } from '../../components/contract/ContractView';
 import PainelDeAceite from '../../components/contract/PainelDeAceite';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
@@ -86,7 +86,7 @@ export default function PaiContract() {
   const nomeDele = admin.marcaNome || admin.name || 'o motorista';
 
   return (
-    <div className={aguardando ? 'pb-80' : 'pb-28'}>
+    <div className={aguardando ? 'pb-40' : 'pb-28'}>
       <Header title="Contrato" showBack />
 
       <div className="p-5 space-y-4">
@@ -101,7 +101,7 @@ export default function PaiContract() {
                 ? 'Contrato novo para assinar'
                 : 'O contrato espera a sua assinatura'}
             </p>
-            <p className="mt-1 text-sm leading-relaxed text-warningText">
+            <p className="mt-1 text-base leading-relaxed text-warningText">
               {aguardando.tipo === 'aditivo'
                 ? 'O motorista mandou um contrato novo. Leia com calma: enquanto você não assinar, vale o contrato atual.'
                 : 'Confira o valor e o dia do vencimento antes de assinar.'}
@@ -109,14 +109,18 @@ export default function PaiContract() {
           </div>
         ) : (
           <div className="bg-card border border-border rounded-2xl p-4">
-            <p className="text-sm font-semibold text-text">Seu contrato com {nomeDele}</p>
-            <p className="text-sm text-textMuted mt-1">
+            <p className="text-base font-semibold text-text">Seu contrato com {nomeDele}</p>
+            <p className="text-base text-textMuted mt-1">
               {acceptanceInfo
                 ? 'Você assinou este contrato. Guarde uma cópia se quiser.'
                 : 'Contrato do transporte escolar da sua criança.'}
             </p>
           </div>
         )}
+
+        {/* O resumo do combinado ANTES do texto longo — o mesmo do portão,
+          * lido dos mesmos dados do contrato logo abaixo. */}
+        <ResumoDoCombinado data={dados} />
 
         {/* print:* deixa a impressão limpa — é assim que ele salva em PDF
           * pelo próprio celular, sem precisar de nada instalado. */}
@@ -126,7 +130,7 @@ export default function PaiContract() {
           </Button>
         </div>
 
-        <div className="bg-card rounded-3xl shadow-sm p-6 print:p-0 print:shadow-none print:rounded-none">
+        <div className="bg-card rounded-3xl shadow-sm p-5 print:p-0 print:shadow-none print:rounded-none">
           <ContractView
             data={dados}
             numero={null}
@@ -150,7 +154,7 @@ export default function PaiContract() {
         title="Fale com o motorista"
         icon={AlertCircle}
       >
-        <div className="space-y-3 px-5 pb-6 text-sm leading-relaxed text-text">
+        <div className="space-y-3 px-5 pb-6 text-base leading-relaxed text-text">
           <p>
             Se algo não está como vocês combinaram, converse com {admin.name || nomeDele}
             {admin.phone ? (

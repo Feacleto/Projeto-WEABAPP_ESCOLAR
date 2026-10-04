@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Clock,
   School,
@@ -35,7 +35,13 @@ import {
 import { mascaraHora } from '../../compartilhado/masks';
 
 /**
- * "Horários" — onde o motorista monta a rota padrão.
+ * "Horários da rota" — onde o motorista monta a rota padrão.
+ *
+ * O NOME É O MESMO EM TODA PORTA (03/10/2026): "Horários da rota" no cabeçalho
+ * daqui, na folha "Meu transporte", no rodapé da tela da rota e na lista de
+ * pendências do Início ("Definir os horários da rota" quando ainda não há
+ * nenhum). Eram três nomes — "Definir os horários", "Editar rota padrão",
+ * "Ajustar horários" — para a mesma tela.
  *
  * POR QUE NÃO SE CHAMA MAIS "ROTA PADRÃO"
  * A rota padrão era uma ordem que ele arrastava à mão, turno por turno. Agora
@@ -55,6 +61,7 @@ import { mascaraHora } from '../../compartilhado/masks';
  */
 export default function TioHorarios() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { children, loading } = useChildren();
   const { mapa: escolasPorId } = useEscolas();
 
@@ -168,12 +175,23 @@ export default function TioHorarios() {
 
   const totalNoDia = blocos.reduce((n, b) => n + b.paradas.length, 0);
 
+  // O VOLTAR DIZ DE ONDE ELE VEIO. Esta tela abre pelo Início, pelo Meu
+  // transporte e pela tela da rota; o rótulo fixo "Rota" mandava para a rota
+  // quem tinha vindo do Início — e fora de rota, para uma tela vazia. Só a
+  // tela da rota marca `de: 'rota'`; o resto volta ao Início.
+  const veioDaRota = location.state?.de === 'rota';
+
   return (
     <div className="min-h-screen pb-28">
-      <Header title="Horários" showBack backLabel="Rota" backTo="/tio/route/now" />
+      <Header
+        title="Horários da rota"
+        showBack
+        backLabel={veioDaRota ? 'Rota' : 'Início'}
+        backTo={veioDaRota ? '/tio/route/now' : '/tio'}
+      />
 
       <div className="px-5 pt-4 space-y-4">
-        <p className="text-sm text-textMuted">
+        <p className="text-base text-textBody">
           O horário que <b>você define</b> para cada criança. A ordem da rota
           sai daqui — e é este número que o responsável vê pra saber a hora de
           estar na porta.
@@ -190,7 +208,7 @@ export default function TioHorarios() {
               type="button"
               onClick={() => setDirecao(d.v)}
               aria-pressed={direcao === d.v}
-              className={`tap py-2 text-xs font-semibold rounded-lg transition-colors ${
+              className={`tap min-h-12 text-base font-semibold rounded-lg transition-colors ${
                 direcao === d.v ? 'bg-card text-text shadow-sm' : 'text-textMuted'
               }`}
             >
@@ -208,8 +226,8 @@ export default function TioHorarios() {
             className="flex items-start gap-2.5 bg-warningSoft border border-warningBorder rounded-2xl p-3"
           >
             <AlertTriangle size={18} className="text-warningText shrink-0 mt-0.5" />
-            <div className="text-xs text-warningText leading-relaxed">
-              <b className="block text-sm">
+            <div className="text-sm text-warningText leading-relaxed">
+              <b className="block text-base">
                 {pendentes.length}{' '}
                 {pendentes.length === 1
                   ? 'criança está com horário presumido'
@@ -231,7 +249,7 @@ export default function TioHorarios() {
                 className="bg-dangerSoft border border-dangerBorder rounded-2xl p-3 flex items-start gap-2.5"
               >
                 <AlertTriangle size={17} className="text-danger shrink-0 mt-0.5" />
-                <p className="text-xs text-dangerText leading-relaxed">
+                <p className="text-sm text-dangerText leading-relaxed">
                   <b>Não fecha:</b> de {a.de.name.split(' ')[0]} (
                   {horaCurta(a.horaDe)}) até {a.para.name.split(' ')[0]} (
                   {horaCurta(a.horaPara)}) são {a.km} km. Dá {a.minutosDisponiveis}{' '}
@@ -284,10 +302,10 @@ export default function TioHorarios() {
                   key={p.child.id}
                   type="button"
                   onClick={() => abrirEdicao(p.child)}
-                  className="tap w-full text-left bg-card border border-border rounded-2xl px-3 py-2.5 flex items-center gap-3"
+                  className="tap w-full min-h-14 text-left bg-card border border-border rounded-2xl px-3 py-2.5 flex items-center gap-3"
                 >
                   <span
-                    className={`font-mono text-sm font-semibold tabular-nums shrink-0 w-14 ${
+                    className={`font-mono text-base font-semibold tabular-nums shrink-0 w-14 ${
                       p.presumido ? 'text-warningText' : 'text-text'
                     }`}
                   >
@@ -301,16 +319,16 @@ export default function TioHorarios() {
                     size="sm"
                   />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold text-text truncate">
+                    <span className="block text-base font-semibold text-text truncate">
                       {p.child.name}
                     </span>
-                    <span className="block text-xs text-textMuted truncate">
+                    <span className="block text-sm text-textMuted truncate">
                       {p.presumido
                         ? 'horário presumido — defina o seu'
                         : p.child.address?.split(',')[0] || 'Sem endereço'}
                     </span>
                   </span>
-                  <Clock size={15} className="text-textMuted shrink-0" />
+                  <Clock size={18} className="text-textMuted shrink-0" />
                 </button>
               ))}
 
@@ -379,11 +397,11 @@ export default function TioHorarios() {
                 <span className="flex-1 min-w-0 truncate font-medium text-text">
                   {p.child.name.split(' ')[0]}
                 </span>
-                <span className="font-mono text-xs text-textMuted tabular-nums">
+                <span className="font-mono text-sm text-textMuted tabular-nums">
                   {horaCurta(p.de)}
                 </span>
                 <ArrowRight size={13} className="text-textMuted" />
-                <span className="font-mono text-xs font-bold text-text tabular-nums">
+                <span className="font-mono text-base font-bold text-text tabular-nums">
                   {horaCurta(p.para)}
                 </span>
               </div>
@@ -458,9 +476,9 @@ function Folha({ children, onClose }) {
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="tap absolute right-4 top-4 w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted"
+            className="tap absolute right-3 top-3 w-12 h-12 rounded-full bg-neutro flex items-center justify-center text-textMuted"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
           {children}
         </div>

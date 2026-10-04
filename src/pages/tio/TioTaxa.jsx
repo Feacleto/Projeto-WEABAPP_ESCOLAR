@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { ArrowLeft, Check, Copy, FileText, QrCode, Receipt } from 'lucide-react';
+import { Check, Copy, FileText, QrCode, Receipt, Repeat } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import Spinner from '../../components/common/Spinner';
+import Header from '../../components/layout/Header';
 import { useAuth } from '../../hooks/useAuth';
 import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { buildPixPayload } from '../../dominio/cobranca/pixPayload';
@@ -17,7 +18,14 @@ import { explicarIsencao } from '../../dominio/associacao/isencaoDaFatura.js';
 import { watchFaturasDoParceiro } from '../../services/taxaService';
 
 /**
- * A TAXA DE ASSOCIAÇÃO na visão do MOTORISTA — o que ele deve à plataforma.
+ * MEU PLANO na visão do MOTORISTA — o que ele deve à plataforma.
+ *
+ * ⚠️ O NOME DA ÁREA É "MEU PLANO" (03/10/2026), o mesmo do menu do rosto. O
+ * título era "Taxa de associação", e a mesma área tinha quatro nomes ("Meu
+ * plano", "Taxa de associação", "Planos e valores", "Escolha seu plano"):
+ * quem toca em "Meu plano" e cai numa tela chamada outra coisa acha que
+ * errou o caminho. Aqui é "Meu plano" (fatura, valor, histórico); a escolha
+ * mora em `/tio/planos`, "Escolher plano".
  *
  * POR QUE ESTA TELA TINHA QUE EXISTIR
  * Sem ela o dono via o que cobrar e o parceiro não via o que devia. Cobrança
@@ -39,71 +47,67 @@ import { watchFaturasDoParceiro } from '../../services/taxaService';
  * conferindo; aqui é o contrário — poucas cobranças, e quem confere é quem
  * recebe.
  *
- * CASCA E CONTEÚDO SEPARADOS
- * O corpo foi escrito solto, pra ser plugado onde a navegação decidisse. Ela
- * decidiu por rota própria (`/tio/taxa`), e rota sob o `TioLayout` recebe só
- * o `<Outlet />` e o rodapé — sem a casca daqui a tela abriria colada na
- * borda, sem título e sem caminho de volta.
+ * O CABEÇALHO É O `Header` DE TODA TELA INTERNA, mesmo fora do `TioLayout`.
+ * Esta rota fica fora do layout (dentro do `GuardaDaConta`, quem está
+ * bloqueado não chegaria na tela de pagar), e por isso tinha um "Voltar"
+ * próprio, cinza e pequeno — um dos quatro estilos de voltar que o app tinha.
+ * O `Header` já sabe consumir a história quando ela existe e cair no destino
+ * nomeado quando não existe (quem chega pelo aviso, por um link ou
+ * recarregando não é jogado para fora do app, justamente numa tela de
+ * pagamento).
  *
- * O VOLTAR É ROTULADO, e não só a seta. Quem chega aqui quase sempre veio do
- * aviso de cobrança por cima do painel — um susto. Depois de um susto, seta
- * sozinha num canto não se lê como saída.
+ * ⚠️ SEM SINO E SEM ROSTO AQUI (`showGlobal={false}`). A escuta do sino mora
+ * no `NotificacoesProvider` do `TioLayout`; fora dele o sino mostraria zero e
+ * a folha diria "nenhum aviso" para quem tem aviso — e o menu do rosto
+ * ofereceria "Meu plano" a quem já está nele.
  */
 export default function TioTaxa() {
   const navigate = useNavigate();
-
-  // Ver o aviso no botão de Voltar, abaixo.
-  const voltar = () => {
-    if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/tio', { replace: true });
-  };
+  const { profile } = useAuth();
 
   return (
-    <div className="min-h-screen pb-10">
-      <header className="sticky top-0 z-20 border-b border-border bg-bg px-5 pb-3 pt-4">
-        {/* ⚠️ DESTINO NOMEADO NA FALTA DE HISTÓRIA, NUNCA `navigate(-1)` SOLTO.
-          *
-          * Estas três telas ficam FORA do `TioLayout` (têm que ficar: dentro do
-          * `GuardaDaConta` o botão "Ver planos" navegava e a tela não mudava),
-          * então não passam pelo `Header`, que é quem sabe checar histórico.
-          *
-          * Com `navigate(-1)` puro, quem chega aqui pelo aviso de cobrança, por
-          * um link, ou recarregando a página sai DO APLICATIVO ao tocar em
-          * Voltar — e sai justamente de uma tela de pagamento, que é a última
-          * de onde alguém deveria ser expulso.
-          *
-          * `history.state.idx > 0` é o mesmo teste que o `Header` usa: consome
-          * história quando ela existe (não empilha uma entrada nova, que faria
-          * o botão físico do Android voltar para cá) e cai no destino quando
-          * não existe. */}
-        <button
-          type="button"
-          onClick={voltar}
-          className="tap -ml-1 mb-2 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
-        >
-          <ArrowLeft size={18} /> Voltar
-        </button>
-        <h1 className="text-xl font-bold text-text">Taxa de associação</h1>
-        <p className="text-sm text-textMuted">
+    <div className="min-h-screen bg-bg pb-10">
+      <Header
+        title="Meu plano"
+        showBack
+        backLabel="Início"
+        backTo="/tio"
+        showGlobal={false}
+      />
+
+      <div className="mx-auto max-w-lg px-5 pt-4">
+        <p className="text-base leading-relaxed text-textMuted">
           O que você paga ao Alô Buzinou. É separado do que as famílias pagam a
           você.
         </p>
-        {/* O CONTRATO A UM TOQUE DA COBRANÇA.
-          * `/tio/contrato-plataforma` respondia sem que nada apontasse pra
-          * ele. Aqui é onde ele é procurado: quem estranha um valor quer ler o
-          * que foi combinado, e esse é o momento em que a dúvida vira ou uma
-          * conferência de trinta segundos ou uma mensagem no WhatsApp. */}
-        <button
-          type="button"
-          onClick={() => navigate('/tio/contrato-plataforma')}
-          className="tap mt-1.5 inline-flex items-center gap-1 py-1 text-xs font-semibold text-primary"
-        >
-          <FileText size={13} />O que foi combinado
-        </button>
-      </header>
+        {/* O CONTRATO A UM TOQUE DA COBRANÇA, com o MESMO nome do título da
+          * tela de destino. Era "O que foi combinado", em 12px: quem estranha
+          * um valor quer ler o que foi combinado, e esse é o momento em que a
+          * dúvida vira ou uma conferência de trinta segundos ou uma mensagem
+          * no WhatsApp. E escolher (ou trocar) o plano fica ao lado — a área
+          * é uma só. */}
+        <div className="mt-2 flex flex-wrap gap-x-5">
+          <button
+            type="button"
+            onClick={() => navigate('/tio/contrato-plataforma')}
+            className="tap inline-flex min-h-12 items-center gap-2 text-base font-semibold text-primary"
+          >
+            <FileText size={18} aria-hidden="true" />
+            Contrato com a plataforma
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/tio/planos')}
+            className="tap inline-flex min-h-12 items-center gap-2 text-base font-semibold text-primary"
+          >
+            <Repeat size={18} aria-hidden="true" />
+            {profile?.plano ? 'Trocar de plano' : 'Escolher plano'}
+          </button>
+        </div>
 
-      <div className="px-5 pt-4">
-        <Conteudo />
+        <div className="mt-3">
+          <Conteudo />
+        </div>
       </div>
     </div>
   );
@@ -141,12 +145,12 @@ function Conteudo() {
 
   if (faturas.length === 0) {
     return (
-      <div className="rounded-2xl bg-card p-5 text-center shadow-sm">
+      <div className="rounded-2xl bg-card p-5 text-center shadow-rest">
         <Receipt size={22} className="mx-auto text-textMuted" />
-        <p className="mt-2 text-sm font-semibold text-text">
-          Nenhuma taxa lançada ainda
+        <p className="mt-2 text-base font-semibold text-text">
+          Nenhuma fatura ainda
         </p>
-        <p className="mt-1 text-xs leading-relaxed text-textMuted">
+        <p className="mt-1 text-sm leading-relaxed text-textMuted">
           Sua primeira fatura aparece aqui no fechamento do mês, com a conta
           que gerou o valor.
         </p>
@@ -158,7 +162,7 @@ function Conteudo() {
     <div className="space-y-4">
       {/* O total em aberto vem primeiro: é a única pergunta que ele abre a
         * tela pra responder. */}
-      <div className="rounded-2xl bg-card p-5 shadow-sm">
+      <div className="rounded-2xl bg-card p-5 shadow-rest">
         <p className="rotulo">
           {abertas.length === 0 ? 'tudo em dia' : 'em aberto'}
         </p>
@@ -170,7 +174,7 @@ function Conteudo() {
           {formatCurrency(total)}
         </p>
         {abertas.length > 1 && (
-          <p className="mt-1 text-xs text-textMuted">
+          <p className="mt-1 text-sm text-textMuted">
             {abertas.length} meses em aberto
           </p>
         )}
@@ -197,26 +201,26 @@ function Conteudo() {
 
       {faturas.some((f) => f.status === 'quitada') && (
         <section>
-          <h2 className="mb-2 px-1 text-sm font-bold text-text">Histórico</h2>
+          <h2 className="mb-2 px-1 text-base font-bold text-text">Histórico</h2>
           <div className="space-y-2">
             {faturas
               .filter((f) => f.status === 'quitada')
               .map((f) => (
                 <div
                   key={f.id}
-                  className="flex items-baseline justify-between rounded-2xl bg-card px-4 py-3 shadow-sm"
+                  className="flex items-baseline justify-between rounded-2xl bg-card px-4 py-3 shadow-rest"
                 >
                   <div>
-                    <p className="text-sm font-semibold capitalize text-text">
+                    <p className="text-base font-semibold capitalize text-text">
                       {formatMonthLabel(f.mes)}
                     </p>
-                    <p className="text-xs text-textMuted">
+                    <p className="text-sm text-textMuted">
                       {f.criancasAtivas ?? 0} criança(s) ·{' '}
                       {f.planoRotulo || 'sem faixa'}
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-primary">
-                    <Check size={13} />
+                  <span className="inline-flex items-center gap-1 text-base font-bold text-primary">
+                    <Check size={16} aria-hidden="true" />
                     {f.isento ? 'isento' : formatCurrency(f.total)}
                   </span>
                 </div>
@@ -235,13 +239,16 @@ function Conteudo() {
         * atrito, que é o que o roteiro comercial usa CONTRA o concorrente.
         *
         * Discreto, mas não escondido: quem não está procurando não tropeça
-        * nele, e quem está procurando acha de primeira. */}
+        * nele, e quem está procurando acha de primeira. Discreto é a COR
+        * (cinza, sublinhado), nunca o tamanho: era 12px num alvo de 30, e
+        * saída que precisa de lupa é a mesma retenção por atrito com outra
+        * roupa. 16px, 48 de alvo, e o mesmo nome da tela de destino. */}
       <div className="pt-2 text-center">
         <Link
           to="/tio/encerrar"
-          className="tap inline-block p-2 text-xs text-textMuted underline underline-offset-2"
+          className="tap inline-flex min-h-12 items-center px-2 text-base text-textMuted underline underline-offset-2"
         >
-          Encerrar minha associação
+          Encerrar associação
         </Link>
       </div>
     </div>
@@ -260,7 +267,7 @@ function FaturaAberta({ fatura }) {
   const isento = isencao !== null;
 
   return (
-    <div className="rounded-2xl bg-card p-5 shadow-sm">
+    <div className="rounded-2xl bg-card p-5 shadow-rest">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-base font-bold capitalize text-text">
           {formatMonthLabel(fatura.mes)}
@@ -343,7 +350,7 @@ function FaturaAberta({ fatura }) {
         * expira enquanto ele ficar — dizer isso onde ele confere a conta é o
         * que transforma um número numa razão para não sair. */}
       {fatura.descontoFechamento > 0 && (
-        <p className="mt-2 text-xs leading-relaxed text-textMuted">
+        <p className="mt-2 text-base leading-relaxed text-text">
           Seu desconto é <strong>permanente</strong>. Ele não tem prazo de
           validade.
         </p>
@@ -352,14 +359,14 @@ function FaturaAberta({ fatura }) {
       {/* O plano da fatura de teste é VITRINE, e apresentar projeção como
         * cláusula é o começo de uma discussão sobre quanto foi combinado. */}
       {fatura.planoContratado === false && (
-        <p className="mt-1 text-xs leading-relaxed text-textMuted">
+        <p className="mt-1 text-sm leading-relaxed text-textMuted">
           O cálculo acima usa o plano mensal, porque você ainda não escolheu
           um. No anual, o valor é menor.
         </p>
       )}
 
       {isencao ? (
-        <p className="mt-3 rounded-xl border border-escolaBorder bg-escolaSoft p-3 text-xs leading-relaxed text-escola">
+        <p className="mt-3 rounded-xl border border-escolaBorder bg-escolaSoft p-3 text-base leading-relaxed text-escola">
           <strong>{isencao.titulo}</strong>
           {isencao.corpo ? ` ${isencao.corpo}` : ''}
           {/* A data só aparece quando a fatura a congelou. Contador de meses
@@ -386,9 +393,9 @@ function FaturaAberta({ fatura }) {
               href={fatura.asaasUrl}
               target="_blank"
               rel="noreferrer"
-              className="tap mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary font-bold text-white"
+              className="tap mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-base font-bold text-white"
             >
-              <Receipt size={16} />
+              <Receipt size={18} aria-hidden="true" />
               Pagar esta fatura
             </a>
           )}
@@ -436,10 +443,10 @@ function PagamentoPix({ fatura }) {
   if (!payload) {
     return (
       <div className="mt-3 rounded-xl border border-border bg-sunken p-3">
-        <p className="text-xs font-semibold text-text">
+        <p className="text-base font-semibold text-text">
           A plataforma ainda não cadastrou a chave PIX
         </p>
-        <p className="mt-0.5 text-xs text-textMuted">
+        <p className="mt-0.5 text-sm text-textMuted">
           Combine o pagamento direto com ela.
         </p>
       </div>
@@ -465,11 +472,13 @@ function PagamentoPix({ fatura }) {
         </p>
       </div>
 
-      <Button size="md" icon={copiado ? Check : Copy} onClick={copiar}>
+      {/* A AÇÃO DA TELA, e por isso no tamanho grande — o QR, logo abaixo, é
+        * a alternativa, no médio. */}
+      <Button icon={copiado ? Check : Copy} onClick={copiar}>
         {copiado ? 'Código copiado!' : 'Copiar código PIX'}
       </Button>
 
-      <p className="text-center text-xs text-textMuted">
+      <p className="text-center text-sm text-textMuted">
         O valor de {formatCurrency(fatura.total)} já vai no código — não precisa
         digitar.
       </p>
@@ -490,13 +499,13 @@ function PagamentoPix({ fatura }) {
           ) : (
             <div className="h-48 w-48 animate-pulse rounded-lg bg-neutro" />
           )}
-          <p className="text-center text-xs text-textMuted">
+          <p className="text-center text-sm text-textMuted">
             Abra o app do banco, escolha PIX e aponte a câmera.
           </p>
         </div>
       )}
 
-      <p className="text-center text-xs leading-relaxed text-textMuted">
+      <p className="text-center text-sm leading-relaxed text-textMuted">
         A baixa é dada pela plataforma quando o PIX cai. Você não precisa avisar.
       </p>
     </div>
@@ -506,9 +515,9 @@ function PagamentoPix({ fatura }) {
 function Linha({ label, valor, forte }) {
   return (
     <div className="flex items-baseline justify-between gap-2 py-0.5">
-      <span className="text-xs text-textMuted">{label}</span>
+      <span className="text-sm text-textMuted">{label}</span>
       <span
-        className={`text-right text-sm ${
+        className={`text-right text-base ${
           forte ? 'font-bold text-text' : 'text-text'
         }`}
       >

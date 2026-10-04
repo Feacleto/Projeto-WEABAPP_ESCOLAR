@@ -77,13 +77,13 @@ export default function ReceiptPicker({ file, onChange }) {
             <Check size={14} className="text-accentText" />
             Comprovante anexado
           </p>
-          <p className="text-xs text-textMuted truncate">{file.name}</p>
+          <p className="text-sm text-textMuted truncate">{file.name}</p>
         </div>
         <button
           type="button"
           onClick={clear}
           aria-label="Remover comprovante"
-          className="tap w-9 h-9 rounded-lg text-textMuted flex items-center justify-center shrink-0"
+          className="tap w-12 h-12 rounded-lg text-textMuted flex items-center justify-center shrink-0"
         >
           <X size={18} />
         </button>

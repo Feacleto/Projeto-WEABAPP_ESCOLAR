@@ -9,7 +9,6 @@ import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
 import ChildCard from '../../components/children/ChildCard';
 import { ChildDetailSheet } from '../../pages/ChildDetail';
-import TioAgendaFAB from '../../components/agenda/TioAgendaFAB';
 import { useChildren } from '../../hooks/useChildren';
 import { useAbsences } from '../../hooks/useAbsences';
 import { getDateKey } from '../../dominio/rota/horarios';
@@ -92,25 +91,11 @@ export default function TioChildren() {
         showBack
         backLabel="Início"
         backTo="/tio"
-        action={
-          <button
-            onClick={() => navigate('/tio/children/new')}
-            aria-label="Cadastrar nova criança"
-            data-tour="add-child"
-            className="tap inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full bg-primary px-3 text-sm font-semibold text-white"
-          >
-            <Plus size={16} />
-            {/* Em tela estreita o rótulo some e sobra o "+": o título da
-              * página não precisa ser cortado pra caber um botão que o ícone
-              * sozinho já explica. ⚠️ O corte era em 360px — exatamente a
-              * largura do Android comum —, então o rótulo aparecia e o título
-              * virava "Min…" (teste no navegador, 02/10/2026). */}
-            <span className="hidden min-[400px]:inline">Nova criança</span>
-          </button>
-        }
       />
 
-      <div className="p-5 space-y-4">
+      {/* `pb-28`: o botão fixo de cadastrar mora no canto de baixo e não
+        * pode cobrir o último cartão da lista. */}
+      <div className="p-5 pb-28 space-y-4">
         {/* Apresenta as pílulas de período que vêm logo abaixo. Elas sempre
           * estiveram certas; o que faltava era dizer que aquilo são as
           * turmas dele. Ver components/layout/PageHeader. */}
@@ -119,9 +104,9 @@ export default function TioChildren() {
           title={
             children.length
               ? `${children.length} criança${children.length > 1 ? 's' : ''} na sua turma`
-              : 'Sua turma'
+              : 'Minha turma'
           }
-          subtitle="Escolha a turma pelo período, ou busque pelo nome. Toque na foto pra abrir a ficha."
+          subtitle="Escolha o período ou busque pelo nome. Toque numa criança para abrir a ficha."
         />
 
         {/* Escolas — cadastro que vive perto de onde ele é usado.
@@ -131,43 +116,54 @@ export default function TioChildren() {
           onClick={() => navigate('/tio/children/escolas')}
           className="tap w-full bg-card border border-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left"
         >
-          <div className="w-9 h-9 rounded-xl bg-escolaSoft text-escola flex items-center justify-center shrink-0">
-            <School size={17} />
+          <div className="w-10 h-10 rounded-xl bg-escolaSoft text-escola flex items-center justify-center shrink-0">
+            <School size={18} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-text leading-tight">
+            <p className="text-base font-semibold text-text leading-tight">
               Escolas
             </p>
-            <p className="text-xs text-textMuted">
+            <p className="text-sm text-textMuted">
               Cadastre uma vez e reaproveite em cada criança
             </p>
           </div>
           <ChevronRight size={18} className="text-textMuted shrink-0" />
         </button>
 
-        {/* Busca por nome */}
-        <div className="relative">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none"
-          />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Digite aqui"
-            className="w-full h-12 pl-10 pr-10 rounded-2xl bg-card border border-border text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              aria-label="Limpar busca"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-textMuted tap p-1"
-            >
-              <X size={16} />
-            </button>
-          )}
+        {/* Busca por nome. O RÓTULO É VISÍVEL: placeholder some no primeiro
+          * toque, e quem volta à tela com a busca preenchida não sabe mais o
+          * que aquele campo filtra. */}
+        <div>
+          <label
+            htmlFor="busca-da-turma"
+            className="mb-2 block text-sm font-semibold text-text"
+          >
+            Buscar pelo nome
+          </label>
+          <div className="relative">
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none"
+            />
+            <input
+              id="busca-da-turma"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Digite aqui"
+              className="w-full h-12 pl-10 pr-14 rounded-2xl bg-card border border-border text-base text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Limpar busca"
+                className="absolute right-0 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center text-textMuted tap"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filtros por período */}
@@ -177,7 +173,7 @@ export default function TioChildren() {
               key={f.value}
               type="button"
               onClick={() => setFilter(f.value)}
-              className={`shrink-0 h-11 px-4 rounded-full text-sm font-semibold tap border ${
+              className={`shrink-0 h-12 px-5 rounded-full text-base font-semibold tap border ${
                 filter === f.value
                   ? 'bg-text text-white border-text'
                   : 'bg-card text-textMuted border-border'
@@ -249,8 +245,27 @@ export default function TioChildren() {
         onClose={() => setFichaDe(null)}
       />
 
-      {/* Agenda digital — botão flutuante de aviso pros pais */}
-      <TioAgendaFAB />
+      {/* CADASTRAR CRIANÇA NO CANTO DE BAIXO, À DIREITA — onde o polegar já
+        * está e onde o olho termina a leitura da tela. Era um "+" no topo
+        * (que perdia o texto abaixo de 400px) e, neste canto, morava o
+        * "Avisar pais": a ação principal da turma no lugar mais difícil, e
+        * uma secundária no melhor. O aviso continua na Agenda e em Meu
+        * transporte.
+        *
+        * Saiu do cabeçalho em vez de ficar nos dois: o topo já tem voltar,
+        * título e sino, e com "Cadastrar criança" escrito o título virava
+        * "Min…" no Android de 360px. A mesma ação em dois lugares é uma
+        * coisa a mais para ler. */}
+      <button
+        type="button"
+        onClick={() => navigate('/tio/children/new')}
+        data-tour="add-child"
+        style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-base font-bold text-white shadow-float tap print:hidden"
+      >
+        <Plus size={22} />
+        Cadastrar criança
+      </button>
     </>
   );
 }

@@ -191,7 +191,7 @@ export default function DriverSignup() {
         * login, então quem vem da bifurcação continua sem sentir que trocou
         * de aplicativo. O movimento contínuo saiu junto: o sistema só o
         * permite no "ao vivo". */}
-      <header className="relative overflow-hidden rounded-b-3xl bg-primary px-6 pb-7 pt-5 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
+      <header className="relative overflow-hidden rounded-b-3xl bg-primary px-6 pb-6 pt-4 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-none lg:px-14 lg:py-14">
 
         {/* TRÊS FILHOS NO FLEX DA COLUNA VERDE: o voltar no alto, o miolo no
           * meio, o domínio embaixo. É o mesmo arranjo da tela de login, e é o
@@ -265,7 +265,7 @@ export default function DriverSignup() {
               className="hidden lg:block"
             />
           </a>
-          <h1 className="mt-5 font-display text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
+          <h1 className="mt-4 font-display lg:mt-5 text-2xl font-extrabold tracking-tight lg:text-[2.1rem]">
             Comece a usar hoje
           </h1>
           {/* ⚠️ A FRASE RESPONDE "O QUE ACONTECE DEPOIS QUE EU MANDAR".
@@ -285,7 +285,10 @@ export default function DriverSignup() {
             — a conta é sua no fim do formulário.
           </p>
 
-          <div className="mt-5">
+          {/* ⚠️ A ESTRADA SÓ NO MONITOR (04/10/2026). No celular ela
+            * empurrava o botão de criar a conta para baixo da dobra: o topo
+            * verde fica curto e o botão sobe para perto do polegar. */}
+          <div className="mt-5 hidden lg:block">
             <ArtRoad />
           </div>
         </div>
@@ -363,7 +366,7 @@ export default function DriverSignup() {
             * operação" foram para o primeiro acesso — lá eles têm contexto,
             * aqui eram o pedágio de quem ainda não viu nada. */}
           <Grupo rotulo="como você entra na sua conta">
-            <Input
+            <Input semSalvar
               type="email"
               inputMode="email"
               label="Email"
@@ -375,7 +378,7 @@ export default function DriverSignup() {
               error={errors.email}
               required
             />
-            <Input
+            <Input semSalvar
               label="WhatsApp"
               placeholder="Digite aqui"
               inputMode="tel"
@@ -393,7 +396,7 @@ export default function DriverSignup() {
               * OAuth é recusado, e este formulário costuma ser aberto a partir
               * de um link compartilhado. Caminho que falha em metade dos
               * aparelhos é pior que um campo a mais. */}
-            <Input
+            <Input semSalvar
               type="password"
               revealable
               label="Senha"
@@ -423,7 +426,12 @@ export default function DriverSignup() {
             * a conta e abre o painel. Um botão que diz só "criar minha conta"
             * deixa a pessoa esperando uma confirmação que não vem — ela já
             * está dentro. */}
-          <Button type="submit" loading={submitting} icon={Bus}>
+          <Button
+            type="submit"
+            loading={submitting}
+            icon={Bus}
+            className="shadow-focus"
+          >
             Criar minha conta e entrar
           </Button>
           <p className="text-xs text-textMuted text-center">

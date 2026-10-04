@@ -4,7 +4,13 @@ import { Home, Bus, School, CheckCircle2, RefreshCw, BellRing } from 'lucide-rea
 import toast from 'react-hot-toast';
 import Logo from '../components/common/Logo';
 import Spinner from '../components/common/Spinner';
-import { verAcompanhamento, inscreverAvisosDoAcesso } from '../services/acompanhamentoService';
+import {
+  avaliarAcompanhamento,
+  verAcompanhamento,
+  inscreverAvisosDoAcesso,
+} from '../services/acompanhamentoService';
+import CartaoDeAvaliacao from '../components/feedback/CartaoDeAvaliacao';
+import { PAPEL_DA_AVALIACAO, perguntaDaAvaliacao } from '../dominio/suporte/avaliacaoRapida.js';
 
 /**
  * O LINK DE 24 HORAS FICA GUARDADO NO APARELHO (03/10/2026). O aviso que
@@ -91,6 +97,10 @@ export default function Acompanhar() {
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
+  // A HORA DA ÚLTIMA RESPOSTA DO SERVIDOR, à vista. A tela se atualiza a cada
+  // minuto sozinha e por toque — sem a hora, quem olha não sabe se está lendo
+  // o agora ou o de meia hora atrás (a falha de rede no meio é silenciosa).
+  const [atualizadoEm, setAtualizadoEm] = useState(null);
   const jaMontou = useRef(false);
 
   const buscar = useCallback(
@@ -99,6 +109,7 @@ export default function Acompanhar() {
       try {
         const d = await verAcompanhamento(token);
         setDados(d);
+        setAtualizadoEm(new Date());
         setErro(null);
       } catch (e) {
         // Só derruba a tela se ainda não houver nada: uma falha de rede no
@@ -125,6 +136,7 @@ export default function Acompanhar() {
       .then((d) => {
         if (!vivo) return;
         setDados(d);
+        setAtualizadoEm(new Date());
         setErro(null);
       })
       .catch((e) => {
@@ -166,11 +178,15 @@ export default function Acompanhar() {
     );
   }
 
+  // OS NOMES DAS ETAPAS SÃO OS MESMOS DO APP (03/10/2026): "Em casa · Na
+  // perua · Na escola · Entregue em casa" — os do motorista e os do Início da
+  // família. Eram três vocabulários, e a avó que ouve "já está na escola" da
+  // mãe não pode ler "Chegou na escola" aqui e duvidar se é a mesma coisa.
   const passos = [
-    { chave: 'esperando', rotulo: 'Esperando na porta', Icone: Home, hora: null },
+    { chave: 'esperando', rotulo: 'Em casa', Icone: Home, hora: null },
     { chave: 'na_perua', rotulo: 'Na perua', Icone: Bus, hora: dados.marcos.naPerua },
-    { chave: 'na_escola', rotulo: 'Chegou na escola', Icone: School, hora: dados.marcos.naEscola },
-    { chave: 'entregue', rotulo: 'Entregue', Icone: CheckCircle2, hora: dados.marcos.entregue },
+    { chave: 'na_escola', rotulo: 'Na escola', Icone: School, hora: dados.marcos.naEscola },
+    { chave: 'entregue', rotulo: 'Entregue em casa', Icone: CheckCircle2, hora: dados.marcos.entregue },
   ];
   const atual = passos.findIndex((p) => p.chave === dados.estado);
 
@@ -206,7 +222,7 @@ export default function Acompanhar() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span
-                    className={`block text-sm ${
+                    className={`block text-base ${
                       i === atual ? 'font-bold text-text' : 'font-medium text-textMuted'
                     }`}
                   >
@@ -214,7 +230,7 @@ export default function Acompanhar() {
                   </span>
                 </span>
                 {p.hora && (
-                  <span className="text-sm font-bold text-text tabular-nums">
+                  <span className="text-base font-bold text-text tabular-nums">
                     {p.hora}
                   </span>
                 )}
@@ -226,7 +242,7 @@ export default function Acompanhar() {
         {/* "FALTA MUITO?" — a fila responde sem dizer onde a perua está. */}
         {dados.estado !== 'entregue' && dados.paradasNaVolta && (
           <div className="bg-card border border-border rounded-2xl p-4">
-            <p className="text-sm text-text leading-relaxed">
+            <p className="text-base text-text leading-relaxed">
               Na volta, {dados.crianca || 'a criança'} é a{' '}
               <strong>{dados.paradasNaVolta}ª parada</strong>
               {dados.combinado.volta && (
@@ -239,17 +255,41 @@ export default function Acompanhar() {
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-2 pt-1">
+        {/* ATUALIZAR É BOTÃO DE VERDADE (48px, 16px) — era um link de 12px,
+          * e é o único gesto que esta pessoa tem na tela. A hora da última
+          * resposta fica ao lado: é o que diz se o que está escrito é de agora. */}
+        <div className="flex flex-col items-center gap-1.5 pt-1">
           <button
             type="button"
             onClick={() => buscar(true)}
             disabled={atualizando}
-            className="tap inline-flex items-center gap-1.5 text-xs font-semibold text-primary disabled:opacity-60"
+            className="tap inline-flex h-12 items-center gap-2 rounded-xl border border-border bg-card px-5 text-base font-semibold text-primary disabled:opacity-60"
           >
-            <RefreshCw size={13} className={atualizando ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={atualizando ? 'animate-spin' : ''} />
             {atualizando ? 'Atualizando...' : 'Atualizar'}
           </button>
+          {atualizadoEm && (
+            <p className="text-sm text-textMuted">
+              Atualizado às{' '}
+              {atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
         </div>
+
+        {/* A AVALIAÇÃO RÁPIDA — depois da entrega, uma vez por link. Quem
+          * decide se pede é o servidor (`reguaDaAvaliacao.js`); aqui só se
+          * mostra. Sem nome nem telefone de quem avalia. */}
+        {dados.avaliacao?.pedir && (
+          <CartaoDeAvaliacao
+            pergunta={perguntaDaAvaliacao({
+              papel: dados.temporario
+                ? PAPEL_DA_AVALIACAO.SEGUNDO_RESPONSAVEL
+                : PAPEL_DA_AVALIACAO.ACOMPANHANTE,
+              crianca: dados.crianca,
+            })}
+            onEnviar={(resposta) => avaliarAcompanhamento(token, resposta)}
+          />
+        )}
 
         {/* O ACESSO DE 24 HORAS pode receber os avisos da rota no celular. */}
         {dados.temporario && !avisosLigados && (

@@ -50,6 +50,7 @@ const { makeCloseStaleRoutes } = require('./lib/routes');
 const { makeSendPushOnNotification } = require('./lib/push');
 const { makeAvisarAproximacao, makeAvisarBuzina } = require('./lib/avisosDaRota');
 const { makeLimparAvisosAntigos } = require('./lib/limpezaDosAvisos');
+const { makeAtualizarIndicesEconomicos } = require('./lib/indicesEconomicos');
 const { makeContarCriancasAtivas } = require('./lib/contadorDaTurma');
 const { makeLigarRelogioNaRota } = require('./lib/relogioNaRota');
 const { makeRestaurarRelogio } = require('./lib/relogioDoTeste');
@@ -65,6 +66,7 @@ const {
   makeGerarAcessoTemporario,
   makeEncerrarAcessoTemporario,
   makeInscreverAvisosDoAcesso,
+  makeAvaliarAcompanhamento,
 } = require('./lib/acompanhamento');
 const {
   makeEnviarAvisosDoDia,
@@ -128,6 +130,9 @@ exports.closeStaleRoutes = makeCloseStaleRoutes(db);
 // O e-mail da cobrança da plataforma sai no MESMO gatilho (enviarEmailDoAviso.js).
 // Avisos com mais de 90 dias saem todo dia às 4h (limpezaDosAvisos.js).
 exports.limparAvisosAntigos = makeLimparAvisosAntigos(db);
+// O IPCA de 12 meses (IBGE) para o "Preciso aumentar?", todo dia às 6h
+// (indicesEconomicos.js). Só grava quando o número muda.
+exports.atualizarIndicesEconomicos = makeAtualizarIndicesEconomicos(db);
 // O contador de crianças e o relógio do teste são do SERVIDOR (03/10/2026):
 // o cliente não grava mais nenhum dos dois (rules).
 exports.contarCriancasAtivas = makeContarCriancasAtivas(db);
@@ -178,6 +183,8 @@ exports.verAcompanhamento = makeVerAcompanhamento(db);
 exports.gerarAcessoTemporario = makeGerarAcessoTemporario(db);
 exports.encerrarAcessoTemporario = makeEncerrarAcessoTemporario(db);
 exports.inscreverAvisosDoAcesso = makeInscreverAvisosDoAcesso(db);
+// A avaliação rápida de quem abriu o link (reguaDaAvaliacao.js).
+exports.avaliarAcompanhamento = makeAvaliarAcompanhamento(db);
 
 // ===== Comprovante reusado (ver functions/lib/receiptGuard.js) =====
 //

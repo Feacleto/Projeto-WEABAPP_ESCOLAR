@@ -22,6 +22,7 @@ import { mensagemDoChamado } from '../../dominio/suporte/chamados.js';
 import { devWhatsAppLink } from '../../config/developer';
 import { APP_VERSION } from '../../version';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
+import BotaoDeFalar from '../common/BotaoDeFalar';
 
 /**
  * "Falar com o Alô Buzinou" — dois passos, e a pessoa não precisa digitar.
@@ -184,6 +185,8 @@ export default function SupportSheet({ open, onClose, uid, role, profile, email 
                 <label htmlFor="suporte-detalhe" className="block text-base font-semibold text-text mb-2">
                   {assunto.value === 'other' ? 'Conte o que aconteceu' : 'Quer contar mais? (opcional)'}
                 </label>
+                {/* Falar em vez de escrever (04/10/2026): o ditado se soma ao texto. */}
+                <BotaoDeFalar valor={detalhe} onChange={setDetalhe} />
                 <textarea
                   id="suporte-detalhe"
                   value={detalhe}

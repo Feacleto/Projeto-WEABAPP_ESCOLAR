@@ -54,7 +54,7 @@ export default function ChildSwitcher({ className = '' }) {
               type="button"
               onClick={() => setActiveChildId(id)}
               aria-pressed={active}
-              className={`tap flex-1 min-w-0 py-2.5 px-2 text-sm font-semibold rounded-xl truncate transition-colors ${
+              className={`tap flex-1 min-w-0 h-12 px-2 text-base font-semibold rounded-xl truncate transition-colors ${
                 active ? 'bg-card text-text shadow-sm' : 'text-textMuted'
               }`}
             >
@@ -66,9 +66,10 @@ export default function ChildSwitcher({ className = '' }) {
           type="button"
           onClick={() => setAddOpen(true)}
           aria-label="Adicionar outro filho"
-          className="tap w-10 h-10 rounded-xl text-textMuted flex items-center justify-center shrink-0"
+          title="Adicionar outro filho"
+          className="tap w-12 h-12 rounded-xl text-textMuted flex items-center justify-center shrink-0"
         >
-          <Plus size={18} />
+          <Plus size={20} />
         </button>
       </div>
 

@@ -8,8 +8,8 @@
  *
  * ── AS DUAS REGRAS, e as duas são do dono
  *
- *   1. SAIR TRANCA. Sair das rotas protegidas (`/tio/finance…` e
- *      `/tio/taxa`) ou mandar o app para o segundo plano conta como sair.
+ *   1. SAIR TRANCA. Sair das rotas protegidas (`/tio/finance…`,
+ *      `/tio/taxa` e `/tio/pix`) ou mandar o app para o segundo plano conta como sair.
  *      A preferência, gravada NO APARELHO, diz se tranca na hora ('sempre',
  *      o padrão) ou se quem volta dentro de 5 ou 30 minutos entra direto.
  *
@@ -41,6 +41,15 @@ export const CAIXA = '/tio/finance';
 
 /** A fatura da plataforma — protegida também, mas mora fora do layout do /tio. */
 export const TAXA = '/tio/taxa';
+
+/**
+ * A chave PIX — TROCAR a chave é protegido desde 04/10/2026 (D2). A auxiliar
+ * com o celular na mão trocava a chave para a dela pelo Perfil ou por
+ * `/tio/pix`, e o dinheiro de todas as famílias passava a cair noutra conta.
+ * MOSTRAR a chave continua sem senha ("Mostrar meu PIX", só leitura).
+ * Mora dentro do TioLayout, então o guarda do `<Outlet />` já a alcança.
+ */
+export const PIX = '/tio/pix';
 
 /** A tela "Turma e contratos", destino do cartão "Minha turma". */
 export const TURMA = '/tio/finance/turma';
@@ -99,12 +108,12 @@ export function normalizarCaminho(caminho) {
 }
 
 /**
- * A rota pede senha? `/tio/finance` e tudo abaixo, e `/tio/taxa` e tudo
- * abaixo. `/tio/financeiro` (que não existe) NÃO casa — o teste confere,
+ * A rota pede senha? `/tio/finance`, `/tio/taxa` e `/tio/pix`, e tudo abaixo
+ * de cada uma. `/tio/financeiro` (que não existe) NÃO casa — o teste confere,
  * porque `startsWith` sozinho casaria.
  */
 export function rotaProtegida(caminho) {
-  return /^\/tio\/(finance|taxa)(\/|$)/.test(normalizarCaminho(caminho));
+  return /^\/tio\/(finance|taxa|pix)(\/|$)/.test(normalizarCaminho(caminho));
 }
 
 /** O estado inicial, e o de quem acabou de trancar. */

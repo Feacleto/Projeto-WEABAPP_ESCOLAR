@@ -60,19 +60,19 @@ export default function TarjaDeAviso({ aviso }) {
       }`}
     >
       <Icone
-        size={15}
+        size={20}
         className={`mt-0.5 shrink-0 ${grave ? 'text-dangerText' : 'text-warningText'}`}
       />
       <div className="min-w-0">
         <p
-          className={`text-[12.5px] font-bold leading-snug ${
+          className={`text-base font-bold leading-snug ${
             grave ? 'text-dangerText' : 'text-warningText'
           }`}
         >
           {aviso.titulo}
         </p>
         <p
-          className={`mt-0.5 text-xs leading-relaxed ${
+          className={`mt-0.5 text-sm leading-relaxed ${
             grave ? 'text-dangerText/90' : 'text-warningText'
           }`}
         >

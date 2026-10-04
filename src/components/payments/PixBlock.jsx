@@ -17,9 +17,14 @@ import { PIX_KEY_TYPES } from '../../services/userService';
  * Props:
  *   - admin:   doc do motorista (pixKey, pixKeyType, name, companyName, city)
  *   - amount:  valor da mensalidade
- *   - txid:    identificação livre (usamos o mês, ex: '2026-08')
+ *   - txid:    identificação da cobrança no extrato do banco — o id do
+ *              pagamento (ver o comentário em PaiFinance)
+ *   - children: a ação que vem DEPOIS de copiar ("Já paguei"). Mora dentro
+ *              do bloco, logo abaixo do "Copiar código PIX", porque é ali que
+ *              o polegar está quando ela volta do app do banco. Sem chave PIX
+ *              ela aparece embaixo do aviso — dinheiro em mãos também se avisa.
  */
-export default function PixBlock({ admin, amount, txid }) {
+export default function PixBlock({ admin, amount, txid, children = null }) {
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState(null);
@@ -59,13 +64,16 @@ export default function PixBlock({ admin, amount, txid }) {
   // direto com ele", e explicar a diferença seria expor um erro dele a ela.
   if (!admin?.pixKey || !payload) {
     return (
-      <div className="bg-sunken border border-border rounded-2xl p-4">
-        <p className="text-sm font-semibold text-text">
-          O motorista ainda não cadastrou a chave PIX
-        </p>
-        <p className="text-xs text-textMuted mt-1">
-          Combine o pagamento direto com ele.
-        </p>
+      <div className="space-y-3">
+        <div className="bg-sunken border border-border rounded-2xl p-4">
+          <p className="text-base font-semibold text-text">
+            O motorista ainda não cadastrou a Chave PIX
+          </p>
+          <p className="text-sm text-textMuted mt-1">
+            Combine o pagamento direto com ele.
+          </p>
+        </div>
+        {children}
       </div>
     );
   }
@@ -86,10 +94,13 @@ export default function PixBlock({ admin, amount, txid }) {
       <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="rotulo">
-              chave pix
+            {/* Rótulo e chave em 16px: é o que ela confere contra o nome que
+              * o banco mostra antes de confirmar. Só o código copia-e-cola
+              * pode ser miúdo — ele é para copiar, não para ler. */}
+            <p className="text-base font-semibold text-textMuted">
+              Chave PIX
             </p>
-            <p className="text-sm text-text break-all">
+            <p className="text-base text-text break-all">
               {PIX_KEY_TYPES[admin.pixKeyType]?.label || 'Chave'}: {admin.pixKey}
             </p>
           </div>
@@ -105,10 +116,12 @@ export default function PixBlock({ admin, amount, txid }) {
         <Button icon={copied ? Check : Copy} onClick={copy}>
           {copied ? 'Código copiado!' : 'Copiar código PIX'}
         </Button>
-        <p className="text-xs text-textMuted text-center">
+        <p className="text-sm text-textMuted text-center">
           O valor de {formatBRLShort(amount)} já vai no código — não precisa
           digitar.
         </p>
+
+        {children}
       </div>
 
       {!showQr ? (
@@ -122,7 +135,7 @@ export default function PixBlock({ admin, amount, txid }) {
           ) : (
             <div className="w-48 h-48 rounded-lg bg-neutro animate-pulse" />
           )}
-          <p className="text-xs text-textMuted text-center">
+          <p className="text-sm text-textMuted text-center">
             Abra o app do banco, escolha PIX e aponte a câmera.
           </p>
         </div>

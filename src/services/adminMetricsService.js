@@ -239,7 +239,14 @@ export async function getSurveyResults({ forcar = false } = {}) {
 
   const base = {
     total: 0,
-    porPapel: { admin: { n: 0, soma: 0 }, parent: { n: 0, soma: 0 } },
+    // Os quatro papéis da avaliação rápida (dominio/suporte/avaliacaoRapida.js):
+    // os dois sem conta chegam pelo link do acompanhamento.
+    porPapel: {
+      admin: { n: 0, soma: 0 },
+      parent: { n: 0, soma: 0 },
+      acompanhante: { n: 0, soma: 0 },
+      segundo_responsavel: { n: 0, soma: 0 },
+    },
     estrelas: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
     usos: {},
     desejos: {},
@@ -249,7 +256,7 @@ export async function getSurveyResults({ forcar = false } = {}) {
 
   for (const d of avaliacoes) {
     const nota = Number(d?.answers?.rating || 0);
-    const papel = d.role === 'admin' ? 'admin' : 'parent';
+    const papel = base.porPapel[d.role] ? d.role : 'parent';
 
     base.total += 1;
     if (nota >= 1 && nota <= 5) {
@@ -299,6 +306,12 @@ export async function getSurveyResults({ forcar = false } = {}) {
       : 0,
     mediaMotorista: media(base.porPapel.admin),
     mediaResponsavel: media(base.porPapel.parent),
+    // Quem acompanhou pelo link — acompanhante do dia e segundo responsável
+    // juntos: os dois veem a mesma página.
+    mediaPeloLink: media({
+      n: base.porPapel.acompanhante.n + base.porPapel.segundo_responsavel.n,
+      soma: base.porPapel.acompanhante.soma + base.porPapel.segundo_responsavel.soma,
+    }),
     // % de quem deu 4 ou 5 — o proxy de recomendação mais honesto que dá
     // pra extrair de uma escala de estrelas (não é NPS, e não vamos chamar
     // de NPS: NPS tem outra pergunta e outra escala).
@@ -442,6 +455,8 @@ async function buscarConsole({ forcar }) {
       concessoes: registroPorParceiro[p.uid]?.concessoes ?? p.concessoes,
     })),
     notas: notasPorMotorista(avaliacoes, responsaveis),
+    // A fila do dia transforma nota baixa de motorista em conversa.
+    avaliacoes,
     faturas: faturasPorParceiro,
   };
 }

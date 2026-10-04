@@ -83,7 +83,7 @@ export default function ConfirmDialog({
           type="button"
           onClick={() => !loading && onCancel?.()}
           aria-label="Fechar"
-          className="absolute right-3 top-3 w-9 h-9 rounded-lg bg-neutro flex items-center justify-center text-textMuted tap"
+          className="absolute right-2 top-2 w-12 h-12 rounded-lg bg-neutro flex items-center justify-center text-textMuted tap"
           disabled={loading}
         >
           <X size={20} />

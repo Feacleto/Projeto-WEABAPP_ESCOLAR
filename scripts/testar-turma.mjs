@@ -16,6 +16,11 @@ import {
   movimentoDaTurma,
   resumoDaTurma,
 } from '../src/dominio/identidade/movimentoDaTurma.js';
+import {
+  linkDoLembreteDoContrato,
+  mensagemDoLembreteDoContrato,
+} from '../src/marca/lembreteDoContrato.js';
+import { readFileSync } from 'node:fs';
 
 let ok = 0;
 let bad = 0;
@@ -63,6 +68,36 @@ igual('singular', frasesDoMovimento({ entraram: 1, sairam: 1 }), { entraram: '1 
 igual('plural', frasesDoMovimento({ entraram: 2, sairam: 3 }), { entraram: '2 entraram', sairam: '3 saíram' });
 igual('zero', frasesDoMovimento({ entraram: 0, sairam: 0 }), { entraram: '0 entraram', sairam: '0 saíram' });
 igual('saída sem dado não vira frase', frasesDoMovimento({ entraram: 2, sairam: null }), { entraram: '2 entraram', sairam: null });
+
+console.log('5. o lembrete do contrato (item 18)');
+{
+  const m = mensagemDoLembreteDoContrato({ responsavel: 'Ana Paula Souza', crianca: 'Laura Souza', assinatura: 'Tio Nino' });
+  igual('frase de quem já entrou', m,
+    'Oi, Ana! O contrato do transporte de Laura está esperando a sua assinatura no app Alô Buzinou. É só abrir o app e assinar. Obrigado! Tio Nino');
+  const comLink = mensagemDoLembreteDoContrato({ responsavel: 'Ana', crianca: 'Laura', linkDoConvite: 'https://alobuzinou.com/convite/TNAB23CD' });
+  igual('quem não entrou recebe o link do convite', comLink.includes('https://alobuzinou.com/convite/TNAB23CD'), true);
+  igual('sem nome, ainda é uma frase', mensagemDoLembreteDoContrato({}).startsWith('Oi! O contrato do transporte está esperando'), true);
+  for (const proibida of ['aditivo', 'versão', 'o que muda', 'mudança']) {
+    igual(`a família não lê "${proibida}"`, (m + comLink).toLowerCase().includes(proibida), false);
+  }
+  const link = linkDoLembreteDoContrato({ telefone: '(11) 98765-4321', responsavel: 'Ana', crianca: 'Laura', familiaEntrou: true });
+  igual('link do WhatsApp com 55 na frente', link.startsWith('https://wa.me/5511987654321?text='), true);
+  igual('a frase vai no link', decodeURIComponent(link.split('text=')[1]).includes('esperando a sua assinatura'), true);
+  igual('telefone que já veio com 55 não ganha outro',
+    linkDoLembreteDoContrato({ telefone: '+55 11 98765-4321', familiaEntrou: true }).startsWith('https://wa.me/5511987654321?'), true);
+  igual('sem telefone, sem botão', linkDoLembreteDoContrato({ telefone: '', familiaEntrou: true }), null);
+  igual('telefone curto, sem botão', linkDoLembreteDoContrato({ telefone: '98765', familiaEntrou: true }), null);
+  igual('nem conta nem convite: nada a lembrar', linkDoLembreteDoContrato({ telefone: '11987654321' }), null);
+  const entrouComConvite = linkDoLembreteDoContrato({ telefone: '11987654321', familiaEntrou: true, linkDoConvite: 'https://x/convite/A' });
+  igual('quem já entrou não recebe convite', decodeURIComponent(entrouComConvite).includes('/convite/'), false);
+
+  // A tela usa o lembrete, e ele é o verde da linha — "Cadastrar" desceu.
+  const tela = readFileSync(new URL('../src/pages/tio/TioTurma.jsx', import.meta.url), 'utf8');
+  igual('TioTurma usa linkDoLembreteDoContrato', tela.includes('linkDoLembreteDoContrato('), true);
+  igual('TioTurma diz "Lembrar a família no WhatsApp"', tela.includes('Lembrar a família no WhatsApp'), true);
+  igual('"Cadastrar nova criança" é secundário',
+    /<Button variant="secondary" icon=\{Plus\}[^\n]*\n\s*Cadastrar nova criança/.test(tela.replace(/\r/g, '')), true);
+}
 
 console.log(`\n${ok} ok, ${bad} falharam`);
 process.exit(bad ? 1 : 0);

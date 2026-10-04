@@ -188,6 +188,13 @@ Quatro durações (`duration-toque` 120, `-estado` 200, `-entrada` 300, `-festa`
 - a barra fina da troca de versão ([TelaDeVersao](../src/components/common/TelaDeVersao.jsx)),
   enquanto o app troca de versão — espera real, que acaba sozinha em segundos.
   É um trecho que passa, nunca uma barra que enche: ninguém sabe quanto falta.
+- o carregamento (04/10/2026, escolhido pelo dono entre quatro): o **anel**
+  do [Spinner](../src/components/common/Spinner.jsx) no botão que salva
+  ("Salvando"), as **bolinhas da senha** piscando uma depois da outra enquanto
+  o servidor confere, e os **três pontinhos** do
+  [PontosDeEspera](../src/components/common/PontosDeEspera.jsx) quando uma tela
+  inteira abre ("Abrindo"). Os três só existem durante a espera real; os
+  pontinhos esperam 300 ms para aparecer, como o Respiro.
 
 O fundo do login DEIXOU de ser exceção em 03/10/2026: os cartões não
 flutuam e os ícones não pulsam mais (`testar:fundo` trava a ausência). Os

@@ -5,9 +5,11 @@ import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { useBoletim } from '../../hooks/useBoletim';
+import { useConfigDoFinanceiro, useDespesasDosUltimosMeses } from '../../hooks/useDespesas';
 import { useValoresVisiveis, VALOR_ESCONDIDO } from '../../hooks/useValoresVisiveis';
 import { formatBRL } from '../../compartilhado/formatters';
 import { PERGUNTA, TEMA, mesDe, nomeDoMes, responder } from '../../dominio/cobranca/boletim.js';
+import { PERGUNTA_DA_PERUA, TEMA_DA_PERUA, responderDaPerua } from '../../dominio/cobranca/buziDaPerua.js';
 
 /**
  * O BUZI — o assistente digital do Financeiro (04/10/2026, decisão do dono).
@@ -27,13 +29,33 @@ import { PERGUNTA, TEMA, mesDe, nomeDoMes, responder } from '../../dominio/cobra
  *
  * Atrás da senha: mora embaixo de `/tio/finance`, e o `GuardaDoFinanceiro`
  * protege pelo caminho. O olho de "esconder valores" vale aqui também.
+ *
+ * ── DOIS GRUPOS DE TRÊS (04/10/2026, pedido do dono)
+ * Ele também fala do que NÃO entra no Boletim: combustível, manutenção e
+ * quanto sobrou (`dominio/cobranca/buziDaPerua.js`). O dono pediu no máximo
+ * três botões à vista — seis empilhados cobririam a conversa num celular de
+ * 320 px —, então uma chave em cima troca o grupo: "Mensalidades" ou "Perua
+ * e sobra". A conversa guarda os dois tipos misturados, na ordem tocada.
  */
-const TEMAS = [TEMA.ATRASADOS, TEMA.AVISARAM, TEMA.ENTROU];
+const GRUPOS = [
+  { id: 'mensalidades', rotulo: 'Mensalidades', temas: [TEMA.ATRASADOS, TEMA.AVISARAM, TEMA.ENTROU] },
+  {
+    id: 'perua',
+    rotulo: 'Perua e sobra',
+    temas: [TEMA_DA_PERUA.COMBUSTIVEL, TEMA_DA_PERUA.MANUTENCAO, TEMA_DA_PERUA.SOBROU],
+  },
+];
+const TEMAS = GRUPOS.flatMap((g) => g.temas);
+const DA_PERUA = new Set(GRUPOS[1].temas);
+const PERGUNTAS = { ...PERGUNTA, ...PERGUNTA_DA_PERUA };
 const MAXIMO_NA_CONVERSA = 12;
 
 const ACAO = {
   [TEMA.ATRASADOS]: { texto: 'Cobrar no caixa', destino: '/tio/finance' },
   [TEMA.AVISARAM]: { texto: 'Conferir no caixa', destino: '/tio/finance' },
+  [TEMA_DA_PERUA.COMBUSTIVEL]: { texto: 'Lançar abastecimento', destino: '/tio/abastecer', sempre: true },
+  [TEMA_DA_PERUA.MANUTENCAO]: { texto: 'Ver a reserva da perua', destino: '/tio/finance/reserva', sempre: true },
+  [TEMA_DA_PERUA.SOBROU]: { texto: 'Ver as despesas', destino: '/tio/finance/expenses', sempre: true },
 };
 
 function chaveDoDia(uid) {
@@ -61,6 +83,9 @@ export default function TioBuzi() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { pagamentos, atualizadoEm } = useBoletim();
+  const { despesas, carregando: carregandoDespesas } = useDespesasDosUltimosMeses(12);
+  const config = useConfigDoFinanceiro();
+  const [grupo, setGrupo] = useState(GRUPOS[0].id);
   const { visiveis, alternar } = useValoresVisiveis();
   const [conversa, setConversa] = useState(() => lerConversa(user?.uid));
   const fim = useRef(null);
@@ -116,12 +141,20 @@ export default function TioBuzi() {
         </BolhaDoBuzi>
 
         {conversa.map((tema, i) => {
-          const r = pagamentos ? responder(tema, pagamentos, { mostrar: visiveis }) : null;
+          const daPerua = DA_PERUA.has(tema);
+          let r = null;
+          if (daPerua) {
+            if (pagamentos && !carregandoDespesas && config !== null) {
+              r = responderDaPerua(tema, { pagamentos, despesas, config: config || {}, mostrar: visiveis });
+            }
+          } else if (pagamentos) {
+            r = responder(tema, pagamentos, { mostrar: visiveis });
+          }
           return (
             <div key={i} className="space-y-3">
               <div className="flex justify-end">
                 <p className="max-w-[80%] rounded-2xl rounded-tr-md bg-primary px-4 py-3 text-[18px] font-semibold text-white">
-                  {PERGUNTA[tema]}
+                  {PERGUNTAS[tema]}
                 </p>
               </div>
               {!r ? (
@@ -146,7 +179,7 @@ export default function TioBuzi() {
                       ))}
                     </ul>
                   )}
-                  {ACAO[tema] && r.quantas > 0 && (
+                  {ACAO[tema] && (ACAO[tema].sempre || r.quantas > 0) && (
                     <button
                       type="button"
                       onClick={() => navigate(ACAO[tema].destino)}
@@ -155,6 +188,7 @@ export default function TioBuzi() {
                       {ACAO[tema].texto}
                     </button>
                   )}
+                  {!daPerua && (
                   <button
                     type="button"
                     onClick={() => navigate('/tio/finance/boletim')}
@@ -163,12 +197,16 @@ export default function TioBuzi() {
                     <FileDown size={20} aria-hidden="true" />
                     Baixar o Boletim
                   </button>
+                  )}
                 </BolhaDoBuzi>
               )}
             </div>
           );
         })}
-        <div ref={fim} />
+        {/* A resposta nova para ACIMA do painel de perguntas, que é fixo e alto
+          * (a chave dos grupos e três botões): sem esta margem, rolar até o fim
+          * deixava o final da resposta escondido atrás dele. */}
+        <div ref={fim} style={{ scrollMarginBottom: '20rem' }} />
       </div>
 
       {/* As três perguntas, fixas acima das abas — o mesmo lugar e a mesma
@@ -178,14 +216,30 @@ export default function TioBuzi() {
         className="sticky z-20 mx-3 mt-2 rounded-2xl bg-card p-2 shadow-float space-y-2"
         style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
       >
-        {TEMAS.map((tema) => (
+        <div role="tablist" aria-label="Assunto das perguntas" className="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
+          {GRUPOS.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              role="tab"
+              aria-selected={grupo === g.id}
+              onClick={() => setGrupo(g.id)}
+              className={`tap h-11 rounded-lg text-base font-bold ${
+                grupo === g.id ? 'bg-primary text-white' : 'text-textMuted'
+              }`}
+            >
+              {g.rotulo}
+            </button>
+          ))}
+        </div>
+        {GRUPOS.find((g) => g.id === grupo).temas.map((tema) => (
           <button
             key={tema}
             type="button"
             onClick={() => perguntar(tema)}
             className="tap h-14 w-full rounded-2xl border border-borderStrong bg-card px-4 text-left text-[18px] font-bold text-text"
           >
-            {PERGUNTA[tema]}
+            {PERGUNTAS[tema]}
           </button>
         ))}
       </div>

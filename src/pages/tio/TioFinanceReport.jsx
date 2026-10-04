@@ -32,6 +32,10 @@ import { useAuth } from '../../hooks/useAuth';
  *   5. Tabela mês a mês (recebido, em aberto, % cobrança)
  *
  * Imprimir / Salvar PDF: window.print() — CSS print já existe no projeto.
+ *
+ * O NOME É O QUE ELE COBRE: doze meses. A porta no Financeiro dizia "Baixar
+ * extrato do mês" e o cabeçalho, "Relatório financeiro" — dois nomes, e o
+ * primeiro prometia um mês só. Os dois agora dizem "Relatório de 12 meses".
  */
 export default function TioFinanceReport() {
   const { user, profile } = useAuth();
@@ -173,7 +177,7 @@ export default function TioFinanceReport() {
   if (loading) {
     return (
       <>
-        <Header title="Relatório financeiro" showBack backLabel="Financeiro" backTo="/tio/finance" />
+        <Header title="Relatório de 12 meses" showBack backLabel="Financeiro" backTo="/tio/finance" />
         <div className="p-5 space-y-3">
           <Skeleton className="h-40" />
           <Skeleton className="h-32" />
@@ -185,7 +189,7 @@ export default function TioFinanceReport() {
 
   return (
     <>
-      <Header title="Relatório financeiro" showBack backLabel="Financeiro" backTo="/tio/finance" />
+      <Header title="Relatório de 12 meses" showBack backLabel="Financeiro" backTo="/tio/finance" />
 
       <div className="p-5 space-y-5">
         {/* Ações topo (escondidas no print) */}
@@ -201,17 +205,17 @@ export default function TioFinanceReport() {
           <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="rotulo">Relatório financeiro</p>
+                <p className="rotulo">Relatório dos últimos 12 meses</p>
                 <h1 className="text-2xl font-bold text-text leading-tight mt-1">
                   {profile?.companyName || profile?.name || 'Transporte escolar'}
                 </h1>
-                <p className="text-xs text-textMuted mt-1">
+                <p className="text-sm text-textMuted mt-1">
                   {profile?.companyDocument || ''}
                 </p>
               </div>
               <FileText size={28} className="text-textMuted shrink-0 mt-1" />
             </div>
-            <p className="text-xs text-textMuted pt-2">
+            <p className="text-sm text-textMuted pt-2">
               Período: {formatMonthLabel(fromKey)} →{' '}
               {formatMonthLabel(currentMonthKey)} · Emitido em{' '}
               {new Date().toLocaleDateString('pt-BR')}
@@ -230,7 +234,7 @@ export default function TioFinanceReport() {
               <p className="font-display text-2xl font-extrabold text-text tabular-nums mt-1">
                 {formatCurrency(totalReceived)}
               </p>
-              <p className="text-xs text-textMuted mt-1">12 meses</p>
+              <p className="text-sm text-textMuted mt-1">12 meses</p>
             </div>
             <div className="bg-surface rounded-xl p-4">
               <p className="rotulo flex items-center gap-1.5">
@@ -240,7 +244,7 @@ export default function TioFinanceReport() {
               <p className="font-display text-2xl font-extrabold text-text tabular-nums mt-1">
                 {formatCurrency(totalOpen)}
               </p>
-              <p className="text-xs text-textMuted mt-1">12 meses</p>
+              <p className="text-sm text-textMuted mt-1">12 meses</p>
             </div>
           </section>
 
@@ -281,7 +285,7 @@ export default function TioFinanceReport() {
           <section className="space-y-3">
             <h2 className="text-sm font-bold text-text">Detalhe mês a mês</h2>
             <div className="overflow-x-auto -mx-2">
-              <table className="w-full text-xs">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="text-textMuted border-b border-border">
                     <th className="text-left py-2 px-2 font-semibold">Mês</th>
@@ -336,7 +340,7 @@ export default function TioFinanceReport() {
             </div>
           </section>
 
-          <footer className="text-center text-xs text-textMuted pt-4 border-t border-border">
+          <footer className="text-center text-sm text-textMuted pt-4 border-t border-border">
             Alô Buzinou · Relatório emitido em{' '}
             {new Date().toLocaleString('pt-BR')}
           </footer>
@@ -345,7 +349,7 @@ export default function TioFinanceReport() {
           {quemMaisAtrasa.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-bold text-text">Quem mais atrasa</h2>
-              <p className="text-xs leading-snug text-textMuted">
+              <p className="text-sm leading-snug text-textMuted">
                 Contando meses vencidos em aberto e meses pagos depois do
                 vencimento, nos últimos 12 meses.
               </p>
@@ -355,18 +359,18 @@ export default function TioFinanceReport() {
                     key={c.nome + i}
                     className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2"
                   >
-                    <span className="w-4 shrink-0 text-center text-xs font-bold tabular-nums text-textMuted">
+                    <span className="w-5 shrink-0 text-center text-sm font-bold tabular-nums text-textMuted">
                       {i + 1}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">
                       {c.nome}
                     </span>
                     {c.emAberto > 0 && (
-                      <span className="shrink-0 text-xs font-semibold tabular-nums text-text">
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-text">
                         {formatCurrency(c.emAberto)} em aberto
                       </span>
                     )}
-                    <span className="shrink-0 rounded-full bg-warningChip px-2 py-0.5 text-xs font-bold tabular-nums text-warningText">
+                    <span className="shrink-0 rounded-full bg-warningChip px-2 py-0.5 text-sm font-bold tabular-nums text-warningText">
                       {c.vezes}x
                     </span>
                   </div>

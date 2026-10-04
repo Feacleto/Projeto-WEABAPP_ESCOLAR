@@ -41,6 +41,12 @@ import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatte
  * No app da família (ela não indica motorista), durante a rota, no sino
  * durante os 90 dias, e **na tela de cancelamento** — desconto que só surge
  * quando ele ameaça sair prova que o preço era teatro.
+ *
+ * ── UM NOME SÓ PARA A AÇÃO
+ * O botão dizia "Indicar um colega" e levava a uma tela chamada "Indicar outro
+ * motorista" — o mesmo nome da linha do "Meu transporte". Agora os três dizem
+ * a mesma coisa. E o cartão vem DEPOIS da ação principal de cada tela (o
+ * contratar, o pagar): ele é continuação, não desvio.
  */
 export default function ConviteParaIndicar({ titulo, className = '' }) {
   const { profile } = useAuth();
@@ -86,13 +92,13 @@ export default function ConviteParaIndicar({ titulo, className = '' }) {
     >
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primaryChip text-primaryDark">
-          <UserPlus size={18} />
+          <UserPlus size={18} aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-bold leading-tight text-text">{titulo}</p>
-          <p className="mt-1 text-sm leading-snug text-textMuted">{frase}</p>
+          <p className="text-lg font-bold leading-tight text-text">{titulo}</p>
+          <p className="mt-1 text-base leading-relaxed text-textMuted">{frase}</p>
           {ativas > 0 && (
-            <p className="mt-1 text-xs text-textMuted">
+            <p className="mt-1 text-sm text-textMuted">
               Você já tem {ativas}{' '}
               {ativas === 1 ? 'indicação valendo' : 'indicações valendo'}.
             </p>
@@ -100,9 +106,12 @@ export default function ConviteParaIndicar({ titulo, className = '' }) {
           <button
             type="button"
             onClick={() => navigate('/tio/indicar')}
-            className="tap mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white"
+            // CONTORNO, NÃO CHEIO: nas telas onde ele mora, o botão cheio é
+            // a ação principal (contratar, pagar, aceitar). Dois botões cheios
+            // na mesma rolagem disputam o polegar.
+            className="tap mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-primary bg-card px-4 text-base font-bold text-primary"
           >
-            Indicar um colega
+            Indicar outro motorista
           </button>
         </div>
       </div>

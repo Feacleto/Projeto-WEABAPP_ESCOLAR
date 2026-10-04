@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, MessageCircle, X } from 'lucide-react';
+import { AlertTriangle, ChevronRight, MessageCircle, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { diasDeCalendario, formatBRL } from '../../compartilhado/formatters';
 import { devWhatsAppLink } from '../../config/developer';
@@ -24,6 +24,17 @@ import { devWhatsAppLink } from '../../config/developer';
  * fecha a escrita da operação. Removendo este componente pelo console do
  * navegador, não há dado atrás dele.
  *
+ * NO CAIXA ELE VIRA UMA LINHA (`compacto`, 04/10/2026, item 19). O caixa já
+ * tem o verde dele (receber a mensalidade), e o cartão trazia um segundo
+ * "Pagar com PIX" verde no topo da mesma tela — dois protagonistas, e o mais
+ * alto era a dívida com a plataforma. Lá ele é uma linha âmbar que leva a
+ * `/tio/taxa`: o aviso continua, o botão verde não. (Os dois dinheiros não se
+ * misturam também na forma: a taxa nunca disputa com a mensalidade.)
+ *
+ * O SUSPENSO É CLARO desde 04/10/2026: era uma cortina `bg-primaryDark/95` com
+ * vidro escuro, e dentro do app não existe tela escura (docs/design-system.md).
+ * Hoje é o padrão de diálogo do app — véu `bg-night/45` e cartão branco.
+ *
  * O PAI NUNCA VÊ NADA DISSO
  * A inadimplência é conversa entre a plataforma e o motorista, e termina aí.
  * Um responsável que descobre que o motorista está devendo começa a duvidar
@@ -34,7 +45,7 @@ import { devWhatsAppLink } from '../../config/developer';
 /** Fechar vale pela SESSÃO. Volta quando ele abrir o app de novo. */
 const CHAVE = 'alobuzinou:avisoFaturaFechado';
 
-export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
+export default function AvisoDaPlataforma({ fatura, criancas = 0, compacto = false }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [fechado, setFechado] = useState(() => {
@@ -55,7 +66,9 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
   // tem esse intervalo: o que ele dispensou era um lembrete, e lembrete
   // dispensado não vale como dispensa de um impedimento.
   if (!suspenso && (!fatura || fatura.status === 'quitada')) return null;
-  if (!suspenso && fechado) return null;
+  // Na linha do caixa o "fechado" não vale: ela não ocupa nada, e é a porta
+  // para a fatura na tela do dinheiro.
+  if (!suspenso && fechado && !compacto) return null;
 
   const valor = Number(fatura?.total) || 0;
   const venc = fatura?.vencimento
@@ -96,11 +109,30 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
       : 'Olá! Quero falar sobre a mensalidade do Alô Buzinou.'
   );
 
+  if (compacto && !suspenso) {
+    return (
+      <div className="px-4 pt-4">
+        <button
+          type="button"
+          onClick={() => navigate('/tio/taxa')}
+          className="tap flex min-h-14 w-full items-center gap-3 rounded-2xl border border-warningBorder bg-warningSoft px-4 py-3 text-left"
+        >
+          <AlertTriangle size={20} className="shrink-0 text-warningText" aria-hidden="true" />
+          <span className="min-w-0 flex-1 text-base text-warningText">
+            <strong>Meu plano:</strong> {formatBRL(valor)} em aberto
+            {dias > 0 ? ` · venceu há ${dias} dia${dias > 1 ? 's' : ''}` : ''}
+          </span>
+          <ChevronRight size={20} className="shrink-0 text-warningText" aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       className={
         suspenso
-          ? 'fixed inset-0 z-50 flex items-center justify-center bg-primaryDark/95 px-5 py-8 backdrop-blur-sm'
+          ? 'fixed inset-0 z-50 flex items-center justify-center bg-night/45 px-5 py-8'
           : // O respiro lateral é DAQUI, e não de quem monta.
             //
             // Ele vive no `TioLayout`, acima do <Outlet /> — ou seja, fora da
@@ -117,7 +149,7 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
       <div
         className={`relative w-full rounded-2xl border p-4 ${
           suspenso
-            ? 'max-w-[26rem] border-white/15 bg-white/[0.07] text-white shadow-2xl backdrop-blur-xl'
+            ? 'max-w-[26rem] border-border bg-card text-text shadow-float'
             : 'border-warningBorder bg-warningSoft'
         }`}
       >
@@ -126,20 +158,18 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
             type="button"
             onClick={fechar}
             aria-label="Fechar aviso"
-            className="tap absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg text-warningText/70"
+            className="tap absolute right-1 top-1 flex h-12 w-12 items-center justify-center rounded-lg text-warningText/80"
           >
-            <X size={16} />
+            <X size={20} />
           </button>
         )}
 
         <p
           className={`rotulo flex items-center gap-1.5 ${
-            // Sobre o verde-escuro da cortina, o vermelho que se lê é o claro
-            // (`dangerBorder`); o `dangerText` some ali.
-            suspenso ? 'text-dangerBorder' : 'text-warningText'
+            suspenso ? 'text-dangerText' : 'text-warningText'
           }`}
         >
-          <AlertTriangle size={12} />
+          <AlertTriangle size={14} />
           {suspenso ? 'acesso suspenso' : 'mensalidade em aberto'}
         </p>
 
@@ -156,15 +186,15 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
                 'Seu acesso está suspenso'
               )}
             </h2>
-            <p className="mt-2 text-[13px] leading-relaxed text-white/70">
+            <p className="mt-2 text-sm leading-relaxed text-textBody">
               Sem o app você não emite nem dá baixa em mensalidade nenhuma —
               volta a cobrar no caderno e de porta em porta.
             </p>
-            <div className="mt-3 rounded-xl border border-dangerBorder/30 bg-dangerText/25 p-3">
-              <p className="text-[13px] font-bold">
+            <div className="mt-3 rounded-xl border border-dangerBorder bg-dangerSoft p-3">
+              <p className="text-sm font-bold text-dangerText">
                 {formatBRL(valor)} destrava tudo agora.
               </p>
-              <p className="mt-0.5 text-xs text-white/60">
+              <p className="mt-0.5 text-sm text-textBody">
                 {venc ? `Vencido em ${venc.toLocaleDateString('pt-BR')}. ` : ''}
                 Nada do seu foi apagado, e seus pais não foram avisados.
               </p>
@@ -172,11 +202,11 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
           </>
         ) : (
           <>
-            <h2 className="mt-1.5 pr-6 text-[15.5px] font-extrabold leading-snug tracking-tight text-text">
+            <h2 className="mt-1.5 pr-10 text-lg font-extrabold leading-snug tracking-tight text-text">
               {formatBRL(valor)}
               {dias > 0 ? ` · venceu há ${dias} dia${dias > 1 ? 's' : ''}` : ''}
             </h2>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-warningText/85">
+            <p className="mt-1.5 text-sm leading-relaxed text-warningText">
               Você continua trabalhando normal — por enquanto. Se o acesso for
               suspenso, <strong>você para de cobrar as mensalidades pelo app</strong>
               {criancas > 0 ? ` das suas ${criancas} famílias` : ''}.
@@ -187,8 +217,8 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
         <button
           type="button"
           onClick={() => navigate('/tio/taxa')}
-          className={`tap mt-3 flex h-11 w-full items-center justify-center rounded-xl text-[14px] font-bold ${
-            suspenso ? 'bg-white text-primaryDark' : 'bg-primary text-white'
+          className={`tap mt-3 flex h-12 w-full items-center justify-center rounded-xl text-base font-bold ${
+            suspenso ? 'bg-primary text-white shadow-focus' : 'bg-primary text-white'
           }`}
         >
           Pagar com PIX
@@ -198,11 +228,11 @@ export default function AvisoDaPlataforma({ fatura, criancas = 0 }) {
           href={zap}
           target="_blank"
           rel="noopener noreferrer"
-          className={`tap mt-2 flex items-center justify-center gap-1.5 py-1.5 text-[12px] font-semibold ${
-            suspenso ? 'text-white/55' : 'text-warningText/80'
+          className={`tap mt-1 flex min-h-12 items-center justify-center gap-1.5 text-sm font-semibold ${
+            suspenso ? 'text-textBody' : 'text-warningText'
           }`}
         >
-          <MessageCircle size={13} />
+          <MessageCircle size={16} />
           Pedir ajuda a um consultor
         </a>
       </div>

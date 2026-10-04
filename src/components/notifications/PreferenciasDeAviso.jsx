@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BellOff, Check } from 'lucide-react';
+import { BellRing, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
@@ -49,7 +49,7 @@ export default function PreferenciasDeAviso() {
   const [desligadas, setDesligadas] = useState(atuais);
   const [salvando, setSalvando] = useState(null);
 
-  const alternar = async (especie) => {
+  const alternar = async (especie, titulo) => {
     const proximas = desligadas.includes(especie)
       ? desligadas.filter((e) => e !== especie)
       : [...desligadas, especie];
@@ -61,6 +61,13 @@ export default function PreferenciasDeAviso() {
     setSalvando(especie);
     try {
       await salvarPreferenciasDeAviso(user?.uid, limpa);
+      // Salvar CONFIRMA. A caixinha muda na hora (otimista), e por isso
+      // mesmo não prova nada: sem esta frase, ela não sabe se a escolha
+      // ficou gravada ou se vai voltar sozinha na próxima abertura.
+      const ficouLigada = !limpa.includes(especie);
+      toast.success(`Pronto: aviso de ${titulo} ${ficouLigada ? 'ligado' : 'desligado'}.`, {
+        duration: 2500,
+      });
     } catch {
       setDesligadas(desligadas);
       toast.error('Não deu pra salvar. Tente de novo.');
@@ -71,11 +78,14 @@ export default function PreferenciasDeAviso() {
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <h2 className="inline-flex items-center gap-1.5 text-sm font-extrabold text-text">
-        <BellOff size={15} />
+      <h2 className="inline-flex items-center gap-2 text-base font-extrabold text-text">
+        {/* Sino tocando, não sino cortado: o título é sobre o que PODE
+          * tocar, e o sino riscado lia como "silenciado" antes de ela
+          * escolher qualquer coisa. */}
+        <BellRing size={18} />
         O que pode tocar no seu celular
       </h2>
-      <p className="mt-1 text-xs leading-relaxed text-textMuted">
+      <p className="mt-1 text-sm leading-relaxed text-textMuted">
         Avisos sobre a criança e sobre a rota chegam sempre — eles são o
         produto. Estes dois você escolhe.
       </p>
@@ -91,21 +101,21 @@ export default function PreferenciasDeAviso() {
               role="switch"
               aria-checked={ligada}
               disabled={salvando === especie}
-              onClick={() => alternar(especie)}
-              className="tap flex w-full items-start gap-3 rounded-xl border border-border bg-surface p-3 text-left disabled:opacity-60"
+              onClick={() => alternar(especie, titulo)}
+              className="tap flex min-h-14 w-full items-start gap-3 rounded-xl border border-border bg-surface p-3 text-left disabled:opacity-60"
             >
               <span
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
                   ligada
                     ? 'border-primary bg-primary text-white'
                     : 'border-border bg-neutro text-transparent'
                 }`}
               >
-                <Check size={13} />
+                <Check size={16} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold text-text">{titulo}</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-textMuted">
+                <span className="block text-base font-bold text-text">{titulo}</span>
+                <span className="mt-0.5 block text-sm leading-relaxed text-textMuted">
                   {descricao}
                 </span>
               </span>

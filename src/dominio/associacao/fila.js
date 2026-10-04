@@ -60,6 +60,7 @@ import { estadoDaConta } from './contaAtiva.js';
 import { pesoDoRisco, riscoDo } from './risco.js';
 import { diasRestantes } from './trial.js';
 import { aguardando, diasEsperando } from '../suporte/chamados.js';
+import { notasBaixasDeMotorista } from '../suporte/avaliacaoRapida.js';
 import {
   AVISO_DE_VENCIMENTO,
   ESTADO as VERIFICACAO,
@@ -226,6 +227,7 @@ export function montarFila({
   faturas = {},
   notas = {},
   chamados = [],
+  avaliacoes = [],
   mes = null,
   agora = new Date(),
 } = {}) {
@@ -239,6 +241,33 @@ export function montarFila({
       agora,
     });
     if (p) itens.push(p);
+  });
+
+  // ── A NOTA BAIXA DO MOTORISTA PARA O APP (03/10/2026) ───────────────────
+  //
+  // "Muito ruim" ou "Ruim" na avaliação rápida, nos últimos 7 dias. Quem pagou
+  // a ferramenta e disse que ela não ajudou é uma conversa — e ela é DELE, não
+  // uma linha a mais: se ele já está na fila por outro motivo, a nota vira
+  // detalhe da mesma linha (a fila conta conversas).
+  const baixas = notasBaixasDeMotorista(avaliacoes, { agora });
+  (Array.isArray(parceiros) ? parceiros : []).forEach((mot) => {
+    const baixa = mot?.uid ? baixas[mot.uid] : null;
+    if (!baixa || mot.suspenso === true) return;
+    const texto = `deu nota "${baixa.nota === 1 ? 'Muito ruim' : 'Ruim'}" ao app`;
+    const ja = itens.find((i) => i.id === `motorista:${mot.uid}`);
+    if (ja) {
+      ja.detalhe = ja.detalhe ? `${ja.detalhe} · ${texto}` : texto;
+      return;
+    }
+    const nome = String(mot.name || '').trim().split(/\s+/)[0] || 'Motorista';
+    itens.push({
+      id: `motorista:${mot.uid}`,
+      nivel: 'medio',
+      titulo: `${nome} ${texto}`,
+      detalhe: baixa.comentario ? `"${baixa.comentario}"` : 'sem comentário',
+      destino: { aba: 'motoristas', uid: mot.uid },
+      espera: 0,
+    });
   });
 
   // ── OS ALVARÁS ──────────────────────────────────────────────────────────

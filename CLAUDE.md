@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 58 scripts. O PRIMEIRO é
+npm run testar                   # 65 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -34,12 +34,13 @@ npm run testar                   # 58 scripts. O PRIMEIRO é
                                  # status, auth, trial, planos, avisos,
                                  # preferencias, multa, encerramento,
                                  # conta, cobranca, gateway, carteira,
-                                 # proposta, chamados, risco, fila, concessao,
+                                 # proposta, chamados, avaliacao, risco, fila, concessao,
                                  # selo, indicacao, irmaos, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca, site,
                                  # tutorial, mapa, modulos, e os do Financeiro
                                  # trancado: extrato, despesas, turma (depois de
-                                 # dinheiro), tranca, senha-financeiro, km-da-rota
+                                 # dinheiro), tranca, senha-financeiro, km-da-rota,
+                                 # perua, ditado, indices
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -349,8 +350,13 @@ src/
 │   │                  Indicações, Pesquisa, Investidores (os contatos que
 │   │                  chegam pelo site). As abas moram em
 │   │                  components/admin/.
-│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.2
-│                       (11/09/2026): a cláusula 8 passou a dizer que o
+│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.3
+│                       (03/10/2026): a saúde da criança ganhou base legal
+│                       própria (consentimento específico da responsável,
+│                       art. 11 I) e saiu das "observações" do motorista.
+│                       ⚠️ TEXTO DO RASCUNHO de docs/consentimento-saude.md,
+│                       NÃO PUBLICAR antes da revisão jurídica (decisão do
+│                       dono). Na 1.2 (11/09/2026) a cláusula 8 passou a dizer que o
 │                       compartilhamento da posição é ESCOLHA DO MOTORISTA e
 │                       revogável (art. 8º §5º — antes a base declarada era
 │                       consentimento e não havia como revogar), que a posição
@@ -389,7 +395,10 @@ src/
 ├── context/           AuthContext (perfil + papel), NotificacoesContext e
 │                      TrancaDoFinanceiroContext (montado no App, não no
 │                      TioLayout: `/tio/taxa` mora fora do layout)
-│                      (a ÚNICA escuta do sino, uma vez por sessão)
+│                      (a ÚNICA escuta do sino, uma vez por sessão) e
+│                      AvisosDoCabecalhoContext (o TioLayout entrega os
+│                      avisos da conta e o `Header` os desenha LOGO ABAIXO
+│                      dele; tela sem Header recebe no topo, como antes)
 ├── dominio/           AS REGRAS. Puro, sem Firebase, sem React — um contexto
 │                      por pasta (ver "Os sete contextos" abaixo)
 │   ├── rota/          horarios, avisoDoMomento, routePresence, faltas,
@@ -512,6 +521,24 @@ obrigatório digitar. O `supportTickets` **continua sendo gravado** no mesmo
 toque, sem `await` antes do link (senão o navegador bloqueia a aba), e é o que
 mantém a aba Chamados do dono.
 
+⚠️ **A AVALIAÇÃO VIROU UM CARTÃO DE CINCO ROSTOS (03/10/2026, aprovado pelo
+dono)** — régua em [avaliacaoRapida.js](src/dominio/suporte/avaliacaoRapida.js),
+`npm run testar:avaliacao`. Substituiu o `ReviewNudge` + `ReviewSheet` (folha
+longa que dependia de uma janela que nascia FECHADA e prometia publicar numa
+home que não existe desde 06/09/2026 — por isso não coletava nada).
+[CartaoDeAvaliacao](src/components/feedback/CartaoDeAvaliacao.jsx) aparece
+DEPOIS de algo dar certo: motorista com a rota de hoje encerrada (**nunca
+com a rota rodando**), responsável com o filho entregue, e acompanhante /
+segundo responsável na página do link depois da entrega (callable
+`avaliarAcompanhamento`, uma por link). Só a partir do 5º dia com o momento
+(contado no aparelho); 60 dias de silêncio depois de responder, 14 depois de
+"Agora não". A pergunta é sobre o APP, nunca sobre o motorista. Nada é
+público: `feedbacks` com `momento`, só o dono lê (aba Pesquisa); nota 1–2 de
+motorista vira linha na fila do dia. O interruptor é
+`platformConfig/app.avaliacaoRapida` — ⚠️ **ausente é LIGADO**; o
+`reviewOpen` antigo não é mais lido. No Perfil, "Avaliar o app" abre a mesma
+pergunta ([AvaliarOAppSheet](src/components/feedback/AvaliarOAppSheet.jsx)).
+
 Os dois dinheiros são contextos SEPARADOS de propósito — misturá-los quebra o
 item 7 dos Termos, e a separação em pastas é o que torna a mistura visível
 antes de ela virar código.
@@ -530,6 +557,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
 `limitesDeTentativa`, `asaasEventosProcessados` e `senhasDoFinanceiro` (só o servidor) ·
 `configFinanceiro` (só o próprio motorista lê) ·
+`indicesEconomicos` (o IPCA; só o servidor escreve, motorista lê) ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -1170,6 +1198,23 @@ pedido do dono) — `ABA_DA_ROTA` em [TioLayout](src/pages/tio/TioLayout.jsx).
 `liveLocation/{uid}.routeActive`, não o GPS deste aparelho. O Início, durante a
 rota, mostra só um cartão "Rota em andamento · Abrir".
 
+⚠️ **A AÇÃO MORA NO RODAPÉ, O ENCERRAR MORA NO TOPO** (03/10/2026, auditoria
+de UX para 40+ — padrão de leitura em Z e lei de Fitts). O rodapé fixo da
+tela da rota era o "Segure para encerrar" e o EMBARQUEI ficava no meio da
+lista: a ação de uma vez por dia no lugar do polegar, a de trinta vezes longe
+dele. Hoje `BarraDaParada` ([OperacaoDaRota](src/components/route/OperacaoDaRota.jsx))
+é o rodapé — 64px, com o nome da criança e "Depois: …" —, e o encerrar e a
+chave do mapa sobem para a faixa verde (`ControleDeRota variante="faixa"`).
+O cartão em foco tem três grupos com nome (Falar com a família · Não vai
+hoje · Corrigir), "Ninguém em casa" pede confirmação e toda marcação vibra.
+O Início faz o mesmo: "Iniciar a rota"/"Abrir a rota" numa barra fixa
+embaixo (`BarraDoInicio`), o cartão verde só informa, e o encerrar SAIU do
+Início — ele mora na aba da rota (o `ControleDeRota oculto` continua montado
+para religar o GPS depois de recarregar). O nome de `/tio/horarios` é
+"Horários da rota" em todo lugar.
+⚠️ **Piso do app desde então:** nenhum botão abaixo de 48px (o `Button sm`
+virou h-12), o voltar do `Header` mostra SEMPRE o rótulo, e conteúdo em 16px.
+
 ⚠️ **QUEM ESTÁ EM FOCO E QUEM VAI JUNTO É RÉGUA PURA** —
 [focoDaViagem.js](src/dominio/rota/focoDaViagem.js) (`npm run testar:viagem`).
 O foco era "a primeira criança com ação" e **travava**: depois do primeiro
@@ -1229,6 +1274,32 @@ rota ([OperacaoDaRota](src/components/route/OperacaoDaRota.jsx)):
   SDK 12 derrubou a tela da família com "INTERNAL ASSERTION FAILED (ca9)"
   (teste M7). O custo: marcação feita sem sinal se perde se o app for fechado
   antes de o sinal voltar. Religar exige o M7 dos dois lados.
+  ⚠️ **O cache em MEMÓRIA passou a guardar (04/10/2026)**: coleta LRU em
+  `firebase/config.js`, em vez da padrão, que jogava fora tudo o que a tela
+  deixava de escutar — trocar de aba e voltar buscava tudo de novo, e era a
+  maior causa de lentidão medida. Continua sem IndexedDB.
+
+⚠️ **O QUE FAZIA O APP DEMORAR, E O QUE MUDOU (04/10/2026)** — medido no
+celular simulado e lido no código:
+- **Os pedaços do painel baixam juntos**: `PreCarregarPainel` (App.jsx) pede
+  guarda, layout e Início do papel assim que o perfil chega; antes um lazy
+  esperava o outro desenhar.
+- **A mãe que volta pelo mesmo link** vai direto ao /pai quando aquele convite
+  já foi reconhecido como dela NESTE aparelho (`alobuzinou:convites-meus` em
+  Invite.jsx), sem esperar a callable `getInvitePreview`.
+- **A senha do Financeiro "acorda" o servidor** quando a tela trancada aparece
+  (`aquecerSenhaDoFinanceiro`, `{ aquecer: true }` na callable, que não conta
+  tentativa): a espera da function fria acontece enquanto ele lê a tela.
+- **A ficha da criança é baixada só quando alguém abre**
+  (`FichaDaCriancaSobDemanda`): ela trazia o mapa e o QR code (155 kB) para
+  todo Início.
+- **O /pai não gira mais para sempre** quando a criança do perfil não existe
+  mais (`PrimeiroAcessoDoPaiGate` espera só a leitura no ar).
+- ⚠️ **Ficou de fora, por decisão do dono**: a abertura do login (~8 s sem
+  aceitar toque, no primeiro acesso pelo celular) e a cortina de 2 s depois
+  de entrar.
+- ⚠️ **No `npm run dev` o erro "ca9" continua** (StrictMode); sem StrictMode,
+  zero — medido de novo com o cache novo.
 - **"Levar de volta para casa"** (passou mal, na ida): marca entregue em casa e
   abre o recado em "Criança não tá bem".
 - **"Problema na perua" é ESTADO da rota**: grava `liveLocation.ocorrencia`
@@ -1292,6 +1363,12 @@ da escola da rota.
 - **Para onde leva**: [destinoDoAviso.js](src/dominio/identidade/destinoDoAviso.js),
   por tipo e por PAPEL, espelhado no servidor — o sino e o push respondem
   igual, e nenhum tipo leva a "/".
+- **Quem aparece no aviso**: [rostoDoAviso.js](src/dominio/identidade/rostoDoAviso.js)
+  — a foto da CRIANÇA quando o aviso é sobre ela, a do MOTORISTA quando chega
+  à família vindo dele, ícone no que vem da plataforma. Sem `childId`, casa
+  pelo nome SÓ se ele for único na turma (duas Marias = ícone). As crianças
+  vêm de [useCriancasDoSino](src/hooks/useCriancasDoSino.js), mesma consulta
+  que o Início já tem aberta. Bloco 12 de `testar:notificacoes`.
 - **Os que faltavam**: "está chegando"/"chegou" (o servidor lê a faixa em
   `children/{id}/proximidade/atual` e avisa SÓ quando a perua se APROXIMA e só a criança em
   casa ou na perua — antes era toast no Início, avisava a perua indo embora,
@@ -1484,7 +1561,10 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `children/{id}/proximidade/atual` → "está chegando") e `avisarBuzina` (`pendingCalls` → aviso)
 - **Acesso de 24 horas:** `gerarAcessoTemporario`, `encerrarAcessoTemporario`
   e `inscreverAvisosDoAcesso` (pública; quem prova é o token), e o
-  `verAcompanhamento` lê os dois tipos de link
+  `verAcompanhamento` lê os dois tipos de link. `avaliarAcompanhamento`
+  (pública) grava UMA avaliação por link, depois da entrega, marcando
+  `avaliadoEm` no próprio acesso na mesma transação
+  ([reguaDaAvaliacao.js](functions/lib/reguaDaAvaliacao.js))
 - **Senha do Financeiro:** `criarSenhaDoFinanceiro` e `conferirSenhaDoFinanceiro`
   ([senhaDoFinanceiro.js](functions/lib/senhaDoFinanceiro.js), régua pura em
   [reguaDaSenhaDoFinanceiro.js](functions/lib/reguaDaSenhaDoFinanceiro.js),
@@ -1556,6 +1636,11 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   rules recusam esta escrita a todo mundo, dono incluído, então o privilégio
   tem que vir de onde já existe. ⚠️ **Ela sai** quando o relatório vier zerado
   em produção, junto do bloco no painel, do script, da régua e do teste.
+- **Índices (agendado):** `atualizarIndicesEconomicos` — todo dia às 6h busca
+  o IPCA de 12 meses no SIDRA do IBGE (sem chave) e grava
+  `indicesEconomicos/ipca` só se mudou. Régua pura em
+  [reguaDosIndices.js](functions/lib/reguaDosIndices.js) (`testar:indices`);
+  ⚠️ o mês vem na coluna `D3C`, não `D2C`.
 - **Outros:** `getShowcase`,
   `flagDuplicateReceipts`, `backfillTestimonialPrivacy`
 
@@ -1718,6 +1803,13 @@ São **duas camadas que não se substituem** — a declaração dele no cadastro
 dela, destacado, na tela dela. O desenho, os textos em rascunho e o que fica de
 fora estão em [docs/consentimento-saude.md](docs/consentimento-saude.md), que
 tem prazo de validade: quando a redação for ratificada, ela vai para o código.
+⚠️ **A TELA DELA EXISTE DESDE 03/10/2026** —
+[SaudeDaCrianca](src/components/children/SaudeDaCrianca.jsx), no bloco "Dia a
+dia" da ficha: opcional, caixa de consentimento própria e desmarcada, editar é
+consentir de novo, apagar leva os dois campos (`salvarSaudeDaCrianca` /
+`apagarSaudeDaCrianca` em childrenService). O motorista só lê, e só quando
+existe. ⚠️ **Os textos ainda são o rascunho**: o código foi construído, e a
+publicação espera a revisão jurídica.
 
 **Falta não gera desconto**, e a cláusula 7ª já dizia: o valor é pela VAGA,
 inclusive nas férias, `independentemente da quantidade de dias letivos`. A tela
@@ -1755,7 +1847,9 @@ o "carregando".
 ⚠️ **A SENHA DO FINANCEIRO (03/10/2026, pedido do dono): a AUXILIAR usa o
 celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
 "Senha do Financeiro — teclado de banco".
-- **Rotas protegidas:** `/tio/finance` e tudo abaixo, e `/tio/taxa`. Quem decide é
+- **Rotas protegidas:** `/tio/finance` e tudo abaixo, `/tio/taxa` e, desde
+  04/10/2026, `/tio/pix` — a auxiliar TROCAVA a chave pelo Perfil sem senha.
+  O Perfil só mostra a chave e leva para lá. Quem decide é
   [GuardaDoFinanceiro](src/components/financeiro/GuardaDoFinanceiro.jsx), pelo
   CAMINHO (no Outlet do TioLayout e na rota da taxa no App) — tela nova embaixo
   de `/tio/finance` já nasce protegida. Régua em
@@ -1769,6 +1863,12 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   devolve `restam: 0`, não lança). Trocar exige login de até 5 min
   (`getIdToken(true)` depois de reautenticar). ⚠️ **Não mora em `users`**: as
   famílias leem aquele documento inteiro.
+- **A tela "Digite sua senha" é porta verde, folha branca** (04/10/2026,
+  versão C escolhida pelo dono): faixa verde no topo com Voltar e
+  "Protegido", e a digital + o teclado (`TecladoDeBanco naFolha`) numa folha
+  branca, com o teclado perto do polegar e a dica "Toque no botão que tem o
+  seu número". Ela não usa a `MolduraDoFinanceiro`; as outras telas da tranca
+  continuam usando.
 - **Digital/rosto** (WebAuthn de plataforma) é conferida NO APARELHO — funciona
   sem internet; a senha precisa de internet.
 - ⚠️ **É CORTINA, NÃO COFRE.** A auxiliar usa a mesma sessão; para o Firestore
@@ -1788,9 +1888,10 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   "Relatório" virou "Baixar extrato do mês (PDF)".
 - ⚠️ **O BUZI E O BOLETIM (04/10/2026, decisão do dono)** — o cartão VERDE da
   tela trancada é "Boletim do seu negócio": senha/digital e abre
-  `/tio/finance/buzi`, uma conversa no jeito do WhatsApp com TRÊS botões
-  fixos ("Quem está atrasado?", "Quem avisou que pagou?", "Quanto entrou este
-  mês?") e o "Baixar o Boletim" no fim de toda resposta (`/tio/finance/boletim`,
+  `/tio/finance/buzi`, uma conversa no jeito do WhatsApp com três botões à
+  vista por grupo (ver "DOIS GRUPOS DE TRÊS" abaixo) — em "Mensalidades": "Quem
+  está atrasado?", "Quem avisou que pagou?", "Quanto entrou este mês?" — e o
+  "Baixar o Boletim" no fim de toda resposta DE MENSALIDADE (`/tio/finance/boletim`,
   PDF por `window.print()`; mês corrente PARCIAL, mês passado FECHADO —
   a foto do último instante dele, pelas datas gravadas). Régua em
   [boletim.js](src/dominio/cobranca/boletim.js), `npm run testar:boletim`.
@@ -1805,6 +1906,21 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   setembro pronto" até ele abrir. Entrar pelo Buzi vale como entrar pelo caixa
   na tranca (`BUZI` em trancaDoFinanceiro.js), senão "Cobrar no caixa" pediria
   a senha de novo. A taxa da plataforma não entra.
+  ⚠️ **SÃO DOIS GRUPOS DE TRÊS desde 04/10/2026** (pedido do dono): uma chave
+  em cima troca entre "Mensalidades" (os três acima) e "Perua e sobra" —
+  "Como está o combustível?", "Como está a manutenção?" e "Quanto sobrou este
+  mês?", o que NÃO entra no Boletim. Nunca mais de três botões à vista: seis
+  cobririam a conversa em 320 px. Régua em
+  [buziDaPerua.js](src/dominio/cobranca/buziDaPerua.js) (`testar:buzi`), com
+  as mesmas regras do dono e mais duas: o posto nunca é recomendado, e nada de
+  "você deveria trocar o óleo" — o app só sabe o que ele lançou. Sem dado, a
+  resposta diz onde lançar; o preço do litro é o pago NO MÊS, sem "subiu".
+- **Turma e contratos** ([TioTurma](src/pages/tio/TioTurma.jsx), 04/10/2026,
+  mistura dos modelos B e C aprovada pelo dono): faixa verde com placar
+  (turma, quanto soma por mês, quantos esperando) e olho; filtros; quem
+  espera a família é um cartão com os valores e o lembrete; os assinados são
+  ladrilhos que abrem o mesmo cartão numa folha; no fim, o gráfico de
+  entradas e saídas (toque no mês mostra quem).
 - **A folha de despesa** ([FolhaDeDespesa](src/components/financeiro/FolhaDeDespesa.jsx),
   régua em [historicoDeDespesas.js](src/dominio/cobranca/historicoDeDespesas.js)):
   histórico por categoria e o KM. ⚠️ **O km tem DUAS fontes e as duas são
@@ -1814,6 +1930,30 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   nenhuma coordenada). A pergunta "a perua roda só nas rotas?"
   (`configFinanceiro.usoDaPerua`) escolhe qual mostrar. Sem duas leituras do
   mesmo contador, nenhum número.
+- ⚠️ **"SUA PERUA" (03/10/2026, maquete aprovada pelo dono)** — um grupo no
+  caixa ([BlocoSuaPerua](src/components/financeiro/BlocoSuaPerua.jsx)) com três
+  telas, régua pura em `dominio/cobranca/` (`combustivel.js`,
+  `reservaDaPerua.js`, `precisoAumentar.js`; `npm run testar:perua`):
+  - **Abastecer** (`/tio/abastecer`, FORA da senha, cartão na tela trancada):
+    o preço da bomba vira "dá N litros" ou "vai dar R$ X"; "Abasteci" lança a
+    despesa `fuel` com `litros`, `tipoCombustivel`, `posto`, `tanqueCheio`
+    (rules: só em `fuel`). O preço do litro NÃO é gravado (amount ÷ litros).
+    Os postos são só NOME, com o último preço visto, em
+    `configFinanceiro.postos` (≤ 20); o tipo é da perua
+    (`configFinanceiro.combustivelDaPerua`), escolhido uma vez.
+  - **Reserva da perua** (`/tio/finance/reserva`): ⚠️ **o app NÃO guarda
+    dinheiro** — ele ANOTA o que o motorista diz ter no banco
+    (`configFinanceiro.guardado.{troca,manutencao}`), e o teste reprova
+    "saldo", "depositar", "sacar", "transferir" e "rendimento" na tela. O
+    plano da troca (`planoDaTroca`: vale hoje, anos, vai valer) é a
+    depreciação sem a palavra; a manutenção é a média de 12 meses lançada.
+  - **Preciso aumentar?** (`/tio/finance/aumentar`): custo por criança (com
+    a reserva) contra a mensalidade média, a alta de 12 meses por parte (o
+    diesel conta o PREÇO, não o volume), meses sem combustível lançado em
+    âmbar e o IPCA recolhido. ⚠️ **Nunca sugere valor de reajuste.** E o
+    contrato com a família NÃO tem cláusula de reajuste (pendente do dono).
+  - Fora desta versão: média da ANP, foto do comprovante, uso pessoal da
+    perua, km por litro.
 - **Saída da criança tem data desde 03/10/2026** (`children.inativadoEm`); antes
   disso as saídas não são recuperáveis, e a turma
   ([movimentoDaTurma.js](src/dominio/identidade/movimentoDaTurma.js)) diz isso.
@@ -1839,6 +1979,32 @@ ENCERRADO`) dizendo qual dos três estados é. Sem ela, a tela troca de cara
 três vezes por dia e nada anuncia. O "falar com o motorista" mora no
 CABEÇALHO ([Header](src/components/layout/Header.jsx)) e nunca desabilita:
 emergência não pode rolar nem virar botão apagado.
+
+⚠️ **A FAMÍLIA RECEBEU A MESMA AUDITORIA DE UX (03/10/2026)** — padrão em Z,
+piso de 16px e 48px, um nome por coisa. O que virou regra:
+- **O cartão começa pelo filho** (foto e nome no canto superior esquerdo) e a
+  ação do momento é uma barra fixa embaixo ("Avisar falta ou quem busca"
+  antes da rota, "Ver a perua no mapa" ao vivo, nenhuma depois). Abaixo do
+  cartão, "Ficha do {nome}" — era o único caminho para o acesso de 24 h.
+- ⚠️ **"AO VIVO" SÓ PULSA COM POSIÇÃO FRESCA.** Com posição velha o rótulo
+  vira "Última posição há N minutos", parado, no cartão e no mapa.
+- ⚠️ **SÁBADO E FERIADO DIZEM "Hoje não tem rota"** (`calendario.js`), e o
+  aviso rápido oferece o próximo dia DE AULA, não "amanhã" cego.
+- **O caderno não some durante a rota** — o "perua quebrou" manda ler o
+  recado lá.
+- ⚠️ **PARA A FAMÍLIA, `claimed` É "Aguardando o motorista confirmar", em
+  âmbar, com ou sem comprovante** ([paymentVocabulary.js](src/dominio/cobranca/paymentVocabulary.js)).
+  Ela via "Pago" verde ao anexar o comprovante, antes de alguém conferir.
+- **Financeiro** é o nome da aba e da tela; "Já paguei" mora no cartão do
+  PIX, ao lado do "Copiar"; o extrato mostra o nome da criança em cada linha.
+- **As etapas têm um vocabulário só, o mesmo do motorista:** Em casa · Na
+  perua · Na escola · Entregue em casa.
+- **O contrato abre com o RESUMO** (`ResumoDoCombinado` em
+  [ContractView](src/components/contract/ContractView.jsx)) — valor, dia,
+  vigência, falta, multa — lido dos mesmos dados das cláusulas; o texto é
+  16px sem justificar. Só apresentação: o hash sai do JSON gravado.
+- [FaixaSemInternet](src/components/dashboard/FaixaSemInternet.jsx) avisa no
+  Início e no mapa que o que está na tela pode estar velho.
 
 **A tarja de aviso só aparece quando o app MENTE** —
 [avisoDoMomento.js](src/dominio/rota/avisoDoMomento.js), testado com hora injetada
@@ -1991,6 +2157,23 @@ em toda navegação não é lembrada como capricho, é lembrada como lentidão.
   recarrega, com prazo em cada passo. Até 03/10/2026 o "Saiu uma versão nova"
   só fazia `reload()` — que NÃO troca o worker: o antigo servia de novo o
   `index.html` antigo, e a pessoa tocava várias vezes.
+  ⚠️ **A TELA DIZ QUAL VERSÃO ESTÁ CHEGANDO E EM QUE PASSO ESTÁ** (pedido do
+  dono, 03/10/2026). ⚠️ **A VERSÃO É UMA POR PUBLICAÇÃO** (04/10/2026): a
+  marca do git `v1.12` no commit publicado, criada por `npm run
+  versao:publicar` (o deploy.ps1 chama; recusa árvore suja) e lida pelo
+  [vite.config.js](vite.config.js) → [version.js](src/version.js). Sobe de um
+  em um; o da frente só por decisão do dono (`-- --maior`). Build que não é
+  publicação diz "1.13-prévia". O suporte recebe "1.12 · commit 391
+  (abc1234)". Régua em [versaoDoApp.js](src/compartilhado/versaoDoApp.js)
+  (`testar:versoes`), lista em [docs/versoes.md](docs/versoes.md) (`npm run
+  versao:lista`). A primeira marcada é a 1.1: a "1.0" era o número fixo, e o
+  que estava no ar não era um commit exato. Era '1.0' escrito à mão e nunca
+  atualizado. O app antigo não conhece o
+  número do novo, então o build publica `/versao.json` (sem cache) e
+  `useTrocaDeVersao` o lê. As etapas da barra (`ETAPAS_DA_TROCA`) são os
+  passos reais de `trocarDeVersao`, não um relógio. ⚠️ Quem vê a tela é a
+  versão ANTIGA: o número só aparece a partir da troca SEGUINTE à que trouxe
+  este código.
   ⚠️ O `Permissions-Policy` do app libera `microphone=(self)`: o
   [CampoDeValor](src/components/common/CampoDeValor.jsx) dita o valor por voz,
   e com `microphone=()` o microfone falhava calado em produção.
@@ -2098,11 +2281,14 @@ escolhendo.
 DENTRO** (11/09/2026). `/quero-fazer-parte` fica com e-mail, WhatsApp e senha —
 só o que a CONTA precisa para existir. O resto é o `PrimeiroAcesso`.
 
-⚠️ **DESDE 02/10/2026 O PRIMEIRO ACESSO É UM CARD POR CIMA DO APP**, em três
+⚠️ **DESDE 02/10/2026 O PRIMEIRO ACESSO É UM CARD POR CIMA DO APP**, em quatro
 passos que só aparecem se faltar algo (`passosQueFaltam` em
 [cadastroDoMotorista.js](src/dominio/identidade/cadastroDoMotorista.js)):
 **seus dados** (nome; WhatsApp só para quem veio do Google; e **homem ou mulher, obrigatório**, que decide o cabelo do avatar — sem isso ele era sorteado), **sua marca**
-(nome obrigatório, logo opcional) e **localização**. O `/tio` renderiza por
+(nome obrigatório, logo opcional), **localização** e, desde 04/10/2026,
+**para o contrato com as famílias** (CPF/CNPJ e endereço — sem eles
+`buildContractData` devolve null e o convite da primeira criança não
+aparecia; ⚠️ vale para quem já usa o app e não os tem). O `/tio` renderiza por
 baixo com `inert`, e o tour guiado espera o card fechar. Pedido do dono: o
 card é CURTO — sem placeholder de exemplo, sem pré-preencher o nome do Google,
 sem "fazer depois", e a única linha de explicação é a da localização.
@@ -2240,6 +2426,19 @@ falsificar depoimento.
 longos e contam a decisão, a alternativa descartada e o bug que motivou. Ao
 mexer num arquivo desses, mantenha o cabeçalho verdadeiro — **comentário que
 promete garantia sem prová-la já foi um problema recorrente aqui**.
+
+**FALAR EM VEZ DE ESCREVER (04/10/2026, pedido do dono).** Os campos de
+cadastro e os textos longos têm microfone: `Input falar="nome|telefone|texto"`
+(microfone dentro do campo) e [BotaoDeFalar](src/components/common/BotaoDeFalar.jsx)
+nas caixas de texto (o ditado SE SOMA ao que já está escrito). O texto entra
+na forma do campo por [ditado.js](src/compartilhado/ditado.js), e a escuta é
+[useDitado](src/hooks/useDitado.js) (Web Speech API; sem suporte, o botão não
+existe). ⚠️ **Nunca** em senha, login, CPF/CNPJ, chave PIX, CEP, km, data ou
+saúde da criança — `npm run testar:ditado` reprova. O áudio vai ao serviço de
+voz do aparelho (Google/Apple), e isso está na seção 2b da Política (1.3).
+No mesmo componente, o "Salvar" ao lado do campo só aparece nos formulários
+longos (`semSalvar` o tira; data e senha nunca têm) e, tocado, vira "✓ Pronto"
+com borda verde — diz "Pronto", nunca "Salvo" (`testar:formularios`).
 
 **Sem emoji em lugar nenhum da interface** (decisão do dono, 02/10/2026) —
 no app, ícone do `lucide-react`; na landing, SVG inline. `testar:site` reprova
@@ -2611,7 +2810,7 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (419 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (422 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes
@@ -2805,6 +3004,8 @@ e por isso fica **fora da bateria encadeada** — é exatamente o que
 **Há CI** — [.github/workflows/ci.yml](.github/workflows/ci.yml) roda lint,
 `npm run testar` e build. Rules e Storage ficam fora até o emulador entrar lá.
 
+⚠️ **A FOLHA "MEU TRANSPORTE" É O MODELO F (04/10/2026, escolhido pelo dono entre seis):** no topo os avisos às famílias em dois botões grandes ("Problema na perua" cheio, nos tokens de alerta; "Não tem aula" de contorno), no meio a operação em quatro quadrados com o número grande (turma, faltas da semana, horários da rota com "N sem horário" em âmbar, escolas), e no pé o resto em linhas ("Mais"). O motorista de 40+ abre com pressa: o peso na tela segue a urgência.
+
 **O Início do motorista tem um ÍNDICE, não um bloco de cadastro.**
 [MeuTransporteSheet](src/components/tio/MeuTransporteSheet.jsx) — turma,
 escolas, rota padrão, semana, avisos e contrato, atrás de uma linha no fim da
@@ -2818,8 +3019,10 @@ dentro dela abriria leitura permanente duplicada do mesmo dado.
 **O TOUR DO MOTORISTA SÃO QUATRO PARADAS** (02/10/2026 —
 [interactiveSteps.js](src/components/tutorial/interactiveSteps.js),
 `npm run testar:tutorial`). Abre sozinho quando o card do primeiro acesso
-fecha: "Cadastrar a primeira criança", "Meu transporte", a aba Financeiro e o topo do
-Início (o botão de iniciar rota, quando há turma). Título curto e uma frase de
+fecha: "Meu transporte", a aba Financeiro, o topo do Início e, por ÚLTIMO
+(04/10/2026), "Cadastrar a primeira criança" — o botão final do balão diz
+"Cadastrar criança" e abre o cadastro (`ctaLabel`/`ctaPath` no passo). Antes o
+tour terminava apontando um cartão vazio e o "Começar" só fechava: beco. Título curto e uma frase de
 até 60 caracteres. Eram treze passos citando a landing, e metade apontava para
 botões que quem acabou de entrar não tem.
 
@@ -2847,6 +3050,19 @@ sozinha no primeiro acesso de alguém.
 novo, que varre `src/` inteiro. A lista de sete arquivos de tela escrita à mão
 reprovou quatro âncoras que existiam — invariante que depende de alguém lembrar
 de acrescentar um arquivo não é invariante.
+
+**UM PROTAGONISTA POR TELA (04/10/2026, aprovado pelo dono).** O motorista
+cansado toca no que mais chama a atenção, então cada tela tem UM botão verde
+cheio (`bg-primary`, grande, largura toda, `shadow-focus`, perto do polegar) —
+o próximo passo da jornada — e o resto é branco ou contorno. Aplicado:
+login ("Começar com Google"), Início (só "Iniciar a rota"; dirigindo, só
+"Abrir a rota"), rota (o EMBARQUEI trava 1,2 s com "Ana ✓ · Desfazer" —
+`barraTravada`), caixa (abre em Mensalidades com atraso; "Cobrar" cheio só na
+atrasada, "Dar baixa" cheio só em quem avisou — `botoesDaMensalidade`),
+Financeiro trancado ("Acessar dados financeiros"), PIX ("Copiar"). Encerrar
+com criança na perua abre confirmação com os nomes. O "Salvar" dos campos é
+CONTORNO. Iniciar a rota tem "Cancelar" por 10 s (o "a perua saiu" já
+enviado fica no sino das famílias).
 
 **Navegação: uma tela só.** Cada troca de tela cobra pedágio — resolva em folha
 onde couber, e rotule o "voltar" onde não couber.

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Bot, ChevronRight, LockKeyhole, ReceiptText, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Bot, ChevronRight, Fuel, LockKeyhole, ReceiptText, Users } from 'lucide-react';
 import IconePix from '../common/IconePix';
 import MolduraDoFinanceiro from './MolduraDoFinanceiro';
 import DigiteASenhaDoFinanceiro from './DigiteASenhaDoFinanceiro';
@@ -31,11 +32,14 @@ import { seloDoPlano } from '../../dominio/associacao/seloDoPlano.js';
  * dono, com o desenho de um app de banco: a saudação, a porta grande, e o que
  * se pode ver SEM a senha.
  *
- * ⚠️ A PORTA VERDE É O BUZI (04/10/2026, decisão do dono) — "Boletim do seu
- * negócio", o assistente que responde em linguagem simples. "Acessar dados
- * financeiros" fica logo abaixo, branco: é a mesma senha, para quem quer o
- * caixa inteiro. Do dia 1 ao 7 o cartão anuncia o Boletim do mês que fechou,
- * até ele abrir (`boletimParaAnunciar`).
+ * A PORTA GRANDE É O ÚNICO VERDE CHEIO (04/10/2026, item 15). Era branca, e o
+ * verde era o Abastecer: quem chega cansado toca no que mais chama, e a tela
+ * cujo nome é "Financeiro" mandava para o posto. O resto é branco.
+ * ⚠️ DESDE 04/10/2026 (mais tarde, decisão do dono) O VERDE É O BUZI —
+ * "Boletim do seu negócio", o assistente que responde em linguagem simples.
+ * "Acessar dados financeiros" continua logo abaixo, branco: é a mesma senha,
+ * para quem quer o caixa inteiro. Do dia 1 ao 7 o cartão anuncia o Boletim
+ * do mês que fechou, até ele abrir (`boletimParaAnunciar`).
  *
  * O QUE APARECE SEM SENHA É O QUE NÃO É DINHEIRO:
  *   - Minha turma: quantas crianças, quantas entraram e saíram no mês
@@ -53,6 +57,7 @@ import { seloDoPlano } from '../../dominio/associacao/seloDoPlano.js';
 export default function FinanceiroTrancado() {
   const { user, profile } = useAuth();
   const tranca = useTrancaDoFinanceiro();
+  const navigate = useNavigate();
   const comDigital = biometriaLigada(user?.uid);
   const [pedindo, setPedindo] = useState(null);
   const [folha, setFolha] = useState(null);
@@ -162,7 +167,7 @@ export default function FinanceiroTrancado() {
         <button
           type="button"
           onClick={() => acessar(TURMA)}
-          className="tap col-span-2 relative min-h-[132px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start gap-2 text-left"
+          className="tap relative min-h-[132px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start gap-2 text-left"
         >
           {/* A turma mostra os contratos: é o único quadrado que pede a senha,
             * e o cadeado no canto diz isso antes do toque. */}
@@ -184,6 +189,17 @@ export default function FinanceiroTrancado() {
         </button>
         <button
           type="button"
+          onClick={() => navigate('/tio/abastecer')}
+          className="tap min-h-[132px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start gap-2 text-left"
+        >
+          <Fuel size={30} className="text-primary" aria-hidden="true" />
+          <span>
+            <span className="block text-lg font-bold text-text">Abastecer</span>
+            <span className="block text-[15px] text-textBody">Quanto dá e lançar</span>
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={() => setFolha('pix')}
           className="tap min-h-[132px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start gap-2 text-left"
         >
@@ -200,7 +216,7 @@ export default function FinanceiroTrancado() {
         </button>
       </div>
       <p className="text-[15px] text-textMuted text-center">
-        PIX e despesa funcionam sem senha.
+        Abastecer, PIX e despesa funcionam sem senha.
       </p>
 
       {cobranca === true && (
@@ -210,7 +226,7 @@ export default function FinanceiroTrancado() {
           className="tap rounded-3xl bg-card shadow-rest px-5 py-4 flex items-center gap-3 text-left"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-[15px] text-textMuted">Meu plano Alô Buzinou</p>
+            <p className="text-[15px] text-textMuted">Meu plano</p>
             <p className="text-lg font-bold text-text">
               {plano.nome}
               <span className={`ml-1.5 px-2.5 py-1 rounded-full text-sm font-bold ${TOM[plano.tom]}`}>

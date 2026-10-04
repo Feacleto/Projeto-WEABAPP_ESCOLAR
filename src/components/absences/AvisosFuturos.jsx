@@ -67,10 +67,10 @@ export default function AvisosFuturos({ child, historico }) {
           <div className="flex items-start gap-2.5">
             <AlertTriangle size={18} className="text-warningText shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-warningText leading-tight">
+              <p className="text-base font-bold text-warningText leading-tight">
                 Amanhã: {ABSENCE_LABELS[vespera.type]?.toLowerCase() || 'ausência'}
               </p>
-              <p className="text-xs text-warningText/80 mt-0.5">
+              <p className="text-sm text-warningText mt-0.5">
                 Você avisou {haQuantoTempo(vespera.createdAt)}. Continua assim?
               </p>
             </div>
@@ -80,14 +80,14 @@ export default function AvisosFuturos({ child, historico }) {
               type="button"
               disabled={removendo === vespera.dateKey}
               onClick={() => desfazer(vespera)}
-              className="tap h-10 rounded-xl bg-card border border-warningBorder text-warningText text-xs font-bold disabled:opacity-60"
+              className="tap h-12 rounded-xl bg-card border border-warningBorder text-warningText text-base font-bold disabled:opacity-60"
             >
               Mudou, ela vai
             </button>
             <button
               type="button"
               onClick={() => toast.success('Combinado. O motorista já está avisado.')}
-              className="tap h-10 rounded-xl bg-warning text-white text-xs font-bold"
+              className="tap h-12 rounded-xl bg-warning text-white text-base font-bold"
             >
               Continua
             </button>
@@ -105,10 +105,10 @@ export default function AvisosFuturos({ child, historico }) {
             <div key={a.dateKey} className="flex items-center gap-2.5 px-3 py-2.5">
               <CalendarDays size={15} className="text-textMuted shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-text leading-tight">
+                <p className="text-base font-semibold text-text leading-tight">
                   {longa(a.dateKey)}
                 </p>
-                <p className="text-xs text-textMuted">
+                <p className="text-sm text-textMuted">
                   {ABSENCE_LABELS[a.type] || 'Ausência'}
                 </p>
               </div>
@@ -117,9 +117,11 @@ export default function AvisosFuturos({ child, historico }) {
                 disabled={removendo === a.dateKey}
                 onClick={() => desfazer(a)}
                 aria-label={`Desmarcar ${longa(a.dateKey)}`}
-                className="tap w-8 h-8 rounded-lg border border-border text-textMuted flex items-center justify-center shrink-0 disabled:opacity-60"
+                // 48px: desmarcar é a razão de esta lista existir (ver o
+                // cabeçalho) — não pode ser o alvo mais difícil da tela.
+                className="tap w-12 h-12 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0 disabled:opacity-60"
               >
-                <X size={15} />
+                <X size={20} />
               </button>
             </div>
           ))}

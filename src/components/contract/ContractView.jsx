@@ -2,6 +2,52 @@ import { formatBRL } from '../../compartilhado/formatters';
 import { formatPhone } from '../../compartilhado/formatters';
 
 /**
+ * A multa por atraso da cláusula 8ª, § 1º — UM número só, lido pela cláusula
+ * e pelo resumo do topo. Antes de 03/10/2026 ela era literal dentro do texto,
+ * e um resumo que a digitasse de novo seria a segunda verdade sobre o mesmo
+ * dinheiro. O texto renderizado da cláusula continua idêntico ("10% (dez por
+ * cento)"), e o hash do aceite nem passa por aqui: ele é tirado do JSON
+ * gravado (`reguaDoContrato.js`), não do que a tela desenha.
+ */
+const MULTA_POR_ATRASO = { pct: 10, extenso: 'dez por cento' };
+
+/**
+ * O RESUMO DO COMBINADO — o que a família precisa conferir, ANTES do texto
+ * longo (03/10/2026).
+ *
+ * Ninguém relê nove cláusulas para achar o valor e o dia do vencimento, e é
+ * exatamente isso que o portão manda conferir. O resumo responde as cinco
+ * perguntas que viram briga depois (quanto, quando vence, até quando, falta
+ * dá desconto?, e se atrasar?) com os números lidos do MESMO `data` que o
+ * contrato abaixo usa — nunca digitados. Não é parte do documento: some na
+ * impressão, e o contrato inteiro continua logo abaixo.
+ */
+export function ResumoDoCombinado({ data, children }) {
+  const { finance, period } = data;
+  const linhas = [
+    ['Mensalidade', formatBRL(finance.monthlyFee)],
+    ['Vencimento', `Todo dia ${finance.dueDay}`],
+    ['Vale de', `${period.startDate} a ${period.endDate}`],
+    ['Falta e férias', 'Não dão desconto'],
+    ['Se atrasar', `Multa de ${MULTA_POR_ATRASO.pct}%`],
+  ];
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4 print:hidden">
+      <h2 className="text-lg font-bold text-text">Resumo do combinado</h2>
+      <dl className="mt-3 divide-y divide-border">
+        {linhas.map(([rotulo, valor]) => (
+          <div key={rotulo} className="flex items-baseline justify-between gap-3 py-2.5">
+            <dt className="text-base text-textMuted">{rotulo}</dt>
+            <dd className="text-right text-lg font-bold text-text">{valor}</dd>
+          </div>
+        ))}
+      </dl>
+      {children}
+    </section>
+  );
+}
+
+/**
  * Renderização visual do contrato. Recebe `data` montado por
  * `buildContractData()` e produz a leitura completa do contrato.
  *
@@ -34,7 +80,7 @@ export default function ContractView({
   } = data;
 
   return (
-    <article className="bg-card text-text leading-relaxed text-sm">
+    <article className="bg-card text-left text-base leading-relaxed text-text">
       <header className="mb-6 text-center">
         <h1 className="text-xl font-bold uppercase tracking-wide">
           Contrato de Prestação de Serviços
@@ -53,19 +99,19 @@ export default function ContractView({
 
       {mudancas?.length > 0 && (
         <section className="mb-6 rounded-2xl border border-warningBorder bg-warningSoft p-4 print:border-linhaImpressa print:bg-transparent">
-          <p className="text-sm font-bold text-warningText">
+          <p className="text-base font-bold text-warningText">
             O que muda em relação à versão anterior
           </p>
           <ul className="mt-2 space-y-1.5">
             {mudancas.map((m) => (
-              <li key={m.rotulo} className="text-sm text-text">
+              <li key={m.rotulo} className="text-base text-text">
                 <strong>{m.rotulo}:</strong>{' '}
                 <span className="line-through text-textMuted">{m.de}</span>{' '}
                 → <strong>{m.para}</strong>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-warningText">
+          <p className="mt-2 text-sm text-warningText">
             O resto do contrato continua igual. Até o aceite, vale a versão anterior.
           </p>
         </section>
@@ -73,7 +119,7 @@ export default function ContractView({
 
       {/* Preâmbulo */}
       <section className="space-y-4">
-        <p className="text-justify">
+        <p>
           Pelo presente instrumento particular de{' '}
           <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TRANSPORTE
           ESCOLAR</strong>,{' '}
@@ -97,7 +143,7 @@ export default function ContractView({
         </p>
 
         {/* Cláusula 1 */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 1ª</strong> – A Contratada obriga-se a transportar o
           aluno do endereço <strong>{student.homeAddress}</strong> para a
           escola <strong>{student.school}</strong>{' '}
@@ -112,14 +158,14 @@ export default function ContractView({
         </p>
 
         {/* Cláusula 2 */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 2ª</strong> – A Contratada se obriga a manter os
           veículos em perfeitas condições de uso, que ofereçam conforto e
           segurança aos alunos que deles se utilizarem.
         </p>
 
         {/* Cláusula 3 */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 3ª</strong> – A configuração formal do ato de
           inscrição no serviço de transporte escolar se procede pelo cadastro
           do aluno realizado pela Contratada no aplicativo Alô Buzinou,
@@ -128,7 +174,7 @@ export default function ContractView({
         </p>
 
         {/* Cláusula 4 */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 4ª</strong> – É de inteira responsabilidade da
           Contratada a prestação de serviço de transporte dos alunos no que se
           refere a designação de veículos, motoristas e auxiliares, fixação do
@@ -137,14 +183,14 @@ export default function ContractView({
         </p>
 
         {/* Cláusula 5 */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 5ª</strong> – Nas ruas que não oferecerem condições
           de tráfego ou de acesso, o motorista do veículo indicará o local
           adequado para acolher e deixar o aluno com seu responsável.
         </p>
 
         {/* Cláusula 6 */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 6ª</strong> – Em caso de mudança de endereço ou de
           regime de transporte por parte do Contratante, o presente contrato
           deverá ser renovado ou aditado, sendo que a Contratada reserva-se o
@@ -152,7 +198,7 @@ export default function ContractView({
         </p>
 
         {/* Cláusula 7 — regra principal: 12 parcelas com férias */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 7ª</strong> – Como contraprestação pelos serviços
           prestados, o Contratante pagará à Contratada{' '}
           <strong>{finance.installments} parcelas mensais</strong> no valor de{' '}
@@ -166,53 +212,53 @@ export default function ContractView({
         </p>
 
         {/* Cláusula 8 */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 8ª</strong> – As parcelas terão vencimento todo dia{' '}
           <strong>{finance.dueDay}</strong> de cada mês.
         </p>
-        <p className="text-justify pl-4">
+        <p className="pl-4">
           <strong>§ 1º</strong> – Em caso de falta de pagamento no vencimento,
-          o valor será acrescido de multa de 10% (dez por cento).
+          o valor será acrescido de multa de {MULTA_POR_ATRASO.pct}% ({MULTA_POR_ATRASO.extenso}).
         </p>
-        <p className="text-justify pl-4">
+        <p className="pl-4">
           <strong>§ 2º</strong> – Em caso de inadimplência, a Contratada poderá
           optar:
         </p>
-        <p className="text-justify pl-8">
+        <p className="pl-8">
           I – Pela rescisão contratual, independente da exigibilidade do débito
           vencido e do devido no mês da efetivação.
         </p>
-        <p className="text-justify pl-8">
+        <p className="pl-8">
           II – Pela suspensão da prestação dos serviços, independente da
           exigibilidade do débito vencido e do devido no mês da efetivação.
         </p>
 
         {/* Cláusula 9 */}
-        <p className="text-justify">
+        <p>
           <strong>CLÁUSULA 9ª</strong> – O presente contrato tem vigência de{' '}
           <strong>{period.startDate}</strong> a{' '}
           <strong>{period.endDate}</strong> e poderá ser rescindido nas
           seguintes hipóteses:
         </p>
-        <p className="text-justify pl-4">
+        <p className="pl-4">
           <strong>A) Pelo Contratante:</strong>
         </p>
-        <p className="text-justify pl-8">I – Por simples desistência formal;</p>
-        <p className="text-justify pl-4">
+        <p className="pl-8">I – Por simples desistência formal;</p>
+        <p className="pl-4">
           <strong>B) Pela Contratada:</strong>
         </p>
-        <p className="text-justify pl-8">
+        <p className="pl-8">
           I – Por inadimplência, nos termos do inciso I do parágrafo 2º da
           cláusula 8ª.
         </p>
-        <p className="text-justify pl-4">
+        <p className="pl-4">
           <strong>Parágrafo Único</strong> – Em todos os casos fica o
           Contratante obrigado a pagar o valor da parcela do mês em que ocorrer
           o evento.
         </p>
 
         {/* Encerramento */}
-        <p className="text-justify mt-6">
+        <p className="mt-6">
           E, por estarem justos e contratados, manifestam o aceite pelo
           aplicativo Alô Buzinou, com pleno valor e eficácia jurídica
           conforme legislação vigente sobre documentos eletrônicos.
@@ -237,7 +283,7 @@ export default function ContractView({
           <h3 className="text-sm font-bold uppercase tracking-widest text-textMuted">
             Aceite eletrônico
           </h3>
-          <div className="bg-bg rounded-xl p-4 space-y-1 text-xs">
+          <div className="bg-bg rounded-xl p-4 space-y-1 text-sm">
             <p>
               <strong>Aceito por:</strong>{' '}
               {acceptanceInfo.name || '—'}
@@ -251,12 +297,12 @@ export default function ContractView({
             {acceptanceInfo.hash && (
               <p className="break-all">
                 <strong>Hash de integridade:</strong>{' '}
-                <span className="font-mono text-xs">
+                <span className="font-mono text-sm">
                   {acceptanceInfo.hash}
                 </span>
               </p>
             )}
-            <p className="text-xs text-textMuted pt-1">
+            <p className="text-sm text-textMuted pt-1">
               {numero ? `Versão ${numero} do contrato.` : `Contrato versão ${acceptanceInfo.version || 1}.`} Aceite registrado
               eletronicamente conforme MP 2.200-2/2001 e Lei 14.063/2020.
             </p>
@@ -265,7 +311,7 @@ export default function ContractView({
       )}
 
       {/* Rodapé com referência do contrato */}
-      <footer className="mt-8 text-center text-xs text-textMuted">
+      <footer className="mt-8 text-center text-sm text-textMuted">
         {numero ? `Versão ${numero}` : `Contrato de ${contractedYear}`} · referência:{' '}
         {data.inviteCode || data.childId}
       </footer>

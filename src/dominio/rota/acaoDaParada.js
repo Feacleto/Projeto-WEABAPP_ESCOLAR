@@ -71,3 +71,24 @@ export function passoAnterior(status, direction) {
   if (status === 'delivered') return 'onboard';
   return null;
 }
+
+/**
+ * A TRAVA DO BOTÃO DA PARADA DEPOIS DE UMA MARCAÇÃO (04/10/2026, pedido do
+ * dono). O EMBARQUEI virava, no mesmo lugar e no mesmo instante, o botão da
+ * PRÓXIMA criança — e o segundo toque de um polegar apressado (ou o toque
+ * duplo de uma tela suja) marcava quem ainda estava na calçada.
+ *
+ * Por `TRAVA_DA_PARADA_MS` o botão não age: ele diz "Ana ✓ · Desfazer" no
+ * lugar dele. É ESTADO, não animação — nada se mexe, o rótulo só troca.
+ *
+ * `marcadoEm` e `agora` em milissegundos. Sem marcação, ou com relógio
+ * andando para trás (marcação "no futuro"), não trava: travar o botão da
+ * rota por um relógio errado é pior que um toque duplo.
+ */
+export const TRAVA_DA_PARADA_MS = 1200;
+
+export function barraTravada(marcadoEm, agora) {
+  if (!Number.isFinite(marcadoEm) || !Number.isFinite(agora)) return false;
+  const passou = agora - marcadoEm;
+  return passou >= 0 && passou < TRAVA_DA_PARADA_MS;
+}

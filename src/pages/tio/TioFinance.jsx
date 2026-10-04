@@ -16,9 +16,8 @@ import {
   ArrowDown,
   Eye,
   EyeOff,
-  Plus,
   Minus,
-  Send,
+  TriangleAlert,
   Receipt,
   Users,
   Download,
@@ -37,6 +36,7 @@ import { nomeDoMes } from '../../components/payments/estadoDaMensalidade';
 import BotoesDoTopoDoFinanceiro from '../../components/financeiro/BotoesDoTopoDoFinanceiro';
 import FolhaDeDespesa from '../../components/financeiro/FolhaDeDespesa';
 import InteressePorCartao from '../../components/tio/InteressePorCartao';
+import BlocoSuaPerua from '../../components/financeiro/BlocoSuaPerua';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { watchAlertasDeComprovante } from '../../services/alertaDeComprovanteService';
@@ -50,6 +50,11 @@ import { montarExtrato } from '../../dominio/cobranca/extratoDoMes.js';
 import { resumoDaTurma, frasesDoMovimento } from '../../dominio/identidade/movimentoDaTurma.js';
 import { diasDeAtraso } from '../../dominio/associacao/contaAtiva.js';
 import { buildChargeMessage } from '../../dominio/cobranca/chargeMessage';
+import {
+  abaInicialDoCaixa,
+  botoesDaMensalidade,
+  rotuloDeCobrarAtrasados,
+} from '../../dominio/cobranca/caixaDoMes.js';
 import {
   confirmReceipt,
   undoReceipt,
@@ -75,6 +80,7 @@ import {
   formatCurrency,
   getCurrentMonthKey,
   emCentavos,
+  diasDeCalendario,
 } from '../../compartilhado/formatters';
 import { PIX_KEY_TYPES } from '../../services/userService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
@@ -83,17 +89,32 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  * Financeiro do Tio — O CAIXA, mês a mês (03/10/2026, protótipo aprovado
  * pelo dono: o Financeiro protegido por senha, lido como o app de um banco).
  *
- * A ORDEM DA TELA é a ordem das perguntas dele:
+ * A ORDEM DA TELA é a ordem das perguntas dele (revista em 03/10/2026, na
+ * auditoria de leitura em Z: o NÚMERO do momento vem antes dos botões):
  *   1. de que mês estou falando          → o seletor, no topo
- *   2. o que eu faço daqui               → os quatro atalhos (receber,
- *                                          lançar despesa, cobrar, chave PIX)
- *   3. quanto sobrou                     → o SALDO: o que entrou menos o que
- *                                          saiu, e quanto falta receber
- *   4. e o resto do negócio              → três portas: despesas, turma e
- *                                          contratos, e o plano da plataforma
+ *   2. quanto sobrou                     → o SALDO de {mês}: o que entrou
+ *                                          menos o que saiu
+ *   3. quem está me devendo              → o cartão âmbar dos atrasados (só
+ *                                          quando há), e a linha do que falta
+ *                                          receber no mês
+ *   4. o que eu faço daqui               → três atalhos: mensalidades,
+ *                                          lançar despesa, chave PIX
  *   5. o que é comigo agora              → "Aguardando você", os atrasados
+ *                                          de meses anteriores
  *   6. o dia a dia do dinheiro           → Extrato (entrou e saiu, por dia)
  *                                          ou Mensalidades (a lista de sempre)
+ *   7. e o resto do negócio              → Sua perua e as três portas:
+ *                                          despesas, turma e contratos, e o
+ *                                          plano da plataforma
+ *
+ * ⚠️ RECEBER O DINHEIRO VEM PRIMEIRO (04/10/2026, item 13). Com mensalidade
+ * em aberto o caixa abre na aba MENSALIDADES (`abaInicialDoCaixa`), o cartão
+ * âmbar ganhou "Cobrar os N atrasados" (leva à lista filtrada; a cobrança
+ * continua uma família por vez, pelo WhatsApp de cada linha — nunca em
+ * massa), e Sua perua e as portas desceram para depois da lista.
+ *
+ * UM NOME SÓ: a tela é "Financeiro" (rodapé e cabeçalho). "Meu caixa" e
+ * "Caixa de outubro" eram o terceiro e o quarto nome da mesma coisa.
  *
  * ⚠️ O SALDO É SÓ DO CAIXA DAS FAMÍLIAS: mensalidade paga menos despesa
  * lançada. A taxa da plataforma (`faturasParceiro`) não entra nele nem no
@@ -156,7 +177,7 @@ export default function TioFinance() {
    * O seletor VOLTOU para o topo (design system aprovado, 03/10/2026), e o
    * motivo de ele ter descido continua de pé: ninguém pode dar baixa achando
    * que está no mês errado. Quem guarda isso agora é o nome do mês no próprio
-   * seletor, repetido no cartão verde ("Recebido em setembro"), e a faixa de
+   * seletor, repetido no cartão do saldo ("Saldo de setembro"), e a faixa de
    * histórico com a porta de volta logo embaixo quando ele sai do mês vigente.
    */
   const isCurrentMonthView = monthKey === getCurrentMonthKey();
@@ -185,8 +206,11 @@ export default function TioFinance() {
   const reais = (v) => (visiveis ? formatCurrency(v) : VALOR_ESCONDIDO);
   const [despesaAberta, setDespesaAberta] = useState(false);
 
-  // Extrato ou Mensalidades. Abre no extrato: é o caixa.
-  const [aba, setAba] = useState('extrato');
+  // Extrato ou Mensalidades. A aba de abertura é DERIVADA do mês (ver
+  // `abaInicialDoCaixa`) até ele tocar numa: a partir daí vale a escolha dele.
+  // Derivar, e não gravar num efeito, é o que deixa a lista que chega depois
+  // do primeiro desenho ainda decidir a aba.
+  const [abaEscolhida, setAba] = useState(null);
   const abasRef = useRef(null);
   const irParaAba = (qual, filtro) => {
     setAba(qual);
@@ -229,9 +253,15 @@ export default function TioFinance() {
    * banco, a família que deve desde o dia 1 podia estar na décima linha, e o
    * motorista descia a lista inteira procurando vermelho.
    *
-   * "Faltam" junta os três estados que não são dinheiro na mão. O filtro de
-   * "Atrasados" saiu: a lista já os põe no topo, e a pergunta que ele faz ao
-   * tocar num filtro é "quem ainda não pagou?", não "quem venceu?".
+   * "Faltam" junta os três estados que não são dinheiro na mão. A PÍLULA de
+   * "Atrasados" continua fora: a lista já os põe no topo, e a pergunta que ele
+   * faz ao tocar num filtro é "quem ainda não pagou?", não "quem venceu?".
+   *
+   * ⚠️ MAS O FILTRO 'overdue' EXISTE, sem pílula: é o destino do cartão âmbar
+   * "N atrasadas" do alto da tela. Cartão que diz "2 atrasadas" e abre uma
+   * lista de nove (as pendentes juntas) obriga a contar de novo o que ele
+   * acabou de ler. Ligado, a lista mostra uma faixa "Só as atrasadas" com
+   * "Ver todas" — a saída fica escrita, não escondida numa quarta pílula.
    */
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -244,6 +274,7 @@ export default function TioFinance() {
       .filter((p) => {
         if (filter === 'paid' && p._display !== 'paid') return false;
         if (filter === 'open' && p._display === 'paid') return false;
+        if (filter === 'overdue' && p._display !== 'overdue') return false;
         if (!term) return true;
         return String(p.childName || '').toLowerCase().includes(term);
       })
@@ -354,6 +385,21 @@ export default function TioFinance() {
   const saiu = despesasDoMes === null ? null : sumExpenses(despesasDoMes);
   const saldo = saiu === null ? null : emCentavos(totals.paid - saiu);
   const faltaReceber = emCentavos(totals.esperado - totals.paid);
+  const quantasFaltam =
+    totals.contagem.claimed + totals.contagem.pending + totals.contagem.overdue;
+  const aba = abaEscolhida ?? abaInicialDoCaixa({ quantasFaltam });
+
+  // A MAIS ANTIGA das atrasadas do mês na tela, em dias: é o número que diz
+  // se a conversa é um lembrete ou uma cobrança séria.
+  const diasDaMaisAntiga = useMemo(() => {
+    let maior = null;
+    for (const p of enriched) {
+      if (p._display !== 'overdue') continue;
+      const dias = diasDeCalendario(p.dueDate, new Date());
+      if (dias !== null && (maior === null || dias > maior)) maior = dias;
+    }
+    return maior;
+  }, [enriched]);
 
   const extrato = useMemo(
     () =>
@@ -373,6 +419,7 @@ export default function TioFinance() {
   const frasesDaTurma = frasesDoMovimento(turma);
 
   const plano = descreverPlano(profile, faturaEmAberto);
+  const indiceDoFiltro = FILTROS.findIndex((f) => f.value === filter);
   const mes = nomeDoMes(monthKey);
 
   const onShareReceipt = async () => {
@@ -516,7 +563,7 @@ export default function TioFinance() {
   return (
     <>
       {/* O cadeado e os ajustes da senha moram no canto do cabeçalho. O
-        * "Relatório" saiu daqui: virou "Baixar extrato do mês", no fim do
+        * "Relatório" saiu daqui: virou "Ver relatório de 12 meses", no fim do
         * extrato, que é onde a pergunta "quero isso no papel" aparece. */}
       <Header title="Financeiro" action={<BotoesDoTopoDoFinanceiro />} />
 
@@ -532,60 +579,36 @@ export default function TioFinance() {
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-warningChip text-warningText">
               <History size={18} />
             </span>
-            <p className="min-w-0 flex-1 text-sm font-semibold text-warningText">
+            <p className="min-w-0 flex-1 text-base font-semibold text-warningText">
               Você está vendo um mês que já passou.
             </p>
             <button
               type="button"
               onClick={() => setMonthKey(getCurrentMonthKey())}
-              className="tap h-10 shrink-0 rounded-full border border-warningBorder bg-card px-3.5 text-sm font-bold text-warningText"
+              className="tap h-12 shrink-0 rounded-full border border-warningBorder bg-card px-4 text-base font-bold text-warningText"
             >
               Voltar pra hoje
             </button>
           </div>
         )}
 
-        {/* "Meu caixa" e o olho. Esconder é do aparelho (ver
-          * useValoresVisiveis): quem abre o caixa com gente do lado. */}
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-extrabold text-text">Meu caixa</h2>
-          <button
-            type="button"
-            onClick={alternarValores}
-            aria-label={visiveis ? 'Esconder valores' : 'Mostrar valores'}
-            aria-pressed={!visiveis}
-            className="tap flex h-12 w-12 items-center justify-center rounded-xl text-text"
-          >
-            {visiveis ? <Eye size={24} /> : <EyeOff size={24} />}
-          </button>
-        </div>
-
-        {/* 2. Os quatro atalhos. Receber e Cobrar levam à mesma lista (quem
-          * falta pagar): receber é dar baixa, cobrar é o WhatsApp de cada
-          * linha — a cobrança continua sendo por família, nunca em massa. */}
-        <div className="grid grid-cols-4 gap-2">
-          <Atalho icon={Plus} rotulo="Receber" onClick={() => irParaAba('mensalidades', 'open')} />
-          <Atalho icon={Minus} rotulo="Lançar despesa" onClick={() => setDespesaAberta(true)} />
-          <Atalho icon={Send} rotulo="Cobrar" onClick={() => irParaAba('mensalidades', 'open')} />
-          {/* O ÍCONE DO PIX (04/10/2026, pedido do dono): o losango com as duas
-            * ondas, o mesmo do "Mostrar meu PIX" da tela trancada. */}
-          <Atalho icon={IconePix} rotulo="Chave PIX" onClick={() => setPixOpen(true)} />
-        </div>
-
-        {/* 3. O SALDO. Um número grande só, e ele é o que sobrou. */}
+        {/* 2. O SALDO, logo depois do mês: é o número que ele veio ver. Um
+          * número grande só, e ele é o que sobrou. O "Esconder" é do aparelho
+          * (ver useValoresVisiveis): quem abre o Financeiro com gente do lado.
+          * Ele vai ESCRITO — o olho sozinho não dizia se mostrava ou escondia. */}
         <section className="flex flex-col gap-1.5 rounded-3xl bg-card p-5 shadow-rest">
-          <button
-            type="button"
-            onClick={() => irParaAba('extrato')}
-            className="tap -mx-1 flex min-h-12 items-center gap-2.5 rounded-xl px-1 text-left"
-          >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primaryChip text-primary">
-              <Wallet size={18} />
-            </span>
-            <span className="flex-1 text-base text-textBody">Caixa de {mes}</span>
-            <ChevronRight size={20} className="text-textBody" />
-          </button>
-          <span className="mt-2 text-base text-textBody">Saldo</span>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-textBody">Saldo de {mes}</h2>
+            <button
+              type="button"
+              onClick={alternarValores}
+              aria-pressed={!visiveis}
+              className="tap -mr-2 flex h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-base font-bold text-primary"
+            >
+              {visiveis ? <EyeOff size={20} aria-hidden /> : <Eye size={20} aria-hidden />}
+              {visiveis ? 'Esconder' : 'Mostrar'}
+            </button>
+          </div>
           {saldo === null ? (
             <Skeleton className="h-10 w-44" />
           ) : (
@@ -597,53 +620,84 @@ export default function TioFinance() {
               {reais(saldo)}
             </span>
           )}
-          <span className="text-base tabular-nums text-textBody">
+          <span className="mt-1 text-base tabular-nums text-textBody">
             Entrou {reais(totals.paid)} · Saiu {saiu === null ? '…' : reais(saiu)}
           </span>
-          <span aria-hidden className="my-2 h-px bg-border" />
+        </section>
+
+        {/* 3. Quem está devendo — âmbar, porque pede atenção dele. Só existe
+          * quando há atrasada: cartão de "0 atrasadas" ensinaria a pular o
+          * cartão. Abre a lista JÁ filtrada nas atrasadas. */}
+        {totals.contagem.overdue > 0 && (
+          <div className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
+          <button
+            type="button"
+            onClick={() => irParaAba('mensalidades', 'overdue')}
+            className="tap flex w-full items-center gap-3 text-left"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-warningChip text-warningText">
+              <TriangleAlert size={22} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-lg font-bold tabular-nums text-warningText">
+                {totals.contagem.overdue}{' '}
+                {totals.contagem.overdue === 1 ? 'atrasada' : 'atrasadas'} ·{' '}
+                {reais(totals.soma.overdue)}
+              </span>
+              {diasDaMaisAntiga !== null && (
+                <span className="block text-base text-warningText">
+                  {totals.contagem.overdue === 1 ? 'Venceu' : 'A mais antiga venceu'}{' '}
+                  {diasDaMaisAntiga <= 0
+                    ? 'hoje'
+                    : diasDaMaisAntiga === 1
+                      ? 'ontem'
+                      : `há ${diasDaMaisAntiga} dias`}
+                </span>
+              )}
+            </span>
+            <ChevronRight size={22} className="shrink-0 text-warningText" aria-hidden />
+          </button>
+          {/* "COBRAR OS N ATRASADOS" (item 13) LEVA À LISTA, não cobra.
+            * Cobrança em massa não existe: cada família recebe a mensagem
+            * dela, pelo "Cobrar no WhatsApp" da própria linha. O botão é
+            * branco com borda âmbar — o verde cheio é o da linha. */}
+          <button
+            type="button"
+            onClick={() => irParaAba('mensalidades', 'overdue')}
+            className="tap mt-3 flex h-12 w-full items-center justify-center rounded-xl border-2 border-warningBorder bg-card text-base font-bold text-warningText"
+          >
+            {rotuloDeCobrarAtrasados(totals.contagem.overdue)}
+          </button>
+          </div>
+        )}
+
+        {/* O que falta entrar no mês, numa linha — conferência, calendário e
+          * cobrança juntos; a aba Mensalidades separa os três. */}
+        {quantasFaltam > 0 && (
           <button
             type="button"
             onClick={() => irParaAba('mensalidades', 'open')}
-            className="tap -mx-1 flex min-h-12 items-center gap-2.5 rounded-xl px-1 text-left"
+            className="tap flex min-h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-rest"
           >
-            <span className="flex-1 text-base text-text">Falta receber</span>
+            <span className="flex-1 text-base text-text">
+              Falta receber em {mes}: <strong className="tabular-nums">{quantasFaltam}</strong>
+            </span>
             <span className="text-base font-bold tabular-nums text-text">{reais(faltaReceber)}</span>
-            <ChevronRight size={20} className="text-textBody" />
+            <ChevronRight size={20} className="shrink-0 text-textBody" aria-hidden />
           </button>
-        </section>
+        )}
 
-        {/* 4. As três portas: para onde o dinheiro foi, quem é a turma que
-          * paga, e o que ele deve à plataforma (só com a cobrança ligada). */}
-        <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
-          <Porta
-            icon={Receipt}
-            titulo="Despesas do mês"
-            detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
-            onClick={() => navigate('/tio/finance/expenses')}
-          />
-          <Porta
-            divisor
-            icon={Users}
-            titulo="Turma e contratos"
-            detalhe={[
-              `${turma.ativas} ${turma.ativas === 1 ? 'criança' : 'crianças'}`,
-              frasesDaTurma.entraram,
-              frasesDaTurma.sairam,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            onClick={() => navigate('/tio/finance/turma')}
-          />
-          {cobranca === true && (
-            <Porta
-              divisor
-              icon={FileText}
-              titulo="Meu plano Alô Buzinou"
-              detalhe={`${plano.nome} · ${plano.estado}`}
-              onClick={() => navigate('/tio/taxa')}
-            />
-          )}
-        </section>
+        {/* 4. Os três atalhos. "Receber" e "Cobrar" levavam à MESMA lista
+          * (quem falta pagar) com dois nomes — viraram "Mensalidades": dar
+          * baixa e cobrar no WhatsApp moram nas linhas dela, e a cobrança
+          * continua sendo por família, nunca em massa. */}
+        <div className="grid grid-cols-3 gap-2.5">
+          <Atalho icon={Wallet} rotulo="Mensalidades" onClick={() => irParaAba('mensalidades', 'open')} />
+          <Atalho icon={Minus} rotulo="Lançar despesa" onClick={() => setDespesaAberta(true)} />
+          {/* O ÍCONE DO PIX (04/10/2026, pedido do dono): o losango com as duas
+            * ondas, o mesmo do "Mostrar meu PIX" da tela trancada. */}
+          <Atalho icon={IconePix} rotulo="Chave PIX" onClick={() => setPixOpen(true)} />
+        </div>
 
         {/* 5. O que espera uma decisão dele. */}
         <AguardandoVoce
@@ -768,12 +822,14 @@ export default function TioFinance() {
                 ))}
               </section>
             )}
+            {/* O botão ABRE a tela do relatório, que tem "Imprimir / Salvar
+              * PDF" — ele não baixa nada sozinho, e "Baixar" prometia isso. */}
             <Button
               variant="secondary"
               icon={Download}
               onClick={() => navigate('/tio/finance/report')}
             >
-              Baixar extrato do mês (PDF)
+              Ver relatório de 12 meses (imprimir ou PDF)
             </Button>
           </>
         )}
@@ -796,13 +852,15 @@ export default function TioFinance() {
                 aria-label="Filtrar mensalidades"
                 className="relative grid grid-cols-3 rounded-full border border-border bg-card p-1"
               >
-                <span
-                  aria-hidden
-                  className="absolute bottom-1 left-1 top-1 w-[calc((100%-8px)/3)] rounded-full bg-primary transition-transform duration-entrada ease-freio"
-                  style={{
-                    transform: `translateX(${FILTROS.findIndex((f) => f.value === filter) * 100}%)`,
-                  }}
-                />
+                {/* No filtro das atrasadas (sem pílula) a pílula verde some:
+                  * nenhuma das três está escolhida, e a faixa abaixo diz qual é. */}
+                {indiceDoFiltro >= 0 && (
+                  <span
+                    aria-hidden
+                    className="absolute bottom-1 left-1 top-1 w-[calc((100%-8px)/3)] rounded-full bg-primary transition-transform duration-entrada ease-freio"
+                    style={{ transform: `translateX(${indiceDoFiltro * 100}%)` }}
+                  />
+                )}
                 {FILTROS.map((f) => (
                   <button
                     key={f.value}
@@ -810,13 +868,28 @@ export default function TioFinance() {
                     role="tab"
                     aria-selected={filter === f.value}
                     onClick={() => setFilter(f.value)}
-                    className={`relative z-[1] h-10 rounded-full text-sm font-semibold transition-colors duration-estado ${
+                    className={`relative z-[1] h-12 rounded-full text-base font-semibold transition-colors duration-estado ${
                       filter === f.value ? 'text-white' : 'text-textMuted'
                     }`}
                   >
                     {f.label}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {filter === 'overdue' && (
+              <div className="flex items-center gap-3 rounded-2xl border border-warningBorder bg-warningSoft py-1 pl-4 pr-1">
+                <p className="min-w-0 flex-1 text-base font-semibold text-warningText">
+                  Só as atrasadas
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFilter('all')}
+                  className="tap h-12 shrink-0 rounded-xl px-3 text-base font-bold text-warningText underline"
+                >
+                  Ver todas
+                </button>
               </div>
             )}
 
@@ -834,16 +907,16 @@ export default function TioFinance() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Digite aqui"
-                  className="h-12 w-full rounded-xl border-2 border-border bg-card pl-11 pr-10 text-base text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  className="h-12 w-full rounded-xl border-2 border-border bg-card pl-11 pr-14 text-base text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
                 />
                 {search && (
                   <button
                     type="button"
                     onClick={() => setSearch('')}
                     aria-label="Limpar busca"
-                    className="tap absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-textMuted"
+                    className="tap absolute right-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg text-textMuted"
                   >
-                    <X size={18} />
+                    <X size={20} />
                   </button>
                 )}
               </div>
@@ -873,7 +946,9 @@ export default function TioFinance() {
                 description={
                   filter === 'open' && !search
                     ? 'Ninguém faltando neste mês.'
-                    : 'Sem pagamentos com esse filtro.'
+                    : filter === 'overdue' && !search
+                      ? 'Nenhuma atrasada neste mês.'
+                      : 'Sem pagamentos com esse filtro.'
                 }
               />
             ) : (
@@ -923,6 +998,48 @@ export default function TioFinance() {
         )}
 
         {/* ── o fim da tela: o que ele consulta, não o que ele opera ── */}
+
+        {/* "SUA PERUA" (03/10/2026): combustível, reserva e "Preciso
+          * aumentar?" num grupo com título, separado das portas do negócio
+          * (proximidade). O olho vem por prop: o bloco obedece ao mesmo toque.
+          *
+          * ⚠️ DESCEU PARA DEPOIS DA LISTA (04/10/2026, item 13), junto das
+          * portas: em cima, ele empurrava as mensalidades para fora da
+          * primeira tela, e receber o dinheiro é o trabalho do caixa. */}
+        <BlocoSuaPerua criancas={turmaInteira} visiveis={visiveis} />
+
+        {/* 7. As três portas: para onde o dinheiro foi, quem é a turma que
+          * paga, e o que ele deve à plataforma (só com a cobrança ligada). */}
+        <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
+          <Porta
+            icon={Receipt}
+            titulo="Despesas do mês"
+            detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
+            onClick={() => navigate('/tio/finance/expenses')}
+          />
+          <Porta
+            divisor
+            icon={Users}
+            titulo="Turma e contratos"
+            detalhe={[
+              `${turma.ativas} ${turma.ativas === 1 ? 'criança' : 'crianças'}`,
+              frasesDaTurma.entraram,
+              frasesDaTurma.sairam,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            onClick={() => navigate('/tio/finance/turma')}
+          />
+          {cobranca === true && (
+            <Porta
+              divisor
+              icon={FileText}
+              titulo="Meu plano"
+              detalhe={`${plano.nome} · ${plano.estado}`}
+              onClick={() => navigate('/tio/taxa')}
+            />
+          )}
+        </section>
 
         {isCurrentMonthView && hasPix && (
           <PixLinha hasPix profile={profile} onOpen={() => setPixOpen(true)} />
@@ -983,7 +1100,7 @@ export default function TioFinance() {
         description={
           attachingTo ? (
             <>
-              <span className="block text-xs mb-3">
+              <span className="block text-sm mb-3">
                 Comprovante de {attachingTo.childName} —{' '}
                 {formatMonthLabel(attachingTo.month)}. Serve a foto do print
                 que o responsável mandou.
@@ -1057,18 +1174,22 @@ function descreverPlano(profile, fatura) {
   return { nome, estado: atraso !== null && atraso > 0 ? 'Fatura atrasada' : 'Fatura em aberto' };
 }
 
-/** Atalho do caixa: ícone num quadrado branco, o nome embaixo. */
+/**
+ * Atalho do Financeiro: o cartão INTEIRO é o alvo (ícone e nome dentro), com
+ * pelo menos 88px de altura. Era só o quadradinho do ícone, com o nome em
+ * 14px solto embaixo — o dedo mirava o ícone e o olho, a palavra.
+ */
 function Atalho({ icon: Icon, rotulo, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="tap flex flex-col items-center gap-2 rounded-2xl py-1 text-center"
+      className="tap flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl bg-card px-1.5 py-3 text-center shadow-rest"
     >
-      <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card text-primary shadow-rest">
-        <Icon size={24} />
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primaryChip text-primary">
+        <Icon size={22} aria-hidden />
       </span>
-      <span className="text-sm font-semibold leading-tight text-text">{rotulo}</span>
+      <span className="text-base font-semibold leading-tight text-text">{rotulo}</span>
     </button>
   );
 }
@@ -1164,6 +1285,10 @@ function PixLinha({ hasPix, profile, onOpen }) {
 }
 
 function renderAction(payment, { onConfirm, onUndo }) {
+  // Cheio ou contorno: quem decide é `botoesDaMensalidade` (item 14). Só a
+  // linha de quem AVISOU que pagou tem "Dar baixa" cheio — quinze verdes na
+  // mesma lista não deixam nenhum chamar.
+  const darBaixa = botoesDaMensalidade(payment._display).darBaixa;
   if (payment._display === 'paid') {
     // Só mostra "Desfazer" enquanto a regra de reversão permitir:
     // qualquer método, dentro de 24h da baixa.
@@ -1189,7 +1314,12 @@ function renderAction(payment, { onConfirm, onUndo }) {
     );
   }
   return (
-    <Button size="sm" fullWidth={false} onClick={onConfirm}>
+    <Button
+      size="sm"
+      variant={darBaixa === 'cheio' ? 'primary' : 'secondary'}
+      fullWidth={false}
+      onClick={onConfirm}
+    >
       Dar baixa
     </Button>
   );
@@ -1224,7 +1354,7 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
               <h2 className="text-xl font-bold text-text leading-tight">
                 Como você recebeu?
               </h2>
-              <p className="text-xs text-textMuted mt-1">
+              <p className="text-base text-textMuted mt-1">
                 {payment.childName} · {formatCurrency(payment.amount)}
                 {claimedMethod && (
                   <span className="ml-1">
@@ -1237,10 +1367,10 @@ function MethodSheet({ payment, loading, onPick, onClose }) {
             <button
               onClick={onClose}
               disabled={loading}
-              className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
+              className="tap w-12 h-12 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
               aria-label="Fechar"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
 
@@ -1297,8 +1427,8 @@ function MethodOption({
         <Icon size={22} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-text leading-tight">{title}</p>
-        <p className="text-xs text-textMuted mt-0.5">{subtitle}</p>
+        <p className="text-lg font-bold text-text leading-tight">{title}</p>
+        <p className="text-base text-textMuted mt-0.5">{subtitle}</p>
       </div>
       {!disabled && <ChevronRight size={18} className="text-textMuted" />}
     </button>

@@ -104,6 +104,29 @@ export async function submitFeedback({
 }
 
 /**
+ * A AVALIAÇÃO RÁPIDA (03/10/2026) — o cartão de cinco rostos do Início e do
+ * Perfil. Nunca pública: `allowTestimonial` falso e escondida, sem nome nem
+ * foto. O `momento` diz onde ela foi feita (fim da rota, dia entregue,
+ * perfil) — a régua é `dominio/suporte/avaliacaoRapida.js`, e as rules
+ * aceitam só os momentos do cliente.
+ */
+export async function enviarAvaliacaoRapida({ uid, role, nota, comentario, momento }) {
+  if (!uid) throw new Error('Sem uid.');
+  await addDoc(collection(db, COLLECTION), {
+    uid,
+    role,
+    version: APP_VERSION,
+    momento,
+    answers: { rating: nota },
+    comment: String(comentario || '').trim().slice(0, 140),
+    allowTestimonial: false,
+    hiddenByOwner: true,
+    allowPhoto: false,
+    createdAt: serverTimestamp(),
+  });
+}
+
+/**
  * Lista feedbacks públicos pra exibir na landing como depoimentos.
  * Critério: rating >= 4 + comentário não vazio + allowTestimonial true.
  * Filtragem extra é client-side pra evitar índices compostos no Firestore.

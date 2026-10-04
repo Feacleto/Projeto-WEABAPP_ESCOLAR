@@ -24,6 +24,7 @@ import { DESTINO_DO_AVISO, destinoDoAviso } from '../src/dominio/identidade/dest
 import { avisoDeAproximacao } from '../src/dominio/rota/proximidade.js';
 import { fraseDaBuzina } from '../src/dominio/rota/buzina.js';
 import * as caixaDeAvisos from '../src/dominio/identidade/caixaDeAvisos.js';
+import { rostoDoAviso } from '../src/dominio/identidade/rostoDoAviso.js';
 
 const require = createRequire(import.meta.url);
 const servidorDestino = require('../functions/lib/destinoDoAviso.js');
@@ -341,6 +342,32 @@ checar('uma execução por vez, com nova tentativa', true,
   && limpeza.includes('maxInstances: LIMITES.AGENDADO') && limpeza.includes('timeoutSeconds: LIMITES.TEMPO_AGENDADO'));
 checar('o orçamento de tempo fica abaixo do timeout do agendado', true,
   reguaLimpeza.ORCAMENTO_DA_LIMPEZA_MS < require('../functions/lib/limites.js').TEMPO_AGENDADO * 1000);
+
+// ─────────────────────────────────────────────────────────────────────────
+bloco('12 · O ROSTO DE CADA AVISO (rostoDoAviso)');
+{
+  const turma = [
+    { id: 'c1', name: 'Felipe Anacleto' },
+    { id: 'c2', name: 'Maria Souza' },
+    { id: 'c3', name: 'Maria Lima' },
+    { id: 'c4', name: 'Ana Clara' },
+  ];
+  const tipo = (aviso, papel = 'admin') => rostoDoAviso(aviso, turma, papel).tipo;
+  const quem = (aviso, papel = 'admin') =>
+    rostoDoAviso(aviso, turma, papel).crianca?.id || null;
+
+  checar('childId da turma → rosto da criança', 'c4', quem({ childId: 'c4', type: 'absence_declared' }));
+  checar('sem childId, nome completo único → casa', 'c1', quem({ childName: 'Felipe Anacleto', type: 'contract_accepted' }));
+  checar('sem childId, primeiro nome único → casa', 'c1', quem({ childName: 'felipe', type: 'payment_claimed' }));
+  checar('acento e caixa não atrapalham', 'c4', quem({ childName: 'ANA CLARA' }));
+  checar('nome repetido (duas Marias) → NÃO casa', 'icone', tipo({ childName: 'Maria', type: 'payment_claimed' }));
+  checar('childId de fora da turma e sem nome → ícone', 'icone', tipo({ childId: 'zz', type: 'alt_pickup' }));
+  checar('motorista, aviso sem criança → ícone (não o próprio rosto)', 'icone', tipo({ type: 'rota_iniciada' }));
+  checar('família, aviso do motorista sem criança → rosto do motorista', 'motorista', tipo({ type: 'school_no_class' }, 'parent'));
+  checar('família, aviso da PLATAFORMA → ícone', 'icone', tipo({ type: 'chamado_respondido' }, 'parent'));
+  checar('família, aviso sobre o filho → rosto do filho', 'crianca', tipo({ childId: 'c1', type: 'agenda_entry' }, 'parent'));
+  checar('aviso nulo não quebra', 'icone', tipo(null));
+}
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

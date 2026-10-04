@@ -16,7 +16,7 @@ import './rota.css';
 /** O título de cada metade da viagem ("Buscar em casa", "Deixar na escola"). */
 export function GrupoDaLinha({ children }) {
   return (
-    <p className="rotulo mb-1 flex items-center gap-2 after:h-px after:flex-1 after:bg-border">
+    <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-textMuted after:h-px after:flex-1 after:bg-border">
       {children}
     </p>
   );
@@ -69,15 +69,17 @@ export function ItemDaLinha({
   const IconeAgora = escola ? School : Bus;
 
   return (
-    <div className="grid grid-cols-[44px_26px_minmax(0,1fr)] gap-x-2">
+    // A coluna da hora tem 52 px desde que a hora foi a 16 px (03/10/2026):
+    // "10h40" em 14 px cabia em 44, em 16 não cabe.
+    <div className="grid grid-cols-[52px_26px_minmax(0,1fr)] gap-x-2">
       <span
         className={`text-right font-mono tabular-nums ${agora ? 'pt-4' : 'pt-3'} ${
           off ? 'text-textMuted' : 'text-text'
         }`}
       >
-        {hora && <span className="block text-sm font-bold">{hora}</span>}
+        {hora && <span className="block text-base font-bold">{hora}</span>}
         {real && (
-          <span className="block text-xs font-medium text-textMuted" aria-label={`aconteceu às ${real}`}>
+          <span className="block text-sm font-medium text-textMuted" aria-label={`aconteceu às ${real}`}>
             {real}
           </span>
         )}

@@ -154,7 +154,7 @@ export default function PixForm({ onDone }) {
           <p className="mt-2 text-2xl font-extrabold tracking-tight text-text">
             {telefoneDoCadastro}
           </p>
-          <p className="mt-2 text-xs leading-relaxed text-textMuted">
+          <p className="mt-2 text-sm leading-relaxed text-textMuted">
             É o número que você deu no cadastro. Só use se ele estiver
             cadastrado como chave PIX no seu banco — é pra ela que as famílias
             vão mandar o dinheiro.
@@ -185,7 +185,7 @@ export default function PixForm({ onDone }) {
                   key={value}
                   type="button"
                   onClick={() => onTypeChange(value)}
-                  className={`h-12 rounded-xl text-xs font-semibold tap border ${
+                  className={`h-12 rounded-xl text-sm font-semibold tap border ${
                     type === value
                       ? 'bg-primary text-white border-primary'
                       : 'bg-card text-text border-border'
@@ -208,7 +208,7 @@ export default function PixForm({ onDone }) {
             </p>
           )}
 
-          <Input
+          <Input semSalvar
             label="Chave PIX"
             placeholder={PIX_KEY_TYPES[type].placeholder}
             icon={Key}

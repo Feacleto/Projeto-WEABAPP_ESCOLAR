@@ -34,6 +34,26 @@ export async function criarSenhaDoFinanceiro(senha) {
 }
 
 /**
+ * Acorda a function de conferir sem conferir nada (04/10/2026) — a tela
+ * trancada chama ao aparecer, para a primeira conferência não esperar a
+ * function ligar. Não conta como tentativa e nunca mostra erro: se falhar, a
+ * conferência de verdade só demora como antes.
+ */
+let aquecidaEm = 0;
+export function aquecerSenhaDoFinanceiro() {
+  // Uma vez a cada 5 minutos basta: a function fica ligada por um tempo
+  // depois de cada chamada.
+  if (Date.now() - aquecidaEm < 5 * 60 * 1000) return;
+  aquecidaEm = Date.now();
+  try {
+    exigirCloud('abrir o Financeiro');
+    httpsCallable(functions, 'conferirSenhaDoFinanceiro')({ aquecer: true }).catch(() => {});
+  } catch {
+    // Sem Cloud Functions configuradas: nada a acordar.
+  }
+}
+
+/**
  * Confere os quatro pares tocados. Devolve `{ ok: true }` ou
  * `{ ok: false, restam }`. Passou do limite de tentativas, lança com a
  * mensagem de esperar.

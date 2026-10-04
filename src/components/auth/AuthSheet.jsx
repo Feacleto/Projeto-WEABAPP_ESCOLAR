@@ -5,7 +5,7 @@ import { Mail, Lock, X, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
 import Input from '../common/Input';
-import GoogleIcon from '../common/GoogleIcon';
+import BotaoDoGoogle, { LinkDoEmail } from './BotaoDoGoogle';
 import {
   authenticateAndRedeem,
   googleAndRedeem,
@@ -33,7 +33,10 @@ import { SENHA_MINIMA } from '../../dominio/identidade/authErrors';
  *
  * 2. Google vem primeiro, grande, com o texto dizendo que não precisa
  *    digitar nada. Email/senha fica escondido atrás de um link — é o caminho
- *    de quem não tem Google, não o caminho padrão.
+ *    de quem não tem Google, não o caminho padrão. Desde 03/10/2026 os dois
+ *    são as peças comuns (`BotaoDoGoogle`, cheio, e `LinkDoEmail`): aqui o
+ *    botão era de contorno e se chamava "Continuar com Google", e a mesma
+ *    porta tinha outro nome e outra cara no login.
  *
  * Props:
  *   - open, onClose
@@ -62,7 +65,7 @@ export default function AuthSheet({
   //      aqui cria uma sessão presa: ele abre o navegador depois e está
   //      deslogado, sem entender por quê.
   //   2. O Google recusa OAuth em webview embutida (disallowed_useragent),
-  //      então "Continuar com Google" entregaria uma página de erro do
+  //      então "Entrar com Google" entregaria uma página de erro do
   //      Google no primeiro contato do pai com o app.
   const inApp = isInAppBrowser();
   const googleWorks = canUseGoogleSignIn();
@@ -189,19 +192,19 @@ export default function AuthSheet({
           type="button"
           onClick={onClose}
           aria-label="Fechar"
-          className="tap absolute right-4 top-4 w-9 h-9 rounded-full text-textMuted flex items-center justify-center"
+          className="tap absolute right-3 top-3 w-12 h-12 rounded-full text-textMuted flex items-center justify-center"
         >
           <X size={20} />
         </button>
 
-        <div className="space-y-1.5 pr-10">
+        <div className="space-y-1.5 pr-12">
           <div className="w-11 h-11 rounded-2xl bg-primaryChip text-primary flex items-center justify-center mb-1">
             <ShieldCheck size={22} />
           </div>
           <h2 className="text-xl font-bold text-text leading-tight">
             {reason ? `Pra ${reason}, entre na sua conta` : 'Entre na sua conta'}
           </h2>
-          <p className="text-sm text-textMuted">
+          <p className="text-base text-textMuted">
             É rápido e protege os dados{who}. Só você vê.
           </p>
         </div>
@@ -214,31 +217,18 @@ export default function AuthSheet({
         {/* Caminho principal: nada pra digitar — quando o Google funciona */}
         {!showBridge && googleWorks && (
           <div className="space-y-2">
-            <Button
-              loading={googleBusy}
-              onClick={onGoogle}
-              className="!bg-card !text-text !border-2 !border-borderStrong hover:!bg-sunken shadow-rest"
-            >
-              {!googleBusy && <GoogleIcon size={22} />}
-              Continuar com Google
-            </Button>
-            <p className="text-xs text-textMuted text-center">
+            <BotaoDoGoogle loading={googleBusy} onClick={onGoogle} />
+            <p className="text-sm text-textMuted text-center">
               Sem digitar nada. Se você usa Gmail no celular, é um toque.
             </p>
           </div>
         )}
 
         {showBridge ? null : googleWorks && !showEmail ? (
-          <button
-            type="button"
-            onClick={() => setShowEmail(true)}
-            className="tap w-full text-sm text-textMuted underline py-1"
-          >
-            Não uso Google — entrar com email
-          </button>
+          <LinkDoEmail onClick={() => setShowEmail(true)} aberto={false} />
         ) : (
           <form onSubmit={onEmailSubmit} className="space-y-3">
-            <Input
+            <Input semSalvar
               type="email"
               inputMode="email"
               label="Seu email"
@@ -258,7 +248,7 @@ export default function AuthSheet({
               icon={Lock}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              minLength={6}
+              minLength={SENHA_MINIMA}
               autoComplete="current-password"
               error={errors.password}
               hint={
@@ -286,14 +276,14 @@ export default function AuthSheet({
               type="button"
               onClick={onForgot}
               disabled={resetting || busy}
-              className="tap w-full text-sm font-semibold text-primary underline py-1 disabled:opacity-50"
+              className="tap min-h-12 w-full text-base font-semibold text-primary underline disabled:opacity-50"
             >
               {resetting ? 'Enviando...' : 'Esqueci minha senha'}
             </button>
           </form>
         )}
 
-        <p className="text-xs text-textMuted text-center leading-relaxed">
+        <p className="text-sm text-textMuted text-center leading-relaxed">
           Ao continuar você aceita os{' '}
           <Link to="/termos" target="_blank" className="underline text-primary">
             Termos

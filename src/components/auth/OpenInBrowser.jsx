@@ -70,11 +70,11 @@ function RodapeDoApp() {
           * precisa sobreviver a um print mandado no WhatsApp. */}
         <span className="inline-flex items-center gap-1.5 rounded-lg bg-primaryChip px-2 py-1 ring-2 ring-primary">
           <Share size={15} className="text-primary" />
-          <span className="text-xs font-bold text-primary">ou</span>
+          <span className="text-sm font-bold text-primary">ou</span>
           <MoreHorizontal size={15} className="text-primary" />
         </span>
       </div>
-      <p className="mt-1.5 text-center text-xs text-textMuted">
+      <p className="mt-1.5 text-center text-sm text-textMuted">
         um destes dois, no rodapé desta tela
       </p>
     </div>
@@ -120,10 +120,10 @@ export default function OpenInBrowser({ onContinueHere }) {
   return (
     <div className="space-y-3">
       <div className="bg-sunken border border-border rounded-xl p-3 space-y-1">
-        <p className="text-sm font-bold text-text">
+        <p className="text-base font-bold text-text">
           Dica: no {browser} fica melhor
         </p>
-        <p className="text-xs text-textMuted leading-relaxed">
+        <p className="text-base text-textMuted leading-relaxed">
           {appName
             ? `Você abriu pelo ${appName}. Dá pra entrar aqui mesmo — só que da próxima vez talvez peça a senha de novo.`
             : 'Dá pra entrar aqui mesmo — só que da próxima vez talvez peça a senha de novo.'}
@@ -136,7 +136,7 @@ export default function OpenInBrowser({ onContinueHere }) {
 
       {showManual && (
         <div className="bg-sunken border border-border rounded-xl p-3 space-y-2.5">
-          <p className="text-xs font-semibold text-text">
+          <p className="text-base font-semibold text-text">
             {isIOS()
               ? `Toque no botão de compartilhar ou no "..." e escolha "Abrir no ${browser}"`
               : `Toque no menu do ${appName || 'app'} e escolha "Abrir no navegador"`}
@@ -148,7 +148,7 @@ export default function OpenInBrowser({ onContinueHere }) {
             * caminho que quase sempre funciona; aqui ela é o caminho. */}
           {isIOS() && <RodapeDoApp />}
 
-          <p className="text-xs text-textMuted">Ou copie o link e cole no {browser}:</p>
+          <p className="text-sm text-textMuted">Ou copie o link e cole no {browser}:</p>
           <Button
             size="sm"
             variant="secondary"

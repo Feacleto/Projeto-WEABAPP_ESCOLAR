@@ -22,13 +22,28 @@ import {
  * Eram duas coisas separadas: o valor só existia no cadastro (sem como mudar)
  * e o contrato era uma linha "Aguardando aceite" que levava a outra tela. O
  * combinado é UM assunto — quanto, até quando, e se a família concordou —, e
- * as duas ações dele (mudar, ver o documento) moram aqui.
+ * as duas ações dele (editar, ver o documento) moram aqui.
+ *
+ * O "EDITAR" PODE MORAR FORA (03/10/2026). Na ficha da criança ele sobe para
+ * o título do bloco "Dinheiro" — um "Editar" por bloco, no mesmo canto — e a
+ * ficha passa `editando`/`onEditando`. Sem essas duas props (o contrato da
+ * criança, em TioContract) o cartão mostra o próprio botão, com o mesmo nome.
+ * O nome era "Mudar", e na mesma ficha havia "Editar", "Corrigir" e
+ * "Escrever" para a mesma ação.
  */
-export default function CartaoDoCombinado({ child, onVerContrato }) {
+export default function CartaoDoCombinado({
+  child,
+  onVerContrato,
+  editando: editandoDeFora,
+  onEditando,
+}) {
   const { profile } = useAuth();
   const { contratos, vigente, aguardando } = useContratos(child);
   useGarantirContrato(child, contratos);
-  const [editando, setEditando] = useState(false);
+  const [editandoAqui, setEditandoAqui] = useState(false);
+  const controlado = typeof onEditando === 'function';
+  const editando = controlado ? Boolean(editandoDeFora) : editandoAqui;
+  const setEditando = controlado ? onEditando : setEditandoAqui;
   const [desfazendo, setDesfazendo] = useState(false);
 
   const estado = estadoDoContrato(child);
@@ -67,21 +82,24 @@ export default function CartaoDoCombinado({ child, onVerContrato }) {
     <>
       <Card className="space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-text">
-            <FileText size={16} className="text-primary" />
+          <h3 className="flex min-h-12 items-center gap-2 text-base font-bold text-text">
+            <FileText size={18} className="text-primary" />
             Contrato e mensalidade
           </h3>
-          <button
-            type="button"
-            onClick={() => setEditando(true)}
-            disabled={!contratos}
-            className="tap -mr-1 -mt-1 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-semibold text-primary disabled:opacity-50"
-          >
-            <Pencil size={14} /> Mudar
-          </button>
+          {!controlado && (
+            <button
+              type="button"
+              onClick={() => setEditando(true)}
+              disabled={!contratos}
+              aria-label="Editar mensalidade e contrato"
+              className="tap -mr-2 inline-flex h-12 items-center gap-1.5 rounded-xl px-3 text-base font-semibold text-primary disabled:opacity-50"
+            >
+              <Pencil size={18} /> Editar
+            </button>
+          )}
         </div>
 
-        <dl className="space-y-1.5 text-sm">
+        <dl className="space-y-2 text-base">
           <div className="flex justify-between gap-3">
             <dt className="text-textMuted">Mensalidade</dt>
             <dd className="font-semibold text-text">
@@ -100,7 +118,7 @@ export default function CartaoDoCombinado({ child, onVerContrato }) {
           </div>
         </dl>
 
-        <p className={`text-sm font-semibold ${status.cor}`}>{status.texto}</p>
+        <p className={`text-base font-semibold ${status.cor}`}>{status.texto}</p>
 
         {estado === 'mudanca' && aguardando?.mudancas?.length > 0 && (
           <div className="rounded-xl bg-warningSoft p-3">
@@ -116,7 +134,7 @@ export default function CartaoDoCombinado({ child, onVerContrato }) {
               type="button"
               onClick={desfazer}
               disabled={desfazendo}
-              className="tap mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-warningText disabled:opacity-50"
+              className="tap mt-2 inline-flex h-12 items-center gap-1.5 text-sm font-semibold text-warningText disabled:opacity-50"
             >
               <Undo2 size={15} /> Cancelar o contrato novo
             </button>
@@ -127,7 +145,7 @@ export default function CartaoDoCombinado({ child, onVerContrato }) {
         <button
           type="button"
           onClick={onVerContrato}
-          className="tap flex min-h-11 w-full items-center justify-between rounded-xl border border-border px-3 text-sm font-semibold text-text"
+          className="tap flex h-12 w-full items-center justify-between rounded-xl border border-border px-3 text-base font-semibold text-text"
         >
           Ver o contrato
           <ChevronRight size={18} className="text-textMuted" />

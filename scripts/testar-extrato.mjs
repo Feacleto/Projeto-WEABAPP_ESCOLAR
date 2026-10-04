@@ -9,6 +9,8 @@
  * AVISOU que pagou), perder uma linha sem data, e misturar a ordem dos dias.
  */
 import { montarExtrato, rotuloDoDia, chaveDoDia } from '../src/dominio/cobranca/extratoDoMes.js';
+import { abaInicialDoCaixa, botoesDaMensalidade, rotuloDeCobrarAtrasados } from '../src/dominio/cobranca/caixaDoMes.js';
+import { readFileSync } from 'node:fs';
 
 let ok = 0;
 let bad = 0;
@@ -81,6 +83,36 @@ const categoriaDesconhecida = montarExtrato({ despesas: [{ id: 'q', amount: 5, c
 igual('categoria desconhecida vira Outros', categoriaDesconhecida.grupos[0].movimentos[0].titulo, 'Outros');
 igual('nada', montarExtrato({ hoje }), { grupos: [], entrou: 0, saiu: 0 });
 igual('centavos', montarExtrato({ despesas: [{ id: 1, amount: 0.1, date: ts(1) }, { id: 2, amount: 0.2, date: ts(1) }], hoje }).saiu, 0.3);
+
+console.log('4. o caixa recebe primeiro (itens 13 e 14, 04/10/2026)');
+igual('com mensalidade em aberto, abre em Mensalidades', abaInicialDoCaixa({ quantasFaltam: 3 }), 'mensalidades');
+igual('uma só em aberto já basta', abaInicialDoCaixa({ quantasFaltam: 1 }), 'mensalidades');
+igual('mês todo recebido, abre no Extrato', abaInicialDoCaixa({ quantasFaltam: 0 }), 'extrato');
+igual('sem dado, Extrato', abaInicialDoCaixa(), 'extrato');
+igual('atrasada: Cobrar cheio, Dar baixa contorno', botoesDaMensalidade('overdue'), { cobrar: 'cheio', darBaixa: 'contorno' });
+igual('pendente: Lembrar suave, Dar baixa contorno', botoesDaMensalidade('pending'), { cobrar: 'suave', darBaixa: 'contorno' });
+igual('avisou que pagou: só Dar baixa, cheio', botoesDaMensalidade('claimed'), { cobrar: null, darBaixa: 'cheio' });
+igual('paga: nenhum dos dois', botoesDaMensalidade('paid'), { cobrar: null, darBaixa: null });
+igual('"Cobrar" cheio SÓ na atrasada',
+  ['overdue', 'pending', 'claimed', 'paid'].filter((e) => botoesDaMensalidade(e).cobrar === 'cheio'), ['overdue']);
+igual('"Dar baixa" cheio SÓ em quem avisou',
+  ['overdue', 'pending', 'claimed', 'paid'].filter((e) => botoesDaMensalidade(e).darBaixa === 'cheio'), ['claimed']);
+igual('botão do cartão âmbar, plural', rotuloDeCobrarAtrasados(3), 'Cobrar os 3 atrasados');
+igual('botão do cartão âmbar, um', rotuloDeCobrarAtrasados(1), 'Cobrar o atrasado');
+igual('sem atrasado, sem botão', rotuloDeCobrarAtrasados(0), null);
+{
+  const tela = readFileSync(new URL('../src/pages/tio/TioFinance.jsx', import.meta.url), 'utf8');
+  const linha = readFileSync(new URL('../src/components/payments/PaymentRow.jsx', import.meta.url), 'utf8');
+  igual('o caixa deriva a aba de abaInicialDoCaixa', tela.includes('abaInicialDoCaixa({ quantasFaltam })'), true);
+  igual('o caixa decide o "Dar baixa" por botoesDaMensalidade', tela.includes('botoesDaMensalidade(payment._display)'), true);
+  igual('a linha decide o "Cobrar" por botoesDaMensalidade', linha.includes('botoesDaMensalidade(displayStatus)'), true);
+  // Sua perua e as portas vêm DEPOIS da troca Extrato/Mensalidades.
+  const abas = tela.indexOf('aria-label="Extrato ou mensalidades"');
+  igual('Sua perua desceu para depois das abas', abas > 0 && tela.indexOf('<BlocoSuaPerua') > abas, true);
+  igual('as portas desceram para depois das abas', abas > 0 && tela.indexOf('titulo="Despesas do mês"') > abas, true);
+  // Cobrança em massa não existe: o botão do cartão só filtra a lista.
+  igual('o cartão âmbar leva à lista filtrada', /irParaAba\('mensalidades', 'overdue'\)\}[\s\S]{0,200}rotuloDeCobrarAtrasados/.test(tela), true);
+}
 
 console.log(`\n${ok} ok, ${bad} falharam`);
 process.exit(bad ? 1 : 0);

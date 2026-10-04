@@ -140,6 +140,13 @@ export default function PrimeiroAcessoDoPai({ passos: passosDoPortao = [] }) {
       await salvarPrimeiroAcessoDoResponsavel(user.uid, { avisosPerguntados: true });
     });
 
+  // ⚠️ O PASSO DOS AVISOS NÃO TINHA SAÍDA (03/10/2026): só "Permitir avisos",
+  // que abre o pedido do sistema. Quem não queria decidir agora ficava presa
+  // num card que cobre o app inteiro. "Agora não" carimba a pergunta como
+  // feita SEM pedir a permissão — ela liga depois, no sino.
+  const agoraNao = () =>
+    seguir(() => salvarPrimeiroAcessoDoResponsavel(user.uid, { avisosPerguntados: true }));
+
   if (!passo) return null;
 
   return (
@@ -168,7 +175,7 @@ export default function PrimeiroAcessoDoPai({ passos: passosDoPortao = [] }) {
             </h2>
             <div className="mt-4 space-y-3">
               {faltam.includes('name') && (
-                <Input
+                <Input falar="nome"
                   label="Seu nome completo"
                   value={form.name}
                   onChange={set('name')}
@@ -199,10 +206,10 @@ export default function PrimeiroAcessoDoPai({ passos: passosDoPortao = [] }) {
               Número da sua casa
             </h2>
             <div className="mt-3 rounded-xl border border-border bg-sunken px-3.5 py-3">
-              <p className="text-sm font-semibold text-text">
+              <p className="text-base font-semibold text-text">
                 {child?.enderecoPartes?.logradouro || child?.address}
               </p>
-              <p className="text-xs text-textMuted">
+              <p className="text-sm text-textMuted">
                 {[child?.enderecoPartes?.bairro, child?.enderecoPartes?.localidade]
                   .filter(Boolean)
                   .join(', ')}
@@ -217,9 +224,9 @@ export default function PrimeiroAcessoDoPai({ passos: passosDoPortao = [] }) {
                 error={errors.numero}
                 required
               />
-              <Input label="Complemento" value={form.complemento} onChange={set('complemento')} />
+              <Input falar="texto" label="Complemento" value={form.complemento} onChange={set('complemento')} />
             </div>
-            <p className="mt-2 text-xs text-textMuted">
+            <p className="mt-2 text-sm text-textMuted">
               Não é a sua rua? Fale com o motorista.
             </p>
           </>
@@ -239,8 +246,8 @@ export default function PrimeiroAcessoDoPai({ passos: passosDoPortao = [] }) {
                 error={errors.birthDate}
                 required
               />
-              <Input label="Turma (opcional)" value={form.turma} onChange={set('turma')} />
-              <Input label="Professora (opcional)" value={form.professora} onChange={set('professora')} />
+              <Input falar="texto" label="Turma (opcional)" value={form.turma} onChange={set('turma')} />
+              <Input falar="nome" label="Professora (opcional)" value={form.professora} onChange={set('professora')} />
             </div>
           </>
         )}
@@ -252,7 +259,7 @@ export default function PrimeiroAcessoDoPai({ passos: passosDoPortao = [] }) {
             </h2>
             {/* A única linha de explicação do card: para que serve, e que dá
               * para desligar. */}
-            <p className="mt-1.5 text-sm text-textMuted">
+            <p className="mt-1.5 text-base text-textMuted">
               Para saber quando a perua está chegando. Você desliga quando
               quiser.
             </p>
@@ -261,9 +268,19 @@ export default function PrimeiroAcessoDoPai({ passos: passosDoPortao = [] }) {
 
         <div className="mt-5">
           {passo === 'avisos' ? (
-            <Button type="button" icon={Bell} loading={salvando} onClick={permitirAvisos}>
-              Permitir avisos
-            </Button>
+            <div className="space-y-1">
+              <Button type="button" icon={Bell} loading={salvando} onClick={permitirAvisos}>
+                Permitir avisos
+              </Button>
+              <button
+                type="button"
+                onClick={agoraNao}
+                disabled={salvando}
+                className="tap min-h-12 w-full text-base font-semibold text-textMuted hover:text-text disabled:opacity-50"
+              >
+                Agora não
+              </button>
+            </div>
           ) : (
             <Button type="submit" loading={salvando}>
               {ultimo ? 'Entrar no app' : 'Continuar'}

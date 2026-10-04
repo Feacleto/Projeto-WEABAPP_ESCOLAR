@@ -101,7 +101,7 @@ export default function AjustesDoFinanceiro({ open, onClose }) {
               aria-label="Digital ou rosto"
               disabled={mexendo}
               onClick={alternarDigital}
-              className={`w-14 h-8 shrink-0 rounded-full p-[3px] flex transition-colors duration-estado ${
+              className={`relative w-14 h-8 shrink-0 rounded-full p-[3px] flex transition-colors duration-estado before:absolute before:-inset-2 before:content-[''] ${
                 digitalLigada ? 'bg-primary justify-end' : 'bg-border justify-start'
               }`}
             >

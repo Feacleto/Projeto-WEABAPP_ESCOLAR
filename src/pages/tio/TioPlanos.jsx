@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Users } from 'lucide-react';
+import { Check, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
+import Header from '../../components/layout/Header';
 import { useAuth } from '../../hooks/useAuth';
 import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
@@ -162,50 +163,39 @@ export default function TioPlanos() {
     }
   };
 
-  // Ver o aviso no botão de Voltar, abaixo.
-  const voltar = () => {
-    if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/tio', { replace: true });
-  };
-
   return (
-    <div className="min-h-screen bg-bg px-4 py-5">
-      <div className="mx-auto max-w-mobile space-y-5">
-        {/* ⚠️ DESTINO NOMEADO NA FALTA DE HISTÓRIA, NUNCA `navigate(-1)` SOLTO.
-          *
-          * Estas três telas ficam FORA do `TioLayout` (têm que ficar: dentro do
-          * `GuardaDaConta` o botão "Ver planos" navegava e a tela não mudava),
-          * então não passam pelo `Header`, que é quem sabe checar histórico.
-          *
-          * Com `navigate(-1)` puro, quem chega aqui pelo aviso de cobrança, por
-          * um link, ou recarregando a página sai DO APLICATIVO ao tocar em
-          * Voltar — e sai justamente de uma tela de pagamento, que é a última
-          * de onde alguém deveria ser expulso.
-          *
-          * `history.state.idx > 0` é o mesmo teste que o `Header` usa: consome
-          * história quando ela existe (não empilha uma entrada nova, que faria
-          * o botão físico do Android voltar para cá) e cai no destino quando
-          * não existe. */}
-        <button
-          type="button"
-          onClick={voltar}
-          className="tap -ml-1 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
-        >
-          <ArrowLeft size={16} /> Voltar
-        </button>
+    <div className="min-h-screen bg-bg">
+      {/* O CABEÇALHO DE TODA TELA INTERNA, mesmo fora do `TioLayout`.
+        *
+        * Esta rota fica fora do layout (dentro do `GuardaDaConta` o botão de
+        * escolher plano da conta inativa navegava e a tela não mudava), e por
+        * isso tinha um "Voltar" próprio, cinza e pequeno. O `Header` já sabe
+        * consumir a história quando ela existe e cair no destino nomeado
+        * quando não existe — quem chega por aviso, link ou recarregando não
+        * sai do app. Sem sino e sem rosto: a escuta do sino mora no
+        * `TioLayout`, e fora dele o sino diria "nenhum aviso" a quem tem.
+        *
+        * ⚠️ O NOME É "ESCOLHER PLANO" (03/10/2026). Era "Escolha seu plano",
+        * e a mesma área tinha quatro nomes; "Meu plano" é a fatura
+        * (`/tio/taxa`), e esta é a escolha. */}
+      <Header
+        title="Escolher plano"
+        showBack
+        backLabel="Início"
+        backTo="/tio"
+        showGlobal={false}
+      />
 
-        <header>
-          <h1 className="text-2xl font-bold text-text">Escolha seu plano</h1>
-          <p className="mt-1 text-sm text-textMuted">
-            O app é completo nos dois. O que muda é o prazo e a forma de sair.
-            Sua mensalidade acompanha o número de crianças ativas.
-          </p>
-        </header>
+      <div className="mx-auto max-w-mobile space-y-5 px-4 py-5">
+        <p className="text-base leading-relaxed text-textMuted">
+          O app é completo nos dois. O que muda é o prazo e a forma de sair.
+          Sua mensalidade acompanha o número de crianças ativas.
+        </p>
 
         {/* O tamanho dele, antes de qualquer oferta. */}
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primaryChip">
-            <Users size={19} className="text-primary" />
+            <Users size={20} className="text-primary" aria-hidden="true" />
           </span>
           <div>
             <p className="text-sm text-textMuted">Sua operação hoje</p>
@@ -216,14 +206,14 @@ export default function TioPlanos() {
               * oposto. O degrau travado é uma FRAÇÃO, então 30% de uma
               * operação maior é um desconto maior — dizer isso aqui é o que
               * impede a tela de parecer uma punição por crescer. */}
-            <p className="mt-0.5 text-xs text-textMuted">
+            <p className="mt-0.5 text-sm leading-relaxed text-textMuted">
               Cadastrou mais uma criança? A conta ajusta sozinha, e seu desconto
               continua valendo.
             </p>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3" role="radiogroup" aria-label="Plano">
           {PLANOS_DISPONIVEIS.map((plano) => {
             // `descontos` E `mes` SAO OBRIGATORIOS AQUI, e ja faltaram uma vez.
             //
@@ -275,6 +265,8 @@ export default function TioPlanos() {
               <button
                 key={plano}
                 type="button"
+                role="radio"
+                aria-checked={selecionado}
                 onClick={() => setEscolhido(plano)}
                 className={`tap w-full rounded-xl border-2 p-4 text-left transition ${
                   selecionado
@@ -282,36 +274,52 @@ export default function TioPlanos() {
                     : 'border-border bg-card'
                 }`}
               >
+                {/* ⚠️ O ESCOLHIDO SE VÊ ANTES DE SE LER. A marca era um
+                  * "Plano escolhido" de 12px no FIM do cartão — o olho chegava
+                  * nela depois de ler o cartão inteiro. Agora é a bolinha de
+                  * escolha, no canto onde a leitura começa, ao lado do nome. */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-text">
-                      {anual ? 'Anual' : 'Mensal'}
-                    </p>
-                    <p className="mt-0.5 text-xs text-textMuted">
-                      {noMinimo ? (
-                        <>mínimo de {formatCurrency(MINIMO[plano])} por mês</>
-                      ) : (
-                        <>
-                          {ativas} × {formatCurrency(TAXA[plano])} por criança
-                        </>
-                      )}
-                    </p>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span
+                      aria-hidden="true"
+                      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                        selecionado
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-borderStrong bg-card'
+                      }`}
+                    >
+                      {selecionado && <Check size={16} strokeWidth={3} />}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-lg font-bold text-text">
+                        {anual ? 'Anual' : 'Mensal'}
+                      </p>
+                      <p className="mt-0.5 text-sm text-textMuted">
+                        {noMinimo ? (
+                          <>mínimo de {formatCurrency(MINIMO[plano])} por mês</>
+                        ) : (
+                          <>
+                            {ativas} × {formatCurrency(TAXA[plano])} por criança
+                          </>
+                        )}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="shrink-0 text-right">
                     {temDesconto && (
-                      <p className="text-xs text-textMuted line-through">
+                      <p className="text-sm text-textMuted line-through">
                         {formatCurrency(preco.bruto)}
                       </p>
                     )}
-                    <p className="text-xl font-bold text-text">
+                    <p className="font-display text-2xl font-bold text-text">
                       {formatCurrency(travando ? travando.liquido : preco.liquido)}
                     </p>
-                    <p className="text-xs text-textMuted">por mês</p>
+                    <p className="text-sm text-textMuted">por mês</p>
                     {/* O de tabela fica visível ao lado do travado — sem ele o
                       * desconto é uma afirmação sem referência. */}
                     {travando && (
-                      <p className="text-xs text-textMuted line-through">
+                      <p className="text-sm text-textMuted line-through">
                         {formatCurrency(preco.liquido)}
                       </p>
                     )}
@@ -321,8 +329,12 @@ export default function TioPlanos() {
                 {/* ⚠️ O QUE CADA PLANO TROCA, e não o que ele inclui.
                   * Nenhum cartão lista "recursos", porque não existe recurso
                   * excluído: o app é completo nos dois. O que muda é prazo e
-                  * saída, e é só isso que estas linhas dizem. */}
-                <ul className="mt-3 space-y-1 text-xs leading-relaxed text-textMuted">
+                  * saída, e é só isso que estas linhas dizem.
+                  *
+                  * ⚠️ E ELAS SÃO CONTEÚDO, NÃO RODAPÉ: prazo e multa são a
+                  * única diferença entre os dois cartões, e estavam em 12px.
+                  * 16px, como o resto do que decide dinheiro. */}
+                <ul className="mt-3 space-y-1 text-base leading-relaxed text-text">
                   {anual ? (
                     <>
                       <li>· Compromisso de 12 meses.</li>
@@ -343,19 +355,13 @@ export default function TioPlanos() {
                     </>
                   )}
                 </ul>
-
-                {selecionado && (
-                  <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-                    <Check size={14} /> Plano escolhido
-                  </p>
-                )}
               </button>
             );
           })}
         </div>
 
         {(fundador || indicacoes > 0) && (
-          <div className="rounded-xl border border-primaryBorder bg-primarySoft p-4 text-sm">
+          <div className="rounded-xl border border-primaryBorder bg-primarySoft p-4 text-base">
             <p className="font-semibold text-text">Seus descontos já estão no preço</p>
             <ul className="mt-1.5 space-y-1 text-textMuted">
               {fundador && <li>· Condição de fundador</li>}
@@ -368,21 +374,39 @@ export default function TioPlanos() {
           </div>
         )}
 
-        {/* ⚠️ ESTA TELA SÓ FALAVA DA INDICAÇÃO PARA QUEM JÁ TINHA UMA.
+        {/* A OFERTA APARECE ONDE A DECISÃO ACONTECE, e some sozinha quando
+          * deixa de valer — quem já contratou não vê promessa que já recebeu,
+          * e quem passou do teste não vê uma que não vai receber.
           *
-          * O bloco acima existe desde sempre e mostra o desconto que ele JÁ
-          * ganhou. Quem tem zero — que é todo mundo no começo — nunca via a
-          * palavra "indicação" aqui, na única tela do produto em que ele está
-          * comparando dois preços e pensando em quanto paga.
+          * ⚠️ ELA VEM COM A DATA EM QUE MUDA, e sem a data não é urgência, é
+          * pressão: "decida logo" não é um prazo.
           *
-          * E é a única alavanca que ELE controla: o degrau depende de quando
-          * decidir, o plano é uma escolha de uma vez só, e o tamanho da
-          * operação não é escolha nenhuma. Indicar é a coisa que ele pode
-          * fazer amanhã e ver na conta. */}
-        <ConviteParaIndicar
-          className="mt-4"
-          titulo="Dá para baixar isso ainda mais"
-        />
+          * ⚠️ E O PREÇO NUNCA SOBE SE ELE RECUSAR. Não há segunda oferta nesta
+          * tela, e é decisão de negócio: desconto que sobe a cada "não" ensina
+          * a recusar, e prova que o preço era teatro. Ver docs/descontos.md,
+          * peça 3 — as respostas ao "não" cedem informação, risco e prazo,
+          * nunca preço.
+          *
+          * ⚠️ E A OFERTA É DO MENSAL, SÓ DELE. A escada não existe no anual,
+          * cujo desconto já está no preço. Mostrar a frase com o anual
+          * selecionado prometeria um desconto que o servidor não vai gravar.
+          *
+          * ⚠️ ELA VEM LOGO ACIMA DO BOTÃO, e em 16px (era 12px, embaixo dele):
+          * é a última coisa que se lê antes de decidir, e a data é a parte
+          * mais importante dela. */}
+        {!jaContratou && escolhido === PLANO.MENSAL && fracaoDoDegrau > 0 && (
+          <p className="text-center text-base leading-relaxed text-text">
+            Contratando {viraEm ? <>até <strong>{dataCurta(viraEm)}</strong></> : 'agora'}, você
+            garante{' '}
+            <strong className="text-accentText">
+              {Math.round(fracaoDoDegrau * 100)}% de desconto permanente
+            </strong>.
+            {fracaoSeguinte > 0 && (
+              <> Depois dessa data, a melhor condição passa a ser{' '}
+              {Math.round(fracaoSeguinte * 100)}%.</>
+            )}
+          </p>
+        )}
 
         {/* CONTRATAR ACONTECE AQUI DENTRO desde 06/09/2026.
           *
@@ -408,37 +432,27 @@ export default function TioPlanos() {
                 : 'Contratar o mensal'}
         </Button>
 
-        {/* A OFERTA APARECE ONDE A DECISÃO ACONTECE, e some sozinha quando
-          * deixa de valer — quem já contratou não vê promessa que já recebeu,
-          * e quem passou do teste não vê uma que não vai receber.
+        {/* ⚠️ ESTA TELA SÓ FALAVA DA INDICAÇÃO PARA QUEM JÁ TINHA UMA.
           *
-          * ⚠️ ELA VEM COM A DATA EM QUE MUDA, e sem a data não é urgência, é
-          * pressão: "decida logo" não é um prazo.
+          * O bloco acima existe desde sempre e mostra o desconto que ele JÁ
+          * ganhou. Quem tem zero — que é todo mundo no começo — nunca via a
+          * palavra "indicação" aqui, na única tela do produto em que ele está
+          * comparando dois preços e pensando em quanto paga.
           *
-          * ⚠️ E O PREÇO NUNCA SOBE SE ELE RECUSAR. Não há segunda oferta nesta
-          * tela, e é decisão de negócio: desconto que sobe a cada "não" ensina
-          * a recusar, e prova que o preço era teatro. Ver docs/descontos.md,
-          * peça 3 — as respostas ao "não" cedem informação, risco e prazo,
-          * nunca preço.
+          * E é a única alavanca que ELE controla: o degrau depende de quando
+          * decidir, o plano é uma escolha de uma vez só, e o tamanho da
+          * operação não é escolha nenhuma. Indicar é a coisa que ele pode
+          * fazer amanhã e ver na conta.
           *
-          * ⚠️ E A OFERTA É DO MENSAL, SÓ DELE. A escada não existe no anual,
-          * cujo desconto já está no preço. Mostrar a frase com o anual
-          * selecionado prometeria um desconto que o servidor não vai gravar. */}
-        {!jaContratou && escolhido === PLANO.MENSAL && fracaoDoDegrau > 0 && (
-          <p className="text-center text-xs leading-relaxed text-textMuted">
-            Contratando {viraEm ? <>até <strong>{dataCurta(viraEm)}</strong></> : 'agora'}, você
-            garante{' '}
-            <strong className="text-accentText">
-              {Math.round(fracaoDoDegrau * 100)}% de desconto permanente
-            </strong>.
-            {fracaoSeguinte > 0 && (
-              <> Depois dessa data, a melhor condição passa a ser{' '}
-              {Math.round(fracaoSeguinte * 100)}%.</>
-            )}
-          </p>
-        )}
+          * ⚠️ MAS ELE VEM DEPOIS DO BOTÃO DE CONTRATAR (03/10/2026). Estava
+          * antes, e um segundo convite entre a escolha e a ação principal
+          * era o jeito de nenhum dos dois ser atendido. A ação da tela fecha
+          * a decisão; o convite é a continuação para quem já decidiu. */}
+        <ConviteParaIndicar
+          titulo="Dá para baixar isso ainda mais"
+        />
 
-        <p className="pb-4 text-center text-xs text-textMuted">
+        <p className="pb-4 text-center text-sm text-textMuted">
           A mensalidade que você cobra das famílias é sua. A plataforma não
           entra no caminho dela.
         </p>

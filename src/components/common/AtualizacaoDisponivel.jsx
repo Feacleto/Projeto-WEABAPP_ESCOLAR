@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ArrowUpCircle, X } from 'lucide-react';
 import TelaDeVersao from './TelaDeVersao';
-import { trocarDeVersao } from '../../services/versaoService';
+import { useTrocaDeVersao } from '../../hooks/useTrocaDeVersao';
 
 /**
  * "SAIU UMA VERSÃO NOVA" — o aviso, e o teatro de trocar.
@@ -54,7 +54,6 @@ import { trocarDeVersao } from '../../services/versaoService';
 const INTERVALO_DE_CHECAGEM_MS = 60 * 60 * 1000;
 
 export default function AtualizacaoDisponivel() {
-  const [atualizando, setAtualizando] = useState(false);
   const [dispensado, setDispensado] = useState(false);
 
   const {
@@ -86,15 +85,14 @@ export default function AtualizacaoDisponivel() {
    * pergunta ao servidor, espera o worker novo baixar, manda ele assumir e só
    * então recarrega, com prazo em cada passo.
    */
-  const atualizar = useCallback(() => {
-    setAtualizando(true);
-    trocarDeVersao();
-  }, []);
+  // O número da versão que está chegando só é perguntado quando há versão
+  // nova de fato (ver useTrocaDeVersao).
+  const { versaoNova, etapa, atualizar } = useTrocaDeVersao({ buscar: precisaAtualizar });
 
-  if (atualizando) {
+  if (etapa) {
     // A MESMA TELA do "Saiu uma versão nova" (ErrorScreen), no estado de
     // quem já tocou em atualizar — ver TelaDeVersao.
-    return <TelaDeVersao estado="atualizando" />;
+    return <TelaDeVersao estado="atualizando" nova={versaoNova} etapa={etapa} />;
   }
 
   if (!precisaAtualizar || dispensado) return null;
@@ -108,7 +106,7 @@ export default function AtualizacaoDisponivel() {
 
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold leading-tight text-text">
-            Tem uma versão nova
+            {versaoNova ? `Saiu a versão ${versaoNova.versao}` : 'Tem uma versão nova'}
           </p>
           <p className="mt-0.5 text-xs leading-snug text-textMuted">
             Toque pra atualizar. Leva um segundo e nada do seu se perde.

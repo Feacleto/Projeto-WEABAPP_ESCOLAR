@@ -21,6 +21,7 @@ import { useAuth } from '../hooks/useAuth';
 import { painelDe } from '../dominio/identidade/papeis';
 import Logo from '../components/common/Logo';
 import Spinner from '../components/common/Spinner';
+import Button from '../components/common/Button';
 import LoginSheet from '../components/landing/LoginSheet';
 import { FRENTE_FAMILIA, lembrarFrente } from '../dominio/vitrine/frentes';
 
@@ -68,8 +69,12 @@ import { FRENTE_FAMILIA, lembrarFrente } from '../dominio/vitrine/frentes';
  *      que é prova ANTES do pedido, do mesmo jeito que a home do motorista faz.
  *   2. Entrar, grande e primeiro.
  *   3. "Perdi o link" — o modo de falha REAL dele. Ele não decora endereço de
- *      site; ele volta pelo link do WhatsApp. A resposta honesta é que o link
- *      não vence nem se gasta, então pedir de novo resolve.
+ *      site; ele volta pelo link do WhatsApp. A resposta honesta é que pedir
+ *      de novo resolve: o motorista gera um link novo na hora. ⚠️ Até
+ *      03/10/2026 a página dizia que o link "não vence e não se gasta" — e
+ *      desde aquele dia o convite não usado vale 15 dias e o usado não abre
+ *      mais conta nenhuma (ver `reguaDoConvite.js`). Prometer link eterno
+ *      mandava a mãe guardar um link que ia parar de funcionar.
  *   4. O que tem dentro, como tranquilidade e não como lista de recursos.
  *
  * ESTA PORTA É CLARA — E DESDE 03/10/2026 A DO MOTORISTA TAMBÉM.
@@ -280,7 +285,7 @@ export default function Familia() {
             <br />
             fica aqui.
           </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-textMuted">
+          <p className="mt-4 text-base leading-relaxed text-textMuted">
             Entre para ver a hora de hoje e acompanhar a perua. É a mesma
             conta que você criou pelo link do motorista.
           </p>
@@ -297,7 +302,7 @@ export default function Familia() {
             *
             * Sem vitrine, não aparece nada — nem a linha, nem o traço. */}
           {responsaveis !== null && (
-            <p className="mt-5 flex items-center gap-2.5 border-t border-border pt-4 text-[13px] leading-snug text-textMuted">
+            <p className="mt-5 flex items-center gap-2.5 border-t border-border pt-4 text-sm leading-snug text-textMuted">
               <Users size={15} className="shrink-0 text-primary" />
               <span>
                 <strong className="font-bold tabular-nums text-text">
@@ -311,26 +316,22 @@ export default function Familia() {
 
         {/* ── 2. ENTRAR ────────────────────────────────────────────────── */}
         <section className="mt-8">
-          <button
-            type="button"
-            onClick={() => setLoginAberto(true)}
-            className="tap flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-bold text-white shadow-focus"
-          >
+          <Button onClick={() => setLoginAberto(true)} className="shadow-focus">
             Entrar na minha conta
             <ArrowRight size={18} />
-          </button>
+          </Button>
         </section>
 
         {/* ── 3. PERDI O LINK — o modo de falha real dele ───────────────── */}
         <section className={`mt-4 ${CARTAO} p-5`}>
-          <p className="flex items-center gap-2 text-sm font-bold">
-            <Link2 size={16} className="text-primary" />
+          <p className="flex items-center gap-2 text-base font-bold">
+            <Link2 size={18} className="text-primary" />
             Perdeu o link?
           </p>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-textMuted">
-            Pode pedir de novo sem preocupação: o link do convite não vence e
-            não se gasta. É o mesmo link, sempre — e ele abre a sua conta
-            direto, sem senha.
+          <p className="mt-2 text-base leading-relaxed text-textMuted">
+            Pode pedir de novo sem preocupação: o motorista manda um link novo
+            na hora. Cada link vale por 15 dias. Se você já entrou antes, não
+            precisa de link — toque em "Entrar na minha conta".
           </p>
           {/* SEM BOTÃO DE WHATSAPP AQUI, e é decisão, não falta.
             *
@@ -343,8 +344,8 @@ export default function Familia() {
             * E não faz falta: quem chega aqui recebeu o link pelo WhatsApp do
             * motorista, então já tem o contato. O que ele não tem é a certeza
             * de que pode pedir de novo — e é isso que o texto resolve. */}
-          <p className="mt-3 flex items-center gap-2 text-[13px] text-textMuted">
-            <MessageCircle size={14} className="shrink-0" />
+          <p className="mt-3 flex items-center gap-2 text-sm text-textMuted">
+            <MessageCircle size={16} className="shrink-0" />
             Chame o motorista no WhatsApp e peça o link de novo.
           </p>
 
@@ -355,17 +356,28 @@ export default function Familia() {
             * email que não existe, recebia erro de login, e concluía que o
             * app está quebrado.
             *
-            * A conta dela só pode nascer pelo convite — `redeemInvite` é o
-            * único caminho, e é assim de propósito (foi por aí que a
-            * auto-promoção se fechou). Então a saída não é um cadastro: é
-            * dizer, sem rodeio, quem consegue criar a conta dela. */}
-          <p className="mt-4 border-t border-border pt-3 text-[13px] leading-relaxed text-textMuted">
-            <strong className="font-semibold text-text">
-              Ainda não tem conta?
-            </strong>{' '}
-            Só o seu motorista pode criar a sua — peça o link pra ele. Não
-            existe cadastro por aqui, e isso protege os dados do seu filho.
-          </p>
+            * ⚠️ A FRASE ANTIGA ("só o seu motorista pode criar a sua") FICOU
+            * FALSA EM 02/10/2026: quem já tem sessão e não tem o link informa
+            * o WhatsApp no `/first-access`, e o motorista aprova o pedido. O
+            * que continua verdade é que NADA se liga ao filho sem o motorista
+            * — por link ou por aprovação. Então a saída é a tela que existe
+            * para quem perdeu o link, com o nome do que ela faz. */}
+          <div className="mt-4 border-t border-border pt-3">
+            <p className="text-base leading-relaxed text-textBody">
+              <strong className="font-semibold text-text">
+                Ainda não tem conta?
+              </strong>{' '}
+              Ela nasce pelo link que o seu motorista manda. Perdeu o link? O
+              app monta a mensagem pra você pedir outro — nada fica ligado ao
+              seu filho sem o motorista confirmar.
+            </p>
+            <Link
+              to="/first-access"
+              className="tap mt-2 inline-flex min-h-12 items-center text-base font-semibold text-primary underline underline-offset-4"
+            >
+              Pedir o link ao motorista
+            </Link>
+          </div>
         </section>
 
         {/* ── 4. O QUE TEM DENTRO — tranquilidade, não recurso ──────────── */}
@@ -391,8 +403,8 @@ export default function Familia() {
                   <Icon size={18} className="text-primary" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold leading-snug">{titulo}</p>
-                  <p className="mt-1 text-[13px] leading-relaxed text-textMuted">
+                  <p className="text-base font-bold leading-snug">{titulo}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-textMuted">
                     {texto}
                   </p>
                 </div>
@@ -414,13 +426,13 @@ export default function Familia() {
         <footer className="mt-10 space-y-5 border-t border-border pt-7">
           <div className="flex items-start gap-2.5">
             <ShieldCheck size={16} className="mt-0.5 shrink-0 text-primary" />
-            <p className="text-xs leading-relaxed text-textMuted">
+            <p className="text-sm leading-relaxed text-textMuted">
               Todos os dados são tratados conforme a LGPD. Endereço e
               localização só aparecem pra quem tem vínculo.
             </p>
           </div>
 
-          <div className="space-y-1.5 text-xs text-textMuted">
+          <div className="space-y-1.5 text-sm text-textMuted">
             <p className="flex items-center gap-2">
               <MapPin size={13} className="shrink-0 text-primary" />
               {DEV_CITY}
@@ -432,16 +444,16 @@ export default function Familia() {
           </div>
 
           <div className="space-y-2 text-center">
-            <div className="flex items-center justify-center gap-3 text-xs text-textMuted">
-              <Link to="/termos" className="hover:underline">
+            <div className="flex items-center justify-center gap-3 text-sm text-textMuted">
+              <Link to="/termos" className="inline-flex min-h-12 items-center px-1 hover:underline">
                 Termos de Uso
               </Link>
               <span aria-hidden>·</span>
-              <Link to="/privacidade" className="hover:underline">
+              <Link to="/privacidade" className="inline-flex min-h-12 items-center px-1 hover:underline">
                 Privacidade
               </Link>
             </div>
-            <p className="text-[12px] leading-relaxed text-textMuted">
+            <p className="text-sm leading-relaxed text-textMuted">
               Alô Buzinou — o transporte escolar do seu filho, organizado.
             </p>
           </div>

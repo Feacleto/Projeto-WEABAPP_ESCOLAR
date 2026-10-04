@@ -19,6 +19,13 @@ import './rota.css';
  * operação calcula pela idade do último envio do GPS.
  *
  * `nos`: [{ chave, tipo: 'casa' | 'escola', estado: 'feito' | 'agora' | 'falta' | 'off' }]
+ *
+ * `controle` (03/10/2026): o encerrar e a chave do mapa (`ControleDeRota`
+ * com `faixa`). Moram AQUI, no topo, desde que o rodapé da rota virou o botão
+ * da parada — o gesto do fim da viagem no alto, o de todo minuto embaixo.
+ *
+ * Os textos de apoio foram de 12 para 14 px: a faixa é lida com o celular no
+ * suporte, a um braço de distância.
  */
 export default function FaixaDaViagem({
   titulo,
@@ -29,6 +36,7 @@ export default function FaixaDaViagem({
   nos = [],
   ativa = false,
   vivo = false,
+  controle = null,
 }) {
   const dia = new Date()
     .toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })
@@ -38,7 +46,7 @@ export default function FaixaDaViagem({
   return (
     <div className="bg-primary px-4 pb-4 pt-3 text-white">
       <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-[0.12em] text-onNightAccent">
+        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 font-mono text-sm font-bold uppercase tracking-[0.1em] text-onNightAccent">
           <span
             aria-hidden="true"
             className={`h-2 w-2 rounded-full ${ativa ? 'bg-accent' : 'bg-white/40'} ${
@@ -47,25 +55,26 @@ export default function FaixaDaViagem({
           />
           {ativa ? 'Rota ativa' : 'Rota parada'}
         </span>
-        <span className="font-mono text-xs font-semibold text-primaryChip">
-          {direcao === 'ida' ? 'ida' : 'volta'} · {dia}
+        <span className="font-mono text-sm font-semibold text-primaryChip">
+          {direcao ? `${direcao === 'ida' ? 'ida' : 'volta'} · ` : ''}
+          {dia}
         </span>
       </div>
 
-      <h2 className="mt-2 font-display text-[21px] font-extrabold leading-tight tracking-tight">
+      <h2 className="mt-2 font-display text-[22px] font-extrabold leading-tight tracking-tight">
         {titulo}
       </h2>
 
-      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs font-semibold text-primaryChip">
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[15px] font-semibold text-primaryChip">
         {contagem && (
           <span className="inline-flex items-center gap-1.5">
-            <Users size={14} aria-hidden="true" />
+            <Users size={16} aria-hidden="true" />
             {contagem}
           </span>
         )}
         {inicio != null && (
           <span className="inline-flex items-center gap-1.5">
-            <Clock size={14} aria-hidden="true" />
+            <Clock size={16} aria-hidden="true" />
             {horaCurta(deMinutos(inicio))}
             {fim != null && fim !== inicio && ` → ${horaCurta(deMinutos(fim))}`}
           </span>
@@ -73,6 +82,8 @@ export default function FaixaDaViagem({
       </div>
 
       {nos.length > 1 && <Trilho nos={nos} />}
+
+      {controle}
     </div>
   );
 }

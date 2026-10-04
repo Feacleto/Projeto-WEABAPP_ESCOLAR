@@ -244,6 +244,23 @@ TIER_B = dict(radii=())
 TIER_C_RX = 0.219                                  # 112/512, raio do ladrilho
 TIER_C_PAD = 0.19                                  # folga do balão dentro dele
 
+# O FAVICON É A PERUA, NÃO O BALÃO (04/10/2026, pedido do dono).
+#
+# O degrau C (só o balão branco num ladrilho esmeralda) foi pensado para a aba
+# de 16 px — e o SVG é UMA arte para todos os tamanhos: o Chrome desenha a
+# mesma em 16 px e nos 32 px de qualquer tela de celular ou monitor nítido.
+# Resultado: a aba mostrava um balão de conversa genérico, que ninguém liga ao
+# logo do site (a perua verde com a janela em balão). Medido em 16, 32 e 64 px
+# sobre aba clara e escura: a perua sem ondas (degrau B) é legível nos três,
+# e a roda, que preocupava, sobra com 2 px a 16.
+#
+# Ladrilho BRANCO, perua esmeralda, janela branca — o mesmo desenho do site e
+# do ícone do app na tela do celular (icon-192, fundo branco). Branco porque
+# o ladrilho é o que separa a marca da aba escura; em aba clara quem separa é
+# a própria perua, que tem 7,6:1 sobre branco. As ondas ficam de fora pela
+# regra de sempre: a 16 px viram um borrão verde no canto.
+FAVICON_PAD = 0.08                                 # folga da perua no ladrilho
+
 
 def mark_bbox(wheels=True, radii=ARC_RR, arc_w=ARC_W):
     pts = [p for r in radii for p in arc_points(ARC_C, r, *ARC_A)]
@@ -377,6 +394,16 @@ def tile_image(size, bg, fg):
     d.polygon([t.pt(p) for p in rounded_poly_pts(TAIL, TAIL_R)], fill=fg)
     x, y, w, h, r = BUBBLE
     d.rounded_rectangle([t.pt((x, y)), t.pt((x + w, y + h))], radius=t.n(r), fill=fg)
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def favicon_image(size):
+    """A perua no ladrilho branco, rasterizada — a mesma arte do favicon.svg."""
+    im, d = canvas(size, size)
+    S = size * SS
+    d.rounded_rectangle([0, 0, S - 1, S - 1], radius=TIER_C_RX * S, fill=rgba(WHITE))
+    draw_mark(d, fit(mark_bbox(**TIER_B), size, size, FAVICON_PAD).scaled(SS),
+              rgba(EMERALD), rgba(WHITE), rgba(WHITE), **TIER_B)
     return im.resize((size, size), Image.LANCZOS)
 
 
@@ -617,22 +644,22 @@ def mark_svg(size=512, pad=0.06, mono=None, dark_aware=False, tile=False):
     tem contraste contra aba clara E escura, então não há nada pra adaptar.
     """
     if tile:
-        # DEGRAU C. O favicon é visto a 16–20 px numa aba, e ali a perua
-        # inteira não cabe: mesmo em ladrilho, a roda dava 1,3 px e a onda
-        # 1,0 px — dois borrões que só engordavam a silhueta. Fica o BALÃO,
-        # que é o elemento maior e o que carrega o sentido, em cheio dentro
-        # do ladrilho. Continua sendo esta marca, sem o que não sobrevive.
-        t = fit(WINDOW_BBOX, size, size, TIER_C_PAD)
+        # A PERUA NO LADRILHO BRANCO — ver FAVICON_PAD. Era o degrau C (só o
+        # balão), que não lembrava o logo do site em tamanho nenhum.
+        t = fit(mark_bbox(**TIER_B), size, size, FAVICON_PAD)
         L = [
           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {s} {s}" fill="none">',
           '  <rect width="{s}" height="{s}" rx="{r}" fill="{bg}"/>',
-          '  <g transform="{t}"><path d="{win}" fill="{fg}"/></g>',
+          '  <g transform="{t}">',
+          '    <path d="{body}" fill="{fg}"/>',
+          '    <path d="{win}" fill="{bg}"/>',
+          '  </g>',
           '</svg>',
           '',
         ]
         return chr(10).join(L).format(
-            s=size, r=round(size * TIER_C_RX), bg=EMERALD, fg=WHITE,
-            t=t.svg(), win=MARK_WINDOW_D)
+            s=size, r=round(size * TIER_C_RX), bg=WHITE, fg=EMERALD,
+            t=t.svg(), body=MARK_BODY_D, win=MARK_WINDOW_D)
     t = fit(MARK_BBOX, size, size, pad)
     if mono:
         return (
@@ -860,24 +887,16 @@ def main():
     wordmark_png(os.path.join(OUT, 'wordmark-white.png'), white=True)
     og_image(os.path.join(OUT, 'og-image.png'))
 
-    # Favicon .ico: ladrilho esmeralda em todos os tamanhos — é o que dá
-    # contraste em aba clara E escura, e por isso o fundo não muda. O que
-    # muda é o CONTEÚDO, por degrau:
+    # Favicon .ico — o formato de RESERVA (o Chrome usa o .svg). Uma arte por
+    # tamanho, escrita à mão em write_ico, porque o Pillow só redimensiona uma.
+    # Até 03/10/2026 era ladrilho esmeralda com o balão (16/24) e a perua branca
+    # (32/48); o balão sozinho não lembrava o logo do site.
     #
-    #   16 e 24  só o balão (degrau C). A perua inteira ali dava roda de
-    #            1,3 px e onda de 1,0 px: dois borrões que engordavam a
-    #            silhueta sem desenhar nada.
-    #   32 e 48  a perua sem ondas (degrau B), em branco — em fundo
-    #            esmeralda o verde não separa.
-    #
-    # A janela vai na COR DO FUNDO, não vazada: com alfa 0 sobre carroceria
-    # branca o balão simplesmente desaparecia.
-    write_ico(os.path.join(OUT, 'favicon.ico'), [
-        tile_image(16, rgba(EMERALD), rgba(WHITE)),
-        tile_image(24, rgba(EMERALD), rgba(WHITE)),
-        icon_image(32, 0.13, rgba(EMERALD), rgba(WHITE), rgba(EMERALD), rgba(WHITE), tier='B'),
-        icon_image(48, 0.13, rgba(EMERALD), rgba(WHITE), rgba(EMERALD), rgba(WHITE), tier='B'),
-    ])
+    # ⚠️ DESDE 04/10/2026 os quatro tamanhos são a PERUA no ladrilho branco,
+    # igual ao favicon.svg — ver FAVICON_PAD. O .ico e o .svg dizerem coisas
+    # diferentes era a mesma marca com duas caras, conforme o navegador.
+    write_ico(os.path.join(OUT, 'favicon.ico'),
+              [favicon_image(n) for n in (16, 24, 32, 48)])
 
     print('JS')
     js_paths()

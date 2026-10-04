@@ -4,10 +4,13 @@ import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
-import { useActiveChild } from '../../hooks/useActiveChild';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { usePaymentsByParent } from '../../hooks/usePayments';
 import { computeDisplayStatus } from '../../services/paymentsService';
+import {
+  paymentLabel,
+  paymentChipClasses,
+} from '../../dominio/cobranca/paymentVocabulary';
 import {
   formatCurrency,
   formatMonthLabel,
@@ -18,11 +21,21 @@ import {
  * Histórico financeiro do Pai pra leitura / impressão.
  * Lista todos os pagamentos do responsável dentro da retenção — 60 meses,
  * ver `dominio/cobranca/retencao.js`.
+ *
+ * ⚠️ É O EXTRATO DA FAMÍLIA, NÃO DO FILHO ATIVO (03/10/2026).
+ * A consulta é por RESPONSÁVEL e sempre trouxe as mensalidades de todos os
+ * filhos — mas o título era o nome do filho ativo, então a mãe de dois lia
+ * as mensalidades do irmão debaixo do nome errado, e o "A pagar" somava as
+ * duas sob um nome só. Filtrar pelo filho ativo foi descartado: o extrato é
+ * o documento que ela imprime para conferir o que deve, e esconder a dívida
+ * do outro filho num papel chamado "histórico" é pior que o título errado.
+ * Então o título fica neutro e, com mais de um filho, cada linha diz de quem
+ * é. O "Prestador" só aparece quando há UM motorista na lista — com filhos em
+ * peruas diferentes, um nome só seria o prestador errado para metade das
+ * linhas.
  */
 export default function PaiFinanceReport() {
   const { user, profile } = useAuth();
-  const { child } = useActiveChild();
-  const { admin } = useAdminProfile(child?.adminUid);
   // A HISTÓRIA INTEIRA, só aqui: o extrato promete a retenção toda, e é aberto
   // sob demanda. Início e Financeiro leem a janela de 12 meses.
   const { payments, loading } = usePaymentsByParent(user?.uid, { historico: true });
@@ -49,9 +62,20 @@ export default function PaiFinanceReport() {
     [enriched]
   );
 
+  const nomesDosFilhos = useMemo(
+    () => [...new Set(payments.map((p) => p.childName).filter(Boolean))],
+    [payments]
+  );
+  const variosFilhos = nomesDosFilhos.length > 1;
+  const motoristas = useMemo(
+    () => [...new Set(payments.map((p) => p.adminUid).filter(Boolean))],
+    [payments]
+  );
+  const { admin } = useAdminProfile(motoristas.length === 1 ? motoristas[0] : null);
+
   const onPrint = () => window.print();
 
-  if (loading || !child) {
+  if (loading) {
     return (
       <>
         <Header title="Histórico de pagamentos" showBack backLabel="Financeiro" backTo="/pai/finance" />
@@ -78,24 +102,27 @@ export default function PaiFinanceReport() {
           <header className="space-y-1 border-b border-border pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="rotulo">
+                <h1 className="text-2xl font-bold text-text leading-tight">
                   Histórico de pagamentos
-                </p>
-                <h1 className="text-2xl font-bold text-text leading-tight mt-1">
-                  {child.name}
                 </h1>
-                <p className="text-xs text-textMuted mt-1">
+                <p className="text-base text-textMuted mt-1">
                   Responsável: {profile?.name || '—'}
                 </p>
+                {nomesDosFilhos.length > 0 && (
+                  <p className="text-base text-textMuted">
+                    {variosFilhos ? 'Crianças' : 'Criança'}:{' '}
+                    {nomesDosFilhos.join(', ')}
+                  </p>
+                )}
               </div>
               <FileText size={28} className="text-textMuted shrink-0 mt-1" />
             </div>
             {admin?.companyName && (
-              <p className="text-xs text-textMuted pt-2">
+              <p className="text-sm text-textMuted pt-2">
                 Prestador: {admin.companyName}
               </p>
             )}
-            <p className="text-xs text-textMuted">
+            <p className="text-sm text-textMuted">
               Emitido em {new Date().toLocaleDateString('pt-BR')}
             </p>
           </header>
@@ -113,17 +140,17 @@ export default function PaiFinanceReport() {
             </section>
           ) : (
             <section className="bg-primarySoft rounded-2xl p-4">
-              <p className="text-sm font-bold text-primary">
+              <p className="text-base font-bold text-primary">
                 Tudo em dia
               </p>
-              <p className="text-xs text-primary/75 mt-0.5">
+              <p className="text-sm text-primary mt-0.5">
                 Nenhuma mensalidade em aberto.
               </p>
             </section>
           )}
 
           <section className="space-y-2">
-            <h2 className="text-sm font-bold text-text">Mensalidades</h2>
+            <h2 className="text-base font-bold text-text">Mensalidades</h2>
             {enriched.length === 0 ? (
               <p className="text-sm text-textMuted text-center py-6">
                 Sem pagamentos no histórico.
@@ -131,7 +158,7 @@ export default function PaiFinanceReport() {
             ) : (
               <div className="space-y-2">
                 {enriched.map((p) => (
-                  <PaymentLine key={p.id} payment={p} />
+                  <PaymentLine key={p.id} payment={p} mostrarFilho={variosFilhos} />
                 ))}
               </div>
             )}
@@ -147,22 +174,28 @@ export default function PaiFinanceReport() {
   );
 }
 
-function PaymentLine({ payment }) {
-  const cfg = STATUS_CONFIG[payment._display] || STATUS_CONFIG.pending;
-  const Icon = cfg.icon;
+// A palavra e a cor saem do MESMO vocabulário do Financeiro
+// (paymentVocabulary): aqui o `claimed` dizia "Aguardando" em azul enquanto
+// o Financeiro dizia "Pago" em verde para o mesmo pagamento.
+function PaymentLine({ payment, mostrarFilho }) {
+  const Icon = ICONE_DO_ESTADO[payment._display] || Clock;
+  const chip = paymentChipClasses(payment._display, 'parent');
 
   return (
     <div className="bg-bg rounded-2xl p-3 flex items-center gap-3">
       <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cfg.color}`}
+        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${chip}`}
       >
         <Icon size={18} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-text capitalize leading-tight">
+        <p className="text-base font-bold text-text capitalize leading-tight">
           {formatMonthLabel(payment.month)}
         </p>
-        <p className="text-xs text-textMuted mt-0.5">
+        {mostrarFilho && payment.childName && (
+          <p className="text-base text-text">{payment.childName}</p>
+        )}
+        <p className="text-sm text-textMuted mt-0.5">
           Vencimento: {formatDate(payment.dueDate)}
           {payment.paidAt && ` · Pago em ${formatDate(payment.paidAt)}`}
           {payment.paymentMethod && (
@@ -173,43 +206,25 @@ function PaymentLine({ payment }) {
           )}
         </p>
       </div>
-      <div className="text-right">
+      <div className="text-right shrink-0">
         <p className="text-base font-bold text-text tabular-nums">
           {formatCurrency(payment.amount)}
         </p>
-        <p className={`rotulo ${cfg.text}`}>
-          {cfg.label}
-        </p>
+        <span
+          className={`mt-1 inline-block max-w-[9rem] rounded-full px-2 py-0.5 text-left text-sm font-semibold leading-tight ${chip}`}
+        >
+          {paymentLabel(payment._display, 'parent')}
+        </span>
       </div>
     </div>
   );
 }
 
-const STATUS_CONFIG = {
-  paid: {
-    icon: CheckCircle2,
-    label: 'Pago',
-    color: 'bg-primaryChip text-primary',
-    text: 'text-primary',
-  },
-  claimed: {
-    icon: Hourglass,
-    label: 'Aguardando',
-    color: 'bg-infoChip text-infoText',
-    text: 'text-infoText',
-  },
-  pending: {
-    icon: Clock,
-    label: 'Pendente',
-    color: 'bg-warningChip text-warningText',
-    text: 'text-warningText',
-  },
-  overdue: {
-    icon: AlertCircle,
-    label: 'Atrasado',
-    color: 'bg-dangerChip text-dangerText',
-    text: 'text-dangerText',
-  },
+const ICONE_DO_ESTADO = {
+  paid: CheckCircle2,
+  claimed: Hourglass,
+  pending: Clock,
+  overdue: AlertCircle,
 };
 
 function methodLabel(m) {

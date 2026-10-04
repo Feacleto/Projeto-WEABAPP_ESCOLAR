@@ -13,8 +13,12 @@ import Skeleton from '../../components/common/Skeleton';
 import AbsenceSheet from '../../components/absences/AbsenceSheet';
 import { useActiveChild } from '../../hooks/useActiveChild';
 import { useChildAbsenceHistory } from '../../hooks/useAbsences';
-import { ABSENCE_LABELS } from '../../services/absencesService';
-import { dataDaChave, faltasDoMes } from '../../dominio/rota/faltas';
+import { ABSENCE_TYPES } from '../../services/absencesService';
+import {
+  DIAS_DE_AVISO_DE_FALTA,
+  dataDaChave,
+  faltasDoMes,
+} from '../../dominio/rota/faltas';
 import {
   addMonths,
   formatMonthLabel,
@@ -36,6 +40,12 @@ import {
  * avisar com muita antecedência abre o buraco em que o plano muda, ninguém
  * desmarca, e no dia o motorista não passa na porta. O histórico anda meses
  * pra trás; o aviso continua cabendo em duas semanas.
+ *
+ * UM NOME POR COISA. A tela diz "falta" em todo lugar, e o tipo de cada
+ * falta usa os MESMOS nomes dos botões do Início (`AvisoRapido`): "Não vai",
+ * "Eu levo", "Eu busco". `ABSENCE_LABELS` do service é a frase do lado do
+ * motorista ("Pai vai levar de manhã") — ela avisou tocando em "Eu levo", e
+ * é isso que ela reconhece na lista.
  *
  * O BOTÃO DE AVISAR ABRE O MESMO `AbsenceSheet` do painel. Uma segunda tela
  * de declarar seria uma segunda régua pra envelhecer sozinha — e a que
@@ -75,7 +85,9 @@ export default function PaiFaltas() {
   }
 
   return (
-    <div className="min-h-screen pb-28">
+    // pb-4, e não pb-28: o layout já reserva o espaço das abas, e a barra de
+    // avisar (sticky, no fim) precisa pousar logo abaixo do último cartão.
+    <div className="min-h-screen pb-4">
       <Header title="Faltas" showBack backLabel="Início" backTo="/pai" />
 
       <div className="space-y-4 px-5 pt-4">
@@ -86,16 +98,16 @@ export default function PaiFaltas() {
             type="button"
             onClick={() => setMes((m) => addMonths(m, -1))}
             aria-label="Mês anterior"
-            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted"
+            className="tap flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted"
           >
-            <ChevronLeft size={17} />
+            <ChevronLeft size={22} />
           </button>
 
           <div className="min-w-0 flex-1 text-center">
-            <p className="text-sm font-bold capitalize leading-tight text-text">
+            <p className="text-lg font-bold capitalize leading-tight text-text">
               {formatMonthLabel(mes)}
             </p>
-            <p className="text-xs text-textMuted">
+            <p className="text-base text-textMuted">
               {doMes.length === 0
                 ? 'nenhuma falta'
                 : `${doMes.length} ${doMes.length === 1 ? 'falta' : 'faltas'}`}
@@ -107,9 +119,9 @@ export default function PaiFaltas() {
             disabled={!podeAvancar}
             onClick={() => podeAvancar && setMes((m) => addMonths(m, 1))}
             aria-label="Próximo mês"
-            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted disabled:opacity-30"
+            className="tap flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted disabled:opacity-30"
           >
-            <ChevronRight size={17} />
+            <ChevronRight size={22} />
           </button>
         </div>
 
@@ -118,10 +130,10 @@ export default function PaiFaltas() {
         {!loading && doMes.length === 0 && (
           <Card className="py-8 text-center">
             <CalendarDays size={30} className="mx-auto text-textMuted" />
-            <p className="mt-2 text-sm font-semibold text-text">
+            <p className="mt-2 text-base font-semibold text-text">
               Nenhuma falta em {formatMonthLabel(mes)}
             </p>
-            <p className="mx-auto mt-1 max-w-[20rem] text-xs leading-relaxed text-textMuted">
+            <p className="mx-auto mt-1 max-w-[20rem] text-sm leading-relaxed text-textMuted">
               Só aparece aqui o que foi avisado pelo app. Falta combinada por
               fora com o motorista não entra nesta conta.
             </p>
@@ -136,20 +148,8 @@ export default function PaiFaltas() {
           </div>
         )}
 
-        {/* AVISAR fica no fim, e não no topo: quem abriu esta tela veio
-          * conferir o passado. Quem veio avisar tem o botão no painel, que é
-          * de onde ele já usa todo dia. */}
-        <button
-          type="button"
-          onClick={() => setAvisando(true)}
-          className="tap flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border bg-card text-sm font-bold text-text"
-        >
-          <CalendarPlus size={17} className="text-primary" />
-          Avisar uma falta
-        </button>
-
-        <p className="px-1 text-center text-xs leading-relaxed text-textMuted">
-          Dá pra avisar até 14 dias à frente. Mais que isso o plano costuma
+        <p className="px-1 text-center text-sm leading-relaxed text-textMuted">
+          Dá pra avisar até {DIAS_DE_AVISO_DE_FALTA} dias à frente. Mais que isso o plano costuma
           mudar, e um aviso que ninguém lembra de desmarcar faz o motorista
           não passar na porta.
         </p>
@@ -167,10 +167,10 @@ export default function PaiFaltas() {
           * ele se sinta enganado por uma regra que ele já conhecia. */}
         {doMes.length > 0 && (
           <div className="rounded-2xl border border-border bg-surface p-4">
-            <p className="text-xs font-semibold text-text">
+            <p className="text-base font-semibold text-text">
               Falta não muda a mensalidade
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-textMuted">
+            <p className="mt-1 text-sm leading-relaxed text-textMuted">
               O valor é pela <strong>vaga na perua</strong> — ela fica
               reservada para o seu filho todos os dias, inclusive nas férias,
               independente de quantos dias ele usou. É a cláusula 7ª do
@@ -179,12 +179,35 @@ export default function PaiFaltas() {
             <button
               type="button"
               onClick={() => navigate('/pai/contrato')}
-              className="tap mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary"
+              className="tap mt-1 -ml-2 inline-flex h-12 items-center gap-1 px-2 text-base font-bold text-primary"
             >
-              Ver o contrato <ChevronRight size={12} />
+              Ver o contrato <ChevronRight size={18} />
             </button>
           </div>
         )}
+      </div>
+
+      {/* AVISAR MORA ONDE O POLEGAR DESCANSA.
+        *
+        * Ficava no FIM da lista — com o argumento de que quem abre esta tela
+        * veio conferir o passado. Mas num mês de muitas faltas o botão saía
+        * da tela, e quem conferia e lembrava "e a consulta de quinta?" tinha
+        * que rolar até achar. Preso acima das abas, mesma forma e lugar da
+        * `BarraDoInicio` do motorista. `sticky` no fim do conteúdo, não
+        * `fixed`: rolando até o fim ela pousa no lugar dela e o último
+        * cartão nunca fica escondido por baixo. */}
+      <div
+        className="sticky z-20 mx-3 mt-4 rounded-2xl bg-card p-2 shadow-float"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
+      >
+        <button
+          type="button"
+          onClick={() => setAvisando(true)}
+          className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-lg font-bold text-white"
+        >
+          <CalendarPlus size={22} />
+          Avisar uma falta
+        </button>
       </div>
 
       <AbsenceSheet
@@ -197,6 +220,14 @@ export default function PaiFaltas() {
     </div>
   );
 }
+
+// Os nomes dos botões do Início (`AvisoRapido`) — ver o cabeçalho.
+const TIPO_DA_FALTA = {
+  [ABSENCE_TYPES.FULL]: 'Não vai',
+  [ABSENCE_TYPES.NO_PICKUP]: 'Eu levo',
+  [ABSENCE_TYPES.NO_DROPOFF]: 'Eu busco',
+  [ABSENCE_TYPES.ALREADY_PICKED]: 'Já peguei na escola',
+};
 
 /**
  * Uma falta na lista.
@@ -217,13 +248,13 @@ function Linha({ falta }) {
 
   return (
     <div className="flex items-start gap-3 rounded-2xl bg-card px-4 py-3 shadow-sm">
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
-        <CalendarX2 size={15} />
+      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
+        <CalendarX2 size={18} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold capitalize text-text">{quando}</p>
-        <p className="mt-0.5 text-xs text-textMuted">
-          {ABSENCE_LABELS[falta.type] || 'Não vai'}
+        <p className="text-base font-semibold capitalize text-text">{quando}</p>
+        <p className="mt-0.5 text-base text-textMuted">
+          {TIPO_DA_FALTA[falta.type] || 'Não vai'}
         </p>
       </div>
     </div>

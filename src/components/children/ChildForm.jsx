@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
   MapPin,
   Phone,
-  Clock,
   Search,
   Check,
   Home,
@@ -17,10 +16,13 @@ import {
   Paperclip,
   ThumbsUp,
   UserPlus,
+  Plus,
+  Circle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../common/Card';
 import MapPicker from '../map/MapPicker';
+import LiveMap from '../map/LiveMap';
 import InviteShare from './InviteShare';
 import NovaEscolaSheet from './NovaEscolaSheet';
 import BuscaDeRua from '../endereco/BuscaDeRua';
@@ -47,6 +49,7 @@ import {
 import { montarEndereco } from '../../compartilhado/formatters';
 import CampoVigencia from '../contract/CampoVigencia';
 import { vigenciaPadrao, erroDaVigencia } from '../../dominio/cobranca/contratoDaFamilia.js';
+import BotaoDeFalar from '../common/BotaoDeFalar';
 
 const GENDERS = [
   { value: 'male', label: 'Menino' },
@@ -134,19 +137,32 @@ function vigenciaDoForm() {
 
 /**
  * Cadastro de criança em wizard (4 passos curtos).
- * Cada passo valida antes de avançar. Voltar é livre.
- *   1. Criança         — nome, gênero, período escolar
- *   2. Onde mora       — endereço (com geocoding Nominatim)
- *   3. Escola          — nome, endereço, turnos do transporte
- *   4. Responsável e financeiro — nome/email/tel, mensalidade, dia vencimento
+ * Cada passo valida antes de avançar. Voltar é livre. Os nomes abaixo são os
+ * de `STEP_LABELS`, e o título de cada passo é o MESMO nome (eram dois: a
+ * barra dizia "Onde estuda" e a tela dizia "Escola e horários").
+ *   1. Quem é a criança          — nome, menino ou menina, a declaração de
+ *                                  autorização (o período sai da hora, no 3)
+ *   2. Onde mora                 — endereço (CEP, busca pela rua, mapa)
+ *   3. Escola e horários         — escola, turma, hora de pegar e de entregar
+ *   4. Responsável e mensalidade — nome/telefone, mensalidade, vencimento, prazo
  *
- * Após salvar, mostra modal de invite code pra entregar ao responsável.
+ * Após salvar, mostra a tela de sucesso com o convite pro responsável.
+ *
+ * ERRO LEVA AO CAMPO. Ao falhar a validação, além do aviso, a tela rola até o
+ * primeiro campo marcado e põe o cursor nele — com o teclado aberto, o campo
+ * errado costumava ficar escondido embaixo dele, e o "confira o que tá
+ * destacado" mandava procurar algo que a pessoa não via.
  */
 export default function ChildForm() {
   const navigate = useNavigate();
   // A vigência nasce pronta (de hoje até o fim do ano) — ver `vigenciaPadrao`.
   const [form, setForm] = useState(() => ({ ...EMPTY_FORM, ...vigenciaDoForm() }));
   const [step, setStep] = useState(1);
+  // As escolas moram AQUI, e não só no passo 3, porque o rodapé precisa
+  // saber se há alguma: sem escola, o protagonista do passo é "Cadastrar
+  // escola", e o "Avançar" vira contorno (04/10/2026). Uma escuta só.
+  const { escolas, loading: carregandoEscolas } = useEscolas();
+  const semEscola = step === 3 && !carregandoEscolas && escolas.length === 0;
   // O id da criança, reservado já no começo: é ele que sorteia o avatar, e o
   // topo mostra a criança desde o passo 2 com o MESMO rosto da ficha.
   const [idReservado, setIdReservado] = useState(() => reservarIdDeCrianca());
@@ -161,6 +177,7 @@ export default function ChildForm() {
   const [createdId, setCreatedId] = useState(null);
   const [errors, setErrors] = useState({});
   const { perguntarPix, folhaDoPix } = usePerguntaDaChavePix();
+  const [pixPerguntado, setPixPerguntado] = useState(false);
 
   const setField = (key) => (e) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -239,6 +256,7 @@ export default function ChildForm() {
   const onAdvance = async () => {
     if (!validateStep(step)) {
       toast.error('Confira o que tá destacado.');
+      focarPrimeiroErro();
       return;
     }
     // O PONTO NO MAPA SAI SOZINHO quando a rua veio da busca ou do CEP: uma
@@ -270,6 +288,7 @@ export default function ChildForm() {
   const onSaveEarly = () => {
     if (!validateStep(step)) {
       toast.error('Confira o que tá destacado.');
+      focarPrimeiroErro();
       return;
     }
     onSubmit();
@@ -323,18 +342,7 @@ export default function ChildForm() {
       });
       setCreatedCode(inviteCode);
       setCreatedId(id);
-      // ACABOU DE COMBINAR UMA MENSALIDADE: é a hora em que a chave PIX passa a
-      // fazer falta. A pergunta aparece por cima da tela do convite, uma vez
-      // por sessão. Ver `PerguntaDaChavePix`.
-      const fee = parseFloat(form.monthlyFee) || 0;
-      if (fee > 0) {
-        perguntarPix({
-          motivo: 'mensalidade',
-          texto: `Você combinou ${formatCurrency(fee)} por mês com a família de ${
-            form.name?.trim().split(/\s+/)[0] || 'esta criança'
-          }. Pra ela pagar pelo app, falta a sua chave PIX.`,
-        });
-      }
+      setPixPerguntado(false);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao salvar. Tente novamente.');
@@ -347,6 +355,28 @@ export default function ChildForm() {
    * cadastra várias crianças da mesma escola em sequência, e escolher de novo
    * a cada uma é o toque mais repetido do dia. Um toque troca. Nome, casa e
    * responsável voltam vazios — esses nunca se repetem por acaso. */
+  /* ACABOU DE COMBINAR UMA MENSALIDADE: é a hora em que a chave PIX passa a
+   * fazer falta. ⚠️ MAS A PERGUNTA VEM DEPOIS DO CONVITE, e não por cima dele
+   * (04/10/2026, aprovado pelo dono): ela cobria o "Mandar convite", que é o
+   * gesto da tela. Agora aparece quando ele manda o convite, ou quando sai
+   * da tela (outra criança, ver a turma) — uma vez por criança, e o "agora
+   * não" vale a sessão inteira. Ver `PerguntaDaChavePix`. */
+  const perguntarPixDepois = (depois) => {
+    const fee = parseFloat(form.monthlyFee) || 0;
+    if (fee <= 0 || pixPerguntado) {
+      depois?.();
+      return;
+    }
+    setPixPerguntado(true);
+    perguntarPix({
+      motivo: 'mensalidade',
+      texto: `Você combinou ${formatCurrency(fee)} por mês com a família de ${
+        form.name?.trim().split(/\s+/)[0] || 'esta criança'
+      }. Pra ela pagar pelo app, falta a sua chave PIX.`,
+      depois,
+    });
+  };
+
   const cadastrarOutra = () => {
     setForm({
       ...EMPTY_FORM,
@@ -379,8 +409,14 @@ export default function ChildForm() {
         gender={form.gender}
         parentName={form.parentName}
         parentPhone={unmaskPhone(form.parentPhone)}
-        onOutra={cadastrarOutra}
-        onDone={() => navigate('/tio/children', { replace: true })}
+        onEnviado={() => perguntarPixDepois()}
+        onOutra={() => perguntarPixDepois(cadastrarOutra)}
+        onDone={() =>
+          perguntarPixDepois(() => navigate('/tio/children', { replace: true }))
+        }
+        onVerContratos={() =>
+          perguntarPixDepois(() => navigate('/tio/finance/turma'))
+        }
       />
       </>
     );
@@ -393,9 +429,9 @@ export default function ChildForm() {
         <button
           type="button"
           onClick={onBack}
-          className="tap -ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm text-textMuted"
+          className="tap -ml-2 inline-flex min-h-12 items-center gap-1 px-2 text-base font-semibold text-primary"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={20} />
           {step === 1 ? 'Cancelar' : 'Voltar'}
         </button>
 
@@ -404,7 +440,7 @@ export default function ChildForm() {
             <p className="rotulo">
               Passo {step} de {TOTAL_STEPS}
             </p>
-            <p className="text-xs font-semibold text-textMuted">
+            <p className="text-sm font-semibold text-textMuted">
               {STEP_LABELS[step - 1]}
             </p>
           </div>
@@ -434,6 +470,7 @@ export default function ChildForm() {
         {step === 1 && (
           <Step1Child
             form={form}
+            idReservado={idReservado}
             setForm={setForm}
             setField={setField}
             errors={errors}
@@ -444,6 +481,8 @@ export default function ChildForm() {
         )}
         {step === 3 && (
           <Step3School
+            escolas={escolas}
+            loading={carregandoEscolas}
             form={form}
             setForm={setForm}
             setField={setField}
@@ -475,7 +514,12 @@ export default function ChildForm() {
           data-avancar
           loading={submitting}
           icon={step === TOTAL_STEPS ? Check : ArrowRight}
-          className="shadow-focus !bg-primary hover:!bg-primary !h-14 !text-base"
+          variant={semEscola ? 'secondary' : 'primary'}
+          className={
+            semEscola
+              ? '!h-14 !text-base'
+              : 'shadow-focus !bg-primary hover:!bg-primary !h-14 !text-base'
+          }
         >
           {step === TOTAL_STEPS ? 'Cadastrar criança' : 'Avançar'}
         </Button>
@@ -488,7 +532,7 @@ export default function ChildForm() {
             type="button"
             onClick={onSaveEarly}
             disabled={submitting}
-            className="tap w-full text-sm font-semibold text-textMuted py-3 disabled:opacity-50"
+            className="tap w-full min-h-12 text-base font-semibold text-textMuted disabled:opacity-50"
           >
             Salvar e completar depois
           </button>
@@ -498,15 +542,45 @@ export default function ChildForm() {
   );
 }
 
+// O nome de cada passo é UM SÓ: o mesmo texto no topo (ao lado de "Passo N
+// de 4") e no título da tela — ver `Heading` em cada passo.
 const STEP_LABELS = [
   'Quem é a criança',
   'Onde mora',
-  'Onde estuda',
+  'Escola e horários',
   'Responsável e mensalidade',
 ];
 
+/**
+ * Leva o cursor ao primeiro campo com erro. Espera dois quadros: o erro só
+ * aparece no DOM depois de o React desenhar o `setErrors`. Campo de texto
+ * recebe foco (abre o teclado no lugar certo); o que não é campo (menino ou
+ * menina, a declaração) é marcado com `data-erro` e só rola até a vista.
+ */
+function focarPrimeiroErro() {
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const alvo = document.querySelector(
+        'main [aria-invalid="true"], main [data-erro]'
+      );
+      if (!alvo) return;
+      alvo.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const campo = alvo.matches('input, textarea, select, button')
+        ? alvo
+        : alvo.querySelector('input, textarea, select, button');
+      campo?.focus({ preventScroll: true });
+    })
+  );
+}
+
 /* ─────────────── Barra de progresso ─────────────── */
 
+/**
+ * TRÊS ESTADOS, TRÊS CARAS. Concluído e atual tinham a mesma cor, e a barra
+ * não dizia em qual passo a pessoa estava — só quantos já tinha passado.
+ * Agora o atual é cheio, o concluído leva um check e o que falta fica
+ * apagado.
+ */
 function ProgressBar({ step, total }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -516,14 +590,17 @@ function ProgressBar({ step, total }) {
         return (
           <div
             key={i}
-            className={`h-1.5 rounded-full flex-1 transition-colors ${
-              done
+            aria-hidden
+            className={`flex h-6 flex-1 items-center justify-center rounded-full transition-colors ${
+              current
                 ? 'bg-primary'
-                : current
-                ? 'bg-primary'
-                : 'bg-border'
+                : done
+                ? 'bg-primaryChip text-accentText'
+                : 'bg-neutro'
             }`}
-          />
+          >
+            {done && <Check size={14} strokeWidth={3} />}
+          </div>
         );
       })}
     </div>
@@ -532,15 +609,16 @@ function ProgressBar({ step, total }) {
 
 /* ─────────────── Passo 1: Criança ─────────────── */
 
-function Step1Child({ form, setForm, setField, errors }) {
+function Step1Child({ form, setForm, setField, errors, idReservado }) {
+  const declaracaoRef = useRef(null);
   return (
     <>
       <Heading
-        title="Quem é a criança?"
+        title={STEP_LABELS[0]}
         subtitle="Comece pelo básico — vamos um passo de cada vez."
       />
 
-      <Input
+      <Input falar="nome"
         label="Nome completo"
         placeholder="Digite aqui"
         icon={User}
@@ -551,26 +629,60 @@ function Step1Child({ form, setForm, setField, errors }) {
         autoFocus
       />
 
-      <div>
-        <label className="block text-sm font-semibold text-text mb-2">
+      <div data-erro={errors.gender ? true : undefined}>
+        <p id="rotulo-menino-menina" className="block text-sm font-semibold text-text mb-2">
           É menino ou menina?
-        </label>
-        <div className="grid grid-cols-2 gap-2">
+        </p>
+        {/* `data-campo-escolha` + `tabIndex={-1}`: o Salvar do nome PARA aqui
+          * em vez de apertar o "Avançar" (avancarCampo.js). Tocar numa opção
+          * leva o foco adiante — à declaração, ou ao botão do passo. */}
+        <div
+          className="grid grid-cols-2 gap-2 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          role="group"
+          aria-labelledby="rotulo-menino-menina"
+          data-campo-escolha
+          tabIndex={-1}
+        >
           {GENDERS.map((g) => (
             <SelectorButton
               key={g.value}
               label={g.label}
               active={form.gender === g.value}
-              onClick={() => setForm((p) => ({ ...p, gender: g.value }))}
+              onClick={() => {
+                setForm((p) => ({ ...p, gender: g.value }));
+                const alvo = form.autorizacaoDeclarada
+                  ? document.querySelector('[data-avancar]:not([disabled])')
+                  : declaracaoRef.current;
+                alvo?.focus();
+              }}
             />
           ))}
         </div>
         {errors.gender && (
-          <p className="mt-1.5 text-xs font-semibold text-dangerText">
+          <p data-erro className="mt-1.5 text-sm font-semibold text-dangerText">
             {errors.gender}
           </p>
         )}
       </div>
+
+      {/* O ROSTO APARECE AO ESCOLHER (04/10/2026, modelo aprovado pelo dono):
+        * é o mesmo avatar da lista e da ficha (o id já está reservado), e
+        * mostra na hora o que o menino/menina decide. */}
+      {form.gender && form.name.trim() && (
+        <div className="flex items-center gap-3 rounded-2xl bg-card px-3 py-2.5 shadow-rest">
+          <img
+            src={childAvatarUrl({ id: idReservado, gender: form.gender })}
+            alt=""
+            className="h-14 w-14 shrink-0 rounded-full bg-primaryChip"
+          />
+          <span className="min-w-0">
+            <span className="block truncate font-display text-lg font-bold text-text">{form.name.trim()}</span>
+            <span className="block text-sm text-textMuted">
+              É assim que {form.gender === 'female' ? 'ela aparece' : 'ele aparece'} no app
+            </span>
+          </span>
+        </div>
+      )}
 
       {/* O ANIVERSÁRIO SAIU DAQUI (02/10/2026). O motorista quase nunca sabe
         * a data — o campo ficava vazio ou com um chute. Quem preenche agora é
@@ -597,16 +709,22 @@ function Step1Child({ form, setForm, setField, errors }) {
         *
         * Fica no passo 1 porque é sobre a criança inteira, e no FIM do passo
         * porque ela confirma o que ele acabou de digitar. */}
-      <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-surface p-3">
+      <label
+        data-erro={errors.autorizacaoDeclarada ? true : undefined}
+        className={`mt-1 flex cursor-pointer items-start gap-3 rounded-2xl border bg-surface p-3 ${
+          errors.autorizacaoDeclarada ? 'border-danger' : 'border-border'
+        }`}
+      >
         <input
+          ref={declaracaoRef}
           type="checkbox"
           checked={form.autorizacaoDeclarada}
           onChange={(e) =>
             setForm((p) => ({ ...p, autorizacaoDeclarada: e.target.checked }))
           }
-          className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+          className="mt-0.5 h-6 w-6 shrink-0 accent-primary"
         />
-        <span className="text-xs leading-relaxed text-text">
+        <span className="text-sm leading-relaxed text-text">
           Confirmo que tenho <strong>autorização do responsável legal</strong>{' '}
           desta criança para cadastrar no Alô Buzinou o nome, o endereço de
           embarque e os dados de contato, com a finalidade de operar o
@@ -614,7 +732,7 @@ function Step1Child({ form, setForm, setField, errors }) {
         </span>
       </label>
       {errors.autorizacaoDeclarada && (
-        <p className="-mt-1 text-xs font-semibold text-dangerText">
+        <p className="-mt-1 text-sm font-semibold text-dangerText">
           {errors.autorizacaoDeclarada}
         </p>
       )}
@@ -694,6 +812,16 @@ function Step2Home({ form, setForm, errors }) {
    * guarda, cada tecla viraria uma requisição: o ViaCEP não cobra, mas
    * atropelar serviço de terceiro de graça é como se perde o de graça.
    */
+  const focarNumero = () =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const campo = document.getElementById('numero-da-casa');
+        if (!campo || campo.disabled) return;
+        campo.focus({ preventScroll: true });
+        campo.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      })
+    );
+
   // A rua escolhida na busca pelo nome tem a mesma forma que a resposta do
   // CEP: o resto do passo não precisa saber de onde ela veio.
   const onRuaEscolhida = (s) => {
@@ -715,6 +843,10 @@ function Step2Home({ form, setForm, errors }) {
     }));
     setSearchState(null);
     setCepState('ok');
+    // O PRÓXIMO TOQUE É O NÚMERO (04/10/2026): a rua já veio inteira, e o
+    // que falta é exatamente o que decide a calçada. O campo só existe
+    // depois que `cepPartes` chega, então espera o React desenhá-lo.
+    focarNumero();
   };
 
   const onCepChange = (e) => {
@@ -740,6 +872,8 @@ function Step2Home({ form, setForm, errors }) {
       return {
         ...prev,
         [campo]: valor,
+        // Número novo, casa nova: o pino antigo sai e é procurado de novo.
+        ...(campo === 'numero' ? { lat: '', lng: '' } : {}),
         address: montarEndereco({
           ...prev.cepPartes,
           numero: campo === 'numero' ? valor : prev.numero,
@@ -794,6 +928,54 @@ function Step2Home({ form, setForm, errors }) {
     }
   };
 
+  /* O MAPA APARECE QUANDO O ENDEREÇO É ACHADO (04/10/2026, modelo aprovado
+   * pelo dono). Com a rua escolhida e o número digitado (ou "não sei o
+   * número"), o ponto é procurado sozinho depois de uma pausa de 1,5 s — o
+   * Nominatim não aceita autocompletar a cada tecla, então é UMA consulta por
+   * endereço assentado, e a fila do locationService segura o ritmo. */
+  const numeroAssentado = form.semNumero ? 'sem' : form.numero.trim();
+  useEffect(() => {
+    if (!veioDoCep || !numeroAssentado || hasCoord) return undefined;
+    let cancelado = false;
+    const espera = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const r = await searchAddress(form.address, { ...form.cepPartes, numero: form.numero });
+        if (!cancelado) {
+          setForm((prev) => ({ ...prev, lat: r.lat, lng: r.lng }));
+          setSearchState('found');
+        }
+      } catch {
+        if (!cancelado) setSearchState('notFound');
+      } finally {
+        if (!cancelado) setSearching(false);
+      }
+    }, 1500);
+    return () => {
+      cancelado = true;
+      clearTimeout(espera);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [veioDoCep, numeroAssentado, hasCoord]);
+
+  // TROCAR A RUA desfaz tudo o que veio dela: número, complemento e ponto.
+  const trocarRua = () => {
+    setForm((prev) => ({
+      ...prev,
+      cep: '',
+      cepPartes: null,
+      address: '',
+      numero: '',
+      complemento: '',
+      semNumero: false,
+      lat: '',
+      lng: '',
+    }));
+    setCepState(null);
+    setCepConsultado('');
+    setSearchState(null);
+  };
+
   const onPick = ({ lat, lng }) => {
     setForm((prev) => ({ ...prev, lat, lng }));
     setSearchState('found');
@@ -804,7 +986,7 @@ function Step2Home({ form, setForm, errors }) {
   return (
     <>
       <Heading
-        title="Onde a criança mora?"
+        title={STEP_LABELS[1]}
         subtitle="O endereço da casa pra você passar todo dia."
       />
 
@@ -817,64 +999,97 @@ function Step2Home({ form, setForm, errors }) {
       {/* PELO NOME DA RUA (02/10/2026). O motorista sabe a rua, quase nunca
         * o CEP: a lista traz o CEP junto. O CEP continua logo abaixo para
         * quem tem, e o campo livre para quando a busca não achar. */}
-      <BuscaDeRua onEscolher={onRuaEscolhida} />
+      {/* DOIS CAMINHOS (04/10/2026, modelo aprovado pelo dono). O comum: o nome
+        * da rua, escolhido da lista — a rua vira um cartão e só sobram o número
+        * e o complemento. O de reserva: o CEP ou o endereço digitado inteiro,
+        * para quando a busca não acha a rua. */}
+      {!veioDoCep && (
+        <>
+          <BuscaDeRua onEscolher={onRuaEscolhida} />
 
-      <Input
-        label="Ou o CEP"
-        placeholder="Digite aqui"
-        icon={MapPin}
-        value={form.cep}
-        onChange={onCepChange}
-        inputMode="numeric"
-        maxLength={9}
-        hint="Se souber."
-      />
+          <Input
+            label="Ou o CEP"
+            placeholder="Digite aqui"
+            icon={MapPin}
+            value={form.cep}
+            onChange={onCepChange}
+            inputMode="numeric"
+            maxLength={9}
+            hint="Se souber."
+          />
 
-      {buscandoCep && (
-        <p className="text-sm text-textMuted">Consultando o CEP…</p>
+          {buscandoCep && (
+            <p className="text-sm text-textMuted">Consultando o CEP…</p>
+          )}
+
+          {/* CEP não encontrado e consulta fora do ar dizem coisas DIFERENTES:
+            * uma é "confira o que você digitou", a outra é "não é você". */}
+          {cepState === 'notFound' && (
+            <div className="text-sm bg-warningSoft border border-warningBorder text-warningText px-4 py-3 rounded-xl space-y-1">
+              <p className="font-semibold">Não achamos esse CEP.</p>
+              <p>Confira os números — ou digite o endereço completo abaixo.</p>
+            </div>
+          )}
+          {cepState === 'offline' && (
+            <div className="text-sm bg-warningSoft border border-warningBorder text-warningText px-4 py-3 rounded-xl space-y-1">
+              <p className="font-semibold">A consulta de CEP está fora do ar.</p>
+              <p>Sem problema — digite o endereço completo abaixo.</p>
+            </div>
+          )}
+
+          <Input falar="texto"
+            label="Ou o endereço completo"
+            placeholder="Digite aqui"
+            icon={Home}
+            value={form.address}
+            onChange={onEnderecoDigitado}
+            hint="Se a rua não aparecer na busca. Quanto mais completo, melhor."
+            error={errors.address}
+          />
+
+          {form.address.trim() && !hasCoord && (
+            <Button
+              type="button"
+              variant="secondary"
+              icon={Search}
+              onClick={onSearch}
+              loading={searching}
+            >
+              Buscar endereço no mapa
+            </Button>
+          )}
+        </>
       )}
 
-      {/* CEP não encontrado e consulta fora do ar dizem coisas DIFERENTES: uma
-        * é "confira o que você digitou", a outra é "não é você". Um texto só
-        * pros dois manda a pessoa reconferir um CEP que está certo. */}
-      {cepState === 'notFound' && (
-        <div className="text-sm bg-warningSoft border border-warningBorder text-warningText px-4 py-3 rounded-xl space-y-1">
-          <p className="font-semibold">Não achamos esse CEP.</p>
-          <p>Confira os números — ou digite o endereço completo abaixo.</p>
-        </div>
-      )}
-
-      {cepState === 'offline' && (
-        <div className="text-sm bg-warningSoft border border-warningBorder text-warningText px-4 py-3 rounded-xl space-y-1">
-          <p className="font-semibold">A consulta de CEP está fora do ar.</p>
-          <p>Sem problema — digite o endereço completo abaixo.</p>
-        </div>
-      )}
-
-      <Input
-        label="Endereço completo"
-        placeholder="Digite aqui"
-        icon={Home}
-        value={form.address}
-        onChange={onEnderecoDigitado}
-        hint={
-          veioDoCep
-            ? 'Preenchido pelo CEP. Se editar aqui, o texto passa a ser seu.'
-            : 'Quanto mais completo, melhor o sistema encontra.'
-        }
-        error={errors.address}
-        required
-      />
-
-      {/* Número e complemento só aparecem depois do CEP porque é ele que dá
-        * sentido a eles: sem a rua preenchida, "123" sozinho não é endereço.
-        * Aqui o número é OBRIGATÓRIO — ver a validação do passo 2. */}
       {veioDoCep && (
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-3">
+        <>
+          <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-rest">
+            <MapPin size={22} className="shrink-0 text-primary" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-base font-bold text-text">
+                {form.cepPartes.logradouro}
+              </span>
+              <span className="block truncate text-sm text-textMuted">
+                {[form.cepPartes.bairro, form.cepPartes.localidade, form.cep].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={trocarRua}
+              className="tap -mr-1 min-h-12 shrink-0 px-2 text-base font-bold text-primary"
+            >
+              Trocar
+            </button>
+          </div>
+
+          {/* Número e complemento: UM POR LINHA (04/10/2026) — lado a lado,
+            * cada um com o seu Salvar, não cabia nem "Apto 12, bloco B". O
+            * número é OBRIGATÓRIO — ver a validação do passo 2. */}
+          <div className="space-y-3">
             <Input
+              id="numero-da-casa"
               label="Número"
-              placeholder={form.semNumero ? 'depois' : '123'}
+              placeholder={form.semNumero ? 'depois' : 'Digite aqui'}
               value={form.numero}
               onChange={setParteDoEndereco('numero')}
               inputMode="numeric"
@@ -882,7 +1097,7 @@ function Step2Home({ form, setForm, errors }) {
               disabled={form.semNumero}
               required={!form.semNumero}
             />
-            <Input
+            <Input falar="texto"
               label="Complemento (opcional)"
               placeholder="Digite aqui"
               value={form.complemento}
@@ -893,39 +1108,54 @@ function Step2Home({ form, setForm, errors }) {
             type="button"
             aria-pressed={form.semNumero}
             onClick={() =>
-              setForm((prev) => ({ ...prev, semNumero: !prev.semNumero, numero: '' }))
+              setForm((prev) => ({ ...prev, semNumero: !prev.semNumero, numero: '', lat: '', lng: '' }))
             }
-            className={`tap w-full rounded-xl border px-3 py-2.5 text-sm font-semibold ${
+            className={`tap flex min-h-12 w-full items-center justify-center gap-1.5 rounded-xl border px-3 text-base font-semibold ${
               form.semNumero
                 ? 'border-primary bg-primarySoft text-primary'
                 : 'border-border bg-card text-textMuted'
             }`}
           >
-            {form.semNumero ? '✓ ' : ''}Não sei o número agora
+            {form.semNumero && <Check size={18} />}
+            Não sei o número agora
           </button>
           {form.semNumero && (
-            <p className="px-1 text-xs text-textMuted">
+            <p className="px-1 text-sm text-textMuted">
               A família confirma o número quando entrar no app, e ele aparece
               aqui para você.
             </p>
           )}
-        </div>
+        </>
       )}
 
-      <Button
-        type="button"
-        variant="secondary"
-        icon={Search}
-        onClick={onSearch}
-        loading={searching}
-      >
-        Buscar endereço no mapa
-      </Button>
+      {searching && veioDoCep && !hasCoord && (
+        <p className="text-sm text-textMuted">Procurando a casa no mapa…</p>
+      )}
 
+      {/* O MAPA SÓ APARECE QUANDO HÁ PONTO: é para conferir, não para
+        * preencher. A pergunta é a que importa na rua — a perua encosta numa
+        * PORTA, e o pino no meio da quadra é o erro que ninguém percebe. */}
       {hasCoord && (
-        <div className="flex items-center gap-2 text-sm text-primary bg-primarySoft border border-primaryBorder px-4 py-3 rounded-xl">
-          <MapPin size={18} />
-          <span>Local confirmado!</span>
+        <div className="space-y-2">
+          <div className="h-44 overflow-hidden rounded-2xl border border-border">
+            <LiveMap home={{ lat: Number(form.lat), lng: Number(form.lng) }} />
+          </div>
+          <div className="rounded-2xl border border-primaryBorder bg-primarySoft px-4 py-3">
+            <p className="text-base font-bold text-text">O pino está na porta da casa?</p>
+            <p className="text-sm text-textBody">
+              {form.semNumero
+                ? 'Sem o número, ele fica no meio da rua. A família acerta quando entrar.'
+                : 'Se não estiver, ajuste no mapa.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="tap mt-1 -ml-1 inline-flex min-h-12 items-center gap-1.5 px-1 text-base font-bold text-primary"
+            >
+              <MapPin size={18} />
+              Ajustar no mapa
+            </button>
+          </div>
         </div>
       )}
 
@@ -938,18 +1168,15 @@ function Step2Home({ form, setForm, errors }) {
             Sem problema — dá pra marcar na mão agora ou seguir e ajustar
             depois. A criança fica salva do mesmo jeito.
           </p>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="tap -ml-1 inline-flex min-h-12 items-center gap-1.5 px-1 text-base font-bold text-primary"
+          >
+            <MapPin size={18} />
+            Marcar no mapa
+          </button>
         </div>
-      )}
-
-      {!hasCoord && (
-        <Button
-          type="button"
-          variant="secondary"
-          icon={MapPin}
-          onClick={() => setPickerOpen(true)}
-        >
-          Marcar no mapa
-        </Button>
       )}
 
       {pickerOpen && (
@@ -977,8 +1204,7 @@ function Step2Home({ form, setForm, errors }) {
  * cinco digitações — e um "E.M." no lugar de "EM" partia a turma em duas no
  * aviso de "não vai ter aula".
  */
-function Step3School({ form, setForm, errors }) {
-  const { escolas, loading } = useEscolas();
+function Step3School({ escolas, loading, form, setForm, errors }) {
   // A escola nova nasce num popup por cima do cadastro — ver NovaEscolaSheet.
   // Antes estes botões navegavam para a tela de escolas, e o formulário da
   // criança (estado local) se perdia inteiro no caminho.
@@ -1005,7 +1231,7 @@ function Step3School({ form, setForm, errors }) {
   return (
     <>
       <Heading
-        title="Escola e horários"
+        title={STEP_LABELS[2]}
         subtitle="Onde estuda e a que horas você vai pegar e entregar."
       />
 
@@ -1021,11 +1247,12 @@ function Step3School({ form, setForm, errors }) {
             <p className="text-sm font-semibold text-text">
               Você não tem escola cadastrada
             </p>
+            {/* O PROTAGONISTA DO PASSO quando não há escola (04/10/2026): largura
+              * toda e a sombra que o "Avançar" cede enquanto isso. */}
             <Button
-              size="md"
-              fullWidth={false}
               icon={School}
               onClick={() => setNovaEscola(true)}
+              className="shadow-focus"
             >
               Cadastrar escola
             </Button>
@@ -1049,18 +1276,18 @@ function Step3School({ form, setForm, errors }) {
                   }`}
                 >
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                       ativa ? 'bg-primary text-white' : 'bg-neutro text-textMuted'
                     }`}
                   >
                     <School size={17} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-text leading-tight">
+                    <p className="text-base font-semibold text-text leading-tight">
                       {e.nome}
                     </p>
                     {e.endereco && (
-                      <p className="text-xs text-textMuted truncate">
+                      <p className="text-sm text-textMuted truncate">
                         {e.endereco}
                       </p>
                     )}
@@ -1072,9 +1299,10 @@ function Step3School({ form, setForm, errors }) {
             <button
               type="button"
               onClick={() => setNovaEscola(true)}
-              className="tap px-1 py-3 text-sm font-semibold text-primary"
+              className="tap inline-flex min-h-12 items-center gap-1.5 px-1 text-base font-semibold text-primary"
             >
-              + Cadastrar outra escola
+              <Plus size={18} />
+              Cadastrar outra escola
             </button>
           </div>
         )}
@@ -1086,74 +1314,86 @@ function Step3School({ form, setForm, errors }) {
         onCriada={escolher}
       />
 
+      {/* A ORDEM DO PASSO (04/10/2026, modelo aprovado pelo dono): a escola,
+        * os dois horários lado a lado, e — com os dois preenchidos — o dia da
+        * criança desenhado como a tela da rota (casa → escola → casa). Turma e
+        * professora vêm por último: são o que ele diz no portão, e os dois são
+        * opcionais. */}
+      <div className="space-y-2">
+        <p className="text-base font-bold text-text">O horário que você vai cumprir</p>
+        <p className="text-sm text-textMuted">
+          É o que a família vê para esperar na hora certa. O horário da escola
+          é outra coisa e não entra aqui.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Pega em casa"
+            // DIGITADA, não no relógio do Android: "0640" vira "06:40".
+            type="text"
+            inputMode="numeric"
+            placeholder="Digite aqui"
+            maxLength={5}
+            semSalvar
+            inputClassName="text-center font-display text-2xl font-extrabold tabular-nums"
+            value={form.horaPega}
+            onChange={(e) => setForm((p) => ({ ...p, horaPega: mascaraHora(e.target.value) }))}
+            error={errors.horaPega}
+          />
+          <Input
+            label="Entrega em casa"
+            type="text"
+            inputMode="numeric"
+            placeholder="Digite aqui"
+            maxLength={5}
+            semSalvar
+            inputClassName="text-center font-display text-2xl font-extrabold tabular-nums"
+            value={form.horaEntrega}
+            onChange={(e) => setForm((p) => ({ ...p, horaEntrega: mascaraHora(e.target.value) }))}
+            error={errors.horaEntrega}
+          />
+        </div>
+        {!(normalizaHora(form.horaPega) && normalizaHora(form.horaEntrega)) && (
+          <p className="text-sm text-textMuted">
+            Pode preencher depois, mas até lá a criança fica com horário presumido.
+          </p>
+        )}
+      </div>
+
+      {normalizaHora(form.horaPega) && normalizaHora(form.horaEntrega) && (
+        <DiaDaCrianca
+          nome={form.name}
+          pega={normalizaHora(form.horaPega)}
+          entrega={normalizaHora(form.horaEntrega)}
+          casa={form.address}
+          escola={form.school}
+          escolaEndereco={form.schoolAddress}
+        />
+      )}
+
+      {escolhida?.geoPending && (
+        <p className="text-sm text-warningText bg-warningSoft border border-warningBorder rounded-xl px-3 py-2">
+          {escolhida.nome} está sem localização no mapa. Dá pra resolver
+          depois em Minha turma → Escolas.
+        </p>
+      )}
+
       {/* TURMA E PROFESSORA, OS DOIS OPCIONAIS (02/10/2026, pedido do dono).
         * É o que ele precisa para chamar a criança no portão ("a do 3º B, da
         * tia Cláudia"). A SALA saiu do cadastro: muda no meio do ano e ele não
         * entra na sala. A família corrige os dois na ficha do filho. */}
       <div className="grid grid-cols-1 gap-3">
-        <Input
+        <Input falar="texto"
           label="Turma (opcional)"
           placeholder="Digite aqui"
           value={form.turma}
           onChange={(e) => setForm((p) => ({ ...p, turma: e.target.value }))}
         />
-        <Input
-          label="Nome da professora (opcional)"
+        <Input falar="nome"
+          label="Professora (opcional)"
+          placeholder="Digite aqui"
           value={form.professora}
           onChange={(e) => setForm((p) => ({ ...p, professora: e.target.value }))}
         />
-      </div>
-
-      {/* Os dois horários que o pai vai ler na tela dele */}
-      <div className="pt-2 space-y-4">
-        <div className="bg-primarySoft border border-primaryBorder rounded-2xl p-3 text-xs text-primary leading-relaxed">
-          <b className="block text-sm mb-0.5">O horário que você vai cumprir</b>
-          É o que o pai vê pra ficar esperando na hora certa, e é por ele que
-          sua rota se organiza sozinha. O horário da escola é outra coisa e não
-          entra aqui.
-        </div>
-
-        <Input
-          label="Que horas você pega em casa?"
-          // DIGITADA, não no relógio do Android: "0640" vira "06:40".
-          type="text"
-          inputMode="numeric"
-          placeholder="Digite aqui"
-          maxLength={5}
-          icon={Clock}
-          value={form.horaPega}
-          onChange={(e) => setForm((p) => ({ ...p, horaPega: mascaraHora(e.target.value) }))}
-          error={errors.horaPega}
-          hint={
-            normalizaHora(form.horaPega)
-              ? `A família vê: “entra na perua às ${horaCurta(normalizaHora(form.horaPega))}”.`
-              : 'Pode preencher depois, mas até lá a criança fica com horário presumido.'
-          }
-        />
-
-        <Input
-          label="Que horas você entrega em casa?"
-          type="text"
-          inputMode="numeric"
-          placeholder="Digite aqui"
-          maxLength={5}
-          icon={Clock}
-          value={form.horaEntrega}
-          onChange={(e) => setForm((p) => ({ ...p, horaEntrega: mascaraHora(e.target.value) }))}
-          error={errors.horaEntrega}
-          hint={
-            normalizaHora(form.horaEntrega)
-              ? `A família vê: “chega em casa às ${horaCurta(normalizaHora(form.horaEntrega))}”.`
-              : undefined
-          }
-        />
-
-        {escolhida?.geoPending && (
-          <p className="text-xs text-warningText bg-warningSoft border border-warningBorder rounded-xl px-3 py-2">
-            {escolhida.nome} está sem localização no mapa. Dá pra resolver
-            depois em Crianças → Escolas.
-          </p>
-        )}
       </div>
     </>
   );
@@ -1161,19 +1401,29 @@ function Step3School({ form, setForm, errors }) {
 
 /* ─────────────── Passo 4: Responsável + Financeiro ─────────────── */
 
+/** Os dias de vencimento mais combinados; outro dia continua possível. */
+const DIAS_COMUNS = ['5', '10', '15', '20'];
+
 function Step4Parent({ form, setForm, setField, setPhone, errors }) {
   const [showSecondParent, setShowSecondParent] = useState(false);
+  // "Outro dia" abre o campo; um dia fora dos comuns já começa aberto.
+  const [outroDia, setOutroDia] = useState(() => !!form.dueDay && !DIAS_COMUNS.includes(form.dueDay));
+  const primeiro = String(form.name || '').trim().split(/\s+/)[0];
 
   return (
     <>
       <Heading
-        title="Responsável e mensalidade"
+        title={STEP_LABELS[3]}
         subtitle="Quem cuida e como é a cobrança."
       />
 
       <Card className="space-y-4">
-        <h3 className="text-sm font-bold text-text">Responsável principal</h3>
-        <Input
+        {/* TRÊS BLOCOS COM NOME (04/10/2026, modelo aprovado pelo dono): quem
+          * cuida, a mensalidade e o contrato. */}
+        <h3 className="text-sm font-bold uppercase tracking-wide text-textMuted">
+          {primeiro ? `Quem cuida de ${primeiro}` : 'Quem cuida'}
+        </h3>
+        <Input falar="nome"
           label="Nome"
           placeholder="Digite aqui"
           icon={User}
@@ -1188,8 +1438,8 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           * toda família. Quem informa é a própria família, ao entrar pelo
           * convite: o `redeemInvite` grava `linkedEmail` com o e-mail da
           * conta dela, e o contrato e a ficha leem esse. */}
-        <Input
-          label="Telefone"
+        <Input falar="telefone"
+          label="WhatsApp"
           placeholder="Digite aqui"
           icon={Phone}
           inputMode="tel"
@@ -1197,13 +1447,14 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           onChange={setPhone('parentPhone')}
           maxLength={15}
           error={errors.parentPhone}
+          hint="O convite vai para este número."
           required
         />
 
         <button
           type="button"
           onClick={() => setShowSecondParent((v) => !v)}
-          className="tap w-full flex items-center justify-between text-sm font-medium text-primary py-2"
+          className="tap w-full min-h-12 flex items-center justify-between text-base font-semibold text-primary"
         >
           <span>
             {showSecondParent
@@ -1215,13 +1466,13 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
 
         {showSecondParent && (
           <div className="space-y-3 pt-1 border-t border-neutro">
-            <Input
+            <Input falar="nome"
               label="Nome do segundo responsável"
               icon={User}
               value={form.parent2Name}
               onChange={setField('parent2Name')}
             />
-            <Input
+            <Input falar="telefone"
               label="Telefone do segundo responsável"
               icon={Phone}
               inputMode="tel"
@@ -1235,7 +1486,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
       </Card>
 
       <Card className="space-y-4">
-        <h3 className="text-sm font-bold text-text">Mensalidade</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wide text-textMuted">Mensalidade</h3>
         <CampoDeValor
           label="Valor da mensalidade"
           value={form.monthlyFee}
@@ -1262,31 +1513,70 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
               : 'Sem valor, esta criança não entra na cobrança do mês. Dá pra preencher depois na ficha dela.'
           }
         />
-        <Input
-          // TEXTO SÓ COM NÚMEROS, não `type="number"`: esse muda o valor
-          // sozinho com a roda do mouse (ou a rolagem) e aceita "e" e negativo
-          // — no teste, o 10 digitado virou 12 no contrato.
-          type="text"
-          inputMode="numeric"
-          min="1"
-          max="28"
-          label="Dia do vencimento"
-          placeholder="Digite aqui"
-          icon={Calendar}
-          value={form.dueDay}
-          maxLength={2}
-          onChange={(e) => setForm((p) => ({ ...p, dueDay: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
-          hint="Em que dia do mês a família paga (1 a 28)."
-          error={errors.dueDay}
-          required
-        />
+        <div data-erro={errors.dueDay ? true : undefined}>
+          <p id="rotulo-vencimento" className="mb-2 block text-sm font-semibold text-text">
+            Vence todo dia
+          </p>
+          <div className="grid grid-cols-5 gap-2" role="group" aria-labelledby="rotulo-vencimento">
+            {DIAS_COMUNS.map((d) => {
+              const ativo = !outroDia && form.dueDay === d;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={ativo}
+                  onClick={() => {
+                    setOutroDia(false);
+                    setForm((p) => ({ ...p, dueDay: d }));
+                  }}
+                  className={`tap h-12 rounded-xl border-2 text-base font-bold ${
+                    ativo ? 'border-primary bg-primarySoft text-primary' : 'border-border bg-card text-text'
+                  }`}
+                >
+                  {d}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              aria-pressed={outroDia}
+              onClick={() => setOutroDia(true)}
+              className={`tap h-12 rounded-xl border-2 text-sm font-bold ${
+                outroDia ? 'border-primary bg-primarySoft text-primary' : 'border-border bg-card text-text'
+              }`}
+            >
+              Outro
+            </button>
+          </div>
+        </div>
+        {outroDia && (
+          <Input
+            // TEXTO SÓ COM NÚMEROS, não `type="number"`: esse muda o valor
+            // sozinho com a roda do mouse (ou a rolagem) e aceita "e" e negativo
+            // — no teste, o 10 digitado virou 12 no contrato.
+            type="text"
+            inputMode="numeric"
+            min="1"
+            max="28"
+            label="Qual dia?"
+            placeholder="Digite aqui"
+            icon={Calendar}
+            value={form.dueDay}
+            maxLength={2}
+            onChange={(e) => setForm((p) => ({ ...p, dueDay: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
+            hint="De 1 a 28."
+            semSalvar
+            error={errors.dueDay}
+            required
+          />
+        )}
       </Card>
 
       {/* A VIGÊNCIA É DELE (02/10/2026). O contrato dizia sempre 01/01 a
         * 31/12 com 12 parcelas — a família que entrava em outubro assinava
         * doze parcelas de um ano com três meses. */}
-      <Card className="space-y-3">
-        <h3 className="text-sm font-bold text-text">Prazo do contrato</h3>
+      <Card className="space-y-3" data-erro={errors.vigencia ? true : undefined}>
+        <h3 className="text-sm font-bold uppercase tracking-wide text-textMuted">Contrato</h3>
         <CampoVigencia
           inicio={form.vigenciaInicio}
           fim={form.vigenciaFim}
@@ -1319,9 +1609,11 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
         * primeiro acesso. Enquanto não existir, o app não deve sugerir o
         * assunto. */}
       <Card>
-        <label className="block text-sm font-bold text-text mb-2">
-          Observações (opcional)
+        <label className="block text-base font-bold text-text mb-2">
+          Observações da parada (opcional)
         </label>
+        {/* Falar em vez de escrever (04/10/2026): o ditado se soma ao texto. */}
+        <BotaoDeFalar valor={form.notes} onChange={(v) => setField('notes')({ target: { value: v } })} />
         <textarea
           value={form.notes}
           onChange={setField('notes')}
@@ -1329,13 +1621,55 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           placeholder="Digite aqui"
           className="w-full rounded-xl border border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-textMuted"
         />
-        <p className="mt-2 text-xs leading-relaxed text-textMuted">
+        <p className="mt-2 text-sm leading-relaxed text-textMuted">
           Só o que ajuda na rota. Informação de saúde, remédio ou alergia é
           assunto para você combinar direto com a família — este campo não é o
           lugar de guardar isso.
         </p>
       </Card>
     </>
+  );
+}
+
+/**
+ * O DIA DA CRIANÇA — casa, escola, casa, com as horas combinadas. O mesmo
+ * desenho da linha do tempo da rota (a escola é o marco violeta), para ele
+ * conferir o que acabou de digitar no formato em que vai ver todo dia. Só
+ * aparece com os dois horários: meia linha do tempo não confere nada.
+ */
+function DiaDaCrianca({ nome, pega, entrega, casa, escola, escolaEndereco }) {
+  const primeiro = String(nome || '').trim().split(/\s+/)[0] || 'da criança';
+  const paradas = [
+    { hora: horaCurta(pega), titulo: 'Pega em casa', detalhe: casa, escola: false },
+    { hora: null, titulo: escola || 'A escola', detalhe: escolaEndereco || (escola ? '' : 'Escolha a escola acima'), escola: true },
+    { hora: horaCurta(entrega), titulo: 'Entrega em casa', detalhe: `A família lê: chega às ${horaCurta(entrega)}`, escola: false },
+  ];
+  return (
+    <div className="rounded-2xl bg-card px-4 py-3 shadow-rest">
+      <p className="mb-1 text-sm font-bold text-textMuted">O dia {primeiro === 'da criança' ? primeiro : `de ${primeiro}`}</p>
+      <ol>
+        {paradas.map((p, i) => (
+          <li key={i} className="grid grid-cols-[3.5rem_1.25rem_1fr] items-center gap-2 py-2">
+            <span className={`text-right tabular-nums ${p.hora ? 'font-mono text-base text-text' : 'text-sm text-textMuted'}`}>
+              {p.hora || 'escola'}
+            </span>
+            <span className="relative flex h-full items-center justify-center">
+              {i < paradas.length - 1 && (
+                <span aria-hidden className="absolute left-1/2 top-1/2 h-[calc(100%+1rem)] w-0.5 -translate-x-1/2 bg-borderStrong" />
+              )}
+              <span
+                aria-hidden
+                className={`relative h-3.5 w-3.5 ${p.escola ? 'rotate-45 rounded-sm bg-escola' : 'rounded-full bg-primary'}`}
+              />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-base font-bold text-text">{p.titulo}</span>
+              {p.detalhe && <span className="block truncate text-sm text-textMuted">{p.detalhe}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -1346,7 +1680,7 @@ function Heading({ title, subtitle }) {
     <div className="mb-1">
       <h1 className="text-2xl font-bold text-text leading-tight">{title}</h1>
       {subtitle && (
-        <p className="text-sm text-textMuted mt-1">{subtitle}</p>
+        <p className="text-base text-textMuted mt-1">{subtitle}</p>
       )}
     </div>
   );
@@ -1356,8 +1690,9 @@ function SelectorButton({ label, icon: Icon, active, onClick }) {
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
-      className={`tap h-14 rounded-2xl text-sm font-semibold border-2 flex flex-col items-center justify-center gap-0.5 ${
+      className={`tap h-14 rounded-2xl text-base font-semibold border-2 flex flex-col items-center justify-center gap-0.5 ${
         active
           ? 'bg-primary text-white border-primary'
           : 'bg-card text-text border-border'
@@ -1397,9 +1732,14 @@ function InviteCodeSuccess({
   gender,
   parentName,
   parentPhone,
+  onEnviado,
   onOutra,
   onDone,
+  onVerContratos,
 }) {
+  // Mandou o convite: o botão vira "Enviado ✓" (dentro do `InviteShare`) e o
+  // destaque passa para "Cadastrar outra criança" — o próximo gesto.
+  const [enviado, setEnviado] = useState(false);
   const primeiro = String(childName || '').trim().split(/\s+/)[0] || 'A criança';
   const responsavel = String(parentName || '').trim().split(/\s+/)[0];
   // O IRMÃO QUE ENTROU SOZINHO. Se o WhatsApp é de quem já usa o app, o
@@ -1409,10 +1749,17 @@ function InviteCodeSuccess({
   // troca o botão pela notícia.
   const { child: aoVivo } = useChild(childId);
   const jaEntrou = aoVivo?.vinculadoPor === 'irmao' && !!aoVivo?.parentUid;
+  // O CONVITE FICA MARCADO QUANDO ELE VOLTA (04/10/2026, pedido do dono): o
+  // toque grava `conviteEnviadoEm` na criança, e a escuta ao vivo traz o
+  // check mesmo que a tela tenha sido recarregada na volta do WhatsApp.
+  const conviteFeito = enviado || !!aoVivo?.conviteEnviadoEm;
+  const contratoAssinado = !!aoVivo?.contratoVigente;
+  const mandarConvite = () =>
+    document.querySelector('[data-convite-whatsapp]')?.click();
 
   return (
-    <div className="min-h-screen flex flex-col px-6 pt-10 pb-6 gap-5">
-      <div className="flex-1 flex flex-col items-center justify-center text-center">
+    <div className="min-h-screen flex flex-col px-6 pt-8 pb-6 gap-5">
+      <div className="flex flex-col items-center text-center">
         {/* A criança feliz. Ela CHEGA uma vez e para: a respiração e o joinha
           * balançando eram laços infinitos, e no app nada se mexe sozinho além
           * do "ao vivo" (design system, Movimento). Com movimento reduzido,
@@ -1426,21 +1773,65 @@ function InviteCodeSuccess({
             />
             <span
               aria-hidden
-              className="absolute -right-2 bottom-3 flex h-14 w-14 items-center justify-center rounded-full bg-perua text-night shadow-float"
+              className="absolute -right-2 bottom-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-float"
             >
               <ThumbsUp size={28} />
             </span>
           </div>
         </div>
-        <h3 className="mt-6 text-2xl font-extrabold text-text">
-          {primeiro} entrou na sua turma
+        <h3 className="mt-5 text-2xl font-extrabold text-text">
+          {primeiro} está na sua turma
         </h3>
-        <p className="mt-1.5 text-sm text-textMuted">
-          {jaEntrou
-            ? `${responsavel || 'O responsável'} já usa o app: ${primeiro} já aparece lá.`
-            : `Mande o convite para ${responsavel || 'o responsável'} entrar no app.`}
-        </p>
       </div>
+
+      {/* O QUE JÁ FOI E O QUE FALTA (04/10/2026, modelo aprovado pelo dono).
+        * Três linhas, e cada pendência tem a ação na própria linha. O contrato
+        * leva à tela de contratos — é lá que ele vai acompanhar quem assinou,
+        * quem entrou e quem saiu, e a primeira visita é melhor agora. */}
+      <ul className="divide-y divide-border rounded-2xl bg-card shadow-rest">
+        <li className="flex min-h-14 items-center gap-3 px-4">
+          <Check size={22} className="shrink-0 text-accentText" aria-hidden />
+          <span className="flex-1 text-base text-text">Cadastro feito</span>
+        </li>
+        <li className="flex min-h-14 items-center gap-3 px-4">
+          {jaEntrou || conviteFeito ? (
+            <Check size={22} className="shrink-0 text-accentText" aria-hidden />
+          ) : (
+            <Circle size={22} className="shrink-0 text-textMuted" aria-hidden />
+          )}
+          <span className="flex-1 text-base text-text">
+            {jaEntrou
+              ? `${responsavel || 'A família'} já entrou no app`
+              : conviteFeito
+              ? 'Convite enviado'
+              : 'Convite para a família'}
+          </span>
+          {!jaEntrou && !conviteFeito && (
+            <button
+              type="button"
+              onClick={mandarConvite}
+              className="tap -mr-2 min-h-12 px-2 text-base font-bold text-primary"
+            >
+              Mandar
+            </button>
+          )}
+        </li>
+        <li className="flex min-h-14 items-center gap-3 px-4">
+          {contratoAssinado ? (
+            <Check size={22} className="shrink-0 text-accentText" aria-hidden />
+          ) : (
+            <Circle size={22} className="shrink-0 text-textMuted" aria-hidden />
+          )}
+          <span className="flex-1 text-base text-text">Contrato assinado</span>
+          <button
+            type="button"
+            onClick={onVerContratos}
+            className="tap -mr-2 min-h-12 px-2 text-base font-bold text-primary"
+          >
+            Ver
+          </button>
+        </li>
+      </ul>
 
       <div className="space-y-2">
         {!jaEntrou && (
@@ -1451,6 +1842,10 @@ function InviteCodeSuccess({
           gender={gender}
           parentPhone={parentPhone}
           recolhido
+          onEnviado={() => {
+            setEnviado(true);
+            onEnviado?.();
+          }}
           // O NOME DE QUEM RECEBE, e não "o responsável de Pedro": é mais curto
           // (cabia em duas linhas e cortava o ícone) e é a pessoa que ele vai
           // ver na conversa do WhatsApp.
@@ -1469,13 +1864,21 @@ function InviteCodeSuccess({
           * é o próprio `InviteShare` — no lugar do botão, no instante em que
           * eles fazem falta. Ver `DadosDoContratoForm`. */}
 
-        <Button variant="secondary" icon={UserPlus} onClick={onOutra}>
+        {/* O DESTAQUE ANDA (04/10/2026): enquanto o convite não saiu, o
+          * protagonista é ele; depois de mandado (ou quando a família já
+          * entrou sozinha), é a próxima criança. Um botão cheio por vez. */}
+        <Button
+          variant={enviado || jaEntrou ? 'primary' : 'secondary'}
+          icon={UserPlus}
+          onClick={onOutra}
+          className={enviado || jaEntrou ? 'shadow-focus' : ''}
+        >
           Cadastrar outra criança
         </Button>
         <button
           type="button"
           onClick={onDone}
-          className="tap w-full py-2 text-sm font-semibold text-textMuted hover:text-text"
+          className="tap w-full min-h-12 py-2 text-base font-semibold text-textMuted hover:text-text"
         >
           Ver minha turma
         </button>
@@ -1529,8 +1932,8 @@ function AnexarContratoAnterior({ childId }) {
 
   if (pronto) {
     return (
-      <p className="flex items-center justify-center gap-1.5 text-xs text-primary">
-        <Check size={14} />
+      <p className="flex items-center justify-center gap-1.5 text-sm text-primary">
+        <Check size={16} />
         Contrato anterior guardado na ficha
       </p>
     );
@@ -1538,17 +1941,17 @@ function AnexarContratoAnterior({ childId }) {
 
   return (
     <div className="rounded-2xl border border-dashed border-borderStrong p-3.5">
-      <p className="text-xs font-semibold text-text">
+      <p className="text-base font-semibold text-text">
         Já tem contrato com essa família?
       </p>
-      <p className="mt-0.5 text-xs leading-relaxed text-textMuted">
+      <p className="mt-0.5 text-sm leading-relaxed text-textMuted">
         Anexe o papel ou o PDF que vocês já assinaram. Ele fica guardado na
         ficha como registro do que foi combinado antes —{' '}
         <strong>o contrato que vale continua sendo o do app</strong>, com os
         valores que você acabou de preencher.
       </p>
-      <label className="tap mt-2.5 flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-borderStrong text-xs font-bold text-text">
-        <Paperclip size={14} />
+      <label className="tap mt-2.5 flex h-12 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-borderStrong text-base font-bold text-text">
+        <Paperclip size={18} />
         {enviando ? 'Enviando…' : 'Anexar ou fotografar'}
         <input
           type="file"

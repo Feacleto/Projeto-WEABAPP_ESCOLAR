@@ -18,7 +18,12 @@
 
 const CAMPOS =
   'input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]):not([disabled]):not([readonly]),' +
-  'textarea:not([disabled]):not([readonly]),select:not([disabled])';
+  'textarea:not([disabled]):not([readonly]),select:not([disabled]),' +
+  // AS ESCOLHAS TAMBÉM SÃO PARADA (04/10/2026). Homem/mulher, menino/menina
+  // são botões, não campos — e o avanço os pulava: o Salvar do nome enviava o
+  // formulário e o motorista recebia "Escolha uma opção." sem ter errado nada.
+  // O grupo marcado com `data-campo-escolha` (e `tabIndex={-1}`) recebe o foco.
+  '[data-campo-escolha]';
 
 function visivel(el) {
   return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
@@ -34,9 +39,14 @@ export function avancarDoCampo(campo) {
     proximo.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
     return;
   }
+  // ⚠️ DENTRO DE UMA FOLHA, O AVANÇO É DA FOLHA (04/10/2026). Procurar o
+  // `data-avancar` na página inteira fazia o último campo da folha "Nova
+  // escola" apertar o "Avançar" do cadastro da criança POR TRÁS dela: o
+  // cadastro pulava de passo, a folha fechava e a escola não era gravada.
+  const dentroDeFolha = !!campo.closest('[role="dialog"]');
   const botao =
     area.querySelector('[data-avancar]:not([disabled])') ||
-    document.querySelector('[data-avancar]:not([disabled])');
+    (dentroDeFolha ? null : document.querySelector('[data-avancar]:not([disabled])'));
   if (botao) {
     campo.blur();
     botao.click();

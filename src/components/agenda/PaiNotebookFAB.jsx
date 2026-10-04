@@ -51,7 +51,12 @@ const MONTH_NAMES = [
  *   - 'pages'  → visualização caderno do mês atual ou de um mês selecionado
  *   - 'index'  → lista cronológica de meses pra navegar pro passado
  */
-export default function PaiNotebookFAB() {
+export default function PaiNotebookFAB({
+  // A LINHA SOBE O TOM quando o motorista avisou um problema com a perua: o
+  // painel da perua manda "veja o recado dele no caderno", e a porta precisa
+  // ser achada sem procurar.
+  destaque = false,
+}) {
   const [abertoNoToque, setAbertoNoToque] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -105,17 +110,21 @@ export default function PaiNotebookFAB() {
       <button
         type="button"
         onClick={() => setAbertoNoToque(true)}
-        className="tap flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left"
+        className={`tap flex min-h-16 w-full items-center gap-3 rounded-2xl border bg-card px-4 py-3 text-left ${
+          destaque ? 'border-2 border-dangerBorder' : 'border-border'
+        }`}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warningSoft text-warningText">
-          <Notebook size={17} />
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warningSoft text-warningText">
+          <Notebook size={20} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-text">
-            Caderno de recados
+          <span className="block text-base font-semibold text-text">
+            {destaque ? 'Ver o recado do motorista' : 'Caderno de recados'}
           </span>
-          <span className="block text-xs text-textMuted">
-            O que o motorista mandou este mês
+          <span className="block text-sm text-textMuted">
+            {destaque
+              ? 'Ele avisou um problema com a perua'
+              : 'O que o motorista mandou este mês'}
           </span>
         </span>
         <ChevronRight size={17} className="shrink-0 text-textMuted" />
@@ -210,7 +219,7 @@ function NotebookView({ open, onClose }) {
               type="button"
               onClick={() => setView('index')}
               aria-label="Ver índice"
-              className="tap w-10 h-10 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
+              className="tap w-12 h-12 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
             >
               <CalendarDays size={18} />
             </button>
@@ -229,7 +238,7 @@ function NotebookView({ open, onClose }) {
               type="button"
               onClick={() => setView('pages')}
               aria-label="Voltar"
-              className="tap w-10 h-10 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
+              className="tap w-12 h-12 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
             >
               <ArrowLeft size={18} />
             </button>
@@ -247,7 +256,7 @@ function NotebookView({ open, onClose }) {
           type="button"
           onClick={onClose}
           aria-label="Fechar agenda"
-          className="tap w-10 h-10 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
+          className="tap w-12 h-12 rounded-full bg-white text-warningText flex items-center justify-center shadow-sm"
         >
           <X size={18} />
         </button>
@@ -285,7 +294,7 @@ function NotebookView({ open, onClose }) {
           >
             <ChevronLeft size={22} />
           </button>
-          <p className="flex-1 text-center text-xs text-warningText font-semibold tabular-nums">
+          <p className="flex-1 text-center text-sm text-warningText font-semibold tabular-nums">
             Folha {page + 1} de {currentMonthEntries.length}
           </p>
           <button
@@ -421,7 +430,7 @@ function Entry({ entry }) {
       )}
 
       <div className="pt-2">
-        <p className="text-[15px] text-warningText leading-relaxed whitespace-pre-wrap font-serif">
+        <p className="text-base text-warningText leading-relaxed whitespace-pre-wrap font-serif">
           {entry.message || (
             <em className="text-warningText">(sem mensagem extra)</em>
           )}

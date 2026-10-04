@@ -109,8 +109,9 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         aria-label="Meu perfil"
         aria-haspopup="menu"
         aria-expanded={open}
-        // A área de toque tem 44×44 mesmo com o avatar pequeno dentro.
-        className={`tap flex h-11 w-11 items-center justify-center rounded-full ${
+        // A área de toque tem 48×48 mesmo com o avatar pequeno dentro — o
+        // piso de toque do app (era 44).
+        className={`tap flex h-12 w-12 items-center justify-center rounded-full ${
           open || active ? 'ring-2 ring-primary' : ''
         }`}
       >
@@ -143,10 +144,10 @@ export default function ProfileMenu({ role, basePath, active = false }) {
                 size="md"
               />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-text">
+                <span className="block truncate text-base font-bold text-text">
                   {profile?.name || 'Minha conta'}
                 </span>
-                <span className="block truncate text-xs text-textMuted">
+                <span className="block truncate text-sm text-textMuted">
                   {user?.email || (role === 'admin' ? 'Motorista' : 'Responsável')}
                 </span>
               </span>
@@ -158,7 +159,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
               type="button"
               role="menuitem"
               onClick={() => go(() => navigate(`${basePath}/profile`))}
-              className="tap mt-3 flex h-11 w-full items-center justify-center gap-1 rounded-xl bg-primary text-sm font-bold text-white"
+              className="tap mt-3 flex h-12 w-full items-center justify-center gap-1 rounded-xl bg-primary text-base font-bold text-white"
             >
               Ver meu perfil
               <ChevronRight size={16} />
@@ -170,7 +171,9 @@ export default function ProfileMenu({ role, basePath, active = false }) {
             * ⚠️ O NOME É "MEU PLANO" (03/10/2026, decisão do dono), e não
             * "Minha associação", "Minha assinatura" nem "taxa": é como ele fala
             * do plano do celular — neutro, sem cara de cobrança. Embaixo vai só
-            * o ESTADO, em cinza; valor em reais só dentro da tela.
+            * o ESTADO, em cinza; valor em reais só dentro da tela. E a tela de
+            * destino tem o MESMO título ("Meu plano"); ela se chamava "Taxa de
+            * associação", e quem toca num nome e cai noutro acha que errou.
             *
             * A tela da taxa tinha uma porta só: o aviso de cobrança em atraso.
             * Quem está em dia não tinha como abrir a própria fatura, ver o
@@ -251,15 +254,15 @@ function MenuItem({ icon: Icon, label, detalhe, onClick, danger = false }) {
       type="button"
       role="menuitem"
       onClick={onClick}
-      className={`tap flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-semibold ${
+      className={`tap flex min-h-12 w-full items-center gap-3 px-3 py-3 text-left text-base font-semibold ${
         danger ? 'text-dangerText' : 'text-text'
       }`}
     >
-      <Icon size={17} className={danger ? 'text-danger' : 'text-textMuted'} />
+      <Icon size={20} aria-hidden="true" className={danger ? 'text-danger' : 'text-textMuted'} />
       <span className="min-w-0 flex-1">
         <span className="block truncate">{label}</span>
         {detalhe && (
-          <span className="block truncate text-xs font-normal text-textMuted">{detalhe}</span>
+          <span className="block truncate text-sm font-normal text-textMuted">{detalhe}</span>
         )}
       </span>
     </button>

@@ -23,8 +23,8 @@ export default function StatusBadge({ status, size = 'md' }) {
   const sizing =
     size === 'lg'
       ? 'px-3 py-1.5 text-sm gap-1.5'
-      : 'px-2.5 py-1 text-[13px] gap-1';
-  const iconSize = size === 'lg' ? 16 : 13;
+      : 'px-2.5 py-1 text-sm gap-1';
+  const iconSize = size === 'lg' ? 16 : 14;
 
   return (
     <span

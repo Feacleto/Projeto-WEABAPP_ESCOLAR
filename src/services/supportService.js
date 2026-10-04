@@ -12,7 +12,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { notifyChamadoRespondido } from './notificationsService';
-import { APP_VERSION } from '../version';
+// A versão COM o commit ("1.12 · commit 391 (abc1234)"): o suporte lê o
+// número que a pessoa vê e o código exato que ela tem (04/10/2026).
+import { VERSAO_PARA_SUPORTE } from '../version';
 
 /**
  * Chamados de suporte abertos pelos usuários. Cada chamado vai pra
@@ -121,7 +123,7 @@ export async function openSupportTicket({ uid, role, category, description }) {
   await addDoc(collection(db, COLLECTION), {
     uid,
     role: role || 'parent',
-    version: APP_VERSION,
+    version: VERSAO_PARA_SUPORTE,
     category,
     description: String(description || '').trim().slice(0, 2000),
     deviceInfo: getDeviceInfo(),

@@ -127,6 +127,9 @@ function makeConferirSenhaDoFinanceiro(db) {
     { ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO },
     async (request) => {
       const uid = await exigirMotorista(db, request);
+      // O "acordar" da tela trancada (04/10/2026): só liga a function, não
+      // confere nada e não conta tentativa. Ver aquecerSenhaDoFinanceiro.
+      if (request.data?.aquecer === true) return { aquecida: true };
       const pares = request.data?.pares;
       if (!paresValidos(pares)) {
         throw new HttpsError('invalid-argument', 'Toque os quatro números da senha.');

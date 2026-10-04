@@ -17,10 +17,9 @@ import {
 import {
   paymentLabel,
   paymentTone,
-  parentClaimedLabel,
-  parentClaimedTone,
 } from '../../dominio/cobranca/paymentVocabulary';
 import { foiPagoAtrasado } from '../../services/paymentsService';
+import { botoesDaMensalidade } from '../../dominio/cobranca/caixaDoMes.js';
 
 // A COR fica aqui (em estadoDaMensalidade); o TEXTO vem de
 // dominio/cobranca/paymentVocabulary, que sabe falar pro papel de quem está
@@ -169,22 +168,15 @@ export default function PaymentRow({
   // chega aqui como prop porque quem carrega é a tela DELE.
   alertaDeDuplicata = null,
 }) {
-  // Mês pago E comprovado, na tela do PAI, não é pendência dele — é
-  // pendência do motorista. Mostrar âmbar ali, no meio de meses verdes,
-  // faz parecer que o pagamento não valeu. Ele lê "Pago"; o tio continua
-  // lendo "conferir".
-  const parentResolved =
-    role === 'parent' && displayStatus === 'claimed' && !!payment.receiptURL;
+  // `claimed` é âmbar para a família com ou sem comprovante: "Aguardando o
+  // motorista confirmar". Verde só depois da baixa — ver o fim de
+  // dominio/cobranca/paymentVocabulary.js.
 
   // Entrou depois do vencimento? Só o tio vê isso — ver paymentVocabulary.
   const pagoAtrasado = foiPagoAtrasado(payment);
 
-  const tom = parentResolved
-    ? parentClaimedTone(true)
-    : paymentTone(displayStatus, role, { pagoAtrasado });
-  const vocabulario = parentResolved
-    ? parentClaimedLabel(true)
-    : paymentLabel(displayStatus, role, { pagoAtrasado });
+  const tom = paymentTone(displayStatus, role, { pagoAtrasado });
+  const vocabulario = paymentLabel(displayStatus, role, { pagoAtrasado });
   // As palavras dos quatro estados moram no vocabulário (paymentVocabulary),
   // inclusive "Conferir" e "Pendente" do lado do motorista.
   const label = vocabulario || '';
@@ -236,14 +228,14 @@ export default function PaymentRow({
           * ⚠️ A cor fica na TAG, nunca no número — número vermelho se lê
           * como dívida mesmo quando é só o valor da mensalidade. */}
         <div className="shrink-0 text-right">
-          <p className="whitespace-nowrap font-bold tabular-nums text-text">
+          <p className="whitespace-nowrap text-lg font-bold tabular-nums text-text">
             {formatCurrency(payment.amount)}
           </p>
           {label && (
             <span
-              className={`mt-1 inline-flex max-w-[11rem] items-center gap-1 rounded-full px-2 py-0.5 text-left text-xs font-semibold leading-tight ${estilo.chip}`}
+              className={`mt-1 inline-flex max-w-[11rem] items-center gap-1 rounded-full px-2.5 py-1 text-left text-sm font-semibold leading-tight ${estilo.chip}`}
             >
-              {ChipIcon && <ChipIcon size={12} />}
+              {ChipIcon && <ChipIcon size={14} />}
               {label}
             </span>
           )}
@@ -266,8 +258,8 @@ export default function PaymentRow({
             * pega o print errado. Uma heurística que acusa sozinha erra e
             * estraga uma relação que precisa durar anos. */}
           {role === 'admin' && alertaDeDuplicata && (
-            <p className="inline-flex items-start gap-1.5 rounded-lg border border-warningBorder bg-warningSoft px-2 py-1.5 text-xs font-semibold text-warningText">
-              <TriangleAlert size={12} className="mt-0.5 shrink-0" />
+            <p className="inline-flex items-start gap-1.5 rounded-lg border border-warningBorder bg-warningSoft px-2.5 py-2 text-sm font-semibold text-warningText">
+              <TriangleAlert size={16} className="mt-0.5 shrink-0" />
               <span>
                 Comprovante igual ao de{' '}
                 {alertaDeDuplicata.month
@@ -287,9 +279,9 @@ export default function PaymentRow({
                 href={payment.receiptURL}
                 target="_blank"
                 rel="noreferrer"
-                className="tap inline-flex h-10 items-center gap-1.5 rounded-full px-1 text-sm font-semibold text-primary underline"
+                className="tap inline-flex h-12 items-center gap-1.5 rounded-full px-2 text-base font-semibold text-primary underline"
               >
-                <Paperclip size={14} />
+                <Paperclip size={18} />
                 Ver comprovante
               </a>
             ) : (
@@ -300,23 +292,32 @@ export default function PaymentRow({
                 <button
                   type="button"
                   onClick={onAttachReceipt}
-                  className="tap inline-flex h-10 items-center gap-1.5 rounded-full px-1 text-sm font-semibold text-textMuted underline"
+                  className="tap inline-flex h-12 items-center gap-1.5 rounded-full px-2 text-base font-semibold text-textMuted underline"
                 >
-                  <Paperclip size={14} />
+                  <Paperclip size={18} />
                   Anexar comprovante
                 </button>
               )
             )}
 
             {/* Cobrar sem sair do app. Só pra quem está devendo — em 'pago' ou
-              * "aguardando confirmação" cobrar seria constrangedor e errado. */}
+              * "aguardando confirmação" cobrar seria constrangedor e errado.
+              *
+              * ⚠️ NA ATRASADA ELE É O VERDE CHEIO DA LINHA (04/10/2026, item
+              * 14): o trabalho daquela linha é cobrar, e o "Dar baixa" ao lado
+              * passou a contorno. Na pendente continua suave — ainda não
+              * venceu. Quem decide é `botoesDaMensalidade` (caixaDoMes.js). */}
             {podeCobrar && (
               <button
                 type="button"
                 onClick={onCharge}
-                className="tap inline-flex h-10 items-center gap-1.5 rounded-full bg-primaryChip px-3.5 text-sm font-semibold text-accentText"
+                className={`tap inline-flex h-12 items-center gap-1.5 rounded-full px-4 text-base ${
+                  botoesDaMensalidade(displayStatus).cobrar === 'cheio'
+                    ? 'bg-primary font-bold text-white'
+                    : 'bg-primaryChip font-semibold text-accentText'
+                }`}
               >
-                <Send size={14} />
+                <Send size={18} />
                 {displayStatus === 'overdue' ? 'Cobrar no WhatsApp' : 'Lembrar no WhatsApp'}
               </button>
             )}

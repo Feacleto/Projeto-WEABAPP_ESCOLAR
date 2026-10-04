@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Printer, ShieldCheck } from 'lucide-react';
+import { Check, Printer, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../../components/common/Card';
+import Header from '../../components/layout/Header';
 import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
@@ -32,8 +32,28 @@ import {
  * quem transporta criança por causa de papel é desproporcional — a mesma
  * razão pela qual vencimento de vigência também não suspende ninguém.
  */
+/**
+ * O CABEÇALHO É O `Header` DE TODA TELA INTERNA, mesmo fora do `TioLayout`
+ * (esta rota fica fora do `GuardaDaConta`: quem está bloqueado contrata para
+ * desbloquear). O "Voltar" próprio, cinza e pequeno, era um dos quatro estilos
+ * de voltar do app. O `Header` consome a história quando ela existe e cai em
+ * "Meu plano" quando não existe — a área a que este contrato pertence. Sem
+ * sino e sem rosto: a escuta do sino mora no `TioLayout`, e fora dele o sino
+ * diria "nenhum aviso" a quem tem.
+ */
+function Cabecalho() {
+  return (
+    <Header
+      title="Contrato com a plataforma"
+      showBack
+      backLabel="Meu plano"
+      backTo="/tio/taxa"
+      showGlobal={false}
+    />
+  );
+}
+
 export default function TioContratoAssociacao() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [contrato, setContrato] = useState(undefined); // undefined = carregando
   const [nome, setNome] = useState('');
@@ -75,51 +95,24 @@ export default function TioContratoAssociacao() {
 
   if (contrato === undefined) {
     return (
-      <div className="min-h-screen px-5 pt-5">
-        <Skeleton className="h-8 w-40 rounded-lg" />
-        <Skeleton className="mt-4 h-96 rounded-2xl" />
+      <div className="min-h-screen bg-bg">
+        <Cabecalho />
+        <div className="px-5 pt-5">
+          <Skeleton className="h-6 w-56 rounded-lg" />
+          <Skeleton className="mt-4 h-96 rounded-2xl" />
+        </div>
       </div>
     );
   }
 
-  // Ver o aviso no botão de Voltar, abaixo.
-  const voltar = () => {
-    if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/tio', { replace: true });
-  };
-
   return (
-    <div className="min-h-screen pb-10">
-      <header className="sticky top-0 z-20 border-b border-border bg-bg px-5 pb-3 pt-4 print:hidden">
-        {/* ⚠️ DESTINO NOMEADO NA FALTA DE HISTÓRIA, NUNCA `navigate(-1)` SOLTO.
-          *
-          * Estas três telas ficam FORA do `TioLayout` (têm que ficar: dentro do
-          * `GuardaDaConta` o botão "Ver planos" navegava e a tela não mudava),
-          * então não passam pelo `Header`, que é quem sabe checar histórico.
-          *
-          * Com `navigate(-1)` puro, quem chega aqui pelo aviso de cobrança, por
-          * um link, ou recarregando a página sai DO APLICATIVO ao tocar em
-          * Voltar — e sai justamente de uma tela de pagamento, que é a última
-          * de onde alguém deveria ser expulso.
-          *
-          * `history.state.idx > 0` é o mesmo teste que o `Header` usa: consome
-          * história quando ela existe (não empilha uma entrada nova, que faria
-          * o botão físico do Android voltar para cá) e cai no destino quando
-          * não existe. */}
-        <button
-          type="button"
-          onClick={voltar}
-          className="tap -ml-1 mb-2 inline-flex items-center gap-1 p-1 text-sm text-textMuted"
-        >
-          <ArrowLeft size={18} /> Voltar
-        </button>
-        <h1 className="text-xl font-bold text-text">Contrato com a plataforma</h1>
-        <p className="text-sm text-textMuted">
+    <div className="min-h-screen bg-bg pb-10">
+      <Cabecalho />
+
+      <div className="mx-auto max-w-lg px-5 pt-4">
+        <p className="mb-3 text-base leading-relaxed text-textMuted print:hidden">
           O que foi combinado entre você e o Alô Buzinou.
         </p>
-      </header>
-
-      <div className="px-5 pt-4">
         {!contrato ? (
           <EmptyState
             icon={ShieldCheck}
@@ -136,18 +129,18 @@ export default function TioContratoAssociacao() {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="tap inline-flex items-center gap-1.5 text-sm font-semibold text-textMuted"
+                className="tap inline-flex min-h-12 items-center gap-2 px-1 text-base font-semibold text-primary"
               >
-                <Printer size={15} /> Salvar em PDF
+                <Printer size={18} aria-hidden="true" /> Salvar em PDF
               </button>
             </div>
 
             {!contrato.aceitoEm && (
               <Card className="mt-4 print:hidden">
-                <p className="text-sm font-bold text-text">
+                <p className="text-base font-bold text-text">
                   Para aceitar, escreva seu nome
                 </p>
-                <p className="mt-1 text-xs leading-relaxed text-textMuted">
+                <p className="mt-1 text-sm leading-relaxed text-textMuted">
                   Registramos a data, o aparelho e uma verificação do texto
                   acima — é o que prova, depois, que o combinado foi este.
                 </p>
@@ -156,15 +149,17 @@ export default function TioContratoAssociacao() {
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Digite aqui"
                   autoComplete="name"
-                  className="mt-3 w-full rounded-xl border border-borderStrong bg-surface px-3 py-2.5 text-[15px] text-text"
+                  aria-label="Seu nome completo"
+                  className="mt-3 h-12 w-full rounded-xl border border-borderStrong bg-surface px-3 text-base text-text"
                 />
+                {/* A AÇÃO DA TELA, e por isso cheia: era `secondary`, com o
+                  * mesmo peso do "Salvar em PDF". */}
                 <Button
                   onClick={aceitar}
                   loading={enviando}
-                  variant="secondary"
+                  icon={Check}
                   className="mt-3"
                 >
-                  {!enviando && <Check size={18} />}
                   Aceitar contrato
                 </Button>
               </Card>

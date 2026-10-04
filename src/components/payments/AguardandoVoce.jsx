@@ -92,8 +92,8 @@ export default function AguardandoVoce({ pagamentos, alertas = {}, onDarBaixa, o
               </div>
 
               {alerta && (
-                <p className="mt-2 flex items-start gap-1.5 rounded-lg border border-warningBorder bg-card px-2 py-1.5 text-xs font-semibold text-warningText">
-                  <TriangleAlert size={12} className="mt-0.5 shrink-0" />
+                <p className="mt-2 flex items-start gap-1.5 rounded-lg border border-warningBorder bg-card px-2.5 py-2 text-sm font-semibold text-warningText">
+                  <TriangleAlert size={16} className="mt-0.5 shrink-0" />
                   <span>
                     Comprovante igual ao de{' '}
                     {alerta.month ? formatMonthLabel(alerta.month) : 'outro mês'}. Vale

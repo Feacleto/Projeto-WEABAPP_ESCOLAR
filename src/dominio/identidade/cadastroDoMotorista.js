@@ -42,7 +42,7 @@
 
 import { ufDoIso } from '../../compartilhado/ruas.js';
 
-/** Os três passos do card, na ordem em que aparecem. */
+/** Os quatro passos do card, na ordem em que aparecem. */
 export const PASSOS = [
   // ⚠️ `gender` ENTROU EM 03/10/2026 E É OBRIGATÓRIO (decisão do dono): sem
   // ele o avatar é SORTEADO, e o "Tio Lipe" aparecia de cabelo comprido para
@@ -51,6 +51,13 @@ export const PASSOS = [
   { id: 'voce', campos: ['name', 'phone', 'gender'] },
   { id: 'marca', campos: ['marcaNome'] },
   { id: 'local', campos: ['city'] },
+  // ⚠️ O CONTRATO COM AS FAMÍLIAS ENTROU EM 04/10/2026 (aprovado pelo dono).
+  // Sem CPF/CNPJ e endereço, `buildContractData` devolve `null` e o convite
+  // da primeira criança não aparecia: no lugar dele surgia um formulário no
+  // meio da comemoração do cadastro. Pedir aqui, uma vez, é o que deixa o
+  // convite sair inteiro. `companyName` não é perguntado de novo: o card o
+  // grava com o nome que ele acabou de dar.
+  { id: 'contrato', campos: ['companyName', 'companyDocument', 'companyAddress'] },
 ];
 
 /** Os campos que travam a entrada — a união dos passos. */
@@ -65,6 +72,9 @@ export const GENEROS = ['male', 'female'];
 
 function falta(profile, campo) {
   if (campo === 'gender') return !GENEROS.includes(profile?.gender);
+  // O nome do contrato é o nome civil quando ele não deu outro — o mesmo
+  // padrão de `DadosDoContratoForm`. Faltar os DOIS é que faz o passo voltar.
+  if (campo === 'companyName') return vazio(profile?.companyName) && vazio(profile?.name);
   return vazio(profile?.[campo]);
 }
 

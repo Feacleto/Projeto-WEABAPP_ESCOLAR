@@ -578,6 +578,9 @@ const cadastroCompleto = {
   marcaNome: 'Tio Joao',
   city: 'Sao Paulo',
   gender: 'male',
+  companyName: 'Joao da Silva',
+  companyDocument: '529.982.247-25',
+  companyAddress: 'Rua das Flores, 100 - Sao Paulo/SP',
 };
 
 checar('cadastro completo passa', false, faltaCompletarCadastro(cadastroCompleto));
@@ -617,10 +620,10 @@ checar(
    ve os tres passos; quem criou com e-mail ja deu o WhatsApp e ve o passo 1
    so pelo nome; quem ja tinha tudo menos a marca ve so a marca. */
 const doGoogle = { role: 'admin', email: 'joao@gmail.com' };
-checar('Google ve os tres passos', ['voce', 'marca', 'local'], passosQueFaltam(doGoogle));
+checar('Google ve os quatro passos', ['voce', 'marca', 'local', 'contrato'], passosQueFaltam(doGoogle));
 checar(
   'e-mail com WhatsApp ainda ve o passo 1 pelo nome',
-  ['voce', 'marca', 'local'],
+  ['voce', 'marca', 'local', 'contrato'],
   passosQueFaltam({ ...doGoogle, phone: '11987654321' })
 );
 checar(
@@ -629,6 +632,32 @@ checar(
   passosQueFaltam({ ...cadastroCompleto, marcaNome: '' })
 );
 checar('mae nao ve card nenhum', [], passosQueFaltam({ role: 'parent' }));
+
+/* O PASSO DO CONTRATO (04/10/2026). Sem CPF/CNPJ e endereco o contrato da
+   familia nao nasce (`buildContractData` devolve null) e o convite da
+   primeira crianca nao aparecia. Ele so aparece se faltar — e o nome do
+   contrato e o nome civil quando ele nao deu outro. */
+checar('sem CPF, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, companyDocument: '' }));
+checar('sem endereco, trava', true, faltaCompletarCadastro({ ...cadastroCompleto, companyAddress: '' }));
+checar(
+  'so o contrato faltando, so o passo do contrato',
+  ['contrato'],
+  passosQueFaltam({ ...cadastroCompleto, companyDocument: '', companyAddress: '' })
+);
+checar(
+  'sem companyName, o nome civil basta',
+  false,
+  faltaCompletarCadastro({ ...cadastroCompleto, companyName: '' })
+);
+const fontePrimeiro11 = semComentarios(readFileSync(
+  new URL('../src/pages/tio/PrimeiroAcesso.jsx', import.meta.url), 'utf8'));
+checar('o passo diz por que pede', true,
+  fontePrimeiro11.includes('Vai no contrato que as famílias assinam.'));
+checar('e grava os campos que o contrato le', true,
+  /companyDocument:[\s\S]{0,80}companyAddress:/.test(fontePrimeiro11));
+checar('o grupo homem/mulher e parada do Salvar do nome', true,
+  /role="radiogroup"[\s\S]{0,120}data-campo-escolha[\s\S]{0,40}tabIndex=\{-1\}/.test(fontePrimeiro11));
+checar('o fundo do card e o da folha, nao o preto', false, fontePrimeiro11.includes('bg-black/'));
 
 /* A CIDADE VEM DO ENDERECO REVERSO, e o formato varia com o lugar: capital em
    `city`, cidade pequena em `town`/`village`. Sem cidade, volta vazio — e a

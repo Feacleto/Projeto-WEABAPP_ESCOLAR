@@ -60,8 +60,8 @@ geometria em fundo claro, escuro e impresso.
 
 | Arquivo | Onde entra |
 |---|---|
-| `favicon.svg` | aba do navegador — ladrilho esmeralda com o balão (degrau C) |
-| `favicon.ico` | reserva 16/24/32/48 px, **uma arte por tamanho** (ver Degraus) |
+| `favicon.svg` | aba do navegador — a perua sem ondas (degrau B) num ladrilho **branco** |
+| `favicon.ico` | reserva 16/24/32/48 px, a mesma arte; copiado também para `/favicon.ico` na raiz do app e da landing |
 | `icon-192.png`, `icon-512.png` | ícones `any` do manifest |
 | `icon-maskable-512.png` | ícone `maskable` — folga extra porque o Android recorta um círculo |
 | `apple-touch-icon.png` | atalho na tela inicial do iOS (180 px) |
@@ -111,15 +111,15 @@ balão tem 256×170. **Some a onda primeiro, a roda nunca.**
 |---|---|---|
 | **A** | ≥ 64 px | completo: corpo, rodas, balão, as duas ondas |
 | **B** | 24–64 px | sem ondas — a silhueta, que é o que se reconhece |
-| **C** | ≤ 24 px | ladrilho: só o balão, que é o que carrega o sentido |
+| **C** | ≤ 24 px | ladrilho: só o balão — **não é mais o favicon** (04/10/2026): o .svg é uma arte só, o navegador a desenha também em 32 px, e o balão sozinho não lembrava o logo. A perua do degrau B é legível a 16 px |
 
 O degrau B usa a MESMA caixa do lockup (mark sem ondas), então a perua ocupa
 a largura inteira do quadro em vez de ceder 13% pro vazio onde as ondas
 estariam.
 
-O `.ico` monta os quatro tamanhos com **uma arte por tamanho** (16 e 24 no
-degrau C, 32 e 48 no B), o que o `sizes=` do Pillow não faz — ele redimensiona
-uma arte só. O container é escrito à mão em `write_ico()`; PNG dentro de `.ico`
+O `.ico` monta os quatro tamanhos com **uma arte por tamanho**, cada uma
+desenhada no seu tamanho (hoje as quatro são a perua no ladrilho branco), o que
+o `sizes=` do Pillow não faz — ele redimensiona uma arte só. O container é escrito à mão em `write_ico()`; PNG dentro de `.ico`
 é aceito desde o Vista.
 
 ## Limites de uso

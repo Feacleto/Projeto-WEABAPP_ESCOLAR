@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AppSheet from '../common/AppSheet';
 import Button from '../common/Button';
 import { AGENDA_TYPES, createChildEntry } from '../../services/agendaService';
+import BotaoDeFalar from '../common/BotaoDeFalar';
 
 /**
  * RECADO NO CADERNO, DE DENTRO DA ROTA (03/10/2026).
@@ -60,7 +61,7 @@ export default function RecadoDaRota({ open, onClose, child, adminUid, tipoInici
               type="button"
               onClick={() => escolher(t)}
               aria-pressed={tipo === t}
-              className={`tap min-h-11 rounded-full border px-4 text-sm font-semibold ${
+              className={`tap min-h-12 rounded-full border px-4 text-base font-semibold ${
                 tipo === t ? 'border-primary bg-primary text-white' : 'border-border bg-card text-text'
               }`}
             >
@@ -68,8 +69,10 @@ export default function RecadoDaRota({ open, onClose, child, adminUid, tipoInici
             </button>
           ))}
         </div>
+        {/* Falar em vez de escrever (04/10/2026): o ditado se soma ao texto. */}
+        <BotaoDeFalar valor={texto} onChange={setTexto} />
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold text-text">O recado</span>
+          <span className="mb-1 block text-base font-semibold text-text">O recado</span>
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
@@ -77,7 +80,7 @@ export default function RecadoDaRota({ open, onClose, child, adminUid, tipoInici
             className="w-full rounded-xl border-2 border-border bg-card p-3 text-base text-text focus:border-primary focus:outline-none"
           />
         </label>
-        <p className="text-sm text-textMuted">Vai só para a família de {nome}, no caderno.</p>
+        <p className="text-base text-textMuted">Vai só para a família de {nome}, no caderno.</p>
         <Button icon={Send} loading={enviando} disabled={!texto.trim()} onClick={enviar}>
           Enviar recado
         </Button>

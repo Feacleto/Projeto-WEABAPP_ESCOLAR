@@ -30,8 +30,15 @@
 import { readFile } from 'node:fs/promises';
 
 const PID = 'alobuzinou-be81f';
-const AUTH = `http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts`;
-const FS = `http://127.0.0.1:8085/v1/projects/${PID}/databases/(default)/documents`;
+// O ENDEREÇO VEM DO EMULADOR, não escrito à mão (04/10/2026). O
+// `emulators:exec` exporta onde subiu cada um; com as portas fixas, um
+// emulador em outra porta (para não brigar com outra sessão aberta) fazia o
+// teste rodar contra o emulador ALHEIO, cheio de dados velhos — e as falhas
+// "409 já existe" e "403" pareciam defeito das regras.
+const HOST_AUTH = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
+const HOST_FS = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8085';
+const AUTH = `http://${HOST_AUTH}/identitytoolkit.googleapis.com/v1/accounts`;
+const FS = `http://${HOST_FS}/v1/projects/${PID}/databases/(default)/documents`;
 
 // O emulador aceita este bearer como Admin SDK: ignora regras. É como o
 // cenário é montado — semear passando pelas regras testaria a semeadura, não
@@ -686,6 +693,101 @@ async function oFinanceiroTrancado({ tio2, pai1, novato, dono, anon }) {
     await escrever('expenses/despKm1', fin, { kmPainel: N(123460) }, ['kmPainel']));
   checar(BL, 'outro motorista não cria despesa com km em nome dele', 'NEGA',
     await criar('expenses', 'despKm5', tio2, despesa({ kmPainel: N(1) })));
+
+  // "SUA PERUA" (03/10/2026) — o abastecimento na despesa, e as quatro
+  // chaves novas da configuração. Cada validação tem o caso que passa ao lado.
+  const I = (v) => ({ integerValue: String(v) });
+  const M = (fields) => ({ mapValue: { fields } });
+  const L = (values) => ({ arrayValue: { values } });
+  const abast = (extra = {}) => despesa({ category: S('fuel'), ...extra });
+  checar(BL, 'abastecimento completo em fuel passa', 'PASSA',
+    await criar('expenses', 'despAb1', fin, abast({
+      litros: N(52.4), tipoCombustivel: S('diesel_s10'), posto: S('Posto do Zé'), tanqueCheio: B(true),
+    })));
+  checar(BL, 'litros fora de fuel é recusado', 'NEGA',
+    await criar('expenses', 'despAb2', fin, despesa({ category: S('maintenance'), litros: N(10) })));
+  checar(BL, 'posto fora de fuel é recusado', 'NEGA',
+    await criar('expenses', 'despAb3', fin, despesa({ category: S('other'), posto: S('Shell') })));
+  checar(BL, 'litros zero é recusado', 'NEGA', await criar('expenses', 'despAb4', fin, abast({ litros: N(0) })));
+  checar(BL, 'litros acima de 500 é recusado', 'NEGA',
+    await criar('expenses', 'despAb5', fin, abast({ litros: N(501) })));
+  checar(BL, 'litros em texto é recusado', 'NEGA',
+    await criar('expenses', 'despAb6', fin, abast({ litros: S('40') })));
+  checar(BL, 'GNV (m³ no mesmo campo) passa', 'PASSA',
+    await criar('expenses', 'despAb7', fin, abast({ litros: N(15), tipoCombustivel: S('gnv') })));
+  checar(BL, 'combustível fora da lista é recusado', 'NEGA',
+    await criar('expenses', 'despAb8', fin, abast({ tipoCombustivel: S('querosene') })));
+  checar(BL, 'posto com mais de 60 letras é recusado', 'NEGA',
+    await criar('expenses', 'despAb9', fin, abast({ posto: S('x'.repeat(61)) })));
+  checar(BL, 'tanqueCheio em texto é recusado', 'NEGA',
+    await criar('expenses', 'despAb10', fin, abast({ tanqueCheio: S('sim') })));
+  checar(BL, 'trocar para manutenção mantendo os litros é recusado', 'NEGA',
+    await escrever('expenses/despAb1', fin, { category: S('maintenance') }, ['category']));
+  checar(BL, 'trocar para manutenção tirando os quatro passa', 'PASSA',
+    await escrever('expenses/despAb1', fin, { category: S('maintenance') },
+      ['category', 'litros', 'tipoCombustivel', 'posto', 'tanqueCheio']));
+  checar(BL, 'corrigir os litros de um abastecimento passa', 'PASSA',
+    await escrever('expenses/despAb7', fin, { litros: N(16.2) }, ['litros']));
+
+  // combustivelDaPerua.
+  checar(BL, 'ele diz que a perua é diesel S10', 'PASSA',
+    await escrever(cfg, fin, { combustivelDaPerua: S('diesel_s10') }, ['combustivelDaPerua']));
+  checar(BL, 'combustível da perua fora da lista é recusado', 'NEGA',
+    await escrever(cfg, fin, { combustivelDaPerua: S('alcool') }, ['combustivelDaPerua']));
+
+  // postos. A rule não valida item por item (não há laço nas rules).
+  const posto = (nome) => M({ nome: S(nome), preco: N(6.29), tipo: S('diesel_s10'), vistoEm: T(0) });
+  const varios = (n) => L(Array.from({ length: n }, (_, i) => posto(`P${i}`)));
+  checar(BL, 'lista de postos passa', 'PASSA',
+    await escrever(cfg, fin, { postos: L([posto('Ipiranga'), posto('Shell')]) }, ['postos']));
+  checar(BL, 'lista vazia de postos passa', 'PASSA', await escrever(cfg, fin, { postos: L([]) }, ['postos']));
+  checar(BL, 'lista com 20 postos passa', 'PASSA', await escrever(cfg, fin, { postos: varios(20) }, ['postos']));
+  checar(BL, 'lista com 21 postos é recusada', 'NEGA', await escrever(cfg, fin, { postos: varios(21) }, ['postos']));
+  checar(BL, 'postos que não são lista são recusados', 'NEGA',
+    await escrever(cfg, fin, { postos: posto('Shell') }, ['postos']));
+
+  // planoDaTroca.
+  const plano = (extra = {}) => M({
+    valorHoje: N(180000), anos: I(5), valorFinal: N(60000), criadoEm: T(0), ...extra,
+  });
+  checar(BL, 'plano da troca válido passa', 'PASSA',
+    await escrever(cfg, fin, { planoDaTroca: plano() }, ['planoDaTroca']));
+  checar(BL, 'plano com valor final igual ao de hoje é recusado', 'NEGA',
+    await escrever(cfg, fin, { planoDaTroca: plano({ valorFinal: N(180000) }) }, ['planoDaTroca']));
+  checar(BL, 'plano com valor de hoje zero é recusado', 'NEGA',
+    await escrever(cfg, fin, { planoDaTroca: plano({ valorHoje: N(0), valorFinal: N(0) }) }, ['planoDaTroca']));
+  checar(BL, 'plano com 21 anos é recusado', 'NEGA',
+    await escrever(cfg, fin, { planoDaTroca: plano({ anos: I(21) }) }, ['planoDaTroca']));
+  checar(BL, 'plano com 0 anos é recusado', 'NEGA',
+    await escrever(cfg, fin, { planoDaTroca: plano({ anos: I(0) }) }, ['planoDaTroca']));
+  checar(BL, 'plano com anos quebrados é recusado', 'NEGA',
+    await escrever(cfg, fin, { planoDaTroca: plano({ anos: N(2.5) }) }, ['planoDaTroca']));
+  checar(BL, 'plano com valor final negativo é recusado', 'NEGA',
+    await escrever(cfg, fin, { planoDaTroca: plano({ valorFinal: N(-1) }) }, ['planoDaTroca']));
+  checar(BL, 'plano sem criadoEm é recusado', 'NEGA',
+    await escrever(cfg, fin, {
+      planoDaTroca: M({ valorHoje: N(180000), anos: I(5), valorFinal: N(60000) }),
+    }, ['planoDaTroca']));
+  checar(BL, 'plano com chave estranha é recusado', 'NEGA',
+    await escrever(cfg, fin, { planoDaTroca: plano({ juros: N(1) }) }, ['planoDaTroca']));
+
+  // guardado — anotação, o app não guarda dinheiro.
+  const caixa = (valor) => M({ valor: N(valor), em: T(0) });
+  checar(BL, 'anotar o guardado da troca passa', 'PASSA',
+    await escrever(cfg, fin, { guardado: M({ troca: caixa(1200) }) }, ['guardado']));
+  checar(BL, 'anotar as duas caixas passa', 'PASSA',
+    await escrever(cfg, fin, { guardado: M({ troca: caixa(1200), manutencao: caixa(0) }) }, ['guardado']));
+  checar(BL, 'guardado negativo é recusado', 'NEGA',
+    await escrever(cfg, fin, { guardado: M({ troca: caixa(-5) }) }, ['guardado']));
+  checar(BL, 'caixa desconhecida é recusada', 'NEGA',
+    await escrever(cfg, fin, { guardado: M({ ferias: caixa(100) }) }, ['guardado']));
+  checar(BL, 'caixa sem a data é recusada', 'NEGA',
+    await escrever(cfg, fin, { guardado: M({ manutencao: M({ valor: N(10) }) }) }, ['guardado']));
+  checar(BL, 'guardado que não é mapa é recusado', 'NEGA',
+    await escrever(cfg, fin, { guardado: N(1200) }, ['guardado']));
+  checar(BL, 'outro motorista NÃO anota o guardado alheio', 'NEGA',
+    await escrever(cfg, tio2, { guardado: M({ troca: caixa(1) }) }, ['guardado']));
+  checar(BL, 'a configuração com tudo continua legível por ele', 'PASSA', await ler(cfg, fin));
 
   // A data de saída da criança.
   checar(BL, 'o motorista inativa a criança com inativadoEm', 'PASSA',
@@ -2624,6 +2726,18 @@ async function aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono }) {
     await criarComHoraDoServidor('feedbacks/depo-ok', pai1, depo(), 'createdAt'));
   checar('pos', 'e o dono o publica', 'PASSA',
     await escrever('feedbacks/depo-ok', dono, { hiddenByOwner: B(false) }, ['hiddenByOwner']));
+
+  // ── A AVALIAÇÃO RÁPIDA diz o MOMENTO (03/10/2026) ──────────────────────
+  // `acompanhamento` é de quem abriu o link sem conta, e só a callable grava.
+  const rapida = (momento) => depo({
+    allowTestimonial: B(false), authorFirstName: { nullValue: null }, momento: S(momento),
+  });
+  checar('pos', 'a mae avalia no dia entregue', 'PASSA',
+    await criarComHoraDoServidor('feedbacks/rapida-ok', pai1, rapida('dia_entregue'), 'createdAt'));
+  checar('avaliacao', 'a mae se passa por quem acompanhou pelo link', 'NEGA',
+    await criarComHoraDoServidor('feedbacks/rapida-link', pai1, rapida('acompanhamento'), 'createdAt'));
+  checar('avaliacao', 'nem com um momento inventado', 'NEGA',
+    await criarComHoraDoServidor('feedbacks/rapida-x', pai1, rapida('qualquer'), 'createdAt'));
 
   // ── O CHAMADO: lista fechada, nasce aberto ─────────────────────────────
   const chamado = (extra = {}) => ({

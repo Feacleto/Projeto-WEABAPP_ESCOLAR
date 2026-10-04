@@ -1,11 +1,12 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, House } from 'lucide-react';
 import Logo from './Logo';
 import Button from './Button';
-import { APP_VERSION } from '../../version';
+import { VERSAO_PARA_SUPORTE } from '../../version';
 import TelaDeVersao from './TelaDeVersao';
-import { trocarDeVersao } from '../../services/versaoService';
+// O hook só fala com a troca de versão (sem auth, sem dado do app) — a
+// regra "esta tela não pode depender de nada" continua valendo.
+import { useTrocaDeVersao } from '../../hooks/useTrocaDeVersao';
 
 /**
  * A TELA QUE APARECE NO LUGAR DA TELA BRANCA.
@@ -36,7 +37,7 @@ import { trocarDeVersao } from '../../services/versaoService';
  */
 export default function ErrorScreen({ error, chunk = false }) {
   const navigate = useNavigate();
-  const [atualizando, setAtualizando] = useState(false);
+  const { versaoNova, etapa, atualizar } = useTrocaDeVersao({ buscar: chunk });
 
   // A VERSÃO NOVA TEM TELA PRÓPRIA (03/10/2026): é a mesma do aviso de
   // atualização, e o toque em "Atualizar" passa para o estado "atualizando"
@@ -49,12 +50,11 @@ export default function ErrorScreen({ error, chunk = false }) {
   if (chunk) {
     return (
       <TelaDeVersao
-        estado={atualizando ? 'atualizando' : 'pronta'}
+        estado={etapa ? 'atualizando' : 'pronta'}
+        nova={versaoNova}
+        etapa={etapa}
         detalhe={error?.message}
-        onAtualizar={() => {
-          setAtualizando(true);
-          trocarDeVersao();
-        }}
+        onAtualizar={atualizar}
         onInicio={() => {
           window.location.href = '/';
         }}
@@ -116,7 +116,7 @@ export default function ErrorScreen({ error, chunk = false }) {
         * LER ela no WhatsApp pra gente — e sem a versão do build a gente
         * fica adivinhando qual código estava no celular dele. */}
       <p className="mt-10 text-xs leading-relaxed text-textMuted/70 max-w-xs break-words">
-        {error?.message ? `${error.message} · ` : ''}v{APP_VERSION}
+        {error?.message ? `${error.message} · ` : ''}{VERSAO_PARA_SUPORTE}
       </p>
     </div>
   );

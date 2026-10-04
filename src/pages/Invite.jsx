@@ -13,8 +13,8 @@ import {
   MessageSquare,
   Wallet,
   MapPin,
-  ChevronRight,
   HeartHandshake,
+  RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
@@ -61,6 +61,37 @@ const CHAVE_DA_PONTE = 'ab_ponte_tentada';
  * primeiro nome, valor da mensalidade, CONTAGEM de recados. Nada de endereço,
  * escola, coordenada ou texto de recado.
  */
+/**
+ * O ATALHO DA FAMÍLIA QUE VOLTA PELO MESMO LINK (04/10/2026).
+ *
+ * Toda semana a mãe toca no mesmo link do WhatsApp para abrir o app, e ele
+ * esperava a callable `getInvitePreview` (3 a 10 s quando o servidor está
+ * frio) só para descobrir que o convite é dela e mandá-la ao /pai. Agora,
+ * quando o servidor já disse uma vez "é seu" NESTE aparelho, a próxima abertura
+ * vai direto — sem perguntar. Fica guardado o código com o uid e a criança, e
+ * o atalho só vale se a sessão é a mesma e a criança ainda está no perfil:
+ * conta trocada ou filho removido caem no caminho normal, que pergunta.
+ */
+const CHAVE_CONVITES_MEUS = 'alobuzinou:convites-meus';
+
+function lerConvitesMeus() {
+  try {
+    return JSON.parse(localStorage.getItem(CHAVE_CONVITES_MEUS) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function guardarConviteMeu(codigo, uid, childId) {
+  try {
+    const todos = lerConvitesMeus();
+    todos[codigo] = { uid, childId: childId || null };
+    localStorage.setItem(CHAVE_CONVITES_MEUS, JSON.stringify(todos));
+  } catch {
+    // Sem armazenamento (aba anônima): só não haverá atalho da próxima vez.
+  }
+}
+
 export default function Invite() {
   const { codigo } = useParams();
   const navigate = useNavigate();
@@ -73,8 +104,23 @@ export default function Invite() {
   } = useAuth();
 
   const code = normalizeInviteCode(codigo);
+
+  // O atalho: convite já reconhecido como DESTA conta neste aparelho.
+  const guardado = code ? lerConvitesMeus()[code] : null;
+  const atalho =
+    !authLoading &&
+    profile?.role === 'parent' &&
+    guardado?.uid &&
+    guardado.uid === user?.uid &&
+    (!guardado.childId || (profile.childIds || []).includes(guardado.childId))
+      ? guardado
+      : null;
   const [preview, setPreview] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  // Sobe a cada "Tentar de novo": é o que faz o efeito da prévia rodar outra
+  // vez sem recarregar a página (recarregar, na webview do WhatsApp, pode
+  // jogar a pessoa para fora do link).
+  const [tentativa, setTentativa] = useState(0);
 
   // O que ele tentou fazer antes de a conta ser pedida — usado no texto da
   // folha e pra levar ele ao lugar certo depois de entrar.
@@ -166,7 +212,19 @@ export default function Invite() {
     setPendingAction(action);
   };
 
+  const temAtalho = !!atalho;
+  const criancaDoAtalho = atalho?.childId || null;
   useEffect(() => {
+    if (!temAtalho) return;
+    if (criancaDoAtalho) setActiveChildId(criancaDoAtalho);
+    navigate('/pai', { replace: true });
+  }, [temAtalho, criancaDoAtalho, navigate, setActiveChildId]);
+
+  useEffect(() => {
+    // Com o atalho, a prévia não é pedida: a família já está indo pro /pai.
+    // Enquanto a sessão carrega, também espera — senão a callable sairia
+    // antes de saber se o atalho vale.
+    if (authLoading || temAtalho) return undefined;
     let alive = true;
     getInvitePreview(code)
       .then((data) => alive && setPreview(data))
@@ -174,7 +232,13 @@ export default function Invite() {
     return () => {
       alive = false;
     };
-  }, [code]);
+  }, [code, tentativa, authLoading, temAtalho]);
+
+  const tentarDeNovo = () => {
+    setLoadError(null);
+    setPreview(null);
+    setTentativa((t) => t + 1);
+  };
 
   // Motorista logado não vira responsável — manda pro painel dele.
   useEffect(() => {
@@ -193,9 +257,10 @@ export default function Invite() {
   // convite é dele, entramos direto na criança certa.
   useEffect(() => {
     if (preview?.status !== 'yours') return;
+    if (user?.uid) guardarConviteMeu(code, user.uid, preview.childId);
     if (preview.childId) setActiveChildId(preview.childId);
     navigate('/pai', { replace: true });
-  }, [preview, navigate, setActiveChildId]);
+  }, [preview, navigate, setActiveChildId, code, user?.uid]);
 
   const finish = async (destination) => {
     await refreshProfile();
@@ -206,13 +271,13 @@ export default function Invite() {
      também é melhor lida no navegador onde ela vai ficar. */
   if (saindoDaWebview) return <SaindoDaWebview />;
 
-  if (loadError) return <InviteBroken message={loadError} />;
+  if (loadError) return <InviteBroken message={loadError} onRetry={tentarDeNovo} />;
 
   if (!preview || authLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <Spinner size={30} className="text-primary" />
-        <p className="text-sm text-textMuted">Abrindo o convite...</p>
+        <p className="text-base text-textMuted">Abrindo o link...</p>
       </div>
     );
   }
@@ -229,7 +294,7 @@ export default function Invite() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <Spinner size={30} className="text-primary" />
-        <p className="text-sm text-textMuted">Abrindo o app...</p>
+        <p className="text-base text-textMuted">Abrindo o app...</p>
       </div>
     );
   }
@@ -305,6 +370,17 @@ function SaindoDaWebview() {
 
 /* ─────────────── Prévia navegável ─────────────── */
 
+/**
+ * ⚠️ UM ALVO SÓ, E ELE VEM LOGO DEPOIS DO TÍTULO (03/10/2026).
+ *
+ * O "Entrar e acompanhar" morava no fim, depois de três cartões — num
+ * celular de 360 px ele ficava abaixo da dobra, e os dois cartões de cima
+ * ("Pagar com PIX", recados) eram botões que faziam EXATAMENTE a mesma coisa
+ * que ele: subir a folha de entrar. Três portas para o mesmo lugar, e a
+ * principal escondida. Agora o botão é a única coisa tocável da prévia e
+ * fica onde o polegar chega sem rolar; os cartões viraram o que de fato são,
+ * uma prévia do que ela encontra lá dentro — sem seta, sem cara de botão.
+ */
 function PreviewScreen({ preview, driverLabel, onAction }) {
   const p = preview.nextPayment;
   const notices = preview.notices?.count || 0;
@@ -320,15 +396,15 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Quem está chamando */}
-      <header className="bg-gradient-to-br from-primary via-primary to-primaryDark text-white px-6 pt-9 pb-7">
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-white/20 border border-white/25 rounded-full px-3 py-1">
-          <Bus size={13} />
+      <header className="bg-gradient-to-br from-primary via-primary to-primaryDark text-white px-6 pt-7 pb-6">
+        <span className="inline-flex items-center gap-1.5 text-sm font-bold bg-white/20 border border-white/25 rounded-full px-3 py-1">
+          <Bus size={15} />
           {driverLabel}
         </span>
         <h1 className="text-2xl font-extrabold leading-tight mt-4">
           O transporte {preview.childFirstName ? doDa(preview.childFirstName, preview.childGender) : 'do seu filho'}, aqui no celular
         </h1>
-        <p className="text-white/85 mt-2 text-sm leading-relaxed">
+        <p className="text-white/85 mt-2 text-base leading-relaxed">
           {driverLabel} te convidou pra acompanhar mensalidade e recados num
           lugar só.
         </p>
@@ -349,8 +425,8 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
           * confere CNH e não treina ninguém; ela conferiu um papel, numa data,
           * e é exatamente isso que a frase diz. Ver `marca/promessas.js`. */}
         {preview.selo && (
-          <p className="mt-4 inline-flex items-start gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-xs leading-relaxed text-white">
-            <BadgeCheck size={14} className="mt-0.5 shrink-0" />
+          <p className="mt-4 inline-flex items-start gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-sm leading-relaxed text-white">
+            <BadgeCheck size={16} className="mt-0.5 shrink-0" />
             <span>
               {preview.selo.texto}
               {preview.selo.conferidoEm && (
@@ -364,15 +440,23 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
       </header>
 
       <main className="flex-1 px-6 py-6 space-y-4">
-        {/* O gancho: a conta DELE, concreta */}
-        {p ? (
-          <button
-            type="button"
-            onClick={() =>
-              onAction({ reason: 'ver e pagar a mensalidade', destination: '/pai/finance' })
-            }
-            className="tap w-full text-left bg-card rounded-2xl p-4 shadow-rest space-y-3"
+        {/* A AÇÃO, antes da prévia — ver o cabeçalho da função. */}
+        <div className="space-y-2">
+          <Button
+            onClick={() => onAction({ reason: 'acompanhar seu filho', destination: '/pai' })}
           >
+            Entrar e acompanhar
+          </Button>
+          <p className="text-sm text-textMuted text-center">
+            Um toque com o Google. Não precisa digitar código nenhum.
+          </p>
+        </div>
+
+        <p className="rotulo pt-2">o que te espera lá dentro</p>
+
+        {/* O gancho: a conta DELE, concreta — prévia, não botão. */}
+        {p ? (
+          <div className="bg-card rounded-2xl p-4 shadow-rest">
             <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-xl bg-primaryChip text-primary flex items-center justify-center shrink-0">
                 <Wallet size={20} />
@@ -385,18 +469,19 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
                   {formatCurrency(p.amount)}
                 </p>
                 <p
-                  className={`text-xs mt-0.5 ${
+                  className={`text-base mt-0.5 ${
                     p.overdue ? 'text-dangerText font-semibold' : 'text-textMuted'
                   }`}
                 >
                   {p.monthLabel} · {dueLabel}
                 </p>
+                <p className="text-sm text-textMuted mt-1 flex items-center gap-1.5">
+                  <Lock size={14} className="shrink-0" />
+                  Depois de entrar, você paga com PIX
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-              Pagar com PIX <ChevronRight size={16} />
-            </div>
-          </button>
+          </div>
         ) : (
           preview.monthlyFee > 0 && (
             <div className="bg-card rounded-2xl p-4 shadow-rest">
@@ -406,45 +491,36 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
               <p className="text-2xl font-extrabold text-text leading-tight mt-0.5">
                 {formatCurrency(preview.monthlyFee)}
               </p>
-              <p className="text-xs text-textMuted mt-0.5">
+              <p className="text-sm text-textMuted mt-0.5">
                 Nada a pagar agora — a cobrança aparece aqui quando abrir.
               </p>
             </div>
           )
         )}
 
-        {/* Recados: contagem visível, conteúdo trancado */}
-        <button
-          type="button"
-          onClick={() =>
-            onAction({ reason: 'ler os recados', destination: '/pai' })
-          }
-          className="tap w-full text-left bg-card rounded-2xl p-4 shadow-rest flex items-center gap-3"
-        >
+        {/* Recados: contagem visível, conteúdo trancado — prévia, não botão. */}
+        <div className="bg-card rounded-2xl p-4 shadow-rest flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-warningChip text-warningText flex items-center justify-center shrink-0">
             <MessageSquare size={20} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-text leading-tight">
+            <p className="text-base font-bold text-text leading-tight">
               {notices === 0
                 ? 'Recados do motorista'
                 : notices === 1
                 ? '1 recado esperando você'
                 : `${notices} recados esperando você`}
             </p>
-            <p className="text-xs text-textMuted mt-0.5 flex items-center gap-1">
-              <Lock size={11} />
+            <p className="text-sm text-textMuted mt-0.5 flex items-center gap-1.5">
+              <Lock size={14} className="shrink-0" />
               Entre pra ler
             </p>
           </div>
-          <ChevronRight size={18} className="text-textMuted shrink-0" />
-        </button>
+        </div>
 
-        {/* O que mais tem lá dentro — expectativa honesta */}
-        <div className="bg-sunken border border-border rounded-2xl p-4 space-y-2.5">
-          <p className="rotulo">
-            também no app
-          </p>
+        {/* O que mais tem lá dentro — expectativa honesta. Sem caixa e sem
+          * borda: é texto, e caixa com borda no celular parece botão. */}
+        <ul className="space-y-3 px-1 pt-1">
           <Feature
             icon={MapPin}
             title="Onde o seu filho está"
@@ -455,21 +531,12 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
             title="Comprovante direto no app"
             desc="Sem mandar print no WhatsApp e sem perguntar se chegou."
           />
-        </div>
-
-        <Button
-          onClick={() => onAction({ reason: 'acompanhar seu filho', destination: '/pai' })}
-        >
-          Entrar e acompanhar
-        </Button>
-        <p className="text-xs text-textMuted text-center">
-          Um toque com o Google. Não precisa digitar código nenhum.
-        </p>
+        </ul>
       </main>
 
       <footer className="px-6 py-5 border-t border-border text-center">
-        <p className="text-xs text-textMuted">
-          Não é você? Fale com {driverLabel} — o convite é pessoal.
+        <p className="text-sm text-textMuted">
+          Não é você? Fale com {driverLabel} — o link é pessoal.
         </p>
       </footer>
     </div>
@@ -478,13 +545,13 @@ function PreviewScreen({ preview, driverLabel, onAction }) {
 
 function Feature({ icon: Icon, title, desc }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <Icon size={16} className="text-textMuted shrink-0 mt-0.5" />
+    <li className="flex items-start gap-3">
+      <Icon size={18} className="text-textMuted shrink-0 mt-0.5" />
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-text leading-tight">{title}</p>
-        <p className="text-xs text-textMuted leading-snug">{desc}</p>
+        <p className="text-base font-semibold text-text leading-tight">{title}</p>
+        <p className="text-sm text-textMuted leading-snug mt-0.5">{desc}</p>
       </div>
-    </div>
+    </li>
   );
 }
 
@@ -514,9 +581,9 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
         <h1 className="text-2xl font-bold text-text leading-tight">
           Adicionar {preview.childFirstName} à sua conta?
         </h1>
-        <p className="text-sm text-textMuted">Convite de {driverLabel}</p>
+        <p className="text-base text-textMuted">Link de {driverLabel}</p>
       </div>
-      <div className="bg-card rounded-2xl p-4 text-sm text-text shadow-rest">
+      <div className="bg-card rounded-2xl p-4 text-base text-text shadow-rest">
         Você já está logado. Depois de adicionar, você troca entre as crianças
         na tela de início.
       </div>
@@ -524,7 +591,10 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
         <Button loading={submitting} onClick={onLink}>
           Sim, adicionar {preview.childFirstName}
         </Button>
-        <Link to="/pai" className="block text-center text-sm text-textMuted py-2">
+        <Link
+          to="/pai"
+          className="tap flex min-h-12 items-center justify-center text-base font-semibold text-textMuted"
+        >
           Agora não
         </Link>
       </div>
@@ -549,8 +619,10 @@ function LinkToExistingAccount({ code, preview, driverLabel, onDone }) {
  *    era o caso mais comum do antigo "já foi usado", e ele continua tendo
  *    porta — o botão maior da tela.
  */
-function InviteBroken({ message }) {
+function InviteBroken({ message, onRetry }) {
+  const navigate = useNavigate();
   const recusado = message === MENSAGEM_DO_CONVITE_RECUSADO;
+  const entrar = () => navigate('/login', { state: { frente: FRENTE_FAMILIA } });
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-5">
       <div className="w-16 h-16 rounded-2xl bg-warningChip flex items-center justify-center">
@@ -560,22 +632,32 @@ function InviteBroken({ message }) {
         <h1 className="text-2xl font-bold text-text">
           {recusado ? 'Este convite não vale mais' : 'Não conseguimos abrir'}
         </h1>
+        {/* ⚠️ FORA A RECUSA, O ERRO É QUASE SEMPRE O SINAL (03/10/2026). A
+          * tela imprimia a mensagem técnica do erro e não tinha saída além de
+          * entrar com uma conta que ela talvez nem tenha. Agora diz o que
+          * fazer e oferece tentar de novo. A recusa continua com a frase
+          * única — não diferencia motivo. */}
         <p className="text-base text-textMuted max-w-xs">
           {recusado
             ? 'Peça um link novo ao motorista — ele gera na hora, na ficha da criança.'
-            : message}
+            : 'Não conseguimos abrir o link. Confira a internet e tente de novo.'}
         </p>
       </div>
       {/* Com a frente: este é o caminho do responsável, e a tela de erro é
         * onde ele já está frustrado — não é hora de oferecer associação. */}
       <div className="w-full max-w-xs space-y-2">
-        <Link
-          to="/login"
-          state={{ frente: FRENTE_FAMILIA }}
-          className="tap w-full h-14 rounded-2xl bg-primary text-white font-semibold inline-flex items-center justify-center shadow-focus"
+        {!recusado && (
+          <Button icon={RefreshCw} onClick={onRetry} className="shadow-focus">
+            Tentar de novo
+          </Button>
+        )}
+        <Button
+          variant={recusado ? 'primary' : 'secondary'}
+          onClick={entrar}
+          className={recusado ? 'shadow-focus' : ''}
         >
           Entrar com minha conta
-        </Link>
+        </Button>
         <p className="text-sm text-textMuted">
           Se você já entrou antes, é só entrar com sua conta.
         </p>

@@ -2,6 +2,55 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { loadEnv } from 'vite';
+import { execSync } from 'node:child_process';
+import { nomeDaVersao, ordenarMarcas, proximaMarca } from './src/compartilhado/versaoDoApp.js';
+
+/**
+ * A VERSÃO SAI DA MARCA DE PUBLICAÇÃO, NÃO DA MÃO (04/10/2026, decisão do dono).
+ *
+ * `src/version.js` dizia '1.0' desde sempre — "atualizar manualmente a cada
+ * release", e ninguém atualizava. Agora cada ida para PRODUÇÃO cria uma marca
+ * do git no commit publicado (`v1.12`, por `npm run versao:publicar` — o
+ * deploy.ps1 chama), e este build lê a marca:
+ *   - o commit É uma publicação → "1.12";
+ *   - não é (npm run dev, CI, build de teste) → "1.13-prévia", a próxima que
+ *     ele seria, para nunca se confundir com uma que foi ao ar.
+ * Junto vão o número do commit e o hash: o suporte lê "1.12 · commit 391
+ * (abc1234)" e sabe exatamente que código a pessoa tem.
+ *
+ * O app ANTIGO não tem como saber o número do NOVO — por isso o build publica
+ * também `/versao.json`, que a tela de atualização lê na hora (sem cache: o
+ * hosting manda no-cache em tudo, e o worker não guarda .json).
+ */
+function git(comando) {
+  try {
+    return execSync(`git ${comando}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return '';
+  }
+}
+
+function versaoDoBuild() {
+  const marcasAqui = git('tag --points-at HEAD').split(/s+/);
+  const exata = ordenarMarcas(marcasAqui)[0] || null;
+  const ultima = ordenarMarcas(git('tag --list "v*"').split(/s+/))[0] || null;
+  const versao = exata ? nomeDaVersao(exata) : `${nomeDaVersao(proximaMarca(ultima))}-prévia`;
+  return {
+    versao,
+    commit: git('rev-list --count HEAD') || null,
+    hash: git('rev-parse --short HEAD') || null,
+    data: new Date().toISOString(),
+  };
+}
+
+function publicarVersao(info) {
+  return {
+    name: 'versao-do-app',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'versao.json', source: JSON.stringify(info) });
+    },
+  };
+}
 
 /**
  * UM BUNDLE SEM A CONFIG DO FIREBASE NÃO PODE SER PUBLICADO.
@@ -44,10 +93,18 @@ function exigirConfigDoFirebase(mode) {
 // buscados online (importante porque o app depende de tempo real).
 export default defineConfig(({ mode }) => {
   exigirConfigDoFirebase(mode);
+  const versao = versaoDoBuild();
 
   return {
+  define: {
+    'import.meta.env.VITE_VERSAO_DO_APP': JSON.stringify(versao.versao),
+    'import.meta.env.VITE_DATA_DO_BUILD': JSON.stringify(versao.data),
+    'import.meta.env.VITE_COMMIT_DO_APP': JSON.stringify(versao.commit),
+    'import.meta.env.VITE_HASH_DO_APP': JSON.stringify(versao.hash),
+  },
   plugins: [
     react(),
+    publicarVersao(versao),
     VitePWA({
       /**
        * `prompt` E NÃO `autoUpdate` — a atualização passa a ser avisada.

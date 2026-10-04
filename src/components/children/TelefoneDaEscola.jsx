@@ -63,7 +63,7 @@ export default function TelefoneDaEscola({ child, isAdmin }) {
   if (editando) {
     return (
       <div className="space-y-2">
-        <Input
+        <Input semSalvar
           label="Telefone da escola"
           icon={Phone}
           inputMode="tel"
@@ -89,7 +89,7 @@ export default function TelefoneDaEscola({ child, isAdmin }) {
       <button
         type="button"
         onClick={() => setEditando(true)}
-        className="tap flex min-h-11 w-full items-center gap-2 rounded-xl border border-dashed border-border px-3 text-left text-sm font-semibold text-primary"
+        className="tap flex h-12 w-full items-center gap-2 rounded-xl border border-dashed border-border px-3 text-left text-base font-semibold text-primary"
       >
         <Phone size={16} />
         Informar o telefone da escola
@@ -101,11 +101,19 @@ export default function TelefoneDaEscola({ child, isAdmin }) {
     <div className="flex items-center gap-2">
       <a
         href={`tel:${child.schoolPhone}`}
-        className="tap flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-text"
+        className="tap flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-card px-3 py-1.5 text-left"
       >
-        <Phone size={16} className="text-primary" />
-        Ligar para a escola
-        <span className="ml-auto font-normal text-textMuted">{formatPhone(child.schoolPhone)}</span>
+        <Phone size={18} className="shrink-0 text-primary" />
+        {/* Rótulo em cima e número embaixo: na mesma linha, com o "Editar"
+          * ao lado, o número era cortado no Android de 360px. */}
+        <span className="min-w-0">
+          <span className="block truncate text-base font-semibold text-text">
+            Ligar para a escola
+          </span>
+          <span className="block text-sm text-textMuted">
+            {formatPhone(child.schoolPhone)}
+          </span>
+        </span>
       </a>
       {/* A família só PREENCHE o vazio; corrigir um número já gravado é do
           motorista — senão uma família trocava o telefone que todas as outras
@@ -114,10 +122,11 @@ export default function TelefoneDaEscola({ child, isAdmin }) {
       <button
         type="button"
         onClick={() => setEditando(true)}
-        aria-label="Corrigir o telefone da escola"
-        className="tap flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border text-textMuted"
+        aria-label="Editar o telefone da escola"
+        className="tap flex h-12 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3 text-base font-semibold text-primary"
       >
-        <Pencil size={15} />
+        <Pencil size={18} />
+        Editar
       </button>
       )}
     </div>

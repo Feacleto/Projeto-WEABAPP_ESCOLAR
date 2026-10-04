@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ImagePlus, MapPin, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { FileText, ImagePlus, MapPin, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -9,8 +9,15 @@ import { completarCadastro } from '../../services/associadoService';
 import { lugarDaPosicaoAtual } from '../../services/locationService';
 import { uploadMarcaLogo, deleteMarcaLogo } from '../../services/photoService';
 import { setMarca } from '../../services/userService';
+import { updateProfile } from '../../services/profileService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
-import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
+import {
+  maskPhone,
+  unmaskPhone,
+  isValidPhone,
+  maskCpfCnpj,
+  documentoValido,
+} from '../../compartilhado/masks';
 import {
   camposQueFaltam,
   passosQueFaltam,
@@ -55,7 +62,20 @@ export default function PrimeiroAcesso() {
   const passo = passos[indice];
   const ultimo = indice === passos.length - 1;
 
-  const [form, setForm] = useState({ name: '', phone: '', gender: '', marcaNome: '', city: '' });
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    gender: '',
+    marcaNome: '',
+    city: '',
+    // O passo do contrato CONFERE o que já existir (ele pode ter preenchido
+    // um dos dois no perfil antes) — não é placeholder, é o dado dele.
+    companyDocument: maskCpfCnpj(profile?.companyDocument || ''),
+    companyAddress: profile?.companyAddress || '',
+  });
+  // Depois de escolher homem ou mulher, o foco desce para o botão do passo:
+  // quem toca numa opção está pronto para continuar.
+  const botaoRef = useRef(null);
   const [errors, setErrors] = useState({});
   const [salvando, setSalvando] = useState(false);
   // A localização falhou (negada, sem sinal, sem cidade): aparece o campo.
@@ -99,8 +119,21 @@ export default function PrimeiroAcesso() {
       errs.marcaNome = 'Escreva como as famílias te chamam.';
     }
     if (passo === 'local' && !form.city.trim()) errs.city = 'Escreva sua cidade.';
+    if (passo === 'contrato') {
+      if (!documentoValido(form.companyDocument)) {
+        errs.companyDocument = 'CPF ou CNPJ inválido — confira os números.';
+      }
+      if (form.companyAddress.trim().length < 8) {
+        errs.companyAddress = 'Escreva rua, número e cidade.';
+      }
+    }
     setErrors(errs);
     if (Object.keys(errs).length) return;
+
+    if (passo === 'contrato') {
+      gravarContrato();
+      return;
+    }
 
     gravar({
       ...(passo === 'voce'
@@ -109,6 +142,34 @@ export default function PrimeiroAcesso() {
       ...(passo === 'marca' ? { marcaNome: form.marcaNome } : {}),
       ...(passo === 'local' ? { city: form.city } : {}),
     });
+  };
+
+  /* O CONTRATO GRAVA PELO MESMO CAMINHO DO `DadosDoContratoForm`
+   * (`updateProfile`, os campos `company*` que o contrato e as rules já
+   * leem). O nome não é perguntado de novo: é o que ele deu no passo 1 (ou o
+   * que já estava no perfil). `completarCadastro` só entra para o carimbo de
+   * fim, quando este é o último passo. */
+  const gravarContrato = async () => {
+    setSalvando(true);
+    try {
+      await updateProfile(user.uid, {
+        companyName: (profile?.companyName || form.name || profile?.name || '').trim(),
+        companyDocument: form.companyDocument.trim(),
+        companyAddress: form.companyAddress.trim(),
+      });
+      if (ultimo) {
+        await completarCadastro(user.uid, {}, { ultimo: true });
+        await refreshProfile();
+      } else {
+        setErrors({});
+        setIndice((i) => i + 1);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Tente de novo.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const permitirLocalizacao = async () => {
@@ -164,7 +225,7 @@ export default function PrimeiroAcesso() {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-3 sm:items-center"
+      className="animate-sheet-fade fixed inset-0 z-[70] flex items-end justify-center bg-night/45 p-3 sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="primeiro-acesso-titulo"
@@ -191,7 +252,7 @@ export default function PrimeiroAcesso() {
             </h2>
             <div className="mt-4 space-y-3">
               {faltando('name') && (
-                <Input
+                <Input falar="nome"
                   label="Seu nome completo"
                   value={form.name}
                   onChange={set('name')}
@@ -217,7 +278,15 @@ export default function PrimeiroAcesso() {
                   {/* O AVATAR SEGUE ESTA RESPOSTA: homem ganha cabelo curto,
                     * mulher cabelo comprido. Sem ela o desenho era sorteado. */}
                   <p className="mb-2 text-sm font-semibold text-text">Você é</p>
-                  <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Você é">
+                  {/* `data-campo-escolha` + `tabIndex={-1}`: o Salvar do nome
+                    * PARA aqui em vez de enviar o card (avancarCampo.js). */}
+                  <div
+                    className="grid grid-cols-2 gap-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    role="radiogroup"
+                    aria-label="Você é"
+                    data-campo-escolha
+                    tabIndex={-1}
+                  >
                     {[
                       { value: 'male', label: 'Homem' },
                       { value: 'female', label: 'Mulher' },
@@ -227,7 +296,10 @@ export default function PrimeiroAcesso() {
                         type="button"
                         role="radio"
                         aria-checked={form.gender === g.value}
-                        onClick={() => setForm((p) => ({ ...p, gender: g.value }))}
+                        onClick={() => {
+                          setForm((p) => ({ ...p, gender: g.value }));
+                          botaoRef.current?.focus();
+                        }}
                         className={`tap min-h-12 rounded-xl border-2 px-2 text-sm font-semibold transition-colors duration-estado ${
                           form.gender === g.value
                             ? 'border-primary bg-primarySoft text-text'
@@ -251,7 +323,7 @@ export default function PrimeiroAcesso() {
               Sua marca
             </h2>
             <div className="mt-4 space-y-3">
-              <Input
+              <Input falar="texto"
                 label="Como as famílias te chamam"
                 value={form.marcaNome}
                 onChange={set('marcaNome')}
@@ -287,7 +359,9 @@ export default function PrimeiroAcesso() {
                         <X size={16} />
                       </button>
                     ) : (
-                      <label className="tap shrink-0 cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary">
+                      /* Botão SECUNDÁRIO de 48 px (04/10/2026): era um texto
+                       * de 12px que a pessoa cansada não achava. */
+                      <label className="tap inline-flex h-12 shrink-0 cursor-pointer items-center rounded-xl border border-border bg-card px-4 text-base font-bold text-text hover:bg-sunken">
                         Escolher imagem
                         <input
                           type="file"
@@ -319,7 +393,7 @@ export default function PrimeiroAcesso() {
             </p>
             {digitarCidade && (
               <div className="mt-4">
-                <Input
+                <Input falar="nome"
                   label="Sua cidade"
                   value={form.city}
                   onChange={set('city')}
@@ -332,13 +406,60 @@ export default function PrimeiroAcesso() {
           </>
         )}
 
+        {passo === 'contrato' && (
+          <>
+            <h2 id="primeiro-acesso-titulo" className="text-xl font-extrabold text-text">
+              Para o contrato com as famílias
+            </h2>
+            {/* A linha diz POR QUE pede: documento é o campo em que a pessoa
+              * mais hesita, e sem motivo à vista ele parece cadastro de banco. */}
+            <p className="mt-1.5 text-sm text-textMuted">
+              Vai no contrato que as famílias assinam.
+            </p>
+            <div className="mt-4 space-y-3">
+              <Input
+                label="CPF ou CNPJ"
+                icon={FileText}
+                inputMode="numeric"
+                value={form.companyDocument}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, companyDocument: maskCpfCnpj(e.target.value) }))
+                }
+                error={errors.companyDocument}
+                required
+              />
+              <Input falar="texto"
+                label="Seu endereço"
+                icon={MapPin}
+                value={form.companyAddress}
+                onChange={set('companyAddress')}
+                error={errors.companyAddress}
+                hint="Rua, número e cidade."
+                autoComplete="street-address"
+                required
+              />
+            </div>
+          </>
+        )}
+
         <div className="mt-5">
           {passo === 'local' && !digitarCidade ? (
-            <Button type="button" icon={MapPin} loading={salvando} onClick={permitirLocalizacao}>
+            <Button
+              type="button"
+              icon={MapPin}
+              loading={salvando}
+              onClick={permitirLocalizacao}
+              className="shadow-focus"
+            >
               Permitir localização
             </Button>
           ) : (
-            <Button type="submit" loading={salvando || subindoLogo}>
+            <Button
+              ref={botaoRef}
+              type="submit"
+              loading={salvando || subindoLogo}
+              className="shadow-focus"
+            >
               {ultimo ? 'Entrar no app' : 'Continuar'}
             </Button>
           )}

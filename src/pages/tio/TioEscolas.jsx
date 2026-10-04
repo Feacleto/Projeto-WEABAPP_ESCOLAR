@@ -8,7 +8,6 @@ import {
   Pencil,
   Trash2,
   Wand2,
-  X,
   Check,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -18,9 +17,9 @@ import Input from '../../components/common/Input';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import Sheet from '../../components/common/Sheet';
 import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
-import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 import {
   addEscola,
   updateEscola,
@@ -43,10 +42,22 @@ import { montarEndereco } from '../../compartilhado/formatters';
  * alcançava só quem tivesse a grafia idêntica.
  *
  * ONDE ELA FICA E POR QUÊ
- * Em `/tio/children/escolas`, alcançada por um botão no topo da lista de
- * crianças. Não virou aba: já são quatro (Início, Crianças, Rota, Financeiro)
- * e a quinta aperta o polegar. Escola é assunto de cadastro — fica onde o
- * motorista já está quando pensa nisso.
+ * Em `/tio/children/escolas`, alcançada por um botão no topo de "Minha
+ * turma". Não virou aba: a quinta aperta o polegar. Escola é assunto de
+ * cadastro — fica onde o motorista já está quando pensa nisso.
+ *
+ * OS MESMOS NOMES DO CADASTRO DA CRIANÇA (03/10/2026). Esta folha dizia
+ * "Buscar no mapa", "Local confirmado" e "Cadastrar"; o cadastro da criança
+ * dizia "Buscar endereço no mapa" e "Local confirmado!", e a folha de escola
+ * nova dizia "Salvar e usar". Três nomes para a mesma ação fazem a pessoa
+ * se perguntar se é outra coisa. Agora: "Buscar endereço no mapa", "Local
+ * confirmado", "Cadastrar escola" para criar e "Salvar" para editar.
+ *
+ * ⚠️ O FORMULÁRIO NÃO É O DA `NovaEscolaSheet`, e isso é deliberado: aqui
+ * também se EDITA (com o telefone copiado para as crianças), se digita o
+ * endereço à mão e se busca o ponto no mapa — a folha do cadastro só cria,
+ * com a coordenada calada. Juntar os dois pediria um terceiro componente
+ * com os dois modos; por ora os textos e os tamanhos é que são os mesmos.
  */
 export default function TioEscolas() {
   const { children, loading: carregandoCriancas } = useChildren();
@@ -55,17 +66,14 @@ export default function TioEscolas() {
   // { id?, nome, cep, endereco, numero, complemento, cepPartes, lat, lng }
   const [editando, setEditando] = useState(null);
 
-  // O ARRASTO RESPEITA O SALVAMENTO — e é por isso que esta folha não entrou
-  // no lote das outras.
-  //
-  // Aqui fechar não é incondicional: o toque fora já checa `!salvando`, porque
-  // sumir com o formulário no meio da gravação deixa a pessoa sem saber se a
-  // escola foi criada. O gesto precisa da mesma trava; sem ela, o caminho mais
-  // fácil de fechar seria justamente o único que ignora a regra.
+  // FECHAR RESPEITA O SALVAMENTO. Sumir com o formulário no meio da gravação
+  // deixa a pessoa sem saber se a escola foi criada. A folha (`Sheet`) usa o
+  // mesmo `onClose` no X, no toque fora, no ESC e no arrasto — então a trava
+  // vale para os quatro, e nenhum caminho de fechar a ignora.
   const [salvando, setSalvando] = useState(false);
-  const { alcaProps, estilo } = useArrastarPraFechar(() => {
+  const fecharFolha = () => {
     if (!salvando) setEditando(null);
-  });
+  };
   const [buscandoEndereco, setBuscandoEndereco] = useState(false);
   const [buscandoCep, setBuscandoCep] = useState(false);
   // null = nunca consultou · 'ok' · 'notFound' · 'offline'
@@ -266,10 +274,10 @@ export default function TioEscolas() {
     setSalvando(true);
     try {
       await removeEscola(paraApagar.id);
-      toast.success('Escola removida.');
+      toast.success('Escola apagada.');
     } catch (err) {
       console.error(err);
-      toast.error('Não deu pra remover.');
+      toast.error('Não deu pra apagar.');
     } finally {
       setSalvando(false);
       setParaApagar(null);
@@ -295,10 +303,10 @@ export default function TioEscolas() {
 
   return (
     <div className="min-h-screen pb-28">
-      <Header title="Escolas" showBack backLabel="Crianças" backTo="/tio/children" />
+      <Header title="Escolas" showBack backLabel="Minha turma" backTo="/tio/children" />
 
       <div className="px-5 pt-4 space-y-4">
-        <p className="text-sm text-textMuted">
+        <p className="text-base text-textMuted">
           As escolas que você atende. Cadastre uma vez e escolha na hora de
           cadastrar a criança — o aviso de “não vai ter aula” usa esta lista pra
           saber quem avisar.
@@ -311,8 +319,8 @@ export default function TioEscolas() {
           <section className="space-y-2">
             <div className="flex items-start gap-2.5 bg-warningSoft border border-warningBorder rounded-2xl p-3">
               <Wand2 size={18} className="text-warningText shrink-0 mt-0.5" />
-              <div className="text-xs text-warningText leading-relaxed">
-                <b className="block text-sm">
+              <div className="text-sm text-warningText leading-relaxed">
+                <b className="block text-base">
                   Achei {propostas.length}{' '}
                   {propostas.length === 1 ? 'escola' : 'escolas'} nos seus
                   cadastros
@@ -329,14 +337,14 @@ export default function TioEscolas() {
                 className="bg-card border border-border rounded-2xl p-3 space-y-2.5"
               >
                 <div className="flex items-start gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-neutro text-textMuted flex items-center justify-center shrink-0">
-                    <School size={17} />
+                  <div className="w-10 h-10 rounded-xl bg-neutro text-textMuted flex items-center justify-center shrink-0">
+                    <School size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-text text-sm leading-tight">
+                    <p className="font-bold text-text text-base leading-tight">
                       {g.nome}
                     </p>
-                    <p className="text-xs text-textMuted">
+                    <p className="text-sm text-textMuted">
                       {g.criancas.length}{' '}
                       {g.criancas.length === 1 ? 'criança' : 'crianças'}
                       {g.lat == null && ' · sem localização'}
@@ -347,7 +355,7 @@ export default function TioEscolas() {
                 {/* As grafias diferentes são o motivo da tela existir —
                   * mostrar quais eram deixa claro o que está sendo unificado. */}
                 {g.variacoes.length > 1 && (
-                  <p className="text-xs text-textMuted bg-sunken rounded-lg px-2.5 py-1.5 leading-relaxed">
+                  <p className="text-sm text-textMuted bg-sunken rounded-lg px-2.5 py-1.5 leading-relaxed">
                     Escrita de {g.variacoes.length} jeitos:{' '}
                     {g.variacoes.map((v) => `“${v}”`).join(', ')}
                   </p>
@@ -383,37 +391,50 @@ export default function TioEscolas() {
 
         {!carregando && escolas.length > 0 && (
           <section className="space-y-2">
-            {escolas.map((e) => (
+            {escolas.map((e) => {
+              const n = contagem[e.id] || 0;
+              return (
               <div
                 key={e.id}
-                className="bg-card border border-border rounded-2xl p-3 flex items-start gap-3"
+                className="bg-card border border-border rounded-2xl p-4 space-y-3"
               >
-                <div className="w-10 h-10 rounded-xl bg-escolaSoft text-escola flex items-center justify-center shrink-0">
-                  <School size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-text text-sm leading-tight">
-                    {e.nome}
-                  </p>
-                  {e.endereco && (
-                    <p className="text-xs text-textMuted truncate mt-0.5">
-                      {e.endereco}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-escolaSoft text-escola flex items-center justify-center shrink-0">
+                    <School size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-text text-lg leading-tight">
+                      {e.nome}
                     </p>
-                  )}
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <span className="inline-flex items-center gap-1 text-xs text-textMuted">
-                      <Users size={12} />
-                      {contagem[e.id] || 0}
-                    </span>
-                    {e.geoPending && (
-                      <span className="inline-flex items-center gap-1 text-xs text-warningText">
-                        <MapPin size={12} />
-                        sem localização
-                      </span>
+                    {e.endereco && (
+                      <p className="text-base text-textMuted mt-0.5 break-words">
+                        {e.endereco}
+                      </p>
                     )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                      {/* A PALAVRA JUNTO DO NÚMERO: um "3" ao lado de um
+                        * ícone de pessoas não diz se são crianças, famílias
+                        * ou vagas. */}
+                      <span className="inline-flex items-center gap-1 text-sm text-textMuted">
+                        <Users size={16} />
+                        {n} {n === 1 ? 'criança' : 'crianças'}
+                      </span>
+                      {e.geoPending && (
+                        <span className="inline-flex items-center gap-1 text-sm font-semibold text-warningText">
+                          <MapPin size={16} />
+                          sem localização
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
+
+                {/* EDITAR E APAGAR COM NOME, 48px, E LONGE UM DO OUTRO. Eram
+                  * dois ícones de 36px colados: o lápis e a lixeira a 4px de
+                  * distância, e o dedo de quem está em pé errava para o lado
+                  * que apaga. "Editar" fica à esquerda, onde o polegar chega
+                  * primeiro; "Apagar" vai para a outra ponta. */}
+                <div className="flex items-center justify-between gap-3 border-t border-neutro pt-3">
                   <button
                     type="button"
                     aria-label={`Editar ${e.nome}`}
@@ -432,21 +453,24 @@ export default function TioEscolas() {
                         lng: e.lng ?? null,
                       })
                     }
-                    className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center"
+                    className="tap inline-flex h-12 items-center gap-1.5 rounded-xl border border-border px-4 text-base font-semibold text-primary"
                   >
-                    <Pencil size={15} />
+                    <Pencil size={18} />
+                    Editar
                   </button>
                   <button
                     type="button"
-                    aria-label={`Remover ${e.nome}`}
+                    aria-label={`Apagar ${e.nome}`}
                     onClick={() => setParaApagar(e)}
-                    className="tap w-9 h-9 rounded-xl border border-border text-danger flex items-center justify-center"
+                    className="tap inline-flex h-12 items-center gap-1.5 rounded-xl px-4 text-base font-semibold text-dangerText"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={18} />
+                    Apagar
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             <Button variant="secondary" icon={Plus} onClick={abrirNova}>
               Cadastrar escola
@@ -455,43 +479,17 @@ export default function TioEscolas() {
         )}
       </div>
 
-      {/* Formulário */}
-      {editando && (
-        <div
-          className="fixed inset-0 z-50 max-w-mobile mx-auto bg-black/40 backdrop-blur-sm"
-          onClick={() => !salvando && setEditando(null)}
-        >
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl max-h-[88vh] overflow-y-auto"
-            style={{
-              paddingBottom: 'env(safe-area-inset-bottom, 0)',
-              ...estilo,
-            }}
-            onClick={(ev) => ev.stopPropagation()}
-          >
-            <div
-              {...alcaProps}
-              className={`pt-3 pb-1 flex justify-center ${alcaProps.className}`}
-            >
-              <span className="block w-10 h-1.5 rounded-full bg-borderStrong" />
-            </div>
-
-            <div className="px-5 pt-2 pb-4 space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="text-xl font-bold text-text">
-                  {editando.id ? 'Editar escola' : 'Nova escola'}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setEditando(null)}
-                  aria-label="Fechar"
-                  className="tap w-9 h-9 rounded-full bg-neutro flex items-center justify-center text-textMuted shrink-0"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <Input
+      {/* Formulário — a mesma folha (`Sheet`) da escola nova no cadastro da
+        * criança: alça, título, X de 48px e o arrasto, sem cópia à mão. */}
+      <Sheet
+        open={!!editando}
+        onClose={fecharFolha}
+        title={editando?.id ? 'Editar escola' : 'Nova escola'}
+        icon={School}
+      >
+        {editando && (
+            <div className="space-y-4 pb-2">
+              <Input falar="texto"
                 label="Nome da escola"
                 icon={School}
                 placeholder="Digite aqui"
@@ -537,7 +535,7 @@ export default function TioEscolas() {
                 </p>
               )}
 
-              <Input
+              <Input falar="telefone"
                 label="Telefone da escola (opcional)"
                 inputMode="tel"
                 maxLength={15}
@@ -547,7 +545,7 @@ export default function TioEscolas() {
                 }
               />
 
-              <Input
+              <Input falar="texto"
                 label="Endereço"
                 icon={MapPin}
                 placeholder="Digite aqui"
@@ -584,7 +582,7 @@ export default function TioEscolas() {
                     onChange={(ev) => setParteDoEndereco('numero')(ev.target.value)}
                     inputMode="numeric"
                   />
-                  <Input
+                  <Input falar="texto"
                     label="Complemento"
                     placeholder="Digite aqui"
                     value={editando.complemento || ''}
@@ -601,33 +599,32 @@ export default function TioEscolas() {
                 loading={buscandoEndereco}
                 onClick={buscarEndereco}
               >
-                Buscar no mapa
+                Buscar endereço no mapa
               </Button>
 
               {editando.lat != null && (
-                <div className="flex items-center gap-2 text-sm text-primary bg-primarySoft border border-primaryBorder px-4 py-3 rounded-xl">
+                <div className="flex items-center gap-2 text-base text-primary bg-primarySoft border border-primaryBorder px-4 py-3 rounded-xl">
                   <Check size={18} />
                   <span>Local confirmado</span>
                 </div>
               )}
 
-              <Button loading={salvando} onClick={salvar}>
-                {editando.id ? 'Salvar' : 'Cadastrar'}
+              <Button loading={salvando} onClick={salvar} icon={editando.id ? Check : Plus}>
+                {editando.id ? 'Salvar' : 'Cadastrar escola'}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+        )}
+      </Sheet>
 
       <ConfirmDialog
         open={!!paraApagar}
-        title={paraApagar ? `Remover ${paraApagar.nome}?` : ''}
+        title={paraApagar ? `Apagar ${paraApagar.nome}?` : ''}
         description={
           contagem[paraApagar?.id]
             ? `${contagem[paraApagar.id]} ${contagem[paraApagar.id] === 1 ? 'criança usa' : 'crianças usam'} esta escola. O endereço fica salvo em cada uma, então a rota não muda — mas o aviso em massa deixa de agrupar por ela.`
             : 'Nenhuma criança usa esta escola.'
         }
-        confirmLabel="Remover"
+        confirmLabel="Apagar"
         variant="danger"
         loading={salvando}
         onConfirm={apagar}

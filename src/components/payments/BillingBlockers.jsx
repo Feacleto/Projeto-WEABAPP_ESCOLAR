@@ -157,16 +157,16 @@ function Blocker({ icon: Icon, title, detail, actionLabel, onAction, disabled })
         <Icon size={18} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-warningText leading-tight">{title}</p>
-        <p className="text-xs text-warningText/85 mt-0.5 leading-snug">{detail}</p>
+        <p className="text-base font-bold text-warningText leading-tight">{title}</p>
+        <p className="text-sm text-warningText mt-1 leading-snug">{detail}</p>
         <button
           type="button"
           onClick={onAction}
           disabled={disabled}
-          className="tap mt-2 inline-flex items-center gap-1 text-xs font-bold text-warningText underline disabled:opacity-60"
+          className="tap mt-1 inline-flex min-h-12 items-center gap-1 text-base font-bold text-warningText underline disabled:opacity-60"
         >
           {actionLabel}
-          <ChevronRight size={13} />
+          <ChevronRight size={18} />
         </button>
       </div>
     </div>

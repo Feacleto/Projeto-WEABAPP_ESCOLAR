@@ -146,15 +146,15 @@ export default function TioSemana() {
             type="button"
             onClick={() => setSemanaBase((b) => somaDias(b, -7))}
             aria-label="Semana anterior"
-            className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
+            className="tap w-12 h-12 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
           >
-            <ChevronLeft size={17} />
+            <ChevronLeft size={22} />
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-bold capitalize text-text leading-tight">
+            <p className="text-base font-bold capitalize text-text leading-tight">
               {rotuloSemana(dias)}
             </p>
-            <p className="text-xs text-textMuted">
+            <p className="text-sm text-textMuted">
               {totalNaSemana === 0
                 ? 'ninguém avisou falta'
                 : `${totalNaSemana} ${totalNaSemana === 1 ? 'aviso' : 'avisos'}`}
@@ -164,9 +164,9 @@ export default function TioSemana() {
             type="button"
             onClick={() => setSemanaBase((b) => somaDias(b, 7))}
             aria-label="Próxima semana"
-            className="tap w-9 h-9 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
+            className="tap w-12 h-12 rounded-xl border border-border text-textMuted flex items-center justify-center shrink-0"
           >
-            <ChevronRight size={17} />
+            <ChevronRight size={22} />
           </button>
         </div>
 
@@ -186,13 +186,14 @@ export default function TioSemana() {
               * com cinco colunas e nome, num aparelho estreito, é a única
               * forma de não espremer o nome até virar reticências. */}
             <div className="overflow-x-auto -mx-1 px-1">
-              <table className="w-full border-collapse" style={{ minWidth: 340 }}>
+              <table className="w-full border-collapse" style={{ minWidth: 360 }}>
                 {/* E o cabeçalho das COLUNAS gruda junto, logo abaixo da
                   * barra da semana. Sem ele, rolar transforma a grade em
                   * quadradinhos anônimos: dá pra ver que alguém faltou, não
-                  * em que dia. `top-[6.5rem]` empilha na ordem cabeçalho do
-                  * app → semana → dias. */}
-                <thead className="sticky top-[6.5rem] z-10 bg-bg">
+                  * em que dia. `top-[121px]` empilha na ordem cabeçalho do
+                  * app (56) → semana (65: as setas foram a 48 px em
+                  * 03/10/2026) → dias. */}
+                <thead className="sticky top-[121px] z-10 bg-bg">
                   <tr>
                     <th className="rotulo text-left pb-2 pr-2">
                       criança
@@ -205,7 +206,7 @@ export default function TioSemana() {
                           className={`rotulo pb-2 px-0.5 ${
                             ehHoje ? 'text-primary' : 'text-textMuted'
                           }`}
-                          style={{ width: 42 }}
+                          style={{ width: 46 }}
                         >
                           <span className="block">{DIAS[i]}</span>
                           <span className="block font-mono text-xs font-normal">
@@ -229,11 +230,11 @@ export default function TioSemana() {
                             size="sm"
                           />
                           <div className="min-w-0">
-                            <p className="text-[13px] font-semibold text-text truncate leading-tight">
+                            <p className="text-base font-semibold text-text truncate leading-tight">
                               {child.name?.split(' ')[0]}
                             </p>
                             {hora && (
-                              <p className="font-mono text-xs text-textMuted">
+                              <p className="font-mono text-sm text-textMuted">
                                 {horaCurta(hora)}
                               </p>
                             )}
@@ -253,7 +254,7 @@ export default function TioSemana() {
 
             {/* A legenda não é enfeite: são quatro estados que só se
               * distinguem por cor e letra, e ninguém adivinha "L" de "levo". */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-textMuted pt-1">
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-textMuted pt-1">
               <Legenda tipo={ABSENCE_TYPES.FULL} texto="não vai" />
               <Legenda tipo={ABSENCE_TYPES.NO_PICKUP} texto="o pai leva" />
               <Legenda tipo={ABSENCE_TYPES.NO_DROPOFF} texto="o pai busca" />
@@ -278,11 +279,11 @@ function Marca({ tipo }) {
   if (!e) {
     // Célula vazia continua desenhada: sem ela a grade vira um campo de
     // buracos e o olho perde a linha da criança ao atravessar a semana.
-    return <span className="inline-block w-7 h-7 rounded-lg bg-sunken" />;
+    return <span className="inline-block w-9 h-9 rounded-lg bg-sunken" />;
   }
   return (
     <span
-      className={`inline-flex w-7 h-7 rounded-lg border items-center justify-center text-xs font-bold ${e.classe}`}
+      className={`inline-flex w-9 h-9 rounded-lg border items-center justify-center text-sm font-bold ${e.classe}`}
     >
       {e.letra}
     </span>
