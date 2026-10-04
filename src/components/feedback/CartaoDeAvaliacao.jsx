@@ -113,7 +113,7 @@ export default function CartaoDeAvaliacao({ pergunta, onEnviar, onDispensar, sem
         type="button"
         onClick={enviar}
         disabled={!nota || enviando}
-        className="tap mt-3 h-12 w-full rounded-xl bg-primary text-base font-bold text-white disabled:bg-sunken disabled:text-textMuted"
+        className="tap mt-3 h-12 w-full rounded-xl bg-marca text-base font-bold text-naMarca disabled:bg-sunken disabled:text-textMuted"
       >
         {enviando ? 'Enviando...' : 'Enviar avaliação'}
       </button>

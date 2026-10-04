@@ -379,7 +379,7 @@ function CartaoDaCrianca({ child: c, naFolha = false, valor, lembreteDe, onMudar
           href={lembrete}
           target="_blank"
           rel="noopener noreferrer"
-          className="tap flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-base font-bold text-white shadow-focus"
+          className="tap flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-marca text-base font-bold text-naMarca shadow-focus"
         >
           <Send size={18} aria-hidden="true" />
           Lembrar a família no WhatsApp

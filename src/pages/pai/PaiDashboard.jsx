@@ -625,7 +625,7 @@ export default function PaiDashboard() {
           <button
             type="button"
             onClick={acaoDaBarra.onClick}
-            className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-lg font-extrabold text-white shadow-focus"
+            className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-lg font-extrabold text-naMarca shadow-focus"
           >
             <acaoDaBarra.Icone size={24} className="shrink-0" />
             <span className="truncate">{acaoDaBarra.rotulo}</span>

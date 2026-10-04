@@ -88,7 +88,7 @@ export default function TioContract() {
             <button
               type="button"
               onClick={() => navigate('/tio/profile')}
-              className="tap mt-3 inline-flex h-12 items-center rounded-xl bg-primary px-4 text-base font-bold text-white"
+              className="tap mt-3 inline-flex h-12 items-center rounded-xl bg-marca px-4 text-base font-bold text-naMarca"
             >
               Completar meu cadastro
             </button>

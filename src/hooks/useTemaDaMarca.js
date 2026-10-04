@@ -18,8 +18,13 @@ export function useTemaDaMarca(cor) {
     const raiz = document.documentElement;
     const nomes = Object.keys(paleta);
     for (const nome of nomes) raiz.style.setProperty(`--tema-${nome}`, canais(paleta[nome]));
+    // `data-marca`: o motorista TEM cor. É o que liga a faixa da marca no
+    // cabeçalho do Início e o filete das outras telas (index.css) — sem cor,
+    // o cabeçalho continua branco como sempre foi.
+    raiz.dataset.marca = '1';
     return () => {
       for (const nome of nomes) raiz.style.removeProperty(`--tema-${nome}`);
+      delete raiz.dataset.marca;
     };
   }, [cor]);
 }

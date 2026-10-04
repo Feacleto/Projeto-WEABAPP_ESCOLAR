@@ -261,7 +261,7 @@ export default function TioChildren() {
         onClick={() => navigate('/tio/children/new')}
         data-tour="add-child"
         style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
-        className="fixed right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-base font-bold text-white shadow-float tap print:hidden"
+        className="fixed right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-marca px-5 text-base font-bold text-naMarca shadow-float tap print:hidden"
       >
         <Plus size={22} />
         Cadastrar criança

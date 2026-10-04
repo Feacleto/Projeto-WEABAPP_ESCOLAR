@@ -139,6 +139,14 @@ const base = {
         primarySoft: '#EEF8F1',
         primaryChip: '#DDF5E5',
         primaryBorder: '#B9E4C6',
+        // A COR VIVA DA MARCA (04/10/2026): as superfícies grandes — faixa,
+        // botão principal, saldo, a pílula do rodapé. Sem logo é o verde da
+        // casa; com logo é a cor dele COMO ELA É, e a letra em cima é
+        // `naMarca` (branca ou quase-preta, a que ler melhor). Ver
+        // marca/corDaMarca.js. Letra sobre o branco continua no `primary`.
+        marca: '#1F5F3F',
+        marcaEscuro: '#143F2A',
+        naMarca: '#FFFFFF',
         // O verde-limão das ondas da marca. Em interface significa CONCLUÍDO.
         // Só preenchimento e ícone — como TEXTO dá 2,3:1 e é ilegível.
         accent: '#52C41A',
@@ -441,7 +449,7 @@ const base = {
  * (accent = concluído/pago, âmbar, vermelho) não entram no tema: um logo
  * vermelho não pode fazer "pago" parecer "atrasado".
  */
-export const CORES_DO_TEMA = ['primary', 'primaryDark', 'primarySoft', 'primaryChip', 'primaryBorder', 'menta'];
+export const CORES_DO_TEMA = ['primary', 'primaryDark', 'primarySoft', 'primaryChip', 'primaryBorder', 'menta', 'marca', 'marcaEscuro', 'naMarca'];
 
 const coresHex = { ...base.theme.extend.colors };
 for (const nome of CORES_DO_TEMA) {

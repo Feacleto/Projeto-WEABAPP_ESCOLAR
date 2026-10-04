@@ -1719,7 +1719,7 @@ function BarraDaParada({
         disabled={busy}
         aria-busy={gravando || undefined}
         onClick={onMarcar}
-        className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-[17px] font-extrabold tracking-[0.03em] text-white shadow-focus disabled:cursor-wait"
+        className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-[17px] font-extrabold tracking-[0.03em] text-naMarca shadow-focus disabled:cursor-wait"
       >
         {gravando ? (
           <>

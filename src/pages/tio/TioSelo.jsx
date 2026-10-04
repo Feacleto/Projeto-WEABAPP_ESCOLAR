@@ -286,7 +286,7 @@ function Certificado({ uid, profile }) {
             seu ficar guardado por aí, melhor para você.
           </p>
 
-          <label className="tap mt-4 flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary text-base font-bold text-white">
+          <label className="tap mt-4 flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-marca text-base font-bold text-naMarca">
             <FileUp size={18} aria-hidden="true" />
             {enviando ? 'Enviando…' : 'Enviar meu alvará'}
             <input

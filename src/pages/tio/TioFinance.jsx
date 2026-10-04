@@ -596,14 +596,26 @@ export default function TioFinance() {
           * número grande só, e ele é o que sobrou. O "Esconder" é do aparelho
           * (ver useValoresVisiveis): quem abre o Financeiro com gente do lado.
           * Ele vai ESCRITO — o olho sozinho não dizia se mostrava ou escondia. */}
-        <section className="flex flex-col gap-1.5 rounded-3xl bg-card p-5 shadow-rest">
+        {/* ⚠️ NA COR VIVA DA MARCA desde 04/10/2026 (aprovado pelo dono), com
+          * a letra que lê nela. O saldo NEGATIVO volta ao cartão branco: o
+          * vermelho dele é significado, e vermelho sobre a cor de um logo
+          * laranja não se lê. */}
+        <section
+          className={`flex flex-col gap-1.5 rounded-3xl p-5 shadow-rest ${
+            saldo !== null && saldo < 0 ? 'bg-card' : 'bg-gradient-to-br from-marca to-marcaEscuro text-naMarca'
+          }`}
+        >
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-textBody">Saldo de {mes}</h2>
+            <h2 className={`text-base font-semibold ${saldo !== null && saldo < 0 ? 'text-textBody' : 'text-naMarca opacity-90'}`}>
+              Saldo de {mes}
+            </h2>
             <button
               type="button"
               onClick={alternarValores}
               aria-pressed={!visiveis}
-              className="tap -mr-2 flex h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-base font-bold text-primary"
+              className={`tap -mr-2 flex h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-base font-bold ${
+                saldo !== null && saldo < 0 ? 'text-primary' : 'text-naMarca'
+              }`}
             >
               {visiveis ? <EyeOff size={20} aria-hidden /> : <Eye size={20} aria-hidden />}
               {visiveis ? 'Esconder' : 'Mostrar'}
@@ -614,13 +626,17 @@ export default function TioFinance() {
           ) : (
             <span
               className={`font-display text-4xl font-extrabold leading-none tabular-nums ${
-                saldo < 0 ? 'text-dangerText' : 'text-text'
+                saldo < 0 ? 'text-dangerText' : 'text-naMarca'
               }`}
             >
               {reais(saldo)}
             </span>
           )}
-          <span className="mt-1 text-base tabular-nums text-textBody">
+          <span
+            className={`mt-1 text-base tabular-nums ${
+              saldo !== null && saldo < 0 ? 'text-textBody' : 'text-naMarca opacity-90'
+            }`}
+          >
             Entrou {reais(totals.paid)} · Saiu {saiu === null ? '…' : reais(saiu)}
           </span>
         </section>

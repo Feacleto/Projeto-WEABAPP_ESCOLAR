@@ -118,7 +118,7 @@ export default function ContaInativa({ motivo = 'trial' }) {
             )}
             target="_blank"
             rel="noopener"
-            className="tap inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-bold text-white hover:bg-primaryDark"
+            className="tap inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-marca px-6 text-base font-bold text-naMarca hover:bg-marcaEscuro"
           >
             <MessageCircle size={18} />
             Falar com a gente

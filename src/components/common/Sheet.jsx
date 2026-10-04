@@ -202,7 +202,7 @@ export function SheetCTA({
     <button
       type={type}
       disabled={disabled || loading}
-      className={`tap relative inline-flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-primary text-base font-bold text-white shadow-focus hover:bg-primaryDark focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60 ${className}`}
+      className={`tap relative inline-flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-marca text-base font-bold text-naMarca shadow-focus hover:bg-marcaEscuro focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60 ${className}`}
       {...rest}
     >
       {loading ? <Spinner size={19} /> : Icon && <Icon size={19} />}

@@ -254,7 +254,7 @@ function BotaoCheio({ onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className="tap flex min-h-14 w-full items-center justify-center rounded-xl bg-primary px-4 text-base font-bold text-white"
+      className="tap flex min-h-14 w-full items-center justify-center rounded-xl bg-marca px-4 text-base font-bold text-naMarca"
     >
       {children}
     </button>

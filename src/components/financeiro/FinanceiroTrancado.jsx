@@ -110,7 +110,7 @@ export default function FinanceiroTrancado() {
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className="w-[52px] h-[52px] shrink-0 rounded-full bg-primary text-white flex items-center justify-center text-lg font-bold"
+          className="w-[52px] h-[52px] shrink-0 rounded-full bg-marca text-naMarca flex items-center justify-center text-lg font-bold"
         >
           {iniciais}
         </span>

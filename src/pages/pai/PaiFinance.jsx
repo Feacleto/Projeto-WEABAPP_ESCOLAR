@@ -325,7 +325,16 @@ export default function PaiFinance() {
           * "Já paguei". Somar tudo num PIX só seria um valor que não casa com
           * nenhuma mensalidade na hora de ele dar baixa. */}
         {nextToPay ? (
-          <Card className="space-y-3">
+          <Card className="space-y-3 overflow-hidden">
+            {/* PARA QUEM VAI O DINHEIRO, NA COR DELE (04/10/2026, aprovado pelo
+              * dono): a mensalidade é PIX direto ao motorista, e a faixa diz
+              * isso com o nome e a cor da marca dele. */}
+            <div className="-mx-5 -mt-5 bg-gradient-to-br from-marca to-marcaEscuro px-5 py-3 text-naMarca">
+              <p className="rotulo !text-naMarca opacity-80">Pagar a</p>
+              <p className="truncate font-display text-xl font-extrabold">
+                {admin?.marcaNome?.trim() || admin?.name?.split(' ')[0] || 'seu motorista'}
+              </p>
+            </div>
             <TopoDaMensalidade
               payment={nextToPay}
               mostrarFilho={hasMultipleChildren}

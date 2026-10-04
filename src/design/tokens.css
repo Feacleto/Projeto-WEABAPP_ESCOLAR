@@ -27,6 +27,9 @@
   --cor-primarySoft: #EEF8F1;
   --cor-primaryChip: #DDF5E5;
   --cor-primaryBorder: #B9E4C6;
+  --cor-marca: #1F5F3F;
+  --cor-marcaEscuro: #143F2A;
+  --cor-naMarca: #FFFFFF;
   --cor-accent: #52C41A;
   --cor-accentText: #1C6B3F;
   --cor-onAccent: #06210A;
@@ -116,6 +119,9 @@
   --tema-primaryChip: 221 245 229;
   --tema-primaryBorder: 185 228 198;
   --tema-menta: 167 243 208;
+  --tema-marca: 31 95 63;
+  --tema-marcaEscuro: 20 63 42;
+  --tema-naMarca: 255 255 255;
 }
 
 .tema-alo {
@@ -125,4 +131,7 @@
   --tema-primaryChip: 221 245 229;
   --tema-primaryBorder: 185 228 198;
   --tema-menta: 167 243 208;
+  --tema-marca: 31 95 63;
+  --tema-marcaEscuro: 20 63 42;
+  --tema-naMarca: 255 255 255;
 }

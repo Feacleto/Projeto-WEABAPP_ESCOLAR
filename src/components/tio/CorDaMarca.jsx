@@ -3,17 +3,20 @@ import { Check, Palette } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { setMarca } from '../../services/userService';
 import { lerCoresDoLogo } from '../../services/coresDoLogoService';
-import { paletaDaMarca } from '../../marca/corDaMarca.js';
+import { opcoesDoLogo, paletaDaMarca } from '../../marca/corDaMarca.js';
+import Sheet from '../common/Sheet';
+
+/** O verde da casa — a volta garantida, sempre a última opção. */
+const VERDE_DA_CASA = '#1F5F3F';
 
 /**
  * A COR DO APP DELE, ESCOLHIDA ENTRE AS DO LOGO (03/10/2026, pedido do dono).
  *
- * Trocar o logo já aplica a cor mais forte sozinho (ver `MarcaCard`). Aqui
- * ele vê as outras sugestões do logo e o verde do Alô Buzinou, e troca com um
- * toque — sem confirmar nada, porque cor é preferência e volta atrás com
- * outro toque. A amostra é a cor JÁ AJUSTADA para leitura (a mesma que o app
- * vai usar), não a cor crua do logo: mostrar uma e aplicar outra seria a
- * tela mentindo.
+ * Três bolinhas: a cor principal do logo, a segunda e o verde do Alô Buzinou.
+ * Trocar é um toque, sem confirmar nada — cor é preferência e volta atrás com
+ * outro toque. A amostra é a COR VIVA que o app vai usar nas faixas e nos
+ * botões (`marca`), não a cor crua: mostrar uma e aplicar outra seria a tela
+ * mentindo.
  *
  * Logo sem cor viva (preto, branco, cinza) não oferece nada, e a linha diz
  * por quê. Logo antigo, subido antes da cor existir, ganha "Usar as cores do
@@ -53,7 +56,7 @@ export default function CorDaMarca({ uid, logoURL, cor, cores = [], onChanged })
     setSalvando(false);
   };
 
-  const opcoes = sugeridas.filter((c) => paletaDaMarca(c));
+  const opcoes = opcoesDoLogo(sugeridas);
 
   return (
     <div className="space-y-2.5 border-t border-neutro pt-3">
@@ -63,19 +66,19 @@ export default function CorDaMarca({ uid, logoURL, cor, cores = [], onChanged })
       </p>
 
       <div className="flex flex-wrap items-center gap-2.5">
-        {opcoes.map((c) => (
+        {opcoes.map((c, i) => (
           <Amostra
             key={c}
-            cor={paletaDaMarca(c).primary}
+            cor={paletaDaMarca(c).marca}
             ativa={cor?.toUpperCase() === c.toUpperCase()}
-            rotulo="Cor do logo"
+            rotulo={i === 0 ? 'Cor principal do logo' : 'Segunda cor do logo'}
             disabled={salvando}
             onClick={() => escolher(c)}
           />
         ))}
         {/* O verde da casa sempre aparece: é a volta garantida. */}
         <Amostra
-          cor="#1F5F3F"
+          cor={VERDE_DA_CASA}
           ativa={!cor || !paletaDaMarca(cor)}
           rotulo="Verde do Alô Buzinou"
           disabled={salvando}
@@ -88,7 +91,7 @@ export default function CorDaMarca({ uid, logoURL, cor, cores = [], onChanged })
           type="button"
           onClick={lerDoLogo}
           disabled={salvando}
-          className="tap text-sm font-semibold text-primary underline underline-offset-2"
+          className="tap min-h-12 text-base font-semibold text-primary underline underline-offset-2"
         >
           Usar as cores do meu logo
         </button>
@@ -98,14 +101,103 @@ export default function CorDaMarca({ uid, logoURL, cor, cores = [], onChanged })
           Não achamos uma cor forte no logo. Envie o logo de novo, ou fique com o verde do Alô Buzinou.
         </p>
       )}
-      <p className="text-xs leading-relaxed text-textMuted">
-        É a cor do seu app e do app das famílias que você atende.
+      <p className="text-sm leading-relaxed text-textMuted">
+        A cor do logo, a segunda cor do logo, ou o verde do Alô Buzinou. Vale
+        para você e para as famílias que você atende.
       </p>
     </div>
   );
 }
 
+/**
+ * A PERGUNTA, LOGO DEPOIS DE TROCAR O LOGO (04/10/2026, aprovado pelo dono).
+ *
+ * Antes a cor mais forte do logo era aplicada sozinha — e ela muda o app das
+ * FAMÍLIAS dele também, que é decisão demais para acontecer calada. Agora a
+ * folha mostra uma prévia do app pintado na cor e pergunta. Nada muda para
+ * ninguém antes do "Usar esta cor"; "Ficar com o verde" grava o verde.
+ *
+ * A prévia é desenhada com a cor do CANDIDATO (estilo em linha), não com o
+ * tema da tela: o app atrás continua na cor de antes enquanto ele decide.
+ */
+export function PerguntaDaCor({ open, cores = [], logoURL, nome, salvando, onUsar, onVerde, onClose }) {
+  const opcoes = opcoesDoLogo(cores);
+  const [tocada, setEscolhida] = useState(null);
+  // Logo novo, cores novas: a escolha que não está mais entre elas volta
+  // para a principal.
+  const escolhida = opcoes.includes(tocada) ? tocada : opcoes[0] || null;
+
+  const p = escolhida ? paletaDaMarca(escolhida) : null;
+  if (!p) return null;
+
+  return (
+    <Sheet open={open} onClose={onClose} title="Achamos a cor do seu logo">
+      <div className="space-y-4 pb-1">
+        {/* A PRÉVIA: o cabeçalho do Início e o botão principal, na cor. */}
+        <div className="overflow-hidden rounded-2xl border border-border bg-bg">
+          <div
+            className="flex items-center gap-3 px-4 py-3"
+            style={{ background: `linear-gradient(135deg, ${p.marca}, ${p.marcaEscuro})`, color: p.naMarca }}
+          >
+            {logoURL && (
+              <img src={logoURL} alt="" className="h-11 w-auto max-w-[120px] rounded-lg bg-white object-contain p-[3px]" />
+            )}
+            <span className="truncate font-display text-lg font-bold">{nome || 'Seu app'}</span>
+          </div>
+          <div className="p-3">
+            <span
+              className="flex h-12 items-center justify-center rounded-xl text-base font-bold"
+              style={{ background: p.marca, color: p.naMarca }}
+            >
+              Iniciar a rota
+            </span>
+          </div>
+        </div>
+
+        <p className="text-lg font-semibold leading-snug text-text">
+          Usar assim no seu app e no de todas as suas famílias?
+        </p>
+
+        {opcoes.length > 1 && (
+          <div className="flex items-center gap-2.5">
+            {opcoes.map((c, i) => (
+              <Amostra
+                key={c}
+                cor={paletaDaMarca(c).marca}
+                ativa={c === escolhida}
+                rotulo={i === 0 ? 'Cor principal do logo' : 'Segunda cor do logo'}
+                disabled={salvando}
+                onClick={() => setEscolhida(c)}
+              />
+            ))}
+            <span className="text-sm text-textMuted">as cores do seu logo</span>
+          </div>
+        )}
+
+        <button
+          type="button"
+          disabled={salvando}
+          onClick={() => onUsar(escolhida)}
+          className="tap flex min-h-14 w-full items-center justify-center rounded-xl text-lg font-bold disabled:opacity-60"
+          style={{ background: p.marca, color: p.naMarca }}
+        >
+          Usar esta cor
+        </button>
+        <button
+          type="button"
+          disabled={salvando}
+          onClick={onVerde}
+          className="tap flex min-h-12 w-full items-center justify-center rounded-xl border border-border bg-card text-base font-semibold text-textBody disabled:opacity-60"
+        >
+          Ficar com o verde do Alô Buzinou
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
 function Amostra({ cor, ativa, rotulo, disabled, onClick }) {
+  const p = paletaDaMarca(cor);
   return (
     <button
       type="button"
@@ -114,12 +206,12 @@ function Amostra({ cor, ativa, rotulo, disabled, onClick }) {
       aria-label={rotulo}
       aria-pressed={ativa}
       title={rotulo}
-      className={`tap flex h-11 w-11 items-center justify-center rounded-full ring-offset-2 ${
+      className={`tap flex h-12 w-12 items-center justify-center rounded-full ring-offset-2 ${
         ativa ? 'ring-2 ring-text' : ''
       }`}
       style={{ backgroundColor: cor }}
     >
-      {ativa && <Check size={20} className="text-white" />}
+      {ativa && <Check size={20} style={{ color: p?.naMarca || '#FFFFFF' }} />}
     </button>
   );
 }

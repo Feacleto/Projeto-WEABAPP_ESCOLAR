@@ -111,7 +111,7 @@ export default function BottomNav({ items }) {
           * não está. */}
         <span
           aria-hidden
-          className="absolute top-2 h-8 w-14 rounded-full bg-primary transition-[left,opacity] duration-entrada ease-freio motion-reduce:transition-none"
+          className="absolute top-2 h-8 w-14 rounded-full bg-marca transition-[left,opacity] duration-entrada ease-freio motion-reduce:transition-none"
           style={{ left: esquerda, opacity: ativo >= 0 ? 1 : 0 }}
         />
 
@@ -149,7 +149,7 @@ export default function BottomNav({ items }) {
                     /* A transição no traço é nova: o engrossar já existia e
                      * acontecia num quadro só, então ninguém via. */
                     className={`transition-[stroke-width,color] duration-estado ${
-                      isActive ? 'text-primaryBorder' : 'text-textMuted'
+                      isActive ? 'text-naMarca' : 'text-textMuted'
                     }`}
                   />
                   {item.badge > 0 && (

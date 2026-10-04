@@ -28,6 +28,12 @@ const BRANCO = [255, 255, 255];
 /** Contraste mínimo do tom principal: contra o fundo da página E sob texto branco. */
 export const CONTRASTE_MINIMO = 5.5;
 
+/** A letra sobre a COR VIVA: o branco, ou o quase-preto da casa (`text`). */
+const TINTA_ESCURA = [0x0b, 0x12, 0x10];
+/** Letra grande e de botão (WCAG AA). O par branco/preto sempre passa: o
+ * pior caso dos dois é ~4,6:1, no meio da escala de luminância. */
+export const CONTRASTE_DA_TINTA = 4.5;
+
 // ── conversões ──────────────────────────────────────────────────────────
 
 export function hexParaRgb(hex) {
@@ -158,8 +164,16 @@ function escurecerAte(h, s, l, alvo) {
 
 /**
  * As tintas do app a partir de UMA cor. Devolve
- * `{ primary, primaryDark, primarySoft, primaryChip, primaryBorder, menta }`
- * em hex, ou null quando a cor não serve (sem cor, ou hex inválido).
+ * `{ primary, primaryDark, primarySoft, primaryChip, primaryBorder, menta,
+ * marca, marcaEscuro, naMarca }` em hex, ou null quando a cor não serve.
+ *
+ * ⚠️ DUAS VERSÕES DA MESMA COR (04/10/2026, aprovado pelo dono). `primary` é
+ * a cor de LEITURA: escurecida até o branco ler em cima e ela ler sobre o
+ * fundo — e por isso o laranja do logo virava marrom e o amarelo, oliva: a
+ * cor do logo "sumia". `marca` é a cor VIVA, a do logo como ela é, para as
+ * superfícies grandes (faixa, botão principal, saldo, rodapé); a letra em
+ * cima dela é `naMarca`, branca ou quase-preta, a que ler melhor. Letra e
+ * ícone sobre o branco continuam no `primary`.
  */
 export function paletaDaMarca(hex) {
   const rgb = hexParaRgb(hex);
@@ -183,7 +197,24 @@ export function paletaDaMarca(hex) {
     menta = hslParaRgb([h, s * 0.6, L]).map(Math.round);
   }
 
+  // A COR VIVA: a do logo, só arredondada. O degrau escuro (o fim do degradê)
+  // desce 10% e só fica se a letra ainda ler nele.
+  let marca = rgb.map(Math.round);
+  let naMarca = contraste(marca, BRANCO) >= contraste(marca, TINTA_ESCURA) ? BRANCO : TINTA_ESCURA;
+  // No meio da escala (um vermelho como #E63119) nenhuma das duas letras
+  // chega a 4,5:1. Ali a cor desce um fio, o mínimo para o branco ler.
+  for (let L = l; contraste(marca, naMarca) < CONTRASTE_DA_TINTA && L > 0.05; L -= 0.01) {
+    marca = hslParaRgb([h, sBruto, L]).map(Math.round);
+    naMarca = BRANCO;
+  }
+  const [, , lM] = rgbParaHsl(marca);
+  let marcaEscuro = hslParaRgb([h, sBruto, Math.max(lM - 0.1, 0.04)]).map(Math.round);
+  if (contraste(marcaEscuro, naMarca) < CONTRASTE_DA_TINTA) marcaEscuro = marca;
+
   return {
+    marca: rgbParaHex(marca),
+    marcaEscuro: rgbParaHex(marcaEscuro),
+    naMarca: rgbParaHex(naMarca),
     primary: rgbParaHex(primary),
     primaryDark: rgbParaHex(primaryDark),
     primarySoft: rgbParaHex(primarySoft),
@@ -191,6 +222,16 @@ export function paletaDaMarca(hex) {
     primaryBorder: rgbParaHex(primaryBorder),
     menta: rgbParaHex(menta),
   };
+}
+
+/**
+ * As cores que ele pode escolher: as DUAS mais fortes do logo, e mais nada
+ * (04/10/2026, pedido do dono: sempre três opções — a principal do logo, a
+ * segunda, e o verde do Alô Buzinou, que a tela acrescenta). Cor que não
+ * serve (sem cor) sai.
+ */
+export function opcoesDoLogo(cores = []) {
+  return (cores || []).filter((c) => paletaDaMarca(c)).slice(0, 2);
 }
 
 /** "#1F5F3F" → "31 95 63", o formato que a variável CSS do tema guarda. */

@@ -394,7 +394,7 @@ function FaturaAberta({ fatura }) {
               href={fatura.asaasUrl}
               target="_blank"
               rel="noreferrer"
-              className="tap mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-base font-bold text-white"
+              className="tap mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-marca text-base font-bold text-naMarca"
             >
               <Receipt size={18} aria-hidden="true" />
               Pagar esta fatura

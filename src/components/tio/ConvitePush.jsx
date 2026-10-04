@@ -151,7 +151,7 @@ export default function ConvitePush() {
               type="button"
               onClick={ligar}
               disabled={ligando}
-              className="tap mt-3 h-12 rounded-xl bg-primary px-5 text-base font-bold text-white disabled:opacity-50"
+              className="tap mt-3 h-12 rounded-xl bg-marca px-5 text-base font-bold text-naMarca disabled:opacity-50"
             >
               {ligando ? 'Ligando…' : 'Ligar avisos'}
             </button>

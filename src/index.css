@@ -128,6 +128,27 @@
   }
 }
 
+/* ── A MARCA DO MOTORISTA NO CABEÇALHO (04/10/2026, aprovado pelo dono) ──
+ * Só existe quando o motorista tem cor (`data-marca`, ver useTemaDaMarca).
+ * No Início o cabeçalho VIRA a faixa da marca, na cor viva do logo e com a
+ * letra que lê nela; nas outras telas ele continua branco, com um filete da
+ * cor embaixo. Sem cor, nada disto vale e o cabeçalho é o branco de sempre. */
+[data-marca] .filete-da-marca {
+  border-bottom: 3px solid rgb(var(--tema-marca));
+}
+[data-marca] .cabecalho-da-marca {
+  background: linear-gradient(135deg, rgb(var(--tema-marca)), rgb(var(--tema-marcaEscuro)));
+  border-bottom-color: transparent;
+}
+[data-marca] .cabecalho-da-marca .na-marca {
+  color: rgb(var(--tema-naMarca));
+}
+/* O logo numa pastilha branca: logo de qualquer cor lê sobre a faixa. */
+[data-marca] .cabecalho-da-marca .pastilha-do-logo {
+  background: #fff;
+  padding: 3px;
+}
+
 @layer components {
   /* Tap highlight customizado para botões em mobile.
    * Animação suave + ease-out pra dar sensação tátil de "afundar" no toque. */

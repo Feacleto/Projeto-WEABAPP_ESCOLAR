@@ -534,9 +534,10 @@ export default function TioDashboard() {
           * cheio: o verde cheio da tela é o "Iniciar a rota" da barra. */}
         {(estado === 'antes' || estado === 'entre' || (estado === 'vazio' && children.length > 0)) && (
           <div className="px-5 pt-4">
-            <section data-tour="hero" className="rounded-2xl bg-primary p-5 text-white shadow-rest">
-              <p className="rotulo text-menta">{cartaoDoDia.rotulo}</p>
-              <p className="mt-1.5 font-display text-[24px] font-extrabold leading-tight text-white">
+            {/* Na COR VIVA da marca (04/10/2026), com a letra que lê nela. */}
+            <section data-tour="hero" className="rounded-2xl bg-gradient-to-br from-marca to-marcaEscuro p-5 text-naMarca shadow-rest">
+              <p className="rotulo !text-naMarca opacity-80">{cartaoDoDia.rotulo}</p>
+              <p className="mt-1.5 font-display text-[24px] font-extrabold leading-tight text-naMarca">
                 {cartaoDoDia.titulo}
               </p>
               {estado === 'vazio' ? (
@@ -552,7 +553,7 @@ export default function TioDashboard() {
                 <button
                   type="button"
                   onClick={() => navigate('/tio/rota')}
-                  className="tap mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-base font-bold text-white"
+                  className="tap mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border border-naMarca/30 bg-naMarca/10 px-4 text-base font-bold text-naMarca"
                 >
                   <Route size={19} aria-hidden="true" />
                   Abrir rota
@@ -643,7 +644,7 @@ export default function TioDashboard() {
           <button
             type="button"
             onClick={() => navigate('/tio/route/now')}
-            className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-lg font-extrabold text-white shadow-focus"
+            className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-lg font-extrabold text-naMarca shadow-focus"
           >
             <Bus size={24} />
             Abrir a rota

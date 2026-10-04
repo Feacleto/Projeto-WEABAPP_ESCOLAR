@@ -212,7 +212,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
             <div className="mt-4 grid grid-cols-2 gap-2">
               <a
                 href={`tel:${telefoneDaFamilia}`}
-                className="tap flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-base font-bold text-white"
+                className="tap flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl bg-marca px-3 text-base font-bold text-naMarca"
               >
                 <Phone size={20} className="shrink-0" />
                 <span className="truncate">Ligar para {nomeDoResponsavel}</span>
@@ -824,7 +824,7 @@ function ChildPhotoEditor({ child }) {
       {STORAGE_ENABLED && (
         <label
           htmlFor={`child-photo-${child.id}`}
-          className="absolute -bottom-1 -right-1 w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
+          className="absolute -bottom-1 -right-1 w-12 h-12 rounded-full bg-marca text-naMarca flex items-center justify-center shadow-lg cursor-pointer tap"
         >
           {/* Texto escondido, não `aria-label`: em <label> o leitor de tela
             * ignora o atributo (axe: aria-prohibited-attr). */}

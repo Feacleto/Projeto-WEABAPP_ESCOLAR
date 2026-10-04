@@ -285,7 +285,7 @@ function StatusPanel({
   if (hasArrived) {
     return (
       <div className="rounded-2xl bg-gradient-to-br from-primarySoft to-primaryChip border border-primaryBorder p-4 flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
+        <div className="w-11 h-11 rounded-xl bg-marca text-naMarca flex items-center justify-center shrink-0">
           <Bus size={22} />
         </div>
         <div className="flex-1">

@@ -350,7 +350,7 @@ console.log('\n═══ A PREVISÃO SÓ GRAVA O QUE MUDOU (escritasDaRota) ═�
   checar('iniciar oferece "Cancelar" por 10 s', true, /duration: 10_000/.test(ctl) && ctl.includes('Cancelar'));
   checar('cancelar encerra sem lista de pendentes', true, ctl.includes('await stop(uid, [])'));
   checar('o "Iniciar a rota" da barra tem a sombra colorida', true,
-    /onClick=\{iniciar\}\s*\/\/[\s\S]{0,300}bg-primary text-lg font-extrabold text-white shadow-focus/.test(ctl));
+    /onClick=\{iniciar\}\s*\/\/[\s\S]{0,300}bg-marca text-lg font-extrabold text-naMarca shadow-focus/.test(ctl));
 
   const resumo = ler('src/components/tio/ResumoDaTurma.jsx');
   checar('o cartão da turma não disputa a sombra colorida', false, /className="[^"]*shadow-focus/.test(resumo));

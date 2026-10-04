@@ -90,7 +90,7 @@ export default function DigiteASenhaDoFinanceiro({ destino, onVoltar = null, vol
               <button
                 type="button"
                 onClick={usarDigital}
-                className="tap h-14 rounded-xl bg-primary shadow-focus flex items-center justify-center gap-2 text-base font-bold text-white"
+                className="tap h-14 rounded-xl bg-marca shadow-focus flex items-center justify-center gap-2 text-base font-bold text-naMarca"
               >
                 <Fingerprint size={22} aria-hidden="true" />
                 Usar a digital ou o rosto

@@ -416,7 +416,7 @@ export default function ControleDeRota({
         // ⚠️ A SOMBRA COLORIDA DA TELA É DELE (04/10/2026): "Iniciar a rota"
         // é o protagonista do Início, e o cartão verde da turma desceu para
         // `shadow-rest` (uma sombra colorida por tela).
-        className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-extrabold text-white shadow-focus"
+        className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-marca text-lg font-extrabold text-naMarca shadow-focus"
       >
         <Play size={22} />
         Iniciar a rota

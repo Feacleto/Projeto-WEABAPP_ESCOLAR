@@ -81,7 +81,7 @@ export default function PedidosDeAcesso({ pedidos = [], criancas = [] }) {
                 type="button"
                 disabled={respondendo === p.id}
                 onClick={() => responder(p, true)}
-                className="tap h-12 flex-1 rounded-xl bg-primary text-base font-bold text-white disabled:opacity-60"
+                className="tap h-12 flex-1 rounded-xl bg-marca text-base font-bold text-naMarca disabled:opacity-60"
               >
                 Aprovar
               </button>

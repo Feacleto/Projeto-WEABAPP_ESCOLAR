@@ -2,7 +2,9 @@ import Spinner from './Spinner';
 
 const variants = {
   primary:
-    'bg-primary text-white hover:bg-primaryDark active:bg-primaryDark disabled:bg-primary/50',
+    // A cor VIVA da marca, com a letra que lê nela (branca ou escura) —
+    // ver `marca` no tailwind.config.js. Sem logo, é o verde da casa.
+    'bg-marca text-naMarca hover:bg-marcaEscuro active:bg-marcaEscuro disabled:bg-marca/50',
   secondary:
     'bg-card border border-border text-text hover:bg-sunken disabled:opacity-60',
   // ⚠️ O FUNDO É O `dangerText`, não o `danger`: branco sobre #EF4444 dá

@@ -13,6 +13,7 @@
  */
 import {
   paletaDaMarca,
+  opcoesDoLogo,
   coresDoLogo,
   contraste,
   hexParaRgb,
@@ -69,10 +70,23 @@ for (let h = 0; h < 360; h += 7) {
       else ok++;
       if (contraste(hexParaRgb(p.menta), P) < 4.5) igual(`${nome}: rótulo claro sobre o botão`, false, true);
       else ok++;
+      // A cor VIVA (04/10/2026): a letra lê nela e no fim do degradê.
+      const N = hexParaRgb(p.naMarca);
+      if (contraste(hexParaRgb(p.marca), N) < 4.5) igual(`${nome}: letra sobre a cor viva`, false, true);
+      else ok++;
+      if (contraste(hexParaRgb(p.marcaEscuro), N) < 4.5) igual(`${nome}: letra sobre o fim do degradê`, false, true);
+      else ok++;
     }
   }
 }
 igual('passou por centenas de cores', combinacoes > 300, true);
+
+igual('no máximo duas cores do logo (o verde é a terceira)',
+  opcoesDoLogo(['#F7941D', '#1E5BB8', '#D62828']).length, 2);
+igual('cor sem cor não entra nas opções', opcoesDoLogo(['#808080', '#1E5BB8']), ['#1E5BB8']);
+igual('o laranja do logo continua laranja na cor viva', paletaDaMarca('#F7941D').marca, '#F7941D');
+igual('e leva letra escura', paletaDaMarca('#F7941D').naMarca, '#0B1210');
+igual('o azul escuro leva letra branca', paletaDaMarca('#1E5BB8').naMarca, '#FFFFFF');
 
 console.log('3. a cor do logo');
 function imagem(lista) {

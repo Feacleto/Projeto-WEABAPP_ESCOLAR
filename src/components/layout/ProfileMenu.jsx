@@ -180,7 +180,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
               type="button"
               role="menuitem"
               onClick={() => go(() => navigate(`${basePath}/profile`))}
-              className="tap mt-3 flex h-12 w-full items-center justify-center gap-1 rounded-xl bg-primary text-base font-bold text-white"
+              className="tap mt-3 flex h-12 w-full items-center justify-center gap-1 rounded-xl bg-marca text-base font-bold text-naMarca"
             >
               Ver meu perfil
               <ChevronRight size={16} />

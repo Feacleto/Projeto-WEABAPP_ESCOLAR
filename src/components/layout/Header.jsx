@@ -99,7 +99,9 @@ export default function Header({
      * A faixa é padding do <header>, não do conteúdo: a barra continua
      * grudada no topo e a tarja do sistema fica com a cor do cabeçalho. */}
     <header
-      className="sticky top-0 z-20 bg-card border-b border-neutro print:hidden"
+      className={`filete-da-marca sticky top-0 z-20 bg-card border-b border-neutro print:hidden ${
+        marca ? 'cabecalho-da-marca' : ''
+      }`}
       style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
     >
       {/* O TÍTULO É BRICOLAGE (`font-display`), como todo título de tela do
@@ -199,7 +201,7 @@ function MarcaOuTitulo({ titulo }) {
     <div className="flex items-center gap-2 min-w-0">
       {logoURL && <LogoDaMarca src={logoURL} />}
       <h1
-        className={soLogo ? 'sr-only' : 'font-display text-lg font-bold text-text truncate'}
+        className={soLogo ? 'sr-only' : 'na-marca font-display text-lg font-bold text-text truncate'}
       >
         {nome || titulo}
       </h1>
@@ -232,11 +234,14 @@ function MarcaNaBarra() {
  * "Tio Nino, Tio Nino" repete sem acrescentar.
  */
 function LogoDaMarca({ src, alt = '' }) {
+  // ⚠️ MAIOR DESDE 04/10/2026 (pedido do dono): 44 px de altura e até 120
+  // de largura — era 32 e 72, e a marca quase não aparecia. Na faixa da cor
+  // ela ganha uma pastilha branca (index.css), para logo de qualquer cor ler.
   return (
     <img
       src={src}
       alt={alt}
-      className="h-8 w-auto max-w-[72px] shrink-0 rounded-lg object-contain"
+      className="pastilha-do-logo h-11 w-auto max-w-[120px] shrink-0 rounded-lg object-contain"
     />
   );
 }
@@ -290,7 +295,7 @@ function GlobalActions({ role, basePath, currentPath }) {
         // 44×44 de área de toque: era 36, abaixo do mínimo para quem toca
         // com o dedo grosso e com pressa.
         className={`relative flex h-12 w-12 items-center justify-center tap rounded-lg ${
-          isOnNotifications ? 'text-primary bg-primaryChip' : 'text-textMuted'
+          isOnNotifications ? 'text-primary bg-primaryChip' : 'na-marca text-textMuted'
         }`}
       >
         <Bell size={20} />
@@ -356,7 +361,7 @@ export function FalarComOMotorista({
         <button
           type="button"
           onClick={tocar}
-          className="tap flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-lg font-bold text-white"
+          className="tap flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-marca px-4 text-lg font-bold text-naMarca"
         >
           <MessageCircle size={22} />
           <span className="truncate">Falar com {nome}</span>
