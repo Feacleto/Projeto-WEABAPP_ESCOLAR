@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, LockKeyhole, QrCode, ReceiptText, Users } from 'lucide-react';
+import { Bot, ChevronRight, LockKeyhole, QrCode, ReceiptText, Users } from 'lucide-react';
 import MolduraDoFinanceiro from './MolduraDoFinanceiro';
 import DigiteASenhaDoFinanceiro from './DigiteASenhaDoFinanceiro';
 import FolhaDeDespesa from './FolhaDeDespesa';
@@ -11,7 +11,9 @@ import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
 import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
 import { useTrancaDoFinanceiro } from '../../hooks/useTrancaDoFinanceiro';
 import { biometriaLigada, conferirBiometria } from '../../services/biometriaService';
-import { CAIXA, TAXA, TURMA } from '../../dominio/identidade/trancaDoFinanceiro.js';
+import { BUZI, CAIXA, TAXA, TURMA } from '../../dominio/identidade/trancaDoFinanceiro.js';
+import { boletimParaAnunciar, nomeDoMes } from '../../dominio/cobranca/boletim.js';
+import { lerBoletimVisto } from '../../hooks/useBoletim';
 // A MESMA régua da porta "Turma e contratos" do caixa e da tela da turma —
 // eram duas na integração (03/10/2026), e duas contas da mesma turma acabam
 // discordando no dia em que uma muda.
@@ -27,6 +29,12 @@ import { seloDoPlano } from '../../dominio/associacao/seloDoPlano.js';
  * A TELA TRANCADA DO FINANCEIRO (03/10/2026) — o protótipo aprovado pelo
  * dono, com o desenho de um app de banco: a saudação, a porta grande, e o que
  * se pode ver SEM a senha.
+ *
+ * ⚠️ A PORTA VERDE É O BUZI (04/10/2026, decisão do dono) — "Boletim do seu
+ * negócio", o assistente que responde em linguagem simples. "Acessar dados
+ * financeiros" fica logo abaixo, branco: é a mesma senha, para quem quer o
+ * caixa inteiro. Do dia 1 ao 7 o cartão anuncia o Boletim do mês que fechou,
+ * até ele abrir (`boletimParaAnunciar`).
  *
  * O QUE APARECE SEM SENHA É O QUE NÃO É DINHEIRO:
  *   - Minha turma: quantas crianças, quantas entraram e saíram no mês
@@ -74,6 +82,8 @@ export default function FinanceiroTrancado() {
     agora,
   });
 
+  const anunciar = boletimParaAnunciar(agora.getTime(), lerBoletimVisto(user?.uid));
+
   const acessar = async (destino) => {
     if (comDigital && (await conferirBiometria(user?.uid))) {
       tranca.abrirCom(destino);
@@ -110,11 +120,34 @@ export default function FinanceiroTrancado() {
 
       <button
         type="button"
-        onClick={() => acessar(CAIXA)}
-        className="tap h-[150px] rounded-3xl bg-card shadow-rest p-6 flex flex-col justify-between items-start text-left"
+        onClick={() => acessar(BUZI)}
+        className="tap min-h-[150px] rounded-3xl bg-primary shadow-focus p-6 flex flex-col justify-between items-start gap-3 text-left text-white"
       >
-        <LockKeyhole size={36} className="text-primary" aria-hidden="true" />
-        <span className="text-[22px] font-bold text-text">Acessar dados financeiros</span>
+        <span className="flex w-full items-start justify-between gap-3">
+          <Bot size={36} aria-hidden="true" />
+          {anunciar && (
+            <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-primary">
+              Boletim de {nomeDoMes(anunciar)} pronto
+            </span>
+          )}
+        </span>
+        <span>
+          <span className="block text-[22px] font-bold">Boletim do seu negócio</span>
+          <span className="block text-[16px] text-white/90">
+            O Buzi, seu assistente digital, resume o seu mês
+          </span>
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={() => acessar(CAIXA)}
+        className="tap rounded-3xl bg-card shadow-rest px-5 py-4 flex items-center gap-3.5 text-left"
+      >
+        <span className="w-12 h-12 shrink-0 rounded-xl bg-primaryChip flex items-center justify-center">
+          <LockKeyhole size={26} className="text-primary" aria-hidden="true" />
+        </span>
+        <span className="flex-1 text-lg font-bold text-text">Acessar dados financeiros</span>
+        <ChevronRight size={20} className="text-textBody shrink-0" aria-hidden="true" />
       </button>
       <p className="text-[15px] text-textMuted text-center">
         {comDigital ? 'Com digital ou rosto' : 'Com a sua senha de 4 números'}

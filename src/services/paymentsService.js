@@ -168,6 +168,34 @@ export async function getPaymentsSince(fromMonthKey, adminUid) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+/**
+ * O MESMO RECORTE, AO VIVO — o que o Buzi e o Boletim leem (04/10/2026).
+ *
+ * Mesma consulta de `getPaymentsSince` (mesmo índice), escutada: se uma
+ * família paga com a conversa aberta, a resposta seguinte já vem com o número
+ * novo. Uma leitura por mensalidade da janela ao abrir; tocar nos botões não
+ * custa leitura nenhuma — a resposta é montada no aparelho.
+ */
+export function watchPaymentsSince(fromMonthKey, adminUid, onUpdate, onError) {
+  if (!fromMonthKey || !adminUid) {
+    onUpdate([]);
+    return () => {};
+  }
+  const q = query(
+    collection(db, 'payments'),
+    where('adminUid', '==', adminUid),
+    where('month', '>=', fromMonthKey)
+  );
+  return onSnapshot(
+    q,
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('watchPaymentsSince error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
 
 /**
  * A DÍVIDA QUE SE ARRASTA — pagamentos abertos de meses ANTERIORES ao pedido.

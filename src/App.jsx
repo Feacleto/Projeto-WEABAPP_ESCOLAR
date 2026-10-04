@@ -58,6 +58,8 @@ const TioHorarios = lazy(() => import('./pages/tio/TioHorarios'));
 const TioSemana = lazy(() => import('./pages/tio/TioSemana'));
 const TioFinance = lazy(() => import('./pages/tio/TioFinance'));
 const TioFinanceReport = lazy(() => import('./pages/tio/TioFinanceReport'));
+const TioBuzi = lazy(() => import('./pages/tio/TioBuzi'));
+const TioBoletim = lazy(() => import('./pages/tio/TioBoletim'));
 const TioChildStatement = lazy(() => import('./pages/tio/TioChildStatement'));
 const TioExpenses = lazy(() => import('./pages/tio/TioExpenses'));
 const TioTurma = lazy(() => import('./pages/tio/TioTurma'));
@@ -647,6 +649,10 @@ export default function App() {
         <Route path="route/plan" element={<TioHorarios />} />
         <Route path="finance" element={<TioFinance />} />
         <Route path="finance/report" element={<TioFinanceReport />} />
+        {/* O Buzi e o Boletim (04/10/2026): embaixo de /tio/finance, então
+          * atrás da senha pelo caminho, sem guarda novo. */}
+        <Route path="finance/buzi" element={<TioBuzi />} />
+        <Route path="finance/boletim" element={<TioBoletim />} />
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="finance/turma" element={<TioTurma />} />
         <Route path="pix" element={<TioPixConfig />} />

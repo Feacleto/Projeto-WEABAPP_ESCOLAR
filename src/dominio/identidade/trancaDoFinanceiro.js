@@ -45,6 +45,14 @@ export const TAXA = '/tio/taxa';
 /** A tela "Turma e contratos", destino do cartão "Minha turma". */
 export const TURMA = '/tio/finance/turma';
 
+/**
+ * O Buzi, o assistente digital (04/10/2026). Entrar por ele NÃO é entrada
+ * direta: a conversa mostra o dinheiro do mês inteiro e leva ao caixa ("Cobrar
+ * no caixa"), e trancar de novo nesse toque pediria a senha duas vezes para a
+ * mesma coisa. Para a regra 2 ele vale como o caixa.
+ */
+export const BUZI = '/tio/finance/buzi';
+
 /** As três escolhas de "Pedir a senha". */
 export const PEDIR_SENHA = {
   SEMPRE: 'sempre',
@@ -112,7 +120,7 @@ export function estadoTrancado() {
 export function destravar(destino) {
   return {
     destravado: true,
-    entradaDireta: normalizarCaminho(destino) !== CAIXA,
+    entradaDireta: ![CAIXA, BUZI].includes(normalizarCaminho(destino)),
     saiuEm: null,
   };
 }

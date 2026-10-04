@@ -1786,6 +1786,25 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   do mês, portas para Despesas, Turma e contratos e Meu plano, abas **Extrato**
   ([extratoDoMes.js](src/dominio/cobranca/extratoDoMes.js)) e Mensalidades.
   "Relatório" virou "Baixar extrato do mês (PDF)".
+- ⚠️ **O BUZI E O BOLETIM (04/10/2026, decisão do dono)** — o cartão VERDE da
+  tela trancada é "Boletim do seu negócio": senha/digital e abre
+  `/tio/finance/buzi`, uma conversa no jeito do WhatsApp com TRÊS botões
+  fixos ("Quem está atrasado?", "Quem avisou que pagou?", "Quanto entrou este
+  mês?") e o "Baixar o Boletim" no fim de toda resposta (`/tio/finance/boletim`,
+  PDF por `window.print()`; mês corrente PARCIAL, mês passado FECHADO —
+  a foto do último instante dele, pelas datas gravadas). Régua em
+  [boletim.js](src/dominio/cobranca/boletim.js), `npm run testar:boletim`.
+  ⚠️ **NÃO É IA, e não se chama assim**: as respostas são montadas no
+  aparelho com as mensalidades que ele já lê (`useBoletim`: 12 meses + o
+  aberto de antes, ao vivo) — tocar não custa leitura. ⚠️ **Três regras do
+  dono, no teste:** um assunto por pergunta; NENHUMA comparação com outro
+  mês (atrasado pago agora pareceria aumento — o "entrou" separa por dentro o
+  que é do mês, atrasado antigo e adiantado); e nada de conversa de amigo.
+  "Entrou" é BAIXA dada (`paidAt`), nunca aviso. O olho de esconder vale na
+  tela; o PDF sai com os valores. Do dia 1 ao 7 o cartão diz "Boletim de
+  setembro pronto" até ele abrir. Entrar pelo Buzi vale como entrar pelo caixa
+  na tranca (`BUZI` em trancaDoFinanceiro.js), senão "Cobrar no caixa" pediria
+  a senha de novo. A taxa da plataforma não entra.
 - **A folha de despesa** ([FolhaDeDespesa](src/components/financeiro/FolhaDeDespesa.jsx),
   régua em [historicoDeDespesas.js](src/dominio/cobranca/historicoDeDespesas.js)):
   histórico por categoria e o KM. ⚠️ **O km tem DUAS fontes e as duas são

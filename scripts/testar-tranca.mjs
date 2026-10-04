@@ -107,6 +107,9 @@ bloco('4. Voltar dentro do Financeiro (a regra do dono)');
   const pelaTurma = aberto(TURMA);
   checar('entrar direto na turma marca entrada direta', true, pelaTurma.entradaDireta);
   checar('entrar pelo caixa não marca', false, aberto(CAIXA).entradaDireta);
+  // O Buzi vale como o caixa: ele leva ao caixa, e pedir a senha de novo
+  // nesse toque seria pedir duas vezes para a mesma coisa (04/10/2026).
+  checar('entrar pelo Buzi não marca', false, aberto('/tio/finance/buzi').entradaDireta);
   checar('entrar pelo caixa com barra no fim não marca', false, aberto('/tio/finance/').entradaDireta);
   checar('entrou direto na turma e voltou ao caixa: TRANCA', false,
     ir(pelaTurma, TURMA, CAIXA).destravado);
