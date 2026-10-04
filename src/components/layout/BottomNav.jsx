@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { indiceDaAba } from '../../compartilhado/abaAtiva';
 
 /**
- * Navegação inferior em pílula flutuante.
+ * Navegação inferior: uma barra branca colada no fim da tela.
  *
  * ── QUEM USA ISTO, E O QUE ISSO DECIDE
  * O motorista tem cerca de 40 anos e usa o app EM PÉ, NA RUA, SOB SOL, COM UMA
@@ -78,28 +78,26 @@ export default function BottomNav({ items }) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-30 bg-bg px-3 pt-2 pb-3 print:hidden"
+      className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-30 bg-card border-t border-border px-3 pt-2 pb-3 print:hidden"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 0.75rem)' }}
     >
       {/* NADA FICA ATRÁS DO MENU (03/10/2026, pedido do dono). A pílula
         * flutuava sobre o conteúdo, e em volta e embaixo dela o que rolava
         * continuava aparecendo — ícone pela metade atrás do menu, e toque que
-        * caía no que estava escondido. Agora o rodapé é uma faixa SÓLIDA da
-        * cor do fundo, com uma transição curta em cima para o conteúdo
-        * sumir em vez de ser cortado em linha reta. O espaço no fim da
-        * rolagem (o paddingBottom dos layouts) garante que o último item sobe acima
-        * dela. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-4 h-4 bg-gradient-to-t from-bg to-transparent"
-      />
-      {/* rounded-full em vez de rounded-3xl: pílula de verdade.
+        * caía no que estava escondido. O espaço no fim da rolagem (o
+        * paddingBottom dos layouts) garante que o último item sobe acima dele.
+        *
+        * ⚠️ E A SEPARAÇÃO É DISCRETA (04/10/2026, pedido do dono). A primeira
+        * correção fez uma faixa cinza com degradê em cima e a pílula branca,
+        * com borda e sombra, por cima dela: três camadas marcando a divisa, e
+        * o dono achou feio. Agora é UMA barra branca com uma linha fina no
+        * topo — o desenho de app de banco e de WhatsApp. A altura não mudou:
+        * as barras fixas (`5.75rem` acima do fim da tela) continuam no lugar.
         *
         * `relative` e `overflow-hidden` existem por causa da pastilha: ela é
-        * absoluta aqui dentro e não pode escapar da borda arredondada
-        * enquanto desliza. */}
+        * absoluta aqui dentro e não escapa enquanto desliza. */}
       <div
-        className="relative overflow-hidden bg-card rounded-full shadow-float border border-neutro grid"
+        className="relative overflow-hidden grid"
         style={{
           gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
         }}
