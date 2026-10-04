@@ -157,8 +157,9 @@ export default function CampoDeValor({
         ) : naoEntendi ? (
           <p className="text-sm text-dangerText">Não entendi o valor. Fale de novo ou digite.</p>
         ) : extenso ? (
-          <div className="flex items-start gap-2">
-            <p className="flex-1 text-sm leading-snug text-textBody first-letter:uppercase">{extenso}</p>
+          <div className="flex items-center gap-2">
+            {/* O "OUVIR" VEM ANTES DO VALOR (03/10/2026, pedido do dono): o
+              * olho chega no botão e logo em seguida no que ele vai falar. */}
             {temVoz && (
               <button
                 type="button"
@@ -170,6 +171,7 @@ export default function CampoDeValor({
                 Ouvir
               </button>
             )}
+            <p className="min-w-0 flex-1 self-center text-sm leading-snug text-textBody first-letter:uppercase">{extenso}</p>
           </div>
         ) : null}
       </div>
