@@ -118,71 +118,73 @@ export default function FinanceiroTrancado() {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => acessar(BUZI)}
-        className="tap min-h-[150px] rounded-3xl bg-primary shadow-focus p-6 flex flex-col justify-between items-start gap-3 text-left text-white"
-      >
-        <span className="flex w-full flex-wrap items-start justify-between gap-3">
-          <Bot size={36} aria-hidden="true" />
-          {anunciar && (
-            <span className="whitespace-nowrap rounded-full bg-white px-3 py-1 text-sm font-bold text-primary">
-              Boletim de {nomeDoMes(anunciar)} pronto
-            </span>
-          )}
-        </span>
-        <span>
-          <span className="block text-[22px] font-bold">Boletim do seu negócio</span>
-          <span className="block text-[16px] text-white/90">
-            O Buzi, seu assistente digital, resume o seu mês
-          </span>
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={() => acessar(CAIXA)}
-        className="tap rounded-3xl bg-card shadow-rest px-5 py-4 flex items-center gap-3.5 text-left"
-      >
-        <span className="w-12 h-12 shrink-0 rounded-xl bg-primaryChip flex items-center justify-center">
-          <LockKeyhole size={26} className="text-primary" aria-hidden="true" />
-        </span>
-        <span className="flex-1 text-lg font-bold text-text">Acessar dados financeiros</span>
-        <ChevronRight size={20} className="text-textBody shrink-0" aria-hidden="true" />
-      </button>
-      <p className="text-[15px] text-textMuted text-center">
-        {comDigital ? 'Com digital ou rosto' : 'Com a sua senha de 4 números'}
-      </p>
-
-      <button
-        type="button"
-        onClick={() => acessar(TURMA)}
-        className="tap rounded-3xl bg-card shadow-rest px-5 py-[18px] flex items-center gap-3.5 text-left"
-      >
-        <span className="w-12 h-12 shrink-0 rounded-xl bg-primaryChip flex items-center justify-center">
-          <Users size={26} className="text-primary" aria-hidden="true" />
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[15px] text-textMuted">Minha turma</p>
-          <p className="font-display text-[22px] font-extrabold text-text">{frases.total}</p>
-          <p className="text-[15px] text-textBody">
-            Em {MESES[agora.getMonth()]}: <strong className="text-accentText">{frases.entraram}</strong>
-            {frases.sairam && (
-              <>
-                {' · '}
-                <strong className="text-dangerText">{frases.sairam}</strong>
-              </>
+      {/* O MODELO B (04/10/2026, escolhido pelo dono entre três): UMA porta
+        * verde com duas saídas. O Buzi é a de cima; "Acessar dados
+        * financeiros" é a faixa branca dentro do mesmo cartão — as duas pedem
+        * a mesma senha, então moram juntas. Embaixo, os quadrados iguais. */}
+      <div className="rounded-3xl bg-primary shadow-focus p-2 text-white">
+        <button
+          type="button"
+          onClick={() => acessar(BUZI)}
+          className="tap w-full rounded-[20px] p-4 flex flex-col items-start gap-3 text-left"
+        >
+          <span className="flex w-full flex-wrap items-start justify-between gap-3">
+            <Bot size={36} aria-hidden="true" />
+            {anunciar && (
+              <span className="whitespace-nowrap rounded-full bg-white px-3 py-1 text-sm font-bold text-primary">
+                Boletim de {nomeDoMes(anunciar)} pronto
+              </span>
             )}
-          </p>
-          <p className="mt-1.5 text-[15px] font-bold text-primary">Ver tudo</p>
-        </div>
-        <ChevronRight size={20} className="text-textBody shrink-0" aria-hidden="true" />
-      </button>
+          </span>
+          <span>
+            <span className="block text-[22px] font-bold">Boletim do seu negócio</span>
+            <span className="block text-[16px] text-white/90">
+              O Buzi, seu assistente digital, resume o seu mês
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => acessar(CAIXA)}
+          className="tap mt-1 flex min-h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left"
+        >
+          <LockKeyhole size={24} className="shrink-0 text-primary" aria-hidden="true" />
+          <span className="flex-1 text-lg font-bold text-text">Acessar dados financeiros</span>
+          <ChevronRight size={20} className="text-textBody shrink-0" aria-hidden="true" />
+        </button>
+      </div>
+      <p className="text-[15px] text-textMuted text-center">
+        {comDigital ? 'Os dois com digital ou rosto' : 'Os dois com a sua senha de 4 números'}
+      </p>
 
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
+          onClick={() => acessar(TURMA)}
+          className="tap col-span-2 relative min-h-[132px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start gap-2 text-left"
+        >
+          {/* A turma mostra os contratos: é o único quadrado que pede a senha,
+            * e o cadeado no canto diz isso antes do toque. */}
+          <LockKeyhole size={16} className="absolute right-4 top-4 text-textMuted" aria-label="Pede a senha" />
+          <Users size={30} className="text-primary" aria-hidden="true" />
+          <span>
+            <span className="block text-lg font-bold text-text">Minha turma</span>
+            <span className="block text-[15px] text-textBody">{frases.total}</span>
+            <span className="block text-[15px] text-textBody">
+              Em {MESES[agora.getMonth()]}: <strong className="text-accentText">{frases.entraram}</strong>
+              {frases.sairam && (
+                <>
+                  {' · '}
+                  <strong className="text-dangerText">{frases.sairam}</strong>
+                </>
+              )}
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={() => setFolha('pix')}
-          className="tap h-[120px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start text-left"
+          className="tap min-h-[132px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start gap-2 text-left"
         >
           <QrCode size={30} className="text-primary" aria-hidden="true" />
           <span className="text-lg font-bold text-text">Mostrar meu PIX</span>
@@ -190,13 +192,15 @@ export default function FinanceiroTrancado() {
         <button
           type="button"
           onClick={() => setFolha('despesa')}
-          className="tap h-[120px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start text-left"
+          className="tap min-h-[132px] rounded-3xl bg-card shadow-rest p-5 flex flex-col justify-between items-start gap-2 text-left"
         >
           <ReceiptText size={30} className="text-primary" aria-hidden="true" />
           <span className="text-lg font-bold text-text">Lançar despesa</span>
         </button>
       </div>
-      <p className="text-[15px] text-textMuted text-center">Estes dois funcionam sem senha.</p>
+      <p className="text-[15px] text-textMuted text-center">
+        PIX e despesa funcionam sem senha.
+      </p>
 
       {cobranca === true && (
         <button
