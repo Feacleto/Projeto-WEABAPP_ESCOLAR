@@ -331,7 +331,7 @@ src/
 │   │                 hoje. Pública, sem conta, sem sessão do Firebase e sem
 │   │                 mapa ao vivo: a posição da perua é o veículo de um
 │   │                 autônomo e ele não decidiu compartilhá-la com terceiros
-│   ├── tio/           24 telas do motorista — entre elas `TioTurma`
+│   ├── tio/           25 telas do motorista — entre elas `TioTurma`
 │   │                 (`/tio/finance/turma`, atrás da senha), `TioEncerrar`
 │   │                 (`/tio/encerrar`, FORA do `GuardaDaConta`: quem está
 │   │                 bloqueado por atraso precisa conseguir sair) e
@@ -1726,7 +1726,9 @@ número de crianças), atividade de Platina nunca exige pagar ou contratar, e o
 selo público só sobe com o que o app confere sozinho. Nada aparece antes da
 primeira rota encerrada — o começo é cadastrar a turma. Tela `/tio/nivel`;
 aba "Platina" no painel do dono; o nível mora no MENU DO PERFIL (e uma
-medalha no rosto), não mais ao lado da marca (04/10/2026).
+medalha no rosto), não mais ao lado da marca (04/10/2026). O rosto do
+perfil no cabeçalho tem fundo BRANCO (`fundo` no Avatar, só ali) e, com o
+menu aberto, um anel na cor do metal do nível (verde sem nível e na família).
 ⚠️ **O DESENHO É O MODELO D2 (04/10/2026, aprovado pelo dono):** selo de
 METAL com reflexo (exceção de movimento nomeada; metais em
 `config/paletaCategorica.js`), a estrada dos cinco níveis
@@ -3103,6 +3105,19 @@ e por isso fica **fora da bateria encadeada** — é exatamente o que
 `npm run testar` e build. Rules e Storage ficam fora até o emulador entrar lá.
 
 ⚠️ **A FOLHA "MEU TRANSPORTE" É O MODELO F (04/10/2026, escolhido pelo dono entre seis):** no topo os avisos às famílias em dois botões grandes ("Problema na perua" cheio, nos tokens de alerta; "Não tem aula" de contorno), no meio a operação em quatro quadrados com o número grande (turma, faltas da semana, horários da rota com "N sem horário" em âmbar, escolas), e no pé o resto em linhas ("Mais"). O motorista de 40+ abre com pressa: o peso na tela segue a urgência.
+
+⚠️ **O INÍCIO TEM QUATRO BLOCOS E A ROTA TEM TELA PRÓPRIA (04/10/2026,
+decisão do dono).** O Início: saudação com a data numa linha, o cartão verde
+com UMA frase do momento ("Ida às 06h40 · 17 crianças", "Hoje é domingo · Sem
+viagem hoje.", "Tudo entregue hoje.") e "Ver a rota", o "Para resolver" quando
+houver, "Meu transporte". A barra "Iniciar a rota" só aparece em dia de rota.
+A lista de quem vai, a escola, a chave do mapa e o "Rodar mesmo assim" moram
+em **"Minha rota"** (`/tio/rota`, [MinhaRota](src/pages/tio/MinhaRota.jsx),
+com [useViagemDoDia](src/hooks/useViagemDoDia.js) e
+[ListaDaViagem](src/components/route/ListaDaViagem.jsx)): Ida e Volta com a
+hora de saída, a lista, a chave, "Editar a rota" (leva a Horários da rota — a
+ordem É a hora) e o iniciar no pé. ⚠️ O Início ainda tem a sua cópia da conta
+da viagem; quando passar a usar `useViagemDoDia`, a cópia sai.
 
 ⚠️ **"PARA VOCÊ" — UMA LINHA NO FIM DO INÍCIO (04/10/2026, desenhado com a
 sessão do Início e aprovado pelo dono).** [ParaVoce](src/components/tio/ParaVoce.jsx),

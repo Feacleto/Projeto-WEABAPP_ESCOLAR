@@ -5,7 +5,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Clock,
   Users,
-  School,
+  Route,
   CircleAlert,
   AlertTriangle,
   ChevronRight,
@@ -19,13 +19,11 @@ import PedidosDeAcesso from '../../components/tio/PedidosDeAcesso';
 import AvaliacaoNoInicio from '../../components/feedback/AvaliacaoNoInicio';
 import { MOMENTO, PAPEL_DA_AVALIACAO, aconteceuHoje } from '../../dominio/suporte/avaliacaoRapida.js';
 import Header from '../../components/layout/Header';
-import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
 import Button from '../../components/common/Button';
 import SchoolBroadcastSheet from '../../components/broadcasts/SchoolBroadcastSheet';
 import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
-import ResumoDaTurma from '../../components/tio/ResumoDaTurma';
 import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
 import ParaVoce from '../../components/tio/ParaVoce';
 import { useAuth } from '../../hooks/useAuth';
@@ -43,7 +41,6 @@ import {
   deMinutos,
   precisaDaPerua,
   semHorarioCombinado,
-  ROTULO_ESTADO,
   formataEspera,
 } from '../../dominio/rota/horarios';
 import {
@@ -52,11 +49,9 @@ import {
 } from '../../services/routeStatusService';
 import { publicarOrdemDoDia } from '../../services/ridesService';
 import { greet } from '../../marca/greeting';
-// Sob demanda: a ficha traz o mapa e o QR code (ver FichaDaCriancaSobDemanda).
-import ChildDetailSheet from '../../components/children/FichaDaCriancaSobDemanda';
 import MeuTransporteSheet from '../../components/tio/MeuTransporteSheet';
 import { useRelogio } from '../../hooks/useRelogio';
-import FestiveBadge from '../../components/festive/FestiveBadge';
+import { diaSemRota, fraseDoDiaSemRota } from '../../dominio/rota/calendario.js';
 
 /**
  * O INÍCIO — a única tela em que o motorista trabalha.
@@ -110,13 +105,12 @@ const MONTHS = [
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
 
-// O DIA EM TRÊS LINHAS (03/10/2026, pedido do dono): "Hoje é sábado", embaixo
-// "3 de outubro", embaixo a hora. Numa linha só, em letra miúda ("SÁBADO, 3 DE
-// OUTUBRO · 20:51"), o dia da semana — que é o que decide se tem rota — se
-// perdia no meio da data.
-function diaDaSemana(d = new Date()) {
-  return `Hoje é ${WEEK_DAYS[d.getDay()]}`;
+/** "Domingo, 4 de outubro" — a data do Início numa linha só. */
+function dataDoDia(d = new Date()) {
+  const dia = WEEK_DAYS[d.getDay()] || '';
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ${diaEMes(d)}`;
 }
+
 function diaEMes(d = new Date()) {
   return `${d.getDate()} de ${MONTHS[d.getMonth()]}`;
 }
@@ -145,15 +139,9 @@ export default function TioDashboard() {
   const todayKey = getDateKey();
   const { absences, byChildId: declaracoes } = useAbsences(todayKey);
 
-  // A hora do cabeçalho, andando de minuto em minuto.
+  // O dia do cabeçalho; `useRelogio` vira a data à meia-noite sozinho.
   const agora = useRelogio();
-  const horaAgora = agora.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 
-  // Qual criança está com a ficha aberta. `null` = nenhuma.
-  const [fichaDe, setFichaDe] = useState(null);
 
   const [indiceAberto, setIndiceAberto] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
@@ -357,38 +345,21 @@ export default function TioDashboard() {
     navigate('/tio/route/now');
   }
 
-  const rotuloDaTurma =
-    bloco && pendentes.length
-      ? `Próxima viagem · ${bloco.direcao === 'ida' ? 'ida' : 'volta'}`
-      : 'Sua turma';
-
-  // A VIAGEM NO CARTÃO VERDE (design system, 03/10/2026): nome, intervalo das
-  // paradas combinadas, escolas e os rostos de quem vai — quem está fora hoje
-  // (falta, o pai leva ou busca) fica na mesma fila, apagado. Sem viagem
-  // pendente, o cartão volta a contar a turma.
-  const viagemDoCartao = useMemo(() => {
-    if (!bloco || !pendentes.length) return null;
-    const ini = horaCurta(deMinutos(bloco.inicio));
-    const fim = horaCurta(deMinutos(bloco.fim));
-    const rostos = bloco.paradas.map((p) => ({
-      child: p.child,
-      fora: !precisaDaPerua(p.estado),
-    }));
-    return {
-      titulo: bloco.direcao === 'ida' ? 'Levando pra escola' : 'Trazendo pra casa',
-      horario: bloco.fim > bloco.inicio ? `${ini} → ${fim}` : ini,
-      escolas: bloco.escolas?.length || 0,
-      rostos,
-      vao: rostos.filter((r) => !r.fora).length,
-      faltam: rostos.filter((r) => r.fora).length,
-    };
-  }, [bloco, pendentes.length]);
-  const linhaDaViagem =
-    faltamMin > 1
-      ? `Começa daqui a ${formataEspera(faltamMin)}.`
-      : faltamMin >= 0
-        ? 'Começa agora.'
-        : null;
+  // A FRASE DO CARTÃO VERDE — uma coisa só, a do momento.
+  const motivoSemRota = diaSemRota(agora);
+  const cartaoDoDia = (() => {
+    if (estado === 'vazio') return { rotulo: 'Sua turma', titulo: linhaDaTurma };
+    if (motivoSemRota) return { rotulo: fraseDoDiaSemRota(motivoSemRota), titulo: 'Sem viagem hoje.' };
+    if (temViagem) {
+      const vao = bloco.paradas.filter((p) => precisaDaPerua(p.estado)).length;
+      return {
+        rotulo: 'Próxima viagem',
+        titulo: `${bloco.direcao === 'ida' ? 'Ida' : 'Volta'} às ${horaCurta(deMinutos(bloco.inicio))} · ${vao} ${vao === 1 ? 'criança' : 'crianças'}`,
+      };
+    }
+    if (diaConcluido) return { rotulo: 'Hoje', titulo: 'Tudo entregue hoje.' };
+    return { rotulo: 'Hoje', titulo: 'Nenhuma viagem pendente.' };
+  })();
 
   const primeiroNome =
     profile?.marcaNome?.trim() || profile?.name?.split(' ')[0] || 'Tio';
@@ -447,27 +418,13 @@ export default function TioDashboard() {
           * tela é caro demais pra gastar com cortesia enquanto ele dirige. */}
         {estado !== 'dirigindo' && (
           <div className="px-5 pt-5">
-            {/* A HORA AO LADO DA DATA.
-              *
-              * O cartão de cima fala em horário ("próxima viagem 17h30") e a
-              * tela não dizia que horas são. Ele conferia no relógio do
-              * sistema pra saber se dava tempo — duas leituras pra uma
-              * pergunta só. O relógio anda sozinho: `useRelogio` re-renderiza
-              * a cada minuto, senão a hora congela na abertura do app e
-              * mente com cara de informação. */}
-            <div className="leading-snug">
-              <p className="text-[17px] font-bold text-primary">{diaDaSemana(agora)}</p>
-              <p className="text-[15px] text-textBody">{diaEMes(agora)}</p>
-              <p className="font-mono text-[15px] font-semibold tabular-nums text-textBody">
-                {horaAgora}
-              </p>
-            </div>
-            <div className="flex items-center gap-3 mt-1">
-              <h1 className="text-[28px] font-extrabold text-text leading-tight flex-1 min-w-0">
-                {greet(new Date())}, {primeiroNome}!
-              </h1>
-              <FestiveBadge />
-            </div>
+            {/* O DIA EM DUAS LINHAS (04/10/2026, decisão do dono): o nome e,
+              * embaixo, a data numa linha só. A hora em letra de máquina e o
+              * botão festivo saíram: o Início ficou com quatro blocos. */}
+            <h1 className="text-[28px] font-extrabold leading-tight text-text">
+              {greet(new Date())}, {primeiroNome}!
+            </h1>
+            <p className="mt-1 text-base text-textBody">{dataDoDia(agora)}</p>
             {/* ⚠️ TURMA VAZIA: O CADASTRO VEM LOGO DEPOIS DA SAUDAÇÃO
               * (04/10/2026). Ele morava embaixo do "Confirme seu e-mail" e dos
               * avisos do nível, e no celular pequeno caía abaixo da dobra —
@@ -574,57 +531,38 @@ export default function TioDashboard() {
         )}
 
         {/* ─────────── O CARTÃO VERDE — a turma e o próximo passo ───────────
-          * Aparece assim que existe a primeira criança, e os números crescem
-          * conforme ele cadastra (pedido do dono). Com a turma vazia, quem
-          * fala é o cartão de "Cadastrar a primeira criança", mais abaixo. */}
+          * Desde 04/10/2026 (decisão do dono) ele diz UMA coisa — a próxima
+          * viagem, ou que hoje não tem, ou que o dia acabou — e leva a "Minha
+          * rota" (`/tio/rota`), onde moram a lista de quem vai, a escola, a
+          * chave do mapa e o "Rodar mesmo assim". Leitura, nunca o botão
+          * cheio: o verde cheio da tela é o "Iniciar a rota" da barra. */}
         {(estado === 'antes' || estado === 'entre' || (estado === 'vazio' && children.length > 0)) && (
           <div className="px-5 pt-4">
-            <ResumoDaTurma
-              rotulo={rotuloDaTurma}
-              criancas={children.length}
-              escolas={escolas.length}
-              viagem={viagemDoCartao}
-              concluido={diaConcluido}
-              linha={viagemDoCartao ? linhaDaViagem : diaConcluido ? null : linhaDaTurma}
-            >
+            <section data-tour="hero" className="rounded-2xl bg-primary p-5 text-white shadow-rest">
+              <p className="rotulo text-menta">{cartaoDoDia.rotulo}</p>
+              <p className="mt-1.5 font-display text-[24px] font-extrabold leading-tight text-white">
+                {cartaoDoDia.titulo}
+              </p>
               {estado === 'vazio' ? (
                 <button
                   type="button"
                   onClick={() => navigate('/tio/horarios')}
-                  className="tap flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-onAccent"
+                  className="tap mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-onAccent"
                 >
                   Definir os horários da rota
                   <ArrowRight size={20} />
                 </button>
-              ) : temViagem ? (
-                /* Com viagem pela frente, o cartão é INFORMAÇÃO (quem vai, que
-                 * horas) e guarda só a chave do mapa — a decisão que se toma
-                 * antes de sair. O botão de iniciar desceu para a barra. */
-                <ControleDeRota
-                  destaque
-                  parte="chave"
-                  direcao={bloco?.direcao}
-                  alvos={alvosDaRota}
-                  saida={saidaDaViagem(bloco)}
-                  pendentes={pendentesDaViagem}
-                />
               ) : (
-                /* ⚠️ DEPOIS DA ÚLTIMA VIAGEM, "INICIAR" NÃO É A AÇÃO DO
-                 * MOMENTO. O botão cheio e grande dizia "vá rodar" a quem
-                 * acabou de entregar todo mundo. Ele continua — passeio,
-                 * reposição, a viagem que não estava no horário —, mas em
-                 * contorno, dentro do cartão. */
-                <ControleDeRota
-                  destaque
-                  secundario
-                  onIniciar={iniciarEAbrir}
-                  direcao={bloco?.direcao}
-                  alvos={alvosDaRota}
-                  saida={saidaDaViagem(bloco)}
-                  pendentes={pendentesDaViagem}
-                />
+                <button
+                  type="button"
+                  onClick={() => navigate('/tio/rota')}
+                  className="tap mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-base font-bold text-white"
+                >
+                  <Route size={19} aria-hidden="true" />
+                  Ver a rota
+                </button>
               )}
-            </ResumoDaTurma>
+            </section>
           </div>
         )}
 
@@ -666,7 +604,6 @@ export default function TioDashboard() {
               * a primeira linha da lista abaixo — duas telas dizendo a mesma
               * coisa faziam ele procurar qual era a certa. */}
 
-            <ListaDaViagem bloco={bloco} onAbrirFicha={setFichaDe} />
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
           </div>
         )}
@@ -718,7 +655,9 @@ export default function TioDashboard() {
           </button>
         </BarraDoInicio>
       )}
-      {(estado === 'antes' || estado === 'entre') && temViagem && (
+      {/* SÓ EM DIA DE ROTA (04/10/2026): no domingo ou feriado a barra some, e
+        * o "Rodar mesmo assim" mora em "Minha rota". */}
+      {(estado === 'antes' || estado === 'entre') && temViagem && !motivoSemRota && (
         <BarraDoInicio>
           <ControleDeRota
             parte="botao"
@@ -731,14 +670,6 @@ export default function TioDashboard() {
         </BarraDoInicio>
       )}
 
-      {/* A ficha da criança, por cima do painel — mesma folha que o pai usa.
-        * `childId` só existe quando alguém tocou numa criança, e é o que
-        * mantém a assinatura da ficha fechada enquanto ninguém pediu. */}
-      <ChildDetailSheet
-        open={!!fichaDe}
-        childId={fichaDe}
-        onClose={() => setFichaDe(null)}
-      />
 
       {/* O ÍNDICE. As contagens vão por prop: esta tela já assina `children`
         * e `escolas`, e reassinar dentro da folha abriria duas leituras
@@ -768,113 +699,6 @@ export default function TioDashboard() {
   );
 }
 
-/* ─────────────── a viagem, em prévia ─────────────── */
-
-/**
- * Quem ele vai pegar, na ordem, com quem faltou já em cinza.
- *
- * Substitui os quatro cartões de contagem que ficavam aqui. Eles diziam
- * QUANTOS; isto diz QUEM — e "quem" é a pergunta que ele faz antes de sair.
- */
-function ListaDaViagem({ bloco, onAbrirFicha }) {
-  if (!bloco?.paradas?.length) return null;
-  return (
-    <section className="space-y-2">
-      <p className="px-1 text-sm font-semibold text-textMuted">
-        {bloco.direcao === 'ida' ? 'Quem você pega' : 'Quem você leva pra casa'}
-      </p>
-
-      {bloco.direcao === 'volta' && bloco.escolas.length > 0 && (
-        <ParadaEscola escolas={bloco.escolas} />
-      )}
-
-      {/* CADA CRIANÇA ABRE A FICHA DELA.
-        *
-        * O nome estava ali, com foto e horário, e não levava a lugar nenhum:
-        * pra conferir endereço, telefone da mãe ou a escola, o motorista saía
-        * do Início, entrava em Minha turma, procurava na lista e voltava. Três
-        * telas pra ler um dado que já estava com o dedo em cima.
-        *
-        * A ficha abre como FOLHA por cima, e não como navegação: ele está
-        * olhando a viagem do dia, e perder essa tela pra ver um telefone é o
-        * pedágio que a folha existe pra não cobrar. */}
-      {bloco.paradas.map((p) => {
-        const fora = !precisaDaPerua(p.estado);
-        return (
-          <button
-            type="button"
-            key={p.child.id}
-            onClick={() => onAbrirFicha?.(p.child.id)}
-            className={`tap w-full min-h-14 text-left rounded-xl px-3 py-2 flex items-center gap-2.5 border ${
-              fora ? 'bg-sunken border-border opacity-70' : 'bg-card border-border'
-            }`}
-          >
-            <span
-              className={`font-mono text-base tabular-nums w-14 shrink-0 ${
-                fora ? 'text-textMuted' : 'text-text font-semibold'
-              }`}
-            >
-              {horaCurta(p.hora)}
-            </span>
-            <Avatar
-              photoURL={p.child.photoURL}
-              gender={p.child.gender}
-              seed={p.child.id}
-              kind="child"
-              size="sm"
-            />
-            <span className="flex-1 min-w-0">
-              <span
-                className={`block text-base font-semibold truncate ${
-                  fora ? 'text-textMuted line-through' : 'text-text'
-                }`}
-              >
-                {p.child.name}
-              </span>
-              {fora && (
-                <span className="block text-sm text-warningText font-medium">
-                  {ROTULO_ESTADO[p.estado] || 'Fora hoje'}
-                </span>
-              )}
-            </span>
-            <ChevronRight size={16} className="shrink-0 text-textMuted" />
-          </button>
-        );
-      })}
-
-      {bloco.direcao === 'ida' && bloco.escolas.length > 0 && (
-        <ParadaEscola escolas={bloco.escolas} />
-      )}
-    </section>
-  );
-}
-
-function ParadaEscola({ escolas }) {
-  return (
-    <div className="flex min-h-12 items-center gap-2.5 px-3 py-2 rounded-xl bg-escolaSoft border border-escolaBorder">
-      <span className="w-14 shrink-0 text-sm font-semibold text-escola">
-        depois
-      </span>
-      <School size={18} className="text-escola shrink-0" />
-      <span className="flex-1 min-w-0 text-base font-semibold text-escola truncate">
-        {escolas.map((e) => e.nome).join(' · ')}
-      </span>
-    </div>
-  );
-}
-
-/* ─────────────── pendências do intervalo ─────────────── */
-
-/**
- * PARA RESOLVER — o que pede um toque dele, com o número no título.
- *
- * Só aparece o que EXISTE. Uma lista de pendências que mostra zeros é uma
- * lista que ele aprende a não ler. A ordem é de quem está esperando: o pedido
- * de acesso (a mãe com o app travado), o dinheiro que alguém disse ter
- * mandado, o atraso, e só depois o que é cadastro.
- *
- * Âmbar porque é aviso — algo para atender (design system, regra 1).
- */
 function ParaResolver({
   className = '',
   pedidos, criancas,
