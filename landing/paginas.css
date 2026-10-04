@@ -182,6 +182,21 @@ footer nav{display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:14px}
 footer nav a{color:#fff; font-weight:600; text-decoration:none}
 footer p{margin:4px 0; color:var(--noite-texto)}
 footer .leg{font-size:13px; opacity:.85}
+/* O rodapé em quadrados (04/10/2026, modelo C): cada página é um quadrado de
+ * toque com ícone e "Ver"; o app é o botão verde largo. */
+footer .rodape-rotulo{font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--menta); margin:0 0 12px}
+footer .quadros{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0}
+footer .quadros a{display:flex; flex-direction:column; align-items:flex-start; text-align:left; justify-content:space-between; gap:14px; min-height:104px; padding:14px; border-radius:16px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); color:#fff; text-decoration:none; font-weight:400}
+footer .quadros a:hover{background:rgba(255,255,255,.1)}
+footer .quadros .ic{width:38px; height:38px; border-radius:11px; background:rgba(167,243,208,.14); color:var(--menta); display:grid; place-items:center}
+footer .quadros .ic svg{width:20px; height:20px}
+footer .quadros b{display:block; font-size:16px; font-weight:700}
+footer .quadros .ver{display:flex; align-items:center; gap:4px; font-size:13px; font-weight:700; color:var(--menta)}
+footer .quadros .ver svg{width:14px; height:14px}
+footer .rodape-app{display:flex; align-items:center; justify-content:center; gap:8px; min-height:54px; margin-top:12px; border-radius:14px; background:var(--vivo); color:var(--vivo-tinta); font-weight:700; font-size:17px; text-decoration:none}
+footer .rodape-app svg{width:18px; height:18px}
+footer .rodape-contato{margin-top:22px; padding-top:16px; border-top:1px solid rgba(255,255,255,.14)}
+@media (min-width:720px){ footer .quadros{grid-template-columns:repeat(3,1fr)} }
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important; transition:none!important}

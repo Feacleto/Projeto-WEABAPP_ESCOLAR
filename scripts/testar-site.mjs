@@ -68,7 +68,10 @@ checar('e lista as sete páginas', PAGINAS, PAGINAS.filter((p) => sitemap.includ
 bloco('3 · A HOME NÃO MUDOU — SÓ O DESTINO DOS LINKS');
 const home = ler('landing/index.html');
 for (const [rotulo, dest] of [['Como funciona', '/como-funciona'], ['Pra família', '/familia'], ['Sobre nós', '/sobre'], ['Dúvidas', '/duvidas'], ['Contato', '/contato'], ['Investidores', '/investidores']]) {
-  checar(`"${rotulo}" abre ${dest}`, true, home.includes(`href="${dest}">${rotulo}</a>`));
+  // Os links viraram quadrados com ícone (04/10/2026): confere o destino e o
+  // rótulo DENTRO do mesmo link, não o formato antigo `<a>Rótulo</a>`.
+  checar(`"${rotulo}" abre ${dest}`, true,
+    new RegExp(`href="${dest}"[^>]*>(?:(?!</a>)[\\s\\S])*<b>${rotulo}</b>`).test(home));
 }
 
 bloco('4 · O FORMULÁRIO DO INVESTIDOR FALA COM O PRÓPRIO SITE');

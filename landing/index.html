@@ -131,14 +131,19 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
 
    ⚠️ POR QUE ELA ENCOLHEU: os motoristas disseram que o site tinha
    informação demais e que eles se perdiam nela. Eram 13 blocos e 8
-   botões pedindo coisas diferentes. Esta home tem CINCO blocos e um
-   caminho só — criar a conta:
+   botões pedindo coisas diferentes. Esta home tem um caminho principal —
+   criar a conta — e, desde 04/10/2026 (aprovado pelo dono), sete blocos:
 
      1. a frase e o botão
      2. a dor ("onde tem confiança, o dinheiro atrapalha")
-     3. três coisas que saem do ombro no primeiro dia
-     4. as três dúvidas que travam a decisão
-     5. o fechamento, com o botão de novo
+     3. "Use grátis. Decida depois.", com as três garantias e o botão
+     4. QUATRO coisas pro motorista (mais que isso ele não lê)
+     5. TRÊS pra família (o pai também chega aqui)
+     6. as três dúvidas que travam a decisão
+     7. passe adiante, pelo WhatsApp
+
+   ⚠️ SEM PREÇO NA HOME: o pai também lê, e o preço mora na tela de planos
+   do app. Toda frase sobre teste e valor é "Use grátis. Decida depois."
 
    NADA FOI APAGADO. O site completo morou em /saiba-mais até 02/10/2026;
    depois virou PÁGINAS PRÓPRIAS (/como-funciona, /familia, /sobre,
@@ -231,6 +236,22 @@ h2.sec{font:800 clamp(28px,7.5vw,36px)/1.08 var(--display); letter-spacing:-.03e
 /* O limão um degrau mais claro, só no hover: não é papel novo, é o toque do `--vivo`. */
 .fim .cta:hover{background:#63D42A}
 .fim .teste{position:relative; color:var(--ok-chip)} .fim .teste b{color:#fff}
+/* 3 · use grátis — o bloco verde ganhou rótulo e as três garantias */
+.usar .eyebrow{position:relative; color:var(--menta); margin-bottom:12px}
+.garantias{position:relative; list-style:none; margin:0 auto 26px; padding:0; display:inline-grid; gap:10px; text-align:left}
+.garantias li{display:flex; align-items:center; gap:10px; font-size:16.5px; color:#fff}
+.garantias svg{width:20px; height:20px; flex:none; color:var(--menta)}
+
+/* 5 · pra família — fundo branco para separar de quem é a conversa */
+.fam{background:var(--branco); padding-bottom:40px}
+.fam .tres li{box-shadow:none; border:1px solid var(--linha)}
+
+/* 7 · passe adiante */
+.passe{padding-block:50px; text-align:center}
+.passe h2.sec{margin-bottom:12px}
+.passe p{margin:0 auto 24px; color:var(--cinza); font-size:16.5px; max-width:34ch}
+.cta.zap{background:var(--cor-whatsapp); color:var(--preto); box-shadow:none}
+.cta.zap:hover{background:var(--cor-whatsapp); filter:brightness(.95)}
 
 footer{background:var(--preto); color:var(--noite-texto); padding-block:34px calc(34px + env(safe-area-inset-bottom,0px)); font-size:14px}
 footer nav{display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:18px}
@@ -241,6 +262,21 @@ footer p{margin:0 0 6px}
 footer .leg{color:var(--cinza-cl); font-size:12.5px; margin-top:14px}
 footer .leg a{color:#C9D3CD; display:inline-block; padding:10px 0}
 footer p a{display:inline-block; padding:10px 0}
+/* O rodapé em quadrados (04/10/2026, modelo C): cada página é um quadrado de
+ * toque com ícone e "Ver"; o app é o botão verde largo. */
+footer .rodape-rotulo{font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--menta); margin:0 0 12px}
+footer .quadros{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0}
+footer .quadros a{display:flex; flex-direction:column; align-items:flex-start; text-align:left; justify-content:space-between; gap:14px; min-height:104px; padding:14px; border-radius:16px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); color:#fff; text-decoration:none; font-weight:400}
+footer .quadros a:hover{background:rgba(255,255,255,.1)}
+footer .quadros .ic{width:38px; height:38px; border-radius:11px; background:rgba(167,243,208,.14); color:var(--menta); display:grid; place-items:center}
+footer .quadros .ic svg{width:20px; height:20px}
+footer .quadros b{display:block; font-size:16px; font-weight:700}
+footer .quadros .ver{display:flex; align-items:center; gap:4px; font-size:13px; font-weight:700; color:var(--menta)}
+footer .quadros .ver svg{width:14px; height:14px}
+footer .rodape-app{display:flex; align-items:center; justify-content:center; gap:8px; min-height:54px; margin-top:12px; border-radius:14px; background:var(--vivo); color:var(--vivo-tinta); font-weight:700; font-size:17px; text-decoration:none}
+footer .rodape-app svg{width:18px; height:18px}
+footer .rodape-contato{margin-top:22px; padding-top:16px; border-top:1px solid rgba(255,255,255,.14)}
+@media (min-width:720px){ footer .quadros{grid-template-columns:repeat(3,1fr)} }
 
 /* Só o topo anima, e só quem não pediu menos movimento. A página nasce legível. */
 @media (prefers-reduced-motion: no-preference){
@@ -279,7 +315,7 @@ footer p a{display:inline-block; padding:10px 0}
       </a>
       <!-- ⚠️ A OFERTA MORA EM DOIS LUGARES DESTA PÁGINA (aqui e no fechamento),
            e as duas mudam juntas. Ver "Na landing" no CLAUDE.md. -->
-      <p class="teste"><b>O app está em fase de teste: por enquanto, é grátis.</b> Cadastra a turma, roda o mês e decide depois.</p>
+      <p class="teste"><b>Use grátis. Decida depois.</b> Cadastra a turma, roda o mês e decide se o app fica.</p>
       <p class="familia">Tem filho na perua? <a href="/familia">Veja a parte da família</a></p>
     </div>
   </section>
@@ -295,23 +331,51 @@ footer p a{display:inline-block; padding:10px 0}
     </div>
   </section>
 
-  <!-- 3 · TRÊS COISAS, NÃO OITO. As que o motorista sente no primeiro dia. -->
+  <!-- 3 · USE GRÁTIS, DECIDA DEPOIS (04/10/2026, aprovado pelo dono). O risco
+       zero vem ANTES da lista: o que trava o motorista não é o preço, é o medo
+       de se arrepender. As três garantias são conferíveis — o cadastro não pede
+       cartão, a cobrança da plataforma começa com aviso, e encerrar não apaga
+       a turma. ⚠️ SEM PREÇO AQUI: o pai também lê esta página, e o preço mora
+       na tela de planos do app. -->
+  <section class="fim usar">
+    <div class="wrap">
+      <div class="eyebrow">Sem compromisso</div>
+      <h2>Use grátis. Decida depois.</h2>
+      <p>Cadastre a sua turma, rode o mês com o app e só então decida se ele fica.</p>
+      <ul class="garantias">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Sem cartão de crédito para começar</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>A gente avisa antes de qualquer cobrança</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Nada da sua turma é apagado</li>
+      </ul>
+      <a class="cta" href="https://alobuzinou.com/quero-fazer-parte">Criar minha conta
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- 4 · QUATRO PRO MOTORISTA, NÃO OITO. Mais de quatro ele não lê (dono,
+       04/10/2026). O dinheiro vem primeiro: é o que ele sente no bolso na
+       primeira semana. -->
   <section class="faz" id="como">
     <div class="wrap">
-      <div class="eyebrow">O seu ambiente digital de trabalho</div>
-      <h2 class="sec">Três coisas saem do seu ombro no primeiro dia.</h2>
+      <div class="eyebrow">Pra você, motorista</div>
+      <h2 class="sec">Quatro coisas saem do seu ombro.</h2>
       <ul class="tres">
         <li>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
+          <div><h3>Quem pagou, quem falta, e o PIX pronto</h3><p>Sem caderno e sem cobrar de boca. A mensalidade cai no seu PIX, inteira.</p></div>
+        </li>
+        <li>
           <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg></span>
-          <div><h3>A rota do dia pronta, na ordem dos horários</h3><p>Você cadastra a turma uma vez, e a rota se monta sozinha, sem você arrastar nada.</p></div>
+          <div><h3>A rota do dia pronta</h3><p>Você cadastra a turma uma vez, e a rota se monta na ordem dos horários.</p></div>
         </li>
         <li>
           <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg></span>
-          <div><h3>A falta avisada antes</h3><p>A família avisa antes de você sair de casa, e você não gasta combustível pra buscar quem não vai.</p></div>
+          <div><h3>A falta avisada antes</h3><p>A família avisa pelo app antes de você sair de casa. Você não roda à toa.</p></div>
         </li>
         <li>
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
-          <div><h3>Quem pagou, quem falta, e o PIX pronto</h3><p>Sem caderno, sem planilha e sem cobrar de boca.</p></div>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/></svg></span>
+          <div><h3>Menos ligação no caminho</h3><p>A família recebe o aviso de que a perua está chegando. Você só dirige.</p></div>
         </li>
       </ul>
 
@@ -326,7 +390,32 @@ footer p a{display:inline-block; padding:10px 0}
     </div>
   </section>
 
-  <!-- 4 · AS TRÊS DÚVIDAS que travam a decisão. O resto do FAQ está em
+  <!-- 5 · TRÊS PRA FAMÍLIA. O pai também chega nesta página (o motorista
+       manda o link). ⚠️ "Se o motorista ligar": o mapa é escolha dele, e a
+       frase não pode prometer o que ele desligou. Nada de segurança. -->
+  <section class="faz fam" id="familia">
+    <div class="wrap">
+      <div class="eyebrow">Pra família</div>
+      <h2 class="sec">E o pai sai da calçada.</h2>
+      <ul class="tres">
+        <li>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <div><h3>Sabe quando a perua está chegando</h3><p>Aviso no celular e, se o motorista ligar, a perua no mapa.</p></div>
+        </li>
+        <li>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M14 14l-4 4M10 14l4 4"/></svg></span>
+          <div><h3>Avisa a falta com um toque</h3><p>Sem mandar mensagem com o motorista dirigindo.</p></div>
+        </li>
+        <li>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg></span>
+          <div><h3>Mensalidade e contrato à vista</h3><p>Copia o PIX, avisa que pagou e guarda o contrato assinado.</p></div>
+        </li>
+      </ul>
+      <p class="familia">Para a família o app é sempre grátis. <a href="/familia">Veja a parte da família</a></p>
+    </div>
+  </section>
+
+  <!-- 6 · AS TRÊS DÚVIDAS que travam a decisão. O resto do FAQ está em
        /duvidas. -->
   <section class="duvidas">
     <div class="wrap">
@@ -335,40 +424,48 @@ footer p a{display:inline-block; padding:10px 0}
       <dl>
         <div class="d"><dt>E se a mãe não souber usar?</dt><dd>Se você sabe mexer no WhatsApp, sabe mexer nesse app. Você manda um link e ela entra com um clique.</dd></div>
         <div class="d"><dt>O app fica com parte do meu dinheiro?</dt><dd>Não. A mensalidade vai direto pro seu PIX, por inteiro. A gente não fica com percentual nenhum.</dd></div>
-        <div class="d"><dt>E quando deixar de ser grátis?</dt><dd>A gente avisa antes, com tempo. Ninguém trava a sua rota nem apaga a sua turma.</dd></div>
+        <div class="d"><dt>E depois que eu decidir?</dt><dd>A gente avisa antes de qualquer cobrança, com tempo. Começar não pede cartão, e nada da sua turma é apagado.</dd></div>
       </dl>
     </div>
   </section>
 
-  <!-- 5 · FECHAMENTO -->
-  <section class="fim">
+  <!-- 7 · PASSE ADIANTE. Tio confia em tio, e a mãe cobra o motorista dela:
+       a mesma frase serve aos dois. ⚠️ ESTE BOTÃO NÃO DÁ DESCONTO — o desconto
+       por indicação é o convite de dentro do app, que sabe quem indicou. O link
+       leva `utm_source=indicacao`, que o app já reconhece (origem.js). -->
+  <section class="passe">
     <div class="wrap">
-      <h2>Daqui em diante, você decide.</h2>
-      <p>Digitalizar a sua rota começa com uma conta.</p>
-      <a class="cta" href="https://alobuzinou.com/quero-fazer-parte">Criar minha conta
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      <div class="eyebrow">Passe adiante</div>
+      <h2 class="sec">Conhece alguém que precisa disto?</h2>
+      <p>Mande para um motorista de van escolar. Ou, se você é pai ou mãe, para o motorista do seu filho.</p>
+      <a class="cta zap" href="https://wa.me/?text=Olha%20esse%20app%20para%20transporte%20escolar%3A%20a%20rota%2C%20o%20aviso%20da%20falta%20e%20a%20mensalidade%20num%20lugar%20s%C3%B3.%20D%C3%A1%20para%20usar%20gr%C3%A1tis%20e%20decidir%20depois.%20https%3A%2F%2Falobuzinou.com.br%2F%3Futm_source%3Dindicacao" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>Mandar pelo WhatsApp
       </a>
-      <p class="teste"><b>Em fase de teste: por enquanto, é grátis.</b></p>
     </div>
   </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <!-- Cada link abre uma PÁGINA PRÓPRIA (paginas.css). O site antigo saiu do ar. -->
-    <nav aria-label="Mais sobre o Alô Buzinou">
-      <a href="/como-funciona">Como funciona</a>
-      <a href="/familia">Pra família</a>
-      <a href="/sobre">Sobre nós</a>
-      <a href="/duvidas">Dúvidas</a>
-      <a href="/contato">Contato</a>
-      <a href="https://alobuzinou.com/login">Entrar no app</a>
-    </nav>
+<footer><div class="wrap">
+  <!-- O RODAPÉ EM QUADRADOS (04/10/2026, modelo C escolhido pelo dono): cada
+       página do site é um quadrado com ícone e "Ver", para quem rola até o fim
+       entender que dá para tocar. "Entrar no app" é o botão verde largo, igual
+       ao topo da página. O mesmo rodapé nas oito páginas. -->
+  <p class="rodape-rotulo">Conheça mais</p>
+  <nav class="quadros" aria-label="Mais sobre o Alô Buzinou">
+    <a href="/como-funciona"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span><span><b>Como funciona</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/familia"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></span><span><b>Pra família</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/sobre"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M21 20c0-2.6-1.6-4.8-4-5.6"/></svg></span><span><b>Sobre nós</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/duvidas"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></span><span><b>Dúvidas</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/contato"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-13.4 7.9L3 21l1.1-4.6A9 9 0 1 1 21 12z"/></svg></span><span><b>Contato</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/investidores"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span><span><b>Investidores</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+  </nav>
+  <a class="rodape-app" href="https://alobuzinou.com/login">Entrar no app <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+  <div class="rodape-contato">
     <p>Rua das Trovas — Socorro · São Paulo/SP · CEP 04763-110</p>
     <p><a href="mailto:contato@alobuzinou.com">contato@alobuzinou.com</a> · <a href="https://wa.me/5511969170709" target="_blank" rel="noopener">(11) 96917-0709</a></p>
-    <p class="leg">CNPJ 65.000.217/0001-47 · © 2026 Alô Buzinou · <a href="https://alobuzinou.com/termos">Termos de Uso</a> · <a href="https://alobuzinou.com/privacidade">Política de Privacidade</a> · <a href="/investidores">Investidores</a></p>
+    <p class="leg">CNPJ 65.000.217/0001-47 · © 2026 Alô Buzinou · <a href="https://alobuzinou.com/termos">Termos de Uso</a> · <a href="https://alobuzinou.com/privacidade">Política de Privacidade</a></p>
   </div>
-</footer>
+</div></footer>
 
 <script>
   /* ══ DE ONDE A PESSOA VEIO — repassado, nunca decidido aqui ═══════════

@@ -122,10 +122,25 @@ PAGINAS = {
 
 RODAPE = '''<section class="fecho"><div class="wrap"><h2>Daqui em diante, você decide.</h2><p>Digitalizar a sua rota começa com uma conta.</p><a class="btn" href="https://alobuzinou.com/quero-fazer-parte">Criar minha conta '''+SETA+'''</a></div></section>
 <footer><div class="wrap">
-  <nav aria-label="Mais sobre o Alô Buzinou"><a href="/como-funciona">Como funciona</a><a href="/familia">Pra família</a><a href="/sobre">Sobre nós</a><a href="/duvidas">Dúvidas</a><a href="/contato">Contato</a><a href="https://alobuzinou.com/login">Entrar no app</a></nav>
-  <p>Rua das Trovas — Socorro · São Paulo/SP · CEP 04763-110</p>
-  <p><a href="mailto:contato@alobuzinou.com">contato@alobuzinou.com</a> · <a href="https://wa.me/5511969170709" target="_blank" rel="noopener">(11) 96917-0709</a></p>
-  <p class="leg">CNPJ 65.000.217/0001-47 · © 2026 Alô Buzinou · <a href="https://alobuzinou.com/termos">Termos de Uso</a> · <a href="https://alobuzinou.com/privacidade">Política de Privacidade</a> · <a href="/investidores">Investidores</a></p>
+  <!-- O RODAPÉ EM QUADRADOS (04/10/2026, modelo C escolhido pelo dono): cada
+       página do site é um quadrado com ícone e "Ver", para quem rola até o fim
+       entender que dá para tocar. "Entrar no app" é o botão verde largo, igual
+       ao topo da página. O mesmo rodapé nas oito páginas. -->
+  <p class="rodape-rotulo">Conheça mais</p>
+  <nav class="quadros" aria-label="Mais sobre o Alô Buzinou">
+    <a href="/como-funciona"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span><span><b>Como funciona</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/familia"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></span><span><b>Pra família</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/sobre"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M21 20c0-2.6-1.6-4.8-4-5.6"/></svg></span><span><b>Sobre nós</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/duvidas"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></span><span><b>Dúvidas</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/contato"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-13.4 7.9L3 21l1.1-4.6A9 9 0 1 1 21 12z"/></svg></span><span><b>Contato</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/investidores"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span><span><b>Investidores</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+  </nav>
+  <a class="rodape-app" href="https://alobuzinou.com/login">Entrar no app <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+  <div class="rodape-contato">
+    <p>Rua das Trovas — Socorro · São Paulo/SP · CEP 04763-110</p>
+    <p><a href="mailto:contato@alobuzinou.com">contato@alobuzinou.com</a> · <a href="https://wa.me/5511969170709" target="_blank" rel="noopener">(11) 96917-0709</a></p>
+    <p class="leg">CNPJ 65.000.217/0001-47 · © 2026 Alô Buzinou · <a href="https://alobuzinou.com/termos">Termos de Uso</a> · <a href="https://alobuzinou.com/privacidade">Política de Privacidade</a></p>
+  </div>
 </div></footer>'''
 
 def pagina(slug, d):
