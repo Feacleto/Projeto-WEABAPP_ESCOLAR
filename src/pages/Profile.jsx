@@ -71,8 +71,7 @@ import { PIX_KEY_TYPES, setMarca } from '../services/userService';
 import { APP_VERSION } from '../version';
 import AvaliarOAppSheet from '../components/feedback/AvaliarOAppSheet';
 import SupportSheet from '../components/support/SupportSheet';
-import CorDaMarca, { PerguntaDaCor } from '../components/tio/CorDaMarca';
-import { opcoesDoLogo } from '../marca/corDaMarca.js';
+import CorDaMarca from '../components/tio/CorDaMarca';
 import { lerCoresDoLogo } from '../services/coresDoLogoService';
 import PreferenciasDeAviso from '../components/notifications/PreferenciasDeAviso';
 import { AddChildSheet } from './pai/AddChild';
@@ -611,7 +610,7 @@ function ProfilePhotoEditor({
       {STORAGE_ENABLED && (
         <label
           htmlFor="profile-photo-input"
-          className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-marca text-naMarca flex items-center justify-center shadow-lg cursor-pointer tap"
+          className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg cursor-pointer tap"
           aria-label="Trocar foto"
         >
           <Camera size={18} />
@@ -980,26 +979,8 @@ function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
   const [valor, setValor] = useState(nome);
   const [salvando, setSalvando] = useState(false);
   const [subindo, setSubindo] = useState(false);
-  // A pergunta da cor depois de trocar o logo: { cores, logoURL } ou null.
-  const [pergunta, setPergunta] = useState(null);
-  const [gravandoCor, setGravandoCor] = useState(false);
 
   const mudou = valor.trim() !== (nome || '').trim();
-
-  const decidirCor = async (nova) => {
-    setGravandoCor(true);
-    try {
-      await setMarca(uid, { cor: nova });
-      await onChanged?.();
-      setPergunta(null);
-      toast.success(nova ? 'Pronto: o app ficou com a cor do seu logo.' : 'Pronto: o app continua no verde.');
-    } catch (err) {
-      console.error(err);
-      toast.error('Não deu pra trocar a cor agora.');
-    } finally {
-      setGravandoCor(false);
-    }
-  };
 
   const salvarNome = async () => {
     setSalvando(true);
@@ -1022,15 +1003,13 @@ function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
     setSubindo(true);
     try {
       const url = await uploadMarcaLogo(uid, file);
-      // A COR É PERGUNTADA, NÃO IMPOSTA (04/10/2026, aprovado pelo dono).
-      // As cores são lidas do ARQUIVO, no aparelho, e guardadas como
-      // SUGESTÃO; a cor do app (que é também a das famílias dele) só muda
-      // quando ele responder a folha. Logo sem cor viva não pergunta nada.
+      // A COR ACOMPANHA O LOGO (03/10/2026): trocou o logo, a cor mais
+      // forte dele vira a cor do app — lida do ARQUIVO, no aparelho, antes
+      // de qualquer rede. Logo sem cor viva volta ao verde da casa.
       const achadas = await lerCoresDoLogo(file);
-      await setMarca(uid, { logoURL: url, cores: achadas });
+      await setMarca(uid, { logoURL: url, cor: achadas[0] || null, cores: achadas });
       await onChanged?.();
-      if (opcoesDoLogo(achadas).length) setPergunta({ cores: achadas, logoURL: url });
-      else toast.success('Logo atualizado!');
+      toast.success('Logo atualizado!');
     } catch (err) {
       console.error('Upload do logo falhou:', err);
       toast.error('Não deu pra enviar a imagem.');
@@ -1129,17 +1108,6 @@ function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
       )}
 
       <CorDaMarca uid={uid} logoURL={logoURL} cor={cor} cores={cores} onChanged={onChanged} />
-
-      <PerguntaDaCor
-        open={!!pergunta}
-        cores={pergunta?.cores || []}
-        logoURL={pergunta?.logoURL}
-        nome={valor.trim() || nome}
-        salvando={gravandoCor}
-        onUsar={(c) => decidirCor(c)}
-        onVerde={() => decidirCor(null)}
-        onClose={() => setPergunta(null)}
-      />
     </Card>
   );
 }
