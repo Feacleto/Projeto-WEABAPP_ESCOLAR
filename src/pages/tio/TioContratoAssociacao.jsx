@@ -34,7 +34,7 @@ import {
  */
 export default function TioContratoAssociacao() {
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
   const [contrato, setContrato] = useState(undefined); // undefined = carregando
   const [nome, setNome] = useState('');
   const [enviando, setEnviando] = useState(false);
