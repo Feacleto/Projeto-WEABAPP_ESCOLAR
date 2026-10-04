@@ -1,3 +1,4 @@
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { useMemo, useState } from 'react';
 import { chaveDoNome } from '../../dominio/escola/nomeEscola';
 import { primeiroNome } from '../../compartilhado/formatters';
@@ -40,6 +41,8 @@ import IconePorNome from '../common/IconePorNome';
  */
 export default function TioAgendaFAB() {
   const [open, setOpen] = useState(false);
+  // O voltar do celular fecha a folha do recado, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, () => setOpen(false));
   const location = useLocation();
   const navigate = useNavigate();
 

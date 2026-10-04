@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import Button from './Button';
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 
 /**
  * Modal de confirmação — bloqueia interação até o usuário decidir. É o
@@ -40,6 +41,12 @@ export default function ConfirmDialog({
   onCancel,
 }) {
   // Fecha com ESC
+  // O voltar do celular é o "Cancelar" (03/10/2026) — nunca durante a
+  // gravação, como o Escape.
+  useVoltarFechaFolha(open, () => {
+    if (!loading) onCancel?.();
+  });
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {

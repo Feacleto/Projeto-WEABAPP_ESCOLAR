@@ -1,3 +1,4 @@
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { useState } from 'react';
 import {
   X,
@@ -94,6 +95,8 @@ export default function AltPickupSheet({
   dateKey,
   currentPickup,
 }) {
+  // O voltar do celular fecha esta folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, onClose);
   const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const [mode, setMode] = useState('default');
   const [submitting, setSubmitting] = useState(false);

@@ -1,3 +1,4 @@
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { MAPA } from '../../config/mapa';
@@ -52,6 +53,8 @@ export default function MapPicker({
   onConfirm,
   onClose,
 }) {
+  // O voltar do celular fecha esta folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(true, onClose);
   const [point, setPoint] = useState(initial);
   const [recenterTo, setRecenterTo] = useState(null);
   const [locating, setLocating] = useState(false);

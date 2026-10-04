@@ -1,3 +1,4 @@
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { X, UserX } from 'lucide-react';
 import { ABSENCE_LABELS } from '../../services/absencesService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
@@ -8,6 +9,8 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  * sair da tela inicial.
  */
 export default function AbsenceListSheet({ open, onClose, absences = [] }) {
+  // O voltar do celular fecha esta folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, onClose);
   const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   if (!open) return null;
   return (

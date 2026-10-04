@@ -1,3 +1,4 @@
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { useEffect, useMemo, useState } from 'react';
 import { X, Megaphone, School, Send, Check, Users } from 'lucide-react';
 import Button from '../common/Button';
@@ -43,6 +44,8 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
  * monta o corpo com `{open && <ChildDetailBody …/>}` pelo mesmo motivo.
  */
 export default function SchoolBroadcastSheet({ open, onClose }) {
+  // O voltar do celular fecha esta folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, onClose);
   if (!open) return null;
   return <SchoolBroadcastBody onClose={onClose} />;
 }

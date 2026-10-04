@@ -103,14 +103,12 @@ export default function Header({
               className="-ml-2 tap text-textMuted inline-flex min-h-11 min-w-11 items-center justify-center gap-1 shrink-0"
             >
               <ArrowLeft size={22} />
-              {backLabel && (
-                /* Some abaixo de 400px: com título longo, o rótulo empurraria
-                 * o nome da tela pras reticências — e saber ONDE ESTOU vem
-                 * antes de saber de onde vim. */
-                <span className="hidden min-[400px]:inline text-sm font-medium">
-                  {backLabel}
-                </span>
-              )}
+              {/* SEMPRE "VOLTAR", NUNCA O NOME DA TELA (03/10/2026, decisão do
+                * dono). A seta sozinha o público de 40+ não lê como botão, e
+                * "← Financeiro" lia como um título a mais. "← Voltar" é a
+                * palavra que ele procura. O `backLabel` continua só no
+                * aria-label, para o leitor de tela dizer para onde vai. */}
+              <span className="text-base font-semibold">Voltar</span>
             </button>
           )}
           {marca ? (

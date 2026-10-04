@@ -1,3 +1,4 @@
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, X, ShieldCheck } from 'lucide-react';
@@ -50,6 +51,8 @@ export default function AuthSheet({
   reason,
   onSuccess,
 }) {
+  // O voltar do celular fecha esta folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, onClose);
   // Estamos dentro do navegador embutido do WhatsApp/Instagram?
   //
   // Se sim, a PRIMEIRA coisa oferecida é sair pro navegador de verdade —

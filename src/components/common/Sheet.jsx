@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 import Spinner from './Spinner';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 
 /**
  * Folha modal — sobe de baixo no celular, centraliza no desktop.
@@ -60,6 +61,8 @@ export default function Sheet({
   children,
 }) {
   const { alcaProps, estilo, arrastando } = useArrastarPraFechar(onClose);
+  // O voltar do celular fecha a folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, onClose);
 
   // Fecha com ESC — mesmo contrato do ConfirmDialog.
   useEffect(() => {

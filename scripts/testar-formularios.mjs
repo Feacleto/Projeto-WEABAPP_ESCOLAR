@@ -72,5 +72,16 @@ caso('e desliga a restauração do navegador', topo.includes("scrollRestoration 
 caso('o cadastro da criança sobe a cada passo',
   /useEffect\(\(\) => \{\s*window\.scrollTo\(0, 0\);\s*\}, \[step\]\)/.test(ler('src/components/children/ChildForm.jsx')));
 
+console.log('5. o voltar');
+const header = ler('src/components/layout/Header.jsx');
+caso('o voltar das telas diz "Voltar", nunca o nome da tela',
+  />\s*Voltar\s*<\/span>/.test(header) && !/\{backLabel\}\s*<\/span>/.test(header));
+for (const arq of ['src/components/common/AppSheet.jsx', 'src/components/common/Sheet.jsx', 'src/components/common/ConfirmDialog.jsx']) {
+  caso(`${arq}: o voltar do celular fecha`, ler(arq).includes('useVoltarFechaFolha('));
+}
+const appSheet = ler('src/components/common/AppSheet.jsx');
+caso('folha de tela cheia tem "← Voltar" e não o X',
+  /size === 'full' && \([\s\S]{0,400}Voltar/.test(appSheet) && appSheet.includes("size !== 'full' && ("));
+
 console.log(`\n  ${ok} passaram, ${bad} falharam\n`);
 process.exit(bad ? 1 : 0);

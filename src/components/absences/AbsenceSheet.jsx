@@ -1,3 +1,4 @@
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { useState } from 'react';
 import { X, UserX, Sunrise, Sunset, Trash2, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -39,6 +40,8 @@ export default function AbsenceSheet({
   // o responsável está com pressa.
   status,
 }) {
+  // O voltar do celular fecha esta folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, onClose);
   const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const [submitting, setSubmitting] = useState(false);
   const [closing, setClosing] = useState(false);

@@ -1,3 +1,4 @@
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { useState } from 'react';
 import {
   X,
@@ -49,6 +50,8 @@ const ICONES = {
 };
 
 export default function SupportSheet({ open, onClose, uid, role, profile, email }) {
+  // O voltar do celular fecha esta folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, onClose);
   const { alcaProps, estilo } = useArrastarPraFechar(onClose);
   const [category, setCategory] = useState(null);
   const [detalhe, setDetalhe] = useState('');

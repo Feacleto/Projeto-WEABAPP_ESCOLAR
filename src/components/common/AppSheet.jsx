@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
+import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 
 /**
  * ATENÇÃO — O CABEÇALHO ABAIXO PROMETE UMA MIGRAÇÃO QUE NÃO ACONTECEU.
@@ -90,6 +91,8 @@ export default function AppSheet({
 }) {
   // ANTES do `if (!open)` abaixo: hook não pode ficar atrás de return.
   const { alcaProps, estilo, arrastando } = useArrastarPraFechar(onClose);
+  // O voltar do celular fecha a folha, em vez de sair da tela (03/10/2026).
+  useVoltarFechaFolha(open, onClose);
 
   // ESC fecha, e o fundo para de rolar enquanto a folha está aberta.
   useEffect(() => {
@@ -140,6 +143,19 @@ export default function AppSheet({
           <span className="block h-[5px] w-10 rounded-full bg-borderStrong" />
         </div>
 
+        {/* A FOLHA DE TELA CHEIA PARECE UMA TELA, e numa tela a pessoa
+          * procura o "Voltar" (03/10/2026, pedido do dono) — não um X no
+          * canto. As folhas menores continuam com o X. */}
+        {size === 'full' && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="tap ml-3 inline-flex min-h-12 items-center gap-1 self-start px-2 text-base font-semibold text-primary"
+          >
+            <ArrowLeft size={22} />
+            Voltar
+          </button>
+        )}
         <div
           {...alcaProps}
           className={`flex shrink-0 items-start gap-3 px-5 pb-3 pt-2 ${alcaProps.className}`}
@@ -159,14 +175,16 @@ export default function AppSheet({
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutro text-textMuted hover:text-text"
-          >
-            <X size={18} />
-          </button>
+          {size !== 'full' && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar"
+              className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutro text-textMuted hover:text-text"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         {/* Único pedaço que rola. */}
