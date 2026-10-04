@@ -2655,6 +2655,9 @@ async function aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono }) {
  */
 async function osNiveis({ tio1, tio2, pai1, dono, anon }) {
   console.log('\n═══ os níveis ═══');
+  // O bloco do Financeiro, logo antes, religa o pai1 a OUTRO motorista: aqui ele
+  // volta a ser família do tio1, senão "a família lê o nível dela" não testaria nada.
+  await semear(`users/${pai1.uid}`, { role: S('parent'), name: S('Pai Um'), adminUid: S(tio1.uid) });
   await semear(`niveis/${tio1.uid}`, { nivel: S('prata'), desde: T(-3), atualizadoEm: T(0) });
   await semear(`niveis/${tio2.uid}`, { nivel: S('ouro'), desde: T(-3), atualizadoEm: T(0) });
 
