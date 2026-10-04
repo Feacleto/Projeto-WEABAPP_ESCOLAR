@@ -6,7 +6,9 @@
  * Decisões:
  *   - Páscoa fica fixa em mar+abr (sem cálculo da data real — varia ano a
  *     ano e a complexidade não compensa pro mood-setter visual).
- *   - Halloween/Natal/Páscoa têm som dedicado (clica toca, clica para).
+ *   - Halloween/Natal/Páscoa têm som dedicado (clica toca, clica para), e o
+ *     Dia das Crianças usa o som do aniversário.
+ *   - Outubro se divide: Dia das Crianças até o dia 24, Halloween de 25 a 31.
  *   - Demais meses são puramente visuais (sem som).
  *   - Dezembro o Natal já roda em nov+dez pra pegar o clima antes.
  *
@@ -98,12 +100,25 @@ const THEMES = {
     animation: 'animate-fest-sway',
     sound: null,
   },
+  // DIA DAS CRIANÇAS (03/10/2026, pedido do dono): outubro é DELE até o dia
+  // 24, e usa o MESMO som do aniversário — é festa de criança, e o som de
+  // festa de criança o app já tem.
+  childrensDay: {
+    key: 'childrensDay',
+    icone: 'Gift',
+    label: 'Dia das Crianças',
+    greeting: 'Feliz Dia das Crianças!',
+    subtitle: 'O mês da turminha que você leva todo dia.',
+    gradient: 'from-sky-400 via-fuchsia-500 to-amber-400',
+    animation: 'animate-fest-bounce',
+    sound: 'birthday',
+  },
   halloween: {
     key: 'halloween',
     icone: 'Ghost',
     label: 'Halloween',
     greeting: 'Feliz Halloween!',
-    subtitle: 'Cuidado com as criancinhas fantasiadas pela rua hoje.',
+    subtitle: 'Cuidado com as criancinhas fantasiadas pela rua nesta semana.',
     gradient: 'from-orange-500 via-orange-600 to-purple-700',
     animation: 'animate-fest-wiggle',
     sound: 'halloween',
@@ -121,7 +136,12 @@ const THEMES = {
 };
 
 // Mapa simples: mês (1-12) → tema. Alguns meses compartilham tema (Páscoa,
-// Natal). Outubro tem Halloween cobrindo o mês inteiro.
+// Natal). Outubro é o único DIVIDIDO: Dia das Crianças até o dia 24 e
+// Halloween só na última semana (ver `getFestivityForDate`) — o Halloween
+// cobria o mês inteiro e engolia o 12 de outubro.
+/** A última semana de outubro: do dia 25 ao 31. */
+const INICIO_DA_SEMANA_DO_HALLOWEEN = 25;
+
 const MONTH_THEMES = {
   1: THEMES.newYear,
   2: THEMES.carnival,
@@ -143,5 +163,8 @@ const MONTH_THEMES = {
  */
 export function getFestivityForDate(date = new Date()) {
   const month = date.getMonth() + 1;
+  if (month === 10) {
+    return date.getDate() >= INICIO_DA_SEMANA_DO_HALLOWEEN ? THEMES.halloween : THEMES.childrensDay;
+  }
   return MONTH_THEMES[month] || null;
 }
