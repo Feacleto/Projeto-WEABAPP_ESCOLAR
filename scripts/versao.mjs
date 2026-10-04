@@ -51,7 +51,9 @@ function infoDaMarca(marca) {
     marca,
     versao: nomeDaVersao(marca),
     commit: git(`rev-list --count ${marca}`),
-    hash: git(`rev-parse --short ${marca}^{commit}`),
+    // `rev-list -n 1` e não `rev-parse marca^{commit}`: no Windows o `^` é o
+    // caractere de escape do cmd, e o comando chegava ao git sem ele.
+    hash: git(`rev-list -n 1 --abbrev-commit ${marca}`),
     data,
   };
 }
