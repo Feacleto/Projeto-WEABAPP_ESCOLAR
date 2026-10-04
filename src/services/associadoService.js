@@ -121,7 +121,10 @@ export async function inscreverAssociado({ email, senha, nome, telefone, cidade,
       role: 'admin',
       ...(String(nome || '').trim() ? { name: String(nome).trim() } : {}),
       email: emailLimpo,
-      phone: String(telefone || '').trim(),
+      // O WHATSAPP SAIU DO FORMULÁRIO (04/10/2026): ele é pedido em "Seus
+      // dados", igual para quem entra com o Google. Ausente, e não `''`, pelo
+      // mesmo motivo da cidade logo abaixo.
+      ...(String(telefone || '').trim() ? { phone: String(telefone).trim() } : {}),
       // ⚠️ CIDADE E NOME SÓ ENTRAM SE VIEREM, e desde 11/09/2026 a inscrição
       // não os manda: ela pede três campos (e-mail, WhatsApp, senha) e o
       // resto é pedido no primeiro acesso, do lado de dentro.
@@ -199,6 +202,20 @@ export async function completarCadastro(uid, dados, { ultimo = false } = {}) {
   if (ultimo) gravar.cadastroCompletoEm = serverTimestamp();
   if (!Object.keys(gravar).length) return;
 
+  await setDoc(doc(db, 'users', uid), gravar, { merge: true });
+}
+
+/**
+ * AS MARCAS DO CADASTRO (04/10/2026): o contrato pulado e o começo e o fim do
+ * cadastro da turma. Só datas, gravadas pelo próprio motorista — não são
+ * cláusula (o `update` de `users` é lista de PROIBIDOS, e estas não estão lá).
+ */
+const MARCAS_DO_CADASTRO = ['contratoPuladoEm', 'turmaIniciadaEm', 'turmaConcluidaEm'];
+export async function marcarCadastro(uid, marcas) {
+  if (!uid) throw new Error('Sem sessão.');
+  const gravar = {};
+  for (const m of marcas) if (MARCAS_DO_CADASTRO.includes(m)) gravar[m] = serverTimestamp();
+  if (!Object.keys(gravar).length) return;
   await setDoc(doc(db, 'users', uid), gravar, { merge: true });
 }
 

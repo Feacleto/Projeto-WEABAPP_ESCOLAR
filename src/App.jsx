@@ -80,12 +80,16 @@ const TioTurma = lazy(() => import('./pages/tio/TioTurma'));
 const TioAbastecer = lazy(() => import('./pages/tio/TioAbastecer'));
 const TioReserva = lazy(() => import('./pages/tio/TioReserva'));
 const TioPrecisoAumentar = lazy(() => import('./pages/tio/TioPrecisoAumentar'));
+// A trilha do negócio (o caminho até o Diamante): embaixo de /tio/finance,
+// então atrás da senha pelo caminho, como as outras.
+const TioNegocio = lazy(() => import('./pages/tio/TioNegocio'));
 const TioContract = lazy(() => import('./pages/tio/TioContract'));
 const TioPixConfig = lazy(() => import('./pages/tio/TioPixConfig'));
 const TioAgenda = lazy(() => import('./pages/tio/TioAgenda'));
 const TioContratoAssociacao = lazy(() => import('./pages/tio/TioContratoAssociacao'));
 const TioTaxa = lazy(() => import('./pages/tio/TioTaxa'));
 const TioPlanos = lazy(() => import('./pages/tio/TioPlanos'));
+const TioHistoria = lazy(() => import('./pages/tio/TioHistoria'));
 const TioEncerrar = lazy(() => import('./pages/tio/TioEncerrar'));
 const TioSelo = lazy(() => import('./pages/tio/TioSelo'));
 const TioNivel = lazy(() => import('./pages/tio/TioNivel'));
@@ -702,6 +706,7 @@ export default function App() {
         <Route path="finance/turma" element={<TioTurma />} />
         <Route path="finance/reserva" element={<TioReserva />} />
         <Route path="finance/aumentar" element={<TioPrecisoAumentar />} />
+        <Route path="finance/negocio" element={<TioNegocio />} />
         <Route path="abastecer" element={<TioAbastecer />} />
         <Route path="pix" element={<TioPixConfig />} />
         <Route path="agenda" element={<TioAgenda />} />
@@ -738,6 +743,18 @@ export default function App() {
           <PrivateRoute requireRole="admin">
             <SoComCobranca>
               <ZonaDaPlataforma><TioPlanos /></ZonaDaPlataforma>
+            </SoComCobranca>
+          </PrivateRoute>
+        }
+      />
+      {/* MINHA HISTÓRIA — a trajetória dele no app, aberta pelo autoatendimento
+        * ("Meus planos"). Mesmas portas da tela de planos. */}
+      <Route
+        path="/tio/historia"
+        element={
+          <PrivateRoute requireRole="admin">
+            <SoComCobranca>
+              <ZonaDaPlataforma><TioHistoria /></ZonaDaPlataforma>
             </SoComCobranca>
           </PrivateRoute>
         }

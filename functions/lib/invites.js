@@ -23,8 +23,6 @@ const LIMITES = require('./limites');
 // conta da mãe já existir — o primeiro cadastro de família pelo link (teste
 // R1). Os módulos novos já usam este caminho.
 const { FieldValue } = require('firebase-admin/firestore');
-const { ligarRelogioComSnap } = require('./relogioDoTeste');
-const { cobrancaLigada } = require('./cobrancaLigada');
 const { chaveDoTelefone } = require('./indicacao');
 
 const REGION = 'southamerica-east1';
@@ -185,9 +183,6 @@ function makeRedeemInvite(db) {
     const childRef = childDoc.ref;
     const userRef = db.doc(`users/${uid}`);
 
-    // Lida FORA da transação: é configuração da plataforma, não dado que
-    // dois resgates disputam. Desligada, o relógio do teste não liga.
-    const cobrancaOn = await cobrancaLigada(db);
 
     const result = await db.runTransaction(async (tx) => {
       const freshChild = await tx.get(childRef);
@@ -229,17 +224,6 @@ function makeRedeemInvite(db) {
         );
       }
 
-      // ⚠️ LEITURA DO DOC DO MOTORISTA AQUI, NA FASE DE LEITURA DA TRANSAÇÃO.
-      //
-      // O relógio do teste é ligado mais abaixo, DEPOIS das escritas — e o
-      // Admin SDK exige todas as leituras antes de todas as escritas. Enquanto
-      // `ligarRelogio` fazia o próprio `tx.get()` lá embaixo, ele lançava e o
-      // `catch` silencioso dele engolia: o gatilho "primeiro responsável"
-      // nunca gravou `trialInicio`, em nenhum resgate.
-      //
-      // Ver `relogioDoTeste.ligarRelogioComSnap`.
-      const relogioRef = child.adminUid ? db.doc(`users/${child.adminUid}`) : null;
-      const relogioSnap = relogioRef ? await tx.get(relogioRef) : null;
 
       tx.update(childRef, {
         parentUid: uid,
@@ -247,25 +231,9 @@ function makeRedeemInvite(db) {
         inviteUsedAt: FieldValue.serverTimestamp(),
       });
 
-      // ⚠️ O RELÓGIO DO TESTE DO MOTORISTA LIGA AQUI TAMBÉM (06/09/2026).
-      //
-      // Durante um dia o único gatilho foi a primeira ROTA, e isso deixou um
-      // buraco de graça ilimitada: dava para cadastrar a turma, convidar as
-      // famílias, emitir contrato e cobrar mensalidade para sempre sem tocar
-      // em "iniciar rota". `trialInicio` nunca existia.
-      //
-      // Uma família entrando no app É o produto entregando valor — tanto
-      // quanto a perua aparecer no mapa. Ver `relogioDoTeste.js`.
-      //
-      // Dentro da MESMA transação: por fora, dois resgates simultâneos
-      // escreveriam dois `trialInicio` e o segundo empurraria a data adiante.
-      //
-      // A leitura já foi feita na fase de leitura, acima — esta chamada só
-      // decide e escreve. Não a troque de volta por `ligarRelogio(…, tx)`:
-      // aquela lê, e ler aqui (depois do `tx.update`) é o que a deixou morta.
-      if (relogioRef && cobrancaOn) {
-        ligarRelogioComSnap(relogioRef, relogioSnap, 'primeiro responsável', tx);
-      }
+      // O RELÓGIO DO TESTE NÃO LIGA MAIS AQUI (04/10/2026): a família entrar
+      // deixou de ser gatilho — o teste começa no 3º dia de rota, e só nele
+      // (ver `relogioNaRota.js`).
 
       const userPayload = {
         role: 'parent',

@@ -70,7 +70,13 @@ function vazio(v) {
 /** Os dois valores que o avatar sabe desenhar. Qualquer outro é "não respondeu". */
 export const GENEROS = ['male', 'female'];
 
+// ⚠️ O CONTRATO PODE SER PULADO (04/10/2026, decisão do dono). Quem pulou
+// (`contratoPuladoEm`) não vê mais o passo: o pedido de CPF/CNPJ e endereço
+// volta na hora de mandar o primeiro contrato (InviteShare já o faz).
+const DO_CONTRATO = ['companyName', 'companyDocument', 'companyAddress'];
+
 function falta(profile, campo) {
+  if (DO_CONTRATO.includes(campo) && profile?.contratoPuladoEm) return false;
   if (campo === 'gender') return !GENEROS.includes(profile?.gender);
   // O nome do contrato é o nome civil quando ele não deu outro — o mesmo
   // padrão de `DadosDoContratoForm`. Faltar os DOIS é que faz o passo voltar.
@@ -93,9 +99,29 @@ export function camposQueFaltam(profile, passoId) {
  */
 export function passosQueFaltam(profile) {
   if (!profile || profile.role !== 'admin') return [];
-  return PASSOS.filter((p) => camposQueFaltam(profile, p.id).length > 0).map(
+  const passos = PASSOS.filter((p) => camposQueFaltam(profile, p.id).length > 0).map(
     (p) => p.id
   );
+  return emCadastroDaTurma(profile) ? [...passos, 'turma'] : passos;
+}
+
+/**
+ * O CADASTRO DAS CRIANÇAS FAZ PARTE DE CRIAR A CONTA (04/10/2026, decisão do
+ * dono): depois do contrato vem "Agora, a sua turma", criança por criança,
+ * até ele dizer "Já cadastrei todas as minhas crianças". Só então aparece o
+ * "Pronto! Seu ambiente digital de trabalho está configurado".
+ *
+ * Quem COMEÇA a turma é o próprio card (`turmaIniciadaEm`), e só para quem
+ * não tem criança nenhuma — conta antiga, com turma, nunca entra aqui. O
+ * card fica aberto até `turmaConcluidaEm`, mesmo que ele feche o app no meio.
+ */
+export function emCadastroDaTurma(profile) {
+  return Boolean(profile?.turmaIniciadaEm) && !profile?.turmaConcluidaEm;
+}
+
+/** O card deve abrir a turma no fim dos passos? Só para quem não tem criança. */
+export function deveCadastrarATurma(profile) {
+  return !profile?.turmaConcluidaEm && !(Number(profile?.criancasAtivas) > 0);
 }
 
 /** `true` quando o motorista ainda deve algum passo do primeiro acesso. */

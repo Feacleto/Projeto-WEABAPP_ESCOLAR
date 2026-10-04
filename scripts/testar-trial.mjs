@@ -32,7 +32,15 @@ import {
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { emMs, rotaComecou, rotaRegistrada, decidirRelogio } from '../functions/lib/reguaDoRelogio.js';
+import {
+  emMs,
+  rotaComecou,
+  rotaRegistrada,
+  decidirRelogio,
+  DIAS_DE_ROTA_PARA_O_TESTE,
+  diaEmBrasilia,
+  contarDiaDeRota,
+} from '../functions/lib/reguaDoRelogio.js';
 import {
   contaComoAtiva,
   motoristasParaRecontar,
@@ -440,7 +448,31 @@ checar('a chave da cobrança continua guardando o início', true,
 const naRota = semComentario(ler('functions/lib/relogioNaRota.js'));
 checar('o gatilho da rota escuta a ultimaRota em users (uma escrita por rota)', true, /users\/\{uid\}/.test(naRota));
 checar('e só liga quando a ultimaRota muda', true, /rotaRegistrada\(/.test(naRota));
-checar("e chama ligarRelogio com 'primeira rota'", true, /ligarRelogio\([^)]*'primeira rota'/.test(naRota));
+checar("e liga no '3º dia de rota', não na primeira", true, /ligarRelogio\([^)]*'3º dia de rota'/.test(naRota));
+checar('conta os dias pela régua pura', true, /contarDiaDeRota\(/.test(naRota));
+checar('com o dia do SERVIDOR, nunca a ultimaRota do cliente', true,
+  /diaEmBrasilia\(Date\.now\(\)\)/.test(naRota));
+checar('e só conta com a cobrança ligada', true, /cobrancaLigada\(db\)/.test(naRota));
+
+bloco('S6. O teste começa no 3º dia de rota, e SÓ nele (04/10/2026)');
+checar('são três dias', 3, DIAS_DE_ROTA_PARA_O_TESTE);
+const d1 = contarDiaDeRota([], '2026-10-05');
+checar('1º dia: conta e não liga', [true, false], [d1.mudou, d1.ligar]);
+const mesmoDia = contarDiaDeRota(['2026-10-05'], '2026-10-05');
+checar('testar duas vezes no mesmo dia conta como um', [false, false, 1],
+  [mesmoDia.mudou, mesmoDia.ligar, mesmoDia.dias.length]);
+const d2 = contarDiaDeRota(['2026-10-05'], '2026-10-06');
+checar('2º dia: ainda não liga', false, d2.ligar);
+const d3 = contarDiaDeRota(['2026-10-05', '2026-10-06'], '2026-10-09');
+checar('3º dia diferente: liga', true, d3.ligar);
+checar('lista suja do banco é limpa', ['2026-10-05'], contarDiaDeRota([null, 7, '2026-10-05'], null).dias);
+// 23h30 de Brasília é o dia seguinte em UTC — o dia tem que ser o de Brasília.
+checar('o dia é o de Brasília, não o de UTC', '2026-10-05',
+  diaEmBrasilia(Date.parse('2026-10-06T02:30:00Z')));
+for (const arq of ['invites.js', 'pedidosDeAcesso.js', 'billing.js']) {
+  const fonte = semComentario(ler(`functions/lib/${arq}`));
+  checar(`${arq} não liga mais o relógio`, false, /ligarRelogio/.test(fonte));
+}
 
 const fechamento = semComentario(ler('functions/lib/fechamento.js'));
 checar('a fatura conta as crianças no banco', true, /contarCriancasAtivas\(db, tioUid\)/.test(fechamento));

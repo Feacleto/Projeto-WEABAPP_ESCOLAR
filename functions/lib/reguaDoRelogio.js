@@ -81,4 +81,59 @@ function rotaRegistrada(antes, depois) {
   return d != null && d !== a;
 }
 
-module.exports = { emMs, rotaComecou, rotaRegistrada, decidirRelogio };
+/**
+ * O TESTE COMEÇA NO 3º DIA DE ROTA, E SÓ NELE (04/10/2026, decisão do dono).
+ *
+ * Era a PRIMEIRA rota, ou a primeira família entrando, ou a primeira
+ * mensalidade — o que viesse antes. Só que o motorista costuma iniciar uma rota
+ * só para ver como funciona, e o convite da primeira família sai na primeira
+ * semana: o teste começava antes de ele sentir o app. Agora ele tem dois dias
+ * de rota "de graça" antes de o relógio andar.
+ *
+ * ⚠️ DIAS DIFERENTES, contados no FUSO DE BRASÍLIA e pelo relógio do SERVIDOR.
+ * Testar três vezes na mesma manhã conta como um dia. A data sai de quando o
+ * servidor viu a rota, nunca de `ultimaRota` (que o cliente grava): com a data
+ * do cliente, bastaria gravar sempre o mesmo dia para o teste nunca começar.
+ *
+ * ⚠️ O BURACO QUE ISTO REABRE, escrito para não ser esquecido: os outros dois
+ * gatilhos (família e mensalidade) existiam para quem pulasse `registrarRota`
+ * pelo devtools. Sem eles, quem fizer isso não entra no relógio. A saída, se
+ * virar caso real, é contar os dias pelas viagens (`rides`), que o servidor vê.
+ */
+const DIAS_DE_ROTA_PARA_O_TESTE = 3;
+
+/** 'AAAA-MM-DD' do instante em Brasília — o dia da rota, não o do servidor em UTC. */
+function diaEmBrasilia(ms) {
+  if (!Number.isFinite(ms)) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(ms));
+}
+
+/**
+ * Soma o dia de hoje à lista de dias com rota. Devolve a lista nova, se ela
+ * mudou (para não regravar o mesmo dia) e se o relógio deve ligar.
+ * A lista guarda no máximo `DIAS_DE_ROTA_PARA_O_TESTE` dias: depois disso o
+ * relógio já ligou e ela não serve para mais nada.
+ */
+function contarDiaDeRota(dias, dia) {
+  const lista = Array.isArray(dias) ? dias.filter((d) => typeof d === 'string') : [];
+  if (!dia || lista.includes(dia)) {
+    return { dias: lista, mudou: false, ligar: lista.length >= DIAS_DE_ROTA_PARA_O_TESTE };
+  }
+  const nova = [...lista, dia].slice(-DIAS_DE_ROTA_PARA_O_TESTE);
+  return { dias: nova, mudou: true, ligar: nova.length >= DIAS_DE_ROTA_PARA_O_TESTE };
+}
+
+module.exports = {
+  emMs,
+  rotaComecou,
+  rotaRegistrada,
+  decidirRelogio,
+  DIAS_DE_ROTA_PARA_O_TESTE,
+  diaEmBrasilia,
+  contarDiaDeRota,
+};

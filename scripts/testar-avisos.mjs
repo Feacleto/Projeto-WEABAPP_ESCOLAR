@@ -284,10 +284,14 @@ const p0 = aviso(1);
 // muda em 10/10" e não sabia que condição era essa, por que aquilo tinha
 // chegado, nem se precisava fazer algo. Mensagem sem gatilho chega como
 // interrupção; sem ação, como aviso de que ele perdeu alguma coisa.
-checar('o P0 diz o gatilho: a primeira rota', true, p0.corpo.includes('primeira rota'));
-checar('e o texto longo explica o que isso iniciou', true, p0.texto.includes('inicia o período de teste'));
-checar('o P0 dá a data do fim do teste', true, p0.corpo.includes('dezembro'));
-checar('e diz que não há cobrança até lá', true, p0.corpo.includes('Nada é cobrado'));
+// ⚠️ 04/10/2026, decisão do dono: o P0 NÃO diz quando o teste acaba — contar
+// o fim no dia em que ele começa deixa ansioso ("vou sair antes que acabe").
+// A data mora só nos avisos do fim. E o teste começa no 3º dia de rota, não
+// na primeira, então a peça não fala mais em "primeira rota".
+checar('o P0 diz que o teste começou', true, p0.texto.includes('Seu teste grátis começou'));
+checar('e promete avisar antes de cobrar', true, p0.corpo.includes('avisa antes de qualquer cobrança'));
+checar('o P0 NÃO dá a data do fim do teste', false, /dezembro|janeiro|até \d/.test(p0.corpo + p0.texto));
+checar('nem fala em primeira rota', false, (p0.corpo + p0.texto).includes('primeira rota'));
 
 // ⚠️ E TODA PEÇA TERMINA COM O QUE FAZER. O push é tocável, mas o texto do
 // sino é lido numa lista — sem a linha final ele fica sendo uma notícia.

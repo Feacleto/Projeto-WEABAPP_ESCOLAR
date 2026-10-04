@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react';
-import { FileText, ImagePlus, MapPin, X } from 'lucide-react';
+import { Check, ChevronLeft, FileText, ImagePlus, MapPin, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Spinner from '../../components/common/Spinner';
 import { useAuth } from '../../hooks/useAuth';
-import { completarCadastro } from '../../services/associadoService';
+import { completarCadastro, marcarCadastro } from '../../services/associadoService';
+import { useChildren } from '../../hooks/useChildren';
+import CadastroRapidoDaCrianca from '../../components/children/CadastroRapidoDaCrianca';
 import { lugarDaPosicaoAtual } from '../../services/locationService';
 import { uploadMarcaLogo, deleteMarcaLogo } from '../../services/photoService';
 import { setMarca } from '../../services/userService';
@@ -20,6 +22,7 @@ import {
 } from '../../compartilhado/masks';
 import {
   camposQueFaltam,
+  deveCadastrarATurma,
   passosQueFaltam,
 } from '../../dominio/identidade/cadastroDoMotorista.js';
 
@@ -56,11 +59,23 @@ import {
  * próprio dono é lista de PROIBIDOS. Nenhum campo daqui está nela.
  */
 export default function PrimeiroAcesso() {
-  const { user, profile, refreshProfile } = useAuth();
-  const [passos] = useState(() => passosQueFaltam(profile));
+  const { user, profile, refreshProfile, logout } = useAuth();
+  // ⚠️ A TURMA É O ÚLTIMO PASSO (04/10/2026): quem ainda não tem criança
+  // cadastra as crianças aqui dentro, antes do "Pronto". Conta antiga, com
+  // turma, nunca vê este passo (`deveCadastrarATurma`).
+  const [passos] = useState(() => {
+    const p = passosQueFaltam(profile);
+    return !p.includes('turma') && deveCadastrarATurma(profile) ? [...p, 'turma'] : p;
+  });
   const [indice, setIndice] = useState(0);
   const passo = passos[indice];
   const ultimo = indice === passos.length - 1;
+  const proximo = passos[indice + 1];
+  // A turma em quatro momentos: a frase, a ficha rápida, a criança salva, o pronto.
+  const [momentoDaTurma, setMomentoDaTurma] = useState('intro');
+  const [autorizou, setAutorizou] = useState(false);
+  const [ultimaCrianca, setUltimaCrianca] = useState('');
+  const { children: turma } = useChildren();
 
   const [form, setForm] = useState({
     name: '',
@@ -87,15 +102,23 @@ export default function PrimeiroAcesso() {
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const faltando = (campo) => camposQueFaltam(profile, passo).includes(campo);
 
+  // Antes da turma, o cadastro da conta está completo: grava a data e marca
+  // o começo da turma (é o que mantém o card aberto se ele fechar o app).
+  // ⚠️ A MARCA DA TURMA VEM PRIMEIRO: se o perfil chegasse completo sem ela,
+  // o card fecharia por um instante no meio do caminho.
+  const irParaATurma = async () => {
+    await marcarCadastro(user.uid, ['turmaIniciadaEm']);
+    await completarCadastro(user.uid, {}, { ultimo: true });
+  };
+
   const gravar = async (dados) => {
     setSalvando(true);
     try {
       await completarCadastro(user.uid, dados, { ultimo });
       if (ultimo) {
-        // O card some sozinho quando o perfil volta completo: quem decide é
-        // o gate, não esta tela.
         await refreshProfile();
       } else {
+        if (proximo === 'turma') await irParaATurma();
         setErrors({});
         setIndice((i) => i + 1);
       }
@@ -123,8 +146,8 @@ export default function PrimeiroAcesso() {
       if (!documentoValido(form.companyDocument)) {
         errs.companyDocument = 'CPF ou CNPJ inválido — confira os números.';
       }
-      if (form.companyAddress.trim().length < 8) {
-        errs.companyAddress = 'Escreva rua, número e cidade.';
+      if (form.companyAddress.trim().length < 5) {
+        errs.companyAddress = 'Escreva a rua e o número.';
       }
     }
     setErrors(errs);
@@ -152,18 +175,44 @@ export default function PrimeiroAcesso() {
   const gravarContrato = async () => {
     setSalvando(true);
     try {
+      // A CIDADE NÃO É PEDIDA DE NOVO: ela veio do passo da localização e
+      // entra no fim do endereço do contrato, se ele não a escreveu.
+      const cidade = (form.city || profile?.city || '').trim();
+      const rua = form.companyAddress.trim();
+      const endereco =
+        cidade && !rua.toLowerCase().includes(cidade.toLowerCase()) ? `${rua}, ${cidade}` : rua;
       await updateProfile(user.uid, {
         companyName: (profile?.companyName || form.name || profile?.name || '').trim(),
         companyDocument: form.companyDocument.trim(),
-        companyAddress: form.companyAddress.trim(),
+        companyAddress: endereco,
       });
-      if (ultimo) {
-        await completarCadastro(user.uid, {}, { ultimo: true });
-        await refreshProfile();
-      } else {
-        setErrors({});
-        setIndice((i) => i + 1);
-      }
+      await depoisDoContrato();
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Tente de novo.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const depoisDoContrato = async () => {
+    if (ultimo) {
+      await completarCadastro(user.uid, {}, { ultimo: true });
+      await refreshProfile();
+    } else {
+      if (proximo === 'turma') await irParaATurma();
+      setErrors({});
+      setIndice((i) => i + 1);
+    }
+  };
+
+  // "PULAR POR AGORA" (04/10/2026, decisão do dono): o pedido volta na hora
+  // de mandar o primeiro contrato (InviteShare), com o mesmo texto.
+  const pularContrato = async () => {
+    setSalvando(true);
+    try {
+      await marcarCadastro(user.uid, ['contratoPuladoEm']);
+      await depoisDoContrato();
     } catch (err) {
       console.error(err);
       toast.error('Não deu pra salvar. Tente de novo.');
@@ -221,7 +270,161 @@ export default function PrimeiroAcesso() {
     }
   };
 
+  const concluirTurma = async () => {
+    setSalvando(true);
+    try {
+      await marcarCadastro(user.uid, ['turmaConcluidaEm']);
+      setMomentoDaTurma('pronto');
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Tente de novo.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const voltar = () => {
+    setErrors({});
+    setIndice((i) => Math.max(0, i - 1));
+  };
+
   if (!passo) return null;
+
+  const barra = passos.length > 1 && (
+    <div className="mb-4 flex gap-1.5" aria-hidden>
+      {passos.map((p, i) => (
+        <span
+          key={p}
+          className={`h-1 flex-1 rounded-full ${i <= indice ? 'bg-primary' : 'bg-border'}`}
+        />
+      ))}
+    </div>
+  );
+  // "VOLTAR" EM TODO PASSO (04/10/2026): o card só andava para a frente. No
+  // primeiro, a saída é "Sair desta conta" (quem entrou com o Google errado).
+  const topoDoCard =
+    indice > 0 ? (
+      <button
+        type="button"
+        onClick={voltar}
+        className="tap -ml-1 mb-1 inline-flex min-h-11 items-center gap-1 text-base font-bold text-primary"
+      >
+        <ChevronLeft size={18} aria-hidden="true" /> Voltar
+      </button>
+    ) : null;
+
+  // ── A TURMA, dentro do mesmo cartão ───────────────────────────────────────
+  if (passo === 'turma') {
+    const n = turma.length;
+    return (
+      <div
+        className="animate-sheet-fade fixed inset-0 z-[70] flex items-end justify-center bg-night/45 p-3 sm:items-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="primeiro-acesso-titulo"
+      >
+        <div className="max-h-[94dvh] w-full max-w-[420px] overflow-y-auto rounded-3xl bg-card p-5 shadow-float">
+          {momentoDaTurma !== 'pronto' && momentoDaTurma !== 'salva' && topoDoCard}
+          {momentoDaTurma !== 'pronto' && barra}
+
+          {momentoDaTurma === 'intro' && (
+            <>
+              <h2 id="primeiro-acesso-titulo" className="text-xl font-extrabold text-text">
+                Agora, a sua turma
+              </h2>
+              <p className="mt-1.5 text-base text-textMuted">Cadastre as crianças que você leva.</p>
+              {/* A declaração do cadastro de hoje, uma vez para a turma toda. */}
+              <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-primarySoft p-3 text-base text-text">
+                <input
+                  type="checkbox"
+                  checked={autorizou}
+                  onChange={(e) => setAutorizou(e.target.checked)}
+                  className="mt-1 h-5 w-5 shrink-0 accent-primary"
+                />
+                As famílias me autorizaram a cadastrar os dados das crianças.
+              </label>
+              <div className="mt-5">
+                <Button
+                  type="button"
+                  disabled={!autorizou}
+                  onClick={() => setMomentoDaTurma('ficha')}
+                  className="shadow-focus"
+                >
+                  {n > 0 ? 'Cadastrar mais uma criança' : 'Cadastrar a primeira criança'}
+                </Button>
+                {n > 0 && (
+                  <button
+                    type="button"
+                    onClick={concluirTurma}
+                    className="tap mt-2 flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-primary"
+                  >
+                    Já cadastrei todas as minhas crianças
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {momentoDaTurma === 'ficha' && (
+            <>
+              <h2 id="primeiro-acesso-titulo" className="mb-4 text-xl font-extrabold text-text">
+                Nova criança
+              </h2>
+              <CadastroRapidoDaCrianca
+                onSalva={({ nome }) => {
+                  setUltimaCrianca(nome);
+                  setMomentoDaTurma('salva');
+                }}
+              />
+            </>
+          )}
+
+          {momentoDaTurma === 'salva' && (
+            <>
+              <h2 id="primeiro-acesso-titulo" className="text-xl font-extrabold text-text">
+                {ultimaCrianca ? `${ultimaCrianca} está na sua turma` : 'Criança cadastrada'}
+              </h2>
+              <p className="mt-1.5 text-base text-textMuted">
+                Sua turma no app: {n} {n === 1 ? 'criança' : 'crianças'}
+              </p>
+              <div className="mt-5 space-y-2">
+                <Button type="button" onClick={() => setMomentoDaTurma('ficha')} className="shadow-focus">
+                  Cadastrar mais uma criança
+                </Button>
+                <button
+                  type="button"
+                  onClick={concluirTurma}
+                  disabled={salvando}
+                  className="tap flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-primary disabled:opacity-60"
+                >
+                  Já cadastrei todas as minhas crianças
+                </button>
+              </div>
+            </>
+          )}
+
+          {momentoDaTurma === 'pronto' && (
+            <div className="text-center">
+              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primaryChip text-primary">
+                <Check size={32} aria-hidden="true" />
+              </span>
+              <h2 id="primeiro-acesso-titulo" className="mt-3 text-xl font-extrabold text-text">
+                Pronto! Seu ambiente digital de trabalho está configurado
+              </h2>
+              <p className="mt-1.5 text-base text-textMuted">
+                {n} {n === 1 ? 'criança já está' : 'crianças já estão'} no app.
+              </p>
+              <div className="mt-5">
+                <Button type="button" onClick={() => refreshProfile()} className="shadow-focus">
+                  Começar
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -232,18 +435,10 @@ export default function PrimeiroAcesso() {
     >
       <form
         onSubmit={continuar}
-        className="w-full max-w-[420px] rounded-3xl bg-card p-5 shadow-float"
+        className="max-h-[94dvh] w-full max-w-[420px] overflow-y-auto rounded-3xl bg-card p-5 shadow-float"
       >
-        {passos.length > 1 && (
-          <div className="mb-4 flex gap-1.5" aria-hidden>
-            {passos.map((p, i) => (
-              <span
-                key={p}
-                className={`h-1 flex-1 rounded-full ${i <= indice ? 'bg-primary' : 'bg-border'}`}
-              />
-            ))}
-          </div>
-        )}
+        {topoDoCard}
+        {barra}
 
         {passo === 'voce' && (
           <>
@@ -409,12 +604,12 @@ export default function PrimeiroAcesso() {
         {passo === 'contrato' && (
           <>
             <h2 id="primeiro-acesso-titulo" className="text-xl font-extrabold text-text">
-              Para o contrato com as famílias
+              Para o seu contrato com as suas famílias
             </h2>
             {/* A linha diz POR QUE pede: documento é o campo em que a pessoa
               * mais hesita, e sem motivo à vista ele parece cadastro de banco. */}
             <p className="mt-1.5 text-sm text-textMuted">
-              Vai no contrato que as famílias assinam.
+              Seu contrato com as famílias agora vai ser digital.
             </p>
             <div className="mt-4 space-y-3">
               <Input
@@ -429,12 +624,11 @@ export default function PrimeiroAcesso() {
                 required
               />
               <Input falar="texto"
-                label="Seu endereço"
+                label="Rua e número"
                 icon={MapPin}
                 value={form.companyAddress}
                 onChange={set('companyAddress')}
                 error={errors.companyAddress}
-                hint="Rua, número e cidade."
                 autoComplete="street-address"
                 required
               />
@@ -444,15 +638,25 @@ export default function PrimeiroAcesso() {
 
         <div className="mt-5">
           {passo === 'local' && !digitarCidade ? (
-            <Button
-              type="button"
-              icon={MapPin}
-              loading={salvando}
-              onClick={permitirLocalizacao}
-              className="shadow-focus"
-            >
-              Permitir localização
-            </Button>
+            <>
+              <Button
+                type="button"
+                icon={MapPin}
+                loading={salvando}
+                onClick={permitirLocalizacao}
+                className="shadow-focus"
+              >
+                Permitir localização
+              </Button>
+              {/* Quem nega a permissão no reflexo não fica preso. */}
+              <button
+                type="button"
+                onClick={() => setDigitarCidade(true)}
+                className="tap mt-2 flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-text"
+              >
+                Digitar minha cidade
+              </button>
+            </>
           ) : (
             <Button
               ref={botaoRef}
@@ -462,6 +666,25 @@ export default function PrimeiroAcesso() {
             >
               {ultimo ? 'Entrar no app' : 'Continuar'}
             </Button>
+          )}
+          {passo === 'contrato' && (
+            <button
+              type="button"
+              onClick={pularContrato}
+              disabled={salvando}
+              className="tap mt-2 flex min-h-12 w-full items-center justify-center text-base font-bold text-primary disabled:opacity-60"
+            >
+              Pular por agora
+            </button>
+          )}
+          {indice === 0 && (
+            <button
+              type="button"
+              onClick={() => logout?.()}
+              className="tap mt-2 flex min-h-12 w-full items-center justify-center text-base font-semibold text-textMuted"
+            >
+              Sair desta conta
+            </button>
           )}
         </div>
       </form>

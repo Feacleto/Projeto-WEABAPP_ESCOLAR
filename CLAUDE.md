@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 65 scripts. O PRIMEIRO é
+npm run testar                   # 68 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -31,7 +31,7 @@ npm run testar                   # 65 scripts. O PRIMEIRO é
                                  # travessia,
                                  # contrato, combinado,
                                  # pix, brcode,
-                                 # status, auth, trial, planos, avisos,
+                                 # status, auth, trial, planos, vitrine, autoatendimento, para-voce, avisos,
                                  # preferencias, multa, encerramento,
                                  # conta, cobranca, gateway, carteira,
                                  # proposta, chamados, avaliacao, risco, fila, concessao,
@@ -331,7 +331,7 @@ src/
 │   │                 hoje. Pública, sem conta, sem sessão do Firebase e sem
 │   │                 mapa ao vivo: a posição da perua é o veículo de um
 │   │                 autônomo e ele não decidiu compartilhá-la com terceiros
-│   ├── tio/           23 telas do motorista — entre elas `TioTurma`
+│   ├── tio/           24 telas do motorista — entre elas `TioTurma`
 │   │                 (`/tio/finance/turma`, atrás da senha), `TioEncerrar`
 │   │                 (`/tio/encerrar`, FORA do `GuardaDaConta`: quem está
 │   │                 bloqueado por atraso precisa conseguir sair) e
@@ -407,7 +407,7 @@ src/
 │   │                  paymentVocabulary, retencao, trilhaDoPagamento
 │   ├── associacao/    planos, multa, contratoAssociacao, trial, contaAtiva,
 │   │                  carteira, proposta, risco, fila, concessao, adesivo,
-│   │                  isencaoDaFatura
+│   │                  isencaoDaFatura, vitrineDoPlano, autoatendimento
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors, verificacao, indicacao, origem,
 │   │                  cadastroDoMotorista
@@ -427,8 +427,21 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        e JS inline, deploy por `--only hosting:landing`. As
                        duas home públicas antigas (`/` do motorista) morreram
                        aqui dentro; a `/familia` continua no app.
-                       A HOME (`index.html`, 5 blocos, um caminho: criar
-                       conta) NÃO MUDA. Desde 02/10/2026 o site antigo
+                       A HOME (`index.html`, um caminho: criar conta) tem
+                       POUCO TEXTO desde 04/10/2026 (aprovado pelo dono): o
+                       motorista lê a 1ª frase e pula o resto, então cada
+                       bloco é UM título que se basta, UMA linha e UM
+                       desenho do app que se mexe UMA vez ao aparecer (só
+                       com a classe `anima`; sem ela, nasce no estado
+                       final). 601 → ~170 palavras, nove blocos em duas
+                       metades — convencer (avisos, "Dia 10, tudo pago",
+                       a falta, a perua chegando, "Use grátis. Decida
+                       depois.") e ficar contente/indicar (o dinheiro é
+                       todo seu, feito no portão da escola, dúvidas
+                       dobradas, WhatsApp com a mensagem à vista). Nenhum
+                       título promete o que o app não faz: a família
+                       AVISA que pagou, o app LEMBRA (não cobra). Sem
+                       preço: o pai também lê; preço é da tela de planos. Desde 02/10/2026 o site antigo
                        (`/saiba-mais`) virou SETE PÁGINAS PRÓPRIAS —
                        /como-funciona, /motorista, /familia, /sobre,
                        /duvidas, /contato, /investidores —, cada uma com
@@ -440,6 +453,14 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        uma coluna, um botão por bloco. `/saiba-mais` é 301
                        para a home (firebase.json) e o arquivo antigo está em
                        `docs/arquivo/`. `npm run testar:site` trava tudo isso.
+                       As páginas próprias seguem a MESMA régua do pouco
+                       texto (04/10/2026): Como funciona virou telas que
+                       passam com o dedo, Motorista "o seu dia com o app"
+                       (linha do tempo), Família e Sobre ícones grandes, e
+                       nas Dúvidas a 1ª frase de cada resposta responde
+                       sozinha. Cenas: a perua deixando as crianças no
+                       portão (home, "Feito no portão da escola") e o
+                       caderno virando app (topo do Sobre).
 functions/             Cloud Functions v2 (CommonJS, Node 22)
   └── lib/             reguaDoServidor (a régua PURA — sem require, e desde
                        10/09/2026 ela espelha `precoDoMes` INTEIRO, porque o
@@ -1101,6 +1122,40 @@ de virar o degrau que acabou de sair: sem marginalidade `preco(41)` seria MENOR
 que `preco(40)` e crescer daria desconto. `npm run testar:planos` varre 1 a 60
 crianças nos dois planos e exige que o preço nunca desça.
 
+**"MEUS PLANOS" É O AUTOATENDIMENTO (04/10/2026, desenho aprovado pelo dono)**
+— [TioPlanos](src/pages/tio/TioPlanos.jsx), régua em
+[autoatendimento.js](src/dominio/associacao/autoatendimento.js)
+(`npm run testar:autoatendimento`). Os MESMOS blocos em toda fase, na mesma
+ordem: fala (tom verde, âmbar no atraso, cinza com a rota parada), Sua conta
+(o PREÇO POR CRIANÇA é o número grande; "Ver conta completa" abre as respostas
+às perguntas dele), Seus descontos (cartão próprio), "Sua turma está
+completa?" (só no teste), o plano e UM botão verde, os serviços em quadrados,
+as dúvidas (3 + "Ver todas") e "Consultar o time de vendas". Cada ponto
+sublinhado abre uma folha de UMA frase (público 40+). Fases:
+`faseDoAutoatendimento`. A porta "Iniciar autoatendimento" aparece uma vez
+por aparelho (localStorage). "Minha história" (`/tio/historia`,
+[TioHistoria](src/pages/tio/TioHistoria.jsx)) mostra 4 marcos e "Ver história
+completa"; só o que o app guarda (nada de total de viagens: somem em 60 dias).
+⚠️ Os textos dizem a regra de HOJE — o teste reprova palavras do preço novo.
+
+**A TELA DE PLANOS É A TELA DE VENDA (04/10/2026, desenho aprovado pelo
+dono)** — [TioPlanos](src/pages/tio/TioPlanos.jsx), contas em
+[vitrineDoPlano.js](src/dominio/associacao/vitrineDoPlano.js)
+(`npm run testar:vitrine`). De cima para baixo: "a conta que fecha" (para onde
+vai o que ele paga, sem valores de custo), o mês do teste com o valor de
+depois e asterisco, a tabela da turma (planos, hoje no teste, descontos, quanto
+o app pesa na RECEITA dele — soma de `children.monthlyFee`) com o único botão
+cheio, "Assinar plano agora para apoiar o app", no fim; depois a comparação:
+o número grande é o DELE, e o do concorrente vem embaixo, em vermelho.
+⚠️ **Nenhum nome de concorrente na tela** (decisão do dono; o teste reprova) —
+é UM concorrente direto, o plano mensal da Via Van (R$ 7,90 por criança; multa
+de 30% no anual), em `PRECO_DO_CONCORRENTE`, com mês de referência. Era a média
+com o Rotasegura (R$ 9,45), e o dono a tirou por inflar o número. Ela SOME
+quando o app sai mais caro. ⚠️ Preço de terceiro envelhece
+sozinho: revisar a cada trimestre. ⚠️ Os números são os de HOJE (`precoDoMes`):
+o preço novo (avulso, escada por USO, R$ 0,20 por indicação) ainda está em
+decisão com o dono.
+
 **O plano capa PRAZO E SAÍDA, nunca funcionalidade** — não existe Básico/Pro. O
 app é completo nos dois: o mensal não tem prazo nem multa e trava o desconto da
 escada; o anual custa menos da metade e pede doze meses, com multa de 20% do
@@ -1112,16 +1167,23 @@ indicações dariam 200% e a fatura viraria crédito. As duas travas são em sé
 protegem coisas diferentes: o teto impede fatura NEGATIVA, o piso impede fatura
 IRRISÓRIA. Testado em `npm run testar:planos`, incluindo o caso que vazava.
 
-**O relógio dos três meses tem TRÊS GATILHOS, e vale o que vier primeiro:**
-primeira rota, primeiro responsável entrando, primeira mensalidade gerada
-([relogioDoTeste.js](functions/lib/relogioDoTeste.js)). Nunca o cadastro.
+**O RELÓGIO DO TESTE LIGA NO 3º DIA DE ROTA, E SÓ NELE (04/10/2026, decisão
+do dono).** Dias DIFERENTES, no fuso de Brasília e pelo relógio do SERVIDOR —
+testar três vezes na mesma manhã conta como um. Os dias contados moram em
+`taxaParceiros/{uid}.diasDeRotaNoTeste`; a régua é `contarDiaDeRota` em
+[reguaDoRelogio.js](functions/lib/reguaDoRelogio.js) (`testar:trial`, bloco
+S6). Com a cobrança desligada, nem os dias são contados. Nunca o cadastro.
+Antes eram três gatilhos (1ª rota, 1º responsável, 1ª mensalidade); o dono
+quis dar tempo de sentir o app a quem inicia a rota só para ver como é.
+⚠️ **O buraco que isso reabre:** a família e a mensalidade existiam para quem
+pulasse `registrarRota` pelo devtools (cadastrar, convidar e cobrar para
+sempre sem o relógio). Se virar caso real, contar os dias pelas viagens
+(`rides`), que o servidor vê.
+⚠️ **Nenhuma tela conta o teste** ("mês 2 de 6", barra de meses, data do fim
+no aviso de início): deixa o motorista ansioso para sair antes de acabar
+(decisão do dono). A data do fim só aparece nos avisos do fim.
 
-Por um dia o único gatilho foi a rota, e isso deixou um buraco de graça
-ilimitada: o app tem DUAS metades, e dava para cadastrar a turma, convidar as
-famílias, emitir contrato e cobrar mensalidade **para sempre** sem tocar em
-"iniciar rota". O erro não foi escolher a rota — foi confundir ROTA com USO.
-
-⚠️ **OS TRÊS LIGAM NO SERVIDOR desde 03/10/2026.** A rota ligava pelo
+⚠️ **O RELÓGIO LIGA NO SERVIDOR desde 03/10/2026.** A rota ligava pelo
 cliente, que gravava a data que quisesse (uma data no futuro = nunca pagar).
 Hoje o cliente grava só `ultimaRota` (sinal de uso) e o gatilho
 `ligarRelogioNaRota` ([relogioNaRota.js](functions/lib/relogioNaRota.js))
@@ -1129,10 +1191,13 @@ escuta essa mudança em `users` — NÃO `liveLocation`, que é regravada a cada
 minuto de rota. O servidor guarda uma CÓPIA em `taxaParceiros/{uid}` e
 `restaurarRelogio` a devolve se a conta for apagada e recriada: apagar e
 recriar não zera o teste. ⚠️ Zerar o teste da base antes de religar a cobrança
-exige apagar as DUAS cópias.
+exige apagar as DUAS cópias (e `diasDeRotaNoTeste`).
 
-**⚠️ ATUALIZAÇÃO 02/10/2026: na HOME a frase virou "O app está em fase de
-teste: por enquanto, é grátis"** — decisão do dono, junto com a home simples.
+**⚠️ ATUALIZAÇÃO 04/10/2026: na HOME toda frase sobre teste e valor é "Use
+grátis. Decida depois."** (decisão do dono; antes, 02/10/2026, era "O app
+está em fase de teste: por enquanto, é grátis"), com três garantias: sem
+cartão para começar, aviso antes de qualquer cobrança, nada da turma apagado.
+A resposta "Ninguém trava a sua rota" saiu: o bloqueio do dia 91 a desmentia.
 A `/saiba-mais` ainda diz "Até 3 meses de teste grátis", e o app continua
 contando o teste de 3 meses (`trial.js`). Enquanto as duas coisas não forem
 reconciliadas, o site faz duas promessas diferentes.
@@ -1660,7 +1725,21 @@ negocia é a **decisão 23**: nível é USO DO APP (nunca plano, pagamento ou
 número de crianças), atividade de Platina nunca exige pagar ou contratar, e o
 selo público só sobe com o que o app confere sozinho. Nada aparece antes da
 primeira rota encerrada — o começo é cadastrar a turma. Tela `/tio/nivel`;
-aba "Platina" no painel do dono; selo no cabeçalho. ⚠️ **A família NÃO vê
+aba "Platina" no painel do dono; o nível mora no MENU DO PERFIL (e uma
+medalha no rosto), não mais ao lado da marca (04/10/2026).
+⚠️ **O DESENHO É O MODELO D2 (04/10/2026, aprovado pelo dono):** selo de
+METAL com reflexo (exceção de movimento nomeada; metais em
+`config/paletaCategorica.js`), a estrada dos cinco níveis
+([EstradaDosNiveis](src/components/nivel/EstradaDosNiveis.jsx)) — verde, com
+o metal só no brilho em volta; tocar num nível mostra o selo dele —, o
+"Feito" e o "Próxima", e o botão "Ver todas as missões". O menu
+([NivelNoMenu](src/components/nivel/NivelNoMenu.jsx)) lê SÓ `niveis/{uid}`:
+o servidor grava ali `feitasEm` (quando cada missão foi vista feita; `null`
+= feita antes de a data existir), `proxima` e `progresso` — régua em
+`anotarFeitas`/`proximaMissao`/`progressoDoNivel`/`ultimaFeita`, com
+espelho (`testar:nivel`, bloco 10). A tela abre com o anel de porcentagem
+(a parte vazia na cor do PRÓXIMO metal) e o nível atual aberto na estrada,
+com as abas "Para fazer"/"Feitas". ⚠️ **A família NÃO vê
 o nível do motorista** desde 04/10/2026 (decisão do dono; rules e
 `testar:nivel` travam).
 
@@ -1675,10 +1754,19 @@ celular dela ([useNivelDaFamilia](src/hooks/useNivelDaFamilia.js)) com o que
 ela já lê — nota de pagamento guardada e vista por terceiros seria cadastro de
 consumidor (CDC 43). O motorista não tem tela com ele, e o teste reprova
 qualquer tela do tio ou do dono que o importe. Vale o "Já paguei" dela, não a
-baixa dele. Selo no cabeçalho do /pai
-([SeloDaFamilia](src/components/nivel/SeloDaFamilia.jsx)); nenhuma frase diz
+baixa dele. Ela abre pelo menu do perfil do /pai
+([SeloDaFamilia](src/components/nivel/SeloDaFamilia.jsx): a linha só roda
+com o menu aberto; o aviso do Ouro mora no Início); nenhuma frase diz
 "pagador". ⚠️ A trilha "Meu negócio"
-(`/tio/finance/negocio`) espera as telas do "Sua perua" serem comitadas.
+(`/tio/finance/negocio`, atrás da senha) é tela SEPARADA do nível, e a única
+ponte é o Diamante (04/10/2026, decisão do dono): o selo dela leva a "Meu
+nível", e o Diamante de lá leva a ela. Desenho (modelo D): placar, o cartão
+"Você está na fase N · nome / Já completou", quatro quadrados por fase (a
+de agora com borda, brilho do Diamante e "Você está aqui"; tocar abre a
+folha) e A fazer / Já feitos / Seus marcos dobráveis, com a contagem e a
+fase de cada passo. Na parada Diamante do nível, a partir da Platina, o
+`CartaoDaTrilha` mostra "N de M", a fase e "Ver a trilha"; antes, só o link.
+A rota foi registrada no App.jsx em 04/10/2026 (a tela existia sem rota).
 
 ---
 
@@ -1978,7 +2066,16 @@ mesma superfície, com a tarja do momento (`HOJE` / `AO VIVO` / `DIA
 ENCERRADO`) dizendo qual dos três estados é. Sem ela, a tela troca de cara
 três vezes por dia e nada anuncia. O "falar com o motorista" mora no
 CABEÇALHO ([Header](src/components/layout/Header.jsx)) e nunca desabilita:
-emergência não pode rolar nem virar botão apagado.
+emergência não pode rolar nem virar botão apagado. Desde 04/10/2026 ele diz
+"Falar com tio" ou "Falar com tia" pelo `gender` do motorista (só "Falar"
+abaixo de 360 px ou sem gênero); o motorista não tem esse botão.
+
+⚠️ **A BARRA SÓ TEM A NAVEGAÇÃO, O TÍTULO MORA NA PÁGINA** (04/10/2026,
+aprovado pelo dono): à esquerda "← Voltar" ou a logo da marca, à direita só
+o que existe em toda tela; o título grande e a `action` da tela vêm logo
+abaixo e quebram linha em vez de cortar. O Início (`marca`) e a rota
+(`tituloNaBarra`) mantêm o título em cima. A logo vai até 72 px, e no Início
+do responsável, com logo, só a logo aparece.
 
 ⚠️ **A FAMÍLIA RECEBEU A MESMA AUDITORIA DE UX (03/10/2026)** — padrão em Z,
 piso de 16px e 48px, um nome por coisa. O que virou regra:
@@ -2232,19 +2329,21 @@ dono — ninguém escolhe papel pra entrar, `painelDe()` resolve depois. É a
 decisão 5 de [docs/decisoes.md](docs/decisoes.md), que estava com estado
 "alvo".
 
-**E ele tem DUAS ABAS desde 06/09/2026** — "Já tenho conta" e "Criar conta",
-no mesmo cartão. O "Cadastrar" antigo era um link pra `/comecar`, e `/comecar`
-devolve pro login quem não tem sessão: quem clicava deslogado voltava pra
-mesma tela. A aba pode vir da URL (`/login?criar=1`): a landing está em outro
-domínio e não tem `state`.
+⚠️ **DESDE 04/10/2026 O LOGIN É UMA TELA LIMPA NO VERDE** (modelo C, escolhido
+pelo dono): a marca, a frase, "Começar com Google" (branco, o único cheio),
+"Usar email" e "Conhecer o app", que abre uma folha com o que o app faz em
+ordem de importância — "Tudo na sua mão.", a mensalidade, a falta avisada
+antes, o app com a sua marca, "E também" e o "Ver o site" pequeno no fim. Cada
+item é título + UMA linha: quem chega lê a primeira frase e pula o resto.
+Saíram as duas colunas, os quatro benefícios, os cartões de fundo, a tira, a
+apresentação animada da primeira visita (`useTeatroDoLogin` ficou sem uso) e o
+"Primeira vez? Criar conta" à vista. `/login?criar=1` (a landing está em outro
+domínio e não tem `state`) mostra as duas portas num cartão branco, com "Já
+tenho conta" de volta.
 
-**A COLUNA DIREITA DO LOGIN TEM FUNDO desde 09/09/2026, e ele TROCA DE
-ASSUNTO com a aba** — [FundoDoLogin](src/components/auth/FundoDoLogin.jsx), com
-as nove peças em [marca/fundoDoLogin.js](src/marca/fundoDoLogin.js). Era uma
-superfície branca com um cartão no meio, e o login é a tela **mais acessada do
-produto** (mais que a landing): aquele vazio era o maior espaço de produto do
-app sem nada dentro. Três cartões por assunto — o dia rodando (entrar), o
-caminho até funcionar (criar conta), o lado da responsável (`/first-access`).
+**O FUNDO DE CARTÕES (09/09/2026) FICOU SÓ NO `/first-access`** —
+[FundoDoLogin](src/components/auth/FundoDoLogin.jsx), com as peças em
+[marca/fundoDoLogin.js](src/marca/fundoDoLogin.js).
 
 ⚠️ **Os cartões são RECRIADOS, nunca print de tela.** Print de produto real
 levaria nome e rosto de criança para uma página pública, que é dado sensível.
@@ -2261,13 +2360,12 @@ fonte**, e o teste confere que elas ainda existem lá.
 ⚠️ **E O CARTÃO DO FORMULÁRIO ENCOSTA À DIREITA — isso é geometria.** Centrado,
 sobram ~159px de cada lado e nenhum cartão de fundo cabe sem ser cortado; o
 problema é o eixo X e nenhum ajuste de altura resolve. O fundo só liga onde a
-conta fecha: **1340px** no login (cartão de 380) e **1500px** no
-`/first-access` (cartão de 520). Abaixo disso ele não existe, em vez de ser
+conta fecha: **1500px** no `/first-access` (cartão de 520). Abaixo disso ele não existe, em vez de ser
 apertado. `testar:fundo` **refaz a conta a partir dos arquivos** — alargar o
 formulário falha no teste em vez de aparecer como cartão cortado do outro lado
 da tela. Foi ele que pegou o fundo ligando antes de o cartão se mover.
 
-**A aba "Criar conta" NÃO cadastra ninguém — ela faz UMA pergunta**, e manda
+**O "Criar conta" (`?criar=1`) NÃO cadastra ninguém — ela faz UMA pergunta**, e manda
 pra `/quero-fazer-parte` (motorista) ou `/first-access` (responsável). Ela já
 pediu o código do convite, e era erro: código é coisa de responsável, e o
 motorista — que é o usuário principal — lia aquilo como "preciso de código pra
@@ -3005,6 +3103,21 @@ e por isso fica **fora da bateria encadeada** — é exatamente o que
 `npm run testar` e build. Rules e Storage ficam fora até o emulador entrar lá.
 
 ⚠️ **A FOLHA "MEU TRANSPORTE" É O MODELO F (04/10/2026, escolhido pelo dono entre seis):** no topo os avisos às famílias em dois botões grandes ("Problema na perua" cheio, nos tokens de alerta; "Não tem aula" de contorno), no meio a operação em quatro quadrados com o número grande (turma, faltas da semana, horários da rota com "N sem horário" em âmbar, escolas), e no pé o resto em linhas ("Mais"). O motorista de 40+ abre com pressa: o peso na tela segue a urgência.
+
+⚠️ **"PARA VOCÊ" — UMA LINHA NO FIM DO INÍCIO (04/10/2026, desenhado com a
+sessão do Início e aprovado pelo dono).** [ParaVoce](src/components/tio/ParaVoce.jsx),
+régua em [paraVoce.js](src/dominio/identidade/paraVoce.js)
+(`npm run testar:para-voce`). O "em dia" do Início é o SILÊNCIO, então a
+linha só aparece com NADA em "Para resolver" e fora da rota (estados `entre`
+e `vazio`), depois de "Meu transporte": um item por vez, no molde da linha de
+cima, no verde da casa, sem número, sem âmbar, sem botão nem "Agora não".
+Ordem: fim do teste (só entre 60 e 31 dias do fim, com a cobrança ligada) →
+Boletim pronto (dia 1–7) → nível novo ("Você chegou à Prata", uma vez por
+aparelho) → prazo da Platina → "a 1 passo do Ouro" → senha do Financeiro →
+fase da trilha. ⚠️ A única exceção ao "em dia" é a Platina nos últimos 3
+dias. O `AvisoDoBronze` e o `CartaoPrazoPlatina` SAÍRAM do topo e moram aqui.
+⚠️ Os 30 últimos dias do teste são do `AvisoDoTrial` (topo de toda tela),
+que desde 04/10/2026 é VERDE CALMO no verde da casa, não âmbar.
 
 **O Início do motorista tem um ÍNDICE, não um bloco de cadastro.**
 [MeuTransporteSheet](src/components/tio/MeuTransporteSheet.jsx) — turma,

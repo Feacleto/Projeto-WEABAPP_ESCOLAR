@@ -115,15 +115,19 @@ export default function AvisoDoTrial({ temContrato = false }) {
       : `Seu teste termina em ${aviso.dias} dias.`
     : `Seu teste termina em ${aviso.dias} dias.`;
 
+  // ⚠️ VERDE CALMO, NÃO ÂMBAR (04/10/2026, decisão do dono): o fim do teste
+  // não é alerta. Continua no topo de toda tela do /tio — é o único aviso que
+  // precisa ser visto mesmo com pendências —, mas no verde da casa (`tema-alo`),
+  // porque é a plataforma falando, não o negócio dele.
   return (
-    <div className="border-b border-warningBorder bg-warningSoft px-4 py-3">
+    <div className="tema-alo border-b border-primaryBorder bg-primarySoft px-4 py-3">
       <div className="mx-auto flex max-w-mobile items-start gap-3">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warningChip">
-          <Clock size={17} className="text-warningText" />
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primaryChip">
+          <Clock size={17} className="text-accentText" />
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-base font-semibold text-warningText">{quantos}</p>
+          <p className="text-base font-semibold text-accentText">{quantos}</p>
           <p className="mt-0.5 text-sm text-textBody">
             Depois dessa data o app pausa até você escolher um plano. Suas
             crianças, horários e histórico continuam salvos.
@@ -150,7 +154,7 @@ export default function AvisoDoTrial({ temContrato = false }) {
             * para sempre é o raro caso de erro a favor do cliente, e mesmo
             * assim é erro: ele decide contra um número que não é o dele. */}
           {fracaoDoDegrau > 0 && (
-            <p className="mt-1.5 text-sm leading-relaxed text-warningText">
+            <p className="mt-1.5 text-sm leading-relaxed text-accentText">
               Quanto antes contratar, menor fica sua mensalidade. Contratando
               agora você garante{' '}
               <strong>{Math.round(fracaoDoDegrau * 100)}% de desconto</strong>, sem
@@ -163,7 +167,7 @@ export default function AvisoDoTrial({ temContrato = false }) {
             * era honesto enquanto não havia para onde ir. */}
           <Link
             to="/tio/planos"
-            className="tap mt-1 inline-flex min-h-12 items-center gap-1.5 text-base font-semibold text-warningText underline"
+            className="tap mt-1 inline-flex min-h-12 items-center gap-1.5 text-base font-semibold text-accentText underline"
           >
             <ArrowRight size={18} /> Ver planos
           </Link>

@@ -98,7 +98,7 @@ caso('data e senha nunca levam o botão',
   /type !== 'date'/.test(input) && /type !== 'password'/.test(input));
 caso('existe o jeito de esconder só o botão (o Enter continua)', /semSalvar = false/.test(input));
 const SEM_SALVAR = {
-  'src/pages/Login.jsx': 1, 'src/pages/DriverSignup.jsx': 3, 'src/components/landing/LoginSheet.jsx': 1, 'src/components/auth/AuthSheet.jsx': 1,
+  'src/pages/Login.jsx': 1, 'src/pages/DriverSignup.jsx': 2, 'src/components/landing/LoginSheet.jsx': 1, 'src/components/auth/AuthSheet.jsx': 1,
   'src/components/acesso/PedirAcesso.jsx': 1, 'src/components/children/TelefoneDaEscola.jsx': 1,
   'src/components/payments/PixForm.jsx': 1, 'src/components/contract/EditarCombinadoSheet.jsx': 1,
   'src/pages/Profile.jsx': 3, 'src/pages/tio/TioAbastecer.jsx': 1, 'src/components/financeiro/FolhaDeDespesa.jsx': 3,
@@ -120,9 +120,10 @@ for (const arq of ['src/pages/tio/PrimeiroAcesso.jsx', 'src/components/children/
 }
 const loginTela = ler('src/pages/Login.jsx');
 caso('login no celular: "Começar com Google"', loginTela.includes('Começar com Google'));
-caso('login no celular: "Primeira vez? Criar conta" com 48 px',
-  /min-h-12[^"]*"\s*>\s*<Plus[^>]*\/> Primeira vez\? Criar conta/.test(loginTela));
-caso('as abas do login têm 48 px e letra de 16', /tap min-h-12 rounded-lg px-2 py-2 text-base font-bold/.test(loginTela));
+// A tela limpa (04/10/2026, modelo C): o Google é o único cheio, e o
+// "Conhecer o app" abre a folha com o que o app faz.
+caso('login: o Google tem 56 px', /tap flex min-h-14 w-full[^"]*bg-card/.test(loginTela));
+caso('login: "Conhecer o app" com 48 px', /min-h-12[^"]*"\s*>\s*Conhecer o app/.test(loginTela));
 const convite = ler('src/components/children/InviteShare.jsx');
 caso('o convite mandado vira "Enviado ✓"', convite.includes("'Enviado ✓'"));
 const fimDoCadastro = ler('src/components/children/ChildForm.jsx');

@@ -50,8 +50,6 @@ const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
 const { criancasQueEsperam, chaveDoTelefone } = require('./reguaDoIrmao');
-const { ligarRelogioComSnap } = require('./relogioDoTeste');
-const { cobrancaLigada } = require('./cobrancaLigada');
 const { idValido } = require('./reguaDosIds');
 const { REGRAS, MENSAGEM_DE_LIMITE } = require('./reguaDasTentativas');
 const limite = require('./limiteDeTentativas');
@@ -195,7 +193,6 @@ function makeResponderPedidoDeAcesso(db) {
     if (!idValido(pedidoId)) throw new HttpsError('invalid-argument', 'Qual pedido?');
 
     const pedidoRef = db.doc(`pedidosDeVinculo/${pedidoId}`);
-    const cobrancaOn = await cobrancaLigada(db);
 
     const pedido = await db.runTransaction(async (tx) => {
       const p = await tx.get(pedidoRef);
@@ -211,12 +208,7 @@ function makeResponderPedidoDeAcesso(db) {
       // `testar:transacoes` lê a ordem pelo texto, não pelo caminho.
       const childRef = db.doc(`children/${dados.childId}`);
       const userRef = db.doc(`users/${dados.parentUid}`);
-      const relogioRef = db.doc(`users/${adminUid}`);
-      const [c, u, relogio] = await Promise.all([
-        tx.get(childRef),
-        tx.get(userRef),
-        tx.get(relogioRef),
-      ]);
+      const [c, u] = await Promise.all([tx.get(childRef), tx.get(userRef)]);
 
       if (!aprovar) {
         tx.update(pedidoRef, { status: 'recusado', respondidoEm: FieldValue.serverTimestamp() });
@@ -259,8 +251,8 @@ function makeResponderPedidoDeAcesso(db) {
         { merge: true }
       );
       tx.update(pedidoRef, { status: 'aprovado', respondidoEm: FieldValue.serverTimestamp() });
-      // Uma família entrando é o mesmo gatilho do relógio que o link liga.
-      if (cobrancaOn) ligarRelogioComSnap(relogioRef, relogio, 'primeiro responsável', tx);
+      // A família entrar não liga mais o relógio do teste (04/10/2026): ele
+      // começa no 3º dia de rota (`relogioNaRota.js`).
       return { ...dados, nomeDaCrianca };
     });
 

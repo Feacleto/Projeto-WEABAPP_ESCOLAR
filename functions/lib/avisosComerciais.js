@@ -272,10 +272,13 @@ function avisoDoDia({ motorista, agora = new Date() } = {}) {
     return {
       tipo: TIPO.TESTE_COMECOU,
       titulo: 'Seu teste começou',
-      corpo: `Você rodou a primeira rota. Nada é cobrado até ${dataLonga(fimDoTeste)}.`,
+      corpo: 'Use à vontade. A gente avisa antes de qualquer cobrança.',
+      // ⚠️ SEM A DATA DO FIM (04/10/2026, decisão do dono): no dia em que o
+      // teste começa, contar quando ele acaba deixa ansioso. A data vem nos
+      // avisos do fim, que existem para ninguém ser cobrado de surpresa.
       texto:
-        `Você rodou sua primeira rota, e é ela que inicia o período de teste. ` +
-        `Ele vai até ${dataLonga(fimDoTeste)} e nada é cobrado até lá.\n\n` +
+        `Seu teste grátis começou. Use à vontade: nada é cobrado durante o ` +
+        `teste, e a gente avisa antes de qualquer cobrança.\n\n` +
         `Quanto antes você contratar, menor fica sua mensalidade — e o desconto ` +
         `que você garantir não tem prazo para acabar. Contratando ainda este ` +
         `mês: ${reais(comDesconto.liquido)} por mês, em vez de ` +

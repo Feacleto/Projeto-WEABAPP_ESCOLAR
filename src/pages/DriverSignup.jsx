@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Mail, Lock, Phone, Bus } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, Bus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -9,7 +9,7 @@ import { SITE_INSTITUCIONAL } from '../config/vitrine';
 import { ArtRoad } from '../components/landing/BlockArt';
 import { inscreverAssociado } from '../services/associadoService';
 import { useAuth } from '../hooks/useAuth';
-import { maskPhone, unmaskPhone, isValidPhone, isValidEmail } from '../compartilhado/masks';
+import { isValidEmail } from '../compartilhado/masks';
 import { resolverOrigem } from '../dominio/identidade/origem.js';
 import { painelDe } from '../dominio/identidade/papeis';
 import { SENHA_MINIMA } from '../dominio/identidade/authErrors';
@@ -72,7 +72,7 @@ export default function DriverSignup() {
    * O que fica aqui é só o que a CONTA precisa para existir: um endereço
    * para voltar, um telefone para ser achado, e uma senha. */
   const [form, setForm] = useState({
-    phone: '',
+
     email: '',
     senha: '',
   });
@@ -100,7 +100,6 @@ export default function DriverSignup() {
   const onSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!isValidPhone(form.phone)) errs.phone = 'WhatsApp com DDD.';
     // Email e senha viraram OBRIGATÓRIOS porque a inscrição agora CRIA A
     // CONTA — não é mais só um lead. Sem eles não há como ele voltar.
     if (!isValidEmail(form.email)) errs.email = 'Precisamos do email pra criar sua conta.';
@@ -129,7 +128,6 @@ export default function DriverSignup() {
       await inscreverAssociado({
         email: form.email,
         senha: form.senha,
-        telefone: unmaskPhone(form.phone),
         origem,
       });
 
@@ -338,10 +336,8 @@ export default function DriverSignup() {
             * Ela dizia "seis campos, em três linhas" — conferível enquanto
             * eram seis. Prometer um número e entregar outro na mesma dobra é
             * a primeira coisa que a pessoa aprende sobre o produto. */}
-          <p className="mt-2 text-sm leading-relaxed text-textMuted">
-            Três campos. No fim deles você entra direto no seu painel — o
-            resto a gente pergunta lá dentro.
-          </p>
+          {/* ⚠️ A TELA SÓ CONDUZ (04/10/2026, decisão do dono): sem explicar o
+            * que vem depois. O resto ele vê passo a passo, lá dentro. */}
         </div>
 
         <form onSubmit={onSubmit} className="space-y-5">
@@ -376,19 +372,6 @@ export default function DriverSignup() {
               onChange={set('email')}
               autoComplete="email"
               error={errors.email}
-              required
-            />
-            <Input semSalvar
-              label="WhatsApp"
-              placeholder="Digite aqui"
-              inputMode="tel"
-              icon={Phone}
-              value={form.phone}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))
-              }
-              autoComplete="tel"
-              error={errors.phone}
               required
             />
             {/* A senha aparece aqui porque a inscrição CRIA A CONTA. Google
@@ -437,6 +420,14 @@ export default function DriverSignup() {
           <p className="text-xs text-textMuted text-center">
             Sem cobrança e sem compromisso.
           </p>
+          {/* QUEM MUDAR DE IDEIA vai para o Google, que mora no login (lá ele
+            * sabe se está numa webview, onde o Google não funciona). */}
+          <Link
+            to="/login"
+            className="tap flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-text"
+          >
+            Prefiro entrar com o Google
+          </Link>
         </form>
 
         <div className="mt-auto pt-6 text-xs text-textMuted flex items-center justify-center gap-3">

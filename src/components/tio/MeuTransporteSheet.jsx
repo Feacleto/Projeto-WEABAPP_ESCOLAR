@@ -217,8 +217,8 @@ export default function MeuTransporteSheet({
             <>
               <Linha
                 icon={Receipt}
-                titulo="Meu plano"
-                subtitulo="Quanto custa o app depois do teste"
+                titulo="Meus planos"
+                subtitulo="Seu autoatendimento: plano, conta e descontos"
                 onClick={() => ir('/tio/planos')}
               />
               <Linha

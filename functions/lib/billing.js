@@ -17,7 +17,6 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./papeis');
 const { logger } = require('firebase-functions/v2');
-const { ligarRelogio } = require('./relogioDoTeste');
 const { mesDentroDaVigencia } = require('./reguaDoContrato');
 const LIMITES = require('./limites');
 const { mesValido } = require('./reguaDosIds');
@@ -94,9 +93,6 @@ async function generateForMonth(db, monthKey, adminUid = null) {
   const existing = new Set(existingSnap.docs.map((d) => d.data().childId));
   const lastDayOfMonth = new Date(year, month, 0).getDate();
 
-  // Um relógio por motorista, não um por criança: numa perua de 25, seriam 25
-  // leituras do mesmo documento para gravar o mesmo campo uma vez.
-  const relogiosLigados = new Set();
   let withoutParent = 0;
   let withoutFee = 0;
   let foraDaVigencia = 0;
@@ -217,22 +213,8 @@ async function generateForMonth(db, monthKey, adminUid = null) {
       },
       childId: childDoc.id,
     });
-    // ⚠️ O TERCEIRO GATILHO DO RELÓGIO DO TESTE (06/09/2026).
-    //
-    // Gerar mensalidade é o dinheiro dele passando por aqui — é uso do
-    // produto, tanto quanto rodar a rota. Sem este gatilho, um motorista
-    // cobrava as famílias pelo app para sempre sem nunca entrar no relógio.
-    //
-    // FORA DO BATCH de propósito: o batch é da COBRANÇA, e uma falha ao ligar
-    // o relógio não pode fazer a mensalidade do mês não existir. `ligarRelogio`
-    // engole o próprio erro pelo mesmo motivo.
-    //
-    // O `Set` evita reler o doc do mesmo motorista uma vez por criança — numa
-    // perua de 25, seriam 25 leituras do mesmo documento para gravar um campo.
-    if (!relogiosLigados.has(child.adminUid)) {
-      relogiosLigados.add(child.adminUid);
-      await ligarRelogio(db, child.adminUid, 'primeira mensalidade');
-    }
+    // A mensalidade gerada não liga mais o relógio do teste (04/10/2026): ele
+    // começa no 3º dia de rota, e só nele (`relogioNaRota.js`).
 
   }
 

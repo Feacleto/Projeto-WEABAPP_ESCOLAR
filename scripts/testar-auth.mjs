@@ -652,7 +652,20 @@ checar(
 const fontePrimeiro11 = semComentarios(readFileSync(
   new URL('../src/pages/tio/PrimeiroAcesso.jsx', import.meta.url), 'utf8'));
 checar('o passo diz por que pede', true,
-  fontePrimeiro11.includes('Vai no contrato que as famílias assinam.'));
+  fontePrimeiro11.includes('Seu contrato com as famílias agora vai ser digital.'));
+// O CONTRATO PODE SER PULADO (04/10/2026, decisão do dono): quem pulou não
+// vê o passo de novo — o pedido volta na hora do primeiro contrato.
+checar('quem pulou o contrato não é desviado por ele', false,
+  faltaCompletarCadastro({ ...cadastroCompleto, companyDocument: '', companyAddress: '', contratoPuladoEm: 1 }));
+checar('e o card tem o "Pular por agora"', true, fontePrimeiro11.includes('Pular por agora'));
+// A TURMA DENTRO DO CADASTRO: começada e não concluída, o card fica aberto.
+checar('turma começada mantém o card', ['turma'],
+  passosQueFaltam({ ...cadastroCompleto, turmaIniciadaEm: 1 }));
+checar('turma concluída fecha o card', [],
+  passosQueFaltam({ ...cadastroCompleto, turmaIniciadaEm: 1, turmaConcluidaEm: 2 }));
+checar('conta antiga, sem a marca da turma, nunca é desviada por ela', false,
+  faltaCompletarCadastro(cadastroCompleto));
+checar('todo passo tem Voltar', true, fontePrimeiro11.includes('Voltar') && fontePrimeiro11.includes('setIndice((i) => Math.max(0, i - 1))'));
 checar('e grava os campos que o contrato le', true,
   /companyDocument:[\s\S]{0,80}companyAddress:/.test(fontePrimeiro11));
 checar('o grupo homem/mulher e parada do Salvar do nome', true,

@@ -20,6 +20,10 @@ export function useGarantirContrato(child, contratos) {
     role === 'admin' &&
     child?.adminUid === user?.uid &&
     child?.active !== false &&
+    // ⚠️ SEM MENSALIDADE, SEM CONTRATO (04/10/2026): o cadastro rápido do
+    // primeiro acesso salva a criança só com o nome, e o contrato sairia
+    // "R$ 0,00" para a família assinar. Ele nasce quando a ficha ganha o valor.
+    Number(child?.monthlyFee) > 0 &&
     dadosDaContratadaFaltando(profile).length === 0;
 
   useEffect(() => {

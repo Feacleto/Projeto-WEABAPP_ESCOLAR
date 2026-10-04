@@ -27,8 +27,7 @@ import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import ResumoDaTurma from '../../components/tio/ResumoDaTurma';
 import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
-import AvisoDoBronze from '../../components/nivel/AvisoDoBronze';
-import CartaoPrazoPlatina from '../../components/nivel/CartaoPrazoPlatina';
+import ParaVoce from '../../components/tio/ParaVoce';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
@@ -394,6 +393,25 @@ export default function TioDashboard() {
   const primeiroNome =
     profile?.marcaNome?.trim() || profile?.name?.split(' ')[0] || 'Tio';
 
+  // ── "PARA VOCÊ" (04/10/2026) ─────────────────────────────────────────────
+  // Só existe quando ele está EM DIA — o mesmo total que esconde o "Para
+  // resolver" — e fora da rota. Fica no fim, depois de "Meu transporte".
+  const emDia =
+    pedidosAbertos.length === 0 &&
+    !(marcados > 0) &&
+    !(atrasados > 0) &&
+    semHorario.length === 0 &&
+    !(convitesAbertos > 0) &&
+    absences.length === 0;
+  const paraVoce = (
+    <ParaVoce
+      foraDaRota={!rotaAtiva}
+      emDia={emDia}
+      criancas={children.length}
+      familias={children.filter((c) => c?.parentUid).length}
+    />
+  );
+
   return (
     <>
       <Header title="Início" marca />
@@ -484,11 +502,9 @@ export default function TioDashboard() {
             )}
             {/* Lembrete, nunca portão: some sozinho depois de confirmar. */}
             <ConfirmeSeuEmail className="mt-4" />
-            {/* OS NÍVEIS (docs/niveis.md): o aviso único do Bronze e o
-              * prazo da Platina — nunca dirigindo, porque este bloco some
-              * com a rota rodando. */}
-            <AvisoDoBronze className="mt-4" />
-            <CartaoPrazoPlatina className="mt-4" />
+            {/* OS AVISOS DE NÍVEL SAÍRAM DAQUI (04/10/2026): o do Bronze e o do
+              * prazo da Platina moram agora no "Para você", no fim da tela.
+              * Só um lugar fala de nível, e o topo fica com o dia dele. */}
           </div>
         )}
 
@@ -670,6 +686,7 @@ export default function TioDashboard() {
             />
 
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            {paraVoce}
           </div>
         )}
 
@@ -680,8 +697,9 @@ export default function TioDashboard() {
           </div>
         )}
         {estado === 'vazio' && children.length > 0 && (
-          <div className="px-5 pt-4">
+          <div className="px-5 pt-4 space-y-4">
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            {paraVoce}
           </div>
         )}
       </div>
