@@ -76,7 +76,20 @@ $FuncoesNucleoLista = @(
   'functions:avisarBuzina',
   'functions:gerarAcessoTemporario',
   'functions:encerrarAcessoTemporario',
-  'functions:inscreverAvisosDoAcesso'
+  'functions:inscreverAvisosDoAcesso',
+  # 03-04/10/2026: o contador da turma e o relógio do teste no servidor, a
+  # senha do Financeiro, o IPCA, os níveis, a avaliação do acompanhante e a
+  # limpeza dos avisos com mais de 90 dias.
+  'functions:contarCriancasAtivas',
+  'functions:ligarRelogioNaRota',
+  'functions:restaurarRelogio',
+  'functions:criarSenhaDoFinanceiro',
+  'functions:conferirSenhaDoFinanceiro',
+  'functions:atualizarIndicesEconomicos',
+  'functions:calcularNiveis',
+  'functions:recalcularMeuNivel',
+  'functions:avaliarAcompanhamento',
+  'functions:limparAvisosAntigos'
 )
 $FuncoesNucleo = $FuncoesNucleoLista -join ','
 
