@@ -715,7 +715,7 @@ function EditProfileForm({ profile, onCancel, onSaved }) {
           label="Telefone"
           icon={Phone}
           inputMode="tel"
-          placeholder="(11) 99999-9999"
+          placeholder="Digite aqui"
           value={phone}
           onChange={(e) => setPhone(maskPhone(e.target.value))}
           maxLength={15}
@@ -1046,7 +1046,7 @@ function MarcaCard({ uid, nome, logoURL, cor, cores, onChanged }) {
       <Input
         id="marca-nome"
         label="Como suas famílias te chamam"
-        placeholder="Ex.: Tio Nino"
+        placeholder="Digite aqui"
         value={valor}
         maxLength={40}
         onChange={(e) => setValor(e.target.value)}

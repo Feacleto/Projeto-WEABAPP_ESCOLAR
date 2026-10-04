@@ -67,6 +67,15 @@ async function generateUniqueInviteCode(maxAttempts = 10) {
  * Cadastra uma nova criança e retorna { id, inviteCode }.
  * Status inicial: "home", inviteStatus: "pending", active: true.
  */
+/**
+ * Reserva o id da criança ANTES de salvar (03/10/2026). Não grava nada: só
+ * sorteia a chave do documento, como o próprio `addChild` faria. O cadastro
+ * usa para mostrar o avatar certo enquanto ele preenche os passos.
+ */
+export function reservarIdDeCrianca() {
+  return doc(collection(db, 'children')).id;
+}
+
 export async function addChild(data) {
   const inviteCode = await generateUniqueInviteCode();
 
@@ -190,7 +199,10 @@ export async function addChild(data) {
   // cada criança criada, desativada, apagada ou trocada de motorista. O
   // número no perfil chega alguns segundos depois; a fatura não depende dele
   // (o fechamento conta no banco).
-  const docRef = doc(collection(db, 'children'));
+  // O id pode vir RESERVADO pelo formulário (`reservarIdDeCrianca`): é ele
+  // que sorteia o avatar, e o cadastro mostra a criança no topo desde o
+  // passo 2 — o rosto de lá tem que ser o mesmo da ficha depois de salvar.
+  const docRef = data.id ? doc(db, 'children', data.id) : doc(collection(db, 'children'));
   await setDoc(docRef, payload);
 
   // Aqui havia um `addChildToDefaultPlan`, que enfileirava a criança nos seis

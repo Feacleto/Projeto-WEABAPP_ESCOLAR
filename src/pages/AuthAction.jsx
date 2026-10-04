@@ -430,7 +430,7 @@ export default function AuthAction() {
         <Input
           type="password"
           label="Repetir a senha"
-          placeholder="Repita para conferir"
+          placeholder="Digite aqui"
           icon={Lock}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}

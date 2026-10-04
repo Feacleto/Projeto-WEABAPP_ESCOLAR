@@ -169,7 +169,7 @@ export default function ConcederSheet({ motorista, onFechar, onPronto }) {
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               rows={3}
-              placeholder="Perdeu duas escolas em agosto e volta em fevereiro."
+              placeholder="Digite aqui"
               className="w-full rounded-xl border border-border bg-surface p-3 text-xs text-text"
             />
             <span className="mt-1 block text-xs leading-relaxed text-textMuted">

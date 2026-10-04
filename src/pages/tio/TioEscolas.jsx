@@ -494,7 +494,7 @@ export default function TioEscolas() {
               <Input
                 label="Nome da escola"
                 icon={School}
-                placeholder="EM Rui Barbosa"
+                placeholder="Digite aqui"
                 value={editando.nome}
                 onChange={(ev) =>
                   setEditando((s) => ({ ...s, nome: ev.target.value }))
@@ -509,7 +509,7 @@ export default function TioEscolas() {
               <Input
                 label="Ou o CEP"
                 icon={MapPin}
-                placeholder="00000-000"
+                placeholder="Digite aqui"
                 value={editando.cep || ''}
                 onChange={(ev) => onCepChange(ev.target.value)}
                 inputMode="numeric"
@@ -550,7 +550,7 @@ export default function TioEscolas() {
               <Input
                 label="Endereço"
                 icon={MapPin}
-                placeholder="Rua, número, bairro"
+                placeholder="Digite aqui"
                 value={editando.endereco}
                 onChange={(ev) =>
                   setEditando((s) => ({
@@ -579,14 +579,14 @@ export default function TioEscolas() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Número"
-                    placeholder="123"
+                    placeholder="Digite aqui"
                     value={editando.numero || ''}
                     onChange={(ev) => setParteDoEndereco('numero')(ev.target.value)}
                     inputMode="numeric"
                   />
                   <Input
                     label="Complemento"
-                    placeholder="bloco B"
+                    placeholder="Digite aqui"
                     value={editando.complemento || ''}
                     onChange={(ev) =>
                       setParteDoEndereco('complemento')(ev.target.value)

@@ -556,7 +556,7 @@ function NotaInterna({ uid, parceiro }) {
         rows={4}
         disabled={parceiro === null}
         className="w-full rounded-xl border border-border bg-surface p-2 text-xs text-text"
-        placeholder="Conversou em agosto, prefere ser chamado à tarde…"
+        placeholder="Digite aqui"
       />
       <button
         type="button"

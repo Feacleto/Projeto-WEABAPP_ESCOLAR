@@ -367,7 +367,7 @@ export default function DriverSignup() {
               type="email"
               inputMode="email"
               label="Email"
-              placeholder="seu@email.com"
+              placeholder="Digite aqui"
               icon={Mail}
               value={form.email}
               onChange={set('email')}
@@ -377,7 +377,7 @@ export default function DriverSignup() {
             />
             <Input
               label="WhatsApp"
-              placeholder="(11) 90000-0000"
+              placeholder="Digite aqui"
               inputMode="tel"
               icon={Phone}
               value={form.phone}
@@ -397,7 +397,7 @@ export default function DriverSignup() {
               type="password"
               revealable
               label="Senha"
-              placeholder="mínimo 6"
+              placeholder="Digite aqui"
               icon={Lock}
               value={form.senha}
               onChange={set('senha')}

@@ -231,7 +231,7 @@ function Folha({ onClose, comValores }) {
         {categoria === 'maintenance' && (
           <Input
             label="O que foi feito"
-            placeholder="Ex.: troca de óleo"
+            placeholder="Digite aqui"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             maxLength={200}

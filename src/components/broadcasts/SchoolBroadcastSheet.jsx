@@ -361,7 +361,7 @@ function SchoolBroadcastBody({ onClose }) {
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
               maxLength={500}
-              placeholder="Reunião do conselho de classe."
+              placeholder="Digite aqui"
               className="w-full rounded-2xl border-2 border-border bg-card p-3 text-sm text-text placeholder:text-textMuted focus:outline-none focus:border-primary resize-none"
             />
           </div>

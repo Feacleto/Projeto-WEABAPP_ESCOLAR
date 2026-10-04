@@ -106,7 +106,7 @@ export default function BuscaDeRua({ onEscolher }) {
           <input
             value={cidade}
             onChange={(e) => setCidade(e.target.value)}
-            placeholder="Cidade"
+            placeholder="Digite aqui"
             aria-label="Cidade"
             className="h-11 rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:border-primary focus:outline-none"
           />

@@ -239,7 +239,7 @@ export default function AuthSheet({
               type="email"
               inputMode="email"
               label="Seu email"
-              placeholder="seu@email.com"
+              placeholder="Digite aqui"
               icon={Mail}
               value={email}
               onChange={(e) => setEmail(e.target.value)}

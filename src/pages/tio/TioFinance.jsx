@@ -831,7 +831,7 @@ export default function TioFinance() {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Procurar criança"
+                  placeholder="Digite aqui"
                   className="h-12 w-full rounded-xl border-2 border-border bg-card pl-11 pr-10 text-base text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
                 />
                 {search && (

@@ -438,7 +438,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
         label="Telefone"
         icon={Phone}
         inputMode="tel"
-        placeholder="(11) 99999-9999"
+        placeholder="Digite aqui"
         value={phone}
         onChange={(e) => setPhone(maskPhone(e.target.value))}
         maxLength={15}
@@ -481,7 +481,7 @@ function NewAltForm({ child, parentUid, dateKey, onCancel, onSaved }) {
         {isCustom && (
           <input
             type="text"
-            placeholder="Ex: madrinha, vizinho, cuidador..."
+            placeholder="Digite aqui"
             value={relationship}
             onChange={(e) => setRelationship(e.target.value)}
             maxLength={40}

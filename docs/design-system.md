@@ -117,6 +117,18 @@ tem volta: título é a pergunta, texto é a consequência, botão repete o verb
 **tela cheia** (só a buzina). Um por vez. Erro aparece onde aconteceu, nunca num
 popup por cima. Durante a rota, nada de confirmação.
 
+## Formulários (03/10/2026)
+
+- **Nenhum exemplo dentro do campo.** "Ex: Pedro Silva", "00000-000", "06:40"
+  eram lidos como resposta já dada. Todo campo diz **"Digite aqui"**; o
+  formato, quando importa, vai na dica embaixo. O `Input` ignora o
+  `placeholder` do chamador, e `testar:formularios` reprova exemplo novo.
+- **"Salvar" ao lado de cada campo** (e o Enter do teclado): leva ao próximo
+  campo e, no último, aciona o avanço da tela — o botão `data-avancar` de um
+  passo a passo, ou o envio do `<form>`. Campo de busca passa `avancar={false}`.
+- **Num cadastro em passos, o topo diz de quem é** a partir do passo 2 (o rosto
+  e o nome da criança no cadastro dela).
+
 ## A cor do motorista (03/10/2026)
 
 O app do motorista, e o das famílias dele, usa a cor tirada do **logo dele**

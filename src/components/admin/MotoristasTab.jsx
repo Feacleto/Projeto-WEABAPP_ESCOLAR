@@ -152,7 +152,7 @@ export default function MotoristasTab({ inicial = null }) {
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Nome, e-mail ou cidade"
+            placeholder="Digite aqui"
             className="h-9 w-full bg-transparent text-xs text-text outline-none"
           />
         </div>

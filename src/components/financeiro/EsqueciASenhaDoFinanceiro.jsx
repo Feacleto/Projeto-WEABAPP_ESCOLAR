@@ -60,7 +60,7 @@ export default function EsqueciASenhaDoFinanceiro({ voltarPara = null }) {
                 type="password"
                 autoComplete="current-password"
                 aria-label="Senha da conta"
-                placeholder="Senha da conta"
+                placeholder="Digite aqui"
                 value={senha}
                 onChange={(ev) => {
                   setSenha(ev.target.value);

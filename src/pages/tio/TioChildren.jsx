@@ -155,7 +155,7 @@ export default function TioChildren() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar pelo nome..."
+            placeholder="Digite aqui"
             className="w-full h-12 pl-10 pr-10 rounded-2xl bg-card border border-border text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
           {search && (

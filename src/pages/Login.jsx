@@ -904,7 +904,7 @@ export default function Login() {
                       type="email"
                       inputMode="email"
                       label="Email"
-                      placeholder="seu@email.com"
+                      placeholder="Digite aqui"
                       icon={Mail}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -915,7 +915,7 @@ export default function Login() {
                       type="password"
                       revealable
                       label="Senha"
-                      placeholder="sua senha"
+                      placeholder="Digite aqui"
                       icon={Lock}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}

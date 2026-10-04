@@ -183,7 +183,7 @@ export default function TioIndicar() {
               <input
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                placeholder="Como você o chama"
+                placeholder="Digite aqui"
                 className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-text"
               />
             </label>
@@ -193,7 +193,7 @@ export default function TioIndicar() {
                 value={telefone}
                 onChange={(e) => setTelefone(maskPhone(e.target.value))}
                 inputMode="tel"
-                placeholder="(11) 98765-4321"
+                placeholder="Digite aqui"
                 className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-text"
               />
             </label>

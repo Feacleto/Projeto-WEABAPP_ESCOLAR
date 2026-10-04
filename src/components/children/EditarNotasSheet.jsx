@@ -52,7 +52,7 @@ export default function EditarNotasSheet({ open, onClose, child }) {
           onChange={(e) => setTexto(e.target.value)}
           rows={4}
           maxLength={300}
-          placeholder="Ex.: portão de trás, tocar o interfone, quem busca na segunda..."
+          placeholder="Digite aqui"
           className="w-full rounded-xl border-2 border-border bg-card p-3 text-base text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-4 focus:ring-accent/25"
         />
         <p className="text-xs leading-relaxed text-textMuted">

@@ -251,7 +251,7 @@ function ConfigDaCasa({ config }) {
             value={pixKey}
             onChange={(e) => setPixKey(e.target.value)}
             className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-xs text-text"
-            placeholder="a chave que aparece na fatura do parceiro"
+            placeholder="Digite aqui"
           />
         </label>
         <label className="block text-xs">

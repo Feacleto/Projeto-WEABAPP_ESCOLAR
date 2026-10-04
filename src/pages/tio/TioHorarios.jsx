@@ -338,7 +338,7 @@ export default function TioHorarios() {
           <input
             type="text"
             inputMode="numeric"
-            placeholder="06:40"
+            placeholder="Digite aqui"
             maxLength={5}
             aria-label={direcao === 'ida' ? 'Que horas você pega em casa?' : 'Que horas você entrega em casa?'}
             value={editando.valor}

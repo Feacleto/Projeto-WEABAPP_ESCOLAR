@@ -120,7 +120,7 @@ export default function CampoDeValor({
           inputMode="numeric"
           autoComplete="off"
           autoFocus={autoFocus}
-          placeholder="0,00"
+          placeholder="Digite aqui"
           value={textoDoValor(value)}
           onChange={(e) => {
             setNaoEntendi(false);

@@ -77,7 +77,7 @@ export default function DadosDoContratoForm({ onSalvo, textoDoBotao = 'Salvar' }
         label="CPF ou CNPJ"
         icon={FileText}
         inputMode="numeric"
-        placeholder="000.000.000-00"
+        placeholder="Digite aqui"
         value={doc}
         onChange={(e) => setDoc(maskCpfCnpj(e.target.value))}
         error={erros.doc}
@@ -85,7 +85,7 @@ export default function DadosDoContratoForm({ onSalvo, textoDoBotao = 'Salvar' }
       <Input
         label="Seu endereço"
         icon={MapPin}
-        placeholder="Rua, número, bairro, cidade"
+        placeholder="Digite aqui"
         value={endereco}
         onChange={(e) => setEndereco(e.target.value)}
         error={erros.endereco}

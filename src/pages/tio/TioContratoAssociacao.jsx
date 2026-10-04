@@ -154,7 +154,7 @@ export default function TioContratoAssociacao() {
                 <input
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  placeholder={profile?.name || 'Seu nome completo'}
+                  placeholder="Digite aqui"
                   autoComplete="name"
                   className="mt-3 w-full rounded-xl border border-borderStrong bg-surface px-3 py-2.5 text-[15px] text-text"
                 />

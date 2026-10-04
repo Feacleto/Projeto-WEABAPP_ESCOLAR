@@ -213,7 +213,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
           <Input
             id="editar-cep"
             label="CEP"
-            placeholder="00000-000"
+            placeholder="Digite aqui"
             value={cep}
             onChange={onCepChange}
             inputMode="numeric"
@@ -244,7 +244,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
           <Input
             id="editar-endereco"
             label="Endereço completo"
-            placeholder="Rua, número, bairro, cidade"
+            placeholder="Digite aqui"
             value={endereco}
             onChange={(e) => onEnderecoDigitado(e.target.value)}
             hint={
@@ -261,7 +261,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
               <Input
                 id="editar-numero"
                 label="Número"
-                placeholder="123"
+                placeholder="Digite aqui"
                 value={numero}
                 onChange={(e) => setNumeroDoEndereco(e.target.value)}
                 inputMode="numeric"
@@ -270,7 +270,7 @@ export default function EditarOndeSheet({ open, child, onClose }) {
               <Input
                 id="editar-complemento"
                 label="Complemento (opcional)"
-                placeholder="apto 42"
+                placeholder="Digite aqui"
                 value={complemento}
                 onChange={(e) => setComplementoDoEndereco(e.target.value)}
               />

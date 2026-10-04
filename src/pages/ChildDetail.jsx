@@ -939,7 +939,7 @@ function TurmaSala({ child, podeEditar }) {
           <input
             value={turma}
             onChange={(e) => setTurma(e.target.value)}
-            placeholder="Ex.: 3º ano B"
+            placeholder="Digite aqui"
             className="h-11 w-full rounded-xl border-2 border-border bg-card px-3 text-sm text-text focus:outline-none focus:border-primary"
           />
         </label>

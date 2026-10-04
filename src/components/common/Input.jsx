@@ -1,5 +1,6 @@
 import { forwardRef, useId, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { avancarDoCampo } from '../../compartilhado/avancarCampo';
 
 const Input = forwardRef(function Input(
   {
@@ -16,6 +17,9 @@ const Input = forwardRef(function Input(
     id: idProp,
     type = 'text',
     revealable = false,
+    // O "Salvar" ao lado do campo (03/10/2026). `avancar={false}` o tira —
+    // campo de busca, por exemplo, em que o Enter já faz a busca.
+    avancar = true,
     ...rest
   },
   ref
@@ -31,6 +35,23 @@ const Input = forwardRef(function Input(
   const showReveal = revealable && isPassword;
   const effectiveType = showReveal && revealed ? 'text' : type;
 
+  /* ⚠️ NENHUM EXEMPLO DENTRO DO CAMPO (03/10/2026, pedido do dono). "Ex:
+   * Pedro Silva", "00000-000", "450,00" — o motorista lia o exemplo cinza
+   * como resposta já dada e passava adiante com o campo vazio. Todo campo
+   * diz a mesma coisa: "Digite aqui". O formato, quando importa, vai na
+   * `hint` embaixo, onde não se confunde com o que foi digitado. O que o
+   * chamador passar em `placeholder` é ignorado de propósito, e
+   * `testar:formularios` reprova exemplo novo no código. */
+  const textoGuia = rest.disabled || rest.readOnly ? undefined : 'Digite aqui';
+  const comSalvar = avancar && !rest.disabled && !rest.readOnly;
+
+  const aoTeclar = (e) => {
+    rest.onKeyDown?.(e);
+    if (e.defaultPrevented || e.key !== 'Enter' || !avancar) return;
+    e.preventDefault();
+    avancarDoCampo(e.currentTarget);
+  };
+
   return (
     <div className={`block ${className}`}>
       {label && (
@@ -41,7 +62,8 @@ const Input = forwardRef(function Input(
           {label}
         </label>
       )}
-      <div className="relative">
+      <div className="flex items-start gap-2">
+      <div className="relative min-w-0 flex-1">
         {Icon && (
           <Icon
             size={18}
@@ -62,6 +84,9 @@ const Input = forwardRef(function Input(
             ${inputClassName}
           `}
           {...rest}
+          placeholder={textoGuia}
+          onKeyDown={aoTeclar}
+          enterKeyHint={rest.enterKeyHint || 'next'}
         />
         {showReveal && (
           <button
@@ -74,6 +99,19 @@ const Input = forwardRef(function Input(
             {revealed ? <EyeOff size={19} /> : <Eye size={19} />}
           </button>
         )}
+      </div>
+      {comSalvar && (
+        <button
+          type="button"
+          // Não rouba o foco antes do clique: o campo de onde ele saiu é a
+          // referência para achar o próximo.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => avancarDoCampo(document.getElementById(id) || e.currentTarget)}
+          className="tap h-14 shrink-0 rounded-xl bg-primary px-4 text-base font-bold text-white"
+        >
+          Salvar
+        </button>
+      )}
       </div>
       {error && <p className="text-xs text-dangerText mt-1.5">{error}</p>}
       {hint && !error && (

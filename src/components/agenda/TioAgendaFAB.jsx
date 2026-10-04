@@ -485,7 +485,7 @@ function TargetStep({
         </p>
         <input
           type="search"
-          placeholder="Buscar pelo nome..."
+          placeholder="Digite aqui"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full h-11 px-3 mb-2 rounded-2xl bg-card border border-border text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
@@ -596,7 +596,7 @@ function ConfirmStep({
           onChange={(e) => onChange(e.target.value)}
           rows={6}
           maxLength={1500}
-          placeholder="Escreve aqui o que aconteceu…"
+          placeholder="Digite aqui"
           className="w-full rounded-2xl border-2 border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-textMuted leading-relaxed"
         />
         <p className="text-xs text-textMuted mt-1.5">

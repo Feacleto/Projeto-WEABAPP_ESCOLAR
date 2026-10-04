@@ -27,7 +27,7 @@ import BuscaDeRua from '../endereco/BuscaDeRua';
 import Input from '../common/Input';
 import CampoDeValor from '../common/CampoDeValor';
 import Button from '../common/Button';
-import { addChild, updateChild } from '../../services/childrenService';
+import { addChild, updateChild, reservarIdDeCrianca } from '../../services/childrenService';
 import { uploadContratoAnterior } from '../../services/photoService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import { usePerguntaDaChavePix } from '../payments/PerguntaDaChavePix';
@@ -147,6 +147,9 @@ export default function ChildForm() {
   // A vigência nasce pronta (de hoje até o fim do ano) — ver `vigenciaPadrao`.
   const [form, setForm] = useState(() => ({ ...EMPTY_FORM, ...vigenciaDoForm() }));
   const [step, setStep] = useState(1);
+  // O id da criança, reservado já no começo: é ele que sorteia o avatar, e o
+  // topo mostra a criança desde o passo 2 com o MESMO rosto da ficha.
+  const [idReservado, setIdReservado] = useState(() => reservarIdDeCrianca());
   const [submitting, setSubmitting] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
   const [createdId, setCreatedId] = useState(null);
@@ -275,6 +278,7 @@ export default function ChildForm() {
       // convite — ver `InviteShare`. Salvar primeiro é deliberado: barrar
       // aqui perderia o que ele acabou de digitar.)
       const { id, inviteCode } = await addChild({
+        id: idReservado,
         ...form,
         horaPega: horaPega || '',
         horaEntrega: horaEntrega || '',
@@ -354,6 +358,7 @@ export default function ChildForm() {
     setCreatedId(null);
     setErrors({});
     setStep(1);
+    setIdReservado(reservarIdDeCrianca());
     window.scrollTo(0, 0);
   };
 
@@ -399,6 +404,24 @@ export default function ChildForm() {
           </div>
           <ProgressBar step={step} total={TOTAL_STEPS} />
         </div>
+
+        {/* DE QUAL CRIANÇA É ESTE CADASTRO (03/10/2026, pedido do dono): do
+          * passo 2 em diante, o rosto e o nome dela no topo. Ele cadastra
+          * várias seguidas e, no endereço ou na mensalidade, não sabia mais
+          * de quem estava falando. */}
+        {step > 1 && form.name.trim() && (
+          <div className="flex items-center gap-3 rounded-2xl bg-card px-3 py-2.5 shadow-rest">
+            <img
+              src={childAvatarUrl({ id: idReservado, gender: form.gender })}
+              alt=""
+              className="h-12 w-12 shrink-0 rounded-full bg-primaryChip"
+            />
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-textMuted">Cadastrando</span>
+              <span className="block truncate text-lg font-bold text-text">{form.name.trim()}</span>
+            </span>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 px-5 pt-3 pb-44 space-y-5">
@@ -442,6 +465,8 @@ export default function ChildForm() {
       >
         <Button
           onClick={onAdvance}
+          // O "Salvar" do último campo de cada passo aciona este botão.
+          data-avancar
           loading={submitting}
           icon={step === TOTAL_STEPS ? Check : ArrowRight}
           className="shadow-focus !bg-primary hover:!bg-primary !h-14 !text-base"
@@ -511,7 +536,7 @@ function Step1Child({ form, setForm, setField, errors }) {
 
       <Input
         label="Nome completo"
-        placeholder="Ex: Pedro Silva"
+        placeholder="Digite aqui"
         icon={User}
         value={form.name}
         onChange={setField('name')}
@@ -790,7 +815,7 @@ function Step2Home({ form, setForm, errors }) {
 
       <Input
         label="Ou o CEP"
-        placeholder="00000-000"
+        placeholder="Digite aqui"
         icon={MapPin}
         value={form.cep}
         onChange={onCepChange}
@@ -822,7 +847,7 @@ function Step2Home({ form, setForm, errors }) {
 
       <Input
         label="Endereço completo"
-        placeholder="Rua, número, bairro, cidade"
+        placeholder="Digite aqui"
         icon={Home}
         value={form.address}
         onChange={onEnderecoDigitado}
@@ -853,7 +878,7 @@ function Step2Home({ form, setForm, errors }) {
             />
             <Input
               label="Complemento (opcional)"
-              placeholder="apto 42"
+              placeholder="Digite aqui"
               value={form.complemento}
               onChange={setParteDoEndereco('complemento')}
             />
@@ -1062,7 +1087,7 @@ function Step3School({ form, setForm, errors }) {
       <div className="grid grid-cols-1 gap-3">
         <Input
           label="Turma (opcional)"
-          placeholder="Ex.: 3º ano B"
+          placeholder="Digite aqui"
           value={form.turma}
           onChange={(e) => setForm((p) => ({ ...p, turma: e.target.value }))}
         />
@@ -1087,7 +1112,7 @@ function Step3School({ form, setForm, errors }) {
           // DIGITADA, não no relógio do Android: "0640" vira "06:40".
           type="text"
           inputMode="numeric"
-          placeholder="06:40"
+          placeholder="Digite aqui"
           maxLength={5}
           icon={Clock}
           value={form.horaPega}
@@ -1104,7 +1129,7 @@ function Step3School({ form, setForm, errors }) {
           label="Que horas você entrega em casa?"
           type="text"
           inputMode="numeric"
-          placeholder="12:50"
+          placeholder="Digite aqui"
           maxLength={5}
           icon={Clock}
           value={form.horaEntrega}
@@ -1144,7 +1169,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
         <h3 className="text-sm font-bold text-text">Responsável principal</h3>
         <Input
           label="Nome"
-          placeholder="Pai, mãe ou tutor"
+          placeholder="Digite aqui"
           icon={User}
           value={form.parentName}
           onChange={setField('parentName')}
@@ -1159,7 +1184,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           * conta dela, e o contrato e a ficha leem esse. */}
         <Input
           label="Telefone"
-          placeholder="(11) 99999-9999"
+          placeholder="Digite aqui"
           icon={Phone}
           inputMode="tel"
           value={form.parentPhone}
@@ -1240,7 +1265,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           min="1"
           max="28"
           label="Dia do vencimento"
-          placeholder="10"
+          placeholder="Digite aqui"
           icon={Calendar}
           value={form.dueDay}
           maxLength={2}
@@ -1295,7 +1320,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           value={form.notes}
           onChange={setField('notes')}
           rows={3}
-          placeholder="Ex.: portão de trás, quem busca na segunda..."
+          placeholder="Digite aqui"
           className="w-full rounded-xl border border-border bg-card text-text p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary placeholder:text-textMuted"
         />
         <p className="mt-2 text-xs leading-relaxed text-textMuted">

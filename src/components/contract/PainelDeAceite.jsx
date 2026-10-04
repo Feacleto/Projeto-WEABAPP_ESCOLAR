@@ -69,7 +69,7 @@ export default function PainelDeAceite({ child, contrato, adminUid, onNaoConcord
       <input
         id="aceite-nome"
         type="text"
-        placeholder="Nome e sobrenome"
+        placeholder="Digite aqui"
         value={nome}
         onChange={(e) => setNome(e.target.value)}
         className="h-12 w-full rounded-xl border-2 border-border px-4 text-base text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"

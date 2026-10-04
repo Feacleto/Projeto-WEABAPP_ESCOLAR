@@ -208,7 +208,7 @@ function Conferir({ motorista, ownerUid, onPronto }) {
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             rows={2}
-            placeholder="O alvará venceu em março. Envie o renovado."
+            placeholder="Digite aqui"
             className="w-full rounded-xl border border-border bg-surface p-2 text-xs text-text"
           />
         </label>
