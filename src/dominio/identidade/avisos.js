@@ -119,6 +119,12 @@ export const ESPECIE_DO_AVISO = {
   // O tio escreveu (ou mudou) uma recomendação para a auxiliar: ela precisa
   // ler e decidir se aparece. Fato sobre o trabalho dela, não se desliga.
   recomendacao_recebida: ESPECIE.FATO,
+  // A rede de parceiros (fase 1, 05/10/2026). O tio parceiro foi indicado a
+  // uma família: é cliente que pode chamar, e isso não se desliga. O tio da
+  // família pergunta se o filho pode aparecer na foto da turma: é ele
+  // pedindo uma resposta dela, como um recado.
+  parceiro_indicou_voce: ESPECIE.FATO,
+  pedido_sim_da_foto: ESPECIE.FATO,
 
   // ── o app não está conseguindo prometer o que promete ───────────────────
   rota_atrasada: ESPECIE.ESTADO,
@@ -153,6 +159,9 @@ export const ESPECIE_DO_AVISO = {
   comercial_teste_comecou: ESPECIE.OFERTA,
   comercial_degrau_vira: ESPECIE.OFERTA,
   comercial_indicacao: ESPECIE.OFERTA,
+  // A foto da turma saiu: novidade, não urgência. Quem desligou "Novidades"
+  // continua vendo a foto no Início, só o celular não toca.
+  foto_da_turma: ESPECIE.OFERTA,
 };
 
 /**
@@ -206,7 +215,7 @@ export const CHAVES_DE_AVISO = [
       'Desconto por indicação, condição do período de teste e convites parados. Nada disso é urgente.',
     // Com a cobrança desligada não existe teste nem desconto para avisar — e
     // esta tela também é lida pela família. Ver `modulosDeCobranca.js`.
-    descricaoSemCobranca: 'Convites parados e novidades do app. Nada disso é urgente.',
+    descricaoSemCobranca: 'Convites parados, foto da turma e novidades do app. Nada disso é urgente.',
   },
 ];
 

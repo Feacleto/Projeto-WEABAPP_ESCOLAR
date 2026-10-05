@@ -157,6 +157,90 @@ function expiraEmMs(agoraMs) {
   return agoraMs + DIAS_DA_FOTO * 86400000;
 }
 
+/* ── A REDE DE PARCEIROS (fase 1, 05/10/2026) ───────────────────────────
+ *
+ * Três coisas que só o servidor faz: dizer em que escolas o parceiro roda,
+ * avisar o parceiro quando ele é indicado a uma família, e avisar as
+ * famílias quando sai a foto da turma.
+ */
+
+/** Até quatro escolas, sem repetir e sem nome vazio. */
+const ESCOLAS_DO_PARCEIRO = 4;
+
+function escolasDoParceiro(nomes = []) {
+  const vistos = new Set();
+  const saida = [];
+  for (const n of nomes) {
+    const nome = String(n || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const chave = nome.toLowerCase();
+    if (!nome || vistos.has(chave)) continue;
+    vistos.add(chave);
+    saida.push(nome);
+    if (saida.length === ESCOLAS_DO_PARCEIRO) break;
+  }
+  return saida;
+}
+
+/** 'AAAA-MM-DD' no fuso de Brasília — o dia do tio, não o do servidor. */
+function diaEmBrasilia(agora = new Date()) {
+  const d = new Date((agora instanceof Date ? agora.getTime() : agora) - 3 * 3600000);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * ⚠️ O AVISO AO PARCEIRO NÃO LEVA NADA DA FAMÍLIA. Nem nome, nem bairro, nem
+ * criança: a família ainda não decidiu chamar, e o tio que indicou não pode
+ * entregar o contato dela a um terceiro. O parceiro só fica sabendo que pode
+ * receber uma mensagem, e de quem veio a indicação.
+ *
+ * O id é um por par e por dia: indicar a mesma pessoa para cinco famílias
+ * numa manhã vira UM aviso, e não cinco toques no celular dele dirigindo.
+ */
+function idDoAvisoAoParceiro(parceiroUid, uid, agora = new Date()) {
+  return `parceiro_${parceiroUid}_${uid}_${diaEmBrasilia(agora)}`;
+}
+
+function avisoAoParceiro(marca) {
+  const nome = String(marca || '').trim() || 'Um tio parceiro';
+  return {
+    type: 'parceiro_indicou_voce',
+    title: `${nome} indicou você a uma família`,
+    body: 'Se ela chamar no seu WhatsApp, a indicação veio dele.',
+  };
+}
+
+/**
+ * O AVISO DA FOTO DA TURMA — um por época, por família e por ano. Postar a
+ * segunda foto do Natal não toca de novo no celular de ninguém; ela só
+ * aparece no Início. A época vem da lista fechada (`EPOCAS`), e o índice
+ * dela entra no id: o nome tem espaço e acento.
+ */
+function idDoAvisoDaFoto(uid, epoca, parentUid, agora = new Date()) {
+  const i = EPOCAS.indexOf(epoca);
+  if (i === -1) return null;
+  return `fototurma_${uid}_${i}_${diaEmBrasilia(agora).slice(0, 4)}_${parentUid}`;
+}
+
+function avisoDaFoto(marca, epoca) {
+  const nome = String(marca || '').trim() || 'A perua';
+  return {
+    type: 'foto_da_turma',
+    title: `${nome} postou a foto da turma`,
+    body: `${epoca}. Ela fica no app por ${DIAS_DA_FOTO} dias.`,
+  };
+}
+
+/** Os responsáveis que veem a foto: um por conta, só de criança ativa. */
+function familiasDaTurma(criancas = []) {
+  const uids = new Set();
+  for (const c of criancas) {
+    if (c && c.active !== false && typeof c.parentUid === 'string' && c.parentUid && !c.parentUid.includes('/')) {
+      uids.add(c.parentUid);
+    }
+  }
+  return [...uids];
+}
+
 module.exports = {
   DIAS_DA_FOTO,
   PUBLICO,
@@ -172,4 +256,12 @@ module.exports = {
   semestreAnterior,
   notaValida,
   resumoParaOTio,
+  ESCOLAS_DO_PARCEIRO,
+  escolasDoParceiro,
+  diaEmBrasilia,
+  idDoAvisoAoParceiro,
+  avisoAoParceiro,
+  idDoAvisoDaFoto,
+  avisoDaFoto,
+  familiasDaTurma,
 };

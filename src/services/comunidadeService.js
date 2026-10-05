@@ -16,7 +16,7 @@ import { db, functions, getStorageLazy } from '../firebase/config';
 import { STORAGE_ENABLED, STORAGE_OFF_MESSAGE } from '../config/capabilities';
 import { exigirCloud, mensagemDeErro } from './callableError';
 import { resizeAndCompress } from './photoService';
-import { PUBLICO, idDaAvaliacao, semestreDe } from '../dominio/identidade/comunidade.js';
+import { PUBLICO, idDaAvaliacao, idDoPedidoDaFoto, pedidoDaFoto, semestreDe } from '../dominio/identidade/comunidade.js';
 
 /**
  * A COMUNIDADE (05/10/2026, etapa 1): a foto da turma na época festiva e os
@@ -172,4 +172,41 @@ export async function minhaNotaDasFamilias() {
   } catch (err) {
     throw new Error(mensagemDeErro(err, 'ver a nota das famílias'), { cause: err });
   }
+}
+
+/* ── A REDE DE PARCEIROS (fase 1, 05/10/2026) ──────────────────────────── */
+
+/**
+ * Avisa o parceiro que ele foi indicado a uma família. Nunca trava a tela:
+ * o WhatsApp da família já abriu, e o aviso ao parceiro é um a mais.
+ */
+export async function avisarParceiroIndicado(parceiroUid) {
+  try {
+    exigirCloud('avisar o parceiro');
+    await httpsCallable(functions, 'avisarParceiroIndicado')({ parceiroUid });
+  } catch {
+    // Silêncio de propósito: ver acima.
+  }
+}
+
+/**
+ * Pergunta às famílias que ainda não responderam se o filho pode aparecer na
+ * foto da turma. Um aviso por criança por mês: o id carrega o mês, e o
+ * segundo envio no mesmo mês é recusado pelas rules (já existe, e só ela
+ * mexe no aviso dela) — isso conta como "já perguntado", não como erro.
+ * Devolve quantos avisos novos saíram.
+ */
+export async function pedirSimDaFoto(criancas, marca) {
+  const resultados = await Promise.allSettled(
+    criancas.map((c) =>
+      setDoc(doc(db, 'notifications', idDoPedidoDaFoto(c.id)), {
+        userId: c.parentUid,
+        childId: c.id,
+        ...pedidoDaFoto({ marca, nomeCrianca: c.name }),
+        read: false,
+        createdAt: serverTimestamp(),
+      })
+    )
+  );
+  return resultados.filter((r) => r.status === 'fulfilled').length;
 }

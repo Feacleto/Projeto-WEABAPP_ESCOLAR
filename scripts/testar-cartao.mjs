@@ -34,14 +34,22 @@ console.log('\n\x1b[1m1. O cartão do tio (convite à família)\x1b[0m');
 eq('título com a marca', cartaoDoConvite({ marca: 'Tio Nino' }).titulo, 'Tio Nino te convidou para o app');
 eq('linha aprovada', cartaoDoConvite({ marca: 'Tio Nino' }).descricao, 'A perua, os avisos e a mensalidade no seu celular.');
 eq('sem marca, o cartão padrão', cartaoDoConvite({ marca: '' }), PADRAO);
-eq('com logo do Storage, a imagem é o logo', cartaoDoConvite({ marca: 'Tio Nino', logoURL: LOGO }).imagem, LOGO);
-eq('sem logo, a imagem padrão', cartaoDoConvite({ marca: 'Tio Nino' }).imagem, IMAGEM_PADRAO);
+eq('com o uid, a imagem é a GRANDE do tio', /^https:\/\/alobuzinou\.com\/cartao\/tio\/UID1\.png\?v=[0-9a-z]+$/.test(cartaoDoConvite({ uid: 'UID1', marca: 'Tio Nino', logoURL: LOGO }).imagem), true);
+eq('e ela é grande (1200x630)', cartaoDoConvite({ uid: 'UID1', marca: 'Tio Nino', logoURL: LOGO }).imagemGrande, true);
+eq('sem uid, a imagem padrão', cartaoDoConvite({ marca: 'Tio Nino', logoURL: LOGO }).imagem, IMAGEM_PADRAO);
+eq('uid com barra não vira endereço', cartaoDoConvite({ uid: 'a/../b', marca: 'Tio Nino' }).imagem, IMAGEM_PADRAO);
+eq('trocar o logo troca o endereço (o WhatsApp busca de novo)',
+  cartaoDoConvite({ uid: 'UID1', marca: 'Tio Nino', logoURL: LOGO }).imagem !== cartaoDoConvite({ uid: 'UID1', marca: 'Tio Nino', logoURL: LOGO + '2' }).imagem, true);
+eq('logo de fora do Storage nem entra na versão',
+  cartaoDoConvite({ uid: 'UID1', marca: 'Tio Nino', logoURL: 'https://exemplo.com/a.png' }).imagem, cartaoDoConvite({ uid: 'UID1', marca: 'Tio Nino' }).imagem);
 eq('marca comprida é cortada', cartaoDoConvite({ marca: 'x'.repeat(80) }).titulo.length <= 40 + ' te convidou para o app'.length, true);
 
 console.log('\n\x1b[1m2. O cartão do app (indicação)\x1b[0m');
 eq('título com quem indicou', cartaoDaIndicacao({ marca: 'Tio Nino' }).titulo, 'Tio Nino te indicou o Alô Buzinou');
 eq('linha aprovada', cartaoDaIndicacao({ marca: 'Tio Nino' }).descricao, 'O app do transporte escolar. Crie sua conta de motorista.');
 eq('sem cupom, o cartão do app sem "indicado por"', cartaoDaIndicacao().titulo, 'Crie sua conta de motorista no Alô Buzinou');
+eq('sem cupom, a imagem padrão', cartaoDaIndicacao().imagem, IMAGEM_PADRAO);
+eq('com quem indicou, a imagem grande do app com a fita', /\/cartao\/app\/UID2\.png\?v=/.test(cartaoDaIndicacao({ uid: 'UID2', marca: 'Tio Nino' }).imagem), true);
 
 console.log('\n\x1b[1m3. Só logo do próprio projeto\x1b[0m');
 eq('logo do Storage, em marcaLogos/', logoConfiavel(LOGO), true);
@@ -59,23 +67,29 @@ eq('o servidor não lê o nome da criança para o cartão', /crianca\.name|child
 
 console.log('\n\x1b[1m5. A troca funciona no index.html de verdade\x1b[0m');
 const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const cartao = cartaoDoConvite({ marca: 'Tio "Nino" <b>', logoURL: LOGO });
+const cartao = cartaoDoConvite({ uid: 'UID1', marca: 'Tio "Nino" <b>', logoURL: LOGO });
 const trocado = trocarTagsDaPrevia(index, cartao, 'https://alobuzinou.com/convite/ABC');
 eq('og:title trocado (e escapado)', trocado.includes('<meta property="og:title" content="Tio &quot;Nino&quot; &lt;b&gt; te convidou para o app" />'), true);
 eq('og:description trocada', trocado.includes('content="A perua, os avisos e a mensalidade no seu celular."'), true);
-eq('og:image é o logo', trocado.includes(`property="og:image" content="${LOGO.replace(/&/g, '&amp;')}"`), true);
+eq('og:image é a imagem grande', trocado.includes(`property="og:image" content="${cartao.imagem}"`), true);
 eq('og:url é o do convite', trocado.includes('property="og:url" content="https://alobuzinou.com/convite/ABC"'), true);
-eq('logo sem as dimensões de 1200x630', trocado.includes('og:image:width'), false);
+eq('a imagem grande mantém as dimensões de 1200x630', trocado.includes('og:image:width'), true);
+eq('o texto alternativo da imagem é o do cartão', trocado.includes('property="og:image:alt" content="Tio &quot;Nino&quot; &lt;b&gt; te convidou para o app"'), true);
+eq('e o cartão grande do Twitter', /name="twitter:card"\s+content="summary_large_image"/.test(trocado), true);
+const pequeno = trocarTagsDaPrevia(index, { ...cartao, imagemGrande: false }, 'https://alobuzinou.com/convite/ABC');
+eq('imagem pequena (o ramo que sobrou) tira as dimensões', pequeno.includes('og:image:width'), false);
 eq('o resto da página continua (o app carrega)', trocado.includes('<div id="root">') && trocado.length > index.length * 0.9, true);
 const padrao = trocarTagsDaPrevia(index, PADRAO, 'https://alobuzinou.com/convite/ABC');
 eq('cartão padrão mantém as dimensões da imagem', padrao.includes('og:image:width'), true);
 
-console.log('\n\x1b[1m6. O hosting manda os dois endereços para a função\x1b[0m');
+console.log('\n\x1b[1m6. O hosting manda os três endereços para as funções\x1b[0m');
 const hosting = JSON.parse(fs.readFileSync(new URL('../firebase.json', import.meta.url), 'utf8')).hosting.find((h) => h.target === 'app');
 const fontes = hosting.rewrites.map((r) => r.source);
 eq('/convite/** vai para cartaoDoLink', hosting.rewrites.find((r) => r.source === '/convite/**')?.function?.functionId, 'cartaoDoLink');
 eq('/quero-fazer-parte vai para cartaoDoLink', hosting.rewrites.find((r) => r.source === '/quero-fazer-parte')?.function?.functionId, 'cartaoDoLink');
-eq('e os dois vêm ANTES do "**" (senão nunca são usados)', fontes.indexOf('**') > fontes.indexOf('/convite/**') && fontes.indexOf('**') > fontes.indexOf('/quero-fazer-parte'), true);
+eq('/cartao/** vai para imagemDoCartao', hosting.rewrites.find((r) => r.source === '/cartao/**')?.function?.functionId, 'imagemDoCartao');
+eq('e os três vêm ANTES do "**" (senão nunca são usados)',
+  ['/convite/**', '/quero-fazer-parte', '/cartao/**'].every((f) => fontes.indexOf(f) >= 0 && fontes.indexOf('**') > fontes.indexOf(f)), true);
 
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);

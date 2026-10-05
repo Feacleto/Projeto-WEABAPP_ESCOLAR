@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Users } from 'lucide-react';
+import { School, Send, Trash2, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
@@ -9,9 +9,15 @@ import Button from '../../components/common/Button';
 import PublicarFoto from '../../components/comunidade/PublicarFoto';
 import NotaDasFamilias from '../../components/comunidade/NotaDasFamilias';
 import IndicarParceiro from '../../components/comunidade/IndicarParceiro';
-import { apagarFotoDaTurma, meusParceiros } from '../../services/comunidadeService';
+import { apagarFotoDaTurma, meusParceiros, pedirSimDaFoto } from '../../services/comunidadeService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
-import { PUBLICO, quandoSome, rotuloDoParceiro } from '../../dominio/identidade/comunidade.js';
+import {
+  PUBLICO,
+  quandoSome,
+  quemFaltaResponder,
+  rotuloDoParceiro,
+  semContaParaPerguntar,
+} from '../../dominio/identidade/comunidade.js';
 
 /**
  * A COMUNIDADE DO TIO — /tio/comunidade (05/10/2026, etapa 1, aprovada pelo
@@ -29,6 +35,9 @@ import { PUBLICO, quandoSome, rotuloDoParceiro } from '../../dominio/identidade/
  * ETAPA 2 (05/10/2026): a NOTA DAS FAMÍLIAS no topo de "Minhas famílias"
  * (só a média do semestre fechado) e o "Indicar para uma família" em cada
  * parceiro — indicação que a família aceita, nunca transferência.
+ *
+ * FASE 1 DA REDE (05/10/2026): as escolas de cada parceiro, o aviso ao
+ * parceiro indicado e o "Perguntar às famílias" do sim da foto.
  */
 export default function TioComunidade() {
   const { user } = useAuth();
@@ -72,6 +81,7 @@ function MinhasFamilias({ uid }) {
   return (
     <>
       <NotaDasFamilias />
+      <PerguntarAsFamilias turma={children} />
       <p className="text-base leading-relaxed text-textMuted">
         A foto da turma numa data especial. As famílias veem no app por 30 dias,
         e depois ela some.
@@ -140,6 +150,12 @@ function Parceiros({ uid }) {
                 </span>
               </span>
               </div>
+              {p.escolas?.length > 0 && (
+                <p className="mt-2 flex items-start gap-2 text-base text-text">
+                  <School size={20} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+                  <span>{p.escolas.join(' · ')}</span>
+                </p>
+              )}
               <IndicarParceiro parceiro={p} />
             </li>
           ))}
@@ -161,6 +177,62 @@ function Parceiros({ uid }) {
         </>
       )}
     </>
+  );
+}
+
+/**
+ * "Perguntar às famílias": quem ainda não respondeu se o filho pode
+ * aparecer na foto recebe um aviso que leva ao Início dela. Some quando
+ * todas responderam. Quem não tem conta no app não recebe — a linha diz
+ * quantas são, para o tio perguntar no portão.
+ */
+function PerguntarAsFamilias({ turma }) {
+  const { profile } = useAuth();
+  const [enviando, setEnviando] = useState(false);
+  const [feito, setFeito] = useState(false);
+  const faltam = quemFaltaResponder(turma || []);
+  const semConta = semContaParaPerguntar(turma || []).length;
+  if (!faltam.length && !semConta) return null;
+
+  const perguntar = async () => {
+    setEnviando(true);
+    try {
+      const novos = await pedirSimDaFoto(faltam, profile?.marcaNome || profile?.name);
+      setFeito(true);
+      toast.success(novos ? 'Pergunta enviada.' : 'Você já perguntou este mês.');
+    } catch {
+      toast.error('Não deu para enviar. Tente de novo.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl bg-card p-4">
+      <p className="text-base font-bold text-text">
+        {faltam.length === 1
+          ? '1 família ainda não respondeu sobre a foto.'
+          : faltam.length > 1
+            ? `${faltam.length} famílias ainda não responderam sobre a foto.`
+            : 'Todas as famílias com o app já responderam.'}
+      </p>
+      {semConta > 0 && (
+        <p className="mt-1 text-base text-textMuted">
+          {semConta === 1 ? '1 família ainda não entrou no app.' : `${semConta} famílias ainda não entraram no app.`}
+        </p>
+      )}
+      {faltam.length > 0 && (
+        <button
+          type="button"
+          onClick={perguntar}
+          disabled={enviando || feito}
+          className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-primary text-base font-bold text-primary disabled:opacity-60"
+        >
+          <Send size={18} aria-hidden="true" />
+          {feito ? 'Pergunta enviada' : 'Perguntar às famílias'}
+        </button>
+      )}
+    </div>
   );
 }
 

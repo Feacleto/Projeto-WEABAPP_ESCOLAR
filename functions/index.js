@@ -81,6 +81,7 @@ const {
 } = require('./lib/billing');
 const { makeGetInvitePreview } = require('./lib/invitePreview');
 const { makeCartaoDoLink } = require('./lib/cartaoDoLink');
+const { makeImagemDoCartao } = require('./lib/imagemDoCartao');
 const {
   makeGerarAcessoDoDia,
   makeVerAcompanhamento,
@@ -197,6 +198,9 @@ exports.getInvitePreview = makeGetInvitePreview(db);
 // passam por aqui (rewrite em firebase.json), e o robô do WhatsApp lê a
 // marca do tio certo no lugar do cartão único do app. Ver lib/cartaoDoLink.js.
 exports.cartaoDoLink = makeCartaoDoLink(db);
+// A IMAGEM GRANDE DO CARTÃO (1200x630, cor + logo + nome do tio), em
+// /cartao/tio/<uid>.png e /cartao/app/<uid>.png. Ver lib/imagemDoCartao.js.
+exports.imagemDoCartao = makeImagemDoCartao(db);
 
 // A COMUNIDADE (05/10/2026, etapa 1): a foto da turma na época festiva, só
 // com o "sim" de cada família, e os tios parceiros pela indicação. A foto
@@ -207,6 +211,7 @@ const {
   makeMeusParceiros,
   makeLimparFotosVencidas,
   makeMinhaNotaDasFamilias,
+  makeAvisarParceiroIndicado,
 } = require('./lib/comunidade');
 exports.publicarFotoDaTurma = makePublicarFotoDaTurma(db);
 exports.apagarFotoDaTurma = makeApagarFotoDaTurma(db);
@@ -214,6 +219,10 @@ exports.meusParceiros = makeMeusParceiros(db);
 exports.limparFotosVencidas = makeLimparFotosVencidas(db);
 // Etapa 2: a nota que as famílias dão ao tio (só ele vê, só a média fechada).
 exports.minhaNotaDasFamilias = makeMinhaNotaDasFamilias(db);
+// Fase 1 da rede: o parceiro fica sabendo que foi indicado a uma família
+// (sem dado nenhum dela). A foto da turma avisa as famílias dentro de
+// `publicarFotoDaTurma`, e as escolas do parceiro vêm em `meusParceiros`.
+exports.avisarParceiroIndicado = makeAvisarParceiroIndicado(db);
 
 /* ══ O LINK DO DIA ═══════════════════════════════════════════════════════
  * Quem vai pegar a criança hoje acompanha a entrega sem ter conta. As duas

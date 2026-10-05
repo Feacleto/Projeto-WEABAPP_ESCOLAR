@@ -31,6 +31,7 @@ const LIMITES = require('./limites');
 const limite = require('./limiteDeTentativas');
 const { REGRAS } = require('./reguaDasTentativas');
 const { normalizarCodigo, codigoValido, conviteVencido } = require('./reguaDoConvite');
+const { idValido } = require('./reguaDosIds');
 const { PADRAO, cartaoDoConvite, cartaoDaIndicacao, trocarTagsDaPrevia } = require('./reguaDoCartao');
 
 const REGION = 'southamerica-east1';
@@ -47,12 +48,16 @@ async function buscarIndex(host) {
   return resp.text();
 }
 
+/** O que o cartão usa do motorista — e o uid, que endereça a imagem grande. */
+function marcaDoDoc(uid, u = {}) {
+  return { uid, marca: u.marcaNome || '', cor: u.marcaCor || null, logoURL: u.marcaLogoURL || null };
+}
+
 async function marcaDe(db, uid) {
-  if (!uid || typeof uid !== 'string' || uid.includes('/')) return null;
+  if (!idValido(uid)) return null;
   const snap = await db.doc(`users/${uid}`).get();
   if (!snap.exists) return null;
-  const u = snap.data() || {};
-  return { marca: u.marcaNome || '', logoURL: u.marcaLogoURL || null };
+  return marcaDoDoc(uid, snap.data() || {});
 }
 
 async function cartaoDoCaminho(db, req) {
@@ -84,8 +89,7 @@ async function cartaoDoCaminho(db, req) {
   if (!/^[A-Z0-9-]{4,20}$/.test(cupom)) return cartaoDaIndicacao();
   const snap = await db.collection('users').where('codigoDeIndicacao', '==', cupom).limit(1).get();
   if (snap.empty) return cartaoDaIndicacao();
-  const u = snap.docs[0].data() || {};
-  return cartaoDaIndicacao({ marca: u.marcaNome, logoURL: u.marcaLogoURL });
+  return cartaoDaIndicacao(marcaDoDoc(snap.docs[0].id, snap.docs[0].data() || {}));
 }
 
 function makeCartaoDoLink(db, { buscar = buscarIndex } = {}) {

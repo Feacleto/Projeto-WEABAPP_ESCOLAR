@@ -115,5 +115,47 @@ const blocoNota = regras.slice(regras.indexOf('match /avaliacoesDoTio/{id}'), re
 eq('o tio não lista as notas', blocoNota.includes('allow list, delete: if false;'), true);
 eq('não existe nota do tio sobre a família', /avaliacoesDaFamilia|notaDaFamilia/.test(regras), false);
 
+console.log('\n\x1b[1m9. Fase 1 da rede: escolas, aviso ao parceiro, aviso da foto e o pedido do sim\x1b[0m');
+eq('escolas: sem repetir, sem vazio, até quatro',
+  srv.escolasDoParceiro(['EE Sol', 'ee sol', '', null, 'Colégio Lua', 'B', 'C', 'D']),
+  ['EE Sol', 'Colégio Lua', 'B', 'C']);
+const antesDas3 = new Date('2026-10-06T02:30:00Z'); // 23h30 do dia 5 em Brasília
+eq('o dia do aviso é o de Brasília', srv.diaEmBrasilia(antesDas3), '2026-10-05');
+eq('um aviso ao parceiro por par e por dia', srv.idDoAvisoAoParceiro('p1', 't1', antesDas3), 'parceiro_p1_t1_2026-10-05');
+const aviso = srv.avisoAoParceiro('Tio Nino');
+eq('o aviso ao parceiro diz quem indicou', aviso.title, 'Tio Nino indicou você a uma família');
+eq('e não leva nada da família (só tipo, título e corpo)', Object.keys(aviso).sort(), ['body', 'title', 'type']);
+eq('o aviso ao parceiro não cita criança nem família pelo nome', /Ana|filho|criança/i.test(aviso.title + aviso.body), false);
+eq('um aviso da foto por época, por família e por ano',
+  srv.idDoAvisoDaFoto('t1', 'Natal', 'mae1', antesDas3), `fototurma_t1_${srv.EPOCAS.indexOf('Natal')}_2026_mae1`);
+eq('época fora da lista não vira aviso', srv.idDoAvisoDaFoto('t1', 'Qualquer', 'mae1'), null);
+eq('o aviso da foto diz quanto tempo ela fica', srv.avisoDaFoto('Tio Nino', 'Natal').body, 'Natal. Ela fica no app por 30 dias.');
+eq('famílias da turma: uma por conta, só criança ativa, sem id com barra',
+  srv.familiasDaTurma([
+    { parentUid: 'm1' }, { parentUid: 'm1' }, { parentUid: 'm2', active: false },
+    { parentUid: 'm3' }, { parentUid: 'x/y' }, {},
+  ]),
+  ['m1', 'm3']);
+const turmaSim = [
+  { id: 'a', name: 'Ana Souza', parentUid: 'm1' },
+  { id: 'b', name: 'Bia', parentUid: 'm2', fotoDaTurmaConsentida: false },
+  { id: 'c', name: 'Caio', parentUid: 'm3', fotoDaTurmaConsentida: true },
+  { id: 'd', name: 'Duda' },
+  { id: 'e', name: 'Edu', parentUid: 'm5', active: false },
+];
+eq('perguntar só a quem tem conta e não respondeu (o "não" também é resposta)',
+  app.quemFaltaResponder(turmaSim).map((c) => c.id), ['a']);
+eq('sem conta no app não dá para perguntar', app.semContaParaPerguntar(turmaSim).map((c) => c.id), ['d']);
+eq('um pedido por criança por mês, no mês de Brasília', app.idDoPedidoDaFoto('a', new Date('2026-11-01T02:00:00Z')), 'simfoto_a_2026-10');
+eq('o pedido usa o primeiro nome e manda ao Início',
+  app.pedidoDaFoto({ marca: 'Tio Nino', nomeCrianca: 'Ana Souza' }),
+  { type: 'pedido_sim_da_foto', title: 'Tio Nino pergunta: Ana pode aparecer na foto da turma?', body: 'Responda no Início do app. Você pode mudar quando quiser.' });
+const srvComunidade = fs.readFileSync('functions/lib/comunidade.js', 'utf8');
+eq('o servidor confere a parceria antes de avisar', /parceiros\.some\(\(p\) => p\.uid === parceiroUid\)/.test(srvComunidade), true);
+eq('o id do parceiro passa pela régua dos ids', /idValido\(parceiroUid\)/.test(srvComunidade), true);
+eq('das escolas do parceiro, só o nome', /select\('nome'\)/.test(srvComunidade), true);
+eq('o aviso da foto só sai para as famílias, não para os parceiros',
+  /if \(d\.publico === PUBLICO\.FAMILIAS\) await avisarFamiliasDaFoto/.test(srvComunidade), true);
+
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);

@@ -24,6 +24,9 @@ const DESTINO_DO_AVISO = {
   irmao_vinculado: '/pai',
   acesso_aprovado: '/pai',
   acesso_recusado: '/pai',
+  // A foto da turma e a pergunta dela moram no Início da família.
+  foto_da_turma: '/pai',
+  pedido_sim_da_foto: '/pai',
 
   absence_declared: { parent: '/pai/faltas', admin: '/tio/children/{childId}' },
   school_no_class: { parent: '/pai', admin: '/tio/semana' },
@@ -61,6 +64,8 @@ const DESTINO_DO_AVISO = {
   encerramento_7d: '/tio/encerrar',
   encerramento_fim: '/tio/encerrar',
   auxiliar_confirmou_pagamento: '/tio/finance/auxiliar',
+
+  parceiro_indicou_voce: '/tio/comunidade',
 
   recomendacao_recebida: '/aux/perfil',
 

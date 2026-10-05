@@ -28,7 +28,8 @@ npm run testar                   # 83 scripts. O PRIMEIRO é
                                  # comentario-na-tela (nenhum `/* */` sem
                                  # chaves vira texto na tela), leituras-do-dono,
                                  # vazamento, contraste, design, dinheiro,
-                                 # travessia, mensagens-do-link, cartao, comunidade,
+                                 # travessia, mensagens-do-link, cartao, imagem-do-cartao,
+                                 # comunidade,
                                  # contrato, combinado,
                                  # pix, brcode,
                                  # status, auth, trial, planos, vitrine, autoatendimento, para-voce, avisos,
@@ -1705,7 +1706,8 @@ rota entra nessa lista na mesma alteração.
 Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 
 - **Comunidade (05/10/2026, etapas 1 e 2):** `publicarFotoDaTurma`,
-  `apagarFotoDaTurma`, `meusParceiros`, `minhaNotaDasFamilias` e a agendada
+  `apagarFotoDaTurma`, `meusParceiros`, `minhaNotaDasFamilias`,
+  `avisarParceiroIndicado` (fase 1 da rede) e a agendada
   `limparFotosVencidas`
   ([comunidade.js](functions/lib/comunidade.js), régua em
   [reguaDaComunidade.js](functions/lib/reguaDaComunidade.js), espelho em
@@ -1729,6 +1731,18 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   semestre FECHADO com pelo menos 5 respostas, e do corrente só quantas —
   a média ao vivo denunciaria quem deu cada nota. O tio NÃO avalia a família
   (seria cadastro de mau pagador, CDC 43). Política 1.4, seção 6.
+  **Fase 1 da rede (05/10/2026):** `meusParceiros` devolve as ESCOLAS de
+  cada parceiro (só o nome, até 4); `avisarParceiroIndicado` (callable)
+  avisa o parceiro que o tio o indicou a uma família — confere a parceria
+  de novo, NADA da família vai no aviso, um por par por dia (id
+  `parceiro_{parceiro}_{tio}_{dia}`, `create` que falha calado); publicar
+  foto PARA AS FAMÍLIAS avisa cada responsável da turma (`foto_da_turma`,
+  espécie `oferta`, uma por época por família por ano, e falhar o aviso não
+  desfaz a foto); e "Perguntar às famílias" na aba Minhas famílias manda
+  `pedido_sim_da_foto` pelo CLIENTE (as rules já deixam o tio avisar a
+  família dele) a quem tem conta e não respondeu, um por criança por mês
+  (id `simfoto_{criança}_{AAAA-MM}`: o segundo é recusado pelas rules,
+  que só deixam a dona mexer no aviso).
 - **Cartão do link (04/10/2026):** `cartaoDoLink` (HTTP público) responde
   `/convite/**` e `/quero-fazer-parte` (rewrites do hosting do app, ANTES do
   `**`) e devolve o MESMO index.html com as tags de prévia trocadas: o
@@ -1736,9 +1750,22 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   criança) e o CARTÃO DO APP ("Tio Nino te indicou o Alô Buzinou", por
   `?cupom=`, achado em `users.codigoDeIndicacao`). ⚠️ Nada da criança no
   cartão; convite que não vale cai no cartão padrão (e conta no limite do
-  convite público); qualquer falha devolve a página com o cartão padrão. A
-  imagem, por enquanto, é o LOGO dele (aparece pequena); a imagem grande com
-  cor e nome (o modelo aprovado) pede gerar PNG no servidor — passo seguinte.
+  convite público); qualquer falha devolve a página com o cartão padrão.
+  A IMAGEM é grande (1200×630, 05/10/2026, modelos aprovados):
+  `imagemDoCartao` (HTTP público, rewrite `/cartao/**` antes do `**`, com
+  cache próprio no bloco de headers) desenha `/cartao/tio/<uid>.png` (fundo
+  na cor da marca, logo num círculo branco ou as iniciais, o nome e "te
+  convidou para o app", "pelo Alô Buzinou" no pé) e `/cartao/app/<uid>.png`
+  (verde da casa, a perua, a fita "Indicado por" com o logo e a marca de quem
+  mandou). SVG pela régua pura
+  [reguaDaImagemDoCartao.js](functions/lib/reguaDaImagemDoCartao.js), PNG pelo
+  `@resvg/resvg-js` com as fontes em `functions/fontes/` (sem fonte do
+  sistema). Só desenha conta `role: 'admin'` com marca; qualquer falha é 302
+  para `/brand/og-image.png`. O og:image leva `?v=` (hash de marca + cor +
+  logo + versão do desenho), por isso o cache é de uma semana. ⚠️ A cor é
+  ESPELHO de `paletaDaMarca` (`marca`/`naMarca`), comparada caso a caso em
+  `npm run testar:imagem-do-cartao`; as larguras das letras são da fonte, e
+  trocar a fonte pede gerar a tabela de novo.
   Régua em [reguaDoCartao.js](functions/lib/reguaDoCartao.js), `testar:cartao`.
   As MENSAGENS que vão junto (texto "Direto", quem fala é a marca dele) estão
   em [mensagensDoLink.js](src/marca/mensagensDoLink.js), `testar:mensagens-do-link`.

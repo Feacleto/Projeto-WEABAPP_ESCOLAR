@@ -91,3 +91,44 @@ export function semestrePorExtenso(semestre) {
 export function idDaAvaliacao(adminUid, familiaUid, semestre) {
   return `${adminUid}_${familiaUid}_${semestre}`;
 }
+
+/* ── O PEDIDO DO "SIM" DA FOTO (fase 1 da rede, 05/10/2026) ─────────────
+ *
+ * O tio pergunta às famílias que ainda não responderam. Quem responde é
+ * SEMPRE ela, no Início dela: o aviso só leva até lá. Família sem conta no
+ * app não recebe (não há celular para tocar), e a tela diz quantas são.
+ *
+ * ⚠️ UM PEDIDO POR CRIANÇA POR MÊS. O id do aviso carrega o mês: tocar de
+ * novo no botão não toca de novo no celular dela, e insistir toda semana
+ * numa autorização é pressão, não pergunta.
+ */
+
+/** As crianças ativas cuja família tem conta e ainda não respondeu. */
+export function quemFaltaResponder(turma = []) {
+  return turma.filter((c) => c && c.active !== false && c.parentUid && simDaFoto(c) === 'sem_resposta');
+}
+
+/** As crianças sem resposta e sem conta da família (não dá para perguntar pelo app). */
+export function semContaParaPerguntar(turma = []) {
+  return turma.filter((c) => c && c.active !== false && !c.parentUid && simDaFoto(c) === 'sem_resposta');
+}
+
+/** 'AAAA-MM' no fuso de Brasília. */
+function mesEmBrasilia(agora = new Date()) {
+  const d = new Date((agora instanceof Date ? agora.getTime() : agora) - 3 * 3600000);
+  return d.toISOString().slice(0, 7);
+}
+
+export function idDoPedidoDaFoto(childId, agora = new Date()) {
+  return `simfoto_${childId}_${mesEmBrasilia(agora)}`;
+}
+
+export function pedidoDaFoto({ marca, nomeCrianca } = {}) {
+  const quem = String(marca || '').trim() || 'A perua';
+  const nome = String(nomeCrianca || '').trim().split(/\s+/)[0] || 'seu filho';
+  return {
+    type: 'pedido_sim_da_foto',
+    title: `${quem} pergunta: ${nome} pode aparecer na foto da turma?`,
+    body: 'Responda no Início do app. Você pode mudar quando quiser.',
+  };
+}

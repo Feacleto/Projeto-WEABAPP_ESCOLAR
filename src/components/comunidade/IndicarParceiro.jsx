@@ -3,6 +3,7 @@ import { Send } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { mensagemDeIndicarParceiro } from '../../marca/mensagensDoLink.js';
+import { avisarParceiroIndicado } from '../../services/comunidadeService';
 
 /**
  * INDICAR UM PARCEIRO PARA UMA FAMÍLIA (etapa 2, 05/10/2026, aprovada pelo
@@ -17,6 +18,9 @@ import { mensagemDeIndicarParceiro } from '../../marca/mensagensDoLink.js';
  *
  * Família sem o WhatsApp no cadastro aparece apagada: não há para onde
  * mandar.
+ *
+ * O PARCEIRO É AVISADO (fase 1 da rede) de que foi indicado, sem nada da
+ * família: nem nome, nem criança. Um aviso por dia por parceiro.
  */
 export default function IndicarParceiro({ parceiro }) {
   const { profile } = useAuth();
@@ -30,6 +34,7 @@ export default function IndicarParceiro({ parceiro }) {
     const fone = String(c.parentPhone || '').replace(/\D/g, '');
     const numero = fone.startsWith('55') ? fone : `55${fone}`;
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+    avisarParceiroIndicado(parceiro.uid);
   };
 
   if (!aberto) {

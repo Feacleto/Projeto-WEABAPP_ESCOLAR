@@ -3528,6 +3528,34 @@ async function osNiveis({ tio1, tio2, pai1, dono, anon }) {
   checar('comunidade', 'a consulta do Início da família passa', 'PASSA', await consultaDasFotos(pai1, tio1.uid));
   checar('comunidade', 'a mesma consulta no motorista de outra família, não', 'NEGA', await consultaDasFotos(pai1, tio2.uid));
 
+  // "PERGUNTAR ÀS FAMÍLIAS" (F1.3, 05/10/2026): o tio grava o aviso
+  // `pedido_sim_da_foto` pelo cliente, com id `simfoto_{criança}_{AAAA-MM}`.
+  // Um por criança por mês: o segundo envio cai no UPDATE, e o update de um
+  // aviso só é da dona da caixa (e só `readAt`). Atores próprios: `pai1` é
+  // resemeado por outros blocos.
+  const tioFoto = await criarLogin(`foto.tio.${Date.now()}@teste.local`);
+  const outroTioFoto = await criarLogin(`foto.outro.${Date.now()}@teste.local`);
+  const maeFoto = await criarLogin(`foto.mae.${Date.now()}@teste.local`);
+  await semear(`users/${tioFoto.uid}`, { role: S('admin'), name: S('Tio Foto') });
+  await semear(`users/${outroTioFoto.uid}`, { role: S('admin'), name: S('Outro Foto') });
+  await semear(`users/${maeFoto.uid}`, { role: S('parent'), name: S('Mãe Foto'), adminUid: S(tioFoto.uid) });
+  const PEDIDO = `notifications/simfoto_kidFotoP_2026-10`;
+  const pedido = (uid) => ({
+    userId: S(uid), childId: S('kidFotoP'), type: S('pedido_sim_da_foto'),
+    title: S('Tio Foto pergunta: Lia pode aparecer na foto da turma?'),
+    body: S('Responda no Início do app. Você pode mudar quando quiser.'),
+    read: B(false), createdAt: T(0),
+  });
+  checar('comunidade', 'o tio pergunta à família dele (1º do mês)', 'PASSA',
+    await escrever(PEDIDO, tioFoto, pedido(maeFoto.uid)));
+  checar('comunidade', 'o 2º envio no mesmo mês é recusado (update)', 'NEGA',
+    await escrever(PEDIDO, tioFoto, pedido(maeFoto.uid)));
+  checar('comunidade', 'outro tio pergunta à família que não é dele', 'NEGA',
+    await escrever('notifications/simfoto_kidFotoQ_2026-10', outroTioFoto, pedido(maeFoto.uid)));
+  checar('comunidade', 'a família lê o pedido', 'PASSA', await ler(PEDIDO, maeFoto));
+  checar('comunidade', 'e marca como lido', 'PASSA',
+    await escrever(PEDIDO, maeFoto, { readAt: T(0) }, ['readAt']));
+
   // ── A NOTA DO TIO (etapa 2 da Comunidade, 05/10/2026) ─────────────────
   //
   // Só a família avalia, no semestre corrente, uma nota por semestre. O tio
