@@ -202,6 +202,8 @@ console.log('\n─── todo scripts/testar-*.mjs está na bateria ───');
     'testar-storage.mjs': 'precisa dos emuladores auth+firestore+storage',
     'testar-fechamento.mjs':
       'precisa do emulador do Firestore, e importa o Admin SDK de propósito — ele ESCREVE',
+    'testar-jornada-responsavel.mjs':
+      'precisa dos emuladores auth+firestore+storage e importa o Admin SDK - anda a jornada da familia chamando as functions',
     'testar-envio.mjs':
       'idem — mede os dois agendados escrevendo na mesma base, que é onde a colisão vivia',
     'testar-limpeza-checkpoint.mjs':
