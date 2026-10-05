@@ -6,7 +6,7 @@
  * muda aparece em destaque antes do texto inteiro.
  */
 import { readFileSync } from 'node:fs';
-import { abrirCelular, passo, tocar, registrar, encerrar, esperar, APP } from './lib.mjs';
+import { abrirCelular, passo, tocar, registrar, encerrar, esperar, APP, garantirSessao, CONTAS } from './lib.mjs';
 
 const EMAIL = readFileSync(new URL('./resultados/mae.txt', import.meta.url), 'utf8').trim();
 const { contexto, pagina, estado } = await abrirCelular('responsavel', { jornada: 'R2b-aditivo' });
@@ -15,14 +15,7 @@ const m = (t) => passo(pagina, estado, t);
 try {
   await pagina.goto(APP + '/pai');
   await esperar(4000);
-  if (new URL(pagina.url()).pathname === '/login') {
-    const usarEmail = pagina.getByText(/^Usar email$/).first();
-    if (await usarEmail.isVisible().catch(() => false)) await tocar(pagina, usarEmail, 'Usar email');
-    await pagina.getByLabel('Email', { exact: true }).fill(EMAIL);
-    await pagina.getByLabel('Senha', { exact: true }).fill('mariana123');
-    await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
-    await esperar(5000);
-  }
+  await garantirSessao(pagina, estado, CONTAS.mariana());
   await m('o Início: o aviso da mudança');
   await registrar(pagina, estado, 'inicio-com-aviso');
   await tocar(pagina, pagina.getByText(/contrato novo para assinar/).first(), 'o aviso da mudança');

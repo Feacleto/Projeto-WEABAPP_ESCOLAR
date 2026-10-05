@@ -1,163 +1,178 @@
 /**
- * F1 — A SENHA DO FINANCEIRO, DA PRIMEIRA VEZ AO DIA A DIA (03/10/2026).
+ * F1 — O TIO COM SENHA: A CENTRAL FORA DA ROTA (refeita em 04/10/2026).
  *
- * Seu Zé (logado, das jornadas M) abre o Financeiro pela primeira vez: cria a
- * senha de 4 números no teclado comum, confirma no teclado de banco, recusa a
- * digital e cai no caixa. Passa pelo caixa (Extrato, Mensalidades, as três
- * portas), sai para o Início e volta — o Financeiro tem de estar TRANCADO.
- * Na tela trancada: lança despesa sem senha (valores escondidos), entra na
- * turma pela senha (uma errada antes) e volta — de novo, trancado.
+ * Fase 2 da "Rota e Central" (2705f9d). A tela trancada com cartões SAIU: fora
+ * da rota a Central é do motorista e abre direto no teclado. Esta jornada
+ * começa onde a C1 (`c1-auxiliar-na-rota.mjs`) parou — a rota aberta, com a
+ * baixa em dinheiro do Lucas e o PIX anotado do Davi feitos SEM a senha — e
+ * mede, em ordem:
+ *   1. segurar "Encerrar" leva à Central, que pede a senha (primeira vez:
+ *      cria no teclado comum, confirma no teclado de banco);
+ *   2. o saldo vem com "Perguntar ao Buzi" logo abaixo;
+ *   3. as abas são Turma · Perua · Mensalidades · Contas, e abrem em Turma;
+ *   4. "Iniciar a rota" fica no pé;
+ *   5. a trilha do Lucas diz "Baixa dada sem a senha, na rota";
+ *   6. sair para o Início e voltar tranca: senha errada, depois a certa.
  *
+ * Rodar: node testes-navegador/semear-financeiro.mjs
+ *        node testes-navegador/c1-auxiliar-na-rota.mjs
+ *        node testes-navegador/f1-financeiro.mjs
  * ⚠️ Só emulador (`demo-alobuzinou`), como todo o kit.
  */
-import { abrirCelular, passo, tocar, registrar, encerrar, esperar, achado, APP } from './lib.mjs';
+import { abrirCelular, passo, tocar, registrar, encerrar, esperar, achado, APP, garantirSessao, CONTAS } from './lib.mjs';
 
 const SENHA = '2580';
-const { contexto, pagina, estado } = await abrirCelular('motorista', { jornada: 'F1-financeiro' });
+const { contexto, pagina, estado } = await abrirCelular('motorista', { jornada: 'F1-financeiro', perfil: CONTAS.zeFinanceiro().perfil });
+// Sem relógio fixo aqui: com ele a callable da senha não volta ("Conferindo
+// a senha" para sempre). Encerrar a rota não depende da hora.
 const m = (t) => passo(pagina, estado, t);
-const visivel = (loc) => loc.isVisible().catch(() => false);
+const visivel = (loc) => loc.first().isVisible().catch(() => false);
+const r = {};
 
 /** Teclado comum: um botão por número. */
 async function digitarComum(senha) {
-  for (const d of senha) {
-    await tocar(pagina, pagina.getByRole('button', { name: d, exact: true }), d);
-  }
+  for (const d of senha) await tocar(pagina, pagina.getByRole('button', { name: d, exact: true }), d);
 }
-
 /** Teclado de banco: acha o botão "a ou b" que tem o número. */
 async function digitarNoBanco(senha) {
   for (const d of senha) {
-    const botao = pagina.getByRole('button', { name: new RegExp(`(^${d} ou \\d$)|(^\\d ou ${d}$)`) });
-    await tocar(pagina, botao, `o botão com ${d}`);
+    await tocar(pagina, pagina.getByRole('button', { name: new RegExp(`(^${d} ou \\d$)|(^\\d ou ${d}$)`) }), `o botão com ${d}`);
   }
 }
-
 async function irPeloRodape(nome) {
-  await tocar(pagina, pagina.getByRole('link', { name: nome }).last(), nome);
-  await esperar(1500);
+  await tocar(pagina, pagina.getByRole('link', { name: new RegExp(nome) }).last(), nome);
+  await esperar(1800);
 }
 
 try {
-  await pagina.goto(APP + '/tio');
-  await esperar(3500);
-  if (new URL(pagina.url()).pathname === '/login') {
-    // A conta vem de semear-financeiro.mjs.
-    await m('entra com a conta do Seu Zé');
-    // A abertura do login no celular dura ~8 s e não aceita toque; o aviso de
-    // cookies cobre o formulário.
-    await esperar(9000);
-    const cookies = pagina.getByRole('button', { name: 'Aceitar todos' });
-    if (await visivel(cookies)) await tocar(pagina, cookies, 'Aceitar todos');
-    const usarEmail = pagina.getByText(/^(Usar email|Entrar com e-mail)$/).first();
-    if (await visivel(usarEmail)) await tocar(pagina, usarEmail, 'Usar email');
-    await pagina.getByLabel('Email', { exact: true }).fill('ze.financeiro@teste.local');
-    await pagina.getByLabel('Senha', { exact: true }).fill('senha-de-teste-123');
-    await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
-    await esperar(6000);
-  }
-  await irPeloRodape('Financeiro');
+  await pagina.goto(APP + '/tio/route/now');
+  await esperar(4500);
+  if (new URL(pagina.url()).pathname === '/login') throw new Error('Sem sessão: rode a C1 antes (ela entra e deixa a rota aberta).');
 
-  // ── Primeira vez ───────────────────────────────────────────────────────
-  await m('primeira vez: "Proteja o seu Financeiro"');
-  await registrar(pagina, estado, '01-primeira-vez');
+  // ── 1. Encerrar leva à Central com senha ───────────────────────────────
+  await m('1 · segura "Encerrar" com criança na perua');
+  const segurar = pagina.getByRole('button', { name: 'Segure para encerrar a rota' }).first();
+  await segurar.waitFor({ state: 'visible', timeout: 15000 });
+  await segurar.scrollIntoViewIfNeeded();
+  const caixa = await segurar.boundingBox();
+  await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2);
+  await pagina.mouse.down();
+  await esperar(1500);
+  await pagina.mouse.up();
+  await esperar(1200);
+  await registrar(pagina, estado, '01-encerrar');
+  const mesmoAssim = pagina.getByRole('button', { name: /Encerrar mesmo assim/ });
+  if (await visivel(mesmoAssim)) await tocar(pagina, mesmoAssim.last(), 'Encerrar mesmo assim');
+  await esperar(4000);
+  r.depoisDeEncerrar = new URL(pagina.url()).pathname;
+  if (r.depoisDeEncerrar !== '/tio/finance') {
+    achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'rota', oque: `Encerrar levou a ${r.depoisDeEncerrar}, e não à Central (/tio/finance).` });
+  }
+  r.pedeSenha = await visivel(pagina.getByText(/Proteja o seu Financeiro|Digite sua senha/));
+  if (!r.pedeSenha) achado(estado, { gravidade: 'bloqueia', lente: 'seguranca', tela: 'Central', oque: 'Depois de encerrar, a Central não pediu a senha.' });
+  await registrar(pagina, estado, '02-central-pede-senha');
+
+  await m('primeira vez: cria a senha');
   await tocar(pagina, pagina.getByRole('button', { name: 'Criar senha' }), 'Criar senha');
   await esperar(800);
-
-  await m('senha fácil é recusada (1234)');
   await digitarComum('1234');
   await esperar(800);
-  await registrar(pagina, estado, '02-senha-facil');
-
-  await m(`cria ${SENHA} no teclado comum`);
+  await registrar(pagina, estado, '03-senha-facil');
   await digitarComum(SENHA);
   await esperar(1000);
-  await m('confirma no teclado de banco');
-  await registrar(pagina, estado, '03-confirmar-no-banco');
+  await registrar(pagina, estado, '04-confirmar-no-banco');
   await digitarNoBanco(SENHA);
   await esperar(3500);
-  await registrar(pagina, estado, '04-senha-criada');
   const agoraNao = pagina.getByRole('button', { name: /Agora não/ });
   if (await visivel(agoraNao)) await tocar(pagina, agoraNao, 'Agora não');
-  else achado(estado, { gravidade: 'alta', lente: 'fluxo', texto: 'Depois de criar a senha não apareceu o "Agora não".' });
   await esperar(2500);
 
-  // ── O caixa ────────────────────────────────────────────────────────────
-  await m('o caixa aberto');
-  await registrar(pagina, estado, '05-caixa', { paginaInteira: true });
-  const mensalidades = pagina.getByRole('tab', { name: 'Mensalidades' });
-  if (await visivel(mensalidades)) {
-    await tocar(pagina, mensalidades, 'Mensalidades');
-    await esperar(1000);
-    await registrar(pagina, estado, '06-aba-mensalidades', { paginaInteira: true });
+  // ── 2. Saldo e Buzi ────────────────────────────────────────────────────
+  await m('2 · o saldo, com "Perguntar ao Buzi" logo abaixo');
+  await registrar(pagina, estado, '05-central', { paginaInteira: true });
+  const saldo = pagina.getByText(/^Saldo de /).first();
+  const buzi = pagina.getByText(/Perguntar ao Buzi/).first();
+  r.saldo = await visivel(saldo);
+  r.buzi = await visivel(buzi);
+  if (r.saldo && r.buzi) {
+    const [a, b] = [await saldo.boundingBox(), await buzi.boundingBox()];
+    r.buziAbaixoDoSaldo = b.y > a.y && b.y - a.y < 260;
+  }
+  if (!r.buzi || r.buziAbaixoDoSaldo === false) achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: '"Perguntar ao Buzi" não está logo abaixo do saldo.' });
+
+  // ── 3. As abas ─────────────────────────────────────────────────────────
+  await m('3 · as quatro abas, abrindo em Turma');
+  const lista = pagina.getByRole('tablist', { name: 'Central' });
+  r.abas = (await lista.getByRole('tab').allInnerTexts()).map((t) => t.trim());
+  r.abaAberta = (await lista.getByRole('tab', { selected: true }).allInnerTexts().catch(() => [])).join();
+  r.abasEmLinhas = await lista.evaluate((el) => new Set([...el.querySelectorAll('[role=tab]')].map((t) => Math.round(t.getBoundingClientRect().top))).size);
+  if (r.abas.join('·') !== 'Turma·Perua·Mensalidades·Contas') achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: `As abas são ${r.abas.join(' · ')}.` });
+  if (r.abaAberta !== 'Turma') achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: `A Central abriu em "${r.abaAberta}", e não em Turma.` });
+  if (r.abasEmLinhas > 1) achado(estado, { gravidade: 'melhoria', lente: '40+', tela: 'Central', oque: `A 360 px as quatro abas ficam em ${r.abasEmLinhas} linhas (2×2): a ordem de leitura vira um quadrado.` });
+
+  // ── 4. Iniciar a rota no pé ────────────────────────────────────────────
+  await m('4 · "Iniciar a rota" no pé');
+  const iniciar = pagina.getByRole('button', { name: /Iniciar a rota/i }).last();
+  r.iniciarNoPe = await visivel(iniciar);
+  if (r.iniciarNoPe) {
+    const b = await iniciar.boundingBox();
+    r.iniciarNaMetadeDeBaixo = b.y > 740 / 2;
+  } else {
+    achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: '"Iniciar a rota" não está à vista no pé da Central.' });
   }
 
-  await m('porta: Despesas do mês');
-  await tocar(pagina, pagina.getByRole('button', { name: /Despesas do mês/ }).or(pagina.getByRole('link', { name: /Despesas do mês/ })).first(), 'Despesas do mês');
-  await esperar(2000);
-  await registrar(pagina, estado, '07-despesas', { paginaInteira: true });
-  await pagina.goBack();
+  // ── 5. A trilha do Lucas ───────────────────────────────────────────────
+  await m('5 · Mensalidades → Lucas → histórico');
+  await tocar(pagina, lista.getByRole('tab', { name: 'Mensalidades' }), 'Mensalidades');
   await esperar(1500);
-
-  await m('porta: Turma e contratos');
-  await tocar(pagina, pagina.getByRole('button', { name: /Turma e contratos/ }).or(pagina.getByRole('link', { name: /Turma e contratos/ })).first(), 'Turma e contratos');
-  await esperar(2000);
-  await registrar(pagina, estado, '08-turma', { paginaInteira: true });
-  await pagina.goBack();
-  await esperar(1500);
-  if (!(await visivel(pagina.getByText(/^Saldo de /)))) {
-    achado(estado, { gravidade: 'alta', lente: 'fluxo', texto: 'Voltar da turma (entrando pelo caixa) não voltou ao caixa aberto.' });
+  await registrar(pagina, estado, '06-mensalidades', { paginaInteira: true });
+  const linhaLucas = pagina.getByText(/Lucas Prado/).first();
+  if (await visivel(linhaLucas)) {
+    await linhaLucas.scrollIntoViewIfNeeded();
+    const historicos = pagina.getByRole('button', { name: /Histórico deste pagamento/ });
+    const n = await historicos.count();
+    // o histórico mais perto do nome do Lucas
+    const yLucas = (await linhaLucas.boundingBox()).y;
+    let melhor = null;
+    for (let i = 0; i < n; i++) {
+      const b = await historicos.nth(i).boundingBox().catch(() => null);
+      if (b && b.y > yLucas && (!melhor || b.y < melhor.y)) melhor = { i, y: b.y };
+    }
+    if (melhor) {
+      await tocar(pagina, historicos.nth(melhor.i), 'Histórico deste pagamento');
+      await esperar(1500);
+    }
+    r.trilhaSemSenha = await visivel(pagina.getByText('Baixa dada sem a senha, na rota'));
+    await registrar(pagina, estado, '07-trilha-do-lucas', { paginaInteira: true });
+    if (!r.trilhaSemSenha) achado(estado, { gravidade: 'atrapalha', lente: 'dinheiro', tela: 'Mensalidades', oque: 'A trilha do Lucas não mostra "Baixa dada sem a senha, na rota".' });
+  } else {
+    achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Mensalidades', oque: 'O Lucas não aparece na aba Mensalidades.' });
   }
 
-  // ── Sair tranca ────────────────────────────────────────────────────────
-  await m('sai para o Início e volta: tem de estar trancado');
+  // ── 6. Sair tranca ─────────────────────────────────────────────────────
+  await m('6 · sai para o Início e volta: tem de pedir a senha');
   await irPeloRodape('Início');
+  await irPeloRodape('Central');
   await esperar(1500);
-  await irPeloRodape('Financeiro');
-  await esperar(2000);
-  await registrar(pagina, estado, '09-trancado', { paginaInteira: true });
-  if (!(await visivel(pagina.getByText('Abrir caixa')))) {
-    achado(estado, { gravidade: 'critica', lente: 'seguranca', texto: 'Voltar ao Financeiro depois de sair NÃO mostrou a tela trancada.' });
-  }
-
-  // ── Sem senha: lançar despesa ──────────────────────────────────────────
-  await m('Lançar despesa sem senha: valores escondidos');
-  await tocar(pagina, pagina.getByRole('button', { name: /Lançar despesa/ }).first(), 'Lançar despesa');
-  await esperar(2000);
-  await registrar(pagina, estado, '10-despesa-sem-senha');
-  const auxiliar = pagina.getByRole('button', { name: 'Auxiliar', exact: true });
-  if (await visivel(auxiliar)) {
-    await tocar(pagina, auxiliar, 'Auxiliar');
-    await esperar(1200);
-    await registrar(pagina, estado, '11-auxiliar-sem-senha');
-  }
-  await pagina.keyboard.press('Escape');
-  await esperar(1000);
-  const fechar = pagina.getByRole('button', { name: /Fechar|Cancelar/ }).first();
-  if (await visivel(fechar)) await tocar(pagina, fechar, 'Fechar');
-  await esperar(1000);
-
-  // ── Pela senha, direto na turma ────────────────────────────────────────
-  await m('Minha turma → senha errada, depois a certa');
-  await tocar(pagina, pagina.getByRole('button', { name: /Minha turma/ }).first(), 'Minha turma');
-  await esperar(1500);
-  await registrar(pagina, estado, '12-teclado-de-banco');
-  await digitarNoBanco('1111' === SENHA ? '2222' : '1111');
-  await esperar(3000);
-  await registrar(pagina, estado, '13-senha-errada');
-  await digitarNoBanco(SENHA);
-  await esperar(3500);
-  await registrar(pagina, estado, '14-turma-pela-senha', { paginaInteira: true });
-
-  await m('voltar da turma: de volta à tela trancada');
-  await tocar(pagina, pagina.getByRole('button', { name: /Voltar/ }).first(), 'Voltar');
-  await esperar(2000);
-  await registrar(pagina, estado, '15-depois-de-voltar');
-  if (!(await visivel(pagina.getByText('Abrir caixa')))) {
-    achado(estado, { gravidade: 'alta', lente: 'fluxo', texto: 'Voltar da turma (entrando pela tela trancada) não voltou à tela trancada.' });
+  r.trancouAoVoltar = await visivel(pagina.getByText('Digite sua senha'));
+  await registrar(pagina, estado, '08-trancado');
+  if (!r.trancouAoVoltar) {
+    achado(estado, { gravidade: 'bloqueia', lente: 'seguranca', tela: 'Central', oque: 'Voltar à Central depois de sair NÃO pediu a senha.' });
+  } else {
+    await digitarNoBanco('1111');
+    await esperar(3000);
+    await registrar(pagina, estado, '09-senha-errada');
+    await digitarNoBanco(SENHA);
+    await esperar(3500);
+    r.abriuComASenha = await visivel(pagina.getByRole('tablist', { name: 'Central' }));
+    await registrar(pagina, estado, '10-aberta-de-novo');
+    if (!r.abriuComASenha) achado(estado, { gravidade: 'bloqueia', lente: 'fluxo', tela: 'Central', oque: 'A senha certa não abriu a Central.' });
   }
 } catch (err) {
   console.error(err);
-  achado(estado, { gravidade: 'critica', lente: 'teste', texto: `A jornada parou: ${err.message}` });
+  achado(estado, { gravidade: 'bloqueia', lente: 'teste', tela: '—', oque: `A jornada parou: ${err.message}` });
   await registrar(pagina, estado, '99-onde-parou').catch(() => {});
 }
+estado.resultado = r;
+console.log(JSON.stringify(r, null, 2));
 await encerrar(contexto, pagina, estado);

@@ -25,7 +25,7 @@
  *
  * ⚠️ Só emulador (`demo-alobuzinou`), como todo o kit.
  */
-import { abrirCelular, passo, tocar, digitar, registrar, encerrar, esperar, achado, responderCookies, APP as APP_DA_LIB } from './lib.mjs';
+import { abrirCelular, passo, tocar, digitar, registrar, encerrar, esperar, achado, responderCookies, APP as APP_DA_LIB, garantirSessao, CONTAS } from './lib.mjs';
 
 const APP = process.env.APP_URL || APP_DA_LIB;
 const SENHA_DA_CONTA = 'senha-de-teste-123';
@@ -91,19 +91,10 @@ function kit(pagina, estado) {
   }
 
   async function entrar(email) {
-    await pagina.goto(APP + '/tio');
-    await esperar(3500);
-    if (caminho() === '/login') {
-      await m(`entra com ${email}`);
-      await responderCookies(pagina);
-      const usarEmail = pagina.getByText(/^(Usar email|Entrar com e-?mail)$/).first();
-      if (await visivel(usarEmail)) await tocar(pagina, usarEmail, 'Entrar com e-mail');
-      await esperar(800);
-      await pagina.getByLabel('Email', { exact: true }).fill(email);
-      await pagina.getByLabel('Senha', { exact: true }).fill(SENHA_DA_CONTA);
-      await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
-      await esperar(6000);
-    }
+    // O novato abre o Chrome LIMPO (celular novo, de propósito); o Beto
+    // reaproveita o dele. Os dois entram pelo login único do kit.
+    const conta = email === CONTAS.beto().email ? CONTAS.beto() : CONTAS.novato();
+    await garantirSessao(pagina, estado, { ...conta, painel: '/tio' });
   }
 
   async function digitarComum(senha) {
@@ -178,7 +169,7 @@ function kit(pagina, estado) {
 // O NOVATO
 // ═════════════════════════════════════════════════════════════════════════
 {
-  const { contexto, pagina, estado } = await abrirCelular('responsavel', { jornada: 'P1-perua-novato', limpar: true });
+  const { contexto, pagina, estado } = await abrirCelular('responsavel', { jornada: 'P1-perua-novato', perfil: CONTAS.novato().perfil, limpar: true });
   estado.persona = 'Motorista novato';
   const k = kit(pagina, estado);
   const { m, visivel, texto, caminho, foto, resultado, campoPreco, campoQtd, botao } = k;
@@ -374,7 +365,7 @@ function kit(pagina, estado) {
 // O SEU BETO
 // ═════════════════════════════════════════════════════════════════════════
 {
-  const { contexto, pagina, estado } = await abrirCelular('motorista', { jornada: 'P1-perua', limpar: true });
+  const { contexto, pagina, estado } = await abrirCelular('motorista', { jornada: 'P1-perua', perfil: CONTAS.beto().perfil });
   const k = kit(pagina, estado);
   const { m, visivel, texto, caminho, foto, resultado, campoPreco, campoQtd, botao } = k;
   const trancado = () => visivel(pagina.getByText('Abrir caixa'));

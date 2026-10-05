@@ -11,7 +11,7 @@
  *   6. na volta, "Ninguém em casa" leva a criança para o fim e o foco segue
  */
 import { readFileSync } from 'node:fs';
-import { abrirCelular, passo, tocar, registrar, encerrar, esperar, APP } from './lib.mjs';
+import { abrirCelular, passo, tocar, registrar, encerrar, esperar, APP, garantirSessao, CONTAS } from './lib.mjs';
 
 const FS = 'http://127.0.0.1:8085/v1/projects/demo-alobuzinou/databases/(default)/documents';
 const ADM = { Authorization: 'Bearer owner' };
@@ -28,16 +28,7 @@ const nomeEmFoco = () =>
   });
 
 async function entrarSePreciso() {
-  if (new URL(pagina.url()).pathname !== '/login') return;
-  const email = JSON.parse(
-    readFileSync(new URL('./resultados/M1-cadastro/resumo.json', import.meta.url), 'utf8')
-  ).email;
-  const usarEmail = pagina.getByText(/^Usar email$/).first();
-  if (await usarEmail.isVisible().catch(() => false)) await tocar(pagina, usarEmail, 'Usar email');
-  await pagina.getByLabel('Email', { exact: true }).fill(email);
-  await pagina.getByLabel('Senha', { exact: true }).fill('perua123');
-  await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
-  await esperar(5000);
+  await garantirSessao(pagina, estado, CONTAS.ze());
 }
 const r = {};
 

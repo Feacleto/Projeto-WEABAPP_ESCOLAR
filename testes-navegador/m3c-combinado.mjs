@@ -9,7 +9,7 @@
  * O caminho de quem procura sozinho: a turma → a ficha → "Contrato e
  * mensalidade" → Mudar → o contrato.
  */
-import { abrirCelular, passo, tocar, digitar, registrar, encerrar, esperar, APP } from './lib.mjs';
+import { abrirCelular, passo, tocar, digitar, registrar, encerrar, esperar, APP, garantirSessao, CONTAS } from './lib.mjs';
 
 const { contexto, pagina, estado } = await abrirCelular('motorista', { jornada: 'M3c-combinado' });
 const m = (t) => passo(pagina, estado, t);
@@ -19,16 +19,7 @@ try {
   await esperar(2500);
   // Reiniciar o emulador derruba a sessão do navegador (não é o app).
   if (new URL(pagina.url()).pathname === '/login') {
-    const { readFileSync } = await import('node:fs');
-    const email = JSON.parse(
-      readFileSync(new URL('./resultados/M1-cadastro/resumo.json', import.meta.url), 'utf8')
-    ).email;
-    const usarEmail = pagina.getByText(/^Usar email$/).first();
-    if (await usarEmail.isVisible().catch(() => false)) await tocar(pagina, usarEmail, 'Usar email');
-    await pagina.getByLabel('Email', { exact: true }).fill(email);
-    await pagina.getByLabel('Senha', { exact: true }).fill('perua123');
-    await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
-    await esperar(5000);
+    await garantirSessao(pagina, estado, CONTAS.ze());
     await pagina.goto(APP + '/tio/children');
     await esperar(2500);
   }

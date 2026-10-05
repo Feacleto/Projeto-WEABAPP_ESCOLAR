@@ -222,3 +222,21 @@ M6 rodou de novo e passou inteiro.
 - A previsão não foi vista no navegador: o teste roda de madrugada e a régua
   cala acima de 90 min de diferença. Está coberta na régua (`testar:viagem`).
 - Motorista substituto: fora do escopo (decisão do dono).
+
+---
+
+## C1 · F1 · A Rota e a Central (fases 1 e 2, 630efb3 e 2705f9d) — 05/10/2026
+
+**C1, a auxiliar na rota** (`c1-auxiliar-na-rota.mjs`, nova). Terminou: **sim**. 9 telas, 0 erro no console, nenhum "R$" em 6 conferências.
+Rodapé Início · Central com a bolinha verde; "Mensalidade de outubro em aberto" e "Recebi" de contorno; dinheiro → `paid`/`cash` com trilha `sem_senha`; "mandou PIX" → `claimed`; "Mostrar PIX da perua" copia a chave; a Central na rota continua na tela da rota.
+
+**F1, o tio com senha** (`f1-financeiro.mjs`, refeita: a tela trancada com cartões saiu). Terminou: **não** — encerrar leva à Central, que pede a senha, e a criação da senha fica em "Conferindo a senha": o emulador de functions parou de responder (ambiente, não o código).
+
+| # | Gravidade | Lente | Tela | O que acontece | Prova | Sugestão |
+|---|---|---|---|---|---|---|
+| 1 | **Atrapalha** — ✅ **corrigido** (3dce192) | 40+ | Rota, porta com mensalidade em aberto | "Mensalidade de outubro em aberto" quebra em 5 linhas a 360 px: o "Recebi" ao lado espreme a frase. | C1/03 | Botão embaixo da frase, ou a frase com a linha inteira. |
+| 2 | **Melhoria** — ✅ **corrigido** (3dce192) | contraste | Rota, faixa verde | O selo "ROTA ATIVA" dá 4,29:1 (#8ef0ae sobre #356f52, 14 px). | axe C1/02 | Verde mais claro no texto ou fundo mais escuro. |
+
+**Conferido em nova rodada da C1 (05/10):** a frase cabe em 2 linhas e o axe dá 0 em todas as 9 telas.
+
+**Ambiente (não é achado do app):** o vite da 5173 e os emuladores estavam de pé desde 12h39 de 04/10. O vite não tinha a classe `bg-marca` (o `tailwind.config.js` mudou às 19h45), e o EMBARQUEI e o "Abrir a rota" saíam transparentes; as jornadas rodaram contra um vite novo (`APP=http://127.0.0.1:5174`). Rodadas à noite, a C1 fixa o relógio do navegador às 6h35 para a tela abrir na ida; a F1 não fixa (com relógio fixo, a callable da senha não volta).

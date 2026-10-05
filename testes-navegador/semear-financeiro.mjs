@@ -5,7 +5,8 @@
  * turma de seis crianças (uma que saiu este mês), as mensalidades de outubro
  * (pagas, avisadas e em aberto) e algumas despesas — o bastante para o caixa,
  * o extrato, a turma e o histórico da folha terem o que mostrar.
- * Idempotente: ids fixos; rodar de novo só regrava.
+ * Idempotente: ids fixos; rodar de novo só regrava (e apaga a trilha e a
+ * rota aberta da rodada anterior).
  *
  * ⚠️ Só fala com o emulador (`demo-alobuzinou`). Nada aqui toca produção.
  * Login: ze.financeiro@teste.local / senha-de-teste-123
@@ -68,20 +69,41 @@ await gravar(`users/${uid}`, {
   criancasAtivas: I(5), createdAt: T(new Date(2026, 6, 1)),
 });
 
+// A ESCOLA E OS HORÁRIOS existem desde 04/10/2026: a jornada da Central na
+// rota (C1) precisa de uma turma que a rota consiga montar. A ordem da ida é a
+// hora de pegar: Lucas (em aberto) e Davi (em aberto) são as duas primeiras
+// portas — uma recebe em dinheiro, a outra anota o PIX.
+const ESCOLA = 'finEscolaVilaOlimpia';
+await gravar(`schools/${ESCOLA}`, {
+  adminUid: S(uid), name: S('EMEF Vila Olímpia'), nome: S('EMEF Vila Olímpia'),
+  address: S('Rua Gomes de Carvalho, 400 — Vila Olímpia, São Paulo/SP'),
+  endereco: S('Rua Gomes de Carvalho, 400 — Vila Olímpia, São Paulo/SP'),
+  lat: N(-23.5955), lng: N(-46.6870), createdAt: T(new Date(2026, 6, 1)),
+});
 const criancas = [
-  ['finMiguel', 'Miguel Santos', 350, 10, new Date(2026, 5, 2), true],
-  ['finLaura', 'Laura Mendes', 350, 10, new Date(2026, 7, 5), true],
-  ['finDavi', 'Davi Rocha', 320, 5, new Date(2026, 8, 1), true],
-  ['finHelena', 'Helena Costa', 350, 10, dia(1), true],
-  ['finLucas', 'Lucas Prado', 350, 15, dia(2), true],
-  ['finBruno', 'Bruno Alves', 300, 10, new Date(2026, 3, 1), false],
+  ['finMiguel', 'Miguel Santos', 350, 10, new Date(2026, 5, 2), true, '06:50', -23.5940, -46.6850],
+  ['finLaura', 'Laura Mendes', 350, 10, new Date(2026, 7, 5), true, '06:55', -23.5930, -46.6845],
+  ['finDavi', 'Davi Rocha', 320, 5, new Date(2026, 8, 1), true, '06:45', -23.5947, -46.6858],
+  ['finHelena', 'Helena Costa', 350, 10, dia(1), true, '07:00', -23.5969, -46.6833],
+  ['finLucas', 'Lucas Prado', 350, 15, dia(2), true, '06:40', -23.5935, -46.6842],
+  ['finBruno', 'Bruno Alves', 300, 10, new Date(2026, 3, 1), false, null, null, null],
 ];
-for (const [id, nome, valor, venc, criada, ativa] of criancas) {
+for (const [id, nome, valor, venc, criada, ativa, hora, lat, lng] of criancas) {
   const f = {
     adminUid: S(uid), name: S(nome), monthlyFee: N(valor), dueDay: I(venc), active: B(ativa),
     status: S('home'), createdAt: T(criada), schoolName: S('EMEF Vila Olímpia'),
+    school: S('EMEF Vila Olímpia'), schoolId: S(ESCOLA),
+    schoolAddress: S('Rua Gomes de Carvalho, 400 — Vila Olímpia, São Paulo/SP'),
     parentName: S('Responsável de ' + nome.split(' ')[0]), parentPhone: S('(11) 91234-0000'),
   };
+  if (hora) {
+    Object.assign(f, {
+      horaPega: S(hora), horaEntrega: S('12:' + hora.slice(3)), period: S('morning'),
+      pickupPeriod: S('morning'), dropoffPeriod: S('morning'),
+      address: S(`Rua de teste, ${hora.replace(':', '')} — Vila Olímpia, São Paulo/SP`),
+      lat: N(lat), lng: N(lng),
+    });
+  }
   if (!ativa) f.inativadoEm = T(dia(2, 18));
   await gravar(`children/${id}`, f);
 }
@@ -89,10 +111,17 @@ for (const [id, nome, valor, venc, criada, ativa] of criancas) {
 const pagamentos = [
   ['finMiguel', 350, 'paid', 'pix', dia(3, 8)],
   ['finLaura', 350, 'paid', 'cash', dia(2, 17)],
-  ['finDavi', 320, 'paid', 'pix', dia(1, 7)],
+  ['finDavi', 320, 'pending', null, null],
   ['finHelena', 350, 'claimed', 'pix', null],
   ['finLucas', 350, 'pending', null, null],
 ];
+// A rota de ontem não pode estar aberta, e a trilha da rodada anterior sai:
+// o C2 procura a linha "sem a senha" que o C1 acabou de gravar.
+await fetch(`${FS}/liveLocation/${uid}`, { method: 'DELETE', headers: ADM });
+for (const [cid] of pagamentos) {
+  const lista = await fetch(`${FS}/payments/${cid}_${mes}/events?pageSize=100`, { headers: ADM }).then((x) => x.json());
+  for (const d of lista.documents || []) await fetch(`http://127.0.0.1:8085/v1/${d.name}`, { method: 'DELETE', headers: ADM });
+}
 for (const [cid, valor, st, metodo, pagoEm] of pagamentos) {
   const nome = criancas.find((c) => c[0] === cid)[1];
   await gravar(`payments/${cid}_${mes}`, {

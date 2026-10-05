@@ -5,7 +5,7 @@
  * dela o contrato (a versão GRAVADA) e depois o primeiro acesso da família.
  * O roteiro reconhece cada tela pelo texto, age nela e registra todas.
  */
-import { abrirCelular, passo, tocar, digitar, registrar, encerrar, esperar, APP } from './lib.mjs';
+import { abrirCelular, passo, tocar, digitar, registrar, encerrar, esperar, APP, garantirSessao, CONTAS } from './lib.mjs';
 
 import { readFileSync } from 'node:fs';
 // A conta que a R1 criou (o e-mail vai para `resultados/mae.txt`).
@@ -46,13 +46,7 @@ try {
     }
     if (url === '/login') {
       // Reiniciar o emulador derruba a sessão do navegador (não é o app).
-      await m('entra de novo com o e-mail dela');
-      const usarEmail = pagina.getByText(/^Usar email$/).first();
-      if (await usarEmail.isVisible().catch(() => false)) await tocar(pagina, usarEmail, 'Usar email');
-      await pagina.getByLabel('Email', { exact: true }).fill(EMAIL);
-      await pagina.getByLabel('Senha', { exact: true }).fill('mariana123');
-      await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
-      await esperar(5000);
+      await garantirSessao(pagina, estado, CONTAS.mariana());
       continue;
     }
     if (await ve(/^Sobre Pedro$/)) {

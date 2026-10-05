@@ -7,9 +7,7 @@
  * escola) — medido pelo M6 do lado dele.
  */
 import { readFileSync } from 'node:fs';
-import { abrirCelular, passo, tocar, digitar, registrar, encerrar, esperar, APP } from './lib.mjs';
-
-const EMAIL = readFileSync(new URL('./resultados/mae.txt', import.meta.url), 'utf8').trim();
+import { abrirCelular, passo, tocar, digitar, registrar, encerrar, esperar, APP, garantirSessao, CONTAS } from './lib.mjs';
 const { contexto, pagina, estado } = await abrirCelular('responsavel', { jornada: 'R3-escola' });
 const m = (t) => passo(pagina, estado, t);
 
@@ -17,12 +15,7 @@ try {
   await pagina.goto(APP + '/pai/child');
   await esperar(4000);
   if (new URL(pagina.url()).pathname === '/login') {
-    const usarEmail = pagina.getByText(/^Usar email$/).first();
-    if (await usarEmail.isVisible().catch(() => false)) await tocar(pagina, usarEmail, 'Usar email');
-    await pagina.getByLabel('Email', { exact: true }).fill(EMAIL);
-    await pagina.getByLabel('Senha', { exact: true }).fill('mariana123');
-    await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
-    await esperar(5000);
+    await garantirSessao(pagina, estado, CONTAS.mariana());
     await pagina.goto(APP + '/pai/child');
     await esperar(4000);
   }

@@ -3,6 +3,7 @@
  *
  * O que cada jornada usa daqui:
  *   abrirCelular(persona)   o Chrome na tela, 360×740, toque, pt-BR, GPS em SP
+ *   garantirSessao(conta)   abre o painel já logado; só entra se cair no /login
  *   passo(texto)            a legenda no topo ("Motorista · M3 · …")
  *   tocar(alvo, rotulo)     contorno amarelo, pausa, toque
  *   digitar(alvo, texto)    contorno amarelo e digitação letra a letra
@@ -15,6 +16,18 @@
  *
  * Rodar uma jornada:  node testes-navegador/m1-cadastro.mjs
  * (com `firebase emulators:start --project demo-alobuzinou` e `vite` de pé)
+ * Sem ninguém assistindo:  RAPIDO=1 node testes-navegador/m5-rota.mjs
+ * (Chrome invisível, sem as pausas antes de cada toque).
+ *
+ * ⚠️ UM CHROME POR CONTA, E UM LOGIN SÓ (05/10/2026, pedido do dono). As
+ * jornadas faziam login de novo a cada rodada: quatro contas de teste (o Zé
+ * da M1, o ze.financeiro da C1/F1, o Beto e o novato da P1) dividiam o mesmo
+ * Chrome do "motorista", e as jornadas o APAGAVAM (`limpar: true`) para trocar
+ * de conta — o que derrubava a sessão de todas as outras. Agora cada conta
+ * tem o seu perfil (`CONTAS`, `perfis/<perfil>`), `limpar` só fica onde se
+ * testa o cadastro (M1, R1), e todo login passa por `garantirSessao`, que só
+ * entra quando o app pede — e acha o botão por qualquer um dos rótulos que o
+ * login já teve, para a próxima troca de texto não quebrar dez jornadas.
  */
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
@@ -22,12 +35,17 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
-export const APP = 'http://127.0.0.1:5173';
+// APP=http://127.0.0.1:5174 roda contra outro servidor (ex.: um vite novo,
+// quando o da 5173 ficou com o tailwind.config.js de antes).
+export const APP = process.env.APP || 'http://127.0.0.1:5173';
 export const SITE = 'http://127.0.0.1:4321';
 const AXE = path.resolve(AQUI, '../node_modules/axe-core/axe.min.js');
 
+/** Modo rápido: Chrome invisível e sem pausas, para conferir sem assistir. */
+export const RAPIDO = process.env.RAPIDO === '1';
+
 /** Pausa antes de cada toque — é o tempo de quem assiste ver o que vai acontecer. */
-const PAUSA = Number(process.env.PAUSA || 900);
+const PAUSA = Number(process.env.PAUSA ?? (RAPIDO ? 0 : 900));
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const PERSONAS = {
@@ -36,20 +54,46 @@ const PERSONAS = {
 };
 
 /**
- * Abre o Chrome como o celular da persona. O perfil é PERSISTENTE por persona
- * (`perfis/<persona>`): a sessão do motorista sobrevive de uma jornada para a
- * outra, como no aparelho dele.
+ * AS CONTAS DE TESTE, cada uma com o seu Chrome (`perfil`). Funções, porque o
+ * e-mail do Zé e da Mariana sai do que a M1 e a R1 gravaram.
  */
-export async function abrirCelular(persona, { jornada, limpar = false } = {}) {
+const lerResultado = (rel) => readFileSync(path.join(AQUI, 'resultados', rel), 'utf8');
+export const CONTAS = {
+  ze: () => ({
+    perfil: 'motorista', painel: '/tio', senha: 'perua123',
+    email: JSON.parse(lerResultado('M1-cadastro/resumo.json')).email,
+  }),
+  mariana: () => ({
+    perfil: 'responsavel', painel: '/pai', senha: 'mariana123',
+    email: lerResultado('mae.txt').trim(),
+  }),
+  zeFinanceiro: () => ({
+    perfil: 'ze-financeiro', painel: '/tio', senha: 'senha-de-teste-123', email: 'ze.financeiro@teste.local',
+  }),
+  beto: () => ({
+    perfil: 'beto', painel: '/tio', senha: 'senha-de-teste-123', email: 'perua.beto@teste.local',
+  }),
+  novato: () => ({
+    perfil: 'novato', painel: '/tio', senha: 'senha-de-teste-123', email: 'perua.novato@teste.local',
+  }),
+};
+
+/**
+ * Abre o Chrome como o celular da persona. O perfil é PERSISTENTE
+ * (`perfis/<perfil>`, por padrão o nome da persona): a sessão sobrevive de uma
+ * jornada para a outra, como no aparelho dele. `persona` decide a legenda e o
+ * lado da tela; `perfil` decide de QUEM é o Chrome — uma conta, um perfil.
+ */
+export async function abrirCelular(persona, { jornada, limpar = false, perfil = persona } = {}) {
   const p = PERSONAS[persona];
-  const dirPerfil = path.join(AQUI, 'perfis', persona);
+  const dirPerfil = path.join(AQUI, 'perfis', perfil);
   if (limpar && existsSync(dirPerfil)) {
     const { rmSync } = await import('node:fs');
     rmSync(dirPerfil, { recursive: true, force: true });
   }
   const contexto = await chromium.launchPersistentContext(dirPerfil, {
     channel: 'chrome',
-    headless: false,
+    headless: RAPIDO,
     viewport: { width: 360, height: 740 },
     deviceScaleFactor: 2,
     isMobile: true,
@@ -201,7 +245,7 @@ export async function digitar(pagina, alvo, texto, rotulo = 'digitando') {
   await destacar(alvo, rotulo);
   await alvo.tap().catch(() => alvo.click());
   await alvo.fill('');
-  await alvo.pressSequentially(texto, { delay: 55 });
+  await alvo.pressSequentially(texto, { delay: RAPIDO ? 0 : 55 });
   await apagarDestaque(pagina, alvo);
   await esperar(300);
 }
@@ -329,6 +373,44 @@ export async function encerrar(contexto, pagina, estado, { manterAberto = 4000 }
   console.log(`  erros no console: ${estado.errosConsole.length} · mensagens interceptadas: ${estado.mensagensEnviadas.length}`);
   await esperar(manterAberto);
   await contexto.close();
+}
+
+/**
+ * ABRE O PAINEL JÁ LOGADO — e só faz login se o app pedir. Devolve `true`
+ * quando precisou entrar. `conta` é um item de `CONTAS` (`CONTAS.ze()`).
+ *
+ * O login acha o botão do e-mail por qualquer rótulo que ele já teve ("Usar
+ * email", "Entrar com e-mail", "Já tenho conta"): ele mudou três vezes em dois
+ * dias, e cada mudança quebrava as jornadas que tinham o texto escrito à mão.
+ */
+export async function garantirSessao(pagina, estado, conta) {
+  const { email, senha, painel = '/tio' } = conta;
+  const caminho = () => new URL(pagina.url()).pathname;
+  if (!caminho().startsWith(painel)) await pagina.goto(APP + painel);
+  // O app decide em segundos se a sessão vale: ou fica no painel, ou manda ao login.
+  await pagina
+    .waitForURL((u) => u.pathname === '/login' || u.pathname.startsWith(painel), { timeout: 20000 })
+    .catch(() => {});
+  await esperar(1200);
+  if (caminho() !== '/login') {
+    estado.sessao = 'ja-estava';
+    return false;
+  }
+  await passo(pagina, estado, `entra com ${email}`);
+  await responderCookies(pagina);
+  const abrirEmail = pagina.getByRole('button', { name: /^(Usar email|Entrar com e-?mail|Já tenho conta)$/i });
+  if (await abrirEmail.first().isVisible().catch(() => false)) await tocar(pagina, abrirEmail.first(), 'Usar email');
+  await pagina.getByLabel('Email', { exact: true }).fill(email);
+  await pagina.getByLabel('Senha', { exact: true }).fill(senha);
+  await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
+  await pagina.waitForURL((u) => u.pathname !== '/login', { timeout: 30000 }).catch(() => {
+    // O caso comum: a conta não existe no emulador (os dados foram apagados e
+    // o `semear-*.mjs` da jornada não rodou). Dizer isso poupa meia hora.
+    throw new Error(`Não entrou com ${email}: a conta existe no emulador? Rode o semear da jornada.`);
+  });
+  await esperar(1500);
+  estado.sessao = 'entrou';
+  return true;
 }
 
 /**

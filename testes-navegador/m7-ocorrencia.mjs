@@ -12,7 +12,7 @@
  * | motorista-encerra. O roteiro chamador roda as quatro em sequência.
  */
 import { readFileSync } from 'node:fs';
-import { abrirCelular, passo, tocar, registrar, encerrar, esperar, APP } from './lib.mjs';
+import { abrirCelular, passo, tocar, registrar, encerrar, esperar, APP, garantirSessao, CONTAS } from './lib.mjs';
 
 const ETAPA = process.env.ETAPA;
 const persona = ETAPA.startsWith('mae') ? 'responsavel' : 'motorista';
@@ -21,17 +21,7 @@ const m = (t) => passo(pagina, estado, t);
 const texto = () => pagina.evaluate(() => document.body.innerText.replace(/\n+/g, ' | '));
 
 async function entrar() {
-  if (new URL(pagina.url()).pathname !== '/login') return;
-  const email =
-    persona === 'motorista'
-      ? JSON.parse(readFileSync(new URL('./resultados/M1-cadastro/resumo.json', import.meta.url), 'utf8')).email
-      : readFileSync(new URL('./resultados/mae.txt', import.meta.url), 'utf8').trim();
-  const usarEmail = pagina.getByText(/^Usar email$/).first();
-  if (await usarEmail.isVisible().catch(() => false)) await tocar(pagina, usarEmail, 'Usar email');
-  await pagina.getByLabel('Email', { exact: true }).fill(email);
-  await pagina.getByLabel('Senha', { exact: true }).fill(persona === 'motorista' ? 'perua123' : 'mariana123');
-  await tocar(pagina, pagina.locator('form button[type=submit]').first(), 'Entrar');
-  await esperar(5000);
+  await garantirSessao(pagina, estado, persona === 'motorista' ? CONTAS.ze() : CONTAS.mariana());
 }
 
 try {
