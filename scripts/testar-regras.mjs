@@ -562,6 +562,7 @@ async function main() {
   await aLeituraDoDonoNosNiveisEAuxiliares({ novato, dono, anon });
   await oRegistroDoDono({ novato, dono, anon });
   await asVagasDaPerua({ novato, dono, anon });
+  await oRegistroDaRota({ novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -4278,6 +4279,77 @@ async function asVagasDaPerua({ novato, dono, anon }) {
   checar(BL, 'anônimo não lê', 'NEGA', await ler(CF, anon));
   checar(BL, 'novato não lê', 'NEGA', await ler(CF, novato));
   checar(BL, 'SONDA: M lê o próprio configFinanceiro', 'PASSA', await ler(CF, M));
+}
+
+/**
+ * O REGISTRO DA ROTA (05/10/2026) — `registroDaRota/{tio}_{AAAA-MM-DD}`,
+ * escrito só pelo servidor. GET para o tio e para a auxiliar com o par ATIVO;
+ * LIST negado a todos. Casos escritos ANTES da regra.
+ */
+async function oRegistroDaRota({ novato, dono, anon }) {
+  console.log('\n=== O REGISTRO DA ROTA (05/10/2026) ===');
+  const BL = 'registroDaRota';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const M = await criarLogin(`rr.m.${agora}@teste.local`);
+  const O = await criarLogin(`rr.o.${agora}@teste.local`);
+  const X = await criarLogin(`rr.x.${agora}@teste.local`);
+  const Y = await criarLogin(`rr.y.${agora}@teste.local`);
+  const Z = await criarLogin(`rr.z.${agora}@teste.local`);
+  const F = await criarLogin(`rr.f.${agora}@teste.local`);
+  await semear(`users/${M.uid}`, { role: S('admin'), name: S('Tio M') });
+  await semear(`users/${O.uid}`, { role: S('admin'), name: S('Tio O') });
+  await semear(`users/${X.uid}`, { role: S('auxiliar'), name: S('Aux X'), motoristaUids: L([S(M.uid)]) });
+  await semear(`users/${Y.uid}`, { role: S('auxiliar'), name: S('Aux Y'), motoristaUids: L([]) });
+  await semear(`users/${Z.uid}`, { role: S('auxiliar'), name: S('Aux Z'), motoristaUids: L([S(O.uid)]) });
+  await semear(`users/${F.uid}`, {
+    role: S('parent'), name: S('Familia de M'), adminUid: S(M.uid), adminUids: L([S(M.uid)]),
+  });
+  await semear(`auxiliares/${M.uid}_${X.uid}`, {
+    motoristaUid: S(M.uid), auxiliarUid: S(X.uid), nome: S('Aux X'), ativa: B(true),
+  });
+  await semear(`auxiliares/${M.uid}_${Y.uid}`, {
+    motoristaUid: S(M.uid), auxiliarUid: S(Y.uid), nome: S('Aux Y'), ativa: B(false),
+  });
+  await semear(`auxiliares/${O.uid}_${Z.uid}`, {
+    motoristaUid: S(O.uid), auxiliarUid: S(Z.uid), nome: S('Aux Z'), ativa: B(true),
+  });
+  const evento = (nome) => ({
+    mapValue: {
+      fields: {
+        em: T(0), auxiliarUid: S(X.uid), auxiliarNome: S('Aux X'), passo: S('onboard'),
+        viagem: S('ida'), criancaNome: S(nome), escola: S('Escola Sol'),
+      },
+    },
+  });
+  const RR = `registroDaRota/${M.uid}_2026-10-05`;
+  await semear(RR, {
+    motoristaUid: S(M.uid), dateKey: S('2026-10-05'), eventos: L([evento('Ana')]),
+  });
+
+  checar(BL, 'o tio M lê o registro do dia', 'PASSA', await ler(RR, M));
+  checar(BL, 'a auxiliar X (par ativo) lê o registro', 'PASSA', await ler(RR, X));
+  checar(BL, 'outro tio O não lê', 'NEGA', await ler(RR, O));
+  checar(BL, 'a auxiliar Y (par desativado) não lê', 'NEGA', await ler(RR, Y));
+  checar(BL, 'a auxiliar Z (de outro tio) não lê', 'NEGA', await ler(RR, Z));
+  checar(BL, 'a família F não lê', 'NEGA', await ler(RR, F));
+  checar(BL, 'novato não lê', 'NEGA', await ler(RR, novato));
+  checar(BL, 'o dono não lê', 'NEGA', await ler(RR, dono));
+  checar(BL, 'anônimo não lê', 'NEGA', await ler(RR, anon));
+  checar(BL, 'M não lista registroDaRota por motoristaUid', 'NEGA',
+    await consultar('registroDaRota', 'motoristaUid', M.uid, M));
+  checar(BL, 'M não lista registroDaRota sem filtro', 'NEGA', await listar('registroDaRota', M));
+  checar(BL, 'M não cria', 'NEGA', await criar('registroDaRota', `${M.uid}_2026-10-06`, M, {
+    motoristaUid: S(M.uid), dateKey: S('2026-10-06'), eventos: L([]),
+  }));
+  checar(BL, 'M não altera', 'NEGA',
+    await escrever(RR, M, { eventos: L([evento('Bia')]) }, ['eventos']));
+  checar(BL, 'M não apaga', 'NEGA', await apagar(RR, M));
+  checar(BL, 'a auxiliar X não acrescenta evento', 'NEGA',
+    await escrever(RR, X, { eventos: L([evento('Ana'), evento('Bia')]) }, ['eventos']));
+  checar(BL, 'o dono não cria', 'NEGA', await criar('registroDaRota', `${M.uid}_2026-10-07`, dono, {
+    motoristaUid: S(M.uid), dateKey: S('2026-10-07'), eventos: L([]),
+  }));
 }
 
 /**
