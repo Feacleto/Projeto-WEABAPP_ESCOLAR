@@ -37,7 +37,9 @@ import path from 'node:path';
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 // APP=http://127.0.0.1:5174 roda contra outro servidor (ex.: um vite novo,
 // quando o da 5173 ficou com o tailwind.config.js de antes).
-export const APP = process.env.APP || 'http://127.0.0.1:5173';
+// `APP_URL` é o nome que a P1 usava: aceito aqui também, para o login único
+// (`garantirSessao`) ir ao mesmo servidor que a jornada.
+export const APP = process.env.APP || process.env.APP_URL || 'http://127.0.0.1:5173';
 export const SITE = 'http://127.0.0.1:4321';
 const AXE = path.resolve(AQUI, '../node_modules/axe-core/axe.min.js');
 
