@@ -128,7 +128,7 @@ checar('a tela pública não devolve telefone nem valor', false,
   /telefone|valorMensal/.test(servidor.slice(servidor.indexOf('function makeVerConviteDeAuxiliar'), servidor.indexOf('function makeAceitarConviteDeAuxiliar')).split('return {').slice(-1)[0]));
 
 console.log('\n6. nenhuma tela da auxiliar mostra valor');
-for (const tela of ['src/pages/auxiliar/AuxHoje.jsx', 'src/pages/auxiliar/AuxPerfil.jsx', 'src/pages/auxiliar/AuxLayout.jsx', 'src/pages/ConviteAuxiliar.jsx']) {
+for (const tela of ['src/pages/auxiliar/AuxHoje.jsx', 'src/pages/auxiliar/AuxFoto.jsx', 'src/pages/auxiliar/AuxPerfil.jsx', 'src/pages/auxiliar/AuxLayout.jsx', 'src/pages/ConviteAuxiliar.jsx']) {
   const s = semComentarios(ler(tela));
   checar(`${tela.split('/').pop()} não imprime valor`, false, /R\$|formatCurrency|monthlyFee|amount/.test(s));
 }
@@ -160,6 +160,15 @@ const hojeDela = ler('src/pages/auxiliar/AuxHoje.jsx');
 checar('a tela dela lê a cópia, nunca children', [true, false],
   [hojeDela.includes('useTurmaDaAuxiliar'), /useChildren|watchChildren|collection\(db, 'children'/.test(hojeDela)]);
 checar('quando a última auxiliar sai, a cópia some', true, servidor.includes('apagarTurmaDaAuxiliar(db, uid)'));
+// F1.5: ela posta a foto da turma e precisa saber quem tem o "sim" da família.
+checar('a cópia leva o "sim" da foto da turma (booleano)', true, R.CAMPOS_DA_TURMA_DA_AUXILIAR.includes('fotoDaTurmaConsentida'));
+checar('e o recorte o carrega', [true, false],
+  [R.recorteParaAuxiliar({ ...criancaCompleta, fotoDaTurmaConsentida: true }).fotoDaTurmaConsentida,
+    R.recorteParaAuxiliar({ ...criancaCompleta, fotoDaTurmaConsentida: false }).fotoDaTurmaConsentida]);
+const fotoDela = ler('src/pages/auxiliar/AuxFoto.jsx');
+checar('a tela da foto lê a cópia, nunca children', [true, false],
+  [fotoDela.includes('useTurmaDaAuxiliar'), /useChildren|watchChildren|collection\(db, 'children'/.test(fotoDela)]);
+checar('ela posta só para as famílias', [true, false], [fotoDela.includes('PUBLICO.FAMILIAS'), fotoDela.includes('PUBLICO.PARCEIROS')]);
 
 console.log('\n8. ela marca na rota, só para a frente (fase 3)');
 checar('ida: em casa → na perua', true, R.passoValido('home', 'onboard'));

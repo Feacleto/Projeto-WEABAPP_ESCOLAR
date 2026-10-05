@@ -122,4 +122,4 @@ async function exigirDono(db, request) {
   return uid;
 }
 
-module.exports = { exigirMotorista, exigirMotoristaOuAuxiliar, exigirAuxiliar, exigirDono, ehDono, ehMotorista };
+module.exports = { carregarUsuario, exigirMotorista, exigirMotoristaOuAuxiliar, exigirAuxiliar, exigirDono, ehDono, ehMotorista };

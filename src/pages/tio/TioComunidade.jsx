@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { School, Send, Trash2, Users } from 'lucide-react';
+import { School, Send, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
@@ -10,12 +10,12 @@ import Button from '../../components/common/Button';
 import PublicarFoto from '../../components/comunidade/PublicarFoto';
 import NotaDasFamilias from '../../components/comunidade/NotaDasFamilias';
 import IndicarParceiro from '../../components/comunidade/IndicarParceiro';
+import FotoNaLista from '../../components/comunidade/FotoNaLista';
 import PedidosParaVoce from '../../components/transferencia/PedidosParaVoce';
-import { apagarFotoDaTurma, meusParceiros, pedirSimDaFoto } from '../../services/comunidadeService';
+import { meusParceiros, pedirSimDaFoto } from '../../services/comunidadeService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import {
   PUBLICO,
-  quandoSome,
   quemFaltaResponder,
   rotuloDoParceiro,
   semContaParaPerguntar,
@@ -40,6 +40,10 @@ import {
  *
  * FASE 1 DA REDE (05/10/2026): as escolas de cada parceiro, o aviso ao
  * parceiro indicado e o "Perguntar às famílias" do sim da foto.
+ *
+ * F1.5 (05/10/2026): a AUXILIAR também posta para as famílias, em nome dele
+ * (pelo app dela, em /aux/foto). A foto aparece aqui como dele, com
+ * "Postada pela Cida", e ele pode apagá-la.
  */
 export default function TioComunidade() {
   const { user } = useAuth();
@@ -248,55 +252,11 @@ function ListaDeFotos({ fotos, vazio = null }) {
   return (
     <ul className="space-y-3">
       {fotos.map((f) => (
-        <FotoNaLista key={f.id} foto={f} />
+        // Só as do próprio tio vêm com `caminho` (as dos parceiros chegam
+        // pela callable, sem ele): é o que decide se há "Apagar". A que a
+        // auxiliar postou também é dele, e mostra "Postada pela Cida".
+        <FotoNaLista key={f.id} foto={f} podeApagar={!!f.caminho} />
       ))}
     </ul>
-  );
-}
-
-function FotoNaLista({ foto }) {
-  const [apagando, setApagando] = useState(false);
-  const expira = foto.expiraEm?.toMillis?.() || foto.expiraEmMs || 0;
-  // Só as do próprio tio vêm com `caminho` (as dos parceiros chegam pela
-  // callable, sem ele): é o que decide se há "Apagar".
-  const minha = !!foto.caminho;
-
-  const apagar = async () => {
-    if (!window.confirm('Apagar esta foto agora? As famílias deixam de ver.')) return;
-    setApagando(true);
-    try {
-      await apagarFotoDaTurma(foto.id);
-      toast.success('Foto apagada.');
-    } catch (err) {
-      toast.error(err.message || 'Não deu para apagar.');
-      setApagando(false);
-    }
-  };
-
-  return (
-    <li className="overflow-hidden rounded-2xl bg-card">
-      <img src={foto.url} alt={`Foto: ${foto.epoca}`} className="h-52 w-full object-cover" loading="lazy" />
-      <div className="flex items-center justify-between gap-2 p-3">
-        <span className="min-w-0">
-          <span className="block truncate text-base font-bold text-text">
-            {foto.autor ? `${foto.autor} · ` : ''}
-            {foto.epoca}
-          </span>
-          {foto.legenda && <span className="block text-sm text-text">{foto.legenda}</span>}
-          <span className="block text-sm text-textMuted">{quandoSome(expira)}</span>
-        </span>
-        {minha && (
-          <button
-            type="button"
-            onClick={apagar}
-            disabled={apagando}
-            className="flex min-h-12 shrink-0 items-center gap-1 rounded-xl border-2 border-border px-3 text-base font-bold text-text"
-          >
-            <Trash2 size={18} aria-hidden="true" />
-            Apagar
-          </button>
-        )}
-      </div>
-    </li>
   );
 }

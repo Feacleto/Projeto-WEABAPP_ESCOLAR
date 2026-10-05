@@ -157,5 +157,60 @@ eq('das escolas do parceiro, só o nome', /select\('nome'\)/.test(srvComunidade)
 eq('o aviso da foto só sai para as famílias, não para os parceiros',
   /if \(d\.publico === PUBLICO\.FAMILIAS\) await avisarFamiliasDaFoto/.test(srvComunidade), true);
 
+console.log('\n\x1b[1m10. F1.5: a auxiliar posta, para as famílias, em nome do tio\x1b[0m');
+eq('o tio publica em nome próprio, na pasta dele',
+  srv.quemPublica({ papel: 'admin', uid: 'tio', publico: 'parceiros' }), { ok: true, tioUid: 'tio', pastaUid: 'tio', pelaAuxiliar: false });
+eq('a auxiliar publica para as famílias, em nome do tio, da pasta dela',
+  srv.quemPublica({ papel: 'auxiliar', uid: 'cida', tioUid: 'tio', publico: 'familias' }), { ok: true, tioUid: 'tio', pastaUid: 'cida', pelaAuxiliar: true });
+eq('a auxiliar NÃO publica para os tios parceiros',
+  srv.quemPublica({ papel: 'auxiliar', uid: 'cida', tioUid: 'tio', publico: 'parceiros' }).ok, false);
+eq('a auxiliar sem dizer a perua, não', srv.quemPublica({ papel: 'auxiliar', uid: 'cida', publico: 'familias' }).ok, false);
+eq('a auxiliar em nome dela mesma, não', srv.quemPublica({ papel: 'auxiliar', uid: 'cida', tioUid: 'cida', publico: 'familias' }).ok, false);
+eq('família não publica', srv.quemPublica({ papel: 'parent', uid: 'mae', tioUid: 'tio', publico: 'familias' }).ok, false);
+const vinc = { motoristaUid: 'tio', auxiliarUid: 'cida', ativa: true };
+eq('vínculo ativo do par vale', srv.vinculoDaAuxiliarVale(vinc, 'tio', 'cida'), true);
+eq('sem vínculo, não', srv.vinculoDaAuxiliarVale(null, 'tio', 'cida'), false);
+eq('vínculo desativado, não', srv.vinculoDaAuxiliarVale({ ...vinc, ativa: false }, 'tio', 'cida'), false);
+eq('vínculo de outra auxiliar, não', srv.vinculoDaAuxiliarVale(vinc, 'tio', 'bia'), false);
+eq('vínculo com outro tio, não', srv.vinculoDaAuxiliarVale(vinc, 'outro', 'cida'), false);
+eq('o caminho dela é aceito na pasta DELA', srv.caminhoValido('cida', 'fotosDaTurma/cida/a1b2c3d4e5f6.jpg'), true);
+eq('e não na pasta do tio', srv.caminhoValido('cida', 'fotosDaTurma/tio/a1b2c3d4e5f6.jpg'), false);
+eq('a cópia vai para a pasta do tio, com o mesmo nome',
+  srv.caminhoNaPastaDoTio('fotosDaTurma/cida/a1b2c3d4e5f6.jpg', 'cida', 'tio'), 'fotosDaTurma/tio/a1b2c3d4e5f6.jpg');
+eq('caminho fora da pasta dela não vira cópia', srv.caminhoNaPastaDoTio('fotosDaTurma/bia/a1b2c3d4e5f6.jpg', 'cida', 'tio'), null);
+const aut = srv.autoriaDaFoto({ pelaAuxiliar: true, uid: 'cida', nome: 'Aparecida Souza', tioUid: 'tio' });
+eq('no doc que a família lê, só o primeiro nome dela', aut.naFoto, { postadaPorNome: 'Aparecida' });
+eq('o uid dela NUNCA vai no doc da família', ['postadaPor' in aut.naFoto, Object.values(aut.naFoto).includes('cida')], [false, false]);
+eq('o uid mora no registro só do servidor', aut.registro, { postadaPor: 'cida', adminUid: 'tio' });
+eq('foto do tio não tem autoria', srv.autoriaDaFoto({ pelaAuxiliar: false, uid: 'tio' }), { naFoto: {}, registro: null });
+const fotoAux = { adminUid: 'tio', postadaPorNome: 'Aparecida' };
+const reg = { postadaPor: 'cida', adminUid: 'tio' };
+eq('o tio apaga a que ela postou', srv.podeApagar(fotoAux, reg, { uid: 'tio', papel: 'admin' }), true);
+eq('a autora apaga a dela', srv.podeApagar(fotoAux, reg, { uid: 'cida', papel: 'auxiliar' }), true);
+eq('outra auxiliar, não', srv.podeApagar(fotoAux, reg, { uid: 'bia', papel: 'auxiliar' }), false);
+eq('a auxiliar não apaga foto do tio (sem registro)', srv.podeApagar(fotoAux, null, { uid: 'cida', papel: 'auxiliar' }), false);
+eq('outro tio, não', srv.podeApagar(fotoAux, reg, { uid: 'outro', papel: 'admin' }), false);
+eq('registro de outra foto não vale', srv.podeApagar(fotoAux, { postadaPor: 'cida', adminUid: 'outro' }, { uid: 'cida', papel: 'auxiliar' }), false);
+eq('o "sim" dela é a régua do tio (uid do TIO)',
+  srv.validarPublicacao({ ...base, uid: 'tio', criancas: ['a', 'c'] }).semSim, ['c']);
+const avisoFoto = srv.avisoDaFoto('Tio Nino', 'Natal');
+eq('o aviso às famílias leva a marca do tio', avisoFoto.title, 'Tio Nino postou a foto da turma');
+eq('e nenhum nome dela', /Aparecida|auxiliar/i.test(avisoFoto.title + avisoFoto.body), false);
+const pub = srvComunidade.slice(srvComunidade.indexOf('function makePublicarFotoDaTurma'), srvComunidade.indexOf('async function criarSeNaoExiste'));
+eq('o servidor confere o vínculo do par e a conta do tio', [pub.includes('vinculoDaAuxiliarVale('), pub.includes('exigirContaDoMotoristaOperando(db, tioUid)')], [true, true]);
+eq('o tioUid passa pela régua dos ids', pub.includes('idValido(tioUid)'), true);
+eq('o doc leva o adminUid do TIO', pub.includes('adminUid: tioUid'), true);
+eq('o doc nunca grava postadaPor', /postadaPor\s*:/.test(pub), false);
+eq('o aviso sai em nome do tio', pub.includes('avisarFamiliasDaFoto(db, tioUid, d.epoca)'), true);
+eq('o "sim" conferido com o uid do tio', pub.includes('uid: tioUid,'), true);
+eq('a cópia vai para a pasta do tio e o original sai', [pub.includes('origem.copy(arquivo)'), pub.includes('origem.delete(')], [true, true]);
+eq('foto e registro de autoria nascem no mesmo lote', pub.includes('lote.set(db.doc(`${AUTORIA}/${ref.id}`)'), true);
+const apagarSrv = srvComunidade.slice(srvComunidade.indexOf('async function apagarFoto'), srvComunidade.indexOf('function makeApagarFotoDaTurma'));
+eq('apagar (inclusive a limpeza dos 30 dias) leva o registro junto', apagarSrv.includes('${AUTORIA}/${ref.id}'), true);
+eq('"as minhas fotos" da auxiliar saem do registro, pela callable',
+  /function makeMinhasFotosDaTurma[\s\S]*exigirAuxiliar[\s\S]*collection\(AUTORIA\)\.where\('postadaPor', '==', uid\)/.test(srvComunidade), true);
+const servicoApp = fs.readFileSync('src/services/comunidadeService.js', 'utf8');
+eq('o app não consulta foto por quem postou', /where\('postadaPor'/.test(servicoApp), false);
+
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);

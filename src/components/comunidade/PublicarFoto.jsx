@@ -22,8 +22,12 @@ import {
  *
  * ⚠️ PARA OS PARCEIROS, NENHUMA CRIANÇA: a lista some e fica só a
  * declaração "nesta foto não aparece nenhuma criança".
+ *
+ * F1.5: a AUXILIAR usa o mesmo formulário pela conta dela. `uid` é a pasta
+ * de quem sobe (a dela) e `tioUid` é o tio em nome de quem a foto sai; ela
+ * só posta para as famílias, e a `turma` é a CÓPIA dela (que traz o "sim").
  */
-export default function PublicarFoto({ uid, publico, turma = [], onPronto }) {
+export default function PublicarFoto({ uid, tioUid = null, publico, turma = [], onPronto }) {
   const [arquivo, setArquivo] = useState(null);
   const [previa, setPrevia] = useState(null);
   const [epoca, setEpoca] = useState('');
@@ -59,7 +63,7 @@ export default function PublicarFoto({ uid, publico, turma = [], onPronto }) {
   const publicar = async () => {
     setEnviando(true);
     try {
-      await publicarFotoDaTurma(uid, arquivo, { publico, criancas: marcadas, epoca, legenda: legenda.trim(), todasMarcadas, semCrianca });
+      await publicarFotoDaTurma(uid, arquivo, { publico, criancas: marcadas, epoca, legenda: legenda.trim(), todasMarcadas, semCrianca, tioUid });
       toast.success(paraFamilias ? 'Foto publicada para as famílias.' : 'Foto publicada para os tios parceiros.');
       onPronto?.();
     } catch (err) {
@@ -171,7 +175,7 @@ export default function PublicarFoto({ uid, publico, turma = [], onPronto }) {
       {!pronta.ok && <p className="text-sm text-textMuted">{pronta.motivo}</p>}
       <Button onClick={publicar} disabled={!pronta.ok || enviando}>
         <Check size={18} aria-hidden="true" />
-        {enviando ? 'Publicando…' : paraFamilias ? 'Publicar para as minhas famílias' : 'Publicar para os tios parceiros'}
+        {enviando ? 'Publicando…' : paraFamilias ? (tioUid ? 'Publicar para as famílias' : 'Publicar para as minhas famílias') : 'Publicar para os tios parceiros'}
       </Button>
     </div>
   );

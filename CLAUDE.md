@@ -215,7 +215,7 @@ não esconde campo): lê `turmaDaAuxiliar/{motoristaUid}` (subcoleções
 `criancas` e `faltas`), uma CÓPIA que o servidor mantém com uma LISTA FECHADA
 de campos (`CAMPOS_DA_TURMA_DA_AUXILIAR`) — copiada no aceite, mantida pelos
 gatilhos `espelharCriancaParaAuxiliar`/`espelharFaltaParaAuxiliar` e apagada
-quando não sobra auxiliar ativa. A falta vai sem o recado.
+quando não sobra auxiliar ativa. A falta vai sem o recado. Desde a F1.5 ela também posta a FOTO DA TURMA para as famílias do tio, em nome dele (`/aux/foto`; ver "Comunidade" nas Cloud Functions).
 ⚠️ **ELA MARCA PELO SERVIDOR** (`marcarParadaPelaAuxiliar`, numa transação):
 só para a frente (`passoValido`), o `rides` ganha `marcadoPelaAuxiliar`, e a
 família recebe o mesmo aviso da marcação do motorista. Desfazer é dele. Marca
@@ -707,6 +707,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `indicesEconomicos` (`ipca`, `selic`, `dolar`; só o servidor escreve, motorista lê) ·
 `fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
 `fotosDaBase` (a foto diária da base, um doc por dia de Brasília, só números; só o servidor escreve, só o dono lê) ·
+`autoriaDaFotoDaTurma` (quem postou, quando foi a auxiliar; só o servidor) ·
 `avaliacoesDoTio` (a nota da família ao tio; só ela lê a dela, o tio não lê nenhuma) ·
 `transferenciasDeFamilia` (passar a família a um tio parceiro; os dois tios leem, a família só com `familiaVe`, só o servidor escreve) ·
 `appState`
@@ -1735,7 +1736,7 @@ rota entra nessa lista na mesma alteração.
 Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 
 - **Comunidade (05/10/2026, etapas 1 e 2):** `publicarFotoDaTurma`,
-  `apagarFotoDaTurma`, `meusParceiros`, `minhaNotaDasFamilias`,
+  `apagarFotoDaTurma`, `minhasFotosDaTurma` (F1.5, a auxiliar), `meusParceiros`, `minhaNotaDasFamilias`,
   `avisarParceiroIndicado` (fase 1 da rede) e a agendada
   `limparFotosVencidas`
   ([comunidade.js](functions/lib/comunidade.js), régua em
@@ -1750,6 +1751,17 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `fotosDaTurma/{uid}/` no Storage, que ninguém lê; o link só sai pela
   callable. A família responde "Pode aparecer em foto da turma?" no Início
   (enquanto não respondeu) e na ficha. Política 1.4 (seção 4, base 5.g).
+  ⚠️ **A AUXILIAR TAMBÉM POSTA (F1.5, 05/10/2026), SÓ PARA AS FAMÍLIAS e em
+  nome do tio** (`/aux/foto`, a linha "Foto da turma" no Hoje dela): com o
+  vínculo do par ativo e a conta do tio operando; ela sobe para a PRÓPRIA
+  pasta (`fotosDaTurma/{auxUid}/`) e a callable COPIA para a do tio e apaga o
+  original. O doc leva `adminUid` do tio e só `postadaPorNome` (o primeiro
+  nome — a família lê o doc inteiro); o uid dela mora em
+  `autoriaDaFotoDaTurma/{fotoId}` (só o servidor). O aviso leva a marca do
+  tio; ele vê "Postada pela Cida" e apaga; ela apaga a dela até desativada,
+  e vê as suas por `minhasFotosDaTurma`. O "sim" vem da cópia da turma
+  (`fotoDaTurmaConsentida` entrou na lista fechada) e é conferido de novo
+  sobre `children`.
   **Etapa 2 (05/10/2026):** em cada parceiro, "Indicar para uma família"
   abre o WhatsApp DELA com o nome e o contato do colega (`meusParceiros`
   devolve o WhatsApp) — indicação que ela aceita, NUNCA transferência; nada

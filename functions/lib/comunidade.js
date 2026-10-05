@@ -13,6 +13,14 @@
  *   escopada por dono nas rules — abri-la entregaria a base inteira.
  * - `limparFotosVencidas`: agendada, apaga documento e arquivo vencidos.
  *
+ * F1.5 (05/10/2026): A AUXILIAR TAMBÉM POSTA, para as famílias, em nome do
+ * tio. Ela sobe o arquivo para a PRÓPRIA pasta (`fotosDaTurma/{auxUid}/…`);
+ * `publicarFotoDaTurma` confere o vínculo do par e a conta do tio, COPIA o
+ * arquivo para a pasta do tio e apaga o original. O documento leva o
+ * `adminUid` do tio e só o primeiro nome dela; o uid dela fica em
+ * `autoriaDaFotoDaTurma/{fotoId}`, que só o servidor lê. `apagarFotoDaTurma`
+ * aceita o tio e a autora; `minhasFotosDaTurma` devolve à auxiliar as dela.
+ *
  * FASE 1 DA REDE (05/10/2026): `meusParceiros` passa a dizer as escolas de
  * cada parceiro, `avisarParceiroIndicado` avisa o parceiro que o tio o
  * indicou a uma família (sem dado nenhum dela), e a foto da turma para as
@@ -26,11 +34,18 @@ const { logger } = require('firebase-functions/v2');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
 const LIMITES = require('./limites');
-const { exigirMotorista } = require('./papeis');
+const { carregarUsuario, exigirAuxiliar, exigirMotorista } = require('./papeis');
+const { exigirContaDoMotoristaOperando } = require('./auxiliares');
+const { idDoVinculo } = require('./reguaDoAuxiliar');
 const { idValido } = require('./reguaDosIds');
 const {
   PUBLICO,
   caminhoValido,
+  quemPublica,
+  vinculoDaAuxiliarVale,
+  caminhoNaPastaDoTio,
+  autoriaDaFoto,
+  podeApagar,
   validarPublicacao,
   parceirosDe,
   expiraEmMs,
@@ -47,6 +62,9 @@ const {
 
 const REGION = 'southamerica-east1';
 const COLECAO = 'fotosDaTurma';
+// Quem postou, pelo uid, quando foi a auxiliar. Só o servidor lê e escreve:
+// o documento da foto a família lê inteiro, e o uid dela não é da conta dela.
+const AUTORIA = 'autoriaDaFotoDaTurma';
 
 function linkDeLeitura(bucket, caminho, token) {
   const host = process.env.FIREBASE_STORAGE_EMULATOR_HOST
@@ -57,9 +75,25 @@ function linkDeLeitura(bucket, caminho, token) {
 
 function makePublicarFotoDaTurma(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
-    const uid = await exigirMotorista(db, request);
+    const { uid, dados: quem } = await carregarUsuario(db, request);
     const d = request.data || {};
-    if (!caminhoValido(uid, d.caminho)) throw new HttpsError('invalid-argument', 'A foto não chegou. Tente de novo.');
+    // Quem publica e em nome de quem: o tio publica em nome próprio; a
+    // auxiliar, só para as famílias e em nome do tio que ela diz.
+    const autor = quemPublica({ papel: quem?.role, uid, tioUid: d.tioUid, publico: d.publico });
+    if (!autor.ok) throw new HttpsError('permission-denied', autor.erro);
+    const { tioUid, pastaUid, pelaAuxiliar } = autor;
+    if (pelaAuxiliar) {
+      // O id vira caminho de documento: passa pela régua antes.
+      if (!idValido(tioUid)) throw new HttpsError('invalid-argument', 'De qual perua é a foto?');
+      const vinculo = await db.doc(`auxiliares/${idDoVinculo(tioUid, uid)}`).get();
+      if (!vinculoDaAuxiliarVale(vinculo.exists ? vinculo.data() : null, tioUid, uid)) {
+        throw new HttpsError('permission-denied', 'O seu acesso a esta perua foi encerrado pelo motorista.');
+      }
+      // Ela escreve com o Admin SDK por cima das rules: conta trancada do
+      // tio não publica pela auxiliar (o mesmo predicado do `isAdmin()`).
+      await exigirContaDoMotoristaOperando(db, tioUid);
+    }
+    if (!caminhoValido(pastaUid, d.caminho)) throw new HttpsError('invalid-argument', 'A foto não chegou. Tente de novo.');
 
     // Id que não passa na régua não vira caminho (e a validação recusa a
     // lista por estar errada, em vez de publicar sem a criança).
@@ -69,7 +103,7 @@ function makePublicarFotoDaTurma(db) {
     const turma = Object.fromEntries(docs.filter((s) => s.exists).map((s) => [s.id, s.data()]));
     const legenda = typeof d.legenda === 'string' ? d.legenda.trim() : null;
     const v = validarPublicacao({
-      uid,
+      uid: tioUid,
       publico: d.publico,
       criancas,
       epoca: d.epoca,
@@ -81,26 +115,58 @@ function makePublicarFotoDaTurma(db) {
     if (!v.ok) throw new HttpsError('failed-precondition', v.erro, v.semSim ? { semSim: v.semSim } : undefined);
 
     const bucket = getStorage().bucket();
-    const arquivo = bucket.file(d.caminho);
-    const [existe] = await arquivo.exists();
+    const origem = bucket.file(d.caminho);
+    const [existe] = await origem.exists();
     if (!existe) throw new HttpsError('not-found', 'A foto não chegou. Tente de novo.');
+
+    // O arquivo da auxiliar vai para a pasta do TIO. Se a cópia falhar, nada
+    // é publicado: o original fica na pasta dela, sem link, inerte (ninguém
+    // lê `fotosDaTurma/` pelo Storage).
+    let caminho = d.caminho;
+    let arquivo = origem;
+    if (pelaAuxiliar) {
+      caminho = caminhoNaPastaDoTio(d.caminho, pastaUid, tioUid);
+      if (!caminho) throw new HttpsError('invalid-argument', 'A foto não chegou. Tente de novo.');
+      arquivo = bucket.file(caminho);
+      try {
+        await origem.copy(arquivo);
+      } catch (err) {
+        logger.warn('comunidade: cópia da foto da auxiliar falhou', { uid, tioUid, erro: err?.message });
+        throw new HttpsError('unavailable', 'Não deu para publicar agora. Tente de novo.');
+      }
+      try {
+        await origem.delete({ ignoreNotFound: true });
+      } catch (err) {
+        // O original fica inerte (sem link): perder a faxina não desfaz a foto.
+        logger.warn('comunidade: original da auxiliar não apagado', { uid, erro: err?.message });
+      }
+    }
     const token = crypto.randomUUID();
     await arquivo.setMetadata({ metadata: { firebaseStorageDownloadTokens: token } });
 
     const agora = Date.now();
+    const expiraEm = Timestamp.fromMillis(expiraEmMs(agora));
     const ref = db.collection(COLECAO).doc();
-    await ref.set({
-      adminUid: uid,
+    const autoria = autoriaDaFoto({ pelaAuxiliar, uid, nome: quem?.name, tioUid });
+    const lote = db.batch();
+    lote.set(ref, {
+      adminUid: tioUid,
       publico: d.publico,
       criancas,
       epoca: d.epoca,
       legenda: legenda || null,
-      caminho: d.caminho,
-      url: linkDeLeitura(bucket, d.caminho, token),
+      caminho,
+      url: linkDeLeitura(bucket, caminho, token),
+      ...autoria.naFoto,
       criadaEm: FieldValue.serverTimestamp(),
-      expiraEm: Timestamp.fromMillis(expiraEmMs(agora)),
+      expiraEm,
     });
-    if (d.publico === PUBLICO.FAMILIAS) await avisarFamiliasDaFoto(db, uid, d.epoca);
+    // O registro e a foto nascem juntos: foto da auxiliar sem registro seria
+    // uma foto que ela não consegue apagar.
+    if (autoria.registro) lote.set(db.doc(`${AUTORIA}/${ref.id}`), { ...autoria.registro, expiraEm });
+    await lote.commit();
+    // O aviso leva a MARCA do tio (lida do doc dele), nunca o nome dela.
+    if (d.publico === PUBLICO.FAMILIAS) await avisarFamiliasDaFoto(db, tioUid, d.epoca);
     return { id: ref.id };
   });
 }
@@ -153,20 +219,62 @@ async function apagarFoto(db, ref, dados) {
   } catch (err) {
     logger.warn('comunidade: arquivo não apagado', { id: ref.id, erro: err?.message });
   }
-  await ref.delete();
+  // O registro de autoria vai junto (quando não existe, o delete é inócuo).
+  const lote = db.batch();
+  lote.delete(ref);
+  lote.delete(db.doc(`${AUTORIA}/${ref.id}`));
+  await lote.commit();
 }
 
 function makeApagarFotoDaTurma(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
-    const uid = await exigirMotorista(db, request);
+    const { uid, dados: quem } = await carregarUsuario(db, request);
     const id = request.data?.id;
     // Todo id vindo do cliente passa pela régua antes de virar caminho.
     if (!idValido(id)) throw new HttpsError('invalid-argument', 'Foto não encontrada.');
     const ref = db.doc(`${COLECAO}/${id}`);
-    const snap = await ref.get();
-    if (!snap.exists || snap.data().adminUid !== uid) throw new HttpsError('not-found', 'Foto não encontrada.');
+    const [snap, autoria] = await Promise.all([ref.get(), db.doc(`${AUTORIA}/${id}`).get()]);
+    // O tio apaga tudo o que está no nome dele; a auxiliar, só o que postou
+    // (inclusive desativada — o porquê está em `podeApagar`).
+    const pode = snap.exists && podeApagar(snap.data(), autoria.exists ? autoria.data() : null, { uid, papel: quem?.role });
+    if (!pode) throw new HttpsError('not-found', 'Foto não encontrada.');
     await apagarFoto(db, ref, snap.data());
     return { ok: true };
+  });
+}
+
+/**
+ * AS FOTOS QUE A AUXILIAR POSTOU e ainda estão no ar (F1.5). Callable, e
+ * não consulta do cliente: o uid dela mora em `autoriaDaFotoDaTurma`, que
+ * ninguém lê pelo app — e abrir `fotosDaTurma` à auxiliar por um campo do
+ * documento seria pôr o uid dela onde a família lê. Vale desativada: ela
+ * apaga a dela até os 30 dias.
+ */
+function makeMinhasFotosDaTurma(db) {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+    const uid = await exigirAuxiliar(db, request);
+    const agoraMs = Date.now();
+    const registros = await db.collection(AUTORIA).where('postadaPor', '==', uid).limit(40).get();
+    const vivos = registros.docs.filter((s) => (s.get('expiraEm')?.toMillis?.() || 0) > agoraMs);
+    if (!vivos.length) return { fotos: [] };
+    const fotos = await db.getAll(...vivos.map((s) => db.doc(`${COLECAO}/${s.id}`)));
+    return {
+      fotos: fotos
+        .filter((s) => s.exists)
+        .map((s) => {
+          const f = s.data();
+          return {
+            id: s.id,
+            adminUid: f.adminUid,
+            epoca: f.epoca,
+            legenda: f.legenda || null,
+            url: f.url,
+            expiraEmMs: f.expiraEm?.toMillis?.() || null,
+            criadaEmMs: f.criadaEm?.toMillis?.() || null,
+          };
+        })
+        .sort((x, y) => (y.criadaEmMs || 0) - (x.criadaEmMs || 0)),
+    };
   });
 }
 
@@ -318,6 +426,7 @@ function makeLimparFotosVencidas(db) {
 module.exports = {
   makePublicarFotoDaTurma,
   makeApagarFotoDaTurma,
+  makeMinhasFotosDaTurma,
   makeMeusParceiros,
   makeLimparFotosVencidas,
   makeMinhaNotaDasFamilias,

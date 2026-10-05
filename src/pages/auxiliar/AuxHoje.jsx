@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Phone, MessageCircle, School, Wallet } from 'lucide-react';
+import { Camera, Phone, MessageCircle, School, Wallet } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
@@ -44,6 +44,10 @@ import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaO
  * `rotaDaPeruaRodando`). O outro botão fica, desabilitado, com a frase. E
  * cada botão e a faixa ganham a cor do tio (`marcaCor` do doc dele, pela
  * mesma `paletaDaMarca` do app, que garante a leitura); sem cor, o verde.
+ *
+ * F1.5: "Foto da turma", em contorno, logo abaixo da turma — de manhã ela já
+ * está aqui. Leva a /aux/foto, onde ela posta para as famílias da perua
+ * escolhida no topo. O cheio da tela continua sendo a marcação.
  */
 const ROTULO_DO_STATUS = {
   home: 'Em casa',
@@ -190,6 +194,15 @@ export default function AuxHoje() {
             )}
           </section>
         ))}
+
+        <button
+          type="button"
+          onClick={() => navigate('/aux/foto')}
+          className="tap flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-card text-base font-bold text-primary"
+        >
+          <Camera size={20} aria-hidden="true" />
+          Foto da turma
+        </button>
 
         <PixDaPerua perfil={motorista} />
         <p className="px-1 text-sm text-textMuted">

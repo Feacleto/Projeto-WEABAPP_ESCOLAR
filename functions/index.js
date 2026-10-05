@@ -212,6 +212,7 @@ exports.imagemDoCartao = makeImagemDoCartao(db);
 const {
   makePublicarFotoDaTurma,
   makeApagarFotoDaTurma,
+  makeMinhasFotosDaTurma,
   makeMeusParceiros,
   makeLimparFotosVencidas,
   makeMinhaNotaDasFamilias,
@@ -219,6 +220,9 @@ const {
 } = require('./lib/comunidade');
 exports.publicarFotoDaTurma = makePublicarFotoDaTurma(db);
 exports.apagarFotoDaTurma = makeApagarFotoDaTurma(db);
+// F1.5: a auxiliar também posta (para as famílias, em nome do tio), e esta
+// devolve a ela as fotos que postou e ainda estão no ar.
+exports.minhasFotosDaTurma = makeMinhasFotosDaTurma(db);
 exports.meusParceiros = makeMeusParceiros(db);
 exports.limparFotosVencidas = makeLimparFotosVencidas(db);
 // Etapa 2: a nota que as famílias dão ao tio (só ele vê, só a média fechada).

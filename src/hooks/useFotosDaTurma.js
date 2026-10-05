@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { watchFotosDaTurma, watchMinhasFotos } from '../services/comunidadeService';
+import { useCallback, useEffect, useState } from 'react';
+import { minhasFotosDaTurma, watchFotosDaTurma, watchMinhasFotos } from '../services/comunidadeService';
 
 /**
  * As fotos da turma "para as famílias" do motorista (`adminUid`) que ainda
@@ -31,4 +31,24 @@ export function useMinhasFotos(uid) {
     );
   }, [uid]);
   return snap.chave === uid ? snap.fotos : null;
+}
+
+/**
+ * As fotos que a AUXILIAR postou e ainda estão no ar (F1.5). Não é escuta:
+ * vem de uma callable, então a tela chama `recarregar` depois de publicar ou
+ * apagar. `null` enquanto carrega; erro vira lista vazia.
+ */
+export function useFotosQueEuPostei() {
+  const [estado, setEstado] = useState({ vez: 0, fotos: null });
+  const recarregar = useCallback(() => setEstado((e) => ({ vez: e.vez + 1, fotos: e.fotos })), []);
+  useEffect(() => {
+    let vivo = true;
+    minhasFotosDaTurma()
+      .then((fotos) => vivo && setEstado((e) => ({ ...e, fotos })))
+      .catch(() => vivo && setEstado((e) => ({ ...e, fotos: [] })));
+    return () => {
+      vivo = false;
+    };
+  }, [estado.vez]);
+  return { fotos: estado.fotos, recarregar };
 }

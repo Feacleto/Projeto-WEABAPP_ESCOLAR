@@ -138,6 +138,10 @@ const CAMPOS_DA_TURMA_DA_AUXILIAR = [
   'horaPega', 'horaEntrega', 'period', 'pickupPeriod', 'dropoffPeriod',
   'parentName', 'parentPhone',
   'status', 'statusUpdatedAt', 'active',
+  // F1.5: o "sim" da família para a foto da turma (booleano). A auxiliar
+  // posta a foto em nome do tio e precisa saber quem pode aparecer; quem
+  // CONFERE de novo é o servidor, sobre `children`.
+  'fotoDaTurmaConsentida',
 ];
 
 /** O recorte de uma criança para a auxiliar. `null` se ela não deve aparecer. */

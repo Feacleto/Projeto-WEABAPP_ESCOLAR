@@ -81,6 +81,8 @@ const AuxLayout = lazy(() => import('./pages/auxiliar/AuxLayout'));
 const AuxHoje = lazy(() => import('./pages/auxiliar/AuxHoje'));
 const AuxPerfil = lazy(() => import('./pages/auxiliar/AuxPerfil'));
 const AuxPagamentos = lazy(() => import('./pages/auxiliar/AuxPagamentos'));
+// F1.5: a auxiliar posta a foto da turma para as famílias, em nome do tio.
+const AuxFoto = lazy(() => import('./pages/auxiliar/AuxFoto'));
 const TioAuxiliar = lazy(() => import('./pages/tio/TioAuxiliar'));
 const TioSubstitutas = lazy(() => import('./pages/tio/TioSubstitutas'));
 // "Sua perua" (03/10/2026): abastecer fica FORA da senha (/tio/abastecer — a
@@ -841,6 +843,7 @@ export default function App() {
       >
         <Route index element={<AuxHoje />} />
         <Route path="pagamentos" element={<AuxPagamentos />} />
+        <Route path="foto" element={<AuxFoto />} />
         <Route path="perfil" element={<AuxPerfil />} />
       </Route>
 

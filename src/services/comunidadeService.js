@@ -37,7 +37,12 @@ function idDoArquivo() {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function publicarFotoDaTurma(uid, arquivo, { publico, criancas, epoca, legenda, todasMarcadas, semCrianca }) {
+/**
+ * `uid` é a PASTA de quem sobe (o tio, ou a auxiliar na pasta dela).
+ * `tioUid` só vem quando quem posta é a AUXILIAR (F1.5): a foto sai em nome
+ * daquele tio, e o servidor copia o arquivo para a pasta dele.
+ */
+export async function publicarFotoDaTurma(uid, arquivo, { publico, criancas, epoca, legenda, todasMarcadas, semCrianca, tioUid }) {
   if (!STORAGE_ENABLED) throw new Error(STORAGE_OFF_MESSAGE);
   exigirCloud('publicar a foto');
   const blob = await resizeAndCompress(arquivo, LADO_DA_FOTO);
@@ -52,6 +57,7 @@ export async function publicarFotoDaTurma(uid, arquivo, { publico, criancas, epo
       legenda: legenda || null,
       todasMarcadas: !!todasMarcadas,
       semCrianca: !!semCrianca,
+      ...(tioUid ? { tioUid } : {}),
     });
     return data;
   } catch (err) {
@@ -65,6 +71,20 @@ export async function apagarFotoDaTurma(id) {
     await httpsCallable(functions, 'apagarFotoDaTurma')({ id });
   } catch (err) {
     throw new Error(mensagemDeErro(err, 'apagar a foto'), { cause: err });
+  }
+}
+
+/**
+ * As fotos que a AUXILIAR postou e ainda estão no ar (F1.5). Pela callable:
+ * quem postou mora num registro que só o servidor lê.
+ */
+export async function minhasFotosDaTurma() {
+  exigirCloud('ver as suas fotos');
+  try {
+    const { data } = await httpsCallable(functions, 'minhasFotosDaTurma')({});
+    return data?.fotos || [];
+  } catch (err) {
+    throw new Error(mensagemDeErro(err, 'ver as suas fotos'), { cause: err });
   }
 }
 

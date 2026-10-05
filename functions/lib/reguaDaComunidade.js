@@ -45,6 +45,91 @@ function caminhoValido(uid, caminho) {
   return /^[A-Za-z0-9_-]{6,40}\.(jpg|jpeg|png|webp)$/.test(caminho.slice(prefixo.length));
 }
 
+/* ── A AUXILIAR POSTA EM NOME DO TIO (F1.5, 05/10/2026) ─────────────────
+ *
+ * A auxiliar com o vínculo do PAR ativo posta a foto da turma pela conta
+ * dela, para as famílias daquele tio. As regras:
+ *
+ * - SÓ PARA AS FAMÍLIAS. A aba dos tios parceiros é conversa entre tios (a
+ *   parceria nasce da indicação, que é dele); ela não fala ali.
+ * - A FOTO É DO TIO: o documento leva `adminUid` = o tio (é o que as rules da
+ *   família e a escuta dela leem) e o aviso às famílias leva a MARCA dele.
+ * - ⚠️ A FAMÍLIA LÊ O DOCUMENTO INTEIRO (regra não esconde campo), então nele
+ *   vai SÓ o primeiro nome dela (`postadaPorNome`), nunca o uid. Quem postou,
+ *   pelo uid, mora em `autoriaDaFotoDaTurma/{fotoId}` — coleção que só o
+ *   servidor lê e escreve (rules `if false`). É por ali que ela apaga a dela
+ *   e vê as que postou. Era possível guardar o uid nos metadados do arquivo
+ *   no Storage, mas metadado não se consulta: "as fotos que eu postei" viraria
+ *   varrer a pasta de cada tio dela.
+ * - O ARQUIVO SOBE PARA A PASTA DELA (`fotosDaTurma/{auxUid}/…`), e o
+ *   servidor o COPIA para a pasta do tio e apaga o original. Assim a pasta
+ *   dele nunca abre para ela no Storage, e a limpeza continua por pasta do tio.
+ * - O "sim" de cada família é a mesma régua do tio (`validarPublicacao` com o
+ *   uid do TIO), conferida no servidor sobre `children`.
+ */
+
+/**
+ * Quem está publicando, e em nome de quem. `papel` é o `role` de quem chamou.
+ * Devolve `{ ok: true, tioUid, pastaUid, pelaAuxiliar }` ou `{ ok: false, erro }`.
+ * O vínculo do par é conferido à parte (`vinculoDaAuxiliarVale`): precisa do
+ * banco.
+ */
+function quemPublica({ papel, uid, tioUid, publico } = {}) {
+  if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (papel === 'admin') return { ok: true, tioUid: uid, pastaUid: uid, pelaAuxiliar: false };
+  if (papel !== 'auxiliar') return { ok: false, erro: 'Esta ação é do motorista ou da auxiliar.' };
+  if (publico !== PUBLICO.FAMILIAS) return { ok: false, erro: 'Para os tios parceiros, quem posta é o motorista.' };
+  if (typeof tioUid !== 'string' || !tioUid || tioUid === uid) return { ok: false, erro: 'De qual perua é a foto?' };
+  return { ok: true, tioUid, pastaUid: uid, pelaAuxiliar: true };
+}
+
+/** O vínculo `auxiliares/{tio}_{aux}` vale para postar? Só ativo e do par. */
+function vinculoDaAuxiliarVale(vinculo, tioUid, auxUid) {
+  return !!vinculo && vinculo.ativa === true && vinculo.motoristaUid === tioUid && vinculo.auxiliarUid === auxUid;
+}
+
+/**
+ * Para onde o arquivo vai: o mesmo nome, na pasta do tio. `null` se o
+ * caminho de origem não for válido na pasta de quem subiu.
+ */
+function caminhoNaPastaDoTio(caminho, pastaUid, tioUid) {
+  if (!caminhoValido(pastaUid, caminho) || !tioUid) return null;
+  return `fotosDaTurma/${tioUid}/${caminho.slice(`fotosDaTurma/${pastaUid}/`.length)}`;
+}
+
+/**
+ * A autoria, em duas partes que moram em lugares diferentes:
+ * `naFoto` vai no documento que a família lê (só o primeiro nome);
+ * `registro` vai em `autoriaDaFotoDaTurma`, que só o servidor lê (o uid).
+ * Foto do próprio tio não tem autoria: `{ naFoto: {}, registro: null }`.
+ */
+function autoriaDaFoto({ pelaAuxiliar, uid, nome, tioUid } = {}) {
+  if (!pelaAuxiliar) return { naFoto: {}, registro: null };
+  const primeiro = String(nome || '').trim().split(/\s+/)[0].slice(0, 30) || null;
+  return {
+    naFoto: { postadaPorNome: primeiro },
+    registro: { postadaPor: uid, adminUid: tioUid },
+  };
+}
+
+/**
+ * Pode apagar? O tio apaga tudo o que está no nome dele (inclusive o que a
+ * auxiliar postou); a auxiliar apaga só o que ELA postou — conferido pelo
+ * registro de autoria, nunca por um campo do documento da família.
+ *
+ * ⚠️ ELA APAGA A DELA MESMO DEPOIS DE DESATIVADA, de propósito: a imagem foi
+ * publicada por ela, e tirar do ar o que se publicou não pode depender de
+ * continuar empregada — senão a única saída seria pedir ao ex-patrão. Apagar
+ * só tira do ar (nada novo aparece para ninguém), e o prazo de 30 dias tira
+ * sozinho de qualquer jeito.
+ */
+function podeApagar(foto, autoria, { uid, papel } = {}) {
+  if (!foto || !uid) return false;
+  if (papel === 'admin' && foto.adminUid === uid) return true;
+  if (papel === 'auxiliar' && autoria && autoria.postadaPor === uid && autoria.adminUid === foto.adminUid) return true;
+  return false;
+}
+
 /**
  * Pode publicar? `turma` é um mapa childId → documento da criança (lido pelo
  * servidor). Devolve `{ ok: true }` ou `{ ok: false, erro, semSim? }`.
@@ -248,6 +333,11 @@ module.exports = {
   MAX_CRIANCAS,
   LEGENDA_MAX,
   caminhoValido,
+  quemPublica,
+  vinculoDaAuxiliarVale,
+  caminhoNaPastaDoTio,
+  autoriaDaFoto,
+  podeApagar,
   validarPublicacao,
   parceirosDe,
   expiraEmMs,
