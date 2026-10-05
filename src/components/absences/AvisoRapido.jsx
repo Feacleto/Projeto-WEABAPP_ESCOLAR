@@ -9,6 +9,7 @@ import {
 } from '../../services/absencesService';
 import { getDateKey, horaCurta, horariosCombinados } from '../../dominio/rota/horarios';
 import { dataDaChave } from '../../dominio/rota/faltas.js';
+import RecadoDoDia from './RecadoDoDia';
 
 /**
  * O AVISO EM UM TOQUE — direto na home do responsável.
@@ -38,6 +39,10 @@ import { dataDaChave } from '../../dominio/rota/faltas.js';
  * de novo desfaz. Confirmação protegeria contra o toque errado, mas cobraria
  * um toque de todo mundo pra proteger de poucos — e o estrago aqui é
  * reversível em um segundo.
+ *
+ * O RECADO DO DIA (05/10/2026, decisão do dono): no fim do bloco, só com
+ * "Hoje" aceso, o campo "Recado para o tio (hoje)" (`RecadoDoDia`) — o tio o
+ * lê em âmbar na ficha rápida da rota.
  */
 export default function AvisoRapido({
   child,
@@ -256,6 +261,8 @@ export default function AvisoRapido({
             ? 'Um toque avisa o motorista na hora.'
             : `Um toque avisa o motorista agora — vale ${quandoPorExtenso(proximo, hoje)}.`}
       </p>
+
+      {dia === 'hoje' && hojeTemRota && <RecadoDoDia child={child} dateKey={hoje} />}
     </section>
   );
 }

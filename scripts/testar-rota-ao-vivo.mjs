@@ -25,9 +25,11 @@ import {
   rotuloDaVez,
 } from '../src/dominio/rota/zonasDaRota.js';
 import { fraseDoEvento, horaDoEvento, ultimosEventos, tituloDoRegistro } from '../src/dominio/rota/registroDaRota.js';
+import { RECADO_MAXIMO, DIAS_DO_RECADO, idDoRecado, textoDoRecado, letrasQueSobram, recadoDoDiaParaMostrar } from '../src/dominio/rota/recadoDoDia.js';
 
 const require = createRequire(import.meta.url);
 const RR = require('../functions/lib/reguaDoRegistroDaRota.js');
+const RD = require('../functions/lib/reguaDoRecadoDoDia.js');
 
 let ok = 0;
 let bad = 0;
@@ -191,8 +193,8 @@ console.log('\n6. a ficha da auxiliar não lê o que ela não vê');
     ['Recado de hoje', "'Busca hoje'", "'Combinado'", "'Responsável'", "'Endereço'", "'Saúde'", 'Ver ficha completa']
       .map((t) => tio.indexOf(t)).every((i, k, a) => i > -1 && (k === 0 || i > a[k - 1])));
   checar('a saúde vai com "Escrito pela família."', true, tio.includes('Escrito pela família.'));
-  checar('o recado do dia vem de UMA fonte: a declaração do dia (nunca o caderno)', [true, false],
-    [tio.includes('declaracao?.note'), /agenda/i.test(tio)]);
+  checar('o recado do dia vem de UMA fonte: recadosDoDia (nunca o note da falta, nunca o caderno)', [true, false, false],
+    [tio.includes('recadoDoDiaParaMostrar(recado, getDateKey())'), tio.includes('.note'), /agenda/i.test(tio)]);
   checar('a ficha do tio não abre escuta (nada de hook de leitura)', false, /use[A-Z]\w*\(/.test(tio.replace('useNavigate(', '')));
 }
 
@@ -206,8 +208,9 @@ console.log('\n7. o tio lê o registro com UMA escuta');
   checar('a rota passa os dados que já escuta, em vez de escutar de novo', [false, false, false],
     [/useChildren|useAbsences|useQuemBuscaHoje/.test(aoVivo), false, false]);
   const op = ler('src/components/route/OperacaoDaRota.jsx');
-  checar('a operação entrega fila, declarações e quem busca ao "ao vivo"', true,
-    /aoVivo\?\.\(\{[\s\S]*fila,[\s\S]*declaracoes,[\s\S]*quemBusca,/.test(op));
+  checar('a operação entrega fila, declarações, quem busca e os recados ao "ao vivo"', true,
+    /aoVivo\?\.\(\{[\s\S]*fila,[\s\S]*declaracoes,[\s\S]*quemBusca,[\s\S]*recados,/.test(op));
+  checar('os recados do dia são UMA consulta da turma na operação', true, op.includes('useRecadosDoDiaDaTurma(user?.uid, dateKey)'));
   checar('e continua com o rodapé da parada e o desfazer', true, op.includes('function BarraDaParada') && op.includes('voltarPasso'));
 }
 
@@ -234,6 +237,57 @@ console.log('\n9. a retenção de 7 dias');
   const ret = ler('functions/lib/retencaoDasViagens.js');
   checar('a agendada das viagens apaga o registro, por campo e em páginas', true,
     ret.includes('await apagarRegistrosAntigos(db)') && /collection\('registroDaRota'\)\s*\.where\('dateKey', '<', corte\)\s*\.limit\(/.test(ret));
+}
+
+console.log('\n10. o recado do dia da família (05/10/2026)');
+{
+  checar('140 letras', 140, RECADO_MAXIMO);
+  checar('texto vazio não é recado', false, textoDoRecado('').ok);
+  checar('só espaços não é recado', false, textoDoRecado('   \n  ').ok);
+  checar('141 letras não cabem', false, textoDoRecado('a'.repeat(141)).ok);
+  checar('140 cabem', true, textoDoRecado('a'.repeat(140)).ok);
+  checar('1 cabe', { ok: true, texto: 'x' }, textoDoRecado('x'));
+  checar('espaços repetidos viram um (a conta da tela é a da rule)', 'Sai às 11h hoje', textoDoRecado('  Sai   às 11h\n hoje ').texto);
+  checar('a contagem do que sobra', 130, letrasQueSobram('  0123456789 '));
+  checar('o id é o dia e a criança', '2026-10-05_c1', idDoRecado('2026-10-05', 'c1'));
+  checar('o recado só aparece no dia dele', ['Sai às 11h', '', ''],
+    [recadoDoDiaParaMostrar({ dateKey: '2026-10-05', texto: 'Sai às 11h' }, '2026-10-05'),
+      recadoDoDiaParaMostrar({ dateKey: '2026-10-04', texto: 'Sai às 11h' }, '2026-10-05'),
+      recadoDoDiaParaMostrar(null, '2026-10-05')]);
+  checar('7 dias, nos dois lados', [7, 7], [DIAS_DO_RECADO, RD.DIAS_DO_RECADO]);
+  checar('o corte do recado', '2026-09-28', RD.corteDoRecado(new Date(Date.UTC(2026, 9, 5, 12))));
+  checar('a régua do servidor não faz require', false, /require\(/.test(semComentarios(ler('functions/lib/reguaDoRecadoDoDia.js'))));
+  const ret = ler('functions/lib/retencaoDasViagens.js');
+  checar('a agendada das viagens apaga os recados, por campo e em páginas', true,
+    ret.includes('await apagarRecadosAntigos(db)') && /collection\('recadosDoDia'\)\s*\.where\('dateKey', '<', corte\)\s*\.limit\(/.test(ret));
+
+  const servico = semComentarios(ler('src/services/recadosDoDiaService.js'));
+  checar('o tio lê com UMA consulta: adminUid e dateKey', true,
+    /where\('adminUid', '==', adminUid\),\s*where\('dateKey', '==', dateKey\)/.test(servico));
+  checar('a edição muda só texto e atualizadoEm', true, servico.includes('updateDoc(ref, { texto: r.texto, atualizadoEm: serverTimestamp() })'));
+  checar('a criação leva adminUid e parentUid da CRIANÇA', true,
+    servico.includes('parentUid: child.parentUid || null') && servico.includes('adminUid: child.adminUid || null'));
+
+  const campo = ler('src/components/absences/RecadoDoDia.jsx');
+  const semC = semComentarios(campo);
+  checar('o campo "Recado para o tio (hoje)" existe', true, semC.includes('label="Recado para o tio (hoje)"'));
+  const iCampo = semC.indexOf('label="Recado para o tio (hoje)"');
+  const iFrase = semC.indexOf('Para saúde, use a ficha da criança.');
+  checar('a frase de saúde mora LOGO abaixo do campo, em 16px e muted', true,
+    iFrase > iCampo && iFrase - iCampo < 400 && /<p className="text-base text-textMuted">Para saúde, use a ficha da criança\.<\/p>/.test(semC));
+  checar('o campo tem o teto de 140', true, semC.includes('maxLength={RECADO_MAXIMO}'));
+  checar('o botão do recado é de contorno (o cheio do Início é a barra)', false, /bg-primary\b|bg-marca\b/.test(semC));
+  checar('o aviso rápido mostra o campo só com "Hoje"', true,
+    ler('src/components/absences/AvisoRapido.jsx').includes("{dia === 'hoje' && hojeTemRota && <RecadoDoDia child={child} dateKey={hoje} />}"));
+
+  // A AUXILIAR NÃO VÊ O RECADO: nenhuma tela, hook ou serviço dela o lê.
+  const daAuxiliar = ['src/pages/auxiliar/AuxHoje.jsx', 'src/pages/auxiliar/AuxFoto.jsx', 'src/pages/auxiliar/AuxLayout.jsx',
+    'src/pages/auxiliar/AuxPagamentos.jsx', 'src/pages/auxiliar/AuxPerfil.jsx', 'src/components/route/FichaRapidaDaAuxiliar.jsx',
+    'src/services/auxiliarService.js', 'src/hooks/useAuxiliares.js'];
+  checar('a auxiliar continua sem ler recadosDoDia', [],
+    daAuxiliar.filter((a) => /recadosDoDia|RecadosDoDia|useRecadoDoDia|RecadoDoDia/.test(semComentarios(ler(a)))));
+  checar('sonda: o padrão acha a leitura', true, /recadosDoDia|useRecadosDoDiaDaTurma/.test("collection(db, 'recadosDoDia')"));
+  checar('o servidor não copia o recado para a turma da auxiliar', false, /recadosDoDia/.test(ler('functions/lib/turmaDaAuxiliar.js')));
 }
 
 console.log(`\n${'═'.repeat(64)}`);

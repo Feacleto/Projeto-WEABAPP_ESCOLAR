@@ -751,6 +751,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `auxiliares` (o vínculo do PAR `{motorista}_{auxiliar}`, com os períodos; nunca apagado; os dois do par e o dono leem, ninguém escreve pelo cliente) ·
 `faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
+`recadosDoDia` (`{AAAA-MM-DD}_{childId}`: o recado curto da família ao tio sobre o dia; a família escreve o do próprio filho, o tio lê, a auxiliar não; dura 7 dias) ·
 `registroDaRota` (`{tio}_{AAAA-MM-DD}`: o que a auxiliar marcou no dia; só o servidor escreve, o tio e a auxiliar ativa do par leem por `get`, `list` negado; dura 7 dias) ·
 `acessosDeSubstituta` (o link de um dia da substituta, com o HASH do segredo; só o tio dele lê, nem o dono; escreve só o servidor) ·
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
@@ -1609,10 +1610,27 @@ criança das zonas (ou, na auxiliar, da lista) abre uma folha
 ordem: o RECADO DE HOJE em âmbar, quem busca hoje (senão "o responsável de
 sempre"), o combinado (pegar na ida, entregar na volta), o responsável com
 WhatsApp e Ligar, o endereço, a saúde ("Escrito pela família.") e "Ver
-ficha completa". ⚠️ O recado de hoje é UMA fonte só: o `note` de
-`absenceDeclarations/{hoje}_{criança}` — o caderno é o recado DELE para a
-família, não entra. ⚠️ Hoje nenhuma tela da família escreve esse `note`:
-o bloco existe e só aparece quando houver. Abrir a folha não abre escuta.
+ficha completa". ⚠️ **O RECADO DE HOJE É `recadosDoDia` (05/10/2026,
+decisão do dono)** — uma fonte só; o `note` da falta, que nenhuma tela
+gravava, saiu, e o caderno é o recado DELE para a família, não entra. A
+FAMÍLIA escreve no aviso rápido do Início, só com "Hoje" aceso
+([RecadoDoDia](src/components/absences/RecadoDoDia.jsx), dentro de
+`AvisoRapido`): "Recado para o tio (hoje)", 1 a 140 letras (régua em
+[recadoDoDia.js](src/dominio/rota/recadoDoDia.js)), mudar e apagar quando
+quiser, e embaixo "Para saúde, use a ficha da criança." (pedido do
+jurídico: o recado é texto livre, e a saúde tem consentimento próprio). O
+documento é `recadosDoDia/{dia}_{criança}` = `{ childId, parentUid,
+adminUid (da criança), dateKey, texto, criadoEm, atualizadoEm }`. O tio lê
+com UMA consulta da turma (`adminUid == ele` e `dateKey == hoje`, sem
+índice composto: duas igualdades) na `OperacaoDaRota`, passada pela
+`aoVivo`. A rule é a de `altPickups` com duas diferenças: o tio só LÊ
+(nunca escreve) e a auxiliar não lê; a família cria só com `adminUid` e
+`parentUid` da criança e o id `{dia}_{criança}`, edita só `texto` e
+`atualizadoEm`, e apaga (bloco `osRecadosDoDia` de `testar:regras`, escrito
+pela QA antes da rule). ⚠️ A auxiliar NÃO vê o recado (nem cópia, nem rule). Dura 7 dias
+(`apagarViagensAntigas`, prazo em
+[reguaDoRecadoDoDia.js](functions/lib/reguaDoRecadoDoDia.js)). Abrir a
+folha não abre escuta.
 **A auxiliar** ([FichaRapidaDaAuxiliar](src/components/route/FichaRapidaDaAuxiliar.jsx))
 vê a mesma folha SEM recado, endereço e saúde — só o que a cópia leva
 (primeiro nome, turma, escola, hora, responsável e telefone) e, desde
@@ -2151,7 +2169,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   ⚠️ **Ela exige o `fieldOverride` de `rides.dateKey` (COLLECTION_GROUP)** em
   firestore.indexes.json — sem ele a consulta falhava todo dia, calada.
   Também: `limparAvisosAntigos` (notifications com mais de 90 dias, às 4h).
-  E na mesma noite ela apaga o `registroDaRota` com mais de 7 dias (coleção
+  E na mesma noite ela apaga o `recadosDoDia` com mais de 7 dias (o recado
+  do dia da família) e o `registroDaRota` com mais de 7 dias (coleção
   de raiz: índice automático).
 - **As agendadas rodam UMA de cada vez** (03/10/2026): `maxInstances: 1`
   sozinho não serializava nada (cada instância aceita 80 pedidos); hoje é o par

@@ -32,6 +32,7 @@ import { useChildren } from '../../hooks/useChildren';
 import { useEscolas } from '../../hooks/useEscolas';
 import { useAbsences } from '../../hooks/useAbsences';
 import { useQuemBuscaHoje } from '../../hooks/useQuemBuscaHoje';
+import { useRecadosDoDiaDaTurma } from '../../hooks/useRecadosDoDia';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
 import {
   getActionForStatus,
@@ -133,6 +134,9 @@ export default function OperacaoDaRota({
   const dateKey = getDateKey();
   // Quem a família indicou para buscar hoje — aparece na entrega (ver abaixo).
   const quemBusca = useQuemBuscaHoje(user?.uid, dateKey);
+  // Os recados do dia da família (05/10/2026): UMA consulta para a turma,
+  // entregue à rota ao vivo pela `aoVivo` — a ficha rápida não abre escuta.
+  const recados = useRecadosDoDiaDaTurma(user?.uid, dateKey);
   // A MENSALIDADE EM ABERTO DE QUEM ESTÁ NA PORTA (04/10/2026). A rota é a
   // A rota é o lugar da auxiliar: ela vê o mês, nunca o valor (`MensalidadeNaPorta`).
   const { payments: pendentes } = useMensalidadesEmAberto();
@@ -1289,6 +1293,7 @@ export default function OperacaoDaRota({
           escolasPorId,
           declaracoes,
           quemBusca,
+          recados,
           vez: foco?.child?.id || null,
           rotaAtiva,
         })}

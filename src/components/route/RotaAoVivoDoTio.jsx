@@ -17,7 +17,8 @@ import FichaRapidaDoTio from './FichaRapidaDoTio';
  *   3. a ficha rápida de quem ele tocar nas zonas.
  *
  * Tudo o que é da turma chega por props, da `OperacaoDaRota` (ver `aoVivo`
- * lá): a fila, as declarações do dia e quem busca hoje. As duas escutas
+ * lá): a fila, as declarações do dia, quem busca hoje e os recados do dia
+ * da família. As duas escutas
  * próprias daqui são UMA consulta das auxiliares dele e UM documento do
  * registro do dia — nenhuma por criança.
  *
@@ -29,7 +30,7 @@ import FichaRapidaDoTio from './FichaRapidaDoTio';
  * zonas desenham tantos assentos quanto as crianças da viagem, como na tela
  * da auxiliar.
  */
-export default function RotaAoVivoDoTio({ fila, direcao, escolasPorId, declaracoes, quemBusca, vez }) {
+export default function RotaAoVivoDoTio({ fila, direcao, escolasPorId, quemBusca, recados, vez }) {
   const { user } = useAuth();
   const auxiliares = useAuxiliaresDoMotorista();
   const nomes = useMemo(
@@ -66,7 +67,7 @@ export default function RotaAoVivoDoTio({ fila, direcao, escolasPorId, declaraco
         <FichaRapidaDoTio
           item={item}
           direcao={direcao}
-          declaracao={declaracoes?.[item.child.id] || null}
+          recado={recados?.[item.child.id] || null}
           quemBusca={quemBusca?.[item.child.id] || null}
           onClose={() => setAberta(null)}
         />

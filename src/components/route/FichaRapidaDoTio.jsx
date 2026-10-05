@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import FichaRapida from './FichaRapida';
-import { horaCurta, horariosCombinados, ROTULO_ESTADO } from '../../dominio/rota/horarios';
+import { getDateKey, horaCurta, horariosCombinados, ROTULO_ESTADO } from '../../dominio/rota/horarios';
+import { recadoDoDiaParaMostrar } from '../../dominio/rota/recadoDoDia.js';
 import { rotuloDoLugar } from '../../dominio/rota/zonasDaRota.js';
 
 /**
@@ -12,29 +13,32 @@ import { rotuloDoLugar } from '../../dominio/rota/zonasDaRota.js';
  *   4. o responsável, com WhatsApp e Ligar;
  *   5. o endereço; 6. a saúde, se a família escreveu; 7. "Ver ficha completa".
  *
- * ⚠️ DE ONDE VEM O "RECADO DE HOJE" — UMA FONTE SÓ: o `note` da declaração do
- * dia (`absenceDeclarations/{hoje}_{criança}`), o único texto da FAMÍLIA que
- * é do dia. O caderno (`agendaEntries`) não entra: ele é o recado do
+ * ⚠️ DE ONDE VEM O "RECADO DE HOJE" — UMA FONTE SÓ, desde 05/10/2026:
+ * `recadosDoDia/{hoje}_{criança}`, o recado que a FAMÍLIA escreve no aviso
+ * rápido do Início ("Recado para o tio (hoje)"). Antes era o `note` da
+ * declaração de falta, que nenhuma tela gravava — o bloco existia e nunca
+ * aparecia. O caderno (`agendaEntries`) não entra: ele é o recado do
  * MOTORISTA para a família — mostrar a ele, como "recado", o que ele mesmo
  * escreveu seria confundir quem fala.
  *
  * ⚠️ NENHUMA LEITURA NOVA: tudo chega por props, do que a rota já escuta —
  * a turma (`useChildren`), as declarações do dia (`useAbsences`, uma
- * consulta para a turma) e quem busca hoje (`useQuemBuscaHoje`, uma consulta
+ * consulta para a turma), quem busca hoje (`useQuemBuscaHoje`, uma consulta
+ * para a turma) e os recados do dia (`useRecadosDoDiaDaTurma`, uma consulta
  * para a turma). Abrir a folha não abre escuta nenhuma.
  */
-export default function FichaRapidaDoTio({ item, direcao, declaracao, quemBusca, onClose }) {
+export default function FichaRapidaDoTio({ item, direcao, recado, quemBusca, onClose }) {
   const navigate = useNavigate();
   const child = item?.child;
   if (!child) return null;
   const ida = direcao !== 'volta';
   const { pega, entrega } = horariosCombinados(child);
-  const recado = String(declaracao?.note || '').trim();
+  const textoDoRecado = recadoDoDiaParaMostrar(recado, getDateKey());
   const fora = !!item.estado && item.estado !== 'normal';
   const responsavel = child.parentName || 'O responsável';
 
-  const aviso = recado
-    ? { titulo: 'Recado de hoje', texto: recado }
+  const aviso = textoDoRecado
+    ? { titulo: 'Recado de hoje', texto: textoDoRecado }
     : fora
       ? { titulo: 'Hoje', texto: ROTULO_ESTADO[item.estado] || 'Não vai hoje' }
       : null;

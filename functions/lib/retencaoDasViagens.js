@@ -3,6 +3,7 @@ const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const { apagarEmPaginas } = require('./reguaDasVarreduras');
 const { corteDoRegistro, DIAS_DO_REGISTRO } = require('./reguaDoRegistroDaRota');
+const { corteDoRecado, DIAS_DO_RECADO } = require('./reguaDoRecadoDoDia');
 
 const REGION = 'southamerica-east1';
 
@@ -91,6 +92,9 @@ function makeApagarViagensAntigas(db) {
       // das viagens já logadas: se ele falhar, o log das viagens já saiu.
       const registro = await apagarRegistrosAntigos(db);
       logger.info('[retencao] registros da rota antigos apagados', registro);
+      // O recado do dia da família (05/10/2026): 7 dias, na mesma noite.
+      const recados = await apagarRecadosAntigos(db);
+      logger.info('[retencao] recados do dia antigos apagados', recados);
       return null;
     }
   );
@@ -169,8 +173,36 @@ async function apagarRegistrosAntigos(db, { agora = new Date() } = {}) {
   return { corte, apagados, paginas, interrompido, diasDeRetencao: DIAS_DO_REGISTRO };
 }
 
+/**
+ * APAGA OS RECADOS DO DIA ANTIGOS — `recadosDoDia` com mais de 7 dias
+ * (decisão do dono, 05/10/2026). O recado serve no dia; depois é texto livre
+ * de uma família parado num lugar que ninguém lê. Coleção de raiz, consulta
+ * por um campo só (índice automático), em páginas como as viagens.
+ */
+async function apagarRecadosAntigos(db, { agora = new Date() } = {}) {
+  const corte = corteDoRecado(agora);
+  const { apagados, paginas, interrompido } = await apagarEmPaginas({
+    tamanho: LOTE,
+    buscar: async (tamanho) => {
+      const snap = await db
+        .collection('recadosDoDia')
+        .where('dateKey', '<', corte)
+        .limit(tamanho)
+        .get();
+      return snap.docs;
+    },
+    apagar: async (docs) => {
+      const lote = db.batch();
+      docs.forEach((d) => lote.delete(d.ref));
+      await lote.commit();
+    },
+  });
+  return { corte, apagados, paginas, interrompido, diasDeRetencao: DIAS_DO_RECADO };
+}
+
 module.exports = {
   makeApagarViagensAntigas,
+  apagarRecadosAntigos,
   apagarViagensAntigas,
   apagarRegistrosAntigos,
   corteDaRetencao,
