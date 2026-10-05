@@ -559,6 +559,7 @@ async function main() {
   await osNiveis({ tio1, tio2, pai1, dono, anon });
   await aFotoDaBase({ novato, dono, anon });
   await aLeituraDoDonoNosNiveisEAuxiliares({ novato, dono, anon });
+  await oRegistroDoDono({ novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -4058,6 +4059,78 @@ async function aFotoDaBase({ novato, dono, anon }) {
   checar(BL, 'o dono não apaga pelo cliente', 'NEGA', await apagar('fotosDaBase/2026-10-05', dono));
   checar(BL, 'motorista não cria', 'NEGA',
     await criar('fotosDaBase', '2026-10-07', moto, { rodaram7d: N(1) }));
+}
+
+/**
+ * O REGISTRO DE AÇÕES DO DONO E A SUSPENSÃO SÓ PELO SERVIDOR (05/10/2026) —
+ * `registroDoDono/{id}`: só o dono lê, ninguém escreve pelo cliente. E
+ * `suspenso`/`suspensoEm` deixam de ser escritos pelo cliente, dono incluído
+ * (a callable grava). Escrito ANTES da regra: os casos marcados HOJE VERMELHO
+ * ficam vermelhos até ela existir.
+ */
+async function oRegistroDoDono({ novato, dono, anon }) {
+  console.log('\n=== O REGISTRO DO DONO E A SUSPENSÃO PELO SERVIDOR (05/10/2026) ===');
+  const BL = 'registroDoDono';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const M = await criarLogin(`rd.m.${agora}@teste.local`);
+  const O = await criarLogin(`rd.o.${agora}@teste.local`);
+  const F = await criarLogin(`rd.f.${agora}@teste.local`);
+  const X = await criarLogin(`rd.x.${agora}@teste.local`);
+  await semear(`users/${M.uid}`, { role: S('admin'), name: S('Tio M') });
+  await semear(`users/${O.uid}`, { role: S('admin'), name: S('Tio O') });
+  await semear(`users/${F.uid}`, {
+    role: S('parent'), name: S('Familia de M'), adminUid: S(M.uid), adminUids: L([S(M.uid)]),
+  });
+  await semear(`users/${X.uid}`, { role: S('auxiliar'), name: S('Aux X'), motoristaUids: L([S(M.uid)]) });
+  await semear('registroDoDono/r1', {
+    em: T(0), donoUid: S(dono.uid), acao: S('suspender'), alvoUid: S(M.uid),
+    alvoPapel: S('motorista'), motivo: S('fraude'), grau: S('suspensao'),
+    mensagem: S('texto'), respostaAte: T(10),
+  });
+
+  checar(BL, 'o dono lê registroDoDono/r1', 'PASSA', await ler('registroDoDono/r1', dono));
+  checar(BL, 'o dono lista registroDoDono', 'PASSA', await listar('registroDoDono', dono));
+  checar(BL, 'o alvo M não lê r1', 'NEGA', await ler('registroDoDono/r1', M));
+  checar(BL, 'outro motorista O não lê r1', 'NEGA', await ler('registroDoDono/r1', O));
+  checar(BL, 'a família F não lê r1', 'NEGA', await ler('registroDoDono/r1', F));
+  checar(BL, 'a auxiliar X não lê r1', 'NEGA', await ler('registroDoDono/r1', X));
+  checar(BL, 'novato não lê r1', 'NEGA', await ler('registroDoDono/r1', novato));
+  checar(BL, 'anônimo não lê r1', 'NEGA', await ler('registroDoDono/r1', anon));
+  checar(BL, 'M não consulta o registro por alvoUid', 'NEGA',
+    await consultar('registroDoDono', 'alvoUid', M.uid, M));
+  checar(BL, 'o dono não cria pelo cliente', 'NEGA',
+    await criar('registroDoDono', 'r2', dono, { acao: S('suspender') }));
+  checar(BL, 'o dono não altera r1', 'NEGA',
+    await escrever('registroDoDono/r1', dono, { motivo: S('outro') }, ['motivo']));
+  checar(BL, 'o dono não apaga r1', 'NEGA', await apagar('registroDoDono/r1', dono));
+  checar(BL, 'M não cria', 'NEGA', await criar('registroDoDono', 'r3', M, { acao: S('x') }));
+
+  checar(BL, 'o dono não escreve users/{M}.suspenso pelo cliente', 'NEGA',
+    await escrever(`users/${M.uid}`, dono, { suspenso: B(true) }, ['suspenso']));
+  checar(BL, 'o dono não escreve users/{M}.suspensoEm pelo cliente', 'NEGA',
+    await escrever(`users/${M.uid}`, dono, { suspensoEm: T(0) }, ['suspensoEm']));
+  const S2 = await criarLogin(`rd.s.${agora}@teste.local`);
+  await semear(`users/${S2.uid}`, { role: S('admin'), name: S('Tio suspenso'), suspenso: B(true) });
+  checar(BL, 'o dono não reativa pelo cliente (suspenso=false)', 'NEGA',
+    await escrever(`users/${S2.uid}`, dono, { suspenso: B(false) }, ['suspenso']));
+  // SONDA: a nota interna continua sendo do dono, nos dois lugares onde ela vive.
+  checar(BL, 'SONDA: o dono escreve notaInterna em users/{M}', 'PASSA',
+    await escrever(`users/${M.uid}`, dono, { notaInterna: S('conversou') }, ['notaInterna']));
+  checar(BL, 'SONDA: o dono escreve notaInterna em taxaParceiros/{M}', 'PASSA',
+    await escrever(`taxaParceiros/${M.uid}`, dono, { notaInterna: S('conversou') }, ['notaInterna']));
+  // Semeia de novo: enquanto a regra nova não existe, o caso do dono acima
+  // REATIVA o S2 de verdade, e aí `suspenso: false` não mudaria nada — o
+  // 200 seria da escrita inócua, não de um furo.
+  await semear(`users/${S2.uid}`, { role: S('admin'), name: S('Tio suspenso'), suspenso: B(true) });
+  checar(BL, 'o suspenso não se reativa sozinho', 'NEGA',
+    await escrever(`users/${S2.uid}`, S2, { suspenso: B(false) }, ['suspenso']));
+
+  const st15 = await escrever(`taxaParceiros/${M.uid}`, dono, { suspensaoAte: T(10) }, ['suspensaoAte']);
+  console.log(`  [INFO] caso 15: dono escreve taxaParceiros/{M}.suspensaoAte -> status ${st15}`);
+  checar(BL, 'a família F não lê taxaParceiros/{M}', 'NEGA', await ler(`taxaParceiros/${M.uid}`, F));
+  const st17 = await ler(`taxaParceiros/${M.uid}`, M);
+  console.log(`  [INFO] caso 17: M lê taxaParceiros/{M} -> status ${st17}`);
 }
 
 /**
