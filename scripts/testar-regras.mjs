@@ -550,6 +550,7 @@ async function main() {
   await oCodigoDeIndicacao({ tio1 });
   await aAuxiliar({ pai1 });
   await aAuxiliarNoDinheiro({ pai1, novato, dono, anon });
+  await asAvaliacoesDaAuxiliar({ pai1, novato, dono, anon });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
@@ -829,6 +830,154 @@ async function aAuxiliar({ pai1 }) {
   checar(BL, 'recontratada, volta a ler o doc do primeiro tio', 'PASSA', await ler(`users/${moto.uid}`, aux));
   checar(BL, 'e a turma dele', 'PASSA', await ler(`${COPIA}/criancas/kidAux1`, aux));
   checar(BL, 'e o tio lê o vínculo com os dois períodos', 'PASSA', await ler(par(moto, aux), moto));
+}
+
+/**
+ * AS AVALIAÇÕES ENTRE O TIO E A AUXILIAR (05/10/2026, F4.4 e F4.5 da sessão
+ * negocio). Casos pedidos à QA:
+ *   - recomendacoesDeAuxiliar/{tio}_{aux}: o autor e ela leem nos três
+ *     estados; ninguém mais lê, nem a aprovada; o dono lê tudo, inclusive a
+ *     removida; removida, o autor e ela deixam de ler; a lista dos dois só
+ *     passa com `removida == false` na consulta; nenhum cliente escreve, nem
+ *     o dono;
+ *   - notasDaAuxiliarAoTio/{tio}_{aux}: só o dono lê; o tio não lê nem por
+ *     lista, e nem ela relê; nenhum cliente escreve.
+ * Atores PRÓPRIOS, para um 403 não ser herança de outro bloco.
+ */
+async function asAvaliacoesDaAuxiliar({ pai1, novato, dono, anon }) {
+  console.log('\n=== AS AVALIAÇÕES ENTRE O TIO E A AUXILIAR (05/10/2026) ===');
+  const BL = 'recomendacao';
+  const agora = Date.now();
+  const moto = await criarLogin(`rec.moto.${agora}@teste.local`);
+  const outroMoto = await criarLogin(`rec.outro.${agora}@teste.local`);
+  const aux = await criarLogin(`rec.aux.${agora}@teste.local`);
+  const auxOutra = await criarLogin(`rec.auxoutra.${agora}@teste.local`);
+  const L = (values) => ({ arrayValue: { values } });
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Rec') });
+  await semear(`users/${outroMoto.uid}`, { role: S('admin'), name: S('Outro Rec') });
+  for (const a of [aux, auxOutra]) {
+    await semear(`users/${a.uid}`, { role: S('auxiliar'), name: S('Cida'), motoristaUids: L([S(moto.uid)]) });
+    await semear(`auxiliares/${moto.uid}_${a.uid}`, {
+      motoristaUid: S(moto.uid), auxiliarUid: S(a.uid), nome: S('Cida'), ativa: B(true),
+    });
+  }
+
+  // A consulta com mais de uma condição: a lista dos dois só passa se a
+  // CONSULTA provar `removida == false` (regra não é filtro).
+  const consultarCom = (col, condicoes, s) =>
+    fetch(`${FS}:runQuery`, {
+      method: 'POST',
+      headers: H(s),
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: col }],
+          where: condicoes.length === 1
+            ? { fieldFilter: { field: { fieldPath: condicoes[0][0] }, op: 'EQUAL', value: condicoes[0][1] } }
+            : { compositeFilter: { op: 'AND', filters: condicoes.map(([campo, valor]) => ({
+              fieldFilter: { field: { fieldPath: campo }, op: 'EQUAL', value: valor },
+            })) } },
+          limit: 20,
+        },
+      }),
+    }).then((r) => r.status);
+
+  const REC = `recomendacoesDeAuxiliar/${moto.uid}_${aux.uid}`;
+  const RECOMENDACAO = (estado, removida = false) => ({
+    motoristaUid: S(moto.uid), auxiliarUid: S(aux.uid), estado: S(estado), removida: B(removida),
+    pontos: L([S('pontual')]), frase: S('Trabalha com cuidado.'), assinatura: S('Tio Rec'), criadaEm: T(0),
+    ...(estado === 'aprovada' ? { aprovadaEm: T(0) } : {}),
+  });
+
+  // 1. O autor e ela leem nos três estados.
+  for (const estado of ['pendente', 'aprovada', 'oculta']) {
+    await semear(REC, RECOMENDACAO(estado));
+    checar(BL, `${estado}: o tio que escreveu lê`, 'PASSA', await ler(REC, moto));
+    checar(BL, `${estado}: a auxiliar do documento lê`, 'PASSA', await ler(REC, aux));
+  }
+
+  // 2. Com a recomendação APROVADA, mais ninguém lê nesta etapa.
+  await semear(REC, RECOMENDACAO('aprovada'));
+  checar(BL, 'aprovada: outro motorista NÃO lê', 'NEGA', await ler(REC, outroMoto));
+  checar(BL, 'aprovada: o novato NÃO lê', 'NEGA', await ler(REC, novato));
+  checar(BL, 'aprovada: outra auxiliar do mesmo tio NÃO lê', 'NEGA', await ler(REC, auxOutra));
+  checar(BL, 'aprovada: a família NÃO lê', 'NEGA', await ler(REC, pai1));
+  checar(BL, 'aprovada: anônimo NÃO lê', 'NEGA', await ler(REC, anon));
+  checar(BL, 'aprovada: o dono lê', 'PASSA', await ler(REC, dono));
+
+  // 5, 6 e 7. As listas.
+  const nao = B(false);
+  checar(BL, 'a lista do tio com removida == false passa', 'PASSA',
+    await consultarCom('recomendacoesDeAuxiliar', [['motoristaUid', S(moto.uid)], ['removida', nao]], moto));
+  checar(BL, 'a lista dela com removida == false passa', 'PASSA',
+    await consultarCom('recomendacoesDeAuxiliar', [['auxiliarUid', S(aux.uid)], ['removida', nao]], aux));
+  checar(BL, 'a lista do tio SEM removida é recusada', 'NEGA',
+    await consultarCom('recomendacoesDeAuxiliar', [['motoristaUid', S(moto.uid)]], moto));
+  checar(BL, 'a lista dela SEM removida é recusada', 'NEGA',
+    await consultarCom('recomendacoesDeAuxiliar', [['auxiliarUid', S(aux.uid)]], aux));
+  checar(BL, 'outro motorista lista as do primeiro', 'NEGA',
+    await consultarCom('recomendacoesDeAuxiliar', [['motoristaUid', S(moto.uid)], ['removida', nao]], outroMoto));
+  checar(BL, 'outra auxiliar lista as da colega', 'NEGA',
+    await consultarCom('recomendacoesDeAuxiliar', [['auxiliarUid', S(aux.uid)], ['removida', nao]], auxOutra));
+  checar(BL, 'lista sem filtro nenhum é recusada ao tio', 'NEGA', await listar('recomendacoesDeAuxiliar', moto));
+  checar(BL, 'o dono lista todas', 'PASSA', await listar('recomendacoesDeAuxiliar', dono));
+
+  // 3 e 4. Removida pelo dono: só ele continua lendo.
+  await semear(REC, { ...RECOMENDACAO('aprovada', true), motivoDaRemocao: S('frase com contato') });
+  checar(BL, 'removida: o dono lê, com o motivo', 'PASSA', await ler(REC, dono));
+  checar(BL, 'removida: o tio que escreveu NÃO lê', 'NEGA', await ler(REC, moto));
+  checar(BL, 'removida: a auxiliar NÃO lê', 'NEGA', await ler(REC, aux));
+  checar(BL, 'removida: a lista do tio continua passando (sem ela)', 'PASSA',
+    await consultarCom('recomendacoesDeAuxiliar', [['motoristaUid', S(moto.uid)], ['removida', nao]], moto));
+  checar(BL, 'removida: o tio pede a lista das removidas', 'NEGA',
+    await consultarCom('recomendacoesDeAuxiliar', [['motoristaUid', S(moto.uid)], ['removida', B(true)]], moto));
+
+  // 8. Nenhum cliente escreve, nem o dono: são as callables.
+  await semear(REC, RECOMENDACAO('pendente'));
+  checar(BL, 'o tio cria uma recomendação pelo app', 'NEGA',
+    await criar('recomendacoesDeAuxiliar', `${moto.uid}_${auxOutra.uid}`, moto,
+      { motoristaUid: S(moto.uid), auxiliarUid: S(auxOutra.uid), estado: S('aprovada'), removida: nao }));
+  checar(BL, 'a auxiliar cria uma para si', 'NEGA',
+    await criar('recomendacoesDeAuxiliar', `${outroMoto.uid}_${aux.uid}`, aux,
+      { motoristaUid: S(outroMoto.uid), auxiliarUid: S(aux.uid), estado: S('aprovada'), removida: nao }));
+  checar(BL, 'o dono cria pelo app', 'NEGA',
+    await criar('recomendacoesDeAuxiliar', `${outroMoto.uid}_${auxOutra.uid}`, dono,
+      { motoristaUid: S(outroMoto.uid), auxiliarUid: S(auxOutra.uid), estado: S('aprovada'), removida: nao }));
+  checar(BL, 'o tio muda a frase pelo app', 'NEGA',
+    await escrever(REC, moto, { frase: S('Liga no 11987654321') }, ['frase']));
+  checar(BL, 'a auxiliar se aprova pelo app', 'NEGA',
+    await escrever(REC, aux, { estado: S('aprovada') }, ['estado']));
+  checar(BL, 'o tio ressuscita uma removida pelo app', 'NEGA',
+    await escrever(REC, moto, { removida: nao }, ['removida']));
+  checar(BL, 'o dono remove pelo app (é callable)', 'NEGA',
+    await escrever(REC, dono, { removida: B(true) }, ['removida']));
+  checar(BL, 'o tio apaga', 'NEGA', await apagar(REC, moto));
+  checar(BL, 'a auxiliar apaga', 'NEGA', await apagar(REC, aux));
+  checar(BL, 'o dono apaga', 'NEGA', await apagar(REC, dono));
+
+  // 9, 10 e 11. A nota dela ao tio: só a equipe vê.
+  const NOTA = `notasDaAuxiliarAoTio/${moto.uid}_${aux.uid}`;
+  await semear(NOTA, { motoristaUid: S(moto.uid), auxiliarUid: S(aux.uid), estrelas: { integerValue: '4' }, criadaEm: T(0) });
+  checar(BL, 'nota: o dono lê', 'PASSA', await ler(NOTA, dono));
+  checar(BL, 'nota: o dono lista', 'PASSA', await listar('notasDaAuxiliarAoTio', dono));
+  checar(BL, 'nota: o tio avaliado NÃO lê', 'NEGA', await ler(NOTA, moto));
+  checar(BL, 'nota: o tio NÃO lista as dele', 'NEGA',
+    await consultarCom('notasDaAuxiliarAoTio', [['motoristaUid', S(moto.uid)]], moto));
+  checar(BL, 'nota: a auxiliar NÃO relê a própria', 'NEGA', await ler(NOTA, aux));
+  checar(BL, 'nota: nem lista as dela', 'NEGA',
+    await consultarCom('notasDaAuxiliarAoTio', [['auxiliarUid', S(aux.uid)]], aux));
+  checar(BL, 'nota: outro motorista NÃO lê', 'NEGA', await ler(NOTA, outroMoto));
+  checar(BL, 'nota: a família NÃO lê', 'NEGA', await ler(NOTA, pai1));
+  checar(BL, 'nota: anônimo NÃO lê', 'NEGA', await ler(NOTA, anon));
+  checar(BL, 'nota: a auxiliar dá a nota pelo app', 'NEGA',
+    await criar('notasDaAuxiliarAoTio', `${outroMoto.uid}_${aux.uid}`, aux,
+      { motoristaUid: S(outroMoto.uid), auxiliarUid: S(aux.uid), estrelas: { integerValue: '1' } }));
+  checar(BL, 'nota: a auxiliar muda a nota pelo app', 'NEGA',
+    await escrever(NOTA, aux, { estrelas: { integerValue: '1' } }, ['estrelas']));
+  checar(BL, 'nota: o tio sobe a própria nota', 'NEGA',
+    await escrever(NOTA, moto, { estrelas: { integerValue: '5' } }, ['estrelas']));
+  checar(BL, 'nota: o tio apaga a nota dele', 'NEGA', await apagar(NOTA, moto));
+  checar(BL, 'nota: o dono escreve pelo app', 'NEGA',
+    await escrever(NOTA, dono, { estrelas: { integerValue: '5' } }, ['estrelas']));
 }
 
 /**
