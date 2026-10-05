@@ -26,7 +26,6 @@ import {
   Baby,
   Bus,
   ClipboardList,
-  UserRound,
 } from 'lucide-react';
 import IconePix from '../../components/common/IconePix';
 import toast from 'react-hot-toast';
@@ -44,6 +43,7 @@ import FolhaDeDespesa from '../../components/financeiro/FolhaDeDespesa';
 import InteressePorCartao from '../../components/tio/InteressePorCartao';
 import BlocoSuaPerua from '../../components/financeiro/BlocoSuaPerua';
 import PlanosFinanceiros from '../../components/financeiro/PlanosFinanceiros';
+import AuxiliarNaCentral from '../../components/auxiliar/AuxiliarNaCentral';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import { useViagemDoDia } from '../../hooks/useViagemDoDia';
 import { saidaDaViagem } from '../../dominio/rota/focoDaViagem.js';
@@ -1074,6 +1074,10 @@ export default function TioFinance() {
           />
         </section>
 
+        {/* 7b. AUXILIAR (05/10/2026) — um espaço próprio, parte da operação:
+          * a de agora, o convite e quem já trabalhou com ele. */}
+        <AuxiliarNaCentral />
+
         {/* 8. PERUA — "Sua perua" (abastecer, reserva, preciso aumentar). */}
         <BlocoSuaPerua criancas={turmaInteira} visiveis={visiveis} />
 
@@ -1125,15 +1129,6 @@ export default function TioFinance() {
             titulo="Despesas do mês"
             detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
             onClick={() => navigate('/tio/finance/expenses')}
-          />
-          {/* A AUXILIAR (05/10/2026): convidar, desativar e quem já
-            * trabalhou com ele. A conta dela é própria, no celular dela. */}
-          <Porta
-            divisor
-            icon={UserRound}
-            titulo="Auxiliar"
-            detalhe="Convidar, desativar e quem já trabalhou com você"
-            onClick={() => navigate('/tio/auxiliar')}
           />
           <Porta
             divisor

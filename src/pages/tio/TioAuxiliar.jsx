@@ -20,12 +20,15 @@ import {
 import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
 
 /**
- * A AUXILIAR, DO LADO DO MOTORISTA — `/tio/auxiliar` (05/10/2026, simulação
+ * A AUXILIAR, DO LADO DO MOTORISTA — `/tio/finance/auxiliar` (05/10/2026, simulação
  * "Aba Auxiliar do Motorista" aprovada pelo dono; fase 1).
  *
  * Aqui ele chama uma auxiliar nova (o link vai pelo WhatsApp e a conta dela
  * nasce ligada a ele), vê quem está ativa, desativa na hora e vê quem já
  * trabalhou com ele — a rotatividade dele, só para ele.
+ *
+ * Mora embaixo de `/tio/finance` (atrás da senha) desde a seção Auxiliar da
+ * Central: o pagamento dela vai pôr valores aqui.
  *
  * Fica para as próximas fases: o pagamento dela com "Recebi", a falta, a
  * substituta com o valor e a lista de substitutas.

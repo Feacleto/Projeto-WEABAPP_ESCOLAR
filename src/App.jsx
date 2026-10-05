@@ -716,7 +716,11 @@ export default function App() {
         <Route path="finance/boletim" element={<TioBoletim />} />
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="finance/turma" element={<TioTurma />} />
-        <Route path="auxiliar" element={<TioAuxiliar />} />
+        {/* A AUXILIAR (05/10/2026) mudou para baixo de /tio/finance: o
+          * pagamento dela põe valores ali, e o caminho já pede a senha. O
+          * endereço velho responde para link salvo não cair no vazio. */}
+        <Route path="finance/auxiliar" element={<TioAuxiliar />} />
+        <Route path="auxiliar" element={<Navigate to="/tio/finance/auxiliar" replace />} />
         <Route path="finance/reserva" element={<TioReserva />} />
         <Route path="finance/aumentar" element={<TioPrecisoAumentar />} />
         <Route path="finance/negocio" element={<TioNegocio />} />
