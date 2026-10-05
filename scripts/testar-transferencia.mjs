@@ -217,8 +217,22 @@ console.log('\n\x1b[1m10. A volta ao aceite depois de assinar (F2.4)\x1b[0m');
   eq('o sessionStorage tem try/catch nas três pontas', (volta.match(/try \{/g) || []).length, 3);
   eq('o pedido vai aos planos no state e no sessionStorage', pedidos.includes('guardarVolta(t.id)')
     && pedidos.includes("navigate('/tio/planos', { state: { voltarAoPedido: assinar } })"), true);
-  eq('os planos voltam ao pedido depois de contratar', /contratarPlano[\s\S]*lerVolta\(location\.state\)[\s\S]*navigate\(CAMINHO_DA_VOLTA, \{ state: \{ pedidoAberto: pedido \} \}\)/.test(planos), true);
-  eq('sem pedido, o caminho de sempre (o contrato)', planos.includes("else navigate('/tio/contrato-plataforma')"), true);
+  const contrato = fs.readFileSync('src/pages/tio/TioContratoAssociacao.jsx', 'utf8');
+  eq('os planos levam ao CONTRATO com o pedido, nunca direto à Comunidade',
+    planos.includes("navigate('/tio/contrato-plataforma', pedido ? { state: { voltarAoPedido: pedido } } : undefined)")
+    && !planos.includes('CAMINHO_DA_VOLTA'), true);
+  eq('é o aceite do contrato que volta ao pedido',
+    /await aceitarContrato\([\s\S]*lerVolta\(location\.state\)[\s\S]*navigate\(CAMINHO_DA_VOLTA, \{ replace: true, state: \{ pedidoAberto: pedido \} \}\)/.test(contrato), true);
+  eq('sem pedido, o fim de sempre (fica no contrato)', contrato.includes("toast.success('Contrato aceito. Uma cópia fica sempre aqui.')"), true);
+  eq('contrato já aceito para o plano: volta direto', contrato.includes('contratoFechaAssinatura(contrato, profile?.plano)'), true);
+  const { contratoFechaAssinatura } = await import('../src/components/transferencia/voltaAoAceite.js');
+  eq('fecha: aceito e com o mesmo plano', contratoFechaAssinatura({ aceitoEm: 1, conteudo: { plano: { id: 'mensal' } } }, 'mensal'), true);
+  eq('não fecha: contrato pendente', contratoFechaAssinatura({ aceitoEm: null, conteudo: { plano: { id: 'mensal' } } }, 'mensal'), false);
+  eq('não fecha: aceito para outro plano', contratoFechaAssinatura({ aceitoEm: 1, conteudo: { plano: { id: 'anual' } } }, 'mensal'), false);
+  eq('não fecha: sem plano', contratoFechaAssinatura({ aceitoEm: 1, conteudo: { plano: { id: 'mensal' } } }, null), false);
+  eq('o servidor confere só o plano, e o comentário diz que a tela leva ao contrato',
+    R.podeAceitarParceiro.toString().includes('ehPagante(parceiro)')
+    && fs.readFileSync('functions/lib/reguaDaTransferencia.js', 'utf8').includes('O SERVIDOR CONFERE SÓ O PLANO'), true);
   eq('a Comunidade abre na aba dos parceiros', comunidade.includes('location.state?.pedidoAberto ? PUBLICO.PARCEIROS'), true);
   eq('o pedido de volta aparece com o aviso', pedidos.includes('voltouPara === t.id && <p') && pedidos.includes('{AVISO_DA_VOLTA}'), true);
   // O aceite nunca é automático: responderTransferencia só no clique.

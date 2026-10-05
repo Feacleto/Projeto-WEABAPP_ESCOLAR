@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Check, Printer, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../../components/common/Card';
@@ -13,6 +14,11 @@ import {
   contratoVigente,
   aceitarContrato,
 } from '../../services/contratoAssociacaoService';
+import {
+  CAMINHO_DA_VOLTA,
+  contratoFechaAssinatura,
+  lerVolta,
+} from '../../components/transferencia/voltaAoAceite';
 
 /**
  * O CONTRATO COM A PLATAFORMA, DO LADO DO MOTORISTA.
@@ -31,6 +37,12 @@ import {
  * De propósito. Contrato pendente é assunto comercial, e travar a operação de
  * quem transporta criança por causa de papel é desproporcional — a mesma
  * razão pela qual vencimento de vigência também não suspende ninguém.
+ *
+ * A VOLTA À FAMÍLIA PARA RECEBER (F2.4): quem chegou aqui vindo de "Aceito
+ * receber" (o pedido no state ou no sessionStorage, `voltaAoAceite.js`)
+ * volta à Comunidade com o pedido aberto assim que o contrato é aceito — é o
+ * aceite que fecha a assinatura. Se o contrato que vale já está aceito para
+ * o mesmo plano, ele volta na hora, sem assinar nada de novo.
  */
 /**
  * O CABEÇALHO É O `Header` DE TODA TELA INTERNA, mesmo fora do `TioLayout`
@@ -54,7 +66,9 @@ function Cabecalho() {
 }
 
 export default function TioContratoAssociacao() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [contrato, setContrato] = useState(undefined); // undefined = carregando
   const [nome, setNome] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -69,6 +83,16 @@ export default function TioContratoAssociacao() {
       });
   }, [user?.uid]);
 
+  // Já fechada (contratou antes, contrato aceito para este plano): volta
+  // direto. Só quem ACABOU de vir dos planos com o pedido (state), para um
+  // sessionStorage esquecido não desviar uma visita qualquer a esta tela.
+  const pedidoNoState = location.state?.voltarAoPedido || null;
+  useEffect(() => {
+    if (pedidoNoState && contratoFechaAssinatura(contrato, profile?.plano)) {
+      navigate(CAMINHO_DA_VOLTA, { replace: true, state: { pedidoAberto: pedidoNoState } });
+    }
+  }, [pedidoNoState, contrato, profile?.plano, navigate]);
+
   const aceitar = async () => {
     const digitado = nome.trim();
     if (digitado.length < 3) {
@@ -82,6 +106,12 @@ export default function TioContratoAssociacao() {
         nome: digitado,
         conteudo: contrato.conteudo,
       });
+      const pedido = lerVolta(location.state);
+      if (pedido) {
+        toast.success('Contrato aceito.');
+        navigate(CAMINHO_DA_VOLTA, { replace: true, state: { pedidoAberto: pedido } });
+        return;
+      }
       toast.success('Contrato aceito. Uma cópia fica sempre aqui.');
       const atualizado = await contratoVigente(user.uid);
       setContrato(atualizado);

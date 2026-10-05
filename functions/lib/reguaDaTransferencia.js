@@ -228,6 +228,13 @@ function podePedir({ cobrancaLigada, uid, tio, crianca, parceiroUid, parceiro, e
 /**
  * O parceiro pode aceitar? Quem ainda não paga recebe `precisaAssinar`: a
  * tela o leva aos planos e ele volta para aceitar.
+ *
+ * ⚠️ O SERVIDOR CONFERE SÓ O PLANO (`ehPagante`), não o contrato aceito. A
+ * assinatura fechada que o dono pede é plano + contrato, e quem garante a
+ * segunda metade é a TELA: os planos levam ao contrato, e só o aceite dele
+ * devolve ao pedido (`src/components/transferencia/voltaAoAceite.js`).
+ * Exigir o contrato aqui é decisão a tomar com o dono — o mesmo critério
+ * grosso vale para pedir e para a família aceitar.
  */
 function podeAceitarParceiro({ cobrancaLigada, uid, t, parceiro, agoraMs = Date.now() }) {
   if (!t || t.paraUid !== uid) return { ok: false, erro: 'Pedido não encontrado.' };

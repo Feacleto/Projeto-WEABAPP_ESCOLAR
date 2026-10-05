@@ -6,8 +6,15 @@
  * plataforma e tinha de achar sozinho o caminho de volta ao pedido — a
  * família que chega por um colega se perdia ali. Agora o pedido viaja junto:
  * no `state` da navegação e, de reserva, no `sessionStorage` (o `state` some
- * se ele passear por outra tela antes de assinar). Assinou, a tela de planos
- * devolve à Comunidade com o pedido aberto e o aviso.
+ * se ele passear por outra tela antes de assinar).
+ *
+ * ⚠️ A VOLTA PASSA PELO CONTRATO (decisão do dono): para receber a família o
+ * tio "antes precisa passar pelo fechamento de uma assinatura", e assinatura
+ * fechada é PLANO CONTRATADO + CONTRATO ACEITO — a cobrança se apoia no
+ * contrato assinado. Então os planos levam ao contrato com o pedido junto, e
+ * é o ACEITE DO CONTRATO que devolve à Comunidade com o pedido aberto e o
+ * aviso. Quem já tem um contrato aceito para o mesmo plano
+ * (`contratoFechaAssinatura`) volta direto, sem assinar de novo.
  *
  * ⚠️ O ACEITE CONTINUA SENDO UM TOQUE DELE. A volta só mostra o pedido; nada
  * aqui chama `responderTransferencia` — ele e a família precisam ver o que
@@ -39,6 +46,15 @@ export function lerVolta(state) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Este contrato fecha a assinatura do plano de agora? Aceito, e com o MESMO
+ * plano que o servidor gravou em `users.plano` (o mesmo campo que a rule do
+ * contrato compara com `conteudo.plano.id`).
+ */
+export function contratoFechaAssinatura(contrato, plano) {
+  return !!contrato?.aceitoEm && !!plano && contrato?.conteudo?.plano?.id === plano;
 }
 
 /** Já voltou: a próxima assinatura não deve desviar de novo. */

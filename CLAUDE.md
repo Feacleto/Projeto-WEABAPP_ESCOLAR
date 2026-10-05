@@ -1764,9 +1764,13 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   folha que diz o que vai e o que fica; sem "Recusar", ela fala com o tio).
   ⚠️ **Só para quem PAGA e fora do ar com a cobrança desligada** (decisão
   do dono): tio sem plano não pede; parceiro sem plano recebe
-  `precisaAssinar` — e, assinado em `/tio/planos`, VOLTA à Comunidade com
-  o pedido aberto e "Pronto. Agora você pode aceitar a família." (o aceite
-  segue sendo um toque dele; `voltaAoAceite.js`, state + sessionStorage).
+  `precisaAssinar` e vai aos planos com o pedido junto (`voltaAoAceite.js`,
+  state + sessionStorage). ⚠️ **A volta passa pelo CONTRATO** (dono:
+  assinatura fechada = plano + contrato aceito): os planos levam a
+  `/tio/contrato-plataforma`, e é o ACEITE dele que devolve à Comunidade com
+  o pedido aberto e "Pronto. Agora você pode aceitar a família."; contrato já
+  aceito para o mesmo plano volta direto (`contratoFechaAssinatura`). O aceite
+  da família segue sendo um toque dele. O servidor confere só o PLANO.
   ⚠️ **Teto de 10 por mês, por tio** (F2.4): contam os pedidos que ELE fez
   no mês de Brasília — abertos, concluídos e os que ele cancelou; o "não
   posso" do parceiro e o vencido não (`pedidosQueContam`, índice deUid +
