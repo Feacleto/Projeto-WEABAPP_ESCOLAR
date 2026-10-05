@@ -555,6 +555,8 @@ async function main() {
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
+  await aFotoDaBase({ novato, dono, anon });
+  await aLeituraDoDonoNosNiveisEAuxiliares({ novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -3877,3 +3879,82 @@ main().catch((e) => {
   console.error('O emulador está de pé? npx firebase emulators:start --only auth,firestore\n');
   process.exit(3);
 });
+
+/**
+ * A FOTO DIÁRIA DA BASE (painel do dono, 05/10/2026) — `fotosDaBase/{AAAA-MM-DD}`.
+ * Escrita só por uma agendada com Admin SDK; só o dono lê. Escrito ANTES da
+ * regra: os casos do dono que esperam PASSA ficam vermelhos até ela existir.
+ */
+async function aFotoDaBase({ novato, dono, anon }) {
+  console.log('\n=== A FOTO DIÁRIA DA BASE (05/10/2026) ===');
+  const BL = 'fotoDaBase';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const moto = await criarLogin(`foto.moto.${agora}@teste.local`);
+  const pai = await criarLogin(`foto.pai.${agora}@teste.local`);
+  const aux = await criarLogin(`foto.aux.${agora}@teste.local`);
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Foto') });
+  await semear(`users/${pai.uid}`, { role: S('parent'), name: S('Mae Foto') });
+  await semear(`users/${aux.uid}`, { role: S('auxiliar'), name: S('Aux Foto'), motoristaUids: L([S(moto.uid)]) });
+
+  await semear('fotosDaBase/2026-10-05', {
+    rodaram7d: N(3), criancasAtivas: N(10), pagariaPorMes: N(100),
+  });
+
+  checar(BL, 'o dono lê a foto do dia', 'PASSA', await ler('fotosDaBase/2026-10-05', dono));
+  checar(BL, 'o dono lista as fotos', 'PASSA', await listar('fotosDaBase', dono));
+  checar(BL, 'motorista não lê', 'NEGA', await ler('fotosDaBase/2026-10-05', moto));
+  checar(BL, 'família não lê', 'NEGA', await ler('fotosDaBase/2026-10-05', pai));
+  checar(BL, 'auxiliar não lê', 'NEGA', await ler('fotosDaBase/2026-10-05', aux));
+  checar(BL, 'novato não lê', 'NEGA', await ler('fotosDaBase/2026-10-05', novato));
+  checar(BL, 'anônimo não lê', 'NEGA', await ler('fotosDaBase/2026-10-05', anon));
+  checar(BL, 'o dono não cria pelo cliente', 'NEGA',
+    await criar('fotosDaBase', '2026-10-06', dono, { rodaram7d: N(1) }));
+  checar(BL, 'o dono não altera pelo cliente', 'NEGA',
+    await escrever('fotosDaBase/2026-10-05', dono, { rodaram7d: N(99) }, ['rodaram7d']));
+  checar(BL, 'o dono não apaga pelo cliente', 'NEGA', await apagar('fotosDaBase/2026-10-05', dono));
+  checar(BL, 'motorista não cria', 'NEGA',
+    await criar('fotosDaBase', '2026-10-07', moto, { rodaram7d: N(1) }));
+}
+
+/**
+ * O DONO LÊ `niveis` E `auxiliares` (painel, 05/10/2026) — e só lê: ler não é
+ * operar. Quem já lia continua lendo, e a família continua sem ver o nível.
+ */
+async function aLeituraDoDonoNosNiveisEAuxiliares({ novato, dono, anon }) {
+  console.log('\n=== A LEITURA DO DONO EM NÍVEIS E AUXILIARES (05/10/2026) ===');
+  const BL = 'donoNiveis';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const A = await criarLogin(`dn.a.${agora}@teste.local`);
+  const Bm = await criarLogin(`dn.b.${agora}@teste.local`);
+  const fam = await criarLogin(`dn.fam.${agora}@teste.local`);
+  const X = await criarLogin(`dn.x.${agora}@teste.local`);
+  await semear(`users/${A.uid}`, { role: S('admin'), name: S('Tio A') });
+  await semear(`users/${Bm.uid}`, { role: S('admin'), name: S('Tio B') });
+  await semear(`users/${fam.uid}`, {
+    role: S('parent'), name: S('Familia de A'), adminUid: S(A.uid), adminUids: L([S(A.uid)]),
+  });
+  await semear(`users/${X.uid}`, { role: S('auxiliar'), name: S('Aux X'), motoristaUids: L([S(A.uid)]) });
+  const NIV = `niveis/${A.uid}`;
+  const AUX = `auxiliares/${A.uid}_${X.uid}`;
+  await semear(NIV, { nivel: S('prata') });
+  await semear(AUX, { motoristaUid: S(A.uid), auxiliarUid: S(X.uid), nome: S('Aux X'), ativa: B(true) });
+
+  checar(BL, 'o dono lê niveis/{A}', 'PASSA', await ler(NIV, dono));
+  checar(BL, 'o dono lista niveis', 'PASSA', await listar('niveis', dono));
+  checar(BL, 'o dono lê auxiliares/{A}_{X}', 'PASSA', await ler(AUX, dono));
+  checar(BL, 'o dono lista auxiliares', 'PASSA', await listar('auxiliares', dono));
+
+  checar(BL, 'A lê o próprio nível', 'PASSA', await ler(NIV, A));
+  checar(BL, 'B não lê o nível de A', 'NEGA', await ler(NIV, Bm));
+  checar(BL, 'a família de A não lê o nível', 'NEGA', await ler(NIV, fam));
+  checar(BL, 'B não lê o vínculo A_X', 'NEGA', await ler(AUX, Bm));
+  checar(BL, 'a família não lê o vínculo A_X', 'NEGA', await ler(AUX, fam));
+  checar(BL, 'anônimo não lê niveis', 'NEGA', await ler(NIV, anon));
+  checar(BL, 'anônimo não lê auxiliares', 'NEGA', await ler(AUX, anon));
+  checar(BL, 'o dono não escreve em niveis', 'NEGA',
+    await escrever(NIV, dono, { nivel: S('ouro') }, ['nivel']));
+  checar(BL, 'o dono não escreve em auxiliares', 'NEGA',
+    await escrever(AUX, dono, { ativa: B(false) }, ['ativa']));
+}
