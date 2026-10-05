@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getRetratoDaBase } from '../../services/adminMetricsService';
 import { formatCurrency } from '../../compartilhado/formatters.js';
 import { DIAS_DE_USO } from '../../dominio/associacao/retratoDaBase.js';
+import EvolucaoDaBase from './EvolucaoDaBase';
 
 /**
  * O RETRATO DA BASE — o topo do Hoje (05/10/2026, desenho aprovado pelo dono
@@ -119,6 +120,8 @@ export default function RetratoDaBase() {
           Onde a barra cai mais é onde está a próxima conversa.
         </p>
       </div>
+
+      <EvolucaoDaBase />
     </section>
   );
 }

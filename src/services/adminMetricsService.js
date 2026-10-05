@@ -237,6 +237,29 @@ export async function getAceitesDosTermos(versao) {
   return { total, naVersao };
 }
 
+/**
+ * AS FOTOS DIÁRIAS DA BASE, para o gráfico de evolução do Hoje.
+ *
+ * Um documento por dia, gravado pela agendada `fotografarBase` às 23h50 de
+ * Brasília (functions/lib/fotoDaBase.js); só números. O teto é de 120 dias —
+ * as 16 semanas do gráfico com folga — e a ordem é pelo campo `dia`, índice
+ * simples automático. Falha devolve lista vazia: o gráfico diz que ainda não
+ * há fotos em vez de derrubar o Hoje.
+ */
+export const DIAS_DE_FOTO_NO_PAINEL = 120;
+
+export async function getFotosDaBase() {
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'fotosDaBase'), orderBy('dia', 'desc'), limit(DIAS_DE_FOTO_NO_PAINEL))
+    );
+    return snap.docs.map((d) => d.data());
+  } catch (err) {
+    console.error('[admin] as fotos da base não vieram:', err);
+    return [];
+  }
+}
+
 async function buscarRetrato({ forcar }) {
   const children = collection(db, 'children');
   const [parceiros, criancasAtivas, criancasComFamilia, baixasNoMes] = await Promise.all([

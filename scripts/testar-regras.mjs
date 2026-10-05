@@ -3706,7 +3706,8 @@ async function osNiveis({ tio1, tio2, pai1, dono, anon }) {
   checar('nivel', 'outro motorista NÃO lê o nível', 'NEGA', await ler(`niveis/${tio1.uid}`, tio2));
   checar('nivel', 'família NÃO lê o nível de outro motorista', 'NEGA', await ler(`niveis/${tio2.uid}`, pai1));
   checar('nivel', 'anônimo NÃO lê nível', 'NEGA', await ler(`niveis/${tio1.uid}`, anon));
-  checar('nivel', 'ninguém lista os níveis da base', 'NEGA', await listar('niveis', dono));
+  // Desde 05/10/2026 o DONO lista (painel; caso em aLeituraDoDonoNosNiveisEAuxiliares).
+  checar('nivel', 'motorista não lista os níveis da base', 'NEGA', await listar('niveis', tio1));
   checar('nivel', 'motorista NÃO escreve o próprio nível', 'NEGA',
     await escrever(`niveis/${tio1.uid}`, tio1, { nivel: S('diamante') }, ['nivel']));
   checar('nivel', 'motorista NÃO cria o nível de outro', 'NEGA',

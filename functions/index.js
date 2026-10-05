@@ -70,6 +70,7 @@ const { makeCloseStaleRoutes } = require('./lib/routes');
 const { makeSendPushOnNotification } = require('./lib/push');
 const { makeAvisarAproximacao, makeAvisarBuzina } = require('./lib/avisosDaRota');
 const { makeLimparAvisosAntigos } = require('./lib/limpezaDosAvisos');
+const { makeFotografarBase } = require('./lib/fotoDaBase');
 const { makeAtualizarIndicesEconomicos } = require('./lib/indicesEconomicos');
 const { makeContarCriancasAtivas } = require('./lib/contadorDaTurma');
 const { makeLigarRelogioNaRota } = require('./lib/relogioNaRota');
@@ -155,6 +156,9 @@ exports.limparAvisosAntigos = makeLimparAvisosAntigos(db);
 // O IPCA de 12 meses (IBGE) para o "Preciso aumentar?", todo dia às 6h
 // (indicesEconomicos.js). Só grava quando o número muda.
 exports.atualizarIndicesEconomicos = makeAtualizarIndicesEconomicos(db);
+// A foto diária da base para o painel do dono, às 23h50 de Brasília
+// (fotoDaBase.js): só números, um documento por dia, só o dono lê.
+exports.fotografarBase = makeFotografarBase(db);
 // O contador de crianças e o relógio do teste são do SERVIDOR (03/10/2026):
 // o cliente não grava mais nenhum dos dois (rules).
 exports.contarCriancasAtivas = makeContarCriancasAtivas(db);

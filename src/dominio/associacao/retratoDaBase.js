@@ -194,3 +194,37 @@ export function retratoDaBase({
     ],
   };
 }
+
+/**
+ * A EVOLUÇÃO, UMA BARRA POR SEMANA — a partir das fotos diárias
+ * (`fotosDaBase/{AAAA-MM-DD}`, gravadas pelo servidor às 23h50).
+ *
+ * Cada semana (de segunda a domingo) vale a ÚLTIMA foto dela: "rodaram nos
+ * últimos 7 dias" no domingo é a semana inteira, e somar sete fotos contaria
+ * o mesmo motorista sete vezes. Semana sem foto não vira zero — ela não
+ * aparece, porque zero seria uma medição que não aconteceu.
+ *
+ * `dia` é 'AAAA-MM-DD' (o dia de Brasília); a conta da semana é feita em UTC
+ * sobre a própria string, para não depender do fuso de quem abre a tela.
+ */
+export function semanasDasFotos(fotos = [], semanas = 16) {
+  const porSemana = new Map();
+  (Array.isArray(fotos) ? fotos : [])
+    .filter((f) => typeof f?.dia === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.dia))
+    .sort((a, b) => a.dia.localeCompare(b.dia))
+    .forEach((f) => {
+      const d = new Date(`${f.dia}T00:00:00Z`);
+      const desdeSegunda = (d.getUTCDay() + 6) % 7;
+      const segunda = new Date(d.getTime() - desdeSegunda * DIA_MS).toISOString().slice(0, 10);
+      porSemana.set(segunda, f);
+    });
+  return [...porSemana.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-semanas)
+    .map(([segunda, f]) => ({
+      semana: segunda,
+      dia: f.dia,
+      rodaramNaSemana: Number(f.rodaramNaSemana) || 0,
+      motoristas: Number(f.motoristas) || 0,
+    }));
+}

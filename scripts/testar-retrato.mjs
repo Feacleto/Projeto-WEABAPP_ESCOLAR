@@ -11,7 +11,10 @@
  *   3. o suspenso não pagaria nada;
  *   4. o funil: cada degrau é subconjunto do anterior;
  *   5. onde o número não veio, `null` — nunca zero;
- *   6. a lista de assinantes: quem tem plano primeiro, depois o maior.
+ *   6. a lista de assinantes: quem tem plano primeiro, depois o maior;
+ *   7. o ESPELHO do servidor (`functions/lib/reguaDoRetrato.js`), que grava a
+ *      foto diária: a mesma resposta caso a caso, o dia de Brasília e a foto
+ *      sem uid nem nome.
  *
  * COMO RODAR
  *   node scripts/testar-retrato.mjs
@@ -25,8 +28,14 @@ import {
   planoDoAssinante,
   retratoDaBase,
   rodouNosUltimos,
+  semanasDasFotos,
 } from '../src/dominio/associacao/retratoDaBase.js';
 import { FUNDADOR, ORIGEM, precoDaTabela, precoDoMes } from '../src/dominio/associacao/planos.js';
+import { createRequire } from 'node:module';
+
+// O espelho é CommonJS e régua pura (só requer `reguaDoServidor`): nenhum SDK
+// no caminho, então ele pode entrar na bateria (ver `testar:imports`).
+const servidor = createRequire(import.meta.url)('../functions/lib/reguaDoRetrato.js');
 
 let ok = 0;
 let bad = 0;
@@ -162,6 +171,81 @@ checar('o desconto travado aparece', 0.3, linhas[1].descontoTravado);
 checar('suspenso aparece como suspenso', 'suspenso', linhas.find((l) => l.uid === 'f').degrau);
 checar('plano do vitalício', 'vitalicio', planoDoAssinante(vitalicio));
 checar('plano de quem está no teste', 'teste', planoDoAssinante(ativoTeste));
+
+// ───────────────────────── 7. o espelho do servidor ────────────────────────
+bloco('─── 7. o espelho do servidor: a foto diária ───');
+{
+  const app = { jaRodou, rodouNosUltimos, planoDoAssinante, pagariaPorMes };
+  const planosM = [undefined, 'mensal', 'anual', 'bimestral'];
+  const fundadores = [null, 'vitalicio', 'metade'];
+  const ultimas = [null, dia('2026-10-05'), dia('2026-09-29'), dia('2026-09-28'), dia('2026-12-01')];
+  const descontosM = [
+    undefined,
+    [{ origem: 'fechamento', fracao: 0.3, ate: null, degrau: 1 }],
+    [{ origem: 'concessao', fracao: 0.2, ate: '2026-09' }],
+  ];
+  const matriz = [];
+  let n = 0;
+  for (const plano of planosM)
+    for (const condicaoFundador of fundadores)
+      for (const ultimaRota of ultimas)
+        for (const d of descontosM)
+          for (const criancasAtivas of [0, 3, 9, 24, 41, 60]) {
+            n += 1;
+            matriz.push({
+              uid: `p${n}`,
+              plano,
+              condicaoFundador,
+              ultimaRota,
+              trialInicio: n % 3 ? dia('2026-08-01') : null,
+              descontos: d,
+              indicacoesAtivas: n % 4,
+              criancasAtivas,
+              suspenso: n % 11 === 0,
+            });
+          }
+  const divergem = matriz.filter((p) => {
+    const a = [app.jaRodou(p), app.rodouNosUltimos(p, HOJE), app.planoDoAssinante(p), app.pagariaPorMes(p, MES)];
+    const sv = [servidor.jaRodou(p), servidor.rodouNosUltimos(p, HOJE), servidor.planoDoAssinante(p), servidor.pagariaPorMes(p, MES)];
+    return JSON.stringify(a) !== JSON.stringify(sv);
+  });
+  checar(`o espelho responde igual nos ${matriz.length} motoristas da matriz`, [], divergem.map((p) => p.uid));
+
+  const args = { parceiros: matriz, agora: HOJE, mes: MES, criancasAtivas: 900, criancasComFamilia: 610, baixasNoMes: 412 };
+  const semFunil = ({ funil: _f, ...resto }) => resto;
+  checar('o retrato inteiro bate (o funil é só da tela)', semFunil(retratoDaBase(args)), servidor.retratoDaBase(args));
+  checar('base vazia bate', semFunil(retratoDaBase()), servidor.retratoDaBase());
+  checar('a janela de uso é a mesma', DIAS_DE_USO, servidor.DIAS_DE_USO);
+
+  checar('23h50 de Brasília (02:50 UTC) ainda é o dia de Brasília', '2026-10-05', servidor.chaveDoDia(new Date('2026-10-06T02:50:00Z')));
+  checar('00h10 de Brasília já é o dia seguinte', '2026-10-06', servidor.chaveDoDia(new Date('2026-10-06T03:10:00Z')));
+  checar('o mês das baixas sai do dia de Brasília', '2026-10', servidor.mesDoDia(new Date('2026-11-01T02:00:00Z')));
+
+  const foto = servidor.fotoDoDia(servidor.retratoDaBase(args), new Date('2026-10-06T02:50:00Z'));
+  checar(
+    'a foto tem SÓ os campos da lista fechada',
+    ['assinantes', 'baixasNoMes', 'criancasAtivas', 'criancasComFamilia', 'dia', 'motoristas', 'pagariaPorMes', 'planos', 'rodaram', 'rodaramNaSemana'],
+    Object.keys(foto).sort()
+  );
+  checar('nenhum uid ou nome escapa para a foto', false, /"uid"|"name"|"marcaNome"|"p\d+"/.test(JSON.stringify(foto)));
+  checar('o id da foto é o dia de Brasília', '2026-10-05', foto.dia);
+  checar('contagem que não veio fica null na foto', null, servidor.fotoDoDia({ motoristas: 1 }).criancasAtivas);
+}
+
+// ───────────────────────── 8. uma barra por semana ─────────────────────────
+bloco('─── 8. a evolução: a última foto de cada semana ───');
+{
+  const f = (dia, r) => ({ dia, rodaramNaSemana: r, motoristas: 60 });
+  const fotos = [f('2026-09-21', 30), f('2026-09-27', 33), f('2026-09-28', 34), f('2026-10-04', 38), f('2026-10-05', 39)];
+  const s = semanasDasFotos(fotos);
+  checar('segunda 21/09 a domingo 27/09 é uma semana', ['2026-09-21', '2026-09-28', '2026-10-05'], s.map((x) => x.semana));
+  checar('vale a ÚLTIMA foto da semana, nunca a soma', [33, 38, 39], s.map((x) => x.rodaramNaSemana));
+  checar('fora de ordem dá o mesmo', s, semanasDasFotos([...fotos].reverse()));
+  checar('semana sem foto não vira zero, some', 2, semanasDasFotos([f('2026-08-03', 5), f('2026-10-05', 9)]).length);
+  checar('só as últimas N semanas', ['2026-09-28', '2026-10-05'], semanasDasFotos(fotos, 2).map((x) => x.semana));
+  checar('foto com dia torto é ignorada', 0, semanasDasFotos([{ dia: '05/10/2026', rodaramNaSemana: 3 }, { rodaramNaSemana: 1 }]).length);
+  checar('sem fotos, lista vazia', [], semanasDasFotos());
+}
 
 // ──────────────────────────────── resumo ───────────────────────────────────
 

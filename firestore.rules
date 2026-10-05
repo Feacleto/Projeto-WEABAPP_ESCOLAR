@@ -2558,9 +2558,13 @@ service cloud.firestore {
       allow write: if false;
     }
     match /auxiliares/{id} {
+      // O dono LÊ (painel, 05/10/2026: quantas auxiliares, de quem, desde
+      // quando) e não escreve: ler não é operar. Desativar continua sendo do
+      // motorista, pela callable.
       allow read: if isSignedIn() && (
         resource.data.motoristaUid == request.auth.uid
         || resource.data.auxiliarUid == request.auth.uid
+        || isOwner()
       );
       allow write: if false;
     }
@@ -3174,8 +3178,23 @@ service cloud.firestore {
     // que o próprio se dá é propaganda. `get` e não `read`: ninguém lista.
     // -----------------------------------------------------------------
     match /niveis/{uid} {
-      allow get: if isAppUser() && request.auth.uid == uid;
-      allow list, write: if false;
+      // O dono lê e lista (painel, 05/10/2026: quantos em cada nível, quem
+      // parou em qual missão) e NÃO escreve — o nível é do servidor. A
+      // família continua sem ler: o nível do motorista não é dela (04/10/2026).
+      // Na tela do dono, nível nunca aparece ao lado de plano (decisão 23).
+      allow get: if (isAppUser() && request.auth.uid == uid) || isOwner();
+      allow list: if isOwner();
+      allow write: if false;
+    }
+
+    // A FOTO DIÁRIA DA BASE (painel do dono, 05/10/2026): um documento por
+    // dia de Brasília, só números, gravado pela agendada `fotografarBase`
+    // (functions/lib/fotoDaBase.js) com Admin SDK. Só o dono lê; ninguém
+    // escreve pelo cliente, nem o dono — foto que o próprio dono retoca não é
+    // histórico.
+    match /fotosDaBase/{dia} {
+      allow read: if isOwner();
+      allow write: if false;
     }
 
     // As atividades de Platina: só o dono lança; todo usuário do app lê.

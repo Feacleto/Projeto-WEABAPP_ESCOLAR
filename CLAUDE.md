@@ -697,7 +697,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
 `limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao`, `convitesDeAuxiliar` e `documentosDeAssinante` (um CPF/CNPJ, uma conta) (só o servidor) ·
-`auxiliares` (o vínculo do PAR `{motorista}_{auxiliar}`, com os períodos; nunca apagado; os dois do par leem, ninguém escreve pelo cliente) ·
+`auxiliares` (o vínculo do PAR `{motorista}_{auxiliar}`, com os períodos; nunca apagado; os dois do par e o dono leem, ninguém escreve pelo cliente) ·
 `faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
@@ -706,6 +706,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `configFinanceiro` (só o próprio motorista lê; a auxiliar lê o dela, só com o `temSenha`) ·
 `indicesEconomicos` (`ipca`, `selic`, `dolar`; só o servidor escreve, motorista lê) ·
 `fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
+`fotosDaBase` (a foto diária da base, um doc por dia de Brasília, só números; só o servidor escreve, só o dono lê) ·
 `avaliacoesDoTio` (a nota da família ao tio; só ela lê a dela, o tio não lê nenhuma) ·
 `transferenciasDeFamilia` (passar a família a um tio parceiro; os dois tios leem, a família só com `familiaVe`, só o servidor escreve) ·
 `appState`
@@ -1958,7 +1959,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 - **Níveis do motorista:** `calcularNiveis` (todo dia 5h30) e `recalcularMeuNivel`
   (callable; o motorista chama ao abrir "Meu nível") —
   [niveis.js](functions/lib/niveis.js). Gravam SÓ o rótulo em `niveis/{uid}`,
-  que só ele lê. Ver "Os níveis" abaixo.
+  que só ele e o dono leem (o dono também lista, para o painel; nenhum dos
+  dois escreve). Ver "Os níveis" abaixo.
 - **Avisos comerciais (agendado):** `enviarAvisosComerciais`, todo dia às 9h.
   É o único canal que alcança quem PAROU de abrir o app — e ele já existia:
   um doc em `notifications` escrito pelo Admin SDK dispara
@@ -2018,6 +2020,13 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `indicesEconomicos/selic` e `/dolar`, com o valor de ~12 meses antes (e o
   IPCA, `ipca12mAntes`) para a seta. ⚠️ A Selic meta vem com datas no
   FUTURO (até o próximo Copom): a consulta é por período terminando hoje.
+- **Foto da base (agendado):** `fotografarBase`, todo dia às 23h50 de Brasília
+  ([fotoDaBase.js](functions/lib/fotoDaBase.js)) — grava `fotosDaBase/{dia}`
+  com os números do Hoje do painel (régua em
+  [reguaDoRetrato.js](functions/lib/reguaDoRetrato.js), espelho de
+  `retratoDaBase.js` comparado caso a caso em `testar:retrato`). Lê os
+  motoristas e faz três `count()`; idempotente. É o histórico do gráfico de
+  evolução do Hoje.
 - **Auxiliar:** `convidarAuxiliar`, `cancelarConviteDeAuxiliar`,
   `verConviteDeAuxiliar` (pública, devolve só a marca e o primeiro nome),
   `aceitarConviteDeAuxiliar`, `desativarAuxiliar` e `marcarParadaPelaAuxiliar`
