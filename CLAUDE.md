@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 82 scripts. O PRIMEIRO é
+npm run testar                   # 83 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -42,7 +42,7 @@ npm run testar                   # 82 scripts. O PRIMEIRO é
                                  # dinheiro), tranca, senha-financeiro, km-da-rota,
                                  # perua, ditado, indices, economia, e os da auxiliar:
                                  # auxiliar, pagamento-da-auxiliar,
-                                 # substitutas
+                                 # substitutas, avaliacao-da-auxiliar
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -236,7 +236,23 @@ só nome e WhatsApp); o valor do dia vira despesa `monitor` ("Auxiliar" no caixa
 "Controle de {mês}" soma faltas e substitutas. ⚠️ **A falta não desconta nada
 sozinha** (combinado entre os dois) e não há estrelas
 ([faltaDaAuxiliar.js](src/dominio/identidade/faltaDaAuxiliar.js),
-`npm run testar:substitutas`). Avaliações: próxima etapa. ⚠️ A Política ainda não fala dela (pendências, bloco D).
+`npm run testar:substitutas`).
+⚠️ **AS AVALIAÇÕES ENTRE OS DOIS (05/10/2026):** com 30 dias de vínculo (a
+SOMA dos períodos do par, ativo ou encerrado), o tio RECOMENDA a auxiliar —
+sem estrela: até 3 de 5 pontos fortes e uma frase de até 80 letras, assinada
+com a marca dele (`recomendacoesDeAuxiliar/{tio}_{aux}`). Ela lê antes e
+decide (mostrar, não mostrar, apagar) no Perfil; editar volta a pendente;
+desativar não apaga. A frase é filtrada NO SERVIDOR (telefone, e-mail, link,
+"@", as raízes de `marca/promessas.js` em espelho, e nome de criança ou
+família da turma dele). Ela dá ao tio de 1 a 5 estrelas ("Como é trabalhar
+com …?", no Perfil e no acesso encerrado; `notasDaAuxiliarAoTio/{tio}_{aux}`).
+⚠️ **Quem vê:** a recomendação, só os dois e o dono — nem a aprovada sai
+disso até a etapa da comunidade em que ela se põe disponível (`aprovadaEm`
+fica pronto); a nota, só o dono, e o tio só a MÉDIA com 3 auxiliares
+diferentes. Tudo por callable, `allow write: if false`
+([avaliacoesDaAuxiliar.js](functions/lib/avaliacoesDaAuxiliar.js), régua em
+[reguaDaAvaliacaoDaAuxiliar.js](functions/lib/reguaDaAvaliacaoDaAuxiliar.js),
+`npm run testar:avaliacao-da-auxiliar`). Sem ranking nem contagem. ⚠️ A Política ainda não fala dela (pendências, bloco D).
 
 **O DONO PODE SER MAIS DE UM, e o legado `superAdmin` SAIU em 06/09/2026.**
 `isOwner()` e `ehDono()` sempre checaram o PAPEL, nunca a identidade — duas
@@ -662,6 +678,8 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
+`recomendacoesDeAuxiliar` (a recomendação do tio para ela; leem os dois e o dono, sem `removida`; escreve só o servidor) ·
+`notasDaAuxiliarAoTio` (as estrelas dela ao tio; só o dono lê, escreve só o servidor) ·
 `configFinanceiro` (só o próprio motorista lê; a auxiliar lê o dela, só com o `temSenha`) ·
 `indicesEconomicos` (`ipca`, `selic`, `dolar`; só o servidor escreve, motorista lê) ·
 `fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
@@ -1912,6 +1930,11 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   ([turmaDaAuxiliar.js](functions/lib/turmaDaAuxiliar.js)). O pagamento dela
   (fase 4): `anotarPagamentoDaAuxiliar` e `confirmarRecebimentoDaAuxiliar`
   ([pagamentosDaAuxiliar.js](functions/lib/pagamentosDaAuxiliar.js)).
+  As avaliações: `recomendarAuxiliar`, `retirarRecomendacao`,
+  `responderRecomendacao`, `removerRecomendacaoAbusiva` (dono, com motivo),
+  `avaliarTio`, `minhaNotaDasAuxiliares` e o gatilho
+  `limparAvaliacoesDaContaApagada`
+  ([avaliacoesDaAuxiliar.js](functions/lib/avaliacoesDaAuxiliar.js)).
 - **Cupom do cartão do app:** `meuCodigoDeIndicacao`
   ([codigoDeIndicacao.js](functions/lib/codigoDeIndicacao.js), régua pura em
   [reguaDoCodigo.js](functions/lib/reguaDoCodigo.js), casos em

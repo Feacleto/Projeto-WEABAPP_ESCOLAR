@@ -2563,6 +2563,33 @@ service cloud.firestore {
       );
       allow write: if false;
     }
+    // AS AVALIAÇÕES ENTRE O TIO E A AUXILIAR (05/10/2026) — ver
+    // functions/lib/avaliacoesDaAuxiliar.js. Ninguém escreve pelo cliente: os
+    // 30 dias de vínculo, o filtro da frase e a assinatura são do servidor.
+    //
+    // A RECOMENDAÇÃO que o tio escreve para ela: lê o autor e ela — pendente,
+    // aprovada ou oculta — e o dono. Nesta etapa NINGUÉM MAIS lê, nem a
+    // aprovada: a leitura por outros tios (quando ela estiver disponível ou
+    // for indicada) é etapa futura e entra aqui, pelo `aprovadaEm`.
+    // ⚠️ `removida == false`, e não `!('removidaPeloDono' in ...)`: regra não
+    // é filtro, e a lista dos dois (`where motoristaUid|auxiliarUid ==` +
+    // `where removida == false`) só passa se a CONSULTA provar a condição.
+    // O que o dono retirou fica com o motivo, e só ele lê.
+    match /recomendacoesDeAuxiliar/{id} {
+      allow read: if isOwner() || (isSignedIn()
+        && resource.data.removida == false
+        && (resource.data.motoristaUid == request.auth.uid
+          || resource.data.auxiliarUid == request.auth.uid));
+      allow write: if false;
+    }
+    // A NOTA que ela dá ao tio: só a equipe do Alô Buzinou (o dono) lê. O tio
+    // recebe a média pela callable `minhaNotaDasAuxiliares`, e só com 3
+    // auxiliares diferentes — nem ela relê a própria (a tela lembra no
+    // aparelho dela).
+    match /notasDaAuxiliarAoTio/{id} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
 
     // -----------------------------------------------------------------
     // A FALTA DA AUXILIAR E AS SUBSTITUTAS (05/10/2026, fase 5) — ver

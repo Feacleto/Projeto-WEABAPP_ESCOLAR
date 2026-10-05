@@ -5,12 +5,18 @@ import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { useMeusVinculos } from '../../hooks/useAuxiliares';
 import { DEV_EMAIL } from '../../config/developer';
+import RecomendacoesRecebidas from '../../components/avaliacaoDaAuxiliar/RecomendacoesRecebidas';
+import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaOTio';
 
 /**
  * PERFIL DA AUXILIAR (05/10/2026, fase 1): quem ela é, de quem é auxiliar e
  * sair. A nota para o motorista e a chave "aberta a trabalhar com outros tios"
  * entram nas próximas fases. Fase 4: "Trocar a senha dos pagamentos" leva à
  * aba Pagamentos já no passo de provar a conta.
+ *
+ * AS AVALIAÇÕES (05/10/2026): as recomendações que os tios escreveram (ela
+ * aprova antes de aparecer) e "Como é trabalhar com …?", uma linha por tio
+ * com quem ela trabalha ou já trabalhou — só a equipe vê a nota.
  *
  * ⚠️ EXCLUIR A CONTA, por enquanto, é pelo e-mail da plataforma — o mesmo
  * canal que os Termos já nomeiam para a família e o motorista. Um botão que
@@ -37,6 +43,10 @@ export default function AuxPerfil() {
                 : 'Acesso encerrado pelo motorista'}
           </p>
         </section>
+        <RecomendacoesRecebidas />
+        {(vinculos || []).map((v) => (
+          <EstrelasParaOTio key={v.motoristaUid} motoristaUid={v.motoristaUid} marca={v.marcaDoMotorista} />
+        ))}
         <Button
           variant="secondary"
           icon={KeyRound}

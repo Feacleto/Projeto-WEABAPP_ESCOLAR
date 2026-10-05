@@ -36,6 +36,15 @@ const {
 } = require('./lib/auxiliares');
 const { makeEspelharCriancaParaAuxiliar, makeEspelharFaltaParaAuxiliar } = require('./lib/turmaDaAuxiliar');
 const { makeAnotarPagamentoDaAuxiliar, makeConfirmarRecebimentoDaAuxiliar } = require('./lib/pagamentosDaAuxiliar');
+const {
+  makeRecomendarAuxiliar,
+  makeRetirarRecomendacao,
+  makeResponderRecomendacao,
+  makeRemoverRecomendacaoAbusiva,
+  makeAvaliarTio,
+  makeMinhaNotaDasAuxiliares,
+  makeLimparAvaliacoesDaContaApagada,
+} = require('./lib/avaliacoesDaAuxiliar');
 const { makeRegistrarInteresseInvestidor } = require('./lib/interesseInvestidor');
 const {
   makePedirAcessoPeloTelefone,
@@ -388,6 +397,15 @@ exports.espelharFaltaParaAuxiliar = makeEspelharFaltaParaAuxiliar(db);
 // ela confirma "Recebi". Só o servidor escreve o recibo dos dois.
 exports.anotarPagamentoDaAuxiliar = makeAnotarPagamentoDaAuxiliar(db);
 exports.confirmarRecebimentoDaAuxiliar = makeConfirmarRecebimentoDaAuxiliar(db);
+// AS AVALIAÇÕES ENTRE O TIO E A AUXILIAR: a recomendação dele (ela aprova) e
+// a nota dela ao tio (só a equipe vê; ele, só a média com 3). Ver o arquivo.
+exports.recomendarAuxiliar = makeRecomendarAuxiliar(db);
+exports.retirarRecomendacao = makeRetirarRecomendacao(db);
+exports.responderRecomendacao = makeResponderRecomendacao(db);
+exports.removerRecomendacaoAbusiva = makeRemoverRecomendacaoAbusiva(db);
+exports.avaliarTio = makeAvaliarTio(db);
+exports.minhaNotaDasAuxiliares = makeMinhaNotaDasAuxiliares(db);
+exports.limparAvaliacoesDaContaApagada = makeLimparAvaliacoesDaContaApagada(db);
 
 // A SENHA DO FINANCEIRO (03/10/2026). A auxiliar usa o celular do motorista e
 // não deve ver valores: o Financeiro abre com 4 números num teclado de banco.

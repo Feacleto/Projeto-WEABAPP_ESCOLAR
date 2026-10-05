@@ -12,6 +12,9 @@ import PagamentoDaAuxiliar from '../../components/auxiliar/PagamentoDaAuxiliar';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuxiliaresDoMotorista } from '../../hooks/useAuxiliares';
 import { useSubstitutas } from '../../hooks/useSubstitutas';
+import { useRecomendacoesQueEscrevi } from '../../hooks/useAvaliacoesDaAuxiliar';
+import RecomendarAuxiliar from '../../components/avaliacaoDaAuxiliar/RecomendarAuxiliar';
+import NotaDasAuxiliares from '../../components/avaliacaoDaAuxiliar/NotaDasAuxiliares';
 import HojeDaAuxiliar from '../../components/auxiliar/HojeDaAuxiliar';
 import ControleDoMes from '../../components/auxiliar/ControleDoMes';
 import { getDateKey } from '../../dominio/rota/horarios.js';
@@ -44,6 +47,10 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks'
  * O vínculo é por PAR (`auxiliares/{ele}_{ela}`): desativar fecha o período e
  * o documento fica, então "Quem já trabalhou comigo" nunca perde ninguém — nem
  * quando ela vai trabalhar também para outro tio.
+ *
+ * AS AVALIAÇÕES (05/10/2026): com 30 dias de trabalho (a soma dos períodos),
+ * "Recomendar" no cartão de cada uma — ela aprova antes de aparecer — e, no
+ * topo, a nota que as auxiliares dão a ele: só a média, com 3 ou mais.
  */
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 function mesAno(ms) {
@@ -57,6 +64,8 @@ export default function TioAuxiliar() {
   const vinculos = useAuxiliaresDoMotorista();
   // Fase 5: a falta de hoje, as substitutas e o controle do mês.
   const { substitutas, faltas } = useSubstitutas();
+  const recomendacoes = useRecomendacoesQueEscrevi();
+  const recomendacaoDe = (auxUid) => (recomendacoes || []).find((r) => r.auxiliarUid === auxUid) || null;
   const hoje = getDateKey();
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -92,6 +101,7 @@ export default function TioAuxiliar() {
     <>
       <Header title="Auxiliar" showBack backLabel="Central" backTo="/tio/finance" />
       <div className="space-y-4 p-4">
+        {historico.length > 0 && <NotaDasAuxiliares />}
         {vinculos === null ? (
           <Skeleton className="h-32 rounded-2xl" />
         ) : ativas.length === 0 ? (
@@ -127,6 +137,7 @@ export default function TioAuxiliar() {
               </div>
               <HojeDaAuxiliar auxiliar={a} dateKey={hoje} faltas={faltas} substitutas={substitutas} />
               <PagamentoDaAuxiliar auxiliar={a} />
+              {recomendacoes !== null && <RecomendarAuxiliar auxiliar={a} recomendacao={recomendacaoDe(a.uid)} />}
             </section>
           ))
         )}
@@ -187,7 +198,8 @@ export default function TioAuxiliar() {
               <Numero valor={rot.ultimos12} rotulo="nos últimos 12 meses" />
             </div>
             {sairam.map((h) => (
-              <div key={h.uid} className="flex min-h-16 items-center gap-3 rounded-2xl bg-card px-4 py-2 shadow-rest">
+              <div key={h.uid} className="space-y-2 rounded-2xl bg-card px-4 py-2 shadow-rest">
+              <div className="flex min-h-16 items-center gap-3">
                 <span className="min-w-0 flex-1">
                   <span className="block text-base font-bold text-text">{h.nome}</span>
                   <span className="block text-sm text-textMuted">
@@ -206,6 +218,8 @@ export default function TioAuxiliar() {
                   <MessageCircle size={18} aria-hidden="true" />
                   Falar
                 </a>
+              </div>
+              {recomendacoes !== null && <RecomendarAuxiliar auxiliar={h} recomendacao={recomendacaoDe(h.uid)} />}
               </div>
             ))}
             <Link

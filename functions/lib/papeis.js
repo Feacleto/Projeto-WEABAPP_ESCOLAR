@@ -97,6 +97,19 @@ async function exigirMotoristaOuAuxiliar(db, request) {
   return uid;
 }
 
+/**
+ * Exige AUXILIAR e devolve o uid dela (05/10/2026, as avaliações entre ela e
+ * o tio). Passa com o vínculo desativado: a recomendação e a nota continuam
+ * dela depois que o acesso à perua acaba — quem confere o PAR é a callable.
+ */
+async function exigirAuxiliar(db, request) {
+  const { uid, dados } = await carregarUsuario(db, request);
+  if (dados?.role !== 'auxiliar') {
+    throw new HttpsError('permission-denied', 'Esta ação é da auxiliar.');
+  }
+  return uid;
+}
+
 /** Exige o DONO DA PLATAFORMA e devolve o uid dele. */
 async function exigirDono(db, request) {
   const { uid, dados } = await carregarUsuario(db, request);
@@ -109,4 +122,4 @@ async function exigirDono(db, request) {
   return uid;
 }
 
-module.exports = { exigirMotorista, exigirMotoristaOuAuxiliar, exigirDono, ehDono, ehMotorista };
+module.exports = { exigirMotorista, exigirMotoristaOuAuxiliar, exigirAuxiliar, exigirDono, ehDono, ehMotorista };

@@ -14,6 +14,7 @@ import { marcarParadaPelaAuxiliar } from '../../services/auxiliarService';
 import PixDaPerua from '../../components/route/PixDaPerua';
 import { diaCompleto, getDateKey, horaCurta, deMinutos, precisaDaPerua, ROTULO_ESTADO } from '../../dominio/rota/horarios';
 import { linkDoZap } from '../../dominio/identidade/auxiliar.js';
+import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaOTio';
 
 /**
  * HOJE — a turma do dia da auxiliar (05/10/2026, fase 2).
@@ -82,6 +83,10 @@ export default function AuxHoje() {
             <h2 className="font-display text-xl font-bold text-text">Seu acesso foi encerrado</h2>
             <p className="mt-2 text-base text-textBody">Você não vê mais a turma nem a rota. Obrigado pelo trabalho.</p>
           </section>
+          {/* A nota ao tio: o fim do acesso é quando ela mais tem o que dizer. */}
+          {vinculos.map((v) => (
+            <EstrelasParaOTio key={v.motoristaUid} motoristaUid={v.motoristaUid} marca={v.marcaDoMotorista} />
+          ))}
           {/* Os pagamentos continuam dela depois do acesso encerrado (fase 4). */}
           <button
             type="button"

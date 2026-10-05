@@ -19,7 +19,7 @@
  * destino para todo tipo que tem espécie em `avisos.js`.
  */
 
-export const PAINEL = { parent: '/pai', admin: '/tio', owner: '/admin' };
+export const PAINEL = { parent: '/pai', admin: '/tio', owner: '/admin', auxiliar: '/aux' };
 
 export const DESTINO_DO_AVISO = {
   // ── A ROTA, para a família
@@ -79,12 +79,15 @@ export const DESTINO_DO_AVISO = {
   encerramento_fim: '/tio/encerrar',
   auxiliar_confirmou_pagamento: '/tio/finance/auxiliar',
 
+  // ── PARA A AUXILIAR
+  recomendacao_recebida: '/aux/perfil',
+
   // ── PARA O DONO
   lead_investidor: '/admin',
 };
 
 function papelDe(papel) {
-  return papel === 'parent' || papel === 'admin' || papel === 'owner' ? papel : 'parent';
+  return papel === 'parent' || papel === 'admin' || papel === 'owner' || papel === 'auxiliar' ? papel : 'parent';
 }
 
 /**
@@ -92,7 +95,7 @@ function papelDe(papel) {
  * caso é o painel de quem recebeu, nunca o login.
  *
  *   aviso — { type, childId?, url?, destino? }
- *   papel — 'parent' | 'admin' | 'owner' (o `role` de quem recebeu)
+ *   papel — 'parent' | 'admin' | 'owner' | 'auxiliar' (o `role` de quem recebeu)
  */
 export function destinoDoAviso(aviso, papel) {
   const p = papelDe(papel);

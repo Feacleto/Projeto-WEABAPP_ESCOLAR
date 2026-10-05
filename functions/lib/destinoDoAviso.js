@@ -6,7 +6,7 @@
 
 'use strict';
 
-const PAINEL = { parent: '/pai', admin: '/tio', owner: '/admin' };
+const PAINEL = { parent: '/pai', admin: '/tio', owner: '/admin', auxiliar: '/aux' };
 
 const DESTINO_DO_AVISO = {
   rota_iniciada: '/pai',
@@ -62,11 +62,13 @@ const DESTINO_DO_AVISO = {
   encerramento_fim: '/tio/encerrar',
   auxiliar_confirmou_pagamento: '/tio/finance/auxiliar',
 
+  recomendacao_recebida: '/aux/perfil',
+
   lead_investidor: '/admin',
 };
 
 function papelDe(papel) {
-  return papel === 'parent' || papel === 'admin' || papel === 'owner' ? papel : 'parent';
+  return papel === 'parent' || papel === 'admin' || papel === 'owner' || papel === 'auxiliar' ? papel : 'parent';
 }
 
 function destinoDoAviso(aviso, papel) {

@@ -71,6 +71,9 @@ const ESPECIE_DO_AVISO = {
   // A auxiliar confirmou que recebeu o pagamento que o motorista anotou:
   // o recibo dos dois fechou. Fato sobre dinheiro dele, não se desliga.
   auxiliar_confirmou_pagamento: ESPECIE.FATO,
+  // O tio escreveu (ou mudou) uma recomendação para a auxiliar: ela precisa
+  // ler e decidir se aparece. Fato sobre o trabalho dela, não se desliga.
+  recomendacao_recebida: ESPECIE.FATO,
 
   rota_atrasada: ESPECIE.ESTADO,
   comercial_retorno: ESPECIE.ESTADO,
