@@ -100,8 +100,8 @@ checar('o aviso ao motorista', ['auxiliar_confirmou_pagamento', 'Cida confirmou 
 console.log('\n6. o aviso tem espécie e destino, nos dois lados');
 checar('espécie no app', 'fato', ESPECIE_DO_AVISO.auxiliar_confirmou_pagamento);
 checar('espécie no servidor', 'fato', avisosDoServidor.ESPECIE_DO_AVISO.auxiliar_confirmou_pagamento);
-checar('leva o motorista à aba Auxiliar', '/tio/auxiliar', destinoDoAviso({ type: 'auxiliar_confirmou_pagamento' }, 'admin'));
-checar('o servidor leva ao mesmo lugar', true, ler('functions/lib/destinoDoAviso.js').includes("auxiliar_confirmou_pagamento: '/tio/auxiliar'"));
+checar('leva o motorista à aba Auxiliar', '/tio/finance/auxiliar', destinoDoAviso({ type: 'auxiliar_confirmou_pagamento' }, 'admin'));
+checar('o servidor leva ao mesmo lugar', true, ler('functions/lib/destinoDoAviso.js').includes("auxiliar_confirmou_pagamento: '/tio/finance/auxiliar'"));
 
 console.log('\n7. a tela, do lado do app');
 checar('nome do mês', 'outubro', nomeDoMesDoPagamento('2026-10'));

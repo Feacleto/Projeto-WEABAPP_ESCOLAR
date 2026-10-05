@@ -20,7 +20,7 @@ import {
  * mês no MESMO lote (`anotarPagamentoDaAuxiliar`), e ela confirma no app
  * dela. Aqui só se mostra em que pé o recibo está.
  *
- * ⚠️ O BOTÃO É DE CONTORNO: a tela `/tio/auxiliar` já tem o verde cheio
+ * ⚠️ O BOTÃO É DE CONTORNO: a tela `/tio/finance/auxiliar` já tem o verde cheio
  * ("Criar convite"), e a regra do app é um protagonista por tela.
  *
  * O valor vem do que ele disse no convite (`valorMensal` do vínculo). Sem

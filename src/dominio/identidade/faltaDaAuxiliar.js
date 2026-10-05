@@ -22,8 +22,13 @@ import { formatBRL } from '../../compartilhado/formatters.js';
  * WhatsApp e o que o próprio tio registrou. Nada de CPF, nada de endereço.
  */
 
-/** A categoria da despesa que o valor do dia vira em `expenses`. */
-export const CATEGORIA_DA_SUBSTITUTA = 'auxiliar';
+/**
+ * A categoria da despesa que o valor do dia vira em `expenses`: `monitor`,
+ * a que o app já chama de "Auxiliar" no caixa — a MESMA do pagamento mensal
+ * dela. Uma chave nova partiria o custo da auxiliar em dois em "Preciso
+ * aumentar?" e no Buzi.
+ */
+export const CATEGORIA_DA_SUBSTITUTA = 'monitor';
 
 /** Teto do valor de UM dia — o mesmo número das rules. */
 export const VALOR_MAXIMO_DO_DIA = 5000;

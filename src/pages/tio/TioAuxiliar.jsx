@@ -26,12 +26,15 @@ import {
 import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
 
 /**
- * A AUXILIAR, DO LADO DO MOTORISTA — `/tio/auxiliar` (05/10/2026, simulação
+ * A AUXILIAR, DO LADO DO MOTORISTA — `/tio/finance/auxiliar` (05/10/2026, simulação
  * "Aba Auxiliar do Motorista" aprovada pelo dono; fase 1).
  *
  * Aqui ele chama uma auxiliar nova (o link vai pelo WhatsApp e a conta dela
  * nasce ligada a ele), vê quem está ativa, desativa na hora e vê quem já
  * trabalhou com ele — a rotatividade dele, só para ele.
+ *
+ * Mora embaixo de `/tio/finance` (atrás da senha) desde a seção Auxiliar da
+ * Central: o pagamento dela vai pôr valores aqui.
  *
  * Fase 4: o pagamento dela, em `PagamentoDaAuxiliar` (ele anota, ela
  * confirma "Recebi").
@@ -127,7 +130,7 @@ export default function TioAuxiliar() {
         {historico.length > 0 && <ControleDoMes faltas={faltas} monthKey={hoje.slice(0, 7)} />}
 
         <Link
-          to="/tio/auxiliar/substitutas"
+          to="/tio/finance/auxiliar/substitutas"
           className="tap flex min-h-16 items-center gap-3 rounded-2xl bg-card px-4 py-2 shadow-rest"
         >
           <span className="min-w-0 flex-1">
@@ -199,7 +202,7 @@ export default function TioAuxiliar() {
               </div>
             ))}
             <Link
-              to="/tio/auxiliar/substitutas"
+              to="/tio/finance/auxiliar/substitutas"
               className="tap flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-text"
             >
               Ver minhas substitutas

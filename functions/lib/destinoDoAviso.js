@@ -60,7 +60,7 @@ const DESTINO_DO_AVISO = {
   encerramento_30d: '/tio/encerrar',
   encerramento_7d: '/tio/encerrar',
   encerramento_fim: '/tio/encerrar',
-  auxiliar_confirmou_pagamento: '/tio/auxiliar',
+  auxiliar_confirmou_pagamento: '/tio/finance/auxiliar',
 
   lead_investidor: '/admin',
 };

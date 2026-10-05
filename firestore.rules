@@ -2599,7 +2599,12 @@ service cloud.firestore {
       allow read: if isAdmin() && resource.data.motoristaUid == request.auth.uid;
       allow delete: if isAdmin() && resource.data.motoristaUid == request.auth.uid
         && id.matches('^' + request.auth.uid + '_.*');
-      allow create: if isAdmin() && faltaValida();
+      // A falta NOVA só de quem ainda é auxiliar dele (vínculo ativo): falta
+      // de quem já saiu seria registro de algo que não pode ter acontecido.
+      // O update fica sem essa exigência — desativar no meio do dia não pode
+      // impedir de registrar a substituta da falta que já existe.
+      allow create: if isAdmin() && faltaValida()
+        && get(/databases/$(database)/documents/auxiliares/$(request.resource.data.auxiliarUid)).data.get('ativa', false) == true;
       allow update: if isAdmin() && resource.data.motoristaUid == request.auth.uid
         && faltaValida();
     }

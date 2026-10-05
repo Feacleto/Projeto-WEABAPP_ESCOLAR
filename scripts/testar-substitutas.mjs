@@ -99,7 +99,7 @@ checar('reais curto', 'R$ 1.200', reaisCurto(1200));
 checar('dia curto', '12/10', diaCurto('2026-10-12'));
 checar('nome do mês', 'outubro', nomeDoMesDaChave('2026-10'));
 checar('descrição da despesa', 'Substituta: Joana · 12/10', descricaoDaDespesa('Joana', '2026-10-12'));
-checar('a categoria da despesa é auxiliar', 'auxiliar', CATEGORIA_DA_SUBSTITUTA);
+checar('a categoria da despesa é a mesma do pagamento (monitor, "Auxiliar" no caixa)', 'monitor', CATEGORIA_DA_SUBSTITUTA);
 
 console.log('\n5. "já foi sua auxiliar" — pelo telefone, nunca pelo nome');
 const historico = [{ uid: 'x', nome: 'Rose', telefone: '(11) 8765-4321', ativa: false }];
@@ -133,8 +133,8 @@ const telaSubs = ler('src/pages/tio/TioSubstitutas.jsx');
 checar('"Falar" abre o WhatsApp pelo linkDoZap', true, telaSubs.includes('href={linkDoZap(s.telefone)}') && telaSubs.includes('Falar'));
 const telaAux = ler('src/pages/tio/TioAuxiliar.jsx');
 checar('as ex-auxiliares têm "Falar" pelo linkDoZap', true, telaAux.includes('href={linkDoZap(h.telefone)}'));
-checar('e "Ver minhas substitutas" no fim', true, telaAux.includes('Ver minhas substitutas') && telaAux.includes('to="/tio/auxiliar/substitutas"'));
-checar('a rota existe, filha do /tio', true, ler('src/App.jsx').includes('<Route path="auxiliar/substitutas" element={<TioSubstitutas />} />'));
+checar('e "Ver minhas substitutas" no fim', true, telaAux.includes('Ver minhas substitutas') && telaAux.includes('to="/tio/finance/auxiliar/substitutas"'));
+checar('a rota existe, embaixo de /tio/finance (atrás da senha: mostra valores)', true, ler('src/App.jsx').includes('<Route path="finance/auxiliar/substitutas" element={<TioSubstitutas />} />'));
 
 console.log('\n8. a auxiliar não alcança nada disto');
 const telasDela = readdirSync(new URL('../src/pages/auxiliar/', import.meta.url)).map((f) => `src/pages/auxiliar/${f}`);

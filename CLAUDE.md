@@ -184,9 +184,14 @@ viram auxiliar com a mesma conta). O vínculo mora em `auxiliares/{uid}`
 (de quem, desde, ativa, até) — ela lê o dela, ele lê os dele, ninguém escreve
 pelo cliente — e `users.motoristaUid` é proibido ao cliente. Ela lê o doc do
 motorista só com o vínculo ativo. O tio convida, desativa e vê quem já
-trabalhou com ele em `/tio/auxiliar` (porta "Auxiliar" na Central), com a
-rotatividade só para ele ([auxiliar.js](src/dominio/identidade/auxiliar.js),
-`npm run testar:auxiliar`).
+trabalhou com ele na seção "Auxiliar" da Central
+([AuxiliarNaCentral](src/components/auxiliar/AuxiliarNaCentral.jsx), um
+espaço na rolagem, não aba) e no detalhe em `/tio/finance/auxiliar` — atrás
+da senha, porque o pagamento dela põe valores ali; `/tio/finance/auxiliar` só
+redireciona —, com a rotatividade só para ele
+([auxiliar.js](src/dominio/identidade/auxiliar.js), `npm run testar:auxiliar`
+e `testar:auxiliar-na-central`). O pagamento (fase 4) e a falta (fase 5)
+entram no bloco pela prop `linhasDaAuxiliar`.
 ⚠️ **ELA NÃO LÊ `children`** (mensalidade, contrato e saúde moram lá, e regra
 não esconde campo): lê `turmaDaAuxiliar/{motoristaUid}` (subcoleções
 `criancas` e `faltas`), uma CÓPIA que o servidor mantém com uma LISTA FECHADA
@@ -201,7 +206,7 @@ sem rota aberta DE PROPÓSITO (ela põe na perua enquanto ele liga o app).
 SDK, então convidar, aceitar e marcar conferem `contaDoMotoristaOpera`, o
 mesmo predicado do `isAdmin()` das rules. Ela vê o PIX DELE (`PixDaPerua`).
 ⚠️ **O PAGAMENTO DELA É UM RECIBO DOS DOIS (fase 4):** no cartão dela em
-`/tio/auxiliar` ele toca "Anotar que paguei" (`anotarPagamentoDaAuxiliar`
+`/tio/finance/auxiliar` ele toca "Anotar que paguei" (`anotarPagamentoDaAuxiliar`
 grava `pagamentosDaAuxiliar/{tio}_{aux}_{AAAA-MM}` e a despesa `monitor` —
 "Auxiliar" no caixa — na MESMA transação; um por mês), e ela confirma
 "Recebi" na aba `/aux/pagamentos` (`confirmarRecebimentoDaAuxiliar`, aviso
@@ -213,8 +218,8 @@ Continua dela depois de desativada. Régua pura em
 `npm run testar:pagamento-da-auxiliar`.
 ⚠️ **FASE 5 — A FALTA DELA E AS SUBSTITUTAS, SÓ NA TELA DO TIO:** no cartão
 de cada ativa, "Hoje" registra a falta (`faltasDaAuxiliar/{tio}_{aux}_{dia}`)
-e quem substituiu, da lista em `/tio/auxiliar/substitutas` (`substitutasDoTio`,
-só nome e WhatsApp); o valor do dia vira despesa `auxiliar` no MESMO lote, e
+e quem substituiu, da lista em `/tio/finance/auxiliar/substitutas` (`substitutasDoTio`,
+só nome e WhatsApp); o valor do dia vira despesa `monitor` ("Auxiliar" no caixa, a mesma do pagamento) no MESMO lote, e
 "Controle de {mês}" soma faltas e substitutas. ⚠️ **A falta não desconta nada
 sozinha** (combinado entre os dois) e não há estrelas
 ([faltaDaAuxiliar.js](src/dominio/identidade/faltaDaAuxiliar.js),
@@ -382,7 +387,7 @@ src/
 │   │                 mapa ao vivo: a posição da perua é o veículo de um
 │   │                 autônomo e ele não decidiu compartilhá-la com terceiros
 │   ├── tio/           26 telas do motorista — entre elas `TioSubstitutas`
-│   │                 (`/tio/auxiliar/substitutas`), `TioTurma`
+│   │                 (`/tio/finance/auxiliar/substitutas`), `TioTurma`
 │   │                 (`/tio/finance/turma`, atrás da senha), `TioEncerrar`
 │   │                 (`/tio/encerrar`, FORA do `GuardaDaConta`: quem está
 │   │                 bloqueado por atraso precisa conseguir sair) e
@@ -1341,7 +1346,7 @@ tinha Abastecer, PIX e Despesa sem senha; o lugar da auxiliar virou a rota).
 e "Iniciar a rota" no pé (`useViagemDoDia` + `ControleDeRota parte="botao"`).
 ⚠️ **É UMA ROLAGEM SÓ, A VISÃO DO MÊS (05/10/2026, decisão do dono)**: o mês,
 o saldo, as MENSALIDADES PRIMEIRO (quem deve, atalhos, o que espera decisão,
-"Extrato | Mensalidades"), depois Turma, Sua perua e Contas. Ela teve quatro
+"Extrato | Mensalidades"), depois Turma, Auxiliar, Sua perua e Contas. Ela teve quatro
 abas abrindo em Turma, e o mês do topo deixou de mudar o que vinha embaixo —
 "o motorista quer ver as mensalidades primeiro e depois a turma". Turma e
 Perua são provisórias (portas e `BlocoSuaPerua`) até os assuntos da sessão

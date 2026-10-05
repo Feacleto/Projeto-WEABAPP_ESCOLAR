@@ -11,7 +11,7 @@ import { jaFoiAuxiliar, linhaDoCartao, ordenarSubstitutas } from '../../dominio/
 import { formatPhone } from '../../compartilhado/formatters';
 
 /**
- * MINHAS SUBSTITUTAS — `/tio/auxiliar/substitutas` (05/10/2026, fase 5).
+ * MINHAS SUBSTITUTAS — `/tio/finance/auxiliar/substitutas` (05/10/2026, fase 5).
  *
  * "Ele precisa ter uma lista de substitutas" — quem ele chama quando a
  * auxiliar falta. Cada substituição registrada no "Hoje" entra aqui sozinha
@@ -33,7 +33,7 @@ export default function TioSubstitutas() {
 
   return (
     <>
-      <Header title="Minhas substitutas" showBack backLabel="Auxiliar" backTo="/tio/auxiliar" />
+      <Header title="Minhas substitutas" showBack backLabel="Auxiliar" backTo="/tio/finance/auxiliar" />
       <div className="space-y-4 p-4">
         <p className="text-base text-textBody">
           Quem você chama quando a auxiliar falta. Cada substituição registrada entra aqui sozinha.
