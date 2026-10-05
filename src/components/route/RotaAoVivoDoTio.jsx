@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuxiliaresDoMotorista } from '../../hooks/useAuxiliares';
 import { useRegistroDaRota } from '../../hooks/useRegistroDaRota';
+import { useVagasDaPerua } from '../../hooks/useVagasDaPerua';
 import { getDateKey } from '../../dominio/rota/horarios';
 import { zonasDaRota } from '../../dominio/rota/zonasDaRota.js';
 import RegistroDaAuxiliar from './RegistroDaAuxiliar';
@@ -22,6 +23,11 @@ import FichaRapidaDoTio from './FichaRapidaDoTio';
  *
  * Ele continua marcando pela linha do tempo e pelo rodapé, como sempre: as
  * zonas só mostram, e o toque nelas abre a ficha, não marca nada.
+ *
+ * A PERUA DAS ZONAS tem os assentos das VAGAS que ele disse
+ * (`useVagasDaPerua`, um documento — o mesmo do Início). Sem vagas ditas, as
+ * zonas desenham tantos assentos quanto as crianças da viagem, como na tela
+ * da auxiliar.
  */
 export default function RotaAoVivoDoTio({ fila, direcao, escolasPorId, declaracoes, quemBusca, vez }) {
   const { user } = useAuth();
@@ -34,6 +40,7 @@ export default function RotaAoVivoDoTio({ fila, direcao, escolasPorId, declaraco
     [auxiliares]
   );
   const eventos = useRegistroDaRota(user?.uid, getDateKey(), nomes.length > 0);
+  const { vagas } = useVagasDaPerua();
   const zonas = useMemo(
     () => (direcao && fila?.length ? zonasDaRota(fila, { direcao, escolasPorId }) : null),
     [fila, direcao, escolasPorId]
@@ -47,7 +54,14 @@ export default function RotaAoVivoDoTio({ fila, direcao, escolasPorId, declaraco
   return (
     <>
       <RegistroDaAuxiliar nomes={nomes} eventos={eventos} />
-      {zonas && <ZonasDaRota zonas={zonas} vez={vez} onTocar={(q) => setAberta(q.child.id)} />}
+      {zonas && (
+        <ZonasDaRota
+          zonas={zonas}
+          vez={vez}
+          assentos={Number.isInteger(vagas) ? vagas : null}
+          onTocar={(q) => setAberta(q.child.id)}
+        />
+      )}
       {item && (
         <FichaRapidaDoTio
           item={item}

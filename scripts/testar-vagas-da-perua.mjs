@@ -12,6 +12,8 @@
  *      `is int`; texto de campo ou 15.5 seriam recusados);
  *   4. as telas: a palavra é "vaga", nunca "lugar"; a família e a auxiliar
  *      não alcançam nada de vagas; nenhuma tela da perua convida a pôr foto.
+ *   5. a perua UNIFICADA das zonas da rota (05/10/2026): o DESENHO chega à
+ *      auxiliar pelas zonas, mas a régua, o hook e o número de vagas não.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -201,6 +203,31 @@ igual('família e auxiliar não alcançam vagas', vazou, []);
 igual('sonda: o padrão pega o import', PROIBIDO.test("import LinhaDaPerua from '../../components/perua/LinhaDaPerua';"), true);
 // Nenhuma rule compara vagas com crianças: "nunca trava".
 igual('nenhuma rule compara vagas com crianças', /vagasDaPerua[^;]*criancasAtivas|criancasAtivas[^;]*vagasDaPerua/.test(ler('firestore.rules')), false);
+
+console.log('\n6. a perua das zonas da rota (o mesmo desenho)');
+{
+  // A auxiliar não vê vagas, mas vê a PERUA: as zonas (que ela usa) desenham
+  // `DesenhoDaPerua` no modo da rota. O que continua proibido a ela é a
+  // régua/hook de vagas e o NÚMERO — o desenho só recebe quantos assentos.
+  const zonas = semComentarios(ler('src/components/route/ZonasDaRota.jsx'));
+  igual('as zonas usam o mesmo desenho da perua, no modo da rota', [true, true],
+    [zonas.includes("import DesenhoDaPerua from '../perua/DesenhoDaPerua'"), zonas.includes('<DesenhoDaPerua naRota')]);
+  igual('as zonas não leem vagas (nem hook, nem régua, nem configFinanceiro)', false,
+    /useVagasDaPerua|vagasDaPerua|configFinanceiro|frasesDaPerua|ocupacao\(/.test(zonas));
+  igual('sem o número do tio, os assentos são as crianças da viagem', true,
+    /Number\.isInteger\(assentos\) && assentos > 0 \? assentos : daViagem/.test(zonas));
+  const tioAoVivo = semComentarios(ler('src/components/route/RotaAoVivoDoTio.jsx'));
+  igual('o TIO passa as vagas dele como assentos', true,
+    tioAoVivo.includes('useVagasDaPerua()') && tioAoVivo.includes('assentos={Number.isInteger(vagas) ? vagas : null}'));
+  const auxHoje = semComentarios(ler('src/pages/auxiliar/AuxHoje.jsx'));
+  igual('a AUXILIAR usa as zonas sem passar assentos (nada de vagas)', [true, false],
+    [auxHoje.includes('<ZonasDaRota'), /assentos=|vagas/i.test(auxHoje)]);
+  const desenho = semComentarios(ler('src/components/perua/DesenhoDaPerua.jsx'));
+  igual('no modo da rota o assento sem ninguém não se chama "vaga"', true,
+    desenho.includes('aria-label="Assento vazio"') && desenho.includes("naRota ? 'Também na perua' : 'Acima das vagas'"));
+  igual('no modo da rota a vaga livre não é tocável', true, desenho.includes('onVagaLivre={naRota ? null : onVagaLivre}'));
+  igual('o desenho não mostra número (nada de frasesDaPerua/ocupacao)', false, /frasesDaPerua|ocupacao\(/.test(desenho));
+}
 
 console.log(`\n${ok} ok, ${bad} falharam`);
 if (bad) process.exit(1);

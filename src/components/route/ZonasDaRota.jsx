@@ -1,5 +1,6 @@
 import { Bus, Home, School } from 'lucide-react';
 import Avatar from '../common/Avatar';
+import DesenhoDaPerua from '../perua/DesenhoDaPerua';
 import { horaCurta } from '../../dominio/rota/horarios';
 import { quantosNaEscola } from '../../dominio/rota/zonasDaRota.js';
 
@@ -20,14 +21,28 @@ import { quantosNaEscola } from '../../dominio/rota/zonasDaRota.js';
  * ⚠️ NADA SE MEXE SOZINHO: sem animação de entrada nem de troca de zona. O
  * "ao vivo" é a criança mudar de lugar quando alguém marca, e só isso.
  *
- * ⚠️ A PERUA AQUI É UMA CAIXA SIMPLES, sem assentos. O desenho da perua em
- * vagas (o Início, os planos) é de outra frente; quando ele existir, esta
- * caixa pode passar a usá-lo.
+ * A PERUA É A MESMA DA PERUA EM VAGAS (05/10/2026, decisão do dono):
+ * `DesenhoDaPerua` no modo da rota, com quem está na perua aceso e os outros
+ * assentos apagados; embaixo, os nomes (tocar abre a ficha).
+ *
+ * ⚠️ QUANTOS ASSENTOS (`assentos`): o TIO passa as vagas que disse; a
+ * AUXILIAR não passa nada — ela não vê vagas (decisão do dono) —, e a perua
+ * dela tem tantos assentos quanto as crianças da viagem, sem vaga livre e
+ * sem número. Esta peça não lê vagas de lugar nenhum: o número só entra pela
+ * prop, e só a tela do tio o tem.
  */
-export default function ZonasDaRota({ zonas, onTocar, vez = null }) {
+const ASSENTOS_NO_MAXIMO = 60;
+
+export default function ZonasDaRota({ zonas, onTocar, vez = null, assentos = null }) {
   if (!zonas) return null;
   const ida = zonas.direcao === 'ida';
   const naEscola = quantosNaEscola(zonas);
+  // As crianças da viagem (quem está fora hoje não ocupa assento).
+  const daViagem = zonas.emCasa.length + zonas.naPerua.length + naEscola + zonas.entregues.length;
+  const nAssentos = Math.min(
+    ASSENTOS_NO_MAXIMO,
+    Number.isInteger(assentos) && assentos > 0 ? assentos : daViagem
+  );
 
   const casa = (
     <Zona
@@ -67,6 +82,11 @@ export default function ZonasDaRota({ zonas, onTocar, vez = null }) {
         Na perua
         <span className="ml-auto text-base font-semibold tabular-nums text-textMuted">{zonas.naPerua.length}</span>
       </h3>
+      {nAssentos > 0 && (
+        <div className="mt-3">
+          <DesenhoDaPerua naRota vagas={nAssentos} criancas={zonas.naPerua.map((q) => q.child)} />
+        </div>
+      )}
       <Pessoas itens={zonas.naPerua} onTocar={onTocar} vez={vez} vazio="Ninguém na perua agora" />
     </section>
   );

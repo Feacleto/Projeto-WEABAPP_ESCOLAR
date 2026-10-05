@@ -1581,9 +1581,15 @@ declarações e quem busca — nenhuma escuta a mais da turma):
   "Ainda em casa" (apagados, pela hora) → "Na perua" → "Na escola" (um
   prédio por escola, violeta); na volta, "Na escola" → "Na perua" →
   "Entregues em casa". Quem falta fica riscado, fora das zonas. O status é
-  o de `statusNaDirecao`, o mesmo da linha do tempo. ⚠️ A perua é uma caixa
-  simples, sem assentos: o desenho em vagas é de outra frente e as duas
-  devem se unificar.
+  o de `statusNaDirecao`, o mesmo da linha do tempo. ⚠️ **A PERUA É A MESMA
+  DA PERUA EM VAGAS (05/10/2026, decisão do dono):** `DesenhoDaPerua naRota`,
+  com quem está na perua aceso e os outros assentos apagados ("Assento
+  vazio", nunca "vaga"), e os nomes embaixo. Quantos assentos é a prop
+  `assentos` das zonas: o TIO passa as vagas dele (`useVagasDaPerua` em
+  `RotaAoVivoDoTio`); a AUXILIAR não passa nada e a perua dela tem tantos
+  assentos quanto as crianças da viagem, sem vaga livre e sem número. O
+  bloco 6 de `testar:vagas-da-perua` permite o DESENHO nas zonas e continua
+  proibindo à auxiliar a régua, o hook e o número.
 - Ele continua marcando como antes (rodapé, foco, desfazer, avisos): as
   zonas só mostram, e o toque nelas abre a FICHA RÁPIDA.
 - **A AUXILIAR** ([AuxHoje](src/pages/auxiliar/AuxHoje.jsx)): a lista do dia

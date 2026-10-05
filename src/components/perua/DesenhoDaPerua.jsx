@@ -22,11 +22,18 @@ import {
  *
  * `onVagaLivre` torna as vagas livres tocáveis (cadastrar criança). Sem ele,
  * a perua só mostra — é assim no card do primeiro acesso, que cobre o app.
+ *
+ * NA ROTA AO VIVO (`naRota`, 05/10/2026, decisão do dono): é a MESMA perua
+ * das zonas da rota ("Na perua"), com as crianças que estão nela acesas e os
+ * outros assentos APAGADOS. `vagas` aqui é só o número de ASSENTOS a
+ * desenhar: o tio passa as vagas dele; a auxiliar, que não vê vagas, passa
+ * as crianças da viagem — então nada desta peça diz "vaga" no modo da rota,
+ * e ela não mostra número nenhum.
  */
-export default function DesenhoDaPerua({ vagas, criancas = [], onVagaLivre }) {
+export default function DesenhoDaPerua({ vagas, criancas = [], onVagaLivre, naRota = false }) {
   const fileiras = fileirasDaPerua(vagas);
   const { vagas: celulas, acima } = vagasDesenhadas({ vagas, criancas });
-  const vaga = (i) => <Vaga key={i} crianca={celulas[i]?.crianca} onVagaLivre={onVagaLivre} />;
+  const vaga = (i) => <Vaga key={i} crianca={celulas[i]?.crianca} onVagaLivre={naRota ? null : onVagaLivre} naRota={naRota} />;
 
   return (
     <div className="relative mx-auto w-[264px] max-w-full rounded-[64px_64px_22px_22px] border-[3px] border-borderStrong bg-surface px-4 pb-5 pt-16">
@@ -60,10 +67,10 @@ export default function DesenhoDaPerua({ vagas, criancas = [], onVagaLivre }) {
       )}
       {acima.length > 0 && (
         <div className="mt-3 rounded-xl border-2 border-dashed border-borderStrong p-2">
-          <p className="text-base font-bold text-textBody">Acima das vagas</p>
+          <p className="text-base font-bold text-textBody">{naRota ? 'Também na perua' : 'Acima das vagas'}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {acima.map((c) => (
-              <Vaga key={c.id} crianca={c} />
+              <Vaga key={c.id} crianca={c} naRota={naRota} />
             ))}
           </div>
         </div>
@@ -75,7 +82,7 @@ export default function DesenhoDaPerua({ vagas, criancas = [], onVagaLivre }) {
 const FORMA =
   'flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px_10px_7px_7px] border-2';
 
-function Vaga({ crianca, onVagaLivre }) {
+function Vaga({ crianca, onVagaLivre, naRota = false }) {
   if (crianca) {
     return (
       <span
@@ -99,6 +106,11 @@ function Vaga({ crianca, onVagaLivre }) {
         <Plus size={20} aria-hidden="true" />
       </button>
     );
+  }
+  // Na rota, o assento sem ninguém AGORA fica apagado — não é vaga livre:
+  // a criança dele pode estar em casa ou na escola.
+  if (naRota) {
+    return <span role="img" aria-label="Assento vazio" className={`${FORMA} border-dashed border-borderStrong bg-card opacity-50`} />;
   }
   return (
     <span role="img" aria-label="Vaga livre" className={`${FORMA} border-dashed border-borderStrong bg-card`} />
