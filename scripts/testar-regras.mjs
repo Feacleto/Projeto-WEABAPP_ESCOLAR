@@ -553,6 +553,7 @@ async function main() {
   await asAvaliacoesDaAuxiliar({ pai1, novato, dono, anon });
   await aTransferencia({ novato, dono, anon });
   await aAutoriaDaFoto({ novato, dono, anon });
+  await aSubstitutaDeUmDia({ novato, dono, anon });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
@@ -834,6 +835,106 @@ async function aAuxiliar({ pai1 }) {
   checar(BL, 'recontratada, volta a ler o doc do primeiro tio', 'PASSA', await ler(`users/${moto.uid}`, aux));
   checar(BL, 'e a turma dele', 'PASSA', await ler(`${COPIA}/criancas/kidAux1`, aux));
   checar(BL, 'e o tio lê o vínculo com os dois períodos', 'PASSA', await ler(par(moto, aux), moto));
+}
+
+/**
+ * A SUBSTITUTA DE UM DIA (F3, 05/10/2026) — os casos escritos pela QA ANTES
+ * da regra, a partir do desenho da sessão negocio. A substituta não tem
+ * conta: ela abre um link que a callable pública `verRotaDaSubstituta`
+ * confere pelo hash. Por isso `acessosDeSubstituta` só tem UM leitor pelo
+ * cliente — o tio dono do acesso — e nenhum escritor. O segredo nunca está
+ * no documento (só o hash), e mesmo assim nada além do tio o lê.
+ *
+ * Atores PRÓPRIOS, para um 403 não ser herança de outro bloco.
+ */
+async function aSubstitutaDeUmDia({ novato, dono, anon }) {
+  console.log('\n=== A SUBSTITUTA DE UM DIA (F3, 05/10/2026) ===');
+  const BL = 'substituta';
+  const agora = Date.now();
+  const moto = await criarLogin(`sub.moto.${agora}@teste.local`);
+  const outro = await criarLogin(`sub.outro.${agora}@teste.local`);
+  const aux = await criarLogin(`sub.aux.${agora}@teste.local`);
+  const mae = await criarLogin(`sub.mae.${agora}@teste.local`);
+  const L = (values) => ({ arrayValue: { values } });
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Sub') });
+  await semear(`users/${outro.uid}`, { role: S('admin'), name: S('Outro Sub') });
+  await semear(`users/${aux.uid}`, { role: S('auxiliar'), name: S('Rosa'), motoristaUids: L([S(moto.uid)]) });
+  await semear(`auxiliares/${moto.uid}_${aux.uid}`, {
+    motoristaUid: S(moto.uid), auxiliarUid: S(aux.uid), nome: S('Rosa'), ativa: B(true),
+  });
+  await semear(`users/${mae.uid}`, {
+    role: S('parent'), name: S('Mãe Sub'), adminUid: S(moto.uid), adminUids: L([S(moto.uid)]),
+  });
+
+  const COL = 'acessosDeSubstituta';
+  const ACESSO = `${COL}/sub${agora}`;
+  const acesso = (extra = {}) => ({
+    motoristaUid: S(moto.uid), substitutaId: S('subJoana'), nome: S('Joana'),
+    dateKey: S('2026-10-05'), segredoHash: S('a'.repeat(64)), criadoEm: T(0),
+    encerradoEm: { nullValue: null }, encerradoPor: { nullValue: null },
+    ...extra,
+  });
+  await semear(ACESSO, acesso());
+
+  // Leitura: só o tio dono do acesso.
+  checar(BL, 'o tio lê o acesso que gerou', 'PASSA', await ler(ACESSO, moto));
+  checar(BL, 'outro motorista NÃO lê', 'NEGA', await ler(ACESSO, outro));
+  checar(BL, 'a auxiliar do tio NÃO lê', 'NEGA', await ler(ACESSO, aux));
+  checar(BL, 'a família do tio NÃO lê', 'NEGA', await ler(ACESSO, mae));
+  checar(BL, 'o novato NÃO lê', 'NEGA', await ler(ACESSO, novato));
+  checar(BL, 'anônimo NÃO lê (a substituta entra pela callable)', 'NEGA', await ler(ACESSO, anon));
+  checar(BL, 'o dono NÃO lê (o hash e o nome são do tio)', 'NEGA', await ler(ACESSO, dono));
+  await semear(ACESSO, acesso({ encerradoEm: T(0), encerradoPor: S('rota') }));
+  checar(BL, 'encerrado: o tio ainda lê (o resumo é dele)', 'PASSA', await ler(ACESSO, moto));
+  checar(BL, 'encerrado: outro motorista continua sem ler', 'NEGA', await ler(ACESSO, outro));
+
+  // As listas: a do tio prova `motoristaUid == ele`.
+  const consultarCom = (col, condicoes, s) =>
+    fetch(`${FS}:runQuery`, {
+      method: 'POST',
+      headers: H(s),
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: col }],
+          where: condicoes.length === 1
+            ? { fieldFilter: { field: { fieldPath: condicoes[0][0] }, op: 'EQUAL', value: condicoes[0][1] } }
+            : { compositeFilter: { op: 'AND', filters: condicoes.map(([campo, valor]) => ({
+              fieldFilter: { field: { fieldPath: campo }, op: 'EQUAL', value: valor },
+            })) } },
+          limit: 20,
+        },
+      }),
+    }).then((r) => r.status);
+  checar(BL, 'a lista do tio (motoristaUid == ele) passa', 'PASSA',
+    await consultarCom(COL, [['motoristaUid', S(moto.uid)]], moto));
+  checar(BL, 'a lista do tio no dia (+ dateKey) passa', 'PASSA',
+    await consultarCom(COL, [['motoristaUid', S(moto.uid)], ['dateKey', S('2026-10-05')]], moto));
+  checar(BL, 'outro motorista lista os acessos do primeiro', 'NEGA',
+    await consultarCom(COL, [['motoristaUid', S(moto.uid)]], outro));
+  checar(BL, 'a auxiliar lista os acessos do tio dela', 'NEGA',
+    await consultarCom(COL, [['motoristaUid', S(moto.uid)]], aux));
+  checar(BL, 'consulta pela substituta, sem o tio, é recusada', 'NEGA',
+    await consultarCom(COL, [['substitutaId', S('subJoana')]], moto));
+  checar(BL, 'lista sem filtro é recusada', 'NEGA', await listar(COL, moto));
+
+  // Ninguém escreve pelo cliente: gerar, encerrar e ver são callables, e o
+  // gatilho do fim da rota também é do servidor.
+  await semear(ACESSO, acesso());
+  checar(BL, 'o tio gera um acesso pelo app', 'NEGA', await criar(COL, `subF${agora}`, moto, acesso()));
+  checar(BL, 'o tio encerra pelo app (é callable)', 'NEGA',
+    await escrever(ACESSO, moto, { encerradoEm: T(0), encerradoPor: S('tio') }, ['encerradoEm', 'encerradoPor']));
+  checar(BL, 'o tio reabre um encerrado pelo app', 'NEGA',
+    await escrever(ACESSO, moto, { encerradoEm: { nullValue: null } }, ['encerradoEm']));
+  checar(BL, 'o tio troca o hash do segredo', 'NEGA',
+    await escrever(ACESSO, moto, { segredoHash: S('b'.repeat(64)) }, ['segredoHash']));
+  checar(BL, 'o tio estica o dia do acesso', 'NEGA',
+    await escrever(ACESSO, moto, { dateKey: S('2026-10-06') }, ['dateKey']));
+  checar(BL, 'o tio apaga o acesso', 'NEGA', await apagar(ACESSO, moto));
+  checar(BL, 'a auxiliar cria um acesso para o tio dela', 'NEGA',
+    await criar(COL, `subA${agora}`, aux, acesso()));
+  checar(BL, 'anônimo cria um acesso', 'NEGA', await criar(COL, `subN${agora}`, anon, acesso()));
+  checar(BL, 'o dono escreve pelo app', 'NEGA',
+    await escrever(ACESSO, dono, { encerradoPor: S('tio') }, ['encerradoPor']));
 }
 
 /**
