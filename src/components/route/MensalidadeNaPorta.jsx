@@ -12,7 +12,7 @@ import { nomeDoMesDaMensalidade } from '../../dominio/cobranca/semSenha.js';
  * A MENSALIDADE EM ABERTO, NA PORTA — sem valor nenhum (04/10/2026, simulação
  * "Rota e Central" aprovada pelo dono).
  *
- * Na rota, a tela é a Central da AUXILIAR, e ela não pode saber quanto cada
+ * Na rota, a tela é o lugar da AUXILIAR, e ela não pode saber quanto cada
  * família paga. Mas é na porta que o dinheiro chega na mão, então ela precisa
  * poder dar baixa. Por isso esta caixa mostra só o MÊS ("Mensalidade de
  * outubro em aberto") e "Recebi" — nunca o valor, nem na confirmação.

@@ -54,7 +54,7 @@ export function usePaymentsByMonth(monthKey) {
 
 /**
  * As mensalidades EM ABERTO da turma do motorista — só para a rota, onde a
- * tela é a Central da auxiliar e mostra o mês sem o valor (ver
+ * tela é o lugar da auxiliar e mostra o mês sem o valor (ver
  * `MensalidadeNaPorta`).
  */
 export function useMensalidadesEmAberto() {

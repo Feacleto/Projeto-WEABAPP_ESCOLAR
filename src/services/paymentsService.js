@@ -141,7 +141,7 @@ export async function anotarPixDaFamilia(paymentId) {
 
 /**
  * AS MENSALIDADES EM ABERTO DA TURMA — só `pending`, e só para a rota
- * (04/10/2026). A rota é a Central da auxiliar: ela vê "Mensalidade de
+ * (04/10/2026). A rota é o lugar da auxiliar: ela vê "Mensalidade de
  * outubro em aberto" na criança da porta, sem valor. ⚠️ A consulta é ESTREITA
  * de propósito (condição da QA): nada de pago, nada de histórico. O valor
  * ainda chega no aparelho — é cortina, não cofre, a mesma da senha do

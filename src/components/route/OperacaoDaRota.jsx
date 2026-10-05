@@ -127,7 +127,7 @@ export default function OperacaoDaRota({
   // Quem a família indicou para buscar hoje — aparece na entrega (ver abaixo).
   const quemBusca = useQuemBuscaHoje(user?.uid, dateKey);
   // A MENSALIDADE EM ABERTO DE QUEM ESTÁ NA PORTA (04/10/2026). A rota é a
-  // Central da auxiliar: ela vê o mês, nunca o valor (`MensalidadeNaPorta`).
+  // A rota é o lugar da auxiliar: ela vê o mês, nunca o valor (`MensalidadeNaPorta`).
   const { payments: pendentes } = useMensalidadesEmAberto();
   const emAberto = useMemo(() => emAbertoPorCrianca(pendentes), [pendentes]);
 

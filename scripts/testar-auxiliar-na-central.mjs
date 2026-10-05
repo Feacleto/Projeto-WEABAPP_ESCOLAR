@@ -1,6 +1,6 @@
 /**
  * A AUXILIAR NA CENTRAL (05/10/2026) — o espaço "Auxiliar" na rolagem da
- * Central e o detalhe atrás da senha.
+ * Carteira e o detalhe atrás da senha.
  *
  *   node scripts/testar-auxiliar-na-central.mjs
  *   (ou: npm run testar:auxiliar-na-central)
@@ -30,12 +30,12 @@ const central = semComentarios(ler('src/pages/tio/TioFinance.jsx'));
 const bloco = semComentarios(ler('src/components/auxiliar/AuxiliarNaCentral.jsx'));
 const app = semComentarios(ler('src/App.jsx'));
 
-console.log('\n1. a seção na Central, entre Turma e Sua perua');
+console.log('\n1. a seção na Carteira, entre Turma e Sua perua');
 const iTurma = central.indexOf('>Turma</h2>');
 const iAux = central.indexOf('<AuxiliarNaCentral');
 const iPerua = central.indexOf('<BlocoSuaPerua');
 const iContas = central.indexOf('>Contas</h2>');
-checar('a Central insere <AuxiliarNaCentral>', true, iAux > -1);
+checar('a Carteira insere <AuxiliarNaCentral>', true, iAux > -1);
 checar('depois de Turma', true, iTurma > -1 && iAux > iTurma);
 checar('antes de Sua perua', true, iPerua > -1 && iAux < iPerua);
 checar('o bloco tem o título "Auxiliar"', true, />Auxiliar<\/h2>/.test(bloco));
@@ -51,7 +51,7 @@ checar('sem "R$"', false, /R\$/.test(bloco));
 checar('sem formatCurrency / reais()', false, /formatCurrency|reais\(/.test(bloco));
 checar('sem valorMensal', false, /valorMensal/.test(bloco));
 checar('as linhas das próximas fases entram pela prop', true, /linhasDaAuxiliar\(a\)/.test(bloco));
-checar('um só botão cheio na Central: o bloco não usa bg-primary cheio', false, /\bbg-primary\b/.test(bloco));
+checar('um só botão cheio na Carteira: o bloco não usa bg-primary cheio', false, /\bbg-primary\b/.test(bloco));
 
 console.log('\n4. o detalhe atrás da senha, e o endereço velho redireciona');
 checar('rota finance/auxiliar → TioAuxiliar', true, /path="finance\/auxiliar"\s+element=\{<TioAuxiliar \/>\}/.test(app));
@@ -73,7 +73,7 @@ function arquivos(dir) {
 }
 const raiz = new URL('../src', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const todos = arquivos(decodeURIComponent(raiz));
-checar('sonda: a varredura acha a Central', true, todos.some((p) => p.endsWith('TioFinance.jsx')));
+checar('sonda: a varredura acha a Carteira', true, todos.some((p) => p.endsWith('TioFinance.jsx')));
 const sobras = todos
   .filter((p) => /['"`]\/tio\/auxiliar(?![\w/-])/.test(semComentarios(readFileSync(p, 'utf8'))));
 checar('nenhum "/tio/auxiliar" em src/', [], sobras);

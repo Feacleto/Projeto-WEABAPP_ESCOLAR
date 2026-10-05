@@ -55,7 +55,7 @@ import { indiceDaAba } from '../../compartilhado/abaAtiva';
  * items: [{ to, label, icon: LucideIcon, end?: bool, badge?: number,
  *           tour?: string, ponto?: bool }]
  *
- * `ponto` é a bolinha verde da Central quando a rota está rodando: não é
+ * `ponto` é a bolinha verde da aba "Rota" quando a rota está rodando: não é
  * aviso para atender (por isso não é âmbar), é estado — "a rota está aberta".
  *
  * `tour` vira data-tour no link: é a âncora que o tutorial guiado ilumina e

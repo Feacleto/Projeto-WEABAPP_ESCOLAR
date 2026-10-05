@@ -748,7 +748,7 @@ export default function App() {
         {/* OS NÍVEIS DO MOTORISTA (docs/niveis.md). */}
         <Route path="nivel" element={<TioNivel />} />
         {/* A COMUNIDADE (05/10/2026): a foto da turma e os tios parceiros.
-          * Fora da Central e da senha: quem posta costuma ser a auxiliar. */}
+          * Fora da Carteira e da senha: quem posta costuma ser a auxiliar. */}
         <Route path="comunidade" element={<TioComunidade />} />
         <Route path="indicar" element={<SoComCobranca modulo="indicacao"><ZonaDaPlataforma><TioIndicar /></ZonaDaPlataforma></SoComCobranca>} />
         <Route path="notifications" element={<Notifications />} />

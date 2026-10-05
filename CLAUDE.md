@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 87 scripts. O PRIMEIRO é
+npm run testar                   # 88 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -203,7 +203,7 @@ PAR ativo, e `marcarParadaPelaAuxiliar` recebe o `motoristaUid`. Régua nova:
 até agora — a recomendação vai exigir 30 dias por ela; espelho no app,
 comparado caso a caso). Sem migração: a conta da auxiliar ainda não foi ao
 ar. O tio convida, desativa e vê quem já
-trabalhou com ele na seção "Auxiliar" da Central
+trabalhou com ele na seção "Auxiliar" da Carteira
 ([AuxiliarNaCentral](src/components/auxiliar/AuxiliarNaCentral.jsx), um
 espaço na rolagem, não aba) e no detalhe em `/tio/finance/auxiliar` — atrás
 da senha, porque o pagamento dela põe valores ali; `/tio/finance/auxiliar` só
@@ -250,7 +250,7 @@ mesmo componente mostra os dias que ela cobriu ("Dias que cobriu", em
 `/tio/finance/auxiliar/substitutas`).
 ⚠️ **E A FALTA DE HOJE APARECE NO INÍCIO, SEM VALOR** (05/10/2026, decisão
 do dono): uma linha por auxiliar no "Para resolver" — "Cida faltou hoje" ·
-"Substituta: Joana" ou "Sem substituta registrada" — que leva à Central (com
+"Substituta: Joana" ou "Sem substituta registrada" — que leva à Carteira (com
 a senha). O Início não tem senha: só nomes, nunca R$ (`linhasDaFaltaDeHoje`,
 escuta estreita do dia em `watchFaltasDeHoje`/`useFaltaDaAuxiliarHoje`).
 ⚠️ **A SUBSTITUTA DE UM DIA (F3, 05/10/2026):** "Chamar hoje" (na lista de
@@ -1444,15 +1444,27 @@ rota; o app que **recarrega** com a rota aberta religa o GPS sozinho
 (`retomar`, em `ControleDeRota`); e o `closeStaleRoutes` espera **90 minutos**
 (antes 20) e apaga a última posição ao fechar, como o "Encerrar" faz.
 
-**O RODAPÉ É INÍCIO · CENTRAL, E NA ROTA A CENTRAL É A ROTA** (04/10/2026,
+**O RODAPÉ É INÍCIO · CARTEIRA, E NA ROTA A SEGUNDA ABA É A ROTA** (04/10/2026,
 simulação "Rota e Central" aprovada pelo dono — `ITENS_EM_ROTA` em
-[TioLayout](src/pages/tio/TioLayout.jsx)). Fora da rota, a aba Central leva a
-`/tio/finance` (o caixa, atrás da senha). Com a rota rodando, a MESMA aba leva
-a `/tio/route/now`, que vira a Central da AUXILIAR: sem senha e sem valor,
-com uma bolinha verde (`ponto` no BottomNav). A rota começar TRANCA o
+[TioLayout](src/pages/tio/TioLayout.jsx)). Fora da rota, a aba Carteira leva a
+`/tio/finance` (o caixa, atrás da senha). Com a rota rodando, a MESMA posição
+vira "Rota" (ícone da perua) e leva a `/tio/route/now`, o lugar da AUXILIAR:
+sem senha e sem valor, com uma bolinha verde (`ponto` no BottomNav).
+⚠️ **(05/10/2026, dono) A CENTRAL VIROU CARTEIRA**, nome escolhido pensando
+no futuro financeiro, com duas condições: na rota a aba vira "Rota", e
+enquanto o app não guarda dinheiro a tela não sugere que guarda — o número
+grande diz "Sobrou em outubro" ("Faltou em …" no negativo), nunca "saldo", e
+nada de depositar, sacar, transferir ou rendimento (`npm run
+testar:nome-da-carteira`; `testar:carteira` já era a carteira de clientes do
+dono). A varredura vale só para a árvore da Carteira (TioFinance e o que ela
+importa direto), porque "transferência" também é a passagem de FAMÍLIA entre
+tios (`components/transferencia/`), que não é dinheiro. Nomes internos
+ficaram: rotas `/tio/finance…`, `AuxiliarNaCentral`, âncoras do tour.
+A rota começar TRANCA o
 Financeiro (`trancar()` no TioLayout); encerrar leva a `/tio/finance`, que
 pede a senha de novo. Quem decide é `liveLocation/{uid}.routeActive`, não o
-GPS deste aparelho. A antiga terceira aba "Rota" saiu.
+GPS deste aparelho. A antiga TERCEIRA aba, que aparecia só na rota, saiu: o
+"Rota" de hoje é a segunda aba trocando de nome.
 ⚠️ **NA ROTA, A AUXILIAR RECEBE SEM VER VALOR:**
 [MensalidadeNaPorta](src/components/route/MensalidadeNaPorta.jsx) mostra
 "Mensalidade de outubro em aberto" na criança da porta (consulta estreita,
@@ -1463,21 +1475,21 @@ servidor, e o evento `claimed` de motorista só com `meta.via: 'sem_senha'`.
 A trilha mostra "Baixa dada sem a senha, na rota". O valor ainda chega no
 aparelho: é cortina, não cofre, como a senha do Financeiro.
 [PixDaPerua](src/components/route/PixDaPerua.jsx) só mostra e copia a chave.
-⚠️ **FORA DA ROTA, A CENTRAL É DO MOTORISTA E ABRE DIRETO NA SENHA** — o
+⚠️ **FORA DA ROTA, A CARTEIRA É DO MOTORISTA E ABRE DIRETO NA SENHA** — o
 `GuardaDoFinanceiro` não devolve mais o `FinanceiroTrancado` no caixa (ele
 tinha Abastecer, PIX e Despesa sem senha; o lugar da auxiliar virou a rota).
-[TioFinance](src/pages/tio/TioFinance.jsx) é a Central: o saldo com
+[TioFinance](src/pages/tio/TioFinance.jsx) é a Carteira: o "Sobrou em {mês}" com
 "Perguntar ao Buzi" logo abaixo (só com senha; leva a `/tio/finance/buzi`)
 e "Iniciar a rota" no pé (`useViagemDoDia` + `ControleDeRota parte="botao"`).
 ⚠️ **É UMA ROLAGEM SÓ, A VISÃO DO MÊS (05/10/2026, decisão do dono)**: o mês,
-o saldo, as MENSALIDADES PRIMEIRO (quem deve, atalhos, o que espera decisão,
+o que sobrou, as MENSALIDADES PRIMEIRO (quem deve, atalhos, o que espera decisão,
 "Extrato | Mensalidades"), depois Turma, Auxiliar, Sua perua e Contas. Ela teve quatro
 abas abrindo em Turma, e o mês do topo deixou de mudar o que vinha embaixo —
 "o motorista quer ver as mensalidades primeiro e depois a turma". Turma e
 Perua são provisórias (portas e `BlocoSuaPerua`) até os assuntos da sessão
 prod em `src/components/carteira/`.
 ⚠️ **A FATURA DE R$ 0,00 (05/10/2026, decisão do dono).** Com a cobrança
-desligada, a seção Contas da Central mostra todo mês "Fatura de outubro ·
+desligada, a seção Contas da Carteira mostra todo mês "Fatura de outubro ·
 Período grátis": o valor da tabela de HOJE riscado e "Você paga R$ 0,00".
 É DEMONSTRATIVO — nada é gravado em `faturasParceiro`; régua em
 [faturaGratis.js](src/dominio/associacao/faturaGratis.js) (casos em
@@ -1773,7 +1785,7 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   ([comunidade.js](functions/lib/comunidade.js), régua em
   [reguaDaComunidade.js](functions/lib/reguaDaComunidade.js), espelho em
   `src/dominio/identidade/comunidade.js`, `testar:comunidade`). No Início do
-  tio, a linha "Comunidade" (`/tio/comunidade`, FORA da Central e da senha:
+  tio, a linha "Comunidade" (`/tio/comunidade`, FORA da Carteira e da senha:
   quem posta costuma ser a auxiliar) com duas abas. ⚠️ **Foto da turma só
   com o "sim" de CADA família marcada** (`children.fotoDaTurmaConsentida`,
   escrito só pela responsável — rules; ausente é NÃO), vista só pelas
@@ -2471,7 +2483,7 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   (`falaDaResposta`). O microfone do ditado continua (só entra). "Pôr no Boletim" (só nas respostas de
   dinheiro) monta o Boletim com as partes que ELE escolheu, na ordem em que
   perguntou: `/tio/finance/boletim?partes=…`; sem parte, o de sempre. Do dia 1
-  ao 7 o botão "Perguntar ao Buzi" da Central vira "Boletim de setembro
+  ao 7 o botão "Perguntar ao Buzi" da Carteira vira "Boletim de setembro
   pronto" e a conversa abre com ele. A conversa do dia fica no aparelho, sem
   valor nenhum; as faltas da semana só são lidas quando a pergunta aparece
   (`useAvisosDaSemana`).

@@ -62,7 +62,7 @@ export const ADMIN_TOUR = [
   {
     path: '/tio',
     anchor: 'nav-finance',
-    title: 'O dinheiro fica aqui',
+    title: 'Esta é a sua Carteira',
     body: 'Quem pagou, quem falta e o PIX pronto.',
   },
   {

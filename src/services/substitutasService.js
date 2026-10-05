@@ -84,7 +84,7 @@ export function watchFaltasDasAuxiliares(motoristaUid, onUpdate, onError) {
 
 /**
  * As faltas de HOJE das auxiliares dele — a escuta ESTREITA do Início
- * (05/10/2026). A de cima traz todas as faltas, de sempre, porque a Central
+ * (05/10/2026). A de cima traz todas as faltas, de sempre, porque a Carteira
  * reconta as substitutas; o Início só precisa do dia, e abrir a escuta larga
  * em toda tela de entrada seria ler o histórico inteiro para mostrar uma
  * linha. Duas igualdades: o Firestore serve com os índices de campo único,

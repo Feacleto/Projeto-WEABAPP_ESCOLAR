@@ -7,8 +7,8 @@ import { linhasDaFaltaDeHoje } from '../dominio/identidade/faltaDaAuxiliar.js';
 /**
  * As linhas "Cida faltou hoje" do Início do motorista (05/10/2026). Só a
  * falta de HOJE, numa escuta estreita (`watchFaltasDeHoje`) — a escuta larga
- * de `useSubstitutas` é da Central. O dia é o mesmo `getDateKey` com que a
- * Central GRAVA a falta: chave calculada de outro jeito aqui seria uma falta
+ * de `useSubstitutas` é da Carteira. O dia é o mesmo `getDateKey` com que a
+ * Carteira GRAVA a falta: chave calculada de outro jeito aqui seria uma falta
  * gravada que o Início não acha.
  *
  * O dia é recalculado a cada render (o Início já re-renderiza com o relógio

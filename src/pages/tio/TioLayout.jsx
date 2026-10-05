@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMarcosDoApp } from '../../hooks/useMarcosDoApp';
-import { Home, Wallet } from 'lucide-react';
+import { Bus, Home, Wallet } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import { indiceDaAba } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
@@ -61,20 +61,26 @@ const NAV_ITEMS = [
   { to: '/tio', label: 'Início', icon: Home, end: true, tour: 'nav-home' },
   {
     to: '/tio/finance',
-    label: 'Central',
+    label: 'Carteira',
     icon: Wallet,
     tour: 'nav-finance',
   },
 ];
 
 /**
- * ⚠️ NA ROTA, A CENTRAL É A TELA DA ROTA (04/10/2026, simulação "Rota e
+ * ⚠️ NA ROTA, A SEGUNDA ABA É A TELA DA ROTA (04/10/2026, simulação "Rota e
  * Central" aprovada pelo dono).
  *
- * O rodapé tem SEMPRE duas abas: Início · Central. Fora da rota a Central é a
- * do motorista (o caixa, atrás da senha). Com a rota rodando, a MESMA aba leva
- * à tela da rota, que vira a Central da auxiliar: sem senha, sem valor
- * nenhum. A bolinha verde (`ponto`) avisa que a rota está rodando.
+ * ⚠️ A CENTRAL VIROU CARTEIRA (05/10/2026, decisão do dono): o nome pensa no
+ * futuro financeiro do app. Duas condições: na rota a aba NÃO se chama
+ * Carteira, chama "Rota" (quem olha ali é a auxiliar, e o que ela vê é a
+ * rota); e, enquanto o app não guarda dinheiro, a tela não sugere que guarda
+ * (`npm run testar:nome-da-carteira`).
+ *
+ * O rodapé tem SEMPRE duas abas: Início · Carteira. Fora da rota a Carteira é
+ * a do motorista (o caixa, atrás da senha). Com a rota rodando, a MESMA posição
+ * vira "Rota" e leva à tela da rota, que é o lugar da auxiliar: sem senha, sem
+ * valor nenhum. A bolinha verde (`ponto`) avisa que a rota está rodando.
  *
  * Era uma terceira aba, "Rota", que aparecia no meio só durante a rota. Saiu
  * porque a auxiliar e o motorista passaram a ter UM lugar cada, e o lugar da
@@ -87,7 +93,7 @@ const NAV_ITEMS = [
  */
 const ITENS_EM_ROTA = [
   NAV_ITEMS[0],
-  { to: '/tio/route/now', label: 'Central', icon: Wallet, tour: 'nav-rota', ponto: true },
+  { to: '/tio/route/now', label: 'Rota', icon: Bus, tour: 'nav-rota', ponto: true },
 ];
 
 /**
@@ -244,7 +250,7 @@ export default function TioLayout() {
   const emRota = !!minhaRota?.routeActive || isTracking();
   const itens = emRota ? ITENS_EM_ROTA : NAV_ITEMS;
   const naTelaDaRota = location.pathname.startsWith('/tio/route/now');
-  // Encerrou com a tela da rota aberta: a Central volta a ser do motorista
+  // Encerrou com a tela da rota aberta: a Carteira volta a ser do motorista
   // (`/tio/finance`, que pede a senha). Só depois de ler o documento — durante
   // a leitura "sem rota" é desconhecido, não falso.
   useEffect(() => {

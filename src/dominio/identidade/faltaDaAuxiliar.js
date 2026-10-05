@@ -211,10 +211,10 @@ export function resumoDoMes(faltas, monthKey) {
 /**
  * "A CIDA FALTOU HOJE", NO INÍCIO DO TIO (05/10/2026, decisão do dono).
  *
- * A falta é coisa da manhã, e a Central (onde ela é registrada) pede a senha.
+ * A falta é coisa da manhã, e a Carteira (onde ela é registrada) pede a senha.
  * Então o "Para resolver" do Início ganha uma linha por auxiliar que faltou
  * HOJE: "Cida faltou hoje" (sem artigo; "Sua auxiliar faltou hoje" sem nome) com "Substituta: Joana" ou "Sem substituta
- * registrada". Tocar leva à Central, que pede a senha — é lá que se registra
+ * registrada". Tocar leva à Carteira, que pede a senha — é lá que se registra
  * quem cobriu, e o valor.
  *
  * ⚠️ SEM VALOR NENHUM. O Início não tem senha, e a auxiliar pode estar com o

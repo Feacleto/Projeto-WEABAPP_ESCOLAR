@@ -2,7 +2,7 @@
  * O QUE A ROTA MOSTRA SEM A SENHA — régua pura (04/10/2026, simulação "Rota e
  * Central" aprovada pelo dono).
  *
- * Na rota, a tela é a Central da AUXILIAR. Ela vê a mensalidade em aberto da
+ * Na rota, a tela é o lugar da AUXILIAR. Ela vê a mensalidade em aberto da
  * criança da porta, mas só o MÊS — nunca o valor. As duas contas abaixo são
  * as únicas que a tela sem senha faz com uma mensalidade, e nenhuma delas toca
  * em `amount`. `npm run testar:sem-senha` confere as duas.

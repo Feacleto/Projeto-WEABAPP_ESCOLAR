@@ -3,7 +3,7 @@ import { ChevronRight, Users } from 'lucide-react';
 
 /**
  * A porta da Comunidade no Início do tio (05/10/2026), no molde da linha
- * "Meu transporte" logo acima. Fica no Início, e não na Central, porque
+ * "Meu transporte" logo acima. Fica no Início, e não na Carteira, porque
  * quem posta a foto da turma costuma ser a auxiliar, sem a senha do
  * Financeiro. Some durante a rota: ali o Início é só "Abrir rota".
  */

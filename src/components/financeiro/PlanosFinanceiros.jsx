@@ -29,7 +29,7 @@ import {
  * é o que ele lê no app do banco. Nada de saldo, depósito, saque ou
  * rendimento nesta tela (`testar:perua` confere as palavras).
  *
- * `reais` vem da Central, já obedecendo ao olho de esconder.
+ * `reais` vem da Carteira, já obedecendo ao olho de esconder.
  */
 export default function PlanosFinanceiros({ reais }) {
   const navigate = useNavigate();

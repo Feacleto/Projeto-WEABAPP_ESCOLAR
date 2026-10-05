@@ -38,7 +38,7 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks'
  * trabalhou com ele — a rotatividade dele, só para ele.
  *
  * Mora embaixo de `/tio/finance` (atrás da senha) desde a seção Auxiliar da
- * Central: o pagamento dela vai pôr valores aqui.
+ * Carteira: o pagamento dela vai pôr valores aqui.
  *
  * Fase 4: o pagamento dela, em `PagamentoDaAuxiliar` (ele anota, ela
  * confirma "Recebi").
@@ -105,7 +105,7 @@ export default function TioAuxiliar() {
 
   return (
     <>
-      <Header title="Auxiliar" showBack backLabel="Central" backTo="/tio/finance" />
+      <Header title="Auxiliar" showBack backLabel="Carteira" backTo="/tio/finance" />
       <div className="space-y-4 p-4">
         {historico.length > 0 && <NotaDasAuxiliares />}
         {vinculos === null ? (
@@ -121,7 +121,7 @@ export default function TioAuxiliar() {
               <div>
                 <p className="font-display text-lg font-bold text-text">{a.nome}</p>
                 <p className="text-base text-textBody">Desde {mesAno(a.desdeMs)} · vê a turma e a rota de hoje</p>
-                <p className="mt-1 text-sm text-textMuted">Ela não vê mensalidade, contrato nem a sua Central.</p>
+                <p className="mt-1 text-sm text-textMuted">Ela não vê mensalidade, contrato nem a sua Carteira.</p>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <a

@@ -25,7 +25,7 @@ import {
  * A COMUNIDADE DO TIO — /tio/comunidade (05/10/2026, etapa 1, aprovada pelo
  * dono).
  *
- * Mora FORA da Central de propósito: fora da rota a Central pede a senha do
+ * Mora FORA da Carteira de propósito: fora da rota a Carteira pede a senha do
  * Financeiro, e quem tira a foto da turma é a auxiliar, que não tem a senha.
  *
  * Duas abas, como ESTADO (uma tela só):

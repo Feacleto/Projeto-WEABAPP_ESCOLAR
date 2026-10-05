@@ -716,7 +716,7 @@ function ParaResolver({
 }) {
   const itens = [];
   // A falta da auxiliar vem primeiro: muda a manhã dele (faz a rota sozinho
-  // ou chama a substituta). A Central pede a senha; a linha não leva valor.
+  // ou chama a substituta). A Carteira pede a senha; a linha não leva valor.
   for (const f of faltasDaAuxiliar) {
     itens.push({ key: `falta-${f.auxiliarUid}`, icon: UserX, titulo: f.titulo, sub: f.sub, onClick: onAuxiliar });
   }

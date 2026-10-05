@@ -580,7 +580,7 @@ export default function TioFinance() {
     }
   };
 
-  // O "Iniciar a rota" do pé da Central — a mesma conta de "Minha rota".
+  // O "Iniciar a rota" do pé da Carteira — a mesma conta de "Minha rota".
   const viagem = useViagemDoDia();
   const iniciarEAbrir = () => {
     viagem.publicarOrdem();
@@ -592,7 +592,7 @@ export default function TioFinance() {
       {/* O cadeado e os ajustes da senha moram no canto do cabeçalho. O
         * "Relatório" saiu daqui: virou "Ver relatório de 12 meses", no fim do
         * extrato, que é onde a pergunta "quero isso no papel" aparece. */}
-      <Header title="Central" action={<BotoesDoTopoDoFinanceiro />} />
+      <Header title="Carteira" action={<BotoesDoTopoDoFinanceiro />} />
 
       <div className="space-y-4 p-4">
         {/* 1. De que mês a tela fala — antes de qualquer número. */}
@@ -619,8 +619,12 @@ export default function TioFinance() {
           </div>
         )}
 
-        {/* 2. O SALDO, logo depois do mês: é o número que ele veio ver. Um
-          * número grande só, e ele é o que sobrou. O "Esconder" é do aparelho
+        {/* 2. O QUE SOBROU, logo depois do mês: é o número que ele veio ver.
+          * Um número grande só, e ele é o que sobrou (entrou − saiu).
+          * ⚠️ NÃO SE CHAMA "SALDO" (05/10/2026, a Central virou Carteira):
+          * o app não guarda dinheiro, e "saldo" numa Carteira diria que
+          * guarda. Negativo diz "Faltou em …" com o valor sem sinal — o
+          * vermelho já é o sinal. O "Esconder" é do aparelho
           * (ver useValoresVisiveis): quem abre o Financeiro com gente do lado.
           * Ele vai ESCRITO — o olho sozinho não dizia se mostrava ou escondia. */}
         {/* ⚠️ NA COR VIVA DA MARCA desde 04/10/2026 (aprovado pelo dono), com
@@ -634,7 +638,7 @@ export default function TioFinance() {
         >
           <div className="flex items-center justify-between gap-3">
             <h2 className={`text-base font-semibold ${saldo !== null && saldo < 0 ? 'text-textBody' : 'text-naMarca opacity-90'}`}>
-              Saldo de {mes}
+              {saldo !== null && saldo < 0 ? `Faltou em ${mes}` : `Sobrou em ${mes}`}
             </h2>
             <button
               type="button"
@@ -656,7 +660,7 @@ export default function TioFinance() {
                 saldo < 0 ? 'text-dangerText' : 'text-naMarca'
               }`}
             >
-              {reais(saldo)}
+              {reais(Math.abs(saldo))}
             </span>
           )}
           <span
@@ -1160,8 +1164,8 @@ export default function TioFinance() {
         </div>
       </div>
 
-      {/* O PÉ DA CENTRAL: "Iniciar a rota" é o único botão cheio da tela. Com
-        * a rota rodando, a aba Central já leva à rota; aqui vira "Abrir". */}
+      {/* O PÉ DA CARTEIRA: "Iniciar a rota" é o único botão cheio da tela. Com
+        * a rota rodando, a aba "Rota" já leva à rota; aqui vira "Abrir". */}
       {viagem.blocos.length > 0 && (
         <div className="sticky bottom-0 z-10 border-t border-border bg-bg px-4 py-3">
           {viagem.rotaAtiva ? (

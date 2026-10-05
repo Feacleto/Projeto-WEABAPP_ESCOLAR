@@ -7,7 +7,7 @@ import { historicoDeAuxiliares, rotatividade, linkDoZap } from '../../dominio/id
 
 /**
  * A AUXILIAR NA CENTRAL (05/10/2026, desenho aprovado pelo dono) — um ESPAÇO
- * na rolagem da Central, não uma aba: o lugar onde o motorista vê as questões
+ * na rolagem da Carteira, não uma aba: o lugar onde o motorista vê as questões
  * da auxiliar de agora sem sair da visão do mês.
  *
  * Mora entre Turma e Sua perua porque a auxiliar é parte da OPERAÇÃO, não das
@@ -110,7 +110,7 @@ export default function AuxiliarNaCentral({ linhasDaAuxiliar }) {
   );
 }
 
-/** A mesma forma da `Porta` da Central: ícone, título, detalhe e a seta. */
+/** A mesma forma da `Porta` da Carteira: ícone, título, detalhe e a seta. */
 function Linha({ icon: Icon, titulo, detalhe, onClick, divisor = false }) {
   return (
     <button

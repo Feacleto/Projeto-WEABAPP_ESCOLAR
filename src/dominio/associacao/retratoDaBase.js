@@ -11,7 +11,7 @@
  *   crianças com família  `children.inviteStatus == 'used'` (o link, o irmão e
  *                         o pedido de acesso gravam o mesmo valor)
  *   baixas no mês         `payments` com `paid` no mês — QUANTAS, não quanto:
- *                         é sinal de que a Central está em uso, e o valor é
+ *                         é sinal de que a Carteira está em uso, e o valor é
  *                         dinheiro das famílias, não da plataforma
  *   pagaria por mês       a soma de `precoDoMes`, que é o que a "Fatura de
  *                         R$ 0,00" já mostra a cada tio, somado para a base

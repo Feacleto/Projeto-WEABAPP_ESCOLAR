@@ -67,7 +67,7 @@ export function contaDoPlano(p, hoje = new Date()) {
 }
 
 /**
- * A linha fechada do assunto "Planos financeiros" na Central: quantos planos e
+ * A linha fechada do assunto "Planos financeiros" na Carteira: quantos planos e
  * quanto separar por mês somando todos. Sem plano, `null` — a linha não
  * inventa um número.
  */

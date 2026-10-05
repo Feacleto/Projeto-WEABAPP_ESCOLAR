@@ -198,14 +198,14 @@ console.log('\n10. "Cida faltou hoje" no Início (sem valor nenhum)');
     linhasDaFaltaDeHoje([faltasHoje[0], { ...faltasHoje[0] }], hoje).length);
 
   const hook = semComentarios(ler('src/hooks/useFaltaDaAuxiliarHoje.js'));
-  checar('o Início usa a escuta estreita do dia, não a larga da Central', true,
+  checar('o Início usa a escuta estreita do dia, não a larga da Carteira', true,
     hook.includes('watchFaltasDeHoje') && !hook.includes('watchFaltasDasAuxiliares'));
-  checar('o dia é o mesmo getDateKey com que a Central grava', true, hook.includes('getDateKey()'));
+  checar('o dia é o mesmo getDateKey com que a Carteira grava', true, hook.includes('getDateKey()'));
   const servHoje = servico.slice(servico.indexOf('export function watchFaltasDeHoje'));
   checar('a consulta do Início é presa ao motorista E ao dia', true,
     /where\('motoristaUid', '==', motoristaUid\),\s*where\('dateKey', '==', dateKey\)/.test(servHoje));
   const inicio = semComentarios(ler('src/pages/tio/TioDashboard.jsx'));
-  checar('o Início monta a linha com a régua e leva à Central', true,
+  checar('o Início monta a linha com a régua e leva à Carteira', true,
     inicio.includes('useFaltaDaAuxiliarHoje()') && inicio.includes("navigate('/tio/finance/auxiliar')"));
   checar('o Início não lê valor de substituta', false, /substituta\??\.valor/.test(inicio));
   checar('a falta de hoje tira o "em dia" (o Para você não aparece por cima)', true,

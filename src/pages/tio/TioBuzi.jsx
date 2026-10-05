@@ -37,8 +37,8 @@ import {
  * O BUZI CHAT — o assistente digital do motorista (05/10/2026, modelo no
  * jeito do WhatsApp aprovado pelo dono no artifact "Buzi Chat").
  *
- * Mora na Central, atrás da senha ("Perguntar ao Buzi", logo abaixo do
- * saldo), e não existe na rota: ali a Central é a da auxiliar.
+ * Mora na Carteira, atrás da senha ("Perguntar ao Buzi", logo abaixo do
+ * saldo), e não existe na rota: ali a aba vira "Rota", o lugar da auxiliar.
  *
  * ── COMO A CONVERSA ANDA
  * O Buzi oferece os botões DENTRO da conversa: o assunto, depois a pergunta,
@@ -290,7 +290,7 @@ export default function TioBuzi() {
 
   return (
     <>
-      <Header title="Buzi" showBack backLabel="Central" backTo="/tio/finance" />
+      <Header title="Buzi" showBack backLabel="Carteira" backTo="/tio/finance" />
 
       <div className="px-3 pt-3 pb-3 space-y-3">
         <div className="flex items-center gap-2 rounded-3xl bg-card shadow-rest p-3">

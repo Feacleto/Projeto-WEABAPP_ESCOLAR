@@ -33,8 +33,8 @@ import {
  *
  * ⚠️ O CAIXA NÃO TEM MAIS TELA TRANCADA PRÓPRIA (04/10/2026, simulação "Rota
  * e Central"). Ela tinha Abastecer, PIX e Despesa sem senha para a auxiliar;
- * agora o lugar da auxiliar é a ROTA (a Central sem senha), e fora dela a
- * Central é do motorista: abre direto no teclado.
+ * agora o lugar da auxiliar é a ROTA (sem senha), e fora dela a
+ * Carteira é do motorista: abre direto no teclado.
  *
  * Isto é cortina, não cofre: a segurança dos dados continua nas rules. Ver
  * `senhaDoFinanceiroService`.
