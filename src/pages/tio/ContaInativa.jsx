@@ -48,7 +48,7 @@ const TEXTO = {
   atraso: {
     titulo: 'Sua conta está pausada',
     corpo:
-      'Sua associação está em aberto há mais de dez dias, e por isso o acesso foi suspenso. Ele volta assim que o pagamento for confirmado.',
+      'Sua assinatura está em aberto há mais de dez dias, e por isso o acesso foi suspenso. Ele volta assim que o pagamento for confirmado.',
     acao: { para: '/tio/taxa', rotulo: 'Pagar agora' },
   },
   // ⚠️ COBERTURA VENCIDA NÃO É INADIMPLÊNCIA, E O TEXTO NÃO PODE CITAR PRAZO.

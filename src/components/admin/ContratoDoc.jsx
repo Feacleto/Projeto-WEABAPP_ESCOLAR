@@ -10,18 +10,27 @@ import {
   TETO_EM_MENSALIDADES,
   DIAS_SEM_MULTA,
 } from '../../dominio/associacao/multa.js';
+import ContratoDocAte7 from './ContratoDocAte7';
 
 /**
- * O CONTRATO DE ASSOCIAÇÃO, RENDERIZADO.
+ * O CONTRATO DE ASSINATURA DO APLICATIVO, RENDERIZADO (versão 8 em diante).
  *
- * Um componente só, usado dos DOIS lados: o dono vê antes de emitir, o
- * associado vê antes de aceitar. Duas telas desenhando o mesmo documento é
- * como um dia elas divergem — e a que a pessoa leu não seria a que o hash
- * provou.
+ * Um componente só, usado dos DOIS lados: o dono vê na ficha, o assinante vê
+ * antes de aceitar. Duas telas desenhando o mesmo documento é como um dia
+ * elas divergem — e a que a pessoa leu não seria a que o hash provou.
  *
  * NADA É CALCULADO AQUI. Tudo vem pronto de `montarContrato()`, e é esse
  * mesmo objeto que entra no SHA-256. Se a tela recalculasse qualquer número,
  * o hash provaria um conteúdo e a pessoa teria lido outro.
+ *
+ * ⚠️ MAS O TEXTO É DESENHADO AQUI, E POR ISSO ELE RAMIFICA PELA VERSÃO.
+ * O hash prova os números; as cláusulas saem deste código no dia em que
+ * alguém abre o documento. Trocar o texto sem desviar faria um contrato
+ * aceito na versão 7 ("associação") passar a exibir as cláusulas da 8 —
+ * limitação de responsabilidade, reajuste — que ninguém aceitou. Por isso
+ * versão ≤ 7 vai para `ContratoDocAte7`, que é o texto antigo congelado, e
+ * este arquivo só desenha a 8. A próxima versão que mudar o texto faz o
+ * mesmo: congela esta num arquivo próprio antes de reescrever.
  *
  * Imprimível de propósito: `window.print()` do navegador gera o PDF. Sem
  * biblioteca — são 200 KB no bundle de um app que roda em celular de rua, pra
@@ -29,8 +38,15 @@ import {
  */
 export default function ContratoDoc({ dados, aceite }) {
   if (!dados) return null;
+  if ((Number(dados.versao) || 0) <= 7) {
+    return <ContratoDocAte7 dados={dados} aceite={aceite} />;
+  }
+  return <ContratoDeAssinatura dados={dados} aceite={aceite} />;
+}
 
-  const { contratada: c, associado: a, plano: p, valores: v } = dados;
+function ContratoDeAssinatura({ dados, aceite }) {
+  const { contratada: c, assinante: a = {}, plano: p, valores: v } = dados;
+  const k = dados.condicoes || {};
   const data = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
   const pct = (f) => `${Math.round((Number(f) || 0) * 100)}%`;
 
@@ -41,24 +57,13 @@ export default function ContratoDoc({ dados, aceite }) {
   /**
    * ⚠️ `ate: null` É VITALÍCIO, E O DOCUMENTO PRECISA DIZER ISSO COM PALAVRAS.
    *
-   * Esta função nasceu porque o contrato estava calado justamente onde o app
-   * mais promete. Quando a escada virou vitalícia (10/09/2026), o código
-   * inteiro acompanhou — `contratarPlano` grava `ate: null`,
-   * `descontosVigentes` o lê como sem prazo, e a conta sai igual três anos
-   * depois. Só o DOCUMENTO ficou para trás: a linha imprimia "−30%" e nada
-   * mais, enquanto fundador saía "sem prazo" e indicação saía "enquanto
-   * ativas".
-   *
-   * Ou seja: a tela prometia um desconto para sempre e o papel assinado não
-   * registrava a promessa. Numa discussão vale o que está escrito — e o que
-   * estava escrito era uma régua de descontos com data.
+   * A escada virou vitalícia em 10/09/2026 e o código inteiro acompanhou; só
+   * o documento ficou para trás, imprimindo "−30%" e nada mais. Numa
+   * discussão vale o que está escrito.
    *
    * ⚠️ E A FRASE TEM DUAS METADES, PORQUE A PROMESSA TEM DUAS. "Sem prazo"
    * sozinho seria promessa aberta: o desconto vale ENQUANTO O CONTRATO
-   * ESTIVER VIGENTE, e quem cancela e volta depois volta pela régua do dia,
-   * não com o degrau antigo. Omitir a segunda metade criaria a expectativa
-   * que gera a reclamação — a pessoa sai, volta, e cobra um desconto que
-   * ninguém nunca disse que sobrevivia à saída.
+   * ESTIVER VIGENTE, e quem cancela e volta depois volta pela régua do dia.
    */
   const validade = (origem) => {
     const d = (v.descontos || []).find((x) => x.origem === origem);
@@ -77,7 +82,7 @@ export default function ContratoDoc({ dados, aceite }) {
         <div className="min-w-0 flex-1">
           <p className="text-[17px] font-extrabold tracking-tight">Alô Buzinou</p>
           <p className="text-[11px] text-textMuted">
-            {c.razao} · CNPJ {c.cnpj}
+            {c.nomeFantasia || c.razao} · CNPJ {c.cnpj}
           </p>
           <p className="text-[11px] text-textMuted">
             {c.cidade} · {c.telefone} · {c.email}
@@ -86,58 +91,66 @@ export default function ContratoDoc({ dados, aceite }) {
       </header>
 
       <h2 className="mt-4 text-[16px] font-extrabold tracking-tight">
-        Contrato de Associação à Plataforma
+        Contrato de Assinatura do Aplicativo Alô Buzinou
       </h2>
       <p className="mb-4 text-[11px] text-textMuted">
         Emitido em {data(dados.emitidoEm)} · versão {dados.versao}
       </p>
 
       <Clausula n="1" titulo="As partes">
-        {/* ⚠️ A QUALIFICAÇÃO DA CONTRATADA INCLUI A SEDE.
-          *
-          * Faltava, e é o que a cláusula de foro dos Termos precisa poder
-          * nomear — ela elege "a comarca da sede do controlador". Um contrato
-          * que não diz onde a contratada fica deixa a cláusula sem referência.
-          *
-          * `c.endereco` vem de `config/developer.js`, a mesma fonte que os
-          * Termos e a Política usam desde 09/09/2026: antes disso a identidade
-          * estava escrita em três lugares e eles discordavam. */}
+        {/* ⚠️ A CONTRATADA É QUALIFICADA PELA RAZÃO SOCIAL DO MEI — o nome
+          * civil do titular —, e "Desenvolva Algo" vem como nome fantasia. A
+          * parte de um contrato é a pessoa que o CNPJ diz; o nome fantasia só
+          * a identifica. A SEDE vai junto porque é o que a cláusula de foro
+          * e a qualificação precisam poder nomear. */}
         <p className="mb-2">
-          <strong>CONTRATADA:</strong> {c.razao}, inscrita no CNPJ sob nº{' '}
-          {c.cnpj}
-          {c.endereco ? `, com sede em ${c.endereco}` : ''}, mantenedora da
-          plataforma Alô Buzinou.
+          <strong>CONTRATADA:</strong> {c.razao}
+          {c.tipo ? ` (${c.tipo})` : ''}
+          {c.nomeFantasia ? `, nome fantasia ${c.nomeFantasia}` : ''}, inscrito
+          no CNPJ sob nº {c.cnpj}
+          {c.endereco ? `, com sede em ${c.endereco}` : ''}, mantenedor do
+          aplicativo Alô Buzinou, e-mail {c.email}.
         </p>
+        {/* ⚠️ O CPF/CNPJ DO ASSINANTE É OBRIGATÓRIO NA VERSÃO 8 (05/10/2026,
+          * um documento = uma conta). A qualificação sai SEMPRE com o número:
+          * a rule de `contratosAssociacao` só deixa nascer contrato cujo
+          * documento bata com o que `contratarPlano` registrou. O "—" só
+          * aparece numa prévia montada antes disso, nunca num contrato
+          * gravado. */}
         <p>
-          <strong>ASSOCIADO:</strong> {a.nome || '—'}, transportador escolar
-          {a.cidade ? ` atuante em ${a.cidade}` : ''}.
+          <strong>ASSINANTE:</strong> {a.nome || '—'}, inscrito no CPF/CNPJ sob
+          nº {a.documento || '—'},
+          transportador escolar
+          {a.cidade ? ` atuante em ${a.cidade}` : ''}
+          {a.email ? `, e-mail ${a.email}` : ''}.
         </p>
       </Clausula>
 
       <Clausula n="2" titulo="Objeto">
-        Licença de uso da plataforma Alô Buzinou para gestão do transporte
-        escolar: cadastro de crianças, roteirização, comunicação com
-        responsáveis e controle de mensalidades.{' '}
+        Assinatura, isto é, licença de uso não exclusiva e intransferível, do
+        aplicativo Alô Buzinou para a gestão do transporte escolar do
+        ASSINANTE: cadastro de crianças, rota, comunicação com responsáveis e
+        controle de mensalidades.{' '}
         <strong>
           A CONTRATADA não processa nem intermedeia os pagamentos entre o
-          ASSOCIADO e as famílias
+          ASSINANTE e as famílias
         </strong>{' '}
-        — a mensalidade das crianças é recebida diretamente pelo ASSOCIADO.
+        — a mensalidade das crianças é recebida diretamente pelo ASSINANTE.
+        Integram este contrato os Termos de Uso e a Política de Privacidade do
+        aplicativo.
       </Clausula>
 
-      <Clausula n="3" titulo="Plano contratado e taxa">
+      <Clausula n="3" titulo="Plano e valor da assinatura">
         <table className="w-full text-[12.5px]">
           <tbody>
             <Linha rotulo="Plano" valor={p.rotulo || '—'} forte />
-            {/* ⚠️ O QUE A CLÁUSULA DECLARA É A TAXA, NÃO UM VALOR.
-              * A versão 4 congelava o preço da faixa e o teto de crianças, e o
-              * efeito era pesado: crescer exigia contrato novo, com aceite
-              * novo, por ter ganhado um cliente. Declarando a taxa, a mesma
-              * cláusula continua verdadeira em qualquer tamanho.
-              * Não existe Básico/Pro: o app é completo nos dois planos. */}
+            {/* O QUE A CLÁUSULA DECLARA É O VALOR POR CRIANÇA, NÃO UM TOTAL:
+              * declarando a regra, a mesma cláusula continua verdadeira em
+              * qualquer tamanho, e crescer não exige contrato novo. Não existe
+              * Básico/Pro: o app é completo nos dois planos. */}
             {p.taxaPorCrianca != null && (
               <Linha
-                rotulo="Taxa por criança ativa"
+                rotulo="Valor por criança ativa"
                 valor={`${formatBRL(p.taxaPorCrianca)} por mês`}
                 forte
               />
@@ -182,12 +195,9 @@ export default function ContratoDoc({ dados, aceite }) {
                 cor="text-warning"
               />
             )}
-            {/*
-              ⚠️ O PISO APARECE SÓ QUANDO MORDE, mas a cláusula existe sempre
-              (`valores.pisoDaFatura`). Sem esta linha o documento mostra o
-              desconto cheio e um valor mensal que ele não justifica — a mesma
-              contradição da concessão, pelo outro lado da conta.
-            */}
+            {/* O PISO APARECE SÓ QUANDO MORDE, mas a regra existe sempre
+              * (`valores.pisoDaFatura`). Sem esta linha o documento mostra o
+              * desconto cheio e um valor mensal que ele não justifica. */}
             {v.pisoAplicado && (
               <Linha
                 rotulo="Piso de manutenção do ambiente"
@@ -204,7 +214,7 @@ export default function ContratoDoc({ dados, aceite }) {
             )}
             {v.isencaoAte && (
               <Linha
-                rotulo="Meses sem taxa"
+                rotulo="Meses sem cobrança"
                 valor={`nenhuma fatura até ${v.isencaoAte}`}
                 cor="text-warning"
               />
@@ -225,63 +235,61 @@ export default function ContratoDoc({ dados, aceite }) {
 
         {v.valorMensal === 0 && (
           <p className="mt-2 rounded-lg bg-warningSoft p-2 text-[12px] text-warningText">
-            <strong>Nenhuma taxa é devida</strong> enquanto vigorarem as
-            condições acima. Terminado o prazo de cada uma, a taxa volta ao que
+            <strong>Nenhum valor é devido</strong> enquanto vigorarem as
+            condições acima. Terminado o prazo de cada uma, o valor volta ao que
             sobrar da tabela.
           </p>
         )}
 
-        {/* A CONTA ACOMPANHA O TAMANHO, E DIZER ISSO AQUI EVITA A CONVERSA MAIS
-          * DESAGRADÁVEL QUE EXISTE: a cobrança que subiu sem aviso.
-          *
-          * ⚠️ O texto anterior dizia "passando do teto, o ASSOCIADO escolhe
-          * entre subir de faixa ou indicar quais crianças saem". Não há mais
-          * teto: nada trava quando ele cresce, e nenhuma criança precisa sair
-          * para a próxima entrar. */}
         <p className="mt-2 text-[11.5px] text-textMuted">
-          O valor mensal é a taxa acima multiplicada pelo número de crianças
-          ativas, apurado no fechamento de cada mês. Não há teto de crianças, e
-          o ASSOCIADO é avisado antes de a conta mudar.
+          O valor mensal é o valor por criança multiplicado pelo número de
+          crianças ativas, apurado no fechamento de cada mês. Não há teto de
+          crianças, e o ASSINANTE é avisado antes de a conta mudar.
         </p>
       </Clausula>
 
-      <Clausula n="4" titulo="Vigência">
+      <Clausula n="4" titulo="Vigência, renovação e reajuste">
         De <strong>{data(dados.vigenciaInicio)}</strong> a{' '}
         <strong>{data(dados.vigenciaFim)}</strong> ({dados.vigenciaMeses} meses).
-        {/* RENOVA DE 12 EM 12, e é isso que dá prazo aos descontos da cláusula
-          * 3 — eles duram exatamente um período. */}
         Ao fim do prazo o contrato se <strong>renova por mais 12 meses</strong>,
         salvo manifestação de qualquer das partes.{' '}
-        {/* ⚠️ ESTA FRASE FOI REESCRITA NA VERSÃO 7, E A ANTIGA ERA AMBÍGUA NO
-          * PIOR LUGAR. Ela dizia que a renovação valia "nas condições de tabela
-          * então vigentes" — o que se lê, sem esforço, como "o desconto acaba
-          * na renovação". E a linha do desconto, três cláusulas acima, promete
-          * "sem prazo enquanto este contrato estiver vigente".
-          *
-          * Duas cláusulas do mesmo documento dizendo coisas opostas sobre
-          * dinheiro. Num contrato de adesão a ambiguidade se resolve a favor de
-          * quem aderiu (CDC art. 47), então na prática ele manteria o desconto
-          * — mas descobrir isso numa discussão é o pior jeito de ter razão. */}
+        {/* A frase do desconto na renovação é a da versão 7, que tirou a
+          * ambiguidade "nas condições de tabela então vigentes" — lida como
+          * "o desconto acaba ao renovar", o oposto da linha da cláusula 3. */}
         <strong>
           Os descontos declarados sem prazo acompanham as renovações
         </strong>{' '}
         enquanto este contrato estiver vigente; os descontos com data de término
         não se renovam. Encerrado o contrato, as condições da cláusula 3ª deixam
-        de valer, e uma nova associação segue a tabela vigente na data dela.
+        de valer, e uma nova assinatura segue a tabela vigente na data dela.
+        {/* ⚠️ O REAJUSTE É NOVO NA 8, E TEM QUATRO TRAVAS QUE SÓ VALEM JUNTAS:
+          * uma vez por ano, só na renovação (nunca no meio do período
+          * contratado), com teto num índice público, e com aviso antes. A
+          * quinta é a saída: quem não aceita o valor novo não renova, sem
+          * multa — reajuste que prende o assinante ao preço novo seria
+          * alteração unilateral do preço (CDC art. 51, X). O teto e o prazo
+          * vêm de `dados.condicoes`, congelados no documento aceito. */}
+        <p className="mt-2">
+          <strong>Reajuste.</strong> O valor por criança, o valor por criança
+          excedente e o mínimo mensal da cláusula 3ª podem ser reajustados{' '}
+          <strong>uma vez por ano, somente na renovação</strong>, limitados à
+          variação do {k.reajusteIndice || 'IPCA'} acumulada nos 12 meses
+          anteriores. A CONTRATADA avisa o ASSINANTE pelo aplicativo com pelo
+          menos <strong>{k.reajusteAvisoDias || 30} dias</strong> de antecedência
+          da renovação. Os descontos sem prazo continuam valendo, aplicados
+          sobre o valor reajustado. Recebido o aviso, o ASSINANTE pode{' '}
+          <strong>não renovar, sem multa</strong>, em qualquer plano.
+        </p>
       </Clausula>
 
       <Clausula n="5" titulo="Suspensão por inadimplência">
-        {/* O QUE CONTA COMO ATRASO — a frase que faltava.
-          * A cláusula falava em "havendo atraso" sobre um contrato que não
-          * marcava data nenhuma. Suspender alguém por descumprir um prazo que
-          * o documento não diz é o tipo de cláusula que não se sustenta. */}
         {v.diaVencimento > 0 && (
           <>
-            Considera-se em atraso a taxa não paga até o{' '}
+            Considera-se em atraso o valor não pago até o{' '}
             <strong>dia {v.diaVencimento}</strong> do mês de referência.{' '}
           </>
         )}
-        Havendo atraso, a CONTRATADA comunica o ASSOCIADO pelo próprio
+        Havendo atraso, a CONTRATADA comunica o ASSINANTE pelo próprio
         aplicativo e poderá{' '}
         <strong>suspender o acesso às funções de operação</strong> — início de
         rota, cadastro e cobrança.{' '}
@@ -292,71 +300,119 @@ export default function ContratoDoc({ dados, aceite }) {
         regularização.{' '}
         <strong>
           A CONTRATADA não comunica a inadimplência aos responsáveis do
-          ASSOCIADO.
+          ASSINANTE.
         </strong>
       </Clausula>
 
-      <Clausula n="6" titulo="Encerramento e dados">
-        {/* ⚠️ A CLÁUSULA É ASSIMÉTRICA DE PROPÓSITO, E SÓ UMA METADE MUDOU.
-          *
-          * Ela dizia "qualquer das partes pode encerrar mediante aviso de 30
-          * dias". O prazo saiu do lado do ASSOCIADO — cancelou, cancelou — e
-          * ficou do lado da CONTRATADA.
-          *
-          * Tirar os dois lados seria pior que não mexer: deixaria a plataforma
-          * podendo cortar da noite pro dia quem depende dela para trabalhar, o
-          * que é rescisão unilateral sem direito equivalente (CDC art. 51, XI).
-          * Quem tem mais poder é quem carrega a obrigação. */}
-        <strong>O ASSOCIADO pode encerrar a qualquer momento</strong>, sem aviso
+      <Clausula n="6" titulo="Encerramento e dados do assinante">
+        {/* ⚠️ A CLÁUSULA É ASSIMÉTRICA DE PROPÓSITO: o ASSINANTE encerra na
+          * hora, a CONTRATADA mantém 30 dias de aviso. Tirar os dois prazos
+          * seria rescisão unilateral sem direito equivalente (CDC art. 51,
+          * XI). E a multa do anual está escrita desde a 7 porque cobrança que
+          * o documento não declara não se sustenta (CDC art. 46). */}
+        <strong>O ASSINANTE pode encerrar a qualquer momento</strong>, sem aviso
         prévio, pelo próprio aplicativo. Não há nova cobrança a partir do
-        encerramento, e ele opera até o fim do período já pago.{' '}
-        {/* ⚠️ A MULTA DO ANUAL PASSOU A ESTAR ESCRITA NA VERSÃO 7.
-          *
-          * Ela existia inteira em `multa.js` — pura, testada, com teto e
-          * carência — e o contrato dizia "sem multa", sem qualquer ressalva.
-          * Cobrança que o documento assinado não declara não se sustenta (CDC
-          * art. 46: o consumidor não se obriga ao que não teve conhecimento
-          * prévio), então a multa era INCOBRÁVEL — e um anual pela metade do
-          * preço com saída livre no segundo mês não é um plano, é um vazamento.
-          *
-          * A metade que NÃO mudou é a do mensal, e ela é absoluta de propósito:
-          * "cancelou, cancelou" é o argumento central contra o concorrente que
-          * cobra 30% do saldo, e uma exceção com asterisco apaga a frase. */}
+        encerramento, e ele usa o aplicativo até o fim do período já pago.{' '}
         <strong>No plano mensal não há multa</strong> em hipótese alguma. No
         plano anual, que tem compromisso de 12 meses, encerrar antes do prazo
         implica multa de <strong>{pct(FRACAO_DA_MULTA)} das mensalidades
         restantes</strong>, limitada a {TETO_EM_MENSALIDADES} mensalidades —
         nada é devido nos primeiros {DIAS_SEM_MULTA} dias, nem depois de
-        cumpridos os 12 meses. O ASSOCIADO do plano anual pode, em vez disso,{' '}
+        cumpridos os 12 meses. O ASSINANTE do plano anual pode, em vez disso,{' '}
         <strong>optar por não renovar</strong>: cumpre o prazo, o contrato não
         se renova e nenhuma multa é devida.{' '}
         <strong>A CONTRATADA</strong>, para encerrar, comunica com{' '}
         <strong>30 dias de antecedência</strong>.{' '}
-        {/* ⚠️ O CANAL VAI ESCRITO, E É POR ISSO QUE ESTA FRASE MUDOU.
-          *
-          * Ela dizia que o associado "pode solicitar a exportação e a exclusão
-          * na forma da LGPD" e não dizia ONDE — e não existe tela para isso no
-          * app. Direito com caminho omitido é o mesmo defeito que esta versão
-          * veio consertar no botão de encerrar: a promessa existe, o caminho
-          * não aparece, e quem precisa dele desiste achando que não tem.
-          *
-          * O canal existe e é o e-mail — os Termos de Uso já o nomeiam, e a
-          * Política descreve o art. 18 inteiro. A cláusula passa a apontar
-          * para o mesmo endereço, que sai de `config/developer.js`, a fonte
-          * única da identidade desde 09/09/2026.
-          *
-          * ⚠️ E A SEGUNDA FRASE EVITA A EXPECTATIVA ERRADA. Encerrar não apaga
-          * nada sozinho, e o registro de pagamento fica cinco anos por
-          * obrigação fiscal — é o que a Política promete na seção 8, e é o
-          * número que `retencao.js` implementa. Calar aqui produziria o pedido
-          * de exclusão que a plataforma não pode atender por inteiro, e a
-          * sensação de promessa quebrada. */}
-        O ASSOCIADO pode solicitar a exportação dos seus dados a qualquer
+        {/* O CANAL VAI ESCRITO: direito sem caminho é promessa sem caminho. E
+          * desde a 8 é o e-mail dos Termos (`EMAIL_DO_CONTRATO`), não o Gmail
+          * de `DEV_EMAIL` — dois endereços para o mesmo direito confundiam. */}
+        O ASSINANTE pode solicitar a exportação dos seus dados a qualquer
         tempo, e a exclusão após o encerramento, na forma do art. 18 da LGPD,
         pelo e-mail <strong>{c.email}</strong>.{' '}
         <strong>O encerramento, por si só, não apaga dados</strong> — os
         registros de pagamento são mantidos por 5 anos por obrigação fiscal,
         conforme a Política de Privacidade.
+      </Clausula>
+
+      {/* ⚠️ A CLÁUSULA DE DADOS (LGPD art. 39) É NOVA NA 8, E É A MAIS
+        * IMPORTANTE DELA. Os dados das famílias e das crianças entram no app
+        * pela mão do ASSINANTE, para a relação DELE com elas — ele decide o
+        * que cadastrar e para quê, então é o CONTROLADOR; a plataforma trata
+        * por conta dele, então é a OPERADORA. Sem isto escrito, a plataforma
+        * fica com a responsabilidade de controladora sobre dado que não
+        * escolheu coletar, e o assinante sem saber que responde pelo que
+        * cadastra.
+        *
+        * ⚠️ A RESSALVA (b) NÃO É BRECHA, É A LISTA DO QUE JÁ EXISTE: conta de
+        * acesso, segurança, cobrança da assinatura, comunidade, níveis — os
+        * usos próprios que a Política descreve. Calar sobre eles faria o
+        * contrato prometer o que o app não cumpre. E a conta de login de
+        * cada responsável é da plataforma como controladora, porque é ela
+        * que a família aceita nos Termos. */}
+      <Clausula n="7" titulo="Tratamento de dados das famílias">
+        Quanto aos dados pessoais dos responsáveis e das crianças que o
+        ASSINANTE cadastra no aplicativo, o{' '}
+        <strong>ASSINANTE é o controlador</strong> e a{' '}
+        <strong>CONTRATADA é a operadora</strong> (Lei 13.709/2018, art. 39). A
+        CONTRATADA: (a) trata esses dados somente para prestar o serviço deste
+        contrato, conforme as instruções do ASSINANTE dadas pelo uso do
+        aplicativo, os Termos de Uso e a Política de Privacidade; (b) não os
+        usa para outros fins, nem os vende ou cede, ressalvados os usos
+        próprios da plataforma descritos na Política — contas de acesso,
+        segurança, cobrança da assinatura e recursos do aplicativo como
+        comunidade e níveis; (c) mantém sigilo sobre eles e o exige de quem os
+        acessa em seu nome; (d) adota medidas de segurança técnicas e
+        administrativas adequadas; (e) usa apenas os fornecedores
+        (suboperadores) declarados na Política de Privacidade; (f) apoia o
+        ASSINANTE no atendimento de pedidos dos titulares; (g) comunica ao
+        ASSINANTE, em prazo razoável, incidente de segurança que possa afetar
+        esses dados; e (h) encerrado o contrato, mantém ou elimina os dados
+        conforme a Política de Privacidade e as obrigações legais. Os dados da
+        conta de acesso de cada responsável são tratados pela CONTRATADA como
+        controladora, conforme a Política. O{' '}
+        <strong>ASSINANTE declara ter base legal</strong> para cadastrar os
+        dados que insere — inclusive os das crianças, no melhor interesse
+        delas — e responde pelo uso que ele e a auxiliar que convidar, na conta
+        própria dela, fazem do aplicativo.
+      </Clausula>
+
+      {/* ⚠️ A LIMITAÇÃO É ESCRITA PARA NÃO SER ABUSIVA. O motorista autônomo
+        * pode ser equiparado a consumidor, e cláusula que exonera o
+        * fornecedor de tudo é nula (CDC art. 51, I). Por isso: (1) o limite é
+        * um VALOR, não uma exoneração; (2) ressalva dolo, culpa grave e o que
+        * a lei não deixa limitar; (3) a exclusão de lucros cessantes vale
+        * para as DUAS partes. O que a plataforma não responde — o transporte,
+        * a relação dele com as famílias — não é limitação: é o que ela de
+        * fato não faz (item 7 dos Termos, docs/marca.md). */}
+      <Clausula n="8" titulo="Disponibilidade e responsabilidade">
+        O aplicativo é oferecido no estado em que se encontra e é melhorado
+        continuamente. A CONTRATADA emprega esforços razoáveis para mantê-lo
+        disponível, mas <strong>não garante funcionamento ininterrupto</strong>{' '}
+        ou livre de falhas: ele depende de internet, do aparelho, do GPS e de
+        serviços de terceiros, e pode passar por manutenção — feita, sempre que
+        possível, fora dos horários de rota. A CONTRATADA{' '}
+        <strong>não presta nem responde pelo serviço de transporte</strong>,
+        pela condução do veículo, nem pela relação contratual e financeira
+        entre o ASSINANTE e as famílias. Nenhuma das partes responde por lucros
+        cessantes. A responsabilidade da CONTRATADA por danos decorrentes deste
+        contrato fica limitada ao total pago pelo ASSINANTE nos{' '}
+        {k.limiteDaIndenizacaoMeses || 12} meses anteriores ao fato,{' '}
+        <strong>
+          exceto em caso de dolo ou culpa grave e nas hipóteses em que a lei
+          não admite limitação
+        </strong>
+        .
+      </Clausula>
+
+      {/* ⚠️ A COMARCA É DECLARADA (`DEV_COMARCA`), NUNCA DERIVADA DA SEDE, e
+        * a ressalva do domicílio é o que impede a cláusula de ser abusiva e
+        * cair inteira quando o assinante for tratado como consumidor (CDC
+        * arts. 51, IV e 101, I). */}
+      <Clausula n="9" titulo="Foro">
+        Fica eleito o foro da comarca de <strong>{c.comarca || '—'}</strong>{' '}
+        para as questões deste contrato, ressalvado ao ASSINANTE, quando
+        considerado consumidor, o direito de propor ação no foro do próprio
+        domicílio (CDC, art. 101, I).
       </Clausula>
 
       {/* ── o rodapé do aceite ── */}
@@ -384,7 +440,7 @@ export default function ContratoDoc({ dados, aceite }) {
         ) : (
           <p>
             <strong className="text-warning">
-              Aguardando aceite do associado.
+              Aguardando aceite do assinante.
             </strong>
           </p>
         )}

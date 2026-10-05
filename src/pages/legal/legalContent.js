@@ -4,6 +4,8 @@ import {
   DEV_COMARCA,
   DEV_ENDERECO,
   DEV_NAME,
+  DEV_RAZAO_SOCIAL,
+  DEV_TIPO_EMPRESA,
 } from '../../config/developer.js';
 
 /**
@@ -28,12 +30,63 @@ import {
  * trinta. É o argumento que `docs/pendencias.md` já registrava, e por isso o
  * momento é este.
  *
- * ⚠️ AINDA FALTA O ENDEREÇO COMPLETO em `COMPANY_INFO.enderecoCompleto` — o
- * único campo destes documentos que ninguém pode preencher por inferência.
- * Ver o aviso lá.
+ * O endereço da sede está completo desde 05/10/2026 (número 61, em
+ * `DEV_NUMERO`), e a parte passou a ser identificada pela razão social do MEI,
+ * não pelo nome fantasia. Ver `COMPANY_INFO`.
  */
-export const LEGAL_VERSION = '1.3';
-export const LEGAL_DATE = '3 de outubro de 2026';
+export const LEGAL_VERSION = '1.4';
+export const LEGAL_DATE = '5 de outubro de 2026';
+
+/*
+ * ── 1.4 (04/10/2026, aprovado pelo dono): O POSTO DE COMBUSTÍVEL. A tela de
+ * abastecer pergunta "Você está no posto agora?" e, com "Sim", lê a posição
+ * UMA vez para anotar o endereço e o ponto do POSTO na lista de postos do
+ * motorista (só ele lê) e reconhecer o posto da próxima vez. Era o primeiro
+ * uso fora da rota, e a cláusula 8 dizia "nem fora da rota": promessa escrita
+ * que o código passaria a quebrar. A cláusula, a base legal (5.c) e a
+ * retenção dizem isso agora. ⚠️ O texto da saúde (1.3) continua sendo o
+ * rascunho que espera a revisão jurídica.
+ * Na mesma 1.4, ainda antes de publicar (aprovado pelo dono), a cláusula 8
+ * passou a listar TODAS as leituras únicas fora da rota: a cidade do
+ * primeiro acesso e o "Usar minha localização" do seletor de mapa já
+ * existiam sem frase, e o "Estou na escola agora" é o da Carteira. Com um
+ * uso só escrito, a frase "há um único uso" era falsa no dia em que nasceu.
+ * E a FOTO DA TURMA (05/10/2026, aprovada pelo dono): a imagem da criança
+ * só com o "Sim" do responsável (seção 4, base legal 5.g, retenção de 30
+ * dias). Também antes de publicar a 1.4. E a NOTA DO TIO (etapa 2): só a
+ * família avalia, e o tio vê só a média do semestre fechado (seção 6).
+ *
+ * E A REVISÃO JURÍDICA (05/10/2026), ainda antes de publicar a 1.4 — por isso
+ * a versão não sobe: ninguém aceitou a 1.4 ainda (a última publicação, v1.2
+ * do app, saiu com a 1.3). O que entrou:
+ *   - O PAPEL DE CADA UM NA LGPD (Política, seção 2). Para os dados das
+ *     famílias e crianças que o motorista cadastra e usa no negócio DELE, o
+ *     motorista é o CONTROLADOR e a plataforma é OPERADORA (art. 5º VII e
+ *     art. 39). A plataforma é controladora só dos fins dela (conta, login,
+ *     cobrança da assinatura, segurança, comunidade, níveis, avaliações do
+ *     app, métricas, comunicação). Dizer "o controlador de tudo somos nós"
+ *     punha na plataforma uma decisão que é do motorista — quem ele
+ *     transporta, quanto cobra, o que anota — e é o tipo de frase que se
+ *     volta contra quem a escreveu.
+ *   - A BASE LEGAL DA OPERAÇÃO DA CRIANÇA deixou de ser o "consentimento
+ *     declarado pelo motorista": consentimento de terceiro declarado por
+ *     outro terceiro não é consentimento. Agora é a execução do contrato de
+ *     transporte de que o responsável é parte (art. 7º V) e o legítimo
+ *     interesse (art. 7º IX), sempre no melhor interesse da criança (art. 14
+ *     caput; Enunciado CD/ANPD nº 1/2023). Consentimento específico ficou SÓ
+ *     para saúde (art. 11 I) e imagem na foto da turma.
+ *   - A SEÇÃO 2b declara todos os serviços que recebem dado pessoal HOJE
+ *     (conferidos no código): Nominatim, ViaCEP, MapTiler, DiceBear, Google
+ *     Analytics (só com aceite), login com Google, WhatsApp. E a linha do
+ *     Resend estava ERRADA: desde 03/10/2026 ele só manda o e-mail da fatura
+ *     ao MOTORISTA (`functions/lib/emailDoAviso.js`), nada de família.
+ *   - "Associação" virou ASSINATURA DO APLICATIVO, e o motorista, assinante.
+ *   - Encarregado nomeado (art. 41 §1º), auxiliar do motorista, acesso de 24
+ *     horas, entrada da família pelo link ou pelo pedido aprovado (o código
+ *     saiu de toda tela em 02/10/2026), e o encerramento da assinatura pelo
+ *     próprio app (existe desde 11/09/2026).
+ *   - A parte passou a ser a razão social do MEI, com o nome fantasia ao lado.
+ */
 
 /*
  * ── 1.3 também declara o DITADO POR VOZ (04/10/2026) na seção 2b: o áudio
@@ -100,10 +153,14 @@ export const LEGAL_DATE = '3 de outubro de 2026';
  * repositório, nos dois lugares acima, e concordam entre si. O que faltava era
  * o documento legal dizer o mesmo.
  *
- * ⚠️ FALTA O NÚMERO E O CEP, e só isso. Logradouro, cidade e UF vêm de
- * `config/developer.js`, alimentado pelo rodapé "Onde estamos" da landing —
- * mesma informação, mesmo domínio, mesmo público. Número e CEP não existem no
- * repositório: complete `DEV_LOGRADOURO` lá e estes documentos mudam junto.
+ * O ENDEREÇO ESTÁ COMPLETO desde 05/10/2026: logradouro, número (61), bairro,
+ * cidade, UF e CEP vêm de `config/developer.js` (`DEV_ENDERECO`).
+ *
+ * ⚠️ E A PARTE É A PESSOA, NÃO O NOME FANTASIA (05/10/2026, dado do dono). A
+ * empresa é um MEI: a razão social é o nome do titular, FELIPE ANDERSON
+ * ANACLETO DA SILVA, e "Desenvolva Algo" é só o nome fantasia. Até aqui os
+ * documentos chamavam "Desenvolva Algo" de razão social — um nome que não
+ * identifica ninguém numa consulta ao CNPJ.
  */
 export const COMPANY_INFO = {
   // O nome pelo qual o produto é conhecido — o que aparece no corpo do texto.
@@ -119,18 +176,36 @@ export const COMPANY_INFO = {
   // produto passaram a existir (Termos dizendo uma coisa, contrato outra,
   // landing uma terceira). `developer.js` já dizia, no próprio cabeçalho, o
   // que fazer: "um lugar pra mudar, todas as telas mudam".
-  razaoSocial: DEV_NAME,
+  razaoSocial: DEV_RAZAO_SOCIAL,
+  tipoEmpresa: DEV_TIPO_EMPRESA,
+  nomeFantasia: DEV_NAME,
   cnpj: DEV_CNPJ,
   cidade: DEV_CIDADE_UF,
   endereco: DEV_ENDERECO,
   email: 'contato@alobuzinou.com',
   dpoEmail: 'contato@alobuzinou.com',
+  // ⚠️ O ENCARREGADO PRECISA DE NOME (LGPD art. 41 §1º: identidade e contato
+  // divulgados publicamente). A dispensa para agente de pequeno porte (Res.
+  // CD/ANPD nº 2/2022) NÃO vale aqui: ela exclui quem faz tratamento de ALTO
+  // RISCO, e este app trata dado de criança, localização e saúde — o caso
+  // mais provável de ser classificado assim. Por isso o campo existe e é
+  // impresso nos documentos.
+  //
+  // Enquanto não houver outra pessoa designada, o encarregado é o próprio
+  // TITULAR do MEI (a razão social de um MEI é o nome dele). Quando o dono
+  // designar alguém, é trocar esta linha — e só esta.
+  encarregadoNome: DEV_RAZAO_SOCIAL,
 };
 
-/** Como o controlador se identifica por extenso, num documento legal. */
+/** Como a plataforma se identifica por extenso, num documento legal. */
 export const CONTROLADOR_POR_EXTENSO =
-  `${COMPANY_INFO.razaoSocial} ("${COMPANY_INFO.name}"), ` +
+  `${COMPANY_INFO.razaoSocial} (${COMPANY_INFO.tipoEmpresa}), ` +
+  `nome fantasia ${COMPANY_INFO.nomeFantasia} ("${COMPANY_INFO.name}"), ` +
   `CNPJ ${COMPANY_INFO.cnpj}, com sede em ${COMPANY_INFO.endereco}`;
+
+/** O encarregado, como os documentos o apresentam. */
+const ENCARREGADO =
+  `${COMPANY_INFO.encarregadoNome}, pelo e-mail ${COMPANY_INFO.dpoEmail}`;
 
 export const TERMS_SECTIONS = [
   {
@@ -146,18 +221,21 @@ export const TERMS_SECTIONS = [
     id: 'objeto',
     title: '2. Objeto',
     paragraphs: [
-      'O Aplicativo é uma ferramenta digital destinada à gestão e ao acompanhamento de transporte escolar privado, oferecida em duas modalidades de uso:',
-      '(a) Motorista (Tio): cadastro de crianças, gerenciamento de rotas, controle financeiro e comunicação com responsáveis;',
-      '(b) Responsável (Pai/Mãe): acompanhamento em tempo real do trajeto da criança, status do transporte e gerenciamento de pagamentos.',
+      'O Aplicativo é uma ferramenta digital destinada à gestão e ao acompanhamento de transporte escolar privado, oferecida nas seguintes modalidades de uso:',
+      '(a) Motorista (Tio), ASSINANTE do Aplicativo: cadastro de crianças, gerenciamento de rotas, controle financeiro e comunicação com responsáveis. O motorista paga a assinatura do aplicativo à plataforma, nas condições do contrato de assinatura que ele aceita no próprio Aplicativo;',
+      '(b) Auxiliar do motorista: pessoa que trabalha com o motorista na rota. Ela tem conta própria, criada somente pelo convite enviado por ele, e vê apenas o que é necessário para ajudar na rota do dia, sem valores de mensalidade, contrato ou informações de saúde. O motorista pode desativar a auxiliar a qualquer momento e responde pelo uso que ela faz do Aplicativo;',
+      '(c) Responsável (Pai/Mãe): acompanhamento do trajeto da criança, status do transporte, contrato com o motorista e registro de pagamentos;',
+      '(d) Acompanhamento por link, sem conta: o responsável pode enviar a quem vai buscar a criança um link que vale até a meia-noite daquele dia; e o responsável ou o motorista pode enviar ao segundo responsável um link que vale por 24 horas, com o qual ele também pode receber no celular os avisos da rota. Quem abre esses links vê apenas o dia da criança — as etapas do transporte —, nunca dinheiro, endereço ou contrato.',
     ],
   },
   {
     id: 'cadastro',
     title: '3. Cadastro e Conta',
     paragraphs: [
-      'Para usar o Aplicativo é necessário criar uma conta com email válido e senha pessoal. Você é responsável por manter a confidencialidade das suas credenciais.',
+      'Para usar o Aplicativo é necessário criar uma conta com e-mail válido e senha pessoal, ou entrar com uma conta Google. Você é responsável por manter a confidencialidade das suas credenciais.',
       'Você deve fornecer informações verdadeiras, atuais e completas. O fornecimento de dados falsos pode resultar em suspensão ou exclusão da conta.',
-      'O cadastro do responsável depende de um código de convite gerado pelo motorista após o cadastro da criança.',
+      'O responsável entra no Aplicativo pelo LINK DE CONVITE que o motorista envia depois de cadastrar a criança, ou, sem o link, informando o número de WhatsApp: nesse caso, a conta só é ligada à criança depois que o motorista aprova o pedido no Aplicativo.',
+      'A conta da auxiliar do motorista só é criada pelo convite enviado por ele.',
       'Menores de 18 anos não podem criar contas próprias. As contas de responsáveis são exclusivamente para pessoas maiores de idade que detêm guarda ou autoridade parental sobre as crianças cadastradas.',
     ],
   },
@@ -180,6 +258,8 @@ export const TERMS_SECTIONS = [
     paragraphs: [
       'Ao se cadastrar como motorista, você declara possuir todas as autorizações legais para exercer a atividade de transporte escolar (CNH, alvará municipal quando exigido, vistoria veicular, etc.).',
       'Você é responsável pelo conteúdo cadastrado, pela exatidão dos dados das crianças e pela comunicação com os responsáveis.',
+      'Os dados das famílias e das crianças que você cadastra e usa no seu serviço de transporte são dados do SEU negócio: para eles, você é o controlador, nos termos da LGPD, e o Aplicativo trata esses dados por sua conta, como operador, conforme estes Termos e a Política de Privacidade. Cabe a você cadastrar só o necessário para o transporte e informar as famílias de que usa o Aplicativo.',
+      'Se você convidar uma auxiliar, você responde pelo uso que ela faz do Aplicativo, e deve desativá-la quando ela deixar de trabalhar com você.',
       'O Aplicativo é uma ferramenta de apoio operacional; não substitui sua responsabilidade legal sobre o transporte e a segurança das crianças.',
       `${COMPANY_INFO.name} não é responsável por incidentes durante o transporte, atrasos, mudanças de rota, problemas mecânicos ou questões trabalhistas/contratuais entre motorista e responsáveis.`,
     ],
@@ -188,7 +268,7 @@ export const TERMS_SECTIONS = [
     id: 'responsabilidades-responsavel',
     title: '6. Responsabilidades do Responsável',
     paragraphs: [
-      'Você declara ter autoridade legal sobre a criança cadastrada (poder familiar, guarda ou tutela) e autorizar expressamente o tratamento dos dados pessoais dela conforme nossa Política de Privacidade.',
+      'Você declara ter autoridade legal sobre a criança cadastrada (poder familiar, guarda ou tutela) e estar ciente do tratamento dos dados pessoais dela descrito na Política de Privacidade. As informações de saúde e a imagem da criança na foto da turma só são tratadas se você autorizar, em pergunta própria, no Aplicativo.',
       'Você é responsável por verificar previamente as informações sobre o motorista, sua habilitação e a regularidade do serviço contratado.',
       'A relação contratual sobre o serviço de transporte (mensalidades, horários, conduta) é exclusivamente entre você e o motorista.',
     ],
@@ -206,7 +286,8 @@ export const TERMS_SECTIONS = [
     id: 'localizacao',
     title: '8. Geolocalização',
     paragraphs: [
-      'O Aplicativo coleta a localização do veículo do motorista somente enquanto ele mantém uma rota iniciada. Não há coleta em segundo plano, nem fora da rota.',
+      'O Aplicativo coleta a localização do veículo do motorista enquanto ele mantém uma rota iniciada. Não há coleta em segundo plano.',
+      'Fora da rota, a localização é lida UMA vez, e só quando o motorista toca no botão que pede isso, em quatro momentos: (1) no primeiro acesso, para preencher o nome da cidade e do bairro dele; (2) no "Usar minha localização" do cadastro de uma criança ou de uma escola, para marcar aquele ponto no mapa; (3) no "Estou na escola agora", para marcar o ponto da escola; e (4) no "Sim, estou" da tela de abastecer, para anotar o endereço e o ponto do posto de combustível na lista de postos dele, que só ele vê, e reconhecer esse posto nos próximos abastecimentos. Em nenhum desses casos a posição do motorista é guardada: fica guardado apenas o nome da cidade e do bairro, ou o lugar da casa, da escola ou do posto.',
       'O COMPARTILHAMENTO COM AS FAMÍLIAS É UMA ESCOLHA DO MOTORISTA, revogável a qualquer momento e sem custo, por uma chave na própria tela de início de rota. Desligada, o veículo deixa de aparecer no mapa dos responsáveis; o aviso de aproximação continua, porque ele é calculado no aparelho do motorista e não envia a posição.',
       'A posição exibida aos responsáveis é APROXIMADA, por referência: ela é arredondada no aparelho do motorista antes de ser enviada, e não indica o ponto exato do veículo.',
       'Ao encerrar a rota, a última posição é APAGADA. O Aplicativo não mantém histórico de localização do motorista.',
@@ -237,7 +318,8 @@ export const TERMS_SECTIONS = [
     id: 'rescisao',
     title: '11. Suspensão e Encerramento',
     paragraphs: [
-      `Você pode encerrar sua conta a qualquer momento solicitando exclusão pelo email ${COMPANY_INFO.email}. O exercício desse direito está descrito na Política de Privacidade.`,
+      'O motorista pode encerrar a assinatura do aplicativo a qualquer momento, pelo próprio Aplicativo, nas condições do contrato de assinatura. Encerrar a assinatura não apaga a conta nem os dados.',
+      `A exclusão da conta é feita a pedido, pelo e-mail ${COMPANY_INFO.email}. O exercício desse direito, e o que precisa ser guardado por obrigação legal, está descrito na Política de Privacidade.`,
       `O ${COMPANY_INFO.name} pode suspender ou encerrar contas em caso de violação destes Termos, fraude ou inatividade prolongada, mediante notificação prévia quando aplicável.`,
     ],
   },
@@ -265,7 +347,7 @@ export const TERMS_SECTIONS = [
     title: '13. Contato',
     paragraphs: [
       `Dúvidas, sugestões ou reclamações sobre estes Termos: ${COMPANY_INFO.email}.`,
-      `Para assuntos relacionados a privacidade e proteção de dados, fale com nosso Encarregado (DPO): ${COMPANY_INFO.dpoEmail}.`,
+      `Para assuntos relacionados a privacidade e proteção de dados, fale com o Encarregado pelo Tratamento de Dados Pessoais: ${ENCARREGADO}.`,
     ],
   },
 ];
@@ -276,30 +358,52 @@ export const PRIVACY_SECTIONS = [
     title: '1. Introdução',
     paragraphs: [
       `Esta Política de Privacidade descreve como o ${COMPANY_INFO.name} ("nós", "Aplicativo") coleta, usa, compartilha e protege dados pessoais, em conformidade com a Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais — LGPD).`,
-      `Ao usar o Aplicativo, você concorda com as práticas descritas aqui. Para fins desta Política, considere "Titular" qualquer pessoa cujos dados são tratados, incluindo motoristas, responsáveis e crianças cadastradas.`,
+      'Para fins desta Política, considere "Titular" qualquer pessoa cujos dados são tratados, incluindo motoristas, auxiliares, responsáveis, crianças cadastradas e as pessoas indicadas por eles (como o segundo responsável e quem busca a criança).',
     ],
   },
   {
     id: 'controlador',
-    title: '2. Controlador de Dados',
+    title: '2. Quem decide sobre os dados',
     paragraphs: [
-      `O controlador dos dados pessoais tratados no Aplicativo é ${CONTROLADOR_POR_EXTENSO}.`,
-      `Encarregado pelo Tratamento de Dados Pessoais (DPO): ${COMPANY_INFO.dpoEmail}.`,
+      // ⚠️ DOIS PAPÉIS, E A FRASE ANTIGA PUNHA OS DOIS NA PLATAFORMA (05/10/2026).
+      //
+      // "O controlador dos dados tratados no Aplicativo é a plataforma" dizia
+      // que é ela quem decide sobre a turma do motorista — quem ele
+      // transporta, quanto cobra, o que anota. Quem decide é ele: o app é a
+      // ferramenta do negócio dele (LGPD art. 5º VI e VII, art. 39). A
+      // plataforma é controladora só do que ela mesma decide fazer.
+      'Na LGPD, CONTROLADOR é quem decide por que e como os dados são usados, e OPERADOR é quem trata os dados por conta do controlador, seguindo as instruções dele (art. 5º, VI e VII). No Aplicativo, os dois papéis existem, e dependem do dado:',
+      '(a) OS DADOS DA TURMA DO MOTORISTA: os dados das famílias e das crianças que o motorista cadastra e usa no serviço de transporte dele (nome, endereço, escola, horários, etapas do transporte, mensalidades, contrato, faltas e recados) são do negócio do motorista. Para esses dados, o MOTORISTA é o controlador, e o Aplicativo é o OPERADOR: guarda e trata esses dados por conta dele, conforme as instruções dele e os Termos de Uso (art. 39).',
+      `(b) OS DADOS DO PRÓPRIO APLICATIVO: para as finalidades da plataforma, o controlador é ${CONTROLADOR_POR_EXTENSO}. São elas: as contas e o login; a cobrança da assinatura do aplicativo paga pelo motorista; a segurança, os registros de acesso e o limite de tentativas; a comunidade (foto da turma, motoristas parceiros e a nota que as famílias dão ao motorista); os níveis do motorista; as avaliações do Aplicativo; as métricas de uso; e a comunicação da plataforma com os usuários.`,
+      'Pedidos de titular — saber quais dados existem, corrigir, apagar, entre outros (seção 9) — podem ser feitos sempre pelo canal do Aplicativo, abaixo, sobre qualquer um desses dados. Quando o pedido for sobre dados da turma de um motorista, nós o atendemos junto com ele ou o encaminhamos a ele, e avisamos você do que foi feito.',
+      `Encarregado pelo Tratamento de Dados Pessoais: ${ENCARREGADO}.`,
     ],
   },
   {
     id: 'operadores',
-    title: '2b. Com quem os dados são compartilhados',
+    title: '2b. Serviços de terceiros que recebem dados',
     paragraphs: [
-      // ⚠️ ESTA SEÇÃO FALTAVA, e a §6 listava só Firebase/Google.
-      //
-      // Dois operadores recebem dado pessoal e não estavam declarados — um
-      // deles internacional, com NOME DE CRIANÇA no corpo do e-mail. LGPD
-      // art. 9º II (informação sobre compartilhamento) e art. 33
-      // (transferência internacional).
-      'Google Firebase (Google LLC): hospedagem, autenticação, banco de dados, armazenamento de arquivos e notificações. Servidores no Brasil (São Paulo) para o banco de dados e as funções.',
-      'Resend (Estados Unidos): envio dos e-mails transacionais de cobrança. Recebe o nome e o e-mail do responsável e o primeiro nome da criança, apenas para compor a mensagem.',
-      'Asaas (Brasil): emissão das cobranças da taxa de associação devida pelo motorista à plataforma. Recebe nome, CPF/CNPJ, e-mail e telefone do MOTORISTA. Nenhum dado de responsável ou de criança é enviado ao Asaas — a mensalidade da família não passa pela plataforma.',
+      // ⚠️ ESTA LISTA É O QUE O CÓDIGO FAZ HOJE, conferida arquivo por arquivo
+      // em 05/10/2026 — e não o que um dia foi contratado. Serviço novo que
+      // receba dado pessoal entra aqui na mesma alteração (LGPD art. 9º, V, e
+      // art. 33). A linha do Resend dizia que ele recebia nome do responsável
+      // e da criança: era verdade até 03/10/2026, quando o e-mail ficou só
+      // para a fatura do motorista (`functions/lib/emailDoAviso.js`).
+      'Para funcionar, o Aplicativo usa os serviços abaixo. Cada um recebe só o necessário para a sua tarefa:',
+      'Google Firebase e Google Cloud (Google LLC): hospedagem, login, banco de dados, armazenamento de arquivos, funções do servidor e notificações no celular. O banco de dados e as funções ficam em servidores em São Paulo.',
+      'Login com Google (Google LLC): quando você escolhe "Começar com Google", o Google confirma quem você é e nos envia o seu nome, e-mail e foto da conta Google.',
+      'Google Analytics (Google LLC): métricas de uso das telas, SOMENTE se você aceitar os cookies analíticos. O endereço das telas é enviado sem o código do convite e sem o link de acompanhamento. Recebe dados técnicos do aparelho, como o endereço IP.',
+      'Asaas (Brasil): emissão das cobranças da assinatura do aplicativo devida pelo motorista à plataforma. Recebe nome, CPF/CNPJ, e-mail e telefone do MOTORISTA. Nenhum dado de responsável ou de criança é enviado ao Asaas — a mensalidade da família não passa pela plataforma.',
+      'Resend (Estados Unidos): envio do e-mail que avisa o MOTORISTA do vencimento da fatura da assinatura. Recebe o e-mail e o primeiro nome do motorista e o texto do aviso. Nenhum e-mail é enviado a responsáveis, e nenhum dado de criança vai ao Resend.',
+      'Nominatim, da OpenStreetMap Foundation (Reino Unido): encontra no mapa o ponto de um endereço. Recebe o endereço digitado (rua, número, bairro, cidade, CEP) da casa da criança, da escola ou do posto. Também recebe a posição do aparelho do motorista nas leituras únicas descritas na cláusula 8 dos Termos — no primeiro acesso, para devolver o nome da cidade e do bairro, e na tela de abastecer, para devolver o endereço do posto. Durante a rota, a posição NÃO é enviada a esse serviço.',
+      'ViaCEP (Brasil): completa o endereço. Recebe o CEP digitado, ou a cidade e o pedaço do nome da rua que o motorista está procurando.',
+      'MapTiler (Suíça): fornece as imagens do mapa. Como qualquer site que entrega imagens, recebe o endereço IP do aparelho e a região do mapa que está sendo vista.',
+      // A SEMENTE DO AVATAR É UM IDENTIFICADOR, e vai na URL da imagem
+      // (`src/marca/avatarUrl.js`): criança = prefixo de gênero + id do
+      // cadastro; adulto = prefixo + uid (ou o nome, quando a tela não tem o
+      // uid). Ele é tratado como dado pessoal por isso.
+      'DiceBear (Alemanha): desenha o avatar de quem não tem foto. Para que o mesmo rosto apareça sempre, o endereço da imagem leva uma "semente": para a criança, o código interno do cadastro dela e, quando o gênero foi informado, uma letra que o indica; para o adulto, o código interno da conta e a mesma letra — ou, quando a tela não tem esse código, o nome da pessoa. O serviço também recebe o endereço IP do aparelho. Quem tem foto enviada não usa o DiceBear.',
+      'WhatsApp (Meta): quando você toca num botão que abre o WhatsApp (mandar o convite, falar com o motorista, pedir acesso, falar com o suporte), o Aplicativo só prepara a mensagem: você vê o texto e decide enviar. O que é enviado passa a seguir as regras do WhatsApp.',
       // O DITADO POR VOZ (04/10/2026). O microfone dos campos usa o
       // reconhecimento de voz do NAVEGADOR do aparelho, que manda o áudio ao
       // serviço do fabricante. Não é operador contratado pela plataforma, mas
@@ -307,7 +411,7 @@ export const PRIVACY_SECTIONS = [
       // botão nosso — por isso está declarado. Entrou na 1.3, ainda não
       // publicada, para ninguém aceitar duas vezes.
       'Ditado por voz (opcional): ao tocar no microfone de um campo, o áudio é enviado ao serviço de reconhecimento de voz do próprio aparelho — Google, no Android; Apple, no iPhone — que devolve o texto escrito. O Alô Buzinou não grava nem guarda o áudio. O microfone não aparece no campo de informações de saúde da criança.',
-      'A transferência internacional para o Resend se apoia no art. 33, II da LGPD (cláusulas contratuais padrão do fornecedor) e se limita ao necessário para o envio do aviso de vencimento.',
+      'Alguns desses serviços ficam fora do Brasil. Como isso é tratado está na seção 11.',
       'Não vendemos, alugamos nem cedemos dados pessoais a terceiros para fins publicitários.',
     ],
   },
@@ -315,13 +419,16 @@ export const PRIVACY_SECTIONS = [
     id: 'dados-coletados',
     title: '3. Dados Coletados',
     paragraphs: [
-      'Coletamos os seguintes dados pessoais:',
-      '(a) De motoristas: nome, email, telefone, senha (criptografada), chave PIX, dados de geolocalização durante rotas ativas;',
-      '(b) De responsáveis: nome, email, telefone, senha (criptografada), informações sobre a relação com a criança;',
-      '(c) De crianças (cadastradas pelo motorista com consentimento do responsável): nome, gênero, escola, endereço residencial, endereço da escola, observações relevantes ao transporte (por exemplo, portão de entrada e quem busca), turnos de transporte, status de mensalidades;',
-      '(c.1) Informações de saúde da criança (opcional): quando o responsável opta por informá-las, com consentimento específico e destacado, guardamos o texto que ele escreveu e a data do consentimento. Essa informação é exibida apenas ao motorista responsável pelo transporte daquela criança, com a finalidade de permitir atendimento adequado em caso de emergência durante o trajeto. Ela pode ser apagada pelo responsável a qualquer momento, e é excluída junto com o cadastro da criança;',
-      '(d) Dados técnicos: endereço IP, identificadores de dispositivo, versão do navegador, registros de acesso (logs);',
-      '(e) Dados de uso: interações com o Aplicativo (não usamos rastreadores de terceiros para fins de marketing).',
+      'Tratamos os seguintes dados pessoais:',
+      '(a) Do motorista: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), cidade e bairro, foto, nome e logotipo da marca dele, chave PIX, CPF ou CNPJ e endereço (para o contrato com as famílias e a cobrança da assinatura), alvará (somente quando ele o envia para receber o selo), despesas, quilômetros rodados nas rotas (só o total, sem trajeto) e a lista de postos de combustível dele, e a localização do veículo durante as rotas e nas leituras únicas descritas na cláusula 8 dos Termos;',
+      '(b) Da auxiliar do motorista: nome, e-mail, telefone e as marcações que ela faz na rota;',
+      '(c) Do responsável: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), foto (se ele enviar), o vínculo com a criança, o aceite do contrato com o motorista e os avisos de pagamento e comprovantes que ele envia;',
+      '(d) Da criança (informados pelo motorista ou pelo responsável): nome, gênero, foto, data de aniversário, escola, turma e professora, endereço de embarque e da escola, horários, as etapas do transporte de cada dia, faltas avisadas, recados, observações do transporte (por exemplo, o portão de entrada), valor e situação das mensalidades e o contrato de transporte;',
+      '(d.1) Informações de saúde da criança (opcional): quando o responsável opta por informá-las, com consentimento específico e destacado, guardamos o texto que ele escreveu e a data do consentimento. Essa informação é exibida apenas ao motorista responsável pelo transporte daquela criança, com a finalidade de permitir atendimento adequado em caso de emergência durante o trajeto. Ela pode ser apagada pelo responsável a qualquer momento, na ficha da criança, e é excluída junto com o cadastro da criança;',
+      '(e) De terceiros, informados pela família ou pelo motorista: nome e telefone do segundo responsável e de quem vai buscar a criança, e o telefone de um motorista colega que alguém indicou ao Aplicativo;',
+      '(f) Avaliações: a nota e o comentário que o usuário dá ao Aplicativo, e a nota que o responsável dá ao motorista (seção 6);',
+      '(g) Dados técnicos: identificadores do aparelho para as notificações, versão do navegador, registros de acesso (logs) e, no limite de tentativas contra abuso (por exemplo, na abertura de convites), um resumo cifrado do endereço IP — não o próprio número;',
+      '(h) Dados de uso: interações com o Aplicativo e, somente com o seu aceite, as métricas do Google Analytics (seção 10).',
     ],
   },
   {
@@ -329,8 +436,9 @@ export const PRIVACY_SECTIONS = [
     title: '4. Tratamento de Dados de Crianças',
     paragraphs: [
       'O tratamento de dados pessoais de crianças e adolescentes ocorre sempre no melhor interesse da criança, conforme o art. 14 da LGPD.',
-      'Os dados operacionais da criança (nome, endereço de embarque, escola, contato) são cadastrados pelo motorista, que declara no cadastro ter autorização do responsável legal.',
-      'As informações de saúde, quando existirem, são escritas pelo próprio responsável, com consentimento específico e destacado, separado do aceite destes termos (art. 11, I, e art. 14, §1º). O motorista apenas as lê, e não pode escrevê-las.',
+      'Os dados da criança usados no transporte (nome, endereço de embarque, escola, horários, contato da família) são cadastrados pelo motorista para prestar o serviço contratado pela família, e servem para levar e trazer a criança com segurança e manter a família informada. A base legal está na seção 5.',
+      'As informações de saúde, quando existirem, são escritas pelo próprio responsável, com consentimento específico e destacado, separado do aceite destes termos (art. 11, I, e art. 14, §1º). O motorista apenas as lê, e não pode escrevê-las. A auxiliar do motorista não as vê.',
+      'A FOTO DA TURMA: numa data especial, o motorista pode publicar uma foto da turma para as famílias atendidas por ele. A criança só aparece se o responsável dela tiver respondido "Sim" à pergunta "Pode aparecer em foto da turma?", no Aplicativo, e essa resposta pode ser mudada a qualquer momento na ficha da criança. A foto é vista só pelas famílias daquele motorista, nunca por outros motoristas, e é apagada automaticamente em 30 (trinta) dias. Foto publicada para outros motoristas parceiros não pode conter criança.',
       'Não coletamos dados diretamente das crianças: quem os informa é o motorista ou o responsável, para fins de operação do transporte.',
       'Não usamos os dados das crianças para perfilamento, marketing, publicidade ou compartilhamento com terceiros para fins comerciais.',
     ],
@@ -339,23 +447,40 @@ export const PRIVACY_SECTIONS = [
     id: 'finalidades',
     title: '5. Finalidades e Bases Legais',
     paragraphs: [
-      'Os dados são tratados para as seguintes finalidades, sob as bases legais aplicáveis (art. 7º e 11 da LGPD):',
-      '(a) Execução do contrato de prestação do serviço de transporte escolar — base: execução de contrato (art. 7º, V);',
-      '(b) Cumprimento de obrigações legais e regulatórias — base: obrigação legal (art. 7º, II);',
-      '(c) Geolocalização do veículo durante rotas — base: consentimento do titular (art. 7º, I), revogável a qualquer momento pela chave na tela de início de rota, sem custo e sem perda de nenhuma outra função do Aplicativo (art. 8º, §5º);',
-      '(d) Comunicação com responsáveis (notificações, status, alertas) — base: legítimo interesse (art. 7º, IX);',
-      '(e) Tratamento de dados de crianças — base: melhor interesse da criança com consentimento dos responsáveis (art. 14);',
-      '(f) Informações de saúde da criança — base: consentimento específico e destacado do responsável (art. 11, I, e art. 14, §1º), revogável a qualquer momento, sem custo, apagando a informação no Aplicativo (art. 8º, §5º).',
+      // ⚠️ A BASE DA OPERAÇÃO DA CRIANÇA NÃO É CONSENTIMENTO (05/10/2026).
+      //
+      // A versão anterior dizia "melhor interesse com consentimento dos
+      // responsáveis (art. 14)", e o consentimento era o que o MOTORISTA
+      // declarava ter. Consentimento de um titular declarado por terceiro não
+      // se prova, e consentimento é revogável: revogado, a criança deixaria de
+      // poder ser transportada pelo app. O Enunciado CD/ANPD nº 1/2023 diz que
+      // dado de criança pode usar as bases do art. 7º e 11, desde que no
+      // melhor interesse dela. Consentimento ficou onde ele é a base certa:
+      // saúde (art. 11, I) e imagem.
+      'Os dados são tratados para as seguintes finalidades, sob as bases legais aplicáveis (art. 7º, 11 e 14 da LGPD):',
+      '(a) Funcionamento do Aplicativo para cada usuário (conta, login, telas, notificações, assinatura do motorista) — base: execução do contrato que o usuário aceita ao aceitar estes Termos (art. 7º, V). O Alô Buzinou não é parte do contrato de transporte entre o motorista e a família;',
+      '(b) Cumprimento de obrigações legais e regulatórias, como a guarda de registros de acesso e de dados fiscais — base: obrigação legal (art. 7º, II);',
+      '(c) Geolocalização do veículo durante rotas — base: consentimento do titular (art. 7º, I), revogável a qualquer momento pela chave na tela de início de rota, sem custo e sem perda de nenhuma outra função do Aplicativo (art. 8º, §5º); e as leituras únicas fora da rota (cidade no primeiro acesso, ponto da casa, da escola e do posto de combustível) — base: consentimento do titular (art. 7º, I), dado a cada vez pelo toque no botão que pede a localização e dispensável, porque em todos os casos o endereço pode ser digitado, sem perda de nenhuma função;',
+      '(d) Comunicação com responsáveis (notificações, status, alertas) — base: execução do contrato de transporte de que o responsável é parte (art. 7º, V) e legítimo interesse (art. 7º, IX);',
+      '(e) Dados da criança usados no transporte (seção 4) — base: execução do contrato de transporte de que o responsável é parte (art. 7º, V) e legítimo interesse do motorista em organizar e prestar o serviço com segurança (art. 7º, IX), sempre no melhor interesse da criança (art. 14, caput; Enunciado CD/ANPD nº 1/2023);',
+      '(f) Informações de saúde da criança — base: consentimento específico e destacado do responsável (art. 11, I, e art. 14, §1º), revogável a qualquer momento, sem custo, apagando a informação no Aplicativo (art. 8º, §5º);',
+      '(g) Imagem da criança na foto da turma — base: consentimento específico do responsável (art. 14, §1º), dado pela resposta "Sim" no Aplicativo e revogável a qualquer momento, sem custo, na ficha da criança (art. 8º, §5º);',
+      '(h) Segurança, prevenção de fraude e limite de tentativas, comunidade, níveis, avaliações do Aplicativo e comunicação da plataforma — base: legítimo interesse (art. 7º, IX), sem uso de dados de criança;',
+      '(i) Métricas de uso pelo Google Analytics — base: consentimento (art. 7º, I), dado no aviso de cookies e revogável a qualquer momento.',
     ],
   },
   {
     id: 'compartilhamento',
     title: '6. Compartilhamento de Dados',
     paragraphs: [
-      'Compartilhamos dados pessoais apenas com:',
-      '(a) Responsáveis das crianças associadas — no escopo necessário para o serviço (status do transporte, localização da perua durante rota);',
-      '(b) Operadores técnicos (Firebase/Google Cloud) — armazenamento e autenticação, como processadores de dados sob contrato;',
-      '(c) Autoridades competentes — quando exigido por ordem judicial ou obrigação legal.',
+      'Dentro do Aplicativo, cada pessoa vê só o que precisa:',
+      '(a) Entre o motorista e as famílias atendidas por ele — no escopo necessário para o serviço (status do transporte, localização aproximada da perua durante a rota, contrato, mensalidades, recados). As famílias também veem o nome, a marca, o telefone, a chave PIX e os dados do motorista que constam no contrato;',
+      '(b) A auxiliar do motorista vê só a turma do dia: nome, foto, escola, turma, horários, as etapas do transporte e o contato do responsável. Não vê mensalidades, contrato nem informações de saúde;',
+      '(c) Quem recebe um link de acompanhamento (quem vai buscar a criança, ou o segundo responsável) vê só o dia da criança, enquanto o link valer — sem dinheiro, endereço ou contrato;',
+      '(d) Em "Indicar para uma família", o motorista passa a uma família dele o nome e o WhatsApp de um motorista parceiro. São dados do próprio parceiro, que aceitou a parceria; a família decide se entra em contato. Nada da família é passado ao parceiro;',
+      '(e) Serviços de terceiros, como operadores, na medida descrita na seção 2b;',
+      '(f) Autoridades competentes — quando exigido por ordem judicial ou obrigação legal.',
+      'A NOTA QUE O RESPONSÁVEL DÁ AO MOTORISTA (de 1 a 5 estrelas, uma por semestre) é guardada com o identificador de quem a deu, só para permitir que ele a mude dentro do semestre. O motorista nunca vê nota individual nem quem a deu: vê apenas a média de um semestre já encerrado, e só quando pelo menos cinco famílias responderam. O motorista não avalia as famílias.',
       'Não vendemos, alugamos ou cedemos dados pessoais para terceiros com finalidade de marketing ou publicidade.',
     ],
   },
@@ -365,7 +490,7 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'Os dados são armazenados em servidores da Google Cloud Platform (Firebase), com criptografia em trânsito (HTTPS/TLS) e em repouso.',
       'Adotamos medidas técnicas e organizacionais para proteger os dados contra acesso não autorizado, perda, alteração ou divulgação, conforme padrões da indústria.',
-      'Apesar disso, nenhum sistema é 100% seguro. Em caso de incidente de segurança que afete dados pessoais, comunicaremos a Autoridade Nacional de Proteção de Dados (ANPD) e os titulares afetados conforme o art. 48 da LGPD.',
+      'Apesar disso, nenhum sistema é 100% seguro. Em caso de incidente de segurança que possa acarretar risco ou dano relevante aos titulares, comunicaremos a Autoridade Nacional de Proteção de Dados (ANPD) e os titulares afetados conforme o art. 48 da LGPD e, quando forem dados da turma de um motorista, também o motorista.',
     ],
   },
   {
@@ -375,7 +500,10 @@ export const PRIVACY_SECTIONS = [
       'Mantemos os dados enquanto a conta estiver ativa e enquanto necessário para as finalidades descritas.',
       'Após encerramento da conta, dados financeiros podem ser retidos pelo prazo de 5 (cinco) anos para cumprimento de obrigações fiscais e contábeis (art. 16, II da LGPD). O registro de mensalidades é apagado automaticamente após esse prazo.',
       'Localização é mantida apenas durante a rota ativa. Ao encerrar, a última posição é apagada — não guardamos histórico de localização do motorista.',
+      'A foto da turma é apagada automaticamente 30 (trinta) dias depois de publicada, ou antes, se o motorista a apagar.',
+      'O endereço e o ponto dos postos de combustível anotados pelo motorista ficam na lista de postos dele (no máximo 20, saindo o visto há mais tempo) enquanto a conta existir.',
       'O registro diário de embarque e entrega (data e horário de cada etapa, sem qualquer dado de localização) é apagado automaticamente após 60 (sessenta) dias.',
+      'Os avisos do Aplicativo (o sino) são apagados automaticamente após 90 (noventa) dias.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
   },
@@ -394,7 +522,8 @@ export const PRIVACY_SECTIONS = [
       '(h) informação sobre a possibilidade de não fornecer consentimento e suas consequências;',
       '(i) revogação do consentimento;',
       '(j) oposição a tratamento que viole a LGPD.',
-      `Para exercer esses direitos, envie email para ${COMPANY_INFO.dpoEmail} com seu nome completo, email da conta e descrição da solicitação. Responderemos em até 15 (quinze) dias.`,
+      `Para exercer esses direitos, envie e-mail para ${COMPANY_INFO.dpoEmail} com seu nome completo, e-mail da conta e descrição da solicitação. Responderemos em até 15 (quinze) dias. O responsável pode fazer o pedido também pelos dados da criança sob sua guarda.`,
+      'Quando o pedido for sobre dados da turma de um motorista (seção 2, item a), ele é atendido junto com o motorista, que é o controlador desses dados, ou encaminhado a ele — e você é avisado do encaminhamento. Algumas informações você mesmo corrige ou apaga no Aplicativo, como as de saúde da criança e a resposta sobre a foto da turma.',
     ],
   },
   {
@@ -403,7 +532,7 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'O Aplicativo usa cookies e armazenamento local (localStorage) para:',
       '(a) Cookies essenciais — necessários para autenticação e funcionamento básico (sessão, preferências de aceite). Não podem ser desativados;',
-      '(b) Cookies analíticos — métricas anônimas de uso para melhorar o produto. Coletados apenas com seu consentimento.',
+      '(b) Cookies analíticos — métricas de uso das telas, pelo Google Analytics, para melhorar o produto. Coletados apenas com seu consentimento.',
       'Você pode gerenciar suas preferências de cookies a qualquer momento pelo aviso exibido na primeira visita ou pelo seu navegador.',
     ],
   },
@@ -411,8 +540,13 @@ export const PRIVACY_SECTIONS = [
     id: 'transferencia',
     title: '11. Transferência Internacional',
     paragraphs: [
-      'Como nossos servidores (Google Firebase) podem estar localizados em data centers fora do Brasil, dados pessoais podem ser transferidos internacionalmente.',
-      'Adotamos garantias contratuais com nossos processadores conforme art. 33 da LGPD, assegurando nível adequado de proteção.',
+      // ⚠️ ESTA SEÇÃO DIZIA "NOSSOS SERVIDORES PODEM ESTAR FORA", enquanto a 2b
+      // dizia São Paulo — as duas eram meia verdade. O banco e as funções
+      // ficam em São Paulo (`southamerica-east1`); o que sai do país são
+      // serviços globais (login, notificações, métricas) e os terceiros
+      // listados na 2b.
+      'O banco de dados e as funções do servidor ficam em São Paulo, no Brasil. Alguns serviços, porém, podem processar dados fora do país: o login, as notificações no celular e as métricas do Google (que operam em servidores globais), o Resend (Estados Unidos), o Nominatim (Reino Unido), o MapTiler (Suíça) e o DiceBear (Alemanha), na medida descrita na seção 2b.',
+      'Essas transferências se apoiam no art. 33 da LGPD: em cláusulas contratuais padrão, quando o fornecedor as oferece (inciso II), ou na necessidade de executar o serviço pedido pelo usuário (inciso IX, combinado com o art. 7º, V). Em todos os casos, só é enviado o necessário para a tarefa daquele serviço.',
     ],
   },
   {
@@ -427,7 +561,7 @@ export const PRIVACY_SECTIONS = [
     id: 'contato-privacidade',
     title: '13. Contato',
     paragraphs: [
-      `Encarregado pelo Tratamento (DPO): ${COMPANY_INFO.dpoEmail}.`,
+      `Encarregado pelo Tratamento de Dados Pessoais: ${ENCARREGADO}. Este é o canal único para qualquer assunto de privacidade e proteção de dados.`,
       `Atendimento geral: ${COMPANY_INFO.email}.`,
       'Você também pode registrar reclamações junto à Autoridade Nacional de Proteção de Dados (ANPD): https://www.gov.br/anpd.',
     ],

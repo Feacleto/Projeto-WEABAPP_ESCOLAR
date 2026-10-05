@@ -21,6 +21,8 @@ import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
 import Header from '../../components/layout/Header';
 import Sheet from '../../components/common/Sheet';
+import Input from '../../components/common/Input';
+import { maskCpfCnpj, documentoValido } from '../../compartilhado/masks';
 import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
@@ -134,6 +136,11 @@ export default function TioPlanos() {
   const [escolhido, setEscolhido] = useState(PLANO.MENSAL);
   const mesAtual = getCurrentMonthKey();
   const [assinando, setAssinando] = useState(false);
+  // O PASSO DO CPF/CNPJ (05/10/2026): só abre para quem não tem um válido no
+  // perfil. Assinar exige o documento, e um documento é uma conta.
+  const [pedindoDocumento, setPedindoDocumento] = useState(false);
+  const [documento, setDocumento] = useState('');
+  const [erroDoDocumento, setErroDoDocumento] = useState('');
 
   // ── O DEGRAU DA ESCADA, para a oferta do rodapé ─────────────────────────
   //
@@ -172,14 +179,39 @@ export default function TioPlanos() {
    * Invertida, a ordem não funciona: emitir antes seria emitir um documento
    * cujo plano ainda não existe em `users`, e a rule negaria.
    */
-  const contratar = async () => {
+  /* ⚠️ O CPF/CNPJ VEM ANTES DE TUDO (decisão do dono, 05/10/2026). Sem um
+   * válido no perfil, a callable recusaria — então a tela pergunta primeiro,
+   * num passo curto, e manda o número junto. Quem GRAVA é o servidor, e só
+   * depois de saber que o documento não é de outra conta. */
+  const contratar = () => {
     if (!escolhido) return;
+    if (!documentoValido(profile?.companyDocument)) {
+      setErroDoDocumento('');
+      setDocumento('');
+      setPedindoDocumento(true);
+      return;
+    }
+    assinar(null);
+  };
+
+  const assinarComDocumento = () => {
+    if (!documentoValido(documento)) {
+      setErroDoDocumento('CPF ou CNPJ inválido. Confira os números.');
+      return;
+    }
+    assinar(documento);
+  };
+
+  const assinar = async (documentoNovo) => {
     setAssinando(true);
     try {
-      const clausula = await contratarPlano(escolhido);
+      const clausula = await contratarPlano(escolhido, documentoNovo);
 
       const conteudo = montarContrato({
-        motorista: { uid: user?.uid, ...profile },
+        // ⚠️ O DOCUMENTO É O QUE O SERVIDOR REGISTROU, não o do perfil em
+        // memória (que ainda não foi relido): a rule do contrato compara os
+        // dois e recusa se divergirem.
+        motorista: { uid: user?.uid, ...profile, documentoDaAssinatura: clausula.documento },
         plano: escolhido,
         criancas: ativas,
         fundador: profile?.condicaoFundador || null,
@@ -208,9 +240,13 @@ export default function TioPlanos() {
       } else {
         toast.success('Plano contratado. Falta só aceitar o contrato.');
       }
+      setPedindoDocumento(false);
       navigate('/tio/contrato-plataforma');
     } catch (err) {
-      toast.error(err?.message || 'Não deu pra contratar agora.');
+      // No passo do documento, o erro fica embaixo do campo (inclusive o de
+      // "já ligado a outra conta", que não diz de quem é).
+      if (documentoNovo) setErroDoDocumento(err?.message || 'Não deu pra assinar agora.');
+      else toast.error(err?.message || 'Não deu pra contratar agora.');
     } finally {
       setAssinando(false);
     }
@@ -830,6 +866,36 @@ export default function TioPlanos() {
           </p>
         </div>
       </div>
+
+      {/* O PASSO DO CPF/CNPJ — um campo, uma frase, um botão verde. Sem
+        * ditado por voz: documento não se dita (`testar:ditado`). */}
+      <Sheet
+        open={pedindoDocumento}
+        onClose={() => !assinando && setPedindoDocumento(false)}
+        title="Seu CPF ou CNPJ"
+      >
+        <p className="mb-3 text-base leading-relaxed text-text">
+          O contrato precisa do seu CPF ou CNPJ.
+        </p>
+        <Input
+          label="CPF ou CNPJ"
+          icon={FileText}
+          inputMode="numeric"
+          autoComplete="off"
+          semSalvar
+          value={documento}
+          onChange={(e) => {
+            setDocumento(maskCpfCnpj(e.target.value));
+            setErroDoDocumento('');
+          }}
+          error={erroDoDocumento}
+        />
+        <div className="mt-4">
+          <Button onClick={assinarComDocumento} loading={assinando}>
+            Assinar
+          </Button>
+        </div>
+      </Sheet>
 
       {/* A FOLHA DE UM PONTO: título com a pergunta, uma frase de resposta. */}
       <Sheet open={Boolean(folhaAberta)} onClose={() => setFolha(null)} title={folhaAberta?.[0]}>

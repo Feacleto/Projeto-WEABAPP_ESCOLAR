@@ -30,6 +30,7 @@ import {
   montarContrato,
   diasParaVencer,
   precisaRenovar,
+  EMAIL_DO_CONTRATO,
 } from '../src/dominio/associacao/contratoAssociacao.js';
 // A identidade da plataforma e os documentos que a citam. Os três têm que ler
 // a mesma fonte — ver o bloco no fim deste arquivo.
@@ -39,6 +40,7 @@ import {
   DEV_COMARCA,
   DEV_ENDERECO,
   DEV_NAME,
+  DEV_RAZAO_SOCIAL,
 } from '../src/config/developer.js';
 import {
   COMPANY_INFO,
@@ -80,6 +82,9 @@ const MOTORISTA = {
   city: 'São Paulo',
   email: 'nino@exemplo.com',
   phone: '11988887777',
+  // O CPF/CNPJ que ele dá no primeiro acesso para o contrato com as famílias
+  // — desde a versão 8 ele também qualifica o ASSINANTE.
+  companyDocument: '123.456.789-09',
 };
 
 /** Meio-dia: em 00:00 qualquer fuso de uma hora rouba um dia. */
@@ -386,17 +391,101 @@ checar('mesma entrada, mesmo documento', JSON.stringify(base), JSON.stringify(mo
 
   // Sonda positiva: se a leitura falhasse, os acima passariam vazios.
   checar('a fonte do documento foi lida', true, fonteDoc.length > 2000);
+
+  // ⚠️ O ASSINANTE SEM NÚMERO DEIXOU DE SER TOLERADO (05/10/2026, um
+  // documento = uma conta). A qualificação era condicional — `a.documento ?
+  // ... : ''` — e o contrato saía sem CPF de quem não tinha. Hoje ela sai
+  // sempre, e a rule só deixa nascer contrato com o documento registrado.
+  checar('a 8 qualifica o assinante SEMPRE com o CPF/CNPJ', true,
+    /ASSINANTE:<\/strong>[^]*?inscrito no CPF\/CNPJ sob\s+nº \{a\.documento/.test(fonteDoc));
+  checar('e não há mais o ramo que o omitia', false,
+    fonteDoc.includes("a.documento ? `, inscrito no CPF/CNPJ"));
+
+  // ── A VERSÃO 8: ASSINATURA DO APLICATIVO ─────────────────────────────────
+  //
+  // O documento virou "Contrato de Assinatura" e a parte, ASSINANTE. A palavra
+  // velha não pode sobrar no texto da 8 — dois nomes para a mesma parte no
+  // mesmo papel é ambiguidade que se resolve contra quem redigiu (CDC 47).
+  const textoDa8 = fonteDoc
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  checar('o título é o da assinatura', true,
+    textoDa8.includes('Contrato de Assinatura do Aplicativo Alô Buzinou'));
+  checar('a parte é ASSINANTE', true, textoDa8.includes('<strong>ASSINANTE:</strong>'));
+  checar('e a palavra "associado" não sobra no texto da 8', false, /associad/i.test(textoDa8));
+  checar('nem "associação"', false, /associação/i.test(textoDa8));
+  // As cláusulas novas, cada uma pela frase que a sustenta.
+  checar('a cláusula de dados declara controlador e operadora', true,
+    textoDa8.includes('ASSINANTE é o controlador') &&
+    textoDa8.includes('CONTRATADA é a operadora') &&
+    textoDa8.includes('art. 39'));
+  checar('e o assinante declara a base legal e responde pela auxiliar', true,
+    textoDa8.includes('ASSINANTE declara ter base legal') && textoDa8.includes('auxiliar'));
+  checar('a limitação tem as ressalvas que a impedem de ser abusiva', true,
+    textoDa8.includes('dolo ou culpa grave') &&
+    textoDa8.includes('a lei') && textoDa8.includes('não admite limitação'));
+  checar('o reajuste é anual, só na renovação, com teto e saída sem multa', true,
+    textoDa8.includes('uma vez por ano, somente na renovação') &&
+    textoDa8.includes('reajusteIndice') &&
+    textoDa8.includes('não renovar, sem multa'));
+  checar('o foro traz a ressalva do domicílio do consumidor', true,
+    textoDa8.includes('art. 101, I') && textoDa8.includes('{c.comarca'));
+  checar('a inadimplência continua não sendo comunicada às famílias', true,
+    textoDa8.includes('A CONTRATADA não comunica a inadimplência'));
+
+  // ⚠️ O CONTRATO ACEITO ATÉ A 7 CONTINUA MOSTRANDO O TEXTO DELE. O hash
+  // prova o JSON; o texto é desenhado por componente. Sem o desvio pela
+  // versão, a cláusula nova apareceria por cima de um aceite antigo.
+  const fonteAte7 = readFileSync(
+    new URL('../src/components/admin/ContratoDocAte7.jsx', import.meta.url),
+    'utf8'
+  );
+  checar('o documento desvia versão ≤ 7 para o texto congelado', true,
+    /dados\.versao\)\s*\|\|\s*0\)\s*<=\s*7/.test(fonteDoc) &&
+    fonteDoc.includes('<ContratoDocAte7'));
+  checar('e o texto congelado é o da associação, com a parte ASSOCIADO', true,
+    fonteAte7.includes('Contrato de Associação à Plataforma') &&
+    fonteAte7.includes('<strong>ASSOCIADO:</strong>'));
+  checar('e ele lê a chave antiga, `associado`', true,
+    fonteAte7.includes('associado: a'));
+  checar('e não ganhou as cláusulas da 8', false,
+    fonteAte7.includes('CONTRATADA é a operadora') || fonteAte7.includes('Reajuste'));
 }
 
 // ⚠️ A VERSÃO SOBE QUANDO O TEXTO MUDA, e subir obriga todo mundo a
-// reaceitar. A 7 trouxe a multa do anual para o papel e tirou a ambiguidade da
-// renovação; a 6 trouxe o desconto vitalício.
-checar('a versão é a 7', 7, VERSAO_CONTRATO);
-checar('e ela viaja no documento', 7, base.versao);
+// reaceitar. A 8 virou assinatura do aplicativo e trouxe dados (LGPD art.
+// 39), responsabilidade, reajuste e foro; a 7 trouxe a multa do anual para o
+// papel e tirou a ambiguidade da renovação; a 6 trouxe o desconto vitalício.
+checar('a versão é a 8', 8, VERSAO_CONTRATO);
+checar('e ela viaja no documento', 8, base.versao);
 
-// A contratada e o associado são identificados: contrato sem parte é papel.
-checar('o associado é identificado', 'tio1', base.associado.uid);
+// A contratada e o assinante são identificados: contrato sem parte é papel.
+checar('o assinante é identificado', 'tio1', base.assinante.uid);
+checar('com o CPF/CNPJ que ele deu no primeiro acesso', '123.456.789-09', base.assinante.documento);
+checar('e o e-mail', 'nino@exemplo.com', base.assinante.email);
+checar('a chave antiga `associado` não é mais escrita', undefined, base.associado);
+// Sem número a régua não inventa um — e a rule recusa o contrato (ver
+// `testar:regras`, bloco do contrato): o vazio vira recusa, nunca papel.
+checar('sem CPF/CNPJ, o documento não inventa um', '',
+  montar({ motorista: { ...MOTORISTA, companyDocument: undefined } }).assinante.documento);
+// ⚠️ O REGISTRADO PELO SERVIDOR VENCE o do perfil: é ele que a rule compara.
+checar('o documento registrado na assinatura vence o do perfil', '11.222.333/0001-81',
+  montar({ motorista: { ...MOTORISTA, documentoDaAssinatura: '11.222.333/0001-81' } }).assinante.documento);
 checar('a contratada tem CNPJ', true, Boolean(base.contratada.cnpj));
+// ⚠️ A RAZÃO SOCIAL É A DO MEI (o nome civil), e o fantasia viaja à parte.
+checar('a contratada é qualificada pela razão social do MEI', DEV_RAZAO_SOCIAL, base.contratada.razao);
+checar('com o nome fantasia separado', DEV_NAME, base.contratada.nomeFantasia);
+checar('e o tipo da empresa', 'MEI', base.contratada.tipo);
+checar('a comarca do foro viaja no documento', DEV_COMARCA, base.contratada.comarca);
+// O reajuste e o teto da indenização são DADO congelado, não literal.
+checar('o teto do reajuste é o IPCA', 'IPCA', base.condicoes.reajusteIndice);
+checar('com 30 dias de aviso', 30, base.condicoes.reajusteAvisoDias);
+checar('e a indenização limitada a 12 meses pagos', 12, base.condicoes.limiteDaIndenizacaoMeses);
+// ⚠️ O E-MAIL DO CONTRATO É O DOS TERMOS, NÃO O GMAIL DE `DEV_EMAIL`. O domínio
+// não pode importar a tela dos Termos, então a amarra é este caso.
+checar('o e-mail do contrato é o mesmo dos Termos', COMPANY_INFO.email, EMAIL_DO_CONTRATO);
+checar('e é ele que viaja no documento', EMAIL_DO_CONTRATO, base.contratada.email);
 
 bloco('10. Plano desconhecido é recusa, não zero');
 
@@ -542,9 +631,11 @@ checar('a validade da concessão está no contrato', '2027-02',
 console.log('');
 console.log('A identidade da plataforma vem de um lugar so');
 
+// Desde 05/10/2026 a razão social é a do MEI (o nome civil do titular) — a
+// mesma que o contrato de assinatura usa; "Desenvolva Algo" é o fantasia.
 checar(
   'os Termos usam a razao social de developer.js',
-  DEV_NAME,
+  DEV_RAZAO_SOCIAL,
   COMPANY_INFO.razaoSocial
 );
 checar('e o CNPJ tambem', DEV_CNPJ, COMPANY_INFO.cnpj);
@@ -561,7 +652,10 @@ checar('e o endereco', DEV_ENDERECO, COMPANY_INFO.endereco);
     criancas: 20,
     mes: '2026-09',
   });
-  checar('o contrato de associacao usa a mesma razao social', DEV_NAME, c.contratada.razao);
+  // ⚠️ Desde a versão 8 a razão é a do MEI (o nome civil do titular) e o
+  // "Desenvolva Algo" vai como nome fantasia — ver o bloco da versão.
+  checar('o contrato de assinatura usa a razao social do MEI', DEV_RAZAO_SOCIAL, c.contratada.razao);
+  checar('e o nome fantasia de developer.js', DEV_NAME, c.contratada.nomeFantasia);
   checar('e o mesmo CNPJ', DEV_CNPJ, c.contratada.cnpj);
   checar('e a cidade de DOCUMENTO, sem o separador visual', DEV_CIDADE_UF, c.contratada.cidade);
   checar('e o endereco da sede', DEV_ENDERECO, c.contratada.endereco);

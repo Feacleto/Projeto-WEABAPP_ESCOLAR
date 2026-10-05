@@ -2292,13 +2292,19 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   // O documento INTEIRO de novo — ver o aviso em `semear`.
   await semear(`users/${vencido.uid}`, {
     role: S('admin'), name: S('Vencido'), trialInicio: T(-100), plano: S('mensal'),
+    documentoDaAssinatura: S('529.982.247-25'),
   });
   checar('pos', 'e o bloqueado AINDA EMITE contrato — o caminho de voltar', 'PASSA',
     await criar('contratosAssociacao', vencido.uid + '_' + Date.now(), vencido, {
       tioUid: S(vencido.uid),
       aceitoEm: { nullValue: null },
       conteudo: {
-        mapValue: { fields: { plano: { mapValue: { fields: { id: S('mensal') } } } } },
+        mapValue: {
+          fields: {
+            plano: { mapValue: { fields: { id: S('mensal') } } },
+            assinante: { mapValue: { fields: { documento: S('529.982.247-25') } } },
+          },
+        },
       },
     }));
 
@@ -2312,17 +2318,55 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   // ⚠️ A AMARRA E SOBRE O PLANO, NAO SOBRE O VALOR. Com preco por crianca o
   // valor muda todo mes; exigir que o contrato repita um numero faria o
   // documento nascer invalido na crianca seguinte.
-  const contrato = (plano) => ({
+  //
+  // ⚠️ E O DOCUMENTO DO ASSINANTE (05/10/2026, um CPF/CNPJ = uma conta): o
+  // contrato precisa trazer o MESMO que `contratarPlano` registrou em
+  // `users.documentoDaAssinatura`. Aqui o servidor é simulado pelo bearer de
+  // Admin (merge com máscara, para não apagar o resto do documento).
+  const DOC_TIO1 = '11.222.333/0001-81';
+  await escrever(`users/${tio1.uid}`, { t: 'owner' },
+    { documentoDaAssinatura: S(DOC_TIO1) }, ['documentoDaAssinatura']);
+  const contrato = (plano, documento = DOC_TIO1) => ({
     tioUid: S(tio1.uid),
     aceitoEm: { nullValue: null },
     conteudo: {
       mapValue: {
-        fields: { plano: { mapValue: { fields: { id: S(plano) } } } },
+        fields: {
+          plano: { mapValue: { fields: { id: S(plano) } } },
+          ...(documento === null
+            ? {}
+            : { assinante: { mapValue: { fields: { documento: S(documento) } } } }),
+        },
       },
     },
   });
   checar('pos', 'o motorista emite o contrato do plano que o dono gravou', 'PASSA',
     await criar('contratosAssociacao', tio1.uid + '_1', tio1, contrato('mensal')));
+  checar('assinante', 'mas não com um CPF/CNPJ diferente do registrado', 'NEGA',
+    await criar('contratosAssociacao', tio1.uid + '_3', tio1, contrato('mensal', '529.982.247-25')));
+  checar('assinante', 'nem sem o CPF/CNPJ do assinante', 'NEGA',
+    await criar('contratosAssociacao', tio1.uid + '_4', tio1, contrato('mensal', null)));
+  checar('assinante', 'nem com o documento em branco', 'NEGA',
+    await criar('contratosAssociacao', tio1.uid + '_5', tio1, contrato('mensal', '')));
+  checar('assinante', 'o motorista não escreve o próprio documentoDaAssinatura', 'NEGA',
+    await escrever(`users/${tio1.uid}`, tio1,
+      { documentoDaAssinatura: S('529.982.247-25') }, ['documentoDaAssinatura']));
+  checar('assinante', 'e ainda grava uma preferência dele (sonda)', 'PASSA',
+    await escrever(`users/${tio1.uid}`, tio1, { compartilhaLocalizacao: B(true) }, ['compartilhaLocalizacao']));
+
+  // O REGISTRO DE UNICIDADE é só do servidor — nem o dono lê, porque a lista
+  // diria quais documentos têm conta.
+  await semear('documentosDeAssinante/abc123', { uid: S(tio1.uid) });
+  checar('assinante', 'o próprio motorista não lê o registro do documento', 'NEGA',
+    await ler('documentosDeAssinante/abc123', tio1));
+  checar('assinante', 'outro motorista não lê', 'NEGA',
+    await ler('documentosDeAssinante/abc123', tio2));
+  checar('assinante', 'o dono não lê', 'NEGA',
+    await ler('documentosDeAssinante/abc123', dono));
+  checar('assinante', 'ninguém cria registro pelo cliente', 'NEGA',
+    await criar('documentosDeAssinante', 'def456', novato, { uid: S(novato.uid) }));
+  checar('assinante', 'nem toma o registro de outro', 'NEGA',
+    await escrever('documentosDeAssinante/abc123', tio2, { uid: S(tio2.uid) }, ['uid']));
   checar('preco', 'mas nao um contrato de plano DIFERENTE', 'NEGA',
     await criar('contratosAssociacao', tio1.uid + '_2', tio1, contrato('anual')));
   checar('preco', 'nem emite contrato no nome de outro motorista', 'NEGA',

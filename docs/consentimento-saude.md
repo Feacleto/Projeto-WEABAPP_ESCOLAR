@@ -141,16 +141,23 @@ garantem — não a interface. Esconder campo é UX; o que impede é a regra.
 > Você pode informar alergias, medicamentos ou condições de saúde que o
 > motorista precise saber em caso de emergência no trajeto.
 >
-> **Isso é opcional.** O transporte funciona igual sem essa informação, e você
-> pode apagá-la quando quiser.
+> **Isso é opcional.** Se você não autorizar, nada muda no uso do app nem no
+> transporte. E você pode apagar a informação nesta ficha, a qualquer momento.
 >
-> ☐ Autorizo o Alô Buzinou a guardar as informações de saúde de
-> **{nome da criança}** e a exibi-las ao motorista responsável pelo transporte
-> dela, para uso em caso de emergência durante o trajeto.
+> ☐ Autorizo que as informações de saúde de **{nome da criança}** sejam
+> guardadas no app e mostradas só ao motorista do transporte dela, para uso em
+> caso de emergência no trajeto.
 >
-> Só o motorista da van dela vê essa informação. Ela não aparece para outros
-> motoristas, não é usada para mais nada e é apagada junto com o cadastro da
-> criança.
+> Essa informação não aparece para outros motoristas nem para a auxiliar, não
+> é usada para mais nada e é apagada junto com o cadastro da criança.
+
+**Revisado em 05/10/2026** (é o texto que está na tela, em
+`SaudeDaCrianca.jsx`): a caixa deixou de dizer "autorizo o Alô Buzinou" —
+quem decide sobre os dados da turma é o motorista, e a plataforma é operadora
+(Política 1.4, seção 2); o que o responsável autoriza é guardar no app e
+mostrar só ao motorista. E a folha passou a dizer que **não autorizar não muda
+nada** e **onde se apaga**: consentimento só é livre quando recusar não custa
+nada.
 
 **Notas para quem for revisar:**
 

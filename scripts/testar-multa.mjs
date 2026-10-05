@@ -122,25 +122,33 @@ checar('e o sétimo dia, que é o mínimo legal, está coberto', 0, em('2026-09-
 
 bloco('3. A multa cai sozinha, sem tabela decrescente');
 
-// 20% do saldo restante. O teto de duas mensalidades (R$ 116) morde no mês 1.
-// Mês 1 → 11 restantes → 11 × 58 = 638 → 20% = 127,60 → teto 116.
+// 10% do saldo restante (era 20% até 05/10/2026, decisão do dono).
+// Mês 1 → 11 restantes → 11 × 58 = 638 → 10% = 63,80. A 10% o teto de duas
+// mensalidades (R$ 116) não morde mais em contrato de doze meses.
 const m1 = em('2026-10-15');
 checar('no mês 1 o saldo é de onze meses', 11, m1.mesesRestantes);
-checar('e o teto morde', true, m1.tetoAplicado);
-checar('cobrando duas mensalidades', 116, m1.valor);
+checar('e o teto não morde', false, m1.tetoAplicado);
+checar('cobrando R$ 63,80', 63.8, m1.valor);
 
-// Mês 3 → 9 restantes → 522 → 20% = 104,40. Abaixo do teto.
+// ⚠️ O TETO CONTINUA SENDO TRAVA, e é medido por um compromisso mais longo:
+// 24 meses, mês 1 → 23 × 58 = 1334 → 10% = 133,40 → teto 116. Sem este caso,
+// o teto viraria código que nenhum teste alcança.
+const longo = em('2026-10-15', { mesesDeContrato: 24 });
+checar('num compromisso mais longo o teto morde', true, longo.tetoAplicado);
+checar('cortando em duas mensalidades', 116, longo.valor);
+
+// Mês 3 → 9 restantes → 522 → 10% = 52,20.
 const m3 = em('2026-12-15');
 checar('no mês 3 restam nove', 9, m3.mesesRestantes);
-checar('e a multa é R$ 104,40', 104.4, m3.valor);
-checar('o teto não morde mais', false, m3.tetoAplicado);
+checar('e a multa é R$ 52,20', 52.2, m3.valor);
+checar('o teto não morde', false, m3.tetoAplicado);
 
-// Mês 6 → 6 restantes → 348 → 69,60.
-checar('no mês 6, R$ 69,60', 69.6, em('2027-03-15').valor);
-// Mês 9 → 3 restantes → 174 → 34,80.
-checar('no mês 9, R$ 34,80', 34.8, em('2027-06-15').valor);
-// Mês 11 → 1 restante → 58 → 11,60.
-checar('no mês 11, R$ 11,60', 11.6, em('2027-08-15').valor);
+// Mês 6 → 6 restantes → 348 → 34,80.
+checar('no mês 6, R$ 34,80', 34.8, em('2027-03-15').valor);
+// Mês 9 → 3 restantes → 174 → 17,40.
+checar('no mês 9, R$ 17,40', 17.4, em('2027-06-15').valor);
+// Mês 11 → 1 restante → 58 → 5,80.
+checar('no mês 11, R$ 5,80', 5.8, em('2027-08-15').valor);
 
 // ⚠️ A INVARIANTE QUE SUBSTITUI A TABELA DECRESCENTE.
 // A intenção era que a multa caísse com o tempo de casa. Sobre o SALDO isso
@@ -186,7 +194,7 @@ const menor = multaDeSaida({
   inicio: INICIO,
   agora: dia('2026-12-15'),
 });
-checar('operação menor, multa menor', 52.2, menor.valor);
+checar('operação menor, multa menor', 26.1, menor.valor);
 checar('e o saldo é o dela', 261, menor.saldo);
 
 checar('sem valor mensal, não há o que cobrar', 0,
@@ -210,8 +218,8 @@ bloco('7. Quanto cai se ele esperar');
 // ⚠️ A TELA MOSTRA ISTO, E NÃO É PARA SEGURÁ-LO. É informação que só a
 // plataforma tem e que joga a favor dele — esconder um número desses seria
 // usar a assimetria de informação contra o cliente.
-// Mês 3 (104,40) → mês 4 (8 restantes × 58 = 464 → 92,80). Queda de 11,60.
-checar('esperar um mês economiza uma parcela da multa', 11.6,
+// Mês 3 (52,20) → mês 4 (8 restantes × 58 = 464 → 46,40). Queda de 5,80.
+checar('esperar um mês economiza uma parcela da multa', 5.8,
   quedaNoProximoMes({ plano: PLANO.ANUAL, valorMensal: MENSAL_DO_ANUAL, inicio: INICIO, agora: dia('2026-12-15') }));
 checar('no mensal não há queda porque não há multa', 0,
   quedaNoProximoMes({ plano: PLANO.MENSAL, valorMensal: 118, inicio: INICIO, agora: dia('2026-12-15') }));
@@ -222,12 +230,12 @@ checar('dentro do arrependimento também não', 0,
 
 bloco('8. As constantes');
 
-checar('a multa é 20% do saldo', 0.2, FRACAO_DA_MULTA);
+checar('a multa é 10% do saldo', 0.1, FRACAO_DA_MULTA);
 checar('o teto são duas mensalidades', 2, TETO_EM_MENSALIDADES);
 
 // ⚠️ A COMPARAÇÃO QUE SUSTENTA O ARGUMENTO DE VENDA.
 // A concorrência cobra 30% do saldo sobre um valor MAIOR. Se esta fração
-// subir, a frase "a nossa é 20% contra os 30% deles" deixa de ser verdade — e
+// subir, a frase "a nossa é 10% contra os 30% deles" deixa de ser verdade — e
 // ela está escrita no roteiro comercial.
 checar('e ela é menor que os 30% da concorrência', true, FRACAO_DA_MULTA < 0.3);
 

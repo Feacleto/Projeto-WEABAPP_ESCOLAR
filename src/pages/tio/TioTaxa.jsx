@@ -94,7 +94,7 @@ export default function TioTaxa() {
             className="tap inline-flex min-h-12 items-center gap-2 text-base font-semibold text-primary"
           >
             <FileText size={18} aria-hidden="true" />
-            Contrato com a plataforma
+            Contrato de assinatura
           </button>
           <button
             type="button"
@@ -249,7 +249,7 @@ function Conteudo() {
           to="/tio/encerrar"
           className="tap inline-flex min-h-12 items-center px-2 text-base text-textMuted underline underline-offset-2"
         >
-          Encerrar associação
+          Encerrar assinatura
         </Link>
       </div>
     </div>

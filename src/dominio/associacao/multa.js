@@ -12,9 +12,9 @@
  * Uma exceção aqui — "só neste caso", "só no primeiro mês" — apaga a frase
  * inteira, porque uma saída livre com asterisco não é uma saída livre.
  *
- * ── POR QUE 20% DO SALDO, E NÃO UMA TABELA DECRESCENTE
+ * ── POR QUE 10% DO SALDO, E NÃO UMA TABELA DECRESCENTE
  * A intenção era que a multa caísse com o tempo de casa. Sobre o SALDO
- * RESTANTE ela já cai sozinha: cada mês pago encolhe o saldo, e 20% de um
+ * RESTANTE ela já cai sozinha: cada mês pago encolhe o saldo, e 10% de um
  * saldo menor é uma multa menor. Um número só, e ele já é proporcional —
  * escrever uma segunda tabela decrescente seria duas réguas dizendo a mesma
  * coisa, e é assim que elas divergem.
@@ -26,7 +26,7 @@
  *
  * ── ELA DISSUADE, ELA NÃO RECUPERA
  * Saindo no mês 6, o associado pagou seis meses de anual em vez de seis de
- * mensal — a diferença é grande, e 20% do saldo devolve uma fração dela. Isso
+ * mensal — a diferença é grande, e 10% do saldo devolve uma fração dela. Isso
  * é deliberado: a fórmula que recuperaria de verdade ("devolva o desconto que
  * recebeu") CRESCE com o tempo de casa, e puniria mais quem ficou mais. O que
  * protege a receita é a maioria não sair; a multa ajuda pelo efeito
@@ -38,17 +38,23 @@
 
 import { PLANO, MESES_DE_CONTRATO, centavos } from './planos.js';
 
-/** A fração do saldo restante. Metade dos 30% que a concorrência cobra. */
-export const FRACAO_DA_MULTA = 0.2;
+/**
+ * A fração do saldo restante — um terço dos 30% que a concorrência cobra.
+ *
+ * Era 20%, e o dono baixou para 10% em 05/10/2026. O contrato de assinatura
+ * (versão 8) ainda não tinha sido assinado por ninguém, então a mudança não
+ * pede novo aceite: o número vai para o papel importado DAQUI.
+ */
+export const FRACAO_DA_MULTA = 0.1;
 
 /**
- * O TETO, em mensalidades — e ele morde exatamente uma vez.
+ * O TETO, em mensalidades — e a 10% ele não morde mais.
  *
- * A 20%, o pior caso é sair no mês 1: onze meses de saldo dão 2,2
- * mensalidades. O teto corta isso em duas, e o efeito prático é pequeno — mas
- * ele transforma a cláusula numa frase que cabe na tela: *"a multa nunca passa
- * de dois meses do seu plano"*. Um limite que a pessoa consegue repetir vale
- * mais que os R$ 12 que ele economiza.
+ * A 20%, o pior caso (sair no mês 1, onze meses de saldo) dava 2,2
+ * mensalidades e o teto cortava em duas. A 10% o pior caso é 1,1 mensalidade,
+ * abaixo do teto. Ele FICA mesmo assim, por dois motivos: a cláusula continua
+ * cabendo numa frase que a pessoa repete (*"a multa nunca passa de dois meses
+ * do seu plano"*), e ele é a trava se alguém voltar a subir a fração.
  */
 export const TETO_EM_MENSALIDADES = 2;
 
@@ -141,7 +147,7 @@ export function multaDeSaida({
   //
   // "Você tem 30 dias" é lido por qualquer pessoa como podendo agir NO trigésimo
   // dia, e num contrato de adesão a ambiguidade se resolve a favor de quem
-  // aderiu (**CDC art. 47**). O `<` cobrava R$ 116 de alguém que cancelou no
+  // aderiu (**CDC art. 47**). O `<` cobrava multa de alguém que cancelou no
   // dia exato que a tela prometeu livre — e essa é a cobrança que vira print.
   const dias = Math.floor((hoje.getTime() - d.getTime()) / MS_POR_DIA);
   if (dias <= DIAS_SEM_MULTA) {

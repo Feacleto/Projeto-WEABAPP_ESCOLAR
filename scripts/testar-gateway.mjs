@@ -185,7 +185,7 @@ checar('a referência é o id da fatura', 'tio1_2026-09', corpo.externalReferenc
 checar('e o cliente é o do gateway', 'cus_1', corpo.customer);
 checar(
   'a descrição diz o mês por extenso',
-  'Alô Buzinou — associação de setembro/2026',
+  'Alô Buzinou — assinatura de setembro/2026',
   corpo.description
 );
 

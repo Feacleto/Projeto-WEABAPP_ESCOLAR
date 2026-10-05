@@ -432,7 +432,7 @@ function Geral({ ov }) {
           <p className="mt-2 rounded-xl bg-warningSoft p-3 text-xs leading-relaxed text-warningText">
             <strong>
               {ov.carteira.acabandoEm7}{' '}
-              {ov.carteira.acabandoEm7 === 1 ? 'associado está' : 'associados estão'} a
+              {ov.carteira.acabandoEm7 === 1 ? 'assinante está' : 'assinantes estão'} a
               menos de 7 dias do fim do teste.
             </strong>{' '}
             É a semana em que a decisão acontece — e quem contrata antes do fim
@@ -449,7 +449,7 @@ function Geral({ ov }) {
             * perguntas diferentes — quanto entra por mês, e quanto já entrou. */}
           <Tile label="MRR (por mês)" value={moeda(ov.carteira.mrr)} tone="emerald" />
           <Tile
-            label="Ticket por associado"
+            label="Ticket por assinante"
             value={naoMedido(ov.carteira.ticketPorAssociado, moeda)}
           />
           <Tile
@@ -506,7 +506,7 @@ function Geral({ ov }) {
             <strong>{moeda(ov.gmvTotal)}</strong> é o volume que passou entre
             pai e motorista dentro do app — é o que prova que o produto está no
             meio de uma transação real. A receita do Alô Buzinou é{' '}
-            <strong>{moeda(ov.receitaPropria)}</strong>: a taxa de associação
+            <strong>{moeda(ov.receitaPropria)}</strong>: o valor da assinatura
             que os parceiros já pagaram — o modelo apresentado a eles, que
             cobre a administração e a manutenção da estrutura. Os dois números
             importam pra valuation por motivos diferentes: GMV mostra o mercado

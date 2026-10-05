@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 68 scripts. O PRIMEIRO é
+npm run testar                   # 81 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -28,12 +28,12 @@ npm run testar                   # 68 scripts. O PRIMEIRO é
                                  # comentario-na-tela (nenhum `/* */` sem
                                  # chaves vira texto na tela), leituras-do-dono,
                                  # vazamento, contraste, design, dinheiro,
-                                 # travessia,
+                                 # travessia, mensagens-do-link, cartao, comunidade,
                                  # contrato, combinado,
                                  # pix, brcode,
                                  # status, auth, trial, planos, vitrine, autoatendimento, para-voce, avisos,
                                  # preferencias, multa, encerramento,
-                                 # conta, cobranca, gateway, carteira,
+                                 # conta, cobranca, gateway, assinante, carteira,
                                  # proposta, chamados, avaliacao, risco, fila, concessao,
                                  # selo, indicacao, irmaos, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca, site,
@@ -440,7 +440,16 @@ src/
 │                       DUAS vezes numa auditoria (primeiro o estado como
 │                       cidade, depois o bairro como cidade). O CEP é o que
 │                       fecha a dúvida, e por isso ele está no endereço.
-│                       Falta só o NÚMERO, em `DEV_NUMERO`
+│                       O número (61) entrou em 05/10/2026, decisão do dono.
+│                       ⚠️ A PARTE É UM MEI: razão social é o nome civil do
+│                       titular (`DEV_RAZAO_SOCIAL`); "Desenvolva Algo" é o
+│                       nome FANTASIA (`DEV_NAME`). Documento legal usa a
+│                       razão social. MEI não pode licenciar software
+│                       (CNAE 6203-1/00): migrar para ME antes de cobrar.
+│                       A 1.4 também (05/10, revisão jurídica): o MOTORISTA é
+│                       CONTROLADOR dos dados da turma e o app é OPERADOR;
+│                       base dos dados da criança é contrato + legítimo
+│                       interesse (consentimento só saúde, imagem, analytics)
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive,
 │                      acesso (o responsável sem link pedindo entrada),
@@ -635,13 +644,15 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
-`limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao` e `convitesDeAuxiliar` (só o servidor) ·
+`limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao`, `convitesDeAuxiliar` e `documentosDeAssinante` (um CPF/CNPJ, uma conta) (só o servidor) ·
 `auxiliares` (o vínculo da auxiliar; ela e o motorista dela leem, ninguém escreve pelo cliente) ·
 `faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
 `configFinanceiro` (só o próprio motorista lê; a auxiliar lê o dela, só com o `temSenha`) ·
 `indicesEconomicos` (o IPCA; só o servidor escreve, motorista lê) ·
+`fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
+`avaliacoesDoTio` (a nota da família ao tio; só ela lê a dela, o tio não lê nenhuma) ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -828,6 +839,12 @@ em [childrenService.js](src/services/childrenService.js). `home` é o que
 - `taxaParceiros` / `faturasParceiro` — taxa de associação do **motorista → a
   plataforma**. [taxaService.js](src/services/taxaService.js)
 
+⚠️ **NÃO EXISTE MAIS "ASSOCIAÇÃO" PARA QUEM LÊ (05/10/2026, decisão do
+dono):** o documento é o **Contrato de Assinatura do Aplicativo** e o
+motorista é o ASSINANTE. Os nomes INTERNOS ficaram (`contratosAssociacao`,
+`contratoAssociacao.js`, rules, campos) — renomear dado em produção é risco
+sem ganho jurídico. Texto novo visível não volta a dizer "associação".
+
 **A associação, ponta a ponta** — reescrita em 10/09/2026, quando o preço
 virou LINEAR. Três paradas, e a primeira é o próprio motorista:
 plano escolhido (`users.plano`, 'mensal' ou 'anual', gravado por
@@ -1009,7 +1026,19 @@ havia base real.
   trocou a faixa pela TAXA POR CRIANÇA e tornou a cláusula 6 assimétrica, a 6
   declarou o desconto VITALÍCIO ("sem prazo enquanto este contrato estiver
   vigente") e a 7 trouxe a **multa do anual para o papel** e tirou a
-  ambiguidade da renovação. Subir a versão exige novo aceite.
+  ambiguidade da renovação. A **8** (05/10/2026) virou CONTRATO DE
+  ASSINATURA: assinante com CPF/CNPJ, a contratada pela razão social do MEI,
+  canal contato@alobuzinou.com, e três cláusulas novas — TRATAMENTO DE DADOS
+  (assinante controlador, plataforma operadora, art. 39), DISPONIBILIDADE e
+  limite de indenização (12 meses pagos), e FORO com a ressalva do CDC; o
+  reajuste anual pelo IPCA, só na renovação e com 30 dias de aviso, entrou
+  na cláusula 4 (`conteudo.condicoes`, dentro do hash).
+  ⚠️ **O texto das versões ≤ 7 está CONGELADO em
+  [ContratoDocAte7](src/components/admin/ContratoDocAte7.jsx)** e o
+  `ContratoDoc` desvia por `dados.versao`: o hash cobre o JSON, não a
+  redação, e sem o desvio todo contrato aceito passaria a mostrar cláusulas
+  que ninguém aceitou. ⚠️ Subir a versão NÃO força reaceite sozinho: só
+  quem contrata de novo em `/tio/planos` assina a 8.
   ⚠️ **A cláusula 3 declara a TAXA, não um valor** — é isso que elimina a
   reassinatura por crescimento. Na versão 4 ganhar uma criança que cruzasse a
   fronteira exigia documento novo, no exato momento em que ele fechou um cliente.
@@ -1018,7 +1047,8 @@ havia base real.
   Tirar os dois prazos seria rescisão unilateral sem direito equivalente (CDC
   art. 51, XI).
   ⚠️ **E A MULTA DO ANUAL ERA INCOBRÁVEL ATÉ A VERSÃO 7** (11/09/2026).
-  [multa.js](src/dominio/associacao/multa.js) calculava 20% do saldo, com teto
+  [multa.js](src/dominio/associacao/multa.js) calculava 20% do saldo (hoje
+  **10%**, decisão do dono de 05/10/2026), com teto
   de duas mensalidades e carência de 30 dias — puro, testado — e a cláusula
   dizia *"sem multa"*, sem ressalva. Cobrança que o documento assinado não
   declara não se sustenta (**CDC art. 46**), então a régua inteira não valia
@@ -1221,8 +1251,10 @@ decisão com o dono.
 
 **O plano capa PRAZO E SAÍDA, nunca funcionalidade** — não existe Básico/Pro. O
 app é completo nos dois: o mensal não tem prazo nem multa e trava o desconto da
-escada; o anual custa menos da metade e pede doze meses, com multa de 20% do
-saldo ([multa.js](src/dominio/associacao/multa.js)).
+escada; o anual custa menos da metade e pede doze meses, com multa de 10% do
+saldo ([multa.js](src/dominio/associacao/multa.js); era 20% até 05/10/2026 —
+a 10% o teto de duas mensalidades não morde mais em doze meses, e fica como
+trava).
 
 **Só o fundador VITALÍCIO chega a zero**, e todo o resto para no piso de
 R$ 19. O desconto somado é cortado em 100% antes disso — sem o corte, dez
@@ -1629,8 +1661,11 @@ o rastreamento da rota, o *"usar minha localização"* do seletor de mapa
 (cadastro da criança e "editar onde mora", este último atrás de `isAdmin`), e
 desde 02/10/2026 o último passo do primeiro acesso, que lê a posição UMA vez
 para gravar o nome da cidade e do bairro, e desde 04/10/2026 o "Sim, estou" do
-abastecer (o lugar do POSTO). A 1.4 da Política declara o do posto; ⚠️ **o do
-primeiro acesso continua sem frase na cláusula 8** — pendente do dono.
+abastecer (o lugar do POSTO). A 1.4 da Política (cláusula 8) declara TODAS
+as leituras únicas fora da rota — cidade do primeiro acesso, ponto da casa e
+da escola pelo seletor, o "Estou na escola agora" (ainda a construir, na
+Carteira) e o posto —, aprovado pelo dono em 04/10/2026. Leitura nova fora da
+rota entra nessa lista na mesma alteração.
 
 ---
 
@@ -1638,6 +1673,44 @@ primeiro acesso continua sem frase na cláusula 8** — pendente do dono.
 
 Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 
+- **Comunidade (05/10/2026, etapas 1 e 2):** `publicarFotoDaTurma`,
+  `apagarFotoDaTurma`, `meusParceiros`, `minhaNotaDasFamilias` e a agendada
+  `limparFotosVencidas`
+  ([comunidade.js](functions/lib/comunidade.js), régua em
+  [reguaDaComunidade.js](functions/lib/reguaDaComunidade.js), espelho em
+  `src/dominio/identidade/comunidade.js`, `testar:comunidade`). No Início do
+  tio, a linha "Comunidade" (`/tio/comunidade`, FORA da Central e da senha:
+  quem posta costuma ser a auxiliar) com duas abas. ⚠️ **Foto da turma só
+  com o "sim" de CADA família marcada** (`children.fotoDaTurmaConsentida`,
+  escrito só pela responsável — rules; ausente é NÃO), vista só pelas
+  famílias daquele tio e apagada em 30 dias. ⚠️ **Para os tios parceiros
+  (quem ele indicou e quem o indicou), nunca criança.** O arquivo sobe para
+  `fotosDaTurma/{uid}/` no Storage, que ninguém lê; o link só sai pela
+  callable. A família responde "Pode aparecer em foto da turma?" no Início
+  (enquanto não respondeu) e na ficha. Política 1.4 (seção 4, base 5.g).
+  **Etapa 2 (05/10/2026):** em cada parceiro, "Indicar para uma família"
+  abre o WhatsApp DELA com o nome e o contato do colega (`meusParceiros`
+  devolve o WhatsApp) — indicação que ela aceita, NUNCA transferência; nada
+  é gravado. E a FAMÍLIA avalia o tio (1 a 5 estrelas, uma por semestre,
+  mudável; `avaliacoesDoTio/{tio}_{família}_{AAAA-S}`, só no semestre
+  corrente em UTC) no Início (até responder, com "Agora não") e na ficha.
+  ⚠️ O tio não lê nota nenhuma: `minhaNotaDasFamilias` devolve só a média do
+  semestre FECHADO com pelo menos 5 respostas, e do corrente só quantas —
+  a média ao vivo denunciaria quem deu cada nota. O tio NÃO avalia a família
+  (seria cadastro de mau pagador, CDC 43). Política 1.4, seção 6.
+- **Cartão do link (04/10/2026):** `cartaoDoLink` (HTTP público) responde
+  `/convite/**` e `/quero-fazer-parte` (rewrites do hosting do app, ANTES do
+  `**`) e devolve o MESMO index.html com as tags de prévia trocadas: o
+  CARTÃO DO TIO ("Tio Nino te convidou para o app", a marca do motorista da
+  criança) e o CARTÃO DO APP ("Tio Nino te indicou o Alô Buzinou", por
+  `?cupom=`, achado em `users.codigoDeIndicacao`). ⚠️ Nada da criança no
+  cartão; convite que não vale cai no cartão padrão (e conta no limite do
+  convite público); qualquer falha devolve a página com o cartão padrão. A
+  imagem, por enquanto, é o LOGO dele (aparece pequena); a imagem grande com
+  cor e nome (o modelo aprovado) pede gerar PNG no servidor — passo seguinte.
+  Régua em [reguaDoCartao.js](functions/lib/reguaDoCartao.js), `testar:cartao`.
+  As MENSAGENS que vão junto (texto "Direto", quem fala é a marca dele) estão
+  em [mensagensDoLink.js](src/marca/mensagensDoLink.js), `testar:mensagens-do-link`.
 - **Convite:** `lookupInvite`, `redeemInvite`, `getInvitePreview` — único
   caminho para criar conta de pai. ⚠️ **Desde 03/10/2026 (segurança):** o
   convite ainda não usado vale **15 DIAS** (decisão do dono; conta de
@@ -1735,7 +1808,18 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 - **Contratação:** `contratarPlano` — o MOTORISTA escolhe mensal ou anual e o
   servidor escreve a cláusula (`users.plano` mais o desconto do degrau, com
   `ate: null`). É function porque esses campos estão na lista que o cliente
-  nunca escreve.
+  nunca escreve. ⚠️ **Desde 05/10/2026 ela EXIGE CPF/CNPJ VÁLIDO, e um
+  documento é uma conta** (decisão do dono — indicação a si mesmo, desconto de
+  fechamento repetido, amarra com o alvará): a fonte é `users.companyDocument`
+  (o do contrato com as famílias); só quando ele falta a tela de planos pede o
+  número e o SERVIDOR o grava. Na mesma transação da cláusula ela registra
+  `documentosDeAssinante/{sha256}` = `{ uid }` (rules `if false`) e grava
+  `users.documentoDaAssinatura` (proibido ao cliente); documento de outra
+  conta é `already-exists` com "fale com o suporte", sem dizer de quem. A rule
+  de `contratosAssociacao` exige `conteudo.assinante.documento` igual a esse
+  campo. Régua em [reguaDoAssinante.js](functions/lib/reguaDoAssinante.js),
+  `npm run testar:assinante`. Liberar um documento (conta apagada e
+  recriada) é à mão, pelo console.
 - **Fechamento (agendado):** `fecharMesDosParceiros` (todo dia 1 às 5h, emite a
   fatura de todo motorista sem uma) e `fecharMesAgora` (o mesmo, à mão, para o
   dono). ⚠️ Até 10/09/2026 a fatura da plataforma só nascia por CLIQUE, e isso
@@ -2918,9 +3002,17 @@ commit e fora do lote — o desconto de um terceiro não pode fazer a baixa da
 fatura falhar.
 
 **SÃO DOIS SELOS, com economias OPOSTAS** — e tratá-los como um só foi o que
-confundiu a conversa inicial. O **adesivo** de rua diz "usa Alô Buzinou", todo
-associado tem, e se ganha **pedindo**
-([adesivo.js](src/dominio/associacao/adesivo.js)). O **certificado** diz
+confundiu a conversa inicial. O **adesivo** de rua é a MARCA DO TIO em
+destaque com "Alô Buzinou" numa faixa verde fina, e desde 04/10/2026 é
+**PRÊMIO DA 1ª PLATINA** (decisão do dono; antes, qualquer associado pedia):
+vale o marco `niveis/{uid}.platinaEm`, gravado UMA vez pelo servidor e
+mantido se ele cair para o Ouro — e por isso o adesivo não escreve o nível.
+O tio escolhe a frase da faixa numa lista fechada ("Eu uso o app" marcada)
+que as rules repetem; o pedido guarda a frase e uma foto da marca, e a aba
+Selos do dono conta quantos pediram cada uma
+([adesivo.js](src/dominio/associacao/adesivo.js), desenho em
+[AdesivoDaPerua](src/components/selo/AdesivoDaPerua.jsx)). O kit gráfico do
+Diamante ainda não foi definido. O **certificado** diz
 "alvará conferido · 09/2026", só quem enviou e foi aprovado tem, e se ganha
 **conquistando** ([verificacao.js](src/dominio/identidade/verificacao.js)).
 Valor não vem de preço, vem de exigência: pago, o selo parece abusivo;

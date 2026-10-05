@@ -226,7 +226,7 @@ export default function LoginSheet({
               tone="emerald"
               icon={Bus}
               title="Sou motorista escolar"
-              detail="Quero ser associado e usar o app na minha rota"
+              detail="Quero assinar o app e usar na minha rota"
               onClick={() => {
                 if (onWantPartner) {
                   setStep('login');

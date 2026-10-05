@@ -68,7 +68,7 @@ async function exigirMotorista(db, request) {
   if (!ehMotorista(dados)) {
     throw new HttpsError(
       'permission-denied',
-      'Esta ação é do motorista associado.'
+      'Esta ação é do motorista assinante.'
     );
   }
   return uid;

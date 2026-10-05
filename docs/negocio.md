@@ -179,7 +179,7 @@ degrau que acabou de sair voltando pelo outro lado.
 
 O plano capa **prazo e saída**, nunca funcionalidade: o mensal não tem prazo
 nem multa e trava o desconto da escada; o anual custa menos da metade e pede
-doze meses, com multa de 20% do saldo.
+doze meses, com multa de 10% do saldo (era 20% até 05/10/2026).
 
 **O que desconta isso mora em [descontos.md](descontos.md)** — escada
 vitalícia, indicação e concessão.

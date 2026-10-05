@@ -32,6 +32,12 @@ import { formatDate } from '../../compartilhado/formatters';
  *
  * ⚠️ OS TEXTOS SÃO O RASCUNHO DO DOCUMENTO, que pede revisão jurídica antes
  * de ir ao ar. Decisão do dono: construir agora, publicar depois da revisão.
+ * Revisados em 05/10/2026: a caixa diz que quem AUTORIZA é o responsável e o
+ * que ele autoriza (guardar no app e mostrar só ao motorista) — "autorizo o
+ * Alô Buzinou" punha a plataforma como quem decide, e para a turma quem
+ * decide é o motorista (Política, seção 2). E a folha diz que NÃO autorizar
+ * não muda nada, e onde se apaga: consentimento só é livre quando recusar
+ * não custa nada (art. 8º e 11, I).
  *
  * QUEM VÊ O QUÊ: a titular (`parentUid`) lê e escreve; o motorista da
  * criança só lê, e só quando existe — sem informação, nada aparece para ele
@@ -109,8 +115,8 @@ export default function SaudeDaCrianca({ child, isAdmin }) {
         <>
           <p className="mt-1 text-base leading-relaxed text-textBody">
             Se quiser, informe alergias, remédios ou condições de saúde que o
-            motorista precise saber numa emergência no trajeto. O transporte
-            funciona igual sem isso.
+            motorista precise saber numa emergência no trajeto. É opcional: sem
+            isso, o app e o transporte funcionam igual.
           </p>
           <Button
             variant="secondary"
@@ -210,9 +216,9 @@ function FolhaDaSaude({ open, onClose, child, primeiroNome }) {
           motorista precise saber em caso de emergência no trajeto.
         </p>
         <p className="text-base leading-relaxed text-textBody">
-          <strong className="font-bold text-text">Isso é opcional.</strong> O
-          transporte funciona igual sem essa informação, e você pode apagá-la
-          quando quiser.
+          <strong className="font-bold text-text">Isso é opcional.</strong> Se
+          você não autorizar, nada muda no uso do app nem no transporte. E você
+          pode apagar a informação nesta ficha, a qualquer momento.
         </p>
 
         <label className="block">
@@ -237,17 +243,17 @@ function FolhaDaSaude({ open, onClose, child, primeiroNome }) {
             className="mt-0.5 h-6 w-6 shrink-0 accent-primary"
           />
           <span className="text-base leading-relaxed text-text">
-            Autorizo o Alô Buzinou a guardar as informações de saúde de{' '}
+            Autorizo que as informações de saúde de{' '}
             <strong className="font-bold">{child?.name || primeiroNome}</strong>{' '}
-            e a exibi-las ao motorista responsável pelo transporte {dele}, para
-            uso em caso de emergência durante o trajeto.
+            sejam guardadas no app e mostradas só ao motorista do transporte{' '}
+            {dele}, para uso em caso de emergência no trajeto.
           </span>
         </label>
 
-        <p className="text-sm leading-relaxed text-textMuted">
-          Só o motorista da perua {dele} vê essa informação. Ela não aparece
-          para outros motoristas, não é usada para mais nada e é apagada junto
-          com o cadastro da criança.
+        <p className="text-base leading-relaxed text-textMuted">
+          Essa informação não aparece para outros motoristas nem para a
+          auxiliar, não é usada para mais nada e é apagada junto com o
+          cadastro da criança.
         </p>
 
         {erro && (

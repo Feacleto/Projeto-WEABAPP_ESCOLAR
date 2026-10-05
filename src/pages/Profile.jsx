@@ -1222,7 +1222,7 @@ function SaidasDaConta({ open, isAdmin, onClose, onPausar, onExcluir }) {
             <span className="min-w-0 flex-1">
               <span className="block text-base font-bold text-text">Pausar a conta</span>
               <span className="mt-0.5 block text-sm text-textBody">
-                Encerra a associação: para de pagar a plataforma. Nada é apagado, e dá para voltar quando quiser.
+                Encerra a assinatura: para de pagar a plataforma. Nada é apagado, e dá para voltar quando quiser.
               </span>
             </span>
           </button>

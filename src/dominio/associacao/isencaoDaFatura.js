@@ -69,7 +69,7 @@ export function explicarIsencao(fatura) {
       // ⚠️ Nada de "no teste" e nada de "custaria": aqui o número ACIMA é a
       // conta de verdade, e ela foi dispensada. Chamar de projeção esconderia
       // o tamanho do que foi concedido.
-      corpo: 'O valor acima é o que sua associação custa hoje — ele foi dispensado neste mês.',
+      corpo: 'O valor acima é o que sua assinatura custa hoje — ele foi dispensado neste mês.',
       ate: null,
       mesDeTeste: null,
     };
@@ -80,7 +80,7 @@ export function explicarIsencao(fatura) {
       motivo,
       titulo: 'Nada a pagar: você está no período de teste.',
       corpo:
-        'O valor acima é o que sua associação custaria hoje, para você já saber como a conta é feita.',
+        'O valor acima é o que sua assinatura custaria hoje, para você já saber como a conta é feita.',
       // A data pronta, congelada no fechamento. É ela que diz até quando, em
       // vez de um contador de meses — o teste tem 90 dias corridos e encosta
       // em até QUATRO meses de calendário, então "mês 4 de 3" apareceria.

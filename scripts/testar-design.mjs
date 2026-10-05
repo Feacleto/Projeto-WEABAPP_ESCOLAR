@@ -98,6 +98,7 @@ bloco('4 · O PISO DE 12PX (D2)');
 // AS EXCEÇÕES, e o motivo de cada uma. Arquivo novo NÃO entra aqui por padrão.
 const EXCECOES = {
   'src/components/admin/ContratoDoc.jsx': 'é impresso em A4, lido a 30cm numa folha, não numa tela',
+  'src/components/admin/ContratoDocAte7.jsx': 'o mesmo documento impresso, congelado no texto das versões ≤ 7',
   'src/components/auth/FundoDoLogin.jsx': 'cartões decorativos atrás do formulário; testar:fundo mede a geometria deles',
   'src/components/landing/BlockArt.jsx': 'ilustração, não texto de leitura',
 };

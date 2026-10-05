@@ -145,7 +145,7 @@ export function mensagemDeProposta({
         `Oi ${nome}! ${prazo}.
 
 ` +
-        `Com ${plural(ativas, 'criança', 'crianças')}, sua associação fica em ` +
+        `Com ${plural(ativas, 'criança', 'crianças')}, sua assinatura fica em ` +
         `${precoCheio} por mês no plano mensal` +
         (precoDele && precoDele !== precoCheio ? ` (${precoDele} com os seus descontos)` : '') +
         `, ou ${precoAnual} por mês no anual, com compromisso de 12 meses.
@@ -196,7 +196,7 @@ export function mensagemDeProposta({
     texto:
       `Oi ${nome}! Tudo certo com o Alô Buzinou por aí?\n\n` +
       `Se você conhece outro motorista escolar que se daria bem com o app, me ` +
-      `passa o contato. Cada indicação que vira associado te dá desconto na ` +
+      `passa o contato. Cada indicação que vira assinante te dá desconto na ` +
       `sua própria mensalidade, todo mês, enquanto ele estiver ativo.`,
   };
 }

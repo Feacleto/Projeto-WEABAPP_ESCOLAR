@@ -4,6 +4,12 @@ const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
 const { descontoAtravessa } = require('./reguaDoEncerramento');
+const crypto = require('crypto');
+const {
+  documentoDoAssinante,
+  donoDoDocumento,
+  FRASE_DA_RECUSA,
+} = require('./reguaDoAssinante');
 
 const REGION = 'southamerica-east1';
 
@@ -106,6 +112,34 @@ function makeContratarPlano(db) {
       const snap = await ref.get();
       const dados = snap.data() || {};
       const agora = new Date();
+
+      // ── O CPF/CNPJ DE QUEM ASSINA (decisão do dono, 05/10/2026) ──────────
+      //
+      // Assinar exige documento válido, e UM DOCUMENTO É UMA CONTA. É o que
+      // impede indicar a si mesmo com outra conta e repetir o desconto de
+      // fechamento abrindo outra — e o que amarra a conta ao alvará. A régua
+      // é `reguaDoAssinante.js`; aqui só se aplica.
+      const doc = documentoDoAssinante({
+        enviado: request.data?.documento ?? null,
+        doPerfil: dados.companyDocument ?? null,
+      });
+      if (!doc.ok) {
+        throw new HttpsError(
+          doc.erro === 'falta' ? 'failed-precondition' : 'invalid-argument',
+          FRASE_DA_RECUSA[doc.erro]
+        );
+      }
+      // ⚠️ O ID É UM HASH, NÃO O NÚMERO. Sem sal secreto, de propósito: CPF
+      // tem só 10⁹ combinações, então nenhum hash o esconde de quem lê a
+      // coleção — e ninguém lê (rules `if false`, só Admin SDK). O hash
+      // existe para o número não aparecer como ID num console, num log ou
+      // numa exportação; e o prefixo separa este uso de qualquer outro
+      // SHA-256 do projeto. Trocar o prefixo órfã todos os registros.
+      const chaveDoDocumento = crypto
+        .createHash('sha256')
+        .update(`alobuzinou:documentoDeAssinante:${doc.digitos}`)
+        .digest('hex');
+      const refDoDocumento = db.doc(`documentosDeAssinante/${chaveDoDocumento}`);
 
       // ── o desconto do degrau ───────────────────────────────────────────
       //
@@ -231,27 +265,49 @@ function makeContratarPlano(db) {
       const jaCoberto = dados.assinaturaAte?.toDate?.() || null;
       const cobertura = cobertoAteOMesSeguinte(agora);
 
-      await ref.set(
-        {
-          plano,
-          /* ⚠️ CONTRATAR RELIGA A RENOVAÇÃO, e sem isto a conta nasceria
-           * encerrando: quem saiu e voltou ainda carrega o `false` do pedido
-           * anterior, e o fechamento pularia a primeira fatura dele. */
-          renovacaoAutomatica: true,
-          encerramentoModo: null,
-          // ⚠️ `limiteCriancas` NÃO É MAIS ESCRITO AQUI, e a ausência é a
-          // mudança. Ele era gravado no MESMO write que a faixa, porque
-          // separá-los abria a janela em que o motorista pagava uma faixa e
-          // tinha o teto de outra. O teto saiu do modelo em 10/09/2026: nada
-          // trava quando a operação cresce, e a fatura segue o número real de
-          // crianças. Não há mais dois campos para manter coerentes.
-          descontos,
-          contratadoEm: agora,
-          assinaturaAte:
-            jaCoberto && jaCoberto > cobertura ? jaCoberto : cobertura,
-        },
-        { merge: true }
-      );
+      // ⚠️ O REGISTRO DO DOCUMENTO E A CLÁUSULA VÃO NA MESMA TRANSAÇÃO.
+      // Separados, dois cadastros com o mesmo CPF contratando no mesmo
+      // segundo passariam os dois pela consulta — e a cláusula sem o
+      // registro, ou o registro sem a cláusula, é a meia escrita que o
+      // fechamento leria errado.
+      await db.runTransaction(async (tx) => {
+        const registro = await tx.get(refDoDocumento);
+        if (donoDoDocumento(registro.exists ? registro.data() : null, uid) === 'outro') {
+          logger.warn('[contratacao] documento já ligado a outra conta', { uid });
+          throw new HttpsError('already-exists', FRASE_DA_RECUSA.outro);
+        }
+        if (!registro.exists) {
+          tx.set(refDoDocumento, { uid, registradoEm: agora });
+        }
+        tx.set(
+          ref,
+          {
+            // O documento que o contrato da assinatura PRECISA trazer: a rule
+            // de `contratosAssociacao` compara o do contrato com este campo,
+            // que o cliente não escreve. `companyDocument` só é gravado aqui
+            // quando o perfil não tinha um válido (a tela pediu).
+            documentoDaAssinatura: doc.documento,
+            ...(doc.gravarNoPerfil ? { companyDocument: doc.documento } : {}),
+            plano,
+            /* ⚠️ CONTRATAR RELIGA A RENOVAÇÃO, e sem isto a conta nasceria
+             * encerrando: quem saiu e voltou ainda carrega o `false` do pedido
+             * anterior, e o fechamento pularia a primeira fatura dele. */
+            renovacaoAutomatica: true,
+            encerramentoModo: null,
+            // ⚠️ `limiteCriancas` NÃO É MAIS ESCRITO AQUI, e a ausência é a
+            // mudança. Ele era gravado no MESMO write que a faixa, porque
+            // separá-los abria a janela em que o motorista pagava uma faixa e
+            // tinha o teto de outra. O teto saiu do modelo em 10/09/2026: nada
+            // trava quando a operação cresce, e a fatura segue o número real de
+            // crianças. Não há mais dois campos para manter coerentes.
+            descontos,
+            contratadoEm: agora,
+            assinaturaAte:
+              jaCoberto && jaCoberto > cobertura ? jaCoberto : cobertura,
+          },
+          { merge: true }
+        );
+      });
 
       // ── O DIA DO VENCIMENTO, QUE O CONTRATO PRECISA DIZER ──────────────
       //
@@ -288,6 +344,8 @@ function makeContratarPlano(db) {
         // O DIA VEM DO SERVIDOR pelo mesmo motivo que a fração: o cliente
         // não alcança a fonte. Ver o bloco acima.
         diaVencimento,
+        // O documento que entra no contrato — o mesmo que a rule exige.
+        documento: doc.documento,
         fechamento: ganhaAgora,
         degrau: ganhaAgora ? degrau : null,
         fracao: ganhaAgora ? fracao : 0,

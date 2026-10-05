@@ -725,6 +725,12 @@ service cloud.firestore {
                // indicação: escrito pelo cliente, um tio copiaria o código de
                // outro e levaria o crédito. Só `meuCodigoDeIndicacao` grava.
                'codigoDeIndicacao',
+               // ⚠️ O DOCUMENTO DA ASSINATURA (05/10/2026). É o CPF/CNPJ que
+               // `contratarPlano` registrou como único em
+               // `documentosDeAssinante` — e o contrato da assinatura só nasce
+               // com ele. Escrito pelo cliente, bastaria pôr aqui um número
+               // nunca conferido para assinar sem passar pela unicidade.
+               'documentoDaAssinatura',
                // ⚠️ A AUXILIAR (05/10/2026): a ligação dela ao motorista é o
                // que vai abrir a turma dele para ela. Escrita pelo cliente,
                // qualquer conta se ligaria a qualquer motorista. Só
@@ -2460,6 +2466,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // `documentosDeAssinante/{hash}` — UM CPF/CNPJ, UMA CONTA (05/10/2026).
+    // O id é o SHA-256 do documento; o corpo é { uid, registradoEm }. Só a
+    // callable `contratarPlano` cria, em transação com a cláusula. Ninguém lê
+    // pelo cliente, nem o dono: a lista diria quais documentos têm conta, e
+    // é exatamente o oráculo que a frase de recusa se recusa a ser.
+    match /documentosDeAssinante/{hash} {
+      allow read, write: if false;
+    }
+
     // `configFinanceiro/{uid}` — o que o Financeiro sabe do motorista, FORA de
     // `users` (que as famílias leem inteiro, e regra não esconde campo).
     //
@@ -3052,6 +3067,14 @@ service cloud.firestore {
         && request.resource.data.tioUid == request.auth.uid
         && request.resource.data.aceitoEm == null
         && request.resource.data.conteudo.plano.id == userDoc().get('plano', '')
+        // ⚠️ E O ASSINANTE TEM CPF/CNPJ, O MESMO QUE O SERVIDOR REGISTROU
+        // (05/10/2026, decisão do dono: um documento, uma conta). Sem esta
+        // amarra o cliente montaria o contrato com um número qualquer — ou
+        // sem número —, e o papel assinado diria outra pessoa que a
+        // registrada em `documentosDeAssinante`.
+        && userDoc().get('documentoDaAssinatura', '').size() > 0
+        && request.resource.data.conteudo.assinante.documento
+             == userDoc().get('documentoDaAssinatura', '')
       );
 
       allow update: if (

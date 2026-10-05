@@ -20,14 +20,20 @@ import { exigirCloud, mensagemDeErro } from './callableError';
  * na hora. Descobrir um desconto só na primeira fatura transforma um presente
  * em desconfiança.
  */
-export async function contratarPlano(plano) {
+/*
+ * `documento` (05/10/2026): o CPF/CNPJ digitado no passo da tela de planos,
+ * só quando o perfil não tem um válido. Com o perfil em ordem vai `null`, e o
+ * servidor usa o do perfil. Devolve também `documento`, o que foi registrado
+ * — é ele que entra no contrato.
+ */
+export async function contratarPlano(plano, documento = null) {
   // `exigirCloud` vem ANTES do try: sem Blaze a API desativada responde sem
   // CORS, e o erro que chega na tela é "falha de rede" — quem usa troca de
   // rede, quem depura procura CORS, e o conserto é ligar o faturamento.
   exigirCloud('contratar o plano');
   try {
     const fn = httpsCallable(functions, 'contratarPlano');
-    const { data } = await fn({ plano });
+    const { data } = await fn(documento ? { plano, documento } : { plano });
     return data;
   } catch (err) {
     throw new Error(mensagemDeErro(err, 'contratar o plano'), { cause: err });

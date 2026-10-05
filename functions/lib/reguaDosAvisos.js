@@ -364,7 +364,7 @@ function avisoDoEncerramento({ motorista, agora = new Date() } = {}) {
   if (faltam <= 0) {
     return {
       tipo: TIPO.ENCERRAMENTO_FIM,
-      titulo: 'Sua associação foi encerrada',
+      titulo: 'Sua assinatura foi encerrada',
       corpo:
         'Seus dados continuam salvos. Para voltar a operar, escolha um plano.',
       destino: '/tio/planos',
@@ -373,10 +373,10 @@ function avisoDoEncerramento({ motorista, agora = new Date() } = {}) {
   if (faltam === DIAS_DO_ENCERRAMENTO_URGENTE) {
     return {
       tipo: TIPO.ENCERRAMENTO_7,
-      titulo: 'Sua associação termina em 7 dias',
+      titulo: 'Sua assinatura termina em 7 dias',
       corpo: quando
         ? `O app funciona até ${quando}. Dá para manter, se quiser.`
-        : 'Dá para manter a sua associação, se quiser.',
+        : 'Dá para manter a sua assinatura, se quiser.',
       destino: '/tio/encerrar',
     };
   }
@@ -385,8 +385,8 @@ function avisoDoEncerramento({ motorista, agora = new Date() } = {}) {
       tipo: TIPO.ENCERRAMENTO_30,
       titulo: 'Sua renovação está desligada',
       corpo: quando
-        ? `Sua associação vai até ${quando}. Dá para manter, se quiser.`
-        : 'Dá para manter a sua associação, se quiser.',
+        ? `Sua assinatura vai até ${quando}. Dá para manter, se quiser.`
+        : 'Dá para manter a sua assinatura, se quiser.',
       destino: '/tio/encerrar',
     };
   }

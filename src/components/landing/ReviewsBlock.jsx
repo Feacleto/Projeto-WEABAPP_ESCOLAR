@@ -96,7 +96,7 @@ export function ReviewCard({ review, exemplo }) {
             )}
           </p>
           <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-textMuted">
-            <Bus size={12} /> Motorista associado
+            <Bus size={12} /> Motorista assinante
           </p>
         </div>
         <Stars value={rating} size={13} />

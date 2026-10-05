@@ -6,7 +6,7 @@ import Header from '../../components/layout/Header';
 import { useAuth } from '../../hooks/useAuth';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
 import { PLANO, precoDoMes } from '../../dominio/associacao/planos.js';
-import { multaDeSaida, quedaNoProximoMes } from '../../dominio/associacao/multa.js';
+import { multaDeSaida, quedaNoProximoMes, FRACAO_DA_MULTA } from '../../dominio/associacao/multa.js';
 import {
   MODO,
   pediuEncerramento,
@@ -111,7 +111,7 @@ export default function TioEncerrar() {
       await pedirEncerramento(user?.uid, modo);
       await refreshProfile();
       setConfirmando(null);
-      toast.success('Sua associação foi encerrada. Você opera até a data combinada.');
+      toast.success('Sua assinatura foi encerrada. Você usa o app até a data combinada.');
     } catch (err) {
       console.error('[encerrar] não deu pra registrar:', err);
       toast.error('Não deu pra registrar agora. Tente de novo.');
@@ -125,7 +125,7 @@ export default function TioEncerrar() {
     try {
       await religarRenovacao(user?.uid);
       await refreshProfile();
-      toast.success('Sua associação continua. Nada foi perdido.');
+      toast.success('Sua assinatura continua. Nada foi perdido.');
     } catch (err) {
       console.error('[encerrar] não deu pra religar:', err);
       toast.error('Não deu pra religar agora. Tente de novo.');
@@ -137,7 +137,7 @@ export default function TioEncerrar() {
   return (
     <div className="min-h-screen bg-bg">
       <Header
-        title={jaPediu ? 'Associação encerrando' : 'Encerrar associação'}
+        title={jaPediu ? 'Assinatura encerrando' : 'Encerrar assinatura'}
         showBack
         backLabel="Meu plano"
         backTo="/tio/taxa"
@@ -193,7 +193,7 @@ export default function TioEncerrar() {
                   continuam exatamente como estão.
                 </p>
                 <Button onClick={religar} loading={salvando} icon={Undo2}>
-                  Manter minha associação
+                  Manter minha assinatura
                 </Button>
               </div>
             )}
@@ -273,7 +273,7 @@ export default function TioEncerrar() {
                     multa.devida ? (
                       <>
                         Você sai antes do fim dos 12 meses, e a multa é de{' '}
-                        <strong>{formatCurrency(multa.valor)}</strong> — 20% do
+                        <strong>{formatCurrency(multa.valor)}</strong> — {Math.round(FRACAO_DA_MULTA * 100)}% do
                         saldo restante
                         {multa.tetoAplicado && ', já no teto de dois meses do seu plano'}
                         .{' '}
@@ -323,7 +323,7 @@ export default function TioEncerrar() {
                     icon={DoorOpen}
                     onClick={() => setConfirmando(MODO.AGORA)}
                   >
-                    Encerrar associação
+                    Encerrar assinatura
                   </Button>
                 )}
               </div>

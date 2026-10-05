@@ -1,5 +1,16 @@
 /**
- * O CONTEÚDO DO CONTRATO DE ASSOCIAÇÃO — aritmética e texto, sem Firebase.
+ * O CONTEÚDO DO CONTRATO DE ASSINATURA DO APLICATIVO — aritmética e dados,
+ * sem Firebase.
+ *
+ * ⚠️ O NOME DO ARQUIVO FICOU "associação", E É DE PROPÓSITO (05/10/2026).
+ * Até a versão 7 o documento se chamava "Contrato de Associação à
+ * Plataforma" e o motorista era o ASSOCIADO. O dono decidiu que o vínculo é
+ * uma ASSINATURA do aplicativo: a partir da 8 o documento é "Contrato de
+ * Assinatura do Aplicativo Alô Buzinou" e as partes são CONTRATADA e
+ * ASSINANTE. Só mudou o que a pessoa LÊ. A coleção `contratosAssociacao`, os
+ * campos, as rules e os nomes de arquivo e função continuam: renomear dado
+ * em produção é risco sem nenhum ganho jurídico. (Os comentários abaixo
+ * ainda dizem "associado" onde contam a história das versões antigas.)
  *
  * POR QUE ISTO É PURO
  * Este objeto é o que o associado assina: ele vira o hash SHA-256 que prova o
@@ -39,10 +50,12 @@
 // volta a ser exatamente o que ele deixou de ser: intestável.
 import {
   DEV_NAME,
+  DEV_RAZAO_SOCIAL,
+  DEV_TIPO_EMPRESA,
   DEV_CNPJ,
   DEV_CIDADE_UF,
   DEV_ENDERECO,
-  DEV_EMAIL,
+  DEV_COMARCA,
   DEV_PHONE_DISPLAY,
 } from '../../config/developer.js';
 import {
@@ -106,7 +119,61 @@ import {
  * nenhuma — "−30%", e ponto —, enquanto o código já o tratava como sem prazo.
  * A tela prometia e o papel calava.
  */
-export const VERSAO_CONTRATO = 7;
+/**
+ * ⚠️ 8 DESDE 05/10/2026 — virou ASSINATURA do aplicativo (decisão do dono).
+ *
+ * Além do nome (ASSINANTE, "valor da assinatura"), a 8 trouxe o que faltava
+ * a um contrato de software com quem cadastra dado de terceiros:
+ *   - a CONTRATADA qualificada pela razão social do MEI (o nome civil do
+ *     titular), com "Desenvolva Algo" como nome fantasia;
+ *   - o ASSINANTE qualificado com CPF/CNPJ e e-mail (o CPF/CNPJ é o
+ *     `companyDocument` que ele já dá no primeiro acesso para o contrato com
+ *     as famílias) — OBRIGATÓRIO e único por conta, registrado pelo servidor
+ *     em `documentosDeAssinante` ao contratar (05/10/2026);
+ *   - a cláusula de TRATAMENTO DE DADOS (LGPD art. 39): ele é o CONTROLADOR
+ *     dos dados das famílias que cadastra, a CONTRATADA é a OPERADORA;
+ *   - limitação de responsabilidade e disponibilidade, sem cláusula abusiva
+ *     (ressalvas de dolo, culpa grave e do que a lei não deixa limitar);
+ *   - REAJUSTE anual, só na renovação, com teto no IPCA e aviso de 30 dias;
+ *   - foro com a ressalva do domicílio do consumidor (CDC art. 101, I);
+ *   - o e-mail de contato e de LGPD passou a ser o dos Termos.
+ *
+ * ⚠️ CONTRATO ACEITO NAS VERSÕES ≤ 7 CONTINUA MOSTRANDO O TEXTO DELE:
+ * `ContratoDoc` desvia para `ContratoDocAte7`, que é o texto antigo
+ * congelado. O hash prova o JSON, e o texto é desenhado por componente —
+ * sem esse desvio, a cláusula nova apareceria por cima de um aceite antigo.
+ */
+export const VERSAO_CONTRATO = 8;
+
+/**
+ * O E-MAIL DO CONTRATO — o mesmo dos Termos e da Política.
+ *
+ * ⚠️ NÃO É `DEV_EMAIL`. Aquele é um Gmail, usado por outras telas (o
+ * "mailto" do suporte, por exemplo), e não é ele que os documentos legais
+ * nomeiam: os Termos e a Política dizem `contato@alobuzinou.com` para
+ * contato e para o encarregado de dados. Até a versão 7 o contrato imprimia o
+ * Gmail como canal de LGPD, e o motorista lia dois endereços diferentes para
+ * o mesmo direito. A constante mora aqui, e não em `developer.js`, para não
+ * trocar o e-mail das outras telas sem decisão; `testar:contrato` confere que
+ * ela é a mesma de `COMPANY_INFO.email` (o domínio não pode importar a tela
+ * dos Termos, então a amarra é o teste).
+ */
+export const EMAIL_DO_CONTRATO = 'contato@alobuzinou.com';
+
+/**
+ * As condições que a 8 escreveu, como DADO e não como literal de texto.
+ *
+ * Vão dentro do objeto (e portanto do hash) pelo mesmo motivo do preço: o
+ * contrato congela o que foi combinado. Se o teto do reajuste ou o prazo do
+ * aviso mudarem um dia, o contrato antigo continua dizendo o que disse.
+ */
+export const CONDICOES_DA_ASSINATURA = Object.freeze({
+  // O reajuste: uma vez por ano, só na renovação, com teto no índice.
+  reajusteIndice: 'IPCA',
+  reajusteAvisoDias: 30,
+  // O teto da indenização: o que foi pago nos últimos N meses.
+  limiteDaIndenizacaoMeses: 12,
+});
 
 /** Janela padrão para avisar que a vigência está acabando. */
 export const JANELA_DE_RENOVACAO = 60;
@@ -198,7 +265,13 @@ export function montarContrato({
     vigenciaMeses: MESES_DE_CONTRATO,
 
     contratada: {
-      razao: DEV_NAME,
+      // ⚠️ A RAZÃO SOCIAL É O NOME CIVIL DO TITULAR DO MEI (05/10/2026).
+      // Até a 7 `razao` levava "Desenvolva Algo", que é o nome FANTASIA — e a
+      // parte qualificada num contrato tem de ser a pessoa que o CNPJ diz.
+      // Os dois viajam separados: a razão qualifica, o fantasia identifica.
+      razao: DEV_RAZAO_SOCIAL,
+      tipo: DEV_TIPO_EMPRESA,
+      nomeFantasia: DEV_NAME,
       cnpj: DEV_CNPJ,
       // ⚠️ `DEV_CIDADE_UF`, NÃO `DEV_CITY`. A segunda é de exibição e traz um
       // separador visual ('Socorro · São Paulo, SP') — num documento que
@@ -206,16 +279,33 @@ export function montarContrato({
       // passaram a usar a mesma forma, e é ela que a cláusula de foro cita.
       cidade: DEV_CIDADE_UF,
       endereco: DEV_ENDERECO,
-      email: DEV_EMAIL,
+      email: EMAIL_DO_CONTRATO,
       telefone: DEV_PHONE_DISPLAY,
+      // A comarca é DECLARADA, nunca derivada da sede (CPC art. 63) — ver
+      // `DEV_COMARCA` em developer.js.
+      comarca: DEV_COMARCA,
     },
-    associado: {
+    // ⚠️ `assinante`, NÃO `associado` — a partir da versão 8. Os contratos ≤ 7
+    // gravados têm a chave antiga, e `ContratoDocAte7` continua lendo-a.
+    assinante: {
       uid: motorista?.uid || '',
       nome: motorista?.name || '',
+      // ⚠️ O CPF/CNPJ É OBRIGATÓRIO DESDE 05/10/2026 (decisão do dono: um
+      // documento, uma conta). Vale o `documentoDaAssinatura` que a callable
+      // `contratarPlano` registrou como único; sem ele, o `companyDocument`
+      // do primeiro acesso (o mesmo do contrato com as famílias). A rule de
+      // `contratosAssociacao` recusa o contrato cujo número não bata com o
+      // registrado — então o vazio aqui não vira contrato sem parte: vira
+      // recusa. Quem não tem documento é pedido dele na tela de planos,
+      // ANTES da callable, e não fica preso: o passo é curto e está ali.
+      documento: String(
+        motorista?.documentoDaAssinatura || motorista?.companyDocument || ''
+      ).trim(),
       cidade: motorista?.city || '',
       email: motorista?.email || '',
       telefone: motorista?.phone || '',
     },
+    condicoes: { ...CONDICOES_DA_ASSINATURA },
 
     plano: {
       id: planoValido(plano) ? plano : null,

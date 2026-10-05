@@ -39,7 +39,7 @@ function checar(nome, esperado, obtido) {
 
 // ── o concorrente direto ──────────────────────────────────────────────────────
 checar('a referência é o mensal do concorrente direto (7,90), não uma média', 7.9, PRECO_DO_CONCORRENTE.porCrianca);
-// A multa do concorrente fica guardada para a comparação: a nossa (20%) é menor.
+// A multa do concorrente fica guardada para a comparação: a nossa (10%) é menor.
 checar('a multa do anual do concorrente é 30%', 0.3, PRECO_DO_CONCORRENTE.multaDoAnual);
 checar('a referência tem mês', true, /^\d{4}-\d{2}$/.test(PRECO_DO_CONCORRENTE.referencia));
 

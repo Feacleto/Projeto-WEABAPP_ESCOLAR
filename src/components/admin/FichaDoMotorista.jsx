@@ -337,7 +337,7 @@ export default function FichaDoMotorista({
           )}
         </Bloco>
 
-        <Bloco icon={FileText} titulo="Contrato com a plataforma">
+        <Bloco icon={FileText} titulo="Contrato de assinatura">
           {contrato === undefined ? (
             <Spinner />
           ) : !contrato ? (

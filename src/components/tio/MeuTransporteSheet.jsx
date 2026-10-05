@@ -220,7 +220,7 @@ export default function MeuTransporteSheet({
               />
               <Linha
                 icon={FileText}
-                titulo="Contrato da plataforma"
+                titulo="Contrato de assinatura"
                 onClick={() => ir('/tio/contrato-plataforma')}
               />
             </>

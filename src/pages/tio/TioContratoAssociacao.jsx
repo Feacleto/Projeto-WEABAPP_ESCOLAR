@@ -44,7 +44,7 @@ import {
 function Cabecalho() {
   return (
     <Header
-      title="Contrato com a plataforma"
+      title="Contrato de assinatura"
       showBack
       backLabel="Meu plano"
       backTo="/tio/taxa"
@@ -64,7 +64,7 @@ export default function TioContratoAssociacao() {
     contratoVigente(user.uid)
       .then(setContrato)
       .catch((err) => {
-        console.error('Contrato de associação não carregou:', err);
+        console.error('Contrato de assinatura não carregou:', err);
         setContrato(null);
       });
   }, [user?.uid]);
@@ -117,7 +117,7 @@ export default function TioContratoAssociacao() {
           <EmptyState
             icon={ShieldCheck}
             title="Nenhum contrato emitido ainda"
-            description="Quando a associação for combinada, o contrato aparece aqui para você ler e aceitar."
+            description="Quando você escolher um plano, o contrato da assinatura aparece aqui para você ler e aceitar."
           />
         ) : (
           <>

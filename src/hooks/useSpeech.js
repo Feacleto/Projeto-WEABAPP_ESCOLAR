@@ -35,7 +35,7 @@ const VOICE_KEY = 'ab_voice_name_v1';
 
 /** Frase de teste do seletor de voz. */
 export const AMOSTRA_DE_VOZ =
-  'Oi! Sou a voz do Alô Buzinou. Vou te explicar a associação em quatro telas.';
+  'Oi! Sou a voz do Alô Buzinou. Vou te explicar a assinatura em quatro telas.';
 
 // Nomes femininos que aparecem nas vozes pt-BR dos sistemas (iOS, Android,
 // Windows e Chrome). Não é elegante, mas a Web Speech API não expõe gênero —

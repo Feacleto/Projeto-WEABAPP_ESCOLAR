@@ -173,7 +173,7 @@ function dadosDaCobranca({ fatura, faturaId, clienteId, hoje = new Date() }) {
     billingType: 'PIX',
     value: Number(Number(fatura?.total || 0).toFixed(2)),
     dueDate,
-    description: `Alô Buzinou — associação de ${rotuloDoMes(fatura?.mes)}`,
+    description: `Alô Buzinou — assinatura de ${rotuloDoMes(fatura?.mes)}`,
     // O elo com a fatura. É por ele que se pergunta ao gateway se este mês já
     // foi cobrado, e é o que permite reconciliar sem depender do nosso banco.
     externalReference: faturaId,

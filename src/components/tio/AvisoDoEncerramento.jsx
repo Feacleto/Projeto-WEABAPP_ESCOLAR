@@ -48,7 +48,7 @@ export default function AvisoDoEncerramento() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-text">
-              Sua associação foi encerrada.
+              Sua assinatura foi encerrada.
             </p>
             <p className="mt-0.5 text-sm text-textBody">
               Seus dados continuam salvos. Para voltar a operar, é só escolher um
@@ -78,8 +78,8 @@ export default function AvisoDoEncerramento() {
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-warningText">
               {aviso.dias <= 1
-                ? 'Sua associação termina amanhã.'
-                : `Sua associação termina em ${aviso.dias} dias.`}
+                ? 'Sua assinatura termina amanhã.'
+                : `Sua assinatura termina em ${aviso.dias} dias.`}
             </p>
             <p className="mt-0.5 text-sm text-textBody">
               A renovação automática está <strong>desligada</strong>
@@ -90,7 +90,7 @@ export default function AvisoDoEncerramento() {
               to="/tio/encerrar"
               className="tap mt-1 inline-flex min-h-12 items-center gap-1.5 text-base font-bold text-primary"
             >
-              <Undo2 size={18} /> Manter minha associação
+              <Undo2 size={18} /> Manter minha assinatura
             </Link>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function AvisoDoEncerramento() {
       {fim && (
         <>
           {' '}
-          — sua associação vai até{' '}
+          — sua assinatura vai até{' '}
           <strong className="font-semibold text-text">{fim}</strong>
         </>
       )}

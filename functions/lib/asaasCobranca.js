@@ -92,7 +92,7 @@ function makeCriarCobrancaDaFatura(db, apiKeySecret, ambienteParam) {
       // ── o motorista ────────────────────────────────────────────────────
       const tioSnap = await db.doc(`users/${tioUid}`).get();
       if (!tioSnap.exists || !ehMotorista(tioSnap.data())) {
-        throw new HttpsError('failed-precondition', 'Este uid não é de um motorista associado.');
+        throw new HttpsError('failed-precondition', 'Este uid não é de um motorista assinante.');
       }
       const motorista = tioSnap.data();
 
