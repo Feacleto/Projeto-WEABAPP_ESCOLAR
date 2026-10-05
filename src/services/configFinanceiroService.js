@@ -1,6 +1,7 @@
 import { Timestamp, doc, getDoc, increment, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { TIPOS_DE_COMBUSTIVEL, nomeDoPosto, postoComPreco } from '../dominio/cobranca/combustivel.js';
+import { vagasParaGravar, vagasValidas } from '../dominio/identidade/vagasDaPerua.js';
 
 /**
  * O QUE O FINANCEIRO SABE DO MOTORISTA, FORA DO DOCUMENTO QUE AS FAMÍLIAS LEEM
@@ -27,6 +28,12 @@ import { TIPOS_DE_COMBUSTIVEL, nomeDoPosto, postoComPreco } from '../dominio/cob
  *                ELE ANOTOU que tem guardado. ⚠️ O app NÃO guarda dinheiro:
  *                é uma anotação, e o vocabulário é "anotou", "guardado",
  *                "atualizar" — nunca saldo, depósito ou saque.
+ *
+ * A PERUA EM VAGAS (05/10/2026):
+ *   vagasDaPerua inteiro de 1 a 60 — quantas crianças cabem na perua, dito
+ *                por ele no primeiro acesso. Nunca trava cadastro: é o desenho
+ *                da perua no Início, nos planos e na turma
+ *                (`dominio/identidade/vagasDaPerua.js`).
  *
  * A validação de cada chave mora aqui (mensagem em português) E na rule de
  * `configFinanceiro`, que é lista de PERMITIDOS — chave nova sem entrada lá é
@@ -166,4 +173,46 @@ export function anotarGuardado(uid, caixa, valor) {
     { guardado: { [caixa]: { valor: n, em: serverTimestamp() } } },
     { merge: true }
   );
+}
+
+/**
+ * Escuta SÓ as vagas da perua: `number` quando ele já disse, `null` quando
+ * não disse, `undefined` quando não dá para saber.
+ *
+ * ⚠️ "NÃO DÁ PARA SABER" TEM DOIS CASOS, e nenhum deles é "não disse": o erro
+ * de leitura, e o documento AUSENTE vindo do cache (sem sinal, o SDK pode
+ * responder "não existe" antes de perguntar ao servidor). Tratar qualquer um
+ * como `null` abriria o card do primeiro acesso para quem já respondeu.
+ */
+export function watchVagasDaPerua(uid, onUpdate) {
+  if (!uid) {
+    onUpdate(undefined);
+    return () => {};
+  }
+  return onSnapshot(
+    doc(db, 'configFinanceiro', uid),
+    (snap) => {
+      if (!snap.exists()) {
+        onUpdate(snap.metadata.fromCache ? undefined : null);
+        return;
+      }
+      const v = snap.data().vagasDaPerua;
+      onUpdate(vagasValidas(v) ? v : null);
+    },
+    (err) => {
+      console.error('[vagasDaPerua]', err);
+      onUpdate(undefined);
+    }
+  );
+}
+
+/**
+ * Grava quantas vagas a perua tem. O número passa por `vagasParaGravar`, que
+ * devolve SEMPRE um inteiro (a rule exige `is int`): texto de campo ou número
+ * quebrado nunca chegam ao Firestore.
+ */
+export function definirVagasDaPerua(uid, valor) {
+  if (!uid) throw new Error('Entre de novo para salvar.');
+  const vagasDaPerua = vagasParaGravar(valor);
+  return setDoc(doc(db, 'configFinanceiro', uid), { vagasDaPerua }, { merge: true });
 }

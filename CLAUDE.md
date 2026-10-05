@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 88 scripts. O PRIMEIRO é
+npm run testar                   # 91 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -44,7 +44,8 @@ npm run testar                   # 88 scripts. O PRIMEIRO é
                                  # perua, ditado, indices, economia, e os da auxiliar:
                                  # auxiliar, pagamento-da-auxiliar,
                                  # substitutas, avaliacao-da-auxiliar,
-                                 # substituta-de-um-dia, calendario-da-auxiliar
+                                 # substituta-de-um-dia, calendario-da-auxiliar,
+                                 # e, no fim, vagas-da-perua
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -534,7 +535,8 @@ src/
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive,
 │                      acesso (o responsável sem link pedindo entrada),
-│                      endereco (`BuscaDeRua`: digita a rua, o CEP vem junto)…
+│                      endereco (`BuscaDeRua`: digita a rua, o CEP vem junto),
+│                      perua (a perua em vagas, só do motorista)…
 ├── services/          39 módulos — TODO acesso ao Firestore passa aqui
 ├── hooks/             23 hooks, quase todos onSnapshot de um service
 ├── design/            tokens.css — GERADO do tailwind.config.js (`npm run
@@ -733,7 +735,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
 `recomendacoesDeAuxiliar` (a recomendação do tio para ela; leem os dois e o dono, sem `removida`; escreve só o servidor) ·
 `notasDaAuxiliarAoTio` (as estrelas dela ao tio; só o dono lê, escreve só o servidor) ·
-`configFinanceiro` (só o próprio motorista lê; a auxiliar lê o dela, só com o `temSenha`) ·
+`configFinanceiro` (só o próprio motorista lê; a auxiliar lê o dela, só com o `temSenha`; guarda também `vagasDaPerua`) ·
 `indicesEconomicos` (`ipca`, `selic`, `dolar`; só o servidor escreve, motorista lê) ·
 `fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
 `fotosDaBase` (a foto diária da base, um doc por dia de Brasília, só números; só o servidor escreve, só o dono lê) ·
@@ -2549,6 +2551,46 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   teste. Em produção não há a dupla montagem, mas navegação muito rápida é o
   mesmo tipo de corrida — se aparecer em produção, a saída é compartilhar as
   escutas, não desligar o StrictMode.
+
+⚠️ **A PERUA EM VAGAS (05/10/2026, decisão do dono).** O motorista diz
+quantas VAGAS para crianças a perua tem e o app a desenha como o mapa de
+assentos de um avião: "Tio" (volante) e "Aux" (na cor da marca) na frente,
+que NÃO contam como vaga, fileiras de três com corredor e o banco de trás com
+o resto. Régua pura em
+[vagasDaPerua.js](src/dominio/identidade/vagasDaPerua.js), telas em
+[components/perua/](src/components/perua/), `npm run testar:vagas-da-perua`.
+- ⚠️ **A palavra é VAGA, nunca "lugar"** (o pai que visse "lugar" cobraria a
+  janela). As cadeiras não têm número e as crianças preenchem a perua NA
+  ORDEM DO CADASTRO: o desenho conta vagas, não diz onde cada uma senta. O
+  teste reprova "lugar" nos arquivos da perua e nas linhas que a inserem.
+- **O dado é `configFinanceiro/{uid}.vagasDaPerua`**, inteiro de 1 a 60,
+  gravado pelo próprio motorista (`definirVagasDaPerua`, sempre pela
+  `vagasParaGravar` — a rule exige `is int`). NADA em `users`, que a
+  família lê inteiro.
+- **Primeiro acesso:** passo "Quantas vagas tem a sua perua?" DEPOIS da marca
+  (`PASSOS` em cadastroDoMotorista.js, `− 15 +` com a perua desenhada; vale
+  para quem já usa o app). É o único passo cujo dado não mora em `users`, então
+  `passosQueFaltam(profile, config)` recebe a config e ⚠️ **sem a config lida
+  o passo não aparece** ("não sei" não é "falta"; documento ausente vindo do
+  cache também é "não sei" — `watchVagasDaPerua`). O `PrimeiroAcessoGate`
+  espera a leitura até 3 s para o card nascer com a lista inteira, e se a
+  gravação falhar o passo é ADIADO para a próxima abertura — nunca prende.
+  No card a perua SÓ MOSTRA (ele cobre o app).
+- **Onde aparece (só o motorista):** no Início, a linha "Sua perua" com a
+  miniatura e "14 de 15 vagas", abaixo do cartão do dia e sem botão cheio;
+  tocar abre a perua inteira numa folha, onde a VAGA LIVRE é tocável e leva a
+  `/tio/children/new`, e onde dá para mudar o número. Nos planos, a mesma
+  miniatura com "14 crianças × R$ 5,90" (só até 40, por causa da taxa
+  marginal) e "Vaga livre não entra na conta" — ⚠️ **nunca sugere encher a
+  perua**. Em Turma e contratos, "Turma de outubro": quem entrou no mês
+  acende, quem saiu fica tracejado com o nome (`movimentoDaTurma.js`).
+- ⚠️ **NUNCA TRAVA.** Com as ativas ≥ vagas, o cadastro da criança pergunta
+  no COMEÇO "Passou das vagas que você disse" (`PerguntaDasVagas`, um
+  `ConfirmDialog`) e deixa seguir. Nenhuma rule compara vagas com crianças, e
+  o excedente aparece como "Acima das vagas" no desenho, sem erro.
+- **Rosto é sempre o avatar** (`childAvatarUrl`), e nenhuma tela da perua
+  convida a pôr foto. A família não vê a perua nem as outras crianças; a
+  auxiliar não vê vagas — o teste reprova o import nas telas das duas.
 
 **Responsável avulso: guarda UM.** `children.altResponsibles` é um array de no
 máximo 1 — o último. Era lista que só crescia; ninguém mantém lista, e são

@@ -41,8 +41,9 @@
  */
 
 import { ufDoIso } from '../../compartilhado/ruas.js';
+import { vagasValidas } from './vagasDaPerua.js';
 
-/** Os quatro passos do card, na ordem em que aparecem. */
+/** Os passos do card, na ordem em que aparecem. */
 export const PASSOS = [
   // ⚠️ `gender` ENTROU EM 03/10/2026 E É OBRIGATÓRIO (decisão do dono): sem
   // ele o avatar é SORTEADO, e o "Tio Lipe" aparecia de cabelo comprido para
@@ -50,6 +51,12 @@ export const PASSOS = [
   // como respondido (ver `GENEROS`), senão o avatar continuaria sorteado.
   { id: 'voce', campos: ['name', 'phone', 'gender'] },
   { id: 'marca', campos: ['marcaNome'] },
+  // ⚠️ AS VAGAS DA PERUA ENTRARAM EM 05/10/2026 (decisão do dono) e são o
+  // ÚNICO passo cujo dado NÃO mora em `users`: o número fica em
+  // `configFinanceiro/{uid}.vagasDaPerua`, que só ele lê (as famílias leem
+  // `users` inteiro). Por isso ele vem no segundo parâmetro de
+  // `passosQueFaltam` — ver `faltaAVaga`.
+  { id: 'vagas', campos: [], configFinanceiro: ['vagasDaPerua'] },
   { id: 'local', campos: ['city'] },
   // ⚠️ O CONTRATO COM AS FAMÍLIAS ENTROU EM 04/10/2026 (aprovado pelo dono).
   // Sem CPF/CNPJ e endereço, `buildContractData` devolve `null` e o convite
@@ -84,11 +91,26 @@ function falta(profile, campo) {
   return vazio(profile?.[campo]);
 }
 
-/** Os campos de um passo que ainda estão vazios no perfil. */
-export function camposQueFaltam(profile, passoId) {
+/**
+ * As vagas faltam? `config` é `configFinanceiro/{uid}` — ou `undefined`
+ * enquanto ele não chegou (ou não pôde ser lido).
+ *
+ * ⚠️ "NÃO SEI" NÃO É "FALTA". Sem o documento lido, o passo NÃO aparece:
+ * senão todo motorista antigo veria o card piscar a cada abertura, e quem
+ * está sem sinal ficaria preso numa pergunta que já respondeu.
+ */
+function faltaAVaga(config) {
+  if (config === undefined || config === null) return false;
+  return !vagasValidas(config.vagasDaPerua);
+}
+
+/** Os campos de um passo que ainda estão vazios no perfil (ou na config). */
+export function camposQueFaltam(profile, passoId, config) {
   const passo = PASSOS.find((p) => p.id === passoId);
   if (!passo) return [];
-  return passo.campos.filter((campo) => falta(profile, campo));
+  const doPerfil = passo.campos.filter((campo) => falta(profile, campo));
+  const daConfig = (passo.configFinanceiro || []).filter(() => faltaAVaga(config));
+  return [...doPerfil, ...daConfig];
 }
 
 /**
@@ -96,10 +118,13 @@ export function camposQueFaltam(profile, passoId) {
  *
  * Lista vazia para quem não é motorista e para perfil ausente — quem decide
  * o desvio não pode desviar a mãe, nem quem ainda está carregando.
+ *
+ * `config` (opcional) é `configFinanceiro/{uid}`; sem ele, o passo das
+ * vagas não entra (ver `faltaAVaga`).
  */
-export function passosQueFaltam(profile) {
+export function passosQueFaltam(profile, config) {
   if (!profile || profile.role !== 'admin') return [];
-  const passos = PASSOS.filter((p) => camposQueFaltam(profile, p.id).length > 0).map(
+  const passos = PASSOS.filter((p) => camposQueFaltam(profile, p.id, config).length > 0).map(
     (p) => p.id
   );
   return emCadastroDaTurma(profile) ? [...passos, 'turma'] : passos;
@@ -125,8 +150,8 @@ export function deveCadastrarATurma(profile) {
 }
 
 /** `true` quando o motorista ainda deve algum passo do primeiro acesso. */
-export function faltaCompletarCadastro(profile) {
-  return passosQueFaltam(profile).length > 0;
+export function faltaCompletarCadastro(profile, config) {
+  return passosQueFaltam(profile, config).length > 0;
 }
 
 /**

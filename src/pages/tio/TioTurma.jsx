@@ -7,6 +7,7 @@ import AppSheet from '../../components/common/AppSheet';
 import EditarCombinadoSheet from '../../components/contract/EditarCombinadoSheet';
 import Avatar from '../../components/common/Avatar';
 import { ChildDetailSheet } from '../ChildDetail';
+import PeruaDoMes from '../../components/perua/PeruaDoMes';
 import { nomeDoMes } from '../../components/payments/estadoDaMensalidade';
 import { useTurmaInteira } from '../../hooks/useTurmaInteira';
 import { useContratos } from '../../hooks/useContratos';
@@ -183,6 +184,7 @@ export default function TioTurma() {
             </p>
           ) : (
             <>
+              <PeruaDoMes criancas={criancas} mes={mesAtual} />
               <div className="flex flex-wrap gap-2" role="group" aria-label="Mostrar">
                 {[
                   ['todos', 'Todos'],

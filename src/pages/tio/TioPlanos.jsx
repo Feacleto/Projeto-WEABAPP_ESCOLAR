@@ -27,6 +27,7 @@ import { maskCpfCnpj, documentoValido } from '../../compartilhado/masks';
 import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
+import PeruaNaConta from '../../components/perua/PeruaNaConta';
 import { useModuloDeCobranca } from '../../hooks/useCobrancaLigada';
 import { useFaturaPlataforma } from '../../hooks/useFaturaPlataforma';
 import { MODULO } from '../../dominio/associacao/modulosDeCobranca.js';
@@ -545,6 +546,7 @@ export default function TioPlanos() {
                   </span>
                 )}
               </p>
+              <PeruaNaConta criancas={children} taxa={TAXA[escolhido]} />
             </>
           ) : (
             <p className="mt-1 text-base text-textMuted">Cadastre a sua turma para ver a sua conta.</p>

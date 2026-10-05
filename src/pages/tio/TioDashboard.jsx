@@ -53,6 +53,7 @@ import {
 import { publicarOrdemDoDia } from '../../services/ridesService';
 import { greet } from '../../marca/greeting';
 import MeuTransporteSheet from '../../components/tio/MeuTransporteSheet';
+import LinhaDaPerua from '../../components/perua/LinhaDaPerua';
 import { useRelogio } from '../../hooks/useRelogio';
 import { diaSemRota, fraseDoDiaSemRota } from '../../dominio/rota/calendario.js';
 
@@ -566,6 +567,8 @@ export default function TioDashboard() {
                 </button>
               )}
             </section>
+            {/* "Sua perua" (05/10/2026): abaixo do cartão do dia, sem competir com ele. */}
+            <LinhaDaPerua criancas={children} />
           </div>
         )}
 

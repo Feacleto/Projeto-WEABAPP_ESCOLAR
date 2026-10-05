@@ -28,6 +28,7 @@ import OutgoingCallPanel from '../../components/call/OutgoingCallPanel';
 import GuardaDoFinanceiro from '../../components/financeiro/GuardaDoFinanceiro';
 import BirthdayModal from '../../components/festive/BirthdayModal';
 import { faltaCompletarCadastro } from '../../dominio/identidade/cadastroDoMotorista.js';
+import { useVagasDaPerua } from '../../hooks/useVagasDaPerua';
 import { isTracking } from '../../services/locationService';
 import { useTrancaDoFinanceiro } from '../../hooks/useTrancaDoFinanceiro';
 import {
@@ -102,6 +103,7 @@ const ITENS_EM_ROTA = [
  */
 export default function TioLayout() {
   const { user, profile, refreshProfile } = useAuth();
+  const { vagas: vagasDaPerua } = useVagasDaPerua();
   const { trancar } = useTrancaDoFinanceiro();
   const location = useLocation();
   const navigate = useNavigate();
@@ -133,13 +135,16 @@ export default function TioLayout() {
     if (autoOpened.current) return;
     // Enquanto o card do primeiro acesso estiver por cima, o tour espera: os
     // dois disputariam a mesma tela, e o tour iluminaria um app inerte.
-    if (faltaCompletarCadastro(profile)) return;
+    // O passo das vagas da perua (05/10/2026) lê `configFinanceiro`: sem a
+    // resposta ainda, não dá para saber se o card vai subir.
+    if (vagasDaPerua === undefined) return;
+    if (faltaCompletarCadastro(profile, { vagasDaPerua })) return;
     if (profile && profile.tutorialDone !== true) {
       autoOpened.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTour('first');
     }
-  }, [profile?.tutorialDone, profile]);
+  }, [profile?.tutorialDone, profile, vagasDaPerua]);
 
   // "Ver tutorial de novo" no perfil manda pra cá com esse state: o tour
   // precisa da tela inicial embaixo pra ter o que iluminar.

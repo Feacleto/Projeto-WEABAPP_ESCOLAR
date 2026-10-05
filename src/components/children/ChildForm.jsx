@@ -50,6 +50,7 @@ import { montarEndereco } from '../../compartilhado/formatters';
 import CampoVigencia from '../contract/CampoVigencia';
 import { vigenciaPadrao, erroDaVigencia } from '../../dominio/cobranca/contratoDaFamilia.js';
 import BotaoDeFalar from '../common/BotaoDeFalar';
+import PerguntaDasVagas from '../perua/PerguntaDasVagas';
 
 const GENDERS = [
   { value: 'male', label: 'Menino' },
@@ -424,6 +425,8 @@ export default function ChildForm() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Passou das vagas da perua? Pergunta e deixa — nunca trava. */}
+      <PerguntaDasVagas chave={idReservado} />
       {/* Header próprio do wizard — sem o Header global pra ter mais espaço */}
       <header className="sticky top-0 z-20 bg-bg px-5 pt-4 pb-3 space-y-3">
         <button

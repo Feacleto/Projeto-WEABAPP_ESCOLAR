@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 /**
@@ -132,6 +132,7 @@ import TermsAcceptanceGate from './components/legal/TermsAcceptanceGate';
 import ContractAcceptanceGate from './components/contract/ContractAcceptanceGate';
 import CookieBanner from './components/legal/CookieBanner';
 import { useAuth } from './hooks/useAuth';
+import { useVagasDaPerua } from './hooks/useVagasDaPerua';
 import { useCobrancaLigada, useModuloDeCobranca } from './hooks/useCobrancaLigada';
 import { faltaCompletarCadastro } from './dominio/identidade/cadastroDoMotorista.js';
 import { passosDoResponsavel } from './dominio/identidade/cadastroDoResponsavel.js';
@@ -389,17 +390,36 @@ function SuperAdminRoute({ children }) {
  */
 function PrimeiroAcessoGate({ children }) {
   const { profile, loading } = useAuth();
+  // ⚠️ AS VAGAS DA PERUA (05/10/2026) MORAM FORA DE `users`, em
+  // `configFinanceiro` — então o card depende de uma segunda leitura.
+  // `undefined` é "não sei ainda" e NÃO abre o passo (ver `faltaAVaga`).
+  const { vagas } = useVagasDaPerua();
+  // Quem não conseguiu gravar (conta trancada, sem rede) segue sem o passo
+  // nesta sessão: a pergunta volta na próxima abertura, nunca prende.
+  const [vagasAdiadas, setVagasAdiadas] = useState(false);
+  // Quem ainda deve passos do perfil espera a leitura das vagas para o card
+  // nascer com a lista inteira (ela é congelada na abertura) — mas só até
+  // 3 s: leitura que não volta não pode virar tela de espera eterna.
+  const [desistiuDeEsperar, setDesistiuDeEsperar] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setDesistiuDeEsperar(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Perfil ainda carregando não é perfil incompleto. Sem esta linha, todo
   // motorista veria o card piscar no primeiro quadro de cada abertura.
   if (loading) return <FullScreenLoader />;
-  if (!faltaCompletarCadastro(profile)) return children;
+  const config = vagas === undefined || vagasAdiadas ? undefined : { vagasDaPerua: vagas };
+  if (faltaCompletarCadastro(profile) && config === undefined && !vagasAdiadas && !desistiuDeEsperar) {
+    return <FullScreenLoader />;
+  }
+  if (!faltaCompletarCadastro(profile, config)) return children;
   return (
     <>
       <div inert aria-hidden="true">
         {children}
       </div>
-      <PrimeiroAcesso />
+      <PrimeiroAcesso config={config} onAdiarVagas={() => setVagasAdiadas(true)} />
     </>
   );
 }

@@ -8,6 +8,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { completarCadastro, marcarCadastro } from '../../services/associadoService';
 import { useChildren } from '../../hooks/useChildren';
 import CadastroRapidoDaCrianca from '../../components/children/CadastroRapidoDaCrianca';
+import PassoDasVagas from '../../components/perua/PassoDasVagas';
+import { definirVagasDaPerua } from '../../services/configFinanceiroService';
+import { VAGAS_SUGERIDAS } from '../../dominio/identidade/vagasDaPerua.js';
 import { lugarDaPosicaoAtual } from '../../services/locationService';
 import { uploadMarcaLogo, deleteMarcaLogo } from '../../services/photoService';
 import { setMarca } from '../../services/userService';
@@ -57,14 +60,21 @@ import {
  * ── NENHUMA RULE MUDOU
  * Tudo é `update` do próprio documento, e a política de `users` para o
  * próprio dono é lista de PROIBIDOS. Nenhum campo daqui está nela.
+ *
+ * ── AS VAGAS DA PERUA (05/10/2026, decisão do dono)
+ * Depois da marca: "Quantas vagas tem a sua perua?". É o único passo que
+ * grava FORA de `users` — em `configFinanceiro/{uid}.vagasDaPerua`, que só
+ * ele lê —, e por isso o portão passa `config` (o que ele já sabe de lá).
+ * Gravar não pode prender: se falhar, o passo é adiado para a próxima
+ * abertura (`onAdiarVagas`) e o card segue.
  */
-export default function PrimeiroAcesso() {
+export default function PrimeiroAcesso({ config, onAdiarVagas }) {
   const { user, profile, refreshProfile, logout } = useAuth();
   // ⚠️ A TURMA É O ÚLTIMO PASSO (04/10/2026): quem ainda não tem criança
   // cadastra as crianças aqui dentro, antes do "Pronto". Conta antiga, com
   // turma, nunca vê este passo (`deveCadastrarATurma`).
   const [passos] = useState(() => {
-    const p = passosQueFaltam(profile);
+    const p = passosQueFaltam(profile, config);
     return !p.includes('turma') && deveCadastrarATurma(profile) ? [...p, 'turma'] : p;
   });
   const [indice, setIndice] = useState(0);
@@ -100,7 +110,9 @@ export default function PrimeiroAcesso() {
   const [subindoLogo, setSubindoLogo] = useState(false);
 
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-  const faltando = (campo) => camposQueFaltam(profile, passo).includes(campo);
+  const faltando = (campo) => camposQueFaltam(profile, passo, config).includes(campo);
+  // O número do − e + é sempre inteiro — é o que a rule exige.
+  const [vagas, setVagas] = useState(VAGAS_SUGERIDAS);
 
   // Antes da turma, o cadastro da conta está completo: grava a data e marca
   // o começo da turma (é o que mantém o card aberto se ele fechar o app).
@@ -157,6 +169,10 @@ export default function PrimeiroAcesso() {
       gravarContrato();
       return;
     }
+    if (passo === 'vagas') {
+      gravarVagas();
+      return;
+    }
 
     gravar({
       ...(passo === 'voce'
@@ -187,6 +203,38 @@ export default function PrimeiroAcesso() {
         companyAddress: endereco,
       });
       await depoisDoContrato();
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Tente de novo.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  /* AS VAGAS esperam o servidor só 2,5 s: sem sinal a escrita fica na fila
+   * do SDK (a tela local já tem o número) e o card segue. Se o servidor
+   * RECUSAR — conta trancada, por exemplo —, o passo é adiado para a próxima
+   * abertura e o card segue do mesmo jeito: a perua é desenho, não trava. */
+  const gravarVagas = async () => {
+    setSalvando(true);
+    try {
+      const escrita = definirVagasDaPerua(user.uid, vagas);
+      escrita.catch(() => onAdiarVagas?.());
+      await Promise.race([escrita, new Promise((r) => setTimeout(r, 2500))]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar as vagas. A gente pergunta de novo depois.');
+      onAdiarVagas?.();
+    }
+    try {
+      if (ultimo) {
+        if (!profile?.cadastroCompletoEm) await completarCadastro(user.uid, {}, { ultimo: true });
+        await refreshProfile();
+      } else {
+        if (proximo === 'turma') await irParaATurma();
+        setErrors({});
+        setIndice((i) => i + 1);
+      }
     } catch (err) {
       console.error(err);
       toast.error('Não deu pra salvar. Tente de novo.');
@@ -573,6 +621,8 @@ export default function PrimeiroAcesso() {
             </div>
           </>
         )}
+
+        {passo === 'vagas' && <PassoDasVagas valor={vagas} onChange={setVagas} />}
 
         {passo === 'local' && (
           <>
