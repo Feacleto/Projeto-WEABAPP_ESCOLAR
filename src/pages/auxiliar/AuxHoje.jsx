@@ -68,6 +68,11 @@ import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaO
  * confirmação, porque avisa a família. Vai pelo servidor
  * (`marcarFaltaPelaAuxiliar`), que grava a mesma falta que o tio grava;
  * desfazer continua com o tio.
+ *
+ * QUEM BUSCA HOJE, SÓ O NOME (05/10/2026, decisão do dono): "Hoje busca: Avó
+ * Lúcia" na ficha e no cartão da vez da ENTREGA em casa. Vem da cópia
+ * (`buscas` de `useTurmaDaAuxiliar`), que o servidor monta só com o nome —
+ * nunca o telefone nem o parentesco à parte.
  */
 const ROTULO_DO_STATUS = {
   home: 'Em casa',
@@ -84,7 +89,7 @@ export default function AuxHoje() {
   const vinculoAtual = ativos.find((v) => v.motoristaUid === motoristaUid);
   const marca = motorista?.marcaNome || motorista?.name || vinculoAtual?.marcaDoMotorista || 'o motorista';
   const hoje = getDateKey();
-  const { criancas, faltas } = useTurmaDaAuxiliar(motoristaUid, hoje);
+  const { criancas, faltas, buscas } = useTurmaDaAuxiliar(motoristaUid, hoje);
 
   const blocos = useMemo(
     () => (criancas ? diaCompleto(criancas, { declaracoes: faltas, escolasPorId: {} }) : []),
@@ -215,6 +220,7 @@ export default function AuxHoje() {
             marcando={vez ? marcando === vez.child.id : false}
             onMarcar={() => vez && marcar(vez.child, vez.action)}
             onFaltou={() => vez && setFaltando(vez.child)}
+            buscaHoje={vez ? buscas[vez.child.id] || null : null}
             onAbrir={() => vez && setAberta(vez.child.id)}
           />
         )}
@@ -297,6 +303,7 @@ export default function AuxHoje() {
           <FichaRapidaDaAuxiliar
             item={fichaNaViagem.item}
             direcao={fichaNaViagem.direcao}
+            buscaHoje={buscas[fichaNaViagem.item.child.id] || null}
             onClose={() => setAberta(null)}
           />
         )}
@@ -357,7 +364,7 @@ function BotaoDaPerua({ botao, onEscolher }) {
  * abre a ficha rápida. Sem ninguém a marcar, diz que a viagem acabou e que
  * quem encerra a rota é ele.
  */
-function CartaoDaVez({ item, direcao, cor, marcando, onMarcar, onFaltou, onAbrir }) {
+function CartaoDaVez({ item, direcao, cor, marcando, onMarcar, onFaltou, buscaHoje, onAbrir }) {
   if (!item) {
     return (
       <section className="rounded-2xl bg-card p-4 shadow-rest">
@@ -386,6 +393,10 @@ function CartaoDaVez({ item, direcao, cor, marcando, onMarcar, onFaltou, onAbrir
           {detalhe && <span className="block truncate text-base text-textBody">{detalhe}</span>}
         </span>
       </button>
+      {/* Na ENTREGA em casa, a quem ela entrega hoje — só o nome. */}
+      {item.action?.nextStatus === 'delivered' && buscaHoje && (
+        <p className="mt-2 text-base font-semibold text-text">Hoje busca: {buscaHoje}</p>
+      )}
       <div className={`mt-3 grid gap-2 ${podeFaltar ? 'grid-cols-[2fr_1fr]' : 'grid-cols-1'}`}>
         <button
           type="button"

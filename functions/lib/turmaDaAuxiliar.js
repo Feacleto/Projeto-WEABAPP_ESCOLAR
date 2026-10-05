@@ -7,6 +7,10 @@
  *                                                    auxiliar ativa
  *   turmaDaAuxiliar/{motoristaUid}/criancas/{id}     o recorte da criança
  *   turmaDaAuxiliar/{motoristaUid}/faltas/{dia_id}   a falta do dia, sem recado
+ *   turmaDaAuxiliar/{motoristaUid}/quemBusca/{dia_id} quem busca no dia — SÓ o
+ *                                                    nome (05/10/2026, decisão
+ *                                                    do dono): nunca telefone
+ *                                                    nem parentesco à parte
  *
  * ── POR QUE UMA CÓPIA
  * Ela não pode ler `children`: mensalidade, contrato e saúde moram lá, e
@@ -25,7 +29,7 @@
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
-const { recorteParaAuxiliar, faltaParaAuxiliar } = require('./reguaDoAuxiliar');
+const { recorteParaAuxiliar, faltaParaAuxiliar, quemBuscaParaAuxiliar } = require('./reguaDoAuxiliar');
 
 const REGION = 'southamerica-east1';
 
@@ -60,13 +64,23 @@ async function copiarTurmaParaAuxiliar(db, motoristaUid) {
     if (f) batch.set(db.doc(`turmaDaAuxiliar/${motoristaUid}/faltas/${d.id}`), f);
     if (++n % 400 === 0) { await batch.commit(); batch = db.batch(); }
   }
+  // Quem busca, de hoje em diante, só com o nome (`quemBuscaParaAuxiliar`).
+  // Consulta por `adminUid` + intervalo de `dateKey`: o índice composto de
+  // `altPickups` está em firestore.indexes.json.
+  const buscas = await db.collection('altPickups')
+    .where('adminUid', '==', motoristaUid).where('dateKey', '>=', hoje).get();
+  for (const d of buscas.docs) {
+    const q = quemBuscaParaAuxiliar(d.data());
+    if (q) batch.set(db.doc(`turmaDaAuxiliar/${motoristaUid}/quemBusca/${d.id}`), q);
+    if (++n % 400 === 0) { await batch.commit(); batch = db.batch(); }
+  }
   await batch.commit();
   return n;
 }
 
-/** Apaga a cópia inteira (a raiz e as duas subcoleções). */
+/** Apaga a cópia inteira (a raiz e as três subcoleções). */
 async function apagarTurmaDaAuxiliar(db, motoristaUid) {
-  for (const sub of ['criancas', 'faltas']) {
+  for (const sub of ['criancas', 'faltas', 'quemBusca']) {
     const snap = await db.collection(`turmaDaAuxiliar/${motoristaUid}/${sub}`).get();
     let batch = db.batch();
     let n = 0;
@@ -116,7 +130,31 @@ function makeEspelharFaltaParaAuxiliar(db) {
   );
 }
 
+/**
+ * QUEM BUSCA HOJE → a cópia dela, SÓ com o nome. Escuta `altPickups` inteiro
+ * (criar, o "Trocar" que refaz e o apagar) e segue o mesmo desenho da falta:
+ * o tio vem do `adminUid` do documento (o da CRIANÇA, que a rule exige), e
+ * só escreve se a raiz `turmaDaAuxiliar/{tio}` existir — quem não tem
+ * auxiliar paga uma leitura, nunca uma escrita. Apagado o original, ou sem
+ * nome, a cópia some.
+ */
+function makeEspelharQuemBuscaParaAuxiliar(db) {
+  return onDocumentWritten(
+    { document: 'altPickups/{id}', region: REGION, maxInstances: LIMITES.GATILHO },
+    async (event) => {
+      const antes = dadosDe(event.data?.before);
+      const depois = dadosDe(event.data?.after);
+      const motoristaUid = depois?.adminUid || antes?.adminUid || null;
+      if (!motoristaUid || !(await temAuxiliarAtiva(db, motoristaUid))) return;
+      const ref = db.doc(`turmaDaAuxiliar/${motoristaUid}/quemBusca/${event.params.id}`);
+      const q = quemBuscaParaAuxiliar(depois);
+      if (q) await ref.set(q); else await ref.delete();
+    }
+  );
+}
+
 module.exports = {
+  makeEspelharQuemBuscaParaAuxiliar,
   copiarTurmaParaAuxiliar,
   apagarTurmaDaAuxiliar,
   makeEspelharCriancaParaAuxiliar,

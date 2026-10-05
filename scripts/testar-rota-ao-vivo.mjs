@@ -8,8 +8,8 @@
  * 2. O evento do registro ("O que a Cida marcou"): lista fechada, primeiro
  *    nome, nada de sobrenome, telefone ou endereço.
  * 3. O servidor grava o registro na MESMA transação da marcação.
- * 4. A ficha da auxiliar não lê recado, quem busca, endereço nem saúde
- *    (leitura de arquivo, com sonda).
+ * 4. A ficha da auxiliar não lê recado, endereço nem saúde, e de quem busca
+ *    só o NOME da cópia — nunca `altPickups` (leitura de arquivo, com sonda).
  * 5. A rule do registro: escrita fechada, `list` negado, `get` do tio e da
  *    auxiliar ATIVA do par.
  * 6. A retenção de 7 dias.
@@ -171,11 +171,18 @@ console.log('\n5. o servidor grava o registro na MESMA transação da marcação
 
 console.log('\n6. a ficha da auxiliar não lê o que ela não vê');
 {
-  const PROIBIDO = /\bnote\b|altPickup|quemBusca|QuemBusca|address|endereco|saude|Saude|declaracao|Recado/;
+  // `quemBusca`/`QuemBusca` continua proibido: é o objeto do TIO (nome,
+  // telefone, parentesco). A auxiliar recebe `buscaHoje`, só o nome da cópia.
+  const PROIBIDO = /\bnote\b|altPickup|quemBusca|QuemBusca|address|endereco|saude|Saude|declaracao|Recado|relationship|\.phone\b/;
   for (const arq of ['src/components/route/FichaRapidaDaAuxiliar.jsx', 'src/pages/auxiliar/AuxHoje.jsx']) {
-    checar(`${arq.split('/').pop()} não cita recado, quem busca, endereço nem saúde`, null,
+    checar(`${arq.split('/').pop()} não cita recado, altPickups, telefone de quem busca, endereço nem saúde`, null,
       (semComentarios(ler(arq)).match(PROIBIDO) || [null])[0]);
   }
+  const fichaAux = semComentarios(ler('src/components/route/FichaRapidaDaAuxiliar.jsx'));
+  checar('a ficha dela diz "Hoje busca" com o nome que recebe', true, fichaAux.includes("titulo: 'Hoje busca', valor: buscaHoje"));
+  const hojeAux = semComentarios(ler('src/pages/auxiliar/AuxHoje.jsx'));
+  checar('e o cartão da ENTREGA também (só no passo de entregar em casa)', true,
+    hojeAux.includes("item.action?.nextStatus === 'delivered' && buscaHoje") && hojeAux.includes('Hoje busca: {buscaHoje}'));
   checar('sonda: o padrão acha o campo quando existe', true, PROIBIDO.test('child.saudeNotas') && PROIBIDO.test('quemBusca.name'));
   const moldura = semComentarios(ler('src/components/route/FichaRapida.jsx'));
   checar('a moldura comum também não lê esses campos (só desenha o que recebe)', null, (moldura.match(PROIBIDO) || [null])[0]);

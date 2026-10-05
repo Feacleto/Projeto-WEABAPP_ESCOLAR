@@ -247,6 +247,45 @@ console.log('\n8b. o "Faltou" dela (05/10/2026)');
   checar('com confirmação antes de avisar a família', true, tela.includes('onConfirm={marcarFalta}'));
 }
 
+console.log('\n8c. quem busca hoje, para ela: SÓ o nome (05/10/2026)');
+{
+  const indicacao = { dateKey: '2026-10-05', childId: 'c1', adminUid: 'tio1', parentUid: 'mae1', name: '  Avó   Lúcia ', phone: '(11) 98888-7777', relationship: 'avó' };
+  const copia = R.quemBuscaParaAuxiliar(indicacao);
+  checar('a cópia leva só childId, dateKey e nome', ['childId', 'dateKey', 'nome'], Object.keys(copia));
+  checar('a lista fechada é a decidida', ['childId', 'dateKey', 'nome'], R.CAMPOS_DE_QUEM_BUSCA_DA_AUXILIAR);
+  checar('o nome como a família escreveu ("Avó Lúcia" fica assim)', 'Avó Lúcia', copia.nome);
+  const texto = JSON.stringify(copia);
+  checar('nenhum telefone na cópia (nem os dígitos)', [false, false, false],
+    [/phone|telefone/i.test(texto), texto.includes('98888'), texto.includes('7777')]);
+  checar('nem o parentesco à parte, nem quem indicou', [false, false], [/relationship/.test(texto), texto.includes('mae1')]);
+  checar('sem nome, sem tio, sem dia: não há cópia', [null, null, null],
+    [R.quemBuscaParaAuxiliar({ ...indicacao, name: '   ' }), R.quemBuscaParaAuxiliar({ ...indicacao, adminUid: null }), R.quemBuscaParaAuxiliar(null)]);
+
+  const turma = ler('functions/lib/turmaDaAuxiliar.js');
+  const gatilho = turma.slice(turma.indexOf('function makeEspelharQuemBuscaParaAuxiliar'), turma.indexOf('module.exports'));
+  checar('o gatilho escuta altPickups e escreve em quemBusca', true,
+    gatilho.includes("document: 'altPickups/{id}'") && gatilho.includes('turmaDaAuxiliar/${motoristaUid}/quemBusca/${event.params.id}'));
+  checar('o tio vem do adminUid do documento', true, gatilho.includes('depois?.adminUid || antes?.adminUid'));
+  checar('só com a raiz da cópia existindo', true, gatilho.includes('temAuxiliarAtiva(db, motoristaUid)'));
+  checar('grava pela régua (nunca um spread do original) e apaga quando some', true,
+    gatilho.includes('quemBuscaParaAuxiliar(depois)') && gatilho.includes('ref.delete()') && !/\.\.\.depois|\.\.\.antes/.test(gatilho));
+  checar('o aceite copia os de hoje em diante', true,
+    /collection\('altPickups'\)\s*\.where\('adminUid', '==', motoristaUid\)\.where\('dateKey', '>=', hoje\)/.test(turma));
+  checar('apagar a cópia leva quemBusca junto', true, turma.includes("['criancas', 'faltas', 'quemBusca']"));
+  checar('o gatilho está exportado', true, indice.includes('exports.espelharQuemBuscaParaAuxiliar ='));
+  const indices = JSON.parse(ler('firestore.indexes.json'));
+  checar('o índice (adminUid, dateKey) de altPickups existe para a cópia do aceite', true,
+    indices.indexes.some((i) => i.collectionGroup === 'altPickups' && i.fields.map((f) => f.fieldPath).join() === 'adminUid,dateKey'));
+
+  // Nenhuma tela da auxiliar lê altPickups: as telas dela e o serviço dela.
+  const telasDela = [...readdirSync(new URL('../src/pages/auxiliar/', import.meta.url)).map((n) => `src/pages/auxiliar/${n}`),
+    'src/components/route/FichaRapidaDaAuxiliar.jsx', 'src/services/auxiliarService.js', 'src/hooks/useAuxiliares.js'];
+  checar('nenhuma tela da auxiliar lê altPickups', [],
+    telasDela.filter((a) => /altPickup|useQuemBuscaHoje|watchQuemBuscaHoje/.test(semComentarios(ler(a)))));
+  checar('sonda: o padrão acha a leitura quando existe', true, /altPickup|useQuemBuscaHoje/.test("collection(db, 'altPickups')"));
+  checar('o serviço dela lê a cópia', true, ler('src/services/auxiliarService.js').includes("collection(db, 'turmaDaAuxiliar', motoristaUid, 'quemBusca')"));
+}
+
 console.log('\n9. o vínculo por PAR (05/10/2026)');
 checar('o id do par', 'tio_aux', R.idDoVinculo('tio', 'aux'));
 checar('o app monta o mesmo id', R.idDoVinculo('t1', 'a1'), idDoVinculoDoApp('t1', 'a1'));

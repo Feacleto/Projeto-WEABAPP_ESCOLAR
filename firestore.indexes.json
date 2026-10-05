@@ -251,6 +251,20 @@
       ]
     },
     {
+      "collectionGroup": "altPickups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "adminUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dateKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "agendaEntries",
       "queryScope": "COLLECTION",
       "fields": [

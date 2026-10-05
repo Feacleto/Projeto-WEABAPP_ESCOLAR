@@ -161,6 +161,25 @@ function faltaParaAuxiliar(declaracao) {
 }
 
 /**
+ * QUEM BUSCA HOJE, PARA A AUXILIAR — SÓ O NOME (05/10/2026, decisão do dono).
+ *
+ * `altPickups/{dia}_{criança}` guarda nome, TELEFONE e parentesco de quem vai
+ * buscar: dado de um terceiro, que a família entregou pensando no motorista.
+ * Ela precisa saber a QUEM entregar a criança, não como ligar para essa
+ * pessoa — então a cópia é uma LISTA FECHADA de três campos: `childId`,
+ * `dateKey` e `nome`. O parentesco não vai à parte: se a família escreveu
+ * "Avó Lúcia" no nome, fica assim; o campo `relationship` fica de fora.
+ * `null` (a cópia é apagada) quando falta o essencial.
+ */
+const CAMPOS_DE_QUEM_BUSCA_DA_AUXILIAR = ['childId', 'dateKey', 'nome'];
+function quemBuscaParaAuxiliar(indicacao) {
+  if (!indicacao || !indicacao.adminUid || !indicacao.childId || !indicacao.dateKey) return null;
+  const nome = String(indicacao.name || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (!nome) return null;
+  return { childId: String(indicacao.childId), dateKey: String(indicacao.dateKey), nome };
+}
+
+/**
  * A MARCAÇÃO DA AUXILIAR SÓ ANDA PARA A FRENTE (fase 3, 05/10/2026), pelos
  * mesmos passos do motorista (`acaoDaParada.js`):
  *   ida   home → onboard → atSchool
@@ -295,6 +314,8 @@ module.exports = {
   CAMPOS_DA_TURMA_DA_AUXILIAR,
   recorteParaAuxiliar,
   faltaParaAuxiliar,
+  CAMPOS_DE_QUEM_BUSCA_DA_AUXILIAR,
+  quemBuscaParaAuxiliar,
   VALIDADE_DO_CONVITE_DIAS,
   VALIDADE_DO_CONVITE_MS,
   MAX_AUXILIARES_ATIVAS,

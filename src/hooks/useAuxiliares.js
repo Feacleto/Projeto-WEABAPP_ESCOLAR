@@ -5,6 +5,7 @@ import {
   watchMeusVinculos,
   watchTurmaDaAuxiliar,
   watchFaltasDaAuxiliar,
+  watchQuemBuscaDaAuxiliar,
   watchPagamentosDoMotorista,
   watchMeusPagamentosDeAuxiliar,
 } from '../services/auxiliarService';
@@ -51,6 +52,8 @@ export function useMeusVinculos() {
 /**
  * A turma de hoje da auxiliar logada (fase 2): as crianças da cópia e as
  * faltas do dia, já no formato que `diaCompleto` espera (`byChildId`).
+ * `buscas` (05/10/2026): `{ [childId]: nome }` de quem busca hoje — só o
+ * nome, que é tudo o que a cópia leva.
  */
 export function useTurmaDaAuxiliar(motoristaUid, dateKey) {
   const [criancas, setCriancas] = useState({ chave: null, lista: null });
@@ -64,11 +67,20 @@ export function useTurmaDaAuxiliar(motoristaUid, dateKey) {
     if (!motoristaUid || !dateKey) return undefined;
     return watchFaltasDaAuxiliar(motoristaUid, dateKey, (lista) => setFaltas({ chave: chaveFaltas, lista }), () => setFaltas({ chave: chaveFaltas, lista: [] }));
   }, [motoristaUid, dateKey, chaveFaltas]);
+  const [buscasDoDia, setBuscasDoDia] = useState({ chave: null, lista: [] });
+  useEffect(() => {
+    if (!motoristaUid || !dateKey) return undefined;
+    return watchQuemBuscaDaAuxiliar(motoristaUid, dateKey, (lista) => setBuscasDoDia({ chave: chaveFaltas, lista }), () => setBuscasDoDia({ chave: chaveFaltas, lista: [] }));
+  }, [motoristaUid, dateKey, chaveFaltas]);
   const lista = criancas.chave === motoristaUid ? criancas.lista : null;
   const doDia = faltas.chave === chaveFaltas ? faltas.lista : [];
   const byChildId = {};
   for (const f of doDia) byChildId[f.childId] = f;
-  return { criancas: lista, faltas: byChildId };
+  const buscas = {};
+  for (const b of buscasDoDia.chave === chaveFaltas ? buscasDoDia.lista : []) {
+    if (b.childId && b.nome) buscas[b.childId] = b.nome;
+  }
+  return { criancas: lista, faltas: byChildId, buscas };
 }
 
 /**

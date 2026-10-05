@@ -135,6 +135,25 @@ export function watchFaltasDaAuxiliar(motoristaUid, dateKey, onUpdate, onError) 
 }
 
 /**
+ * QUEM BUSCA HOJE, NA CÓPIA DELA (05/10/2026): só `{ childId, dateKey, nome }`
+ * — o servidor nunca copia telefone nem parentesco. Ela não lê `altPickups`.
+ */
+export function watchQuemBuscaDaAuxiliar(motoristaUid, dateKey, onUpdate, onError) {
+  if (!motoristaUid || !dateKey) {
+    onUpdate([]);
+    return () => {};
+  }
+  return onSnapshot(
+    query(collection(db, 'turmaDaAuxiliar', motoristaUid, 'quemBusca'), where('dateKey', '==', dateKey)),
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('watchQuemBuscaDaAuxiliar:', err);
+      onError?.(err);
+    }
+  );
+}
+
+/**
  * A AUXILIAR MARCA NA ROTA (fase 3): EMBARQUEI / ENTREGUEI pelo servidor —
  * ela não escreve em `children`. Só para a frente; desfazer é do motorista.
  */

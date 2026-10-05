@@ -9,11 +9,14 @@ import { rotuloDoLugar } from '../../dominio/rota/zonasDaRota.js';
  * responsável com o telefone.
  *
  * ⚠️ O que fica de fora é decisão, não esquecimento: o recado da família, a
- * pessoa que busca no dia, a casa e os dados de saúde. A cópia dela nem traz
- * esses campos, e este arquivo não os cita — `testar:rota-ao-vivo` lê o
- * arquivo. A pessoa que busca, para ela, está EM ABERTO com o dono.
+ * casa e os dados de saúde. A cópia dela nem traz esses campos, e este
+ * arquivo não os cita — `testar:rota-ao-vivo` lê o arquivo.
+ *
+ * QUEM BUSCA HOJE (05/10/2026, decisão do dono): SÓ O NOME, "Hoje busca: Avó
+ * Lúcia" (`buscaHoje`, da cópia `turmaDaAuxiliar/{tio}/quemBusca`). Telefone
+ * e parentesco à parte ficam de fora — a cópia nem os leva.
  */
-export default function FichaRapidaDaAuxiliar({ item, direcao, onClose }) {
+export default function FichaRapidaDaAuxiliar({ item, direcao, buscaHoje = null, onClose }) {
   const child = item?.child;
   if (!child) return null;
   const ida = direcao !== 'volta';
@@ -23,6 +26,7 @@ export default function FichaRapidaDaAuxiliar({ item, direcao, onClose }) {
     ? pega ? `Pegar às ${horaCurta(pega)}` : null
     : entrega ? `Entregar às ${horaCurta(entrega)}` : null;
   const linhas = [
+    buscaHoje ? { titulo: 'Hoje busca', valor: buscaHoje } : null,
     { titulo: 'Escola', valor: [child.school, child.turma].filter(Boolean).join(' · ') || null },
     { titulo: 'Combinado', valor: combinado },
     { titulo: 'Responsável', valor: child.parentName || null, nota: child.parentPhone || null },

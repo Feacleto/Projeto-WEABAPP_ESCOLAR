@@ -35,7 +35,11 @@ const {
   makeMarcarParadaPelaAuxiliar,
   makeMarcarFaltaPelaAuxiliar,
 } = require('./lib/auxiliares');
-const { makeEspelharCriancaParaAuxiliar, makeEspelharFaltaParaAuxiliar } = require('./lib/turmaDaAuxiliar');
+const {
+  makeEspelharCriancaParaAuxiliar,
+  makeEspelharFaltaParaAuxiliar,
+  makeEspelharQuemBuscaParaAuxiliar,
+} = require('./lib/turmaDaAuxiliar');
 const {
   makeGerarAcessoDeSubstituta,
   makeEncerrarAcessoDeSubstituta,
@@ -438,6 +442,8 @@ exports.marcarFaltaPelaAuxiliar = makeMarcarFaltaPelaAuxiliar(db);
 // A TURMA DA AUXILIAR (fase 2): a cópia sem valor que ela lê.
 exports.espelharCriancaParaAuxiliar = makeEspelharCriancaParaAuxiliar(db);
 exports.espelharFaltaParaAuxiliar = makeEspelharFaltaParaAuxiliar(db);
+// Quem busca hoje, para ela: SÓ o nome (05/10/2026).
+exports.espelharQuemBuscaParaAuxiliar = makeEspelharQuemBuscaParaAuxiliar(db);
 // O PAGAMENTO DA AUXILIAR (fase 4): ele anota que pagou (vira despesa do mês),
 // ela confirma "Recebi". Só o servidor escreve o recibo dos dois.
 exports.anotarPagamentoDaAuxiliar = makeAnotarPagamentoDaAuxiliar(db);

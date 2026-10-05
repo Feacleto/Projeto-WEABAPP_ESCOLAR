@@ -214,10 +214,18 @@ e `testar:auxiliar-na-central`). O pagamento (fase 4) e a falta (fase 5)
 entram no bloco pela prop `linhasDaAuxiliar`.
 ⚠️ **ELA NÃO LÊ `children`** (mensalidade, contrato e saúde moram lá, e regra
 não esconde campo): lê `turmaDaAuxiliar/{motoristaUid}` (subcoleções
-`criancas` e `faltas`), uma CÓPIA que o servidor mantém com uma LISTA FECHADA
+`criancas`, `faltas` e `quemBusca`), uma CÓPIA que o servidor mantém com uma LISTA FECHADA
 de campos (`CAMPOS_DA_TURMA_DA_AUXILIAR`) — copiada no aceite, mantida pelos
-gatilhos `espelharCriancaParaAuxiliar`/`espelharFaltaParaAuxiliar` e apagada
-quando não sobra auxiliar ativa. A falta vai sem o recado. Desde a F1.5 ela também posta a FOTO DA TURMA para as famílias do tio, em nome dele (`/aux/foto`; ver "Comunidade" nas Cloud Functions).
+gatilhos `espelharCriancaParaAuxiliar`/`espelharFaltaParaAuxiliar`/`espelharQuemBuscaParaAuxiliar` e apagada
+quando não sobra auxiliar ativa. A falta vai sem o recado.
+⚠️ **QUEM BUSCA, SÓ O NOME (05/10/2026, decisão do dono):**
+`turmaDaAuxiliar/{tio}/quemBusca/{dia}_{criança}` = `{ childId, dateKey, nome }`
+(`quemBuscaParaAuxiliar`, lista fechada em `CAMPOS_DE_QUEM_BUSCA_DA_AUXILIAR`)
+— nunca o telefone nem o parentesco à parte ("Avó Lúcia" no nome fica
+assim). O gatilho escuta `altPickups` (o tio vem do `adminUid`), só escreve
+com a raiz existindo e apaga a cópia quando o original some; o aceite copia
+os de hoje em diante (índice `altPickups (adminUid, dateKey)`). Ela não lê
+`altPickups`: vê "Hoje busca: …" na ficha e no cartão da entrega. Desde a F1.5 ela também posta a FOTO DA TURMA para as famílias do tio, em nome dele (`/aux/foto`; ver "Comunidade" nas Cloud Functions).
 ⚠️ **ELA MARCA PELO SERVIDOR** (`marcarParadaPelaAuxiliar`, numa transação):
 só para a frente (`passoValido`), o `rides` ganha `marcadoPelaAuxiliar`, e a
 família recebe o mesmo aviso da marcação do motorista. Desfazer é dele. Marca
@@ -1584,8 +1592,9 @@ declarações e quem busca — nenhuma escuta a mais da turma):
   depois — ela não lê `liveLocation`), o CARTÃO DA VEZ no topo, com o botão
   CHEIO na cor da marca do tio ("Entrou na perua", "Entregue na escola",
   "Entregue em casa"), e as zonas. `npm run testar:rota-ao-vivo`.
-- ⚠️ **EM ABERTO COM O DONO:** "quem busca hoje" para ela. O "Faltou" dela
-  saiu do aberto em 05/10/2026 (ver "O FALTOU DELA" na seção dos papéis).
+- O "Faltou" dela e "quem busca hoje" para ela saíram do aberto em
+  05/10/2026 (ver "O FALTOU DELA" e "QUEM BUSCA, SÓ O NOME" na seção dos
+  papéis).
 
 ⚠️ **A FICHA RÁPIDA NA ROTA (05/10/2026, decisão do dono):** tocar numa
 criança das zonas (ou, na auxiliar, da lista) abre uma folha
@@ -1599,9 +1608,10 @@ ficha completa". ⚠️ O recado de hoje é UMA fonte só: o `note` de
 família, não entra. ⚠️ Hoje nenhuma tela da família escreve esse `note`:
 o bloco existe e só aparece quando houver. Abrir a folha não abre escuta.
 **A auxiliar** ([FichaRapidaDaAuxiliar](src/components/route/FichaRapidaDaAuxiliar.jsx))
-vê a mesma folha SEM recado, quem busca, endereço e saúde — só o que a cópia
-leva (primeiro nome, turma, escola, hora, responsável e telefone); o teste
-lê o arquivo.
+vê a mesma folha SEM recado, endereço e saúde — só o que a cópia leva
+(primeiro nome, turma, escola, hora, responsável e telefone) e, desde
+05/10/2026, "Hoje busca: Avó Lúcia" (SÓ o nome, nunca o telefone de quem
+busca; também no cartão da vez da entrega em casa); o teste lê o arquivo.
 
 **A TELA DA ROTA É UMA LINHA DO TEMPO** (03/10/2026, modelo aprovado pelo
 dono): [FaixaDaViagem](src/components/route/FaixaDaViagem.jsx) no topo e
@@ -2190,7 +2200,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `aceitarConviteDeAuxiliar`, `desativarAuxiliar`, `marcarParadaPelaAuxiliar` e
   `marcarFaltaPelaAuxiliar` (o "Faltou" dela, antes do embarque)
   ([auxiliares.js](functions/lib/auxiliares.js)); a cópia da turma é dos
-  gatilhos `espelharCriancaParaAuxiliar` e `espelharFaltaParaAuxiliar`
+  gatilhos `espelharCriancaParaAuxiliar`, `espelharFaltaParaAuxiliar` e
+  `espelharQuemBuscaParaAuxiliar` (quem busca, só o nome)
   ([turmaDaAuxiliar.js](functions/lib/turmaDaAuxiliar.js)). O pagamento dela
   (fase 4): `anotarPagamentoDaAuxiliar` e `confirmarRecebimentoDaAuxiliar`
   ([pagamentosDaAuxiliar.js](functions/lib/pagamentosDaAuxiliar.js)).
