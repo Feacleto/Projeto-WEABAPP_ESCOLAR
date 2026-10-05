@@ -46,7 +46,7 @@ export default function FaixaDaViagem({
   return (
     <div className="bg-primary px-4 pb-4 pt-3 text-white">
       <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 font-mono text-sm font-bold uppercase tracking-[0.1em] text-onNightAccent">
+        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 font-mono text-sm font-bold uppercase tracking-[0.1em] text-white">
           <span
             aria-hidden="true"
             className={`h-2 w-2 rounded-full ${ativa ? 'bg-accent' : 'bg-white/40'} ${

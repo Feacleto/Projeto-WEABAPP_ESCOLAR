@@ -74,15 +74,17 @@ export default function MensalidadeNaPorta({ payment, childName }) {
 
   return (
     <>
-      <div className="flex items-center gap-3 rounded-xl border border-warningBorder bg-warningSoft px-3 py-2.5">
-        <HandCoins size={20} className="shrink-0 text-warningText" aria-hidden="true" />
-        <span className="min-w-0 flex-1 text-base font-bold text-warningText">
+      {/* A frase tem a linha inteira e o "Recebi" vem embaixo: lado a lado,
+        * a 360 px a frase quebrava em cinco linhas (jornada C1). */}
+      <div className="space-y-2 rounded-xl border border-warningBorder bg-warningSoft p-3">
+        <p className="flex items-center gap-2 text-base font-bold text-warningText">
+          <HandCoins size={20} className="shrink-0" aria-hidden="true" />
           Mensalidade de {mes} em aberto
-        </span>
+        </p>
         <button
           type="button"
           onClick={() => setAberta(true)}
-          className="tap min-h-12 shrink-0 rounded-xl border-2 border-warningText bg-card px-4 text-base font-bold text-warningText"
+          className="tap min-h-12 w-full rounded-xl border-2 border-warningText bg-card px-4 text-base font-bold text-warningText"
         >
           Recebi
         </button>
