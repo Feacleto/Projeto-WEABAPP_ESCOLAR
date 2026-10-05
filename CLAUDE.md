@@ -1768,7 +1768,7 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 
 - **Comunidade (05/10/2026, etapas 1 e 2):** `publicarFotoDaTurma`,
   `apagarFotoDaTurma`, `minhasFotosDaTurma` (F1.5, a auxiliar), `meusParceiros`, `minhaNotaDasFamilias`,
-  `avisarParceiroIndicado` (fase 1 da rede) e a agendada
+  `avisarParceiroIndicado` (fase 1 da rede), `fotosDaComunidade` e a agendada
   `limparFotosVencidas`
   ([comunidade.js](functions/lib/comunidade.js), régua em
   [reguaDaComunidade.js](functions/lib/reguaDaComunidade.js), espelho em
@@ -1803,6 +1803,28 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   semestre FECHADO com pelo menos 5 respostas, e do corrente só quantas —
   a média ao vivo denunciaria quem deu cada nota. O tio NÃO avalia a família
   (seria cadastro de mau pagador, CDC 43). Política 1.4, seção 6.
+  ⚠️ **A FOTO DA COMUNIDADE (05/10/2026, decisão do dono):** a foto com
+  criança vai também aos tios PARCEIROS e às famílias DELES (`publico:
+  'comunidade'`, que substituiu o "Postar para os parceiros"; os posts
+  'parceiros' antigos seguem até vencer). Um "sim" SÓ cobre a turma e a
+  comunidade, e a pergunta (texto dos jurídicos, `textoDaPergunta`) nomeia
+  os dois públicos; o "sim" grava `children.fotoDaTurmaAlcance: 'comunidade'`
+  (só a família, rules olham o valor RESULTANTE: o "não" tira o alcance; o
+  motorista nunca escreve). O "sim" ANTIGO, sem alcance, vale só para a
+  turma, e a família é perguntada de novo no Início. Quem vê lê pela
+  callable `fotosDaComunidade`: o tio, as dos parceiros e as dele; a
+  família, as dos tios dela e dos parceiros deles (`/pai/comunidade`,
+  [PaiComunidade](src/pages/pai/PaiComunidade.jsx), separada das fotos da
+  turma). ⚠️ O "sim" é conferido NA LEITURA (`postAindaVale`: o "não", a
+  saída da turma ou a passagem derrubam o post na hora), o link é ASSINADO
+  de 15 minutos (sem token nem link no documento) e a resposta é uma lista
+  fechada, sem criança. ⚠️ A TURMA continua com token permanente — os dois
+  jeitos estão explicados no cabeçalho de comunidade.js, NÃO uniformizar sem
+  decidir. A legenda passa pelo filtro comum
+  [reguaDoTextoLivre.js](functions/lib/reguaDoTextoLivre.js) (o mesmo da
+  recomendação da auxiliar: contato, promessa de segurança, nome da turma).
+  ⚠️ Deploy: assinar o link exige o papel "Criador de tokens da conta de
+  serviço" para a conta de serviço das functions, sobre ela mesma.
   **Fase 1 da rede (05/10/2026):** `meusParceiros` devolve as ESCOLAS de
   cada parceiro (só o nome, até 4); `avisarParceiroIndicado` (callable)
   avisa o parceiro que o tio o indicou a uma família — confere a parceria

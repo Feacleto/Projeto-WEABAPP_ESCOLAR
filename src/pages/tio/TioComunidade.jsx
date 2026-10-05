@@ -12,7 +12,7 @@ import NotaDasFamilias from '../../components/comunidade/NotaDasFamilias';
 import IndicarParceiro from '../../components/comunidade/IndicarParceiro';
 import FotoNaLista from '../../components/comunidade/FotoNaLista';
 import PedidosParaVoce from '../../components/transferencia/PedidosParaVoce';
-import { meusParceiros, pedirSimDaFoto } from '../../services/comunidadeService';
+import { fotosDaComunidade, meusParceiros, pedirSimDaFoto } from '../../services/comunidadeService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import {
   PUBLICO,
@@ -105,10 +105,19 @@ function MinhasFamilias({ uid }) {
   );
 }
 
+/**
+ * A ABA DOS PARCEIROS. Desde 05/10/2026 o tio posta aqui PARA A COMUNIDADE:
+ * os tios parceiros e as famílias deles veem, e a foto pode ter criança com
+ * o "sim" da comunidade. As fotos chegam pela callable (link de 15 minutos);
+ * os posts antigos "só para os parceiros" continuam aparecendo até vencer.
+ */
 function Parceiros({ uid }) {
+  const { children } = useChildren();
   const [dados, setDados] = useState(null);
+  const [comunidade, setComunidade] = useState([]);
   const [erro, setErro] = useState(null);
   const [postando, setPostando] = useState(false);
+  const [versao, setVersao] = useState(0);
   const fotos = useMinhasFotos(uid);
   const minhas = (fotos || []).filter((f) => f.publico === PUBLICO.PARCEIROS);
 
@@ -121,6 +130,15 @@ function Parceiros({ uid }) {
       vivo = false;
     };
   }, []);
+  useEffect(() => {
+    let vivo = true;
+    fotosDaComunidade()
+      .then((lista) => vivo && setComunidade(lista))
+      .catch(() => vivo && setComunidade([]));
+    return () => {
+      vivo = false;
+    };
+  }, [versao]);
 
   if (erro) return <p className="rounded-2xl bg-card p-4 text-base text-textMuted">{erro}</p>;
   if (!dados) return <p className="text-base text-textMuted">Carregando…</p>;
@@ -131,8 +149,8 @@ function Parceiros({ uid }) {
       {/* As famílias que um parceiro quer passar para ele (fase 2). */}
       <PedidosParaVoce />
       <p className="text-base leading-relaxed text-textMuted">
-        Os tios que você indicou e os que indicaram você. Aqui só vale foto sem
-        criança: a perua enfeitada, o portão, a decoração.
+        Os tios que você indicou e os que indicaram você. A foto para a
+        comunidade aparece para eles e para as famílias deles.
       </p>
       {!dados.parceiros.length ? (
         <div className="rounded-2xl border border-dashed border-border p-5 text-center">
@@ -173,13 +191,33 @@ function Parceiros({ uid }) {
         </ul>
       )}
       {STORAGE_ENABLED && dados.parceiros.length > 0 && (postando ? (
-        <PublicarFoto uid={uid} publico={PUBLICO.PARCEIROS} onPronto={() => setPostando(false)} />
+        <PublicarFoto
+          uid={uid}
+          publico={PUBLICO.COMUNIDADE}
+          turma={children}
+          onPronto={() => {
+            setPostando(false);
+            setVersao((v) => v + 1);
+          }}
+        />
       ) : (
-        <Button variant="secondary" onClick={() => setPostando(true)}>Postar para os parceiros</Button>
+        <Button variant="secondary" onClick={() => setPostando(true)}>Postar para a comunidade</Button>
       ))}
+      {comunidade.length > 0 && (
+        <ul className="space-y-3">
+          {comunidade.map((f) => (
+            <FotoNaLista
+              key={f.id}
+              foto={{ ...f, autor: f.minha ? null : f.marca }}
+              podeApagar={f.minha}
+              onApagada={() => setVersao((v) => v + 1)}
+            />
+          ))}
+        </ul>
+      )}
       <ListaDeFotos
         fotos={dados.fotos.map((f) => ({ ...f, autor: marcaDe[f.adminUid] }))}
-        vazio={dados.parceiros.length ? 'Nenhum parceiro postou nada agora.' : null}
+        vazio={dados.parceiros.length && !comunidade.length ? 'Nenhum parceiro postou nada agora.' : null}
       />
       {minhas.length > 0 && (
         <>

@@ -1,33 +1,41 @@
 import { useState } from 'react';
-import { Camera, X } from 'lucide-react';
+import { Camera, ChevronRight, Users, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useFotosDaTurma } from '../../hooks/useFotosDaTurma';
+import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
 import { responderFotoDaTurma } from '../../services/comunidadeService';
-import { quandoSome, simDaFoto } from '../../dominio/identidade/comunidade.js';
+import { estadoDaPergunta, quandoSome, textoDaPergunta } from '../../dominio/identidade/comunidade.js';
 
 /**
  * A FOTO DA TURMA, DO LADO DA FAMÍLIA (05/10/2026).
  *
  * Duas peças:
- * - `PerguntaDaFoto`: "Pode aparecer em foto da turma?". É a autorização
- *   dela (LGPD art. 14), e só ela responde: as rules recusam o motorista.
- *   No Início aparece enquanto ela não respondeu; na ficha, sempre, com a
- *   resposta atual e o jeito de mudar.
+ * - `PerguntaDaFoto`: "Seu filho pode aparecer nas fotos da perua?". É a
+ *   autorização dela (LGPD art. 14), e só ela responde: as rules recusam o
+ *   motorista. No Início aparece enquanto ela não respondeu; na ficha,
+ *   sempre, com a resposta atual e o jeito de mudar.
+ *   ⚠️ FOTO DA COMUNIDADE (05/10/2026): o texto é o dos jurídicos, com os
+ *   DOIS públicos (as famílias da perua, os tios parceiros e as famílias
+ *   deles), e o "sim" grava o alcance. Quem tinha o "sim" antigo, só da
+ *   turma, vê a pergunta de novo no Início — consentimento não se estende.
  * - `FotosDaTurmaNoInicio`: as fotos que o motorista publicou para as
  *   famílias e ainda valem. Sem curtir, sem comentar: é para ver.
  */
 export function PerguntaDaFoto({ child, naFicha = false }) {
   const [salvando, setSalvando] = useState(false);
-  const estado = simDaFoto(child);
+  const { nome: marca } = useMarcaDoTio();
+  const estado = estadoDaPergunta(child);
   if (!child?.id) return null;
-  if (!naFicha && estado !== 'sem_resposta') return null;
+  if (!naFicha && estado !== 'sem_resposta' && estado !== 'perguntar_de_novo') return null;
   const nome = String(child.name || '').trim().split(/\s+/)[0] || 'seu filho';
+  const texto = textoDaPergunta({ marca, nome: child.name });
 
   const responder = async (sim) => {
     setSalvando(true);
     try {
       await responderFotoDaTurma(child.id, sim);
-      toast.success(sim ? `${nome} pode aparecer na foto da turma.` : `${nome} não aparece na foto da turma.`);
+      toast.success(sim ? `${nome} pode aparecer nas fotos da perua.` : `${nome} não aparece nas fotos da perua.`);
     } catch {
       toast.error('Não deu para salvar. Tente de novo.');
     } finally {
@@ -37,14 +45,16 @@ export function PerguntaDaFoto({ child, naFicha = false }) {
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <p className="text-base font-bold text-text">Pode aparecer em foto da turma?</p>
-      <p className="mt-1 text-base text-textMuted">
-        {estado === 'sim'
-          ? `Sim: ${nome} pode aparecer na foto que a perua posta numa data especial, só para as famílias da turma. Ela some em 30 dias.`
-          : estado === 'nao'
-            ? `Não: ${nome} não aparece em foto da turma.`
-            : `Numa data especial, a perua pode postar uma foto da turma para as famílias dela. Ela some em 30 dias. Você escolhe se ${nome} pode aparecer.`}
-      </p>
+      <p className="text-base font-bold text-text">{texto.titulo}</p>
+      {estado === 'perguntar_de_novo' && (
+        <p className="mt-1 text-base font-semibold text-text">Mudou quem pode ver: responda de novo.</p>
+      )}
+      <p className="mt-1 text-base text-textMuted">{texto.linha}</p>
+      {naFicha && (estado === 'sim' || estado === 'nao') && (
+        <p className="mt-1 text-base font-semibold text-text">
+          {estado === 'sim' ? `Hoje: ${nome} pode aparecer.` : `Hoje: ${nome} não aparece.`}
+        </p>
+      )}
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="button"
@@ -65,6 +75,7 @@ export function PerguntaDaFoto({ child, naFicha = false }) {
           Sim
         </button>
       </div>
+      <p className="mt-2 text-base text-textMuted">{texto.rodape}</p>
     </div>
   );
 }
@@ -122,5 +133,26 @@ export function FotosDaTurmaNoInicio({ child }) {
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * A PORTA DAS FOTOS DA COMUNIDADE no Início da família (05/10/2026): uma
+ * linha só, depois das fotos da turma — o lugar é separado (decisão do dono).
+ */
+export function LinhaFotosDaComunidade() {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => navigate('/pai/comunidade')}
+      className="tap flex min-h-14 w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primaryChip text-primary">
+        <Users size={20} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1 text-base font-semibold text-text">Fotos da comunidade</span>
+      <ChevronRight size={18} className="shrink-0 text-textMuted" aria-hidden="true" />
+    </button>
   );
 }

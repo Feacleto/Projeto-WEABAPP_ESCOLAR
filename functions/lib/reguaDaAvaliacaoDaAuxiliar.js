@@ -24,16 +24,19 @@
  * é dado de terceiro que ninguém autorizou. Filtro na tela se pula com o
  * console; aqui, não.
  *
- * ⚠️ AS RAÍZES PROIBIDAS SÃO ESPELHO de `src/marca/promessas.js` — o deploy
- * das functions não alcança `src/`. `npm run testar:avaliacao-da-auxiliar`
- * compara as duas listas por LEITURA DE ARQUIVO.
+ * ⚠️ O FILTRO MORA EM `reguaDoTextoLivre.js` desde 05/10/2026: a legenda da
+ * foto da comunidade usa a mesma régua, e duas cópias divergiriam. As raízes
+ * proibidas (espelho de `src/marca/promessas.js`) mudaram de casa com ele.
  *
- * Régua sem `require`, como toda régua de `functions/lib/` (`testar:imports`).
+ * Régua sem require de SDK (`testar:imports`): o único require é o do filtro
+ * comum, que também é puro.
  * Quem conta os dias de vínculo é `diasDeVinculo` (reguaDoAuxiliar.js): a
  * callable passa o número pronto.
  */
 
 'use strict';
+
+const T = require('./reguaDoTextoLivre');
 
 /** Os cinco pontos fortes "para trabalhar junto". Lista fechada do dono. */
 const PONTOS_FORTES = [
@@ -56,30 +59,9 @@ const MOTIVO_MAX = 200;
 const ESTADO = { PENDENTE: 'pendente', APROVADA: 'aprovada', OCULTA: 'oculta' };
 const ACOES_DELA = ['aprovar', 'ocultar', 'apagar'];
 
-/** ⚠️ ESPELHO de `PROIBIDAS` em src/marca/promessas.js — mesma ordem. */
-const RAIZES_PROIBIDAS = [
-  'segur',
-  'protegid',
-  'protecao',
-  'vistoriad',
-  'certificad',
-  'garant',
-  'fiscalizad',
-  'homologad',
-  'confiavel',
-  'aprovado pela',
-];
-
 /** O id do documento é o do PAR, o mesmo do vínculo: uma por par. */
 function idDaAvaliacao(motoristaUid, auxiliarUid) {
   return `${motoristaUid}_${auxiliarUid}`;
-}
-
-function normalizar(texto) {
-  return String(texto || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
 }
 
 /** Pontos: de 1 a 3, da lista, sem repetir. Devolve `{ ok, pontos, erro }`. */
@@ -97,30 +79,6 @@ function validarPontos(pontos) {
   return { ok: true, pontos: IDS_DOS_PONTOS.filter((id) => pontos.includes(id)) };
 }
 
-/** Espaços repetidos viram um; a frase é aparada. */
-function fraseLimpa(bruto) {
-  return String(bruto == null ? '' : bruto).replace(/\s+/g, ' ').trim();
-}
-
-/** Palavras de 3+ letras, sem acento e sem caixa. */
-function palavras(texto) {
-  return normalizar(texto).split(/[^a-z]+/).filter((p) => p.length >= 3);
-}
-
-/**
- * As palavras dos nomes da turma DAQUELE tio (crianças e responsáveis), menos
- * as que estão no nome da própria auxiliar — "A Ana é ótima" não pode ser
- * recusada porque uma mãe da turma também se chama Ana.
- */
-function palavrasDosNomes(nomes, nomeDaAuxiliar = '') {
-  const dela = new Set(palavras(nomeDaAuxiliar));
-  const set = new Set();
-  for (const n of Array.isArray(nomes) ? nomes : []) {
-    for (const p of palavras(n)) if (!dela.has(p)) set.add(p);
-  }
-  return set;
-}
-
 const MSG = {
   vazia: null,
   longa: `A frase tem até ${MAX_FRASE} letras.`,
@@ -129,16 +87,6 @@ const MSG = {
   nome: 'Tire o nome de criança ou família da frase.',
 };
 
-/** 8 ou mais dígitos numa sequência, com ou sem máscara (telefone, CPF, CNPJ). */
-function temNumeroLongo(texto) {
-  const corridas = String(texto).match(/\d[\d\s().\-/]*\d/g) || [];
-  return corridas.some((c) => (c.match(/\d/g) || []).length >= 8);
-}
-
-function temLink(t) {
-  return /https?:|www\.|\.com\b|\.br\b|@/.test(t);
-}
-
 /**
  * A frase pode ir? Devolve `null` se pode, ou `{ motivo, mensagem }`. A
  * mensagem diz O QUE tirar, de forma genérica — nunca repete o nome achado.
@@ -146,14 +94,7 @@ function temLink(t) {
  * `nomesDaTurma` é o conjunto de `palavrasDosNomes`.
  */
 function problemaNaFrase(frase, nomesDaTurma = new Set()) {
-  const f = fraseLimpa(frase);
-  if (!f) return null;
-  if (f.length > MAX_FRASE) return { motivo: 'longa', mensagem: MSG.longa };
-  const t = normalizar(f);
-  if (temNumeroLongo(f) || temLink(t)) return { motivo: 'contato', mensagem: MSG.contato };
-  if (RAIZES_PROIBIDAS.some((r) => t.includes(r))) return { motivo: 'promessa', mensagem: MSG.promessa };
-  if (palavras(f).some((p) => nomesDaTurma.has(p))) return { motivo: 'nome', mensagem: MSG.nome };
-  return null;
+  return T.problemaNoTexto(frase, { max: MAX_FRASE, nomes: nomesDaTurma, mensagens: MSG });
 }
 
 /** Trabalhou o bastante para recomendar? `dias` vem de `diasDeVinculo`. */
@@ -170,7 +111,7 @@ function assinaturaDoTio({ marcaNome, name } = {}) {
   const marca = String(marcaNome || '').trim().replace(/\s+/g, ' ').slice(0, 60);
   const primeiro = String(name || '').trim().split(/\s+/)[0] || '';
   if (!marca) return primeiro || 'Motorista';
-  if (!primeiro || palavras(marca).includes(normalizar(primeiro))) return marca;
+  if (!primeiro || T.palavras(marca).includes(T.normalizar(primeiro))) return marca;
   return `${marca} (${primeiro})`;
 }
 
@@ -184,7 +125,7 @@ function documentoDaRecomendacao({ existente, motoristaUid, auxiliarUid, assinat
     auxiliarUid,
     assinatura,
     pontos,
-    frase: fraseLimpa(frase),
+    frase: T.fraseLimpa(frase),
     criadaEm: existente?.criadaEm || agora,
     editadaEm: existente ? agora : null,
     estado: ESTADO.PENDENTE,
@@ -240,12 +181,12 @@ module.exports = {
   MOTIVO_MAX,
   ESTADO,
   ACOES_DELA,
-  RAIZES_PROIBIDAS,
+  RAIZES_PROIBIDAS: T.RAIZES_PROIBIDAS,
   idDaAvaliacao,
-  normalizar,
+  normalizar: T.normalizar,
   validarPontos,
-  fraseLimpa,
-  palavrasDosNomes,
+  fraseLimpa: T.fraseLimpa,
+  palavrasDosNomes: T.palavrasDosNomes,
   problemaNaFrase,
   podeRecomendar,
   assinaturaDoTio,

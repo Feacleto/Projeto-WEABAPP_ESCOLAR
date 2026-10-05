@@ -120,6 +120,8 @@ const PaiMap = lazy(() => import('./pages/pai/PaiMap'));
 const AddChild = lazy(() => import('./pages/pai/AddChild'));
 const PaiContract = lazy(() => import('./pages/pai/PaiContract'));
 const PaiFaltas = lazy(() => import('./pages/pai/PaiFaltas'));
+// As fotos da comunidade (05/10/2026): a rede dos tios, num lugar separado.
+const PaiComunidade = lazy(() => import('./pages/pai/PaiComunidade'));
 
 const Notifications = lazy(() => import('./pages/Notifications'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -869,6 +871,7 @@ export default function App() {
           * e este mês"; aqui ele olha pra trás, que é o que a conversa com a
           * escola e a conferência da mensalidade pedem. */}
         <Route path="faltas" element={<PaiFaltas />} />
+        <Route path="comunidade" element={<PaiComunidade />} />
         <Route path="finance" element={<PaiFinance />} />
         <Route path="finance/report" element={<PaiFinanceReport />} />
         <Route path="map" element={<PaiMap />} />

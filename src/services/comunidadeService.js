@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   limit,
   onSnapshot,
@@ -16,7 +17,7 @@ import { db, functions, getStorageLazy } from '../firebase/config';
 import { STORAGE_ENABLED, STORAGE_OFF_MESSAGE } from '../config/capabilities';
 import { exigirCloud, mensagemDeErro } from './callableError';
 import { resizeAndCompress } from './photoService';
-import { PUBLICO, idDaAvaliacao, idDoPedidoDaFoto, pedidoDaFoto, semestreDe } from '../dominio/identidade/comunidade.js';
+import { ALCANCE_COMUNIDADE, PUBLICO, idDaAvaliacao, idDoPedidoDaFoto, pedidoDaFoto, semestreDe } from '../dominio/identidade/comunidade.js';
 
 /**
  * A COMUNIDADE (05/10/2026, etapa 1): a foto da turma na época festiva e os
@@ -149,10 +150,29 @@ export function watchFotosDaTurma(adminUid, cb, onError) {
 
 /** O "sim" (ou o "não") da família para a foto da turma. Só ela escreve. */
 export async function responderFotoDaTurma(childId, sim) {
+  // A FOTO DA COMUNIDADE (05/10/2026): o "sim" da pergunta nova cobre a
+  // turma e a comunidade, e isso fica no alcance. O "não" tira o alcance no
+  // mesmo write — as rules olham o valor resultante.
   await updateDoc(doc(db, 'children', childId), {
     fotoDaTurmaConsentida: !!sim,
+    fotoDaTurmaAlcance: sim ? ALCANCE_COMUNIDADE : deleteField(),
     fotoDaTurmaEm: serverTimestamp(),
   });
+}
+
+/**
+ * As fotos da comunidade que esta pessoa pode ver (o tio: as dos parceiros e
+ * as dele; a família: as dos tios dela e dos parceiros deles). Os links
+ * valem 15 minutos: cada abertura da tela pede de novo.
+ */
+export async function fotosDaComunidade() {
+  exigirCloud('ver as fotos da comunidade');
+  try {
+    const { data } = await httpsCallable(functions, 'fotosDaComunidade')({});
+    return data?.fotos || [];
+  } catch (err) {
+    throw new Error(mensagemDeErro(err, 'ver as fotos da comunidade'), { cause: err });
+  }
 }
 
 /* ── A AVALIAÇÃO DO TIO PELA FAMÍLIA (etapa 2) ─────────────────────────── */

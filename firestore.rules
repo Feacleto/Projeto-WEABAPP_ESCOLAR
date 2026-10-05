@@ -1137,7 +1137,7 @@ service cloud.firestore {
           'contratoVigente', 'contractAcceptedAt', 'contractAcceptedByUid',
           'contractAcceptedName', 'contractHash', 'contractUserAgent',
           'contractVersion', 'saudeNotas', 'saudeConsentidaEm', 'vinculadoPor',
-          'fotoDaTurmaConsentida', 'fotoDaTurmaEm'
+          'fotoDaTurmaConsentida', 'fotoDaTurmaEm', 'fotoDaTurmaAlcance'
         ]);
       // ⚠️ A CRIANÇA PASSADA A OUTRO TIO NÃO SE APAGA (QA, 05/10/2026). A
       // família lê o contrato e os pagamentos antigos PELO `parentUid` dela
@@ -1188,7 +1188,7 @@ service cloud.firestore {
         // o consentimento de quem responde por ela (LGPD art. 14), e quem
         // posta a foto não pode ser quem autoriza.
         && !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['fotoDaTurmaConsentida', 'fotoDaTurmaEm'])
+             .hasAny(['fotoDaTurmaConsentida', 'fotoDaTurmaEm', 'fotoDaTurmaAlcance'])
         // ⚠️ O ACEITE DO CONTRATO É DA FAMÍLIA — O MOTORISTA SÓ PODE APAGÁ-LO
         // (02/10/2026). Este ramo permitia qualquer campo, então o motorista
         // reescrevia `contractAcceptedAt`, o hash e o NOME de quem aceitou: a
@@ -1295,12 +1295,27 @@ service cloud.firestore {
         // Os dois campos andam juntos, como na saúde: o "sim" com a data, e
         // o "não" também com a data (saber quando mudou de ideia importa).
         // Ausente é NÃO — o servidor só publica com `true`.
+        //
+        // ⚠️ A FOTO DA COMUNIDADE (05/10/2026, decisão do dono): o mesmo "sim"
+        // passa a valer também para os tios PARCEIROS e as famílias deles, e
+        // isso fica marcado em `fotoDaTurmaAlcance: 'comunidade'`. O "sim"
+        // antigo, sem o campo, vale só para a turma: consentimento não se
+        // estende sozinho. A regra olha o valor RESULTANTE (achado da QA): o
+        // "não" tem de tirar o alcance, senão o 'comunidade' gravado antes
+        // ficaria de pé, porque o valor dele não muda e não entra no diff.
         isSignedIn()
         && resource.data.parentUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['fotoDaTurmaConsentida', 'fotoDaTurmaEm'])
+            .hasOnly(['fotoDaTurmaConsentida', 'fotoDaTurmaEm', 'fotoDaTurmaAlcance'])
         && request.resource.data.fotoDaTurmaConsentida is bool
         && request.resource.data.fotoDaTurmaEm == request.time
+        && (
+          !('fotoDaTurmaAlcance' in request.resource.data)
+          || (
+            request.resource.data.fotoDaTurmaAlcance == 'comunidade'
+            && request.resource.data.fotoDaTurmaConsentida == true
+          )
+        )
       ) || (
         // Pai atualiza foto da própria criança (reflete pro Tio).
         //

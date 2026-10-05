@@ -7,6 +7,7 @@ import {
   EPOCAS,
   LEGENDA_MAX,
   PUBLICO,
+  podeNaComunidade,
   prontaParaPublicar,
   simDaFoto,
 } from '../../dominio/identidade/comunidade.js';
@@ -23,6 +24,11 @@ import {
  * ⚠️ PARA OS PARCEIROS, NENHUMA CRIANÇA: a lista some e fica só a
  * declaração "nesta foto não aparece nenhuma criança".
  *
+ * ⚠️ PARA A COMUNIDADE (05/10/2026): ele marca quem está na foto, e só pode
+ * marcar quem tem o "sim" que cobre a comunidade; ou declara que não aparece
+ * nenhuma criança. A legenda é lida por gente de fora: o servidor recusa
+ * telefone, link, promessa de segurança e nome da turma.
+ *
  * F1.5: a AUXILIAR usa o mesmo formulário pela conta dela. `uid` é a pasta
  * de quem sobe (a dela) e `tioUid` é o tio em nome de quem a foto sai; ela
  * só posta para as famílias, e a `turma` é a CÓPIA dela (que traz o "sim").
@@ -37,6 +43,9 @@ export default function PublicarFoto({ uid, tioUid = null, publico, turma = [], 
   const [semCrianca, setSemCrianca] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const paraFamilias = publico === PUBLICO.FAMILIAS;
+  const paraComunidade = publico === PUBLICO.COMUNIDADE;
+  const marcaCriancas = paraFamilias || paraComunidade;
+  const pode = (c) => (paraComunidade ? podeNaComunidade(c) : simDaFoto(c) === 'sim');
 
   // A prévia nasce no toque (não num efeito) e a anterior é liberada.
   const previaAtual = useRef(null);
@@ -54,7 +63,7 @@ export default function PublicarFoto({ uid, tioUid = null, publico, turma = [], 
     () => [...turma].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
     [turma]
   );
-  const comSim = ordenada.filter((c) => simDaFoto(c) === 'sim').length;
+  const comSim = ordenada.filter(pode).length;
   const pronta = prontaParaPublicar({ publico, marcadas, turma, epoca, todasMarcadas, semCrianca, temFoto: !!arquivo });
 
   const alternar = (id) =>
@@ -64,7 +73,7 @@ export default function PublicarFoto({ uid, tioUid = null, publico, turma = [], 
     setEnviando(true);
     try {
       await publicarFotoDaTurma(uid, arquivo, { publico, criancas: marcadas, epoca, legenda: legenda.trim(), todasMarcadas, semCrianca, tioUid });
-      toast.success(paraFamilias ? 'Foto publicada para as famílias.' : 'Foto publicada para os tios parceiros.');
+      toast.success(paraFamilias ? 'Foto publicada para as famílias.' : paraComunidade ? 'Foto publicada para a comunidade.' : 'Foto publicada para os tios parceiros.');
       onPronto?.();
     } catch (err) {
       toast.error(err.message || 'Não deu para publicar.');
@@ -121,15 +130,17 @@ export default function PublicarFoto({ uid, tioUid = null, publico, turma = [], 
         />
       </label>
 
-      {paraFamilias ? (
+      {marcaCriancas ? (
         <div>
           <p className="text-base font-semibold text-text">Quem está na foto?</p>
           <p className="mb-2 text-sm text-textMuted">
-            {comSim} de {ordenada.length} famílias deram o sim para foto. Quem não deu não pode aparecer.
+            {paraComunidade
+              ? `${comSim} de ${ordenada.length} famílias deram o sim para a comunidade. Quem não deu não pode aparecer.`
+              : `${comSim} de ${ordenada.length} famílias deram o sim para foto. Quem não deu não pode aparecer.`}
           </p>
           <div className="space-y-2">
             {ordenada.map((c) => {
-              const sim = simDaFoto(c) === 'sim';
+              const sim = pode(c);
               const marcada = marcadas.includes(c.id);
               return (
                 <button
@@ -159,6 +170,17 @@ export default function PublicarFoto({ uid, tioUid = null, publico, turma = [], 
             />
             Marquei todas as crianças que aparecem na foto.
           </label>
+          {paraComunidade && marcadas.length === 0 && (
+            <label className="mt-1 flex min-h-12 items-center gap-3 text-base text-text">
+              <input
+                type="checkbox"
+                checked={semCrianca}
+                onChange={(e) => setSemCrianca(e.target.checked)}
+                className="h-6 w-6 accent-primary"
+              />
+              Nesta foto não aparece nenhuma criança.
+            </label>
+          )}
         </div>
       ) : (
         <label className="flex min-h-12 items-center gap-3 text-base text-text">
@@ -175,7 +197,7 @@ export default function PublicarFoto({ uid, tioUid = null, publico, turma = [], 
       {!pronta.ok && <p className="text-sm text-textMuted">{pronta.motivo}</p>}
       <Button onClick={publicar} disabled={!pronta.ok || enviando}>
         <Check size={18} aria-hidden="true" />
-        {enviando ? 'Publicando…' : paraFamilias ? (tioUid ? 'Publicar para as famílias' : 'Publicar para as minhas famílias') : 'Publicar para os tios parceiros'}
+        {enviando ? 'Publicando…' : paraFamilias ? (tioUid ? 'Publicar para as famílias' : 'Publicar para as minhas famílias') : paraComunidade ? 'Publicar para a comunidade' : 'Publicar para os tios parceiros'}
       </Button>
     </div>
   );

@@ -21,8 +21,25 @@
  * leitura depois de `expiraEm`, e uma agendada apaga o documento e o arquivo.
  */
 
+const { problemaNoTexto } = require('./reguaDoTextoLivre');
+
 const DIAS_DA_FOTO = 30;
-const PUBLICO = Object.freeze({ FAMILIAS: 'familias', PARCEIROS: 'parceiros' });
+// `PARCEIROS` é o post SEM criança só para os tios (etapa 1; os antigos
+// continuam lidos até vencer). `COMUNIDADE` (05/10/2026) é o que o tio posta
+// hoje na aba dos parceiros: os tios parceiros E as famílias deles veem, e
+// pode ter criança — só com o "sim" de alcance 'comunidade' de cada família.
+const PUBLICO = Object.freeze({ FAMILIAS: 'familias', PARCEIROS: 'parceiros', COMUNIDADE: 'comunidade' });
+/** O alcance do "sim" que cobre a comunidade. Ausente = só a turma. */
+const ALCANCE_COMUNIDADE = 'comunidade';
+/** O link assinado da foto da comunidade vale 15 minutos (exigência da QA). */
+const MINUTOS_DO_LINK = 15;
+/** As frases da recusa da legenda, ditas pela tela do tio. */
+const MENSAGENS_DA_LEGENDA = Object.freeze({
+  longa: 'A legenda passou do tamanho.',
+  contato: 'Tire telefone, e-mail ou link da legenda.',
+  promessa: 'Tire da legenda palavras como "segura" ou "garantida": o app não confere isso.',
+  nome: 'Tire o nome de criança ou família da legenda: outras famílias vão ler.',
+});
 const EPOCAS = Object.freeze([
   'Volta às aulas',
   'Carnaval',
@@ -134,7 +151,7 @@ function podeApagar(foto, autoria, { uid, papel } = {}) {
  * Pode publicar? `turma` é um mapa childId → documento da criança (lido pelo
  * servidor). Devolve `{ ok: true }` ou `{ ok: false, erro, semSim? }`.
  */
-function validarPublicacao({ uid, publico, criancas, epoca, legenda, todasMarcadas, semCrianca, turma } = {}) {
+function validarPublicacao({ uid, publico, criancas, epoca, legenda, todasMarcadas, semCrianca, turma, nomesDaTurma = new Set() } = {}) {
   if (!Object.values(PUBLICO).includes(publico)) return { ok: false, erro: 'Escolha para quem é a foto.' };
   if (!EPOCAS.includes(epoca)) return { ok: false, erro: 'Escolha a época da foto.' };
   if (legenda != null && (typeof legenda !== 'string' || legenda.length > LEGENDA_MAX)) {
@@ -148,6 +165,31 @@ function validarPublicacao({ uid, publico, criancas, epoca, legenda, todasMarcad
   if (publico === PUBLICO.PARCEIROS) {
     if (lista.length > 0 || semCrianca !== true) {
       return { ok: false, erro: 'Para os tios parceiros, só foto sem criança.' };
+    }
+    return { ok: true };
+  }
+
+  // A COMUNIDADE: gente de fora da turma lê a legenda (o mesmo filtro da
+  // recomendação da auxiliar), e cada criança precisa do "sim" que cobre a
+  // comunidade. Sem criança, vale a declaração, como era nos parceiros.
+  if (publico === PUBLICO.COMUNIDADE) {
+    const problema = problemaNoTexto(legenda, { max: LEGENDA_MAX, nomes: nomesDaTurma, mensagens: MENSAGENS_DA_LEGENDA });
+    if (problema) return { ok: false, erro: problema.mensagem };
+    if (!lista.length) {
+      if (semCrianca !== true) return { ok: false, erro: 'Marque quem está na foto, ou confirme que não aparece nenhuma criança.' };
+      return { ok: true };
+    }
+    if (todasMarcadas !== true) return { ok: false, erro: 'Confirme que marcou todas as crianças da foto.' };
+    const semSim = [];
+    for (const id of lista) {
+      const c = turma?.[id];
+      if (!c || c.adminUid !== uid || c.active === false) {
+        return { ok: false, erro: 'Uma das crianças marcadas não é da sua turma.' };
+      }
+      if (!podeNaComunidade(c)) semSim.push(id);
+    }
+    if (semSim.length) {
+      return { ok: false, erro: 'Há criança na foto sem a autorização da família para a comunidade.', semSim };
     }
     return { ok: true };
   }
@@ -326,9 +368,80 @@ function familiasDaTurma(criancas = []) {
   return [...uids];
 }
 
+/* ── A FOTO DA COMUNIDADE (05/10/2026, decisão do dono) ────────────────
+ *
+ * Um "sim" só cobre a turma e a comunidade (a pergunta à família diz os dois
+ * públicos, com as palavras dela — parecer dos jurídicos). O "sim" antigo,
+ * sem `fotoDaTurmaAlcance`, vale só para a turma: consentimento não se
+ * estende sozinho.
+ */
+
+/** O "sim" desta criança cobre a comunidade? */
+function podeNaComunidade(c) {
+  return !!c && c.fotoDaTurmaConsentida === true && c.fotoDaTurmaAlcance === ALCANCE_COMUNIDADE;
+}
+
+/**
+ * ⚠️ O CONSENTIMENTO VALE NA LEITURA, NÃO SÓ NA PUBLICAÇÃO (QA). Uma família
+ * que diz "não" depois, ou a criança que sai da turma ou é passada a outro
+ * tio, derruba o post na hora: ele deixa de ser entregue a quem não conhece a
+ * criança. `criancasPorId` são os documentos lidos AGORA.
+ */
+function postAindaVale(post, criancasPorId = {}) {
+  if (!post || post.publico !== PUBLICO.COMUNIDADE) return false;
+  const ids = Array.isArray(post.criancas) ? post.criancas : [];
+  return ids.every((id) => {
+    const c = criancasPorId[id];
+    return !!c
+      && c.adminUid === post.adminUid
+      && c.active !== false
+      && !c.transferidaPara
+      && podeNaComunidade(c);
+  });
+}
+
+/**
+ * De quem a família vê a comunidade: os tios dela (`adminUids` e o singular)
+ * e os parceiros de cada um. Sem repetir; o tamanho é cortado por quem chama.
+ */
+function redeDaFamilia(tiosDela = [], parceirosPorTio = {}) {
+  const set = new Set();
+  for (const t of tiosDela) {
+    if (!t) continue;
+    set.add(t);
+    for (const p of parceirosPorTio[t] || []) set.add(p);
+  }
+  return [...set];
+}
+
+/**
+ * O que sai para quem vê a comunidade — LISTA FECHADA. Nunca as crianças, o
+ * caminho do arquivo nem quem postou: só a foto (link curto), a época, a
+ * legenda, a marca do tio e a validade.
+ */
+function postParaLeitura(post, { id, url, marca, logoURL, minha }) {
+  return {
+    id,
+    url,
+    epoca: post.epoca,
+    legenda: post.legenda || null,
+    marca: marca || 'Tio parceiro',
+    logoURL: logoURL || null,
+    expiraEmMs: post.expiraEm?.toMillis?.() || post.expiraEmMs || null,
+    minha: !!minha,
+  };
+}
+
 module.exports = {
   DIAS_DA_FOTO,
   PUBLICO,
+  ALCANCE_COMUNIDADE,
+  MINUTOS_DO_LINK,
+  MENSAGENS_DA_LEGENDA,
+  podeNaComunidade,
+  postAindaVale,
+  redeDaFamilia,
+  postParaLeitura,
   EPOCAS,
   MAX_CRIANCAS,
   LEGENDA_MAX,

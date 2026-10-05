@@ -14,7 +14,9 @@
  */
 
 export const DIAS_DA_FOTO = 30;
-export const PUBLICO = Object.freeze({ FAMILIAS: 'familias', PARCEIROS: 'parceiros' });
+export const PUBLICO = Object.freeze({ FAMILIAS: 'familias', PARCEIROS: 'parceiros', COMUNIDADE: 'comunidade' });
+/** O alcance do "sim" que cobre a comunidade (espelho do servidor). */
+export const ALCANCE_COMUNIDADE = 'comunidade';
 export const EPOCAS = Object.freeze([
   'Volta às aulas',
   'Carnaval',
@@ -36,6 +38,40 @@ export function simDaFoto(crianca) {
 }
 
 /**
+ * O "sim" desta criança cobre a COMUNIDADE (05/10/2026)? Só o "sim" dado na
+ * pergunta nova, que diz os dois públicos. O antigo vale só para a turma.
+ */
+export function podeNaComunidade(crianca) {
+  return crianca?.fotoDaTurmaConsentida === true && crianca?.fotoDaTurmaAlcance === ALCANCE_COMUNIDADE;
+}
+
+/**
+ * O que a pergunta da família mostra no Início:
+ * 'sem_resposta' e 'perguntar_de_novo' (o "sim" antigo, só da turma) pedem a
+ * pergunta; 'sim' e 'nao' não.
+ */
+export function estadoDaPergunta(crianca) {
+  const sim = simDaFoto(crianca);
+  if (sim === 'sim' && !podeNaComunidade(crianca)) return 'perguntar_de_novo';
+  return sim;
+}
+
+/**
+ * A PERGUNTA À FAMÍLIA — texto dos jurídicos (05/10/2026), versão do "sim"
+ * único escolhida pelo dono. Ela nomeia os DOIS públicos com as palavras
+ * dela: é isso que torna o consentimento específico. Não cortar.
+ */
+export function textoDaPergunta({ marca, nome } = {}) {
+  const quem = String(marca || '').trim() || 'a perua';
+  const n = String(nome || '').trim().split(/\s+/)[0] || 'seu filho';
+  return {
+    titulo: 'Seu filho pode aparecer nas fotos da perua?',
+    linha: `Numa data especial, ${quem} posta uma foto da turma. Quem vê: as famílias desta perua, os tios parceiros dele e as famílias desses tios. Some em ${DIAS_DA_FOTO} dias.`,
+    rodape: `Você muda quando quiser, na ficha de ${n}.`,
+  };
+}
+
+/**
  * Pode mandar para o servidor? Devolve `{ ok, motivo }` — o mesmo critério
  * do servidor, para a tela dizer o que falta ANTES do toque.
  */
@@ -45,6 +81,18 @@ export function prontaParaPublicar({ publico, marcadas = [], turma = [], epoca, 
   if (publico === PUBLICO.PARCEIROS) {
     if (marcadas.length) return { ok: false, motivo: 'Para os tios parceiros, só foto sem criança.' };
     if (!semCrianca) return { ok: false, motivo: 'Confirme que não aparece nenhuma criança.' };
+    return { ok: true, motivo: null };
+  }
+  if (publico === PUBLICO.COMUNIDADE) {
+    if (!marcadas.length) {
+      if (!semCrianca) return { ok: false, motivo: 'Marque quem está na foto, ou confirme que não aparece nenhuma criança.' };
+      return { ok: true, motivo: null };
+    }
+    const porId = new Map(turma.map((c) => [c.id, c]));
+    if (marcadas.some((id) => !podeNaComunidade(porId.get(id)))) {
+      return { ok: false, motivo: 'Tem criança marcada sem o sim da família para a comunidade.' };
+    }
+    if (!todasMarcadas) return { ok: false, motivo: 'Confirme que marcou todas as crianças da foto.' };
     return { ok: true, motivo: null };
   }
   if (publico !== PUBLICO.FAMILIAS) return { ok: false, motivo: 'Escolha para quem é a foto.' };
@@ -105,12 +153,12 @@ export function idDaAvaliacao(adminUid, familiaUid, semestre) {
 
 /** As crianças ativas cuja família tem conta e ainda não respondeu. */
 export function quemFaltaResponder(turma = []) {
-  return turma.filter((c) => c && c.active !== false && c.parentUid && simDaFoto(c) === 'sem_resposta');
+  return turma.filter((c) => c && c.active !== false && c.parentUid && ['sem_resposta', 'perguntar_de_novo'].includes(estadoDaPergunta(c)));
 }
 
 /** As crianças sem resposta e sem conta da família (não dá para perguntar pelo app). */
 export function semContaParaPerguntar(turma = []) {
-  return turma.filter((c) => c && c.active !== false && !c.parentUid && simDaFoto(c) === 'sem_resposta');
+  return turma.filter((c) => c && c.active !== false && !c.parentUid && ['sem_resposta', 'perguntar_de_novo'].includes(estadoDaPergunta(c)));
 }
 
 /** 'AAAA-MM' no fuso de Brasília. */
@@ -128,7 +176,7 @@ export function pedidoDaFoto({ marca, nomeCrianca } = {}) {
   const nome = String(nomeCrianca || '').trim().split(/\s+/)[0] || 'seu filho';
   return {
     type: 'pedido_sim_da_foto',
-    title: `${quem} pergunta: ${nome} pode aparecer na foto da turma?`,
+    title: `${quem} pergunta: ${nome} pode aparecer nas fotos da perua?`,
     body: 'Responda no Início do app. Você pode mudar quando quiser.',
   };
 }

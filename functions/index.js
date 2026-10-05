@@ -226,6 +226,7 @@ const {
   makeLimparFotosVencidas,
   makeMinhaNotaDasFamilias,
   makeAvisarParceiroIndicado,
+  makeFotosDaComunidade,
 } = require('./lib/comunidade');
 exports.publicarFotoDaTurma = makePublicarFotoDaTurma(db);
 exports.apagarFotoDaTurma = makeApagarFotoDaTurma(db);
@@ -253,6 +254,9 @@ exports.aceitarTransferencia = makeAceitarTransferencia(db);
 // (sem dado nenhum dela). A foto da turma avisa as famílias dentro de
 // `publicarFotoDaTurma`, e as escolas do parceiro vêm em `meusParceiros`.
 exports.avisarParceiroIndicado = makeAvisarParceiroIndicado(db);
+// A foto da comunidade (05/10/2026): os tios parceiros e as famílias deles
+// veem pela callable, com link de 15 minutos e o "sim" conferido na leitura.
+exports.fotosDaComunidade = makeFotosDaComunidade(db);
 
 /* ══ O LINK DO DIA ═══════════════════════════════════════════════════════
  * Quem vai pegar a criança hoje acompanha a entrega sem ter conta. As duas

@@ -25,6 +25,21 @@
  * cada parceiro, `avisarParceiroIndicado` avisa o parceiro que o tio o
  * indicou a uma família (sem dado nenhum dela), e a foto da turma para as
  * famílias toca no celular delas, uma vez por época.
+ *
+ * ── ⚠️ A FOTO DA COMUNIDADE (05/10/2026) E OS DOIS JEITOS DE LINK — decidido
+ * com a QA, NÃO "uniformizar" sem decidir de novo:
+ * - TURMA ('familias'): token permanente no metadata do arquivo, e o link
+ *   fica no documento, que as famílias DAQUELE tio leem pelas rules. O
+ *   público é fechado e conhecido, e o link morre quando o arquivo é apagado
+ *   (30 dias, ou o tio apaga). O "não" da família impede só a PRÓXIMA
+ *   postagem.
+ * - COMUNIDADE ('comunidade'): nenhum token e nenhum link no documento. Quem
+ *   vê (os tios parceiros e as famílias deles, gente que não conhece a
+ *   criança) recebe pela callable `fotosDaComunidade` um link ASSINADO de
+ *   `MINUTOS_DO_LINK` minutos, gerado a cada leitura, e a callable confere o
+ *   "sim" de cada criança AGORA (`postAindaVale`): o "não" vale na hora.
+ *   ⚠️ Assinar exige que a conta de serviço das functions tenha
+ *   "Criador de tokens da conta de serviço" sobre si mesma (deploy).
  */
 
 const crypto = require('crypto');
@@ -38,6 +53,7 @@ const { carregarUsuario, exigirAuxiliar, exigirMotorista } = require('./papeis')
 const { exigirContaDoMotoristaOperando } = require('./auxiliares');
 const { idDoVinculo } = require('./reguaDoAuxiliar');
 const { idValido } = require('./reguaDosIds');
+const { palavrasDosNomes } = require('./reguaDoTextoLivre');
 const {
   PUBLICO,
   caminhoValido,
@@ -56,6 +72,10 @@ const {
   avisoDaFoto,
   familiasDaTurma,
   semestreDe,
+  MINUTOS_DO_LINK,
+  postAindaVale,
+  redeDaFamilia,
+  postParaLeitura,
   semestreAnterior,
   resumoParaOTio,
 } = require('./reguaDaComunidade');
@@ -102,6 +122,14 @@ function makePublicarFotoDaTurma(db) {
     const docs = criancas.length ? await db.getAll(...criancas.map((id) => db.doc(`children/${id}`))) : [];
     const turma = Object.fromEntries(docs.filter((s) => s.exists).map((s) => [s.id, s.data()]));
     const legenda = typeof d.legenda === 'string' ? d.legenda.trim() : null;
+    // Para a comunidade, a legenda é lida por quem não conhece a turma: o
+    // filtro precisa dos nomes DELA (crianças e responsáveis).
+    let nomesDaTurma = new Set();
+    if (d.publico === PUBLICO.COMUNIDADE) {
+      const daTurma = await db.collection('children').where('adminUid', '==', tioUid)
+        .select('name', 'parentName', 'parent2Name').limit(300).get();
+      nomesDaTurma = palavrasDosNomes(daTurma.docs.flatMap((c) => [c.get('name'), c.get('parentName'), c.get('parent2Name')]));
+    }
     const v = validarPublicacao({
       uid: tioUid,
       publico: d.publico,
@@ -111,6 +139,7 @@ function makePublicarFotoDaTurma(db) {
       todasMarcadas: d.todasMarcadas,
       semCrianca: d.semCrianca,
       turma,
+      nomesDaTurma,
     });
     if (!v.ok) throw new HttpsError('failed-precondition', v.erro, v.semSim ? { semSim: v.semSim } : undefined);
 
@@ -141,8 +170,15 @@ function makePublicarFotoDaTurma(db) {
         logger.warn('comunidade: original da auxiliar não apagado', { uid, erro: err?.message });
       }
     }
-    const token = crypto.randomUUID();
-    await arquivo.setMetadata({ metadata: { firebaseStorageDownloadTokens: token } });
+    // Só a turma ganha o token permanente (ver o cabeçalho). A comunidade é
+    // lida por link assinado, gerado a cada leitura.
+    const paraComunidade = d.publico === PUBLICO.COMUNIDADE;
+    let url = null;
+    if (!paraComunidade) {
+      const token = crypto.randomUUID();
+      await arquivo.setMetadata({ metadata: { firebaseStorageDownloadTokens: token } });
+      url = linkDeLeitura(bucket, caminho, token);
+    }
 
     const agora = Date.now();
     const expiraEm = Timestamp.fromMillis(expiraEmMs(agora));
@@ -156,7 +192,7 @@ function makePublicarFotoDaTurma(db) {
       epoca: d.epoca,
       legenda: legenda || null,
       caminho,
-      url: linkDeLeitura(bucket, caminho, token),
+      url,
       ...autoria.naFoto,
       criadaEm: FieldValue.serverTimestamp(),
       expiraEm,
@@ -371,6 +407,104 @@ function makeAvisarParceiroIndicado(db) {
   });
 }
 
+/** Link assinado curto; no emulador (sem conta para assinar), o link do emulador. */
+async function linkCurto(bucket, caminho) {
+  if (process.env.FIREBASE_STORAGE_EMULATOR_HOST) {
+    return `http://${process.env.FIREBASE_STORAGE_EMULATOR_HOST}/v0/b/${bucket.name}/o/${encodeURIComponent(caminho)}?alt=media`;
+  }
+  const [url] = await bucket.file(caminho).getSignedUrl({
+    version: 'v4',
+    action: 'read',
+    expires: Date.now() + MINUTOS_DO_LINK * 60 * 1000,
+  });
+  return url;
+}
+
+async function parceirosDoTio(db, uid) {
+  const [feitas, recebidas] = await Promise.all([
+    db.collection('indicacoes').where('indicadorUid', '==', uid).limit(200).get(),
+    db.collection('indicacoes').where('indicadoUid', '==', uid).limit(50).get(),
+  ]);
+  return parceirosDe(uid, {
+    feitas: feitas.docs.map((x) => x.data()),
+    recebidas: recebidas.docs.map((x) => x.data()),
+  }).map((p) => p.uid);
+}
+
+/**
+ * A FOTO DA COMUNIDADE, PARA QUEM VÊ (05/10/2026). O tio vê as dos parceiros
+ * e as dele; a família vê as dos tios dela e dos parceiros deles. Cada post
+ * só sai se TODAS as crianças dele ainda têm o "sim" da comunidade agora, e
+ * sai com um link de 15 minutos — nunca o nome da criança.
+ */
+function makeFotosDaComunidade(db) {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+    const { uid, dados: eu } = await carregarUsuario(db, request);
+    let tios;
+    if (eu?.role === 'admin') {
+      tios = [uid, ...(await parceirosDoTio(db, uid))];
+    } else if (eu?.role === 'parent') {
+      const dela = [...new Set([...(Array.isArray(eu.adminUids) ? eu.adminUids : []), eu.adminUid].filter(idValido))].slice(0, 5);
+      const parceiros = {};
+      for (const t of dela) parceiros[t] = await parceirosDoTio(db, t);
+      tios = redeDaFamilia(dela, parceiros);
+    } else {
+      throw new HttpsError('permission-denied', 'Esta tela é do motorista ou da família.');
+    }
+    tios = [...new Set(tios.filter(idValido))].slice(0, 90);
+    if (!tios.length) return { fotos: [] };
+
+    const agora = Timestamp.now();
+    const posts = [];
+    for (let i = 0; i < tios.length; i += 30) {
+      const snap = await db.collection(COLECAO)
+        .where('adminUid', 'in', tios.slice(i, i + 30))
+        .where('publico', '==', PUBLICO.COMUNIDADE)
+        .where('expiraEm', '>', agora)
+        .limit(60)
+        .get();
+      posts.push(...snap.docs);
+    }
+    if (!posts.length) return { fotos: [] };
+
+    // O "sim" de cada criança, lido AGORA.
+    const ids = [...new Set(posts.flatMap((p) => (p.get('criancas') || []).filter(idValido)))];
+    const criancas = {};
+    for (let i = 0; i < ids.length; i += 100) {
+      const docs = await db.getAll(...ids.slice(i, i + 100).map((id) => db.doc(`children/${id}`)));
+      for (const c of docs) if (c.exists) criancas[c.id] = c.data();
+    }
+    const valem = posts.filter((p) => postAindaVale(p.data(), criancas));
+
+    const donos = [...new Set(valem.map((p) => p.get('adminUid')))];
+    const perfis = donos.length ? await db.getAll(...donos.map((u) => db.doc(`users/${u}`))) : [];
+    const marcaDe = Object.fromEntries(perfis.map((p) => [p.id, p.exists ? p.data() : {}]));
+    const bucket = getStorage().bucket();
+    const fotos = [];
+    for (const p of valem) {
+      const post = p.data();
+      try {
+        const u = marcaDe[post.adminUid] || {};
+        fotos.push({
+          foto: postParaLeitura(post, {
+            id: p.id,
+            url: await linkCurto(bucket, post.caminho),
+            marca: u.marcaNome || u.name,
+            logoURL: u.marcaLogoURL,
+            minha: post.adminUid === uid,
+          }),
+          ordem: post.criadaEm?.toMillis?.() || 0,
+        });
+      } catch (err) {
+        logger.warn('comunidade: link da foto não saiu', { id: p.id, erro: err?.message });
+      }
+    }
+    fotos.sort((a, b) => b.ordem - a.ordem);
+    // A ordem só serviu para ordenar: não sai.
+    return { fotos: fotos.slice(0, 60).map((x) => x.foto) };
+  });
+}
+
 /**
  * A NOTA DAS FAMÍLIAS — o que o tio pode ver (etapa 2). Mora no servidor
  * porque as rules não deixam o tio ler as avaliações uma a uma (é o que
@@ -431,4 +565,5 @@ module.exports = {
   makeLimparFotosVencidas,
   makeMinhaNotaDasFamilias,
   makeAvisarParceiroIndicado,
+  makeFotosDaComunidade,
 };

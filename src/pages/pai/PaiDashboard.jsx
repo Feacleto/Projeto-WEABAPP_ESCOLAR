@@ -59,7 +59,7 @@ import { GRADIENTE_STATUS } from '../../config/paletaCategorica';
 import { diaSemRota, ehDiaDeAula } from '../../dominio/rota/calendario.js';
 import FaixaSemInternet from '../../components/dashboard/FaixaSemInternet';
 import { AvisoDoOuroDaFamilia } from '../../components/nivel/SeloDaFamilia';
-import { FotosDaTurmaNoInicio } from '../../components/comunidade/FotoDaTurmaDaFamilia';
+import { FotosDaTurmaNoInicio, LinhaFotosDaComunidade } from '../../components/comunidade/FotoDaTurmaDaFamilia';
 import AvaliarOTio from '../../components/comunidade/AvaliarOTio';
 import TransferenciaParaAceitar from '../../components/transferencia/TransferenciaParaAceitar';
 
@@ -433,6 +433,8 @@ export default function PaiDashboard() {
         {/* A PASSAGEM PARA OUTRO TIO (fase 2 da rede): fica até ela responder. */}
         <TransferenciaParaAceitar />
         <FotosDaTurmaNoInicio child={child} />
+        {/* As fotos da comunidade (05/10/2026): lugar separado, uma linha só. */}
+        <LinhaFotosDaComunidade />
         {/* A NOTA DO TIO (etapa 2): uma vez por semestre, só ele vê a média. */}
         <AvaliarOTio child={child} noInicio />
 

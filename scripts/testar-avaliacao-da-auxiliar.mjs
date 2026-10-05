@@ -94,9 +94,13 @@ checar('a mensagem de contato diz o que tirar', 'Tire telefone, e-mail ou link d
 
 console.log('\n3. o espelho das raízes é o de promessas.js');
 checar('a mesma lista, na mesma ordem', PROIBIDAS, A.RAIZES_PROIBIDAS);
-const textoDoEspelho = ler('functions/lib/reguaDaAvaliacaoDaAuxiliar.js');
+// O espelho mudou de casa (05/10/2026): o filtro é comum à legenda da foto
+// da comunidade, em reguaDoTextoLivre.js.
+const textoDoEspelho = ler('functions/lib/reguaDoTextoLivre.js');
 checar('o espelho diz de onde vem', true, textoDoEspelho.includes('src/marca/promessas.js'));
-checar('a régua não requer nada (testar:imports)', false, /require\(/.test(semComentarios(textoDoEspelho)));
+checar('o filtro comum não requer nada (testar:imports)', false, /require\(/.test(semComentarios(textoDoEspelho)));
+const requiresDaRegua = semComentarios(ler('functions/lib/reguaDaAvaliacaoDaAuxiliar.js')).match(/require\([^)]*\)/g) || [];
+checar('a régua da avaliação só requer o filtro comum', ["require('./reguaDoTextoLivre')"], requiresDaRegua);
 
 console.log('\n4. os 30 dias de vínculo, pela SOMA dos períodos');
 const agora = Date.UTC(2026, 9, 5, 12);

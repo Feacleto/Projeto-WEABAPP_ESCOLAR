@@ -91,7 +91,7 @@ const blocoFoto = regras.slice(regras.indexOf('match /fotosDaTurma/{id}'), regra
 eq('ninguém escreve fotosDaTurma pelo app', /allow write: if false;/.test(blocoFoto), true);
 eq('a família só lê até vencer', blocoFoto.includes('resource.data.expiraEm > request.time'), true);
 eq('a família só lê as "para as famílias"', blocoFoto.includes("resource.data.publico == 'familias'"), true);
-eq('o motorista não escreve o "sim" da família', /hasAny\(\['fotoDaTurmaConsentida', 'fotoDaTurmaEm'\]\)/.test(regras), true);
+eq('o motorista não escreve o "sim" da família, nem o alcance', /hasAny\(\['fotoDaTurmaConsentida', 'fotoDaTurmaEm', 'fotoDaTurmaAlcance'\]\)/.test(regras), true);
 const blocoStorage = storage.slice(storage.indexOf('match /fotosDaTurma/'), storage.indexOf('match /fotosDaTurma/') + 600);
 eq('ninguém lê a foto pelo Storage', blocoStorage.includes('allow read: if false;'), true);
 
@@ -143,13 +143,15 @@ const turmaSim = [
   { id: 'd', name: 'Duda' },
   { id: 'e', name: 'Edu', parentUid: 'm5', active: false },
 ];
-eq('perguntar só a quem tem conta e não respondeu (o "não" também é resposta)',
-  app.quemFaltaResponder(turmaSim).map((c) => c.id), ['a']);
+// A foto da comunidade (05/10/2026): o "sim" ANTIGO (o Caio, sem alcance)
+// vale só para a turma, então ele também é perguntado de novo.
+eq('perguntar a quem tem conta e não respondeu, e a quem tem só o sim antigo (o "não" é resposta)',
+  app.quemFaltaResponder(turmaSim).map((c) => c.id), ['a', 'c']);
 eq('sem conta no app não dá para perguntar', app.semContaParaPerguntar(turmaSim).map((c) => c.id), ['d']);
 eq('um pedido por criança por mês, no mês de Brasília', app.idDoPedidoDaFoto('a', new Date('2026-11-01T02:00:00Z')), 'simfoto_a_2026-10');
 eq('o pedido usa o primeiro nome e manda ao Início',
   app.pedidoDaFoto({ marca: 'Tio Nino', nomeCrianca: 'Ana Souza' }),
-  { type: 'pedido_sim_da_foto', title: 'Tio Nino pergunta: Ana pode aparecer na foto da turma?', body: 'Responda no Início do app. Você pode mudar quando quiser.' });
+  { type: 'pedido_sim_da_foto', title: 'Tio Nino pergunta: Ana pode aparecer nas fotos da perua?', body: 'Responda no Início do app. Você pode mudar quando quiser.' });
 const srvComunidade = fs.readFileSync('functions/lib/comunidade.js', 'utf8');
 eq('o servidor confere a parceria antes de avisar', /parceiros\.some\(\(p\) => p\.uid === parceiroUid\)/.test(srvComunidade), true);
 eq('o id do parceiro passa pela régua dos ids', /idValido\(parceiroUid\)/.test(srvComunidade), true);
@@ -211,6 +213,74 @@ eq('"as minhas fotos" da auxiliar saem do registro, pela callable',
   /function makeMinhasFotosDaTurma[\s\S]*exigirAuxiliar[\s\S]*collection\(AUTORIA\)\.where\('postadaPor', '==', uid\)/.test(srvComunidade), true);
 const servicoApp = fs.readFileSync('src/services/comunidadeService.js', 'utf8');
 eq('o app não consulta foto por quem postou', /where\('postadaPor'/.test(servicoApp), false);
+
+console.log('\n\x1b[1m10. A foto da comunidade: o "sim" que cobre a rede, o filtro da legenda e o "não" na leitura\x1b[0m');
+eq('o app e o servidor têm os mesmos públicos', { ...app.PUBLICO }, { ...srv.PUBLICO });
+eq('o mesmo alcance', app.ALCANCE_COMUNIDADE, srv.ALCANCE_COMUNIDADE);
+const simNovo = { fotoDaTurmaConsentida: true, fotoDaTurmaAlcance: 'comunidade' };
+const simAntigo = { fotoDaTurmaConsentida: true };
+for (const [nome, c, esperado] of [
+  ['o sim novo', simNovo, true],
+  ['o sim antigo (só a turma)', simAntigo, false],
+  ['o não', { fotoDaTurmaConsentida: false }, false],
+  ['alcance sem o sim (dado torto)', { fotoDaTurmaAlcance: 'comunidade' }, false],
+  ['sem resposta', {}, false],
+]) {
+  eq(`cobre a comunidade: ${nome}`, srv.podeNaComunidade(c), esperado);
+  eq(`o app e o servidor concordam: ${nome}`, app.podeNaComunidade(c), srv.podeNaComunidade(c));
+}
+eq('o sim antigo pede a pergunta de novo', app.estadoDaPergunta(simAntigo), 'perguntar_de_novo');
+eq('o sim novo não pede', app.estadoDaPergunta(simNovo), 'sim');
+const pergunta = app.textoDaPergunta({ marca: 'o Tio Nino', nome: 'Ana Souza' });
+eq('a pergunta nomeia os dois públicos com as palavras dela',
+  /famílias desta perua/.test(pergunta.linha) && /tios parceiros dele e as famílias desses tios/.test(pergunta.linha), true);
+eq('e diz onde mudar, com o primeiro nome', pergunta.rodape, 'Você muda quando quiser, na ficha de Ana.');
+
+const T = 'tio';
+const turmaC = {
+  k1: { adminUid: T, ...simNovo }, k2: { adminUid: T, ...simAntigo }, k3: { adminUid: T, fotoDaTurmaConsentida: false },
+};
+const pubC = (extra) => srv.validarPublicacao({ uid: T, publico: 'comunidade', epoca: 'Natal', turma: turmaC, ...extra });
+eq('comunidade: criança com o sim novo passa', pubC({ criancas: ['k1'], todasMarcadas: true }).ok, true);
+eq('comunidade: o sim antigo NÃO passa', pubC({ criancas: ['k2'], todasMarcadas: true }).semSim, ['k2']);
+eq('comunidade: sem criança, só com a declaração', [pubC({ criancas: [] }).ok, pubC({ criancas: [], semCrianca: true }).ok], [false, true]);
+eq('comunidade: sem "marquei todas", não', pubC({ criancas: ['k1'] }).ok, false);
+const filtro = require('../functions/lib/reguaDoTextoLivre.js');
+const nomesDaTurma = filtro.palavrasDosNomes(['Lucas Andrade', 'Márcia Andrade']);
+const leg = (legenda) => pubC({ criancas: [], semCrianca: true, legenda, nomesDaTurma });
+eq('legenda limpa passa', leg('Feliz Natal da nossa perua!').ok, true);
+eq('legenda com telefone não passa', leg('Liga 11 98765-4321').erro, srv.MENSAGENS_DA_LEGENDA.contato);
+eq('legenda com nome da turma não passa', leg('O Lucas adorou').erro, srv.MENSAGENS_DA_LEGENDA.nome);
+eq('legenda com promessa de segurança não passa', leg('Perua segura e feliz').erro, srv.MENSAGENS_DA_LEGENDA.promessa);
+eq('legenda com link não passa', leg('veja www.perua').erro, srv.MENSAGENS_DA_LEGENDA.contato);
+eq('na TURMA a legenda não passa pelo filtro (é lida só por quem conhece)', srv.validarPublicacao({
+  uid: T, publico: 'familias', epoca: 'Natal', turma: turmaC, criancas: ['k1'], todasMarcadas: true, legenda: 'O Lucas adorou', nomesDaTurma,
+}).ok, true);
+
+const post = { publico: 'comunidade', adminUid: T, criancas: ['k1'] };
+eq('o post vale com o sim novo de todas', srv.postAindaVale(post, { k1: { adminUid: T, ...simNovo } }), true);
+eq('a família disse NÃO depois: o post cai na hora', srv.postAindaVale(post, { k1: { adminUid: T, fotoDaTurmaConsentida: false } }), false);
+eq('voltou ao sim antigo (sem alcance): cai', srv.postAindaVale(post, { k1: { adminUid: T, ...simAntigo } }), false);
+eq('a criança saiu da turma: cai', srv.postAindaVale(post, { k1: { adminUid: T, ...simNovo, active: false } }), false);
+eq('a criança foi passada a outro tio: cai', srv.postAindaVale(post, { k1: { adminUid: T, ...simNovo, transferidaPara: { uid: 'x' } } }), false);
+eq('a criança é de outro tio agora: cai', srv.postAindaVale(post, { k1: { adminUid: 'outro', ...simNovo } }), false);
+eq('a criança sumiu: cai', srv.postAindaVale(post, {}), false);
+eq('post sem criança vale', srv.postAindaVale({ ...post, criancas: [] }, {}), true);
+eq('post da turma nunca sai pela comunidade', srv.postAindaVale({ ...post, publico: 'familias' }, { k1: { adminUid: T, ...simNovo } }), false);
+eq('a rede da família: os tios dela e os parceiros, sem repetir',
+  srv.redeDaFamilia(['t1', 't2'], { t1: ['p1', 't2'], t2: ['p1', 'p2'] }), ['t1', 'p1', 't2', 'p2']);
+const lido = srv.postParaLeitura({ ...post, epoca: 'Natal', legenda: 'Oi', caminho: 'fotosDaTurma/tio/x.jpg', postadaPor: 'aux', expiraEmMs: 5 },
+  { id: 'f1', url: 'https://assinado', marca: 'Tio Nino', logoURL: null, minha: false });
+eq('o que sai é uma lista fechada: nada de criança, caminho ou autora',
+  Object.keys(lido).sort(), ['epoca', 'expiraEmMs', 'id', 'legenda', 'logoURL', 'marca', 'minha', 'url']);
+eq('o link vale 15 minutos', srv.MINUTOS_DO_LINK, 15);
+const comunidadeSrv = fs.readFileSync('functions/lib/comunidade.js', 'utf8');
+eq('a comunidade não grava token nem link no documento', /if \(!paraComunidade\) \{[\s\S]*?firebaseStorageDownloadTokens/.test(comunidadeSrv), true);
+eq('o link da comunidade é assinado na leitura', /getSignedUrl\(/.test(comunidadeSrv), true);
+eq('o "sim" é conferido na leitura', /postAindaVale\(p\.data\(\), criancas\)/.test(comunidadeSrv), true);
+eq('o cabeçalho diz por que os dois links são diferentes', /NÃO "uniformizar" sem decidir de novo/.test(comunidadeSrv), true);
+const telaDaComunidade = fs.readFileSync('src/pages/pai/PaiComunidade.jsx', 'utf8');
+eq('a tela da família não tem botão de baixar nem de compartilhar', /download|navigator\.share|Baixar|Compartilhar/.test(telaDaComunidade), false);
 
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);
