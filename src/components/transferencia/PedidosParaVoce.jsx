@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRightLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { responderTransferencia, watchPedidosParaMim } from '../../services/transferenciasService';
 import { estaAberta, prazoDoPedido } from '../../dominio/identidade/transferencia.js';
+import { AVISO_DA_VOLTA, guardarVolta, limparVolta } from './voltaAoAceite';
 
 /**
  * OS PEDIDOS QUE CHEGARAM AO PARCEIRO (fase 2 da rede, 05/10/2026), no topo
@@ -15,15 +16,26 @@ import { estaAberta, prazoDoPedido } from '../../dominio/identidade/transferenci
  * chegam quando a FAMÍLIA aceitar. Quem ainda não tem plano recebe o
  * caminho para assinar (`precisaAssinar`) e volta para aceitar — decisão do
  * dono: conta grátis não recebe turma.
+ *
+ * F2.4: o pedido vai junto para os planos (`voltaAoAceite.js`), e quem
+ * assinou volta AQUI com ele aberto e "Pronto. Agora você pode aceitar a
+ * família." em cima. O aceite segue sendo o toque dele em "Aceito receber".
  */
 export default function PedidosParaVoce() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [pedidos, setPedidos] = useState([]);
   const [ocupado, setOcupado] = useState(null);
-  const [assinar, setAssinar] = useState(false);
+  // O id do pedido que pediu a assinatura (ou null).
+  const [assinar, setAssinar] = useState(null);
+  const voltouPara = location.state?.pedidoAberto || null;
 
   useEffect(() => watchPedidosParaMim(user?.uid, setPedidos), [user?.uid]);
+  // Voltou: a reserva do sessionStorage já serviu.
+  useEffect(() => {
+    if (voltouPara) limparVolta();
+  }, [voltouPara]);
 
   const abertos = pedidos.filter((t) => estaAberta(t));
   if (!abertos.length) return null;
@@ -34,7 +46,10 @@ export default function PedidosParaVoce() {
       await responderTransferencia(t.id, aceito);
       toast.success(aceito ? 'Aceito. Agora a família decide.' : 'Pedido recusado.');
     } catch (err) {
-      if (err.precisaAssinar) setAssinar(true);
+      if (err.precisaAssinar) {
+        guardarVolta(t.id);
+        setAssinar(t.id);
+      }
       toast.error(err.message);
     } finally {
       setOcupado(null);
@@ -52,7 +67,7 @@ export default function PedidosParaVoce() {
           <p className="text-base text-text">Para receber uma família, assine um plano antes. Depois volte aqui para aceitar.</p>
           <button
             type="button"
-            onClick={() => navigate('/tio/planos')}
+            onClick={() => navigate('/tio/planos', { state: { voltarAoPedido: assinar } })}
             className="mt-3 min-h-12 w-full rounded-xl bg-primary text-base font-bold text-white"
           >
             Ver os planos
@@ -60,7 +75,8 @@ export default function PedidosParaVoce() {
         </div>
       )}
       {abertos.map((t) => (
-        <div key={t.id} className="rounded-2xl bg-card p-4">
+        <div key={t.id} className={`rounded-2xl bg-card p-4 ${voltouPara === t.id ? 'border-2 border-primary' : ''}`}>
+          {voltouPara === t.id && <p className="mb-2 text-base font-bold text-primary">{AVISO_DA_VOLTA}</p>}
           <p className="text-base font-bold text-text">
             {t.marcaDe || 'Um tio parceiro'} quer passar {t.previa?.primeiroNome || 'uma criança'} para você
           </p>

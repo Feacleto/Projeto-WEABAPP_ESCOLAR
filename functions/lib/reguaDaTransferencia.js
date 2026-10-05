@@ -44,6 +44,24 @@
 const DIAS_PARA_RESPONDER = 7;
 const DIA_MS = 86400000;
 
+/**
+ * ── O TETO: 10 POR MÊS, POR TIO (decisão do dono, 05/10/2026, F2.4)
+ * Passar família é exceção (mudou de bairro, a perua lotou), não um jeito de
+ * esvaziar a turma em lote para uma conta nova. Acima de 10 no mês, é
+ * conversa com o suporte.
+ *
+ * ⚠️ O QUE CONTA: os pedidos que ELE FEZ no mês corrente, no fuso de
+ * Brasília, pelo `criadoEm` — os abertos, os concluídos e os que ELE
+ * CANCELOU. Não contam o "não posso" do parceiro nem o que venceu sem
+ * resposta: ali quem parou foi outra pessoa (ou o relógio), e contar o "não"
+ * de um terceiro tiraria dele uma vaga que ele não usou. O cancelado conta
+ * de propósito: sem isso, pedir e cancelar seria sem fim, e cada pedido é um
+ * aviso no celular do parceiro. Pedido em aberto conta porque é família a
+ * caminho — esperar a conclusão deixaria abrir 30 de uma vez.
+ */
+const TETO_POR_MES = 10;
+const ERRO_DO_TETO = 'Você já passou 10 famílias este mês. Fale com o suporte para passar mais.';
+
 const ESTADO = Object.freeze({
   PEDIDO: 'pedido',
   PARCEIRO_ACEITOU: 'parceiro_aceitou',
@@ -154,6 +172,29 @@ function estaAberta(t, agoraMs = Date.now()) {
   return ABERTOS.includes(estadoEfetivo(t, agoraMs));
 }
 
+/** O começo do mês de agora no fuso de Brasília (UTC−3, sem horário de verão), em ms. */
+function inicioDoMesMs(agoraMs = Date.now()) {
+  const d = new Date(agoraMs - 3 * 3600000);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) + 3 * 3600000;
+}
+
+/**
+ * Quantos pedidos dele contam para o teto deste mês (ver `TETO_POR_MES`).
+ * A consulta do servidor já vem presa ao mês; a régua confere de novo, para
+ * o mês virado zerar mesmo se a lista vier larga. `criadoEm` ausente conta:
+ * na dúvida, a vaga é do teto, não do pedido.
+ */
+function pedidosQueContam(transferencias, agoraMs = Date.now()) {
+  const inicio = inicioDoMesMs(agoraMs);
+  return (Array.isArray(transferencias) ? transferencias : []).filter((t) => {
+    if (!t) return false;
+    const criado = emMs(t.criadoEm);
+    if (criado != null && criado < inicio) return false;
+    const estado = estadoEfetivo(t, agoraMs);
+    return estado !== ESTADO.RECUSADA_PARCEIRO && estado !== ESTADO.EXPIRADA;
+  }).length;
+}
+
 function primeiroNome(nome) {
   return String(nome || '').trim().split(/\s+/)[0] || 'A criança';
 }
@@ -168,10 +209,10 @@ function previaDoParceiro(crianca) {
 
 /**
  * O tio de agora pode pedir? Devolve `{ ok, erro }`.
- * `ehParceiro` e `temAberta` vêm do servidor (consultas); o resto é do
- * documento.
+ * `ehParceiro`, `temAberta` e `pedidasNoMes` (`pedidosQueContam`) vêm do
+ * servidor (consultas); o resto é do documento.
  */
-function podePedir({ cobrancaLigada, uid, tio, crianca, parceiroUid, parceiro, ehParceiro, temAberta }) {
+function podePedir({ cobrancaLigada, uid, tio, crianca, parceiroUid, parceiro, ehParceiro, temAberta, pedidasNoMes = 0 }) {
   if (cobrancaLigada !== true) return { ok: false, erro: 'Passar a família para outro tio ainda não está disponível.' };
   if (!crianca || crianca.adminUid !== uid) return { ok: false, erro: 'Criança não encontrada.' };
   if (crianca.active === false) return { ok: false, erro: 'Esta criança já saiu da sua turma.' };
@@ -180,6 +221,7 @@ function podePedir({ cobrancaLigada, uid, tio, crianca, parceiroUid, parceiro, e
   if (!parceiroUid || parceiroUid === uid || !ehParceiro) return { ok: false, erro: 'Escolha um dos seus tios parceiros.' };
   if (!parceiro || parceiro.role !== 'admin' || parceiro.suspenso === true) return { ok: false, erro: 'Este tio não pode receber famílias agora.' };
   if (temAberta) return { ok: false, erro: 'Já existe um pedido aberto para esta criança.' };
+  if (!(Number(pedidasNoMes) < TETO_POR_MES)) return { ok: false, erro: ERRO_DO_TETO };
   return { ok: true, erro: null };
 }
 
@@ -325,6 +367,10 @@ function avisosDaConclusao({ marcaPara, nome }) {
 
 module.exports = {
   DIAS_PARA_RESPONDER,
+  TETO_POR_MES,
+  ERRO_DO_TETO,
+  inicioDoMesMs,
+  pedidosQueContam,
   ESTADO,
   ABERTOS,
   CAMPOS_QUE_VAO,

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CAMINHO_DA_VOLTA, lerVolta } from '../../components/transferencia/voltaAoAceite';
 import {
   Check,
   ChevronRight,
@@ -109,6 +110,7 @@ function paraDataLocal(v) {
  */
 export default function TioPlanos() {
   const navigate = useNavigate();
+  const location = useLocation();
   // ⚠️ O `uid` VEM DO `user`, NUNCA DO `profile`.
   //
   // `profile` é o `snap.data()` de `users/{uid}` (ver `getUserDoc`), e o
@@ -241,7 +243,12 @@ export default function TioPlanos() {
         toast.success('Plano contratado. Falta só aceitar o contrato.');
       }
       setPedindoDocumento(false);
-      navigate('/tio/contrato-plataforma');
+      // VEIO DE UMA FAMÍLIA PARA RECEBER (F2.4): assinou, volta ao pedido
+      // aberto — o aceite continua sendo um toque dele lá. O contrato da
+      // plataforma espera em "Meus planos", e o toast acima já diz que falta.
+      const pedido = lerVolta(location.state);
+      if (pedido) navigate(CAMINHO_DA_VOLTA, { state: { pedidoAberto: pedido } });
+      else navigate('/tio/contrato-plataforma');
     } catch (err) {
       // No passo do documento, o erro fica embaixo do campo (inclusive o de
       // "já ligado a outra conta", que não diz de quem é).

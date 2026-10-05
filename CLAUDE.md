@@ -1764,7 +1764,13 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   folha que diz o que vai e o que fica; sem "Recusar", ela fala com o tio).
   ⚠️ **Só para quem PAGA e fora do ar com a cobrança desligada** (decisão
   do dono): tio sem plano não pede; parceiro sem plano recebe
-  `precisaAssinar`. ⚠️ **O aceite cria uma criança NOVA** (lista fechada
+  `precisaAssinar` — e, assinado em `/tio/planos`, VOLTA à Comunidade com
+  o pedido aberto e "Pronto. Agora você pode aceitar a família." (o aceite
+  segue sendo um toque dele; `voltaAoAceite.js`, state + sessionStorage).
+  ⚠️ **Teto de 10 por mês, por tio** (F2.4): contam os pedidos que ELE fez
+  no mês de Brasília — abertos, concluídos e os que ele cancelou; o "não
+  posso" do parceiro e o vencido não (`pedidosQueContam`, índice deUid +
+  criadoEm). O 11º: "Fale com o suporte". ⚠️ **O aceite cria uma criança NOVA** (lista fechada
   `CAMPOS_QUE_VAO`: saúde, foto, dinheiro, contrato, horários e histórico
   nunca vão; a escola casa pelo nome com uma do parceiro), e a antiga fica
   `active: false` com `transferidaPara`, do mesmo dono, e CONGELADA para

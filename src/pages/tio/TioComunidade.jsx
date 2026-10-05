@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { School, Send, Trash2, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -42,7 +43,10 @@ import {
  */
 export default function TioComunidade() {
   const { user } = useAuth();
-  const [aba, setAba] = useState(PUBLICO.FAMILIAS);
+  const location = useLocation();
+  // Quem volta dos planos para aceitar uma família (F2.4) cai direto na aba
+  // em que o pedido mora.
+  const [aba, setAba] = useState(location.state?.pedidoAberto ? PUBLICO.PARCEIROS : PUBLICO.FAMILIAS);
 
   return (
     <div className="min-h-screen bg-bg pb-16">

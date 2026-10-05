@@ -52,7 +52,8 @@ function makePedirTransferencia(db) {
     const { childId, parceiroUid } = request.data || {};
     if (!idValido(childId) || !idValido(parceiroUid)) throw new HttpsError('invalid-argument', 'Escolha um dos seus tios parceiros.');
 
-    const [ligada, tioSnap, criancaSnap, parceiroSnap, ehParceiro, abertas] = await Promise.all([
+    const agora = Date.now();
+    const [ligada, tioSnap, criancaSnap, parceiroSnap, ehParceiro, abertas, doMes] = await Promise.all([
       cobrancaLigada(db),
       db.doc(`users/${uid}`).get(),
       db.doc(`children/${childId}`).get(),
@@ -60,9 +61,14 @@ function makePedirTransferencia(db) {
       saoParceiros(db, uid, parceiroUid),
       db.collection(COLECAO).where('deUid', '==', uid).where('childId', '==', childId)
         .where('estado', 'in', R.ABERTOS).limit(5).get(),
+      // O TETO DO MÊS: só os pedidos DELE, criados neste mês (fuso de
+      // Brasília). Índice composto deUid + criadoEm (firestore.indexes.json).
+      // O limite passa do teto com folga: a conta de quem conta é da régua.
+      db.collection(COLECAO).where('deUid', '==', uid)
+        .where('criadoEm', '>=', Timestamp.fromMillis(R.inicioDoMesMs(agora)))
+        .select('estado', 'expiraEm', 'criadoEm').limit(R.TETO_POR_MES * 5).get(),
     ]);
     const crianca = criancaSnap.exists ? criancaSnap.data() : null;
-    const agora = Date.now();
     const v = R.podePedir({
       cobrancaLigada: ligada,
       uid,
@@ -72,6 +78,11 @@ function makePedirTransferencia(db) {
       parceiro: parceiroSnap.exists ? parceiroSnap.data() : null,
       ehParceiro,
       temAberta: abertas.docs.some((s) => R.estaAberta(s.data(), agora)),
+      // Lista cheia (50 pedidos no mês) é teto, sem contar: a página cortada
+      // poderia deixar de fora justamente os que contam.
+      pedidasNoMes: doMes.size >= R.TETO_POR_MES * 5
+        ? R.TETO_POR_MES
+        : R.pedidosQueContam(doMes.docs.map((s) => s.data()), agora),
     });
     if (!v.ok) throw new HttpsError('failed-precondition', v.erro);
 

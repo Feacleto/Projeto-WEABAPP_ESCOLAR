@@ -168,5 +168,64 @@ eq('o "Aceito" da família mora dentro da folha que mostra o que vai', /<Sheet[\
 eq('a família não tem botão de recusar (fala com o tio)', />\s*Recusar\s*</.test(aceite), false);
 eq('sonda: o detector acha um botão de recusar', />\s*Recusar\s*</.test('<button>Recusar</button>'), true);
 
+console.log('\n\x1b[1m9. O teto de 10 por mês (F2.4)\x1b[0m');
+{
+  const outubro = Date.parse('2026-10-20T15:00:00Z');
+  const noMes = Date.parse('2026-10-03T12:00:00Z');
+  const pedido = (estado, extra = {}) => ({ estado, criadoEm: noMes, expiraEm: outubro + 86400000, ...extra });
+  const dez = Array.from({ length: 10 }, () => pedido('concluida'));
+  eq('o teto é 10', R.TETO_POR_MES, 10);
+  eq('9 no mês: o 10º passa', R.podePedir({ ...base, pedidasNoMes: 9 }).ok, true);
+  eq('10 no mês: o 11º é recusado', R.podePedir({ ...base, pedidasNoMes: 10 }).ok, false);
+  eq('a frase do teto', R.podePedir({ ...base, pedidasNoMes: 10 }).erro,
+    'Você já passou 10 famílias este mês. Fale com o suporte para passar mais.');
+  eq('sem a contagem, vale zero (o caminho de antes passa)', R.podePedir(base).ok, true);
+  eq('10 concluídas contam 10', R.pedidosQueContam(dez, outubro), 10);
+  eq('abertos contam (família a caminho)', R.pedidosQueContam([pedido('pedido'), pedido('parceiro_aceitou')], outubro), 2);
+  eq('cancelados contam (pedir e cancelar não burla)', R.pedidosQueContam([pedido('cancelada')], outubro), 1);
+  eq('o "não posso" do parceiro não conta', R.pedidosQueContam([pedido('recusada_parceiro')], outubro), 0);
+  eq('expirado (gravado) não conta', R.pedidosQueContam([pedido('expirada')], outubro), 0);
+  eq('vencido sem resposta (estado efetivo) não conta',
+    R.pedidosQueContam([pedido('pedido', { expiraEm: outubro - 1 })], outubro), 0);
+  eq('10 concluídas + 3 recusadas: ainda é 10, o 11º recusa',
+    R.podePedir({ ...base, pedidasNoMes: R.pedidosQueContam([...dez, ...Array(3).fill(pedido('recusada_parceiro'))], outubro) }).ok, false);
+  eq('8 concluídas + 5 recusadas: passa', R.podePedir({ ...base, pedidasNoMes: R.pedidosQueContam([...dez.slice(2), ...Array(5).fill(pedido('recusada_parceiro'))], outubro) }).ok, true);
+  const setembro = dez.map((t) => ({ ...t, criadoEm: Date.parse('2026-09-28T12:00:00Z') }));
+  eq('mês virado zera', R.pedidosQueContam(setembro, outubro), 0);
+  // 01/10 00:30 em Brasília = 03:30 UTC; 30/09 23:30 em Brasília = 01/10 02:30 UTC.
+  eq('o mês é o de Brasília: 30/09 23h30 de lá ainda é setembro',
+    R.pedidosQueContam([pedido('concluida', { criadoEm: Date.parse('2026-10-01T02:30:00Z') })], outubro), 0);
+  eq('o mês é o de Brasília: 01/10 00h30 de lá já é outubro',
+    R.pedidosQueContam([pedido('concluida', { criadoEm: Date.parse('2026-10-01T03:30:00Z') })], outubro), 1);
+  eq('início do mês em Brasília', new Date(R.inicioDoMesMs(outubro)).toISOString(), '2026-10-01T03:00:00.000Z');
+  eq('janeiro vira certo', new Date(R.inicioDoMesMs(Date.parse('2027-01-01T02:00:00Z'))).toISOString(), '2026-12-01T03:00:00.000Z');
+
+  eq('o servidor conta os pedidos DELE do mês e passa à régua', /where\('deUid', '==', uid\)\s*\.where\('criadoEm', '>=', Timestamp\.fromMillis\(R\.inicioDoMesMs\(agora\)\)\)/.test(srv)
+    && srv.includes('pedidasNoMes:') && srv.includes('R.pedidosQueContam('), true);
+  const indices = JSON.parse(fs.readFileSync('firestore.indexes.json', 'utf8')).indexes;
+  eq('o índice composto deUid + criadoEm existe', indices.some((i) => i.collectionGroup === 'transferenciasDeFamilia'
+    && i.fields.map((f) => f.fieldPath).join(',') === 'deUid,criadoEm'), true);
+}
+
+console.log('\n\x1b[1m10. A volta ao aceite depois de assinar (F2.4)\x1b[0m');
+{
+  const volta = fs.readFileSync('src/components/transferencia/voltaAoAceite.js', 'utf8');
+  const pedidos = fs.readFileSync('src/components/transferencia/PedidosParaVoce.jsx', 'utf8');
+  const planos = fs.readFileSync('src/pages/tio/TioPlanos.jsx', 'utf8');
+  const comunidade = fs.readFileSync('src/pages/tio/TioComunidade.jsx', 'utf8');
+  eq('o aviso da volta', volta.includes("'Pronto. Agora você pode aceitar a família.'"), true);
+  eq('o sessionStorage tem try/catch nas três pontas', (volta.match(/try \{/g) || []).length, 3);
+  eq('o pedido vai aos planos no state e no sessionStorage', pedidos.includes('guardarVolta(t.id)')
+    && pedidos.includes("navigate('/tio/planos', { state: { voltarAoPedido: assinar } })"), true);
+  eq('os planos voltam ao pedido depois de contratar', /contratarPlano[\s\S]*lerVolta\(location\.state\)[\s\S]*navigate\(CAMINHO_DA_VOLTA, \{ state: \{ pedidoAberto: pedido \} \}\)/.test(planos), true);
+  eq('sem pedido, o caminho de sempre (o contrato)', planos.includes("else navigate('/tio/contrato-plataforma')"), true);
+  eq('a Comunidade abre na aba dos parceiros', comunidade.includes('location.state?.pedidoAberto ? PUBLICO.PARCEIROS'), true);
+  eq('o pedido de volta aparece com o aviso', pedidos.includes('voltouPara === t.id && <p') && pedidos.includes('{AVISO_DA_VOLTA}'), true);
+  // O aceite nunca é automático: responderTransferencia só no clique.
+  const chamadas = pedidos.match(/responderTransferencia\(/g) || [];
+  eq('o aceite continua sendo um toque (uma chamada só, dentro do responder)', chamadas.length, 1);
+  eq('a volta não aceita nada sozinha (nem importa quem aceita)', /responderTransferencia|aceitarTransferencia|import /.test(volta.replace(/\/\*[\s\S]*?\*\//g, '')), false);
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);

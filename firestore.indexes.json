@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "transferenciasDeFamilia",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "deUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "agendaEntries",
       "queryScope": "COLLECTION",
       "fields": [
