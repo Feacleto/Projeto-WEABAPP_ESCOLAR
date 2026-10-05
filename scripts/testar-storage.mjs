@@ -84,7 +84,7 @@ const semear = (caminho, fields) =>
  * seguiam verdes pelo mesmo motivo errado. O `multipart` é o formato que o app
  * de verdade usa (`uploadBytes`), então é ele que o teste precisa medir.
  */
-function corpoMultipart(caminho, tipo) {
+function corpoMultipart(caminho, tipo, extra = 0) {
   const fronteira = 'fronteiraDoTeste';
   return {
     fronteira,
@@ -95,13 +95,14 @@ function corpoMultipart(caminho, tipo) {
           `--${fronteira}\r\nContent-Type: ${tipo}\r\n\r\n`
       ),
       Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+      Buffer.alloc(extra, 0x61),
       Buffer.from(`\r\n--${fronteira}--`),
     ]),
   };
 }
 
-const subir = (caminho, autorizacao, tipo) => {
-  const { fronteira, corpo } = corpoMultipart(caminho, tipo);
+const subir = (caminho, autorizacao, tipo, extra = 0) => {
+  const { fronteira, corpo } = corpoMultipart(caminho, tipo, extra);
   return fetch(`${ST}?name=${encodeURIComponent(caminho)}`, {
     method: 'POST',
     headers: {
@@ -114,8 +115,8 @@ const subir = (caminho, autorizacao, tipo) => {
 };
 
 /** Sobe 1 pixel de JPEG. O conteúdo não importa; o content-type sim. */
-const enviar = (caminho, sessao, tipo = 'image/jpeg') =>
-  subir(caminho, `Firebase ${sessao.t}`, tipo).then((r) => r.status);
+const enviar = (caminho, sessao, tipo = 'image/jpeg', extra = 0) =>
+  subir(caminho, `Firebase ${sessao.t}`, tipo, extra).then((r) => r.status);
 
 const baixar = (caminho, sessao) =>
   fetch(`${ST}/${encodeURIComponent(caminho)}`, {
@@ -219,6 +220,50 @@ async function main() {
     await baixar(`fotosDaTurma/${tio1.uid}/abc123def456.jpg`, tio1));
   checar('turma', 'a família não lê pelo Storage', 'NEGA',
     await baixar(`fotosDaTurma/${tio1.uid}/abc123def456.jpg`, pai1));
+
+  // ── A FOTO DA TURMA PELA AUXILIAR (F1.5) — CASOS ESCRITOS ANTES DA REGRA.
+  // A auxiliar sobe na PRÓPRIA pasta e uma callable copia para a do tio. A
+  // regra ainda não existe: HOJE só o primeiro caso fica vermelho (ela não é
+  // isAdmin); os outros passam, e é isso que garante que a regra nova não
+  // abra nada além dele.
+  console.log('\n═══ FOTO DA TURMA PELA AUXILIAR (F1.5, casos antes da regra) ═══');
+  const auxAtiva = await criarLogin(`s.auxa.${Date.now()}@teste.local`);
+  const auxSemTio = await criarLogin(`s.auxs.${Date.now()}@teste.local`);
+  const outraAux = await criarLogin(`s.auxo.${Date.now()}@teste.local`);
+  const LISTA = (ids) => ({ arrayValue: ids.length ? { values: ids.map(S) } : {} });
+  await semear(`users/${auxAtiva.uid}`, {
+    role: S('auxiliar'), name: S('Aux Ativa'), motoristaUids: LISTA([tio1.uid]),
+  });
+  await semear(`users/${auxSemTio.uid}`, {
+    role: S('auxiliar'), name: S('Aux Sem Tio'), motoristaUids: LISTA([]),
+  });
+  await semear(`users/${outraAux.uid}`, {
+    role: S('auxiliar'), name: S('Outra Aux'), motoristaUids: LISTA([tio1.uid]),
+  });
+  const A = 'turmaaux';
+  checar(A, 'a auxiliar ativa sobe na própria pasta', 'PASSA',
+    await enviar(`fotosDaTurma/${auxAtiva.uid}/aux001.jpg`, auxAtiva));
+  checar(A, 'a auxiliar sem tio ativo NÃO sobe', 'NEGA',
+    await enviar(`fotosDaTurma/${auxSemTio.uid}/aux002.jpg`, auxSemTio));
+  checar(A, 'a auxiliar NÃO sobe na pasta do tio', 'NEGA',
+    await enviar(`fotosDaTurma/${tio1.uid}/aux003.jpg`, auxAtiva));
+  checar(A, 'a auxiliar NÃO sobe na pasta de outra auxiliar', 'NEGA',
+    await enviar(`fotosDaTurma/${outraAux.uid}/aux004.jpg`, auxAtiva));
+  checar(A, 'a família NÃO sobe na própria pasta', 'NEGA',
+    await enviar(`fotosDaTurma/${pai1.uid}/aux005.jpg`, pai1));
+  checar(A, 'o novato/outro motorista NÃO sobe na pasta da auxiliar', 'NEGA',
+    await enviar(`fotosDaTurma/${auxAtiva.uid}/aux006.jpg`, tio2));
+  checar(A, 'o motorista continua subindo na dele', 'PASSA',
+    await enviar(`fotosDaTurma/${tio1.uid}/aux007.jpg`, tio1));
+  checar(A, 'a auxiliar NÃO sobe arquivo que não é imagem', 'NEGA',
+    await enviar(`fotosDaTurma/${auxAtiva.uid}/aux008.pdf`, auxAtiva, 'application/pdf'));
+  checar(A, 'a auxiliar NÃO sobe imagem grande demais', 'NEGA',
+    await enviar(`fotosDaTurma/${auxAtiva.uid}/aux009.jpg`, auxAtiva, 'image/jpeg', 3 * 1024 * 1024));
+  await plantar(`fotosDaTurma/${auxAtiva.uid}/aux010.jpg`);
+  checar(A, 'a auxiliar NÃO lê a própria foto', 'NEGA',
+    await baixar(`fotosDaTurma/${auxAtiva.uid}/aux010.jpg`, auxAtiva));
+  checar(A, 'o tio NÃO lê a foto da auxiliar', 'NEGA',
+    await baixar(`fotosDaTurma/${auxAtiva.uid}/aux010.jpg`, tio1));
 
   // ── FOTO DA CRIANÇA — o caminho determinístico que mais assusta.
   console.log('\n═══ FOTO DA CRIANÇA ═══');
