@@ -4126,11 +4126,23 @@ async function oRegistroDoDono({ novato, dono, anon }) {
   checar(BL, 'o suspenso não se reativa sozinho', 'NEGA',
     await escrever(`users/${S2.uid}`, S2, { suspenso: B(false) }, ['suspenso']));
 
-  const st15 = await escrever(`taxaParceiros/${M.uid}`, dono, { suspensaoAte: T(10) }, ['suspensaoAte']);
-  console.log(`  [INFO] caso 15: dono escreve taxaParceiros/{M}.suspensaoAte -> status ${st15}`);
+  // O PRAZO DA SUSPENSÃO É SÓ DA CALLABLE: gravado à mão pelo dono, ele
+  // divergiria da linha do registro que diz até quando.
+  checar(BL, 'o dono não escreve taxaParceiros/{M}.suspensaoAte pelo cliente', 'NEGA',
+    await escrever(`taxaParceiros/${M.uid}`, dono, { suspensaoAte: T(10) }, ['suspensaoAte']));
+  await semear(`taxaParceiros/${O.uid}`, { suspensaoAte: T(10) });
+  checar(BL, 'o dono não apaga o suspensaoAte pelo cliente', 'NEGA',
+    await escrever(`taxaParceiros/${O.uid}`, dono, {}, ['suspensaoAte']));
+  const novoParceiro = await criarLogin(`rd.n.${agora}@teste.local`);
+  await semear(`users/${novoParceiro.uid}`, { role: S('admin'), name: S('Tio N') });
+  checar(BL, 'o dono não cria taxaParceiros já com suspensaoAte', 'NEGA',
+    await escrever(`taxaParceiros/${novoParceiro.uid}`, dono,
+      { notaInterna: S('nova'), suspensaoAte: T(10) }, ['notaInterna', 'suspensaoAte']));
+  checar(BL, 'SONDA: o dono cria taxaParceiros só com a nota', 'PASSA',
+    await escrever(`taxaParceiros/${novoParceiro.uid}`, dono, { notaInterna: S('nova') }, ['notaInterna']));
   checar(BL, 'a família F não lê taxaParceiros/{M}', 'NEGA', await ler(`taxaParceiros/${M.uid}`, F));
-  const st17 = await ler(`taxaParceiros/${M.uid}`, M);
-  console.log(`  [INFO] caso 17: M lê taxaParceiros/{M} -> status ${st17}`);
+  checar(BL, 'o motorista não lê o próprio taxaParceiros (a nota interna mora lá)', 'NEGA',
+    await ler(`taxaParceiros/${M.uid}`, M));
 }
 
 /**
