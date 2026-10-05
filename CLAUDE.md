@@ -43,7 +43,8 @@ npm run testar                   # 84 scripts. O PRIMEIRO é
                                  # dinheiro), tranca, senha-financeiro, km-da-rota,
                                  # perua, ditado, indices, economia, e os da auxiliar:
                                  # auxiliar, pagamento-da-auxiliar,
-                                 # substitutas, avaliacao-da-auxiliar
+                                 # substitutas, avaliacao-da-auxiliar,
+                                 # substituta-de-um-dia
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -247,6 +248,25 @@ do dono): uma linha por auxiliar no "Para resolver" — "Cida faltou hoje" ·
 "Substituta: Joana" ou "Sem substituta registrada" — que leva à Central (com
 a senha). O Início não tem senha: só nomes, nunca R$ (`linhasDaFaltaDeHoje`,
 escuta estreita do dia em `watchFaltasDeHoje`/`useFaltaDaAuxiliarHoje`).
+⚠️ **A SUBSTITUTA DE UM DIA (F3, 05/10/2026):** "Chamar hoje" (na lista de
+substitutas e, registrada a substituta, "Mandar o link de hoje" no "Hoje" da
+auxiliar) gera um link `/substituta/s_{id}.{SEGREDO}` e abre o WhatsApp dela.
+Não é conta: a página pública ([Substituta.jsx](src/pages/Substituta.jsx))
+chama `verRotaDaSubstituta`, que confere o HASH (`acessosDeSubstituta/{id}`
+guarda só ele; só o tio do acesso lê, nem o dono) e devolve a rota na ordem
+da viagem: PRIMEIRO nome, hora, escola, status de hoje e falta, e a marca do
+tio — nunca sobrenome, foto, telefone, endereço, valor ou saúde. Ela só vê.
+Morre à meia-noite (pela leitura), quando o tio encerra, e quando a ROTA DO
+DIA acaba — ⚠️ **sem gatilho em `liveLocation`** (acordaria a cada posição):
+a leitura confere `liveLocation/{tio}` e só conta o encerramento a menos de
+90 min da última parada (encerrar a IDA não mata o link da volta); o app do
+tio e o `closeStaleRoutes` pedem ao servidor que encerre e avise ("Acesso da
+Joana encerrado."). ⚠️ **O caminho público não escreve**: só o limite por IP,
+e só para a sondagem (segredo errado), nunca para o link certo que morreu.
+Régua em [reguaDaSubstitutaDeUmDia.js](functions/lib/reguaDaSubstitutaDeUmDia.js),
+`npm run testar:substituta-de-um-dia`. ⚠️ **Um terceiro vê o primeiro nome
+das crianças: depende da revisão da Política (sessão jurídica avisada) para
+ir ao ar.**
 ⚠️ **AS AVALIAÇÕES ENTRE OS DOIS (05/10/2026):** com 30 dias de vínculo (a
 SOMA dos períodos do par, ativo ou encerrado), o tio RECOMENDA a auxiliar —
 sem estrela: até 3 de 5 pontos fortes e uma frase de até 80 letras, assinada
@@ -421,6 +441,8 @@ src/
 │                      do arquivo — era 1,47 MB num bundle só)
 ├── pages/
 │   ├── Familia, Invite, Login, FirstAccess, Welcome, AuthAction (públicas)
+│   ├── Substituta    /substituta/:token — a rota de hoje para quem cobre a
+│   │                 auxiliar UM dia. Pública, sem conta, só leitura
 │   ├── Acompanhar    /acompanhar/:token — a tela de quem vai PEGAR a criança
 │   │                 hoje. Pública, sem conta, sem sessão do Firebase e sem
 │   │                 mapa ao vivo: a posição da perua é o veículo de um
@@ -700,6 +722,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `auxiliares` (o vínculo do PAR `{motorista}_{auxiliar}`, com os períodos; nunca apagado; os dois do par e o dono leem, ninguém escreve pelo cliente) ·
 `faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
+`acessosDeSubstituta` (o link de um dia da substituta, com o HASH do segredo; só o tio dele lê, nem o dono; escreve só o servidor) ·
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
 `recomendacoesDeAuxiliar` (a recomendação do tio para ela; leem os dois e o dono, sem `removida`; escreve só o servidor) ·
 `notasDaAuxiliarAoTio` (as estrelas dela ao tio; só o dono lê, escreve só o servidor) ·
@@ -2052,6 +2075,12 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `avaliarTio`, `minhaNotaDasAuxiliares` e o gatilho
   `limparAvaliacoesDaContaApagada`
   ([avaliacoesDaAuxiliar.js](functions/lib/avaliacoesDaAuxiliar.js)).
+- **Substituta de um dia:** `gerarAcessoDeSubstituta` (o tio; gerar de novo
+  encerra o anterior), `encerrarAcessoDeSubstituta` (`{ id }`, ou
+  `{ pelaRota: true }`, que o app chama ao encerrar a rota e o servidor
+  confere pela régua) e `verRotaDaSubstituta` (PÚBLICA, só lê; limite por IP
+  `SUBSTITUTA_PUBLICA`) — [substitutaDeUmDia.js](functions/lib/substitutaDeUmDia.js).
+  O `closeStaleRoutes` também encerra os links de quem ele fechou.
 - **Cupom do cartão do app:** `meuCodigoDeIndicacao`
   ([codigoDeIndicacao.js](functions/lib/codigoDeIndicacao.js), régua pura em
   [reguaDoCodigo.js](functions/lib/reguaDoCodigo.js), casos em

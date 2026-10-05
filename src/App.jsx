@@ -39,6 +39,8 @@ import AuthAction from './pages/AuthAction';
  * download dela de todo mundo que abre o app pra ver a rota. O `Respiro`
  * cobre os 300ms dela, e é exatamente pra isso que ele existe. */
 const Acompanhar = lazy(() => import('./pages/Acompanhar'));
+// A substituta de um dia (F3): pública, sem conta, como o acompanhar.
+const Substituta = lazy(() => import('./pages/Substituta'));
 const Welcome = lazy(() => import('./pages/Welcome'));
 const Comecar = lazy(() => import('./pages/Comecar'));
 const DriverSignup = lazy(() => import('./pages/DriverSignup'));
@@ -623,6 +625,7 @@ export default function App() {
         <Route path="/acompanhar/:token" element={<Acompanhar />} />
         {/* O aviso do acesso de 24h abre sem token: o aparelho lembra (Acompanhar.jsx). */}
         <Route path="/acompanhar" element={<Acompanhar />} />
+        <Route path="/substituta/:token" element={<Substituta />} />
         <Route path="/quero-fazer-parte" element={<DriverSignup />} />
         {/* /conheca — o folheto verde antigo. Link velho, QR impresso e
           * favorito continuam funcionando; hoje eles chegam na landing.

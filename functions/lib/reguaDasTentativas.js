@@ -37,6 +37,10 @@ const REGRAS = Object.freeze({
   PEDIDO_DE_ACESSO: Object.freeze({ escopo: 'pedido', max: 5, janelaMs: DIA_MS }),
   // Contatos do formulário de investidor, por IP.
   INVESTIDOR: Object.freeze({ escopo: 'investidor', max: 5, janelaMs: HORA_MS }),
+  // Links da substituta de um dia que não abriram (token mal formado ou
+  // segredo errado), por IP. O link certo que morreu NÃO conta: é a própria
+  // substituta relendo a página depois da rota (reguaDaSubstitutaDeUmDia.js).
+  SUBSTITUTA_PUBLICA: Object.freeze({ escopo: 'substituta', max: 30, janelaMs: HORA_MS }),
 });
 
 const MENSAGEM_DE_LIMITE = 'Muitas tentativas seguidas. Espere um pouco e tente de novo.';

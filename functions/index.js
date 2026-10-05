@@ -35,6 +35,11 @@ const {
   makeMarcarParadaPelaAuxiliar,
 } = require('./lib/auxiliares');
 const { makeEspelharCriancaParaAuxiliar, makeEspelharFaltaParaAuxiliar } = require('./lib/turmaDaAuxiliar');
+const {
+  makeGerarAcessoDeSubstituta,
+  makeEncerrarAcessoDeSubstituta,
+  makeVerRotaDaSubstituta,
+} = require('./lib/substitutaDeUmDia');
 const { makeAnotarPagamentoDaAuxiliar, makeConfirmarRecebimentoDaAuxiliar } = require('./lib/pagamentosDaAuxiliar');
 const {
   makeRecomendarAuxiliar,
@@ -436,6 +441,11 @@ exports.removerRecomendacaoAbusiva = makeRemoverRecomendacaoAbusiva(db);
 exports.avaliarTio = makeAvaliarTio(db);
 exports.minhaNotaDasAuxiliares = makeMinhaNotaDasAuxiliares(db);
 exports.limparAvaliacoesDaContaApagada = makeLimparAvaliacoesDaContaApagada(db);
+// A SUBSTITUTA DE UM DIA (F3): o tio manda um link que vale só hoje a quem
+// cobre a auxiliar; ela vê a ordem da rota, sem conta. Ver o arquivo.
+exports.gerarAcessoDeSubstituta = makeGerarAcessoDeSubstituta(db);
+exports.encerrarAcessoDeSubstituta = makeEncerrarAcessoDeSubstituta(db);
+exports.verRotaDaSubstituta = makeVerRotaDaSubstituta(db);
 
 // A SENHA DO FINANCEIRO (03/10/2026). A auxiliar usa o celular do motorista e
 // não deve ver valores: o Financeiro abre com 4 números num teclado de banco.

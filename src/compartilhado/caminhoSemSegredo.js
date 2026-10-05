@@ -8,6 +8,7 @@
  *
  *   /convite/TNAB23CD        o código que cria a conta da família
  *   /acompanhar/AAAA…SEGREDO o link de quem busca a criança hoje
+ *   /substituta/s_…SEGREDO   o link de um dia da substituta da auxiliar
  *   /auth-action?oobCode=…   o link de redefinir a senha
  *
  * Com o padrão do SDK, cada um desses ia parar num relatório de terceiro,
@@ -31,6 +32,7 @@
 const COM_SEGREDO = {
   convite: ':codigo',
   acompanhar: ':token',
+  substituta: ':token',
 };
 
 // Id do Firestore tem 20 caracteres; o segredo do acompanhamento é maior; o

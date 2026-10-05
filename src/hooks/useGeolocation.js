@@ -10,6 +10,8 @@ import {
   avisarSaidaDaRota,
   avisarQuemFicou,
 } from '../services/routeStatusService';
+import { avisarFimDaRotaParaSubstituta } from '../services/substitutaDeUmDiaService';
+import { chaveDeHoje } from '../dominio/rota/rotaDaSubstituta.js';
 
 /**
  * Hook do lado do motorista (Tio): controla o tracking GPS.
@@ -125,6 +127,10 @@ export function useGeolocation() {
       if (driverUid) {
         avisarQuemFicou({ adminUid: driverUid, pendentes });
       }
+      // A SUBSTITUTA DE UM DIA (F3): o servidor confere se esta era a rota
+      // do DIA (a ida não mata o link da volta) e, se era, encerra o link
+      // dela e avisa. Só pergunta se este aparelho gerou um link hoje.
+      avisarFimDaRotaParaSubstituta(chaveDeHoje());
     } catch (err) {
       setError(err);
     } finally {

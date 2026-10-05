@@ -80,6 +80,15 @@
           ]
         },
         {
+          "source": "/substituta/**",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            }
+          ]
+        },
+        {
           "source": "/acompanhar/**",
           "headers": [
             {

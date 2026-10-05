@@ -2652,6 +2652,23 @@ service cloud.firestore {
       allow update: if isAdmin() && resource.data.motoristaUid == request.auth.uid
         && substitutaValida();
     }
+    // -----------------------------------------------------------------
+    // acessosDeSubstituta/{id} — A SUBSTITUTA DE UM DIA (F3, 05/10/2026).
+    // Ver functions/lib/reguaDaSubstitutaDeUmDia.js.
+    //
+    // A substituta NÃO tem conta: ela abre um link que a callable pública
+    // `verRotaDaSubstituta` confere pelo hash. Por isso o documento tem UM
+    // leitor pelo cliente — o tio que o gerou (para mostrar "Com o link de
+    // hoje" e o "Encerrar") — e nenhum escritor: gerar e encerrar são
+    // callables, e o fim da rota também é do servidor. Nem o dono da
+    // plataforma lê: o nome e o hash são do tio. As listas dele (por
+    // `motoristaUid`, e por `motoristaUid` + `dateKey`) passam porque a
+    // condição é sobre o campo que a consulta prova.
+    // -----------------------------------------------------------------
+    match /acessosDeSubstituta/{id} {
+      allow read: if isSignedIn() && resource.data.motoristaUid == request.auth.uid;
+      allow write: if false;
+    }
     // Uma falta por auxiliar por dia: o id É `{motorista}_{auxiliar}_{dia}`,
     // e a auxiliar precisa ser dele (o vínculo do par em
     // `auxiliares/{motorista}_{auxiliar}` — o id já diz de quem é). Sem isso,

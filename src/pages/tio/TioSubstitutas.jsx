@@ -4,6 +4,8 @@ import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
 import FolhaDaSubstituta from '../../components/auxiliar/FolhaDaSubstituta';
+import ChamarSubstitutaHoje from '../../components/auxiliar/ChamarSubstitutaHoje';
+import { useAcessosDeSubstituta } from '../../hooks/useAcessosDeSubstituta';
 import { useSubstitutas } from '../../hooks/useSubstitutas';
 import { useAuxiliaresDoMotorista } from '../../hooks/useAuxiliares';
 import { historicoDeAuxiliares, linkDoZap } from '../../dominio/identidade/auxiliar.js';
@@ -23,9 +25,13 @@ import { formatPhone } from '../../compartilhado/formatters';
  *
  * Sem estrelas nem avaliação nesta fase: quem vê a nota de quem ainda é
  * decisão do dono.
+ *
+ * F3: "Chamar hoje" manda a ela o link de um dia — a ordem da rota, sem
+ * conta (`ChamarSubstitutaHoje`).
  */
 export default function TioSubstitutas() {
   const { substitutas } = useSubstitutas();
+  const { acessos, hoje } = useAcessosDeSubstituta();
   const vinculos = useAuxiliaresDoMotorista();
   const [folha, setFolha] = useState(null); // { substituta } | { nova: true }
   const historico = historicoDeAuxiliares(vinculos || []).filter((h) => !h.ativa);
@@ -77,6 +83,7 @@ export default function TioSubstitutas() {
                   Editar
                 </button>
               </div>
+              <ChamarSubstitutaHoje substituta={s} acessos={acessos} hoje={hoje} />
             </section>
           ))
         )}

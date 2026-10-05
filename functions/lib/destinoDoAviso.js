@@ -65,6 +65,7 @@ const DESTINO_DO_AVISO = {
   encerramento_7d: '/tio/encerrar',
   encerramento_fim: '/tio/encerrar',
   auxiliar_confirmou_pagamento: '/tio/finance/auxiliar',
+  acesso_substituta_encerrado: '/tio/finance/auxiliar/substitutas',
 
   parceiro_indicou_voce: '/tio/comunidade',
   transferencia_pedida: '/tio/comunidade',

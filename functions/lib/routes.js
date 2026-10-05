@@ -16,6 +16,7 @@ const LIMITES = require('./limites');
 // `FieldValue` pelo caminho modular (03/10/2026): `admin.firestore.FieldValue`
 // chegava `undefined` no emulador — derrubou o `redeemInvite` no teste R1.
 const { FieldValue } = require('firebase-admin/firestore');
+const { encerrarAcessosPelaRota } = require('./substitutaDeUmDia');
 
 const REGION = 'southamerica-east1';
 
@@ -78,6 +79,9 @@ function makeCloseStaleRoutes(db) {
           { merge: true }
         );
         encerradas += 1;
+        // A SUBSTITUTA DE UM DIA: a rota abandonada também acaba o dia — o
+        // link dela morre e o tio é avisado, se a régua disser (nunca lança).
+        await encerrarAcessosPelaRota(db, docSnap.id);
         logger.info(
           `Rota encerrada por inatividade: motorista=${docSnap.id}, ${Math.round(age / 60000)} min sem posição.`
         );

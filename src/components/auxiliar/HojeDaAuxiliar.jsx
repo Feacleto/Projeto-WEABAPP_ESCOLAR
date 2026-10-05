@@ -2,6 +2,8 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EscolherSubstituta from './EscolherSubstituta';
+import ChamarSubstitutaHoje from './ChamarSubstitutaHoje';
+import { useAcessosDeSubstituta } from '../../hooks/useAcessosDeSubstituta';
 import { registrarFaltaDaAuxiliar, desfazerFaltaDaAuxiliar } from '../../services/substitutasService';
 import { faltaDoDia } from '../../dominio/identidade/faltaDaAuxiliar.js';
 import { formatBRL } from '../../compartilhado/formatters';
@@ -17,6 +19,9 @@ import { formatBRL } from '../../compartilhado/formatters';
  * falta registrada sem volta.
  *
  * ⚠️ A falta não desconta nada sozinha: o app anota, os dois combinam.
+ *
+ * F3: registrada a substituta, "Mandar o link de hoje" dá a ela a ordem da
+ * rota por um dia, sem conta (`ChamarSubstitutaHoje`).
  */
 export default function HojeDaAuxiliar({ auxiliar, dateKey, faltas, substitutas }) {
   const [escolhendo, setEscolhendo] = useState(false);
@@ -24,6 +29,7 @@ export default function HojeDaAuxiliar({ auxiliar, dateKey, faltas, substitutas 
   const [ocupado, setOcupado] = useState(false);
   const primeiro = String(auxiliar?.nome || 'auxiliar').trim().split(' ')[0];
   const falta = faltaDoDia(faltas || [], auxiliar?.uid, dateKey);
+  const { acessos, hoje } = useAcessosDeSubstituta();
 
   async function faltou() {
     setOcupado(true);
@@ -54,9 +60,20 @@ export default function HojeDaAuxiliar({ auxiliar, dateKey, faltas, substitutas 
             Falta registrada
           </span>
           {falta.substituta ? (
-            <p className="text-base text-textBody">
-              Substituída por {falta.substituta.nome} · {formatBRL(falta.substituta.valor)}.
-            </p>
+            <>
+              <p className="text-base text-textBody">
+                Substituída por {falta.substituta.nome} · {formatBRL(falta.substituta.valor)}.
+              </p>
+              {/* O link é de HOJE: numa falta de outro dia, não há o que mandar. */}
+              {falta.dateKey === hoje && (substitutas || []).some((s) => s.id === falta.substituta.id) && (
+                <ChamarSubstitutaHoje
+                  substituta={(substitutas || []).find((s) => s.id === falta.substituta.id)}
+                  acessos={acessos}
+                  hoje={hoje}
+                  rotulo="Mandar o link de hoje"
+                />
+              )}
+            </>
           ) : (
             <>
               <p className="text-base text-textBody">Você faz a rota sozinho, ou registra quem substituiu.</p>
