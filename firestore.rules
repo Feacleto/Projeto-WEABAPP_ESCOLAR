@@ -1930,6 +1930,73 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // recadosDoDia/{AAAA-MM-DD}_{childId} — o RECADO DO DIA da família
+    // para o tio (05/10/2026, decisão do dono): até 140 letras sobre AQUELE
+    // dia, lido em âmbar no topo da ficha rápida da rota.
+    //
+    // No molde de `altPickups`, com duas diferenças, as duas de propósito:
+    //   - o TIO SÓ LÊ. O recado é a voz da família; o tio escrevendo ali
+    //     seria ele pondo palavras na boca dela.
+    //   - a AUXILIAR NÃO LÊ. Texto livre de família pode trazer o que ela
+    //     não deve ver (a saúde tem caminho próprio, com consentimento, e a
+    //     tela diz isso). Não há cópia para ela, e nenhum ramo aqui a admite.
+    //
+    // A família não escolhe o motorista que lê: `adminUid` e `parentUid` são
+    // os da CRIANÇA (get de `children`), como em `altPickups`. Na edição, só
+    // `texto` e `atualizadoEm` mudam — o dia, a criança e os donos ficam.
+    // O texto é checado AQUI também (1 a 140, e não só espaços): a régua do
+    // app (`recadoDoDia.js`) limpa antes, a rule é o piso.
+    // -----------------------------------------------------------------
+    match /recadosDoDia/{id} {
+      function ownsChild(childId) {
+        return isSignedIn()
+          && exists(/databases/$(database)/documents/children/$(childId))
+          && get(/databases/$(database)/documents/children/$(childId)).data.parentUid == request.auth.uid;
+      }
+      function criancaDaTurma(childId) {
+        return isAdmin()
+          && exists(/databases/$(database)/documents/children/$(childId))
+          && get(/databases/$(database)/documents/children/$(childId)).data.get('adminUid', '') == request.auth.uid;
+      }
+      function textoDoRecado(t) {
+        return t is string && t.size() >= 1 && t.size() <= 140 && t.trim().size() >= 1;
+      }
+      function recadoValido(d) {
+        return d.keys().hasOnly(['childId', 'parentUid', 'adminUid', 'dateKey', 'texto', 'criadoEm', 'atualizadoEm'])
+          && d.keys().hasAll(['childId', 'parentUid', 'adminUid', 'dateKey', 'texto', 'criadoEm', 'atualizadoEm'])
+          && d.childId is string
+          && d.dateKey is string
+          && d.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && textoDoRecado(d.texto)
+          && d.criadoEm is timestamp
+          && d.atualizadoEm is timestamp;
+      }
+      // O documento do dia que ainda não existe se autoriza pela criança do
+      // ID (a dela, ou a da turma do tio) — a escuta do dia nasce antes do
+      // recado, como em `altPickups`. Não vaza nada: não há o que ler.
+      allow read: if (resource == null && isSignedIn() && (
+          ownsChild(id.split('_')[1]) || criancaDaTurma(id.split('_')[1])
+        ))
+        || ehDoMotorista() || (
+        isSignedIn() && ownsChild(resource.data.childId)
+      );
+      allow create: if isSignedIn()
+        && recadoValido(request.resource.data)
+        && id == request.resource.data.dateKey + '_' + request.resource.data.childId
+        && ownsChild(request.resource.data.childId)
+        && request.resource.data.parentUid == request.auth.uid
+        && request.resource.data.adminUid != ''
+        && request.resource.data.adminUid ==
+           get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.get('adminUid', '');
+      allow update: if isSignedIn()
+        && ownsChild(resource.data.childId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['texto', 'atualizadoEm'])
+        && textoDoRecado(request.resource.data.texto)
+        && request.resource.data.atualizadoEm is timestamp;
+      allow delete: if isSignedIn() && ownsChild(resource.data.childId);
+    }
+
+    // -----------------------------------------------------------------
     // routePlans e dailyRoutes MORRERAM com os turnos.
     //
     // Guardavam a ordem fixa das seis filas e o override do dia. A rota deixou
