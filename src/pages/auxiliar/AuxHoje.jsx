@@ -12,7 +12,11 @@ import { getEffectiveStatus } from '../../services/childrenService';
 import { statusNaDirecao, getActionForStatus } from '../../services/routeStatusService';
 import { marcarParadaPelaAuxiliar } from '../../services/auxiliarService';
 import PixDaPerua from '../../components/route/PixDaPerua';
-import { diaCompleto, getDateKey, horaCurta, deMinutos, precisaDaPerua, ROTULO_ESTADO } from '../../dominio/rota/horarios';
+import ZonasDaRota from '../../components/route/ZonasDaRota';
+import FichaRapidaDaAuxiliar from '../../components/route/FichaRapidaDaAuxiliar';
+import { diaCompleto, blocoDoMomento, getDateKey, horaCurta, deMinutos, precisaDaPerua, ROTULO_ESTADO } from '../../dominio/rota/horarios';
+import { zonasDaRota, viagemAoVivo, rotuloDaVez } from '../../dominio/rota/zonasDaRota.js';
+import { pendentesEmOrdem, focoDaViagem } from '../../dominio/rota/focoDaViagem.js';
 import { linkDoZap, rotaDaPeruaRodando, trocaDePerua } from '../../dominio/identidade/auxiliar.js';
 import { paletaDaMarca } from '../../marca/corDaMarca.js';
 import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaOTio';
@@ -48,6 +52,18 @@ import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaO
  * F1.5: "Foto da turma", em contorno, logo abaixo da turma — de manhã ela já
  * está aqui. Leva a /aux/foto, onde ela posta para as famílias da perua
  * escolhida no topo. O cheio da tela continua sendo a marcação.
+ *
+ * A ROTA AO VIVO (05/10/2026, decisão do dono): o foco dela são as CRIANÇAS
+ * o dia todo — tocar numa criança abre a FICHA RÁPIDA dela
+ * (`FichaRapidaDaAuxiliar`, só o que a cópia leva). Com a viagem ao vivo
+ * (`viagemAoVivo`: alguém na perua hoje, ou a viagem do momento começando ou
+ * rodando pelo relógio), a mesma tela ganha, no topo, o CARTÃO DA VEZ — o
+ * protagonista, com o botão CHEIO na cor da marca do tio — e as zonas "Na
+ * perua" e "Na escola" (`ZonasDaRota`), as mesmas que o tio vê.
+ *
+ * ⚠️ O "FALTOU" DELA NÃO EXISTE AINDA: o servidor só a deixa andar para a
+ * frente (`passoValido`), e marcar falta pede decisão do dono, régua e rule.
+ * O cartão da vez tem só o passo que ela já pode dar.
  */
 const ROTULO_DO_STATUS = {
   home: 'Em casa',
@@ -71,6 +87,7 @@ export default function AuxHoje() {
     [criancas, faltas]
   );
   const [marcando, setMarcando] = useState(null);
+  const [aberta, setAberta] = useState(null); // id da criança da ficha rápida
   async function marcar(child, acao) {
     setMarcando(child.id);
     try {
@@ -86,6 +103,35 @@ export default function AuxHoje() {
   const rodando = rotaDaPeruaRodando(criancas);
   const troca = trocaDePerua(ativos, motoristaUid, rodando, { marca, genero: motorista?.gender });
   const cor = paletaDaMarca(motorista?.marcaCor);
+  // A VIAGEM DO MOMENTO, com a mesma régua do tio (`blocoDoMomento` +
+  // `focoDaViagem`): o cartão da vez dela e o rodapé dele apontam a mesma
+  // criança, salvo quando ele tocou noutra.
+  const filaDe = (b) => {
+    const dir = b.direcao === 'ida' ? 'pickup' : 'dropoff';
+    return b.paradas.map((p) => {
+      const st = statusNaDirecao(p.child, faltas[p.child.id], dir);
+      return { ...p, status: st, action: precisaDaPerua(p.estado) ? getActionForStatus(st, dir) : null };
+    });
+  };
+  const agora = new Date();
+  const blocoAgora = blocoDoMomento(blocos, agora, (b) => filaDe(b).some((q) => q.action));
+  const filaAgora = blocoAgora ? filaDe(blocoAgora) : [];
+  const aoVivo = viagemAoVivo(blocoAgora, agora.getHours() * 60 + agora.getMinutes(), rodando);
+  const vez = aoVivo ? focoDaViagem(pendentesEmOrdem(filaAgora)) : null;
+  const zonas = aoVivo && blocoAgora ? zonasDaRota(filaAgora, { direcao: blocoAgora.direcao }) : null;
+  // A ficha lê o item da viagem de AGORA quando a criança está nela (o lugar
+  // muda na hora se o tio marcar com a folha aberta); senão, o da viagem em
+  // que ela aparece primeiro no dia.
+  const fichaNaViagem = (() => {
+    if (!aberta) return null;
+    const agoraItem = filaAgora.find((q) => q.child.id === aberta);
+    if (agoraItem) return { item: agoraItem, direcao: blocoAgora.direcao };
+    for (const b of blocos) {
+      const q = filaDe(b).find((x) => x.child.id === aberta);
+      if (q) return { item: q, direcao: b.direcao };
+    }
+    return null;
+  })();
   const vaoHoje = new Set(blocos.flatMap((b) => b.paradas.filter((p) => precisaDaPerua(p.estado)).map((p) => p.child.id))).size;
 
   if (vinculos?.length > 0 && ativos.length === 0) {
@@ -141,6 +187,20 @@ export default function AuxHoje() {
 
         {criancas === null && <Skeleton className="h-40 rounded-2xl" />}
 
+        {aoVivo && blocoAgora && (
+          <CartaoDaVez
+            item={vez}
+            direcao={blocoAgora.direcao}
+            cor={cor}
+            marcando={vez ? marcando === vez.child.id : false}
+            onMarcar={() => vez && marcar(vez.child, vez.action)}
+            onAbrir={() => vez && setAberta(vez.child.id)}
+          />
+        )}
+        {zonas && (
+          <ZonasDaRota zonas={zonas} vez={vez?.child?.id || null} onTocar={(q) => setAberta(q.child.id)} />
+        )}
+
         {blocos.map((b) => (
           <section key={`${b.direcao}-${b.inicio}`} className="space-y-2">
             <h2 className="px-1 font-display text-lg font-bold text-text">
@@ -155,13 +215,20 @@ export default function AuxHoje() {
                 <div key={p.child.id} className={`rounded-2xl bg-card px-3 py-2.5 shadow-rest ${fora ? 'opacity-70' : ''}`}>
                 <div className="flex items-center gap-3">
                   <span className="w-12 shrink-0 text-base font-semibold tabular-nums text-textBody">{horaCurta(p.hora)}</span>
-                  <Avatar photoURL={p.child.photoURL} gender={p.child.gender} seed={p.child.id} kind="child" size="sm" />
-                  <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-base font-bold ${fora ? 'text-textMuted line-through' : 'text-text'}`}>{p.child.name}</span>
-                    <span className={`block text-sm ${fora ? 'font-semibold text-warningText' : 'text-textMuted'}`}>
-                      {fora ? ROTULO_ESTADO[p.estado] || 'Fora hoje' : status}
+                  <button
+                    type="button"
+                    onClick={() => setAberta(p.child.id)}
+                    aria-label={`${p.child.name}: abrir a ficha`}
+                    className="tap flex min-h-12 min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <Avatar photoURL={p.child.photoURL} gender={p.child.gender} seed={p.child.id} kind="child" size="sm" />
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-base font-bold ${fora ? 'text-textMuted line-through' : 'text-text'}`}>{p.child.name}</span>
+                      <span className={`block text-sm ${fora ? 'font-semibold text-warningText' : 'text-textMuted'}`}>
+                        {fora ? ROTULO_ESTADO[p.estado] || 'Fora hoje' : status}
+                      </span>
                     </span>
-                  </span>
+                  </button>
                   {!fora && p.child.parentPhone && (
                     <span className="flex shrink-0 gap-1.5">
                       <a href={`tel:${p.child.parentPhone}`} aria-label={`Ligar para a família de ${p.child.name}`} className="tap flex h-12 w-12 items-center justify-center rounded-xl bg-primarySoft text-primary">
@@ -205,6 +272,13 @@ export default function AuxHoje() {
         </button>
 
         <PixDaPerua perfil={motorista} />
+        {fichaNaViagem && (
+          <FichaRapidaDaAuxiliar
+            item={fichaNaViagem.item}
+            direcao={fichaNaViagem.direcao}
+            onClose={() => setAberta(null)}
+          />
+        )}
         <p className="px-1 text-sm text-textMuted">
           O que você marca, {marca} vê na hora. Para desfazer um toque errado, fale com ele.
         </p>
@@ -242,5 +316,51 @@ function BotaoDaPerua({ botao, onEscolher }) {
       )}
       {botao.rotulo}
     </button>
+  );
+}
+
+/**
+ * O CARTÃO DA VEZ — o protagonista da tela dela com a viagem ao vivo
+ * (05/10/2026). A criança da vez (a mesma régua do foco do tio) e UM botão
+ * CHEIO na cor da marca do tio, com o passo que ela pode dar. Tocar no rosto
+ * abre a ficha rápida. Sem ninguém a marcar, diz que a viagem acabou e que
+ * quem encerra a rota é ele.
+ */
+function CartaoDaVez({ item, direcao, cor, marcando, onMarcar, onAbrir }) {
+  if (!item) {
+    return (
+      <section className="rounded-2xl bg-card p-4 shadow-rest">
+        <p className="font-display text-xl font-bold text-text">{direcao === 'ida' ? 'Todos na escola.' : 'Todos entregues.'}</p>
+        <p className="mt-1 text-base text-textBody">A viagem acabou. Quem encerra a rota é o motorista.</p>
+      </section>
+    );
+  }
+  const rotulo = rotuloDaVez(item.action?.nextStatus) || item.action?.shortLabel;
+  const detalhe = [item.child.turma, item.child.school].filter(Boolean).join(' · ');
+  return (
+    <section className="rounded-2xl border-2 border-perua bg-card p-4 shadow-rest">
+      <p className="text-base font-semibold text-textMuted">Agora{item.hora ? ` · ${horaCurta(item.hora)}` : ''}</p>
+      <button
+        type="button"
+        onClick={onAbrir}
+        aria-label={`${item.child.name}: abrir a ficha`}
+        className="tap mt-1 flex min-h-12 w-full items-center gap-3 text-left"
+      >
+        <Avatar photoURL={item.child.photoURL} gender={item.child.gender} seed={item.child.id} kind="child" size="md" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-display text-2xl font-bold leading-tight text-text">{String(item.child.name || '').split(' ')[0]}</span>
+          {detalhe && <span className="block truncate text-base text-textBody">{detalhe}</span>}
+        </span>
+      </button>
+      <button
+        type="button"
+        disabled={marcando}
+        onClick={onMarcar}
+        style={cor ? { backgroundColor: cor.marca, color: cor.naMarca } : undefined}
+        className={`tap mt-3 flex h-14 w-full items-center justify-center rounded-xl text-lg font-extrabold shadow-focus disabled:opacity-60 ${cor ? '' : 'bg-marca text-naMarca'}`}
+      >
+        {marcando ? 'Marcando…' : rotulo}
+      </button>
+    </section>
   );
 }

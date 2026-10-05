@@ -120,6 +120,13 @@ export default function OperacaoDaRota({
   // Quem montar esta operação numa tela que já tem o próprio encerrar passa
   // `false`, senão seriam dois botões de encerrar rota na mesma tela.
   mostrarControle = true,
+  // A ROTA AO VIVO (05/10/2026): o registro "O que a Cida marcou" e as
+  // zonas (em casa / na perua / na escola) entram no topo da operação por
+  // aqui. É uma função porque elas precisam dos MESMOS dados que esta tela já
+  // escuta (a fila da viagem, as declarações e quem busca hoje) — montá-las
+  // de fora abriria uma segunda escuta para cada um. Ela só desenha; a
+  // operação (foco, rodapé, desfazer, avisos) continua inteira aqui.
+  aoVivo = null,
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -1275,6 +1282,16 @@ export default function OperacaoDaRota({
 
       <div className="space-y-4 px-4 pt-4">
         {loading && <Skeleton className="h-56 rounded-2xl" />}
+
+        {!loading && aoVivo?.({
+          fila,
+          direcao: blocoAtual?.direcao || null,
+          escolasPorId,
+          declaracoes,
+          quemBusca,
+          vez: foco?.child?.id || null,
+          rotaAtiva,
+        })}
 
         {!loading && blocos.length === 0 && (
           <EmptyState

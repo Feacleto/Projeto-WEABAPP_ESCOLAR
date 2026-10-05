@@ -45,7 +45,7 @@ npm run testar                   # 91 scripts. O PRIMEIRO é
                                  # auxiliar, pagamento-da-auxiliar,
                                  # substitutas, avaliacao-da-auxiliar,
                                  # substituta-de-um-dia, calendario-da-auxiliar,
-                                 # e, no fim, vagas-da-perua
+                                 # vagas-da-perua e, no fim, rota-ao-vivo
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -222,6 +222,8 @@ quando não sobra auxiliar ativa. A falta vai sem o recado. Desde a F1.5 ela tam
 só para a frente (`passoValido`), o `rides` ganha `marcadoPelaAuxiliar`, e a
 família recebe o mesmo aviso da marcação do motorista. Desfazer é dele. Marca
 sem rota aberta DE PROPÓSITO (ela põe na perua enquanto ele liga o app).
+Na mesma transação, o evento entra em `registroDaRota/{tio}_{dia}` — o "O
+que a {auxiliar} marcou" da rota ao vivo (ver "A ROTA AO VIVO").
 ⚠️ **CONTA TRANCADA NÃO OPERA PELA AUXILIAR**: as callables escrevem com Admin
 SDK, então convidar, aceitar e marcar conferem `contaDoMotoristaOpera`, o
 mesmo predicado do `isAdmin()` das rules. Ela vê o PIX DELE (`PixDaPerua`).
@@ -731,6 +733,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `auxiliares` (o vínculo do PAR `{motorista}_{auxiliar}`, com os períodos; nunca apagado; os dois do par e o dono leem, ninguém escreve pelo cliente) ·
 `faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
+`registroDaRota` (`{tio}_{AAAA-MM-DD}`: o que a auxiliar marcou no dia; só o servidor escreve, o tio e a auxiliar ativa do par leem por `get`, `list` negado; dura 7 dias) ·
 `acessosDeSubstituta` (o link de um dia da substituta, com o HASH do segredo; só o tio dele lê, nem o dono; escreve só o servidor) ·
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
 `recomendacoesDeAuxiliar` (a recomendação do tio para ela; leem os dois e o dono, sem `removida`; escreve só o servidor) ·
@@ -1539,6 +1542,56 @@ dos alvos do "está chegando". Ao encerrar com pendência, a barra diz
 soltar antes cancela) — os dois toques com "Confirmar" saíram com o design
 system.
 
+⚠️ **A ROTA AO VIVO: O TIO VÊ O QUE A AUXILIAR MARCA (05/10/2026, decisão do
+dono, protótipo "A auxiliar marca, o tio vê").** No topo de `/tio/route/now`,
+acima da linha do tempo, [RotaAoVivoDoTio](src/components/route/RotaAoVivoDoTio.jsx)
+(pela prop `aoVivo` da `OperacaoDaRota`, que lhe entrega a fila, as
+declarações e quem busca — nenhuma escuta a mais da turma):
+- **"O que a {auxiliar} marcou"** ([RegistroDaAuxiliar](src/components/route/RegistroDaAuxiliar.jsx)),
+  só com auxiliar ATIVA: "06:52 Ana entrou na perua", os 6 mais recentes, o
+  mais novo em cima. Mora em `registroDaRota/{tio}_{dia}` (dia de Brasília),
+  escrito SÓ por `marcarParadaPelaAuxiliar`, com `arrayUnion` na MESMA
+  transação da marcação. O evento é uma lista fechada
+  ([reguaDoRegistroDaRota.js](functions/lib/reguaDoRegistroDaRota.js)):
+  `em` (`Timestamp.now()` — array recusa `serverTimestamp`), `auxiliarUid`,
+  `auxiliarNome` e `criancaNome` (PRIMEIRO nome), `passo`, `viagem`,
+  `escola`. O tio lê UM documento pelo id do dia. ⚠️ Dura 7 dias:
+  `apagarViagensAntigas` apaga os mais velhos na mesma noite.
+- **As três zonas** ([ZonasDaRota](src/components/route/ZonasDaRota.jsx),
+  régua em [zonasDaRota.js](src/dominio/rota/zonasDaRota.js)): na ida
+  "Ainda em casa" (apagados, pela hora) → "Na perua" → "Na escola" (um
+  prédio por escola, violeta); na volta, "Na escola" → "Na perua" →
+  "Entregues em casa". Quem falta fica riscado, fora das zonas. O status é
+  o de `statusNaDirecao`, o mesmo da linha do tempo. ⚠️ A perua é uma caixa
+  simples, sem assentos: o desenho em vagas é de outra frente e as duas
+  devem se unificar.
+- Ele continua marcando como antes (rodapé, foco, desfazer, avisos): as
+  zonas só mostram, e o toque nelas abre a FICHA RÁPIDA.
+- **A AUXILIAR** ([AuxHoje](src/pages/auxiliar/AuxHoje.jsx)): a lista do dia
+  com a ficha de cada criança, e, com a viagem ao vivo (`viagemAoVivo`:
+  alguém na perua hoje, ou a viagem do momento de 30 min antes a 90 min
+  depois — ela não lê `liveLocation`), o CARTÃO DA VEZ no topo, com o botão
+  CHEIO na cor da marca do tio ("Entrou na perua", "Entregue na escola",
+  "Entregue em casa"), e as zonas. `npm run testar:rota-ao-vivo`.
+- ⚠️ **EM ABERTO COM O DONO:** o "Faltou" da auxiliar (o servidor só a deixa
+  andar para a frente — pede régua e rule) e "quem busca hoje" para ela.
+
+⚠️ **A FICHA RÁPIDA NA ROTA (05/10/2026, decisão do dono):** tocar numa
+criança das zonas (ou, na auxiliar, da lista) abre uma folha
+([FichaRapida](src/components/route/FichaRapida.jsx)). **O tio**
+([FichaRapidaDoTio](src/components/route/FichaRapidaDoTio.jsx)), nesta
+ordem: o RECADO DE HOJE em âmbar, quem busca hoje (senão "o responsável de
+sempre"), o combinado (pegar na ida, entregar na volta), o responsável com
+WhatsApp e Ligar, o endereço, a saúde ("Escrito pela família.") e "Ver
+ficha completa". ⚠️ O recado de hoje é UMA fonte só: o `note` de
+`absenceDeclarations/{hoje}_{criança}` — o caderno é o recado DELE para a
+família, não entra. ⚠️ Hoje nenhuma tela da família escreve esse `note`:
+o bloco existe e só aparece quando houver. Abrir a folha não abre escuta.
+**A auxiliar** ([FichaRapidaDaAuxiliar](src/components/route/FichaRapidaDaAuxiliar.jsx))
+vê a mesma folha SEM recado, quem busca, endereço e saúde — só o que a cópia
+leva (primeiro nome, turma, escola, hora, responsável e telefone); o teste
+lê o arquivo.
+
 **A TELA DA ROTA É UMA LINHA DO TEMPO** (03/10/2026, modelo aprovado pelo
 dono): [FaixaDaViagem](src/components/route/FaixaDaViagem.jsx) no topo e
 [LinhaDoTempo](src/components/route/LinhaDoTempo.jsx) com a hora combinada à
@@ -2071,6 +2124,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   ⚠️ **Ela exige o `fieldOverride` de `rides.dateKey` (COLLECTION_GROUP)** em
   firestore.indexes.json — sem ele a consulta falhava todo dia, calada.
   Também: `limparAvisosAntigos` (notifications com mais de 90 dias, às 4h).
+  E na mesma noite ela apaga o `registroDaRota` com mais de 7 dias (coleção
+  de raiz: índice automático).
 - **As agendadas rodam UMA de cada vez** (03/10/2026): `maxInstances: 1`
   sozinho não serializava nada (cada instância aceita 80 pedidos); hoje é o par
   com `concurrency: 1` (`LIMITES.CONCORRENCIA_AGENDADO`). O
