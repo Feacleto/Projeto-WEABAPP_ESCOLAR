@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, MessageCircle, UserPlus } from 'lucide-react';
+import { CalendarX2, ChevronRight, MessageCircle, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
@@ -17,6 +17,7 @@ import RecomendarAuxiliar from '../../components/avaliacaoDaAuxiliar/RecomendarA
 import NotaDasAuxiliares from '../../components/avaliacaoDaAuxiliar/NotaDasAuxiliares';
 import HojeDaAuxiliar from '../../components/auxiliar/HojeDaAuxiliar';
 import ControleDoMes from '../../components/auxiliar/ControleDoMes';
+import CalendarioDaAuxiliar from '../../components/auxiliar/CalendarioDaAuxiliar';
 import { getDateKey } from '../../dominio/rota/horarios.js';
 import { convidarAuxiliar, desativarAuxiliar } from '../../services/auxiliarService';
 import {
@@ -42,7 +43,9 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks'
  * Fase 4: o pagamento dela, em `PagamentoDaAuxiliar` (ele anota, ela
  * confirma "Recebi").
  * Fase 5: a falta de hoje no cartão de cada ativa (`HojeDaAuxiliar`), o
- * controle do mês e a porta para "Minhas substitutas".
+ * controle do mês e a porta para "Minhas substitutas". E "Calendário de
+ * faltas" no cartão de cada uma (`CalendarioDaAuxiliar`, numa folha), das
+ * ativas e das que já saíram: a falta antiga continua sendo dela.
  *
  * O vínculo é por PAR (`auxiliares/{ele}_{ela}`): desativar fecha o período e
  * o documento fica, então "Quem já trabalhou comigo" nunca perde ninguém — nem
@@ -60,7 +63,7 @@ function mesAno(ms) {
 }
 
 export default function TioAuxiliar() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const vinculos = useAuxiliaresDoMotorista();
   // Fase 5: a falta de hoje, as substitutas e o controle do mês.
   const { substitutas, faltas } = useSubstitutas();
@@ -74,6 +77,9 @@ export default function TioAuxiliar() {
   const [convite, setConvite] = useState(null);
   const [desativando, setDesativando] = useState(null);
   const [ocupado, setOcupado] = useState(false);
+  // O calendário de faltas abre numa folha, com as faltas que a tela já
+  // escuta (`useSubstitutas`) — nenhuma leitura nova.
+  const [calendario, setCalendario] = useState(null);
 
   const historico = historicoDeAuxiliares(vinculos || []);
   const ativas = historico.filter((h) => h.ativa);
@@ -136,6 +142,7 @@ export default function TioAuxiliar() {
                 </button>
               </div>
               <HojeDaAuxiliar auxiliar={a} dateKey={hoje} faltas={faltas} substitutas={substitutas} />
+              <BotaoDoCalendario onClick={() => setCalendario(a)} />
               <PagamentoDaAuxiliar auxiliar={a} />
               {recomendacoes !== null && <RecomendarAuxiliar auxiliar={a} recomendacao={recomendacaoDe(a.uid)} />}
             </section>
@@ -219,6 +226,7 @@ export default function TioAuxiliar() {
                   Falar
                 </a>
               </div>
+              <BotaoDoCalendario onClick={() => setCalendario(h)} />
               {recomendacoes !== null && <RecomendarAuxiliar auxiliar={h} recomendacao={recomendacaoDe(h.uid)} />}
               </div>
             ))}
@@ -231,6 +239,14 @@ export default function TioAuxiliar() {
           </section>
         )}
       </div>
+
+      <CalendarioDaAuxiliar
+        open={!!calendario}
+        onClose={() => setCalendario(null)}
+        faltas={faltas}
+        motoristaUid={user?.uid}
+        auxiliar={calendario}
+      />
 
       <ConfirmDialog
         open={!!desativando}
@@ -254,6 +270,20 @@ export default function TioAuxiliar() {
         onCancel={() => setDesativando(null)}
       />
     </>
+  );
+}
+
+/** "Calendário de faltas" — contorno: o verde cheio da tela é o convite. */
+function BotaoDoCalendario({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="tap flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border bg-card text-base font-bold text-text"
+    >
+      <CalendarX2 size={20} aria-hidden="true" />
+      Calendário de faltas
+    </button>
   );
 }
 

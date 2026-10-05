@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { MessageCircle, Pencil, UserPlus } from 'lucide-react';
+import { CalendarCheck, MessageCircle, Pencil, UserPlus } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
 import FolhaDaSubstituta from '../../components/auxiliar/FolhaDaSubstituta';
 import ChamarSubstitutaHoje from '../../components/auxiliar/ChamarSubstitutaHoje';
+import CalendarioDaAuxiliar from '../../components/auxiliar/CalendarioDaAuxiliar';
+import { useAuth } from '../../hooks/useAuth';
 import { useAcessosDeSubstituta } from '../../hooks/useAcessosDeSubstituta';
 import { useSubstitutas } from '../../hooks/useSubstitutas';
 import { useAuxiliaresDoMotorista } from '../../hooks/useAuxiliares';
@@ -28,9 +30,15 @@ import { formatPhone } from '../../compartilhado/formatters';
  *
  * F3: "Chamar hoje" manda a ela o link de um dia — a ordem da rota, sem
  * conta (`ChamarSubstitutaHoje`).
+ *
+ * "Dias que cobriu" abre o mesmo calendário das faltas da auxiliar pelo lado
+ * da substituta (`CalendarioDaAuxiliar substituta=…`), com as faltas que
+ * `useSubstitutas` já escuta para recontar — nenhuma leitura nova.
  */
 export default function TioSubstitutas() {
-  const { substitutas } = useSubstitutas();
+  const { user } = useAuth();
+  const { substitutas, faltas } = useSubstitutas();
+  const [calendario, setCalendario] = useState(null); // a substituta aberta
   const { acessos, hoje } = useAcessosDeSubstituta();
   const vinculos = useAuxiliaresDoMotorista();
   const [folha, setFolha] = useState(null); // { substituta } | { nova: true }
@@ -83,6 +91,14 @@ export default function TioSubstitutas() {
                   Editar
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => setCalendario(s)}
+                className="tap flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border bg-card text-base font-bold text-text"
+              >
+                <CalendarCheck size={20} aria-hidden="true" />
+                Dias que cobriu
+              </button>
               <ChamarSubstitutaHoje substituta={s} acessos={acessos} hoje={hoje} />
             </section>
           ))
@@ -93,6 +109,14 @@ export default function TioSubstitutas() {
         </Button>
         <p className="text-center text-sm text-textMuted">Só nome e WhatsApp. Ela não precisa ter conta no app.</p>
       </div>
+
+      <CalendarioDaAuxiliar
+        open={!!calendario}
+        onClose={() => setCalendario(null)}
+        faltas={faltas}
+        motoristaUid={user?.uid}
+        substituta={calendario ? { id: calendario.id, nome: calendario.nome } : null}
+      />
 
       {folha && (
         <FolhaDaSubstituta

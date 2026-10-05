@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 86 scripts. O PRIMEIRO é
+npm run testar                   # 87 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -44,7 +44,7 @@ npm run testar                   # 86 scripts. O PRIMEIRO é
                                  # perua, ditado, indices, economia, e os da auxiliar:
                                  # auxiliar, pagamento-da-auxiliar,
                                  # substitutas, avaliacao-da-auxiliar,
-                                 # substituta-de-um-dia
+                                 # substituta-de-um-dia, calendario-da-auxiliar
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -242,7 +242,12 @@ só nome e WhatsApp); o valor do dia vira despesa `monitor` ("Auxiliar" no caixa
 "Controle de {mês}" soma faltas e substitutas. ⚠️ **A falta não desconta nada
 sozinha** (combinado entre os dois) e não há estrelas
 ([faltaDaAuxiliar.js](src/dominio/identidade/faltaDaAuxiliar.js),
-`npm run testar:substitutas`).
+`npm run testar:substitutas`). "Calendário de faltas", no cartão de cada
+auxiliar, abre o mês numa folha ([CalendarioDaAuxiliar](src/components/auxiliar/CalendarioDaAuxiliar.jsx),
+régua em [calendarioDaAuxiliar.js](src/dominio/identidade/calendarioDaAuxiliar.js),
+totais de `resumoDoMes`, `testar:calendario-da-auxiliar`); com `substituta`, o
+mesmo componente mostra os dias que ela cobriu ("Dias que cobriu", em
+`/tio/finance/auxiliar/substitutas`).
 ⚠️ **E A FALTA DE HOJE APARECE NO INÍCIO, SEM VALOR** (05/10/2026, decisão
 do dono): uma linha por auxiliar no "Para resolver" — "Cida faltou hoje" ·
 "Substituta: Joana" ou "Sem substituta registrada" — que leva à Central (com
