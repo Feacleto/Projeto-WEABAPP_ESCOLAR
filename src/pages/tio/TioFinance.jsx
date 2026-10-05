@@ -42,6 +42,7 @@ import BotoesDoTopoDoFinanceiro from '../../components/financeiro/BotoesDoTopoDo
 import FolhaDeDespesa from '../../components/financeiro/FolhaDeDespesa';
 import InteressePorCartao from '../../components/tio/InteressePorCartao';
 import BlocoSuaPerua from '../../components/financeiro/BlocoSuaPerua';
+import PlanosFinanceiros from '../../components/financeiro/PlanosFinanceiros';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import { useViagemDoDia } from '../../hooks/useViagemDoDia';
 import { saidaDaViagem } from '../../dominio/rota/focoDaViagem.js';
@@ -1148,6 +1149,9 @@ export default function TioFinance() {
                 </section>
               );
             })()}
+            {/* OS PLANOS FINANCEIROS (05/10/2026): metas que ele anota, com
+              * a conta de quanto separar por mês. O app não guarda dinheiro. */}
+            <PlanosFinanceiros reais={reais} />
             <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
               <Porta
                 icon={Receipt}

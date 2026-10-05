@@ -125,6 +125,39 @@ checar('nível sem rótulo não entra', false,
   checar('é demonstrativo: nada é gravado', false, /firebase|addDoc|setDoc|faturasParceiro\b.*=/.test(fonte.replace(/\/\*[\s\S]*?\*\//g, '')));
 }
 
+// ── OS PLANOS FINANCEIROS (05/10/2026) ──
+{
+  const pf = await import('../src/dominio/cobranca/planosFinanceiros.js');
+  const hoje = new Date(2026, 9, 5);
+  checar('6 meses a partir de outubro terminam em março', '2027-03', pf.mesDoFim(6, hoje));
+  checar('outubro a março são 6 meses', 6, pf.mesesQueFaltam('2027-03', hoje));
+  checar('mês do fim já passado conta como 1', 1, pf.mesesQueFaltam('2026-01', hoje));
+  const c = pf.contaDoPlano({ meta: 2400, separado: 600, ate: '2027-03' }, hoje);
+  checar('falta e por mês', [1800, 300], [c.falta, c.porMes]);
+  checar('a barra é a fração anotada', 0.25, c.fracao);
+  const cheio = pf.contaDoPlano({ meta: 1000, separado: 1500, ate: '2027-03' }, hoje);
+  checar('acima da meta: barra cheia, falta zero, chegou', [1, 0, true], [cheio.fracao, cheio.falta, cheio.chegou]);
+  checar('sem plano, a linha não inventa número', null, pf.resumoDePlanos([], hoje));
+  checar('resumo soma o por mês', { numero: 2, porMes: 400 }, pf.resumoDePlanos([
+    { nome: 'A', meta: 1200, separado: 0, ate: '2027-03' },
+    { nome: 'B', meta: 1200, separado: 0, ate: '2027-03' },
+  ], hoje));
+  const novo = pf.novoPlano({ nome: ' Férias ', meta: '2500,50', meses: 3 }, hoje, 'x');
+  checar('plano novo: nome limpo, vírgula vira ponto, separado zero', ['Férias', 2500.5, 0, '2026-12'],
+    [novo.nome, novo.meta, novo.separado, novo.ate]);
+  let erro = '';
+  try { pf.novoPlano({ nome: '', meta: 10, meses: 3 }, hoje); } catch (e) { erro = e.message; }
+  checar('sem nome, a frase diz o que falta', 'Para quê é o plano?', erro);
+  // ⚠️ O APP NÃO GUARDA DINHEIRO: a tela dos planos não fala como banco.
+  const tela = readFileSync(new URL('../src/components/financeiro/PlanosFinanceiros.jsx', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  checar('nenhuma palavra de banco na tela dos planos', [],
+    ['saldo', 'deposit', 'sacar', 'saque', 'transferir', 'rendimento'].filter((p) => tela.toLowerCase().includes(p)));
+  checar('a sonda acha a palavra se ela existir', true, 'Seu saldo'.toLowerCase().includes('saldo'));
+  const regras = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+  checar('as rules aceitam os planos, com teto de 12', true, regras.includes("d.planos.size() <= 12"));
+}
+
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) {

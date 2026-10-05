@@ -2494,7 +2494,12 @@ service cloud.firestore {
       function configFinanceiroValida() {
         let d = request.resource.data;
         return d.keys().hasOnly(['usoDaPerua', 'kmDasRotas', 'temSenha',
-                                 'combustivelDaPerua', 'postos', 'planoDaTroca', 'guardado'])
+                                 'combustivelDaPerua', 'postos', 'planoDaTroca', 'guardado',
+                                 'planos'])
+          // OS PLANOS FINANCEIROS (05/10/2026): metas que o próprio motorista
+          // anota. Só ele lê este documento; o teto de 12 segura o tamanho, e
+          // o formato de cada um é conferido pela régua no aparelho.
+          && (!('planos' in d) || (d.planos is list && d.planos.size() <= 12))
           && (!('usoDaPerua' in d) || d.usoDaPerua in ['so_rota', 'tambem_fora'])
           && (!('combustivelDaPerua' in d)
               || d.combustivelDaPerua in ['diesel_s10', 'diesel_s500', 'gasolina', 'etanol', 'gnv'])
