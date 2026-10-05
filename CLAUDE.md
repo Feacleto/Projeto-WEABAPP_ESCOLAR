@@ -165,10 +165,41 @@ armadilha central do projeto:
 | `owner` | **Dono da plataforma** — acompanha a base, vê os números | `/admin` |
 | `admin` | **MOTORISTA**, não dono. Nome histórico. | `/tio` |
 | `parent` | Responsável | `/pai` |
+| `auxiliar` | **Auxiliar de um motorista** (05/10/2026) — conta própria, no celular dela | `/aux` |
 | *(sem papel)* | Sessão criada, escolha ainda não feita | `/comecar` |
 
 **`role: 'admin'` significa motorista.** Ler isso como "administrador" é o erro
 mais caro possível aqui.
+
+⚠️ **A AUXILIAR É O QUINTO PAPEL (05/10/2026, simulações "Conta da Auxiliar" e
+"Aba Auxiliar do Motorista" aprovadas pelo dono).** Cada um tem a sua conta —
+não existe "modo auxiliar" no celular do tio. A conta dela nasce SÓ pelo
+convite dele (`/auxiliar/:codigo`, callables em
+[auxiliares.js](functions/lib/auxiliares.js), régua pura em
+[reguaDoAuxiliar.js](functions/lib/reguaDoAuxiliar.js)): link de 15 dias, até
+2 ativas por motorista, e uma conta só tem um papel (família ou motorista não
+viram auxiliar com a mesma conta). O vínculo mora em `auxiliares/{uid}`
+(de quem, desde, ativa, até) — ela lê o dela, ele lê os dele, ninguém escreve
+pelo cliente — e `users.motoristaUid` é proibido ao cliente. Ela lê o doc do
+motorista só com o vínculo ativo. O tio convida, desativa e vê quem já
+trabalhou com ele em `/tio/auxiliar` (porta "Auxiliar" na Central), com a
+rotatividade só para ele ([auxiliar.js](src/dominio/identidade/auxiliar.js),
+`npm run testar:auxiliar`).
+⚠️ **ELA NÃO LÊ `children`** (mensalidade, contrato e saúde moram lá, e regra
+não esconde campo): lê `turmaDaAuxiliar/{motoristaUid}` (subcoleções
+`criancas` e `faltas`), uma CÓPIA que o servidor mantém com uma LISTA FECHADA
+de campos (`CAMPOS_DA_TURMA_DA_AUXILIAR`) — copiada no aceite, mantida pelos
+gatilhos `espelharCriancaParaAuxiliar`/`espelharFaltaParaAuxiliar` e apagada
+quando não sobra auxiliar ativa. A falta vai sem o recado.
+⚠️ **ELA MARCA PELO SERVIDOR** (`marcarParadaPelaAuxiliar`, numa transação):
+só para a frente (`passoValido`), o `rides` ganha `marcadoPelaAuxiliar`, e a
+família recebe o mesmo aviso da marcação do motorista. Desfazer é dele. Marca
+sem rota aberta DE PROPÓSITO (ela põe na perua enquanto ele liga o app).
+⚠️ **CONTA TRANCADA NÃO OPERA PELA AUXILIAR**: as callables escrevem com Admin
+SDK, então convidar, aceitar e marcar conferem `contaDoMotoristaOpera`, o
+mesmo predicado do `isAdmin()` das rules. Ela vê o PIX DELE (`PixDaPerua`).
+Pagamentos dela com senha própria, falta, substitutas e avaliações: próximas
+fases. ⚠️ A Política ainda não fala dela (pendências, bloco D).
 
 **O DONO PODE SER MAIS DE UM, e o legado `superAdmin` SAIU em 06/09/2026.**
 `isOwner()` e `ehDono()` sempre checaram o PAPEL, nunca a identidade — duas
@@ -579,7 +610,9 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
-`limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro` e `codigosDeIndicacao` (só o servidor) ·
+`limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao` e `convitesDeAuxiliar` (só o servidor) ·
+`auxiliares` (o vínculo da auxiliar; ela e o motorista dela leem, ninguém escreve pelo cliente) ·
+`turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
 `configFinanceiro` (só o próprio motorista lê) ·
 `indicesEconomicos` (o IPCA; só o servidor escreve, motorista lê) ·
 `appState`
@@ -1743,6 +1776,12 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `indicesEconomicos/ipca` só se mudou. Régua pura em
   [reguaDosIndices.js](functions/lib/reguaDosIndices.js) (`testar:indices`);
   ⚠️ o mês vem na coluna `D3C`, não `D2C`.
+- **Auxiliar:** `convidarAuxiliar`, `cancelarConviteDeAuxiliar`,
+  `verConviteDeAuxiliar` (pública, devolve só a marca e o primeiro nome),
+  `aceitarConviteDeAuxiliar`, `desativarAuxiliar` e `marcarParadaPelaAuxiliar`
+  ([auxiliares.js](functions/lib/auxiliares.js)); a cópia da turma é dos
+  gatilhos `espelharCriancaParaAuxiliar` e `espelharFaltaParaAuxiliar`
+  ([turmaDaAuxiliar.js](functions/lib/turmaDaAuxiliar.js)).
 - **Cupom do cartão do app:** `meuCodigoDeIndicacao`
   ([codigoDeIndicacao.js](functions/lib/codigoDeIndicacao.js), régua pura em
   [reguaDoCodigo.js](functions/lib/reguaDoCodigo.js), casos em

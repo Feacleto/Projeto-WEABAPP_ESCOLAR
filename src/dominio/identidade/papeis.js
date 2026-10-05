@@ -59,6 +59,15 @@ export function ehResponsavel(profile) {
 }
 
 /**
+ * A AUXILIAR (05/10/2026) — o quinto papel, sempre ligado a um motorista
+ * (`users.motoristaUid`). A conta nasce só pelo convite dele, pelo servidor:
+ * o cliente não escreve `role`. Ver functions/lib/auxiliares.js.
+ */
+export function ehAuxiliar(profile) {
+  return profile?.role === 'auxiliar';
+}
+
+/**
  * O PAPEL `aguardando` DEIXOU DE EXISTIR EM 06/09/2026, junto com a
  * aprovação. A conta do motorista passou a nascer operando: ele preenche o
  * cadastro, entra e roda: quem controla o acesso agora é o TESTE DE TRÊS
@@ -107,6 +116,7 @@ export function painelDe(profile) {
   if (ehDono(profile)) return '/admin';
   if (ehMotorista(profile)) return '/tio';
   if (ehResponsavel(profile)) return '/pai';
+  if (ehAuxiliar(profile)) return '/aux';
   // SEM PAPEL NÃO É ERRO — É O ESTADO NORMAL DE QUEM ACABOU DE ENTRAR.
   //
   // A conta do Firebase nasce antes de qualquer escolha: quem toca em

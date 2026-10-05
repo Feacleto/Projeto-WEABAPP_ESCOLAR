@@ -26,6 +26,15 @@ const { makeDesvincularResponsavel } = require('./lib/desvincularResponsavel');
 const { makeAceitarContrato } = require('./lib/aceitarContrato');
 const { makeInformarTelefoneDaEscola } = require('./lib/telefoneDaEscola');
 const { makeMeuCodigoDeIndicacao } = require('./lib/codigoDeIndicacao');
+const {
+  makeConvidarAuxiliar,
+  makeCancelarConviteDeAuxiliar,
+  makeVerConviteDeAuxiliar,
+  makeAceitarConviteDeAuxiliar,
+  makeDesativarAuxiliar,
+  makeMarcarParadaPelaAuxiliar,
+} = require('./lib/auxiliares');
+const { makeEspelharCriancaParaAuxiliar, makeEspelharFaltaParaAuxiliar } = require('./lib/turmaDaAuxiliar');
 const { makeRegistrarInteresseInvestidor } = require('./lib/interesseInvestidor');
 const {
   makePedirAcessoPeloTelefone,
@@ -339,6 +348,18 @@ exports.informarTelefoneDaEscola = makeInformarTelefoneDaEscola(db);
 // O CUPOM DO "CARTÃO DO APP" (04/10/2026): o código de indicação do tio nasce
 // no servidor, único, e é proibido ao cliente — ver o arquivo.
 exports.meuCodigoDeIndicacao = makeMeuCodigoDeIndicacao(db);
+// A CONTA DA AUXILIAR (05/10/2026): o quinto papel, sempre ligado a um
+// motorista. Nasce só pelo convite dele, e ele desativa — ver o arquivo.
+exports.convidarAuxiliar = makeConvidarAuxiliar(db);
+exports.cancelarConviteDeAuxiliar = makeCancelarConviteDeAuxiliar(db);
+exports.verConviteDeAuxiliar = makeVerConviteDeAuxiliar(db);
+exports.aceitarConviteDeAuxiliar = makeAceitarConviteDeAuxiliar(db);
+exports.desativarAuxiliar = makeDesativarAuxiliar(db);
+// A AUXILIAR MARCA NA ROTA (fase 3): pelo servidor, porque ela não escreve em children.
+exports.marcarParadaPelaAuxiliar = makeMarcarParadaPelaAuxiliar(db);
+// A TURMA DA AUXILIAR (fase 2): a cópia sem valor que ela lê.
+exports.espelharCriancaParaAuxiliar = makeEspelharCriancaParaAuxiliar(db);
+exports.espelharFaltaParaAuxiliar = makeEspelharFaltaParaAuxiliar(db);
 
 // A SENHA DO FINANCEIRO (03/10/2026). A auxiliar usa o celular do motorista e
 // não deve ver valores: o Financeiro abre com 4 números num teclado de banco.

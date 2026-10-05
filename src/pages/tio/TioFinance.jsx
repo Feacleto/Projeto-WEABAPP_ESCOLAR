@@ -26,6 +26,7 @@ import {
   Baby,
   Bus,
   ClipboardList,
+  UserRound,
 } from 'lucide-react';
 import IconePix from '../../components/common/IconePix';
 import toast from 'react-hot-toast';
@@ -1124,6 +1125,15 @@ export default function TioFinance() {
             titulo="Despesas do mês"
             detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
             onClick={() => navigate('/tio/finance/expenses')}
+          />
+          {/* A AUXILIAR (05/10/2026): convidar, desativar e quem já
+            * trabalhou com ele. A conta dela é própria, no celular dela. */}
+          <Porta
+            divisor
+            icon={UserRound}
+            titulo="Auxiliar"
+            detalhe="Convidar, desativar e quem já trabalhou com você"
+            onClick={() => navigate('/tio/auxiliar')}
           />
           <Porta
             divisor

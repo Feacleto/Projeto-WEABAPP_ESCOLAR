@@ -434,6 +434,16 @@ service cloud.firestore {
           )
         )
         || (
+          // A AUXILIAR lê o doc do motorista DELA (a marca, o PIX da perua),
+          // e só enquanto o vínculo estiver ativo (05/10/2026). É o mesmo
+          // documento que as famílias dele já leem.
+          isAppUser()
+          && resource.data.role == 'admin'
+          && userDoc().get('role', '') == 'auxiliar'
+          && userDoc().get('motoristaUid', '') == uid
+          && get(/databases/$(database)/documents/auxiliares/$(request.auth.uid)).data.get('ativa', false) == true
+        )
+        || (
           // E o motorista lê o doc do responsável dele — só dele.
           //
           // Os DOIS campos, pelo mesmo motivo do ramo de cima: `adminUid`
@@ -715,6 +725,11 @@ service cloud.firestore {
                // indicação: escrito pelo cliente, um tio copiaria o código de
                // outro e levaria o crédito. Só `meuCodigoDeIndicacao` grava.
                'codigoDeIndicacao',
+               // ⚠️ A AUXILIAR (05/10/2026): a ligação dela ao motorista é o
+               // que vai abrir a turma dele para ela. Escrita pelo cliente,
+               // qualquer conta se ligaria a qualquer motorista. Só
+               // `aceitarConviteDeAuxiliar` grava.
+               'motoristaUid',
                // O número que a pessoa DIGITOU ao pedir acesso sem link — não
                // comprovado. Gera pedido para o motorista aprovar, nunca
                // vínculo; mesmo assim é do servidor.
@@ -2462,6 +2477,35 @@ service cloud.firestore {
     // escreve pelo cliente — o servidor grava com Admin SDK.
     match /indicesEconomicos/{id} {
       allow read: if temPapelDeMotorista();
+      allow write: if false;
+    }
+
+    // -----------------------------------------------------------------
+    // A CONTA DA AUXILIAR (05/10/2026) — ver functions/lib/auxiliares.js.
+    //
+    // `convitesDeAuxiliar` é só do servidor: o código é o segredo do link, e
+    // a tela pública lê pela callable `verConviteDeAuxiliar`, que devolve o
+    // mínimo. `auxiliares/{uid}` é o vínculo: ela lê o dela, o motorista lê
+    // os dele (é o histórico e a rotatividade). Ninguém escreve pelo cliente
+    // — convidar, aceitar e desativar são callables.
+    // -----------------------------------------------------------------
+    match /convitesDeAuxiliar/{codigo} {
+      allow read, write: if false;
+    }
+    // A TURMA DA AUXILIAR (fase 2): a cópia sem valor que o servidor mantém.
+    // Só a auxiliar ATIVA daquele motorista lê; ninguém escreve pelo cliente.
+    match /turmaDaAuxiliar/{motoristaUid}/{resto=**} {
+      allow read: if isSignedIn()
+        && exists(/databases/$(database)/documents/auxiliares/$(request.auth.uid))
+        && get(/databases/$(database)/documents/auxiliares/$(request.auth.uid)).data.motoristaUid == motoristaUid
+        && get(/databases/$(database)/documents/auxiliares/$(request.auth.uid)).data.ativa == true;
+      allow write: if false;
+    }
+    match /auxiliares/{auxUid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == auxUid
+        || resource.data.motoristaUid == request.auth.uid
+      );
       allow write: if false;
     }
 

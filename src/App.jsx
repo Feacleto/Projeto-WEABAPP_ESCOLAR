@@ -75,6 +75,12 @@ const TioBoletim = lazy(() => import('./pages/tio/TioBoletim'));
 const TioChildStatement = lazy(() => import('./pages/tio/TioChildStatement'));
 const TioExpenses = lazy(() => import('./pages/tio/TioExpenses'));
 const TioTurma = lazy(() => import('./pages/tio/TioTurma'));
+// A CONTA DA AUXILIAR (05/10/2026): o convite, o app dela e a tela do tio.
+const ConviteAuxiliar = lazy(() => import('./pages/ConviteAuxiliar'));
+const AuxLayout = lazy(() => import('./pages/auxiliar/AuxLayout'));
+const AuxHoje = lazy(() => import('./pages/auxiliar/AuxHoje'));
+const AuxPerfil = lazy(() => import('./pages/auxiliar/AuxPerfil'));
+const TioAuxiliar = lazy(() => import('./pages/tio/TioAuxiliar'));
 // "Sua perua" (03/10/2026): abastecer fica FORA da senha (/tio/abastecer — a
 // auxiliar e o motorista no posto); reserva e "Preciso aumentar?" ficam
 // embaixo de /tio/finance, e por isso atrás da senha sem código novo.
@@ -599,6 +605,9 @@ export default function App() {
         {/* O convite é o caminho principal do responsável: o código vem na
           * URL, então ele não digita nada além de email e senha. */}
         <Route path="/convite/:codigo" element={<Invite />} />
+        {/* O convite da AUXILIAR: público, como o da família. A conta nasce
+          * de auxiliar pelo servidor (aceitarConviteDeAuxiliar). */}
+        <Route path="/auxiliar/:codigo" element={<ConviteAuxiliar />} />
         {/* O LINK DO DIA — quem vai pegar a criança hoje acompanha a entrega
           * sem ter conta. Público de propósito: a avó não vai criar login
           * pra uma tarde. O que ela vê é decidido no servidor, campo a
@@ -707,6 +716,7 @@ export default function App() {
         <Route path="finance/boletim" element={<TioBoletim />} />
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="finance/turma" element={<TioTurma />} />
+        <Route path="auxiliar" element={<TioAuxiliar />} />
         <Route path="finance/reserva" element={<TioReserva />} />
         <Route path="finance/aumentar" element={<TioPrecisoAumentar />} />
         <Route path="finance/negocio" element={<TioNegocio />} />
@@ -805,6 +815,19 @@ export default function App() {
           </PrivateRoute>
         }
       />
+
+      {/* O APP DA AUXILIAR (05/10/2026): a conta dela, no celular dela. */}
+      <Route
+        path="/aux"
+        element={
+          <PrivateRoute requireRole="auxiliar">
+            <AuxLayout />
+          </PrivateRoute>
+        }
+      >
+        <Route index element={<AuxHoje />} />
+        <Route path="perfil" element={<AuxPerfil />} />
+      </Route>
 
       <Route
         path="/pai"

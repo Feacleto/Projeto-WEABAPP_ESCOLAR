@@ -17,9 +17,13 @@ import { PIX_KEY_TYPES } from '../../services/userService';
  *
  * Sem chave cadastrada, o botão não aparece: na rota não há o que fazer com
  * isso, e cadastrar pede a senha.
+ *
+ * `perfil` é o do MOTORISTA quando quem abre é a auxiliar na conta dela
+ * (05/10/2026): a chave é dele, não dela.
  */
-export default function PixDaPerua() {
-  const { profile } = useAuth();
+export default function PixDaPerua({ perfil = null }) {
+  const { profile: proprio } = useAuth();
+  const profile = perfil || proprio;
   const [aberta, setAberta] = useState(false);
   const chave = String(profile?.pixKey || '').trim();
   if (!chave) return null;
