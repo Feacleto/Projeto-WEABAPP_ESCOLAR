@@ -61,6 +61,7 @@ import FaixaSemInternet from '../../components/dashboard/FaixaSemInternet';
 import { AvisoDoOuroDaFamilia } from '../../components/nivel/SeloDaFamilia';
 import { FotosDaTurmaNoInicio } from '../../components/comunidade/FotoDaTurmaDaFamilia';
 import AvaliarOTio from '../../components/comunidade/AvaliarOTio';
+import TransferenciaParaAceitar from '../../components/transferencia/TransferenciaParaAceitar';
 
 
 /**
@@ -429,6 +430,8 @@ export default function PaiDashboard() {
 
         {/* A FOTO DA TURMA (05/10/2026): a pergunta "pode aparecer?" enquanto
           * ela não respondeu, e as fotos que a perua postou para as famílias. */}
+        {/* A PASSAGEM PARA OUTRO TIO (fase 2 da rede): fica até ela responder. */}
+        <TransferenciaParaAceitar />
         <FotosDaTurmaNoInicio child={child} />
         {/* A NOTA DO TIO (etapa 2): uma vez por semestre, só ele vê a média. */}
         <AvaliarOTio child={child} noInicio />

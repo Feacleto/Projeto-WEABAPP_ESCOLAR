@@ -68,6 +68,8 @@ import AcessoDeUmDia from '../components/children/AcessoDeUmDia';
 import SaudeDaCrianca from '../components/children/SaudeDaCrianca';
 import { PerguntaDaFoto } from '../components/comunidade/FotoDaTurmaDaFamilia';
 import AvaliarOTio from '../components/comunidade/AvaliarOTio';
+import PassarParaOutroTio from '../components/transferencia/PassarParaOutroTio';
+import PedirOutroTio from '../components/transferencia/PedirOutroTio';
 
 /**
  * Mini-perfil da criança. Funciona pra Tio (com edit/delete) e pra Pai (read-only).
@@ -486,6 +488,11 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
             />
           )}
         </Bloco>
+
+        {/* PASSAR A FAMÍLIA PARA OUTRO TIO (fase 2 da rede, 05/10/2026): o tio
+          * escolhe um parceiro; a família pede ao tio dela. Os dois somem com a
+          * cobrança desligada. */}
+        {isAdmin ? <PassarParaOutroTio child={child} /> : <PedirOutroTio child={child} />}
 
         {/* Remover fica isolado no fim, longe do dedo. */}
         {isAdmin && (

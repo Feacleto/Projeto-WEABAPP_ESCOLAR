@@ -685,6 +685,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `indicesEconomicos` (`ipca`, `selic`, `dolar`; só o servidor escreve, motorista lê) ·
 `fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
 `avaliacoesDoTio` (a nota da família ao tio; só ela lê a dela, o tio não lê nenhuma) ·
+`transferenciasDeFamilia` (passar a família a um tio parceiro; os dois tios leem, a família só com `familiaVe`, só o servidor escreve) ·
 `appState`
 
 ### Conceitos que não dá pra adivinhar do nome
@@ -1743,6 +1744,30 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   família dele) a quem tem conta e não respondeu, um por criança por mês
   (id `simfoto_{criança}_{AAAA-MM}`: o segundo é recusado pelas rules,
   que só deixam a dona mexer no aviso).
+- **Passar a família para outro tio (05/10/2026, fase 2 da rede):**
+  `pedirTransferencia`, `responderTransferencia`, `cancelarTransferencia` e
+  `aceitarTransferencia` ([transferencias.js](functions/lib/transferencias.js),
+  régua em [reguaDaTransferencia.js](functions/lib/reguaDaTransferencia.js),
+  espelho em `src/dominio/identidade/transferencia.js`,
+  `npm run testar:transferencia`). Três toques: o tio pede na ficha a um
+  PARCEIRO (nunca uma lista de tios), o parceiro aceita vendo só o primeiro
+  nome e a escola, e a FAMÍLIA aceita no Início dela (o "Aceito" mora na
+  folha que diz o que vai e o que fica; sem "Recusar", ela fala com o tio).
+  ⚠️ **Só para quem PAGA e fora do ar com a cobrança desligada** (decisão
+  do dono): tio sem plano não pede; parceiro sem plano recebe
+  `precisaAssinar`. ⚠️ **O aceite cria uma criança NOVA** (lista fechada
+  `CAMPOS_QUE_VAO`: saúde, foto, dinheiro, contrato, horários e histórico
+  nunca vão; a escola casa pelo nome com uma do parceiro), e a antiga fica
+  `active: false` com `transferidaPara`, do mesmo dono, e CONGELADA para
+  ele nas rules (não reativa, não perde a marca, não ganha contrato e não
+  se apaga: a família lê o contrato e os pagamentos antigos por ela). A
+  família troca a antiga pela nova em `childIds`, ganha o parceiro em
+  `adminUids` (e no singular), e o tio de antes só sai da lista sem
+  criança ativa nem mensalidade em aberto com ele. A nova é cobrada a partir
+  do mês seguinte (`primeiroMesCobrado`, que o billing respeita). Pedido
+  vence em 7 dias. A família pede ao tio dela por um aviso
+  (`familia_pede_outro_tio`, um por criança por mês). Teto mensal e o
+  caminho de assinar do parceiro: sessão negocio (F2.4).
 - **Cartão do link (04/10/2026):** `cartaoDoLink` (HTTP público) responde
   `/convite/**` e `/quero-fazer-parte` (rewrites do hosting do app, ANTES do
   `**`) e devolve o MESMO index.html com as tags de prévia trocadas: o

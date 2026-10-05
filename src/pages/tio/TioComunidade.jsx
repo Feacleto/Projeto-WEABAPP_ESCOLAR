@@ -9,6 +9,7 @@ import Button from '../../components/common/Button';
 import PublicarFoto from '../../components/comunidade/PublicarFoto';
 import NotaDasFamilias from '../../components/comunidade/NotaDasFamilias';
 import IndicarParceiro from '../../components/comunidade/IndicarParceiro';
+import PedidosParaVoce from '../../components/transferencia/PedidosParaVoce';
 import { apagarFotoDaTurma, meusParceiros, pedirSimDaFoto } from '../../services/comunidadeService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import {
@@ -119,6 +120,8 @@ function Parceiros({ uid }) {
   const marcaDe = Object.fromEntries(dados.parceiros.map((p) => [p.uid, p.marca]));
   return (
     <>
+      {/* As famílias que um parceiro quer passar para ele (fase 2). */}
+      <PedidosParaVoce />
       <p className="text-base leading-relaxed text-textMuted">
         Os tios que você indicou e os que indicaram você. Aqui só vale foto sem
         criança: a perua enfeitada, o portão, a decoração.

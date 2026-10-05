@@ -219,6 +219,19 @@ exports.meusParceiros = makeMeusParceiros(db);
 exports.limparFotosVencidas = makeLimparFotosVencidas(db);
 // Etapa 2: a nota que as famílias dão ao tio (só ele vê, só a média fechada).
 exports.minhaNotaDasFamilias = makeMinhaNotaDasFamilias(db);
+// Fase 2 da rede: passar a família para um tio parceiro. Só para quem paga e
+// fora do ar com a cobrança desligada; a criança NOVA nasce no aceite da
+// família. Ver lib/transferencias.js e lib/reguaDaTransferencia.js.
+const {
+  makePedirTransferencia,
+  makeResponderTransferencia,
+  makeCancelarTransferencia,
+  makeAceitarTransferencia,
+} = require('./lib/transferencias');
+exports.pedirTransferencia = makePedirTransferencia(db);
+exports.responderTransferencia = makeResponderTransferencia(db);
+exports.cancelarTransferencia = makeCancelarTransferencia(db);
+exports.aceitarTransferencia = makeAceitarTransferencia(db);
 // Fase 1 da rede: o parceiro fica sabendo que foi indicado a uma família
 // (sem dado nenhum dela). A foto da turma avisa as famílias dentro de
 // `publicarFotoDaTurma`, e as escolas do parceiro vêm em `meusParceiros`.

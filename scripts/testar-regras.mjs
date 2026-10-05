@@ -551,6 +551,7 @@ async function main() {
   await aAuxiliar({ pai1 });
   await aAuxiliarNoDinheiro({ pai1, novato, dono, anon });
   await asAvaliacoesDaAuxiliar({ pai1, novato, dono, anon });
+  await aTransferencia({ novato, dono, anon });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
@@ -830,6 +831,243 @@ async function aAuxiliar({ pai1 }) {
   checar(BL, 'recontratada, volta a ler o doc do primeiro tio', 'PASSA', await ler(`users/${moto.uid}`, aux));
   checar(BL, 'e a turma dele', 'PASSA', await ler(`${COPIA}/criancas/kidAux1`, aux));
   checar(BL, 'e o tio lê o vínculo com os dois períodos', 'PASSA', await ler(par(moto, aux), moto));
+}
+
+/**
+ * PASSAR A FAMÍLIA PARA OUTRO TIO (F2.2, 05/10/2026) — os casos escritos
+ * pela QA ANTES da regra, a partir do desenho da sessão prod. São o
+ * contrato que `transferenciasDeFamilia` e o resto das rules têm de cumprir.
+ *
+ * O desenho: só o servidor escreve; o tio de agora (`deUid`) e o parceiro
+ * (`paraUid`) leem sempre; a família (`familiaUid`) só depois de o parceiro
+ * aceitar — marcado por `familiaVe: true`, gravado pelo servidor no aceite
+ * do parceiro (é o campo que a consulta da lista dela prova, como o
+ * `removida` das recomendações). No aceite da família o servidor cria uma
+ * criança NOVA na turma do parceiro e desliga a antiga, que nunca muda de
+ * `adminUid` e guarda o `parentUid` (o contrato e os pagamentos antigos
+ * seguem dela).
+ *
+ * Atores PRÓPRIOS, para um 403 não ser herança de outro bloco.
+ */
+async function aTransferencia({ novato, dono, anon }) {
+  console.log('\n=== PASSAR A FAMÍLIA PARA OUTRO TIO (F2.2, 05/10/2026) ===');
+  const BL = 'transferencia';
+  const agora = Date.now();
+  const de = await criarLogin(`tr.de.${agora}@teste.local`);
+  const para = await criarLogin(`tr.para.${agora}@teste.local`);
+  const outroTio = await criarLogin(`tr.outro.${agora}@teste.local`);
+  const mae = await criarLogin(`tr.mae.${agora}@teste.local`);
+  const outraMae = await criarLogin(`tr.outramae.${agora}@teste.local`);
+  const L = (values) => ({ arrayValue: { values } });
+  const VELHA = `kidTrVelha${agora}`;
+  const NOVA = `kidTrNova${agora}`;
+  await semear(`users/${de.uid}`, { role: S('admin'), name: S('Tio De'), pixKey: S('de@pix') });
+  await semear(`users/${para.uid}`, { role: S('admin'), name: S('Tio Para'), pixKey: S('para@pix') });
+  await semear(`users/${outroTio.uid}`, { role: S('admin'), name: S('Outro Tio') });
+  await semear(`users/${outraMae.uid}`, { role: S('parent'), name: S('Outra Mãe'), adminUid: S(outroTio.uid) });
+
+  // ── ANTES DO ACEITE DA FAMÍLIA ──────────────────────────────────────────
+  const maeAntes = {
+    role: S('parent'), name: S('Mãe Tr'), adminUid: S(de.uid), adminUids: L([S(de.uid)]),
+    childId: S(VELHA), childIds: L([S(VELHA)]),
+  };
+  await semear(`users/${mae.uid}`, maeAntes);
+  const criancaVelha = (extra = {}) => ({
+    name: S('Lia Souza'), adminUid: S(de.uid), parentUid: S(mae.uid), active: B(true),
+    schoolName: S('EMEF Sol'), address: S('Rua A, 10'), monthlyFee: N(400), saudeNotas: S('alergia'),
+    ...extra,
+  });
+  await semear(`children/${VELHA}`, criancaVelha());
+  await semear(`children/${VELHA}/contratos/1`, {
+    numero: { integerValue: '1' }, status: S('aceito'), adminUid: S(de.uid), familia: S(mae.uid), tipo: S('contrato'),
+  });
+  await semear(`payments/pgTr${agora}`, {
+    adminUid: S(de.uid), parentUid: S(mae.uid), childId: S(VELHA), amount: N(400),
+    status: S('paid'), monthKey: S('2026-09'),
+  });
+
+  const TR = `transferenciasDeFamilia/tr${agora}`;
+  const transferencia = (estado, familiaVe, extra = {}) => ({
+    deUid: S(de.uid), paraUid: S(para.uid), familiaUid: S(mae.uid), childId: S(VELHA),
+    previa: { mapValue: { fields: { primeiroNome: S('Lia'), escola: S('EMEF Sol') } } },
+    marcaDe: S('Tio De'), marcaPara: S('Tio Para'), estado: S(estado), familiaVe: B(familiaVe),
+    criadoEm: T(0), expiraEm: T(7), ...extra,
+  });
+
+  // O pedido, antes de o parceiro aceitar: só os dois tios.
+  await semear(TR, transferencia('pedido', false));
+  checar(BL, 'pedido: o tio de agora lê', 'PASSA', await ler(TR, de));
+  checar(BL, 'pedido: o parceiro lê (a prévia)', 'PASSA', await ler(TR, para));
+  checar(BL, 'pedido: a família NÃO lê (ainda não sabe)', 'NEGA', await ler(TR, mae));
+  checar(BL, 'pedido: outro tio NÃO lê', 'NEGA', await ler(TR, outroTio));
+  checar(BL, 'pedido: o novato NÃO lê', 'NEGA', await ler(TR, novato));
+  checar(BL, 'pedido: outra família NÃO lê', 'NEGA', await ler(TR, outraMae));
+  checar(BL, 'pedido: anônimo NÃO lê', 'NEGA', await ler(TR, anon));
+  // O parceiro, antes do aceite, conhece só a prévia: nem a criança, nem a
+  // família, nem o contrato, nem os pagamentos.
+  checar(BL, 'antes: o parceiro NÃO lê a criança antiga', 'NEGA', await ler(`children/${VELHA}`, para));
+  checar(BL, 'antes: nem o doc da família', 'NEGA', await ler(`users/${mae.uid}`, para));
+  checar(BL, 'antes: nem o contrato antigo', 'NEGA', await ler(`children/${VELHA}/contratos/1`, para));
+  checar(BL, 'antes: nem os pagamentos', 'NEGA', await ler(`payments/pgTr${agora}`, para));
+  checar(BL, 'antes: a família NÃO lê o doc do parceiro', 'NEGA', await ler(`users/${para.uid}`, mae));
+
+  // Recusado pelo parceiro: a família nunca soube, e continua sem saber.
+  await semear(TR, transferencia('recusada_parceiro', false));
+  checar(BL, 'recusada pelo parceiro: a família NÃO lê', 'NEGA', await ler(TR, mae));
+  checar(BL, 'recusada pelo parceiro: o tio de agora lê', 'PASSA', await ler(TR, de));
+  // Cancelada antes de o parceiro aceitar: idem.
+  await semear(TR, transferencia('cancelada', false));
+  checar(BL, 'cancelada antes do parceiro: a família NÃO lê', 'NEGA', await ler(TR, mae));
+
+  // O parceiro aceitou: agora a família vê o pedido (e decide).
+  await semear(TR, transferencia('parceiro_aceitou', true, { parceiroAceitouEm: T(0) }));
+  checar(BL, 'parceiro aceitou: a família lê', 'PASSA', await ler(TR, mae));
+  checar(BL, 'parceiro aceitou: o parceiro continua lendo', 'PASSA', await ler(TR, para));
+  checar(BL, 'parceiro aceitou: outra família NÃO lê', 'NEGA', await ler(TR, outraMae));
+  checar(BL, 'parceiro aceitou: o parceiro AINDA NÃO lê a criança', 'NEGA', await ler(`children/${VELHA}`, para));
+  // Cancelada depois de o parceiro aceitar: a família já sabia, e lê o fim.
+  await semear(TR, transferencia('cancelada', true, { parceiroAceitouEm: T(0) }));
+  checar(BL, 'cancelada depois do parceiro: a família lê', 'PASSA', await ler(TR, mae));
+
+  // As listas: escopadas por um dos três, e a da família prova `familiaVe`.
+  const consultarCom = (col, condicoes, s) =>
+    fetch(`${FS}:runQuery`, {
+      method: 'POST',
+      headers: H(s),
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: col }],
+          where: condicoes.length === 1
+            ? { fieldFilter: { field: { fieldPath: condicoes[0][0] }, op: 'EQUAL', value: condicoes[0][1] } }
+            : { compositeFilter: { op: 'AND', filters: condicoes.map(([campo, valor]) => ({
+              fieldFilter: { field: { fieldPath: campo }, op: 'EQUAL', value: valor },
+            })) } },
+          limit: 20,
+        },
+      }),
+    }).then((r) => r.status);
+  const COL = 'transferenciasDeFamilia';
+  checar(BL, 'a lista do tio de agora (deUid == eu) passa', 'PASSA', await consultarCom(COL, [['deUid', S(de.uid)]], de));
+  checar(BL, 'a lista do parceiro (paraUid == eu) passa', 'PASSA', await consultarCom(COL, [['paraUid', S(para.uid)]], para));
+  checar(BL, 'a lista da família com familiaVe == true passa', 'PASSA',
+    await consultarCom(COL, [['familiaUid', S(mae.uid)], ['familiaVe', B(true)]], mae));
+  checar(BL, 'a lista da família SEM familiaVe é recusada', 'NEGA',
+    await consultarCom(COL, [['familiaUid', S(mae.uid)]], mae));
+  checar(BL, 'outro tio lista as do tio de agora', 'NEGA', await consultarCom(COL, [['deUid', S(de.uid)]], outroTio));
+  checar(BL, 'outro tio lista as do parceiro', 'NEGA', await consultarCom(COL, [['paraUid', S(para.uid)]], outroTio));
+  checar(BL, 'outra família lista as da primeira', 'NEGA',
+    await consultarCom(COL, [['familiaUid', S(mae.uid)], ['familiaVe', B(true)]], outraMae));
+  checar(BL, 'lista sem filtro é recusada', 'NEGA', await listar(COL, de));
+
+  // Nenhum cliente escreve: pedir, responder e aceitar são callables.
+  await semear(TR, transferencia('pedido', false));
+  checar(BL, 'o tio de agora cria uma transferência pelo app', 'NEGA',
+    await criar(COL, `trF${agora}`, de, transferencia('pedido', false)));
+  checar(BL, 'o parceiro aceita pelo app', 'NEGA',
+    await escrever(TR, para, { estado: S('parceiro_aceitou'), familiaVe: B(true) }, ['estado', 'familiaVe']));
+  checar(BL, 'a família conclui pelo app', 'NEGA',
+    await escrever(TR, mae, { estado: S('concluida') }, ['estado']));
+  checar(BL, 'o parceiro troca a prévia pelo app', 'NEGA',
+    await escrever(TR, para, { previa: { mapValue: { fields: { primeiroNome: S('Lia Souza') } } } }, ['previa']));
+  checar(BL, 'o tio de agora apaga a transferência', 'NEGA', await apagar(TR, de));
+  checar(BL, 'o dono escreve pelo app', 'NEGA',
+    await escrever(TR, dono, { estado: S('cancelada') }, ['estado']));
+
+  // ── DEPOIS DO ACEITE DA FAMÍLIA (como o servidor deixa) ─────────────────
+  await semear(TR, transferencia('concluida', true, { parceiroAceitouEm: T(0), novaCriancaId: S(NOVA) }));
+  await semear(`children/${NOVA}`, {
+    name: S('Lia Souza'), adminUid: S(para.uid), parentUid: S(mae.uid), active: B(true),
+    inviteStatus: S('used'), schoolName: S('EMEF Sol'), address: S('Rua A, 10'),
+  });
+  await semear(`children/${VELHA}`, criancaVelha({
+    active: B(false), inativadoEm: T(0),
+    transferidaPara: { mapValue: { fields: { uid: S(para.uid), em: T(0) } } },
+  }));
+  // A família: a criança nova no lugar da antiga, o parceiro na lista, e o
+  // tio de agora FORA (sem criança ativa nem mensalidade em aberto com ele).
+  await semear(`users/${mae.uid}`, {
+    role: S('parent'), name: S('Mãe Tr'), adminUid: S(para.uid), adminUids: L([S(para.uid)]),
+    childId: S(NOVA), childIds: L([S(NOVA)]),
+  });
+
+  checar(BL, 'concluída: a família lê', 'PASSA', await ler(TR, mae));
+  checar(BL, 'concluída: os dois tios leem', 'PASSA', await ler(TR, de));
+  // (a) O parceiro nunca lê a criança antiga — nem depois.
+  checar(BL, '(a) depois: o parceiro NÃO lê a criança antiga', 'NEGA', await ler(`children/${VELHA}`, para));
+  checar(BL, '(a) nem o contrato antigo', 'NEGA', await ler(`children/${VELHA}/contratos/1`, para));
+  checar(BL, '(a) nem os pagamentos antigos', 'NEGA', await ler(`payments/pgTr${agora}`, para));
+  checar(BL, 'o parceiro lê a criança NOVA', 'PASSA', await ler(`children/${NOVA}`, para));
+  checar(BL, 'e o doc da família', 'PASSA', await ler(`users/${mae.uid}`, para));
+  // (b) O tio de agora deixa de alcançar a criança nova e a família.
+  checar(BL, '(b) o tio de agora NÃO lê a criança nova', 'NEGA', await ler(`children/${NOVA}`, de));
+  checar(BL, '(b) nem o doc da família', 'NEGA', await ler(`users/${mae.uid}`, de));
+  checar(BL, '(b) nem escreve na criança nova', 'NEGA',
+    await escrever(`children/${NOVA}`, de, { monthlyFee: N(1) }, ['monthlyFee']));
+  checar(BL, '(b) nem no doc da família', 'NEGA',
+    await escrever(`users/${mae.uid}`, de, { phone: S('11900000000') }, ['phone']));
+  checar(BL, 'o tio de agora ainda lê a criança antiga (é o histórico dele)', 'PASSA', await ler(`children/${VELHA}`, de));
+  // A criança antiga fica CONGELADA para o tio de agora: reativá-la, tirar a
+  // marca da transferência ou emitir contrato novo nela traria a família de
+  // volta pela porta dos fundos.
+  checar(BL, 'o tio de agora NÃO reativa a criança transferida', 'NEGA',
+    await escrever(`children/${VELHA}`, de, { active: B(true) }, ['active']));
+  checar(BL, 'nem apaga a marca da transferência', 'NEGA',
+    await escrever(`children/${VELHA}`, de, { transferidaPara: { nullValue: null } }, ['transferidaPara']));
+  checar(BL, 'nem emite contrato novo nela', 'NEGA',
+    await criar(`children/${VELHA}/contratos`, '2', de, {
+      numero: { integerValue: '2' }, tipo: S('contrato'), status: S('aguardando'),
+      adminUid: S(de.uid), familia: S(mae.uid), emitidoEm: T(0),
+    }));
+  // Nem a APAGA: a família lê o contrato e os pagamentos antigos pela
+  // criança antiga, e apagá-la levaria o passado dela junto.
+  checar(BL, 'nem apaga a criança transferida', 'NEGA', await apagar(`children/${VELHA}`, de));
+  await semear(`children/kidTrSolta${agora}`, { name: S('Solta'), adminUid: S(de.uid), active: B(false) });
+  checar(BL, 'sonda: a criança dele que não foi transferida ainda se apaga', 'PASSA',
+    await apagar(`children/kidTrSolta${agora}`, de));
+  // (c) A família continua com o passado.
+  checar(BL, '(c) a família lê a criança antiga', 'PASSA', await ler(`children/${VELHA}`, mae));
+  checar(BL, '(c) e o contrato antigo', 'PASSA', await ler(`children/${VELHA}/contratos/1`, mae));
+  checar(BL, '(c) e os pagamentos antigos', 'PASSA', await ler(`payments/pgTr${agora}`, mae));
+  checar(BL, '(c) e a lista dos pagamentos dela', 'PASSA', await consultar('payments', 'parentUid', mae.uid, mae));
+  checar(BL, 'a família lê a criança nova', 'PASSA', await ler(`children/${NOVA}`, mae));
+  checar(BL, 'e o doc do parceiro (o PIX novo)', 'PASSA', await ler(`users/${para.uid}`, mae));
+  // (f) Quem não está na transferência não alcança nada dela.
+  checar(BL, '(f) o novato NÃO lê a transferência', 'NEGA', await ler(TR, novato));
+  checar(BL, '(f) nem a criança nova', 'NEGA', await ler(`children/${NOVA}`, novato));
+  checar(BL, '(f) nem a antiga', 'NEGA', await ler(`children/${VELHA}`, novato));
+  checar(BL, '(f) outro tio NÃO lê a criança nova', 'NEGA', await ler(`children/${NOVA}`, outroTio));
+  checar(BL, '(f) outro tio NÃO lê a transferência concluída', 'NEGA', await ler(TR, outroTio));
+
+  // O caso em que o tio de agora FICA na família (mensalidade em aberto com
+  // ele): ele continua lendo o doc dela, mas nunca a criança nova.
+  await semear(`users/${mae.uid}`, {
+    role: S('parent'), name: S('Mãe Tr'), adminUid: S(para.uid), adminUids: L([S(para.uid), S(de.uid)]),
+    childId: S(NOVA), childIds: L([S(NOVA)]),
+  });
+  checar(BL, 'com mensalidade em aberto: o tio de agora lê o doc dela', 'PASSA', await ler(`users/${mae.uid}`, de));
+  checar(BL, 'mas continua sem a criança nova', 'NEGA', await ler(`children/${NOVA}`, de));
+
+  // A FAMÍLIA PEDE AO TIO DELA "me passe a outro tio": o aviso
+  // `familia_pede_outro_tio`, gravado pelo cliente dela com id
+  // `outrotio_{criança}_{AAAA-MM}` — um por criança por mês, como o pedido
+  // do sim da foto. Atores próprios.
+  const tioP = await criarLogin(`tr.tiop.${agora}@teste.local`);
+  const maeP = await criarLogin(`tr.maep.${agora}@teste.local`);
+  await semear(`users/${tioP.uid}`, { role: S('admin'), name: S('Tio P') });
+  await semear(`users/${maeP.uid}`, {
+    role: S('parent'), name: S('Mãe P'), adminUid: S(tioP.uid), adminUids: L([S(tioP.uid)]),
+  });
+  const PEDE = `notifications/outrotio_kidTrP_2026-10`;
+  const pede = (uid) => ({
+    userId: S(uid), childId: S('kidTrP'), type: S('familia_pede_outro_tio'),
+    title: S('A família da Lia pediu para ir a outro tio'), read: B(false), createdAt: T(0),
+  });
+  checar(BL, 'a família pede ao tio dela (1º do mês)', 'PASSA', await escrever(PEDE, maeP, pede(tioP.uid)));
+  checar(BL, 'o 2º pedido no mesmo mês é recusado (update)', 'NEGA', await escrever(PEDE, maeP, pede(tioP.uid)));
+  checar(BL, 'a família NÃO pede a um tio que não é dela', 'NEGA',
+    await escrever('notifications/outrotio_kidTrQ_2026-10', maeP, pede(outroTio.uid)));
+  checar(BL, 'o tio lê o pedido', 'PASSA', await ler(PEDE, tioP));
+  checar(BL, 'outro tio NÃO lê o pedido', 'NEGA', await ler(PEDE, outroTio));
 }
 
 /**

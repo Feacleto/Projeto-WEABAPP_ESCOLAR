@@ -18,6 +18,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { exigirMotorista } = require('./papeis');
 const { logger } = require('firebase-functions/v2');
 const { mesDentroDaVigencia } = require('./reguaDoContrato');
+const { mesCobravel } = require('./reguaDaTransferencia');
 const LIMITES = require('./limites');
 const { mesValido } = require('./reguaDosIds');
 const admin = require('firebase-admin');
@@ -136,6 +137,15 @@ async function generateForMonth(db, monthKey, adminUid = null) {
 
     // Fora da vigência do contrato não há parcela (`reguaDoContrato`).
     if (!mesDentroDaVigencia(monthKey, child.vigenciaInicio, child.vigenciaFim)) {
+      foraDaVigencia += 1;
+      continue;
+    }
+
+    // A CRIANÇA QUE VEIO DE OUTRO TIO só é cobrada a partir do mês seguinte
+    // ao aceite (`primeiroMesCobrado`): o mês da passagem já tem mensalidade
+    // no documento antigo, com o tio de antes, e a família pagaria duas
+    // vezes. Ver reguaDaTransferencia.js.
+    if (!mesCobravel(monthKey, child.primeiroMesCobrado)) {
       foraDaVigencia += 1;
       continue;
     }

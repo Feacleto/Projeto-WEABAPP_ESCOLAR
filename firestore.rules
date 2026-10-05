@@ -1135,7 +1135,12 @@ service cloud.firestore {
           'contractVersion', 'saudeNotas', 'saudeConsentidaEm', 'vinculadoPor',
           'fotoDaTurmaConsentida', 'fotoDaTurmaEm'
         ]);
-      allow delete: if ehDoMotorista();
+      // ⚠️ A CRIANÇA PASSADA A OUTRO TIO NÃO SE APAGA (QA, 05/10/2026). A
+      // família lê o contrato e os pagamentos antigos PELO `parentUid` dela
+      // (o contrato é uma subcoleção, e a rule dele lê a criança): apagada,
+      // a família perde o passado junto. O app não apaga criança pelo
+      // cliente — remover é desligar —, então isto não fecha caminho nenhum.
+      allow delete: if ehDoMotorista() && !('transferidaPara' in resource.data);
 
       // Updates permitidos (não-admin):
       //   a) Aceitar invite: pending → used, parentUid = auth.uid
@@ -1153,6 +1158,12 @@ service cloud.firestore {
       allow update: if (
         ehDoMotorista()
         && request.resource.data.adminUid == resource.data.adminUid
+        // ⚠️ A CRIANÇA PASSADA A OUTRO TIO FICA CONGELADA PARA ELE (fase 2 da
+        // rede, 05/10/2026). Reativá-la, tirar a marca ou emitir contrato
+        // nela traria a família de volta pela porta dos fundos: ela já está
+        // numa criança NOVA, na turma do parceiro. Quem a criou foi o aceite
+        // dela, no servidor.
+        && !('transferidaPara' in resource.data)
         // ⚠️ O MOTORISTA NÃO TOCA NA INFORMAÇÃO DE SAÚDE. NUNCA.
         //
         // Este ramo permite qualquer outro campo, e é por isso que a proibição
@@ -1464,6 +1475,9 @@ service cloud.firestore {
         || isOwner()
       );
       allow create: if doMotoristaDela()
+        // A criança passada a outro tio não recebe contrato novo (ver o
+        // ramo do motorista em children).
+        && crianca().get('transferidaPara', null) == null
         && request.resource.data.get('familia', null) == crianca().get('parentUid', null)
         && request.resource.data.status == 'aguardando'
         && request.resource.data.adminUid == request.auth.uid
@@ -2993,6 +3007,30 @@ service cloud.firestore {
           && resource.data.expiraEm > request.time
           && ehMotoristaDaFamilia(resource.data.adminUid)
         )
+      );
+      allow write: if false;
+    }
+
+    // transferenciasDeFamilia/{id} — PASSAR A FAMÍLIA PARA OUTRO TIO (fase 2
+    // da rede, 05/10/2026). Ver functions/lib/reguaDaTransferencia.js.
+    //
+    // Só o servidor escreve: pedir, responder, cancelar e aceitar são
+    // callables, e o aceite da família cria a criança NOVA com Admin SDK.
+    // O documento guarda só o primeiro nome e a escola (`previa`): é tudo o
+    // que o parceiro vê antes de a família aceitar.
+    //
+    // ⚠️ A FAMÍLIA SÓ LÊ DEPOIS DE O PARCEIRO ACEITAR. Antes disso o pedido é
+    // conversa entre os dois tios, e ela ficaria sabendo de uma passagem que
+    // pode nem acontecer. É `familiaVe` (desenho da QA, como o `removida`
+    // das recomendações): o servidor grava `true` no aceite do parceiro e
+    // nunca volta a `false`. `estado != 'pedido'` vazaria a recusada e a
+    // cancelada que ela nunca soube, e não é provável numa consulta: a dela
+    // é `familiaUid == eu` + `familiaVe == true`.
+    match /transferenciasDeFamilia/{id} {
+      allow read: if isAppUser() && (
+        resource.data.deUid == request.auth.uid
+        || resource.data.paraUid == request.auth.uid
+        || (resource.data.familiaUid == request.auth.uid && resource.data.familiaVe == true)
       );
       allow write: if false;
     }

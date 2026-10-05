@@ -41,6 +41,7 @@ export const DESTINO_DO_AVISO = {
   // A foto da turma e a pergunta dela moram no Início da família.
   foto_da_turma: '/pai',
   pedido_sim_da_foto: '/pai',
+  transferencia_para_aceitar: '/pai',
 
   // ── DOS DOIS LADOS
   absence_declared: { parent: '/pai/faltas', admin: '/tio/children/{childId}' },
@@ -84,6 +85,10 @@ export const DESTINO_DO_AVISO = {
 
   // ── A REDE DE PARCEIROS
   parceiro_indicou_voce: '/tio/comunidade',
+  transferencia_pedida: '/tio/comunidade',
+  transferencia_respondida: '/tio/children/{childId}',
+  transferencia_concluida: '/tio/children/{childId}',
+  familia_pede_outro_tio: '/tio/children/{childId}',
 
   // ── PARA A AUXILIAR
   recomendacao_recebida: '/aux/perfil',

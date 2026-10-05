@@ -79,6 +79,13 @@ const ESPECIE_DO_AVISO = {
   // família pergunta se o filho pode aparecer na foto da turma: é ele
   // pedindo uma resposta dela, como um recado.
   parceiro_indicou_voce: ESPECIE.FATO,
+  // Passar a família para outro tio (fase 2): cada passo é um fato sobre a
+  // turma dele ou sobre o transporte do filho dela, e nenhum se desliga.
+  transferencia_pedida: ESPECIE.FATO,
+  transferencia_respondida: ESPECIE.FATO,
+  transferencia_concluida: ESPECIE.FATO,
+  transferencia_para_aceitar: ESPECIE.FATO,
+  familia_pede_outro_tio: ESPECIE.FATO,
   pedido_sim_da_foto: ESPECIE.FATO,
 
   rota_atrasada: ESPECIE.ESTADO,
