@@ -39,6 +39,7 @@ const R = require('./reguaDoAuxiliar');
 const { idValido } = require('./reguaDosIds');
 const { copiarTurmaParaAuxiliar, apagarTurmaDaAuxiliar } = require('./turmaDaAuxiliar');
 const { estaLigada } = require('./reguaDaCobranca');
+const { idDoRegistro, eventoDoRegistro } = require('./reguaDoRegistroDaRota');
 
 const REGION = 'southamerica-east1';
 const FRASE_DO_LINK_QUE_NAO_VALE = 'Este convite não vale mais. Peça ao motorista um link novo.';
@@ -312,6 +313,10 @@ function makeDesativarAuxiliar(db) {
  *
  * Só para a frente (`passoValido`); desfazer é do motorista.
  *
+ * Cada marcação também entra no REGISTRO DA ROTA do dia
+ * (`registroDaRota/{tio}_{dia}`, ver `reguaDoRegistroDaRota.js`), que é o
+ * "O que a Cida marcou" no topo da rota do tio.
+ *
  * Ela marca mesmo antes de o tio tocar em "Iniciar a rota", DE PROPÓSITO: é
  * comum ela pôr a criança na perua enquanto ele ainda está ligando o app, e
  * recusar ali faria a família perder o aviso.
@@ -369,6 +374,27 @@ function makeMarcarParadaPelaAuxiliar(db) {
         marcadoPelaAuxiliar: true,
         atualizadoEm: marca,
       }, { merge: true });
+      // O REGISTRO DA ROTA ("O que a Cida marcou", 05/10/2026): o tio lê o
+      // que ela marcou e quando. Na MESMA transação da marcação — um sem o
+      // outro seria o tio lendo uma coisa e a família recebendo outra. O
+      // evento é a lista fechada da régua (primeiro nome, nunca telefone ou
+      // endereço); `em` vai pronto porque array recusa `serverTimestamp`.
+      const evento = eventoDoRegistro({
+        em: Timestamp.now(),
+        auxiliarUid: uid,
+        auxiliarNome: v.nome,
+        anterior,
+        passo: proximo,
+        criancaNome: child.name,
+        escola: child.school,
+      });
+      if (evento) {
+        tx.set(db.doc(`registroDaRota/${idDoRegistro(motoristaUid, hoje)}`), {
+          motoristaUid,
+          dateKey: hoje,
+          eventos: FieldValue.arrayUnion(evento),
+        }, { merge: true });
+      }
       const texto = child.parentUid ? R.avisoDaMarcacao({ proximo, anterior, nome: child.name, hora: horaDeBrasilia(agora) }) : null;
       if (texto) {
         tx.set(db.collection('notifications').doc(), { userId: child.parentUid, ...texto, childId, createdAt: marca });

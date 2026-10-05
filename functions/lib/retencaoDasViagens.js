@@ -2,6 +2,7 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
 const LIMITES = require('./limites');
 const { apagarEmPaginas } = require('./reguaDasVarreduras');
+const { corteDoRegistro, DIAS_DO_REGISTRO } = require('./reguaDoRegistroDaRota');
 
 const REGION = 'southamerica-east1';
 
@@ -86,6 +87,10 @@ function makeApagarViagensAntigas(db) {
     async () => {
       const resultado = await apagarViagensAntigas(db);
       logger.info('[retencao] viagens antigas apagadas', resultado);
+      // O registro da rota ("O que a Cida marcou") vai na mesma noite, DEPOIS
+      // das viagens já logadas: se ele falhar, o log das viagens já saiu.
+      const registro = await apagarRegistrosAntigos(db);
+      logger.info('[retencao] registros da rota antigos apagados', registro);
       return null;
     }
   );
@@ -134,9 +139,40 @@ async function apagarViagensAntigas(db, { agora = new Date() } = {}) {
   return { corte, apagados, paginas, interrompido, diasDeRetencao: DIAS_DE_RETENCAO };
 }
 
+/**
+ * APAGA O REGISTRO DA ROTA COM MAIS DE 7 DIAS — `registroDaRota/{tio}_{dia}`
+ * (05/10/2026, decisão do dono; o porquê do prazo mora em
+ * `reguaDoRegistroDaRota.js`).
+ *
+ * Coleção de RAIZ e campo único em desigualdade: o índice é o automático, sem
+ * `fieldOverrides` (a viagem precisa dele por ser `collectionGroup`). Em
+ * páginas, pelo mesmo motivo das viagens.
+ */
+async function apagarRegistrosAntigos(db, { agora = new Date() } = {}) {
+  const corte = corteDoRegistro(agora);
+  const { apagados, paginas, interrompido } = await apagarEmPaginas({
+    tamanho: LOTE,
+    buscar: async (tamanho) => {
+      const snap = await db
+        .collection('registroDaRota')
+        .where('dateKey', '<', corte)
+        .limit(tamanho)
+        .get();
+      return snap.docs;
+    },
+    apagar: async (docs) => {
+      const lote = db.batch();
+      docs.forEach((d) => lote.delete(d.ref));
+      await lote.commit();
+    },
+  });
+  return { corte, apagados, paginas, interrompido, diasDeRetencao: DIAS_DO_REGISTRO };
+}
+
 module.exports = {
   makeApagarViagensAntigas,
   apagarViagensAntigas,
+  apagarRegistrosAntigos,
   corteDaRetencao,
   DIAS_DE_RETENCAO,
 };
