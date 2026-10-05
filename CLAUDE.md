@@ -1278,6 +1278,16 @@ servidor, e o evento `claimed` de motorista só com `meta.via: 'sem_senha'`.
 A trilha mostra "Baixa dada sem a senha, na rota". O valor ainda chega no
 aparelho: é cortina, não cofre, como a senha do Financeiro.
 [PixDaPerua](src/components/route/PixDaPerua.jsx) só mostra e copia a chave.
+⚠️ **FORA DA ROTA, A CENTRAL É DO MOTORISTA E ABRE DIRETO NA SENHA** — o
+`GuardaDoFinanceiro` não devolve mais o `FinanceiroTrancado` no caixa (ele
+tinha Abastecer, PIX e Despesa sem senha; o lugar da auxiliar virou a rota).
+[TioFinance](src/pages/tio/TioFinance.jsx) é a Central: o saldo com
+"Perguntar ao Buzi" logo abaixo (só com senha; leva a `/tio/finance/buzi`),
+quatro abas como ESTADO (Turma · Perua · Mensalidades · Contas, abre em
+Turma; "Extrato | Mensalidades" mora dentro de Mensalidades) e "Iniciar a
+rota" no pé (`useViagemDoDia` + `ControleDeRota parte="botao"`). Turma e
+Perua são provisórias (portas e `BlocoSuaPerua`) até os assuntos da sessão
+prod em `src/components/carteira/`.
 
 ⚠️ **A AÇÃO MORA NO RODAPÉ, O ENCERRAR MORA NO TOPO** (03/10/2026, auditoria
 de UX para 40+ — padrão de leitura em Z e lei de Fitts). O rodapé fixo da

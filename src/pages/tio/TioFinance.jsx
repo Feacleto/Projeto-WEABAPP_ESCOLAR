@@ -21,6 +21,11 @@ import {
   Receipt,
   Users,
   Download,
+  MessageCircle,
+  School,
+  Baby,
+  Bus,
+  ClipboardList,
 } from 'lucide-react';
 import IconePix from '../../components/common/IconePix';
 import toast from 'react-hot-toast';
@@ -37,6 +42,9 @@ import BotoesDoTopoDoFinanceiro from '../../components/financeiro/BotoesDoTopoDo
 import FolhaDeDespesa from '../../components/financeiro/FolhaDeDespesa';
 import InteressePorCartao from '../../components/tio/InteressePorCartao';
 import BlocoSuaPerua from '../../components/financeiro/BlocoSuaPerua';
+import ControleDeRota from '../../components/route/ControleDeRota';
+import { useViagemDoDia } from '../../hooks/useViagemDoDia';
+import { saidaDaViagem } from '../../dominio/rota/focoDaViagem.js';
 import { useAuth } from '../../hooks/useAuth';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { watchAlertasDeComprovante } from '../../services/alertaDeComprovanteService';
@@ -212,7 +220,14 @@ export default function TioFinance() {
   // do primeiro desenho ainda decidir a aba.
   const [abaEscolhida, setAba] = useState(null);
   const abasRef = useRef(null);
+  // ⚠️ A CENTRAL DO MOTORISTA TEM QUATRO ABAS, E ABRE SEMPRE EM TURMA
+  // (04/10/2026, simulação "Rota e Central" aprovada pelo dono). Elas são
+  // ESTADO, nunca rota: a tranca do Financeiro é por CAMINHO, e uma aba fora
+  // de `/tio/finance` pediria a senha de novo a cada troca (aviso da QA).
+  // "Extrato | Mensalidades" continua, DENTRO da aba Mensalidades.
+  const [secao, setSecao] = useState('turma');
   const irParaAba = (qual, filtro) => {
+    setSecao('mensalidades');
     setAba(qual);
     if (filtro) setFilter(filtro);
     abasRef.current?.scrollIntoView({ block: 'start' });
@@ -560,12 +575,19 @@ export default function TioFinance() {
     }
   };
 
+  // O "Iniciar a rota" do pé da Central — a mesma conta de "Minha rota".
+  const viagem = useViagemDoDia();
+  const iniciarEAbrir = () => {
+    viagem.publicarOrdem();
+    navigate('/tio/route/now');
+  };
+
   return (
     <>
       {/* O cadeado e os ajustes da senha moram no canto do cabeçalho. O
         * "Relatório" saiu daqui: virou "Ver relatório de 12 meses", no fim do
         * extrato, que é onde a pergunta "quero isso no papel" aparece. */}
-      <Header title="Financeiro" action={<BotoesDoTopoDoFinanceiro />} />
+      <Header title="Central" action={<BotoesDoTopoDoFinanceiro />} />
 
       <div className="space-y-4 p-4">
         {/* 1. De que mês a tela fala — antes de qualquer número. */}
@@ -639,7 +661,45 @@ export default function TioFinance() {
           >
             Entrou {reais(totals.paid)} · Saiu {saiu === null ? '…' : reais(saiu)}
           </span>
+          {/* ⚠️ O BUZI MORA AQUI, LOGO ABAIXO DO SALDO (04/10/2026, simulação
+            * aprovada): ele fala de dinheiro, então só existe com a senha — e
+            * some na rota, onde quem segura o celular pode ser a auxiliar. */}
+          <button
+            type="button"
+            onClick={() => navigate('/tio/finance/buzi')}
+            className="tap mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-card text-base font-bold text-primary"
+          >
+            <MessageCircle size={20} aria-hidden="true" />
+            Perguntar ao Buzi
+          </button>
         </section>
+
+        {/* AS QUATRO ABAS DA CENTRAL. "Mensalidades" vai inteiro: 40+ não
+          * decifra abreviação (auditoria "uso"); abaixo de 380 px, duas linhas. */}
+        <div role="tablist" aria-label="Central" className="grid grid-cols-2 gap-1 rounded-2xl bg-neutro p-1 min-[380px]:grid-cols-4">
+          {[
+            ['turma', 'Turma'],
+            ['perua', 'Perua'],
+            ['mensalidades', 'Mensalidades'],
+            ['contas', 'Contas'],
+          ].map(([id, rotulo]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={secao === id}
+              onClick={() => setSecao(id)}
+              className={`tap min-h-12 rounded-xl px-1 text-sm font-bold ${
+                secao === id ? 'bg-card text-text shadow-rest' : 'text-textBody'
+              }`}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+
+        {secao === 'mensalidades' && (
+        <>
 
         {/* 3. Quem está devendo — âmbar, porque pede atenção dele. Só existe
           * quando há atrasada: cartão de "0 atrasadas" ensinaria a pular o
@@ -1013,68 +1073,104 @@ export default function TioFinance() {
           </>
         )}
 
-        {/* ── o fim da tela: o que ele consulta, não o que ele opera ── */}
-
-        {/* "SUA PERUA" (03/10/2026): combustível, reserva e "Preciso
-          * aumentar?" num grupo com título, separado das portas do negócio
-          * (proximidade). O olho vem por prop: o bloco obedece ao mesmo toque.
-          *
-          * ⚠️ DESCEU PARA DEPOIS DA LISTA (04/10/2026, item 13), junto das
-          * portas: em cima, ele empurrava as mensalidades para fora da
-          * primeira tela, e receber o dinheiro é o trabalho do caixa. */}
-        <BlocoSuaPerua criancas={turmaInteira} visiveis={visiveis} />
-
-        {/* 7. As três portas: para onde o dinheiro foi, quem é a turma que
-          * paga, e o que ele deve à plataforma (só com a cobrança ligada). */}
-        <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
-          <Porta
-            icon={Receipt}
-            titulo="Despesas do mês"
-            detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
-            onClick={() => navigate('/tio/finance/expenses')}
-          />
-          <Porta
-            divisor
-            icon={Users}
-            titulo="Turma e contratos"
-            detalhe={[
-              `${turma.ativas} ${turma.ativas === 1 ? 'criança' : 'crianças'}`,
-              frasesDaTurma.entraram,
-              frasesDaTurma.sairam,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            onClick={() => navigate('/tio/finance/turma')}
-          />
-          {cobranca === true && (
-            <Porta
-              divisor
-              icon={FileText}
-              titulo="Meu plano"
-              detalhe={`${plano.nome} · ${plano.estado}`}
-              onClick={() => navigate('/tio/taxa')}
-            />
-          )}
-        </section>
-
-        {isCurrentMonthView && hasPix && (
-          <PixLinha hasPix profile={profile} onOpen={() => setPixOpen(true)} />
+        </>
         )}
 
-        {/* A PESQUISA DO CARTÃO, no fim e sem prometer nada.
-          *
-          * Ela mora AQUI porque é aqui que a pergunta já está na cabeça de quem
-          * está lendo — ele acabou de olhar quem pagou e quem não pagou. E ela
-          * NÃO é modal: interromper a operação de alguém para fazer pesquisa é
-          * cobrar atenção por um benefício que ainda não existe.
-          *
-          * O texto não tem data e não diz "em breve". Prometer prazo para um
-          * autônomo e não cumprir custa a confiança que é a visão da empresa —
-          * `docs/negocio.md` é explícito. */}
-        <div className="pt-2">
-          <InteressePorCartao />
-        </div>
+        {/* TURMA — provisório até os assuntos da Carteira (sessão prod):
+          * as portas de hoje para crianças, contratos e escolas. */}
+        {secao === 'turma' && (
+          <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
+            <Porta
+              icon={Baby}
+              titulo="Crianças"
+              detalhe={`${turma.ativas} ${turma.ativas === 1 ? 'criança' : 'crianças'}`}
+              onClick={() => navigate('/tio/children')}
+            />
+            <Porta
+              divisor
+              icon={Users}
+              titulo="Turma e contratos"
+              detalhe={[frasesDaTurma.entraram, frasesDaTurma.sairam].filter(Boolean).join(' · ') || 'Quem entrou e quem saiu'}
+              onClick={() => navigate('/tio/finance/turma')}
+            />
+            <Porta
+              divisor
+              icon={School}
+              titulo="Escolas"
+              detalhe="Telefone e horários"
+              onClick={() => navigate('/tio/children/escolas')}
+            />
+          </section>
+        )}
+
+        {/* PERUA — "Sua perua" de hoje (abastecer, reserva, preciso
+          * aumentar), até os assuntos da sessão prod chegarem. */}
+        {secao === 'perua' && <BlocoSuaPerua criancas={turmaInteira} visiveis={visiveis} />}
+
+        {/* CONTAS — para onde o dinheiro foi, o que ele deve à plataforma e a
+          * chave PIX. Meu plano só existe com a cobrança ligada. */}
+        {secao === 'contas' && (
+          <>
+            <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
+              <Porta
+                icon={Receipt}
+                titulo="Despesas do mês"
+                detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
+                onClick={() => navigate('/tio/finance/expenses')}
+              />
+              <Porta
+                divisor
+                icon={ClipboardList}
+                titulo="Boletim do negócio"
+                detalhe="O mês num papel"
+                onClick={() => navigate('/tio/finance/boletim')}
+              />
+              {cobranca === true && (
+                <Porta
+                  divisor
+                  icon={FileText}
+                  titulo="Meu plano no Alô Buzinou"
+                  detalhe={`${plano.nome} · ${plano.estado}`}
+                  onClick={() => navigate('/tio/taxa')}
+                />
+              )}
+            </section>
+            <PixLinha hasPix={hasPix} profile={profile} onOpen={() => setPixOpen(true)} />
+            {/* A PESQUISA DO CARTÃO, no fim e sem prometer nada (ver
+              * InteressePorCartao): sem data e sem "em breve". */}
+            <div className="pt-2">
+              <InteressePorCartao />
+            </div>
+          </>
+        )}
       </div>
+
+      {/* O PÉ DA CENTRAL: "Iniciar a rota" é o único botão cheio da tela. Com
+        * a rota rodando, a aba Central já leva à rota; aqui vira "Abrir". */}
+      {viagem.blocos.length > 0 && (
+        <div className="sticky bottom-0 z-10 border-t border-border bg-bg px-4 py-3">
+          {viagem.rotaAtiva ? (
+            <button
+              type="button"
+              onClick={() => navigate('/tio/route/now')}
+              className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-lg font-extrabold text-white shadow-focus"
+            >
+              <Bus size={24} aria-hidden="true" />
+              Abrir a rota
+            </button>
+          ) : (
+            <ControleDeRota
+              parte="botao"
+              secundario={!viagem.temViagem}
+              onIniciar={iniciarEAbrir}
+              direcao={viagem.bloco?.direcao}
+              alvos={viagem.alvosDaRota}
+              saida={saidaDaViagem(viagem.bloco)}
+              pendentes={viagem.pendentesDaViagem}
+            />
+          )}
+        </div>
+      )}
 
       <FolhaDeDespesa open={despesaAberta} onClose={() => setDespesaAberta(false)} comValores />
 

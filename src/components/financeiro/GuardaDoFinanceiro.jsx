@@ -1,14 +1,12 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import PontosDeEspera from '../common/PontosDeEspera';
-import FinanceiroTrancado from './FinanceiroTrancado';
 import PrimeiraSenhaDoFinanceiro from './PrimeiraSenhaDoFinanceiro';
 import EsqueciASenhaDoFinanceiro from './EsqueciASenhaDoFinanceiro';
 import DigiteASenhaDoFinanceiro from './DigiteASenhaDoFinanceiro';
 import { useTrancaDoFinanceiro } from '../../hooks/useTrancaDoFinanceiro';
 import { aquecerSenhaDoFinanceiro } from '../../services/senhaDoFinanceiroService';
 import {
-  CAIXA,
   normalizarCaminho,
   rotaProtegida,
 } from '../../dominio/identidade/trancaDoFinanceiro.js';
@@ -31,8 +29,12 @@ import {
  *   2. destravado?                     → as telas de verdade
  *   3. ainda não se sabe se há senha?  → espera, sem piscar a tela errada
  *   4. não há senha?                   → a primeira vez
- *   5. no caixa?                       → a tela trancada
- *   6. noutro destino (link direto)?   → o teclado, a caminho DAQUELE destino
+ *   5. trancado?                       → o teclado, a caminho DAQUELE destino
+ *
+ * ⚠️ O CAIXA NÃO TEM MAIS TELA TRANCADA PRÓPRIA (04/10/2026, simulação "Rota
+ * e Central"). Ela tinha Abastecer, PIX e Despesa sem senha para a auxiliar;
+ * agora o lugar da auxiliar é a ROTA (a Central sem senha), e fora dela a
+ * Central é do motorista: abre direto no teclado.
  *
  * Isto é cortina, não cofre: a segurança dos dados continua nas rules. Ver
  * `senhaDoFinanceiroService`.
@@ -61,6 +63,5 @@ export default function GuardaDoFinanceiro({ children, voltarPara = null }) {
   if (tranca.destravado) return children;
   if (tranca.temSenha === undefined) return <PontosDeEspera titulo="Financeiro" rotulo="Abrindo" />;
   if (!tranca.temSenha) return <PrimeiraSenhaDoFinanceiro destino={aqui} voltarPara={voltarPara} />;
-  if (aqui === CAIXA) return <FinanceiroTrancado />;
   return <DigiteASenhaDoFinanceiro destino={aqui} voltarPara={voltarPara} />;
 }
