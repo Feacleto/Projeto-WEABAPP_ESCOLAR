@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { Bus, UserRound } from 'lucide-react';
+import { Bus, UserRound, Wallet } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 
 /**
@@ -15,6 +15,8 @@ import BottomNav from '../../components/layout/BottomNav';
  */
 const NAV_ITEMS = [
   { to: '/aux', label: 'Hoje', icon: Bus, end: true },
+  // Fase 4: o que o motorista anotou que pagou a ela, atrás da senha dela.
+  { to: '/aux/pagamentos', label: 'Pagamentos', icon: Wallet },
   { to: '/aux/perfil', label: 'Perfil', icon: UserRound },
 ];
 

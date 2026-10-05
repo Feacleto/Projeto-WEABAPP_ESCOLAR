@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Phone, MessageCircle, School } from 'lucide-react';
+import { Phone, MessageCircle, School, Wallet } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
@@ -38,6 +39,7 @@ const ROTULO_DO_STATUS = {
 };
 
 export default function AuxHoje() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const vinculo = useMeuVinculo();
   const motoristaUid = profile?.motoristaUid || null;
@@ -74,6 +76,15 @@ export default function AuxHoje() {
             <h2 className="font-display text-xl font-bold text-text">{marca} encerrou o seu acesso</h2>
             <p className="mt-2 text-base text-textBody">Você não vê mais a turma nem a rota. Obrigado pelo trabalho.</p>
           </section>
+          {/* Os pagamentos continuam dela depois do acesso encerrado (fase 4). */}
+          <button
+            type="button"
+            onClick={() => navigate('/aux/pagamentos')}
+            className="tap flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-card text-base font-bold text-primary"
+          >
+            <Wallet size={20} aria-hidden="true" />
+            Ver os meus pagamentos
+          </button>
         </div>
       </>
     );

@@ -2508,6 +2508,19 @@ service cloud.firestore {
       );
       allow write: if false;
     }
+    // O PAGAMENTO DA AUXILIAR (fase 4, 05/10/2026): o recibo dos dois — o
+    // que o motorista anotou que pagou a ELA e o "Recebi" dela. Lê só quem
+    // está no recibo; ela continua lendo depois de desativada (os pagamentos
+    // são dela). Ninguém escreve pelo cliente: cada lado só pode dizer a sua
+    // metade, e quem garante isso são as callables de
+    // functions/lib/pagamentosDaAuxiliar.js. Ela NÃO lê `expenses`.
+    match /pagamentosDaAuxiliar/{id} {
+      allow read: if isSignedIn() && (
+        resource.data.motoristaUid == request.auth.uid
+        || resource.data.auxiliarUid == request.auth.uid
+      );
+      allow write: if false;
+    }
 
     match /configFinanceiro/{uid} {
       function kmAntes() {
@@ -2557,7 +2570,10 @@ service cloud.firestore {
           // o cliente não pode TIRAR o contador (apagar = voltar a zero)
           && (resource == null || !('kmDasRotas' in resource.data) || 'kmDasRotas' in d);
       }
-      allow read: if temPapelDeMotorista() && request.auth.uid == uid;
+      // A AUXILIAR lê o PRÓPRIO (fase 4): ali só existe o `temSenha` da senha
+      // dos pagamentos dela, gravado pelo servidor. Escrever, ela não escreve.
+      allow read: if request.auth != null && request.auth.uid == uid
+        && (temPapelDeMotorista() || userDoc().get('role', '') == 'auxiliar');
       allow create: if isAdmin() && request.auth.uid == uid
         && configFinanceiroValida()
         && !('temSenha' in request.resource.data);

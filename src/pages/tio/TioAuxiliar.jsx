@@ -7,6 +7,7 @@ import Input from '../../components/common/Input';
 import CampoDeValor from '../../components/common/CampoDeValor';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import Skeleton from '../../components/common/Skeleton';
+import PagamentoDaAuxiliar from '../../components/auxiliar/PagamentoDaAuxiliar';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuxiliaresDoMotorista } from '../../hooks/useAuxiliares';
 import { convidarAuxiliar, desativarAuxiliar } from '../../services/auxiliarService';
@@ -27,8 +28,9 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks'
  * nasce ligada a ele), vê quem está ativa, desativa na hora e vê quem já
  * trabalhou com ele — a rotatividade dele, só para ele.
  *
- * Fica para as próximas fases: o pagamento dela com "Recebi", a falta, a
- * substituta com o valor e a lista de substitutas.
+ * Fase 4: o pagamento dela, em `PagamentoDaAuxiliar` (ele anota, ela
+ * confirma "Recebi"). Fica para as próximas: a falta, a substituta com o
+ * valor e a lista de substitutas.
  */
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 function mesAno(ms) {
@@ -107,6 +109,7 @@ export default function TioAuxiliar() {
                   Desativar acesso
                 </button>
               </div>
+              <PagamentoDaAuxiliar auxiliar={a} />
             </section>
           ))
         )}

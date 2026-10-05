@@ -301,6 +301,7 @@ function makeMarcarParadaPelaAuxiliar(db) {
 }
 
 module.exports = {
+  exigirContaDoMotoristaOperando,
   makeMarcarParadaPelaAuxiliar,
   makeConvidarAuxiliar,
   makeCancelarConviteDeAuxiliar,

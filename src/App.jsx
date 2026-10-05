@@ -80,6 +80,7 @@ const ConviteAuxiliar = lazy(() => import('./pages/ConviteAuxiliar'));
 const AuxLayout = lazy(() => import('./pages/auxiliar/AuxLayout'));
 const AuxHoje = lazy(() => import('./pages/auxiliar/AuxHoje'));
 const AuxPerfil = lazy(() => import('./pages/auxiliar/AuxPerfil'));
+const AuxPagamentos = lazy(() => import('./pages/auxiliar/AuxPagamentos'));
 const TioAuxiliar = lazy(() => import('./pages/tio/TioAuxiliar'));
 // "Sua perua" (03/10/2026): abastecer fica FORA da senha (/tio/abastecer — a
 // auxiliar e o motorista no posto); reserva e "Preciso aumentar?" ficam
@@ -826,6 +827,7 @@ export default function App() {
         }
       >
         <Route index element={<AuxHoje />} />
+        <Route path="pagamentos" element={<AuxPagamentos />} />
         <Route path="perfil" element={<AuxPerfil />} />
       </Route>
 

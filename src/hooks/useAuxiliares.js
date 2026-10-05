@@ -5,6 +5,8 @@ import {
   watchMeuVinculo,
   watchTurmaDaAuxiliar,
   watchFaltasDaAuxiliar,
+  watchPagamentosDoMotorista,
+  watchMeusPagamentosDeAuxiliar,
 } from '../services/auxiliarService';
 
 /**
@@ -59,4 +61,27 @@ export function useTurmaDaAuxiliar(motoristaUid, dateKey) {
   const byChildId = {};
   for (const f of doDia) byChildId[f.childId] = f;
   return { criancas: lista, faltas: byChildId };
+}
+
+/**
+ * OS RECIBOS DE PAGAMENTO (fase 4). `null` enquanto carrega. Do motorista:
+ * os que ele anotou, de todas as auxiliares. Da auxiliar: os dela.
+ */
+function usePagamentos(assinar) {
+  const { user } = useAuth();
+  const uid = user?.uid || null;
+  const [snap, setSnap] = useState({ chave: null, lista: null });
+  useEffect(() => {
+    if (!uid) return undefined;
+    return assinar(uid, (lista) => setSnap({ chave: uid, lista }), () => setSnap({ chave: uid, lista: [] }));
+  }, [uid, assinar]);
+  return snap.chave === uid ? snap.lista : null;
+}
+
+export function usePagamentosDoMotorista() {
+  return usePagamentos(watchPagamentosDoMotorista);
+}
+
+export function useMeusPagamentosDeAuxiliar() {
+  return usePagamentos(watchMeusPagamentosDeAuxiliar);
 }

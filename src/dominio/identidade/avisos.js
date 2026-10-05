@@ -113,6 +113,9 @@ export const ESPECIE_DO_AVISO = {
   numero_da_casa: ESPECIE.FATO,
   // Um investidor deixou o contato no site — só o dono recebe.
   lead_investidor: ESPECIE.FATO,
+  // A auxiliar confirmou que recebeu o pagamento que o motorista anotou:
+  // o recibo dos dois fechou. Fato sobre dinheiro dele, não se desliga.
+  auxiliar_confirmou_pagamento: ESPECIE.FATO,
 
   // ── o app não está conseguindo prometer o que promete ───────────────────
   rota_atrasada: ESPECIE.ESTADO,

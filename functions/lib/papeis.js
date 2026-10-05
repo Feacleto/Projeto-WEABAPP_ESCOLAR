@@ -74,6 +74,29 @@ async function exigirMotorista(db, request) {
   return uid;
 }
 
+/**
+ * Exige MOTORISTA ou AUXILIAR e devolve o uid de quem chamou (05/10/2026).
+ *
+ * Só a senha de 4 números usa isto: a do motorista protege o Financeiro, a
+ * da auxiliar protege os pagamentos DELA. É a mesma peça (hash em
+ * `senhasDoFinanceiro/{uid}`, sempre o documento de quem chamou), então
+ * duplicar as callables seria duplicar a régua das tentativas.
+ *
+ * ⚠️ A auxiliar passa MESMO COM O VÍNCULO DESATIVADO: os pagamentos dela
+ * continuam dela depois que o motorista encerra o acesso, e a senha é o que
+ * os abre.
+ */
+async function exigirMotoristaOuAuxiliar(db, request) {
+  const { uid, dados } = await carregarUsuario(db, request);
+  if (!ehMotorista(dados) && dados?.role !== 'auxiliar') {
+    throw new HttpsError(
+      'permission-denied',
+      'Esta ação é do motorista ou da auxiliar.'
+    );
+  }
+  return uid;
+}
+
 /** Exige o DONO DA PLATAFORMA e devolve o uid dele. */
 async function exigirDono(db, request) {
   const { uid, dados } = await carregarUsuario(db, request);
@@ -86,4 +109,4 @@ async function exigirDono(db, request) {
   return uid;
 }
 
-module.exports = { exigirMotorista, exigirDono, ehDono, ehMotorista };
+module.exports = { exigirMotorista, exigirMotoristaOuAuxiliar, exigirDono, ehDono, ehMotorista };

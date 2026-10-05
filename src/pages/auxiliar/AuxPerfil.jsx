@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { KeyRound, LogOut } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,8 +8,9 @@ import { DEV_EMAIL } from '../../config/developer';
 
 /**
  * PERFIL DA AUXILIAR (05/10/2026, fase 1): quem ela é, de quem é auxiliar e
- * sair. A nota para o motorista, a chave "aberta a trabalhar com outros tios"
- * e a senha dos pagamentos entram nas próximas fases.
+ * sair. A nota para o motorista e a chave "aberta a trabalhar com outros tios"
+ * entram nas próximas fases. Fase 4: "Trocar a senha dos pagamentos" leva à
+ * aba Pagamentos já no passo de provar a conta.
  *
  * ⚠️ EXCLUIR A CONTA, por enquanto, é pelo e-mail da plataforma — o mesmo
  * canal que os Termos já nomeiam para a família e o motorista. Um botão que
@@ -32,6 +33,14 @@ export default function AuxPerfil() {
             {vinculo === undefined ? '…' : vinculo?.ativa ? 'Auxiliar ativa' : 'Acesso encerrado pelo motorista'}
           </p>
         </section>
+        <Button
+          variant="secondary"
+          icon={KeyRound}
+          className="border-2"
+          onClick={() => navigate('/aux/pagamentos', { state: { trocar: true } })}
+        >
+          Trocar a senha dos pagamentos
+        </Button>
         <Button
           variant="secondary"
           icon={LogOut}

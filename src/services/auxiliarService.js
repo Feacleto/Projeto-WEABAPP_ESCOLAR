@@ -133,3 +133,46 @@ export async function marcarParadaPelaAuxiliar(childId, proximo) {
   const { data } = await chamar('marcarParadaPelaAuxiliar')({ childId, proximo });
   return data;
 }
+
+/**
+ * O PAGAMENTO DA AUXILIAR (fase 4, 05/10/2026) — o recibo dos dois em
+ * `pagamentosDaAuxiliar`. Escrever é do servidor: ele ANOTA (e nasce a
+ * despesa do caixa dele), ela CONFIRMA. Aqui só se chama e se escuta.
+ *
+ * As consultas têm UM campo só (sem `orderBy`), então não pedem índice
+ * composto; a ordem por mês é feita na tela.
+ */
+export async function anotarPagamentoDaAuxiliar({ auxiliarUid, mes, valor }) {
+  const { data } = await chamar('anotarPagamentoDaAuxiliar')({ auxiliarUid, mes, valor });
+  return data;
+}
+
+export async function confirmarRecebimentoDaAuxiliar(id) {
+  const { data } = await chamar('confirmarRecebimentoDaAuxiliar')({ id });
+  return data;
+}
+
+function watchPagamentos(campo, uid, onUpdate, onError) {
+  if (!uid) {
+    onUpdate([]);
+    return () => {};
+  }
+  return onSnapshot(
+    query(collection(db, 'pagamentosDaAuxiliar'), where(campo, '==', uid)),
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('watchPagamentosDaAuxiliar:', err);
+      onError?.(err);
+    }
+  );
+}
+
+/** Os recibos que o motorista anotou (de todas as auxiliares dele). */
+export function watchPagamentosDoMotorista(motoristaUid, onUpdate, onError) {
+  return watchPagamentos('motoristaUid', motoristaUid, onUpdate, onError);
+}
+
+/** Os recibos da própria auxiliar — continuam depois de desativada. */
+export function watchMeusPagamentosDeAuxiliar(auxUid, onUpdate, onError) {
+  return watchPagamentos('auxiliarUid', auxUid, onUpdate, onError);
+}

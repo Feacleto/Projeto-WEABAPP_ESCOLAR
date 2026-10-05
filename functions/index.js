@@ -35,6 +35,7 @@ const {
   makeMarcarParadaPelaAuxiliar,
 } = require('./lib/auxiliares');
 const { makeEspelharCriancaParaAuxiliar, makeEspelharFaltaParaAuxiliar } = require('./lib/turmaDaAuxiliar');
+const { makeAnotarPagamentoDaAuxiliar, makeConfirmarRecebimentoDaAuxiliar } = require('./lib/pagamentosDaAuxiliar');
 const { makeRegistrarInteresseInvestidor } = require('./lib/interesseInvestidor');
 const {
   makePedirAcessoPeloTelefone,
@@ -360,9 +361,15 @@ exports.marcarParadaPelaAuxiliar = makeMarcarParadaPelaAuxiliar(db);
 // A TURMA DA AUXILIAR (fase 2): a cópia sem valor que ela lê.
 exports.espelharCriancaParaAuxiliar = makeEspelharCriancaParaAuxiliar(db);
 exports.espelharFaltaParaAuxiliar = makeEspelharFaltaParaAuxiliar(db);
+// O PAGAMENTO DA AUXILIAR (fase 4): ele anota que pagou (vira despesa do mês),
+// ela confirma "Recebi". Só o servidor escreve o recibo dos dois.
+exports.anotarPagamentoDaAuxiliar = makeAnotarPagamentoDaAuxiliar(db);
+exports.confirmarRecebimentoDaAuxiliar = makeConfirmarRecebimentoDaAuxiliar(db);
 
 // A SENHA DO FINANCEIRO (03/10/2026). A auxiliar usa o celular do motorista e
 // não deve ver valores: o Financeiro abre com 4 números num teclado de banco.
+// Desde a fase 4 (05/10/2026) a AUXILIAR usa as mesmas duas callables para a
+// senha dos pagamentos DELA, no documento do próprio uid.
 // O hash mora em `senhasDoFinanceiro/{uid}`, que nenhum cliente alcança; a
 // conferência recebe os PARES tocados, nunca a senha. Ver o cabeçalho de
 // `senhaDoFinanceiro.js` e a régua em `reguaDaSenhaDoFinanceiro.js`.

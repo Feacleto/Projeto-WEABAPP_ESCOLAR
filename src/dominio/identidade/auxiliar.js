@@ -38,6 +38,9 @@ export function historicoDeAuxiliares(vinculos, agoraMs = Date.now()) {
       uid: v.uid,
       nome: v.nome || 'Auxiliar',
       telefone: v.telefone || '',
+      // O que ele disse no convite que ia pagar — o botão do pagamento
+      // (fase 4) já nasce com ele. Sem valor, a tela pede o valor.
+      valorMensal: Number(v.valorMensal) > 0 ? Number(v.valorMensal) : null,
       ativa: !!v.ativa,
       desdeMs: desde,
       ateMs: ate,
@@ -85,4 +88,56 @@ export function linkDoZap(telefone, texto = '') {
   const d = String(telefone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
   const alvo = d.length === 10 || d.length === 11 ? `55${d}` : '';
   return `https://wa.me/${alvo}${texto ? `?text=${encodeURIComponent(texto)}` : ''}`;
+}
+
+/**
+ * O PAGAMENTO DA AUXILIAR (fase 4, 05/10/2026). O recibo mora em
+ * `pagamentosDaAuxiliar/{motoristaUid}_{auxiliarUid}_{AAAA-MM}` e só o
+ * servidor escreve (`functions/lib/reguaDoPagamentoDaAuxiliar.js`). Aqui, o
+ * que a tela precisa saber dele.
+ */
+const NOMES_DOS_MESES = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+
+/** "outubro" — o mês do recibo, sem o ano (o cartão já está no ano). */
+export function nomeDoMesDoPagamento(mes) {
+  const m = Number(String(mes || '').slice(5, 7));
+  return NOMES_DOS_MESES[m - 1] || '';
+}
+
+/** "outubro de 2026" */
+export function mesEAnoDoPagamento(mes) {
+  const nome = nomeDoMesDoPagamento(mes);
+  return nome ? `${nome} de ${String(mes).slice(0, 4)}` : '';
+}
+
+/** "05/10" — o dia em que ele anotou, ou em que ela confirmou. */
+export function diaCurto(valor) {
+  const t = ms(valor);
+  if (t == null) return '';
+  const d = new Date(t);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** O id do recibo — o mesmo desenho do servidor. */
+export function idDoPagamentoDaAuxiliar(motoristaUid, auxiliarUid, mes) {
+  return `${motoristaUid}_${auxiliarUid}_${mes}`;
+}
+
+/** O recibo de UMA auxiliar num mês, ou `null`. */
+export function pagamentoDoMes(lista, auxiliarUid, mes) {
+  return (lista || []).find((p) => p.auxiliarUid === auxiliarUid && p.mes === mes) || null;
+}
+
+/** Os recibos do mais novo para o mais velho (a consulta não ordena). */
+export function recibosEmOrdem(lista) {
+  return [...(lista || [])].sort((a, b) => String(b.mes).localeCompare(String(a.mes)));
+}
+
+/** O estado do recibo, como as duas telas o dizem. */
+export function estadoDoRecibo(pagamento) {
+  if (!pagamento) return 'sem_anotacao';
+  return pagamento.recebidoEm ? 'confirmado' : 'esperando';
 }

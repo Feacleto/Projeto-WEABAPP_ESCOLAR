@@ -24,7 +24,15 @@
  *
  * ── O ESCOPO É O UID AUTENTICADO
  * Nenhum id do payload vira caminho: o documento é sempre o de quem chamou
- * (`exigirMotorista` devolve o uid). Por isso não há `idValido` aqui.
+ * (`exigirMotoristaOuAuxiliar` devolve o uid). Por isso não há `idValido`.
+ *
+ * ── A AUXILIAR USA A MESMA PEÇA (05/10/2026, fase 4)
+ * Com conta própria, a auxiliar ganhou a aba "Pagamentos" — o que o motorista
+ * anotou que pagou a ELA — protegida pela senha DELA, no mesmo teclado de
+ * banco. Mesmas callables, mesmo documento por uid: a senha dela mora em
+ * `senhasDoFinanceiro/{uidDela}` e o `temSenha` em `configFinanceiro/{uidDela}`
+ * (as rules deixam a auxiliar ler o próprio). Duas callables novas seriam a
+ * régua das tentativas copiada, e a cópia é a que fica para trás.
  */
 
 'use strict';
@@ -33,7 +41,7 @@ const crypto = require('crypto');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
-const { exigirMotorista } = require('./papeis');
+const { exigirMotoristaOuAuxiliar } = require('./papeis');
 const {
   formatoValido,
   senhaFacil,
@@ -72,7 +80,7 @@ function makeCriarSenhaDoFinanceiro(db) {
   return onCall(
     { ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO },
     async (request) => {
-      const uid = await exigirMotorista(db, request);
+      const uid = await exigirMotoristaOuAuxiliar(db, request);
       const senha = request.data?.senha;
       if (!formatoValido(senha)) {
         throw new HttpsError('invalid-argument', 'A senha tem 4 números.');
@@ -126,7 +134,7 @@ function makeConferirSenhaDoFinanceiro(db) {
   return onCall(
     { ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO },
     async (request) => {
-      const uid = await exigirMotorista(db, request);
+      const uid = await exigirMotoristaOuAuxiliar(db, request);
       // O "acordar" da tela trancada (04/10/2026): só liga a function, não
       // confere nada e não conta tentativa. Ver aquecerSenhaDoFinanceiro.
       if (request.data?.aquecer === true) return { aquecida: true };
@@ -139,7 +147,7 @@ function makeConferirSenhaDoFinanceiro(db) {
       const snap = await ref.get();
       const doc = snap.exists ? snap.data() : null;
       if (!doc?.hash || !doc?.sal) {
-        throw new HttpsError('failed-precondition', 'Crie a senha do Financeiro primeiro.');
+        throw new HttpsError('failed-precondition', 'Crie a senha primeiro.');
       }
       if (trancado({ bloqueadoAteMs: msDe(doc.bloqueadoAte), agoraMs: Date.now() })) {
         throw new HttpsError('resource-exhausted', MENSAGEM_DE_ESPERA);

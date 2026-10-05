@@ -183,7 +183,7 @@ export default function PrimeiraSenhaDoFinanceiro({ troca = false, destino, volt
 }
 
 /** O teclado de todo dia: 1–9, 0 e Apagar. Só para criar a senha nova. */
-function TecladoComum({ digitados, erro, aoDigitar, aoApagar }) {
+export function TecladoComum({ digitados, erro, aoDigitar, aoApagar }) {
   const teclas = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'apagar'];
   return (
     <div className="flex flex-col gap-4">

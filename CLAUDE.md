@@ -40,7 +40,8 @@ npm run testar                   # 68 scripts. O PRIMEIRO é
                                  # tutorial, mapa, modulos, e os do Financeiro
                                  # trancado: extrato, despesas, turma (depois de
                                  # dinheiro), tranca, senha-financeiro, km-da-rota,
-                                 # perua, ditado, indices
+                                 # perua, ditado, indices, e os da auxiliar:
+                                 # auxiliar, pagamento-da-auxiliar
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -198,6 +199,17 @@ sem rota aberta DE PROPÓSITO (ela põe na perua enquanto ele liga o app).
 ⚠️ **CONTA TRANCADA NÃO OPERA PELA AUXILIAR**: as callables escrevem com Admin
 SDK, então convidar, aceitar e marcar conferem `contaDoMotoristaOpera`, o
 mesmo predicado do `isAdmin()` das rules. Ela vê o PIX DELE (`PixDaPerua`).
+⚠️ **O PAGAMENTO DELA É UM RECIBO DOS DOIS (fase 4):** no cartão dela em
+`/tio/auxiliar` ele toca "Anotar que paguei" (`anotarPagamentoDaAuxiliar`
+grava `pagamentosDaAuxiliar/{tio}_{aux}_{AAAA-MM}` e a despesa `monitor` —
+"Auxiliar" no caixa — na MESMA transação; um por mês), e ela confirma
+"Recebi" na aba `/aux/pagamentos` (`confirmarRecebimentoDaAuxiliar`, aviso
+`auxiliar_confirmou_pagamento` a ele), atrás da senha DELA — as mesmas
+callables da senha do Financeiro, que aceitam a auxiliar
+(`exigirMotoristaOuAuxiliar`), e o `temSenha` dela em `configFinanceiro/{uid}`.
+Continua dela depois de desativada. Régua pura em
+[reguaDoPagamentoDaAuxiliar.js](functions/lib/reguaDoPagamentoDaAuxiliar.js),
+`npm run testar:pagamento-da-auxiliar`.
 Pagamentos dela com senha própria, falta, substitutas e avaliações: próximas
 fases. ⚠️ A Política ainda não fala dela (pendências, bloco D).
 
@@ -613,7 +625,8 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao` e `convitesDeAuxiliar` (só o servidor) ·
 `auxiliares` (o vínculo da auxiliar; ela e o motorista dela leem, ninguém escreve pelo cliente) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
-`configFinanceiro` (só o próprio motorista lê) ·
+`pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
+`configFinanceiro` (só o próprio motorista lê; a auxiliar lê o dela, só com o `temSenha`) ·
 `indicesEconomicos` (o IPCA; só o servidor escreve, motorista lê) ·
 `appState`
 
@@ -1781,7 +1794,9 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `aceitarConviteDeAuxiliar`, `desativarAuxiliar` e `marcarParadaPelaAuxiliar`
   ([auxiliares.js](functions/lib/auxiliares.js)); a cópia da turma é dos
   gatilhos `espelharCriancaParaAuxiliar` e `espelharFaltaParaAuxiliar`
-  ([turmaDaAuxiliar.js](functions/lib/turmaDaAuxiliar.js)).
+  ([turmaDaAuxiliar.js](functions/lib/turmaDaAuxiliar.js)). O pagamento dela
+  (fase 4): `anotarPagamentoDaAuxiliar` e `confirmarRecebimentoDaAuxiliar`
+  ([pagamentosDaAuxiliar.js](functions/lib/pagamentosDaAuxiliar.js)).
 - **Cupom do cartão do app:** `meuCodigoDeIndicacao`
   ([codigoDeIndicacao.js](functions/lib/codigoDeIndicacao.js), régua pura em
   [reguaDoCodigo.js](functions/lib/reguaDoCodigo.js), casos em
