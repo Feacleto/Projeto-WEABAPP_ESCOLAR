@@ -201,6 +201,61 @@ function avisoDaMarcacao({ proximo, anterior, nome, hora }) {
   return null;
 }
 
+/** O tipo da falta do dia inteiro (`ABSENCE_TYPES.FULL` no app). Constante, e não literal: o
+ * `testar:preferencias` lê todo `type: '…'` como tipo de AVISO. */
+const FALTA_DO_DIA_INTEIRO = 'full';
+
+/**
+ * O "FALTOU" DA AUXILIAR (05/10/2026, decisão do dono). Falta não é passo da
+ * viagem — por isso não passa por `passoValido` —, mas tem a mesma trava do
+ * botão do motorista: só ANTES de embarcar. Quem já está na perua (ou já foi
+ * à escola, ou já voltou) não "faltou"; corrigir isso é desfazer, e desfazer
+ * é do motorista.
+ */
+function podeMarcarFalta(statusHoje) {
+  return (statusHoje || 'home') === 'home';
+}
+
+/**
+ * A DECLARAÇÃO que a falta dela grava em `absenceDeclarations/{dia}_{id}` —
+ * o MESMO formato que o "Faltou" do motorista grava pelo app
+ * (`declareAbsence` em src/services/absencesService.js): o tipo 'full' (`ABSENCE_TYPES.FULL`), o
+ * `adminUid` da CRIANÇA, `note` vazio. Muda só `declaredBy: 'auxiliar'`, o
+ * campo que o formato já tinha para dizer quem registrou — e toda tela que
+ * o lê compara com 'parent', então ela conta como "a perua registrou".
+ * `createdAt`/`updatedAt` quem põe é o servidor (sentinela do SDK).
+ */
+function declaracaoDaFaltaPelaAuxiliar({ dateKey, childId, child }) {
+  return {
+    dateKey,
+    childId,
+    childName: String(child?.name || ''),
+    parentUid: child?.parentUid || null,
+    adminUid: child?.adminUid || null,
+    type: FALTA_DO_DIA_INTEIRO,
+    declaredBy: 'auxiliar',
+    note: '',
+  };
+}
+
+/**
+ * O aviso à família — o MESMO `type` ('absence_declared') e os mesmos campos
+ * do aviso de quando o motorista marca "Faltou" (`notifyAbsence`), para o
+ * sino, o push e o destino tratarem igual. O corpo diz "Marcado na perua.",
+ * como as outras marcações dela: quem marcou foi a perua, não a família.
+ */
+function avisoDaFaltaPelaAuxiliar({ nome, dateKey }) {
+  const n = String(nome || '').trim().split(/\s+/)[0] || 'A criança';
+  return {
+    type: 'absence_declared',
+    title: `${n} não vai hoje`,
+    body: 'Marcado na perua. A perua não passa nas duas viagens.',
+    childName: String(nome || '') || 'Aluno',
+    absenceType: FALTA_DO_DIA_INTEIRO,
+    dateKey,
+  };
+}
+
 /**
  * ⚠️ A CONTA DO MOTORISTA ESTÁ OPERANDO? (achado da QA, 05/10/2026)
  *
@@ -234,6 +289,9 @@ module.exports = {
   passoValido,
   statusDeHoje,
   avisoDaMarcacao,
+  podeMarcarFalta,
+  declaracaoDaFaltaPelaAuxiliar,
+  avisoDaFaltaPelaAuxiliar,
   CAMPOS_DA_TURMA_DA_AUXILIAR,
   recorteParaAuxiliar,
   faltaParaAuxiliar,

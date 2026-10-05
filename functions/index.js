@@ -33,6 +33,7 @@ const {
   makeAceitarConviteDeAuxiliar,
   makeDesativarAuxiliar,
   makeMarcarParadaPelaAuxiliar,
+  makeMarcarFaltaPelaAuxiliar,
 } = require('./lib/auxiliares');
 const { makeEspelharCriancaParaAuxiliar, makeEspelharFaltaParaAuxiliar } = require('./lib/turmaDaAuxiliar');
 const {
@@ -433,6 +434,7 @@ exports.aceitarConviteDeAuxiliar = makeAceitarConviteDeAuxiliar(db);
 exports.desativarAuxiliar = makeDesativarAuxiliar(db);
 // A AUXILIAR MARCA NA ROTA (fase 3): pelo servidor, porque ela não escreve em children.
 exports.marcarParadaPelaAuxiliar = makeMarcarParadaPelaAuxiliar(db);
+exports.marcarFaltaPelaAuxiliar = makeMarcarFaltaPelaAuxiliar(db);
 // A TURMA DA AUXILIAR (fase 2): a cópia sem valor que ela lê.
 exports.espelharCriancaParaAuxiliar = makeEspelharCriancaParaAuxiliar(db);
 exports.espelharFaltaParaAuxiliar = makeEspelharFaltaParaAuxiliar(db);

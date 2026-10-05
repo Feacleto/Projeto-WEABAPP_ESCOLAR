@@ -184,7 +184,7 @@ checar('de manhã o embarque não avisa a família', null, R.avisoDaMarcacao({ p
 checar('na saída da escola avisa', 'child_onboard', R.avisoDaMarcacao({ proximo: 'onboard', anterior: 'atSchool', nome: 'Ana', hora: '12:10' })?.type);
 checar('chegou na escola e em casa avisam', ['child_arrived_school', 'child_arrived_home'],
   [R.avisoDaMarcacao({ proximo: 'atSchool', nome: 'Ana', hora: '07:00' })?.type, R.avisoDaMarcacao({ proximo: 'delivered', nome: 'Ana', hora: '12:30' })?.type]);
-const marcar = servidor.slice(servidor.indexOf('function makeMarcarParadaPelaAuxiliar'), servidor.indexOf('module.exports'));
+const marcar = servidor.slice(servidor.indexOf('function makeMarcarParadaPelaAuxiliar'), servidor.indexOf('function makeMarcarFaltaPelaAuxiliar'));
 checar('a marcação confere o vínculo ATIVO', true, marcar.includes('v.ativa !== true'));
 checar('marcar recebe o motoristaUid e o passa no idValido ANTES de virar caminho', true,
   marcar.includes("request.data?.motoristaUid") && marcar.indexOf('idValido(motoristaUid)') > -1
@@ -194,7 +194,7 @@ checar('e o app manda o tio escolhido', true,
 checar('e que a criança é do motorista dela', true, marcar.includes('child.adminUid !== motoristaUid'));
 checar('e grava status, marco e aviso numa TRANSAÇÃO (toque duplo não avisa duas vezes)', true, ['runTransaction', 'tx.get(childRef)', 'tx.update(childRef', 'rides/${hoje}', "collection('notifications')"].every((p) => marcar.includes(p)));
 checar('e recusa a conta trancada do motorista', true, marcar.includes('exigirContaDoMotoristaOperando(db, motoristaUid)'));
-checar('convidar e aceitar também recusam conta trancada', 3, (servidor.match(/await exigirContaDoMotoristaOperando\(db,/g) || []).length);
+checar('convidar, aceitar e o Faltou também recusam conta trancada', 4, (servidor.match(/await exigirContaDoMotoristaOperando\(db,/g) || []).length);
 const DIA = 864e5;
 const T = Date.UTC(2026, 9, 5);
 const opera = (m, ligada) => R.contaDoMotoristaOpera(m, { cobrancaLigada: ligada, agoraMs: T });
@@ -208,6 +208,44 @@ checar('assinatura vencida há 11 dias: não opera', false, opera({ role: 'admin
 checar('quem não é motorista não opera', false, opera({ role: 'parent' }, false));
 checar('a callable está exportada', true, indice.includes('exports.marcarParadaPelaAuxiliar ='));
 checar('o PIX dela é o do motorista', true, ler('src/pages/auxiliar/AuxHoje.jsx').includes('<PixDaPerua perfil={motorista} />'));
+
+console.log('\n8b. o "Faltou" dela (05/10/2026)');
+{
+  checar('só antes de embarcar', [true, true, false, false, false],
+    [R.podeMarcarFalta('home'), R.podeMarcarFalta(undefined), R.podeMarcarFalta('onboard'), R.podeMarcarFalta('atSchool'), R.podeMarcarFalta('delivered')]);
+  const child = { name: 'Ana Souza', parentUid: 'mae1', adminUid: 'tio1', address: 'Rua das Trovas, 61', monthlyFee: 300 };
+  const d = R.declaracaoDaFaltaPelaAuxiliar({ dateKey: '2026-10-05', childId: 'c1', child });
+  // O formato do "Faltou" do tio (declareAbsence), sem os carimbos de hora.
+  checar('a mesma declaração do "Faltou" do tio, com declaredBy auxiliar',
+    { dateKey: '2026-10-05', childId: 'c1', childName: 'Ana Souza', parentUid: 'mae1', adminUid: 'tio1', type: 'full', declaredBy: 'auxiliar', note: '' }, d);
+  const servico = ler('src/services/absencesService.js');
+  const formato = servico.slice(servico.indexOf("setDoc(doc(db, 'absenceDeclarations'"), servico.indexOf("playSound('salvo')"));
+  checar('os campos são os mesmos que o app grava (o espelho não perdeu nenhum)', true,
+    formato.length > 0 && Object.keys(d).every((k) => formato.includes(k)) && ['createdAt', 'updatedAt'].every((k) => formato.includes(k)));
+  const aviso = R.avisoDaFaltaPelaAuxiliar({ nome: 'Ana Souza', dateKey: '2026-10-05' });
+  checar('o aviso tem o mesmo type do aviso do tio', 'absence_declared', aviso.type);
+  checar('e o tio usa esse type', true, servico.includes("type: 'absence_declared'"));
+  checar('o título é o primeiro nome', 'Ana não vai hoje', aviso.title);
+  const falta = servidor.slice(servidor.indexOf('function makeMarcarFaltaPelaAuxiliar'), servidor.indexOf('module.exports'));
+  checar('a callable existe e está exportada', [true, true], [falta.length > 0, indice.includes('exports.marcarFaltaPelaAuxiliar =')]);
+  checar('confere os ids pelo idValido ANTES do caminho', true,
+    falta.indexOf('idValido(childId)') > -1 && falta.indexOf('idValido(motoristaUid)') > -1
+    && falta.indexOf('idValido(motoristaUid)') < falta.indexOf('auxiliares/${R.idDoVinculo(motoristaUid, uid)}'));
+  checar('confere o par ativo, a conta operando, a criança do tio e ativa', true,
+    ['v.ativa !== true', 'exigirContaDoMotoristaOperando(db, motoristaUid)', 'child.adminUid !== motoristaUid', 'child.active !== true'].every((p) => falta.includes(p)));
+  checar('e o status de HOJE ainda em casa', true, falta.includes('R.podeMarcarFalta(R.statusDeHoje(child, hoje, chaveDoDia))'));
+  const tx = falta.slice(falta.indexOf('runTransaction'), falta.indexOf('return { ok: true, avisou }'));
+  checar('numa transação: a declaração, o registro e o aviso', true,
+    ['tx.get(childRef)', 'tx.get(faltaRef)', 'tx.set(faltaRef', 'registroDaRota/${idDoRegistro(motoristaUid, hoje)}', "passo: 'faltou'", "collection('notifications')"].every((p) => tx.includes(p)));
+  checar('o id da falta é o do dia e da criança', true, falta.includes('absenceDeclarations/${hoje}_${childId}'));
+  checar('falta já marcada não avisa de novo', true, tx.includes("faltaSnap.data().type === 'full') return false"));
+  checar('ela não desmarca falta (nenhum delete)', false, /\.delete\(/.test(falta));
+  const tela = semComentarios(ler('src/pages/auxiliar/AuxHoje.jsx'));
+  checar('a tela chama a callable com o tio escolhido', true, tela.includes('marcarFaltaPelaAuxiliar(child.id, motoristaUid)'));
+  checar('o "Faltou" só antes de embarcar, e de CONTORNO', true,
+    tela.includes("item.action?.nextStatus === 'onboard' && (item.status || 'home') === 'home'") && /border-2 border-dangerBorder bg-card[^"]*"\s*>\s*Faltou/.test(tela));
+  checar('com confirmação antes de avisar a família', true, tela.includes('onConfirm={marcarFalta}'));
+}
 
 console.log('\n9. o vínculo por PAR (05/10/2026)');
 checar('o id do par', 'tio_aux', R.idDoVinculo('tio', 'aux'));

@@ -134,6 +134,12 @@ console.log('\n4. o evento do registro é uma lista fechada');
     [RR.eventoDoRegistro({ em, auxiliarUid: 'a', anterior: 'onboard', passo: 'home' }),
       RR.eventoDoRegistro({ em, auxiliarUid: 'a', anterior: 'delivered', passo: 'onboard' }),
       RR.eventoDoRegistro({ em: null, auxiliarUid: 'a', anterior: 'home', passo: 'onboard' })]);
+  const falta = RR.eventoDoRegistro({ em, auxiliarUid: 'aux1', auxiliarNome: 'Cida', anterior: 'home', passo: 'faltou', criancaNome: 'Ana Souza', escola: 'EMEF Sol' });
+  checar('"faltou" vira evento, com a mesma lista fechada', RR.CAMPOS_DO_EVENTO, Object.keys(falta || {}));
+  checar('a falta vale para o dia', 'dia', falta?.viagem);
+  checar('a frase da falta', 'Ana faltou', fraseDoEvento(falta));
+  checar('falta depois de embarcar não vira evento', [null, null],
+    [RR.eventoDoRegistro({ em, auxiliarUid: 'a', anterior: 'onboard', passo: 'faltou' }), RR.eventoDoRegistro({ em, auxiliarUid: 'a', anterior: 'atSchool', passo: 'faltou' })]);
   checar('o id é do tio e do dia', 'tio1_2026-10-05', RR.idDoRegistro('tio1', '2026-10-05'));
   checar('a régua do servidor não faz require', false, /require\(/.test(semComentarios(ler('functions/lib/reguaDoRegistroDaRota.js'))));
 
@@ -149,13 +155,18 @@ console.log('\n4. o evento do registro é uma lista fechada');
 console.log('\n5. o servidor grava o registro na MESMA transação da marcação');
 {
   const servidor = ler('functions/lib/auxiliares.js');
-  const marcar = servidor.slice(servidor.indexOf('function makeMarcarParadaPelaAuxiliar'), servidor.indexOf('module.exports'));
+  const marcar = servidor.slice(servidor.indexOf('function makeMarcarParadaPelaAuxiliar'), servidor.indexOf('function makeMarcarFaltaPelaAuxiliar'));
   const transacao = marcar.slice(marcar.indexOf('runTransaction'), marcar.indexOf('return { ok: true, avisou'));
   checar('o registro é escrito dentro da transação (tx.set)', true, transacao.includes('tx.set(db.doc(`registroDaRota/${idDoRegistro(motoristaUid, hoje)}`)'));
   checar('com arrayUnion do evento da régua', true, transacao.includes('eventos: FieldValue.arrayUnion(evento)') && transacao.includes('eventoDoRegistro('));
   checar('o instante é Timestamp.now() (array recusa serverTimestamp)', true, transacao.includes('em: Timestamp.now()'));
   checar('o dia é o mesmo da marcação', true, transacao.includes('dateKey: hoje'));
   checar('fora da transação, nenhuma escrita do registro', false, marcar.replace(transacao, '').includes('registroDaRota'));
+  const falta = servidor.slice(servidor.indexOf('function makeMarcarFaltaPelaAuxiliar'), servidor.indexOf('module.exports'));
+  const txFalta = falta.slice(falta.indexOf('runTransaction'), falta.indexOf('return { ok: true, avisou }'));
+  checar('o Faltou dela grava o registro na transação dele, com passo "faltou"', true,
+    txFalta.includes('tx.set(db.doc(`registroDaRota/${idDoRegistro(motoristaUid, hoje)}`)') && txFalta.includes("passo: 'faltou'"));
+  checar('e fora da transação do Faltou, nenhuma escrita do registro', false, falta.replace(txFalta, '').includes('registroDaRota'));
 }
 
 console.log('\n6. a ficha da auxiliar não lê o que ela não vê');

@@ -20,7 +20,7 @@
  *
  * ⚠️ `em` é `Timestamp.now()`, não `serverTimestamp()`: o Firestore recusa
  * sentinela dentro de array. Quem escreve é só o servidor
- * (`marcarParadaPelaAuxiliar`), com `arrayUnion`, na MESMA transação da
+ * (`marcarParadaPelaAuxiliar` e `marcarFaltaPelaAuxiliar`), com `arrayUnion`, na MESMA transação da
  * marcação — registro sem marcação, ou marcação sem registro, seriam o tio
  * lendo uma coisa e a família recebendo outra.
  *
@@ -33,7 +33,13 @@
 
 const DIAS_DO_REGISTRO = 7;
 
-const PASSOS = ['onboard', 'atSchool', 'delivered'];
+/**
+ * Os passos que viram evento. 'faltou' (05/10/2026, decisão do dono) é a
+ * falta que ELA marcou antes do embarque (`marcarFaltaPelaAuxiliar`): não é
+ * passo da viagem, e por isso a `viagem` dele é 'dia' — a falta vale para a
+ * ida e a volta.
+ */
+const PASSOS = ['onboard', 'atSchool', 'delivered', 'faltou'];
 
 /** Os campos do evento, na ordem. Campo novo precisa entrar AQUI, de propósito. */
 const CAMPOS_DO_EVENTO = ['em', 'auxiliarUid', 'auxiliarNome', 'passo', 'viagem', 'criancaNome', 'escola'];
@@ -51,9 +57,11 @@ function primeiroNome(nome) {
  * Ida ou volta, pelo passo dado — o mesmo desenho de `passoValido`:
  *   ida   home → onboard → atSchool
  *   volta atSchool → onboard → delivered
+ * e 'dia' para a falta, que só se marca antes de embarcar (home → faltou).
  * `null` quando o par não é um passo da auxiliar.
  */
 function viagemDoPasso(anterior, proximo) {
+  if (proximo === 'faltou') return anterior === 'home' || !anterior ? 'dia' : null;
   if (proximo === 'atSchool' && anterior === 'onboard') return 'ida';
   if (proximo === 'delivered' && anterior === 'onboard') return 'volta';
   if (proximo === 'onboard' && anterior === 'home') return 'ida';

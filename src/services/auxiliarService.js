@@ -145,6 +145,16 @@ export async function marcarParadaPelaAuxiliar(childId, proximo, motoristaUid) {
 }
 
 /**
+ * O "FALTOU" DELA (05/10/2026): pelo servidor, que grava a MESMA declaração
+ * do "Faltou" do motorista e avisa a família. Só antes de embarcar; desfazer
+ * é do motorista.
+ */
+export async function marcarFaltaPelaAuxiliar(childId, motoristaUid) {
+  const { data } = await chamar('marcarFaltaPelaAuxiliar')({ childId, motoristaUid });
+  return data;
+}
+
+/**
  * O PAGAMENTO DA AUXILIAR (fase 4, 05/10/2026) — o recibo dos dois em
  * `pagamentosDaAuxiliar`. Escrever é do servidor: ele ANOTA (e nasce a
  * despesa do caixa dele), ela CONFIRMA. Aqui só se chama e se escuta.

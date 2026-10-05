@@ -405,7 +405,99 @@ function makeMarcarParadaPelaAuxiliar(db) {
   });
 }
 
+/**
+ * O "FALTOU" DA AUXILIAR (05/10/2026, decisão do dono) — no cartão da vez,
+ * ANTES de embarcar, ao lado do "Entrou na perua".
+ *
+ * ── POR QUE UMA CALLABLE SEPARADA, E NÃO UM PASSO A MAIS DA MARCAÇÃO
+ * `marcarParadaPelaAuxiliar` move o STATUS da criança e só anda para a frente
+ * (`passoValido`). A falta não move status nenhum: ela grava uma DECLARAÇÃO
+ * do dia, que a rota inteira (a do tio, a dela pela cópia, a da família) já
+ * sabe ler. Pôr 'faltou' entre os passos obrigaria a régua da viagem a
+ * conhecer algo que não é viagem, e o "só para a frente" deixaria de ser
+ * simples. Separadas, cada uma confere a sua trava.
+ *
+ * ── O QUE ELA GRAVA, NUMA TRANSAÇÃO
+ *   1. `absenceDeclarations/{dia}_{criança}` — o MESMO documento que o
+ *      "Faltou" do motorista grava pelo app (`declareAbsence`), com
+ *      `declaredBy: 'auxiliar'` (ver `declaracaoDaFaltaPelaAuxiliar`). O
+ *      gatilho `espelharFaltaParaAuxiliar` leva a falta à tela dela.
+ *   2. o aviso à família, o mesmo `absence_declared` do motorista;
+ *   3. o evento `passo: 'faltou'` no registro da rota ("Ana faltou").
+ * Lendo a criança e a declaração DENTRO da transação, um toque duplo (ou o tio
+ * marcando junto) acha a falta já gravada e não avisa a família duas vezes.
+ *
+ * Só com o status de HOJE em 'home' (`podeMarcarFalta`). Desfazer é do tio.
+ */
+function makeMarcarFaltaPelaAuxiliar(db) {
+  return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
+    const childId = String(request.data?.childId || '');
+    const motoristaUid = String(request.data?.motoristaUid || '');
+    if (!idValido(childId)) throw new HttpsError('invalid-argument', 'Qual criança?');
+    if (!idValido(motoristaUid)) throw new HttpsError('invalid-argument', 'De qual perua?');
+
+    const vinculo = await db.doc(`auxiliares/${R.idDoVinculo(motoristaUid, uid)}`).get();
+    const v = vinculo.exists ? vinculo.data() : null;
+    if (!v || v.ativa !== true || v.auxiliarUid !== uid || v.motoristaUid !== motoristaUid) {
+      throw new HttpsError('permission-denied', 'O seu acesso a esta perua foi encerrado pelo motorista.');
+    }
+    await exigirContaDoMotoristaOperando(db, motoristaUid);
+
+    const hoje = chaveDoDia(Date.now());
+    const childRef = db.doc(`children/${childId}`);
+    const faltaRef = db.doc(`absenceDeclarations/${hoje}_${childId}`);
+    const avisou = await db.runTransaction(async (tx) => {
+      const [snap, faltaSnap] = await Promise.all([tx.get(childRef), tx.get(faltaRef)]);
+      const child = snap.exists ? snap.data() : null;
+      if (!child || child.adminUid !== motoristaUid || child.active !== true) {
+        throw new HttpsError('permission-denied', 'Esta criança não é da sua perua.');
+      }
+      if (!R.podeMarcarFalta(R.statusDeHoje(child, hoje, chaveDoDia))) {
+        throw new HttpsError('failed-precondition', 'Ela já entrou na perua hoje. Para corrigir, fale com o motorista.');
+      }
+      // Já está marcada como falta (ela mesma, o tio ou a família): nada a
+      // gravar e, principalmente, nada a avisar de novo.
+      if (faltaSnap.exists && faltaSnap.data().type === 'full') return false;
+
+      const marca = FieldValue.serverTimestamp();
+      tx.set(faltaRef, {
+        ...R.declaracaoDaFaltaPelaAuxiliar({ dateKey: hoje, childId, child }),
+        createdAt: marca,
+        updatedAt: marca,
+      });
+      const evento = eventoDoRegistro({
+        em: Timestamp.now(),
+        auxiliarUid: uid,
+        auxiliarNome: v.nome,
+        anterior: 'home',
+        passo: 'faltou',
+        criancaNome: child.name,
+        escola: child.school,
+      });
+      if (evento) {
+        tx.set(db.doc(`registroDaRota/${idDoRegistro(motoristaUid, hoje)}`), {
+          motoristaUid,
+          dateKey: hoje,
+          eventos: FieldValue.arrayUnion(evento),
+        }, { merge: true });
+      }
+      if (!child.parentUid) return false;
+      tx.set(db.collection('notifications').doc(), {
+        userId: child.parentUid,
+        ...R.avisoDaFaltaPelaAuxiliar({ nome: child.name, dateKey: hoje }),
+        childId,
+        createdAt: marca,
+      });
+      return true;
+    });
+    return { ok: true, avisou };
+  });
+}
+
 module.exports = {
+  makeMarcarFaltaPelaAuxiliar,
   exigirContaDoMotoristaOperando,
   makeMarcarParadaPelaAuxiliar,
   makeConvidarAuxiliar,

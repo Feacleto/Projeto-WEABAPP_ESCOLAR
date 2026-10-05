@@ -2,7 +2,7 @@
  * O REGISTRO DA ROTA NA TELA DO TIO — "O que a Cida marcou" (05/10/2026).
  *
  * Quem GRAVA é o servidor (`functions/lib/reguaDoRegistroDaRota.js`, dentro
- * de `marcarParadaPelaAuxiliar`); aqui só se lê e se escreve a frase. Não há
+ * de `marcarParadaPelaAuxiliar` e de `marcarFaltaPelaAuxiliar`); aqui só se lê e se escreve a frase. Não há
  * espelho porque não há conta dos dois lados: o servidor monta o evento, a
  * tela só o desenha.
  *
@@ -31,6 +31,8 @@ export function fraseDoEvento(evento) {
   }
   if (evento?.passo === 'atSchool') return `${nome} foi entregue${escola}`;
   if (evento?.passo === 'delivered') return `${nome} foi entregue em casa`;
+  // A falta que a auxiliar marcou antes do embarque (05/10/2026).
+  if (evento?.passo === 'faltou') return `${nome} faltou`;
   return `${nome} foi marcada`;
 }
 

@@ -10,7 +10,8 @@ import { usePeruaDaAuxiliar } from '../../hooks/usePeruaDaAuxiliar';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { statusNaDirecao, getActionForStatus } from '../../services/routeStatusService';
-import { marcarParadaPelaAuxiliar } from '../../services/auxiliarService';
+import { marcarParadaPelaAuxiliar, marcarFaltaPelaAuxiliar } from '../../services/auxiliarService';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import PixDaPerua from '../../components/route/PixDaPerua';
 import ZonasDaRota from '../../components/route/ZonasDaRota';
 import FichaRapidaDaAuxiliar from '../../components/route/FichaRapidaDaAuxiliar';
@@ -61,9 +62,12 @@ import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaO
  * protagonista, com o botão CHEIO na cor da marca do tio — e as zonas "Na
  * perua" e "Na escola" (`ZonasDaRota`), as mesmas que o tio vê.
  *
- * ⚠️ O "FALTOU" DELA NÃO EXISTE AINDA: o servidor só a deixa andar para a
- * frente (`passoValido`), e marcar falta pede decisão do dono, régua e rule.
- * O cartão da vez tem só o passo que ela já pode dar.
+ * O "FALTOU" DELA (05/10/2026, decisão do dono): no cartão da vez, de
+ * CONTORNO ao lado do "Entrou na perua" (o cheio continua sendo o embarque),
+ * e só ANTES de embarcar — quem já está na perua não faltou. Pede
+ * confirmação, porque avisa a família. Vai pelo servidor
+ * (`marcarFaltaPelaAuxiliar`), que grava a mesma falta que o tio grava;
+ * desfazer continua com o tio.
  */
 const ROTULO_DO_STATUS = {
   home: 'Em casa',
@@ -88,6 +92,7 @@ export default function AuxHoje() {
   );
   const [marcando, setMarcando] = useState(null);
   const [aberta, setAberta] = useState(null); // id da criança da ficha rápida
+  const [faltando, setFaltando] = useState(null); // a criança da confirmação do "Faltou"
   async function marcar(child, acao) {
     setMarcando(child.id);
     try {
@@ -98,6 +103,21 @@ export default function AuxHoje() {
       toast.error(err?.message || 'Não deu para marcar. Tente de novo.');
     } finally {
       setMarcando(null);
+    }
+  }
+  async function marcarFalta() {
+    const child = faltando;
+    if (!child) return;
+    setMarcando(child.id);
+    try {
+      const r = await marcarFaltaPelaAuxiliar(child.id, motoristaUid);
+      toast.success(r?.avisou ? 'Falta marcada. A família foi avisada.' : 'Falta marcada.');
+      if (navigator.vibrate) navigator.vibrate(30);
+    } catch (err) {
+      toast.error(err?.message || 'Não deu para marcar. Tente de novo.');
+    } finally {
+      setMarcando(null);
+      setFaltando(null);
     }
   }
   const rodando = rotaDaPeruaRodando(criancas);
@@ -194,6 +214,7 @@ export default function AuxHoje() {
             cor={cor}
             marcando={vez ? marcando === vez.child.id : false}
             onMarcar={() => vez && marcar(vez.child, vez.action)}
+            onFaltou={() => vez && setFaltando(vez.child)}
             onAbrir={() => vez && setAberta(vez.child.id)}
           />
         )}
@@ -279,6 +300,16 @@ export default function AuxHoje() {
             onClose={() => setAberta(null)}
           />
         )}
+        <ConfirmDialog
+          open={!!faltando}
+          title={faltando ? `${String(faltando.name || '').split(' ')[0]} faltou hoje?` : ''}
+          description="Sai da rota hoje. Família avisada."
+          confirmLabel="Registrar"
+          variant="danger"
+          loading={!!faltando && marcando === faltando.id}
+          onConfirm={marcarFalta}
+          onCancel={() => setFaltando(null)}
+        />
         <p className="px-1 text-sm text-textMuted">
           O que você marca, {marca} vê na hora. Para desfazer um toque errado, fale com ele.
         </p>
@@ -326,7 +357,7 @@ function BotaoDaPerua({ botao, onEscolher }) {
  * abre a ficha rápida. Sem ninguém a marcar, diz que a viagem acabou e que
  * quem encerra a rota é ele.
  */
-function CartaoDaVez({ item, direcao, cor, marcando, onMarcar, onAbrir }) {
+function CartaoDaVez({ item, direcao, cor, marcando, onMarcar, onFaltou, onAbrir }) {
   if (!item) {
     return (
       <section className="rounded-2xl bg-card p-4 shadow-rest">
@@ -337,6 +368,9 @@ function CartaoDaVez({ item, direcao, cor, marcando, onMarcar, onAbrir }) {
   }
   const rotulo = rotuloDaVez(item.action?.nextStatus) || item.action?.shortLabel;
   const detalhe = [item.child.turma, item.child.school].filter(Boolean).join(' · ');
+  // "Faltou" só ANTES de embarcar: o passo da vez é o embarque e ela ainda
+  // está em casa (na volta o embarque sai da escola — aí não é falta).
+  const podeFaltar = item.action?.nextStatus === 'onboard' && (item.status || 'home') === 'home';
   return (
     <section className="rounded-2xl border-2 border-perua bg-card p-4 shadow-rest">
       <p className="text-base font-semibold text-textMuted">Agora{item.hora ? ` · ${horaCurta(item.hora)}` : ''}</p>
@@ -352,15 +386,27 @@ function CartaoDaVez({ item, direcao, cor, marcando, onMarcar, onAbrir }) {
           {detalhe && <span className="block truncate text-base text-textBody">{detalhe}</span>}
         </span>
       </button>
-      <button
-        type="button"
-        disabled={marcando}
-        onClick={onMarcar}
-        style={cor ? { backgroundColor: cor.marca, color: cor.naMarca } : undefined}
-        className={`tap mt-3 flex h-14 w-full items-center justify-center rounded-xl text-lg font-extrabold shadow-focus disabled:opacity-60 ${cor ? '' : 'bg-marca text-naMarca'}`}
-      >
-        {marcando ? 'Marcando…' : rotulo}
-      </button>
+      <div className={`mt-3 grid gap-2 ${podeFaltar ? 'grid-cols-[2fr_1fr]' : 'grid-cols-1'}`}>
+        <button
+          type="button"
+          disabled={marcando}
+          onClick={onMarcar}
+          style={cor ? { backgroundColor: cor.marca, color: cor.naMarca } : undefined}
+          className={`tap flex h-14 w-full items-center justify-center rounded-xl text-lg font-extrabold shadow-focus disabled:opacity-60 ${cor ? '' : 'bg-marca text-naMarca'}`}
+        >
+          {marcando ? 'Marcando…' : rotulo}
+        </button>
+        {podeFaltar && (
+          <button
+            type="button"
+            disabled={marcando}
+            onClick={onFaltou}
+            className="tap flex h-14 w-full items-center justify-center rounded-xl border-2 border-dangerBorder bg-card text-lg font-bold text-dangerText disabled:opacity-60"
+          >
+            Faltou
+          </button>
+        )}
+      </div>
     </section>
   );
 }

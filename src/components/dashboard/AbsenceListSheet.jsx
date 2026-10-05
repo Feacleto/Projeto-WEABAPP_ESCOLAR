@@ -72,7 +72,9 @@ export default function AbsenceListSheet({ open, onClose, absences = [] }) {
                       {ABSENCE_LABELS[a.type] || 'Ausente'} ·{' '}
                       {a.declaredBy === 'parent'
                         ? 'avisado pelo responsável'
-                        : 'registrado por você'}
+                        : a.declaredBy === 'auxiliar'
+                          ? 'registrado pela auxiliar'
+                          : 'registrado por você'}
                     </p>
                   </div>
                 </div>

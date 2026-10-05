@@ -224,6 +224,16 @@ família recebe o mesmo aviso da marcação do motorista. Desfazer é dele. Marc
 sem rota aberta DE PROPÓSITO (ela põe na perua enquanto ele liga o app).
 Na mesma transação, o evento entra em `registroDaRota/{tio}_{dia}` — o "O
 que a {auxiliar} marcou" da rota ao vivo (ver "A ROTA AO VIVO").
+⚠️ **O "FALTOU" DELA (05/10/2026, decisão do dono)**: no cartão da vez, de
+contorno ao lado do "Entrou na perua", só ANTES de embarcar e com
+confirmação. Callable SEPARADA, `marcarFaltaPelaAuxiliar` (falta não é passo
+da viagem; o "só para a frente" da marcação continua simples): confere o par
+ativo, a conta operando, a criança do tio e ativa e o status de HOJE em
+'home', e numa transação grava a MESMA `absenceDeclarations/{dia}_{criança}`
+do "Faltou" do tio (`type: 'full'`, o `adminUid` da criança, `note: ''`) com
+`declaredBy: 'auxiliar'`, o aviso `absence_declared` à família e o evento
+`passo: 'faltou'` ("Ana faltou", `viagem: 'dia'`) no registro. Falta já
+marcada não avisa de novo. Desfazer é do tio.
 ⚠️ **CONTA TRANCADA NÃO OPERA PELA AUXILIAR**: as callables escrevem com Admin
 SDK, então convidar, aceitar e marcar conferem `contaDoMotoristaOpera`, o
 mesmo predicado do `isAdmin()` das rules. Ela vê o PIX DELE (`PixDaPerua`).
@@ -1550,7 +1560,8 @@ declarações e quem busca — nenhuma escuta a mais da turma):
 - **"O que a {auxiliar} marcou"** ([RegistroDaAuxiliar](src/components/route/RegistroDaAuxiliar.jsx)),
   só com auxiliar ATIVA: "06:52 Ana entrou na perua", os 6 mais recentes, o
   mais novo em cima. Mora em `registroDaRota/{tio}_{dia}` (dia de Brasília),
-  escrito SÓ por `marcarParadaPelaAuxiliar`, com `arrayUnion` na MESMA
+  escrito SÓ por `marcarParadaPelaAuxiliar` e `marcarFaltaPelaAuxiliar`
+  ("Ana faltou"), com `arrayUnion` na MESMA
   transação da marcação. O evento é uma lista fechada
   ([reguaDoRegistroDaRota.js](functions/lib/reguaDoRegistroDaRota.js)):
   `em` (`Timestamp.now()` — array recusa `serverTimestamp`), `auxiliarUid`,
@@ -1573,8 +1584,8 @@ declarações e quem busca — nenhuma escuta a mais da turma):
   depois — ela não lê `liveLocation`), o CARTÃO DA VEZ no topo, com o botão
   CHEIO na cor da marca do tio ("Entrou na perua", "Entregue na escola",
   "Entregue em casa"), e as zonas. `npm run testar:rota-ao-vivo`.
-- ⚠️ **EM ABERTO COM O DONO:** o "Faltou" da auxiliar (o servidor só a deixa
-  andar para a frente — pede régua e rule) e "quem busca hoje" para ela.
+- ⚠️ **EM ABERTO COM O DONO:** "quem busca hoje" para ela. O "Faltou" dela
+  saiu do aberto em 05/10/2026 (ver "O FALTOU DELA" na seção dos papéis).
 
 ⚠️ **A FICHA RÁPIDA NA ROTA (05/10/2026, decisão do dono):** tocar numa
 criança das zonas (ou, na auxiliar, da lista) abre uma folha
@@ -2176,7 +2187,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   mandar com ele dentro. Reativar na data é à mão, por ora.
 - **Auxiliar:** `convidarAuxiliar`, `cancelarConviteDeAuxiliar`,
   `verConviteDeAuxiliar` (pública, devolve só a marca e o primeiro nome),
-  `aceitarConviteDeAuxiliar`, `desativarAuxiliar` e `marcarParadaPelaAuxiliar`
+  `aceitarConviteDeAuxiliar`, `desativarAuxiliar`, `marcarParadaPelaAuxiliar` e
+  `marcarFaltaPelaAuxiliar` (o "Faltou" dela, antes do embarque)
   ([auxiliares.js](functions/lib/auxiliares.js)); a cópia da turma é dos
   gatilhos `espelharCriancaParaAuxiliar` e `espelharFaltaParaAuxiliar`
   ([turmaDaAuxiliar.js](functions/lib/turmaDaAuxiliar.js)). O pagamento dela
