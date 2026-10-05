@@ -82,6 +82,7 @@ const AuxHoje = lazy(() => import('./pages/auxiliar/AuxHoje'));
 const AuxPerfil = lazy(() => import('./pages/auxiliar/AuxPerfil'));
 const AuxPagamentos = lazy(() => import('./pages/auxiliar/AuxPagamentos'));
 const TioAuxiliar = lazy(() => import('./pages/tio/TioAuxiliar'));
+const TioSubstitutas = lazy(() => import('./pages/tio/TioSubstitutas'));
 // "Sua perua" (03/10/2026): abastecer fica FORA da senha (/tio/abastecer — a
 // auxiliar e o motorista no posto); reserva e "Preciso aumentar?" ficam
 // embaixo de /tio/finance, e por isso atrás da senha sem código novo.
@@ -718,6 +719,7 @@ export default function App() {
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="finance/turma" element={<TioTurma />} />
         <Route path="auxiliar" element={<TioAuxiliar />} />
+        <Route path="auxiliar/substitutas" element={<TioSubstitutas />} />
         <Route path="finance/reserva" element={<TioReserva />} />
         <Route path="finance/aumentar" element={<TioPrecisoAumentar />} />
         <Route path="finance/negocio" element={<TioNegocio />} />
