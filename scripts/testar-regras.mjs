@@ -549,6 +549,7 @@ async function main() {
   await aRotaSemSenha({ tio1, tio2, pai1 });
   await oCodigoDeIndicacao({ tio1 });
   await aAuxiliar({ pai1 });
+  await aAuxiliarNoDinheiro({ pai1, novato, dono, anon });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
@@ -747,6 +748,191 @@ async function aAuxiliar({ pai1 }) {
   await semear(`auxiliares/${aux.uid}`, { motoristaUid: S(moto.uid), nome: S('Rosa'), ativa: B(false) });
   checar(BL, 'a auxiliar DESATIVADA não lê mais o doc do motorista', 'NEGA', await ler(`users/${moto.uid}`, aux));
   checar(BL, 'nem a turma dele', 'NEGA', await ler(`${COPIA}/criancas/kidAux1`, aux));
+}
+
+/**
+ * A AUXILIAR NO DINHEIRO (05/10/2026, fases 4 e 5 da sessão negocio): o
+ * pagamento dela, a falta, as substitutas e o Financeiro dela. Casos pedidos
+ * pelos agentes à QA. Atores PRÓPRIOS, para um 403 não ser herança.
+ *   - pagamentosDaAuxiliar: o tio e a auxiliar leem (ela mesmo desativada),
+ *     mais ninguém; nenhum cliente escreve — são callables;
+ *   - configFinanceiro: a auxiliar lê só o dela e não escreve;
+ *   - expenses e senhasDoFinanceiro: fechados para ela;
+ *   - substitutasDoTio: só o tio, com campos e limites fechados, e só com a
+ *     conta operando;
+ *   - faltasDaAuxiliar: id amarrado a {tio}_{aux}_{dia}, vínculo dele e
+ *     ATIVO para criar; a auxiliar não lê;
+ *   - o lote da substituição (falta + despesa + substituta) passa inteiro.
+ */
+async function aAuxiliarNoDinheiro({ pai1, novato, dono, anon }) {
+  console.log('\n=== A AUXILIAR NO DINHEIRO (05/10/2026) ===');
+  const BL = 'aux-dinheiro';
+  const agora = Date.now();
+  const moto = await criarLogin(`din.moto.${agora}@teste.local`);
+  const outroMoto = await criarLogin(`din.outro.${agora}@teste.local`);
+  const aux = await criarLogin(`din.aux.${agora}@teste.local`);
+  const auxOutra = await criarLogin(`din.auxoutra.${agora}@teste.local`);
+  const auxParada = await criarLogin(`din.auxparada.${agora}@teste.local`);
+  const motoSusp = await criarLogin(`din.susp.${agora}@teste.local`);
+  const motoVenc = await criarLogin(`din.venc.${agora}@teste.local`);
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Din') });
+  await semear(`users/${outroMoto.uid}`, { role: S('admin'), name: S('Outro Din') });
+  await semear(`users/${motoSusp.uid}`, { role: S('admin'), name: S('Suspenso'), suspenso: B(true) });
+  await semear(`users/${motoVenc.uid}`, { role: S('admin'), name: S('Vencido'), trialInicio: T(-120) });
+  for (const [a, m, ativa] of [[aux, moto, true], [auxOutra, outroMoto, true], [auxParada, moto, false]]) {
+    await semear(`users/${a.uid}`, { role: S('auxiliar'), name: S('Aux'), motoristaUid: S(m.uid) });
+    await semear(`auxiliares/${a.uid}`, { motoristaUid: S(m.uid), nome: S('Aux'), ativa: B(ativa) });
+  }
+  const I = (v) => ({ integerValue: String(v) });
+
+  // 1. pagamentosDaAuxiliar
+  const PAG = `pagamentosDaAuxiliar/${moto.uid}_${aux.uid}_2026-10`;
+  await semear(PAG, {
+    motoristaUid: S(moto.uid), auxiliarUid: S(aux.uid), mes: S('2026-10'), valor: N(800), anotadoEm: T(0),
+  });
+  checar(BL, 'o tio lê o pagamento que anotou', 'PASSA', await ler(PAG, moto));
+  checar(BL, 'e consulta os dele', 'PASSA', await consultar('pagamentosDaAuxiliar', 'motoristaUid', moto.uid, moto));
+  checar(BL, 'a auxiliar lê o pagamento dela', 'PASSA', await ler(PAG, aux));
+  checar(BL, 'e consulta os dela', 'PASSA', await consultar('pagamentosDaAuxiliar', 'auxiliarUid', aux.uid, aux));
+  checar(BL, 'outra auxiliar NÃO lê', 'NEGA', await ler(PAG, auxOutra));
+  checar(BL, 'outro motorista NÃO lê', 'NEGA', await ler(PAG, outroMoto));
+  checar(BL, 'a família NÃO lê', 'NEGA', await ler(PAG, pai1));
+  checar(BL, 'o novato NÃO lê', 'NEGA', await ler(PAG, novato));
+  checar(BL, 'anônimo NÃO lê', 'NEGA', await ler(PAG, anon));
+  checar(BL, 'consulta sem filtro é recusada', 'NEGA', await listar('pagamentosDaAuxiliar', moto));
+  checar(BL, 'outro motorista consulta pelo uid do primeiro', 'NEGA',
+    await consultar('pagamentosDaAuxiliar', 'motoristaUid', moto.uid, outroMoto));
+  checar(BL, 'o tio muda o valor pelo app', 'NEGA', await escrever(PAG, moto, { valor: N(1) }, ['valor']));
+  checar(BL, 'a auxiliar grava recebidoEm pelo app', 'NEGA', await escrever(PAG, aux, { recebidoEm: T(0) }, ['recebidoEm']));
+  checar(BL, 'o dono escreve no pagamento', 'NEGA', await escrever(PAG, dono, { valor: N(1) }, ['valor']));
+  checar(BL, 'o tio cria um pagamento pelo app', 'NEGA',
+    await criar('pagamentosDaAuxiliar', `${moto.uid}_${aux.uid}_2026-11`, moto,
+      { motoristaUid: S(moto.uid), auxiliarUid: S(aux.uid), mes: S('2026-11') }));
+  await semear(`auxiliares/${aux.uid}`, { motoristaUid: S(moto.uid), nome: S('Aux'), ativa: B(false) });
+  checar(BL, 'desativada, a auxiliar ainda lê o pagamento dela', 'PASSA', await ler(PAG, aux));
+  await semear(`auxiliares/${aux.uid}`, { motoristaUid: S(moto.uid), nome: S('Aux'), ativa: B(true) });
+
+  // 2. configFinanceiro
+  await semear(`configFinanceiro/${aux.uid}`, { temSenha: B(true) });
+  await semear(`configFinanceiro/${moto.uid}`, { usoDaPerua: S('so_rota') });
+  checar(BL, 'a auxiliar lê o configFinanceiro DELA', 'PASSA', await ler(`configFinanceiro/${aux.uid}`, aux));
+  checar(BL, 'a auxiliar NÃO lê o do tio', 'NEGA', await ler(`configFinanceiro/${moto.uid}`, aux));
+  checar(BL, 'a auxiliar NÃO escreve no dela', 'NEGA',
+    await escrever(`configFinanceiro/${aux.uid}`, aux, { usoDaPerua: S('so_rota') }, ['usoDaPerua']));
+  checar(BL, 'a família NÃO lê o do tio', 'NEGA', await ler(`configFinanceiro/${moto.uid}`, pai1));
+  checar(BL, 'o tio lê o dele, como antes', 'PASSA', await ler(`configFinanceiro/${moto.uid}`, moto));
+
+  // 3 e 4. expenses e senha
+  await semear('expenses/expDin1', {
+    adminUid: S(moto.uid), amount: N(80), category: S('monitor'), monthKey: S('2026-10'), date: T(0),
+  });
+  checar(BL, 'a auxiliar NÃO lê uma despesa do tio', 'NEGA', await ler('expenses/expDin1', aux));
+  checar(BL, 'nem consulta as despesas dele', 'NEGA', await consultar('expenses', 'adminUid', moto.uid, aux));
+  await semear(`senhasDoFinanceiro/${aux.uid}`, { hash: S('abc'), sal: S('def') });
+  checar(BL, 'a auxiliar NÃO lê o hash da própria senha', 'NEGA', await ler(`senhasDoFinanceiro/${aux.uid}`, aux));
+  checar(BL, 'nem zera as tentativas', 'NEGA',
+    await escrever(`senhasDoFinanceiro/${aux.uid}`, aux, { erros: I(0) }, ['erros']));
+
+  // 5. substitutasDoTio
+  const SUB = (extra = {}) => ({
+    motoristaUid: S(moto.uid), nome: S('Ana Paula'), telefone: S('11987654321'),
+    vezes: I(0), ultimaEm: S('2026-10-05'), ultimoValor: N(80), criadaEm: T(0), ...extra,
+  });
+  checar(BL, 'o tio cadastra uma substituta com os 7 campos', 'PASSA', await criar('substitutasDoTio', 'subDin1', moto, SUB()));
+  checar(BL, 'campo a mais é recusado', 'NEGA', await criar('substitutasDoTio', 'subDin2', moto, SUB({ cpf: S('123') })));
+  checar(BL, 'uid de outro motorista', 'NEGA', await criar('substitutasDoTio', 'subDin3', moto, SUB({ motoristaUid: S(outroMoto.uid) })));
+  checar(BL, 'telefone curto (9 dígitos)', 'NEGA', await criar('substitutasDoTio', 'subDin4', moto, SUB({ telefone: S('119876543') })));
+  checar(BL, 'telefone longo (12 dígitos)', 'NEGA', await criar('substitutasDoTio', 'subDin5', moto, SUB({ telefone: S('119876543210') })));
+  checar(BL, 'telefone com letras', 'NEGA', await criar('substitutasDoTio', 'subDin6', moto, SUB({ telefone: S('(11)98765-43') })));
+  checar(BL, 'nome vazio', 'NEGA', await criar('substitutasDoTio', 'subDin7', moto, SUB({ nome: S('') })));
+  checar(BL, 'nome com 61 letras', 'NEGA', await criar('substitutasDoTio', 'subDin8', moto, SUB({ nome: S('a'.repeat(61)) })));
+  checar(BL, 'valor zero', 'NEGA', await criar('substitutasDoTio', 'subDin9', moto, SUB({ ultimoValor: N(0) })));
+  checar(BL, 'valor acima de 5000', 'NEGA', await criar('substitutasDoTio', 'subDin10', moto, SUB({ ultimoValor: N(5001) })));
+  checar(BL, 'o tio lê a substituta dele', 'PASSA', await ler('substitutasDoTio/subDin1', moto));
+  checar(BL, 'e atualiza as vezes', 'PASSA',
+    await escrever('substitutasDoTio/subDin1', moto, { vezes: I(1) }, ['vezes']));
+  checar(BL, 'outro motorista NÃO lê', 'NEGA', await ler('substitutasDoTio/subDin1', outroMoto));
+  checar(BL, 'outro motorista NÃO muda', 'NEGA',
+    await escrever('substitutasDoTio/subDin1', outroMoto, { vezes: I(9) }, ['vezes']));
+  checar(BL, 'a auxiliar NÃO lê a lista de substitutas', 'NEGA', await ler('substitutasDoTio/subDin1', aux));
+  checar(BL, 'a auxiliar NÃO apaga', 'NEGA', await apagar('substitutasDoTio/subDin1', aux));
+  checar(BL, 'o novato NÃO lê', 'NEGA', await ler('substitutasDoTio/subDin1', novato));
+  checar(BL, 'conta SUSPENSA não cadastra', 'NEGA',
+    await criar('substitutasDoTio', 'subDinS', motoSusp, SUB({ motoristaUid: S(motoSusp.uid) })));
+  checar(BL, 'conta com o TESTE VENCIDO não cadastra', 'NEGA',
+    await criar('substitutasDoTio', 'subDinV', motoVenc, SUB({ motoristaUid: S(motoVenc.uid) })));
+
+  // 6. faltasDaAuxiliar
+  const DIA = '2026-10-05';
+  const FALTA = (auxUid, dia = DIA, extra = {}) => ({
+    motoristaUid: S(moto.uid), auxiliarUid: S(auxUid), nomeDaAuxiliar: S('Aux'),
+    dateKey: S(dia), criadaEm: T(0), ...extra,
+  });
+  const idFalta = (auxUid, dia = DIA) => `${moto.uid}_${auxUid}_${dia}`;
+  checar(BL, 'o tio registra a falta da auxiliar dele', 'PASSA',
+    await criar('faltasDaAuxiliar', idFalta(aux.uid), moto, FALTA(aux.uid)));
+  checar(BL, 'id que não bate com o dia', 'NEGA',
+    await criar('faltasDaAuxiliar', idFalta(aux.uid, '2026-10-06'), moto, FALTA(aux.uid, DIA)));
+  checar(BL, 'auxiliar de OUTRO motorista', 'NEGA',
+    await criar('faltasDaAuxiliar', idFalta(auxOutra.uid), moto, FALTA(auxOutra.uid)));
+  checar(BL, 'vínculo que não existe', 'NEGA',
+    await criar('faltasDaAuxiliar', idFalta('ninguem'), moto, FALTA('ninguem')));
+  checar(BL, 'auxiliar DESATIVADA não ganha falta nova', 'NEGA',
+    await criar('faltasDaAuxiliar', idFalta(auxParada.uid), moto, FALTA(auxParada.uid)));
+  checar(BL, 'campo a mais na falta', 'NEGA',
+    await criar('faltasDaAuxiliar', idFalta(aux.uid, '2026-10-07'), moto, FALTA(aux.uid, '2026-10-07', { nota: S('x') })));
+  const SUBST = { mapValue: { fields: { id: S('subDin1'), nome: S('Ana Paula'), telefone: S('11987654321'), valor: N(80) } } };
+  checar(BL, 'o update acrescenta a substituta e a despesa', 'PASSA',
+    await escrever(`faltasDaAuxiliar/${idFalta(aux.uid)}`, moto, { substituta: SUBST, despesaId: S('expDin1') }, ['substituta', 'despesaId']));
+  checar(BL, 'substituta com valor acima do teto', 'NEGA',
+    await escrever(`faltasDaAuxiliar/${idFalta(aux.uid)}`, moto,
+      { substituta: { mapValue: { fields: { id: S('s'), nome: S('Ana'), telefone: S('11987654321'), valor: N(9000) } } } }, ['substituta']));
+  checar(BL, 'a auxiliar NÃO lê a falta dela', 'NEGA', await ler(`faltasDaAuxiliar/${idFalta(aux.uid)}`, aux));
+  checar(BL, 'outro motorista NÃO lê', 'NEGA', await ler(`faltasDaAuxiliar/${idFalta(aux.uid)}`, outroMoto));
+  checar(BL, 'outro motorista NÃO apaga', 'NEGA', await apagar(`faltasDaAuxiliar/${idFalta(aux.uid)}`, outroMoto));
+  checar(BL, 'o tio apaga a falta dele', 'PASSA', await apagar(`faltasDaAuxiliar/${idFalta(aux.uid)}`, moto));
+
+  // 7. O lote da substituição, como o app manda: falta (já existe) +
+  // substituta nova + despesa "monitor", num commit só.
+  const DIA2 = '2026-10-08';
+  await semear(`faltasDaAuxiliar/${idFalta(aux.uid, DIA2)}`, {
+    motoristaUid: S(moto.uid), auxiliarUid: S(aux.uid), nomeDaAuxiliar: S('Aux'), dateKey: S(DIA2),
+  });
+  const base = FS.slice(0, -'/documents'.length);
+  const doc = (c) => `projects/${PID}/databases/(default)/documents/${c}`;
+  const lote = await fetch(`${base}/documents:commit`, {
+    method: 'POST',
+    headers: H(moto),
+    body: JSON.stringify({
+      writes: [
+        {
+          update: { name: doc('substitutasDoTio/subDinLote'), fields: {
+            motoristaUid: S(moto.uid), nome: S('Bia'), telefone: S('11912345678'),
+            vezes: I(1), ultimaEm: S(DIA2), ultimoValor: N(90),
+          } },
+          updateTransforms: [{ fieldPath: 'criadaEm', setToServerValue: 'REQUEST_TIME' }],
+          currentDocument: { exists: false },
+        },
+        {
+          update: { name: doc('expenses/expDinLote'), fields: {
+            adminUid: S(moto.uid), amount: N(90), category: S('monitor'),
+            description: S('Substituta Bia em 08/10'), date: T(0), monthKey: S('2026-10'),
+          } },
+          updateTransforms: [{ fieldPath: 'createdAt', setToServerValue: 'REQUEST_TIME' }],
+          currentDocument: { exists: false },
+        },
+        {
+          update: { name: doc(`faltasDaAuxiliar/${idFalta(aux.uid, DIA2)}`), fields: {
+            substituta: { mapValue: { fields: { id: S('subDinLote'), nome: S('Bia'), telefone: S('11912345678'), valor: N(90) } } },
+            despesaId: S('expDinLote'),
+          } },
+          updateMask: { fieldPaths: ['substituta', 'despesaId'] },
+          currentDocument: { exists: true },
+        },
+      ],
+    }),
+  }).then((r) => r.status);
+  checar(BL, 'o lote da substituição passa inteiro (falta + despesa + substituta)', 'PASSA', lote);
 }
 
 /**
