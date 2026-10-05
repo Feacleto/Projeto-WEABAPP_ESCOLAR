@@ -548,6 +548,7 @@ async function main() {
   await oTesteDeCodigo({ tio1, tio2, pai1, dono });
   await aRotaSemSenha({ tio1, tio2, pai1 });
   await oCodigoDeIndicacao({ tio1 });
+  await aAuxiliar({ pai1 });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
@@ -665,6 +666,87 @@ async function oCodigoDeIndicacao({ tio1 }) {
   // documento — o NEGA de cima é pelo campo, não pela conta.
   checar('codigo', 'e ainda grava uma preferência dele (sonda)', 'PASSA',
     await escrever(`users/${tio1.uid}`, tio1, { compartilhaLocalizacao: B(true) }, ['compartilhaLocalizacao']));
+}
+
+/**
+ * A CONTA DA AUXILIAR (05/10/2026) — o quinto papel, sempre ligado a um
+ * motorista. O que este bloco trava (casos pedidos à QA pela sessão negocio):
+ *   - ela lê o doc do motorista DELA, e só enquanto o vínculo está ativo;
+ *   - nunca o de outro motorista;
+ *   - o motorista lista os vínculos dele; outro motorista não lê;
+ *   - ninguém escreve vínculo nem convite pelo cliente (são callables);
+ *   - ela não se liga a um motorista sozinha (`motoristaUid` é do servidor).
+ *
+ * Atores PRÓPRIOS: um 403 aqui não pode ser herança de outro bloco.
+ */
+async function aAuxiliar({ pai1 }) {
+  console.log('\n=== A CONTA DA AUXILIAR (05/10/2026) ===');
+  const BL = 'auxiliar';
+  const moto = await criarLogin(`aux.moto.${Date.now()}@teste.local`);
+  const outro = await criarLogin(`aux.outro.${Date.now()}@teste.local`);
+  const aux = await criarLogin(`aux.ela.${Date.now()}@teste.local`);
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio da Aux'), pixKey: S('tio@pix') });
+  await semear(`users/${outro.uid}`, { role: S('admin'), name: S('Outro Tio') });
+  await semear(`users/${aux.uid}`, { role: S('auxiliar'), name: S('Rosa'), motoristaUid: S(moto.uid) });
+  await semear(`auxiliares/${aux.uid}`, { motoristaUid: S(moto.uid), nome: S('Rosa'), ativa: B(true) });
+
+  checar(BL, 'a auxiliar ATIVA lê o doc do motorista dela', 'PASSA', await ler(`users/${moto.uid}`, aux));
+  checar(BL, 'a auxiliar lê o doc de OUTRO motorista', 'NEGA', await ler(`users/${outro.uid}`, aux));
+  checar(BL, 'a auxiliar lê o doc de uma família', 'NEGA', await ler(`users/${pai1.uid}`, aux));
+  checar(BL, 'ela lê o próprio vínculo', 'PASSA', await ler(`auxiliares/${aux.uid}`, aux));
+  checar(BL, 'o motorista lista os vínculos dele', 'PASSA', await consultar('auxiliares', 'motoristaUid', moto.uid, moto));
+  checar(BL, 'outro motorista lê o vínculo', 'NEGA', await ler(`auxiliares/${aux.uid}`, outro));
+  checar(BL, 'outro motorista lista os vínculos do primeiro', 'NEGA',
+    await consultar('auxiliares', 'motoristaUid', moto.uid, outro));
+
+  // Ninguém escreve pelo cliente: convidar, aceitar e desativar são callables.
+  checar(BL, 'o motorista escreve o vínculo', 'NEGA',
+    await escrever(`auxiliares/${aux.uid}`, moto, { ativa: B(false) }, ['ativa']));
+  checar(BL, 'a auxiliar se reativa', 'NEGA',
+    await escrever(`auxiliares/${aux.uid}`, aux, { ativa: B(true) }, ['ativa']));
+  checar(BL, 'alguém cria um vínculo novo', 'NEGA',
+    await criar('auxiliares', outro.uid, outro, { motoristaUid: S(moto.uid), ativa: B(true) }));
+  checar(BL, 'o motorista cria um convite pelo cliente', 'NEGA',
+    await criar('convitesDeAuxiliar', 'COD12345', moto, { motoristaUid: S(moto.uid) }));
+  checar(BL, 'alguém lê um convite pelo código', 'NEGA', await ler('convitesDeAuxiliar/COD12345', aux));
+
+  // Ela não se liga sozinha, nem muda de papel.
+  checar(BL, 'a auxiliar troca o próprio motoristaUid', 'NEGA',
+    await escrever(`users/${aux.uid}`, aux, { motoristaUid: S(outro.uid) }, ['motoristaUid']));
+  checar(BL, 'qualquer conta grava motoristaUid em si', 'NEGA',
+    await escrever(`users/${outro.uid}`, outro, { motoristaUid: S(moto.uid) }, ['motoristaUid']));
+  checar(BL, 'a auxiliar vira motorista', 'NEGA',
+    await escrever(`users/${aux.uid}`, aux, { role: S('admin') }, ['role']));
+
+  // FASE 2 — A TURMA DELA: a cópia em turmaDaAuxiliar/{motorista}, com a
+  // lista fechada de campos (sem endereço, saúde, valor nem coordenada). Só
+  // o servidor escreve; só a auxiliar ATIVA daquele motorista lê.
+  const COPIA = `turmaDaAuxiliar/${moto.uid}`;
+  await semear(COPIA, { ligadaEm: T(0) });
+  await semear(`${COPIA}/criancas/kidAux1`, { name: S('Caio'), status: S('home'), active: B(true) });
+  await semear(`${COPIA}/faltas/hoje_kidAux1`, { dateKey: S('2026-10-05'), childId: S('kidAux1'), type: S('absence') });
+  const aux2 = await criarLogin(`aux.outra.${Date.now()}@teste.local`);
+  await semear(`users/${aux2.uid}`, { role: S('auxiliar'), name: S('Lia'), motoristaUid: S(outro.uid) });
+  await semear(`auxiliares/${aux2.uid}`, { motoristaUid: S(outro.uid), nome: S('Lia'), ativa: B(true) });
+
+  checar(BL, 'a auxiliar ativa lê a turma do motorista dela', 'PASSA', await ler(`${COPIA}/criancas/kidAux1`, aux));
+  checar(BL, 'e lista a turma', 'PASSA', await listar(`${COPIA}/criancas`, aux));
+  checar(BL, 'e lê as faltas do dia', 'PASSA', await listar(`${COPIA}/faltas`, aux));
+  checar(BL, 'a auxiliar de OUTRO motorista lê essa turma', 'NEGA', await ler(`${COPIA}/criancas/kidAux1`, aux2));
+  checar(BL, 'o próprio motorista lê a cópia (não precisa dela)', 'NEGA', await ler(`${COPIA}/criancas/kidAux1`, moto));
+  checar(BL, 'uma família lê a cópia', 'NEGA', await ler(`${COPIA}/criancas/kidAux1`, pai1));
+  checar(BL, 'a auxiliar escreve na cópia', 'NEGA',
+    await escrever(`${COPIA}/criancas/kidAux1`, aux, { status: S('delivered') }, ['status']));
+  checar(BL, 'o motorista escreve na cópia', 'NEGA',
+    await escrever(`${COPIA}/criancas/kidAux1`, moto, { name: S('Outro') }, ['name']));
+  checar(BL, 'alguém cria uma criança na cópia', 'NEGA',
+    await criar(`${COPIA}/criancas`, 'kidFalso', aux, { name: S('Falso') }));
+  checar(BL, 'alguém sem vínculo lê a cópia', 'NEGA', await ler(`${COPIA}/criancas/kidAux1`, outro));
+
+  // Desativada, perde o acesso — mesmo com o motoristaUid ainda no doc dela.
+  await semear(`auxiliares/${aux.uid}`, { motoristaUid: S(moto.uid), nome: S('Rosa'), ativa: B(false) });
+  checar(BL, 'a auxiliar DESATIVADA não lê mais o doc do motorista', 'NEGA', await ler(`users/${moto.uid}`, aux));
+  checar(BL, 'nem a turma dele', 'NEGA', await ler(`${COPIA}/criancas/kidAux1`, aux));
 }
 
 /**
