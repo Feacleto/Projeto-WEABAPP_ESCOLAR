@@ -554,6 +554,7 @@ async function main() {
   await aTransferencia({ novato, dono, anon });
   await aAutoriaDaFoto({ novato, dono, anon });
   await aSubstitutaDeUmDia({ novato, dono, anon });
+  await aFotoDaComunidade({ novato, dono, anon });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
@@ -992,6 +993,96 @@ async function aAutoriaDaFoto({ novato, dono, anon }) {
   checar(BL, 'a autora apaga', 'NEGA', await apagar(DOC, aux));
   checar(BL, 'o dono escreve pelo app', 'NEGA',
     await escrever(DOC, dono, { expiraEm: T(60) }, ['expiraEm']));
+}
+
+/**
+ * A FOTO DA COMUNIDADE (escrito ANTES da regra). A família diz "sim" com
+ * alcance 'comunidade'; a foto com `publico: 'comunidade'` só o tio autor lê.
+ */
+async function aFotoDaComunidade({ novato, dono, anon }) {
+  console.log('\n=== A FOTO DA COMUNIDADE (alcance, 05/10/2026) ===');
+  const BL = 'comunidadeFoto';
+  const agora = Date.now();
+  const tioA = await criarLogin(`fc.a.${agora}@teste.local`);
+  const tioB = await criarLogin(`fc.b.${agora}@teste.local`);
+  const maeA = await criarLogin(`fc.maea.${agora}@teste.local`);
+  const maeB = await criarLogin(`fc.maeb.${agora}@teste.local`);
+  const L = (values) => ({ arrayValue: { values } });
+  const K = `kidFc${agora}`;
+  const KB = `kidFcB${agora}`;
+  await semear(`users/${tioA.uid}`, { role: S('admin'), name: S('Tio A'), pixKey: S('a@pix') });
+  await semear(`users/${tioB.uid}`, { role: S('admin'), name: S('Tio B'), pixKey: S('b@pix') });
+  await semear(`indicacoes/${tioA.uid}_11900000001`, {
+    indicadorUid: S(tioA.uid), indicadoUid: S(tioB.uid), chave: S('11900000001'), estado: S('ativa'),
+  });
+  await semear(`users/${maeA.uid}`, {
+    role: S('parent'), name: S('Mãe A'), adminUid: S(tioA.uid), adminUids: L([S(tioA.uid)]),
+    childId: S(K), childIds: L([S(K)]),
+  });
+  await semear(`users/${maeB.uid}`, {
+    role: S('parent'), name: S('Mãe B'), adminUid: S(tioB.uid), adminUids: L([S(tioB.uid)]),
+    childId: S(KB), childIds: L([S(KB)]),
+  });
+  await semear(`children/${KB}`, {
+    name: S('Bia'), adminUid: S(tioB.uid), parentUid: S(maeB.uid), active: B(true),
+  });
+  const crianca = (extra = {}) => ({
+    name: S('Caio'), adminUid: S(tioA.uid), parentUid: S(maeA.uid), active: B(true), ...extra,
+  });
+  const C = `children/${K}`;
+  const ALC = 'fotoDaTurmaAlcance';
+  const sim = (extra) => atualizarComHoraDoServidor(C, maeA,
+    { fotoDaTurmaConsentida: B(true), ...extra }, ['fotoDaTurmaConsentida', ...Object.keys(extra)], 'fotoDaTurmaEm');
+
+  await semear(C, crianca());
+  checar(BL, '1 a família diz sim com alcance comunidade', 'PASSA',
+    await sim({ [ALC]: S('comunidade') }));
+  await semear(C, crianca());
+  checar(BL, '2 alcance sem consentida true no mesmo write', 'NEGA',
+    await atualizarComHoraDoServidor(C, maeA, { [ALC]: S('comunidade') }, [ALC], 'fotoDaTurmaEm'));
+  await semear(C, crianca());
+  checar(BL, '3 alcance com valor diferente (turma)', 'NEGA', await sim({ [ALC]: S('turma') }));
+  await semear(C, crianca());
+  checar(BL, '4 alcance com a data do cliente', 'NEGA',
+    await escrever(C, maeA, { fotoDaTurmaConsentida: B(true), [ALC]: S('comunidade'), fotoDaTurmaEm: T(0) },
+      ['fotoDaTurmaConsentida', ALC, 'fotoDaTurmaEm']));
+  const comAlcance = () => crianca({
+    fotoDaTurmaConsentida: B(true), [ALC]: S('comunidade'), fotoDaTurmaEm: T(-1),
+  });
+  await semear(C, comAlcance());
+  checar(BL, '5 o não: consentida false e alcance removido', 'PASSA',
+    await atualizarComHoraDoServidor(C, maeA, { fotoDaTurmaConsentida: B(false) },
+      ['fotoDaTurmaConsentida', ALC], 'fotoDaTurmaEm'));
+  await semear(C, comAlcance());
+  checar(BL, '6 o não mantendo o alcance comunidade', 'NEGA',
+    await atualizarComHoraDoServidor(C, maeA, { fotoDaTurmaConsentida: B(false), [ALC]: S('comunidade') },
+      ['fotoDaTurmaConsentida', ALC], 'fotoDaTurmaEm'));
+  await semear(C, crianca());
+  checar(BL, '7 o motorista grava o alcance', 'NEGA',
+    await escrever(C, tioA, { [ALC]: S('comunidade') }, [ALC]));
+  await semear(C, comAlcance());
+  checar(BL, '8 o motorista apaga o alcance', 'NEGA', await escrever(C, tioA, {}, [ALC]));
+  await semear(C, crianca());
+  checar(BL, '9 o sim antigo, sem alcance, continua', 'PASSA', await sim({}));
+
+  const F = `fotosDaTurma/fc${agora}`;
+  await semear(F, {
+    adminUid: S(tioA.uid), publico: S('comunidade'), url: S('x'), expiraEm: T(10),
+  });
+  checar(BL, '10 o tio autor lê', 'PASSA', await ler(F, tioA));
+  checar(BL, '11 o tio parceiro NÃO lê', 'NEGA', await ler(F, tioB));
+  checar(BL, '12 a família do autor NÃO lê', 'NEGA', await ler(F, maeA));
+  checar(BL, '13 a família do parceiro NÃO lê', 'NEGA', await ler(F, maeB));
+  checar(BL, '14 o novato NÃO lê', 'NEGA', await ler(F, novato));
+  checar(BL, '15 anônimo NÃO lê', 'NEGA', await ler(F, anon));
+  const r16 = await consultar('fotosDaTurma', 'adminUid', tioA.uid, tioA);
+  console.log(`  (16 o tio A lista por adminUid == A → ${r16}; sem esperado)`);
+  checar(BL, '17a o tio A cria foto comunidade', 'NEGA',
+    await criar('fotosDaTurma', `fcN${agora}`, tioA,
+      { adminUid: S(tioA.uid), publico: S('comunidade'), url: S('x'), expiraEm: T(10) }));
+  checar(BL, '17b o tio A altera', 'NEGA', await escrever(F, tioA, { url: S('y') }, ['url']));
+  checar(BL, '17c o tio A apaga', 'NEGA', await apagar(F, tioA));
+  checar(BL, '18 o dono NÃO lê', 'NEGA', await ler(F, dono));
 }
 
 async function aTransferencia({ novato, dono, anon }) {
