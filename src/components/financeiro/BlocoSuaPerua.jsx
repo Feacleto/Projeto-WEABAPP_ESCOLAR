@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Fuel, PiggyBank, Scale } from 'lucide-react';
+import { ChevronRight, Fuel, Landmark, PiggyBank, Scale } from 'lucide-react';
 import { useConfigDoFinanceiro, useDespesasDosUltimosMeses } from '../../hooks/useDespesas';
 import { VALOR_ESCONDIDO } from '../../hooks/useValoresVisiveis';
 import { TIPOS_DE_COMBUSTIVEL, abastecimentosDe } from '../../dominio/cobranca/combustivel.js';
@@ -113,6 +113,15 @@ export default function BlocoSuaPerua({ criancas = [], visiveis = true }) {
           titulo="Preciso aumentar?"
           detalhe={aumentar}
           onClick={() => navigate('/tio/finance/aumentar')}
+        />
+        {/* "Economia do mês" (05/10/2026): uma linha, no mesmo formato —
+          * a porta pequena que o dono pediu, sem cartão novo no caixa. */}
+        <Linha
+          divisor
+          icon={Landmark}
+          titulo="Economia do mês"
+          detalhe="Inflação, juros, dólar e combustível"
+          onClick={() => navigate('/tio/finance/economia')}
         />
       </section>
     </div>

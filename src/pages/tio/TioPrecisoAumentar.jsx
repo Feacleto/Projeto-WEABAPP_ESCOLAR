@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronDown, Landmark, TriangleAlert } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
@@ -262,6 +263,14 @@ export default function TioPrecisoAumentar() {
                       O índice de inflação ainda não chegou. Tente de novo mais tarde.
                     </p>
                   )}
+                  {/* A porta da "Economia do mês" (05/10/2026): juros,
+                    * dólar e o litro dele, ao lado da inflação. */}
+                  <Link
+                    to="/tio/finance/economia"
+                    className="tap mt-1 flex min-h-12 items-center text-base font-semibold text-primary underline underline-offset-4"
+                  >
+                    Ver a economia do mês
+                  </Link>
                 </div>
               )}
             </section>

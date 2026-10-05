@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 81 scripts. O PRIMEIRO é
+npm run testar                   # 82 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -40,7 +40,7 @@ npm run testar                   # 81 scripts. O PRIMEIRO é
                                  # tutorial, mapa, modulos, e os do Financeiro
                                  # trancado: extrato, despesas, turma (depois de
                                  # dinheiro), tranca, senha-financeiro, km-da-rota,
-                                 # perua, ditado, indices, e os da auxiliar:
+                                 # perua, ditado, indices, economia, e os da auxiliar:
                                  # auxiliar, pagamento-da-auxiliar,
                                  # substitutas
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
@@ -650,7 +650,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·
 `configFinanceiro` (só o próprio motorista lê; a auxiliar lê o dela, só com o `temSenha`) ·
-`indicesEconomicos` (o IPCA; só o servidor escreve, motorista lê) ·
+`indicesEconomicos` (`ipca`, `selic`, `dolar`; só o servidor escreve, motorista lê) ·
 `fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
 `avaliacoesDoTio` (a nota da família ao tio; só ela lê a dela, o tio não lê nenhuma) ·
 `appState`
@@ -1886,7 +1886,11 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   o IPCA de 12 meses no SIDRA do IBGE (sem chave) e grava
   `indicesEconomicos/ipca` só se mudou. Régua pura em
   [reguaDosIndices.js](functions/lib/reguaDosIndices.js) (`testar:indices`);
-  ⚠️ o mês vem na coluna `D3C`, não `D2C`.
+  ⚠️ o mês vem na coluna `D3C`, não `D2C`. Desde 05/10/2026 também a Selic
+  meta (SGS 432) e o dólar PTAX venda (SGS 1) do Banco Central, em
+  `indicesEconomicos/selic` e `/dolar`, com o valor de ~12 meses antes (e o
+  IPCA, `ipca12mAntes`) para a seta. ⚠️ A Selic meta vem com datas no
+  FUTURO (até o próximo Copom): a consulta é por período terminando hoje.
 - **Auxiliar:** `convidarAuxiliar`, `cancelarConviteDeAuxiliar`,
   `verConviteDeAuxiliar` (pública, devolve só a marca e o primeiro nome),
   `aceitarConviteDeAuxiliar`, `desativarAuxiliar` e `marcarParadaPelaAuxiliar`
@@ -2269,8 +2273,14 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
     diesel conta o PREÇO, não o volume), meses sem combustível lançado em
     âmbar e o IPCA recolhido. ⚠️ **Nunca sugere valor de reajuste.** E o
     contrato com a família NÃO tem cláusula de reajuste (pendente do dono).
-  - Fora desta versão: média da ANP, foto do comprovante, uso pessoal da
-    perua, km por litro.
+  - **Economia do mês** (`/tio/finance/economia`, [TioEconomia](src/pages/tio/TioEconomia.jsx),
+    05/10/2026, versão B do dono): inflação, Selic, dólar e o litro que ELE
+    pagou, e o custo por criança de 12 meses atrás contra hoje (reusa
+    `precisoAumentar.js`). Régua em [economia.js](src/dominio/cobranca/economia.js)
+    (`testar:economia`). ⚠️ Mostra o custo e a inflação; **nunca sugere
+    reajuste**. Portas: uma linha em "Sua perua" e um link no Preciso aumentar?.
+  - Fora desta versão: média da ANP (planilha .xlsx sem endereço estável),
+    foto do comprovante, uso pessoal da perua, km por litro.
 - **Saída da criança tem data desde 03/10/2026** (`children.inativadoEm`); antes
   disso as saídas não são recuperáveis, e a turma
   ([movimentoDaTurma.js](src/dominio/identidade/movimentoDaTurma.js)) diz isso.

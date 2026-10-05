@@ -89,6 +89,8 @@ const TioSubstitutas = lazy(() => import('./pages/tio/TioSubstitutas'));
 const TioAbastecer = lazy(() => import('./pages/tio/TioAbastecer'));
 const TioReserva = lazy(() => import('./pages/tio/TioReserva'));
 const TioPrecisoAumentar = lazy(() => import('./pages/tio/TioPrecisoAumentar'));
+// "Economia do mês" (05/10/2026): embaixo de /tio/finance, atrás da senha.
+const TioEconomia = lazy(() => import('./pages/tio/TioEconomia'));
 // A trilha do negócio (o caminho até o Diamante): embaixo de /tio/finance,
 // então atrás da senha pelo caminho, como as outras.
 const TioNegocio = lazy(() => import('./pages/tio/TioNegocio'));
@@ -727,6 +729,7 @@ export default function App() {
         <Route path="auxiliar" element={<Navigate to="/tio/finance/auxiliar" replace />} />
         <Route path="finance/reserva" element={<TioReserva />} />
         <Route path="finance/aumentar" element={<TioPrecisoAumentar />} />
+        <Route path="finance/economia" element={<TioEconomia />} />
         <Route path="finance/negocio" element={<TioNegocio />} />
         <Route path="abastecer" element={<TioAbastecer />} />
         <Route path="pix" element={<TioPixConfig />} />

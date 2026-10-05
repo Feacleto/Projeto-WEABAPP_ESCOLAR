@@ -4,8 +4,13 @@ const { FieldValue } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
 const {
   URL_DO_IPCA_12M,
-  lerIpcaDoSidra,
+  lerSerieDoIpca,
   indiceMudou,
+  SERIES_DO_BC,
+  diaEmBrasilia,
+  urlDaSerieDoBc,
+  lerSerieDoBc,
+  serieMudou,
 } = require('./reguaDosIndices');
 
 const REGION = 'southamerica-east1';
@@ -52,7 +57,7 @@ async function atualizarIpca(db, { buscar = fetch } = {}) {
     return { gravou: false, motivo: 'rede' };
   }
 
-  const novo = lerIpcaDoSidra(json);
+  const novo = lerSerieDoIpca(json);
   if (!novo) {
     logger.error('[indices] a resposta do SIDRA não está no formato esperado', {
       amostra: JSON.stringify(json).slice(0, 500),
@@ -69,7 +74,68 @@ async function atualizarIpca(db, { buscar = fetch } = {}) {
   await ref.set({
     mes: novo.mes,
     ipca12m: novo.ipca12m,
+    // O mesmo mês um ano antes (05/10/2026): a seta "Subiu/Desceu em 12
+    // meses" da Economia do mês. `null` quando o IBGE não o devolveu.
+    mesAntes: novo.mesAntes,
+    ipca12mAntes: novo.ipca12mAntes,
     fonte: 'IBGE',
+    atualizadoEm: FieldValue.serverTimestamp(),
+  });
+  return { gravou: true, ...novo };
+}
+
+/**
+ * SELIC META E DÓLAR PTAX — `indicesEconomicos/selic` e `/dolar`
+ * (05/10/2026, tela "Economia do mês" do motorista). Mesmo desenho do IPCA:
+ * busca uma vez por dia, só grava se mudou, e falha não apaga nada. A régua
+ * (formato do SGS, datas no futuro da Selic, dia útil do dólar) está em
+ * `reguaDosIndices.js`.
+ *
+ * As duas séries são independentes: o Banco Central fora para uma não pode
+ * calar a outra nem o IPCA — por isso cada uma tem o seu `try`, e quem chama
+ * roda as três em sequência sem parar na primeira falha.
+ */
+async function atualizarSerieDoBc(db, chave, { buscar = fetch, agora = new Date() } = {}) {
+  const serie = SERIES_DO_BC[chave];
+  const hoje = diaEmBrasilia(agora);
+  const url = urlDaSerieDoBc(serie.codigo, hoje);
+  let json;
+  try {
+    const res = await buscar(url, { signal: AbortSignal.timeout(PRAZO_DA_API_MS) });
+    if (!res.ok) {
+      // 404 é "nenhum ponto no período" — a janela é de 400 dias, então na
+      // prática é a API mudando, não o feriado.
+      logger.error('[indices] o Banco Central respondeu com erro', { chave, status: res.status });
+      return { gravou: false, motivo: 'http' };
+    }
+    json = await res.json();
+  } catch (err) {
+    logger.error('[indices] a chamada ao Banco Central falhou', { chave, erro: String(err?.message || err) });
+    return { gravou: false, motivo: 'rede' };
+  }
+
+  const novo = lerSerieDoBc(json, { ...serie, hoje });
+  if (!novo) {
+    logger.error('[indices] a resposta do Banco Central não está no formato esperado', {
+      chave,
+      amostra: JSON.stringify(json).slice(0, 500),
+    });
+    return { gravou: false, motivo: 'formato' };
+  }
+
+  const ref = db.collection('indicesEconomicos').doc(chave);
+  const atual = await ref.get();
+  // A Selic é preenchida todo dia com o mesmo número: comparar a data
+  // regravaria o documento diariamente sem nada novo para a tela.
+  const comData = chave !== 'selic';
+  if (!serieMudou(atual.exists ? atual.data() : null, novo, { comData })) {
+    return { gravou: false, motivo: 'igual', ...novo };
+  }
+
+  await ref.set({
+    ...novo,
+    serie: serie.codigo,
+    fonte: 'Banco Central',
     atualizadoEm: FieldValue.serverTimestamp(),
   });
   return { gravou: true, ...novo };
@@ -86,11 +152,21 @@ function makeAtualizarIndicesEconomicos(db) {
       maxInstances: LIMITES.AGENDADO,
     },
     async () => {
-      const resultado = await atualizarIpca(db);
-      logger.info('[indices] IPCA conferido', resultado);
+      // Uma falha de banco numa série não pode calar as outras.
+      const tarefas = [
+        ['ipca', () => atualizarIpca(db)],
+        ...Object.keys(SERIES_DO_BC).map((chave) => [chave, () => atualizarSerieDoBc(db, chave)]),
+      ];
+      for (const [chave, tarefa] of tarefas) {
+        try {
+          logger.info(`[indices] ${chave} conferido`, await tarefa());
+        } catch (err) {
+          logger.error(`[indices] ${chave} falhou`, { erro: String(err?.message || err) });
+        }
+      }
       return null;
     }
   );
 }
 
-module.exports = { makeAtualizarIndicesEconomicos, atualizarIpca };
+module.exports = { makeAtualizarIndicesEconomicos, atualizarIpca, atualizarSerieDoBc };
