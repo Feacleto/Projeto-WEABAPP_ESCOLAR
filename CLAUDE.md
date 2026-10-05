@@ -243,7 +243,7 @@ sozinha** (combinado entre os dois) e não há estrelas
 ([faltaDaAuxiliar.js](src/dominio/identidade/faltaDaAuxiliar.js),
 `npm run testar:substitutas`).
 ⚠️ **E A FALTA DE HOJE APARECE NO INÍCIO, SEM VALOR** (05/10/2026, decisão
-do dono): uma linha por auxiliar no "Para resolver" — "A Cida faltou hoje" ·
+do dono): uma linha por auxiliar no "Para resolver" — "Cida faltou hoje" ·
 "Substituta: Joana" ou "Sem substituta registrada" — que leva à Central (com
 a senha). O Início não tem senha: só nomes, nunca R$ (`linhasDaFaltaDeHoje`,
 escuta estreita do dia em `watchFaltasDeHoje`/`useFaltaDaAuxiliarHoje`).

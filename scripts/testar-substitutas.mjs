@@ -168,7 +168,7 @@ checar('falta: só o próprio motorista lê', true, blocoFalta.includes('allow r
 checar('o valor do dia tem teto de 5000 nas rules', true, regras.includes('v is number && v > 0 && v <= 5000'));
 checar('o telefone tem 10 ou 11 dígitos nas rules', true, regras.includes("t.matches('^[0-9]{10,11}$')"));
 
-console.log('\n10. "A Cida faltou hoje" no Início (sem valor nenhum)');
+console.log('\n10. "Cida faltou hoje" no Início (sem valor nenhum)');
 {
   const hoje = '2026-10-05';
   const faltasHoje = [
@@ -179,8 +179,11 @@ console.log('\n10. "A Cida faltou hoje" no Início (sem valor nenhum)');
   const linhas = linhasDaFaltaDeHoje(faltasHoje, hoje);
   const da = (uid) => linhas.find((l) => l.auxiliarUid === uid) || {};
   checar('uma linha por auxiliar que faltou HOJE (ontem não entra)', 2, linhas.length);
-  checar('com substituta: o nome dela', { titulo: 'A Cida faltou hoje', sub: 'Substituta: Joana' },
+  checar('com substituta: o nome dela', { titulo: 'Cida faltou hoje', sub: 'Substituta: Joana' },
     { titulo: da('a1').titulo, sub: da('a1').sub });
+  checar('sem nome: "Sua auxiliar faltou hoje"', 'Sua auxiliar faltou hoje',
+    linhasDaFaltaDeHoje([{ auxiliarUid: 'a9', nomeDaAuxiliar: '', dateKey: hoje, substituta: null }], hoje)[0]?.titulo);
+  checar('sem artigo antes do nome', false, linhas.some((l) => /^A /.test(l.titulo)));
   checar('sem substituta: diz que não há', 'Sem substituta registrada', da('a2').sub);
   const texto = JSON.stringify(linhas);
   checar('nenhum "R$" no texto', false, texto.includes('R$'));

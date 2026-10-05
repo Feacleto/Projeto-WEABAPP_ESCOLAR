@@ -133,7 +133,7 @@ export default function TioDashboard() {
   const { openTutorial } = useOutletContext() || {};
   const { children, loading: carregandoCriancas } = useChildren();
   const { pedidos } = usePedidosDeAcesso('motorista');
-  // "A Cida faltou hoje" — só nomes, nunca valor (o Início não tem senha).
+  // "Cida faltou hoje" — só nomes, nunca valor (o Início não tem senha).
   const faltasDaAuxiliar = useFaltaDaAuxiliarHoje();
   const pedidosAbertos = useMemo(
     () => pedidos.filter((p) => p.status === 'aguardando'),

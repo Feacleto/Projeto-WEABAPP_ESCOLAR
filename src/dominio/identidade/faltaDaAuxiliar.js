@@ -213,7 +213,7 @@ export function resumoDoMes(faltas, monthKey) {
  *
  * A falta é coisa da manhã, e a Central (onde ela é registrada) pede a senha.
  * Então o "Para resolver" do Início ganha uma linha por auxiliar que faltou
- * HOJE: "A Cida faltou hoje" com "Substituta: Joana" ou "Sem substituta
+ * HOJE: "Cida faltou hoje" (sem artigo; "Sua auxiliar faltou hoje" sem nome) com "Substituta: Joana" ou "Sem substituta
  * registrada". Tocar leva à Central, que pede a senha — é lá que se registra
  * quem cobriu, e o valor.
  *
@@ -245,7 +245,7 @@ export function linhasDaFaltaDeHoje(faltas, dateKey, vinculos = null) {
     const substituta = nomeDaSubstituta(f.substituta?.nome);
     linhas.push({
       auxiliarUid: f.auxiliarUid,
-      titulo: primeiro === 'auxiliar' ? 'A auxiliar faltou hoje' : `A ${primeiro} faltou hoje`,
+      titulo: primeiro === 'auxiliar' ? 'Sua auxiliar faltou hoje' : `${primeiro} faltou hoje`,
       sub: substituta ? `Substituta: ${substituta.split(' ')[0]}` : 'Sem substituta registrada',
     });
   }

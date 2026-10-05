@@ -69,7 +69,7 @@ export default function EstrelasParaOTio({ motoristaUid, marca }) {
           </button>
         ))}
       </div>
-      <p className="mt-2 text-sm text-textMuted">
+      <p className="mt-2 text-base text-text">
         Só a equipe do Alô Buzinou vê a sua nota.{nota != null ? ' Você pode mudar quando quiser.' : ''}
       </p>
     </div>

@@ -44,7 +44,7 @@ export default function RecomendarAuxiliar({ auxiliar, recomendacao }) {
   if (!podeRecomendar(auxiliar?.dias)) {
     if (recomendacao) return null; // não acontece: o servidor só grava com 30 dias
     return (
-      <p className="text-sm text-textMuted">Recomendar fica disponível com {MIN_DIAS_PARA_RECOMENDAR} dias de trabalho.</p>
+      <p className="text-base text-textBody">Recomendar fica disponível com {MIN_DIAS_PARA_RECOMENDAR} dias de trabalho.</p>
     );
   }
 
@@ -168,7 +168,7 @@ function FolhaDaRecomendacao({ auxiliar, nome, recomendacao, onClose }) {
               );
             })}
           </div>
-          <p aria-live="polite" className="mt-1 min-h-6 text-sm font-semibold text-warningText">{aviso}</p>
+          <p aria-live="polite" className="mt-1 min-h-6 text-base font-semibold text-warningText">{aviso}</p>
         </div>
 
         <div className="space-y-2">
@@ -182,8 +182,8 @@ function FolhaDaRecomendacao({ auxiliar, nome, recomendacao, onClose }) {
             maxLength={MAX_FRASE}
             className="w-full rounded-2xl border-2 border-border bg-card p-3 text-base text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
-          <p className="text-sm text-textMuted">{frase.length} de {MAX_FRASE}</p>
-          <p className="text-sm text-textMuted">Sem telefone, link ou nome de criança e família. Vai assinada por você.</p>
+          <p className="text-base text-textBody">{frase.length} de {MAX_FRASE}</p>
+          <p className="text-base text-textBody">Sem telefone, link ou nome de criança e família. Vai assinada por você.</p>
         </div>
 
         <Button onClick={enviar} loading={enviando}>Enviar para {nome} aprovar</Button>

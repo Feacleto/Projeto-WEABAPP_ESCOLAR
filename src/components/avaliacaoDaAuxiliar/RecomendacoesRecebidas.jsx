@@ -43,7 +43,7 @@ export default function RecomendacoesRecebidas() {
   return (
     <section className="space-y-3">
       <h2 className="px-1 font-display text-lg font-bold text-text">Recomendações</h2>
-      {ordenadas.map((r) => (
+      {ordenadas.map((r, i) => (
         <div key={r.id} className="space-y-3 rounded-2xl bg-card p-5 shadow-rest">
           <p className="text-base font-bold text-text">{r.assinatura}</p>
           <ul className="space-y-1">
@@ -59,7 +59,15 @@ export default function RecomendacoesRecebidas() {
           {r.estado === 'pendente' ? (
             <>
               <p className="text-base font-semibold text-warningText">Leia e escolha se ela aparece.</p>
-              <Button onClick={() => responder(r, 'aprovar')} loading={ocupado === `${r.id}:aprovar`}>Mostrar</Button>
+              {/* Um botão cheio por tela: só a PRIMEIRA pendente (elas vêm
+                * primeiro na lista) leva o "Mostrar" cheio; as outras, contorno. */}
+              {i === 0 ? (
+                <Button onClick={() => responder(r, 'aprovar')} loading={ocupado === `${r.id}:aprovar`}>Mostrar</Button>
+              ) : (
+                <Botao onClick={() => responder(r, 'aprovar')} disabled={!!ocupado}>
+                  {ocupado === `${r.id}:aprovar` ? 'Mostrando…' : 'Mostrar'}
+                </Botao>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <Botao onClick={() => responder(r, 'ocultar')} disabled={!!ocupado}>Não mostrar</Botao>
                 <Botao onClick={() => setApagando(r)} disabled={!!ocupado}>Apagar</Botao>
