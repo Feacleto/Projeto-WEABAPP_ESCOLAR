@@ -6,6 +6,7 @@
 
 | Arquivo | Para quem | Quando ler |
 |---|---|---|
+| [`visao-geral.md`](visao-geral.md) | **pessoa e agente** | **Para começar.** O projeto inteiro numa leitura: personas, premissas, modelo de negócio, descontos, vendas, telas por papel, funcionalidades, as jornadas para testar e o que está em construção. É um mapa: cada assunto aponta para o documento que manda nele. Escrito em 04/10/2026. |
 | [`decisoes.md`](decisoes.md) | agente e pessoa | **Sempre.** Cada decisão em ~30 linhas, com o que a prova. É o que impede uma "melhoria" plausível de quebrar uma regra de negócio. |
 | [`design-system.md`](design-system.md) | agente e pessoa | Antes de criar tela, peça, cor ou animação, no app ou no site. Os valores moram no `tailwind.config.js`; aqui ficam as regras de uso, e `npm run testar:design` trava as principais. |
 
