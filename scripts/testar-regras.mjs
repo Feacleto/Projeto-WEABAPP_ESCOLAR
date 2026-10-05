@@ -552,6 +552,7 @@ async function main() {
   await aAuxiliarNoDinheiro({ pai1, novato, dono, anon });
   await asAvaliacoesDaAuxiliar({ pai1, novato, dono, anon });
   await aTransferencia({ novato, dono, anon });
+  await aAutoriaDaFoto({ novato, dono, anon });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
@@ -851,6 +852,46 @@ async function aAuxiliar({ pai1 }) {
  *
  * Atores PRÓPRIOS, para um 403 não ser herança de outro bloco.
  */
+/**
+ * QUEM POSTOU A FOTO DA TURMA (F1.5, 05/10/2026). O doc em `fotosDaTurma` a
+ * família lê INTEIRO, então o uid da auxiliar que postou mora em
+ * `autoriaDaFotoDaTurma/{fotoId}`, que só o servidor lê e escreve — nem a
+ * autora, nem o tio, nem a família, nem o dono pelo app.
+ */
+async function aAutoriaDaFoto({ novato, dono, anon }) {
+  console.log('\n=== QUEM POSTOU A FOTO DA TURMA (F1.5, 05/10/2026) ===');
+  const BL = 'autoria';
+  const agora = Date.now();
+  const moto = await criarLogin(`aut.moto.${agora}@teste.local`);
+  const aux = await criarLogin(`aut.aux.${agora}@teste.local`);
+  const mae = await criarLogin(`aut.mae.${agora}@teste.local`);
+  const L = (values) => ({ arrayValue: { values } });
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Autoria') });
+  await semear(`users/${aux.uid}`, { role: S('auxiliar'), name: S('Rosa'), motoristaUids: L([S(moto.uid)]) });
+  await semear(`users/${mae.uid}`, {
+    role: S('parent'), name: S('Mãe Autoria'), adminUid: S(moto.uid), adminUids: L([S(moto.uid)]),
+  });
+  const COL = 'autoriaDaFotoDaTurma';
+  const DOC = `${COL}/foto${agora}`;
+  const autoria = () => ({ postadaPor: S(aux.uid), adminUid: S(moto.uid), expiraEm: T(30) });
+  await semear(DOC, autoria());
+
+  checar(BL, 'a autora NÃO lê', 'NEGA', await ler(DOC, aux));
+  checar(BL, 'o tio NÃO lê', 'NEGA', await ler(DOC, moto));
+  checar(BL, 'a família NÃO lê', 'NEGA', await ler(DOC, mae));
+  checar(BL, 'o dono NÃO lê', 'NEGA', await ler(DOC, dono));
+  checar(BL, 'o novato NÃO lê', 'NEGA', await ler(DOC, novato));
+  checar(BL, 'anônimo NÃO lê', 'NEGA', await ler(DOC, anon));
+  checar(BL, 'a autora lista as dela', 'NEGA', await consultar(COL, 'postadaPor', aux.uid, aux));
+  checar(BL, 'o tio lista as da turma dele', 'NEGA', await consultar(COL, 'adminUid', moto.uid, moto));
+  checar(BL, 'a autora cria', 'NEGA', await criar(COL, `fotoA${agora}`, aux, autoria()));
+  checar(BL, 'o tio troca a autora', 'NEGA',
+    await escrever(DOC, moto, { postadaPor: S(moto.uid) }, ['postadaPor']));
+  checar(BL, 'a autora apaga', 'NEGA', await apagar(DOC, aux));
+  checar(BL, 'o dono escreve pelo app', 'NEGA',
+    await escrever(DOC, dono, { expiraEm: T(60) }, ['expiraEm']));
+}
+
 async function aTransferencia({ novato, dono, anon }) {
   console.log('\n=== PASSAR A FAMÍLIA PARA OUTRO TIO (F2.2, 05/10/2026) ===');
   const BL = 'transferencia';
