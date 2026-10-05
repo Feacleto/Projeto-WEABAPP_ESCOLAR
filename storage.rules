@@ -111,8 +111,13 @@ service firebase.storage {
       return request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
     }
 
+    // ⚠️ `request.resource != null` na frente (F1.5, 05/10/2026, achado da
+    // QA): o emulador soltava "Null value error" aqui. Sem arquivo novo não há
+    // tamanho a medir, e a resposta continua sendo NÃO — só que por `false`,
+    // não por erro, para o caso do arquivo grande negar pelo TAMANHO.
     function isWithinSizeLimit() {
-      return request.resource.size < 2 * 1024 * 1024; // 2 MB
+      return request.resource != null
+        && request.resource.size < 2 * 1024 * 1024; // 2 MB
     }
 
     // --------------------------------------------------------------------
@@ -235,12 +240,29 @@ service firebase.storage {
     // `publicarFotoDaTurma`, que só então dá o link de leitura — e o link só
     // vai para o documento em `fotosDaTurma`, que as rules do Firestore
     // protegem. Arquivo que não virou publicação fica inerte, sem link.
+    //
+    // F1.5 (05/10/2026): A AUXILIAR SOBE NA PRÓPRIA PASTA, nunca na do tio.
+    // `publicarFotoDaTurma` confere o vínculo do PAR, copia o arquivo para
+    // `fotosDaTurma/{tioUid}/` (Admin SDK) e apaga o original. Aqui só se
+    // exige que seja auxiliar com pelo menos um tio ativo (`motoristaUids`,
+    // que só o servidor escreve): a pasta dela não é lida por ninguém, e o
+    // que não vira publicação fica inerte, como o do tio.
     match /fotosDaTurma/{uid}/{arquivo} {
       allow read: if false;
-      allow create: if isAdmin()
-        && request.auth.uid == uid
-        && isImage()
-        && isWithinSizeLimit();
+      allow create: if (
+          isAdmin()
+          && request.auth.uid == uid
+          && isImage()
+          && isWithinSizeLimit()
+        ) || (
+          isSignedIn()
+          && request.auth.uid == uid
+          && firestore.exists(/databases/(default)/documents/users/$(uid))
+          && firestore.get(/databases/(default)/documents/users/$(uid)).data.role == 'auxiliar'
+          && firestore.get(/databases/(default)/documents/users/$(uid)).data.get('motoristaUids', []).size() > 0
+          && isImage()
+          && isWithinSizeLimit()
+        );
       allow update, delete: if false;
     }
 

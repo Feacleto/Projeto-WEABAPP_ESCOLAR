@@ -3015,6 +3015,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // autoriaDaFotoDaTurma/{fotoId} — QUEM POSTOU, quando foi a auxiliar
+    // (F1.5, 05/10/2026): `{ postadaPor, adminUid, expiraEm }`. O doc da foto
+    // a família lê INTEIRO (regra não esconde campo), então o uid da auxiliar
+    // mora aqui, e só o servidor lê e escreve: `apagarFotoDaTurma` confere a
+    // autora por aqui, e `minhasFotosDaTurma` lista as dela. O
+    // `{document=**}` do fim já negaria; o bloco existe para a decisão ter
+    // nome e caso de teste.
+    match /autoriaDaFotoDaTurma/{id} {
+      allow read, write: if false;
+    }
+
     // transferenciasDeFamilia/{id} — PASSAR A FAMÍLIA PARA OUTRO TIO (fase 2
     // da rede, 05/10/2026). Ver functions/lib/reguaDaTransferencia.js.
     //
