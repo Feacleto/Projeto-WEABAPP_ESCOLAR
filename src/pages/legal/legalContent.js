@@ -87,6 +87,12 @@ export const LEGAL_DATE = '5 de outubro de 2026';
  *     próprio app (existe desde 11/09/2026).
  *   - A parte passou a ser a razão social do MEI, com o nome fantasia ao lado.
  *
+ * E A COMUNIDADE (05/10/2026, noite), conferida contra 74369d9: a última
+ * marca "em construção" saiu. O texto ganhou o que o código garante — o "não"
+ * vale na hora, a criança sai junto da turma, nenhum nome de criança, a
+ * legenda filtrada, o link de 15 minutos — e a foto só para os tios, que
+ * continua sem criança.
+ *
  * CONFERIDO CONTRA O CÓDIGO (05/10/2026, noite): a substituta de um dia (F3,
  * reguaDaSubstitutaDeUmDia.js) e a foto postada pela auxiliar (F1.5,
  * autoriaDaFoto em reguaDaComunidade.js) entraram, e as frases deixaram de
@@ -501,19 +507,18 @@ export const PRIVACY_SECTIONS = [
       'O tratamento de dados pessoais de crianças e adolescentes ocorre sempre no melhor interesse da criança, conforme o art. 14 da LGPD.',
       'Os dados da criança usados no transporte (nome, endereço de embarque, escola, horários, contato da família) são cadastrados pelo motorista para prestar o serviço contratado pela família, e servem para levar e trazer a criança com segurança e manter a família informada. A base legal está na seção 5.',
       'As informações de saúde, quando existirem, são escritas pelo próprio responsável, com consentimento específico e destacado, separado do aceite destes termos (art. 11, I, e art. 14, §1º). O motorista apenas as lê, e não pode escrevê-las. A auxiliar do motorista não as vê.',
-      // ⚠️ A FOTO DA COMUNIDADE (05/10/2026, decisão do dono) está EM
-      // CONSTRUÇÃO no prod. Conferir contra o código antes de ir ao
-      // advogado. Se ela não entrar, este parágrafo volta ao texto do commit
-      // a5a3b4e: "vista só pelas famílias daquele motorista, nunca por outros
-      // motoristas (...) Foto publicada para outros motoristas parceiros não
-      // pode conter criança."
+      // A FOTO DA COMUNIDADE (05/10/2026, decisão do dono) — conferida contra
+      // o código que entrou em 74369d9 (reguaDaComunidade.js: PUBLICO,
+      // podeNaComunidade, redeDaFamilia, a lista fechada do que sai). O sim é
+      // conferido na LEITURA, não só na publicação: o "não", a saída da turma
+      // e a passagem a outro tio tiram a criança na hora.
       //
       // O "sim" é UM para os dois públicos, por escolha do dono. A lei aceita
       // um só consentimento se ele for ESPECÍFICO (art. 8º §4º, art. 14 §1º):
       // por isso a pergunta e este texto dizem os dois públicos com todas as
       // letras. O "sim" antigo, que só falava da turma, NÃO vale para a
       // comunidade: a família é perguntada de novo.
-      'A FOTO DA TURMA E A COMUNIDADE: numa data especial, o motorista pode publicar uma foto da turma. Ela é vista pelas famílias atendidas por ele e, na comunidade, pelos motoristas parceiros dele (os que ele indicou ao Aplicativo e o que o indicou) e pelas famílias atendidas por esses parceiros, numa tela separada. A criança só aparece se o responsável dela tiver respondido "Sim" à pergunta sobre as fotos, que diz quem vê a foto. Quem respondeu "Sim" antes de a comunidade existir é perguntado de novo. A resposta pode ser mudada a qualquer momento na ficha da criança. Ninguém pode curtir nem comentar a foto no Aplicativo, e ela é apagada automaticamente em 30 (trinta) dias.',
+      'A FOTO DA TURMA E A COMUNIDADE: numa data especial, o motorista pode publicar uma foto da turma, escolhendo para quem: só para as famílias atendidas por ele, ou para a comunidade, que são essas famílias, os motoristas parceiros dele (os que ele indicou ao Aplicativo e o que o indicou) e as famílias atendidas por esses parceiros, numa tela separada. A criança só aparece se o responsável dela tiver respondido "Sim" à pergunta "Seu filho pode aparecer nas fotos da perua?", que diz quem vê a foto. Quem respondeu "Sim" antes de a comunidade existir continua nas fotos para as famílias do motorista e é perguntado de novo para a comunidade. A resposta pode ser mudada a qualquer momento na ficha da criança, e o "Não" vale na hora, inclusive para as fotos já publicadas; a criança também deixa de aparecer se sair da turma ou passar para outro motorista. Na foto não aparece o nome de nenhuma criança. A legenda não aceita telefone, e-mail, link, nome de criança da turma nem promessa de segurança. Ninguém pode curtir, comentar, baixar ou compartilhar a foto pelo Aplicativo, o endereço que mostra a imagem vale só 15 (quinze) minutos, e a foto é apagada automaticamente em 30 (trinta) dias. Foto publicada só para os motoristas parceiros, sem as famílias, não pode conter criança.',
       'A auxiliar também pode publicar a foto da turma, pelo celular dela e em nome do motorista, com as mesmas regras: só para as famílias daquele motorista e só com as crianças cuja família respondeu "Sim". As famílias veem apenas o primeiro nome de quem publicou; quem foi, pelo identificador, só o servidor do Aplicativo guarda, para saber o que ela pode apagar. A auxiliar pode apagar a foto que publicou a qualquer momento, mesmo depois de deixar de trabalhar com o motorista.',
       // A CÓPIA DA AUXILIAR É UMA LISTA FECHADA (`CAMPOS_DA_TURMA_DA_AUXILIAR`
       // em functions/lib/reguaDoAuxiliar.js): campo novo da criança não chega
@@ -551,7 +556,6 @@ export const PRIVACY_SECTIONS = [
       '(d) Comunicação com responsáveis (notificações, status, alertas) — base: execução do contrato de transporte de que o responsável é parte (art. 7º, V) e legítimo interesse (art. 7º, IX);',
       '(e) Dados da criança usados no transporte (seção 4) — base: execução do contrato de transporte de que o responsável é parte (art. 7º, V) e legítimo interesse do motorista em organizar e prestar o serviço com segurança (art. 7º, IX), sempre no melhor interesse da criança (art. 14, caput; Enunciado CD/ANPD nº 1/2023);',
       '(f) Informações de saúde da criança — base: consentimento específico e destacado do responsável (art. 11, I, e art. 14, §1º), revogável a qualquer momento, sem custo, apagando a informação no Aplicativo (art. 8º, §5º);',
-      // ⚠️ "e na comunidade" acompanha o parágrafo da §4 (em construção).
       '(g) Imagem da criança na foto da turma e na comunidade — base: consentimento específico do responsável (art. 14, §1º), dado pela resposta "Sim" no Aplicativo a uma pergunta que diz quem vê a foto, e revogável a qualquer momento, sem custo, na ficha da criança (art. 8º, §5º);',
       '(h) Segurança, prevenção de fraude e limite de tentativas, comunidade, níveis, avaliações do Aplicativo e comunicação da plataforma — base: legítimo interesse (art. 7º, IX), sem uso de dados de criança;',
       '(i) Métricas de uso pelo Google Analytics — base: consentimento (art. 7º, I), dado no aviso de cookies e revogável a qualquer momento.',
@@ -583,8 +587,7 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'Dentro do Aplicativo, cada pessoa vê só o que precisa:',
       '(a) Entre o motorista e as famílias atendidas por ele — no escopo necessário para o serviço (status do transporte, localização aproximada da perua durante a rota, contrato, mensalidades, recados). As famílias também veem o nome, a marca, o telefone, a chave PIX e os dados do motorista que constam no contrato;',
-      // ⚠️ A FOTO DA COMUNIDADE, EM CONSTRUÇÃO (ver a seção 4).
-      '(a.1) A foto da turma, só com as crianças cuja família respondeu "Sim", é vista também, numa tela separada, pelos motoristas parceiros daquele motorista e pelas famílias atendidas por esses parceiros, até ser apagada em 30 dias;',
+      '(a.1) A foto da turma que o motorista publica para a comunidade, só com as crianças cuja família respondeu "Sim", é vista também, numa tela separada, pelos motoristas parceiros daquele motorista e pelas famílias atendidas por esses parceiros, até ser apagada em 30 dias. Quem a vê recebe só a imagem, a época, a legenda e a marca do motorista: nunca os nomes das crianças nem quem publicou;',
       '(b) A auxiliar do motorista vê, de cada motorista com quem trabalha e só enquanto está ativa com ele, a cópia reduzida da turma descrita na seção 4 (sem endereço, mensalidades, contrato nem informações de saúde), a marca e a chave PIX do motorista. Do vínculo, os dois veem o mesmo: os períodos de trabalho e o valor informado no convite. O recibo do pagamento é visto só pelos dois, e ela continua vendo os recibos dela depois de desativada. As faltas dela e a lista de substitutas são vistas SÓ pelo motorista; a auxiliar não as vê. Quem já trabalhou com o motorista continua na lista "quem já trabalhou comigo" dele, com os períodos;',
       '(b.1) A substituta que recebe do motorista o link de um dia vê só a rota daquele dia, como descrito na seção 4, e só enquanto o link valer. O nome e o WhatsApp dela são vistos só pelo motorista que a cadastrou;',
       '(c) Quem recebe um link de acompanhamento (quem vai buscar a criança, ou o segundo responsável) vê só o dia da criança, enquanto o link valer — sem dinheiro, endereço ou contrato;',
