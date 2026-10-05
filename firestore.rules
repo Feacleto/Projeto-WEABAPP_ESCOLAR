@@ -2576,6 +2576,30 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/auxiliares/$(motoristaUid + '_' + request.auth.uid)).data.ativa == true;
       allow write: if false;
     }
+    // O REGISTRO DA ROTA (05/10/2026) — "O que a Cida marcou":
+    // `registroDaRota/{tio}_{AAAA-MM-DD}`, escrito SÓ pelo servidor
+    // (`marcarParadaPelaAuxiliar`, na transação da marcação). Lê o TIO dono
+    // do registro e a auxiliar com o PAR ATIVO — o `exists()` vem antes do
+    // `get()` porque o get de um vínculo que não existe falha a regra.
+    // ⚠️ `get` e `list` SEPARADOS: o tio lê UM documento pelo id do dia, e
+    // ninguém varre a coleção (o histórico de quem marcou o quê não é
+    // consulta de ninguém).
+    // ⚠️ O documento do dia nasce na primeira marcação dela; antes disso a
+    // escuta do tio pede um documento AUSENTE, e `resource.data` de nulo
+    // nega — a escuta morreria e não veria o documento nascer (o mesmo caso
+    // de `absenceDeclarations`). Ausente se autoriza pelo tio do ID.
+    match /registroDaRota/{id} {
+      allow get: if isSignedIn() && (
+        (resource == null && id.split('_')[0] == request.auth.uid)
+        || resource.data.motoristaUid == request.auth.uid
+        || (
+          exists(/databases/$(database)/documents/auxiliares/$(resource.data.motoristaUid + '_' + request.auth.uid))
+          && get(/databases/$(database)/documents/auxiliares/$(resource.data.motoristaUid + '_' + request.auth.uid)).data.ativa == true
+        )
+      );
+      allow list: if false;
+      allow write: if false;
+    }
     match /auxiliares/{id} {
       // O dono LÊ (painel, 05/10/2026: quantas auxiliares, de quem, desde
       // quando) e não escreve: ler não é operar. Desativar continua sendo do
