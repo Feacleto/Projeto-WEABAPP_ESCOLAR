@@ -27,7 +27,11 @@ import {
 } from '../src/marca/pedidoAoMotorista.js';
 import {
   ESTADO as ADESIVO,
+  FRASES as FRASES_ADESIVO,
+  FRASE_PADRAO,
   TEXTO as TEXTO_ADESIVO,
+  contarFrases,
+  fraseValida,
   podePedir,
   podeTransitar as podeTransitarAdesivo,
   situacaoDoPedido,
@@ -76,6 +80,10 @@ bloco('1. Nenhum texto impresso promete segurança');
 // lê antes de entregar o filho.
 Object.entries(TEXTO_ADESIVO).forEach(([chave, texto]) => {
   checar(`adesivo.${chave} está limpo`, true, podeDizer(texto));
+});
+// As frases que o tio escolhe vão impressas na faixa, ao lado de "Alô Buzinou".
+FRASES_ADESIVO.forEach((frase) => {
+  checar(`frase "${frase}" está limpa`, true, podeDizer(`${frase} ${TEXTO_ADESIVO.marca}`));
 });
 Object.entries(TEXTO_SELO).forEach(([chave, texto]) => {
   checar(`certificado.${chave} está limpo`, true, podeDizer(texto));
@@ -200,15 +208,38 @@ checar('vencido some em silêncio', null,
 
 // ═══════════════════════ 3. O ADESIVO ══════════════════════════════════════
 
-bloco('6. O adesivo é fácil de propósito');
+bloco('6. O adesivo é prêmio da 1ª Platina (04/10/2026)');
 
-// Não há mérito aqui: ele é MÍDIA DA PLATAFORMA na van dele. Adiar até ele
-// contratar é adiar a propaganda até depois da hora em que ela mais renderia.
-checar('quem está em teste pede', true, podePedir({ uid: 'a' }));
-checar('quem contratou pede', true, podePedir({ uid: 'a', planoId: 'ate25' }));
+// ⚠️ MUDOU ÀS CLARAS: era "qualquer associado pede, desde o teste". Agora vale
+// o MARCO `platinaEm`, gravado uma vez pelo servidor — não o nível de hoje.
+const naPlatina = { platinaEm: { seconds: 1 } };
+checar('sem o marco, não pede', false, podePedir({ uid: 'a' }, { nivel: 'ouro' }));
+checar('sem o documento de nível, não pede', false, podePedir({ uid: 'a' }, null));
+checar('chegou à Platina, pede', true, podePedir({ uid: 'a' }, { nivel: 'platina', ...naPlatina }));
+checar('caiu para o Ouro e ainda pede (o prêmio não oscila)', true, podePedir({ uid: 'a' }, { nivel: 'ouro', ...naPlatina }));
 // Suspenso não: seria pagar frete para pôr a marca numa van que não a usa.
-checar('suspenso não pede', false, podePedir({ uid: 'a', suspenso: true }));
-checar('sem uid não pede', false, podePedir({}));
+checar('suspenso não pede', false, podePedir({ uid: 'a', suspenso: true }, naPlatina));
+checar('sem uid não pede', false, podePedir({}, naPlatina));
+
+bloco('6b. A frase é dele, de uma lista fechada');
+checar('a padrão é "Eu uso o app"', 'Eu uso o app', FRASE_PADRAO);
+checar('frase da lista vale', true, fraseValida('Parceiro do'));
+checar('frase livre não vale', false, fraseValida('Transporte de confiança'));
+checar(
+  'a conta das frases traz as quatro, com zero',
+  [1, 0, 2, 0],
+  contarFrases([{ frase: 'Eu uso o app' }, { frase: 'Apoiado por' }, { frase: 'Apoiado por' }, { frase: 'livre' }, {}]).map((x) => x.total),
+);
+// ⚠️ AS RULES REPETEM A LISTA: mudar uma e esquecer a outra recusaria em
+// produção a frase que a tela oferece (ou aceitaria a que ela tirou).
+const regras = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+const listaDasRegras = (regras.match(/request\.resource\.data\.frase in \[([^\]]+)\]/) || [])[1] || '';
+checar(
+  'as rules aceitam exatamente as frases da régua',
+  JSON.stringify(FRASES_ADESIVO),
+  JSON.stringify(listaDasRegras.split(',').map((s) => s.trim().replace(/^'|'$/g, ''))),
+);
+checar('as rules exigem o marco da Platina', true, regras.includes("data.get('platinaEm', null) != null"));
 
 bloco('7. O endereço, que o correio não adivinha');
 

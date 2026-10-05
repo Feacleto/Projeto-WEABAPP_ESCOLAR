@@ -66,6 +66,8 @@ import { setChildPhotoURL } from '../services/childrenService';
 import { PERIOD_LABELS, formatPhone } from '../compartilhado/formatters';
 import AcessoDeUmDia from '../components/children/AcessoDeUmDia';
 import SaudeDaCrianca from '../components/children/SaudeDaCrianca';
+import { PerguntaDaFoto } from '../components/comunidade/FotoDaTurmaDaFamilia';
+import AvaliarOTio from '../components/comunidade/AvaliarOTio';
 
 /**
  * Mini-perfil da criança. Funciona pra Tio (com edit/delete) e pra Pai (read-only).
@@ -351,6 +353,13 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
             * Fica no dia a dia porque é para a emergência NO TRAJETO; o
             * porquê inteiro mora no componente. */}
           <SaudeDaCrianca child={child} isAdmin={isAdmin} />
+
+          {/* A FOTO DA TURMA (05/10/2026): só a família responde, e muda aqui.
+            * O motorista não vê a pergunta: a resposta aparece para ele na
+            * hora de marcar quem está na foto. */}
+          {!isAdmin && <PerguntaDaFoto child={child} naFicha />}
+          {/* A nota do tio (etapa 2): na ficha sempre, para mudar. */}
+          {!isAdmin && <AvaliarOTio child={child} />}
 
           <FaltasDaCrianca childId={child.id} adminUid={child.adminUid} />
         </Bloco>

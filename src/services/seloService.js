@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, getStorageLazy } from '../firebase/config';
-import { ESTADO as ADESIVO, podePedir, validarEndereco } from '../dominio/associacao/adesivo.js';
+import { ESTADO as ADESIVO, fraseValida, podePedir, validarEndereco } from '../dominio/associacao/adesivo.js';
 import { ESTADO as VERIF, validarRecusa } from '../dominio/identidade/verificacao.js';
 
 /**
@@ -49,12 +49,18 @@ const PEDIDO = (uid) => doc(db, 'pedidosAdesivo', uid);
 /**
  * O motorista pede o adesivo. UMA VEZ — a rule só permite `create`.
  *
+ * Desde 04/10/2026 é prêmio da 1ª Platina (`nivel` é `niveis/{uid}`, e a
+ * rule confere o mesmo `platinaEm`), com a FRASE que ele escolheu e uma FOTO
+ * da marca dele no instante do pedido (nome, logo, cor): é isso que o dono
+ * imprime. Se ele trocar o logo depois, o adesivo que chega é o que ele viu.
+ *
  * O endereço vem inteiro no mesmo documento: um pedido sem para onde enviar é
  * uma linha na tela do dono que ele não consegue resolver, e vira uma conversa
  * de WhatsApp que ninguém queria.
  */
-export async function pedirAdesivo(motorista, endereco) {
-  if (!podePedir(motorista)) throw new Error('Esta conta não pode pedir adesivo agora.');
+export async function pedirAdesivo(motorista, endereco, { frase, nivel } = {}) {
+  if (!podePedir(motorista, nivel)) throw new Error('O adesivo chega quando você alcança a Platina.');
+  if (!fraseValida(frase)) throw new Error('Escolha a frase do adesivo.');
   const { ok, faltando } = validarEndereco(endereco);
   if (!ok) throw new Error(`Falta preencher: ${faltando.join(', ')}.`);
 
@@ -62,6 +68,12 @@ export async function pedirAdesivo(motorista, endereco) {
     tioUid: motorista.uid,
     nome: motorista.name || '',
     estado: ADESIVO.PEDIDO,
+    frase,
+    marca: {
+      nome: String(motorista.marcaNome || motorista.name || '').trim(),
+      logoURL: motorista.marcaLogoURL || null,
+      cor: motorista.marcaCor || null,
+    },
     endereco: {
       cep: String(endereco.cep).trim(),
       logradouro: String(endereco.logradouro).trim(),

@@ -205,6 +205,21 @@ async function main() {
   checar('logo', 'o responsável VÊ o logo (vai no cabeçalho dele)', 'PASSA',
     await baixar(`marcaLogos/${tio1.uid}`, pai1));
 
+  // ── A FOTO DA TURMA (05/10/2026) — o motorista sobe na própria pasta, e
+  // NINGUÉM lê por aqui: o link só sai pela callable, depois de conferir o
+  // "sim" de cada família.
+  console.log('\n═══ FOTO DA TURMA ═══');
+  checar('turma', 'o motorista sobe na própria pasta', 'PASSA',
+    await enviar(`fotosDaTurma/${tio1.uid}/abc123def456.jpg`, tio1));
+  checar('turma', 'outro motorista sobe na pasta dele', 'NEGA',
+    await enviar(`fotosDaTurma/${tio1.uid}/abc123def457.jpg`, tio2));
+  checar('turma', 'a família não sobe foto da turma', 'NEGA',
+    await enviar(`fotosDaTurma/${pai1.uid}/abc123def458.jpg`, pai1));
+  checar('turma', 'nem o próprio motorista lê pelo Storage', 'NEGA',
+    await baixar(`fotosDaTurma/${tio1.uid}/abc123def456.jpg`, tio1));
+  checar('turma', 'a família não lê pelo Storage', 'NEGA',
+    await baixar(`fotosDaTurma/${tio1.uid}/abc123def456.jpg`, pai1));
+
   // ── FOTO DA CRIANÇA — o caminho determinístico que mais assusta.
   console.log('\n═══ FOTO DA CRIANÇA ═══');
   await plantar('childPhotos/skid1');

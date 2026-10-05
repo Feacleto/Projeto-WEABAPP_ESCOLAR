@@ -158,6 +158,9 @@ async function lerAtividades(db) {
  * Transação porque a agendada e a callable podem cruzar no mesmo motorista, e
  * a que chega depois não pode reescrever `desde` com base num nível velho.
  */
+/** Os níveis que dão o adesivo (o primeiro em que ele chega vale para sempre). */
+const NIVEIS_DO_ADESIVO = ['platina', 'diamante'];
+
 async function calcularEGravar(db, uid, agora = new Date(), atividades = null) {
   const fatos = await montarFatos(db, uid);
   if (!fatos) return { nivel: 'sem_nivel', gravou: false };
@@ -181,6 +184,17 @@ async function calcularEGravar(db, uid, agora = new Date(), atividades = null) {
     const proxima = proximaMissao(missoes, nivel);
     const progresso = progressoDoNivel(missoes, nivel);
     const resumo = { feitasEm, proxima, progresso };
+    // O ADESIVO DA PERUA É PRÊMIO DA PRIMEIRA PLATINA (04/10/2026, decisão do
+    // dono). A Platina oscila, o prêmio não: `platinaEm` é gravado UMA vez e
+    // atravessa toda troca de nível (os `tx.set` abaixo substituem o
+    // documento inteiro, e sem carregar o campo a queda para o Ouro apagaria
+    // o direito ao adesivo). As rules de `pedidosAdesivo` leem este campo.
+    const chegouNaPlatina = NIVEIS_DO_ADESIVO.includes(nivel);
+    const marcoDoAdesivo = gravado?.platinaEm
+      ? { platinaEm: gravado.platinaEm }
+      : chegouNaPlatina
+        ? { platinaEm: FieldValue.serverTimestamp() }
+        : {};
     const mudouResumo = mudouFeitas
       || JSON.stringify(gravado?.proxima ?? null) !== JSON.stringify(proxima)
       || JSON.stringify(gravado?.progresso ?? null) !== JSON.stringify(progresso);
@@ -190,6 +204,7 @@ async function calcularEGravar(db, uid, agora = new Date(), atividades = null) {
       tx.set(ref, {
         nivel,
         ...resumo,
+        ...marcoDoAdesivo,
         desde: FieldValue.serverTimestamp(),
         atualizadoEm: FieldValue.serverTimestamp(),
       });
@@ -200,14 +215,17 @@ async function calcularEGravar(db, uid, agora = new Date(), atividades = null) {
       tx.set(ref, {
         nivel,
         ...resumo,
+        ...marcoDoAdesivo,
         desde: FieldValue.serverTimestamp(),
         atualizadoEm: FieldValue.serverTimestamp(),
       });
       return { nivel, gravou: true };
     }
 
-    if (mudouResumo || diaDeBrasilia(gravado.atualizadoEm) !== diaDeBrasilia(agora)) {
-      tx.update(ref, { ...resumo, atualizadoEm: FieldValue.serverTimestamp() });
+    // Quem já era Platina antes de o prêmio existir ganha o marco aqui.
+    const faltaMarco = chegouNaPlatina && !gravado.platinaEm;
+    if (faltaMarco || mudouResumo || diaDeBrasilia(gravado.atualizadoEm) !== diaDeBrasilia(agora)) {
+      tx.update(ref, { ...resumo, ...marcoDoAdesivo, atualizadoEm: FieldValue.serverTimestamp() });
       return { nivel, gravou: true };
     }
     return { nivel, gravou: false };

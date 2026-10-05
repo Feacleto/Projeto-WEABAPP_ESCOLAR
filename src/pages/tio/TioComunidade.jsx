@@ -1,0 +1,223 @@
+import { useEffect, useState } from 'react';
+import { Trash2, Users } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
+import { useChildren } from '../../hooks/useChildren';
+import { useMinhasFotos } from '../../hooks/useFotosDaTurma';
+import Header from '../../components/layout/Header';
+import Button from '../../components/common/Button';
+import PublicarFoto from '../../components/comunidade/PublicarFoto';
+import NotaDasFamilias from '../../components/comunidade/NotaDasFamilias';
+import IndicarParceiro from '../../components/comunidade/IndicarParceiro';
+import { apagarFotoDaTurma, meusParceiros } from '../../services/comunidadeService';
+import { STORAGE_ENABLED } from '../../config/capabilities';
+import { PUBLICO, quandoSome, rotuloDoParceiro } from '../../dominio/identidade/comunidade.js';
+
+/**
+ * A COMUNIDADE DO TIO — /tio/comunidade (05/10/2026, etapa 1, aprovada pelo
+ * dono).
+ *
+ * Mora FORA da Central de propósito: fora da rota a Central pede a senha do
+ * Financeiro, e quem tira a foto da turma é a auxiliar, que não tem a senha.
+ *
+ * Duas abas, como ESTADO (uma tela só):
+ * - "Minhas famílias": a foto da turma na época festiva, só com o "sim" de
+ *   cada família marcada, e as fotos que ainda valem (com "Apagar").
+ * - "Tios parceiros": quem ele indicou e quem o indicou (a indicação é o que
+ *   cria a amizade), e os posts deles — sempre sem criança.
+ *
+ * ETAPA 2 (05/10/2026): a NOTA DAS FAMÍLIAS no topo de "Minhas famílias"
+ * (só a média do semestre fechado) e o "Indicar para uma família" em cada
+ * parceiro — indicação que a família aceita, nunca transferência.
+ */
+export default function TioComunidade() {
+  const { user } = useAuth();
+  const [aba, setAba] = useState(PUBLICO.FAMILIAS);
+
+  return (
+    <div className="min-h-screen bg-bg pb-16">
+      <Header title="Comunidade" showBack backLabel="Início" backTo="/tio" />
+      <main className="mx-auto w-full max-w-lg space-y-4 px-5 py-5">
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-card p-1" role="tablist">
+          {[
+            [PUBLICO.FAMILIAS, 'Minhas famílias'],
+            [PUBLICO.PARCEIROS, 'Tios parceiros'],
+          ].map(([chave, rotulo]) => (
+            <button
+              key={chave}
+              type="button"
+              role="tab"
+              aria-selected={aba === chave}
+              onClick={() => setAba(chave)}
+              className={`min-h-12 rounded-xl text-base font-bold ${
+                aba === chave ? 'bg-primary text-white' : 'text-text'
+              }`}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+        {aba === PUBLICO.FAMILIAS ? <MinhasFamilias uid={user?.uid} /> : <Parceiros uid={user?.uid} />}
+      </main>
+    </div>
+  );
+}
+
+function MinhasFamilias({ uid }) {
+  const { children } = useChildren();
+  const fotos = useMinhasFotos(uid);
+  const [postando, setPostando] = useState(false);
+  const minhas = (fotos || []).filter((f) => f.publico === PUBLICO.FAMILIAS);
+
+  return (
+    <>
+      <NotaDasFamilias />
+      <p className="text-base leading-relaxed text-textMuted">
+        A foto da turma numa data especial. As famílias veem no app por 30 dias,
+        e depois ela some.
+      </p>
+      {!STORAGE_ENABLED ? null : postando ? (
+        <PublicarFoto uid={uid} publico={PUBLICO.FAMILIAS} turma={children} onPronto={() => setPostando(false)} />
+      ) : (
+        <Button onClick={() => setPostando(true)}>Postar foto da turma</Button>
+      )}
+      <ListaDeFotos fotos={minhas} vazio="Nenhuma foto no ar agora." />
+    </>
+  );
+}
+
+function Parceiros({ uid }) {
+  const [dados, setDados] = useState(null);
+  const [erro, setErro] = useState(null);
+  const [postando, setPostando] = useState(false);
+  const fotos = useMinhasFotos(uid);
+  const minhas = (fotos || []).filter((f) => f.publico === PUBLICO.PARCEIROS);
+
+  useEffect(() => {
+    let vivo = true;
+    meusParceiros()
+      .then((d) => vivo && setDados(d))
+      .catch((e) => vivo && setErro(e.message));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  if (erro) return <p className="rounded-2xl bg-card p-4 text-base text-textMuted">{erro}</p>;
+  if (!dados) return <p className="text-base text-textMuted">Carregando…</p>;
+
+  const marcaDe = Object.fromEntries(dados.parceiros.map((p) => [p.uid, p.marca]));
+  return (
+    <>
+      <p className="text-base leading-relaxed text-textMuted">
+        Os tios que você indicou e os que indicaram você. Aqui só vale foto sem
+        criança: a perua enfeitada, o portão, a decoração.
+      </p>
+      {!dados.parceiros.length ? (
+        <div className="rounded-2xl border border-dashed border-border p-5 text-center">
+          <Users size={28} className="mx-auto text-primary" aria-hidden="true" />
+          <p className="mt-2 text-base text-text">
+            Seus parceiros aparecem aqui quando um colega que você indicou criar a conta.
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {dados.parceiros.map((p) => (
+            <li key={p.uid} className="rounded-2xl bg-card p-3">
+              <div className="flex items-center gap-3">
+              {p.logoURL ? (
+                <img src={p.logoURL} alt="" className="h-11 w-11 rounded-full object-cover" />
+              ) : (
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primarySoft text-base font-bold text-primary">
+                  {String(p.marca || '?').slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span className="min-w-0">
+                <span className="block truncate text-base font-bold text-text">{p.marca}</span>
+                <span className="block truncate text-sm text-textMuted">
+                  {rotuloDoParceiro(p.papel)}
+                  {p.lugar ? ` · ${p.lugar}` : ''}
+                </span>
+              </span>
+              </div>
+              <IndicarParceiro parceiro={p} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {STORAGE_ENABLED && dados.parceiros.length > 0 && (postando ? (
+        <PublicarFoto uid={uid} publico={PUBLICO.PARCEIROS} onPronto={() => setPostando(false)} />
+      ) : (
+        <Button variant="secondary" onClick={() => setPostando(true)}>Postar para os parceiros</Button>
+      ))}
+      <ListaDeFotos
+        fotos={dados.fotos.map((f) => ({ ...f, autor: marcaDe[f.adminUid] }))}
+        vazio={dados.parceiros.length ? 'Nenhum parceiro postou nada agora.' : null}
+      />
+      {minhas.length > 0 && (
+        <>
+          <p className="pt-2 text-base font-semibold text-text">As suas, para os parceiros</p>
+          <ListaDeFotos fotos={minhas} />
+        </>
+      )}
+    </>
+  );
+}
+
+function ListaDeFotos({ fotos, vazio = null }) {
+  if (!fotos.length) return vazio ? <p className="text-base text-textMuted">{vazio}</p> : null;
+  return (
+    <ul className="space-y-3">
+      {fotos.map((f) => (
+        <FotoNaLista key={f.id} foto={f} />
+      ))}
+    </ul>
+  );
+}
+
+function FotoNaLista({ foto }) {
+  const [apagando, setApagando] = useState(false);
+  const expira = foto.expiraEm?.toMillis?.() || foto.expiraEmMs || 0;
+  // Só as do próprio tio vêm com `caminho` (as dos parceiros chegam pela
+  // callable, sem ele): é o que decide se há "Apagar".
+  const minha = !!foto.caminho;
+
+  const apagar = async () => {
+    if (!window.confirm('Apagar esta foto agora? As famílias deixam de ver.')) return;
+    setApagando(true);
+    try {
+      await apagarFotoDaTurma(foto.id);
+      toast.success('Foto apagada.');
+    } catch (err) {
+      toast.error(err.message || 'Não deu para apagar.');
+      setApagando(false);
+    }
+  };
+
+  return (
+    <li className="overflow-hidden rounded-2xl bg-card">
+      <img src={foto.url} alt={`Foto: ${foto.epoca}`} className="h-52 w-full object-cover" loading="lazy" />
+      <div className="flex items-center justify-between gap-2 p-3">
+        <span className="min-w-0">
+          <span className="block truncate text-base font-bold text-text">
+            {foto.autor ? `${foto.autor} · ` : ''}
+            {foto.epoca}
+          </span>
+          {foto.legenda && <span className="block text-sm text-text">{foto.legenda}</span>}
+          <span className="block text-sm text-textMuted">{quandoSome(expira)}</span>
+        </span>
+        {minha && (
+          <button
+            type="button"
+            onClick={apagar}
+            disabled={apagando}
+            className="flex min-h-12 shrink-0 items-center gap-1 rounded-xl border-2 border-border px-3 text-base font-bold text-text"
+          >
+            <Trash2 size={18} aria-hidden="true" />
+            Apagar
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}

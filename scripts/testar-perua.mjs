@@ -27,6 +27,10 @@ import {
   mesmoPosto,
   nomeDoPosto,
   postoComPreco,
+  postosPerto,
+  pontoDoPosto,
+  enderecoDoPosto,
+  RAIO_DO_POSTO_M,
   postosEmOrdem,
   precoDoLitro,
   precoEm12Meses,
@@ -812,6 +816,30 @@ const TURMA = [
   checar('haQuantoTempo com data lixo', '', haQuantoTempo('lixo', HOJE));
   checar('altaEm12Meses sem argumento', null, altaEm12Meses());
   checar('custoPorCrianca sem argumento', null, custoPorCrianca());
+}
+
+// ───────────────── o posto pelo lugar (04/10/2026) ─────────────────────────
+{
+  const em = new Date(2026, 9, 2);
+  let lista = postoComPreco([], { nome: 'Posto Shell', preco: 6.29, tipo: 'diesel_s10', em, endereco: '  Av. Interlagos,  1500 · Socorro ', lat: -23.654321, lng: -46.712345 });
+  checar('lugar: o ponto do posto vai com 4 casas', { lat: -23.6543, lng: -46.7123 }, { lat: lista[0].lat, lng: lista[0].lng });
+  checar('lugar: o endereço vem limpo', 'Av. Interlagos, 1500 · Socorro', lista[0].endereco);
+  lista = postoComPreco(lista, { nome: 'posto shell', preco: 6.39, tipo: 'diesel_s10', em: new Date(2026, 9, 9) });
+  checar('lugar: anotar o preço de novo NÃO apaga o lugar', [-23.6543, 'Av. Interlagos, 1500 · Socorro'], [lista[0].lat, lista[0].endereco]);
+  checar('lugar: e o preço novo fica', 6.39, lista[0].preco);
+  checar('lugar: o raio é de 200 metros', 200, RAIO_DO_POSTO_M);
+  checar('lugar: a 40 metros, é o posto', ['posto shell'], postosPerto(lista, { lat: -23.6546, lng: -46.7124 }).map((p) => p.nome));
+  checar('lugar: a 1 km, não é', 0, postosPerto(lista, { lat: -23.6633, lng: -46.7123 }).length);
+  const dois = postoComPreco(lista, { nome: 'Ipiranga', preco: 6.1, tipo: 'diesel_s10', em, lat: -23.6550, lng: -46.7123 });
+  checar('lugar: dois perto, o mais perto primeiro', ['posto shell', 'Ipiranga'], postosPerto(dois, { lat: -23.6544, lng: -46.7123 }).map((p) => p.nome));
+  checar('lugar: posto sem ponto guardado não entra', 0, postosPerto([{ nome: 'BR', preco: 6 }], { lat: -23.6, lng: -46.7 }).length);
+  checar('lugar: sem posição, nada', 0, postosPerto(lista, null).length);
+  checar('lugar: ponto fora do mapa é null', null, pontoDoPosto(200, 10));
+  checar('lugar: endereço pelo nome', 'Av. Interlagos, 1500 · Socorro', enderecoDoPosto(lista, 'POSTO SHELL'));
+  checar('lugar: posto sem endereço devolve vazio', '', enderecoDoPosto(dois, 'Ipiranga'));
+  const tela = readFileSync(new URL('../src/pages/tio/TioAbastecer.jsx', import.meta.url), 'utf8');
+  checar('lugar: a tela NÃO preenche o preço com o último visto', false, tela.includes('textoDe(ultimo.preco'));
+  checar('lugar: a tela pergunta se ele está no posto', true, tela.includes('Você está no posto agora?'));
 }
 
 // ───────────────────────────── resumo ──────────────────────────────────────

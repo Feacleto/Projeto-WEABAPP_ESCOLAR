@@ -1121,7 +1121,8 @@ service cloud.firestore {
         && !request.resource.data.keys().hasAny([
           'contratoVigente', 'contractAcceptedAt', 'contractAcceptedByUid',
           'contractAcceptedName', 'contractHash', 'contractUserAgent',
-          'contractVersion', 'saudeNotas', 'saudeConsentidaEm', 'vinculadoPor'
+          'contractVersion', 'saudeNotas', 'saudeConsentidaEm', 'vinculadoPor',
+          'fotoDaTurmaConsentida', 'fotoDaTurmaEm'
         ]);
       allow delete: if ehDoMotorista();
 
@@ -1156,6 +1157,12 @@ service cloud.firestore {
         // Campo de saúde novo entra NESTA lista na mesma alteração.
         && !request.resource.data.diff(resource.data).affectedKeys()
              .hasAny(['saudeNotas', 'saudeConsentidaEm'])
+        // ⚠️ O "SIM" DA FOTO DA TURMA É DA FAMÍLIA (05/10/2026), pelo mesmo
+        // motivo da saúde: imagem de criança mostrada a outras famílias pede
+        // o consentimento de quem responde por ela (LGPD art. 14), e quem
+        // posta a foto não pode ser quem autoriza.
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['fotoDaTurmaConsentida', 'fotoDaTurmaEm'])
         // ⚠️ O ACEITE DO CONTRATO É DA FAMÍLIA — O MOTORISTA SÓ PODE APAGÁ-LO
         // (02/10/2026). Este ramo permitia qualquer campo, então o motorista
         // reescrevia `contractAcceptedAt`, o hash e o NOME de quem aceitou: a
@@ -1256,6 +1263,18 @@ service cloud.firestore {
             && request.resource.data.get('saudeConsentidaEm', null) == null
           )
         )
+      ) || (
+        // A FOTO DA TURMA (05/10/2026): a responsável diz se o filho pode
+        // aparecer na foto da turma que a perua posta para as famílias dela.
+        // Os dois campos andam juntos, como na saúde: o "sim" com a data, e
+        // o "não" também com a data (saber quando mudou de ideia importa).
+        // Ausente é NÃO — o servidor só publica com `true`.
+        isSignedIn()
+        && resource.data.parentUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['fotoDaTurmaConsentida', 'fotoDaTurmaEm'])
+        && request.resource.data.fotoDaTurmaConsentida is bool
+        && request.resource.data.fotoDaTurmaEm == request.time
       ) || (
         // Pai atualiza foto da própria criança (reflete pro Tio).
         //
@@ -2908,12 +2927,69 @@ service cloud.firestore {
     // vez, e já nasce em 'pedido'); mover para postado/entregue é do dono,
     // porque quem posta é ele — e um motorista que se marca "entregue" apaga a
     // única linha que faria o adesivo sair.
+    // fotosDaTurma/{id} — a foto da turma na época festiva (05/10/2026).
+    //
+    // SÓ O SERVIDOR ESCREVE: é ele que confere o "sim" de cada família
+    // marcada (`publicarFotoDaTurma`), e as rules não leem criança por
+    // criança de uma lista. O tio LÊ as próprias (para apagar antes do
+    // prazo); a família lê só as "para as famílias" do motorista DELA, e só
+    // até `expiraEm`. Post "para os parceiros" ninguém lê direto: vai pela
+    // callable `meusParceiros`, que confere a parceria.
+    match /fotosDaTurma/{id} {
+      allow read: if isAppUser() && (
+        resource.data.adminUid == request.auth.uid
+        || (
+          resource.data.publico == 'familias'
+          && resource.data.expiraEm > request.time
+          && ehMotoristaDaFamilia(resource.data.adminUid)
+        )
+      );
+      allow write: if false;
+    }
+
+    // avaliacoesDoTio/{adminUid_familiaUid_semestre} — a nota que a família dá
+    // ao motorista (etapa 2 da Comunidade, 05/10/2026).
+    //
+    // ⚠️ O TIO NÃO LÊ NENHUMA, de propósito: é o que mantém o anonimato. Ele
+    // vê só a média do semestre FECHADO, com o mínimo de respostas, pela
+    // callable `minhaNotaDasFamilias`. A família lê a DELA (para mostrar o que
+    // respondeu) e escreve só no próprio documento: o id carrega o uid dela
+    // e o semestre, então uma nota por família por semestre, mudável.
+    // O tio não avalia a família — não existe o caminho contrário.
+    match /avaliacoesDoTio/{id} {
+      allow get: if isAppUser()
+        && id.matches('^[A-Za-z0-9]+_' + request.auth.uid + '_[0-9]{4}-[12]$');
+      allow create, update: if isAppUser()
+        && id == request.resource.data.adminUid + '_' + request.auth.uid + '_' + request.resource.data.semestre
+        && request.resource.data.familiaUid == request.auth.uid
+        && ehMotoristaDaFamilia(request.resource.data.adminUid)
+        && request.resource.data.nota is int
+        && request.resource.data.nota >= 1 && request.resource.data.nota <= 5
+        // Só o semestre CORRENTE (pelo relógio do servidor, em UTC, como a
+        // régua): mexer num semestre fechado mudaria a média que o tio já viu.
+        && (
+          (request.time.month() <= 6 && request.resource.data.semestre == string(request.time.year()) + '-1')
+          || (request.time.month() > 6 && request.resource.data.semestre == string(request.time.year()) + '-2')
+        )
+        && request.resource.data.em == request.time
+        && request.resource.data.keys().hasOnly(['adminUid', 'familiaUid', 'semestre', 'nota', 'em']);
+      allow list, delete: if false;
+    }
+
     match /pedidosAdesivo/{uid} {
       allow read: if isOwner() || (isSignedIn() && request.auth.uid == uid);
       allow create: if isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.estado == 'pedido'
-        && request.resource.data.tioUid == uid;
+        && request.resource.data.tioUid == uid
+        // PRÊMIO DA 1ª PLATINA (04/10/2026): o marco que o SERVIDOR grava uma
+        // vez em niveis/{uid}. A Platina oscila, o marco não. Sem o
+        // documento, o get falha e o pedido é recusado — que é o certo.
+        && get(/databases/$(database)/documents/niveis/$(uid)).data.get('platinaEm', null) != null
+        // A FRASE é de uma lista fechada: texto livre num adesivo impresso é
+        // a porta da promessa de segurança. Espelha FRASES em
+        // dominio/associacao/adesivo.js (testar:selo compara as duas).
+        && request.resource.data.frase in ['Eu uso o app', 'Parceiro do', 'Apoiado por', 'Acompanhe a rota no'];
       allow update, delete: if isOwner();
     }
 

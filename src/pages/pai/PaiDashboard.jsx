@@ -59,6 +59,8 @@ import { GRADIENTE_STATUS } from '../../config/paletaCategorica';
 import { diaSemRota, ehDiaDeAula } from '../../dominio/rota/calendario.js';
 import FaixaSemInternet from '../../components/dashboard/FaixaSemInternet';
 import { AvisoDoOuroDaFamilia } from '../../components/nivel/SeloDaFamilia';
+import { FotosDaTurmaNoInicio } from '../../components/comunidade/FotoDaTurmaDaFamilia';
+import AvaliarOTio from '../../components/comunidade/AvaliarOTio';
 
 
 /**
@@ -424,6 +426,12 @@ export default function PaiDashboard() {
           <span className="truncate">Ficha {artigo(child)} {primeiro}</span>
           <ChevronRight size={18} className="shrink-0" />
         </button>
+
+        {/* A FOTO DA TURMA (05/10/2026): a pergunta "pode aparecer?" enquanto
+          * ela não respondeu, e as fotos que a perua postou para as famílias. */}
+        <FotosDaTurmaNoInicio child={child} />
+        {/* A NOTA DO TIO (etapa 2): uma vez por semestre, só ele vê a média. */}
+        <AvaliarOTio child={child} noInicio />
 
         {/* ───────── ESPERANDO — "que horas eu preciso estar na porta?" ───────── */}
         {estadoDoDia === 'esperando' && (

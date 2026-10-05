@@ -82,7 +82,7 @@ const QUANDO = [
   { chave: 'outro', rotulo: 'Outro dia' },
 ];
 
-function Folha({ onClose, posto, tipo, litros, valor, kmDasRotas, onLancado }) {
+function Folha({ onClose, posto, tipo, litros, valor, kmDasRotas, onLancado, local = null }) {
   const { user } = useAuth();
   const hoje = new Date();
   const ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1);
@@ -142,7 +142,8 @@ function Folha({ onClose, posto, tipo, litros, valor, kmDasRotas, onLancado }) {
       // O preço do posto é um extra: se falhar, o abastecimento já está
       // lançado, e dizer "não deu" aqui faria ele lançar de novo.
       if (quando === 'hoje' && posto && tipo && preco) {
-        guardarPrecoNoPosto(user?.uid, { nome: posto, preco, tipo }).catch((err) =>
+        // `local` (endereço e ponto) só vem quando ele disse "estou no posto".
+        guardarPrecoNoPosto(user?.uid, { nome: posto, preco, tipo, local }).catch((err) =>
           console.error('[abastecer] preço do posto', err)
         );
       }

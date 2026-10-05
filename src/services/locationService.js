@@ -230,6 +230,57 @@ export async function lugarDaPosicaoAtual() {
   return lugar;
 }
 
+/**
+ * "VOCÊ ESTÁ NO POSTO AGORA?" — a posição lida UMA vez, no abastecer
+ * (04/10/2026, pedido do dono). Devolve `{ lat, lng, endereco }`: o ponto
+ * serve para achar um posto que ele já usou, e o endereço (rua, número e
+ * bairro) é o que a tela mostra e o que se guarda junto do nome do posto.
+ *
+ * ⚠️ NADA AQUI GRAVA. Quem decide guardar é o "Abasteci"/"Guardar só o preço",
+ * e o que vai é o ponto DO POSTO, na lista de postos dele (só ele lê). Sem
+ * endereço (rede caiu), o ponto ainda serve para reconhecer o posto.
+ *
+ * Precisão alta e posição fresca: aqui a resposta é "qual posto", e a
+ * diferença entre dois postos da mesma avenida é de cem metros.
+ */
+export async function posicaoNoPosto() {
+  const erro = (code, message) => Object.assign(new Error(message), { code });
+  if (!('geolocation' in navigator)) {
+    throw erro('sem-posicao', 'Este navegador não informa a localização.');
+  }
+  const pos = await new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 60000,
+    });
+  }).catch((e) => {
+    throw e?.code === 1
+      ? erro('negado', 'Localização não permitida.')
+      : erro('sem-posicao', 'Não deu pra achar sua localização.');
+  });
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  // zoom 18 é o nível do prédio: traz a rua e, quando há, o número.
+  const params = new URLSearchParams({
+    format: 'json',
+    lat: String(lat),
+    lon: String(lng),
+    zoom: '18',
+    addressdetails: '1',
+  });
+  let endereco = '';
+  try {
+    const a = (await pedirAoNominatim('reverse', params))?.address || {};
+    const rua = [a.road || a.pedestrian || '', a.house_number || ''].filter(Boolean).join(', ');
+    const bairro = a.suburb || a.neighbourhood || a.city_district || '';
+    endereco = [rua, bairro].filter(Boolean).join(' · ');
+  } catch {
+    // sem rede: o ponto ainda reconhece o posto; o endereço fica em branco
+  }
+  return { lat, lng, endereco };
+}
+
 // ============================================================================
 // GPS Tracking (Tio)
 // ============================================================================

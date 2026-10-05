@@ -29,6 +29,14 @@
       ],
       "rewrites": [
         {
+          "source": "/convite/**",
+          "function": { "functionId": "cartaoDoLink", "region": "southamerica-east1" }
+        },
+        {
+          "source": "/quero-fazer-parte",
+          "function": { "functionId": "cartaoDoLink", "region": "southamerica-east1" }
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }

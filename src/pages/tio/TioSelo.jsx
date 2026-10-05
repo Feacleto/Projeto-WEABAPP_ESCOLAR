@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BadgeCheck, FileUp, Sticker } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 import ConviteParaIndicar from '../../components/tio/ConviteParaIndicar';
+import AdesivoDaPerua from '../../components/selo/AdesivoDaPerua';
+import { useNivel } from '../../hooks/useNivel';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import {
   enviarAlvara,
@@ -14,7 +17,9 @@ import {
 import {
   ESTADO as ADESIVO,
   CAMPOS,
-  TEXTO as TEXTO_ADESIVO,
+  FRASES,
+  FRASE_PADRAO,
+  podePedir,
   situacaoDoPedido,
   validarEndereco,
 } from '../../dominio/associacao/adesivo.js';
@@ -79,8 +84,8 @@ export default function TioSelo() {
 
       <main className="mx-auto w-full max-w-lg space-y-4 px-5 py-5">
         <p className="text-base leading-relaxed text-textMuted">
-          Duas coisas diferentes: um adesivo que você pede, e um certificado que
-          você conquista.
+          Duas coisas diferentes: um adesivo com a sua marca, que chega na
+          Platina, e um certificado do alvará.
         </p>
         <Adesivo uid={user?.uid} profile={profile} />
         {STORAGE_ENABLED && <Certificado uid={user?.uid} profile={profile} />}
@@ -94,7 +99,11 @@ export default function TioSelo() {
 function Adesivo({ uid, profile }) {
   const [pedido, setPedido] = useState(undefined);
   const [form, setForm] = useState({});
+  const [frase, setFrase] = useState(FRASE_PADRAO);
   const [salvando, setSalvando] = useState(false);
+  // O documento de nível que o menu do perfil já lê: o marco `platinaEm`
+  // decide se o adesivo pode ser pedido (o prêmio não oscila com a Platina).
+  const { dados: nivel, carregando } = useNivel(uid);
 
   useEffect(() => {
     if (!uid) return undefined;
@@ -104,11 +113,27 @@ function Adesivo({ uid, profile }) {
   const { ok } = validarEndereco(form);
   const situacao = situacaoDoPedido(pedido, new Date());
   const jaPediu = pedido && pedido.estado !== ADESIVO.NAO_PEDIDO;
+  const liberado = podePedir({ uid, ...profile }, nivel);
+  // Depois de pedido, o desenho é o que FOI pedido (a foto da marca no
+  // instante do pedido), e não o perfil de hoje.
+  const desenho = jaPediu
+    ? {
+        marcaNome: pedido.marca?.nome || profile?.marcaNome,
+        logoURL: pedido.marca?.logoURL,
+        cor: pedido.marca?.cor,
+        frase: pedido.frase || FRASE_PADRAO,
+      }
+    : {
+        marcaNome: profile?.marcaNome || profile?.name,
+        logoURL: profile?.marcaLogoURL,
+        cor: profile?.marcaCor,
+        frase,
+      };
 
   const enviar = async () => {
     setSalvando(true);
     try {
-      await pedirAdesivo({ uid, ...profile }, form);
+      await pedirAdesivo({ uid, ...profile }, form, { frase, nivel });
       toast.success('Pedido registrado. Vamos postar em breve.');
     } catch (err) {
       toast.error(err.message || 'Não deu pra pedir.');
@@ -121,49 +146,71 @@ function Adesivo({ uid, profile }) {
     <section className="rounded-2xl border border-border bg-card p-4">
       <h2 className="inline-flex items-center gap-2 text-lg font-bold text-text">
         <Sticker size={20} aria-hidden="true" />
-        Adesivo para a traseira
+        Adesivo da sua perua
       </h2>
 
-      {/* O QUE VAI ESCRITO, ANTES DE ELE PEDIR. Ele vai colar isso no veículo
-        * dele — e não dá para voltar atrás depois de impresso. */}
-      <div className="mt-3 rounded-xl border border-dashed border-border bg-surface p-3 text-center">
-        <p className="text-base font-bold text-text">{TEXTO_ADESIVO.linha1}</p>
-        <p className="mt-0.5 text-sm text-textMuted">{TEXTO_ADESIVO.linha2}</p>
-        <p className="rotulo mt-1 text-primary">
-          {TEXTO_ADESIVO.site}
-        </p>
-      </div>
+      {/* O QUE VAI IMPRESSO, ANTES DE ELE PEDIR: a marca dele em destaque e
+        * o Alô Buzinou na faixa. Não dá para voltar atrás depois de impresso. */}
+      <AdesivoDaPerua {...desenho} className="mx-auto mt-3 block w-full max-w-[240px]" />
 
-      <p className="mt-3 text-base leading-relaxed text-textMuted">
-        É por nossa conta — inclusive o frete. Ele fala com quem anda atrás de
-        você e ainda não sabe que a família pode acompanhar a rota.
-      </p>
-
-      {/* ⚠️ O CONVITE A INDICAR MORA AQUI PORQUE É O MESMO GESTO, COM UM PASSO
-        * A MENOS. Quem pede o adesivo já aceitou pôr o nome do produto na
-        * traseira da própria perua, para ser lido por quem anda atrás dele —
-        * e quem anda atrás dele, no portão da escola, é outro motorista.
-        *
-        * Só aparece DEPOIS de pedido: antes disso a tela tem um formulário
-        * pela frente, e um segundo pedido no meio dele é o jeito de nenhum
-        * dos dois ser atendido. */}
-      {pedido === undefined ? null : jaPediu ? (
+      {pedido === undefined || carregando ? null : jaPediu ? (
         <>
           <p className="mt-3 rounded-xl bg-primarySoft p-3 text-base font-bold text-primary">
             {situacao.texto}
           </p>
+          {/* ⚠️ O CONVITE A INDICAR MORA AQUI PORQUE É O MESMO GESTO: quem cola
+            * a marca na traseira fala com quem anda atrás dele, e quem anda
+            * atrás dele, no portão da escola, é outro motorista. */}
           <ConviteParaIndicar
             className="mt-3"
             titulo="O adesivo fala com quem vem atrás. Você também pode"
           />
         </>
+      ) : !liberado ? (
+        // PRÊMIO DA 1ª PLATINA (04/10/2026). Antes dela, a tela mostra o que
+        // ele vai ganhar e onde ver o caminho, nunca um botão que falha.
+        <div className="mt-3 space-y-3">
+          <p className="text-base leading-relaxed text-text">
+            O adesivo é presente nosso quando você chega à <b>Platina</b>, com
+            frete por nossa conta.
+          </p>
+          <Link
+            to="/tio/nivel"
+            className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-primary text-base font-bold text-primary"
+          >
+            Ver o caminho até a Platina
+          </Link>
+        </div>
       ) : (
         <div className="mt-4 space-y-2">
-          <p className="text-base font-semibold text-text">
-            Para onde enviamos
+          <p className="text-base leading-relaxed text-textMuted">
+            Você chegou à Platina: o adesivo é presente nosso, com frete por
+            nossa conta.
           </p>
+          {/* A FRASE É DELE, de uma lista fechada (as rules repetem a lista).
+            * O pedido guarda a escolhida, e o dono vê qual sai mais. */}
+          <p className="text-base font-semibold text-text">O que vai escrito na faixa</p>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Frase do adesivo">
+            {FRASES.map((opcao) => (
+              <button
+                key={opcao}
+                type="button"
+                role="radio"
+                aria-checked={frase === opcao}
+                onClick={() => setFrase(opcao)}
+                className={`min-h-12 rounded-xl border-2 px-2 text-base font-bold ${
+                  frase === opcao
+                    ? 'border-primary bg-primarySoft text-primary'
+                    : 'border-border bg-surface text-text'
+                }`}
+              >
+                {opcao}
+              </button>
+            ))}
+          </div>
+          <p className="pt-2 text-base font-semibold text-text">Para onde enviamos</p>
           {/* O ENDEREÇO FICA NUMA COLEÇÃO SÓ DO DONO. Ele não entra em `users`,
-            * que as famílias dele leem — e a perua costuma sair da casa dele. */}
+            * que as famílias dele leem, e a perua costuma sair da casa dele. */}
           <div className="grid grid-cols-2 gap-2">
             {[
               ['cep', 'CEP'],
@@ -184,7 +231,7 @@ function Adesivo({ uid, profile }) {
                 </span>
                 <input
                   value={form[campo] || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, [campo]: e.target.value }))}
+                  onChange={(e) => setForm((v) => ({ ...v, [campo]: e.target.value }))}
                   className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-base text-text"
                 />
               </label>

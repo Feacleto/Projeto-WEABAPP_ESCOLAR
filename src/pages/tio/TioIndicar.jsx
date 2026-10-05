@@ -13,13 +13,13 @@ import {
 import {
   DESCONTO_POR_INDICACAO,
   PISO_DA_FATURA,
-  descontoDoFechamento,
   valorDaIndicacao,
 } from '../../dominio/associacao/planos.js';
-import { DIAS_DE_TRIAL } from '../../dominio/associacao/trial.js';
 import { maskPhone } from '../../compartilhado/masks';
 import { formatCurrency, getCurrentMonthKey } from '../../compartilhado/formatters';
 import { conviteDeMotorista } from '../../config/vitrine';
+import { mensagemDaIndicacao, linkDaIndicacao } from '../../marca/mensagensDoLink.js';
+import { meuCodigoDeIndicacao } from '../../services/codigoDeIndicacaoService';
 
 /**
  * INDICAR OUTRO MOTORISTA — /tio/indicar
@@ -55,6 +55,16 @@ export default function TioIndicar() {
   const [telefone, setTelefone] = useState('');
   const [nome, setNome] = useState('');
   const [salvando, setSalvando] = useState(false);
+  // O cupom do tio: o campo do perfil quando o servidor já gravou; senão,
+  // pede uma vez. Qualquer falha devolve null e a mensagem sai sem cupom.
+  const [cupomPedido, setCupomPedido] = useState(null);
+  const cupom = profile?.codigoDeIndicacao || cupomPedido;
+  useEffect(() => {
+    if (!user?.uid || profile?.codigoDeIndicacao) return undefined;
+    let vivo = true;
+    meuCodigoDeIndicacao().then((c) => { if (vivo) setCupomPedido(c); });
+    return () => { vivo = false; };
+  }, [user?.uid, profile?.codigoDeIndicacao]);
 
   useEffect(() => {
     if (!user?.uid) return undefined;
@@ -112,24 +122,17 @@ export default function TioIndicar() {
   // perdia a origem — `DriverSignup` lê o `utm_source` da própria URL, então
   // indicação que passa pela landing chega ao painel do dono como tráfego
   // solto. Ver CADASTRO_DE_MOTORISTA em config/vitrine.js.
-  // ⚠️ A MENSAGEM DIZ O QUE O INDICADO GANHA, E ISSO NÃO É DESCONTO NOVO.
-  //
-  // O indicado NÃO recebe nada por ter sido indicado, e isso é decisão: dois
-  // motoristas que se cadastram no mesmo dia não podem pagar diferente por
-  // conhecerem ou não alguém que já usa o app. A escada qualquer um reproduz
-  // — é só decidir cedo; "ter sido indicado" é sorte de quem você conhece, e
-  // é a conversa que não tem resposta na fila do portão da escola.
-  //
-  // O que ele ganha é o degrau que JÁ existe para todo mundo. Dizer isso aqui
-  // custa zero, não cria regra nenhuma, e serve aos dois lados: quanto antes
-  // o colega contratar, antes o desconto de quem indicou entra.
-  const primeiroDegrau = Math.round(descontoDoFechamento(1) * 100);
-  const convite =
-    `Oi! Eu uso o Alô Buzinou pra organizar meu transporte escolar — rota ao ` +
-    `vivo pras famílias, mensalidade e recados num lugar só. ` +
-    `Tem ${DIAS_DE_TRIAL} dias de teste, e fechando no primeiro mês você trava ` +
-    `${primeiroDegrau}% de desconto enquanto for cliente. ` +
-    `Você cria a sua conta aqui: ${conviteDeMotorista('indicacao')}`;
+  // O TEXTO "DIRETO" (04/10/2026, escolhido pelo dono): quem fala é a marca
+  // dele, de motorista para motorista. Saíram os dias de teste e o desconto
+  // do 1º mês: número que envelhece no WhatsApp vira promessa, e o preço
+  // está em decisão. O CUPOM entra quando o servidor já deu um ao tio (o
+  // código e o que ele dá são da sessão do negócio); sem ele, a mensagem sai
+  // sem a linha. Ver marca/mensagensDoLink.js.
+  const convite = mensagemDaIndicacao({
+    marca: profile?.marcaNome,
+    cupom,
+    url: linkDaIndicacao(conviteDeMotorista('indicacao'), cupom),
+  });
 
   return (
     <div className="min-h-screen bg-bg pb-16">

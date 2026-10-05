@@ -6,6 +6,7 @@ import Button from '../common/Button';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import { inviteUrl } from '../../dominio/identidade/inviteUrl';
 import { doDa } from '../../compartilhado/formatters';
+import { mensagemDoConvite } from '../../marca/mensagensDoLink.js';
 import { FileSignature } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
@@ -211,8 +212,14 @@ export default function InviteShare({
           `Este é o link de volta pro app: ${url}` +
           `\n\nEle abre direto na página ${firstName ? doDa(firstName, gender) : 'da criança'}. ` +
           `Sua conta continua a mesma — é só entrar.`
-      : `Oi! Aqui é do transporte escolar${firstName ? ` ${doDa(firstName, gender)}` : ''}. ` +
-          `Abra este link pra acompanhar a rota e as mensalidades pelo app: ${url}`
+      : // O texto "Direto" (04/10/2026, escolhido pelo dono): quem fala é a
+        // marca dele, e a mãe entende numa frase. Ver marca/mensagensDoLink.js.
+        mensagemDoConvite({
+          marca: profile?.marcaNome,
+          nomeCrianca: firstName,
+          generoCrianca: gender,
+          url,
+        })
   );
   const waHref = parentPhone
     ? `https://wa.me/${parentPhone.startsWith('55') ? parentPhone : `55${parentPhone}`}?text=${waText}`

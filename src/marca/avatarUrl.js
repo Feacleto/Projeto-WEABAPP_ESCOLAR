@@ -170,15 +170,23 @@ export function childAvatarUrl({ id, gender }) {
  * possível (ninguém sabe o gênero de quem nunca foi perguntado), e a pessoa
  * resolve sozinha ao preencher no perfil.
  */
-export function adultAvatarUrl({ name, seed, gender }) {
-  return build(`${prefixo(gender)}${seed || name || 'user'}`, BG_PARENT, {
+export function adultAvatarUrl({ name, seed, gender, fundo }) {
+  return build(`${prefixo(gender)}${seed || name || 'user'}`, fundo || BG_PARENT, {
     hair: cabeloPor(gender),
   });
 }
 
+/**
+ * FUNDO BRANCO, SÓ NO CABEÇALHO (04/10/2026, pedido do dono). O rosto do
+ * perfil no canto de toda tela fica sobre branco, e o anel em volta é que
+ * ganha cor (a do metal do nível, com o menu aberto). Nas listas e fichas o
+ * fundo continua o da família de cor — lá ele separa um rosto do outro.
+ */
+export const FUNDO_BRANCO = 'ffffff';
+
 /** Avatar do motorista, na família de cor da marca. */
-export function adminAvatarUrl({ name, seed, gender }) {
-  return build(`${prefixo(gender)}${seed || name || 'driver'}`, BG_ADMIN, {
+export function adminAvatarUrl({ name, seed, gender, fundo }) {
+  return build(`${prefixo(gender)}${seed || name || 'driver'}`, fundo || BG_ADMIN, {
     hair: cabeloPor(gender),
   });
 }

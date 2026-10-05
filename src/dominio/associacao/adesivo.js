@@ -5,13 +5,19 @@
  *
  *   |          | Adesivo             | Certificado                    |
  *   |----------|---------------------|--------------------------------|
- *   | diz      | "usa Alô Buzinou"   | "alvará conferido · 09/2026"   |
- *   | quem tem | todo associado      | quem enviou alvará e foi aceito|
- *   | ganha    | **pedindo**         | **conquistando**               |
+ *   | diz      | a marca DO TIO      | "alvará conferido · 09/2026"   |
+ *   | quem tem | quem chegou à Platina | quem enviou alvará e foi aceito|
+ *   | ganha    | **chegando à Platina** | **conquistando**            |
  *
- * Valor não vem de preço, vem de exigência. O adesivo é fácil de propósito —
- * ele é propaganda, e propaganda que exige mérito não circula. O certificado é
- * difícil de propósito, pelo motivo inverso.
+ * ⚠️ MUDOU EM 04/10/2026 (decisão do dono): o adesivo era de qualquer
+ * associado, desde o teste, e virou PRÊMIO DA PRIMEIRA PLATINA. E o destaque
+ * passou a ser o TIO: o logo e o nome dele ocupam quase todo o disco, e o Alô
+ * Buzinou assina numa faixa verde fina embaixo (modelo "Faixa fina").
+ * A Platina oscila, o prêmio não: quem caiu para o Ouro continua podendo
+ * pedir. Por isso o adesivo NÃO escreve o nível — ele diria algo que deixou
+ * de ser verdade, colado num vidro.
+ * O marco é `niveis/{uid}.platinaEm`, gravado pelo servidor uma vez
+ * (functions/lib/niveis.js); as rules de `pedidosAdesivo` o leem.
  *
  * ── QUEM PAGA É A PLATAFORMA, E ISSO DECIDE O RESTO
  * É mídia dela na van dele. Cobrar pelo adesivo seria cobrar do motorista para
@@ -52,34 +58,64 @@ export const ESTADO = {
 };
 
 /**
- * O que vai impresso.
+ * O que vai impresso na faixa verde, embaixo da marca dele: a FRASE pequena
+ * (escolhida por ele), "Alô Buzinou" grande e o site pequeno, como numa marca.
  *
  * ⚠️ NENHUMA PALAVRA SOBRE SEGURANÇA. O que ele afirma é verificável por quem
- * lê: este motorista usa o app, e a família acompanha a rota por ele.
+ * lê: este motorista usa o app.
  */
 export const TEXTO = {
-  linha1: 'Este transporte usa Alô Buzinou',
-  linha2: 'a família acompanha a rota pelo celular',
+  marca: 'Alô Buzinou',
   site: 'alobuzinou.com.br',
 };
+
+/**
+ * AS FRASES QUE ELE PODE ESCOLHER, e a ordem é a da tela.
+ *
+ * Lista FECHADA de propósito (as rules repetem a lista): texto livre num
+ * adesivo impresso é a porta para a promessa de segurança que a marca não
+ * pode fazer. O pedido guarda a escolhida, e o painel do dono conta quantos
+ * pediram cada uma — o dono quer padronizar, com o tempo, a mais pedida.
+ * Mudar a lista exige mudar as rules na mesma alteração (testar:selo).
+ */
+export const FRASES = ['Eu uso o app', 'Parceiro do', 'Apoiado por', 'Acompanhe a rota no'];
+export const FRASE_PADRAO = FRASES[0];
+
+/** A frase é uma das permitidas? */
+export function fraseValida(frase) {
+  return FRASES.includes(frase);
+}
+
+/**
+ * Quantos pediram cada frase, na ordem da lista (as que ninguém pediu
+ * aparecem com zero: a ausência também é resposta). Pedido antigo, sem frase,
+ * não entra na conta.
+ */
+export function contarFrases(pedidos) {
+  const conta = Object.fromEntries(FRASES.map((f) => [f, 0]));
+  for (const p of pedidos || []) {
+    if (fraseValida(p?.frase)) conta[p.frase] += 1;
+  }
+  return FRASES.map((frase) => ({ frase, total: conta[frase] }));
+}
 
 /** Os campos do endereço, e todos são obrigatórios — correio não adivinha. */
 export const CAMPOS = ['cep', 'logradouro', 'numero', 'bairro', 'cidade', 'uf'];
 
 /**
- * TODO ASSOCIADO PODE PEDIR, DESDE O TESTE.
+ * PODE PEDIR QUEM JÁ CHEGOU À PLATINA ALGUMA VEZ (04/10/2026).
  *
- * Não há mérito aqui, e é o desenho: o adesivo é mídia da plataforma, e adiar
- * a mídia até ele contratar é adiar a propaganda até depois da hora em que ela
- * mais renderia — o motorista novo é o que mais conversa sobre o app.
+ * `nivel` é o documento `niveis/{uid}` (o que o menu do perfil já lê): vale
+ * `platinaEm`, o marco gravado UMA vez, e não o nível de hoje — a Platina
+ * oscila, o prêmio não.
  *
  * Suspenso não pede: mandar adesivo para quem está fora da plataforma é pagar
  * frete para pôr a marca numa van que não a usa.
  */
-export function podePedir(motorista) {
+export function podePedir(motorista, nivel) {
   if (!motorista?.uid) return false;
   if (motorista.suspenso === true) return false;
-  return true;
+  return !!nivel?.platinaEm;
 }
 
 /** O endereço está completo? Devolve `{ ok, faltando }`. */

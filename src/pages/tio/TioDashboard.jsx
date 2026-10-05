@@ -26,6 +26,7 @@ import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
 import ParaVoce from '../../components/tio/ParaVoce';
+import LinhaComunidade from '../../components/comunidade/LinhaComunidade';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
@@ -602,6 +603,7 @@ export default function TioDashboard() {
               * coisa faziam ele procurar qual era a certa. */}
 
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            <LinhaComunidade />
           </div>
         )}
 
@@ -620,6 +622,7 @@ export default function TioDashboard() {
             />
 
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            <LinhaComunidade />
             {paraVoce}
           </div>
         )}
@@ -633,6 +636,7 @@ export default function TioDashboard() {
         {estado === 'vazio' && children.length > 0 && (
           <div className="px-5 pt-4 space-y-4">
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            <LinhaComunidade />
             {paraVoce}
           </div>
         )}

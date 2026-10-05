@@ -46,6 +46,9 @@ export default function Avatar({
   name = '',
   size = 'md',
   className = '',
+  // `fundo` troca a cor de fundo do desenho gerado (hex sem #). Só o rosto
+  // do perfil no cabeçalho usa: branco, com o anel de metal em volta.
+  fundo,
 }) {
   const { box, icon } = SIZES[size] || SIZES.md;
   const style = GENDER_STYLES[gender] || GENDER_STYLES.default;
@@ -83,15 +86,15 @@ export default function Avatar({
   // motorista, que ele vê no canto de toda tela.
   const generatedSrc =
     kind === 'admin'
-      ? adminAvatarUrl({ name, seed, gender })
+      ? adminAvatarUrl({ name, seed, gender, fundo })
       : kind === 'adult'
-        ? adultAvatarUrl({ name, seed, gender })
+        ? adultAvatarUrl({ name, seed, gender, fundo })
         : childAvatarUrl({ id: seed, gender });
 
   if (!generatedError) {
     return (
       <div
-        className={`${box} rounded-full overflow-hidden shrink-0 bg-neutro ${className}`}
+        className={`${box} rounded-full overflow-hidden shrink-0 ${fundo ? 'bg-card' : 'bg-neutro'} ${className}`}
       >
         <img
           src={generatedSrc}

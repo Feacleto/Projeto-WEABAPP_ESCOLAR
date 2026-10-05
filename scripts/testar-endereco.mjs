@@ -301,7 +301,9 @@ console.log('\n\x1b[1m9. O NOMINATIM PELA FILA: 1 por segundo, sem repetir\x1b[0
   eq('o locationService só chama o Nominatim pela fila',
     (loc.match(/nominatim\.openstreetmap\.org/g) || []).length, 1);
   eq('e esse único endereço está dentro de pedirAoNominatim', /function pedirAoNominatim[\s\S]{0,200}nominatim\.openstreetmap\.org/.test(loc), true);
-  eq('busca e endereço reverso passam por ela', (loc.match(/pedirAoNominatim\('(search|reverse)'/g) || []).length, 2);
+  // Três chamadas, todas pela fila: a busca do endereço, a cidade do primeiro
+  // acesso e, desde 04/10/2026, o endereço do posto no abastecer.
+  eq('busca e os dois endereços reversos passam por ela', (loc.match(/pedirAoNominatim\('(search|reverse)'/g) || []).length, 3);
 }
 
 console.log('\n' + '─'.repeat(66));

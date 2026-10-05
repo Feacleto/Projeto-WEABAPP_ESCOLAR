@@ -4,7 +4,8 @@ import { ChevronRight, Gem, LogOut, Medal, Receipt } from 'lucide-react';
 import { useNivel } from '../../hooks/useNivel';
 import { chaveDoNivel } from '../nivel/rotuloDoNivel';
 import NivelNoMenu from '../nivel/NivelNoMenu';
-import { gradienteDoMetal } from '../../config/paletaCategorica';
+import { METAL_DO_NIVEL, gradienteDoMetal } from '../../config/paletaCategorica';
+import { FUNDO_BRANCO } from '../../marca/avatarUrl.js';
 import { FolhaDoNivelDaFamilia, NivelDaFamiliaNoMenu } from '../nivel/SeloDaFamilia';
 import Avatar from '../common/Avatar';
 import Logo from '../common/Logo';
@@ -31,7 +32,7 @@ import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
  *
  * ⚠️ O MENU FICOU CURTO (03/10/2026, pedido do dono). "Ver o tutorial de
  * novo" e "Falar com o suporte" saíram daqui: os dois já moram na tela de
- * perfil, e repetidos aqui eles disputavam o olho com o "Ver meu perfil",
+ * perfil, e repetidos aqui eles disputavam o olho com o "Abrir perfil" (era "Ver meu perfil"),
  * que é o caminho principal. Sobraram quem está logado, o perfil em
  * destaque, o nível (desde 04/10/2026, quando saiu do cabeçalho), o plano
  * (só motorista, com a cobrança ligada) e sair.
@@ -54,6 +55,10 @@ export default function ProfileMenu({ role, basePath, active = false }) {
   const ehMotorista = role === 'admin';
   const { nivel, dados: dadosDoNivel } = useNivel(ehMotorista ? user?.uid || null : null);
   const chaveDoMotorista = chaveDoNivel(nivel);
+  const brilho = ehMotorista ? METAL_DO_NIVEL[chaveDoMotorista]?.brilho : null;
+  const anelDoRosto = brilho
+    ? `0 0 0 2px #fff, 0 0 0 5px ${brilho}, 0 0 14px 3px ${brilho}`
+    : '0 0 0 2px #fff, 0 0 0 4px rgb(var(--tema-primary))';
   const [folhaDaFamilia, setFolhaDaFamilia] = useState(false);
   const [folhaJaAbriu, setFolhaJaAbriu] = useState(false);
 
@@ -126,18 +131,26 @@ export default function ProfileMenu({ role, basePath, active = false }) {
         aria-expanded={open}
         // A área de toque tem 48×48 mesmo com o avatar pequeno dentro — o
         // piso de toque do app (era 44).
-        className={`tap relative flex h-12 w-12 items-center justify-center rounded-full ${
-          open || active ? 'ring-2 ring-primary' : ''
-        }`}
+        // ⚠️ O ROSTO É BRANCO E O ANEL É DE METAL (04/10/2026, pedido do
+        // dono). Fechado, uma borda fina (rosto branco sobre o cabeçalho
+        // branco some sem ela). Aberto — ou na tela do perfil —, o anel ganha a
+        // cor do metal do nível do motorista; sem nível (e na família), o verde.
+        className="tap relative flex h-12 w-12 items-center justify-center rounded-full"
       >
-        <Avatar
-          photoURL={profile?.photoURL}
-          kind={role === 'admin' ? 'admin' : 'adult'}
-          gender={profile?.gender}
-          seed={user?.uid}
-          name={profile?.name}
-          size="sm"
-        />
+        <span
+          className={`flex rounded-full ${open || active ? '' : 'ring-1 ring-border'}`}
+          style={open || active ? { boxShadow: anelDoRosto } : undefined}
+        >
+          <Avatar
+            photoURL={profile?.photoURL}
+            kind={role === 'admin' ? 'admin' : 'adult'}
+            gender={profile?.gender}
+            seed={user?.uid}
+            name={profile?.name}
+            size="sm"
+            fundo={FUNDO_BRANCO}
+          />
+        </span>
         {/* A MEDALHA NO ROSTO: o lembrete de que o nível existe, sem ocupar
           * a barra. Só o motorista — o da família custaria leitura em toda
           * tela. */}
@@ -163,6 +176,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
                 seed={user?.uid}
                 name={profile?.name}
                 size="md"
+                fundo={FUNDO_BRANCO}
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-base font-bold text-text">
@@ -182,7 +196,7 @@ export default function ProfileMenu({ role, basePath, active = false }) {
               onClick={() => go(() => navigate(`${basePath}/profile`))}
               className="tap mt-3 flex h-12 w-full items-center justify-center gap-1 rounded-xl bg-marca text-base font-bold text-naMarca"
             >
-              Ver meu perfil
+              Abrir perfil
               <ChevronRight size={16} />
             </button>
           </div>

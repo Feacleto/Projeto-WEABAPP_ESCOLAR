@@ -13,8 +13,11 @@ import {
 } from '../../services/seloService';
 import {
   ESTADO as ADESIVO,
+  FRASE_PADRAO,
+  contarFrases,
   podeTransitar as podeTransitarAdesivo,
 } from '../../dominio/associacao/adesivo.js';
+import AdesivoDaPerua from '../selo/AdesivoDaPerua';
 import { ESTADO as VERIF } from '../../dominio/identidade/verificacao.js';
 
 /**
@@ -113,6 +116,18 @@ export default function SelosTab() {
           <Sticker size={11} />
           Adesivos para postar
         </h2>
+        {/* QUAL FRASE SAI MAIS (04/10/2026, pedido do dono): o tio escolhe
+          * entre quatro, e com o tempo a mais pedida vira o padrão. Conta
+          * todos os pedidos, inclusive os entregues. */}
+        {(pedidos || []).some((p) => p.frase) && (
+          <ul className="flex flex-wrap gap-2 text-xs">
+            {contarFrases(pedidos).map(({ frase, total }) => (
+              <li key={frase} className="rounded-lg border border-border bg-card px-2 py-1 text-text">
+                {frase} Alô Buzinou · <b>{total}</b>
+              </li>
+            ))}
+          </ul>
+        )}
         {!aPostar.length ? (
           <p className="rounded-2xl border border-dashed border-border p-6 text-center text-xs text-textMuted">
             Nenhum adesivo na fila.
@@ -258,6 +273,27 @@ function Pedido({ pedido }) {
           {pedido.estado}
         </span>
       </div>
+      {/* O QUE VAI PARA A GRÁFICA: a marca dele como estava quando pediu e
+        * a frase escolhida. Pedido antigo (antes do prêmio) não tem marca:
+        * sai o nome e a frase padrão. */}
+      <AdesivoDaPerua
+        marcaNome={pedido.marca?.nome || pedido.nome}
+        logoURL={pedido.marca?.logoURL}
+        cor={pedido.marca?.cor}
+        frase={pedido.frase || FRASE_PADRAO}
+        className="mx-auto mt-2 block w-40"
+      />
+      {pedido.marca?.logoURL && (
+        <a
+          href={pedido.marca.logoURL}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 inline-flex items-center gap-1 font-bold text-primary"
+        >
+          <ExternalLink size={12} aria-hidden="true" />
+          Logo em tamanho original
+        </a>
+      )}
       {/* O ENDEREÇO INTEIRO, PRONTO PARA COPIAR na etiqueta. Um endereço em
         * pedaços obriga a montar a linha à mão, e é onde o número some. */}
       <p className="mt-2 select-all leading-relaxed text-textMuted">

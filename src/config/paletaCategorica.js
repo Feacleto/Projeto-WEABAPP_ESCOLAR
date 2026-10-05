@@ -131,3 +131,20 @@ export function gradienteDoMetal(chave) {
   const [escuro, claro, meio, reflexo] = m.faixa;
   return `linear-gradient(135deg, ${escuro} 0%, ${claro} 28%, ${meio} 52%, ${reflexo} 72%, ${escuro} 100%)`;
 }
+
+/**
+ * AS CORES DO ADESIVO DA PERUA (04/10/2026) — elas vão para a GRÁFICA, não
+ * para a tela, e por isso são hex literais: o desenho do adesivo
+ * (`components/selo/AdesivoDaPerua.jsx`) é o mesmo arquivo que o dono manda
+ * imprimir, e uma variável CSS não sai num PDF de gráfica. A faixa é o verde
+ * da casa (`primary`), com a buzina no limão (`accent`) e a letra pequena no
+ * verde claro. O disco de cima é a cor DA MARCA DELE (`users.marcaCor`), que
+ * vem do dado, com o verde da casa quando ele não escolheu uma.
+ */
+export const CORES_DO_ADESIVO = {
+  faixa: '#1F5F3F',
+  buzina: '#52C41A',
+  letraPequena: '#CFEBD9',
+  branco: '#FFFFFF',
+  borda: '#143F2A',
+};

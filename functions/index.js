@@ -71,6 +71,7 @@ const {
   makeRunBillingNow,
 } = require('./lib/billing');
 const { makeGetInvitePreview } = require('./lib/invitePreview');
+const { makeCartaoDoLink } = require('./lib/cartaoDoLink');
 const {
   makeGerarAcessoDoDia,
   makeVerAcompanhamento,
@@ -182,6 +183,28 @@ exports.runBillingNow = makeRunBillingNow(db);
 // WhatsApp busca a URL pra montar o cartao de previa.
 
 exports.getInvitePreview = makeGetInvitePreview(db);
+
+// O CARTÃO DO LINK NO WHATSAPP (04/10/2026): /convite/** e /quero-fazer-parte
+// passam por aqui (rewrite em firebase.json), e o robô do WhatsApp lê a
+// marca do tio certo no lugar do cartão único do app. Ver lib/cartaoDoLink.js.
+exports.cartaoDoLink = makeCartaoDoLink(db);
+
+// A COMUNIDADE (05/10/2026, etapa 1): a foto da turma na época festiva, só
+// com o "sim" de cada família, e os tios parceiros pela indicação. A foto
+// some em 30 dias. Ver lib/comunidade.js e lib/reguaDaComunidade.js.
+const {
+  makePublicarFotoDaTurma,
+  makeApagarFotoDaTurma,
+  makeMeusParceiros,
+  makeLimparFotosVencidas,
+  makeMinhaNotaDasFamilias,
+} = require('./lib/comunidade');
+exports.publicarFotoDaTurma = makePublicarFotoDaTurma(db);
+exports.apagarFotoDaTurma = makeApagarFotoDaTurma(db);
+exports.meusParceiros = makeMeusParceiros(db);
+exports.limparFotosVencidas = makeLimparFotosVencidas(db);
+// Etapa 2: a nota que as famílias dão ao tio (só ele vê, só a média fechada).
+exports.minhaNotaDasFamilias = makeMinhaNotaDasFamilias(db);
 
 /* ══ O LINK DO DIA ═══════════════════════════════════════════════════════
  * Quem vai pegar a criança hoje acompanha a entrega sem ter conta. As duas

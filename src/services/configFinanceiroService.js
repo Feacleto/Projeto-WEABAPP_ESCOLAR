@@ -94,8 +94,12 @@ export function definirCombustivelDaPerua(uid, chave) {
  * Ler e regravar tem uma janela (dois aparelhos anotando no mesmo segundo,
  * um preço se perde). É o celular de UMA pessoa anotando à mão; uma
  * transação aqui seria custo sem caso real.
+ *
+ * `local` ({ endereco, lat, lng }) vem quando ele respondeu "estou no posto"
+ * (04/10/2026): o posto passa a ser reconhecido pelo lugar. Só o ponto do
+ * POSTO é guardado, nunca a posição dele fora do abastecimento.
  */
-export async function guardarPrecoNoPosto(uid, { nome, preco, tipo }) {
+export async function guardarPrecoNoPosto(uid, { nome, preco, tipo, local = null }) {
   if (!uid) throw new Error('Entre de novo para salvar.');
   const limpo = nomeDoPosto(String(nome || ''));
   if (!limpo) throw new Error('Diga o nome do posto.');
@@ -109,7 +113,15 @@ export async function guardarPrecoNoPosto(uid, { nome, preco, tipo }) {
   const ref = doc(db, 'configFinanceiro', uid);
   const snap = await getDoc(ref);
   const atuais = snap.exists() && Array.isArray(snap.data().postos) ? snap.data().postos : [];
-  const postos = postoComPreco(atuais, { nome: limpo, preco: valor, tipo, em: Timestamp.now() });
+  const postos = postoComPreco(atuais, {
+    nome: limpo,
+    preco: valor,
+    tipo,
+    em: Timestamp.now(),
+    endereco: local?.endereco,
+    lat: local?.lat,
+    lng: local?.lng,
+  });
   return setDoc(ref, { postos }, { merge: true });
 }
 

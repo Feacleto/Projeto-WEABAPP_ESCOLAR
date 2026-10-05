@@ -1957,12 +1957,22 @@ async function oQueNinguemTestava({ tio1, tio2, pai1, dono, novato, anon }) {
   // Ele nao pode morar em `users` (as familias leem, e a perua sai da casa do
   // motorista) nem em `taxaParceiros` (que guarda a nota interna do dono sobre
   // ele, e rules nao escondem campo). Daqui: o dono le tudo, ele le so o dele.
-  const ADESIVO = (uid) => ({
+  const ADESIVO = (uid, frase = 'Eu uso o app') => ({
     tioUid: S(uid),
     estado: S('pedido'),
+    frase: S(frase),
     endereco: { mapValue: { fields: { cep: S('13000-000'), numero: S('10') } } },
   });
-  checar('adesivo', 'o motorista pede o proprio', 'PASSA',
+  // ⚠️ PRÊMIO DA 1ª PLATINA (04/10/2026): sem o marco que o servidor grava em
+  // niveis/{uid}.platinaEm, ninguém pede. O tio2 fica sem o marco de propósito.
+  checar('adesivo', 'sem a Platina, nao pede', 'NEGA',
+    await escrever('pedidosAdesivo/' + tio1.uid, tio1, ADESIVO(tio1.uid)));
+  await semear(`niveis/${tio1.uid}`, { nivel: S('ouro'), platinaEm: T(-10), atualizadoEm: T(0) });
+  // A frase é de lista fechada: texto livre num adesivo impresso é a porta da
+  // promessa de segurança.
+  checar('adesivo', 'frase fora da lista', 'NEGA',
+    await escrever('pedidosAdesivo/' + tio1.uid, tio1, ADESIVO(tio1.uid, 'Transporte seguro')));
+  checar('adesivo', 'caiu para o Ouro e ainda pede (o premio nao oscila)', 'PASSA',
     await escrever('pedidosAdesivo/' + tio1.uid, tio1, ADESIVO(tio1.uid)));
   checar('adesivo', 'e le o proprio pedido', 'PASSA',
     await ler('pedidosAdesivo/' + tio1.uid, tio1));
@@ -3161,6 +3171,91 @@ async function osNiveis({ tio1, tio2, pai1, dono, anon }) {
     await escrever(`niveis/${tio1.uid}`, pai1, { nivel: S('bronze') }, ['nivel']));
   checar('nivel', 'nem o dono escreve nível (só o servidor)', 'NEGA',
     await escrever(`niveis/${tio1.uid}`, dono, { nivel: S('diamante') }, ['nivel']));
+
+  // ── A COMUNIDADE (05/10/2026): a foto da turma ────────────────────────
+  //
+  // O "sim" para foto é da FAMÍLIA, nunca do motorista (LGPD art. 14), e a
+  // foto só é lida pelas famílias daquele motorista, até vencer. Quem grava
+  // a foto é o servidor, depois de conferir o "sim" de cada criança.
+  await semear('children/kidFoto', {
+    name: S('Clara'),
+    adminUid: S(tio1.uid),
+    parentUid: S(pai1.uid),
+    active: B(true),
+  });
+  checar('comunidade', 'a família dá o sim para foto', 'PASSA',
+    await atualizarComHoraDoServidor('children/kidFoto', pai1, { fotoDaTurmaConsentida: B(true) },
+      ['fotoDaTurmaConsentida'], 'fotoDaTurmaEm'));
+  checar('comunidade', 'o motorista NÃO dá o sim no lugar dela', 'NEGA',
+    await atualizarComHoraDoServidor('children/kidFoto', tio1, { fotoDaTurmaConsentida: B(true) },
+      ['fotoDaTurmaConsentida'], 'fotoDaTurmaEm'));
+  checar('comunidade', 'a família não inventa a data do sim', 'NEGA',
+    await escrever('children/kidFoto', pai1, { fotoDaTurmaConsentida: B(false), fotoDaTurmaEm: T(-30) },
+      ['fotoDaTurmaConsentida', 'fotoDaTurmaEm']));
+  checar('comunidade', 'o motorista não grava a foto direto', 'NEGA',
+    await escrever('fotosDaTurma/f1', tio1, { adminUid: S(tio1.uid), publico: S('familias'), expiraEm: T(10) }));
+  await semear('fotosDaTurma/fFam', { adminUid: S(tio1.uid), publico: S('familias'), url: S('x'), expiraEm: T(10) });
+  await semear('fotosDaTurma/fVelha', { adminUid: S(tio1.uid), publico: S('familias'), url: S('x'), expiraEm: T(-1) });
+  await semear('fotosDaTurma/fPar', { adminUid: S(tio1.uid), publico: S('parceiros'), url: S('x'), expiraEm: T(10) });
+  await semear('fotosDaTurma/fOutro', { adminUid: S(tio2.uid), publico: S('familias'), url: S('x'), expiraEm: T(10) });
+  checar('comunidade', 'a família vê a foto do motorista dela', 'PASSA', await ler('fotosDaTurma/fFam', pai1));
+  checar('comunidade', 'mas não depois de vencer', 'NEGA', await ler('fotosDaTurma/fVelha', pai1));
+  checar('comunidade', 'nem o post para os tios parceiros', 'NEGA', await ler('fotosDaTurma/fPar', pai1));
+  checar('comunidade', 'nem a foto da turma de outro motorista', 'NEGA', await ler('fotosDaTurma/fOutro', pai1));
+  checar('comunidade', 'o motorista lê as próprias (para apagar)', 'PASSA', await ler('fotosDaTurma/fPar', tio1));
+  checar('comunidade', 'outro motorista não lê a foto da turma alheia', 'NEGA', await ler('fotosDaTurma/fFam', tio2));
+  checar('comunidade', 'anônimo não lê', 'NEGA', await ler('fotosDaTurma/fFam', anon));
+  // A consulta do Início dela, com o filtro que as rules exigem.
+  const consultaDasFotos = (s, adminUid) => fetch(`${FS.slice(0, -'/documents'.length)}/documents:runQuery`, {
+    method: 'POST',
+    headers: H(s),
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'fotosDaTurma' }],
+        where: { compositeFilter: { op: 'AND', filters: [
+          { fieldFilter: { field: { fieldPath: 'adminUid' }, op: 'EQUAL', value: S(adminUid) } },
+          { fieldFilter: { field: { fieldPath: 'publico' }, op: 'EQUAL', value: S('familias') } },
+          { fieldFilter: { field: { fieldPath: 'expiraEm' }, op: 'GREATER_THAN', value: T(0.01) } },
+        ] } },
+        limit: 10,
+      },
+    }),
+  }).then((r) => r.status);
+  checar('comunidade', 'a consulta do Início da família passa', 'PASSA', await consultaDasFotos(pai1, tio1.uid));
+  checar('comunidade', 'a mesma consulta no motorista de outra família, não', 'NEGA', await consultaDasFotos(pai1, tio2.uid));
+
+  // ── A NOTA DO TIO (etapa 2 da Comunidade, 05/10/2026) ─────────────────
+  //
+  // Só a família avalia, no semestre corrente, uma nota por semestre. O tio
+  // NÃO lê nota nenhuma: a média sai pela callable, só do semestre fechado.
+  const agoraNota = new Date();
+  const semestreAgora = `${agoraNota.getUTCFullYear()}-${agoraNota.getUTCMonth() + 1 <= 6 ? 1 : 2}`;
+  const nota = (adminUid, familiaUid, semestre, n) => ({
+    adminUid: S(adminUid), familiaUid: S(familiaUid), semestre: S(semestre), nota: { integerValue: String(n) },
+  });
+  checar('nota', 'a família avalia o motorista dela', 'PASSA',
+    await criarComHoraDoServidor(`avaliacoesDoTio/${tio1.uid}_${pai1.uid}_${semestreAgora}`, pai1,
+      nota(tio1.uid, pai1.uid, semestreAgora, 4), 'em'));
+  checar('nota', 'e lê a própria nota', 'PASSA',
+    await ler(`avaliacoesDoTio/${tio1.uid}_${pai1.uid}_${semestreAgora}`, pai1));
+  checar('nota', 'o motorista NÃO lê a nota (anonimato)', 'NEGA',
+    await ler(`avaliacoesDoTio/${tio1.uid}_${pai1.uid}_${semestreAgora}`, tio1));
+  checar('nota', 'nem lista as notas', 'NEGA', await listar('avaliacoesDoTio', tio1));
+  checar('nota', 'a família não avalia um motorista que não é dela', 'NEGA',
+    await criarComHoraDoServidor(`avaliacoesDoTio/${tio2.uid}_${pai1.uid}_${semestreAgora}`, pai1,
+      nota(tio2.uid, pai1.uid, semestreAgora, 1), 'em'));
+  checar('nota', 'nem dá 6 estrelas', 'NEGA',
+    await criarComHoraDoServidor(`avaliacoesDoTio/${tio1.uid}_${pai1.uid}_${semestreAgora}x`, pai1,
+      nota(tio1.uid, pai1.uid, semestreAgora, 6), 'em'));
+  checar('nota', 'nem mexe num semestre fechado', 'NEGA',
+    await criarComHoraDoServidor(`avaliacoesDoTio/${tio1.uid}_${pai1.uid}_2020-1`, pai1,
+      nota(tio1.uid, pai1.uid, '2020-1', 5), 'em'));
+  checar('nota', 'nem avalia no nome de outra família', 'NEGA',
+    await criarComHoraDoServidor(`avaliacoesDoTio/${tio1.uid}_outra_${semestreAgora}`, pai1,
+      nota(tio1.uid, 'outra', semestreAgora, 1), 'em'));
+  checar('nota', 'o motorista não se avalia', 'NEGA',
+    await criarComHoraDoServidor(`avaliacoesDoTio/${tio1.uid}_${tio1.uid}_${semestreAgora}`, tio1,
+      nota(tio1.uid, tio1.uid, semestreAgora, 5), 'em'));
 
   const atividade = {
     titulo: S('Lance as despesas do mês'),

@@ -229,6 +229,22 @@ service firebase.storage {
     }
 
     // --------------------------------------------------------------------
+    // fotosDaTurma/{uid}/{arquivo} — a foto da turma na época festiva
+    // (05/10/2026). O motorista SOBE para a própria pasta; ninguém lê por
+    // aqui. Quem decide se a foto vale (o "sim" de cada família) é a callable
+    // `publicarFotoDaTurma`, que só então dá o link de leitura — e o link só
+    // vai para o documento em `fotosDaTurma`, que as rules do Firestore
+    // protegem. Arquivo que não virou publicação fica inerte, sem link.
+    match /fotosDaTurma/{uid}/{arquivo} {
+      allow read: if false;
+      allow create: if isAdmin()
+        && request.auth.uid == uid
+        && isImage()
+        && isWithinSizeLimit();
+      allow update, delete: if false;
+    }
+
+    // --------------------------------------------------------------------
     // paymentReceipts/{paymentId} — comprovante que o pai anexa ao avisar
     // que pagou. Fecha o ciclo pagar → comprovar → confirmar dentro do app,
     // em vez de virar conversa paralela no WhatsApp.

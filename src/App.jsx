@@ -102,6 +102,7 @@ const TioHistoria = lazy(() => import('./pages/tio/TioHistoria'));
 const TioEncerrar = lazy(() => import('./pages/tio/TioEncerrar'));
 const TioSelo = lazy(() => import('./pages/tio/TioSelo'));
 const TioNivel = lazy(() => import('./pages/tio/TioNivel'));
+const TioComunidade = lazy(() => import('./pages/tio/TioComunidade'));
 const TioIndicar = lazy(() => import('./pages/tio/TioIndicar'));
 const ChildForm = lazy(() => import('./components/children/ChildForm'));
 
@@ -736,6 +737,9 @@ export default function App() {
         <Route path="selo" element={<ZonaDaPlataforma><TioSelo /></ZonaDaPlataforma>} />
         {/* OS NÍVEIS DO MOTORISTA (docs/niveis.md). */}
         <Route path="nivel" element={<TioNivel />} />
+        {/* A COMUNIDADE (05/10/2026): a foto da turma e os tios parceiros.
+          * Fora da Central e da senha: quem posta costuma ser a auxiliar. */}
+        <Route path="comunidade" element={<TioComunidade />} />
         <Route path="indicar" element={<SoComCobranca modulo="indicacao"><ZonaDaPlataforma><TioIndicar /></ZonaDaPlataforma></SoComCobranca>} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />

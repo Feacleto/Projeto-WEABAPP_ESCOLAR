@@ -40,6 +40,7 @@
  */
 
 import { diasDesde, normalizarNome, paraData } from './historicoDeDespesas.js';
+import { haversineDistance } from '../../compartilhado/haversine.js';
 
 export const TIPOS_DE_COMBUSTIVEL = [
   { chave: 'diesel_s10', rotulo: 'Diesel S10', unidade: 'litros' },
@@ -215,15 +216,25 @@ export function postosEmOrdem(postos) {
 
 /**
  * Anota o preço visto num posto. Devolve um array NOVO: o posto de mesmo nome
- * é substituído no lugar; um posto novo entra no fim. Passando de 20, sai o
+ * é atualizado no lugar; um posto novo entra no fim. Passando de 20, sai o
  * visto há mais tempo. Nome vazio não anota nada.
+ *
+ * O LUGAR DO POSTO (04/10/2026, pedido do dono): `endereco` e o ponto
+ * (`lat`, `lng`) entram quando ele respondeu "estou no posto". Anotar só o
+ * preço de novo NÃO apaga o lugar já guardado — o posto continua sendo
+ * reconhecido da próxima vez.
  */
-export function postoComPreco(postos, { nome, preco, tipo, em } = {}) {
+export function postoComPreco(postos, { nome, preco, tipo, em, endereco, lat, lng } = {}) {
   const lista = [...(postos || [])];
   const limpo = nomeDoPosto(nome);
   if (!limpo) return lista;
-  const novo = { nome: limpo, preco, tipo, vistoEm: em };
   const i = lista.findIndex((p) => mesmoPosto(p?.nome, limpo));
+  const anterior = i >= 0 ? lista[i] || {} : {};
+  const novo = { ...anterior, nome: limpo, preco, tipo, vistoEm: em };
+  const ponto = pontoDoPosto(lat, lng);
+  if (ponto) Object.assign(novo, ponto);
+  const end = enderecoLimpo(endereco);
+  if (end) novo.endereco = end;
   if (i >= 0) lista[i] = novo;
   else lista.push(novo);
   // O que acabou de ser anotado nunca é o que sai: sem `em` (dado
@@ -242,4 +253,55 @@ export function haQuantoTempo(data, hoje = new Date()) {
   if (dias <= 0) return 'hoje';
   if (dias === 1) return 'ontem';
   return `há ${dias} dias`;
+}
+
+// ─── O POSTO PELO LUGAR (04/10/2026, pedido do dono) ─────────────────────────
+//
+// "Você está no posto agora?" — com "Sim", o celular lê a posição UMA vez. Da
+// primeira vez ela vira o endereço e o ponto do posto, guardados na lista dele;
+// das próximas, ela acha o posto que ele já usou. ⚠️ O PREÇO NUNCA É SUGERIDO:
+// ele muda todo dia. Depois que ele digita o de hoje, a tela mostra a última
+// vez naquele posto, como histórico.
+
+/** Até onde um posto guardado conta como "você está aqui" (metros). */
+export const RAIO_DO_POSTO_M = 200;
+
+/** O endereço do posto que se guarda: até 120 caracteres. */
+export const TAMANHO_DO_ENDERECO = 120;
+
+/**
+ * O ponto do posto com 4 casas (~11 m): o bastante para reconhecer o posto, e
+ * nada além disso. Fora do mapa, null.
+ */
+export function pontoDoPosto(lat, lng) {
+  const a = Number(lat);
+  const o = Number(lng);
+  if (lat == null || lng == null || !Number.isFinite(a) || !Number.isFinite(o)) return null;
+  if (Math.abs(a) > 90 || Math.abs(o) > 180) return null;
+  return { lat: Math.round(a * 1e4) / 1e4, lng: Math.round(o * 1e4) / 1e4 };
+}
+
+function enderecoLimpo(texto) {
+  if (typeof texto !== 'string') return '';
+  return texto.replace(/\s+/g, ' ').trim().slice(0, TAMANHO_DO_ENDERECO).trim();
+}
+
+/**
+ * Os postos dele a menos de `raio` metros do ponto, o mais perto primeiro,
+ * com a distância. Posto sem ponto guardado não entra.
+ */
+export function postosPerto(postos, ponto, raio = RAIO_DO_POSTO_M) {
+  const p = pontoDoPosto(ponto?.lat, ponto?.lng);
+  if (!p) return [];
+  return (postos || [])
+    .filter((x) => pontoDoPosto(x?.lat, x?.lng) && nomeDoPosto(x?.nome))
+    .map((x) => ({ ...x, metros: Math.round(haversineDistance(p.lat, p.lng, x.lat, x.lng) * 1000) }))
+    .filter((x) => x.metros <= raio)
+    .sort((a, b) => a.metros - b.metros);
+}
+
+/** O endereço guardado de um posto pelo nome, ou ''. */
+export function enderecoDoPosto(postos, nome) {
+  const p = (postos || []).find((x) => mesmoPosto(x?.nome, nome));
+  return enderecoLimpo(p?.endereco);
 }
