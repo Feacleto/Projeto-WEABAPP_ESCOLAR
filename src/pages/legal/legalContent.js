@@ -497,7 +497,19 @@ export const PRIVACY_SECTIONS = [
       'O tratamento de dados pessoais de crianças e adolescentes ocorre sempre no melhor interesse da criança, conforme o art. 14 da LGPD.',
       'Os dados da criança usados no transporte (nome, endereço de embarque, escola, horários, contato da família) são cadastrados pelo motorista para prestar o serviço contratado pela família, e servem para levar e trazer a criança com segurança e manter a família informada. A base legal está na seção 5.',
       'As informações de saúde, quando existirem, são escritas pelo próprio responsável, com consentimento específico e destacado, separado do aceite destes termos (art. 11, I, e art. 14, §1º). O motorista apenas as lê, e não pode escrevê-las. A auxiliar do motorista não as vê.',
-      'A FOTO DA TURMA: numa data especial, o motorista pode publicar uma foto da turma para as famílias atendidas por ele. A criança só aparece se o responsável dela tiver respondido "Sim" à pergunta "Pode aparecer em foto da turma?", no Aplicativo, e essa resposta pode ser mudada a qualquer momento na ficha da criança. A foto é vista só pelas famílias daquele motorista, nunca por outros motoristas, e é apagada automaticamente em 30 (trinta) dias. Foto publicada para outros motoristas parceiros não pode conter criança.',
+      // ⚠️ A FOTO DA COMUNIDADE (05/10/2026, decisão do dono) está EM
+      // CONSTRUÇÃO no prod. Conferir contra o código antes de ir ao
+      // advogado. Se ela não entrar, este parágrafo volta ao texto do commit
+      // a5a3b4e: "vista só pelas famílias daquele motorista, nunca por outros
+      // motoristas (...) Foto publicada para outros motoristas parceiros não
+      // pode conter criança."
+      //
+      // O "sim" é UM para os dois públicos, por escolha do dono. A lei aceita
+      // um só consentimento se ele for ESPECÍFICO (art. 8º §4º, art. 14 §1º):
+      // por isso a pergunta e este texto dizem os dois públicos com todas as
+      // letras. O "sim" antigo, que só falava da turma, NÃO vale para a
+      // comunidade: a família é perguntada de novo.
+      'A FOTO DA TURMA E A COMUNIDADE: numa data especial, o motorista pode publicar uma foto da turma. Ela é vista pelas famílias atendidas por ele e, na comunidade, pelos motoristas parceiros dele (os que ele indicou ao Aplicativo e o que o indicou) e pelas famílias atendidas por esses parceiros, numa tela separada. A criança só aparece se o responsável dela tiver respondido "Sim" à pergunta sobre as fotos, que diz quem vê a foto. Quem respondeu "Sim" antes de a comunidade existir é perguntado de novo. A resposta pode ser mudada a qualquer momento na ficha da criança. Ninguém pode curtir nem comentar a foto no Aplicativo, e ela é apagada automaticamente em 30 (trinta) dias.',
       // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
       // conferir contra o código antes de ir ao advogado; se a função não
       // entrar, esta frase sai.
@@ -541,7 +553,8 @@ export const PRIVACY_SECTIONS = [
       '(d) Comunicação com responsáveis (notificações, status, alertas) — base: execução do contrato de transporte de que o responsável é parte (art. 7º, V) e legítimo interesse (art. 7º, IX);',
       '(e) Dados da criança usados no transporte (seção 4) — base: execução do contrato de transporte de que o responsável é parte (art. 7º, V) e legítimo interesse do motorista em organizar e prestar o serviço com segurança (art. 7º, IX), sempre no melhor interesse da criança (art. 14, caput; Enunciado CD/ANPD nº 1/2023);',
       '(f) Informações de saúde da criança — base: consentimento específico e destacado do responsável (art. 11, I, e art. 14, §1º), revogável a qualquer momento, sem custo, apagando a informação no Aplicativo (art. 8º, §5º);',
-      '(g) Imagem da criança na foto da turma — base: consentimento específico do responsável (art. 14, §1º), dado pela resposta "Sim" no Aplicativo e revogável a qualquer momento, sem custo, na ficha da criança (art. 8º, §5º);',
+      // ⚠️ "e na comunidade" acompanha o parágrafo da §4 (em construção).
+      '(g) Imagem da criança na foto da turma e na comunidade — base: consentimento específico do responsável (art. 14, §1º), dado pela resposta "Sim" no Aplicativo a uma pergunta que diz quem vê a foto, e revogável a qualquer momento, sem custo, na ficha da criança (art. 8º, §5º);',
       '(h) Segurança, prevenção de fraude e limite de tentativas, comunidade, níveis, avaliações do Aplicativo e comunicação da plataforma — base: legítimo interesse (art. 7º, IX), sem uso de dados de criança;',
       '(i) Métricas de uso pelo Google Analytics — base: consentimento (art. 7º, I), dado no aviso de cookies e revogável a qualquer momento.',
       // AS LETRAS NOVAS VÊM DEPOIS DA (i), em vez de renumerar: o comentário
@@ -575,6 +588,8 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'Dentro do Aplicativo, cada pessoa vê só o que precisa:',
       '(a) Entre o motorista e as famílias atendidas por ele — no escopo necessário para o serviço (status do transporte, localização aproximada da perua durante a rota, contrato, mensalidades, recados). As famílias também veem o nome, a marca, o telefone, a chave PIX e os dados do motorista que constam no contrato;',
+      // ⚠️ A FOTO DA COMUNIDADE, EM CONSTRUÇÃO (ver a seção 4).
+      '(a.1) A foto da turma, só com as crianças cuja família respondeu "Sim", é vista também, numa tela separada, pelos motoristas parceiros daquele motorista e pelas famílias atendidas por esses parceiros, até ser apagada em 30 dias;',
       '(b) A auxiliar do motorista vê, de cada motorista com quem trabalha e só enquanto está ativa com ele, a cópia reduzida da turma descrita na seção 4 (sem endereço, mensalidades, contrato nem informações de saúde), a marca e a chave PIX do motorista. Do vínculo, os dois veem o mesmo: os períodos de trabalho e o valor informado no convite. O recibo do pagamento é visto só pelos dois, e ela continua vendo os recibos dela depois de desativada. As faltas dela e a lista de substitutas são vistas SÓ pelo motorista; a auxiliar não as vê. Quem já trabalhou com o motorista continua na lista "quem já trabalhou comigo" dele, com os períodos;',
       // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
       // conferir contra o código antes de ir ao advogado; se a função não
