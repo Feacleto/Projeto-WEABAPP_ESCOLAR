@@ -42,7 +42,8 @@ const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
 const { idValido } = require('./reguaDosIds');
 const { exigirContaDoMotoristaOperando } = require('./auxiliares');
-const { faltaParaAuxiliar } = require('./reguaDoAuxiliar');
+const { faltaParaAuxiliar, contaDoMotoristaOpera } = require('./reguaDoAuxiliar');
+const { estaLigada } = require('./reguaDaCobranca');
 const limite = require('./limiteDeTentativas');
 const { REGRAS, MENSAGEM_DE_LIMITE } = require('./reguaDasTentativas');
 const R = require('./reguaDaSubstitutaDeUmDia');
@@ -237,16 +238,27 @@ function makeVerRotaDaSubstituta(db) {
 
     // Daqui em diante, quem chamou provou o segredo.
     const motoristaUid = acesso.motoristaUid;
-    const motorista = await db.doc(`users/${motoristaUid}`).get();
-    const marca = R.marcaParaSubstituta(motorista.exists ? motorista.data() : null);
+    const [motorista, config] = await Promise.all([
+      db.doc(`users/${motoristaUid}`).get(),
+      db.doc('platformConfig/app').get(),
+    ]);
+    const dadosDoTio = motorista.exists ? motorista.data() : null;
+    const marca = R.marcaParaSubstituta(dadosDoTio);
     if (!primeiro.ok) throw await recusar(primeiro.motivo, marca);
+    // A conta do tio opera? O mesmo predicado das callables da auxiliar —
+    // só leitura; trancada, a frase é a mesma e a turma nem é lida.
+    const contaOpera = contaDoMotoristaOpera(dadosDoTio, {
+      cobrancaLigada: estaLigada(config.exists ? config.data() : null),
+    });
+    const daConta = R.acessoVale({ acesso, hashDoSegredo: hash, hojeChave: hoje, contaOpera });
+    if (!daConta.ok) throw await recusar(daConta.motivo, marca);
 
     const [rota, turma] = await Promise.all([
       lerRota(db, motoristaUid),
       lerTurmaDoTio(db, motoristaUid, hoje),
     ]);
     const paradas = R.recorteDaSubstituta({ ...turma, hojeChave: hoje });
-    const veredito = R.acessoVale({ acesso, hashDoSegredo: hash, hojeChave: hoje, rota, paradas });
+    const veredito = R.acessoVale({ acesso, hashDoSegredo: hash, hojeChave: hoje, contaOpera, rota, paradas });
     if (!veredito.ok) throw await recusar(veredito.motivo, marca);
 
     return {

@@ -32,6 +32,8 @@ import { DESTINO_DO_AVISO } from '../src/dominio/identidade/destinoDoAviso.js';
 
 const require = createRequire(import.meta.url);
 const R = require('../functions/lib/reguaDaSubstitutaDeUmDia.js');
+const { contaDoMotoristaOpera } = require('../functions/lib/reguaDoAuxiliar.js');
+const { estaLigada } = require('../functions/lib/reguaDaCobranca.js');
 const avisosServidor = require('../functions/lib/avisos.js');
 const destinoServidor = require('../functions/lib/destinoDoAviso.js');
 
@@ -118,6 +120,32 @@ checar('a página diz a mesma frase', /Este link não vale mais\./.test(ler('src
 checar('só a sondagem conta no limite por IP (segredo errado, inexistente, formato)',
   R.recusaDeSondagem('hash') && R.recusaDeSondagem('inexistente') && R.recusaDeSondagem('formato')
   && !R.recusaDeSondagem('dia') && !R.recusaDeSondagem('encerrado') && !R.recusaDeSondagem('rota'));
+
+// ─────────────────────────────────────────────────────────────────────────
+bloco('3b · CONTA TRANCADA MATA O LINK (o mesmo predicado da auxiliar)');
+const AGORA = BRT(5, 8, 0);
+const DIA = 24 * 60 * 60 * 1000;
+const opera = (tio, config) => contaDoMotoristaOpera(tio, { cobrancaLigada: estaLigada(config), agoraMs: AGORA });
+const vale = (contaOpera) => R.acessoVale({ acesso: ACESSO, hashDoSegredo: sha(SEGREDO), hojeChave: HOJE, contaOpera });
+const LIGADA = { cobrancaLigada: true };
+eq('conta suspensa = morto', 'conta', vale(opera({ role: 'admin', suspenso: true }, LIGADA)).motivo);
+eq('suspensa, mesmo com a cobrança desligada = morto', 'conta', vale(opera({ role: 'admin', suspenso: true }, null)).motivo);
+eq('teste vencido sem assinatura, cobrança ligada = morto', 'conta',
+  vale(opera({ role: 'admin', trialInicio: AGORA - 100 * DIA }, LIGADA)).motivo);
+eq('teste vencido com a cobrança DESLIGADA = vivo', true,
+  vale(opera({ role: 'admin', trialInicio: AGORA - 100 * DIA }, null)).ok);
+eq('conta ok (assinatura em dia) = vivo', true,
+  vale(opera({ role: 'admin', trialInicio: AGORA - 100 * DIA, assinaturaAte: AGORA + 20 * DIA }, LIGADA)).ok);
+eq('teste correndo = vivo', true, vale(opera({ role: 'admin', trialInicio: AGORA - 10 * DIA }, LIGADA)).ok);
+eq('sem saber da conta (ausente), nunca vale', 'conta',
+  R.acessoVale({ acesso: ACESSO, hashDoSegredo: sha(SEGREDO), hojeChave: HOJE, contaOpera: false }).motivo);
+checar('conta trancada não é sondagem (não conta no limite)', !R.recusaDeSondagem('conta'));
+checar('a callable lê users e platformConfig e usa o MESMO predicado',
+  /contaDoMotoristaOpera\(dadosDoTio, \{\s*cobrancaLigada: estaLigada\(/.test(ver)
+  && /db\.doc\('platformConfig\/app'\)\.get\(\)/.test(ver)
+  && /contaOpera, rota, paradas/.test(ver));
+checar('o gerar continua exigindo a conta operando',
+  /exigirContaDoMotoristaOperando\(db, uid\)/.test(codigo.slice(codigo.indexOf('function makeGerarAcessoDeSubstituta'))));
 
 // ─────────────────────────────────────────────────────────────────────────
 bloco('4 · A ROTA DO DIA ACABOU');

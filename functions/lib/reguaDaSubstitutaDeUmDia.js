@@ -183,13 +183,18 @@ function rotaDoDiaAcabou({ criadoEmMs, rota, ultimaParadaMin }) {
 /**
  * O acesso vale agora? `{ ok, motivo }`. A ordem importa pouco — a frase é a
  * mesma —, mas o hash vem primeiro: sem o segredo, nada mais é olhado.
- *   'inexistente' | 'hash' | 'dia' | 'encerrado' | 'rota'
+ *   'inexistente' | 'hash' | 'dia' | 'encerrado' | 'conta' | 'rota'
  */
-function acessoVale({ acesso, hashDoSegredo, hojeChave, rota = null, paradas = null }) {
+function acessoVale({ acesso, hashDoSegredo, hojeChave, contaOpera = true, rota = null, paradas = null }) {
   if (!acesso) return { ok: false, motivo: 'inexistente' };
   if (!hashesIguais(acesso.segredoHash, hashDoSegredo)) return { ok: false, motivo: 'hash' };
   if (acesso.dateKey !== hojeChave) return { ok: false, motivo: 'dia' };
   if (acesso.encerradoEm) return { ok: false, motivo: 'encerrado' };
+  // ⚠️ CONTA TRANCADA NÃO MOSTRA A TURMA A UM TERCEIRO: o link morre quando
+  // a conta do tio deixa de operar (suspensa, ou teste vencido sem assinatura
+  // com a cobrança ligada). `contaOpera` vem de `contaDoMotoristaOpera`
+  // (reguaDoAuxiliar.js), o MESMO predicado do `isAdmin()` das rules.
+  if (contaOpera !== true) return { ok: false, motivo: 'conta' };
   if (rota && rotaDoDiaAcabou({
     criadoEmMs: emMs(acesso.criadoEm),
     rota,
