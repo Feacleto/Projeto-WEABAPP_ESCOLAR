@@ -9,7 +9,8 @@
  *   1. segurar "Encerrar" leva à Central, que pede a senha (primeira vez:
  *      cria no teclado comum, confirma no teclado de banco);
  *   2. o saldo vem com "Perguntar ao Buzi" logo abaixo;
- *   3. as abas são Turma · Perua · Mensalidades · Contas, e abrem em Turma;
+ *   3. é UMA rolagem (05/10/2026, decisão do dono): as mensalidades primeiro
+ *      ("Extrato | Mensalidades"), depois Turma e Contas — sem abas;
  *   4. "Iniciar a rota" fica no pé;
  *   5. a trilha do Lucas diz "Baixa dada sem a senha, na rota";
  *   6. sair para o Início e voltar tranca: senha errada, depois a certa.
@@ -100,15 +101,20 @@ try {
   }
   if (!r.buzi || r.buziAbaixoDoSaldo === false) achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: '"Perguntar ao Buzi" não está logo abaixo do saldo.' });
 
-  // ── 3. As abas ─────────────────────────────────────────────────────────
-  await m('3 · as quatro abas, abrindo em Turma');
-  const lista = pagina.getByRole('tablist', { name: 'Central' });
-  r.abas = (await lista.getByRole('tab').allInnerTexts()).map((t) => t.trim());
-  r.abaAberta = (await lista.getByRole('tab', { selected: true }).allInnerTexts().catch(() => [])).join();
-  r.abasEmLinhas = await lista.evaluate((el) => new Set([...el.querySelectorAll('[role=tab]')].map((t) => Math.round(t.getBoundingClientRect().top))).size);
-  if (r.abas.join('·') !== 'Turma·Perua·Mensalidades·Contas') achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: `As abas são ${r.abas.join(' · ')}.` });
-  if (r.abaAberta !== 'Turma') achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: `A Central abriu em "${r.abaAberta}", e não em Turma.` });
-  if (r.abasEmLinhas > 1) achado(estado, { gravidade: 'melhoria', lente: '40+', tela: 'Central', oque: `A 360 px as quatro abas ficam em ${r.abasEmLinhas} linhas (2×2): a ordem de leitura vira um quadrado.` });
+  // ── 3. Uma rolagem só, mensalidades primeiro ───────────────────────
+  await m('3 · uma rolagem: mensalidades, depois Turma e Contas');
+  r.abasDaCentral = await visivel(pagina.getByRole('tablist', { name: 'Central' }));
+  if (r.abasDaCentral) achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: 'A Central ainda tem abas; a decisão de 05/10 é uma rolagem só.' });
+  const yDe = async (loc) => (await loc.first().boundingBox().catch(() => null))?.y ?? null;
+  const ordem = {
+    mensalidades: await yDe(pagina.getByRole('tablist', { name: 'Extrato ou mensalidades' })),
+    turma: await yDe(pagina.getByRole('heading', { name: 'Turma', exact: true })),
+    contas: await yDe(pagina.getByRole('heading', { name: 'Contas', exact: true })),
+  };
+  // boundingBox é relativo à janela, mas a ordem vale na mesma rolagem
+  r.ordem = ordem;
+  r.ordemCerta = Object.values(ordem).every((y) => y !== null) && ordem.mensalidades < ordem.turma && ordem.turma < ordem.contas;
+  if (!r.ordemCerta) achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'Central', oque: `A ordem da rolagem não é Mensalidades → Turma → Contas: ${JSON.stringify(ordem)}.` });
 
   // ── 4. Iniciar a rota no pé ────────────────────────────────────────────
   await m('4 · "Iniciar a rota" no pé');
@@ -123,6 +129,7 @@ try {
 
   // ── 5. A trilha do Lucas ───────────────────────────────────────────────
   await m('5 · Mensalidades → Lucas → histórico');
+  const lista = pagina.getByRole('tablist', { name: 'Extrato ou mensalidades' });
   await tocar(pagina, lista.getByRole('tab', { name: 'Mensalidades' }), 'Mensalidades');
   await esperar(1500);
   await registrar(pagina, estado, '06-mensalidades', { paginaInteira: true });
@@ -164,7 +171,7 @@ try {
     await registrar(pagina, estado, '09-senha-errada');
     await digitarNoBanco(SENHA);
     await esperar(3500);
-    r.abriuComASenha = await visivel(pagina.getByRole('tablist', { name: 'Central' }));
+    r.abriuComASenha = await visivel(pagina.getByRole('tablist', { name: 'Extrato ou mensalidades' }));
     await registrar(pagina, estado, '10-aberta-de-novo');
     if (!r.abriuComASenha) achado(estado, { gravidade: 'bloqueia', lente: 'fluxo', tela: 'Central', oque: 'A senha certa não abriu a Central.' });
   }
