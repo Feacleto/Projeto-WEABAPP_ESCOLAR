@@ -87,6 +87,13 @@ export const LEGAL_DATE = '5 de outubro de 2026';
  *     próprio app (existe desde 11/09/2026).
  *   - A parte passou a ser a razão social do MEI, com o nome fantasia ao lado.
  *
+ * CONFERIDO CONTRA O CÓDIGO (05/10/2026, noite): a substituta de um dia (F3,
+ * reguaDaSubstitutaDeUmDia.js) e a foto postada pela auxiliar (F1.5,
+ * autoriaDaFoto em reguaDaComunidade.js) entraram, e as frases deixaram de
+ * ser "em construção". O código mostrava mais que o texto dizia (o turno, a
+ * falta do dia, a marca do tio; o link que morre com a conta trancada; o IP
+ * de quem erra o link) e o texto subiu até ele. Só a COMUNIDADE segue marcada.
+ *
  * E AINDA ANTES DE PUBLICAR (05/10/2026, à tarde), o que o código ganhou no
  * mesmo dia e a 1.4 precisa declarar. A versão NÃO sobe: a 1.4 nunca foi ao
  * ar (no ar está a 1.3) e ninguém a aceitou. Tudo isto vai para a revisão
@@ -481,10 +488,7 @@ export const PRIVACY_SECTIONS = [
       '(d) Da criança (informados pelo motorista ou pelo responsável): nome, gênero, foto, data de aniversário, escola, turma e professora, endereço de embarque e da escola, horários, as etapas do transporte de cada dia, faltas avisadas, recados, observações do transporte (por exemplo, o portão de entrada), valor e situação das mensalidades e o contrato de transporte;',
       '(d.1) Informações de saúde da criança (opcional): quando o responsável opta por informá-las, com consentimento específico e destacado, guardamos o texto que ele escreveu e a data do consentimento. Essa informação é exibida apenas ao motorista responsável pelo transporte daquela criança, com a finalidade de permitir atendimento adequado em caso de emergência durante o trajeto. Ela pode ser apagada pelo responsável a qualquer momento, na ficha da criança, e é excluída junto com o cadastro da criança;',
       '(e) De terceiros, informados pela família ou pelo motorista: nome e telefone do segundo responsável e de quem vai buscar a criança, o telefone de um motorista colega que alguém indicou ao Aplicativo e, das SUBSTITUTAS que o motorista anota quando a auxiliar falta, só o nome e o WhatsApp, os dias em que cada uma cobriu a falta e o valor que o motorista anotou ter pago por dia. Nunca CPF, endereço ou foto da substituta;',
-      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
-      // conferir contra o código antes de ir ao advogado; se a função não
-      // entrar, esta frase sai.
-      '(e.1) Do link de um dia da substituta: quando o motorista manda a uma substituta o link que mostra a rota do dia, guardamos o nome dela, o dia, quando o link deixou de valer e um resumo cifrado do segredo do link — não o próprio link;',
+      '(e.1) Do link de um dia da substituta: quando o motorista manda a uma substituta o link que mostra a rota do dia, guardamos o nome dela, o dia, quando o link foi criado, quando e por que deixou de valer e um resumo cifrado do segredo do link — não o próprio link. Quem tenta abrir um link que não existe ou com o segredo errado tem o endereço IP contado no limite de tentativas, como no convite;',
       '(f) Avaliações: a nota e o comentário que o usuário dá ao Aplicativo; a nota que o responsável dá ao motorista; a recomendação que o motorista escreve para a auxiliar (até 3 pontos fortes de uma lista fixa e uma frase curta, assinada por ele); e a nota de 1 a 5 estrelas que a auxiliar dá ao motorista (seção 6);',
       '(g) Dados técnicos: identificadores do aparelho para as notificações, versão do navegador, registros de acesso (logs) e, no limite de tentativas contra abuso (por exemplo, na abertura de convites), um resumo cifrado do endereço IP — não o próprio número;',
       '(h) Dados de uso: interações com o Aplicativo e, somente com o seu aceite, as métricas do Google Analytics (seção 10).',
@@ -510,18 +514,12 @@ export const PRIVACY_SECTIONS = [
       // letras. O "sim" antigo, que só falava da turma, NÃO vale para a
       // comunidade: a família é perguntada de novo.
       'A FOTO DA TURMA E A COMUNIDADE: numa data especial, o motorista pode publicar uma foto da turma. Ela é vista pelas famílias atendidas por ele e, na comunidade, pelos motoristas parceiros dele (os que ele indicou ao Aplicativo e o que o indicou) e pelas famílias atendidas por esses parceiros, numa tela separada. A criança só aparece se o responsável dela tiver respondido "Sim" à pergunta sobre as fotos, que diz quem vê a foto. Quem respondeu "Sim" antes de a comunidade existir é perguntado de novo. A resposta pode ser mudada a qualquer momento na ficha da criança. Ninguém pode curtir nem comentar a foto no Aplicativo, e ela é apagada automaticamente em 30 (trinta) dias.',
-      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
-      // conferir contra o código antes de ir ao advogado; se a função não
-      // entrar, esta frase sai.
-      'A auxiliar também pode publicar a foto da turma, pelo celular dela e em nome do motorista, com as mesmas regras: só para as famílias daquele motorista e só com as crianças cuja família respondeu "Sim". As famílias veem apenas o primeiro nome de quem publicou.',
+      'A auxiliar também pode publicar a foto da turma, pelo celular dela e em nome do motorista, com as mesmas regras: só para as famílias daquele motorista e só com as crianças cuja família respondeu "Sim". As famílias veem apenas o primeiro nome de quem publicou; quem foi, pelo identificador, só o servidor do Aplicativo guarda, para saber o que ela pode apagar. A auxiliar pode apagar a foto que publicou a qualquer momento, mesmo depois de deixar de trabalhar com o motorista.',
       // A CÓPIA DA AUXILIAR É UMA LISTA FECHADA (`CAMPOS_DA_TURMA_DA_AUXILIAR`
       // em functions/lib/reguaDoAuxiliar.js): campo novo da criança não chega
       // a ela sem alguém decidir. Esta frase é aquela lista lida em voz alta.
       'O QUE A AUXILIAR VÊ DA CRIANÇA: o servidor mantém para ela uma cópia reduzida da turma de cada motorista com quem ela trabalha, com nome, foto, gênero, escola, turma, professora, telefone da escola, horários, as etapas do transporte e o nome e o telefone do responsável, e as faltas avisadas para o dia, sem o recado. Ela NUNCA vê o endereço, a data de aniversário, o segundo responsável, mensalidades, contrato, recados nem informações de saúde. A cópia deixa de ser lida por ela no instante em que o motorista a desativa, e é apagada quando o motorista não tem mais nenhuma auxiliar ativa.',
-      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
-      // conferir contra o código antes de ir ao advogado; se a função não
-      // entrar, esta frase sai.
-      'O QUE A SUBSTITUTA DE UM DIA VÊ: pelo link do dia, sem conta, só a rota daquele dia — o primeiro nome de cada criança, a escola, a hora de pegar e de entregar e a etapa do transporte (em casa, na perua, na escola, entregue). Ela nunca vê sobrenome, foto, telefone, endereço, mensalidade, contrato nem saúde, e não marca nada. O link para à meia-noite, quando a rota é encerrada ou quando o motorista o encerra, o que vier primeiro.',
+      'O QUE A SUBSTITUTA DE UM DIA VÊ: pelo link do dia, sem conta, só a rota daquele dia — o primeiro nome de cada criança, a escola, a hora de pegar e de entregar, o turno, a etapa do transporte (em casa, na perua, na escola, entregue) e se a criança faltou ou vai com a família naquele dia. Do motorista, só a marca e o logo. Ela nunca vê sobrenome, foto, telefone, endereço, mensalidade, contrato nem saúde, e não marca nada. O link para à meia-noite, quando a rota é encerrada, quando o motorista o encerra ou quando a conta do motorista deixa de operar, o que vier primeiro.',
       // A LISTA É `CAMPOS_QUE_VAO` / `CAMPOS_QUE_NUNCA_VAO` em
       // functions/lib/reguaDaTransferencia.js. ⚠️ A tela da família
       // (`O_QUE_VAI`) não cita o e-mail do responsável nem o telefone da
@@ -576,9 +574,6 @@ export const PRIVACY_SECTIONS = [
       // V). A prévia ao parceiro (primeiro nome e escola) acontece ANTES do
       // aceite, e por isso tem base própria, declarada.
       '(m) A passagem da família para outro motorista — base: execução de contrato a pedido do titular (art. 7º, V): os dados só vão ao novo motorista quando a família toca em "Aceito", para que ele possa atendê-la e fazer o contrato novo com ela, sempre no melhor interesse da criança (art. 14). Antes do aceite, mostrar ao parceiro só o primeiro nome e a escola, para ele dizer se pode atender — base: legítimo interesse do motorista (art. 7º, IX), com o mínimo que permite essa resposta;',
-      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
-      // conferir contra o código antes de ir ao advogado; se a função não
-      // entrar, esta frase sai.
       '(n) O link de um dia da substituta — base: legítimo interesse do motorista em fazer a rota acontecer no dia em que a auxiliar falta (art. 7º, IX), no melhor interesse da criança (art. 14), com o mínimo de dados descrito na seção 4.',
     ],
   },
@@ -591,9 +586,6 @@ export const PRIVACY_SECTIONS = [
       // ⚠️ A FOTO DA COMUNIDADE, EM CONSTRUÇÃO (ver a seção 4).
       '(a.1) A foto da turma, só com as crianças cuja família respondeu "Sim", é vista também, numa tela separada, pelos motoristas parceiros daquele motorista e pelas famílias atendidas por esses parceiros, até ser apagada em 30 dias;',
       '(b) A auxiliar do motorista vê, de cada motorista com quem trabalha e só enquanto está ativa com ele, a cópia reduzida da turma descrita na seção 4 (sem endereço, mensalidades, contrato nem informações de saúde), a marca e a chave PIX do motorista. Do vínculo, os dois veem o mesmo: os períodos de trabalho e o valor informado no convite. O recibo do pagamento é visto só pelos dois, e ela continua vendo os recibos dela depois de desativada. As faltas dela e a lista de substitutas são vistas SÓ pelo motorista; a auxiliar não as vê. Quem já trabalhou com o motorista continua na lista "quem já trabalhou comigo" dele, com os períodos;',
-      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
-      // conferir contra o código antes de ir ao advogado; se a função não
-      // entrar, esta frase sai.
       '(b.1) A substituta que recebe do motorista o link de um dia vê só a rota daquele dia, como descrito na seção 4, e só enquanto o link valer. O nome e o WhatsApp dela são vistos só pelo motorista que a cadastrou;',
       '(c) Quem recebe um link de acompanhamento (quem vai buscar a criança, ou o segundo responsável) vê só o dia da criança, enquanto o link valer — sem dinheiro, endereço ou contrato;',
       '(d) Em "Indicar para uma família", o motorista passa a uma família dele o nome e o WhatsApp de um motorista parceiro. São dados do próprio parceiro, que aceitou a parceria; a família decide se entra em contato. O parceiro recebe um aviso de que foi indicado, com o nome da marca de quem indicou e nada mais: nenhum dado da família é passado a ele. Entre parceiros, cada um vê também o nome das escolas atendidas pelo outro;',
@@ -604,9 +596,6 @@ export const PRIVACY_SECTIONS = [
       'A RECOMENDAÇÃO QUE O MOTORISTA ESCREVE PARA A AUXILIAR só pode ser feita depois de 30 (trinta) dias de trabalho juntos, somando os períodos. Ela tem até 3 pontos fortes de uma lista fixa e uma frase curta, assinada por ele. A frase não aceita telefone, e-mail, link, nome de criança ou de família da turma dele, nem promessa de segurança. A auxiliar lê antes e escolhe mostrar, não mostrar ou apagar, e pode mudar de ideia a qualquer momento; se o motorista editar o texto, ela precisa aprovar de novo. Hoje a recomendação é vista só pelos dois e pela equipe do Alô Buzinou, que pode retirar uma recomendação abusiva e guarda o motivo.',
       'A NOTA QUE A AUXILIAR DÁ AO MOTORISTA (de 1 a 5 estrelas, uma por motorista com quem ela trabalhou, mudável) é vista, nota a nota, só pela equipe do Alô Buzinou. O motorista vê apenas a média, e só quando pelo menos 3 (três) auxiliares diferentes responderam — com menos, a média diria quem deu cada nota.',
       'Nenhuma dessas notas ou recomendações vira lista pública, ranking ou cadastro de pessoas a evitar, e nenhuma é mostrada às famílias.',
-      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
-      // conferir contra o código antes de ir ao advogado; se a função não
-      // entrar, esta frase sai.
       'Quando a auxiliar publica a foto da turma em nome do motorista, as famílias daquele motorista veem a foto e apenas o primeiro nome de quem a publicou.',
       'Não vendemos, alugamos ou cedemos dados pessoais para terceiros com finalidade de marketing ou publicidade.',
     ],
@@ -642,10 +631,7 @@ export const PRIVACY_SECTIONS = [
       'A substituta tirada da lista pelo motorista deixa de aparecer nela, mas o nome e o WhatsApp dela continuam nas faltas que ela já cobriu, e o nome na despesa daquele dia no caixa do motorista, como controle do mês dele, enquanto a conta existir.',
       'A recomendação que o motorista escreveu para a auxiliar é apagada quando um dos dois a apaga ou quando a conta de qualquer um dos dois é excluída. A retirada pela equipe por abuso fica registrada, com o motivo, até a exclusão de uma dessas contas.',
       'Na passagem da família para outro motorista, o registro do pedido (quem pediu, para quem, o primeiro nome da criança, a escola e as datas de cada passo) fica enquanto as contas existirem. O cadastro anterior da criança continua com o motorista anterior, inativo, com os registros do período em que ele atendeu a família, e segue os prazos desta seção.',
-      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
-      // conferir contra o código antes de ir ao advogado; se a função não
-      // entrar, esta frase sai.
-      'O link de um dia da substituta para de funcionar à meia-noite daquele dia, quando a rota é encerrada ou quando o motorista o encerra. Do link, guardamos só o nome dela, o dia, quando ele deixou de valer e o resumo cifrado do segredo, enquanto a conta do motorista existir.',
+      'O link de um dia da substituta para de funcionar à meia-noite daquele dia, quando a rota é encerrada, quando o motorista o encerra ou quando a conta dele deixa de operar. Do link, guardamos só o nome dela, o dia, quando ele deixou de valer e o resumo cifrado do segredo, enquanto a conta do motorista existir.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
   },
