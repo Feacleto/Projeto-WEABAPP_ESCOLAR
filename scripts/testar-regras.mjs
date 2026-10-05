@@ -753,6 +753,23 @@ async function oFinanceiroTrancado({ tio2, pai1, novato, dono, anon }) {
   checar(BL, 'campo estranho é recusado', 'NEGA',
     await escrever(cfg, fin, { saldo: N(1) }, ['saldo']));
 
+  // OS PLANOS FINANCEIROS (05/10/2026): metas que ele anota, no máximo 12.
+  // O formato de cada plano é da régua no aparelho; a rule segura o tamanho
+  // da lista e o escopo (só ele).
+  const PLANOS = (n) => ({
+    arrayValue: {
+      values: Array.from({ length: n }, (_, i) => ({
+        mapValue: { fields: { id: S(`p${i}`), nome: S(`Plano ${i}`), valor: N(500), data: S('2027-01') } },
+      })),
+    },
+  });
+  checar(BL, 'ele grava 12 planos', 'PASSA', await escrever(cfg, fin, { planos: PLANOS(12) }, ['planos']));
+  checar(BL, 'o 13º plano é recusado', 'NEGA', await escrever(cfg, fin, { planos: PLANOS(13) }, ['planos']));
+  checar(BL, 'planos que não são lista são recusados', 'NEGA',
+    await escrever(cfg, fin, { planos: S('meu plano') }, ['planos']));
+  checar(BL, 'outro motorista grava planos no documento dele', 'NEGA',
+    await escrever(cfg, tio2, { planos: PLANOS(1) }, ['planos']));
+
   // kmDasRotas só sobe.
   checar(BL, 'somar 5 km (increment, como o SDK manda)', 'PASSA', await somarKm(fin, fin.uid, 5));
   checar(BL, 'km NÃO desce (increment negativo)', 'NEGA', await somarKm(fin, fin.uid, -3));
