@@ -22,6 +22,9 @@ import SelosTab from '../../components/admin/SelosTab';
 import IndicacoesTab from '../../components/admin/IndicacoesTab';
 import AtividadesDaPlatinaTab from '../../components/admin/AtividadesDaPlatinaTab';
 import InvestidoresTab from '../../components/admin/InvestidoresTab';
+import RetratoDaBase from '../../components/admin/RetratoDaBase';
+import AssinantesDaBase from '../../components/admin/AssinantesDaBase';
+import JuridicoTab from '../../components/admin/JuridicoTab';
 import { listarInteresses } from '../../services/interesseService';
 import { definirDepoimentoNaHome } from '../../services/feedbackService';
 import { functions } from '../../firebase/config';
@@ -65,7 +68,8 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * `sm`, e as fichas de número abrindo em quatro colunas em `lg`.
  *
  * OITO ABAS, E O QUE CADA UMA RESPONDE
- * 0. Hoje: a fila do dia. Não tem conteúdo próprio — é a soma das outras,
+ * 0. Hoje: o retrato da base (o app está sendo usado?) e, embaixo, a fila
+ *    do dia. A fila não tem conteúdo próprio — é a soma das outras,
  *    apresentada como trabalho. Cada linha é um toque e leva à aba onde a
  *    coisa se resolve.
  * 1. Motoristas: a lista e a FICHA de cada associado — plano, contrato,
@@ -74,7 +78,9 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * 2. Chamados: quem pediu ajuda e há quanto tempo espera. `supportTickets`
  *    recebia desde sempre e NENHUMA tela do dono lia — quem pede ajuda e não
  *    recebe resposta cancela sem dizer por quê.
- * 3. Mês: a régua da casa e o fechamento das faturas. É o trabalho mensal.
+ * 3. Financeiro: os assinantes e o plano de cada um (05/10/2026), e embaixo
+ *    a régua da casa e o fechamento das faturas — o trabalho mensal que se
+ *    chamava "Mês".
  * 4. Números: a carteira, o MRR e o funil. É a leitura do negócio.
  * 5. Selos: os alvarás para conferir e os adesivos para postar. É a ÚNICA
  *    aba que põe você no caminho crítico — e é de propósito: valor não vem de
@@ -82,6 +88,8 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * 6. Indicações: quem trouxe quem, e em que pé está cada uma. Ela existe
  *    porque as duas falhas possíveis produzem a MESMA queixa — "indiquei e
  *    não recebi" — e sem uma tela que mostre o estado, não há como responder.
+ * Jurídico (05/10/2026): os documentos em vigor, quem aceitou a versão
+ *    atual, as contas suspensas e o que falta no papel para bloquear.
  * 7. Pesquisa: o que os usuários responderam — inclusive as avaliações de
  *    responsável, que nunca vão pra home mas dizem se o app está servindo a
  *    ponta que não paga pela ferramenta.
@@ -242,10 +250,11 @@ export default function AdminPanel() {
             ['hoje', 'Hoje'],
             ['motoristas', 'Motoristas'],
             ['chamados', 'Chamados'],
-            ['mes', 'Mês'],
+            ['mes', 'Financeiro'],
             ['numeros', 'Números'],
             ['selos', 'Selos'],
             ['indicacoes', 'Indicações'],
+            ['juridico', 'Jurídico'],
             ['platina', 'Platina'],
             ['pesquisa', 'Pesquisa'],
             ['investidores', 'Investidores'],
@@ -274,12 +283,15 @@ export default function AdminPanel() {
         </div>
 
         {tab === 'hoje' && (
-          <FilaTab
-            onIr={(destino) => {
-              setMotoristaAlvo(destino?.uid || null);
-              setTab(destino?.aba || 'motoristas');
-            }}
-          />
+          <div className="space-y-8">
+            <RetratoDaBase />
+            <FilaTab
+              onIr={(destino) => {
+                setMotoristaAlvo(destino?.uid || null);
+                setTab(destino?.aba || 'motoristas');
+              }}
+            />
+          </div>
         )}
         {tab === 'motoristas' && (
           // A `key` remonta a aba quando a fila manda abrir outro motorista.
@@ -288,10 +300,16 @@ export default function AdminPanel() {
           <MotoristasTab key={motoristaAlvo || 'lista'} inicial={motoristaAlvo} />
         )}
         {tab === 'chamados' && <ChamadosTab />}
-        {tab === 'mes' && <TaxaTab />}
+        {tab === 'mes' && (
+          <div className="space-y-8">
+            <AssinantesDaBase />
+            <TaxaTab />
+          </div>
+        )}
         {tab === 'numeros' && <Geral ov={ov} />}
         {tab === 'selos' && <SelosTab />}
         {tab === 'indicacoes' && <IndicacoesTab />}
+        {tab === 'juridico' && <JuridicoTab />}
         {tab === 'platina' && <AtividadesDaPlatinaTab />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
         {tab === 'investidores' && <InvestidoresTab />}

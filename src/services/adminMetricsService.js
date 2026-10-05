@@ -12,6 +12,7 @@ import {
 import { db } from '../firebase/config';
 import { notasPorMotorista, resumirCarteira } from '../dominio/associacao/carteira.js';
 import { contarPorCanal } from '../dominio/identidade/origem.js';
+import { linhasDosAssinantes, retratoDaBase } from '../dominio/associacao/retratoDaBase.js';
 import { criarCacheComValidade } from '../compartilhado/cacheComValidade.js';
 import { addMonths } from '../compartilhado/formatters.js';
 import { parceirosDoDono } from './userService';
@@ -189,6 +190,82 @@ export async function getPlatformOverview() {
     // ⚠️ `null` com base vazia, de propósito: onde o número não existe a tela
     // diz "—", nunca zero. Dez canais zerados parecem medição e não são.
     origens: contarPorCanal(parceiros),
+  };
+}
+
+/**
+ * O RETRATO DA BASE — o Hoje e o Financeiro com a cobrança desligada.
+ *
+ * TRÊS CONTAGENS NO SERVIDOR e a lista de motoristas que já está no cache
+ * (`parceirosDoDono`). Nenhum documento de criança ou de pagamento vem para o
+ * navegador: crianças com família é `count()` de `inviteStatus == 'used'` (o
+ * link, o irmão e o pedido de acesso gravam o mesmo valor), e as baixas do mês
+ * são a MESMA consulta do GMV do mês, contada em vez de somada.
+ *
+ * Contagem que falha vem `null`, não zero — a tela escreve "—". A conta mora
+ * em `dominio/associacao/retratoDaBase.js` (`npm run testar:retrato`).
+ */
+async function contaOuNada(q) {
+  try {
+    return (await getCountFromServer(q)).data().count || 0;
+  } catch (err) {
+    console.error('[admin] contagem do retrato não veio:', err);
+    return null;
+  }
+}
+
+// Hoje e Financeiro leem o mesmo retrato, e as abas desmontam ao trocar: sem
+// cache, cada toque na barra refaria as três contagens.
+const cacheDoRetrato = criarCacheComValidade({ validadeMs: 90 * 1000 });
+
+export function getRetratoDaBase({ forcar = false } = {}) {
+  return cacheDoRetrato.obter(() => buscarRetrato({ forcar }), { forcar });
+}
+
+/**
+ * QUEM ACEITOU A VERSÃO ATUAL DOS TERMOS — duas contagens, nenhuma lista.
+ * `total` exclui o dono só por não filtrar por papel: a diferença de uma ou
+ * duas contas não muda a leitura, e filtrar por três papéis custaria três
+ * consultas. `null` quando a contagem não veio.
+ */
+export async function getAceitesDosTermos(versao) {
+  const users = collection(db, 'users');
+  const [total, naVersao] = await Promise.all([
+    contaOuNada(query(users)),
+    contaOuNada(query(users, where('termsVersion', '==', versao))),
+  ]);
+  return { total, naVersao };
+}
+
+async function buscarRetrato({ forcar }) {
+  const children = collection(db, 'children');
+  const [parceiros, criancasAtivas, criancasComFamilia, baixasNoMes] = await Promise.all([
+    parceirosDoDono({ forcar }),
+    contaOuNada(query(children, where('active', '==', true))),
+    contaOuNada(
+      query(children, where('active', '==', true), where('inviteStatus', '==', 'used'))
+    ),
+    contaOuNada(
+      query(
+        collection(db, 'payments'),
+        where('status', '==', 'paid'),
+        where('month', '==', mesAtual())
+      )
+    ),
+  ]);
+
+  const agora = new Date();
+  const mes = mesAtual();
+  return {
+    retrato: retratoDaBase({
+      parceiros,
+      agora,
+      mes,
+      criancasAtivas,
+      criancasComFamilia,
+      baixasNoMes,
+    }),
+    assinantes: linhasDosAssinantes({ parceiros, agora, mes }),
   };
 }
 

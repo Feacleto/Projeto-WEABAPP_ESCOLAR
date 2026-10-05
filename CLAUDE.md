@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 83 scripts. O PRIMEIRO é
+npm run testar                   # 84 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -34,7 +34,7 @@ npm run testar                   # 83 scripts. O PRIMEIRO é
                                  # pix, brcode,
                                  # status, auth, trial, planos, vitrine, autoatendimento, para-voce, avisos,
                                  # preferencias, multa, encerramento,
-                                 # conta, cobranca, gateway, assinante, carteira,
+                                 # conta, cobranca, gateway, assinante, carteira, retrato,
                                  # proposta, chamados, avaliacao, risco, fila, concessao,
                                  # selo, indicacao, irmaos, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca, site,
@@ -439,12 +439,19 @@ src/
 │   ├── pai/           8 telas do responsável + `PrimeiroAcessoDoPai`, o card
 │   │                 por cima do `/pai` (dados, número da casa se faltar,
 │   │                 aniversário do filho, avisos) — mesmo desenho do motorista
-│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com NOVE
-│   │                  abas: Hoje (a fila), Motoristas (lista + FICHA),
-│   │                  Chamados, Mês (régua e fechamento), Números, Selos,
-│   │                  Indicações, Pesquisa, Investidores (os contatos que
-│   │                  chegam pelo site). As abas moram em
-│   │                  components/admin/.
+│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com ONZE
+│   │                  abas: Hoje (o RETRATO DA BASE — o app está sendo
+│   │                  usado? — e a fila), Motoristas (lista + FICHA),
+│   │                  Chamados, Financeiro (os assinantes e o plano de cada
+│   │                  um, e a régua e o fechamento que eram a aba "Mês"),
+│   │                  Números, Selos, Indicações, Jurídico (documentos,
+│   │                  aceites, suspensos, o que falta no papel), Platina,
+│   │                  Pesquisa, Investidores. As abas moram em
+│   │                  components/admin/; o retrato é a régua pura
+│   │                  `dominio/associacao/retratoDaBase.js`
+│   │                  (`testar:retrato`). ⚠️ "Pagaria por mês" é POTENCIAL,
+│   │                  nunca receita. O redesenho inteiro (26 telas) está no
+│   │                  canvas "Painel do dono"; este foi o lote só de leitura.
 │   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.4
 │                       (04/10/2026: a leitura única da posição no
 │                       posto de combustível entrou na cláusula 8, na
