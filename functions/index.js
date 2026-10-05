@@ -76,6 +76,7 @@ const { makeSendPushOnNotification } = require('./lib/push');
 const { makeAvisarAproximacao, makeAvisarBuzina } = require('./lib/avisosDaRota');
 const { makeLimparAvisosAntigos } = require('./lib/limpezaDosAvisos');
 const { makeFotografarBase } = require('./lib/fotoDaBase');
+const { makeSuspenderConta } = require('./lib/registroDoDono');
 const { makeAtualizarIndicesEconomicos } = require('./lib/indicesEconomicos');
 const { makeContarCriancasAtivas } = require('./lib/contadorDaTurma');
 const { makeLigarRelogioNaRota } = require('./lib/relogioNaRota');
@@ -164,6 +165,9 @@ exports.atualizarIndicesEconomicos = makeAtualizarIndicesEconomicos(db);
 // A foto diária da base para o painel do dono, às 23h50 de Brasília
 // (fotoDaBase.js): só números, um documento por dia, só o dono lê.
 exports.fotografarBase = makeFotografarBase(db);
+// Suspender, avisar ou reativar um motorista, com a linha no registro de
+// ações na mesma transação (registroDoDono.js). Só o dono chama.
+exports.suspenderConta = makeSuspenderConta(db);
 // O contador de crianças e o relógio do teste são do SERVIDOR (03/10/2026):
 // o cliente não grava mais nenhum dos dois (rules).
 exports.contarCriancasAtivas = makeContarCriancasAtivas(db);

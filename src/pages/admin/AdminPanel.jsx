@@ -25,6 +25,7 @@ import InvestidoresTab from '../../components/admin/InvestidoresTab';
 import RetratoDaBase from '../../components/admin/RetratoDaBase';
 import AssinantesDaBase from '../../components/admin/AssinantesDaBase';
 import JuridicoTab from '../../components/admin/JuridicoTab';
+import RegistroTab from '../../components/admin/RegistroTab';
 import { listarInteresses } from '../../services/interesseService';
 import { definirDepoimentoNaHome } from '../../services/feedbackService';
 import { functions } from '../../firebase/config';
@@ -88,6 +89,8 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * 6. Indicações: quem trouxe quem, e em que pé está cada uma. Ela existe
  *    porque as duas falhas possíveis produzem a MESMA queixa — "indiquei e
  *    não recebi" — e sem uma tela que mostre o estado, não há como responder.
+ * Registro (05/10/2026): quem suspendeu, avisou ou reativou quem, quando e
+ *    por quê — só leitura; quem grava é a callable `suspenderConta`.
  * Jurídico (05/10/2026): os documentos em vigor, quem aceitou a versão
  *    atual, as contas suspensas e o que falta no papel para bloquear.
  * 7. Pesquisa: o que os usuários responderam — inclusive as avaliações de
@@ -255,6 +258,7 @@ export default function AdminPanel() {
             ['selos', 'Selos'],
             ['indicacoes', 'Indicações'],
             ['juridico', 'Jurídico'],
+            ['registro', 'Registro'],
             ['platina', 'Platina'],
             ['pesquisa', 'Pesquisa'],
             ['investidores', 'Investidores'],
@@ -310,6 +314,7 @@ export default function AdminPanel() {
         {tab === 'selos' && <SelosTab />}
         {tab === 'indicacoes' && <IndicacoesTab />}
         {tab === 'juridico' && <JuridicoTab />}
+        {tab === 'registro' && <RegistroTab />}
         {tab === 'platina' && <AtividadesDaPlatinaTab />}
         {tab === 'pesquisa' && <Pesquisa s={survey} />}
         {tab === 'investidores' && <InvestidoresTab />}

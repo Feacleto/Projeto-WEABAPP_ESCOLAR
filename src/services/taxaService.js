@@ -200,25 +200,13 @@ export function watchParceiros(cb, onError) {
   );
 }
 
-/**
- * SUSPENDER OU REATIVAR um parceiro.
- *
- * `suspenso` é a única via em que uma PESSOA decide que a conta para — o
- * bloqueio por teste vencido e por atraso é conta de data, e acontece sozinho.
- * `isAdmin()` nas rules nega quem está suspenso, então isto vale para todas as
- * coleções de uma vez, não uma por uma.
- *
- * A data fica junto porque "desde quando" é a primeira pergunta de qualquer
- * conversa sobre uma suspensão.
+/*
+ * ⚠️ SUSPENDER E REATIVAR SAÍRAM DAQUI (05/10/2026). Eram um `setDoc` do dono
+ * em `users.suspenso`, sem motivo nem rastro. Agora é a callable
+ * `suspenderConta` (services/registroDoDonoService.js), que grava a conta e a
+ * linha do `registroDoDono` na mesma transação — e as rules recusam a escrita
+ * direta.
  */
-export async function suspenderParceiro(uid, suspenso) {
-  if (!uid) throw new Error('Sem motorista.');
-  await setDoc(
-    doc(db, 'users', uid),
-    { suspenso: suspenso === true, suspensoEm: suspenso === true ? serverTimestamp() : null },
-    { merge: true }
-  );
-}
 
 /** A nota interna do dono sobre um parceiro. Ele nunca lê isto. */
 export async function setNotaInterna(uid, nota) {

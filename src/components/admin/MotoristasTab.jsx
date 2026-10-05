@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, Users } from 'lucide-react';
-import toast from 'react-hot-toast';
 import Spinner from '../common/Spinner';
 import FichaDoMotorista from './FichaDoMotorista';
+import FolhaDeSuspensao from './FolhaDeSuspensao';
 import { carregarConsole } from '../../services/adminMetricsService';
-import { suspenderParceiro } from '../../services/taxaService';
+import { cobrancaLigada, watchPlatformConfig } from '../../services/platformConfigService';
 import { degrauDo, mensalidadeDe } from '../../dominio/associacao/carteira.js';
 import { pesoDoRisco, riscoDo } from '../../dominio/associacao/risco.js';
 import { contarFundadores, resumirConcessoes } from '../../dominio/associacao/concessao.js';
@@ -113,15 +113,14 @@ export default function MotoristasTab({ inicial = null }) {
     );
   }, [dados, busca, mes]);
 
-  const suspender = async (mot) => {
-    try {
-      await suspenderParceiro(mot.uid, !mot.suspenso);
-      toast.success(mot.suspenso ? 'Reativado.' : 'Suspenso.');
-      carregar(true);
-    } catch (err) {
-      toast.error(err.message || 'Não deu pra mudar.');
-    }
-  };
+  // ⚠️ SUSPENDER ABRE A FOLHA, e não escreve mais nada daqui (05/10/2026).
+  // Era um `setDoc` em `users.suspenso` sem motivo nem rastro; agora a folha
+  // pede motivo e mensagem e chama a callable `suspenderConta`, que grava a
+  // conta e a linha do registro juntas. As rules recusam a escrita direta.
+  const [suspendendo, setSuspendendo] = useState(null);
+  const [ligada, setLigada] = useState(false);
+  useEffect(() => watchPlatformConfig((cfg) => setLigada(cobrancaLigada(cfg))), []);
+  const suspender = (mot) => setSuspendendo(mot);
 
   const aberto = linhas?.find((l) => l.mot.uid === escolhido) || null;
 
@@ -142,6 +141,17 @@ export default function MotoristasTab({ inicial = null }) {
 
   return (
     <div className="lg:grid lg:grid-cols-[20rem_1fr] lg:items-start lg:gap-4">
+      {suspendendo && (
+        <FolhaDeSuspensao
+          motorista={suspendendo}
+          cobrancaLigada={ligada}
+          onFechar={() => setSuspendendo(null)}
+          onFeito={() => {
+            setSuspendendo(null);
+            carregar(true);
+          }}
+        />
+      )}
       {/* No celular a lista SOME quando há ficha aberta — duas superfícies
         * empilhadas em 360px viram uma rolagem que ninguém percorre. */}
       <div className={aberto ? 'hidden lg:block' : ''}>

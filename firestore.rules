@@ -672,7 +672,11 @@ service cloud.firestore {
         // que precisa deixar rastro, não conveniência de suporte.
         isOwner()
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['suspenso', 'suspensoEm', 'notaInterna', 'limiteCriancas',
+             // ⚠️ `suspenso` e `suspensoEm` SAÍRAM daqui em 05/10/2026: suspender
+             // e reativar passam pela callable `suspenderConta`, que grava a
+             // conta e a linha do `registroDoDono` na MESMA transação. Escrita
+             // direta do dono seria suspensão sem motivo nem rastro.
+             .hasOnly(['notaInterna', 'limiteCriancas',
                        'assinaturaAte',
                        // A CLÁUSULA DE PREÇO, que em 10/09/2026 virou taxa por
                        // criança. `plano` ('mensal' | 'anual') é o que a
@@ -2849,7 +2853,27 @@ service cloud.firestore {
     // Rules não filtram campo na leitura: liberar o doc pro dono dele seria
     // liberar a nota junto.
     match /taxaParceiros/{uid} {
-      allow read, write: if isOwner();
+      // `suspensaoAte` é o prazo da suspensão, e só a callable `suspenderConta`
+      // o grava, junto da linha do registro: escrito à mão, o prazo daqui e o
+      // do registro poderiam divergir.
+      // Nada no app apaga este documento, e apagá-lo levaria o prazo junto:
+      // o delete pelo cliente é recusado a todos, dono incluído.
+      allow read: if isOwner();
+      allow delete: if false;
+      allow create: if isOwner() && !request.resource.data.keys().hasAny(['suspensaoAte']);
+      allow update: if isOwner()
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['suspensaoAte']);
+    }
+
+    // O REGISTRO DE AÇÕES DO DONO (05/10/2026): quem suspendeu, avisou ou
+    // reativou quem, quando e por quê. APPEND-ONLY e só pela callable
+    // `suspenderConta` (functions/lib/registroDoDono.js): ninguém escreve pelo
+    // cliente, nem o dono — registro que quem decidiu pode editar não é
+    // registro. Só o dono lê; o alvo recebe a mensagem pelo aviso, e pede a
+    // linha dele pelo canal de contato (LGPD art. 18).
+    match /registroDoDono/{id} {
+      allow read: if isOwner();
+      allow write: if false;
     }
 
     // faturasParceiro/{id} — o que ele deve, e ele PRECISA ver.

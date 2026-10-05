@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 84 scripts. O PRIMEIRO é
+npm run testar                   # 85 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -34,7 +34,7 @@ npm run testar                   # 84 scripts. O PRIMEIRO é
                                  # pix, brcode,
                                  # status, auth, trial, planos, vitrine, autoatendimento, para-voce, avisos,
                                  # preferencias, multa, encerramento,
-                                 # conta, cobranca, gateway, assinante, carteira, retrato,
+                                 # conta, cobranca, gateway, assinante, carteira, retrato, registro,
                                  # proposta, chamados, avaliacao, risco, fila, concessao,
                                  # selo, indicacao, irmaos, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca, site,
@@ -461,13 +461,15 @@ src/
 │   ├── pai/           8 telas do responsável + `PrimeiroAcessoDoPai`, o card
 │   │                 por cima do `/pai` (dados, número da casa se faltar,
 │   │                 aniversário do filho, avisos) — mesmo desenho do motorista
-│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com ONZE
+│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com DOZE
 │   │                  abas: Hoje (o RETRATO DA BASE — o app está sendo
 │   │                  usado? — e a fila), Motoristas (lista + FICHA),
 │   │                  Chamados, Financeiro (os assinantes e o plano de cada
 │   │                  um, e a régua e o fechamento que eram a aba "Mês"),
 │   │                  Números, Selos, Indicações, Jurídico (documentos,
-│   │                  aceites, suspensos, o que falta no papel), Platina,
+│   │                  aceites, suspensos, o que falta no papel),
+│   │                  Registro (quem suspendeu/avisou/reativou quem e por
+│   │                  quê — `registroDoDono`, só leitura), Platina,
 │   │                  Pesquisa, Investidores. As abas moram em
 │   │                  components/admin/; o retrato é a régua pura
 │   │                  `dominio/associacao/retratoDaBase.js`
@@ -730,6 +732,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `indicesEconomicos` (`ipca`, `selic`, `dolar`; só o servidor escreve, motorista lê) ·
 `fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
 `fotosDaBase` (a foto diária da base, um doc por dia de Brasília, só números; só o servidor escreve, só o dono lê) ·
+`registroDoDono` (quem suspendeu, avisou ou reativou quem, quando e por quê; APPEND-ONLY, só a callable `suspenderConta` escreve, só o dono lê) ·
 `autoriaDaFotoDaTurma` (quem postou, quando foi a auxiliar; só o servidor) ·
 `avaliacoesDoTio` (a nota da família ao tio; só ela lê a dela, o tio não lê nenhuma) ·
 `transferenciasDeFamilia` (passar a família a um tio parceiro; os dois tios leem, a família só com `familiaVe`, só o servidor escreve) ·
@@ -2062,6 +2065,19 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `retratoDaBase.js` comparado caso a caso em `testar:retrato`). Lê os
   motoristas e faz três `count()`; idempotente. É o histórico do gráfico de
   evolução do Hoje.
+- **Registro de ações do dono:** `suspenderConta`
+  ([registroDoDono.js](functions/lib/registroDoDono.js), régua em
+  [reguaDoRegistro.js](functions/lib/reguaDoRegistro.js), espelho em
+  `src/dominio/identidade/registroDoDono.js`, `testar:registro`). Suspender,
+  avisar ou reativar um MOTORISTA (dono não suspende dono): numa transação,
+  `users.suspenso`/`suspensoEm`, `taxaParceiros.suspensaoAte`, a linha em
+  `registroDoDono` e o aviso ao alvo (`conta_suspensa`, `conta_reativada`,
+  `aviso_da_plataforma`, espécie `estado`). ⚠️ O aviso leva a MENSAGEM e o
+  prazo de resposta (10 dias), nunca o motivo da lista nem a evidência. As
+  rules recusam ao dono escrever `suspenso`, `suspensoEm` e `suspensaoAte`
+  pelo cliente. O texto padrão traz o marcador `[CLÁUSULA DOS TERMOS]` até a
+  jurídica entregar a seção "Suspensão e bloqueio", e a régua não deixa
+  mandar com ele dentro. Reativar na data é à mão, por ora.
 - **Auxiliar:** `convidarAuxiliar`, `cancelarConviteDeAuxiliar`,
   `verConviteDeAuxiliar` (pública, devolve só a marca e o primeiro nome),
   `aceitarConviteDeAuxiliar`, `desativarAuxiliar` e `marcarParadaPelaAuxiliar`

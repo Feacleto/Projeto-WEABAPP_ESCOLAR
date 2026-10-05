@@ -17,9 +17,9 @@ import { planoValido } from '../../dominio/associacao/planos.js';
  * pedir aceite — nunca escritas à mão aqui, senão esta tela diria uma versão
  * e o app pediria outra. Os aceites são duas contagens no servidor.
  *
- * ⚠️ "SUSPENSOS" É O QUE EXISTE HOJE: o `suspenso` do motorista, com a data.
- * Motivo, prazo de resposta e registro de quem decidiu ainda não são gravados
- * — é o lote que mexe nas regras, e a lista de pendências abaixo diz isso.
+ * "SUSPENSOS" é o `suspenso` do motorista, com a data. Desde 05/10/2026 o
+ * motivo, o prazo de resposta e quem decidiu moram no `registroDoDono` (aba
+ * Registro), gravados pela callable `suspenderConta`.
  */
 export default function JuridicoTab() {
   const [aceites, setAceites] = useState(null);
@@ -187,8 +187,8 @@ export default function JuridicoTab() {
           </ul>
         )}
         <p className="text-xs leading-relaxed text-textMuted">
-          Hoje só existe a suspensão do motorista, sem motivo nem prazo de resposta gravados. Família
-          e auxiliar ainda não podem ser bloqueadas pela plataforma.
+          O motivo, o prazo de resposta e quem decidiu ficam na aba Registro. Família e auxiliar
+          ainda não podem ser bloqueadas pela plataforma.
         </p>
       </section>
     </div>

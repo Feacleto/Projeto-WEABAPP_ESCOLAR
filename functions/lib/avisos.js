@@ -103,6 +103,12 @@ const ESPECIE_DO_AVISO = {
   encerramento_30d: ESPECIE.ESTADO,
   encerramento_7d: ESPECIE.ESTADO,
   encerramento_fim: ESPECIE.ESTADO,
+  // A plataforma suspendeu, reativou ou deu um aviso formal (painel do dono,
+  // 05/10/2026). É a conta mudando de estado por decisão de alguém, com prazo
+  // de resposta: desligar isto seria a pessoa não saber por que o app parou.
+  conta_suspensa: ESPECIE.ESTADO,
+  conta_reativada: ESPECIE.ESTADO,
+  aviso_da_plataforma: ESPECIE.ESTADO,
 
   payment_due_5d: ESPECIE.PRAZO,
   payment_due_3d: ESPECIE.PRAZO,

@@ -64,6 +64,11 @@ const DESTINO_DO_AVISO = {
   encerramento_30d: '/tio/encerrar',
   encerramento_7d: '/tio/encerrar',
   encerramento_fim: '/tio/encerrar',
+  // A suspensão, a reativação e o aviso formal levam ao Início: é lá que o
+  // cartão da plataforma explica o estado da conta.
+  conta_suspensa: '/tio',
+  conta_reativada: '/tio',
+  aviso_da_plataforma: '/tio',
   auxiliar_confirmou_pagamento: '/tio/finance/auxiliar',
   acesso_substituta_encerrado: '/tio/finance/auxiliar/substitutas',
 
