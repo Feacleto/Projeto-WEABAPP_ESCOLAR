@@ -561,6 +561,7 @@ async function main() {
   await aFotoDaBase({ novato, dono, anon });
   await aLeituraDoDonoNosNiveisEAuxiliares({ novato, dono, anon });
   await oRegistroDoDono({ novato, dono, anon });
+  await asVagasDaPerua({ novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -4234,6 +4235,49 @@ async function oRegistroDoDono({ novato, dono, anon }) {
   checar(BL, 'a família F não lê taxaParceiros/{M}', 'NEGA', await ler(`taxaParceiros/${M.uid}`, F));
   checar(BL, 'o motorista não lê o próprio taxaParceiros (a nota interna mora lá)', 'NEGA',
     await ler(`taxaParceiros/${M.uid}`, M));
+}
+
+/**
+ * AS VAGAS DA PERUA (05/10/2026) — `configFinanceiro/{uid}.vagasDaPerua`,
+ * inteiro de 1 a 60, gravado pelo PRÓPRIO motorista. Ninguém mais lê o
+ * documento. Casos escritos ANTES da regra.
+ */
+async function asVagasDaPerua({ novato, dono, anon }) {
+  console.log('\n=== AS VAGAS DA PERUA (05/10/2026) ===');
+  const BL = 'vagasDaPerua';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const I = (v) => ({ integerValue: String(v) });
+  const M = await criarLogin(`vp.m.${agora}@teste.local`);
+  const O = await criarLogin(`vp.o.${agora}@teste.local`);
+  const X = await criarLogin(`vp.x.${agora}@teste.local`);
+  const F = await criarLogin(`vp.f.${agora}@teste.local`);
+  await semear(`users/${M.uid}`, { role: S('admin'), name: S('Tio M') });
+  await semear(`users/${O.uid}`, { role: S('admin'), name: S('Tio O') });
+  await semear(`users/${X.uid}`, { role: S('auxiliar'), name: S('Aux X'), motoristaUids: L([S(M.uid)]) });
+  await semear(`auxiliares/${M.uid}_${X.uid}`, {
+    motoristaUid: S(M.uid), auxiliarUid: S(X.uid), nome: S('Aux X'), ativa: B(true),
+  });
+  await semear(`users/${F.uid}`, {
+    role: S('parent'), name: S('Familia de M'), adminUid: S(M.uid), adminUids: L([S(M.uid)]),
+  });
+  const CF = `configFinanceiro/${M.uid}`;
+  await semear(CF, { usoDaPerua: S('so_rota') });
+
+  checar(BL, 'M grava vagasDaPerua 15 no próprio doc', 'PASSA',
+    await escrever(CF, M, { vagasDaPerua: I(15) }, ['vagasDaPerua']));
+  checar(BL, 'M grava 0', 'NEGA', await escrever(CF, M, { vagasDaPerua: I(0) }, ['vagasDaPerua']));
+  checar(BL, 'M grava 61', 'NEGA', await escrever(CF, M, { vagasDaPerua: I(61) }, ['vagasDaPerua']));
+  checar(BL, 'M grava 3.5', 'NEGA', await escrever(CF, M, { vagasDaPerua: N(3.5) }, ['vagasDaPerua']));
+  checar(BL, 'M grava "15" (string)', 'NEGA', await escrever(CF, M, { vagasDaPerua: S('15') }, ['vagasDaPerua']));
+  checar(BL, 'O não grava vagasDaPerua no doc de M', 'NEGA',
+    await escrever(CF, O, { vagasDaPerua: I(15) }, ['vagasDaPerua']));
+  checar(BL, 'a auxiliar X de M não lê configFinanceiro/{M}', 'NEGA', await ler(CF, X));
+  checar(BL, 'a família F não lê configFinanceiro/{M}', 'NEGA', await ler(CF, F));
+  console.log(`  [reporte] o dono lê configFinanceiro/{M}: status ${await ler(CF, dono)}`);
+  checar(BL, 'anônimo não lê', 'NEGA', await ler(CF, anon));
+  checar(BL, 'novato não lê', 'NEGA', await ler(CF, novato));
+  checar(BL, 'SONDA: M lê o próprio configFinanceiro', 'PASSA', await ler(CF, M));
 }
 
 /**
