@@ -30,6 +30,7 @@ import {
   linhaDoCartao,
   descricaoDaDespesa,
   resumoDoMes,
+  linhasDaFaltaDeHoje,
 } from '../src/dominio/identidade/faltaDaAuxiliar.js';
 
 let ok = 0;
@@ -166,6 +167,47 @@ checar('falta nova: o vínculo do par precisa estar ativo', true,
 checar('falta: só o próprio motorista lê', true, blocoFalta.includes('allow read: if isAdmin() && resource.data.motoristaUid == request.auth.uid'));
 checar('o valor do dia tem teto de 5000 nas rules', true, regras.includes('v is number && v > 0 && v <= 5000'));
 checar('o telefone tem 10 ou 11 dígitos nas rules', true, regras.includes("t.matches('^[0-9]{10,11}$')"));
+
+console.log('\n10. "A Cida faltou hoje" no Início (sem valor nenhum)');
+{
+  const hoje = '2026-10-05';
+  const faltasHoje = [
+    { auxiliarUid: 'a1', nomeDaAuxiliar: 'Cida Souza', dateKey: hoje, substituta: { id: 's1', nome: 'Joana Lima', telefone: '11987654321', valor: 87.5 } },
+    { auxiliarUid: 'a2', nomeDaAuxiliar: 'Bia', dateKey: hoje, substituta: null },
+    { auxiliarUid: 'a1', nomeDaAuxiliar: 'Cida Souza', dateKey: '2026-10-04', substituta: null },
+  ];
+  const linhas = linhasDaFaltaDeHoje(faltasHoje, hoje);
+  const da = (uid) => linhas.find((l) => l.auxiliarUid === uid) || {};
+  checar('uma linha por auxiliar que faltou HOJE (ontem não entra)', 2, linhas.length);
+  checar('com substituta: o nome dela', { titulo: 'A Cida faltou hoje', sub: 'Substituta: Joana' },
+    { titulo: da('a1').titulo, sub: da('a1').sub });
+  checar('sem substituta: diz que não há', 'Sem substituta registrada', da('a2').sub);
+  const texto = JSON.stringify(linhas);
+  checar('nenhum "R$" no texto', false, texto.includes('R$'));
+  checar('nenhum valor no texto (87,50 / 87.5)', false, /87[.,]5/.test(texto));
+  checar('a linha só tem auxiliarUid, titulo e sub (nada copiado da falta)', ['auxiliarUid', 'sub', 'titulo'],
+    Object.keys(linhas[0]).sort());
+  checar('a falta desfeita some (lista sem ela)', 0, linhasDaFaltaDeHoje([], hoje).length);
+  checar('sem dia, nada', 0, linhasDaFaltaDeHoje(faltasHoje, null).length);
+  checar('com vínculos, a que saiu não entra', ['a1'],
+    linhasDaFaltaDeHoje(faltasHoje, hoje, [{ auxiliarUid: 'a1', ativa: true }, { auxiliarUid: 'a2', ativa: false }]).map((l) => l.auxiliarUid));
+  checar('falta duplicada do mesmo dia vira uma linha', 1,
+    linhasDaFaltaDeHoje([faltasHoje[0], { ...faltasHoje[0] }], hoje).length);
+
+  const hook = semComentarios(ler('src/hooks/useFaltaDaAuxiliarHoje.js'));
+  checar('o Início usa a escuta estreita do dia, não a larga da Central', true,
+    hook.includes('watchFaltasDeHoje') && !hook.includes('watchFaltasDasAuxiliares'));
+  checar('o dia é o mesmo getDateKey com que a Central grava', true, hook.includes('getDateKey()'));
+  const servHoje = servico.slice(servico.indexOf('export function watchFaltasDeHoje'));
+  checar('a consulta do Início é presa ao motorista E ao dia', true,
+    /where\('motoristaUid', '==', motoristaUid\),\s*where\('dateKey', '==', dateKey\)/.test(servHoje));
+  const inicio = semComentarios(ler('src/pages/tio/TioDashboard.jsx'));
+  checar('o Início monta a linha com a régua e leva à Central', true,
+    inicio.includes('useFaltaDaAuxiliarHoje()') && inicio.includes("navigate('/tio/finance/auxiliar')"));
+  checar('o Início não lê valor de substituta', false, /substituta\??\.valor/.test(inicio));
+  checar('a falta de hoje tira o "em dia" (o Para você não aparece por cima)', true,
+    inicio.includes('faltasDaAuxiliar.length === 0'));
+}
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

@@ -82,6 +82,33 @@ export function watchFaltasDasAuxiliares(motoristaUid, onUpdate, onError) {
   );
 }
 
+/**
+ * As faltas de HOJE das auxiliares dele — a escuta ESTREITA do Início
+ * (05/10/2026). A de cima traz todas as faltas, de sempre, porque a Central
+ * reconta as substitutas; o Início só precisa do dia, e abrir a escuta larga
+ * em toda tela de entrada seria ler o histórico inteiro para mostrar uma
+ * linha. Duas igualdades: o Firestore serve com os índices de campo único,
+ * sem índice composto. A rule é a mesma (`motoristaUid` é ele).
+ */
+export function watchFaltasDeHoje(motoristaUid, dateKey, onUpdate, onError) {
+  if (!motoristaUid || !dateKey) {
+    onUpdate([]);
+    return () => {};
+  }
+  return onSnapshot(
+    query(
+      collection(db, 'faltasDaAuxiliar'),
+      where('motoristaUid', '==', motoristaUid),
+      where('dateKey', '==', dateKey)
+    ),
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('watchFaltasDeHoje:', err);
+      onError?.(err);
+    }
+  );
+}
+
 /** "A {nome} faltou hoje" — a falta sem substituta (ele faz a rota sozinho). */
 export async function registrarFaltaDaAuxiliar({ auxiliar, dateKey }) {
   const uid = uidOuErro();

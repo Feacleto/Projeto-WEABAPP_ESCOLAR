@@ -238,6 +238,11 @@ só nome e WhatsApp); o valor do dia vira despesa `monitor` ("Auxiliar" no caixa
 sozinha** (combinado entre os dois) e não há estrelas
 ([faltaDaAuxiliar.js](src/dominio/identidade/faltaDaAuxiliar.js),
 `npm run testar:substitutas`).
+⚠️ **E A FALTA DE HOJE APARECE NO INÍCIO, SEM VALOR** (05/10/2026, decisão
+do dono): uma linha por auxiliar no "Para resolver" — "A Cida faltou hoje" ·
+"Substituta: Joana" ou "Sem substituta registrada" — que leva à Central (com
+a senha). O Início não tem senha: só nomes, nunca R$ (`linhasDaFaltaDeHoje`,
+escuta estreita do dia em `watchFaltasDeHoje`/`useFaltaDaAuxiliarHoje`).
 ⚠️ **AS AVALIAÇÕES ENTRE OS DOIS (05/10/2026):** com 30 dias de vínculo (a
 SOMA dos períodos do par, ativo ou encerrado), o tio RECOMENDA a auxiliar —
 sem estrela: até 3 de 5 pontos fortes e uma frase de até 80 letras, assinada

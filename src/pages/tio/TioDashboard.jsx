@@ -13,6 +13,7 @@ import {
   ArrowRight,
   MailWarning,
   UserPlus,
+  UserX,
   Bus,
 } from 'lucide-react';
 import PedidosDeAcesso from '../../components/tio/PedidosDeAcesso';
@@ -30,6 +31,7 @@ import LinhaComunidade from '../../components/comunidade/LinhaComunidade';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
+import { useFaltaDaAuxiliarHoje } from '../../hooks/useFaltaDaAuxiliarHoje';
 import { useEscolas } from '../../hooks/useEscolas';
 import { usePaymentsByMonth } from '../../hooks/usePayments';
 import { useAbsences } from '../../hooks/useAbsences';
@@ -131,6 +133,8 @@ export default function TioDashboard() {
   const { openTutorial } = useOutletContext() || {};
   const { children, loading: carregandoCriancas } = useChildren();
   const { pedidos } = usePedidosDeAcesso('motorista');
+  // "A Cida faltou hoje" — só nomes, nunca valor (o Início não tem senha).
+  const faltasDaAuxiliar = useFaltaDaAuxiliarHoje();
   const pedidosAbertos = useMemo(
     () => pedidos.filter((p) => p.status === 'aguardando'),
     [pedidos]
@@ -374,7 +378,8 @@ export default function TioDashboard() {
     !(atrasados > 0) &&
     semHorario.length === 0 &&
     !(convitesAbertos > 0) &&
-    absences.length === 0;
+    absences.length === 0 &&
+    faltasDaAuxiliar.length === 0;
   const paraVoce = (
     <ParaVoce
       foraDaRota={!rotaAtiva}
@@ -580,6 +585,8 @@ export default function TioDashboard() {
             atrasados={atrasados}
             marcados={marcados}
             ausentes={absences.length}
+            faltasDaAuxiliar={faltasDaAuxiliar}
+            onAuxiliar={() => navigate('/tio/finance/auxiliar')}
             onHorarios={() => navigate('/tio/horarios')}
             onCriancas={() => navigate('/tio/children')}
             onFinanceiro={() => navigate('/tio/finance')}
@@ -704,9 +711,15 @@ function ParaResolver({
   className = '',
   pedidos, criancas,
   semHorario, convitesAbertos, atrasados, marcados, ausentes,
-  onHorarios, onCriancas, onFinanceiro, onAusentes,
+  faltasDaAuxiliar = [],
+  onHorarios, onCriancas, onFinanceiro, onAusentes, onAuxiliar,
 }) {
   const itens = [];
+  // A falta da auxiliar vem primeiro: muda a manhã dele (faz a rota sozinho
+  // ou chama a substituta). A Central pede a senha; a linha não leva valor.
+  for (const f of faltasDaAuxiliar) {
+    itens.push({ key: `falta-${f.auxiliarUid}`, icon: UserX, titulo: f.titulo, sub: f.sub, onClick: onAuxiliar });
+  }
   if (marcados > 0) {
     itens.push({
       icon: AlertTriangle,
@@ -760,7 +773,7 @@ function ParaResolver({
       <PedidosDeAcesso pedidos={pedidos} criancas={criancas} />
       {itens.map((i) => (
         <button
-          key={i.titulo}
+          key={i.key || i.titulo}
           type="button"
           onClick={i.onClick}
           className="tap flex min-h-16 w-full items-center gap-3 rounded-2xl border border-warningBorder bg-warningSoft p-3.5 text-left"

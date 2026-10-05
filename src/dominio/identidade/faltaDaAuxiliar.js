@@ -207,3 +207,47 @@ export function resumoDoMes(faltas, monthKey) {
     total,
   };
 }
+
+/**
+ * "A CIDA FALTOU HOJE", NO INÍCIO DO TIO (05/10/2026, decisão do dono).
+ *
+ * A falta é coisa da manhã, e a Central (onde ela é registrada) pede a senha.
+ * Então o "Para resolver" do Início ganha uma linha por auxiliar que faltou
+ * HOJE: "A Cida faltou hoje" com "Substituta: Joana" ou "Sem substituta
+ * registrada". Tocar leva à Central, que pede a senha — é lá que se registra
+ * quem cobriu, e o valor.
+ *
+ * ⚠️ SEM VALOR NENHUM. O Início não tem senha, e a auxiliar pode estar com o
+ * celular dele na mão: daqui só saem NOMES. A linha é montada campo a campo —
+ * nunca um spread da falta —, então `substituta.valor` não tem como chegar à
+ * tela por descuido. O teste procura "R$" e o número do valor no texto.
+ *
+ * `vinculos` é opcional. Quando vem (a lista de `auxiliares` do motorista),
+ * só entra quem ainda é auxiliar ATIVA dele. Quando é `null`, vale a falta
+ * como está: a rule só deixa NASCER falta de quem tem o vínculo ativo, e o
+ * nome viaja dentro da própria falta — o Início não precisa abrir uma escuta
+ * de `auxiliares` só para isto.
+ */
+export function linhasDaFaltaDeHoje(faltas, dateKey, vinculos = null) {
+  const ativas = Array.isArray(vinculos)
+    ? new Set(vinculos.filter((v) => v?.ativa === true).map((v) => v.auxiliarUid || v.uid))
+    : null;
+  const vistas = new Set();
+  const linhas = [];
+  const doDia = (Array.isArray(faltas) ? faltas : [])
+    .filter((f) => f && f.auxiliarUid && f.dateKey === dateKey)
+    .sort((a, b) => String(a.nomeDaAuxiliar || '').localeCompare(String(b.nomeDaAuxiliar || ''), 'pt-BR'));
+  for (const f of doDia) {
+    if (vistas.has(f.auxiliarUid)) continue;
+    if (ativas && !ativas.has(f.auxiliarUid)) continue;
+    vistas.add(f.auxiliarUid);
+    const primeiro = String(f.nomeDaAuxiliar || '').trim().split(/\s+/)[0] || 'auxiliar';
+    const substituta = nomeDaSubstituta(f.substituta?.nome);
+    linhas.push({
+      auxiliarUid: f.auxiliarUid,
+      titulo: primeiro === 'auxiliar' ? 'A auxiliar faltou hoje' : `A ${primeiro} faltou hoje`,
+      sub: substituta ? `Substituta: ${substituta.split(' ')[0]}` : 'Sem substituta registrada',
+    });
+  }
+  return linhas;
+}
