@@ -496,6 +496,12 @@ src/
 │                       CONTROLADOR dos dados da turma e o app é OPERADOR;
 │                       base dos dados da criança é contrato + legítimo
 │                       interesse (consentimento só saúde, imagem, analytics)
+│                       E ainda na 1.4 (05/10, à tarde): a equipe da
+│                       auxiliar (vínculo, recibo, falta, substitutas), a
+│                       recomendação e a nota dela, e a passagem da família
+│                       (Termos §7b, que não renumera a cláusula 8). A
+│                       substituta de um dia e a foto postada pela auxiliar
+│                       levam ⚠️ "em construção": sai se a função não entrar
 ├── components/        por domínio: route, agenda, children, payments, map,
 │                      call, notifications, landing, tutorial, festive,
 │                      acesso (o responsável sem link pedindo entrada),

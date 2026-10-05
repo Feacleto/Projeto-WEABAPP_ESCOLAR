@@ -86,6 +86,44 @@ export const LEGAL_DATE = '5 de outubro de 2026';
  *     saiu de toda tela em 02/10/2026), e o encerramento da assinatura pelo
  *     próprio app (existe desde 11/09/2026).
  *   - A parte passou a ser a razão social do MEI, com o nome fantasia ao lado.
+ *
+ * E AINDA ANTES DE PUBLICAR (05/10/2026, à tarde), o que o código ganhou no
+ * mesmo dia e a 1.4 precisa declarar. A versão NÃO sobe: a 1.4 nunca foi ao
+ * ar (no ar está a 1.3) e ninguém a aceitou. Tudo isto vai para a revisão
+ * do advogado junto com o resto da 1.4; nada é publicado antes. Cada frase
+ * foi conferida no código que ela descreve:
+ *   - A AUXILIAR POR PAR (`functions/lib/auxiliares.js`, `reguaDoAuxiliar.js`):
+ *     até dois motoristas por auxiliar, o histórico de quem trabalhou com
+ *     quem (nunca apagado: desativar fecha o período, recontratar abre outro)
+ *     e a CÓPIA da turma com lista fechada de campos
+ *     (`CAMPOS_DA_TURMA_DA_AUXILIAR`) — sem endereço, mensalidade, contrato,
+ *     saúde, aniversário nem recado. Política 3(b), 4, 6(b), 8 e 9.
+ *   - O RECIBO DO PAGAMENTO DELA (`pagamentosDaAuxiliar.js`): o motorista
+ *     anota, ela confirma, a despesa nasce no caixa dele. Política 3(b), 6, 8.
+ *   - A FALTA DELA E AS SUBSTITUTAS (`substitutasService.js`,
+ *     `faltaDaAuxiliar.js`): dado de TERCEIRO que não usa o app, informado
+ *     pelo motorista, que responde por poder cadastrá-lo (Termos 5).
+ *     Base: legítimo interesse do motorista (5.k), com o dado mínimo que as
+ *     rules permitem (nome e WhatsApp). Política 3(e), 6, 8 e 9.
+ *   - A RECOMENDAÇÃO E A NOTA (`avaliacoesDaAuxiliar.js`). Base da
+ *     recomendação: LEGÍTIMO INTERESSE (5.l), e não consentimento, porque o
+ *     desenho é esse — o motorista escreve ANTES de ela dizer qualquer coisa
+ *     (o texto nasce pendente), e o que ela controla é o que acontece depois:
+ *     mostrar, não mostrar ou apagar, a qualquer momento. Isso é a oposição
+ *     garantida do legítimo interesse (art. 18 §2º), não um consentimento
+ *     prévio. Hoje ninguém além dos dois e da equipe lê, nem a aprovada; no
+ *     dia em que outros motoristas lerem (etapa futura), a aprovação dela
+ *     passa a ser a condição, e a base precisa ser revista nesse dia.
+ *   - A PASSAGEM DA FAMÍLIA A OUTRO MOTORISTA (`reguaDaTransferencia.js`):
+ *     comunicação de um controlador (o motorista que sai) a outro (o que
+ *     entra), que só acontece com o "Aceito" da família — base: execução de
+ *     contrato a pedido do titular (5.m). Antes do aceite o parceiro vê só o
+ *     primeiro nome e a escola; isso, sim, é legítimo interesse, e está
+ *     declarado. Termos 7b; Política 4, 6(f) e 8.
+ *   - O AVISO AO PARCEIRO INDICADO (`avisarParceiroIndicado`): leva só a
+ *     marca de quem indicou, nada da família. Política 6(d).
+ * ⚠️ O texto da saúde (1.3) continua sendo o RASCUNHO que espera a revisão
+ * jurídica (`docs/consentimento-saude.md`).
  */
 
 /*
@@ -223,7 +261,7 @@ export const TERMS_SECTIONS = [
     paragraphs: [
       'O Aplicativo é uma ferramenta digital destinada à gestão e ao acompanhamento de transporte escolar privado, oferecida nas seguintes modalidades de uso:',
       '(a) Motorista (Tio), ASSINANTE do Aplicativo: cadastro de crianças, gerenciamento de rotas, controle financeiro e comunicação com responsáveis. O motorista paga a assinatura do aplicativo à plataforma, nas condições do contrato de assinatura que ele aceita no próprio Aplicativo;',
-      '(b) Auxiliar do motorista: pessoa que trabalha com o motorista na rota. Ela tem conta própria, criada somente pelo convite enviado por ele, e vê apenas o que é necessário para ajudar na rota do dia, sem valores de mensalidade, contrato ou informações de saúde. O motorista pode desativar a auxiliar a qualquer momento e responde pelo uso que ela faz do Aplicativo;',
+      '(b) Auxiliar do motorista: pessoa que trabalha com o motorista na rota. Ela tem conta própria, criada somente pelo convite enviado por ele, e pode trabalhar com até dois motoristas ao mesmo tempo, cada um pelo seu convite. Ela vê apenas o que é necessário para ajudar na rota do dia, sem endereço, valores de mensalidade, contrato ou informações de saúde. Cada motorista pode desativá-la a qualquer momento, só na perua dele, e responde pelo uso que ela faz do Aplicativo no trabalho com ele;',
       '(c) Responsável (Pai/Mãe): acompanhamento do trajeto da criança, status do transporte, contrato com o motorista e registro de pagamentos;',
       '(d) Acompanhamento por link, sem conta: o responsável pode enviar a quem vai buscar a criança um link que vale até a meia-noite daquele dia; e o responsável ou o motorista pode enviar ao segundo responsável um link que vale por 24 horas, com o qual ele também pode receber no celular os avisos da rota. Quem abre esses links vê apenas o dia da criança — as etapas do transporte —, nunca dinheiro, endereço ou contrato.',
     ],
@@ -259,7 +297,9 @@ export const TERMS_SECTIONS = [
       'Ao se cadastrar como motorista, você declara possuir todas as autorizações legais para exercer a atividade de transporte escolar (CNH, alvará municipal quando exigido, vistoria veicular, etc.).',
       'Você é responsável pelo conteúdo cadastrado, pela exatidão dos dados das crianças e pela comunicação com os responsáveis.',
       'Os dados das famílias e das crianças que você cadastra e usa no seu serviço de transporte são dados do SEU negócio: para eles, você é o controlador, nos termos da LGPD, e o Aplicativo trata esses dados por sua conta, como operador, conforme estes Termos e a Política de Privacidade. Cabe a você cadastrar só o necessário para o transporte e informar as famílias de que usa o Aplicativo.',
-      'Se você convidar uma auxiliar, você responde pelo uso que ela faz do Aplicativo, e deve desativá-la quando ela deixar de trabalhar com você.',
+      'Se você convidar uma auxiliar, você responde pelo uso que ela faz do Aplicativo no trabalho com você, e deve desativá-la quando ela deixar de trabalhar com você. O que você anota sobre ela — o pagamento, as faltas e a recomendação — deve ser verdadeiro.',
+      'Se você cadastrar substitutas (pessoas que cobriram a falta da auxiliar), você declara que elas sabem e concordam em ter o nome e o WhatsApp na sua lista, e deve tirá-las da lista quando elas pedirem. Elas não usam o Aplicativo e não são avisadas por ele.',
+      'Se você pedir para passar uma família para outro motorista (cláusula 7b), você declara que conversou com a família antes e que o outro motorista tem condições de prestar o serviço.',
       'O Aplicativo é uma ferramenta de apoio operacional; não substitui sua responsabilidade legal sobre o transporte e a segurança das crianças.',
       `${COMPANY_INFO.name} não é responsável por incidentes durante o transporte, atrasos, mudanças de rota, problemas mecânicos ou questões trabalhistas/contratuais entre motorista e responsáveis.`,
     ],
@@ -280,6 +320,21 @@ export const TERMS_SECTIONS = [
       `O ${COMPANY_INFO.name} oferece registro e acompanhamento de mensalidades, mas não processa nem intermedeia transações financeiras.`,
       'Os pagamentos ocorrem diretamente entre o responsável e o motorista, fora do Aplicativo (PIX, dinheiro ou outros meios combinados entre as partes).',
       `O ${COMPANY_INFO.name} não tem responsabilidade por valores devidos, atrasos, estornos ou disputas financeiras entre as partes.`,
+      'O mesmo vale para o pagamento da auxiliar: o motorista anota no Aplicativo o que pagou e ela confirma que recebeu. É um recibo dos dois, não um pagamento — o dinheiro não passa pelo Aplicativo.',
+    ],
+  },
+  {
+    // ⚠️ "7b" E NÃO "8": a Política cita a "cláusula 8 dos Termos" (a
+    // geolocalização) em três lugares. Renumerar quebraria as três em
+    // silêncio — o mesmo motivo da "2b" da Política.
+    id: 'transferencia-familia',
+    title: '7b. Passagem da família para outro motorista',
+    paragraphs: [
+      'O motorista pode pedir, na ficha da criança, para passar o transporte dela a um motorista PARCEIRO (alguém que ele indicou ao Aplicativo, ou que o indicou). Nunca a qualquer motorista: a lista é só a dos parceiros dele.',
+      'São três passos, um de cada pessoa: (1) o motorista de agora pede; (2) o parceiro aceita ou recusa, vendo só o primeiro nome da criança e a escola; (3) a FAMÍLIA lê o que vai e o que fica, e decide. Nada muda antes do "Aceito" da família. O motorista de agora pode desistir até lá, e o pedido que não é concluído em 7 (sete) dias depois de feito vence sozinho: a criança continua com o motorista de agora.',
+      'Com o aceite, a criança entra na turma do novo motorista com um cadastro novo e sai da turma do anterior. O novo motorista combina com a família o valor e os horários e envia um contrato novo, que a família assina no Aplicativo. As mensalidades em aberto continuam devidas ao motorista anterior, e o novo só cobra a partir do mês seguinte.',
+      'A passagem está disponível só para motoristas com assinatura do aplicativo; quem vai receber a família e ainda não assina precisa assinar antes. Cada motorista pode pedir até 10 (dez) passagens por mês; acima disso, pelo suporte.',
+      'O que vai para o novo motorista, e o que nunca vai, está na seção 4 da Política de Privacidade.',
     ],
   },
   {
@@ -358,7 +413,7 @@ export const PRIVACY_SECTIONS = [
     title: '1. Introdução',
     paragraphs: [
       `Esta Política de Privacidade descreve como o ${COMPANY_INFO.name} ("nós", "Aplicativo") coleta, usa, compartilha e protege dados pessoais, em conformidade com a Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais — LGPD).`,
-      'Para fins desta Política, considere "Titular" qualquer pessoa cujos dados são tratados, incluindo motoristas, auxiliares, responsáveis, crianças cadastradas e as pessoas indicadas por eles (como o segundo responsável e quem busca a criança).',
+      'Para fins desta Política, considere "Titular" qualquer pessoa cujos dados são tratados, incluindo motoristas, auxiliares, responsáveis, crianças cadastradas e as pessoas indicadas por eles (como o segundo responsável, quem busca a criança e as substitutas que o motorista anota quando a auxiliar falta).',
     ],
   },
   {
@@ -373,8 +428,8 @@ export const PRIVACY_SECTIONS = [
       // ferramenta do negócio dele (LGPD art. 5º VI e VII, art. 39). A
       // plataforma é controladora só do que ela mesma decide fazer.
       'Na LGPD, CONTROLADOR é quem decide por que e como os dados são usados, e OPERADOR é quem trata os dados por conta do controlador, seguindo as instruções dele (art. 5º, VI e VII). No Aplicativo, os dois papéis existem, e dependem do dado:',
-      '(a) OS DADOS DA TURMA DO MOTORISTA: os dados das famílias e das crianças que o motorista cadastra e usa no serviço de transporte dele (nome, endereço, escola, horários, etapas do transporte, mensalidades, contrato, faltas e recados) são do negócio do motorista. Para esses dados, o MOTORISTA é o controlador, e o Aplicativo é o OPERADOR: guarda e trata esses dados por conta dele, conforme as instruções dele e os Termos de Uso (art. 39).',
-      `(b) OS DADOS DO PRÓPRIO APLICATIVO: para as finalidades da plataforma, o controlador é ${CONTROLADOR_POR_EXTENSO}. São elas: as contas e o login; a cobrança da assinatura do aplicativo paga pelo motorista; a segurança, os registros de acesso e o limite de tentativas; a comunidade (foto da turma, motoristas parceiros e a nota que as famílias dão ao motorista); os níveis do motorista; as avaliações do Aplicativo; as métricas de uso; e a comunicação da plataforma com os usuários.`,
+      '(a) OS DADOS DA TURMA DO MOTORISTA: os dados das famílias e das crianças que o motorista cadastra e usa no serviço de transporte dele (nome, endereço, escola, horários, etapas do transporte, mensalidades, contrato, faltas e recados), e o que ele anota sobre a equipe dele (o vínculo com a auxiliar, o pagamento dela, as faltas dela e as substitutas), são do negócio do motorista. Para esses dados, o MOTORISTA é o controlador, e o Aplicativo é o OPERADOR: guarda e trata esses dados por conta dele, conforme as instruções dele e os Termos de Uso (art. 39).',
+      `(b) OS DADOS DO PRÓPRIO APLICATIVO: para as finalidades da plataforma, o controlador é ${CONTROLADOR_POR_EXTENSO}. São elas: as contas e o login; a cobrança da assinatura do aplicativo paga pelo motorista; a segurança, os registros de acesso e o limite de tentativas; a comunidade (foto da turma, motoristas parceiros, a nota que as famílias dão ao motorista, a recomendação que o motorista escreve para a auxiliar e a nota que a auxiliar dá ao motorista); os níveis do motorista; as avaliações do Aplicativo; as métricas de uso; e a comunicação da plataforma com os usuários.`,
       'Pedidos de titular — saber quais dados existem, corrigir, apagar, entre outros (seção 9) — podem ser feitos sempre pelo canal do Aplicativo, abaixo, sobre qualquer um desses dados. Quando o pedido for sobre dados da turma de um motorista, nós o atendemos junto com ele ou o encaminhamos a ele, e avisamos você do que foi feito.',
       `Encarregado pelo Tratamento de Dados Pessoais: ${ENCARREGADO}.`,
     ],
@@ -421,12 +476,16 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'Tratamos os seguintes dados pessoais:',
       '(a) Do motorista: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), cidade e bairro, foto, nome e logotipo da marca dele, chave PIX, CPF ou CNPJ e endereço (para o contrato com as famílias e a cobrança da assinatura), alvará (somente quando ele o envia para receber o selo), despesas, quilômetros rodados nas rotas (só o total, sem trajeto) e a lista de postos de combustível dele, e a localização do veículo durante as rotas e nas leituras únicas descritas na cláusula 8 dos Termos;',
-      '(b) Da auxiliar do motorista: nome, e-mail, telefone e as marcações que ela faz na rota;',
+      '(b) Da auxiliar do motorista: nome, e-mail, telefone e as marcações que ela faz na rota; com cada motorista com quem trabalha (até dois ao mesmo tempo), o vínculo de trabalho: quando começou, quando terminou cada período (quem sai e volta tem mais de um) e o valor mensal que o motorista informou no convite, se informou; o recibo de cada pagamento (o mês, o valor que o motorista anotou ter pago, a data da anotação e a data em que ela confirmou o recebimento); as faltas dela que o motorista registra (o dia e quem a substituiu); a recomendação que um motorista escreve para ela; e a nota que ela dá ao motorista;',
       '(c) Do responsável: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), foto (se ele enviar), o vínculo com a criança, o aceite do contrato com o motorista e os avisos de pagamento e comprovantes que ele envia;',
       '(d) Da criança (informados pelo motorista ou pelo responsável): nome, gênero, foto, data de aniversário, escola, turma e professora, endereço de embarque e da escola, horários, as etapas do transporte de cada dia, faltas avisadas, recados, observações do transporte (por exemplo, o portão de entrada), valor e situação das mensalidades e o contrato de transporte;',
       '(d.1) Informações de saúde da criança (opcional): quando o responsável opta por informá-las, com consentimento específico e destacado, guardamos o texto que ele escreveu e a data do consentimento. Essa informação é exibida apenas ao motorista responsável pelo transporte daquela criança, com a finalidade de permitir atendimento adequado em caso de emergência durante o trajeto. Ela pode ser apagada pelo responsável a qualquer momento, na ficha da criança, e é excluída junto com o cadastro da criança;',
-      '(e) De terceiros, informados pela família ou pelo motorista: nome e telefone do segundo responsável e de quem vai buscar a criança, e o telefone de um motorista colega que alguém indicou ao Aplicativo;',
-      '(f) Avaliações: a nota e o comentário que o usuário dá ao Aplicativo, e a nota que o responsável dá ao motorista (seção 6);',
+      '(e) De terceiros, informados pela família ou pelo motorista: nome e telefone do segundo responsável e de quem vai buscar a criança, o telefone de um motorista colega que alguém indicou ao Aplicativo e, das SUBSTITUTAS que o motorista anota quando a auxiliar falta, só o nome e o WhatsApp, os dias em que cada uma cobriu a falta e o valor que o motorista anotou ter pago por dia. Nunca CPF, endereço ou foto da substituta;',
+      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
+      // conferir contra o código antes de ir ao advogado; se a função não
+      // entrar, esta frase sai.
+      '(e.1) Do link de um dia da substituta: quando o motorista manda a uma substituta o link que mostra a rota do dia, guardamos o nome dela, o dia, quando o link deixou de valer e um resumo cifrado do segredo do link — não o próprio link;',
+      '(f) Avaliações: a nota e o comentário que o usuário dá ao Aplicativo; a nota que o responsável dá ao motorista; a recomendação que o motorista escreve para a auxiliar (até 3 pontos fortes de uma lista fixa e uma frase curta, assinada por ele); e a nota de 1 a 5 estrelas que a auxiliar dá ao motorista (seção 6);',
       '(g) Dados técnicos: identificadores do aparelho para as notificações, versão do navegador, registros de acesso (logs) e, no limite de tentativas contra abuso (por exemplo, na abertura de convites), um resumo cifrado do endereço IP — não o próprio número;',
       '(h) Dados de uso: interações com o Aplicativo e, somente com o seu aceite, as métricas do Google Analytics (seção 10).',
     ],
@@ -439,6 +498,24 @@ export const PRIVACY_SECTIONS = [
       'Os dados da criança usados no transporte (nome, endereço de embarque, escola, horários, contato da família) são cadastrados pelo motorista para prestar o serviço contratado pela família, e servem para levar e trazer a criança com segurança e manter a família informada. A base legal está na seção 5.',
       'As informações de saúde, quando existirem, são escritas pelo próprio responsável, com consentimento específico e destacado, separado do aceite destes termos (art. 11, I, e art. 14, §1º). O motorista apenas as lê, e não pode escrevê-las. A auxiliar do motorista não as vê.',
       'A FOTO DA TURMA: numa data especial, o motorista pode publicar uma foto da turma para as famílias atendidas por ele. A criança só aparece se o responsável dela tiver respondido "Sim" à pergunta "Pode aparecer em foto da turma?", no Aplicativo, e essa resposta pode ser mudada a qualquer momento na ficha da criança. A foto é vista só pelas famílias daquele motorista, nunca por outros motoristas, e é apagada automaticamente em 30 (trinta) dias. Foto publicada para outros motoristas parceiros não pode conter criança.',
+      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
+      // conferir contra o código antes de ir ao advogado; se a função não
+      // entrar, esta frase sai.
+      'A auxiliar também pode publicar a foto da turma, pelo celular dela e em nome do motorista, com as mesmas regras: só para as famílias daquele motorista e só com as crianças cuja família respondeu "Sim". As famílias veem apenas o primeiro nome de quem publicou.',
+      // A CÓPIA DA AUXILIAR É UMA LISTA FECHADA (`CAMPOS_DA_TURMA_DA_AUXILIAR`
+      // em functions/lib/reguaDoAuxiliar.js): campo novo da criança não chega
+      // a ela sem alguém decidir. Esta frase é aquela lista lida em voz alta.
+      'O QUE A AUXILIAR VÊ DA CRIANÇA: o servidor mantém para ela uma cópia reduzida da turma de cada motorista com quem ela trabalha, com nome, foto, gênero, escola, turma, professora, telefone da escola, horários, as etapas do transporte e o nome e o telefone do responsável, e as faltas avisadas para o dia, sem o recado. Ela NUNCA vê o endereço, a data de aniversário, o segundo responsável, mensalidades, contrato, recados nem informações de saúde. A cópia deixa de ser lida por ela no instante em que o motorista a desativa, e é apagada quando o motorista não tem mais nenhuma auxiliar ativa.',
+      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
+      // conferir contra o código antes de ir ao advogado; se a função não
+      // entrar, esta frase sai.
+      'O QUE A SUBSTITUTA DE UM DIA VÊ: pelo link do dia, sem conta, só a rota daquele dia — o primeiro nome de cada criança, a escola, a hora de pegar e de entregar e a etapa do transporte (em casa, na perua, na escola, entregue). Ela nunca vê sobrenome, foto, telefone, endereço, mensalidade, contrato nem saúde, e não marca nada. O link para à meia-noite, quando a rota é encerrada ou quando o motorista o encerra, o que vier primeiro.',
+      // A LISTA É `CAMPOS_QUE_VAO` / `CAMPOS_QUE_NUNCA_VAO` em
+      // functions/lib/reguaDaTransferencia.js. ⚠️ A tela da família
+      // (`O_QUE_VAI`) não cita o e-mail do responsável nem o telefone da
+      // escola, que vão; aqui eles estão, para o documento não prometer menos
+      // do que o código faz.
+      'NA PASSAGEM PARA OUTRO MOTORISTA (cláusula 7b dos Termos): antes de a família aceitar, o motorista parceiro vê só o primeiro nome da criança e o nome da escola. Depois do "Aceito" da família, vão para o novo motorista o nome, o gênero, a data de aniversário, a turma e a professora da criança; o endereço de casa (com o ponto no mapa) e a escola (nome, endereço, telefone e ponto no mapa); e o nome, o e-mail e o WhatsApp do responsável, e o nome e o WhatsApp do segundo responsável. NUNCA vão: as informações de saúde e o consentimento delas, a foto, a resposta sobre a foto da turma, mensalidades e pagamentos, o contrato, os horários, as etapas e o histórico do transporte, quem busca a criança, as observações e recados. Essas autorizações e esses registros foram dados ao motorista anterior e ficam com ele; com o novo, a família combina e autoriza tudo de novo.',
       'Não coletamos dados diretamente das crianças: quem os informa é o motorista ou o responsável, para fins de operação do transporte.',
       'Não usamos os dados das crianças para perfilamento, marketing, publicidade ou compartilhamento com terceiros para fins comerciais.',
     ],
@@ -467,6 +544,29 @@ export const PRIVACY_SECTIONS = [
       '(g) Imagem da criança na foto da turma — base: consentimento específico do responsável (art. 14, §1º), dado pela resposta "Sim" no Aplicativo e revogável a qualquer momento, sem custo, na ficha da criança (art. 8º, §5º);',
       '(h) Segurança, prevenção de fraude e limite de tentativas, comunidade, níveis, avaliações do Aplicativo e comunicação da plataforma — base: legítimo interesse (art. 7º, IX), sem uso de dados de criança;',
       '(i) Métricas de uso pelo Google Analytics — base: consentimento (art. 7º, I), dado no aviso de cookies e revogável a qualquer momento.',
+      // AS LETRAS NOVAS VÊM DEPOIS DA (i), em vez de renumerar: o comentário
+      // de cada versão cita a letra (5.c, 5.g), e renumerar faria as citações
+      // antigas apontarem para outra coisa.
+      '(j) A conta da auxiliar, o vínculo dela com cada motorista, a cópia reduzida da turma que ela vê e o recibo do pagamento dela — base: execução do contrato que ela aceita ao aceitar estes Termos e do acerto de trabalho entre ela e o motorista, de que ela é parte (art. 7º, V); o histórico de quem trabalhou com quem, que continua depois de ela ser desativada, e o recibo, que serve de prova aos dois — base: legítimo interesse dos dois e exercício regular de direitos (art. 7º, VI e IX). Na cópia da turma, os dados da criança seguem a letra (e);',
+      '(k) As faltas da auxiliar e a lista de substitutas que o motorista anota — base: legítimo interesse do motorista em organizar a equipe dele (art. 7º, IX), com o mínimo de dados: da substituta, só nome e WhatsApp;',
+      // A RECOMENDAÇÃO É LEGÍTIMO INTERESSE, E NÃO CONSENTIMENTO, pelo
+      // desenho: o motorista escreve antes de ela dizer qualquer coisa (o texto
+      // nasce pendente), então não há consentimento PRÉVIO a declarar. O que
+      // ela tem é a oposição a qualquer momento — mostrar, não mostrar,
+      // apagar —, que é a garantia do legítimo interesse (art. 18, §2º). No
+      // dia em que outros motoristas lerem a aprovada (etapa futura), rever.
+      '(l) A recomendação que o motorista escreve para a auxiliar e a nota que ela dá a ele — base: legítimo interesse (art. 7º, IX) em registrar como foi trabalhar junto. A auxiliar decide se a recomendação aparece, e pode ocultá-la ou apagá-la a qualquer momento, sem dar motivo;',
+      // A PASSAGEM DA FAMÍLIA é comunicação de dados de um controlador (o
+      // motorista que sai) a outro (o que entra). Ela só acontece com o
+      // "Aceito" da família, e a família aceita para continuar sendo
+      // atendida: é procedimento de um contrato novo, a pedido dela (art. 7º,
+      // V). A prévia ao parceiro (primeiro nome e escola) acontece ANTES do
+      // aceite, e por isso tem base própria, declarada.
+      '(m) A passagem da família para outro motorista — base: execução de contrato a pedido do titular (art. 7º, V): os dados só vão ao novo motorista quando a família toca em "Aceito", para que ele possa atendê-la e fazer o contrato novo com ela, sempre no melhor interesse da criança (art. 14). Antes do aceite, mostrar ao parceiro só o primeiro nome e a escola, para ele dizer se pode atender — base: legítimo interesse do motorista (art. 7º, IX), com o mínimo que permite essa resposta;',
+      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
+      // conferir contra o código antes de ir ao advogado; se a função não
+      // entrar, esta frase sai.
+      '(n) O link de um dia da substituta — base: legítimo interesse do motorista em fazer a rota acontecer no dia em que a auxiliar falta (art. 7º, IX), no melhor interesse da criança (art. 14), com o mínimo de dados descrito na seção 4.',
     ],
   },
   {
@@ -475,12 +575,24 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'Dentro do Aplicativo, cada pessoa vê só o que precisa:',
       '(a) Entre o motorista e as famílias atendidas por ele — no escopo necessário para o serviço (status do transporte, localização aproximada da perua durante a rota, contrato, mensalidades, recados). As famílias também veem o nome, a marca, o telefone, a chave PIX e os dados do motorista que constam no contrato;',
-      '(b) A auxiliar do motorista vê só a turma do dia: nome, foto, escola, turma, horários, as etapas do transporte e o contato do responsável. Não vê mensalidades, contrato nem informações de saúde;',
+      '(b) A auxiliar do motorista vê, de cada motorista com quem trabalha e só enquanto está ativa com ele, a cópia reduzida da turma descrita na seção 4 (sem endereço, mensalidades, contrato nem informações de saúde), a marca e a chave PIX do motorista. Do vínculo, os dois veem o mesmo: os períodos de trabalho e o valor informado no convite. O recibo do pagamento é visto só pelos dois, e ela continua vendo os recibos dela depois de desativada. As faltas dela e a lista de substitutas são vistas SÓ pelo motorista; a auxiliar não as vê. Quem já trabalhou com o motorista continua na lista "quem já trabalhou comigo" dele, com os períodos;',
+      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
+      // conferir contra o código antes de ir ao advogado; se a função não
+      // entrar, esta frase sai.
+      '(b.1) A substituta que recebe do motorista o link de um dia vê só a rota daquele dia, como descrito na seção 4, e só enquanto o link valer. O nome e o WhatsApp dela são vistos só pelo motorista que a cadastrou;',
       '(c) Quem recebe um link de acompanhamento (quem vai buscar a criança, ou o segundo responsável) vê só o dia da criança, enquanto o link valer — sem dinheiro, endereço ou contrato;',
-      '(d) Em "Indicar para uma família", o motorista passa a uma família dele o nome e o WhatsApp de um motorista parceiro. São dados do próprio parceiro, que aceitou a parceria; a família decide se entra em contato. Nada da família é passado ao parceiro;',
-      '(e) Serviços de terceiros, como operadores, na medida descrita na seção 2b;',
-      '(f) Autoridades competentes — quando exigido por ordem judicial ou obrigação legal.',
+      '(d) Em "Indicar para uma família", o motorista passa a uma família dele o nome e o WhatsApp de um motorista parceiro. São dados do próprio parceiro, que aceitou a parceria; a família decide se entra em contato. O parceiro recebe um aviso de que foi indicado, com o nome da marca de quem indicou e nada mais: nenhum dado da família é passado a ele. Entre parceiros, cada um vê também o nome das escolas atendidas pelo outro;',
+      '(e) Na passagem da família para outro motorista (cláusula 7b dos Termos), o motorista de agora comunica ao novo motorista os dados da criança e do responsável listados na seção 4 — e só depois do "Aceito" da família. Antes disso, o parceiro vê só o primeiro nome da criança e a escola, e a família só vê o pedido depois que o parceiro aceita. Dali em diante, o novo motorista passa a ser o controlador desses dados para o serviço dele, e o anterior continua com os registros do período em que atendeu a família (mensalidades, contrato e histórico), que o novo nunca vê;',
+      '(f) Serviços de terceiros, como operadores, na medida descrita na seção 2b;',
+      '(g) Autoridades competentes — quando exigido por ordem judicial ou obrigação legal.',
       'A NOTA QUE O RESPONSÁVEL DÁ AO MOTORISTA (de 1 a 5 estrelas, uma por semestre) é guardada com o identificador de quem a deu, só para permitir que ele a mude dentro do semestre. O motorista nunca vê nota individual nem quem a deu: vê apenas a média de um semestre já encerrado, e só quando pelo menos cinco famílias responderam. O motorista não avalia as famílias.',
+      'A RECOMENDAÇÃO QUE O MOTORISTA ESCREVE PARA A AUXILIAR só pode ser feita depois de 30 (trinta) dias de trabalho juntos, somando os períodos. Ela tem até 3 pontos fortes de uma lista fixa e uma frase curta, assinada por ele. A frase não aceita telefone, e-mail, link, nome de criança ou de família da turma dele, nem promessa de segurança. A auxiliar lê antes e escolhe mostrar, não mostrar ou apagar, e pode mudar de ideia a qualquer momento; se o motorista editar o texto, ela precisa aprovar de novo. Hoje a recomendação é vista só pelos dois e pela equipe do Alô Buzinou, que pode retirar uma recomendação abusiva e guarda o motivo.',
+      'A NOTA QUE A AUXILIAR DÁ AO MOTORISTA (de 1 a 5 estrelas, uma por motorista com quem ela trabalhou, mudável) é vista, nota a nota, só pela equipe do Alô Buzinou. O motorista vê apenas a média, e só quando pelo menos 3 (três) auxiliares diferentes responderam — com menos, a média diria quem deu cada nota.',
+      'Nenhuma dessas notas ou recomendações vira lista pública, ranking ou cadastro de pessoas a evitar, e nenhuma é mostrada às famílias.',
+      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
+      // conferir contra o código antes de ir ao advogado; se a função não
+      // entrar, esta frase sai.
+      'Quando a auxiliar publica a foto da turma em nome do motorista, as famílias daquele motorista veem a foto e apenas o primeiro nome de quem a publicou.',
       'Não vendemos, alugamos ou cedemos dados pessoais para terceiros com finalidade de marketing ou publicidade.',
     ],
   },
@@ -504,6 +616,21 @@ export const PRIVACY_SECTIONS = [
       'O endereço e o ponto dos postos de combustível anotados pelo motorista ficam na lista de postos dele (no máximo 20, saindo o visto há mais tempo) enquanto a conta existir.',
       'O registro diário de embarque e entrega (data e horário de cada etapa, sem qualquer dado de localização) é apagado automaticamente após 60 (sessenta) dias.',
       'Os avisos do Aplicativo (o sino) são apagados automaticamente após 90 (noventa) dias.',
+      // ⚠️ SÓ O QUE O CÓDIGO FAZ (05/10/2026). Vínculo da auxiliar, recibos,
+      // faltas, substitutas, a nota dela ao motorista e o registro da passagem
+      // de família NÃO têm prazo nem varredura no código: "enquanto a conta
+      // existir" é a frase verdadeira hoje, e o prazo é PENDÊNCIA do dono.
+      // A cópia da turma e as recomendações têm regra no código, e ela está
+      // escrita como é.
+      'A cópia reduzida da turma que a auxiliar vê é apagada automaticamente quando o motorista deixa de ter auxiliar ativa; a criança que sai da turma sai da cópia na hora.',
+      'O vínculo entre o motorista e a auxiliar (os períodos de trabalho) não é apagado quando ele a desativa: é o histórico de quem trabalhou com quem, e fica enquanto a conta existir. O mesmo vale para os recibos de pagamento dela, as faltas dela registradas pelo motorista, a lista de substitutas dele e a nota que a auxiliar dá ao motorista.',
+      'A substituta tirada da lista pelo motorista deixa de aparecer nela, mas o nome e o WhatsApp dela continuam nas faltas que ela já cobriu, e o nome na despesa daquele dia no caixa do motorista, como controle do mês dele, enquanto a conta existir.',
+      'A recomendação que o motorista escreveu para a auxiliar é apagada quando um dos dois a apaga ou quando a conta de qualquer um dos dois é excluída. A retirada pela equipe por abuso fica registrada, com o motivo, até a exclusão de uma dessas contas.',
+      'Na passagem da família para outro motorista, o registro do pedido (quem pediu, para quem, o primeiro nome da criança, a escola e as datas de cada passo) fica enquanto as contas existirem. O cadastro anterior da criança continua com o motorista anterior, inativo, com os registros do período em que ele atendeu a família, e segue os prazos desta seção.',
+      // ⚠️ DESCREVE A F3/F1.5 AINDA EM CONSTRUÇÃO (sessão negocio, 05/10/2026);
+      // conferir contra o código antes de ir ao advogado; se a função não
+      // entrar, esta frase sai.
+      'O link de um dia da substituta para de funcionar à meia-noite daquele dia, quando a rota é encerrada ou quando o motorista o encerra. Do link, guardamos só o nome dela, o dia, quando ele deixou de valer e o resumo cifrado do segredo, enquanto a conta do motorista existir.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
   },
@@ -524,6 +651,8 @@ export const PRIVACY_SECTIONS = [
       '(j) oposição a tratamento que viole a LGPD.',
       `Para exercer esses direitos, envie e-mail para ${COMPANY_INFO.dpoEmail} com seu nome completo, e-mail da conta e descrição da solicitação. Responderemos em até 15 (quinze) dias. O responsável pode fazer o pedido também pelos dados da criança sob sua guarda.`,
       'Quando o pedido for sobre dados da turma de um motorista (seção 2, item a), ele é atendido junto com o motorista, que é o controlador desses dados, ou encaminhado a ele — e você é avisado do encaminhamento. Algumas informações você mesmo corrige ou apaga no Aplicativo, como as de saúde da criança e a resposta sobre a foto da turma.',
+      `A AUXILIAR pode ocultar ou apagar a qualquer momento, no Aplicativo, a recomendação que recebeu. Para o resto — o vínculo, os recibos, as faltas registradas pelo motorista, a nota que ela deu ou a própria conta —, o pedido vai para ${COMPANY_INFO.dpoEmail}. Ao excluir a conta dela, as recomendações são apagadas automaticamente; os registros que são do negócio de cada motorista (vínculo, recibos e faltas) são tratados junto com ele, guardado o que a lei obriga.`,
+      `A SUBSTITUTA, que não usa o Aplicativo, pode pedir ao motorista que a tire da lista dele — ele faz isso no próprio Aplicativo, em "Minhas substitutas" — ou pedir por ${COMPANY_INFO.dpoEmail}, informando o nome e o WhatsApp. Pelo e-mail, o pedido é atendido junto com o motorista, inclusive sobre o nome dela nas faltas que já cobriu.`,
     ],
   },
   {
