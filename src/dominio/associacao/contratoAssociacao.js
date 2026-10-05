@@ -428,6 +428,11 @@ export function precisaRenovar(contrato, janelaDias = JANELA_DE_RENOVACAO, agora
  *
  * A ordem é pela emissão (`emitidoEm`); sem ela (ainda não voltou do
  * servidor), pelo número que o id carrega (`{uid}_{Date.now()}`).
+ *
+ * ⚠️ `contratoParaAssinar` TEM ESPELHO NO SERVIDOR: `contratoMaisRecente` em
+ * functions/lib/reguaDaTransferencia.js, que decide se o tio pode receber uma
+ * família (o mais recente aceito, do plano de agora). `npm run
+ * testar:transferencia` compara os dois caso a caso — mudar um é mudar o outro.
  */
 function emissaoMs(c) {
   const e = c?.emitidoEm;

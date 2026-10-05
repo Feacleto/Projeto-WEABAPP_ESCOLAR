@@ -1776,9 +1776,11 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   o pedido aberto e "Pronto. Agora você pode aceitar a família."; contrato já
   aceito para o mesmo plano volta direto (`contratoFechaAssinatura`). O aceite
   da família segue sendo um toque dele. ⚠️ **O servidor exige os dois**:
-  `responderTransferencia` lê `contratosAssociacao` dele e só aceita com um
-  ACEITO do plano de agora (`contratoAceitoDoPlano`); senão `precisaAssinar`
-  (com plano, a tela leva só ao contrato).
+  `responderTransferencia` lê `contratosAssociacao` dele e só aceita se o
+  MAIS RECENTE estiver aceito e for do plano de agora (`contratoAceitoDoPlano`,
+  com `contratoMaisRecente` espelhando `contratoParaAssinar` — a mesma
+  pergunta da tela); pendente novo recusa mesmo com um aceito velho, com
+  `precisaAssinar` (com plano, a tela leva só ao contrato).
   ⚠️ **Teto de 10 por mês, por tio** (F2.4): contam os pedidos que ELE fez
   no mês de Brasília — abertos, concluídos e os que ele cancelou; o "não
   posso" do parceiro e o vencido não (`pedidosQueContam`, índice deUid +

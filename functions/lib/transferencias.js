@@ -132,14 +132,15 @@ function makeResponderTransferencia(db) {
     const { id, aceito } = request.data || {};
     if (!idValido(id)) throw new HttpsError('invalid-argument', 'Pedido não encontrado.');
     const ref = db.doc(`${COLECAO}/${id}`);
-    // Os contratos da assinatura dele: o aceite exige um ACEITO do plano de
-    // agora (`contratoAceitoDoPlano`). Igualdade só no tioUid: índice de
-    // campo único, e são poucos por tio.
+    // Os contratos da assinatura dele: o aceite exige que o MAIS RECENTE
+    // esteja aceito e seja do plano de agora (`contratoAceitoDoPlano`).
+    // Igualdade só no tioUid: índice de campo único, e são poucos por tio —
+    // a ordem é feita na régua, pela emissão.
     const [snap, eu, ligada, contratos] = await Promise.all([
       ref.get(),
       db.doc(`users/${uid}`).get(),
       cobrancaLigada(db),
-      db.collection('contratosAssociacao').where('tioUid', '==', uid).select('aceitoEm', 'conteudo.plano').limit(50).get(),
+      db.collection('contratosAssociacao').where('tioUid', '==', uid).select('aceitoEm', 'emitidoEm', 'conteudo.plano').limit(50).get(),
     ]);
     const t = snap.exists ? snap.data() : null;
     if (!t || t.paraUid !== uid) throw new HttpsError('not-found', 'Pedido não encontrado.');
@@ -158,7 +159,7 @@ function makeResponderTransferencia(db) {
       uid,
       t,
       parceiro: eu.data(),
-      contratoAceito: R.contratoAceitoDoPlano(contratos.docs.map((s) => s.data()), eu.get('plano')),
+      contratoAceito: R.contratoAceitoDoPlano(contratos.docs.map((s) => ({ id: s.id, ...s.data() })), eu.get('plano')),
     });
     if (!v.ok) throw new HttpsError('failed-precondition', v.erro, v.precisaAssinar ? { precisaAssinar: true } : undefined);
     const lote = db.batch();

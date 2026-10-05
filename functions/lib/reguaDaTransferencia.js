@@ -226,16 +226,42 @@ function podePedir({ cobrancaLigada, uid, tio, crianca, parceiroUid, parceiro, e
 }
 
 /**
- * Ele tem um contrato da assinatura ACEITO para o plano de agora? Um doc de
- * `contratosAssociacao` dele com `aceitoEm` e `conteudo.plano.id` igual a
- * `users.plano` — o mesmo par que a rule do contrato compara na emissão.
- * Aceito de OUTRO plano (trocou de mensal para anual e não assinou o novo)
- * não vale, nem o pendente.
+ * ESPELHO de `contratoParaAssinar` (src/dominio/associacao/contratoAssociacao.js):
+ * o contrato da assinatura MAIS RECENTE, aceito ou não. O deploy das functions
+ * não alcança `src/`, e `npm run testar:transferencia` compara os dois caso
+ * a caso. A ordem é a emissão (`emitidoEm`); sem ela, o número do id
+ * (`{uid}_{Date.now()}`).
+ */
+function emissaoMs(c) {
+  const e = c?.emitidoEm;
+  if (e != null) {
+    if (typeof e === 'number') return e;
+    if (typeof e.toMillis === 'function') return e.toMillis();
+    if (typeof e.seconds === 'number') return e.seconds * 1000;
+    if (e instanceof Date) return e.getTime();
+  }
+  const m = /_(\d+)$/.exec(String(c?.id || ''));
+  return m ? Number(m[1]) : 0;
+}
+
+function contratoMaisRecente(contratos) {
+  return (Array.isArray(contratos) ? contratos : [])
+    .filter(Boolean)
+    .sort((a, b) => emissaoMs(b) - emissaoMs(a))[0] || null;
+}
+
+/**
+ * A assinatura dele está FECHADA para o plano de agora? O contrato que vale é
+ * o MAIS RECENTE (o mesmo que a tela de assinar mostra), e ele precisa estar
+ * aceito e com `conteudo.plano.id` igual a `users.plano` — o mesmo par que a
+ * rule do contrato compara na emissão. Pendente mais novo recusa mesmo com um
+ * aceito mais velho: tela e servidor dizem a mesma coisa (decisão do dono).
+ * Aceito de OUTRO plano também não vale.
  */
 function contratoAceitoDoPlano(contratos, plano) {
   if (!plano) return false;
-  return (Array.isArray(contratos) ? contratos : [])
-    .some((c) => c && c.aceitoEm != null && c.conteudo?.plano?.id === plano);
+  const c = contratoMaisRecente(contratos);
+  return !!c && c.aceitoEm != null && c.conteudo?.plano?.id === plano;
 }
 
 /**
@@ -401,6 +427,7 @@ module.exports = {
   CAMPOS_QUE_NUNCA_VAO,
   ehPagante,
   contratoAceitoDoPlano,
+  contratoMaisRecente,
   emMs,
   expiraEmMs,
   estadoEfetivo,

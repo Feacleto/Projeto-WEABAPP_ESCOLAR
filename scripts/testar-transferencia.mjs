@@ -69,9 +69,9 @@ const pedido = { paraUid: 'para', estado: 'pedido', expiraEm: agora + 1000 };
 const srvTransf = fs.readFileSync('functions/lib/transferencias.js', 'utf8');
 eq('parceiro pagante, com o contrato aceito, aceita', R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'para', t: pedido, parceiro, contratoAceito: true, agoraMs: agora }).ok, true);
 {
-  const aceitoAnual = { aceitoEm: 1, conteudo: { plano: { id: 'anual' } } };
-  const aceitoMensal = { aceitoEm: 1, conteudo: { plano: { id: 'mensal' } } };
-  const pendenteAnual = { aceitoEm: null, conteudo: { plano: { id: 'anual' } } };
+  const aceitoMensal = { id: 'para_1000', emitidoEm: 1000, aceitoEm: 1, conteudo: { plano: { id: 'mensal' } } };
+  const pendenteAnual = { id: 'para_2000', emitidoEm: 2000, aceitoEm: null, conteudo: { plano: { id: 'anual' } } };
+  const aceitoAnual = { id: 'para_3000', emitidoEm: 3000, aceitoEm: 1, conteudo: { plano: { id: 'anual' } } };
   const aceita = (contratos) => R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'para', t: pedido, parceiro,
     contratoAceito: R.contratoAceitoDoPlano(contratos, parceiro.plano), agoraMs: agora });
   const semContrato = aceita([]);
@@ -81,6 +81,37 @@ eq('parceiro pagante, com o contrato aceito, aceita', R.podeAceitarParceiro({ co
   eq('contrato pendente: recusa', aceita([pendenteAnual]).ok, false);
   eq('contrato aceito do plano atual: passa', aceita([aceitoMensal, pendenteAnual, aceitoAnual]).ok, true);
   eq('sem plano, contrato nenhum vale', R.contratoAceitoDoPlano([aceitoAnual], undefined), false);
+  // O MAIS RECENTE é o que vale (tela e servidor dizem a mesma coisa).
+  const v7 = { id: 'para_7000', versao: 7, emitidoEm: 7000, aceitoEm: 7500, conteudo: { plano: { id: 'anual' } } };
+  const v8pendente = { id: 'para_8000', versao: 8, emitidoEm: 8000, aceitoEm: null, conteudo: { plano: { id: 'anual' } } };
+  const v8aceito = { ...v8pendente, aceitoEm: 8500 };
+  eq('aceito v7 + pendente v8 do mesmo plano: recusa', aceita([v7, v8pendente]).ok, false);
+  eq('aceito v7 + pendente v8: a recusa é o mesmo precisaAssinar', aceita([v8pendente, v7]).precisaAssinar, true);
+  eq('só o aceito v8: passa', aceita([v8aceito]).ok, true);
+  eq('aceito v8 mais novo que um pendente velho: passa', aceita([{ ...v8pendente, id: 'para_100', emitidoEm: 100 }, v8aceito]).ok, true);
+  eq('Timestamp do Admin SDK (toMillis) ordena', aceita([
+    { ...v7, emitidoEm: { toMillis: () => 7000 } }, { ...v8pendente, emitidoEm: { toMillis: () => 8000 } },
+  ]).ok, false);
+  eq('o servidor manda o id e a emissão à régua', srvTransf.includes("select('aceitoEm', 'emitidoEm', 'conteudo.plano')")
+    && srvTransf.includes('({ id: s.id, ...s.data() })'), true);
+
+  // O ESPELHO: o mais recente do servidor é o mesmo de `contratoParaAssinar` do app.
+  const { contratoParaAssinar: doApp } = await import('../src/dominio/associacao/contratoAssociacao.js');
+  const casosDoEspelho = [
+    ['vazio', []],
+    ['nulo', null],
+    ['só aceito', [v7]],
+    ['aceito v7 + pendente v8', [v7, v8pendente]],
+    ['pendente v8 + aceito v7 (ordem trocada)', [v8pendente, v7]],
+    ['aceito novo + pendente velho', [{ ...v8pendente, id: 'para_100', emitidoEm: 100 }, v8aceito]],
+    ['sem emitidoEm, pelo id', [v7, { ...v8pendente, emitidoEm: null }]],
+    ['Timestamp com toMillis', [{ ...v7, emitidoEm: { toMillis: () => 7000 } }, { ...v8pendente, emitidoEm: { toMillis: () => 8000 } }]],
+    ['Timestamp com seconds', [{ ...v7, emitidoEm: { seconds: 7 } }, { ...v8pendente, emitidoEm: { seconds: 8 } }]],
+    ['com um buraco na lista', [null, v7, undefined, v8aceito]],
+  ];
+  for (const [nome, lista] of casosDoEspelho) {
+    eq(`espelho do mais recente: ${nome}`, R.contratoMaisRecente(lista)?.id ?? null, doApp(lista)?.id ?? null);
+  }
   eq('sem a leitura (padrão), recusa', R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'para', t: pedido, parceiro, agoraMs: agora }).ok, false);
   eq('o servidor lê os contratos dele e passa à régua', srvTransf.includes("db.collection('contratosAssociacao').where('tioUid', '==', uid)")
     && srvTransf.includes("contratoAceito: R.contratoAceitoDoPlano("), true);
