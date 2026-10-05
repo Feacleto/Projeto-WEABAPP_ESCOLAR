@@ -1282,14 +1282,17 @@ aparelho: é cortina, não cofre, como a senha do Financeiro.
 `GuardaDoFinanceiro` não devolve mais o `FinanceiroTrancado` no caixa (ele
 tinha Abastecer, PIX e Despesa sem senha; o lugar da auxiliar virou a rota).
 [TioFinance](src/pages/tio/TioFinance.jsx) é a Central: o saldo com
-"Perguntar ao Buzi" logo abaixo (só com senha; leva a `/tio/finance/buzi`),
-quatro abas como ESTADO (Turma · Perua · Mensalidades · Contas, abre em
-Turma; "Extrato | Mensalidades" mora dentro de Mensalidades) e "Iniciar a
-rota" no pé (`useViagemDoDia` + `ControleDeRota parte="botao"`). Turma e
+"Perguntar ao Buzi" logo abaixo (só com senha; leva a `/tio/finance/buzi`)
+e "Iniciar a rota" no pé (`useViagemDoDia` + `ControleDeRota parte="botao"`).
+⚠️ **É UMA ROLAGEM SÓ, A VISÃO DO MÊS (05/10/2026, decisão do dono)**: o mês,
+o saldo, as MENSALIDADES PRIMEIRO (quem deve, atalhos, o que espera decisão,
+"Extrato | Mensalidades"), depois Turma, Sua perua e Contas. Ela teve quatro
+abas abrindo em Turma, e o mês do topo deixou de mudar o que vinha embaixo —
+"o motorista quer ver as mensalidades primeiro e depois a turma". Turma e
 Perua são provisórias (portas e `BlocoSuaPerua`) até os assuntos da sessão
 prod em `src/components/carteira/`.
 ⚠️ **A FATURA DE R$ 0,00 (05/10/2026, decisão do dono).** Com a cobrança
-desligada, a aba Contas da Central mostra todo mês "Fatura de outubro ·
+desligada, a seção Contas da Central mostra todo mês "Fatura de outubro ·
 Período grátis": o valor da tabela de HOJE riscado e "Você paga R$ 0,00".
 É DEMONSTRATIVO — nada é gravado em `faturasParceiro`; régua em
 [faturaGratis.js](src/dominio/associacao/faturaGratis.js) (casos em

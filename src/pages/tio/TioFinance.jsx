@@ -222,14 +222,13 @@ export default function TioFinance() {
   // do primeiro desenho ainda decidir a aba.
   const [abaEscolhida, setAba] = useState(null);
   const abasRef = useRef(null);
-  // ⚠️ A CENTRAL DO MOTORISTA TEM QUATRO ABAS, E ABRE SEMPRE EM TURMA
-  // (04/10/2026, simulação "Rota e Central" aprovada pelo dono). Elas são
-  // ESTADO, nunca rota: a tranca do Financeiro é por CAMINHO, e uma aba fora
-  // de `/tio/finance` pediria a senha de novo a cada troca (aviso da QA).
-  // "Extrato | Mensalidades" continua, DENTRO da aba Mensalidades.
-  const [secao, setSecao] = useState('turma');
+  // ⚠️ A CENTRAL DO MOTORISTA É UMA ROLAGEM SÓ, A VISÃO DO MÊS (05/10/2026,
+  // decisão do dono). Ela teve quatro abas (Turma · Perua · Mensalidades ·
+  // Contas) abrindo em Turma, e o mês escolhido no topo deixou de mudar o que
+  // vinha embaixo: a visão do mês tinha sumido. Voltou a ordem do caixa de
+  // antes — o mês, o saldo, as MENSALIDADES PRIMEIRO, depois a turma, a perua e
+  // as contas. "O motorista quer ver as mensalidades primeiro e depois a turma."
   const irParaAba = (qual, filtro) => {
-    setSecao('mensalidades');
     setAba(qual);
     if (filtro) setFilter(filtro);
     abasRef.current?.scrollIntoView({ block: 'start' });
@@ -676,33 +675,6 @@ export default function TioFinance() {
           </button>
         </section>
 
-        {/* AS QUATRO ABAS DA CENTRAL. "Mensalidades" vai inteiro: 40+ não
-          * decifra abreviação (auditoria "uso"); abaixo de 380 px, duas linhas. */}
-        <div role="tablist" aria-label="Central" className="grid grid-cols-2 gap-1 rounded-2xl bg-neutro p-1 min-[380px]:grid-cols-4">
-          {[
-            ['turma', 'Turma'],
-            ['perua', 'Perua'],
-            ['mensalidades', 'Mensalidades'],
-            ['contas', 'Contas'],
-          ].map(([id, rotulo]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={secao === id}
-              onClick={() => setSecao(id)}
-              className={`tap min-h-12 rounded-xl px-1 text-sm font-bold ${
-                secao === id ? 'bg-card text-text shadow-rest' : 'text-textBody'
-              }`}
-            >
-              {rotulo}
-            </button>
-          ))}
-        </div>
-
-        {secao === 'mensalidades' && (
-        <>
-
         {/* 3. Quem está devendo — âmbar, porque pede atenção dele. Só existe
           * quando há atrasada: cartão de "0 atrasadas" ensinaria a pular o
           * cartão. Abre a lista JÁ filtrada nas atrasadas. */}
@@ -1075,115 +1047,107 @@ export default function TioFinance() {
           </>
         )}
 
-        </>
-        )}
+        {/* 7. TURMA — depois das mensalidades (decisão do dono, 05/10/2026):
+          * as portas para crianças, contratos e escolas. */}
+        <h2 className="px-1 pt-4 font-display text-xl font-bold text-text">Turma</h2>
+        <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
+          <Porta
+            icon={Baby}
+            titulo="Crianças"
+            detalhe={`${turma.ativas} ${turma.ativas === 1 ? 'criança' : 'crianças'}`}
+            onClick={() => navigate('/tio/children')}
+          />
+          <Porta
+            divisor
+            icon={Users}
+            titulo="Turma e contratos"
+            detalhe={[frasesDaTurma.entraram, frasesDaTurma.sairam].filter(Boolean).join(' · ') || 'Quem entrou e quem saiu'}
+            onClick={() => navigate('/tio/finance/turma')}
+          />
+          <Porta
+            divisor
+            icon={School}
+            titulo="Escolas"
+            detalhe="Telefone e horários"
+            onClick={() => navigate('/tio/children/escolas')}
+          />
+        </section>
 
-        {/* TURMA — provisório até os assuntos da Carteira (sessão prod):
-          * as portas de hoje para crianças, contratos e escolas. */}
-        {secao === 'turma' && (
-          <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
-            <Porta
-              icon={Baby}
-              titulo="Crianças"
-              detalhe={`${turma.ativas} ${turma.ativas === 1 ? 'criança' : 'crianças'}`}
-              onClick={() => navigate('/tio/children')}
-            />
-            <Porta
-              divisor
-              icon={Users}
-              titulo="Turma e contratos"
-              detalhe={[frasesDaTurma.entraram, frasesDaTurma.sairam].filter(Boolean).join(' · ') || 'Quem entrou e quem saiu'}
-              onClick={() => navigate('/tio/finance/turma')}
-            />
-            <Porta
-              divisor
-              icon={School}
-              titulo="Escolas"
-              detalhe="Telefone e horários"
-              onClick={() => navigate('/tio/children/escolas')}
-            />
-          </section>
-        )}
+        {/* 8. PERUA — "Sua perua" (abastecer, reserva, preciso aumentar). */}
+        <BlocoSuaPerua criancas={turmaInteira} visiveis={visiveis} />
 
-        {/* PERUA — "Sua perua" de hoje (abastecer, reserva, preciso
-          * aumentar), até os assuntos da sessão prod chegarem. */}
-        {secao === 'perua' && <BlocoSuaPerua criancas={turmaInteira} visiveis={visiveis} />}
-
-        {/* CONTAS — para onde o dinheiro foi, o que ele deve à plataforma e a
-          * chave PIX. Meu plano só existe com a cobrança ligada. */}
-        {secao === 'contas' && (
-          <>
-            {/* ⚠️ A FATURA DE R$ 0,00 (05/10/2026, decisão do dono). Enquanto
-              * a cobrança está desligada, ele vê o que pagaria, RISCADO, e
-              * "Você paga R$ 0,00". É demonstrativo: nada é gravado. */}
-            {cobranca === false && (() => {
-              const f = faturaGratisDoMes({
-                criancas: turma.ativas,
-                plano: profile?.plano || undefined,
-              });
-              if (!f) return null;
-              return (
-                <section className="rounded-3xl bg-card p-5 shadow-rest">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-display text-lg font-bold text-text">Fatura de {f.mes}</h3>
-                    <span className="rounded-full bg-primaryChip px-3 py-1 text-sm font-bold text-primary">
-                      {f.motivo}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-baseline justify-between gap-3 text-base text-textBody">
-                    <span>
-                      Seu plano: {f.criancas} {f.criancas === 1 ? 'criança' : 'crianças'}
-                    </span>
-                    <s className="tabular-nums">{reais(f.valorDeHoje)}</s>
-                  </div>
-                  <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-border pt-2">
-                    <span className="text-base font-bold text-text">Você paga</span>
-                    <span className="font-display text-2xl font-extrabold tabular-nums text-accentText">
-                      {reais(f.vocePaga)}
-                    </span>
-                  </div>
-                  {isCurrentMonthView && <p className="mt-2 text-sm text-textMuted">
-                    Este mês: {totals.contagem.paid}{' '}
-                    {totals.contagem.paid === 1 ? 'mensalidade recebida' : 'mensalidades recebidas'} pelo app.
-                  </p>}
-                </section>
-              );
-            })()}
-            {/* OS PLANOS FINANCEIROS (05/10/2026): metas que ele anota, com
-              * a conta de quanto separar por mês. O app não guarda dinheiro. */}
-            <PlanosFinanceiros reais={reais} />
-            <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
-              <Porta
-                icon={Receipt}
-                titulo="Despesas do mês"
-                detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
-                onClick={() => navigate('/tio/finance/expenses')}
-              />
-              <Porta
-                divisor
-                icon={ClipboardList}
-                titulo="Boletim do negócio"
-                detalhe="O mês num papel"
-                onClick={() => navigate('/tio/finance/boletim')}
-              />
-              {cobranca === true && (
-                <Porta
-                  divisor
-                  icon={FileText}
-                  titulo="Meu plano no Alô Buzinou"
-                  detalhe={`${plano.nome} · ${plano.estado}`}
-                  onClick={() => navigate('/tio/taxa')}
-                />
-              )}
+        {/* 9. CONTAS — para onde o dinheiro foi, o que ele deve à plataforma e
+          * a chave PIX. Meu plano só existe com a cobrança ligada. */}
+        <h2 className="px-1 pt-4 font-display text-xl font-bold text-text">Contas</h2>
+        {/* ⚠️ A FATURA DE R$ 0,00 (05/10/2026, decisão do dono). Enquanto
+          * a cobrança está desligada, ele vê o que pagaria, RISCADO, e
+          * "Você paga R$ 0,00". É demonstrativo: nada é gravado. */}
+        {cobranca === false && (() => {
+          const f = faturaGratisDoMes({
+            criancas: turma.ativas,
+            plano: profile?.plano || undefined,
+          });
+          if (!f) return null;
+          return (
+            <section className="rounded-3xl bg-card p-5 shadow-rest">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-lg font-bold text-text">Fatura de {f.mes}</h3>
+                <span className="rounded-full bg-primaryChip px-3 py-1 text-sm font-bold text-primary">
+                  {f.motivo}
+                </span>
+              </div>
+              <div className="mt-3 flex items-baseline justify-between gap-3 text-base text-textBody">
+                <span>
+                  Seu plano: {f.criancas} {f.criancas === 1 ? 'criança' : 'crianças'}
+                </span>
+                <s className="tabular-nums">{reais(f.valorDeHoje)}</s>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                <span className="text-base font-bold text-text">Você paga</span>
+                <span className="font-display text-2xl font-extrabold tabular-nums text-accentText">
+                  {reais(f.vocePaga)}
+                </span>
+              </div>
+              {isCurrentMonthView && <p className="mt-2 text-sm text-textMuted">
+                Este mês: {totals.contagem.paid}{' '}
+                {totals.contagem.paid === 1 ? 'mensalidade recebida' : 'mensalidades recebidas'} pelo app.
+              </p>}
             </section>
-            <PixLinha hasPix={hasPix} profile={profile} onOpen={() => setPixOpen(true)} />
-            {/* A PESQUISA DO CARTÃO, no fim e sem prometer nada (ver
-              * InteressePorCartao): sem data e sem "em breve". */}
-            <div className="pt-2">
-              <InteressePorCartao />
-            </div>
-          </>
-        )}
+          );
+        })()}
+        {/* OS PLANOS FINANCEIROS (05/10/2026): metas que ele anota, com
+          * a conta de quanto separar por mês. O app não guarda dinheiro. */}
+        <PlanosFinanceiros reais={reais} />
+        <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
+          <Porta
+            icon={Receipt}
+            titulo="Despesas do mês"
+            detalhe={`Saiu ${saiu === null ? '…' : reais(saiu)}`}
+            onClick={() => navigate('/tio/finance/expenses')}
+          />
+          <Porta
+            divisor
+            icon={ClipboardList}
+            titulo="Boletim do negócio"
+            detalhe="O mês num papel"
+            onClick={() => navigate('/tio/finance/boletim')}
+          />
+          {cobranca === true && (
+            <Porta
+              divisor
+              icon={FileText}
+              titulo="Meu plano no Alô Buzinou"
+              detalhe={`${plano.nome} · ${plano.estado}`}
+              onClick={() => navigate('/tio/taxa')}
+            />
+          )}
+        </section>
+        <PixLinha hasPix={hasPix} profile={profile} onOpen={() => setPixOpen(true)} />
+        {/* A PESQUISA DO CARTÃO, no fim e sem prometer nada (ver
+          * InteressePorCartao): sem data e sem "em breve". */}
+        <div className="pt-2">
+          <InteressePorCartao />
+        </div>
       </div>
 
       {/* O PÉ DA CENTRAL: "Iniciar a rota" é o único botão cheio da tela. Com
