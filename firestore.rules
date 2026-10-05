@@ -2762,7 +2762,13 @@ service cloud.firestore {
         let d = request.resource.data;
         return d.keys().hasOnly(['usoDaPerua', 'kmDasRotas', 'temSenha',
                                  'combustivelDaPerua', 'postos', 'planoDaTroca', 'guardado',
-                                 'planos'])
+                                 'planos', 'vagasDaPerua'])
+          // A PERUA EM VAGAS (05/10/2026): quantas crianças cabem, dito pelo
+          // próprio motorista. INTEIRO de 1 a 60 — o desenho conta vagas, e
+          // 15.5 ou "15" quebrariam a conta da tela. ⚠️ Nenhuma regra compara
+          // vagas com crianças: passar das vagas nunca trava (decisão do dono).
+          && (!('vagasDaPerua' in d)
+              || (d.vagasDaPerua is int && d.vagasDaPerua >= 1 && d.vagasDaPerua <= 60))
           // OS PLANOS FINANCEIROS (05/10/2026): metas que o próprio motorista
           // anota. Só ele lê este documento; o teto de 12 segura o tamanho, e
           // o formato de cada um é conferido pela régua no aparelho.
