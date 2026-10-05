@@ -59,6 +59,28 @@ export function rotuloDoEvento(tipo) {
   return ROTULOS[tipo] || tipo;
 }
 
+/**
+ * ⚠️ O QUE FOI FEITO NA ROTA, SEM A SENHA, DIZ ISSO (04/10/2026).
+ *
+ * Na rota, a tela é da auxiliar: ela dá baixa no dinheiro que recebeu na
+ * porta, ou anota que a família disse ter mandado PIX. Para o Firestore ela e
+ * o motorista são a MESMA conta — a marca `meta.via: 'sem_senha'` é o único
+ * jeito de o tio saber depois o que conferir. Sem ela, o "Responsável
+ * informou o pagamento" gravado pela auxiliar se passaria pelo toque da mãe.
+ */
+export const VIA_SEM_SENHA = 'sem_senha';
+const ROTULOS_SEM_SENHA = {
+  confirmed: 'Baixa dada sem a senha, na rota',
+  claimed: 'Anotado na rota, sem a senha: a família disse que mandou PIX',
+};
+
+function rotuloDaLinha(e) {
+  if (e?.meta?.via === VIA_SEM_SENHA && ROTULOS_SEM_SENHA[e?.type]) {
+    return ROTULOS_SEM_SENHA[e.type];
+  }
+  return rotuloDoEvento(e?.type);
+}
+
 /** Timestamp do Firestore, Date, número ou string → Date (ou null). */
 function paraData(valor) {
   if (!valor) return null;
@@ -84,10 +106,11 @@ export function montarTrilha({ payment = null, eventos = [] } = {}) {
 
   const linhas = lista.map((e) => ({
     tipo: e?.type || null,
-    rotulo: rotuloDoEvento(e?.type),
+    rotulo: rotuloDaLinha(e),
     quando: paraData(e?.at),
     quem: e?.actorRole || null,
     nota: e?.note || null,
+    semSenha: e?.meta?.via === VIA_SEM_SENHA,
     sintetizado: false,
   }));
 

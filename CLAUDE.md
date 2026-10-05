@@ -1259,12 +1259,25 @@ rota; o app que **recarrega** com a rota aberta religa o GPS sozinho
 (`retomar`, em `ControleDeRota`); e o `closeStaleRoutes` espera **90 minutos**
 (antes 20) e apaga a última posição ao fechar, como o "Encerrar" faz.
 
-**A ROTA TEM ABA PRÓPRIA, QUE SÓ EXISTE ENQUANTO ELA EXISTE** (03/10/2026,
-pedido do dono) — `ABA_DA_ROTA` em [TioLayout](src/pages/tio/TioLayout.jsx).
-"INICIAR ROTA" põe **Rota** no meio do rodapé e abre `/tio/route/now`;
-"Encerrar" a tira e volta ao Início. Quem decide é
-`liveLocation/{uid}.routeActive`, não o GPS deste aparelho. O Início, durante a
-rota, mostra só um cartão "Rota em andamento · Abrir".
+**O RODAPÉ É INÍCIO · CENTRAL, E NA ROTA A CENTRAL É A ROTA** (04/10/2026,
+simulação "Rota e Central" aprovada pelo dono — `ITENS_EM_ROTA` em
+[TioLayout](src/pages/tio/TioLayout.jsx)). Fora da rota, a aba Central leva a
+`/tio/finance` (o caixa, atrás da senha). Com a rota rodando, a MESMA aba leva
+a `/tio/route/now`, que vira a Central da AUXILIAR: sem senha e sem valor,
+com uma bolinha verde (`ponto` no BottomNav). A rota começar TRANCA o
+Financeiro (`trancar()` no TioLayout); encerrar leva a `/tio/finance`, que
+pede a senha de novo. Quem decide é `liveLocation/{uid}.routeActive`, não o
+GPS deste aparelho. A antiga terceira aba "Rota" saiu.
+⚠️ **NA ROTA, A AUXILIAR RECEBE SEM VER VALOR:**
+[MensalidadeNaPorta](src/components/route/MensalidadeNaPorta.jsx) mostra
+"Mensalidade de outubro em aberto" na criança da porta (consulta estreita,
+só `pending` — `watchMensalidadesEmAberto`). "Em dinheiro" dá baixa; "a
+família disse que mandou PIX" vira `claimed` (o tio confere no banco) — as
+rules aceitam `claimedAt` do motorista só nessa transição e com a hora do
+servidor, e o evento `claimed` de motorista só com `meta.via: 'sem_senha'`.
+A trilha mostra "Baixa dada sem a senha, na rota". O valor ainda chega no
+aparelho: é cortina, não cofre, como a senha do Financeiro.
+[PixDaPerua](src/components/route/PixDaPerua.jsx) só mostra e copia a chave.
 
 ⚠️ **A AÇÃO MORA NO RODAPÉ, O ENCERRAR MORA NO TOPO** (03/10/2026, auditoria
 de UX para 40+ — padrão de leitura em Z e lei de Fitts). O rodapé fixo da

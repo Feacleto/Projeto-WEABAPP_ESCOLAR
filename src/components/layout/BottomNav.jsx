@@ -53,7 +53,10 @@ import { indiceDaAba } from '../../compartilhado/abaAtiva';
  * motivo: enjoo, vertigem, epilepsia fotossensível.
  *
  * items: [{ to, label, icon: LucideIcon, end?: bool, badge?: number,
- *           tour?: string }]
+ *           tour?: string, ponto?: bool }]
+ *
+ * `ponto` é a bolinha verde da Central quando a rota está rodando: não é
+ * aviso para atender (por isso não é âmbar), é estado — "a rota está aberta".
  *
  * `tour` vira data-tour no link: é a âncora que o tutorial guiado ilumina e
  * escuta pra saber que a pessoa tocou na aba certa.
@@ -152,6 +155,12 @@ export default function BottomNav({ items }) {
                       isActive ? 'text-naMarca' : 'text-textMuted'
                     }`}
                   />
+                  {item.ponto && (
+                    <span
+                      className="absolute -top-0.5 right-2 h-2.5 w-2.5 rounded-full bg-accent border-2 border-card"
+                      aria-label="Rota rodando"
+                    />
+                  )}
                   {item.badge > 0 && (
                     <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-xs font-bold flex items-center justify-center border-2 border-card">
                       {item.badge > 9 ? '9+' : item.badge}

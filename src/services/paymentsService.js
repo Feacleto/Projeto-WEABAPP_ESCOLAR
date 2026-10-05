@@ -125,6 +125,49 @@ export async function confirmReceipt(paymentId, method = null) {
 
 
 /**
+ * "A FAMÍLIA DISSE QUE MANDOU PIX" — o "Recebi por PIX" da rota, sem senha
+ * (04/10/2026). Não é baixa: a auxiliar não vê o extrato do banco dele. Vira
+ * `claimed`, o mesmo estado do "Já paguei" da família, e o tio confere depois.
+ * As rules só aceitam `claimedAt` nessa transição e com a hora do servidor; a
+ * trilha recebe o evento com `meta.via` (ver `trilhaDoPagamento.js`).
+ */
+export async function anotarPixDaFamilia(paymentId) {
+  await updateDoc(doc(db, 'payments', paymentId), {
+    status: 'claimed',
+    claimedAt: serverTimestamp(),
+    paymentMethod: 'pix',
+  });
+}
+
+/**
+ * AS MENSALIDADES EM ABERTO DA TURMA — só `pending`, e só para a rota
+ * (04/10/2026). A rota é a Central da auxiliar: ela vê "Mensalidade de
+ * outubro em aberto" na criança da porta, sem valor. ⚠️ A consulta é ESTREITA
+ * de propósito (condição da QA): nada de pago, nada de histórico. O valor
+ * ainda chega no aparelho — é cortina, não cofre, a mesma da senha do
+ * Financeiro —, e a tela que usa isto não pode imprimi-lo (`testar:sem-senha`).
+ */
+export function watchMensalidadesEmAberto(adminUid, onUpdate, onError) {
+  if (!adminUid) {
+    onUpdate([]);
+    return () => {};
+  }
+  const q = query(
+    collection(db, 'payments'),
+    where('adminUid', '==', adminUid),
+    where('status', '==', 'pending')
+  );
+  return onSnapshot(
+    q,
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('watchMensalidadesEmAberto error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
  * Reverte uma confirmação (em caso de erro do tio). Sujeito às regras
  * de `canUndoReceipt` — joga erro se não for permitido (a UI evita o
  * caminho mas a verificação aqui é a fonte da verdade).

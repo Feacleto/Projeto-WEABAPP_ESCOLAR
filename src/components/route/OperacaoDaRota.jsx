@@ -42,6 +42,10 @@ import {
 } from '../../services/routeStatusService';
 import { passoAnterior, barraTravada, TRAVA_DA_PARADA_MS } from '../../dominio/rota/acaoDaParada.js';
 import AvisosDaViagem from './AvisosDaViagem';
+import MensalidadeNaPorta from './MensalidadeNaPorta';
+import PixDaPerua from './PixDaPerua';
+import { useMensalidadesEmAberto } from '../../hooks/usePayments';
+import { emAbertoPorCrianca } from '../../dominio/cobranca/semSenha.js';
 import RecadoDaRota from './RecadoDaRota';
 import {
   diaCompleto,
@@ -122,6 +126,10 @@ export default function OperacaoDaRota({
   const dateKey = getDateKey();
   // Quem a família indicou para buscar hoje — aparece na entrega (ver abaixo).
   const quemBusca = useQuemBuscaHoje(user?.uid, dateKey);
+  // A MENSALIDADE EM ABERTO DE QUEM ESTÁ NA PORTA (04/10/2026). A rota é a
+  // Central da auxiliar: ela vê o mês, nunca o valor (`MensalidadeNaPorta`).
+  const { payments: pendentes } = useMensalidadesEmAberto();
+  const emAberto = useMemo(() => emAbertoPorCrianca(pendentes), [pendentes]);
 
   const { children, loading } = useChildren();
   const { mapa: escolasPorId } = useEscolas();
@@ -910,6 +918,12 @@ export default function OperacaoDaRota({
         </GrupoDeAcoes>
       )}
 
+      {/* O DINHEIRO QUE CHEGA NA PORTA (04/10/2026). Só na porta — na
+        * escola não há família para pagar — e só o mês, sem valor. */}
+      {foco.action.nextStatus !== 'atSchool' && emAberto[foco.child.id] && (
+        <MensalidadeNaPorta payment={emAberto[foco.child.id]} childName={foco.child.name} />
+      )}
+
       {/* NÃO VAI HOJE.
         * ⚠️ "FALTOU" E "O PAI LEVOU" SÓ ANTES DE EMBARCAR (03/10/2026):
         * oferecer "Faltou" para quem já está dentro da perua é convidar
@@ -1374,6 +1388,10 @@ export default function OperacaoDaRota({
             onAbriuProblema={consumirAtalho}
           />
         )}
+
+        {/* "MOSTRAR PIX DA PERUA" (04/10/2026): a mãe pergunta no portão, e
+          * quem está com o celular pode ser a auxiliar. Só mostra a chave. */}
+        {!loading && <PixDaPerua />}
 
         {/* Cadastro só na porta separada. Dentro do Início a operação aparece
           * com o veículo em movimento, e ali ele não vai ajustar horário. */}

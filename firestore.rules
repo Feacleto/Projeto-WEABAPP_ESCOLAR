@@ -1538,8 +1538,23 @@ service cloud.firestore {
               'receiptURL',
               'receiptHash',
               'receiptAttachedAt',
+              'claimedAt',
             ])
         && request.resource.data.status in ['pending', 'claimed', 'paid']
+        // ⚠️ "A FAMÍLIA DISSE QUE MANDOU PIX" (04/10/2026, Rota e Central).
+        // Na rota, sem senha, a auxiliar não vê o extrato do banco dele: o
+        // "Recebi por PIX" não dá baixa, vira `claimed` — o mesmo estado do
+        // "Já paguei" da família —, e o tio confere depois. O `claimedAt` só
+        // entra nessa transição e com a hora do SERVIDOR; data forjada seria
+        // prova falsa de quando a família avisou.
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['claimedAt'])
+          || (
+            resource.data.status == 'pending'
+            && request.resource.data.status == 'claimed'
+            && request.resource.data.claimedAt == request.time
+          )
+        )
         // O comprovante que o MOTORISTA anexa também é lido pela família
         // (03/10/2026): a mesma tranca de bucket do ramo dela.
         && (
@@ -1626,6 +1641,15 @@ service cloud.firestore {
             paymentDoc().get('adminUid', '') == request.auth.uid
             && request.resource.data.actorRole == 'admin'
             && request.resource.data.type in ['confirmed', 'reverted', 'receipt_attached', 'receipt_replaced']
+          )
+          // O "Recebi por PIX" da rota, sem senha: o motorista grava o aviso
+          // em nome da família SÓ marcado como tal (`meta.via`), para a
+          // trilha nunca confundir com o "Já paguei" que ela mesma tocou.
+          || (
+            paymentDoc().get('adminUid', '') == request.auth.uid
+            && request.resource.data.actorRole == 'admin'
+            && request.resource.data.type == 'claimed'
+            && request.resource.data.get('meta', {}).get('via', '') == 'sem_senha'
           )
           || (
             paymentDoc().parentUid == request.auth.uid

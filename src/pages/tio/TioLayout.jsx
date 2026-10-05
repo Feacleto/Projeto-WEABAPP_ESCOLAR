@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMarcosDoApp } from '../../hooks/useMarcosDoApp';
-import { Home, DollarSign, Bus } from 'lucide-react';
+import { Home, Wallet } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import { indiceDaAba } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
@@ -29,6 +29,7 @@ import GuardaDoFinanceiro from '../../components/financeiro/GuardaDoFinanceiro';
 import BirthdayModal from '../../components/festive/BirthdayModal';
 import { faltaCompletarCadastro } from '../../dominio/identidade/cadastroDoMotorista.js';
 import { isTracking } from '../../services/locationService';
+import { useTrancaDoFinanceiro } from '../../hooks/useTrancaDoFinanceiro';
 import {
   getTodaysBirthdayChildren,
   shouldShowBirthdayModal,
@@ -60,27 +61,34 @@ const NAV_ITEMS = [
   { to: '/tio', label: 'Início', icon: Home, end: true, tour: 'nav-home' },
   {
     to: '/tio/finance',
-    label: 'Financeiro',
-    icon: DollarSign,
+    label: 'Central',
+    icon: Wallet,
     tour: 'nav-finance',
   },
 ];
 
 /**
- * ⚠️ A ABA ROTA SÓ EXISTE ENQUANTO A ROTA EXISTE (03/10/2026, pedido do dono).
+ * ⚠️ NA ROTA, A CENTRAL É A TELA DA ROTA (04/10/2026, simulação "Rota e
+ * Central" aprovada pelo dono).
  *
- * A rota é a razão de o motorista usar o app, e ganhou tela própria. Mas uma
- * aba fixa para uma coisa que acontece duas vezes por dia seria o mesmo erro
- * que tirou "Rota" do rodapé: ela aparece quando ele toca em "Iniciar a rota",
- * fica no MEIO (onde o polegar descansa), e some quando ele encerra.
+ * O rodapé tem SEMPRE duas abas: Início · Central. Fora da rota a Central é a
+ * do motorista (o caixa, atrás da senha). Com a rota rodando, a MESMA aba leva
+ * à tela da rota, que vira a Central da auxiliar: sem senha, sem valor
+ * nenhum. A bolinha verde (`ponto`) avisa que a rota está rodando.
+ *
+ * Era uma terceira aba, "Rota", que aparecia no meio só durante a rota. Saiu
+ * porque a auxiliar e o motorista passaram a ter UM lugar cada, e o lugar da
+ * auxiliar é a rota.
  *
  * Quem diz se a rota está aberta é `liveLocation/{uid}.routeActive` — o mesmo
  * documento que as famílias leem —, e não o GPS deste aparelho: se o app
  * recarregar no meio da rota, a aba continua lá e o GPS religa sozinho
  * (`ControleDeRota`).
  */
-const ABA_DA_ROTA = { to: '/tio/route/now', label: 'Rota', icon: Bus, tour: 'nav-rota' };
-const ITENS_EM_ROTA = [NAV_ITEMS[0], ABA_DA_ROTA, NAV_ITEMS[1]];
+const ITENS_EM_ROTA = [
+  NAV_ITEMS[0],
+  { to: '/tio/route/now', label: 'Central', icon: Wallet, tour: 'nav-rota', ponto: true },
+];
 
 /**
  * Layout do painel do Tio: <Outlet /> + BottomNav fixo.
@@ -88,6 +96,7 @@ const ITENS_EM_ROTA = [NAV_ITEMS[0], ABA_DA_ROTA, NAV_ITEMS[1]];
  */
 export default function TioLayout() {
   const { user, profile, refreshProfile } = useAuth();
+  const { trancar } = useTrancaDoFinanceiro();
   const location = useLocation();
   const navigate = useNavigate();
   // null | 'first' (primeiro acesso) | 'review' (pediu pra rever no perfil)
@@ -235,12 +244,19 @@ export default function TioLayout() {
   const emRota = !!minhaRota?.routeActive || isTracking();
   const itens = emRota ? ITENS_EM_ROTA : NAV_ITEMS;
   const naTelaDaRota = location.pathname.startsWith('/tio/route/now');
-  // Encerrou com a tela da rota aberta: volta para o Início, que é onde a
-  // próxima viagem aparece. Só depois de ler o documento — durante a leitura
-  // "sem rota" é desconhecido, não falso.
+  // Encerrou com a tela da rota aberta: a Central volta a ser do motorista
+  // (`/tio/finance`, que pede a senha). Só depois de ler o documento — durante
+  // a leitura "sem rota" é desconhecido, não falso.
   useEffect(() => {
-    if (!carregandoRota && !emRota && naTelaDaRota) navigate('/tio', { replace: true });
+    if (!carregandoRota && !emRota && naTelaDaRota) navigate('/tio/finance', { replace: true });
   }, [carregandoRota, emRota, naTelaDaRota, navigate]);
+
+  // ⚠️ A ROTA TRANCA O DINHEIRO. Com a rota rodando, quem segura o celular
+  // pode ser a auxiliar: se o Financeiro tivesse ficado destravado antes, ela
+  // entraria nele sem senha. Trancar ao ver a rota começar fecha essa porta.
+  useEffect(() => {
+    if (emRota) trancar();
+  }, [emRota, trancar]);
 
   /* ⚠️ OS AVISOS MORAM ABAIXO DO CABEÇALHO DA TELA (03/10/2026, auditoria de
    * UX) — ver `AvisosDoCabecalhoContext`. Eles eram desenhados aqui, acima do
