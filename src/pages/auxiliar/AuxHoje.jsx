@@ -13,7 +13,8 @@ import { statusNaDirecao, getActionForStatus } from '../../services/routeStatusS
 import { marcarParadaPelaAuxiliar } from '../../services/auxiliarService';
 import PixDaPerua from '../../components/route/PixDaPerua';
 import { diaCompleto, getDateKey, horaCurta, deMinutos, precisaDaPerua, ROTULO_ESTADO } from '../../dominio/rota/horarios';
-import { linkDoZap } from '../../dominio/identidade/auxiliar.js';
+import { linkDoZap, rotaDaPeruaRodando, trocaDePerua } from '../../dominio/identidade/auxiliar.js';
+import { paletaDaMarca } from '../../marca/corDaMarca.js';
 import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaOTio';
 
 /**
@@ -37,6 +38,12 @@ import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaO
  * aparelho — e a marcação vai com o tio escolhido. Com um tio, a tela é a de
  * sempre. O acesso encerrado só aparece quando NÃO sobra tio ativo: se um
  * desativa e o outro continua, ela só deixa de ver aquela perua.
+ *
+ * F4.1: a troca TRAVA com a rota da perua escolhida rodando (alguma criança
+ * "Na perua" hoje, lida da cópia da turma — ela não lê `liveLocation`; ver
+ * `rotaDaPeruaRodando`). O outro botão fica, desabilitado, com a frase. E
+ * cada botão e a faixa ganham a cor do tio (`marcaCor` do doc dele, pela
+ * mesma `paletaDaMarca` do app, que garante a leitura); sem cor, o verde.
  */
 const ROTULO_DO_STATUS = {
   home: 'Em casa',
@@ -72,6 +79,9 @@ export default function AuxHoje() {
       setMarcando(null);
     }
   }
+  const rodando = rotaDaPeruaRodando(criancas);
+  const troca = trocaDePerua(ativos, motoristaUid, rodando, { marca, genero: motorista?.gender });
+  const cor = paletaDaMarca(motorista?.marcaCor);
   const vaoHoje = new Set(blocos.flatMap((b) => b.paradas.filter((p) => precisaDaPerua(p.estado)).map((p) => p.child.id))).size;
 
   if (vinculos?.length > 0 && ativos.length === 0) {
@@ -106,27 +116,20 @@ export default function AuxHoje() {
       <Header title="Hoje" />
       <div className="space-y-4 p-4">
         {ativos.length > 1 && (
-          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Escolher a perua">
-            {ativos.map((v) => {
-              const escolhida = v.motoristaUid === motoristaUid;
-              return (
-                <button
-                  key={v.motoristaUid}
-                  type="button"
-                  aria-pressed={escolhida}
-                  onClick={() => escolher(v.motoristaUid)}
-                  className={`tap min-h-12 rounded-xl border-2 px-2 text-base font-bold ${
-                    escolhida ? 'border-primary bg-primarySoft text-primary' : 'border-border bg-card text-text'
-                  }`}
-                >
-                  Perua {v.marcaDoMotorista ? `de ${v.marcaDoMotorista}` : 'do motorista'}
-                </button>
-              );
-            })}
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Escolher a perua">
+              {troca.botoes.map((b) => (
+                <BotaoDaPerua key={b.motoristaUid} botao={b} onEscolher={() => escolher(b.motoristaUid)} />
+              ))}
+            </div>
+            {troca.aviso && <p className="px-1 text-base font-semibold text-textBody">{troca.aviso}</p>}
           </div>
         )}
-        <section className="rounded-2xl bg-primary p-5 text-white">
-          <p className="rotulo text-menta">Perua de {marca}</p>
+        <section
+          className={`rounded-2xl p-5 ${cor ? '' : 'bg-primary text-white'}`}
+          style={cor ? { backgroundColor: cor.marca, color: cor.naMarca } : undefined}
+        >
+          <p className={`rotulo ${cor ? 'opacity-80' : 'text-menta'}`} style={cor ? { color: cor.naMarca } : undefined}>Perua de {marca}</p>
           <p className="mt-1 font-display text-2xl font-extrabold leading-tight">
             {criancas === null ? 'Carregando a turma…' : blocos.length === 0 ? 'Sem viagem hoje' : `${vaoHoje} ${vaoHoje === 1 ? 'criança vai' : 'crianças vão'} hoje`}
           </p>
@@ -194,5 +197,37 @@ export default function AuxHoje() {
         </p>
       </div>
     </>
+  );
+}
+
+/**
+ * Um botão da troca de perua, na cor DAQUELE tio. O doc dele vem pela mesma
+ * escuta de `useAdminProfile` que a tela já usa (ela lê o doc do tio só com
+ * o vínculo ativo); um componente por botão porque o número de tios varia e
+ * hook não mora em laço. Escolhido: contorno e fundo claro na cor dele.
+ * Travado: desabilitado, mas na tela — a frase embaixo diz por quê.
+ */
+function BotaoDaPerua({ botao, onEscolher }) {
+  const { admin } = useAdminProfile(botao.motoristaUid);
+  const cor = paletaDaMarca(admin?.marcaCor);
+  const estilo = botao.escolhida && cor
+    ? { borderColor: cor.primary, backgroundColor: cor.primarySoft, color: cor.primary }
+    : undefined;
+  return (
+    <button
+      type="button"
+      aria-pressed={botao.escolhida}
+      disabled={botao.travado}
+      onClick={onEscolher}
+      style={estilo}
+      className={`tap flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-2 text-base font-bold disabled:opacity-50 ${
+        botao.escolhida ? (cor ? '' : 'border-primary bg-primarySoft text-primary') : 'border-border bg-card text-text'
+      }`}
+    >
+      {!botao.escolhida && cor && (
+        <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cor.marca }} />
+      )}
+      {botao.rotulo}
+    </button>
   );
 }

@@ -26,6 +26,8 @@ import {
   mesesEntre,
   diasDeVinculo as diasDeVinculoDoApp,
   idDoVinculo as idDoVinculoDoApp,
+  rotaDaPeruaRodando,
+  trocaDePerua,
 } from '../src/dominio/identidade/auxiliar.js';
 import { readdirSync, statSync } from 'node:fs';
 
@@ -269,7 +271,7 @@ checar('o app da auxiliar não lê mais profile.motoristaUid', [],
 
 console.log('\n10. o app dela com dois tios');
 const hojeSrc = ler('src/pages/auxiliar/AuxHoje.jsx');
-checar('com dois tios, a troca de perua (um botão por tio)', true, hojeSrc.includes('ativos.length > 1') && hojeSrc.includes('escolher(v.motoristaUid)'));
+checar('com dois tios, a troca de perua (um botão por tio)', true, hojeSrc.includes('ativos.length > 1') && hojeSrc.includes('escolher(b.motoristaUid)'));
 checar('o acesso encerrado só quando não sobra tio ativo', true, hojeSrc.includes('vinculos?.length > 0 && ativos.length === 0'));
 const perua = ler('src/hooks/usePeruaDaAuxiliar.js');
 checar('a escolha da perua é lembrada no aparelho, com try/catch', true,
@@ -278,6 +280,37 @@ const convite = ler('src/pages/ConviteAuxiliar.jsx');
 checar('o convite de um segundo tio diz "também"', true, convite.includes('Você vai trabalhar também na perua de'));
 checar('ser auxiliar não pula mais o convite (só o link já usado por ela)', true, convite.includes('convite?.jaEhSeu'));
 checar('os pagamentos dizem de qual tio é cada um', true, ler('src/pages/auxiliar/AuxPagamentos.jsx').includes('marcaDe(p.motoristaUid)'));
+
+console.log('\n11. a troca de perua trava com a rota rodando (F4.1)');
+{
+  const agora = new Date(2026, 9, 5, 7, 10);
+  const hojeCedo = { toDate: () => new Date(2026, 9, 5, 6, 45) };
+  const ontem = { toDate: () => new Date(2026, 9, 4, 17, 0) };
+  checar('ninguém na perua: não roda', false, rotaDaPeruaRodando([{ status: 'home' }, { status: 'atSchool', statusUpdatedAt: hojeCedo }], agora));
+  checar('uma criança "Na perua" hoje: roda', true, rotaDaPeruaRodando([{ status: 'home' }, { status: 'onboard', statusUpdatedAt: hojeCedo }], agora));
+  checar('"Na perua" de ontem não trava hoje', false, rotaDaPeruaRodando([{ status: 'onboard', statusUpdatedAt: ontem }], agora));
+  checar('a data em milissegundos também vale', true, rotaDaPeruaRodando([{ status: 'onboard', statusUpdatedAt: agora.getTime() }], agora));
+  checar('turma carregando (null): não trava', false, rotaDaPeruaRodando(null, agora));
+
+  const ativos = [{ motoristaUid: 't1', marcaDoMotorista: 'Tio Nino' }, { motoristaUid: 't2', marcaDoMotorista: 'Tia Cida' }];
+  const solta = trocaDePerua(ativos, 't1', false, { marca: 'Tio Nino', genero: 'male' });
+  checar('sem rota: nenhum botão travado, nenhuma frase', [[false, false], null], [solta.botoes.map((b) => b.travado), solta.aviso]);
+  const presa = trocaDePerua(ativos, 't1', true, { marca: 'Tio Nino', genero: 'male' });
+  checar('com rota: só o OUTRO botão trava (os dois continuam na tela)', [false, true], presa.botoes.map((b) => b.travado));
+  checar('a frase diz de quem é a rota', 'A rota do Tio Nino está rodando.', presa.aviso);
+  checar('tia: "da"', 'A rota da Tia Cida está rodando.', trocaDePerua(ativos, 't2', true, { marca: 'Tia Cida', genero: 'female' }).aviso);
+  checar('com um tio só, não há frase de troca', null, trocaDePerua([ativos[0]], 't1', true, { marca: 'Tio Nino' }).aviso);
+  checar('o rótulo do botão é "Perua de {marca}"', 'Perua de Tia Cida', presa.botoes[1].rotulo);
+
+  const tela = semComentarios(ler('src/pages/auxiliar/AuxHoje.jsx'));
+  checar('a tela decide pela régua, com a turma da cópia', true,
+    tela.includes('rotaDaPeruaRodando(criancas)') && tela.includes('trocaDePerua(ativos, motoristaUid, rodando'));
+  checar('o botão travado fica desabilitado, não some', true, tela.includes('disabled={botao.travado}'));
+  checar('a frase da trava em 16px (text-base)', true, /text-base[^"]*">\{troca\.aviso\}/.test(tela));
+  checar('a auxiliar não lê liveLocation (nenhuma escuta da posição)', false, /liveLocation|useLiveLocation/.test(tela));
+  checar('a cor do tio passa pela paletaDaMarca (contraste do app)', true,
+    tela.includes('paletaDaMarca(motorista?.marcaCor)') && tela.includes('paletaDaMarca(admin?.marcaCor)'));
+}
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

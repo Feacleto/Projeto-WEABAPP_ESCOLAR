@@ -183,3 +183,68 @@ export function estadoDoRecibo(pagamento) {
   if (!pagamento) return 'sem_anotacao';
   return pagamento.recebidoEm ? 'confirmado' : 'esperando';
 }
+
+/**
+ * A ROTA DA PERUA ESCOLHIDA ESTÁ RODANDO? (05/10/2026, F4.1)
+ *
+ * Com dois tios, o topo de Hoje troca de perua — e trocar com criança dentro
+ * da perua é ela deixar de ver (e de marcar) a turma que está no banco de
+ * trás. Então a troca TRAVA enquanto a rota da perua escolhida roda.
+ *
+ * ⚠️ QUEM DIZ QUE A ROTA RODA É A CÓPIA DA TURMA, NÃO `liveLocation`. A
+ * auxiliar não lê `liveLocation/{tio}` (as rules abrem a posição só ao
+ * motorista e às famílias dele), e abrir a posição da perua a ela por isto
+ * seria regra nova sobre o dado mais sensível do motorista. A cópia
+ * (`turmaDaAuxiliar`) já traz `status` e `statusUpdatedAt` de cada criança:
+ * alguma "Na perua" HOJE é viagem rodando. O que ela não vê: a rota ligada
+ * antes da primeira criança embarcar — e aí não há ninguém dentro para ela
+ * perder de vista, então trocar não custa nada.
+ *
+ * `statusUpdatedAt` de outro dia não conta (o "na perua" de ontem não trava
+ * hoje) — a mesma régua de `getEffectiveStatus`, aqui sem Firebase.
+ */
+function mesmoDia(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function dataDe(valor) {
+  if (!valor) return null;
+  if (typeof valor.toDate === 'function') return valor.toDate();
+  if (typeof valor.toMillis === 'function') return new Date(valor.toMillis());
+  if (valor instanceof Date) return valor;
+  if (typeof valor === 'number') return new Date(valor);
+  return null;
+}
+
+export function rotaDaPeruaRodando(criancas, agora = new Date()) {
+  return (Array.isArray(criancas) ? criancas : []).some((c) => {
+    if (c?.status !== 'onboard') return false;
+    const quando = dataDe(c.statusUpdatedAt);
+    // Sem data, vale o status como está — o mesmo de `getEffectiveStatus`.
+    return !quando || mesmoDia(quando, agora);
+  });
+}
+
+/**
+ * Os botões da troca de perua: um por tio ativo, com o rótulo e se está
+ * travado. Travado é o botão do OUTRO tio quando a rota da escolhida roda —
+ * ele fica na tela, desabilitado, com a frase dizendo por quê (sumir faria
+ * ela achar que o outro tio a desativou).
+ */
+export function trocaDePerua(ativos, motoristaUid, rodando, { marca, genero } = {}) {
+  const botoes = (Array.isArray(ativos) ? ativos : []).map((v) => {
+    const escolhida = v.motoristaUid === motoristaUid;
+    return {
+      motoristaUid: v.motoristaUid,
+      rotulo: `Perua ${v.marcaDoMotorista ? `de ${v.marcaDoMotorista}` : 'do motorista'}`,
+      escolhida,
+      travado: !!rodando && !escolhida,
+    };
+  });
+  const quem = String(marca || '').trim() || 'motorista';
+  const artigo = genero === 'female' ? 'da' : 'do';
+  return {
+    botoes,
+    aviso: rodando && botoes.length > 1 ? `A rota ${artigo} ${quem} está rodando.` : null,
+  };
+}

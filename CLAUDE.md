@@ -189,7 +189,11 @@ valor, `marcaDoMotorista`, `ativa`, `aceitoEm`, `encerradoEm` e `periodos:
 recontratando reabre o MESMO doc com período novo, e o convite de outro tio
 cria o doc dele. **Até 2 tios ativos por auxiliar** (quem já é auxiliar aceita
 o convite de um segundo tio; com dois, o Hoje dela troca de perua, lembrada
-por aparelho em `usePeruaDaAuxiliar`) e até 2 auxiliares por tio, conferidos
+por aparelho em `usePeruaDaAuxiliar`, na cor de cada tio — e TRAVADA com a
+rota da perua escolhida rodando: "A rota do Tio Nino está rodando.", o outro
+botão desabilitado. Ela não lê `liveLocation`; quem diz que roda é a cópia da
+turma, alguma criança "Na perua" hoje — `rotaDaPeruaRodando`/`trocaDePerua`
+em [auxiliar.js](src/dominio/identidade/auxiliar.js)) e até 2 auxiliares por tio, conferidos
 de novo no aceite. `users.motoristaUids` (os tios ATIVOS) é do servidor, e
 `motoristaUid` (o singular antigo) e `motoristaUids` são proibidos ao cliente.
 Ela lê o doc do tio, a cópia da turma e a falta é escrita só pelo vínculo do
