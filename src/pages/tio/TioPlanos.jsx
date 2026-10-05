@@ -620,7 +620,7 @@ export default function TioPlanos() {
                       </span>
                       {d.rotulo === 'Fechamento no teste' ? (
                         <Ponto chave="fechamento" onAbrir={setFolha}>{d.rotulo}</Ponto>
-                      ) : d.rotulo === 'Indicações' ? (
+                      ) : d.rotulo === 'Distribuição do app' ? (
                         <Ponto chave="indicacao" onAbrir={setFolha}>{d.rotulo}</Ponto>
                       ) : (
                         d.rotulo
@@ -681,7 +681,7 @@ export default function TioPlanos() {
           )}
           {/* A INDICAÇÃO É O CONVITE DE SEMPRE, com o valor em reais da próxima
             * (`valorDaIndicacao`) — e ele some sozinho com o módulo desligado. */}
-          <ConviteParaIndicar titulo="Indique e ganhe desconto" />
+          <ConviteParaIndicar titulo="Desconto por distribuição do app" />
           {!indicacaoAtiva && !(escadaAtiva && !jaContratou) && (
             <p className="text-base text-textMuted">Por enquanto, não há outro desconto para você.</p>
           )}

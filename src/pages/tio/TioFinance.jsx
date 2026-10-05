@@ -57,6 +57,7 @@ import { EXPENSE_CATEGORIES, sumExpenses } from '../../services/expensesService'
 import { montarExtrato } from '../../dominio/cobranca/extratoDoMes.js';
 import { resumoDaTurma, frasesDoMovimento } from '../../dominio/identidade/movimentoDaTurma.js';
 import { diasDeAtraso } from '../../dominio/associacao/contaAtiva.js';
+import { faturaGratisDoMes } from '../../dominio/associacao/faturaGratis.js';
 import { buildChargeMessage } from '../../dominio/cobranca/chargeMessage';
 import {
   abaInicialDoCaixa,
@@ -1111,6 +1112,42 @@ export default function TioFinance() {
           * chave PIX. Meu plano só existe com a cobrança ligada. */}
         {secao === 'contas' && (
           <>
+            {/* ⚠️ A FATURA DE R$ 0,00 (05/10/2026, decisão do dono). Enquanto
+              * a cobrança está desligada, ele vê o que pagaria, RISCADO, e
+              * "Você paga R$ 0,00". É demonstrativo: nada é gravado. */}
+            {cobranca === false && (() => {
+              const f = faturaGratisDoMes({
+                criancas: turma.ativas,
+                plano: profile?.plano || undefined,
+              });
+              if (!f) return null;
+              return (
+                <section className="rounded-3xl bg-card p-5 shadow-rest">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-display text-lg font-bold text-text">Fatura de {f.mes}</h3>
+                    <span className="rounded-full bg-primaryChip px-3 py-1 text-sm font-bold text-primary">
+                      {f.motivo}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-baseline justify-between gap-3 text-base text-textBody">
+                    <span>
+                      Seu plano: {f.criancas} {f.criancas === 1 ? 'criança' : 'crianças'}
+                    </span>
+                    <s className="tabular-nums">{reais(f.valorDeHoje)}</s>
+                  </div>
+                  <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                    <span className="text-base font-bold text-text">Você paga</span>
+                    <span className="font-display text-2xl font-extrabold tabular-nums text-accentText">
+                      {reais(f.vocePaga)}
+                    </span>
+                  </div>
+                  {isCurrentMonthView && <p className="mt-2 text-sm text-textMuted">
+                    Este mês: {totals.contagem.paid}{' '}
+                    {totals.contagem.paid === 1 ? 'mensalidade recebida' : 'mensalidades recebidas'} pelo app.
+                  </p>}
+                </section>
+              );
+            })()}
             <section className="overflow-hidden rounded-3xl bg-card shadow-rest">
               <Porta
                 icon={Receipt}

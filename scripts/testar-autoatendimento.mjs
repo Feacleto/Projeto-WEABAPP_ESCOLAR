@@ -111,6 +111,20 @@ checar('sem dado nenhum, nenhum marco', [], marcosDaHistoria({ agora }));
 checar('nível sem rótulo não entra', false,
   marcosDaHistoria({ nivel: 'sem_nivel', agora }).some((m) => m.icone === 'nivel'));
 
+// ── A FATURA DE R$ 0,00 (05/10/2026, decisão do dono) ──
+{
+  const { faturaGratisDoMes } = await import('../src/dominio/associacao/faturaGratis.js');
+  const { precoDaTabela } = await import('../src/dominio/associacao/planos.js');
+  const f = faturaGratisDoMes({ criancas: 15, agora: new Date(2026, 9, 5) });
+  checar('o valor riscado é o da tabela de hoje', precoDaTabela({ criancas: 15 }), f.valorDeHoje);
+  checar('ele paga zero', 0, f.vocePaga);
+  checar('o mês pelo nome', 'outubro', f.mes);
+  checar('sem criança, não há fatura para mostrar', null, faturaGratisDoMes({ criancas: 0 }));
+  checar('o motivo diz grátis, nunca conta o teste', true, !/m[eê]s \d|de 6|até/i.test(f.motivo));
+  const fonte = readFileSync(new URL('../src/dominio/associacao/faturaGratis.js', import.meta.url), 'utf8');
+  checar('é demonstrativo: nada é gravado', false, /firebase|addDoc|setDoc|faturasParceiro\b.*=/.test(fonte.replace(/\/\*[\s\S]*?\*\//g, '')));
+}
+
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) {

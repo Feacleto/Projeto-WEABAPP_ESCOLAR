@@ -83,7 +83,7 @@ const comDesconto = precoDoMes({
   mes: '2026-10',
 });
 checar('fechamento e indicação viram duas linhas',
-  ['Fechamento no teste', 'Indicações'],
+  ['Fechamento no teste', 'Distribuição do app'],
   linhasDeDesconto(comDesconto).map((l) => l.rotulo));
 checar('sem desconto, nenhuma linha', [],
   linhasDeDesconto(precoDoMes({ criancas: 20, plano: PLANO.MENSAL })));

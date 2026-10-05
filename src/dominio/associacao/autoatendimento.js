@@ -99,7 +99,7 @@ export const EXPLICACOES = {
   concorrente: ['De onde vem esse número?', ['Preço do plano mensal de outro app de van escolar.']],
   bolso: ['Como fiz a conta?', ['O que as famílias te pagam, dividido pelas crianças.']],
   fechamento: ['Desconto por decidir cedo', ['Quem assina no teste trava esse desconto para sempre.']],
-  indicacao: ['Indicação', ['Cada colega que vira cliente baixa a sua conta.']],
+  indicacao: ['Distribuição do app', ['Cada colega que vira cliente pelo seu cartão do app baixa a sua conta.']],
 };
 
 /**

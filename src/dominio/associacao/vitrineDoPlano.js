@@ -101,7 +101,7 @@ export function linhasDeDesconto(preco) {
   const linhas = [
     ['Condição de fundador', preco.descontoFundador],
     ['Fechamento no teste', preco.descontoFechamento],
-    ['Indicações', preco.descontoIndicacao],
+    ['Distribuição do app', preco.descontoIndicacao],
     ['Condição especial', preco.descontoConcessao],
   ];
   return linhas

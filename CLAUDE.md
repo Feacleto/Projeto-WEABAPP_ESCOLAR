@@ -1288,6 +1288,14 @@ Turma; "Extrato | Mensalidades" mora dentro de Mensalidades) e "Iniciar a
 rota" no pé (`useViagemDoDia` + `ControleDeRota parte="botao"`). Turma e
 Perua são provisórias (portas e `BlocoSuaPerua`) até os assuntos da sessão
 prod em `src/components/carteira/`.
+⚠️ **A FATURA DE R$ 0,00 (05/10/2026, decisão do dono).** Com a cobrança
+desligada, a aba Contas da Central mostra todo mês "Fatura de outubro ·
+Período grátis": o valor da tabela de HOJE riscado e "Você paga R$ 0,00".
+É DEMONSTRATIVO — nada é gravado em `faturasParceiro`; régua em
+[faturaGratis.js](src/dominio/associacao/faturaGratis.js) (casos em
+`testar:autoatendimento`). Sem data de fim nem contagem do teste. O desconto
+da indicação passou a se chamar **"Desconto por distribuição do app"** nas
+telas de planos (o cartão do app é distribuído pelo tio).
 
 ⚠️ **A AÇÃO MORA NO RODAPÉ, O ENCERRAR MORA NO TOPO** (03/10/2026, auditoria
 de UX para 40+ — padrão de leitura em Z e lei de Fitts). O rodapé fixo da
