@@ -22,7 +22,10 @@ import { AVISO_DA_VOLTA, guardarVolta, limparVolta } from './voltaAoAceite';
  * família." em cima. O aceite segue sendo o toque dele em "Aceito receber".
  */
 export default function PedidosParaVoce() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  // Com plano e sem o contrato aceito, o que falta é só o contrato: ir aos
+  // planos o faria escolher de novo o que já escolheu.
+  const soFaltaContrato = !!profile?.plano;
   const navigate = useNavigate();
   const location = useLocation();
   const [pedidos, setPedidos] = useState([]);
@@ -64,13 +67,17 @@ export default function PedidosParaVoce() {
       </p>
       {assinar && (
         <div className="rounded-2xl bg-primarySoft p-4">
-          <p className="text-base text-text">Para receber uma família, assine um plano antes. Depois volte aqui para aceitar.</p>
+          <p className="text-base text-text">
+            {soFaltaContrato
+              ? 'Para receber uma família, aceite o contrato da assinatura antes.'
+              : 'Para receber uma família, assine um plano antes. Depois volte aqui para aceitar.'}
+          </p>
           <button
             type="button"
-            onClick={() => navigate('/tio/planos', { state: { voltarAoPedido: assinar } })}
+            onClick={() => navigate(soFaltaContrato ? '/tio/contrato-plataforma' : '/tio/planos', { state: { voltarAoPedido: assinar } })}
             className="mt-3 min-h-12 w-full rounded-xl bg-primary text-base font-bold text-white"
           >
-            Ver os planos
+            {soFaltaContrato ? 'Ver o contrato' : 'Ver os planos'}
           </button>
         </div>
       )}

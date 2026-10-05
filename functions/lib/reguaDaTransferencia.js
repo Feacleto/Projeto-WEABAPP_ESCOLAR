@@ -226,22 +226,39 @@ function podePedir({ cobrancaLigada, uid, tio, crianca, parceiroUid, parceiro, e
 }
 
 /**
- * O parceiro pode aceitar? Quem ainda não paga recebe `precisaAssinar`: a
- * tela o leva aos planos e ele volta para aceitar.
- *
- * ⚠️ O SERVIDOR CONFERE SÓ O PLANO (`ehPagante`), não o contrato aceito. A
- * assinatura fechada que o dono pede é plano + contrato, e quem garante a
- * segunda metade é a TELA: os planos levam ao contrato, e só o aceite dele
- * devolve ao pedido (`src/components/transferencia/voltaAoAceite.js`).
- * Exigir o contrato aqui é decisão a tomar com o dono — o mesmo critério
- * grosso vale para pedir e para a família aceitar.
+ * Ele tem um contrato da assinatura ACEITO para o plano de agora? Um doc de
+ * `contratosAssociacao` dele com `aceitoEm` e `conteudo.plano.id` igual a
+ * `users.plano` — o mesmo par que a rule do contrato compara na emissão.
+ * Aceito de OUTRO plano (trocou de mensal para anual e não assinou o novo)
+ * não vale, nem o pendente.
  */
-function podeAceitarParceiro({ cobrancaLigada, uid, t, parceiro, agoraMs = Date.now() }) {
+function contratoAceitoDoPlano(contratos, plano) {
+  if (!plano) return false;
+  return (Array.isArray(contratos) ? contratos : [])
+    .some((c) => c && c.aceitoEm != null && c.conteudo?.plano?.id === plano);
+}
+
+/**
+ * O parceiro pode aceitar? Quem ainda não fechou a assinatura recebe
+ * `precisaAssinar`: a tela o leva aos planos (ou ao contrato) e ele volta
+ * para aceitar.
+ *
+ * ⚠️ ASSINATURA FECHADA É PLANO + CONTRATO ACEITO (o dono pediu "o
+ * fechamento de uma assinatura", e a QA confirmou): a cobrança se apoia no
+ * contrato assinado, e plano sem contrato deixaria um tio recebendo turma sem
+ * documento. `contratoAceito` vem de `contratoAceitoDoPlano`, lido pelo
+ * servidor. A tela leva pelo mesmo caminho (planos → contrato → pedido,
+ * `src/components/transferencia/voltaAoAceite.js`), mas quem garante é aqui.
+ */
+function podeAceitarParceiro({ cobrancaLigada, uid, t, parceiro, contratoAceito = false, agoraMs = Date.now() }) {
   if (!t || t.paraUid !== uid) return { ok: false, erro: 'Pedido não encontrado.' };
   if (estadoEfetivo(t, agoraMs) !== ESTADO.PEDIDO) return { ok: false, erro: 'Este pedido não está mais aberto.' };
   if (cobrancaLigada !== true) return { ok: false, erro: 'Passar a família para outro tio ainda não está disponível.' };
   if (!ehPagante(parceiro)) {
     return { ok: false, erro: 'Para receber uma família, assine um plano antes.', precisaAssinar: true };
+  }
+  if (contratoAceito !== true) {
+    return { ok: false, erro: 'Para receber uma família, aceite o contrato da assinatura antes.', precisaAssinar: true };
   }
   return { ok: true, erro: null };
 }
@@ -383,6 +400,7 @@ module.exports = {
   CAMPOS_QUE_VAO,
   CAMPOS_QUE_NUNCA_VAO,
   ehPagante,
+  contratoAceitoDoPlano,
   emMs,
   expiraEmMs,
   estadoEfetivo,

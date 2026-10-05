@@ -66,7 +66,25 @@ eq('atraso não derruba o pagante (só sair derruba)', R.ehPagante({ plano: 'men
 console.log('\n\x1b[1m3. O parceiro: o que vê e quando pode aceitar\x1b[0m');
 eq('a prévia é só o primeiro nome e a escola', R.previaDoParceiro({ ...crianca, address: 'Rua A', parentPhone: '11999' }), { primeiroNome: 'Lia', escola: 'EMEF Sol' });
 const pedido = { paraUid: 'para', estado: 'pedido', expiraEm: agora + 1000 };
-eq('parceiro pagante aceita', R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'para', t: pedido, parceiro, agoraMs: agora }).ok, true);
+const srvTransf = fs.readFileSync('functions/lib/transferencias.js', 'utf8');
+eq('parceiro pagante, com o contrato aceito, aceita', R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'para', t: pedido, parceiro, contratoAceito: true, agoraMs: agora }).ok, true);
+{
+  const aceitoAnual = { aceitoEm: 1, conteudo: { plano: { id: 'anual' } } };
+  const aceitoMensal = { aceitoEm: 1, conteudo: { plano: { id: 'mensal' } } };
+  const pendenteAnual = { aceitoEm: null, conteudo: { plano: { id: 'anual' } } };
+  const aceita = (contratos) => R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'para', t: pedido, parceiro,
+    contratoAceito: R.contratoAceitoDoPlano(contratos, parceiro.plano), agoraMs: agora });
+  const semContrato = aceita([]);
+  eq('plano sem contrato: recusa, com precisaAssinar', [semContrato.ok, semContrato.precisaAssinar], [false, true]);
+  eq('a frase pede o contrato', semContrato.erro, 'Para receber uma família, aceite o contrato da assinatura antes.');
+  eq('contrato aceito de OUTRO plano: recusa', aceita([aceitoMensal]).ok, false);
+  eq('contrato pendente: recusa', aceita([pendenteAnual]).ok, false);
+  eq('contrato aceito do plano atual: passa', aceita([aceitoMensal, pendenteAnual, aceitoAnual]).ok, true);
+  eq('sem plano, contrato nenhum vale', R.contratoAceitoDoPlano([aceitoAnual], undefined), false);
+  eq('sem a leitura (padrão), recusa', R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'para', t: pedido, parceiro, agoraMs: agora }).ok, false);
+  eq('o servidor lê os contratos dele e passa à régua', srvTransf.includes("db.collection('contratosAssociacao').where('tioUid', '==', uid)")
+    && srvTransf.includes("contratoAceito: R.contratoAceitoDoPlano("), true);
+}
 const semPlano = R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'para', t: pedido, parceiro: { role: 'admin' }, agoraMs: agora });
 eq('parceiro sem plano é mandado assinar (não perde a família)', [semPlano.ok, semPlano.precisaAssinar], [false, true]);
 eq('outro tio não responde', R.podeAceitarParceiro({ cobrancaLigada: true, uid: 'x', t: pedido, parceiro, agoraMs: agora }).ok, false);
@@ -216,7 +234,7 @@ console.log('\n\x1b[1m10. A volta ao aceite depois de assinar (F2.4)\x1b[0m');
   eq('o aviso da volta', volta.includes("'Pronto. Agora você pode aceitar a família.'"), true);
   eq('o sessionStorage tem try/catch nas três pontas', (volta.match(/try \{/g) || []).length, 3);
   eq('o pedido vai aos planos no state e no sessionStorage', pedidos.includes('guardarVolta(t.id)')
-    && pedidos.includes("navigate('/tio/planos', { state: { voltarAoPedido: assinar } })"), true);
+    && pedidos.includes("navigate(soFaltaContrato ? '/tio/contrato-plataforma' : '/tio/planos', { state: { voltarAoPedido: assinar } })"), true);
   const contrato = fs.readFileSync('src/pages/tio/TioContratoAssociacao.jsx', 'utf8');
   eq('os planos levam ao CONTRATO com o pedido, nunca direto à Comunidade',
     planos.includes("navigate('/tio/contrato-plataforma', pedido ? { state: { voltarAoPedido: pedido } } : undefined)")
@@ -230,9 +248,8 @@ console.log('\n\x1b[1m10. A volta ao aceite depois de assinar (F2.4)\x1b[0m');
   eq('não fecha: contrato pendente', contratoFechaAssinatura({ aceitoEm: null, conteudo: { plano: { id: 'mensal' } } }, 'mensal'), false);
   eq('não fecha: aceito para outro plano', contratoFechaAssinatura({ aceitoEm: 1, conteudo: { plano: { id: 'anual' } } }, 'mensal'), false);
   eq('não fecha: sem plano', contratoFechaAssinatura({ aceitoEm: 1, conteudo: { plano: { id: 'mensal' } } }, null), false);
-  eq('o servidor confere só o plano, e o comentário diz que a tela leva ao contrato',
-    R.podeAceitarParceiro.toString().includes('ehPagante(parceiro)')
-    && fs.readFileSync('functions/lib/reguaDaTransferencia.js', 'utf8').includes('O SERVIDOR CONFERE SÓ O PLANO'), true);
+  eq('o servidor exige plano E contrato aceito (assinatura fechada)',
+    R.podeAceitarParceiro.toString().includes('ehPagante(parceiro)') && R.podeAceitarParceiro.toString().includes('contratoAceito !== true'), true);
   eq('a Comunidade abre na aba dos parceiros', comunidade.includes('location.state?.pedidoAberto ? PUBLICO.PARCEIROS'), true);
   eq('o pedido de volta aparece com o aviso', pedidos.includes('voltouPara === t.id && <p') && pedidos.includes('{AVISO_DA_VOLTA}'), true);
   // O aceite nunca é automático: responderTransferencia só no clique.
